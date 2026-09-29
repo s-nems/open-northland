@@ -7,7 +7,8 @@ import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { seatBaseOf } from '../base.js';
-import { buildingTypeByContentId, goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
+import { buildingTypeByContentId, countedTiers, goodTypeByContentId } from '../content-lookup.js';
+import { type JoineryRole, joineryRoles } from '../joinery-role.js';
 import { anyLiveResource } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
 import { enemyOverSea } from '../sea-route.js';
@@ -33,24 +34,32 @@ function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingT
   return false;
 }
 
-/** One decision's map-wide answers, so the entries that ask the same question search the map once:
- *  whether the map holds a live resource, per good type, and whether the enemy lies over the sea. */
+/** One decision's answers, so the entries that ask the same question work it out once: whether the map
+ *  holds a live resource, per good type, whether the enemy lies over the sea, and the top-tier joineries'
+ *  roles. */
 export interface DecisionMemo {
   readonly live: Map<number, boolean>;
   enemyOverSea: boolean | undefined;
+  roleOf: ((joinery: Entity) => JoineryRole) | undefined;
 }
 
 export function decisionMemo(): DecisionMemo {
-  return { live: new Map(), enemyOverSea: undefined };
+  return { live: new Map(), enemyOverSea: undefined, roleOf: undefined };
 }
 
-/** The tiers an entry counts: `type` and those above it on its chain, stopping below `belowTier`. */
-function countedTiers(ctx: SystemContext, type: BuildingType, belowTier: string | undefined): Set<number> {
-  const index = contentIndex(ctx.content);
-  const counted = tiersAtOrAbove(index, type);
-  const cap = belowTier === undefined ? undefined : buildingTypeByContentId(ctx.content, belowTier);
-  if (cap !== undefined) for (const tier of tiersAtOrAbove(index, cap)) counted.delete(tier);
-  return counted;
+function memoOverSea(world: World, ctx: SystemContext, player: number, memo: DecisionMemo): boolean {
+  memo.enemyOverSea ??= enemyOverSea(world, ctx, player);
+  return memo.enemyOverSea;
+}
+
+function memoRoles(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  memo: DecisionMemo,
+): (joinery: Entity) => JoineryRole {
+  memo.roleOf ??= joineryRoles(world, ctx, player, () => memoOverSea(world, ctx, player, memo));
+  return memo.roleOf;
 }
 
 /** `owned` is the seat's {@link ownedBuildings} list and `memo` this decision's, both passed in so one
@@ -72,19 +81,17 @@ export function entryStatus(
       if (type === undefined) return 'skip';
       // The placed tier or anything above it on its chain, below `belowTier`, counts, so an upgraded
       // workshop never triggers a duplicate placement; a home entry counts every home tier.
-      const counted = countedTiers(ctx, type, entry.belowTier);
+      const counted = countedTiers(ctx.content, type, entry.belowTier);
+      const roleOf = entry.role === undefined ? undefined : memoRoles(world, ctx, player, memo);
       let have = 0;
       for (const e of owned) {
         const ownedType = index.buildings.get(world.get(e, Building).buildingType);
         if (ownedType === undefined) continue;
         const matches = type.kind === 'home' ? ownedType.kind === 'home' : counted.has(ownedType.typeId);
-        if (matches) have++;
+        if (matches && (roleOf === undefined || roleOf(e) === entry.role)) have++;
       }
       if (have >= entry.count) return 'satisfied';
-      if (entry.onlyWhen === 'enemyOverSea') {
-        memo.enemyOverSea ??= enemyOverSea(world, ctx, player);
-        if (!memo.enemyOverSea) return 'skip';
-      }
+      if (entry.onlyWhen === 'enemyOverSea' && !memoOverSea(world, ctx, player, memo)) return 'skip';
       if (
         entry.unlessWithin !== undefined &&
         unservedAnchor(world, index, owned, counted, entry.unlessWithin) === null
@@ -100,7 +107,7 @@ export function entryStatus(
     case 'upgrade': {
       const target = buildingTypeByContentId(ctx.content, entry.building);
       if (target === undefined) return 'skip';
-      const done = countedTiers(ctx, target, entry.belowTier);
+      const done = countedTiers(ctx.content, target, entry.belowTier);
       let have = 0;
       for (const e of owned) {
         const type = world.get(e, Building).buildingType;

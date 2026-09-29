@@ -1,5 +1,6 @@
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../game-phase.js';
+import type { JoineryRole } from '../joinery-role.js';
 
 /** Where a placement gravitates, on top of the always-on near-base rule; `placement.ts` resolves
  *  each kind to a node. `resource` is the good's nearest live deposit, or the seat's store holding the
@@ -24,7 +25,8 @@ export type BuildOrderEntry =
    *  `radius` world-metric nodes, or while the seat has none of those; a `near` affinity on the same id
    *  then pulls the spot toward the first one lacking. `onlyWhen: 'enemyOverSea'` skips the entry while
    *  the nearest enemy headquarters can be reached by land. `belowTier` stops the count below that tier of
-   *  the chain, so buildings placed straight at it never meet the entry. */
+   *  the chain, so buildings placed straight at it never meet the entry. `role` counts only the top-tier
+   *  joineries holding that role (`../joinery-role.ts`). */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -35,6 +37,7 @@ export type BuildOrderEntry =
       readonly unlessWithin?: { readonly building: string; readonly radius: number };
       readonly onlyWhen?: 'enemyOverSea';
       readonly belowTier?: string;
+      readonly role?: JoineryRole;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier, and below `belowTier` when given. */
@@ -85,14 +88,6 @@ export const WELL_REACH_NODES = 12;
  *  wider than the well's reach, since the well entry serving the same brewery comes first in the list and
  *  takes the nearest room, and the brewer's carrier walks the little further for honey. */
 const HIVE_REACH_NODES = 18;
-
-/** How near the barracks a top-tier joinery must stand to count as its catapult joinery, in world-metric
- *  nodes (authored): the army musters there, and a ship joinery by a far shore stays out of it. */
-const CATAPULT_JOINERY_REACH_NODES = 16;
-
-/** The catapult joinery's reach: the build order places one where no barracks has a top-tier joinery in
- *  it, and the joiners of one standing in it make catapults (`workforce/joinery-role.ts`). */
-export const CATAPULT_JOINERY_REACH = { building: 'barracks', radius: CATAPULT_JOINERY_REACH_NODES } as const;
 
 /** How far a store's coverage reaches, in world-metric nodes (authored): well over a tower's, since a
  *  warehouse serves carriers rather than bows, and the base is a store too. */
@@ -226,6 +221,7 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     count: 1,
     near: [{ kind: 'shore' }],
     onlyWhen: 'enemyOverSea',
+    role: 'ship',
   },
   { kind: 'towerCoverage', building: 'tower_01' },
   { kind: 'place', building: 'work_smithy_01', count: 2, near: IRON_AND_WOOD },
@@ -285,14 +281,14 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'home_level_04', count: 8 },
   // The late game runs out of mail, plate and long bows.
   { kind: 'place', building: 'work_smithy_01', count: 5, near: [{ kind: 'resource', good: 'iron' }] },
-  // The catapult joinery stands by the barracks. Its count reaches past a ship joinery, and the barracks
-  // rule skips it once one stands there, so a land map gets one top-tier joinery and a sea map two.
+  // The catapult joinery stands by the barracks, where the army musters. A land map gets one top-tier
+  // joinery, a sea map two.
   {
     kind: 'place',
     building: 'work_joinery_03',
-    count: 2,
+    count: 1,
     near: [{ kind: 'building', id: 'barracks' }],
-    unlessWithin: CATAPULT_JOINERY_REACH,
+    role: 'catapult',
   },
   { kind: 'place', building: 'work_armory_01', count: 2, near: [{ kind: 'resource', good: 'wood' }] },
   // The strength-amulet mint, and two more druid huts on the big healing potion with a mushroom gatherer

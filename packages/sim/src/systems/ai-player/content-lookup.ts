@@ -28,3 +28,17 @@ export function tiersAtOrAbove(index: ContentIndex, target: BuildingType): Set<n
   }
   return tiers;
 }
+
+/** The tiers a build-order entry counts: `type` and those above it on its chain, stopping below the
+ *  `belowTier` content id when given. */
+export function countedTiers(
+  content: ContentSet,
+  type: BuildingType,
+  belowTier: string | undefined,
+): Set<number> {
+  const index = contentIndex(content);
+  const counted = tiersAtOrAbove(index, type);
+  const cap = belowTier === undefined ? undefined : buildingTypeByContentId(content, belowTier);
+  if (cap !== undefined) for (const tier of tiersAtOrAbove(index, cap)) counted.delete(tier);
+  return counted;
+}

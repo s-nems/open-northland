@@ -15,12 +15,12 @@ import { withinNodeRadius } from '../../../src/nav/node-circle.js';
 import {
   type BuildOrderEntry,
   buildOrderModule,
-  CATAPULT_JOINERY_REACH,
   DEFAULT_BUILD_ORDER,
   entryStatuses,
   SeatSupply,
   WELL_REACH_NODES,
 } from '../../../src/systems/ai-player/index.js';
+import { type JoineryRole, joineryRoles } from '../../../src/systems/ai-player/joinery-role.js';
 import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import * as seaRoute from '../../../src/systems/ai-player/sea-route.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
@@ -201,22 +201,24 @@ const LAKE = { x0: 28, x1: 40, y0: 2, y1: 14 };
 /** A bay the sea reaches into our land by: its south shore is where a ship yard fits, since the yard's
  *  door stands south of its hull and the sea's straight west shore admits none. */
 const BAY = { x0: 44, x1: SEA_WEST, y0: 36, y1: 44 };
+/** The same bay further south, beyond the reach of a settlement of the headquarters alone. */
+const FAR_BAY = { ...BAY, y0: 50, y1: 58 };
 
 interface MapShape {
   readonly bridge?: boolean;
   readonly lake?: boolean;
-  readonly bay?: boolean;
+  readonly bay?: typeof BAY | null;
 }
 
 /** A sea between our land and the enemy's reaching into ours by a bay, with a land bridge over it or a
  *  lake on our side on request. */
-function seaMap({ bridge = false, lake = false, bay = true }: MapShape = {}): TerrainMap {
+function seaMap({ bridge = false, lake = false, bay = BAY }: MapShape = {}): TerrainMap {
   const typeIds = new Array<number>(MAP_W * MAP_H).fill(GRASS);
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
       const sea = x >= SEA_WEST && x < SEA_EAST && !(bridge && y >= HOME.y - 2 && y < HOME.y + 2);
       const pond = lake && x >= LAKE.x0 && x < LAKE.x1 && y >= LAKE.y0 && y < LAKE.y1;
-      const inlet = bay && x >= BAY.x0 && x < BAY.x1 && y >= BAY.y0 && y < BAY.y1;
+      const inlet = bay !== null && x >= bay.x0 && x < bay.x1 && y >= bay.y0 && y < bay.y1;
       if (sea || pond || inlet) typeIds[y * MAP_W + x] = WATER;
     }
   }
@@ -271,8 +273,8 @@ function placeEntry(
   throw new Error('entry missing from the default list');
 }
 
-const shipJoinery = placeEntry((e) => e.onlyWhen === 'enemyOverSea');
-const catapultJoinery = placeEntry((e) => e.building === 'work_joinery_03' && e.unlessWithin !== undefined);
+const shipJoinery = placeEntry((e) => e.role === 'ship');
+const catapultJoinery = placeEntry((e) => e.role === 'catapult');
 const toolsJoinery = placeEntry((e) => e.building === 'work_joinery_01');
 const druidWell = placeEntry(
   (e) => e.building === 'work_well_00' && e.unlessWithin?.building === 'work_druid_01',
@@ -301,6 +303,33 @@ describe('build order - the sea route', () => {
     // Only a tower stands over the sea: no headquarters to sail for.
     const towerOnly = world(seaMap(), [{ buildingType: TOWER_TYPE, ...ENEMY_HOME, owner: ENEMY }], false);
     expect(seaRoute.enemyOverSea(towerOnly.world, fleetCtx(towerOnly), SEAT)).toBe(false);
+  });
+
+  it('reads each enemy seat’s headquarters, never its other buildings', () => {
+    const ENEMY_TOWERS = [
+      { x: HOME.x + 6, y: HOME.y },
+      { x: ENEMY_HOME.x - 6, y: ENEMY_HOME.y },
+      { x: ENEMY_HOME.x, y: ENEMY_HOME.y + 8 },
+    ];
+    const sim = world(
+      seaMap(),
+      ENEMY_TOWERS.map((at) => ({ buildingType: TOWER_TYPE, ...at, owner: ENEMY })),
+    );
+    const towers = ownedBuildings(sim.world, ENEMY).filter(
+      (e) => sim.world.get(e, Building).buildingType === TOWER_TYPE,
+    );
+    expect(towers).toHaveLength(ENEMY_TOWERS.length);
+    const read = vi.spyOn(sim.world, 'get');
+    try {
+      const ctx = fleetCtx(sim);
+      expect(seaRoute.enemyOverSea(sim.world, ctx, SEAT)).toBe(true);
+      expect(seaRoute.nearestEnemyBuilding(sim.world, ctx, SEAT, { hx: HOME.x, hy: HOME.y })).toMatchObject({
+        headquarters: true,
+      });
+      expect(read.mock.calls.filter(([e]) => towers.includes(e))).toEqual([]);
+    } finally {
+      read.mockRestore();
+    }
   });
 
   it('asks the sea question once a decision, however many entries depend on it', () => {
@@ -342,7 +371,7 @@ describe('build order - the shore affinity', () => {
   });
 
   it('places nothing by a straight shore, where no ship yard fits', () => {
-    expect(first(world(seaMap({ bay: false })), [shipJoinery])).toBeUndefined();
+    expect(first(world(seaMap({ bay: null })), [shipJoinery])).toBeUndefined();
   });
 
   it('prefers the sea that reaches the enemy over a nearer lake, and takes the lake when no enemy lies over the sea', () => {
@@ -361,39 +390,100 @@ describe('build order - the shore affinity', () => {
   });
 });
 
+/** Each top-tier joinery of the seat with its role this decision, ascending id. */
+function rolesOf(sim: Simulation): JoineryRole[] {
+  const ctx = fleetCtx(sim);
+  const roleOf = joineryRoles(sim.world, ctx, SEAT, () => seaRoute.enemyOverSea(sim.world, ctx, SEAT));
+  return ownedBuildings(sim.world, SEAT)
+    .filter((e) => sim.world.get(e, Building).buildingType === JOINERY_03_TYPE)
+    .map(roleOf);
+}
+
+/** Runs `order` to the end, finishing each site. */
+function buildOut(sim: Simulation, order: readonly BuildOrderEntry[]): void {
+  for (let round = 0; round < 4; round++) {
+    const command = first(sim, order);
+    if (command === undefined) return;
+    sim.enqueueSetup(command);
+    sim.step();
+    completeSites(sim);
+  }
+}
+
 describe('build order - the top-tier joineries', () => {
   const BARRACKS_AT = { x: 30, y: 20 };
+  /** How near the barracks the catapult joinery's spot lands, in world-metric nodes. */
+  const BESIDE_BARRACKS_NODES = 12;
 
-  /** Runs the ship and catapult entries to the end, finishing each site, and counts the top-tier joineries. */
-  function topJoineries(map: TerrainMap): number {
-    const sim = world(map, [{ buildingType: BARRACKS_TYPE, ...BARRACKS_AT }]);
-    for (let round = 0; round < 4; round++) {
-      const command = first(sim, [shipJoinery, catapultJoinery]);
-      if (command === undefined) break;
-      sim.enqueueSetup(command);
-      sim.step();
-      completeSites(sim);
-    }
-    return [...sim.world.query(Building)].filter(
-      (e) => sim.world.get(e, Building).buildingType === JOINERY_03_TYPE,
-    ).length;
+  function topJoineryRoles(map: TerrainMap, barracks = BARRACKS_AT): JoineryRole[] {
+    const sim = world(map, [{ buildingType: BARRACKS_TYPE, ...barracks }]);
+    buildOut(sim, [shipJoinery, catapultJoinery]);
+    return rolesOf(sim);
   }
 
-  it('raises one by the barracks on a land map and one more by the shore on a sea map', () => {
-    expect(topJoineries(landMap())).toBe(1);
-    expect(topJoineries(seaMap())).toBe(2);
+  it('raises a catapult joinery on a land map and a ship joinery besides on a sea map', () => {
+    expect(topJoineryRoles(landMap())).toEqual(['catapult']);
+    expect(topJoineryRoles(seaMap())).toEqual(['ship', 'catapult']);
+  });
+
+  it('raises both where the barracks stands by the shore, the first one on the water building ships', () => {
+    const BY_THE_BAY = { x: 46, y: 50 };
+    expect(topJoineryRoles(seaMap(), BY_THE_BAY)).toEqual(['ship', 'catapult']);
+    // Placed first, the catapult joinery by the water takes the ship role, and the next one catapults.
+    const sim = world(seaMap(), [{ buildingType: BARRACKS_TYPE, ...BY_THE_BAY }]);
+    buildOut(sim, [catapultJoinery, shipJoinery]);
+    expect(rolesOf(sim)).toEqual(['ship', 'catapult']);
+  });
+
+  it('still raises the ship joinery once the shore comes in reach after the catapult joinery stands', () => {
+    const FROM_THE_BARRACKS = { x: 30, y: 12 };
+    const TOWARD_THE_BAY = { x: 40, y: 50 };
+    const map = seaMap({ bay: FAR_BAY });
+    const sim = world(map, [
+      { buildingType: BARRACKS_TYPE, ...BARRACKS_AT },
+      { buildingType: JOINERY_03_TYPE, ...FROM_THE_BARRACKS },
+    ]);
+    expect(entryStatuses(sim.world, fleetCtx(sim), SEAT, [shipJoinery, catapultJoinery])).toEqual([
+      'unmet',
+      'satisfied',
+    ]);
+    expect(first(sim, [shipJoinery])).toBeUndefined();
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: TOWER_TYPE,
+      ...TOWARD_THE_BAY,
+      tribe: VIKING,
+      owner: SEAT,
+      force: true,
+    });
+    sim.step();
+    buildOut(sim, [shipJoinery, catapultJoinery]);
+    expect(rolesOf(sim)).toEqual(['catapult', 'ship']);
+    expect(entryStatuses(sim.world, fleetCtx(sim), SEAT, [shipJoinery, catapultJoinery])).toEqual([
+      'satisfied',
+      'satisfied',
+    ]);
+  });
+
+  it('keeps a joinery by the water on catapults and skips the ship joinery where the enemy lies over land', () => {
+    const sim = world(seaMap({ bridge: true }), [
+      { buildingType: BARRACKS_TYPE, ...BARRACKS_AT },
+      { buildingType: JOINERY_03_TYPE, x: 44, y: 50 },
+    ]);
+    expect(rolesOf(sim)).toEqual(['catapult']);
+    expect(entryStatuses(sim.world, fleetCtx(sim), SEAT, [shipJoinery, catapultJoinery])).toEqual([
+      'skip',
+      'satisfied',
+    ]);
   });
 
   it('puts the catapult joinery beside the barracks', () => {
     const spot = first(world(landMap(), [{ buildingType: BARRACKS_TYPE, ...BARRACKS_AT }]), [
       catapultJoinery,
     ]);
-    if (spot?.kind !== 'placeBuilding' || catapultJoinery.unlessWithin === undefined)
-      throw new Error('expected the catapult joinery placement');
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected the catapult joinery placement');
     expect(spot.buildingType).toBe(JOINERY_03_TYPE);
-    expect(
-      withinNodeRadius(BARRACKS_AT.x, BARRACKS_AT.y, spot.x, spot.y, catapultJoinery.unlessWithin.radius),
-    ).toBe(true);
+    expect(withinNodeRadius(BARRACKS_AT.x, BARRACKS_AT.y, spot.x, spot.y, BESIDE_BARRACKS_NODES)).toBe(true);
   });
 
   it.each([
@@ -509,13 +599,16 @@ describe('workforce - the top-tier joineries’ roles', () => {
 
   const all = (good: number) => Array.from({ length: TOP_JOINERY_JOINERS }, () => [good]);
 
-  it('puts a whole crew on catapults beside the barracks and another on ships by a sea seat’s shore', () => {
+  it('puts a whole crew on catapults away from the water and another on ships by a sea seat’s shore', () => {
     const { sim, joineries } = crewedJoineries(seaMap(), [BY_BARRACKS, AWAY]);
     const [byBarracks, away] = joineries;
     if (byBarracks === undefined || away === undefined) throw new Error('setup: two joineries');
+    // The untuned crew has opened a yard on the water, whose body blocks it: the ship role holds.
     expect(
-      withinNodeRadius(BARRACKS_AT.x, BARRACKS_AT.y, AWAY.x, AWAY.y, CATAPULT_JOINERY_REACH.radius),
-    ).toBe(false);
+      ownedBuildings(sim.world, SEAT).some(
+        (e) => sim.world.get(e, Building).buildingType === SHIP_HOUSE_TYPE,
+      ),
+    ).toBe(true);
     expect(tuned(sim)).toEqual(
       new Map([
         [byBarracks, all(CATAPULT_GOOD)],
@@ -526,16 +619,16 @@ describe('workforce - the top-tier joineries’ roles', () => {
     expect(tuned(sim)).toEqual(new Map());
   });
 
-  it('puts a crew away from the barracks on catapults where no enemy lies over the sea', () => {
+  it('puts a crew by the water on catapults where no enemy lies over the sea', () => {
     const { sim, joineries } = crewedJoineries(landMap(), [AWAY]);
     expect(tuned(sim)).toEqual(new Map([[joineries[0], all(CATAPULT_GOOD)]]));
   });
 
-  it('asks the sea question once a decision, however many joineries away from the barracks', () => {
-    const { sim } = crewedJoineries(seaMap(), [AWAY, { x: 44, y: 60 }]);
+  it('asks the sea question once a decision, and puts one crew by the water on ships', () => {
+    const { sim } = crewedJoineries(seaMap(), [AWAY, { x: 44, y: 46 }]);
     const asked = vi.spyOn(seaRoute, 'enemyOverSea');
     try {
-      expect([...tuned(sim).values()]).toEqual([all(SHIP_GOOD), all(SHIP_GOOD)]);
+      expect([...tuned(sim).values()]).toEqual([all(SHIP_GOOD), all(CATAPULT_GOOD)]);
       expect(asked).toHaveBeenCalledTimes(1);
     } finally {
       asked.mockRestore();

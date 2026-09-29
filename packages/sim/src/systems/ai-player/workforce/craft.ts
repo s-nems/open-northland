@@ -17,8 +17,9 @@ import type { SystemContext } from '../../context.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { goodTypeByContentId } from '../content-lookup.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
+import { type JoineryRole, joineryRoles, ROLE_JOINERY_ID } from '../joinery-role.js';
+import { enemyOverSea } from '../sea-route.js';
 import { ownedSettlers } from '../seat-roster.js';
-import { type JoineryRole, joineryRoles } from './joinery-role.js';
 import type { SeatSupply, SupplyLine } from './supply.js';
 
 /**
@@ -209,7 +210,7 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
  *  The top-tier joinery's whole crew builds catapults, or small ships. */
 export const CRAFT_PLANS_BY_JOINERY_ROLE: Readonly<Record<string, Readonly<Record<JoineryRole, CraftPlan>>>> =
   {
-    work_joinery_03: { catapult: { seats: [['catapult']] }, ship: { seats: [['ship_small']] } },
+    [ROLE_JOINERY_ID]: { catapult: { seats: [['catapult']] }, ship: { seats: [['ship_small']] } },
   };
 
 /** The run a workshop opens with once built, by stable content ids (authored): its whole crew works only
@@ -250,7 +251,7 @@ export function tuneCraftCounters(
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
-  const roleOf = joineryRoles(world, ctx, player);
+  const roleOf = joineryRoles(world, ctx, player, () => enemyOverSea(world, ctx, player));
   // Restricted plan -> its operators across the seat, gathered first because a seat's share depends on
   // how many men the plan employs. Insertion follows the canonical settler walk, so the seats and the
   // emitted command order are both deterministic.

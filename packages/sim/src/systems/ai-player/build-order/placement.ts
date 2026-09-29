@@ -9,8 +9,11 @@ import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf } from '../../footprint/geometry.js';
 import { shipYardProbe, VEHICLE_SITE_PLACEMENT_RINGS } from '../../footprint/placement/vehicle-site.js';
+import { interactionCell } from '../../settlers/targets/index.js';
 import { resourcesAtNode } from '../../spatial/resources.js';
-import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
+import { seatBaseOf } from '../base.js';
+import { countedTiers, goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
+import { smallestShipHouse } from '../joinery-role.js';
 import { nearestLiveResource } from '../live-resources.js';
 import type { EnemyFire } from '../military/defence/index.js';
 import { anchorNodeOf, bestRingNode, firstRingNode, towardNode } from '../node-geometry.js';
@@ -18,10 +21,11 @@ import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 
-/** One affinity resolved to a node, or null when it cannot be. A `building` affinity takes the seat's
- *  lowest-id building of that id or a tier above it, so the pick is deterministic and an upgraded
- *  workshop still anchors; when the entry's `unlessWithin` names the same id, it takes the first such
- *  building with none of the entry's kind in reach, the one the placement exists to serve. */
+/** One affinity other than `shore` ({@link shoreTarget}) resolved to a node, or null when it cannot be. A
+ *  `building` affinity takes the seat's lowest-id building of that id or a tier above it, so the pick is
+ *  deterministic and an upgraded workshop still anchors; when the entry's `unlessWithin` names the same
+ *  id, it takes the first such building with none of the entry's counted kind in reach, the one the
+ *  placement exists to serve. */
 function affinityNode(
   world: World,
   ctx: SystemContext,
@@ -30,9 +34,8 @@ function affinityNode(
   owned: readonly Entity[],
   anchor: HalfCellNode,
   type: BuildingType,
-  tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
-  affinity: PlacementAffinity,
+  affinity: Exclude<PlacementAffinity, { kind: 'shore' }>,
 ): HalfCellNode | null {
   switch (affinity.kind) {
     case 'building': {
@@ -40,7 +43,7 @@ function affinityNode(
       const near = entry.unlessWithin;
       const chosen =
         near !== undefined && near.building === affinity.id
-          ? unservedAnchor(world, index, owned, tiersAtOrAbove(index, type), near)
+          ? unservedAnchor(world, index, owned, countedTiers(ctx.content, type, entry.belowTier), near)
           : anchorsOfId(world, index, owned, affinity.id)[0];
       return chosen === undefined || chosen === null ? null : anchorNodeOf(world, chosen);
     }
@@ -62,8 +65,6 @@ function affinityNode(
         anchor,
         nearestEnemyBuilding(world, ctx, player, anchor)?.node ?? mapCentreNode(terrain),
       );
-    case 'shore':
-      return shipWaterNode(world, ctx, terrain, player, owned, anchor, tribe);
   }
 }
 
@@ -75,37 +76,23 @@ const SHORE_SPOT_RINGS = VEHICLE_SITE_PLACEMENT_RINGS;
  *  placement's own search fan, since the spot must still land in the settlement's reach. */
 const SHORE_SEARCH_RADIUS_NODES = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
 
-/** The house of the content's smallest ship, the one with the least `logicSize` among the vehicles whose
- *  house is raised on water, the lowest type id on a tie; null when the content has none. */
-function smallestShipHouse(index: ContentIndex): number | null {
-  let least: { readonly house: number; readonly size: number } | null = null;
-  for (const house of index.buildings.values()) {
-    if (!house.ignoreContinents || house.vehicleType === undefined) continue;
-    const size = index.vehicles.get(house.vehicleType)?.logicSize;
-    if (
-      size === undefined ||
-      (least !== null && (size > least.size || (size === least.size && house.typeId > least.house)))
-    )
-      continue;
-    least = { house: house.typeId, size };
-  }
-  return least?.house ?? null;
-}
-
-/** The static land component under `anchor`, the seat's home continent. */
-function homeComponent(terrain: TerrainGraph, anchor: HalfCellNode): number {
-  return terrain.componentOf(terrain.nodeAtClamped(anchor.hx, anchor.hy));
+/** The static land component of the seat's base interaction cell, as {@link seaRouteOf} reads it, or
+ *  {@link NO_COMPONENT} for a seat with no base. */
+function baseComponent(world: World, ctx: SystemContext, terrain: TerrainGraph, player: number): number {
+  const base = seatBaseOf(world, ctx, player);
+  return base === null ? NO_COMPONENT : terrain.componentOf(interactionCell(world, ctx, terrain, base));
 }
 
 /**
  * The `shore` target: the water node nearest `anchor` on the lattice's rings where a yard of the content's
- * smallest ship fits with its door on the seat's continent ({@link shipYardProbe}), in a body bordering
- * that continent, close enough to the seat's reach for a spot beside it. The yard's door stands south of
- * its hull, so only shore with the water to its north admits one. A body that also borders the continent
- * of the enemy headquarters over the sea is taken first. Null when none lies within
+ * smallest ship fits with its door on the seat's home continent ({@link shipYardProbe}), in a body
+ * bordering that continent, close enough to the seat's reach for a spot beside it. The yard's door stands
+ * south of its hull, so only shore with the water to its north admits one. A body that also borders the
+ * continent of the enemy headquarters over the sea is taken first. The home continent is the sea route's
+ * while one exists, else the base's, read the same way. Null when no such water lies within
  * {@link SHORE_SEARCH_RADIUS_NODES}.
  */
-function shipWaterNode(
+function shoreTarget(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -113,16 +100,16 @@ function shipWaterNode(
   owned: readonly Entity[],
   anchor: HalfCellNode,
   tribe: number,
-): HalfCellNode | null {
+): { readonly node: HalfCellNode; readonly home: number } | null {
+  const route = seaRouteOf(world, ctx, player);
+  const home = route?.home ?? baseComponent(world, ctx, terrain, player);
   const house = smallestShipHouse(contentIndex(ctx.content));
-  const home = homeComponent(terrain, anchor);
   const yardFits =
     house === null || home === NO_COMPONENT ? null : shipYardProbe(world, ctx, terrain, house, tribe, home);
   if (yardFits === null) return null;
   const coasts = coastsOf(terrain);
   const ours = coasts.get(home);
   if (ours === undefined) return null;
-  const route = seaRouteOf(world, ctx, player);
   const theirs = route === null ? undefined : coasts.get(route.enemy);
   const reach = buildReach(world, owned, anchor);
   const sailable = (bodies: ReadonlySet<number>) => (x: number, y: number) => {
@@ -137,7 +124,8 @@ function shipWaterNode(
     theirs === undefined
       ? null
       : firstRingNode(anchor.hx, anchor.hy, SHORE_SEARCH_RADIUS_NODES, sailable(theirs));
-  return across ?? firstRingNode(anchor.hx, anchor.hy, SHORE_SEARCH_RADIUS_NODES, sailable(ours));
+  const node = across ?? firstRingNode(anchor.hx, anchor.hy, SHORE_SEARCH_RADIUS_NODES, sailable(ours));
+  return node === null ? null : { node, home };
 }
 
 /** How far past the settlement's front-most building a `front` placement aims, in Manhattan nodes
@@ -266,11 +254,18 @@ function searchCentre(
   const anchors: HalfCellNode[] = [];
   let within: SpotBound = null;
   for (const affinity of entry.near ?? []) {
-    const node = affinityNode(world, ctx, terrain, player, owned, anchor, type, tribe, entry, affinity);
-    if (node === null) {
-      if (affinity.kind === 'shore') return null;
+    if (affinity.kind === 'shore') {
+      const shore = shoreTarget(world, ctx, terrain, player, owned, anchor, tribe);
+      if (shore === null) return null;
+      const { node, home } = shore;
+      anchors.push(node);
+      within = (x, y) =>
+        hexDistanceBetween(node.hx, node.hy, x, y) < SHORE_SPOT_RINGS &&
+        terrain.componentOf(terrain.nodeAt(x, y)) === home;
       continue;
     }
+    const node = affinityNode(world, ctx, terrain, player, owned, anchor, type, entry, affinity);
+    if (node === null) continue;
     anchors.push(node);
     const serveRadius = entry.unlessWithin?.radius;
     if (
@@ -279,12 +274,6 @@ function searchCentre(
       serveRadius !== undefined
     )
       within = (x, y) => withinNodeRadius(node.hx, node.hy, x, y, serveRadius);
-    if (affinity.kind === 'shore') {
-      const home = homeComponent(terrain, anchor);
-      within = (x, y) =>
-        hexDistanceBetween(node.hx, node.hy, x, y) < SHORE_SPOT_RINGS &&
-        terrain.componentOf(terrain.nodeAt(x, y)) === home;
-    }
   }
   if (anchors.length === 0) return { centre: anchor, within };
   let sx = 0;

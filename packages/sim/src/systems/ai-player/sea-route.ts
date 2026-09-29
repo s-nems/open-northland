@@ -17,10 +17,59 @@ export interface EnemyBuilding {
   readonly headquarters: boolean;
 }
 
+const headquartersByRoster = new WeakMap<readonly Entity[], Entity | null>();
+
+/**
+ * The seat's lowest-id headquarters in any construction state, or null. Kept per {@link ownedBuildings}
+ * roster copy, which is replaced whenever a building is added, removed or re-owned, so a seat's roster
+ * is walked once per such change: a headquarters sits on no upgrade chain, so no type change in place
+ * makes or unmakes one.
+ */
+export function seatHeadquartersOf(world: World, ctx: SystemContext, player: number): Entity | null {
+  const roster = ownedBuildings(world, player);
+  const held = headquartersByRoster.get(roster);
+  if (held !== undefined) return held;
+  const buildings = contentIndex(ctx.content).buildings;
+  const found =
+    roster.find((e) => buildings.get(world.get(e, Building).buildingType)?.id === HEADQUARTERS_BUILDING_ID) ??
+    null;
+  headquartersByRoster.set(roster, found);
+  return found;
+}
+
+/** Manhattan distance between two lattice nodes. */
+function manhattan(a: HalfCellNode, b: HalfCellNode): number {
+  return Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy);
+}
+
+/** The headquarters nearest `from` (Manhattan) of a player the seat holds as enemy, the lowest id on a
+ *  tie, or null while none stands: one lookup per enemy seat. */
+function nearestEnemyHeadquarters(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  from: HalfCellNode,
+): EnemyBuilding | null {
+  let best: EnemyBuilding | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let owner = 0; owner < MAX_PLAYERS; owner++) {
+    if (owner === player || diplomacyStance(world, player, owner) !== 'enemy') continue;
+    const hq = seatHeadquartersOf(world, ctx, owner);
+    const node = hq === null ? null : anchorNodeOf(world, hq);
+    if (hq === null || node === null) continue;
+    const distance = manhattan(node, from);
+    if (distance < bestDistance || (distance === bestDistance && best !== null && hq < best.entity)) {
+      best = { entity: hq, node, headquarters: true };
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
 /**
  * The building nearest `from` (Manhattan) of a player the seat holds as enemy, headquarters ranked ahead
- * of everything else, or null while no enemy has a building. The lowest id wins a tie. Read off the enemy
- * seats' building rosters, so the walk is over their buildings, not every seat's.
+ * of everything else, or null while no enemy has a building. The lowest id wins a tie. The enemies'
+ * other buildings are walked only while none of them has a headquarters.
  */
 export function nearestEnemyBuilding(
   world: World,
@@ -28,7 +77,8 @@ export function nearestEnemyBuilding(
   player: number,
   from: HalfCellNode,
 ): EnemyBuilding | null {
-  const index = contentIndex(ctx.content);
+  const hq = nearestEnemyHeadquarters(world, ctx, player, from);
+  if (hq !== null) return hq;
   let best: EnemyBuilding | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (let owner = 0; owner < MAX_PLAYERS; owner++) {
@@ -36,14 +86,10 @@ export function nearestEnemyBuilding(
     for (const e of ownedBuildings(world, owner)) {
       const node = anchorNodeOf(world, e);
       if (node === null) continue;
-      const hq = index.buildings.get(world.get(e, Building).buildingType)?.id === HEADQUARTERS_BUILDING_ID;
-      if (best?.headquarters === true && !hq) continue;
-      const distance = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
+      const distance = manhattan(node, from);
       // The seats' rosters are walked one after another, so the lowest id on a tie is kept explicitly.
-      const closer =
-        distance < bestDistance || (distance === bestDistance && best !== null && e < best.entity);
-      if ((hq && best?.headquarters !== true) || closer) {
-        best = { entity: e, node, headquarters: hq };
+      if (distance < bestDistance || (distance === bestDistance && best !== null && e < best.entity)) {
+        best = { entity: e, node, headquarters: false };
         bestDistance = distance;
       }
     }
@@ -51,7 +97,8 @@ export function nearestEnemyBuilding(
   return best;
 }
 
-/** The two static land components ({@link TerrainGraph.componentOf}) a seat's sea route joins. */
+/** The two static land components ({@link TerrainGraph.componentOf}) a seat's sea route joins, each read
+ *  at its headquarters' or base's interaction cell. */
 export interface SeaRoute {
   readonly home: number;
   readonly enemy: number;
@@ -68,8 +115,8 @@ export function seaRouteOf(world: World, ctx: SystemContext, player: number): Se
   const base = seatBaseOf(world, ctx, player);
   const from = base === null ? null : anchorNodeOf(world, base);
   if (base === null || from === null) return null;
-  const enemy = nearestEnemyBuilding(world, ctx, player, from);
-  if (enemy === null || !enemy.headquarters) return null;
+  const enemy = nearestEnemyHeadquarters(world, ctx, player, from);
+  if (enemy === null) return null;
   const home = terrain.componentOf(interactionCell(world, ctx, terrain, base));
   const far = terrain.componentOf(interactionCell(world, ctx, terrain, enemy.entity));
   if (home === NO_COMPONENT || far === NO_COMPONENT || home === far) return null;
