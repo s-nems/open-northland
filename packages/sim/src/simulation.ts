@@ -58,6 +58,7 @@ import {
   ownPalisadeNodeSet,
   palisadeAnswerFor,
   placementAnswerFor,
+  roadSiteAnswerFor,
   signpostAnswerFor,
 } from './simulation/probe-answers.js';
 import {
@@ -464,6 +465,11 @@ export class Simulation {
   /** {@link palisadeProbe}'s verdict over every node of `area`, as plain data. */
   palisadeAnswer(gfxIndex: number, area: NodeArea): NodeGridAnswer | null {
     return palisadeAnswerFor(this.world, this.content, this.terrain, gfxIndex, area);
+  }
+
+  /** Where a road may be ordered over every node of `area`, as plain data; null for a mapless sim. */
+  roadSiteAnswer(area: NodeArea): NodeGridAnswer | null {
+    return roadSiteAnswerFor(this.world, this.content, this.terrain, area);
   }
 
   /** The nodes {@link ownPalisadeNodes} accepts, as plain data. */

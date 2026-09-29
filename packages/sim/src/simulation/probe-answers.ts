@@ -17,6 +17,7 @@ import {
 import { gridChangeKey, placementBlockerGrid } from '../systems/footprint/placement/blocker-grid.js';
 import { ownPalisadeNodeList, palisadePlacementProbe } from '../systems/palisades/index.js';
 import { buildingEnabled } from '../systems/progression/index.js';
+import { roadSitePlacementProbe, roadSitePlacementVersion } from '../systems/roads/sites.js';
 import { signpostNetwork, signpostNetworkRevision, signpostProbe } from '../systems/signposts/index.js';
 import { mooringSpotsOf } from '../systems/vehicles/index.js';
 import type { FogState } from '../systems/vision/index.js';
@@ -227,6 +228,22 @@ export function palisadeAnswerFor(
     area,
     accepted: gridOver(area, (hx, hy) => probe.canPlace(hx, hy)),
     key: placementBlockerVersion(world),
+  };
+}
+
+/** The road site probe's answer over `area`; null for a mapless sim. */
+export function roadSiteAnswerFor(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph | undefined,
+  area: NodeArea,
+): NodeGridAnswer | null {
+  if (terrain === undefined) return null;
+  const probe = roadSitePlacementProbe(world, content, terrain);
+  return {
+    area,
+    accepted: gridOver(area, (hx, hy) => probe.canPlace(hx, hy)),
+    key: roadSitePlacementVersion(world),
   };
 }
 

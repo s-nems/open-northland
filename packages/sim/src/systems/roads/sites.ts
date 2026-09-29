@@ -8,6 +8,7 @@ import {
   SupplyRun,
   stampOwner,
   UnderConstruction,
+  Vehicle,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -18,10 +19,11 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { scatterSpilledStock, spilledStockOf } from '../economy/goods-spill.js';
 import { siteClaimHolder } from '../economy/site-claim.js';
-import { ANCHOR_ONLY } from '../footprint/geometry.js';
 import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
-import { canPlacePalisadeAnchor, type PlacementProbe } from '../footprint/placement/index.js';
-import { isRoad, layRoad } from './index.js';
+import { OBSTACLE, vehicleBlockerCells } from '../footprint/placement/blockers.js';
+import { type PlacementProbe, placementBlockerVersion } from '../footprint/placement/index.js';
+import { vehicleAnchorRevision } from '../footprint/vehicle-anchors.js';
+import { isRoad, layRoad, roadRevision } from './index.js';
 
 /** The good a road is paved with, by catalog slug. Original behavior: a road site costs one stone. */
 const ROAD_GOOD_SLUG = 'stone';
@@ -37,8 +39,8 @@ export function roadConstructionBill(content: ContentSet): { goodType: number; a
 /**
  * Where a road may be ordered, shared by the UI ghost and the command: walkable land clear of every body
  * a wall segment would also refuse - a building, a resource, a signpost, a wall, a scripted blocker - and
- * not already a road or a road site. A road is flat, so settlers and animals standing there never block
- * it. Project rule, after the wall's placement.
+ * not already a road or a road site. A road is flat, so settlers, animals and parked vehicles standing
+ * there never block it. Project rule, after the wall's placement.
  */
 export function roadSitePlacementProbe(
   world: World,
@@ -47,13 +49,55 @@ export function roadSitePlacementProbe(
 ): PlacementProbe {
   const grid = placementBlockerGrid(world, content, terrain);
   const sites = roadSitesByNode(world, terrain);
+  const vehicles = vehicleObstacleCounts(world, content, terrain);
   return {
-    canPlace: (x, y) =>
-      terrain.inBounds(x, y) &&
-      canPlacePalisadeAnchor(grid, ANCHOR_ONLY, x, y) &&
-      !isRoad(world, terrain.nodeAt(x, y)) &&
-      !sites.has(terrain.nodeAt(x, y)),
+    canPlace: (x, y) => {
+      if (!terrain.inBounds(x, y)) return false;
+      const node = terrain.nodeAt(x, y);
+      const slot = y * terrain.width + x;
+      return (
+        terrain.isWalkable(node) &&
+        (grid.obstacle[slot] ?? 0) <= (vehicles.get(slot) ?? 0) &&
+        (grid.palisadeBody[slot] ?? 0) === 0 &&
+        !isRoad(world, node) &&
+        !sites.has(node)
+      );
+    },
   };
+}
+
+/** A token that changes whenever {@link roadSitePlacementProbe} may answer differently. */
+export function roadSitePlacementVersion(world: World): string {
+  return `${placementBlockerVersion(world)}.${roadRevision(world)}.${world.componentGeneration(RoadSite)}`;
+}
+
+interface VehicleObstacles {
+  readonly key: string;
+  readonly counts: Map<number, number>;
+}
+
+const vehicleObstacles = new WeakMap<World, VehicleObstacles>();
+
+/** How many parked vehicle discs stamp each node's obstacle count, by `y * width + x` slot, so the road
+ *  probe can discount them. Rebuilt when a vehicle comes, goes or enters a node; derived read state. */
+function vehicleObstacleCounts(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+): ReadonlyMap<number, number> {
+  const key = `${world.componentGeneration(Vehicle)}.${vehicleAnchorRevision(world)}`;
+  const held = vehicleObstacles.get(world);
+  if (held !== undefined && held.key === key) return held.counts;
+  const counts = new Map<number, number>();
+  for (const e of world.query(Vehicle, Position)) {
+    vehicleBlockerCells(world, content, e, (x, y, channel) => {
+      if (channel !== OBSTACLE || !terrain.inBounds(x, y)) return;
+      const slot = y * terrain.width + x;
+      counts.set(slot, (counts.get(slot) ?? 0) + 1);
+    });
+  }
+  vehicleObstacles.set(world, { key, counts });
+  return counts;
 }
 
 export function placeRoadSite(

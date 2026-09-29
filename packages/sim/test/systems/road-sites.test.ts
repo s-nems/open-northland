@@ -20,6 +20,8 @@ import {
   exportSaveGame,
   fx,
   hexNeighboursOf,
+  type NodeArea,
+  nodeGridAccepts,
   nodeOfPosition,
   ONE,
   playerCommand,
@@ -31,8 +33,10 @@ import {
 import type { TerrainMap } from '../../src/nav/terrain/index.js';
 import { constructionSystem } from '../../src/systems/economy/construction.js';
 import { claimSite } from '../../src/systems/economy/site-claim.js';
+import { palisadePlacementProbe as palisadeProbe } from '../../src/systems/palisades/index.js';
 import { isRoad } from '../../src/systems/roads/index.js';
 import { roadSitePlacementProbe } from '../../src/systems/roads/sites.js';
+import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -60,6 +64,12 @@ const MAP_HEIGHT = 16;
 /** Long enough for a builder to fetch a stone across the test map and swing once. */
 const BUILD_TICKS = 3000;
 const FAR_HX = 40;
+const HANDCART = 1;
+const HANDCART_JOB = 50;
+const HANDCART_SLOTS = 15;
+const HANDCART_HITPOINTS = 100;
+/** A disc one node out from its anchor, so the cart covers its neighbours too. */
+const HANDCART_LOGIC_SIZE = 1;
 
 const WALL: ScriptLandscapeType = {
   typeId: 691,
@@ -91,6 +101,17 @@ function roadContent() {
         typeId: VIKING,
         id: 'viking',
         atomicBindings: [{ jobType: BUILDER, atomicId: BUILD_ROAD_ATOMIC, animation: BUILD_ROAD_CLIP }],
+      },
+    ],
+    vehicles: [
+      {
+        typeId: HANDCART,
+        id: 'handcart',
+        jobId: HANDCART_JOB,
+        stockSlots: HANDCART_SLOTS,
+        logicSize: HANDCART_LOGIC_SIZE,
+        passengerJobs: [],
+        hitpoints: HANDCART_HITPOINTS,
       },
     ],
     atomicAnimations: [{ id: BUILD_ROAD_CLIP, name: BUILD_ROAD_CLIP, length: BUILD_ROAD_CLIP_TICKS }],
@@ -243,6 +264,48 @@ describe('road site commands', () => {
     const before = [...sim.world.query(RoadSite)].length;
     orderRoads(sim, [{ hx: STORE_HX, hy: ROW }, { hx: 10, hy: ROW }, CENTRE, { hx: 30, hy: ROW }]);
     expect([...sim.world.query(RoadSite)]).toHaveLength(before);
+  });
+
+  it('ignore a parked vehicle, which a wall still refuses', () => {
+    const sim = roadSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped simulation');
+    createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: HANDCART,
+      x: CENTRE.hx,
+      y: CENTRE.hy,
+      tribe: VIKING,
+      owner: HUMAN,
+    });
+    const wallProbe = palisadeProbe(sim.world, sim.content, terrain, WALL.typeId);
+    expect(wallProbe?.canPlace(CENTRE.hx, CENTRE.hy)).toBe(false);
+    expect(roadSitePlacementProbe(sim.world, sim.content, terrain).canPlace(CENTRE.hx, CENTRE.hy)).toBe(true);
+    orderRoads(sim, [CENTRE]);
+    expect(siteAt(sim, CENTRE.hx, CENTRE.hy)).toBeDefined();
+  });
+
+  it('answer the probe as plain data, keyed to change when a road site is ordered', () => {
+    const sim = roadSim();
+    storeAt(sim, STORE_HX);
+    sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped simulation');
+    const area: NodeArea = { minHx: -1, minHy: -1, maxHx: MAP_WIDTH, maxHy: MAP_HEIGHT };
+    const before = sim.roadSiteAnswer(area);
+    if (before === null) throw new Error('expected an answer');
+    expect(sim.roadSiteAnswer(area)?.key).toBe(before.key);
+    orderRoads(sim, [CENTRE]);
+    const after = sim.roadSiteAnswer(area);
+    if (after === null) throw new Error('expected an answer');
+    expect(after.key).not.toBe(before.key);
+    const probe = roadSitePlacementProbe(sim.world, sim.content, terrain);
+    for (let hy = area.minHy; hy <= area.maxHy; hy++) {
+      for (let hx = area.minHx; hx <= area.maxHx; hx++) {
+        expect(nodeGridAccepts(after, hx, hy), `${hx},${hy}`).toBe(probe.canPlace(hx, hy));
+      }
+    }
+    expect(nodeGridAccepts(after, CENTRE.hx, CENTRE.hy)).toBe(false);
+    expect(nodeGridAccepts(before, CENTRE.hx, CENTRE.hy)).toBe(true);
   });
 
   it('refuse a seat the force option and a tribe it may not place', () => {
