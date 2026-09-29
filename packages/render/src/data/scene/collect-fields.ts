@@ -16,7 +16,6 @@ import {
   readBerryBushGfxIndex,
   readBerryBushLevel,
   readCarrying,
-  readChestGfxIndex,
   readEngaged,
   readEquipmentArmorGood,
   readEquipmentWeaponGood,
@@ -95,15 +94,6 @@ export function assignBerryBushFields(
   if (gfxIndex !== undefined) item.gfxIndex = gfxIndex;
   const level = readBerryBushLevel(components);
   if (level !== undefined) item.level = level;
-}
-
-/** A chest draws its own `[GfxLandscape]` record's one frame; `gfxIndex` also selects closed or open. */
-export function assignChestFields(
-  item: MutableDrawItem,
-  components: Readonly<Record<string, unknown>>,
-): void {
-  const gfxIndex = readChestGfxIndex(components);
-  if (gfxIndex !== undefined) item.gfxIndex = gfxIndex;
 }
 
 export function assignStockpileFields(

@@ -3,7 +3,6 @@ import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import {
   assignBerryBushFields,
   assignBuildingFields,
-  assignChestFields,
   assignProjectileArc,
   assignSettlerFields,
   assignStockpileFields,
@@ -65,6 +64,7 @@ export function assembleItem(
       break;
     case 'resource':
     case 'stump':
+    case 'chest':
       assignStaticFields(item, kind, components);
       break;
     case 'fish':
@@ -72,9 +72,6 @@ export function assembleItem(
       break;
     case 'berrybush':
       assignBerryBushFields(item, components);
-      break;
-    case 'chest':
-      assignChestFields(item, components);
       break;
     case 'signpost':
       pushSignpostItems(

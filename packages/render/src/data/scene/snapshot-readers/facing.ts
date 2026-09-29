@@ -65,10 +65,5 @@ export function readFacing(components: Readonly<Record<string, unknown>>): numbe
   const idx = typeof pf.index === 'number' ? pf.index : 0;
   const wp = route.waypoints[idx] as WaypointValue | undefined;
   if (wp === undefined || typeof wp.x !== 'number' || typeof wp.y !== 'number') return undefined;
-  const from = tileToScreen(pos.x / ONE, pos.y / ONE);
-  const to = tileToScreen(wp.x / ONE, wp.y / ONE);
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  if (dx === 0 && dy === 0) return undefined;
-  return facingFromScreenHeading(dx, dy);
+  return facingTowardTile({ x: pos.x / ONE, y: pos.y / ONE }, { x: wp.x / ONE, y: wp.y / ONE });
 }

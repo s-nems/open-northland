@@ -176,7 +176,7 @@ export function readBerryBushGfxIndex(components: Readonly<Record<string, unknow
 }
 
 /** A closed or opened chest's render variant, or `undefined` for a scene chest with no variant tag. */
-export function readChestGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
+function readChestGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Chest', 'gfxIndex') ?? readNumField(components, 'OpenedChest', 'gfxIndex');
 }
 
