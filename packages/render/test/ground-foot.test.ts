@@ -18,6 +18,7 @@ import {
   groundKinds,
 } from '../src/gpu/ground-foot/foot-ground.js';
 import { GroundedFootCache } from '../src/gpu/ground-foot/grounded-foot-cache.js';
+import { SoftShadowCache } from '../src/gpu/soft-shadow-cache.js';
 import { LayerBinder } from '../src/gpu/sprite-pool/bind-layers.js';
 import { createPooled } from '../src/gpu/sprite-pool/pooled-entity.js';
 import type { ResolvedLayer } from '../src/gpu/sprite-pool/resolved-layer.js';
@@ -234,11 +235,22 @@ describe('GroundedFootCache', () => {
     cache.setGround(flat(GRASS));
     // A frame's first analysis always runs, so the largest frame cannot starve; this one spends it all.
     const big: AtlasFrame = { ...FRAME, width: 256, height: 256 };
-    cache.beginFrame();
+    cache.beginFrame(true);
     cache.overlaysAt(source, big, 1, 0, 0);
     expect(cache.overlaysAt(source, FRAME, 1, 0, 0)).toBeNull();
     expect(cache.deferredBakes).toBe(true);
-    cache.beginFrame();
+    cache.beginFrame(true);
+    expect(cache.overlaysAt(source, FRAME, 1, 0, 0)).not.toBeNull();
+    expect(cache.deferredBakes).toBe(false);
+  });
+
+  it('bakes past the budget in an unbudgeted frame', () => {
+    mockFrames(art(WALL_BOX));
+    const cache = new GroundedFootCache();
+    cache.setGround(flat(GRASS));
+    const big: AtlasFrame = { ...FRAME, width: 256, height: 256 };
+    cache.beginFrame(false);
+    cache.overlaysAt(source, big, 1, 0, 0);
     expect(cache.overlaysAt(source, FRAME, 1, 0, 0)).not.toBeNull();
     expect(cache.deferredBakes).toBe(false);
   });
@@ -259,6 +271,16 @@ describe('TextureCache ground switch', () => {
     deferred.mockReturnValue(false);
     cache.beginFrame();
     expect(cache.textureRevision).toBe(settled + 1);
+  });
+
+  it('opens only its first frame unbudgeted', () => {
+    const feet = vi.spyOn(GroundedFootCache.prototype, 'beginFrame');
+    const shadows = vi.spyOn(SoftShadowCache.prototype, 'beginFrame');
+    const cache = new TextureCache();
+    cache.beginFrame();
+    cache.beginFrame();
+    expect(feet.mock.calls).toEqual([[false], [true]]);
+    expect(shadows.mock.calls).toEqual([[false], [true]]);
   });
 });
 

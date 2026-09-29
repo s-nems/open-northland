@@ -49,6 +49,7 @@ export class TextureCache {
   private readonly softShadows = new SoftShadowCache();
   private useSoftShadows = false;
   private revision = 0;
+  private framesBegun = 0;
   private readonly cache = new Map<AtlasFrame, Texture>();
   /** Cast-silhouette views of the character frames that project onto the ground, kept out of
    *  {@link cache} so the same frame can draw both, keyed by how many of its top rows the view keeps. */
@@ -72,12 +73,16 @@ export class TextureCache {
     return this.revision;
   }
 
-  /** Opens a frame. A bake the last frame's budget turned away bumps the revision, so the layers still
-   *  holding hard silhouettes or plain feet rebind and the backlog drains a frame at a time. */
+  /** Opens a frame. The first frame bakes everything it shows, so a map opens with its soft shadows and
+   *  grounded feet in place; later frames ration bakes. A bake the last frame's budget turned away bumps
+   *  the revision, so the layers still holding hard silhouettes or plain feet rebind and the backlog
+   *  drains a frame at a time. */
   beginFrame(): void {
     if (this.softShadows.deferredBakes || this.groundedFeet.deferredBakes) this.revision++;
-    this.softShadows.beginFrame();
-    this.groundedFeet.beginFrame();
+    const budgeted = this.framesBegun > 0;
+    this.framesBegun++;
+    this.softShadows.beginFrame(budgeted);
+    this.groundedFeet.beginFrame(budgeted);
   }
 
   setSoftShadows(enabled: boolean): void {

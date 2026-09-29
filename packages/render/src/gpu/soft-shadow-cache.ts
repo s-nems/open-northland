@@ -11,9 +11,9 @@ export const SHADOW_BLUR_PADDING = SHADOW_BLUR_RADIUS + 1;
 export const SHADOW_BLUR_KERNEL_SUM = SHADOW_BLUR_KERNEL.reduce((sum, tap) => sum + tap, 0);
 const MAX_PIXELS = 2 * 1024 * 1024;
 const MAX_FRAME_PIXELS = 512 * 512;
-/** Pixels one frame may bake. A bake is synchronous, so without a ceiling, switching the enhancement on
- *  over a settled town softens every visible caster inside that one frame. One frame of the largest
- *  allowed silhouette still fits, so a backlog always drains. */
+/** Pixels one budgeted frame may bake. A bake is synchronous, so without a ceiling, switching the
+ *  enhancement on over a settled town softens every visible caster inside that one frame. One frame of
+ *  the largest allowed silhouette still fits, so a backlog always drains. */
 const MAX_PIXELS_PER_FRAME = MAX_FRAME_PIXELS;
 
 /** Artistic approximation: a one-source-pixel Gaussian softens the existing black silhouette.
@@ -55,9 +55,9 @@ export class SoftShadowCache {
   private pixels = 0;
   private framePixels = 0;
   private deferred = false;
-  /** The per-frame ceiling binds only an owner that opens frames. A cache driven outside a draw loop,
-   *  such as an art-gallery preview, would otherwise spend its one budget and never bake again. */
-  private framed = false;
+  /** The per-frame ceiling binds only a frame its owner opens as budgeted. A cache driven outside a draw
+   *  loop, such as an art-gallery preview, would otherwise spend its one budget and never bake again. */
+  private budgeted = false;
 
   /** Whether the frame just drawn ran out of bake budget, so some callers still hold hard silhouettes
    *  and need to ask again. */
@@ -65,8 +65,9 @@ export class SoftShadowCache {
     return this.deferred;
   }
 
-  beginFrame(): void {
-    this.framed = true;
+  /** Opens a drawn frame; an unbudgeted one softens every caster it asks for. */
+  beginFrame(budgeted: boolean): void {
+    this.budgeted = budgeted;
     this.framePixels = 0;
     this.deferred = false;
   }
@@ -79,7 +80,7 @@ export class SoftShadowCache {
     const height = frame.height + SHADOW_BLUR_PADDING * 2;
     const pixels = width * height;
     if (pixels > MAX_FRAME_PIXELS || this.pixels + pixels > MAX_PIXELS) return null;
-    if (this.framed && this.framePixels > 0 && this.framePixels + pixels > MAX_PIXELS_PER_FRAME) {
+    if (this.budgeted && this.framePixels > 0 && this.framePixels + pixels > MAX_PIXELS_PER_FRAME) {
       this.deferred = true;
       return null;
     }
@@ -131,6 +132,6 @@ export class SoftShadowCache {
     this.pixels = 0;
     this.framePixels = 0;
     this.deferred = false;
-    this.framed = false;
+    this.budgeted = false;
   }
 }

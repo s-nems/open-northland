@@ -207,13 +207,13 @@ keep the map, camera and zoom fixed, and include x2 and a zoomed-out pan.
   projects its own body frame onto the ground, sheared toward the light of the original building
   silhouettes; a character's head overlay casts too, cropped to the rows above its body frame so the
   two projections meet instead of darkening the ground twice. A bake falls back to the hard
-  silhouette when the page is unreadable or a budget is full; a bake the per-frame budget defers is
-  picked up on a later frame, so switching the setting on over a town softens progressively rather
-  than stalling one frame. Flat decor (bushes, mushrooms, and the dead trees that block no walking)
-  draws its authored silhouette under every decor body whatever the setting. The per-frame soft bakes
-  cannot batch into a decor mesh, so with the setting on its own mesh shader applies the same
-  strength and colour and blurs the silhouette with the bake's kernel, reading only inside the
-  frame's own texels.
+  silhouette when the page is unreadable or a budget is full. A map's first frame softens everything it
+  shows; after it a bake the per-frame budget defers waits for a later frame, so switching the setting
+  on over a town softens progressively rather than stalling one frame. Flat decor (bushes, mushrooms,
+  and the dead trees that block no walking) draws its authored silhouette under every decor body
+  whatever the setting. The per-frame soft bakes cannot batch into a decor mesh, so with the setting
+  on its own mesh shader applies the same strength and colour and blurs the silhouette with the
+  bake's kernel, reading only inside the frame's own texels.
 - **Enhanced water** (`enhancedWater`): crossing swells, darker shallows and darker still deep water
   (the map's own two pattern families), a bluer and slightly more saturated colour, stronger on the
   deep family, and a glint band drifting over the deep water.
@@ -228,8 +228,9 @@ keep the map, camera and zoom fixed, and include x2 and a zoomed-out pan.
   each stretch of the foot: a stain of its colour, tufts on grass, a drift on snow. The ground's
   colours come from the terrain's per-cell colours, so a presentation pack without them draws the
   original look, and whatever covers a wall's foot takes that wall's own light. A frame with no ground
-  line, an unreadable page, or a full GPU budget draws as the original; a bake the per-frame budget
-  defers is picked up on a later frame, so a town grounds progressively. Construction stages, the
+  line, an unreadable page, or a full GPU budget draws as the original. A map's first frame grounds
+  everything it shows; after it a bake the per-frame budget defers waits for a later frame, so
+  switching the setting on over a town grounds it progressively. Construction stages, the
   placement ghost and a collapse draw the plain body.
 
 Original humans and animals keep their tick anchors under every setting: the original engine moves

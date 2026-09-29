@@ -9,9 +9,9 @@ const RGBA = 4;
 /** Overlay bytes retained on the GPU across every frame and ground, plus as much again in CPU canvas
  *  copies. Past it a new foot draws as the original: evicting could strand a pooled sprite. */
 const MAX_GPU_BYTES = 32 * 1024 * 1024;
-/** Frame pixels one drawn frame may analyse and bake. A bake is synchronous, so without a ceiling a map's
- *  first frame, or switching the enhancement on over a settled town, would bake every visible foot at
- *  once. A frame's first bake always runs, so a backlog always drains. */
+/** Frame pixels one budgeted frame may analyse and bake. A bake is synchronous, so without a ceiling
+ *  switching the enhancement on over a settled town would bake every visible foot at once. A frame's first
+ *  bake always runs, so a backlog always drains. */
 const MAX_BAKE_PIXELS_PER_FRAME = 256 * 256;
 
 /** What one feet position of a frame drew with. */
@@ -45,7 +45,8 @@ export class GroundedFootCache {
   private readonly baked = new Map<AtlasFrame, Map<string, GroundedOverlays | null>>();
   private gpuBytes = 0;
   private framePixels = 0;
-  private framed = false;
+  /** Whether the open frame is held to {@link MAX_BAKE_PIXELS_PER_FRAME}. */
+  private budgeted = false;
   private deferred = false;
   // The last spot asked for: a body and its two overlays ask for the same one in a row.
   private lastFrame: AtlasFrame | null = null;
@@ -60,8 +61,9 @@ export class GroundedFootCache {
     return this.deferred;
   }
 
-  beginFrame(): void {
-    this.framed = true;
+  /** Opens a drawn frame; an unbudgeted one bakes every foot it asks for. */
+  beginFrame(budgeted: boolean): void {
+    this.budgeted = budgeted;
     this.framePixels = 0;
     this.deferred = false;
   }
@@ -183,7 +185,7 @@ export class GroundedFootCache {
   }
 
   private spend(pixels: number): boolean {
-    if (this.framed && this.framePixels > 0 && this.framePixels + pixels > MAX_BAKE_PIXELS_PER_FRAME) {
+    if (this.budgeted && this.framePixels > 0 && this.framePixels + pixels > MAX_BAKE_PIXELS_PER_FRAME) {
       this.deferred = true;
       return false;
     }
