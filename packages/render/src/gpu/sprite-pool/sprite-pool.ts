@@ -21,7 +21,7 @@ import { DEFAULT_FACING, vehicleAfloat, vehicleLookFor } from '../../data/sprite
 import type { ElevationField } from '../../data/terrain/index.js';
 import { PalettedQuad } from '../paletted-sprite/index.js';
 import type { PixelArtScaler } from '../pixel-art-registry.js';
-import type { PlanRoadTextures } from '../plan-road.js';
+import { PLOT_BOUNDS, type PlanRoadTextures } from '../plan-road.js';
 import type { PlanStakeTextures } from '../plan-stake.js';
 import type { ShadowStyle } from '../shadow-style.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
@@ -118,6 +118,25 @@ export interface MapViewPassFrame extends PortraitView {
 /** A borrowed entity's bounds are reset to this after its bind, so they never count as the frame's and
  *  it stays unpickable on the main map. */
 const MAP_VIEW_BOUNDS_FRAME = -1;
+
+/**
+ * Depth is the feet-anchor screen y plus a small deterministic x tiebreak, the same key the tall map
+ * objects use, so a settler and the tree it walks behind sort into one painter order. Adding back
+ * `item.lift` restores the pre-lift y, so occlusion sorts by map row while the sprite rides the hill. An
+ * unclaimed road plot paints with the ground; a claimed one keeps its flag among the standing sprites
+ * but sorts at the plot's back edge, so a walker on the plot is never painted under its stones. The
+ * flag then covers a walker at most the plot's half-depth behind its pole.
+ */
+function pooledDepth(pe: PooledEntity, item: DrawItem): number {
+  const plotBack = item.roadSite === 'claimed' ? PLOT_BOUNDS.top : 0;
+  return screenDepth(
+    pe.motion.drawX,
+    pe.motion.drawY + (item.lift ?? 0) + plotBack,
+    item.kind,
+    item.isFlag === true,
+    item.roadSite === 'unclaimed',
+  );
+}
 
 export class SpritePool {
   private readonly pool = new Map<number, PooledEntity>();
@@ -244,16 +263,7 @@ export class SpritePool {
     }
     this.binder.bind(pe, item, layers, frame, this.frameId);
     stamp.record(item, this.epoch.current, highlight, pe.motion, layers);
-    // Depth is the feet-anchor screen y plus a small deterministic x tiebreak, the same key the tall map
-    // objects use, so a settler and the tree it walks behind sort into one painter order. Adding back
-    // `item.lift` restores the pre-lift y, so occlusion sorts by map row while the sprite rides the hill.
-    pe.container.zIndex = screenDepth(
-      pe.motion.drawX,
-      pe.motion.drawY + (item.lift ?? 0),
-      item.kind,
-      item.isFlag === true,
-      item.roadSite === 'unclaimed',
-    );
+    pe.container.zIndex = pooledDepth(pe, item);
   }
 
   /** Leave `pe`'s sprites and depth as bound; bounds stamped last frame hold for this one. */
@@ -448,13 +458,7 @@ export class SpritePool {
           const layers = presentEntity(pe, item, frame, this.sheet);
           this.binder.bind(pe, item, layers, frame, this.frameId);
           pe.boundsFrame = MAP_VIEW_BOUNDS_FRAME;
-          pe.container.zIndex = screenDepth(
-            pe.motion.drawX,
-            pe.motion.drawY + (item.lift ?? 0),
-            item.kind,
-            item.isFlag === true,
-            item.roadSite === 'unclaimed',
-          );
+          pe.container.zIndex = pooledDepth(pe, item);
           pe.viewSeen = this.frameId;
         }
         if (item.ref === view.solo) solo = pe.container;
