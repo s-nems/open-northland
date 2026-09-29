@@ -8,8 +8,9 @@ import {
   SettlerProgress,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, positionOfNode, Simulation } from '../../../src/index.js';
+import { fx, nodeOfPosition, positionOfNode, Simulation } from '../../../src/index.js';
 import { nearestLiveResource } from '../../../src/systems/ai-player/live-resources.js';
+import { resourceAtTile } from '../../../src/systems/footprint/resource-tile-cache.js';
 import { atomicSystem } from '../../../src/systems/index.js';
 import {
   harvestFromNode,
@@ -120,10 +121,14 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     if (node === undefined) throw new Error('carcass missing');
 
     // Meat, skin, meat off the one body - the alternating cadaver stages (see ResourceLayers). Each stage
-    // keeps the harvest atomic but changes the good, so the per-good resource buckets must follow it.
+    // keeps the harvest atomic but changes the good, so the per-good indexes must follow it.
+    const { hx, hy } = nodeOfPosition(sim.world.get(node, Position).x, sim.world.get(node, Position).y);
     for (const expected of [MEAT, LEATHER, MEAT]) {
+      const other = expected === MEAT ? LEATHER : MEAT;
       expect(sim.world.get(node, Resource).goodType).toBe(expected);
       expect(nearestLiveResource(sim.world, expected, { hx: 0, hy: 0 })).toBe(node);
+      expect(resourceAtTile(sim.world, hx, hy, expected)).toBe(node);
+      expect(resourceAtTile(sim.world, hx, hy, other)).toBeNull();
       expect(sim.world.verifyCaches()).toEqual([]);
       startAtomic(sim, hunter, { kind: 'harvest', resource: node, goodType: expected }, 1, HARVEST_CADAVER);
       atomicSystem(sim.world, ctxOf(sim));
