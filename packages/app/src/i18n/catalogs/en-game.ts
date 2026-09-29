@@ -576,7 +576,7 @@ export const enGame = {
       productionUnfold: 'show all ({count})',
       productionFold: 'fewer',
       productionIdle: 'Nothing is being made now',
-      needs: '{good} · needs: {inputs}',
+      needs: '{good}\nNeeds: {inputs}',
       need: '{good}: {have} here, {need} per cycle',
       fields: 'Fields {sown} · ripe {ripe}',
       stock: 'Stock',

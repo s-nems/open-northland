@@ -76,6 +76,8 @@ export function createStockSection(deps: BuildingPanelDeps): StockSection {
             label,
             empty: !model.stock.some((row) => row.category === index),
             marked: model.stock.some((row) => row.category === index && row.amount > 0),
+            // A category with no shelf here could never list anything (the barracks keep no food).
+            hidden: !model.stock.some((row) => row.category === index),
           })),
         ],
         tab,

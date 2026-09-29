@@ -1,4 +1,4 @@
-import { button, element, setAttribute, setClass, setTip } from './dom.js';
+import { button, element, setAttribute, setClass, setHidden, setTip } from './dom.js';
 
 /** One icon tab: faded while its category holds nothing, a lit dot for "something runs here". The
  *  label is the tab's name and its whole tooltip. */
@@ -6,6 +6,8 @@ export interface CategoryTab {
   readonly label: string;
   readonly empty: boolean;
   readonly marked: boolean;
+  /** Left out of the strip: a category the house has no shelf for. */
+  readonly hidden?: boolean;
 }
 
 /** A strip of square icon tabs over a list, one open at a time. The strip knows no content; its owner
@@ -26,6 +28,7 @@ export function createCategoryTabs(
   root.setAttribute('role', 'tablist');
   root.setAttribute('aria-label', groupLabel);
   let open = 0;
+  let shown: readonly CategoryTab[] = [];
   const tabs = glyphs.map((glyph, index) => {
     const tab = button('on-tab on-tab--icon', `${glyph}<i class="on-tab__dot"></i>`);
     tab.setAttribute('role', 'tab');
@@ -38,7 +41,9 @@ export function createCategoryTabs(
     const step = STEP_KEYS[event.key];
     if (step === undefined) return;
     event.preventDefault();
-    const next = (open + step + tabs.length) % tabs.length;
+    let next = open;
+    do next = (next + step + tabs.length) % tabs.length;
+    while (next !== open && shown[next]?.hidden === true);
     onPick(next);
     tabs[next]?.focus();
   });
@@ -47,10 +52,12 @@ export function createCategoryTabs(
     element: root,
     update(models, openIndex): void {
       open = openIndex;
+      shown = models;
       models.forEach((model, index) => {
         const tab = tabs[index];
         if (tab === undefined) return;
         const selected = index === openIndex;
+        setHidden(tab, model.hidden === true);
         setClass(tab, 'on-tab--empty', model.empty);
         setClass(tab, 'on-tab--marked', model.marked);
         setAttribute(tab, 'aria-selected', String(selected));

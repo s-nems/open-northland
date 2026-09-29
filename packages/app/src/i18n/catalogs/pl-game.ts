@@ -558,7 +558,7 @@ export const plGame = {
       productionUnfold: 'rozwiń ({count})',
       productionFold: 'zwiń',
       productionIdle: 'Nic teraz nie powstaje',
-      needs: '{good} · wymaga: {inputs}',
+      needs: '{good}\nWymaga: {inputs}',
       need: '{good}: jest {have}, na cykl {need}',
       fields: 'Pola {sown} · dojrzałe {ripe}',
       stock: 'Magazyn',
