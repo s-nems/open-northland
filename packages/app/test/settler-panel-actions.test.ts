@@ -66,6 +66,12 @@ describe('the settler panel’s orders', () => {
     expect(cues).toEqual(['confirm']);
   });
 
+  it('ends a builder’s road or wall run by unpinning it', () => {
+    const { actions, sent } = harness();
+    actions.endBuildRun(OWN);
+    expect(sent).toEqual([{ kind: 'unassignBuilder', entity: OWN }]);
+  });
+
   it('refuses another seat’s settler and a vanished one, sending nothing', () => {
     const { actions, sent, cues, renamed } = harness();
     actions.unassignWorkplace(FOREIGN);

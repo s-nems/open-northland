@@ -38,6 +38,8 @@ export interface SettlerPanelActions {
   readonly orderNeed: (id: number, need: NeedKind) => void;
   readonly assignWorkplace: (id: number) => void;
   readonly unassignWorkplace: (id: number) => void;
+  /** End a builder's road or wall run. */
+  readonly endBuildRun: (id: number) => void;
   readonly assignHome: (id: number) => void;
   readonly unassignHome: (id: number) => void;
   /** Send the person to find the nearest partner and wed. */

@@ -58,6 +58,7 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     },
     bars: [bar('Warm', 100), bar('Warm', 50, 'hunger'), bar('Warm', 25, 'fatigue'), bar('Warm', 10, 'piety')],
     workplace: { target: { id: 1, label: 'Warm' }, assign: true, remove: 'warm', flag: false },
+    buildRun: 'roads',
     home: { target: null, assign: true, remove: null },
     vehicle: { target: { id: 2, label: 'Warm', load: 'Warm' }, assign: true, remove: true },
     family: { partner: null, child: null, marry: true },

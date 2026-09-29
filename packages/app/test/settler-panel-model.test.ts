@@ -1,6 +1,7 @@
 import { type EntitySnapshot, systems, type TraderView } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
+  JOB_BUILDER,
   JOB_CARRIER,
   JOB_CIVILIST,
   JOB_COLLECTOR,
@@ -183,6 +184,21 @@ describe('the settler panel model', () => {
       },
     ]);
     expect(model.military).toEqual({ stance: systems.MILITARY_MODE.DEFEND, regeneration: false });
+  });
+
+  it("shows a builder's road or wall run, and none for another seat's builder", () => {
+    const builder = (buildMode: Record<string, unknown>, owner = HUMAN_PLAYER) => ({
+      id: SETTLER,
+      components: {
+        Owner: { player: owner },
+        Settler: { tribe: 1, jobType: JOB_BUILDER },
+        ...buildMode,
+      },
+    });
+    expect(settlerModel([builder({ BuildMode: { kind: 'roads' } })]).buildRun).toBe('roads');
+    expect(settlerModel([builder({ BuildMode: { kind: 'walls' } })]).buildRun).toBe('walls');
+    expect(settlerModel([builder({})]).buildRun).toBeNull();
+    expect(settlerModel([builder({ BuildMode: { kind: 'roads' } }, OTHER_SEAT)]).buildRun).toBeNull();
   });
 
   it('gives a man without a trade no workplace row', () => {

@@ -103,6 +103,7 @@ export function createWorkSection(
     onLinkHover: (_index, event) => workplaceCard.hover(current()?.workplace?.target?.id ?? null, event),
     onButton: (index) => (index === 0 ? actions.assignWorkplace(id()) : actions.unassignWorkplace(id())),
   });
+  const buildRun = createLedger({ buttons: 1, onButton: () => actions.endBuildRun(id()) });
   const home = createLedger({
     buttons: 2,
     onLink: () => {
@@ -134,7 +135,14 @@ export function createWorkSection(
       }
     },
   });
-  root.append(title.element, workplace.element, home.element, vehicle.element, family.element);
+  root.append(
+    title.element,
+    workplace.element,
+    buildRun.element,
+    home.element,
+    vehicle.element,
+    family.element,
+  );
 
   return {
     element: root,
@@ -165,6 +173,14 @@ export function createWorkSection(
               copy.unassignWorkplaceHint,
             ),
           ],
+        });
+      }
+      setHidden(buildRun.element, model.buildRun === null);
+      if (model.buildRun !== null) {
+        buildRun.update({
+          label: panel.buildRun,
+          value: [{ text: panel.buildRuns[model.buildRun] }],
+          buttons: [seatButton(true, GLYPH.close, panel.endBuildRun, panel.endBuildRunHint)],
         });
       }
       setHidden(home.element, model.home === null);

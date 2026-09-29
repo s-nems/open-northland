@@ -64,6 +64,14 @@ export interface SettlerStatusModel {
   readonly carrying: CarriedGoodModel | null;
 }
 
+/** A builder's road or wall run, which the player started by putting it on such a site by hand. */
+export type BuildRunKind = 'roads' | 'walls';
+
+function buildRunOf(comps: Comp): BuildRunKind | null {
+  const kind = (comps.BuildMode as { kind?: unknown } | undefined)?.kind;
+  return kind === 'roads' || kind === 'walls' ? kind : null;
+}
+
 export interface SettlerMilitaryModel {
   /** The `MILITARY_MODE`, null before the sim stamped one. */
   readonly stance: number | null;
@@ -93,6 +101,8 @@ export interface SettlerPanelModel {
   /** Zdrowie, then the need bars the person carries. */
   readonly bars: readonly PanelBar[];
   readonly workplace: SettlerWorkplaceRow | null;
+  /** The road or wall run a builder is on; null for another seat's person. */
+  readonly buildRun: BuildRunKind | null;
   readonly home: SettlerSeatRow | null;
   readonly vehicle: SettlerVehicleRow | null;
   readonly family: SettlerFamilyModel | null;
@@ -227,6 +237,7 @@ export function settlerPanelModel(
       ...base,
       renamable: false,
       workplace: work.place === null ? null : { target: work.place, assign: null, remove: null, flag: false },
+      buildRun: null,
       home: null,
       vehicle: null,
       family: null,
@@ -244,6 +255,7 @@ export function settlerPanelModel(
     ...base,
     renamable: !hero,
     workplace: role === 'worker' ? workplaceRow(ctx, ent, work.place, control) : null,
+    buildRun: buildRunOf(comps),
     home: homeRow(ctx, snapshot, ent, role, control),
     vehicle: vehicleRow(ctx, snapshot, ent, role, control),
     family: familyModel(ctx, snapshot, ent, role, controllable),
