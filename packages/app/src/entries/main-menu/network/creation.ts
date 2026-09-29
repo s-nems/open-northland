@@ -9,7 +9,7 @@ import {
 } from '../../../content/transfer/index.js';
 import { FOG_MODE_BY_NAME } from '../../../game/fog.js';
 import { assertMultiplayerMap } from '../../../game/multiplayer-map.js';
-import { DEFAULT_SESSION_SEED, DEFAULT_SESSION_SPEED, mapSession } from '../../../game/session-url.js';
+import { DEFAULT_SESSION_SPEED, drawSessionSeed, mapSession } from '../../../game/session-url.js';
 import { initialLobbyOptions } from '../lobby/model.js';
 import { authoredVacantMode, vacantOffers } from '../lobby/roster-state.js';
 import type { CreateChoice } from './create-card.js';
@@ -74,7 +74,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
   const settings: RoomSettings = {
     name: choice.name,
     world: { kind: 'map', mapId },
-    seed: save?.header.seed ?? DEFAULT_SESSION_SEED,
+    seed: save?.header.seed ?? drawSessionSeed(),
     rules,
     speed: savedSession?.descriptor.speed ?? DEFAULT_SESSION_SPEED,
     ...(savedSession === null

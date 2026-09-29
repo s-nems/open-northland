@@ -25,6 +25,11 @@ const { isValidPlayer } = components;
 /** The seed a session runs on when nothing names one; a networked session carries its own. */
 export const DEFAULT_SESSION_SEED = 7;
 
+const SEED_VALUES = 2 ** 32;
+
+/** A new match's seed, drawn outside the sim: each match plays another world and another weather. */
+export const drawSessionSeed = (): number => Math.floor(Math.random() * SEED_VALUES);
+
 /** The wall-clock multiplier a session starts at when `?speed=` names none. */
 export const DEFAULT_SESSION_SPEED = 1;
 

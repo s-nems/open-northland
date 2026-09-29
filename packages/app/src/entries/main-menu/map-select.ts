@@ -1,3 +1,4 @@
+import { drawSessionSeed } from '../../game/session-url.js';
 import { messages } from '../../i18n/index.js';
 import type { LaunchEntry } from '../../launch.js';
 import { initialLobbyOptions, initialLobbyState, lobbyStartEntry } from './lobby/model.js';
@@ -32,7 +33,7 @@ export function mapSelectScreen(
       else if (item.tutorialStep !== undefined) {
         const state = initialLobbyState(item.players);
         const options = initialLobbyOptions(new URLSearchParams(window.location.search));
-        launch(targetSearch(lobbyStartEntry(item.id, state, item.players, options)));
+        launch(targetSearch(lobbyStartEntry(item.id, state, item.players, options, drawSessionSeed())));
       } else openLobby(item);
     },
   });

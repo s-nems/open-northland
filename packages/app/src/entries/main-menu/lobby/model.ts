@@ -102,6 +102,7 @@ export function lobbySession(
   state: RosterState,
   players: readonly MapPlayerSlot[],
   options: LobbyOptions,
+  seed: number = DEFAULT_SESSION_SEED,
 ): GameSession {
   const lists = {
     ai: new Set(state.seat === null ? [] : aiSeats(state, players)),
@@ -125,7 +126,7 @@ export function lobbySession(
   }
   return {
     world: { kind: 'map', mapId },
-    seed: DEFAULT_SESSION_SEED,
+    seed,
     seats: orderedSeats(seats),
     localSeat,
     rules: {
@@ -144,6 +145,7 @@ export function lobbyStartEntry(
   state: RosterState,
   players: readonly MapPlayerSlot[],
   options: LobbyOptions,
+  seed?: number,
 ): string {
-  return formatSearch(sessionSearch(lobbySession(mapId, state, players, options), players));
+  return formatSearch(sessionSearch(lobbySession(mapId, state, players, options, seed), players));
 }

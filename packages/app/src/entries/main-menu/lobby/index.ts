@@ -1,3 +1,4 @@
+import { drawSessionSeed } from '../../../game/session-url.js';
 import { messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { createMapDetailsCard } from '../map-card.js';
@@ -202,7 +203,8 @@ export function lobbyScreen(
   window.addEventListener('keydown', onKeydown, true);
 
   start.addEventListener('click', () => {
-    if (!start.disabled) launch(targetSearch(lobbyStartEntry(item.id, state, item.players, options)));
+    if (!start.disabled)
+      launch(targetSearch(lobbyStartEntry(item.id, state, item.players, options, drawSessionSeed())));
   });
 
   return { element: section, dispose: () => window.removeEventListener('keydown', onKeydown, true) };
