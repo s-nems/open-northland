@@ -7,6 +7,7 @@ import {
   Health,
   MAX_PLAYERS,
   Position,
+  Rider,
   Settler,
   type SettlerIdentity,
   Weapon,
@@ -40,7 +41,8 @@ export interface WeaponMix {
  * A man merely walking an order out is still counted here; the muster drops him itself (`errand.ts`).
  *
  * A man holding a tower post leaves the army too. {@link towerPostFor}'s entitlement is the test rather
- * than the garrison marker, so an archer still walking to his tower is already gone from the muster.
+ * than the garrison marker, so an archer still walking to his tower is already gone from the muster. A
+ * man attached to a vehicle belongs to it: a walk order to a driver would drive his catapult instead.
  */
 export function takeCensus(world: World, ctx: SystemContext, player: number): ArmyCensus {
   const ready: Entity[] = [];
@@ -51,7 +53,7 @@ export function takeCensus(world: World, ctx: SystemContext, player: number): Ar
     if (jobType === null || !isFighterJob(ctx.content, jobType)) continue;
     if (towerPostFor(world, ctx, e, jobType) !== null) continue;
     if (world.has(e, AttackOrder) || world.has(e, Engagement)) continue;
-    if (!world.has(e, Position)) continue;
+    if (!world.has(e, Position) || world.has(e, Rider)) continue;
     const bare = fightingWeapon(world, ctx, e, settler) === null;
     (bare && world.has(e, AssistantRecruit) ? awaitingWeapon : ready).push(e);
   }

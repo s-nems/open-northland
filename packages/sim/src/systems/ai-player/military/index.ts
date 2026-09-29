@@ -15,6 +15,7 @@ import {
 
 import { runOffensive } from './offensive.js';
 import { outfitOrders } from './outfit.js';
+import { siegeCrewOrders } from './siege-crew.js';
 
 export { campaignTarget } from './campaign.js';
 export {
@@ -47,12 +48,22 @@ export {
   WAVE_RAMP_TICKS,
   waveBandAt,
 } from './plan.js';
+export {
+  type CrewedCatapult,
+  crewedCatapults,
+  PARK_RING_MAX_NODES,
+  PARK_RING_MIN_NODES,
+  PARK_SPACING_NODES,
+  parkingOrders,
+  seatCatapults,
+} from './siege-crew.js';
 
 /**
  * One decision for the seat's fighting men, home before abroad: the free fighters are enlisted, the
  * towers take their garrison ({@link TOWER_GARRISON_ARCHERS}) out of the free band, a raid at the gates
- * takes the rest of it, and the campaign gets what neither claimed. A man the campaign leaves waiting at
- * the barracks is sent for his outfit.
+ * takes the rest of it, the catapults take their drivers, and the campaign gets what is left. A man the
+ * campaign leaves waiting at the barracks, or a driver parked at home, is sent for his outfit; the errand
+ * takes a driver off his catapult, which drafts another.
  *
  * The home half runs with the module off too: the original's scripted handler, which the `HAI_Disable`
  * toggles do not reach, lists the soldiers, mans the towers and answers an attack (original behavior). The
@@ -76,16 +87,22 @@ function runMilitary(
   const raid = raidOnTheSettlement(world, ctx, terrain, owned, raiders);
   // A raid benches the campaign: it takes the same band the muster would have gathered.
   const marchable: readonly Entity[] = raid === null ? free : [];
+  const siege = campaign ? siegeCrewOrders(world, ctx, terrain, player, owned, marchable) : null;
+  const field = siege === null ? marchable : marchable.filter((e) => !siege.drafted.has(e));
   const offensive = campaign
-    ? runOffensive(world, ctx, terrain, player, { army: marchable, awaitingWeapon: army.awaitingWeapon })
+    ? runOffensive(world, ctx, terrain, player, { army: field, awaitingWeapon: army.awaitingWeapon })
     : null;
   return [
     ...enlistOrders(world, ctx, player),
     ...alarmOrders(world, ctx, terrain, owned, raiders),
     ...posts.commands,
     ...(raid === null ? [] : sortieOrders(world, terrain, free, raid)),
+    ...(siege?.commands ?? []),
     ...(offensive?.commands ?? []),
-    ...outfitOrders(world, ctx, terrain, player, offensive?.waiting ?? []),
+    ...outfitOrders(world, ctx, terrain, player, [
+      ...(offensive?.waiting ?? []),
+      ...(siege?.parkedDrivers ?? []),
+    ]),
   ];
 }
 

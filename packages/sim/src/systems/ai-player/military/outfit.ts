@@ -39,8 +39,8 @@ export const SOLDIER_OUTFIT_GOOD_IDS: readonly string[] = [
  * armour, then the {@link SOLDIER_OUTFIT_GOOD_IDS} he has no slot of (authored: a man drilled while
  * the shops were empty is dressed as their goods come in). One errand per man per decision, none for a
  * man whose errand is underway, and never more errands for a good than the stores the barracks door can
- * reach hold. `waiting` must be men the campaign leaves standing at the door this decision, since a walk
- * order strips the errand.
+ * reach hold. `waiting` must be men no order of this decision walks elsewhere, the campaign's men left at
+ * the door and the parked catapult drivers, since a walk order strips the errand.
  */
 export function outfitOrders(
   world: World,

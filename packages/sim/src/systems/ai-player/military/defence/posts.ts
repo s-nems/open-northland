@@ -75,7 +75,7 @@ export function towerPostOrders(
 
 /** The fighting classes a building employs and how many of each (the towers' `logicworker 40/41` bow-soldier
  *  posts), empty for every building staffed by civilians alone. */
-function garrisonSlots(world: World, ctx: SystemContext, building: Entity): Map<number, number> {
+export function garrisonSlots(world: World, ctx: SystemContext, building: Entity): Map<number, number> {
   const type = contentIndex(ctx.content).buildings.get(world.get(building, Building).buildingType);
   const slots = new Map<number, number>();
   for (const slot of type?.workers ?? []) {
