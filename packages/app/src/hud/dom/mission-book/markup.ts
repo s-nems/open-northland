@@ -26,6 +26,8 @@ const SHORT_SPEECH = 260;
 /** The drop capital spans two lines, so it opens only a paragraph that surely wraps: a one-line
  *  paragraph at a page's foot would cut the capital off at the page edge. A full line holds about 50. */
 const DROP_CAP_MIN_CHARS = 90;
+/** CSS includes leading punctuation in ::first-letter, so only letter-led prose gets an initial. */
+const NARRATIVE_OPENING = /^\p{L}/u;
 
 export const FLOURISH =
   '<svg viewBox="0 0 120 16" class="on-book__flourish" aria-hidden="true"><path d="M2 8h44M74 8h44" stroke="currentColor" stroke-width="1"/><path d="M60 2l6 6-6 6-6-6z" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="60" cy="8" r="1.6" fill="currentColor"/><path d="M46 8c4-4 6-4 8 0M74 8c-4 4-6 4-8 0" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
@@ -95,6 +97,7 @@ function paragraph(s: Extract<BookSegment, { kind: 'para' }>, first: boolean): s
     first &&
     s.link === null &&
     (s.align === 'left' || s.align === 'justify') &&
+    NARRATIVE_OPENING.test(s.text) &&
     s.text.length >= DROP_CAP_MIN_CHARS
   )
     classes.push('on-book__p--first');

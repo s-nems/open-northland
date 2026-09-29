@@ -247,6 +247,12 @@ describe('flowMarkup', () => {
       'on-book__p--first',
     );
     expect(opening('W celi znaleźliśmy osłabionego Thraina. '.repeat(3))).toContain('on-book__p--first');
+    for (const start of ['- "Czekaliśmy na was, bohaterowie!"', '– "We waited for you!"', '„Witajcie!”']) {
+      const text = `${start} ${'Strażnicy czekali przy wejściu. '.repeat(4)}`;
+      const markup = opening(text);
+      expect(markup).not.toContain('on-book__p--first');
+      expect(markup).toContain(text.trim().replaceAll('"', '&quot;'));
+    }
   });
 
   it('leaves a figure card clear over its hole, where the renderer paints the fill, and fills a card without one', () => {
