@@ -139,8 +139,9 @@ const PICK_BOX = {
   settler: { halfW: 18, up: 42, down: 12 },
   building: { halfW: 44, up: 104, down: 22 },
   palisade: { halfW: 12, up: 72, down: 8 },
-  // A road plot is 30 px across and lies flat; the exact plot bounds normally stand in.
-  roadsite: { halfW: 15, up: 9, down: 9 },
+  // A road plot is 15 px across and 10 deep and lies flat; the exact plot bounds, grown a little,
+  // normally stand in.
+  roadsite: { halfW: 9, up: 6, down: 7 },
   // A cart is settler-sized, a ship or catapult wider; the exact sprite bounds normally stand in.
   vehicle: { halfW: 40, up: 64, down: 16 },
   resource: { halfW: 28, up: 64, down: 12 },

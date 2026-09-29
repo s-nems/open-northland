@@ -1,6 +1,13 @@
 import type { DoorBadge, ElevationField } from '@open-northland/render';
 import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
-import { drawnInFront, pickDoorBadgeRow, pickGarrisonFlag, pickTopAt, topTargetAt } from '../picking.js';
+import {
+  drawnInFront,
+  type Pickable,
+  pickDoorBadgeRow,
+  pickGarrisonFlag,
+  pickTopAt,
+  topTargetAt,
+} from '../picking.js';
 import type { UnitTargets } from './unit-targets.js';
 
 /** A door marker's click owner: a sign row stands for its settler, a garrison flag for its building. */
@@ -25,7 +32,8 @@ export interface ClickHits {
  * a building, then a palisade segment or gate, then an owned vehicle, then a signpost. Sign rows and garrison
  * flags are small intentional targets that a building's larger sprite would otherwise swallow. A vehicle
  * comes after the units and houses: its crew standing beside it, and a house its sprite overlaps, must stay
- * clickable.
+ * clickable. A road plot is smaller than all of them: under the cursor it outranks everything but a door
+ * marker and a unit standing on it or in front of it.
  */
 export function createClickHits(deps: ClickHitDeps): ClickHits {
   /** An enemy building's markers are not selection proxies for the men behind them. */
@@ -49,22 +57,30 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
    * work-centre marker to that human at the rank humans hold, above houses and signposts, and the later
    * hit of its front-to-back scan wins among equal ranks.
    */
-  const unitAt = (wx: number, wy: number): number | null => {
+  const unitAt = (wx: number, wy: number): Pickable | null => {
     const flag = topTargetAt(deps.targets.flags(), wx, wy);
     const settler = topTargetAt(deps.targets.owned('settler'), wx, wy);
-    if (flag === null) return settler?.ref ?? null;
-    return settler !== null && drawnInFront(settler, flag) ? settler.ref : flag.ref;
+    if (flag === null) return settler;
+    return settler !== null && drawnInFront(settler, flag) ? settler : flag;
+  };
+
+  /** A unit standing on the road plot under the cursor, or in front of it, covers it; one behind it does
+   *  not. */
+  const unitOrPlotAt = (wx: number, wy: number): number | null => {
+    const unit = unitAt(wx, wy);
+    const plot = topTargetAt(deps.targets.owned('roadsite'), wx, wy);
+    if (plot === null) return unit?.ref ?? null;
+    return unit !== null && unit.y >= plot.y ? unit.ref : plot.ref;
   };
 
   return {
     doorMarkerAt,
     selectionAt: (wx, wy) =>
       doorMarkerAt(wx, wy)?.ref ??
-      unitAt(wx, wy) ??
+      unitOrPlotAt(wx, wy) ??
       pickTopAt(deps.targets.owned('building'), wx, wy) ??
       pickTopAt(deps.targets.owned('palisade'), wx, wy) ??
       pickTopAt(deps.targets.owned('vehicle'), wx, wy) ??
-      pickTopAt(deps.targets.owned('roadsite'), wx, wy) ??
       pickTopAt(deps.targets.signposts(), wx, wy),
   };
 }

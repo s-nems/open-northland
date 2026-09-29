@@ -26,6 +26,9 @@ const FLAG_GATHERER = 70;
 const SIGNPOST = 80;
 const OWNED_WALL = 90;
 const OWNED_VEHICLE = 91;
+const OWNED_ROAD_SITE = 92;
+/** How far a settler's feet stand behind or in front of a road plot, in world px. */
+const PLOT_OFFSET = 3;
 
 const DOOR_TILE = { col: 3, row: 5 } as const;
 const DOOR = tileToScreen(DOOR_TILE.col, DOOR_TILE.row);
@@ -176,6 +179,22 @@ describe('click hit priority', () => {
     expect(selected({ owned: [wall] })).toBe(OWNED_WALL);
     expect(selected({ owned: [wall, under(OWNED_BUILDING, 'building')] })).toBe(OWNED_BUILDING);
     expect(selected({ owned: [wall], signposts: SIGNPOST_ARM })).toBe(OWNED_WALL);
+  });
+
+  it('gives a road plot the click over the larger targets, and a unit on or in front of it the plot', () => {
+    const plot = under(OWNED_ROAD_SITE, 'roadsite');
+    const larger = [under(OWNED_BUILDING, 'building'), under(OWNED_WALL, 'palisade')];
+    expect(
+      selected({
+        owned: [plot, ...larger],
+        vehicles: [under(OWNED_VEHICLE, 'vehicle')],
+        signposts: SIGNPOST_ARM,
+      }),
+    ).toBe(OWNED_ROAD_SITE);
+    const settlerAt = (dy: number): Pickable => ({ ...under(OWNED_UNIT, 'settler'), y: CLICK.y + dy });
+    expect(selected({ owned: [plot, settlerAt(-PLOT_OFFSET)] })).toBe(OWNED_ROAD_SITE);
+    expect(selected({ owned: [plot, settlerAt(0)] })).toBe(OWNED_UNIT);
+    expect(selected({ owned: [plot, settlerAt(PLOT_OFFSET)] })).toBe(OWNED_UNIT);
   });
 
   it('gives a vehicle the click only once no unit stands on it, so its crew beside it stays clickable', () => {

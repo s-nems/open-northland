@@ -42,6 +42,18 @@ export interface UnitTargetsDeps {
   readonly pixelHitOf: ((ref: number, wx: number, wy: number) => boolean | undefined) | undefined;
 }
 
+/** World px a road plot's click box reaches past its drawn plot. Tuned by eye. */
+const ROAD_PLOT_PICK_MARGIN = 2;
+
+function grownBox(box: EntityBounds, margin: number): EntityBounds {
+  return {
+    minX: box.minX - margin,
+    minY: box.minY - margin,
+    maxX: box.maxX + margin,
+    maxY: box.maxY + margin,
+  };
+}
+
 /** The drawable kinds a unit-controls click resolves to (a signpost has its own picker). */
 export type UnitTargetKind = 'settler' | 'building' | 'palisade' | 'roadsite' | 'vehicle';
 
@@ -114,15 +126,17 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       : null;
 
   /** A building or vehicle refines to solid pixels, since its sprite box overhangs the footprint. A palisade
-   *  keeps its sprite box: the gaps between its posts are part of the wall a player aims at. */
+   *  keeps its sprite box: the gaps between its posts are part of the wall a player aims at. A road plot's
+   *  box grows a little, so the small flat plot stays easy to hit. */
   const hitTarget = (item: DrawItem, kind: UnitTargetKind): Pickable => {
     const pixelHitOf = deps.pixelHitOf;
+    const box = deps.boundsOf?.(item.ref);
     return {
       ref: item.ref,
       x: item.x,
       y: item.y,
       kind,
-      box: deps.boundsOf?.(item.ref),
+      box: kind === 'roadsite' && box !== undefined ? grownBox(box, ROAD_PLOT_PICK_MARGIN) : box,
       ...((kind === 'building' || kind === 'vehicle') && pixelHitOf !== undefined
         ? { pixelHit: (wx: number, wy: number) => pixelHitOf(item.ref, wx, wy) }
         : {}),
