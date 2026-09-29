@@ -13,7 +13,7 @@ export const PINK_NOISE_S = 3.7;
 export const BROWN_NOISE_S = 4.3;
 /** Soft drop bursts of light rain: loop length and density. Approximation. */
 export const DROPS_S = 5.3;
-export const DROPS_PER_S = 30;
+export const DROPS_PER_S = 140;
 /** Sand grit: a hail of tiny broadband ticks. Approximation. */
 export const GRIT_S = 2.9;
 export const GRIT_TICKS_PER_S = 900;
@@ -37,17 +37,18 @@ const STEREO_CORRELATION = 0.25;
 const LOOP_CROSSFADE_S = 0.05;
 
 /** A drop is a short noise burst band-passed round a random centre: no tone, just a soft tap. */
-const DROP_LOW_HZ = 900;
-const DROP_HIGH_HZ = 4500;
+const DROP_LOW_HZ = 500;
+const DROP_HIGH_HZ = 2800;
 /** Band-pass sharpness of a drop: wide, so it never rings as a pitch. */
 const DROP_Q = 0.9;
 /** A drop's parabolic pulse length range. Approximation. */
-const DROP_MIN_S = 0.002;
-const DROP_MAX_S = 0.007;
+const DROP_MIN_S = 0.004;
+const DROP_MAX_S = 0.014;
 /** Samples of filter ring kept after the pulse, in pulse lengths. */
 const DROP_RING_LENGTHS = 2;
-/** Softest drop relative to the loudest. */
+/** Softest drop relative to the loudest, and the power that keeps most drops near the softest. */
 const DROP_MIN_LEVEL = 0.1;
+const DROP_LEVEL_POWER = 3;
 /** A grit tick decays over this time constant range. */
 const GRIT_MIN_DECAY_S = 0.0002;
 const GRIT_MAX_DECAY_S = 0.0008;
@@ -185,7 +186,7 @@ export function fillDrops(data: Float32Array, rate: number, seed: number): void 
   for (let n = 0; n < count; n++) {
     const start = Math.floor(random() * data.length);
     const pulse = Math.max(1, Math.round((DROP_MIN_S + (DROP_MAX_S - DROP_MIN_S) * random()) * rate));
-    const level = DROP_MIN_LEVEL + (1 - DROP_MIN_LEVEL) * random() ** 2;
+    const level = DROP_MIN_LEVEL + (1 - DROP_MIN_LEVEL) * random() ** DROP_LEVEL_POWER;
     const band = bandpass(DROP_LOW_HZ * (DROP_HIGH_HZ / DROP_LOW_HZ) ** random(), DROP_Q, rate);
     const length = pulse * (1 + DROP_RING_LENGTHS);
     let x1 = 0;

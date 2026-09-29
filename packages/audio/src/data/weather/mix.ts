@@ -21,7 +21,7 @@ export interface WeatherMix {
   /** Low-mid roar of heavy rain and the low-pass that sets its top. */
   readonly rainRoarGain: number;
   readonly rainRoarLowpassHz: number;
-  /** Sparse soft drop bursts, heard mostly in light rain. */
+  /** Soft drop bursts that fuse into a patter, heard mostly in light rain. */
   readonly dropsGain: number;
   /** Band-passed wind noise, then a low-pass that muffles it (snow) or opens it (sand). */
   readonly windGain: number;
@@ -44,14 +44,14 @@ export const WEATHER_SILENT_GAIN = 1e-4;
  *  measured so a full storm bed sits near -30 dBFS RMS and light rain near -40, far under gameplay. */
 export const RAIN_HISS_MAX_GAIN = 0.14;
 export const RAIN_ROAR_MAX_GAIN = 0.16;
-export const DROPS_MAX_GAIN = 0.08;
+export const DROPS_MAX_GAIN = 0.06;
 export const WIND_MAX_GAIN = 0.25;
 export const GRIT_MAX_GAIN = 0.05;
 
-/** Rain hiss band: a drizzle is a bright hiss, a downpour opens lower and loses its glassy top. */
-export const RAIN_HISS_LIGHT_HIGHPASS_HZ = 2000;
+/** Rain hiss band: a drizzle is a soft mid hiss, a downpour opens lower and loses more of its top. */
+export const RAIN_HISS_LIGHT_HIGHPASS_HZ = 900;
 export const RAIN_HISS_HEAVY_HIGHPASS_HZ = 700;
-export const RAIN_HISS_LIGHT_LOWPASS_HZ = 9000;
+export const RAIN_HISS_LIGHT_LOWPASS_HZ = 5500;
 export const RAIN_HISS_HEAVY_LOWPASS_HZ = 4500;
 /** Share of the hiss a downpour keeps: the roar takes over as the rain gets heavy. */
 export const RAIN_HISS_HEAVY_SHARE = 0.4;

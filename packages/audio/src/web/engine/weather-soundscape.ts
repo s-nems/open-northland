@@ -24,7 +24,7 @@ export const WEATHER_STOP_FADE_S = 0.5;
 const PARAM_EPSILON = 1e-3;
 
 /** Weather bus trim: one knob for the whole weather level under the game-sounds bus. */
-export const WEATHER_OUTPUT_GAIN = 1;
+export const WEATHER_OUTPUT_GAIN = 0.6;
 /** Safety soft limiter on the weather bus: linear up to the knee, bending smoothly to the ceiling.
  *  Tuned levels stay under the knee; it only catches overlapping near strikes. */
 export const WEATHER_LIMIT_KNEE = 0.5;
@@ -261,7 +261,11 @@ export class WeatherSoundscape {
     const hissHigh = filter('highpass', mix.rainHissHighpassHz);
     const hissLow = filter('lowpass', mix.rainHissLowpassHz);
     const hissGain = layer(rainBreath);
-    loop(buffers.white, 0).connect(hissHigh).connect(hissLow).connect(hissGain);
+    // Pink noise: its falling spectrum reads as rain heard from above, where white reads as static.
+    loop(buffers.pink, 1 / 2)
+      .connect(hissHigh)
+      .connect(hissLow)
+      .connect(hissGain);
     const roarLow = filter('lowpass', mix.rainRoarLowpassHz);
     const roarGain = layer(rainBreath);
     loop(buffers.pink, 0)
