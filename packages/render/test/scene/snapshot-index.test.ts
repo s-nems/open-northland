@@ -158,6 +158,22 @@ describe('the views over a mirror', () => {
     expect(targetPositionsOf(calm).size).toBe(0);
   });
 
+  it('stops counting a store as enterable while it upgrades, so a builder delivering there stays drawn', () => {
+    const store = { Building: { buildingType: 7, tribe: 0 } };
+    const mirror = mirrorOf([entity(3, 3, 1, store)]);
+    expect(enterableStoresOf(mirror.snapshot())).toEqual(new Set([3]));
+    const upgrading = advance(mirror, [
+      {
+        id: 3,
+        components: { Upgrading: {}, Building: { buildingType: 7, tribe: 0, built: 0 } },
+        removed: [],
+      },
+    ]);
+    expect(enterableStoresOf(upgrading).size).toBe(0);
+    const done = advance(mirror, [{ id: 3, components: store, removed: ['Upgrading'] }]);
+    expect(enterableStoresOf(done)).toEqual(new Set([3]));
+  });
+
   it('matches a fresh walk as targets move, crafts change workplace and stores upgrade', () => {
     const swingAt = (target: number) => ({ atomicId: ATTACK_ATOMIC_ID, targetEntity: target });
     const craftAt = (workplace: number) => ({

@@ -82,8 +82,9 @@ export const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
   ...FISHING_ATOMIC_IDS,
 ]);
 
+/** An upgrade site keeps its old body standing but, like any site, takes deliveries at the door. */
 function isEnterableStore(components: Readonly<Record<string, unknown>>): boolean {
-  return 'Building' in components && readBuiltPct(components) === undefined;
+  return 'Building' in components && readBuiltPct(components) === undefined && !('Upgrading' in components);
 }
 
 const ENTERABLE_STORES: SnapshotIndexSpec<Set<number>> = {
@@ -200,8 +201,8 @@ const NO_SHOTS: readonly SiegeShot[] = [];
 
 /**
  * Completed buildings, the stores a settler can walk into. A settler exchanging goods with one is not
- * drawn: observed original, where the carrier vanishes into the house. A ground pile, flag or
- * construction site is not enterable, so those exchanges keep their animation. A mirror edits the set in
+ * drawn: observed original, where the carrier vanishes into the house. A ground pile, flag, construction
+ * site or upgrade site is not enterable, so those exchanges keep their animation. A mirror edits the set in
  * place as it advances, so read it within the frame.
  */
 export function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
