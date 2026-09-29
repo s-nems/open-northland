@@ -22,8 +22,8 @@ import {
   WELL_TYPE,
 } from './support.js';
 
-/** The build order's material gates: an upgrade that would idle the only maker of its own bill goods, and
- *  the brewery's second well. */
+/** The build order's material gates: an upgrade that would idle the only maker of its own bill goods or
+ *  of its output, and the brewery's second well. */
 
 const BRICK = 50;
 const PILLAR = 51;
@@ -124,6 +124,47 @@ describe('build order - material gates', () => {
     expect(next()).toBeUndefined();
     store(sim, PILLAR, MASON_BILL.pillars);
     expect(next()).toEqual({ kind: 'upgradeBuilding', building: entityOfBuilding(sim, MASON_HUT) });
+  });
+
+  it('counts the bricks a site already holds as spoken for, not as stock the pottery can spend', () => {
+    const { sim, next } = workshopsSeat();
+    const hut = entityOfBuilding(sim, MASON_HUT);
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: hut });
+    sim.step();
+    // The hut's site already holds its bricks and still waits on a pillar the stock covers.
+    sim.world.mut(hut, Stockpile).amounts.set(BRICK, MASON_BILL.bricks);
+    store(sim, PILLAR, MASON_BILL.pillars + POTTERY_BILL.pillars);
+    // Seat stock reads the site's two bricks as well, yet only these are free for the pottery's bill.
+    store(sim, BRICK, POTTERY_BILL.bricks - 1);
+    expect(next()).toBeUndefined();
+    store(sim, BRICK, 1);
+    expect(next()).toEqual({ kind: 'upgradeBuilding', building: entityOfBuilding(sim, POTTERY) });
+  });
+
+  it('keeps one maker of a good working while another upgrades', () => {
+    const content = materialsContent();
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    for (const x of [40, 50]) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: POTTERY,
+        x,
+        y: 16,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    }
+    sim.step();
+    store(sim, BRICK, 2 * POTTERY_BILL.bricks);
+    store(sim, PILLAR, 2 * POTTERY_BILL.pillars);
+    const both = buildOrderModule([{ kind: 'upgrade', building: 'work_pottery_01', count: 2 }]);
+    const next = () => [...both.run(sim.world, { ...ctxOf(sim), content }, SEAT)][0];
+    const first = next();
+    if (first?.kind !== 'upgradeBuilding') throw new Error('expected the first pottery upgrade');
+    sim.enqueueSetup(first);
+    sim.step();
+    expect(next()).toBeUndefined();
   });
 
   describe('the brewery well', () => {

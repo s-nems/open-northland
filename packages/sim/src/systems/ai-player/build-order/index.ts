@@ -39,7 +39,7 @@ import {
 import { type Siege, seatSiege } from './siege.js';
 import { StalledSearches } from './stalled-searches.js';
 import { coverageOf, coverageSpotSearch, uncoveredTargets } from './tower-coverage.js';
-import { upgradeBillCovered } from './upgrade-supply.js';
+import { upgradeKeepsSupply } from './upgrade-supply.js';
 
 export * from './entries.js';
 export {
@@ -70,10 +70,10 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
  * An unmet entry with no legal action stalls rather than being skipped, so no later site draws off the
  * goods it waits for: most retry next decision, a placement that found no spot every
  * {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and an upgrade holds while a bill good only it or
- * another site could make is not yet in store ({@link upgradeBillCovered}). The exceptions are passed
- * over instead ({@link Verdict}): a serving placement with no room beside what it serves, and a
- * coverage entry with no target it can cover. Builders are never pinned to a site; the builder drive
- * picks its own.
+ * another site could make is not yet in store, or while it would idle a good's last working maker
+ * ({@link upgradeKeepsSupply}). The exceptions are passed over instead ({@link Verdict}): a serving
+ * placement with no room beside what it serves, and a coverage entry with no target it can cover.
+ * Builders are never pinned to a site; the builder drive picks its own.
  *
  * Three rules keep a site from rising under the enemy's bows only to be knocked down again, and a razed
  * building from being re-placed into the same fire ({@link seatSiege}): nothing is placed or upgraded while
@@ -204,7 +204,7 @@ function runBuildOrder(
         const nextTier = index.buildings.get(building.buildingType)?.upgradeTarget;
         if (nextTier === undefined || !buildingEnabled(world, ctx, player, building.tribe, nextTier))
           return [];
-        if (!upgradeBillCovered(world, ctx, player, owned, candidate)) return [];
+        if (!upgradeKeepsSupply(world, ctx, player, owned, candidate)) return [];
         return [{ kind: 'upgradeBuilding', building: candidate }];
       }
       case 'collector':
