@@ -292,14 +292,14 @@ describe('road traffic (roadBuild)', () => {
       expect(roadPieces(sim)).toBe(1);
     });
 
-    it('clears a bucket a road already serves without placing anything', () => {
+    it('clears a bucket a road already serves and leaves the turn to a building', () => {
       const { sim, tick, bucket } = hotSim();
       const hot = hottestTraffic(sim.world, SEAT, tick, TRAFFIC_ROAD_WALKS);
       if (hot === null) throw new Error('setup: the bucket is hot');
       const terrain = terrainOf(sim);
       layRoad(sim.world, terrain, [terrain.nodeAt(hot.centre.hx, hot.centre.hy)]);
       const plan = roadBuildPlan(sim.world, ctxOf(sim, tick), SEAT);
-      expect(plan).toEqual({ source: 'traffic', commands: [] });
+      expect(plan?.source).toBe('building');
       expect(walksOf(sim, bucket, tick)).toBe(0);
     });
   });

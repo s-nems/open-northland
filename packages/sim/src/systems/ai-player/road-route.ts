@@ -18,7 +18,10 @@ interface OpenRecord extends IndexedHeapRecord {
   f: number;
 }
 
-const better = (a: OpenRecord, b: OpenRecord): boolean => a.f < b.f || (a.f === b.f && a.node < b.node);
+// On equal f the deeper node first: the heuristic prices open ground at the laid-road step, so ties are
+// many, and settling toward the goal among them keeps an open-ground search from widening at every step.
+const better = (a: OpenRecord, b: OpenRecord): boolean =>
+  a.f < b.f || (a.f === b.f && (a.g > b.g || (a.g === b.g && a.node < b.node)));
 
 // A node's step across and down the screen, as raw fixed-point integers: the lattice has no stagger there.
 const NODE_SCREEN_X: number = HALF_COLUMN;

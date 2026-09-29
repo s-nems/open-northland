@@ -2,7 +2,7 @@ import { Building, Position } from '../../components/index.js';
 import type { PlayerCommand } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
-import { forEachRingNode, nodeOfPosition } from '../../nav/halfcell.js';
+import { forEachRingNode, hexDistanceBetween, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { structureBlockOverlay } from '../footprint/blocked.js';
@@ -33,9 +33,19 @@ export const MAX_PENDING_ROAD_SITES = 24;
 /** The most road sites one decision places (authored). */
 export const ROAD_SITES_PER_DECISION = 12;
 
-/** The settle budget of one decision's door-to-base route search (authored): a settlement-scale route,
- *  far under a map flood. A route past it waits for the roads nearer the base, which cost less to cross. */
+/** The least settle budget of one decision's route search (authored): a settlement-scale route, far
+ *  under a map flood. */
 export const ROAD_ROUTE_MAX_EXPLORED = 4096;
+
+/** The most a long route's budget grows to (authored). Over open ground the search, priced at the laid
+ *  road step, settles about the square of the hex distance, so the budget follows that square up to
+ *  here; a route past it waits for the roads nearer the base, which cost less to cross. */
+export const ROAD_ROUTE_MAX_EXPLORED_FAR = 16384;
+
+/** The settle budget of a road route between two nodes `hexDistance` apart. */
+export function roadRouteBudget(hexDistance: number): number {
+  return Math.min(ROAD_ROUTE_MAX_EXPLORED_FAR, Math.max(ROAD_ROUTE_MAX_EXPLORED, hexDistance * hexDistance));
+}
 
 /** What a route step onto a node costs (authored): a road or one of the seat's road sites costs half of
  *  open ground, as a road halves a walker's step cost, so a route joins the network rather than running
@@ -109,7 +119,11 @@ export function roadBuildPlan(world: World, ctx: SystemContext, player: number):
   if (hot === null && building === undefined) return none;
   const roads = roadPlanner(world, ctx, terrain, player, base, room);
   if (roads === null) return none;
-  if (hot !== null) return { source: 'traffic', commands: trafficRoad(world, ctx.tick, roads, hot) };
+  if (hot !== null) {
+    const commands = trafficRoad(world, ctx.tick, roads, hot);
+    // A bucket already served or deferred leaves the turn to a building, as a turn with none hot does.
+    if (commands.length > 0 || building === undefined) return { source: 'traffic', commands };
+  }
   if (building === undefined) return none;
   const from = entranceOf(world, ctx, terrain, roads.blocked, building);
   return { source: 'building', commands: from === null ? [] : (roads.route(from)?.commands ?? []) };
@@ -195,7 +209,13 @@ function roadPlanner(
       return false;
     },
     route(from) {
-      const route = roadRoute(terrain, from, to, stepCost, ROAD_STEP_LAID, ROAD_ROUTE_MAX_EXPLORED);
+      const distance = hexDistanceBetween(
+        terrain.xOf(from),
+        terrain.yOf(from),
+        terrain.xOf(to),
+        terrain.yOf(to),
+      );
+      const route = roadRoute(terrain, from, to, stepCost, ROAD_STEP_LAID, roadRouteBudget(distance));
       if (route === null) return null;
       const commands: PlaceRoadSite[] = [];
       for (let i = route.length - 1; i >= 0; i--) {
