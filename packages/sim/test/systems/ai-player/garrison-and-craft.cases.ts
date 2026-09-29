@@ -1301,22 +1301,27 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(mints.products()).toEqual([amulets, amulets]);
   });
 
-  it('puts an amulet seat on defence amulets while leather armour is in store, on strength amulets while short swords are, and on both while neither', () => {
-    const mints = crewedMints(4);
+  it('alternates strength-first and defence-first amulet seats, each falling back to the other line while its own input is out', () => {
+    const mints = crewedMints(6);
     mints.stockCoins(COIN_GLUT_UNITS);
     mints.stock(LEATHER_ARMOUR, 1);
-    mints.hire(0, 4);
-    expect(mints.products()).toEqual([[COIN], [DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
+    mints.stock(SWORD_SHORT, 1);
+    mints.hire(0, 6);
+    // Both inputs in store: the five amulet seats split three strength, two defence.
+    const strength = [STRENGTH_AMULET];
+    const defence = [DEFENCE_AMULET];
+    expect(mints.products()).toEqual([[COIN], strength, defence, strength, defence, strength]);
+    // No short sword: the strength-first seats turn to defence amulets.
+    mints.stock(SWORD_SHORT, 0);
+    expect(mints.products()).toEqual([defence, defence, defence]);
+    // No leather armour: every seat strikes strength amulets.
     mints.stock(LEATHER_ARMOUR, 0);
     mints.stock(SWORD_SHORT, 1);
-    expect(mints.products()).toEqual([[STRENGTH_AMULET], [STRENGTH_AMULET], [STRENGTH_AMULET]]);
-    // Both in store: the defence line comes first.
-    mints.stock(LEATHER_ARMOUR, 1);
-    expect(mints.products()).toEqual([[DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
-    mints.stock(LEATHER_ARMOUR, 0);
+    expect(mints.products()).toEqual([strength, strength, strength, strength, strength]);
+    // Neither in store: every seat works both lines.
     mints.stock(SWORD_SHORT, 0);
     const amulets = [DEFENCE_AMULET, STRENGTH_AMULET];
-    expect(mints.products()).toEqual([amulets, amulets, amulets]);
+    expect(mints.products()).toEqual([amulets, amulets, amulets, amulets, amulets]);
   });
 
   it('turns the first armourer to wooden spears alone while the long bows pile up, and back once they are drawn down', () => {

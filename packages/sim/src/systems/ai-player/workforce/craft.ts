@@ -94,31 +94,29 @@ const SHORT_PRODUCT_SEATS = 2;
  *  could have had. Every seat but the first reads it; the first coiner never stops. */
 export const COIN_GLUT_UNITS = 20;
 
-/** An amulet seat: defence amulets while a leather armour is in store, strength amulets while a short sword
- *  is, both lines while neither, so the seat never idles on a line the tailors or the smiths have not fed. */
-const AMULET_SEAT: CraftSeat = {
-  firstFed: [
-    { good: 'amulet_defense', input: 'armor_leather' },
-    { good: 'amulet_strength', input: 'sword_shord' },
-  ],
-};
+const DEFENCE_AMULET_LINE = { good: 'amulet_defense', input: 'armor_leather' } as const;
+const STRENGTH_AMULET_LINE = { good: 'amulet_strength', input: 'sword_shord' } as const;
+
+/** Amulet seats: each strikes its own amulet while its input is in store and the other one's meanwhile, so
+ *  the seat never idles on a line the tailors or the smiths have not fed; both lines while neither is. */
+const STRENGTH_AMULET_SEAT: CraftSeat = { firstFed: [STRENGTH_AMULET_LINE, DEFENCE_AMULET_LINE] };
+const DEFENCE_AMULET_SEAT: CraftSeat = { firstFed: [DEFENCE_AMULET_LINE, STRENGTH_AMULET_LINE] };
 
 /** A top-up coiner: coins while they lie under {@link COIN_GLUT_UNITS}, amulets meanwhile. */
-const COIN_TOP_UP_SEAT: CraftSeat = {
-  goods: ['coin'],
-  glut: { coin: COIN_GLUT_UNITS },
-  otherwise: AMULET_SEAT,
-};
+function coinTopUpSeat(amulets: CraftSeat): CraftSeat {
+  return { goods: ['coin'], glut: { coin: COIN_GLUT_UNITS }, otherwise: amulets };
+}
 
 /** The mint's six seats over three mints: one coiner always, two more only while the coins run under the
- *  glut, and the rest on amulets. */
+ *  glut, and the rest on amulets. The amulet seats alternate strength-first and defence-first, so the
+ *  plentiful leather armour does not turn every seat to defence amulets while short swords are in store. */
 const MINT_SEATS: readonly CraftSeat[] = [
   ['coin'],
-  COIN_TOP_UP_SEAT,
-  COIN_TOP_UP_SEAT,
-  AMULET_SEAT,
-  AMULET_SEAT,
-  AMULET_SEAT,
+  coinTopUpSeat(STRENGTH_AMULET_SEAT),
+  coinTopUpSeat(DEFENCE_AMULET_SEAT),
+  STRENGTH_AMULET_SEAT,
+  DEFENCE_AMULET_SEAT,
+  STRENGTH_AMULET_SEAT,
 ];
 
 /** How many druids a seat's six huts employ; one boils the temple's oil, the rest brew the big potion. */
@@ -200,7 +198,7 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
     seats: [['holy_oil'], ...Array.from({ length: DRUID_SEATS - 1 }, (): CraftSeat => ['potion_heal_big'])],
   },
   // One coiner on coins for good, two more only while the coins run under the glut line, and the rest
-  // on amulets: defence while leather armour is in store, strength while short swords are.
+  // on amulets, half strength-first and half defence-first.
   work_coin_mint: { seats: MINT_SEATS },
 };
 
