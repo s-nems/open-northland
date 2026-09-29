@@ -50,6 +50,8 @@ import {
 
 const ENEMY = SEAT + 1;
 const GRASS = 0;
+/** Walkable ground no building stands on. */
+const SCREE = 18;
 const WATER = 1;
 const JOINERY_02_TYPE = 60;
 const JOINERY_03_TYPE = 61;
@@ -109,6 +111,7 @@ function fleetContent(): ContentSet {
   const bill = [{ goodType: WOOD, amount: 2 }];
   return parseContentSet({
     ...base,
+    landscape: [...(base.landscape ?? []), { typeId: SCREE, id: 'scree', walkable: true, buildable: false }],
     goods: [
       ...base.goods,
       { typeId: SHIP_GOOD, id: 'ship_small', weight: 0, vehicleHouse: SHIP_HOUSE_TYPE },
@@ -393,6 +396,27 @@ describe('build order - the shore affinity', () => {
     if (noEnemy?.kind !== 'placeBuilding') throw new Error('expected a lake placement');
     expect(noEnemy.y).toBeLessThan(LAKE.y1 + VEHICLE_SITE_PLACEMENT_RINGS);
     expect(isWaterAt(map, noEnemy.x, noEnemy.y)).toBe(false);
+  });
+
+  it('passes over ship water with no room beside it for the joinery', () => {
+    // Scree, walkable but unbuildable, covers the land around the near bay but for the headquarters'
+    // yard: a ship yard's door still fits there, the joinery does not. A second bay to the north has
+    // open land.
+    const NORTH_BAY = { x0: BAY.x0, x1: SEA_WEST, y0: 8, y1: 16 };
+    const SCREE_FROM_Y = NORTH_BAY.y1 + 6;
+    const HQ_YARD = 3;
+    const map = seaMap();
+    const typeIds = map.typeIds.map((id, i) => {
+      const x = i % MAP_W;
+      const y = Math.floor(i / MAP_W);
+      if (x >= SEA_WEST) return id;
+      if (x >= NORTH_BAY.x0 && y >= NORTH_BAY.y0 && y < NORTH_BAY.y1) return WATER;
+      const yard = Math.abs(x - HOME.x) <= HQ_YARD && Math.abs(y - HOME.y) <= HQ_YARD;
+      return id === WATER || y < SCREE_FROM_Y || yard ? id : SCREE;
+    });
+    const placed = first(world({ ...map, typeIds }), [shoreJoinery]);
+    if (placed?.kind !== 'placeBuilding') throw new Error('expected a shore placement');
+    expect(placed.y).toBeLessThan(SCREE_FROM_Y);
   });
 
   it('places nothing by the shore where no water lies in reach', () => {

@@ -16,6 +16,7 @@ import {
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
   enemyFire,
+  OVERFLOW_BUILD_REACH_NODES,
   STALLED_PLACEMENT_RETRY_DECISIONS,
 } from '../../../src/systems/ai-player/index.js';
 import { bestRingNode } from '../../../src/systems/ai-player/node-geometry.js';
@@ -86,6 +87,44 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(firstCommandOf(barren, DEFAULT_BUILD_ORDER)).toBeUndefined();
     const home = firstCommandOf(barren, [{ kind: 'place', building: 'home_level_00', count: 1 }]);
     expect(home?.kind).toBe('placeBuilding');
+  });
+
+  it('builds past a barren belt wider than the reach, on its own land only', () => {
+    // Sand out to beyond the reach around the HQ, grass past it: the farm overflows onto the grass.
+    const BELT = BUILD_SEARCH_MAX_RADIUS_NODES + 4;
+    const WIDE = 2 * (HQ_X + OVERFLOW_BUILD_REACH_NODES);
+    const barrenBelt = (x: number, y: number) => Math.abs(x - HQ_X) + Math.abs(y - HQ_Y) <= BELT;
+    const overflow = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: mapWithSand(WIDE, 32, barrenBelt),
+    });
+    placeHq(overflow);
+    overflow.step();
+    const farm = firstCommandOf(overflow, DEFAULT_BUILD_ORDER);
+    if (farm?.kind !== 'placeBuilding') throw new Error('expected the farm placement');
+    const distance = Math.abs(farm.x - HQ_X) + Math.abs(farm.y - HQ_Y);
+    expect(distance).toBeGreaterThan(BELT);
+    expect(distance).toBeLessThanOrEqual(OVERFLOW_BUILD_REACH_NODES);
+
+    // The same grass behind a strait: the farm stalls rather than landing where no builder walks.
+    const WATER = 1;
+    const STRAIT_X = HQ_X + BELT + 1;
+    const typeIds = new Array<number>(WIDE * 32);
+    for (let y = 0; y < 32; y++) {
+      for (let x = 0; x < WIDE; x++) {
+        const west = x < STRAIT_X;
+        typeIds[y * WIDE + x] = x === STRAIT_X ? WATER : west || barrenBelt(x, y) ? SAND : 0;
+      }
+    }
+    const island = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: { resolution: 'half-cell', width: WIDE, height: 32, typeIds },
+    });
+    placeHq(island);
+    island.step();
+    expect(firstCommandOf(island, DEFAULT_BUILD_ORDER)).toBeUndefined();
   });
 
   it('re-searches a stalled placement only every retry interval and places on the first retry after room frees', () => {

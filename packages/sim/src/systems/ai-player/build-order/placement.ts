@@ -19,7 +19,7 @@ import type { EnemyFire } from '../military/defence/index.js';
 import { anchorNodeOf, bestRingNode, firstRingNode, towardNode } from '../node-geometry.js';
 import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
-import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
+import { BUILD_SEARCH_MAX_RADIUS_NODES, OVERFLOW_BUILD_REACH_NODES } from './entries.js';
 
 /** One affinity other than `shore` ({@link shoreTarget}) resolved to a node, or null when it cannot be. A
  *  `building` affinity takes the seat's lowest-id building of that id or a tier above it, so the pick is
@@ -76,6 +76,10 @@ const SHORE_SPOT_RINGS = VEHICLE_SITE_PLACEMENT_RINGS;
  *  placement's own search fan, since the spot must still land in the settlement's reach. */
 const SHORE_SEARCH_RADIUS_NODES = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
 
+/** The Manhattan span of {@link SHORE_SPOT_RINGS} hex rings on the half-cell lattice, where one ring steps
+ *  at most one node across and two down. */
+const SHORE_SPOT_SPAN_NODES = 3 * SHORE_SPOT_RINGS;
+
 /** The static land component of the seat's base interaction cell, as {@link seaRouteOf} reads it, or
  *  {@link NO_COMPONENT} for a seat with no base. */
 function baseComponent(world: World, ctx: SystemContext, terrain: TerrainGraph, player: number): number {
@@ -100,6 +104,7 @@ function shoreTarget(
   owned: readonly Entity[],
   anchor: HalfCellNode,
   tribe: number,
+  accept: (x: number, y: number) => boolean,
 ): { readonly node: HalfCellNode; readonly home: number } | null {
   const route = seaRouteOf(world, ctx, player);
   const home = route?.home ?? baseComponent(world, ctx, terrain, player);
@@ -110,15 +115,27 @@ function shoreTarget(
   const coasts = coastsOf(terrain);
   const ours = coasts.get(home);
   if (ours === undefined) return null;
-  const theirs = route === null ? undefined : coasts.get(route.enemy);
+  const theirs = route === null ? undefined : coasts.get(route.rival);
   const reach = buildReach(world, owned, anchor);
+  const spotBeside = (wx: number, wy: number) =>
+    firstRingNode(
+      wx,
+      wy,
+      SHORE_SPOT_SPAN_NODES,
+      (x, y) =>
+        hexDistanceBetween(wx, wy, x, y) < SHORE_SPOT_RINGS &&
+        terrain.inBounds(x, y) &&
+        terrain.componentOf(terrain.nodeAt(x, y)) === home &&
+        reach.contains(x, y) &&
+        accept(x, y),
+    ) !== null;
   const sailable = (bodies: ReadonlySet<number>) => (x: number, y: number) => {
     if (!terrain.inBounds(x, y)) return false;
     const node = terrain.nodeAt(x, y);
     if (!terrain.isWater(node)) return false;
     const body = terrain.componentOf(node);
     if (!ours.has(body) || !bodies.has(body)) return false;
-    return reach.meets({ hx: x, hy: y }, SHORE_SPOT_RINGS) && yardFits(x, y);
+    return reach.meets({ hx: x, hy: y }, SHORE_SPOT_RINGS) && yardFits(x, y) && spotBeside(x, y);
   };
   const across =
     theirs === undefined
@@ -250,12 +267,15 @@ function searchCentre(
   type: BuildingType,
   tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
+  acceptor: SpotAcceptor,
+  underFire: EnemyFire,
 ): { centre: HalfCellNode; within: SpotBound } | null {
   const anchors: HalfCellNode[] = [];
   let within: SpotBound = null;
   for (const affinity of entry.near ?? []) {
     if (affinity.kind === 'shore') {
-      const shore = shoreTarget(world, ctx, terrain, player, owned, anchor, tribe);
+      const accept = acceptor.around(underFire, anchor, SHORE_SEARCH_RADIUS_NODES + SHORE_SPOT_SPAN_NODES);
+      const shore = shoreTarget(world, ctx, terrain, player, owned, anchor, tribe, accept);
       if (shore === null) return null;
       const { node, home } = shore;
       anchors.push(node);
@@ -288,8 +308,8 @@ function searchCentre(
   };
 }
 
-/** The ground a placement may take: within {@link BUILD_SEARCH_MAX_RADIUS_NODES} (Manhattan) of one of
- *  the seat's buildings, sites included, so the settlement keeps growing from wherever it stands. */
+/** The ground a placement may take: within a radius (Manhattan) of one of the seat's buildings, sites
+ *  included, so the settlement keeps growing from wherever it stands. */
 export interface BuildReach {
   contains(x: number, y: number): boolean;
   /** Whether some building's disc meets the Manhattan disc of `span` around `centre`: what a search
@@ -303,18 +323,22 @@ export interface BuildReach {
 }
 
 /** The {@link BuildReach} of the seat's `owned` buildings, or of `fallback` alone while none has a node. */
-export function buildReach(world: World, owned: readonly Entity[], fallback: HalfCellNode): BuildReach {
+export function buildReach(
+  world: World,
+  owned: readonly Entity[],
+  fallback: HalfCellNode,
+  radius = BUILD_SEARCH_MAX_RADIUS_NODES,
+): BuildReach {
   const centres: HalfCellNode[] = [];
   for (const e of owned) {
     const node = anchorNodeOf(world, e);
     if (node !== null) centres.push(node);
   }
   if (centres.length === 0) centres.push(fallback);
-  return reachOver(centres, fallback);
+  return reachOver(centres, fallback, radius);
 }
 
-function reachOver(centres: readonly HalfCellNode[], fallback: HalfCellNode): BuildReach {
-  const radius = BUILD_SEARCH_MAX_RADIUS_NODES;
+function reachOver(centres: readonly HalfCellNode[], fallback: HalfCellNode, radius: number): BuildReach {
   // Ring walks test runs of nearby nodes, so the centre that took the last one goes first.
   let last = 0;
   const within = (c: HalfCellNode | undefined, x: number, y: number): boolean =>
@@ -336,6 +360,7 @@ function reachOver(centres: readonly HalfCellNode[], fallback: HalfCellNode): Bu
       return reachOver(
         centres.filter((c) => nodeDistance(c, centre) <= span + radius),
         fallback,
+        radius,
       );
     },
     clamp(node) {
@@ -471,7 +496,9 @@ export const HQ_PULL_DIVISOR_NODES = 4;
  *
  * An affinity pull that finds nothing yields to the same search from `anchor` (authored): a
  * settlement wider than the fan keeps room on its far side that the pulled centre never reaches, and a
- * barracks or a mint anywhere in it beats a list stalled for half an hour.
+ * barracks or a mint anywhere in it beats a list stalled for half an hour. When neither finds a spot, the
+ * pulled search runs once more over {@link OVERFLOW_BUILD_REACH_NODES}, on the base's own land component
+ * only, since the wider reach can span a strait the builders cannot walk.
  */
 export function placementSpot(
   world: World,
@@ -487,36 +514,36 @@ export function placementSpot(
 ): HalfCellNode | null {
   const settlement = buildReach(world, owned, anchor);
   const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
-  const search = searchCentre(world, ctx, terrain, player, owned, anchor, settlement, type, tribe, entry);
+  const search = searchCentre(
+    world,
+    ctx,
+    terrain,
+    player,
+    owned,
+    anchor,
+    settlement,
+    type,
+    tribe,
+    entry,
+    acceptor,
+    underFire,
+  );
   if (search === null) return null;
   const { centre, within } = search;
-  const pulled = spotAround(
-    ctx,
-    terrain,
-    settlement,
-    acceptor,
-    anchor,
-    centre,
-    within,
-    type,
-    tribe,
-    entry,
-    underFire,
-  );
-  if (pulled !== null || (centre.hx === anchor.hx && centre.hy === anchor.hy)) return pulled;
-  return spotAround(
-    ctx,
-    terrain,
-    settlement,
-    acceptor,
-    anchor,
-    anchor,
-    within,
-    type,
-    tribe,
-    entry,
-    underFire,
-  );
+  const near = (reach: BuildReach, from: HalfCellNode, bound: SpotBound, fan: number) =>
+    spotAround(ctx, terrain, reach, acceptor, anchor, from, bound, fan, type, tribe, entry, underFire);
+  const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
+  const pulled = near(settlement, centre, within, fan);
+  if (pulled !== null) return pulled;
+  const fromAnchor =
+    centre.hx === anchor.hx && centre.hy === anchor.hy ? null : near(settlement, anchor, within, fan);
+  if (fromAnchor !== null) return fromAnchor;
+  const home = baseComponent(world, ctx, terrain, player);
+  if (home === NO_COMPONENT) return null;
+  const onHomeLand = (x: number, y: number) =>
+    (within === null || within(x, y)) && terrain.componentOf(terrain.nodeAt(x, y)) === home;
+  const overflow = buildReach(world, owned, anchor, OVERFLOW_BUILD_REACH_NODES);
+  return near(overflow, centre, onHomeLand, 2 * OVERFLOW_BUILD_REACH_NODES);
 }
 
 function spotAround(
@@ -527,12 +554,12 @@ function spotAround(
   anchor: HalfCellNode,
   centre: HalfCellNode,
   within: SpotBound,
+  fan: number,
   type: BuildingType,
   tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   underFire: EnemyFire,
 ): HalfCellNode | null {
-  const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
   const accept = acceptor.around(underFire, centre, fan);
   const reach = settlement.around(centre, fan);
   const hqPull = (x: number, y: number): number =>
