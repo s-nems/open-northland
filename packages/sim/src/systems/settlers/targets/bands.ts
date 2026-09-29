@@ -5,6 +5,7 @@ import {
   GroundDrop,
   Palisade,
   Position,
+  RoadSite,
   Stockpile,
   UnderConstruction,
   Upgrading,
@@ -110,6 +111,7 @@ export class TargetBands {
       w.componentGeneration(GroundDrop) +
       w.componentGeneration(Building) +
       w.componentGeneration(Palisade) +
+      w.componentGeneration(RoadSite) +
       w.componentValueGeneration(Building) +
       w.componentGeneration(Upgrading) +
       w.componentValueGeneration(Upgrading) +

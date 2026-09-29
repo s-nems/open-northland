@@ -1,4 +1,12 @@
-import { Building, DeliveryFlag, GroundDrop, Palisade, Position, Stockpile } from '../../components/index.js';
+import {
+  Building,
+  DeliveryFlag,
+  GroundDrop,
+  Palisade,
+  Position,
+  RoadSite,
+  Stockpile,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -108,7 +116,11 @@ export function lowestStockedGood(stock: { amounts: ReadonlyMap<number, number> 
  *  `Stockpile`, so none is ever a pile. */
 export function isLoosePile(world: World, e: Entity): boolean {
   return (
-    world.has(e, Stockpile) && world.has(e, Position) && !world.has(e, Building) && !world.has(e, Palisade)
+    world.has(e, Stockpile) &&
+    world.has(e, Position) &&
+    !world.has(e, Building) &&
+    !world.has(e, Palisade) &&
+    !world.has(e, RoadSite)
   );
 }
 

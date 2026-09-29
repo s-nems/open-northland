@@ -1,4 +1,12 @@
-import { Building, GroundDrop, HarvestedBy, Palisade, Position, Stockpile } from '../../components/index.js';
+import {
+  Building,
+  GroundDrop,
+  HarvestedBy,
+  Palisade,
+  Position,
+  RoadSite,
+  Stockpile,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
@@ -48,8 +56,8 @@ export function evictLooseGoodsFromCells(
   for (const cell of body) {
     const { x, y } = terrain.coordsOf(cell);
     for (const e of stockpilesAtNode(world, x, y)) {
-      // A persistent store keeps its cell, and a wall's stock is its own construction hold.
-      if (world.has(e, Building) || world.has(e, Palisade)) continue;
+      // A persistent store keeps its cell, and a wall's or road site's stock is its own construction hold.
+      if (world.has(e, Building) || world.has(e, Palisade) || world.has(e, RoadSite)) continue;
       buriedUnsorted.push(e);
     }
   }

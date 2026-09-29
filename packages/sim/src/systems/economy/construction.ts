@@ -8,6 +8,7 @@ import {
   Palisade,
   PalisadeBlocking,
   Position,
+  RoadSite,
   Settler,
   Stockpile,
   setStockAmount,
@@ -24,8 +25,8 @@ import type { System, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { settleClosedWall, travellerOnClosing } from '../palisades/index.js';
-import { dropLapsedClaim, holdsPalisadeClaim } from '../palisades/reservation.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
+import { finishRoadSite } from '../roads/sites.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
 import {
   constructionBillOf,
@@ -42,6 +43,7 @@ import { destroyFieldsUnderBuilding } from './fields.js';
 import { evictLooseGoodsFromFootprint } from './goods-evict.js';
 import { scatterSpilledStock, spilledStockOf } from './goods-spill.js';
 import { clearRepairedDamage } from './repair.js';
+import { dropLapsedClaim, holdsSiteClaim, isSoloSite } from './site-claim.js';
 import { destroyStumpsInReserved } from './stumps.js';
 
 /**
@@ -63,7 +65,7 @@ export const constructionSystem: System = (world, ctx) => {
   for (const e of world.canonicalQuery(UnderConstruction)) {
     if (!world.has(e, Stockpile)) continue;
     const wall = world.tryGet(e, Palisade);
-    if (wall !== undefined) dropLapsedClaim(world, e);
+    if (isSoloSite(world, e)) dropLapsedClaim(world, e);
     // A site drained to 0 HP earlier this tick is rubble awaiting the cleanupSystem; raising it here
     // would resurrect it swing after swing.
     const health = world.tryGet(e, Health);
@@ -78,6 +80,8 @@ export const constructionSystem: System = (world, ctx) => {
       }
     } else if (wall !== undefined) {
       advanceWallSite(world, ctx, e, wall, constructionBillOf(world, ctx, e));
+    } else if (world.has(e, RoadSite)) {
+      advanceRoadSite(world, ctx, e);
     }
   }
   for (const site of launches) launchVehicle(world, ctx, site);
@@ -135,6 +139,13 @@ function advanceWallSite(
   if (next === before) return;
   world.mut(e, Palisade).built = next;
   rampHealth(world, e, before, next);
+}
+
+/** Lay a road site once its one strike and its stone are in. */
+function advanceRoadSite(world: World, ctx: SystemContext, e: Entity): void {
+  if (world.get(e, UnderConstruction).labor < ONE || !constructionMaterialsPresent(world, ctx, e)) return;
+  consumeMaterials(world, e, constructionBillOf(world, ctx, e));
+  finishRoadSite(world, ctx, e);
 }
 
 /** A site's `built` fraction: its labor, capped by the delivered material. */
@@ -272,6 +283,7 @@ export function forceFinishConstruction(world: World, ctx: SystemContext, site: 
   const building = world.tryGet(site, Building);
   if (building !== undefined) finishBuilding(world, ctx, site, building);
   else if (world.has(site, Palisade)) finishWall(world, ctx, site);
+  else if (world.has(site, RoadSite)) finishRoadSite(world, ctx, site);
 }
 
 /** Ramp a site's {@link Health} for a rise from `before` to `after`: the pool gains what the ceiling gained
@@ -312,9 +324,10 @@ const STEPS_PER_UNIT = 30;
 
 /** Labor installed by one construction step at `site`. */
 function constructionLaborPerStep(world: World, ctx: SystemContext, site: Entity): Fixed {
-  // A wall segment rises in a single strike once its wood is in. Project rule, approximation: the readable
-  // data gives no count.
-  if (world.has(site, Palisade)) return ONE;
+  // A wall segment rises in a single strike once its wood is in, and a road site once its stone is. Project
+  // rule, approximation: the readable data gives no count, and the build-road clip is as long as the
+  // build-wall one.
+  if (isSoloSite(world, site)) return ONE;
   const totalSteps = constructionTotalUnits(world, ctx, site) * STEPS_PER_UNIT;
   // At least 1 ULP per step so a huge-cost building still finishes: `trunc(ONE / totalSteps)` floors
   // to 0 once `totalSteps > ONE`.
@@ -350,7 +363,7 @@ export function advanceConstructionLabor(
   const uc = world.tryMut(site, UnderConstruction);
   if (uc === undefined) return false;
   const before = uc.labor;
-  if (world.has(site, Palisade) && !holdsPalisadeClaim(world, site, builder)) return false;
+  if (isSoloSite(world, site) && !holdsSiteClaim(world, site, builder)) return false;
   const steps = buildStepsPerSwing(
     jobExperiencePercent(world, ctx, builder, null),
     toolWorkFactorPct(world, ctx, builder),

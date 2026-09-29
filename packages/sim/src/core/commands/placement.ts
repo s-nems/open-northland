@@ -14,7 +14,9 @@ export type PlacementCommand =
   | DemolishSignpostCommand
   | DemolishPalisadeCommand
   | ConvertPalisadeGateCommand
-  | SetPalisadeGateCommand;
+  | SetPalisadeGateCommand
+  | PlaceRoadSiteCommand
+  | CancelRoadSiteCommand;
 
 /** The placements a player seat may issue for itself; the rest are world edits only trusted setup or
  *  the admin channel may make. */
@@ -27,7 +29,9 @@ export type PlayerPlacementCommand =
   | DemolishSignpostCommand
   | DemolishPalisadeCommand
   | ConvertPalisadeGateCommand
-  | SetPalisadeGateCommand;
+  | SetPalisadeGateCommand
+  | PlaceRoadSiteCommand
+  | CancelRoadSiteCommand;
 
 /** Place one data-described wall segment at a half-cell node. `gfxIndex` selects the map catalog row,
  * which must carry `ScriptLandscapeType.wall`; seat envelopes own the segment and start it unfinished. */
@@ -43,6 +47,24 @@ export interface PlacePalisadeCommand {
   /** Trusted authored-map durability/valency; ignored for a construction site. */
   readonly valency?: number;
   readonly force?: boolean;
+}
+
+/** Order a road on one half-cell node: a site a builder lays with the road's stone. Seat envelopes own
+ *  the site. */
+export interface PlaceRoadSiteCommand {
+  readonly kind: 'placeRoadSite';
+  readonly x: number;
+  readonly y: number;
+  readonly tribe: number;
+  readonly owner?: number;
+  /** Trusted setup only: skip the ground and blocker test, never the one-site-per-node rule. */
+  readonly force?: boolean;
+}
+
+/** Withdraw a road site not yet laid; any stone already delivered drops beside it. */
+export interface CancelRoadSiteCommand {
+  readonly kind: 'cancelRoadSite';
+  readonly roadSite: Entity;
 }
 
 export interface DemolishPalisadeCommand {

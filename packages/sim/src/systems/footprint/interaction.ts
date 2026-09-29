@@ -5,6 +5,7 @@ import {
   Palisade,
   Position,
   ResourceFootprint,
+  RoadSite,
   Stockpile,
   stockpileEntries,
 } from '../../components/index.js';
@@ -74,7 +75,8 @@ export function constructionWorkCells(
   const building = world.tryGet(site, Building);
   const palisade = world.tryGet(site, Palisade);
   const position = world.tryGet(site, Position);
-  if ((building === undefined && palisade === undefined) || position === undefined) return [];
+  const road = world.has(site, RoadSite);
+  if ((building === undefined && palisade === undefined && !road) || position === undefined) return [];
 
   const anchorCoords = nodeOfPosition(position.x, position.y);
   const anchor = terrain.nodeAtClamped(anchorCoords.hx, anchorCoords.hy);

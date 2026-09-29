@@ -110,6 +110,8 @@ export const COMMAND_ISSUER: {
   placeBuilding: 'seat',
   placePalisade: 'seat',
   convertPalisadeGate: 'seat',
+  placeRoadSite: 'seat',
+  cancelRoadSite: 'seat',
   placeResource: 'trusted',
   placeSignpost: 'seat',
   renameSettler: 'seat',
@@ -179,6 +181,7 @@ export function ownedEnvelope(envelope: CommandEnvelope): CommandEnvelope {
 
 function seatOwned(command: PlayerCommand, player: number): PlayerCommand {
   const owned = clonePlainData(command);
+  if (owned.kind === 'placeRoadSite') return { ...owned, owner: owned.owner ?? player };
   if (owned.kind !== 'placeBuilding' && owned.kind !== 'placePalisade') return owned;
   return {
     ...owned,

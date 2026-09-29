@@ -5,7 +5,6 @@ import {
   JobAssignment,
   ownerOf,
   ownersCompatible,
-  Palisade,
   Position,
   SiteAssignment,
   Stockpile,
@@ -18,8 +17,8 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
+import { holdsSiteClaim, isSoloSite } from '../../../economy/site-claim.js';
 import { constructionWorkCell } from '../../../footprint/index.js';
-import { holdsPalisadeClaim } from '../../../palisades/reservation.js';
 import {
   bankedSlot,
   buildingProduces,
@@ -262,8 +261,7 @@ function constructionSiteNeeds(
   supplier: Entity,
 ): boolean {
   if (!world.has(e, UnderConstruction) || constructionTribeOf(world, e) !== tribe) return false;
-  const wall = world.tryGet(e, Palisade);
-  if (wall !== undefined && !holdsPalisadeClaim(world, e, supplier)) return false;
+  if (isSoloSite(world, e) && !holdsSiteClaim(world, e, supplier)) return false;
   if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
   const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
   return have < stockCapacity(world, ctx, e, goodType);

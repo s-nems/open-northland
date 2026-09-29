@@ -2,9 +2,9 @@ import { footprintCellDx, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Palisade, Position, SiteAssignment, UnderConstruction } from '../../src/components/index.js';
 import { adminCommand, type Entity, fx, ONE, type ScriptLandscapeType, Simulation } from '../../src/index.js';
+import { claimSite, releaseSiteClaim } from '../../src/systems/economy/site-claim.js';
 import { buildingBlockedCells, placementBlockerVersion } from '../../src/systems/footprint/index.js';
 import { standingWallCells } from '../../src/systems/footprint/wall-joints.js';
-import { claimPalisade, releasePalisadeReservation } from '../../src/systems/palisades/reservation.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -66,9 +66,9 @@ describe('wall caches', () => {
 
     const builder = sim.world.create();
     sim.world.add(builder, SiteAssignment, { site, pinned: false });
-    expect(claimPalisade(sim.world, site, builder)).toBe(true);
+    expect(claimSite(sim.world, site, builder)).toBe(true);
     sim.world.mut(site, Palisade).built = fx.div(ONE, fx.fromInt(2));
-    releasePalisadeReservation(sim.world, builder);
+    releaseSiteClaim(sim.world, builder);
 
     expect(buildingBlockedCells(sim.world, ctxOf(sim), terrain)).toBe(blocked);
     expect(placementBlockerVersion(sim.world)).toBe(version);
@@ -80,7 +80,7 @@ describe('wall caches', () => {
     const bystander = sim.world.create();
     sim.world.add(bystander, SiteAssignment, { site, pinned: false });
     const generation = sim.world.componentValueGeneration(Palisade);
-    releasePalisadeReservation(sim.world, bystander);
+    releaseSiteClaim(sim.world, bystander);
     expect(sim.world.componentValueGeneration(Palisade)).toBe(generation);
   });
 

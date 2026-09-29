@@ -18,11 +18,11 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { droppedEquipmentOf, scatterSpilledStock } from '../economy/goods-spill.js';
+import { releaseSiteClaim } from '../economy/site-claim.js';
 import { removeWorkFlag } from '../economy/work-flag.js';
 import { isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
 import { setLandscape } from '../landscape/edits.js';
-import { releasePalisadeReservation } from '../palisades/reservation.js';
 import { animalRecord, firstLandscapeGfxOf, isSoldierJob, MEAT_LANDSCAPE_SLUG } from '../readviews/index.js';
 import { abandonCargoRun } from '../vehicles/cargo.js';
 
@@ -89,7 +89,7 @@ function remainsSize(cadaverSize: number, young: boolean): number {
  *  the statistics and the dropped gear on top of this. */
 export function removeSettlerSilently(world: World, e: Entity): void {
   removeWorkFlag(world, e); // a work flag has no owner once its gatherer is gone
-  releasePalisadeReservation(world, e);
+  releaseSiteClaim(world, e);
   const rider = world.tryGet(e, Rider);
   if (rider !== undefined && world.has(rider.vehicle, Vehicle)) unseatPassenger(world, rider.vehicle, e);
   abandonCargoRun(world, e);

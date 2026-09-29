@@ -25,13 +25,13 @@ import {
 import { damageVsTarget } from '../../src/systems/conflict/weapons.js';
 import { advanceConstructionLabor, constructionSystem } from '../../src/systems/economy/construction.js';
 import { needsRepair, repairStructure } from '../../src/systems/economy/repair.js';
-import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import {
-  claimPalisade,
+  claimSite,
   constructionSiteAvailableTo,
-  palisadeReservedBy,
-  releasePalisadeReservation,
-} from '../../src/systems/palisades/reservation.js';
+  releaseSiteClaim,
+  siteClaimHolder,
+} from '../../src/systems/economy/site-claim.js';
+import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { PlannerSpacing } from '../../src/systems/settlers/planner/spacing.js';
 import { isLoosePile } from '../../src/systems/stores/capacity.js';
@@ -121,7 +121,7 @@ function fresh(): Simulation {
 function flagBearer(sim: Simulation, site: Entity): Entity {
   const builder = sim.world.create();
   sim.world.add(builder, SiteAssignment, { site, pinned: false });
-  claimPalisade(sim.world, site, builder);
+  claimSite(sim.world, site, builder);
   return builder;
 }
 
@@ -503,13 +503,13 @@ describe('palisades', () => {
 
     expect(constructionSiteAvailableTo(sim.world, wall, first)).toBe(true);
     expect(constructionSiteAvailableTo(sim.world, wall, second)).toBe(false);
-    expect(claimPalisade(sim.world, wall, second)).toBe(false);
-    expect(palisadeReservedBy(sim.world, wall)).toBe(first);
+    expect(claimSite(sim.world, wall, second)).toBe(false);
+    expect(siteClaimHolder(sim.world, wall)).toBe(first);
 
-    releasePalisadeReservation(sim.world, first);
-    expect(palisadeReservedBy(sim.world, wall)).toBeNull();
-    expect(claimPalisade(sim.world, wall, second)).toBe(true);
-    expect(palisadeReservedBy(sim.world, wall)).toBe(second);
+    releaseSiteClaim(sim.world, first);
+    expect(siteClaimHolder(sim.world, wall)).toBeNull();
+    expect(claimSite(sim.world, wall, second)).toBe(true);
+    expect(siteClaimHolder(sim.world, wall)).toBe(second);
   });
 
   it('restores a claim so a reloaded builder keeps the segment it was raising', () => {
@@ -533,6 +533,6 @@ describe('palisades', () => {
     });
 
     expect(restored.world.get(wall, Palisade).reservation).toEqual({ builder });
-    expect(palisadeReservedBy(restored.world, wall)).toBe(builder);
+    expect(siteClaimHolder(restored.world, wall)).toBe(builder);
   });
 });

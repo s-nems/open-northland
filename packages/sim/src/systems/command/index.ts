@@ -59,6 +59,7 @@ import {
   unequipGood,
 } from '../orders/index.js';
 import { convertPalisadeGate, placePalisade, setPalisadeGate } from '../palisades/index.js';
+import { cancelRoadSite, placeRoadSite } from '../roads/sites.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
@@ -143,6 +144,12 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'demolishPalisade':
       razePalisade(world, ctx, command.palisade);
+      return;
+    case 'placeRoadSite':
+      placeRoadSite(world, ctx, command);
+      return;
+    case 'cancelRoadSite':
+      cancelRoadSite(world, ctx, command.roadSite);
       return;
     case 'dropGood':
       dropGood(world, ctx, command);

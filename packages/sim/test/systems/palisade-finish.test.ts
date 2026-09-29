@@ -20,9 +20,9 @@ import {
 } from '../../src/index.js';
 import type { TerrainGraph } from '../../src/nav/terrain/index.js';
 import { advanceConstructionLabor, constructionSystem } from '../../src/systems/economy/construction.js';
+import { claimSite } from '../../src/systems/economy/site-claim.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { moveUnit } from '../../src/systems/orders/index.js';
-import { claimPalisade } from '../../src/systems/palisades/reservation.js';
 import { fighterAt } from '../conflict/melee-engagement/support.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -97,7 +97,7 @@ function hammer(sim: Simulation, site: Entity): void {
   setStockAmount(sim.world, site, WOOD, 1);
   const builder = sim.world.create();
   sim.world.add(builder, SiteAssignment, { site, pinned: false });
-  claimPalisade(sim.world, site, builder);
+  claimSite(sim.world, site, builder);
   expect(advanceConstructionLabor(sim.world, ctxOf(sim), site, builder)).toBe(true);
 }
 

@@ -1,4 +1,4 @@
-import { CurrentAtomic, Palisade, UnderConstruction } from '../../../../components/index.js';
+import { CurrentAtomic, Palisade, RoadSite, UnderConstruction } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { remainingConstructionSteps } from '../../../economy/construction.js';
@@ -14,7 +14,8 @@ import { atomicHoldsSettler } from '../../atomics/busy.js';
 export class ConstructionTaskClaims {
   private readonly hammerBySite = new Map<Entity, number>();
   private readonly stepCapacityBySite = new Map<Entity, number>();
-  private walls: WallSurvey | undefined;
+  private walls: SoloSiteSurvey | undefined;
+  private roads: SoloSiteSurvey | undefined;
 
   constructor(
     private readonly world: World,
@@ -56,16 +57,24 @@ export class ConstructionTaskClaims {
    * site stock stays put during the planner.
    */
   wallMayHaveTask(canSource: (goodType: number) => boolean): boolean {
-    this.walls ??= this.surveyWalls();
-    return (
-      this.walls.hammerable.some((site) => this.hasHammerWork(site)) || this.walls.missing.some(canSource)
-    );
+    this.walls ??= this.survey(this.world.query(UnderConstruction, Palisade));
+    return this.mayHaveTask(this.walls, canSource);
   }
 
-  private surveyWalls(): WallSurvey {
+  /** {@link wallMayHaveTask} over the road sites. */
+  roadMayHaveTask(canSource: (goodType: number) => boolean): boolean {
+    this.roads ??= this.survey(this.world.query(UnderConstruction, RoadSite));
+    return this.mayHaveTask(this.roads, canSource);
+  }
+
+  private mayHaveTask(survey: SoloSiteSurvey, canSource: (goodType: number) => boolean): boolean {
+    return survey.hammerable.some((site) => this.hasHammerWork(site)) || survey.missing.some(canSource);
+  }
+
+  private survey(sites: Iterable<Entity>): SoloSiteSurvey {
     const hammerable: Entity[] = [];
     const missing = new Set<number>();
-    for (const site of this.world.query(UnderConstruction, Palisade)) {
+    for (const site of sites) {
       if (this.hasHammerWork(site)) hammerable.push(site);
       addUndeliveredConstructionGoods(this.world, this.ctx, site, missing);
     }
@@ -87,9 +96,9 @@ export class ConstructionTaskClaims {
   }
 }
 
-interface WallSurvey {
-  /** Segments with an unclaimed delivered step when the pass first asked. */
+interface SoloSiteSurvey {
+  /** Sites with an unclaimed delivered step when the pass first asked. */
   readonly hammerable: readonly Entity[];
-  /** Every good some segment's bill still lacks on site. */
+  /** Every good some site's bill still lacks on site. */
   readonly missing: readonly number[];
 }

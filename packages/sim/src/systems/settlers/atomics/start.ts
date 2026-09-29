@@ -74,6 +74,11 @@ export const BUILD_HOUSE_ATOMIC_ID = 39;
  *  builder's `allowatomic 42` in `jobtypes.ini`). */
 export const BUILD_WALL_ATOMIC_ID = 42;
 
+/** The build-road slot bound for the builder job, swung for a road site's one-stone finish (source basis
+ *  the `viking_builder_build_road` binding in `DataCnmd/tribetypes12/tribetypes.ini` and the builder's
+ *  `allowatomic 41` in `jobtypes.ini`). */
+export const BUILD_ROAD_ATOMIC_ID = 41;
+
 /** Construction labor belongs to the builder trade. Other jobs may expose the same atomic for their
  *  animation set, so atomic permission alone does not establish the construction role. */
 export function jobCanBuild(content: ContentSet, jobType: number): boolean {

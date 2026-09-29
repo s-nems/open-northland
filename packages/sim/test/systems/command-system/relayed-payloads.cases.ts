@@ -1,6 +1,6 @@
 import { HomeQualityEffect } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Owner, Palisade, Settler, Vehicle } from '../../../src/components/index.js';
+import { Building, Owner, Palisade, RoadSite, Settler, Vehicle } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
   COMMAND_ENVELOPE_VERSION,
@@ -59,6 +59,7 @@ interface Targets {
   readonly ship: Entity;
   readonly catapult: Entity;
   readonly wall: Entity;
+  readonly roadSite: Entity;
 }
 
 function seatWorld(): { sim: Simulation; targets: Targets } {
@@ -102,6 +103,7 @@ function seatWorld(): { sim: Simulation; targets: Targets } {
       underConstruction: false,
     });
   }
+  sim.enqueueSetup({ kind: 'placeRoadSite', x: 4, y: 4, tribe: VIKING, owner: SEAT });
   sim.step();
   const w = sim.world;
   const all = w.canonicalEntities();
@@ -131,6 +133,10 @@ function seatWorld(): { sim: Simulation; targets: Targets } {
       wall: nth(
         all.filter((e) => w.has(e, Palisade)),
         2,
+      ),
+      roadSite: nth(
+        all.filter((e) => w.has(e, RoadSite)),
+        0,
       ),
     },
   };
@@ -196,6 +202,8 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     ],
     placePalisade: [{ gfxIndex: WALL_ROW, ...node, tribe: VIKING }],
     convertPalisadeGate: [{ palisade: t.wall, gfxIndex: GATE_ROW }],
+    placeRoadSite: [{ ...node, tribe: VIKING }],
+    cancelRoadSite: [{ roadSite: t.roadSite }],
     placeSignpost: [{ entity: t.scout, ...node }],
     setAssistantCounter: [{ player: SEAT, counter: 'extraMen', value: 3, infinite: false }],
     setAssistantGrant: [{ player: SEAT, goodType: SHOES, enabled: true }],

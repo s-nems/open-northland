@@ -8,6 +8,7 @@ import {
   Palisade,
   Position,
   Resource,
+  RoadSite,
   Stockpile,
   UnderConstruction,
 } from '../../../components/index.js';
@@ -53,6 +54,8 @@ export interface TargetCandidates {
   /** Unfinished wall segments, indexed apart from {@link constructionSiteCells}: builders take them only
    *  once no building site is left, and only a segment's own builder supplies it. */
   readonly wallSiteCells: InteractionCellIndex;
+  /** The road sites, indexed like {@link wallSiteCells}. */
+  readonly roadSiteCells: InteractionCellIndex;
   /** Buildings carrying {@link Damaged}, as a ring index keyed by interaction cell, for the nearest-repair
    *  pick. Built on first ask, so a pass with no builder looking for repairs never scans them. */
   readonly repairSiteCells: InteractionCellIndex;
@@ -118,6 +121,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   let cropsByFarm: Map<Entity, Entity[]> | undefined;
   let constructionSiteCells: InteractionCellIndex | undefined;
   let wallSiteCells: InteractionCellIndex | undefined;
+  let roadSiteCells: InteractionCellIndex | undefined;
   let repairSiteCells: InteractionCellIndex | undefined;
   let wallRepairCells: InteractionCellIndex | undefined;
   let zones: ReadonlySet<NodeId> | undefined;
@@ -147,6 +151,15 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
         world.canonicalQuery(UnderConstruction, Palisade, Position),
       );
       return wallSiteCells;
+    },
+    get roadSiteCells() {
+      roadSiteCells ??= new InteractionCellIndex(
+        world,
+        ctx,
+        terrain,
+        world.canonicalQuery(UnderConstruction, RoadSite, Position),
+      );
+      return roadSiteCells;
     },
     get repairSiteCells() {
       repairSiteCells ??= new InteractionCellIndex(

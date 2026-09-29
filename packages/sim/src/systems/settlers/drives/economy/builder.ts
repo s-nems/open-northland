@@ -4,6 +4,7 @@ import {
   ownersCompatible,
   Palisade,
   Position,
+  RoadSite,
   SiteAssignment,
   UnderConstruction,
 } from '../../../../components/index.js';
@@ -12,15 +13,17 @@ import type { Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { needsRepair } from '../../../economy/repair.js';
 import {
-  claimPalisade,
+  claimSite,
   constructionSiteAvailableTo,
-  releasePalisadeReservation,
-} from '../../../palisades/reservation.js';
+  isSoloSite,
+  releaseSiteClaim,
+} from '../../../economy/site-claim.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { constructionTribeOf, hasInboundSupply } from '../../../stores/index.js';
 import {
   atOrWalk,
   BUILD_HOUSE_ATOMIC_ID,
+  BUILD_ROAD_ATOMIC_ID,
   BUILD_WALL_ATOMIC_ID,
   jobCanBuild,
   startAtomic,
@@ -41,12 +44,14 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
  * BUILD - mend the nearest damaged building that is safe to reach, else keep a useful automatic crew
  * assignment stable, otherwise move the builder to the nearest reachable site with material to fetch or
  * delivered labor to install, and with no task anywhere wait beside a site. Walls come after every
- * building site, a damaged wall before a new segment. Player pins and unfinished workplace bindings are
- * strict: their builders stay with that site even while another has work.
+ * building site, a damaged wall before a new segment, and road sites after every wall. Player pins and
+ * unfinished workplace bindings are strict: their builders stay with that site even while another has
+ * work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
  * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the
- * builder is already on included, where the original recruits only builders with no site, and walls last.
+ * builder is already on included, where the original recruits only builders with no site, then walls,
+ * then roads last (owner ruling).
  */
 export function planBuilder(
   plan: PlannerContext,
@@ -132,20 +137,32 @@ export function planBuilder(
     buildingLeft ??= nearestSite(targets.constructionSiteCells, canStandAt) !== null;
     return buildingLeft;
   };
-  const inTurn = (site: Entity): boolean => !isWall(site) || !wallsWait();
+  // Roads come after walls the same way: they wait while a building or a wall site is standable.
+  let wallLeft: boolean | undefined;
+  const roadsWait = (): boolean => {
+    wallLeft ??= wallsWait() || nearestSite(targets.wallSiteCells, canStandAt) !== null;
+    return wallLeft;
+  };
+  const inTurn = (site: Entity): boolean =>
+    world.has(site, RoadSite) ? !roadsWait() : !isWall(site) || !wallsWait();
   // Every `accepts` implies `canStandAt`, so a building site that passes it keeps the walls waiting.
-  // `walls` narrows the segments to those that can pass `accepts`, null for none: while every segment
-  // waits for material, an idle builder would otherwise weigh them all on each plan.
+  // `walls` and `roads` narrow the sites to those that can pass `accepts`, null for none: while every
+  // site waits for material, an idle builder would otherwise weigh them all on each plan.
   const nearestInTurn = (
     accepts: (site: Entity) => boolean,
     walls: () => InteractionCellIndex | null,
+    roads: () => InteractionCellIndex | null,
   ): Entity | null => {
     const building = nearestSite(targets.constructionSiteCells, accepts);
     if (building !== null || wallsWait()) return building;
-    const candidates = walls();
-    return candidates === null ? null : nearestSite(candidates, accepts);
+    const wallCandidates = walls();
+    const wall = wallCandidates === null ? null : nearestSite(wallCandidates, accepts);
+    if (wall !== null || roadsWait()) return wall;
+    const roadCandidates = roads();
+    return roadCandidates === null ? null : pickRoadSite(roadCandidates, nearestSite, accepts);
   };
   const everyWall = (): InteractionCellIndex => targets.wallSiteCells;
+  const everyRoad = (): InteractionCellIndex => targets.roadSiteCells;
 
   // The damaged-wall list is checked first: most passes have none, and `wallsWait` is a site search.
   if (
@@ -162,9 +179,13 @@ export function planBuilder(
   const site =
     crewSite !== null && hasTask(crewSite) && inTurn(crewSite)
       ? crewSite
-      : nearestInTurn(hasTask, () => (claims.wallMayHaveTask(materials.canSource) ? everyWall() : null));
-  if (site !== null && world.has(site, Palisade)) {
-    // A segment is claimed before any hammer or delivery, so it has one builder.
+      : nearestInTurn(
+          hasTask,
+          () => (claims.wallMayHaveTask(materials.canSource) ? everyWall() : null),
+          () => (claims.roadMayHaveTask(materials.canSource) ? everyRoad() : null),
+        );
+  if (site !== null && isSoloSite(world, site)) {
+    // A segment or road site is claimed before any hammer or delivery, so it has one builder.
     stampAssignment(plan, site, false);
     if (!holdSegment(plan, site)) return false;
     if (!workAtSite(plan, spacing, claims, materials, site)) waitAtSite(plan, spacing, site);
@@ -181,11 +202,12 @@ export function planBuilder(
   const staging =
     nearestInTurn(
       (candidate) => hasInboundSupply(plan.inbound, candidate) && canStandAt(candidate),
-      () => wallsAwaitingSupply(plan),
+      () => soloSitesAwaitingSupply(plan, 'wall'),
+      () => soloSitesAwaitingSupply(plan, 'road'),
     ) ??
     (crewSite !== null && canStandAt(crewSite) && inTurn(crewSite)
       ? crewSite
-      : nearestInTurn(canStandAt, everyWall));
+      : nearestInTurn(canStandAt, everyWall, everyRoad));
   if (staging !== null) {
     stampAssignment(plan, staging, false);
     if (!holdSegment(plan, staging)) return false;
@@ -236,23 +258,36 @@ function repairNearest(
   return true;
 }
 
-/** The wall segments a live supply errand is bringing material to, indexed like
+/** The wall segments or road sites a live supply errand is bringing material to, indexed like
  *  `TargetCandidates.wallSiteCells`, or null for none. */
-function wallsAwaitingSupply(plan: PlannerContext): InteractionCellIndex | null {
+function soloSitesAwaitingSupply(plan: PlannerContext, kind: 'wall' | 'road'): InteractionCellIndex | null {
   const { world, ctx, terrain } = plan;
+  const component = kind === 'wall' ? Palisade : RoadSite;
   const sites: Entity[] = [];
   for (const site of plan.inbound.inbound.keys()) {
-    if (world.has(site, Palisade) && world.has(site, UnderConstruction) && world.has(site, Position)) {
+    if (world.has(site, component) && world.has(site, UnderConstruction) && world.has(site, Position)) {
       sites.push(site);
     }
   }
   return sites.length === 0 ? null : new InteractionCellIndex(world, ctx, terrain, sites);
 }
 
+/**
+ * The road site an automatic builder turns to once no building or wall site is left: the nearest that
+ * `accepts`. The one seam a smarter pick replaces.
+ */
+function pickRoadSite(
+  sites: InteractionCellIndex,
+  nearestSite: (sites: InteractionCellIndex, accepts: (site: Entity) => boolean) => Entity | null,
+  accepts: (site: Entity) => boolean,
+): Entity | null {
+  return nearestSite(sites, accepts);
+}
+
 /** Take a wall segment's single-builder claim; an ordinary building always passes. A lost claim drops
  *  the assignment. */
 function holdSegment(plan: PlannerContext, site: Entity): boolean {
-  if (claimPalisade(plan.world, site, plan.entity)) return true;
+  if (claimSite(plan.world, site, plan.entity)) return true;
   dropAssignment(plan);
   return false;
 }
@@ -264,9 +299,9 @@ function segmentAwaitsClearance(plan: PlannerContext, site: Entity): boolean {
   return labor !== undefined && labor >= ONE && plan.world.has(site, Palisade);
 }
 
-/** Leave crew membership, releasing any wall segment claim before the assignment that anchors it. */
+/** Leave crew membership, releasing any one-builder site claim before the assignment that anchors it. */
 function dropAssignment(plan: PlannerContext): void {
-  releasePalisadeReservation(plan.world, plan.entity);
+  releaseSiteClaim(plan.world, plan.entity);
   plan.world.remove(plan.entity, SiteAssignment);
 }
 
@@ -299,7 +334,11 @@ function startHammer(
   if (!claims.hasHammerWork(site)) return false;
   const stand = claimWorkCell(world, terrain, e, here, site, spacing);
   if (stand === null || !claims.claimHammer(site)) return false;
-  const buildAtomic = world.has(site, Palisade) ? BUILD_WALL_ATOMIC_ID : BUILD_HOUSE_ATOMIC_ID;
+  const buildAtomic = world.has(site, Palisade)
+    ? BUILD_WALL_ATOMIC_ID
+    : world.has(site, RoadSite)
+      ? BUILD_ROAD_ATOMIC_ID
+      : BUILD_HOUSE_ATOMIC_ID;
   atOrWalk(world, e, here, stand, () =>
     startAtomic(
       world,
@@ -323,7 +362,7 @@ function stampAssignment(plan: PlannerContext, site: Entity, pinned: boolean): v
   const { world, entity: e } = plan;
   const assigned = world.tryGet(e, SiteAssignment);
   if (assigned === undefined || assigned.site !== site || assigned.pinned !== pinned) {
-    if (assigned?.site !== site) releasePalisadeReservation(world, e);
+    if (assigned?.site !== site) releaseSiteClaim(world, e);
     world.add(e, SiteAssignment, { site, pinned });
   }
 }

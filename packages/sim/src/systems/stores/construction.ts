@@ -4,6 +4,7 @@ import {
   type GoodsLine,
   holdsAll,
   Palisade,
+  RoadSite,
   Stockpile,
   UnderConstruction,
   Upgrading,
@@ -30,8 +31,8 @@ export function upgradeTierOf(type: BuildingType, ctx: ContentContext): Building
  * `construction`, the level difference the source encodes per tier.
  */
 export function constructionBillOf(world: World, ctx: ContentContext, site: Entity): readonly GoodsLine[] {
-  const wall = world.tryGet(site, Palisade);
-  if (wall !== undefined) return wall.construction;
+  const solo = world.tryGet(site, Palisade) ?? world.tryGet(site, RoadSite);
+  if (solo !== undefined) return solo.construction;
   const b = world.tryGet(site, Building);
   if (b === undefined) return EMPTY_CONSTRUCTION;
   if (world.has(site, Upgrading)) {
@@ -66,7 +67,11 @@ export function razeSalvageOf(world: World, ctx: ContentContext, building: Entit
 
 /** The civilization whose builders may raise this site, independent of the structure kind. */
 export function constructionTribeOf(world: World, site: Entity): number | undefined {
-  return world.tryGet(site, Building)?.tribe ?? world.tryGet(site, Palisade)?.tribe;
+  return (
+    world.tryGet(site, Building)?.tribe ??
+    world.tryGet(site, Palisade)?.tribe ??
+    world.tryGet(site, RoadSite)?.tribe
+  );
 }
 
 const EMPTY_CONSTRUCTION: readonly GoodsLine[] = [];

@@ -1,7 +1,6 @@
 import {
   Carrying,
   DeliveryFlag,
-  Palisade,
   Stockpile,
   setStockAmount,
   Upgrading,
@@ -9,8 +8,8 @@ import {
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 import { flushBankedBonus } from '../../../../economy/production/bonus-output.js';
+import { holdsSiteClaim, isSoloSite } from '../../../../economy/site-claim.js';
 import { depositHomeQuality, homeQualityUseFor, spendHomeQuality } from '../../../../family/home-quality.js';
-import { holdsPalisadeClaim } from '../../../../palisades/reservation.js';
 import { isFood } from '../../../../readviews/index.js';
 import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '../../../../stores/index.js';
 import { carriedGoodForm } from '../../../drives/economy/delivery-targets.js';
@@ -68,8 +67,7 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
     shrinkCarry(world, settler, load, qualityMoved);
     return qualityMoved;
   }
-  const wall = world.tryGet(store, Palisade);
-  if (wall !== undefined && !holdsPalisadeClaim(world, store, settler)) return 0;
+  if (isSoloSite(world, store) && !holdsSiteClaim(world, store, settler)) return 0;
   const stock = world.tryGet(store, Stockpile);
   if (stock === undefined) return 0;
 

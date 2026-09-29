@@ -78,6 +78,10 @@ function seatMayIssue(
     if (hasAuthoredOptions(command)) return false;
     if (!playerPlacementTribes(world, seat)?.includes(command.tribe)) return false;
   }
+  if (command.kind === 'placeRoadSite') {
+    if (command.force !== undefined) return false;
+    if (!playerPlacementTribes(world, seat)?.includes(command.tribe)) return false;
+  }
   // A seat cuts a gate into its own finished run; only a map stands one on open ground.
   if (command.kind === 'placePalisade' && terrain !== undefined && isGateRow(terrain, command.gfxIndex)) {
     return false;
@@ -93,6 +97,7 @@ function seatMayIssue(
   ) {
     return ownerOf(world, command.palisade) === seat;
   }
+  if (command.kind === 'cancelRoadSite') return ownerOf(world, command.roadSite) === seat;
   const asset = assetTargetOf(command);
   return asset === undefined || ownersCompatible(seat, ownerOf(world, asset));
 }

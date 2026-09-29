@@ -1,7 +1,14 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { FOG_MODE, Settler, seatPassenger, Vehicle, VehicleDrive } from '../../src/components/index.js';
+import {
+  FOG_MODE,
+  RoadSite,
+  Settler,
+  seatPassenger,
+  Vehicle,
+  VehicleDrive,
+} from '../../src/components/index.js';
 import {
   exportSaveGame,
   parseSaveGame,
@@ -39,10 +46,12 @@ const ROAD_ROW = 4;
 const ROAD_FROM_HX = 12;
 const ROAD_TO_HX = 15;
 const FIXTURE_MAP_ID = 'fixture';
+/** A road ordered but not yet laid. */
+const ROAD_SITE = { hx: 2, hy: 12 };
 
 /** The world the fixture freezes: every section populated - a shared-vision pair and its fog mask
  *  from a scout and a script-style reveal, several component stores including a vehicle's and the road
- *  network, an advanced rng stream, and one pending envelope. */
+ *  network and a road site, an advanced rng stream, and one pending envelope. */
 function fixtureSim(): Simulation {
   const sim = new Simulation({ seed: 9, content: testContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
@@ -57,6 +66,7 @@ function fixtureSim(): Simulation {
     tribe: VIKING,
     owner: P0,
   });
+  sim.enqueueSetup({ kind: 'placeRoadSite', x: ROAD_SITE.hx, y: ROAD_SITE.hy, tribe: VIKING, owner: P0 });
   sim.enqueueSetup({ kind: 'dropGood', good: WOOD_GOOD, x: 6, y: 6, amount: 3 });
   sim.enqueueSetup({ kind: 'dropGood', good: SHOES_GOOD, x: 6, y: 8, amount: 1 });
   sim.enqueueSetup({ kind: 'dropGood', good: TOOL_GOOD, x: 6, y: 10, amount: 1 });
@@ -89,6 +99,7 @@ describe('committed save fixture', () => {
   it('is reproduced byte for byte by exporting the fixture world', () => {
     const sim = fixtureSim();
     expect([...sim.world.query(VehicleDrive)]).toHaveLength(1); // the layout covers a drive under way
+    expect([...sim.world.query(RoadSite)]).toHaveLength(1);
     const bytes = serializeSaveGame(exportSaveGame(sim, { mapId: FIXTURE_MAP_ID }));
     if (process.env.UPDATE_SAVE_FIXTURE === '1') writeFileSync(FIXTURE_PATH, `${bytes}\n`);
     expect(readFileSync(FIXTURE_PATH, 'utf8')).toBe(`${bytes}\n`);

@@ -27,11 +27,7 @@ import {
 } from '../../src/index.js';
 import { advanceConstructionLabor, constructionSystem } from '../../src/systems/economy/construction.js';
 import { WALL_REPAIR_CREW_LIMIT } from '../../src/systems/economy/repair.js';
-import {
-  claimPalisade,
-  palisadeReservedBy,
-  releasePalisadeReservation,
-} from '../../src/systems/palisades/reservation.js';
+import { claimSite, releaseSiteClaim, siteClaimHolder } from '../../src/systems/economy/site-claim.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { REPAIR_CALM_TICKS } from '../../src/systems/settlers/drives/economy/repair.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -375,7 +371,7 @@ describe('wall claims', () => {
   function stillClaimant(sim: Simulation, site: Entity): Entity {
     const holder = sim.world.create();
     sim.world.add(holder, SiteAssignment, { site, pinned: false });
-    expect(claimPalisade(sim.world, site, holder)).toBe(true);
+    expect(claimSite(sim.world, site, holder)).toBe(true);
     return holder;
   }
 
@@ -387,7 +383,7 @@ describe('wall claims', () => {
     sim.enqueueSetup({ kind: 'assignBuilder', entity: pinned, site });
     sim.run(30);
     expect(sim.world.get(pinned, SiteAssignment)).toEqual({ site, pinned: true });
-    expect(palisadeReservedBy(sim.world, site)).toBe(holder);
+    expect(siteClaimHolder(sim.world, site)).toBe(holder);
     expect(sim.world.get(site, UnderConstruction).labor).toBe(0);
   });
 
@@ -411,7 +407,7 @@ describe('wall claims', () => {
     const second = wallSite(sim, 30);
     const builder = builderAt(sim, 20);
     sim.world.add(builder, SiteAssignment, { site: first, pinned: false });
-    expect(claimPalisade(sim.world, first, builder)).toBe(true);
+    expect(claimSite(sim.world, first, builder)).toBe(true);
     sim.enqueueSetup({ kind: 'assignBuilder', entity: builder, site: second });
     sim.step();
     expect(sim.world.get(first, Palisade).reservation).toBeNull();
@@ -419,13 +415,13 @@ describe('wall claims', () => {
     // A lapse no release saw, such as a job change: the construction pass clears the raw claim.
     const other = sim.world.create();
     sim.world.add(other, SiteAssignment, { site: first, pinned: false });
-    expect(claimPalisade(sim.world, first, other)).toBe(true);
+    expect(claimSite(sim.world, first, other)).toBe(true);
     sim.world.remove(other, SiteAssignment);
     sim.step();
     expect(sim.world.get(first, Palisade).reservation).toBeNull();
 
     sim.world.add(builder, SiteAssignment, { site: first, pinned: false });
-    expect(claimPalisade(sim.world, first, builder)).toBe(true);
+    expect(claimSite(sim.world, first, builder)).toBe(true);
     sim.world.add(builder, Health, { hitpoints: 1, max: 1 });
     sim.enqueue(adminCommand({ kind: 'debugKill', target: builder }));
     sim.step();
@@ -445,7 +441,7 @@ describe('wall claims', () => {
     sim.world.add(walker, MoveGoal, { cell: terrain.nodeAt(40, ROW) });
 
     // The builder leaves the struck segment as the planner does.
-    releasePalisadeReservation(sim.world, holder);
+    releaseSiteClaim(sim.world, holder);
     sim.world.remove(holder, SiteAssignment);
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(site, UnderConstruction)).toBe(true);
