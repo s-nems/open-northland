@@ -24,9 +24,11 @@ import { type PlacementGrid, placementBlockerGrid } from './blocker-grid.js';
  * distance from blocking terrain and other houses, both encoded by the extracted footprint.
  *
  * source-basis: the footprint cells and the body/zone split are the extracted
- * `LogicWalkBlockArea`/`LogicBuildBlockArea` data. The zone-vs-zone reading is a named approximation with
- * no oracle: holding the reserved rings disjoint matches observed settlement density, while letting them
- * overlap packs about twice as densely.
+ * `LogicWalkBlockArea`/`LogicBuildBlockArea` data. Original behavior: the test is crossed, a new house's
+ * top-level body against other houses' build areas and its build area against their current bodies, so
+ * margin rings may overlap. Holding the rings disjoint is a deliberate deviation: under the crossed rule a
+ * neighbour's upgrade can grow its body across a door exit, a recessed door can be walled off by a body at
+ * the ring edge, and small buildings fit inside a wonder's courtyard, each leaving a door no settler reaches.
  */
 function canPlaceAnchor(
   grid: PlacementGrid,
