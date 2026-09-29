@@ -5381,6 +5381,17 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-building-stock .on-tabs--icons {
   margin-bottom: 4px;
 }
+/* Eight lines high whatever the open tab lists (the list's own cap), so a tab never resizes the window. */
+.on-hud .on-building-stock--tabbed .on-building-stock__shelves {
+  display: flex;
+  flex-direction: column;
+  height: 200px;
+}
+.on-hud .on-building-stock--tabbed .on-manifest--lines {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: none;
+}
 .on-hud .on-building-empty {
   margin: 4px 0;
   font-size: 12px;

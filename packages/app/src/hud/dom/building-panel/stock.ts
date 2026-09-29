@@ -48,8 +48,12 @@ export function createStockSection(deps: BuildingPanelDeps): StockSection {
     setClass(list, 'on-manifest--more', below);
   };
   list.addEventListener('scroll', paintFold, { passive: true });
+  // Under tabs the shelves keep one height, so another tab never resizes the window.
+  const shelves = element('div', 'on-building-stock__shelves');
+  shelves.append(list, empty);
   const root = element('div', 'on-building-stock');
-  root.append(title.element, tabs.element, list, empty);
+  root.append(title.element, tabs.element, shelves);
+  let tabbed = false;
   const lines = new Map<string, GoodLine>();
   // The overview's ranking, kept while the same goods lead so no line moves under the cursor.
   let ranked: readonly StockRow[] = [];
@@ -61,8 +65,9 @@ export function createStockSection(deps: BuildingPanelDeps): StockSection {
 
   const paint = (model: BuildingPanelModel): void => {
     const copy = messages().hud.buildingPanel;
-    const tabbed = model.stockLayout === 'tabs';
+    tabbed = model.stockLayout === 'tabs';
     setHidden(tabs.element, !tabbed);
+    setClass(root, 'on-building-stock--tabbed', tabbed);
     if (tabbed) {
       const labels = stockTabLabels();
       tabs.update(
@@ -149,11 +154,13 @@ export function createStockSection(deps: BuildingPanelDeps): StockSection {
     },
     fit(overflow): void {
       const least = STOCK_LINES_LEAST * STOCK_LINE_PX;
-      list.style.maxHeight = `${Math.max(least, list.clientHeight - overflow)}px`;
+      if (tabbed) shelves.style.height = `${Math.max(least, shelves.clientHeight - overflow)}px`;
+      else list.style.maxHeight = `${Math.max(least, list.clientHeight - overflow)}px`;
       paintFold();
     },
     unfit(): void {
       list.style.removeProperty('max-height');
+      shelves.style.removeProperty('height');
     },
   };
 }
