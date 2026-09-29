@@ -1,9 +1,13 @@
 /* In-game HUD foundation (docs/design/ingame-menu/FOUNDATION.md): tokens and shared primitives.
    Sizes are design px; the root scales them by --hud-scale. Everything is scoped under .on-hud. */
-/* Middle-drag panning hides the OS cursor globally, including any inline canvas cursor overrides. */
-body.on-drag-scroll-cursor-hidden,
-body.on-drag-scroll-cursor-hidden * {
+/* A drag scroll hides the OS cursor globally, including inline canvas cursor overrides, and keeps HUD
+   chrome from hovering under it when the browser refused the pointer lock. */
+body.on-drag-scroll,
+body.on-drag-scroll * {
   cursor: none !important;
+}
+body.on-drag-scroll * {
+  pointer-events: none !important;
 }
 
 .on-hud {

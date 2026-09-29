@@ -21,6 +21,8 @@ const SCOUT = { id: 1, col: 2, row: 4 };
 /** A second settler, selected beside the scout only where a test says so. */
 const MATE = { id: 2, col: 4, row: 4 };
 const MAP_SIZE = { width: 16, height: 16 };
+/** The middle mouse button, which drags the view. */
+const MIDDLE = 1;
 /** A far node the camera is nowhere near - the case the overview exists for. */
 const FAR_NODE = { hx: 25, hy: 27 };
 
@@ -187,6 +189,16 @@ describe('orders named on the map overview', () => {
     expect(pickMode.isArmed()).toBe(false);
   });
 
+  it('leaves an armed mode for the middle-button drag of the overview', () => {
+    const { press, pickMode, issued } = harness();
+    pickMode.arm({ kind: 'workplace', units: [SCOUT.id] });
+
+    expect(pressOn(press, FAR_NODE, { button: MIDDLE })).toBe(false);
+
+    expect(issued).toEqual([]);
+    expect(pickMode.isArmed()).toBe(true);
+  });
+
   it('clicks confirm for an order that commanded someone, fail for a called-off pick, nothing otherwise', () => {
     const { press, pickMode, cues, selection } = harness();
 
@@ -230,6 +242,14 @@ describe('a world press on an armed pick mode', () => {
     pickMode.arm({ kind: 'attack-move', units: [SCOUT.id], vehicles: [] });
     expect(pickMode.handleMouseDown(click(2))).toBe('calledOff');
     expect(issued).toHaveLength(1);
+  });
+
+  it('keeps an armed mode through a middle-button drag scroll', () => {
+    const { pickMode, issued } = harness();
+    pickMode.arm({ kind: 'workplace', units: [SCOUT.id] });
+    expect(pickMode.handleMouseDown(click(MIDDLE))).toBeNull();
+    expect(pickMode.isArmed()).toBe(true);
+    expect(issued).toEqual([]);
   });
 
   it('strikes a wild animal an attack-move is pressed on instead of marching past it', () => {

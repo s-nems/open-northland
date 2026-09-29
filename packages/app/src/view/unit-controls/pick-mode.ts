@@ -27,9 +27,11 @@ import type { UnitOrderController } from './orders.js';
 import type { UnitTargets } from './unit-targets.js';
 import type { VehicleOrderController } from './vehicle-orders.js';
 
+const MIDDLE_BUTTON = 1;
+
 /**
- * Arming one mode replaces whatever was armed; a click of any kind, Esc, or a selection change resolves
- * or cancels it. The map overview is the one surface that can leave a mode armed: it cannot name the
+ * Arming one mode replaces whatever was armed; a left or right click, Esc, or a selection change
+ * resolves or cancels it, while a middle-button drag scroll leaves it armed. The map overview is the one surface that can leave a mode armed: it cannot name the
  * unit or building a picked-target mode wants. Every mode carries the settlers it orders, the ones that
  * allowed the order when it was armed, so a mixed selection's order skips the rest.
  */
@@ -446,7 +448,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
 
   const handleMouseDown = (event: MouseEvent): PickPress | null => {
     const mode = pickMode;
-    if (mode === null) return null;
+    if (mode === null || event.button === MIDDLE_BUTTON) return null;
     // A selection change cancels any armed mode, so the selection read at click time is still the one
     // this mode was armed for.
     cancel();
@@ -468,7 +470,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
 
   const handleOverviewPress = (button: number, target: Tile): PickPress | null => {
     const mode = pickMode;
-    if (mode === null) return null;
+    if (mode === null || button === MIDDLE_BUTTON) return null;
     if (button !== 0) {
       cancel(); // any other button just calls the mode off
       return 'calledOff';

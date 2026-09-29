@@ -1,6 +1,7 @@
 import type { Camera } from '@open-northland/render';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_KEY_BINDINGS, type KeyBindings } from '../src/hud/keybindings.js';
+import { DRAG_SCROLL_CLASS } from '../src/view/camera/drag-capture.js';
 import {
   type CameraController,
   type CameraInputSettings,
@@ -25,7 +26,6 @@ const DEFAULT_INPUT_SETTINGS: CameraInputSettings = {
   edgeScrollEnabled: true,
   invertDragScroll: false,
 };
-const DRAG_SCROLL_CURSOR_HIDDEN_CLASS = 'on-drag-scroll-cursor-hidden';
 
 type Listener = (event: unknown) => void;
 
@@ -73,15 +73,37 @@ const install = (
   const win = eventTarget();
   const canvasEvents = eventTarget();
   const bodyClasses = classList();
+  const docEvents = eventTarget();
+  // A browser that refuses the pointer lock unless a test grants it; the drag then reads client deltas.
+  const lock = { grantLock: false, element: null as unknown };
+  const doc = {
+    hasFocus: () => true,
+    body: { classList: bodyClasses },
+    get pointerLockElement(): unknown {
+      return lock.element;
+    },
+    exitPointerLock: (): void => {
+      lock.element = null;
+      docEvents.emit('pointerlockchange');
+    },
+    addEventListener: docEvents.addEventListener,
+    removeEventListener: docEvents.removeEventListener,
+  };
   const canvas = {
     width: CANVAS_W,
     height: CANVAS_H,
     getBoundingClientRect: () => ({ width: CANVAS_W, height: CANVAS_H, left: 0, top: 0 }) as DOMRect,
     addEventListener: canvasEvents.addEventListener,
     removeEventListener: canvasEvents.removeEventListener,
+    requestPointerLock: (): Promise<void> => {
+      if (!lock.grantLock) return Promise.reject(new Error('refused'));
+      lock.element = canvas;
+      docEvents.emit('pointerlockchange');
+      return Promise.resolve();
+    },
   } as unknown as HTMLCanvasElement;
   vi.stubGlobal('window', win);
-  vi.stubGlobal('document', { hasFocus: () => true, body: { classList: bodyClasses } });
+  vi.stubGlobal('document', doc);
   // The typing-target guard probes these DOM classes, which the node test environment lacks.
   vi.stubGlobal('HTMLInputElement', class {});
   vi.stubGlobal('HTMLTextAreaElement', class {});
@@ -93,10 +115,21 @@ const install = (
     ctl,
     win,
     canvasEvents,
-    cursorHidden: (): boolean => bodyClasses.contains(DRAG_SCROLL_CURSOR_HIDDEN_CLASS),
+    lock,
+    locked: (): boolean => lock.element === canvas,
+    /** The browser dropping the lock on its own, as Escape does. */
+    loseLock: (): void => {
+      lock.element = null;
+      docEvents.emit('pointerlockchange');
+    },
+    cursorHidden: (): boolean => bodyClasses.contains(DRAG_SCROLL_CLASS),
     /** Fire a `mousemove` whose hit target is the canvas unless `over` names another element. */
     move: (x: number, y: number, over: unknown = canvas): void => {
       win.emit('mousemove', { clientX: x, clientY: y, target: over });
+    },
+    /** A locked mouse: the cursor stays at the press, only the movement changes. */
+    moveLocked: (movementX: number, movementY: number, x = 0, y = 0): void => {
+      win.emit('mousemove', { clientX: x, clientY: y, movementX, movementY, target: canvas });
     },
     press: (code: string, modifiers: Partial<KeyboardEvent> = {}): void => {
       win.emit('keydown', {
@@ -311,6 +344,36 @@ describe('createCameraController input settings', () => {
     startMiddleDrag(120, 100);
     move(130, 100);
     expect(ctl.camera().offsetX).toBe(0);
+    ctl.dispose();
+  });
+
+  it('holds the cursor with a pointer lock and pans by the locked movement', () => {
+    const { ctl, cursorHidden, lock, locked, moveLocked, startMiddleDrag, win } = install();
+    lock.grantLock = true;
+    startMiddleDrag(100, 100);
+    expect(locked()).toBe(true);
+
+    // The locked cursor's client point stays put, so only the movement can pan. The first locked move is
+    // dropped: Chromium can report a jump there.
+    moveLocked(500, 400, 100, 100);
+    moveLocked(30, -10, 100, 100);
+    moveLocked(30, 0, 100, 100);
+    expect(ctl.camera()).toEqual({ offsetX: 60, offsetY: -10 });
+
+    win.emit('mouseup', { button: 1 });
+    expect(locked()).toBe(false);
+    expect(cursorHidden()).toBe(false);
+    ctl.dispose();
+  });
+
+  it('ends the drag when the browser drops the lock, as Escape does', () => {
+    const { ctl, cursorHidden, lock, loseLock, moveLocked, startMiddleDrag } = install();
+    lock.grantLock = true;
+    startMiddleDrag(100, 100);
+    loseLock();
+    expect(cursorHidden()).toBe(false);
+    moveLocked(30, 0);
+    expect(ctl.camera()).toEqual({ offsetX: 0, offsetY: 0 });
     ctl.dispose();
   });
 

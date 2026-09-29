@@ -1,6 +1,7 @@
 import type { Camera } from '@open-northland/render';
 import { isFieldKey } from '../../hud/hotkeys.js';
 import { bindingFromKeyboardEvent, type KeyBindings } from '../../hud/keybindings.js';
+import { createDragCapture } from './drag-capture.js';
 import {
   type CameraTuning,
   DEBUG_MIN_ZOOM,
@@ -23,7 +24,6 @@ import { clientToScreen, screenScale } from './screen-scale.js';
 const WHEEL_ZOOM_STEP = 1.1;
 /** Max wall-clock ms one held-key pan step integrates - a backgrounded tab resumes smoothly, not with a lurch. */
 const MAX_PAN_STEP_MS = 100;
-const DRAG_SCROLL_CURSOR_HIDDEN_CLASS = 'on-drag-scroll-cursor-hidden';
 
 type PanAction = 'panLeft' | 'panRight' | 'panUp' | 'panDown';
 const PAN_ACTIONS: readonly PanAction[] = ['panLeft', 'panRight', 'panUp', 'panDown'];
@@ -80,8 +80,6 @@ export function createCameraController(
   };
   const held = new Set<PanAction>();
   let dragging = false;
-  let lastX = 0;
-  let lastY = 0;
   let pointerGuard: ((clientX: number, clientY: number) => boolean) | null = null;
   let edgeHold: (() => boolean) | null = null;
   // The clamped scale the wheel glide eases toward, anchored at the last wheel cursor in screen px, so
@@ -95,21 +93,17 @@ export function createCameraController(
   // move, so a parked cursor waits.
   let pointerSample: { readonly x: number; readonly y: number } | null = null;
   let suspended = false;
-  const setDragScrollCursorHidden = (hidden: boolean): void => {
-    document.body?.classList.toggle(DRAG_SCROLL_CURSOR_HIDDEN_CLASS, hidden);
-  };
   const endMiddleDrag = (): void => {
     dragging = false;
-    setDragScrollCursorHidden(false);
+    dragCapture.end();
   };
+  const dragCapture = createDragCapture(canvas, endMiddleDrag);
 
   const onMouseDown = (e: MouseEvent): void => {
     if (suspended) return;
     if (e.button !== 1 || pointerGuard?.(e.clientX, e.clientY)) return;
     dragging = true;
-    setDragScrollCursorHidden(true);
-    lastX = e.clientX;
-    lastY = e.clientY;
+    dragCapture.begin(e.clientX, e.clientY);
     e.preventDefault(); // suppress the middle-click autoscroll widget
   };
   const onMouseMove = (e: MouseEvent): void => {
@@ -120,13 +114,12 @@ export function createCameraController(
     if (!dragging) return;
     const { sx, sy } = screenScale(canvas, resolution());
     const direction = activeInputSettings.invertDragScroll ? -1 : 1;
+    const { dx, dy } = dragCapture.step(e);
     cam = panCamera(
       cam,
-      (e.clientX - lastX) * sx * activeInputSettings.dragScrollSpeed * direction,
-      (e.clientY - lastY) * sy * activeInputSettings.dragScrollSpeed * direction,
+      dx * sx * activeInputSettings.dragScrollSpeed * direction,
+      dy * sy * activeInputSettings.dragScrollSpeed * direction,
     );
-    lastX = e.clientX;
-    lastY = e.clientY;
   };
   const onMouseUp = (e: MouseEvent): void => {
     if (e.button === 1) endMiddleDrag();
@@ -269,7 +262,8 @@ export function createCameraController(
       }
     },
     dispose: () => {
-      endMiddleDrag();
+      dragging = false;
+      dragCapture.dispose();
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
