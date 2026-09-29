@@ -198,9 +198,12 @@ export function finishRoadSite(world: World, ctx: SystemContext, site: Entity): 
     const n = nodeOfPosition(at.x, at.y);
     nodes.push(terrain.nodeAt(n.hx, n.hy));
   }
+  // A finish that spent no stone, such as a debug completion, leaves what was delivered beside the road.
+  const spill = spilledStockOf(world, site);
   removeRoadSite(world, site);
   for (const e of absorbed) removeRoadSite(world, e);
   layRoad(world, terrain, nodes);
+  scatterSpilledStock(world, ctx, spill);
 }
 
 /** A neighbour the finishing stone may pave: unclaimed and holding nothing. */

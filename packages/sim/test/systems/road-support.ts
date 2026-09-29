@@ -48,6 +48,7 @@ const HOUSE = 2;
 /** A home built of wood alone, which a store short of wood leaves waiting. */
 export const WOODEN_HOUSE = 4;
 const GRASS = 0;
+const WATER = 1;
 export const ROW = 6;
 export const STORE_HX = 4;
 export const MAP_WIDTH = 48;
@@ -100,7 +101,10 @@ function roadContent() {
         allowedAtomics: [BUILD_HOUSE_ATOMIC, BUILD_ROAD_ATOMIC, BUILD_WALL_ATOMIC],
       },
     ],
-    landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
+    landscape: [
+      { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
+      { typeId: WATER, id: 'water', walkable: false, buildable: false },
+    ],
     tribes: [
       {
         typeId: VIKING,
@@ -162,8 +166,16 @@ function roadContent() {
   });
 }
 
-export function roadSim(seed = 1, width = MAP_WIDTH): Simulation {
-  const map: TerrainMap = grassNodeMap(width, MAP_HEIGHT);
+/** A road scene on grass, but for water at the `water` nodes. */
+export function roadSim(
+  seed = 1,
+  width = MAP_WIDTH,
+  water: readonly { hx: number; hy: number }[] = [],
+): Simulation {
+  const grass = grassNodeMap(width, MAP_HEIGHT);
+  const typeIds = [...grass.typeIds];
+  for (const { hx, hy } of water) typeIds[hy * width + hx] = WATER;
+  const map: TerrainMap = { ...grass, typeIds };
   const sim = new Simulation({
     seed,
     content: roadContent(),

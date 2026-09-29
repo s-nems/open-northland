@@ -69,6 +69,15 @@ function finishDirectly(sim: Simulation, site: Entity): Entity {
 }
 
 const CENTRE = { hx: 20, hy: ROW };
+
+/** Stone lying on the ground, outside every building. */
+function looseStone(sim: Simulation): number {
+  let stone = 0;
+  for (const e of sim.world.query(Stockpile)) {
+    if (!sim.world.has(e, Building)) stone += sim.world.get(e, Stockpile).amounts.get(STONE) ?? 0;
+  }
+  return stone;
+}
 /** The store's stone in the scenes that count every unit after a site goes away mid-errand. */
 const STOCKED_STONE = 10;
 
@@ -191,6 +200,40 @@ describe('road site commands', () => {
       0,
     );
     expect(spilled).toBe(1);
+  });
+});
+
+describe('road site stone', () => {
+  it('is left beside the road by a debug completion, which spends none', () => {
+    const sim = roadSim();
+    orderRoads(sim, [CENTRE]);
+    const site = siteAt(sim, CENTRE.hx, CENTRE.hy);
+    if (site === undefined) throw new Error('expected a road site');
+    setStockAmount(sim.world, site, STONE, 1);
+    sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: site });
+    sim.step();
+    expect(roadAt(sim, CENTRE.hx, CENTRE.hy)).toBe(true);
+    expect(looseStone(sim)).toBe(1);
+  });
+
+  it('spills beside a cancelled site forced onto water', () => {
+    const sim = roadSim(1, MAP_WIDTH, [CENTRE]);
+    sim.enqueueSetup({
+      kind: 'placeRoadSite',
+      x: CENTRE.hx,
+      y: CENTRE.hy,
+      tribe: VIKING,
+      owner: HUMAN,
+      force: true,
+    });
+    sim.step();
+    const site = siteAt(sim, CENTRE.hx, CENTRE.hy);
+    if (site === undefined) throw new Error('expected a forced road site');
+    setStockAmount(sim.world, site, STONE, 1);
+    sim.enqueue(playerCommand(HUMAN, { kind: 'cancelRoadSite', roadSite: site }));
+    sim.step();
+    expect(sim.world.isAlive(site)).toBe(false);
+    expect(looseStone(sim)).toBe(1);
   });
 });
 

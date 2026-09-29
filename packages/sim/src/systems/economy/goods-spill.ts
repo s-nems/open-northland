@@ -9,6 +9,8 @@ import {
 import type { Fixed } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
+import { NEAREST_NODE_SEARCH_CAP } from '../../nav/nearest.js';
+import { ringSearch } from '../../nav/ring-search.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
@@ -88,15 +90,20 @@ export function droppedEquipmentOf(world: World, character: Entity): SpilledStoc
  *
  * Only tiles a fetcher could actually work are used: nothing standing, and the spill tile's own walk
  * component, so no heap is stranded under a wall or across a river. Whatever finds no tile inside
- * {@link spillOverRings}'s radius is lost, the one place this rule does not conserve goods.
+ * {@link spillOverRings}'s radius, or no walkable node near an unwalkable origin, is lost, the one place
+ * this rule does not conserve goods.
  */
 export function scatterSpilledStock(world: World, ctx: SystemContext, spill: SpilledStock | null): void {
   const terrain = ctx.terrain;
   if (spill === null || terrain === undefined) return;
   const n = nodeOfPosition(spill.x, spill.y);
-  const from = terrain.nodeAtClamped(n.hx, n.hy);
+  const at = terrain.nodeAtClamped(n.hx, n.hy);
+  // An unwalkable origin, such as a site forced onto water, spills from the nearest walkable node.
+  const from = terrain.isWalkable(at)
+    ? at
+    : ringSearch(terrain, at, NEAREST_NODE_SEARCH_CAP, { accept: () => true });
+  if (from === null) return;
   const component = terrain.componentOf(from);
-  if (component < 0) return; // an unwalkable origin matches no tile: the ring walk could place nothing
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const usable = (node: NodeId): boolean => !blocked.has(node) && terrain.componentOf(node) === component;
   for (const line of spill.goods) {
