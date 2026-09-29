@@ -27,11 +27,12 @@ import { FULL_FIELD_SHARES, GARRISON_WEAPON_INTENTS } from '../workforce/garriso
 import { fighterWeaponClass } from './census.js';
 
 /** The misc goods every soldier waiting at the barracks is sent to fetch, one slot each, whenever a store
- *  holds a unit (authored). The seat's druids and coiners make exactly these. */
+ *  holds a unit (authored); they fill every misc slot. The seat's druids, coiners and brewers make them. */
 export const SOLDIER_OUTFIT_GOOD_IDS: readonly string[] = [
   'potion_heal_big',
   'amulet_defense',
   'amulet_strength',
+  'mead',
 ];
 
 /**
