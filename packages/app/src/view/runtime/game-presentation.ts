@@ -31,9 +31,10 @@ export async function mountGamePresentation(
 ): Promise<ReturnType<typeof createSoundDriver> | null> {
   const ir = await loadIr();
   const sound = createSoundDriver(ir);
+  const settings = readStoredSettings();
+  renderer.setWeatherEnabled(settings.weather);
   try {
     if (sound !== null) {
-      const settings = readStoredSettings();
       sound.setEnabled(gameSoundEnabled(params, settings.soundEnabled));
       sound.setSfxVolume(settings.soundVolume);
       sound.setMusicVolume(settings.musicVolume);
