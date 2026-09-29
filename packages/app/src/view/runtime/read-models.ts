@@ -103,7 +103,7 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
     buildingGeometry: buildings.geometryOf,
     overlayFrame: makeOverlayFrameSource(deps.probes, host, mapSize, localPlayer),
     signpostOverlayFrame: makeSignpostOverlaySource(deps.probes, host, mapSize, localPlayer),
-    litOverlayFrame: makeLitOverlaySource(host, mapSize, localPlayer),
+    litOverlayFrame: makeLitOverlaySource(deps.probes, host, mapSize, localPlayer),
     dockOverlayFrame: makeDockOverlaySource(deps.probes, host, mapSize, localPlayer),
     ...createSnapshotProjections(
       deps.viewer,

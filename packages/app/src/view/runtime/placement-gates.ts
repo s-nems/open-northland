@@ -27,6 +27,9 @@ export interface PlacementProbeViews {
   /** The held building's rule for the local seat; a paper waives the seat's technology gate. */
   readonly building: (typeId: number, paper?: Paper) => NodeGridProbe;
   readonly signpost: () => NodeGridProbe;
+  /** The wall and road line tools' rules, which their lit washes wait on. */
+  readonly palisade: (gfxIndex: number) => NodeGridProbe;
+  readonly road: () => NodeGridProbe;
   /** The ship's mooring spots; undefined while they are being answered. */
   readonly mooring: (vehicle: number) => MooringProbe | null | undefined;
 }
@@ -251,6 +254,8 @@ export function createPlacementGates(
     probes: {
       building,
       signpost,
+      palisade,
+      road,
       mooring,
     },
     dispose: () => {

@@ -20,8 +20,9 @@ import {
   WEAPON_SWORD,
 } from '../src/game/sandbox/index.js';
 import { sandboxPalisadeTypes } from '../src/game/sandbox/palisades.js';
+import { createLineTool } from '../src/hud/tool-panel/line-tool.js';
 import { inlineSessionHost } from '../src/session/index.js';
-import { makeOverlayFrameSource } from '../src/view/placement-overlay.js';
+import { makeLitOverlaySource, makeOverlayFrameSource } from '../src/view/placement-overlay.js';
 import { createFogGates } from '../src/view/projections/index.js';
 import { createPlacementGates, type PlacementGates } from '../src/view/runtime/placement-gates.js';
 
@@ -321,5 +322,27 @@ describe('placement gates - the ground an enemy army contests', () => {
     // The raider's ground is inside the band and dimmed; the far site is lit.
     expect(blocked.has(`${NEAR.hx},${NEAR.hy}`)).toBe(true);
     expect(blocked.has(`${FAR.hx},${FAR.hy}`)).toBe(false);
+  });
+
+  it("holds a line tool's start wash until the answers over the band land, instead of dimming it all", async () => {
+    const { sim, fog } = openField();
+    const host = inlineSessionHost(sim);
+    const gates = createPlacementGates(host, fog, HUMAN_PLAYER);
+    const wash = makeLitOverlaySource(gates.probes, host, { width: MAP_W, height: MAP_H }, HUMAN_PLAYER);
+    const road = createLineTool({
+      tool: 'road',
+      maxEdges: 1,
+      canPlace: (node) => gates.canPlaceRoadAt(node.col, node.row),
+      answersKey: gates.roadAnswersKey,
+      commit: () => {},
+    });
+    const camera = { offsetX: 0, offsetY: 0, scale: 1 };
+    const frame = () => wash(road.starts(), { tool: 'road' }, camera, WIDE_SCREEN.width, WIDE_SCREEN.height);
+
+    expect(frame()).toBeNull();
+    await landed();
+    const landedFrame = frame();
+    if (landedFrame === null) throw new Error('no wash once the answers landed');
+    expect(landedFrame.blocked.some(({ col, row }) => col === FAR.hx && row === FAR.hy)).toBe(false);
   });
 });

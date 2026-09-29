@@ -58,15 +58,36 @@ export function makeSignpostOverlaySource(
   return (camera, screenW, screenH) => band(gridBandProbe(probes.signpost(), 's'), camera, screenW, screenH);
 }
 
-/** The wash of a tool that lights a node set of its own: everything dims but `lit`. */
+/** The line tool whose placement answers a lit set reads: the road tool's, or a wall graphics row's. */
+export type LitAnswers = { readonly tool: 'road' } | { readonly tool: 'palisade'; readonly gfxIndex: number };
+
+/**
+ * The wash of a tool that lights a node set of its own: everything dims but `lit`. A set read from a line
+ * tool's `answers` refuses every node whose area is still being answered, so, like the grid washes, it
+ * shows nothing until an answer over the band lands; otherwise the tool's first frame dims the whole view.
+ */
 export function makeLitOverlaySource(
+  probes: Pick<PlacementProbeViews, 'road' | 'palisade'>,
   host: Pick<SessionHost, 'fogView'>,
   mapSize: { readonly width: number; readonly height: number },
   player: number = HUMAN_PLAYER,
-): (lit: LitNodes, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
+): (
+  lit: LitNodes,
+  answers: LitAnswers | null,
+  camera: Camera,
+  screenW: number,
+  screenH: number,
+) => PlacementOverlayFrame | null {
   const band = makeBandProber(host, mapSize, player);
-  return (lit, camera, screenW, screenH) =>
-    band({ keyWithin: () => lit.key, accepts: () => lit.has }, camera, screenW, screenH);
+  return (lit, answers, camera, screenW, screenH) => {
+    const probe =
+      answers === null ? null : answers.tool === 'road' ? probes.road() : probes.palisade(answers.gfxIndex);
+    const keyWithin = (range: NodeBand): string | null =>
+      probe === null || probe.keyWithin(range.minCol, range.maxCol, range.minRow, range.maxRow) !== null
+        ? lit.key
+        : null;
+    return band({ keyWithin, accepts: () => lit.has }, camera, screenW, screenH);
+  };
 }
 
 /**

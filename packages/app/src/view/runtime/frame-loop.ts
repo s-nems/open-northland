@@ -19,6 +19,7 @@ import { placementPointer } from '../cursors/placement.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type {
+  LitAnswers,
   makeDockOverlaySource,
   makeLitOverlaySource,
   makeOverlayFrameSource,
@@ -181,9 +182,14 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const { controller } = toolPanel;
     const line = controller.activeLine();
     const lit = line !== null ? line.reach() : (controller.lineStarts() ?? controller.gateSites());
-    return lit === null
-      ? null
-      : litOverlayFrame(lit, cameraCtl.camera(), app.screen.width, app.screen.height);
+    if (lit === null) return null;
+    const gfxIndex = controller.palisadeGfxIndex();
+    const answers: LitAnswers | null = controller.roadActive()
+      ? { tool: 'road' }
+      : gfxIndex !== null && controller.palisadeMode() !== 'gate'
+        ? { tool: 'palisade', gfxIndex }
+        : null;
+    return litOverlayFrame(lit, answers, cameraCtl.camera(), app.screen.width, app.screen.height);
   };
   const dockOverlay = (vehicle: number) =>
     dockOverlayFrame(vehicle, cameraCtl.camera(), app.screen.width, app.screen.height);
