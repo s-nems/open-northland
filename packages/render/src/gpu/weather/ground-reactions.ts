@@ -1,4 +1,4 @@
-import { BufferImageSource, GlProgram, Mesh, MeshGeometry, Shader, Texture, UniformGroup } from 'pixi.js';
+import { BufferImageSource, Geometry, GlProgram, Mesh, Shader, Texture, UniformGroup } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import { WEATHER_SECTOR_NODES, type WeatherField, weatherFieldTexels } from '../../data/weather/field.js';
 import {
@@ -238,7 +238,7 @@ type ReactionUniforms = UniformGroup & {
   };
 };
 
-function quadGeometry(): MeshGeometry {
+function quadGeometry(): Geometry {
   const positions = new Float32Array(SLOT_TOTAL * 8);
   const slots = new Float32Array(SLOT_TOTAL * 4);
   const indices = new Uint32Array(SLOT_TOTAL * 6);
@@ -249,9 +249,13 @@ function quadGeometry(): MeshGeometry {
     const v = s * 4;
     indices.set([v, v + 1, v + 2, v, v + 2, v + 3], s * 6);
   }
-  const geometry = new MeshGeometry({ positions, uvs: positions.slice(), indices });
-  geometry.addAttribute('aSlot', { buffer: slots, format: 'float32' });
-  return geometry;
+  return new Geometry({
+    attributes: {
+      aPosition: { buffer: positions, format: 'float32x2' },
+      aSlot: { buffer: slots, format: 'float32' },
+    },
+    indexBuffer: indices,
+  });
 }
 
 /** This frame's view of the world, in world px. */
@@ -264,7 +268,7 @@ export interface GroundView {
 
 /** The ground reaction mesh; {@link WeatherGround} drives it. */
 export class GroundReactions {
-  readonly mesh: Mesh<MeshGeometry, Shader>;
+  readonly mesh: Mesh<Geometry, Shader>;
   private readonly uniforms: ReactionUniforms;
   private fieldTex: BufferImageSource;
   private groundTex: BufferImageSource;
