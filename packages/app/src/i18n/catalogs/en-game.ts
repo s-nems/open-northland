@@ -277,7 +277,9 @@ export const enGame = {
         'left click lays the wall, with Ctrl/Cmd it draws on, Shift keeps it straight, right click drops the line',
       placeGateHint: 'point at a straight run of five finished wall sections',
       roadHint: 'settlers walk faster on roads. One stone paves a plot and the planned plots next to it.',
-      placeRoadHint: 'click where the road starts',
+      placeRoadHint: 'click where the road starts, hold Alt to cancel road sites instead',
+      cancelRoadHint: 'click where the cancel line starts, release Alt to lay road',
+      cancelRoadLineHint: 'left click cancels your road sites under the line, release Alt to lay road',
       placeRoadLineHint:
         'left click lays the road, with Ctrl/Cmd it draws on, Shift keeps it straight, right click drops the line',
       placePaperHint: 'from a plan: point at a place, the building stands finished',

@@ -107,6 +107,7 @@ import { mountGamePresentation } from './game-presentation.js';
 import { createHostAnswers } from './host-answers.js';
 import { createMenuExit } from './menu-exit.js';
 import type { NetReadout } from './net-readout.js';
+import { ownRoadSiteAt } from './own-road-sites.js';
 import { createPauseHolds } from './pause-holds.js';
 import { createPlacementGates } from './placement-gates.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
@@ -500,6 +501,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       canPlaceRoadAt,
       roadBuiltAt: roadBuiltHere,
       roadAnswersKey,
+      ownRoadSiteAt: (col, row) => ownRoadSiteAt(host.snapshot(), localPlayer, col, row),
       placementClickAsks: placementGates,
       palisadeTools: palisadeToolsOf(host),
       mapSize: deps.mapSize,

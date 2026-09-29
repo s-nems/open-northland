@@ -1,7 +1,7 @@
 import type { PlacementGhost, PlacementOverlayFrame } from '@open-northland/render';
 import type { Paper } from '@open-northland/sim';
 import type { LinePreviewNode } from '../../hud/tool-panel/line-tool.js';
-import type { GatePreview } from '../../hud/tool-panel/placement.js';
+import type { GatePreview, RoadPreview } from '../../hud/tool-panel/placement.js';
 
 export interface PlacementCursor {
   readonly overlay: PlacementOverlayFrame | null;
@@ -35,11 +35,8 @@ export interface PlacementCursorInput {
     readonly col: number;
     readonly row: number;
   }) => readonly LinePreviewNode[] | null;
-  /** The road line's plots under the cursor. */
-  readonly roadPreview?: (tile: {
-    readonly col: number;
-    readonly row: number;
-  }) => readonly LinePreviewNode[] | null;
+  /** The road line's plots, or the cancel line's, under the cursor. */
+  readonly roadPreview?: (tile: { readonly col: number; readonly row: number }) => RoadPreview | null;
   /** The gate tool's gate under the cursor, which draws in place of span markers. */
   readonly gatePreview?: (tile: { readonly col: number; readonly row: number }) => GatePreview | null;
   /** A line has its first click, so the preview's first node marks where it starts. */
@@ -65,11 +62,18 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   if (input.roadActive === true) {
     // The wash stays while the pointer leaves the map; only the plots need a tile.
     const tile = input.tileAt();
-    const nodes = tile === null ? null : (input.roadPreview?.(tile) ?? null);
+    const plan = tile === null ? null : (input.roadPreview?.(tile) ?? null);
     return {
       overlay: input.palisadeWash?.() ?? null,
       ghost:
-        nodes === null ? null : { kind: 'line', nodes, anchored: input.anchored === true, marker: 'road' },
+        plan === null
+          ? null
+          : {
+              kind: 'line',
+              nodes: plan.nodes,
+              anchored: plan.anchored,
+              marker: plan.cancel ? 'roadCancel' : 'road',
+            },
     };
   }
   if (placementType === null && palisadeGfxIndex === null && !input.signpostActive) {

@@ -79,6 +79,7 @@ import {
   type PalisadePlacementMode,
   type PlacementClickAsks,
   type PlacementState,
+  type RoadPreview,
 } from './placement.js';
 import { canBecomeOptions } from './residents/can-become.js';
 import { ResidentFigures } from './residents/figures.js';
@@ -170,6 +171,8 @@ export interface ToolPanelOptions {
   /** Whether a road or a road site already lies on a node. */
   readonly roadBuiltAt?: (col: number, row: number) => boolean;
   readonly roadAnswersKey?: () => string;
+  /** The seat's own road site on a node, which the road tool's Alt line cancels. */
+  readonly ownRoadSiteAt?: (col: number, row: number) => number | null;
   /** The placement rules a click asks the sim as it lands. */
   readonly placementClickAsks?: PlacementClickAsks;
   /** The wall and closed-gate graphics rows the quick row's palisade and gate tools place; a missing
@@ -251,7 +254,7 @@ export interface ToolPanelController {
   palisadeMode(): PalisadePlacementMode | null;
   /** The road tool is held. */
   roadActive(): boolean;
-  roadPreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
+  roadPreview(tile: LineNode | null): RoadPreview | null;
   /** Arm the wall line tool to lay finished walls for `owner` through the admin channel; false when the
    *  map has no wall row or world edits are off. */
   enterStandingWall(owner: number, tribe: number): boolean;
@@ -422,6 +425,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       ...(opts.canPlaceRoadAt !== undefined ? { canPlaceRoadAt: opts.canPlaceRoadAt } : {}),
       ...(opts.roadBuiltAt !== undefined ? { roadBuiltAt: opts.roadBuiltAt } : {}),
       ...(opts.roadAnswersKey !== undefined ? { roadAnswersKey: opts.roadAnswersKey } : {}),
+      ...(opts.ownRoadSiteAt !== undefined ? { ownRoadSiteAt: opts.ownRoadSiteAt } : {}),
       ...(opts.placementClickAsks !== undefined ? { clickAsks: opts.placementClickAsks } : {}),
       ...(opts.enqueueTrusted !== undefined ? { enqueueTrusted: opts.enqueueTrusted } : {}),
       tribe: opts.tribe,

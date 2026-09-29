@@ -10,6 +10,7 @@ import {
   needsRuleEnabled,
   staffOf,
 } from '../../game/snapshot.js';
+import { ownRoadSiteAt } from '../runtime/own-road-sites.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
 
 /** A box holding no tile: a read that only registers the position index. */
@@ -28,6 +29,8 @@ export const FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   { name: 'settler bubbles', read: (snapshot) => computeSettlerBubbles(snapshot) },
   { name: 'position buckets', read: (snapshot) => positionedWithin(snapshot, NO_TILES) },
   { name: 'staff', read: (snapshot) => staffOf(snapshot, NO_ENTITY) },
+  // The road tool's cancel line reads it per frame while Alt is held.
+  { name: 'road sites by node', read: (snapshot) => ownRoadSiteAt(snapshot, NO_ENTITY, 0, 0) },
   {
     name: 'families',
     // The grouping registers on the first home anybody lives in, as a door badge's read does; a one-off

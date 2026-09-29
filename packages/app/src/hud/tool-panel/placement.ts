@@ -10,6 +10,7 @@ import {
   type LineTool,
   type LitNodes,
 } from './line-tool.js';
+import { createRoadCancelLine } from './road-cancel.js';
 
 /** `standingWall` is the admin tool's wall line: it lays finished walls through the trusted channel. */
 export type PalisadePlacementMode = 'wall' | 'gate' | 'standingWall';
@@ -92,6 +93,14 @@ interface LineClickSpec {
   readonly showStrip: () => void;
 }
 
+/** The road tool's line under the cursor: `cancel` marks the sites an Alt line withdraws as `open`. */
+export interface RoadPreview {
+  readonly nodes: readonly LinePreviewNode[];
+  readonly cancel: boolean;
+  /** The line has its first click, so its first node marks where it starts. */
+  readonly anchored: boolean;
+}
+
 export interface PlacementDeps {
   readonly ctx: PanelContext;
   /** The strip that names the held building while placing. */
@@ -118,6 +127,8 @@ export interface PlacementDeps {
   readonly roadBuiltAt?: (col: number, row: number) => boolean;
   /** Changes whenever the two road rules above may answer differently. */
   readonly roadAnswersKey?: () => string;
+  /** The seat's own road site on a node, which an Alt line cancels; absent, it cancels none. */
+  readonly ownRoadSiteAt?: (col: number, row: number) => number | null;
   /** The admin channel a standing-wall line commits through; absent, that tool lays nothing. */
   readonly enqueueTrusted?: (command: Command) => void;
   /** The rules a click decides on, asked of the sim as it lands; absent, a click decides on the
@@ -158,14 +169,17 @@ export interface PlacementController {
   stepBack(): boolean;
   /** Shift held: a wall line keeps to the nearest straight run. */
   setStraight(on: boolean): void;
+  /** Alt held: the road tool draws a line that cancels the seat's road sites under it. */
+  setErase(on: boolean): void;
   /** Route a left-click while placing; a rejecting or off-map tile still consumes it, so a mis-click
    *  cannot drop the mode. Returns true when consumed. */
   handleClick(clientX: number, clientY: number, mods?: { readonly keep: boolean }): boolean;
   /** The markers under the cursor: the wall line, or a refused gate span no gate row suits; null outside
    *  the palisade tools. */
   palisadePreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
-  /** The road line's plots under the cursor; null outside the road tool. */
-  roadPreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
+  /** The road line's plots under the cursor, or with Alt held the cancel line's; null outside the road
+   *  tool. */
+  roadPreview(tile: LineNode | null): RoadPreview | null;
   /** The gate under the cursor, or null outside the gate tool or off every wall. */
   gatePreview(tile: LineNode | null): GatePreview | null;
   /** The started wall or road line, for the reach wash. */
@@ -188,6 +202,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   let placementType: number | null = null;
   let placementPaper: Paper | null = null;
   let straight = false;
+  let erase = false;
   let palisade: {
     readonly gfxIndex: number;
     readonly mode: PalisadePlacementMode;
@@ -199,9 +214,17 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   const showRoadStrip = (): void => {
     if (road === null) return;
     const copy = messages().hud;
-    const hint =
-      road.anchor() === null ? copy.construction.placeRoadHint : copy.construction.placeRoadLineHint;
-    strip.show({ label: copy.construction.road, hint });
+    const { construction } = copy;
+    if (erase) {
+      const started = roadCancel.anchor() !== null || road.anchor() !== null;
+      strip.show({
+        label: copy.cancelRoadSite,
+        hint: started ? construction.cancelRoadLineHint : construction.cancelRoadHint,
+      });
+      return;
+    }
+    const hint = road.anchor() === null ? construction.placeRoadHint : construction.placeRoadLineHint;
+    strip.show({ label: construction.road, hint });
   };
 
   const showPalisadeStrip = (): void => {
@@ -227,6 +250,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     placementPaper = null;
     palisade = null;
     road = null;
+    roadCancel.stepBack();
     strip.clear();
   };
 
@@ -267,6 +291,27 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
         ctx.cue('confirm');
       },
     });
+
+  const roadCancel = createRoadCancelLine({
+    maxEdges: ROAD_LINE_MAX_EDGES,
+    siteAt: (col, row) => deps.ownRoadSiteAt?.(col, row) ?? null,
+    cancel: (sites) => {
+      for (const site of sites) deps.enqueue({ kind: 'cancelRoadSite', roadSite: site as Entity });
+      ctx.cue('confirm');
+    },
+  });
+
+  /** An Alt click: the cancel line starts where the road line did, when one is started, else here. */
+  const clickCancel = (line: LineTool, tile: LineNode | null): void => {
+    if (tile === null) {
+      ctx.cue('fail');
+      return;
+    }
+    const from = roadCancel.anchor() ?? line.anchor();
+    if (!roadCancel.click(from, tile, straight)) ctx.cue('fail');
+    if (from !== null) line.stepBack();
+    showRoadStrip();
+  };
 
   /** A node on a lit span stands for that span's centre, so a gate cuts in wherever its run is pointed at;
    *  the live probe there still decides, as a settler may have stepped into the opening since. */
@@ -379,6 +424,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     placementPaper = null;
     palisade = null;
     road = roadLine();
+    roadCancel.stepBack();
     showRoadStrip();
   };
 
@@ -400,7 +446,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       if (building) deps.onCancel?.(paper);
     },
     stepBack: (): boolean => {
-      if (road?.stepBack() === true) {
+      if (road !== null && (roadCancel.stepBack() || road.stepBack())) {
         showRoadStrip();
         return true;
       }
@@ -411,12 +457,23 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     setStraight: (on): void => {
       straight = on;
     },
+    setErase: (on): void => {
+      if (erase === on) return;
+      erase = on;
+      // Letting go of Alt drops a started cancel line; the road line under it stays.
+      if (!on) roadCancel.stepBack();
+      showRoadStrip();
+    },
     handleClick: (clientX, clientY, mods): boolean => {
       if (placementType === null && palisade === null && road === null) return false;
       if (deciding) return true;
       const tile = deps.screenToTile(clientX, clientY);
       const asks = deps.clickAsks;
       const keep = mods?.keep === true;
+      if (road !== null && erase) {
+        clickCancel(road, tile);
+        return true;
+      }
       if (road !== null) {
         const line = road;
         const spec: LineClickSpec = { keep, holds: true, showStrip: showRoadStrip };
@@ -461,15 +518,26 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       if (tile === null || palisade === null) return null;
       return palisade.mode === 'gate' ? gateSpan(tile) : palisade.line.preview(tile, straight);
     },
-    roadPreview: (tile): readonly LinePreviewNode[] | null =>
-      tile === null || road === null ? null : road.preview(tile, straight),
+    roadPreview: (tile): RoadPreview | null => {
+      if (tile === null || road === null) return null;
+      if (!erase)
+        return { nodes: road.preview(tile, straight), cancel: false, anchored: road.anchor() !== null };
+      const from = roadCancel.anchor() ?? road.anchor();
+      return {
+        nodes: roadCancel.preview(from ?? tile, tile, straight),
+        cancel: true,
+        anchored: from !== null,
+      };
+    },
     gatePreview: (tile): GatePreview | null =>
       tile === null || palisade?.mode !== 'gate' ? null : gateAt(tile),
     activeLine: () => {
-      if (road !== null) return road.active();
+      // A cancel line washes nothing: every node takes it.
+      if (road !== null) return erase ? null : road.active();
       return palisade !== null && palisade.mode !== 'gate' ? palisade.line.active() : null;
     },
     lineStarts: () => {
+      if (road !== null && erase) return null;
       const line = road ?? (palisade !== null && palisade.mode !== 'gate' ? palisade.line : null);
       return line !== null && line.active() === null ? line.starts() : null;
     },

@@ -18,6 +18,8 @@ export interface HeldMode {
   stepBack?(): boolean;
   /** Shift is held: a line tool keeps its line straight. */
   setStraight?(on: boolean): void;
+  /** Alt is held: the road tool's line cancels road sites instead of ordering them. */
+  setErase?(on: boolean): void;
 }
 
 /** The action whose key toggles each beam entry. */
@@ -81,17 +83,29 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     for (const mode of held) mode.cancel();
   };
 
-  // Every pointer event reports Shift too, so one pressed while another window had focus still counts.
+  // Every pointer event reports Shift and Alt too, so one pressed while another window had focus still
+  // counts.
   const syncStraight = (on: boolean): void => {
     for (const mode of held) mode.setStraight?.(on);
   };
-  const onShiftKey = (e: KeyboardEvent): void => {
-    if (e.key === 'Shift') syncStraight(e.type === 'keydown');
+  const syncErase = (on: boolean): void => {
+    for (const mode of held) mode.setErase?.(on);
   };
-  const onBlur = (): void => syncStraight(false);
+  const syncModifiers = (e: MouseEvent): void => {
+    syncStraight(e.shiftKey);
+    syncErase(e.altKey);
+  };
+  const onModifierKey = (e: KeyboardEvent): void => {
+    if (e.key === 'Shift') syncStraight(e.type === 'keydown');
+    if (e.key === 'Alt') syncErase(e.type === 'keydown');
+  };
+  const onBlur = (): void => {
+    syncStraight(false);
+    syncErase(false);
+  };
 
   const onMouseDown = (e: MouseEvent): void => {
-    syncStraight(e.shiftKey);
+    syncModifiers(e);
     const { x, y } = toCanvas(e.clientX, e.clientY);
     const consume = (): void => {
       e.preventDefault();
@@ -127,7 +141,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   };
 
   const onMouseMove = (e: MouseEvent): void => {
-    syncStraight(e.shiftKey);
+    syncModifiers(e);
   };
 
   // A wheel over an open pop-up belongs to that window; its default would scroll the page behind the
@@ -223,8 +237,8 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   canvas.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('keydown', onKeyDown, { capture: true });
   window.addEventListener('keydown', onEscapeMenu);
-  window.addEventListener('keydown', onShiftKey);
-  window.addEventListener('keyup', onShiftKey);
+  window.addEventListener('keydown', onModifierKey);
+  window.addEventListener('keyup', onModifierKey);
   window.addEventListener('blur', onBlur);
 
   return {
@@ -234,8 +248,8 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       canvas.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKeyDown, { capture: true });
       window.removeEventListener('keydown', onEscapeMenu);
-      window.removeEventListener('keydown', onShiftKey);
-      window.removeEventListener('keyup', onShiftKey);
+      window.removeEventListener('keydown', onModifierKey);
+      window.removeEventListener('keyup', onModifierKey);
       window.removeEventListener('blur', onBlur);
     },
   };

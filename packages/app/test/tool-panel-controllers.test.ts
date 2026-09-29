@@ -746,7 +746,7 @@ describe('placement controller', () => {
     expect(placement.activeLine()?.anchor).toEqual({ col: 4, row: 2 });
     expect(strip.shown?.hint).toBe(messages().hud.construction.placeRoadLineHint);
     tile = { col: 8, row: 2 };
-    expect(placement.roadPreview(tile)?.map((node) => node.state)).toEqual([
+    expect(placement.roadPreview(tile)?.nodes.map((node) => node.state)).toEqual([
       'open',
       'open',
       'built',
@@ -781,6 +781,69 @@ describe('placement controller', () => {
     placement.handleClick(0, 0);
     expect(placement.activeLine()).toBeNull();
     expect(cues).toEqual(['fail', 'fail']);
+  });
+
+  it('cancels the own road sites under an Alt line and keeps the road tool', () => {
+    let tile = { col: 4, row: 2 };
+    // Own sites on columns 5 and 7 of row 2; column 9 lies past the line's end.
+    const sites = new Map([
+      [5, 105],
+      [7, 107],
+      [9, 109],
+    ]);
+    const { placement, commands, cues, strip } = mount(() => tile, undefined, undefined, undefined, {
+      canPlaceRoadAt: () => true,
+      ownRoadSiteAt: (col, row) => (row === 2 ? (sites.get(col) ?? null) : null),
+    });
+    placement.enterRoad();
+    placement.setErase(true);
+    expect(strip.shown).toEqual({
+      label: messages().hud.cancelRoadSite,
+      hint: messages().hud.construction.cancelRoadHint,
+    });
+    expect(placement.activeLine()).toBeNull();
+    expect(placement.lineStarts()).toBeNull();
+    placement.handleClick(0, 0);
+    expect(strip.shown?.hint).toBe(messages().hud.construction.cancelRoadLineHint);
+    tile = { col: 8, row: 2 };
+    const preview = placement.roadPreview(tile);
+    expect(preview?.cancel).toBe(true);
+    expect(preview?.anchored).toBe(true);
+    expect(preview?.nodes.map((node) => node.state)).toEqual(['built', 'open', 'built', 'open', 'built']);
+    placement.handleClick(10, 0);
+    expect(commands).toEqual([
+      { kind: 'cancelRoadSite', roadSite: 105 },
+      { kind: 'cancelRoadSite', roadSite: 107 },
+    ]);
+    expect(cues).toEqual(['confirm']);
+    expect(placement.activeRoad()).toBe(true);
+
+    // A line over no site of the seat's fails, and letting go of Alt lays road again.
+    tile = { col: 4, row: 6 };
+    placement.handleClick(0, 0);
+    tile = { col: 8, row: 6 };
+    placement.handleClick(10, 0);
+    expect(cues).toEqual(['confirm', 'fail']);
+    placement.setErase(false);
+    expect(placement.roadPreview(tile)?.cancel).toBe(false);
+    expect(strip.shown?.hint).toBe(messages().hud.construction.placeRoadHint);
+  });
+
+  it('cancels from a started road line when Alt comes down, and drops that line', () => {
+    let tile = { col: 4, row: 2 };
+    const { placement, commands } = mount(() => tile, undefined, undefined, undefined, {
+      canPlaceRoadAt: () => true,
+      ownRoadSiteAt: (col) => (col === 6 ? 106 : null),
+    });
+    placement.enterRoad();
+    placement.handleClick(0, 0);
+    placement.setErase(true);
+    tile = { col: 7, row: 2 };
+    expect(placement.roadPreview(tile)?.nodes[0]).toMatchObject({ col: 4, row: 2 });
+    placement.handleClick(10, 0);
+    expect(commands).toEqual([{ kind: 'cancelRoadSite', roadSite: 106 }]);
+    placement.setErase(false);
+    expect(placement.activeLine()).toBeNull();
   });
 
   it('stops a road line at the first refused node and keeps the road tool across a remount', () => {

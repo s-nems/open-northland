@@ -64,6 +64,7 @@ export interface GameToolPanelDeps {
   readonly canPlaceRoadAt: (col: number, row: number) => boolean;
   readonly roadBuiltAt: (col: number, row: number) => boolean;
   readonly roadAnswersKey: () => string;
+  readonly ownRoadSiteAt: (col: number, row: number) => number | null;
   /** The placement rules a click asks the sim as it lands. */
   readonly placementClickAsks: PlacementClickAsks;
   readonly palisadeTools: PalisadeTools;
@@ -275,6 +276,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       canPlaceRoadAt: deps.canPlaceRoadAt,
       roadBuiltAt: deps.roadBuiltAt,
       roadAnswersKey: deps.roadAnswersKey,
+      ownRoadSiteAt: deps.ownRoadSiteAt,
       placementClickAsks: deps.placementClickAsks,
       palisadeTools: deps.palisadeTools,
       onSpeedChange: deps.onSpeed,

@@ -261,8 +261,11 @@ export const plGame = {
       placeWallLineHint:
         'lewy przycisk stawia palisadę, z Ctrl/Cmd ciągnie dalej, Shift trzyma prostą, prawy anuluje linię',
       placeGateHint: 'wskaż prosty odcinek pięciu gotowych segmentów palisady',
-      roadHint: 'po drogach osadnicy chodzą szybciej. Jeden kamień brukuje plac i sąsiednie zaplanowane place.',
-      placeRoadHint: 'kliknij, gdzie ma się zacząć droga',
+      roadHint:
+        'po drogach osadnicy chodzą szybciej. Jeden kamień brukuje plac i sąsiednie zaplanowane place.',
+      placeRoadHint: 'kliknij, gdzie ma się zacząć droga, z Alt usuwasz place pod drogę',
+      cancelRoadHint: 'kliknij, gdzie zaczyna się linia usuwania, puść Alt, by wytyczać drogę',
+      cancelRoadLineHint: 'lewy przycisk usuwa twoje place pod drogę na linii, puść Alt, by wytyczać drogę',
       placeRoadLineHint:
         'lewy przycisk wytycza drogę, z Ctrl/Cmd ciągnie dalej, Shift trzyma prostą, prawy anuluje linię',
       placePaperHint: 'z planu: wskaż miejsce, budynek stanie gotowy',
