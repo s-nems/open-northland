@@ -722,7 +722,7 @@ describe('placement controller', () => {
     expect(commands.map((command) => ('x' in command ? command.x : null))).toEqual([5, 6, 7]);
   });
 
-  it('lays one road site per open node of a road line, passing a laid road, and exits', () => {
+  it('lays one road site per open node of a road line, passing a laid road, and stays held', () => {
     let tile = { col: 4, row: 2 };
     const { placement, commands, cues, strip } = mount(
       () => tile,
@@ -760,7 +760,27 @@ describe('placement controller', () => {
       [4, 5, 7, 8].map((x) => ({ kind: 'placeRoadSite', x, y: 2, tribe: 1, owner: 0 })),
     );
     expect(cues).toEqual(['confirm']);
-    expect(placement.isActive()).toBe(false);
+    expect(placement.activeRoad()).toBe(true);
+    expect(placement.activeLine()).toBeNull();
+    expect(strip.shown?.hint).toBe(messages().hud.construction.placeRoadHint);
+  });
+
+  it('fails a line start on a refused node, for the road and the wall tool alike', () => {
+    const tile = { col: 4, row: 2 };
+    const { placement, cues } = mount(
+      () => tile,
+      undefined,
+      () => false,
+      undefined,
+      { canPlaceRoadAt: () => false },
+    );
+    placement.enterRoad();
+    placement.handleClick(0, 0);
+    expect(placement.activeLine()).toBeNull();
+    placement.enterPalisade(691, 'wall');
+    placement.handleClick(0, 0);
+    expect(placement.activeLine()).toBeNull();
+    expect(cues).toEqual(['fail', 'fail']);
   });
 
   it('stops a road line at the first refused node and keeps the road tool across a remount', () => {

@@ -84,6 +84,14 @@ export interface PlacementClickAsks {
   readonly roadLineReady: (anchor: LineNode, reach: number) => Promise<void>;
 }
 
+/** How a line tool's click ends: `keep` (Ctrl/Cmd) draws on from the laid line, `holds` keeps the tool
+ *  after a line is laid. */
+interface LineClickSpec {
+  readonly keep: boolean;
+  readonly holds: boolean;
+  readonly showStrip: () => void;
+}
+
 export interface PlacementDeps {
   readonly ctx: PanelContext;
   /** The strip that names the held building while placing. */
@@ -334,10 +342,15 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     exitPlacement();
   };
 
-  /** A laid line ends the tool like a placed building, unless Ctrl draws on from where it ends. */
-  const clickLine = (line: LineTool, tile: LineNode | null, keep: boolean, showStrip: () => void): void => {
-    if (line.click(tile, { straight, chain: keep }) && !keep) exitPlacement();
-    else showStrip();
+  /** A laid wall line ends the tool like a placed building, unless Ctrl draws on from where it ends; the
+   *  road tool stays held, since a road is laid in segments. A refused start or a line that would lay
+   *  nothing fails. */
+  const clickLine = (line: LineTool, tile: LineNode | null, spec: LineClickSpec): void => {
+    const starting = line.anchor() === null;
+    const laid = line.click(tile, { straight, chain: spec.keep });
+    if (!laid && (!starting || line.anchor() === null)) ctx.cue('fail');
+    if (laid && !spec.keep && !spec.holds) exitPlacement();
+    else spec.showStrip();
   };
 
   const enter = (typeId: number, paper?: Paper): void => {
@@ -406,12 +419,11 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       const keep = mods?.keep === true;
       if (road !== null) {
         const line = road;
-        if (asks === undefined || tile === null) clickLine(line, tile, keep, showRoadStrip);
+        const spec: LineClickSpec = { keep, holds: true, showStrip: showRoadStrip };
+        if (asks === undefined || tile === null) clickLine(line, tile, spec);
         else {
           const anchor = line.anchor() ?? tile;
-          decideLater(asks.roadLineReady(anchor, ROAD_LINE_MAX_EDGES), () =>
-            clickLine(line, tile, keep, showRoadStrip),
-          );
+          decideLater(asks.roadLineReady(anchor, ROAD_LINE_MAX_EDGES), () => clickLine(line, tile, spec));
         }
         return true;
       }
@@ -421,12 +433,13 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
           if (tile === null) return true;
           if (asks === undefined) convert(gateProbeAt(tile));
           else decideLater(asks.askPalisadeGate(tile.col, tile.row), convert);
-        } else if (asks === undefined || tile === null) clickLine(held.line, tile, keep, showPalisadeStrip);
-        else {
+        } else if (asks === undefined || tile === null) {
+          clickLine(held.line, tile, { keep, holds: false, showStrip: showPalisadeStrip });
+        } else {
           const anchor = held.line.anchor() ?? tile;
           decideLater(
             asks.palisadeLineReady(held.gfxIndex, held.side.owner, anchor, PALISADE_LINE_MAX_EDGES),
-            () => clickLine(held.line, tile, keep, showPalisadeStrip),
+            () => clickLine(held.line, tile, { keep, holds: false, showStrip: showPalisadeStrip }),
           );
         }
         return true;
