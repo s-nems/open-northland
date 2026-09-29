@@ -17,7 +17,7 @@ export interface ThunderPlan {
   readonly strikeId: number;
   /** Game seconds the sound reaches the listener. */
   readonly arriveSeconds: number;
-  /** Peak of the sharp crack a near strike opens with; 0 for a distant one. */
+  /** Peak of the low-passed noise burst a near strike opens with; 0 for a distant one. */
   readonly crackGain: number;
   /** Low-pass over the rumble: distance swallows the highs. */
   readonly lowpassHz: number;
@@ -29,16 +29,18 @@ export interface ThunderPlan {
 
 /** Strikes nearer than this open with a crack. Approximation. */
 export const THUNDER_CRACK_DISTANCE = 0.3;
-export const THUNDER_CRACK_MAX_GAIN = 0.9;
-/** Rumble peak overhead and far away. Approximation. */
-export const THUNDER_RUMBLE_NEAR_GAIN = 0.85;
-export const THUNDER_RUMBLE_FAR_GAIN = 0.3;
-/** Rumble low-pass overhead and far away. Approximation. */
-export const THUNDER_NEAR_LOWPASS_HZ = 2400;
-export const THUNDER_FAR_LOWPASS_HZ = 160;
+/** Crack peak overhead, in dB of the rumble peak it opens. Approximation. */
+export const THUNDER_CRACK_OVER_RUMBLE_DB = -2;
+/** Rumble peak level overhead and far away, dB of linear gain into the weather bus. Approximation,
+ *  measured so the nearest strike peaks near -12 dBFS and a far one under -28. */
+export const THUNDER_RUMBLE_NEAR_DB = -9;
+export const THUNDER_RUMBLE_FAR_DB = -21;
+/** Rumble low-pass overhead and far away: real thunder carries most energy under 200 Hz. */
+export const THUNDER_NEAR_LOWPASS_HZ = 320;
+export const THUNDER_FAR_LOWPASS_HZ = 110;
 /** Rumble length overhead and far away: distant thunder rolls longer. Approximation. */
-export const THUNDER_NEAR_RUMBLE_S = 2.8;
-export const THUNDER_FAR_RUMBLE_S = 6.5;
+export const THUNDER_NEAR_RUMBLE_S = 5;
+export const THUNDER_FAR_RUMBLE_S = 8;
 /** Rolling swells per rumble, inclusive range. */
 export const THUNDER_MIN_ROLLS = 3;
 export const THUNDER_MAX_ROLLS = 6;
@@ -46,12 +48,13 @@ export const THUNDER_MAX_ROLLS = 6;
  *  {@link THUNDER_ROLL_FLOOR}, so the rumble rolls up and down while it dies away. */
 export const THUNDER_ROLL_DECAY = 0.8;
 export const THUNDER_ROLL_FLOOR = 0.4;
-/** Swells spread over this share of the rumble, each jittered by up to this share of its slot. */
-export const THUNDER_ROLL_SPAN = 0.75;
+/** Swells spread over this share of the rumble, each jittered by up to this share of its slot; the
+ *  rest is the fading tail. */
+export const THUNDER_ROLL_SPAN = 0.5;
 export const THUNDER_ROLL_JITTER = 0.8;
 /** The first swell lands this early near and this late far (a far rumble builds slowly). */
-export const THUNDER_NEAR_ONSET_S = 0.04;
-export const THUNDER_FAR_ONSET_S = 0.6;
+export const THUNDER_NEAR_ONSET_S = 0.15;
+export const THUNDER_FAR_ONSET_S = 1.2;
 /** A strike first seen after its thunder should already have sounded by more than this is skipped
  *  (weather switched on mid-storm, a load), so no backlog of thunder plays at once. */
 export const THUNDER_STALE_S = 0.5;
@@ -72,11 +75,15 @@ export function seededRandom(seed: number): () => number {
   };
 }
 
+function dbToGain(db: number): number {
+  return 10 ** (db / 20);
+}
+
 /** Plan one strike's thunder; `random` shapes the rolls, so the plan is testable and repeatable. */
 export function planThunder(strike: LightningStrike, random: () => number): ThunderPlan {
   const distance = clamp(strike.distance, 0, 1);
   const rumbleS = lerp(THUNDER_NEAR_RUMBLE_S, THUNDER_FAR_RUMBLE_S, distance);
-  const peak = lerp(THUNDER_RUMBLE_NEAR_GAIN, THUNDER_RUMBLE_FAR_GAIN, distance);
+  const peak = dbToGain(lerp(THUNDER_RUMBLE_NEAR_DB, THUNDER_RUMBLE_FAR_DB, distance));
   const count = THUNDER_MIN_ROLLS + Math.floor(random() * (THUNDER_MAX_ROLLS - THUNDER_MIN_ROLLS + 1));
   const onsetS = lerp(THUNDER_NEAR_ONSET_S, THUNDER_FAR_ONSET_S, distance);
   const slot = (rumbleS * THUNDER_ROLL_SPAN) / count;
@@ -92,7 +99,7 @@ export function planThunder(strike: LightningStrike, random: () => number): Thun
     arriveSeconds: strike.atSeconds + thunderDelaySeconds(strike),
     crackGain:
       distance < THUNDER_CRACK_DISTANCE
-        ? THUNDER_CRACK_MAX_GAIN * (1 - distance / THUNDER_CRACK_DISTANCE)
+        ? peak * dbToGain(THUNDER_CRACK_OVER_RUMBLE_DB) * (1 - distance / THUNDER_CRACK_DISTANCE)
         : 0,
     lowpassHz: lerpHz(THUNDER_NEAR_LOWPASS_HZ, THUNDER_FAR_LOWPASS_HZ, distance),
     rumbleS,

@@ -6,11 +6,24 @@ import {
   seededRandom,
   THUNDER_CRACK_DISTANCE,
   THUNDER_STALE_S,
+  type ThunderPlan,
   ThunderQueue,
 } from '../src/data/weather/thunder.js';
 import { WebAudioEngine, weatherMix } from '../src/index.js';
-import { WEATHER_TEARDOWN_S, WeatherSoundscape } from '../src/web/engine/weather-soundscape.js';
-import { FakeContext, type FakeGain, type FakeNode, type FakeSource } from './helpers/fake-audio.js';
+import { createWeatherBuffers, seamlessLoop } from '../src/web/engine/weather-noise.js';
+import {
+  WEATHER_LIMIT_CEILING,
+  WEATHER_LIMIT_KNEE,
+  WEATHER_TEARDOWN_S,
+  WeatherSoundscape,
+} from '../src/web/engine/weather-soundscape.js';
+import {
+  FakeContext,
+  type FakeGain,
+  type FakeNode,
+  FakeShaper,
+  type FakeSource,
+} from './helpers/fake-audio.js';
 
 const DRY = { rain: 0, snow: 0, sand: 0 };
 
@@ -32,35 +45,42 @@ describe('weatherMix', () => {
     expect(weatherMix(conditions({ storm: 1, gust: 1 })).silent).toBe(true);
   });
 
-  it('makes heavier rain louder, denser and lower', () => {
+  it('makes heavier rain louder and lower, with fewer drops and no glassy top', () => {
     const light = weatherMix(conditions({ amounts: { ...DRY, rain: 0.05 } }));
     const heavy = weatherMix(conditions({ amounts: { ...DRY, rain: 0.4 }, storm: 0.8 }));
     expect(light.silent).toBe(false);
     expect(heavy.rainHissGain).toBeGreaterThan(light.rainHissGain);
-    expect(heavy.rainBodyGain).toBeGreaterThan(light.rainBodyGain);
-    expect(light.patterSparseGain).toBeGreaterThan(light.patterDenseGain);
-    expect(heavy.patterDenseGain).toBeGreaterThan(heavy.patterSparseGain);
-    expect(heavy.rainBodyLowpassHz).toBeLessThan(light.rainBodyLowpassHz);
+    expect(heavy.rainRoarGain).toBeGreaterThan(light.rainRoarGain);
+    expect(light.dropsGain).toBeGreaterThan(heavy.dropsGain);
+    expect(heavy.rainRoarLowpassHz).toBeLessThan(light.rainRoarLowpassHz);
     expect(heavy.rainHissHighpassHz).toBeLessThan(light.rainHissHighpassHz);
+    expect(heavy.rainHissLowpassHz).toBeLessThan(light.rainHissLowpassHz);
   });
 
-  it('gives snow a muffled wind only and sand a harsh gritty one', () => {
+  it('gives snow a muffled wind only and sand a gritty, more open one', () => {
     const snow = weatherMix(conditions({ amounts: { ...DRY, snow: 0.3 } }));
     const sand = weatherMix(conditions({ amounts: { ...DRY, sand: 0.3 } }));
-    expect(snow.rainHissGain + snow.patterSparseGain + snow.gritGain).toBe(0);
+    expect(snow.rainHissGain + snow.dropsGain + snow.gritGain).toBe(0);
     expect(snow.windGain).toBeGreaterThan(0);
+    expect(snow.windLowpassHz).toBeLessThanOrEqual(600);
     expect(sand.gritGain).toBeGreaterThan(0);
     expect(sand.windLowpassHz).toBeGreaterThan(snow.windLowpassHz * 4);
   });
 
-  it('whistles only in a storm, and louder in a gust', () => {
+  it('swells the wind with the gust', () => {
     const amounts = { ...DRY, snow: 0.3 };
-    expect(weatherMix(conditions({ amounts, gust: 1 })).whistleGain).toBe(0);
     const lull = weatherMix(conditions({ amounts, storm: 1, gust: 0 }));
     const gust = weatherMix(conditions({ amounts, storm: 1, gust: 1 }));
-    expect(lull.whistleGain).toBeGreaterThan(0);
-    expect(gust.whistleGain).toBeGreaterThan(lull.whistleGain);
     expect(gust.windGain).toBeGreaterThan(lull.windGain);
+    expect(gust.windBandHz).toBeGreaterThan(lull.windBandHz);
+  });
+
+  it('keeps the loudest storm a quiet background', () => {
+    const full = { rain: 1, snow: 1, sand: 1 };
+    const mix = weatherMix(conditions({ amounts: full, storm: 1, gust: 1 }));
+    const gains = [mix.rainHissGain, mix.rainRoarGain, mix.dropsGain, mix.windGain, mix.gritGain];
+    // Root-sum-square of the layer gains on unit-RMS-scaled noise, before any filtering.
+    expect(Math.hypot(...gains)).toBeLessThan(0.4);
   });
 });
 
@@ -74,6 +94,16 @@ describe('planThunder', () => {
     expect(planThunder(strike(3, 0, THUNDER_CRACK_DISTANCE), seededRandom(3)).crackGain).toBe(0);
     expect(far.lowpassHz).toBeLessThan(near.lowpassHz);
     expect(far.rumbleS).toBeGreaterThan(near.rumbleS);
+  });
+
+  it('keeps the nearest strike under unity gain and a far one much quieter', () => {
+    const near = planThunder(strike(1, 0, 0), seededRandom(1));
+    const far = planThunder(strike(2, 0, 1), seededRandom(2));
+    // Gains apply to noise at RMS 0.25, so unity gain already peaks near -12 dBFS.
+    const peak = (p: ThunderPlan): number => Math.max(...p.rolls.map((r) => r.gain)) + p.crackGain;
+    expect(peak(near)).toBeLessThan(1);
+    expect(peak(far)).toBeLessThan(peak(near) / 4);
+    expect(near.lowpassHz).toBeLessThanOrEqual(400);
   });
 
   it('rolls in time order inside the rumble', () => {
@@ -136,14 +166,13 @@ describe('WeatherSoundscape', () => {
     scape.update(rain, 0);
     expect(scape.active).toBe(true);
     const mix = weatherMix(rain);
-    const bedOut = ctx.gains.find((g) => g.connectedTo.includes(out)) as FakeGain;
-    const layers = ctx.gains.filter((g) => g.connectedTo.includes(bedOut));
-    // Silent layers (whistle, grit in a calm rain) are never sent a target; the rest glide.
-    const sounding = layers.filter((g) => g.gain.value > 0);
-    expect(sounding.length).toBeGreaterThanOrEqual(3);
-    expect(sounding.every((g) => g.gain.events.every((e) => e.kind === 'target'))).toBe(true);
-    expect(layers.map((g) => g.gain.value)).toContain(mix.rainHissGain);
-    expect(layers.map((g) => g.gain.value)).toContain(mix.patterSparseGain);
+    expect(ctx.created.filter((n) => n.connectedTo.includes(out))).toHaveLength(1);
+    // Layer gains start at zero and glide; silent layers (grit in a calm rain) are never sent one.
+    const gliding = ctx.gains.filter((g) => g.gain.events.length > 0);
+    expect(gliding.length).toBeGreaterThanOrEqual(3);
+    expect(gliding.every((g) => g.gain.events.every((e) => e.kind === 'target'))).toBe(true);
+    expect(gliding.map((g) => g.gain.value)).toContain(mix.rainHissGain);
+    expect(gliding.map((g) => g.gain.value)).toContain(mix.dropsGain);
   });
 
   it('does not resend an unchanged target every frame', () => {
@@ -201,12 +230,48 @@ describe('WeatherSoundscape', () => {
     expect(live(ctx, from)).toEqual([]);
   });
 
+  it('limits the weather bus softly: untouched under the knee, never past the ceiling', () => {
+    const { ctx, scape } = soundscape();
+    scape.update(rain, 0);
+    const shaper = ctx.created.find((n): n is FakeShaper => n instanceof FakeShaper);
+    const curve = shaper?.curve ?? new Float32Array();
+    const at = (x: number): number => curve[Math.round(((x + 1) / 2) * (curve.length - 1))] ?? Number.NaN;
+    expect(at(0)).toBe(0);
+    expect(at(WEATHER_LIMIT_KNEE)).toBeCloseTo(WEATHER_LIMIT_KNEE, 6);
+    expect(at(1)).toBeLessThanOrEqual(WEATHER_LIMIT_CEILING);
+    expect(at(-1)).toBeGreaterThanOrEqual(-WEATHER_LIMIT_CEILING);
+  });
+
   it('opens a near strike with a crack', () => {
     const { ctx, scape } = soundscape();
     scape.update({ ...rain, strikes: [strike(1, 0, 0)] }, 0);
     const started = ctx.sources.filter((s) => !s.loop);
     expect(started).toHaveLength(1); // the crack plays once; the rumble loops its buffer
     expect(scape.thunderVoices).toBe(1);
+  });
+});
+
+describe('weather noise buffers', () => {
+  it('folds the generated tail into the head, so the loop wraps without a step', () => {
+    const ramp = (data: Float32Array): void => {
+      for (let i = 0; i < data.length; i++) data[i] = i;
+    };
+    const loop = seamlessLoop(1000, 8000, ramp, 0);
+    expect((loop[0] ?? 0) - (loop.at(-1) ?? 0)).toBe(1);
+  });
+
+  it('builds every loop with a wrap no larger than its ordinary steps', () => {
+    const buffers = createWeatherBuffers(new FakeContext() as unknown as BaseAudioContext);
+    for (const buffer of [buffers.white, buffers.pink, buffers.brown, buffers.grit, buffers.swell]) {
+      for (let c = 0; c < buffer.numberOfChannels; c++) {
+        const data = buffer.getChannelData(c);
+        let largest = 0;
+        for (let i = 1; i < data.length; i++)
+          largest = Math.max(largest, Math.abs((data[i] ?? 0) - (data[i - 1] ?? 0)));
+        expect(Math.abs((data[0] ?? 0) - (data.at(-1) ?? 0))).toBeLessThanOrEqual(largest);
+      }
+    }
+    expect(buffers.pink.numberOfChannels).toBe(2);
   });
 });
 
@@ -223,8 +288,9 @@ describe('WebAudioEngine weather', () => {
     await engine.resume();
     engine.applyWeather(rain, 0);
     const [, sfxBus] = ctx.gains as [FakeGain, FakeGain];
-    const from = ctx.created.indexOf(ctx.gains.find((g) => g.connectedTo.includes(sfxBus)) as FakeGain);
-    expect(from).toBeGreaterThan(0);
+    const limiter = ctx.created.findIndex((n) => n.connectedTo.includes(sfxBus));
+    expect(limiter).toBeGreaterThan(0);
+    const from = limiter - 1; // the weather bus trim gain feeds its limiter
     engine.setEnabled(false);
     expect(live(ctx, from)).toEqual([]);
   });

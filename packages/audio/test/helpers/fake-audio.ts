@@ -69,6 +69,7 @@ export class FakeSource extends FakeNode {
   loop = false;
   loopStart = 0;
   loopEnd = 0;
+  playbackRate = new FakeParam();
   started = false;
   /** Context time the source was scheduled to open at, so a test can assert a silent gap. */
   startedAt = 0;
@@ -95,23 +96,26 @@ export class FakeBiquad extends FakeNode {
   gain = new FakeParam();
 }
 
-export class FakeOscillator extends FakeSource {
-  frequency = new FakeParam();
+export class FakeShaper extends FakeNode {
+  curve: Float32Array | null = null;
 }
 
 export class FakeBuffer {
-  private readonly data: Float32Array;
+  private readonly channels: Float32Array[];
   constructor(
+    readonly numberOfChannels: number,
     readonly length: number,
     readonly sampleRate: number,
   ) {
-    this.data = new Float32Array(length);
+    this.channels = Array.from({ length: numberOfChannels }, () => new Float32Array(length));
   }
   get duration(): number {
     return this.length / this.sampleRate;
   }
-  getChannelData(_channel: number): Float32Array {
-    return this.data;
+  getChannelData(channel: number): Float32Array {
+    const data = this.channels[channel];
+    if (data === undefined) throw new RangeError(`no channel ${channel}`);
+    return data;
   }
 }
 
@@ -153,13 +157,13 @@ export class FakeContext {
     this.created.push(f);
     return f;
   }
-  createOscillator(): FakeOscillator {
-    const o = new FakeOscillator();
-    this.created.push(o);
-    return o;
+  createWaveShaper(): FakeShaper {
+    const w = new FakeShaper();
+    this.created.push(w);
+    return w;
   }
-  createBuffer(_channels: number, length: number, sampleRate: number): FakeBuffer {
-    return new FakeBuffer(length, sampleRate);
+  createBuffer(channels: number, length: number, sampleRate: number): FakeBuffer {
+    return new FakeBuffer(channels, length, sampleRate);
   }
   createStereoPanner(): FakePanner {
     return new FakePanner();
