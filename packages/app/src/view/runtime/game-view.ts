@@ -62,6 +62,7 @@ import { currentLocale } from '../../i18n/index.js';
 import { presentationPack } from '../../presentation/pack.js';
 import type { OffThreadTickCost, SessionHost } from '../../session/index.js';
 import { setUpdateContinuation } from '../../update/watcher.js';
+import type { AmbientWeather } from '../ambient-weather.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
 import type { CameraController } from '../camera/index.js';
@@ -161,6 +162,8 @@ export interface GameViewDeps {
   readonly minimapCellColours?: Uint32Array;
   /** Map bounds in cells; half-cell consumers derive the 2x node bounds from it. */
   readonly mapSize: { readonly width: number; readonly height: number };
+  /** Ambient weather for a map that authors none; absent, the sky stays as the map wrote it. */
+  readonly ambientWeather?: AmbientWeather | null;
   /** Terrain-height field, so clicks on lifted hills resolve to the tile drawn there. */
   readonly elevation?: ElevationField;
   /** The controlled seat (`?player=N`): fog perspective, selection and orders, placement ownership, HUD economy. */
@@ -766,6 +769,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         deps.mapSize,
         (field) => renderer.setWeatherField(field),
         weatherParam(params),
+        deps.ambientWeather ?? null,
       ),
       mapText,
       now: () => performance.now(),

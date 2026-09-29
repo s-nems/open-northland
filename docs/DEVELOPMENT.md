@@ -160,7 +160,7 @@ Common modifiers include `lang=<pol|eng>`, `fog=<off|classic|classic-fow|recon|r
 lobby's map setting, with `-fow` for fog of war; `off` reveals the map), `player=<...>`, `ai=<...>`, `sound=off`,
 `intro=off` (skip all automatic briefing windows, including script chapters), `fullscreen=off`, and
 `weather=<rain|snow|sand|clear>[:<percent>]` (whole-map weather in this view only, default 30; the sim's
-weather is untouched). `ai=<seat,...>`
+weather is untouched; `weather=ambient[:<percent>]` holds an ambient episode, default its strongest). `ai=<seat,...>`
 names the seats a person could have taken that the strategic AI plays instead; a map's own computer
 seats (authored `ai`, offered to nobody) play without being named. `seed=<n>` picks
 the world seed a `?map=` session runs on, so two clients of one session start from the same world;

@@ -19,6 +19,7 @@ import { observerSeats } from '../../game/observer-seats.js';
 import { harvestablePlacementOrdinals } from '../../game/sandbox/index.js';
 import { sessionSearch } from '../../game/session-url.js';
 import { currentLocale, messages } from '../../i18n/index.js';
+import { ambientWeatherFor } from '../../view/ambient-weather.js';
 import { cameraCenteredOnTile, createCameraController } from '../../view/camera/index.js';
 import { mapZoomParam } from '../../view/camera/map-zoom.js';
 import { formatSearch } from '../../view/params.js';
@@ -176,6 +177,7 @@ export async function presentMapWorld(
     ...terrainColourOption(world.terrain),
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
+    ambientWeather: ambientWeatherFor(script, terrainGrid, ir?.gfxPatterns ?? [], hosted.seed),
     elevation: world.elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
     onEvents: (events) => {
       staticLayer?.(events);

@@ -158,6 +158,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
     },
     jitter: (nowMs) => effects.jitter(nowMs),
     frame(snapshot, camera, nowMs) {
+      weather.frame(snapshot.tick / TICKS_PER_SECOND);
       trace?.refresh(snapshot.tick, scriptFired);
       scriptFired = false;
       // A seat switch re-reads at once: the cadence paces one seat's lines, not a change of seat.

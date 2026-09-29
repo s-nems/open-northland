@@ -75,6 +75,7 @@ function harness(
     writeAll: (regions) => {
       for (const region of regions) calls.push(`weather:${region.weather}`);
     },
+    frame: () => {},
   };
   const presentation = createScriptPresentation({
     host,
