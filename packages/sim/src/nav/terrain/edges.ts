@@ -9,7 +9,6 @@
  *
  * Neighbours are emitted in a fixed canonical order so traversal is byte-identical across runs.
  */
-import { fx } from '../../core/fixed.js';
 import type { BlockOverlay } from '../block-overlay.js';
 import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../world-metric.js';
 
@@ -79,10 +78,10 @@ export abstract class TerrainEdges extends TerrainLattice {
 
   /**
    * The pathfinder's 8-direction edge set from `node`, emitted in the order pinned by the pathfinding
-   * goldens: E/W half-column steps, the four diagonals, then N/S half-row steps. A step costs the
-   * destination node's {@link walkCost} times the edge's world length, so A* minimises true on-screen
-   * distance. A step onto a blocked or unwalkable destination is omitted, and a diagonal additionally
-   * needs one of its two midpoint flanks passable.
+   * goldens: E/W half-column steps, the four diagonals, then N/S half-row steps. A step costs the edge's
+   * world length; the pathfinder weighs it by the destination's ground. A step onto a blocked or
+   * unwalkable destination is omitted, and a diagonal additionally needs one of its two midpoint flanks
+   * passable.
    *
    * The allocating form; hot callers use {@link stepsInto}.
    */
@@ -112,7 +111,7 @@ export abstract class TerrainEdges extends TerrainLattice {
       const ny = y + dy;
       if (!this.passable(nx, ny, blocked, traversal)) continue;
       const c = this.idAt(nx, ny);
-      out.push(c, fx.mul(this.walkCostAt(c), HALF_COLUMN));
+      out.push(c, HALF_COLUMN);
     }
     for (const [dx, dy] of DIAGONAL_STEP_OFFSETS) {
       const nx = x + dx;
@@ -122,14 +121,14 @@ export abstract class TerrainEdges extends TerrainLattice {
       // Both midpoint flanks blocked is a wall joint, not a gap to slip through.
       if (!this.passable(x, fy, blocked, traversal) && !this.passable(nx, fy, blocked, traversal)) continue;
       const c = this.idAt(nx, ny);
-      out.push(c, fx.mul(this.walkCostAt(c), DIAGONAL_STEP));
+      out.push(c, DIAGONAL_STEP);
     }
     for (const [dx, dy] of VERTICAL_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
       if (!this.passable(nx, ny, blocked, traversal)) continue;
       const c = this.idAt(nx, ny);
-      out.push(c, fx.mul(this.walkCostAt(c), HALF_ROW));
+      out.push(c, HALF_ROW);
     }
   }
 

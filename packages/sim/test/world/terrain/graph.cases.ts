@@ -6,7 +6,6 @@ import {
   HALF_ROW,
   halfCellMapFromCells,
   type NodeId,
-  ONE,
   TerrainGraph,
   type TerrainMap,
 } from '../../../src/index.js';
@@ -84,11 +83,6 @@ describe('walkability + per-type props resolve from the IR', () => {
       expect(g.isWalkable(g.nodeAt(x, y))).toBe(false);
       expect(g.typeAt(g.nodeAt(x, y))).toBe(WATER);
     }
-  });
-
-  it('walk cost is fixed-point ONE for a walkable node', () => {
-    const g = buildTerrainGraph(testContent(), crossMap());
-    expect(g.walkCost(g.nodeAt(0, 0))).toBe(ONE);
   });
 });
 

@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ONE } from '../../src/core/fixed.js';
 import { type LandscapeProps, type NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import { doorPassage } from '../../src/systems/footprint/building-blocked-cache.js';
 
 const GRASS = 0;
 const PROPS = new Map<number, LandscapeProps>([
-  [GRASS, { walkable: true, buildable: true, plantable: true, walkCost: ONE }],
+  [GRASS, { walkable: true, buildable: true, plantable: true }],
 ]);
 
 /** `#` a wall node, `D` the door, `.` open ground; one string per lattice row. */

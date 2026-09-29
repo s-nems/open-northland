@@ -8,8 +8,6 @@
  * 68x38 px projection, and cell `(c, r)` is node `(2c + (r&1), 2r)`, so the staggered raster becomes a
  * rectangular lattice with one parity-independent neighbour table.
  */
-import { type Fixed, ONE } from '../../core/fixed.js';
-
 import { type LandscapeProps, UNKNOWN_LANDSCAPE_PROPS } from './landscape-props.js';
 import type { NodeId } from './node-id.js';
 
@@ -37,7 +35,6 @@ export abstract class TerrainLattice {
   /** Each node's resolved props, row-major like {@link typeIds}, so the step test reads a slot instead
    *  of looking the node's type up. The terrain is immutable; live walk blocks are an overlay. */
   private readonly flags: Uint8Array;
-  private readonly walkCosts: readonly Fixed[];
 
   constructor(
     width: number,
@@ -61,7 +58,6 @@ export abstract class TerrainLattice {
     this.typeIds = typeIds;
     const propsOf = (typeId: number): LandscapeProps => props.get(typeId) ?? UNKNOWN_LANDSCAPE_PROPS;
     this.flags = Uint8Array.from(typeIds, (typeId) => flagsOf(propsOf(typeId)));
-    this.walkCosts = Array.from(typeIds, (typeId) => propsOf(typeId).walkCost);
   }
 
   get nodeCount(): number {
@@ -147,19 +143,8 @@ export abstract class TerrainLattice {
     return (this.checkedSlot(this.flags, node) & PLANTABLE) !== 0;
   }
 
-  walkCost(node: NodeId): Fixed {
-    const cost = this.walkCosts[node];
-    if (cost === undefined) throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
-    return cost;
-  }
-
   /** {@link isWalkable} for a node the caller has already bounds-checked, as the step test's hot read. */
   protected walkableAt(node: NodeId): boolean {
     return ((this.flags[node] ?? 0) & WALKABLE) !== 0;
-  }
-
-  /** {@link walkCost} for a node the caller has already bounds-checked. */
-  protected walkCostAt(node: NodeId): Fixed {
-    return this.walkCosts[node] ?? ONE;
   }
 }
