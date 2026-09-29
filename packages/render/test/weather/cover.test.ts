@@ -3,6 +3,7 @@ import {
   COVER_SNAP_SECONDS,
   COVER_STEP_SECONDS,
   coverEquilibrium,
+  SAND_SATURATING_AMOUNT,
   WeatherCover,
 } from '../../src/data/weather/cover.js';
 import type { WeatherField } from '../../src/data/weather/field.js';
@@ -25,17 +26,17 @@ function run(cover: WeatherCover, from: number, to: number): void {
 describe('weather cover', () => {
   it('opens a map at the equilibrium of its field, so a snowy map starts white', () => {
     const cover = new WeatherCover();
-    cover.setField(fieldOf(0, 0.3, 0));
+    cover.setField(fieldOf(0, 0.5, 0));
     expect(cover.advance(0)).toBe(true);
-    expect(cover.sector(0).snow).toBeCloseTo(coverEquilibrium(0, 0.3, 0).snow, 6);
+    expect(cover.sector(0).snow).toBeCloseTo(coverEquilibrium(0, 0.5, 0).snow, 6);
     expect(cover.sector(0).snow).toBe(1);
     expect(cover.texels()[1]).toBe(255);
   });
 
   it('opens at the equilibrium of the last field set before the first step', () => {
     const cover = new WeatherCover();
-    cover.setField(fieldOf(0, 0, 0.3));
-    cover.setField(fieldOf(0, 0.3, 0));
+    cover.setField(fieldOf(0, 0, 0.5));
+    cover.setField(fieldOf(0, 0.5, 0));
     cover.advance(0);
     expect(cover.sector(0).snow).toBe(1);
   });
@@ -44,7 +45,7 @@ describe('weather cover', () => {
     const cover = new WeatherCover();
     cover.setField(fieldOf(0, 0, 0));
     cover.advance(0);
-    cover.setField(fieldOf(0.3, 0, 0));
+    cover.setField(fieldOf(0.5, 0, 0));
     run(cover, 0, 20);
     const wetAfterRise = cover.sector(0).wet;
     // One rise constant closes about 63% of the gap.
@@ -63,11 +64,11 @@ describe('weather cover', () => {
     const dry = new WeatherCover();
     const rainy = new WeatherCover();
     for (const cover of [dry, rainy]) {
-      cover.setField(fieldOf(0, 0.3, 0));
+      cover.setField(fieldOf(0, 0.5, 0));
       cover.advance(0);
     }
     dry.setField(fieldOf(0, 0, 0));
-    rainy.setField(fieldOf(0.3, 0, 0));
+    rainy.setField(fieldOf(0.5, 0, 0));
     run(dry, 0, 60);
     run(rainy, 0, 60);
     expect(rainy.sector(0).snow).toBeLessThan(dry.sector(0).snow);
@@ -76,7 +77,7 @@ describe('weather cover', () => {
 
   it('carries the rain falling now in alpha, apart from the wetness it leaves', () => {
     const cover = new WeatherCover();
-    cover.setField(fieldOf(0.3, 0, 0));
+    cover.setField(fieldOf(0.5, 0, 0));
     cover.advance(0);
     expect(cover.texels()[3]).toBe(255);
     cover.setField(fieldOf(0, 0, 0));
@@ -90,7 +91,7 @@ describe('weather cover', () => {
     const cover = new WeatherCover();
     cover.setField(fieldOf(0, 0, 0));
     cover.advance(0);
-    cover.setField(fieldOf(0, 0.3, 0));
+    cover.setField(fieldOf(0, 0.5, 0));
     run(cover, 0, 30);
     expect(cover.sector(0).snow).toBeGreaterThan(0.1);
     expect(cover.sector(0).snow).toBeLessThan(0.4);
@@ -100,7 +101,7 @@ describe('weather cover', () => {
     const cover = new WeatherCover();
     cover.setField(fieldOf(0, 0, 0));
     cover.advance(0);
-    cover.setField(fieldOf(0.3, 0, 0));
+    cover.setField(fieldOf(0.5, 0, 0));
     expect(cover.advance(COVER_STEP_SECONDS / 2)).toBe(false);
     expect(cover.advance(COVER_STEP_SECONDS)).toBe(true);
     run(cover, COVER_STEP_SECONDS, 400);
@@ -112,7 +113,7 @@ describe('weather cover', () => {
     const cover = new WeatherCover();
     cover.setField(fieldOf(0, 0, 0));
     cover.advance(100);
-    cover.setField(fieldOf(0.3, 0, 0));
+    cover.setField(fieldOf(0.5, 0, 0));
     expect(cover.advance(100 + COVER_SNAP_SECONDS + 1)).toBe(true);
     expect(cover.sector(0).wet).toBe(1);
     cover.setField(fieldOf(0, 0, 0));
@@ -120,11 +121,19 @@ describe('weather cover', () => {
     expect(cover.sector(0).wet).toBe(0);
   });
 
+  it('leaves a light scripted fall short of the full cover a heavy one brings', () => {
+    const light = coverEquilibrium(0.1, 0.1, 0.03);
+    expect(light.wet).toBeLessThan(0.6);
+    expect(light.snow).toBeLessThan(0.6);
+    expect(light.dust).toBeLessThan(0.6);
+    expect(coverEquilibrium(0, 0.1, 0).snow).toBeGreaterThan(0.3);
+  });
+
   it('keeps sleet from settling and rain from lifting dust', () => {
-    const both = coverEquilibrium(0.3, 0.3, 0.3);
+    const both = coverEquilibrium(0.5, 0.5, 0.5);
     expect(both.wet).toBe(1);
     expect(both.snow).toBe(0);
     expect(both.dust).toBe(0);
-    expect(coverEquilibrium(0, 0, 0.05).dust).toBe(1);
+    expect(coverEquilibrium(0, 0, SAND_SATURATING_AMOUNT).dust).toBe(1);
   });
 });

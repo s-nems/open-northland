@@ -28,7 +28,7 @@ function snowField(density: number) {
 }
 
 const SNOWING: WeatherConditions = {
-  amounts: { rain: 0, snow: 0.3, sand: 0 },
+  amounts: { rain: 0, snow: 0.5, sand: 0 },
   storm: 0,
   windX: 30,
   windY: 0,
@@ -57,7 +57,7 @@ function rainField(density: number) {
   );
 }
 
-const RAINING: WeatherConditions = { ...SNOWING, amounts: { rain: 0.3, snow: 0, sand: 0 } };
+const RAINING: WeatherConditions = { ...SNOWING, amounts: { rain: 0.5, snow: 0, sand: 0 } };
 
 describe('WeatherGround', () => {
   it('never switches the terrain cover on over a dry map', () => {
@@ -75,7 +75,7 @@ describe('WeatherGround', () => {
     const target = recorder();
     const ground = new WeatherGround([target]);
     ground.setTerrain(TERRAIN);
-    ground.setField(snowField(3000));
+    ground.setField(snowField(5000));
     ground.update(SNOWING, VIEW, 0);
     const first = target.calls[0];
     expect(first?.[1]).toBe(255);
@@ -93,7 +93,7 @@ describe('WeatherGround cover targets', () => {
     const decor = recorder();
     const ground = new WeatherGround([terrain, decor]);
     ground.setTerrain(TERRAIN);
-    ground.setField(rainField(3000));
+    ground.setField(rainField(5000));
     ground.update(RAINING, VIEW, 0);
     expect(decor.calls).toEqual(terrain.calls);
     // Rain falling now rides the cover's alpha, the wetness its red.
@@ -108,7 +108,7 @@ describe('WeatherGround cover targets', () => {
     const decor = recorder();
     const ground = new WeatherGround([terrain, decor]);
     ground.setTerrain(TERRAIN);
-    ground.setField(snowField(3000));
+    ground.setField(snowField(5000));
     ground.update(SNOWING, VIEW, 0);
     ground.setTerrain(TERRAIN);
     ground.setField(null);

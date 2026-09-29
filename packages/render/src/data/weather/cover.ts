@@ -15,10 +15,11 @@ const SNOW = WEATHER_KINDS.indexOf('snow');
 const SAND = WEATHER_KINDS.indexOf('sand');
 
 /** Field amounts that saturate each cover. Real maps script amounts of 0.05 to 0.3 and write sand at
- *  0.02 to 0.07, so the ground reads clearly at typical densities. Tuned by eye. */
-const RAIN_SATURATING_AMOUNT = 0.15;
-const SNOW_SATURATING_AMOUNT = 0.1;
-const SAND_SATURATING_AMOUNT = 0.05;
+ *  0.02 to 0.07, so a light shower only darkens the ground and the full cover takes a heavy one.
+ *  Tuned by eye; the ground reactions share them. */
+export const RAIN_SATURATING_AMOUNT = 0.35;
+export const SNOW_SATURATING_AMOUNT = 0.4;
+export const SAND_SATURATING_AMOUNT = 0.1;
 /** How much of the melting snow shows as wet ground while it thaws. Tuned by eye. */
 const MELT_WETNESS = 0.8;
 

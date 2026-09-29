@@ -1,5 +1,10 @@
 import { BufferImageSource, Geometry, GlProgram, Mesh, Shader, Texture, UniformGroup } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
+import {
+  RAIN_SATURATING_AMOUNT,
+  SAND_SATURATING_AMOUNT,
+  SNOW_SATURATING_AMOUNT,
+} from '../../data/weather/cover.js';
 import { WEATHER_SECTOR_NODES, type WeatherField, weatherFieldTexels } from '../../data/weather/field.js';
 import {
   type GroundBudget,
@@ -28,12 +33,8 @@ const RIPPLE_LIFE_S = 1.2;
 const WISP_LIFE_S = 3.4;
 /** Quad sizes in world px. */
 const SPLASH_SIZE = [10, 10] as const;
-const RIPPLE_SIZE = [22, 12] as const;
+const RIPPLE_SIZE = [18, 10] as const;
 const WISP_SIZE = [84, 14] as const;
-/** Field amounts at which a spot always wins its roll; mirrors the ground cover's saturation. */
-const RAIN_FULL_AMOUNT = 0.15;
-const SNOW_FULL_AMOUNT = 0.1;
-const SAND_FULL_AMOUNT = 0.05;
 /** A spot counts as water above this surface fraction, so rings keep off the shore line. */
 const WATER_MIN_SURFACE = 0.9;
 /** How far wisps travel downwind per second of life, as a share of the wind (ground drag). */
@@ -118,15 +119,15 @@ const VERTEX = `#version 300 es
       bool snow = hash(id, cycle * 5u + 7u) < share;
       kind = snow ? 2 : 3;
       keep = snow
-        ? min(1.0, field.g / ${f(SNOW_FULL_AMOUNT)}) * uActivity.y
-        : min(1.0, field.b / ${f(SAND_FULL_AMOUNT)}) * uActivity.z;
+        ? min(1.0, field.g / ${f(SNOW_SATURATING_AMOUNT)}) * uActivity.y
+        : min(1.0, field.b / ${f(SAND_SATURATING_AMOUNT)}) * uActivity.z;
       vec2 drift = uWind * ${f(WISP_WIND_SHARE)};
       float speed = length(drift);
       if (speed < ${f(WISP_MIN_DRIFT)}) drift = speed > 0.0 ? drift / speed * ${f(WISP_MIN_DRIFT)} : vec2(${f(WISP_MIN_DRIFT)}, 0.0);
       centre += drift * life * (age - 0.5);
       if (water) keep = 0.0;
     } else {
-      keep = min(1.0, field.r / ${f(RAIN_FULL_AMOUNT)}) * uActivity.x;
+      keep = min(1.0, field.r / ${f(RAIN_SATURATING_AMOUNT)}) * uActivity.x;
       if ((kind == 1) != water) keep = 0.0;
     }
     if (roll >= keep) { hide(); return; }
@@ -145,14 +146,21 @@ const SPLASH_COLOUR = 'vec3(0.84, 0.9, 0.97)';
 const RIPPLE_COLOUR = 'vec3(0.82, 0.9, 0.96)';
 const SNOW_WISP_COLOUR = 'vec3(1.0, 1.0, 1.0)';
 const SAND_WISP_COLOUR = 'vec3(0.98, 0.88, 0.68)';
-const SPLASH_ALPHA = 0.55;
+const SPLASH_ALPHA = 0.4;
 /** The spreading ring is fainter than the droplets. */
 const SPLASH_RING_ALPHA = 0.7;
 /** Share of a splash's life its droplets fly. */
-const SPLASH_DROP_LIFE = 0.55;
-const RIPPLE_ALPHA = 0.55;
-const SNOW_WISP_ALPHA = 0.42;
-const SAND_WISP_ALPHA = 0.5;
+const SPLASH_DROP_LIFE = 0.5;
+/** A splash's widest foot ring and the height its middle and outer droplets reach (px): a small
+ *  flick of the ground, not a burst. */
+const SPLASH_RING_RADIUS_PX = 2.6;
+const SPLASH_DROP_RISE_PX = 3.5;
+const SPLASH_SIDE_RISE_PX = 2;
+/** A water ring's widest radius (px). */
+const RIPPLE_RADIUS_PX = 8;
+const RIPPLE_ALPHA = 0.4;
+const SNOW_WISP_ALPHA = 0.28;
+const SAND_WISP_ALPHA = 0.32;
 /** A wisp's sideways wave (radians per px along it, amplitude px), thickness and fray frequency. */
 const WISP_WAVE_PER_PX = 0.09;
 const WISP_WAVE_PX = 2.2;
@@ -187,14 +195,14 @@ const FRAGMENT = `#version 300 es
     if (vKind == 0) {
       // A crown: a ring spreading at the foot, and two or three droplets thrown up that fall back.
       vec2 foot = p - vec2(0.0, 2.0);
-      float body = ring(foot, mix(0.5, 3.2, a)) * (1.0 - a);
+      float body = ring(foot, mix(0.5, ${f(SPLASH_RING_RADIUS_PX)}, a)) * (1.0 - a);
       float drops = 0.0;
       if (a < ${f(SPLASH_DROP_LIFE)}) {
         float d = a / ${f(SPLASH_DROP_LIFE)};
         for (int k = 0; k < 3; k++) {
           // The middle droplet leaps highest, the outer two arc low and wide.
           float side = float(k - 1);
-          float rise = side == 0.0 ? 5.0 : 2.5 + vSeed;
+          float rise = side == 0.0 ? ${f(SPLASH_DROP_RISE_PX)} : ${f(SPLASH_SIDE_RISE_PX)} + vSeed;
           vec2 drop = vec2((side * (3.0 + vSeed) + (vSeed - 0.5)) * d, 2.0 - rise * 4.0 * d * (1.0 - d));
           drops += 1.0 - step(0.75, length(p - drop));
         }
@@ -202,8 +210,8 @@ const FRAGMENT = `#version 300 es
       alpha = max(body * ${f(SPLASH_RING_ALPHA)}, min(1.0, drops) * (1.0 - a)) * ${f(SPLASH_ALPHA)};
       colour = ${SPLASH_COLOUR};
     } else if (vKind == 1) {
-      float outer = ring(p, mix(1.0, 10.0, a));
-      float inner = a > 0.3 ? ring(p, mix(1.0, 10.0, a - 0.3)) * 0.6 : 0.0;
+      float outer = ring(p, mix(1.0, ${f(RIPPLE_RADIUS_PX)}, a));
+      float inner = a > 0.3 ? ring(p, mix(1.0, ${f(RIPPLE_RADIUS_PX)}, a - 0.3)) * 0.6 : 0.0;
       alpha = max(outer, inner) * pow(1.0 - a, 1.4) * ${f(RIPPLE_ALPHA)};
       colour = ${RIPPLE_COLOUR};
     } else {

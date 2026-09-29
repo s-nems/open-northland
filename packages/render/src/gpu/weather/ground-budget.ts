@@ -15,9 +15,9 @@ export const RIPPLE_SLOTS = 512;
 export const WISP_SLOTS = 384;
 
 /** World px² of viewed ground per running slot at full activity, before the storm boost. */
-const SPLASH_GROUND_PX2 = 3000;
-const RIPPLE_GROUND_PX2 = 3200;
-const WISP_GROUND_PX2 = 8000;
+const SPLASH_GROUND_PX2 = 8000;
+const RIPPLE_GROUND_PX2 = 6000;
+const WISP_GROUND_PX2 = 14000;
 /** A full storm runs this many times the calm count. */
 const STORM_BOOST = 1.6;
 /** Wisps run at this share of their count in still air and ramp to all of it at this wind speed. */
