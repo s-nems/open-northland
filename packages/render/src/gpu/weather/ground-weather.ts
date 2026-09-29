@@ -5,7 +5,8 @@ import type { ElevationField, WaterField } from '../../data/terrain/index.js';
 import { WeatherCover } from '../../data/weather/cover.js';
 import type { WeatherField } from '../../data/weather/field.js';
 import type { WeatherConditions } from '../../data/weather/types.js';
-import { groundBudget, weatherActivity } from './ground-budget.js';
+import { groundBudget, type MutableActivity, type MutableBudget, weatherActivity } from './ground-budget.js';
+import { PUDDLE_RING_LIFE_S } from './ground-cover-shading.js';
 import { buildGroundMask } from './ground-mask.js';
 import { GroundReactions } from './ground-reactions.js';
 
@@ -17,8 +18,10 @@ export interface WeatherCoverTarget {
   setWeatherCoverClock?(gameSeconds: number, rainFalling: number): void;
 }
 
-/** The cover clock wraps here so the f32 uniform keeps its precision. */
-const COVER_CLOCK_WRAP_S = 3600;
+/** The cover clock wraps after this many puddle ring lives, so the f32 uniform keeps its precision and
+ *  no ring jumps at the wrap. */
+const COVER_CLOCK_WRAP_RING_CYCLES = 6000;
+const COVER_CLOCK_WRAP_S = PUDDLE_RING_LIFE_S * COVER_CLOCK_WRAP_RING_CYCLES;
 
 /** The map ground the reactions read: its size in cells, water and lift. */
 export interface WeatherGroundTerrain {
@@ -50,6 +53,14 @@ export class WeatherGround {
   private groundReady = false;
   private enabled = true;
   private coverShown = false;
+  private readonly activity: MutableActivity = { rain: 0, snow: 0, sand: 0 };
+  private readonly budget: MutableBudget = { splashes: 0, ripples: 0, wisps: 0 };
+  private readonly groundView: { minX: number; minY: number; width: number; height: number } = {
+    minX: 0,
+    minY: 0,
+    width: 0,
+    height: 0,
+  };
 
   constructor(private readonly targets: readonly WeatherCoverTarget[]) {
     this.container.addChild(this.reactions.mesh);
@@ -98,15 +109,16 @@ export class WeatherGround {
       return;
     }
     const zoom = view.camera.scale ?? 1;
-    const minX = -view.camera.offsetX / zoom;
-    const minY = -view.camera.offsetY / zoom;
-    const width = view.screenW / zoom;
-    const height = view.screenH / zoom;
-    const centreHx = (minX + width / 2) / TILE_HALF_W;
-    const centreHy = (2 * (minY + height / 2)) / TILE_HALF_H;
-    const activity = weatherActivity(conditions, field, centreHx, centreHy);
+    const ground = this.groundView;
+    ground.minX = -view.camera.offsetX / zoom;
+    ground.minY = -view.camera.offsetY / zoom;
+    ground.width = view.screenW / zoom;
+    ground.height = view.screenH / zoom;
+    const centreHx = (ground.minX + ground.width / 2) / TILE_HALF_W;
+    const centreHy = (2 * (ground.minY + ground.height / 2)) / TILE_HALF_H;
+    const activity = weatherActivity(conditions, field, centreHx, centreHy, this.activity);
     this.tickCover(gameSeconds, activity.rain);
-    const budget = groundBudget(width, height, activity, conditions);
+    const budget = groundBudget(ground.width, ground.height, activity, conditions, this.budget);
     if (budget.splashes + budget.ripples + budget.wisps > 0 && !this.groundReady) {
       // Built on first need, so a dry map never pays for the per-cell mask.
       this.reactions.setGround(
@@ -116,7 +128,7 @@ export class WeatherGround {
     }
     // Wind arrives in screen px per second; the reactions live in world px.
     this.reactions.draw(
-      { minX, minY, width, height },
+      ground,
       budget,
       activity,
       conditions.windX / zoom,

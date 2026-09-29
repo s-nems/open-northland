@@ -81,7 +81,7 @@ const PUDDLE_SKY_VARIATION = 0.35;
 /** Rain rings in a puddle: one candidate per grid cell (world px), its life, the share of cells
  *  ringing at once in full rain, the widest radius (px) and brightness. */
 const PUDDLE_RING_CELL_PX = 9;
-const PUDDLE_RING_LIFE_S = 0.6;
+export const PUDDLE_RING_LIFE_S = 0.6;
 const PUDDLE_RING_CHANCE = 0.18;
 const PUDDLE_RING_RADIUS_PX = 3;
 const PUDDLE_RING_GAIN = 0.16;
@@ -326,8 +326,10 @@ export const COVER_FRAGMENT_DECLARATIONS = `
           vec3 surface = mix(bed, ${PUDDLE_SKY} * (sky * alpha), ${f(PUDDLE_MIRROR)});
           rgb = mix(rgb * (1.0 - ${f(PUDDLE_SHORE_DARKEN)} * shore), surface, water * ${f(PUDDLE_OPACITY)});
           float rain = cover.a * uCoverClock.y;
-          if (water > 0.0 && rain > 0.0)
-            rgb += ${PUDDLE_RING_COLOUR} * (${f(PUDDLE_RING_GAIN)} * water * puddleRings(px, rain) * alpha);
+          // Slush does not ring: the rings fade out under the snow cover.
+          float openWater = water * (1.0 - cover.g);
+          if (openWater > 0.0 && rain > 0.0)
+            rgb += ${PUDDLE_RING_COLOUR} * (${f(PUDDLE_RING_GAIN)} * openWater * puddleRings(px, rain) * alpha);
         }
       }
     }

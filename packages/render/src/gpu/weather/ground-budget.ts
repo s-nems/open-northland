@@ -27,6 +27,7 @@ const WISP_FULL_WIND_PX_PER_S = 60;
 const ACTIVE_AMOUNT = 1e-3;
 
 export type WeatherActivity = Readonly<Record<WeatherKind, number>>;
+export type MutableActivity = Record<WeatherKind, number>;
 
 /**
  * Whether each kind is falling now, 0..1: the screen's smoothed amount over the field's own amount at
@@ -38,15 +39,16 @@ export function weatherActivity(
   field: WeatherField,
   centreHx: number,
   centreHy: number,
+  out: MutableActivity = { rain: 0, snow: 0, sand: 0 },
 ): WeatherActivity {
-  const activity: Record<WeatherKind, number> = { rain: 0, snow: 0, sand: 0 };
   for (const kind of WEATHER_KINDS) {
     const amount = conditions.amounts[kind];
+    out[kind] = 0;
     if (amount < ACTIVE_AMOUNT) continue;
     const local = weatherAmountAt(field, kind, centreHx, centreHy);
-    activity[kind] = local < ACTIVE_AMOUNT ? 1 : Math.min(1, amount / local);
+    out[kind] = local < ACTIVE_AMOUNT ? 1 : Math.min(1, amount / local);
   }
-  return activity;
+  return out;
 }
 
 export interface GroundBudget {
@@ -55,7 +57,11 @@ export interface GroundBudget {
   readonly wisps: number;
 }
 
-export const NO_GROUND_BUDGET: GroundBudget = { splashes: 0, ripples: 0, wisps: 0 };
+export type MutableBudget = { -readonly [K in keyof GroundBudget]: number };
+
+function slotCount(area: number, px2: number, scale: number, cap: number): number {
+  return scale <= 0 ? 0 : Math.min(cap, Math.round((area / px2) * scale));
+}
 
 /** The running slot counts for a view of `groundW` by `groundH` world px. */
 export function groundBudget(
@@ -63,17 +69,15 @@ export function groundBudget(
   groundH: number,
   activity: WeatherActivity,
   conditions: Pick<WeatherConditions, 'storm' | 'windX' | 'windY' | 'gust'>,
+  out: MutableBudget = { splashes: 0, ripples: 0, wisps: 0 },
 ): GroundBudget {
   const area = Math.max(0, groundW) * Math.max(0, groundH);
   const storm = 1 + STORM_BOOST * Math.min(1, Math.max(0, conditions.storm));
   const wind = Math.min(1, Math.hypot(conditions.windX, conditions.windY) / WISP_FULL_WIND_PX_PER_S);
   const airborne = Math.max(activity.snow, activity.sand);
   const windShare = Math.min(1, WISP_CALM_SHARE + (1 - WISP_CALM_SHARE) * Math.max(wind, conditions.gust));
-  const count = (px2: number, scale: number, cap: number): number =>
-    scale <= 0 ? 0 : Math.min(cap, Math.round((area / px2) * scale));
-  return {
-    splashes: count(SPLASH_GROUND_PX2, activity.rain * storm, SPLASH_SLOTS),
-    ripples: count(RIPPLE_GROUND_PX2, activity.rain * storm, RIPPLE_SLOTS),
-    wisps: count(WISP_GROUND_PX2, airborne * storm * windShare, WISP_SLOTS),
-  };
+  out.splashes = slotCount(area, SPLASH_GROUND_PX2, activity.rain * storm, SPLASH_SLOTS);
+  out.ripples = slotCount(area, RIPPLE_GROUND_PX2, activity.rain * storm, RIPPLE_SLOTS);
+  out.wisps = slotCount(area, WISP_GROUND_PX2, airborne * storm * windShare, WISP_SLOTS);
+  return out;
 }

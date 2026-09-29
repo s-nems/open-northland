@@ -18,8 +18,8 @@ import type { GroundMask } from './ground-mask.js';
 /**
  * The ground reactions as one static mesh of quads whose vertex shader places, ages and gates every
  * quad from uniforms: no per-frame CPU loop and no per-particle state. A slot's life is a hash of
- * (slot, cycle) against game seconds, so pause freezes it and a replay repeats it. A slot rolls a spot
- * inside the view each cycle, finds the ground under that drawn spot (lifted terrain resolved by two
+ * (slot, cycle) against game seconds, so pause freezes it and a replay repeats it. A slot rolls a world
+ * spot each cycle, wrapped into the view so it holds still while the camera pans, finds the ground under that drawn spot (lifted terrain resolved by two
  * fixed-point steps through the lift mask), and hides unless the weather field there wins its roll:
  * splashes on land, rings on water, wisps where snow or sand lies. Every shape, size, life and
  * colour below is tuned by eye; the whole layer is an Open Northland enhancement.
@@ -31,8 +31,8 @@ const SLOT_TOTAL = SPLASH_SLOTS + RIPPLE_SLOTS + WISP_SLOTS;
 const SPLASH_LIFE_S = 0.35;
 const RIPPLE_LIFE_S = 1.2;
 const WISP_LIFE_S = 3.4;
-/** Quad sizes in world px. */
-const SPLASH_SIZE = [10, 10] as const;
+/** Quad sizes in world px. A splash is wider than its crown so wind can lean the droplets. */
+const SPLASH_SIZE = [14, 10] as const;
 const RIPPLE_SIZE = [18, 10] as const;
 const WISP_SIZE = [84, 14] as const;
 /** A spot counts as water above this surface fraction, so rings keep off the shore line. */
@@ -58,7 +58,7 @@ const VERTEX = `#version 300 es
   uniform vec3 uActivity;
   uniform vec2 uWind;
   uniform vec2 uFieldScale;
-  uniform vec4 uGroundMap;
+  uniform vec2 uGroundTexel;
   uniform float uMaxLift;
   uniform sampler2D uFieldTex;
   uniform sampler2D uGroundTex;
@@ -78,7 +78,7 @@ const VERTEX = `#version 300 es
     float row = p.y / ${f(TILE_HALF_H)};
     float odd = mod(floor(row + 0.5), 2.0);
     vec2 cell = vec2(p.x / ${f(2 * TILE_HALF_W)} - 0.5 * odd, row);
-    return textureLod(uGroundTex, (cell + 0.5) * uGroundMap.zw, 0.0).rg;
+    return textureLod(uGroundTex, (cell + 0.5) * uGroundTexel, 0.0).rg;
   }
 
   void hide() {
@@ -104,7 +104,10 @@ const VERTEX = `#version 300 es
     float t = uTime / life + hash(id, 0u);
     uint cycle = uint(floor(t));
     float age = fract(t);
-    vec2 drawn = uView.xy + vec2(hash(id, cycle * 3u + 1u), hash(id, cycle * 3u + 2u)) * uView.zw;
+    // The spot repeats every view size across the world; reducing the view offset first keeps both mod
+    // operands view-sized, so f32 holds its precision on large maps.
+    vec2 spot = vec2(hash(id, cycle * 3u + 1u), hash(id, cycle * 3u + 2u)) * uView.zw;
+    vec2 drawn = uView.xy + mod(spot - mod(uView.xy, uView.zw), uView.zw);
     // The drawn spot shows the ground whose unlifted row lies its lift further down the screen.
     float y = drawn.y;
     for (int i = 0; i < 2; i++) y = drawn.y + groundAt(vec2(drawn.x, y)).g * uMaxLift;
@@ -156,6 +159,9 @@ const SPLASH_DROP_LIFE = 0.5;
 const SPLASH_RING_RADIUS_PX = 2.6;
 const SPLASH_DROP_RISE_PX = 3.5;
 const SPLASH_SIDE_RISE_PX = 2;
+/** Droplets drift downwind by the wind (world px/s) times this over their flight, capped (px). */
+const SPLASH_WIND_LEAN_S = 0.02;
+const SPLASH_MAX_LEAN_PX = 1.5;
 /** A water ring's widest radius (px). */
 const RIPPLE_RADIUS_PX = 8;
 const RIPPLE_ALPHA = 0.4;
@@ -171,6 +177,7 @@ const RING_SQUASH = 2.0;
 
 const FRAGMENT = `#version 300 es
   precision highp float;
+  uniform vec2 uWind;
   in vec2 vLocal;
   in float vAge;
   flat in int vKind;
@@ -199,11 +206,12 @@ const FRAGMENT = `#version 300 es
       float drops = 0.0;
       if (a < ${f(SPLASH_DROP_LIFE)}) {
         float d = a / ${f(SPLASH_DROP_LIFE)};
+        float lean = clamp(uWind.x * ${f(SPLASH_WIND_LEAN_S)}, -${f(SPLASH_MAX_LEAN_PX)}, ${f(SPLASH_MAX_LEAN_PX)});
         for (int k = 0; k < 3; k++) {
           // The middle droplet leaps highest, the outer two arc low and wide.
           float side = float(k - 1);
           float rise = side == 0.0 ? ${f(SPLASH_DROP_RISE_PX)} : ${f(SPLASH_SIDE_RISE_PX)} + vSeed;
-          vec2 drop = vec2((side * (3.0 + vSeed) + (vSeed - 0.5)) * d, 2.0 - rise * 4.0 * d * (1.0 - d));
+          vec2 drop = vec2((side * (3.0 + vSeed) + (vSeed - 0.5) + lean) * d, 2.0 - rise * 4.0 * d * (1.0 - d));
           drops += 1.0 - step(0.75, length(p - drop));
         }
       }
@@ -241,7 +249,7 @@ type ReactionUniforms = UniformGroup & {
     readonly uActivity: Float32Array;
     readonly uWind: Float32Array;
     readonly uFieldScale: Float32Array;
-    readonly uGroundMap: Float32Array;
+    readonly uGroundTexel: Float32Array;
     uMaxLift: number;
   };
 };
@@ -290,7 +298,7 @@ export class GroundReactions {
       uActivity: { value: new Float32Array(3), type: 'vec3<f32>' },
       uWind: { value: new Float32Array(2), type: 'vec2<f32>' },
       uFieldScale: { value: new Float32Array(2), type: 'vec2<f32>' },
-      uGroundMap: { value: new Float32Array(4), type: 'vec4<f32>' },
+      uGroundTexel: { value: new Float32Array(2), type: 'vec2<f32>' },
       uMaxLift: { value: 0, type: 'f32' },
     }) as ReactionUniforms;
     this.fieldTex = blankTexture('rgba8unorm');
@@ -316,10 +324,9 @@ export class GroundReactions {
       }),
     );
     // World px of the unlifted ground to field UV: node = (x / HALF_W, 2y / HALF_H).
-    this.uniforms.uniforms.uFieldScale.set([
-      1 / (TILE_HALF_W * field.sectorsX * WEATHER_SECTOR_NODES),
-      2 / (TILE_HALF_H * field.sectorsY * WEATHER_SECTOR_NODES),
-    ]);
+    const scale = this.uniforms.uniforms.uFieldScale;
+    scale[0] = 1 / (TILE_HALF_W * field.sectorsX * WEATHER_SECTOR_NODES);
+    scale[1] = 2 / (TILE_HALF_H * field.sectorsY * WEATHER_SECTOR_NODES);
     this.uniforms.update();
   }
 
@@ -336,8 +343,10 @@ export class GroundReactions {
         addressMode: 'clamp-to-edge',
       }),
     );
-    this.uniforms.uniforms.uGroundMap.set([0, 0, 1 / mask.texWidth, 1 / Math.max(1, mask.height)]);
-    this.uniforms.uniforms.uMaxLift = mask.maxLift;
+    const u = this.uniforms.uniforms;
+    u.uGroundTexel[0] = 1 / mask.texWidth;
+    u.uGroundTexel[1] = 1 / Math.max(1, mask.height);
+    u.uMaxLift = mask.maxLift;
     this.uniforms.update();
   }
 
@@ -354,11 +363,19 @@ export class GroundReactions {
     this.mesh.visible = running;
     if (!running) return;
     const u = this.uniforms.uniforms;
-    u.uView.set([view.minX, view.minY, view.width, view.height]);
+    u.uView[0] = view.minX;
+    u.uView[1] = view.minY;
+    u.uView[2] = view.width;
+    u.uView[3] = view.height;
     u.uTime = ((gameSeconds % TIME_WRAP_S) + TIME_WRAP_S) % TIME_WRAP_S;
-    u.uCounts.set([budget.splashes, budget.ripples, budget.wisps]);
-    u.uActivity.set([activity.rain, activity.snow, activity.sand]);
-    u.uWind.set([windX, windY]);
+    u.uCounts[0] = budget.splashes;
+    u.uCounts[1] = budget.ripples;
+    u.uCounts[2] = budget.wisps;
+    u.uActivity[0] = activity.rain;
+    u.uActivity[1] = activity.snow;
+    u.uActivity[2] = activity.sand;
+    u.uWind[0] = windX;
+    u.uWind[1] = windY;
     this.uniforms.update();
   }
 

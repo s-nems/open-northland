@@ -8,15 +8,35 @@ import {
 } from '../../src/data/weather/cover.js';
 import type { WeatherField } from '../../src/data/weather/field.js';
 
-/** A one-sector field with the given `[rain, snow, sand]` amounts. */
-function fieldOf(rain: number, snow: number, sand: number): WeatherField {
+/** A one-sector field with the given `[rain, snow, sand]` amounts and lying snow. */
+function fieldOf(rain: number, snow: number, sand: number, lyingSnow = 0): WeatherField {
   return {
     sectorsX: 1,
     sectorsY: 1,
     amounts: Float32Array.from([rain, snow, sand]),
     any: rain + snow + sand > 0,
+    lyingSnow,
   };
 }
+
+/** Advance `cover` from `from` to `to` game seconds in steps of `step`. */
+function runSteps(cover: WeatherCover, from: number, to: number, step: number): void {
+  for (let t = from + step; t <= to + step / 2; t += step) cover.advance(t);
+}
+
+/** A cover settled under full snow at time 0, then under light rain that melts it. */
+function thawingCover(): WeatherCover {
+  const cover = new WeatherCover();
+  cover.setField(fieldOf(0, 0.5, 0));
+  cover.advance(0);
+  cover.setField(fieldOf(LIGHT_RAIN, 0, 0));
+  return cover;
+}
+
+/** Rain light enough that the snow's thaw, not the rain, sets the wetness at first. */
+const LIGHT_RAIN = 0.05;
+/** Largest difference allowed between a finely and a coarsely stepped cover. */
+const STEP_TOLERANCE = 0.02;
 
 /** Advance `cover` from `from` to `to` game seconds at a 60 fps frame step. */
 function run(cover: WeatherCover, from: number, to: number): void {
@@ -135,5 +155,51 @@ describe('weather cover', () => {
     expect(both.snow).toBe(0);
     expect(both.dust).toBe(0);
     expect(coverEquilibrium(0, 0, SAND_SATURATING_AMOUNT).dust).toBe(1);
+  });
+
+  it('keeps lying snow under a clear sky and gives it up to rain, which the thaw wets', () => {
+    const lying = 0.6;
+    const cover = new WeatherCover();
+    cover.setField(fieldOf(0, 0, 0, lying));
+    cover.advance(0);
+    expect(cover.sector(0).snow).toBeCloseTo(lying, 6);
+    runSteps(cover, 0, 300, COVER_STEP_SECONDS);
+    expect(cover.sector(0).snow).toBeCloseTo(lying, 6);
+    expect(cover.sector(0).wet).toBe(0);
+    cover.setField(fieldOf(0.5, 0, 0, lying));
+    runSteps(cover, 300, 330, COVER_STEP_SECONDS);
+    expect(cover.sector(0).snow).toBeLessThan(lying);
+    expect(cover.sector(0).wet).toBeGreaterThan(0);
+    runSteps(cover, 330, 900, COVER_STEP_SECONDS);
+    expect(cover.sector(0).snow).toBeLessThan(0.01);
+  });
+
+  it('wets the ground from the thaw of lying snow even without rain', () => {
+    const cover = new WeatherCover();
+    cover.setField(fieldOf(0, 0.5, 0, 0.2));
+    cover.advance(0);
+    cover.setField(fieldOf(0, 0, 0, 0.2));
+    runSteps(cover, 0, 60, COVER_STEP_SECONDS);
+    expect(cover.sector(0).snow).toBeGreaterThan(0.2);
+    expect(cover.sector(0).wet).toBeGreaterThan(0);
+  });
+
+  it('comes out the same whether it steps finely or coarsely', () => {
+    const fine = thawingCover();
+    const coarse = thawingCover();
+    runSteps(fine, 0, 120, COVER_STEP_SECONDS);
+    runSteps(coarse, 0, 120, 10);
+    for (const key of ['wet', 'snow', 'dust'] as const)
+      expect(Math.abs(fine.sector(0)[key] - coarse.sector(0)[key])).toBeLessThan(STEP_TOLERANCE);
+  });
+
+  it('integrates a long gap, like a hidden tab, in sub-steps so the thaw follows the melt', () => {
+    const fine = thawingCover();
+    const jump = thawingCover();
+    const gap = COVER_SNAP_SECONDS / 2;
+    runSteps(fine, 0, gap, COVER_STEP_SECONDS);
+    jump.advance(gap);
+    expect(Math.abs(fine.sector(0).wet - jump.sector(0).wet)).toBeLessThan(STEP_TOLERANCE);
+    expect(Math.abs(fine.sector(0).snow - jump.sector(0).snow)).toBeLessThan(STEP_TOLERANCE);
   });
 });

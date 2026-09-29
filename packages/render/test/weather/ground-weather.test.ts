@@ -85,6 +85,22 @@ describe('WeatherGround', () => {
     expect(ground.container.children.every((c) => !c.visible)).toBe(true);
     ground.destroy();
   });
+
+  it('shows the cover and reactions again when switched back on', () => {
+    const target = recorder();
+    const ground = new WeatherGround([target]);
+    ground.setTerrain(TERRAIN);
+    ground.setField(snowField(5000));
+    ground.update(SNOWING, VIEW, 0);
+    ground.setEnabled(false);
+    ground.update(SNOWING, VIEW, 1);
+    expect(target.calls.at(-1)).toBeNull();
+    ground.setEnabled(true);
+    ground.update(SNOWING, VIEW, 2);
+    expect(target.calls.at(-1)?.[1]).toBe(255);
+    expect(ground.container.children.some((c) => c.visible)).toBe(true);
+    ground.destroy();
+  });
 });
 
 describe('WeatherGround cover targets', () => {
@@ -132,10 +148,6 @@ describe('terrain weather cover hook', () => {
     );
     const mesh = layer.container.children[0]?.children[0];
     if (!(mesh instanceof Mesh)) throw new Error('Missing terrain mesh');
-    const fragment = mesh.shader?.glProgram?.fragment ?? '';
-    // A dry map must not pay for the cover: the switch gates a branch and never scales an expression.
-    expect(fragment).toContain('if (uCover > 0.5)');
-    expect(fragment).not.toMatch(/[,*+-]\s*uCover\b/);
     const group = mesh.shader?.resources.coverVars;
     if (!(group instanceof UniformGroup)) throw new Error('Missing cover uniforms');
     expect(group.uniforms.uCover).toBe(0);

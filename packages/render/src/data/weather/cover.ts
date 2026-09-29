@@ -37,6 +37,10 @@ const DUST_WASH_SECONDS = 30;
 
 /** Cover advances in steps of this many game seconds, a few times per second at normal speed. */
 export const COVER_STEP_SECONDS = 0.25;
+/** A longer gap (a hidden tab, fast-forward) is integrated in sub-steps no longer than this, so thaw
+ *  wetness follows the melting snow instead of the snow at the gap's start. Tuned against the
+ *  shortest time constant; an approximation. */
+const COVER_MAX_STEP_SECONDS = 5;
 /** A clock that jumps back, or forward by more than this (a load, a seek, a long fast-forward),
  *  snaps the cover to its equilibrium instead of integrating the gap. */
 export const COVER_SNAP_SECONDS = 600;
@@ -58,16 +62,26 @@ export interface CoverTargets {
   readonly dust: number;
 }
 
-/** The cover a sector settles at under steady `rain`, `snow` and `sand` field amounts (0..1). */
-export function coverEquilibrium(rain: number, snow: number, sand: number): CoverTargets {
+type MutableTargets = { -readonly [K in keyof CoverTargets]: number };
+
+function writeEquilibrium(out: MutableTargets, rain: number, snow: number, sand: number): void {
   const wet = response(rain, RAIN_SATURATING_AMOUNT);
+  out.wet = wet;
   // Rain and snow in one sector fall as sleet, which does not settle.
-  const snowCover = response(snow, SNOW_SATURATING_AMOUNT) * (1 - wet);
-  return { wet, snow: snowCover, dust: response(sand, SAND_SATURATING_AMOUNT) * (1 - wet) };
+  out.snow = response(snow, SNOW_SATURATING_AMOUNT) * (1 - wet);
+  out.dust = response(sand, SAND_SATURATING_AMOUNT) * (1 - wet);
 }
 
-function approach(value: number, target: number, dt: number, seconds: number): number {
-  return value + (target - value) * (1 - Math.exp(-dt / seconds));
+/** The cover a sector settles at under steady `rain`, `snow` and `sand` field amounts (0..1). */
+export function coverEquilibrium(rain: number, snow: number, sand: number): CoverTargets {
+  const out = { wet: 0, snow: 0, dust: 0 };
+  writeEquilibrium(out, rain, snow, sand);
+  return out;
+}
+
+/** The share of its gap a cover closes in `dt` under time constant `seconds`. */
+function blend(dt: number, seconds: number): number {
+  return 1 - Math.exp(-dt / seconds);
 }
 
 /**
@@ -83,6 +97,8 @@ export class WeatherCover {
   /** Game seconds of the last step; null until the first {@link advance} after a field arrives. */
   private stepped: number | null = null;
   private settled = true;
+  /** Scratch for the sector target being stepped. */
+  private readonly target: MutableTargets = { wet: 0, snow: 0, dust: 0 };
 
   get sectorsX(): number {
     return this.field?.sectorsX ?? 0;
@@ -118,11 +134,12 @@ export class WeatherCover {
   }
 
   /** Jump every sector to the current field's equilibrium. */
-  snapToEquilibrium(): void {
+  private snapToEquilibrium(): void {
     const field = this.field;
     if (field === null) return;
+    const t = this.target;
     for (let i = 0; i < this.wet.length; i++) {
-      const t = this.targetsAt(field, i, 0);
+      this.writeTarget(field, i, 0);
       this.wet[i] = t.wet;
       this.snow[i] = t.snow;
       this.dust[i] = t.dust;
@@ -148,20 +165,34 @@ export class WeatherCover {
     if (dt < COVER_STEP_SECONDS) return false;
     this.stepped = gameSeconds;
     if (this.settled) return false;
+    const steps = Math.ceil(dt / COVER_MAX_STEP_SECONDS);
+    for (let s = 0; s < steps && !this.settled; s++) this.step(field, dt / steps);
+    return true;
+  }
+
+  /** One integration step of `dt` game seconds over every sector. */
+  private step(field: WeatherField, dt: number): void {
+    const wetRise = blend(dt, WET_RISE_SECONDS);
+    const wetDry = blend(dt, WET_DRY_SECONDS);
+    const snowBuild = blend(dt, SNOW_BUILD_SECONDS);
+    const snowRainMelt = blend(dt, SNOW_RAIN_MELT_SECONDS);
+    const snowMelt = blend(dt, SNOW_MELT_SECONDS);
+    const dustRise = blend(dt, DUST_RISE_SECONDS);
+    const dustWash = blend(dt, DUST_WASH_SECONDS);
+    const dustSettle = blend(dt, DUST_SETTLE_SECONDS);
+    const t = this.target;
     let gap = 0;
     for (let i = 0; i < this.wet.length; i++) {
       const snow = this.snow[i] ?? 0;
-      const t = this.targetsAt(field, i, snow);
+      this.writeTarget(field, i, snow);
       const rain = field.amounts[i * KIND_COUNT + RAIN] ?? 0;
       const wet = this.wet[i] ?? 0;
       const dust = this.dust[i] ?? 0;
-      const nextWet = approach(wet, t.wet, dt, t.wet > wet ? WET_RISE_SECONDS : WET_DRY_SECONDS);
-      const snowSeconds =
-        t.snow > snow ? SNOW_BUILD_SECONDS : rain > 0 ? SNOW_RAIN_MELT_SECONDS : SNOW_MELT_SECONDS;
-      const nextSnow = approach(snow, t.snow, dt, snowSeconds);
-      const dustSeconds =
-        t.dust > dust ? DUST_RISE_SECONDS : rain > 0 ? DUST_WASH_SECONDS : DUST_SETTLE_SECONDS;
-      const nextDust = approach(dust, t.dust, dt, dustSeconds);
+      const nextWet = wet + (t.wet - wet) * (t.wet > wet ? wetRise : wetDry);
+      const snowShare = t.snow > snow ? snowBuild : rain > 0 ? snowRainMelt : snowMelt;
+      const nextSnow = snow + (t.snow - snow) * snowShare;
+      const dustShare = t.dust > dust ? dustRise : rain > 0 ? dustWash : dustSettle;
+      const nextDust = dust + (t.dust - dust) * dustShare;
       this.wet[i] = nextWet;
       this.snow[i] = nextSnow;
       this.dust[i] = nextDust;
@@ -173,7 +204,6 @@ export class WeatherCover {
       );
     }
     if (gap < SETTLE_EPSILON) this.snapToEquilibrium();
-    return true;
   }
 
   /** RGBA8 per sector (r wet, g snow, b dust, a how hard rain falls there now), row-major like
@@ -199,19 +229,28 @@ export class WeatherCover {
     return { wet: this.wet[i] ?? 0, snow: this.snow[i] ?? 0, dust: this.dust[i] ?? 0 };
   }
 
-  /** Sector `i`'s target; `snow` is its current snow, whose thaw wets the ground. */
-  private targetsAt(field: WeatherField, i: number, snow: number): CoverTargets {
+  /** Writes sector `i`'s target into {@link target}; `snow` is its current snow, whose thaw wets the
+   *  ground. */
+  private writeTarget(field: WeatherField, i: number, snow: number): void {
     const base = i * KIND_COUNT;
-    const t = coverEquilibrium(
+    const t = this.target;
+    writeEquilibrium(
+      t,
       field.amounts[base + RAIN] ?? 0,
       field.amounts[base + SNOW] ?? 0,
       field.amounts[base + SAND] ?? 0,
     );
     // Lying snow holds under a clear sky and gives way only to rain.
     const lying = (field.lyingSnow ?? 0) * (1 - t.wet);
-    const held = lying > t.snow ? { ...t, snow: lying, dust: t.dust * (1 - lying) } : t;
-    const thaw = Math.max(0, snow - held.snow) * MELT_WETNESS;
-    return thaw > held.wet ? { ...held, wet: thaw, dust: held.dust * (1 - thaw) } : held;
+    if (lying > t.snow) {
+      t.snow = lying;
+      t.dust *= 1 - lying;
+    }
+    const thaw = Math.max(0, snow - t.snow) * MELT_WETNESS;
+    if (thaw > t.wet) {
+      t.wet = thaw;
+      t.dust *= 1 - thaw;
+    }
   }
 
   private resize(count: number): void {
