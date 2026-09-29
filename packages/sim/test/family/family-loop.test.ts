@@ -288,6 +288,51 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(new Set(families[0])).toEqual(new Set([woman(), man()]));
   });
 
+  it("marrying two separately housed singles moves the husband into the wife's home", () => {
+    // The man spawns first, so the lower id is his: the wife's home wins regardless of ids.
+    const sim = new Simulation({ seed: 29, content: familyContent(), map: grassMap(28, 4) });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME, x: 22, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 16, y: 0, tribe: VIKING, owner: PLAYER });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 2, y: 0, tribe: VIKING, owner: PLAYER });
+    sim.step();
+    const settlers = [...sim.world.query(Settler)].sort((a, b) => a - b);
+    const [man, woman] = settlers;
+    const homes = [...sim.world.query(Building)].sort((a, b) => a - b);
+    const [herHome, hisHome] = homes;
+    if (man === undefined || woman === undefined || herHome === undefined || hisHome === undefined) {
+      throw new Error('setup: settlers or homes missing');
+    }
+    expect(sim.world.get(man, Settler).jobType).toBe(CIVILIST);
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman, house: herHome });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: man, house: hisHome });
+    sim.step();
+    expect(sim.world.get(man, Residence).home).toBe(hisHome);
+
+    sim.enqueueSetup({ kind: 'marry', entity: woman });
+    runUntil(sim, () => sim.world.has(woman, Marriage) && sim.world.has(man, Marriage), 400, 'wedding');
+
+    expect(sim.world.get(woman, Residence).home).toBe(herHome);
+    expect(sim.world.get(man, Residence).home).toBe(herHome);
+    expect(familiesOf(sim.world, herHome)).toHaveLength(1);
+    expect(familiesOf(sim.world, hisHome)).toHaveLength(0);
+  });
+
+  it('marrying two singles of one home leaves them there as a single family', () => {
+    const { sim, woman, man, home } = familySim(31);
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: man(), house: home() });
+    sim.step();
+    expect(familiesOf(sim.world, home())).toHaveLength(2);
+
+    sim.enqueueSetup({ kind: 'marry', entity: woman() });
+    runUntil(sim, () => sim.world.has(woman(), Marriage) && sim.world.has(man(), Marriage), 400, 'wedding');
+
+    expect(sim.world.get(woman(), Residence).home).toBe(home());
+    expect(sim.world.get(man(), Residence).home).toBe(home());
+    expect(familiesOf(sim.world, home())).toHaveLength(1);
+  });
+
   it('marry auto-cancels when no eligible partner exists (a soldier is on a mission)', () => {
     const sim = new Simulation({ seed: 5, content: familyContent(), map: grassMap(28, 4) });
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 2, y: 0, tribe: VIKING, owner: PLAYER });

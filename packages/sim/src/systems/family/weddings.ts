@@ -1,4 +1,5 @@
 import {
+  Female,
   Marriage,
   ownerOf,
   Position,
@@ -30,17 +31,18 @@ export function startWedding(world: World, seeker: Entity, partner: Entity): voi
 
 /**
  * Move a freshly-wed pair into one home: a married couple is a single household, one `homeSize` family
- * slot, so two separately-housed singles consolidate into the pair's lower id's home. Without it a
- * settler married after being assigned a house stays a one-person household and `makeChild` never finds
- * the couple together (observed original behaviour: a married couple cohabits).
+ * slot. A homeless partner joins the housed one; two separately-housed partners settle in the wife's
+ * home, since homes anchor on women (see `widowhood.ts`). Without it a settler married after being
+ * assigned a house stays a one-person household and `makeChild` never finds the couple together
+ * (observed original behaviour: a married couple cohabits).
  */
 function coHouseNewlyweds(world: World, a: Entity, b: Entity): void {
-  const homeA = world.tryGet(a, Residence)?.home;
-  const homeB = world.tryGet(b, Residence)?.home;
-  if (homeA !== undefined && homeB === undefined) world.add(b, Residence, { home: homeA });
-  else if (homeB !== undefined && homeA === undefined) world.add(a, Residence, { home: homeB });
-  else if (homeA !== undefined && homeB !== undefined && homeA !== homeB)
-    world.add(b, Residence, { home: homeA });
+  const [wife, husband] = world.has(b, Female) ? [b, a] : [a, b];
+  const wifeHome = world.tryGet(wife, Residence)?.home;
+  const husbandHome = world.tryGet(husband, Residence)?.home;
+  if (wifeHome !== undefined && husbandHome !== wifeHome) world.add(husband, Residence, { home: wifeHome });
+  else if (husbandHome !== undefined && wifeHome === undefined)
+    world.add(wife, Residence, { home: husbandHome });
 }
 
 /** Cancel `e`'s wedding on both sides (partner death, unreachable partner). No marriage results. */
