@@ -146,7 +146,7 @@ export function applyEffect(
       grantWorkExperience(world, ctx, settler, effect.species, 1);
       return;
     case 'drop':
-      dropCarriedLoad(world, ctx.terrain, settler);
+      dropCarriedLoad(world, ctx, settler);
       return;
     case 'equip':
       equipFromStore(world, ctx, settler, effect.from, effect.goodType, effect.group, effect.slot);

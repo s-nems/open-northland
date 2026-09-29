@@ -151,5 +151,5 @@ export function unloadCart(
     }
   }
   addCarry(world, trader, goodType, 1);
-  dropCarryAtOwnTile(world, trader);
+  dropCarryAtOwnTile(world, ctx, trader);
 }

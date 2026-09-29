@@ -42,13 +42,13 @@ describe('goods lying on the ground have no owner', () => {
   it('a set-down leaves an unowned heap either side may add to', () => {
     const { sim } = fixture();
     const first = carrierAt(sim, HEAP_HX, HEAP_HY, WOOD, P0);
-    expect(dropCarryAtOwnTile(sim.world, first)).toBe(1);
+    expect(dropCarryAtOwnTile(sim.world, ctxOf(sim), first)).toBe(1);
     const [pile] = stockpilesAtNode(sim.world, HEAP_HX, HEAP_HY);
     if (pile === undefined) throw new Error('the drop left no pile on the tile');
     expect(ownerOf(sim.world, pile)).toBeUndefined();
 
     const other = carrierAt(sim, HEAP_HX, HEAP_HY, WOOD, P1);
-    expect(dropCarryAtOwnTile(sim.world, other)).toBe(1); // another player's heap is just a heap
+    expect(dropCarryAtOwnTile(sim.world, ctxOf(sim), other)).toBe(1); // another player's heap is just a heap
     expect(sim.world.has(other, Carrying)).toBe(false);
     expect(sim.world.get(pile, Stockpile).amounts.get(WOOD)).toBe(2);
     expect(ownerOf(sim.world, pile)).toBeUndefined(); // and it stays unowned
@@ -60,7 +60,7 @@ describe('goods lying on the ground have no owner', () => {
     sim.world.add(flag, Position, positionOfNode(HEAP_HX, HEAP_HY));
     // A heap with room ON the flag's own node, left there by another player's settler.
     const dropper = carrierAt(sim, HEAP_HX, HEAP_HY, WOOD, P1);
-    dropCarryAtOwnTile(sim.world, dropper);
+    dropCarryAtOwnTile(sim.world, ctxOf(sim), dropper);
     const yard = collectTargets(sim.world, ctxOf(sim), terrain).yard;
     const here = terrain.nodeAt(HEAP_HX - 2, HEAP_HY);
 

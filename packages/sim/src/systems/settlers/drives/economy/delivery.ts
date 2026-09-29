@@ -73,7 +73,7 @@ export function planDelivery(
       workplace !== undefined &&
       isBoundToStorageSink(world, ctx, entity) &&
       farmWorkGood(world, ctx, workplace) === null &&
-      dropCarryAtOwnTile(world, entity) > 0
+      dropCarryAtOwnTile(world, ctx, entity) > 0
     ) {
       return;
     }

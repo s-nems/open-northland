@@ -295,12 +295,12 @@ function spawnHarvestables(
     (owner) => (owner === undefined ? PRIMARY_TRIBE : playerTribe(roster, owner)),
     new Set(options.absentSeats),
   );
-  const bushes =
-    options.berryBushes === false ? [] : [...spawnMapBerryBushes(sim, map.objects, ir).placementByEntity];
+  const bushes = options.berryBushes === false ? null : spawnMapBerryBushes(sim, map.objects, ir);
   return {
-    harvestablePlacements: [...resources.placementByEntity, ...bushes],
+    harvestablePlacements: [...resources.placementByEntity, ...(bushes?.placementByEntity ?? [])],
     pooledPlacements: [
       ...fields.retiredPlacements,
+      ...(bushes?.retiredPlacements ?? []),
       ...chests.placementByEntity.values(),
       ...goods.placementByEntity.values(),
       ...palisades,

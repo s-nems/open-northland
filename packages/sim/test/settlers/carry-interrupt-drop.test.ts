@@ -17,15 +17,20 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
+import { buildingBlockedCells } from '../../src/systems/footprint/index.js';
 import { combatSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
-import { dropCarriedLoad } from '../../src/systems/settlers/atomics/effects/goods/index.js';
+import {
+  dropCarriedLoad,
+  dropCarryAtOwnTile,
+} from '../../src/systems/settlers/atomics/effects/goods/index.js';
 import { DROP_ATOMIC_ID } from '../../src/systems/settlers/atomics/start.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 import { combatant } from '../conflict/stances/support.js';
 import { testContent } from '../fixtures/content.js';
-import { fleeCheckCtxOf } from '../fixtures/context.js';
+import { ctxOf, fleeCheckCtxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
+import { HUT, mappedSim, placedBuilding, terrainOf } from '../footprint/building-placement/support.js';
 
 /**
  * When a settler's carrying is interrupted - a profession change, an enemy scaring it, a move order - it sets
@@ -93,7 +98,7 @@ describe('dropCarriedLoad - set the whole load on the ground', () => {
     const sim = freshSim();
     const e = carryingWoodcutter(sim, 3, 1, 1);
 
-    const placed = dropCarriedLoad(sim.world, sim.terrain, e);
+    const placed = dropCarriedLoad(sim.world, ctxOf(sim), e);
 
     expect(placed).toBe(1);
     expect(sim.world.has(e, Carrying)).toBe(false);
@@ -114,7 +119,7 @@ describe('dropCarriedLoad - set the whole load on the ground', () => {
     sim.world.add(full, Position, { x: at.x, y: at.y });
     sim.world.add(full, Stockpile, { amounts: new Map([[WOOD, MAX_GROUND_STACK]]) });
 
-    const placed = dropCarriedLoad(sim.world, sim.terrain, e);
+    const placed = dropCarriedLoad(sim.world, ctxOf(sim), e);
 
     expect(placed).toBe(2); // both units reached the ground (nothing lost)
     expect(sim.world.has(e, Carrying)).toBe(false);
@@ -124,6 +129,59 @@ describe('dropCarriedLoad - set the whole load on the ground', () => {
     expect(totalWood).toBe(MAX_GROUND_STACK + 2);
     const spill = looseWoodPiles(sim).find((p) => p.pile !== full);
     expect(spill?.wood).toBe(2);
+  });
+});
+
+describe('a drop never heaps goods on a building body', () => {
+  // HUT anchored at node (5,5) walls (5,5) and (6,5), its door at (4,5).
+  const HUT_ANCHOR = { hx: 5, hy: 5 };
+  const INSIDE_BODY = { hx: 6, hy: 5 };
+
+  function hutWithCarrierInside(amount: number): { sim: Simulation; carrier: Entity } {
+    const sim = mappedSim();
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HUT,
+      x: HUT_ANCHOR.hx,
+      y: HUT_ANCHOR.hy,
+      tribe: VIKING,
+    });
+    sim.step();
+    placedBuilding(sim); // throws unless the hut stands
+    const carrier = carryingWoodcutter(sim, 0, 0, amount);
+    Object.assign(sim.world.mut(carrier, Position), positionOfNode(INSIDE_BODY.hx, INSIDE_BODY.hy));
+    return { sim, carrier };
+  }
+
+  function heapNodes(sim: Simulation) {
+    const terrain = terrainOf(sim);
+    return looseWoodPiles(sim).map(({ pile }) => {
+      const p = sim.world.get(pile, Position);
+      const n = nodeOfPosition(p.x, p.y);
+      return terrain.nodeAt(n.hx, n.hy);
+    });
+  }
+
+  it('sets a forced drop down beside the walls when the settler stands inside them', () => {
+    const { sim, carrier } = hutWithCarrierInside(2);
+    const walls = buildingBlockedCells(sim.world, ctxOf(sim), terrainOf(sim));
+    expect(walls.has(terrainOf(sim).nodeAt(INSIDE_BODY.hx, INSIDE_BODY.hy))).toBe(true);
+
+    expect(dropCarriedLoad(sim.world, ctxOf(sim), carrier)).toBe(2);
+
+    const nodes = heapNodes(sim);
+    expect(nodes.length).toBeGreaterThan(0);
+    for (const node of nodes) expect(walls.has(node)).toBe(false);
+    expect(looseWoodPiles(sim).reduce((sum, p) => sum + p.wood, 0)).toBe(2);
+  });
+
+  it('keeps an own-tile set-down on the back inside the walls', () => {
+    const { sim, carrier } = hutWithCarrierInside(1);
+
+    expect(dropCarryAtOwnTile(sim.world, ctxOf(sim), carrier)).toBe(0);
+
+    expect(looseWoodPiles(sim)).toHaveLength(0);
+    expect(sim.world.get(carrier, Carrying).amount).toBe(1);
   });
 });
 

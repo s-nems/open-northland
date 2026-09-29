@@ -161,19 +161,35 @@ export function harvestablePlacementOrdinals(
   return out;
 }
 
+export interface MapBerryBushSpawnResult extends MapResourceSpawnResult {
+  /** Bushes authored in a start building's reserved zone, which its placement clears: never spawned, and
+   *  their static sprites retired. */
+  readonly retiredPlacements: readonly number[];
+}
+
 /**
  * Direct scene assembly, valid pre-tick-0 only, in native placement order so ids mint deterministically.
  * Bushes are walkable in the original, so nothing here is skipped from the static collision bake and the
- * placement join serves only the render handover.
+ * placement join serves only the render handover. Runs after the start buildings stand, so a bush inside
+ * one's reserved zone is left out, as placing the building would have cleared it.
  */
 export function spawnMapBerryBushes(
   sim: Simulation,
   objects: TerrainObjects,
   ir: ContentIr,
-): MapResourceSpawnResult {
+): MapBerryBushSpawnResult {
   let spawned = 0;
   const placementByEntity = new Map<Entity, number>();
+  const retiredPlacements: number[] = [];
+  const terrain = sim.terrain;
   for (const { gfxIndex, hx, hy, placement } of mapBerryBushSpawns(objects, ir)) {
+    if (
+      terrain !== undefined &&
+      systems.insideBuildingReservedZone(sim.world, sim.content, terrain, hx, hy)
+    ) {
+      retiredPlacements.push(placement);
+      continue;
+    }
     const e = systems.createBerryBush(sim.world, {
       x: hx,
       y: hy,
@@ -183,7 +199,7 @@ export function spawnMapBerryBushes(
     placementByEntity.set(e, placement);
     spawned++;
   }
-  return { spawned, placementByEntity };
+  return { spawned, placementByEntity, retiredPlacements };
 }
 
 /**

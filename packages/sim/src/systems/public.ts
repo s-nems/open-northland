@@ -47,6 +47,7 @@ export { createGroundGoods, type GroundGoodsSpec } from './economy/ground-goods.
 export { OUTPUT_TENTHS_PER_UNIT } from './economy/production/bonus-output.js';
 // The repair crew cap, so the app's right-click and site pick fall through where assignBuilder refuses.
 export { REPAIR_CREW_LIMIT } from './economy/repair.js';
+export { insideBuildingReservedZone } from './economy/reserved-decor.js';
 export { jobUsesWorkFlag } from './economy/work-flag.js';
 export { isOnMission } from './family/eligibility.js';
 export {

@@ -58,7 +58,7 @@ export function pickupFromStore(
  */
 export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entity, store: Entity): number {
   if (world.has(store, DeliveryFlag)) {
-    dropCarryAtOwnTile(world, settler);
+    dropCarryAtOwnTile(world, ctx, settler);
     return 0;
   }
   const load = world.tryGet(settler, Carrying);

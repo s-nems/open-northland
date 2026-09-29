@@ -1,8 +1,11 @@
+import type { ContentSet } from '@open-northland/data';
 import { Building, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { reservedZoneOf } from '../footprint/geometry.js';
+import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
 import { entityNode } from '../spatial/nodes.js';
 
 /** A spatial region-index `near` query - every entity of one decor kind whose anchor lies within `reach`
@@ -32,4 +35,21 @@ export function decorInReservedZone(
   return near(world, anchor.hx, anchor.hy, rz.reach).filter((e) =>
     rz.zone.has(entityNode(world, terrain, e)),
   );
+}
+
+/**
+ * Whether half-cell node `(hx, hy)` lies in a standing building's reserved zone, the ground its placement
+ * cleared of walkable decor. A map's decor authored there, such as under a start building a changed tribe
+ * widened, is skipped at spawn so it matches what placing the building would have left.
+ */
+export function insideBuildingReservedZone(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  hx: number,
+  hy: number,
+): boolean {
+  if (!terrain.inBounds(hx, hy)) return false;
+  const grid = placementBlockerGrid(world, content, terrain);
+  return (grid.buildingZone[hy * terrain.width + hx] ?? 0) > 0;
 }
