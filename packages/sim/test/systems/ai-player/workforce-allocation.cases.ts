@@ -52,6 +52,7 @@ import {
 import { gathererReach, workableResourceTest } from '../../../src/systems/ai-player/live-resources.js';
 import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
+import { collectorAnchors } from '../../../src/systems/ai-player/workforce/collectors/anchor.js';
 import {
   allocateCollectors,
   CLEAR_GROUND_FROM_NODES,
@@ -70,7 +71,6 @@ import {
   WOOD_OVER_STONE_NODES,
   wantedCollectorGoods,
 } from '../../../src/systems/ai-player/workforce/collectors/index.js';
-import { collectorAnchors } from '../../../src/systems/ai-player/workforce/collectors/anchor.js';
 import {
   flagGround,
   flagSpotNear,
@@ -905,6 +905,35 @@ describe('workforce module (collectResources)', () => {
     expect(flagMoves(ordinaryDecisionTick(gatherer))).toEqual([]);
     // …and follows the nearer resource on the periodic upkeep.
     const [moved] = flagMoves(flagRelocationTick(gatherer));
+    if (moved?.kind !== 'setWorkFlag') throw new Error('expected the generic flag to move');
+    expect(Math.abs(moved.x - NEAR.x) + Math.abs(moved.y - NEAR.y)).toBeLessThanOrEqual(
+      FLAG_MAX_DISTANCE_NODES,
+    );
+  });
+
+  it("leaves a generic holder's own flag out of the spread check on the nearer clearing good", () => {
+    const sim = aiSim();
+    placeHq(sim);
+    const FAR = { x: 56, y: 28 };
+    placeResources(sim, [{ ...RESOURCE_SPOTS.wood, ...FAR }]);
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: COLLECTOR, x: 52, y: 26, tribe: VIKING, owner: SEAT });
+    sim.step();
+    const gatherer = [...sim.world.query(Settler)].find(
+      (e) => sim.world.get(e, Settler).jobType === COLLECTOR,
+    );
+    if (gatherer === undefined) throw new Error('setup: gatherer missing');
+    const flagAt = { x: FAR.x - FLAG_MIN_DISTANCE_NODES, y: FAR.y };
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: gatherer, ...flagAt });
+    sim.enqueueSetup({ kind: 'setGatherGood', entity: gatherer, goodType: null });
+    // Inside the spread band of his own flag, and well nearer the base than it.
+    const NEAR = { x: 44, y: 26 };
+    expect(Math.abs(NEAR.x - flagAt.x) + Math.abs(NEAR.y - flagAt.y)).toBeLessThan(CLEARING_SPREAD_NODES);
+    placeResources(sim, [{ ...RESOURCE_SPOTS.wood, ...NEAR }]);
+    sim.step();
+
+    const [moved] = [...collectModule.run(sim.world, ctxOf(sim, flagRelocationTick(gatherer)), SEAT)].filter(
+      (c) => c.kind === 'setWorkFlag' && c.entity === gatherer,
+    );
     if (moved?.kind !== 'setWorkFlag') throw new Error('expected the generic flag to move');
     expect(Math.abs(moved.x - NEAR.x) + Math.abs(moved.y - NEAR.y)).toBeLessThanOrEqual(
       FLAG_MAX_DISTANCE_NODES,

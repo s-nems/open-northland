@@ -274,12 +274,13 @@ export function allocateGenericCollectors(
   const commands: PlayerCommand[] = [];
   const { baseNode, workable } = ground;
   const reach = gathererReach(world, ctx, ground.flags.terrain);
-  // The other posts' flags: a re-plant or a hire keeps its resource clear of them, so the posts fan out.
-  const flags: HalfCellNode[] = [];
+  // Each post's flag by holder: a re-plant or a hire keeps its resource clear of the others', so the
+  // posts fan out.
+  const flags = new Map<Entity, HalfCellNode>();
   for (const g of genericCollectors) {
     const flag = liveWorkFlag(world, g);
     const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);
-    if (flagNode !== null) flags.push(flagNode);
+    if (flagNode !== null) flags.set(g, flagNode);
   }
   for (const g of genericCollectors) {
     const flag = liveWorkFlag(world, g);
@@ -291,7 +292,7 @@ export function allocateGenericCollectors(
     const alive = patchWorked(world, reach, g, flagNode, flag.radius, harvests);
     if (alive) forgetReplantMissesWhileHarvesting(world, g);
     if (alive ? !flagRelocateDue(ctx, g) : !replantDue(world, ctx, g, flagNode)) continue;
-    const others = flags.filter((f) => f !== flagNode);
+    const others = [...flags].flatMap(([holder, f]) => (holder === g ? [] : [f]));
     const nearest = (open: WorkableTest): Entity | null =>
       clearingResource(world, ctx, baseNode, (e) => workable(e) && open(e) && clearOfFlags(world, e, others));
     if (alive && !farFromNearest(world, baseNode, flagNode, nearest(everyResource))) continue;
@@ -307,7 +308,7 @@ export function allocateGenericCollectors(
     if (alive && nodeDistance(spot, resource) >= nodeDistance(flagNode, resource)) continue; // no nearer spot
     commands.push({ kind: 'setWorkFlag', entity: g, x: spot.hx, y: spot.hy });
     claimFlagNode(taken, spot);
-    flags.push(spot);
+    flags.set(g, spot);
   }
   const job = genericCollectorJob(ctx);
   if (job === null) return commands;
@@ -315,7 +316,7 @@ export function allocateGenericCollectors(
   for (let hired = genericCollectors.length; hired < target; hired++) {
     if (!force.any()) break;
     const resource =
-      clearingResource(world, ctx, baseNode, (e) => workable(e) && clearOfFlags(world, e, flags)) ??
+      clearingResource(world, ctx, baseNode, (e) => workable(e) && clearOfFlags(world, e, flags.values())) ??
       clearingResource(world, ctx, baseNode, workable); // every clearing good stands by a post: double up
     if (resource === null) break; // no clearing good stands anywhere - no generic post
     const spot = flagSpotNear(world, ground.flags, resource, baseNode, taken);
@@ -326,7 +327,7 @@ export function allocateGenericCollectors(
     commands.push({ kind: 'setWorkFlag', entity: spare, x: spot.hx, y: spot.hy });
     commands.push({ kind: 'setGatherGood', entity: spare, goodType: null });
     claimFlagNode(taken, spot);
-    flags.push(spot);
+    flags.set(spare, spot);
   }
   return commands;
 }
@@ -385,8 +386,9 @@ function clearingResource(
 }
 
 /** Whether `resource` stands at least {@link CLEARING_SPREAD_NODES} from every flag in `flags`. */
-function clearOfFlags(world: World, resource: Entity, flags: readonly HalfCellNode[]): boolean {
+function clearOfFlags(world: World, resource: Entity, flags: Iterable<HalfCellNode>): boolean {
   const node = anchorNodeOf(world, resource);
   if (node === null) return false;
-  return flags.every((f) => nodeDistance(node, f) >= CLEARING_SPREAD_NODES);
+  for (const f of flags) if (nodeDistance(node, f) < CLEARING_SPREAD_NODES) return false;
+  return true;
 }
