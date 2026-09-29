@@ -89,6 +89,8 @@ export const enGame = {
     openGate: 'Open gate',
     closeGate: 'Close gate',
     demolishPalisade: 'Demolish palisade',
+    roadSite: 'Road site',
+    cancelRoadSite: 'Cancel road',
     demolishGate: 'Demolish gate',
     constructionProgress: 'Construction: {percent}%',
     // The vehicle's hover line: `vehiclewindow` gui strings where the original has one (ids in the
@@ -274,6 +276,10 @@ export const enGame = {
       placeWallLineHint:
         'left click lays the wall, with Ctrl/Cmd it draws on, Shift keeps it straight, right click drops the line',
       placeGateHint: 'point at a straight run of five finished wall sections',
+      roadHint: 'one stone paves the node and its neighbouring planned nodes',
+      placeRoadHint: 'click where the road starts',
+      placeRoadLineHint:
+        'left click lays the road, with Ctrl/Cmd it draws on, Shift keeps it straight, right click drops the line',
       placePaperHint: 'from a plan: point at a place, the building stands finished',
       heldPaper: 'Building plan',
       heldPaperHint: 'choose a building in the window',

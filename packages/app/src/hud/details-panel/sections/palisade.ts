@@ -12,7 +12,10 @@ export function drawPalisade(
 ): void {
   const hud = messages().hud;
   chrome.window(layout.section.frame);
-  chrome.headline(layout.section.title, model.gateOpen === null ? hud.palisade : hud.gate);
+  chrome.headline(
+    layout.section.title,
+    model.roadSite ? hud.roadSite : model.gateOpen === null ? hud.palisade : hud.gate,
+  );
   if (model.health !== null) {
     chrome.textAt(
       `${model.health.label}: ${model.health.hover}`,
@@ -34,9 +37,11 @@ export function drawPalisade(
         ? model.gateOpen === true
           ? hud.closeGate
           : hud.openGate
-        : model.gateOpen === null
-          ? hud.demolishPalisade
-          : hud.demolishGate;
+        : model.roadSite
+          ? hud.cancelRoadSite
+          : model.gateOpen === null
+            ? hud.demolishPalisade
+            : hud.demolishGate;
     chrome.button(button, label, hover === button.action);
   }
 }

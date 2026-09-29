@@ -87,6 +87,8 @@ export const plGame = {
     openGate: 'Otwórz bramę',
     closeGate: 'Zamknij bramę',
     demolishPalisade: 'Wyburz palisadę',
+    roadSite: 'Plac pod drogę',
+    cancelRoadSite: 'Anuluj drogę',
     demolishGate: 'Wyburz bramę',
     constructionProgress: 'Budowa: {percent}%',
     vehicle: 'Wehikuł', // vehiclewindow 0
@@ -259,6 +261,10 @@ export const plGame = {
       placeWallLineHint:
         'lewy przycisk stawia palisadę, z Ctrl/Cmd ciągnie dalej, Shift trzyma prostą, prawy anuluje linię',
       placeGateHint: 'wskaż prosty odcinek pięciu gotowych segmentów palisady',
+      roadHint: 'jeden kamień brukuje węzeł i sąsiednie zaplanowane węzły',
+      placeRoadHint: 'kliknij, gdzie ma się zacząć droga',
+      placeRoadLineHint:
+        'lewy przycisk wytycza drogę, z Ctrl/Cmd ciągnie dalej, Shift trzyma prostą, prawy anuluje linię',
       placePaperHint: 'z planu: wskaż miejsce, budynek stanie gotowy',
       heldPaper: 'Plan budowy',
       heldPaperHint: 'wybierz budynek z okna',

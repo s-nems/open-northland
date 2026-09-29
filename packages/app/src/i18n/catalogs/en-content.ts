@@ -218,6 +218,11 @@ export const enContent = {
       summary:
         'Builders raise a connected wooden stockade, a gate opens a route through it, and an enemy soldier breaks a segment to make a second breach.',
     },
+    roads: {
+      title: 'Roads',
+      summary:
+        'Two builders pave a laid line of road sites with stone from the store; one stone paves a site and its waiting neighbours.',
+    },
     'tower-defence': {
       title: 'Tower defence',
       summary:

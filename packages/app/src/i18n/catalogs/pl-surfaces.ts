@@ -261,6 +261,7 @@ export const plSurfaces = {
         coarseStep: 'Zmień licznik szkolenia o 10',
         craftToggle: 'Dodaj/usuń produkt z listy produkcji',
         workFlagOrder: 'Ustaw flagę pracy',
+        roadTool: 'Narzędzie drogi',
       },
       keySpace: 'Spacja',
       mouseLeft: 'lewy przycisk myszy',

@@ -43,7 +43,7 @@ export interface UnitTargetsDeps {
 }
 
 /** The drawable kinds a unit-controls click resolves to (a signpost has its own picker). */
-export type UnitTargetKind = 'settler' | 'building' | 'palisade' | 'vehicle';
+export type UnitTargetKind = 'settler' | 'building' | 'palisade' | 'roadsite' | 'vehicle';
 
 /** The pickable target sets the unit controls hit-test a click against, plus the order-issuing set. */
 export interface UnitTargets {
@@ -105,7 +105,11 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
 
   /** The item's kind when it is one a unit-controls click selects or orders, else null. */
   const unitKindOf = (item: DrawItem): UnitTargetKind | null =>
-    item.kind === 'settler' || item.kind === 'building' || item.kind === 'palisade' || item.kind === 'vehicle'
+    item.kind === 'settler' ||
+    item.kind === 'building' ||
+    item.kind === 'palisade' ||
+    item.kind === 'roadsite' ||
+    item.kind === 'vehicle'
       ? item.kind
       : null;
 
@@ -158,7 +162,8 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         // A unit, a building or a vehicle is an attack target - a warrior can raze an enemy structure
         // or batter a cart.
         const itemKind = unitKindOf(it);
-        if (itemKind === null) continue;
+        // A road site is flat ground: nothing to strike.
+        if (itemKind === null || itemKind === 'roadsite') continue;
         // The ghost guard fog-gates the attack set: a remembered structure still draws, but no swing
         // can be ordered at it.
         if (!isHitTarget(it)) continue;

@@ -43,6 +43,7 @@ export const HOST_REQUESTS = [
   'placementProbe',
   'signpostProbe',
   'palisadeProbe',
+  'roadSiteProbe',
   'palisadeGateProbe',
   'palisadeGateSites',
   'ownPalisadeNodes',

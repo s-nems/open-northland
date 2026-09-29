@@ -175,8 +175,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   const frameReport = () => frameStats.report();
   const visiblePlots = createVisiblePlots(() => host.constructionPlots(), fogGates.seesNode);
-  // The wall tool lights where a line starts, then the started line's reach; the gate tool the spans it
-  // can cut into.
+  // The wall and road tools light where a line starts, then the started line's reach; the gate tool the
+  // spans it can cut into.
   const palisadeWash = () => {
     const { controller } = toolPanel;
     const line = controller.activeLine();
@@ -253,6 +253,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       placementType: toolPanel.controller.placementType(),
       placementPaper: toolPanel.controller.placementPaper(),
       palisadeGfxIndex: toolPanel.controller.palisadeGfxIndex(),
+      roadActive: toolPanel.controller.roadActive(),
       signpostActive: controls.signpostPlacementActive(),
       dockVehicle: controls.dockPickVehicle(),
       flagActive: controls.workFlagPlacementActive(),
@@ -263,6 +264,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       canPlaceAt,
       canPlaceSignpostAt,
       palisadePreview: (tile) => toolPanel.controller.palisadePreview(tile),
+      roadPreview: (tile) => toolPanel.controller.roadPreview(tile),
       gatePreview: (tile) => toolPanel.controller.gatePreview(tile),
       anchored: toolPanel.controller.activeLine() !== null,
       palisadeWash,
@@ -275,7 +277,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       deps.canvas,
       'placement',
       placementPointer(
-        toolPanel.controller.placementType() !== null || toolPanel.controller.palisadeGfxIndex() !== null,
+        toolPanel.controller.placementType() !== null ||
+          toolPanel.controller.palisadeGfxIndex() !== null ||
+          toolPanel.controller.roadActive(),
         cursor.ghost,
       ),
     );

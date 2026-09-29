@@ -14,6 +14,8 @@ export interface PlacementCursorInput {
   /** The paper paying for this placement, which bypasses the technology part of the live probe. */
   readonly placementPaper: Paper | null;
   readonly palisadeGfxIndex?: number | null;
+  /** The road tool is held. */
+  readonly roadActive?: boolean;
   readonly signpostActive: boolean;
   /** The ship whose dock pick is armed, or null. */
   readonly dockVehicle: number | null;
@@ -33,11 +35,16 @@ export interface PlacementCursorInput {
     readonly col: number;
     readonly row: number;
   }) => readonly LinePreviewNode[] | null;
+  /** The road line's plots under the cursor. */
+  readonly roadPreview?: (tile: {
+    readonly col: number;
+    readonly row: number;
+  }) => readonly LinePreviewNode[] | null;
   /** The gate tool's gate under the cursor, which draws in place of span markers. */
   readonly gatePreview?: (tile: { readonly col: number; readonly row: number }) => GatePreview | null;
   /** A line has its first click, so the preview's first node marks where it starts. */
   readonly anchored?: boolean;
-  /** The palisade tool's wash: a started line's reach or the gate tool's spans, null when it has none. */
+  /** The line tools' wash: a started line's reach or the gate tool's spans, null when it has none. */
   readonly palisadeWash?: () => PlacementOverlayFrame | null;
   /** Owner slot for a signpost ghost - the renderer applies the session colour mapping. */
   readonly localPlayer: number;
@@ -47,7 +54,7 @@ export interface PlacementCursorInput {
 
 /**
  * The ghost stays hidden over ground that rejects it, matching the original's vanishing house cursor.
- * A held building takes precedence over a wall tool, that over a pending signpost, those over an armed
+ * A held building takes precedence over a wall or road tool, those over a pending signpost, those over an armed
  * dock pick, whose wash of mooring spots floats no ghost, and all of them over a pending work flag, which
  * has no wash: the sim snaps the flag to the nearest workable node on the click.
  */
@@ -55,6 +62,16 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   const { placementType } = input;
   const palisadeGfxIndex = input.palisadeGfxIndex ?? null;
   const paper = input.placementPaper === null ? undefined : input.placementPaper;
+  if (input.roadActive === true) {
+    // The wash stays while the pointer leaves the map; only the plots need a tile.
+    const tile = input.tileAt();
+    const nodes = tile === null ? null : (input.roadPreview?.(tile) ?? null);
+    return {
+      overlay: input.palisadeWash?.() ?? null,
+      ghost:
+        nodes === null ? null : { kind: 'line', nodes, anchored: input.anchored === true, marker: 'road' },
+    };
+  }
   if (placementType === null && palisadeGfxIndex === null && !input.signpostActive) {
     if (input.dockVehicle !== null) return { overlay: input.dockOverlay(input.dockVehicle), ghost: null };
     if (!input.flagActive) return { overlay: null, ghost: null };

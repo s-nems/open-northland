@@ -486,6 +486,7 @@ class WorkerClient<E> {
       placementProbe: (...args) => this.ask('placementProbe', args),
       signpostProbe: (...args) => this.ask('signpostProbe', args),
       palisadeProbe: (...args) => this.ask('palisadeProbe', args),
+      roadSiteProbe: (...args) => this.ask('roadSiteProbe', args),
       palisadeGateProbe: (...args) => this.ask('palisadeGateProbe', args),
       palisadeGateSites: (...args) => this.ask('palisadeGateSites', args),
       ownPalisadeNodes: (...args) => this.ask('ownPalisadeNodes', args),

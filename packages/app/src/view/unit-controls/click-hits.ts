@@ -64,6 +64,7 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
       pickTopAt(deps.targets.owned('building'), wx, wy) ??
       pickTopAt(deps.targets.owned('palisade'), wx, wy) ??
       pickTopAt(deps.targets.owned('vehicle'), wx, wy) ??
+      pickTopAt(deps.targets.owned('roadsite'), wx, wy) ??
       pickTopAt(deps.targets.signposts(), wx, wy),
   };
 }

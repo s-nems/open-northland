@@ -6,6 +6,7 @@ import type { PanelView } from './selection-view.js';
 export type PanelClick =
   | { readonly kind: 'demolishSignpost'; readonly entityId: number }
   | { readonly kind: 'demolishPalisade'; readonly entityId: number }
+  | { readonly kind: 'cancelRoadSite'; readonly entityId: number }
   | { readonly kind: 'setPalisadeGate'; readonly entityId: number; readonly open: boolean };
 
 /** The intent of an enabled button, or null for an action this view kind does not wire. */
@@ -14,7 +15,12 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
     case 'signpost':
       return action === 'demolish' ? { kind: 'demolishSignpost', entityId: view.model.entityId } : null;
     case 'palisade':
-      if (action === 'demolish-palisade') return { kind: 'demolishPalisade', entityId: view.model.entityId };
+      if (action === 'demolish-palisade') {
+        return {
+          kind: view.model.roadSite ? 'cancelRoadSite' : 'demolishPalisade',
+          entityId: view.model.entityId,
+        };
+      }
       if (action === 'toggle-gate' && view.model.gateOpen !== null) {
         return {
           kind: 'setPalisadeGate',

@@ -148,6 +148,8 @@ export interface SessionHost {
   ): Promise<NodeGridAnswer | null>;
   signpostProbe(player: number, area: NodeArea): Promise<NodeGridAnswer | null>;
   palisadeProbe(gfxIndex: number, area: NodeArea): Promise<NodeGridAnswer | null>;
+  /** Where a road may be ordered over `area`; null for a mapless world. */
+  roadSiteProbe(area: NodeArea): Promise<NodeGridAnswer | null>;
   palisadeGateProbe(
     hx: number,
     hy: number,

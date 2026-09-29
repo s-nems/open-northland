@@ -80,6 +80,7 @@ import {
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
 import { floatParam, introParam } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
+import { nodeBounds } from '../picking.js';
 import {
   createFogGates,
   diplomacyMetSeats,
@@ -111,6 +112,7 @@ import { createPlacementGates } from './placement-gates.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
 import type { RafLoop } from './raf-loop.js';
 import { createViewReadModels } from './read-models.js';
+import { roadBuiltAt } from './road-nodes.js';
 import { createSaveLoadSession, type SaveLoadSessionOptions } from './save-load/index.js';
 import { relatedWorldLoader } from './save-load/related-world.js';
 import { createScriptPresentation } from './script-presentation.js';
@@ -356,7 +358,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       palisadeAnswersKey,
       palisadeGateProbe,
       palisadeGateSites,
+      canPlaceRoadAt,
+      roadAnswersKey,
     } = placementGates;
+    const roadNodeWidth = nodeBounds(deps.mapSize).width;
+    const roadBuiltHere = (col: number, row: number): boolean =>
+      roadBuiltAt(host.snapshot(), roadNodeWidth, col, row);
 
     // Assigned right after the tool panel mounts: stage order is draw order, and the minimap window
     // draws over the strip's lower buttons on a short screen.
@@ -490,6 +497,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       palisadeAnswersKey,
       palisadeGateProbe,
       palisadeGateSites,
+      canPlaceRoadAt,
+      roadBuiltAt: roadBuiltHere,
+      roadAnswersKey,
       placementClickAsks: placementGates,
       palisadeTools: palisadeToolsOf(host),
       mapSize: deps.mapSize,
@@ -832,6 +842,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         hudHidden ||
         toolPanel.controller.placementType() !== null ||
         toolPanel.controller.palisadeGfxIndex() !== null ||
+        toolPanel.controller.roadActive() ||
         toolPanel.claimPointer(clientX, clientY) ||
         controls.claimsPointer(clientX, clientY),
     });

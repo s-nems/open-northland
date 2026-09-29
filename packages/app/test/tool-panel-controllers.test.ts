@@ -490,6 +490,7 @@ describe('placement controller', () => {
             });
           },
           palisadeLineReady: () => Promise.resolve(),
+          roadLineReady: () => Promise.resolve(),
           askPalisadeGate: () => Promise.resolve(null),
         },
       },
@@ -509,6 +510,7 @@ describe('placement controller', () => {
       clickAsks: {
         askPlaceAt: () => Promise.resolve(true),
         palisadeLineReady: () => Promise.resolve(),
+        roadLineReady: () => Promise.resolve(),
         askPalisadeGate: () => Promise.resolve(null),
       },
     });
@@ -718,6 +720,66 @@ describe('placement controller', () => {
     ]);
     placement.handleClick(10, 0);
     expect(commands.map((command) => ('x' in command ? command.x : null))).toEqual([5, 6, 7]);
+  });
+
+  it('lays one road site per open node of a road line, passing a laid road, and exits', () => {
+    let tile = { col: 4, row: 2 };
+    const { placement, commands, cues, strip } = mount(
+      () => tile,
+      undefined,
+      () => false,
+      undefined,
+      {
+        canPlaceRoadAt: (col) => col !== 6,
+        roadBuiltAt: (col) => col === 6,
+      },
+    );
+
+    placement.enterRoad();
+    expect(placement.activeRoad()).toBe(true);
+    expect(strip.shown).toEqual({
+      label: messages().hud.construction.road,
+      hint: messages().hud.construction.placeRoadHint,
+    });
+    expect(placement.lineStarts()).not.toBeNull();
+    placement.handleClick(0, 0);
+    expect(placement.activeLine()?.anchor).toEqual({ col: 4, row: 2 });
+    expect(strip.shown?.hint).toBe(messages().hud.construction.placeRoadLineHint);
+    tile = { col: 8, row: 2 };
+    expect(placement.roadPreview(tile)?.map((node) => node.state)).toEqual([
+      'open',
+      'open',
+      'built',
+      'open',
+      'open',
+    ]);
+    expect(placement.palisadePreview(tile)).toBeNull();
+    placement.handleClick(10, 0);
+
+    expect(commands).toEqual(
+      [4, 5, 7, 8].map((x) => ({ kind: 'placeRoadSite', x, y: 2, tribe: 1, owner: 0 })),
+    );
+    expect(cues).toEqual(['confirm']);
+    expect(placement.isActive()).toBe(false);
+  });
+
+  it('stops a road line at the first refused node and keeps the road tool across a remount', () => {
+    let tile = { col: 4, row: 2 };
+    const { placement, commands } = mount(() => tile, undefined, undefined, undefined, {
+      canPlaceRoadAt: (col) => col < 6,
+    });
+    placement.enterRoad();
+    const held = placement.state();
+    expect(held.road).toBe(true);
+    placement.handleClick(0, 0);
+    tile = { col: 9, row: 2 };
+    placement.handleClick(10, 0);
+    expect(commands.map((command) => ('x' in command ? command.x : null))).toEqual([4, 5]);
+
+    const again = mount(() => tile);
+    again.placement.restore(held);
+    expect(again.placement.activeRoad()).toBe(true);
+    expect(again.placement.activePalisade()).toBeNull();
   });
 
   it('lays an admin standing-wall line finished for the chosen owner through the trusted channel', () => {

@@ -61,6 +61,9 @@ export interface GameToolPanelDeps {
   readonly palisadeAnswersKey: () => string;
   readonly palisadeGateProbe: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites: () => GateSites;
+  readonly canPlaceRoadAt: (col: number, row: number) => boolean;
+  readonly roadBuiltAt: (col: number, row: number) => boolean;
+  readonly roadAnswersKey: () => string;
   /** The placement rules a click asks the sim as it lands. */
   readonly placementClickAsks: PlacementClickAsks;
   readonly palisadeTools: PalisadeTools;
@@ -269,6 +272,9 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       palisadeAnswersKey: deps.palisadeAnswersKey,
       palisadeGateProbe: deps.palisadeGateProbe,
       palisadeGateSites: deps.palisadeGateSites,
+      canPlaceRoadAt: deps.canPlaceRoadAt,
+      roadBuiltAt: deps.roadBuiltAt,
+      roadAnswersKey: deps.roadAnswersKey,
       placementClickAsks: deps.placementClickAsks,
       palisadeTools: deps.palisadeTools,
       onSpeedChange: deps.onSpeed,

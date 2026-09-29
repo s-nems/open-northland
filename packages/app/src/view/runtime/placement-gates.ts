@@ -42,6 +42,12 @@ export interface PlacementClickGates {
     anchor: { readonly col: number; readonly row: number },
     reach: number,
   ) => Promise<void>;
+  /** Brings the road answers within `reach` nodes of a line's anchor up to now, like
+   *  {@link palisadeLineReady}. */
+  readonly roadLineReady: (
+    anchor: { readonly col: number; readonly row: number },
+    reach: number,
+  ) => Promise<void>;
   /** The gate conversion a click at a node would make, its span centre resolved as the preview does. */
   readonly askPalisadeGate: (col: number, row: number) => Promise<PalisadeGateProbeView | null>;
   readonly askMoorAt: (vehicle: number, col: number, row: number) => Promise<boolean>;
@@ -58,6 +64,9 @@ export interface PlacementGates extends PlacementClickGates {
   readonly palisadeAnswersKey: () => string;
   readonly palisadeGateProbe: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites: () => GateSites;
+  readonly canPlaceRoadAt: (col: number, row: number) => boolean;
+  /** Changes whenever `canPlaceRoadAt` may answer differently. */
+  readonly roadAnswersKey: () => string;
   readonly probes: PlacementProbeViews;
   dispose(): void;
 }
@@ -130,6 +139,25 @@ export function createPlacementGates(
     gridProbe(`p${gfxIndex}`, () =>
       nodeGridProbe(grids, `p${gfxIndex}`, (area) => host.palisadeProbe(gfxIndex, area), blockerVersion),
     );
+  // Asked every tick while read: no host version names the road sites and the road network.
+  const road = (): NodeGridProbe =>
+    gridProbe('r', () => nodeGridProbe(grids, 'r', (area) => host.roadSiteProbe(area), blockerVersion, true));
+  /** Brings `probe`'s areas within `reach` nodes of `anchor` up to now. */
+  const areasReady = (
+    probe: NodeGridProbe,
+    anchor: { readonly col: number; readonly row: number },
+    reach: number,
+  ): Promise<unknown>[] => {
+    const asked: Promise<unknown>[] = [];
+    const first = (node: number): number => Math.floor((node - reach) / PROBE_AREA_NODES);
+    const last = (node: number): number => Math.floor((node + reach) / PROBE_AREA_NODES);
+    for (let ay = first(anchor.row); ay <= last(anchor.row); ay++) {
+      for (let ax = first(anchor.col); ax <= last(anchor.col); ax++) {
+        asked.push(probe.freshAt(ax * PROBE_AREA_NODES, ay * PROBE_AREA_NODES));
+      }
+    }
+    return asked;
+  };
   const askMooring = (vehicle: number) => (): Promise<MooringProbe | null> =>
     host.mooringProbe(vehicle as Entity).then((answer) => (answer === null ? null : mooringProbeOf(answer)));
   // Asked every tick besides: the ship's own position is an input too.
@@ -184,6 +212,8 @@ export function createPlacementGates(
       );
     },
     palisadeGateSites: gateSites,
+    canPlaceRoadAt: (col, row) => fogGates.seesNode(col, row) && road().at(col, row) === true,
+    roadAnswersKey: () => `${grids.version}:${fogKey()}`,
     askPlaceAt: (typeId, col, row, paper) =>
       fogGates.seesNode(col, row)
         ? building(typeId, paper)
@@ -191,16 +221,13 @@ export function createPlacementGates(
             .then((verdict) => verdict !== false)
         : Promise.resolve(false),
     palisadeLineReady: async (gfxIndex, owner, anchor, reach) => {
-      const probe = palisade(gfxIndex);
-      const asked: Promise<unknown>[] = [ownNodes.fresh(`${owner}`, askOwnNodes(owner), blockerVersion())];
-      const first = (node: number): number => Math.floor((node - reach) / PROBE_AREA_NODES);
-      const last = (node: number): number => Math.floor((node + reach) / PROBE_AREA_NODES);
-      for (let ay = first(anchor.row); ay <= last(anchor.row); ay++) {
-        for (let ax = first(anchor.col); ax <= last(anchor.col); ax++) {
-          asked.push(probe.freshAt(ax * PROBE_AREA_NODES, ay * PROBE_AREA_NODES));
-        }
-      }
-      await Promise.all(asked);
+      await Promise.all([
+        ownNodes.fresh(`${owner}`, askOwnNodes(owner), blockerVersion()),
+        ...areasReady(palisade(gfxIndex), anchor, reach),
+      ]);
+    },
+    roadLineReady: async (anchor, reach) => {
+      await Promise.all(areasReady(road(), anchor, reach));
     },
     askPalisadeGate: async (col, row) => {
       const layout = host.palisadeLayoutVersion();

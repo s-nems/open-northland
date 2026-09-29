@@ -122,9 +122,11 @@ export function layoutPalisade(
     ...(model.gateOpen === null ? [] : (['toggle-gate'] as const)),
     'demolish-palisade' as const,
   ];
-  const showsProgress = model.underConstruction;
-  // The hitpoints label, its bar, then the build progress of a segment still going up.
-  const rows = showsProgress ? 3 : 2;
+  // The hitpoints label, its bar, then the build progress of a segment still going up. A road site has
+  // neither: its one stone lays it at once.
+  const healthRows = model.roadSite ? 0 : 2;
+  const showsProgress = model.underConstruction && !model.roadSite;
+  const rows = healthRows + (showsProgress ? 1 : 0);
   const bodyH = rowH * rows + actions.length * buttonH + pad * Math.max(0, actions.length - 1);
   const probe = sectionAt(0, 0, w, bodyH, s);
   const panel = panelRect(probe.frame.h, screen, s);
@@ -137,7 +139,7 @@ export function layoutPalisade(
     h: Math.max(4, rowH - 6),
   };
   const progress = showsProgress
-    ? { x: section.body.x, y: section.body.y + rowH * 2, w: section.body.w, h: rowH }
+    ? { x: section.body.x, y: section.body.y + rowH * healthRows, w: section.body.w, h: rowH }
     : null;
   const buttonY = section.body.y + rowH * rows;
   const buttons = actions.map((action, index) => ({

@@ -340,6 +340,7 @@ export async function createUnitChrome(
       onDemolishPalisade: (id) => opts.enqueue({ kind: 'demolishPalisade', palisade: id as Entity }),
       onSetPalisadeGate: (id, open) =>
         opts.enqueue({ kind: 'setPalisadeGate', palisade: id as Entity, open }),
+      onCancelRoadSite: (id) => opts.enqueue({ kind: 'cancelRoadSite', roadSite: id as Entity }),
       onModel: (model) => {
         settlerPanel.update(model);
         vehiclePanel.update(model);

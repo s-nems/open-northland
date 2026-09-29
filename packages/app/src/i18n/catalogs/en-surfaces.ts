@@ -265,6 +265,7 @@ export const enSurfaces = {
         coarseStep: 'Change a training counter by 10',
         craftToggle: 'Add/remove a product from production',
         workFlagOrder: 'Set a work flag',
+        roadTool: 'Road tool',
       },
       keySpace: 'Space',
       mouseLeft: 'left mouse button',

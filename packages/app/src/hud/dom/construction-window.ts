@@ -56,6 +56,8 @@ export interface ConstructionWindowDeps {
   readonly onPick: (typeId: number) => void;
   /** The quick-row tools this game offers; the others show disabled. */
   readonly tools: readonly ConstructionTool[];
+  /** A quick-row tool's tooltip, where it has one. */
+  readonly toolHints?: Partial<Readonly<Record<ConstructionTool, string>>>;
   /** A quick-row tool was pressed; the window has already hidden for its placement. */
   readonly onPickTool: (tool: ConstructionTool) => void;
   /** A plan card was pressed: the owner starts the placement it pays for (a named house), or holds
@@ -175,6 +177,8 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     const text = control.querySelector('span');
     if (text !== null) text.textContent = copy[tool];
     if (deps.tools.includes(tool)) {
+      const hint = deps.toolHints?.[tool];
+      if (hint !== undefined) control.title = hint;
       control.addEventListener('click', () => {
         deps.cue('confirm');
         suspend();

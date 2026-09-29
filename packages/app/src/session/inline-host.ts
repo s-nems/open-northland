@@ -75,6 +75,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
       Promise.resolve(sim.placementAnswer(buildingType, area, player, tribe, gated)),
     signpostProbe: (player, area) => Promise.resolve(sim.signpostAnswer(player, area)),
     palisadeProbe: (gfxIndex, area) => Promise.resolve(sim.palisadeAnswer(gfxIndex, area)),
+    roadSiteProbe: (area) => Promise.resolve(sim.roadSiteAnswer(area)),
     palisadeGateProbe: (hx, hy, closedGates, player) =>
       Promise.resolve(sim.palisadeGateProbe(hx, hy, closedGates, player)),
     palisadeGateSites: (closedGates, player) => Promise.resolve(sim.palisadeGateSites(closedGates, player)),

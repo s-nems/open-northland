@@ -36,6 +36,11 @@ const reviewedBinaryAssets = new Set([
   'packages/app/src/assets/markers/plan-stake-blocked.png',
   'packages/app/src/assets/markers/plan-stake-open.png',
   'packages/app/src/assets/markers/plan-stake-ring.png',
+  // The road tool's plot: generated for this project, no original-game input; the blocked and claimed
+  // copies are the same image with its stones recoloured and its pegs pulled.
+  'packages/app/src/assets/markers/plan-road-blocked.png',
+  'packages/app/src/assets/markers/plan-road-claimed.png',
+  'packages/app/src/assets/markers/plan-road-open.png',
   'packages/app/public/fonts/tinos-latin-400.woff2',
   'packages/app/public/fonts/tinos-latinext-400.woff2',
   // The menu's typefaces: Cinzel and Alegreya Sans, subset from Google Fonts releases; SIL OFL

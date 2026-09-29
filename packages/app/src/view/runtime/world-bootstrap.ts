@@ -2,6 +2,7 @@ import type { SpriteSheet, TerrainTextureSet } from '@open-northland/render';
 import { WorldRenderer } from '@open-northland/render';
 import type { Application } from 'pixi.js';
 import { loadGoodNameMap } from '../../content/good-names.js';
+import { loadPlanRoadArt } from '../../content/plan-road-art.js';
 import { loadPlanStakeArt } from '../../content/plan-stake-art.js';
 import {
   loadRuntimeRealContent,
@@ -44,7 +45,7 @@ export async function createWorldRenderer(
   sheet: SpriteSheet | undefined,
   playerColourOf?: (player: number) => number,
 ): Promise<WorldRenderer> {
-  const planStakes = await loadPlanStakeArt();
+  const [planStakes, planRoads] = await Promise.all([loadPlanStakeArt(), loadPlanRoadArt()]);
   // One read, so a write landing mid-construction cannot hand the renderer a mixed snapshot.
   const stored = readStoredSettings();
   return new WorldRenderer(app, {
@@ -55,6 +56,7 @@ export async function createWorldRenderer(
     postFx: postFxParam(params) ?? stored.postFxEnabled,
     ...(playerColourOf !== undefined ? { playerColourOf } : {}),
     planStakes,
+    planRoads,
   });
 }
 

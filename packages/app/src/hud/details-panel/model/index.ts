@@ -2,6 +2,7 @@ import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import {
   isBuilding,
   isPalisade,
+  isRoadSite,
   isSettler,
   isSignpost,
   isVehicle,
@@ -134,6 +135,8 @@ export interface PalisadePanelModel {
   readonly builtPct: number;
   readonly gateOpen: boolean | null;
   readonly underConstruction: boolean;
+  /** A road site shares the wall site's panel: a title and the button that withdraws it. */
+  readonly roadSite: boolean;
 }
 
 export type UnitPanelModel =
@@ -161,6 +164,19 @@ function palisadePanelModel(ent: SnapshotEntity): PalisadePanelModel {
     builtPct: pct(num(palisade?.built)),
     gateOpen: gate === undefined || gate === null ? null : gate.open === true,
     underConstruction: ent.components.UnderConstruction !== undefined,
+    roadSite: false,
+  };
+}
+
+function roadSitePanelModel(ent: SnapshotEntity): PalisadePanelModel {
+  return {
+    kind: 'palisade',
+    entityId: ent.id,
+    health: null,
+    builtPct: 0,
+    gateOpen: null,
+    underConstruction: true,
+    roadSite: true,
   };
 }
 
@@ -177,6 +193,7 @@ export function buildUnitPanelModel(
   const buildings: SnapshotEntity[] = [];
   const signposts: SnapshotEntity[] = [];
   const palisades: SnapshotEntity[] = [];
+  const roadSites: SnapshotEntity[] = [];
   const vehicles: SnapshotEntity[] = [];
   for (const id of selected) {
     const e = entityById(snapshot, id);
@@ -185,6 +202,7 @@ export function buildUnitPanelModel(
     else if (isBuilding(e)) buildings.push(e);
     else if (isSignpost(e)) signposts.push(e);
     else if (isPalisade(e)) palisades.push(e);
+    else if (isRoadSite(e)) roadSites.push(e);
     else if (isVehicle(e)) vehicles.push(e);
   }
   const settler = only(settlers);
@@ -195,6 +213,10 @@ export function buildUnitPanelModel(
   const noUnitOrHouse = settlers.length === 0 && buildings.length === 0;
 
   if (noUnitOrHouse && signposts.length === 0 && palisade !== undefined) return palisadePanelModel(palisade);
+  const roadSite = only(roadSites);
+  if (noUnitOrHouse && signposts.length === 0 && palisades.length === 0 && roadSite !== undefined) {
+    return roadSitePanelModel(roadSite);
+  }
   // A signpost is a direct-click-only selection (never marquee'd), so units/buildings always outrank
   // it. A vehicle's order window opens for it alone; settlers boxed with vehicles are a group.
   if (noUnitOrHouse && signpost !== undefined) return { kind: 'signpost', entityId: signpost.id };

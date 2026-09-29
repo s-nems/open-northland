@@ -212,6 +212,11 @@ export const plContent = {
       summary:
         'Budowniczowie najpierw naprawiają spokojny dom, a bliższy, przy którym trwa walka, zostawiają na później.',
     },
+    roads: {
+      title: 'Drogi',
+      summary:
+        'Dwóch budowniczych brukuje wytyczoną linię placów pod drogę kamieniem ze składu; jeden kamień brukuje plac i czekających sąsiadów.',
+    },
     palisade: {
       title: 'Palisady i bramy',
       summary:

@@ -49,6 +49,8 @@ export interface ToolPanelInputDeps {
   readonly toggleNav: (id: NavEntryId) => void;
   readonly togglePause: () => void;
   readonly toggleHud: () => void;
+  /** Hold the road tool; absent where the game offers none, which leaves its key to the page. */
+  readonly roadTool?: () => void;
   /** The GUI click: a held mode called off by right-click or Esc fails (Esc is an approximation: only
    *  the mouse cancel is original behavior). */
   readonly cue: (cue: UiCue) => void;
@@ -184,6 +186,12 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       if (modalOwned(e)) return;
       consume(e);
       deps.toggleNav(entry);
+      return;
+    }
+    if (deps.roadTool !== undefined && isActionHotkey(e, deps.bindings, 'roadTool')) {
+      if (modalOwned(e)) return;
+      consume(e);
+      deps.roadTool();
       return;
     }
     if (isActionHotkey(e, deps.bindings, 'pauseToggle')) {

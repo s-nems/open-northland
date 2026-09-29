@@ -5,6 +5,7 @@ export interface PanelClickActions {
   readonly onDemolishSignpost: (entityId: number) => void;
   readonly onDemolishPalisade?: (entityId: number) => void;
   readonly onSetPalisadeGate?: (entityId: number, open: boolean) => void;
+  readonly onCancelRoadSite?: (entityId: number) => void;
 }
 
 export function applyPanelClick(click: PanelClick, actions: PanelClickActions): void {
@@ -17,6 +18,9 @@ export function applyPanelClick(click: PanelClick, actions: PanelClickActions): 
       return;
     case 'setPalisadeGate':
       actions.onSetPalisadeGate?.(click.entityId, click.open);
+      return;
+    case 'cancelRoadSite':
+      actions.onCancelRoadSite?.(click.entityId);
       return;
     default: {
       const unreachable: never = click;

@@ -120,6 +120,8 @@ interface RightClickAim {
   readonly house: number | null;
   /** An own building under the cursor, the ladder's building rung. */
   readonly building: number | null;
+  /** An own wall or road site under the cursor, which the selected builders take as their site. */
+  readonly site: number | null;
   readonly tile: Tile;
 }
 
@@ -207,6 +209,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const aim: RightClickAim = {
       house: onBuilding ?? pickTopAt(deps.targets.buildings(), world.x, world.y),
       building: onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y),
+      site: siteAt(world.x, world.y),
       tile: worldToTile(world.x, world.y, deps.elevation),
     };
     if (
@@ -266,7 +269,35 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   const orderPastRoute = (event: MouseEvent, units: readonly FormationUnit[], aim: RightClickAim): boolean =>
     aim.building !== null
       ? orderAtBuilding(event, units, aim.building)
-      : issueWalkOrder(aim.tile, units, 'moveUnit');
+      : aim.site !== null
+        ? orderAtSite(units, aim.site, aim.tile)
+        : issueWalkOrder(aim.tile, units, 'moveUnit');
+
+  /** An own wall segment or road site still to be built under the cursor. */
+  const siteAt = (wx: number, wy: number): number | null => {
+    const snapshot = deps.snapshot();
+    const walls = deps.targets
+      .owned('palisade')
+      .filter((target) => entityById(snapshot, target.ref)?.components.UnderConstruction !== undefined);
+    return pickTopAt([...walls, ...deps.targets.owned('roadsite')], wx, wy);
+  };
+
+  /** A wall or road site pins the builders among `commanded` to it; the rest walk there. */
+  const orderAtSite = (commanded: readonly FormationUnit[], site: number, tile: Tile): boolean => {
+    const snapshot = deps.snapshot();
+    const walkers: FormationUnit[] = [];
+    for (const unit of commanded) {
+      const self = entityById(snapshot, unit.ref);
+      const job = self !== undefined ? settlerJobType(self) : undefined;
+      if (job !== undefined && systems.jobCanBuild(deps.content, job)) {
+        deps.enqueue({ kind: 'assignBuilder', entity: unit.ref as Entity, site: site as Entity });
+      } else {
+        walkers.push(unit);
+      }
+    }
+    if (walkers.length > 0) issueWalkOrder(tile, walkers, 'moveUnit');
+    return true;
+  };
 
   /** The right-click ladder over an own building; true when it opened the school dialog or enqueued an
    *  order, so a building that takes none of the selection stays silent. */

@@ -132,6 +132,10 @@ export function isPalisade(e: SnapshotEntity): boolean {
   return e.components.Palisade !== undefined;
 }
 
+export function isRoadSite(e: SnapshotEntity): boolean {
+  return e.components.RoadSite !== undefined;
+}
+
 /** The commander's seat is the last passenger slot; a free slot there reads as no commander. */
 export function vehicleCommanderOf(e: SnapshotEntity): number | undefined {
   const slots = (e.components.Vehicle as { passengers?: unknown } | undefined)?.passengers;
@@ -248,6 +252,14 @@ export function buildingTypeOf(e: SnapshotEntity): number | undefined {
 export function buildingTribeOf(e: SnapshotEntity): number | undefined {
   const b = e.components.Building as { tribe?: unknown } | undefined;
   return num(b?.tribe);
+}
+
+/** The tribe a building, wall segment or road site is raised for, which a builder must share. */
+export function siteTribeOf(e: SnapshotEntity): number | undefined {
+  const site = (e.components.Building ?? e.components.Palisade ?? e.components.RoadSite) as
+    | { tribe?: unknown }
+    | undefined;
+  return num(site?.tribe);
 }
 
 /** Fixed-point construction progress, where `ONE` is finished. */

@@ -165,6 +165,11 @@ export interface ToolPanelOptions {
   readonly palisadeAnswersKey?: () => string;
   readonly palisadeGateProbe?: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites?: () => GateSites;
+  /** Where a road site may be ordered; absent, the road tool stays disabled. */
+  readonly canPlaceRoadAt?: (col: number, row: number) => boolean;
+  /** Whether a road or a road site already lies on a node. */
+  readonly roadBuiltAt?: (col: number, row: number) => boolean;
+  readonly roadAnswersKey?: () => string;
   /** The placement rules a click asks the sim as it lands. */
   readonly placementClickAsks?: PlacementClickAsks;
   /** The wall and closed-gate graphics rows the quick row's palisade and gate tools place; a missing
@@ -244,6 +249,9 @@ export interface ToolPanelController {
   /** The source wall/gate graphics row currently held for placement. */
   palisadeGfxIndex(): number | null;
   palisadeMode(): PalisadePlacementMode | null;
+  /** The road tool is held. */
+  roadActive(): boolean;
+  roadPreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
   /** Arm the wall line tool to lay finished walls for `owner` through the admin channel; false when the
    *  map has no wall row or world edits are off. */
   enterStandingWall(owner: number, tribe: number): boolean;
@@ -288,6 +296,12 @@ interface ToolPanelAssets {
   readonly uiFont: UiFont;
   readonly bitmaps: PanelBitmaps;
   readonly history: HypertextBook | null;
+}
+
+/** The road button's tooltip: its key, when bound, and what a stone paves. */
+function roadToolHint(key: string | null): string {
+  const copy = messages().hud.construction;
+  return key === null ? `${copy.road}: ${copy.roadHint}` : `${copy.road} (${key}): ${copy.roadHint}`;
 }
 
 const assetsByLanguage = new Map<string, Promise<ToolPanelAssets>>();
@@ -399,6 +413,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       ...(opts.palisadeAnswersKey !== undefined ? { palisadeAnswersKey: opts.palisadeAnswersKey } : {}),
       ...(opts.palisadeGateProbe !== undefined ? { palisadeGateProbe: opts.palisadeGateProbe } : {}),
       ...(opts.palisadeGateSites !== undefined ? { palisadeGateSites: opts.palisadeGateSites } : {}),
+      ...(opts.canPlaceRoadAt !== undefined ? { canPlaceRoadAt: opts.canPlaceRoadAt } : {}),
+      ...(opts.roadBuiltAt !== undefined ? { roadBuiltAt: opts.roadBuiltAt } : {}),
+      ...(opts.roadAnswersKey !== undefined ? { roadAnswersKey: opts.roadAnswersKey } : {}),
       ...(opts.placementClickAsks !== undefined ? { clickAsks: opts.placementClickAsks } : {}),
       ...(opts.enqueueTrusted !== undefined ? { enqueueTrusted: opts.enqueueTrusted } : {}),
       tribe: opts.tribe,
@@ -417,6 +434,13 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         : tool === 'gate'
           ? (opts.palisadeTools?.gate ?? null)
           : null;
+    const roadOffered = opts.canPlaceRoadAt !== undefined;
+    const toolOffered = (tool: ConstructionTool): boolean =>
+      tool === 'road' ? roadOffered : palisadeToolRow(tool) !== null;
+    const roadKeyLabel = (): string | null => {
+      const binding = opts.bindings.roadTool;
+      return binding === null ? null : keyDisplayLabel(binding);
+    };
     // A cancel runs the modes in this order, so the plan a cancelled placement hands back stays held
     // until the next cancel drops it: one rung per press.
     const held: readonly HeldMode[] = [heldPaper, placement];
@@ -500,8 +524,13 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           paperLabel: nameOfPaper,
           buildingLabel: (typeId) => labelByType.get(typeId) ?? `#${typeId}`,
           onPick: seam.onPick,
-          tools: CONSTRUCTION_TOOLS.filter((tool) => palisadeToolRow(tool) !== null),
+          tools: CONSTRUCTION_TOOLS.filter(toolOffered),
+          toolHints: { road: roadToolHint(roadKeyLabel()) },
           onPickTool: (tool) => {
+            if (tool === 'road') {
+              placement.enterRoad();
+              return;
+            }
             const gfxIndex = palisadeToolRow(tool);
             if (gfxIndex !== null) placement.enterPalisade(gfxIndex, tool === 'gate' ? 'gate' : 'wall');
           },
@@ -663,6 +692,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         speed.togglePause();
       },
       toggleHud: () => opts.onToggleHud?.(),
+      ...(roadOffered
+        ? {
+            roadTool: () => {
+              ctx.cue('confirm');
+              placement.enterRoad();
+            },
+          }
+        : {}),
       cue: ctx.cue,
       deferToOverlay: (clientX, clientY) => opts.deferToOverlay?.(clientX, clientY) === true,
     });
@@ -720,6 +757,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       placementPaper: () => placement.activePaper(),
       palisadeGfxIndex: () => placement.activePalisade(),
       palisadeMode: () => placement.activePalisadeMode(),
+      roadActive: () => placement.activeRoad(),
+      roadPreview: (tile) => placement.roadPreview(tile),
       enterStandingWall: (owner, tribe): boolean => {
         const gfxIndex = opts.palisadeTools?.wall ?? null;
         if (gfxIndex === null || opts.enqueueTrusted === undefined) return false;

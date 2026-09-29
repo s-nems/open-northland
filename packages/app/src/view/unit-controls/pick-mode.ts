@@ -284,7 +284,16 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
 
   const buildingUnder = (event: MouseEvent, kind: BuildingPickKind): number | null => {
     const w = deps.toWorld(event.clientX, event.clientY);
-    const candidates = kind === 'trade-house' ? deps.targets.buildings() : deps.targets.owned('building');
+    const candidates =
+      kind === 'trade-house'
+        ? deps.targets.buildings()
+        : kind === 'building-site'
+          ? [
+              ...deps.targets.owned('building'),
+              ...deps.targets.owned('palisade'),
+              ...deps.targets.owned('roadsite'),
+            ]
+          : deps.targets.owned('building');
     return pickTopAt(candidates, w.x, w.y);
   };
 
