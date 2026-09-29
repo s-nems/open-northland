@@ -37,6 +37,7 @@ const REASON_PARAMS: { readonly [C in RelayReasonCode]: ParamsOf<Extract<RelayRe
   malformed: { detail: 'detail' },
   trafficLimit: {},
   relayFault: {},
+  serverRestart: {},
   alreadyIntroduced: {},
   alreadyInRoom: {},
   notInRoom: {},
@@ -111,6 +112,7 @@ const CLOSING_CODES = keysOf<ClosingCode>({
   messageTooLarge: true,
   malformed: true,
   trafficLimit: true,
+  serverRestart: true,
 });
 
 const COMPATIBILITY_KINDS = keysOf<CompatibilityIssue['kind']>({

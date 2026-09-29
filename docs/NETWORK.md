@@ -22,8 +22,9 @@ plus its fields). A relay message is bounded by what it carries: a full tick fra
 `MAX_MEMBERS * MAX_COMMANDS_PER_TICK` envelopes of `MAX_ENVELOPE_BYTES` each plus their sequence
 wrappers, a little over 240 KiB, and a blob is as large as the one a client sent. A binary frame or
 unparsable text closes the connection. Every message is an object with a string `kind`. A close
-with `CLOSE_REPLACED` (4000) or `CLOSE_PROTOCOL_ERROR` (1002) is final; after any other close a
-client may reconnect on its token.
+with `CLOSE_REPLACED` (4000), `CLOSE_PROTOCOL_ERROR` (1002) or `CLOSE_SERVICE_RESTART` (1012, the
+relay shutting down with its rooms) is final; after any other close a client may reconnect on its
+token.
 
 The relay replies to a message it cannot honour with `rejected { of, reason }`, naming the kind it
 refused, and keeps the connection. A violation of the protocol itself gets `error { reason }`

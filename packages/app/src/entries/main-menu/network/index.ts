@@ -77,7 +77,8 @@ export function networkScreen(
     roomHost.replaceChildren();
     browser.hidden = false;
   };
-  const disconnect = button(copy.disconnect, () => {
+  /** Ends this screen's connection and room, leaving `text` as the notice; Connect works again. */
+  const dropConnection = (text: string): void => {
     generation++;
     unsubscribe();
     assets?.dispose();
@@ -85,9 +86,10 @@ export function networkScreen(
     connection?.dispose();
     connection = null;
     resetRoom();
-    notice('');
+    notice(text);
     sync();
-  });
+  };
+  const disconnect = button(copy.disconnect, () => dropConnection(''));
   form.append(field(copy.server, address), field(copy.nick, nick), connect, disconnect);
   const list = node('div', 'network-menu__rooms');
   const refresh = button(copy.refresh, () => connection?.client.listRooms());
@@ -215,7 +217,11 @@ export function networkScreen(
         generation++;
         busy = false;
         notice(copy.reconnecting);
-      } else if (event.state === 'closed') notice(relayCloseText(event.reason));
+      } else if (event.state === 'closed') {
+        // A link that will not reopen leaves nothing to wait for, a restarted relay no room to show.
+        dropConnection(relayCloseText(event.reason));
+        return;
+      }
       room && current.client.room && room.update(current.client.room, current.connected);
       sync();
       return;

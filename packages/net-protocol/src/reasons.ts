@@ -15,6 +15,7 @@ export type RelayReason =
   | { readonly code: 'malformed'; readonly detail: string }
   | { readonly code: 'trafficLimit' }
   | { readonly code: 'relayFault' }
+  | { readonly code: 'serverRestart' }
   | { readonly code: 'alreadyIntroduced' }
   | { readonly code: 'alreadyInRoom' }
   | { readonly code: 'notInRoom' }
@@ -92,7 +93,8 @@ export type ClosingReason = Extract<
       | 'replaced'
       | 'messageTooLarge'
       | 'malformed'
-      | 'trafficLimit';
+      | 'trafficLimit'
+      | 'serverRestart';
   }
 >;
 

@@ -14,6 +14,7 @@ const SAMPLES: { readonly [C in RelayReasonCode]: Extract<RelayReason, { code: C
   malformed: { code: 'malformed', detail: 'setSettings: the room world is immutable' },
   trafficLimit: { code: 'trafficLimit' },
   relayFault: { code: 'relayFault' },
+  serverRestart: { code: 'serverRestart' },
   alreadyIntroduced: { code: 'alreadyIntroduced' },
   alreadyInRoom: { code: 'alreadyInRoom' },
   notInRoom: { code: 'notInRoom' },

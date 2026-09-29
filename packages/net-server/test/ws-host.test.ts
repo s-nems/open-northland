@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { connect as connectTcp } from 'node:net';
 import type { GameSession } from '@open-northland/lockstep';
-import { PROTOCOL_VERSION, type RoomSettings } from '@open-northland/net-protocol';
+import { CLOSE_SERVICE_RESTART, PROTOCOL_VERSION, type RoomSettings } from '@open-northland/net-protocol';
 import { HEALTH_PATH, type RelayHost, startRelayHost } from '@open-northland/net-server';
 import { playerCommand, restoreSimulation, type SaveGame, Simulation } from '@open-northland/sim';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -168,6 +168,16 @@ describe('websocket host', () => {
     const event = await closed;
     expect(client.errors).toEqual([{ code: 'helloFirst' }]);
     expect(event.reason).toBe('helloFirst');
+  });
+
+  it.skipIf(REMOTE_URL !== undefined)('tells its clients it restarts when it shuts down', async () => {
+    const local = await startRelayHost({ port: 0 });
+    const { socket } = await connect(`ws://127.0.0.1:${local.port}`, 'Dorota');
+    const closed = new Promise<CloseEvent>((resolve) => socket.addEventListener('close', resolve));
+    await local.close();
+    const event = await closed;
+    expect(event.code).toBe(CLOSE_SERVICE_RESTART);
+    expect(event.reason).toBe('serverRestart');
   });
 
   it.skipIf(REMOTE_URL !== undefined)('survives a request target the URL parser would refuse', async () => {

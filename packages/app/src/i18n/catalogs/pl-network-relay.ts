@@ -19,6 +19,7 @@ export const plNetworkRelay = {
     malformed: 'serwer nie zrozumiał wiadomości z tej gry',
     trafficLimit: 'ta gra wysłała zbyt dużo danych',
     relayFault: 'na serwerze wystąpił błąd wewnętrzny',
+    serverRestart: 'serwer został uruchomiony ponownie',
     alreadyIntroduced: 'ta gra już się przedstawiła',
     alreadyInRoom: 'jesteś już w pokoju',
     notInRoom: 'nie jesteś w żadnym pokoju',

@@ -1,14 +1,29 @@
-import { CLOSE_PROTOCOL_ERROR, CLOSE_REPLACED, type ClientMessage } from '@open-northland/net-protocol';
+import {
+  CLOSE_PROTOCOL_ERROR,
+  CLOSE_REPLACED,
+  CLOSE_SERVICE_RESTART,
+  type ClientMessage,
+  type ClosingCode,
+} from '@open-northland/net-protocol';
 
 const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 10_000;
+const FINAL_CLOSE_CODES: readonly number[] = [CLOSE_REPLACED, CLOSE_PROTOCOL_ERROR];
+/** A restarted relay has forgotten every room, so reconnecting to one would only be refused. The
+ *  reason tells the relay's own restart from a proxy's, after which the relay may still be there. */
+const SERVER_RESTART: ClosingCode = 'serverRestart';
+
+function finalClose(event: CloseEvent): boolean {
+  if (FINAL_CLOSE_CODES.includes(event.code)) return true;
+  return event.code === CLOSE_SERVICE_RESTART && event.reason === SERVER_RESTART;
+}
 
 /** What a relay link reports to its owner. */
 export interface RelayLinkEvents {
   /** Runs on every (re)connection; the client introduces itself again from here. */
   readonly onOpen: () => void;
   readonly onMessage: (raw: unknown) => void;
-  /** Runs once the link will not reopen: closed here, replaced, or refused by the relay. */
+  /** Runs once the link will not reopen: closed here, replaced, refused or restarted by the relay. */
   readonly onClosed: (reason: string) => void;
   readonly onRetry?: (attempt: number, inMs: number) => void;
 }
@@ -83,7 +98,7 @@ export class RelaySocket implements RelayLink {
       if (this.socket !== socket) return;
       this.socket = null;
       if (this.closed) return;
-      if (event.code === CLOSE_REPLACED || event.code === CLOSE_PROTOCOL_ERROR) {
+      if (finalClose(event)) {
         this.closed = true;
         this.options.onClosed(event.reason === '' ? `closed with code ${event.code}` : event.reason);
         return;

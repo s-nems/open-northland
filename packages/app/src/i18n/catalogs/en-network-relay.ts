@@ -19,6 +19,7 @@ export const enNetworkRelay = {
     malformed: 'the server could not read a message from this game',
     trafficLimit: 'this game sent too much data',
     relayFault: 'the server hit an internal error',
+    serverRestart: 'the server restarted',
     alreadyIntroduced: 'this game has already introduced itself',
     alreadyInRoom: 'you are already in a room',
     notInRoom: 'you are not in a room',

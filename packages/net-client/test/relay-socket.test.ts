@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const CLOSE_ABNORMAL = 1006;
 const CLOSE_PROTOCOL_ERROR = 1002;
 const CLOSE_REPLACED = 4000;
+const CLOSE_SERVICE_RESTART = 1012;
 
 class FakeSocket {
   readonly OPEN = 1;
@@ -119,6 +120,21 @@ describe('RelaySocket', () => {
       expect(sockets).toHaveLength(1);
       expect(events.at(-1)).toBe('closed:told why');
     }
+  });
+
+  it('stays closed after the relay restarts, but retries a restart some proxy reported', () => {
+    const restarted = harness();
+    restarted.sockets[0]?.open();
+    restarted.sockets[0]?.drop(CLOSE_SERVICE_RESTART, 'serverRestart');
+    vi.advanceTimersByTime(60_000);
+    expect(restarted.sockets).toHaveLength(1);
+    expect(restarted.events.at(-1)).toBe('closed:serverRestart');
+
+    const proxied = harness();
+    proxied.sockets[0]?.open();
+    proxied.sockets[0]?.drop(CLOSE_SERVICE_RESTART, '');
+    vi.advanceTimersByTime(60_000);
+    expect(proxied.sockets.length).toBeGreaterThan(1);
   });
 
   it('closes for good on request and cancels a pending retry', () => {

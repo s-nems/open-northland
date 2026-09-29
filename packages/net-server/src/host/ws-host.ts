@@ -3,6 +3,7 @@ import { Socket } from 'node:net';
 import {
   CLOSE_PROTOCOL_ERROR,
   CLOSE_REPLACED,
+  CLOSE_SERVICE_RESTART,
   type ClosingCode,
   MAX_BLOB_MESSAGE_BYTES,
   PROTOCOL_VERSION,
@@ -20,6 +21,7 @@ const CLOSE_INTERNAL_ERROR = 1011;
 /** Close reasons are relay reason codes, which a client words in its own language. */
 const TRAFFIC_LIMIT: ClosingCode = 'trafficLimit';
 const RELAY_FAULT: RelayReasonCode = 'relayFault';
+const SERVER_RESTART: ClosingCode = 'serverRestart';
 export const HEALTH_PATH = '/healthz';
 const MS_PER_SECOND = 1000;
 const HTTP_CONNECTION_HEADROOM = 16;
@@ -265,7 +267,9 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
         close: () => {
           clearInterval(poll);
           clearInterval(silence);
-          for (const socket of sockets.clients) socket.terminate();
+          // Rooms live in memory and end here; the close code tells a client not to wait for them.
+          // `closeTimeout` bounds a client that never answers the close.
+          for (const socket of sockets.clients) socket.close(CLOSE_SERVICE_RESTART, SERVER_RESTART);
           sockets.close();
           server.closeAllConnections();
           return new Promise((done, fail) => server.close((err) => (err ? fail(err) : done())));
