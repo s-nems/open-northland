@@ -103,8 +103,9 @@ const IRON_AND_WOOD: readonly PlacementAffinity[] = [
   { kind: 'resource', good: 'wood' },
 ];
 
-/** A well beside the first `building` with none in reach. `cap` only caps the seat's wells, one more
- *  than the well entries before it allow, since the entry is skipped once every such building has one. */
+/** A well beside the first `building` with none in reach; the entry is skipped once every such building
+ *  has one. `cap` only caps the seat's wells: one for the opening mill and bakeries and one for every
+ *  other water-drinking building the list has raised by this entry, so each has room for its own. */
 function wellBeside(building: string, cap: number): BuildOrderEntry {
   return {
     kind: 'place',
@@ -262,7 +263,7 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     needsResources: ['mushroom', 'gold'],
   },
   // The druids brew with water: each druid entry is followed by a well beside the hut with none in reach.
-  wellBeside('work_druid_01', 4),
+  wellBeside('work_druid_01', 5),
   { kind: 'place', building: 'work_smithy_01', count: 4, near: IRON_AND_WOOD },
   // Beside the barracks: the temple stands with the army it blesses, not on a front of its own.
   {
@@ -274,10 +275,10 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   },
   { kind: 'place', building: 'work_bakery_01', count: 4, near: [{ kind: 'building', id: 'work_mill_00' }] },
   // Every bakery drinks water like the brewery: one standing beyond a well's reach gets a well beside it.
-  wellBeside('work_bakery_00', 6),
+  wellBeside('work_bakery_00', 7),
   // Beside the first, sharing its hive and well when they stand in reach; a second hive and well beside
   // it otherwise.
-  ...breweryWithHiveAndWell(2, 7),
+  ...breweryWithHiveAndWell(2, 8),
   { kind: 'place', building: 'home_level_04', count: 8 },
   // The late game runs out of mail, plate and long bows.
   { kind: 'place', building: 'work_smithy_01', count: 5, near: [{ kind: 'resource', good: 'iron' }] },
@@ -302,9 +303,9 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   },
   { kind: 'collector', good: 'mushroom', count: 2 },
   druidHuts(4),
-  wellBeside('work_druid_01', 8),
+  wellBeside('work_druid_01', 10),
   // The third brewery beside the first two, with its own hive and well by the same rule.
-  ...breweryWithHiveAndWell(3, 9),
+  ...breweryWithHiveAndWell(3, 11),
   // From here the warehouses and the denser tower ring run as lanes beside the list, one site each out of
   // the four the late game opens (authored): a warehouse wherever a workshop or a work flag stands
   // beyond every store's reach, so the smithies unload nearby and the ore piled at the mines gets carried
@@ -318,12 +319,12 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_smithy_01', count: 7, near: IRON_AND_WOOD },
   { kind: 'upgrade', building: 'work_joinery_02', count: 1, belowTier: 'work_joinery_03' },
   druidHuts(6),
-  wellBeside('work_druid_01', 10),
-  { kind: 'place', building: 'work_bakery_01', count: 5, near: [{ kind: 'building', id: 'work_mill_00' }] },
-  wellBeside('work_bakery_00', 11),
-  ...breweryWithHiveAndWell(4, 12),
-  druidHuts(8),
   wellBeside('work_druid_01', 13),
+  { kind: 'place', building: 'work_bakery_01', count: 5, near: [{ kind: 'building', id: 'work_mill_00' }] },
+  wellBeside('work_bakery_00', 14),
+  ...breweryWithHiveAndWell(4, 15),
+  druidHuts(8),
+  wellBeside('work_druid_01', 17),
 ];
 
 /** What a seat with no base puts up: the headquarters declares an empty construction bill and would

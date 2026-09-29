@@ -110,8 +110,9 @@ function coinTopUpSeat(amulets: CraftSeat): CraftSeat {
 }
 
 /** The mint's six seats over three mints: one coiner always, two more only while the coins run under the
- *  glut, and the rest on amulets. The amulet seats alternate strength-first and defence-first, so the
- *  plentiful leather armour does not turn every seat to defence amulets while short swords are in store. */
+ *  glut, and the rest on amulets. From the second seat on they alternate strength-first and defence-first,
+ *  three seats to two, so the plentiful leather armour does not turn every seat to defence amulets while
+ *  short swords are in store. */
 const MINT_SEATS: readonly CraftSeat[] = [
   ['coin'],
   coinTopUpSeat(STRENGTH_AMULET_SEAT),
@@ -201,7 +202,7 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
     seats: [['holy_oil'], ...Array.from({ length: DRUID_SEATS - 1 }, (): CraftSeat => ['potion_heal_big'])],
   },
   // One coiner on coins for good, two more only while the coins run under the glut line, and the rest
-  // on amulets, half strength-first and half defence-first.
+  // on amulets, the seats with an amulet line alternating strength-first and defence-first.
   work_coin_mint: { seats: MINT_SEATS },
 };
 
