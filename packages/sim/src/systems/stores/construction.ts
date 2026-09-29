@@ -121,3 +121,17 @@ export function neededConstructionGoods(
   shortfalls.sort((a, b) => a.covered * b.need - b.covered * a.need || a.goodType - b.goodType);
   return shortfalls.map(({ goodType, amount }) => ({ goodType, amount }));
 }
+
+/** Add to `goods` each good of `site`'s bill not yet on site in full, whatever is inbound: a superset of
+ *  {@link neededConstructionGoods} under any tally. */
+export function addUndeliveredConstructionGoods(
+  world: World,
+  ctx: ContentContext,
+  site: Entity,
+  goods: Set<number>,
+): void {
+  const stock = world.tryGet(site, Stockpile)?.amounts;
+  for (const line of constructionBillOf(world, ctx, site)) {
+    if (Math.max(stock?.get(line.goodType) ?? 0, 0) < line.amount) goods.add(line.goodType);
+  }
+}

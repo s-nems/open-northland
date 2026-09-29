@@ -1,7 +1,8 @@
-import { CurrentAtomic, UnderConstruction } from '../../../../components/index.js';
+import { CurrentAtomic, Palisade, UnderConstruction } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { remainingConstructionSteps } from '../../../economy/construction.js';
+import { addUndeliveredConstructionGoods } from '../../../stores/index.js';
 import { atomicHoldsSettler } from '../../atomics/busy.js';
 
 /**
@@ -13,6 +14,7 @@ import { atomicHoldsSettler } from '../../atomics/busy.js';
 export class ConstructionTaskClaims {
   private readonly hammerBySite = new Map<Entity, number>();
   private readonly stepCapacityBySite = new Map<Entity, number>();
+  private walls: WallSurvey | undefined;
 
   constructor(
     private readonly world: World,
@@ -47,6 +49,29 @@ export class ConstructionTaskClaims {
     return true;
   }
 
+  /**
+   * Whether any wall segment could give a builder a task: an unclaimed delivered step, or a good some
+   * segment still lacks that `canSource` finds. False proves no segment qualifies, so an idle builder
+   * skips the scan over every waiting one. One survey serves the pass: claims only take steps away, and
+   * site stock stays put during the planner.
+   */
+  wallMayHaveTask(canSource: (goodType: number) => boolean): boolean {
+    this.walls ??= this.surveyWalls();
+    return (
+      this.walls.hammerable.some((site) => this.hasHammerWork(site)) || this.walls.missing.some(canSource)
+    );
+  }
+
+  private surveyWalls(): WallSurvey {
+    const hammerable: Entity[] = [];
+    const missing = new Set<number>();
+    for (const site of this.world.query(UnderConstruction, Palisade)) {
+      if (this.hasHammerWork(site)) hammerable.push(site);
+      addUndeliveredConstructionGoods(this.world, this.ctx, site, missing);
+    }
+    return { hammerable, missing: [...missing] };
+  }
+
   private reserveHammer(site: Entity): void {
     this.hammerBySite.set(site, (this.hammerBySite.get(site) ?? 0) + 1);
   }
@@ -60,4 +85,11 @@ export class ConstructionTaskClaims {
     }
     return capacity;
   }
+}
+
+interface WallSurvey {
+  /** Segments with an unclaimed delivered step when the pass first asked. */
+  readonly hammerable: readonly Entity[];
+  /** Every good some segment's bill still lacks on site. */
+  readonly missing: readonly number[];
 }

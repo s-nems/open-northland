@@ -27,7 +27,7 @@ import {
 } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
-import { type InteractionCellIndex, nearestBuilderSite, unreachableSiteStand } from '../../targets/index.js';
+import { InteractionCellIndex, nearestBuilderSite, unreachableSiteStand } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { claimWorkCell } from '../spacing.js';
 import type { ConstructionTaskClaims } from './construction-task-claims.js';
@@ -109,7 +109,7 @@ export function planBuilder(
     constructionSiteAvailableTo(world, site, e) &&
     !segmentAwaitsClearance(plan, site) &&
     builderCanReach(plan, spacing, site);
-  // The pass-memoized work checks run before the reach test: an idle builder asks every waiting wall.
+  // The pass-memoized work checks run before the reach test, the costlier per site.
   const hasTask = (site: Entity): boolean =>
     (claims.hasHammerWork(site) || materials.has(site)) && canStandAt(site);
   const nearestSite = (sites: InteractionCellIndex, accepts: (site: Entity) => boolean): Entity | null =>
@@ -134,9 +134,18 @@ export function planBuilder(
   };
   const inTurn = (site: Entity): boolean => !isWall(site) || !wallsWait();
   // Every `accepts` implies `canStandAt`, so a building site that passes it keeps the walls waiting.
-  const nearestInTurn = (accepts: (site: Entity) => boolean): Entity | null =>
-    nearestSite(targets.constructionSiteCells, accepts) ??
-    (wallsWait() ? null : nearestSite(targets.wallSiteCells, accepts));
+  // `walls` narrows the segments to those that can pass `accepts`, null for none: while every segment
+  // waits for material, an idle builder would otherwise weigh them all on each plan.
+  const nearestInTurn = (
+    accepts: (site: Entity) => boolean,
+    walls: () => InteractionCellIndex | null,
+  ): Entity | null => {
+    const building = nearestSite(targets.constructionSiteCells, accepts);
+    if (building !== null || wallsWait()) return building;
+    const candidates = walls();
+    return candidates === null ? null : nearestSite(candidates, accepts);
+  };
+  const everyWall = (): InteractionCellIndex => targets.wallSiteCells;
 
   // The damaged-wall list is checked first: most passes have none, and `wallsWait` is a site search.
   if (
@@ -150,7 +159,10 @@ export function planBuilder(
   // Crew membership is sticky while it still has useful work. This avoids re-ranking builders between
   // equally valid sites every time one hammer atomic completes.
   const crewSite = assigned?.pinned === false && avoidSite?.(assigned.site) !== true ? assigned.site : null;
-  const site = crewSite !== null && hasTask(crewSite) && inTurn(crewSite) ? crewSite : nearestInTurn(hasTask);
+  const site =
+    crewSite !== null && hasTask(crewSite) && inTurn(crewSite)
+      ? crewSite
+      : nearestInTurn(hasTask, () => (claims.wallMayHaveTask(materials.canSource) ? everyWall() : null));
   if (site !== null && world.has(site, Palisade)) {
     // A segment is claimed before any hammer or delivery, so it has one builder.
     stampAssignment(plan, site, false);
@@ -167,8 +179,13 @@ export function planBuilder(
   // already walking in, else the current crew site, else the nearest. A builder has no other trade to
   // fall back to, and one that drifts off with the idle crowd pays the walk back for every delivery.
   const staging =
-    nearestInTurn((candidate) => hasInboundSupply(plan.inbound, candidate) && canStandAt(candidate)) ??
-    (crewSite !== null && canStandAt(crewSite) && inTurn(crewSite) ? crewSite : nearestInTurn(canStandAt));
+    nearestInTurn(
+      (candidate) => hasInboundSupply(plan.inbound, candidate) && canStandAt(candidate),
+      () => wallsAwaitingSupply(plan),
+    ) ??
+    (crewSite !== null && canStandAt(crewSite) && inTurn(crewSite)
+      ? crewSite
+      : nearestInTurn(canStandAt, everyWall));
   if (staging !== null) {
     stampAssignment(plan, staging, false);
     if (!holdSegment(plan, staging)) return false;
@@ -217,6 +234,19 @@ function repairNearest(
   repairs.join(site, e);
   stampAssignment(plan, site, false);
   return true;
+}
+
+/** The wall segments a live supply errand is bringing material to, indexed like
+ *  `TargetCandidates.wallSiteCells`, or null for none. */
+function wallsAwaitingSupply(plan: PlannerContext): InteractionCellIndex | null {
+  const { world, ctx, terrain } = plan;
+  const sites: Entity[] = [];
+  for (const site of plan.inbound.inbound.keys()) {
+    if (world.has(site, Palisade) && world.has(site, UnderConstruction) && world.has(site, Position)) {
+      sites.push(site);
+    }
+  }
+  return sites.length === 0 ? null : new InteractionCellIndex(world, ctx, terrain, sites);
 }
 
 /** Take a wall segment's single-builder claim; an ordinary building always passes. A lost claim drops

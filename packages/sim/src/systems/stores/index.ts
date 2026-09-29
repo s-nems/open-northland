@@ -10,6 +10,7 @@ export {
   stockCapacity,
 } from './capacity.js';
 export {
+  addUndeliveredConstructionGoods,
   constructionBillOf,
   constructionMaterialsPresent,
   constructionTotalUnits,
