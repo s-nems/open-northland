@@ -16,6 +16,11 @@ function rawClaimOf(world: World, site: Entity): Claim | undefined {
   return (world.tryGet(site, Palisade) ?? world.tryGet(site, RoadSite))?.reservation;
 }
 
+/** Whether the site carries a claim record, live or lapsed: its fate then hangs on its builder's state. */
+export function carriesSiteClaim(world: World, site: Entity): boolean {
+  return (rawClaimOf(world, site) ?? null) !== null;
+}
+
 function writeClaim(world: World, site: Entity, claim: Claim): void {
   if (world.has(site, Palisade)) world.mut(site, Palisade).reservation = claim;
   else world.mut(site, RoadSite).reservation = claim;

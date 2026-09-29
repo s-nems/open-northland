@@ -37,6 +37,7 @@ import {
   upgradeTierOf,
 } from '../stores/index.js';
 import { createVehicle } from '../vehicles/create.js';
+import { awakeSitesOf } from './awake-sites.js';
 import { destroyBerryBushesInReserved } from './berries.js';
 import { evictCarcassesFromFootprint } from './carcasses.js';
 import { destroyFieldsUnderBuilding } from './fields.js';
@@ -60,32 +61,38 @@ import { destroyStumpsInReserved } from './stumps.js';
 export const constructionSystem: System = (world, ctx) => {
   // A finished vehicle site is destroyed, so launches wait for the walk to end.
   const launches: Entity[] = [];
-  // Sites only, in ascending id: the pass scales with what is being built, and two sites finishing on
-  // one tick settle their plots in a canonical order.
-  for (const e of world.canonicalQuery(UnderConstruction)) {
-    if (!world.has(e, Stockpile)) continue;
-    const wall = world.tryGet(e, Palisade);
-    if (isSoloSite(world, e)) dropLapsedClaim(world, e);
-    // A site drained to 0 HP earlier this tick is rubble awaiting the cleanupSystem; raising it here
-    // would resurrect it swing after swing.
-    const health = world.tryGet(e, Health);
-    if (health !== undefined && health.hitpoints <= 0) continue;
-    const building = world.tryGet(e, Building);
-    if (building !== undefined) {
-      // A type missing from content has an empty bill and a zero labor total, which would read as
-      // complete and finish the site for free.
-      if (!contentIndex(ctx.content).buildings.has(building.buildingType)) continue;
-      if (advanceBuildingSite(world, ctx, e, building, constructionBillOf(world, ctx, e)) === 'launch') {
-        launches.push(e);
-      }
-    } else if (wall !== undefined) {
-      advanceWallSite(world, ctx, e, wall, constructionBillOf(world, ctx, e));
-    } else if (world.has(e, RoadSite)) {
-      advanceRoadSite(world, ctx, e);
-    }
+  // Awake sites only, in ascending id: the pass scales with what is being worked, and two sites finishing
+  // on one tick settle their plots in a canonical order.
+  const awake = awakeSitesOf(world, ctx);
+  for (const e of awake.take(ctx)) {
+    advanceSite(world, ctx, e, launches);
+    awake.settle(e);
   }
   for (const site of launches) launchVehicle(world, ctx, site);
 };
+
+function advanceSite(world: World, ctx: SystemContext, e: Entity, launches: Entity[]): void {
+  if (!world.has(e, UnderConstruction) || !world.has(e, Stockpile)) return;
+  const wall = world.tryGet(e, Palisade);
+  if (isSoloSite(world, e)) dropLapsedClaim(world, e);
+  // A site drained to 0 HP earlier this tick is rubble awaiting the cleanupSystem; raising it here
+  // would resurrect it swing after swing.
+  const health = world.tryGet(e, Health);
+  if (health !== undefined && health.hitpoints <= 0) return;
+  const building = world.tryGet(e, Building);
+  if (building !== undefined) {
+    // A type missing from content has an empty bill and a zero labor total, which would read as
+    // complete and finish the site for free.
+    if (!contentIndex(ctx.content).buildings.has(building.buildingType)) return;
+    if (advanceBuildingSite(world, ctx, e, building, constructionBillOf(world, ctx, e)) === 'launch') {
+      launches.push(e);
+    }
+  } else if (wall !== undefined) {
+    advanceWallSite(world, ctx, e, wall, constructionBillOf(world, ctx, e));
+  } else if (world.has(e, RoadSite)) {
+    advanceRoadSite(world, ctx, e);
+  }
+}
 
 type BuildingState = NonNullable<(typeof Building)['__value']>;
 type PalisadeState = NonNullable<(typeof Palisade)['__value']>;
