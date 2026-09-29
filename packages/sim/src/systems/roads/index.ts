@@ -1,43 +1,89 @@
-import { roadNetworkState, writeRoadNetwork } from '../../components/roads.js';
-import type { World } from '../../ecs/world.js';
+import { RoadShard, roadNetworkState, roadShardKey, writeRoadNetwork } from '../../components/roads.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-
-/** Whether a road runs over `node`. Per-step readers use the terrain's mirrored lane instead. */
-export function isRoad(world: World, node: NodeId): boolean {
-  return roadNetworkState(world).nodes.has(node);
-}
 
 /** The road network's change counter: 0 until the first road, bumped by every change. */
 export function roadRevision(world: World): number {
   return roadNetworkState(world).revision;
 }
 
+/** Every road node, shard by shard in ascending carrier id, each shard in laying order. Per-step
+ *  readers ask the terrain's mirrored lane instead. */
+export function* roadNodes(world: World): Generator<NodeId> {
+  for (const e of world.canonicalQuery(RoadShard)) yield* world.get(e, RoadShard).nodes;
+}
+
+export function roadNodeCount(world: World): number {
+  let count = 0;
+  for (const e of world.query(RoadShard)) count += world.get(e, RoadShard).nodes.length;
+  return count;
+}
+
+interface ShardCarriers {
+  readonly generation: number;
+  readonly byBlock: ReadonlyMap<number, Entity>;
+}
+
+const shardCarriers = new WeakMap<World, ShardCarriers>();
+
+/** The carrier of each block's shard, re-derived when a shard comes or goes: a few per map. */
+function carriersOf(world: World): ReadonlyMap<number, Entity> {
+  const generation = world.componentGeneration(RoadShard);
+  const held = shardCarriers.get(world);
+  if (held !== undefined && held.generation === generation) return held.byBlock;
+  const byBlock = new Map<number, Entity>();
+  for (const e of world.canonicalQuery(RoadShard)) {
+    const block = world.get(e, RoadShard).block;
+    if (!byBlock.has(block)) byBlock.set(block, e);
+  }
+  shardCarriers.set(world, { generation, byBlock });
+  return byBlock;
+}
+
 /**
  * Lay a road over `nodes`, skipping those that already carry one, and mirror the change into the
  * terrain's lanes at once, so a route searched later in the same tick already prefers it. Laying never
  * blocks a node, so a route searched before stays walkable; it just may no longer be the cheapest.
- * System-internal: a player lays roads through a command.
+ * Writes only the shards of the blocks the new nodes lie in. System-internal: a player lays roads
+ * through a command.
  */
 export function layRoad(world: World, terrain: TerrainGraph, nodes: Iterable<NodeId>): void {
+  // The lane is the O(1) road lookup; brought up to the world first, so it answers for it.
+  syncRoadLane(world, terrain);
   const fresh = new Set<NodeId>();
-  const known = roadNetworkState(world).nodes;
   for (const node of nodes) {
     // Validates the id before it reaches hashed state.
-    terrain.isRoad(node);
-    if (!known.has(node)) fresh.add(node);
+    if (!terrain.isRoad(node)) fresh.add(node);
   }
   if (fresh.size === 0) return;
+  const byBlock = new Map<number, NodeId[]>();
+  for (const node of fresh) {
+    const block = roadShardKey(terrain.xOf(node), terrain.yOf(node));
+    const held = byBlock.get(block);
+    if (held === undefined) byBlock.set(block, [node]);
+    else held.push(node);
+  }
   const from = roadRevision(world);
   writeRoadNetwork(world, (state) => {
-    for (const node of fresh) state.nodes.set(node, true);
     state.revision += 1;
   });
+  const carriers = carriersOf(world);
+  for (const [block, added] of byBlock) {
+    const carrier = carriers.get(block);
+    if (carrier === undefined) {
+      world.add(world.create(), RoadShard, { block, nodes: added, revision: 1 });
+      continue;
+    }
+    const shard = world.mut(carrier, RoadShard);
+    shard.nodes.push(...added);
+    shard.revision += 1;
+  }
   if (!terrain.extendRoads(from, roadRevision(world), fresh)) syncRoadLane(world, terrain);
 }
 
 /** Mirror the world's road network into its simulation's own `terrain` when the revision moved: before
  *  every tick and after a restore, so a restored world's roads reach the per-step readers. */
 export function syncRoadLane(world: World, terrain: TerrainGraph): void {
-  const state = roadNetworkState(world);
-  terrain.syncRoads(state.revision, state.nodes.keys());
+  const revision = roadRevision(world);
+  if (terrain.mirroredRoadRevision !== revision) terrain.syncRoads(revision, roadNodes(world));
 }

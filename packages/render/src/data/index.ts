@@ -24,8 +24,9 @@ export { anchorTileBox } from './scene/entity-source.js';
 export {
   indoorHouseOf,
   isIndoorSettler,
-  type RoadNetworkView,
-  roadNetworkOf,
+  type RoadShardView,
+  roadRevisionOf,
+  roadShardOf,
 } from './scene/snapshot-index.js';
 export { type SceneGround, type SceneTerrain, terrainMapToScene } from './scene/terrain-scene.js';
 export type { SpriteAtlas } from './sprites/atlas.js';

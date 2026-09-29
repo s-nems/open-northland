@@ -153,6 +153,11 @@ export class TerrainGraph extends TerrainEdges {
     return traversal === 'land' ? (this.routeWeights[node] ?? ONE) : ONE;
   }
 
+  /** The world road revision the lanes mirror; {@link UNSYNCED_ROAD_REVISION} before the first sync. */
+  get mirroredRoadRevision(): number {
+    return this.roadRevision;
+  }
+
   /**
    * Mirror the world's road network into the per-node lanes, once per road revision; a repeat call with
    * the revision already mirrored costs nothing. The world owns the network (`systems/roads`); these

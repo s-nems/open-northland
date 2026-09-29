@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ROAD_SHARD_NODES, RoadShard } from '../../src/components/roads.js';
 import { Rng } from '../../src/core/rng.js';
 import {
   exportSaveGame,
@@ -11,7 +12,7 @@ import {
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import { fillRoadDistances, NO_NEAREST_ROAD, NO_ROAD_DISTANCE } from '../../src/nav/terrain/road-distance.js';
 import { NO_ROAD_NETWORK } from '../../src/nav/terrain/road-networks.js';
-import { isRoad, layRoad, roadRevision } from '../../src/systems/roads/index.js';
+import { layRoad, roadNodes, roadRevision } from '../../src/systems/roads/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap, roughNodeMap, waterColumnMap } from '../fixtures/terrain.js';
 
@@ -65,11 +66,22 @@ describe('road network', () => {
     layRoad(sim.world, terrain, [snow]);
     expect([terrain.resistanceAt(snow), terrain.resistanceAt(sand)]).toEqual([ROAD, SAND]);
     expect(terrain.roughnessAt(snow)).toBe(SNOW);
-    expect([isRoad(sim.world, snow), terrain.isRoad(snow), isRoad(sim.world, sand)]).toEqual([
-      true,
-      true,
-      false,
+    expect([...roadNodes(sim.world)]).toEqual([snow]);
+    expect([terrain.isRoad(snow), terrain.isRoad(sand)]).toEqual([true, false]);
+  });
+
+  it('keeps the roads of each block in its own shard, so a lay writes only the shards it touches', () => {
+    const { sim, terrain } = mappedSim(grassNodeMap(2 * ROAD_SHARD_NODES, 1));
+    const [west, nextWest, east] = [0, 1, ROAD_SHARD_NODES].map((hx) => terrain.nodeAt(hx, 0));
+    if (west === undefined || nextWest === undefined || east === undefined) throw new Error('missing node');
+    layRoad(sim.world, terrain, [west, east]);
+    layRoad(sim.world, terrain, [nextWest]);
+    const shards = sim.world.canonicalQuery(RoadShard).map((e) => sim.world.get(e, RoadShard));
+    expect(shards).toEqual([
+      { block: 0, nodes: [west, nextWest], revision: 2 },
+      { block: 1, nodes: [east], revision: 1 },
     ]);
+    expect(roadRevision(sim.world)).toBe(2);
   });
 
   it('bumps the revision once per change and never for a node already a road', () => {
@@ -190,8 +202,9 @@ describe('road network', () => {
         else expect(network).toBe(terrain.roadNetworkNear(nearest as NodeId));
       }
     }
-    // Only the first road rebuilds the lanes; every later batch is extended in place.
-    expect(syncs).toHaveBeenCalledTimes(1);
+    // Only the first road rebuilds the lanes, after mirroring the roadless world; every later batch is
+    // extended in place.
+    expect(syncs).toHaveBeenCalledTimes(2);
     const restored = restoreSimulation(exportSaveGame(sim), {
       content: testContent(),
       map: waterColumnMap(width, height, waterColumn),

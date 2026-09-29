@@ -20,6 +20,7 @@ export {
   PROJECTILE_ARC_PEAK_MAX_PX,
   SHOT_STRIKE_HEIGHT_PX,
 } from './projectile-arc.js';
+export { type RoadChanges, RoadShardTracker } from './road-shards.js';
 export {
   readSiegeShot,
   type ShotPath,
@@ -32,8 +33,9 @@ export {
 export {
   indoorHouseOf,
   isIndoorSettler,
-  type RoadNetworkView,
-  roadNetworkOf,
+  type RoadShardView,
+  roadRevisionOf,
+  roadShardOf,
   siegeShotsOf,
 } from './snapshot-index.js';
 export { depositVisualLevel } from './snapshot-readers/index.js';

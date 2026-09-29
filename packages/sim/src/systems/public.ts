@@ -148,6 +148,8 @@ export {
   slayAtomicOfSpecies,
 } from './readviews/tribes/livestock.js';
 export { awaitsDraughtAnimal, isShipVehicle, isSiegeVehicle } from './readviews/vehicles.js';
+// The laid road count, which the road scene's acceptance reads.
+export { roadNodeCount } from './roads/index.js';
 // jobCanBuild is the "can this trade raise a foundation" gate, so the app's right-click on a site cannot
 // drift from the rule assignBuilder and the builder drive ask; PRAY_ATOMIC_ID keys the app's pray gate.
 export { jobCanBuild, PRAY_ATOMIC_ID } from './settlers/atomics/start.js';

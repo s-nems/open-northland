@@ -1,5 +1,5 @@
 import { Container, type TextureSource } from 'pixi.js';
-import type { SceneTerrain } from '../../data/scene/index.js';
+import type { RoadChanges, SceneTerrain } from '../../data/scene/index.js';
 import {
   type Barycentric,
   cellsNearNode,
@@ -87,11 +87,12 @@ function weighted(values: readonly number[], stride: number, w: Barycentric, off
  * Script vertex colours do not tint the road (an approximation).
  */
 export class RoadLayer {
-  private readonly roads = new Set<number>();
   /** Road nodes per block key whose triangles lie in that block. */
   private readonly byChunk = new Map<number, Set<number>>();
   private readonly meshes = new Map<number, Container>();
   private readonly chunkByKey = new Map<number, TerrainChunk>();
+  /** Blocks whose mesh no longer matches their roads. */
+  private readonly dirty = new Set<number>();
   private readonly nodeWidth: number;
   private readonly chunkColumns: number;
 
@@ -101,10 +102,14 @@ export class RoadLayer {
     private readonly lift: NodeLiftFn,
     private readonly lane: LaneShading,
     chunks: readonly TerrainChunk[],
+    /** Every road node (half-cell row-major ids), owned by the caller, which reports each change. */
+    private readonly roads: ReadonlySet<number>,
   ) {
     this.nodeWidth = 2 * terrain.width;
     this.chunkColumns = Math.ceil(terrain.width / TERRAIN_CHUNK_TILES);
     for (const chunk of chunks) this.chunkByKey.set(this.chunkKeyOf(chunk.c0, chunk.r0), chunk);
+    for (const id of roads) this.move(id, true);
+    this.meshDirty();
   }
 
   /** Null when the loaded set lacks a road pattern or its page, which draws no roads. */
@@ -114,22 +119,23 @@ export class RoadLayer {
     lift: NodeLiftFn,
     lane: LaneShading,
     chunks: readonly TerrainChunk[],
+    roads: ReadonlySet<number>,
   ): RoadLayer | null {
     const resolved = resolveRoadTextures(textures);
-    return resolved === null ? null : new RoadLayer(terrain, resolved, lift, lane, chunks);
+    return resolved === null ? null : new RoadLayer(terrain, resolved, lift, lane, chunks, roads);
   }
 
-  /** Replace the road set with `nodes` (half-cell row-major ids), re-meshing the blocks that changed. */
-  setRoads(nodes: Iterable<number>): void {
-    const next = new Set(nodes);
-    const dirty = new Set<number>();
-    for (const id of this.roads) {
-      if (!next.has(id)) this.move(id, false, dirty);
-    }
-    for (const id of next) {
-      if (!this.roads.has(id)) this.move(id, true, dirty);
-    }
-    for (const key of dirty) this.remesh(key);
+  /** Re-mesh the blocks of nodes laid or lifted since the last call; the road set already holds the
+   *  change. */
+  apply(changes: RoadChanges): void {
+    for (const id of changes.removed) this.move(id, false);
+    for (const id of changes.added) this.move(id, true);
+    this.meshDirty();
+  }
+
+  private meshDirty(): void {
+    for (const key of this.dirty) this.remesh(key);
+    this.dirty.clear();
   }
 
   destroy(): void {
@@ -139,7 +145,7 @@ export class RoadLayer {
     }
     this.meshes.clear();
     this.byChunk.clear();
-    this.roads.clear();
+    this.dirty.clear();
   }
 
   private chunkKeyOf(col: number, row: number): number {
@@ -166,12 +172,10 @@ export class RoadLayer {
     return out;
   }
 
-  private move(id: number, laid: boolean, dirty: Set<number>): void {
-    if (laid) this.roads.add(id);
-    else this.roads.delete(id);
+  private move(id: number, laid: boolean): void {
     for (const { col, row } of this.trianglesOf(id)) {
       const key = this.chunkKeyOf(col, row);
-      dirty.add(key);
+      this.dirty.add(key);
       let bucket = this.byChunk.get(key);
       if (laid) {
         if (bucket === undefined) {

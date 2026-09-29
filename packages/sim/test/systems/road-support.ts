@@ -19,7 +19,7 @@ import {
   Simulation,
 } from '../../src/index.js';
 import type { TerrainMap } from '../../src/nav/terrain/index.js';
-import { isRoad } from '../../src/systems/roads/index.js';
+import { roadNodes } from '../../src/systems/roads/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
@@ -247,7 +247,8 @@ export function siteAt(sim: Simulation, hx: number, hy: number): Entity | undefi
 export function roadAt(sim: Simulation, hx: number, hy: number): boolean {
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('expected a mapped simulation');
-  return isRoad(sim.world, terrain.nodeAt(hx, hy));
+  const node = terrain.nodeAt(hx, hy);
+  return [...roadNodes(sim.world)].includes(node);
 }
 
 export function roadMapOf(): TerrainMap {

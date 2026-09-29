@@ -31,7 +31,7 @@ import {
 import { type PlacementProbe, placementBlockerVersion } from '../footprint/placement/index.js';
 import { vehicleAnchorRevision } from '../footprint/vehicle-anchors.js';
 import { canonicalById } from '../spatial/nodes.js';
-import { isRoad, layRoad, roadRevision } from './index.js';
+import { layRoad, roadRevision } from './index.js';
 import { roadSitesByNode } from './site-index.js';
 
 /** The good a road is paved with, by catalog slug. Original behavior: a road site costs one stone. */
@@ -73,7 +73,7 @@ export function roadSitePlacementProbe(
         terrain.isWalkable(node) &&
         (grid.obstacle[slot] ?? 0) <= (vehicles.get(slot) ?? 0) &&
         (grid.palisadeBody[slot] ?? 0) === 0 &&
-        !isRoad(world, node) &&
+        !terrain.isRoad(node) &&
         !sites.has(node)
       );
     },
@@ -123,7 +123,7 @@ export function placeRoadSite(
   if (terrain === undefined || !terrain.inBounds(command.x, command.y)) return;
   const node = terrain.nodeAt(command.x, command.y);
   if (command.force === true) {
-    if (isRoad(world, node) || roadSitesByNode(world, terrain).has(node)) return;
+    if (terrain.isRoad(node) || roadSitesByNode(world, terrain).has(node)) return;
   } else if (!roadSitePlacementProbe(world, ctx.content, terrain).canPlace(command.x, command.y)) {
     return;
   }

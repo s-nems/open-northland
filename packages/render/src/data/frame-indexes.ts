@@ -3,7 +3,7 @@ import { hudTotalsOf } from './hud/totals.js';
 import {
   enterableStoresOf,
   palisadesOf,
-  roadNetworkOf,
+  roadRevisionOf,
   siegeShotsOf,
   targetPositionsOf,
 } from './scene/snapshot-index.js';
@@ -30,5 +30,6 @@ export const RENDER_FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   { name: 'palisades', read: (snapshot) => palisadesOf(snapshot) },
   { name: 'siege shots', read: (snapshot) => siegeShotsOf(snapshot) },
   { name: 'fog ghost vehicles', read: (snapshot) => entitiesWith(snapshot, 'Vehicle') },
-  { name: 'road network', read: (snapshot) => roadNetworkOf(snapshot) },
+  { name: 'road network', read: (snapshot) => roadRevisionOf(snapshot) },
+  { name: 'road shards', read: (snapshot) => entitiesWith(snapshot, 'RoadShard') },
 ];

@@ -295,21 +295,27 @@ function positionsOfRefs(
   return byRef;
 }
 
-/** The road network's snapshot value: the half-cell node ids a road runs over (the sim's row-major
- *  `NodeId`), as the `[id, true]` pairs its plain-cloned Map becomes, and the change counter every
- *  change bumps. */
-export interface RoadNetworkView {
-  readonly nodes: readonly (readonly [number, unknown])[];
+/** The road network's change counter, 0 before the first road; every shard change bumps it. */
+export function roadRevisionOf(snapshot: WorldSnapshot): number {
+  const value = entitiesWith(snapshot, 'RoadNetwork')[0]?.components.RoadNetwork;
+  if (typeof value !== 'object' || value === null) return 0;
+  const { revision } = value as { readonly revision?: unknown };
+  return typeof revision === 'number' ? revision : 0;
+}
+
+/** One road shard's snapshot value: the half-cell node ids (the sim's row-major `NodeId`) a road runs
+ *  over in one block, in laying order, and the shard's own change counter. */
+export interface RoadShardView {
+  readonly block: number;
+  readonly nodes: readonly number[];
   readonly revision: number;
 }
 
-const NO_ROADS: RoadNetworkView = { nodes: [], revision: 0 };
-
-/** The world's road network; an empty one before the first road. */
-export function roadNetworkOf(snapshot: WorldSnapshot): RoadNetworkView {
-  const value = entitiesWith(snapshot, 'RoadNetwork')[0]?.components.RoadNetwork;
-  if (typeof value !== 'object' || value === null) return NO_ROADS;
-  const { nodes, revision } = value as Partial<Record<keyof RoadNetworkView, unknown>>;
-  if (!Array.isArray(nodes) || typeof revision !== 'number') return NO_ROADS;
-  return value as RoadNetworkView;
+/** The road shard an entity carries, or null. */
+export function roadShardOf(entity: EntitySnapshot): RoadShardView | null {
+  const value = entity.components.RoadShard;
+  if (typeof value !== 'object' || value === null) return null;
+  const { block, nodes, revision } = value as Partial<Record<keyof RoadShardView, unknown>>;
+  if (typeof block !== 'number' || !Array.isArray(nodes) || typeof revision !== 'number') return null;
+  return value as RoadShardView;
 }

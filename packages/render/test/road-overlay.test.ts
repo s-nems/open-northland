@@ -155,14 +155,28 @@ function roadTriangles(layer: TerrainLayer): number[] {
   );
 }
 
+/** A viewport over the whole test map. */
+const EVERYWHERE = { minX: -1e6, minY: -1e6, maxX: 1e6, maxY: 1e6 };
+
+/** Hand `layer` a road change and cull it to `viewport`, which meshes the changed blocks it shows. */
+function change(
+  layer: TerrainLayer,
+  added: readonly number[],
+  removed: readonly number[] = [],
+  viewport = EVERYWHERE,
+): void {
+  layer.updateRoads({ added, removed });
+  layer.cull(viewport);
+}
+
 describe('TerrainLayer roads', () => {
   it('meshes a road node into the half triangles around it, only in its own block', () => {
     const layer = new TerrainLayer();
     layer.set(grid, roadTextures);
     // A cell centre is a corner of six ground triangles and so of six half triangles.
-    layer.setRoads([4 * NODE_WIDTH + 4]);
+    change(layer, [4 * NODE_WIDTH + 4]);
     expect(roadTriangles(layer)).toEqual([6, 0, 0]);
-    layer.setRoads([]);
+    change(layer, [], [4 * NODE_WIDTH + 4]);
     expect(roadTriangles(layer)).toEqual([0, 0, 0]);
     layer.destroy();
   });
@@ -170,10 +184,10 @@ describe('TerrainLayer roads', () => {
   it('re-meshes only the blocks a change touches', () => {
     const layer = new TerrainLayer();
     layer.set(grid, roadTextures);
-    layer.setRoads([4 * NODE_WIDTH + 4]);
+    change(layer, [4 * NODE_WIDTH + 4]);
     const [first] = layer.container.children;
     const before = first?.children.at(-1);
-    layer.setRoads([4 * NODE_WIDTH + 4, 4 * NODE_WIDTH + 100]);
+    change(layer, [4 * NODE_WIDTH + 100]);
     expect(first?.children.at(-1)).toBe(before);
     expect(roadTriangles(layer)).toEqual([6, 6, 0]);
     layer.destroy();
@@ -182,8 +196,9 @@ describe('TerrainLayer roads', () => {
   it('keeps the road set across a map rebuild', () => {
     const layer = new TerrainLayer();
     layer.set(grid, roadTextures);
-    layer.setRoads([4 * NODE_WIDTH + 4]);
+    change(layer, [4 * NODE_WIDTH + 4]);
     layer.set(grid, roadTextures);
+    layer.cull(EVERYWHERE);
     expect(roadTriangles(layer)).toEqual([6, 0, 0]);
     layer.destroy();
   });

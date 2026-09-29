@@ -1,4 +1,4 @@
-import { components, type Simulation } from '@open-northland/sim';
+import { components, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_BUILDER } from '../catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
@@ -33,7 +33,7 @@ const BUILDER_CELLS = [
 const STORED_STONE = 30;
 export const ROADS_RUN_TICKS = 3_000;
 
-const { RoadSite, Stockpile, roadNetworkState } = components;
+const { RoadSite, Stockpile } = components;
 
 /** The line's nodes: a row of half-cell nodes, then a column running down from its middle. */
 export function roadSceneNodes(): readonly { readonly hx: number; readonly hy: number }[] {
@@ -69,7 +69,7 @@ export function roadSitesLeft(sim: Simulation): number {
 }
 
 export function roadNodesLaid(sim: Simulation): number {
-  return roadNetworkState(sim.world).nodes.size;
+  return systems.roadNodeCount(sim.world);
 }
 
 export const roadsScene: SceneDefinition = {

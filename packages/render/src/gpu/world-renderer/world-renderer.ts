@@ -1,7 +1,12 @@
 import type { FogView, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container } from 'pixi.js';
 import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
-import { type DrawItem, palisadeLayoutOf, roadNetworkOf, type SceneTerrain } from '../../data/scene/index.js';
+import {
+  type DrawItem,
+  palisadeLayoutOf,
+  RoadShardTracker,
+  type SceneTerrain,
+} from '../../data/scene/index.js';
 import { type BrightnessField, type ElevationField, makeElevationField } from '../../data/terrain/index.js';
 import { GroundTone } from '../ground-foot/index.js';
 import { type GroundWave, GroundWaveLayer } from '../ground-waves/index.js';
@@ -78,8 +83,8 @@ export class WorldRenderer {
   private readonly mapViews: MapViewLayer;
 
   private readonly viewSmoothing: boolean;
-  /** The road network revision the ground last drew; the sim's counter starts at 0 with no road. */
-  private roadRevision = 0;
+  /** What the ground last drew of the road network. */
+  private readonly roadShards = new RoadShardTracker();
   private readonly playerColourOf: ((player: number) => number) | undefined;
   private enhancements: WorldEnhancements = BASELINE_ENHANCEMENTS;
 
@@ -161,12 +166,10 @@ export class WorldRenderer {
     this.terrain.set(terrain, textures, this.elevation);
   }
 
-  /** Redraw the roads when the network's revision moved: one compare per frame, the re-mesh per change. */
+  /** Hand the terrain the roads laid since the last frame: one compare per frame, a diff per changed shard. */
   private syncRoads(snapshot: WorldSnapshot): void {
-    const network = roadNetworkOf(snapshot);
-    if (network.revision === this.roadRevision) return;
-    this.roadRevision = network.revision;
-    this.terrain.setRoads(network.nodes.map(([id]) => id));
+    const changes = this.roadShards.update(snapshot);
+    if (changes !== null) this.terrain.updateRoads(changes);
   }
 
   applyTerrainVertexColors(updates: readonly TerrainVertexColor[], palette?: readonly number[]): void {

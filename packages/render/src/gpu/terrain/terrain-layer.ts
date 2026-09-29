@@ -1,6 +1,6 @@
 import { BufferImageSource, Container, Mesh } from 'pixi.js';
 import { aabbIntersects, type Viewport } from '../../data/projection/index.js';
-import type { SceneTerrain } from '../../data/scene/index.js';
+import type { RoadChanges, SceneTerrain } from '../../data/scene/index.js';
 import {
   type BrightnessField,
   composeShadingLane,
@@ -55,8 +55,8 @@ export class TerrainLayer {
   private enhancedWater = false;
   private enhancedSampling = false;
   private roads: RoadLayer | null = null;
-  /** The last road set given, kept so a rebuilt map redraws it. */
-  private roadNodes: readonly number[] = [];
+  /** Every road node given, kept so a rebuilt map redraws it. */
+  private readonly roadNodes = new Set<number>();
 
   setEnhancedSampling(enabled: boolean): void {
     this.enhancedSampling = enabled;
@@ -128,15 +128,22 @@ export class TerrainLayer {
       }
     }
     if (textures !== undefined) {
-      this.roads = RoadLayer.create(terrain, textures, liftFn(terrain, elevation), lane, this.chunks);
-      this.roads?.setRoads(this.roadNodes);
+      this.roads = RoadLayer.create(
+        terrain,
+        textures,
+        liftFn(terrain, elevation),
+        lane,
+        this.chunks,
+        this.roadNodes,
+      );
     }
   }
 
-  /** Draw finished roads over `nodes` (half-cell row-major ids); re-meshes only the blocks that changed. */
-  setRoads(nodes: readonly number[]): void {
-    this.roadNodes = nodes;
-    this.roads?.setRoads(nodes);
+  /** Take the road nodes (half-cell row-major ids) laid and lifted; re-meshes only the blocks that changed. */
+  updateRoads(changes: RoadChanges): void {
+    for (const id of changes.removed) this.roadNodes.delete(id);
+    for (const id of changes.added) this.roadNodes.add(id);
+    this.roads?.apply(changes);
   }
 
   applyVertexColors(updates: readonly TerrainVertexColor[], palette?: readonly number[]): void {

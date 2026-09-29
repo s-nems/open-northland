@@ -1,9 +1,11 @@
-import { type RoadNetworkView, roadNetworkOf } from '@open-northland/render/data';
+import { type RoadShardView, roadShardOf } from '@open-northland/render/data';
 import {
   countedBy,
+  groupedBy,
   indexesOf,
   NODE_SET_STRIDE,
   nodeOfPosition,
+  roadShardKey,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { positionOf } from '../../game/snapshot-base.js';
@@ -21,14 +23,24 @@ const ROAD_SITE_NODES = countedBy(
   { values: ['Position'], presence: ['RoadSite'] },
 );
 
-/** The road network's node ids as a set, built once per network value, which a road change replaces. */
-const roadNodesByNetwork = new WeakMap<RoadNetworkView, ReadonlySet<number>>();
+/** The road shard carriers by the sim's shard key: one per block holding roads. */
+const ROAD_SHARDS = groupedBy((entity) => roadShardOf(entity)?.block, 'road shards', {
+  values: ['RoadShard'],
+});
 
-function roadNodes(network: RoadNetworkView): ReadonlySet<number> {
-  let nodes = roadNodesByNetwork.get(network);
+/** Each shard's nodes as a set, built once per shard value, which a lay in that block replaces. */
+const shardNodeSets = new WeakMap<RoadShardView, ReadonlySet<number>>();
+
+function shardAt(snapshot: WorldSnapshot, col: number, row: number): RoadShardView | null {
+  const carrier = indexesOf(snapshot).get(ROAD_SHARDS).get(roadShardKey(col, row))?.[0];
+  return carrier === undefined ? null : roadShardOf(carrier);
+}
+
+function shardNodes(shard: RoadShardView): ReadonlySet<number> {
+  let nodes = shardNodeSets.get(shard);
   if (nodes === undefined) {
-    nodes = new Set(network.nodes.map(([id]) => id));
-    roadNodesByNetwork.set(network, nodes);
+    nodes = new Set(shard.nodes);
+    shardNodeSets.set(shard, nodes);
   }
   return nodes;
 }
@@ -39,8 +51,9 @@ function roadNodes(network: RoadNetworkView): ReadonlySet<number> {
  */
 export function roadBuiltAt(snapshot: WorldSnapshot, nodeWidth: number, col: number, row: number): boolean {
   if (col < 0 || col >= nodeWidth) return false;
+  const shard = shardAt(snapshot, col, row);
   return (
-    roadNodes(roadNetworkOf(snapshot)).has(row * nodeWidth + col) ||
+    (shard !== null && shardNodes(shard).has(row * nodeWidth + col)) ||
     indexesOf(snapshot)
       .get(ROAD_SITE_NODES)
       .has(row * NODE_SET_STRIDE + col)
