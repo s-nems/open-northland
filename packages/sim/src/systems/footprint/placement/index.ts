@@ -13,9 +13,10 @@ export {
 export {
   findVehicleSite,
   reusableVehicleSite,
-  VEHICLE_SITE_PLACEMENT_RINGS,
-  VEHICLE_SITE_REUSE_RINGS,
+  SHIP_SITE_RINGS,
+  VEHICLE_SITE_RINGS,
   type VehicleSiteVerdict,
+  vehicleSiteRings,
 } from './vehicle-site.js';
 export {
   canPlaceWorkFlag,

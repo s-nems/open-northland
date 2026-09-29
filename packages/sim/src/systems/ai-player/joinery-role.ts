@@ -4,11 +4,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { hexagonRing } from '../../nav/halfcell.js';
 import { NO_COMPONENT } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import {
-  reusableVehicleSite,
-  shipYardProbe,
-  VEHICLE_SITE_PLACEMENT_RINGS,
-} from '../footprint/placement/vehicle-site.js';
+import { reusableVehicleSite, shipYardProbe } from '../footprint/placement/vehicle-site.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { anchorNodeOf } from './node-geometry.js';
 import { ownedBuildings } from './seat-roster.js';
@@ -36,9 +32,13 @@ export function smallestShipHouse(index: ContentIndex): number | null {
   return least?.house ?? null;
 }
 
-/** Whether `joinery`'s crew could launch a ship: one of the seat's unfinished `yards` stands where the
- *  yard drive reuses it, or a fresh yard of the ship house fits within the yard search rings for a worker
- *  at its door ({@link shipYardProbe}). The standing yard counts because its own body blocks the water. */
+/** How near its ship water the AI keeps a ship joinery, in hex rings: the original's yard placement ring,
+ *  well inside the wider yard search, so the crew launches beside its joinery. */
+export const SHIP_JOINERY_SHORE_RINGS = 10;
+
+/** Whether `joinery` stands by ship water: within {@link SHIP_JOINERY_SHORE_RINGS}, one of the seat's
+ *  unfinished `yards` stands or a fresh yard of the ship house fits for a worker at its door
+ *  ({@link shipYardProbe}). The standing yard counts because its own body blocks the water. */
 function hasShipWater(
   world: World,
   ctx: SystemContext,
@@ -50,12 +50,13 @@ function hasShipWater(
   const terrain = ctx.terrain;
   const centre = anchorNodeOf(world, joinery);
   if (terrain === undefined || centre === null) return false;
-  if (reusableVehicleSite(world, yards, house, player, centre) !== null) return true;
+  if (reusableVehicleSite(world, yards, house, player, centre, SHIP_JOINERY_SHORE_RINGS) !== null)
+    return true;
   const shore = terrain.componentOf(interactionCell(world, ctx, terrain, joinery));
   if (shore === NO_COMPONENT) return false;
   const fits = shipYardProbe(world, ctx, terrain, house, world.get(joinery, Building).tribe, shore);
   if (fits === null) return false;
-  for (let r = 0; r < VEHICLE_SITE_PLACEMENT_RINGS; r++) {
+  for (let r = 0; r < SHIP_JOINERY_SHORE_RINGS; r++) {
     for (const { point } of hexagonRing(centre, r)) {
       if (!terrain.inBounds(point.hx, point.hy) || !terrain.isWater(terrain.nodeAt(point.hx, point.hy)))
         continue;

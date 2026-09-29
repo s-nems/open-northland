@@ -18,15 +18,27 @@ import { vehicleFootprintNodes } from '../vehicle-footprint.js';
 import { canPlaceBuilding } from './building.js';
 
 // Where a workshop's worker raises the hidden site of a vehicle house (docs/formats/VEHICLES.md
-// "Construction"): an unfinished site of the house within the reuse ring of the work centre, else a
-// fresh point in the placement ring whose footprint the vehicle's free-size class admits, house placement
+// "Construction"): an unfinished site of the house within the house's rings of the work centre, else a
+// fresh point in those rings whose footprint the vehicle's free-size class admits, house placement
 // allows, and no parked vehicle stands on. A ship house (`ignoreContinents`) lands on the water body
 // beside the yard with its work point on the worker's shore.
 
-/** Hexagon rings of the work centre an unfinished vehicle site is reused from (`r < 20`). */
-export const VEHICLE_SITE_REUSE_RINGS = 20;
-/** Hexagon rings of the work centre a new vehicle site is picked in (`r < 10`). */
-export const VEHICLE_SITE_PLACEMENT_RINGS = 10;
+/**
+ * Hex rings of the work centre a land vehicle's site is reused from and opened in (`r < 30`). Owner
+ * ruling, wider than the original's (placement `r < 10`, reuse `r < 20`): a joinery hemmed in by its
+ * own town searches further out for room instead of refusing the cart or catapult.
+ */
+export const VEHICLE_SITE_RINGS = 30;
+/**
+ * Hex rings a ship yard's site is reused from and opened in (`r < 80`). Owner ruling: far wider than a
+ * land yard's, so launched ships filling the water beside the joinery do not cap how many it builds.
+ */
+export const SHIP_SITE_RINGS = 80;
+
+/** The rings a site of `house` is searched in: a ship house's, else a land vehicle's. */
+export function vehicleSiteRings(house: { readonly ignoreContinents?: boolean | undefined }): number {
+  return house.ignoreContinents === true ? SHIP_SITE_RINGS : VEHICLE_SITE_RINGS;
+}
 
 /**
  * The search's answer: a node to put the site on, or why the worker gives up. `occupied` is the
@@ -39,8 +51,8 @@ export type VehicleSiteVerdict =
   | { readonly kind: 'occupied' };
 
 /**
- * The unfinished site of `houseType` owned by `owner` nearest `centre` within the reuse ring, by
- * `(hex distance, id)`; null when none stands there.
+ * The unfinished site of `houseType` owned by `owner` nearest `centre` within `rings` hex rings that
+ * `reachable` admits, by `(hex distance, id)`; null when none stands there.
  */
 export function reusableVehicleSite(
   world: World,
@@ -48,6 +60,8 @@ export function reusableVehicleSite(
   houseType: number,
   owner: number | undefined,
   centre: HalfCellNode,
+  rings: number,
+  reachable: (site: Entity) => boolean = () => true,
 ): Entity | null {
   let best: { entity: Entity; distance: number } | null = null;
   for (const e of sites) {
@@ -57,7 +71,10 @@ export function reusableVehicleSite(
     if (building === undefined || p === undefined || building.buildingType !== houseType) continue;
     if (world.tryGet(e, Owner)?.player !== owner) continue;
     const distance = hexDistance(centre, nodeOfPosition(p.x, p.y));
-    if (distance >= VEHICLE_SITE_REUSE_RINGS) continue;
+    if (distance >= rings) continue;
+    if (best !== null && (distance > best.distance || (distance === best.distance && e > best.entity)))
+      continue;
+    if (!reachable(e)) continue;
     if (best === null || distance < best.distance || (distance === best.distance && e < best.entity)) {
       best = { entity: e, distance };
     }
@@ -160,11 +177,12 @@ function waterObjection(
   hx: number,
   hy: number,
 ): Objection {
+  // A land anchor never qualifies, so it is refused before the body is built: most ring points are land.
+  const anchor = terrain.nodeAt(hx, hy);
+  if (!terrain.isWater(anchor)) return 'blocked';
   const body = bodyNodes(terrain, site.footprint, hx, hy);
   if (body === null) return 'blocked';
   for (const node of body) if (parked.has(node)) return 'occupied';
-  const anchor = terrain.nodeAt(hx, hy);
-  if (!terrain.isWater(anchor)) return 'blocked';
   const continent = terrain.componentOf(anchor);
   const forbidden = landscapeEditState(world).forbidden;
   if (vehicleClearance(world, ctx, terrain).classOf(anchor) < vehicle.logicSize) return 'blocked';
@@ -201,9 +219,9 @@ export function shipYardProbe(
 }
 
 /**
- * The first point in the original's ring order (`hexagonRing`, rings 0 to {@link VEHICLE_SITE_PLACEMENT_RINGS}
- * exclusive around `centre`) where a fresh site of `tribe`'s `houseType` may go for a worker standing at
- * `workerNode`, else why none may.
+ * The first point in the original's ring order (`hexagonRing`, the house's {@link vehicleSiteRings} around
+ * `centre`) where a fresh site of `tribe`'s `houseType` may go for a worker standing at `workerNode`, else
+ * why none may.
  */
 export function findVehicleSite(
   world: World,
@@ -222,7 +240,7 @@ export function findVehicleSite(
   const workerContinent = terrain.componentOf(workerNode);
   const parked = parkedVehicleNodes(world, ctx, terrain);
   let occupied = false;
-  for (let r = 0; r < VEHICLE_SITE_PLACEMENT_RINGS; r++) {
+  for (let r = 0, rings = vehicleSiteRings(house); r < rings; r++) {
     for (const { point } of hexagonRing(centre, r)) {
       if (!terrain.inBounds(point.hx, point.hy)) continue;
       const objection = house.ignoreContinents

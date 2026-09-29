@@ -21,12 +21,16 @@ import {
   SeatSupply,
   WELL_REACH_NODES,
 } from '../../../src/systems/ai-player/index.js';
-import { type JoineryRole, joineryRoles } from '../../../src/systems/ai-player/joinery-role.js';
+import {
+  type JoineryRole,
+  joineryRoles,
+  SHIP_JOINERY_SHORE_RINGS,
+} from '../../../src/systems/ai-player/joinery-role.js';
 import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import * as seaRoute from '../../../src/systems/ai-player/sea-route.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import { tuneCraftCounters } from '../../../src/systems/ai-player/workforce/craft.js';
-import { findVehicleSite, VEHICLE_SITE_PLACEMENT_RINGS } from '../../../src/systems/footprint/index.js';
+import { findVehicleSite } from '../../../src/systems/footprint/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import {
@@ -401,7 +405,7 @@ describe('build order - the shore affinity', () => {
     expect(toSea.x).toBeGreaterThan(LAKE.x1);
     const noEnemy = first(world(map, [], false), [shoreJoinery]);
     if (noEnemy?.kind !== 'placeBuilding') throw new Error('expected a lake placement');
-    expect(noEnemy.y).toBeLessThan(LAKE.y1 + VEHICLE_SITE_PLACEMENT_RINGS);
+    expect(noEnemy.y).toBeLessThan(LAKE.y1 + SHIP_JOINERY_SHORE_RINGS);
     expect(isWaterAt(map, noEnemy.x, noEnemy.y)).toBe(false);
   });
 

@@ -17,17 +17,14 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation, type TerrainMap } from '../../src/index.js';
 import { type HalfCellNode, hexagonRing, hexDistance, nodeOfPosition } from '../../src/nav/halfcell.js';
-import {
-  findVehicleSite,
-  VEHICLE_SITE_PLACEMENT_RINGS,
-  VEHICLE_SITE_REUSE_RINGS,
-} from '../../src/systems/footprint/index.js';
+import { findVehicleSite, SHIP_SITE_RINGS, VEHICLE_SITE_RINGS } from '../../src/systems/footprint/index.js';
 import { plannerSystem } from '../../src/systems/index.js';
+import { setBuildForbidden } from '../../src/systems/landscape/edits.js';
 import { setProductionGoods } from '../../src/systems/orders/index.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { grassCellMap } from '../fixtures/terrain.js';
+import { grassCellMap, waterColumnMap } from '../fixtures/terrain.js';
 
 /**
  * The VEHICLE YARD drive (docs/formats/VEHICLES.md "Construction"): a workshop operator whose rotation
@@ -82,8 +79,14 @@ const HANDCART_WOOD = 2;
 const WOOD_TRACK = 1;
 const PLANK_GATE_RAW_XP = 300;
 const MAP_CELLS = 24;
+/** Open water cell rows at the top of the far-shore map: enough for the small ship's hull. */
+const SHALLOW_SHORE_ROWS = 4;
+/** The cell column of the river that splits the reuse map into two banks, east of the workshop. */
+const RIVER_COLUMN = 17;
 /** Well past the 2-wood site's fetch, delivery and hammering. */
 const BUILD_BUDGET_TICKS = 3000;
+/** The original's yard placement ring (`r < 10`), which the wider owner-ruled search outgrows. */
+const ORIGINAL_PLACEMENT_RINGS = 10;
 /** Well past the first plan and the plank batch it starts. */
 const PLANK_START_BUDGET_TICKS = 200;
 
@@ -273,7 +276,7 @@ function yardWorld(s: Simulation, select: readonly number[] = [HANDCART_GOOD]) {
 }
 
 describe('the yard site search', () => {
-  it('opens the site at the first admissible ring point of the work centre, inside the placement ring', () => {
+  it('opens the site at the first admissible ring point of the work centre, inside the yard rings', () => {
     const s = sim();
     const { shop, worker } = yardWorld(s);
     plannerSystem(s.world, ctxOf(s));
@@ -281,7 +284,7 @@ describe('the yard site search', () => {
     if (site === undefined) throw new Error('no yard site opened');
     const centre = anchorOf(s, shop);
     const at = anchorOf(s, site);
-    expect(hexDistance(centre, at)).toBeLessThan(VEHICLE_SITE_PLACEMENT_RINGS);
+    expect(hexDistance(centre, at)).toBeLessThan(VEHICLE_SITE_RINGS);
     // The walk visits the rings in the original's order: ring 0 is the workshop's own node and every
     // ring-1 anchor keeps that node inside the yard's reserved margin, so ring 2's first point, two steps
     // north-west of the centre, takes the site.
@@ -292,15 +295,26 @@ describe('the yard site search', () => {
     expect(s.world.get(site, Building)).toMatchObject({ buildingType: HANDCART_YARD, tribe: VIKING });
   });
 
-  it('reuses an unfinished yard of the owner inside the reuse ring instead of opening another', () => {
+  it('reuses an unfinished yard of the owner inside the yard rings instead of opening another', () => {
     const s = sim();
     const { shop, worker } = yardWorld(s);
     const centre = anchorOf(s, shop);
-    const near = siteAt(s, HANDCART_YARD, 12 + 7, 12); // 14 hex steps east, inside r < 20
-    expect(hexDistance(centre, anchorOf(s, near))).toBeLessThan(VEHICLE_SITE_REUSE_RINGS);
+    const near = siteAt(s, HANDCART_YARD, 12 + 11, 12); // 22 hex steps east, inside r < 30
+    expect(hexDistance(centre, anchorOf(s, near))).toBeLessThan(VEHICLE_SITE_RINGS);
     plannerSystem(s.world, ctxOf(s));
     expect(sitesOf(s, HANDCART_YARD)).toEqual([near]);
     expect(s.world.get(worker, SiteAssignment).site).toBe(near);
+  });
+
+  it('leaves an unfinished yard across the water to its own bank and opens one on the worker’s', () => {
+    const s = sim(waterColumnMap(MAP_CELLS, MAP_CELLS, RIVER_COLUMN));
+    const { shop, worker } = yardWorld(s);
+    const across = siteAt(s, HANDCART_YARD, RIVER_COLUMN + 3, 12);
+    expect(hexDistance(anchorOf(s, shop), anchorOf(s, across))).toBeLessThan(VEHICLE_SITE_RINGS);
+    plannerSystem(s.world, ctxOf(s));
+    const mine = s.world.get(worker, SiteAssignment).site;
+    expect(mine).not.toBe(across);
+    expect(sitesOf(s, HANDCART_YARD)).toHaveLength(2);
   });
 
   it('two workmates planned in one pass share the yard the first of them opened', () => {
@@ -315,18 +329,34 @@ describe('the yard site search', () => {
     expect(s.world.get(mate, SiteAssignment).site).toBe(site);
   });
 
-  it('leaves a yard past the reuse ring, and another player’s yard, alone', () => {
-    const s = sim();
+  it('leaves a yard past the yard rings, and another player’s yard, alone', () => {
+    const s = sim(grassCellMap(2 * MAP_CELLS, MAP_CELLS));
     const { shop } = yardWorld(s);
     const centre = anchorOf(s, shop);
-    const far = siteAt(s, HANDCART_YARD, 12 + 11, 12); // 22 hex steps east, past r < 20
-    expect(hexDistance(centre, anchorOf(s, far))).toBeGreaterThanOrEqual(VEHICLE_SITE_REUSE_RINGS);
+    const far = siteAt(s, HANDCART_YARD, 12 + 16, 12); // 32 hex steps east, past r < 30
+    expect(hexDistance(centre, anchorOf(s, far))).toBeGreaterThanOrEqual(VEHICLE_SITE_RINGS);
     const rival = siteAt(s, HANDCART_YARD, 12, 12 + 4, P1);
     plannerSystem(s.world, ctxOf(s));
     const sites = sitesOf(s, HANDCART_YARD);
     expect(sites).toHaveLength(3);
     expect(sites).toContain(far);
     expect(sites).toContain(rival);
+  });
+
+  it('searches past the original rings when the ground around the workshop is taken', () => {
+    const s = sim();
+    const { shop, worker } = yardWorld(s);
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const centre = anchorOf(s, shop);
+    setBuildForbidden(s.world, terrain, centre, ORIGINAL_PLACEMENT_RINGS, true);
+    plannerSystem(s.world, ctxOf(s));
+    const [site] = sitesOf(s, HANDCART_YARD);
+    if (site === undefined) throw new Error('no yard site opened');
+    const distance = hexDistance(centre, anchorOf(s, site));
+    expect(distance).toBeGreaterThanOrEqual(ORIGINAL_PLACEMENT_RINGS);
+    expect(distance).toBeLessThan(VEHICLE_SITE_RINGS);
+    expect(s.world.get(worker, SiteAssignment).site).toBe(site);
   });
 
   it('reports the yard occupied when a parked cart is all that stands in the one spot', () => {
@@ -386,7 +416,7 @@ describe('the yard site search', () => {
     if (site === undefined) throw new Error('no ship yard opened');
     const at = anchorOf(s, site);
     expect(terrain.isWalkable(terrain.nodeAt(at.hx, at.hy))).toBe(false);
-    expect(hexDistance(anchorOf(s, shop), at)).toBeLessThan(VEHICLE_SITE_PLACEMENT_RINGS);
+    expect(hexDistance(anchorOf(s, shop), at)).toBeLessThan(SHIP_SITE_RINGS);
     // The hull's last row lies against the shore and the door three rows south of the anchor, on the
     // worker's continent.
     expect(terrain.isWalkable(terrain.nodeAt(at.hx, at.hy + 2))).toBe(false);
@@ -395,6 +425,19 @@ describe('the yard site search', () => {
     const workerNode = terrain.nodeAt(anchorOf(s, worker).hx, anchorOf(s, worker).hy);
     expect(terrain.isWalkable(door)).toBe(true);
     expect(terrain.componentOf(door)).toBe(terrain.componentOf(workerNode));
+  });
+
+  it('lands a ship yard on water far past the original rings from the shipyard', () => {
+    const s = sim(shoreMap(SHALLOW_SHORE_ROWS));
+    const shop = buildingAt(s, WAINWRIGHT, 12, MAP_CELLS - 4);
+    const worker = carpenterAt(s, 12, MAP_CELLS - 3, shop);
+    craftOnly(s, worker, [SHIP_GOOD]);
+    plannerSystem(s.world, ctxOf(s));
+    const [site] = sitesOf(s, SHIP_YARD);
+    if (site === undefined) throw new Error('no ship yard opened');
+    const distance = hexDistance(anchorOf(s, shop), anchorOf(s, site));
+    expect(distance).toBeGreaterThanOrEqual(ORIGINAL_PLACEMENT_RINGS);
+    expect(distance).toBeLessThan(SHIP_SITE_RINGS);
   });
 
   it('refuses a ship yard to a shipyard with no water in reach', () => {

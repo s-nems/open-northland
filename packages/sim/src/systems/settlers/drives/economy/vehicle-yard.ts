@@ -4,7 +4,7 @@ import type { Entity } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import { assembleBuilding } from '../../../command/placement.js';
 import { advanceRotation, nextRotationPick, spendRotationPick } from '../../../economy/production.js';
-import { findVehicleSite, reusableVehicleSite } from '../../../footprint/index.js';
+import { findVehicleSite, reusableVehicleSite, vehicleSiteRings } from '../../../footprint/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { vehicleHouseOfGood } from '../../../readviews/index.js';
 import { deliveredConstructionFraction, recipesByProductOf } from '../../../stores/index.js';
@@ -19,7 +19,7 @@ import { fetchNeededMaterial } from './site-supply.js';
  * VEHICLE YARD - a workshop operator whose rotation has reached a vehicle good builds it as a hidden
  * construction site of the good's `vehicleHouse` beside the workshop instead of running a cycle
  * (docs/formats/VEHICLES.md "Construction"): it reuses its own or any unfinished site of that house within
- * the reuse ring of the work centre, else opens one at the first admissible point of the placement ring,
+ * its yard rings of the work centre, else opens one at the first admissible point of those rings,
  * then hammers from the house work point while delivered material is left to install and fetches the
  * bill's goods otherwise, from the workshop's own shelves first, the way a builder crews an ordinary site. The construction system launches the
  * vehicle when the site finishes; the worker then moves its rotation past the vehicle good.
@@ -87,7 +87,7 @@ function releaseFinishedSite(
 
 /**
  * The site the worker builds `houseType` on: the one it already crews, else the nearest unfinished one of
- * the owner's within the reuse ring, else a fresh one opened at the first admissible placement-ring point.
+ * the owner's within the yard rings, else a fresh one opened at their first admissible point.
  * Null when none can be had, which skips the turn.
  */
 function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): Entity | null {
@@ -103,7 +103,22 @@ function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): En
   }
   const centreOf = world.get(workplace, Position);
   const centre = nodeOfPosition(centreOf.x, centreOf.y);
-  const reused = reusableVehicleSite(world, targets.vehicleSites, houseType, plan.owner, centre);
+  const house = contentIndex(ctx.content).commandBuildings.get(houseType);
+  if (house === undefined) return null;
+  const rings = vehicleSiteRings(house);
+  // A yard across the water or on another shore is out of this crew's walk, however near it stands.
+  const shore = terrain.componentOf(here);
+  const onShore = (candidate: Entity): boolean =>
+    terrain.componentOf(interactionCell(world, ctx, terrain, candidate, here)) === shore;
+  const reused = reusableVehicleSite(
+    world,
+    targets.vehicleSites,
+    houseType,
+    plan.owner,
+    centre,
+    rings,
+    onShore,
+  );
   if (reused !== null) return reused;
   // The work centre stands in for the failed search in the memo: it is the worker's bound workplace, which
   // no target scan vetoes, so the entry only spaces the searches out.
@@ -116,9 +131,7 @@ function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): En
     }
     return null;
   }
-  const type = contentIndex(ctx.content).commandBuildings.get(houseType);
-  if (type === undefined) return null;
-  const site = assembleBuilding(world, ctx, type, {
+  const site = assembleBuilding(world, ctx, house, {
     buildingType: houseType,
     tribe: plan.tribe,
     owner: plan.owner,

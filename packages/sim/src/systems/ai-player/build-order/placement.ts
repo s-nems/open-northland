@@ -8,13 +8,13 @@ import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../nav/terra
 import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../../footprint/geometry.js';
-import { shipYardProbe, VEHICLE_SITE_PLACEMENT_RINGS } from '../../footprint/placement/vehicle-site.js';
+import { shipYardProbe } from '../../footprint/placement/vehicle-site.js';
 import { roadSitesByNode } from '../../roads/site-index.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { resourcesAtNode } from '../../spatial/resources.js';
 import { seatBaseOf } from '../base.js';
 import { countedTiers, goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
-import { smallestShipHouse } from '../joinery-role.js';
+import { SHIP_JOINERY_SHORE_RINGS, smallestShipHouse } from '../joinery-role.js';
 import { nearestLiveResource } from '../live-resources.js';
 import type { EnemyFire } from '../military/defence/index.js';
 import { anchorNodeOf, bestRingNode, firstRingNode, towardNode } from '../node-geometry.js';
@@ -69,9 +69,8 @@ function affinityNode(
   }
 }
 
-/** How near its ship water a `shore` placement's anchor stands, in hex rings: inside the rings a
- *  workshop's worker searches for a ship yard site. */
-const SHORE_SPOT_RINGS = VEHICLE_SITE_PLACEMENT_RINGS;
+/** How near its ship water a `shore` placement's anchor stands, in hex rings. */
+const SHORE_SPOT_RINGS = SHIP_JOINERY_SHORE_RINGS;
 
 /** How far out from the base the `shore` affinity looks for ship water, in Manhattan nodes: the
  *  placement's own search fan, since the spot must still land in the settlement's reach. */
