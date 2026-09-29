@@ -62,6 +62,32 @@ const WALL: ScriptLandscapeType = {
   },
 };
 
+const GATE_POSTS: ScriptLandscapeType['walk'] = [
+  { dx: -2, dy: 0 },
+  { dx: 2, dy: 0 },
+];
+
+const CLOSED_GATE: ScriptLandscapeType = {
+  typeId: 696,
+  walk: [...GATE_POSTS, { dx: -1, dy: 0 }, { dx: 0, dy: 0 }, { dx: 1, dy: 0 }],
+  build: [],
+  groups: [],
+  wall: {
+    maxHitpoints: 100,
+    repairPerStrike: 1,
+    construction: [{ goodType: WOOD, amount: 1 }],
+    gate: { open: false, counterpartGfxIndex: 700 },
+  },
+};
+
+/** An open gate's body is its two posts alone. */
+const OPEN_GATE: ScriptLandscapeType = {
+  ...CLOSED_GATE,
+  typeId: 700,
+  walk: GATE_POSTS,
+  wall: { ...CLOSED_GATE.wall, gate: { open: true, counterpartGfxIndex: 696 } },
+};
+
 function builderContent() {
   return parseContentSet({
     manifest: TEST_MANIFEST,
@@ -278,6 +304,36 @@ describe('palisade builders', () => {
       largest = Math.max(largest, crew);
     }
     expect(largest).toBe(WALL_REPAIR_CREW_LIMIT);
+  });
+
+  it('mend a damaged gate standing open', () => {
+    const map = grassNodeMap(48, 12);
+    const sim = new Simulation({
+      seed: 6,
+      content: builderContent(),
+      map: { ...map, landscapes: { types: [WALL, CLOSED_GATE, OPEN_GATE], placements: [] } },
+    });
+    buildingAt(sim, STORE, 4, false);
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: CLOSED_GATE.typeId,
+      x: 24,
+      y: ROW,
+      tribe: VIKING,
+      owner: HUMAN,
+      valency: 90,
+    });
+    builderAt(sim, 16);
+    sim.step();
+    const [gate] = [...sim.world.query(Palisade)];
+    if (gate === undefined) throw new Error('expected a standing gate');
+    sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: true });
+    sim.step();
+    expect(sim.world.get(gate, Palisade).gate?.open).toBe(true);
+    expect(sim.world.has(gate, Damaged)).toBe(true);
+
+    for (let tick = 0; tick < 2000 && sim.world.has(gate, Damaged); tick++) sim.step();
+    expect(sim.world.get(gate, Health).hitpoints).toBe(CLOSED_GATE.wall?.maxHitpoints);
   });
 });
 
