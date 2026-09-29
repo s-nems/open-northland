@@ -98,8 +98,8 @@ export const enSurfaces = {
       teamColour: 'Team colour',
       teamColourLocked: 'this map fixes its colours',
       tribe: 'Civilization',
-      tribeRecommended: '{tribe} (recommended)',
-      tribeMapChoice: 'the map recommends {tribe}',
+      tribeRecommended: 'Recommended by the map',
+      tribeMapChoice: 'The map recommends {tribe}',
       tribeTitle:
         'The civilization this seat plays: its settlers and buildings take that people. The map was designed for the recommended one.',
       settingsTitle: 'Match settings',

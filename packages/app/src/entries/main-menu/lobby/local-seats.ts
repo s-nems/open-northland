@@ -96,13 +96,17 @@ export function localSeatElements(
     return control.root;
   };
 
-  // A civilization seat's picker replaces the tribe name its detail line would otherwise carry.
-  const tribeCell = (row: LobbySlotRow): HTMLElement | undefined => {
-    if (!row.offersTribe) return undefined;
+  // A monster seat keeps its people, so its cell only names them.
+  const tribeCell = (row: LobbySlotRow): HTMLElement => {
+    if (!row.offersTribe) {
+      const cell = document.createElement('div');
+      cell.className = 'main-menu__lobby-tribe-fixed';
+      cell.textContent = tribeName(row.tribe);
+      return cell;
+    }
     const picker = tribePicker(row.slot.tribeId, (tribe) => actions.pickTribe(row.slot.player, tribe));
     picker.update(row.tribe, false);
-    const select = picker.root.querySelector('select');
-    if (select !== null) select.dataset.focus = `tribe:${row.slot.player}`;
+    picker.button.dataset.focus = `tribe:${row.slot.player}`;
     return picker.root;
   };
 
@@ -135,21 +139,15 @@ export function localSeatElements(
       action.append(sit);
     }
 
-    const tribe = tribeCell(row);
     const seat = seatRow({
       className: 'main-menu__lobby-row',
       labelClass: 'main-menu__lobby-label',
       nameClass: 'main-menu__lobby-name',
       detailClass: 'main-menu__lobby-sub',
       beforeLabel: [chipButton(row)],
-      controls: [controlCell(row), action],
-      ...(tribe === undefined ? {} : { action: tribe }),
+      controls: [tribeCell(row), controlCell(row), action],
     });
-    seat.update(
-      title,
-      tribe === undefined ? `${tribeName(row.tribe)} · ${subText}` : subText,
-      row.kind === 'yours',
-    );
+    seat.update(title, subText, row.kind === 'yours');
     seat.root.classList.toggle('is-scenario', row.kind === 'scenario');
     return seat.root;
   };

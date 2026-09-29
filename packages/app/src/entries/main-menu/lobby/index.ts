@@ -47,9 +47,17 @@ export function lobbyScreen(
   cols.className = 'main-menu__lobby-cols';
   const slotHead = document.createElement('span');
   slotHead.textContent = lobby.slotHeader;
+  const tribeHead = document.createElement('span');
+  tribeHead.textContent = lobby.tribe;
   const controlHead = document.createElement('span');
   controlHead.textContent = lobby.controlHeader;
-  cols.append(document.createElement('span'), slotHead, controlHead, document.createElement('span'));
+  cols.append(
+    document.createElement('span'),
+    slotHead,
+    tribeHead,
+    controlHead,
+    document.createElement('span'),
+  );
   const list = document.createElement('div');
   list.className = 'main-menu__lobby-list';
   const footnote = document.createElement('div');

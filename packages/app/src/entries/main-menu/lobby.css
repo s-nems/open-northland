@@ -54,15 +54,16 @@
   background: rgb(var(--accent-rgb) / 0.65);
 }
 
-/* Header row and slot rows share one grid: chip | name | control | action. */
+/* Header row and slot rows share one grid: chip | name | civilization | control | action. */
 .main-menu__lobby-cols,
 .main-menu__lobby-row {
   display: grid;
   grid-template-columns:
     calc(var(--u) * 56)
-    1fr
-    calc(var(--u) * 400)
-    calc(var(--u) * 220);
+    minmax(0, 1fr)
+    calc(var(--u) * 330)
+    calc(var(--u) * 340)
+    calc(var(--u) * 200);
   gap: calc(var(--u) * 24);
   align-items: center;
 }
@@ -163,59 +164,171 @@
   color: rgba(143, 184, 173, 0.75);
 }
 
-/* A seat's civilization picker, shared with the network room; the note names the map's own pick. In a
-   local seat row the select carries its own aria-label, so the visible caption is dropped. */
-.main-menu__lobby-row .lobby-tribe {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--u) * 4) calc(var(--u) * 10);
+/* A seat's civilization picker, shared with the network room: a button showing the chosen people's
+   headquarters, opening a list of all of them. The map's own carries a star. */
+.lobby-tribe {
+  position: relative;
   min-width: 0;
-  max-width: 100%;
 }
 
-.main-menu__lobby-row .lobby-tribe > span:first-child {
+.main-menu__lobby-row .lobby-tribe__label {
   display: none;
 }
 
-.lobby-tribe select {
+.lobby-tribe__button {
+  all: unset;
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 12);
+  width: 100%;
   min-width: 0;
-  max-width: 100%;
-  padding: calc(var(--u) * 4) calc(var(--u) * 8);
-  border: 1px solid rgb(var(--accent-rgb) / 0.45);
-  border-radius: 4px;
-  background: rgba(12, 22, 34, 0.85);
-  color: var(--text-body);
-  font:
-    500 calc(var(--u) * 20) / 1.2 "Alegreya Sans",
-    system-ui,
-    sans-serif;
+  padding: calc(var(--u) * 5) calc(var(--u) * 12) calc(var(--u) * 5) calc(var(--u) * 5);
+  border: 2px solid rgb(var(--accent-rgb) / 0.35);
+  border-radius: 6px;
+  background: rgba(12, 22, 34, 0.6);
   cursor: var(--cursor-pointer, pointer);
+  transition:
+    border-color 150ms ease-out,
+    background 150ms ease-out;
 }
 
-.lobby-tribe select:focus-visible {
+.lobby-tribe__button:hover,
+.lobby-tribe__button[aria-expanded="true"] {
+  border-color: rgb(var(--accent-rgb) / 0.75);
+  background: rgba(20, 38, 54, 0.85);
+}
+
+.lobby-tribe__button:focus-visible,
+.lobby-tribe__option:focus-visible {
   outline: 2px solid var(--accent-bright);
   outline-offset: 2px;
 }
 
-.lobby-tribe select:disabled {
+.lobby-tribe__button:disabled {
   cursor: var(--cursor-default, default);
-  opacity: 0.6;
+  border-color: rgb(var(--accent-rgb) / 0.15);
 }
 
-.lobby-tribe__note {
-  display: none;
+.lobby-tribe__emblem {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--u) * 52);
+  height: calc(var(--u) * 52);
+  border-radius: 4px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, rgba(143, 184, 173, 0.22), rgba(8, 16, 26, 0.9));
   font:
-    italic 400 calc(var(--u) * 17) / 1.2 "Alegreya Sans",
+    700 calc(var(--u) * 26) / 1 "Alegreya Sans",
     system-ui,
     sans-serif;
   color: var(--accent-bright);
-  opacity: 0.8;
 }
 
-.lobby-tribe.is-off-map .lobby-tribe__note {
-  display: inline;
+.lobby-tribe__emblem > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.lobby-tribe__caption {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 8);
+  min-width: 0;
+}
+
+.lobby-tribe__name {
+  font:
+    700 calc(var(--u) * 24) / 1.1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lobby-tribe__star {
+  flex: none;
+  width: calc(var(--u) * 20);
+  height: calc(var(--u) * 20);
+  fill: #e8c46a;
+}
+
+.lobby-tribe__caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  border-left: calc(var(--u) * 7) solid transparent;
+  border-right: calc(var(--u) * 7) solid transparent;
+  border-top: calc(var(--u) * 8) solid rgb(var(--accent-rgb) / 0.9);
+}
+
+.lobby-tribe__button:disabled .lobby-tribe__caret {
+  visibility: hidden;
+}
+
+/* The opened list sits in the top layer; the picker places it under (or above) its button. */
+.lobby-tribe__menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  box-sizing: border-box;
+  padding: calc(var(--u) * 6);
+  border: 2px solid rgb(var(--accent-rgb) / 0.55);
+  border-radius: 8px;
+  background: #0c1622;
+  box-shadow: 0 calc(var(--u) * 12) calc(var(--u) * 32) rgba(0, 0, 0, 0.55);
+  color: var(--text-body);
+}
+
+.lobby-tribe__menu:popover-open {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 4);
+}
+
+.lobby-tribe__option {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 12);
+  padding: calc(var(--u) * 5) calc(var(--u) * 16) calc(var(--u) * 5) calc(var(--u) * 5);
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: var(--cursor-pointer, pointer);
+}
+
+.lobby-tribe__option .lobby-tribe__emblem {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+}
+
+.lobby-tribe__option:hover {
+  background: rgb(var(--accent-rgb) / 0.14);
+}
+
+.lobby-tribe__option.is-current {
+  border-color: rgb(var(--accent-rgb) / 0.7);
+  background: rgb(var(--accent-rgb) / 0.22);
+}
+
+.lobby-tribe__option.is-current .lobby-tribe__name {
+  color: var(--text-primary);
+}
+
+.main-menu__lobby-tribe-fixed {
+  padding-left: calc(var(--u) * 12);
+  font:
+    500 calc(var(--u) * 22) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: rgba(143, 184, 173, 0.75);
 }
 
 /* Control cell states: your static "Human", a locked scenario seat, or the vacant-mode segment. */
