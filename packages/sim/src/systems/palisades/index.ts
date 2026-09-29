@@ -32,6 +32,7 @@ import { anyRouteFollowed, invalidateRoutesThrough } from '../landscape/routes.j
 import { landscapeTypes } from '../landscape/view.js';
 import { evictSettlersFromCells, settlersByNode } from '../movement/evict.js';
 import { isTravelling } from '../movement/nav-state.js';
+import { cancelRoadSitesUnder } from '../roads/sites.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
 export type PalisadeGateAxis = 0 | 1 | 2;
@@ -561,6 +562,7 @@ export function placePalisade(
     placementWalk: placementWalkOf(terrain, type),
   });
   if (entity === null) return;
+  cancelRoadSitesUnder(world, ctx, entity);
   if (world.has(entity, PalisadeBlocking)) {
     settleClosedWall(world, ctx, terrain, entity);
     // An authored wall below its maximum starts on the builders' list with no blow behind it; a new

@@ -64,6 +64,20 @@ const MAP_HEIGHT = 16;
 /** Long enough for a builder to fetch a stone across the test map and swing once. */
 const BUILD_TICKS = 3000;
 const FAR_HX = 40;
+const HUT = 3;
+/** A two-node body over which a road site is cancelled, with a one-node margin a road may keep. */
+const HUT_FOOTPRINT = {
+  blocked: [
+    { dx: 0, dy: 0 },
+    { dx: 1, dy: 0 },
+  ],
+  familyBody: [
+    { dx: 0, dy: 0 },
+    { dx: 1, dy: 0 },
+  ],
+  reserved: [-1, 0, 1, 2].flatMap((dy) => [-1, 0, 1, 2].map((dx) => ({ dx, dy }))),
+  door: { dx: -1, dy: 0 },
+};
 const HANDCART = 1;
 const HANDCART_JOB = 50;
 const HANDCART_SLOTS = 15;
@@ -131,6 +145,14 @@ function roadContent() {
         kind: 'home',
         homeSize: 1,
         construction: [{ goodType: STONE, amount: 1 }],
+      },
+      {
+        typeId: HUT,
+        id: 'hut',
+        kind: 'home',
+        homeSize: 1,
+        construction: [{ goodType: STONE, amount: 1 }],
+        footprint: HUT_FOOTPRINT,
       },
     ],
   });
@@ -340,6 +362,60 @@ describe('road site commands', () => {
       0,
     );
     expect(spilled).toBe(1);
+  });
+});
+
+describe('road sites under a new structure', () => {
+  function totalStone(sim: Simulation): number {
+    let stone = 0;
+    for (const e of sim.world.query(Stockpile)) stone += sim.world.get(e, Stockpile).amounts.get(STONE) ?? 0;
+    return stone;
+  }
+
+  it('are withdrawn under a building body, their stone spilled, while a laid road and the margin stay', () => {
+    const sim = roadSim();
+    const laid = { hx: 21, hy: ROW };
+    const covered = { hx: CENTRE.hx, hy: ROW };
+    const margin = { hx: 22, hy: ROW };
+    orderRoads(sim, [laid]);
+    const laidSite = siteAt(sim, laid.hx, laid.hy);
+    if (laidSite === undefined) throw new Error('expected a road site');
+    const holder = finishDirectly(sim, laidSite);
+    sim.world.remove(holder, SiteAssignment);
+    orderRoads(sim, [covered, margin]);
+    const site = siteAt(sim, covered.hx, covered.hy);
+    if (site === undefined) throw new Error('expected a road site');
+    setStockAmount(sim.world, site, STONE, 1);
+
+    sim.enqueue(
+      playerCommand(HUMAN, { kind: 'placeBuilding', buildingType: HUT, x: CENTRE.hx, y: ROW, tribe: VIKING }),
+    );
+    sim.step();
+    expect([...sim.world.query(Building)]).toHaveLength(1);
+    expect(sim.world.isAlive(site)).toBe(false);
+    expect(siteAt(sim, margin.hx, margin.hy)).toBeDefined();
+    expect(roadAt(sim, laid.hx, laid.hy)).toBe(true);
+    expect(totalStone(sim)).toBe(1);
+  });
+
+  it('are withdrawn under a wall segment', () => {
+    const sim = roadSim();
+    orderRoads(sim, [CENTRE]);
+    const site = siteAt(sim, CENTRE.hx, CENTRE.hy);
+    if (site === undefined) throw new Error('expected a road site');
+    sim.enqueue(
+      playerCommand(HUMAN, {
+        kind: 'placePalisade',
+        gfxIndex: WALL.typeId,
+        x: CENTRE.hx,
+        y: CENTRE.hy,
+        tribe: VIKING,
+        underConstruction: true,
+      }),
+    );
+    sim.step();
+    expect([...sim.world.query(Palisade)]).toHaveLength(1);
+    expect(sim.world.isAlive(site)).toBe(false);
   });
 });
 

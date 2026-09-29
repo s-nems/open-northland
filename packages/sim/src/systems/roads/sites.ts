@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import {
   ownerOf,
+  Palisade,
   Position,
   RoadSite,
   SiteAssignment,
@@ -20,9 +21,17 @@ import type { SystemContext } from '../context.js';
 import { scatterSpilledStock, spilledStockOf } from '../economy/goods-spill.js';
 import { siteClaimHolder } from '../economy/site-claim.js';
 import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
-import { OBSTACLE, vehicleBlockerCells } from '../footprint/placement/blockers.js';
+import {
+  type BlockerVisit,
+  BUILDING_STORE,
+  OBSTACLE,
+  PALISADE_BODY,
+  palisadeBodyCells,
+  vehicleBlockerCells,
+} from '../footprint/placement/blockers.js';
 import { type PlacementProbe, placementBlockerVersion } from '../footprint/placement/index.js';
 import { vehicleAnchorRevision } from '../footprint/vehicle-anchors.js';
+import { canonicalById } from '../spatial/nodes.js';
 import { isRoad, layRoad, roadRevision } from './index.js';
 
 /** The good a road is paved with, by catalog slug. Original behavior: a road site costs one stone. */
@@ -131,6 +140,26 @@ export function cancelRoadSite(world: World, ctx: SystemContext, site: Entity): 
   const spill = spilledStockOf(world, site);
   removeRoadSite(world, site);
   scatterSpilledStock(world, ctx, spill);
+}
+
+/**
+ * Withdraw the road sites a newly placed building's or wall's body covers, each as its owner's cancel
+ * would: the cells the road probe refuses for that body. A laid road stays under it. Project rule.
+ */
+export function cancelRoadSitesUnder(world: World, ctx: SystemContext, structure: Entity): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return;
+  const sites = roadSitesByNode(world, terrain);
+  if (sites.size === 0) return;
+  const covered: Entity[] = [];
+  const visit: BlockerVisit = (x, y, channel) => {
+    if ((channel !== OBSTACLE && channel !== PALISADE_BODY) || !terrain.inBounds(x, y)) return;
+    const site = sites.get(terrain.nodeAt(x, y));
+    if (site !== undefined && !covered.includes(site)) covered.push(site);
+  };
+  if (world.has(structure, Palisade)) palisadeBodyCells(world, structure, visit);
+  else BUILDING_STORE.cells(world, ctx.content, structure, visit);
+  for (const site of canonicalById(covered)) cancelRoadSite(world, ctx, site);
 }
 
 /**

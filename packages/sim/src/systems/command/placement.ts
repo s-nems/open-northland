@@ -33,6 +33,7 @@ import { destroyStumpsInReserved } from '../economy/stumps.js';
 import { evictWorkFlagsFromFootprint } from '../economy/work-flag.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { buildingEnabled } from '../progression/index.js';
+import { cancelRoadSitesUnder } from '../roads/sites.js';
 import { wakeCrewInside } from '../settlers/planner/idle-replan.js';
 import { displaceSignpostsFromFootprint } from '../signposts/index.js';
 import { upgradeTierOf } from '../stores/index.js';
@@ -192,6 +193,7 @@ export function assembleBuilding(
   destroyStumpsInReserved(world, ctx, e);
   // A field declares no build area, so it never refuses a site - this is the only thing that clears one.
   destroyFieldsUnderBuilding(world, ctx, e);
+  cancelRoadSitesUnder(world, ctx, e);
   ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { hx: spec.x, hy: spec.y } });
   return e;
 }

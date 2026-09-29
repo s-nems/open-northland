@@ -26,7 +26,7 @@ import { toolWorkFactorPct } from '../equipment/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { settleClosedWall, travellerOnClosing } from '../palisades/index.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
-import { finishRoadSite } from '../roads/sites.js';
+import { cancelRoadSitesUnder, finishRoadSite } from '../roads/sites.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
 import {
   constructionBillOf,
@@ -272,6 +272,7 @@ export function settleFootprint(world: World, ctx: SystemContext, e: Entity): vo
   destroyBerryBushesInReserved(world, ctx, e);
   destroyStumpsInReserved(world, ctx, e);
   destroyFieldsUnderBuilding(world, ctx, e);
+  cancelRoadSitesUnder(world, ctx, e);
 }
 
 /**

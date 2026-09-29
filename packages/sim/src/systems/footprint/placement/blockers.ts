@@ -92,7 +92,7 @@ export function buildingBlockerCells(
   for (const c of zone) visit(hx + footprintCellDx(hy, c), hy + c.dy, BUILDING_ZONE);
 }
 
-function palisadeBodyCells(world: World, e: Entity, visit: BlockerVisit): void {
+export function palisadeBodyCells(world: World, e: Entity, visit: BlockerVisit): void {
   const wall = world.tryGet(e, Palisade);
   const p = world.tryGet(e, Position);
   if (wall === undefined || p === undefined) return;
