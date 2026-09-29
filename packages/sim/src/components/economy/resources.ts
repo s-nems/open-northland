@@ -118,6 +118,10 @@ export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy', 'econo
 /** Names the hunter whose shot left this carcass {@link Resource}; absent on a node not shot into being. */
 export const KilledBy = defineComponent<{ by: Entity }>('KilledBy', 'economy');
 
+/** Marks a dying animal whose hunter's shot already left its carcass, so its death lays no meat pile. Added
+ *  on the lethal hit and gone with the animal in the same tick's cleanup. */
+export const LeftCarcass = defineComponent<Record<string, never>>('LeftCarcass', 'economy');
+
 /**
  * A wild berry bush a hungry settler forages directly (the `forage` atomic), no job or tool needed, and
  * which regrows over time. Deliberately not a {@link Resource}: it carries no harvest atomic and never

@@ -79,6 +79,20 @@ function deadAnimal(sim: Simulation, tribe: number, x: number): Entity {
   return e;
 }
 
+/** A settler of `jobType` at x=1 kills a cow at x=4 with one blow; the cow is left for cleanup. */
+function killWithOneBlow(sim: Simulation, jobType: number | null): Entity {
+  const attacker = settlerAt(sim, {
+    jobType,
+    tribe: VIKING,
+    position: { x: fx.fromInt(1), y: fx.fromInt(5) },
+  });
+  const cow = settlerAt(sim, { jobType: null, tribe: COW, position: { x: fx.fromInt(4), y: fx.fromInt(5) } });
+  sim.world.add(cow, Health, { hitpoints: 20, max: 20 });
+  startAtomic(sim, attacker, { kind: 'attack', target: cow, damage: 100 }, 1, ATTACK_ATOMIC);
+  atomicSystem(sim.world, ctxOf(sim));
+  return cow;
+}
+
 describe('cleanupSystem - reaping 0-HP combatants', () => {
   it("leaves a third of a wild animal's cadaver size as meat, at least one, and saves it", () => {
     const content = remainsContent([
@@ -129,25 +143,23 @@ describe('cleanupSystem - reaping 0-HP combatants', () => {
 
   it("leaves a hunter's kill of huntable prey only its harvestable carcass", () => {
     const sim = new Simulation({ seed: 1, content: remainsContent([[COW, 12]]), map: REMAINS_MAP });
-    const hunter = settlerAt(sim, {
-      jobType: HUNTER,
-      tribe: VIKING,
-      position: { x: fx.fromInt(1), y: fx.fromInt(5) },
-    });
-    const cow = settlerAt(sim, {
-      jobType: null,
-      tribe: COW,
-      position: { x: fx.fromInt(4), y: fx.fromInt(5) },
-    });
-    sim.world.add(cow, Health, { hitpoints: 20, max: 20 });
-    startAtomic(sim, hunter, { kind: 'attack', target: cow, damage: 100 }, 1, ATTACK_ATOMIC);
-    atomicSystem(sim.world, ctxOf(sim));
-    // Approximation: prey another hand kills leaves nothing, where the original lays meat.
-    deadAnimal(sim, COW, 6);
+    const cow = killWithOneBlow(sim, HUNTER);
     cleanupSystem(sim.world, ctxOf(sim));
     expect(sim.world.isAlive(cow)).toBe(false);
     expect([...sim.world.query(Resource)].map((e) => sim.world.get(e, Resource).goodType)).toEqual([MEAT]);
     expect(sim.landscapeEdits().added).toEqual([]);
+  });
+
+  it('leaves meat for huntable prey any other hand kills', () => {
+    const sim = new Simulation({ seed: 1, content: remainsContent([[COW, 12]]), map: REMAINS_MAP });
+    killWithOneBlow(sim, null);
+    deadAnimal(sim, COW, 6);
+    cleanupSystem(sim.world, ctxOf(sim));
+    expect([...sim.world.query(Resource)]).toEqual([]);
+    expect(sim.landscapeEdits().added).toMatchObject([
+      { typeId: MEAT_PILE_GFX, hx: 9, hy: 10, level: 4 },
+      { typeId: MEAT_PILE_GFX, hx: 13, hy: 10, level: 4 },
+    ]);
   });
 
   it('leaves nothing for an animal whose cadaver size is 0', () => {

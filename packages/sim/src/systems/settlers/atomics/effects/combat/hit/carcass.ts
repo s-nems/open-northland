@@ -1,4 +1,4 @@
-import { Position, type ResourceLayer, Settler } from '../../../../../../components/index.js';
+import { LeftCarcass, Position, type ResourceLayer, Settler } from '../../../../../../components/index.js';
 import { contentIndex } from '../../../../../../core/content-index.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../../../nav/halfcell.js';
@@ -57,6 +57,7 @@ export function spawnCarcasses(world: World, ctx: SystemContext, attacker: Entit
     layers,
     killedBy: attacker,
   });
+  world.add(target, LeftCarcass, {});
 }
 
 /** The body's extraction sequence: one unit per step, round-robin over the yield goods in authored order,

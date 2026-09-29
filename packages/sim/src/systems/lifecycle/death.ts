@@ -1,5 +1,6 @@
 import {
   isWildlife,
+  LeftCarcass,
   Marriage,
   Owner,
   Position,
@@ -22,13 +23,7 @@ import { isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
 import { setLandscape } from '../landscape/edits.js';
 import { releasePalisadeReservation } from '../palisades/reservation.js';
-import {
-  animalRecord,
-  firstLandscapeGfxOf,
-  huntYieldsOf,
-  isSoldierJob,
-  MEAT_LANDSCAPE_SLUG,
-} from '../readviews/index.js';
+import { animalRecord, firstLandscapeGfxOf, isSoldierJob, MEAT_LANDSCAPE_SLUG } from '../readviews/index.js';
 import { abandonCargoRun } from '../vehicles/cargo.js';
 
 // A settler's death and silent removal: a leaf below the cleanup system, so a vehicle sinking its crew
@@ -59,9 +54,8 @@ export function reap(world: World, ctx: SystemContext, e: Entity): void {
 }
 
 /**
- * Original behavior: an animal's death other than a hunter's kill leaves a `meat` pile where it fell.
- * Approximations: the killer is unknown here, so huntable prey is left to the hunter's carcass (none when
- * another hand killed it) and any other species leaves meat even to a hunter's bow, where the original
+ * Original behavior: an animal's death other than a hunter's bow kill leaves a `meat` pile where it fell.
+ * Approximations: a species with no carcass yields leaves meat even to a hunter's shot, where the original
  * lays its tribe's cadaver; a young pile halved to zero lays nothing, where the original also clears the
  * node's standing object.
  */
@@ -72,7 +66,7 @@ function layAnimalRemains(
   tribe: number,
   pos: { x: Fixed; y: Fixed },
 ): void {
-  if (huntYieldsOf(ctx.content, tribe) !== null) return;
+  if (world.has(e, LeftCarcass)) return;
   const size = remainsSize(
     animalRecord(ctx.content, tribe)?.maximumCadaverSize ?? 0,
     world.has(e, YoungAnimal),
