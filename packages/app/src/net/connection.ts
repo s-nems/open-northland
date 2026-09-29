@@ -1,6 +1,6 @@
 import type { GameSession } from '@open-northland/lockstep';
 import type { DisputeRecord, TickDigest } from '@open-northland/net-client';
-import type { ServerMessage } from '@open-northland/net-protocol';
+import type { ClosingCode, ServerMessage } from '@open-northland/net-protocol';
 import { errorText } from '../diag/error-text.js';
 import { diag } from '../diag/index.js';
 import { workerStallReports } from '../entries/map/stall-reports.js';
@@ -18,8 +18,11 @@ import {
 import { endpointPort, type SessionPort } from '../session/worker/port.js';
 import { type WorkerSessionOptions, wireError } from '../session/worker/protocol.js';
 import type { WorkerSession } from '../session/worker/worker-session.js';
+import { holdRelayPlace, requestUpdateCheck } from '../update/watcher.js';
 import { RelayClientMirror } from './net-worker-client.js';
 import { RelayedWorlds, WorldNotAdoptedError } from './relayed-worlds.js';
+
+const SERVER_RESTART: ClosingCode = 'serverRestart';
 
 /** The client failures that end a game; a command or snapshot dropped while the link is down is the
  *  link's notice to carry. */
@@ -90,6 +93,7 @@ export class NetworkConnection {
   private link: LinkState | null = null;
   private lastLink: { readonly state: LinkState; readonly reason?: string } | null = null;
   private disposed = false;
+  private readonly releasePlace: () => void;
   private leaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
@@ -114,6 +118,8 @@ export class NetworkConnection {
       this.emit({ kind: 'failure', what: 'worker', error });
     });
     this.post({ kind: 'connect', url, ...identity });
+    // A room is a relayed game to the update notice even while the menu shows it.
+    this.releasePlace = holdRelayPlace(() => this.client.room !== null);
   }
 
   /** Whether the relay link is up. */
@@ -154,6 +160,7 @@ export class NetworkConnection {
   dispose(leave = true): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.releasePlace();
     this.listeners.clear();
     this.client.apply({ kind: 'left' });
     this.onWorld = () => undefined;
@@ -202,6 +209,9 @@ export class NetworkConnection {
         // link event so a screen that ends on the drop never sees the room end for another reason.
         const left = message.state === 'reconnecting' && this.dropped();
         this.emit({ kind: 'link', ...this.lastLink });
+        // A relay restarts for a release, so the page itself may be outdated now.
+        if (message.state === 'closed' && message.reason === SERVER_RESTART)
+          requestUpdateCheck('relayRestart');
         if (left) this.emit({ kind: 'message', message: { kind: 'left' } });
         return;
       }

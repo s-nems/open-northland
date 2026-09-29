@@ -329,6 +329,23 @@ export const plSurfaces = {
     },
     recommendedBrowser: 'Sugerowana przeglądarka: Google Chrome.',
   },
+  updateNotice: {
+    countdown: 'Jest nowa wersja {version}. Gra przeładuje się za {seconds} s.',
+    reloadingNow: 'Jest nowa wersja {version}. Przeładowuję grę…',
+    relayRestarted: 'Serwer zaktualizowano do wersji {version}. Wracasz do menu…',
+    continue:
+      'Jest nowa wersja {version}. Przeładuj, żeby grać dalej w tę grę na nowej wersji, w tym samym miejscu.',
+    finishOrReload:
+      'Jest nowa wersja {version}, ale nie wczyta tej gry. Dokończ ją albo przeładuj i zacznij od nowa.',
+    finishThenReload: 'Jest nowa wersja {version}. Po tej grze przeładuj stronę.',
+    manual:
+      'Serwer ma wersję {version}, a ta karta wciąż {running}. Przeładuj stronę; jeśli to nie pomoże, wyczyść dane tej strony.',
+    reloadNow: 'Przeładuj teraz',
+    reloadAndContinue: 'Przeładuj i graj dalej',
+    reload: 'Przeładuj',
+    later: 'Później',
+    dismiss: 'Zamknij',
+  },
   loading: {
     graphics: 'Uruchamianie grafiki…',
     map: 'Wczytywanie mapy…',

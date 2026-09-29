@@ -333,6 +333,22 @@ export const enSurfaces = {
     },
     recommendedBrowser: 'Suggested browser: Google Chrome.',
   },
+  // `{version}` is the release the server now serves; `{running}` the one this tab runs.
+  updateNotice: {
+    countdown: 'Version {version} is out. The game reloads in {seconds} s.',
+    reloadingNow: 'Version {version} is out. Reloading the game…',
+    relayRestarted: 'The server was updated to version {version}. Returning to the menu…',
+    continue: 'Version {version} is out. Reload to keep playing this game on it, from where you are.',
+    finishOrReload: 'Version {version} is out and cannot load this game. Finish it, or reload to start over.',
+    finishThenReload: 'Version {version} is out. Reload the page after this game.',
+    manual:
+      "The server serves version {version}, this tab still runs {running}. Reload the page; if that does not help, clear this site's data.",
+    reloadNow: 'Reload now',
+    reloadAndContinue: 'Reload and continue',
+    reload: 'Reload',
+    later: 'Later',
+    dismiss: 'Close',
+  },
   // One label per `BootPhase`.
   loading: {
     graphics: 'Starting the graphics…',

@@ -463,8 +463,14 @@ world, so a forced divergence for a resync check runs in the headless multi-clie
 ## Build version
 
 `ON_VERSION=1.2.3 npm run build` stamps a semantic version into the main menu's version line and
-writes `{"version":"1.2.3"}` to `version.json` beside `index.html`; without it both read `dev`. The
-relay image takes its identifier as `--build-arg RELAY_BUILD=...` and reports it on `/healthz`.
+writes `version.json` beside `index.html`: `version`, `build` (the entry script, which changes with
+any rebuild) and `restore` (a hash of the client sources and `content/ir.json`, null without content).
+Without `ON_VERSION` the version reads `dev`. A released web tab polls `version.json` (`src/update/`)
+and, when the host serves another `build`, reloads from the menu, offers a local game a reload that
+resumes it when `restore` matches, and returns to the menu when the relay closes with
+`CLOSE_SERVICE_RESTART`. To try it, serve one build, open a tab, rebuild with another `ON_VERSION`
+into the same `dist/`. The relay image takes its identifier as `--build-arg RELAY_BUILD=...` and
+reports it on `/healthz`.
 
 ## Desktop packaging
 

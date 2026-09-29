@@ -1,5 +1,6 @@
 import { installCrashCapture, logBootHeader } from './diag/index.js';
 import { runEntry } from './launch.js';
+import { installUpdateWatcher } from './update/watcher.js';
 import { deviceNoticeCleared } from './view/device-notice.js';
 
 /**
@@ -9,6 +10,7 @@ import { deviceNoticeCleared } from './view/device-notice.js';
  */
 logBootHeader();
 installCrashCapture();
+installUpdateWatcher();
 // The right button is a game button everywhere, DOM overlays included: a right press that opens the
 // school dialog fires `contextmenu` on the dialog, not the canvas. Capture keeps a stopped event covered.
 window.addEventListener('contextmenu', (e) => e.preventDefault(), { capture: true });

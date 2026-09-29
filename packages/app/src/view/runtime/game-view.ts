@@ -61,6 +61,7 @@ import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
 import { presentationPack } from '../../presentation/pack.js';
 import type { OffThreadTickCost, SessionHost } from '../../session/index.js';
+import { setUpdateContinuation } from '../../update/watcher.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
 import type { CameraController } from '../camera/index.js';
@@ -283,6 +284,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     },
     isPaused: () => driver.paused,
   });
+  // A local world carries over a reload into a new release; a relayed one lives on the relay.
+  if (!sharedClock && deps.worldToken !== undefined && deps.worldToken !== null) {
+    setUpdateContinuation(() => saveLoad.stageForReload());
+    cleanup.push(() => setUpdateContinuation(null));
+  }
   // Three overlays hold the sim paused - the menu, the mission book and the verdict - so
   // each holds under its own key and none can release another's.
   const pauseHolds = createPauseHolds(saveLoad, !sharedClock);

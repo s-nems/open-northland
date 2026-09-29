@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultClientConditions, defineConfig, type Plugin, runnerImport } from 'vite';
 import { clientBuildIdentity, refreshClientBuild } from './build/client-version.js';
-import { emitVersionFile, gameVersion } from './build/game-version.js';
+import { emitVersionFile, gameVersion, restoreIdentity } from './build/game-version.js';
 import { devCheckout } from './vite/dev-checkout.js';
 import { serveContent } from './vite/serve-content.js';
 
@@ -21,13 +21,16 @@ async function checkoutPlugins(command: 'serve' | 'build'): Promise<Plugin[]> {
 }
 
 const version = gameVersion();
+const clientBuild = clientBuildIdentity(resolve(here, '../..'));
+const restore = restoreIdentity(clientBuild, contentRoot);
 
 export default defineConfig(async ({ command }) => ({
   root: here,
   resolve: { conditions: [...(command === 'serve' ? ['source'] : []), ...defaultClientConditions] },
   define: {
-    __CLIENT_BUILD__: JSON.stringify(clientBuildIdentity(resolve(here, '../..'))),
+    __CLIENT_BUILD__: JSON.stringify(clientBuild),
     __GAME_VERSION__: JSON.stringify(version),
+    __RESTORE_IDENTITY__: JSON.stringify(restore),
     // The sim's fixed-point overflow asserts run in the dev server and are compiled out of builds.
     __SIM_ASSERTS__: JSON.stringify(command === 'serve'),
   },
@@ -35,7 +38,7 @@ export default defineConfig(async ({ command }) => ({
     devCheckout(resolve(here, '../..'), contentRoot),
     serveContent(contentRoot),
     refreshClientBuild(resolve(here, '../..')),
-    emitVersionFile(version),
+    emitVersionFile({ version, restore }),
     ...(await checkoutPlugins(command)),
   ],
   server: { open: false },

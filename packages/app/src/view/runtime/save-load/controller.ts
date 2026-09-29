@@ -30,8 +30,8 @@ export interface SaveLoadDeps {
   readonly isPaused: () => boolean;
   /** Restart the page into the staged save; nothing after it runs in the surviving flow. */
   readonly reload: () => void;
-  /** Stage a validated file's bytes for the reloaded boot. */
-  readonly stagePending: (bytes: SaveBytes) => Promise<void>;
+  /** Stage save bytes for the reloaded boot, which resumes the world running when `resume` is set. */
+  readonly stagePending: (bytes: SaveBytes, resume?: boolean) => Promise<void>;
   readonly pickFile: () => Promise<PickedSaveFile | null>;
   /** Hand save bytes to the user as a file download. */
   readonly downloadSave: (fileName: string, bytes: SaveBytes) => void;
@@ -45,6 +45,8 @@ export interface SaveLoadSession {
   listSaves(): Promise<SaveSlotInfo[]>;
   /** Write the running game into the named slot, overwriting a same-named save. */
   saveGame(name: string): Promise<SaveOutcome>;
+  /** Stage the running game for this page's next boot to pick up where it stands; no slot is written. */
+  stageForReload(): Promise<void>;
   loadSave(id: string): Promise<LoadOutcome>;
   loadFromFile(): Promise<LoadOutcome>;
   /** Hand a stored save back out as a file download. */
@@ -74,6 +76,18 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
     if (forced === null) return;
     deps.setPaused(forced.priorPaused);
     forced = null;
+  };
+
+  const captureRunning = async (): Promise<{ save: SaveGame; bytes: SaveBytes }> => {
+    const capture = deps.captureSave ?? ((options: ExportSaveOptions) => host.exportSave(options));
+    const save = await capture({
+      savedAt: Date.now(),
+      ...(deps.sessionMetadata === undefined ? {} : { session: deps.sessionMetadata() }),
+      ...(deps.parent !== undefined ? { parent: deps.parent } : {}),
+      ...(worldToken !== null ? { mapId: worldToken } : {}),
+      ...(deps.entrySearch !== null ? { entry: deps.entrySearch } : {}),
+    });
+    return { save, bytes: await compressSaveText(serializeSaveGame(save)) };
   };
 
   const runLoad = async (pick: () => Promise<PickedSaveFile | null>): Promise<LoadOutcome> => {
@@ -125,15 +139,7 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
 
     async saveGame(name: string): Promise<SaveOutcome> {
       try {
-        const capture = deps.captureSave ?? ((options: ExportSaveOptions) => host.exportSave(options));
-        const save = await capture({
-          savedAt: Date.now(),
-          ...(deps.sessionMetadata === undefined ? {} : { session: deps.sessionMetadata() }),
-          ...(deps.parent !== undefined ? { parent: deps.parent } : {}),
-          ...(worldToken !== null ? { mapId: worldToken } : {}),
-          ...(deps.entrySearch !== null ? { entry: deps.entrySearch } : {}),
-        });
-        const bytes = await compressSaveText(serializeSaveGame(save));
+        const { save, bytes } = await captureRunning();
         await deps.store.write(name, bytes, {
           mapId: worldToken,
           tick: save.header.tick,
@@ -180,6 +186,13 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
         diag.warn('save', `exporting slot ${JSON.stringify(id)} failed: ${String(err)}`);
         return { kind: 'failed' };
       }
+    },
+
+    async stageForReload(): Promise<void> {
+      // An open menu's pause is not the player's: the game resumes as it stood under the menu.
+      const running = forced === null ? !deps.isPaused() : !forced.priorPaused;
+      const { bytes } = await captureRunning();
+      await deps.stagePending(bytes, running);
     },
 
     deleteSave: (id) => deps.store.remove(id),

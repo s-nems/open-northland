@@ -1,3 +1,5 @@
+import { GAME_VERSION } from '../../build-version.js';
+
 export type MenuScreen = 'main' | 'multiplayer' | 'newGame' | 'lobby' | 'load' | 'settings' | 'credits';
 
 /** A screen and its teardown, which the shell runs when the screen leaves, for handlers bound outside
@@ -6,10 +8,6 @@ export interface MountedScreen {
   readonly element: HTMLElement;
   readonly dispose?: () => void;
 }
-
-declare const __GAME_VERSION__: string;
-
-const GAME_VERSION = typeof __GAME_VERSION__ === 'string' ? __GAME_VERSION__ : 'dev';
 
 export const VERSION_LINE = `pre-alpha ${GAME_VERSION} · AGPL-3.0`;
 

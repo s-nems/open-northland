@@ -1,7 +1,7 @@
 import { LockstepDriver, LoopbackTransport } from '@open-northland/lockstep';
 import type { TerrainTextureSet } from '@open-northland/render';
 import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-northland/render';
-import type { SaveGame, Simulation } from '@open-northland/sim';
+import type { Simulation } from '@open-northland/sim';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
@@ -31,7 +31,7 @@ import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
 import { startGameView } from '../view/runtime/game-view.js';
-import { takeStagedSave } from '../view/runtime/save-load/index.js';
+import { type StagedSession, takeStagedSession } from '../view/runtime/save-load/index.js';
 import { SCENE_TOKEN_PREFIX } from '../view/runtime/save-load/world-names.js';
 import {
   createWorldRenderer,
@@ -72,13 +72,14 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   // Claimed before the scene lookup, and so before any world assembly: the staged bytes are one-shot,
   // and an entry that returns without claiming them leaves them for an unrelated boot to restore. A
   // staged save that fails from here on halts the boot rather than silently starting a fresh world.
-  let stagedSave: SaveGame | null;
+  let staged: StagedSession;
   try {
-    stagedSave = await takeStagedSave(worldToken);
+    staged = await takeStagedSession(worldToken);
   } catch (err) {
     haltOnFailedRestore(err);
     return;
   }
+  const stagedSave = staged.save;
   const scene = getScene(sceneId);
   if (scene === undefined) {
     mountUnknownSceneOverlay(
@@ -164,7 +165,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     sim,
     transport: new LoopbackTransport(),
     speed: session.speed,
-    paused: stagedSave !== null,
+    paused: stagedSave !== null && !staged.resume,
   });
 
   // Framed on the first tick's snapshot: a scene's settler spawns run as tick-1 commands, so the tick-0

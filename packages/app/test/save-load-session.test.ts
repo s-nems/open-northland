@@ -115,6 +115,8 @@ interface Harness {
   readonly session: ReturnType<typeof saveLoadSession>;
   readonly store: Map<string, StoredSlot>;
   readonly staged: SaveBytes[];
+  /** Whether each staging asked the next boot to resume running. */
+  readonly resumes: boolean[];
   readonly reloads: () => number;
   readonly paused: () => boolean;
   readonly delivered: Array<{ fileName: string; bytes: SaveBytes }>;
@@ -127,7 +129,7 @@ function harness(
   overrides: {
     captureSave?: (options: ExportSaveOptions) => SaveGame | Promise<SaveGame>;
     pickFile?: () => Promise<PickedSaveFile | null>;
-    stagePending?: (bytes: SaveBytes) => Promise<void>;
+    stagePending?: (bytes: SaveBytes, resume?: boolean) => Promise<void>;
     startPaused?: boolean;
     failWrite?: boolean;
     sessionMetadata?: () => unknown;
@@ -139,6 +141,7 @@ function harness(
   let reloads = 0;
   const store = new Map<string, StoredSlot>();
   const staged: SaveBytes[] = [];
+  const resumes: boolean[] = [];
   const delivered: Array<{ fileName: string; bytes: SaveBytes }> = [];
   const session = saveLoadSession({
     ...(overrides.captureSave === undefined ? {} : { captureSave: overrides.captureSave }),
@@ -157,8 +160,9 @@ function harness(
     },
     stagePending:
       overrides.stagePending ??
-      ((bytes) => {
+      ((bytes, resume = false) => {
         staged.push(bytes);
+        resumes.push(resume);
         return Promise.resolve();
       }),
     pickFile: overrides.pickFile ?? (() => Promise.resolve(null)),
@@ -189,7 +193,7 @@ function harness(
       },
     },
   });
-  return { session, store, staged, reloads: () => reloads, paused: () => paused, delivered };
+  return { session, store, staged, resumes, reloads: () => reloads, paused: () => paused, delivered };
 }
 
 describe('stagedSaveFrom', () => {
@@ -283,6 +287,33 @@ describe('saveLoadSession save flow', () => {
     await expect(failed.session.saveGame('Slot 1')).resolves.toEqual({ kind: 'failed' });
     expect(failed.paused()).toBe(true);
     expect(failed.store.size).toBe(0);
+  });
+});
+
+describe('saveLoadSession reload hand-over', () => {
+  it('stages the running world for the next boot without writing a slot or reloading itself', async () => {
+    const sim = demoSim();
+    const h = harness(sim);
+    await h.session.stageForReload();
+    const save = stagedSaveFrom(await decodeSaveText(h.staged[0] ?? new Uint8Array()), WORLD_TOKEN);
+    expect(save.header.tick).toBe(sim.tick);
+    expect(save.header.entry).toBe(ENTRY_SEARCH);
+    expect(h.resumes).toEqual([true]);
+    expect(h.store.size).toBe(0);
+    expect(h.reloads()).toBe(0);
+  });
+
+  it('keeps a paused world paused across the reload', async () => {
+    const h = harness(demoSim(), { startPaused: true });
+    await h.session.stageForReload();
+    expect(h.resumes).toEqual([false]);
+  });
+
+  it('resumes a world only an open menu paused', async () => {
+    const h = harness(demoSim());
+    h.session.forcePause();
+    await h.session.stageForReload();
+    expect(h.resumes).toEqual([true]);
   });
 });
 
