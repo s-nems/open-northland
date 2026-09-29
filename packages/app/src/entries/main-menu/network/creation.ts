@@ -40,21 +40,23 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
     const metadata = roster.get(slot.player);
     return metadata === undefined ? (['ai', 'idle', 'absent'] as const) : vacantOffers(metadata);
   };
-  const savedColors =
+  // A single-player save names its seats in its entry search; its world already plays their tribes.
+  const savedSeats = new Map(
     save?.header.entry == null
-      ? new Map<number, number>()
-      : new Map(
-          mapSession(new URLSearchParams(save.header.entry), players).seats.map((seat) => [
-            seat.player,
-            seat.color,
-          ]),
-        );
-  const authoredSeats: RoomSeatSetup[] = script.players.map((slot) => ({
-    player: slot.player,
-    color: savedColors.get(slot.player) ?? slot.colorId,
-    mode: vacantMode(slot),
-    offers: offers(slot),
-  }));
+      ? []
+      : mapSession(new URLSearchParams(save.header.entry), players).seats.map((seat) => [seat.player, seat]),
+  );
+  const authoredSeats: RoomSeatSetup[] = script.players.map((slot) => {
+    const saved = savedSeats.get(slot.player);
+    return {
+      player: slot.player,
+      color: saved?.color ?? slot.colorId,
+      mode: vacantMode(slot),
+      offers: offers(slot),
+      authoredTribe: slot.tribeId,
+      ...(saved?.tribe === undefined ? {} : { tribe: saved.tribe }),
+    };
+  });
   const seats = save === null ? authoredSeats : restoreSavedSeats(save, authoredSeats);
   const savedSession = save === null ? null : savedRoster(save);
   const options = initialLobbyOptions(params);

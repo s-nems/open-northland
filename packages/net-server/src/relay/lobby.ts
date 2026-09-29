@@ -64,9 +64,19 @@ export class Lobby {
     return null;
   }
 
+  /** The creator sets up any seat; a seated member may choose only its own seat's tribe. */
   setSeat(member: Member, player: number, change: SeatChange): Refusal {
-    if (member !== this.creator()) return { code: 'creatorOnly' };
-    if (this.settings.initialSave !== undefined && (change.color !== undefined || change.team !== undefined))
+    const ownTribe =
+      member.seat === player &&
+      change.tribe !== undefined &&
+      change.mode === undefined &&
+      change.color === undefined &&
+      change.team === undefined;
+    if (member !== this.creator() && !ownTribe) return { code: 'creatorOnly' };
+    if (
+      this.settings.initialSave !== undefined &&
+      (change.color !== undefined || change.team !== undefined || change.tribe !== undefined)
+    )
       return { code: 'savedSeatsFixed' };
     if (this.settings.initialSave !== undefined && change.mode === 'absent')
       return { code: 'savedSeatsFixed' };
@@ -77,7 +87,8 @@ export class Lobby {
     if (
       before?.mode === after?.mode &&
       before?.color === after?.color &&
-      (before?.team ?? null) === (after?.team ?? null)
+      (before?.team ?? null) === (after?.team ?? null) &&
+      before?.tribe === after?.tribe
     )
       return null;
     this.invalidateReady();

@@ -24,6 +24,7 @@ export function relayReasonText(reason: RelayReason, copy: Messages = messages()
       });
     case 'noSeat':
     case 'seatEmpty':
+    case 'seatTribeUnavailable':
       return formatMessage(templates[reason.code], { seat: seatNumber(reason.player) });
     case 'seatTaken':
       return formatMessage(templates[reason.code], { seat: seatNumber(reason.player), nick: reason.nick });

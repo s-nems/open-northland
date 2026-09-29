@@ -13,17 +13,23 @@ import {
  * that a launch URL and the descriptor it launches describe the same game.
  */
 
+/** `TRIBE_TYPE_HUMAN_*` codes the rosters below name. */
+const VIKING = 1;
+const FRANK = 2;
+const BYZANTINE = 3;
+const SARACEN = 4;
+
 const ROSTER: readonly SessionRosterSlot[] = [
-  { player: 0, colorId: 7, type: 'human', claimable: true },
-  { player: 1, colorId: 4, type: 'human', claimable: true },
-  { player: 2, colorId: 9, type: 'ai', claimable: true },
+  { player: 0, colorId: 7, tribeId: VIKING, type: 'human', claimable: true },
+  { player: 1, colorId: 4, tribeId: FRANK, type: 'human', claimable: true },
+  { player: 2, colorId: 9, tribeId: SARACEN, type: 'ai', claimable: true },
 ];
 
 /** A Forteca-style roster: three seats a person may take, then the map's own computer seats. */
 const SCENARIO_ROSTER: readonly SessionRosterSlot[] = [
   ...ROSTER,
-  { player: 3, colorId: 3, type: 'ai', claimable: false },
-  { player: 6, colorId: 9, type: 'ai', claimable: false },
+  { player: 3, colorId: 3, tribeId: VIKING, type: 'ai', claimable: false },
+  { player: 6, colorId: 9, tribeId: VIKING, type: 'ai', claimable: false },
 ];
 
 function session(search: string) {
@@ -103,8 +109,8 @@ describe('mapSession', () => {
     // World assembly enqueues one setup command per AI seat in this order, so it cannot be left to the
     // order a roster was authored in or a `?ai=` list was typed in.
     const shuffled: readonly SessionRosterSlot[] = [
-      { player: 2, colorId: 9, type: 'human', claimable: true },
-      { player: 0, colorId: 7, type: 'human', claimable: true },
+      { player: 2, colorId: 9, tribeId: VIKING, type: 'human', claimable: true },
+      { player: 0, colorId: 7, tribeId: VIKING, type: 'human', claimable: true },
     ];
     expect(mapSession(new URLSearchParams('map=zatoka'), shuffled).seats.map((s) => s.player)).toEqual([
       0, 2,
@@ -126,8 +132,7 @@ describe('sceneSession', () => {
 
 describe('sessionSearch', () => {
   it('round-trips every parameter a session carries', () => {
-    const search =
-      'map=magiczny_las&player=2&seed=42&colors=0:3&ai=1&fog=recon-fow&progression=off&needs=on&speed=1.5';
+    const search = `map=magiczny_las&player=2&seed=42&colors=0:3&tribes=1:${BYZANTINE}&ai=1&fog=recon-fow&progression=off&needs=on&speed=1.5`;
     const parsed = session(search);
     expect(mapSession(sessionSearch(parsed, ROSTER), ROSTER)).toEqual(parsed);
   });
@@ -135,6 +140,14 @@ describe('sessionSearch', () => {
   it('writes only what the person chose, and always the seat', () => {
     const parsed = session('map=zatoka');
     expect(sessionSearch(parsed, ROSTER).toString()).toBe('map=zatoka&player=0');
+  });
+
+  it('names only the seats played as another civilization than the roster gives them', () => {
+    const parsed = session(`map=zatoka&tribes=0:${BYZANTINE},1:${FRANK}`);
+    expect(parsed.seats.map((seat) => seat.tribe)).toEqual([BYZANTINE, FRANK, undefined]);
+    const search = sessionSearch(parsed, ROSTER);
+    expect(search.get('tribes')).toBe(`0:${BYZANTINE}`);
+    expect(sessionSearch(session('map=zatoka'), ROSTER).has('tribes')).toBe(false);
   });
 
   it('leaves the map’s own computer seats out of `?ai=`, which lists the person’s choices', () => {

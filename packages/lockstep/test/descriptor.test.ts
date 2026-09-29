@@ -82,6 +82,22 @@ describe('game session descriptor', () => {
     }
   });
 
+  it('preserves a chosen civilization and omits it when the map keeps its own', () => {
+    const configured = session({
+      seats: [
+        { player: 0, mode: 'human', color: 0, tribe: 4 },
+        { player: 1, mode: 'ai', color: 1 },
+      ],
+    });
+    expect(roundTrip(configured)).toEqual(configured);
+    expect(roundTrip(configured).seats[1]).not.toHaveProperty('tribe');
+    for (const tribe of [0, -1, 1.5, '4', null]) {
+      expect(() =>
+        parseGameSession({ ...session(), seats: [{ player: 0, mode: 'human', color: 0, tribe }] }),
+      ).toThrow(/tribe/);
+    }
+  });
+
   it('refuses a payload that would assemble a different world', () => {
     expect(() => parseGameSession(session({ seed: 1.5 }))).toThrow(/seed/);
     expect(() => parseGameSession(session({ speed: 0 }))).toThrow(/speed/);

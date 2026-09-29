@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 11` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 12` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -60,23 +60,30 @@ immediately. The host closes a connection that has sent nothing, a pong included
 `createRoom { settings, seats }` makes a room and puts the sender in it. `settings` is
 `{ name, world, seed, rules, speed, kickedSeatMode?, initialSave?, mapOrigin? }`, where `world` and `rules` are the session descriptor's, and
 the world is fixed for the room's life. `seats` lists the world's seats in ascending order as
-`{ player, mode, offers, color, team? }` with `mode` `ai`, `idle` or `absent`; `human` is never chosen, it
-is what a claimed seat becomes. `offers` lists the vacant modes the map's `playeroption` row allows the
-seat, `mode` among them. An `absent` seat idles, and a fresh world places none of its authored settlers,
+`{ player, mode, offers, color, team?, authoredTribe?, tribe? }` with `mode` `ai`, `idle` or `absent`;
+`human` is never chosen, it is what a claimed seat becomes. `offers` lists the vacant modes the map's
+`playeroption` row allows the seat, `mode` among them. `authoredTribe` is the tribe the map's roster
+names for the seat, and `tribe` the one it starts as when that differs (a saved world's choice); a seat
+without `authoredTribe` offers no tribe choice, and `tribe` needs it. Tribe ids are integers from 1
+through `MAX_TRIBE_ID` (255); which of them name a civilization is the clients' content to say. An `absent` seat idles, and a fresh world places none of its authored settlers,
 buildings, walls, animals or signposts. A room resumed from a save refuses `absent`, since its world
 already stands. `joinRoom { roomId }` joins a room in the lobby; a room that has started refuses. A
 duplicate nick within a room gets a numeric suffix (`Ania`, `Ania2`). At most `MAX_MEMBERS` (12)
 people share a room.
 
 Every change to a room is broadcast to its members as `room { room }`, the whole view:
-`{ id, state, creator, settings, seats: [{ player, mode, offers, color, team?, nick, ready }], members: [{ nick, seat, connected, compatibility, load }] }`.
+`{ id, state, creator, settings, seats: [{ player, mode, offers, color, team?, authoredTribe?, tribe?, nick, ready }], members: [{ nick, seat, connected, compatibility, load }] }`,
+where a seat carries `authoredTribe` and its current `tribe` together or neither.
 A member's `load` is the one its last acknowledgement reported (below), null before its first. A
 moved load alone sends a view at most once per `LOAD_VIEW_INTERVAL_MS` (1 s) per room; any other
 change carries the current loads with it.
 
 - `claimSeat { player }` sits down in a seat nobody holds, which makes it `human` whatever it was;
   `claimSeat { player: null }` stands up and returns it to its lobby setting.
-- `setSeat { player, mode?, color?, team? }` is the creator's: `mode` only on a vacant seat that offers it.
+- `setSeat { player, mode?, color?, team?, tribe? }` is the creator's: `mode` only on a vacant seat that
+  offers it. A seated member may also send `tribe` alone for its own seat. `tribe` needs a seat with an
+  `authoredTribe` (else `seatTribeUnavailable`), and reaches the start descriptor's seat only when it
+  differs from the authored one; a seat without it plays the map's roster tribe.
   `team` is an integer from 0 through 15, or null; omitted/null preserves map-authored diplomacy.
   Explicit teams are carried in the session descriptor, whose trusted setup applies the relations
   and joins each team's seats into one fog mask (`setSharedVision`), so teammates explore, see and
@@ -84,7 +91,7 @@ change carries the current loads with it.
 - `setSettings { settings }` is the creator's. It replaces `{ name, seed, rules, speed, kickedSeatMode? }`
   in full; including `world`, `initialSave` or `mapOrigin` is refused because these are immutable,
   and a replacement that changes nothing produces no room update. A saved room also fixes its seed,
-  rules, seat colors and teams; claims and creator-selected vacant AI/idle modes remain editable.
+  rules, seat colors, teams and tribes; claims and creator-selected vacant AI/idle modes remain editable.
 - `setCompatibility { compatibility }` supplies the sender's report or null to invalidate it.
 - `setReady { ready }` needs a seat; becoming ready also requires all compatibility checks to pass.
 - `leaveRoom` frees the seat and identity; the last member out drops the room, and
@@ -95,7 +102,7 @@ change carries the current loads with it.
   initial built tick yet, the handover notice and AI command wait for that baseline and name the
   actual first resumed tick; the identity and room slot are released immediately.
 
-Every effective report, membership, seat, team, color or settings change clears all ready flags.
+Every effective report, membership, seat, team, color, tribe or settings change clears all ready flags.
 Repeating the same report, seat claim or settings preserves readiness. A reconnect in the lobby also
 clears that member's compatibility report and all readiness, so the new client must check its files.
 A reconnect into a started game is checked by its snapshot tick and digests instead.
@@ -318,7 +325,8 @@ only the simulation queue; retained relay frames reconstruct accepted orders aft
 A manual multiplayer save is written locally and shared through the relay as a `save` blob. What a
 save records of its session (the descriptor and the public roster, never a token) is the save
 format's contract in [`DATA-FORMAT.md`](DATA-FORMAT.md). A room created from a save offers the
-saved human seats as vacant and each player claims one explicitly; the new room's seats supersede a
+saved human seats as vacant and each player claims one explicitly, with the saved seats' colors, teams
+and tribes, since its world already stands; the new room's seats supersede a
 seat handover the previous room had scheduled but not applied, and player orders keep their saved
 ticks and order.
 

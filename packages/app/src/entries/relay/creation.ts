@@ -30,6 +30,7 @@ export async function roomCreation(params: URLSearchParams, mapId: string): Prom
       mode: authoredVacantMode(slot),
       offers: vacantOffers(slot),
       color: slot.colorId,
+      authoredTribe: slot.tribeId,
     })),
   };
 }

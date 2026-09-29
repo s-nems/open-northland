@@ -8,8 +8,10 @@ import {
 import { describe, expect, it } from 'vitest';
 import {
   canClaimSeat,
+  canSetSeatTribe,
   roomPermissions,
   savedSeatHint,
+  seatCivilization,
 } from '../../src/entries/main-menu/network/room/model.js';
 import { memberLoadText } from '../../src/view/net/member-load.js';
 
@@ -124,6 +126,38 @@ describe('network room permissions', () => {
     expect(roomPermissions(running, 'Ania', false).canRejoin).toBe(false);
     expect(roomPermissions(running, 'Celina', true).canRejoin).toBe(false);
     expect(roomPermissions(room(), 'Ania', true).canRejoin).toBe(false);
+  });
+});
+
+describe('network room tribes', () => {
+  const VIKING = 1;
+  const WEREWOLF = 6;
+  const seat = (player: number) => {
+    const found = room().seats.find((view) => view.player === player);
+    if (found === undefined) throw new Error(`no seat ${player}`);
+    return found;
+  };
+
+  it('offers a choice only on a seat the map gave a civilization', () => {
+    expect(seatCivilization({ ...seat(0), authoredTribe: VIKING, tribe: VIKING })).toBe(VIKING);
+    expect(seatCivilization({ ...seat(0), authoredTribe: WEREWOLF, tribe: WEREWOLF })).toBeNull();
+    expect(seatCivilization(seat(0))).toBeNull();
+  });
+
+  it('lets the creator choose any seat’s tribe and a member its own, until a save or the start fixes them', () => {
+    const view = room();
+    for (const target of view.seats) expect(canSetSeatTribe(view, target, 'Ania', true)).toBe(true);
+    expect(canSetSeatTribe(view, seat(1), 'Bartek', true)).toBe(true);
+    expect(canSetSeatTribe(view, seat(0), 'Bartek', true)).toBe(false);
+    expect(canSetSeatTribe(view, seat(2), 'Bartek', true)).toBe(false);
+    expect(canSetSeatTribe(view, seat(1), 'Bartek', false)).toBe(false);
+    expect(canSetSeatTribe({ ...view, state: 'running' }, seat(1), 'Bartek', true)).toBe(false);
+    const saved = {
+      ...view,
+      settings: { ...view.settings, initialSave: { fingerprint: 'd'.repeat(64), tick: 20 } },
+    };
+    expect(canSetSeatTribe(saved, seat(0), 'Ania', true)).toBe(false);
+    expect(canSetSeatTribe(saved, seat(1), 'Bartek', true)).toBe(false);
   });
 });
 

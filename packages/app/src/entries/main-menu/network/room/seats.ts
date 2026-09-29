@@ -10,8 +10,9 @@ import { node } from '../../dom.js';
 import { colorChip, colorPalette } from '../../lobby-controls/color.js';
 import { seatRow as createSeatRow } from '../../lobby-controls/seat.js';
 import { seatModeControl } from '../../lobby-controls/seat-mode.js';
+import { tribePicker } from '../../lobby-controls/tribe.js';
 import { button, selectControl } from './controls.js';
-import { canClaimSeat, roomPermissions, savedSeatHint } from './model.js';
+import { canClaimSeat, canSetSeatTribe, roomPermissions, savedSeatHint, seatCivilization } from './model.js';
 import type { NetworkRoomDeps } from './types.js';
 
 const ROOM_VACANT_ORDER: readonly VacantSeatMode[] = ['idle', 'ai', 'absent'];
@@ -35,7 +36,19 @@ export function roomSeats(deps: NetworkRoomDeps) {
     if (focus !== null) rows.get(focus)?.chip.focus();
     if (player !== null) rows.get(player)?.palette.scrollIntoView({ block: 'nearest' });
   }
-  function seatRow(player: number, offers: readonly VacantSeatMode[], resumed: boolean) {
+  function seatTribe(player: number, authored: number) {
+    const picker = tribePicker(authored, (tribe) => client.setSeat(player, { tribe }), 'network-room__field');
+    return {
+      root: picker.root,
+      update: (seat: RoomSeatView, disabled: boolean) => picker.update(seat.tribe ?? authored, disabled),
+    };
+  }
+  function seatRow(
+    player: number,
+    offers: readonly VacantSeatMode[],
+    resumed: boolean,
+    civilization: number | null,
+  ) {
     const colorOptions = {
       label: copy.color,
       name: colorName,
@@ -99,6 +112,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
       },
       'select',
     );
+    const tribe = civilization === null ? null : seatTribe(player, civilization);
     const take = button(copy.takeSeat, () => client.claimSeat(player));
     take.classList.add('network-room__claim');
     const row = createSeatRow({
@@ -106,7 +120,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
       nameClass: 'network-room__seat-name',
       detailClass: 'network-room__muted',
       action: take,
-      controls: [color, team.root, mode.root, palette],
+      controls: [color, team.root, mode.root, ...(tribe === null ? [] : [tribe.root]), palette],
     });
     return {
       row: row.root,
@@ -139,6 +153,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
         paintPalette(room, seat, frozen);
         team.update(String(seat.team ?? ''), frozen);
         mode.update(seat.mode, !permissions.creator || seat.nick !== null);
+        tribe?.update(seat, !canSetSeatTribe(room, seat, client.nick, connected));
         take.disabled = !canClaimSeat(room, seat, client.nick, connected);
         take.hidden = seat.nick !== null;
       },
@@ -163,7 +178,12 @@ export function roomSeats(deps: NetworkRoomDeps) {
       for (const seat of room.seats) {
         let row = rows.get(seat.player);
         if (row === undefined) {
-          row = seatRow(seat.player, seat.offers, room.settings.initialSave !== undefined);
+          row = seatRow(
+            seat.player,
+            seat.offers,
+            room.settings.initialSave !== undefined,
+            seatCivilization(seat),
+          );
           rows.set(seat.player, row);
           root.append(row.row);
         }

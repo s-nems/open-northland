@@ -9,6 +9,7 @@ import {
   parseSeatIndex,
   parseSeatSetups,
   parseTeam,
+  parseTribe,
   VACANT_SEAT_MODES,
 } from './room.js';
 import { assertNever, asTimestamp, parseLine, parseNick, parseToken } from './text.js';
@@ -81,6 +82,7 @@ export function parseClientMessage(value: unknown): ClientMessage {
         ...(raw.mode !== undefined ? { mode: asOneOf(raw.mode, VACANT_SEAT_MODES, 'setSeat.mode') } : {}),
         ...(raw.color !== undefined ? { color: asCount(raw.color, 'setSeat.color') } : {}),
         ...(raw.team !== undefined ? { team: parseTeam(raw.team, 'setSeat.team') } : {}),
+        ...(raw.tribe !== undefined ? { tribe: parseTribe(raw.tribe, 'setSeat.tribe') } : {}),
       };
     case 'setSettings':
       if (

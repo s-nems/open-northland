@@ -8,6 +8,7 @@ import {
   MAX_NICK_LENGTH,
   MAX_REPORTED_BUFFERED,
   MAX_REPORTED_TICK_MS,
+  MAX_TRIBE_ID,
   PROTOCOL_VERSION,
   parseClientMessage,
   parseServerMessage,
@@ -83,12 +84,22 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
       { player: 3, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 9 },
     ],
   },
+  {
+    kind: 'createRoom',
+    settings,
+    seats: [
+      { player: 0, mode: 'idle', offers: ['idle', 'ai'], color: 0, authoredTribe: 1 },
+      { player: 1, mode: 'ai', offers: ['idle', 'ai'], color: 1, authoredTribe: 2, tribe: 7 },
+    ],
+  },
   { kind: 'joinRoom', roomId: 'a1b2c3d4' },
   { kind: 'leaveRoom' },
   { kind: 'claimSeat', player: 2 },
   { kind: 'claimSeat', player: null },
   { kind: 'setSeat', player: 1, mode: 'ai', color: 4 },
   { kind: 'setSeat', player: 1 },
+  { kind: 'setSeat', player: 1, tribe: 4 },
+  { kind: 'setSeat', player: 1, tribe: MAX_TRIBE_ID },
   { kind: 'setReady', ready: true },
   { kind: 'setCompatibility', compatibility: COMPATIBILITY },
   { kind: 'setCompatibility', compatibility: null },
@@ -187,6 +198,27 @@ describe('client messages', () => {
         seats: [],
       },
       /tick 1 or later/,
+    ],
+    ['a tribe 0', { kind: 'setSeat', player: 0, tribe: 0 }, /setSeat\.tribe/],
+    ['a tribe past the bound', { kind: 'setSeat', player: 0, tribe: MAX_TRIBE_ID + 1 }, /setSeat\.tribe/],
+    ['a fractional tribe', { kind: 'setSeat', player: 0, tribe: 1.5 }, /setSeat\.tribe/],
+    [
+      'a seat tribe without the authored one',
+      {
+        kind: 'createRoom',
+        settings,
+        seats: [{ player: 0, mode: 'ai', offers: ['ai'], color: 0, tribe: 2 }],
+      },
+      /without an authored tribe/,
+    ],
+    [
+      'an authored tribe 0',
+      {
+        kind: 'createRoom',
+        settings,
+        seats: [{ player: 0, mode: 'ai', offers: ['ai'], color: 0, authoredTribe: 0 }],
+      },
+      /authoredTribe/,
     ],
     [
       'a human seat setup',
@@ -299,6 +331,16 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
       seats: [
         { player: 0, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 0, nick: 'Ania', ready: true },
         { player: 1, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 4, nick: null, ready: false },
+        {
+          player: 2,
+          mode: 'idle',
+          offers: ['idle'],
+          color: 5,
+          authoredTribe: 1,
+          tribe: 3,
+          nick: null,
+          ready: false,
+        },
       ],
       members: [
         {
@@ -405,6 +447,22 @@ describe('server messages', () => {
         parseSession,
       ),
     ).toThrow(/player envelopes only/);
+  });
+
+  it('refuses a seat view carrying one of its two tribes', () => {
+    const view = (seat: Record<string, unknown>) => ({
+      kind: 'room',
+      room: {
+        id: 'a1b2c3d4',
+        state: 'lobby',
+        creator: 'Ania',
+        settings,
+        seats: [{ player: 0, mode: 'idle', offers: ['idle'], color: 0, nick: null, ready: false, ...seat }],
+        members: [],
+      },
+    });
+    expect(() => parseServerMessage(view({ authoredTribe: 1 }), parseSession)).toThrow(/missing beside/);
+    expect(() => parseServerMessage(view({ tribe: 1 }), parseSession)).toThrow(/without an authored tribe/);
   });
 
   it('refuses a wait reason and a desync domain it does not know', () => {

@@ -13,7 +13,12 @@ import { describe, expect, it } from 'vitest';
 import { runDemoWorld } from '../src/game/world/index.js';
 import { inlineSessionHost } from '../src/session/index.js';
 import { stagedSaveFrom } from '../src/view/runtime/save-load/boot.js';
-import { decodeSaveText, isGzipSave, type SaveBytes } from '../src/view/runtime/save-load/codec.js';
+import {
+  compressSaveText,
+  decodeSaveText,
+  isGzipSave,
+  type SaveBytes,
+} from '../src/view/runtime/save-load/codec.js';
 import type { PickedSaveFile } from '../src/view/runtime/save-load/file-access.js';
 import {
   evaluateSaveFile,
@@ -127,6 +132,7 @@ function harness(
     failWrite?: boolean;
     sessionMetadata?: () => unknown;
     onSaved?: (save: SaveGame) => Promise<void>;
+    loadRelatedWorld?: (save: SaveGame, bytes: SaveBytes) => Promise<void>;
   } = {},
 ): Harness {
   let paused = overrides.startPaused === true;
@@ -138,6 +144,7 @@ function harness(
     ...(overrides.captureSave === undefined ? {} : { captureSave: overrides.captureSave }),
     ...(overrides.sessionMetadata === undefined ? {} : { sessionMetadata: overrides.sessionMetadata }),
     ...(overrides.onSaved === undefined ? {} : { onSaved: overrides.onSaved }),
+    ...(overrides.loadRelatedWorld === undefined ? {} : { loadRelatedWorld: overrides.loadRelatedWorld }),
     host: inlineSessionHost(sim),
     worldToken: WORLD_TOKEN,
     entrySearch: ENTRY_SEARCH,
@@ -287,6 +294,28 @@ describe('saveLoadSession slot load and export', () => {
     await expect(h.session.loadSave('Slot 1')).resolves.toEqual({ kind: 'loading' });
     expect(h.staged).toEqual([h.store.get('Slot 1')?.bytes]);
     expect(h.reloads()).toBe(1);
+  });
+
+  it('reloads a save of this session in place and relaunches one this map recorded under another', async () => {
+    const relaunched: (string | null)[] = [];
+    const h = harness(demoSim(), {
+      loadRelatedWorld: (save) => {
+        relaunched.push(save.header.entry);
+        return Promise.resolve();
+      },
+    });
+    await h.session.saveGame('Same');
+    await expect(h.session.loadSave('Same')).resolves.toEqual({ kind: 'loading' });
+    expect([h.reloads(), relaunched]).toEqual([1, []]);
+
+    const other = `${ENTRY_SEARCH}&tribes=2:4`;
+    const save = exportSaveGame(demoSim(), { mapId: WORLD_TOKEN, entry: other });
+    h.store.set('Other', {
+      bytes: await compressSaveText(serializeSaveGame(save)),
+      meta: { mapId: WORLD_TOKEN, tick: 0, entry: other },
+    });
+    await expect(h.session.loadSave('Other')).resolves.toEqual({ kind: 'loading' });
+    expect([h.reloads(), relaunched]).toEqual([1, [other]]);
   });
 
   it('rejects a vanished slot as missing, touching nothing', async () => {

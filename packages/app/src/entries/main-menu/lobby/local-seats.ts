@@ -3,6 +3,7 @@ import { currentLocale, formatMessage, messages, tribeName } from '../../../i18n
 import { colorChip, colorPalette } from '../lobby-controls/color.js';
 import { seatRow } from '../lobby-controls/seat.js';
 import { seatModeControl } from '../lobby-controls/seat-mode.js';
+import { tribePicker } from '../lobby-controls/tribe.js';
 import type { MapSelectItem } from '../map-select-model.js';
 import type { LobbySlotRow } from './model.js';
 import { type RosterState, type VacantMode, vacantOffers, wornByAnother } from './roster-state.js';
@@ -11,6 +12,7 @@ interface SeatActions {
   readonly togglePicker: (player: number) => void;
   readonly pickColor: (player: number, color: number) => void;
   readonly setMode: (player: number, mode: VacantMode) => void;
+  readonly pickTribe: (player: number, tribe: number) => void;
   readonly claim: (player: number) => void;
 }
 
@@ -94,13 +96,22 @@ export function localSeatElements(
     return control.root;
   };
 
+  // A civilization seat's picker replaces the tribe name its detail line would otherwise carry.
+  const tribeCell = (row: LobbySlotRow): HTMLElement | undefined => {
+    if (!row.offersTribe) return undefined;
+    const picker = tribePicker(row.slot.tribeId, (tribe) => actions.pickTribe(row.slot.player, tribe));
+    picker.update(row.tribe, false);
+    const select = picker.root.querySelector('select');
+    if (select !== null) select.dataset.focus = `tribe:${row.slot.player}`;
+    return picker.root;
+  };
+
   const slotRow = (row: LobbySlotRow): HTMLElement => {
     const title =
       localizedMapText(row.slot.name, currentLocale()) ??
       (row.kind === 'open'
         ? lobby.freeSlot
         : formatMessage(lobby.playerSlotLabel, { n: row.slot.player + 1 }));
-    const tribe = tribeName(row.slot.tribeId);
     const subText =
       row.kind === 'yours'
         ? lobby.yourSub
@@ -124,6 +135,7 @@ export function localSeatElements(
       action.append(sit);
     }
 
+    const tribe = tribeCell(row);
     const seat = seatRow({
       className: 'main-menu__lobby-row',
       labelClass: 'main-menu__lobby-label',
@@ -131,8 +143,13 @@ export function localSeatElements(
       detailClass: 'main-menu__lobby-sub',
       beforeLabel: [chipButton(row)],
       controls: [controlCell(row), action],
+      ...(tribe === undefined ? {} : { action: tribe }),
     });
-    seat.update(title, `${tribe} · ${subText}`, row.kind === 'yours');
+    seat.update(
+      title,
+      tribe === undefined ? `${tribeName(row.tribe)} · ${subText}` : subText,
+      row.kind === 'yours',
+    );
     seat.root.classList.toggle('is-scenario', row.kind === 'scenario');
     return seat.root;
   };

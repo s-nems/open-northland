@@ -12,13 +12,13 @@ const descriptor: GameSession = {
   speed: 2,
   rules: { fog: null, progression: null, needs: null },
   seats: [
-    { player: 0, mode: 'human', color: 3, team: 1 },
+    { player: 0, mode: 'human', color: 3, team: 1, tribe: 7 },
     { player: 1, mode: 'ai', color: 4 },
   ],
 };
 const authored: RoomSeatSetup[] = [
-  { player: 0, mode: 'idle', offers: ['ai', 'idle', 'absent'], color: 0 },
-  { player: 1, mode: 'idle', offers: ['idle'], color: 1 },
+  { player: 0, mode: 'idle', offers: ['ai', 'idle', 'absent'], color: 0, authoredTribe: 1 },
+  { player: 1, mode: 'idle', offers: ['idle'], color: 1, authoredTribe: 2 },
 ];
 const metadata = createSavedSessionMetadata(descriptor, [
   { player: 0, nick: 'Ania' },
@@ -27,11 +27,19 @@ const metadata = createSavedSessionMetadata(descriptor, [
 const save = exportSaveGame(runDemoWorld(7, 0), { mapId: 'test', session: metadata });
 
 describe('saved multiplayer roster', () => {
-  it('recovers colors, teams and AI, leaving saved humans free for an explicit claim', () => {
+  it('recovers colors, teams, tribes and AI, leaving saved humans free for an explicit claim', () => {
     expect(restoreSavedSeats(save, authored)).toEqual([
-      { player: 0, mode: 'idle', offers: ['ai', 'idle', 'absent'], color: 3, team: 1 },
+      {
+        player: 0,
+        mode: 'idle',
+        offers: ['ai', 'idle', 'absent'],
+        color: 3,
+        team: 1,
+        authoredTribe: 1,
+        tribe: 7,
+      },
       // The saved mode stays valid even where the map no longer offers it.
-      { player: 1, mode: 'ai', offers: ['idle', 'ai'], color: 4 },
+      { player: 1, mode: 'ai', offers: ['idle', 'ai'], color: 4, authoredTribe: 2 },
     ]);
     expect(savedRoster(save)?.roster[0]?.nick).toBe('Ania');
   });

@@ -168,7 +168,7 @@ export async function presentMapWorld(
       ? { observerSeats: observerSeats(session, script, currentLocale()) }
       : {}),
     playerColourOf,
-    seatTribeOf: (player) => playerTribe(script, player),
+    seatTribeOf: (player) => playerTribe({ players: world.seatedPlayers }, player),
     tribes: world.tribes,
     seatNameOf: playerNameMap(script, currentLocale()),
     rosterPlayers: script?.players.map((p) => p.player) ?? [],

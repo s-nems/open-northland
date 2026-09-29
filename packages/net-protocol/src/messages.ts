@@ -39,6 +39,11 @@ export interface RoomSeatSetup {
   readonly offers: readonly VacantSeatMode[];
   readonly color: number;
   readonly team?: number | null;
+  /** The tribe the map's roster names for the seat; a seat without one, such as a scene's, offers no
+   *  tribe choice. */
+  readonly authoredTribe?: number;
+  /** The tribe the seat starts as when it is not `authoredTribe`: a saved world's choice. */
+  readonly tribe?: number;
 }
 
 export interface RoomSeatView {
@@ -47,6 +52,9 @@ export interface RoomSeatView {
   readonly offers: readonly VacantSeatMode[];
   readonly color: number;
   readonly team?: number | null;
+  /** Present together: the map's tribe for the seat and the one it plays. */
+  readonly authoredTribe?: number;
+  readonly tribe?: number;
   readonly nick: string | null;
   readonly ready: boolean;
 }
@@ -157,6 +165,7 @@ export type ClientMessage =
       readonly mode?: VacantSeatMode;
       readonly color?: number;
       readonly team?: number | null;
+      readonly tribe?: number;
     }
   | { readonly kind: 'setReady'; readonly ready: boolean }
   | { readonly kind: 'setCompatibility'; readonly compatibility: LobbyCompatibility | null }

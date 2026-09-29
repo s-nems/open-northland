@@ -96,6 +96,11 @@ export const plSurfaces = {
       overseerTaken: 'Nadzorujesz',
       teamColour: 'Kolor drużyny',
       teamColourLocked: 'ta mapa ma stałe kolory',
+      tribe: 'Nacja',
+      tribeRecommended: '{tribe} (zalecana)',
+      tribeMapChoice: 'mapa zaleca: {tribe}',
+      tribeTitle:
+        'Nacja, którą gra to miejsce: jego osadnicy i budynki należą do tego ludu. Mapę zaprojektowano pod nację zalecaną.',
       settingsTitle: 'Ustawienia rozgrywki',
       mapLabel: 'Mapa',
       mapModes: {

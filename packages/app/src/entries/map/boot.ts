@@ -1,4 +1,4 @@
-import { mapLobbySlots } from '@open-northland/data';
+import { type MapScript, mapLobbySlots } from '@open-northland/data';
 import { type GameSession, seatColourOf } from '@open-northland/lockstep';
 import {
   createWindowPixiApp,
@@ -31,6 +31,7 @@ import { readVerifiedMapDocuments, type VerifiedMapDocuments } from '../../conte
 import { diag, hashTraceFor, setDiagGameSession } from '../../diag/index.js';
 import { assertMultiplayerMap } from '../../game/multiplayer-map.js';
 import { sandboxGoods } from '../../game/sandbox/index.js';
+import { sessionSeating } from '../../game/seat-tribes.js';
 import { onOffParam } from '../../game/session-rules.js';
 import type { SessionRosterSlot } from '../../game/session-url.js';
 import { terrainSceneFor } from '../../game/world/index.js';
@@ -116,6 +117,8 @@ export interface AssembledMapWorld<H extends HostedMapWorld = HostedMapWorld> {
   readonly briefing: Awaited<ReturnType<typeof loadMapBriefing>>;
   readonly strings: Awaited<ReturnType<typeof loadMapStrings>>;
   readonly tribes: WorldTribes;
+  /** The roster as the session plays it, each seat on the civilization the lobby chose. */
+  readonly seatedPlayers: MapScript['players'];
   readonly staticObjects: LoadedObjects | undefined;
   /** The map's shore waves by placement ordinal, the key a script's landscape removal names them by. */
   readonly groundWaves: ReadonlyMap<number, GroundWave>;
@@ -183,7 +186,13 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     const ir = await irLoad;
     // Every civilization the map fields brings its own building and settler pages, so the sheet loads
     // exactly the seats' and the authored entities' tribes.
-    const tribes = worldTribes(script, loaded?.entities, ir ?? {});
+    const seating = sessionSeating(session, script?.players ?? [], ir ?? {});
+    const tribes = worldTribes(
+      script === null ? null : { players: seating.players, missions: script.missions },
+      loaded?.entities,
+      ir ?? {},
+      seating.remap,
+    );
     await boot.begin('sprites');
     const goods = realContent?.content.goods ?? sandboxGoods();
     // The admin panel's monster presets draw only with their looks loaded; those pages are large, so they
@@ -285,6 +294,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
       briefing,
       strings,
       tribes,
+      seatedPlayers: seating.players,
       staticObjects,
       groundWaves,
     };

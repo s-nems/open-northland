@@ -163,6 +163,61 @@
   color: rgba(143, 184, 173, 0.75);
 }
 
+/* A seat's civilization picker, shared with the network room; the note names the map's own pick. In a
+   local seat row the select carries its own aria-label, so the visible caption is dropped. */
+.main-menu__lobby-row .lobby-tribe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--u) * 4) calc(var(--u) * 10);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.main-menu__lobby-row .lobby-tribe > span:first-child {
+  display: none;
+}
+
+.lobby-tribe select {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  padding: calc(var(--u) * 4) calc(var(--u) * 8);
+  border: 1px solid rgb(var(--accent-rgb) / 0.45);
+  border-radius: 4px;
+  background: rgba(12, 22, 34, 0.85);
+  color: var(--text-body);
+  font:
+    500 calc(var(--u) * 20) / 1.2 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  cursor: var(--cursor-pointer, pointer);
+}
+
+.lobby-tribe select:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+.lobby-tribe select:disabled {
+  cursor: var(--cursor-default, default);
+  opacity: 0.6;
+}
+
+.lobby-tribe__note {
+  display: none;
+  font:
+    italic 400 calc(var(--u) * 17) / 1.2 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--accent-bright);
+  opacity: 0.8;
+}
+
+.lobby-tribe.is-off-map .lobby-tribe__note {
+  display: inline;
+}
+
 /* Control cell states: your static "Human", a locked scenario seat, or the vacant-mode segment. */
 .main-menu__lobby-human,
 .main-menu__lobby-locked {

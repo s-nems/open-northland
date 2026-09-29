@@ -33,6 +33,7 @@ import {
   spawnMapResources,
   type WorldContentOptions,
 } from '../../game/sandbox/index.js';
+import type { SeatTribeRemap } from '../../game/seat-tribes.js';
 import { applySessionRuleOverrides } from '../../game/session-rules.js';
 import { grantStartingPapers } from '../../game/starting-papers.js';
 import {
@@ -75,6 +76,8 @@ export interface MapWorldOptions extends SessionRules {
    *  its scripts drive; only these keep {@link LOBBY_AI_PEACE_TICKS}. */
   readonly lobbyAiSeats?: readonly number[];
   readonly playerRoster?: MapScript['players'];
+  /** The tribes a changed seat's authored placements take; the map's own when omitted. */
+  readonly seatTribes?: SeatTribeRemap;
   /** Seats whose chest-window assistant grants start on, less the AI seats running no strategic module. */
   readonly assistantSeats: readonly number[];
   /** Override the authored participant roster; an empty list runs no match. */
@@ -173,6 +176,7 @@ function runWorld(
       content,
       script,
       options.absentSeats,
+      options.seatTribes,
     );
     if (authored !== null) return { sim: authored, kind: 'authored' };
   }

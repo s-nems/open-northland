@@ -1,8 +1,8 @@
-import type { MapsIndexPlayerSlot } from '@open-northland/data';
+import { isCivilizationTribe, type MapsIndexPlayerSlot } from '@open-northland/data';
 import type { LocalSeat } from '@open-northland/lockstep';
 
 /**
- * Pure roster state behind the lobby screen: seats, colours and vacant modes over the slots
+ * Pure roster state behind the lobby screen: seats, colours, civilizations and vacant modes over the slots
  * `maps-index.json` lists. No DOM, so it is unit-tested headlessly.
  */
 
@@ -34,6 +34,11 @@ export function vacantOffers(slot: MapPlayerSlot): VacantMode[] {
   ];
 }
 
+/** A seat the map gives a civilization may be played as any other; a monster seat keeps its tribe. */
+export function offersTribeChoice(slot: MapPlayerSlot): boolean {
+  return isCivilizationTribe(slot.tribeId);
+}
+
 /** False for an all-AI roster, where the menu must not gate Start on a seat that cannot exist. */
 export function hasClaimableSeat(players: readonly MapPlayerSlot[]): boolean {
   return players.some((p) => p.claimable && !p.hidden);
@@ -45,6 +50,8 @@ export interface RosterState {
   readonly seat: SeatChoice | null;
   /** Current colour per slot id, initialised from the map's authored colours. */
   readonly colors: ReadonlyMap<number, number>;
+  /** Current civilization per slot id, initialised from the map's authored tribes. */
+  readonly tribes: ReadonlyMap<number, number>;
   /** Per-slot vacant mode, initialised from the authored type. */
   readonly vacantModes: ReadonlyMap<number, VacantMode>;
 }
@@ -53,6 +60,7 @@ export function initialRosterState(players: readonly MapPlayerSlot[]): RosterSta
   return {
     seat: null,
     colors: new Map(players.map((p) => [p.player, p.colorId])),
+    tribes: new Map(players.map((p) => [p.player, p.tribeId])),
     vacantModes: new Map(players.map((p) => [p.player, authoredVacantMode(p)])),
   };
 }
@@ -66,6 +74,12 @@ export function setVacantMode(state: RosterState, slot: number, mode: VacantMode
   const vacantModes = new Map(state.vacantModes);
   vacantModes.set(slot, mode);
   return { ...state, vacantModes };
+}
+
+export function setSlotTribe(state: RosterState, slot: number, tribe: number): RosterState {
+  const tribes = new Map(state.tribes);
+  tribes.set(slot, tribe);
+  return { ...state, tribes };
 }
 
 /** Real maps author duplicate colours freely, so "worn" is always relative to the asking slot. */

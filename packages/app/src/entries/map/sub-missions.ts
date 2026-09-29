@@ -3,6 +3,7 @@ import { localPlayerOf } from '@open-northland/lockstep';
 import { exportSaveGame, type SaveGame, type SimEvent } from '@open-northland/sim';
 import { loadMapScript, loadTerrainMap } from '../../content/map-loader.js';
 import { loadMapList } from '../../content/maps-index.js';
+import { sessionMapScript } from '../../game/seat-tribes.js';
 import { onOffParam } from '../../game/session-rules.js';
 import { mapSession } from '../../game/session-url.js';
 import { sessionWorldOptions } from '../../game/session-world.js';
@@ -54,27 +55,25 @@ export function mapSubMissionLoader(
     const [map, source] = await Promise.all([loadTerrainMap(target), loadMapScript(target)]);
     if (map === null || source === null)
       throw new Error(`Sub-mission ${target}: map or script is unavailable`);
-    const missionWorld = mapScriptWorld(source, ir);
-    const options = {
-      map,
-      playerRoster: source.players,
-      specialItems: source.specialItems,
-      script: missionWorld,
-      ir,
-      content,
-    };
     if (parent !== undefined) {
       if (relaunchSearch(parent.header) === null) throw new Error('Parent mission cannot be relaunched');
-      restoreMapWorld(options, parent);
+      restoreMapWorld({ map, script: mapScriptWorld(source, ir), ir, content }, parent);
       return parent;
     }
     const params = new URLSearchParams(inputs.params);
     for (const key of ['scene', 'center', 'intro']) params.delete(key);
     params.set('map', target);
     const session = mapSession(params, mapLobbySlots(source));
+    const seated = sessionMapScript(session, source, ir);
     const world = buildMapWorld({
-      ...options,
-      ...sessionWorldOptions(session, source, missionWorld),
+      map,
+      playerRoster: seated.script?.players ?? [],
+      specialItems: source.specialItems,
+      script: seated.world,
+      ir,
+      content,
+      seatTribes: seated.remap,
+      ...sessionWorldOptions(session, source, seated.world),
       seed: current.header.seed,
       missions: onOffParam(params, 'missions'),
       demoOwner: localPlayerOf(session),

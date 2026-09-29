@@ -1,4 +1,4 @@
-import type { MapsIndexPlayerSlot } from '@open-northland/data';
+import { type MapsIndexPlayerSlot, WEREWOLF_TRIBE } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   initialLobbyOptions,
@@ -14,14 +14,20 @@ import {
   OVERSEER_SEAT,
   type RosterState,
   setSlotColor,
+  setSlotTribe,
   setVacantMode,
 } from '../src/entries/main-menu/lobby/roster-state.js';
+import { mapSession } from '../src/game/session-url.js';
+
+/** `TRIBE_TYPE_HUMAN_*` codes the rosters below name. */
+const VIKING = 1;
+const SARACEN = 4;
 
 function slot(player: number, over: Partial<MapsIndexPlayerSlot> = {}): MapsIndexPlayerSlot {
   return {
     player,
     type: 'ai',
-    tribeId: 1,
+    tribeId: VIKING,
     colorId: player,
     claimable: false,
     hidden: false,
@@ -64,6 +70,13 @@ describe('lobbySlotRows', () => {
     const rows = lobbySlotRows(players, state);
     expect(rows[1]?.colorId).toBe(7);
     expect(rows[2]?.vacantMode).toBe('idle'); // authored ai default flipped off
+  });
+
+  it('offers a civilization pick on every civilization seat and none on a monster seat', () => {
+    const roster = [...players, slot(4, { tribeId: WEREWOLF_TRIBE })];
+    const rows = lobbySlotRows(roster, setSlotTribe(initialLobbyState(roster), 1, SARACEN));
+    expect(rows.map((row) => row.offersTribe)).toEqual([true, true, true, false]);
+    expect(rows.map((row) => row.tribe)).toEqual([VIKING, SARACEN, VIKING, WEREWOLF_TRIBE]);
   });
 });
 
@@ -177,6 +190,34 @@ describe('lobbySession', () => {
         lobbyStartEntry('zatoka', recoloured ?? initialRosterState(players), players, OPTIONS),
       ).get('colors'),
     ).toBe('2:3');
+  });
+});
+
+describe('lobby civilization picks', () => {
+  const players = [
+    slot(0, { claimable: true, type: 'human' }),
+    slot(1),
+    slot(2, { tribeId: WEREWOLF_TRIBE }),
+  ];
+
+  it('carries a chosen civilization from the lobby to the launched session', () => {
+    const state = setSlotTribe(initialLobbyState(players), 1, SARACEN);
+    const session = lobbySession('zatoka', state, players, OPTIONS);
+    expect(session.seats.map((seat) => seat.tribe)).toEqual([undefined, SARACEN, undefined]);
+    const entry = new URLSearchParams(lobbyStartEntry('zatoka', state, players, OPTIONS));
+    expect(entry.get('tribes')).toBe(`1:${SARACEN}`);
+    expect(mapSession(entry, players)).toEqual(session);
+  });
+
+  it('writes no `?tribes=` while every seat keeps the map’s civilization', () => {
+    const state = setSlotTribe(initialLobbyState(players), 1, VIKING);
+    expect(lobbySession('zatoka', state, players, OPTIONS).seats.some((seat) => 'tribe' in seat)).toBe(false);
+    expect(new URLSearchParams(lobbyStartEntry('zatoka', state, players, OPTIONS)).has('tribes')).toBe(false);
+  });
+
+  it('keeps a monster seat its own tribe whatever the state holds', () => {
+    const state = setSlotTribe(initialLobbyState(players), 2, SARACEN);
+    expect(lobbySession('zatoka', state, players, OPTIONS).seats[2]?.tribe).toBeUndefined();
   });
 });
 

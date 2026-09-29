@@ -8,6 +8,7 @@ import {
   MAX_SEATS,
   MAX_SEED,
   MAX_SPEED,
+  MAX_TRIBE_ID,
   MAX_WORLD_ID_LENGTH,
 } from '../limits.js';
 import type {
@@ -123,8 +124,29 @@ export function parseSeatSetups(value: unknown, at: string): readonly RoomSeatSe
       offers,
       color: asCount(raw.color, `${at}[${i}].color`),
       ...(raw.team === undefined ? {} : { team: parseTeam(raw.team, `${at}[${i}].team`) }),
+      ...parseSeatTribes(raw, `${at}[${i}]`, false),
     };
   });
+}
+
+/** A seat's authored and current tribe. A setup may leave the current one out, meaning the authored
+ *  one; a view carries both or neither. Neither is allowed without an authored tribe. */
+function parseSeatTribes(
+  raw: Record<string, unknown>,
+  at: string,
+  paired: boolean,
+): { readonly authoredTribe?: number; readonly tribe?: number } {
+  if (raw.authoredTribe === undefined) {
+    if (raw.tribe !== undefined)
+      throw new Error(`${at}.tribe: a seat without an authored tribe has no choice`);
+    return {};
+  }
+  const authoredTribe = parseTribe(raw.authoredTribe, `${at}.authoredTribe`);
+  if (raw.tribe === undefined) {
+    if (paired) throw new Error(`${at}.tribe: missing beside the authored tribe`);
+    return { authoredTribe };
+  }
+  return { authoredTribe, tribe: parseTribe(raw.tribe, `${at}.tribe`) };
 }
 
 export function parseRoomView(value: unknown, at: string): RoomView {
@@ -156,6 +178,7 @@ function parseRoomSeatView(value: unknown, at: string): RoomSeatView {
     offers: parseSeatOffers(raw.offers, `${at}.offers`),
     color: asCount(raw.color, `${at}.color`),
     ...(raw.team === undefined ? {} : { team: parseTeam(raw.team, `${at}.team`) }),
+    ...parseSeatTribes(raw, at, true),
     nick: raw.nick === null ? null : parseNick(raw.nick, `${at}.nick`),
     ready: asBoolean(raw.ready, `${at}.ready`),
   };
@@ -204,6 +227,13 @@ export function parseSeatIndex(value: unknown, at: string): number {
 
 export function parseTeam(value: unknown, at: string): number | null {
   return value === null ? null : parseSeatIndex(value, at);
+}
+
+export function parseTribe(value: unknown, at: string): number {
+  const tribe = asCount(value, at);
+  if (tribe < 1 || tribe > MAX_TRIBE_ID)
+    throw new Error(`${at}: tribe ${tribe} is outside 1..${MAX_TRIBE_ID}`);
+  return tribe;
 }
 
 /** A saved start stands past tick 0, where a freshly built world would be indistinguishable. */

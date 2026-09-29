@@ -30,7 +30,10 @@ export const DEFAULT_SESSION_SPEED = 1;
 
 /** The seat rows an entry knows before a world exists: a map script's roster read against its
  *  `[multiplayer]` table (`mapLobbySlots`), or the lobby's `maps-index.json` rows. */
-export type SessionRosterSlot = Pick<MapsIndexPlayerSlot, 'player' | 'colorId' | 'type' | 'claimable'>;
+export type SessionRosterSlot = Pick<
+  MapsIndexPlayerSlot,
+  'player' | 'colorId' | 'tribeId' | 'type' | 'claimable'
+>;
 
 /**
  * An authored-`ai` seat no person may take: the map's own computer player, which no lobby choice and
@@ -39,7 +42,7 @@ export type SessionRosterSlot = Pick<MapsIndexPlayerSlot, 'player' | 'colorId' |
  * `playeroption` row offering nothing at all still leaves the seat a computer player here, where a
  * network room would close it (`authoredVacantMode`); no corpus map authors such a row.
  */
-export function isMapComputerSeat(slot: SessionRosterSlot): boolean {
+export function isMapComputerSeat(slot: Pick<SessionRosterSlot, 'type' | 'claimable'>): boolean {
   return slot.type === 'ai' && !slot.claimable;
 }
 
@@ -49,7 +52,7 @@ export function mapIdParam(params: URLSearchParams): string | null {
 }
 
 /** The session a `?map=` search describes. The roster supplies each seat's authored colour, which
- *  `?colors=` then overrides. */
+ *  `?colors=` then overrides; `?tribes=` names the seats played as another civilization. */
 export function mapSession(params: URLSearchParams, roster: readonly SessionRosterSlot[]): GameSession {
   const localSeat = localSeatParam(params);
   return {
@@ -95,6 +98,13 @@ export function sessionSearch(
       .filter((seat) => seat.color !== (authored.get(seat.player) ?? seat.player))
       .map((seat) => `${seat.player}:${seat.color}`);
     if (recoloured.length > 0) params.set('colors', recoloured.join(','));
+    const authoredTribe = new Map(roster.map((slot) => [slot.player, slot.tribeId]));
+    const retribed = session.seats.flatMap((seat) =>
+      seat.tribe === undefined || seat.tribe === authoredTribe.get(seat.player)
+        ? []
+        : [`${seat.player}:${seat.tribe}`],
+    );
+    if (retribed.length > 0) params.set('tribes', retribed.join(','));
     // The map's own computer seats play without being named, so `?ai=` lists the person's choices only.
     const mapComputer = new Set(roster.filter(isMapComputerSeat).map((slot) => slot.player));
     const ai = session.seats
@@ -136,6 +146,7 @@ function rosterSeats(
   localSeat: LocalSeat,
 ): readonly SessionSeat[] {
   const overrides = colorOverridesParam(params);
+  const tribes = seatPairsParam(params, 'tribes', (tribe) => tribe > 0);
   const lists: SeatLists = {
     ai: new Set(seatListParam(params, 'ai').filter(isValidPlayer)),
     absent: new Set(seatListParam(params, 'absent').filter(isValidPlayer)),
@@ -147,10 +158,12 @@ function rosterSeats(
     [...players].map((player) => {
       // A seat the map never authored is a claimable one that keeps its slot id as its colour.
       const slot = authored.get(player) ?? { player, colorId: player, type: 'human', claimable: true };
+      const tribe = tribes.get(player);
       return {
         player,
         mode: seatMode(slot, localSeat, lists),
         color: overrides.get(player) ?? slot.colorId,
+        ...(tribe === undefined ? {} : { tribe }),
       };
     }),
   );
@@ -165,25 +178,36 @@ export interface SeatLists {
 /** The claimed seat is played by the person even when a list also names it: one seat cannot be both.
  *  Otherwise `?ai=` and the map's own computer seats play as AI, `?absent=` seats are left off the map,
  *  and the rest sit out. */
-export function seatMode(slot: SessionRosterSlot, localSeat: LocalSeat, lists: SeatLists): SeatMode {
+export function seatMode(
+  slot: Pick<SessionRosterSlot, 'player' | 'type' | 'claimable'>,
+  localSeat: LocalSeat,
+  lists: SeatLists,
+): SeatMode {
   if (slot.player === localSeat) return 'human';
   if (lists.ai.has(slot.player) || isMapComputerSeat(slot)) return 'ai';
   return lists.absent.has(slot.player) ? 'absent' : 'idle';
 }
 
-/** `?colors=<slot>:<colorId>,…`, dropping malformed pairs. Colours are bounded to the roster's id
- *  space, because an out-of-range id renders differently per consumer. */
+/** `?colors=<slot>:<colorId>,…`. Colours are bounded to the roster's id space, because an
+ *  out-of-range id renders differently per consumer. */
 function colorOverridesParam(params: URLSearchParams): ReadonlyMap<number, number> {
+  return seatPairsParam(params, 'colors', (color) => color >= 0 && color < MAP_PLAYER_COLOR_COUNT);
+}
+
+/** A `<slot>:<value>,…` list, dropping malformed pairs and values `valid` refuses. */
+function seatPairsParam(
+  params: URLSearchParams,
+  key: string,
+  valid: (value: number) => boolean,
+): ReadonlyMap<number, number> {
   const out = new Map<number, number>();
-  const raw = params.get('colors');
+  const raw = params.get(key);
   if (raw === null) return out;
   for (const pair of raw.split(',')) {
-    const [slotRaw, colorRaw] = pair.split(':');
+    const [slotRaw, valueRaw] = pair.split(':');
     const slot = Number.parseInt(slotRaw ?? '', 10);
-    const color = Number.parseInt(colorRaw ?? '', 10);
-    if (isValidPlayer(slot) && Number.isInteger(color) && color >= 0 && color < MAP_PLAYER_COLOR_COUNT) {
-      out.set(slot, color);
-    }
+    const value = Number.parseInt(valueRaw ?? '', 10);
+    if (isValidPlayer(slot) && Number.isInteger(value) && valid(value)) out.set(slot, value);
   }
   return out;
 }

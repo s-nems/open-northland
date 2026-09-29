@@ -24,6 +24,9 @@ const SECONDS_PER_HOUR = 60 * 60;
 export const MAX_REPORTED_BUFFERED = SECONDS_PER_HOUR * TICKS_PER_SECOND * MAX_SPEED;
 /** The sim's `FOG_MODE` ids, which a test pins; the descriptor refuses any other. */
 export const FOG_MODES: readonly number[] = [0, 1, 2, 3, 4];
+/** The widest tribe id a seat may carry, a sanity bound: which ids name a civilization is the
+ *  content's to say, and the relay holds no content. */
+export const MAX_TRIBE_ID = 0xff;
 /** The sim seeds its generator with 32 bits; a wider seed would collapse onto another. */
 export const MAX_SEED = 0xffff_ffff;
 

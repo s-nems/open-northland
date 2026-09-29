@@ -4,8 +4,8 @@ import { DESCRIPTOR_WORLD } from '@open-northland/net-protocol';
 import { type Entity, parseSaveGame, type SaveGame } from '@open-northland/sim';
 import { buildingFootprints } from '../../content/ir/joins.js';
 import type { ContentIr } from '../../content/ir/rows.js';
+import { sessionMapScript } from '../../game/seat-tribes.js';
 import { sessionWorldOptions } from '../../game/session-world.js';
-import { mapScriptWorld } from '../../game/world/mission-script.js';
 import { servedOverLoopback } from '../../session/worker/loopback.js';
 import type { RelayedBuild } from '../../session/worker/net-world-port.js';
 import type { WorkerSessionOptions } from '../../session/worker/protocol.js';
@@ -46,12 +46,13 @@ const NO_PLACEMENTS: MapWorldPlacements = { harvestablePlacements: [], pooledPla
 export function buildMapWorldFromInputs(inputs: MapWorldInputs): BuiltWorld<MapWorldPlacements> {
   const { map, ir, script, session, save } = inputs;
   // The render layers read the raw map; the sim runs on the collision resolution of the same map.
-  const missionWorld = mapScriptWorld(script, ir);
+  const seated = sessionMapScript(session, script, ir);
+  const missionWorld = seated.world;
   const worldOptions = {
     script: missionWorld,
     map,
     ir,
-    playerRoster: script?.players ?? [],
+    playerRoster: seated.script?.players ?? [],
     specialItems: script?.specialItems ?? [],
     content: {
       footprints: buildingFootprints(ir),
@@ -68,6 +69,7 @@ export function buildMapWorldFromInputs(inputs: MapWorldInputs): BuiltWorld<MapW
     ...sessionWorldOptions(session, script, missionWorld),
     seed: session.seed,
     missions: inputs.missions,
+    seatTribes: seated.remap,
   });
   return {
     sim: world.sim,

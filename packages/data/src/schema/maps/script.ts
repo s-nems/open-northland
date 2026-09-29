@@ -17,6 +17,14 @@ export const MAP_PLAYER_COLOR_COUNT = 10;
 export const WERESNAKE_TRIBE = 5;
 export const WEREWOLF_TRIBE = 6;
 
+/** The `TRIBE_TYPE_HUMAN_*` codes of the civilizations a roster row can name: viking 1, frank 2,
+ *  byzantine 3, saracen 4 and egypt 7, in code order. The rest of the range is the two monsters. */
+export const CIVILIZATION_TRIBES: readonly number[] = [1, 2, 3, 4, 7];
+
+export function isCivilizationTribe(tribe: number): boolean {
+  return CIVILIZATION_TRIBES.includes(tribe);
+}
+
 /**
  * One `player <slot> <type> <tribe> <colorId>` roster row. `type` is `PLAYER_TYPE_HUMAN 1` (a seat a
  * person may take) or `PLAYER_TYPE_AI 2` (script-driven); `tribeId` is the `TRIBE_TYPE_HUMAN_*` code

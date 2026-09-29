@@ -6,6 +6,7 @@ import { evaluateSaveFile, type SaveRejection } from './evaluate.js';
 import { browserSaveDownload, type PickedSaveFile, pickedSaveOf } from './file-access.js';
 import { displayNameOf } from './list-model.js';
 import { rootWorldId } from './related-world.js';
+import { relaunchSearch } from './relaunch.js';
 import type { SaveSlotInfo, SaveStore } from './store.js';
 
 export type SaveOutcome = { kind: 'saved' } | { kind: 'failed' };
@@ -94,7 +95,12 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
       irVersion: host.content.manifest.version,
     });
     if (!evaluated.ok) return { kind: 'rejected', reason: evaluated.reason };
-    if (evaluated.save.header.mapId !== worldToken && deps.loadRelatedWorld !== undefined) {
+    // A save of this map played under another session (another seat or civilization) relaunches
+    // through its own entry, as another map's does: the running search would assemble its world.
+    const relaunch = relaunchSearch(evaluated.save.header);
+    const elsewhere =
+      evaluated.save.header.mapId !== worldToken || (relaunch !== null && relaunch !== deps.entrySearch);
+    if (elsewhere && deps.loadRelatedWorld !== undefined) {
       try {
         await deps.loadRelatedWorld(evaluated.save, picked.raw);
         return { kind: 'loading' };

@@ -1,5 +1,6 @@
 import { decodeMissionResult, type MapScript, type TerrainMapFile } from '@open-northland/data';
 import { PRIMARY_TRIBE } from './rules.js';
+import { MAP_TRIBES, type SeatTribeRemap } from './seat-tribes.js';
 import { type AuthoredJoinRows, contentJoins } from './world/index.js';
 
 /**
@@ -15,13 +16,15 @@ const LAST_HUMAN_TRIBE = 7;
 
 /**
  * The civilizations a world fields: the seats' roster tribes plus the tribes of every authored building
- * and settler, including later mission reinforcements. Each one costs its own atlas pages, so the loaders take this set
- * rather than every tribe the content describes.
+ * and settler, including later mission reinforcements, as the session's seat tribes restamp them. Each
+ * one costs its own atlas pages, so the loaders take this set rather than every tribe the content
+ * describes.
  */
 export function worldTribes(
   script: (Pick<MapScript, 'players'> & Partial<Pick<MapScript, 'missions'>>) | null,
   entities: TerrainMapFile['entities'],
   rows: AuthoredJoinRows,
+  seatTribes: SeatTribeRemap = MAP_TRIBES,
 ): WorldTribes {
   // The base is pinned even on a map that fields no viking: it backs every building type and character
   // look the other tribes do not skin, at the cost of its own pages on such a map.
@@ -37,12 +40,17 @@ export function worldTribes(
     for (const line of mission.results) {
       const op = decodeMissionResult(line);
       if (op.opcode !== 'SetHuman' && op.opcode !== 'SetHumanX') continue;
-      add(op.tribe.ref === 'id' ? op.tribe.id : joins.tribe(op.tribe.name));
+      const tribe = op.tribe.ref === 'id' ? op.tribe.id : joins.tribe(op.tribe.name);
+      add(tribe === undefined ? undefined : seatTribes.tribe(op.player, tribe));
     }
   }
-  for (const human of entities?.humans ?? []) add(joins.tribe(human.tribe));
+  for (const human of entities?.humans ?? []) {
+    const tribe = joins.tribe(human.tribe);
+    add(tribe === undefined ? undefined : seatTribes.tribe(human.player, tribe));
+  }
   for (const building of entities?.buildings ?? []) {
-    add(joins.buildingBob(building.name, building.level)?.tribeId);
+    const hit = joins.buildingBob(building.name, building.level);
+    add(hit === undefined ? undefined : seatTribes.building(building.player, hit.typeId, hit.tribeId));
   }
   return [PRIMARY_TRIBE, ...[...tribes].filter((t) => t !== PRIMARY_TRIBE).sort((a, b) => a - b)];
 }

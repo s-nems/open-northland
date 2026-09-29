@@ -14,6 +14,8 @@ interface Seat {
   readonly offers: readonly VacantSeatMode[];
   color: number;
   team?: number | null;
+  /** The map's tribe for the seat and the one it plays; absent on a seat that offers no choice. */
+  readonly tribes?: { readonly authored: number; current: number };
   member: Member | null;
 }
 
@@ -21,6 +23,7 @@ export interface SeatChange {
   readonly mode?: VacantSeatMode;
   readonly color?: number;
   readonly team?: number | null;
+  readonly tribe?: number;
 }
 
 /** The room's seats: who sits where, and what a vacant seat does. */
@@ -34,6 +37,9 @@ export class SeatTable {
       offers: seat.offers,
       color: seat.color,
       ...(seat.team === undefined ? {} : { team: seat.team }),
+      ...(seat.authoredTribe === undefined
+        ? {}
+        : { tribes: { authored: seat.authoredTribe, current: seat.tribe ?? seat.authoredTribe } }),
       member: null,
     }));
   }
@@ -80,6 +86,8 @@ export class SeatTable {
   setUp(player: number, change: SeatChange): Refusal {
     const seat = this.at(player);
     if (seat === null) return { code: 'noSeat', player };
+    if (change.tribe !== undefined && seat.tribes === undefined)
+      return { code: 'seatTribeUnavailable', player };
     if (change.mode !== undefined) {
       if (seat.member !== null) return { code: 'seatTaken', player, nick: seat.member.nick };
       if (!seat.offers.includes(change.mode))
@@ -88,6 +96,7 @@ export class SeatTable {
     }
     if (change.color !== undefined) seat.color = change.color;
     if (change.team !== undefined && change.team !== (seat.team ?? null)) seat.team = change.team;
+    if (change.tribe !== undefined && seat.tribes !== undefined) seat.tribes.current = change.tribe;
     return null;
   }
 
@@ -100,6 +109,9 @@ export class SeatTable {
     return this.seats.map((seat) => ({
       ...this.sessionSeat(seat),
       offers: seat.offers,
+      ...(seat.tribes === undefined
+        ? {}
+        : { authoredTribe: seat.tribes.authored, tribe: seat.tribes.current }),
       nick: seat.member?.nick ?? null,
       ready: seat.member?.ready ?? false,
     }));
@@ -109,12 +121,15 @@ export class SeatTable {
     return this.seats.find((seat) => seat.player === player) ?? null;
   }
 
+  /** A seat's tribe reaches the descriptor only as a change from the map's. */
   private sessionSeat(seat: Seat): SessionSeat {
+    const tribes = seat.tribes;
     return {
       player: seat.player,
       mode: seat.member === null ? seat.vacantMode : 'human',
       color: seat.color,
       ...(seat.team === undefined ? {} : { team: seat.team }),
+      ...(tribes === undefined || tribes.current === tribes.authored ? {} : { tribe: tribes.current }),
     };
   }
 }

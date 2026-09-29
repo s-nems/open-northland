@@ -1,6 +1,7 @@
 import type { Simulation, TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { resolveWorldContent, type WorldContentOptions } from '../sandbox/index.js';
+import { MAP_TRIBES, type SeatTribeRemap, seatedPlacements } from '../seat-tribes.js';
 import { authoredCatalogExtras } from './authored-catalog.js';
 import { type AuthoredEntities, resolveAuthoredPlacements } from './authored-placements.js';
 import { enqueuePlacements, type MapScriptWorld, newWorldSim } from './build.js';
@@ -35,6 +36,7 @@ export function runAuthoredMap(
   options: WorldContentOptions = {},
   script: MapScriptWorld = {},
   absentSeats: readonly number[] = [],
+  seatTribes: SeatTribeRemap = MAP_TRIBES,
 ): Simulation | null {
   const { placements, skipped, droppedGoods, droppedPicks, droppedAttachments, skippedAnimals } =
     resolveAuthoredPlacements(entities, rows, map, script.humanNames);
@@ -51,9 +53,14 @@ export function runAuthoredMap(
   // The catalog above still counts an absent seat's placements, so a restore resolves the same content
   // without knowing the roster.
   const absent = new Set(absentSeats);
+  // Like the absent seats, a changed seat's tribes stay out of the catalog, which a restore resolves
+  // without the session.
   enqueuePlacements(
     sim,
-    placements.filter((p) => p.owner === undefined || !absent.has(p.owner)),
+    seatedPlacements(
+      placements.filter((p) => p.owner === undefined || !absent.has(p.owner)),
+      seatTribes,
+    ),
   );
   sim.run(ticks);
   return sim;

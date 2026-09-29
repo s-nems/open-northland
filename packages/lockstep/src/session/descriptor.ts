@@ -18,6 +18,8 @@ export interface SessionSeat {
   readonly color: number;
   /** Explicit lobby team; absent or null preserves the map's diplomacy. */
   readonly team?: number | null;
+  /** The civilization the lobby chose for the seat; absent keeps the map's roster tribe. */
+  readonly tribe?: number;
 }
 
 /** The two spectator choices watch the whole map: `observer` issues no command, `overseer` commands
@@ -169,11 +171,15 @@ function parseSeats(value: unknown): readonly SessionSeat[] {
     // The palette's own bound belongs to the content layer; a negative id has no reading anywhere.
     if (color < 0) throw new Error(`session seat ${player} has a negative colour`);
     const team = parseTeam(raw.team);
+    const tribe = raw.tribe === undefined ? undefined : integer(raw.tribe, 'seat.tribe');
+    // Which ids are civilizations is the content's to say; a non-positive id has no reading anywhere.
+    if (tribe !== undefined && tribe <= 0) throw new Error(`session seat ${player} has tribe ${tribe}`);
     seats.push({
       player,
       mode: parseSeatMode(raw.mode),
       color,
       ...(team === undefined ? {} : { team }),
+      ...(tribe === undefined ? {} : { tribe }),
     });
   }
   return seats;

@@ -1,3 +1,4 @@
+import { isCivilizationTribe } from '@open-northland/data';
 import type { SavedSessionMetadata } from '@open-northland/lockstep';
 import { compatibilityIssues, type RoomSeatView, type RoomView } from '@open-northland/net-protocol';
 
@@ -31,6 +32,27 @@ export function roomPermissions(room: RoomView, nick: string, connected: boolean
 
 export function canClaimSeat(room: RoomView, seat: RoomSeatView, nick: string, connected: boolean): boolean {
   return roomPermissions(room, nick, connected).interactive && seat.nick === null;
+}
+
+/** The map's civilization for a seat that may play another; null for a seat without one, such as a
+ *  monster's. */
+export function seatCivilization(seat: RoomSeatView): number | null {
+  return seat.authoredTribe !== undefined && isCivilizationTribe(seat.authoredTribe)
+    ? seat.authoredTribe
+    : null;
+}
+
+/** The creator chooses any seat's civilization and a seated member its own, as the relay allows; a
+ *  saved world's civilizations stand. */
+export function canSetSeatTribe(
+  room: RoomView,
+  seat: RoomSeatView,
+  nick: string,
+  connected: boolean,
+): boolean {
+  const permissions = roomPermissions(room, nick, connected);
+  if (!permissions.interactive || room.settings.initialSave !== undefined) return false;
+  return permissions.creator || (seat.nick !== null && seat.nick === nick);
 }
 
 export function savedSeatHint(metadata: SavedSessionMetadata | null, player: number, nick: string) {
