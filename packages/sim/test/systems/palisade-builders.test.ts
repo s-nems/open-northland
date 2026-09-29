@@ -67,17 +67,19 @@ const GATE_POSTS: ScriptLandscapeType['walk'] = [
   { dx: 2, dy: 0 },
 ];
 
+const GATE_MAX_HITPOINTS = 100;
+const GATE_WALL = {
+  maxHitpoints: GATE_MAX_HITPOINTS,
+  repairPerStrike: 1,
+  construction: [{ goodType: WOOD, amount: 1 }],
+};
+
 const CLOSED_GATE: ScriptLandscapeType = {
   typeId: 696,
   walk: [...GATE_POSTS, { dx: -1, dy: 0 }, { dx: 0, dy: 0 }, { dx: 1, dy: 0 }],
   build: [],
   groups: [],
-  wall: {
-    maxHitpoints: 100,
-    repairPerStrike: 1,
-    construction: [{ goodType: WOOD, amount: 1 }],
-    gate: { open: false, counterpartGfxIndex: 700 },
-  },
+  wall: { ...GATE_WALL, gate: { open: false, counterpartGfxIndex: 700 } },
 };
 
 /** An open gate's body is its two posts alone. */
@@ -85,7 +87,7 @@ const OPEN_GATE: ScriptLandscapeType = {
   ...CLOSED_GATE,
   typeId: 700,
   walk: GATE_POSTS,
-  wall: { ...CLOSED_GATE.wall, gate: { open: true, counterpartGfxIndex: 696 } },
+  wall: { ...GATE_WALL, gate: { open: true, counterpartGfxIndex: 696 } },
 };
 
 function builderContent() {
@@ -333,7 +335,7 @@ describe('palisade builders', () => {
     expect(sim.world.has(gate, Damaged)).toBe(true);
 
     for (let tick = 0; tick < 2000 && sim.world.has(gate, Damaged); tick++) sim.step();
-    expect(sim.world.get(gate, Health).hitpoints).toBe(CLOSED_GATE.wall?.maxHitpoints);
+    expect(sim.world.get(gate, Health).hitpoints).toBe(GATE_MAX_HITPOINTS);
   });
 });
 
