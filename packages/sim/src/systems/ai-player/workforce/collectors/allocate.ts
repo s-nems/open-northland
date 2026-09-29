@@ -56,7 +56,6 @@ function postCollector(
 
 interface VeteranSteal {
   readonly veteran: Entity;
-  readonly commands: readonly PlayerCommand[];
   readonly vacatedGood: WantedGood;
 }
 
@@ -65,13 +64,12 @@ interface VeteranSteal {
  * steal, and only from an ungated one: otherwise a dry pool would have two goods trading the same man
  * every decision, each swap dropping his load and cancelling the dig.
  */
-function stealVeteranFor(
+function veteranToSteal(
   world: World,
   ctx: SystemContext,
   w: WantedGood,
   wanted: readonly WantedGood[],
   collectorsByGood: ReadonlyMap<number, Entity[]>,
-  spot: HalfCellNode,
 ): VeteranSteal | null {
   for (const other of wanted) {
     if (other === w) continue;
@@ -85,15 +83,32 @@ function stealVeteranFor(
       const holder = otherHolders[i];
       if (holder !== undefined && meetsNeed(world, ctx, holder, w.good.typeId)) veteran = holder;
     }
-    if (veteran === undefined) continue;
-    const { jobType } = world.get(veteran, Settler);
-    const commands: PlayerCommand[] = [];
-    if (jobType !== w.job) commands.push({ kind: 'setJob', entity: veteran, jobType: w.job });
-    commands.push({ kind: 'setWorkFlag', entity: veteran, x: spot.hx, y: spot.hy });
-    commands.push({ kind: 'setGatherGood', entity: veteran, goodType: w.good.typeId });
-    return { veteran, commands, vacatedGood: other };
+    if (veteran !== undefined) return { veteran, vacatedGood: other };
   }
   return null;
+}
+
+/** Move the stolen veteran onto `w`'s post at `spot`, off the good he leaves. */
+function postVeteran(
+  world: World,
+  steal: VeteranSteal,
+  w: WantedGood,
+  spot: HalfCellNode,
+  holders: Entity[],
+  collectorsByGood: Map<number, Entity[]>,
+  taken: TakenFlagNodes,
+  commands: PlayerCommand[],
+): void {
+  const { veteran } = steal;
+  if (world.get(veteran, Settler).jobType !== w.job)
+    commands.push({ kind: 'setJob', entity: veteran, jobType: w.job });
+  commands.push({ kind: 'setWorkFlag', entity: veteran, x: spot.hx, y: spot.hy });
+  commands.push({ kind: 'setGatherGood', entity: veteran, goodType: w.good.typeId });
+  claimFlagNode(taken, spot);
+  const vacated = collectorsByGood.get(steal.vacatedGood.good.typeId);
+  vacated?.splice(vacated.indexOf(veteran), 1);
+  holders.push(veteran);
+  collectorsByGood.set(w.good.typeId, holders);
 }
 
 /** Where one decision's flag gatherers stand: each good's anchors, the ground the flags go on, and which
@@ -164,6 +179,11 @@ export function allocateCollectors(
     upkeepHolders(world, ctx, ground, w, holders, seated.anchors, taken, builderJob, commands);
     const anchor = seated.free[0];
     if (holders.length >= w.min || anchor === undefined) continue;
+    // The spot search floods from the anchor and the deposit, so it runs only once someone can take it.
+    const qualifies = (e: Entity): boolean => meetsNeed(world, ctx, e, w.good.typeId);
+    const menQualify = (holders.length > 0 && genericCollectors.some(qualifies)) || force.any(qualifies);
+    let steal = menQualify ? null : veteranToSteal(world, ctx, w, wanted, collectorsByGood);
+    if (!menQualify && steal === null) continue;
     const spot = collectorSpot(world, ground.flags, anchor, w.good.typeId, taken, workable);
     if (spot === null) continue; // no reachable free spot beside a live node of this good
     if (holders.length > 0 && builderJob !== null)
@@ -172,7 +192,7 @@ export function allocateCollectors(
     const spare =
       (holders.length > 0 ? takeGenericCollector(world, ctx, genericCollectors, w) : null) ??
       force.take(
-        (e) => meetsNeed(world, ctx, e, w.good.typeId) && !(keepBuilders && isBuilder(e)),
+        (e) => qualifies(e) && !(keepBuilders && isBuilder(e)),
         experienceRank(world, ctx, w.job, w.good.typeId),
       );
     if (spare !== null) {
@@ -180,14 +200,8 @@ export function allocateCollectors(
       postCollector(spare, w, spot, holders, collectorsByGood, taken, commands);
       continue;
     }
-    const steal = stealVeteranFor(world, ctx, w, wanted, collectorsByGood, spot);
-    if (steal === null) continue;
-    commands.push(...steal.commands);
-    claimFlagNode(taken, spot);
-    const vacated = collectorsByGood.get(steal.vacatedGood.good.typeId);
-    vacated?.splice(vacated.indexOf(steal.veteran), 1);
-    holders.push(steal.veteran);
-    collectorsByGood.set(w.good.typeId, holders);
+    steal ??= veteranToSteal(world, ctx, w, wanted, collectorsByGood);
+    if (steal !== null) postVeteran(world, steal, w, spot, holders, collectorsByGood, taken, commands);
   }
   return commands;
 }
