@@ -582,6 +582,7 @@ describe('road sites persisted', () => {
     a.run(BUILD_TICKS);
     b.run(BUILD_TICKS);
     expect(a.hashState()).toBe(b.hashState());
+    expect(a.world.verifyCaches()).toEqual([]);
     expect([...a.world.query(RoadSite)]).toEqual([]);
   });
 });

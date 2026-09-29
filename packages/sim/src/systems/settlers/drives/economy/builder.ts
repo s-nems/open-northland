@@ -182,7 +182,7 @@ export function planBuilder(
       : nearestInTurn(
           hasTask,
           () => (claims.wallMayHaveTask(materials.canSource) ? everyWall() : null),
-          () => (claims.roadMayHaveTask(materials.canSource) ? everyRoad() : null),
+          () => (claims.roadMayHaveTask(materials.canSource, settler.owner) ? everyRoad() : null),
         );
   if (site !== null && isSoloSite(world, site)) {
     // A segment or road site is claimed before any hammer or delivery, so it has one builder.

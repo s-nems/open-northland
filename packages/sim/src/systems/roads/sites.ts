@@ -14,7 +14,7 @@ import {
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { fx } from '../../core/fixed.js';
-import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import { hexNeighboursOf, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -33,15 +33,21 @@ import { type PlacementProbe, placementBlockerVersion } from '../footprint/place
 import { vehicleAnchorRevision } from '../footprint/vehicle-anchors.js';
 import { canonicalById } from '../spatial/nodes.js';
 import { isRoad, layRoad, roadRevision } from './index.js';
+import { roadSitesByNode } from './site-index.js';
 
 /** The good a road is paved with, by catalog slug. Original behavior: a road site costs one stone. */
 const ROAD_GOOD_SLUG = 'stone';
 const ROAD_STONES_PER_SITE = 1;
 
+/** The good a road is paved with in this content, or undefined when it has no stone. */
+export function roadPavingGood(content: ContentSet): number | undefined {
+  return contentIndex(content).goodTypeBySlug.get(ROAD_GOOD_SLUG);
+}
+
 /** A road site's bill, minted fresh per site. Empty when the content has no stone, as a wall's bill is
  *  when it has no wood. */
 export function roadConstructionBill(content: ContentSet): { goodType: number; amount: number }[] {
-  const stone = contentIndex(content).goodTypeBySlug.get(ROAD_GOOD_SLUG);
+  const stone = roadPavingGood(content);
   return stone === undefined ? [] : [{ goodType: stone, amount: ROAD_STONES_PER_SITE }];
 }
 
@@ -221,69 +227,4 @@ function removeRoadSite(world: World, site: Entity): void {
     world.remove(builder, SiteAssignment);
   }
   world.destroy(site);
-}
-
-interface RoadSiteIndex {
-  readonly terrain: TerrainGraph;
-  readonly feed: ChangeFeed;
-  readonly byNode: Map<NodeId, Entity>;
-  readonly nodeOf: Map<Entity, NodeId>;
-}
-
-const indexes = new WeakMap<World, RoadSiteIndex>();
-
-/**
- * The road sites by node, kept per world from a change feed, so a placement probe or a finish costs the
- * sites that changed rather than a walk over every site. The feed watches RoadSite membership alone: a
- * site takes its Position first and never moves. One node holds at most one site. Derived read state,
- * never hashed.
- */
-export function roadSitesByNode(world: World, terrain: TerrainGraph): ReadonlyMap<NodeId, Entity> {
-  let index = indexes.get(world);
-  if (index === undefined || index.terrain !== terrain) {
-    index = {
-      terrain,
-      feed: world.watchChanges([RoadSite], []),
-      byNode: new Map(),
-      nodeOf: new Map(),
-    };
-    indexes.set(world, index);
-    rebuildIndex(world, index);
-    world.registerCacheVerifier('roadSitesByNode', () => verifyIndex(world));
-    return index.byNode;
-  }
-  const current = index;
-  const lost = current.feed.drain((e) => refreshEntry(world, current, e));
-  if (lost) rebuildIndex(world, current);
-  return current.byNode;
-}
-
-function refreshEntry(world: World, index: RoadSiteIndex, e: Entity): void {
-  const held = index.nodeOf.get(e);
-  if (held !== undefined) {
-    index.nodeOf.delete(e);
-    if (index.byNode.get(held) === e) index.byNode.delete(held);
-  }
-  const p = world.has(e, RoadSite) ? world.tryGet(e, Position) : undefined;
-  if (p === undefined) return;
-  const { hx, hy } = nodeOfPosition(p.x, p.y);
-  const node = index.terrain.nodeAtClamped(hx, hy);
-  index.nodeOf.set(e, node);
-  index.byNode.set(node, e);
-}
-
-function rebuildIndex(world: World, index: RoadSiteIndex): void {
-  index.byNode.clear();
-  index.nodeOf.clear();
-  for (const e of world.canonicalQuery(RoadSite, Position)) refreshEntry(world, index, e);
-}
-
-function verifyIndex(world: World): string[] {
-  const index = indexes.get(world);
-  if (index === undefined || index.feed.pending) return [];
-  const live = world.canonicalQuery(RoadSite, Position);
-  if (live.length !== index.nodeOf.size || live.some((e) => !index.nodeOf.has(e))) {
-    return ['roadSitesByNode diverges from the live road sites'];
-  }
-  return [];
 }

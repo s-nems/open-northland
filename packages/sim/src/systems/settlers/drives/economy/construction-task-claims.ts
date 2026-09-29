@@ -1,7 +1,9 @@
-import { CurrentAtomic, Palisade, RoadSite, UnderConstruction } from '../../../../components/index.js';
+import { CurrentAtomic, Palisade, UnderConstruction } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { remainingConstructionSteps } from '../../../economy/construction.js';
+import { openRoadSites } from '../../../roads/site-index.js';
+import { roadPavingGood } from '../../../roads/sites.js';
 import { addUndeliveredConstructionGoods } from '../../../stores/index.js';
 import { atomicHoldsSettler } from '../../atomics/busy.js';
 
@@ -15,7 +17,6 @@ export class ConstructionTaskClaims {
   private readonly hammerBySite = new Map<Entity, number>();
   private readonly stepCapacityBySite = new Map<Entity, number>();
   private walls: SoloSiteSurvey | undefined;
-  private roads: SoloSiteSurvey | undefined;
 
   constructor(
     private readonly world: World,
@@ -61,10 +62,19 @@ export class ConstructionTaskClaims {
     return this.mayHaveTask(this.walls, canSource);
   }
 
-  /** {@link wallMayHaveTask} over the road sites. */
-  roadMayHaveTask(canSource: (goodType: number) => boolean): boolean {
-    this.roads ??= this.survey(this.world.query(UnderConstruction, RoadSite));
-    return this.mayHaveTask(this.roads, canSource);
+  /**
+   * {@link wallMayHaveTask} over `owner`'s road sites, from the per-change tally of the unclaimed ones:
+   * one holding stock may be hammered, and a bare one needs stone `canSource` finds. Only an unclaimed
+   * site can give an automatic builder a task.
+   */
+  roadMayHaveTask(canSource: (goodType: number) => boolean, owner: number | undefined): boolean {
+    const terrain = this.ctx.terrain;
+    if (terrain === undefined) return false;
+    const open = openRoadSites(this.world, terrain, owner);
+    if (open.stocked > 0) return true;
+    if (open.unstocked === 0) return false;
+    const stone = roadPavingGood(this.ctx.content);
+    return stone === undefined || canSource(stone);
   }
 
   private mayHaveTask(survey: SoloSiteSurvey, canSource: (goodType: number) => boolean): boolean {
