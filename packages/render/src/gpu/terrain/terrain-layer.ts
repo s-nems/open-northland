@@ -139,7 +139,8 @@ export class TerrainLayer {
     }
   }
 
-  /** Take the road nodes (half-cell row-major ids) laid and lifted; re-meshes only the blocks that changed. */
+  /** Take the road nodes (half-cell row-major ids) laid and lifted; the next {@link cull} re-meshes the
+   *  changed blocks it shows. */
   updateRoads(changes: RoadChanges): void {
     for (const id of changes.removed) this.roadNodes.delete(id);
     for (const id of changes.added) this.roadNodes.add(id);
@@ -166,6 +167,7 @@ export class TerrainLayer {
     for (const chunk of this.chunks) {
       chunk.container.visible = aabbIntersects(vp, chunk);
     }
+    this.roads?.meshVisible();
   }
 
   /**

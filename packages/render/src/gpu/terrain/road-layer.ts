@@ -83,7 +83,8 @@ function weighted(values: readonly number[], stride: number, w: Barycentric, off
 
 /**
  * The finished roads painted over the ground: one mesh set per terrain block holding roads, drawn as that
- * block's last child so the block's cull hides it. A change re-meshes only the blocks its nodes touch.
+ * block's last child so the block's cull hides it. A change marks the blocks its nodes touch, and a
+ * marked block re-meshes when a cull shows it, so a road laid off screen costs no mesh until seen.
  * Script vertex colours do not tint the road (an approximation).
  */
 export class RoadLayer {
@@ -109,7 +110,6 @@ export class RoadLayer {
     this.chunkColumns = Math.ceil(terrain.width / TERRAIN_CHUNK_TILES);
     for (const chunk of chunks) this.chunkByKey.set(this.chunkKeyOf(chunk.c0, chunk.r0), chunk);
     for (const id of roads) this.move(id, true);
-    this.meshDirty();
   }
 
   /** Null when the loaded set lacks a road pattern or its page, which draws no roads. */
@@ -125,17 +125,20 @@ export class RoadLayer {
     return resolved === null ? null : new RoadLayer(terrain, resolved, lift, lane, chunks, roads);
   }
 
-  /** Re-mesh the blocks of nodes laid or lifted since the last call; the road set already holds the
-   *  change. */
+  /** Mark the blocks of nodes laid or lifted since the last call; the road set already holds the change. */
   apply(changes: RoadChanges): void {
     for (const id of changes.removed) this.move(id, false);
     for (const id of changes.added) this.move(id, true);
-    this.meshDirty();
   }
 
-  private meshDirty(): void {
-    for (const key of this.dirty) this.remesh(key);
-    this.dirty.clear();
+  /** Re-mesh the marked blocks the cull just showed. */
+  meshVisible(): void {
+    for (const key of this.dirty) {
+      const chunk = this.chunkByKey.get(key);
+      if (chunk !== undefined && !chunk.container.visible) continue;
+      this.dirty.delete(key);
+      this.remesh(key);
+    }
   }
 
   destroy(): void {

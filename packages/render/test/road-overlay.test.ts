@@ -155,8 +155,9 @@ function roadTriangles(layer: TerrainLayer): number[] {
   );
 }
 
-/** A viewport over the whole test map. */
+/** A viewport over the whole test map, and one over its first block alone. */
 const EVERYWHERE = { minX: -1e6, minY: -1e6, maxX: 1e6, maxY: 1e6 };
+const FIRST_BLOCK = { minX: 0, minY: -1e6, maxX: 500, maxY: 1e6 };
 
 /** Hand `layer` a road change and cull it to `viewport`, which meshes the changed blocks it shows. */
 function change(
@@ -190,6 +191,16 @@ describe('TerrainLayer roads', () => {
     change(layer, [4 * NODE_WIDTH + 100]);
     expect(first?.children.at(-1)).toBe(before);
     expect(roadTriangles(layer)).toEqual([6, 6, 0]);
+    layer.destroy();
+  });
+
+  it('meshes a road laid in a hidden block only once a cull shows it', () => {
+    const layer = new TerrainLayer();
+    layer.set(grid, roadTextures);
+    change(layer, [4 * NODE_WIDTH + 100], [], FIRST_BLOCK);
+    expect(roadTriangles(layer)).toEqual([0, 0, 0]);
+    layer.cull(EVERYWHERE);
+    expect(roadTriangles(layer)).toEqual([0, 6, 0]);
     layer.destroy();
   });
 
