@@ -373,6 +373,77 @@ describe('catapult stances and scans', () => {
   });
 });
 
+describe('the guard position', () => {
+  const DRIVE_TICKS = 1000;
+
+  function anchorOf(s: Simulation, e: Entity): { hx: number; hy: number } {
+    const at = s.vehicleView(e)?.at;
+    if (at === null || at === undefined) throw new Error('vehicle off the map');
+    return at;
+  }
+
+  /** Step until the drive stands between two legs, route left, east of `pastHx`: the moment a stop
+   *  ends it at once, with no leg under way to finish. */
+  function stepToLegEnd(s: Simulation, vehicle: Entity, pastHx: number): void {
+    for (let i = 0; i < DRIVE_TICKS; i++) {
+      s.step();
+      const drive = s.world.tryGet(vehicle, VehicleDrive);
+      if (drive?.from === null && drive.route.length > 0 && anchorOf(s, vehicle).hx > pastHx) return;
+    }
+    throw new Error('the drive never stood between legs');
+  }
+
+  it('moves to where a goto stopped between two legs, so a holding catapult fires from there', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 4, 8, P1);
+    s.enqueue(playerCommand(P1, { kind: 'moveVehicle', vehicle: catapult, x: 60, y: 8 }));
+    stepToLegEnd(s, catapult, 4 + CATAPULT_MAX_RANGE - CATAPULT_MIN_RANGE);
+    s.enqueue(playerCommand(P1, { kind: 'stopVehicle', vehicle: catapult }));
+    s.step();
+    expect(s.world.has(catapult, VehicleDrive)).toBe(false);
+    const here = anchorOf(s, catapult);
+    expect(s.world.get(catapult, Vehicle).guard).toEqual(here);
+    // Inside the band from where it stopped, beyond it from where it started.
+    const house = houseAt(s, here.hx + CATAPULT_MIN_RANGE, here.hy, P2, TOUGH_HOUSE);
+    const hits = collect(s, SHOT_TICKS, ['projectileHit']);
+    expect(hits.some((ev) => ev.kind === 'projectileHit' && ev.target === house)).toBe(true);
+  });
+
+  it('moves to where a goto gave up on a route that closed under it', () => {
+    const s = sim(strait(40, 12, 16, 32));
+    // A cart, whose one-node body lets another vehicle close its next node.
+    const cart = createVehicle(s.world, ctxOf(s), {
+      vehicleType: HANDCART,
+      x: 4,
+      y: 8,
+      tribe: VIKING,
+      owner: P1,
+    });
+    if (cart === null) throw new Error('handcart type missing');
+    const driver = fighterAt(s, 1, 8, P1);
+    expect(seatPassenger(s.world, cart, driver)).toBe(true);
+    boardRider(s.world, driver, cart);
+    s.enqueue(playerCommand(P1, { kind: 'moveVehicle', vehicle: cart, x: 28, y: 8 }));
+    stepToLegEnd(s, cart, 4);
+    // Another cart parks on the next node and the goal moves across the strait: no way leads on.
+    const drive = s.world.mut(cart, VehicleDrive);
+    const next = drive.route[0];
+    if (next === undefined) throw new Error('no next node');
+    drive.goal = { hx: 70, hy: 8 };
+    createVehicle(s.world, ctxOf(s), {
+      vehicleType: HANDCART,
+      x: next.hx,
+      y: next.hy,
+      tribe: VIKING,
+      owner: P1,
+    });
+    const refused = collect(s, 1, ['vehicleMoveRefused']);
+    expect(refused.map((ev) => (ev.kind === 'vehicleMoveRefused' ? ev.reason : ''))).toEqual(['noPath']);
+    expect(s.world.has(cart, VehicleDrive)).toBe(false);
+    expect(s.world.get(cart, Vehicle).guard).toEqual(anchorOf(s, cart));
+  });
+});
+
 describe('the clip and its target', () => {
   it('lets a clip end unfired when its mark leaves the map before the event tick', () => {
     const s = sim(grass(40, 10));

@@ -369,7 +369,10 @@ export function stopVehicle(world: World, command: Extract<Command, { kind: 'sto
   if (drive === undefined && !held) return;
   if (drive !== undefined) {
     drive.route.length = 0;
-    if (drive.from === null) world.remove(e, VehicleDrive);
+    if (drive.from === null) {
+      world.remove(e, VehicleDrive);
+      reanchorGuard(world, e);
+    }
   }
   if (held) stopAskingCrewIn(world, state);
   const live = world.mut(e, Vehicle);
@@ -442,6 +445,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
         world.remove(e, VehicleDrive);
         refuseMove(world, ctx, e, 'noPath');
         abandonDock(world, e);
+        reanchorGuard(world, e);
       }
       continue; // the fresh route's first leg starts next tick
     }
@@ -475,8 +479,9 @@ export const vehicleMovementSystem: System = (world, ctx) => {
   }
 };
 
-/** A drive's end is the new guard position a holding or defending siege vehicle scans around, unless
- *  the drive was its own chase, which must not walk the guard along with it. */
+/** Wherever a drive ends, arrived, stopped or given up, is the new guard position a holding or
+ *  defending siege vehicle scans around, unless the drive was its own chase, which must not walk the
+ *  guard along with it. */
 function reanchorGuard(world: World, e: Entity): void {
   const state = world.get(e, Vehicle);
   const anchor = vehicleAnchor(world, e);
