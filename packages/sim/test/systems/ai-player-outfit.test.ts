@@ -13,8 +13,8 @@ import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 import { armedContent, SWORD, UNARMED } from './ai-player/support.js';
 
-// The soldiers' outfit: the heal potion, both amulets and the mead the military module sends a man waiting
-// at the barracks to fetch.
+// The soldiers' outfit: the heal potion and the defence amulet the military module sends a man waiting at
+// the barracks to fetch.
 
 const VIKING = 1;
 const SEAT = 2;
@@ -31,7 +31,6 @@ const WAITING_SEED = 1;
 const POTION = 60;
 const AMULET = 61;
 const STRENGTH_AMULET = 62;
-const MEAD = 63;
 
 const HQ = { x: 20, y: 30 };
 const FOE_HQ = { x: 80, y: 50 };
@@ -56,7 +55,6 @@ function outfitContent(): ContentSet {
         weight: 1,
         equip: { category: 'misc', wears: false },
       },
-      { typeId: MEAD, id: 'mead', weight: 1, equip: { category: 'misc', wears: true, uses: 1 } },
     ],
   });
 }
@@ -248,27 +246,6 @@ describe('military module - the soldiers outfit', () => {
     });
     expect(equipOrders(sim)).toEqual([
       { kind: 'equipGood', entity: man, group: 'misc', slot: 2, goodType: STRENGTH_AMULET },
-    ]);
-  });
-
-  it('sends a man who wears the potion and both amulets for the mead, into the last misc slot', () => {
-    const sim = outfittedSeat([{ good: MEAD, amount: 1 }], 1);
-    const [man] = soldiers(sim);
-    if (man === undefined) throw new Error('setup: no soldier');
-    sim.world.add(man, Equipment, {
-      boots: null,
-      tool: null,
-      weapon: null,
-      armor: null,
-      misc: [
-        { goodType: POTION, degreeOfUse: ZERO },
-        { goodType: AMULET, degreeOfUse: ZERO },
-        { goodType: STRENGTH_AMULET, degreeOfUse: ZERO },
-        null,
-      ],
-    });
-    expect(equipOrders(sim)).toEqual([
-      { kind: 'equipGood', entity: man, group: 'misc', slot: 3, goodType: MEAD },
     ]);
   });
 
