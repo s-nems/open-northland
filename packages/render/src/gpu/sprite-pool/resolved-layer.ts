@@ -27,6 +27,9 @@ export interface ResolvedLayer {
   /** The construction stage's `[fromPct, toPct]` progress window, mapping eased progress into this
    *  stage's own threshold scale. */
   readonly revealWindow?: readonly [number, number];
+  /** Fades from opaque at this build progress (a whole percent) to clear at 100: an upgrade site's old
+   *  body giving way to the next tier rising around it. */
+  readonly fadeOutFromPct?: number;
   /** Excluded from the entity's stamped bounds: a building's animated state overlay (the mill's rotor)
    *  breathes in size and offset per frame and must not move the box. It still draws and still
    *  pixel-hit-tests. */

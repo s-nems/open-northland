@@ -43,6 +43,13 @@ export type BindFrame = Pick<
 const HIGHLIGHT_OK_TINT = 0x88ff88;
 const HIGHLIGHT_NO_TINT = 0xff8888;
 
+/** A layer's opacity at the eased build progress: opaque unless it fades out towards completion. */
+function fadeAlpha(layer: ResolvedLayer, reveal: number | undefined): number {
+  if (layer.fadeOutFromPct === undefined || reveal === undefined) return 1;
+  const from = layer.fadeOutFromPct / 100;
+  return clamp(1 - (reveal - from) / (1 - from), 0, 1);
+}
+
 function entityTint(ref: number, ghost: boolean, highlight?: ReadonlyMap<number, boolean>): number {
   if (ghost) return FOG_GHOST_TINT;
   const ok = highlight?.get(ref);
@@ -181,6 +188,7 @@ export class LayerBinder {
           : null;
       const box = this.drawBox;
       layerDrawBox(box, layer, displayReveal, revealTexture !== null);
+      const alpha = fadeAlpha(layer, displayReveal);
       if (pe.paletted && layer.shadow === true) {
         this.bindShadowSprite(pe, shadowSlot++, layer, box, tint, shadowStyle);
       } else if (pe.paletted) {
@@ -198,11 +206,14 @@ export class LayerBinder {
       } else {
         // The ground overlays spill past the body; a click on them is a click on the ground.
         pe.pickExempt[spriteSlot] = layer.shadow === true || layer.groundFoot === 'cover';
+        const spr = this.plainSlot(pe, spriteSlot);
+        spr.alpha = alpha;
         if (layer.cast === true) {
-          this.placeShadow(this.plainSlot(pe, spriteSlot++), layer, box, tint, shadowStyle);
+          this.placeShadow(spr, layer, box, tint, shadowStyle);
         } else {
-          this.bindPlainLayer(pe, spriteSlot++, layer, revealTexture, box, tint, enhanceBuilding);
+          this.bindPlainLayer(pe, spriteSlot, layer, revealTexture, box, tint, enhanceBuilding);
         }
+        spriteSlot++;
       }
       if (layer.boundsExempt === true) continue;
       const selection = layer.frame.selectionEllipse;

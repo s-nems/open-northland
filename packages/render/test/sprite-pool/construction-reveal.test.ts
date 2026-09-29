@@ -166,3 +166,66 @@ describe('SpritePool - an upgrade site reveals the next tier from its upgradePct
     expect(visibleStages(layer)).toBe(2); // old body plus the risen next-tier overlay
   });
 });
+
+describe('SpritePool - a tribe without upgrade rows rebuilds its next tier around the old body', () => {
+  const FRANK = 2;
+  const NEXT_TIER = 14;
+  // The frank skin carries no upgrade rows, so type 13 rises as type 14's construction stack: a scaffold
+  // (bob 86) and the next tier's finished body (bob 71).
+  const rebuildSheet: SpriteSheet = {
+    ...sheet,
+    families: {
+      houses: {
+        source,
+        atlas: { ...atlas, frames: new Map([frame(70), frame(71), frame(86)]) },
+        times,
+      },
+    },
+    bindings: {
+      ...sheet.bindings,
+      building: {
+        byType: { 13: { layer: 'houses', bob: 70 } },
+        default: 70,
+        upgradeTargetByType: { 13: NEXT_TIER },
+        byTribe: {
+          [FRANK]: {
+            byType: { 13: { layer: 'houses', bob: 70 }, [NEXT_TIER]: { layer: 'houses', bob: 71 } },
+            constructionByType: {
+              [NEXT_TIER]: [
+                { layer: 'houses', bob: 86, fromPct: 0, toPct: 100 },
+                { layer: 'houses', bob: 71, fromPct: 0, toPct: 100 },
+              ],
+            },
+          },
+        },
+      },
+    },
+  };
+  function frankUpgrade(pct: number): ReturnType<typeof entity> {
+    return entity(1, 0, 0, {
+      Building: { buildingType: 13, tribe: FRANK, built: Math.round((pct * SIM_ONE) / 100) },
+      UnderConstruction: {},
+      Upgrading: {},
+    });
+  }
+  function visibleAlphas(layer: Container): number[] {
+    const container = layer.children[0] as Container | undefined;
+    return ((container?.children ?? []) as { visible: boolean; alpha: number }[])
+      .filter((s) => s.visible)
+      .map((s) => s.alpha);
+  }
+
+  it('draws the scaffold under the old body and the next-tier body over it, fading the old body at the end', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), rebuildSheet);
+    for (let f = 0; f < 60; f++) pool.reconcile(poolFrame(snapshotOf([frankUpgrade(50)])));
+    // Scaffold, old body, next-tier body: back walls hide behind the kept body, front faces rise over it.
+    expect(visibleAlphas(layer)).toEqual([1, 1, 1]);
+
+    for (let f = 0; f < 120; f++) pool.reconcile(poolFrame(snapshotOf([frankUpgrade(99)])));
+    const [scaffold, oldBody, nextBody] = visibleAlphas(layer);
+    expect(scaffold).toBe(1);
+    expect(oldBody).toBeLessThan(0.5);
+    expect(nextBody).toBe(1);
+  });
+});

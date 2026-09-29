@@ -152,14 +152,25 @@ export function pushGroundedBody(
   sheet: SpriteSheet,
   kind: SpriteKind,
   draw: BuildingDraw,
+  wrap: (part: ResolvedLayer) => ResolvedLayer = identity,
 ): boolean {
   const layer = sourceLayerFor(sheet, kind, draw);
   if (layer === undefined) return false;
-  return pushGroundedFrom(out, layer, draw.bob, layeredScale(sheet, kind, draw));
+  return pushGroundedFrom(out, layer, draw.bob, layeredScale(sheet, kind, draw), wrap);
 }
 
-/** {@link pushGroundedBody} for one bob of an already chosen layer. */
-export function pushGroundedFrom(out: LayerBuffer, layer: SpriteLayer, bob: number, scale: number): boolean {
+function identity(part: ResolvedLayer): ResolvedLayer {
+  return part;
+}
+
+/** {@link pushGroundedBody} for one bob of an already chosen layer; `wrap` restyles every part pushed. */
+export function pushGroundedFrom(
+  out: LayerBuffer,
+  layer: SpriteLayer,
+  bob: number,
+  scale: number,
+  wrap: (part: ResolvedLayer) => ResolvedLayer = identity,
+): boolean {
   const body = resolveFromLayer(layer, bob, scale);
   if (body === null) return false;
   let parts = groundedRecords.get(body);
@@ -172,10 +183,10 @@ export function pushGroundedFrom(out: LayerBuffer, layer: SpriteLayer, bob: numb
     ];
     groundedRecords.set(body, parts);
   }
-  out.push(parts[0]);
+  out.push(wrap(parts[0]));
   const shadow = shadowLayerFor(layer, bob, scale);
-  if (shadow !== null) out.push(shadow);
-  out.push(parts[1]);
-  out.push(parts[2]);
+  if (shadow !== null) out.push(wrap(shadow));
+  out.push(wrap(parts[1]));
+  out.push(wrap(parts[2]));
   return true;
 }
