@@ -157,6 +157,7 @@ export async function createUnitChrome(
           .current()
           .actions.open({ x: press.x, y: press.y, ...(edge === null ? {} : { keepRightOf: edge }) });
       },
+      closeOrders: () => mounts.current().actions.close(),
       assignWorkplace: callbacks.assignWorkplace,
       assignHome: callbacks.assignHome,
       attachTradeHouse: callbacks.attachTradeHouse,

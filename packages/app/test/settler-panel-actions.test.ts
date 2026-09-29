@@ -45,6 +45,7 @@ function harness(
       selectGroup: () => undefined,
       centre: () => undefined,
       openOrders: () => undefined,
+      closeOrders: () => undefined,
       assignWorkplace: () => undefined,
       assignHome: () => undefined,
       attachTradeHouse: () => undefined,

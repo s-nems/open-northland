@@ -20,6 +20,7 @@ export interface SettlerPanelHost {
   readonly selectGroup: (ids: readonly number[]) => void;
   readonly centre: (id: number) => void;
   readonly openOrders: (press: OrdersPress) => void;
+  readonly closeOrders: () => void;
   readonly assignWorkplace: (id: number) => void;
   readonly assignHome: (id: number) => void;
   readonly attachTradeHouse: (id: number) => void;
@@ -57,6 +58,7 @@ export function settlerPanelActions(
     selectGroup: view(host.selectGroup),
     clearSelection: view(() => host.selectGroup([])),
     openOrders: order((_id, press: OrdersPress) => host.openOrders(press)),
+    closeOrders: host.closeOrders,
     rename: order(contract.rename),
     // The ring's own order, so a press obeys the same gate the ring button does.
     orderNeed: order((id, need: NeedKind) => host.ringCommand(NEED_ORDER[need], [id])),

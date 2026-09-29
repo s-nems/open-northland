@@ -282,7 +282,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       const w = toWorld(e.clientX, e.clientY);
       const marker = clickHits.doorMarkerAt(w.x, w.y);
       if (marker?.kind === 'settler') {
+        // The marker stands for the person inside, so it takes the right click the figure would.
         applySelection([marker.ref], false);
+        chrome.actions().open({ x: e.clientX, y: e.clientY });
         cue('confirm');
       } else {
         // Settlers the vehicle under the cursor refuses take the usual right-click once it answered.

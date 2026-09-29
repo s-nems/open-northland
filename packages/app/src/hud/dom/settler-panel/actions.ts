@@ -32,6 +32,8 @@ export interface SettlerPanelActions {
   /** Open the action ring for the settler around the press (the medallion, a right click on the
    *  portrait); the panel steps aside while the ring is up. */
   readonly openOrders: (id: number, press: OrdersPress) => void;
+  /** Close the action ring or its profession list, if either is up. */
+  readonly closeOrders: () => void;
   readonly rename: (id: number, name: string) => void;
   readonly orderNeed: (id: number, need: NeedKind) => void;
   readonly assignWorkplace: (id: number) => void;

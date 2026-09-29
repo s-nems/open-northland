@@ -74,6 +74,10 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     deps.tooltip,
   );
 
+  // A left press anywhere on the panel puts the ring away; the medallion's click then opens it anew.
+  frame.element.addEventListener('mousedown', (event) => {
+    if (event.button === 0) actions.closeOrders();
+  });
   const portrait = createPortraitSection(deps, entity);
   const needs = createNeedsSection(deps, entity);
   const work = createWorkSection(deps, current);
