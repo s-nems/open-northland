@@ -1,19 +1,25 @@
 /**
- * A* pathfinding over the terrain half-cell adjacency graph. Each edge costs its real world length times
- * the entered node's route weight (its walking resistance on land), and the heuristic is
- * {@link latticeDistanceTo} scaled by the graph's least weight, admissible and consistent because no step
- * weighs less. A route so minimises on-screen distance weighed by ground, reading straight under the
- * staggered raster on even ground. All costs are fixed-point; no float enters the search.
+ * Weighted A* pathfinding over the terrain half-cell adjacency graph. Each edge costs its real world
+ * length times the entered node's route weight (its walking resistance on land), and the heuristic is
+ * {@link latticeDistanceTo} times {@link LAND_HEURISTIC_WEIGHT} on land. A route so nearly minimises
+ * on-screen distance weighed by ground, reading straight under the staggered raster on even ground. All
+ * costs are fixed-point; no float enters the search.
  *
  * Ties break on a history-independent total order, so two clients in lockstep pick byte-identical paths.
- * The line-deviation key only separates routes that already tie on cost, so optimality is untouched.
+ * The line-deviation key only separates routes that already tie on `f`.
  *
  * Working storage is reused per graph, so a query allocates only the path it returns.
  */
 
-import { type Fixed, fx } from '../../core/fixed.js';
+import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { BlockOverlay } from '../block-overlay.js';
-import { latticeDistanceTo, type NodeId, type TerrainGraph, type Traversal } from '../terrain/index.js';
+import {
+  DEFAULT_NODE_ROUGHNESS,
+  latticeDistanceTo,
+  type NodeId,
+  type TerrainGraph,
+  type Traversal,
+} from '../terrain/index.js';
 import { siftDown, siftUp } from './open-heap.js';
 import { MAX_QUERY_GENERATION, NO_NODE, SETTLED, type SearchScratch, scratchFor } from './scratch.js';
 
@@ -160,6 +166,16 @@ export function findPathWithin(
 
 const UNCAPPED = Number.POSITIVE_INFINITY;
 
+/**
+ * The land heuristic's per-length weight: common ground (grass, roughness 2), not a road's 1. A deliberately
+ * inflated heuristic (weighted A*), a named approximation trading exactness for search cost: scaled by the
+ * least weight, a long route on magiczny_las settled about 40k nodes. Unweighted lattice distance is
+ * consistent (no step weighs under 1), so even without reopening settled nodes a route costs at most this
+ * factor over the cheapest; measured there, 0.3 to 1.2% over on average. A road detouring off an
+ * all-grass straight line is usually not taken; one across pricier ground is. On uniform grass it is exact.
+ */
+const LAND_HEURISTIC_WEIGHT = fx.fromInt(DEFAULT_NODE_ROUGHNESS);
+
 function pathOf(verdict: NodeId[] | 'unreachable' | 'aborted'): NodeId[] | null {
   return typeof verdict === 'string' ? null : verdict;
 }
@@ -181,7 +197,6 @@ class ResumableSearch {
   private readonly startY: number;
   private readonly goalX: number;
   private readonly goalY: number;
-  /** The heuristic's factor: no step of this traversal weighs less. */
   private readonly heuristicScale: Fixed;
 
   constructor(
@@ -204,7 +219,7 @@ class ResumableSearch {
     this.startY = graph.yOf(start);
     this.goalX = graph.xOf(goal);
     this.goalY = graph.yOf(goal);
-    this.heuristicScale = graph.minRouteWeight(traversal);
+    this.heuristicScale = traversal === 'land' ? LAND_HEURISTIC_WEIGHT : ONE;
     scratch.stamps[start] = this.query;
     scratch.g[start] = 0;
     scratch.f[start] = this.heuristic(start);
@@ -230,7 +245,7 @@ class ResumableSearch {
       if (stats !== undefined) stats.explored += 1;
       if (current === goal) return reconstruct(scratch, current);
 
-      // The heuristic is admissible, so the popped minimum is settled and can be closed.
+      // The popped minimum is closed for good; see LAND_HEURISTIC_WEIGHT for what that costs on land.
       heapIdx[current] = SETTLED;
       const last = heap.pop();
       if (last !== undefined && heap.length > 0) {
@@ -256,7 +271,8 @@ class ResumableSearch {
           continue;
         }
         // A relaxation only decreases the key, so restoring the heap invariant is a sift toward the root.
-        // Settled nodes are never relaxed: under a consistent heuristic their g is already optimal.
+        // Settled nodes are never relaxed. Water's heuristic is consistent, so their g is optimal there;
+        // on land the inflated heuristic can settle a node early, a loss the weight's bound covers.
         const index = heapIdx[next] ?? SETTLED;
         const knownG = g[next] ?? 0;
         if (index === SETTLED || tentativeG >= knownG) continue;

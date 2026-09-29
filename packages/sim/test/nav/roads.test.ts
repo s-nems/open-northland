@@ -62,8 +62,8 @@ describe('road network', () => {
     expect(roadRevision(sim.world)).toBe(1);
   });
 
-  it('routes a walker along a road detour that costs less than the straight line over grass', () => {
-    const { sim, terrain } = mappedSim(grassNodeMap(24, 14));
+  it('routes a walker along a road detour that costs less than the straight line over sand', () => {
+    const { sim, terrain } = mappedSim(roughNodeMap(24, 14, () => SAND));
     expect(route(terrain).every((node) => terrain.yOf(node) === FROM.hy)).toBe(true);
     layRoad(sim.world, terrain, detourRoad(terrain));
     const onRoad = route(terrain);
@@ -71,6 +71,12 @@ describe('road network', () => {
     expect(onRoad.every((node) => terrain.isRoad(node) || node === terrain.nodeAt(FROM.hx, FROM.hy))).toBe(
       true,
     );
+  });
+
+  it('keeps to the straight line over grass beside a cheaper road: the land heuristic is weighed as grass', () => {
+    const { sim, terrain } = mappedSim(grassNodeMap(24, 14));
+    layRoad(sim.world, terrain, detourRoad(terrain));
+    expect(route(terrain).every((node) => terrain.yOf(node) === FROM.hy)).toBe(true);
   });
 
   it('routes round snow on the straight line: every ground weighs by its resistance', () => {

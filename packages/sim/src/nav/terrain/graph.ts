@@ -33,8 +33,8 @@ export const ROAD_RESISTANCE = 1;
 
 /**
  * The least resistance a land route step is weighed by. `lmpr` 0 marks the map border and a few void
- * nodes, which the original's search enters for free; a zero weight would leave the A* heuristic nothing
- * to scale by, so they weigh as a road. Approximation.
+ * nodes, which the original's search enters for free; they weigh as a road instead, so unweighted
+ * lattice distance stays a lower bound on any route's cost. Approximation.
  */
 const MIN_ROUTE_RESISTANCE = ROAD_RESISTANCE;
 
@@ -57,8 +57,6 @@ export class TerrainGraph extends TerrainEdges {
   /** Per-node land route weight: the node's resistance, at least {@link MIN_ROUTE_RESISTANCE}, as a
    *  multiple of ONE. */
   private readonly routeWeights: Fixed[];
-  /** The least route weight of any walkable node without roads. */
-  private readonly groundMinRouteWeight: Fixed;
 
   constructor(
     width: number,
@@ -83,17 +81,10 @@ export class TerrainGraph extends TerrainEdges {
     this.roughness = roughness === undefined ? undefined : Uint8Array.from(roughness);
     this.roads = new Uint8Array(this.nodeCount);
     this.routeWeights = new Array<Fixed>(this.nodeCount);
-    let groundMin = routeWeightOf(ROAD_RESISTANCE);
-    let anyWalkable = false;
     for (let i = 0; i < this.nodeCount; i++) {
       const node = i as NodeId;
-      const weight = routeWeightOf(this.roughnessAt(node));
-      this.routeWeights[node] = weight;
-      if (!this.isWalkable(node)) continue;
-      if (!anyWalkable || weight < groundMin) groundMin = weight;
-      anyWalkable = true;
+      this.routeWeights[node] = routeWeightOf(this.roughnessAt(node));
     }
-    this.groundMinRouteWeight = groundMin;
     const cellCount = Math.ceil(width / 2) * Math.ceil(height / 2);
     if (elevation !== undefined && elevation.length !== cellCount) {
       throw new Error(`elevation lane has ${elevation.length} cells, expected ${cellCount}`);
@@ -130,13 +121,6 @@ export class TerrainGraph extends TerrainEdges {
    */
   routeWeightAt(node: NodeId, traversal: Traversal): Fixed {
     return traversal === 'land' ? (this.routeWeights[node] ?? ONE) : ONE;
-  }
-
-  /** The least {@link routeWeightAt} any node of `traversal` carries, the A* heuristic's scale. */
-  minRouteWeight(traversal: Traversal): Fixed {
-    if (traversal === 'water') return ONE;
-    const road = routeWeightOf(ROAD_RESISTANCE);
-    return this.roadNodes.length > 0 && road < this.groundMinRouteWeight ? road : this.groundMinRouteWeight;
   }
 
   /**
