@@ -53,6 +53,8 @@ import {
   storeAt,
   VIKING,
   WALL,
+  WOOD,
+  WOODEN_HOUSE,
 } from './road-support.js';
 
 /** Hand `site` its stone and a claim holder that has landed its one strike, then run the finish. */
@@ -381,6 +383,28 @@ describe('road site construction', () => {
     }
     expect(sim.world.isAlive(road)).toBe(false);
     expect(roadAt(sim, 10, ROW)).toBe(true);
+  });
+
+  it('wait for a building site only while it holds a task the builder can do', () => {
+    for (const wood of [0, 1]) {
+      const sim = roadSim();
+      const store = storeAt(sim, STORE_HX);
+      setStockAmount(sim.world, store, WOOD, wood);
+      const house = houseSiteAt(sim, 12, WOODEN_HOUSE);
+      const builder = builderAt(sim, 8);
+      orderRoads(sim, [{ hx: 10, hy: ROW }]);
+      const road = siteAt(sim, 10, ROW);
+      if (road === undefined) throw new Error('expected a road site');
+
+      for (let tick = 0; tick < 2 * BUILD_TICKS && sim.world.isAlive(road); tick++) {
+        sim.step();
+        if (wood > 0 && sim.world.tryGet(builder, SiteAssignment)?.site === road) {
+          expect(sim.world.has(house, UnderConstruction), `house first, tick ${tick}`).toBe(false);
+        }
+      }
+      expect(roadAt(sim, 10, ROW), `wood ${wood}`).toBe(true);
+      expect(sim.world.has(house, UnderConstruction), `wood ${wood}`).toBe(wood === 0);
+    }
   });
 
   it('cancelled while its stone is on the way, strands no errand and loses no stone', () => {

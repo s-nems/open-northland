@@ -47,9 +47,10 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
  * BUILD - mend the nearest damaged building that is safe to reach, else keep a useful automatic crew
  * assignment stable, otherwise move the builder to the nearest reachable site with material to fetch or
  * delivered labor to install, and with no task anywhere wait beside a site. A road or wall run the
- * player started ({@link BuildMode}) goes before all of that. Walls come after every building site, a
- * damaged wall before a new segment, and road sites after every wall. Player pins and unfinished
- * workplace bindings are strict: their builders stay with that site even while another has work.
+ * player started ({@link BuildMode}) goes before all of that. Walls wait while a building site holds a
+ * task the builder can do, a damaged wall goes before a new segment, and road sites wait while a building
+ * or a wall site holds one. Player pins and unfinished workplace bindings are strict: their builders stay
+ * with that site even while another has work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
  * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the
@@ -175,25 +176,31 @@ export function planBuilder(
 
   if (repairNearest(plan, spacing, repairs, avoidSite, false)) return true;
 
-  // Walls come last: an automatic builder turns to one only once no building site it could stand at is
-  // left, so walls wait out every new house and upgrade. Project rule.
+  // Walls come after buildings: an automatic builder turns to one only while no building site holds a
+  // task it can do, so a house starved of material does not stall the walls. Project rule.
   const isWall = (site: Entity): boolean => world.has(site, Palisade);
-  let buildingLeft: boolean | undefined;
-  const wallsWait = (): boolean => {
-    buildingLeft ??= nearestSite(targets.constructionSiteCells, canStandAt) !== null;
-    return buildingLeft;
+  let buildingTask: Entity | null | undefined;
+  const nearestBuildingTask = (): Entity | null => {
+    if (buildingTask === undefined) buildingTask = nearestSite(targets.constructionSiteCells, hasTask);
+    return buildingTask;
   };
-  // Roads come after walls the same way: they wait while a building or a wall site is standable.
-  let wallLeft: boolean | undefined;
-  const roadsWait = (): boolean => {
-    wallLeft ??= wallsWait() || nearestSite(targets.wallSiteCells, canStandAt) !== null;
-    return wallLeft;
+  const wallsWait = (): boolean => nearestBuildingTask() !== null;
+  // Roads come after walls the same way: they wait while a building or a wall site holds a task.
+  let wallTask: Entity | null | undefined;
+  const nearestWallTask = (): Entity | null => {
+    if (wallTask === undefined) {
+      wallTask = claims.wallMayHaveTask(materials.canSource)
+        ? nearestSite(targets.wallSiteCells, hasTask)
+        : null;
+    }
+    return wallTask;
   };
+  const roadsWait = (): boolean => wallsWait() || nearestWallTask() !== null;
   const inTurn = (site: Entity): boolean =>
     world.has(site, RoadSite) ? !roadsWait() : !isWall(site) || !wallsWait();
-  // Every `accepts` implies `canStandAt`, so a building site that passes it keeps the walls waiting.
-  // `walls` and `roads` narrow the sites to those that can pass `accepts`, null for none: while every
-  // site waits for material, an idle builder would otherwise weigh them all on each plan.
+  // Staging only: a building site that passes `accepts` outranks every wall and road, and a wall every
+  // road. `walls` and `roads` narrow the sites to those that can pass `accepts`, null for none: while
+  // every site waits for material, an idle builder would otherwise weigh them all on each plan.
   const nearestInTurn = (
     accepts: (site: Entity) => boolean,
     walls: () => InteractionCellIndex | null,
@@ -225,11 +232,11 @@ export function planBuilder(
   const site =
     crewSite !== null && hasTask(crewSite) && inTurn(crewSite)
       ? crewSite
-      : nearestInTurn(
-          hasTask,
-          () => (claims.wallMayHaveTask(materials.canSource) ? everyWall() : null),
-          () => (claims.roadMayHaveTask(materials.canSource, settler.owner) ? everyRoad() : null),
-        );
+      : (nearestBuildingTask() ??
+        nearestWallTask() ??
+        (claims.roadMayHaveTask(materials.canSource, settler.owner)
+          ? pickRoad(targets.roadSiteCells, hasTask)
+          : null));
   if (site !== null && isSoloSite(world, site)) {
     // A segment or road site is claimed before any hammer or delivery, so it has one builder.
     stampAssignment(plan, site, false);

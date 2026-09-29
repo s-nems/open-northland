@@ -29,7 +29,7 @@ export const VIKING = 1;
 export const HUMAN = 0;
 export const RIVAL = 1;
 export const STONE = 1;
-const WOOD = 2;
+export const WOOD = 2;
 const IDLE = 0;
 const BUILDER = 7;
 const BUILD_HOUSE_ATOMIC = 39;
@@ -45,6 +45,8 @@ export const ONE_STRIKE_CLIP_PACE = 2;
 export const BUILD_STRIKE_TICKS = BUILD_CLIP_TICKS * ONE_STRIKE_CLIP_PACE;
 const STORE = 1;
 const HOUSE = 2;
+/** A home built of wood alone, which a store short of wood leaves waiting. */
+export const WOODEN_HOUSE = 4;
 const GRASS = 0;
 export const ROW = 6;
 export const STORE_HX = 4;
@@ -142,6 +144,13 @@ function roadContent() {
         construction: [{ goodType: STONE, amount: 1 }],
       },
       {
+        typeId: WOODEN_HOUSE,
+        id: 'home_wooden',
+        kind: 'home',
+        homeSize: 1,
+        construction: [{ goodType: WOOD, amount: 1 }],
+      },
+      {
         typeId: HUT,
         id: 'hut',
         kind: 'home',
@@ -179,10 +188,10 @@ export function storeAt(sim: Simulation, hx: number, stone = 10): Entity {
   return e;
 }
 
-export function houseSiteAt(sim: Simulation, hx: number): Entity {
+export function houseSiteAt(sim: Simulation, hx: number, buildingType = HOUSE): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(hx, ROW));
-  sim.world.add(e, Building, { buildingType: HOUSE, tribe: VIKING, built: fx.fromInt(0), level: 0 });
+  sim.world.add(e, Building, { buildingType, tribe: VIKING, built: fx.fromInt(0), level: 0 });
   sim.world.add(e, Stockpile, { amounts: new Map() });
   sim.world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
   sim.world.add(e, Owner, { player: HUMAN });
