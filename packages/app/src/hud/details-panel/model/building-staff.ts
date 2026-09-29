@@ -56,12 +56,16 @@ const TRAINEES = groupedBy((e) => (isSettler(e) ? trainingHouseOf(e) : undefined
   presence: ['Settler'],
 });
 
-const ATOMIC_TARGETS = groupedBy(
-  (e) =>
-    isSettler(e)
-      ? num((e.components.CurrentAtomic as { targetEntity?: unknown } | undefined)?.targetEntity)
-      : undefined,
-  'atomic targets',
+/** Settlers hammering at a site, by the site. Only the `construct` action counts: a blow or a meal
+ *  aimed at the same building is no work on it. */
+const HAMMERING = groupedBy(
+  (e) => {
+    if (!isSettler(e)) return undefined;
+    const effect = (e.components.CurrentAtomic as { effect?: { kind?: unknown; site?: unknown } } | undefined)
+      ?.effect;
+    return effect?.kind === 'construct' ? num(effect.site) : undefined;
+  },
+  'hammering settlers',
   { values: ['CurrentAtomic'], presence: ['Settler'] },
 );
 
@@ -88,7 +92,7 @@ function personOf(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, e: Snapsh
 export function raisingCrew(snapshot: WorldSnapshot, site: number): SnapshotEntity[] {
   const crew = new Map<number, SnapshotEntity>();
   for (const e of siteCrewOf(snapshot, site)) if (isSettler(e)) crew.set(e.id, e);
-  for (const e of indexesOf(snapshot).get(ATOMIC_TARGETS).get(site) ?? []) crew.set(e.id, e);
+  for (const e of indexesOf(snapshot).get(HAMMERING).get(site) ?? []) crew.set(e.id, e);
   for (const e of supplyRunsTo(snapshot, site)) if (isSettler(e)) crew.set(e.id, e);
   return [...crew.values()].sort((a, b) => a.id - b.id);
 }

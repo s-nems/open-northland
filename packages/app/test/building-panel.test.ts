@@ -56,10 +56,12 @@ describe('building staff readers', () => {
   it('lists the crew raising a site once each: builders, hands at it, suppliers', () => {
     const snap = snapshotOf([
       sett(1, { SiteAssignment: { site: BUILDING } }),
-      sett(2, { CurrentAtomic: { targetEntity: BUILDING } }),
+      sett(2, { CurrentAtomic: { effect: { kind: 'construct', site: BUILDING }, targetEntity: BUILDING } }),
       sett(3, { SupplyRun: { site: BUILDING } }),
       sett(4, { SiteAssignment: { site: BUILDING }, SupplyRun: { site: BUILDING } }),
       sett(5, { SiteAssignment: { site: OTHER } }),
+      // A blow aimed at the site is no work on it.
+      sett(6, { CurrentAtomic: { effect: { kind: 'attack', target: BUILDING }, targetEntity: BUILDING } }),
     ]);
     expect(raisingCrew(snap, BUILDING).map((e) => e.id)).toEqual([1, 2, 3, 4]);
   });
