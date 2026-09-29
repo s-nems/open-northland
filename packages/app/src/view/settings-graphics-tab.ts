@@ -137,7 +137,7 @@ export function graphicsSettingsRows(
   );
   minimapFrame.root.classList.add('main-menu__minimap-frames');
   const enhancementToggles = (
-    ['softShadows', 'enhancedWater', 'environmentMotion', 'groundedBuildings'] as const
+    ['softShadows', 'enhancedWater', 'environmentMotion', 'groundedBuildings', 'weather'] as const
   ).map((key) => {
     const toggle = togglePill(settings[key], (enabled) => {
       void store.update({ [key]: enabled });

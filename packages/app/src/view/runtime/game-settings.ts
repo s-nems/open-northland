@@ -26,6 +26,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
   readonly setMinimapFrame: (frame: MenuSettings['minimapFrame']) => void;
+  readonly setWeatherEnabled: (enabled: boolean) => void;
 }
 
 /** An explicit session URL choice wins over the persisted sound preference. */
@@ -61,6 +62,7 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     }
     if (patch.debugToolsEnabled !== undefined) deps.setDebugToolsEnabled(patch.debugToolsEnabled);
     if (patch.minimapFrame !== undefined) deps.setMinimapFrame(patch.minimapFrame);
+    if (patch.weather !== undefined) deps.setWeatherEnabled(patch.weather);
     if (ENHANCEMENT_KEYS.some((key) => patch[key] !== undefined)) {
       deps.setGraphicsEnhancements(enhancementsOf(current));
     }

@@ -29,6 +29,14 @@ it('hands the renderer a newly picked pixel-art filter', async () => {
   });
 });
 
+it('switches weather live without touching the renderer enhancements', async () => {
+  const h = harness();
+  await h.settings.update({ weather: false });
+  expect(h.setWeatherEnabled).toHaveBeenCalledWith(false);
+  expect(h.setGraphicsEnhancements).not.toHaveBeenCalled();
+  expect(h.persist).toHaveBeenCalledWith({ weather: false });
+});
+
 it('reframes the mounted minimap when another frame is picked', async () => {
   const h = harness();
   await h.settings.update({ minimapFrame: 'urnes' });
@@ -48,6 +56,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setDebugToolsEnabled = vi.fn();
   const setGraphicsEnhancements = vi.fn();
   const setMinimapFrame = vi.fn();
+  const setWeatherEnabled = vi.fn();
   const settings = createGameSettingsRuntime({
     initial: {
       ...defaultSettings(),
@@ -68,6 +77,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setDebugToolsEnabled,
     setGraphicsEnhancements,
     setMinimapFrame,
+    setWeatherEnabled,
     ...overrides,
   });
   return {
@@ -83,6 +93,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setDebugToolsEnabled,
     setGraphicsEnhancements,
     setMinimapFrame,
+    setWeatherEnabled,
   };
 }
 

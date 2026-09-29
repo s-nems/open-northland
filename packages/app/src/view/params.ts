@@ -82,3 +82,27 @@ export function seatListParam(params: URLSearchParams, name: 'ai' | 'absent'): n
 export function introParam(params: URLSearchParams): boolean {
   return params.get('intro') !== 'off';
 }
+
+/** A `?weather=` value: one kind over the whole map at an amount in percent, or `clear`. */
+export interface WeatherParam {
+  readonly kind: 'rain' | 'snow' | 'sand' | 'clear';
+  readonly percent: number;
+}
+
+const WEATHER_PARAM_KINDS = ['rain', 'snow', 'sand', 'clear'] as const;
+/** The amount a bare `?weather=<kind>` shows: a heavy script shower, near the storm threshold. */
+const WEATHER_PARAM_DEFAULT_PERCENT = 30;
+const PERCENT_FULL = 100;
+
+/** `?weather=<rain|snow|sand|clear>[:<percent>]` overrides the map's weather in this view only, for
+ *  captures and visual review; the sim's weather state is untouched. */
+export function weatherParam(params: URLSearchParams): WeatherParam | null {
+  const raw = params.get('weather');
+  if (raw === null) return null;
+  const [name, amount] = raw.split(':');
+  const kind = WEATHER_PARAM_KINDS.find((k) => k === name);
+  if (kind === undefined) return null;
+  const parsed = amount === undefined ? WEATHER_PARAM_DEFAULT_PERCENT : Number.parseFloat(amount);
+  if (!Number.isFinite(parsed)) return null;
+  return { kind, percent: Math.min(PERCENT_FULL, Math.max(0, parsed)) };
+}

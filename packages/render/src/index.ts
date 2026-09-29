@@ -135,6 +135,7 @@ export {
   windSway,
 } from './data/weather/climate.js';
 export { coverEquilibrium, WeatherCover } from './data/weather/cover.js';
+export { buildWeatherField, type WeatherField } from './data/weather/field.js';
 export { stormOf, weatherIntensity } from './data/weather/precipitation.js';
 export type { ClothIndexRanges } from './gpu/cloth-wind.js';
 export { type DrawableResource, isDrawableResource, readable2dContext } from './gpu/drawable-resource.js';

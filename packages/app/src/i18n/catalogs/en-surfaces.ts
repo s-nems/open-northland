@@ -192,6 +192,9 @@ export const enSurfaces = {
       groundedBuildings: 'Grounded buildings',
       groundedBuildingsTip:
         'Buildings, palisades and stone walls sink a little into the ground they stand on: a soft shade along the walls, tufts of grass on a meadow and a drift on snow, each in the light of its own wall. Off keeps the original look.',
+      weather: 'Weather',
+      weatherTip:
+        'Rain, snow and sandstorms where the map calls for them: falling drops and flakes, mist and storm light, wet and snowy ground, splashes, wind and thunder. Weather never changes the game itself. Off shows clear skies and silences the weather.',
       uiScale: 'In-game interface scale',
       uiScaleTip: 'Size of in-game panels and buttons; does not change world sharpness.',
       uiScalePinnedTip: 'This session has a fixed diagnostic ?uiscale value.',

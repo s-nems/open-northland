@@ -37,6 +37,7 @@ export async function mountGamePresentation(
       sound.setEnabled(gameSoundEnabled(params, settings.soundEnabled));
       sound.setSfxVolume(settings.soundVolume);
       sound.setMusicVolume(settings.musicVolume);
+      sound.setWeatherEnabled(settings.weather);
       startSound(sound, { signal });
       if (musicType !== null) void startMapMusic(sound, musicType);
     }

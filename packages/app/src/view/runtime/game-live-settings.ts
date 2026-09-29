@@ -60,6 +60,7 @@ export interface LiveGameSettingsDeps {
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
   readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
+  readonly setWeatherEnabled: (enabled: boolean) => void;
 }
 
 export interface LiveGameSettings {
@@ -126,6 +127,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setDebugToolsEnabled: deps.setDebugToolsEnabled,
     setGraphicsEnhancements: deps.setGraphicsEnhancements,
     setMinimapFrame: deps.minimap.setFrame,
+    setWeatherEnabled: deps.setWeatherEnabled,
   });
 
   return {

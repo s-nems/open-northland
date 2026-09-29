@@ -52,6 +52,8 @@ export interface MenuSettings {
   readonly enhancedWater: boolean;
   readonly environmentMotion: boolean;
   readonly groundedBuildings: boolean;
+  /** Rain, snow and sandstorms: their sky, ground and sound. Presentation only, the sim never reads it. */
+  readonly weather: boolean;
   readonly fpsLimit: FpsLimit;
   readonly cursorTheme: CursorTheme;
   readonly cursorSize: CursorSize;
@@ -90,6 +92,7 @@ export function defaultSettings(): MenuSettings {
     enhancedWater: true,
     environmentMotion: true,
     groundedBuildings: true,
+    weather: true,
     fpsLimit: null,
     cursorTheme: DEFAULT_CURSOR_THEME,
     cursorSize: DEFAULT_CURSOR_SIZE,
@@ -164,6 +167,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
       typeof record.environmentMotion === 'boolean' ? record.environmentMotion : defaults.environmentMotion,
     groundedBuildings:
       typeof record.groundedBuildings === 'boolean' ? record.groundedBuildings : defaults.groundedBuildings,
+    weather: typeof record.weather === 'boolean' ? record.weather : defaults.weather,
     fpsLimit: parseFpsLimit(record.fpsLimit),
     cursorTheme: parseCursorTheme(record.cursorTheme),
     cursorSize: parseCursorSize(record.cursorSize),

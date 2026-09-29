@@ -16,6 +16,7 @@ import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { CameraJitter, ScriptEffects } from '../script-effects.js';
 import type { ScriptMarkers } from '../script-markers.js';
 import type { UnitControls } from '../unit-controls/index.js';
+import type { WeatherFeed } from '../weather-feed.js';
 import { mountMissionTrace } from './mission-trace.js';
 
 const DIAG_CHANNEL = 'missions';
@@ -43,6 +44,7 @@ export interface ScriptPresentationDeps {
   readonly elevation?: ElevationField;
   readonly markers: ScriptMarkers;
   readonly effects: ScriptEffects;
+  readonly weather: WeatherFeed;
   /** The map's own string by id, for the info lines. */
   readonly mapText: (stringId: number) => string | undefined;
   readonly now: () => number;
@@ -65,7 +67,7 @@ export interface ScriptPresentation {
  * diagnostics log for what the script asked for and did not get.
  */
 export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPresentation {
-  const { host, toolPanel, controls, markers, effects } = deps;
+  const { host, toolPanel, controls, markers, effects, weather } = deps;
   const trace = deps.missionTrace === true ? mountMissionTrace(host) : null;
   let linesTick = Number.NEGATIVE_INFINITY;
   let linesSeat: number | null = null;
@@ -88,7 +90,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
             },
       );
     }
-    for (const region of saved.weather) effects.setWeather({ kind: 'missionWeather', ...region });
+    for (const region of saved.weather) weather.write(region);
   };
   void host.missionPresentation().then((saved) => {
     if (!disposed) restore(saved);
@@ -132,7 +134,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
             markers.apply(event);
             break;
           case 'missionWeather':
-            effects.setWeather(event);
+            weather.write(event);
             break;
           case 'missionEarthquake':
             effects.startEarthquake(event.seconds, deps.now());
@@ -176,14 +178,12 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
       toolPanel.controller.setInfoLines(lines);
       const screen = deps.screen();
       markers.update(camera, screen, nowMs);
-      effects.update(camera, screen);
     },
     dispose() {
       disposed = true;
       lineAnswers.dispose();
       trace?.dispose();
       markers.dispose();
-      effects.dispose();
     },
   };
 }

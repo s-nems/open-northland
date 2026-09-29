@@ -8,7 +8,13 @@ import {
   SPRITE_CULL_MARGIN,
   type Viewport,
 } from '@open-northland/render';
-import type { FogView, Paper, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import {
+  type FogView,
+  type Paper,
+  type SimEvent,
+  TICKS_PER_SECOND,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import { type FrameStats, framePhaseEmitter, recordTickDiagnostics } from '../../diag/index.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
@@ -336,6 +342,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     worldHover.update(snap, nowMs); // after controls, so the pointer-claim state is current
     presentation?.frame(snap, drawnCamera, nowMs);
     deps.onFrame?.(snap);
+    // After `renderer.update`, which stepped the weather this frame.
+    soundDriver?.updateWeather(renderer.weatherConditions(), (snap.tick + renderAlpha) / TICKS_PER_SECOND);
     if (soundDriver !== null) {
       const jingleSeat = loop.viewer.seat();
       soundDriver.update({

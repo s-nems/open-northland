@@ -1,4 +1,4 @@
-import type { FogView, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import { type FogView, type SimEvent, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container } from 'pixi.js';
 import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
 import {
@@ -8,6 +8,7 @@ import {
   type SceneTerrain,
 } from '../../data/scene/index.js';
 import { type BrightnessField, type ElevationField, makeElevationField } from '../../data/terrain/index.js';
+import { WeatherClimate } from '../../data/weather/climate.js';
 import type { WeatherField } from '../../data/weather/field.js';
 import type { WeatherConditions } from '../../data/weather/types.js';
 import { GroundTone } from '../ground-foot/index.js';
@@ -37,6 +38,7 @@ import type { TerrainVertexColor } from '../terrain/vertex-colors.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { TextureCache } from '../texture-cache.js';
 import { WeatherGround } from '../weather/ground-weather.js';
+import { WeatherSky } from '../weather/weather-sky.js';
 import { installWorldBatcher } from '../world-batcher.js';
 import {
   BASELINE_ENHANCEMENTS,
@@ -68,8 +70,11 @@ export class WorldRenderer {
   private readonly textureCache = new TextureCache();
   private readonly terrain = new TerrainLayer();
   private readonly weatherGround = new WeatherGround(this.terrain);
+  private readonly weatherSky = new WeatherSky();
+  private readonly climate = new WeatherClimate();
+  private weatherField: WeatherField | null = null;
+  private weatherEnabled = true;
   private weather: WeatherConditions | null = null;
-  private weatherSeconds = 0;
   private readonly mapObjects: MapObjectLayer;
   private readonly groundWaves: GroundWaveLayer;
   private readonly pool: SpritePool;
@@ -139,6 +144,8 @@ export class WorldRenderer {
       ...this.marks.slots,
     });
     app.stage.addChild(this.worldLayer);
+    // Screen-space like the chrome, but under its vignette and pause wash.
+    app.stage.addChild(this.weatherSky.container);
     this.chrome = new WorldChrome(this.textureCache, opts?.postFx === true, opts?.spriteSmoothing);
     this.chrome.attach(app.stage);
     app.stage.addChild(this.hud.container);
@@ -181,19 +188,21 @@ export class WorldRenderer {
 
   /** The map's weather field, after {@link setTerrain} and again after every change; null for none. */
   setWeatherField(field: WeatherField | null): void {
+    this.weatherField = field;
     this.weatherGround.setField(field);
+    this.weatherSky.setField(field);
   }
 
-  /** This frame's sky and the game clock in seconds (frozen while paused), drawn by the next
-   *  {@link update}; null conditions leave the ground cover alone and stop the ground reactions. */
-  setWeather(conditions: WeatherConditions | null, gameSeconds: number): void {
-    this.weather = conditions;
-    this.weatherSeconds = gameSeconds;
-  }
-
-  /** The weather setting: off draws the ground as it is without weather. */
+  /** The weather setting: off draws a clear sky over ground without weather. */
   setWeatherEnabled(enabled: boolean): void {
+    this.weatherEnabled = enabled;
     this.weatherGround.setEnabled(enabled);
+    this.weatherSky.setEnabled(enabled);
+  }
+
+  /** The weather the last {@link update} drew, for the soundscape; null before the first frame. */
+  weatherConditions(): WeatherConditions | null {
+    return this.weather;
   }
 
   /** Hand the terrain the roads laid since the last frame: one compare per frame, a diff per changed shard. */
@@ -316,11 +325,17 @@ export class WorldRenderer {
     this.syncRoads(snapshot);
     this.terrain.cull(vp);
     this.terrain.animate(tick + alpha);
-    this.weatherGround.update(
-      this.weather,
-      { camera, screenW: this.app.screen.width, screenH: this.app.screen.height },
-      this.weatherSeconds,
-    );
+    // Game seconds, so a pause freezes the weather with the world.
+    const gameSeconds = (tick + alpha) / TICKS_PER_SECOND;
+    const weatherView = { camera, screenW: this.app.screen.width, screenH: this.app.screen.height };
+    this.weather = this.climate.step({
+      field: this.weatherField,
+      viewport: cameraViewport(camera, weatherView.screenW, weatherView.screenH),
+      gameSeconds,
+      enabled: this.weatherEnabled,
+    });
+    this.weatherGround.update(this.weather, weatherView, gameSeconds);
+    this.weatherSky.update(this.weather, weatherView, gameSeconds);
     const fogFrame = this.fog.update(snapshot, vp, this.elevation);
     this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch, tick + alpha);
     const portrait = this.portrait.subjects();
@@ -477,6 +492,7 @@ export class WorldRenderer {
   dispose(): void {
     this.groundWaves.destroy();
     this.weatherGround.destroy();
+    this.weatherSky.destroy();
     this.terrain.destroy();
     this.mapObjects.destroy();
     this.pool.destroy();

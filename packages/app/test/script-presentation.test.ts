@@ -13,6 +13,7 @@ import type { GameToolPanelHandle } from '../src/view/game-tool-panel.js';
 import { createScriptPresentation } from '../src/view/runtime/script-presentation.js';
 import type { ScriptEffects } from '../src/view/script-effects.js';
 import type { ScriptMarkers } from '../src/view/script-markers.js';
+import type { WeatherFeed } from '../src/view/weather-feed.js';
 
 /**
  * The join from a script's display events to the HUD: a cutscene opens the window on its page, a
@@ -66,12 +67,10 @@ function harness(
     dispose: () => undefined,
   };
   const effects: ScriptEffects = {
-    setWeather: (event) => calls.push(`weather:${event.weather}`),
     startEarthquake: (seconds) => calls.push(`quake:${seconds}`),
     jitter: () => null,
-    update: () => undefined,
-    dispose: () => undefined,
   };
+  const weather: WeatherFeed = { write: (region) => calls.push(`weather:${region.weather}`) };
   const presentation = createScriptPresentation({
     host,
     seat,
@@ -82,6 +81,7 @@ function harness(
     screen: () => SCREEN,
     markers,
     effects,
+    weather,
     mapText: (id) => (id === 7 ? 'Held: %d of %d' : undefined),
     now: () => 0,
     exit: () => calls.push('exit'),

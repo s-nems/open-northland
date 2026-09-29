@@ -60,10 +60,13 @@ export {
   type WindSway,
   windSway,
 } from './weather/climate.js';
+export { buildWeatherField, type WeatherField, weatherAmountAt } from './weather/field.js';
 export { stormOf, weatherIntensity } from './weather/precipitation.js';
 export type {
   LightningStrike,
   WeatherAmounts,
   WeatherConditions,
   WeatherKind,
+  WeatherRegionInput,
 } from './weather/types.js';
+export { WEATHER_DENSITY_FULL, WEATHER_KINDS } from './weather/types.js';

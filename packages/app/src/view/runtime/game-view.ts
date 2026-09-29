@@ -80,7 +80,7 @@ import {
   palisadeToolsOf,
 } from '../game-tool-panel.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
-import { floatParam, introParam } from '../params.js';
+import { floatParam, introParam, weatherParam } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
 import { nodeBounds } from '../picking.js';
 import {
@@ -96,6 +96,7 @@ import { createScriptMarkers } from '../script-markers.js';
 import { readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createUnitControls, type UnitControls } from '../unit-controls/index.js';
+import { createWeatherFeed } from '../weather-feed.js';
 import { chestTooltipLines, createWorldHover } from '../world-hover.js';
 import { installDebugHandle } from './debug-handle.js';
 import { mountDebugOverlays } from './debug-mounts.js';
@@ -326,6 +327,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
   try {
     const storedSettings = readStoredSettings();
+    renderer.setWeatherEnabled(storedSettings.weather);
     // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; only a positive value pins.
     const uiScaleParam = floatParam(params, 'uiscale', 0);
     const pinnedUiScale = uiScaleParam > 0 ? uiScaleParam : null;
@@ -744,7 +746,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
     pickableDoorBadges = () => doorBadgesFor(host.snapshot());
 
-    // The script's markers and washes draw over the world and under every HUD plane.
+    // The script's markers draw over the world and under every HUD plane.
     const scriptOverlay = new Container();
     cleanup.push(() => scriptOverlay.destroy({ children: true }));
     scriptOverlay.zIndex = SCRIPT_OVERLAY_Z;
@@ -760,7 +762,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       screen: () => app.screen,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
       markers: createScriptMarkers(scriptOverlay, await loadGuiArt(), deps.elevation),
-      effects: createScriptEffects(scriptOverlay, deps.elevation),
+      effects: createScriptEffects(),
+      weather: createWeatherFeed(
+        deps.mapSize,
+        (field) => renderer.setWeatherField(field),
+        weatherParam(params),
+      ),
       mapText,
       now: () => performance.now(),
       exit: () => queueMicrotask(quitToMenu),
@@ -887,6 +894,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       sound: soundDriver,
       setDebugToolsEnabled: debugMounts.setToolsEnabled,
       setGraphicsEnhancements: (next) => renderer.setGraphicsEnhancements(next),
+      setWeatherEnabled: (enabled) => {
+        renderer.setWeatherEnabled(enabled);
+        soundDriver?.setWeatherEnabled(enabled);
+      },
       setKeyBindings: (next) => {
         Object.assign(keyBindings, next);
         cameraCtl.setBindings(next);
