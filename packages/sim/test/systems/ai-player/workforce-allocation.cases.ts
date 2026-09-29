@@ -1543,6 +1543,63 @@ describe('workforce module (collectResources)', () => {
     expect(reach.patchHarvestable(holder, { hx: flag.x, hy: flag.y }, radius, (g) => g === MUD)).toBe(true);
   });
 
+  it('moves a flag a blocker ring seals in a pocket with its deposit, the holder left outside', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud]);
+    spawnMen(sim, 1);
+    sim.step();
+    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+    sim.step();
+    const terrain = sim.terrain;
+    const deposit = [...sim.world.query(Resource)].find((e) => sim.world.get(e, Resource).goodType === MUD);
+    const [holder] = holdersOf(sim, MUD);
+    if (terrain === undefined || deposit === undefined || holder === undefined) throw new Error('setup');
+    const at = sim.world.get(deposit, Position);
+    const depositNode = nodeOfPosition(at.x, at.y);
+    const flagAt = sim.world.get(sim.world.get(holder, WorkFlag).flag, Position);
+    const flagNode = nodeOfPosition(flagAt.x, flagAt.y);
+    const flagCell = terrain.nodeAt(flagNode.hx, flagNode.hy);
+
+    // A ring of blockers one pathfinder step past the flag seals the deposit, its stance cells and the
+    // flag in one pocket. Every resource inside the flag's circle reads workable from the flag itself.
+    const FLOOD_DEPTH = 10; // steps, past the flag's 4..6-node band
+    const depth = new Map<NodeId, number>([[terrain.nodeAt(depositNode.hx, depositNode.hy), 0]]);
+    const queue: NodeId[] = [...depth.keys()];
+    for (let i = 0; i < queue.length; i++) {
+      const node = queue[i];
+      const d = node === undefined ? undefined : depth.get(node);
+      if (node === undefined || d === undefined || d >= FLOOD_DEPTH) continue;
+      for (const { node: next } of terrain.steps(node)) {
+        if (depth.has(next)) continue;
+        depth.set(next, d + 1);
+        queue.push(next);
+      }
+    }
+    const flagDepth = depth.get(flagCell);
+    if (flagDepth === undefined || flagDepth >= FLOOD_DEPTH)
+      throw new Error('setup: the flag lies off the flood');
+    const inside = (node: NodeId): boolean => (depth.get(node) ?? FLOOD_DEPTH) <= flagDepth;
+    const ring = [...depth]
+      .filter(([, d]) => d === flagDepth + 1)
+      .map(([node]) => ({ x: terrain.xOf(node), y: terrain.yOf(node) }));
+    const holderAt = sim.world.get(holder, Position);
+    const holderNode = nodeOfPosition(holderAt.x, holderAt.y);
+    expect(inside(terrain.nodeAt(holderNode.hx, holderNode.hy))).toBe(false);
+    wallOver(sim, ring);
+    const FRESH = { x: 50, y: 8 };
+    placeResources(sim, [{ ...RESOURCE_SPOTS.mud, ...FRESH }]);
+    sim.step();
+    const radius = sim.world.get(holder, WorkFlag).radius;
+    const reach = gathererReach(sim.world, ctxOf(sim), terrain);
+    expect(reach.patchHarvestable(holder, flagNode, radius, (g) => g === MUD)).toBe(false);
+
+    const move = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
+    const flag = move.find((c) => c.kind === 'setWorkFlag' && c.entity === holder);
+    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the flag to leave the pocket');
+    expect(inside(terrain.nodeAt(flag.x, flag.y))).toBe(false);
+  });
+
   it('moves a clay holder off a spent deposit beside the next live one', () => {
     const sim = aiSim();
     placeHq(sim);
@@ -1862,6 +1919,45 @@ describe('flagSpotNear', () => {
     expect(Math.abs(spot.hx - resource.hx) + Math.abs(spot.hy - resource.hy)).toBeLessThanOrEqual(
       FLAG_MAX_DISTANCE_NODES,
     );
+  });
+
+  it('never picks a node sealed in a pocket, though it is the only clear one beside the deposit', () => {
+    // Landscape blockers fill every node out to the fallback reach but one, which they leave clear but
+    // walled in: a flag there is a post no gatherer walks to.
+    const MAP_NODES = 48;
+    const FILL_REACH = 14; // past the band's fallback reach
+    const resource = { hx: 24, hy: 24 };
+    const pocket = { hx: resource.hx + FLAG_MIN_DISTANCE_NODES, hy: resource.hy };
+    const blockers: { hx: number; hy: number }[] = [];
+    for (let hy = resource.hy - FILL_REACH; hy <= resource.hy + FILL_REACH; hy++) {
+      for (let hx = resource.hx - FILL_REACH; hx <= resource.hx + FILL_REACH; hx++) {
+        const reach = Math.abs(hx - resource.hx) + Math.abs(hy - resource.hy);
+        if (reach <= FILL_REACH && (hx !== pocket.hx || hy !== pocket.hy)) blockers.push({ hx, hy });
+      }
+    }
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: {
+        ...grassNodeMap(MAP_NODES, MAP_NODES),
+        landscapes: {
+          types: [{ typeId: 1, walk: [{ dx: 0, dy: 0 }], build: [], groups: ['blocker'] }],
+          placements: blockers.map((at, id) => ({ id, typeId: 1, ...at, level: 0 })),
+        },
+      },
+    });
+    sim.enqueueSetup({
+      kind: 'placeResource',
+      good: MUD,
+      x: resource.hx,
+      y: resource.hy,
+      remaining: 5,
+      harvestAtomic: RESOURCE_SPOTS.mud.harvest,
+    });
+    sim.step();
+    const origin = { hx: resource.hx, hy: 2 };
+
+    expect(flagSpotNear(sim.world, groundOf(sim, origin), depositOf(sim), origin, new Set())).toBeNull();
   });
 
   it('never picks a node a landscape object blocks', () => {

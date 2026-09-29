@@ -51,6 +51,16 @@ const CELL_AND_NEIGHBOURS = [
   { dx: 0, dy: -1 },
 ];
 
+/** The cell and three of its stance neighbours, plus every step into the fourth, `(1, 0)`: that
+ *  neighbour stays open but sealed in a one-node pocket. */
+const CELL_WITH_SEALED_EAST_NEIGHBOUR = [
+  { dx: 0, dy: 0 },
+  { dx: -1, dy: 0 },
+  { dx: 0, dy: 1 },
+  { dx: 0, dy: -1 },
+  ...STEP_OFFSETS.map(({ dx, dy }) => ({ dx: dx + 1, dy })).filter(({ dx, dy }) => dx !== 0 || dy !== 0),
+];
+
 function mappedSim(): { sim: Simulation; terrain: TerrainGraph } {
   const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(12, 6) });
   if (sim.terrain === undefined) throw new Error('mapped sim expected');
@@ -115,7 +125,21 @@ describe('stances no walk can enter', () => {
     expect(nearestStoreHolding(targets.bands, sim.world, here, STONE, undefined)).toBeNull();
   });
 
-  it("carries ore a worked-out deposit's neighbours leave covered to the miner's stance", () => {
+  it('never sends a fetcher to a pile whose only stance is sealed in a pocket', () => {
+    const { sim, terrain } = mappedSim();
+    const ctx = ctxOf(sim);
+    blockerAt(sim, ANCHOR.x, ANCHOR.y, CELL_WITH_SEALED_EAST_NEIGHBOUR);
+    stoneDropAt(sim, ANCHOR.x, ANCHOR.y);
+    const here = terrain.nodeAt(2, ANCHOR.y);
+
+    const targets = collectTargets(sim.world, ctx, terrain);
+    expect(nearestStoreHolding(targets.bands, sim.world, here, STONE, undefined)).toBeNull();
+  });
+
+  it.each([
+    ['cover', CELL_AND_NEIGHBOURS],
+    ['seal in a pocket', CELL_WITH_SEALED_EAST_NEIGHBOUR],
+  ])("carries ore a worked-out deposit's neighbours %s to the miner's stance", (_shape, walk) => {
     const { sim, terrain } = mappedSim();
     const ctx = ctxOf(sim);
     const deposit = sim.world.create();
@@ -123,7 +147,7 @@ describe('stances no walk can enter', () => {
     sim.world.add(deposit, Resource, { goodType: STONE, remaining: 1, harvestAtomic: HARVEST_STONE });
     sim.world.add(deposit, MineDeposit, { initial: 1, levels: 1, strikes: 0 });
     stampResourceFootprintData(sim.world, deposit, { walk: [], build: [], work: [{ dx: -2, dy: 0 }] });
-    blockerAt(sim, ANCHOR.x, ANCHOR.y, CELL_AND_NEIGHBOURS);
+    blockerAt(sim, ANCHOR.x, ANCHOR.y, walk);
     const stance = { x: ANCHOR.x - 2, y: ANCHOR.y };
     const miner = sim.world.create();
     sim.world.add(miner, Position, positionOfNode(stance.x, stance.y));

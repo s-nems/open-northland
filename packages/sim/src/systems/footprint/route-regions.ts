@@ -47,6 +47,8 @@ interface RouteRegionCache {
   nextPocket: number;
   readonly queue: NodeId[];
   readonly steps: StepBuffer;
+  /** A blocked start's exits, apart from {@link steps}, which the region floods reuse. */
+  readonly exits: StepBuffer;
 }
 
 const cacheByWorld = new WeakMap<World, RouteRegionCache>();
@@ -75,20 +77,26 @@ export class RouteRegions {
   /**
    * Whether a walk from `from` to `to` provably has no route under the overlay: one endpoint sits in a
    * sealed pocket the other is not in. True is a proof; false is not a routability promise, since two open
-   * endpoints may be walled apart beyond the cap, unit bodies and vehicles are not in this overlay, and a
-   * blocked endpoint always reads false because findPath exempts a blocked start.
+   * endpoints may be walled apart beyond the cap, and unit bodies and vehicles are not in this overlay. A
+   * blocked `from` is judged by the nodes it can step out to, as findPath exempts a blocked start, and
+   * reads false with none; a blocked `to` reads false, since findPath rejects that goal first.
    */
   unroutable(from: NodeId, to: NodeId): boolean {
     if (from === to) return false;
     const cache = this.cache;
     this.refresh(cache);
-    const { terrain, blocked } = cache;
-    if (!terrain.isWalkable(from) || blocked.has(from)) return false;
+    const { terrain, blocked, exits } = cache;
+    if (!terrain.isWalkable(from)) return false;
     if (!terrain.isWalkable(to) || blocked.has(to)) return false;
-    const a = this.regionOf(from);
-    const b = this.regionOf(to);
-    if (a === OPEN_REGION && b === OPEN_REGION) return false;
-    return a !== b;
+    const target = this.regionOf(to);
+    if (!blocked.has(from)) return this.regionOf(from) !== target;
+    terrain.stepsInto(from, blocked, exits);
+    // No exit at all proves nothing: a walker deep in a building body leaves it by the door, not a step.
+    if (exits.length === 0) return false;
+    for (let i = 0; i < exits.length; i++) {
+      if (this.regionOf(exits.at(i).node) === target) return false;
+    }
+    return true;
   }
 
   /**
@@ -192,6 +200,7 @@ export function routeRegions(world: World, ctx: ContentContext, terrain: Terrain
       nextPocket: 0,
       queue: [],
       steps: new StepBuffer(),
+      exits: new StepBuffer(),
     };
     cacheByWorld.set(world, cache);
   }

@@ -152,14 +152,20 @@ describe('routeRegions', () => {
     expect(cold.unroutable(outside, inside)).toBe(false);
   });
 
-  it('never vetoes from a blocked start - the walker may step off its own blocked node', () => {
+  it('judges a blocked start by the nodes it can step off to', () => {
     const sim = mappedSim(grassMap(12, 6));
     const terrain = terrainOf(sim);
     wallAt(sim, 10, 6, SEAL_RING);
+    wallAt(sim, 2, 2, [{ dx: 0, dy: 0 }]);
     const regions = routeRegions(sim.world, ctxOf(sim), terrain);
-    const onWall = terrain.nodeAt(9, 6);
+    const onWall = terrain.nodeAt(9, 6); // steps off into the pocket and into the open
+    const onStone = terrain.nodeAt(2, 2); // steps off into the open only
+    const sealed = terrain.nodeAt(10, 6);
 
-    expect(regions.unroutable(onWall, terrain.nodeAt(2, 2))).toBe(false);
+    expect(regions.unroutable(onWall, terrain.nodeAt(4, 4))).toBe(false);
+    expect(regions.unroutable(onWall, sealed)).toBe(false);
+    expect(regions.unroutable(onStone, terrain.nodeAt(4, 4))).toBe(false);
+    expect(regions.unroutable(onStone, sealed)).toBe(true);
   });
 
   it('never mints a pocket from the un-swept remainder of a large confined region', () => {

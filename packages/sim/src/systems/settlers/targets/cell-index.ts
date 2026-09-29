@@ -1,4 +1,4 @@
-import { Position } from '../../../components/index.js';
+import { Building, Palisade, Position, Stockpile } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import { insertSortedById, removeSortedById } from '../../../core/sorted-id.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -6,7 +6,7 @@ import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { MapContext } from '../../context.js';
-import { interactionNode } from '../../footprint/index.js';
+import { interactionNode, routeRegions } from '../../footprint/index.js';
 import { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../spatial/metric.js';
 import { NodeBuckets } from '../../spatial/nodes.js';
 import { interactionCell } from './workplaces.js';
@@ -420,9 +420,26 @@ export class InteractionCellIndex {
     const cell = interactionCell(this.world, this.ctx, this.terrain, e, here);
     if (gate !== undefined && !gate.allowsNode(cell)) return best;
     if (veto?.(cell) === true) return best;
+    if (this.pileCellSealed(e, here, cell)) return best;
     const distance = manhattan(this.terrain, here, cell);
     if (best !== null && !precedes(distance, cell, e, best)) return best;
     return { entity: e, cell, distance, payload: hit.payload };
+  }
+
+  /**
+   * Whether loose pile `e` resolved to a `cell` no walk from `here` enters: a structure covers it, or it
+   * lies across a sealed pocket wall. A pile whose every stance is walled off resolves to its own anchor,
+   * and a fetcher sent there path-fails on every re-pick. A palisade or a door-less building is worked
+   * from cells its own drive picks, so only a structure-less stockpile is judged. Checked after the cheap
+   * gates.
+   */
+  private pileCellSealed(e: Entity, here: NodeId, cell: NodeId): boolean {
+    const { world } = this;
+    if (cell === here || !world.has(e, Stockpile) || world.has(e, Building) || world.has(e, Palisade)) {
+      return false;
+    }
+    const regions = routeRegions(this.world, this.ctx, this.terrain);
+    return !regions.standable(cell) || regions.unroutable(here, cell);
   }
 
   /** The exact linear scan the rings accelerate, for a short list or a door ring's out-of-range
@@ -443,9 +460,11 @@ export class InteractionCellIndex {
       (e) => {
         const hit = accept(e);
         if (hit === null) return null;
-        const cell = this.doorCell.get(e) ?? interactionCell(this.world, this.ctx, this.terrain, e, here);
+        const door = this.doorCell.get(e);
+        const cell = door ?? interactionCell(this.world, this.ctx, this.terrain, e, here);
         if (gate !== undefined && !gate.allowsNode(cell)) return null;
         if (veto?.(cell) === true) return null;
+        if (door === undefined && this.pileCellSealed(e, here, cell)) return null;
         return { cell, payload: hit.payload };
       },
       onSide,

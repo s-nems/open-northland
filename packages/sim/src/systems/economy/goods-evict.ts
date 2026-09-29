@@ -73,9 +73,10 @@ export function evictLooseGoodsFromCells(
 }
 
 /**
- * Move the ground drops at `cell` that no unit can stand on or beside onto `landing`, the stance a
- * harvester worked a just-removed node from. A node's neighbours can keep its cell covered after it goes,
- * and a drop left there is a source every fetcher path-fails on. Drops are visited in ascending id order.
+ * Move the ground drops at `cell` that no walk from `landing` can reach onto `landing`, the stance a
+ * harvester worked a just-removed node from. A node's neighbours can keep its cell covered, or leave only
+ * a sealed pocket beside it, after it goes, and a drop left there is a source every fetcher path-fails
+ * on. Drops are visited in ascending id order.
  */
 export function landStrandedDrops(
   world: World,
@@ -85,10 +86,13 @@ export function landStrandedDrops(
   landing: NodeId,
 ): void {
   const { x, y } = terrain.coordsOf(cell);
+  const regions = routeRegions(world, ctx, terrain);
   const stranded = stockpilesAtNode(world, x, y).filter(
-    (e) => world.has(e, GroundDrop) && positionedStanceCells(world, ctx, terrain, e).length === 0,
+    (e) =>
+      world.has(e, GroundDrop) &&
+      positionedStanceCells(world, ctx, terrain, e).every((stance) => regions.unroutable(landing, stance)),
   );
-  if (stranded.length === 0 || !routeRegions(world, ctx, terrain).standable(landing)) return;
+  if (stranded.length === 0 || !regions.standable(landing)) return;
   for (const pile of canonicalById(stranded)) movePile(world, terrain, pile, landing);
 }
 

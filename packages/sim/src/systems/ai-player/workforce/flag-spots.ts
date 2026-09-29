@@ -4,7 +4,12 @@ import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { HALF_COLUMN } from '../../../nav/world-metric.js';
 import type { SystemContext } from '../../context.js';
-import { dynamicBlockOverlay, resourceStanceCells, workFlagPlacementTest } from '../../footprint/index.js';
+import {
+  dynamicBlockOverlay,
+  resourceStanceCells,
+  routeRegions,
+  workFlagPlacementTest,
+} from '../../footprint/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { type GathererReach, nearestLiveResource, type WorkableTest } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
@@ -67,6 +72,8 @@ export interface FlagGround {
   readonly walkFrom: (origin: HalfCellNode) => WalkDistances;
   /** The gatherer's walk out from `resource`'s work cells, one lazy flood per resource for the decision. */
   readonly walkOut: (resource: Entity) => WalkDistances;
+  /** Whether `node` provably lies across a sealed pocket wall from the carriers' walk out of `origin`. */
+  readonly sealedFrom: (origin: HalfCellNode, node: NodeId) => boolean;
 }
 
 export function flagGround(
@@ -77,14 +84,29 @@ export function flagGround(
   baseNode: HalfCellNode,
 ): FlagGround {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const regions = routeRegions(world, ctx, terrain);
+  const seeds = new Map<string, NodeId | null>();
+  const seedOf = (origin: HalfCellNode): NodeId | null => {
+    const key = flagNodeKey(origin.hx, origin.hy);
+    let seed = seeds.get(key);
+    if (seed === undefined) {
+      seed = walkSeedNear(terrain, blocked, origin, ORIGIN_SEED_RADIUS_NODES);
+      seeds.set(key, seed);
+    }
+    return seed;
+  };
   const fromOrigin = new Map<NodeId | null, WalkDistances>();
   const fromResource = new Map<Entity, WalkDistances>();
   return {
     terrain,
     limit: networkLimitAt(world, terrain, player, baseNode.hx, baseNode.hy),
     placeable: workFlagPlacementTest(world, ctx.content, terrain),
+    sealedFrom: (origin, node) => {
+      const seed = seedOf(origin);
+      return seed !== null && regions.unroutable(seed, node);
+    },
     walkFrom: (origin) => {
-      const seed = walkSeedNear(terrain, blocked, origin, ORIGIN_SEED_RADIUS_NODES);
+      const seed = seedOf(origin);
       let flood = fromOrigin.get(seed);
       if (flood === undefined) {
         flood = new WalkFlood(terrain, blocked, seed === null ? [] : [seed], ORIGIN_FLOOD_BUDGET_NODES);
@@ -123,9 +145,9 @@ export function legalFlagNodeTest(
  * leg from the spot to the resource's work cells, weighed {@link GATHERER_LEG_WEIGHT}, plus the carriers'
  * leg from `origin`, the base or workshop they walk out from, both floods over the live walk-block
  * overlay, so a spot behind a ridge or on the far side of the deposit loses to one the men reach straight.
- * A candidate a flood never reached ranks after every reached one by straight-line distance. Ties go to
- * the innermost ring, then the walk order. Any nearby legal node when the band is fully blocked; null when
- * none.
+ * A candidate a flood never reached ranks after every reached one by straight-line distance, and one
+ * sealed in a pocket the carriers' walk cannot enter is never chosen. Ties go to the innermost ring, then
+ * the walk order. Any nearby legal node when the band is fully blocked; null when none.
  */
 export function flagSpotNear(
   world: World,
@@ -137,7 +159,10 @@ export function flagSpotNear(
   const centre = anchorNodeOf(world, resource);
   if (centre === null) return null;
   const { terrain } = ground;
-  const legal = legalFlagNodeTest(ground, taken);
+  const legalNode = legalFlagNodeTest(ground, taken);
+  // Last, since it may flood: a spot sealed off from the carriers is one the gatherer never walks to.
+  const legal = (x: number, y: number): boolean =>
+    legalNode(x, y) && !ground.sealedFrom(origin, terrain.nodeAt(x, y));
   const fromOrigin = ground.walkFrom(origin);
   const fromResource = ground.walkOut(resource);
   const unreached = fx.fromInt(UNREACHED_WALK_PENALTY_TILES);

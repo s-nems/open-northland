@@ -97,9 +97,7 @@ export function gathererReach(world: World, ctx: SystemContext, terrain: Terrain
     const subject = needSubjectOf(world, holder);
     const memo = unreachableGoals(world, ctx, holder);
     const needMet = new Map<number, boolean>();
-    const holderComponent = world.has(holder, Position)
-      ? terrain.componentOf(entityNode(world, terrain, holder))
-      : NO_COMPONENT;
+    const holderNode = world.has(holder, Position) ? entityNode(world, terrain, holder) : null;
     // One flag centre per call, so its pocket verdict is read once rather than per candidate.
     let sealedCenter: NodeId | null = null;
     let sealed = false;
@@ -112,9 +110,12 @@ export function gathererReach(world: World, ctx: SystemContext, terrain: Terrain
     };
     return {
       allowed,
-      /** Whether the holder can walk to a flag on `center` at all; the per-resource test assumes it. */
+      /** Whether the holder can walk to a flag on `center` at all, not across static terrain nor into or
+       *  out of a sealed pocket; the per-resource test assumes it. */
       reachesFlag: (center: NodeId): boolean =>
-        holderComponent === NO_COMPONENT || terrain.componentOf(center) === holderComponent,
+        holderNode === null ||
+        (terrain.componentOf(center) === terrain.componentOf(holderNode) &&
+          !regions.unroutable(holderNode, center)),
       takes: (center: NodeId, radius: number, e: Entity, wanted: (goodType: number) => boolean): boolean => {
         const res = world.get(e, Resource);
         if (res.remaining <= 0 || !wanted(res.goodType) || !allowed.has(res.harvestAtomic)) return false;
