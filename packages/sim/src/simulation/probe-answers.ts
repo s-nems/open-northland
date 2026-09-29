@@ -17,7 +17,9 @@ import {
 import { gridChangeKey, placementBlockerGrid } from '../systems/footprint/placement/blocker-grid.js';
 import { ownPalisadeNodeList, palisadePlacementProbe } from '../systems/palisades/index.js';
 import { buildingEnabled } from '../systems/progression/index.js';
-import { roadSitePlacementProbe, roadSitePlacementVersion } from '../systems/roads/sites.js';
+import { roadAreaKey } from '../systems/roads/index.js';
+import { roadSiteAreaKey } from '../systems/roads/site-index.js';
+import { roadSitePlacementProbe } from '../systems/roads/sites.js';
 import { signpostNetwork, signpostNetworkRevision, signpostProbe } from '../systems/signposts/index.js';
 import { mooringSpotsOf } from '../systems/vehicles/index.js';
 import type { FogState } from '../systems/vision/index.js';
@@ -231,7 +233,11 @@ export function palisadeAnswerFor(
   };
 }
 
-/** The road site probe's answer over `area`; null for a mapless sim. */
+/** Road site grids by area, each valid while the blockers, the road sites and the roads on its nodes
+ *  hold, so a site ordered across the map leaves them standing. A read-path cache, never hashed. */
+const roadSiteGrids = new WeakMap<World, Map<string, FootprintGrid>>();
+
+/** The road site probe's answer over `area`, keyed on what its own nodes read; null for a mapless sim. */
 export function roadSiteAnswerFor(
   world: World,
   content: ContentSet,
@@ -239,12 +245,23 @@ export function roadSiteAnswerFor(
   area: NodeArea,
 ): NodeGridAnswer | null {
   if (terrain === undefined) return null;
-  const probe = roadSitePlacementProbe(world, content, terrain);
-  return {
-    area,
-    accepted: gridOver(area, (hx, hy) => probe.canPlace(hx, hy)),
-    key: roadSitePlacementVersion(world),
-  };
+  let grids = roadSiteGrids.get(world);
+  if (grids === undefined) {
+    grids = new Map();
+    roadSiteGrids.set(world, grids);
+  }
+  const blockers = placementBlockerGrid(world, content, terrain);
+  // The probe reads each node alone, so no blocker beyond the area reaches it.
+  const key = `${gridChangeKey(blockers, area, 0)}.${roadSiteAreaKey(world, terrain, area)}.${roadAreaKey(world, area)}`;
+  const slot = areaKey(area);
+  let held = grids.get(slot);
+  if (held === undefined || held.key !== key) {
+    const probe = roadSitePlacementProbe(world, content, terrain);
+    if (grids.size >= MAX_FOOTPRINT_GRIDS && held === undefined) grids.clear();
+    held = { key, grid: gridOver(area, (hx, hy) => probe.canPlace(hx, hy)) };
+    grids.set(slot, held);
+  }
+  return { area, accepted: held.grid.slice(), key };
 }
 
 /** The spot set stays the same object while the mooring memo's key holds, so it is packed once. */

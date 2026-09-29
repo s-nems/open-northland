@@ -1,10 +1,16 @@
 import { Owner, ownerOf, Position, RoadSite, Stockpile } from '../../components/index.js';
 import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { type NodeArea, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 
 /** The tally key of a site no player owns. */
 const NEUTRAL = -1;
+
+/** Edge in half-cell nodes of the square regions whose site comings and goings are counted. */
+const SITE_REGION_NODES = 32;
+
+/** A region's row times this plus its column. */
+const SITE_REGION_STRIDE = 1 << 16;
 
 /** One owner's road sites no builder has claimed, split by whether stock already lies on them. */
 export interface OpenRoadSites {
@@ -25,6 +31,10 @@ interface RoadSiteIndex {
   readonly byNode: Map<NodeId, Entity>;
   readonly entries: Map<Entity, SiteEntry>;
   readonly openByOwner: Map<number, OpenRoadSites>;
+  /** Per region, the times a site came to or left one of its nodes; absent for none. */
+  readonly regionChanges: Map<number, number>;
+  /** Bumped by a rebuild, which may move any region at once. */
+  epoch: number;
 }
 
 const indexes = new WeakMap<World, RoadSiteIndex>();
@@ -44,6 +54,8 @@ function indexOf(world: World, terrain: TerrainGraph): RoadSiteIndex {
       byNode: new Map(),
       entries: new Map(),
       openByOwner: new Map(),
+      regionChanges: new Map(),
+      epoch: 0,
     };
     indexes.set(world, index);
     rebuildIndex(world, index);
@@ -58,6 +70,29 @@ function indexOf(world: World, terrain: TerrainGraph): RoadSiteIndex {
 
 export function roadSitesByNode(world: World, terrain: TerrainGraph): ReadonlyMap<NodeId, Entity> {
   return indexOf(world, terrain).byNode;
+}
+
+/** A token over the road sites on the nodes of `area`: it changes whenever a site comes to or leaves
+ *  one of them. */
+export function roadSiteAreaKey(world: World, terrain: TerrainGraph, area: NodeArea): string {
+  const { regionChanges, epoch } = indexOf(world, terrain);
+  let sum = 0;
+  for (let ry = regionOf(area.minHy); ry <= regionOf(area.maxHy); ry++) {
+    for (let rx = regionOf(area.minHx); rx <= regionOf(area.maxHx); rx++) {
+      sum += regionChanges.get(ry * SITE_REGION_STRIDE + rx) ?? 0;
+    }
+  }
+  return `${epoch}.${sum}`;
+}
+
+function regionOf(node: number): number {
+  return Math.floor(node / SITE_REGION_NODES);
+}
+
+function countRegionChange(index: RoadSiteIndex, node: NodeId): void {
+  const { terrain, regionChanges } = index;
+  const key = regionOf(terrain.yOf(node)) * SITE_REGION_STRIDE + regionOf(terrain.xOf(node));
+  regionChanges.set(key, (regionChanges.get(key) ?? 0) + 1);
 }
 
 /** `owner`'s unclaimed road sites, or every owner's for an unowned asker. Read-only. */
@@ -92,7 +127,10 @@ function refreshEntry(world: World, index: RoadSiteIndex, e: Entity): void {
   }
   const site = world.tryGet(e, RoadSite);
   const p = site === undefined ? undefined : world.tryGet(e, Position);
-  if (site === undefined || p === undefined) return;
+  if (site === undefined || p === undefined) {
+    if (held !== undefined) countRegionChange(index, held.node);
+    return;
+  }
   const { hx, hy } = nodeOfPosition(p.x, p.y);
   const entry: SiteEntry = {
     node: index.terrain.nodeAtClamped(hx, hy),
@@ -103,6 +141,9 @@ function refreshEntry(world: World, index: RoadSiteIndex, e: Entity): void {
   index.entries.set(e, entry);
   index.byNode.set(entry.node, e);
   tally(index, entry, 1);
+  if (held?.node === entry.node) return;
+  if (held !== undefined) countRegionChange(index, held.node);
+  countRegionChange(index, entry.node);
 }
 
 function holdsStock(world: World, e: Entity): boolean {
@@ -113,6 +154,7 @@ function holdsStock(world: World, e: Entity): boolean {
 }
 
 function rebuildIndex(world: World, index: RoadSiteIndex): void {
+  index.epoch += 1;
   index.byNode.clear();
   index.entries.clear();
   index.openByOwner.clear();
@@ -122,7 +164,13 @@ function rebuildIndex(world: World, index: RoadSiteIndex): void {
 function verifyIndex(world: World): string[] {
   const index = indexes.get(world);
   if (index === undefined || index.feed.pending) return [];
-  const fresh: RoadSiteIndex = { ...index, byNode: new Map(), entries: new Map(), openByOwner: new Map() };
+  const fresh: RoadSiteIndex = {
+    ...index,
+    byNode: new Map(),
+    entries: new Map(),
+    openByOwner: new Map(),
+    regionChanges: new Map(),
+  };
   rebuildIndex(world, fresh);
   const out: string[] = [];
   if (fresh.entries.size !== index.entries.size) out.push('road site index diverges from the live sites');

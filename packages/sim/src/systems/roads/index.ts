@@ -1,5 +1,12 @@
-import { RoadShard, roadNetworkState, roadShardKey, writeRoadNetwork } from '../../components/roads.js';
+import {
+  ROAD_SHARD_NODES,
+  RoadShard,
+  roadNetworkState,
+  roadShardKey,
+  writeRoadNetwork,
+} from '../../components/roads.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { NodeArea } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 
 /** The road network's change counter: 0 until the first road, bumped by every change. */
@@ -38,6 +45,20 @@ function carriersOf(world: World): ReadonlyMap<number, Entity> {
   }
   shardCarriers.set(world, { generation, byBlock });
   return byBlock;
+}
+
+/** A token over the roads on the nodes of `area`: it changes whenever a shard it overlaps does. */
+export function roadAreaKey(world: World, area: NodeArea): number {
+  const carriers = carriersOf(world);
+  const block = (node: number): number => Math.floor(node / ROAD_SHARD_NODES);
+  let sum = 0;
+  for (let by = block(area.minHy); by <= block(area.maxHy); by++) {
+    for (let bx = block(area.minHx); bx <= block(area.maxHx); bx++) {
+      const carrier = carriers.get(roadShardKey(bx * ROAD_SHARD_NODES, by * ROAD_SHARD_NODES));
+      if (carrier !== undefined) sum += world.get(carrier, RoadShard).revision;
+    }
+  }
+  return sum;
 }
 
 /**

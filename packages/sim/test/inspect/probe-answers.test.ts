@@ -11,6 +11,8 @@ import {
 } from '../../src/index.js';
 import { CONTESTED_GROUND_RADIUS_NODES } from '../../src/systems/conflict/contested-ground.js';
 import { createSignpost } from '../../src/systems/index.js';
+import { layRoad } from '../../src/systems/roads/index.js';
+import { roadSitePlacementProbe } from '../../src/systems/roads/sites.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 import {
@@ -202,6 +204,34 @@ describe('probe answer keys', () => {
     if (live === null) throw new Error('no probe');
     expect(disagreements(near ?? null, (hx, hy) => live.canPlace(hx, hy))).toEqual([]);
     expect(near?.accepted.some((node) => node === 0)).toBe(true);
+  });
+});
+
+describe('road site answer keys', () => {
+  const AREA: NodeArea = { minHx: 0, minHy: 0, maxHx: 31, maxHy: 31 };
+  const FAR_SITE = { hx: 80, hy: 20 };
+  const NEAR_SITE = { hx: 10, hy: 10 };
+  const NEAR_ROAD = { hx: 5, hy: 5 };
+
+  it('hold across a road site ordered far from the area and move with a site or a road in it', () => {
+    const sim = mappedSim(grassMap(48, 16));
+    const terrain = terrainOf(sim);
+    const order = (at: { hx: number; hy: number }): void => {
+      sim.enqueueSetup({ kind: 'placeRoadSite', x: at.hx, y: at.hy, tribe: VIKING, owner: P0 });
+      sim.step();
+    };
+    const before = sim.roadSiteAnswer(AREA)?.key;
+    order(FAR_SITE);
+    expect(sim.roadSiteAnswer(AREA)?.key).toBe(before);
+    order(NEAR_SITE);
+    const afterSite = sim.roadSiteAnswer(AREA);
+    expect(afterSite?.key).not.toBe(before);
+    expect(afterSite === null ? null : nodeGridAccepts(afterSite, NEAR_SITE.hx, NEAR_SITE.hy)).toBe(false);
+    layRoad(sim.world, terrain, [terrain.nodeAt(NEAR_ROAD.hx, NEAR_ROAD.hy)]);
+    const afterRoad = sim.roadSiteAnswer(AREA);
+    expect(afterRoad?.key).not.toBe(afterSite?.key);
+    const live = roadSitePlacementProbe(sim.world, sim.content, terrain);
+    expect(disagreements(afterRoad ?? null, (hx, hy) => live.canPlace(hx, hy))).toEqual([]);
   });
 });
 
