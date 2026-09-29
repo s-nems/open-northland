@@ -11,9 +11,15 @@ import {
   NO_WATER,
   type WaterField,
 } from '../../data/terrain/index.js';
+import { WEATHER_SECTOR_NODES } from '../../data/weather/field.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
 import { makeWaveUniforms, WAVE_TIME_PERIOD_TICKS, type WaveUniforms } from '../shading.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
+import {
+  type GroundCoverUniforms,
+  makeGroundCoverTexture,
+  makeGroundCoverUniforms,
+} from '../weather/ground-cover-shading.js';
 import { buildFlat } from './build-flat.js';
 import { buildTextured } from './build-ground.js';
 import {
@@ -51,12 +57,17 @@ export class TerrainLayer {
    *  {@link animate} is one write per frame rather than one per chunk. */
   private waveGroup: WaveUniforms | undefined;
   private hasWater = false;
+  private terrainHeight = 0;
   private water: WaterField = NO_WATER;
   private enhancedWater = false;
   private enhancedSampling = false;
   private roads: RoadLayer | null = null;
   /** Every road node given, kept so a rebuilt map redraws it. */
   private readonly roadNodes = new Set<number>();
+  /** The map's weather-cover grid and switch, bound into every shaded mesh; off until
+   *  {@link setWeatherCover} hands it a grid. */
+  private coverUniforms: GroundCoverUniforms = makeGroundCoverUniforms();
+  private coverTex: BufferImageSource = makeGroundCoverTexture(1, 1);
 
   setEnhancedSampling(enabled: boolean): void {
     this.enhancedSampling = enabled;
@@ -112,11 +123,15 @@ export class TerrainLayer {
     this.waveGroup = makeWaveUniforms();
     this.waveGroup.uniforms.uEnhancedSampling = this.enhancedSampling ? 1 : 0;
     this.waveGroup.uniforms.uEnhancedWater = this.enhancedWater ? 1 : 0;
+    this.coverUniforms = makeGroundCoverUniforms();
+    this.coverTex = makeGroundCoverTexture(1, 1);
+    this.terrainHeight = terrain.height;
     const lane: LaneShading = {
       brightnessTex: this.brightnessTex,
       laneTexWidth: this.laneTexWidth,
       water,
       waveUniforms: this.waveGroup,
+      cover: { texture: this.coverTex, uniforms: this.coverUniforms },
     };
     this.chunks =
       textures !== undefined
@@ -145,6 +160,53 @@ export class TerrainLayer {
     for (const id of changes.removed) this.roadNodes.delete(id);
     for (const id of changes.added) this.roadNodes.add(id);
     this.roads?.apply(changes);
+  }
+
+  /**
+   * The weather cover over the shaded ground: `texels` is a `sectorsX` by `sectorsY` RGBA grid of
+   * weather sectors (r wet, g snow, b dust), the map's half-cell nodes split like the weather field.
+   * `null` switches the cover off, which draws the ground exactly as without it. The unshaded
+   * placeholder ground takes no cover.
+   */
+  setWeatherCover(texels: Uint8Array | null, sectorsX: number, sectorsY: number): void {
+    const uniforms = this.coverUniforms.uniforms;
+    if (texels === null || this.laneTexWidth === 0 || texels.length !== sectorsX * sectorsY * 4) {
+      if (uniforms.uCover !== 0) {
+        uniforms.uCover = 0;
+        this.coverUniforms.update();
+      }
+      return;
+    }
+    if (this.coverTex.width !== sectorsX || this.coverTex.height !== sectorsY)
+      this.rebindCover(sectorsX, sectorsY);
+    const data = this.coverTex.resource as Uint8Array;
+    data.set(texels);
+    this.coverTex.update();
+    // Brightness-lane UV to cover UV: the lane texel centres on its cell, the cell on node
+    // (2c + 1/2 on average over the row stagger, 2r), and a cover texel on its sector's centre node.
+    const spanX = sectorsX * WEATHER_SECTOR_NODES;
+    const spanY = sectorsY * WEATHER_SECTOR_NODES;
+    uniforms.uCoverMap.set([
+      (2 * this.laneTexWidth) / spanX,
+      (2 * this.terrainHeight) / spanY,
+      -0.5 / spanX,
+      -1 / spanY,
+    ]);
+    uniforms.uCover = 1;
+    this.coverUniforms.update();
+  }
+
+  private rebindCover(sectorsX: number, sectorsY: number): void {
+    const previous = this.coverTex;
+    this.coverTex = makeGroundCoverTexture(sectorsX, sectorsY);
+    for (const chunk of this.chunks) {
+      for (const child of chunk.container.children) {
+        if (child instanceof Mesh && child.shader?.resources.uCoverTex !== undefined) {
+          child.shader.resources.uCoverTex = this.coverTex;
+        }
+      }
+    }
+    previous.destroy();
   }
 
   applyVertexColors(updates: readonly TerrainVertexColor[], palette?: readonly number[]): void {
@@ -197,6 +259,8 @@ export class TerrainLayer {
     this.waveGroup = undefined;
     this.hasWater = false;
     this.water = NO_WATER;
+    this.coverTex.destroy();
+    this.terrainHeight = 0;
   }
 
   /** The current map's water mask; {@link NO_WATER} on a map whose ground paints none. */

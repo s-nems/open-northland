@@ -1,6 +1,11 @@
 import { Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
 import { scaleColour } from '../../data/terrain/index.js';
-import { makeShadedTerrainShader, makeTintedTerrainShader, type WaveUniforms } from '../shading.js';
+import {
+  makeShadedTerrainShader,
+  makeTintedTerrainShader,
+  type TerrainCoverBinding,
+  type WaveUniforms,
+} from '../shading.js';
 
 export type TerrainChild = Mesh<MeshGeometry, Shader>;
 
@@ -91,6 +96,7 @@ export class ChunkBatcher {
   constructor(
     private readonly brightnessTex?: TextureSource,
     private readonly wave?: WaveUniforms,
+    private readonly cover?: TerrainCoverBinding,
   ) {}
 
   batchFor(pageKey: string, source: TextureSource, layer: TerrainLayerKind = 'base'): TerrainBatch {
@@ -136,8 +142,13 @@ export class ChunkBatcher {
     for (const batch of batches) {
       const geometry = meshGeometry(batch);
       const texture = new Texture({ source: batch.source });
-      if (batch.brightnessUVs.length > 0 && this.brightnessTex !== undefined && this.wave !== undefined) {
-        const shader = makeShadedTerrainShader(batch.source, this.brightnessTex, this.wave);
+      if (
+        batch.brightnessUVs.length > 0 &&
+        this.brightnessTex !== undefined &&
+        this.wave !== undefined &&
+        this.cover !== undefined
+      ) {
+        const shader = makeShadedTerrainShader(batch.source, this.brightnessTex, this.wave, this.cover);
         out.push(new Mesh({ geometry, texture, shader }));
       } else {
         const mesh = new Mesh({

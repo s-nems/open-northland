@@ -51,3 +51,19 @@ export {
   type WorldBounds,
 } from './terrain/minimap.js';
 export { patternSrcRect, type SrcRect, texturePageKey } from './terrain/uv.js';
+export {
+  type ClimateInput,
+  LIGHTNING_RETAIN_SECONDS,
+  THUNDER_MAX_DELAY_SECONDS,
+  thunderDelaySeconds,
+  WeatherClimate,
+  type WindSway,
+  windSway,
+} from './weather/climate.js';
+export { stormOf, weatherIntensity } from './weather/precipitation.js';
+export type {
+  LightningStrike,
+  WeatherAmounts,
+  WeatherConditions,
+  WeatherKind,
+} from './weather/types.js';

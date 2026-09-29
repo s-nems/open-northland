@@ -125,6 +125,17 @@ export {
   texturePageKey,
   type WorldBounds,
 } from './data/terrain/index.js';
+export {
+  type ClimateInput,
+  LIGHTNING_RETAIN_SECONDS,
+  THUNDER_MAX_DELAY_SECONDS,
+  thunderDelaySeconds,
+  WeatherClimate,
+  type WindSway,
+  windSway,
+} from './data/weather/climate.js';
+export { coverEquilibrium, WeatherCover } from './data/weather/cover.js';
+export { stormOf, weatherIntensity } from './data/weather/precipitation.js';
 export type { ClothIndexRanges } from './gpu/cloth-wind.js';
 export { type DrawableResource, isDrawableResource, readable2dContext } from './gpu/drawable-resource.js';
 export {
@@ -230,6 +241,13 @@ export type {
   TransitionPattern,
 } from './gpu/terrain-textures.js';
 export { TextureCache } from './gpu/texture-cache.js';
+export {
+  type WeatherCoverTarget,
+  WeatherGround,
+  type WeatherGroundTerrain,
+  type WeatherGroundView,
+} from './gpu/weather/ground-weather.js';
+export { WeatherSky, type WeatherSkyView } from './gpu/weather/weather-sky.js';
 export {
   type BuildingHighlightItem,
   SPRITE_CULL_MARGIN,

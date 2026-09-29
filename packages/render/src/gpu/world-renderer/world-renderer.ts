@@ -8,6 +8,8 @@ import {
   type SceneTerrain,
 } from '../../data/scene/index.js';
 import { type BrightnessField, type ElevationField, makeElevationField } from '../../data/terrain/index.js';
+import type { WeatherField } from '../../data/weather/field.js';
+import type { WeatherConditions } from '../../data/weather/types.js';
 import { GroundTone } from '../ground-foot/index.js';
 import { type GroundWave, GroundWaveLayer } from '../ground-waves/index.js';
 import { MapObjectLayer, type MapObjectSprite } from '../map-objects/index.js';
@@ -34,6 +36,7 @@ import { TerrainLayer } from '../terrain/index.js';
 import type { TerrainVertexColor } from '../terrain/vertex-colors.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { TextureCache } from '../texture-cache.js';
+import { WeatherGround } from '../weather/ground-weather.js';
 import { installWorldBatcher } from '../world-batcher.js';
 import {
   BASELINE_ENHANCEMENTS,
@@ -64,6 +67,9 @@ export class WorldRenderer {
   private readonly spriteLayer = new Container();
   private readonly textureCache = new TextureCache();
   private readonly terrain = new TerrainLayer();
+  private readonly weatherGround = new WeatherGround(this.terrain);
+  private weather: WeatherConditions | null = null;
+  private weatherSeconds = 0;
   private readonly mapObjects: MapObjectLayer;
   private readonly groundWaves: GroundWaveLayer;
   private readonly pool: SpritePool;
@@ -125,6 +131,7 @@ export class WorldRenderer {
       terrain: this.terrain.container,
       decorShadows: this.mapObjects.decorShadowContainer,
       decor: this.mapObjects.decorContainer,
+      weatherGround: this.weatherGround.container,
       fog: this.fog.container,
       constructionPlots: this.constructionPlots.container,
       placementWash: this.placementOverlay.container,
@@ -164,6 +171,29 @@ export class WorldRenderer {
   setTerrain(terrain: SceneTerrain, textures?: TerrainTextureSet): void {
     this.elevation = makeElevationField(terrain.elevation, terrain.width, terrain.height);
     this.terrain.set(terrain, textures, this.elevation);
+    this.weatherGround.setTerrain({
+      width: terrain.width,
+      height: terrain.height,
+      water: this.terrain.waterField(),
+      elevation: this.elevation,
+    });
+  }
+
+  /** The map's weather field, after {@link setTerrain} and again after every change; null for none. */
+  setWeatherField(field: WeatherField | null): void {
+    this.weatherGround.setField(field);
+  }
+
+  /** This frame's sky and the game clock in seconds (frozen while paused), drawn by the next
+   *  {@link update}; null conditions leave the ground cover alone and stop the ground reactions. */
+  setWeather(conditions: WeatherConditions | null, gameSeconds: number): void {
+    this.weather = conditions;
+    this.weatherSeconds = gameSeconds;
+  }
+
+  /** The weather setting: off draws the ground as it is without weather. */
+  setWeatherEnabled(enabled: boolean): void {
+    this.weatherGround.setEnabled(enabled);
   }
 
   /** Hand the terrain the roads laid since the last frame: one compare per frame, a diff per changed shard. */
@@ -286,6 +316,11 @@ export class WorldRenderer {
     this.syncRoads(snapshot);
     this.terrain.cull(vp);
     this.terrain.animate(tick + alpha);
+    this.weatherGround.update(
+      this.weather,
+      { camera, screenW: this.app.screen.width, screenH: this.app.screen.height },
+      this.weatherSeconds,
+    );
     const fogFrame = this.fog.update(snapshot, vp, this.elevation);
     this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch, tick + alpha);
     const portrait = this.portrait.subjects();
@@ -441,6 +476,7 @@ export class WorldRenderer {
    *  container tree-walked away below. */
   dispose(): void {
     this.groundWaves.destroy();
+    this.weatherGround.destroy();
     this.terrain.destroy();
     this.mapObjects.destroy();
     this.pool.destroy();

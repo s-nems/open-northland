@@ -1,5 +1,11 @@
 import { GlProgram, Shader, type TextureSource, UniformGroup } from 'pixi.js';
 import { BRIGHTNESS_NEUTRAL } from '../data/terrain/index.js';
+import {
+  COVER_FRAGMENT_DECLARATIONS,
+  COVER_VERTEX_BODY,
+  COVER_VERTEX_DECLARATIONS,
+  type GroundCoverUniforms,
+} from './weather/ground-cover-shading.js';
 
 /**
  * The custom mesh shaders for the brightness-shaded ground and decor, which Pixi's built-in mesh shader
@@ -171,9 +177,11 @@ const FIELD_VERTEX = `#version 300 es
   out float vGlintPhase;
   uniform vec2 uWave; // x = animation time (sim ticks), y = master amplitude scale (0 = still)
   uniform float uEnhancedWater;
+  ${COVER_VERTEX_DECLARATIONS}
   ${matrixBlock}
   void main(void) {
     vSampleBounds = aSampleBounds;
+    ${COVER_VERTEX_BODY}
     float phase = (aPosition.x + aPosition.y) * ${WAVE_PHASE_PER_PX.toFixed(8)};
     vec2 pos = aPosition;
     // Water swell: bob the vertex by its wave amplitude (0 on land and along the coast, data/terrain/water.ts).
@@ -220,6 +228,7 @@ const FIELD_FRAGMENT = `#version 300 es
   out vec4 finalColor;
 
   ${TERRAIN_SAMPLE}
+  ${COVER_FRAGMENT_DECLARATIONS}
 
   void main(void) {
     vec4 texel = sampleTerrain();
@@ -255,6 +264,11 @@ const FIELD_FRAGMENT = `#version 300 es
       vec3 tint = mix(vec3(1.0), ${glslVec3(WATER_SHALLOW_TINT)}, shallow)
         * mix(vec3(1.0), ${glslVec3(WATER_DEEP_TINT)}, deep);
       texel.rgb = mix(vec3(luma), texel.rgb, saturation) * tint;
+    }
+    // Weather cover keeps off the water surface; the uniform gate keeps a dry map's arithmetic as it was.
+    if (uCover > 0.5) {
+      vec3 cover = texture(uCoverTex, vCoverUV).rgb * (1.0 - clamp(vWater.x, 0.0, 1.0));
+      texel.rgb = weatherCover(texel.rgb, texel.a, lane, cover);
     }
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
     finalColor = vec4(texel.rgb * lane * vVertexColor, texel.a) * uColor;
@@ -322,6 +336,7 @@ export function makeShadedTerrainShader(
   source: TextureSource,
   brightnessTex: TextureSource,
   wave: WaveUniforms,
+  cover: TerrainCoverBinding,
 ): Shader {
   fieldProgram ??= new GlProgram({ vertex: FIELD_VERTEX, fragment: FIELD_FRAGMENT });
   return new Shader({
@@ -332,8 +347,16 @@ export function makeShadedTerrainShader(
       uBrightnessTex: brightnessTex,
       waveVars: wave,
       sampling: terrainSamplingUniforms(source),
+      coverVars: cover.uniforms,
+      uCoverTex: cover.texture,
     },
   });
+}
+
+/** The map's weather-cover texture and switch, shared by every shaded ground mesh. */
+export interface TerrainCoverBinding {
+  readonly texture: TextureSource;
+  readonly uniforms: GroundCoverUniforms;
 }
 
 /**

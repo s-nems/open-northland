@@ -2,7 +2,7 @@ import { type BufferImageSource, Container } from 'pixi.js';
 import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import type { SceneTerrain } from '../../data/scene/index.js';
 import { type ElevationField, type NodeXY, nodeLift, type WaterField } from '../../data/terrain/index.js';
-import type { WaveUniforms } from '../shading.js';
+import type { TerrainCoverBinding, WaveUniforms } from '../shading.js';
 import type { TerrainChild } from './chunk-batcher.js';
 
 /**
@@ -61,6 +61,7 @@ export interface LaneShading {
   readonly laneTexWidth: number;
   readonly water: WaterField;
   readonly waveUniforms: WaveUniforms;
+  readonly cover: TerrainCoverBinding;
 }
 
 export function liftFn(terrain: SceneTerrain, elevation: ElevationField): NodeLiftFn {

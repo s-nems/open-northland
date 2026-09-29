@@ -81,7 +81,7 @@ export function buildTextured(
   const lift = liftFn(terrain, elevation);
   const shaded = lane.brightnessTex !== undefined;
   return buildChunks(parent, terrain, elevation.maxLift, (c0, r0, c1, r1) => {
-    const batcher = new ChunkBatcher(lane.brightnessTex, lane.waveUniforms);
+    const batcher = new ChunkBatcher(lane.brightnessTex, lane.waveUniforms, lane.cover);
     for (let row = r0; row <= r1; row++) {
       for (let col = c0; col <= c1; col++) {
         const typeId = terrain.typeIds[row * terrain.width + col] ?? -1;
@@ -165,7 +165,7 @@ function buildGround(
   const lift = liftFn(terrain, elevation);
   const shaded = lane.brightnessTex !== undefined;
   return buildChunks(parent, terrain, elevation.maxLift, (c0, r0, c1, r1) => {
-    const batcher = new ChunkBatcher(lane.brightnessTex, lane.waveUniforms);
+    const batcher = new ChunkBatcher(lane.brightnessTex, lane.waveUniforms, lane.cover);
     const pushOverlay = (
       laneValue: number,
       nodes: readonly [NodeXY, NodeXY, NodeXY],
