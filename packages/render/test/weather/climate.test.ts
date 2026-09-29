@@ -159,7 +159,16 @@ describe('weather climate storms', () => {
         flash: 0,
         strikes: [],
       }),
-    ).toEqual({ strength: 0, direction: 0 });
+    ).toEqual({ strength: 0, direction: 0, gust: 0 });
+  });
+
+  it('leaves the calm breeze of a clear sky out of the sway', () => {
+    const clear = run(new WeatherClimate(), null, 0, 1);
+    expect(Math.hypot(clear.windX, clear.windY)).toBeGreaterThan(0);
+    expect(windSway(clear).strength).toBe(0);
+    const storm = windSway(run(new WeatherClimate(), field('rain', 0.5), 0, 1));
+    expect(storm.strength).toBeGreaterThan(0.5);
+    expect(storm.direction).toBeGreaterThan(0);
   });
 });
 

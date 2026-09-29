@@ -6,6 +6,7 @@ import {
   SMOKE_PUFFS_PER_EMITTER,
   smokePuff,
 } from '../../data/effects/index.js';
+import type { WindSway } from '../../data/weather/climate.js';
 import type { DamagedBuilding, DrawnGeometry } from '../sprite-pool/index.js';
 import { retireUndrawn } from './retained-pool.js';
 
@@ -27,9 +28,10 @@ export class DamageSmokeLayer {
 
   /**
    * A building not drawn this frame retires its node and re-mints it on scroll-back (cheap for a handful
-   * of Graphics). `tick` is interpolated render time, so the rise glides between sim ticks.
+   * of Graphics). `tick` is interpolated render time, so the rise glides between sim ticks. `wind` is the
+   * weather's, absent in still air.
    */
-  draw(damaged: readonly DamagedBuilding[], drawn: DrawnGeometry, tick: number): void {
+  draw(damaged: readonly DamagedBuilding[], drawn: DrawnGeometry, tick: number, wind?: WindSway): void {
     this.seen.clear();
     for (const { ref, hpFrac } of damaged) {
       const emitters = damageSmokeEmitters(hpFrac);
@@ -43,7 +45,7 @@ export class DamageSmokeLayer {
         this.nodes.set(ref, node);
       }
       node.visible = true;
-      placePlumes(node, ref, emitters, bounds, tick);
+      placePlumes(node, ref, emitters, bounds, tick, wind);
       this.seen.add(ref);
     }
     retireUndrawn(this.nodes, this.seen, (node) => node.destroy({ children: true }));
@@ -76,6 +78,7 @@ function placePlumes(
   emitters: number,
   bounds: { minX: number; minY: number; maxX: number; maxY: number },
   tick: number,
+  wind: WindSway | undefined,
 ): void {
   const w = bounds.maxX - bounds.minX;
   const h = bounds.maxY - bounds.minY;
@@ -88,7 +91,7 @@ function placePlumes(
     emitter.position.set(bounds.minX + spot.u * w, bounds.minY + spot.v * h);
     for (let p = 0; p < emitter.children.length; p++) {
       const puff = emitter.children[p] as Graphics;
-      const pose = smokePuff(seed, e, p, tick);
+      const pose = smokePuff(seed, e, p, tick, wind);
       puff.position.set(pose.x, pose.y);
       puff.scale.set(pose.radius);
       puff.alpha = pose.alpha;

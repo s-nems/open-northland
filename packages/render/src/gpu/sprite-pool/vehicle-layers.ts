@@ -1,5 +1,6 @@
 import type { DrawItem } from '../../data/scene/index.js';
 import { resolveVehicleDraw } from '../../data/sprites/index.js';
+import type { WindSway } from '../../data/weather/climate.js';
 import { sailWind } from '../cloth-wind.js';
 import { shipSway } from '../ship-sway.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
@@ -22,6 +23,7 @@ export function pushVehicleLayers(
   item: DrawItem,
   tick: number,
   gaitClock: number,
+  wind?: WindSway,
 ): boolean {
   const driven = cartDriveLook(sheet, item);
   if (driven !== undefined) return pushCartDriveLayers(out, sheet, driven, item, tick, gaitClock);
@@ -36,7 +38,7 @@ export function pushVehicleLayers(
     !still && draw.indexed && draw.layer !== undefined
       ? sheet.vehiclePalette?.sailRanges?.[draw.layer]
       : undefined;
-  const cloth = sails === undefined ? undefined : sailWind(sails, tick, item.x, item.y, underSail);
+  const cloth = sails === undefined ? undefined : sailWind(sails, tick, item.x, item.y, underSail, wind);
   for (const layer of VEHICLE_BODY.finish()) {
     out.push(
       sway === null || layer.shadow

@@ -21,6 +21,73 @@ const tree: MapObjectSprite = {
   sway: TREE_SWAY,
 };
 
+const STILL_AIR = { strength: 0, direction: 1, gust: 1 };
+const STORM = { strength: 0.8, direction: 1, gust: 0 };
+/** Ticks sampled across several breeze swings. */
+const SWING_TICKS = Array.from({ length: 600 }, (_, tick) => tick);
+
+describe('vegetation in weather wind', () => {
+  it('sways in still air exactly as without weather', () => {
+    for (const tick of [0, 7.5, 123, 4000])
+      expect(vegetationShear(tick, 20, 40, TREE_SWAY, STILL_AIR)).toBe(
+        vegetationShear(tick, 20, 40, TREE_SWAY),
+      );
+  });
+
+  it('swings wider in a storm and leans the crown downwind', () => {
+    const calm = SWING_TICKS.map((tick) => vegetationShear(tick, 20, 40, TREE_SWAY));
+    const storm = SWING_TICKS.map((tick) => vegetationShear(tick, 20, 40, TREE_SWAY, STORM));
+    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const spread = (xs: number[]) => Math.max(...xs) - Math.min(...xs);
+    expect(spread(storm)).toBeGreaterThan(1.5 * spread(calm));
+    // A negative shear leans the crown right, the way this wind blows.
+    expect(mean(storm)).toBeLessThan(-TREE_SWAY);
+    expect(Math.max(...storm.map(Math.abs))).toBeLessThan(6 * TREE_SWAY);
+    const westerly = { ...STORM, direction: -1 };
+    expect(
+      mean(SWING_TICKS.map((tick) => vegetationShear(tick, 20, 40, TREE_SWAY, westerly))),
+    ).toBeGreaterThan(TREE_SWAY);
+  });
+
+  it('bends the crown of a tree downwind and leaves its root', () => {
+    const container = new Container();
+    const layer = new MapObjectLayer(container, new TextureCache());
+    layer.set([tree]);
+    const crownShift = (wind?: typeof STORM) => {
+      layer.update(WIDE, 20, undefined, undefined, 20, wind);
+      const sprite = container.children[0];
+      if (!(sprite instanceof Sprite)) throw new Error('Missing tree');
+      sprite.updateLocalTransform();
+      expect(sprite.localTransform.apply({ x: 4, y: 7 }).x).toBeCloseTo(tree.x, 10);
+      return sprite.localTransform.apply({ x: -frame.offsetX, y: 0 }).x;
+    };
+    const calm = crownShift();
+    // Weather wind reaches the trees only under the environment-motion setting.
+    expect(crownShift(STORM)).toBe(calm);
+    layer.setEnvironmentMotion(true);
+    const breeze = crownShift();
+    expect(crownShift({ ...STORM, strength: 1 })).toBeGreaterThan(breeze);
+    layer.destroy();
+  });
+
+  it('bends a pooled resource tree and holds a ghost still', () => {
+    const atlas = { width: 8, height: 8, frames: new Map([[0, frame]]) };
+    const sheet: SpriteSheet = {
+      source: tree.source,
+      atlas,
+      bindings: { settler: 0, building: 0, resource: { default: { layer: 'tree', bob: 0 }, byGood: {} } },
+      families: { tree: { source: tree.source, atlas, sway: TREE_SWAY } },
+    };
+    const item = { kind: 'resource' as const, ref: 1, x: tree.x, y: tree.y, depth: 0 };
+    expect(resolveLayers(sheet, item, 20, 20, 20.5, STORM)?.[0]?.shear).toBe(
+      vegetationShear(20.5, tree.x, tree.y, TREE_SWAY, STORM),
+    );
+    expect(resolveLayers(sheet, { ...item, ghost: true }, 20, 20, 20, STORM)?.[0]?.shear).toBe(
+      vegetationShear(0, tree.x, tree.y, TREE_SWAY),
+    );
+  });
+});
+
 describe('own vegetation breeze', () => {
   it('smooths only enabled breeze between ticks and restores the baseline immediately', () => {
     const container = new Container();

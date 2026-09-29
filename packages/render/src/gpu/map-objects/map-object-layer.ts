@@ -1,6 +1,7 @@
 import { FOG_STATE } from '@open-northland/sim';
 import { type BufferImageSource, Container, Mesh } from 'pixi.js';
 import { aabbIntersects, screenToCell, TILE_HALF_W, type Viewport } from '../../data/projection/index.js';
+import type { WindSway } from '../../data/weather/climate.js';
 import { WEATHER_SECTOR_NODES } from '../../data/weather/field.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
 import { worldShadowStyle } from '../pixel-art-registry.js';
@@ -37,6 +38,7 @@ interface UpdateInputs {
   readonly maxY: number;
   readonly tick: number;
   readonly motionTime: number;
+  readonly wind: WindSway | undefined;
   readonly textureRevision: number;
   readonly fogEpoch: number | undefined;
 }
@@ -166,7 +168,9 @@ export class MapObjectLayer {
 
   /**
    * Advance the landscape objects for one frame. Flat decor keeps drawing on ground the viewer does not
-   * watch, because it reads as terrain dressing, but its animation freezes there.
+   * watch, because it reads as terrain dressing, but its animation freezes there. The weather's `wind`
+   * bends the swaying vegetation only while environment motion is on; pass the same object while the
+   * wind holds still.
    */
   update(
     vp: Viewport,
@@ -174,8 +178,10 @@ export class MapObjectLayer {
     fogStateOfCell?: (cellX: number, cellY: number) => number,
     fogEpoch?: number,
     timeTicks: number = tick,
+    weatherWind?: WindSway,
   ): void {
     const motionTime = this.environmentMotion ? timeTicks : tick;
+    const wind = this.environmentMotion ? weatherWind : undefined;
     const shadowStyle = worldShadowStyle();
     if (shadowStyle !== this.writtenShadowStyle) {
       writeDecorShadowStyle(this.decorStyle.shadow, shadowStyle);
@@ -194,6 +200,7 @@ export class MapObjectLayer {
       last.maxY === vp.maxY &&
       last.tick === tick &&
       last.motionTime === motionTime &&
+      last.wind === wind &&
       last.textureRevision === textureRevision &&
       last.fogEpoch === fogEpoch
     ) {
@@ -207,6 +214,7 @@ export class MapObjectLayer {
           maxY: vp.maxY,
           tick,
           motionTime,
+          wind,
           textureRevision,
           fogEpoch,
         }
@@ -231,7 +239,7 @@ export class MapObjectLayer {
         uploadAnimatedBatch(batch);
       }
     }
-    this.tall.update(vp, tick, fogStateOfCell, motionTime, this.environmentMotion);
+    this.tall.update(vp, tick, fogStateOfCell, motionTime, this.environmentMotion, wind);
   }
 
   private rebindCover(sectorsX: number, sectorsY: number): BufferImageSource {

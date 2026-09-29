@@ -2,6 +2,7 @@ import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { Viewport } from '../../data/projection/index.js';
 import type { ElevationField, WaterField } from '../../data/terrain/index.js';
+import type { WindSway } from '../../data/weather/climate.js';
 import {
   BadgeLayer,
   type BuildingSignGfx,
@@ -55,6 +56,8 @@ export interface WorldMarksFrame {
   /** Interpolated render clock (`tick + alpha`) so fades, sinks and plumes glide at any frame rate. */
   readonly renderTime: number;
   readonly damaged: readonly DamagedBuilding[];
+  /** The weather's wind the damage smoke leans in. */
+  readonly wind: WindSway;
   /** The drawn ships, off the pool's culled draw list like {@link damaged}. */
   readonly ships: readonly ShipAfloat[];
   /** The map's water mask the wakes fade off. */
@@ -161,7 +164,7 @@ export class WorldMarks {
     this.effects.draw(elevation, viewport, renderTime);
     this.collapses.draw(elevation, viewport, renderTime);
     this.shots.draw({ snapshot: frame.snapshot, drawn, elevation, viewport, renderTime });
-    this.damageSmoke.draw(frame.damaged, drawn, renderTime);
+    this.damageSmoke.draw(frame.damaged, drawn, renderTime, frame.wind);
     this.badges.draw(frame.doorBadges, elevation, viewport, renderTime);
     this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
     this.bubbles.draw({ bubbles: frame.settlerBubbles, drawn, elevation }, viewport);

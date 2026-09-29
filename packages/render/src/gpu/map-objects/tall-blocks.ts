@@ -11,6 +11,7 @@ import {
 import { drawPassDepth, SHADOW_DEPTH_EPS } from '../../data/scene/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { scaleColour } from '../../data/terrain/index.js';
+import type { WindSway } from '../../data/weather/climate.js';
 import type { GroundFootPart } from '../ground-foot/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { castShadowShear, setVegetationShear, vegetationShear } from '../vegetation-sway.js';
@@ -106,6 +107,7 @@ export class TallObjectLayer {
   private lastAnimTick = -1;
   private lastMotionTime = -1;
   private lastEnvironmentMotion = false;
+  private lastWind: WindSway | undefined;
   private lastTextureRevision = -1;
 
   /** Tall objects attach to `spriteLayer` so they interleave with entities in one painter order. */
@@ -224,6 +226,7 @@ export class TallObjectLayer {
     clock: number,
     motionTime: number,
     sway: number,
+    wind: WindSway | undefined,
   ): boolean {
     const obj = po.obj;
     const frameIndex = objectFrameIndexAt(obj, clock);
@@ -232,7 +235,7 @@ export class TallObjectLayer {
     // Draw at the lifted feet; mint's zIndex kept the pre-lift `obj.y`, so depth is still by map row.
     const lift = obj.lift ?? 0;
     sprite.texture = this.textures.get(obj.source, frame);
-    const shear = vegetationShear(motionTime, obj.x, obj.y, sway);
+    const shear = vegetationShear(motionTime, obj.x, obj.y, sway, wind);
     setVegetationShear(sprite, obj.scale, shear);
     sprite.position.set(
       obj.x + (frame.offsetX + frame.offsetY * shear) * obj.scale,
@@ -268,9 +271,10 @@ export class TallObjectLayer {
     fogStateOfCell: ((cellX: number, cellY: number) => number) | undefined,
     motionTime: number,
     environmentMotion: boolean,
+    wind?: WindSway,
   ): void {
     const animAdvanced = tick !== this.lastAnimTick;
-    const motionAdvanced = motionTime !== this.lastMotionTime;
+    const motionAdvanced = motionTime !== this.lastMotionTime || wind !== this.lastWind;
     const motionSwitched = environmentMotion !== this.lastEnvironmentMotion;
     const texturesChanged = this.lastTextureRevision !== this.textures.textureRevision;
     for (const block of this.blocks.values()) {
@@ -312,7 +316,18 @@ export class TallObjectLayer {
           (watched && animAdvanced && obj.frames.length > 1) ||
           (watched && motionAdvanced && sway !== undefined) ||
           (motionSwitched && obj.environmentSway !== undefined);
-        if (rebind && !this.bindPose(po, sprite, watched ? tick : 0, watched ? motionTime : 0, sway ?? 0)) {
+        // A ghost holds its frozen pose, still air included.
+        if (
+          rebind &&
+          !this.bindPose(
+            po,
+            sprite,
+            watched ? tick : 0,
+            watched ? motionTime : 0,
+            sway ?? 0,
+            watched ? wind : undefined,
+          )
+        ) {
           continue;
         }
         po.lastWatched = watched;
@@ -329,6 +344,7 @@ export class TallObjectLayer {
     this.lastAnimTick = tick;
     this.lastMotionTime = motionTime;
     this.lastEnvironmentMotion = environmentMotion;
+    this.lastWind = wind;
     this.lastTextureRevision = this.textures.textureRevision;
   }
 

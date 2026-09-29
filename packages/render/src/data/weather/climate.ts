@@ -296,23 +296,33 @@ export class WeatherClimate {
   }
 }
 
-/** Wind for sway consumers (vegetation, smoke): 0 calm .. 1 storm strength and a signed -1..1 screen
- *  direction (positive blows right). A strength of 0 means "use the default breeze". */
+/** The weather's wind for sway consumers (vegetation, smoke, sails): `strength` 0..1 of the wind the
+ *  weather adds over the calm breeze, a signed -1..1 screen `direction` (positive blows right) and the
+ *  0..1 `gust`. A clear sky has strength 0, which consumers draw exactly as they would with no weather. */
 export interface WindSway {
   readonly strength: number;
   readonly direction: number;
+  readonly gust: number;
 }
 
-/** Wind speed in screen px/s that reads as full sway. */
+export const CALM_WIND_SWAY: WindSway = { strength: 0, direction: 0, gust: 0 };
+
+export function sameWindSway(a: WindSway, b: WindSway): boolean {
+  return a.strength === b.strength && a.direction === b.direction && a.gust === b.gust;
+}
+
+/** Weather wind in screen px/s, over the calm breeze, that reads as full sway. Tuned by eye. */
 const SWAY_FULL_WIND = 260;
-/** How much a full gust adds to the sway strength on top of the speed it already adds. */
-const SWAY_GUST_SHARE = 0.25;
 
 export function windSway(conditions: WeatherConditions): WindSway {
   const speed = Math.hypot(conditions.windX, conditions.windY);
-  if (speed === 0) return { strength: 0, direction: 0 };
+  const sand = weatherIntensity('sand', conditions.amounts.sand);
+  // The calm breeze is left out: the world's own breeze already stands for it.
+  const weatherWind = (STORM_WIND * conditions.storm + SAND_WIND * sand) * (1 + GUST_GAIN * conditions.gust);
+  if (speed === 0 || weatherWind === 0) return CALM_WIND_SWAY;
   return {
-    strength: Math.min(1, speed / SWAY_FULL_WIND + SWAY_GUST_SHARE * conditions.gust),
+    strength: Math.min(1, weatherWind / SWAY_FULL_WIND),
     direction: conditions.windX / speed,
+    gust: conditions.gust,
   };
 }

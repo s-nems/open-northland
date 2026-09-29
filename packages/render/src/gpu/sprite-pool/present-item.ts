@@ -1,5 +1,6 @@
 import type { DrawItem } from '../../data/scene/index.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
+import type { WindSway } from '../../data/weather/climate.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import { type AtomicPoseTrack, atomicPose, interpolateAtomicPose } from './atomic-pose.js';
 import { cartDriveLook } from './cart-drive.js';
@@ -71,6 +72,7 @@ export function presentItem(
   frameAlpha: number,
   sheet: SpriteSheet | undefined,
   environmentMotion = false,
+  wind?: WindSway,
 ): readonly ResolvedLayer[] | null {
   if (track.motion.tick === -1) {
     track.atomicPose.item = undefined;
@@ -113,6 +115,7 @@ export function presentItem(
     clocks.gait,
     environmentMotion ? tick + frameAlpha : clocks.animation,
     held ? 0 : idleElapsed,
+    environmentMotion && !held ? wind : undefined,
   );
 }
 

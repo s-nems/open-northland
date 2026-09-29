@@ -19,6 +19,29 @@ import type { DrawnGeometry } from '../src/gpu/sprite-pool/index.js';
  * seeded roof plume, and an HP rise sheds them again with no event wiring.
  */
 
+describe('smokePuff in weather wind', () => {
+  const OLD_PUFF_TICK = SMOKE_PUFF_PERIOD_TICKS - 1;
+  const oldest = (wind?: { strength: number; direction: number; gust: number }) => {
+    // The oldest puff of the plume is the one furthest up its rise.
+    const poses = Array.from({ length: 6 }, (_, puff) => smokePuff(3, 0, puff, OLD_PUFF_TICK, wind));
+    return poses.reduce((a, b) => (b.y < a.y ? b : a));
+  };
+
+  it('draws still air exactly as no wind', () => {
+    expect(smokePuff(3, 1, 2, 17, { strength: 0, direction: 1, gust: 1 })).toEqual(smokePuff(3, 1, 2, 17));
+  });
+
+  it('leans the plume downwind and flattens its rise', () => {
+    const still = oldest();
+    const right = oldest({ strength: 0.8, direction: 1, gust: 0 });
+    const left = oldest({ strength: 0.8, direction: -1, gust: 0 });
+    expect(right.x).toBeGreaterThan(still.x + SMOKE_RISE_PX / 2);
+    expect(left.x).toBeLessThan(still.x - SMOKE_RISE_PX / 2);
+    expect(right.y).toBeGreaterThan(still.y);
+    expect(right.y).toBeLessThan(0);
+  });
+});
+
 describe('damageSmokeEmitters - one plume per damage step, shed on repair', () => {
   it('steps 0→max as the pool drains, and back down as it refills', () => {
     expect(damageSmokeEmitters(1)).toBe(0); // pristine

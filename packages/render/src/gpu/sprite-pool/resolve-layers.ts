@@ -10,6 +10,7 @@ import {
   resolveSpriteBobId,
   resolveStockpileDraw,
 } from '../../data/sprites/index.js';
+import type { WindSway } from '../../data/weather/climate.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import { vegetationShear } from '../vegetation-sway.js';
 import { pushBuildingExtras, pushBuildingLayers } from './building-layers.js';
@@ -38,8 +39,9 @@ export function resolveLayers(
   // The motion-scaled walk-cycle clock; defaults to the free tick for callers with no motion track.
   gaitClock: number = tick,
   vegetationClock: number = tick,
+  wind?: WindSway,
 ): readonly ResolvedLayer[] | null {
-  return resolveLayersInto(new LayerBuffer(), sheet, item, tick, gaitClock, vegetationClock);
+  return resolveLayersInto(new LayerBuffer(), sheet, item, tick, gaitClock, vegetationClock, undefined, wind);
 }
 
 /**
@@ -54,9 +56,12 @@ export function resolveLayersInto(
   gaitClock: number,
   vegetationClock: number,
   idleElapsed?: number,
+  wind?: WindSway,
 ): readonly ResolvedLayer[] | null {
   out.reset();
-  return pushLayers(out, sheet, item, tick, gaitClock, vegetationClock, idleElapsed) ? out.finish() : null;
+  return pushLayers(out, sheet, item, tick, gaitClock, vegetationClock, idleElapsed, wind)
+    ? out.finish()
+    : null;
 }
 
 /** Append an entity's layers to an empty buffer; false means the placeholder. */
@@ -67,7 +72,8 @@ function pushLayers(
   tick: number,
   gaitClock: number,
   vegetationClock: number,
-  idleElapsed?: number,
+  idleElapsed: number | undefined,
+  wind: WindSway | undefined,
 ): boolean {
   if (sheet === undefined) return false;
 
@@ -116,6 +122,7 @@ function pushLayers(
                 item.x,
                 item.y,
                 sway,
+                item.ghost === true || item.frozen === true ? undefined : wind,
               );
         return pushLayeredWithShadow(out, sheet, 'resource', draw, shear);
       }
@@ -147,7 +154,7 @@ function pushLayers(
       return pushLayeredWithShadow(out, sheet, 'craftfx', draw);
     }
     case 'vehicle':
-      return pushVehicleLayers(out, sheet, item, tick, gaitClock);
+      return pushVehicleLayers(out, sheet, item, tick, gaitClock, wind);
     default: {
       const _exhaustive: never = item.kind;
       void _exhaustive;

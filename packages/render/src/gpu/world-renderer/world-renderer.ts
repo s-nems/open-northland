@@ -8,7 +8,13 @@ import {
   type SceneTerrain,
 } from '../../data/scene/index.js';
 import { type BrightnessField, type ElevationField, makeElevationField } from '../../data/terrain/index.js';
-import { WeatherClimate } from '../../data/weather/climate.js';
+import {
+  CALM_WIND_SWAY,
+  sameWindSway,
+  WeatherClimate,
+  type WindSway,
+  windSway,
+} from '../../data/weather/climate.js';
 import type { WeatherField } from '../../data/weather/field.js';
 import type { WeatherConditions } from '../../data/weather/types.js';
 import { GroundTone } from '../ground-foot/index.js';
@@ -74,6 +80,9 @@ export class WorldRenderer {
   private weatherField: WeatherField | null = null;
   private weatherEnabled = true;
   private weather: WeatherConditions | null = null;
+  /** This frame's weather wind for the swaying world; kept as the same object while it holds still, so
+   *  its consumers skip a rebind. */
+  private wind: WindSway = CALM_WIND_SWAY;
   private readonly mapObjects: MapObjectLayer;
   private readonly weatherGround: WeatherGround;
   private readonly groundWaves: GroundWaveLayer;
@@ -335,10 +344,12 @@ export class WorldRenderer {
       gameSeconds,
       enabled: this.weatherEnabled,
     });
+    const wind = windSway(this.weather);
+    if (!sameWindSway(wind, this.wind)) this.wind = wind;
     this.weatherGround.update(this.weather, weatherView, gameSeconds);
     this.weatherSky.update(this.weather, weatherView, gameSeconds);
     const fogFrame = this.fog.update(snapshot, vp, this.elevation);
-    this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch, tick + alpha);
+    this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch, tick + alpha, this.wind);
     const portrait = this.portrait.subjects();
     this.pool.reconcile({
       snapshot,
@@ -353,6 +364,7 @@ export class WorldRenderer {
       enhancedSampling: this.enhancements.enhancedSampling,
       pixelArtScaler: this.enhancements.pixelArtScaler,
       environmentMotion: this.enhancements.environmentMotion,
+      wind: this.wind,
       shadowStyle: this.enhancements.softShadows ? DEFAULT_SHADOW_STYLE : undefined,
       ...fogFrame,
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
@@ -367,6 +379,7 @@ export class WorldRenderer {
       viewport: vp,
       renderTime: tick + alpha,
       damaged: this.pool.damagedBuildings(),
+      wind: this.wind,
       ships: this.pool.shipsAfloat(),
       water: this.terrain.waterField(),
       selection,

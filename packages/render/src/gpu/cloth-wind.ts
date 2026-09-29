@@ -5,6 +5,8 @@
  * way than standing at sea. Periods are sim ticks (12 Hz), lengths native sprite pixels.
  */
 
+import type { WindSway } from '../data/weather/climate.js';
+
 /** Two inclusive palette-index ranges `[loA, hiA, loB, hiB]` that are cloth in an indexed atlas. */
 export type ClothIndexRanges = readonly [number, number, number, number];
 
@@ -29,6 +31,10 @@ const SAILING_DISPLACEMENT_PX = 2;
 const SAILING_SHADE_DEPTH = 0.1;
 const AT_SEA_DISPLACEMENT_PX = 1;
 const AT_SEA_SHADE_DEPTH = 0.05;
+/** How much more a full weather wind fills the sail: extra slide and extra shading, as shares of the
+ *  calm ripple. Tuned by eye. */
+const WIND_DISPLACEMENT_GAIN = 1.5;
+const WIND_SHADE_GAIN = 1;
 /** Per-anchor phase offsets, radians per world pixel, so a fleet's sails never ripple in step. */
 const PHASE_PER_X = 0.021;
 const PHASE_PER_Y = 0.017;
@@ -40,12 +46,17 @@ export function sailWind(
   x: number,
   y: number,
   underSail: boolean,
+  wind?: WindSway,
 ): ClothWind {
+  const displacementPx = underSail ? SAILING_DISPLACEMENT_PX : AT_SEA_DISPLACEMENT_PX;
+  const shadeDepth = underSail ? SAILING_SHADE_DEPTH : AT_SEA_SHADE_DEPTH;
+  const strength = wind?.strength ?? 0;
   return {
     ranges,
     phase: ((tick / WAVE_PERIOD_TICKS) * TAU + x * PHASE_PER_X + y * PHASE_PER_Y) % TAU,
-    displacementPx: underSail ? SAILING_DISPLACEMENT_PX : AT_SEA_DISPLACEMENT_PX,
-    shadeDepth: underSail ? SAILING_SHADE_DEPTH : AT_SEA_SHADE_DEPTH,
+    displacementPx:
+      strength === 0 ? displacementPx : displacementPx * (1 + WIND_DISPLACEMENT_GAIN * strength),
+    shadeDepth: strength === 0 ? shadeDepth : shadeDepth * (1 + WIND_SHADE_GAIN * strength),
     freqX: TAU / WAVELENGTH_X_PX,
     freqY: TAU / WAVELENGTH_Y_PX,
   };

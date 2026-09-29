@@ -17,6 +17,15 @@ describe('sailWind', () => {
     expect(sailing.ranges).toBe(SAIL);
   });
 
+  it('fills harder in weather wind and leaves still air as it was', () => {
+    const still = sailWind(SAIL, 5, 10, 20, true);
+    expect(sailWind(SAIL, 5, 10, 20, true, { strength: 0, direction: 0, gust: 0 })).toEqual(still);
+    const storm = sailWind(SAIL, 5, 10, 20, true, { strength: 1, direction: 1, gust: 0.5 });
+    expect(storm.displacementPx).toBeGreaterThan(still.displacementPx);
+    expect(storm.shadeDepth).toBeGreaterThan(still.shadeDepth);
+    expect(storm.phase).toBe(still.phase);
+  });
+
   it('advances its phase every tick inside one turn, and phases two ships apart by their anchors', () => {
     const phases = Array.from({ length: 40 }, (_, tick) => sailWind(SAIL, tick, 0, 0, true).phase);
     for (const phase of phases) {

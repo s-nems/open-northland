@@ -19,6 +19,7 @@ import {
 } from '../../data/scene/index.js';
 import { DEFAULT_FACING, vehicleAfloat, vehicleLookFor } from '../../data/sprites/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
+import type { WindSway } from '../../data/weather/climate.js';
 import { PalettedQuad } from '../paletted-sprite/index.js';
 import type { PixelArtScaler } from '../pixel-art-registry.js';
 import { PLOT_BOUNDS, type PlanRoadTextures } from '../plan-road.js';
@@ -50,6 +51,9 @@ export interface PoolFrame {
   /** How original pixel art magnifies under enhanced sampling; the registry default when absent. */
   readonly pixelArtScaler?: PixelArtScaler;
   readonly environmentMotion?: boolean;
+  /** The weather's wind, bending swaying vegetation and filling sails while `environmentMotion` is on;
+   *  the same object while it holds still. Absent is still air. */
+  readonly wind?: WindSway | undefined;
   /** How shadow silhouettes draw; absent means the shadow enhancement is off, which also keeps a
    *  character's projected cast layer off the screen. */
   readonly shadowStyle?: ShadowStyle | undefined;

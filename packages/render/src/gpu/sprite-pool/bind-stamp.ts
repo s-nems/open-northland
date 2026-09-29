@@ -13,6 +13,9 @@ export class FrameEpoch {
   private enhancedSampling: PoolFrame['enhancedSampling'];
   private pixelArtScaler: PoolFrame['pixelArtScaler'];
   private environmentMotion: PoolFrame['environmentMotion'];
+  /** Whether weather wind blows. The wind itself moves with the frame clock, which already re-presents
+   *  every swaying entity, so only its arrival or end (the setting switched while paused) bumps. */
+  private windy = false;
   private shadowStyle: PoolFrame['shadowStyle'];
   private textureRevision = Number.NaN;
   private offsetX = Number.NaN;
@@ -24,7 +27,9 @@ export class FrameEpoch {
 
   advance(frame: PoolFrame, textureRevision: number): void {
     const camera = frame.camera;
+    const windy = (frame.wind?.strength ?? 0) > 0;
     if (
+      windy === this.windy &&
       frame.tick === this.tick &&
       frame.enhancedSampling === this.enhancedSampling &&
       frame.pixelArtScaler === this.pixelArtScaler &&
@@ -45,6 +50,7 @@ export class FrameEpoch {
     this.enhancedSampling = frame.enhancedSampling;
     this.pixelArtScaler = frame.pixelArtScaler;
     this.environmentMotion = frame.environmentMotion;
+    this.windy = windy;
     this.shadowStyle = frame.shadowStyle;
     this.textureRevision = textureRevision;
     this.offsetX = camera.offsetX;
