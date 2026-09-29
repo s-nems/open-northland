@@ -1111,6 +1111,18 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
   });
 
+  it('keeps the upgraded joinery’s joiners on iron tools past the tools joinery’s glut, never on furniture', () => {
+    const base = furnitureContent();
+    const upgraded = parseContentSet({
+      ...base,
+      buildings: base.buildings.map((b) => (b.typeId === JOINERY_TYPE ? { ...b, id: 'work_joinery_02' } : b)),
+    });
+    const seat = crewedWorkshop(upgraded, 2);
+    expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
+    seat.stock(TOOL_IRON, 2 * glutOf('work_joinery_01', 0, 'tool_iron'));
+    expect(seat.products()).toEqual([]);
+  });
+
   it('opens an upgraded mason hut on a marble run, then alternates stone blocks and marble', () => {
     const base = aiContent();
     const MASON = 9;

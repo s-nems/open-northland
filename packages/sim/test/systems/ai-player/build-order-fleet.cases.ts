@@ -1,30 +1,46 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it, vi } from 'vitest';
-import { Building } from '../../../src/components/index.js';
+import {
+  Building,
+  JobAssignment,
+  Owner,
+  Settler,
+  setStockAmount,
+  Vehicle,
+} from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
+import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation, type TerrainMap } from '../../../src/index.js';
-import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
 import { withinNodeRadius } from '../../../src/nav/node-circle.js';
 import {
   type BuildOrderEntry,
   buildOrderModule,
+  CATAPULT_JOINERY_REACH,
   DEFAULT_BUILD_ORDER,
   entryStatuses,
+  SeatSupply,
   WELL_REACH_NODES,
 } from '../../../src/systems/ai-player/index.js';
+import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import * as seaRoute from '../../../src/systems/ai-player/sea-route.js';
-import { VEHICLE_SITE_PLACEMENT_RINGS } from '../../../src/systems/footprint/index.js';
+import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
+import { tuneCraftCounters } from '../../../src/systems/ai-player/workforce/craft.js';
+import { findVehicleSite, VEHICLE_SITE_PLACEMENT_RINGS } from '../../../src/systems/footprint/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import {
   BARRACKS_TYPE,
+  BUILDER,
+  CARRIER,
   completeSites,
   ctxOf,
   entityOfBuilding,
   HQ_TYPE,
+  JOINER,
   JOINERY_TYPE,
   MILL_TYPE,
   SEAT,
+  spawnMen,
   TOWER_TYPE,
   VIKING,
   WELL_TYPE,
@@ -38,17 +54,65 @@ const JOINERY_02_TYPE = 60;
 const JOINERY_03_TYPE = 61;
 const DRUID_TYPE = 62;
 const SHIP_HOUSE_TYPE = 63;
+const CATAPULT_HOUSE_TYPE = 64;
 const SHIP_SMALL = 3;
-/** The real small ship's free-size class. */
+const CATAPULT = 5;
+/** The real small ship's and catapult's free-size classes. */
 const SHIP_LOGIC_SIZE = 2;
+const CATAPULT_LOGIC_SIZE = 1;
+/** The vehicle goods the top-tier joinery's crew builds on a yard. */
+const SHIP_GOOD = 40;
+const CATAPULT_GOOD = 41;
+/** The real top-tier joinery's joiner seats. */
+const TOP_JOINERY_JOINERS = 3;
+/** The real small-ship yard body, rows -2..2 and five wide at the middle, its door on the shore. */
+const SHIP_HULL = [
+  [-1, -2],
+  [0, -2],
+  [1, -2],
+  [-2, -1],
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-2, 0],
+  [-1, 0],
+  [0, 0],
+  [1, 0],
+  [2, 0],
+  [-2, 1],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+  [-1, 2],
+  [0, 2],
+  [1, 2],
+].map(([dx, dy]) => ({ dx: dx as number, dy: dy as number }));
+const SHIP_DOOR = { dx: -2, dy: 3 };
+/** The real catapult yard body and door. */
+const CATAPULT_BODY = [
+  [-1, -1],
+  [0, -1],
+  [-1, 0],
+  [0, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+].map(([dx, dy]) => ({ dx: dx as number, dy: dy as number }));
+const CATAPULT_DOOR = { dx: -1, dy: 2 };
 
-/** The AI fixture with the joinery chain up to its top tier, the druid hut, and a small ship raised on
- *  water, whose `logicSize` the shore affinity reads. */
+/** The AI fixture with the joinery chain up to its top tier, the druid hut, and the yards of a small ship
+ *  raised on water, whose `logicSize` the shore affinity reads, and of a catapult. The top tier's three
+ *  joiners build the two vehicles out of the stores' wood. */
 function fleetContent(): ContentSet {
   const base = aiContent();
   const bill = [{ goodType: WOOD, amount: 2 }];
   return parseContentSet({
     ...base,
+    goods: [
+      ...base.goods,
+      { typeId: SHIP_GOOD, id: 'ship_small', weight: 0, vehicleHouse: SHIP_HOUSE_TYPE },
+      { typeId: CATAPULT_GOOD, id: 'catapult', weight: 0, vehicleHouse: CATAPULT_HOUSE_TYPE },
+    ],
     buildings: [
       ...base.buildings.map((b) =>
         b.typeId === JOINERY_TYPE ? { ...b, upgradeTarget: JOINERY_02_TYPE } : b,
@@ -60,7 +124,22 @@ function fleetContent(): ContentSet {
         upgradeTarget: JOINERY_03_TYPE,
         construction: bill,
       },
-      { typeId: JOINERY_03_TYPE, id: 'work_joinery_03', kind: 'workplace', construction: bill },
+      {
+        typeId: JOINERY_03_TYPE,
+        id: 'work_joinery_03',
+        kind: 'workplace',
+        construction: bill,
+        workers: [
+          { jobType: JOINER, count: TOP_JOINERY_JOINERS },
+          { jobType: CARRIER, count: 1 },
+        ],
+        produces: [SHIP_GOOD, CATAPULT_GOOD],
+        recipes: [SHIP_GOOD, CATAPULT_GOOD].map((goodType) => ({
+          inputs: [],
+          outputs: [{ goodType, amount: 1 }],
+          ticks: 180,
+        })),
+      },
       { typeId: DRUID_TYPE, id: 'work_druid_01', kind: 'workplace', construction: bill },
       {
         typeId: SHIP_HOUSE_TYPE,
@@ -69,6 +148,20 @@ function fleetContent(): ContentSet {
         vehicleType: SHIP_SMALL,
         ignoreContinents: true,
         construction: bill,
+        footprint: { blocked: SHIP_HULL, familyBody: SHIP_HULL, reserved: SHIP_HULL, door: SHIP_DOOR },
+      },
+      {
+        typeId: CATAPULT_HOUSE_TYPE,
+        id: 'catapult',
+        kind: 'vehicle',
+        vehicleType: CATAPULT,
+        construction: bill,
+        footprint: {
+          blocked: CATAPULT_BODY,
+          familyBody: CATAPULT_BODY,
+          reserved: CATAPULT_BODY,
+          door: CATAPULT_DOOR,
+        },
       },
     ],
     vehicles: [
@@ -81,6 +174,16 @@ function fleetContent(): ContentSet {
         passengerSlots: 19,
         logicSize: SHIP_LOGIC_SIZE,
         cargoGoods: [WOOD],
+      },
+      {
+        typeId: CATAPULT,
+        id: 'catapult',
+        jobId: 54,
+        hitpoints: 3000,
+        stockSlots: 0,
+        passengerSlots: 0,
+        logicSize: CATAPULT_LOGIC_SIZE,
+        cargoGoods: [],
       },
     ],
   });
@@ -95,20 +198,26 @@ const HOME = { x: 24, y: 32 };
 const ENEMY_HOME = { x: 104, y: 32 };
 /** A lake on our side, nearer the base than the sea. */
 const LAKE = { x0: 28, x1: 40, y0: 2, y1: 14 };
+/** A bay the sea reaches into our land by: its south shore is where a ship yard fits, since the yard's
+ *  door stands south of its hull and the sea's straight west shore admits none. */
+const BAY = { x0: 44, x1: SEA_WEST, y0: 36, y1: 44 };
 
 interface MapShape {
   readonly bridge?: boolean;
   readonly lake?: boolean;
+  readonly bay?: boolean;
 }
 
-/** A sea between our land and the enemy's, with a land bridge over it or a lake on our side on request. */
-function seaMap({ bridge = false, lake = false }: MapShape = {}): TerrainMap {
+/** A sea between our land and the enemy's reaching into ours by a bay, with a land bridge over it or a
+ *  lake on our side on request. */
+function seaMap({ bridge = false, lake = false, bay = true }: MapShape = {}): TerrainMap {
   const typeIds = new Array<number>(MAP_W * MAP_H).fill(GRASS);
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
       const sea = x >= SEA_WEST && x < SEA_EAST && !(bridge && y >= HOME.y - 2 && y < HOME.y + 2);
       const pond = lake && x >= LAKE.x0 && x < LAKE.x1 && y >= LAKE.y0 && y < LAKE.y1;
-      if (sea || pond) typeIds[y * MAP_W + x] = WATER;
+      const inlet = bay && x >= BAY.x0 && x < BAY.x1 && y >= BAY.y0 && y < BAY.y1;
+      if (sea || pond || inlet) typeIds[y * MAP_W + x] = WATER;
     }
   }
   return { resolution: 'half-cell', width: MAP_W, height: MAP_H, typeIds };
@@ -211,17 +320,29 @@ describe('build order - the sea route', () => {
 });
 
 describe('build order - the shore affinity', () => {
-  it('puts the ship joinery on our shore within a ship yard search of water a ship can sail', () => {
+  it('puts the ship joinery on our shore where its ship yard search finds a site', () => {
     const map = seaMap();
     const sim = world(map);
     const spot = first(sim, [shipJoinery]);
     if (spot?.kind !== 'placeBuilding') throw new Error('expected the ship joinery placement');
     expect(spot.buildingType).toBe(JOINERY_03_TYPE);
     expect(spot.x).toBeLessThan(SEA_WEST);
-    // Sailable water sits a ship's free-size class off the shore, inside the yard search's rings.
-    expect(hexDistanceBetween(spot.x, spot.y, SEA_WEST + SHIP_LOGIC_SIZE, spot.y)).toBeLessThan(
-      VEHICLE_SITE_PLACEMENT_RINGS,
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const yard = findVehicleSite(
+      sim.world,
+      fleetCtx(sim),
+      terrain,
+      SHIP_HOUSE_TYPE,
+      VIKING,
+      { hx: spot.x, hy: spot.y },
+      terrain.nodeAt(spot.x, spot.y),
     );
+    expect(yard.kind).toBe('site');
+  });
+
+  it('places nothing by a straight shore, where no ship yard fits', () => {
+    expect(first(world(seaMap({ bay: false })), [shipJoinery])).toBeUndefined();
   });
 
   it('prefers the sea that reaches the enemy over a nearer lake, and takes the lake when no enemy lies over the sea', () => {
@@ -326,5 +447,136 @@ describe('build order - the druid wells', () => {
 
   it('skips the well while one stands beside the druid hut', () => {
     expect(druidSeat(DRUID_AT.x + 4)).toMatchObject({ kind: 'placeBuilding', buildingType: MILL_TYPE });
+  });
+});
+
+describe('workforce - the top-tier joineries’ roles', () => {
+  const BARRACKS_AT = { x: 30, y: 20 };
+  const BY_BARRACKS = { x: 30, y: 12 };
+  const AWAY = { x: 44, y: 50 };
+  /** Wood in the headquarters for every yard bill a test runs. */
+  const YARD_WOOD = 40;
+  /** Well past the crew's walk, the bill's fetch and the hammering. */
+  const LAUNCH_BUDGET_TICKS = 6000;
+
+  /** Hire `TOP_JOINERY_JOINERS` fresh men at `joinery` as its joiners. */
+  function crew(sim: Simulation, joinery: Entity): void {
+    const hired = new Set([...sim.world.query(JobAssignment)]);
+    spawnMen(sim, TOP_JOINERY_JOINERS, BUILDER);
+    sim.step();
+    for (const man of [...sim.world.query(Settler)].sort((a, b) => a - b)) {
+      if (hired.has(man) || sim.world.get(man, Settler).jobType !== BUILDER) continue;
+      sim.enqueueSetup({ kind: 'assignWorker', entity: man, building: joinery, jobPriority: [JOINER] });
+    }
+    sim.step();
+  }
+
+  function topJoineryAt(sim: Simulation, at: { x: number; y: number }): Entity {
+    const found = ownedBuildings(sim.world, SEAT).find(
+      (e) =>
+        sim.world.get(e, Building).buildingType === JOINERY_03_TYPE &&
+        anchorNodeOf(sim.world, e)?.hx === at.x &&
+        anchorNodeOf(sim.world, e)?.hy === at.y,
+    );
+    if (found === undefined) throw new Error(`setup: no top-tier joinery at ${at.x}, ${at.y}`);
+    return found;
+  }
+
+  /** One decision's craft selections, keyed by the joiners' workplace; applied to the sim. */
+  function tuned(sim: Simulation): Map<Entity, (readonly number[])[]> {
+    const ctx = fleetCtx(sim);
+    const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), DEFAULT_BUILD_ORDER);
+    const byWorkplace = new Map<Entity, (readonly number[])[]>();
+    for (const c of tuneCraftCounters(sim.world, ctx, SEAT, supply)) {
+      if (c.kind !== 'setProductionGoods') continue;
+      const workplace = sim.world.get(c.entity, JobAssignment).workplace;
+      byWorkplace.set(workplace, [...(byWorkplace.get(workplace) ?? []), c.goods]);
+      sim.enqueueSetup(c);
+    }
+    sim.step();
+    return byWorkplace;
+  }
+
+  function crewedJoineries(map: TerrainMap, spots: readonly { x: number; y: number }[]) {
+    const sim = world(map, [
+      { buildingType: BARRACKS_TYPE, ...BARRACKS_AT },
+      ...spots.map((at) => ({ buildingType: JOINERY_03_TYPE, ...at })),
+    ]);
+    const joineries = spots.map((at) => topJoineryAt(sim, at));
+    for (const joinery of joineries) crew(sim, joinery);
+    return { sim, joineries };
+  }
+
+  const all = (good: number) => Array.from({ length: TOP_JOINERY_JOINERS }, () => [good]);
+
+  it('puts a whole crew on catapults beside the barracks and another on ships by a sea seat’s shore', () => {
+    const { sim, joineries } = crewedJoineries(seaMap(), [BY_BARRACKS, AWAY]);
+    const [byBarracks, away] = joineries;
+    if (byBarracks === undefined || away === undefined) throw new Error('setup: two joineries');
+    expect(
+      withinNodeRadius(BARRACKS_AT.x, BARRACKS_AT.y, AWAY.x, AWAY.y, CATAPULT_JOINERY_REACH.radius),
+    ).toBe(false);
+    expect(tuned(sim)).toEqual(
+      new Map([
+        [byBarracks, all(CATAPULT_GOOD)],
+        [away, all(SHIP_GOOD)],
+      ]),
+    );
+    // Applied, the selections hold: the next decision issues nothing.
+    expect(tuned(sim)).toEqual(new Map());
+  });
+
+  it('puts a crew away from the barracks on catapults where no enemy lies over the sea', () => {
+    const { sim, joineries } = crewedJoineries(landMap(), [AWAY]);
+    expect(tuned(sim)).toEqual(new Map([[joineries[0], all(CATAPULT_GOOD)]]));
+  });
+
+  it('asks the sea question once a decision, however many joineries away from the barracks', () => {
+    const { sim } = crewedJoineries(seaMap(), [AWAY, { x: 44, y: 60 }]);
+    const asked = vi.spyOn(seaRoute, 'enemyOverSea');
+    try {
+      expect([...tuned(sim).values()]).toEqual([all(SHIP_GOOD), all(SHIP_GOOD)]);
+      expect(asked).toHaveBeenCalledTimes(1);
+    } finally {
+      asked.mockRestore();
+    }
+  });
+
+  function vehiclesOf(sim: Simulation, vehicleType: number): Entity[] {
+    return [...sim.world.query(Vehicle)].filter((e) => sim.world.get(e, Vehicle).vehicleType === vehicleType);
+  }
+
+  /** Stock the yard wood, tune the crews once, and step until a `vehicleType` launches. */
+  function launch(sim: Simulation, vehicleType: number): Entity | undefined {
+    const hq = ownedBuildings(sim.world, SEAT).find(
+      (e) => sim.world.get(e, Building).buildingType === HQ_TYPE,
+    );
+    if (hq === undefined) throw new Error('setup: our headquarters');
+    setStockAmount(sim.world, hq, WOOD, YARD_WOOD);
+    tuned(sim);
+    for (let i = 0; i < LAUNCH_BUDGET_TICKS && vehiclesOf(sim, vehicleType).length === 0; i++) sim.step();
+    return vehiclesOf(sim, vehicleType)[0];
+  }
+
+  it('launches a catapult from the joinery beside the barracks', () => {
+    const { sim } = crewedJoineries(landMap(), [BY_BARRACKS]);
+    const catapult = launch(sim, CATAPULT);
+    if (catapult === undefined) throw new Error('no catapult launched');
+    expect(sim.world.get(catapult, Owner).player).toBe(SEAT);
+    expect(vehiclesOf(sim, SHIP_SMALL)).toEqual([]);
+  });
+
+  it('launches a small ship from the joinery the build order put by the shore', () => {
+    const sim = world(seaMap(), [{ buildingType: BARRACKS_TYPE, ...BARRACKS_AT }]);
+    const spot = first(sim, [shipJoinery]);
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected the ship joinery placement');
+    sim.enqueueSetup(spot);
+    sim.step();
+    completeSites(sim);
+    crew(sim, topJoineryAt(sim, spot));
+    const ship = launch(sim, SHIP_SMALL);
+    if (ship === undefined) throw new Error('no ship launched');
+    expect(sim.world.get(ship, Owner).player).toBe(SEAT);
+    expect(vehiclesOf(sim, CATAPULT)).toEqual([]);
   });
 });

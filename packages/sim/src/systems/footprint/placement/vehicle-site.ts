@@ -176,6 +176,30 @@ function waterObjection(
   return 'none';
 }
 
+const NO_PARKED: ReadonlySet<NodeId> = new Set();
+
+/**
+ * Whether a fresh site of the ship house `houseType` fits anchored at a node for a worker on
+ * `workerContinent`, by the water rule {@link findVehicleSite} applies with no ship parked there, so a
+ * placement can pick ground whose yard search will succeed. Null for a type that is not a ship house.
+ */
+export function shipYardProbe(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  houseType: number,
+  tribe: number,
+  workerContinent: number,
+): ((hx: number, hy: number) => boolean) | null {
+  const index = contentIndex(ctx.content);
+  const house = index.buildings.get(houseType);
+  const vehicle = house?.vehicleType === undefined ? undefined : index.vehicles.get(house.vehicleType);
+  if (house === undefined || vehicle === undefined || !house.ignoreContinents) return null;
+  const site: SiteHouse = { house, tribe, footprint: buildingFootprintFor(house, tribe) };
+  return (hx, hy) =>
+    waterObjection(world, ctx, terrain, site, vehicle, workerContinent, NO_PARKED, hx, hy) === 'none';
+}
+
 /**
  * The first point in the original's ring order (`hexagonRing`, rings 0 to {@link VEHICLE_SITE_PLACEMENT_RINGS}
  * exclusive around `centre`) where a fresh site of `tribe`'s `houseType` may go for a worker standing at

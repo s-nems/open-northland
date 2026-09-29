@@ -8,8 +8,7 @@ import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../nav/terra
 import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf } from '../../footprint/geometry.js';
-import { VEHICLE_SITE_PLACEMENT_RINGS } from '../../footprint/placement/vehicle-site.js';
-import { vehicleClearance } from '../../footprint/vehicle-clearance.js';
+import { shipYardProbe, VEHICLE_SITE_PLACEMENT_RINGS } from '../../footprint/placement/vehicle-site.js';
 import { resourcesAtNode } from '../../spatial/resources.js';
 import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { nearestLiveResource } from '../live-resources.js';
@@ -31,6 +30,7 @@ function affinityNode(
   owned: readonly Entity[],
   anchor: HalfCellNode,
   type: BuildingType,
+  tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   affinity: PlacementAffinity,
 ): HalfCellNode | null {
@@ -63,7 +63,7 @@ function affinityNode(
         nearestEnemyBuilding(world, ctx, player, anchor)?.node ?? mapCentreNode(terrain),
       );
     case 'shore':
-      return shipWaterNode(world, ctx, terrain, player, owned, anchor);
+      return shipWaterNode(world, ctx, terrain, player, owned, anchor, tribe);
   }
 }
 
@@ -75,16 +75,21 @@ const SHORE_SPOT_RINGS = VEHICLE_SITE_PLACEMENT_RINGS;
  *  placement's own search fan, since the spot must still land in the settlement's reach. */
 const SHORE_SEARCH_RADIUS_NODES = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
 
-/** The least free-size class a ship of the content needs: the smallest `logicSize` among the vehicles
- *  whose house is raised on water, or null when the content has none. */
-function shipClearanceClass(index: ContentIndex): number | null {
-  let least: number | null = null;
+/** The house of the content's smallest ship, the one with the least `logicSize` among the vehicles whose
+ *  house is raised on water, the lowest type id on a tie; null when the content has none. */
+function smallestShipHouse(index: ContentIndex): number | null {
+  let least: { readonly house: number; readonly size: number } | null = null;
   for (const house of index.buildings.values()) {
     if (!house.ignoreContinents || house.vehicleType === undefined) continue;
     const size = index.vehicles.get(house.vehicleType)?.logicSize;
-    if (size !== undefined && (least === null || size < least)) least = size;
+    if (
+      size === undefined ||
+      (least !== null && (size > least.size || (size === least.size && house.typeId > least.house)))
+    )
+      continue;
+    least = { house: house.typeId, size };
   }
-  return least;
+  return least?.house ?? null;
 }
 
 /** The static land component under `anchor`, the seat's home continent. */
@@ -93,10 +98,11 @@ function homeComponent(terrain: TerrainGraph, anchor: HalfCellNode): number {
 }
 
 /**
- * The `shore` target: the water node nearest `anchor` on the lattice's rings that a ship may sail
- * (its free-size class admits the content's smallest ship), in a body bordering the seat's continent,
- * close enough to the seat's reach for a spot beside it. A body that also borders the continent of the
- * enemy headquarters over the sea is taken first. Null when none lies within
+ * The `shore` target: the water node nearest `anchor` on the lattice's rings where a yard of the content's
+ * smallest ship fits with its door on the seat's continent ({@link shipYardProbe}), in a body bordering
+ * that continent, close enough to the seat's reach for a spot beside it. The yard's door stands south of
+ * its hull, so only shore with the water to its north admits one. A body that also borders the continent
+ * of the enemy headquarters over the sea is taken first. Null when none lies within
  * {@link SHORE_SEARCH_RADIUS_NODES}.
  */
 function shipWaterNode(
@@ -106,24 +112,26 @@ function shipWaterNode(
   player: number,
   owned: readonly Entity[],
   anchor: HalfCellNode,
+  tribe: number,
 ): HalfCellNode | null {
-  const shipClass = shipClearanceClass(contentIndex(ctx.content));
+  const house = smallestShipHouse(contentIndex(ctx.content));
   const home = homeComponent(terrain, anchor);
-  if (shipClass === null || home === NO_COMPONENT) return null;
+  const yardFits =
+    house === null || home === NO_COMPONENT ? null : shipYardProbe(world, ctx, terrain, house, tribe, home);
+  if (yardFits === null) return null;
   const coasts = coastsOf(terrain);
   const ours = coasts.get(home);
   if (ours === undefined) return null;
   const route = seaRouteOf(world, ctx, player);
   const theirs = route === null ? undefined : coasts.get(route.enemy);
-  const clearance = vehicleClearance(world, ctx, terrain);
   const reach = buildReach(world, owned, anchor);
   const sailable = (bodies: ReadonlySet<number>) => (x: number, y: number) => {
     if (!terrain.inBounds(x, y)) return false;
     const node = terrain.nodeAt(x, y);
     if (!terrain.isWater(node)) return false;
     const body = terrain.componentOf(node);
-    if (!ours.has(body) || !bodies.has(body) || clearance.classOf(node) < shipClass) return false;
-    return reach.meets({ hx: x, hy: y }, SHORE_SPOT_RINGS);
+    if (!ours.has(body) || !bodies.has(body)) return false;
+    return reach.meets({ hx: x, hy: y }, SHORE_SPOT_RINGS) && yardFits(x, y);
   };
   const across =
     theirs === undefined
@@ -186,7 +194,12 @@ function stockedStoreNode(
 }
 
 /** The seat's buildings of the content id or a tier above it, canonical ascending; none for an unknown id. */
-function anchorsOfId(world: World, index: ContentIndex, owned: readonly Entity[], id: string): Entity[] {
+export function anchorsOfId(
+  world: World,
+  index: ContentIndex,
+  owned: readonly Entity[],
+  id: string,
+): Entity[] {
   const typeId = index.buildingTypeBySlug.get(id);
   const type = typeId === undefined ? undefined : index.buildings.get(typeId);
   if (type === undefined) return [];
@@ -247,12 +260,13 @@ function searchCentre(
   anchor: HalfCellNode,
   reach: BuildReach,
   type: BuildingType,
+  tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): { centre: HalfCellNode; within: SpotBound } | null {
   const anchors: HalfCellNode[] = [];
   let within: SpotBound = null;
   for (const affinity of entry.near ?? []) {
-    const node = affinityNode(world, ctx, terrain, player, owned, anchor, type, entry, affinity);
+    const node = affinityNode(world, ctx, terrain, player, owned, anchor, type, tribe, entry, affinity);
     if (node === null) {
       if (affinity.kind === 'shore') return null;
       continue;
@@ -484,7 +498,7 @@ export function placementSpot(
 ): HalfCellNode | null {
   const settlement = buildReach(world, owned, anchor);
   const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
-  const search = searchCentre(world, ctx, terrain, player, owned, anchor, settlement, type, entry);
+  const search = searchCentre(world, ctx, terrain, player, owned, anchor, settlement, type, tribe, entry);
   if (search === null) return null;
   const { centre, within } = search;
   const pulled = spotAround(

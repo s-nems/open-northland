@@ -90,6 +90,10 @@ const HIVE_REACH_NODES = 18;
  *  nodes (authored): the army musters there, and a ship joinery by a far shore stays out of it. */
 const CATAPULT_JOINERY_REACH_NODES = 16;
 
+/** The catapult joinery's reach: the build order places one where no barracks has a top-tier joinery in
+ *  it, and the joiners of one standing in it make catapults (`workforce/joinery-role.ts`). */
+export const CATAPULT_JOINERY_REACH = { building: 'barracks', radius: CATAPULT_JOINERY_REACH_NODES } as const;
+
 /** How far a store's coverage reaches, in world-metric nodes (authored): well over a tower's, since a
  *  warehouse serves carriers rather than bows, and the base is a store too. */
 const STORE_COVERAGE_RADIUS_NODES = 32;
@@ -288,7 +292,7 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     building: 'work_joinery_03',
     count: 2,
     near: [{ kind: 'building', id: 'barracks' }],
-    unlessWithin: { building: 'barracks', radius: CATAPULT_JOINERY_REACH_NODES },
+    unlessWithin: CATAPULT_JOINERY_REACH,
   },
   { kind: 'place', building: 'work_armory_01', count: 2, near: [{ kind: 'resource', good: 'wood' }] },
   // The strength-amulet mint, and two more druid huts on the big healing potion with a mushroom gatherer

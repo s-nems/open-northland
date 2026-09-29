@@ -18,6 +18,7 @@ import { isCarrierJob } from '../../stores/index.js';
 import { goodTypeByContentId } from '../content-lookup.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
 import { ownedSettlers } from '../seat-roster.js';
+import { type JoineryRole, joineryRoles } from './joinery-role.js';
 import type { SeatSupply, SupplyLine } from './supply.js';
 
 /**
@@ -40,8 +41,8 @@ export type CraftSeat =
 
 /** A workplace type's product plan, by stable content ids (authored). */
 export interface CraftPlan {
-  /** One seat per operator, counted across every building of the type the seat owns and handed out in
-   *  canonical settler order, wrapping when more operators work the type than it lists. */
+  /** One seat per operator, counted across every building of the seat that works this plan and handed out
+   *  in canonical settler order, wrapping when more operators work it than it lists. */
   readonly seats: readonly CraftSeat[];
   /** What the type's only operator works while it employs just one, instead of the first seat. */
   readonly alone?: readonly string[];
@@ -55,8 +56,8 @@ export interface CraftPlan {
  *  hovering at the line does not flip the seat with every unit made or taken. */
 export const CRAFT_GLUT_BAND_UNITS = 8;
 
-/** The iron tools in stock at which the joiners turn to furniture (authored). Every worker wears one and
- *  no bill or shelf sizes them, so they take no supply lines and the glut is authored. */
+/** The iron tools in stock at which the small joinery's joiners turn to furniture (authored). Every worker
+ *  wears one and no bill or shelf sizes them, so they take no supply lines and the glut is authored. */
 const JOINERY_TOOL_GLUT_UNITS = 24;
 
 /** A joiner's seat: iron tools until they reach {@link JOINERY_TOOL_GLUT_UNITS}, furniture meanwhile. */
@@ -129,10 +130,11 @@ const DRUID_SEATS = 12;
  * products lie at glut ({@link sinkHolds}). The reason for each row stands beside it.
  */
 export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
-  // Every joiner makes iron tools and turns to furniture only while the tools pile up.
+  // The small joinery's joiners make iron tools and turn to furniture only while the tools pile up. The
+  // upgraded joinery's make iron tools alone, past the glut too: furniture feeds no bill or recipe, the
+  // tools wear out steadily, and resting at the glut would release the crew, as no seat stops its men.
   work_joinery_01: { seats: [JOINERY_SEAT, JOINERY_SEAT] },
-  work_joinery_02: { seats: [JOINERY_SEAT, JOINERY_SEAT, JOINERY_SEAT] },
-  work_joinery_03: { seats: [JOINERY_SEAT, JOINERY_SEAT, JOINERY_SEAT] },
+  work_joinery_02: { seats: [['tool_iron']] },
   // The first potter works bricks and tiles, the second crockery, which doubles a stocked home's food,
   // until it piles up; a short building material takes the crockery seat, and both potters turn to
   // crockery while bricks and tiles lie at their glut lines.
@@ -202,6 +204,14 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_coin_mint: { seats: MINT_SEATS },
 };
 
+/** The plans of a workplace type whose buildings each take a role by where they stand
+ *  ({@link joineryRoles}), per role (authored); the type takes no {@link CRAFT_PLANS_BY_BUILDING_ID} row.
+ *  The top-tier joinery's whole crew builds catapults, or small ships. */
+export const CRAFT_PLANS_BY_JOINERY_ROLE: Readonly<Record<string, Readonly<Record<JoineryRole, CraftPlan>>>> =
+  {
+    work_joinery_03: { catapult: { seats: [['catapult']] }, ship: { seats: [['ship_small']] } },
+  };
+
 /** The run a workshop opens with once built, by stable content ids (authored): its whole crew works only
  *  `good` until that building has finished `cycles` of it, then the seat lists apply. Tiles and marble come
  *  only from these tiers and the next bills wait on both. */
@@ -221,7 +231,8 @@ interface RestrictedCrew {
 }
 
 /**
- * Keep every operator of a restricted workplace type on the plan's product list for its seat.
+ * Keep every operator of a restricted workplace on its plan's product list for his seat: the type's plan,
+ * or for a type whose buildings take roles, the plan of his building's role.
  * `ProductionCounters` is per worker, not per building, and any employment change clears it (`reidleAsJob`),
  * so the check runs every decision and issues a command only when the live counters differ from "these
  * products unlimited, every other one stopped". An empty result issues nothing, because
@@ -239,28 +250,28 @@ export function tuneCraftCounters(
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
-  // Restricted workplace type -> its operators across the seat, gathered first because a seat's share
-  // depends on how many men the whole type employs. Insertion follows the canonical settler walk, so the
-  // seats and the emitted command order are both deterministic.
-  const crews = new Map<number, RestrictedCrew>();
+  const roleOf = joineryRoles(world, ctx, player);
+  // Restricted plan -> its operators across the seat, gathered first because a seat's share depends on
+  // how many men the plan employs. Insertion follows the canonical settler walk, so the seats and the
+  // emitted command order are both deterministic.
+  const crews = new Map<CraftPlan, RestrictedCrew>();
   for (const e of ownedSettlers(world, player)) {
     const assignment = world.tryGet(e, JobAssignment);
     if (assignment === undefined) continue;
     const job = world.get(e, Settler).jobType;
     if (job === null || isCarrierJob(ctx, job) || index.harvestJobs.has(job)) continue;
     const building = world.tryGet(assignment.workplace, Building);
-    if (building === undefined) continue;
-    const seated = crews.get(building.buildingType);
+    const type = building === undefined ? undefined : index.buildings.get(building.buildingType);
+    if (type === undefined) continue;
+    const roles = CRAFT_PLANS_BY_JOINERY_ROLE[type.id];
+    const plan =
+      roles === undefined ? CRAFT_PLANS_BY_BUILDING_ID[type.id] : roles[roleOf(assignment.workplace)];
+    if (plan === undefined) continue;
+    const seated = crews.get(plan);
     if (seated !== undefined) {
       seated.crew.push(e);
       seated.workplaces.push(assignment.workplace);
-      continue;
-    }
-    const type = index.buildings.get(building.buildingType);
-    if (type === undefined) continue;
-    const plan = CRAFT_PLANS_BY_BUILDING_ID[type.id];
-    if (plan === undefined) continue;
-    crews.set(building.buildingType, { type, plan, crew: [e], workplaces: [assignment.workplace] });
+    } else crews.set(plan, { type, plan, crew: [e], workplaces: [assignment.workplace] });
   }
   for (const { type, plan, crew, workplaces } of crews.values()) {
     const products = productsOf(ctx, type);

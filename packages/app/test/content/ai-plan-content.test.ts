@@ -7,6 +7,7 @@ const {
   COLLECTOR_TARGET_BY_GOOD_ID,
   COLLECTOR_WORKSHOP_BY_GOOD_ID,
   CRAFT_PLANS_BY_BUILDING_ID,
+  CRAFT_PLANS_BY_JOINERY_ROLE,
   DEFAULT_BUILD_ORDER,
   HEADQUARTERS_BUILDING_ID,
   SOLDIER_OUTFIT_GOOD_IDS,
@@ -159,13 +160,14 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     expect(linesOf('late')).toEqual({ ...lines, glut: 36 });
   });
 
-  it('keeps the joiners on iron tools, turning to furniture only at an authored glut', () => {
+  it('keeps the small joinery on iron tools, turning to furniture only at an authored glut, the upgraded one on tools alone', () => {
     const plan = CRAFT_PLANS_BY_BUILDING_ID.work_joinery_01;
     for (const seat of plan?.seats ?? []) {
       expect(seat).toMatchObject({ goods: ['tool_iron'], otherwise: ['furniture'] });
       expect('goods' in seat && seat.glut.tool_iron).toBeGreaterThan(0);
     }
     expect(plan?.seats).toHaveLength(2);
+    expect(CRAFT_PLANS_BY_BUILDING_ID.work_joinery_02?.seats).toEqual([['tool_iron']]);
   });
 
   it('the workforce tables name real buildings, goods, and matching worker slots', async () => {
@@ -282,7 +284,13 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       }
       return ids;
     };
-    for (const [id, plan] of Object.entries(CRAFT_PLANS_BY_BUILDING_ID)) {
+    const plans = [
+      ...Object.entries(CRAFT_PLANS_BY_BUILDING_ID),
+      ...Object.entries(CRAFT_PLANS_BY_JOINERY_ROLE).flatMap(([id, roles]) =>
+        Object.values(roles).map((plan) => [id, plan] as const),
+      ),
+    ];
+    for (const [id, plan] of plans) {
       const building = buildingById.get(id);
       expect(building, `craft restriction ${id}`).toBeDefined();
       const produced = new Set(building?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
