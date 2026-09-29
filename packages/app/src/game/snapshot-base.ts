@@ -63,8 +63,8 @@ export function needsRuleEnabled(snapshot: WorldSnapshot): boolean {
 }
 
 /**
- * Whether `e` belongs to a computer seat. Its settlers raise no note and float no bubble: original behavior,
- * the original drops every message a human of a computer-type player sends before it reaches the
+ * Whether `e` belongs to a computer seat. Its settlers raise no note and float no need bubble: original
+ * behavior, the original drops every message a human of a computer-type player sends before it reaches the
  * player.
  */
 export function ownedByComputerSeat(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
