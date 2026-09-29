@@ -53,6 +53,7 @@ import { gathererReach, workableResourceTest } from '../../../src/systems/ai-pla
 import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import {
+  allocateCollectors,
   CLEAR_GROUND_FROM_NODES,
   CLEARING_SPREAD_NODES,
   extraGatherers,
@@ -69,11 +70,13 @@ import {
   WOOD_OVER_STONE_NODES,
   wantedCollectorGoods,
 } from '../../../src/systems/ai-player/workforce/collectors/index.js';
+import { collectorAnchors } from '../../../src/systems/ai-player/workforce/collectors/anchor.js';
 import {
   flagGround,
   flagSpotNear,
   replantSpot,
 } from '../../../src/systems/ai-player/workforce/flag-spots.js';
+import { SpareForce } from '../../../src/systems/ai-player/workforce/pool.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
 import { resourceStanceCells, resourceWorkCell } from '../../../src/systems/footprint/interaction.js';
 import { canPlaceWorkFlag, type SystemContext } from '../../../src/systems/index.js';
@@ -1327,6 +1330,57 @@ describe('workforce module (collectResources)', () => {
     sim.step();
     const rehire = [...gated.run(sim.world, ctxOf(sim), SEAT)];
     expect(rehire.filter((c) => c.kind === 'setGatherGood').map((c) => c.goodType)).toEqual([STONE]);
+  });
+
+  it('drops exactly the stolen veteran from the good he leaves', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.stone, RESOURCE_SPOTS.iron]);
+    spawnMen(sim, 2, COLLECTOR);
+    sim.step();
+    const [senior, junior] = [...sim.world.query(Settler)];
+    if (senior === undefined || junior === undefined) throw new Error('setup: stone holders missing');
+    for (const [man, dy] of [
+      [senior, 0],
+      [junior, 2],
+    ] as const) {
+      const flag = { x: RESOURCE_SPOTS.stone.x - FLAG_MIN_DISTANCE_NODES, y: RESOURCE_SPOTS.stone.y + dy };
+      sim.enqueueSetup({ kind: 'setWorkFlag', entity: man, ...flag });
+      sim.enqueueSetup({ kind: 'setGatherGood', entity: man, goodType: STONE });
+    }
+    sim.step();
+    // Both clear iron's gate; the senior stands first on stone, as the classifier ranks them.
+    sim.world.mut(senior, SettlerProgress).experience.set(STONE_XP_TRACK, 2 * IRON_GATE_XP);
+    sim.world.mut(junior, SettlerProgress).experience.set(STONE_XP_TRACK, IRON_GATE_XP);
+
+    const ctx = ctxOf(sim);
+    const terrain = sim.terrain;
+    const baseNode = anchorNodeOf(sim.world, entityOfBuilding(sim, HQ_TYPE));
+    if (terrain === undefined || baseNode === null) throw new Error('setup: mapped HQ missing');
+    const ironEntry: BuildOrderEntry[] = [{ kind: 'collector', good: 'iron' }];
+    const wanted = [STONE, IRON].map((good) => wantedRow(sim, ctx, good, ironEntry));
+    if (wanted.some((w) => w === undefined)) throw new Error('setup: stone and iron must be wanted');
+    const collectorsByGood = new Map<number, Entity[]>([[STONE, [senior, junior]]]);
+    allocateCollectors(
+      sim.world,
+      ctx,
+      SEAT,
+      {
+        anchors: collectorAnchors(sim.world, ctx, ownedBuildings(sim.world, SEAT), baseNode),
+        baseNode,
+        flags: flagGround(sim.world, ctx, terrain, SEAT, baseNode),
+        workable: workableResourceTest(sim.world, ctx, terrain),
+      },
+      wanted.filter((w) => w !== undefined),
+      collectorsByGood,
+      [],
+      new SpareForce([]),
+      new Set(),
+      BUILDER,
+    );
+    // The last qualified holder costs stone the least; he alone leaves its list.
+    expect(collectorsByGood.get(IRON)).toEqual([junior]);
+    expect(collectorsByGood.get(STONE)).toEqual([senior]);
   });
 
   it('moves a flag off a deposit a building has buried, though the deposit is not dug out', () => {

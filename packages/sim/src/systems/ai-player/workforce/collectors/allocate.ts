@@ -184,7 +184,8 @@ export function allocateCollectors(
     if (steal === null) continue;
     commands.push(...steal.commands);
     claimFlagNode(taken, spot);
-    collectorsByGood.get(steal.vacatedGood.good.typeId)?.shift();
+    const vacated = collectorsByGood.get(steal.vacatedGood.good.typeId);
+    vacated?.splice(vacated.indexOf(steal.veteran), 1);
     holders.push(steal.veteran);
     collectorsByGood.set(w.good.typeId, holders);
   }
