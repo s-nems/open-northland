@@ -7,6 +7,7 @@ import {
   isValidPlayer,
   metContactBits,
   Owner,
+  Palisade,
   Position,
   recordContact,
   Settler,
@@ -15,13 +16,13 @@ import {
   Signpost,
   Vehicle,
 } from '../../components/index.js';
-import type { Entity, World } from '../../ecs/world.js';
+import type { Component, Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System } from '../context.js';
 import { SCOUT_EXPERIENCE_TYPE, scoutVisionBonusNodes } from '../progression/index.js';
 import { isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
 import { cellOfNode } from './gates.js';
-import { FOG_STATE } from './state.js';
+import { FOG_STATE, type FogState } from './state.js';
 
 /**
  * Ticks between visibility-mask rebuilds. Positions move every tick but the masks refresh on this cadence,
@@ -48,6 +49,19 @@ export function visionRadiusForJob(content: ContentSet, jobType: number | null):
   if (isFighterJob(content, jobType)) return SOLDIER_VISION_NODES;
   if (isHunterJob(content, jobType)) return HUNTER_VISION_NODES;
   return CIVILIAN_VISION_NODES;
+}
+
+/** The kinds an owned eye can be, in {@link visionRadiusOf}'s order: the passes walk these stores alone,
+ *  so owned entities that neither see nor introduce their owner (a road site) cost them nothing. */
+const EYE_KINDS: readonly Component<unknown>[] = [Settler, Building, Vehicle, Signpost];
+
+/** The kinds whose sighting introduces their owner: every owned kind but a signpost and a road site. */
+const MET_KINDS: readonly Component<unknown>[] = [Settler, Building, Vehicle, Palisade];
+
+/** A viewer and the players it has met, hoisted out of the contact pass. */
+interface ViewerBits {
+  readonly viewer: number;
+  bits: number;
 }
 
 /**
@@ -89,43 +103,33 @@ export const visionSystem: System = (world, ctx) => {
   // Stamp pass: writes are idempotent and commutative, so query order needs no canonical sort. Without
   // fog of war no byte ever falls back, so the pass memoizes each eye's footprint.
   fog.beginStampPass(!settings.fogOfWar);
-  for (const e of world.query(Owner, Position)) {
-    const radius = visionRadiusOf(world, ctx.content, e);
-    if (radius === null) continue; // an owned entity that is not an eye (a flag, a pile)
-    const p = world.get(e, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    const { cx, cy } = cellOfNode(n.hx, n.hy);
-    if (fog.stampEye(e, world.get(e, Owner).player, cx, cy, radius)) changed = true;
+  // An entity of two eye kinds stamps the same footprint twice, which writes nothing new.
+  for (const kind of EYE_KINDS) {
+    for (const e of world.query(kind, Owner, Position)) {
+      const radius = visionRadiusOf(world, ctx.content, e);
+      if (radius === null) continue;
+      const p = world.get(e, Position);
+      const n = nodeOfPosition(p.x, p.y);
+      const { cx, cy } = cellOfNode(n.hx, n.hy);
+      if (fog.stampEye(e, world.get(e, Owner).player, cx, cy, radius)) changed = true;
+    }
   }
   fog.endStampPass();
 
   // Contact pass over the settled masks: a viewer meets every owner whose entity stands on a cell the
   // viewer's group has explored, in sight now or not (reading: the original tests the viewer's once-set
-  // explored bit under the entity every tick). Signposts do not introduce their owner; every member of
-  // a group with a mask views through it. The met bits are hoisted out of the loop so a saturated world
-  // pays per-pair integer tests only; the list is re-read because a stamp may have allocated a group's
+  // explored bit under the entity every tick). Signposts and road sites do not introduce their owner
+  // (project rule for road sites); every member of a group with a mask views through it. The met bits
+  // are hoisted out of the loop so a saturated world pays per-pair integer tests only, and an entity of
+  // two kinds visited twice meets nobody new; the list is re-read because a stamp may have allocated a group's
   // first mask.
-  const viewerBits = fog
+  const viewerBits: ViewerBits[] = fog
     .groupsWithMasks()
     .flatMap((group) =>
       fog.visionGroupMembers(group).map((viewer) => ({ viewer, bits: metContactBits(world, viewer) })),
     );
-  for (const e of world.query(Owner, Position)) {
-    if (world.has(e, Signpost)) continue;
-    const owner = world.get(e, Owner).player;
-    if (!isValidPlayer(owner)) continue; // never meetable - skip before any per-entity work
-    const ownerBit = 1 << owner;
-    if (viewerBits.every((v) => v.viewer === owner || (v.bits & ownerBit) !== 0)) continue;
-    const p = world.get(e, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    const { cx, cy } = cellOfNode(n.hx, n.hy);
-    for (const v of viewerBits) {
-      if (v.viewer === owner || (v.bits & ownerBit) !== 0) continue;
-      if (fog.stateAt(v.viewer, cx, cy) >= FOG_STATE.EXPLORED) {
-        recordContact(world, v.viewer, owner);
-        v.bits |= ownerBit;
-      }
-    }
+  for (const kind of MET_KINDS) {
+    for (const e of world.query(kind, Owner, Position)) meetOwnerOf(world, fog, viewerBits, e);
   }
 
   fog.activeMode = mode;
@@ -134,6 +138,24 @@ export const visionSystem: System = (world, ctx) => {
   // ground among them, re-reads the masks on a bump, and a quiet Classic rebuild writes nothing.
   if (changed) fog.generation++;
 };
+
+/** Record every viewer that has explored the cell under `e` as having met its owner. */
+function meetOwnerOf(world: World, fog: FogState, viewerBits: readonly ViewerBits[], e: Entity): void {
+  const owner = world.get(e, Owner).player;
+  if (!isValidPlayer(owner)) return; // never meetable - skip before any per-entity work
+  const ownerBit = 1 << owner;
+  if (viewerBits.every((v) => v.viewer === owner || (v.bits & ownerBit) !== 0)) return;
+  const p = world.get(e, Position);
+  const n = nodeOfPosition(p.x, p.y);
+  const { cx, cy } = cellOfNode(n.hx, n.hy);
+  for (const v of viewerBits) {
+    if (v.viewer === owner || (v.bits & ownerBit) !== 0) continue;
+    if (fog.stateAt(v.viewer, cx, cy) >= FOG_STATE.EXPLORED) {
+      recordContact(world, v.viewer, owner);
+      v.bits |= ownerBit;
+    }
+  }
+}
 
 /** The vision radius in nodes of one owned entity, or null when it is not an eye. A rising site counts as
  *  manned ground and sees the building radius, a vehicle sees like a civilian (approximation), and a

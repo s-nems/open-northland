@@ -14,6 +14,7 @@ import {
   Owner,
   PlayerContacts,
   Position,
+  RoadSite,
   SettlerProgress,
   Signpost,
   Stance,
@@ -557,6 +558,16 @@ describe('first contact - the vision-driven discovery of other players', () => {
     unit(sim, SCOUT_AT.x + 1, SCOUT_AT.y, P1);
     sim.run(VISION_CADENCE_TICKS + 1);
     expect(sim.hasMetPlayer(P0, P1)).toBe(true);
+  });
+
+  it('meets no owner through a road site, even one in plain sight', () => {
+    const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR);
+    unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
+    const site = cellAnchorNode(SCOUT_AT.x + 1, SCOUT_AT.y);
+    sim.enqueueSetup({ kind: 'placeRoadSite', x: site.hx, y: site.hy, tribe: VIKING, owner: P1 });
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect([...sim.world.query(RoadSite)]).toHaveLength(1);
+    expect(sim.hasMetPlayer(P0, P1)).toBe(false);
   });
 
   it('skips an invalid owner slot instead of recording a contact for it', () => {
