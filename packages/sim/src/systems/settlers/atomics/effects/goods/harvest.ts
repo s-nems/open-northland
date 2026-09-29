@@ -2,6 +2,7 @@ import {
   Crop,
   Felling,
   HarvestedBy,
+  KilledBy,
   MineDeposit,
   Position,
   Resource,
@@ -13,6 +14,7 @@ import {
 import { eventAt } from '../../../../../core/events.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
+import { stampCarcassFootprint } from '../../../../economy/carcasses.js';
 import { toolWorkFactorPct } from '../../../../equipment/index.js';
 import { stampResourceFootprintOrFallback, unstampResourceFootprint } from '../../../../footprint/index.js';
 import { jobExperiencePercent, strokesPerUnit, workRepeatsFor } from '../../../../progression/index.js';
@@ -235,7 +237,8 @@ function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: n
     if (indexedChanged) world.add(node, Resource, { ...r });
     if (buried.layers.length === 1) world.remove(node, ResourceLayers);
     else world.mut(node, ResourceLayers).layers.shift();
-    stampResourceFootprintOrFallback(world, ctx.content, node, layer.goodType);
+    if (world.has(node, KilledBy)) stampCarcassFootprint(world, ctx.content, node, layer.goodType);
+    else stampResourceFootprintOrFallback(world, ctx.content, node, layer.goodType);
     return;
   }
   const pos = world.get(node, Position);

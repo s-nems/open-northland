@@ -1,18 +1,12 @@
-import {
-  KilledBy,
-  Position,
-  Resource,
-  type ResourceLayer,
-  ResourceLayers,
-  Settler,
-} from '../../../../../../components/index.js';
+import { Position, type ResourceLayer, Settler } from '../../../../../../components/index.js';
 import { contentIndex } from '../../../../../../core/content-index.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
-import { nodeOfPosition, positionOfNode } from '../../../../../../nav/halfcell.js';
+import { nodeOfPosition } from '../../../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../../../context.js';
+import { placeCarcass } from '../../../../../economy/carcasses.js';
 import { sowNodeOccupied } from '../../../../../economy/fields.js';
-import { dynamicBlockOverlay, stampResourceFootprintOrFallback } from '../../../../../footprint/index.js';
+import { dynamicBlockOverlay } from '../../../../../footprint/index.js';
 import { huntYieldsOf, isHunterJob } from '../../../../../readviews/index.js';
 
 /**
@@ -53,17 +47,16 @@ export function spawnCarcasses(world: World, ctx: SystemContext, attacker: Entit
   const node =
     slots.find((s) => !blocked.has(s) && !sowNodeOccupied(world, terrain.xOf(s), terrain.yOf(s))) ?? anchor;
 
-  const e = world.create();
-  world.add(e, Position, positionOfNode(terrain.xOf(node), terrain.yOf(node)));
-  world.add(e, Resource, {
-    goodType: head.goodType,
-    remaining: head.amount,
-    harvestAtomic: head.harvestAtomic,
-    ...(head.gfxIndex !== undefined ? { gfxIndex: head.gfxIndex } : {}),
+  placeCarcass(world, ctx.content, terrain.xOf(node), terrain.yOf(node), {
+    resource: {
+      goodType: head.goodType,
+      remaining: head.amount,
+      harvestAtomic: head.harvestAtomic,
+      ...(head.gfxIndex !== undefined ? { gfxIndex: head.gfxIndex } : {}),
+    },
+    layers,
+    killedBy: attacker,
   });
-  world.add(e, KilledBy, { by: attacker });
-  if (layers.length > 0) world.add(e, ResourceLayers, { layers });
-  stampResourceFootprintOrFallback(world, ctx.content, e, head.goodType);
 }
 
 /** The body's extraction sequence: one unit per step, round-robin over the yield goods in authored order,

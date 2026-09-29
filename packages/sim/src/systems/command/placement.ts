@@ -25,6 +25,7 @@ import { positionOfNode } from '../../nav/halfcell.js';
 import { seatPlacementProbe } from '../conflict/contested-ground.js';
 import type { SystemContext } from '../context.js';
 import { destroyBerryBushesInReserved } from '../economy/berries.js';
+import { evictCarcassesFromFootprint } from '../economy/carcasses.js';
 import { destroyFieldsUnderBuilding } from '../economy/fields.js';
 import { evictLooseGoodsFromFootprint } from '../economy/goods-evict.js';
 import { releaseEmployment } from '../economy/jobs/index.js';
@@ -177,13 +178,14 @@ export function assembleBuilding(
   world.add(e, Stockpile, { amounts });
   stampOwner(world, e, spec.owner);
   stampMissionId(world, e, spec.missionId);
-  // The plot is impassable from this tick. The placement gates ignore work flags, loose goods and the
-  // placer's own signposts, and a forced placement ignores every post, so a house may legally land on any
-  // of them; each is displaced outward rather than walled in.
+  // The plot is impassable from this tick. The placement gates ignore work flags, loose goods, carcasses
+  // and the placer's own signposts, and a forced placement ignores every post, so a house may legally land
+  // on any of them; each is displaced outward rather than walled in.
   evictSettlersFromFootprint(world, ctx, e);
   evictWorkFlagsFromFootprint(world, ctx, e);
   displaceSignpostsFromFootprint(world, ctx, e);
   evictLooseGoodsFromFootprint(world, ctx, e);
+  evictCarcassesFromFootprint(world, ctx, e);
   // Bushes and felled-tree stumps are walkable and not a placement obstacle, so the plot may cover them; the
   // original clears landscape decoration in a building's reserved zone.
   destroyBerryBushesInReserved(world, ctx, e);

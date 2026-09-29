@@ -37,6 +37,7 @@ import {
 } from '../stores/index.js';
 import { createVehicle } from '../vehicles/create.js';
 import { destroyBerryBushesInReserved } from './berries.js';
+import { evictCarcassesFromFootprint } from './carcasses.js';
 import { destroyFieldsUnderBuilding } from './fields.js';
 import { evictLooseGoodsFromFootprint } from './goods-evict.js';
 import { scatterSpilledStock, spilledStockOf } from './goods-spill.js';
@@ -249,13 +250,14 @@ function launchVehicle(world: World, ctx: SystemContext, site: Entity): void {
 }
 
 /**
- * Clear a finished body's plot: settlers, piles and decor can occupy it during a build, and a larger
- * tier's reserved zone can grow over decor the smaller placement never covered. Work flags need no
+ * Clear a finished body's plot: settlers, piles, carcasses and decor can occupy it during a build, and a
+ * larger tier's reserved zone can grow over decor the smaller placement never covered. Work flags need no
  * re-pass: flag legality is family-body-wide from the moment the Building appears.
  */
 export function settleFootprint(world: World, ctx: SystemContext, e: Entity): void {
   evictSettlersFromFootprint(world, ctx, e);
   evictLooseGoodsFromFootprint(world, ctx, e);
+  evictCarcassesFromFootprint(world, ctx, e);
   destroyBerryBushesInReserved(world, ctx, e);
   destroyStumpsInReserved(world, ctx, e);
   destroyFieldsUnderBuilding(world, ctx, e);

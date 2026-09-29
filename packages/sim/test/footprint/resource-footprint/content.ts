@@ -7,21 +7,25 @@ export const WOOD = 1;
 export const STONE = 4;
 export const MUSHROOM = 5;
 export const CLAY = 6;
+export const MEAT = 7;
 export const WOODCUTTER = 1;
 export const CLAY_DIGGER = 2;
 export const WOOD_ATOMIC = 24;
 export const STONE_ATOMIC = 25;
 export const MUSHROOM_ATOMIC = 32;
 export const CLAY_ATOMIC = 26;
+export const CADAVER_ATOMIC = 33;
 export const TREE_LOGIC = 100;
 export const STONE_LOGIC = 101;
 export const MUSHROOM_LOGIC = 102;
 export const CLAY_LOGIC = 103;
+export const CADAVER_LOGIC = 104;
 export const TREE_GFX = 10;
 export const STONE_GFX = 11;
 export const MUSHROOM_GFX = 12;
 export const CLAY_GFX = 13;
 export const STONE_VARIANT_GFX = 14;
+export const CADAVER_GFX = 15;
 export const CHEST_LOGIC = 85;
 export const CHEST_GFX = 60;
 export const TEST_HUT = 99;
@@ -70,6 +74,13 @@ export function content(): ContentSet {
         atomics: { harvest: CLAY_ATOMIC },
         gathering: { bioLandscape: false },
       },
+      {
+        typeId: MEAT,
+        id: 'meat',
+        weight: 1,
+        atomics: { harvest: CADAVER_ATOMIC },
+        gathering: { bioLandscape: false },
+      },
     ],
     jobs: [
       { typeId: 0, id: 'idle' },
@@ -85,6 +96,7 @@ export function content(): ContentSet {
       { typeId: MUSHROOM_LOGIC, id: 'mushroom_logic', walkable: true, buildable: true },
       { typeId: CLAY_LOGIC, id: 'clay_logic', walkable: true, buildable: true },
       { typeId: CHEST_LOGIC, id: 'chest_wooden', walkable: true, buildable: true },
+      { typeId: CADAVER_LOGIC, id: 'cadaver_meat', walkable: true, buildable: true },
     ],
     landscapeGfx: [
       {
@@ -170,6 +182,17 @@ export function content(): ContentSet {
           [2, 1, 0, 1],
         ],
       },
+      {
+        // Shaped like the cadaver records: walkable, with a one-node build zone on its own anchor.
+        index: CADAVER_GFX,
+        editName: 'test cadaver',
+        logicType: CADAVER_LOGIC,
+        maxValency: 5,
+        isWorkable: true,
+        walkBlockAreas: [],
+        buildBlockAreas: [[1, 0, 0, 1]],
+        workAreas: [[1, 0, 0, 1]],
+      },
     ],
     gatheringPipeline: [
       { goodType: WOOD, goodId: 'wood', harvest: { landscapeType: TREE_LOGIC, gfxIndices: [TREE_GFX] } },
@@ -184,6 +207,11 @@ export function content(): ContentSet {
         harvest: { landscapeType: MUSHROOM_LOGIC, gfxIndices: [MUSHROOM_GFX] },
       },
       { goodType: CLAY, goodId: 'mud', harvest: { landscapeType: CLAY_LOGIC, gfxIndices: [CLAY_GFX] } },
+      {
+        goodType: MEAT,
+        goodId: 'meat',
+        harvest: { landscapeType: CADAVER_LOGIC, gfxIndices: [CADAVER_GFX] },
+      },
     ],
     tribes: [
       {
