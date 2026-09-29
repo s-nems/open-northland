@@ -53,8 +53,8 @@ import {
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
 import { isServedAtHome } from './home-errands.js';
-import { guideLostSettler } from './lost-guide.js';
 import { planBreeder } from './husbandry/index.js';
+import { guideLostSettler } from './lost-guide.js';
 import { answerNeedInPlace, orderedNeed, planNeeds } from './needs.js';
 import { planShelter } from './shelter.js';
 import { deStackIdle, stepOffHomeDoor } from './spacing.js';
@@ -304,7 +304,7 @@ function planEconomy(
   pass.idle.stand(e, true);
   if (cutOffCheckDue(ctx)) {
     reconcileCutOff(world, ctx, e, plan.jobType, plan.limit, pass.seatDoors);
-    if (guideLostSettler(world, ctx, terrain, e, plan.limit, pass.seatDoors, pass.spacing)) return;
+    if (guideLostSettler(pass, e, plan.limit)) return;
   }
   if (world.has(e, Chat) || staysPut(world, e)) return;
   if (stepOffHomeDoor(world, ctx, terrain, e, plan.here, pass.spacing)) return;

@@ -3,9 +3,10 @@ import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { hexDistanceBetween, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
+import { routeRegions } from '../../footprint/index.js';
 import { type NavigationLimit, networkLimitAt, signpostNetwork } from '../../signposts/index.js';
-import type { PlannerSpacing } from '../planner/spacing.js';
+import type { PlannerPass } from '../planner/pass.js';
+import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { SeatDoors } from './cut-off.js';
 import { nearestFreeCell } from './spacing.js';
 
@@ -17,18 +18,11 @@ export const LOST_GUIDE_DELAY_TICKS = 10 * TICKS_PER_SECOND;
  * Lead a computer seat's lost settler back towards its settlement: once it has stood lost for
  * {@link LOST_GUIDE_DELAY_TICKS} with no door of its seat in reach, it walks to the nearest own post from
  * which the signpost network reaches a door, or to the nearest door when no post does. The walk itself
- * ignores the confinement, as a player's order would; normal planning resumes on arrival. Returns
- * whether it set the walk.
+ * ignores the confinement, as a player's order would; normal planning resumes on arrival. A settler
+ * sealed in a pocket, or whose last guided walk failed, stays put. Returns whether it set the walk.
  */
-export function guideLostSettler(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  e: Entity,
-  limit: NavigationLimit | null,
-  doors: SeatDoors,
-  spacing: PlannerSpacing,
-): boolean {
+export function guideLostSettler(pass: PlannerPass, e: Entity, limit: NavigationLimit | null): boolean {
+  const { world, ctx, terrain } = pass;
   if (limit === null) return false;
   const lost = world.tryGet(e, LostWay);
   if (lost === undefined || ctx.tick - lost.since < LOST_GUIDE_DELAY_TICKS) return false;
@@ -36,46 +30,74 @@ export function guideLostSettler(
   if (owner === undefined || !isAiPlayer(world, owner)) return false;
   const p = world.get(e, Position);
   const { hx, hy } = nodeOfPosition(p.x, p.y);
-  const component = terrain.componentOf(terrain.nodeAtClamped(hx, hy));
+  const here = terrain.nodeAtClamped(hx, hy);
+  const component = terrain.componentOf(here);
   if (component === -1) return false;
-  const seatDoors = doors.of(owner).filter((door) => terrain.componentOf(door) === component);
-  if (seatDoors.length === 0 || seatDoors.some((door) => limit.allowsNode(door))) return false;
-  const target =
-    homewardPost(world, terrain, owner, hx, hy, component, seatDoors) ?? nearest(terrain, hx, hy, seatDoors);
-  if (target === null) return false;
-  const stand = nearestFreeCell(terrain, target, spacing);
-  if (stand === null) return false;
-  spacing.claim(stand);
+  const home = pass.homeward.of(owner, component);
+  if (home.doors.length === 0 || home.doors.some((door) => limit.allowsNode(door))) return false;
+  const target = nearest(terrain, hx, hy, home.posts) ?? nearest(terrain, hx, hy, home.doors);
+  const stand = target === null ? null : nearestFreeCell(terrain, target, pass.spacing);
+  if (stand === null || isUnreachableGoal(unreachableGoals(world, ctx, e), stand)) return false;
+  if (routeRegions(world, ctx, terrain).unroutable(here, stand)) return false;
+  pass.spacing.claim(stand);
   world.add(e, MoveGoal, { cell: stand });
   return true;
 }
 
-/** The own post nearest `(hx, hy)` on `component` whose network reaches one of `seatDoors`, nearest first
- *  by hex distance, node id breaking ties. */
-function homewardPost(
-  world: World,
-  terrain: TerrainGraph,
-  player: number,
-  hx: number,
-  hy: number,
-  component: number,
-  seatDoors: readonly NodeId[],
-): NodeId | null {
-  const posts = (signpostNetwork(world).get(player) ?? [])
-    .map((s) => terrain.nodeAtClamped(s.hx, s.hy))
-    .filter((node) => terrain.componentOf(node) === component);
-  for (const post of byDistance(terrain, hx, hy, posts)) {
-    const reach = networkLimitAt(world, terrain, player, terrain.xOf(post), terrain.yOf(post));
-    if (reach === null || seatDoors.some((door) => reach.allowsNode(door))) return post;
+/** One seat's landmarks on one static component: its doors there, and its posts there from which the
+ *  signpost network reaches one of those doors. */
+interface Homeward {
+  readonly doors: readonly NodeId[];
+  readonly posts: readonly NodeId[];
+}
+
+/** Each seat's {@link Homeward} landmarks, derived at most once per planner pass per seat and component,
+ *  so a pass pays one post-by-post network test however many of the seat's settlers stand lost. */
+export class HomewardPosts {
+  private readonly byKey = new Map<string, Homeward>();
+
+  constructor(
+    private readonly world: World,
+    private readonly terrain: TerrainGraph,
+    private readonly seatDoors: SeatDoors,
+  ) {}
+
+  of(seat: number, component: number): Homeward {
+    const key = `${seat}:${component}`;
+    let home = this.byKey.get(key);
+    if (home === undefined) {
+      home = this.derive(seat, component);
+      this.byKey.set(key, home);
+    }
+    return home;
   }
-  return null;
+
+  private derive(seat: number, component: number): Homeward {
+    const { world, terrain } = this;
+    const onComponent = (node: NodeId): boolean => terrain.componentOf(node) === component;
+    const doors = this.seatDoors.of(seat).filter(onComponent);
+    if (doors.length === 0) return { doors, posts: [] };
+    const posts = (signpostNetwork(world).get(seat) ?? [])
+      .map((s) => terrain.nodeAtClamped(s.hx, s.hy))
+      .filter(onComponent)
+      .filter((post) => {
+        const reach = networkLimitAt(world, terrain, seat, terrain.xOf(post), terrain.yOf(post));
+        return reach === null || doors.some((door) => reach.allowsNode(door));
+      });
+    return { doors, posts };
+  }
 }
 
+/** The node of `nodes` nearest `(hx, hy)` by hex distance, node id breaking ties. */
 function nearest(terrain: TerrainGraph, hx: number, hy: number, nodes: readonly NodeId[]): NodeId | null {
-  return byDistance(terrain, hx, hy, nodes)[0] ?? null;
-}
-
-function byDistance(terrain: TerrainGraph, hx: number, hy: number, nodes: readonly NodeId[]): NodeId[] {
-  const distance = (n: NodeId): number => hexDistanceBetween(hx, hy, terrain.xOf(n), terrain.yOf(n));
-  return [...nodes].sort((a, b) => distance(a) - distance(b) || a - b);
+  let best: NodeId | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const node of nodes) {
+    const distance = hexDistanceBetween(hx, hy, terrain.xOf(node), terrain.yOf(node));
+    if (distance < bestDistance || (distance === bestDistance && best !== null && node < best)) {
+      best = node;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }

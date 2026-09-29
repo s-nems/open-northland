@@ -11,6 +11,7 @@ import { SeatDoors } from '../drives/cut-off.js';
 import { collectHarvestClaims, type HarvestClaims } from '../drives/economy/harvest-claims.js';
 import { ConstructionTaskClaims, RepairCrews, WorkSeatClaims } from '../drives/economy/index.js';
 import { collectFarmClaims, type FarmClaims } from '../drives/farming/index.js';
+import { HomewardPosts } from '../drives/lost-guide.js';
 import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../targets/index.js';
 import { IdleStands } from './idle-replan.js';
 import { standsThroughPass } from './replan.js';
@@ -41,6 +42,7 @@ export interface PlannerPass {
   readonly constructionClaims: ConstructionTaskClaims;
   readonly repairCrews: RepairCrews;
   readonly seatDoors: SeatDoors;
+  readonly homeward: HomewardPosts;
   /** The buildings on alarm and the room each has left, empty on a map with no defence mode up, which
    *  is what makes the shelter rung free when nothing is happening. */
   readonly shelters: ShelterSites;
@@ -53,6 +55,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
   const targets = collectTargets(world, ctx, terrain);
   const front = new BattleFront(world, ctx);
   const shelters = collectShelters(world, ctx);
+  const seatDoors = new SeatDoors(world, ctx, terrain, targets.buildings);
   return {
     world,
     ctx,
@@ -70,7 +73,8 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     front,
     constructionClaims: new ConstructionTaskClaims(world, ctx),
     repairCrews: new RepairCrews(world, ctx, front),
-    seatDoors: new SeatDoors(world, ctx, terrain, targets.buildings),
+    seatDoors,
+    homeward: new HomewardPosts(world, terrain, seatDoors),
     shelters,
     idle: new IdleStands(),
   };

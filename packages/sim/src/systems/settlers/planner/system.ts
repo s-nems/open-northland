@@ -70,7 +70,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
         if (world.get(e, IdleStand).standing && cutOffCheckDue(ctx)) {
           const limit = navigationLimitFor(world, ctx.content, terrain, e);
           reconcileCutOff(world, ctx, e, settler.jobType, limit, pass.seatDoors);
-          guideLostSettler(world, ctx, terrain, e, limit, pass.seatDoors, pass.spacing);
+          guideLostSettler(pass, e, limit);
         }
         continue;
       }

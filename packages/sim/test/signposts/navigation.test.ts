@@ -14,6 +14,7 @@ import {
   PlayerOrder,
   Position,
   Resource,
+  ResourceFootprint,
   Settler,
   SettlerProgress,
   stampOwner,
@@ -23,6 +24,7 @@ import { fx, ONE } from '../../src/core/fixed.js';
 import { TICKS_PER_SECOND } from '../../src/core/loop.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { hexDistanceBetween, Simulation } from '../../src/index.js';
+import { nodeOfPosition, positionOfNode } from '../../src/nav/halfcell.js';
 import {
   createSignpost,
   navigationLimitFor,
@@ -51,6 +53,8 @@ const HUNTER = 15; // exempt like the scout - bounded by its work flag, never th
 const CARPENTER = 2;
 const CIVILIST = 6;
 const CARRIER = 24;
+const STONE = 3;
+const RING_NODES = 2;
 const P0 = 0;
 
 function ownedUnit(sim: Simulation, x: number, y: number, jobType: number): Entity {
@@ -430,6 +434,36 @@ describe('a computer seat leads its lost settlers back', () => {
     run(sim, LEAD_TICKS + WALK_TICKS);
     expect(tileX(sim, stranded)).toBeLessThan(10);
     expect(sim.world.has(stranded, LostWay)).toBe(false);
+  });
+
+  it('leaves a settler sealed in a pocket where it stands, with no walk to fail', () => {
+    const sim = confinedSim();
+    computerSeat(sim);
+    building(sim, 2, 2);
+    stampPost(sim, 12, 2);
+    stampPost(sim, 30, 2);
+    const sealed = ownedUnit(sim, 60, 4, WOODCUTTER);
+    const p = sim.world.get(sealed, Position);
+    const at = nodeOfPosition(p.x, p.y);
+    const rockAt = (hx: number, hy: number): void => {
+      const rock = sim.world.create();
+      sim.world.add(rock, Position, positionOfNode(hx, hy));
+      sim.world.add(rock, Resource, { goodType: STONE, remaining: 1, harvestAtomic: 0 });
+      sim.world.add(rock, ResourceFootprint, { walk: [{ dx: 0, dy: 0 }], build: [], work: [] });
+    };
+    // Two nodes of rock on every side, so no diagonal squeezes between them.
+    for (let dy = -RING_NODES; dy <= RING_NODES; dy++) {
+      for (let dx = -RING_NODES; dx <= RING_NODES; dx++) {
+        if (dx !== 0 || dy !== 0) rockAt(at.hx + dx, at.hy + dy);
+      }
+    }
+    let walks = 0;
+    for (let i = 0; i < LEAD_TICKS + WALK_TICKS; i++) {
+      sim.step();
+      if (sim.world.has(sealed, MoveGoal)) walks++;
+    }
+    expect(sim.world.has(sealed, LostWay)).toBe(true);
+    expect(walks).toBe(0);
   });
 
   it("leaves a human seat's lost settler for the player to lead", () => {
