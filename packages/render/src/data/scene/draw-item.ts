@@ -107,7 +107,8 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   readonly y: number;
   /** Composed sort key: the anchor's depth plus the per-kind paint bias. */
   readonly depth: number;
-  /** For a fish swarm: how many independently moving fish the renderer emits (1..30). */
+  /** For a fish swarm: how many independently moving fish the renderer emits, capped at the sim's
+   *  swarm maximum. */
   readonly swarmCount?: number;
   /** For a stockpile: a designated delivery flag rather than a loose pile - a marker holding no
    *  goods. */

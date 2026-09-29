@@ -1,4 +1,4 @@
-import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
+import { type EntitySnapshot, systems, type WorldSnapshot } from '@open-northland/sim';
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import {
   assignBerryBushFields,
@@ -111,5 +111,7 @@ export function assembleItem(
 
 function assignFishFields(item: MutableSpriteDrawItem, components: Readonly<Record<string, unknown>>): void {
   const fish = components.FishSwarm as { count?: unknown } | undefined;
-  if (typeof fish?.count === 'number') item.swarmCount = Math.max(0, Math.min(30, Math.trunc(fish.count)));
+  if (typeof fish?.count === 'number') {
+    item.swarmCount = Math.max(0, Math.min(systems.MAX_FISH_PER_SWARM, Math.trunc(fish.count)));
+  }
 }

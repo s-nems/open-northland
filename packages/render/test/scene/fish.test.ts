@@ -1,3 +1,4 @@
+import { systems } from '@open-northland/sim';
 import type { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { fishHeadingIndex } from '../../src/gpu/sprite-pool/resolve-layers.js';
@@ -22,6 +23,14 @@ describe('fish swarm rendering', () => {
     );
     expect(scene).toHaveLength(1);
     expect(scene[0]).toMatchObject({ kind: 'fish', ref: 7, swarmCount: 12 });
+  });
+
+  it("caps an overfull swarm's drawn fish at the sim's swarm maximum", () => {
+    const overfull = systems.MAX_FISH_PER_SWARM + 5;
+    const scene = buildSpriteScene(
+      snapshotOf([entity(7, 1.5, 2, { FishSwarm: { count: overfull, continent: 3, shore: 8 } })]),
+    );
+    expect(scene[0]?.swarmCount).toBe(systems.MAX_FISH_PER_SWARM);
   });
 
   it('does not draw a depleted persistent swarm', () => {

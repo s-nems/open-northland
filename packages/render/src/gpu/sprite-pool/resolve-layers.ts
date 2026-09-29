@@ -251,7 +251,7 @@ function byRowOffset(a: ResolvedLayer, b: ResolvedLayer): number {
 function pushFishSchool(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem, tick: number): boolean {
   const binding = sheet.bindings.fish;
   if (binding === undefined || binding.bobs.length === 0) return false;
-  const count = Math.max(0, Math.min(30, Math.trunc(item.swarmCount ?? 0)));
+  const count = item.swarmCount ?? 0;
   const t = tick / Math.max(1, binding.ticksPerFrame);
   for (let fish = 0; fish < count; fish++) {
     const now = fishPoint(item.ref, fish, t);
