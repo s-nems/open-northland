@@ -85,12 +85,13 @@ export function flagGround(
 ): FlagGround {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const regions = routeRegions(world, ctx, terrain);
-  const seeds = new Map<string, NodeId | null>();
-  const seedOf = (origin: HalfCellNode): NodeId | null => {
+  const seeds = new Map<string, { node: NodeId | null; pocketed: boolean }>();
+  const seedOf = (origin: HalfCellNode): { node: NodeId | null; pocketed: boolean } => {
     const key = flagNodeKey(origin.hx, origin.hy);
     let seed = seeds.get(key);
     if (seed === undefined) {
-      seed = walkSeedNear(terrain, blocked, origin, ORIGIN_SEED_RADIUS_NODES);
+      const node = walkSeedNear(terrain, blocked, origin, ORIGIN_SEED_RADIUS_NODES);
+      seed = { node, pocketed: node !== null && regions.pocketed(node) };
       seeds.set(key, seed);
     }
     return seed;
@@ -101,12 +102,13 @@ export function flagGround(
     terrain,
     limit: networkLimitAt(world, terrain, player, baseNode.hx, baseNode.hy),
     placeable: workFlagPlacementTest(world, ctx.content, terrain),
+    // A seed pocketed behind its building stands in for carriers who leave by the door, so it vetoes nothing.
     sealedFrom: (origin, node) => {
       const seed = seedOf(origin);
-      return seed !== null && regions.unroutable(seed, node);
+      return seed.node !== null && !seed.pocketed && regions.unroutable(seed.node, node);
     },
     walkFrom: (origin) => {
-      const seed = seedOf(origin);
+      const seed = seedOf(origin).node;
       let flood = fromOrigin.get(seed);
       if (flood === undefined) {
         flood = new WalkFlood(terrain, blocked, seed === null ? [] : [seed], ORIGIN_FLOOD_BUDGET_NODES);

@@ -168,6 +168,19 @@ describe('routeRegions', () => {
     expect(regions.unroutable(onStone, sealed)).toBe(true);
   });
 
+  it('calls a blocked node pocketed only when no node it steps off to lies in the open', () => {
+    const sim = mappedSim(grassMap(40, 20)); // larger than the flood cap, so the open ground reads open
+    const terrain = terrainOf(sim);
+    wallAt(sim, 10, 2, rectangleWall(3, 7)); // seals the column (11, 3..7)
+    wallAt(sim, 11, 5, [{ dx: 0, dy: 0 }]); // a stone inside the pocket
+    wallAt(sim, 2, 2, [{ dx: 0, dy: 0 }]); // a stone in the open
+    const regions = routeRegions(sim.world, ctxOf(sim), terrain);
+
+    expect(regions.pocketed(terrain.nodeAt(11, 5))).toBe(true);
+    expect(regions.pocketed(terrain.nodeAt(2, 2))).toBe(false);
+    expect(regions.pocketed(terrain.nodeAt(10, 4))).toBe(false); // the wall steps off both ways
+  });
+
   it('never mints a pocket from the un-swept remainder of a large confined region', () => {
     // A 648-node walled yard (beyond the cap). The first verdict's flood from one corner caps and
     // stamps a 512-node ball; the far corner's flood then drains the remainder against those stamps.

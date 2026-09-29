@@ -420,9 +420,9 @@ export class InteractionCellIndex {
     const cell = interactionCell(this.world, this.ctx, this.terrain, e, here);
     if (gate !== undefined && !gate.allowsNode(cell)) return best;
     if (veto?.(cell) === true) return best;
-    if (this.pileCellSealed(e, here, cell)) return best;
     const distance = manhattan(this.terrain, here, cell);
     if (best !== null && !precedes(distance, cell, e, best)) return best;
+    if (this.pileCellSealed(e, here, cell)) return best;
     return { entity: e, cell, distance, payload: hit.payload };
   }
 

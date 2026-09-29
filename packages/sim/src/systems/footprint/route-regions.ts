@@ -100,17 +100,24 @@ export class RouteRegions {
   }
 
   /**
-   * Whether `node` provably sits in a sealed pocket. False for a blocked or unwalkable node and for
-   * everything the capped flood cannot prove - the same fail-open contract as {@link unroutable}. A
-   * pocketed proxy inverts {@link unroutable} (every open spot reads unroutable), so a pick whose `from`
-   * stands in for the walker rather than being its cell must disable that veto instead.
+   * Whether `node` provably sits in a sealed pocket, a blocked node when every node it steps out to lies
+   * in a pocket, as {@link unroutable} judges it. False for an unwalkable node and for everything the
+   * capped flood cannot prove. A pocketed proxy inverts {@link unroutable} (every open spot reads
+   * unroutable), so a pick whose `from` stands in for the walker rather than being its cell must disable
+   * that veto instead.
    */
   pocketed(node: NodeId): boolean {
     const cache = this.cache;
     this.refresh(cache);
-    const { terrain, blocked } = cache;
-    if (!terrain.isWalkable(node) || blocked.has(node)) return false;
-    return this.regionOf(node) !== OPEN_REGION;
+    const { terrain, blocked, exits } = cache;
+    if (!terrain.isWalkable(node)) return false;
+    if (!blocked.has(node)) return this.regionOf(node) !== OPEN_REGION;
+    terrain.stepsInto(node, blocked, exits);
+    if (exits.length === 0) return false;
+    for (let i = 0; i < exits.length; i++) {
+      if (this.regionOf(exits.at(i).node) === OPEN_REGION) return false;
+    }
+    return true;
   }
 
   /** Re-key the labels against the overlay inputs, invalidating every label when any moved. Ran per
