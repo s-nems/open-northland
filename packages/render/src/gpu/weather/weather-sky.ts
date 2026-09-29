@@ -11,11 +11,13 @@ import {
   zoomSize,
 } from '../../data/weather/precipitation.js';
 import { WEATHER_KINDS, type WeatherConditions, type WeatherKind } from '../../data/weather/types.js';
+import type { FogWashMask } from '../overlays/index.js';
 import { type AtmosphereFrame, WeatherAtmosphere } from './atmosphere.js';
 import { atmosphereLook, atmosphereLookScratch } from './atmosphere-look.js';
 import { WeatherFieldTextures } from './field-textures.js';
 import { flashingStrike, LightningBolt } from './lightning-bolt.js';
 import { type PrecipitationFrame, PrecipitationLayer } from './precipitation-layer.js';
+import { WeatherReach } from './weather-reach.js';
 
 /** Paint order of the particle kinds: dust behind snow behind rain. */
 const PARTICLE_ORDER: readonly WeatherKind[] = ['sand', 'snow', 'rain'];
@@ -51,6 +53,7 @@ function stillAir(conditions: WeatherConditions): boolean {
 export class WeatherSky {
   readonly container = new Container();
   private readonly field = new WeatherFieldTextures();
+  private readonly reach = new WeatherReach();
   private readonly atmosphere: WeatherAtmosphere;
   private readonly layers: Readonly<Record<WeatherKind, PrecipitationLayer>>;
   private readonly bolt: LightningBolt;
@@ -81,11 +84,11 @@ export class WeatherSky {
 
   constructor() {
     this.container.label = 'weather-sky';
-    this.atmosphere = new WeatherAtmosphere(this.container);
+    this.atmosphere = new WeatherAtmosphere(this.container, this.reach);
     const layers = {
-      rain: new PrecipitationLayer('rain', this.field),
-      snow: new PrecipitationLayer('snow', this.field),
-      sand: new PrecipitationLayer('sand', this.field),
+      rain: new PrecipitationLayer('rain', this.field, this.reach),
+      snow: new PrecipitationLayer('snow', this.field, this.reach),
+      sand: new PrecipitationLayer('sand', this.field, this.reach),
     };
     for (const kind of PARTICLE_ORDER) this.container.addChild(layers[kind].mesh);
     this.layers = layers;
@@ -97,6 +100,16 @@ export class WeatherSky {
     this.field.set(field);
     for (const kind of PARTICLE_ORDER) this.layers[kind].bindField();
     this.field.dropRetired();
+  }
+
+  /** The map's size in cells; weather fades out over its outermost sector. */
+  setMapSize(cellsWide: number, cellsHigh: number): void {
+    this.reach.setMap(cellsWide, cellsHigh);
+  }
+
+  /** The fog wash the weather keeps off the unexplored parts of; read on every {@link update}. */
+  watchFog(mask: FogWashMask): void {
+    this.reach.watchFog(mask);
   }
 
   setEnabled(enabled: boolean): void {
@@ -121,6 +134,10 @@ export class WeatherSky {
       return;
     }
     this.container.visible = true;
+    if (this.reach.update()) {
+      this.atmosphere.bindReach();
+      for (const kind of PARTICLE_ORDER) this.layers[kind].bindReach();
+    }
     const frame = this.frame;
     frame.screenW = screenW;
     frame.screenH = screenH;

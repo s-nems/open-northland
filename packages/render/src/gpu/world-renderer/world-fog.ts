@@ -3,7 +3,7 @@ import type { Container } from 'pixi.js';
 import { FogGhostStore, fogTileVisible } from '../../data/fog/index.js';
 import type { Viewport } from '../../data/projection/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
-import { FogLayer } from '../overlays/index.js';
+import { FogLayer, type FogWashMask } from '../overlays/index.js';
 import type { PoolFrame } from '../sprite-pool/index.js';
 
 /**
@@ -31,6 +31,11 @@ export class WorldFog {
 
   get container(): Container {
     return this.wash.container;
+  }
+
+  /** The wash's texture and band, rewritten in place as the fog redraws. */
+  get washMask(): FogWashMask {
+    return this.wash.mask;
   }
 
   /** The tall map-object gate: this view's per-cell state, `undefined` while fog is off. */

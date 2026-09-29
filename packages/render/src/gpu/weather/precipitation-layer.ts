@@ -12,6 +12,7 @@ import {
 import { WEATHER_KINDS, type WeatherKind } from '../../data/weather/types.js';
 import type { WeatherFieldTextures } from './field-textures.js';
 import { precipitationProgram } from './precipitation-shader.js';
+import type { WeatherReach } from './weather-reach.js';
 
 /** Depth draws are skewed towards the far layer: most particles are small and faint, a few big and near. */
 const DEPTH_SKEW = 1.6;
@@ -97,6 +98,7 @@ export class PrecipitationLayer {
   constructor(
     private readonly kind: WeatherKind,
     private readonly field: WeatherFieldTextures,
+    private readonly reach: WeatherReach,
   ) {
     const channel = new Float32Array(WEATHER_KINDS.length);
     channel[WEATHER_KINDS.indexOf(kind)] = 1;
@@ -124,6 +126,8 @@ export class PrecipitationLayer {
         weather: this.uniforms,
         uFieldPrev: field.previousSource,
         uFieldCur: field.currentSource,
+        weatherReach: reach.uniforms,
+        uReachFog: reach.fogSource,
       },
     });
     this.mesh = new Mesh({ geometry: this.makeGeometry(0), shader: this.shader });
@@ -172,6 +176,11 @@ export class PrecipitationLayer {
   bindField(): void {
     this.shader.resources.uFieldPrev = this.field.previousSource;
     this.shader.resources.uFieldCur = this.field.currentSource;
+  }
+
+  /** Re-bind the fog texture after the reach replaced it. */
+  bindReach(): void {
+    this.shader.resources.uReachFog = this.reach.fogSource;
   }
 
   hide(): void {

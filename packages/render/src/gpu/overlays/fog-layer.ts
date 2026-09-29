@@ -1,5 +1,5 @@
 import { FOG_STATE, type FogView } from '@open-northland/sim';
-import { BufferImageSource, Container, Rectangle, Sprite, Texture } from 'pixi.js';
+import { BufferImageSource, Container, Rectangle, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA } from '../../data/fog/index.js';
 import { TILE_HALF_H, TILE_HALF_W, type Viewport, visibleTileRange } from '../../data/projection/index.js';
 
@@ -26,6 +26,22 @@ const FOG_BAND_MARGIN = 3;
 /** Texture allocation step (texels) - grow-only, so a steady pan never re-allocates GPU memory. */
 const TEXTURE_QUANT = 64;
 
+/** Where the wash's texture lies in the world, for a shader that samples it: one texel per cell. */
+export interface FogWashMask {
+  /** Null while the fog is off. */
+  readonly source: TextureSource | null;
+  /** World px of the band's first texel corner. */
+  readonly originX: number;
+  readonly originY: number;
+  /** Texels of the band in use, and of the whole texture. */
+  readonly bandW: number;
+  readonly bandH: number;
+  readonly texW: number;
+  readonly texH: number;
+}
+
+type MutableFogWashMask = { -readonly [K in keyof FogWashMask]: FogWashMask[K] };
+
 export class FogLayer {
   readonly container = new Container();
   private readonly sprite = new Sprite();
@@ -36,10 +52,24 @@ export class FogLayer {
   private texH = 0;
   /** Signature of the frame last rasterized - an unchanged signature skips the rebuild. */
   private key = '';
+  private readonly washMask: MutableFogWashMask = {
+    source: null,
+    originX: 0,
+    originY: 0,
+    bandW: 0,
+    bandH: 0,
+    texW: 0,
+    texH: 0,
+  };
 
   constructor() {
     this.sprite.visible = false;
     this.container.addChild(this.sprite);
+  }
+
+  /** The wash as drawn, rewritten in place on every rebuild. */
+  get mask(): FogWashMask {
+    return this.washMask;
   }
 
   /** Re-rasterize the visible band of `view`'s mask; `null` clears the wash (fog off). */
@@ -47,6 +77,7 @@ export class FogLayer {
     if (view === null) {
       if (this.key !== '') {
         this.sprite.visible = false;
+        this.washMask.source = null;
         this.key = '';
       }
       return;
@@ -86,10 +117,15 @@ export class FogLayer {
     texture.frame.height = bandH;
     texture.update();
     this.sprite.texture = texture;
-    this.sprite.position.set(
-      2 * TILE_HALF_W * band.minCol - TILE_HALF_W,
-      TILE_HALF_H * band.minRow - TILE_HALF_H / 2,
-    );
+    const mask = this.washMask;
+    mask.source = texture.source;
+    mask.originX = 2 * TILE_HALF_W * band.minCol - TILE_HALF_W;
+    mask.originY = TILE_HALF_H * band.minRow - TILE_HALF_H / 2;
+    mask.bandW = bandW;
+    mask.bandH = bandH;
+    mask.texW = this.texW;
+    mask.texH = this.texH;
+    this.sprite.position.set(mask.originX, mask.originY);
     this.sprite.width = bandW * 2 * TILE_HALF_W;
     this.sprite.height = bandH * TILE_HALF_H;
     this.sprite.visible = true;
@@ -122,6 +158,7 @@ export class FogLayer {
   }
 
   destroy(): void {
+    this.washMask.source = null;
     this.texture?.destroy(true);
     this.container.destroy({ children: true });
   }

@@ -1,6 +1,7 @@
 import { type Container, Geometry, GlProgram, Mesh, Shader, UniformGroup } from 'pixi.js';
 import type { PrecipitationTravel } from '../../data/weather/precipitation.js';
 import type { AtmosphereLook } from './atmosphere-look.js';
+import { WEATHER_REACH_GLSL, type WeatherReach } from './weather-reach.js';
 
 /**
  * The air over the world: a multiply quad (grade, drifting cloud shadows, storm vignette) under a
@@ -108,6 +109,7 @@ const VEIL_FRAGMENT = `#version 300 es
   uniform vec3 uFlash;
   // Where the flash is brightest (screen px) and its reach (px).
   uniform vec3 uFlashAt;
+  ${WEATHER_REACH_GLSL}
   ${NOISE}
   const float FLASH_FLOOR = ${FLASH_FLOOR};
   const vec2 MIST_CELL = vec2(${MIST_SCALE_PX * MIST_STRETCH_X}.0, ${MIST_SCALE_PX}.0);
@@ -115,10 +117,11 @@ const VEIL_FRAGMENT = `#version 300 es
   // Veil alpha posterization steps; the dither between them stays below what reads as a pattern.
   const float STEPS = 64.0;
   void main(void) {
-    float a = uHaze.a;
+    vec2 world = (vScreen - uCamera.xy) / uCamera.z;
+    // The veil keeps off the void and unexplored ground, which stay black.
+    float a = uHaze.a > 0.0 ? uHaze.a * weatherReach(world) : 0.0;
     // Flat haze (or none) skips the noise: the mist term only reshapes a veil that lies in banks.
     if (a > 0.0 && uMist.x > 0.0) {
-      vec2 world = (vScreen - uCamera.xy) / uCamera.z;
       vec2 p = world / MIST_CELL + uDrift.xy;
       float banks = fbm(p);
       float wisps = fbm(p * 2.0 + vec2(banks * 1.5, 0.0));
@@ -211,8 +214,12 @@ export class WeatherAtmosphere {
   readonly veil: Mesh<Geometry, Shader>;
   private readonly gradeUniforms: GradeUniforms;
   private readonly veilUniforms: VeilUniforms;
+  private readonly veilShader: Shader;
 
-  constructor(parent: Container) {
+  constructor(
+    parent: Container,
+    private readonly reach: WeatherReach,
+  ) {
     this.gradeUniforms = new UniformGroup({
       uScreen: { value: new Float32Array(2), type: 'vec2<f32>' },
       uCamera: { value: new Float32Array([0, 0, 1]), type: 'vec3<f32>' },
@@ -236,10 +243,11 @@ export class WeatherAtmosphere {
       shader: new Shader({ glProgram: gradeProgram, resources: { weatherGrade: this.gradeUniforms } }),
     });
     this.grade.blendMode = 'multiply';
-    this.veil = new Mesh({
-      geometry: screenQuad(),
-      shader: new Shader({ glProgram: veilProgram, resources: { weatherVeil: this.veilUniforms } }),
+    this.veilShader = new Shader({
+      glProgram: veilProgram,
+      resources: { weatherVeil: this.veilUniforms, weatherReach: reach.uniforms, uReachFog: reach.fogSource },
     });
+    this.veil = new Mesh({ geometry: screenQuad(), shader: this.veilShader });
     parent.addChild(this.grade, this.veil);
   }
 
@@ -279,6 +287,11 @@ export class WeatherAtmosphere {
     this.veilUniforms.update();
     this.veil.visible = look.hazeAlpha > 0 || flash[0] > 0 || flash[1] > 0 || flash[2] > 0;
     this.veil.scale.set(screenW, screenH);
+  }
+
+  /** Re-bind the fog texture after the reach replaced it. */
+  bindReach(): void {
+    this.veilShader.resources.uReachFog = this.reach.fogSource;
   }
 
   hide(): void {

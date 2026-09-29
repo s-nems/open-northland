@@ -5,6 +5,7 @@ import {
   WEATHER_NODES_PER_WORLD_Y,
 } from '../../data/weather/precipitation.js';
 import type { WeatherKind } from '../../data/weather/types.js';
+import { WEATHER_REACH_GLSL } from './weather-reach.js';
 
 /**
  * The airborne precipitation shaders: one instanced quad per particle, placed entirely on the GPU from
@@ -122,6 +123,7 @@ const VERTEX_HEAD = `#version 300 es
   uniform vec2 uIntensity;
   // Particles drawn, strongest intensity on screen, zoom size scale.
   uniform vec3 uDraw;
+  ${WEATHER_REACH_GLSL}
 
   const float TAU = 6.28318530718;
   const float MARGIN = ${glslFloat(PARTICLE_WRAP_MARGIN_PX)};
@@ -160,14 +162,16 @@ const VERTEX_HEAD = `#version 300 es
     return mod(aSeedA.xy * box + travel, box) - MARGIN;
   }
 
-  // 0..1 visibility of the particle at screen point 'p' for its rank among the drawn particles.
+  // 0..1 visibility of the particle at screen point 'p' for its rank among the drawn particles, kept
+  // off the void past the map and off unexplored ground.
   float densityGate(vec2 p) {
-    vec2 node = (p - uCamera.xy) / uCamera.z * NODES_PER_WORLD;
+    vec2 world = (p - uCamera.xy) / uCamera.z;
+    vec2 node = world * NODES_PER_WORLD;
     vec2 uv = node / uField.xy;
     float amount = dot(mix(textureLod(uFieldPrev, uv, 0.0).rgb, textureLod(uFieldCur, uv, 0.0).rgb, uField.z), uChannel);
     float intensity = amount > 0.0 ? min(1.0, pow(amount * uIntensity.x, uIntensity.y)) : 0.0;
     float rank = (aSeedA.w + 0.5) / uDraw.x;
-    return smoothstep(rank, rank + GATE_SOFT, intensity / max(uDraw.y, 1e-4));
+    return smoothstep(rank, rank + GATE_SOFT, intensity / max(uDraw.y, 1e-4)) * weatherReach(world);
   }
 
   void place(vec2 screen) {

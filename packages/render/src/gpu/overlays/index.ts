@@ -13,7 +13,7 @@ export { type ConstructionSign, ConstructionSignLayer } from './construction-sig
 export { DamageSmokeLayer } from './damage-smoke-layer.js';
 export { type BadgeAnchor, badgeAnchor, type DoorBadge } from './door-badge.js';
 export { CombatEffectsLayer } from './effects-layer.js';
-export { FogLayer } from './fog-layer.js';
+export { FogLayer, type FogWashMask } from './fog-layer.js';
 export { hitsGarrisonFlag } from './garrison-flag.js';
 export { type GeometryDebugCell, type GeometryDebugItem, GeometryDebugLayer } from './geometry-debug.js';
 export { type LifeHeart, LifeHeartLayer } from './heart-layer.js';

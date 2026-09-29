@@ -156,6 +156,7 @@ export class WorldRenderer {
     app.stage.addChild(this.worldLayer);
     // Screen-space like the chrome, but under its vignette and pause wash.
     app.stage.addChild(this.weatherSky.container);
+    this.weatherSky.watchFog(this.fog.washMask);
     this.chrome = new WorldChrome(this.textureCache, opts?.postFx === true, opts?.spriteSmoothing);
     this.chrome.attach(app.stage);
     app.stage.addChild(this.hud.container);
@@ -194,6 +195,7 @@ export class WorldRenderer {
       water: this.terrain.waterField(),
       elevation: this.elevation,
     });
+    this.weatherSky.setMapSize(terrain.width, terrain.height);
   }
 
   /** The map's weather field, after {@link setTerrain} and again after every change; null for none. */
@@ -354,8 +356,9 @@ export class WorldRenderer {
     const wind = windSway(this.weather);
     if (!sameWindSway(wind, this.wind)) this.wind = wind;
     this.weatherGround.update(this.weather, weatherView, gameSeconds);
-    this.weatherSky.update(this.weather, weatherView, gameSeconds);
+    // The fog first: the sky reads the band it just drew.
     const fogFrame = this.fog.update(snapshot, vp, this.elevation);
+    this.weatherSky.update(this.weather, weatherView, gameSeconds);
     this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch, tick + alpha, this.wind);
     const portrait = this.portrait.subjects();
     this.pool.reconcile({

@@ -37,6 +37,9 @@ const WET_SHADOW_LUMA = 0.25;
 const WET_HIGHLIGHT_LUMA = 0.7;
 /** Saturation gain of fully wet ground: wet surfaces read deeper in colour, never greyer. */
 const WET_SATURATION = 0.35;
+/** Extra gain while rain falls hard, which offsets the cool grade and grey veil of the rain's air so
+ *  soaked ground still reads more saturated than dry ground in clear weather. Tuned by eye. */
+const WET_RAIN_SATURATION = 0.25;
 /** Ground soaks unevenly: the share of wetness the driest patches keep off, and their size (world px). */
 const WET_PATCHINESS = 0.3;
 const WET_PATCH_SCALE_PX = 70;
@@ -98,6 +101,12 @@ const SNOW_FINE_SCALE_PX = 9;
 const SNOW_DRIFT_WEIGHT = 0.45;
 const SNOW_PATCH_WEIGHT = 0.35;
 const SNOW_FINE_WEIGHT = 0.2;
+/** Zoomed out, the pixel-scale snow detail (fine breakup, grain, grass tips) fades out between these
+ *  zooms, so drifts stay drifts instead of breaking into speckle; at default zoom it is all there. */
+const SNOW_DETAIL_FULL_ZOOM = 0.85;
+const SNOW_DETAIL_GONE_ZOOM = 0.45;
+/** Mean of the value noise, which a faded octave settles on. */
+const NOISE_MEAN = 0.5;
 /** Half-width of the snow edge in noise units. */
 const SNOW_EDGE = 0.07;
 /** Per-pixel grain breaking the edge into the ground's own pixel grid. */
@@ -115,6 +124,9 @@ const SNOW_SLOPE_PENALTY = 0.22;
 const SNOW_TIP_LUMA_LOW = 0.28;
 const SNOW_TIP_LUMA_HIGH = 0.5;
 const SNOW_TIP_PENALTY = 0.22;
+/** Zoomed out, grass takes this share of the tip penalty everywhere instead of per texel, so the snow
+ *  keeps about its cover without the per-pixel breakup. Approximation, by eye. */
+const SNOW_TIP_MEAN = 0.25;
 /** Bare rock sheds snow: the saturation band below which a texel counts as grey stone, and the noise
  *  stone takes off. */
 const SNOW_ROCK_SATURATION_LOW = 0.06;
@@ -237,11 +249,13 @@ const COVER_NOISE = `
     float push = ${f(TRANSITION_JITTER)} * (coverNoise(p / ${f(TRANSITION_SCALE_PX)} + 31.0) - 0.5);
     return clamp(cover + push * 4.0 * cover * (1.0 - cover), 0.0, 1.0);
   }
-  // The drift noise at a ground-plane px, before any grain or ground penalty.
-  float snowNoise(vec2 p) {
+  // The drift noise at a ground-plane px, before any grain or ground penalty; 'detail' 0..1 keeps the
+  // fine octave, which settles on its mean without it.
+  float snowNoise(vec2 p, float detail) {
+    float fine = detail > 0.0 ? coverNoise(p / ${f(SNOW_FINE_SCALE_PX)} + 97.0) : ${f(NOISE_MEAN)};
     return ${f(SNOW_DRIFT_WEIGHT)} * coverNoise(p / ${f(SNOW_DRIFT_SCALE_PX)})
       + ${f(SNOW_PATCH_WEIGHT)} * coverNoise(p / ${f(SNOW_PATCH_SCALE_PX)} + 53.0)
-      + ${f(SNOW_FINE_WEIGHT)} * coverNoise(p / ${f(SNOW_FINE_SCALE_PX)} + 97.0);
+      + ${f(SNOW_FINE_WEIGHT)} * mix(${f(NOISE_MEAN)}, fine, detail);
   }
   // The noise level a drift starts at under snow cover g: above any noise for none.
   float snowThreshold(float g) {
@@ -257,12 +271,15 @@ export const COVER_VERTEX_DECLARATIONS = `
   uniform vec4 uCoverMap; // xy scale, zw offset from the brightness-lane UV to the cover UV
   out vec2 vCoverUV;
   out vec2 vGroundPos;
+  flat out float vCoverZoom;
 `;
 
-/** Vertex body; needs `aBrightnessUV` and `aPosition`. */
+/** Vertex body; needs `aBrightnessUV`, `aPosition` and the transform matrices. */
 export const COVER_VERTEX_BODY = `
     vCoverUV = aBrightnessUV * uCoverMap.xy + uCoverMap.zw;
     vGroundPos = aPosition;
+    // Screen px per world px: the camera zoom and any view scale above it.
+    vCoverZoom = length((uWorldTransformMatrix * uTransformMatrix)[0].xy);
 `;
 
 export const COVER_FRAGMENT_DECLARATIONS = `
@@ -271,6 +288,7 @@ export const COVER_FRAGMENT_DECLARATIONS = `
   uniform vec2 uCoverClock; // x game seconds, y rain falling on screen 0..1
   in vec2 vCoverUV;
   in vec2 vGroundPos;
+  flat in float vCoverZoom;
   ${COVER_NOISE}
 
   // Rain rings on a puddle's open water around drawn ground px p: one candidate per grid cell and cycle.
@@ -307,7 +325,8 @@ export const COVER_FRAGMENT_DECLARATIONS = `
       float wet = cover.r * (1.0 - ${f(WET_PATCHINESS)} * coverNoise(p / ${f(WET_PATCH_SCALE_PX)} + 71.0));
       float highlight = smoothstep(${f(WET_SHADOW_LUMA)}, ${f(WET_HIGHLIGHT_LUMA)}, luma);
       float darken = mix(${f(WET_DARKEN)}, ${f(WET_HIGHLIGHT_DARKEN)}, highlight);
-      rgb = mix(vec3(grey), rgb, 1.0 + ${f(WET_SATURATION)} * wet) * (1.0 - darken * wet);
+      float wetSaturation = ${f(WET_SATURATION)} + ${f(WET_RAIN_SATURATION)} * cover.a * uCoverClock.y;
+      rgb = mix(vec3(grey), rgb, 1.0 + wetSaturation * wet) * (1.0 - darken * wet);
       float streak = smoothstep(${f(SHEEN_NOISE_LOW)}, ${f(SHEEN_NOISE_HIGH)},
         coverNoise(p / ${f(SHEEN_SCALE_PX)}));
       rgb += ${SHEEN_COLOUR} * (${f(SHEEN_GAIN)} * wet * streak * highlight * alpha);
@@ -342,9 +361,10 @@ export const COVER_FRAGMENT_DECLARATIONS = `
       float rock = (1.0 - smoothstep(${f(SNOW_ROCK_SATURATION_LOW)}, ${f(SNOW_ROCK_SATURATION_HIGH)}, saturation))
         * (1.0 - snowy);
       float tip = grass * smoothstep(${f(SNOW_TIP_LUMA_LOW)}, ${f(SNOW_TIP_LUMA_HIGH)}, luma);
-      float n = snowNoise(p) + (coverHash(ivec2(px)) - 0.5) * ${f(SNOW_GRAIN)}
+      float detail = smoothstep(${f(SNOW_DETAIL_GONE_ZOOM)}, ${f(SNOW_DETAIL_FULL_ZOOM)}, vCoverZoom);
+      float n = snowNoise(p, detail) + (coverHash(ivec2(px)) - 0.5) * ${f(SNOW_GRAIN)} * detail
         - ${f(SNOW_SLOPE_PENALTY)} * clamp(abs(lane - 1.0) * ${f(SNOW_SLOPE_FALLOFF)}, 0.0, 1.0)
-        - ${f(SNOW_TIP_PENALTY)} * tip - ${f(SNOW_ROCK_PENALTY)} * rock;
+        - ${f(SNOW_TIP_PENALTY)} * mix(grass * ${f(SNOW_TIP_MEAN)}, tip, detail) - ${f(SNOW_ROCK_PENALTY)} * rock;
       float threshold = snowThreshold(cover.g);
       float mask = snowMask(n, threshold) * (1.0 - ${f(SNOWY_KEEP)} * snowy);
       float depth = mix(${f(SNOW_THIN_OPACITY)}, mix(${f(SNOW_THIN_OPACITY)}, ${f(SNOW_DEEP_OPACITY)}, cover.g),
@@ -397,7 +417,7 @@ export const DECOR_COVER_VERTEX_BODY = `
       vec2 node = vec2(aAnchor.x / ${f(TILE_HALF_W)}, 2.0 * aAnchor.y / ${f(TILE_HALF_H)});
       vec2 p = coverPlane(floor(aAnchor) + 0.5);
       float g = coverJitter(textureLod(uCoverTex, node * uCoverNodeScale, 0.0).rgb, p).g;
-      if (g > 0.0) vSnow = mix(${f(DECOR_BARE_SHARE)}, 1.0, snowMask(snowNoise(p), snowThreshold(g))) * g;
+      if (g > 0.0) vSnow = mix(${f(DECOR_BARE_SHARE)}, 1.0, snowMask(snowNoise(p, 1.0), snowThreshold(g))) * g;
     }
 `;
 

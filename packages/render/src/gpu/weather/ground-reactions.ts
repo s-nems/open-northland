@@ -14,6 +14,7 @@ import {
   WISP_SLOTS,
 } from './ground-budget.js';
 import type { GroundMask } from './ground-mask.js';
+import { MAP_EDGE_GLSL, NODES_PER_CELL } from './weather-reach.js';
 
 /**
  * The ground reactions as one static mesh of quads whose vertex shader places, ages and gates every
@@ -60,6 +61,8 @@ const VERTEX = `#version 300 es
   uniform vec2 uFieldScale;
   uniform vec2 uGroundTexel;
   uniform float uMaxLift;
+  // Map size in half-cell nodes.
+  uniform vec2 uMapNodes;
   uniform sampler2D uFieldTex;
   uniform sampler2D uGroundTex;
   out vec2 vLocal;
@@ -80,6 +83,8 @@ const VERTEX = `#version 300 es
     vec2 cell = vec2(p.x / ${f(2 * TILE_HALF_W)} - 0.5 * odd, row);
     return textureLod(uGroundTex, (cell + 0.5) * uGroundTexel, 0.0).rg;
   }
+
+  ${MAP_EDGE_GLSL}
 
   void hide() {
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
@@ -133,6 +138,8 @@ const VERTEX = `#version 300 es
       keep = min(1.0, field.r / ${f(RAIN_SATURATING_AMOUNT)}) * uActivity.x;
       if ((kind == 1) != water) keep = 0.0;
     }
+    // No reactions over the void past the map; the fog wash above hides the unexplored ground.
+    keep *= mapEdge(vec2(drawn.x / ${f(TILE_HALF_W)}, 2.0 * y / ${f(TILE_HALF_H)}), uMapNodes);
     if (roll >= keep) { hide(); return; }
     vKind = kind;
     vAge = age;
@@ -251,6 +258,7 @@ type ReactionUniforms = UniformGroup & {
     readonly uFieldScale: Float32Array;
     readonly uGroundTexel: Float32Array;
     uMaxLift: number;
+    readonly uMapNodes: Float32Array;
   };
 };
 
@@ -300,6 +308,7 @@ export class GroundReactions {
       uFieldScale: { value: new Float32Array(2), type: 'vec2<f32>' },
       uGroundTexel: { value: new Float32Array(2), type: 'vec2<f32>' },
       uMaxLift: { value: 0, type: 'f32' },
+      uMapNodes: { value: new Float32Array(2), type: 'vec2<f32>' },
     }) as ReactionUniforms;
     this.fieldTex = blankTexture('rgba8unorm');
     this.groundTex = blankTexture('rg8unorm');
@@ -347,6 +356,8 @@ export class GroundReactions {
     u.uGroundTexel[0] = 1 / mask.texWidth;
     u.uGroundTexel[1] = 1 / Math.max(1, mask.height);
     u.uMaxLift = mask.maxLift;
+    u.uMapNodes[0] = mask.width * NODES_PER_CELL;
+    u.uMapNodes[1] = mask.height * NODES_PER_CELL;
     this.uniforms.update();
   }
 
