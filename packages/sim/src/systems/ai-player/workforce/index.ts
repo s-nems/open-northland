@@ -234,16 +234,16 @@ function rebuildCrew(
 
 /**
  * Every man a baseless seat may put on that site, spare first: beyond the pool it takes scouts, generic
- * gatherers, and men standing at a post, whose job binding and work flag `setJob` drops. Without those
- * groups a seat whose few survivors were all classified or employed mints no builder and never regains
+ * gatherers, flag fishers, and men standing at a post, whose job binding and work flag `setJob` drops.
+ * Without those groups a seat whose few survivors were all classified or employed mints no builder and never regains
  * a base.
  */
 function rebuildHands(world: World, ctx: SystemContext, player: number): Entity[] {
-  const { pool, genericCollectors, scouts } = classifyWorkforce(world, ctx, player, []);
+  const { pool, genericCollectors, fishers, scouts } = classifyWorkforce(world, ctx, player, []);
   const posted = ownedSettlers(world, player).filter(
     (e) => world.has(e, JobAssignment) && !atomicHoldsSettler(world, e) && isAllocatableMan(world, ctx, e),
   );
-  return [...pool, ...scouts, ...genericCollectors, ...posted];
+  return [...pool, ...scouts, ...genericCollectors, ...fishers, ...posted];
 }
 
 /** The scout hire and retire: one scout exists while either duty has work (`scout/index.ts`), an idle

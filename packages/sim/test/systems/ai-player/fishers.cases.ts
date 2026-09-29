@@ -16,6 +16,7 @@ import { claimFlagNode, flagGround } from '../../../src/systems/ai-player/workfo
 import { SpareForce } from '../../../src/systems/ai-player/workforce/pool.js';
 import { addFishSwarms } from '../../../src/systems/economy/fish.js';
 import { liveWorkFlag } from '../../../src/systems/economy/work-flag.js';
+import { razeBuilding } from '../../../src/systems/lifecycle/cleanup.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
 import {
@@ -277,5 +278,22 @@ describe('workforce module - the fishers', () => {
     expect(distance({ hx: move.x, hy: move.y }, shoreOf(sim, TRIP_SWARM))).toBeLessThanOrEqual(
       FISHER_FLAG_MAX_DISTANCE_NODES,
     );
+  });
+  it("crews a baseless seat's site out of its surviving fishers", () => {
+    const sim = fishingSeat(0, [NEAR_SWARM]);
+    spawnMen(sim, 2, FISHER);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: STOCK_TYPE,
+      ...STORE_SPOT,
+      tribe: VIKING,
+      owner: SEAT,
+      underConstruction: true,
+    });
+    sim.step();
+    razeBuilding(sim.world, ctxOf(sim), entityOfBuilding(sim, HQ_TYPE));
+
+    const hires = decide(sim).filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
+    expect(hires.length).toBeGreaterThan(0);
   });
 });
