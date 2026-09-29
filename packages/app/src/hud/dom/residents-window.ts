@@ -25,6 +25,7 @@ import type { ToolWindow } from '../tool-panel/window-shell.js';
 import type { ChoiceGroup } from './choice-window.js';
 import { GLYPH, RESIDENTS_TOKEN } from './icons.js';
 import { button, element, setAttribute, setHidden, setValue, write } from './parts/dom.js';
+import { quietTextField } from './parts/text-field.js';
 import { professionChoices } from './profession-choices.js';
 import { centralWindowPlacer, createHudWindow } from './window.js';
 
@@ -124,7 +125,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   if (query === null) throw new Error('residents: search field');
   query.placeholder = copy.searchPlaceholder;
   query.setAttribute('aria-label', copy.searchLabel);
-  query.autocomplete = 'off';
+  quietTextField(query);
   const selectField = (caption: string): HTMLSelectElement => {
     const field = element('label', 'on-res-field', `<span></span><select></select>`);
     const [text, select] = [field.querySelector('span'), field.querySelector('select')];

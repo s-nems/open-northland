@@ -2,6 +2,7 @@ import { navBeamRect } from '../nav-beam.js';
 import { SELECTION_PANEL_W, TOP_BAR_HEIGHT } from '../regions.js';
 import { GLYPH } from './icons.js';
 import { button, element, setAttribute, setClass, setHidden, setTip, write } from './parts/dom.js';
+import { quietTextField } from './parts/text-field.js';
 import { attachTipLayer, type TipChip } from './parts/tip-layer.js';
 import { type ClientRect, closePortraitHole, cutPortraitHole } from './portrait-hole.js';
 import { WINDOW_ORNAMENTS } from './symbols.js';
@@ -134,7 +135,7 @@ export function createSelectionPanel(
   if (renameText === null) throw new Error('selection: rename');
   const field = element('input', 'on-rename-field');
   field.type = 'text';
-  field.autocomplete = 'off';
+  quietTextField(field);
   field.hidden = true;
   title.append(plainName, renameButton, field);
   const meta = element('div', 'on-selection__meta');

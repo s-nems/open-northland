@@ -1,6 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { bcp47Tag, messages } from '../../i18n/index.js';
 import { GLYPH } from './icons.js';
+import { quietTextField } from './parts/text-field.js';
 import { createHudPlane } from './root.js';
 import { createHudWindow } from './window.js';
 
@@ -47,6 +48,7 @@ export function createChoiceWindow(opts: {
     compact: true,
   });
   window.element.classList.add('on-window--choices');
+  window.element.tabIndex = -1;
   const title = window.element.querySelector('h2');
   const tools = document.createElement('div');
   tools.className = 'on-choice-tools';
@@ -54,9 +56,10 @@ export function createChoiceWindow(opts: {
   context.className = 'on-choice-context';
   const field = document.createElement('label');
   field.className = 'on-res-field on-res-field--search on-choice-search';
-  field.innerHTML = `${GLYPH.search}<input type="search" autocomplete="off">`;
-  const search = field.querySelector('input');
-  if (search === null) throw new Error('choice search missing');
+  field.innerHTML = `${GLYPH.search}<input type="search">`;
+  const input = field.querySelector('input');
+  if (input === null) throw new Error('choice search missing');
+  const search = quietTextField(input);
   search.placeholder = copy.choiceSearch;
   search.setAttribute('aria-label', copy.choiceSearch);
   const list = document.createElement('div');
@@ -88,13 +91,24 @@ export function createChoiceWindow(opts: {
     );
   };
   let trigger: HTMLElement | null = null;
-  const focusSearch = (): void => {
-    search.focus({ preventScroll: true });
-    search.select();
+  // Focus rests on the rows, never on the search field unasked, so the browser offers no AutoFill;
+  // typed text still reaches the search from the dialog.
+  const focusFirstRow = (): void =>
+    (list.querySelector<HTMLButtonElement>('button') ?? window.element).focus({ preventScroll: true });
+  const typeIntoSearch = (event: KeyboardEvent): boolean => {
+    if (!searchable || event.target === search || event.ctrlKey || event.metaKey || event.altKey)
+      return false;
+    if (event.key === 'Backspace') search.value = search.value.slice(0, -1);
+    else if ([...event.key].length === 1 && event.key !== ' ') search.value += event.key;
+    else return false;
+    list.scrollTop = 0;
+    render();
+    return true;
   };
   const render = (): void => {
     const focusKey =
       document.activeElement instanceof HTMLElement ? document.activeElement.dataset.choice : undefined;
+    const resting = document.activeElement === window.element;
     const scroll = list.scrollTop;
     list.replaceChildren();
     let count = 0;
@@ -144,9 +158,10 @@ export function createChoiceWindow(opts: {
       (button) => button.dataset.choice === focusKey,
     );
     if (focusKey !== undefined)
-      (focused ?? (searchable ? search : list.querySelector<HTMLButtonElement>('button')))?.focus({
+      (focused ?? list.querySelector<HTMLButtonElement>('button') ?? window.element).focus({
         preventScroll: true,
       });
+    else if (resting) focusFirstRow();
     list.scrollTop = scroll;
     if (dialog.open) place();
   };
@@ -169,12 +184,15 @@ export function createChoiceWindow(opts: {
   });
   dialog.addEventListener('keydown', (event) => {
     event.stopPropagation();
+    if (typeIntoSearch(event)) {
+      event.preventDefault();
+      return;
+    }
     if (event.key !== 'Escape') return;
     event.preventDefault();
     if (search.value) {
       search.value = '';
       render();
-      focusSearch();
     } else dismiss();
   });
   dialog.addEventListener('click', (event) => {
@@ -212,8 +230,7 @@ export function createChoiceWindow(opts: {
         dialog.showModal();
       }
       place();
-      if (searchable) focusSearch();
-      else list.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+      focusFirstRow();
     },
     hide,
     scrollTop: () => list.scrollTop,

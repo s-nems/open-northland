@@ -1,4 +1,5 @@
 import { MAX_CHAT_LENGTH, type RoomView } from '@open-northland/net-protocol';
+import { quietTextField } from '../../../../hud/dom/parts/text-field.js';
 import { formatMessage, messages } from '../../../../i18n/index.js';
 import { memberLoadText } from '../../../../view/net/member-load.js';
 import { node } from '../../dom.js';
@@ -47,6 +48,7 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
   const form = node('form', 'network-room__chat-form');
   const input = node('input');
   input.type = 'text';
+  quietTextField(input);
   input.maxLength = MAX_CHAT_LENGTH;
   input.placeholder = copy.chatPlaceholder;
   input.setAttribute('aria-label', copy.chatPlaceholder);

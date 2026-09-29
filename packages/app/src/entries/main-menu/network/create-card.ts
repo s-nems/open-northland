@@ -1,5 +1,6 @@
 import { MAX_ROOM_NAME_LENGTH } from '@open-northland/net-protocol';
 import { errorText } from '../../../diag/error-text.js';
+import { quietTextField } from '../../../hud/dom/parts/text-field.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { SaveBytes } from '../../../view/runtime/save-load/codec.js';
 import { pickSaveFile } from '../../../view/runtime/save-load/file-access.js';
@@ -26,7 +27,7 @@ interface CreateCardOptions {
 export function createRoomCard(options: CreateCardOptions) {
   const copy = messages().network;
   const element = node('form', 'network-menu__create');
-  const name = node('input');
+  const name = quietTextField(node('input'));
   name.maxLength = MAX_ROOM_NAME_LENGTH;
   name.required = true;
   name.value = copy.defaultRoomName;

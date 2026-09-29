@@ -1,3 +1,4 @@
+import { quietTextField } from '../../hud/dom/parts/text-field.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { confirmDialog } from '../confirm-dialog.js';
 import { flowRunner } from '../runtime/save-load/flow-runner.js';
@@ -32,6 +33,7 @@ export function buildSavePanel(deps: SavePanelDeps): SavePanelView {
     'flex:1;padding:6px 8px;background:rgba(20,16,12,0.9);color:inherit;font:inherit;border:1px solid rgba(138,116,74,0.7);border-radius:4px',
   );
   nameInput.type = 'text';
+  quietTextField(nameInput);
   nameInput.maxLength = MAX_SAVE_NAME_LENGTH;
   nameLabel.append(nameInput);
 

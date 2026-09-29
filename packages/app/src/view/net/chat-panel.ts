@@ -1,4 +1,5 @@
 import { MAX_CHAT_LENGTH } from '@open-northland/net-protocol';
+import { quietTextField } from '../../hud/dom/parts/text-field.js';
 import { messages } from '../../i18n/index.js';
 import { el } from '../overlay.js';
 
@@ -71,6 +72,7 @@ export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
   const lines = el('div', 'display:flex;flex-direction:column;gap:2px');
   const input = el('input', INPUT_STYLE);
   input.type = 'text';
+  quietTextField(input);
   input.maxLength = MAX_CHAT_LENGTH;
   input.placeholder = copy.chatPlaceholder;
   input.setAttribute('aria-label', copy.chatPlaceholder);

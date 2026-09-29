@@ -1,4 +1,5 @@
 import { loadMapList } from '../../content/maps-index.js';
+import { quietTextField } from '../../hud/dom/parts/text-field.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../i18n/index.js';
 import { MAP_SCENES, SCENES } from '../../scenes/index.js';
 import { createMapDetailsCard, metaLine } from './map-card.js';
@@ -102,6 +103,7 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
   tutorialIntro.append(tutorialIntroTitle, tutorialIntroBody);
   const search = document.createElement('input');
   search.type = 'search';
+  quietTextField(search);
   search.className = 'main-menu__map-search';
   search.placeholder = select.searchPlaceholder;
   search.setAttribute('aria-label', select.searchPlaceholder);

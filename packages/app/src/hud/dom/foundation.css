@@ -2288,6 +2288,10 @@ body.on-drag-scroll-cursor-hidden * {
   max-width: calc(100% - 32px);
   max-height: calc(100% - 56px);
 }
+/* Holds focus only while no row matches, so typed text keeps filtering. */
+.on-hud .on-window--choices:focus {
+  outline: none;
+}
 .on-hud .on-window--choices .on-window__head {
   padding: 6px 10px;
 }

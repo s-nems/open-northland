@@ -1,3 +1,4 @@
+import { quietTextField } from '../../hud/dom/parts/text-field.js';
 import { el } from '../overlay.js';
 
 export const PANEL_WIDTH_PX = 300;
@@ -113,6 +114,7 @@ export function rowOf(entries: readonly LabelledButton[]): HTMLElement {
 export function filterInput(entries: readonly LabelledButton[], placeholder: string): HTMLElement {
   const input = el('input', FILTER_STYLE);
   input.type = 'search';
+  quietTextField(input);
   input.placeholder = placeholder;
   input.addEventListener('input', () => {
     const q = input.value.trim().toLowerCase();
@@ -128,6 +130,7 @@ export function numberField(label: string, value: number, onChange: (v: number) 
   wrap.append(el('span', 'opacity:0.8', label));
   const input = el('input', `width:64px;${FIELD_INPUT_STYLE}`);
   input.type = 'number';
+  quietTextField(input);
   input.min = '0';
   input.value = String(value);
   // A spawn press `preventDefault()`s the click and so suppresses blur; a `change` commit would never
