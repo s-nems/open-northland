@@ -35,8 +35,11 @@ interface BuildingBlockedCache extends CountedCells {
 const buildingBlockedCache = new WeakMap<World, BuildingBlockedCache>();
 
 /** Open the shortest passage through a building's own walk block to exterior ground.
- * Some door points are ringed by wall cells; clearing the point alone leaves the door unreachable. */
+ * Some door points are ringed by wall cells; clearing the point alone leaves the door unreachable. Open
+ * ground the walls enclose is no exit: the saracen fortress's door lane zig-zags through one-node holes
+ * that this lattice's steps cannot follow, so its nearest opening is a sealed pocket. */
 export function doorPassage(terrain: TerrainGraph, body: ReadonlySet<NodeId>, door: NodeId): NodeId[] {
+  const leadsOut = exteriorTest(terrain, body, door);
   const queue: NodeId[] = [door];
   const parent = new Map<NodeId, NodeId>();
   const depth = new Map<NodeId, number>([[door, 0]]);
@@ -49,6 +52,7 @@ export function doorPassage(terrain: TerrainGraph, body: ReadonlySet<NodeId>, do
     for (const next of terrain.neighbours(cell)) {
       if (!terrain.isWalkable(next)) continue;
       if (!body.has(next)) {
+        if (!leadsOut(next)) continue;
         if (exit === null || steps < exit.depth || (steps === exit.depth && next < exit.outside))
           exit = { via: cell, outside: next, depth: steps };
       } else if (!depth.has(next)) {
@@ -68,6 +72,55 @@ export function doorPassage(terrain: TerrainGraph, body: ReadonlySet<NodeId>, do
     cell = previous;
   }
   return passage;
+}
+
+/** Whether open ground walks out past the body's bounding box by the pathfinder's own steps, so an exit
+ *  into a hole the walls enclose is refused. Memoized per open node within one building's carve. */
+function exteriorTest(
+  terrain: TerrainGraph,
+  body: ReadonlySet<NodeId>,
+  door: NodeId,
+): (open: NodeId) => boolean {
+  let x0 = terrain.xOf(door);
+  let x1 = x0;
+  let y0 = terrain.yOf(door);
+  let y1 = y0;
+  for (const n of body) {
+    x0 = Math.min(x0, terrain.xOf(n));
+    x1 = Math.max(x1, terrain.xOf(n));
+    y0 = Math.min(y0, terrain.yOf(n));
+    y1 = Math.max(y1, terrain.yOf(n));
+  }
+  const outside = (n: NodeId): boolean => {
+    const x = terrain.xOf(n);
+    const y = terrain.yOf(n);
+    return x < x0 || x > x1 || y < y0 || y > y1;
+  };
+  const verdict = new Map<NodeId, boolean>();
+  return (open) => {
+    const known = verdict.get(open);
+    if (known !== undefined) return known;
+    const seen = new Set<NodeId>([open]);
+    const queue: NodeId[] = [open];
+    let out = false;
+    for (let at = 0; at < queue.length && !out; at++) {
+      const cell = queue[at];
+      if (cell === undefined) continue;
+      if (outside(cell) || verdict.get(cell) === true) out = true;
+      else {
+        for (const { node } of terrain.steps(cell, body)) {
+          if (!seen.has(node)) {
+            seen.add(node);
+            queue.push(node);
+          }
+        }
+      }
+    }
+    // A failed flood saw its whole pocket, so every node of it shares the verdict.
+    if (out) verdict.set(open, true);
+    else for (const n of seen) verdict.set(n, false);
+    return out;
+  };
 }
 
 interface BuildingCells {
