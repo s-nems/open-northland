@@ -35,10 +35,14 @@ const BUILDER = 7;
 const BUILD_HOUSE_ATOMIC = 39;
 export const BUILD_ROAD_ATOMIC = 41;
 export const BUILD_WALL_ATOMIC = 42;
-const BUILD_ROAD_CLIP = 'viking_builder_build_road';
+export const BUILD_ROAD_CLIP = 'viking_builder_build_road';
 const BUILD_WALL_CLIP = 'viking_builder_build_wall';
 /** The mod's build-road and build-wall clip length. */
 export const BUILD_CLIP_TICKS = 15;
+/** Ticks per authored clip tick the sim plays a one-strike site's clip at. */
+export const ONE_STRIKE_CLIP_PACE = 2;
+/** How long a road or wall strike runs. */
+export const BUILD_STRIKE_TICKS = BUILD_CLIP_TICKS * ONE_STRIKE_CLIP_PACE;
 const STORE = 1;
 const HOUSE = 2;
 const GRASS = 0;

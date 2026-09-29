@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Palisade, Position, UnderConstruction } from '../../src/components/index.js';
+import { contentIndex } from '../../src/core/content-index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { positionOfNode, type Simulation } from '../../src/index.js';
 import { siteClaimHolder } from '../../src/systems/economy/site-claim.js';
 import {
-  BUILD_CLIP_TICKS,
   BUILD_ROAD_ATOMIC,
+  BUILD_ROAD_CLIP,
+  BUILD_STRIKE_TICKS,
   BUILD_TICKS,
   BUILD_WALL_ATOMIC,
   builderAt,
   HUMAN,
+  ONE_STRIKE_CLIP_PACE,
   orderRoads,
   ROW,
   roadAt,
@@ -67,10 +70,10 @@ describe('a one-strike site', () => {
 
     const strike = strikeAt(sim, builder, site, () => !sim.world.isAlive(site));
     expect(strike.atomicId).toBe(BUILD_ROAD_ATOMIC);
-    expect(strike.duration).toBe(BUILD_CLIP_TICKS);
+    expect(strike.duration).toBe(BUILD_STRIKE_TICKS);
     // The strike runs every tick of its clip but the one it lands on, which lays the road.
-    expect(strike.runningTicks).toBe(BUILD_CLIP_TICKS - 1);
-    expect(strike.finishTick - strike.startTick).toBe(BUILD_CLIP_TICKS - 1);
+    expect(strike.runningTicks).toBe(BUILD_STRIKE_TICKS - 1);
+    expect(strike.finishTick - strike.startTick).toBe(BUILD_STRIKE_TICKS - 1);
     expect(roadAt(sim, SITE_HX, ROW)).toBe(true);
   });
 
@@ -96,8 +99,33 @@ describe('a one-strike site', () => {
 
     const strike = strikeAt(sim, builder, wall, () => !sim.world.has(wall, UnderConstruction));
     expect(strike.atomicId).toBe(BUILD_WALL_ATOMIC);
-    expect(strike.duration).toBe(BUILD_CLIP_TICKS);
-    expect(strike.runningTicks).toBe(BUILD_CLIP_TICKS - 1);
-    expect(strike.finishTick - strike.startTick).toBe(BUILD_CLIP_TICKS - 1);
+    expect(strike.duration).toBe(BUILD_STRIKE_TICKS);
+    expect(strike.runningTicks).toBe(BUILD_STRIKE_TICKS - 1);
+    expect(strike.finishTick - strike.startTick).toBe(BUILD_STRIKE_TICKS - 1);
+  });
+
+  it('keeps each paced clip event at the first tick of its stretched frame, once per strike', () => {
+    const FIRST_TICK = 0;
+    const NEED_FRAME = 6;
+    const REST = 1;
+    const DRAIN = -100;
+    const base = roadSim().content;
+    const content = {
+      ...base,
+      atomicAnimations: base.atomicAnimations.map((clip) =>
+        clip.name === BUILD_ROAD_CLIP
+          ? {
+              ...clip,
+              events: [
+                { at: FIRST_TICK, type: REST, value: DRAIN, extended: false },
+                { at: NEED_FRAME, type: REST, value: DRAIN, extended: false },
+              ],
+            }
+          : clip,
+      ),
+    };
+    const paced = contentIndex(content).atomicAnimationsByName.get(BUILD_ROAD_CLIP);
+    expect(paced?.length).toBe(BUILD_STRIKE_TICKS);
+    expect(paced?.events.map((e) => e.at)).toEqual([FIRST_TICK, (NEED_FRAME - 1) * ONE_STRIKE_CLIP_PACE + 1]);
   });
 });

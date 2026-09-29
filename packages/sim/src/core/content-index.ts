@@ -18,7 +18,7 @@ import {
   type WeaponType,
 } from '@open-northland/data';
 import type { GoodsLine } from '../components/economy/infrastructure.js';
-import { atomicBindingTables, harvestCapableJobs } from './content-index/atomics.js';
+import { atomicAnimationTable, atomicBindingTables, harvestCapableJobs } from './content-index/atomics.js';
 import { byKey, byOptionalKey, byPairKey, lastByPairKey, valueByKey } from './content-index/by-key.js';
 import { militaryGoodTypes } from './content-index/combat.js';
 import { constructionBills } from './content-index/construction.js';
@@ -89,7 +89,8 @@ export interface ContentIndex {
   readonly livestockWorkplaceTypes: ReadonlySet<number>;
   /** Species good → the breeder atomic that slaughters one of its adults. */
   readonly livestockSlayAtomicByGood: ReadonlyMap<number, number>;
-  /** Atomic animations by `name` (the `setatomic` join key). */
+  /** Atomic animations by `name` (the `setatomic` join key), one-strike site clips paced
+   *  ({@link atomicAnimationTable}). */
   readonly atomicAnimationsByName: ReadonlyMap<string, AtomicAnimation>;
   /** Per building type: the set of job types its `workers` slots name (empty for a type with no
    *  worker slots). */
@@ -199,6 +200,7 @@ function buildIndex(content: ContentSet): ContentIndex {
   const roles = jobRoleSets(jobs);
   const tribes = byKey(content.tribes, (t) => t.typeId);
   const livestock = livestockTables(content);
+  const atomicBindings = atomicBindingTables(content);
   return {
     buildings: byKey(content.buildings, (b) => b.typeId),
     goods: byKey(content.goods, (g) => g.typeId),
@@ -219,14 +221,14 @@ function buildIndex(content: ContentSet): ContentIndex {
     livestockTribeByGood: livestock.tribeByGood,
     livestockWorkplaceTypes: livestock.workplaceTypes,
     livestockSlayAtomicByGood: livestock.slayAtomicByGood,
-    atomicAnimationsByName: byKey(content.atomicAnimations, (a) => a.name),
+    atomicAnimationsByName: atomicAnimationTable(content, atomicBindings),
     workerJobsByBuilding: workerJobs,
     operatorJobsByBuilding: operatorJobSets(workerJobs, content),
     storedGoodsByBuilding: storedGoodSets(content),
     stockSlotCapacityByBuilding: stockSlotCapacityTables(content),
     recipeByProductByBuilding: recipeProductTables(content),
     mergedRecipeByBuilding: mergedRecipes(content),
-    atomicBindingsByTribe: atomicBindingTables(content),
+    atomicBindingsByTribe: atomicBindings,
     gatheringPipelinesByGood: byKey(content.gatheringPipeline, (p) => p.goodType),
     landscapeGfxByIndex: new Map(content.landscapeGfx.map((g) => [g.index, g])), // last-wins
     atomicsByJob: resolveJobAtomics(content.jobs),
