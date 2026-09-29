@@ -170,20 +170,21 @@ const UNCAPPED = Number.POSITIVE_INFINITY;
  * The land heuristic's per-length weight far from roads: common ground (grass, roughness 2), not a road's
  * 1. A deliberately inflated heuristic (weighted A*), a named approximation trading exactness for search
  * cost: scaled by the least weight, a long route on magiczny_las settled about 40k nodes. Unweighted
- * lattice distance is consistent (no step weighs under 1), so even without reopening settled nodes a
- * route costs at most this factor over the cheapest; measured there, 0.3 to 1.2% over on average. On
- * uniform grass it is exact.
+ * lattice distance is consistent (no step weighs under 1), so with this term alone a route costs at most
+ * this factor over the cheapest even without reopening settled nodes; measured there, 0.3 to 1.2% over on
+ * average. On uniform grass it is exact.
  */
 const LAND_HEURISTIC_WEIGHT = fx.fromInt(DEFAULT_NODE_ROUGHNESS);
 
 /**
- * The inflation of the road-aware lower bound `d + min(d, r)`, with `d` the lattice distance to the goal
- * and `r` to the nearest road: a route walks at least `r` over ground (grass, 2) before its first road
- * step (1), so it costs at least `d + r`, and `2d` without a road. Measured on magiczny_las with town
- * streets laid: uninflated, searches in and into a town settled 6 to 11 times what the grass weight
- * does; at 3/2, 1.2 to 1.4 times, routes cost 1.9 to 2.7% over the cheapest on average, and 93 to 98% of
- * the routes a road shortens by 2% take it (the grass weight alone: 61 to 90%). Approximation: native
- * resistance-1 ground and map-border nodes are not counted as roads.
+ * The inflation of the road-aware estimate `d + min(d, r)`, with `d` the lattice distance to the goal and
+ * `r` to the nearest road: ground (grass, 2) up to the step onto the first road (1) makes a route cost at
+ * least `d + r - 1`, and `2d` without a road. The inflated term is no scaled consistent heuristic, so the
+ * grass weight's bound does not cover it; its cost is measured. On magiczny_las with town streets laid:
+ * uninflated, searches in and into a town settled 6 to 11 times what the grass weight does; at 3/2, 1.2 to
+ * 1.4 times, routes cost 1.9 to 2.7% over the cheapest on average, and 93 to 98% of the routes a road
+ * shortens by 2% take it (the grass weight alone: 61 to 90%). Approximation: native resistance-1 ground
+ * and map-border nodes are not counted as roads.
  */
 const ROAD_HEURISTIC_INFLATION = fx.div(fx.fromInt(3), fx.fromInt(2));
 
@@ -281,7 +282,7 @@ class ResumableSearch {
         }
         // A relaxation only decreases the key, so restoring the heap invariant is a sift toward the root.
         // Settled nodes are never relaxed. Water's heuristic is consistent, so their g is optimal there;
-        // on land the inflated heuristic can settle a node early, a loss the weights' bounds cover.
+        // on land the inflated heuristic can settle a node early, a loss the two weights' notes quantify.
         const index = heapIdx[next] ?? SETTLED;
         const knownG = g[next] ?? 0;
         if (index === SETTLED || tentativeG >= knownG) continue;
