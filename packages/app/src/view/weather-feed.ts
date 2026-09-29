@@ -9,7 +9,7 @@ import {
   winterWeather,
 } from '@open-northland/render/data';
 import type { AmbientWeather } from './ambient-weather.js';
-import type { WeatherParam } from './params.js';
+import { PERCENT_FULL, type WeatherParam } from './params.js';
 
 /** Mirrors the sim's weather regions into the renderer's sector field. */
 export interface WeatherFeed {
@@ -26,7 +26,6 @@ const AMBIENT_LEVEL_STEP = 1 / 32;
 
 const regionKey = (r: WeatherRegionInput): string =>
   `${r.weather}:${r.min.hx},${r.min.hy}:${r.max.hx},${r.max.hy}`;
-const PERCENT_FULL = 100;
 
 /** The view-only `?weather=` override as whole-map regions: `clear` zeroes every kind. */
 function overrideRegions(param: WeatherParam, nodesX: number, nodesY: number): WeatherRegionInput[] {
@@ -43,7 +42,7 @@ function overrideRegions(param: WeatherParam, nodesX: number, nodesY: number): W
  * Keeps the sim's write order: a repeated kind and extent moves to the end, zero clears included, and
  * every write rebuilds the field. Writes are rare (map load, script results), so the rebuild is cheap.
  * An override lies over every write. The game's own weather fills the sectors the map leaves clear
- * and never plays under an override.
+ * and never plays under an override; a held `ambient` override plays it in every match mode.
  */
 export function createWeatherFeed(
   map: { readonly width: number; readonly height: number },
@@ -57,7 +56,7 @@ export function createWeatherFeed(
   const nodesY = map.height * 2;
   const held = override?.kind === 'ambient' && ambient !== null ? override : null;
   const over = override === null || held !== null ? [] : overrideRegions(override, nodesX, nodesY);
-  const own = ambient !== null && ambient.mode !== 'map' && (override === null || held !== null);
+  const own = held !== null || (ambient !== null && ambient.mode !== 'map' && override === null);
   const winter = ambient?.mode === 'winter';
   let now: AmbientWeatherNow =
     held === null ? { level: 0, cold: false } : { level: held.percent / PERCENT_FULL, cold: false };

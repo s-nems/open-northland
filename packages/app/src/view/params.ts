@@ -105,7 +105,7 @@ const WEATHER_PARAM_DEFAULT_PERCENT = 30;
 /** A bare `?weather=ambient` holds the strongest light episode; the scale ends at a full storm. */
 const WEATHER_PARAM_AMBIENT_PERCENT = 100;
 const WEATHER_PARAM_AMBIENT_MAX_PERCENT = 300;
-const PERCENT_FULL = 100;
+export const PERCENT_FULL = 100;
 
 /** `?weather=<rain|snow|sand|clear|ambient>[:<percent>]` overrides the map's weather in this view only, for
  *  captures and visual review; the sim's weather state is untouched. */

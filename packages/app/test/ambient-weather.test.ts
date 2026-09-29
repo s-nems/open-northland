@@ -1,7 +1,8 @@
+import type { WeatherMode } from '@open-northland/lockstep';
 import type { SceneTerrain, WeatherField } from '@open-northland/render';
 import { AMBIENT_LEVEL_AMOUNTS, WEATHER_KINDS, weatherAmountAt } from '@open-northland/render/data';
 import { describe, expect, it } from 'vitest';
-import { type AmbientWeatherMode, ambientWeatherFor } from '../src/view/ambient-weather.js';
+import { ambientWeatherFor } from '../src/view/ambient-weather.js';
 import { createWeatherFeed } from '../src/view/weather-feed.js';
 
 const PATTERNS = [
@@ -28,7 +29,7 @@ function terrain(west: string, east: string): SceneTerrain {
 }
 
 const kindAt = (map: SceneTerrain, sx: number): string | undefined => {
-  const ambient = ambientWeatherFor(map, PATTERNS, 1);
+  const ambient = ambientWeatherFor(map, PATTERNS, 1, 'variable');
   return WEATHER_KINDS[ambient?.sectors.kinds[sx] ?? -1];
 };
 const WEST = 0;
@@ -64,8 +65,14 @@ describe('ambient weather feed', () => {
   const size = { width: SIZE, height: SIZE };
   const DAY_SECONDS = 24 * 3600;
   const [lightRain] = AMBIENT_LEVEL_AMOUNTS.rain;
+  const EMPTY: WeatherField = {
+    sectorsX: 1,
+    sectorsY: 1,
+    amounts: new Float32Array(WEATHER_KINDS.length),
+    any: false,
+  };
   const played = (
-    mode: AmbientWeatherMode,
+    mode: WeatherMode,
   ): { fields: WeatherField[]; feed: ReturnType<typeof createWeatherFeed> } => {
     const fields: WeatherField[] = [];
     const feed = createWeatherFeed(
@@ -84,11 +91,64 @@ describe('ambient weather feed', () => {
       size,
       (next) => fields.push(next),
       { kind: 'ambient', percent: 50 },
-      ambientWeatherFor(map, PATTERNS, 1),
+      ambientWeatherFor(map, PATTERNS, 1, 'variable'),
     );
     const built = fields.at(-1);
     if (built === undefined) throw new Error('no field');
     expect(weatherAmountAt(built, 'rain', 20, 20)).toBeCloseTo(lightRain / 2);
+  });
+
+  it('holds the preview episode in the map mode too', () => {
+    const fields: WeatherField[] = [];
+    createWeatherFeed(
+      size,
+      (next) => fields.push(next),
+      { kind: 'ambient', percent: 100 },
+      ambientWeatherFor(map, PATTERNS, 1, 'map'),
+    );
+    expect(weatherAmountAt(fields.at(-1) ?? EMPTY, 'rain', 20, 20)).toBeCloseTo(lightRain);
+  });
+
+  it("opens a game loaded inside an episode at the episode's level", () => {
+    const { fields } = played('variable');
+    const wetAt = (() => {
+      const seen: WeatherField[] = [];
+      const feed = createWeatherFeed(
+        size,
+        (next) => seen.push(next),
+        null,
+        ambientWeatherFor(map, PATTERNS, 1, 'variable'),
+      );
+      for (let t = 0; t < DAY_SECONDS; t += 10) {
+        feed.frame(t);
+        if (seen.at(-1)?.any === true) return t + 5 * 60;
+      }
+      throw new Error('no episode');
+    })();
+    const loaded: WeatherField[] = [];
+    createWeatherFeed(
+      size,
+      (next) => loaded.push(next),
+      null,
+      ambientWeatherFor(map, PATTERNS, 1, 'variable'),
+    ).frame(wetAt);
+    expect(fields.length).toBeGreaterThan(0);
+    expect(weatherAmountAt(loaded.at(-1) ?? EMPTY, 'rain', 20, 20)).toBeGreaterThan(0);
+  });
+
+  it("falls again where a script clears the map's weather", () => {
+    const fields: WeatherField[] = [];
+    const feed = createWeatherFeed(
+      size,
+      (next) => fields.push(next),
+      { kind: 'ambient', percent: 100 },
+      ambientWeatherFor(map, PATTERNS, 1, 'variable'),
+    );
+    const whole = { min: { hx: 0, hy: 0 }, max: { hx: 39, hy: 39 } };
+    feed.write({ weather: 'snow', ...whole, density: 2000 });
+    expect(weatherAmountAt(fields.at(-1) ?? EMPTY, 'rain', 20, 20)).toBe(0);
+    feed.write({ weather: 'snow', ...whole, density: 0 });
+    expect(weatherAmountAt(fields.at(-1) ?? EMPTY, 'rain', 20, 20)).toBeCloseTo(lightRain);
   });
 
   it('plays nothing of its own in the map mode', () => {

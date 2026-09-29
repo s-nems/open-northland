@@ -1,3 +1,4 @@
+import type { WeatherMode } from '@open-northland/lockstep';
 import type { SceneTerrain } from '@open-northland/render';
 import {
   AMBIENT_NO_WEATHER,
@@ -7,17 +8,13 @@ import {
   type WeatherKind,
 } from '@open-northland/render/data';
 
-/**
- * The game's own weather for a match: which kind falls where, read off the ground. An OpenNorthland
- * addition; where a map writes weather itself, by rectangle or by script, the map's weather stands.
- */
-/** The match's weather setting: the map's own only, the map's plus ours, or a winter game. */
-export type AmbientWeatherMode = 'map' | 'variable' | 'winter';
+// The game's own weather for a match: which kind falls where, read off the ground. An OpenNorthland
+// addition; where a map writes weather itself, by rectangle or by script, the map's weather stands.
 
 export interface AmbientWeather {
   /** The match seed: every new game draws another schedule. */
   readonly seed: number;
-  readonly mode: AmbientWeatherMode;
+  readonly mode: WeatherMode;
   readonly sectors: AmbientSectors;
 }
 
@@ -37,6 +34,7 @@ const DESERT_MAP_LAND_SHARE = 0.3;
 
 type Ground = 'water' | WeatherKind;
 
+/** Approximation: every land that is not snow, ice or desert is rained on, rock and swamp included. */
 function groundOf(groups: readonly string[]): Ground {
   if (groups.includes(WATER_GROUP)) return 'water';
   if (SNOW_GROUPS.some((g) => groups.includes(g))) return 'snow';
@@ -53,7 +51,7 @@ export function ambientWeatherFor(
   terrain: SceneTerrain,
   patterns: readonly GroundPatternRow[],
   seed: number,
-  mode: AmbientWeatherMode = 'variable',
+  mode: WeatherMode,
 ): AmbientWeather | null {
   const ground = terrain.ground;
   if (ground === undefined) return null;

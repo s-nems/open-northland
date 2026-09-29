@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AMBIENT_EPISODE_PEAK_SHARE,
+  AMBIENT_FIRST_DELAY_SECONDS,
+  AMBIENT_HEAVY_EPISODE_CHANCE,
   AMBIENT_HEAVY_LEVEL,
   AMBIENT_LEVEL_AMOUNTS,
   AMBIENT_LIGHT_LEVEL,
   AMBIENT_NO_WEATHER,
+  AMBIENT_STORM_EPISODE_CHANCE,
   AMBIENT_STORM_LEVEL,
   ambientAmount,
   buildAmbientField,
@@ -52,9 +56,9 @@ describe('ambientAmount', () => {
 
 describe('variableWeather', () => {
   it('stays clear through the opening of every game', () => {
-    const OPENING_SECONDS = 25 * 60;
     for (let seed = 0; seed < 200; seed++) {
-      for (let t = 0; t < OPENING_SECONDS; t += 30) expect(variableWeather(seed, t).level).toBe(0);
+      for (let t = 0; t < AMBIENT_FIRST_DELAY_SECONDS.min; t += 30)
+        expect(variableWeather(seed, t).level).toBe(0);
     }
   });
 
@@ -71,6 +75,32 @@ describe('variableWeather', () => {
     expect(wet / SEEDS).toBeLessThan(0.1);
     expect(heavy / SEEDS).toBeGreaterThan(0);
     expect(heavy / SEEDS).toBeLessThan(wet / SEEDS / 3);
+  });
+
+  it('peaks each episode inside its grade band, in the shares the chances name', () => {
+    const peaks: number[] = [];
+    for (let seed = 1; seed <= 4 * SEEDS; seed++) {
+      let peak = 0;
+      for (let t = 0; t < SESSION_SECONDS; t += 4 * STEP_SECONDS) {
+        const { level } = variableWeather(seed, t);
+        if (level > peak) peak = level;
+        else if (level === 0 && peak > 0) {
+          peaks.push(peak);
+          peak = 0;
+        }
+      }
+    }
+    const SHARE_TOLERANCE = 0.05;
+    const PEAK_TOLERANCE = 0.01;
+    const share = (floor: number): number =>
+      peaks.filter((p) => p > floor && p <= floor + 1).length / peaks.length;
+    expect(share(AMBIENT_HEAVY_LEVEL)).toBeGreaterThan(0);
+    expect(Math.abs(share(AMBIENT_HEAVY_LEVEL) - AMBIENT_STORM_EPISODE_CHANCE)).toBeLessThan(SHARE_TOLERANCE);
+    expect(Math.abs(share(AMBIENT_LIGHT_LEVEL) - AMBIENT_HEAVY_EPISODE_CHANCE)).toBeLessThan(SHARE_TOLERANCE);
+    for (const peak of peaks) {
+      const into = peak - Math.floor(peak - PEAK_TOLERANCE);
+      expect(into).toBeGreaterThan(AMBIENT_EPISODE_PEAK_SHARE.min - PEAK_TOLERANCE);
+    }
   });
 
   it('draws another schedule for another seed and repeats for the same one', () => {
@@ -163,6 +193,15 @@ describe('buildAmbientField', () => {
     expect(weatherAmountAt(field, 'snow', 25, 5)).toBeCloseTo(TRACE_DENSITY / WEATHER_DENSITY_FULL);
     const clear = buildAmbientField(sectors, { level: 0, cold: false }, false, authored);
     expect(clear.any).toBe(true);
+  });
+
+  it("keeps a map's weather whole when its grid is another", () => {
+    const authored = buildWeatherField(
+      [{ weather: 'rain', min: { hx: 0, hy: 0 }, max: { hx: 9, hy: 9 }, density: 3000 }],
+      10,
+      10,
+    );
+    expect(buildAmbientField(sectors, light, false, authored)).toBe(authored);
   });
 
   it('snows everywhere in winter and keeps the ground white under a clear sky', () => {

@@ -3,12 +3,10 @@ import type { WeatherField } from './field.js';
 import { smoothstep } from './precipitation.js';
 import { WEATHER_KINDS, type WeatherKind } from './types.js';
 
-/**
- * The game's own weather, laid where a map authors none. An OpenNorthland addition (the original shows
- * weather only where a map asks for it); every constant is a tuned approximation. Both schedules are
- * pure functions of the match seed and game seconds, so a pause freezes them, and a save, a replay
- * and every seat of a shared game see the same weather.
- */
+// The game's own weather, laid where a map authors none. An OpenNorthland addition (the original
+// shows weather only where a map asks for it); every constant is a tuned approximation. Both
+// schedules are pure functions of the match seed and game seconds, so a pause freezes them, and a
+// save, a replay and every seat of a shared game see the same weather.
 
 const MINUTE = 60;
 interface Range {
@@ -39,7 +37,7 @@ export function ambientAmount(kind: WeatherKind, level: number): number {
 }
 
 /** Game seconds before the first episode may start, tuned for play at triple speed. */
-const FIRST_DELAY_SECONDS: Range = { min: 25 * MINUTE, max: 120 * MINUTE };
+export const AMBIENT_FIRST_DELAY_SECONDS: Range = { min: 25 * MINUTE, max: 120 * MINUTE };
 /** Clear game seconds between two episodes. */
 const GAP_SECONDS: Range = { min: 60 * MINUTE, max: 180 * MINUTE };
 const EPISODE_SECONDS: Range = { min: 6 * MINUTE, max: 14 * MINUTE };
@@ -48,10 +46,10 @@ const EPISODE_RAMP_SECONDS = 90;
 /** Share of episodes that stay clear, so the rhythm cannot be learnt. */
 const CLEAR_EPISODE_CHANCE = 0.3;
 /** Of the episodes that fall, the share that turn heavy and the share that turn into a storm. */
-const HEAVY_EPISODE_CHANCE = 0.2;
-const STORM_EPISODE_CHANCE = 0.08;
+export const AMBIENT_HEAVY_EPISODE_CHANCE = 0.2;
+export const AMBIENT_STORM_EPISODE_CHANCE = 0.08;
 /** An episode peaks this far into its grade's level band. */
-const EPISODE_PEAK_SHARE: Range = { min: 0.45, max: 1 };
+export const AMBIENT_EPISODE_PEAK_SHARE: Range = { min: 0.45, max: 1 };
 /** Share of episodes that turn cold: snow falls where rain would. */
 const COLD_EPISODE_CHANCE = 0.12;
 
@@ -89,22 +87,23 @@ export function variableWeather(seed: number, gameSeconds: number): AmbientWeath
     frac(seed ^ SALT_EPISODES, episode * DRAWS_PER_EPISODE + k);
   let start = 0;
   for (let episode = 0; episode < MAX_EPISODES; episode++) {
-    start += within(episode === 0 ? FIRST_DELAY_SECONDS : GAP_SECONDS, draw(episode, DRAW_GAP));
+    start += within(episode === 0 ? AMBIENT_FIRST_DELAY_SECONDS : GAP_SECONDS, draw(episode, DRAW_GAP));
     if (gameSeconds < start) return CLEAR;
     const end = start + within(EPISODE_SECONDS, draw(episode, DRAW_LENGTH));
     if (gameSeconds < end) {
       if (draw(episode, DRAW_CLEAR) < CLEAR_EPISODE_CHANCE) return CLEAR;
       const grade = draw(episode, DRAW_GRADE);
-      const band =
-        grade < STORM_EPISODE_CHANCE
+      // A grade's band starts at the level below it: a storm peaks between heavy and storm.
+      const bandFloor =
+        grade < AMBIENT_STORM_EPISODE_CHANCE
           ? AMBIENT_HEAVY_LEVEL
-          : grade < STORM_EPISODE_CHANCE + HEAVY_EPISODE_CHANCE
+          : grade < AMBIENT_STORM_EPISODE_CHANCE + AMBIENT_HEAVY_EPISODE_CHANCE
             ? AMBIENT_LIGHT_LEVEL
             : 0;
       const fade =
         smoothstep(start, start + EPISODE_RAMP_SECONDS, gameSeconds) *
         (1 - smoothstep(end - EPISODE_RAMP_SECONDS, end, gameSeconds));
-      const peak = band + within(EPISODE_PEAK_SHARE, draw(episode, DRAW_PEAK));
+      const peak = bandFloor + within(AMBIENT_EPISODE_PEAK_SHARE, draw(episode, DRAW_PEAK));
       return { level: fade * peak, cold: draw(episode, DRAW_COLD) < COLD_EPISODE_CHANCE };
     }
     start = end;
@@ -159,7 +158,8 @@ const SNOW = WEATHER_KINDS.indexOf('snow');
 /**
  * The field of the game's own weather: each sector carries its kind's amount at `now.level`, snow
  * for rain when cold. `winter` snows on every sector and keeps the ground white. Where `authored`
- * carries more than a trace of its own in a sector, that sector stays as authored.
+ * carries more than a trace of its own in a sector, that sector stays as authored. An authored
+ * field on another grid stands alone: a map's weather is never dropped.
  */
 export function buildAmbientField(
   sectors: AmbientSectors,
@@ -167,15 +167,15 @@ export function buildAmbientField(
   winter = false,
   authored: WeatherField | null = null,
 ): WeatherField {
+  if (authored !== null && (authored.sectorsX !== sectors.sectorsX || authored.sectorsY !== sectors.sectorsY))
+    return authored;
   const kindCount = WEATHER_KINDS.length;
   const amounts = new Float32Array(sectors.sectorsX * sectors.sectorsY * kindCount);
-  const sameGrid =
-    authored !== null && authored.sectorsX === sectors.sectorsX && authored.sectorsY === sectors.sectorsY;
   let any = false;
   for (let i = 0; i < sectors.kinds.length; i++) {
     const base = i * kindCount;
     let kept = false;
-    if (sameGrid && authored !== null) {
+    if (authored !== null) {
       for (let k = 0; k < kindCount; k++) {
         const amount = authored.amounts[base + k] ?? 0;
         amounts[base + k] = amount;
