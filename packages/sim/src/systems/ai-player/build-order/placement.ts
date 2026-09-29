@@ -7,8 +7,9 @@ import { withinNodeRadius } from '../../../nav/node-circle.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../nav/terrain/index.js';
 import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
-import { ANCHOR_ONLY, buildingFootprintOf } from '../../footprint/geometry.js';
+import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../../footprint/geometry.js';
 import { shipYardProbe, VEHICLE_SITE_PLACEMENT_RINGS } from '../../footprint/placement/vehicle-site.js';
+import { roadSitesByNode } from '../../roads/site-index.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { resourcesAtNode } from '../../spatial/resources.js';
 import { seatBaseOf } from '../base.js';
@@ -461,6 +462,8 @@ export function spotAcceptor(
     const good = goodTypeByContentId(ctx.content, id);
     if (good !== undefined) deposits.add(good.typeId);
   }
+  const body = buildingFlagBody(ctx.content, buildingTypeId, tribe);
+  const roadSites = roadSitesByNode(world, terrain);
   return {
     around(underFire, centre, fan) {
       const fire = underFire.around(centre.hx, centre.hy, fan, span);
@@ -468,10 +471,33 @@ export function spotAcceptor(
         if (!terrain.inBounds(x, y)) return false;
         const node = terrain.nodeAt(x, y);
         if (!terrain.isBuildable(node) || occupied.has(node) || fire.reaches(x, y, span)) return false;
-        return probe.canPlace(x, y) && !coversLiveDeposit(world, deposits, zone, x, y);
+        return (
+          probe.canPlace(x, y) &&
+          !coversLiveDeposit(world, deposits, zone, x, y) &&
+          !coversRoad(terrain, roadSites, body, x, y)
+        );
       };
     },
   };
+}
+
+/** Whether the body `cells` anchored at `(x, y)` covers a road or a road site. A seat building never does
+ *  (authored): a laid road would break under its walls and a site under them is withdrawn. */
+function coversRoad(
+  terrain: TerrainGraph,
+  roadSites: ReadonlyMap<NodeId, Entity>,
+  cells: readonly { dx: number; dy: number }[],
+  x: number,
+  y: number,
+): boolean {
+  for (const c of cells) {
+    const cx = x + footprintCellDx(y, c);
+    const cy = y + c.dy;
+    if (!terrain.inBounds(cx, cy)) continue;
+    const node = terrain.nodeAt(cx, cy);
+    if (terrain.isRoad(node) || roadSites.has(node)) return true;
+  }
+  return false;
 }
 
 /** Whether the zone `cells` anchored at `(x, y)` covers the node of a `deposits` resource with goods left. */

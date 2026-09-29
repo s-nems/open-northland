@@ -11,11 +11,13 @@ import { aiCommand, type PlayerCommand } from '../../../src/core/commands/index.
 import type { Entity } from '../../../src/ecs/world.js';
 import { hexNeighboursOf, nodeOfPosition, Simulation } from '../../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
+import { spotAcceptor } from '../../../src/systems/ai-player/build-order/placement.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import { ROADS_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
 import {
   BACKLOG_ROAD_CREW,
   DEFAULT_BUILD_ORDER,
+  enemyFire,
   MAX_PENDING_ROAD_SITES,
   ROAD_BACKLOG_SITES,
   ROAD_CREW,
@@ -293,6 +295,25 @@ describe('road build module (roadBuild)', () => {
     expect(detour.length).toBeLessThan(first.length);
     expect(sitesOf(sim)).toBe(detour.length);
     expect(paved(sim, { x: HOME_X, y: HOME_Y }, HQ_DOOR)).toBe(true);
+  });
+
+  it('never picks a building spot over a road or a road site', () => {
+    const sim = roadSim(1, 0);
+    const terrain = terrainOf(sim);
+    const accept = () =>
+      spotAcceptor(sim.world, ctxOf(sim, sim.tick), terrain, SEAT, HOME_TYPE, VIKING).around(
+        enemyFire([]),
+        { hx: MIDWAY.x, hy: MIDWAY.y },
+        0,
+      );
+    const road = { x: MIDWAY.x, y: MIDWAY.y };
+    const site = { x: MIDWAY.x + SITE_SPACING, y: MIDWAY.y };
+    expect(accept()(road.x, road.y)).toBe(true);
+    expect(accept()(site.x, site.y)).toBe(true);
+    layRoad(sim.world, terrain, [terrain.nodeAt(road.x, road.y)]);
+    apply(sim, [{ kind: 'placeRoadSite', x: site.x, y: site.y, tribe: VIKING, owner: SEAT }]);
+    expect(accept()(road.x, road.y)).toBe(false);
+    expect(accept()(site.x, site.y)).toBe(false);
   });
 
   it(`keeps at most ${MAX_PENDING_ROAD_SITES} road sites pending`, () => {
