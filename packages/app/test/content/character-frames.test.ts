@@ -6,9 +6,15 @@ import {
   type SpriteFrameRef,
 } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import { ATTACK_ATOMIC } from '../../src/catalog/atomics.js';
+import {
+  ATTACK_ATOMIC,
+  BUILD_HOUSE_ATOMIC,
+  BUILD_ROAD_ATOMIC,
+  BUILD_WALL_ATOMIC,
+} from '../../src/catalog/atomics.js';
 import {
   JOB_ARCHER_LONG,
+  JOB_BUILDER,
   JOB_HERO_UNARMED,
   JOB_HEROINE_BOW,
   JOB_SOLDIER_UNARMED,
@@ -196,6 +202,21 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
       }
     }
     expect(unarmedFidgets).toEqual([]);
+  });
+
+  it('swings the hammer per facing across every build atomic, a road site and a wall segment included', () => {
+    for (const [tribe, table] of tables) {
+      const builder = table?.byJob[JOB_BUILDER] ?? table?.default;
+      const house = builder?.binding.byAtomic?.[BUILD_HOUSE_ATOMIC];
+      for (const atomic of [BUILD_HOUSE_ATOMIC, BUILD_ROAD_ATOMIC, BUILD_WALL_ATOMIC]) {
+        const swing = builder?.binding.byAtomic?.[atomic];
+        if (swing === undefined || typeof swing === 'number' || !('frameLists' in swing)) {
+          throw new Error(`tribe ${tribe} builder binds no hammer frame lists for atomic ${atomic}`);
+        }
+        expect(swing.spansAtomic, `tribe ${tribe} atomic ${atomic}`).toBe(true);
+        expect(swing, `tribe ${tribe} atomic ${atomic}`).toEqual(house);
+      }
+    }
   });
 
   it('draws a viking carrying stone under the stooped head the source names for it', () => {

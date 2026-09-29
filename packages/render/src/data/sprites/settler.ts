@@ -182,6 +182,20 @@ function stretchedFrame(ref: SpriteFrameRef, facing: number, progress: number): 
   return ref.start + dir * ref.stride + at(cycle);
 }
 
+/** An action clip's frame `clock` ticks into its atomic: clocked by its cadence, or stretched over a
+ *  `duration`-tick atomic when it spans it. */
+function atomicFrame(
+  ref: SpriteFrameRef,
+  facing: number,
+  clock: number,
+  duration: number | undefined,
+): number {
+  const spans = typeof ref === 'object' && 'frameLists' in ref && ref.spansAtomic === true;
+  return spans && duration !== undefined && duration > 0
+    ? stretchedFrame(ref, facing, clock / duration)
+    : frameOf(ref, facing, clock);
+}
+
 export function movingFrameRef(binding: SettlerStateBinding, item: DrawItem): SpriteFrameRef {
   const carry = item.carrying ? binding.carrying : undefined;
   const loaded = item.carryGood === undefined ? undefined : carry?.byGood?.[item.carryGood];
@@ -230,7 +244,7 @@ export function resolveSettlerBobId(
     const byAtomic = binding.byAtomic;
     if (byAtomic !== undefined && item.atomicId !== undefined) {
       const specific = byAtomic[item.atomicId];
-      if (specific !== undefined) return frameOf(specific, facing, clock);
+      if (specific !== undefined) return atomicFrame(specific, facing, clock, item.atomicDuration);
     }
     // With no generic `acting` bound the atomic stands still, rather than borrowing the woodcut swing
     // at a wrong speed.

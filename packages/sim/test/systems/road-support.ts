@@ -34,10 +34,11 @@ const IDLE = 0;
 const BUILDER = 7;
 const BUILD_HOUSE_ATOMIC = 39;
 export const BUILD_ROAD_ATOMIC = 41;
-const BUILD_WALL_ATOMIC = 42;
+export const BUILD_WALL_ATOMIC = 42;
 const BUILD_ROAD_CLIP = 'viking_builder_build_road';
-/** The mod's build-road clip length. */
-const BUILD_ROAD_CLIP_TICKS = 15;
+const BUILD_WALL_CLIP = 'viking_builder_build_wall';
+/** The mod's build-road and build-wall clip length. */
+export const BUILD_CLIP_TICKS = 15;
 const STORE = 1;
 const HOUSE = 2;
 const GRASS = 0;
@@ -98,7 +99,10 @@ function roadContent() {
       {
         typeId: VIKING,
         id: 'viking',
-        atomicBindings: [{ jobType: BUILDER, atomicId: BUILD_ROAD_ATOMIC, animation: BUILD_ROAD_CLIP }],
+        atomicBindings: [
+          { jobType: BUILDER, atomicId: BUILD_ROAD_ATOMIC, animation: BUILD_ROAD_CLIP },
+          { jobType: BUILDER, atomicId: BUILD_WALL_ATOMIC, animation: BUILD_WALL_CLIP },
+        ],
       },
     ],
     vehicles: [
@@ -112,7 +116,10 @@ function roadContent() {
         hitpoints: HANDCART_HITPOINTS,
       },
     ],
-    atomicAnimations: [{ id: BUILD_ROAD_CLIP, name: BUILD_ROAD_CLIP, length: BUILD_ROAD_CLIP_TICKS }],
+    atomicAnimations: [
+      { id: BUILD_ROAD_CLIP, name: BUILD_ROAD_CLIP, length: BUILD_CLIP_TICKS },
+      { id: BUILD_WALL_CLIP, name: BUILD_WALL_CLIP, length: BUILD_CLIP_TICKS },
+    ],
     buildings: [
       {
         typeId: STORE,

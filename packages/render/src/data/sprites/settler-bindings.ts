@@ -47,6 +47,9 @@ export interface FrameListAnim {
   /** Wrap past the last entry instead of returning to the first, for a list driven by the endless free
    *  tick clock (an idle wait cycle), which would otherwise freeze after one play at world start. */
   readonly loop?: boolean;
+  /** Play the list once across the running atomic, however long the content makes it, instead of at
+   *  {@link ticksPerFrame}: a one-shot swing whose atomic ends mid-list never lands its blow. */
+  readonly spansAtomic?: boolean;
 }
 
 export type SpriteFrameRef = number | DirectionalAnim | FrameListAnim;

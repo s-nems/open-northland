@@ -25,10 +25,6 @@ export const STONECRUSH_SEQ = 'human_man_stonecrusher_work_stonecrushing';
 // The `constructionworker` swing. Its 42-frame strip is 6 direction blocks, not a clean ×8, so only the
 // `[gfxanimatomic]` action-39 frame lists (13 entries/dir, impact holds baked in) lay it out.
 export const HAMMER_SEQ = 'human_man_constructionworker_Work_Hammer';
-/** Sim ticks per hammer frame. Observed-pace approximation: the 13-entry swing reads frantically fast at
- *  1 frame/tick. The construct atomic's duration scales with this, so the swing still plays once per
- *  atomic. */
-export const HAMMER_TICKS_PER_FRAME = 2;
 // The farmer's three field clips, the render side of `setatomic 18 29/34/35` (reap, sow, water). None is a
 // clean ×8 strip cut (66 / 120 / 96 frames; the `[gfxanimatomic]` job-18 lists cut 24/23/29 per dir), so
 // only their extracted frame lists lay them out.

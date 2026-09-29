@@ -14,6 +14,11 @@ export function readAtomicElapsed(components: Readonly<Record<string, unknown>>)
   return readNumFieldOrNull(components, 'AtomicClock', 'elapsed');
 }
 
+/** The running atomic's length in ticks (`CurrentAtomic.duration`), or `null` when not mid-atomic. */
+export function readAtomicDuration(components: Readonly<Record<string, unknown>>): number | null {
+  return readNumFieldOrNull(components, 'CurrentAtomic', 'duration');
+}
+
 /**
  * The entity a settler's current atomic acts on (`CurrentAtomic.targetEntity`), or `null` when it runs
  * no atomic or its atomic has no entity target. The id rather than the target's tile, because the

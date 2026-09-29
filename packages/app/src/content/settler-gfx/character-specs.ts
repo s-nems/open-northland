@@ -1,6 +1,7 @@
 import {
   BUILD_GUIDE_ATOMIC,
   BUILD_HOUSE_ATOMIC,
+  BUILD_ROAD_ATOMIC,
   BUILD_WALL_ATOMIC,
   CLAY_HARVEST_ATOMIC,
   CULTIVATE_ATOMIC,
@@ -63,7 +64,6 @@ import {
   CHOP_SEQ,
   EAT_ATOMIC,
   HAMMER_SEQ,
-  HAMMER_TICKS_PER_FRAME,
   PICKUP_SEQ,
   PRAY_ATOMIC,
   REAP_SEQ,
@@ -106,7 +106,9 @@ export interface CharacterSpec {
    * action left unnamed still binds through the tribe's own `[gfxanimatomic]` rows for the look's job
    * chain. `phaseStart` tunes only the strip fallback, `ticksPerFrame` applies to that and to the authored
    * frame lists, and `loop` repeats a gesture whose sim action intentionally outlasts one authored
-   * playthrough.
+   * playthrough. `spansAtomic` plays the frame lists once across the running atomic instead, and
+   * `framesFrom` names the action whose frame lists lay out the sequence where the tribe authors none
+   * under this one.
    */
   readonly atomics?: Readonly<
     Record<
@@ -117,6 +119,8 @@ export interface CharacterSpec {
         readonly phaseStart?: number;
         readonly ticksPerFrame?: number;
         readonly loop?: true;
+        readonly spansAtomic?: true;
+        readonly framesFrom?: number;
       }
     >
   >;
@@ -142,6 +146,13 @@ export interface CharacterSpec {
 const HANDCART_STAND_ACTION = 2;
 const OXCART_STAND_ACTION = 3;
 
+/**
+ * The builder's one hammer swing, played whole across each build or repair atomic whatever length the
+ * content gives it, so a one-strike road or wall site shows its blow land. Every hammer action lays the
+ * swing out with the build-house frame lists, the only ones every tribe authors for it.
+ */
+const HAMMER_SWING = { seq: HAMMER_SEQ, spansAtomic: true, framesFrom: BUILD_HOUSE_ATOMIC } as const;
+
 /** The generic man body's action sequences, shared by every civilian trade it draws. */
 const CIVILIAN_ATOMICS = {
   [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START },
@@ -154,8 +165,9 @@ const CIVILIAN_ATOMICS = {
   [HERB_HARVEST_ATOMIC]: { seq: REAP_SEQ },
   [PLANT_ATOMIC]: { seq: SOW_SEQ },
   [CULTIVATE_ATOMIC]: { seq: WATER_SEQ },
-  [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
-  [BUILD_WALL_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
+  [BUILD_HOUSE_ATOMIC]: HAMMER_SWING,
+  [BUILD_ROAD_ATOMIC]: HAMMER_SWING,
+  [BUILD_WALL_ATOMIC]: HAMMER_SWING,
   [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
   [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
   [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
@@ -213,7 +225,7 @@ export const CHARACTER_SPECS = {
     carryPrefix: 'human_man_generic_walk_',
     attack: 'human_man_Civilian_Fight_punch',
     atomics: {
-      [BUILD_GUIDE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
+      [BUILD_GUIDE_ATOMIC]: HAMMER_SWING,
       [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },

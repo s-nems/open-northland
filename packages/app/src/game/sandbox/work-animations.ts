@@ -1,15 +1,17 @@
-import { HAMMER_TICKS_PER_FRAME } from '../../content/settler-gfx/index.js';
-
-// The extracted `viking_builder_build_house` `length 15`, scaled by the render clip's half cadence
-// because the authored 1 frame/tick pace reads frantically fast (named approximation). The whole swing
-// plays once per construct atomic, and labor advances per completed swing.
-export const BUILD_HOUSE_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
+/** The extracted hammer clips are `length 15`; the sandbox runs its swings twice as long because the authored
+ *  1 frame/tick pace reads frantically fast (named approximation). The render plays the whole swing across
+ *  each construct atomic, and labor advances per completed swing. */
+const HAMMER_CLIP_LENGTH = 15;
+const SANDBOX_HAMMER_SLOWDOWN = 2;
+const SANDBOX_HAMMER_SWING_LENGTH = HAMMER_CLIP_LENGTH * SANDBOX_HAMMER_SLOWDOWN;
+// `viking_builder_build_house`, `_build_road` and `_build_wall`, and `viking_scout_build_guide`.
+export const BUILD_HOUSE_SWING_LENGTH = SANDBOX_HAMMER_SWING_LENGTH;
 export const BUILD_HOUSE_ANIMATION = 'viking_builder_build_house';
-// The extracted `viking_builder_build_wall` `length 15`, at the same cadence.
-export const BUILD_WALL_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
+export const BUILD_ROAD_SWING_LENGTH = SANDBOX_HAMMER_SWING_LENGTH;
+export const BUILD_ROAD_ANIMATION = 'viking_builder_build_road';
+export const BUILD_WALL_SWING_LENGTH = SANDBOX_HAMMER_SWING_LENGTH;
 export const BUILD_WALL_ANIMATION = 'viking_builder_build_wall';
-// The extracted `viking_scout_build_guide` `length 15`, at the builder swing's cadence.
-export const BUILD_GUIDE_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
+export const BUILD_GUIDE_SWING_LENGTH = SANDBOX_HAMMER_SWING_LENGTH;
 export const BUILD_GUIDE_ANIMATION = 'viking_scout_build_guide';
 // Extracted from `DataCnmd/atomicanimations12/atomicanimations.ini`; the names are the original's own
 // `setatomic 18 29/34/35` bindings.

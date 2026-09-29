@@ -27,7 +27,6 @@ export {
   programFrameLists,
 } from './seq-anim.js';
 export {
-  HAMMER_TICKS_PER_FRAME,
   HARVEST_TICKS,
   IDLE_ACTIONS,
   MUSHROOM_PLUCK_FRAMES,

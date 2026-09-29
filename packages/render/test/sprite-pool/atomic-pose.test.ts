@@ -20,6 +20,12 @@ describe('atomic completion pose', () => {
     expect(idle).toEqual({ kind: 'settler', ref: 1, x: 20, y: 30, depth: 0, state: 'idle', facing: 0 });
   });
 
+  it('keeps the atomic length on the completion pose, so a swing spanning it ends on its blow', () => {
+    const track = fresh();
+    atomicPose({ ...swing, atomicDuration: 15 }, 14, track);
+    expect(atomicPose(idle, 15, track).atomicDuration).toBe(15);
+  });
+
   it('keeps the same completion frame through redraws but returns to idle after one sim tick', () => {
     const track = fresh();
     atomicPose(swing, 14, track);

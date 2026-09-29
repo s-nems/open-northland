@@ -52,6 +52,10 @@ export const ATTACK_ATOMIC = 81;
  */
 export const BUILD_HOUSE_ATOMIC = 39;
 
+/** The build-road swing (`tribetypes.ini setatomic 7 41 "viking_builder_build_road"`), the same hammer clip
+ *  aimed at a road site. */
+export const BUILD_ROAD_ATOMIC = 41;
+
 /** The build-wall swing (`tribetypes.ini setatomic 7 42 "viking_builder_build_wall"`), the same hammer clip
  *  aimed at a wall segment. */
 export const BUILD_WALL_ATOMIC = 42;

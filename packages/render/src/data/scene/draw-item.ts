@@ -127,6 +127,9 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    *  binding advances one frame per `ticksPerFrame` of these, so every action animates at the same
    *  cadence. */
   readonly elapsed?: number;
+  /** For an `acting` sprite: its current atomic's length in ticks (`CurrentAtomic.duration`), which a
+   *  clip that spans its atomic is stretched over. */
+  readonly atomicDuration?: number;
   /** For a settler: hauling a good (`Carrying` present). Orthogonal to {@link state}, since a settler
    *  can carry while `moving` or `acting`; the loaded gait replaces the empty-handed one (the
    *  original's `..._walk_wood` instead of `..._walk`). For a vehicle: its hold is not empty. */

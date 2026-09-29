@@ -318,6 +318,30 @@ describe('resolveSpriteBobId - FrameListAnim (explicit per-direction attack layo
     ).toBe(2000 + 0);
   });
 
+  it('plays a list that spans its atomic once across the atomic, whatever its length', () => {
+    const BUILD = 42;
+    const HAMMER: FrameListAnim = { start: 5000, frameLists: [[0, 1, 2, 3, 4, 5]], spansAtomic: true };
+    const b: SpriteBindings = {
+      settler: { idle: STAND, byAtomic: { [BUILD]: HAMMER } },
+      building: 0,
+      resource: 0,
+    };
+    const played = (duration: number): number[] =>
+      Array.from({ length: duration }, (_, tick) =>
+        resolveSpriteBobId(
+          {
+            ...settlerItem('acting', { facing: 0, atomicId: BUILD, elapsed: tick + 1 }),
+            atomicDuration: duration,
+          },
+          b,
+          0,
+        ),
+      ).map((frame) => (frame ?? 0) - HAMMER.start);
+    // A short atomic still reaches the list's last entry, the blow, on its last tick; a long one holds.
+    expect(played(3)).toEqual([0, 2, 4]);
+    expect(played(12)).toEqual([0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
+  });
+
   it('runs on the atomic elapsed clock, not the free tick (a swing is duration-independent)', () => {
     expect(
       resolveSpriteBobId(settlerItem('acting', { facing: 0, atomicId: ATTACK, elapsed: 2 }), bindings, 12345),

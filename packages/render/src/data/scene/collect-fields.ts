@@ -11,6 +11,7 @@ import { SIGNPOST_BOARD_FRAMES, signpostBoards } from './signpost-boards.js';
 import {
   assignStaticFields,
   copyStaticFields,
+  readAtomicDuration,
   readAtomicElapsed,
   readBehaviourGlow,
   readBerryBushGfxIndex,
@@ -44,6 +45,8 @@ export function assignSettlerFields(
     // The clock only rides with the atomic: a stale `CurrentAtomic` must not leave an orphan elapsed.
     const elapsed = readAtomicElapsed(components);
     if (elapsed !== null) item.elapsed = elapsed;
+    const duration = readAtomicDuration(components);
+    if (duration !== null) item.atomicDuration = duration;
   }
   if (readEngaged(components)) item.engaged = true;
   if ('AnimalRunning' in components) item.running = true;

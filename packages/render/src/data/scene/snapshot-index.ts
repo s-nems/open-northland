@@ -32,6 +32,9 @@ const ATTACK_ATOMIC_ID = 81;
 /** The builder hammer action (`setatomic 7 39`). */
 const BUILD_HOUSE_ATOMIC_ID = 39;
 
+/** The builder's road action (`setatomic 7 41`), the same hammer clip aimed at a road site. */
+const BUILD_ROAD_ATOMIC_ID = 41;
+
 /** The builder's wall action (`setatomic 7 42`), the same hammer clip aimed at a wall segment. */
 const BUILD_WALL_ATOMIC_ID = 42;
 
@@ -73,6 +76,7 @@ const FISHING_ATOMIC_IDS = [36, 37, 38] as const;
  */
 export const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
   BUILD_HOUSE_ATOMIC_ID,
+  BUILD_ROAD_ATOMIC_ID,
   BUILD_WALL_ATOMIC_ID,
   ...UTILITY_DRAW_ATOMIC_IDS,
   ATTACK_ATOMIC_ID,

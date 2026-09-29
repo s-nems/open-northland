@@ -171,8 +171,9 @@ export function characterBinding(
     const transcribed =
       action === undefined ? [] : typeof action.seq === 'string' ? [action.seq] : action.seq;
     const authored = programsByAction?.get(atomicId);
+    const borrowed = action?.framesFrom === undefined ? undefined : programsByAction?.get(action.framesFrom);
     const candidates: { readonly seq: string; readonly program: GfxAtomicProgram | undefined }[] = [
-      ...transcribed.map((seq) => ({ seq, program: authored?.get(seq) })),
+      ...transcribed.map((seq) => ({ seq, program: authored?.get(seq) ?? borrowed?.get(seq) })),
       ...(ownAtomics.get(atomicId) ?? []).filter((clip) => !transcribed.includes(clip.seq)),
     ];
     const playable = candidates.find((clip) => {
@@ -190,6 +191,7 @@ export function characterBinding(
         frameLists: lists,
         ...(clip.program?.mode === GFX_ANIM_MODE_LOOP || action?.loop === true ? { loop: true } : {}),
         ...(action?.ticksPerFrame !== undefined ? { ticksPerFrame: action.ticksPerFrame } : {}),
+        ...(action?.spansAtomic === true ? { spansAtomic: true } : {}),
       };
       continue;
     }
