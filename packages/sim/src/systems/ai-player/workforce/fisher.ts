@@ -83,8 +83,8 @@ export function fishingPlan(
 
 /**
  * The first phase keeps every fisher's flag on fished water: a flag whose water ran dry moves to the
- * seat's nearest stand, and its holder is handed back as a builder when no stand is left; a man mid-action
- * is left alone. It then hires one fisher, the top-up phase toward {@link FISHER_TARGET}. A hire is a flag
+ * seat's nearest stand with a free bank node, and its holder is handed back as a builder when no stand
+ * is left; a man mid-action is left alone. It then hires one fisher, the top-up phase toward {@link FISHER_TARGET}. A hire is a flag
  * fisher rather than a store's employee: he drops each catch at the flag beside his water for the
  * carriers, where an employee walks every fish to the store himself.
  */
@@ -130,8 +130,7 @@ function keepFlagsOnWater(
     if (at !== null && fishInReach(world, terrain, terrain.nodeAtClamped(at.hx, at.hy))) continue;
     // Not mid-action, walking included: a walk carries no CurrentAtomic.
     if (world.has(fisher, CurrentAtomic)) continue;
-    const stand = plan.stands[0];
-    const spot = stand === undefined ? null : fisherFlagSpot(plan, stand, taken);
+    const spot = firstFlagSpot(plan, taken);
     if (spot !== null) {
       commands.push({ kind: 'setWorkFlag', entity: fisher, x: spot.hx, y: spot.hy });
       claimFlagNode(taken, spot);
@@ -140,6 +139,15 @@ function keepFlagsOnWater(
       plan.fishers.splice(plan.fishers.indexOf(fisher), 1);
     }
   }
+}
+
+/** The flag spot of the nearest stand whose bank has a legal node, or null. */
+function firstFlagSpot(plan: FishingPlan, taken: TakenFlagNodes): HalfCellNode | null {
+  for (const stand of plan.stands) {
+    const spot = fisherFlagSpot(plan, stand, taken);
+    if (spot !== null) return spot;
+  }
+  return null;
 }
 
 /** The legal flag node within {@link FISHER_FLAG_MAX_DISTANCE_NODES} of the stand's shore nearest the

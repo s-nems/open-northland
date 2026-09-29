@@ -6,12 +6,32 @@ import type { TerrainMap } from '../../../src/index.js';
 import { nodeOfPosition, positionOfNode, Simulation } from '../../../src/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import { BUILDER_CAP } from '../../../src/systems/ai-player/index.js';
-import { FISHER_FLAG_MAX_DISTANCE_NODES } from '../../../src/systems/ai-player/workforce/fisher.js';
+import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
+import {
+  allocateFishers,
+  FISHER_FLAG_MAX_DISTANCE_NODES,
+  fishingPlan,
+} from '../../../src/systems/ai-player/workforce/fisher.js';
+import { claimFlagNode, flagGround } from '../../../src/systems/ai-player/workforce/flag-spots.js';
+import { SpareForce } from '../../../src/systems/ai-player/workforce/pool.js';
 import { addFishSwarms } from '../../../src/systems/economy/fish.js';
 import { liveWorkFlag } from '../../../src/systems/economy/work-flag.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
-import { BUILDER, collectModule, ctxOf, HQ_TYPE, HQ_X, HQ_Y, placeHq, SEAT, spawnMen } from './support.js';
+import {
+  BUILDER,
+  collectModule,
+  ctxOf,
+  entityOfBuilding,
+  HQ_TYPE,
+  HQ_X,
+  HQ_Y,
+  placeHq,
+  SEAT,
+  STOCK_TYPE,
+  spawnMen,
+  VIKING,
+} from './support.js';
 
 /** The fishers: flag-bound beside fished water within a fishing trip of a store's door. */
 
@@ -28,6 +48,11 @@ const REMOTE_SWARM = { hx: HQ_X + WALK_RANGE_NODES + 10, hy: HQ_Y };
 /** The cell column of a river between the headquarters and {@link REMOTE_SWARM}, in the 64 x 32 cell map
  *  that matches the fishing seat's node lattice. */
 const RIVER_CELL_COLUMN = 36;
+/** A store east of the headquarters, inside its signpost reach, beside {@link STORE_SWARM}. */
+const STORE_SPOT = { x: HQ_X + 30, y: HQ_Y };
+/** A swarm a few nodes off {@link STORE_SPOT}, nearer it than {@link TRIP_SWARM} and farther from the
+ *  headquarters than {@link TRIP_SWARM}. */
+const STORE_SWARM = { hx: HQ_X + 34, hy: HQ_Y };
 /** Decisions the catch test runs: long enough for a walk to the shore and several casts. */
 const FISHING_DECISIONS = 120;
 
@@ -212,5 +237,45 @@ describe('workforce module - the fishers', () => {
       { kind: 'setJob', entity: fisher, jobType: BUILDER },
     ]);
     expect(sim.world.get(fisher, Settler).jobType).toBe(FISHER);
+  });
+  it('moves a dry flag to the next stand whose bank still has a free node, before retiring the fisher', () => {
+    const sim = fishingSeat(4, [NEAR_SWARM, TRIP_SWARM, STORE_SWARM]);
+    const fisher = hireFisher(sim);
+    // The store rises after his hire, so he fishes the headquarters' water.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: STOCK_TYPE,
+      ...STORE_SPOT,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    drySwarms(sim, [NEAR_SWARM]);
+
+    const ctx = { ...ctxOf(sim), content: fishingContent() };
+    const terrain = sim.terrain;
+    const baseNode = anchorNodeOf(sim.world, entityOfBuilding(sim, HQ_TYPE));
+    if (terrain === undefined || baseNode === null) throw new Error('setup: mapped HQ missing');
+    const plan = fishingPlan(sim.world, ctx, SEAT, flagGround(sim.world, ctx, terrain, SEAT, baseNode), [
+      fisher,
+    ]);
+    // The store beside its own water is the nearest stand; another decision phase has taken its bank.
+    const store = shoreOf(sim, STORE_SWARM);
+    expect(plan?.stands.map((stand) => terrain.coordsOf(stand.shore))).toEqual([
+      { x: store.hx, y: store.hy },
+      { x: shoreOf(sim, TRIP_SWARM).hx, y: shoreOf(sim, TRIP_SWARM).hy },
+    ]);
+    const taken = new Set<string>();
+    const reach = FISHER_FLAG_MAX_DISTANCE_NODES;
+    for (let dx = -reach; dx <= reach; dx++)
+      for (let dy = -reach; dy <= reach; dy++) claimFlagNode(taken, { hx: store.hx + dx, hy: store.hy + dy });
+
+    const moved = allocateFishers(sim.world, ctx, plan, new SpareForce([]), BUILDER, taken, 'first');
+    expect(moved).toHaveLength(1);
+    const [move] = moved;
+    if (move?.kind !== 'setWorkFlag' || move.entity !== fisher) throw new Error('expected the flag to move');
+    expect(distance({ hx: move.x, hy: move.y }, shoreOf(sim, TRIP_SWARM))).toBeLessThanOrEqual(
+      FISHER_FLAG_MAX_DISTANCE_NODES,
+    );
   });
 });
