@@ -22,7 +22,7 @@ const FRANK = 2;
 const BOBS = 'data/engine2d/bin/bobs';
 
 function row(tribe: number, job: number, body: string, over: Partial<JobGraphicsRow> = {}): JobGraphicsRow {
-  return { tribe, job, body: `${BOBS}/${body}.bmd`, heads: [], ...over };
+  return { tribe, job, body: `${BOBS}/${body}.bmd`, heads: [], randomPalettes: [], ...over };
 }
 
 const ir: ContentIr = {

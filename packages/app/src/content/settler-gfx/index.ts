@@ -33,4 +33,11 @@ export {
   MUSHROOM_PLUCK_FRAMES,
   MUSHROOM_PLUCKS_PER_PICK,
 } from './sequences.js';
-export { isAnimalBody, lookFrom, lookStem, type TribeLook, tribeLooks } from './tribe-looks.js';
+export {
+  DEFAULT_PALETTE,
+  isAnimalBody,
+  lookFrom,
+  lookStem,
+  type TribeLook,
+  tribeLooks,
+} from './tribe-looks.js';

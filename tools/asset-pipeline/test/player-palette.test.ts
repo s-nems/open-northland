@@ -1,74 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import {
-  composePlayerPalette,
-  PLAYER_COLOR_BANDS,
-  PLAYER_COLORS,
-  PLAYER_RAMP_START,
-  synthesizePlayerSource,
-} from '../src/decoders/player-palette.js';
+import { hueRotateRamp, PLAYER_COLORS, synthesizePlayerSource } from '../src/decoders/player-palette.js';
 import { solidPalette as solid } from './fixtures/palette.js';
 
 /**
- * Player-palette maths tests. No copyrighted fixtures: synthetic 768-byte RGB palettes with distinct,
- * easy-to-assert values. Covers the band predicate, band composition (only the band is swapped), the
- * hue-rotation synthesiser (hue changes, greys stay neutral, non-band untouched).
+ * Player-colour maths over synthetic palettes: the hue-rotation synthesiser (hue changes, greys stay
+ * neutral, entries outside the ramp untouched) and the slot table.
  */
 
-/** A 256-colour palette where index `i` → `(i, i, i)` (a grey ramp - trivially distinct per index). */
-const greyRamp = (): Uint8Array => {
-  const p = new Uint8Array(768);
-  for (let i = 0; i < 256; i++) p.fill(i, i * 3, i * 3 + 3);
-  return p;
-};
+/** Colour range 1 of a `playerNN.pcx`, the `Player NN` ramp. */
+const PLAYER_RAMP_START = 16;
 
-describe('composePlayerPalette', () => {
-  it('writes the source ramp (idx 16..31) into every clothing patch; base elsewhere', () => {
-    // The men's clothing patches (5 + 10) that receive the player ramp - NOT the source-ramp indices 16..31.
-    // Patch 15 (240–255) is excluded on purpose: it holds carried-good colours (the "blue wood" bug); the
-    // `player_NN` recipe only remaps patches 10 + 5 (see PLAYER_COLOR_BANDS doc / source basis).
-    expect(PLAYER_COLOR_BANDS).toEqual([
-      [80, 95],
-      [160, 175],
-    ]);
-    const base = solid(10, 20, 30);
-    // A source whose index i has colour (i, 0, 0), so we can check the ramp maps 16..31 → 80.., 160.., 240..
-    const source = new Uint8Array(768);
-    for (let i = 0; i < 256; i++) source[i * 3] = i;
-    const out = composePlayerPalette(base, source);
-    expect(out.length).toBe(768);
-    for (const [lo] of PLAYER_COLOR_BANDS) {
-      for (let k = 0; k < 16; k++) {
-        const o = (lo + k) * 3;
-        // band[lo+k] = source[16+k] = (16+k, 0, 0)
-        expect([out[o], out[o + 1], out[o + 2]]).toEqual([PLAYER_RAMP_START + k, 0, 0]);
-      }
-    }
-    // A non-band index keeps the base colour.
-    expect([out[100 * 3], out[100 * 3 + 1], out[100 * 3 + 2]]).toEqual([10, 20, 30]);
-  });
-
-  it('does not mutate its inputs', () => {
-    const base = greyRamp();
-    const source = solid(1, 2, 3);
-    const baseCopy = base.slice();
-    composePlayerPalette(base, source);
-    expect(base).toEqual(baseCopy);
-  });
-
-  it('throws on a wrong-sized palette', () => {
-    expect(() => composePlayerPalette(new Uint8Array(767), solid(0, 0, 0))).toThrow(/768 bytes/);
-  });
-
-  it('does not alias the base when it is a Node Buffer (Buffer.slice shares memory)', () => {
-    // A decoded .pcx palette IS a Buffer; a naive `base.slice()` would return a shared view, so composing
-    // twice would corrupt the base and both results would collapse to the last ramp. Guard against that.
-    const base = Buffer.alloc(768, 7); // every byte 7
-    const before = Uint8Array.from(base);
-    const blue = composePlayerPalette(base, solid(0, 0, 200));
-    const red = composePlayerPalette(base, solid(200, 0, 0));
-    expect(Uint8Array.from(base)).toEqual(before); // base untouched
-    expect([blue[80 * 3], blue[80 * 3 + 1], blue[80 * 3 + 2]]).toEqual([0, 0, 200]);
-    expect([red[80 * 3], red[80 * 3 + 1], red[80 * 3 + 2]]).toEqual([200, 0, 0]);
+describe('hueRotateRamp', () => {
+  it('rotates every entry and leaves its input alone', () => {
+    const ramp = new Uint8Array([255, 0, 0, 128, 128, 128]);
+    expect([...hueRotateRamp(ramp, 240)]).toEqual([0, 0, 255, 128, 128, 128]);
+    expect([...ramp]).toEqual([255, 0, 0, 128, 128, 128]);
   });
 });
 
@@ -86,11 +32,10 @@ describe('synthesizePlayerSource', () => {
     }
   });
 
-  it('keeps greys neutral (hue is meaningless at zero saturation)', () => {
-    const ref = solid(128, 128, 128);
-    const out = synthesizePlayerSource(ref, 90);
-    const o = PLAYER_RAMP_START * 3;
-    expect([out[o], out[o + 1], out[o + 2]]).toEqual([128, 128, 128]);
+  it('does not alias a Node Buffer reference (Buffer.slice shares memory)', () => {
+    const ref = Buffer.from(solid(255, 0, 0));
+    synthesizePlayerSource(ref, 240);
+    expect(Uint8Array.from(ref)).toEqual(solid(255, 0, 0));
   });
 });
 

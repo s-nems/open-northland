@@ -18,6 +18,7 @@ import { applyBuildingGraphicsOverlays } from './building-overlays.js';
 import { fillBuildingRecipes, pairVehicleGoods } from './building-recipes.js';
 import { loadCifTable, loadIniTable } from './cif-tables.js';
 import { buildGatheringPipeline } from './gathering-pipeline.js';
+import { loadHumanPalettes } from './human-palettes.js';
 import { correctJobExperience } from './job-experience.js';
 import { loadJobGraphics } from './job-graphics.js';
 import { resolveIniSources } from './sources.js';
@@ -58,7 +59,8 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     buildingHolyFirePoints,
     buildingGraphicsOverlays,
   } = await extractIniTables(await resolveIniSources(roots));
-  const jobGraphics = await loadJobGraphics(roots);
+  const { jobGraphics, jobChanges } = await loadJobGraphics(roots);
+  const humanPalettes = await loadHumanPalettes(roots, jobGraphics, jobChanges);
   const vehicleGraphics = buildVehicleGraphics({
     bindings: await loadVehicleGraphicsBindings(roots),
     vehicles,
@@ -127,6 +129,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     trianglePatternTypes: triangleTypes,
     bobSequences,
     jobGraphics,
+    humanPalettes,
     gfxAtomics,
     gfxWalkAtomics,
     gfxInHousePrograms,

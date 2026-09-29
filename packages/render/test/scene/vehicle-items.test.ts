@@ -152,12 +152,14 @@ describe('vehicle draw items', () => {
 
   it('names the commander riding inside as its driver, and nobody while he walks outside', () => {
     const TRADER = 25;
-    const commander = { components: { Settler: { jobType: TRADER, tribe: VIKING } } };
+    const commander = {
+      components: { Settler: { jobType: TRADER, tribe: VIKING }, Female: { female: true } },
+    };
     const seated = (inside: boolean) =>
       buildSpriteScene(
         snapshotOf([vehicle(1, { passengers: [null, { entity: 2, inside }] }), { id: 2, ...commander }]),
       ).find((i) => i.ref === 1);
-    expect(seated(true)?.driver).toEqual({ jobType: TRADER, tribe: VIKING });
+    expect(seated(true)?.driver).toEqual({ ref: 2, jobType: TRADER, tribe: VIKING, female: true });
     expect(seated(false)?.driver).toBeUndefined();
   });
 

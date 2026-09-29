@@ -22,6 +22,9 @@ export const JobGraphics = z.strictObject({
   bodyPalette: z.string().optional(),
   /** `gfxpalettebasehead` editname, lower-cased. */
   headPalette: z.string().optional(),
+  /** `gfxpaletterandom` recipe names in file order, lower-cased: one is rolled per human at creation.
+   *  Original behavior: a name no recipe carries (`bear01`) takes its share of the roll and changes nothing. */
+  randomPalettes: z.array(z.string()),
   source: Provenance.optional(),
 });
 export type JobGraphics = z.infer<typeof JobGraphics>;

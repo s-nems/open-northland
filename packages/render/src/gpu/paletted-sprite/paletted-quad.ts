@@ -8,7 +8,7 @@ import {
 import { type PalettedRow, worldBatched } from '../world-batcher.js';
 
 /**
- * A character layer drawn through the player-colour LUT as one quad of the world batch, so a crowd shares
+ * A character layer drawn through the human palette LUT as one quad of the world batch, so a crowd shares
  * draw calls with everything else in the sprite layer. Its texture comes from
  * `TextureCache.palettedFrame`, which names the LUT; {@link lutRow} picks the row.
  */

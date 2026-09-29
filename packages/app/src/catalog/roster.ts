@@ -22,7 +22,7 @@ export interface VikingCharacter {
 /** The served palette every roster body and head decodes with: the viking base skin. */
 export const DEFAULT_CHARACTER_PALETTE = 'test_human_00';
 
-/** The palette slug of the indexed (recolourable) atlas the player-colour LUT is read through. */
+/** The palette slug of the indexed (recolourable) atlas the human palette LUT is read through. */
 export const INDEXED_CHARACTER_PALETTE = 'indexed';
 
 /**
@@ -52,7 +52,7 @@ export const PLAYER_COLOR_COUNT = PLAYER_COLOR_NAMES.length;
 
 /**
  * One flat `0xRRGGBB` per player id for UI swatches, slot order = {@link PLAYER_COLOR_NAMES}. An
- * approximation: the real team colours exist only as band-limited ramps in the pipeline's LUT texture,
+ * approximation: the real team colours exist only as band-limited ramps in the player palette recipes,
  * so each name gets one hand-picked representative at its `playerNN.pcx` or rotation hue.
  */
 export const PLAYER_SWATCH_COLORS: readonly number[] = [

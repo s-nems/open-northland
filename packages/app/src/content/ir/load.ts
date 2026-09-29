@@ -4,9 +4,8 @@ import {
   type BuildTimeSheet,
   loadAtlasSource,
   type SpriteLayer,
-  type TextureSource,
 } from '@open-northland/render';
-import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from '../net.js';
+import { fetchImageData, fetchJsonOrNull } from '../net.js';
 import { BODY_IMAGELIB, type BobSeqRow, type ContentIr } from './rows.js';
 
 /**
@@ -90,28 +89,6 @@ async function loadBuildTimeSheet(url: string): Promise<BuildTimeSheet | undefin
   const values = new Uint8Array(img.width * img.height);
   for (let i = 0; i < values.length; i++) values[i] = img.data[i * 4] ?? 0;
   return { width: img.width, height: img.height, values };
-}
-
-/** The served player-colour LUT and the rows the pipeline stacked into it. */
-export interface PlayerLut {
-  readonly source: TextureSource;
-  /** Total rows, the head row included. */
-  readonly colours: number;
-  /** The head palette row, the one after the player blocks. */
-  readonly headRow: number;
-}
-
-/**
- * The player-colour LUT (`/bobs/player-lut.png`): one 16-row player block per armor tier, then one head
- * row, the layout `convertPlayerColorLut` writes. The row count comes from the texture's own height, not
- * a constant, so the shader's row lookup cannot desync from the PNG. `undefined` when the pipeline hasn't
- * produced it.
- */
-export async function loadPlayerLut(): Promise<PlayerLut | undefined> {
-  const source = await loadTextureIfPresent('/bobs/player-lut.png');
-  if (source === undefined) return undefined;
-  const colours = source.pixelHeight;
-  return { source, colours, headRow: colours - 1 };
 }
 
 let contentIrPromise: Promise<unknown> | null = null;

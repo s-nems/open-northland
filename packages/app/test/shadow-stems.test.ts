@@ -61,9 +61,10 @@ describe('resolveLooks - a character look carries its own shadow set', () => {
         heads: [`${B}/cr_hum_head_00.bmd`],
         bodyPalette: 'test_human_00',
         headPalette: 'test_human_00',
+        randomPalettes: [],
       },
       // The record the woman look ends on names no shadow set, so she keeps drawing shadow-less.
-      { tribe: 1, job: JOB_WOMAN, body: `${B}/cr_hum_body_10.bmd`, heads: [] },
+      { tribe: 1, job: JOB_WOMAN, body: `${B}/cr_hum_body_10.bmd`, heads: [], randomPalettes: [] },
     ],
   };
 

@@ -162,6 +162,7 @@ export class SpritePool {
   reconcile(frame: PoolFrame): void {
     const scene = this.sceneFor(frame);
     this.frameId++;
+    this.sheet?.palette?.beginFrame();
     this.epoch.advance(frame, this.textures.textureRevision);
     this.snapResolution = frame.snapResolution;
     this.portrait.release();
@@ -212,6 +213,7 @@ export class SpritePool {
     }
 
     this.reap(scene.liveRefs);
+    this.sheet?.palette?.flush();
   }
 
   /**
@@ -223,7 +225,11 @@ export class SpritePool {
   private presentPooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame, continuous: boolean): void {
     const stamp = pe.bound;
     const highlight = frame.highlight?.get(item.ref);
-    const holds = continuous && pe.reveal === undefined && stamp.holds(item, this.epoch.current, highlight);
+    const holds =
+      continuous &&
+      pe.reveal === undefined &&
+      stamp.holds(item, this.epoch.current, highlight) &&
+      this.binder.paletteHolds(pe, item);
     if (holds && stamp.alpha === frame.alpha) {
       this.keepBound(pe);
       return;
@@ -450,6 +456,7 @@ export class SpritePool {
         if (item.ref === view.solo) solo = pe.container;
       }
       this.placePaletted(view.camera, view.width, view.height);
+      this.sheet?.palette?.flush();
       if (solo !== null) stash = stashHidden(this.spriteLayer.children, solo);
       if (view.solo === undefined || solo !== null) render(solo === null ? null : this.spriteLayer);
     } finally {

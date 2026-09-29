@@ -21,7 +21,7 @@ export interface ResolvedLook extends TribeLook {
    *  body loads in. */
   readonly shadowStem?: string;
   readonly headStems: readonly string[];
-  /** Whether body and heads load as the recolourable atlas the player-colour LUT is read through. */
+  /** Whether body and heads load as the recolourable atlas the human palette LUT is read through. */
   readonly indexed: boolean;
 }
 
@@ -33,13 +33,10 @@ export interface LoadedLook {
 
 /**
  * `look` as the stems to fetch. `palette` overrides each bob set's authored skin - the recolourable atlases
- * the player-colour LUT is read through - and `undefined` keeps each record's own, which is the only skin
+ * the human palette LUT is read through - and `undefined` keeps each record's own, which is the only skin
  * some bob sets are decoded in (the egyptian soldier ships `egypt_soldier` alone). An animal body has no
  * recolourable atlas, so it keeps its own skin and its heads keep theirs: a look never mixes an indexed
  * layer with a baked one.
- *
- * Known limitation on the LUT path: its rows are composed from `test_human_00` alone, so the civilization
- * looks authored against another palette (the egyptian soldiers) draw in the viking colour table.
  */
 function resolveLook(look: TribeLook, palette: string | undefined): ResolvedLook {
   const skin = isAnimalBody(look.bodyBmd) ? undefined : palette;

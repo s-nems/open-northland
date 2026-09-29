@@ -2,20 +2,22 @@ import { Container, Sprite, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { Camera, Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
+import { HUMAN_HEAD_ROW_OFFSET } from '../../src/gpu/human-palette-lut.js';
 import { PalettedQuad } from '../../src/gpu/paletted-sprite/index.js';
 import { palettedLutOf } from '../../src/gpu/pixel-art-registry.js';
 import { DEFAULT_SHADOW_STYLE, type ShadowStyle } from '../../src/gpu/shadow-style.js';
 import { type BindFrame, LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
+import { humanLutRow } from '../../src/gpu/sprite-pool/human-palette-row.js';
 import { type PoolFrame, SpritePool, settlerPalette } from '../../src/gpu/sprite-pool/index.js';
 import { createPooled } from '../../src/gpu/sprite-pool/pooled-entity.js';
 import type { ResolvedLayer } from '../../src/gpu/sprite-pool/resolved-layer.js';
-import { type PlayerColourLut, settlerPaletteLutRow } from '../../src/gpu/sprite-sheet.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import type { DrawItem, SpriteAtlas, SpriteSheet } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
+import { syntheticHumanLut } from '../support/human-palettes.js';
 
 /**
- * A settler binds team-coloured PalettedQuads only when both the indexed characters and the player-colour
+ * A settler binds team-coloured PalettedQuads only when both the indexed characters and the human palette
  * LUT are loaded. A vehicle's PalettedSprite mesh stays with the browser scenes: it needs a DOM canvas to
  * construct, since Pixi probes fragment precision.
  */
@@ -122,13 +124,7 @@ describe('SpritePool - a plain character shadow draws under the body without mov
 });
 
 describe('LayerBinder - a paletted character binds its silhouette on a plain sprite of its own', () => {
-  const lut: PlayerColourLut = {
-    source,
-    colours: 17,
-    playerRows: 16,
-    armorTierByGood: new Map(),
-    headRow: 16,
-  };
+  const lut = syntheticHumanLut();
   const shadowSource = new TextureSource({ width: 64, height: 64 });
   const shadowLayer: ResolvedLayer = {
     source: shadowSource,
@@ -258,13 +254,7 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
 });
 
 describe('LayerBinder - a paletted character body draws as a batched quad through its LUT', () => {
-  const lut: PlayerColourLut = {
-    source: new TextureSource({ width: 256, height: 17 }),
-    colours: 17,
-    playerRows: 16,
-    armorTierByGood: new Map(),
-    headRow: 16,
-  };
+  const lut = syntheticHumanLut();
   const indexed = new TextureSource({ width: 64, height: 64 });
   const body: ResolvedLayer = {
     source: indexed,
@@ -287,7 +277,7 @@ describe('LayerBinder - a paletted character body draws as a batched quad throug
     return quad;
   };
 
-  it("binds each layer on a quad that names the entity's LUT, the body on the owner's row", () => {
+  it("binds each layer on a quad that names the entity's LUT, the body on its own row", () => {
     const palettedSheet = { ...sheet, palette: lut };
     const binder = new LayerBinder(new TextureCache(), palettedSheet);
     const pe = paletted();
@@ -297,9 +287,8 @@ describe('LayerBinder - a paletted character body draws as a batched quad throug
     const [bodyQuad, headQuad] = [quadAt(pe, 0), quadAt(pe, 1)];
     expect(palettedLutOf(bodyQuad.texture)).toBe(lut.source);
     expect(bodyQuad.texture.frame.width).toBe(16);
-    expect(bodyQuad.lutRow).toBe(settlerPaletteLutRow(palettedSheet, item));
-    expect(bodyQuad.lutRow).not.toBe(0); // the owner's row, not the default one
-    expect(headQuad.lutRow).toBe(lut.headRow);
+    expect(bodyQuad.lutRow).toBe(humanLutRow(palettedSheet, item));
+    expect(headQuad.lutRow).toBe(bodyQuad.lutRow + HUMAN_HEAD_ROW_OFFSET);
     expect(pe.container.children).toEqual([bodyQuad, headQuad]);
   });
 
@@ -364,7 +353,7 @@ describe('LayerBinder - a paletted character body draws as a batched quad throug
 });
 
 describe('LayerBinder - an animal settler is never paletted, even with the LUT loaded', () => {
-  // The species atlases are baked recolours: reading them through the player-colour LUT would treat
+  // The species atlases are baked recolours: reading them through the human palette LUT would treat
   // pixel colours as palette indices. The class is decided at creation and rechecked each frame.
   const ANIMAL_TRIBE = 8;
   const palettedSheet: SpriteSheet = {
@@ -377,7 +366,7 @@ describe('LayerBinder - an animal settler is never paletted, even with the LUT l
         tribes: new Set([ANIMAL_TRIBE]),
       },
     },
-    palette: { source, colours: 17, playerRows: 16, armorTierByGood: new Map(), headRow: 16 },
+    palette: syntheticHumanLut(),
   };
   const item = (tribe: number): DrawItem => ({ kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, tribe });
 
@@ -449,16 +438,10 @@ describe('LayerBinder - an animal settler is never paletted, even with the LUT l
   });
 });
 
-describe('LayerBinder - a hero glow binds under the body on the plain player row', () => {
+describe("LayerBinder - a hero glow binds under the body on its owner's team row", () => {
   const ARMOR = 9;
-  const PLAYER = 2;
-  const lut: PlayerColourLut = {
-    source,
-    colours: 33,
-    playerRows: 16,
-    armorTierByGood: new Map([[ARMOR, 1]]),
-    headRow: 32,
-  };
+  const PLAYER = 0;
+  const lut = syntheticHumanLut(new Map([[ARMOR, 1]]));
   const frame = { x: 0, y: 0, width: 16, height: 32, offsetX: -8, offsetY: -32 };
   const body: ResolvedLayer = { source, frame, scale: 1 };
   const glow: ResolvedLayer = { source, frame, scale: 1, dx: -6, dy: 0, boundsExempt: true, glow: 0.25 };
@@ -479,7 +462,7 @@ describe('LayerBinder - a hero glow binds under the body on the plain player row
     return spr;
   };
 
-  it('reads the team row despite armor, fades by its opacity and keeps the body box', () => {
+  it('reads the unrolled team row despite armor, fades by its opacity and keeps the body box', () => {
     const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
     const pe = createPooled('settler', lut);
 
@@ -487,8 +470,9 @@ describe('LayerBinder - a hero glow binds under the body on the plain player row
 
     const halo = quadAt(pe, 0);
     const drawn = quadAt(pe, 1);
-    expect([halo.glow, halo.alpha, halo.lutRow]).toEqual([true, 0.25, PLAYER]);
-    expect([drawn.glow, drawn.alpha, drawn.lutRow]).toEqual([false, 1, lut.playerRows + PLAYER]);
+    expect([halo.glow, halo.alpha, halo.lutRow]).toEqual([true, 0.25, lut.teamRow(PLAYER)]);
+    expect([drawn.glow, drawn.alpha]).toEqual([false, 1]);
+    expect(drawn.lutRow).not.toBe(halo.lutRow); // the armored body reads its own composed row
     expect(pe.bounds.maxX - pe.bounds.minX).toBe(frame.width); // the halo's offset copy is off the box
   });
 

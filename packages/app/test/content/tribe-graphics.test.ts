@@ -29,7 +29,7 @@ import { contentDir, hasRealIr, rawIrUnderTest } from './helpers.js';
  *  egypt. Viking leads, as the base tribe of a world fielding them all. */
 const CIVILIZATIONS: WorldTribes = [1, 2, 3, 4, 7];
 
-/** The recolourable atlas variant the player-colour LUT is read through - what the game loads. */
+/** The recolourable atlas variant the human palette LUT is read through - what the game loads. */
 const INDEXED = 'indexed';
 
 function bobsDir(): string {

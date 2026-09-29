@@ -1,4 +1,3 @@
-import { playerLutCartBlock } from '@open-northland/data';
 import type { CartDriveBinding, SpriteLayer, SpriteSheet } from '@open-northland/render';
 import { JOB_CARRIER, JOB_TRADER } from '../../catalog/jobs.js';
 import { INDEXED_CHARACTER_PALETTE, PLAYER_COLOR_COUNT } from '../../catalog/roster.js';
@@ -22,8 +21,8 @@ import {
   sequencesFor,
   shadowStemsByAtlasStem,
 } from '../ir/joins.js';
-import { loadIr, loadLayer, loadPlayerLut, MissingAtlasError } from '../ir/load.js';
-import { BODY_IMAGELIB, type ContentIr } from '../ir/rows.js';
+import { loadIr, loadLayer, MissingAtlasError } from '../ir/load.js';
+import { BODY_IMAGELIB } from '../ir/rows.js';
 import { buildMunitionBinding, munitionAtlasStems, resolveMunitionRefs } from '../munition-gfx.js';
 import { buildPalisadeBinding, palisadeAtlasStems, resolvePalisadeGfxRefs } from '../palisade-gfx.js';
 import {
@@ -45,6 +44,7 @@ import { buildHumanBindings, type GoodRef } from '../settler-gfx/index.js';
 import { loadVehicleSheet } from '../vehicle-gfx/index.js';
 import { loadBuildingSheet } from './buildings.js';
 import { loadCharacters } from './characters.js';
+import { humanPaletteLut } from './human-palettes.js';
 
 // Assemble the real decoded SpriteSheet from the loaded atlases and binding reducers. Loads from the
 // gitignored `content/` over the dev/shot vite server.
@@ -120,12 +120,10 @@ export async function loadHumanSpriteSheet(
     loadLayer(HOUSE_ATLAS, shadowStems.get(HOUSE_ATLAS)),
     loadBuildingSheet(ir, tribes, shadowStems),
   ]);
-  // Player-colour LUT: when the pipeline emitted `/bobs/player-lut.png` the characters load as the
-  // recolourable indexed atlas drawn through it per player; without it they fall back to the baked-palette
-  // characters and draw single-coloured. One indexed atlas plus one LUT serve every player.
-  const lut = await loadPlayerLut();
-  // With the LUT every human body loads as the one recolourable atlas; without it each keeps its own
-  // authored skin, which for several tribe bodies is the only one decoded (`cr_hum_body_78.egypt_soldier`).
+  // With human palette data every human body loads as the one recolourable atlas, drawn through a palette
+  // composed per human; without it each keeps its own authored skin, which for several tribe bodies is the
+  // only one decoded (`cr_hum_body_78.egypt_soldier`), and draws single-coloured.
+  const lut = humanPaletteLut(ir);
   const characterPalette = lut !== undefined ? INDEXED_CHARACTER_PALETTE : undefined;
   // Per-job characters (the `[jobbasegraphics]` join): a missing extra body degrades per look, never
   // failing the sheet, and `undefined` keeps the legacy single-body settler path. The wildlife looks have
@@ -251,17 +249,10 @@ export async function loadHumanSpriteSheet(
     ...(craftFxBinding?.byName[HOLY_FIRE_EFFECT_NAME] !== undefined ? { holyFire: holyFireLookup(ir) } : {}),
     ...(characters !== undefined ? { characters } : {}),
     ...(vehicles.palette !== undefined ? { vehiclePalette: vehicles.palette } : {}),
-    // Team-colour LUT: present ⇒ the characters are the indexed atlas and the pool paints each per its
-    // player; absent ⇒ the baked characters draw as plain sprites. The armor recolor axis rides along.
+    // Human palette LUT: present ⇒ the characters are the indexed atlas and the pool paints each through
+    // its own composed palettes; absent ⇒ the baked characters draw as plain sprites.
     ...(lut !== undefined
-      ? {
-          palette: {
-            ...lut,
-            playerRows: PLAYER_COLOR_COUNT,
-            armorTierByGood: armorTiersByGood(ir),
-          },
-          ...(characters !== undefined ? { cartDrive: CART_DRIVE } : {}),
-        }
+      ? { palette: lut, ...(characters !== undefined ? { cartDrive: CART_DRIVE } : {}) }
       : {}),
   };
 }
@@ -273,19 +264,5 @@ export async function loadHumanSpriteSheet(
 const CART_DRIVE: CartDriveBinding = {
   commanderJobs: new Set([JOB_CARRIER, JOB_TRADER]),
   lookJob: JOB_TRADER,
-  paletteBlockByVehicleType: {
-    [VEHICLE_HANDCART]: playerLutCartBlock('good_HandCart'),
-    [VEHICLE_OXCART]: playerLutCartBlock('good_OxCart'),
-  },
+  cartRecipeByVehicleType: { [VEHICLE_HANDCART]: 'handcart', [VEHICLE_OXCART]: 'oxcart' },
 };
-
-/** The worn-armor recolor join: armor `goodType` → its `typeId` (the `TArmorType` tier, the LUT's
- *  row-block index). Empty for synthetic content (no `armor` lane), which draws plain player rows. */
-function armorTiersByGood(ir: ContentIr | null): ReadonlyMap<number, number> {
-  const byGood = new Map<number, number>();
-  for (const record of ir?.armor ?? []) {
-    if (typeof record.goodType !== 'number' || typeof record.typeId !== 'number') continue;
-    if (!byGood.has(record.goodType)) byGood.set(record.goodType, record.typeId);
-  }
-  return byGood;
-}

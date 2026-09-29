@@ -326,7 +326,7 @@ describe('jobBaseGraphicsToBindings', () => {
         ],
         bodyPalette: 'b_pal',
         headPalette: 'h_pal',
-        randomPalette: 'rnd',
+        randomPalettes: ['rnd'],
       },
     ]);
 
@@ -352,7 +352,7 @@ describe('jobBaseGraphicsToBindings', () => {
         head: [{ index: 0, bmd: 'data/bobs/head.bmd', shadowBmd: undefined }],
         bodyPalette: 'b_pal', // body keeps its palette
         headPalette: undefined, // head has none -> dropped
-        randomPalette: undefined,
+        randomPalettes: [],
       },
     ]);
 
@@ -376,7 +376,7 @@ describe('jobBaseGraphicsToBindings', () => {
         head: [],
         bodyPalette: undefined,
         headPalette: undefined,
-        randomPalette: 'grizzu_small',
+        randomPalettes: ['grizzu_small'],
       },
     ]);
 

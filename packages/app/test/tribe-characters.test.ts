@@ -35,7 +35,7 @@ const CIVILIAN_SEQS = ['human_man_generic_walk', 'human_man_generic_wait'];
 const WARRIOR_SEQS = ['human_man_warrior_empty_walk', 'human_man_warrior_empty_wait'];
 
 function row(tribe: number, job: number, body: string): JobGraphicsRow {
-  return { tribe, job, body: `${BOBS}/${body}.bmd`, heads: [] };
+  return { tribe, job, body: `${BOBS}/${body}.bmd`, heads: [], randomPalettes: [] };
 }
 
 const ir: ContentIr = {

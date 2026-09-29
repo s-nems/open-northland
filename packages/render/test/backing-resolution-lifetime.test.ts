@@ -11,6 +11,10 @@ vi.mock('pixi.js', () => ({
     async init() {}
   },
   Assets: {},
+  // The human palette LUT module rides along with `pixi-app.ts`, which registers its uploader.
+  BufferImageSource: class {},
+  ExtensionType: {},
+  extensions: { add: () => undefined },
 }));
 
 // `pixi.js` is a real ESM package, so its exports cannot be spied in place, and test files share

@@ -1,5 +1,6 @@
 import type { TextureSource } from 'pixi.js';
-import type { DrawItem, InHouseProgramLookup } from '../data/scene/index.js';
+import type { CartRecipe, CharacterPalette } from '../data/palettes/human-palettes.js';
+import type { InHouseProgramLookup } from '../data/scene/index.js';
 import type {
   BuildTimeSheet,
   ByJobTable,
@@ -9,7 +10,7 @@ import type {
   SpriteKind,
 } from '../data/sprites/index.js';
 import type { ClothIndexRanges } from './cloth-wind.js';
-import type { ResolvedLayer } from './sprite-pool/resolved-layer.js';
+import type { HumanPaletteLut } from './human-palette-lut.js';
 
 /** A `256 x colours` palette LUT the paletted meshes read an indexed atlas through. */
 export interface PaletteLut {
@@ -34,63 +35,18 @@ export function vehicleLutRow(palette: PaletteLut, player: number | undefined): 
   return (player ?? 0) % palette.colours;
 }
 
-/** The player-colour LUT the paletted settler meshes read team colours through. The texture carries one
- *  `playerRows`-row block per recolor tier (`row = tier * playerRows + player`, tier 0 = the plain
- *  player rows), then the head row. */
-export interface PlayerColourLut extends PaletteLut {
-  /** Rows per armor-tier block. */
-  readonly playerRows: number;
-  /** Worn armor `goodType` → its recolor tier (`armortypes.ini` `type`, 1..4). */
-  readonly armorTierByGood: ReadonlyMap<number, number>;
-  /** The row after the blocks, which a head overlay reads: the original composes a head palette apart
-   *  from the body's, and the team recipes patch the body's bands only. */
-  readonly headRow: number;
-}
-
-/** The `(armor tier, player)` block row when the worn `armorGood` resolves to a tier the texture
- *  actually carries, else the plain player row. */
-export function paletteLutRow(
-  palette: PlayerColourLut,
-  player: number | undefined,
-  armorGood: number | null | undefined,
-): number {
-  const tier = armorGood == null ? undefined : palette.armorTierByGood.get(armorGood);
-  return paletteBlockRow(palette, player, tier);
-}
-
-/** `player`'s row in row block `block` when the texture carries that block, else the plain player row. */
-export function paletteBlockRow(
-  palette: PlayerColourLut,
-  player: number | undefined,
-  block: number | undefined,
-): number {
-  const base = player ?? 0; // player 0 is a block's base palette row
-  if (block === undefined) return base;
-  const row = block * palette.playerRows + base;
-  return row < palette.headRow ? row : base;
-}
-
 /**
  * A cart drawn as one figure with the driver riding inside it, the original's look for a trader's cart:
  * the `lookJob` character's {@link SettlerStateBinding.cartDrive} gait, whatever the commander's own job,
- * read through the settler LUT's cart row block.
+ * in the driver's palettes with the cart's recipe on top.
  */
 export interface CartDriveBinding {
   /** The commander jobs whose ride draws the figure; any other commander leaves the cart's own sprite. */
   readonly commanderJobs: ReadonlySet<number>;
   /** The job whose character draws the figure. */
   readonly lookJob: number;
-  /** The settler LUT row block each cart vehicle type's figure reads. */
-  readonly paletteBlockByVehicleType: Readonly<Record<number, number>>;
-}
-
-/** The row one resolved layer reads: the head row for a head overlay, else the body's `bodyRow`. */
-export function layerLutRow(
-  palette: PlayerColourLut,
-  layer: Pick<ResolvedLayer, 'head'>,
-  bodyRow: number,
-): number {
-  return layer.head === true ? palette.headRow : bodyRow;
+  /** The cart recipe each cart vehicle type's figure applies to its driver. */
+  readonly cartRecipeByVehicleType: Readonly<Record<number, CartRecipe>>;
 }
 
 export interface SpriteLayer {
@@ -108,8 +64,11 @@ export interface SpriteLayer {
  *  in its own frame-id space, so the binding travels with the layers. */
 export interface SettlerCharacter {
   readonly body: SpriteLayer;
-  /** False for a baked body atlas that must bypass the player-colour LUT. */
+  /** False for a baked body atlas that must bypass the human palette LUT. */
   readonly indexed?: boolean;
+  /** The bases and recipes an indexed look composes its palettes from; absent composes the palette
+   *  book's fallback base alone. */
+  readonly palette?: CharacterPalette;
   /** Complete appearances selected stably by entity id. */
   readonly variants?: readonly Omit<SettlerCharacter, 'variants'>[];
   readonly interpolateMotion?: boolean;
@@ -145,27 +104,6 @@ export interface SettlerCharacterSet extends ByJobTable<SettlerCharacter> {
 }
 
 /**
- * The palette row for one indexed settler body. A fixed-by-job character is an authored identity (the
- * hero bodies), not a generic soldier body: its armor still affects combat and equipment, but does not
- * select an armor-colour block. The base player row remains active for any authored team-colour pixels.
- */
-export function settlerPaletteLutRow(
-  sheet: Pick<SpriteSheet, 'palette' | 'characters'> | undefined,
-  item: DrawItem,
-): number {
-  const palette = sheet?.palette;
-  if (palette === undefined) return 0;
-  const table =
-    (item.tribe !== undefined ? sheet?.characters?.byTribe?.[item.tribe] : undefined) ?? sheet?.characters;
-  const fixedCharacter =
-    item.kind === 'settler' &&
-    item.young !== true &&
-    item.jobType !== undefined &&
-    table?.fixedByJob?.[item.jobType] !== undefined;
-  return paletteLutRow(palette, item.player, fixedCharacter ? undefined : item.armorGood);
-}
-
-/**
  * A loaded bob atlas ready for the GPU. `overlays` are extra layers drawn on top of the body in order,
  * each indexed by the same resolved bob id (the head bob shares the body's frame numbering).
  */
@@ -189,10 +127,9 @@ export interface SpriteSheet {
   /** Per-job settler characters. Absent, a settler draws the sheet-global body (`source`/`overlays`) +
    *  `bindings.settler`. */
   readonly characters?: SettlerCharacterSet;
-  /** The `256 × colours` team-colour palette texture the {@link characters} are drawn through when their
-   *  atlases are the recolourable indexed variant (palette index in red): one indexed atlas plus one LUT
-   *  serve all `colours` players. */
-  readonly palette?: PlayerColourLut;
+  /** The per-human palette LUT the {@link characters} are drawn through when their atlases are the
+   *  recolourable indexed variant (palette index in red). */
+  readonly palette?: HumanPaletteLut;
   /** The LUT the indexed vehicle looks are drawn through per owner; absent draws the baked looks. */
   readonly vehiclePalette?: VehicleColourLut;
   /** The crewed-cart figure; absent draws every cart as its own sprite. */

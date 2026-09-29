@@ -39,8 +39,11 @@ export type VehicleDrawTask =
 
 /** The commander riding inside a vehicle, as its seat and `Settler` name him. */
 export interface VehicleDriver {
+  /** The rider's entity id, which seeds the figure's palette rolls. */
+  readonly ref: number;
   readonly jobType: number;
   readonly tribe?: number;
+  readonly female?: boolean;
 }
 
 /** The draw fields a fog ghost keeps from its last sighting, shared by every sprite kind. */
@@ -84,10 +87,10 @@ export interface StaticDrawFields {
    * `Vehicle.facing`, remapped from its eight walk headings.
    */
   facing?: number;
-  /** For a settler, signpost or vehicle: the team-colour slot - the row of the `256×N` colour LUT a
-   *  `PalettedSprite` reads its clothing-band indices through, and the signpost's or ship's baked
-   *  per-colour atlas. Defaults to the owning `Owner.player` slot, or carries the mapped colour when
-   *  the scene was built with a `playerColourOf`. */
+  /** For a settler, signpost or vehicle: the team-colour slot - the player recipe a human's palettes
+   *  compose from, the ship LUT row, and the signpost's baked per-colour atlas. Defaults to the owning
+   *  `Owner.player` slot, or carries the mapped colour when the scene was built with a
+   *  `playerColourOf`. */
   player?: number;
 }
 
@@ -159,6 +162,8 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   readonly young?: boolean;
   /** For a settler: its mission behaviour mask asks for the hero glow, whatever its job. */
   readonly glow?: boolean;
+  /** For a settler: `Female` present, which picks the women's player palette recipe. */
+  readonly female?: boolean;
   /** For a building upgrading into its next level: upgrade progress as a whole percent (0..99, floored
    *  `Building.built`). Distinct from {@link builtPct}, since an upgrading building keeps its finished
    *  old-tier body and the next tier's overlay (the `[GfxHouse]` `upgrade === 1` rows) reveals over it

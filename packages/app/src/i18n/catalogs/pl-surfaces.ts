@@ -463,7 +463,7 @@ export const plSurfaces = {
     noRosterFrames: 'content/ir.json nie zawiera sekwencji postaci. Uruchom pipeline assetów ponownie.',
     filterNoMatch: 'Nic nie pasuje do filtra „{filter}”.',
     missingPalette: 'Paleta graczy jest niedostępna',
-    missingPaletteDetail: 'Uruchom pipeline assetów ponownie, aby wygenerować player-lut.png.',
+    missingPaletteDetail: 'Uruchom pipeline assetów ponownie, aby wygenerować palety postaci w ir.json.',
   },
   icons: {
     title: 'Atlas sprite’ów',

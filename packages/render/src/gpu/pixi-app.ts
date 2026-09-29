@@ -1,4 +1,5 @@
 import { Application, Assets, type Texture, type TextureSource } from 'pixi.js';
+import { registerHumanPaletteUploader } from './human-palette-lut.js';
 import { markPixelArtSource } from './pixel-art-registry.js';
 
 /**
@@ -30,6 +31,7 @@ export async function createPixiApp(
   width: number,
   height: number,
 ): Promise<Application> {
+  registerHumanPaletteUploader();
   const app = new Application();
   await app.init({ canvas, width, height, ...APP_OPTIONS });
   return app;
@@ -102,6 +104,7 @@ export async function createWindowPixiApp(
   options?: WindowPixiAppOptions,
 ): Promise<Application> {
   const resolutionScale = options?.resolutionScale ?? 1;
+  registerHumanPaletteUploader();
   const app = new Application();
   await app.init({
     canvas,

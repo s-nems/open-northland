@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { extractJobBaseGraphics, parseIniSections } from '../src/decoders/ini.js';
-import { jobGraphicsRows, mergeJobGraphics } from '../src/stages/ir/job-graphics.js';
+import { extractJobBaseGraphics, extractJobChangeGraphics, parseIniSections } from '../src/decoders/ini.js';
+import { jobChangeRows, jobGraphicsRows, mergeJobGraphics } from '../src/stages/ir/job-graphics.js';
 
 // The mod's `types/humanstype/jobgraphics.ini` grammar: a viking civilist with four head looks, a
 // frank soldier with two heads and a `human_special` head palette, and one record without a tribe.
@@ -41,6 +41,7 @@ describe('jobGraphicsRows', () => {
         heads: ['data/engine2d/bin/bobs/cr_hum_head_00.bmd', 'data/engine2d/bin/bobs/cr_hum_head_01.bmd'],
         bodyPalette: 'test_human_00',
         headPalette: 'test_human_00',
+        randomPalettes: ['vik_man_base'],
         source: { file: MOD_SRC.file, block: 'jobbasegraphics', layer: 'mod' },
       },
       {
@@ -50,6 +51,7 @@ describe('jobGraphicsRows', () => {
         heads: ['data/engine2d/bin/bobs/cr_hum_head_33.bmd', 'data/engine2d/bin/bobs/cr_hum_head_34.bmd'],
         bodyPalette: 'test_human_00',
         headPalette: 'human_special',
+        randomPalettes: [],
         source: { file: MOD_SRC.file, block: 'jobbasegraphics', layer: 'mod' },
       },
     ]);
@@ -64,5 +66,31 @@ describe('mergeJobGraphics', () => {
       [row(1, 6, 'base_civilist'), row(1, 5, 'base_woman')],
     ]);
     expect(merged.map((r) => r.body)).toEqual(['mod_civilist', 'mod_soldier', 'base_woman']);
+  });
+});
+
+// A trader's change record lists two recipes; one change record lists none, one lacks its tribe.
+const JOBCHANGEGRAPHICS_INI = `[jobchangegraphics]
+logictribe 1
+logicjob 25
+gfxbobmanagerbody 0 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Body_00.bmd"
+gfxpaletterandom "Vik_Man_ChangeJobTrader"
+gfxpaletterandom "Vik_Man_ChangeJob"
+[jobchangegraphics]
+logictribe 1
+logicjob 30
+gfxbobmanagerbody 0 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Body_00.bmd"
+[jobchangegraphics]
+logicjob 6
+gfxbobmanagerbody 0 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Body_00.bmd"
+gfxpaletterandom "Vik_Man_ChangeJob"
+`;
+
+describe('jobChangeRows', () => {
+  it('keeps every gfxpaletterandom name in file order, lower-cased, keyed by (tribe, job)', () => {
+    expect(jobChangeRows(extractJobChangeGraphics(parseIniSections(JOBCHANGEGRAPHICS_INI)))).toEqual([
+      { tribe: 1, job: 25, recipes: ['vik_man_changejobtrader', 'vik_man_changejob'] },
+      { tribe: 1, job: 30, recipes: [] },
+    ]);
   });
 });

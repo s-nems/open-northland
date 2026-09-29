@@ -318,14 +318,18 @@ describe('bodySequences', () => {
     // The werewolf's attack record names the weresnake's clip, which sits over its own fight.
     const own: ContentIr = {
       ...ir,
-      jobGraphics: [{ tribe: 6, job: 31, body: 'data/bobs/cr_hum_body_05.bmd', heads: [] }],
+      jobGraphics: [
+        { tribe: 6, job: 31, body: 'data/bobs/cr_hum_body_05.bmd', heads: [], randomPalettes: [] },
+      ],
       gfxAtomics: [{ tribe: 6, job: 31, action: 81, bodySeq: 'pray', dirFrames: [[0]] }],
     };
     expect([...bodySequences(own, 'cr_hum_body_05', drawing(8)).keys()]).toEqual(['shot', 'aim', 'pray']);
     // A base job's record for another body adds nothing.
     const other = {
       ...own,
-      jobGraphics: [{ tribe: 6, job: 6, body: 'data/bobs/cr_hum_body_00.bmd', heads: [] }],
+      jobGraphics: [
+        { tribe: 6, job: 6, body: 'data/bobs/cr_hum_body_00.bmd', heads: [], randomPalettes: [] },
+      ],
     };
     expect([...bodySequences(other, 'cr_hum_body_05', drawing(8)).keys()]).toEqual(['shot', 'aim']);
   });

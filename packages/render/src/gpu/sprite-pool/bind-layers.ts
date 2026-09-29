@@ -8,18 +8,12 @@ import { PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
 import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
 import { mintPlanStake, type PlanStakeTextures, STAKE_BOUNDS } from '../plan-stake.js';
 import { type ShadowStyle, setCastShadowTransform } from '../shadow-style.js';
-import {
-  layerLutRow,
-  type PaletteLut,
-  paletteLutRow,
-  type SpriteSheet,
-  settlerPaletteLutRow,
-} from '../sprite-sheet.js';
+import type { PaletteLut, SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
 import { worldBatched } from '../world-batcher.js';
-import { cartDriveLook } from './cart-drive.js';
 import { settlerPalette } from './character-layers.js';
+import { humanLayerRow, humanLutRow } from './human-palette-row.js';
 import { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
 import { drawPlaceholder, placeholderBounds } from './placeholder.js';
 import {
@@ -87,6 +81,16 @@ export class LayerBinder {
     return (pe.paletted ? pe.palette : undefined) === this.paletteFor(pe.kind, item);
   }
 
+  /**
+   * Whether `pe`'s bound palette rows still serve `item` this frame. A human's row is asked for again,
+   * which keeps it from eviction and recomposes it in place when the identity changed; only a moved row
+   * needs a bind.
+   */
+  paletteHolds(pe: PooledEntity, item: DrawItem): boolean {
+    if (!pe.paletted || pe.palette !== this.sheet?.palette) return true;
+    return humanLutRow(this.sheet, item) === pe.lutRow;
+  }
+
   private paletteFor(kind: SpriteKind, item: DrawItem): PaletteLut | undefined {
     if (kind === 'vehicle') return vehiclePalette(this.sheet, item);
     return kind === 'settler' ? settlerPalette(this.sheet, item) : undefined;
@@ -125,15 +129,14 @@ export class LayerBinder {
     const snap = frame.snapResolution;
     const originX = snapToDevicePixels(cameraScreenX(frame.camera, drawX), snap);
     const originY = snapToDevicePixels(cameraScreenY(frame.camera, drawY), snap);
-    // The (armor tier, player) LUT row - worn armor recolours the clothing bands. Unused on the plain path.
-    const driven = pe.kind === 'vehicle' && pe.paletted ? cartDriveLook(this.sheet, item) : undefined;
+    // The LUT row the body reads; a human's head reads the row after it. Unused on the plain path.
     const bodyRow = !pe.paletted
       ? 0
       : pe.kind === 'vehicle'
-        ? vehicleBodyRow(this.sheet, item, pe.palette, driven)
-        : settlerPaletteLutRow(this.sheet, item);
-    // Only a character's layers include a head, which reads the settler LUT's own head row.
-    const settlerLut = pe.kind === 'vehicle' && driven === undefined ? undefined : this.sheet?.palette;
+        ? vehicleBodyRow(this.sheet, item, pe.palette)
+        : humanLutRow(this.sheet, item);
+    const human = pe.paletted && pe.palette === this.sheet?.palette;
+    if (pe.paletted) pe.lutRow = bodyRow;
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight); // constant per entity
     this.feetX = item.x;
     this.feetY = item.y - (item.lift ?? 0);
@@ -181,10 +184,11 @@ export class LayerBinder {
       if (pe.paletted && layer.shadow === true) {
         this.bindShadowSprite(pe, shadowSlot++, layer, box, tint, shadowStyle);
       } else if (pe.paletted) {
-        const row = settlerLut === undefined ? bodyRow : layerLutRow(settlerLut, layer, bodyRow);
+        const row = human ? humanLayerRow(layer, bodyRow) : bodyRow;
         if (layer.glow !== undefined) {
-          // The team ramp the glow reads rides the plain player row, whatever armor recolours the body.
-          const glowRow = settlerLut === undefined ? bodyRow : paletteLutRow(settlerLut, item.player, null);
+          // The glow reads the owner's team ramp, which a human's own rolled rows may have recoloured.
+          const glowRow =
+            human && this.sheet?.palette !== undefined ? this.sheet.palette.teamRow(item.player ?? 0) : row;
           this.bindPalettedQuad(pe, spriteSlot++, layer, box, frame, glowRow, tint);
         } else if (pe.kind === 'vehicle') {
           this.bindPalettedMesh(pe, spriteSlot++, layer, originX, originY, camScale, frame, row, tint);

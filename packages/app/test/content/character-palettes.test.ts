@@ -21,7 +21,7 @@ import { characterTablesUnderTest, contentDir, hasRealIr, rawIrUnderTest } from 
 
 /**
  * Pins which atlas each character layer loads from against the served content: a look draws through the
- * player-colour LUT or in its baked skin as a whole, since a baked head drawn through the paletted shader
+ * human palette LUT or in its baked skin as a whole, since a baked head drawn through the paletted shader
  * reads its colours as palette indices.
  */
 

@@ -1,12 +1,19 @@
 import {
   type AtlasFrame,
+  createHumanPaletteIdentity,
   type DrawableResource,
+  type DrawItem,
+  HUMAN_PALETTE_BYTES,
+  HumanPaletteCache,
+  type HumanPaletteColours,
+  humanPaletteIdentity,
   isDrawableResource,
-  layerLutRow,
   type PaletteLut,
-  type PlayerColourLut,
   type ResolvedLayer,
   readable2dContext,
+  type SpriteSheet,
+  vehicleLutRow,
+  vehiclePalette,
 } from '@open-northland/render';
 
 /** One atlas frame as a 2d canvas can draw it: the image and the rect to take from it. */
@@ -24,9 +31,10 @@ export interface FigureFrameImage {
 const PAGE_SIZE = 1024;
 /** Clear px between packed frames, so a smoothed draw never samples a neighbour. */
 const PAGE_GUTTER = 1;
-/** The LUT's column count: one per palette index. */
+/** A LUT's column count: one per palette index. */
 const LUT_WIDTH = 256;
 const CHANNELS = 4;
+const RGB = 3;
 
 /** Row-by-row placement of rectangles on a fixed page; `null` once the page cannot take one more. */
 export class ShelfPacker {
@@ -62,62 +70,133 @@ export class ShelfPacker {
 }
 
 /**
- * Settler or vehicle frames for 2d canvases. A baked sheet's frame is its atlas image; an indexed sheet's
- * frame is recoloured on the CPU through its LUT row, as the paletted shader does on the GPU, and cached
- * per (frame, row) on one shared page. Nothing here needs the GPU, so a DOM element can draw the figure
- * the map draws. Only the settler LUT has a head row.
+ * The palettes a figure's layers are recoloured through: an indexed human's own composed palettes, the
+ * ship LUT row of an indexed vehicle, or none for a baked look.
+ */
+class FigurePalettes {
+  private readonly humans: HumanPaletteCache | undefined;
+  private readonly identity = createHumanPaletteIdentity({ body: '', head: '', random: [] });
+  private readonly lutRows = new Map<PaletteLut, LutRowColours>();
+
+  constructor(private readonly sheet: SpriteSheet | undefined) {
+    const book = sheet?.palette?.book;
+    this.humans = book === undefined ? undefined : new HumanPaletteCache(book);
+  }
+
+  of(item: DrawItem): HumanPaletteColours | undefined {
+    if (this.humans !== undefined && humanPaletteIdentity(this.sheet, item, this.identity)) {
+      return this.humans.colours(item.ref, this.identity);
+    }
+    if (item.kind !== 'vehicle') return undefined;
+    const palette = vehiclePalette(this.sheet, item);
+    if (palette === undefined) return undefined;
+    let rows = this.lutRows.get(palette);
+    if (rows === undefined) {
+      rows = new LutRowColours(palette);
+      this.lutRows.set(palette, rows);
+    }
+    return rows.row(vehicleLutRow(palette, item.player)) ?? undefined;
+  }
+}
+
+/** A served LUT texture's rows as palettes, read back once and kept per row. */
+class LutRowColours {
+  private pixels: ImageData | null | undefined;
+  private readonly rows = new Map<number, HumanPaletteColours | null>();
+
+  constructor(private readonly palette: PaletteLut) {}
+
+  row(row: number): HumanPaletteColours | null {
+    const held = this.rows.get(row);
+    if (held !== undefined) return held;
+    const pixels = this.read();
+    let colours: HumanPaletteColours | null = null;
+    if (pixels !== null) {
+      const rgb = new Uint8Array(HUMAN_PALETTE_BYTES);
+      const start = Math.min(Math.max(row, 0), pixels.height - 1) * LUT_WIDTH * CHANNELS;
+      for (let i = 0; i < LUT_WIDTH; i++) {
+        rgb[i * RGB] = pixels.data[start + i * CHANNELS] ?? 0;
+        rgb[i * RGB + 1] = pixels.data[start + i * CHANNELS + 1] ?? 0;
+        rgb[i * RGB + 2] = pixels.data[start + i * CHANNELS + 2] ?? 0;
+      }
+      colours = { body: rgb, head: rgb };
+    }
+    this.rows.set(row, colours);
+    return colours;
+  }
+
+  private read(): ImageData | null {
+    if (this.pixels !== undefined) return this.pixels;
+    this.pixels = null;
+    const resource: unknown = this.palette.source.resource;
+    if (!isDrawableResource(resource)) return null;
+    const ctx = readable2dContext(LUT_WIDTH, this.palette.colours);
+    if (ctx === null) return null;
+    ctx.drawImage(resource, 0, 0);
+    this.pixels = ctx.getImageData(0, 0, LUT_WIDTH, this.palette.colours);
+    return this.pixels;
+  }
+}
+
+/**
+ * Settler or vehicle frames for 2d canvases. A baked look's frame is its atlas image; an indexed look's
+ * frame is recoloured on the CPU through its palette, as the paletted shader does on the GPU, and cached
+ * per (frame, palette) on one shared page. Nothing here needs the GPU, so a DOM element can draw the
+ * figure the map draws.
  */
 export class FigureFrames {
-  private readonly recoloured = new WeakMap<AtlasFrame, Map<number, FigureFrameImage | null>>();
+  private readonly recoloured = new WeakMap<AtlasFrame, Map<Uint8Array, FigureFrameImage | null>>();
   /** Every frame with a cached recolour, so the cache can be emptied wholesale: a WeakMap cannot be
    *  cleared, but dropping the per-frame maps lets the frames be rebuilt. */
   private readonly cachedFrames = new Set<AtlasFrame>();
   private readonly packer = new ShelfPacker(PAGE_SIZE, PAGE_SIZE, PAGE_GUTTER);
+  private readonly palettes: FigurePalettes;
   private page: CanvasRenderingContext2D | null | undefined;
-  private lut: ImageData | null | undefined;
 
-  constructor(private readonly palette: PlayerColourLut | PaletteLut | undefined) {}
+  constructor(sheet: SpriteSheet | undefined) {
+    this.palettes = new FigurePalettes(sheet);
+  }
 
-  /** `row` is the LUT row the layer reads; ignored by a baked sheet. Null when the source cannot be
-   *  drawn (a GPU-only resource) or the palette cannot be read. */
-  frame(layer: ResolvedLayer, row: number): FigureFrameImage | null {
+  /** `colours` is the RGB palette the layer reads; undefined draws the atlas as it is. Null when the
+   *  source cannot be drawn (a GPU-only resource). */
+  frame(layer: ResolvedLayer, colours: Uint8Array | undefined): FigureFrameImage | null {
     const { frame } = layer;
     const resource: unknown = layer.source.resource;
     if (!isDrawableResource(resource)) return null;
-    if (this.palette === undefined) {
+    if (colours === undefined) {
       return { image: resource, x: frame.x, y: frame.y, width: frame.width, height: frame.height };
     }
-    const cached = this.recoloured.get(frame)?.get(row);
+    const cached = this.recoloured.get(frame)?.get(colours);
     if (cached !== undefined) return cached;
     // Looked up again: a recolour that fills the page empties the cache.
-    const image = this.recolour(resource, frame, row);
+    const image = this.recolour(resource, frame, colours);
     let perFrame = this.recoloured.get(frame);
     if (perFrame === undefined) {
       perFrame = new Map();
       this.recoloured.set(frame, perFrame);
       this.cachedFrames.add(frame);
     }
-    perFrame.set(row, image);
+    perFrame.set(colours, image);
     return image;
   }
 
-  /** Draw a figure's resolved layers with its feet at (`feetX`, `feetY`), `zoom` canvas px per map
-   *  px. `bodyRow` is the body's own LUT row, which a settler's head layer overrides. A shadow is left
-   *  out: its page holds a mask for the map's shadow pass, not colours a 2d canvas can paint. */
+  /** Draw `item`'s resolved layers with its feet at (`feetX`, `feetY`), `zoom` canvas px per map px. A
+   *  shadow is left out: its page holds a mask for the map's shadow pass, not colours a 2d canvas can
+   *  paint. */
   draw(
     ctx: CanvasRenderingContext2D,
     layers: readonly ResolvedLayer[],
-    bodyRow: number,
+    item: DrawItem,
     zoom: number,
     feetX: number,
     feetY: number,
   ): void {
+    const palettes = this.palettes.of(item);
     for (const layer of layers) {
       if (layer.shadow === true) continue;
-      const palette = this.palette;
-      const row =
-        palette === undefined || !('headRow' in palette) ? bodyRow : layerLutRow(palette, layer, bodyRow);
-      const image = this.frame(layer, row);
+      const colours =
+        palettes === undefined ? undefined : layer.head === true ? palettes.head : palettes.body;
+      const image = this.frame(layer, colours);
       if (image === null) continue;
       const s = zoom * layer.scale;
       ctx.imageSmoothingEnabled = layer.source.scaleMode !== 'nearest';
@@ -135,26 +214,28 @@ export class FigureFrames {
     }
   }
 
-  private recolour(source: DrawableResource, frame: AtlasFrame, row: number): FigureFrameImage | null {
-    const lut = this.readLut();
+  private recolour(
+    source: DrawableResource,
+    frame: AtlasFrame,
+    colours: Uint8Array,
+  ): FigureFrameImage | null {
     const page = this.readPage();
-    if (lut === null || page === null || frame.width === 0 || frame.height === 0) return null;
+    if (page === null || frame.width === 0 || frame.height === 0) return null;
     const scratch = readable2dContext(frame.width, frame.height);
     if (scratch === null) return null;
     scratch.drawImage(source, frame.x, frame.y, frame.width, frame.height, 0, 0, frame.width, frame.height);
     const indexed = scratch.getImageData(0, 0, frame.width, frame.height);
     const out = new ImageData(frame.width, frame.height);
-    const lutRow = Math.min(Math.max(row, 0), lut.height - 1) * LUT_WIDTH * CHANNELS;
     for (let i = 0; i < indexed.data.length; i += CHANNELS) {
       // Red carries the palette index, alpha the coverage; an unwritten pixel stays clear. The canvas
       // round trip premultiplies, so a partly covered pixel's index is approximate; the shipped atlases
       // carry only full or empty coverage.
       const coverage = indexed.data[i + 3] ?? 0;
       if (coverage === 0) continue;
-      const at = lutRow + (indexed.data[i] ?? 0) * CHANNELS;
-      out.data[i] = lut.data[at] ?? 0;
-      out.data[i + 1] = lut.data[at + 1] ?? 0;
-      out.data[i + 2] = lut.data[at + 2] ?? 0;
+      const at = (indexed.data[i] ?? 0) * RGB;
+      out.data[i] = colours[at] ?? 0;
+      out.data[i + 1] = colours[at + 1] ?? 0;
+      out.data[i + 2] = colours[at + 2] ?? 0;
       out.data[i + 3] = coverage;
     }
     let at = this.packer.place(frame.width, frame.height);
@@ -182,24 +263,5 @@ export class FigureFrames {
     canvas.height = PAGE_SIZE;
     this.page = canvas.getContext('2d');
     return this.page;
-  }
-
-  private readLut(): ImageData | null {
-    if (this.lut !== undefined) return this.lut;
-    const palette = this.palette;
-    const resource: unknown = palette?.source.resource;
-    if (palette === undefined || !isDrawableResource(resource)) {
-      this.lut = null;
-      return null;
-    }
-    const ctx = readable2dContext(LUT_WIDTH, palette.colours);
-    if (ctx === null) {
-      this.lut = null;
-      return null;
-    }
-    ctx.drawImage(resource, 0, 0);
-    const lut = ctx.getImageData(0, 0, LUT_WIDTH, palette.colours);
-    this.lut = lut;
-    return lut;
   }
 }

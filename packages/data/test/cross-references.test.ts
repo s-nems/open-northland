@@ -486,3 +486,55 @@ it.each([
     }),
   ).toThrow(error);
 });
+
+describe('human palette references', () => {
+  const RAMP = '0'.repeat(96);
+  const BASE = '0'.repeat(1536);
+  const lane = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    bases: { test_human_00: BASE },
+    ramps: { 'player 00': RAMP },
+    recipes: [
+      { name: 'player_00', patches: [{ band: 10, source: { kind: 'ramp', ramp: 'player 00' }, weight: 10 }] },
+    ],
+    players: [{ player: 0, male: 'player_00', female: 'player_00' }],
+    armorRecipes: ['player_00'],
+    cartRecipes: { handcart: 'player_00', oxcart: 'player_00' },
+    jobChanges: [{ tribe: 1, job: 1, recipe: 'player_00' }],
+    ...overrides,
+  });
+  const look = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    tribe: 1,
+    job: 1,
+    body: 'cr_hum_body_00.bmd',
+    bodyPalette: 'test_human_00',
+    randomPalettes: ['player_00'],
+    ...overrides,
+  });
+
+  it('accepts a lane whose every name resolves, and a synthetic set without one', () => {
+    expect(() => parseWith({ humanPalettes: lane(), jobGraphics: [look()] })).not.toThrow();
+    expect(() => parseWith({ jobGraphics: [look({ randomPalettes: ['absent'] })] })).not.toThrow();
+    // A look may roll a name no recipe carries; the original rolls it as an empty recipe.
+    expect(() =>
+      parseWith({ humanPalettes: lane(), jobGraphics: [look({ randomPalettes: ['absent'] })] }),
+    ).not.toThrow();
+  });
+
+  it.each([
+    [{ humanPalettes: lane({ ramps: {} }) }, /recipe "player_00" names unknown ramp "player 00"/],
+    [
+      { humanPalettes: lane({ armorRecipes: ['absent'] }) },
+      /armor tier 0 names unknown palette recipe "absent"/,
+    ],
+    [
+      { humanPalettes: lane({ jobChanges: [{ tribe: 1, job: 2, recipe: 'absent' }] }) },
+      /job change 1\/2 names unknown palette recipe "absent"/,
+    ],
+    [
+      { humanPalettes: lane(), jobGraphics: [look({ headPalette: 'absent' })] },
+      /job graphics 1\/1 names unknown base palette "absent"/,
+    ],
+  ])('rejects a dangling name: %#', (overrides, error) => {
+    expect(() => parseWith(overrides)).toThrow(error);
+  });
+});

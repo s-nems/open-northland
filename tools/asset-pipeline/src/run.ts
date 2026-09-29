@@ -22,11 +22,7 @@ import { BOBS_INDEX_FILE, MAPS_INDEX_FILE, writeListings } from './stages/listin
 import { convertMapDatTree, createMinimapSynthesizer } from './stages/maps/index.js';
 import { renderMusicStage } from './stages/music/index.js';
 import { composeMaskedTransitionPages, convertPcxTree } from './stages/pcx.js';
-import {
-  convertGuidepostPlayerAtlases,
-  convertIndexedCharacterAtlases,
-  convertPlayerColorLut,
-} from './stages/player-colors.js';
+import { convertGuidepostPlayerAtlases, convertIndexedCharacterAtlases } from './stages/player-colors.js';
 import { copySoundTree } from './stages/sounds.js';
 import { indexSourceAssets } from './stages/source-files.js';
 import { convertVehiclePaletteFamilies } from './stages/vehicle-colors.js';
@@ -69,10 +65,6 @@ export async function runPipeline(args: Args): Promise<void> {
   );
 
   const indexed = await convertIndexedCharacterAtlases(bindings, args.out, assets);
-  const lut = await convertPlayerColorLut(roots, args.out, assets).catch((err: unknown) => {
-    console.warn(`[pipeline] player-colour LUT skipped: ${errorMessage(err)}`);
-    return undefined;
-  });
   const guideAtlases = await convertGuidepostPlayerAtlases(args.out, assets).catch((err: unknown) => {
     console.warn(`[pipeline] guidepost player atlases skipped: ${errorMessage(err)}`);
     return 0;
@@ -85,7 +77,6 @@ export async function runPipeline(args: Args): Promise<void> {
   );
   console.log(
     `[pipeline] player colours: ${indexed.length} indexed character atlas(es)` +
-      `${lut ? `, ${lut.colors}-colour ×${lut.blocks}-block + head LUT -> ${lut.png}` : ' (LUT skipped)'}` +
       `, ${guideAtlases} guidepost player atlas(es)` +
       `, ${vehicleColors.indexed.length} indexed vehicle atlas(es) over ${vehicleColors.luts.length} palette family LUT(s)`,
   );
@@ -122,7 +113,8 @@ export async function runPipeline(args: Args): Promise<void> {
       `${ir.buildings.length} buildings, ` +
       `${ir.weapons.length} weapons, ${ir.armor.length} armor, ${ir.animals.length} animals, ${ir.vehicles.length} vehicles, ${ir.landscape.length} landscape, ` +
       `${ir.tribes.length} tribes, ${ir.atomicAnimations.length} atomic animations, ${ir.bobSequences.length} bob-sequence sets, ${ir.buildingBobs.length} building bobs, ${ir.maps.length} maps, ` +
-      `${ir.gatheringPipeline.length} gathering pipelines ` +
+      `${ir.gatheringPipeline.length} gathering pipelines, ` +
+      `${ir.humanPalettes.recipes.length} human palette recipes over ${Object.keys(ir.humanPalettes.ramps).length} ramps ` +
       `-> ${join(args.out, 'ir.json')}`,
   );
 

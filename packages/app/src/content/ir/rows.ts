@@ -60,6 +60,8 @@ export interface JobGraphicsRow {
   readonly heads: readonly string[];
   readonly bodyPalette?: string;
   readonly headPalette?: string;
+  /** `gfxpaletterandom`: the recipes one of which each human of the record rolls. */
+  readonly randomPalettes: readonly string[];
 }
 
 /** One good, narrowed to the typeId→slug join the graphics lanes need. */
@@ -249,6 +251,8 @@ export interface ContentIr {
    *  creature (`hitpointsAdult` > 0) or a decorative swarm the sim never spawns; behaviour fields stay
    *  sim-side. */
   readonly animals?: readonly { tribeType?: number; hitpointsAdult?: number }[];
+  /** The recipes, ramps and bases human palettes compose from; parsed with its schema where used. */
+  readonly humanPalettes?: unknown;
   /** The `armortypes.ini` records - the worn-good → recolor-tier join. */
   readonly armor?: readonly { typeId?: number; goodType?: number }[];
   readonly sounds?: SoundBank;

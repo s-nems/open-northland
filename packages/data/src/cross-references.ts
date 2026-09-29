@@ -1,3 +1,4 @@
+import { checkHumanPalettes } from './human-palette-references.js';
 import { firstByTypeId } from './lookup.js';
 import {
   type ContentSet,
@@ -33,6 +34,7 @@ const CHECKS: readonly CrossReferenceCheck[] = [
   checkJobs,
   checkJobExperience,
   checkVehicles,
+  checkHumanPalettes,
 ];
 
 /** The id-sets every `check*` resolves references against, built once from the set. */

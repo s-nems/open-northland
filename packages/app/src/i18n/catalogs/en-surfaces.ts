@@ -466,7 +466,7 @@ export const enSurfaces = {
     noRosterFrames: 'content/ir.json has no playable roster sequences. Run the asset pipeline again.',
     filterNoMatch: 'Nothing matches the “{filter}” filter.',
     missingPalette: 'Player palette is unavailable',
-    missingPaletteDetail: 'Run the asset pipeline again to generate player-lut.png.',
+    missingPaletteDetail: 'Run the asset pipeline again to generate the human palettes in ir.json.',
   },
   icons: {
     title: 'Sprite atlas',

@@ -1,4 +1,4 @@
-export { AnimationGallery, type GalleryCellSpec } from './animation-gallery.js';
+export { AnimationGallery, type GalleryCellSpec, type GalleryPalette } from './animation-gallery.js';
 export {
   COMPASS_TO_BLOCK,
   clipDirs,

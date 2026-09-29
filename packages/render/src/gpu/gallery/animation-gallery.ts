@@ -1,8 +1,9 @@
 import { type Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import { type Camera, cameraScreenX, cameraScreenY } from '../../data/projection/index.js';
 import { lookupFrame } from '../../data/sprites/index.js';
+import { HUMAN_HEAD_ROW_OFFSET } from '../human-palette-lut.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
-import type { PlayerColourLut, SpriteLayer } from '../sprite-sheet.js';
+import type { PaletteLut, SpriteLayer } from '../sprite-sheet.js';
 import { TextureCache } from '../texture-cache.js';
 import {
   CELL_H,
@@ -40,14 +41,16 @@ export interface GalleryCellSpec {
   /** Label override for this cell; defaults to {@link GalleryClip.label}. */
   readonly label?: string;
   /**
-   * The player-colour row (0-based) this cell draws in paletted mode, ignored otherwise. The colours
-   * montage varies it per cell; a single-colour view sets the same row on every cell.
+   * The team-colour slot this cell draws in paletted mode, ignored otherwise. The colours montage varies
+   * it per cell; a single-colour view sets the same slot on every cell.
    */
   readonly player?: number;
 }
 
-/** The LUT a paletted gallery reads; see {@link PlayerColourLut} for the rows. */
-export type GalleryPalette = Pick<PlayerColourLut, 'source' | 'colours' | 'headRow'>;
+/** The human LUT a paletted gallery reads: a body row per player, its head row right under it. */
+export interface GalleryPalette extends PaletteLut {
+  bodyRow(player: number): number;
+}
 
 /** One cell's retained display objects (built once, textures swapped per frame). */
 interface GalleryCell {
@@ -57,8 +60,8 @@ interface GalleryCell {
   readonly layers: readonly SpriteLayer[];
   /** One sprite per layer, in the same order. */
   readonly sprites: readonly (Sprite | PalettedSprite)[];
-  /** The player-colour row this cell draws in paletted mode; 0 otherwise. */
-  readonly player: number;
+  /** The LUT body row this cell draws in paletted mode; 0 otherwise. */
+  readonly bodyRow: number;
 }
 
 /**
@@ -73,7 +76,7 @@ export class AnimationGallery {
   private direction: GalleryDirection;
   private readonly columns: number;
   private readonly cellCount: number;
-  /** When set, cells draw through the player-colour LUT ({@link PalettedSprite}) instead of baked textures. */
+  /** When set, cells draw through the human palette LUT ({@link PalettedSprite}) instead of baked textures. */
   private readonly palette: GalleryPalette | undefined;
 
   constructor(
@@ -83,9 +86,9 @@ export class AnimationGallery {
       readonly columns: number;
       readonly direction?: GalleryDirection;
       /**
-       * The player-colour LUT (a `256 × colours` texture) and its row count. When given, every cell
-       * draws through it at the cell's {@link GalleryCellSpec.player} row, its head overlays at the
-       * head row; absent, cells take the plain baked-texture path.
+       * The human LUT. When given, every cell draws through it at its {@link GalleryCellSpec.player}'s
+       * body row, its head overlays at the head row under it; absent, cells take the plain baked-texture
+       * path.
        */
       readonly palette?: GalleryPalette;
     },
@@ -140,7 +143,8 @@ export class AnimationGallery {
         container.addChild(spr);
       }
       this.root.addChild(container);
-      this.cells.push({ clip: spec.clip, container, layers, sprites, player: spec.player ?? 0 });
+      const bodyRow = this.palette?.bodyRow(spec.player ?? 0) ?? 0;
+      this.cells.push({ clip: spec.clip, container, layers, sprites, bodyRow });
     }
   }
 
@@ -189,7 +193,7 @@ export class AnimationGallery {
         if (spr instanceof PalettedSprite && palette !== undefined) {
           spr.setFrame(layer.source, frame, layer.atlas.width, layer.atlas.height);
           spr.place(originX, originY, scale, resW, resH);
-          spr.player = i === 0 ? cell.player : palette.headRow;
+          spr.player = i === 0 ? cell.bodyRow : cell.bodyRow + HUMAN_HEAD_ROW_OFFSET;
         } else {
           spr.texture = this.textures.get(layer.source, frame);
           spr.position.set(frame.offsetX, frame.offsetY);

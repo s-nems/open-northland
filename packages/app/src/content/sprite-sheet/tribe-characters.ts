@@ -252,7 +252,7 @@ export function tribeCharacters(
       const head = headBindingFor(binding, heads, headClips(seqByName, tribeSeqs.heads, inputs.sequences));
       return {
         body: feetShiftedLayer(layers.body, spec.feetShiftY),
-        ...(look.indexed ? {} : { indexed: false }),
+        ...(look.indexed ? { palette: look.palette } : { indexed: false }),
         ...(heads.length > 0 ? { heads } : {}),
         binding,
         ...(head !== undefined ? { headBinding: head } : {}),

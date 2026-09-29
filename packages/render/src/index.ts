@@ -15,6 +15,16 @@ export {
   placeHud,
   type StockCount,
 } from './data/hud/index.js';
+export { HumanPaletteCache } from './data/palettes/human-palette-cache.js';
+export {
+  type CartRecipe,
+  type CharacterPalette,
+  createHumanPaletteIdentity,
+  HUMAN_PALETTE_BYTES,
+  HumanPaletteBook,
+  type HumanPaletteColours,
+  type HumanPaletteIdentity,
+} from './data/palettes/human-palettes.js';
 export {
   type Camera,
   cameraScreenX,
@@ -124,8 +134,10 @@ export {
   type GalleryCellSpec,
   type GalleryClip,
   type GalleryDirection,
+  type GalleryPalette,
 } from './gpu/gallery/index.js';
 export type { GroundWave } from './gpu/ground-waves/index.js';
+export { HumanPaletteLut } from './gpu/human-palette-lut.js';
 export type { MapObjectSprite } from './gpu/map-objects/index.js';
 export {
   type BadgeAnchor,
@@ -177,6 +189,7 @@ export {
 } from './gpu/pixel-art-registry.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource, windowResolutionFor } from './gpu/pixi-app.js';
 export type { PlanStakeTextures } from './gpu/plan-stake.js';
+export { humanPaletteIdentity } from './gpu/sprite-pool/human-palette-row.js';
 export {
   createPresentationTrack,
   type EntityBounds,
@@ -184,21 +197,15 @@ export {
   presentItem,
   type ResolvedLayer,
   resolveLayers,
-  settlerPalette,
-  vehicleBodyRow,
   vehiclePalette,
 } from './gpu/sprite-pool/index.js';
 export {
   type CartDriveBinding,
-  layerLutRow,
   type PaletteLut,
-  type PlayerColourLut,
-  paletteLutRow,
   type SettlerCharacter,
   type SettlerCharacterSet,
   type SpriteLayer,
   type SpriteSheet,
-  settlerPaletteLutRow,
   type VehicleColourLut,
   vehicleLutRow,
 } from './gpu/sprite-sheet.js';

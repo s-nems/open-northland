@@ -590,8 +590,7 @@ these choices for the holes:
   `human_man_z01TraderOx_walk` for 60) while it drives, `[gfxanimatomic]` action 2 or 3 standing, in the
   commander's tribe and player colours through the human palette patched by the `randompalette.ini`
   recipe `good_HandCart` or `good_OxCart` (original behavior, unconfirmed against
-  the running game). The patched rows are two more blocks of the player LUT after the armor tiers
-  (`packages/data/src/player-lut.ts`). A parked cart, or one whose trader walks outside to load, draws its
+  the running game), which the IR carries as `humanPalettes.cartRecipes`. A parked cart, or one whose trader walks outside to load, draws its
   own sprite, the ox cart with its all-brown `oxcart` palette; the trader or carrier outside walks as a
   civilist with the unit it carries. Only the viking records author the figure; every tribe borrows them
   (approximation: the original falls back along the job chain, not traced). The ox-less cart, ships and

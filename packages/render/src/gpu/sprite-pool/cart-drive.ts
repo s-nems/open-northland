@@ -1,3 +1,4 @@
+import type { CartRecipe } from '../../data/palettes/human-palettes.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import type { CartDriveAnim } from '../../data/sprites/index.js';
 import type { SettlerCharacter, SpriteSheet } from '../sprite-sheet.js';
@@ -14,8 +15,8 @@ import type { LayerBuffer } from './resolved-layer.js';
 export interface CartDriveLook {
   readonly character: SettlerCharacter;
   readonly anim: CartDriveAnim;
-  /** The settler LUT row block the figure reads. */
-  readonly paletteBlock: number;
+  /** The recipe the cart lays over its driver's palettes. */
+  readonly cartRecipe: CartRecipe;
 }
 
 /** Looks already built, per character and vehicle type, so a driven cart allocates nothing per frame. */
@@ -34,8 +35,8 @@ export function cartDriveLook(sheet: SpriteSheet | undefined, item: DrawItem): C
   if (drive === undefined || characters === undefined || driver === undefined || typeId === undefined)
     return undefined;
   if (item.ghost === true || !drive.commanderJobs.has(driver.jobType)) return undefined;
-  const paletteBlock = drive.paletteBlockByVehicleType[typeId];
-  if (paletteBlock === undefined) return undefined;
+  const cartRecipe = drive.cartRecipeByVehicleType[typeId];
+  if (cartRecipe === undefined) return undefined;
   const own = humanCharacter(characters, driver.tribe, drive.lookJob, false, undefined, item.ref);
   const character =
     own.binding.cartDrive?.[typeId] !== undefined
@@ -49,8 +50,8 @@ export function cartDriveLook(sheet: SpriteSheet | undefined, item: DrawItem): C
     looksByCharacter.set(character, byType);
   }
   let look = byType.get(typeId);
-  if (look === undefined || look.paletteBlock !== paletteBlock) {
-    look = { character, anim, paletteBlock };
+  if (look === undefined || look.cartRecipe !== cartRecipe) {
+    look = { character, anim, cartRecipe };
     byType.set(typeId, look);
   }
   return look;

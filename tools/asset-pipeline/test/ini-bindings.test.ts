@@ -615,7 +615,7 @@ describe('extractJobBaseGraphics', () => {
         // `Test_Human_00` lower-cases to join case-insensitively onto the palette index.
         bodyPalette: 'test_human_00',
         headPalette: 'test_human_00',
-        randomPalette: 'vik_man_base',
+        randomPalettes: ['vik_man_base'],
       },
       {
         tribeId: 3,
@@ -631,7 +631,7 @@ describe('extractJobBaseGraphics', () => {
         head: [],
         bodyPalette: undefined,
         headPalette: undefined,
-        randomPalette: 'grizzu',
+        randomPalettes: ['grizzu'],
       },
     ]);
   });
@@ -685,7 +685,7 @@ describe('extractJobChangeGraphics', () => {
         ],
         bodyPalette: undefined,
         headPalette: 'test_human_00',
-        randomPalette: 'vik_man_changejob',
+        randomPalettes: ['vik_man_changejob'],
       },
     ]);
   });

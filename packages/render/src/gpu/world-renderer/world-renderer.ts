@@ -84,6 +84,8 @@ export class WorldRenderer {
   constructor(app: Application, opts?: WorldRendererOptions) {
     installWorldBatcher(); // before the sprite layer's render group builds its first batch
     this.app = app;
+    const gl = 'gl' in app.renderer ? app.renderer.gl : undefined;
+    if (gl !== undefined) opts?.sheet?.palette?.fitTo(gl.getParameter(gl.MAX_TEXTURE_SIZE) as number);
     this.viewSmoothing = opts?.viewSmoothing === true;
     this.playerColourOf = opts?.playerColourOf;
     this.spriteLayer.sortableChildren = true;

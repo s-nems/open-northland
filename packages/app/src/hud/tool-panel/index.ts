@@ -432,7 +432,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const goodIdByType = new Map(opts.goods.map((g) => [g.typeId, g.id]));
     const goodTypeById = new Map(opts.goods.map((g) => [g.id, g.typeId]));
     const thumbs = createBuildingThumbs(opts.sheet, opts.tribe);
-    const figureFrames = new FigureFrames(opts.sheet?.palette);
+    const figureFrames = new FigureFrames(opts.sheet);
     const windows = createToolWindows({
       ctx,
       container: windowContainer,

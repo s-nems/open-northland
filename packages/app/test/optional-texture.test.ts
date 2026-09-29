@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * `loadTextureIfPresent` is the optional-texture half of the degrade policy in `content/net.ts`. Its
- * callers - the player-colour LUT, the GUI and font palette LUTs, the goods palette, the panel bitmap
+ * callers - the ship palette LUTs, the GUI and font palette LUTs, the goods palette, the panel bitmap
  * fills - read `undefined` as the only failure signal and have no `catch` of their own, so a rejection
- * here escapes far past the texture: a broken `player-lut.png` fails all of `loadHumanSheet` rather
- * than just dropping per-player recolouring.
+ * here escapes far past the texture: a broken ship LUT fails all of `loadHumanSpriteSheet` rather than
+ * just dropping per-owner ship colours.
  */
 
 type LoadAtlasSource = typeof import('@open-northland/render').loadAtlasSource;
@@ -30,7 +30,7 @@ const { loadTextureIfPresent } = await import('../src/content/net.js');
 const { diag } = await import('../src/diag/log.js');
 diag.setConsoleLevel('silent');
 
-const LUT_URL = '/bobs/player-lut.png';
+const LUT_URL = '/bobs/ls_vehicles.lut.png';
 
 /** Entries the call under test appended - the ring is app-wide and shared across the suite. */
 let ringBefore = 0;

@@ -1,45 +1,18 @@
 /**
- * Player (team) colour palettes. The original composes a per-creature palette from a base body palette
- * plus a player-colour ramp bound to the clothing patches, and a `.bmd` stores palette indices, so the
- * atlas keeps raw indices and the renderer reads each one through a per-player row of a LUT texture.
- *
- * The `randompalette.ini` `player_00…09` recipes bind the `Player NN` ramp, colour-range 1 of a
- * `playerNN.pcx`, onto the men's clothing patches. The original ships 10 player colours; the extra six
- * are hue-rotated approximations with no original equivalent.
- *
- * A human carries two palettes, body and head, each from the base its record names for that half: a
- * recipe's `Patch` id 0..15 addresses body band `id`, 16..31 head band `id - 16` (original behavior).
- * The player recipes patch body bands only, so the head never wears the
- * team ramp.
+ * Player (team) colours. The original gives a player's humans the `player_NN` (male) or `woman_NN`
+ * (female) `randompalette.ini` recipe of its colour, which patch the `Player NN` ramps (colour ranges
+ * of a `playerNN.pcx`) onto clothing bands. The original ships 10 player colours; the extra six are
+ * hue-rotated approximations with no original equivalent.
  */
 
 import { assertPaletteBytes, PALETTE_RGB_BYTES } from './image.js';
 
-/** One palette band, a `Patch` target or a `[GfxPalette16]` ramp, is 16 indices. */
-const BAND_LENGTH = 16;
 /** First index of the source `Player NN` ramp inside a `playerNN.pcx` (colour-range 1 = indices 16–31). */
-export const PLAYER_RAMP_START = 16;
-/** Length of the player ramp (a 16-colour `[GfxPalette16]` ramp). */
-const PLAYER_RAMP_LENGTH = BAND_LENGTH;
-
-/**
- * The body-palette index runs that receive a player's colour ramp: patch 10 (indices 160–175, the men's
- * vest) and patch 5 (80–95), which the `player_00…09` recipes mirror from patch 10 (`Patch 5 10 10`).
- * Everything else (skin, hair, metal, tools) is the shared base and identical across players.
- *
- * Patch 15 (240–255) is excluded because the carried-good colours live there (`good_Wood`/`good_clay`
- * set patch 14 + patch 15); the `player_NN` recipes remap patches 10 and 5 only, and the women's ramp
- * is the separate `woman_NN` recipe on patch 15.
- */
-export const PLAYER_COLOR_BANDS: readonly (readonly [number, number])[] = [
-  [80, 95],
-  [160, 175],
-];
-
-/** Head band 4 (`Patch 20`) is the hair, beard and moustache ramp; band 5 (`Patch 21`) the eyebrows
- *  (the mod's own `inis/humans/palety - info.txt` band notes). */
-const HEAD_HAIR_BAND = 4;
-const HEAD_EYEBROW_BAND = 5;
+const PLAYER_RAMP_START = 16;
+/** Length of a 16-colour `[GfxPalette16]` ramp. */
+const RAMP_LENGTH = 16;
+/** RGB bytes per palette entry. */
+const RGB_BYTES = 3;
 
 export interface PlayerColorDef {
   readonly id: number;
@@ -77,52 +50,13 @@ export const PLAYER_COLORS: readonly PlayerColorDef[] = [
   { id: 15, name: 'pink', source: { kind: 'synthetic', hue: 336 } },
 ];
 
-function assertPalette(p: Uint8Array, what: string): void {
-  assertPaletteBytes(p, 'player-palette', what);
-}
-
 /**
  * A detached 768-byte copy of a palette. Not `p.slice()`: a decoded `.pcx` palette is a Node `Buffer`,
- * whose `slice` returns a view sharing memory, so every composed palette would alias one buffer.
+ * whose `slice` returns a view sharing memory.
  */
 function copyPalette(p: Uint8Array): Uint8Array {
   const out = new Uint8Array(PALETTE_RGB_BYTES);
   out.set(p.subarray(0, PALETTE_RGB_BYTES));
-  return out;
-}
-
-/**
- * Composes one player's palette: a copy of the shared body palette `base` with every
- * {@link PLAYER_COLOR_BANDS} run overwritten by `source`'s 16-colour ramp at {@link PLAYER_RAMP_START}.
- * Both inputs are 768-byte RGB triples.
- */
-export function composePlayerPalette(base: Uint8Array, source: Uint8Array): Uint8Array {
-  assertPalette(base, 'base palette');
-  assertPalette(source, 'source palette');
-  const out = copyPalette(base);
-  for (const [lo] of PLAYER_COLOR_BANDS) {
-    for (let k = 0; k < PLAYER_RAMP_LENGTH; k++) {
-      const s = (PLAYER_RAMP_START + k) * 3;
-      const o = (lo + k) * 3;
-      out[o] = source[s] ?? 0;
-      out[o + 1] = source[s + 1] ?? 0;
-      out[o + 2] = source[s + 2] ?? 0;
-    }
-  }
-  return out;
-}
-
-/**
- * The head palette every player's heads read: the body base with the eyebrow band copied from the hair
- * band. Approximation: the human `*_Base` recipes roll that copy (`Patch 21 20 35`) against a lighter
- * blond or face-skin option and `Egy_Soldier_Base` leaves the band alone; the copy is taken
- * deterministically, and the heads authored on another base palette read this one's row too.
- */
-export function composeHeadPalette(base: Uint8Array): Uint8Array {
-  assertPalette(base, 'base palette');
-  const out = copyPalette(base);
-  const from = HEAD_HAIR_BAND * BAND_LENGTH * 3;
-  out.copyWithin(HEAD_EYEBROW_BAND * BAND_LENGTH * 3, from, from + BAND_LENGTH * 3);
   return out;
 }
 
@@ -165,20 +99,28 @@ function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
 }
 
 /**
- * Builds a synthetic player source by hue-rotating `reference`'s ramp to `hueDeg`, keeping each entry's
- * saturation and value so a synthesised colour shades like a shipped one. Near-grey entries stay
- * neutral. Returns a full 768-byte palette of which only the ramp differs.
+ * Hue-rotates every entry of `ramp` (RGB triples) to `hueDeg` degrees, keeping each entry's saturation
+ * and value so a synthesised colour shades like a shipped one; near-grey entries stay neutral. Returns
+ * a detached copy.
+ */
+export function hueRotateRamp(ramp: Uint8Array, hueDeg: number): Uint8Array {
+  const out = new Uint8Array(ramp.length);
+  for (let o = 0; o + RGB_BYTES <= ramp.length; o += RGB_BYTES) {
+    const [, s, v] = rgbToHsv(ramp[o] ?? 0, ramp[o + 1] ?? 0, ramp[o + 2] ?? 0);
+    out.set(hsvToRgb(hueDeg, s, v), o);
+  }
+  return out;
+}
+
+/**
+ * Builds a synthetic player source palette: `reference` with its `Player NN` ramp (colour range 1)
+ * hue-rotated to `hueDeg` by {@link hueRotateRamp}.
  */
 export function synthesizePlayerSource(reference: Uint8Array, hueDeg: number): Uint8Array {
-  assertPalette(reference, 'reference palette');
+  assertPaletteBytes(reference, 'player-palette', 'reference palette');
   const out = copyPalette(reference);
-  for (let k = 0; k < PLAYER_RAMP_LENGTH; k++) {
-    const o = (PLAYER_RAMP_START + k) * 3;
-    const [, s, v] = rgbToHsv(reference[o] ?? 0, reference[o + 1] ?? 0, reference[o + 2] ?? 0);
-    const [r, g, b] = hsvToRgb(hueDeg, s, v);
-    out[o] = r;
-    out[o + 1] = g;
-    out[o + 2] = b;
-  }
+  const start = PLAYER_RAMP_START * RGB_BYTES;
+  const end = start + RAMP_LENGTH * RGB_BYTES;
+  out.set(hueRotateRamp(reference.subarray(start, end), hueDeg), start);
   return out;
 }

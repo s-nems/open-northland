@@ -1,7 +1,10 @@
 import {
   AnimationGallery,
+  createHumanPaletteIdentity,
   createWindowPixiApp,
   type GalleryCellSpec,
+  type GalleryPalette,
+  HumanPaletteLut,
   type SpriteLayer,
 } from '@open-northland/render';
 import {
@@ -14,13 +17,9 @@ import {
   VIKING_CHARACTERS,
   type VikingCharacter,
 } from '../catalog/roster.js';
-import {
-  loadBodyClips,
-  loadGalleryLayers,
-  loadPlayerLut,
-  MissingAtlasError,
-  type PlayerLut,
-} from '../content/ir/load.js';
+import { VIKING_TRIBE } from '../content/building-gfx/index.js';
+import { loadBodyClips, loadGalleryLayers, loadIr, MissingAtlasError } from '../content/ir/load.js';
+import { bodyCharacterPalette, humanPaletteBook } from '../content/sprite-sheet/human-palettes.js';
 import { formatMessage, messages } from '../i18n/index.js';
 import { createCameraController, MIN_ZOOM } from '../view/camera/index.js';
 import { mountMessage } from '../view/overlay.js';
@@ -101,8 +100,7 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
   const copy = messages().animation;
   const view = parseView(params.get('view'));
   const color = parseColor(params.get('color'), PLAYER_COLOR_COUNT);
-  // Paletted mode loads the indexed atlases and the player-colour LUT, so the character is recoloured
-  // per player at draw time.
+  // Paletted mode loads the indexed atlases and composes the character's palettes per team colour.
   const paletted = view === 'colors' || color !== null;
   const { bodyStem, headStems } = characterStems(
     char,
@@ -122,9 +120,9 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
 
-  let lut: PlayerLut | undefined;
+  let lut: GalleryPalette | undefined;
   if (paletted) {
-    lut = await loadPlayerLut();
+    lut = await galleryPalette(char);
     if (lut === undefined) {
       mountMessage(copy.missingPalette, copy.missingPaletteDetail);
       return;
@@ -155,12 +153,40 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
   await startGallery(canvas, params, cells, { char, view }, lut);
 }
 
+/** The characters the gallery composes as women's palettes. */
+const FEMALE_CHARACTERS: ReadonlySet<string> = new Set(['woman', 'girl']);
+/** The one human every gallery cell shows: a fixed seed, so a reload rolls the same clothes. */
+const GALLERY_SEED = 1;
+
+/**
+ * `char`'s palettes for every team colour, composed from the look its viking `[jobbasegraphics]` record
+ * gives its body; undefined without human palette data.
+ */
+async function galleryPalette(char: VikingCharacter): Promise<GalleryPalette | undefined> {
+  const ir = await loadIr();
+  const book = humanPaletteBook(ir);
+  if (book === undefined) return undefined;
+  const lut = new HumanPaletteLut(book, new Map(), HumanPaletteLut.rowsFor(PLAYER_COLOR_COUNT));
+  const identity = createHumanPaletteIdentity(bodyCharacterPalette(ir, VIKING_TRIBE, char.bodyBmd));
+  identity.female = FEMALE_CHARACTERS.has(char.id);
+  identity.seed = GALLERY_SEED;
+  const rows = Array.from({ length: PLAYER_COLOR_COUNT }, (_, player) => {
+    identity.player = player;
+    return lut.rowFor(player, identity);
+  });
+  return {
+    source: lut.source,
+    colours: lut.colours,
+    bodyRow: (player) => rows[player] ?? 0,
+  };
+}
+
 async function startGallery(
   canvas: HTMLCanvasElement,
   params: URLSearchParams,
   cells: readonly GalleryCellSpec[],
   overlay: { readonly char: VikingCharacter | null; readonly view: GalleryView },
-  palette?: PlayerLut,
+  palette?: GalleryPalette,
 ): Promise<void> {
   // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);

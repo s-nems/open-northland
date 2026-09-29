@@ -17,6 +17,7 @@ import {
   BuildingHolyFirePoint,
   BuildingOverlay,
 } from '../graphics/building-bobs.js';
+import { emptyHumanPalettes, HumanPalettes } from '../graphics/human-palettes.js';
 import { GfxInHouseProgram } from '../graphics/inhouse-anims.js';
 import { JobGraphics } from '../graphics/job-graphics.js';
 import { ParticleGfx } from '../graphics/particles.js';
@@ -72,6 +73,8 @@ export const ContentSet = z.strictObject({
   bobSequences: z.array(BobSequenceSet).default([]),
   /** `[jobbasegraphics]` `(tribe, job)` → body/head bob-set bindings. */
   jobGraphics: z.array(JobGraphics).default([]),
+  /** The `randompalette.ini` recipes, ramps and base palettes human palettes compose from. */
+  humanPalettes: HumanPalettes.default(emptyHumanPalettes),
   /** `[gfxanimatomic]` atomic-action → directional body-animation bindings. */
   gfxAtomics: z.array(GfxAnimAtomic).default([]),
   /** `[gfxwalkatomic]` good → loaded-gait bindings. */

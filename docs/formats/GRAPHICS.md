@@ -18,18 +18,27 @@ The game's stored 256-color palette body is 1,024 bytes: 256 entries in `B, G, R
 PCX palette trailers instead store three-byte `R, G, B` entries. The pipeline keeps those layouts
 separate and converts both to a common RGBA representation.
 
-Player colors, GUI elements, fonts, and some building families use palette lookup textures rather than
-duplicated RGBA atlases.
+GUI elements, fonts, and some building families use palette lookup textures rather than duplicated
+RGBA atlases; human bobs keep raw palette indices and draw through per-human palettes.
 
 A human draws its body and head bobs through two palettes, each starting from the base its
 `[jobbasegraphics]` record names for that half (`gfxpalettebasebody`, `gfxpalettebasehead`). A
 `randompalette.ini` `Patch <id> <ramp|patch> <weight>` line overwrites one 16-entry band: id 0..15
 addresses body band `id`, 16..31 head band `id - 16`, and a numeric source copies the band it names in
-the same way; the weights of one id's lines are summed and rolled, and lines apply in file order
-(original behavior). The `player_NN` and `woman_NN` recipes patch body bands
-only, so a head never carries the team ramp. The human `*_Base` recipes roll the eyebrows (head band 5)
+the same way, reading the palette being composed. Each distinct id, in the order its first line
+appears, sums its lines' weights and rolls one of them (original behavior).
+
+Original behavior: a human is composed at creation from its bases, then the recipe of its player
+colour `n` (`player_%2.2d` for men, `woman_%2.2d` for women), then one recipe rolled from its record's
+`gfxpaletterandom` lines. A later job change applies the `[jobchangegraphics]` record's recipe on
+top, and that record keeps the last of its `gfxpaletterandom` lines. A soldier then applies
+`human_armor_%3.3d` of its armor type. The `player_NN` and `woman_NN` recipes patch body bands only, so
+a head never carries the team ramp. The human `*_Base` recipes roll the eyebrows (head band 5)
 from the already rolled hair band (`Patch 21 20 35`) against a lighter blond or face-skin option;
 `Egy_Soldier_Base` leaves them at the base.
+
+Approximation: the renderer composes a human from what it is now (current look, job and worn armor),
+not from its history, so a job change rerolls from the new look's record and armor follows what is worn.
 
 ## Bob animations (`.bmd`)
 

@@ -154,5 +154,10 @@ export function readVehicleDriver(
   const jobType = rider === undefined ? undefined : readJobType(rider.components);
   if (rider === undefined || jobType === undefined) return;
   const tribe = readSettlerTribe(rider.components);
-  item.driver = tribe === undefined ? { jobType } : { jobType, tribe };
+  item.driver = {
+    ref: rider.id,
+    jobType,
+    ...(tribe !== undefined ? { tribe } : {}),
+    ...('Female' in rider.components ? { female: true } : {}),
+  };
 }

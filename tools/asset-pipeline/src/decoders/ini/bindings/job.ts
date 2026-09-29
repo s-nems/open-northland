@@ -4,7 +4,12 @@
  */
 
 import type { RuleProp, RuleSection } from '../grammar.js';
-import { getPaletteName, normalizeAssetPath, normalizeOptionalPath } from '../ir-fields.js';
+import {
+  getPaletteName,
+  normalizeAssetPath,
+  normalizeOptionalPath,
+  normalizePaletteName,
+} from '../ir-fields.js';
 import { findProps, getInt } from '../props.js';
 import { type BmdPaletteBinding, readBmdPaletteBindings } from './bmd-palette.js';
 
@@ -63,7 +68,8 @@ export interface IndexedBobManager {
  * One human's full graphics binding from a `[jobbasegraphics]` record: a body bob plus zero-or-more
  * numbered head bobs, each a `gfxbobmanagerbody/head <index> "<bmd>" ["<shadow>"]` line whose leading
  * int shifts the `.bmd` path off `values[0]`. Palettes split three ways: `gfxpalettebasebody` and
- * `gfxpalettebasehead` colour the two bob sets, `gfxpaletterandom` is the per-settler random tint range.
+ * `gfxpalettebasehead` colour the two bob sets, and each `gfxpaletterandom` line names a
+ * `randompalette.ini` recipe the human may roll.
  */
 export interface JobBaseGraphicsBinding {
   /** The record's `logictribe` id, when it carries the key. */
@@ -78,8 +84,8 @@ export interface JobBaseGraphicsBinding {
   readonly bodyPalette: string | undefined;
   /** The `gfxpalettebasehead` `editname`, lower-cased. */
   readonly headPalette: string | undefined;
-  /** The `gfxpaletterandom` `editname`, lower-cased. */
-  readonly randomPalette: string | undefined;
+  /** The `gfxpaletterandom` recipe names in file order, lower-cased. */
+  readonly randomPalettes: readonly string[];
 }
 
 /**
@@ -128,7 +134,10 @@ function extractIndexedGraphics(
       head,
       bodyPalette: getPaletteName(sec, 'gfxpalettebasebody'),
       headPalette: getPaletteName(sec, 'gfxpalettebasehead'),
-      randomPalette: getPaletteName(sec, 'gfxpaletterandom'),
+      randomPalettes: findProps(sec, 'gfxpaletterandom').flatMap((p) => {
+        const name = p.values[0];
+        return name !== undefined && name.trim() !== '' ? [normalizePaletteName(name)] : [];
+      }),
     });
   }
   return bindings;

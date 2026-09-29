@@ -1,3 +1,4 @@
+import type { CharacterPalette } from '@open-northland/render';
 import type { ContentIr, JobGraphicsRow } from '../ir/rows.js';
 import { CHARACTER_SPEC_ENTRIES, type CharacterSpecId } from './character-specs.js';
 
@@ -17,12 +18,13 @@ export interface TribeLook {
   readonly headBmds: readonly string[];
   readonly bodyPalette: string;
   readonly headPalette: string;
+  /** The bases and `gfxpaletterandom` recipes a human of this look composes its palettes from. */
+  readonly palette: CharacterPalette;
 }
 
 /** What a record with no `gfxpalettebasebody` falls to: the skin most records name outright and the same
- *  floor the BMD pipeline decodes such bodies with. `gfxpaletterandom` remains a runtime tint range rather
- *  than a base bob palette; until that composition is supported, this keeps its unique body drawable. */
-const DEFAULT_PALETTE = 'test_human_00';
+ *  floor the BMD pipeline decodes such bodies with. A composed human palette falls to it too. */
+export const DEFAULT_PALETTE = 'test_human_00';
 
 /** The bob-set prefixes of the human and the animal body libraries. Some monster jobs draw a person on an
  *  animal body. */
@@ -54,6 +56,11 @@ export function lookFrom(row: JobGraphicsRow): TribeLook {
     headBmds: heads,
     bodyPalette: row.bodyPalette ?? DEFAULT_PALETTE,
     headPalette: row.headPalette ?? DEFAULT_PALETTE,
+    palette: {
+      body: row.bodyPalette ?? DEFAULT_PALETTE,
+      head: row.headPalette ?? DEFAULT_PALETTE,
+      random: row.randomPalettes,
+    },
   };
 }
 

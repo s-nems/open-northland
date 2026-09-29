@@ -7,7 +7,6 @@ export * from './json-fingerprint.js';
 export * from './lookup.js';
 export * from './map-lobby.js';
 export * from './missions/index.js';
-export * from './player-lut.js';
 export * from './schema/index.js';
 export * from './technology.js';
 export * from './terrain-fingerprint.js';

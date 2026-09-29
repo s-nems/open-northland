@@ -71,6 +71,7 @@ export function assignSettlerFields(
   // from colliding synthetic adult ids.
   if ('Age' in components) item.young = true;
   if (readBehaviourGlow(components)) item.glow = true;
+  if ('Female' in components) item.female = true;
 }
 
 export function assignBuildingFields(

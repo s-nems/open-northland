@@ -58,6 +58,8 @@ export interface PalettedPooledEntity extends PooledEntityBase {
    *  draws palette-less, as a plain sprite under them. Grown as frames resolve them. */
   readonly shadows: Sprite[];
   readonly palette: PaletteLut;
+  /** The body row the last bind read. */
+  lutRow: number;
 }
 
 /** Every other entity: its atlas layers are plain cached-sub-texture {@link Sprite}s. */
@@ -88,5 +90,5 @@ export function createPooled(kind: SpriteKind, palette: PaletteLut | undefined):
   };
   return palette === undefined
     ? { ...base, paletted: false, sprites: [], pickExempt: [] }
-    : { ...base, paletted: true, sprites: [], shadows: [], palette };
+    : { ...base, paletted: true, sprites: [], shadows: [], palette, lutRow: 0 };
 }

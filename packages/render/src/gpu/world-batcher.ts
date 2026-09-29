@@ -92,7 +92,7 @@ const WORLD_LUT_SLOT_MASK = 31;
 export const WORLD_LUT_ROW_SHIFT = 9;
 /**
  * The palette index a hero's glow takes its colour from: step 10 of the team ramp in the body palette's
- * vest band (160-175), which every player row of the settler LUT carries. Original behavior: the glow
+ * vest band (160-175), which each player's team row of the human LUT carries. Original behavior: the glow
  * colour is that step of the owner's `Player NN` ramp.
  */
 export const GLOW_PALETTE_INDEX = 170;

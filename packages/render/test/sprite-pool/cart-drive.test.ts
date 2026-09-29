@@ -6,10 +6,11 @@ import type { ElevationField } from '../../src/data/terrain/index.js';
 import { LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
 import { SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { resolveLayers } from '../../src/gpu/sprite-pool/resolve-layers.js';
-import type { PlayerColourLut, SpriteSheet } from '../../src/gpu/sprite-sheet.js';
+import type { SpriteSheet } from '../../src/gpu/sprite-sheet.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import type { SpriteAtlas } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
+import { syntheticHumanLut } from '../support/human-palettes.js';
 
 /**
  * A cart its trader or carrier commander rides inside draws as the trader's driving figure, in the
@@ -23,7 +24,7 @@ const HANDCART = 1;
 const TRADER = 25;
 const CARRIER = 24;
 const WOMAN = 5;
-const CART_BLOCK = 5;
+const DRIVER = 8;
 const CART_BOB = 3;
 const STAND_BOB = 40;
 const DRIVE_START = 100;
@@ -41,13 +42,7 @@ const humanAtlas: SpriteAtlas = {
     [DRIVE_START + EAST * DRIVE_STRIDE + 2, frame],
   ]),
 };
-const lut: PlayerColourLut = {
-  source,
-  colours: 7 * 16 + 1,
-  playerRows: 16,
-  armorTierByGood: new Map(),
-  headRow: 7 * 16,
-};
+const lut = syntheticHumanLut();
 const trader = {
   body: { source, atlas: humanAtlas },
   binding: {
@@ -78,7 +73,7 @@ const sheet: SpriteSheet = {
   cartDrive: {
     commanderJobs: new Set([CARRIER, TRADER]),
     lookJob: TRADER,
-    paletteBlockByVehicleType: { [HANDCART]: CART_BLOCK },
+    cartRecipeByVehicleType: { [HANDCART]: 'handcart' },
   },
 };
 
@@ -92,7 +87,7 @@ const cart = (driverJob?: number, state: DrawItem['state'] = 'idle'): DrawItem =
   typeId: HANDCART,
   facing: EAST,
   state,
-  ...(driverJob !== undefined ? { driver: { jobType: driverJob, tribe: VIKING } } : {}),
+  ...(driverJob !== undefined ? { driver: { ref: DRIVER, jobType: driverJob, tribe: VIKING } } : {}),
 });
 const bodyFrameOf = (item: DrawItem, tick = 2) =>
   resolveLayers(sheet, item, tick)?.find((l) => l.shadow !== true && l.head !== true)?.frame;

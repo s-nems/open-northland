@@ -2,18 +2,13 @@ import {
   buildSpriteScene,
   createPresentationTrack,
   type DrawItem,
-  type PaletteLut,
   type PresentationTrack,
   presentItem,
   type ResolvedLayer,
   type SpriteSheet,
-  settlerPalette,
-  settlerPaletteLutRow,
-  vehicleBodyRow,
-  vehiclePalette,
 } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import { FigureFrames } from './figure-frames.js';
+import type { FigureFrames } from './figure-frames.js';
 
 /** The figure's map-px multiplier on its thumbnail, and how far above the thumbnail's bottom edge its
  *  feet stand (design px): the usual place, and the closest a covered card's lowered figure comes. */
@@ -142,7 +137,6 @@ export class NoticeFigures {
   /** Each shown vehicle's box over every frame it has drawn, so its fit holds still as it animates. */
   private readonly vehicleBounds = new Map<number, FigureBounds>();
   /** Frame caches for every LUT other than the settler LUT `frames` serves, and for none (a baked look). */
-  private readonly otherFrames = new Map<PaletteLut | undefined, FigureFrames>();
   private readonly contexts = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>();
   /** The scene built for the last (snapshot, subjects) pair; frames between ticks reuse it. */
   private sceneFor: { snapshot: WorldSnapshot; refs: string; items: ReadonlyMap<number, DrawItem> } | null =
@@ -193,13 +187,10 @@ export class NoticeFigures {
         this.drawVehicle(ctx, slot, item, layers, width, height, pixelScale);
         continue;
       }
-      // A baked look (an animal, an animal-bodied monster) is drawn as its atlas is, not through the LUT.
-      const palette = settlerPalette(this.sheet, item);
-      const bodyRow = palette === undefined ? 0 : settlerPaletteLutRow(this.sheet, item);
       const zoom = THUMB_ZOOM * pixelScale;
       const feetX = width / 2;
       const feetY = feetLine(layers, height, slot.visible * pixelScale, zoom, pixelScale);
-      this.framesFor(palette).draw(ctx, layers, bodyRow, zoom, feetX, feetY);
+      this.frames.draw(ctx, layers, item, zoom, feetX, feetY);
     }
     for (const entity of this.tracks.keys()) if (!live.has(entity)) this.tracks.delete(entity);
     for (const entity of this.vehicleBounds.keys()) if (!live.has(entity)) this.vehicleBounds.delete(entity);
@@ -218,19 +209,7 @@ export class NoticeFigures {
     if (bounds === null) return;
     this.vehicleBounds.set(slot.entity, bounds);
     const fit = vehicleFit(bounds, width, height, slot.visible * pixelScale, pixelScale);
-    const palette = vehiclePalette(this.sheet, item);
-    const row = palette === undefined ? 0 : vehicleBodyRow(this.sheet, item, palette);
-    this.framesFor(palette).draw(ctx, layers, row, fit.zoom, fit.feetX, fit.feetY);
-  }
-
-  private framesFor(palette: PaletteLut | undefined): FigureFrames {
-    if (palette !== undefined && palette === this.sheet?.palette) return this.frames;
-    let frames = this.otherFrames.get(palette);
-    if (frames === undefined) {
-      frames = new FigureFrames(palette);
-      this.otherFrames.set(palette, frames);
-    }
-    return frames;
+    this.frames.draw(ctx, layers, item, fit.zoom, fit.feetX, fit.feetY);
   }
 
   private items(snapshot: WorldSnapshot, slots: readonly NoticeFigureSlot[]): ReadonlyMap<number, DrawItem> {
