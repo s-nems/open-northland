@@ -75,10 +75,7 @@ export const plSurfaces = {
       scenarioControl: 'SI - zablokowany',
       vacantComputer: 'Komputer',
       vacantIdle: 'Bezczynny',
-      vacantComputerSub: 'gra komputer',
       vacantAbsent: 'Brak',
-      vacantIdleSub: 'bezczynny',
-      vacantAbsentSub: 'nie ma go na mapie',
       vacantToggleTitle:
         'Co robi wolne miejsce po starcie gry: Bezczynny nic nie robi, Komputer zagra automatycznie, Brak usuwa jego osadników i budynki z mapy.',
       sit: 'Usiądź tutaj',

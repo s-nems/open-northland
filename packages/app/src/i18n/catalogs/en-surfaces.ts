@@ -76,10 +76,7 @@ export const enSurfaces = {
       scenarioControl: 'AI - locked',
       vacantComputer: 'Computer',
       vacantIdle: 'Idle',
-      vacantComputerSub: 'computer plays',
       vacantAbsent: 'None',
-      vacantIdleSub: 'idle',
-      vacantAbsentSub: 'not on the map',
       vacantToggleTitle:
         'What a free seat does once the game starts: Idle does nothing, Computer will play automatically, None removes its settlers and buildings from the map.',
       sit: 'Sit here',

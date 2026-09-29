@@ -111,14 +111,6 @@ export function localSeatElements(
       (row.kind === 'open'
         ? lobby.freeSlot
         : formatMessage(lobby.playerSlotLabel, { n: row.slot.player + 1 }));
-    // Your seat and a scenario seat say what they are in the control cell, so they carry no detail line.
-    const subText =
-      row.kind === 'yours' || row.kind === 'scenario'
-        ? ''
-        : { ai: lobby.vacantComputerSub, idle: lobby.vacantIdleSub, absent: lobby.vacantAbsentSub }[
-            row.vacantMode
-          ];
-
     const action = document.createElement('div');
     action.className = 'main-menu__lobby-action';
     if (row.kind === 'open') {
@@ -141,8 +133,8 @@ export function localSeatElements(
       beforeLabel: [chipButton(row)],
       controls: [tribeCell(row), controlCell(row), action],
     });
-    const detail = row.offersTribe ? subText : [tribeName(row.tribe), subText].filter(Boolean).join(' · ');
-    seat.update(title, detail, row.kind === 'yours');
+    // The control cell says who plays the seat; only a monster seat's people get a detail line.
+    seat.update(title, row.offersTribe ? '' : tribeName(row.tribe), row.kind === 'yours');
     seat.root.classList.toggle('is-scenario', row.kind === 'scenario');
     return seat.root;
   };
