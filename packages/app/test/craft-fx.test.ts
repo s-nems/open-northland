@@ -51,12 +51,15 @@ function fixtureIr(): ContentIr {
       { index: 700, editName: 'fx bare', logicType: 1, frames: [{ state: 1, bobIds: [5] }] },
     ],
     buildingHolyFirePoints: [
-      { tribeId: VIKING, typeId: 4, level: 2, x: -80, y: 24 },
-      { tribeId: VIKING, typeId: 5, level: 3, x: -79, y: 25 },
-      { tribeId: VIKING, typeId: 5, level: 3, x: -3, y: 45 },
-      { tribeId: VIKING, typeId: HQ, level: 0, x: 17, y: 38 },
-      { tribeId: VIKING, typeId: TEMPLE, level: 0, x: 5, y: 20 },
-      { tribeId: VIKING, typeId: TOWER, level: 1, x: 3, y: 9 },
+      { tribeId: VIKING, typeId: 4, level: 2, editName: 'viking home', x: -80, y: 24 },
+      { tribeId: VIKING, typeId: 5, level: 3, editName: 'viking home', x: -79, y: 25 },
+      { tribeId: VIKING, typeId: 5, level: 3, editName: 'viking home', x: -3, y: 45 },
+      { tribeId: VIKING, typeId: HQ, level: 0, editName: 'viking headquarters', x: 17, y: 38 },
+      { tribeId: VIKING, typeId: HQ, level: 0, editName: 'viking headquarters', x: -63, y: 16 },
+      { tribeId: VIKING, typeId: HQ, level: 0, editName: 'viking headquarters house', x: 19, y: 66 },
+      { tribeId: VIKING, typeId: HQ, level: 0, editName: 'viking headquarters house', x: -63, y: 44 },
+      { tribeId: VIKING, typeId: TEMPLE, level: 0, editName: 'viking temple', x: 5, y: 20 },
+      { tribeId: VIKING, typeId: TOWER, level: 1, editName: 'viking tower', x: 3, y: 9 },
     ],
     buildings: [
       { typeId: 4, id: 'home_level_02', kind: 'home' },
@@ -130,6 +133,10 @@ describe('the staged craft effects', () => {
     const lookup = holyFireLookup(fixtureIr());
     expect(lookup(VIKING, TEMPLE, 0)?.perpetual).toBe(true);
     expect(lookup(VIKING, HQ, 0)?.perpetual).toBe(true);
+    expect(lookup(VIKING, HQ, 0)?.points).toEqual([
+      { x: 17, y: 38 },
+      { x: -63, y: 16 },
+    ]);
     expect(lookup(VIKING, 4, 2)?.perpetual).toBe(false);
     expect(lookup(VIKING, TOWER, 1)?.perpetual).toBe(false);
   });

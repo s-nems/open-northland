@@ -193,11 +193,51 @@ GfxHolyFirePoint 1 99 99
     );
 
     expect(points).toEqual([
-      { tribeId: 1, typeId: 4, level: 2, x: -80, y: 24, source: { ...src, block: 'GfxHouse' } },
-      { tribeId: 1, typeId: 5, level: 3, x: -79, y: 25, source: { ...src, block: 'GfxHouse' } },
-      { tribeId: 1, typeId: 5, level: 3, x: -3, y: 45, source: { ...src, block: 'GfxHouse' } },
-      { tribeId: 1, typeId: 6, level: 4, x: -100, y: 40, source: { ...src, block: 'GfxHouse' } },
-      { tribeId: 1, typeId: 6, level: 4, x: -11, y: 66, source: { ...src, block: 'GfxHouse' } },
+      {
+        tribeId: 1,
+        typeId: 4,
+        level: 2,
+        editName: 'viking home',
+        x: -80,
+        y: 24,
+        source: { ...src, block: 'GfxHouse' },
+      },
+      {
+        tribeId: 1,
+        typeId: 5,
+        level: 3,
+        editName: 'viking home',
+        x: -79,
+        y: 25,
+        source: { ...src, block: 'GfxHouse' },
+      },
+      {
+        tribeId: 1,
+        typeId: 5,
+        level: 3,
+        editName: 'viking home',
+        x: -3,
+        y: 45,
+        source: { ...src, block: 'GfxHouse' },
+      },
+      {
+        tribeId: 1,
+        typeId: 6,
+        level: 4,
+        editName: 'viking home',
+        x: -100,
+        y: 40,
+        source: { ...src, block: 'GfxHouse' },
+      },
+      {
+        tribeId: 1,
+        typeId: 6,
+        level: 4,
+        editName: 'viking home',
+        x: -11,
+        y: 66,
+        source: { ...src, block: 'GfxHouse' },
+      },
       // Level 1 has no LogicType row in this fixture, so the orphan anchor is omitted.
     ]);
   });

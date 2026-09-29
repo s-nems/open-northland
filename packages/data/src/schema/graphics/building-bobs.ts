@@ -79,6 +79,7 @@ export const BuildingHolyFirePoint = z.strictObject({
   tribeId: TypeId,
   typeId: TypeId,
   level: z.number().int().nonnegative(),
+  editName: z.string(),
   /** Pixel offset from the building bob's draw anchor (+y down/toward the viewer). */
   x: z.number().int(),
   y: z.number().int(),

@@ -2,6 +2,7 @@ import { type BuildingFootprint, type GfxInHouseProgram, UNLOADED_GOOD_TYPE } fr
 import type { HolyFireLookup, InHouseProgramLookup, SpriteAtlas } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import { canonicalJobType } from '../../game/sandbox/ids/index.js';
+import { CANONICAL_EDIT_NAME } from '../building-gfx/families.js';
 import type { GoodRef } from '../settler-gfx/index.js';
 import type { BobSeqRow, ContentIr, LandscapeGfxRow } from './rows.js';
 
@@ -312,20 +313,33 @@ export function holyFireLookup(ir: ContentIr | null): HolyFireLookup {
   for (const b of ir?.buildings ?? []) {
     if (b.prayerSite !== undefined && b.typeId !== undefined) prayerSites.add(b.typeId);
   }
-  const byKey = new Map<string, { name: string; points: { x: number; y: number }[]; perpetual: boolean }>();
+  const byKey = new Map<
+    string,
+    Map<string, { name: string; points: { x: number; y: number }[]; perpetual: boolean }>
+  >();
   for (const row of ir?.buildingHolyFirePoints ?? []) {
     const key = `${row.tribeId}/${row.typeId}/${row.level}`;
-    const binding = byKey.get(key);
+    let variants = byKey.get(key);
+    if (variants === undefined) {
+      variants = new Map();
+      byKey.set(key, variants);
+    }
+    const binding = variants.get(row.editName);
     if (binding !== undefined) binding.points.push({ x: row.x, y: row.y });
     else {
-      byKey.set(key, {
+      variants.set(row.editName, {
         name: HOLY_FIRE_EFFECT_NAME,
         points: [{ x: row.x, y: row.y }],
         perpetual: prayerSites.has(row.typeId),
       });
     }
   }
-  return (tribe, buildingType, level) => byKey.get(`${tribe}/${buildingType}/${level}`);
+  return (tribe, buildingType, level) => {
+    const variants = byKey.get(`${tribe}/${buildingType}/${level}`);
+    if (variants === undefined) return undefined;
+    const canonical = CANONICAL_EDIT_NAME[buildingType];
+    return (canonical === undefined ? undefined : variants.get(canonical)) ?? variants.values().next().value;
+  };
 }
 
 /** One `[gfxanimatomic]` record as a clip candidate: the body bobseq it names and its own frame lists. */

@@ -158,6 +158,8 @@ export function extractBuildingHolyFirePoints(
   const points: BuildingHolyFirePoint[] = [];
   for (const { rec, tribeType, typeByLevel } of gfxHouseLogicRecords(sections)) {
     if (!Number.isFinite(tribeType)) continue;
+    const editName = getStr(rec, 'EditName');
+    if (editName === undefined) continue;
     for (const p of findProps(rec, 'GfxHolyFirePoint')) {
       const [level, x, y] = p.values.map((v) => Number.parseInt(v, 10));
       if (level === undefined || x === undefined || y === undefined) continue;
@@ -169,6 +171,7 @@ export function extractBuildingHolyFirePoints(
           tribeId: tribeType,
           typeId,
           level,
+          editName,
           x,
           y,
           source: makeSource(src, 'GfxHouse'),
