@@ -34,6 +34,8 @@ export const MISSION_BEHAVIOUR = {
   WALKS_SLOWLY: 1 << 9,
   /** Walks faster than its trade would. */
   WALKS_FAST: 1 << 17,
+  /** Drawn with the owner-coloured glow a hero wears; no rule reads it. */
+  GLOWS: 1 << 19,
 } as const;
 
 /** The house bits this build acts on; bit 0 is the only one with a located reader. */

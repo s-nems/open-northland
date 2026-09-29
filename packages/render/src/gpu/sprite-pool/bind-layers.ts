@@ -8,7 +8,13 @@ import { PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
 import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
 import { mintPlanStake, type PlanStakeTextures, STAKE_BOUNDS } from '../plan-stake.js';
 import { type ShadowStyle, setCastShadowTransform } from '../shadow-style.js';
-import { layerLutRow, type PaletteLut, type SpriteSheet, settlerPaletteLutRow } from '../sprite-sheet.js';
+import {
+  layerLutRow,
+  type PaletteLut,
+  paletteLutRow,
+  type SpriteSheet,
+  settlerPaletteLutRow,
+} from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
 import { worldBatched } from '../world-batcher.js';
@@ -152,6 +158,8 @@ export class LayerBinder {
       if (layer === undefined) continue;
       // A cast layer holds unprojected body art, so it draws only with a style to project it by.
       if (layer.cast === true && shadowStyle === undefined) continue;
+      // A glow reads its colour from a player LUT row, which only a paletted look has.
+      if (layer.glow !== undefined && !pe.paletted) continue;
       // Per-pixel reveal: a pixel appears once the eased progress, mapped into the stage's own
       // [fromPct,toPct] window, reaches its baked TimeMask threshold (the original's
       // construction reveal). `null` - no time data or no bake - crops instead.
@@ -174,7 +182,11 @@ export class LayerBinder {
         this.bindShadowSprite(pe, shadowSlot++, layer, box, tint, shadowStyle);
       } else if (pe.paletted) {
         const row = settlerLut === undefined ? bodyRow : layerLutRow(settlerLut, layer, bodyRow);
-        if (pe.kind === 'vehicle') {
+        if (layer.glow !== undefined) {
+          // The team ramp the glow reads rides the plain player row, whatever armor recolours the body.
+          const glowRow = settlerLut === undefined ? bodyRow : paletteLutRow(settlerLut, item.player, null);
+          this.bindPalettedQuad(pe, spriteSlot++, layer, box, frame, glowRow, tint);
+        } else if (pe.kind === 'vehicle') {
           this.bindPalettedMesh(pe, spriteSlot++, layer, originX, originY, camScale, frame, row, tint);
         } else {
           this.bindPalettedQuad(pe, spriteSlot++, layer, box, frame, row, tint);
@@ -352,6 +364,8 @@ export class LayerBinder {
     spr.placeFor(frame.camera, pe.motion.drawX, pe.motion.drawY, frame.snapResolution);
     // The shader reads the LUT without a bounds check.
     spr.lutRow = clamp(lutRow, 0, pe.palette.colours - 1);
+    spr.glow = layer.glow !== undefined;
+    spr.alpha = layer.glow ?? 1;
     if (spr.tint !== tint) spr.tint = tint;
     spr.visible = true;
   }

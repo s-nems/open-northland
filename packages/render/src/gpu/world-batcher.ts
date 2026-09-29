@@ -83,24 +83,44 @@ export const WORLD_FLAG_SHADOW = 2;
 /** The element's page is palette-indexed: the batch texture at its LUT slot holds the palette, and the
  *  flags above the slot hold its LUT row. */
 export const WORLD_FLAG_PALETTED = 4;
-/** A paletted element's LUT slot in the batch's texture list, in `aFlags` bits 3 to 7. */
-export const WORLD_LUT_SLOT_SHIFT = 3;
+/** A paletted element drawn as its row's {@link GLOW_PALETTE_INDEX} colour over its coverage alone. */
+export const WORLD_FLAG_GLOW = 8;
+/** A paletted element's LUT slot in the batch's texture list, in `aFlags` bits 4 to 8. */
+export const WORLD_LUT_SLOT_SHIFT = 4;
 const WORLD_LUT_SLOT_MASK = 31;
-/** A paletted element's LUT row, from `aFlags` bit 8 up; a float32 holds it exactly below 2^16 rows. */
-export const WORLD_LUT_ROW_SHIFT = 8;
+/** A paletted element's LUT row, from `aFlags` bit 9 up; a float32 holds it exactly below 2^15 rows. */
+export const WORLD_LUT_ROW_SHIFT = 9;
+/**
+ * The palette index a hero's glow takes its colour from: step 10 of the team ramp in the body palette's
+ * vest band (160-175), which every player row of the settler LUT carries. Original behavior: the glow
+ * colour is that step of the owner's `Player NN` ramp.
+ */
+export const GLOW_PALETTE_INDEX = 170;
 /** Texture slots each batch keeps free for the palette LUT its paletted elements read. */
 const LUT_SLOTS = 1;
 
 /** A world sprite drawn through a palette LUT names its row here; its texture names the LUT. */
 export interface PalettedRow {
   readonly lutRow: number;
+  /** Draws the frame's coverage flat in the row's glow colour instead of its palette colours. */
+  readonly glow: boolean;
 }
 
-/** Read off the element's sprite: a batchable record names it `renderable`, which the element types omit. */
-function lutRowOf(element: BatchableElement): number {
+/** The element's sprite: a batchable record names it `renderable`, which the element types omit. */
+function renderableOf(element: BatchableElement): object | null {
   const renderable: unknown = (element as { renderable?: unknown }).renderable;
-  if (typeof renderable !== 'object' || renderable === null || !('lutRow' in renderable)) return 0;
+  return typeof renderable === 'object' ? renderable : null;
+}
+
+function lutRowOf(element: BatchableElement): number {
+  const renderable = renderableOf(element);
+  if (renderable === null || !('lutRow' in renderable)) return 0;
   return typeof renderable.lutRow === 'number' ? renderable.lutRow : 0;
+}
+
+function glowOf(element: BatchableElement): boolean {
+  const renderable = renderableOf(element);
+  return renderable !== null && 'glow' in renderable && renderable.glow === true;
 }
 
 /** The batcher class, its geometry and shaders are defined on first install, not at import, so a
@@ -223,6 +243,8 @@ function defineWorldBatcher(): WorldBatcherClass {
   const int WORLD_FLAG_MAGNIFY = ${WORLD_FLAG_MAGNIFY};
   const int WORLD_FLAG_SHADOW = ${WORLD_FLAG_SHADOW};
   const int WORLD_FLAG_PALETTED = ${WORLD_FLAG_PALETTED};
+  const int WORLD_FLAG_GLOW = ${WORLD_FLAG_GLOW};
+  const float GLOW_PALETTE_INDEX = ${GLOW_PALETTE_INDEX}.0;
   const int WORLD_LUT_SLOT_SHIFT = ${WORLD_LUT_SLOT_SHIFT};
   const int WORLD_LUT_SLOT_MASK = ${WORLD_LUT_SLOT_MASK};
   const int WORLD_LUT_ROW_SHIFT = ${WORLD_LUT_ROW_SHIFT};
@@ -309,6 +331,9 @@ ${PIXEL_ART_MAGNIFY_GLSL}
     vec4 outColor;
     if (paletted) {
       outColor = palettedColour(p, texelsPerPixel, uvFootprint);
+      if (hasFlag(WORLD_FLAG_GLOW)) {
+        outColor = vec4(paletteColour(GLOW_PALETTE_INDEX / PALETTE_INDEX_MAX), 1.0) * outColor.a;
+      }
     } else if (!hasFlag(WORLD_FLAG_MAGNIFY) || WORLD_MAGNIFY < 0.5) {
       outColor = sampleTexture(vUV);
     } else if (texelsPerPixel < 1.0) {
@@ -397,7 +422,10 @@ ${PIXEL_ART_MAGNIFY_GLSL}
 
   function palettedFlags(element: BatchableElement, lutSlot: number): number {
     return (
-      WORLD_FLAG_PALETTED | (lutSlot << WORLD_LUT_SLOT_SHIFT) | (lutRowOf(element) << WORLD_LUT_ROW_SHIFT)
+      WORLD_FLAG_PALETTED |
+      (glowOf(element) ? WORLD_FLAG_GLOW : 0) |
+      (lutSlot << WORLD_LUT_SLOT_SHIFT) |
+      (lutRowOf(element) << WORLD_LUT_ROW_SHIFT)
     );
   }
 

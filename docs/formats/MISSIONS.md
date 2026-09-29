@@ -410,16 +410,17 @@ the encoding). Bits with a known effect (reading; each is a hypothesis to confir
 | 15 | 32768 | a hit does not spread to nearby units |
 | 16 | 65536 | for the two non-settler tribes: alert military mode instead of the default |
 | 17 | 131072 | walks faster |
+| 19 | 524288 | drawn with the owner-coloured glow a hero wears, except on the Frankish heroine slot |
 
 Bit 0 acts twice: urgent needs skip such a human, and animation events never change its four need
 bars, so they neither fall nor refill.
 
 Original behavior: bit 12 stops only shoe wear; a barefoot step checks bit 0 instead.
 
-Bits 8, 10, 18, and 19 appear in the corpus (masks 548897, 524328, 272507) with no known
-effect. The original sets 0x1800 plus bits 0 and 6, and bit 7 for one tribe, on the special soldier jobs
-it spawns. Corpus masks: `sethuman` mostly 0, then 272507, 8315, 64; `SetPlayerBehaviourFlag` mostly
-512, 131200, 16384, 8192; `SetHumanBehaviourFlag` mostly 32, 512, 33, 128, 8.
+Bits 8, 10 and 18 appear in the corpus (bit 18 in mask 272507) with no known effect. The original
+sets 0x1800 plus bits 0 and 6, and bit 7 for one tribe, on the special soldier jobs it spawns.
+Corpus masks: `sethuman` mostly 0, then 272507, 8315, 64; `SetPlayerBehaviourFlag` mostly 512,
+131200, 16384, 8192; `SetHumanBehaviourFlag` mostly 32, 512, 33, 128, 8.
 
 Houses keep their own mask; only bit 0 has a known effect: an indestructible house ignores weapon hits and
 script damage (reading). `SetHouseBehaviourFlag` takes a bit index, not a mask. The animal behaviour
@@ -917,7 +918,7 @@ the script verdicts described under "Multiplayer integration".
 
 ## Open questions
 
-- Behaviour bits 8, 10, 18, 19 and the animal behaviour value.
+- Behaviour bits 8, 10, 18 and the animal behaviour value.
 - Readings above may not match the owned 2001 build; it has not been checked for the check period,
   the tick reset, `SelectHuman`'s flag or the load-time job seeding.
 

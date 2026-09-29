@@ -14,6 +14,7 @@ import { type PalettedRow, worldBatched } from '../world-batcher.js';
  */
 export class PalettedQuad extends Sprite implements PalettedRow {
   private row = 0;
+  private glowing = false;
   /** The layer's offset from the feet anchor in world px, before {@link placeFor} snaps it. */
   offsetX = 0;
   offsetY = 0;
@@ -31,6 +32,17 @@ export class PalettedQuad extends Sprite implements PalettedRow {
   set lutRow(row: number) {
     if (row === this.row) return;
     this.row = row;
+    this.onViewUpdate();
+  }
+
+  get glow(): boolean {
+    return this.glowing;
+  }
+
+  /** Packed into the vertices like {@link lutRow}. */
+  set glow(on: boolean) {
+    if (on === this.glowing) return;
+    this.glowing = on;
     this.onViewUpdate();
   }
 

@@ -1,3 +1,4 @@
+import { components as simComponents } from '@open-northland/sim';
 import { readNumField, readNumFieldOrNull } from '../../snapshot/index.js';
 import type { SpriteState } from '../draw-item.js';
 
@@ -123,6 +124,12 @@ function readEquipSlotGood(
   if (eq === undefined) return undefined;
   const goodType = eq[slot]?.goodType;
   return typeof goodType === 'number' ? goodType : null;
+}
+
+/** Whether a human's mission behaviour mask asks for the hero glow. */
+export function readBehaviourGlow(components: Readonly<Record<string, unknown>>): boolean {
+  const flags = readNumField(components, 'MissionBehaviour', 'flags') ?? 0;
+  return (flags & simComponents.MISSION_BEHAVIOUR.GLOWS) !== 0;
 }
 
 /** The owning player slot (`Owner.player`), the team-colour key, or `undefined` for an unowned settler

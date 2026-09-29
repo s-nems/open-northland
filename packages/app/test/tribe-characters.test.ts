@@ -10,6 +10,7 @@ import {
   JOB_BABY_MALE,
   JOB_CIVILIST,
   JOB_HERO_SWORD,
+  JOB_HEROINE_BOW,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
   JOB_WOMAN,
@@ -125,6 +126,46 @@ describe('tribeCharacters', () => {
 
     expect(table?.byJob[JOB_HERO_SWORD]?.body).toBe(uniqueBody);
     expect(table?.fixedByJob?.[JOB_HERO_SWORD]?.body).toBe(uniqueBody);
+  });
+
+  it('lights every hero glow but the Frankish heroine slot, which draws Santa Claus', () => {
+    const heroes = [JOB_HERO_SWORD, JOB_HEROINE_BOW];
+    const bodies = ['cr_hum_body_60', 'cr_hum_body_63'];
+    const heroIr: ContentIr = {
+      jobGraphics: [...(ir.jobGraphics ?? []), ...heroes.map((job, i) => row(VIKING, job, bodies[i] ?? ''))],
+      gfxWalkAtomics: heroes.map((job) => ({
+        tribe: VIKING,
+        job,
+        goodType: 0,
+        bodySeq: 'hero_walk',
+        dirFrames: Array.from({ length: 8 }, () => [0]),
+      })),
+      gfxAtomics: heroes.map((job) => ({
+        tribe: VIKING,
+        job,
+        action: 2,
+        bodySeq: 'hero_wait',
+        mode: 1,
+        dirFrames: [[0]],
+      })),
+    };
+    const inputs = inputsFor(VIKING, ['cr_hum_body_00', 'cr_hum_body_05', ...bodies], undefined, heroIr);
+    const sequencesByBody = new Map(inputs.sequencesByBody);
+    for (const body of bodies) sequencesByBody.set(body, seqs(['hero_walk', 'hero_wait']));
+    const viking = tribeCharacters(heroIr, [], VIKING, { ...inputs, sequencesByBody });
+    // The Franks author neither hero here, so both slots inherit the viking looks.
+    const frank = tribeCharacters(
+      heroIr,
+      [],
+      FRANK,
+      inputsFor(FRANK, ['cr_hum_body_30', 'cr_hum_body_32'], undefined, heroIr),
+      viking,
+    );
+
+    expect(viking?.fixedByJob?.[JOB_HERO_SWORD]?.glow).toBe('always');
+    expect(viking?.fixedByJob?.[JOB_HEROINE_BOW]?.glow).toBe('always');
+    expect(frank?.fixedByJob?.[JOB_HERO_SWORD]?.glow).toBe('always');
+    expect(frank?.fixedByJob?.[JOB_HEROINE_BOW]?.glow).toBe('never');
   });
 
   it('resolves a hero that authors no action rows through its baseJob chain, on its own body', () => {

@@ -157,6 +157,8 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** For a settler: born young (`Age` present), the only thing separating the age-class `jobType` ids
    *  1..4 from a synthetic fixture's colliding adult job ids. */
   readonly young?: boolean;
+  /** For a settler: its mission behaviour mask asks for the hero glow, whatever its job. */
+  readonly glow?: boolean;
   /** For a building upgrading into its next level: upgrade progress as a whole percent (0..99, floored
    *  `Building.built`). Distinct from {@link builtPct}, since an upgrading building keeps its finished
    *  old-tier body and the next tier's overlay (the `[GfxHouse]` `upgrade === 1` rows) reveals over it

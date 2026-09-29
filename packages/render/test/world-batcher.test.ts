@@ -17,6 +17,7 @@ import { DEFAULT_SHADOW_STYLE } from '../src/gpu/shadow-style.js';
 import {
   installWorldBatcher,
   WORLD_ATTRIBUTE_OFFSETS,
+  WORLD_FLAG_GLOW,
   WORLD_FLAG_PALETTED,
   WORLD_FLAG_SHADOW,
   WORLD_LUT_ROW_SHIFT,
@@ -122,7 +123,7 @@ describe('world batcher element flags', () => {
 
 describe('world batcher palette LUT', () => {
   /** A quad element as Pixi's sprite pipe hands it over, drawing `texture` through `lutRow`. */
-  function quad(texture: Texture, lutRow?: number) {
+  function quad(texture: Texture, lutRow?: number, glow = false) {
     return {
       batcherName: 'world',
       packAsQuad: true,
@@ -135,7 +136,7 @@ describe('world batcher palette LUT', () => {
       bounds: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
       color: 0xffffffff,
       roundPixels: 0,
-      renderable: lutRow === undefined ? {} : { lutRow },
+      renderable: lutRow === undefined ? {} : { lutRow, glow },
     } as unknown as DefaultBatchableQuadElement;
   }
 
@@ -173,6 +174,27 @@ describe('world batcher palette LUT', () => {
     // A repack outside a rebuild, such as a new frame on the same page, keeps the slot.
     batcher.updateElement(elements[0] as DefaultBatchableQuadElement);
     expect(flagsOf(0, 0)).toBe(slotOne | (3 << WORLD_LUT_ROW_SHIFT));
+    batcher.destroy();
+  });
+
+  it('flags a glowing paletted element beside its slot and row', () => {
+    const WorldBatcher = installWorldBatcher();
+    const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT });
+    const lut = new TextureSource({ width: 256, height: 4 });
+    const walker = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    markPalettedTexture(walker, lut);
+
+    batcher.begin();
+    batcher.add(quad(walker, 2, true));
+    batcher.add(quad(walker, 2));
+    batcher.break(new InstructionSet());
+
+    const floats = batcher.attributeBuffer.float32View;
+    const flagsOf = (element: number) =>
+      floats[element * 4 * WORLD_VERTEX_SIZE + WORLD_ATTRIBUTE_OFFSETS.aFlags / 4];
+    const body = WORLD_FLAG_PALETTED | (1 << WORLD_LUT_SLOT_SHIFT) | (2 << WORLD_LUT_ROW_SHIFT);
+    expect(flagsOf(0)).toBe(body | WORLD_FLAG_GLOW);
+    expect(flagsOf(1)).toBe(body);
     batcher.destroy();
   });
 });

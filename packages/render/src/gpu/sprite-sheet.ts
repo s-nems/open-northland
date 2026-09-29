@@ -121,6 +121,9 @@ export interface SettlerCharacter {
   /** The binding the head overlay resolves through when it must differ from {@link binding}. Absent,
    *  heads resolve at the body's own bob id. */
   readonly headBinding?: SettlerStateBinding;
+  /** Whether the owner-coloured hero glow surrounds body and head: `always` for a hero look, `never`
+   *  for a look that refuses it, absent when only the settler's mission behaviour turns it on. */
+  readonly glow?: 'always' | 'never';
 }
 
 /** The render-side `[jobbasegraphics]` join: a settler's tribe picks the table, then its weapon, job and

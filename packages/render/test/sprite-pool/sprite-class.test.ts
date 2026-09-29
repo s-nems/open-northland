@@ -448,3 +448,67 @@ describe('LayerBinder - an animal settler is never paletted, even with the LUT l
     for (const spr of container.children) expect(spr).toBeInstanceOf(Sprite);
   });
 });
+
+describe('LayerBinder - a hero glow binds under the body on the plain player row', () => {
+  const ARMOR = 9;
+  const PLAYER = 2;
+  const lut: PlayerColourLut = {
+    source,
+    colours: 33,
+    playerRows: 16,
+    armorTierByGood: new Map([[ARMOR, 1]]),
+    headRow: 32,
+  };
+  const frame = { x: 0, y: 0, width: 16, height: 32, offsetX: -8, offsetY: -32 };
+  const body: ResolvedLayer = { source, frame, scale: 1 };
+  const glow: ResolvedLayer = { source, frame, scale: 1, dx: -6, dy: 0, boundsExempt: true, glow: 0.25 };
+  const armored: DrawItem = {
+    kind: 'settler',
+    ref: 1,
+    x: 0,
+    y: 0,
+    depth: 0,
+    tribe: 0,
+    player: PLAYER,
+    armorGood: ARMOR,
+  };
+  const bindFrame: BindFrame = { camera: CAMERA, screenW: 800, screenH: 600 };
+  const quadAt = (pe: ReturnType<typeof createPooled>, i: number): PalettedQuad => {
+    const spr = pe.sprites[i];
+    if (!(spr instanceof PalettedQuad)) throw new Error(`slot ${i} must hold a PalettedQuad`);
+    return spr;
+  };
+
+  it('reads the team row despite armor, fades by its opacity and keeps the body box', () => {
+    const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
+    const pe = createPooled('settler', lut);
+
+    binder.bind(pe, armored, [glow, body], bindFrame, 1);
+
+    const halo = quadAt(pe, 0);
+    const drawn = quadAt(pe, 1);
+    expect([halo.glow, halo.alpha, halo.lutRow]).toEqual([true, 0.25, PLAYER]);
+    expect([drawn.glow, drawn.alpha, drawn.lutRow]).toEqual([false, 1, lut.playerRows + PLAYER]);
+    expect(pe.bounds.maxX - pe.bounds.minX).toBe(frame.width); // the halo's offset copy is off the box
+  });
+
+  it('returns a slot that held a glow copy to a plain body quad', () => {
+    const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
+    const pe = createPooled('settler', lut);
+    binder.bind(pe, armored, [glow, body], bindFrame, 1);
+
+    binder.bind(pe, armored, [body], bindFrame, 2);
+
+    expect([quadAt(pe, 0).glow, quadAt(pe, 0).alpha]).toEqual([false, 1]);
+    expect(pe.sprites[1]?.visible).toBe(false);
+  });
+
+  it('draws no glow for a look without the LUT', () => {
+    const binder = new LayerBinder(new TextureCache(), sheet);
+    const pe = createPooled('settler', undefined);
+
+    binder.bind(pe, armored, [glow, body], bindFrame, 1);
+
+    expect(pe.sprites.filter((s) => s.visible)).toHaveLength(1);
+  });
+});

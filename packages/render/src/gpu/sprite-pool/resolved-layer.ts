@@ -53,6 +53,9 @@ export interface ResolvedLayer {
   readonly groundFoot?: GroundFootPart;
   /** A settler's head overlay, which the paletted path reads through the LUT's head row. */
   readonly head?: true;
+  /** A glow copy of a paletted character layer: its coverage drawn flat in the owner's glow colour at
+   *  this opacity (0..1), under the body. Always also {@link boundsExempt}. */
+  readonly glow?: number;
 }
 
 const NO_LAYERS: readonly ResolvedLayer[] = [];

@@ -66,6 +66,33 @@ describe('buildScene over a real Simulation snapshot', () => {
   });
 });
 
+describe('a mission behaviour mask over a real Simulation snapshot', () => {
+  it('asks for the hero glow on the settler whose mask carries the glow bit', () => {
+    const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(4, 1) });
+    const glows = components.MISSION_BEHAVIOUR.GLOWS | components.MISSION_BEHAVIOUR.STAYS_PUT;
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: CARRIER,
+      x: 0,
+      y: 0,
+      tribe: VIKING,
+      behaviourFlags: glows,
+    });
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: CARRIER,
+      x: 2,
+      y: 0,
+      tribe: VIKING,
+      behaviourFlags: components.MISSION_BEHAVIOUR.STAYS_PUT,
+    });
+    sim.step();
+
+    const settlers = collectSpriteScene(sim.snapshot()).items.filter((i) => i.kind === 'settler');
+    expect(settlers.map((i) => i.glow === true)).toEqual([true, false]);
+  });
+});
+
 describe('a workplace craft over a real Simulation snapshot', () => {
   it('draws the worker its program choreographs, clocked by the atomic the sim runs', () => {
     const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(6, 1) });

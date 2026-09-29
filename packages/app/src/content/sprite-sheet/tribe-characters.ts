@@ -8,6 +8,7 @@ import type {
   SpriteLayer,
 } from '@open-northland/render';
 import { MUSHROOM_HARVEST_ATOMIC } from '../../catalog/atomics.js';
+import { JOB_HEROINE_BOW } from '../../catalog/jobs.js';
 import { diag } from '../../diag/index.js';
 import {
   carryWalkSeqs,
@@ -159,6 +160,21 @@ function characterIdleFidgets(
   return out;
 }
 
+/** The Frankish tribe, whose heroine slot's graphics row is Santa Claus rather than a heroine. */
+const FRANK_TRIBE = 2;
+
+/** Original behavior: every hero job glows in its owner's colour, and the Frankish heroine slot never
+ *  does, whatever its mission behaviour asks. */
+function heroGlow(tribe: number, job: number): NonNullable<SettlerCharacter['glow']> {
+  return tribe === FRANK_TRIBE && job === JOB_HEROINE_BOW ? 'never' : 'always';
+}
+
+/** `char` and each appearance variant it picks from, all set to `glow`. */
+function withGlow(char: SettlerCharacter, glow: NonNullable<SettlerCharacter['glow']>): SettlerCharacter {
+  const variants = char.variants?.map((variant) => ({ ...variant, glow }));
+  return { ...char, glow, ...(variants !== undefined ? { variants } : {}) };
+}
+
 /** What one tribe's table is composed from: its looks, the loaded bob sets, each body's playable
  *  `[bobseq]` rows, and every human row, where a head clip is looked up whether or not the body draws it. */
 export interface TribeCharacterInputs {
@@ -273,7 +289,7 @@ export function tribeCharacters(
   const fixedByJob: Record<number, SettlerCharacter> = { ...base?.fixedByJob };
   for (const job of HERO_JOBS) {
     const char = byJob[job];
-    if (char !== undefined) fixedByJob[job] = char;
+    if (char !== undefined) fixedByJob[job] = withGlow(char, heroGlow(tribe, job));
   }
   // These mission jobs name their whole animal body by job. A worn weapon may drive combat, but it
   // must not replace the wolf/lion/bear body with the weapon class's generic warrior look.

@@ -12,6 +12,44 @@ import type { LayerBuffer, ResolvedLayer } from './resolved-layer.js';
 const castRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 const headCastRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 const headRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
+const glowRecords = new WeakMap<ResolvedLayer, readonly ResolvedLayer[]>();
+
+/**
+ * The hero glow's eight copies of a layer's silhouette, painted in this order under it, each blending
+ * the owner's glow colour over what lies beneath at its opacity. Original behavior: offsets in bob
+ * pixels, opacities out of 256.
+ */
+const GLOW_COPIES: readonly { readonly dx: number; readonly dy: number; readonly alpha: number }[] = [
+  { dx: -6, dy: 0, alpha: 40 / 256 },
+  { dx: 6, dy: 0, alpha: 40 / 256 },
+  { dx: 0, dy: -6, alpha: 40 / 256 },
+  { dx: 0, dy: 6, alpha: 40 / 256 },
+  { dx: -2, dy: -2, alpha: 64 / 256 },
+  { dx: -2, dy: 2, alpha: 64 / 256 },
+  { dx: 2, dy: -2, alpha: 64 / 256 },
+  { dx: 2, dy: 2, alpha: 64 / 256 },
+];
+
+function glowLayersFor(of: ResolvedLayer): readonly ResolvedLayer[] {
+  let records = glowRecords.get(of);
+  if (records === undefined) {
+    records = GLOW_COPIES.map(({ dx, dy, alpha }) => ({
+      source: of.source,
+      frame: of.frame,
+      scale: of.scale,
+      dx: dx * of.scale,
+      dy: dy * of.scale,
+      boundsExempt: true,
+      glow: alpha,
+    }));
+    glowRecords.set(of, records);
+  }
+  return records;
+}
+
+function pushGlow(out: LayerBuffer, of: ResolvedLayer): void {
+  for (const layer of glowLayersFor(of)) out.push(layer);
+}
 
 /**
  * One frame again, for the binder to project onto the ground under the character. An indexed sheet
@@ -93,9 +131,9 @@ export function pushCharacterLayers(
 }
 
 /**
- * Append `char`'s cast silhouettes, authored shadow, body and head for `binding`'s frame at `item`'s state
- * and facing; the head reads `headBinding` when the head moves apart from the body, else the body's bob.
- * False appends nothing and means the placeholder.
+ * Append `char`'s cast silhouettes, authored shadow, glow, body and head for `binding`'s frame at
+ * `item`'s state and facing; the head reads `headBinding` when the head moves apart from the body,
+ * else the body's bob. False appends nothing and means the placeholder.
  */
 export function pushComposedCharacterLayers(
   out: LayerBuffer,
@@ -124,8 +162,12 @@ export function pushComposedCharacterLayers(
     }
     const shadow = shadowLayerFor(char.body, bob, scale);
     if (shadow !== null) out.push(shadow);
-    out.push(body);
   }
+  if (char.glow === 'always' || (item.glow === true && char.glow !== 'never')) {
+    if (body !== null) pushGlow(out, body);
+    if (head !== null) pushGlow(out, head);
+  }
+  if (body !== null) out.push(body);
   if (head !== null) out.push(headLayerFor(head));
   return body !== null || head !== null;
 }

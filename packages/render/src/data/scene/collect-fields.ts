@@ -12,6 +12,7 @@ import {
   assignStaticFields,
   copyStaticFields,
   readAtomicElapsed,
+  readBehaviourGlow,
   readBerryBushGfxIndex,
   readBerryBushLevel,
   readCarrying,
@@ -69,6 +70,7 @@ export function assignSettlerFields(
   // Only a born-young settler carries `Age`, which is what separates the age-class `jobType` ids 1..4
   // from colliding synthetic adult ids.
   if ('Age' in components) item.young = true;
+  if (readBehaviourGlow(components)) item.glow = true;
 }
 
 export function assignBuildingFields(
