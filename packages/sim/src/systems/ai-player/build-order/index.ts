@@ -29,7 +29,13 @@ import {
   sitePace,
 } from './entries.js';
 import { placementSpot } from './placement.js';
-import { type EntryStatus, entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
+import {
+  type DecisionMemo,
+  decisionMemo,
+  type EntryStatus,
+  entryStatus,
+  upgradeCandidate,
+} from './progress.js';
 import { type Siege, seatSiege } from './siege.js';
 import { StalledSearches } from './stalled-searches.js';
 import { coverageOf, coverageSpotSearch, uncoveredTargets } from './tower-coverage.js';
@@ -65,7 +71,7 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
  * goods it waits for: most retry next decision, a placement that found no spot every
  * {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and an upgrade holds while a bill good only it or
  * another site could make is not yet in store ({@link upgradeBillCovered}). The exceptions are passed
- * over instead ({@link Verdict}): a serving placement with no room beside the workshop it serves, and a
+ * over instead ({@link Verdict}): a serving placement with no room beside what it serves, and a
  * coverage entry with no target it can cover. Builders are never pinned to a site; the builder drive
  * picks its own.
  *
@@ -109,8 +115,8 @@ function runBuildOrder(
   if (anchor === null) return [];
   const index = contentIndex(ctx.content);
 
-  const live: LiveResourceMemo = new Map();
-  const statuses = order.map((entry) => entryStatus(world, ctx, player, owned, entry, live));
+  const memo = decisionMemo();
+  const statuses = order.map((entry) => entryStatus(world, ctx, player, owned, entry, memo));
   const searches = new StalledSearches(world, player, statuses);
   // One search per entry a decision: the lanes and the list share each verdict.
   const verdicts = new Map<number, Verdict>();
@@ -175,7 +181,7 @@ function runBuildOrder(
     const verdict = verdictOf(entryIndex);
     if (verdict.kind === 'pass') continue;
     if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick)) return [];
-    if (listSites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, live)) return [];
+    if (listSites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, memo)) return [];
     searches.acting(entryIndex);
     if (verdict.placement !== null) return [verdict.placement];
     switch (entry.kind) {
@@ -215,8 +221,8 @@ function runBuildOrder(
 type PlaceCommand = Extract<PlayerCommand, { kind: 'placeBuilding' }>;
 
 /**
- * What the list makes of an unmet entry this decision. A serving placement with no room beside the
- * workshop it serves, or a coverage entry with no target it can cover, is passed over: the workshop still
+ * What the list makes of an unmet entry this decision. A serving placement with no room beside what it
+ * serves, or a coverage entry with no target it can cover, is passed over: the workshop still
  * runs, slower, and the goods still travel, only farther, while a stalled list would not. A passed-over
  * entry holds neither the list nor the lanes and moves neither the frontier nor the stall record. Every
  * other unmet entry acts, carrying the placement its search found when it is one of those kinds.
@@ -229,7 +235,13 @@ const PASSED_OVER: Verdict = { kind: 'pass' };
 /** Whether an unmet `entry` is one the list passes over rather than stalls on when its search finds nothing. */
 function passesOver(entry: BuildOrderEntry): boolean {
   if (entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') return true;
-  return entry.kind === 'place' && entry.unlessWithin !== undefined;
+  return entry.kind === 'place' && servesPlacement(entry);
+}
+
+/** A placement that exists to serve something beside it: a workshop an `unlessWithin` entry supplies, or
+ *  the ships a `shore` workshop launches. */
+function servesPlacement(entry: Extract<BuildOrderEntry, { kind: 'place' }>): boolean {
+  return entry.unlessWithin !== undefined || (entry.near?.some((a) => a.kind === 'shore') ?? false);
 }
 
 function searchVerdict(
@@ -246,7 +258,7 @@ function searchVerdict(
   if (tribe === undefined) return ACTS;
   switch (entry.kind) {
     case 'place': {
-      if (entry.unlessWithin === undefined) return ACTS;
+      if (!servesPlacement(entry)) return ACTS;
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined || !buildingEnabled(world, ctx, player, tribe, type.typeId)) return ACTS;
       const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, tribe, entry, underFire);
@@ -411,7 +423,7 @@ function outrunsSites(
   owned: readonly Entity[],
   order: readonly BuildOrderEntry[],
   entryIndex: number,
-  live: LiveResourceMemo,
+  memo: DecisionMemo,
 ): boolean {
   const { lookahead } = sitePace(ctx.tick);
   if (entryIndex <= lookahead) return false;
@@ -420,15 +432,15 @@ function outrunsSites(
   for (let i = 0; i < entryIndex && oldest < 0; i++) {
     const entry = order[i];
     if (entry === undefined || isLaneEntry(entry)) continue;
-    if (entryStatus(world, ctx, player, standing, entry, live, false) !== 'unmet') continue;
-    if (entryStatus(world, ctx, player, owned, entry, live) !== 'unmet') oldest = i;
+    if (entryStatus(world, ctx, player, standing, entry, memo, false) !== 'unmet') continue;
+    if (entryStatus(world, ctx, player, owned, entry, memo) !== 'unmet') oldest = i;
   }
   if (oldest < 0) return false;
   let ahead = 0;
   for (let i = oldest + 1; i <= entryIndex; i++) {
     const entry = order[i];
     if (entry === undefined || isLaneEntry(entry)) continue;
-    if (entryStatus(world, ctx, player, owned, entry, live) !== 'skip') ahead++;
+    if (entryStatus(world, ctx, player, owned, entry, memo) !== 'skip') ahead++;
   }
   return ahead > lookahead;
 }

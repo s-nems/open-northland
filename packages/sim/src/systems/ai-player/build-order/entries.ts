@@ -5,12 +5,15 @@ import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../game-phase.js';
  *  each kind to a node. `resource` is the good's nearest live deposit, or the seat's store holding the
  *  most of the good once none stands. `front` is the settlement's own edge toward the nearest enemy seat,
  *  its headquarters before any other building, and toward the map centre while no enemy has a building
- *  standing. */
+ *  standing. `shore` is the nearest water beside the seat's land a ship can sail, a body that also
+ *  touches the enemy's continent first; unlike the others it is a hard rule, the spot landing close
+ *  enough to that water for the workshop's ship yard. */
 export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
   | { readonly kind: 'resource'; readonly good: string }
   | { readonly kind: 'mapCentre' }
-  | { readonly kind: 'front' };
+  | { readonly kind: 'front' }
+  | { readonly kind: 'shore' };
 
 export type BuildOrderEntry =
   /** Place `count` buildings of the stable content id. `near` pulls the spot toward its anchors,
@@ -19,7 +22,9 @@ export type BuildOrderEntry =
    *  none of any one of them, like a collector entry. `unlessWithin` skips the entry while every one of
    *  the seat's named buildings (at that tier or above) has one of the buildings the entry counts within
    *  `radius` world-metric nodes, or while the seat has none of those; a `near` affinity on the same id
-   *  then pulls the spot toward the first one lacking. */
+   *  then pulls the spot toward the first one lacking. `onlyWhen: 'enemyOverSea'` skips the entry while
+   *  the nearest enemy headquarters can be reached by land. `belowTier` stops the count below that tier of
+   *  the chain, so buildings placed straight at it never meet the entry. */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -28,10 +33,17 @@ export type BuildOrderEntry =
       readonly ground?: 'plantable';
       readonly needsResources?: readonly string[];
       readonly unlessWithin?: { readonly building: string; readonly radius: number };
+      readonly onlyWhen?: 'enemyOverSea';
+      readonly belowTier?: string;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
-   *  named tier. */
-  | { readonly kind: 'upgrade'; readonly building: string; readonly count: number }
+   *  named tier, and below `belowTier` when given. */
+  | {
+      readonly kind: 'upgrade';
+      readonly building: string;
+      readonly count: number;
+      readonly belowTier?: string;
+    }
   /** Wait for `count` (default 1) flag-bound gatherers of the good; the workforce module owns the hire
    *  and keeps at least that many. Posts past the first come out of spare men only, so the list holds
    *  here until the seat has them. A good with no live resource is skipped. */
@@ -74,6 +86,10 @@ export const WELL_REACH_NODES = 12;
  *  takes the nearest room, and the brewer's carrier walks the little further for honey. */
 const HIVE_REACH_NODES = 18;
 
+/** How near the barracks a top-tier joinery must stand to count as its catapult joinery, in world-metric
+ *  nodes (authored): the army musters there, and a ship joinery by a far shore stays out of it. */
+const CATAPULT_JOINERY_REACH_NODES = 16;
+
 /** How far a store's coverage reaches, in world-metric nodes (authored): well over a tower's, since a
  *  warehouse serves carriers rather than bows, and the base is a store too. */
 const STORE_COVERAGE_RADIUS_NODES = 32;
@@ -87,6 +103,44 @@ const IRON_AND_WOOD: readonly PlacementAffinity[] = [
   { kind: 'resource', good: 'iron' },
   { kind: 'resource', good: 'wood' },
 ];
+
+/** A well beside the first `building` with none in reach. `cap` only caps the seat's wells, one more
+ *  than the well entries before it allow, since the entry is skipped once every such building has one. */
+function wellBeside(building: string, cap: number): BuildOrderEntry {
+  return {
+    kind: 'place',
+    building: 'work_well_00',
+    count: cap,
+    near: [{ kind: 'building', id: building }],
+    unlessWithin: { building, radius: WELL_REACH_NODES },
+  };
+}
+
+/** The `count`th brewery beside the others, then a hive and a well beside it unless theirs stand in reach. */
+function breweryWithHiveAndWell(count: number, wellCap: number): BuildOrderEntry[] {
+  return [
+    { kind: 'place', building: 'work_brewery', count, near: [{ kind: 'building', id: 'work_brewery' }] },
+    {
+      kind: 'place',
+      building: 'work_hive_00',
+      count,
+      near: [{ kind: 'building', id: 'work_brewery' }],
+      unlessWithin: { building: 'work_brewery', radius: HIVE_REACH_NODES },
+    },
+    wellBeside('work_brewery', wellCap),
+  ];
+}
+
+/** Druid huts on the big healing potion up to `count`, beside the ones standing. */
+function druidHuts(count: number): BuildOrderEntry {
+  return {
+    kind: 'place',
+    building: 'work_druid_01',
+    count,
+    near: [{ kind: 'building', id: 'work_druid_01' }],
+    needsResources: ['mushroom', 'gold'],
+  };
+}
 
 /**
  * Authored: the opening list is a plan, not extracted data. It is ordered so each entry's materials
@@ -118,13 +172,7 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   // second well beside it too when the first one stands farther off.
   { kind: 'place', building: 'work_brewery', count: 1, near: [{ kind: 'building', id: 'work_well_00' }] },
   { kind: 'place', building: 'work_hive_00', count: 1, near: [{ kind: 'building', id: 'work_brewery' }] },
-  {
-    kind: 'place',
-    building: 'work_well_00',
-    count: 2,
-    near: [{ kind: 'building', id: 'work_brewery' }],
-    unlessWithin: { building: 'work_brewery', radius: WELL_REACH_NODES },
-  },
+  wellBeside('work_brewery', 2),
   // Tiles and marble come only from these tiers, and homes, the armory and the bakeries all wait on them,
   // so the upgrades land well before the first bill that needs them.
   { kind: 'upgrade', building: 'work_pottery_01', count: 1 },
@@ -139,14 +187,7 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     ],
   },
   // The animal farm drinks water like the brewery, so it gets a well beside it when none stands in reach.
-  // The count only caps the seat's wells: the entry is skipped once any well stands within reach.
-  {
-    kind: 'place',
-    building: 'work_well_00',
-    count: 3,
-    near: [{ kind: 'building', id: 'work_animal_farm' }],
-    unlessWithin: { building: 'work_animal_farm', radius: WELL_REACH_NODES },
-  },
+  wellBeside('work_animal_farm', 3),
   {
     kind: 'place',
     building: 'work_sewery_01',
@@ -155,7 +196,15 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   },
   // The joinery works iron tools out of wood and iron, the smithy its wares out of iron and wood: each
   // stands between its two deposits, so neither carrier walks far.
-  { kind: 'place', building: 'work_joinery_01', count: 1, near: WOOD_AND_IRON },
+  // The tools joinery: the top-tier joineries placed later work ships and catapults, never tools, so
+  // they neither meet this entry nor its upgrade.
+  {
+    kind: 'place',
+    building: 'work_joinery_01',
+    count: 1,
+    near: WOOD_AND_IRON,
+    belowTier: 'work_joinery_03',
+  },
   { kind: 'collector', good: 'iron' },
   { kind: 'place', building: 'work_smithy_01', count: 1, near: IRON_AND_WOOD },
   // On the settlement's edge toward the nearest enemy, where the attacks come from; the barracks also
@@ -166,6 +215,14 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'upgrade', building: 'home_level_03', count: 3 },
   { kind: 'upgrade', building: 'home_level_04', count: 3 },
   { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
+  // Where only a ship reaches the nearest enemy, the joinery that builds it goes up by the water early.
+  {
+    kind: 'place',
+    building: 'work_joinery_03',
+    count: 1,
+    near: [{ kind: 'shore' }],
+    onlyWhen: 'enemyOverSea',
+  },
   { kind: 'towerCoverage', building: 'tower_01' },
   { kind: 'place', building: 'work_smithy_01', count: 2, near: IRON_AND_WOOD },
   { kind: 'place', building: 'home_level_04', count: 5 },
@@ -204,6 +261,8 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     near: [{ kind: 'building', id: 'work_herb_hut' }],
     needsResources: ['mushroom', 'gold'],
   },
+  // The druids brew with water: each druid entry is followed by a well beside the hut with none in reach.
+  wellBeside('work_druid_01', 4),
   { kind: 'place', building: 'work_smithy_01', count: 4, near: IRON_AND_WOOD },
   // Beside the barracks: the temple stands with the army it blesses, not on a front of its own.
   {
@@ -215,33 +274,22 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   },
   { kind: 'place', building: 'work_bakery_01', count: 4, near: [{ kind: 'building', id: 'work_mill_00' }] },
   // Every bakery drinks water like the brewery: one standing beyond a well's reach gets a well beside it.
-  {
-    kind: 'place',
-    building: 'work_well_00',
-    count: 5,
-    near: [{ kind: 'building', id: 'work_bakery_00' }],
-    unlessWithin: { building: 'work_bakery_00', radius: WELL_REACH_NODES },
-  },
+  wellBeside('work_bakery_00', 6),
   // Beside the first, sharing its hive and well when they stand in reach; a second hive and well beside
   // it otherwise.
-  { kind: 'place', building: 'work_brewery', count: 2, near: [{ kind: 'building', id: 'work_brewery' }] },
-  {
-    kind: 'place',
-    building: 'work_hive_00',
-    count: 2,
-    near: [{ kind: 'building', id: 'work_brewery' }],
-    unlessWithin: { building: 'work_brewery', radius: HIVE_REACH_NODES },
-  },
-  {
-    kind: 'place',
-    building: 'work_well_00',
-    count: 6,
-    near: [{ kind: 'building', id: 'work_brewery' }],
-    unlessWithin: { building: 'work_brewery', radius: WELL_REACH_NODES },
-  },
+  ...breweryWithHiveAndWell(2, 7),
   { kind: 'place', building: 'home_level_04', count: 8 },
   // The late game runs out of mail, plate and long bows.
   { kind: 'place', building: 'work_smithy_01', count: 5, near: [{ kind: 'resource', good: 'iron' }] },
+  // The catapult joinery stands by the barracks. Its count reaches past a ship joinery, and the barracks
+  // rule skips it once one stands there, so a land map gets one top-tier joinery and a sea map two.
+  {
+    kind: 'place',
+    building: 'work_joinery_03',
+    count: 2,
+    near: [{ kind: 'building', id: 'barracks' }],
+    unlessWithin: { building: 'barracks', radius: CATAPULT_JOINERY_REACH_NODES },
+  },
   { kind: 'place', building: 'work_armory_01', count: 2, near: [{ kind: 'resource', good: 'wood' }] },
   // The strength-amulet mint, and two more druid huts on the big healing potion with a mushroom gatherer
   // to feed them.
@@ -253,29 +301,10 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     needsResources: ['gold'],
   },
   { kind: 'collector', good: 'mushroom', count: 2 },
-  {
-    kind: 'place',
-    building: 'work_druid_01',
-    count: 4,
-    near: [{ kind: 'building', id: 'work_druid_01' }],
-    needsResources: ['mushroom', 'gold'],
-  },
+  druidHuts(4),
+  wellBeside('work_druid_01', 8),
   // The third brewery beside the first two, with its own hive and well by the same rule.
-  { kind: 'place', building: 'work_brewery', count: 3, near: [{ kind: 'building', id: 'work_brewery' }] },
-  {
-    kind: 'place',
-    building: 'work_hive_00',
-    count: 3,
-    near: [{ kind: 'building', id: 'work_brewery' }],
-    unlessWithin: { building: 'work_brewery', radius: HIVE_REACH_NODES },
-  },
-  {
-    kind: 'place',
-    building: 'work_well_00',
-    count: 7,
-    near: [{ kind: 'building', id: 'work_brewery' }],
-    unlessWithin: { building: 'work_brewery', radius: WELL_REACH_NODES },
-  },
+  ...breweryWithHiveAndWell(3, 9),
   // From here the warehouses and the denser tower ring run as lanes beside the list, one site each out of
   // the four the late game opens (authored): a warehouse wherever a workshop or a work flag stands
   // beyond every store's reach, so the smithies unload nearby and the ore piled at the mines gets carried
@@ -283,17 +312,18 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   // holds the lane, not the list.
   { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES, lane: true },
   { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES, lane: true },
-  // The other two sites go on down the list: two more smithies, the joinery at its top tier for a third
-  // joiner on iron tools, and two more druid huts on the big healing potion.
+  // The other two sites go on down the list: four more top homes, two more smithies, the tools joinery a
+  // tier up for a third joiner on iron tools, and more bakeries, breweries and druid huts.
+  { kind: 'place', building: 'home_level_04', count: 12 },
   { kind: 'place', building: 'work_smithy_01', count: 7, near: IRON_AND_WOOD },
-  { kind: 'upgrade', building: 'work_joinery_03', count: 1 },
-  {
-    kind: 'place',
-    building: 'work_druid_01',
-    count: 6,
-    near: [{ kind: 'building', id: 'work_druid_01' }],
-    needsResources: ['mushroom', 'gold'],
-  },
+  { kind: 'upgrade', building: 'work_joinery_02', count: 1, belowTier: 'work_joinery_03' },
+  druidHuts(6),
+  wellBeside('work_druid_01', 10),
+  { kind: 'place', building: 'work_bakery_01', count: 5, near: [{ kind: 'building', id: 'work_mill_00' }] },
+  wellBeside('work_bakery_00', 11),
+  ...breweryWithHiveAndWell(4, 12),
+  druidHuts(8),
+  wellBeside('work_druid_01', 13),
 ];
 
 /** What a seat with no base puts up: the headquarters declares an empty construction bill and would

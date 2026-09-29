@@ -1,4 +1,4 @@
-export { DEFAULT_NODE_ROUGHNESS, TerrainGraph } from './graph.js';
+export { DEFAULT_NODE_ROUGHNESS, NO_COMPONENT, TerrainGraph } from './graph.js';
 export { type LandscapeProps, resolveLandscapeProps } from './landscape-props.js';
 export type {
   LandscapeMapInput,

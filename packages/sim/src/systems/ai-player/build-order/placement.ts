@@ -1,20 +1,21 @@
 import { type BuildingType, footprintCellDx, footprintCellMaxAbsDx } from '@open-northland/data';
-import { Building, diplomacyStance, MAX_PLAYERS, Resource, Stockpile } from '../../../components/index.js';
+import { Building, Resource, Stockpile } from '../../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
 import { withinNodeRadius } from '../../../nav/node-circle.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../nav/terrain/index.js';
 import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf } from '../../footprint/geometry.js';
-import { HEADQUARTERS_BUILDING_ID } from '../../readviews/index.js';
+import { VEHICLE_SITE_PLACEMENT_RINGS } from '../../footprint/placement/vehicle-site.js';
+import { vehicleClearance } from '../../footprint/vehicle-clearance.js';
 import { resourcesAtNode } from '../../spatial/resources.js';
 import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { nearestLiveResource } from '../live-resources.js';
 import type { EnemyFire } from '../military/defence/index.js';
-import { anchorNodeOf, bestRingNode, towardNode } from '../node-geometry.js';
-import { ownedBuildings } from '../seat-roster.js';
+import { anchorNodeOf, bestRingNode, firstRingNode, towardNode } from '../node-geometry.js';
+import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 
@@ -54,13 +55,81 @@ function affinityNode(
     case 'mapCentre':
       return mapCentreNode(terrain);
     case 'front':
+      // The pull points down the road the attacks come by rather than at the middle of the map.
       return frontEdgeNode(
         world,
         owned,
         anchor,
-        frontNode(world, ctx, player, anchor) ?? mapCentreNode(terrain),
+        nearestEnemyBuilding(world, ctx, player, anchor)?.node ?? mapCentreNode(terrain),
       );
+    case 'shore':
+      return shipWaterNode(world, ctx, terrain, player, owned, anchor);
   }
+}
+
+/** How near its ship water a `shore` placement's anchor stands, in hex rings: inside the rings a
+ *  workshop's worker searches for a ship yard site. */
+const SHORE_SPOT_RINGS = VEHICLE_SITE_PLACEMENT_RINGS;
+
+/** How far out from the base the `shore` affinity looks for ship water, in Manhattan nodes: the
+ *  placement's own search fan, since the spot must still land in the settlement's reach. */
+const SHORE_SEARCH_RADIUS_NODES = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
+
+/** The least free-size class a ship of the content needs: the smallest `logicSize` among the vehicles
+ *  whose house is raised on water, or null when the content has none. */
+function shipClearanceClass(index: ContentIndex): number | null {
+  let least: number | null = null;
+  for (const house of index.buildings.values()) {
+    if (!house.ignoreContinents || house.vehicleType === undefined) continue;
+    const size = index.vehicles.get(house.vehicleType)?.logicSize;
+    if (size !== undefined && (least === null || size < least)) least = size;
+  }
+  return least;
+}
+
+/** The static land component under `anchor`, the seat's home continent. */
+function homeComponent(terrain: TerrainGraph, anchor: HalfCellNode): number {
+  return terrain.componentOf(terrain.nodeAtClamped(anchor.hx, anchor.hy));
+}
+
+/**
+ * The `shore` target: the water node nearest `anchor` on the lattice's rings that a ship may sail
+ * (its free-size class admits the content's smallest ship), in a body bordering the seat's continent,
+ * close enough to the seat's reach for a spot beside it. A body that also borders the continent of the
+ * enemy headquarters over the sea is taken first. Null when none lies within
+ * {@link SHORE_SEARCH_RADIUS_NODES}.
+ */
+function shipWaterNode(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  owned: readonly Entity[],
+  anchor: HalfCellNode,
+): HalfCellNode | null {
+  const shipClass = shipClearanceClass(contentIndex(ctx.content));
+  const home = homeComponent(terrain, anchor);
+  if (shipClass === null || home === NO_COMPONENT) return null;
+  const coasts = coastsOf(terrain);
+  const ours = coasts.get(home);
+  if (ours === undefined) return null;
+  const route = seaRouteOf(world, ctx, player);
+  const theirs = route === null ? undefined : coasts.get(route.enemy);
+  const clearance = vehicleClearance(world, ctx, terrain);
+  const reach = buildReach(world, owned, anchor);
+  const sailable = (bodies: ReadonlySet<number>) => (x: number, y: number) => {
+    if (!terrain.inBounds(x, y)) return false;
+    const node = terrain.nodeAt(x, y);
+    if (!terrain.isWater(node)) return false;
+    const body = terrain.componentOf(node);
+    if (!ours.has(body) || !bodies.has(body) || clearance.classOf(node) < shipClass) return false;
+    return reach.meets({ hx: x, hy: y }, SHORE_SPOT_RINGS);
+  };
+  const across =
+    theirs === undefined
+      ? null
+      : firstRingNode(anchor.hx, anchor.hy, SHORE_SEARCH_RADIUS_NODES, sailable(theirs));
+  return across ?? firstRingNode(anchor.hx, anchor.hy, SHORE_SEARCH_RADIUS_NODES, sailable(ours));
 }
 
 /** How far past the settlement's front-most building a `front` placement aims, in Manhattan nodes
@@ -156,53 +225,19 @@ function mapCentreNode(terrain: TerrainGraph): HalfCellNode {
   return { hx: Math.floor(terrain.width / 2), hy: Math.floor(terrain.height / 2) };
 }
 
-/**
- * The `front` target: the building nearest `anchor` (Manhattan) of a player the seat holds as enemy,
- * headquarters ranked ahead of everything else, so the pull points down the road the attacks come by
- * rather than at the middle of the map. Null while no enemy has a building. The lowest id wins a tie.
- * Read off the enemy seats' building rosters, so the walk is over their buildings, not every seat's.
- */
-function frontNode(
-  world: World,
-  ctx: SystemContext,
-  player: number,
-  anchor: HalfCellNode,
-): HalfCellNode | null {
-  const index = contentIndex(ctx.content);
-  let best: HalfCellNode | null = null;
-  let bestEntity: Entity | null = null;
-  let bestHq = false;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  for (let owner = 0; owner < MAX_PLAYERS; owner++) {
-    if (owner === player || diplomacyStance(world, player, owner) !== 'enemy') continue;
-    for (const e of ownedBuildings(world, owner)) {
-      const node = anchorNodeOf(world, e);
-      if (node === null) continue;
-      const hq = index.buildings.get(world.get(e, Building).buildingType)?.id === HEADQUARTERS_BUILDING_ID;
-      if (bestHq && !hq) continue;
-      const distance = nodeDistance(node, anchor);
-      // The seats' rosters are walked one after another, so the lowest id on a tie is kept explicitly.
-      const closer =
-        distance < bestDistance || (distance === bestDistance && bestEntity !== null && e < bestEntity);
-      if ((hq && !bestHq) || closer) {
-        best = node;
-        bestEntity = e;
-        bestHq = hq;
-        bestDistance = distance;
-      }
-    }
-  }
-  return best;
-}
-
 /** Lattice Manhattan distance, not the anisotropic world metric the spacing veto measures in. */
 function nodeDistance(a: HalfCellNode, b: HalfCellNode): number {
   return Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy);
 }
 
+/** Where the spot must land beyond the reach and the acceptor, or null for anywhere. */
+type SpotBound = ((x: number, y: number) => boolean) | null;
+
 /** The centre the ring search grows from: the integer mean of the entry's resolved affinity nodes,
- *  clamped back into the seat's {@link BuildReach}, or the anchor itself when nothing resolves. `serves` is
- *  the building an `unlessWithin` entry's affinity picked, which the spot must land in reach of, else null. */
+ *  clamped back into the seat's {@link BuildReach}, or the anchor itself when nothing resolves. `within`
+ *  keeps the spot in reach of what it serves: the building an `unlessWithin` entry's affinity picked, or
+ *  the ship water a `shore` affinity found, on the seat's continent. Null when a `shore` affinity finds
+ *  no water, since a spot anywhere else would serve no ship. */
 function searchCentre(
   world: World,
   ctx: SystemContext,
@@ -213,16 +248,31 @@ function searchCentre(
   reach: BuildReach,
   type: BuildingType,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
-): { centre: HalfCellNode; serves: HalfCellNode | null } {
+): { centre: HalfCellNode; within: SpotBound } | null {
   const anchors: HalfCellNode[] = [];
-  let serves: HalfCellNode | null = null;
+  let within: SpotBound = null;
   for (const affinity of entry.near ?? []) {
     const node = affinityNode(world, ctx, terrain, player, owned, anchor, type, entry, affinity);
-    if (node === null) continue;
+    if (node === null) {
+      if (affinity.kind === 'shore') return null;
+      continue;
+    }
     anchors.push(node);
-    if (affinity.kind === 'building' && affinity.id === entry.unlessWithin?.building) serves = node;
+    const serveRadius = entry.unlessWithin?.radius;
+    if (
+      affinity.kind === 'building' &&
+      affinity.id === entry.unlessWithin?.building &&
+      serveRadius !== undefined
+    )
+      within = (x, y) => withinNodeRadius(node.hx, node.hy, x, y, serveRadius);
+    if (affinity.kind === 'shore') {
+      const home = homeComponent(terrain, anchor);
+      within = (x, y) =>
+        hexDistanceBetween(node.hx, node.hy, x, y) < SHORE_SPOT_RINGS &&
+        terrain.componentOf(terrain.nodeAt(x, y)) === home;
+    }
   }
-  if (anchors.length === 0) return { centre: anchor, serves };
+  if (anchors.length === 0) return { centre: anchor, within };
   let sx = 0;
   let sy = 0;
   for (const a of anchors) {
@@ -231,7 +281,7 @@ function searchCentre(
   }
   return {
     centre: reach.clamp({ hx: Math.floor(sx / anchors.length), hy: Math.floor(sy / anchors.length) }),
-    serves,
+    within,
   };
 }
 
@@ -414,7 +464,7 @@ export const HQ_PULL_DIVISOR_NODES = 4;
  * the {@link HQ_PULL_DIVISOR_NODES} pull toward `anchor`, or null to stall the entry. The ring budget is
  * twice the reach radius, so a centre inside one building's disc reaches every node of that disc. An
  * `unlessWithin` entry's spot must lie within that radius of the building it serves, or a well would go
- * up that serves nothing.
+ * up that serves nothing, and a `shore` entry's close enough to its ship water for the ship yard.
  *
  * An affinity pull that finds nothing yields to the same search from `anchor` (authored): a
  * settlement wider than the fan keeps room on its far side that the pulled centre never reaches, and a
@@ -434,17 +484,9 @@ export function placementSpot(
 ): HalfCellNode | null {
   const settlement = buildReach(world, owned, anchor);
   const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
-  const { centre, serves } = searchCentre(
-    world,
-    ctx,
-    terrain,
-    player,
-    owned,
-    anchor,
-    settlement,
-    type,
-    entry,
-  );
+  const search = searchCentre(world, ctx, terrain, player, owned, anchor, settlement, type, entry);
+  if (search === null) return null;
+  const { centre, within } = search;
   const pulled = spotAround(
     ctx,
     terrain,
@@ -452,7 +494,7 @@ export function placementSpot(
     acceptor,
     anchor,
     centre,
-    serves,
+    within,
     type,
     tribe,
     entry,
@@ -466,7 +508,7 @@ export function placementSpot(
     acceptor,
     anchor,
     anchor,
-    serves,
+    within,
     type,
     tribe,
     entry,
@@ -481,7 +523,7 @@ function spotAround(
   acceptor: SpotAcceptor,
   anchor: HalfCellNode,
   centre: HalfCellNode,
-  serves: HalfCellNode | null,
+  within: SpotBound,
   type: BuildingType,
   tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
@@ -490,15 +532,14 @@ function spotAround(
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
   const accept = acceptor.around(underFire, centre, fan);
   const reach = settlement.around(centre, fan);
-  const serveRadius = entry.unlessWithin?.radius ?? 0;
   const hqPull = (x: number, y: number): number =>
     Math.floor((Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy)) / HQ_PULL_DIVISOR_NODES);
   return bestRingNode(centre.hx, centre.hy, fan, hqPull, (x, y) => {
     // The reach first: an affinity-pulled centre puts much of every ring outside it, and a stalled
     // entry re-walks the whole fan on every retry.
     if (!reach.contains(x, y)) return false;
-    if (serves !== null && !withinNodeRadius(serves.hx, serves.hy, x, y, serveRadius)) return false;
-    if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes - bounds come first
+    if (!terrain.inBounds(x, y)) return false; // the bound and groundAccepted resolve nodes
+    if (within !== null && !within(x, y)) return false;
     if (!groundAccepted(ctx, terrain, type, tribe, entry, x, y)) return false;
     return accept(x, y);
   });

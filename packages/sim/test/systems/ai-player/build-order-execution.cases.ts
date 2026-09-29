@@ -165,9 +165,9 @@ describe('build-order module (houseBuild)', () => {
     sim.enqueueSetup({ kind: 'setGatherGood', entity: settler, goodType: IRON });
     sim.step();
 
-    // Past the gate: the barracks, both bakery upgrades, then the late tail - the closing pair of level-2
-    // bakeries and the second brewery follow, with a tower wherever one lands outside the tower circles,
-    // and the third brewery closes the list. The home entries name `home_level_04`, a tier this
+    // Past the gate: the barracks, both bakery upgrades, then the late tail - the pair of level-2 bakeries
+    // and the second brewery follow, with a tower wherever one lands outside the tower circles, then the
+    // third brewery, and a fifth bakery and a fourth brewery close the list. The home entries name `home_level_04`, a tier this
     // content set stops short of, so they skip here - the direct top-tier placement has its own test
     // below. The smithy and armory entries are absent from this fixture, so both skip.
     const barracks = nextPlacement(sim);
@@ -182,7 +182,15 @@ describe('build-order module (houseBuild)', () => {
     }
     // The joinery stands between the wood and the iron, out past the base's defence circle, so the opening
     // tower entry raises one tower over it; every other building sits inside the store and tower circles.
-    for (const expected of [TOWER_TYPE, BAKERY_TOP_TYPE, BAKERY_TOP_TYPE, BREWERY_TYPE, BREWERY_TYPE]) {
+    for (const expected of [
+      TOWER_TYPE,
+      BAKERY_TOP_TYPE,
+      BAKERY_TOP_TYPE,
+      BREWERY_TYPE,
+      BREWERY_TYPE,
+      BAKERY_TOP_TYPE,
+      BREWERY_TYPE,
+    ]) {
       const next = nextPlacement(sim);
       if (next?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);
       expect(next.buildingType).toBe(expected);

@@ -1,4 +1,5 @@
 import './ai-player/build-order-execution.cases.js';
+import './ai-player/build-order-fleet.cases.js';
 import './ai-player/build-order-placement.cases.js';
 import './ai-player/contested-rebuild.cases.js';
 import './ai-player/experience-retention.cases.js';

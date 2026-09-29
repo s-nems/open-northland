@@ -10,6 +10,7 @@ import { seatBaseOf } from '../base.js';
 import { buildingTypeByContentId, goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { anyLiveResource } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
+import { enemyOverSea } from '../sea-route.js';
 import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import { type BuildOrderEntry, isLaneEntry } from './entries.js';
 import { unservedAnchor } from './placement.js';
@@ -32,11 +33,27 @@ function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingT
   return false;
 }
 
-/** Whether the map holds a live resource, per good type: one decision's answers, so entries gated on the
- *  same good search the map once. */
-export type LiveResourceMemo = Map<number, boolean>;
+/** One decision's map-wide answers, so the entries that ask the same question search the map once:
+ *  whether the map holds a live resource, per good type, and whether the enemy lies over the sea. */
+export interface DecisionMemo {
+  readonly live: Map<number, boolean>;
+  enemyOverSea: boolean | undefined;
+}
 
-/** `owned` is the seat's {@link ownedBuildings} list and `live` this decision's memo, both passed in so one
+export function decisionMemo(): DecisionMemo {
+  return { live: new Map(), enemyOverSea: undefined };
+}
+
+/** The tiers an entry counts: `type` and those above it on its chain, stopping below `belowTier`. */
+function countedTiers(ctx: SystemContext, type: BuildingType, belowTier: string | undefined): Set<number> {
+  const index = contentIndex(ctx.content);
+  const counted = tiersAtOrAbove(index, type);
+  const cap = belowTier === undefined ? undefined : buildingTypeByContentId(ctx.content, belowTier);
+  if (cap !== undefined) for (const tier of tiersAtOrAbove(index, cap)) counted.delete(tier);
+  return counted;
+}
+
+/** `owned` is the seat's {@link ownedBuildings} list and `memo` this decision's, both passed in so one
  *  decision computes them once. An upgrade in flight counts toward its next tier, as a placed site counts
  *  toward its entry, unless `inFlightUpgrades` is false. */
 export function entryStatus(
@@ -45,7 +62,7 @@ export function entryStatus(
   player: number,
   owned: readonly Entity[],
   entry: BuildOrderEntry,
-  live: LiveResourceMemo,
+  memo: DecisionMemo,
   inFlightUpgrades = true,
 ): EntryStatus {
   const index = contentIndex(ctx.content);
@@ -53,9 +70,9 @@ export function entryStatus(
     case 'place': {
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) return 'skip';
-      // The placed tier or anything above it on its chain counts, so an upgraded workshop never
-      // triggers a duplicate placement; a home entry counts every home tier.
-      const counted = tiersAtOrAbove(index, type);
+      // The placed tier or anything above it on its chain, below `belowTier`, counts, so an upgraded
+      // workshop never triggers a duplicate placement; a home entry counts every home tier.
+      const counted = countedTiers(ctx, type, entry.belowTier);
       let have = 0;
       for (const e of owned) {
         const ownedType = index.buildings.get(world.get(e, Building).buildingType);
@@ -64,6 +81,10 @@ export function entryStatus(
         if (matches) have++;
       }
       if (have >= entry.count) return 'satisfied';
+      if (entry.onlyWhen === 'enemyOverSea') {
+        memo.enemyOverSea ??= enemyOverSea(world, ctx, player);
+        if (!memo.enemyOverSea) return 'skip';
+      }
       if (
         entry.unlessWithin !== undefined &&
         unservedAnchor(world, index, owned, counted, entry.unlessWithin) === null
@@ -71,7 +92,7 @@ export function entryStatus(
         return 'skip';
       for (const goodId of entry.needsResources ?? []) {
         const needed = goodTypeByContentId(ctx.content, goodId);
-        if (needed === undefined || !liveResourceNearBase(world, ctx, player, needed.typeId, live))
+        if (needed === undefined || !liveResourceNearBase(world, ctx, player, needed.typeId, memo.live))
           return 'skip';
       }
       return 'unmet';
@@ -79,7 +100,7 @@ export function entryStatus(
     case 'upgrade': {
       const target = buildingTypeByContentId(ctx.content, entry.building);
       if (target === undefined) return 'skip';
-      const done = tiersAtOrAbove(index, target);
+      const done = countedTiers(ctx, target, entry.belowTier);
       let have = 0;
       for (const e of owned) {
         const type = world.get(e, Building).buildingType;
@@ -100,7 +121,7 @@ export function entryStatus(
       }
       if (holders >= collectorCount(entry)) return 'satisfied';
       // Nothing left to collect anywhere counts as done, so the list never stalls on a dry map.
-      return liveResourceNearBase(world, ctx, player, good.typeId, live) ? 'unmet' : 'skip';
+      return liveResourceNearBase(world, ctx, player, good.typeId, memo.live) ? 'unmet' : 'skip';
     }
     case 'towerCoverage':
     case 'storeCoverage': {
@@ -117,7 +138,7 @@ function liveResourceNearBase(
   ctx: SystemContext,
   player: number,
   goodType: number,
-  live: LiveResourceMemo,
+  live: Map<number, boolean>,
 ): boolean {
   const known = live.get(goodType);
   if (known !== undefined) return known;
@@ -139,8 +160,8 @@ export function entryStatuses(
   order: readonly BuildOrderEntry[],
 ): EntryStatus[] {
   const owned = ownedBuildings(world, player);
-  const live: LiveResourceMemo = new Map();
-  return order.map((entry) => entryStatus(world, ctx, player, owned, entry, live));
+  const memo = decisionMemo();
+  return order.map((entry) => entryStatus(world, ctx, player, owned, entry, memo));
 }
 
 /** The lowest-id built building the seat can upgrade toward `target`; a site, including an in-flight

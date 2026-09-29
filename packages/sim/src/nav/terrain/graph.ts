@@ -20,6 +20,9 @@ export const DEFAULT_NODE_ROUGHNESS = 2;
  *  all-water cells read 1). */
 export const DEFAULT_WATER_ROUGHNESS = 1;
 
+/** The {@link TerrainGraph.componentOf} label of a node no mover class enters. */
+export const NO_COMPONENT = -1;
+
 /**
  * The sim's navigation model: the half-cell node lattice with its 8-direction edge set and each node's
  * static connectivity label. Distinct from the render's triangle tessellation. Construct through
@@ -83,10 +86,10 @@ export class TerrainGraph extends TerrainEdges {
   /**
    * The static-connectivity label of a node, the continent key land and water share: nodes reachable
    * over static terrain by one mover class share a label, land labels come first and water labels
-   * after them, and a node no class enters (a rock face, a tree trunk, the border) is -1. A walk-block
-   * overlay only removes edges, so two differently labelled nodes are provably unreachable under any
-   * overlay. Labels are assigned by ascending seed id at build time, making them a pure function of
-   * the terrain.
+   * after them, and a node no class enters (a rock face, a tree trunk, the border) is
+   * {@link NO_COMPONENT}. A walk-block overlay only removes edges, so two differently labelled nodes
+   * are provably unreachable under any overlay. Labels are assigned by ascending seed id at build
+   * time, making them a pure function of the terrain.
    */
   componentOf(node: NodeId): number {
     return this.checkedSlot(this.components, node);
@@ -97,13 +100,13 @@ export class TerrainGraph extends TerrainEdges {
    *  one class's node set, so the BFS labelling is well-defined. Runs from the constructor, so an
    *  override of {@link stepsInto} would see a subclass's own fields still uninitialised. */
   private computeComponents(): Int32Array {
-    const components = new Int32Array(this.nodeCount).fill(-1);
+    const components = new Int32Array(this.nodeCount).fill(NO_COMPONENT);
     const queue: NodeId[] = [];
     const edges = new StepBuffer();
     let nextLabel = 0;
     for (const traversal of TRAVERSALS) {
       for (let seed = 0; seed < this.nodeCount; seed++) {
-        if (components[seed] !== -1 || !this.traversable(seed as NodeId, traversal)) continue;
+        if (components[seed] !== NO_COMPONENT || !this.traversable(seed as NodeId, traversal)) continue;
         const label = nextLabel;
         nextLabel += 1;
         components[seed] = label;
@@ -115,7 +118,7 @@ export class TerrainGraph extends TerrainEdges {
           this.stepsInto(cur, undefined, edges, traversal);
           for (let i = 0; i < edges.length; i++) {
             const { node } = edges.at(i);
-            if (components[node] === -1) {
+            if (components[node] === NO_COMPONENT) {
               components[node] = label;
               queue.push(node);
             }

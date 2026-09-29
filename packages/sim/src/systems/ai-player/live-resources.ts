@@ -2,7 +2,7 @@ import { Position, Resource, ResourceFootprint, Settler } from '../../components
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/blocked.js';
 import { routeRegions } from '../footprint/index.js';
@@ -42,9 +42,6 @@ export function workableResourceTest(world: World, ctx: SystemContext, terrain: 
     !world.has(e, ResourceFootprint) ||
     resourceStanceCells(world, terrain, e).some((cell) => !blocked.has(cell));
 }
-
-/** The {@link TerrainGraph.componentOf} label of an unwalkable node. */
-const NO_COMPONENT = -1;
 
 /**
  * The {@link WorkableTest} that also drops every resource whose work cell nearest `from` lies on another
