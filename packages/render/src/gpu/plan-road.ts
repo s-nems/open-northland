@@ -1,7 +1,7 @@
 import { type Container, Graphics, Sprite, type Texture } from 'pixi.js';
 
 /**
- * A pegged plot of cobbles: the marker for one planned road node, in the road tool's preview and on a laid
+ * A round, pegged plot of cobbles: the marker for one planned road node, in the road tool's preview and on a laid
  * site until its road is paved. Its stones say whether the node takes a road: grey where it can go, red
  * where it cannot. A claimed site pulls the pegs and plants the builder's flag in the plot instead. All
  * three pieces of art share one frame and ground point.
@@ -16,9 +16,11 @@ export type PlanRoadLook = keyof PlanRoadTextures;
 
 /** World px across the plot; the art is generated for this project, sized by eye against a settler. */
 const PLOT_WIDTH = 30;
-/** Where the plot's centre meets the ground, as fractions of the art. */
-const ART_GROUND = { x: 0.498, y: 0.464 } as const;
-const ART_ASPECT = 1024 / 631;
+/** Where the plot's centre meets the ground, as fractions of the art: the middle of the rim's ellipse. */
+const ART_GROUND = { x: 0.499, y: 0.435 } as const;
+const ART_WIDTH_PX = 112;
+const ART_HEIGHT_PX = 74;
+const ART_ASPECT = ART_WIDTH_PX / ART_HEIGHT_PX;
 const PLOT_HEIGHT = PLOT_WIDTH / ART_ASPECT;
 
 /** The drawn box around the ground point, for hit bounds: left, top, right and bottom offsets. */
