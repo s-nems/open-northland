@@ -6,7 +6,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
 import { landscapeBlocks } from '../landscape/view.js';
-import { buildingBlockedLayer, doorPassage } from './building-blocked-cache.js';
+import { buildingBlockedLayer, doorPassage, heldBuildingTypesStand } from './building-blocked-cache.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedLayer } from './resource-blocked-cache.js';
 import { vehicleBlockedLayer } from './vehicle-blocked-cache.js';
@@ -36,9 +36,7 @@ export interface ConstructionPlot {
   readonly cells: readonly { readonly col: number; readonly row: number }[];
 }
 
-/** The plots last derived for a world, with the generations they hold for. Of the Building fields only
- *  `buildingType` moves a plot, while `built` progress bumps the value generation on every construction
- *  advance, so a value bump replays the written buildings against {@link types} instead of rebuilding. */
+/** The plots last derived for a world, with the generations and site types they hold for. */
 interface ConstructionPlotMemo {
   readonly content: ContentSet;
   readonly siteGeneration: number;
@@ -64,7 +62,7 @@ export function constructionSitePlots(world: World, content: ContentSet): readon
     memo.content === content &&
     memo.siteGeneration === siteGeneration &&
     memo.buildingGeneration === buildingGeneration &&
-    writesKeepSiteTypes(world, memo, buildingValueGeneration)
+    heldBuildingTypesStand(world, memo.types, memo.buildingValueGeneration)
   ) {
     memo.buildingValueGeneration = buildingValueGeneration;
     return memo.plots;
@@ -90,19 +88,6 @@ export function constructionSitePlots(world: World, content: ContentSet): readon
     plots,
   });
   return plots;
-}
-
-/** Whether the Building value writes since the memo's generation left every site's type alone. False
- *  when the journal cannot cover the span. */
-function writesKeepSiteTypes(world: World, memo: ConstructionPlotMemo, valueGeneration: number): boolean {
-  if (memo.buildingValueGeneration === valueGeneration) return true;
-  const written = world.valueWritesSince(Building, memo.buildingValueGeneration);
-  if (written === null) return false;
-  for (const e of written) {
-    const type = memo.types.get(e);
-    if (type !== undefined && world.tryGet(e, Building)?.buildingType !== type) return false;
-  }
-  return true;
 }
 
 /** One building's walk-blocked body: its footprint `blocked` cells on the map minus its door passage, or

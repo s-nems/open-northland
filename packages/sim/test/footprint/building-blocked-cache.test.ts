@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Building, Position, Stockpile, UnderConstruction, Upgrading } from '../../src/components/index.js';
 import { GENERATION_JOURNAL_LIMIT } from '../../src/ecs/generation-journal.js';
 import { fx, ONE, positionOfNode, Simulation } from '../../src/index.js';
+import { buildingOpenings } from '../../src/systems/footprint/building-blocked-cache.js';
 import { buildingBlockedCells, constructionSystem } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -103,6 +104,28 @@ describe('buildingBlockedCells memo', () => {
   });
 });
 
+describe('buildingOpenings memo', () => {
+  it('construction progress keeps the openings', () => {
+    const { sim, home } = twoTierHome();
+    sim.world.mut(home, UnderConstruction).labor = HALF;
+    const terrain = terrainOf(sim);
+    const before = buildingOpenings(sim.world, sim.content, terrain);
+
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(home, Building).built).toBe(HALF);
+    expect(buildingOpenings(sim.world, sim.content, terrain)).toBe(before);
+  });
+
+  it('a tier swap re-derives the openings with the new tier door', () => {
+    const { sim, door } = twoTierHome();
+    const terrain = terrainOf(sim);
+    expect(buildingOpenings(sim.world, sim.content, terrain).has(door)).toBe(false);
+
+    constructionSystem(sim.world, ctxOf(sim)); // upgrades in place
+    expect(buildingOpenings(sim.world, sim.content, terrain).has(door)).toBe(true);
+  });
+});
+
 const HOME_S = 20; // 1-node body
 const HOME_L = 21; // grows one node east
 const STONE = 1;
@@ -111,7 +134,7 @@ const HALF = fx.div(ONE, fx.fromInt(2));
 /** A level-0 home re-opened as an UPGRADE SITE (the command-driven model: `UnderConstruction` +
  *  `Upgrading` beside the Building) with the hammering done and the next tier's material delivered -
  *  one `constructionSystem` run finishes the upgrade in place. `growth` is the node only the larger
- *  tier walls off. */
+ *  tier walls off, `door` the larger tier's door, outside its body. */
 function twoTierHome() {
   const content = parseContentSet({
     manifest: TEST_MANIFEST,
@@ -142,6 +165,7 @@ function twoTierHome() {
             { dx: 0, dy: 0 },
             { dx: 1, dy: 0 },
           ],
+          door: { dx: 0, dy: 2 },
         },
       },
     ],
@@ -157,5 +181,5 @@ function twoTierHome() {
     savedStock: new Map<number, number>(),
     seeded: new Map<number, number>(),
   });
-  return { sim, home, growth: terrainOf(sim).nodeAt(6, 5) };
+  return { sim, home, growth: terrainOf(sim).nodeAt(6, 5), door: terrainOf(sim).nodeAt(5, 7) };
 }

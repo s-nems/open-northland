@@ -14,10 +14,7 @@ import { standingWallCells, wallJointSeals } from './wall-joints.js';
 interface BuildingBlockedCache extends CountedCells {
   /** Building MEMBERSHIP generation (add/remove/destroy) the cells were derived at. */
   readonly membershipGeneration: number;
-  /** Building VALUE generation the cells were last confirmed at. Of the Building fields only
-   *  `buildingType` moves cells (the in-place home tier swap), while `built` progress bumps this on every
-   *  construction advance, so a bump replays the written buildings against {@link types} and rebuilds
-   *  only when one changed type. */
+  /** Building VALUE generation the cells were last confirmed at (see {@link heldBuildingTypesStand}). */
   valueGeneration: number;
   /** Palisade and PalisadeBlocking membership generations: a wall or a shut gate blocks its walk cells.
    *  Its cells and gate state change only by a re-add; the in-place writes are a claim and build progress. */
@@ -183,19 +180,41 @@ function deriveBuildingBlockedCells(
   return blocked;
 }
 
+/**
+ * Whether the Building value writes since `generation` left every building in `types` at its held type.
+ * Of the Building fields only `buildingType` moves a footprint (the in-place tier swap), while `built`
+ * progress bumps the value generation on every construction advance. False when the journal cannot cover
+ * the span; the caller turned on `journalValueWrites(Building)` when it recorded `types`.
+ */
+export function heldBuildingTypesStand(
+  world: World,
+  types: ReadonlyMap<Entity, number>,
+  generation: number,
+): boolean {
+  if (world.componentValueGeneration(Building) === generation) return true;
+  const written = world.valueWritesSince(Building, generation);
+  if (written === null) return false;
+  for (const e of written) {
+    const type = types.get(e);
+    if (type !== undefined && world.tryGet(e, Building)?.buildingType !== type) return false;
+  }
+  return true;
+}
+
 interface OpeningsMemo {
   readonly content: ContentSet;
   readonly terrain: TerrainGraph;
   readonly membershipGeneration: number;
-  readonly valueGeneration: number;
+  valueGeneration: number;
+  readonly types: ReadonlyMap<Entity, number>;
   readonly openings: ReadonlySet<NodeId>;
 }
 
 const openingsMemo = new WeakMap<World, OpeningsMemo>();
 
 /** Every building's door node and the passage cleared from it to exterior ground, which a wall joint
- *  seal leaves open. Memoized on the Building generations alone, so a wall change keeps it. Derived
- *  state, never hashed. */
+ *  seal leaves open. Memoized on Building membership and the buildings' types, so construction progress
+ *  and a wall change keep it. Derived state, never hashed. */
 export function buildingOpenings(
   world: World,
   content: ContentSet,
@@ -208,26 +227,16 @@ export function buildingOpenings(
     held?.content === content &&
     held.terrain === terrain &&
     held.membershipGeneration === membershipGeneration &&
-    held.valueGeneration === valueGeneration
+    heldBuildingTypesStand(world, held.types, held.valueGeneration)
   ) {
+    held.valueGeneration = valueGeneration;
     return held.openings;
   }
-  const { openings } = deriveBuildingCells(world, content, terrain);
-  openingsMemo.set(world, { content, terrain, membershipGeneration, valueGeneration, openings });
+  world.journalValueWrites(Building);
+  const types = new Map<Entity, number>();
+  const { openings } = deriveBuildingCells(world, content, terrain, types);
+  openingsMemo.set(world, { content, terrain, membershipGeneration, valueGeneration, types, openings });
   return openings;
-}
-
-/** Whether the Building value writes since the cache's confirmed generation left every derived building's
- *  type alone, so its cells still hold. False when the journal cannot cover the span. */
-function valueWritesKeepCells(world: World, cached: BuildingBlockedCache, valueGeneration: number): boolean {
-  if (cached.valueGeneration === valueGeneration) return true;
-  const written = world.valueWritesSince(Building, cached.valueGeneration);
-  if (written === null) return false;
-  for (const e of written) {
-    const b = world.tryGet(e, Building);
-    if (b !== undefined && world.has(e, Position) && cached.types.get(e) !== b.buildingType) return false;
-  }
-  return true;
 }
 
 function palisadesUnchanged(world: World, cached: BuildingBlockedCache): boolean {
@@ -244,7 +253,7 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
   if (
     cached.membershipGeneration !== world.componentGeneration(Building) ||
     !palisadesUnchanged(world, cached) ||
-    !valueWritesKeepCells(world, cached, world.componentValueGeneration(Building))
+    !heldBuildingTypesStand(world, cached.types, cached.valueGeneration)
   ) {
     return []; // stale key - the next read rebuilds, nothing can consume the old cells
   }
@@ -295,7 +304,7 @@ export function buildingBlockedLayer(world: World, ctx: ContentContext, terrain:
     cached.content === ctx.content &&
     cached.membershipGeneration === membershipGeneration &&
     palisadesUnchanged(world, cached) &&
-    valueWritesKeepCells(world, cached, valueGeneration)
+    heldBuildingTypesStand(world, cached.types, cached.valueGeneration)
   ) {
     cached.valueGeneration = valueGeneration;
     return cached;
