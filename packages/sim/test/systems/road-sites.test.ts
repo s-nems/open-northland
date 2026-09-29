@@ -35,6 +35,7 @@ import { constructionSystem } from '../../src/systems/economy/construction.js';
 import { claimSite } from '../../src/systems/economy/site-claim.js';
 import { palisadePlacementProbe as palisadeProbe } from '../../src/systems/palisades/index.js';
 import { isRoad } from '../../src/systems/roads/index.js';
+import { pickRoadSite } from '../../src/systems/roads/site-pick.js';
 import { roadSitePlacementProbe } from '../../src/systems/roads/sites.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -552,6 +553,55 @@ describe('road site construction', () => {
     let stone = 0;
     for (const e of sim.world.query(Stockpile)) stone += sim.world.get(e, Stockpile).amounts.get(STONE) ?? 0;
     expect(stone + (sim.world.tryGet(builder, Carrying)?.amount ?? 0)).toBe(10);
+  });
+});
+
+describe('road site pick', () => {
+  /** Seven pending sites in a row, west to east. */
+  const LINE = [10, 11, 12, 13, 14, 15, 16].map((hx) => ({ hx, hy: ROW }));
+
+  function lineSites(sim: Simulation): Entity[] {
+    orderRoads(sim, LINE);
+    return LINE.map(({ hx, hy }) => {
+      const site = siteAt(sim, hx, hy);
+      if (site === undefined) throw new Error(`expected a road site at ${hx},${hy}`);
+      return site;
+    });
+  }
+
+  it('two builders pick interior sites a stone apart and pave six of seven with two stones', () => {
+    const sim = roadSim();
+    const store = storeAt(sim, STORE_HX, 2);
+    const builders = [builderAt(sim, 6), builderAt(sim, 7)];
+    const sites = lineSites(sim);
+    const firstPick = new Map<Entity, Entity>();
+    for (let tick = 0; tick < BUILD_TICKS; tick++) {
+      sim.step();
+      for (const b of builders) {
+        const site = sim.world.tryGet(b, SiteAssignment)?.site;
+        if (site !== undefined && !firstPick.has(b)) firstPick.set(b, site);
+      }
+    }
+    expect(builders.map((b) => sites.indexOf(firstPick.get(b) ?? -1))).toEqual([1, 4]);
+    expect(LINE.map(({ hx, hy }) => roadAt(sim, hx, hy))).toEqual([true, true, true, true, true, true, false]);
+    expect(sim.world.get(store, Stockpile).amounts.get(STONE) ?? 0).toBe(0);
+  });
+
+  it('prefers the most pending cover away from another builder claim, then the nearer site', () => {
+    const sim = roadSim();
+    const sites = lineSites(sim);
+    const terrain = sim.terrain;
+    const [west, second] = sites;
+    if (terrain === undefined || west === undefined || second === undefined) throw new Error('expected sites');
+    const holder = builderAt(sim, 30);
+    sim.world.add(holder, SiteAssignment, { site: second, pinned: false });
+    claimSite(sim.world, second, holder);
+    const seeker = builderAt(sim, 2);
+    const here = terrain.nodeAt(2, ROW);
+    const pick = pickRoadSite(sim.world, terrain, seeker, here, west, () => true);
+    expect(sites.indexOf(pick)).toBe(4);
+    const lone = pickRoadSite(sim.world, terrain, seeker, here, west, (site) => site === west);
+    expect(lone).toBe(west);
   });
 });
 

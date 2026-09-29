@@ -19,6 +19,7 @@ import {
   releaseSiteClaim,
 } from '../../../economy/site-claim.js';
 import { atomicDuration } from '../../../readviews/animations.js';
+import { pickRoadSite } from '../../../roads/site-pick.js';
 import { constructionTribeOf, hasInboundSupply } from '../../../stores/index.js';
 import {
   atOrWalk,
@@ -129,6 +130,14 @@ export function planBuilder(
       accepts,
     );
 
+  // A road site's stone paves its pending neighbours too, so the nearest one only anchors the pick.
+  const pickRoad = (sites: InteractionCellIndex, accepts: (site: Entity) => boolean): Entity | null => {
+    const nearest = nearestSite(sites, accepts);
+    return nearest === null
+      ? null
+      : pickRoadSite(world, terrain, e, here, nearest, (site) => avoidSite?.(site) !== true && accepts(site));
+  };
+
   // Walls come last: an automatic builder turns to one only once no building site it could stand at is
   // left, so walls wait out every new house and upgrade. Project rule.
   const isWall = (site: Entity): boolean => world.has(site, Palisade);
@@ -159,7 +168,7 @@ export function planBuilder(
     const wall = wallCandidates === null ? null : nearestSite(wallCandidates, accepts);
     if (wall !== null || roadsWait()) return wall;
     const roadCandidates = roads();
-    return roadCandidates === null ? null : pickRoadSite(roadCandidates, nearestSite, accepts);
+    return roadCandidates === null ? null : pickRoad(roadCandidates, accepts);
   };
   const everyWall = (): InteractionCellIndex => targets.wallSiteCells;
   const everyRoad = (): InteractionCellIndex => targets.roadSiteCells;
@@ -270,18 +279,6 @@ function soloSitesAwaitingSupply(plan: PlannerContext, kind: 'wall' | 'road'): I
     }
   }
   return sites.length === 0 ? null : new InteractionCellIndex(world, ctx, terrain, sites);
-}
-
-/**
- * The road site an automatic builder turns to once no building or wall site is left: the nearest that
- * `accepts`. The one seam a smarter pick replaces.
- */
-function pickRoadSite(
-  sites: InteractionCellIndex,
-  nearestSite: (sites: InteractionCellIndex, accepts: (site: Entity) => boolean) => Entity | null,
-  accepts: (site: Entity) => boolean,
-): Entity | null {
-  return nearestSite(sites, accepts);
 }
 
 /** Take a wall segment's single-builder claim; an ordinary building always passes. A lost claim drops
