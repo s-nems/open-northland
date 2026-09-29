@@ -5,6 +5,7 @@
  */
 export { carryAnimsByGood, characterBinding } from './bindings-character.js';
 export { buildHumanBindings } from './bindings-demo.js';
+export { borrowedHeadAtlas } from './borrowed-head-frames.js';
 export {
   ADULT_CHARACTER_BY_JOB,
   CHARACTER_SPEC_ENTRIES,

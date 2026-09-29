@@ -21,6 +21,7 @@ import {
 import type { BobSeqRow, ContentIr } from '../ir/rows.js';
 import {
   ADULT_CHARACTER_BY_JOB,
+  borrowedHeadAtlas,
   CHARACTER_SPEC_ENTRIES,
   type CharacterSpecId,
   carryHeadFallback,
@@ -109,6 +110,34 @@ function headBindingFor(
   if (headAtlas === undefined) return undefined;
   const head = carryHeadFallback(headBinding(binding, clips) ?? binding, headAtlas);
   return head === binding ? undefined : head;
+}
+
+/** Head layer → walk clip start → the layer with its blank clips borrowed; several looks and tribes share
+ *  one head set, so each is copied once. */
+const borrowedHeadLayers = new WeakMap<SpriteLayer, Map<number, SpriteLayer>>();
+
+/** `heads`, each with the body clips its set leaves blank borrowed from the other heads on the body,
+ *  standing in the walk's head. */
+function withBorrowedHeadClips(
+  heads: readonly SpriteLayer[],
+  headsByStem: ReadonlyMap<string, SpriteLayer>,
+  seqByName: ReadonlyMap<string, BobSeqRow>,
+  walk: SettlerStateBinding['moving'],
+): SpriteLayer[] {
+  const walkStart = typeof walk === 'object' ? walk.start : walk;
+  const stand = [...seqByName.values()].find((row) => row.start === walkStart);
+  if (stand === undefined) return [...heads];
+  return heads.map((layer) => {
+    const byStand = borrowedHeadLayers.get(layer) ?? new Map<number, SpriteLayer>();
+    borrowedHeadLayers.set(layer, byStand);
+    const cached = byStand.get(stand.start);
+    if (cached !== undefined) return cached;
+    const donors = [...headsByStem.values()].filter((other) => other !== layer).map((other) => other.atlas);
+    const atlas = borrowedHeadAtlas(layer.atlas, donors, seqByName.values(), stand);
+    const borrowed = atlas === layer.atlas ? layer : { ...layer, atlas };
+    byStand.set(stand.start, borrowed);
+    return borrowed;
+  });
 }
 
 /** The idle-action clips this body's bob pool draws, other than its base wait: a human body's `wait`
@@ -246,10 +275,16 @@ export function tribeCharacters(
         bound.idle,
       );
       const binding = idleFidgets.length > 0 ? { ...bound, idleFidgets } : bound;
-      const heads = look.headStems
+      const authoredHeads = look.headStems
         .map((stem) => layers.headsByStem.get(stem))
         .filter((l): l is SpriteLayer => l !== undefined);
-      const head = headBindingFor(binding, heads, headClips(seqByName, tribeSeqs.heads, inputs.sequences));
+      // The carry fallback reads the authored frames, so a carry gait keeps the walk's animated head.
+      const head = headBindingFor(
+        binding,
+        authoredHeads,
+        headClips(seqByName, tribeSeqs.heads, inputs.sequences),
+      );
+      const heads = withBorrowedHeadClips(authoredHeads, layers.headsByStem, seqByName, binding.moving);
       return {
         body: feetShiftedLayer(layers.body, spec.feetShiftY),
         ...(look.indexed ? { palette: look.palette } : { indexed: false }),

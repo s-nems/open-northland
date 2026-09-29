@@ -1,7 +1,12 @@
 import { type FrameListAnim, indexAtlasFrames, type SettlerStateBinding } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import type { BobSeqRow } from '../src/content/ir/rows.js';
-import { carryHeadFallback, headBinding, headClips } from '../src/content/settler-gfx/index.js';
+import {
+  borrowedHeadAtlas,
+  carryHeadFallback,
+  headBinding,
+  headClips,
+} from '../src/content/settler-gfx/index.js';
 
 /**
  * The head overlay's own clips: a body clip the source overlays with another head clip (`gfxbobseqhead`)
@@ -127,5 +132,38 @@ describe('carryHeadFallback', () => {
   it('returns the binding by identity when every carry head draws', () => {
     const drawn: SettlerStateBinding = { ...head, carrying: { byGood: { 5: wood } } };
     expect(carryHeadFallback(drawn, hats)).toBe(drawn);
+  });
+});
+
+describe('borrowedHeadAtlas', () => {
+  /** Six facings: the stand clip draws one frame per facing, the kiss two. */
+  const STAND = row('walk', 10, 6);
+  const KISS = row('kiss', 40, 12);
+  const frame = (bobId: number, x: number, offsetX: number, offsetY: number) => ({
+    bobId,
+    rect: { x, y: 0, width: 8, height: 8 },
+    offsetX,
+    offsetY,
+  });
+  const standFrames = (x: number, offsetY: number) =>
+    Array.from({ length: STAND.length }, (_, i) => frame(STAND.start + i, x + i, i, offsetY));
+  /** A donor set that draws the kiss, its head lower and to the right as the body leans. */
+  const donor = indexAtlasFrames(64, 64, [
+    ...standFrames(0, -40),
+    ...Array.from({ length: KISS.length }, (_, i) => frame(KISS.start + i, 0, i + 3, -36)),
+  ]);
+  /** A taller hat that draws only the stand clip, two pixels higher on the same neck. */
+  const hat = indexAtlasFrames(64, 64, standFrames(20, -42));
+
+  it('draws a blank clip with the own stand head of that facing, where the donor puts its head', () => {
+    const borrowed = borrowedHeadAtlas(hat, [donor], [STAND, KISS], STAND);
+    // Kiss entry 7 lies in the fourth facing block, whose stand frame is bob 13.
+    expect(borrowed.frames.get(KISS.start + 7)).toMatchObject({ x: 23, offsetX: 7 + 3, offsetY: -38 });
+    expect(borrowed.frames.get(STAND.start)).toBe(hat.frames.get(STAND.start));
+  });
+
+  it('returns the atlas by identity when no donor draws what it leaves blank', () => {
+    expect(borrowedHeadAtlas(hat, [], [STAND, KISS], STAND)).toBe(hat);
+    expect(borrowedHeadAtlas(donor, [hat], [STAND, KISS], STAND)).toBe(donor);
   });
 });

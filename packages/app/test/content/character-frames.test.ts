@@ -30,7 +30,8 @@ import { characterTablesUnderTest, hasRealIr, rawIrUnderTest } from './helpers.j
  * Every frame a civilization's settler looks can play draws a whole figure on the REAL decoded content:
  * where the body draws, each head look overlays it. A clip the source overlays with another head clip
  * (`gfxbobseqhead`) reads that clip, or the frankish spearman and the frankish and byzantine archers walk
- * headless.
+ * headless. A clip a head set authors no frames for borrows them from another head on the body, or the
+ * frankish, saracen and byzantine women kiss headless.
  */
 
 /** The `TRIBE_TYPE_HUMAN_*` civilizations, viking leading as the base. */
@@ -46,23 +47,6 @@ const FACINGS = 8;
 const ARMED_JOBS: readonly number[] = [
   ...Array.from({ length: SOLDIER_JOB_MAX - JOB_SOLDIER_UNARMED }, (_, i) => JOB_SOLDIER_UNARMED + 1 + i),
   ...Array.from({ length: JOB_HEROINE_BOW - JOB_HERO_UNARMED }, (_, i) => JOB_HERO_UNARMED + 1 + i),
-];
-
-/**
- * Head looks the source authors no frames for. Original behavior, unconfirmed in the running game: it draws
- * them headless too. Each pattern matches `tribe <id> <look>: <slot>`.
- */
-const SOURCE_HEADLESS: readonly RegExp[] = [
-  // The scout's and the druid's hats: other trades' indoor clips, which neither plays, and the scout's brawl.
-  /^tribe 1 job (27|30): sub-clip /,
-  /^tribe 1 job 27: atomic 81$/,
-  // The frankish, byzantine and saracen women kiss headless, and the byzantine woman sleeps so.
-  /^tribe [234] job 5: atomic 2[01]$/,
-  /^tribe 3 job 5: atomic 8$/,
-  // One of two civilian head looks each: the byzantine clay dig, the saracen woodcut, the egyptian brawl.
-  /^tribe 3 (default|job 25): atomic 26$/,
-  /^tribe 4 (default|job 25): atomic 24$/,
-  /^tribe 7 (default|job (22|25|27|30)): atomic 81$/,
 ];
 
 /** Each slot's body clip beside the head clip its overlay reads, by slot name. */
@@ -159,7 +143,7 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
         for (const slot of headlessSlots(char)) gaps.push(`tribe ${tribe} ${key}: ${slot}`);
       }
     }
-    expect(gaps.filter((gap) => !SOURCE_HEADLESS.some((known) => known.test(gap)))).toEqual([]);
+    expect(gaps).toEqual([]);
   });
 
   it('swings the unarmed punch and the longbow shot at N and S out of their own clip', () => {

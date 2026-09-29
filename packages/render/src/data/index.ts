@@ -29,7 +29,7 @@ export {
   roadShardOf,
 } from './scene/snapshot-index.js';
 export { type SceneGround, type SceneTerrain, terrainMapToScene } from './scene/terrain-scene.js';
-export type { SpriteAtlas } from './sprites/atlas.js';
+export type { AtlasFrame, SpriteAtlas } from './sprites/atlas.js';
 export { GFX_DIR_TO_FACING, subClipKey } from './sprites/settler.js';
 export type {
   CarryingBinding,
