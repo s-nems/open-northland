@@ -19,7 +19,7 @@ const SETTINGS: RoomSettings = {
   name: 'socket',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 3,
-  rules: { fog: null, progression: null, needs: null },
+  rules: { fog: null, progression: null, needs: null, weather: null },
   speed: 1,
 };
 const SEATS = [

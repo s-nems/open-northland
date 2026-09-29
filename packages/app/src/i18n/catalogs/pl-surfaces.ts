@@ -123,6 +123,12 @@ export const plSurfaces = {
         on: 'Rosną z czasem',
         off: 'Wyłączone',
       },
+      weatherLabel: 'Pogoda',
+      weatherModes: {
+        map: { label: 'Mapa', detail: 'Tylko pogoda ustalona przez mapę.' },
+        variable: { label: 'Zmienna', detail: 'Pogoda mapy oraz okazjonalna pogoda samej gry.' },
+        winter: { label: 'Zima', detail: 'Śnieżna gra.' },
+      },
       start: 'Rozpocznij grę',
       startNeedsSeat: 'Najpierw zajmij miejsce',
     },

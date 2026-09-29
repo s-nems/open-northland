@@ -5,7 +5,16 @@
 
 /** The player-facing settings that survive a menu/game switch; every other param is dropped. The
  *  `?uiscale` diagnostic pin is deliberately not carried: sticky, it would mask the scale setting. */
-export const CARRIED_PARAMS = ['lang', 'speed', 'fog', 'progression', 'needs', 'sound', 'debug'] as const;
+export const CARRIED_PARAMS = [
+  'lang',
+  'speed',
+  'fog',
+  'progression',
+  'needs',
+  'weathermode',
+  'sound',
+  'debug',
+] as const;
 export type CarriedParam = (typeof CARRIED_PARAMS)[number];
 
 export function carriedParams(current = new URLSearchParams(window.location.search)): URLSearchParams {
@@ -84,7 +93,7 @@ export function introParam(params: URLSearchParams): boolean {
 }
 
 /** A `?weather=` value: one kind over the whole map at an amount in percent, `clear`, or `ambient`,
- *  a held ambient episode at a percent of its strongest. */
+ *  the game's own weather held at a percent of a light episode: 200 is heavy, 300 a storm. */
 export interface WeatherParam {
   readonly kind: 'rain' | 'snow' | 'sand' | 'clear' | 'ambient';
   readonly percent: number;
@@ -93,8 +102,9 @@ export interface WeatherParam {
 const WEATHER_PARAM_KINDS = ['rain', 'snow', 'sand', 'clear', 'ambient'] as const;
 /** The amount a bare `?weather=<kind>` shows: a heavy script shower, near the storm threshold. */
 const WEATHER_PARAM_DEFAULT_PERCENT = 30;
-/** A bare `?weather=ambient` holds the strongest ambient episode. */
+/** A bare `?weather=ambient` holds the strongest light episode; the scale ends at a full storm. */
 const WEATHER_PARAM_AMBIENT_PERCENT = 100;
+const WEATHER_PARAM_AMBIENT_MAX_PERCENT = 300;
 const PERCENT_FULL = 100;
 
 /** `?weather=<rain|snow|sand|clear|ambient>[:<percent>]` overrides the map's weather in this view only, for
@@ -108,5 +118,6 @@ export function weatherParam(params: URLSearchParams): WeatherParam | null {
   const bare = kind === 'ambient' ? WEATHER_PARAM_AMBIENT_PERCENT : WEATHER_PARAM_DEFAULT_PERCENT;
   const parsed = amount === undefined ? bare : Number.parseFloat(amount);
   if (!Number.isFinite(parsed)) return null;
-  return { kind, percent: Math.min(PERCENT_FULL, Math.max(0, parsed)) };
+  const max = kind === 'ambient' ? WEATHER_PARAM_AMBIENT_MAX_PERCENT : PERCENT_FULL;
+  return { kind, percent: Math.min(max, Math.max(0, parsed)) };
 }

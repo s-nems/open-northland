@@ -9,7 +9,12 @@ const LOBBY_FIELDS = keysOf<Exclude<keyof LobbySettings, 'rules'>>({
   speed: true,
   kickedSeatMode: true,
 });
-const RULE_FIELDS = keysOf<keyof SessionRules>({ fog: true, progression: true, needs: true });
+const RULE_FIELDS = keysOf<keyof SessionRules>({
+  fog: true,
+  progression: true,
+  needs: true,
+  weather: true,
+});
 
 export function sameSessionRules(a: SessionRules, b: SessionRules): boolean {
   return RULE_FIELDS.every((field) => a[field] === b[field]);

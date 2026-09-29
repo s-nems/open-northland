@@ -52,11 +52,14 @@ export {
 } from './terrain/minimap.js';
 export { patternSrcRect, type SrcRect, texturePageKey } from './terrain/uv.js';
 export {
-  AMBIENT_FULL_AMOUNT,
+  AMBIENT_LEVEL_AMOUNTS,
   AMBIENT_NO_WEATHER,
   type AmbientSectors,
-  ambientStrength,
+  type AmbientWeatherNow,
+  ambientAmount,
   buildAmbientField,
+  variableWeather,
+  winterWeather,
 } from './weather/ambient.js';
 export { THUNDER_MAX_DELAY_SECONDS, thunderDelaySeconds } from './weather/climate.js';
 export {

@@ -22,7 +22,7 @@ const SETTINGS: RoomSettings = {
   name: 'result',
   world: { kind: 'scene', sceneId: 'result' },
   seed: 7,
-  rules: { fog: null, progression: null, needs: null },
+  rules: { fog: null, progression: null, needs: null, weather: null },
   speed: 1,
 };
 const SEATS = [

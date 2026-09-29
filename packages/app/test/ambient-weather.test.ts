@@ -1,7 +1,7 @@
 import type { SceneTerrain, WeatherField } from '@open-northland/render';
-import { AMBIENT_FULL_AMOUNT, WEATHER_KINDS, weatherAmountAt } from '@open-northland/render/data';
+import { AMBIENT_LEVEL_AMOUNTS, WEATHER_KINDS, weatherAmountAt } from '@open-northland/render/data';
 import { describe, expect, it } from 'vitest';
-import { ambientWeatherFor, authorsWeather } from '../src/view/ambient-weather.js';
+import { type AmbientWeatherMode, ambientWeatherFor } from '../src/view/ambient-weather.js';
 import { createWeatherFeed } from '../src/view/weather-feed.js';
 
 const PATTERNS = [
@@ -28,7 +28,7 @@ function terrain(west: string, east: string): SceneTerrain {
 }
 
 const kindAt = (map: SceneTerrain, sx: number): string | undefined => {
-  const ambient = ambientWeatherFor(null, map, PATTERNS, 1);
+  const ambient = ambientWeatherFor(map, PATTERNS, 1);
   return WEATHER_KINDS[ambient?.sectors.kinds[sx] ?? -1];
 };
 const WEST = 0;
@@ -57,44 +57,72 @@ describe('ambientWeatherFor', () => {
   it('gives open water the kind of the map', () => {
     expect(kindAt(terrain('snow', 'sea'), EAST)).toBe('snow');
   });
-
-  it('is unscheduled on a map that authors weather', () => {
-    const script = { missions: [{ results: [{ values: ['SetWeather', '1', '1', '9', '0', '10'] }] }] };
-    expect(authorsWeather(script)).toBe(true);
-    expect(authorsWeather({ weather: [{}] })).toBe(true);
-    expect(authorsWeather({ missions: [{ results: [{ values: ['ActivateMission', '3'] }] }] })).toBe(false);
-    expect(ambientWeatherFor(script, terrain('grass', 'grass'), PATTERNS, 1)?.scheduled).toBe(false);
-  });
 });
 
 describe('ambient weather feed', () => {
   const map = terrain('grass', 'grass');
   const size = { width: SIZE, height: SIZE };
+  const DAY_SECONDS = 24 * 3600;
+  const [lightRain] = AMBIENT_LEVEL_AMOUNTS.rain;
+  const played = (
+    mode: AmbientWeatherMode,
+  ): { fields: WeatherField[]; feed: ReturnType<typeof createWeatherFeed> } => {
+    const fields: WeatherField[] = [];
+    const feed = createWeatherFeed(
+      size,
+      (next) => fields.push(next),
+      null,
+      ambientWeatherFor(map, PATTERNS, 1, mode),
+    );
+    for (let t = 0; t < DAY_SECONDS; t += 10) feed.frame(t);
+    return { fields, feed };
+  };
 
   it('holds a preview episode under the ambient override', () => {
-    let field: WeatherField | null = null;
+    const fields: WeatherField[] = [];
     createWeatherFeed(
       size,
-      (next) => {
-        field = next;
-      },
+      (next) => fields.push(next),
       { kind: 'ambient', percent: 50 },
-      ambientWeatherFor(null, map, PATTERNS, 1),
+      ambientWeatherFor(map, PATTERNS, 1),
     );
-    const built = field as WeatherField | null;
-    if (built === null) throw new Error('no field');
-    expect(weatherAmountAt(built, 'rain', 20, 20)).toBeCloseTo(AMBIENT_FULL_AMOUNT.rain / 2);
+    const built = fields.at(-1);
+    if (built === undefined) throw new Error('no field');
+    expect(weatherAmountAt(built, 'rain', 20, 20)).toBeCloseTo(lightRain / 2);
   });
 
-  it('follows the schedule and stops at the first authored write', () => {
-    let applied = 0;
-    const feed = createWeatherFeed(size, () => applied++, null, ambientWeatherFor(null, map, PATTERNS, 1));
-    const DAY_SECONDS = 24 * 3600;
-    for (let t = 0; t < DAY_SECONDS; t += 10) feed.frame(t);
-    expect(applied).toBeGreaterThan(0);
-    feed.write({ weather: 'rain', min: { hx: 0, hy: 0 }, max: { hx: 9, hy: 9 }, density: 1000 });
-    const after = applied;
-    for (let t = DAY_SECONDS; t < 2 * DAY_SECONDS; t += 10) feed.frame(t);
-    expect(applied).toBe(after);
+  it('plays nothing of its own in the map mode', () => {
+    expect(played('map').fields).toHaveLength(0);
+  });
+
+  it('follows the schedule in the variable mode and yields where the map writes', () => {
+    const { fields, feed } = played('variable');
+    expect(fields.some((field) => field.any)).toBe(true);
+    feed.write({ weather: 'snow', min: { hx: 0, hy: 0 }, max: { hx: 39, hy: 39 }, density: 2000 });
+    const built = fields.at(-1);
+    if (built === undefined) throw new Error('no field');
+    expect(weatherAmountAt(built, 'snow', 20, 20)).toBeCloseTo(0.2);
+    expect(weatherAmountAt(built, 'rain', 20, 20)).toBe(0);
+  });
+
+  it('lays the winter snow on the first frame', () => {
+    const fields: WeatherField[] = [];
+    const feed = createWeatherFeed(
+      size,
+      (next) => fields.push(next),
+      null,
+      ambientWeatherFor(map, PATTERNS, 1, 'winter'),
+    );
+    feed.frame(0);
+    expect(fields).toHaveLength(1);
+    expect(fields[0]?.lyingSnow ?? 0).toBeGreaterThan(0);
+  });
+
+  it('snows on grass and keeps lying snow in the winter mode', () => {
+    const { fields } = played('winter');
+    expect(fields.length).toBeGreaterThan(0);
+    expect(fields.every((field) => (field.lyingSnow ?? 0) > 0)).toBe(true);
+    expect(fields.some((field) => weatherAmountAt(field, 'snow', 20, 20) > 0)).toBe(true);
+    expect(fields.every((field) => weatherAmountAt(field, 'rain', 20, 20) === 0)).toBe(true);
   });
 });

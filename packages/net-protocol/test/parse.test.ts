@@ -34,7 +34,7 @@ const settings: RoomSettings = {
   name: 'Zatoka o świcie',
   world: { kind: 'map', mapId: 'zatoka' },
   seed: 7,
-  rules: { fog: 1, progression: null, needs: false },
+  rules: { fog: 1, progression: null, needs: false, weather: 'winter' },
   speed: 1,
 };
 
@@ -184,6 +184,24 @@ describe('client messages', () => {
       'a fog rule the sim has no mode for',
       { kind: 'createRoom', settings: { ...settings, rules: { ...settings.rules, fog: 9 } }, seats: [] },
       /not a fog mode/,
+    ],
+    [
+      'a weather mode no client draws',
+      {
+        kind: 'createRoom',
+        settings: { ...settings, rules: { ...settings.rules, weather: 'rain' } },
+        seats: [],
+      },
+      /rules\.weather/,
+    ],
+    [
+      'rules without a weather mode',
+      {
+        kind: 'createRoom',
+        settings: { ...settings, rules: { fog: 1, progression: null, needs: false } },
+        seats: [],
+      },
+      /rules\.weather/,
     ],
     [
       'a seed wider than the sim reads',

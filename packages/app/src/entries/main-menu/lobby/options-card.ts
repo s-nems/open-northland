@@ -16,6 +16,7 @@ export function lobbyOptionsCard(options: LobbyOptions): HTMLElement {
     fogOfWar: { label: lobby.fogOfWarLabel, ...lobby.fogOfWarModes },
     progression: { label: lobby.progressionLabel, ...lobby.progressionModes },
     needs: { label: lobby.needsLabel, ...lobby.needsModes },
+    weather: { label: lobby.weatherLabel, modes: lobby.weatherModes },
     onChange(change) {
       if (change.fog != null) {
         const name = fogModeName(change.fog);
@@ -23,6 +24,7 @@ export function lobbyOptionsCard(options: LobbyOptions): HTMLElement {
       }
       if (change.progression != null) options.professionProgression = change.progression;
       if (change.needs != null) options.settlerNeeds = change.needs;
+      if (change.weather != null) options.weather = change.weather;
       paint();
     },
   });
@@ -32,6 +34,7 @@ export function lobbyOptionsCard(options: LobbyOptions): HTMLElement {
         fog: FOG_MODE_BY_NAME[options.fog],
         progression: options.professionProgression,
         needs: options.settlerNeeds,
+        weather: options.weather,
       },
       false,
     );

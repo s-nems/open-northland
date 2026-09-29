@@ -8,15 +8,16 @@ import {
 } from '@open-northland/render/data';
 
 /**
- * The ambient weather of a map that authors none: which kind falls where, read off the ground. An
- * OpenNorthland addition; a map that writes weather itself, by rectangle or by script, keeps full
- * control and gets no ambient weather.
+ * The game's own weather for a match: which kind falls where, read off the ground. An OpenNorthland
+ * addition; where a map writes weather itself, by rectangle or by script, the map's weather stands.
  */
+/** The match's weather setting: the map's own only, the map's plus ours, or a winter game. */
+export type AmbientWeatherMode = 'map' | 'variable' | 'winter';
+
 export interface AmbientWeather {
   /** The match seed: every new game draws another schedule. */
   readonly seed: number;
-  /** False on a map that authors weather: its sectors serve a held preview only. */
-  readonly scheduled: boolean;
+  readonly mode: AmbientWeatherMode;
   readonly sectors: AmbientSectors;
 }
 
@@ -24,16 +25,6 @@ interface GroundPatternRow {
   readonly editName?: string | undefined;
   readonly editGroups?: readonly string[] | undefined;
 }
-
-interface ScriptWeatherView {
-  readonly weather?: readonly unknown[] | undefined;
-  readonly missions?:
-    | readonly { readonly results: readonly { readonly values: readonly string[] }[] }[]
-    | undefined;
-}
-
-/** The script result that writes weather; its name is the row's first value. */
-const SET_WEATHER_RESULT = 'setweather';
 
 /** The ground pattern edit groups that name a biome. */
 const WATER_GROUP = 'water all';
@@ -57,20 +48,12 @@ function groundOf(groups: readonly string[]): Ground {
 const isBeachSand = (groups: readonly string[]): boolean =>
   groups.includes(SAND_GROUP) && !DESERT_GROUPS.some((g) => groups.includes(g));
 
-export function authorsWeather(script: ScriptWeatherView | null): boolean {
-  if (script === null) return false;
-  if ((script.weather?.length ?? 0) > 0) return true;
-  return (script.missions ?? []).some((mission) =>
-    mission.results.some((result) => result.values[0]?.toLowerCase() === SET_WEATHER_RESULT),
-  );
-}
-
 /** Null when the map carries no ground to read a biome from. */
 export function ambientWeatherFor(
-  script: ScriptWeatherView | null,
   terrain: SceneTerrain,
   patterns: readonly GroundPatternRow[],
   seed: number,
+  mode: AmbientWeatherMode = 'variable',
 ): AmbientWeather | null {
   const ground = terrain.ground;
   if (ground === undefined) return null;
@@ -135,7 +118,7 @@ export function ambientWeatherFor(
   }
   return {
     seed,
-    scheduled: !authorsWeather(script),
+    mode,
     sectors: { sectorsX, sectorsY, kinds: sectorKinds },
   };
 }

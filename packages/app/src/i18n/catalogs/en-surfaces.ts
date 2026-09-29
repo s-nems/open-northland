@@ -124,6 +124,12 @@ export const enSurfaces = {
         on: 'Rise over time',
         off: 'Disabled',
       },
+      weatherLabel: 'Weather',
+      weatherModes: {
+        map: { label: 'Map', detail: 'Only the weather the map itself sets.' },
+        variable: { label: 'Variable', detail: "The map's weather plus the game's own occasional weather." },
+        winter: { label: 'Winter', detail: 'A snowy game.' },
+      },
       start: 'Start game',
       startNeedsSeat: 'Take a seat first',
     },

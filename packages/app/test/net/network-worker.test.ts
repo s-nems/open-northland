@@ -24,7 +24,7 @@ const SESSION: GameSession = {
   seed: 1,
   seats: [{ player: 0, color: 0, mode: 'human' }],
   localSeat: 0,
-  rules: { fog: null, progression: null, needs: null },
+  rules: { fog: null, progression: null, needs: null, weather: null },
   speed: 1,
 };
 const FRAMES = 5;

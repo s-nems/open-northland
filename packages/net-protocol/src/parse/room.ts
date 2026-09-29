@@ -1,4 +1,4 @@
-import type { SeatMode, SessionRules, SessionWorld } from '@open-northland/lockstep';
+import type { SeatMode, SessionRules, SessionWorld, WeatherMode } from '@open-northland/lockstep';
 import {
   FOG_MODES,
   MAX_REPORTED_BUFFERED,
@@ -41,6 +41,7 @@ import { assertNever, parseLine, parseNick } from './text.js';
 const ROOM_STATES = ['lobby', 'running', 'ended'] as const satisfies readonly RoomState[];
 
 const SEAT_MODES = keysOf<SeatMode>({ human: true, ai: true, idle: true, absent: true });
+const WEATHER_MODES = keysOf<WeatherMode>({ map: true, variable: true, winter: true });
 export const VACANT_SEAT_MODES = keysOf<VacantSeatMode>({ ai: true, idle: true, absent: true });
 export const DEPARTED_SEAT_MODES = keysOf<DepartedSeatMode>({ ai: true, idle: true });
 
@@ -102,6 +103,7 @@ function parseSessionRules(value: unknown, at: string): SessionRules {
     fog: raw.fog === null ? null : parseFogMode(raw.fog, `${at}.fog`),
     progression: raw.progression === null ? null : asBoolean(raw.progression, `${at}.progression`),
     needs: raw.needs === null ? null : asBoolean(raw.needs, `${at}.needs`),
+    weather: raw.weather === null ? null : asOneOf(raw.weather, WEATHER_MODES, `${at}.weather`),
   };
 }
 

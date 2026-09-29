@@ -207,8 +207,11 @@ export class WeatherCover {
       field.amounts[base + SNOW] ?? 0,
       field.amounts[base + SAND] ?? 0,
     );
-    const thaw = Math.max(0, snow - t.snow) * MELT_WETNESS;
-    return thaw > t.wet ? { ...t, wet: thaw, dust: t.dust * (1 - thaw) } : t;
+    // Lying snow holds under a clear sky and gives way only to rain.
+    const lying = (field.lyingSnow ?? 0) * (1 - t.wet);
+    const held = lying > t.snow ? { ...t, snow: lying, dust: t.dust * (1 - lying) } : t;
+    const thaw = Math.max(0, snow - held.snow) * MELT_WETNESS;
+    return thaw > held.wet ? { ...held, wet: thaw, dust: held.dust * (1 - thaw) } : held;
   }
 
   private resize(count: number): void {

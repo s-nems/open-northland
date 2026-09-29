@@ -2,7 +2,7 @@ import { type CarriedParam, carriedParams, formatSearch } from '../../view/param
 import { DEFAULT_FOG_MODE, LOBBY_FOG_MODES } from './lobby/model.js';
 
 /** World rules a scene authors for itself, so a carried menu choice never reaches one. */
-const SCENE_OWNED_PARAMS: readonly CarriedParam[] = ['fog', 'progression', 'needs'];
+const SCENE_OWNED_PARAMS: readonly CarriedParam[] = ['fog', 'progression', 'needs', 'weathermode'];
 
 /**
  * Builds a launch URL's search: the entry's params layered over the menu's carried settings.

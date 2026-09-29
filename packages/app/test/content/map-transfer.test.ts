@@ -55,7 +55,12 @@ describe.runIf(hasRealIr())('verified map transfer with owned content', () => {
     expect(receiver.sim.hashState()).toBe(creator.sim.hashState());
     const save = exportSaveGame(creator.sim, { mapId });
     vi.stubGlobal('fetch', serveIrFetch);
-    expect(await validateNetworkSave(save, guest)).toEqual({ fog: 1, progression: false, needs: false });
+    expect(await validateNetworkSave(save, guest)).toEqual({
+      fog: 1,
+      progression: false,
+      needs: false,
+      weather: null,
+    });
     const restored = restoreMapWorld(options(guest), save);
     expect(restored.sim.hashState()).toBe(creator.sim.hashState());
     const corrupted = { ...save, header: { ...save.header, contentFingerprint: '0'.repeat(64) } };

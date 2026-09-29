@@ -32,7 +32,7 @@ const ROOM: RoomView = {
     name: 'Forest',
     world: { kind: 'map', mapId: 'forest' },
     seed: 7,
-    rules: { fog: null, progression: null, needs: null },
+    rules: { fog: null, progression: null, needs: null, weather: null },
     speed: 1,
   },
   seats: [

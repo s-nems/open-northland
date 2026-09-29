@@ -28,6 +28,13 @@ describe('the on/off session rules', () => {
     expect(launch('needs=on').needsEnabled()).toBe(true);
   });
 
+  it('reads ?weathermode= as a presentation choice the sim never receives', () => {
+    expect(sessionRuleOverrides(new URLSearchParams('weathermode=winter')).weather).toBe('winter');
+    expect(sessionRuleOverrides(new URLSearchParams('weathermode=snow')).weather).toBeNull();
+    expect(sessionRuleOverrides(new URLSearchParams('weather=snow')).weather).toBeNull();
+    expect(launch('weathermode=winter').hashState()).toBe(launch('').hashState());
+  });
+
   it('applies every flag on one launch without them interfering', () => {
     const sim = launch('fog=off&progression=off&needs=off');
     expect(sim.needsEnabled()).toBe(false);

@@ -1,6 +1,7 @@
-import { parseSavedSessionMetadata } from '@open-northland/lockstep';
+import { parseSavedSessionMetadata, type WeatherMode } from '@open-northland/lockstep';
 import type { RoomSeatSetup } from '@open-northland/net-protocol';
 import type { SaveGame } from '@open-northland/sim';
+import { weatherModeParam } from '../../../game/session-rules.js';
 
 export function savedRoster(save: SaveGame) {
   const saved = parseSavedSessionMetadata(save.header.session);
@@ -10,6 +11,13 @@ export function savedRoster(save: SaveGame) {
       throw new Error('Saved session does not match its world');
   }
   return saved;
+}
+
+/** The weather a save was played under: a relayed save's descriptor, else a single-player launch search. */
+export function savedWeatherMode(save: SaveGame): WeatherMode | null {
+  const saved = savedRoster(save);
+  if (saved !== null) return saved.descriptor.rules.weather;
+  return save.header.entry === null ? null : weatherModeParam(new URLSearchParams(save.header.entry));
 }
 
 export function restoreSavedSeats(save: SaveGame, authored: readonly RoomSeatSetup[]): RoomSeatSetup[] {

@@ -5,7 +5,7 @@ const BASE: LobbySettings = {
   name: 'Zatoka',
   seed: 7,
   speed: 1,
-  rules: { fog: null, progression: null, needs: null },
+  rules: { fog: null, progression: null, needs: null, weather: null },
 };
 
 describe('lobby settings comparison', () => {
@@ -18,6 +18,7 @@ describe('lobby settings comparison', () => {
       { ...BASE, rules: { ...BASE.rules, fog: 1 } },
       { ...BASE, rules: { ...BASE.rules, progression: false } },
       { ...BASE, rules: { ...BASE.rules, needs: true } },
+      { ...BASE, rules: { ...BASE.rules, weather: 'winter' } },
     ];
     for (const settings of changed) expect(sameLobbySettings(BASE, settings)).toBe(false);
     expect(sameLobbySettings(BASE, { ...BASE, rules: { ...BASE.rules } })).toBe(true);

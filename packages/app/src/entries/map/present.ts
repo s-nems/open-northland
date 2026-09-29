@@ -1,5 +1,6 @@
 import { mapLobbySlots } from '@open-northland/data';
 import {
+  DEFAULT_WEATHER_MODE,
   isReadOnlySpectator,
   isSpectator,
   localPlayerOf,
@@ -177,7 +178,12 @@ export async function presentMapWorld(
     ...terrainColourOption(world.terrain),
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
-    ambientWeather: ambientWeatherFor(script, terrainGrid, ir?.gfxPatterns ?? [], hosted.seed),
+    ambientWeather: ambientWeatherFor(
+      terrainGrid,
+      ir?.gfxPatterns ?? [],
+      hosted.seed,
+      session.rules.weather ?? DEFAULT_WEATHER_MODE,
+    ),
     elevation: world.elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
     onEvents: (events) => {
       staticLayer?.(events);

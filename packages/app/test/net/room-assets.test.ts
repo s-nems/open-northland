@@ -28,7 +28,7 @@ function room(id = 'room'): RoomView {
       name: 'Forest',
       world: { kind: 'map', mapId: MAP.mapId },
       seed: 1,
-      rules: { fog: null, progression: null, needs: null },
+      rules: { fog: null, progression: null, needs: null, weather: null },
       speed: 1,
       initialSave: IDENTITY,
     },
@@ -61,7 +61,7 @@ function harness(verify = vi.fn(async () => SAVE)) {
   client.attach((message) => sent.push(message));
   const failed = vi.fn();
   const load = vi.fn(async () => REPORT);
-  const validate = vi.fn(async () => ({ fog: 0 as const, progression: true, needs: true }));
+  const validate = vi.fn(async () => ({ fog: 0 as const, progression: true, needs: true, weather: null }));
   let delivered: RoomMapTransferOptions['onVerified'] = () => undefined;
   const transfer = {
     prepare: vi.fn(),
@@ -205,7 +205,7 @@ describe('room assets coordinator', () => {
       world: { kind: 'map' as const, mapId: MAP.mapId },
       seed: 1,
       speed: 1,
-      rules: { fog: null, progression: null, needs: null },
+      rules: { fog: null, progression: null, needs: null, weather: null },
       seats: [{ player: 0, color: 0, mode: 'human' as const }],
       localSeat: 0,
     };
@@ -219,7 +219,7 @@ describe('room assets coordinator', () => {
     });
     h.validate.mockImplementation(async () => {
       await pending;
-      return { fog: 0 as const, progression: true, needs: true };
+      return { fog: 0 as const, progression: true, needs: true, weather: null };
     });
     h.assets.observe(room());
     h.deliver(MAP);

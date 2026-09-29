@@ -28,7 +28,7 @@ const SESSION: GameSession = {
     { player: 1, mode: 'human', color: 1 },
   ],
   localSeat: 0,
-  rules: { fog: null, progression: null, needs: null },
+  rules: { fog: null, progression: null, needs: null, weather: null },
   speed: 1,
 };
 const RESTORED_TICK = 40;

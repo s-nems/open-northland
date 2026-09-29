@@ -6,8 +6,11 @@ export interface SavedSessionSeat {
   readonly nick: string | null;
 }
 
+/** Bumped with any change to the recorded descriptor's layout. */
+const SAVED_SESSION_VERSION = 2;
+
 export interface SavedSessionMetadata {
-  readonly version: 1;
+  readonly version: typeof SAVED_SESSION_VERSION;
   readonly descriptor: GameSession;
   readonly roster: readonly SavedSessionSeat[];
 }
@@ -17,7 +20,7 @@ export function createSavedSessionMetadata(
   descriptor: GameSession,
   roster: readonly SavedSessionSeat[],
 ): SavedSessionMetadata {
-  return parsePresent({ version: 1, descriptor, roster });
+  return parsePresent({ version: SAVED_SESSION_VERSION, descriptor, roster });
 }
 
 /** Null means a legacy/unrecorded session. Malformed recorded metadata is never treated as legacy. */
@@ -29,7 +32,7 @@ function parsePresent(value: unknown): SavedSessionMetadata {
   if (value === null || typeof value !== 'object' || Array.isArray(value))
     throw new Error('saved session metadata must be a record');
   const raw = value as Record<string, unknown>;
-  if (raw.version !== 1) throw new Error('unsupported saved session metadata version');
+  if (raw.version !== SAVED_SESSION_VERSION) throw new Error('unsupported saved session metadata version');
   const { initialSave: _initialSave, ...descriptor } = parseGameSession(raw.descriptor);
   if (!Array.isArray(raw.roster) || raw.roster.length !== descriptor.seats.length)
     throw new Error('saved session roster must match every descriptor seat');
@@ -58,5 +61,5 @@ function parsePresent(value: unknown): SavedSessionMetadata {
     }
     return { player: seat.player, nick };
   });
-  return { version: 1, descriptor, roster };
+  return { version: SAVED_SESSION_VERSION, descriptor, roster };
 }

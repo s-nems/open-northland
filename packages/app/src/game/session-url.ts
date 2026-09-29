@@ -122,6 +122,7 @@ export function sessionSearch(
     params.set('progression', session.rules.progression ? 'on' : 'off');
   }
   if (session.rules.needs !== null) params.set('needs', session.rules.needs ? 'on' : 'off');
+  if (session.rules.weather !== null) params.set('weathermode', session.rules.weather);
   if (session.speed !== DEFAULT_SESSION_SPEED) params.set('speed', String(session.speed));
   return params;
 }

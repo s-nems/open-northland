@@ -66,6 +66,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
           fog: FOG_MODE_BY_NAME[options.fog],
           progression: options.professionProgression,
           needs: options.settlerNeeds,
+          weather: options.weather,
         }
       : await validateNetworkSave(save, handle);
   const initial: PreparedNetworkSave | null = save === null ? null : await prepareInitialSave(save);

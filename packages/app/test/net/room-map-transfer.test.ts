@@ -17,7 +17,7 @@ function room(): RoomView {
       name: 'room',
       world: { kind: 'map', mapId: 'island' },
       seed: 1,
-      rules: { fog: 1, progression: null, needs: false },
+      rules: { fog: 1, progression: null, needs: false, weather: null },
       speed: 1,
       mapOrigin: 'user',
     },

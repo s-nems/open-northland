@@ -16,6 +16,8 @@ export interface WeatherField {
   readonly amounts: Float32Array;
   /** True when any sector has any weather; lets consumers skip all work on a dry map. */
   readonly any: boolean;
+  /** 0..1 snow the ground keeps whatever falls: a winter game's lying snow. Absent is none. */
+  readonly lyingSnow?: number;
 }
 
 const kindIndex = (kind: WeatherKind): number => WEATHER_KINDS.indexOf(kind);

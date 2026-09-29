@@ -10,7 +10,7 @@ const SESSION: GameSession = {
   seed: 7,
   localSeat: 0,
   speed: 1,
-  rules: { fog: null, progression: null, needs: null },
+  rules: { fog: null, progression: null, needs: null, weather: null },
   seats: [
     { player: 0, mode: 'human', color: 0, team: 1 },
     { player: 1, mode: 'human', color: 1, team: 1 },

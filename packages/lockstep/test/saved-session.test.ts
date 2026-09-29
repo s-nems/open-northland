@@ -4,7 +4,7 @@ import { createSavedSessionMetadata, type GameSession, parseSavedSessionMetadata
 const descriptor: GameSession = {
   world: { kind: 'map', mapId: 'fixture' },
   seed: 7,
-  rules: { fog: 1, progression: false, needs: true },
+  rules: { fog: 1, progression: false, needs: true, weather: 'winter' },
   speed: 2,
   localSeat: 0,
   kickedSeatMode: 'idle',
@@ -27,7 +27,7 @@ describe('persisted session metadata', () => {
       { ...descriptor, initialSave: { tick: 10, fingerprint: 'a'.repeat(64) } },
       roster,
     );
-    expect(metadata).toEqual({ version: 1, descriptor, roster });
+    expect(metadata).toEqual({ version: 2, descriptor, roster });
     const parsed = parseSavedSessionMetadata({
       ...metadata,
       token: 'secret',
@@ -44,7 +44,8 @@ describe('persisted session metadata', () => {
     for (const value of [
       undefined,
       {},
-      { ...valid, version: 2 },
+      { ...valid, version: 1 },
+      { ...valid, version: 3 },
       { ...valid, roster: [] },
       { ...valid, roster: [roster[1], roster[0]] },
       { ...valid, roster: [roster[0], { player: 1, nick: 'AI' }] },

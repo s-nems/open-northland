@@ -1,11 +1,13 @@
 import {
   DEFAULT_LOCAL_PLAYER,
+  DEFAULT_WEATHER_MODE,
   type GameSession,
   orderedSeats,
   type SessionSeat,
+  type WeatherMode,
 } from '@open-northland/lockstep';
 import { FOG_MODE_BY_NAME, type FogModeName } from '../../../game/fog.js';
-import { onOffParam } from '../../../game/session-rules.js';
+import { onOffParam, weatherModeParam } from '../../../game/session-rules.js';
 import {
   DEFAULT_SESSION_SEED,
   DEFAULT_SESSION_SPEED,
@@ -38,6 +40,7 @@ export interface LobbyOptions {
   fog: LobbyFogModeName;
   professionProgression: boolean;
   settlerNeeds: boolean;
+  weather: WeatherMode;
 }
 
 /** Both rules default on, so only an explicit `off` in the URL clears the box. */
@@ -47,6 +50,7 @@ export function initialLobbyOptions(params: URLSearchParams): LobbyOptions {
     fog: LOBBY_FOG_MODES.find((mode) => mode === fog) ?? DEFAULT_FOG_MODE,
     professionProgression: onOffParam(params, 'progression') !== false,
     settlerNeeds: onOffParam(params, 'needs') !== false,
+    weather: weatherModeParam(params) ?? DEFAULT_WEATHER_MODE,
   };
 }
 
@@ -128,6 +132,7 @@ export function lobbySession(
       fog: FOG_MODE_BY_NAME[options.fog],
       progression: options.professionProgression,
       needs: options.settlerNeeds,
+      weather: options.weather,
     },
     speed: DEFAULT_SESSION_SPEED,
   };

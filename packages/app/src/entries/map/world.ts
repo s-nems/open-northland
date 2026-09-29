@@ -7,7 +7,6 @@ import {
   WERESNAKE_TRIBE,
   WEREWOLF_TRIBE,
 } from '@open-northland/data';
-import type { SessionRules } from '@open-northland/lockstep';
 import {
   components,
   type Entity,
@@ -34,7 +33,7 @@ import {
   type WorldContentOptions,
 } from '../../game/sandbox/index.js';
 import type { SeatTribeRemap } from '../../game/seat-tribes.js';
-import { applySessionRuleOverrides } from '../../game/session-rules.js';
+import { applySessionRuleOverrides, type SimSessionRules } from '../../game/session-rules.js';
 import { grantStartingPapers } from '../../game/starting-papers.js';
 import {
   authoredCatalogExtras,
@@ -56,7 +55,7 @@ import { grantAssistantDefaults } from '../../view/assistant-grants.js';
 
 export type MapWorldKind = 'authored' | 'bare' | 'demo';
 
-export interface MapWorldOptions extends SessionRules {
+export interface MapWorldOptions extends SimSessionRules {
   readonly missions?: boolean | null;
   readonly diplomacy?: readonly MapDiplomacy[];
   /** Groups of players that explore through one fog mask, the lobby's teams. */

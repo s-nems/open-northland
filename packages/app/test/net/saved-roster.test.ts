@@ -2,7 +2,11 @@ import { createSavedSessionMetadata, type GameSession } from '@open-northland/lo
 import type { RoomSeatSetup } from '@open-northland/net-protocol';
 import { exportSaveGame } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { restoreSavedSeats, savedRoster } from '../../src/entries/main-menu/network/saved-roster.js';
+import {
+  restoreSavedSeats,
+  savedRoster,
+  savedWeatherMode,
+} from '../../src/entries/main-menu/network/saved-roster.js';
 import { runDemoWorld } from '../../src/game/world/index.js';
 
 const descriptor: GameSession = {
@@ -10,7 +14,7 @@ const descriptor: GameSession = {
   seed: 7,
   localSeat: 0,
   speed: 2,
-  rules: { fog: null, progression: null, needs: null },
+  rules: { fog: null, progression: null, needs: null, weather: null },
   seats: [
     { player: 0, mode: 'human', color: 3, team: 1, tribe: 7 },
     { player: 1, mode: 'ai', color: 4 },
@@ -48,6 +52,20 @@ describe('saved multiplayer roster', () => {
       authored,
     );
     expect(() => savedRoster({ ...save, header: { ...save.header, session: {} } })).toThrow();
+  });
+  it('reads the weather a relayed save recorded, else the one a single-player launch search named', () => {
+    const winter = createSavedSessionMetadata(
+      { ...descriptor, rules: { ...descriptor.rules, weather: 'winter' } },
+      [
+        { player: 0, nick: 'Ania' },
+        { player: 1, nick: null },
+      ],
+    );
+    expect(savedWeatherMode({ ...save, header: { ...save.header, session: winter } })).toBe('winter');
+    expect(savedWeatherMode(save)).toBeNull();
+    const single = { ...save.header, session: null, entry: '?map=test&weathermode=map' };
+    expect(savedWeatherMode({ ...save, header: single })).toBe('map');
+    expect(savedWeatherMode({ ...save, header: { ...single, entry: null } })).toBeNull();
   });
   it('rejects a saved descriptor naming a different map, seed or roster', () => {
     expect(() => savedRoster({ ...save, header: { ...save.header, mapId: 'other' } })).toThrow(/world/);

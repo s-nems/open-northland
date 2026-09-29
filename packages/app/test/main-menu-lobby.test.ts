@@ -81,17 +81,22 @@ describe('lobbySlotRows', () => {
 });
 
 describe('initialLobbyOptions', () => {
-  it('defaults to classic fog, progression on and needs on, honouring explicit URL params', () => {
+  it('defaults to classic fog, progression on, needs on and variable weather, honouring explicit URL params', () => {
     expect(initialLobbyOptions(new URLSearchParams(''))).toEqual({
       fog: 'classic',
       professionProgression: true,
       settlerNeeds: true,
+      weather: 'variable',
     });
-    expect(initialLobbyOptions(new URLSearchParams('fog=recon-fow&progression=off&needs=off'))).toEqual({
+    expect(
+      initialLobbyOptions(new URLSearchParams('fog=recon-fow&progression=off&needs=off&weathermode=winter')),
+    ).toEqual({
       fog: 'recon-fow',
       professionProgression: false,
       settlerNeeds: false,
+      weather: 'winter',
     });
+    expect(initialLobbyOptions(new URLSearchParams('weathermode=bogus')).weather).toBe('variable');
     // The revealed map is a debug-menu pick, never a lobby one.
     expect(initialLobbyOptions(new URLSearchParams('fog=off')).fog).toBe('classic');
     expect(initialLobbyOptions(new URLSearchParams('fog=bogus')).fog).toBe('classic');
@@ -99,7 +104,12 @@ describe('initialLobbyOptions', () => {
   });
 });
 
-const OPTIONS = { fog: 'classic', professionProgression: true, settlerNeeds: true } as const;
+const OPTIONS = {
+  fog: 'classic',
+  professionProgression: true,
+  settlerNeeds: true,
+  weather: 'variable',
+} as const;
 
 /** The offered seats the launched session declares as AI, which is what `?ai=` carries. */
 function aiSeatsOfLobby(state: RosterState, players: readonly MapsIndexPlayerSlot[]): number[] {
@@ -230,6 +240,7 @@ describe('lobbyStartEntry', () => {
         fog: 'recon-fow',
         professionProgression: false,
         settlerNeeds: false,
+        weather: 'map',
       }),
     );
     expect(params.get('map')).toBe('zatoka');
@@ -248,15 +259,13 @@ describe('lobbyStartEntry', () => {
     expect(params.get('fog')).toBe('recon-fow');
     expect(params.get('progression')).toBe('off');
     expect(params.get('needs')).toBe('off');
+    expect(params.get('weathermode')).toBe('map');
   });
 
-  it('writes the needs default explicitly, so a carried `needs=off` cannot leak into the next map', () => {
+  it('writes the needs and weather defaults explicitly, so a carried choice cannot leak into the next map', () => {
     const players = [slot(0, { claimable: true, type: 'human' })];
-    const entry = lobbyStartEntry('zatoka', initialLobbyState(players), players, {
-      fog: 'classic',
-      professionProgression: true,
-      settlerNeeds: true,
-    });
+    const entry = lobbyStartEntry('zatoka', initialLobbyState(players), players, OPTIONS);
     expect(new URLSearchParams(entry).get('needs')).toBe('on');
+    expect(new URLSearchParams(entry).get('weathermode')).toBe('variable');
   });
 });

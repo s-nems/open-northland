@@ -42,7 +42,12 @@ describe('mapSession', () => {
     expect(parsed.world).toEqual({ kind: 'map', mapId: 'magiczny_las' });
     expect(parsed.localSeat).toBe(1);
     expect(parsed.seed).toBe(42);
-    expect(parsed.rules).toEqual({ fog: FOG_MODE.RECON_FOG_OF_WAR, progression: null, needs: false });
+    expect(parsed.rules).toEqual({
+      fog: FOG_MODE.RECON_FOG_OF_WAR,
+      progression: null,
+      needs: false,
+      weather: null,
+    });
     expect(parsed.speed).toBe(2);
   });
 
@@ -51,7 +56,7 @@ describe('mapSession', () => {
     expect(parsed.localSeat).toBe(0);
     expect(parsed.seed).toBe(DEFAULT_SESSION_SEED);
     expect(parsed.speed).toBe(1);
-    expect(parsed.rules).toEqual({ fog: null, progression: null, needs: null });
+    expect(parsed.rules).toEqual({ fog: null, progression: null, needs: null, weather: null });
   });
 
   it('reads both spectator seats, which play no roster seat', () => {
@@ -126,13 +131,13 @@ describe('sceneSession', () => {
     expect(parsed.world).toEqual({ kind: 'scene', sceneId: 'sandbox' });
     expect(parsed.seed).toBe(11);
     expect(parsed.seats).toEqual([]);
-    expect(parsed.rules).toEqual({ fog: null, progression: false, needs: null });
+    expect(parsed.rules).toEqual({ fog: null, progression: false, needs: null, weather: null });
   });
 });
 
 describe('sessionSearch', () => {
   it('round-trips every parameter a session carries', () => {
-    const search = `map=magiczny_las&player=2&seed=42&colors=0:3&tribes=1:${BYZANTINE}&ai=1&fog=recon-fow&progression=off&needs=on&speed=1.5`;
+    const search = `map=magiczny_las&player=2&seed=42&colors=0:3&tribes=1:${BYZANTINE}&ai=1&fog=recon-fow&progression=off&needs=on&weathermode=winter&speed=1.5`;
     const parsed = session(search);
     expect(mapSession(sessionSearch(parsed, ROSTER), ROSTER)).toEqual(parsed);
   });
@@ -169,5 +174,13 @@ describe('sessionSearch', () => {
   it('names a scene without a roster of its own', () => {
     const parsed = sceneSession(new URLSearchParams('needs=off'), 'sandbox', 11);
     expect(sessionSearch(parsed).toString()).toBe('scene=sandbox&needs=off');
+  });
+
+  it('carries the weather mode, and writes none when the session has no choice of its own', () => {
+    const parsed = session('map=zatoka&weathermode=map');
+    expect(parsed.rules.weather).toBe('map');
+    expect(sessionSearch(parsed, ROSTER).get('weathermode')).toBe('map');
+    expect(session('map=zatoka&weathermode=rain').rules.weather).toBeNull();
+    expect(sessionSearch(session('map=zatoka'), ROSTER).has('weathermode')).toBe(false);
   });
 });

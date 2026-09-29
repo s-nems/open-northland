@@ -1,10 +1,12 @@
 import { buildWeatherField, type WeatherField } from '@open-northland/render';
 import {
-  ambientStrength,
+  type AmbientWeatherNow,
   buildAmbientField,
+  variableWeather,
   WEATHER_DENSITY_FULL,
   WEATHER_KINDS,
   type WeatherRegionInput,
+  winterWeather,
 } from '@open-northland/render/data';
 import type { AmbientWeather } from './ambient-weather.js';
 import type { WeatherParam } from './params.js';
@@ -14,12 +16,13 @@ export interface WeatherFeed {
   write(region: WeatherRegionInput): void;
   /** Several writes in order with one rebuild, for restoring a saved or seeded list. */
   writeAll(regions: readonly WeatherRegionInput[]): void;
-  /** Once per frame: moves the ambient weather along the game clock. */
+  /** Once per frame: moves the game's own weather along the game clock. */
   frame(gameSeconds: number): void;
 }
 
-/** Ambient strength moves the field in this many steps; the renderer fades between them. */
-const AMBIENT_STRENGTH_STEPS = 32;
+/** The game's own weather moves the field in steps of this share of a level; the renderer fades
+ *  between them. */
+const AMBIENT_LEVEL_STEP = 1 / 32;
 
 const regionKey = (r: WeatherRegionInput): string =>
   `${r.weather}:${r.min.hx},${r.min.hy}:${r.max.hx},${r.max.hy}`;
@@ -39,8 +42,8 @@ function overrideRegions(param: WeatherParam, nodesX: number, nodesY: number): W
 /**
  * Keeps the sim's write order: a repeated kind and extent moves to the end, zero clears included, and
  * every write rebuilds the field. Writes are rare (map load, script results), so the rebuild is cheap.
- * An override lies over every write. Scheduled ambient weather plays only until the first write and
- * never under an override.
+ * An override lies over every write. The game's own weather fills the sectors the map leaves clear
+ * and never plays under an override.
  */
 export function createWeatherFeed(
   map: { readonly width: number; readonly height: number },
@@ -52,19 +55,23 @@ export function createWeatherFeed(
   // Cells to half-cell nodes: the lattice is twice the map in each axis.
   const nodesX = map.width * 2;
   const nodesY = map.height * 2;
-  const held = override?.kind === 'ambient' ? override : null;
+  const held = override?.kind === 'ambient' && ambient !== null ? override : null;
   const over = override === null || held !== null ? [] : overrideRegions(override, nodesX, nodesY);
-  const heldField =
-    held === null || ambient === null
-      ? null
-      : buildAmbientField(ambient.sectors, held.percent / PERCENT_FULL);
-  const rebuild = (): void =>
-    apply(heldField ?? buildWeatherField([...regions.values(), ...over], nodesX, nodesY));
-  if (over.length > 0 || heldField !== null) rebuild();
-  let ambientLive = ambient?.scheduled === true && override === null;
-  let ambientStep = 0;
+  const own = ambient !== null && ambient.mode !== 'map' && (override === null || held !== null);
+  const winter = ambient?.mode === 'winter';
+  let now: AmbientWeatherNow =
+    held === null ? { level: 0, cold: false } : { level: held.percent / PERCENT_FULL, cold: false };
+
+  // A winter game lays its snow on the first frame, whatever falls then.
+  let laid = !winter;
+
+  const rebuild = (): void => {
+    laid = true;
+    const authored = buildWeatherField([...regions.values(), ...over], nodesX, nodesY);
+    apply(own && ambient !== null ? buildAmbientField(ambient.sectors, now, winter, authored) : authored);
+  };
+  if (over.length > 0 || held !== null) rebuild();
   const retain = (region: WeatherRegionInput): void => {
-    ambientLive = false;
     const key = regionKey(region);
     regions.delete(key);
     regions.set(key, region);
@@ -80,11 +87,12 @@ export function createWeatherFeed(
       rebuild();
     },
     frame(gameSeconds) {
-      if (!ambientLive || ambient === null) return;
-      const step = Math.round(ambientStrength(ambient.seed, gameSeconds) * AMBIENT_STRENGTH_STEPS);
-      if (step === ambientStep) return;
-      ambientStep = step;
-      apply(buildAmbientField(ambient.sectors, step / AMBIENT_STRENGTH_STEPS));
+      if (!own || ambient === null || held !== null) return;
+      const next = (winter ? winterWeather : variableWeather)(ambient.seed, gameSeconds);
+      const level = Math.round(next.level / AMBIENT_LEVEL_STEP) * AMBIENT_LEVEL_STEP;
+      if (laid && level === now.level && (level === 0 || next.cold === now.cold)) return;
+      now = { level, cold: next.cold };
+      rebuild();
     },
   };
 }

@@ -9,6 +9,7 @@ export {
   absentSeatsOf,
   aiSeatsOf,
   DEFAULT_LOCAL_PLAYER,
+  DEFAULT_WEATHER_MODE,
   type GameSession,
   humanSeatsOf,
   isReadOnlySpectator,
@@ -25,6 +26,8 @@ export {
   type SessionSeat,
   type SessionWorld,
   seatColourOf,
+  WEATHER_MODES,
+  type WeatherMode,
 } from './session/descriptor.js';
 export {
   applyInitialSaveSeats,

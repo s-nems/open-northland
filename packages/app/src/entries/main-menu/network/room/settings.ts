@@ -25,6 +25,7 @@ export function roomSettings(deps: NetworkRoomDeps) {
     fogOfWar: { label: lobby.fogOfWarLabel, on: copy.enabled, off: copy.disabled },
     progression: { label: copy.progression, on: copy.enabled, off: copy.disabled },
     needs: { label: copy.needs, on: copy.enabled, off: copy.disabled },
+    weather: { label: lobby.weatherLabel, modes: lobby.weatherModes },
     onChange(change) {
       queue.change({ rules: change });
     },

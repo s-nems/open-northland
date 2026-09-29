@@ -1,3 +1,4 @@
+import { DEFAULT_WEATHER_MODE, WEATHER_MODES, type WeatherMode } from '@open-northland/lockstep';
 import { FOG_MODE, type FogSettings } from '@open-northland/sim';
 import { segControl } from '../../../view/settings-controls.js';
 import { fogRuleComposer, isMapMode, MAP_MODES, type MapModeName, ruleChoiceState } from './rules-state.js';
@@ -8,6 +9,8 @@ export interface GameRules {
   readonly fog: number | null;
   readonly progression: boolean | null;
   readonly needs: boolean | null;
+  /** Null plays the default weather mode. */
+  readonly weather: WeatherMode | null;
 }
 interface RuleText {
   readonly label: string;
@@ -32,6 +35,10 @@ export interface GameRuleControlOptions {
   readonly fogOfWar: BooleanRuleText;
   readonly progression: BooleanRuleText;
   readonly needs: BooleanRuleText;
+  readonly weather: {
+    readonly label: string;
+    readonly modes: Readonly<Record<WeatherMode, RuleText>>;
+  };
   readonly onChange: (change: Partial<GameRules>) => void;
 }
 interface Choice<T> extends RuleText {
@@ -109,6 +116,41 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     };
   }
 
+  /** A compact multi-value rule: a labelled segment strip with each choice's detail on hover. */
+  function segmentedRule<T extends string>(
+    label: string,
+    choices: readonly Choice<T>[],
+    change: (value: T) => void,
+  ) {
+    const state = ruleChoiceState<T | null>(
+      choices.map((choice) => choice.value),
+      (value) => {
+        if (value !== null) change(value);
+      },
+    );
+    const title = document.createElement('div');
+    title.className = 'main-menu__lobby-option-label';
+    title.textContent = label;
+    const segments = segControl<string>(
+      choices.map((choice) => ({ id: choice.value, label: choice.label })),
+      '',
+      (id) => {
+        const choice = choices.find((choice) => choice.value === id);
+        if (choice !== undefined) state.request(choice.value);
+      },
+    );
+    segments.root.classList.add('main-menu__lobby-map');
+    const field = detailTipHost(segments.root, choices);
+    return {
+      elements: [title, field],
+      update(value: T | null, disabled: boolean): void {
+        state.update(value, disabled);
+        segments.setActive(value ?? '');
+        for (const button of segments.root.querySelectorAll('button')) button.disabled = disabled;
+      },
+    };
+  }
+
   const fog = fogRuleComposer();
   const mapChoices: Choice<ShownMap>[] = MAP_MODES.map((mode) => ({
     value: mode,
@@ -128,28 +170,15 @@ export function gameRuleControls(options: GameRuleControlOptions) {
         },
       };
     }
-    const state = ruleChoiceState(
-      mapChoices.map((choice) => choice.value),
+    const control = segmentedRule<MapModeName>(
+      options.map.label,
+      MAP_MODES.map((mode) => ({ value: mode, ...options.map.modes[mode] })),
       change,
     );
-    const label = document.createElement('div');
-    label.className = 'main-menu__lobby-option-label';
-    label.textContent = options.map.label;
-    const segments = segControl(
-      mapChoices.map((choice) => ({ id: String(choice.value), label: choice.label })),
-      '',
-      (id) => {
-        if (isMapMode(id)) state.request(id);
-      },
-    );
-    segments.root.classList.add('main-menu__lobby-map');
-    const field = detailTipHost(segments.root, mapChoices);
     return {
-      elements: [label, field],
+      elements: control.elements,
       update(shown: ShownMap, disabled: boolean): void {
-        state.update(shown, disabled);
-        segments.setActive(String(shown));
-        for (const button of segments.root.querySelectorAll('button')) button.disabled = disabled;
+        control.update(shown === 'revealed' ? null : shown, disabled);
       },
     };
   })();
@@ -160,14 +189,30 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     options.onChange({ progression: value }),
   );
   const needs = booleanRule(options.needs, true, (value) => options.onChange({ needs: value }));
+  const weatherChoices: Choice<WeatherMode>[] = WEATHER_MODES.map((mode) => ({
+    value: mode,
+    ...options.weather.modes[mode],
+  }));
+  const changeWeather = (weather: WeatherMode) => options.onChange({ weather });
+  const weather =
+    options.presentation === 'select'
+      ? select(options.weather.label, weatherChoices, changeWeather)
+      : segmentedRule(options.weather.label, weatherChoices, changeWeather);
   return {
-    elements: [...map.elements, ...fogOfWar.elements, ...progression.elements, ...needs.elements],
+    elements: [
+      ...map.elements,
+      ...fogOfWar.elements,
+      ...progression.elements,
+      ...needs.elements,
+      ...weather.elements,
+    ],
     update(rules: GameRules, disabled: boolean): void {
       const settings = fog.show(rules.fog);
       map.update(shownMapOf(rules.fog, settings), disabled);
       fogOfWar.update(settings?.fogOfWar ?? null, disabled);
       progression.update(rules.progression, disabled);
       needs.update(rules.needs, disabled);
+      weather.update(rules.weather ?? DEFAULT_WEATHER_MODE, disabled);
     },
     /** The room refused the last settings change; drop what the fog pair composed on top of it. */
     rejected: fog.reject,

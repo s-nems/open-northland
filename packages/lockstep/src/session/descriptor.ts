@@ -34,6 +34,15 @@ export type SessionWorld =
   | { readonly kind: 'map'; readonly mapId: string }
   | { readonly kind: 'scene'; readonly sceneId: string };
 
+/** How a match's weather is drawn: `map` shows only what the map authors, `variable` adds the game's
+ *  own occasional weather, and `winter` plays a snowy game. Presentation only; the sim never reads it. */
+export type WeatherMode = 'map' | 'variable' | 'winter';
+
+export const WEATHER_MODES = ['map', 'variable', 'winter'] as const satisfies readonly WeatherMode[];
+
+/** The weather mode a session with no choice of its own plays. */
+export const DEFAULT_WEATHER_MODE: WeatherMode = 'variable';
+
 /** The world rules the session overrides; null keeps whatever the world set for itself. */
 export interface SessionRules {
   /** A `FOG_MODE` id. */
@@ -42,6 +51,8 @@ export interface SessionRules {
   readonly progression: boolean | null;
   /** Sets `WorldRules.needsEnabled`, which defines what the rule covers. */
   readonly needs: boolean | null;
+  /** Null plays {@link DEFAULT_WEATHER_MODE}. */
+  readonly weather: WeatherMode | null;
 }
 
 /**
@@ -214,7 +225,15 @@ function parseRules(value: unknown): SessionRules {
     fog: parseFog(raw.fog),
     progression: nullableBoolean(raw.progression, 'rules.progression'),
     needs: nullableBoolean(raw.needs, 'rules.needs'),
+    weather: parseWeather(raw.weather),
   };
+}
+
+function parseWeather(value: unknown): WeatherMode | null {
+  if (value === null) return null;
+  const mode = WEATHER_MODES.find((known) => known === value);
+  if (mode === undefined) throw new Error('rules.weather must name a weather mode or be null');
+  return mode;
 }
 
 function parseFog(value: unknown): number | null {

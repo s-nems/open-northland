@@ -8,6 +8,7 @@ import {
   orderedSeats,
   parseGameSession,
   seatColourOf,
+  WEATHER_MODES,
 } from '../src/index.js';
 
 /**
@@ -25,7 +26,7 @@ function session(over: Partial<GameSession> = {}): GameSession {
       { player: 2, mode: 'idle', color: 9 },
     ],
     localSeat: 0,
-    rules: { fog: 1, progression: true, needs: null },
+    rules: { fog: 1, progression: true, needs: null, weather: 'map' },
     speed: 1,
     ...over,
   };
@@ -123,9 +124,21 @@ describe('game session descriptor', () => {
 
   it('rejects unsafe integers and undefined fog modes', () => {
     expect(() => parseGameSession(session({ seed: 1e30 }))).toThrow(/seed/);
-    expect(() => parseGameSession(session({ rules: { fog: 9, progression: null, needs: null } }))).toThrow(
-      /rules.fog/,
+    expect(() =>
+      parseGameSession(session({ rules: { fog: 9, progression: null, needs: null, weather: null } })),
+    ).toThrow(/rules.fog/);
+  });
+
+  it('reads every weather mode and null, and refuses an unknown or missing one', () => {
+    for (const weather of [...WEATHER_MODES, null]) {
+      const rules = { fog: null, progression: null, needs: null, weather };
+      expect(roundTrip(session({ rules })).rules.weather).toBe(weather);
+    }
+    const rules = { fog: null, progression: null, needs: null };
+    expect(() => parseGameSession({ ...session(), rules: { ...rules, weather: 'rain' } })).toThrow(
+      /rules.weather/,
     );
+    expect(() => parseGameSession({ ...session(), rules })).toThrow(/rules.weather/);
   });
 
   it('reads the roster the way the entry consumes it', () => {
