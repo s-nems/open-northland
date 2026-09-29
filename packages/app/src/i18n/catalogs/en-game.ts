@@ -276,7 +276,7 @@ export const enGame = {
       placeWallLineHint:
         'left click lays the wall, with Ctrl/Cmd it draws on, Shift keeps it straight, right click drops the line',
       placeGateHint: 'point at a straight run of five finished wall sections',
-      roadHint: 'one stone paves the node and its neighbouring planned nodes',
+      roadHint: 'settlers walk faster on roads. One stone paves a plot and the planned plots next to it.',
       placeRoadHint: 'click where the road starts',
       placeRoadLineHint:
         'left click lays the road, with Ctrl/Cmd it draws on, Shift keeps it straight, right click drops the line',
