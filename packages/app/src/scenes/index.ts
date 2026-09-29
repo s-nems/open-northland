@@ -48,6 +48,7 @@ import { tradeDomesticScene } from './trade-domestic.js';
 import { tributeScene } from './tribute.js';
 import type { SceneDefinition } from './types.js';
 import { upgradeScene } from './upgrade.js';
+import { upgradeTribesScene } from './upgrade-tribes.js';
 import { vehicleAttackMoveScene } from './vehicle-attack-move.js';
 import { vehicleCargoScene } from './vehicle-cargo.js';
 import { vehicleCatapultScene } from './vehicle-catapult.js';
@@ -93,6 +94,7 @@ export const SCENES: readonly SceneDefinition[] = [
   constructionScene,
   farmConstructionScene,
   upgradeScene,
+  upgradeTribesScene,
   signpostsScene,
   familyScene,
   childrenScene,

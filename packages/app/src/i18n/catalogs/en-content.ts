@@ -403,6 +403,11 @@ export const enContent = {
       summary:
         'A home re-opens as a construction site and rises a level for the difference cost; a second home awaits your Upgrade button.',
     },
+    'upgrade-tribes': {
+      title: 'Upgrades across civilizations',
+      summary:
+        "A viking home and a frank home upgrade side by side, each keeping its own civilization's look.",
+    },
     signposts: {
       title: 'Signposts',
       summary: 'A scout erects a signpost; settlers work only within the connected guidepost network.',

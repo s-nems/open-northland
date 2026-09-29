@@ -23,7 +23,8 @@ export interface BuildingTribeTables {
   readonly constructionByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>;
   /**
    * The `GfxBobConstructionLayer` `upgrade === 1` rows, keyed by the tier being upgraded while the
-   * row's bob is the next tier's finished body. A type absent here shows only its old body.
+   * row's bob is the next tier's finished body. A type absent here shows only its old body, even
+   * when the base tribe has rows for it.
    */
   readonly upgradeByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>;
   /** The `[GfxHouse]` type-4 `GfxOverlay` table. The original lists overlays only for the finished body,

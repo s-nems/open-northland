@@ -401,6 +401,11 @@ export const plContent = {
       summary:
         'Dom ponownie staje się placem budowy i rośnie o poziom za różnicę kosztów; drugi dom czeka na twój przycisk Rozbuduj.',
     },
+    'upgrade-tribes': {
+      title: 'Rozbudowa u innych ludów',
+      summary:
+        'Dom wikingów i dom Franków rozbudowują się obok siebie; każdy zachowuje wygląd własnego ludu.',
+    },
     signposts: {
       title: 'Drogowskazy',
       summary: 'Zwiadowca stawia drogowskaz; osadnicy pracują tylko w zasięgu połączonej sieci drogowskazów.',

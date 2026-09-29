@@ -114,15 +114,16 @@ function stageDraw(l: ConstructionLayerRef): ConstructionDraw {
  * The overlays an upgrading building reveals on top of its still-drawn old-tier body: the type's
  * `upgrade === 1` rows, revealed across their window like a construction stage. Unlike
  * {@link resolveConstructionDraws} there is no lowest-stage fallback, since outside every window the
- * old body alone is the correct draw. The rows are extracted; composing them over the old body is a
- * named approximation, as the original's upgrade-pass compositing is unknown.
+ * old body alone is the correct draw. The rows are the drawing tribe's own and never the base tribe's,
+ * since each row is that tribe's next-tier body. The rows are extracted; composing them over the old
+ * body is a named approximation, as the original's upgrade-pass compositing is unknown.
  */
 export function resolveUpgradeDraws(
   binding: number | BuildingTypeBinding,
   item: DrawItem,
 ): ConstructionDraw[] | null {
   if (typeof binding === 'number' || item.upgradePct === undefined || item.typeId === undefined) return null;
-  const layers = byTypeFor(binding, item, (t) => t.upgradeByType);
+  const layers = tablesFor(binding, item).upgradeByType?.[item.typeId];
   if (layers === undefined || layers.length === 0) return null;
   const pct = item.upgradePct;
   const active = layers.filter((l) => pct >= l.fromPct && pct <= l.toPct);

@@ -56,7 +56,7 @@ export function placeBuiltSandboxBuilding(
   x: number,
   y: number,
   owner: number = HUMAN_PLAYER,
-  opts: { readonly fillStock?: boolean } = {},
+  opts: { readonly fillStock?: boolean; readonly tribe?: number } = {},
 ): Entity {
   const { Building, Health, Owner, Position, Stockpile } = components;
   const typeId = resolveVikingBuilding(ref).typeId;
@@ -65,7 +65,7 @@ export function placeBuiltSandboxBuilding(
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(node.hx, node.hy));
   const level = buildingLevelForType(sim.content, typeId);
-  sim.world.add(e, Building, { buildingType: typeId, tribe: PRIMARY_TRIBE, built: ONE, level });
+  sim.world.add(e, Building, { buildingType: typeId, tribe: opts.tribe ?? PRIMARY_TRIBE, built: ONE, level });
   const amounts = new Map<number, number>();
   for (const slot of def?.stock ?? []) {
     const seeded = opts.fillStock ? slot.capacity : slot.initial;

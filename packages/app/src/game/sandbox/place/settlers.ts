@@ -21,6 +21,7 @@ export function spawnSandboxSettler(
     readonly hitpoints?: number;
     readonly weaponTypeId?: number;
     readonly equipment?: SettlerEquipment;
+    readonly tribe?: number;
   } = {},
 ): void {
   const node = cellAnchorNode(x, y);
@@ -30,7 +31,7 @@ export function spawnSandboxSettler(
     jobType,
     x: node.hx,
     y: node.hy,
-    tribe: PRIMARY_TRIBE,
+    tribe: opts.tribe ?? PRIMARY_TRIBE,
     owner,
     ...(opts.hitpoints !== undefined ? { hitpoints: opts.hitpoints } : {}),
     ...(opts.weaponTypeId !== undefined ? { weaponTypeId: opts.weaponTypeId } : {}),

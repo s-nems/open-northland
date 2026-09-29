@@ -8,6 +8,7 @@ import {
   resolveBuildingOverlayDraw,
   resolveConstructionDraws,
   resolveSpriteBobId,
+  resolveUpgradeDraws,
 } from '../../src/data/sprites/index.js';
 import type { DrawItem, SpriteBindings } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
@@ -203,6 +204,30 @@ describe('resolveConstructionDraws - construction-stage stack for an under-const
       constructionByType: { 2: [{ bob: 102, fromPct: 10, toPct: 50 }] },
     };
     expect(resolveConstructionDraws(gappy, site(2, 0))).toEqual([{ bob: 102, fromPct: 10, toPct: 50 }]);
+  });
+});
+
+describe('resolveUpgradeDraws - the next-tier overlay over an upgrading body', () => {
+  const upgrading = (tribe: number): DrawItem => drawItem('building', { typeId: 2, tribe, upgradePct: 50 });
+  // Only the viking skin has upgrade rows, as in the mod's `[GfxHouse]` data; the frank skin has none.
+  const vikingNextTier = { bob: 11, fromPct: 0, toPct: 100 };
+  const binding: BuildingTypeBinding = {
+    byType: { 2: 1 },
+    default: 11,
+    upgradeByType: { 2: [vikingNextTier] },
+    byTribe: {
+      1: { byType: { 2: 1 }, upgradeByType: { 2: [vikingNextTier] } },
+      2: { byType: { 2: { layer: 'frank', bob: 28 } } },
+    },
+  };
+
+  it("reveals the drawing tribe's own next tier", () => {
+    expect(resolveUpgradeDraws(binding, upgrading(1))).toEqual([vikingNextTier]);
+  });
+
+  it("never borrows the base tribe's next tier for a tribe without upgrade rows", () => {
+    // A frank home rising into a viking house would swap skins again when the upgrade lands.
+    expect(resolveUpgradeDraws(binding, upgrading(2))).toBeNull();
   });
 });
 
