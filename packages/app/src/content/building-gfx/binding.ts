@@ -59,7 +59,17 @@ export function buildingBinding(
   const base = tribeTables(ir, scopeFor(tribes[0]));
   const byTribe: Record<number, BuildingTribeTables> = { [tribes[0]]: base };
   for (const tribe of tribes) byTribe[tribe] ??= tribeTables(ir, scopeFor(tribe));
-  return { ...base, default: HOUSE_BOB, byTribe };
+  const upgradeTargetByType: Record<number, number> = {};
+  for (const b of ir?.buildings ?? []) {
+    if (b.typeId !== undefined && b.upgradeTarget !== undefined)
+      upgradeTargetByType[b.typeId] = b.upgradeTarget;
+  }
+  return {
+    ...base,
+    default: HOUSE_BOB,
+    byTribe,
+    ...(Object.keys(upgradeTargetByType).length > 0 ? { upgradeTargetByType } : {}),
+  };
 }
 
 /** The bob a type is bound to for its own tribe, then for the sheet's base tribe; `undefined` when no

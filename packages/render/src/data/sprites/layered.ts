@@ -57,9 +57,10 @@ function byTypeFor<T>(
   binding: BuildingTypeBinding,
   item: DrawItem,
   table: (tables: BuildingTribeTables) => Readonly<Record<number, T>> | undefined,
+  typeId: number | undefined = item.typeId,
 ): T | undefined {
-  if (item.typeId === undefined) return undefined;
-  return table(tablesFor(binding, item))?.[item.typeId] ?? table(binding)?.[item.typeId];
+  if (typeId === undefined) return undefined;
+  return table(tablesFor(binding, item))?.[typeId] ?? table(binding)?.[typeId];
 }
 
 /** An unmapped or type-less item falls back to `default`, so a sparse table is always total. */
@@ -83,10 +84,34 @@ export function resolveConstructionDraws(
   binding: number | BuildingTypeBinding,
   item: DrawItem,
 ): ConstructionDraw[] | null {
-  if (typeof binding === 'number' || item.builtPct === undefined || item.typeId === undefined) return null;
-  const layers = byTypeFor(binding, item, (t) => t.constructionByType);
+  if (typeof binding === 'number' || item.builtPct === undefined) return null;
+  return constructionStack(binding, item, item.typeId, item.builtPct);
+}
+
+/**
+ * The stage stack of an upgrading building whose tribe has no upgrade rows for its type, or `null`: the
+ * next tier's from-scratch construction stack at the upgrade progress, drawn in place of the old body.
+ * Only the viking skin carries upgrade rows, so this is every other civilization's upgrade site; raising
+ * the next tier as a fresh build is a named approximation.
+ */
+export function resolveUpgradeRebuildDraws(
+  binding: number | BuildingTypeBinding,
+  item: DrawItem,
+): ConstructionDraw[] | null {
+  if (typeof binding === 'number' || item.upgradePct === undefined || item.typeId === undefined) return null;
+  if (tablesFor(binding, item).upgradeByType?.[item.typeId] !== undefined) return null;
+  const target = binding.upgradeTargetByType?.[item.typeId];
+  return target === undefined ? null : constructionStack(binding, item, target, item.upgradePct);
+}
+
+function constructionStack(
+  binding: BuildingTypeBinding,
+  item: DrawItem,
+  typeId: number | undefined,
+  pct: number,
+): ConstructionDraw[] | null {
+  const layers = byTypeFor(binding, item, (t) => t.constructionByType, typeId);
   if (layers === undefined || layers.length === 0) return null;
-  const pct = item.builtPct;
   // Descending index is drawn-on-top first, so `coverTo` accumulates the max `toPct` above each layer.
   const active: ConstructionLayerRef[] = [];
   let coverTo = 0;
@@ -115,7 +140,8 @@ function stageDraw(l: ConstructionLayerRef): ConstructionDraw {
  * `upgrade === 1` rows, revealed across their window like a construction stage. Unlike
  * {@link resolveConstructionDraws} there is no lowest-stage fallback, since outside every window the
  * old body alone is the correct draw. The rows are the drawing tribe's own and never the base tribe's,
- * since each row is that tribe's next-tier body. The rows are extracted; composing them over the old
+ * since each row is that tribe's next-tier body; a tribe without them takes
+ * {@link resolveUpgradeRebuildDraws}. The rows are extracted; composing them over the old
  * body is a named approximation, as the original's upgrade-pass compositing is unknown.
  */
 export function resolveUpgradeDraws(

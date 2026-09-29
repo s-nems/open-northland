@@ -24,6 +24,7 @@ export {
   resolveSignpostDraw,
   resolveStockpileDraw,
   resolveUpgradeDraws,
+  resolveUpgradeRebuildDraws,
 } from './layered.js';
 export type {
   BuildingBobRef,

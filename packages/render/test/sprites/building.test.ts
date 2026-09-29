@@ -9,6 +9,7 @@ import {
   resolveConstructionDraws,
   resolveSpriteBobId,
   resolveUpgradeDraws,
+  resolveUpgradeRebuildDraws,
 } from '../../src/data/sprites/index.js';
 import type { DrawItem, SpriteBindings } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
@@ -207,27 +208,48 @@ describe('resolveConstructionDraws - construction-stage stack for an under-const
   });
 });
 
-describe('resolveUpgradeDraws - the next-tier overlay over an upgrading body', () => {
-  const upgrading = (tribe: number): DrawItem => drawItem('building', { typeId: 2, tribe, upgradePct: 50 });
-  // Only the viking skin has upgrade rows, as in the mod's `[GfxHouse]` data; the frank skin has none.
+describe('resolveUpgradeDraws / resolveUpgradeRebuildDraws - an upgrading building', () => {
+  const upgrading = (tribe: number, upgradePct = 50): DrawItem =>
+    drawItem('building', { typeId: 2, tribe, upgradePct });
+  // Only the viking skin has upgrade rows, as in the mod's `[GfxHouse]` data; the frank skin rises its
+  // next tier (type 3) from its own from-scratch stack instead.
   const vikingNextTier = { bob: 11, fromPct: 0, toPct: 100 };
+  const frankFoundation = { layer: 'frank', bob: 26, fromPct: 0, toPct: 53 };
+  const frankScaffold = { layer: 'frank', bob: 27, fromPct: 0, toPct: 100 };
+  const frankBody = { layer: 'frank', bob: 24, fromPct: 35, toPct: 100 };
   const binding: BuildingTypeBinding = {
     byType: { 2: 1 },
     default: 11,
     upgradeByType: { 2: [vikingNextTier] },
+    upgradeTargetByType: { 2: 3 },
     byTribe: {
       1: { byType: { 2: 1 }, upgradeByType: { 2: [vikingNextTier] } },
-      2: { byType: { 2: { layer: 'frank', bob: 28 } } },
+      2: {
+        byType: { 2: { layer: 'frank', bob: 28 } },
+        constructionByType: { 3: [frankFoundation, frankScaffold, frankBody] },
+      },
     },
   };
 
-  it("reveals the drawing tribe's own next tier", () => {
+  it("reveals the drawing tribe's own next tier over the old body", () => {
     expect(resolveUpgradeDraws(binding, upgrading(1))).toEqual([vikingNextTier]);
+    expect(resolveUpgradeRebuildDraws(binding, upgrading(1))).toBeNull();
   });
 
-  it("never borrows the base tribe's next tier for a tribe without upgrade rows", () => {
+  it("rebuilds the next tier from scratch for a tribe without upgrade rows, never borrowing the base tribe's", () => {
     // A frank home rising into a viking house would swap skins again when the upgrade lands.
     expect(resolveUpgradeDraws(binding, upgrading(2))).toBeNull();
+    expect(resolveUpgradeRebuildDraws(binding, upgrading(2, 10))).toEqual([frankFoundation, frankScaffold]);
+    expect(resolveUpgradeRebuildDraws(binding, upgrading(2, 50))).toEqual([
+      frankFoundation,
+      frankScaffold,
+      frankBody,
+    ]);
+  });
+
+  it('keeps the old body for a type with no next tier or a finished building', () => {
+    expect(resolveUpgradeRebuildDraws({ ...binding, upgradeTargetByType: {} }, upgrading(2))).toBeNull();
+    expect(resolveUpgradeRebuildDraws(binding, drawItem('building', { typeId: 2, tribe: 2 }))).toBeNull();
   });
 });
 

@@ -8,6 +8,7 @@ import {
   resolveBuildingOverlayDraw,
   resolveConstructionDraws,
   resolveUpgradeDraws,
+  resolveUpgradeRebuildDraws,
 } from '../../data/sprites/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import { hasLoadedFamily, layeredLayerFor, pushGroundedBody } from './layered-layers.js';
@@ -18,7 +19,8 @@ const overlayRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 
 /**
  * Append a building's atlas layers: an under-construction building's active construction-stage stack in
- * stacking order, or a finished building's named-family body plus {@link pushBuildingExtras}. True when
+ * stacking order (an upgrade site without upgrade rows rebuilds its next tier the same way), or a
+ * finished building's named-family body plus {@link pushBuildingExtras}. True when
  * drawn, false for the placeholder, or the default building-layer bob id with nothing appended: the
  * `kindLayers` body then draws it and appends the extras, while the sheet-global body draws none.
  */
@@ -28,9 +30,10 @@ export function pushBuildingLayers(
   item: DrawItem,
   tick: number,
 ): boolean | number {
-  const stack = resolveConstructionDraws(sheet.bindings.building, item);
-  if (stack !== null && pushRevealingStages(out, sheet, stack, item.builtPct)) return true;
-  const draw = resolveBuildingDraw(sheet.bindings.building, item);
+  const binding = sheet.bindings.building;
+  const stack = resolveConstructionDraws(binding, item) ?? resolveUpgradeRebuildDraws(binding, item);
+  if (stack !== null && pushRevealingStages(out, sheet, stack, item.builtPct ?? item.upgradePct)) return true;
+  const draw = resolveBuildingDraw(binding, item);
   // An unloaded family falls through to the default building layer - deliberately unlike the
   // construction path, which drops the stage instead.
   if (!hasLoadedFamily(sheet, draw)) return draw.bob;

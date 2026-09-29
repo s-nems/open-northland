@@ -118,6 +118,11 @@ describe('buildingBinding', () => {
     expect(binding.byTribe?.[SARACEN]?.byType[13]).toBeUndefined();
     expect(binding.byTribe?.[VIKING]?.byType[13]).toBe(70);
   });
+
+  it("carries each type's next tier, so a tribe without upgrade rows can rebuild it", () => {
+    const withTiers: ContentIr = { ...ir, buildings: [{ typeId: 2, upgradeTarget: 3 }, { typeId: 3 }] };
+    expect(buildingBinding(withTiers, [VIKING], families).upgradeTargetByType).toEqual({ 2: 3 });
+  });
 });
 
 describe('referencedFamilyLayers', () => {
