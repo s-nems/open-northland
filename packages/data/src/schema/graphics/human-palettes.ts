@@ -54,10 +54,19 @@ export const JobChangePalette = z.strictObject({
 });
 export type JobChangePalette = z.infer<typeof JobChangePalette>;
 
+/** The `good_*` recipe a human carrying `good` lays over its palettes. */
+export const GoodPaletteRecipe = z.strictObject({
+  good: TypeId,
+  /** The recipe name, lower-cased. */
+  recipe: z.string(),
+});
+export type GoodPaletteRecipe = z.infer<typeof GoodPaletteRecipe>;
+
 /**
  * Everything a runtime needs to compose a human's body and head palettes the way the original does:
- * base palettes, then the player recipe, then the job's rolled recipe, then armor or cart recipes.
- * Only recipes, ramps and bases some human look, player, armor tier or cart can reach are included.
+ * base palettes, then the player recipe, then the job's rolled recipe, then armor or cart recipes, then
+ * a carried good's recipe. Only recipes, ramps and bases some human look, player, armor tier, cart or
+ * good can reach are included.
  */
 export const HumanPalettes = z.strictObject({
   /** `[GfxPalette256]` editname (lower-cased) → its colours. */
@@ -71,6 +80,7 @@ export const HumanPalettes = z.strictObject({
   /** Recipe names a crewed handcart and ox cart apply to their driver, lower-cased. */
   cartRecipes: z.strictObject({ handcart: z.string(), oxcart: z.string() }),
   jobChanges: z.array(JobChangePalette),
+  goodRecipes: z.array(GoodPaletteRecipe),
 });
 export type HumanPalettes = z.infer<typeof HumanPalettes>;
 
@@ -83,4 +93,5 @@ export const emptyHumanPalettes: HumanPalettes = {
   armorRecipes: [],
   cartRecipes: { handcart: '', oxcart: '' },
   jobChanges: [],
+  goodRecipes: [],
 };

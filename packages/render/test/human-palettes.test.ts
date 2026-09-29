@@ -229,4 +229,60 @@ describe('composing a human palette', () => {
     }
     expect(seen).toEqual(new Set([String(GOLD), String(grey(HEAD_HAIR_BAND * 16))]));
   });
+
+  describe('a carried good', () => {
+    const WHEAT = 4;
+    const STONE = 3;
+    const FURNITURE = 29;
+    const DRESS = TEAM;
+    const MAN_TEAM = 10;
+    const goodBook = (extra = {}) =>
+      new HumanPaletteBook(
+        syntheticLane(
+          ramps,
+          [
+            { name: 'player_00', patches: [ramp(MAN_TEAM, 'red')] },
+            { name: 'woman_00', patches: [ramp(DRESS, 'blue')] },
+            { name: 'good_wheat', patches: [ramp(APRON, 'gold'), ramp(DRESS, 'gold')] },
+            { name: 'good_furniture', patches: [ramp(APRON, 'brown'), ramp(DRESS, 'brown')] },
+            { name: 'human_armor_001', patches: [ramp(APRON, 'mail')] },
+            { name: 'good_handcart', patches: [ramp(APRON, 'wood')] },
+          ],
+          {
+            goodRecipes: [
+              { good: WHEAT, recipe: 'good_wheat' },
+              { good: FURNITURE, recipe: 'good_furniture' },
+            ],
+            armorRecipes: ['human_armor_000', 'human_armor_001'],
+            cartRecipes: { handcart: 'good_handcart', oxcart: 'good_oxcart' },
+            ...extra,
+          },
+        ),
+        TEST_BASE,
+      );
+
+    it("colours a man's load wholly by the good's recipe", () => {
+      const out = compose(goodBook(), identity(PLAIN, { carried: WHEAT }));
+      expect(band(out.body, APRON)).toEqual(GOLD);
+      expect(band(out.body, DRESS)).toEqual(GOLD);
+      expect(band(out.body, MAN_TEAM)).toEqual(RED);
+    });
+
+    it("keeps a woman's team-coloured dress and gives only the band her load shares the good's colour", () => {
+      const out = compose(goodBook(), identity(PLAIN, { carried: FURNITURE, female: true }));
+      expect(band(out.body, DRESS)).toEqual(BLUE);
+      expect(band(out.body, APRON)).toEqual(BROWN);
+    });
+
+    it('leaves a good without a recipe in the human palette as it is', () => {
+      const b = goodBook();
+      expect(compose(b, identity(PLAIN, { carried: STONE }))).toEqual(compose(b, identity(PLAIN)));
+    });
+
+    it('goes on after the armor and the cart', () => {
+      const out = compose(goodBook(), identity(PLAIN, { carried: WHEAT, armorTier: 1, cart: 'handcart' }));
+      expect(band(out.body, APRON)).toEqual(GOLD);
+      expect(band(compose(goodBook(), identity(PLAIN, { armorTier: 1 })).body, APRON)).toEqual(MAIL);
+    });
+  });
 });

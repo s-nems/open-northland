@@ -2,7 +2,12 @@ import type { JobGraphics, RandomPaletteRecipe } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { parseIniSections } from '../src/decoders/ini.js';
 import { PLAYER_COLORS } from '../src/decoders/player-palette.js';
-import { buildHumanPalettes, type HumanPaletteSources } from '../src/stages/ir/human-palettes.js';
+import { extractRandomPalettes } from '../src/decoders/random-palette.js';
+import {
+  buildHumanPalettes,
+  goodPaletteRecipes,
+  type HumanPaletteSources,
+} from '../src/stages/ir/human-palettes.js';
 import { solidPalette } from './fixtures/palette.js';
 
 /** The ten shipped player colours with `player_NN` / `woman_NN` recipes. */
@@ -73,6 +78,7 @@ function sources(overrides: Partial<HumanPaletteSources> = {}): HumanPaletteSour
       { tribe: 1, job: 30, recipes: [] },
       { tribe: 1, job: 31, recipes: ['vik_man_changejob', 'bear01'] },
     ],
+    goods: [],
     loadPalette: async (file) => {
       const [r, g, b] = FILE_COLORS[file] ?? [255, 0, 0];
       return solidPalette(r, g, b);
@@ -163,5 +169,53 @@ describe('buildHumanPalettes', () => {
     await expect(
       buildHumanPalettes(sources({ jobGraphics: [{ ...WOMAN_LOOK, bodyPalette: 'nowhere' }] })),
     ).rejects.toThrow(/no \[GfxPalette256\] named "nowhere"/);
+  });
+});
+
+describe('goodPaletteRecipes', () => {
+  // One recipe per matching rule, a duplicate, the cart recipes, and a recipe of no good.
+  const GOOD_RECIPES_INI = [
+    'good_Wheat',
+    'good_holyoil',
+    'good_bow',
+    'good_potion_food',
+    'good_clay',
+    'good_tools_iron',
+    'good_tile',
+    'good_tile',
+    'good_HandCart',
+    'good_OxCart',
+    'good_nothing',
+    'vik_man_base',
+  ]
+    .map((name, i) => `[RandomPalette]\nName "${name}"\nPatch 14 "colors ${i}" 10\n`)
+    .join('\n');
+  const goods = [
+    { typeId: 4, id: 'wheat' },
+    { typeId: 15, id: 'holy_oil' },
+    { typeId: 37, id: 'bow_short' },
+    { typeId: 38, id: 'bow_long' },
+    { typeId: 44, id: 'potion_food_small' },
+    { typeId: 45, id: 'potion_food_big' },
+    { typeId: 46, id: 'potion_stamina_small' },
+    { typeId: 2, id: 'mud' },
+    { typeId: 32, id: 'tool_iron' },
+    { typeId: 25, id: 'tile' },
+    { typeId: 59, id: 'handcart' },
+  ];
+
+  it('matches a good by name, then by name prefix, then by the alias table, leaving the carts out', () => {
+    const recipes = extractRandomPalettes(parseIniSections(GOOD_RECIPES_INI));
+    expect(goodPaletteRecipes(recipes, goods)).toEqual([
+      { good: 4, recipe: 'good_wheat' },
+      { good: 15, recipe: 'good_holyoil' },
+      { good: 37, recipe: 'good_bow' },
+      { good: 38, recipe: 'good_bow' },
+      { good: 44, recipe: 'good_potion_food' },
+      { good: 45, recipe: 'good_potion_food' },
+      { good: 2, recipe: 'good_clay' },
+      { good: 32, recipe: 'good_tools_iron' },
+      { good: 25, recipe: 'good_tile' },
+    ]);
   });
 });

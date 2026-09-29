@@ -27,6 +27,11 @@ export function checkHumanPalettes(set: ContentSet): string[] {
   for (const [tier, name] of lane.armorRecipes.entries()) recipe(name, `armor tier ${tier}`);
   recipe(lane.cartRecipes.handcart, 'handcart');
   recipe(lane.cartRecipes.oxcart, 'ox cart');
+  const goodTypes = new Set(set.goods.map((g) => g.typeId));
+  for (const g of lane.goodRecipes) {
+    recipe(g.recipe, `good ${g.good}`);
+    if (!goodTypes.has(g.good)) errors.push(`good palette recipe "${g.recipe}" names unknown good ${g.good}`);
+  }
   for (const c of lane.jobChanges) {
     if (c.recipe !== undefined) recipe(c.recipe, `job change ${c.tribe}/${c.job}`);
   }

@@ -37,6 +37,8 @@ export interface HumanPaletteIdentity {
   /** Worn `TArmorType`, which picks a `human_armor_NNN` recipe. */
   armorTier: number | undefined;
   cart: CartRecipe | undefined;
+  /** The good type the human carries, whose recipe goes on last. */
+  carried: number | undefined;
   /** Stable per human; every roll derives from it. */
   seed: number;
 }
@@ -49,6 +51,7 @@ export function createHumanPaletteIdentity(look: CharacterPalette): HumanPalette
     jobChange: undefined,
     armorTier: undefined,
     cart: undefined,
+    carried: undefined,
     seed: 0,
   };
 }
@@ -61,6 +64,7 @@ export function sameHumanPaletteIdentity(a: HumanPaletteIdentity, b: HumanPalett
     a.jobChange === b.jobChange &&
     a.armorTier === b.armorTier &&
     a.cart === b.cart &&
+    a.carried === b.carried &&
     a.seed === b.seed
   );
 }
@@ -72,6 +76,7 @@ export function copyHumanPaletteIdentity(from: HumanPaletteIdentity, to: HumanPa
   to.jobChange = from.jobChange;
   to.armorTier = from.armorTier;
   to.cart = from.cart;
+  to.carried = from.carried;
   to.seed = from.seed;
 }
 
@@ -102,6 +107,9 @@ const STAGE_RANDOM = 3;
 const STAGE_JOB_CHANGE = 4;
 const STAGE_ARMOR = 5;
 const STAGE_CART = 6;
+const STAGE_GOOD = 7;
+/** An empty set of bands; a band set holds one bit per band id. */
+const NO_BANDS = 0;
 
 /**
  * The `humanPalettes` lane made ready to compose: colours decoded, each recipe grouped into its band
@@ -118,6 +126,7 @@ export class HumanPaletteBook {
   private readonly resolvedJobChanges = new Map<number, string | null>();
   private readonly armorRecipes: readonly string[];
   private readonly cartRecipes: Readonly<Record<CartRecipe, string>>;
+  private readonly goodRecipes = new Map<number, string>();
   private readonly rng = new PaletteRng();
 
   constructor(
@@ -136,6 +145,8 @@ export class HumanPaletteBook {
     }
     this.armorRecipes = lane.armorRecipes;
     this.cartRecipes = lane.cartRecipes;
+    for (const g of lane.goodRecipes)
+      if (!this.goodRecipes.has(g.good)) this.goodRecipes.set(g.good, g.recipe);
   }
 
   /** Whether the lane carries anything to compose team colours from. */
@@ -168,16 +179,22 @@ export class HumanPaletteBook {
 
   /**
    * Compose `identity`'s palettes into `out`: the look's bases, then its player recipe by sex, one recipe
-   * rolled from the look's list, the job-change recipe, the worn armor's recipe and the cart's.
+   * rolled from the look's list, the job-change recipe, the worn armor's recipe, the cart's, and last the
+   * carried good's.
+   *
+   * The good recipe is a project choice, not the original's behavior (the original draws a carried good
+   * through the human palette unchanged). It skips every band the player recipe wrote, so a woman's
+   * team-coloured dress stays while the band her load shares with it takes the good's colours.
    */
   compose(identity: HumanPaletteIdentity, out: HumanPaletteColours): void {
     const { look, seed } = identity;
     out.body.set(this.base(look.body));
     out.head.set(this.base(look.head));
     const player = this.players.get(identity.player);
-    if (player !== undefined) {
-      this.apply(identity.female ? player.female : player.male, seed, STAGE_PLAYER, out);
-    }
+    const teamBands =
+      player === undefined
+        ? NO_BANDS
+        : this.apply(identity.female ? player.female : player.male, seed, STAGE_PLAYER, out);
     if (look.random.length > 0) {
       this.rng.seed(seed, STAGE_PICK);
       const pick = look.random[this.rng.below(look.random.length)];
@@ -189,6 +206,8 @@ export class HumanPaletteBook {
       if (armor !== undefined) this.apply(armor, seed, STAGE_ARMOR, out);
     }
     if (identity.cart !== undefined) this.apply(this.cartRecipes[identity.cart], seed, STAGE_CART, out);
+    const good = identity.carried === undefined ? undefined : this.goodRecipes.get(identity.carried);
+    if (good !== undefined) this.apply(good, seed, STAGE_GOOD, out, teamBands);
   }
 
   /**
@@ -199,24 +218,30 @@ export class HumanPaletteBook {
     out.body.set(this.base(this.fallbackBase));
     out.head.set(this.base(this.fallbackBase));
     const recipes = this.players.get(player);
-    if (recipes !== undefined) this.apply(recipes.male, 0, STAGE_PLAYER, out, true);
+    if (recipes !== undefined) this.apply(recipes.male, 0, STAGE_PLAYER, out, NO_BANDS, true);
   }
 
   private base(name: string): Uint8Array {
     return this.bases.get(name) ?? this.bases.get(this.fallbackBase) ?? EMPTY_PALETTE;
   }
 
-  /** Each band rolls one of its lines by weight, in the order the bands first appear, or takes its first
-   *  line when `firstLine`; a copy reads the palette as composed so far, earlier bands included. */
+  /**
+   * Each band rolls one of its lines by weight, in the order the bands first appear, or takes its first
+   * line when `firstLine`; a copy reads the palette as composed so far, earlier bands of the same recipe
+   * included. A band in `keep` (one bit per band id) still rolls but is left as it is. Answers the bands
+   * the recipe wrote.
+   */
   private apply(
     name: string,
     seed: number,
     stage: number,
     out: HumanPaletteColours,
+    keep = NO_BANDS,
     firstLine = false,
-  ): void {
+  ): number {
     const rolls = this.recipes.get(name);
-    if (rolls === undefined) return;
+    if (rolls === undefined) return NO_BANDS;
+    let written = NO_BANDS;
     this.rng.seed(seed, stage);
     for (const roll of rolls) {
       let pick = firstLine ? 0 : this.rng.below(roll.total);
@@ -229,7 +254,9 @@ export class HumanPaletteBook {
         }
         pick -= weight;
       }
-      if (chosen === undefined) continue;
+      const bit = 1 << roll.band;
+      if (chosen === undefined || (keep & bit) !== 0) continue;
+      written |= bit;
       const target = bandPalette(out, roll.band);
       const at = bandStart(roll.band);
       if ('copyBand' in chosen) {
@@ -241,6 +268,7 @@ export class HumanPaletteBook {
         target.set(chosen.ramp, at);
       }
     }
+    return written;
   }
 }
 

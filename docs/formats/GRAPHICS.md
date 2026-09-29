@@ -37,9 +37,6 @@ a head never carries the team ramp. The human `*_Base` recipes roll the eyebrows
 from the already rolled hair band (`Patch 21 20 35`) against a lighter blond or face-skin option;
 `Egy_Soldier_Base` leaves them at the base.
 
-Approximation: the renderer composes a human from what it is now (current look, job and worn armor),
-not from its history, so a job change rerolls from the new look's record and armor follows what is worn.
-
 ## Bob animations (`.bmd`)
 
 A bob manager contains frame records, line-control words, and packed scanline data. A frame record

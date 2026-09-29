@@ -50,6 +50,7 @@ export function humanPaletteIdentity(
     out.jobChange = lut.book.jobChangeRecipe(driver.tribe, driver.jobType);
     out.armorTier = undefined;
     out.cart = driven.cartRecipe;
+    out.carried = undefined;
     out.seed = driver.ref;
     return true;
   }
@@ -66,6 +67,7 @@ export function humanPaletteIdentity(
   out.jobChange = lut.book.jobChangeRecipe(item.tribe, item.jobType);
   out.armorTier = fixed || armorGood == null ? undefined : lut.armorTierByGood.get(armorGood);
   out.cart = undefined;
+  out.carried = item.carrying === true ? item.carryGood : undefined;
   out.seed = item.ref;
   return true;
 }

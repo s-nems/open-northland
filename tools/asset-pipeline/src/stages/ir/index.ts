@@ -60,7 +60,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     buildingGraphicsOverlays,
   } = await extractIniTables(await resolveIniSources(roots));
   const { jobGraphics, jobChanges } = await loadJobGraphics(roots);
-  const humanPalettes = await loadHumanPalettes(roots, jobGraphics, jobChanges);
+  const humanPalettes = await loadHumanPalettes(roots, jobGraphics, jobChanges, goods);
   const vehicleGraphics = buildVehicleGraphics({
     bindings: await loadVehicleGraphicsBindings(roots),
     vehicles,

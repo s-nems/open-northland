@@ -51,6 +51,15 @@ describe('a settler palette identity', () => {
     expect(out).toMatchObject({ look, player: OWNER, female: true, seed: item.ref, armorTier: CHAIN_TIER });
   });
 
+  it('reads the carried good only while the settler carries it', () => {
+    const WHEAT = 4;
+    const out = createHumanPaletteIdentity(look);
+    humanPaletteIdentity(sheetWith(plain), { ...item, carrying: true, carryGood: WHEAT }, out);
+    expect(out.carried).toBe(WHEAT);
+    humanPaletteIdentity(sheetWith(plain), { ...item, carrying: false, carryGood: WHEAT }, out);
+    expect(out.carried).toBeUndefined();
+  });
+
   it('keeps a fixed hero character out of the armor recipes despite its mechanical armor', () => {
     const out = createHumanPaletteIdentity(look);
     humanPaletteIdentity(sheetWith(heroes), item, out);

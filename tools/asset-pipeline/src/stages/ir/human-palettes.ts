@@ -1,5 +1,6 @@
 import {
   emptyHumanPalettes,
+  type GoodPaletteRecipe,
   type HumanPalettes,
   type JobGraphics,
   type PlayerPaletteRecipes,
@@ -32,6 +33,15 @@ const maleRecipeName = (color: number): string => `player_${String(color).padSta
 const femaleRecipeName = (color: number): string => `woman_${String(color).padStart(2, '0')}`;
 /** The recipes a crewed handcart and ox cart apply to their driver. */
 const CART_RECIPES = { handcart: 'good_handcart', oxcart: 'good_oxcart' } as const;
+/** The prefix of the `randompalette.ini` recipes named after a good. */
+const GOOD_RECIPE_PREFIX = 'good_';
+/** The `good_*` recipes whose name matches no good's by the rules of {@link goodPaletteRecipes}. */
+const GOOD_RECIPE_ALIASES: Readonly<Record<string, string>> = {
+  good_clay: 'mud',
+  good_tools_iron: 'tool_iron',
+  good_tools_wooden: 'tool_wooden',
+};
+
 /** The shipped colour whose recipes the synthetic player colours mirror. */
 const SYNTHETIC_TEMPLATE_COLOR = 0;
 
@@ -44,10 +54,47 @@ export interface HumanPaletteSources {
   readonly paletteSections: readonly RuleSection[];
   readonly jobGraphics: readonly JobGraphics[];
   readonly jobChanges: readonly JobChangeRecipes[];
+  /** The goods a `good_*` recipe can name, by `id`. */
+  readonly goods: readonly { readonly typeId: number; readonly id: string }[];
   readonly loadPalette: (gfxFile: string) => Promise<Uint8Array>;
 }
 
 const toHex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
+
+const squash = (name: string): string => name.replaceAll('_', '');
+
+/**
+ * The good each `good_<X>` recipe colours a carrier of: the good whose id equals X ignoring case and
+ * underscores, else every good whose id starts with `X_`, else the named alias. The cart recipes stay
+ * out, since the driving figure applies them. A good matched by two recipes keeps the first in file
+ * order.
+ */
+export function goodPaletteRecipes(
+  recipes: readonly RandomPaletteRecipe[],
+  goods: readonly { readonly typeId: number; readonly id: string }[],
+): GoodPaletteRecipe[] {
+  const carts = new Set<string>(Object.values(CART_RECIPES));
+  const out: GoodPaletteRecipe[] = [];
+  const claimed = new Set<number>();
+  for (const { name } of recipes) {
+    if (!name.startsWith(GOOD_RECIPE_PREFIX) || carts.has(name)) continue;
+    const stem = name.slice(GOOD_RECIPE_PREFIX.length);
+    const alias = GOOD_RECIPE_ALIASES[name];
+    const exact = goods.filter((g) => squash(g.id.toLowerCase()) === squash(stem));
+    const matched =
+      alias !== undefined
+        ? goods.filter((g) => g.id === alias)
+        : exact.length > 0
+          ? exact
+          : goods.filter((g) => g.id.toLowerCase().startsWith(`${stem}_`));
+    for (const good of matched) {
+      if (claimed.has(good.typeId)) continue;
+      claimed.add(good.typeId);
+      out.push({ good: good.typeId, recipe: name });
+    }
+  }
+  return out;
+}
 
 /** A synthetic colour's copy of a template recipe, every ramp swapped for its hue-rotated twin. */
 function synthesizeRecipe(template: RandomPaletteRecipe, name: string, hue: number): RandomPaletteRecipe {
@@ -98,6 +145,10 @@ export async function buildHumanPalettes(sources: HumanPaletteSources): Promise<
       ? { tribe, job }
       : { tribe, job, recipe: reach(last, 'job change') };
   });
+  const goodRecipes = goodPaletteRecipes(sources.recipes, sources.goods).map((g) => ({
+    ...g,
+    recipe: reach(g.recipe, 'good'),
+  }));
   const armorRecipes = Array.from({ length: ARMOR_TIERS }, (_, tier) =>
     reach(armorRecipeName(tier), 'armor tier'),
   );
@@ -161,6 +212,7 @@ export async function buildHumanPalettes(sources: HumanPaletteSources): Promise<
     armorRecipes,
     cartRecipes,
     jobChanges,
+    goodRecipes,
   };
 }
 
@@ -201,6 +253,7 @@ export async function loadHumanPalettes(
   roots: SourceRoots,
   jobGraphics: readonly JobGraphics[],
   jobChanges: readonly JobChangeRecipes[],
+  goods: HumanPaletteSources['goods'],
 ): Promise<HumanPalettes> {
   if ((await resolveSourceFile(roots, RANDOMPALETTE_INI)) === undefined) return emptyHumanPalettes;
   return buildHumanPalettes({
@@ -208,6 +261,7 @@ export async function loadHumanPalettes(
     paletteSections: iniBytesToSections(await readSourceFile(roots, PALETTES_INI)),
     jobGraphics,
     jobChanges,
+    goods,
     loadPalette: async (gfxFile) => {
       const palette = decodePcx(await readSourceFile(roots, gfxFile)).palette;
       if (palette === undefined) throw new Error(`human palettes: ${gfxFile} has no palette trailer`);

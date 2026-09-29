@@ -500,6 +500,7 @@ describe('human palette references', () => {
     armorRecipes: ['player_00'],
     cartRecipes: { handcart: 'player_00', oxcart: 'player_00' },
     jobChanges: [{ tribe: 1, job: 1, recipe: 'player_00' }],
+    goodRecipes: [],
     ...overrides,
   });
   const look = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
@@ -529,6 +530,14 @@ describe('human palette references', () => {
     [
       { humanPalettes: lane({ jobChanges: [{ tribe: 1, job: 2, recipe: 'absent' }] }) },
       /job change 1\/2 names unknown palette recipe "absent"/,
+    ],
+    [
+      { humanPalettes: lane({ goodRecipes: [{ good: UNKNOWN, recipe: 'player_00' }] }) },
+      /good palette recipe "player_00" names unknown good 99/,
+    ],
+    [
+      { humanPalettes: lane({ goodRecipes: [{ good: UNKNOWN, recipe: 'absent' }] }) },
+      /good 99 names unknown palette recipe "absent"/,
     ],
     [
       { humanPalettes: lane(), jobGraphics: [look({ headPalette: 'absent' })] },
