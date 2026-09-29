@@ -137,7 +137,7 @@ export {
   type GalleryPalette,
 } from './gpu/gallery/index.js';
 export type { GroundWave } from './gpu/ground-waves/index.js';
-export { HumanPaletteLut } from './gpu/human-palette-lut.js';
+export { type HumanArmorPalettes, HumanPaletteLut } from './gpu/human-palette-lut.js';
 export type { MapObjectSprite } from './gpu/map-objects/index.js';
 export {
   type BadgeAnchor,

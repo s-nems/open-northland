@@ -55,7 +55,7 @@ export function paletteAliasMap(aliases: readonly PaletteAlias[]): Map<string, s
 
 /** One `[GfxPalette16]` sub-palette, a named 16-colour ramp cut out of a `[GfxPalette256]` source:
  *  `gfxcolorrange "<source editname>" <range>` names the source palette and the 16-index range
- *  (`armor-palette.ts` `cutRamp` owns the index convention). */
+ *  (`decoders/random-palette.ts` `cutRamp` owns the index convention). */
 export interface RampAlias {
   readonly name: string;
   /** The `[GfxPalette256]` editname the ramp is cut from. */

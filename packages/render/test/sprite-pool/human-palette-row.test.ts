@@ -14,6 +14,8 @@ const CHAIN_MAIL = 35;
 const CHAIN_TIER = 3;
 const HERO_JOB = 43;
 const OWNER = 2;
+const SOLDIER_JOB = 31;
+const UNARMORED_TIER = 0;
 
 const look = { body: 'body', head: 'head', random: ['roll'] };
 const item: DrawItem = {
@@ -33,7 +35,7 @@ function sheetWith(characters: SettlerCharacterSet): SpriteSheet {
     atlas: { width: 0, height: 0, frames: new Map() },
     bindings: { settler: 0, building: 0, resource: 0 },
     characters,
-    palette: syntheticHumanLut(new Map([[CHAIN_MAIL, CHAIN_TIER]])),
+    palette: syntheticHumanLut(new Map([[CHAIN_MAIL, CHAIN_TIER]]), undefined, new Set([SOLDIER_JOB])),
   };
 }
 
@@ -63,6 +65,17 @@ describe('a settler palette identity', () => {
   it('keeps a fixed hero character out of the armor recipes despite its mechanical armor', () => {
     const out = createHumanPaletteIdentity(look);
     humanPaletteIdentity(sheetWith(heroes), item, out);
+    expect(out.armorTier).toBeUndefined();
+  });
+
+  it('gives a soldier wearing no armor tier 0 and a civilian wearing none no armor recipe', () => {
+    const out = createHumanPaletteIdentity(look);
+    const bare = { ...item, armorGood: undefined };
+    humanPaletteIdentity(sheetWith(plain), { ...bare, jobType: SOLDIER_JOB }, out);
+    expect(out.armorTier).toBe(UNARMORED_TIER);
+    humanPaletteIdentity(sheetWith(plain), { ...bare, jobType: SOLDIER_JOB, armorGood: CHAIN_MAIL }, out);
+    expect(out.armorTier).toBe(CHAIN_TIER);
+    humanPaletteIdentity(sheetWith(plain), { ...bare, jobType: undefined }, out);
     expect(out.armorTier).toBeUndefined();
   });
 

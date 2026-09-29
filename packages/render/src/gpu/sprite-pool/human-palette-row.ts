@@ -13,6 +13,9 @@ import type { ResolvedLayer } from './resolved-layer.js';
 /** The look of a character loaded without palette data: the book's fallback base alone. */
 const BASE_ONLY: CharacterPalette = { body: '', head: '', random: [] };
 
+/** `human_armor_000`'s tier, which a soldier wearing no armor applies. */
+const UNARMORED_TIER = 0;
+
 /** Scratch {@link humanLutRow} resolves into, so the per-frame path allocates nothing. */
 const scratch = createHumanPaletteIdentity(BASE_ONLY);
 
@@ -26,8 +29,8 @@ const scratch = createHumanPaletteIdentity(BASE_ONLY);
  *   human holds that job, not only after changing into it.
  * - The rolled `gfxpaletterandom` recipe comes from the current look's record, so a civilist turned
  *   soldier rolls from the soldier's list and a child's roll switches when it grows up.
- * - The armor recipe follows the armor worn now; the original applies it at the job change, with the
- *   armor worn then.
+ * - The armor recipe follows the armor worn now, tier 0 for a soldier wearing none; the original applies
+ *   it at the job change, with the armor worn then.
  *
  * A fixed-by-job character (the heroes) is an authored identity: its worn armor still counts in combat
  * but adds no armor recipe.
@@ -65,7 +68,9 @@ export function humanPaletteIdentity(
   out.player = item.player ?? 0;
   out.female = item.female === true;
   out.jobChange = lut.book.jobChangeRecipe(item.tribe, item.jobType);
-  out.armorTier = fixed || armorGood == null ? undefined : lut.armorTierByGood.get(armorGood);
+  const worn = armorGood == null ? undefined : lut.armor.tierByGood.get(armorGood);
+  const soldier = item.jobType !== undefined && lut.armor.soldierJobs.has(item.jobType);
+  out.armorTier = fixed ? undefined : (worn ?? (soldier ? UNARMORED_TIER : undefined));
   out.cart = undefined;
   out.carried = item.carrying === true ? item.carryGood : undefined;
   out.seed = item.ref;

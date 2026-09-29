@@ -49,8 +49,15 @@ export interface HumanPaletteLutStats {
   rowUploads: number;
   /** Whole-texture uploads: the first, a context restore, a resize, or a flush past the threshold. */
   wholeUploads: number;
-  /** Rows handed out from the shared fallback because every private row was drawn this frame. */
+  /** Shared fallback rows handed out, one per call, while every private row was drawn this frame or last. */
   sharedFallbacks: number;
+}
+
+/** The armor recipe join: worn armor `goodType` to its `TArmorType`, and the soldier jobs, which apply
+ *  tier 0's recipe while they wear none. */
+export interface HumanArmorPalettes {
+  readonly tierByGood: ReadonlyMap<number, number>;
+  readonly soldierJobs: ReadonlySet<number>;
 }
 
 interface Entry {
@@ -194,8 +201,7 @@ export class HumanPaletteLut implements PaletteLut {
 
   constructor(
     readonly book: HumanPaletteBook,
-    /** Worn armor `goodType` to its `TArmorType`. */
-    readonly armorTierByGood: ReadonlyMap<number, number>,
+    readonly armor: HumanArmorPalettes,
     rows = HUMAN_LUT_ROWS,
   ) {
     this.rows = evenRows(rows);

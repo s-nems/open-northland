@@ -166,7 +166,11 @@ async function galleryPalette(char: VikingCharacter): Promise<GalleryPalette | u
   const ir = await loadIr();
   const book = humanPaletteBook(ir);
   if (book === undefined) return undefined;
-  const lut = new HumanPaletteLut(book, new Map(), HumanPaletteLut.rowsFor(PLAYER_COLOR_COUNT));
+  const lut = new HumanPaletteLut(
+    book,
+    { tierByGood: new Map(), soldierJobs: new Set() },
+    HumanPaletteLut.rowsFor(PLAYER_COLOR_COUNT),
+  );
   const identity = createHumanPaletteIdentity(bodyCharacterPalette(ir, VIKING_TRIBE, char.bodyBmd));
   identity.female = FEMALE_CHARACTERS.has(char.id);
   identity.seed = GALLERY_SEED;

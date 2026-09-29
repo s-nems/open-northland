@@ -26,7 +26,12 @@ function parentJobs(ir: ContentIr | null): ReadonlyMap<number, number> {
 /** The human palette LUT the world draws every indexed human through, over {@link humanPaletteBook}. */
 export function humanPaletteLut(ir: ContentIr | null): HumanPaletteLut | undefined {
   const book = humanPaletteBook(ir);
-  return book === undefined ? undefined : new HumanPaletteLut(book, armorTiersByGood(ir));
+  return book === undefined
+    ? undefined
+    : new HumanPaletteLut(book, {
+        tierByGood: armorTiersByGood(ir),
+        soldierJobs: soldierJobs(ir),
+      });
 }
 
 /** The palettes of `tribe`'s first `[jobbasegraphics]` look drawn on `bodyBmd`, for a viewer that shows a
@@ -38,6 +43,19 @@ export function bodyCharacterPalette(ir: ContentIr | null, tribe: number, bodyBm
     if (look.bodyBmd === bodyBmd) return look.palette;
   }
   return { body: DEFAULT_PALETTE, head: DEFAULT_PALETTE, random: [] };
+}
+
+/** `jobtypes.ini` ids naming a soldier class, the sim's soldier role rule. */
+const SOLDIER_JOB_PREFIX = 'soldier';
+
+/** The jobs whose humans apply an armor recipe, tier 0 when they wear none. */
+function soldierJobs(ir: ContentIr | null): ReadonlySet<number> {
+  const jobs = new Set<number>();
+  for (const job of ir?.jobs ?? []) {
+    if (typeof job.typeId === 'number' && job.id?.startsWith(SOLDIER_JOB_PREFIX) === true)
+      jobs.add(job.typeId);
+  }
+  return jobs;
 }
 
 /** The worn-armor recolor join: armor `goodType` → its `typeId` (the `TArmorType` tier, the index of its

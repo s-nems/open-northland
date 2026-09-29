@@ -43,10 +43,15 @@ export function syntheticLane(
 export function syntheticHumanLut(
   armorTierByGood: ReadonlyMap<number, number> = new Map(),
   rows?: number,
+  soldierJobs: ReadonlySet<number> = new Set(),
 ): HumanPaletteLut {
   const lane = syntheticLane({ red: flatRamp(255, 0, 0), blue: flatRamp(0, 0, 255) }, [
     { name: 'player_00', patches: [{ band: 15, source: { kind: 'ramp', ramp: 'red' }, weight: 1 }] },
     { name: 'woman_00', patches: [{ band: 15, source: { kind: 'ramp', ramp: 'blue' }, weight: 1 }] },
   ]);
-  return new HumanPaletteLut(new HumanPaletteBook(lane, TEST_BASE), armorTierByGood, rows);
+  return new HumanPaletteLut(
+    new HumanPaletteBook(lane, TEST_BASE),
+    { tierByGood: armorTierByGood, soldierJobs },
+    rows,
+  );
 }
