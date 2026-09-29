@@ -1,5 +1,13 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
-import { isBuilding, isPalisade, isSettler, isSignpost, isVehicle, num } from '../../../game/snapshot.js';
+import {
+  isBuilding,
+  isPalisade,
+  isSettler,
+  isSignpost,
+  isVehicle,
+  num,
+  type SnapshotEntity,
+} from '../../../game/snapshot.js';
 import { healthBar, pct } from './bars.js';
 import { type BuildingPanelModel, buildingPanelModel } from './building.js';
 import type { UnitPanelModelContext } from './context.js';
@@ -138,6 +146,24 @@ export type UnitPanelModel =
   | MultiSettlerPanelModel
   | GenericSelectionPanelModel;
 
+/** The one entity of a list holding exactly one. */
+function only(list: readonly SnapshotEntity[]): SnapshotEntity | undefined {
+  return list.length === 1 ? list[0] : undefined;
+}
+
+function palisadePanelModel(ent: SnapshotEntity): PalisadePanelModel {
+  const palisade = ent.components.Palisade as { built?: unknown; gate?: unknown } | undefined;
+  const gate = palisade?.gate as { open?: unknown } | null | undefined;
+  return {
+    kind: 'palisade',
+    entityId: ent.id,
+    health: healthBar(ent),
+    builtPct: pct(num(palisade?.built)),
+    gateOpen: gate === undefined || gate === null ? null : gate.open === true,
+    underConstruction: ent.components.UnderConstruction !== undefined,
+  };
+}
+
 export function buildUnitPanelModel(
   snapshot: WorldSnapshot,
   selected: ReadonlySet<number>,
@@ -146,70 +172,36 @@ export function buildUnitPanelModel(
   if (selected.size === 0) return { kind: 'empty' };
 
   // Classifying goes through the snapshot's id index, so it costs O(selected · log entities) rather than
-  // a walk over a decoded map's scenery. The sorts below, not the selection's iteration order, decide the
-  // single-pick branches' winner.
-  const settlerIds: number[] = [];
-  const buildingIds: number[] = [];
-  const signpostIds: number[] = [];
-  const palisadeIds: number[] = [];
-  const vehicleIds: number[] = [];
+  // a walk over a decoded map's scenery. A single-entity panel opens only when its kind holds exactly one.
+  const settlers: SnapshotEntity[] = [];
+  const buildings: SnapshotEntity[] = [];
+  const signposts: SnapshotEntity[] = [];
+  const palisades: SnapshotEntity[] = [];
+  const vehicles: SnapshotEntity[] = [];
   for (const id of selected) {
     const e = entityById(snapshot, id);
     if (e === undefined) continue;
-    if (isSettler(e)) settlerIds.push(e.id);
-    else if (isBuilding(e)) buildingIds.push(e.id);
-    else if (isSignpost(e)) signpostIds.push(e.id);
-    else if (isPalisade(e)) palisadeIds.push(e.id);
-    else if (isVehicle(e)) vehicleIds.push(e.id);
+    if (isSettler(e)) settlers.push(e);
+    else if (isBuilding(e)) buildings.push(e);
+    else if (isSignpost(e)) signposts.push(e);
+    else if (isPalisade(e)) palisades.push(e);
+    else if (isVehicle(e)) vehicles.push(e);
   }
-  settlerIds.sort((a, b) => a - b);
-  buildingIds.sort((a, b) => a - b);
-  signpostIds.sort((a, b) => a - b);
-  palisadeIds.sort((a, b) => a - b);
+  const settler = only(settlers);
+  const building = only(buildings);
+  const signpost = only(signposts);
+  const palisade = only(palisades);
+  const vehicle = only(vehicles);
+  const noUnitOrHouse = settlers.length === 0 && buildings.length === 0;
 
-  if (
-    settlerIds.length === 0 &&
-    buildingIds.length === 0 &&
-    signpostIds.length === 0 &&
-    palisadeIds.length === 1
-  ) {
-    const entityId = palisadeIds[0] as number;
-    const ent = entityById(snapshot, entityId);
-    if (ent === undefined) return { kind: 'empty' };
-    const palisade = ent.components.Palisade as { built?: unknown; gate?: unknown } | undefined;
-    const gate = palisade?.gate as { open?: unknown } | null | undefined;
-    return {
-      kind: 'palisade',
-      entityId,
-      health: healthBar(ent),
-      builtPct: pct(num(palisade?.built)),
-      gateOpen: gate === undefined || gate === null ? null : gate.open === true,
-      underConstruction: ent.components.UnderConstruction !== undefined,
-    };
-  }
-  vehicleIds.sort((a, b) => a - b);
-
+  if (noUnitOrHouse && signposts.length === 0 && palisade !== undefined) return palisadePanelModel(palisade);
   // A signpost is a direct-click-only selection (never marquee'd), so units/buildings always outrank
   // it. A vehicle's order window opens for it alone; settlers boxed with vehicles are a group.
-  if (settlerIds.length === 0 && buildingIds.length === 0 && signpostIds.length === 1) {
-    return { kind: 'signpost', entityId: signpostIds[0] as number };
-  }
-  if (settlerIds.length === 0 && buildingIds.length === 0 && vehicleIds.length === 1) {
-    const ent = entityById(snapshot, vehicleIds[0] as number);
-    return ent === undefined ? { kind: 'empty' } : vehiclePanelModel(ctx, snapshot, ent);
-  }
-  if (settlerIds.length > 0 && vehicleIds.length > 0) return { kind: 'generic', count: selected.size };
-
-  if (settlerIds.length === 0 && buildingIds.length === 1) {
-    const ent = entityById(snapshot, buildingIds[0] as number);
-    return ent === undefined ? { kind: 'empty' } : buildingPanelModel(ctx, snapshot, ent);
-  }
-
-  if (settlerIds.length === 1) {
-    const ent = entityById(snapshot, settlerIds[0] as number);
-    return ent === undefined ? { kind: 'empty' } : settlerPanelModel(ctx, snapshot, ent);
-  }
-
-  if (settlerIds.length > 1) return { kind: 'multi-settler', count: settlerIds.length };
+  if (noUnitOrHouse && signpost !== undefined) return { kind: 'signpost', entityId: signpost.id };
+  if (noUnitOrHouse && vehicle !== undefined) return vehiclePanelModel(ctx, snapshot, vehicle);
+  if (settlers.length > 0 && vehicles.length > 0) return { kind: 'generic', count: selected.size };
+  if (settlers.length === 0 && building !== undefined) return buildingPanelModel(ctx, snapshot, building);
+  if (settler !== undefined) return settlerPanelModel(ctx, snapshot, settler);
+  if (settlers.length > 1) return { kind: 'multi-settler', count: settlers.length };
   return { kind: 'generic', count: selected.size };
 }

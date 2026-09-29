@@ -47,8 +47,8 @@ const structureKeyOf = (model: UnitPanelModel): string => {
   }
 };
 
-/** Gates the panel's model re-derive and re-bake: `decide` runs every frame while the O(entities) model
- *  build and the bake must not. */
+/** Gates the panel's model re-derive and re-bake: `decide` runs every frame, the model build once per
+ *  snapshot or landed answer, and the bake at most once per throttle window for a value change. */
 export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuildGate {
   /** Keyed on snapshot identity, not `snapshot.tick`: a same-tick world mutation hands out a new snapshot
    *  object under an unchanged tick, and a paused tick never advances to heal a stale model. */
