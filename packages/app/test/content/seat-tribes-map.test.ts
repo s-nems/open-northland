@@ -24,11 +24,18 @@ const VIKING_SEAT = 2;
 /** Long enough for the computer seat to lay out its first building sites. */
 const OPENING_TICKS = 3000;
 
-function readMap(): { map: TerrainMapFile; script: MapScript } {
+/** Bjarni the viking and Xena the byzantine lead the human seat's vikings. */
+const HEROES_MAP_ID = 'wilczy_lad';
+const FRANK = 2;
+const BYZANTINE = 3;
+const BJARNI = 100;
+const XENA = 101;
+
+function readMap(mapId: string): { map: TerrainMapFile; script: MapScript } {
   const root = resolve(contentDir(), 'maps');
   return {
-    map: TerrainMapFile.parse(JSON.parse(readFileSync(resolve(root, `${MAP_ID}.json`), 'utf8'))),
-    script: MapScript.parse(JSON.parse(readFileSync(resolve(root, `${MAP_ID}.script.json`), 'utf8'))),
+    map: TerrainMapFile.parse(JSON.parse(readFileSync(resolve(root, `${mapId}.json`), 'utf8'))),
+    script: MapScript.parse(JSON.parse(readFileSync(resolve(root, `${mapId}.script.json`), 'utf8'))),
   };
 }
 
@@ -47,7 +54,7 @@ describe.runIf(hasRealIr())(`${MAP_ID} with lobby-chosen civilizations`, () => {
   it('starts each changed seat as its chosen people and lets the computer build as one', async () => {
     const ir = rawIrUnderTest() as ContentIr;
     const { merge } = await loadContentUnderTest();
-    const { map, script } = readMap();
+    const { map, script } = readMap(MAP_ID);
     const params = new URLSearchParams(
       `map=${MAP_ID}&player=${HUMAN_SEAT}&ai=${AI_SEAT}&tribes=0:${SARACEN},1:${EGYPT}`,
     );
@@ -80,5 +87,44 @@ describe.runIf(hasRealIr())(`${MAP_ID} with lobby-chosen civilizations`, () => {
       seating.remap,
     );
     expect(art).toEqual([VIKING, SARACEN, WEREWOLF, EGYPT]);
+  });
+});
+
+describe.runIf(hasRealIr())(`${HEROES_MAP_ID} with a lobby-chosen civilization`, () => {
+  it("keeps the seat's heroes in their own people", async () => {
+    const ir = rawIrUnderTest() as ContentIr;
+    const { merge } = await loadContentUnderTest();
+    const { map, script } = readMap(HEROES_MAP_ID);
+    const params = new URLSearchParams(`map=${HEROES_MAP_ID}&player=${HUMAN_SEAT}&tribes=0:${FRANK}`);
+    const session = mapSession(params, mapLobbySlots(script));
+    const { sim } = buildMapWorldFromInputs({
+      map,
+      ir,
+      script,
+      goodNames: new Map(),
+      content: merge.content,
+      session,
+      missions: null,
+      save: null,
+    });
+    const { MissionObjectId, Settler } = components;
+    const tribeOf = (missionId: number) =>
+      [...sim.world.query(Settler)]
+        .filter(
+          (e) => sim.world.has(e, MissionObjectId) && sim.world.get(e, MissionObjectId).id === missionId,
+        )
+        .map((e) => sim.world.get(e, Settler).tribe);
+    expect(tribeOf(BJARNI)).toEqual([VIKING]);
+    expect(tribeOf(XENA)).toEqual([BYZANTINE]);
+    expect(seatTribes(sim, HUMAN_SEAT).settlers).toEqual(new Set([FRANK, VIKING, BYZANTINE]));
+
+    const seating = sessionSeating(session, script.players, ir);
+    const art = worldTribes(
+      { players: seating.players, missions: script.missions },
+      map.entities,
+      ir,
+      seating.remap,
+    );
+    expect(art).toContain(BYZANTINE);
   });
 });

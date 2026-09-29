@@ -25,6 +25,8 @@ const WERESNAKE = 5;
 const WOLVES = 20;
 const BARRACKS = 30;
 const SHIP = 45;
+const BUILDER = 7;
+const HERO_BJARNI = 60;
 /** Ticks run on each side of the save before the two worlds are compared. */
 const RESTORE_TICKS = 40;
 
@@ -51,6 +53,7 @@ const rows: AuthoredJoinRows = {
     { editName: 'viking ship', level: 0, typeId: SHIP, tribeId: VIKING },
   ],
   tribes: [...(AUTHORED_ROWS.tribes ?? []), { typeId: SARACEN, id: 'saracen' }],
+  jobs: [...(AUTHORED_ROWS.jobs ?? []), { typeId: HERO_BJARNI, id: 'hero_sword_bjarni' }],
 };
 
 describe('sessionSeatTribes', () => {
@@ -77,12 +80,19 @@ describe('seatTribeRemap', () => {
     expect(remap.tribe(undefined, VIKING)).toBe(VIKING);
   });
 
+  it("keeps a hero in the map's own people", () => {
+    expect(remap.human(0, HERO_BJARNI, VIKING)).toBe(VIKING);
+    expect(remap.human(0, HERO_BJARNI, FRANK)).toBe(FRANK);
+    expect(remap.human(0, BUILDER, VIKING)).toBe(SARACEN);
+    expect(remap.human(0, undefined, VIKING)).toBe(SARACEN);
+  });
+
   it('keeps a building type the chosen civilization has no graphics for', () => {
     expect(remap.building(0, BARRACKS, VIKING)).toBe(SARACEN);
     expect(remap.building(0, SHIP, VIKING)).toBe(VIKING);
   });
 
-  it("moves the seat's script lines, including a house the chosen civilization draws", () => {
+  it("moves the seat's script lines, including a house the chosen civilization draws but no hero", () => {
     const script = {
       missions: [
         {
@@ -95,6 +105,8 @@ describe('seatTribeRemap', () => {
             { opcode: 'AllowJob', player: 2, tribe: FRANK, job: 7 },
             { opcode: 'SetHouse', player: 0, houseName: { typeId: BARRACKS, tribe: VIKING } },
             { opcode: 'SetHouse', player: 0, houseName: { typeId: SHIP, tribe: VIKING } },
+            { opcode: 'SetHuman', player: 0, tribe: VIKING, job: BUILDER },
+            { opcode: 'SetHumanX', player: 0, tribe: VIKING, job: HERO_BJARNI },
           ],
         },
       ],
@@ -108,6 +120,8 @@ describe('seatTribeRemap', () => {
       FRANK,
       { typeId: BARRACKS, tribe: SARACEN },
       { typeId: SHIP, tribe: VIKING },
+      SARACEN,
+      VIKING,
     ]);
   });
 });

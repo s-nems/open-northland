@@ -1,6 +1,6 @@
 import { isCivilizationTribe as isCivilization, type MapAiSeat, type MapScript } from '@open-northland/data';
 import type { GameSession } from '@open-northland/lockstep';
-import type { MissionHouseRef, MissionScript } from '@open-northland/sim';
+import { type MissionHouseRef, type MissionScript, systems } from '@open-northland/sim';
 import type { AuthoredPlacement } from './world/authored-placements.js';
 import type { MapScriptWorld } from './world/build.js';
 import type { AuthoredJoinRows } from './world/content-joins.js';
@@ -31,28 +31,38 @@ export function sessionSeatTribes(
  * The tribe a seat's own things take once the lobby changed its civilization: every civilization
  * settler, vehicle, building, permission row and script line of that seat, so a mixed-tribe town
  * becomes one people. A monster or an animal keeps its tribe, and so does a building type the chosen
- * civilization has no graphics for (the viking big ship, the wonders).
+ * civilization has no graphics for (the viking big ship, the wonders), and a hero, who is a named
+ * character of the map's own people (Bjarni stays a viking).
  */
 export interface SeatTribeRemap {
   readonly changed: boolean;
   tribe(owner: number | undefined, tribe: number): number;
+  /** A settler's tribe by its job typeId; an unresolved job counts as no hero. */
+  human(owner: number | undefined, job: number | undefined, tribe: number): number;
   building(owner: number | undefined, typeId: number, tribe: number): number;
 }
 
 export const MAP_TRIBES: SeatTribeRemap = {
   changed: false,
   tribe: (_owner, tribe) => tribe,
+  human: (_owner, _job, tribe) => tribe,
   building: (_owner, _typeId, tribe) => tribe,
 };
 
 export function seatTribeRemap(
   seatTribes: SeatTribes,
-  rows: Pick<AuthoredJoinRows, 'buildingBobs'>,
+  rows: Pick<AuthoredJoinRows, 'buildingBobs' | 'jobs'>,
 ): SeatTribeRemap {
   if (seatTribes.size === 0) return MAP_TRIBES;
   const drawn = new Set<string>();
   for (const bob of rows.buildingBobs ?? []) {
     if (bob.typeId !== undefined && bob.tribeId !== undefined) drawn.add(`${bob.tribeId}:${bob.typeId}`);
+  }
+  const heroJobs = new Set<number>();
+  for (const job of rows.jobs ?? []) {
+    if (job.typeId !== undefined && job.id !== undefined && systems.isHeroJobRow({ id: job.id })) {
+      heroJobs.add(job.typeId);
+    }
   }
   const tribe = (owner: number | undefined, current: number): number => {
     const chosen = owner === undefined ? undefined : seatTribes.get(owner);
@@ -61,6 +71,8 @@ export function seatTribeRemap(
   return {
     changed: true,
     tribe,
+    human: (owner, job, current) =>
+      job !== undefined && heroJobs.has(job) ? current : tribe(owner, current),
     building: (owner, typeId, current) => {
       const next = tribe(owner, current);
       return drawn.has(`${next}:${typeId}`) ? next : current;
@@ -95,13 +107,14 @@ function seatedMapScript(script: MapScript, players: MapScript['players'], remap
   };
 }
 
-/** A resolved script line naming a player and a tribe or a house of one: its tribe follows the seat. */
+/** A resolved script line naming a player and a tribe or a house of one: its tribe follows the seat,
+ *  except for a hero the line spawns. */
 function seatedOp<T extends object>(op: T, remap: SeatTribeRemap): T {
   if (!('player' in op) || typeof op.player !== 'number') return op;
   const owner = op.player;
   let seated = op;
   if ('tribe' in op && typeof op.tribe === 'number') {
-    const tribe = remap.tribe(owner, op.tribe);
+    const tribe = spawnsHuman(op) ? remap.human(owner, op.job, op.tribe) : remap.tribe(owner, op.tribe);
     if (tribe !== op.tribe) seated = { ...seated, tribe };
   }
   if ('houseName' in op && isHouseRef(op.houseName)) {
@@ -110,6 +123,15 @@ function seatedOp<T extends object>(op: T, remap: SeatTribeRemap): T {
     if (tribe !== house.tribe) seated = { ...seated, houseName: { ...house, tribe } };
   }
   return seated;
+}
+
+function spawnsHuman(op: object): op is { opcode: 'SetHuman' | 'SetHumanX'; job: number } {
+  return (
+    'opcode' in op &&
+    (op.opcode === 'SetHuman' || op.opcode === 'SetHumanX') &&
+    'job' in op &&
+    typeof op.job === 'number'
+  );
 }
 
 function isHouseRef(value: unknown): value is MissionHouseRef {
@@ -139,7 +161,9 @@ function seatedAi(seats: readonly MapAiSeat[], remap: SeatTribeRemap): readonly 
   return seats.map((seat) => ({
     ...seat,
     tasks: seat.tasks.map((task) =>
-      task.kind === 'createCreatures' ? { ...task, tribe: remap.tribe(seat.player, task.tribe) } : task,
+      task.kind === 'createCreatures'
+        ? { ...task, tribe: remap.human(seat.player, task.job, task.tribe) }
+        : task,
     ),
   }));
 }
@@ -160,7 +184,8 @@ export function seatedPlacements(
   if (!remap.changed) return placements;
   return placements.map((p): AuthoredPlacement => {
     if (p.kind === 'building') return { ...p, tribe: remap.building(p.owner, p.typeId, p.tribe) };
-    if (p.kind === 'human' || p.kind === 'vehicle') return { ...p, tribe: remap.tribe(p.owner, p.tribe) };
+    if (p.kind === 'human') return { ...p, tribe: remap.human(p.owner, p.jobType, p.tribe) };
+    if (p.kind === 'vehicle') return { ...p, tribe: remap.tribe(p.owner, p.tribe) };
     return p;
   });
 }
@@ -174,7 +199,7 @@ export interface SessionSeating {
 export function sessionSeating(
   session: Pick<GameSession, 'seats'>,
   players: MapScript['players'],
-  rows: Pick<AuthoredJoinRows, 'buildingBobs'>,
+  rows: Pick<AuthoredJoinRows, 'buildingBobs' | 'jobs'>,
 ): SessionSeating {
   const seatTribes = sessionSeatTribes(session, players);
   return { players: seatedRoster(players, seatTribes), remap: seatTribeRemap(seatTribes, rows) };
