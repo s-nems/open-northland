@@ -1,16 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  BuildMode,
-  Position,
-  RoadSite,
-  Settler,
-  Stockpile,
-  setStockAmount,
-} from '../../../src/components/index.js';
-import { aiCommand, type PlayerCommand } from '../../../src/core/commands/index.js';
+import { BuildMode, RoadSite, Settler, Stockpile, setStockAmount } from '../../../src/components/index.js';
+import type { PlayerCommand } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { hexNeighboursOf, nodeOfPosition, Simulation } from '../../../src/index.js';
-import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
+import type { Simulation } from '../../../src/index.js';
 import { spotAcceptor } from '../../../src/systems/ai-player/build-order/placement.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import { ROADS_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
@@ -32,12 +24,21 @@ import {
   ROAD_SITE_SHORTAGE_POSTS,
   wantedCollectorGoods,
 } from '../../../src/systems/ai-player/workforce/collectors/index.js';
-import { structureBlockOverlay } from '../../../src/systems/footprint/blocked.js';
 import { createSignpost } from '../../../src/systems/index.js';
 import { layRoad, roadNodeCount, roadNodes } from '../../../src/systems/roads/index.js';
-import { ownedRoadSites, roadSitesByNode } from '../../../src/systems/roads/site-index.js';
+import { roadSitesByNode } from '../../../src/systems/roads/site-index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
-import { grassNodeMap } from '../../fixtures/terrain.js';
+import {
+  apply,
+  HOME_X,
+  HOME_Y,
+  HQ_DOOR,
+  paved,
+  paveSites,
+  roadSim,
+  sitesOf,
+  terrainOf,
+} from './road-support.js';
 import {
   BUILDER,
   collectModule,
@@ -49,13 +50,9 @@ import {
   HQ_Y,
   SEAT,
   STONE,
-  spawnMen,
   VIKING,
 } from './support.js';
 
-/** A home far enough west of the HQ that its road runs a good stretch of open grass. */
-const HOME_X = HQ_X - 16;
-const HOME_Y = HQ_Y;
 /** The first row the crew cases lay their hand-placed road sites on, clear of the HQ's body, and the
  *  rows between two of their rows. */
 const SITE_ROW = HQ_Y + 8;
@@ -78,34 +75,6 @@ const HQ_STONE_CAPACITY = 150;
 const RUN_END_TICKS = 600;
 /** Builders the crew cases give the seat. */
 const CREW_CASE_BUILDERS = 6;
-
-/** A seat at the road clock with its stocked HQ, a built home to the west and `men` builders. */
-function roadSim(seed: number, men: number): Simulation {
-  const sim = new Simulation({ seed, content: aiContent(), map: grassNodeMap(64, 32) });
-  sim.restoreTick(ROADS_FROM_TICKS);
-  sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
-  sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
-  sim.enqueueSetup({
-    kind: 'placeBuilding',
-    buildingType: HQ_TYPE,
-    x: HQ_X,
-    y: HQ_Y,
-    tribe: VIKING,
-    owner: SEAT,
-    fillStock: true,
-  });
-  sim.enqueueSetup({
-    kind: 'placeBuilding',
-    buildingType: HOME_TYPE,
-    x: HOME_X,
-    y: HOME_Y,
-    tribe: VIKING,
-    owner: SEAT,
-  });
-  spawnMen(sim, men, BUILDER);
-  sim.step();
-  return sim;
-}
 
 /** {@link roadSim} whose builders are busy raising {@link BUSY_SITES}. */
 function busySim(seed: number): Simulation {
@@ -139,33 +108,18 @@ function placeSites(sim: Simulation, count: number, firstRow = SITE_ROW): void {
   sim.step();
 }
 
-function apply(sim: Simulation, commands: readonly PlayerCommand[]): void {
-  for (const command of commands) sim.enqueue(aiCommand(SEAT, command));
-  sim.step();
-}
-
 const roadsters = (sim: Simulation): Entity[] =>
   [...sim.world.query(Settler, BuildMode)].filter((e) => sim.world.get(e, BuildMode).kind === 'roads');
-
-const sitesOf = (sim: Simulation): number =>
-  sim.terrain === undefined ? 0 : ownedRoadSites(sim.world, sim.terrain, SEAT).size;
 
 const named = (commands: readonly PlayerCommand[], e: Entity): PlayerCommand[] =>
   commands.filter((c) => 'entity' in c && c.entity === e);
 
-/** The seat's HQ door, where every route of these cases ends. */
-const HQ_DOOR = { x: HQ_X, y: HQ_Y + 4 };
 /** A node on the straight line between the home and the HQ door, clear of both bodies. */
 const MIDWAY = { x: HQ_X - 8, y: HQ_Y + 2 };
 /** Decisions a route between the home and the HQ takes to place whole, a site cap's worth apiece. */
 const ROUTE_DECISIONS = 4;
 /** How far from either end of the road the cut falls, in nodes, so both sides keep a stretch of road. */
 const CUT_MARGIN_NODES = 4;
-
-function terrainOf(sim: Simulation): TerrainGraph {
-  if (sim.terrain === undefined) throw new Error('mapped sim');
-  return sim.terrain;
-}
 
 /** Run the road module decision after decision, applying each, until it places nothing more. Returns
  *  every command it placed. */
@@ -178,49 +132,6 @@ function placeWholeRoute(sim: Simulation): PlayerCommand[] {
     apply(sim, commands);
   }
   return placed;
-}
-
-/** Whether roads and road sites join the building at `from` to the one at `to` node by node over the
- *  ring a road paints across, from beside the one to beside the other: an entrance on a building's
- *  own body takes no road. */
-function paved(sim: Simulation, from: { x: number; y: number }, to: { x: number; y: number }): boolean {
-  const terrain = terrainOf(sim);
-  const sites = roadSitesByNode(sim.world, terrain);
-  const blocked = structureBlockOverlay(sim.world, ctxOf(sim, sim.tick), terrain);
-  const carries = (node: NodeId): boolean => (terrain.isRoad(node) || sites.has(node)) && !blocked.has(node);
-  const ring = (x: number, y: number): NodeId[] => [
-    terrain.nodeAt(x, y),
-    ...hexNeighboursOf(x, y)
-      .filter((n) => terrain.inBounds(n.hx, n.hy))
-      .map((n) => terrain.nodeAt(n.hx, n.hy)),
-  ];
-  const goal = new Set(ring(to.x, to.y));
-  const open = ring(from.x, from.y).filter(carries);
-  const seen = new Set<NodeId>(open);
-  for (let node = open.pop(); node !== undefined; node = open.pop()) {
-    if (goal.has(node)) return true;
-    for (const next of ring(terrain.xOf(node), terrain.yOf(node))) {
-      if (seen.has(next) || !carries(next)) continue;
-      seen.add(next);
-      open.push(next);
-    }
-  }
-  return false;
-}
-
-/** Turn every road site into road, as a finished run would. */
-function paveSites(sim: Simulation): void {
-  const terrain = terrainOf(sim);
-  const nodes: NodeId[] = [];
-  for (const e of sim.world.query(RoadSite, Position)) {
-    const at = nodeOfPosition(sim.world.get(e, Position).x, sim.world.get(e, Position).y);
-    nodes.push(terrain.nodeAt(at.hx, at.hy));
-  }
-  layRoad(sim.world, terrain, nodes);
-  apply(
-    sim,
-    [...sim.world.query(RoadSite)].map((roadSite) => ({ kind: 'cancelRoadSite', roadSite }) as const),
-  );
 }
 
 describe('road build module (roadBuild)', () => {

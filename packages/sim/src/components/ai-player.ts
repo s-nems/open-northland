@@ -102,6 +102,30 @@ export const ReplantMisses = defineComponent<{ hx: number; hy: number; misses: n
  */
 export const AiPeace = defineComponent<{ untilTick: number }>('AiPeace', 'players');
 
+export interface RoadTrafficState {
+  /** The seat whose settlers walked here. */
+  player: number;
+  /** The bucket's index in the map's row-major grid of traffic buckets. */
+  bucket: number;
+  /** Off-road walks that entered the bucket, as of the start of half-life `epoch`. */
+  walks: number;
+  /** The sums of the half-cell node columns and rows those walks entered on, scaled down with `walks`
+   *  so their mean, the walks' average entry node, holds. */
+  sumX: number;
+  sumY: number;
+  /** The half-life period the counts were last brought up to; each one since halves them once. */
+  epoch: number;
+  /** The first tick the seat's road decision may route from this bucket again. */
+  retryTick: number;
+}
+
+/**
+ * How much one computer seat's settlers walk off-road through one square of the map, one entity per
+ * (seat, bucket) the seat walks: counting touches only the bucket a step entered, so a tick's writes stay
+ * as small as its steps. The road decision paves the busiest (`systems/ai-player/traffic.ts`).
+ */
+export const RoadTraffic = defineComponent<RoadTrafficState>('RoadTraffic', 'players');
+
 /** The {@link AiPlayer} carrier for `player`, or null when the seat is not AI-driven. The lowest-id
  *  carrier wins should more than one ever exist. */
 export function aiPlayerEntity(world: World, player: number): Entity | null {

@@ -15,6 +15,7 @@ import { type Fixed, fx, ONE, ULP } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { DEFAULT_NODE_ROUGHNESS, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { HALF_COLUMN, HALF_ROW, worldDistance } from '../../nav/world-metric.js';
+import { trafficCounter } from '../ai-player/traffic.js';
 import type { System, SystemContext } from '../context.js';
 import { wearWornBoots } from '../equipment/index.js';
 import { chargeBarefootStep, drinkPressingDraughts } from '../lifecycle/needs/index.js';
@@ -71,6 +72,7 @@ export const movementSystem: System = (world, ctx) => {
   for (const e of world.query(AnimalRunning)) {
     if (!world.has(e, PathFollow)) world.remove(e, AnimalRunning);
   }
+  const countTraffic = trafficCounter(world, ctx);
   for (const e of world.query(Position, PathFollow)) {
     const pf = world.mut(e, PathFollow);
     const stops = world.get(e, PathRoute).waypoints;
@@ -95,6 +97,10 @@ export const movementSystem: System = (world, ctx) => {
           ? walkHumanLeg(world, ctx, e, pf, stops, p, target)
           : walkPeriodicLeg(pf, stops, p, target, period);
       if (!arrived) break;
+      const from = stops[pf.index - 1];
+      if (countTraffic !== null && !paced && period === undefined && from !== undefined) {
+        countTraffic(e, from.node, target.node);
+      }
       if (pf.index + 1 >= stops.length) {
         if (!paced && period === undefined) chargeNode(world, ctx, e, resistanceAt(ctx.terrain, target));
         dropPath(world, e);

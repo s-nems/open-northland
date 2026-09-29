@@ -20,6 +20,7 @@ export * from './military/index.js';
 export * from './population.js';
 export * from './road-build.js';
 export * from './scout/index.js';
+export * from './traffic.js';
 export * from './workforce/index.js';
 
 /**
