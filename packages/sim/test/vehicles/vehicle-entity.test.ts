@@ -440,10 +440,13 @@ describe('removeVehicle', () => {
     const aboard = spawnRider(s, 2, 2);
     const walking = spawnRider(s, 2, 4);
     const drowned = spawnRider(s, 2, 6);
+    const ashore = spawnRider(s, 2, 8);
     seatPassenger(s.world, moored, aboard);
     seatPassenger(s.world, moored, walking);
     seatPassenger(s.world, atSea, drowned);
+    seatPassenger(s.world, atSea, ashore);
     boardSeated(s, moored, aboard);
+    boardSeated(s, atSea, drowned);
     const door = s.vehicleView(moored)?.door;
     if (door === null || door === undefined) throw new Error('moored ship has no door');
     removeVehicle(s.world, ctxOf(s), moored, 'destroyed');
@@ -454,6 +457,10 @@ describe('removeVehicle', () => {
     const q = s.world.get(walking, Position);
     expect(nodeOfPosition(q.x, q.y)).toEqual({ hx: 2, hy: 4 });
     expect(s.world.isAlive(drowned)).toBe(false);
+    // A rider seated on the ship at sea but still standing ashore never went aboard: he is only detached.
+    const r = s.world.get(ashore, Position);
+    expect(nodeOfPosition(r.x, r.y)).toEqual({ hx: 2, hy: 8 });
+    expect(s.world.has(ashore, Rider)).toBe(false);
     expect(
       s.events
         .current()
@@ -475,21 +482,28 @@ describe('removeVehicle', () => {
     const atSea = spawn(s, SHIP_SMALL, shoreX + SHIP_DOOR_DISTANCE + 4, 10);
     const landed = spawn(s, HANDCART, 2, 2);
     const sunk = spawn(s, HANDCART, 2, 4);
+    const sailed = spawn(s, SHIP_SMALL, shoreX + SHIP_DOOR_DISTANCE + 4, 20);
+    const loading = spawn(s, HANDCART, 2, 8);
     carry(s, moored, landed);
     carry(s, atSea, sunk);
+    // A cart still driving to a ship that cast off holds its slot but stands on land.
+    s.world.mut(sailed, Vehicle).vehicles[0] = { entity: loading, inside: false };
+    s.world.mut(loading, Vehicle).carrier = sailed;
     const door = s.vehicleView(moored)?.door;
     if (door === null || door === undefined) throw new Error('moored ship has no door');
     removeVehicle(s.world, ctxOf(s), moored, 'destroyed');
     removeVehicle(s.world, ctxOf(s), atSea, 'destroyed');
+    removeVehicle(s.world, ctxOf(s), sailed, 'destroyed');
     expect(s.world.isAlive(landed)).toBe(true);
     expect(s.vehicleView(landed)).toMatchObject({ carrier: null, at: door });
     expect(s.world.isAlive(sunk)).toBe(false);
+    expect(s.vehicleView(loading)).toMatchObject({ carrier: null, at: { hx: 2, hy: 8 } });
     expect(
       s.events
         .current()
         .filter((ev) => ev.kind === 'vehicleDestroyed')
         .map((ev) => ev.entity),
-    ).toEqual([moored, sunk, atSea]);
+    ).toEqual([moored, sunk, atSea, sailed]);
   });
 
   it('removes a vehicle for a script with no cargo spill, no ruins and no RNG draw', () => {

@@ -306,7 +306,10 @@ ship moors on the arrival tick with a `vehicleDocked` event (approximation: the 
 to a 12-tick dock clip, which is not played); a goto clears the pending mooring point and never re-moors on
 arrival (the commander-less re-mooring is not implemented, a goto needs a commander anyway); a dock
 walk that loses its route drops the mooring point behind the `vehicleNoPath` note. A sunk ship's
-crew is reaped like any death, so the owner's casualty tallies count it. The dock pick shows where the
+crew aboard is reaped like any death, so the owner's casualty tallies count it. Deviation (owner's
+choice): a rider still walking to a ship lost at sea, and a cart still driving to it, stand on land
+and are only detached (`removeVehicle`, `systems/vehicles/remove.ts`); the original frees them with
+the ship. The dock pick shows where the
 order would moor (`mooringProbe`): the water the ship can reach under its walk-block within the walk
 range is flooded once per blocker change and ship position, and every walkable node at exactly the door
 distance from it is a mooring spot, lit on the map; the rest is dimmed, a click there orders nothing, and

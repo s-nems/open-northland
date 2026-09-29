@@ -31,13 +31,15 @@ const PERCENT = 100;
 export type VehicleRemovalCause = 'destroyed' | 'defeated' | 'script';
 
 /**
- * Take a vehicle off the map (docs/formats/VEHICLES.md "Lifecycle"). With the door on land, riders who
- * were aboard step onto it and riders still walking to it are merely detached, and a carried vehicle is
- * set down there; with the door at sea, or none, the crew drowns and a carried vehicle goes down with
- * the ship. A wrecked cart or catapult draws ruins on {@link VEHICLE_RUIN_PERCENT} of its footprint
- * through the seeded RNG, and one destroyed in play also heaps its cargo around it; a script removal
- * leaves neither and draws nothing, and a ship leaves nothing. The event goes out before the destroy so
- * the owner and position are still readable.
+ * Take a vehicle off the map (docs/formats/VEHICLES.md "Ships and docking"). Riders and carried vehicles
+ * still on the map are merely detached where they stand. With the door on land, the riders aboard step
+ * onto it and a carried vehicle aboard is set down there; with the door at sea, or none, the crew aboard
+ * drowns and a carried vehicle aboard goes down with the ship. Deviation (owner's choice): the original
+ * also frees every rider and carried vehicle still on the map when the door is not on land. A wrecked
+ * cart or catapult draws ruins on {@link VEHICLE_RUIN_PERCENT} of its footprint through the seeded RNG,
+ * and one destroyed in play also heaps its cargo around it; a script removal leaves neither and draws
+ * nothing, and a ship leaves nothing. The event goes out before the destroy so the owner and position
+ * are still readable.
  */
 export function removeVehicle(world: World, ctx: SystemContext, e: Entity, cause: VehicleRemovalCause): void {
   const vehicle = world.tryGet(e, Vehicle);
@@ -49,17 +51,17 @@ export function removeVehicle(world: World, ctx: SystemContext, e: Entity, cause
 
   for (const seat of carriedVehicles(vehicle)) {
     if (!world.isAlive(seat.entity)) continue;
-    if (landing === null) removeVehicle(world, ctx, seat.entity, cause);
+    if (seat.inside && landing === null) removeVehicle(world, ctx, seat.entity, cause);
     else {
-      if (seat.inside) placeOnNode(world, seat.entity, landing);
+      if (seat.inside && landing !== null) placeOnNode(world, seat.entity, landing);
       releaseCarried(world, e, seat.entity);
     }
   }
   for (const seat of vehiclePassengers(vehicle)) {
     if (!world.isAlive(seat.entity)) continue;
-    if (landing === null) reap(world, ctx, seat.entity);
+    if (seat.inside && landing === null) reap(world, ctx, seat.entity);
     else {
-      if (seat.inside) setDownRider(world, seat.entity, landing);
+      if (seat.inside && landing !== null) setDownRider(world, seat.entity, landing);
       releaseRider(world, seat.entity, e);
     }
   }
