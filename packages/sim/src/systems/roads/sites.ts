@@ -6,7 +6,6 @@ import {
   RoadSite,
   SiteAssignment,
   Stockpile,
-  SupplyRun,
   stampOwner,
   UnderConstruction,
   Vehicle,
@@ -170,8 +169,8 @@ export function cancelRoadSitesUnder(world: World, ctx: SystemContext, structure
 
 /**
  * Lay a finished road site. Its stone paves its own node and every lattice neighbour holding a site of the
- * same owner that no builder has claimed and no stone has reached or is on its way to; those sites are
- * spent. A claimed or supplied neighbour keeps its own build. Original behavior.
+ * same owner that no builder has claimed and no stone has reached; those sites are spent. Stone travels
+ * only to a claimed site, so none is on its way to them. Original behavior.
  */
 export function finishRoadSite(world: World, ctx: SystemContext, site: Entity): void {
   const terrain = ctx.terrain;
@@ -181,8 +180,6 @@ export function finishRoadSite(world: World, ctx: SystemContext, site: Entity): 
   const owner = ownerOf(world, site);
   const sites = roadSitesByNode(world, terrain);
   const absorbed: Entity[] = [];
-  let supplied: Set<Entity> | undefined;
-  const suppliedSites = (): ReadonlySet<Entity> => (supplied ??= sitesWithSupplyInbound(world));
   for (const n of hexNeighboursOf(hx, hy)) {
     if (!terrain.inBounds(n.hx, n.hy)) continue;
     const neighbour = sites.get(terrain.nodeAt(n.hx, n.hy));
@@ -190,7 +187,7 @@ export function finishRoadSite(world: World, ctx: SystemContext, site: Entity): 
       neighbour !== undefined &&
       neighbour !== site &&
       ownerOf(world, neighbour) === owner &&
-      absorbable(world, neighbour, suppliedSites)
+      absorbable(world, neighbour)
     ) {
       absorbed.push(neighbour);
     }
@@ -206,18 +203,11 @@ export function finishRoadSite(world: World, ctx: SystemContext, site: Entity): 
   layRoad(world, terrain, nodes);
 }
 
-/** Every site a live supply errand is bringing material to; built only when a neighbour gets this far. */
-function sitesWithSupplyInbound(world: World): Set<Entity> {
-  const sites = new Set<Entity>();
-  for (const e of world.query(SupplyRun)) sites.add(world.get(e, SupplyRun).site);
-  return sites;
-}
-
-/** A neighbour the finishing stone may pave: unclaimed, holding nothing and awaiting no delivery. */
-function absorbable(world: World, site: Entity, supplied: () => ReadonlySet<Entity>): boolean {
+/** A neighbour the finishing stone may pave: unclaimed and holding nothing. */
+function absorbable(world: World, site: Entity): boolean {
   if (siteClaimHolder(world, site) !== null) return false;
   for (const amount of world.get(site, Stockpile).amounts.values()) if (amount > 0) return false;
-  return !supplied().has(site);
+  return true;
 }
 
 /** Destroy a road site, letting go of the builder whose assignment names it. */

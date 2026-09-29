@@ -24,7 +24,7 @@ import {
   type Simulation,
 } from '../../src/index.js';
 import { constructionSystem } from '../../src/systems/economy/construction.js';
-import { claimSite } from '../../src/systems/economy/site-claim.js';
+import { claimSite, releaseSiteClaim } from '../../src/systems/economy/site-claim.js';
 import { palisadePlacementProbe as palisadeProbe } from '../../src/systems/palisades/index.js';
 import { pickRoadSite } from '../../src/systems/roads/site-pick.js';
 import { roadSitePlacementProbe } from '../../src/systems/roads/sites.js';
@@ -67,6 +67,8 @@ function finishDirectly(sim: Simulation, site: Entity): Entity {
 }
 
 const CENTRE = { hx: 20, hy: ROW };
+/** The store's stone in the scenes that count every unit after a site goes away mid-errand. */
+const STOCKED_STONE = 10;
 
 describe('road site commands', () => {
   it('place a seat-owned site costing one stone, even under a standing settler', () => {
@@ -299,14 +301,13 @@ describe('road site construction', () => {
     expect(siteAt(sim, beyond.hx, beyond.hy)).toBeDefined();
   });
 
-  it('leave a claimed, a stocked, a supplied and a rival neighbour to their own build', () => {
+  it('leave a claimed, a stocked and a rival neighbour to their own build', () => {
     const sim = roadSim();
-    const [claimed, stocked, supplied, free, , rival] = hexNeighboursOf(CENTRE.hx, CENTRE.hy);
-    if (claimed === undefined || stocked === undefined || supplied === undefined || free === undefined) {
+    const [claimed, stocked, free, , , rival] = hexNeighboursOf(CENTRE.hx, CENTRE.hy);
+    if (claimed === undefined || stocked === undefined || free === undefined || rival === undefined) {
       throw new Error('expected six neighbours');
     }
-    if (rival === undefined) throw new Error('expected six neighbours');
-    orderRoads(sim, [CENTRE, claimed, stocked, supplied, free]);
+    orderRoads(sim, [CENTRE, claimed, stocked, free]);
     orderRoads(sim, [rival], RIVAL);
     const at = (n: { hx: number; hy: number }): Entity => {
       const e = siteAt(sim, n.hx, n.hy);
@@ -317,16 +318,39 @@ describe('road site construction', () => {
     sim.world.add(holder, SiteAssignment, { site: at(claimed), pinned: false });
     claimSite(sim.world, at(claimed), holder);
     setStockAmount(sim.world, at(stocked), STONE, 1);
-    const carrier = builderAt(sim, 30);
-    sim.world.add(carrier, SupplyRun, { site: at(supplied), goodType: STONE, amount: 1, source: null });
 
     finishDirectly(sim, at(CENTRE));
     expect(roadAt(sim, free.hx, free.hy)).toBe(true);
-    for (const kept of [claimed, stocked, supplied, rival]) {
+    for (const kept of [claimed, stocked, rival]) {
       expect(roadAt(sim, kept.hx, kept.hy), `${kept.hx},${kept.hy}`).toBe(false);
       expect(siteAt(sim, kept.hx, kept.hy)).toBeDefined();
     }
     expect(sim.world.get(holder, SiteAssignment).site).toBe(at(claimed));
+  });
+
+  it('pave a neighbour whose errand lost its claim, and the stone on the way stays whole', () => {
+    const sim = roadSim();
+    storeAt(sim, STORE_HX, STOCKED_STONE);
+    const builder = builderAt(sim, 8);
+    const [east] = hexNeighboursOf(CENTRE.hx, CENTRE.hy);
+    if (east === undefined) throw new Error('expected six neighbours');
+    orderRoads(sim, [CENTRE, east]);
+    for (let tick = 0; tick < BUILD_TICKS && !sim.world.has(builder, Carrying); tick++) sim.step();
+    // Two neighbours: the builder fetches for one, the other finishes with stone of its own.
+    const errand = sim.world.get(builder, SupplyRun).site;
+    const other = [CENTRE, east].map(({ hx, hy }) => siteAt(sim, hx, hy)).find((e) => e !== errand);
+    if (other === undefined) throw new Error('expected the other site');
+    releaseSiteClaim(sim.world, builder);
+    sim.world.remove(builder, SiteAssignment);
+
+    finishDirectly(sim, other);
+    expect(sim.world.isAlive(errand)).toBe(false);
+    expect(roadAt(sim, CENTRE.hx, CENTRE.hy) && roadAt(sim, east.hx, east.hy)).toBe(true);
+    for (let tick = 0; tick < BUILD_TICKS && sim.world.has(builder, Carrying); tick++) sim.step();
+    expect(sim.world.tryGet(builder, SupplyRun)?.site).not.toBe(errand);
+    let stone = 0;
+    for (const e of sim.world.query(Stockpile)) stone += sim.world.get(e, Stockpile).amounts.get(STONE) ?? 0;
+    expect(stone + (sim.world.tryGet(builder, Carrying)?.amount ?? 0)).toBe(STOCKED_STONE);
   });
 
   it('come after a building site and a wall site, even when the road site is nearest', () => {
@@ -361,7 +385,7 @@ describe('road site construction', () => {
 
   it('cancelled while its stone is on the way, strands no errand and loses no stone', () => {
     const sim = roadSim();
-    storeAt(sim, STORE_HX);
+    storeAt(sim, STORE_HX, STOCKED_STONE);
     const builder = builderAt(sim, 8);
     orderRoads(sim, [{ hx: FAR_HX, hy: ROW }]);
     const site = siteAt(sim, FAR_HX, ROW);
@@ -376,7 +400,7 @@ describe('road site construction', () => {
     expect(sim.world.tryGet(builder, SiteAssignment)).toBeUndefined();
     let stone = 0;
     for (const e of sim.world.query(Stockpile)) stone += sim.world.get(e, Stockpile).amounts.get(STONE) ?? 0;
-    expect(stone + (sim.world.tryGet(builder, Carrying)?.amount ?? 0)).toBe(10);
+    expect(stone + (sim.world.tryGet(builder, Carrying)?.amount ?? 0)).toBe(STOCKED_STONE);
   });
 });
 
