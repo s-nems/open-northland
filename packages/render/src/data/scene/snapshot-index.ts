@@ -290,3 +290,22 @@ function positionsOfRefs(
   }
   return byRef;
 }
+
+/** The road network's snapshot value: the half-cell node ids a road runs over (the sim's row-major
+ *  `NodeId`), as the `[id, true]` pairs its plain-cloned Map becomes, and the change counter every
+ *  change bumps. */
+export interface RoadNetworkView {
+  readonly nodes: readonly (readonly [number, unknown])[];
+  readonly revision: number;
+}
+
+const NO_ROADS: RoadNetworkView = { nodes: [], revision: 0 };
+
+/** The world's road network; an empty one before the first road. */
+export function roadNetworkOf(snapshot: WorldSnapshot): RoadNetworkView {
+  const value = entitiesWith(snapshot, 'RoadNetwork')[0]?.components.RoadNetwork;
+  if (typeof value !== 'object' || value === null) return NO_ROADS;
+  const { nodes, revision } = value as Partial<Record<keyof RoadNetworkView, unknown>>;
+  if (!Array.isArray(nodes) || typeof revision !== 'number') return NO_ROADS;
+  return value as RoadNetworkView;
+}

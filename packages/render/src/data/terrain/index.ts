@@ -25,6 +25,20 @@ export {
   type WorldBounds,
 } from './minimap.js';
 export {
+  type Barycentric,
+  cellsNearNode,
+  type HalfTriangle,
+  halfTrianglesA,
+  halfTrianglesB,
+  ROAD_GROUND_PATTERN,
+  ROAD_TRANSITIONS,
+  type RoadPaint,
+  type RoadVariant,
+  roadPaintOf,
+  roadVariant,
+  triangleRoadNodes,
+} from './road-overlay.js';
+export {
   cellNode,
   type NodeXY,
   nodeCell,

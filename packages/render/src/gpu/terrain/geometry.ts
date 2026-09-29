@@ -85,6 +85,9 @@ export function positions(nodes: readonly [NodeXY, NodeXY, NodeXY], lift: NodeLi
  */
 export interface TerrainChunk {
   readonly container: Container;
+  /** The block's first cell column and row. */
+  readonly c0: number;
+  readonly r0: number;
   readonly minX: number;
   readonly minY: number;
   readonly maxX: number;
@@ -114,6 +117,8 @@ export function buildChunks(
       parent.addChild(container);
       chunks.push({
         container,
+        c0,
+        r0,
         minX: (2 * c0 - 1) * TILE_HALF_W,
         maxX: (2 * c1 + 3) * TILE_HALF_W,
         // The lift only ever raises a vertex (−y) and the analytic box cannot see it, so extend the

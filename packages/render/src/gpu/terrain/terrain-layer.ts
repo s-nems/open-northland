@@ -20,9 +20,11 @@ import {
   DEFAULT_TILE_COLOUR,
   dominantGroundColour,
   type LaneShading,
+  liftFn,
   type TerrainChunk,
 } from './geometry.js';
 import { padLaneRows } from './lane-texture.js';
+import { RoadLayer } from './road-layer.js';
 import { type TerrainVertexColor, TerrainVertexColors } from './vertex-colors.js';
 
 /**
@@ -52,6 +54,9 @@ export class TerrainLayer {
   private water: WaterField = NO_WATER;
   private enhancedWater = false;
   private enhancedSampling = false;
+  private roads: RoadLayer | null = null;
+  /** The last road set given, kept so a rebuilt map redraws it. */
+  private roadNodes: readonly number[] = [];
 
   setEnhancedSampling(enabled: boolean): void {
     this.enhancedSampling = enabled;
@@ -122,6 +127,16 @@ export class TerrainLayer {
         if (child instanceof Mesh) this.vertexColors.bind(child.geometry);
       }
     }
+    if (textures !== undefined) {
+      this.roads = RoadLayer.create(terrain, textures, liftFn(terrain, elevation), lane, this.chunks);
+      this.roads?.setRoads(this.roadNodes);
+    }
+  }
+
+  /** Draw finished roads over `nodes` (half-cell row-major ids); re-meshes only the blocks that changed. */
+  setRoads(nodes: readonly number[]): void {
+    this.roadNodes = nodes;
+    this.roads?.setRoads(nodes);
   }
 
   applyVertexColors(updates: readonly TerrainVertexColor[], palette?: readonly number[]): void {
@@ -158,6 +173,8 @@ export class TerrainLayer {
   }
 
   destroy(): void {
+    this.roads?.destroy();
+    this.roads = null;
     this.vertexColors.clear();
     for (const chunk of this.chunks) {
       destroyMeshChildren(chunk.container);
