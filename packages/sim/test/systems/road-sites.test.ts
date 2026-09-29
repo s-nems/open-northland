@@ -467,6 +467,29 @@ describe('road site pick', () => {
     expect(sim.world.get(store, Stockpile).amounts.get(STONE) ?? 0).toBe(0);
   });
 
+  it('a builder with no stone to fetch claims no site, so the one stone paves its full cover', () => {
+    const sim = roadSim();
+    const store = storeAt(sim, STORE_HX, 1);
+    const builders = [builderAt(sim, 6), builderAt(sim, 7)];
+    const sites = lineSites(sim);
+    for (let tick = 0; tick < BUILD_TICKS; tick++) {
+      sim.step();
+      const holders = builders.filter((b) => sim.world.has(b, SiteAssignment));
+      expect(holders.length, `tick ${tick}`).toBeLessThanOrEqual(1);
+    }
+    expect(LINE.map(({ hx, hy }) => roadAt(sim, hx, hy))).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
+    expect(sim.world.get(store, Stockpile).amounts.get(STONE) ?? 0).toBe(0);
+    for (const site of sites.slice(3)) expect(sim.world.get(site, RoadSite).reservation).toBeNull();
+  });
+
   it('prefers the most pending cover away from another builder claim, then the nearer site', () => {
     const sim = roadSim();
     const sites = lineSites(sim);

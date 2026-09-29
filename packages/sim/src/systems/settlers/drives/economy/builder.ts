@@ -215,7 +215,6 @@ export function planBuilder(
     return roadCandidates === null ? null : pickRoad(roadCandidates, accepts);
   };
   const everyWall = (): InteractionCellIndex => targets.wallSiteCells;
-  const everyRoad = (): InteractionCellIndex => targets.roadSiteCells;
 
   // The damaged-wall list is checked first: most passes have none, and `wallsWait` is a site search.
   if (
@@ -252,15 +251,17 @@ export function planBuilder(
   // No site has a task this pass, so stand ready where the next one will appear: a site with a delivery
   // already walking in, else the current crew site, else the nearest. A builder has no other trade to
   // fall back to, and one that drifts off with the idle crowd pays the walk back for every delivery.
+  // Only a road site with stone on the way is waited at: waiting claims the site, and a claimed site is
+  // one a neighbour's finishing stone cannot pave and a supplied builder must pass over.
   const staging =
     nearestInTurn(
       (candidate) => hasInboundSupply(plan.inbound, candidate) && canStandAt(candidate),
       () => soloSitesAwaitingSupply(plan, 'wall'),
       () => soloSitesAwaitingSupply(plan, 'road'),
     ) ??
-    (crewSite !== null && canStandAt(crewSite) && inTurn(crewSite)
+    (crewSite !== null && !world.has(crewSite, RoadSite) && canStandAt(crewSite) && inTurn(crewSite)
       ? crewSite
-      : nearestInTurn(canStandAt, everyWall, everyRoad));
+      : nearestInTurn(canStandAt, everyWall, () => null));
   if (staging !== null) {
     stampAssignment(plan, staging, false);
     if (!holdSegment(plan, staging)) return false;
