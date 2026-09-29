@@ -116,7 +116,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     };
   }
 
-  /** A compact multi-value rule: a labelled segment strip with each choice's detail on hover. */
+  /** A compact multi-value rule: one row of label and segment strip, each choice's detail on hover. */
   function segmentedRule<T extends string>(
     label: string,
     choices: readonly Choice<T>[],
@@ -128,8 +128,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
         if (value !== null) change(value);
       },
     );
-    const title = document.createElement('div');
-    title.className = 'main-menu__lobby-option-label';
+    const title = document.createElement('span');
     title.textContent = label;
     const segments = segControl<string>(
       choices.map((choice) => ({ id: choice.value, label: choice.label })),
@@ -140,9 +139,9 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       },
     );
     segments.root.classList.add('main-menu__lobby-map');
-    const field = detailTipHost(segments.root, choices);
+    const row = detailTipRow(title, segments.root, choices);
     return {
-      elements: [title, field],
+      elements: [row],
       update(value: T | null, disabled: boolean): void {
         state.update(value, disabled);
         segments.setActive(value ?? '');
@@ -220,11 +219,15 @@ export function gameRuleControls(options: GameRuleControlOptions) {
 }
 
 /** The hovered or focused segment's detail in the shared menu bubble: the segment strip clips its own
- *  overflow, so the host wraps it. */
-function detailTipHost(segments: HTMLElement, choices: readonly RuleText[]): HTMLDivElement {
+ *  overflow, so the row hosts it. */
+function detailTipRow(
+  label: HTMLElement,
+  segments: HTMLElement,
+  choices: readonly RuleText[],
+): HTMLDivElement {
   const host = document.createElement('div');
-  host.className = 'main-menu__lobby-map-field main-menu__tip-host';
-  host.append(segments);
+  host.className = 'main-menu__lobby-option-row main-menu__lobby-map-field main-menu__tip-host';
+  host.append(label, segments);
   const buttons = [...segments.querySelectorAll('button')];
   const show = (event: Event): void => {
     const index = event.target instanceof HTMLButtonElement ? buttons.indexOf(event.target) : -1;

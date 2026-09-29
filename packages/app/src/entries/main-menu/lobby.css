@@ -548,18 +548,9 @@
   color: rgba(143, 184, 173, 0.7);
 }
 
-.main-menu__lobby-option-label {
-  font:
-    500 calc(var(--u) * 24) / 1 "Alegreya Sans",
-    system-ui,
-    sans-serif;
-  color: var(--text-body);
-}
-
 .main-menu__lobby-map .main-menu__seg-btn {
-  flex: 1;
   text-align: center;
-  padding: calc(var(--u) * 12) calc(var(--u) * 10);
+  padding: calc(var(--u) * 10) calc(var(--u) * 12);
 }
 
 .main-menu__lobby-map-field[data-tip]::after {
