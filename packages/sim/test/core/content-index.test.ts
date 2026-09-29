@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { contentIndex } from '../../src/core/content-index.js';
 import { testContent } from '../fixtures/content.js';
@@ -75,5 +75,41 @@ describe('contentIndex base-job chain', () => {
     });
     expect(index.atomicsByJob.get(HEIR_JOB)?.size).toBe(0);
     expect(index.harvestJobs.has(HEIR_JOB)).toBe(false);
+  });
+});
+
+describe('contentIndex class weapons', () => {
+  const VIKING = 1;
+  const CIVILIAN = 6;
+  const HUNTER = 15;
+  const HOUSE_BOW = 20;
+  const HUNTER_BOW = 19;
+
+  it('never arms a civilian with the wall bow its weapons.ini row names the civilian job on', () => {
+    const content = parseContentSet({
+      ...testContent(),
+      weapons: [
+        {
+          typeId: HOUSE_BOW,
+          id: 'house_bow',
+          tribeType: VIKING,
+          jobType: CIVILIAN,
+          munitionType: 1,
+          speed: 7,
+        },
+        {
+          typeId: HUNTER_BOW,
+          id: 'hunter_bow',
+          tribeType: VIKING,
+          jobType: HUNTER,
+          munitionType: 1,
+          speed: 7,
+        },
+      ],
+    });
+    const index = contentIndex(content);
+    expect(index.weaponsByTribeAndJob.get(VIKING)?.get(CIVILIAN)).toBeUndefined();
+    expect(index.weaponsByTribeAndJob.get(VIKING)?.get(HUNTER)?.id).toBe('hunter_bow');
+    expect(index.houseBowByTribe.get(VIKING)?.id).toBe('house_bow');
   });
 });

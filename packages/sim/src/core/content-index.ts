@@ -117,7 +117,9 @@ export interface ContentIndex {
   readonly mergedRecipeByBuilding: ReadonlyMap<number, Recipe>;
   /** The worn/stored weapon type key; later rows replace earlier definitions of the same type. */
   readonly weaponsByTribeAndTypeId: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
-  /** How a jobbed combatant binds its class weapon; first-wins per pair in source order. */
+  /** How a jobbed combatant binds its class weapon; first-wins per pair in source order. The wall bow is
+   *  left out: its row names the civilian job, but only a defence-mode building fires it, so a civilian in
+   *  the open stays unarmed. */
   readonly weaponsByTribeAndJob: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
   /** Which weapon a craftable good is (`weapons.ini` `goodtype`); first-wins per pair in source order. */
   readonly weaponByTribeAndGoodType: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
@@ -272,7 +274,7 @@ function buildIndex(content: ContentSet): ContentIndex {
       (w) => w.typeId,
     ),
     weaponsByTribeAndJob: byPairKey(
-      content.weapons,
+      content.weapons.filter((w) => w.id !== HOUSE_BOW_WEAPON_ID),
       (w) => w.tribeType,
       (w) => w.jobType,
     ),
