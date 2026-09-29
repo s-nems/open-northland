@@ -94,8 +94,8 @@ export interface BuildingOrdersModel {
   readonly hire: { readonly jobType: number; readonly label: string } | null;
 }
 
-/** How Magazyn lists the shelves: a store under category tabs, a workshop its inputs over its
- *  products, anything else one list. */
+/** How Magazyn lists the shelves: a store and the barracks' armory under category tabs, a workshop
+ *  its inputs over its products, anything else one list. */
 export type StockLayout = 'tabs' | 'split' | 'list';
 
 /** An agreement this house offers a visiting trader: the trader gives one side and takes the other. */
@@ -300,7 +300,7 @@ function markedStock(
 }
 
 function stockLayoutOf(def: BuildingDef | undefined, rows: readonly StockRow[]): StockLayout {
-  if (def?.kind === 'storage') return 'tabs';
+  if (def?.kind === 'storage' || def?.kind === 'training') return 'tabs';
   const products = rows.filter((row) => row.product === true).length;
   return products > 0 && products < rows.length ? 'split' : 'list';
 }

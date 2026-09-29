@@ -480,6 +480,17 @@ export const plGame = {
       pickerAdd: '{good} · dodaj do listy',
       pickerEmpty: 'Ten pojazd nie wozi nic z tej kategorii',
     },
+    goodEffect: {
+      heal: 'Leczy {pct}% zdrowia',
+      hunger: 'Zaspokaja {pct}% głodu',
+      fatigue: 'Usuwa {pct}% zmęczenia',
+      damageDealt: '+{pct}% obrażeń',
+      criticalHit: '{chance}% szans na cios ×{times}',
+      damageTaken: '-{pct}% otrzymanych obrażeń',
+      walk: 'Szybszy marsz',
+      uses: 'Łyków: {count}',
+      lasting: 'Nie zużywa się',
+    },
     buildingPanel: {
       prevTooltip: 'Poprzedni budynek tego typu · Shift+Tab',
       nextTooltip: 'Następny budynek tego typu · Tab',

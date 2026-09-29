@@ -498,6 +498,17 @@ export const enGame = {
       pickerAdd: '{good} · add to the list',
       pickerEmpty: 'This vehicle carries nothing of this category',
     },
+    goodEffect: {
+      heal: 'Heals {pct}% health',
+      hunger: 'Stills {pct}% hunger',
+      fatigue: 'Removes {pct}% fatigue',
+      damageDealt: '+{pct}% damage',
+      criticalHit: '{chance}% chance of a ×{times} blow',
+      damageTaken: '-{pct}% damage taken',
+      walk: 'Faster march',
+      uses: '{count} sips',
+      lasting: 'Never wears out',
+    },
     buildingPanel: {
       prevTooltip: 'Previous building of this type · Shift+Tab',
       nextTooltip: 'Next building of this type · Tab',

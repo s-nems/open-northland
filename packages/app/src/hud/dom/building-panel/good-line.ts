@@ -58,12 +58,27 @@ export function createGoodLine(icons: GoodIconPainter): GoodLine {
   }
   let good = '';
   let needGoods = '';
+  let needTexts = '';
   let chips: HTMLElement[] = [];
+
+  /** Show the ingredients only when all of them fit beside the name: a part of the list would read
+   *  as the whole recipe. A wrapped chip sits below the first; the tooltip still lists them all. */
+  const fitNeeds = (): void => {
+    const top = chips[0]?.offsetTop;
+    setClass(
+      needs,
+      'on-cargo-row__needs--clipped',
+      chips.some((chip) => chip.offsetTop !== top),
+    );
+  };
+  // The name's width and the panel's first layout move the room left; a hidden chip keeps its box.
+  let resizes: ResizeObserver | null = null;
 
   const paintNeeds = (list: readonly GoodNeedModel[]): void => {
     const key = list.map((need) => need.goodId ?? '').join();
     if (key !== needGoods) {
       needGoods = key;
+      needTexts = '';
       chips = list.map((need) => {
         const chip = element('span', 'on-need', `${goodIconMarkup(NEED_ICON_PX)}<b></b>`);
         const icon = chip.querySelector('.on-good__frame');
@@ -71,6 +86,10 @@ export function createGoodLine(icons: GoodIconPainter): GoodLine {
         return chip;
       });
       needs.replaceChildren(...chips);
+      if (resizes === null && chips.length > 0) {
+        resizes = new ResizeObserver(fitNeeds);
+        resizes.observe(needs);
+      }
     }
     list.forEach((need, index) => {
       const chip = chips[index];
@@ -80,6 +99,11 @@ export function createGoodLine(icons: GoodIconPainter): GoodLine {
       setClass(chip, 'on-need--short', need.short);
       setTip(chip, need.tooltip);
     });
+    const texts = list.map((need) => need.text).join();
+    if (texts !== needTexts) {
+      needTexts = texts;
+      fitNeeds();
+    }
   };
 
   return {
@@ -102,6 +126,11 @@ export function createGoodLine(icons: GoodIconPainter): GoodLine {
       setClass(item, 'on-cargo-row--danger', model.tone === 'danger');
     },
   };
+}
+
+/** A line's tooltip with the good's carried effect under it, when it has one. */
+export function withEffect(tooltip: string, effect: string): string {
+  return effect === '' ? tooltip : `${tooltip}\n${effect}`;
 }
 
 /** Keep one line per key in `list`, rebuilt only when the keys change; returns the lines in order. */

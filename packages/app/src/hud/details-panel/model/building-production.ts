@@ -18,6 +18,7 @@ import {
   recipeOutputs,
   type UnitPanelModelContext,
 } from './context.js';
+import { goodEffectText } from './good-effect.js';
 
 /** One product row of a workshop's Produkcja section. */
 export interface ProductionRow {
@@ -25,6 +26,8 @@ export interface ProductionRow {
   /** The product's string id - the row's icon key. */
   readonly goodId?: string;
   readonly label: string;
+  /** What the product does when carried, for a draught or an amulet; otherwise empty. */
+  readonly effect: string;
   /** The highest progress among the in-flight `Production.cycles` crafting this product; 0 when none
    *  runs, since a finished batch deposits and leaves the list. */
   readonly pct: number;
@@ -164,10 +167,12 @@ export function productionModel(
     inputsByProduct.set(product, recipeInputs(ctx, recipe.inputs, held));
   }
   const rows = outputs.map((o) => {
-    const goodId = goodDef(ctx, o.goodType)?.id;
+    const good = goodDef(ctx, o.goodType);
+    const goodId = good?.id;
     return {
       goodType: o.goodType,
       label: o.amount > 1 ? `${goodLabel(ctx, o.goodType)} ×${o.amount}` : goodLabel(ctx, o.goodType),
+      effect: goodEffectText(good?.equip),
       pct: bestPct.get(o.goodType) ?? 0,
       running: bestPct.has(o.goodType),
       inputs: inputsByProduct.get(o.goodType) ?? [],
@@ -213,6 +218,7 @@ function livestockHerdRows(
     rows.push({
       goodType: species,
       label: `${goodLabel(ctx, species)} ${herd}${cap === undefined ? '' : `/${cap}`}`,
+      effect: '',
       pct: bestPct.get(species) ?? 0,
       running: bestPct.has(species),
       // What one breeding costs.

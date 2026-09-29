@@ -5,7 +5,7 @@ import { button, element, setAttribute, setHidden, write } from '../parts/dom.js
 import { meterFill } from '../parts/meter-row.js';
 import { createSection } from '../parts/section.js';
 import type { BuildingPanelDeps } from './actions.js';
-import { createGoodLine, type GoodLine, syncLines } from './good-line.js';
+import { createGoodLine, type GoodLine, syncLines, withEffect } from './good-line.js';
 
 /** A list of this many products or more folds to the batches in flight behind "rozwiń". */
 export const PRODUCTION_FOLD_FROM = 4;
@@ -85,7 +85,10 @@ export function createProductionSection(deps: BuildingPanelDeps): ProductionSect
         label: row.label,
         value: `${row.pct}%`,
         fill: `${row.pct}%`,
-        tooltip: inputs === '' ? row.label : formatMessage(copy.needs, { good: row.label, inputs }),
+        tooltip: withEffect(
+          inputs === '' ? row.label : formatMessage(copy.needs, { good: row.label, inputs }),
+          row.effect,
+        ),
         muted: row.pct === 0,
         needs: row.inputs.map((input) => ({
           goodId: input.goodId,

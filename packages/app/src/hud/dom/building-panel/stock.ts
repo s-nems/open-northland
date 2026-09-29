@@ -9,7 +9,7 @@ import { meterFill } from '../parts/meter-row.js';
 import { createSection } from '../parts/section.js';
 import { keptRanking, OVERVIEW_TAB, stockStripGlyphs, stockTabRows } from '../parts/stock-browser.js';
 import type { BuildingPanelDeps } from './actions.js';
-import { createGoodLine, type GoodLine, syncLines } from './good-line.js';
+import { createGoodLine, type GoodLine, syncLines, withEffect } from './good-line.js';
 
 /** Design px of one stock line (foundation.css `.on-cargo-row`), and the lines a list squeezed to fit
  *  the plane still shows. */
@@ -116,12 +116,14 @@ export function createStockSection(deps: BuildingPanelDeps): StockSection {
         label: row.label,
         value: stockAmount(row.amount, row.capacity),
         fill: meterFill(row.amount, capacity),
-        tooltip:
+        tooltip: withEffect(
           row.alert === undefined
             ? words
             : formatMessage(row.alert === 'waiting' ? copy.stockWaiting : copy.stockFull, {
                 good: row.label,
               }),
+          row.effect ?? '',
+        ),
         muted: row.amount <= 0 && row.alert === undefined,
         ...(row.alert === undefined ? {} : { tone: row.alert === 'waiting' ? 'warning' : 'danger' }),
       });

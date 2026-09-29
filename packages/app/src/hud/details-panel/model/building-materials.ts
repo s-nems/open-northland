@@ -16,12 +16,15 @@ import {
   goodLabel,
   type UnitPanelModelContext,
 } from './context.js';
+import { goodEffectText } from './good-effect.js';
 
 export interface StockRow {
   readonly goodType: number;
   /** The good's string id (stable across content sets) - the key the HUD resolves its icon by. */
   readonly goodId?: string;
   readonly label: string;
+  /** What the good does when carried, for a draught or an amulet. */
+  readonly effect?: string;
   readonly amount: number;
   /** The good's declared store ceiling (its `stock` slot capacity) - the row reads "7.0 / 25.0". */
   readonly capacity?: number;
@@ -124,7 +127,9 @@ export function stockRows(
       goodDef(ctx, slot.goodType)?.vehicleHouse === undefined,
   );
   return slots.map((slot) => {
-    const goodId = goodDef(ctx, slot.goodType)?.id;
+    const good = goodDef(ctx, slot.goodType);
+    const goodId = good?.id;
+    const effect = goodEffectText(good?.equip);
     return {
       goodType: slot.goodType,
       // Shown by the hover tooltip only; the drawn row is just the icon and the amount.
@@ -139,6 +144,7 @@ export function stockRows(
       category: goodCategoryTab(goodId),
       capacity: slot.capacity,
       ...(goodId !== undefined ? { goodId } : {}),
+      ...(effect !== '' ? { effect } : {}),
     };
   });
 }

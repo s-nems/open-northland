@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { JOB_ARCHER, JOB_BUILDER, JOB_CARRIER, JOB_TRADER } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import {
+  BUILDING_BARRACKS,
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
@@ -312,8 +313,9 @@ describe('building panel orders and alerts', () => {
     expect(buildingModel([buildingEntity(1, BUILDING_HOME_00)], 1).orders?.hire).toBeNull();
   });
 
-  it("lists a store under tabs and a workshop's inputs over its products", () => {
+  it("lists a store and the barracks under tabs and a workshop's inputs over its products", () => {
     expect(buildingModel([buildingEntity(1, BUILDING_HEADQUARTERS)], 1).stockLayout).toBe('tabs');
+    expect(buildingModel([buildingEntity(1, BUILDING_BARRACKS)], 1).stockLayout).toBe('tabs');
     const mill = buildingModel([buildingEntity(1, BUILDING_MILL)], 1);
     expect(mill.stockLayout).toBe('split');
     expect(mill.stock.map((row) => [row.goodType, row.product === true])).toEqual([

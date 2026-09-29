@@ -84,6 +84,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
         goodType,
         ...good(goodType),
         label: 'Warm',
+        effect: 'Warm',
         pct: 50 * goodType,
         running: goodType === 1,
         inputs: [0, 1].map((input) => ({
