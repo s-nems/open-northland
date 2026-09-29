@@ -98,7 +98,7 @@ export const animalFrightSystem: System = (world, ctx) => {
       terrain,
       blocked,
       here,
-      f.from,
+      [f.from],
       FRIGHT_STEP_NODES,
       withinTerritory(world, ctx, terrain, e, here),
     );

@@ -33,7 +33,7 @@ const GUARDS: readonly (readonly [number, number])[] = [
  *  east tower outlasts the raiders battering it from every side. */
 const RAIDER_COLUMNS = [29, 30, 31, 32];
 const RAIDER_ROW_FIRST = 8;
-const RAIDER_ROW_LAST = 11;
+const RAIDER_ROW_LAST = 10;
 
 const { Building, DefenceMode, Health, Owner, Resting, Settler, Sheltering } = components;
 

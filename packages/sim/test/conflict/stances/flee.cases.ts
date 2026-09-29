@@ -8,15 +8,38 @@ import {
   PathRoute,
   Position,
   Settler,
+  WalkFacing,
 } from '../../../src/components/index.js';
 import { fx, ONE } from '../../../src/core/fixed.js';
+import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, type NodeId, Simulation } from '../../../src/index.js';
-import { FLEE_CHECK_STRIDE_TICKS } from '../../../src/systems/conflict/flee.js';
+import {
+  FLEE_CHECK_STRIDE_TICKS,
+  FLEE_REPATH_CADENCE,
+  FLEE_STEP_NODES,
+} from '../../../src/systems/conflict/flee.js';
 import { combatSystem } from '../../../src/systems/index.js';
 import { movementSystem } from '../../../src/systems/movement/system.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
+import { hexNodeDistance } from '../../../src/systems/spatial/metric.js';
+import { entityNode } from '../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../fixtures/content.js';
-import { combatant, ctxOf, fleeCheckCtxOf, grassMap, P0, P1, tileOf } from './support.js';
+import {
+  cell,
+  combatant,
+  combatantAtNode,
+  ctxOf,
+  fleeCheckCtxOf,
+  grassMap,
+  P0,
+  P1,
+  tileOf,
+} from './support.js';
+
+/** How long the ringed civilian is watched: several flee re-aims. */
+const RINGED_WATCH_TICKS = 200;
+/** Heading changes a straight escape through a gap may take: setting off, and bending along the way. */
+const RINGED_MAX_TURNS = 4;
 
 describe('FLEE - civilians run from danger', () => {
   it('stamps Fleeing and heads AWAY from the nearest threat', () => {
@@ -61,6 +84,65 @@ describe('FLEE - civilians run from danger', () => {
     sim.world.mut(civ, Settler).hunger = ONE; // pin hunger at ONE (collapse)
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(false); // yielded to the need despite the threat
+  });
+
+  it('a civilian ringed by raiders runs out through a gap, not back and forth between them', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(60, 60) });
+    const civ = combatant(sim, 30, 30, P0, MILITARY_MODE.FLEE);
+    // Uneven distances, so running from the nearest raider alone leads toward the next.
+    const raiders = [
+      combatant(sim, 25, 30, P1, MILITARY_MODE.IGNORE),
+      combatant(sim, 36, 30, P1, MILITARY_MODE.IGNORE),
+      combatant(sim, 30, 24, P1, MILITARY_MODE.IGNORE),
+      combatant(sim, 30, 37, P1, MILITARY_MODE.IGNORE),
+    ];
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const nodeOf = (e: Entity): NodeId => entityNode(sim.world, terrain, e);
+    const nearestRaider = (): number =>
+      Math.min(...raiders.map((r) => hexNodeDistance(terrain, nodeOf(civ), nodeOf(r))));
+    const origin = nodeOf(civ);
+    const start = nearestRaider();
+    let turns = 0;
+    let heading = sim.world.tryGet(civ, WalkFacing)?.target;
+    for (let i = 0; i < RINGED_WATCH_TICKS; i++) {
+      sim.step();
+      const now = sim.world.tryGet(civ, WalkFacing)?.target;
+      if (now !== heading) turns++;
+      heading = now;
+    }
+    expect(turns).toBeLessThanOrEqual(RINGED_MAX_TURNS);
+    expect(nearestRaider()).toBeGreaterThanOrEqual(start);
+    expect(hexNodeDistance(terrain, origin, nodeOf(civ))).toBeGreaterThan(FLEE_STEP_NODES); // out of the ring
+  });
+
+  it('a raider stepping onto the escape line turns the run away from it', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(60, 60) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const civ = combatant(sim, 30, 30, P0, MILITARY_MODE.FLEE);
+    combatant(sim, 28, 30, P1, MILITARY_MODE.IGNORE);
+    const from = fleeCheckCtxOf(sim, civ).tick;
+    combatSystem(sim.world, { ...ctxOf(sim), tick: from });
+    const first = sim.world.get(civ, MoveGoal).cell;
+    // Halfway along the run, where it cannot be passed at a distance.
+    const here = terrain.coordsOf(cell(sim, 30, 30));
+    const aim = terrain.coordsOf(first);
+    const raider = combatantAtNode(
+      sim,
+      Math.trunc((here.x + aim.x) / 2),
+      Math.trunc((here.y + aim.y) / 2),
+      P1,
+      MILITARY_MODE.IGNORE,
+    );
+    const raiderNode = entityNode(sim.world, terrain, raider);
+
+    combatSystem(sim.world, { ...ctxOf(sim), tick: from + FLEE_REPATH_CADENCE });
+
+    const goal = sim.world.get(civ, MoveGoal).cell;
+    expect(hexNodeDistance(terrain, goal, raiderNode)).toBeGreaterThan(
+      hexNodeDistance(terrain, first, raiderNode),
+    );
   });
 
   it('a calm civilian with a raider in sight flees on its next check tick and not before', () => {

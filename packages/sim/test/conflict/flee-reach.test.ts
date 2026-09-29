@@ -22,7 +22,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { LayeredBlocks } from '../../src/nav/block-overlay.js';
-import type { TerrainGraph } from '../../src/nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import { CombatIndex } from '../../src/systems/conflict/combat-index.js';
 import { FLEE_REPATH_CADENCE, fleeDestination } from '../../src/systems/conflict/flee.js';
 import {
@@ -34,7 +34,7 @@ import { firingBuildings, isFleeThreat, SIGHT_RADIUS_NODES } from '../../src/sys
 import { dynamicBlockOverlay, stampResourceFootprintData } from '../../src/systems/footprint/index.js';
 import { combatSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
-import { manhattan } from '../../src/systems/spatial/metric.js';
+import { hexNodeDistance, manhattan } from '../../src/systems/spatial/metric.js';
 import { entityNode } from '../../src/systems/spatial/nodes.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, fleeCheckCtxOf } from '../fixtures/context.js';
@@ -190,11 +190,25 @@ describe('fleeDestination - only a cell a route can reach', () => {
     const terrain = terrainOf(s);
     const here = terrain.nodeAt(30, 30);
     const threat = terrain.nodeAt(34, 30);
-    const best = fleeDestination(terrain, empty, here, threat);
-    const next = fleeDestination(terrain, new LayeredBlocks([new Set([best])]), here, threat);
+    const best = fleeDestination(terrain, empty, here, [threat]);
+    const next = fleeDestination(terrain, new LayeredBlocks([new Set([best])]), here, [threat]);
     expect(next).not.toBe(best);
     expect(next).not.toBe(here);
     expect(manhattan(terrain, next, threat)).toBeGreaterThan(manhattan(terrain, here, threat));
+  });
+
+  it('runs from the nearest threat without running at the next one', () => {
+    const s = sim();
+    const terrain = terrainOf(s);
+    const here = terrain.nodeAt(30, 30);
+    const threats = [terrain.nodeAt(26, 30), terrain.nodeAt(40, 22), terrain.nodeAt(40, 38)];
+    const clearance = (at: NodeId): number =>
+      Math.min(...threats.map((t) => hexNodeDistance(terrain, at, t)));
+    const [nearest] = threats;
+    if (nearest === undefined) throw new Error('threats expected');
+    // Running from the nearest one alone ends nearer another than the runner stands now.
+    expect(clearance(fleeDestination(terrain, empty, here, [nearest]))).toBeLessThan(clearance(here));
+    expect(clearance(fleeDestination(terrain, empty, here, threats))).toBeGreaterThan(clearance(here));
   });
 
   it('never aims across water at the other bank', () => {
@@ -202,7 +216,7 @@ describe('fleeDestination - only a cell a route can reach', () => {
     const s = sim(waterColumnMap(20, 4, 10));
     const terrain = terrainOf(s);
     const here = terrain.nodeAt(15, 2);
-    const dest = fleeDestination(terrain, empty, here, terrain.nodeAt(1, 2));
+    const dest = fleeDestination(terrain, empty, here, [terrain.nodeAt(1, 2)]);
     expect(terrain.componentOf(dest)).toBe(terrain.componentOf(here));
   });
 });
@@ -213,12 +227,9 @@ describe('FLEE - aiming past trees and houses', () => {
     const terrain = terrainOf(s);
     const civ = combatantAtNode(s, 30, 30, P0, MILITARY_MODE.FLEE, { jobType: CIVILIAN_JOB });
     combatantAtNode(s, 34, 30, P1, MILITARY_MODE.IGNORE);
-    const best = fleeDestination(
-      terrain,
-      new LayeredBlocks([]),
-      terrain.nodeAt(30, 30),
+    const best = fleeDestination(terrain, new LayeredBlocks([]), terrain.nodeAt(30, 30), [
       terrain.nodeAt(34, 30),
-    );
+    ]);
     const { x, y } = terrain.coordsOf(best);
     treeAtNode(s, x, y);
 
@@ -234,12 +245,9 @@ describe('FLEE - aiming past trees and houses', () => {
     const terrain = terrainOf(s);
     const civ = combatantAtNode(s, 30, 30, P0, MILITARY_MODE.FLEE, { jobType: CIVILIAN_JOB });
     combatantAtNode(s, 34, 30, P1, MILITARY_MODE.IGNORE);
-    const best = fleeDestination(
-      terrain,
-      new LayeredBlocks([]),
-      terrain.nodeAt(30, 30),
+    const best = fleeDestination(terrain, new LayeredBlocks([]), terrain.nodeAt(30, 30), [
       terrain.nodeAt(34, 30),
-    );
+    ]);
     const { x, y } = terrain.coordsOf(best);
     buildingAtNode(s, HOUSE, x - 1, y, P0); // the middle wall on the best cell
     expect(dynamicBlockOverlay(s.world, ctxOf(s), terrain).has(best)).toBe(true);
@@ -315,7 +323,7 @@ describe('FLEE and fright - a cornered or refused run waits for the cadence', ()
       terrain,
       new LayeredBlocks([]),
       terrain.nodeAt(30, 30),
-      scare,
+      [scare],
       FRIGHT_STEP_NODES,
     );
     const { x, y } = terrain.coordsOf(best);
