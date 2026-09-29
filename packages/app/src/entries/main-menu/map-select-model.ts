@@ -104,8 +104,9 @@ export interface MapSelectMemory {
   selectedId: string | null;
 }
 
-export function initialMapSelectMemory(): MapSelectMemory {
-  return { filter: 'all', query: '', selectedId: null };
+/** New Game opens on free play; a room shows no tab bar, so it keeps every map under `all`. */
+export function initialMapSelectMemory(filter: MapFilter): MapSelectMemory {
+  return { filter, query: '', selectedId: null };
 }
 
 const has = (item: MapSelectItem, code: number): boolean => item.types.includes(code);

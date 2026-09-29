@@ -145,7 +145,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
 
   let screen: MenuScreen = 'main';
   // Screen state that outlives the screens themselves, so a round trip keeps the filter and seats.
-  const mapSelectMemory = initialMapSelectMemory();
+  const mapSelectMemory = initialMapSelectMemory('free');
   const settingsMemory = initialSettingsMemory();
   const rosters = new Map<string, RosterState>();
   let lobbyMap: MapSelectItem | null = null;

@@ -12,7 +12,7 @@ interface CreatePanelOptions {
  *  the screen drops the relay connection. */
 export function createPanel(options: CreatePanelOptions) {
   const card = createRoomCard({ create: options.create, pickMap: () => showMapList(true) });
-  const memory = initialMapSelectMemory();
+  const memory = initialMapSelectMemory('all');
   let chosen: MapSelectItem | null = null;
   const choose = (item: MapSelectItem | null): void => {
     chosen = item;
