@@ -5,27 +5,26 @@ import { loadTribeEmblems } from './tribe-emblems.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const STAR_PATH = 'M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7-6.2-3.8-6.2 3.8 1.6-7L2 9.5l7.1-.6z';
-/** Gap in CSS pixels between the button and its opened list. */
+/** Gap in CSS pixels between the button and its opened list, and between the list and the viewport edge. */
 const MENU_GAP_PX = 4;
 
-/** The recommended civilization's mark; its tooltip and accessible name say what it means. */
+/** The map's own civilization's mark; the note beside it says what it means. */
 function star(): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-hidden', 'true');
   svg.classList.add('lobby-tribe__star');
-  const title = document.createElementNS(SVG_NS, 'title');
-  title.textContent = messages().mainMenu.lobby.tribeRecommended;
   const path = document.createElementNS(SVG_NS, 'path');
   path.setAttribute('d', STAR_PATH);
-  svg.append(title, path);
+  svg.append(path);
   return svg;
 }
 
-/** The civilization's headquarters thumbnail; its initial stands in until the content draws it. */
+/** The civilization's headquarters thumbnail; its initial stands in until the content draws it. The
+ *  name is carried by the surrounding control, so the picture stays out of the accessible name. */
 function emblem(tribe: number): HTMLElement {
   const box = node('span', 'lobby-tribe__emblem', tribeName(tribe).slice(0, 1));
-  box.dataset.tribe = String(tribe);
+  box.setAttribute('aria-hidden', 'true');
   void loadTribeEmblems().then((urls) => {
     const url = urls.get(tribe);
     if (url === undefined) return;
@@ -33,7 +32,6 @@ function emblem(tribe: number): HTMLElement {
     image.src = url;
     image.alt = '';
     box.replaceChildren(image);
-    box.classList.add('has-image');
   });
   return box;
 }
@@ -44,7 +42,7 @@ function caption(tribe: number, authored: number): HTMLElement {
   root.append(node('span', 'lobby-tribe__name', tribeName(tribe)));
   if (tribe === authored) {
     const note = node('span', 'lobby-tribe__note');
-    note.append(star(), messages().mainMenu.lobby.tribeRecommended);
+    note.append(star(), messages().mainMenu.lobby.tribeMapDefault);
     root.append(note);
   }
   return root;
@@ -70,18 +68,20 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
   menu.popover = 'auto';
   menu.setAttribute('role', 'listbox');
   menu.setAttribute('aria-label', copy.tribe);
+  // The button invokes the list natively, so a second click closes it instead of light-dismissing
+  // and reopening it.
+  button.popoverTargetElement = menu;
   const options = CIVILIZATION_TRIBES.map((tribe) => {
     const option = node('button', 'lobby-tribe__option');
     option.type = 'button';
     option.setAttribute('role', 'option');
-    option.dataset.tribe = String(tribe);
     option.append(emblem(tribe), caption(tribe, authored));
     option.addEventListener('click', () => {
       menu.hidePopover();
       if (tribe !== current) change(tribe);
     });
     menu.append(option);
-    return option;
+    return { tribe, option };
   });
   root.append(label, button, menu);
 
@@ -93,32 +93,45 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
       below >= height + MENU_GAP_PX || below >= anchor.top
         ? anchor.bottom + MENU_GAP_PX
         : anchor.top - MENU_GAP_PX - height;
+    const left = Math.min(anchor.left, window.innerWidth - menu.offsetWidth - MENU_GAP_PX);
     menu.style.top = `${Math.max(MENU_GAP_PX, top)}px`;
-    menu.style.left = `${anchor.left}px`;
+    menu.style.left = `${Math.max(MENU_GAP_PX, left)}px`;
   };
-  button.addEventListener('click', () => menu.togglePopover());
-  menu.addEventListener('toggle', (event) => {
-    const open = (event as ToggleEvent).newState === 'open';
-    button.setAttribute('aria-expanded', String(open));
-    if (!open) return;
-    place();
-    options.find((option) => option.classList.contains('is-current'))?.focus();
+  // Esc anywhere closes the open list before the menu reads it as back-navigation, even with focus
+  // outside the picker (a click on the list's padding, a Tab past its last entry).
+  const onKeydown = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape') return;
+    event.stopPropagation();
+    event.preventDefault();
+    menu.hidePopover();
+    button.focus();
+  };
+  menu.addEventListener('beforetoggle', (event) => {
+    // The next frame runs once the opened list has a size, and before it is first painted.
+    if (event.newState === 'open') requestAnimationFrame(place);
   });
-  // Esc closes the list here, before the menu reads it as back-navigation.
-  root.addEventListener('keydown', (event) => {
-    if (!menu.matches(':popover-open')) return;
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      event.preventDefault();
-      menu.hidePopover();
-      button.focus();
-      return;
+  menu.addEventListener('toggle', (event) => {
+    const open = event.newState === 'open';
+    button.setAttribute('aria-expanded', String(open));
+    if (open) {
+      window.addEventListener('keydown', onKeydown, true);
+      window.addEventListener('scroll', place, true);
+      window.addEventListener('resize', place);
+      options.find(({ tribe }) => tribe === current)?.option.focus();
+    } else {
+      window.removeEventListener('keydown', onKeydown, true);
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
     }
+  });
+  menu.addEventListener('keydown', (event) => {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     event.preventDefault();
-    const at = options.indexOf(document.activeElement as HTMLButtonElement);
+    const at = options.findIndex(({ option }) => option === document.activeElement);
     const step = event.key === 'ArrowDown' ? 1 : -1;
-    options[(at + step + options.length) % options.length]?.focus();
+    const next =
+      at === -1 ? (step > 0 ? 0 : options.length - 1) : (at + step + options.length) % options.length;
+    options[next]?.option.focus();
   });
 
   return {
@@ -133,19 +146,17 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
         buttonEmblem = next;
       }
       current = tribe;
-      const offMap = tribe !== authored;
-      root.classList.toggle('is-off-map', offMap);
       const name = tribeName(tribe);
       button.setAttribute('aria-label', `${copy.tribe}: ${name}`);
       button.title = `${
-        offMap
-          ? `${name}. ${formatMessage(copy.tribeMapChoice, { tribe: tribeName(authored) })}.`
-          : `${name} (${copy.tribeRecommended})`
+        tribe === authored
+          ? `${name} (${copy.tribeMapDefault})`
+          : `${name}. ${formatMessage(copy.tribeMapChoice, { tribe: tribeName(authored) })}.`
       }\n${copy.tribeTitle}`;
       button.disabled = disabled;
       if (disabled && menu.matches(':popover-open')) menu.hidePopover();
-      for (const option of options) {
-        const selected = option.dataset.tribe === String(tribe);
+      for (const { tribe: entry, option } of options) {
+        const selected = entry === tribe;
         option.classList.toggle('is-current', selected);
         option.setAttribute('aria-selected', String(selected));
       }

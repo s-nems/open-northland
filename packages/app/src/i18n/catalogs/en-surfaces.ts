@@ -92,11 +92,11 @@ export const enSurfaces = {
       overseerTaken: 'You oversee',
       teamColour: 'Team colour',
       teamColourLocked: 'this map fixes its colours',
-      tribe: 'Civilization',
-      tribeRecommended: 'map default',
+      tribe: 'Nation',
+      tribeMapDefault: 'map default',
       tribeMapChoice: 'The map recommends {tribe}',
       tribeTitle:
-        'The civilization this seat plays: its settlers and buildings take that people. The map was designed for the recommended one.',
+        'The nation this seat plays: its settlers and buildings take that people. The map was designed for the starred one.',
       settingsTitle: 'Match settings',
       mapLabel: 'Map',
       mapModes: {

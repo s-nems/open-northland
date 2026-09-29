@@ -196,6 +196,18 @@ function pickCanonicalBuildingRow(
   return best;
 }
 
+/** The one `buildingBobs` row a tribe's building of `typeId` draws, chosen as the world binding chooses it. */
+export function canonicalBuildingRow(
+  rows: readonly BuildingBobRow[],
+  tribeId: number,
+  typeId: number,
+): BuildingBobRow | undefined {
+  const list = rowsByType(rows, tribeId, (row) => row.typeId === typeId).get(typeId);
+  return list === undefined
+    ? undefined
+    : pickCanonicalBuildingRow(typeId, list, preferredPaletteFor(rows, tribeId));
+}
+
 /**
  * Resolve a row's `(bmd, palette)` to the atlas family it draws from: `{}` = the default building layer (a
  * bare-id ref), `{ layer }` = a loaded named family, `null` = an unloaded family the caller must drop,

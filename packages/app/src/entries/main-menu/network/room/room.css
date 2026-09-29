@@ -102,6 +102,7 @@
 }
 /* The civilization button matches the room's select height. */
 .network-room__seat .lobby-tribe__button {
+  align-self: start;
   padding: calc(var(--u) * 2);
   border-width: 1px;
 }

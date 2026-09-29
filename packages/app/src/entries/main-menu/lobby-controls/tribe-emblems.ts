@@ -1,13 +1,11 @@
 import { CIVILIZATION_TRIBES } from '@open-northland/data';
 import type { AtlasManifest } from '@open-northland/render';
+import { tribeEmblemRows } from '../../../content/building-gfx/emblems.js';
 import { servedAtlasStem } from '../../../content/ir/joins.js';
 import { loadIr } from '../../../content/ir/load.js';
-import type { ContentIr } from '../../../content/ir/rows.js';
+import type { BuildingBobRow } from '../../../content/ir/rows.js';
 import { fetchJsonOrNull } from '../../../content/net.js';
 
-/** The building whose sprite stands for a civilization in the lobby: every civilization founds one. */
-const EMBLEM_BUILDING = 'headquarters';
-const EMBLEM_LEVEL = 0;
 /** Square edge in device pixels the thumbnail is painted at; the CSS box scales it down. */
 const EMBLEM_PX = 128;
 
@@ -16,27 +14,28 @@ export type TribeEmblems = ReadonlyMap<number, string>;
 
 let emblems: Promise<TribeEmblems> | null = null;
 
-/** Loaded once per page from the served content; resolves empty when the content is missing. */
+/** Loaded once per page from the served content. Absent content resolves empty and is retried by the
+ *  next caller, like the IR it reads. */
 export function loadTribeEmblems(): Promise<TribeEmblems> {
-  emblems ??= loadIr().then(async (ir) => {
+  if (emblems !== null) return emblems;
+  const pending = loadIr().then(async (ir) => {
+    if (ir === null) {
+      emblems = null;
+      return new Map<number, string>();
+    }
+    const rows = tribeEmblemRows(ir, CIVILIZATION_TRIBES);
     const entries = await Promise.all(
-      CIVILIZATION_TRIBES.map(async (tribe) => {
-        const url = ir === null ? null : await emblemUrl(ir, tribe).catch(() => null);
-        return [tribe, url] as const;
-      }),
+      [...rows].map(async ([tribe, row]) => [tribe, await emblemUrl(row).catch(() => null)] as const),
     );
     return new Map(entries.filter((entry): entry is readonly [number, string] => entry[1] !== null));
   });
-  return emblems;
+  emblems = pending;
+  return pending;
 }
 
-async function emblemUrl(ir: ContentIr, tribe: number): Promise<string | null> {
-  const typeId = ir.buildings?.find((row) => row.id === EMBLEM_BUILDING)?.typeId;
-  const bob = ir.buildingBobs?.find(
-    (row) => row.tribeId === tribe && row.typeId === typeId && row.level === EMBLEM_LEVEL,
-  );
-  const stem = bob === undefined ? undefined : servedAtlasStem(bob);
-  if (bob === undefined || stem === undefined) return null;
+async function emblemUrl(bob: BuildingBobRow): Promise<string | null> {
+  const stem = servedAtlasStem(bob);
+  if (stem === undefined) return null;
   const manifest = await fetchJsonOrNull<AtlasManifest>(`/bobs/${stem}.atlas.json`);
   const rect = manifest?.frames.find((frame) => frame.bobId === bob.bobId)?.rect;
   if (rect === undefined || rect.width === 0 || rect.height === 0) return null;
