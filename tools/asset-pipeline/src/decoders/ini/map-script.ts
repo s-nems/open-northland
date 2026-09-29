@@ -20,6 +20,7 @@ import { GOOD_TYPE_CODES } from './good-type-codes.js';
 import type { RuleProp, RuleSection } from './grammar.js';
 import { HOUSE_TYPE_CODES } from './house-type-codes.js';
 import { makeSource, type SourceRef } from './ir-fields.js';
+import { weatherRectangles } from './map-weather.js';
 import { codeOf } from './props.js';
 
 /**
@@ -479,7 +480,7 @@ function humanNameRow(p: RuleProp): MapScript['humanNames'][number] | undefined 
 
 /**
  * Reduces a map's decoded sections into its validated {@link MapScript}, keeping every `playermisc`
- * line and unrecognized `playerdata` or `specialItems` line lossless in `misc`, the `misc_humannames`
+ * line and unrecognized `playerdata` or `specialItems` line lossless in `misc`, the `misc_*`
  * rows typed, and one mission per repeated `MissionData` section in authored order. Section names match
  * case-insensitively (the corpus carries both `[AIData]` and `[aidata]`), and a duplicate `player`
  * slot keeps its first row. Returns undefined when no section yields anything, and the caller then
@@ -496,6 +497,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
   const misc: NonNullable<MapScript['misc']> = [];
   const humanNames: NonNullable<MapScript['humanNames']> = [];
   const tradeAgreements: NonNullable<MapScript['tradeAgreements']> = [];
+  const weather: NonNullable<MapScript['weather']> = [];
   const missions: NonNullable<MapScript['missions']> = [];
   let multiplayer: NonNullable<MapScript['multiplayer']> | undefined;
   for (const sec of sections) {
@@ -528,6 +530,8 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
         const row = tradeAgreementRow(p);
         if (row !== undefined) tradeAgreements.push(row);
       }
+    } else if (name === 'misc_weather') {
+      weather.push(...weatherRectangles(sec));
     } else if (name === 'playerdata') {
       for (const p of sec.props) {
         if (p.key === 'player') {
@@ -575,7 +579,8 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     humanNames.length +
     permissions.length +
     ai.length +
-    tradeAgreements.length;
+    tradeAgreements.length +
+    weather.length;
   if (scripted === 0 && multiplayer === undefined) return undefined;
   return MapScript.parse({
     players,
@@ -588,6 +593,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     misc,
     humanNames,
     tradeAgreements,
+    weather,
     missions,
     // Provenance names the section the payload actually came from, not a fixed `playerdata`.
     source: makeSource(

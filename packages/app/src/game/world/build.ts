@@ -6,6 +6,7 @@ import type {
   MapRelationFlag,
   MapScript,
   MapTradeAgreement,
+  MapWeatherRectangle,
 } from '@open-northland/data';
 import { components, type MissionScript, Simulation, systems, type TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
@@ -25,6 +26,8 @@ export interface MapScriptWorld {
   readonly humanNames?: readonly MapHumanName[];
   /** The map's `tradeagreement` rows, registered before the first tick. */
   readonly tradeAgreements?: readonly MapTradeAgreement[];
+  /** The map's `[misc_weather]` rectangles, laid down before the first tick and any script write. */
+  readonly weather?: readonly MapWeatherRectangle[];
   readonly missions?: MissionScript;
   readonly participants?: readonly number[];
 }
@@ -73,6 +76,7 @@ export function newWorldSim(
     systems.addFishSwarms(sim.world, sim.terrain, map.fishSwarms);
   }
   for (const row of script.permissions ?? []) components.setMapPermission(sim.world, row);
+  components.seedMapWeather(sim.world, script.weather ?? []);
   for (const row of script.relationFlags ?? []) {
     if (row.kind !== 'hideDetails') components.setDiplomacyLock(sim.world, row.a, row.b, true);
   }

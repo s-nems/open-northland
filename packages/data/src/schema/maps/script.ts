@@ -334,6 +334,26 @@ export const MapTradeAgreement = z.strictObject({
 });
 export type MapTradeAgreement = z.infer<typeof MapTradeAgreement>;
 
+/** The weather kinds a map's `[misc_weather]` section can lay down; scripts write only rain and snow. */
+export const MAP_WEATHER_KINDS = ['rain', 'snow', 'sand'] as const;
+/** The original's full weather density; an authored value outside `0..` this is clamped where it applies. */
+export const MAP_WEATHER_DENSITY_FULL = 10000;
+
+const MapWeatherNode = z.strictObject({ hx: z.number().int(), hy: z.number().int() });
+
+/**
+ * One `[misc_weather]` `set<kind>rectangle <x1> <y1> <x2> <y2> <density>` row in half-cell nodes, the
+ * lattice script `SetWeather` points use. The corners are ordered as the original orders them, and the
+ * density stays as authored on the `0..`{@link MAP_WEATHER_DENSITY_FULL} scale.
+ */
+export const MapWeatherRectangle = z.strictObject({
+  weather: z.enum(MAP_WEATHER_KINDS),
+  min: MapWeatherNode,
+  max: MapWeatherNode,
+  density: z.number().int(),
+});
+export type MapWeatherRectangle = z.infer<typeof MapWeatherRectangle>;
+
 /** The whole decoded script: `misc` keeps `playermisc` and unrecognised `playerdata` lines lossless,
  *  and `missions` stays in authored order. */
 export const MapScript = z.strictObject({
@@ -363,6 +383,8 @@ export const MapScript = z.strictObject({
   humanNames: z.array(MapHumanName).default([]),
   /** The `[misc_tradeagreement]` rows in file order, when the map ships the section. */
   tradeAgreements: z.array(MapTradeAgreement).default([]),
+  /** The `[misc_weather]` rectangles in file order, applied at map load before any script write. */
+  weather: z.array(MapWeatherRectangle).default([]),
   missions: z.array(MapMission).default([]),
   source: Provenance.optional(),
 });

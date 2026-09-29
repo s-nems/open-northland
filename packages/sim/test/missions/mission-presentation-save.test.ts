@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { MissionPresentation, retainMissionPresentation } from '../../src/components/mission-presentation.js';
+import {
+  MissionPresentation,
+  retainMissionPresentation,
+  seedMapWeather,
+} from '../../src/components/mission-presentation.js';
 import { Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { firingSim, LOAD_PASS, roundTrip } from './support.js';
@@ -107,5 +111,44 @@ describe('persistent mission presentation', () => {
     expect(sim.missionPresentation().weather.map((region) => region.density)).toEqual([2000, 0]);
     expect(sim.missionPresentation().weather).toHaveLength(2);
     expect(roundTrip(sim).missionPresentation()).toEqual(sim.missionPresentation());
+  });
+
+  it('seeds map weather in file order, clamped, before a script write that then wins', () => {
+    const square = { min: { hx: 7, hy: 9 }, max: { hx: 17, hy: 19 } };
+    const sim = firingSim([{ opcode: 'SetWeather', point: POINT, range: 5, amount: 25, flag: false }]);
+    seedMapWeather(sim.world, [
+      { weather: 'rain', ...square, density: 300 },
+      { weather: 'sand', min: { hx: 0, hy: 0 }, max: { hx: 40, hy: 40 }, density: 20000 },
+      { weather: 'snow', ...square, density: -5 },
+    ]);
+    expect(sim.missionPresentation().weather).toEqual([
+      { weather: 'rain', ...square, density: 300 },
+      { weather: 'sand', min: { hx: 0, hy: 0 }, max: { hx: 40, hy: 40 }, density: 10000 },
+      { weather: 'snow', ...square, density: 0 },
+    ]);
+    sim.run(LOAD_PASS);
+    expect(sim.missionPresentation().weather).toEqual([
+      { weather: 'sand', min: { hx: 0, hy: 0 }, max: { hx: 40, hy: 40 }, density: 10000 },
+      { weather: 'snow', ...square, density: 0 },
+      { weather: 'rain', ...square, density: 2500 },
+    ]);
+  });
+
+  it('round-trips a seeded sand region through a save', () => {
+    const sim = firingSim([]);
+    seedMapWeather(sim.world, [{ weather: 'sand', min: POINT, max: { hx: 30, hy: 30 }, density: 700 }]);
+    const restored = roundTrip(sim);
+    expect(restored.missionPresentation().weather).toEqual([
+      { weather: 'sand', min: POINT, max: { hx: 30, hy: 30 }, density: 700 },
+    ]);
+    expect(restored.hashState()).toBe(sim.hashState());
+  });
+
+  it('leaves the world untouched when the map has no weather', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const before = sim.hashState();
+    seedMapWeather(sim.world, []);
+    expect(sim.world.lowestEntityWith(MissionPresentation)).toBeNull();
+    expect(sim.hashState()).toBe(before);
   });
 });

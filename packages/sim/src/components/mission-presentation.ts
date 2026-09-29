@@ -1,3 +1,4 @@
+import { MAP_WEATHER_DENSITY_FULL } from '@open-northland/data';
 import type { SimEvent } from '../core/events.js';
 import type { World } from '../ecs/world.js';
 import { defineWorldSingleton } from '../ecs/world-singleton.js';
@@ -8,7 +9,7 @@ export interface GroundMissionMarker {
   readonly point: HalfCellNode;
 }
 export interface MissionWeatherRegion {
-  readonly weather: 'rain' | 'snow';
+  readonly weather: 'rain' | 'snow' | 'sand';
   readonly min: HalfCellNode;
   readonly max: HalfCellNode;
   readonly density: number;
@@ -73,6 +74,23 @@ export function retainMissionPresentation(world: World, event: PersistentEvent):
       }
     }
   });
+}
+
+/**
+ * Lays a map's `[misc_weather]` rectangles down in file order, as the original does at map load. Call
+ * it while building the world, before any script write, so a later `SetWeather` over the same extent
+ * wins. Densities clamp to the original's scale; an empty list leaves the world untouched.
+ */
+export function seedMapWeather(world: World, regions: readonly MissionWeatherRegion[]): void {
+  for (const { weather, min, max, density } of regions) {
+    retainMissionPresentation(world, {
+      kind: 'missionWeather',
+      weather,
+      min,
+      max,
+      density: Math.min(MAP_WEATHER_DENSITY_FULL, Math.max(0, density)),
+    });
+  }
 }
 
 export function missionPresentation(world: World): MissionPresentationView {

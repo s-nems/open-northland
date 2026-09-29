@@ -428,3 +428,30 @@ forbidjob 2 1 #UNKNOWN_JOB
   ]);
   expect(script?.misc).toEqual([{ key: 'forbidjob', values: ['2', '1', '#UNKNOWN_JOB'] }]);
 });
+
+describe('extractMapScript [misc_weather]', () => {
+  it('types the rectangles in file order, orders reversed corners and drops short rows', () => {
+    const text = `
+[misc_weather]
+
+setsnowrectangle 0 0 40 40 35
+setsandrectangle 90 12 30 60 700 
+setrainrectangle 10 20 30 5 20000
+setfogrectangle 0 0 10 10 100
+setrainrectangle 1 2 3 4
+setsandrectangle a 0 10 10 100
+`;
+    expect(extractMapScript(parseIniSections(text), SRC)?.weather).toEqual([
+      { weather: 'snow', min: { hx: 0, hy: 0 }, max: { hx: 40, hy: 40 }, density: 35 },
+      { weather: 'sand', min: { hx: 30, hy: 12 }, max: { hx: 90, hy: 60 }, density: 700 },
+      { weather: 'rain', min: { hx: 10, hy: 5 }, max: { hx: 30, hy: 20 }, density: 20000 },
+    ]);
+  });
+
+  it('emits a script for a map whose only payload is weather, and none for an empty section', () => {
+    expect(
+      extractMapScript(parseIniSections('[misc_weather]\nsetsandrectangle 0 0 8 8 100\n'), SRC),
+    ).toBeDefined();
+    expect(extractMapScript(parseIniSections('[misc_weather]\n'), SRC)).toBeUndefined();
+  });
+});

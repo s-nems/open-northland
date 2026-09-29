@@ -457,11 +457,12 @@ export type SimEvent =
     }
   | {
       /**
-       * A `SetWeather` result: `rain` or snow over the square from `min` to `max` at `density`, the
-       * original's 0 to 10000 scale where 0 clears the effect.
+       * A `SetWeather` result or a map `[misc_weather]` rectangle: the weather over the rectangle from
+       * `min` to `max` at `density`, the original's 0 to 10000 scale where 0 clears it. Sand comes only
+       * from the map.
        */
       readonly kind: 'missionWeather';
-      readonly weather: 'rain' | 'snow';
+      readonly weather: 'rain' | 'snow' | 'sand';
       readonly min: HalfCellNode;
       readonly max: HalfCellNode;
       readonly density: number;

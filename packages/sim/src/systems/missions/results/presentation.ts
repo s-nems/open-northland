@@ -1,3 +1,4 @@
+import { MAP_WEATHER_DENSITY_FULL } from '@open-northland/data';
 import { deliverMissionBriefing, nameHuman } from '../../../components/index.js';
 import { retainMissionPresentation } from '../../../components/mission-presentation.js';
 import type { SimEvent } from '../../../core/events.js';
@@ -8,9 +9,8 @@ import { missionHumans } from '../targets.js';
 
 /** The GUI marker slots the original keeps (reading). */
 const GUI_MARKER_SLOTS = 10;
-/** A weather square is clamped to this density (reading); the script writes it in hundredths. */
+/** The script writes weather density in hundredths of the full scale (reading). */
 const WEATHER_DENSITY_SCALE = 100;
-const WEATHER_DENSITY_MAX = 10000;
 
 /** Open the briefing page and end the pass after this mission; with the replay flag the page is also
  *  what the mission window opens on from now on. */
@@ -115,7 +115,7 @@ export function setScriptedWeather(
   pass: MissionPass,
   op: Extract<MissionResultOp, { opcode: 'SetWeather' }>,
 ): void {
-  const density = Math.min(WEATHER_DENSITY_MAX, Math.max(0, op.amount * WEATHER_DENSITY_SCALE));
+  const density = Math.min(MAP_WEATHER_DENSITY_FULL, Math.max(0, op.amount * WEATHER_DENSITY_SCALE));
   emitPersistent(pass, {
     kind: 'missionWeather',
     weather: op.flag ? 'snow' : 'rain',

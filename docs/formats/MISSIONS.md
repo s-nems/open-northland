@@ -789,8 +789,12 @@ documented with the `.briefing.json` sidecar schema in `packages/data`.
 The markers (`SetGuiMarker`, the area and import markers) and weather squares are retained in a lazy
 `MissionPresentation` singleton and restored into the view before its first frame. GUI slots replace
 their previous marker; ground markers share a point-keyed overlay. Weather regions retain write
-order, including zero-density clears, with repeated extents replacing their earlier entry. The
-point overlay and weather squares remain approximations of the original's entities and sector fields.
+order, including zero-density clears, with repeated extents replacing their earlier entry. A map's
+`[misc_weather]` rectangles (`set<rain|snow|sand>rectangle <x1> <y1> <x2> <y2> <density>`, half-cell
+nodes, raw density) are seeded into the singleton in file order while the world is built, so a later
+`SetWeather` over the same extent wins; like the original, reversed corners are ordered and the
+density is clamped to 10000. Sand comes only from these rows. The point overlay and weather squares
+remain approximations of the original's entities and sector fields.
 
 Mission records also retain the first and last execution ticks and an execution count. Goal-only
 `CheckMission` probes do not increment them, and later failed checks do not erase them. The optional
