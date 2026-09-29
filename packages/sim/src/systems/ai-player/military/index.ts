@@ -1,3 +1,4 @@
+import { Vehicle, vehicleCommander } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -43,6 +44,7 @@ export {
   RANKS_BEHIND_CATAPULTS_NODES,
   REGROUP_SLACK_NODES,
   SIEGE_STANDOFF_NODES,
+  SIEGE_TIMEOUT_TICKS,
   SIEGE_TOWER_RADIUS_NODES,
   SIEGE_TOWER_STANDOFF_NODES,
 } from './march/index.js';
@@ -75,8 +77,8 @@ export {
  * One decision for the seat's fighting men, home before abroad: the free fighters are enlisted, the
  * towers take their garrison ({@link TOWER_GARRISON_ARCHERS}) out of the free band, a raid at the gates
  * takes the rest of it, the catapults take their drivers, and the campaign gets what is left. A man the
- * campaign leaves waiting at the barracks, or a driver parked at home, is sent for his outfit; the errand
- * takes a driver off his catapult, which drafts another. The men and catapults of a marching wave belong
+ * campaign leaves waiting at the barracks, or a driver parked at home while no raid stands, is sent for his
+ * outfit; the errand takes a driver off his catapult, which drafts another. The men and catapults of a marching wave belong
  * to its march ({@link marchingWave}) until it is spent.
  *
  * The home half runs with the module off too: the original's scripted handler, which the `HAI_Disable`
@@ -115,6 +117,13 @@ function runMilitary(
         wave: wave === null ? [] : army.ready.filter((e) => wave.men.has(e)),
       })
     : null;
+  // Drivers of the catapults a launch took this decision are the wave's now, and a raid leaves no free man
+  // to replace a driver called down.
+  const launched = campaign ? marchingWave(world, ctx, player) : null;
+  const parkedDrivers =
+    raid !== null || siege === null
+      ? []
+      : siege.parkedDrivers.filter((driver) => !drivesOneOf(world, driver, launched?.catapults));
   return [
     ...enlistOrders(world, ctx, player),
     ...alarmOrders(world, ctx, terrain, owned, raiders),
@@ -122,14 +131,20 @@ function runMilitary(
     ...(raid === null ? [] : sortieOrders(world, terrain, free, raid)),
     ...(siege?.commands ?? []),
     ...(offensive?.commands ?? []),
-    ...outfitOrders(world, ctx, terrain, player, [
-      ...(offensive?.waiting ?? []),
-      ...(siege?.parkedDrivers ?? []),
-    ]),
+    ...outfitOrders(world, ctx, terrain, player, [...(offensive?.waiting ?? []), ...parkedDrivers]),
   ];
 }
 
 const NONE_MARCHING: ReadonlySet<Entity> = new Set();
+
+function drivesOneOf(world: World, driver: Entity, catapults: ReadonlySet<Entity> | undefined): boolean {
+  if (catapults === undefined) return false;
+  for (const vehicle of catapults) {
+    const state = world.tryGet(vehicle, Vehicle);
+    if (state !== undefined && vehicleCommander(state) === driver) return true;
+  }
+  return false;
+}
 
 export const militaryModule: AiPlayerModule = {
   id: 'military',

@@ -99,17 +99,22 @@ function place(sim: Simulation, buildingType: number, at: { x: number; y: number
   sim.step();
 }
 
-function spawnAt(sim: Simulation, spots: readonly { x: number; y: number }[], jobType: number): Entity[] {
+function spawnAt(
+  sim: Simulation,
+  spots: readonly { x: number; y: number }[],
+  jobType: number,
+  owner = SEAT,
+): Entity[] {
   const before = new Set(sim.world.query(Settler));
   for (const { x, y } of spots) {
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y, tribe: VIKING, owner });
   }
   sim.step();
   return [...sim.world.query(Settler)].filter((e) => !before.has(e));
 }
 
-function spawnOne(sim: Simulation, at: { x: number; y: number }, jobType: number): Entity {
-  const [e] = spawnAt(sim, [at], jobType);
+function spawnOne(sim: Simulation, at: { x: number; y: number }, jobType: number, owner = SEAT): Entity {
+  const [e] = spawnAt(sim, [at], jobType, owner);
   if (e === undefined) throw new Error('setup: no settler spawned');
   return e;
 }
@@ -292,6 +297,7 @@ describe('military module - the parked driver outfit', () => {
   function outfitSim(at: (rally: { x: number; y: number }) => { x: number; y: number }): {
     sim: Simulation;
     driver: Entity;
+    vehicle: Entity;
   } {
     const sim = siegeSim();
     sim.enqueueSetup({
@@ -310,11 +316,13 @@ describe('military module - the parked driver outfit', () => {
     crew(sim, driver, vehicle);
     sim.enqueue(playerCommand(SEAT, { kind: 'setVehicleStance', vehicle, stance: 'attack' }));
     sim.step();
-    return { sim, driver };
+    return { sim, driver, vehicle };
   }
 
+  const inPark = (rally: { x: number; y: number }) => ({ x: rally.x + 4, y: rally.y + 8 });
+
   it('sends the driver of a parked catapult down for an outfit a store holds', () => {
-    const { sim, driver } = outfitSim((rally) => ({ x: rally.x + 4, y: rally.y + 8 }));
+    const { sim, driver } = outfitSim(inPark);
     const commands = run(sim);
     expect(vehicleOrders(commands)).toEqual([]); // parked already
     const errand = commands.filter((c) => c.kind === 'equipGood');
@@ -326,6 +334,31 @@ describe('military module - the parked driver outfit', () => {
 
   it('keeps the driver aboard while his catapult is still on its way home', () => {
     const { sim } = outfitSim(() => YARD);
+    expect(run(sim).some((c) => c.kind === 'equipGood')).toBe(false);
+  });
+
+  it('keeps aboard the driver of a catapult the launching wave takes', () => {
+    const { sim, driver, vehicle } = outfitSim(inPark);
+    place(sim, HQ_TYPE, FOE_HQ, FOE);
+    const rally = rallyOf(sim);
+    spawnAt(
+      sim,
+      Array.from({ length: WAVE_MIN_SOLDIERS + 1 }, (_, i) => ({
+        x: rally.x + (i % RALLY_HOLD_RADIUS_NODES),
+        y: rally.y + 2 * Math.floor(i / RALLY_HOLD_RADIUS_NODES),
+      })),
+      SPEARMAN,
+    );
+    const commands = run(sim);
+    expect(commands.some((c) => c.kind === 'moveVehicle' && c.vehicle === vehicle && c.attackMove)).toBe(
+      true,
+    );
+    expect(commands.some((c) => c.kind === 'equipGood' && c.entity === driver)).toBe(false);
+  });
+
+  it('keeps the parked driver aboard while a raid stands at the gates', () => {
+    const { sim } = outfitSim(inPark);
+    spawnOne(sim, { x: BARRACKS.x + 6, y: BARRACKS.y + 6 }, SPEARMAN, FOE);
     expect(run(sim).some((c) => c.kind === 'equipGood')).toBe(false);
   });
 });

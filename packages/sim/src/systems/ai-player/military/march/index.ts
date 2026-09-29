@@ -31,7 +31,7 @@ import { arrivalOrders, enemyTowerNodesNear } from './siege.js';
 
 export { RANKS_BEHIND_CATAPULTS_NODES } from './formation.js';
 export { LEG_NODES, SIEGE_STANDOFF_NODES, SIEGE_TOWER_STANDOFF_NODES } from './route.js';
-export { SIEGE_TOWER_RADIUS_NODES } from './siege.js';
+export { SIEGE_TIMEOUT_TICKS, SIEGE_TOWER_RADIUS_NODES } from './siege.js';
 
 // A launched wave marches as one body: leg by leg along one route, the next leg ordered only once
 // everybody stands closed up on the last. The original's army formation is unobserved, so every distance,
@@ -40,7 +40,8 @@ export { SIEGE_TOWER_RADIUS_NODES } from './siege.js';
 /** How near his own place a man stands to count as closed up. */
 export const REGROUP_SLACK_NODES = 4;
 
-/** How long a leg waits for its stragglers before the wave marches on without them. */
+/** How long a leg waits for its stragglers before the wave marches on without them: a man left behind
+ *  falls back to the muster, a catapult out of the wave to be parked at home. */
 export const LEG_TIMEOUT_TICKS = 60 * TICKS_PER_SECOND;
 
 /** How far around the wave's centre enemy fighters count toward a charge. */
@@ -157,7 +158,11 @@ export function advanceWave(
   const wave: Wave = { men: men.filter((e) => inField.has(e)), members: men, catapults, centre };
 
   const charge = chargePoint(world, ctx, terrain, player, wave);
-  if (charge !== null) return { commands: chargeOrders(world, terrain, wave, charge), active: true };
+  if (charge !== null) {
+    // A charge scatters the ranks: the leg and siege timeouts count from its end, not through it.
+    world.mut(barracks, WaveMarch).legSince = ctx.tick;
+    return { commands: chargeOrders(world, terrain, wave, charge), active: true };
+  }
   if (!state.arrived) {
     const commands = legOrders(world, ctx, terrain, barracks, player, state, wave);
     if (commands !== null) return { commands, active: true };
@@ -228,8 +233,8 @@ function nearestMemberNode(
 
 /**
  * The next leg's orders, or null once the wave has closed up on its last leg end: it has arrived. The
- * wave closes up when every man stands on his place and every catapult on its own, or when the leg has
- * waited {@link LEG_TIMEOUT_TICKS} for a straggler.
+ * wave closes up when every man stands on his place and every catapult on its own; once the leg has
+ * waited {@link LEG_TIMEOUT_TICKS}, it drops the stragglers not in a fight and goes on without them.
  */
 function legOrders(
   world: World,
@@ -248,26 +253,35 @@ function legOrders(
   }
   const state = world.get(barracks, WaveMarch);
   let places = formation(world, ctx, terrain, state, wave.members, wave.catapults);
-  if (
-    closedUp(world, terrain, places, wave.members, wave.catapults) ||
-    ctx.tick - state.legSince >= LEG_TIMEOUT_TICKS
-  ) {
+  let march = wave;
+  const behind = stragglers(world, terrain, places, wave.members, wave.catapults);
+  const timedOut = ctx.tick - state.legSince >= LEG_TIMEOUT_TICKS;
+  if (behind.size === 0 || timedOut) {
+    const dropped = (e: Entity): boolean => behind.has(e) && !fighting(world, e);
+    march = {
+      ...wave,
+      men: wave.men.filter((e) => !dropped(e)),
+      members: wave.members.filter((e) => !dropped(e)),
+      catapults: wave.catapults.filter((v) => !behind.has(v)),
+    };
     const live = world.mut(barracks, WaveMarch);
-    live.men = [...wave.members];
+    live.men = [...march.members];
     // A catapult that lost its driver stays the wave's where it stands, out of the home crew's reach.
-    live.catapults = state.catapults.filter((v) => (world.tryGet(v, Health)?.hitpoints ?? 0) > 0);
+    live.catapults = state.catapults.filter(
+      (v) => !behind.has(v) && (world.tryGet(v, Health)?.hitpoints ?? 0) > 0,
+    );
+    live.legSince = ctx.tick;
     if (state.leg + 1 >= state.waypoints.length) {
       live.arrived = true;
       return null;
     }
     live.leg = state.leg + 1;
-    live.legSince = ctx.tick;
-    places = formation(world, ctx, terrain, live, wave.members, wave.catapults);
+    places = formation(world, ctx, terrain, live, march.members, march.catapults);
   }
-  const fire = wave.catapults.length === 0 ? null : fireOver(world, ctx, terrain, player, wave);
+  const fire = march.catapults.length === 0 ? null : fireOver(world, ctx, terrain, player, march);
   return [
-    ...placeOrders(world, ctx, terrain, wave.men, places, fire, MILITARY_MODE.DEFEND),
-    ...catapultOrders(world, wave.catapults, places),
+    ...placeOrders(world, ctx, terrain, march.men, places, fire, MILITARY_MODE.DEFEND),
+    ...catapultOrders(world, march.catapults, places),
   ];
 }
 
@@ -285,26 +299,28 @@ function legNearest(state: WaveMarchView, centre: HalfCellNode): number {
   }
 }
 
-function closedUp(
+/** The men and catapults of the wave not standing on their places: none when it has closed up. */
+function stragglers(
   world: World,
   terrain: TerrainGraph,
   places: ReadonlyMap<Entity, HalfCellNode>,
   members: readonly Entity[],
   catapults: readonly Entity[],
-): boolean {
+): Set<Entity> {
+  const behind = new Set<Entity>();
   for (const e of members) {
     const place = places.get(e);
     if (place === undefined) continue;
     if (manhattanOf(nodeOf(terrain, entityNode(world, terrain, e)), place) > REGROUP_SLACK_NODES)
-      return false;
+      behind.add(e);
   }
   for (const vehicle of catapults) {
     const place = places.get(vehicle);
     const at = vehicleAnchor(world, vehicle);
     if (place === undefined || at === null) continue;
-    if (world.has(vehicle, VehicleDrive) || hexDistance(at, place) > REGROUP_SLACK_NODES) return false;
+    if (world.has(vehicle, VehicleDrive) || hexDistance(at, place) > REGROUP_SLACK_NODES) behind.add(vehicle);
   }
-  return true;
+  return behind;
 }
 
 /** The enemy fire the wave's men may stand in: every manned tower post, and the loose enemy archers near
@@ -331,8 +347,8 @@ function fireOver(
 /**
  * Where the wave charges, or null: once at least max({@link CHARGE_MIN_ENEMIES}, a
  * {@link CHARGE_ARMY_DIVISOR}th of its men) enemy fighters on foot stand within {@link CHARGE_RADIUS_NODES}
- * of its centre, the node of the one nearest that centre (the lowest id on a tie). Read off the seat's
- * raider scan, which its defence has already paid for this tick.
+ * of its centre, on the continent of the man nearest it, the node of the one nearest that centre (the
+ * lowest id on a tie). Read off the seat's raider scan, which its defence has already paid for this tick.
  */
 function chargePoint(
   world: World,
@@ -342,9 +358,13 @@ function chargePoint(
   wave: Wave,
 ): HalfCellNode | null {
   const threshold = Math.max(CHARGE_MIN_ENEMIES, Math.ceil(wave.members.length / CHARGE_ARMY_DIVISOR));
+  const standing = nearestMemberNode(world, terrain, wave.centre, wave.members);
+  if (standing === null) return null;
+  const reachable = terrain.componentOf(standing);
   let near = 0;
   let best: { at: HalfCellNode; distance: number } | null = null;
   for (const raider of seatRaiders(world, ctx, terrain, player)) {
+    if (raider.component !== reachable) continue;
     const at = { hx: raider.x, hy: raider.y };
     const distance = manhattanOf(at, wave.centre);
     if (distance > CHARGE_RADIUS_NODES) continue;

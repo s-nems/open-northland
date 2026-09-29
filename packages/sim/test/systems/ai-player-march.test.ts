@@ -4,17 +4,30 @@ import { Building, Owner, Position, Settler, WaveMarch } from '../../src/compone
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command, PlayerCommand } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { EventBuffer, playerCommand, Rng, Simulation } from '../../src/index.js';
+import {
+  EventBuffer,
+  exportSaveGame,
+  parseSaveGame,
+  playerCommand,
+  Rng,
+  restoreSimulation,
+  Simulation,
+  serializeSaveGame,
+  type TerrainMap,
+} from '../../src/index.js';
 import { type HalfCellNode, positionOfNode } from '../../src/nav/halfcell.js';
 import {
   ASSAULT_RING_RADIUS_NODES,
   CHARGE_ARMY_DIVISOR,
   CHARGE_MIN_ENEMIES,
+  LEG_TIMEOUT_TICKS,
   militaryModule,
   RALLY_HOLD_RADIUS_NODES,
+  SIEGE_TIMEOUT_TICKS,
 } from '../../src/systems/ai-player/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
+import { entityNode } from '../../src/systems/spatial/nodes.js';
 import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -83,8 +96,29 @@ function ctxOf(sim: Simulation): SystemContext {
   };
 }
 
-function marchSim(): Simulation {
-  const sim = new Simulation({ seed: 1, content: CONTENT, map: grassNodeMap(128, 96) });
+const MAP_W = 128;
+const MAP_H = 96;
+/** Ground type 1 of the synthetic fixtures: water, walkable by nothing. */
+const WATER = 1;
+/** How thick a moat is, in nodes: wide enough that no diagonal step crosses it. */
+const MOAT_NODES = 2;
+
+/** The grass map with a water moat around the node rectangle `island` (inclusive), so what stands on it
+ *  is on another continent. */
+function moatMap(island: { x0: number; y0: number; x1: number; y1: number }): TerrainMap {
+  const map = grassNodeMap(MAP_W, MAP_H);
+  const typeIds = [...map.typeIds];
+  for (let y = island.y0 - MOAT_NODES; y <= island.y1 + MOAT_NODES; y++) {
+    for (let x = island.x0 - MOAT_NODES; x <= island.x1 + MOAT_NODES; x++) {
+      const inside = x >= island.x0 && x <= island.x1 && y >= island.y0 && y <= island.y1;
+      if (!inside) typeIds[y * MAP_W + x] = WATER;
+    }
+  }
+  return { ...map, typeIds };
+}
+
+function marchSim(map: TerrainMap = grassNodeMap(MAP_W, MAP_H)): Simulation {
+  const sim = new Simulation({ seed: 1, content: CONTENT, map });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   place(sim, BARRACKS_TYPE, BARRACKS, SEAT);
   place(sim, HQ_TYPE, FOE_HQ, FOE);
@@ -290,13 +324,45 @@ describe('military module - the wave marches in legs', () => {
     // Marching, the catapults are the wave's: no park order ever calls them home.
     expect(drives(run(sim)).every((c) => c.attackMove === true)).toBe(true);
   });
+
+  it('marches on without the stragglers once the leg times out, and hands them back', () => {
+    const sim = marchSim();
+    const rally = rallyOf(sim);
+    const catapult = catapultAt(sim, { x: rally.x + 4, y: rally.y + 10 });
+    const band = pack(sim, BAND + 1, SPEARMAN);
+    const first = walks(run(sim));
+    expect(march(sim).catapults).toEqual([catapult]);
+    // All but one man close up; he and the catapult never leave the door.
+    const [straggler, ...fast] = band;
+    if (straggler === undefined) throw new Error('setup: no band');
+    for (const e of fast) {
+      const goal = first.get(e);
+      if (goal !== undefined) teleport(sim, e, goal);
+    }
+    expect(march(sim).leg).toBe(0);
+    expect(walks(run(sim)).has(straggler)).toBe(true);
+    expect(march(sim).leg).toBe(0);
+
+    sim.world.mut(barracksOf(sim), WaveMarch).legSince = sim.tick - LEG_TIMEOUT_TICKS;
+    const next = run(sim);
+    const state = march(sim);
+    expect(state.leg).toBe(1);
+    expect(state.men).toEqual(fast);
+    expect(state.catapults).toEqual([]);
+    expect([...walks(next).keys()]).toEqual(fast);
+    expect(drives(next).filter((c) => c.attackMove === true)).toEqual([]);
+  });
 });
 
 describe('military module - the wave charges', () => {
   /** A wave of `size` launched and standing in midfield, with `enemies` fighters moved in beside it. Both
    *  are set down between decisions, so nobody is in a fight yet. */
-  function standoff(size: number, enemies: number): { sim: Simulation; band: Entity[]; foes: Entity[] } {
-    const sim = marchSim();
+  function standoff(
+    size: number,
+    enemies: number,
+    map?: TerrainMap,
+  ): { sim: Simulation; band: Entity[]; foes: Entity[] } {
+    const sim = marchSim(map);
     const foes = spawnAt(
       sim,
       Array.from({ length: enemies }, (_, i) => ({ x: FOE_CAMP.x + 2 * i, y: FOE_CAMP.y })),
@@ -351,6 +417,23 @@ describe('military module - the wave charges', () => {
     const at = standoff(size, needed);
     expect(chargedAt(run(at.sim), at.band, enemyBody)).toBe(size);
   });
+
+  it('ignores an enemy body of the floor size across the water', () => {
+    const island = {
+      x0: enemyBody.x - 2,
+      y0: enemyBody.y - 2,
+      x1: enemyBody.x + 2 * ENEMY_FILE,
+      y1: enemyBody.y + 2 * ENEMY_FILE,
+    };
+    const across = standoff(BAND, CHARGE_MIN_ENEMIES, moatMap(island));
+    const terrain = across.sim.terrain;
+    const [foe] = across.foes;
+    const [man] = across.band;
+    if (terrain === undefined || foe === undefined || man === undefined) throw new Error('setup');
+    const componentOf = (e: Entity): number => terrain.componentOf(entityNode(across.sim.world, terrain, e));
+    expect(componentOf(foe)).not.toBe(componentOf(man));
+    expect(chargedAt(run(across.sim), across.band, enemyBody)).toBe(0);
+  });
 });
 
 describe('military module - the siege', () => {
@@ -387,5 +470,75 @@ describe('military module - the siege', () => {
     );
     expect(inRing.map(([e]) => e)).toEqual([...spearmen, ...bowmen]);
     expect(drives(assault).map((c) => [c.vehicle, c.attackMove])).toEqual([[catapult, true]]);
+  });
+
+  /** An arrived wave of one catapult, spearmen and bowmen, with an enemy tower beside its objective. */
+  function arrivedBeside(map?: TerrainMap) {
+    const sim = marchSim(map);
+    const rally = rallyOf(sim);
+    const catapult = catapultAt(sim, { x: rally.x + 4, y: rally.y + 10 });
+    const spearmen = pack(sim, BAND, SPEARMAN);
+    const bowmen = pack(sim, 2, BOWMAN, BAND);
+    run(sim);
+    sim.world.mut(barracksOf(sim), WaveMarch).arrived = true;
+    place(sim, TOWER_TYPE, FOE_TOWER, FOE);
+    return { sim, catapult, men: [...spearmen, ...bowmen] };
+  }
+
+  function assaulted(sim: Simulation, commands: readonly Command[]): Entity[] {
+    const objective = objectiveOf(sim);
+    return [...walks(commands)]
+      .filter(([, g]) => manhattan(g, objective) <= ASSAULT_RING_RADIUS_NODES)
+      .map(([e]) => e);
+  }
+
+  it('leaves a tower across the water to the assault', () => {
+    const moat = { x0: FOE_TOWER.x - 6, y0: FOE_TOWER.y - 6, x1: FOE_TOWER.x + 6, y1: FOE_TOWER.y + 6 };
+    const { sim, catapult, men } = arrivedBeside(moatMap(moat));
+    const commands = run(sim);
+    expect(commands.some((c) => c.kind === 'attackWithVehicle' || c.kind === 'attackUnit')).toBe(false);
+    expect(assaulted(sim, commands)).toEqual(men);
+    expect(drives(commands).map((c) => c.vehicle)).toEqual([catapult]);
+  });
+
+  it('gives the siege up for the assault once it has lasted too long', () => {
+    const { sim, catapult, men } = arrivedBeside();
+    expect(run(sim).some((c) => c.kind === 'attackWithVehicle')).toBe(true);
+
+    sim.world.mut(barracksOf(sim), WaveMarch).legSince = sim.tick - SIEGE_TIMEOUT_TICKS;
+    const commands = run(sim);
+    expect(commands.some((c) => c.kind === 'attackWithVehicle' || c.kind === 'attackUnit')).toBe(false);
+    expect(assaulted(sim, commands)).toEqual(men);
+    expect(drives(commands).map((c) => c.vehicle)).toEqual([catapult]);
+  });
+});
+
+describe('military module - a marching wave through a save', { timeout: 60_000 }, () => {
+  /** Ticks to wait for the seat to launch its wave and close up on its first leg end. */
+  const LAUNCH_TICKS = 6000;
+  /** Ticks to run both copies on after the save. */
+  const AFTER_TICKS = 1500;
+
+  it('restores a wave mid-march, and the restored seat marches identically', () => {
+    const sim = marchSim();
+    pack(sim, BAND, SPEARMAN);
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true });
+    sim.step();
+    const barracks = barracksOf(sim);
+    while ((sim.world.tryGet(barracks, WaveMarch)?.leg ?? 0) === 0) {
+      if (sim.tick > LAUNCH_TICKS) throw new Error('setup: the wave never reached its second leg');
+      sim.step();
+    }
+
+    const bytes = serializeSaveGame(exportSaveGame(sim));
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
+      content: CONTENT,
+      map: grassNodeMap(MAP_W, MAP_H),
+    });
+    expect(restored.hashState()).toBe(sim.hashState());
+    sim.run(AFTER_TICKS);
+    restored.run(AFTER_TICKS);
+    expect(restored.hashState()).toBe(sim.hashState());
+    expect(sim.world.tryGet(barracks, WaveMarch)?.leg ?? 0).toBeGreaterThan(1);
   });
 });
