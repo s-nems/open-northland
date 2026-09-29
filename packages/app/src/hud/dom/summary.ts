@@ -204,7 +204,7 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
       columnHost.append(host);
       return { host, rows: [] as TipRow[] };
     });
-    goodIconSource(spec.icon, deps.pack)
+    goodIconSource(spec.icon, deps.pack, null)
       .then((source) => {
         const frame = count.button.querySelector('.on-good__frame');
         if (disposed || source === null || !(frame instanceof HTMLElement)) return;

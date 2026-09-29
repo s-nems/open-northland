@@ -120,10 +120,11 @@ export async function createUnitChrome(
     return binding === null ? messages().mainMenu.settings.bindingUnassigned : keyDisplayLabel(binding);
   };
   // Its own card: the world hover hides the plane's shared one every frame the cursor is over the HUD.
+  const icons = createGoodIconPainter(opts.domHud.pack, opts.content);
   const hoverCard = createHoverCard({
     plane: opts.domHud.plane,
     scale: opts.domHud.scale,
-    pack: opts.domHud.pack,
+    icons,
     uiString: opts.domHud.uiString,
   });
   const hoverContext: BuildingHoverContext = {
@@ -174,7 +175,6 @@ export async function createUnitChrome(
     contract,
     equipPicker,
   );
-  const icons = createGoodIconPainter(opts.domHud.pack);
   // One trade window for both panels: a trader's own and a trader's cart's Handel open it.
   const tradeWindow = createTradeWindow({
     plane: opts.domHud.plane,

@@ -1,54 +1,37 @@
+import type { ContentSet } from '@open-northland/data';
 import { loadGoodsManifest } from '../../content/goods-gfx.js';
-import { fetchJsonOrNull } from '../../content/net.js';
+import { type SpriteIconFrame, servedAtlas, spriteGoodIcon } from '../../content/sprite-good-icons.js';
 import { diag } from '../../diag/index.js';
 import type { GoodIconSource, PresentationPack } from '../../presentation/pack.js';
 
 /**
  * A good's icon for a DOM surface, drawn as a CSS background crop of its sheet: the presentation pack's
  * icon when it has one, else the original's recoloured pile atlas (`/bobs/ls_goods.<palette>.png`), the
- * same frame the Pixi panels show. `null` when nothing is served.
+ * same frame the Pixi panels show, else a vehicle's or an animal's own sprite for a good with no pile.
+ * `null` when nothing is served.
  */
 
-/** The served atlas manifest's fields this reader needs. */
-interface AtlasJson {
-  readonly width: number;
-  readonly height: number;
-  readonly frames: readonly {
-    readonly bobId: number;
-    readonly rect: {
-      readonly x: number;
-      readonly y: number;
-      readonly width: number;
-      readonly height: number;
-    };
-  }[];
-}
-
-const atlasByPalette = new Map<string, Promise<AtlasJson | null>>();
-
-function paletteAtlas(stem: string): Promise<AtlasJson | null> {
-  let pending = atlasByPalette.get(stem);
-  if (pending === undefined) {
-    pending = fetchJsonOrNull<AtlasJson>(`/bobs/${stem}.atlas.json`);
-    atlasByPalette.set(stem, pending);
-  }
-  return pending;
-}
-
-export async function goodIconSource(
-  goodId: string,
-  pack: PresentationPack | null,
-): Promise<GoodIconSource | null> {
-  const packed = pack?.goodIconSource(goodId);
-  if (packed !== undefined) return packed;
+async function pileIcon(goodId: string): Promise<SpriteIconFrame | null> {
   const manifest = await loadGoodsManifest();
   const icon = manifest?.icons[goodId];
   if (manifest === null || icon === undefined) return null;
   // The preview stem names one palette's sheet; every palette's sheet sits beside it, same packing.
   const stem = manifest.previewStem.replace(/\.[^.]+$/, `.${icon.palette}`);
-  const atlas = await paletteAtlas(stem);
-  const frame = atlas?.frames.find((f) => f.bobId === icon.frame);
-  if (atlas === null || frame === undefined) return null;
+  const atlas = await servedAtlas(stem);
+  return atlas === null ? null : { stem, atlas, bobId: icon.frame };
+}
+
+export async function goodIconSource(
+  goodId: string,
+  pack: PresentationPack | null,
+  content: ContentSet | null,
+): Promise<GoodIconSource | null> {
+  const packed = pack?.goodIconSource(goodId);
+  if (packed !== undefined) return packed;
+  const icon = (await pileIcon(goodId)) ?? (content === null ? null : await spriteGoodIcon(content, goodId));
+  const frame = icon?.atlas.frames.find((f) => f.bobId === icon.bobId);
+  if (icon === null || frame === undefined) return null;
+  const { atlas, stem } = icon;
   return { url: `/bobs/${stem}.png`, sheet: { width: atlas.width, height: atlas.height }, rect: frame.rect };
 }
 
@@ -84,14 +67,17 @@ export function goodIconStyle(source: GoodIconSource, boxPx = GOOD_ICON_BOX_PX):
  *  source resolves, and a frame that left the document meanwhile is skipped. */
 export type GoodIconPainter = (frame: HTMLElement, goodId: string, boxPx: number) => void;
 
-/** One painter per game: the icon a good resolves to follows the pack that game draws with, and a
- *  menu-to-game swap builds a new painter in the same document. */
-export function createGoodIconPainter(pack: PresentationPack | null): GoodIconPainter {
+/** One painter per game: the icon a good resolves to follows the pack and the content that game draws
+ *  with, and a menu-to-game swap builds a new painter in the same document. */
+export function createGoodIconPainter(
+  pack: PresentationPack | null,
+  content: ContentSet | null,
+): GoodIconPainter {
   const sources = new Map<string, Promise<GoodIconSource | null>>();
   return (frame, goodId, boxPx) => {
     let pending = sources.get(goodId);
     if (pending === undefined) {
-      pending = goodIconSource(goodId, pack);
+      pending = goodIconSource(goodId, pack, content);
       sources.set(goodId, pending);
     }
     pending

@@ -45,6 +45,7 @@ import {
   type ViewerSeat,
 } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
+import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
 import { mountHudDomRoot } from '../../hud/dom/root.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-card/building.js';
@@ -820,7 +821,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const hoverCard = createHoverCard({
       plane: hudDom.element,
       scale: hudDom.currentScale,
-      pack,
+      icons: createGoodIconPainter(pack, host.content),
       uiString: toolPanel.controller.uiString,
     });
     cleanup.push(() => hoverCard.dispose());

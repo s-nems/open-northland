@@ -334,7 +334,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       const frame = slot.querySelector('.on-good__frame');
       const goodId = deps.goodIdOf(line.goodType);
       if (frame instanceof HTMLElement && goodId !== undefined) {
-        void goodIconSource(goodId, deps.pack).then((source) => {
+        void goodIconSource(goodId, deps.pack, null).then((source) => {
           if (!disposed && source !== null) frame.style.cssText = goodIconStyle(source, COST_ICON_BOX_PX);
         });
       }

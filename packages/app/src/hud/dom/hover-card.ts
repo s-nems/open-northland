@@ -1,6 +1,5 @@
 import type { UiString } from '../../content/gui-gfx.js';
 import { messages } from '../../i18n/index.js';
-import type { PresentationPack } from '../../presentation/pack.js';
 import type {
   BuildingHoverModel,
   BuildingHoverState,
@@ -9,7 +8,7 @@ import type {
   HoverOwner,
 } from '../hover-card/model.js';
 import { diplomacyStanceText, playerLabel } from '../tool-panel/diplomacy/model.js';
-import { createGoodIconPainter, goodIconMarkup } from './good-art.js';
+import { type GoodIconPainter, goodIconMarkup } from './good-art.js';
 import { stockAmount } from './parts/amount.js';
 import { setClass, setHidden, setStyleVar, write } from './parts/dom.js';
 import { createMeterRow } from './parts/meter-row.js';
@@ -38,8 +37,8 @@ export interface HoverCardDeps {
   readonly plane: HTMLElement;
   /** The plane's current scale, which turns a client (CSS) point into a design-px one. */
   readonly scale: () => number;
-  /** The pack the map draws with, or null for the original's art; the good icons follow it. */
-  readonly pack: PresentationPack | null;
+  /** Paints the rows' good icons in the art this game draws with. */
+  readonly icons: GoodIconPainter;
   readonly uiString: UiString;
 }
 
@@ -72,9 +71,6 @@ function rowsOf(model: HoverCardModel): readonly HoverCardRow[] {
 }
 
 export function createHoverCard(deps: HoverCardDeps): HoverCard {
-  // Per card, not per module: the icon a good resolves to follows the pack this game draws with.
-  const paintIcon = createGoodIconPainter(deps.pack);
-
   const rowElement = (row: HoverCardRow): DrawnRow => {
     const line = document.createElement('p');
     line.className = 'on-tip__row';
@@ -84,7 +80,7 @@ export function createHoverCard(deps: HoverCardDeps): HoverCard {
     const figure = document.createElement('b');
     line.append(name, figure);
     const frame = name.querySelector('.on-good__frame');
-    if (row.goodId !== undefined && frame instanceof HTMLElement) paintIcon(frame, row.goodId, ROW_ICON_PX);
+    if (row.goodId !== undefined && frame instanceof HTMLElement) deps.icons(frame, row.goodId, ROW_ICON_PX);
     return { key: rowKey(row), line, figure };
   };
 
