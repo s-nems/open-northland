@@ -153,8 +153,8 @@ function roadContent() {
   });
 }
 
-export function roadSim(seed = 1): Simulation {
-  const map: TerrainMap = grassNodeMap(MAP_WIDTH, MAP_HEIGHT);
+export function roadSim(seed = 1, width = MAP_WIDTH): Simulation {
+  const map: TerrainMap = grassNodeMap(width, MAP_HEIGHT);
   const sim = new Simulation({
     seed,
     content: roadContent(),

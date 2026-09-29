@@ -7,7 +7,7 @@ import {
   UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { playerCommand, type Simulation } from '../../src/index.js';
+import { playerCommand, type Simulation, WALK_RANGE_NODES } from '../../src/index.js';
 import { claimSite } from '../../src/systems/economy/site-claim.js';
 import {
   BUILD_TICKS,
@@ -37,6 +37,12 @@ const FIRST_OWN_HX = 11;
 const OWN_HX = 22;
 /** Budget for a run over three sites and the house after it. */
 const RUN_TICKS = 4 * BUILD_TICKS;
+/** A map wide enough for a road site past the builder's signpost walk range. */
+const WIDE_MAP_WIDTH = 128;
+/** How far past the walk range from the run's first site its second one lies, in half-cell nodes. */
+const PAST_RANGE_NODES = 10;
+/** A run's second site, with no signpost between it and the first. */
+const BEYOND_RANGE_HX = FIRST_OWN_HX + WALK_RANGE_NODES + PAST_RANGE_NODES;
 
 function siteOf(sim: Simulation, hx: number): Entity {
   const site = siteAt(sim, hx, ROW);
@@ -113,6 +119,25 @@ describe('a road run', () => {
     expect(roadAt(sim, FIRST_OWN_HX, ROW)).toBe(true);
     expect(roadAt(sim, OWN_HX, ROW)).toBe(true);
     for (const site of others) expect(sim.world.get(site, RoadSite).reservation).toBeNull();
+  });
+
+  it('goes on past the signpost walk range, as a pin does', () => {
+    const sim = roadSim(1, WIDE_MAP_WIDTH);
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    storeAt(sim, STORE_HX);
+    const builder = builderAt(sim, BUILDER_HX);
+    orderRoads(sim, [
+      { hx: FIRST_OWN_HX, hy: ROW },
+      { hx: BEYOND_RANGE_HX, hy: ROW },
+    ]);
+    assign(sim, builder, siteOf(sim, FIRST_OWN_HX));
+
+    for (let tick = 0; tick < RUN_TICKS && siteAt(sim, BEYOND_RANGE_HX, ROW) !== undefined; tick++) {
+      sim.step();
+      expect(sim.world.has(builder, BuildMode), `tick ${tick}`).toBe(true);
+    }
+    expect(roadAt(sim, FIRST_OWN_HX, ROW)).toBe(true);
+    expect(roadAt(sim, BEYOND_RANGE_HX, ROW)).toBe(true);
   });
 
   it('passes over a site another builder holds', () => {

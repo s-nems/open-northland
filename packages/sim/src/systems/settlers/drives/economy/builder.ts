@@ -21,6 +21,7 @@ import {
 } from '../../../economy/site-claim.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { pickRoadSite } from '../../../roads/site-pick.js';
+import type { NavigationLimit } from '../../../signposts/index.js';
 import { constructionTribeOf, hasInboundSupply } from '../../../stores/index.js';
 import {
   atOrWalk,
@@ -112,41 +113,55 @@ export function planBuilder(
 
   // A damaged upgrade site is mended before its upgrade goes on, and only by a repair crew, so an
   // automatic builder never hammers the upgrade of a building still under attack.
-  const canStandAt = (site: Entity): boolean =>
-    world.has(site, UnderConstruction) &&
-    !needsRepair(world, site) &&
-    constructionSiteAvailableTo(world, site, e) &&
-    !segmentAwaitsClearance(plan, site) &&
-    builderCanReach(plan, spacing, site);
+  const standableWithin =
+    (limit: NavigationLimit | null) =>
+    (site: Entity): boolean =>
+      world.has(site, UnderConstruction) &&
+      !needsRepair(world, site) &&
+      constructionSiteAvailableTo(world, site, e) &&
+      !segmentAwaitsClearance(plan, site) &&
+      builderCanReach(plan, spacing, site, limit);
+  const canStandAt = standableWithin(plan.limit);
   // The pass-memoized work checks run before the reach test, the costlier per site.
   const hasTask = (site: Entity): boolean =>
     (claims.hasHammerWork(site) || materials.has(site)) && canStandAt(site);
-  const nearestSite = (sites: InteractionCellIndex, accepts: (site: Entity) => boolean): Entity | null =>
+  const nearestSite = (
+    sites: InteractionCellIndex,
+    accepts: (site: Entity) => boolean,
+    limit = plan.limit,
+  ): Entity | null =>
     nearestBuilderSite(
       sites,
       world,
       here,
       settler.tribe,
       settler.owner,
-      plan.limit ?? undefined,
+      limit ?? undefined,
       avoidSite,
       accepts,
     );
 
   // A road site's stone paves its pending neighbours too, so the nearest one only anchors the pick.
-  const pickRoad = (sites: InteractionCellIndex, accepts: (site: Entity) => boolean): Entity | null => {
-    const nearest = nearestSite(sites, accepts);
+  const pickRoad = (
+    sites: InteractionCellIndex,
+    accepts: (site: Entity) => boolean,
+    limit = plan.limit,
+  ): Entity | null => {
+    const nearest = nearestSite(sites, accepts, limit);
     return nearest === null
       ? null
       : pickRoadSite(world, terrain, e, here, nearest, (site) => avoidSite?.(site) !== true && accepts(site));
   };
 
   if (mode !== undefined) {
+    // A run is the player's order, like a pin: it goes on past the signpost area, to any site the builder
+    // can walk to.
+    const runStandable = standableWithin(null);
     const next =
       keptRunSite(plan, mode, assigned?.site) ??
       (mode === 'roads'
-        ? pickRoad(targets.roadSiteCells, canStandAt)
-        : nearestSite(targets.wallSiteCells, canStandAt));
+        ? pickRoad(targets.roadSiteCells, runStandable, null)
+        : nearestSite(targets.wallSiteCells, runStandable, null));
     if (next !== null) {
       stampAssignment(plan, next, true);
       if (!holdSegment(plan, next)) return false;
@@ -411,14 +426,17 @@ function onOwnSide(plan: PlannerContext, site: Entity): boolean {
   );
 }
 
-/** Ownership, confinement and an actual routeable perimeter cell for an automatic assignment. */
-function builderCanReach(plan: PlannerContext, spacing: PlannerSpacing, site: Entity): boolean {
+/** Ownership, confinement to `limit` and an actual routeable perimeter cell for an assignment. */
+function builderCanReach(
+  plan: PlannerContext,
+  spacing: PlannerSpacing,
+  site: Entity,
+  limit: NavigationLimit | null = plan.limit,
+): boolean {
   const { terrain, here } = plan;
   if (!onOwnSide(plan, site)) return false;
   const component = terrain.componentOf(here);
   return spacing
     .workCells(site)
-    .some(
-      (cell: NodeId) => terrain.componentOf(cell) === component && (plan.limit?.allowsNode(cell) ?? true),
-    );
+    .some((cell: NodeId) => terrain.componentOf(cell) === component && (limit?.allowsNode(cell) ?? true));
 }
