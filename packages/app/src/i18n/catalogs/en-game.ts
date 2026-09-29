@@ -91,6 +91,9 @@ export const enGame = {
     demolishPalisade: 'Demolish palisade',
     roadSite: 'Road site',
     cancelRoadSite: 'Cancel road',
+    roadSiteNeeds: 'Needs {good}: {have}/{need}',
+    roadSiteBuilderComing: 'A builder is on the way',
+    roadSiteSupplied: '{good} delivered, ready to pave',
     demolishGate: 'Demolish gate',
     constructionProgress: 'Construction: {percent}%',
     // The vehicle's hover line: `vehiclewindow` gui strings where the original has one (ids in the

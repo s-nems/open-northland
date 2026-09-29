@@ -1,11 +1,13 @@
 import { type EntitySnapshot, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
-import { BUILDING_FARM } from '../src/game/sandbox/ids/index.js';
+import { BUILDING_FARM, GOOD_STONE } from '../src/game/sandbox/ids/index.js';
 import { buildUnitPanelModel, type UnitPanelModel } from '../src/hud/details-panel/index.js';
 import { type DetailsLayout, mapLayout } from '../src/hud/details-panel/layout/index.js';
+import { goodLabel } from '../src/hud/details-panel/model/context.js';
 import { panelViewFor } from '../src/hud/details-panel/selection-view.js';
 import type { Rect } from '../src/hud/geometry.js';
+import { formatMessage, messages } from '../src/i18n/index.js';
 import { PANEL_SCREEN, viewOfKind } from './support/details-panel.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
@@ -30,6 +32,32 @@ describe('details panel layout', () => {
     // Both multi-select kinds share the one compact strip - the pairing the type keeps and the reason
     // the discriminant is the layout's kind, not the model's.
     expect(viewOfKind(modelOf([1, 2], [settler(1), settler(2)]), 'compact').model.kind).toBe('multi-settler');
+  });
+
+  it('gives a road site one status row: its stone wanted, a builder coming, or the stone on site', () => {
+    const ctx = sandboxCtx();
+    const site = (reservation: unknown, stones: number): EntitySnapshot => ({
+      id: 1,
+      components: {
+        RoadSite: { tribe: 1, construction: [{ goodType: GOOD_STONE, amount: 1 }], reservation },
+        Stockpile: { amounts: stones > 0 ? [[GOOD_STONE, stones]] : [] },
+        UnderConstruction: {},
+      },
+    });
+    const view = (entity: EntitySnapshot) =>
+      viewOfKind(buildUnitPanelModel(snapshotOf([entity]), new Set([1]), ctx), 'palisade');
+    const stone = goodLabel(ctx, GOOD_STONE);
+    const copy = messages().hud;
+
+    const waiting = view(site(null, 0));
+    expect(waiting.model.siteStatus).toBe(
+      formatMessage(copy.roadSiteNeeds, { good: stone, have: 0, need: 1 }),
+    );
+    expect(waiting.layout.progress).not.toBeNull();
+    expect(view(site({ builder: 9 }, 0)).model.siteStatus).toBe(copy.roadSiteBuilderComing);
+    expect(view(site({ builder: 9 }, 1)).model.siteStatus).toBe(
+      formatMessage(copy.roadSiteSupplied, { good: stone }),
+    );
   });
 
   /** The rect every mapped field must have become - no real layout rect can carry these coords. */

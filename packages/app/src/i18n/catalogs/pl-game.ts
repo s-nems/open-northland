@@ -89,6 +89,9 @@ export const plGame = {
     demolishPalisade: 'Wyburz palisadę',
     roadSite: 'Plac pod drogę',
     cancelRoadSite: 'Anuluj drogę',
+    roadSiteNeeds: 'Potrzeba: {good} {have}/{need}',
+    roadSiteBuilderComing: 'Budowniczy jest w drodze',
+    roadSiteSupplied: 'Dostarczono: {good}, gotowe do brukowania',
     demolishGate: 'Wyburz bramę',
     constructionProgress: 'Budowa: {percent}%',
     vehicle: 'Wehikuł', // vehiclewindow 0

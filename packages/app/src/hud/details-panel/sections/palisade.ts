@@ -26,9 +26,7 @@ export function drawPalisade(
     chrome.bar(layout.health, model.health.pct);
   }
   if (layout.progress !== null) {
-    const progress = formatMessage(hud.constructionProgress, {
-      percent: model.builtPct,
-    });
+    const progress = model.siteStatus ?? formatMessage(hud.constructionProgress, { percent: model.builtPct });
     chrome.textAt(progress, layout.progress.x, layout.progress.y + ROW_TEXT_PAD * s, 'dimmed');
   }
   for (const button of layout.buttons) {

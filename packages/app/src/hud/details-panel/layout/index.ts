@@ -123,9 +123,9 @@ export function layoutPalisade(
     'demolish-palisade' as const,
   ];
   // The hitpoints label, its bar, then the build progress of a segment still going up. A road site has
-  // neither: its one stone lays it at once.
+  // no hitpoints, and its progress row says where its paving stands.
   const healthRows = model.roadSite ? 0 : 2;
-  const showsProgress = model.underConstruction && !model.roadSite;
+  const showsProgress = model.underConstruction;
   const rows = healthRows + (showsProgress ? 1 : 0);
   const bodyH = rowH * rows + actions.length * buttonH + pad * Math.max(0, actions.length - 1);
   const probe = sectionAt(0, 0, w, bodyH, s);

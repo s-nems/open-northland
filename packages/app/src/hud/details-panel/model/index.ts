@@ -9,9 +9,11 @@ import {
   num,
   type SnapshotEntity,
 } from '../../../game/snapshot.js';
+import { formatMessage, messages } from '../../../i18n/index.js';
 import { healthBar, pct } from './bars.js';
 import { type BuildingPanelModel, buildingPanelModel } from './building.js';
-import type { UnitPanelModelContext } from './context.js';
+import { liveAmounts } from './building-materials.js';
+import { goodLabel, type UnitPanelModelContext } from './context.js';
 import { type SettlerPanelModel, settlerPanelModel } from './settler-panel.js';
 import { type VehiclePanelModel, vehiclePanelModel } from './vehicle.js';
 
@@ -135,8 +137,11 @@ export interface PalisadePanelModel {
   readonly builtPct: number;
   readonly gateOpen: boolean | null;
   readonly underConstruction: boolean;
-  /** A road site shares the wall site's panel: a title and the button that withdraws it. */
+  /** A road site shares the wall site's panel: a title, its {@link siteStatus} and the button that
+   *  withdraws it. */
   readonly roadSite: boolean;
+  /** Where a road site's paving stands: its stone wanted, delivered, or a builder coming for it. */
+  readonly siteStatus: string | null;
 }
 
 export type UnitPanelModel =
@@ -165,10 +170,39 @@ function palisadePanelModel(ent: SnapshotEntity): PalisadePanelModel {
     gateOpen: gate === undefined || gate === null ? null : gate.open === true,
     underConstruction: ent.components.UnderConstruction !== undefined,
     roadSite: false,
+    siteStatus: null,
   };
 }
 
-function roadSitePanelModel(ent: SnapshotEntity): PalisadePanelModel {
+/** The bill's goods on site, else a builder that claimed the site, else the first good still wanted. */
+function roadSiteStatus(ctx: UnitPanelModelContext, ent: SnapshotEntity): string | null {
+  const copy = messages().hud;
+  const site = ent.components.RoadSite as { construction?: unknown; reservation?: unknown } | undefined;
+  const bill = Array.isArray(site?.construction) ? site.construction : [];
+  const held = liveAmounts(ent.components.Stockpile);
+  const goods: { goodType: number; have: number; need: number }[] = [];
+  for (const entry of bill) {
+    const goodType = num((entry as { goodType?: unknown }).goodType);
+    const need = num((entry as { amount?: unknown }).amount);
+    if (goodType !== undefined && need !== undefined)
+      goods.push({ goodType, have: held.get(goodType) ?? 0, need });
+  }
+  const first = goods.find((good) => good.have < good.need);
+  if (first === undefined) {
+    const paved = goods[0];
+    return paved === undefined
+      ? null
+      : formatMessage(copy.roadSiteSupplied, { good: goodLabel(ctx, paved.goodType) });
+  }
+  if (site?.reservation !== undefined && site.reservation !== null) return copy.roadSiteBuilderComing;
+  return formatMessage(copy.roadSiteNeeds, {
+    good: goodLabel(ctx, first.goodType),
+    have: first.have,
+    need: first.need,
+  });
+}
+
+function roadSitePanelModel(ctx: UnitPanelModelContext, ent: SnapshotEntity): PalisadePanelModel {
   return {
     kind: 'palisade',
     entityId: ent.id,
@@ -177,6 +211,7 @@ function roadSitePanelModel(ent: SnapshotEntity): PalisadePanelModel {
     gateOpen: null,
     underConstruction: true,
     roadSite: true,
+    siteStatus: roadSiteStatus(ctx, ent),
   };
 }
 
@@ -215,7 +250,7 @@ export function buildUnitPanelModel(
   if (noUnitOrHouse && signposts.length === 0 && palisade !== undefined) return palisadePanelModel(palisade);
   const roadSite = only(roadSites);
   if (noUnitOrHouse && signposts.length === 0 && palisades.length === 0 && roadSite !== undefined) {
-    return roadSitePanelModel(roadSite);
+    return roadSitePanelModel(ctx, roadSite);
   }
   // A signpost is a direct-click-only selection (never marquee'd), so units/buildings always outrank
   // it. A vehicle's order window opens for it alone; settlers boxed with vehicles are a group.
