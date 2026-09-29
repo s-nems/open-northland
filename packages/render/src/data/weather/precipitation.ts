@@ -33,7 +33,7 @@ export const WEATHER_STORM_RANGE: Readonly<
   Record<WeatherKind, { readonly start: number; readonly full: number }>
 > = {
   rain: { start: 0.18, full: 0.35 },
-  snow: { start: 0.2, full: 0.4 },
+  snow: { start: 0.25, full: 0.5 },
   sand: { start: 0.045, full: 0.085 },
 };
 
@@ -48,8 +48,9 @@ export function stormOf(kind: WeatherKind, amount: number): number {
   return smoothstep(range.start, range.full, amount);
 }
 
-/** Screen px² per particle at full intensity and zoom 1. Rain and sand count streaks, snow flakes. */
-export const PARTICLE_AREA_PX: Readonly<Record<WeatherKind, number>> = { rain: 360, snow: 520, sand: 300 };
+/** Screen px² per particle at full intensity and zoom 1. Rain and sand count streaks, snow flakes. Rain
+ *  reads through fewer, better-shaped streaks; snow needs many flakes, most of them far and tiny. */
+export const PARTICLE_AREA_PX: Readonly<Record<WeatherKind, number>> = { rain: 560, snow: 190, sand: 480 };
 
 /** Particles wrap in a box this much larger than the screen on every side, so a long streak or a swaying
  *  flake never pops at the edge. */
@@ -83,9 +84,13 @@ export function particleWrapArea(screenW: number, screenH: number): number {
   return (screenW + 2 * PARTICLE_WRAP_MARGIN_PX) * (screenH + 2 * PARTICLE_WRAP_MARGIN_PX);
 }
 
-/** A full storm draws this share more particles than the heaviest calm weather. A sandstorm's longer,
- *  faster dashes and dust wall already fill the screen. */
-export const PARTICLE_STORM_BONUS: Readonly<Record<WeatherKind, number>> = { rain: 0.6, snow: 0.8, sand: 0 };
+/** A full storm draws this share more particles than the heaviest calm weather: a blizzard is thick with
+ *  flakes, a sandstorm's dust wall carries the rest. */
+export const PARTICLE_STORM_BONUS: Readonly<Record<WeatherKind, number>> = {
+  rain: 0.7,
+  snow: 1.4,
+  sand: 0.3,
+};
 
 /** Particles of `kind` to draw for the strongest `intensity` on screen and the view's `storm`. */
 export function particleCount(

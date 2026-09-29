@@ -31,6 +31,10 @@ export const MIST_SCALE_PX = 230;
 const MIST_STRETCH_X = 2;
 /** Streaks of blowing dust or snow: long thin noise cells, world px. */
 const STREAK_CELL_PX = [520, 110] as const;
+/** The flash lights the whole screen by this share and the rest around the strike, within this share of
+ *  the screen's larger side, so a strike off one edge lights that side. */
+const FLASH_FLOOR = 0.35;
+const FLASH_REACH_SHARE = 0.8;
 
 const NOISE = `
   const float PERIOD = ${ATMOSPHERE_NOISE_PERIOD}.0;
@@ -99,7 +103,10 @@ const VEIL_FRAGMENT = `#version 300 es
   // Mist unevenness, streak share (blowing dust or snow).
   uniform vec2 uMist;
   uniform vec3 uFlash;
+  // Where the flash is brightest (screen px) and its reach (px).
+  uniform vec3 uFlashAt;
   ${NOISE}
+  const float FLASH_FLOOR = ${FLASH_FLOOR};
   const vec2 MIST_CELL = vec2(${MIST_SCALE_PX * MIST_STRETCH_X}.0, ${MIST_SCALE_PX}.0);
   const vec2 STREAK_CELL = vec2(${STREAK_CELL_PX[0]}.0, ${STREAK_CELL_PX[1]}.0);
   // Veil alpha posterization steps; the dither between them stays below what reads as a pattern.
@@ -115,7 +122,9 @@ const VEIL_FRAGMENT = `#version 300 es
     mist = mix(mist, 0.5 + 1.2 * (streaks - 0.3), uMist.y);
     float a = uHaze.a * clamp(1.0 - uMist.x + 2.0 * uMist.x * mist, 0.0, 1.0);
     a = clamp(floor(a * STEPS + bayer(vScreen)) / STEPS, 0.0, 1.0);
-    finalColor = vec4(uHaze.rgb * a + uFlash, a);
+    vec2 fromStrike = (vScreen - uFlashAt.xy) / uFlashAt.z;
+    float lit = FLASH_FLOOR + (1.0 - FLASH_FLOOR) * exp(-dot(fromStrike, fromStrike));
+    finalColor = vec4(uHaze.rgb * a + uFlash * lit, a);
   }
 `;
 
@@ -137,6 +146,7 @@ type VeilUniforms = UniformGroup & {
     readonly uHaze: Float32Array;
     readonly uMist: Float32Array;
     readonly uFlash: Float32Array;
+    readonly uFlashAt: Float32Array;
   };
 };
 
@@ -167,6 +177,9 @@ export interface AtmosphereFrame {
   readonly windTravelY: number;
   readonly windX: number;
   readonly windY: number;
+  /** Screen fraction of the lightning strike that lights the flash; off screen for a distant one. */
+  readonly flashX: number;
+  readonly flashY: number;
 }
 
 /** A world-px drift as noise lattice cells, wrapped on the noise period so float32 keeps it precise and
@@ -197,6 +210,7 @@ export class WeatherAtmosphere {
       uHaze: { value: new Float32Array(4), type: 'vec4<f32>' },
       uMist: { value: new Float32Array(2), type: 'vec2<f32>' },
       uFlash: { value: new Float32Array(3), type: 'vec3<f32>' },
+      uFlashAt: { value: new Float32Array([0, 0, 1]), type: 'vec3<f32>' },
     }) as VeilUniforms;
     gradeProgram ??= new GlProgram({ vertex: VERTEX, fragment: GRADE_FRAGMENT, name: 'weather-grade' });
     veilProgram ??= new GlProgram({ vertex: VERTEX, fragment: VEIL_FRAGMENT, name: 'weather-veil' });
@@ -245,6 +259,11 @@ export class WeatherAtmosphere {
     v.uHaze.set([...look.haze, look.hazeAlpha]);
     v.uMist.set([look.mist, look.streaks]);
     v.uFlash.set(look.flash);
+    v.uFlashAt.set([
+      frame.flashX * screenW,
+      frame.flashY * screenH,
+      FLASH_REACH_SHARE * Math.max(screenW, screenH),
+    ]);
     this.veilUniforms.update();
     this.veil.visible = look.hazeAlpha > 0 || look.flash.some((channel) => channel > 0);
     this.veil.scale.set(screenW, screenH);

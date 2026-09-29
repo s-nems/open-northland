@@ -39,34 +39,36 @@ const AIR: Readonly<Record<WeatherKind, KindAir>> = {
     streaks: 0.15,
   },
   snow: {
-    grade: [0.94, 0.97, 1],
-    stormGrade: [0.9, 0.93, 0.98],
+    // Overcast: the ground dims a little so the white flakes stand out against snow cover.
+    grade: [0.83, 0.86, 0.93],
+    stormGrade: [0.92, 0.94, 0.98],
     cloudShadow: 0.08,
     stormCloudShadow: 0.06,
-    haze: [0.92, 0.95, 1],
-    hazeAlpha: 0.14,
-    stormHazeAlpha: 0.5,
-    mist: 0.6,
-    streaks: 0.45,
+    haze: [0.9, 0.93, 0.98],
+    hazeAlpha: 0.06,
+    stormHazeAlpha: 0.34,
+    mist: 0.65,
+    streaks: 0.5,
   },
   sand: {
-    grade: [1, 0.9, 0.74],
-    stormGrade: [0.88, 0.78, 0.62],
+    grade: [1, 0.93, 0.8],
+    stormGrade: [0.9, 0.8, 0.66],
     cloudShadow: 0,
     stormCloudShadow: 0.05,
-    haze: [0.84, 0.65, 0.42],
-    hazeAlpha: 0.18,
-    stormHazeAlpha: 0.52,
-    mist: 0.7,
-    streaks: 0.8,
+    haze: [0.84, 0.66, 0.44],
+    hazeAlpha: 0.14,
+    stormHazeAlpha: 0.3,
+    mist: 0.75,
+    streaks: 0.85,
   },
 };
 
 /** Vignette corner darkening at a full storm. */
 const STORM_VIGNETTE = 0.38;
-/** Additive flash colour at full flash, and how much of the grade's darkening a full flash lifts. */
-const FLASH_COLOUR: Rgb = [0.3, 0.33, 0.4];
-const FLASH_LIFT = 0.85;
+/** Additive cool flash colour at full flash, and how much of the grade's darkening a full flash lifts:
+ *  a strike lights the scene up to about its clear-day look with a cold edge, never a white wash. */
+const FLASH_COLOUR: Rgb = [0.09, 0.11, 0.18];
+const FLASH_LIFT = 0.75;
 /** Below this the air is left undrawn. */
 const VISIBLE_EPSILON = 0.002;
 

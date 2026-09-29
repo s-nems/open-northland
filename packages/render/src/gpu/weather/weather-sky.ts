@@ -5,14 +5,16 @@ import { WEATHER_SNAP_SECONDS } from '../../data/weather/climate.js';
 import type { WeatherField } from '../../data/weather/field.js';
 import { particleCount, stormOf, weatherIntensity, zoomSize } from '../../data/weather/precipitation.js';
 import type { WeatherConditions, WeatherKind } from '../../data/weather/types.js';
-import { WeatherAtmosphere } from './atmosphere.js';
+import { type AtmosphereFrame, WeatherAtmosphere } from './atmosphere.js';
 import { atmosphereLook } from './atmosphere-look.js';
 import { WeatherFieldTextures } from './field-textures.js';
-import { LightningBolt } from './lightning-bolt.js';
+import { flashingStrike, LightningBolt } from './lightning-bolt.js';
 import { type PrecipitationFrame, PrecipitationLayer } from './precipitation-layer.js';
 
 /** Paint order of the particle kinds: dust behind snow behind rain. */
 const PARTICLE_ORDER: readonly WeatherKind[] = ['sand', 'snow', 'rain'];
+/** Screen fraction a flash without a strike lights around: the sky above the view's middle. */
+const FLASH_UNPLACED = 0.5;
 
 /** The camera and screen the sky is framed on: the main view's camera after any device-pixel snap. */
 export interface WeatherSkyView {
@@ -80,7 +82,8 @@ export class WeatherSky {
       return;
     }
     this.container.visible = true;
-    const frame: PrecipitationFrame = {
+    const flashing = flashingStrike(conditions.strikes, gameSeconds);
+    const frame: PrecipitationFrame & AtmosphereFrame = {
       screenW,
       screenH,
       offsetX: camera.offsetX,
@@ -93,6 +96,8 @@ export class WeatherSky {
       windY: conditions.windY,
       storm: conditions.storm,
       sizeScale: zoomSize(zoom),
+      flashX: flashing?.screenX ?? FLASH_UNPLACED,
+      flashY: flashing?.screenY ?? FLASH_UNPLACED,
     };
     this.atmosphere.update(look, frame);
     const viewport = cameraViewport(camera, screenW, screenH);

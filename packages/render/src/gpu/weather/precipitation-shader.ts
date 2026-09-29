@@ -37,30 +37,30 @@ interface PrecipitationLook {
 
 const LOOKS: Readonly<Record<WeatherKind, PrecipitationLook>> = {
   rain: {
-    fall: [300, 720],
+    fall: [360, 820],
     windResponse: 1.6,
-    parallax: [1.05, 1.45],
-    alpha: [0.38, 0.72],
-    size: [1, 1.6],
-    colour: [0.74, 0.82, 0.92],
-    stormAlpha: 0.35,
+    parallax: [1.05, 1.5],
+    alpha: [0.16, 0.5],
+    size: [1, 1.4],
+    colour: [0.68, 0.76, 0.87],
+    stormAlpha: 0.3,
   },
   snow: {
-    fall: [20, 64],
+    fall: [18, 70],
     windResponse: 1.2,
-    parallax: [1.0, 1.35],
-    alpha: [0.55, 0.95],
-    size: [1.6, 5.2],
-    colour: [0.97, 0.98, 1.0],
-    stormAlpha: 0.1,
+    parallax: [0.95, 1.5],
+    alpha: [0.9, 1],
+    size: [1.8, 8],
+    colour: [1.0, 1.0, 1.0],
+    stormAlpha: 0,
   },
   sand: {
     fall: [6, 22],
     windResponse: 1.25,
     parallax: [1.0, 1.3],
-    alpha: [0.45, 0.8],
-    size: [1, 1.5],
-    colour: [0.94, 0.8, 0.58],
+    alpha: [0.3, 0.7],
+    size: [1, 1.4],
+    colour: [1.0, 0.9, 0.72],
     stormAlpha: 0,
   },
 };
@@ -90,7 +90,8 @@ const VERTEX_HEAD = `#version 300 es
   in vec4 aSeedB;
   out vec2 vLocal;
   out float vAlpha;
-  flat out float vShape;
+  flat out vec4 vShape;
+  flat out vec2 vShade;
   flat out vec3 vColour;
   uniform mat3 uProjectionMatrix;
   uniform mat3 uWorldTransformMatrix;
@@ -156,11 +157,20 @@ const VERTEX_HEAD = `#version 300 es
   }
 `;
 
-/** Thin slanted streaks along the fall velocity, brightest at the head. */
+/** Thin slanted streaks along the fall velocity, brightest at the head: far ones short, dim and slow,
+ *  near ones long and brighter. A storm sweeps heavier sheets of rain across the screen with the wind. */
 const RAIN_VERTEX = `
-  // Streak length is the distance travelled in this many seconds, within bounds (px at zoom 1).
-  const float STREAK_SECONDS = 0.04;
-  const vec2 STREAK_LENGTH = vec2(7.0, 34.0);
+  // Streak length px at zoom 1, far to near.
+  const vec2 STREAK_LENGTH = vec2(7.0, 40.0);
+  // Brightness far to near: distant rain melts into the air.
+  const vec2 BRIGHTNESS = vec2(0.78, 1.1);
+  // Storm sheets: bands of heavier rain, px per band, whole cycles per time split, and how much a full
+  // storm thins the rain between the bands.
+  const vec2 SHEET_WAVELENGTH = vec2(460.0, 190.0);
+  const vec2 SHEET_CYCLES = vec2(9.0, 23.0);
+  const float SHEET_DEPTH = 0.75;
+  // The bands lean down to the right, like rain blown across the view.
+  const vec2 SHEET_SLANT = vec2(1.0, 0.35);
   void main(void) {
     float depth = aSeedA.z;
     vec2 box = uScreen + 2.0 * MARGIN;
@@ -173,109 +183,157 @@ const RAIN_VERTEX = `
     vec2 velocity = fallVel + uWind * windShare;
     vec2 dir = normalize(velocity);
     vec2 across = vec2(-dir.y, dir.x);
-    float len = clamp(length(velocity) * STREAK_SECONDS * (0.7 + 0.6 * aSeedB.y),
-      STREAK_LENGTH.x * uDraw.z, STREAK_LENGTH.y * uDraw.z) * (1.0 + 0.4 * uStorm);
+    float len = mix(STREAK_LENGTH.x, STREAK_LENGTH.y, depth) * (0.75 + 0.5 * aSeedB.y) * uDraw.z
+      * (1.0 + 0.3 * uStorm);
     float core = 0.5 * mix(SIZE.x, SIZE.y, depth) * uDraw.z;
     float halfWidth = core + 1.0;
+    float phase = uTime.y / TIME_SPLIT;
+    float band = dot(centre, SHEET_SLANT);
+    float sheet = 0.6 * (0.5 + 0.5 * sin(TAU * (band / SHEET_WAVELENGTH.x - SHEET_CYCLES.x * phase)))
+      + 0.4 * (0.5 + 0.5 * sin(TAU * (band / SHEET_WAVELENGTH.y - SHEET_CYCLES.y * phase)));
+    float sheetGain = mix(1.0, mix(1.0 - SHEET_DEPTH, 1.0 + 0.5 * SHEET_DEPTH, sheet), uStorm);
     vLocal = vec2(aPosition.x * halfWidth, aPosition.y);
-    vShape = core;
-    vColour = COLOUR * (0.9 + 0.2 * aSeedB.z);
-    vAlpha = mix(ALPHA.x, ALPHA.y, depth) * (1.0 + STORM_ALPHA * uStorm) * gate;
+    vShape = vec4(core, 0.0, 0.0, 0.0);
+    vShade = vec2(0.0);
+    vColour = COLOUR * mix(BRIGHTNESS.x, BRIGHTNESS.y, depth) * (0.92 + 0.16 * aSeedB.z);
+    vAlpha = mix(ALPHA.x, ALPHA.y, depth) * (1.0 + STORM_ALPHA * uStorm) * sheetGain * gate;
     place(centre + dir * aPosition.y * len * 0.5 + across * aPosition.x * halfWidth);
   }
 `;
 
 const RAIN_FRAGMENT = `
   void main(void) {
-    float coverage = clamp(vShape + 0.5 - abs(vLocal.x), 0.0, 1.0);
+    float coverage = clamp(vShape.x + 0.5 - abs(vLocal.x), 0.0, 1.0);
     float along = 0.5 * (vLocal.y + 1.0);
-    float a = vAlpha * coverage * along * along;
+    float a = vAlpha * coverage * along * sqrt(along);
     finalColor = vec4(vColour * a, a);
   }
 `;
 
-/** Flakes that sway and tumble; far ones are single crisp pixels, a few near ones the original's plus. */
+/**
+ * Flakes that sway, tumble and in a blizzard stretch along the wind. Far flakes are crisp whole-pixel
+ * squares, a few mid flakes the original's plus sign, near flakes large soft discs. Every flake carries a
+ * cool shade under it, so it reads on snow-covered ground as well as on grass.
+ */
 const SNOW_VERTEX = `
   // Whole sway and tumble cycles per time split, so the motion is continuous across it.
   const vec2 SWAY_CYCLES = vec2(9.0, 22.0);
   const vec2 TUMBLE_CYCLES = vec2(14.0, 40.0);
-  const float SWAY_PX = 7.0;
-  const float TUMBLE = 0.55;
+  const float SWAY_PX = 9.0;
+  const float TUMBLE = 0.3;
   // Blizzard wind stretches flakes into short dashes from this speed on (px/s), up to this factor.
   const vec2 STRETCH_SPEED = vec2(120.0, 420.0);
-  const float STRETCH_MAX = 0.9;
-  // Flakes below this size are drawn as whole crisp pixels.
-  const float PIXEL_FLAKE = 2.2;
-  // Share of near flakes drawn as a plus sign.
-  const float CROSS_SHARE = 0.18;
+  const float STRETCH_MAX = 1.3;
+  // Flakes below this diameter px are drawn as whole crisp pixels.
+  const float PIXEL_FLAKE = 3.0;
+  // Share of mid-size flakes drawn as a crisp plus sign.
+  const float CROSS_SHARE = 0.16;
+  const float CROSS_MAX = 4.5;
+  // Edge softness px of a soft flake, far to near: near flakes are out of focus.
+  const vec2 SOFT_PX = vec2(0.6, 2.2);
+  // The shade sits this many px under the flake.
+  const float SHADE_DROP = 1.0;
+  // Far flakes are this much dimmer and follow this share of a near flake's wind.
+  const float FAR_BRIGHTNESS = 0.9;
+  const float FAR_WIND = 0.55;
   void main(void) {
     float depth = aSeedA.z;
     vec2 box = uScreen + 2.0 * MARGIN;
     float speed = mix(FALL.x, FALL.y, depth) * speedOf(aSeedB.x);
     vec2 fallVel = vec2(0.0, speed);
-    float windShare = WIND_RESPONSE * mix(0.6, 1.0, depth) * uDraw.z;
+    float windShare = WIND_RESPONSE * mix(FAR_WIND, 1.0, depth) * uDraw.z;
     vec2 centre = wrapped(box, fallVel, windShare, mix(PARALLAX.x, PARALLAX.y, depth));
     float phase = uTime.y / TIME_SPLIT;
     float swayCycles = floor(mix(SWAY_CYCLES.x, SWAY_CYCLES.y, aSeedB.z));
-    centre.x += SWAY_PX * (0.4 + depth) * uDraw.z * sin(TAU * (swayCycles * phase + aSeedB.y));
+    centre.x += SWAY_PX * (0.3 + depth) * uDraw.z * sin(TAU * (swayCycles * phase + aSeedB.y));
     float gate = densityGate(centre);
     if (gate <= 0.0) { cull(); return; }
-    float size = mix(SIZE.x, SIZE.y, depth * depth) * (0.65 + 0.7 * aSeedB.w) * uDraw.z;
+    // Flakes fall between the camera and the ground, so zooming out never shrinks them below their
+    // zoom-1 size: tiny flakes would vanish into the snow cover.
+    float size = mix(SIZE.x, SIZE.y, depth * depth) * (0.7 + 0.6 * aSeedB.w) * max(uDraw.z, 1.0);
     vec2 velocity = fallVel + uWind * windShare;
     vec2 dir = normalize(velocity);
     vec2 across = vec2(-dir.y, dir.x);
+    vColour = COLOUR * mix(FAR_BRIGHTNESS, 1.0, depth);
+    vAlpha = mix(ALPHA.x, ALPHA.y, depth) * gate;
+    vShade = vec2(0.0);
+    if (size < PIXEL_FLAKE) {
+      // A whole-pixel square snapped to the pixel grid, with its shade row under it.
+      float n = max(1.0, floor(size + 0.5));
+      vLocal = 0.5 * (1.0 + aPosition) * vec2(n, n + SHADE_DROP);
+      vShape = vec4(0.0, n, 0.0, 0.0);
+      place(floor(centre) + vLocal);
+      return;
+    }
+    if (size < CROSS_MAX && aSeedB.w > 1.0 - CROSS_SHARE) {
+      // Upright and pixel-snapped: one-pixel arms either side of a centre pixel, shade row under.
+      float arm = floor(size * 0.5 + 0.5);
+      vLocal = aPosition * (arm + 0.5) + vec2(0.0, (aPosition.y + 1.0) * 0.5 * SHADE_DROP);
+      vShape = vec4(1.0, arm, 0.0, 0.0);
+      place(floor(centre) + 0.5 + vLocal);
+      return;
+    }
     float stretch = 1.0 + STRETCH_MAX * smoothstep(STRETCH_SPEED.x, STRETCH_SPEED.y, length(velocity));
     float tumbleCycles = floor(mix(TUMBLE_CYCLES.x, TUMBLE_CYCLES.y, aSeedB.y));
     float tumble = 1.0 - TUMBLE * abs(sin(TAU * (tumbleCycles * phase + aSeedB.z)));
-    bool pixel = size < PIXEL_FLAKE;
-    bool plus = !pixel && depth > 0.5 && aSeedB.w > 1.0 - CROSS_SHARE;
-    vShape = pixel ? 0.0 : (plus ? 2.0 : 1.0);
-    vColour = COLOUR;
-    vAlpha = mix(ALPHA.x, ALPHA.y, depth) * (1.0 + STORM_ALPHA * uStorm) * gate;
-    vLocal = aPosition;
-    if (pixel) {
-      // A whole-pixel square snapped to the pixel grid: crisp like the original's dots.
-      vec2 cell = floor(centre) + 0.5 * (1.0 + aPosition) * max(1.0, floor(size + 0.5));
-      place(cell);
-      return;
-    }
-    if (plus) {
-      // Upright and pixel-snapped, three px arms either side of a centre pixel at the largest size.
-      float arm = floor(size * 0.5 + 0.5) + 0.5;
-      place(floor(centre) + 0.5 + aPosition * arm);
-      return;
-    }
-    float r = 0.5 * size + 0.75;
-    place(centre + dir * aPosition.y * r * stretch + across * aPosition.x * r * tumble);
+    float soft = mix(SOFT_PX.x, SOFT_PX.y, depth);
+    // Radii across and along the flight direction.
+    vec2 radii = 0.5 * size * vec2(tumble, stretch);
+    vec2 extent = radii + soft + SHADE_DROP + 1.0;
+    vLocal = aPosition * extent;
+    vShape = vec4(2.0, soft, radii);
+    // Screen down in the flake's (across, along) frame.
+    vShade = SHADE_DROP * vec2(across.y, dir.y);
+    place(centre + across * vLocal.x + dir * vLocal.y);
   }
 `;
 
 const SNOW_FRAGMENT = `
+  const vec3 SHADE_COLOUR = vec3(0.3, 0.36, 0.5);
+  const float SHADE_ALPHA = 0.6;
+  float plusAt(vec2 p, float arm) {
+    vec2 d = abs(p);
+    return (max(d.x, d.y) <= arm + 0.5 && min(d.x, d.y) < 0.5) ? 1.0 : 0.0;
+  }
+  // 0..1 cover of a soft ellipse with 'radii' at 'p', blurred over 'soft' px inside its edge.
+  float discAt(vec2 p, vec2 radii, float soft) {
+    float edge = (length(p / radii) - 1.0) * min(radii.x, radii.y);
+    return 1.0 - smoothstep(-soft, 0.5, edge);
+  }
   void main(void) {
-    float a;
-    if (vShape < 0.5) {
-      a = 1.0;
-    } else if (vShape > 1.5) {
-      vec2 d = abs(vLocal);
-      float armWidth = 0.34;
-      a = (d.x < armWidth || d.y < armWidth) ? 1.0 : 0.0;
+    float flake;
+    float shade;
+    float glow = 1.0;
+    if (vShape.x < 0.5) {
+      flake = vLocal.y < vShape.y ? 1.0 : 0.0;
+      shade = 1.0 - flake;
+    } else if (vShape.x < 1.5) {
+      flake = plusAt(vLocal, vShape.y);
+      shade = plusAt(vLocal - vec2(0.0, 1.0), vShape.y);
     } else {
-      a = 1.0 - smoothstep(0.45, 0.95, length(vLocal));
+      flake = discAt(vLocal, vShape.zw, vShape.y);
+      shade = discAt(vLocal - vShade, vShape.zw, vShape.y);
+      // A brighter heart: soft flakes are densest in the middle.
+      glow = 0.9 + 0.1 * (1.0 - clamp(length(vLocal / vShape.zw), 0.0, 1.0));
     }
-    a *= vAlpha;
-    finalColor = vec4(vColour * a, a);
+    float under = shade * SHADE_ALPHA * (1.0 - flake);
+    float a = (flake + under) * vAlpha;
+    finalColor = vec4((vColour * glow * flake + SHADE_COLOUR * under) * vAlpha, a);
   }
 `;
 
-/** Fast sideways dashes plus a few slow, large dust puffs. */
+/** Fine sideways dust dashes plus a few slow, large, faint dust puffs; a sandstorm lengthens the dashes
+ *  and thickens them, while the atmosphere's streaked dust wall carries the rest. */
 const SAND_VERTEX = `
-  const float STREAK_SECONDS = 0.05;
-  const vec2 STREAK_LENGTH = vec2(6.0, 30.0);
-  const float PUFF_SHARE = 0.09;
-  const vec2 PUFF_SIZE = vec2(22.0, 70.0);
-  const float PUFF_ALPHA = 0.14;
+  const vec2 STREAK_LENGTH = vec2(4.0, 20.0);
+  const float STREAK_SECONDS = 0.045;
+  // A full sandstorm lengthens the dashes by this share.
+  const float STORM_STRETCH = 0.6;
+  const float PUFF_SHARE = 0.14;
+  const vec2 PUFF_SIZE = vec2(36.0, 110.0);
+  const float PUFF_ALPHA = 0.18;
   const float PUFF_WIND = 0.45;
-  const vec3 PUFF_COLOUR = vec3(0.8, 0.66, 0.46);
+  const vec3 PUFF_COLOUR = vec3(0.82, 0.68, 0.48);
   // Vertical wobble of a dash, whole cycles per time split.
   const vec2 WOBBLE_CYCLES = vec2(20.0, 50.0);
   const float WOBBLE_PX = 5.0;
@@ -291,10 +349,11 @@ const SAND_VERTEX = `
     centre.y += WOBBLE_PX * uDraw.z * sin(TAU * (floor(mix(WOBBLE_CYCLES.x, WOBBLE_CYCLES.y, aSeedB.z)) * phase + aSeedB.y));
     float gate = densityGate(centre);
     if (gate <= 0.0) { cull(); return; }
-    vLocal = aPosition;
+    vShade = vec2(0.0);
     if (puff) {
       float r = 0.5 * mix(PUFF_SIZE.x, PUFF_SIZE.y, aSeedB.y) * uDraw.z * (1.0 + 0.5 * uStorm);
-      vShape = 1.0 + aSeedB.z;
+      vLocal = aPosition;
+      vShape = vec4(1.0 + aSeedB.z, 0.0, 0.0, 0.0);
       vColour = PUFF_COLOUR;
       vAlpha = PUFF_ALPHA * (0.6 + 0.8 * depth) * (1.0 + STORM_ALPHA * uStorm) * gate;
       place(centre + aPosition * r);
@@ -304,11 +363,11 @@ const SAND_VERTEX = `
     vec2 dir = normalize(velocity + vec2(1e-3, 0.0));
     vec2 across = vec2(-dir.y, dir.x);
     float len = clamp(length(velocity) * STREAK_SECONDS * (0.6 + 0.8 * aSeedB.y),
-      STREAK_LENGTH.x * uDraw.z, STREAK_LENGTH.y * uDraw.z);
+      STREAK_LENGTH.x * uDraw.z, STREAK_LENGTH.y * uDraw.z) * (1.0 + STORM_STRETCH * uStorm);
     float core = 0.5 * mix(SIZE.x, SIZE.y, depth) * uDraw.z;
     float halfWidth = core + 1.0;
     vLocal = vec2(aPosition.x * halfWidth, aPosition.y);
-    vShape = -core;
+    vShape = vec4(-core, 0.0, 0.0, 0.0);
     vColour = COLOUR * (0.85 + 0.3 * aSeedB.z);
     vAlpha = mix(ALPHA.x, ALPHA.y, depth) * (1.0 + STORM_ALPHA * uStorm) * gate;
     place(centre + dir * aPosition.y * len * 0.5 + across * aPosition.x * halfWidth);
@@ -318,13 +377,14 @@ const SAND_VERTEX = `
 const SAND_FRAGMENT = `
   void main(void) {
     float a;
-    if (vShape > 0.0) {
+    float seed = vShape.x;
+    if (seed > 0.0) {
       // A lumpy soft puff: the radius wobbles with the angle, seeded per puff.
       float angle = atan(vLocal.y, vLocal.x);
-      float r = length(vLocal) * (1.0 + 0.18 * sin(3.0 * angle + 6.2831 * vShape) + 0.1 * sin(5.0 * angle - 4.0 * vShape));
+      float r = length(vLocal) * (1.0 + 0.18 * sin(3.0 * angle + 6.2831 * seed) + 0.1 * sin(5.0 * angle - 4.0 * seed));
       a = 1.0 - smoothstep(0.15, 1.0, r);
     } else {
-      float coverage = clamp(-vShape + 0.5 - abs(vLocal.x), 0.0, 1.0);
+      float coverage = clamp(-seed + 0.5 - abs(vLocal.x), 0.0, 1.0);
       a = coverage * (1.0 - vLocal.y * vLocal.y);
     }
     a *= vAlpha;
@@ -336,7 +396,10 @@ const FRAGMENT_HEAD = `#version 300 es
   precision highp float;
   in vec2 vLocal;
   in float vAlpha;
-  flat in float vShape;
+  // Per-kind shape parameters; see each body.
+  flat in vec4 vShape;
+  // Snow: the shade's offset under a soft flake, in the flake's frame.
+  flat in vec2 vShade;
   flat in vec3 vColour;
   out vec4 finalColor;
 `;
