@@ -266,6 +266,7 @@ export const enSurfaces = {
         craftToggle: 'Add/remove a product from production',
         workFlagOrder: 'Set a work flag',
         roadTool: 'Road tool',
+        palisadeTool: 'Palisade tool',
       },
       keySpace: 'Space',
       mouseLeft: 'left mouse button',

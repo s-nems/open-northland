@@ -262,6 +262,7 @@ export const plSurfaces = {
         craftToggle: 'Dodaj/usuń produkt z listy produkcji',
         workFlagOrder: 'Ustaw flagę pracy',
         roadTool: 'Narzędzie drogi',
+        palisadeTool: 'Narzędzie palisady',
       },
       keySpace: 'Spacja',
       mouseLeft: 'lewy przycisk myszy',

@@ -304,6 +304,12 @@ function roadToolHint(key: string | null): string {
   return key === null ? `${copy.road}: ${copy.roadHint}` : `${copy.road} (${key}): ${copy.roadHint}`;
 }
 
+/** The palisade button's tooltip: its label and key, when bound. */
+function palisadeToolHint(key: string | null): string {
+  const label = messages().hud.construction.palisade;
+  return key === null ? label : `${label} (${key})`;
+}
+
 const assetsByLanguage = new Map<string, Promise<ToolPanelAssets>>();
 
 function loadToolPanelAssets(lang: string): Promise<ToolPanelAssets> {
@@ -435,10 +441,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           ? (opts.palisadeTools?.gate ?? null)
           : null;
     const roadOffered = opts.canPlaceRoadAt !== undefined;
+    const wallRow = palisadeToolRow('palisade');
     const toolOffered = (tool: ConstructionTool): boolean =>
       tool === 'road' ? roadOffered : palisadeToolRow(tool) !== null;
-    const roadKeyLabel = (): string | null => {
-      const binding = opts.bindings.roadTool;
+    const keyLabel = (action: 'roadTool' | 'palisadeTool'): string | null => {
+      const binding = opts.bindings[action];
       return binding === null ? null : keyDisplayLabel(binding);
     };
     // A cancel runs the modes in this order, so the plan a cancelled placement hands back stays held
@@ -525,7 +532,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           buildingLabel: (typeId) => labelByType.get(typeId) ?? `#${typeId}`,
           onPick: seam.onPick,
           tools: CONSTRUCTION_TOOLS.filter(toolOffered),
-          toolHints: { road: roadToolHint(roadKeyLabel()) },
+          toolHints: {
+            road: roadToolHint(keyLabel('roadTool')),
+            palisade: palisadeToolHint(keyLabel('palisadeTool')),
+          },
           onPickTool: (tool) => {
             if (tool === 'road') {
               placement.enterRoad();
@@ -697,6 +707,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
             roadTool: () => {
               ctx.cue('confirm');
               placement.enterRoad();
+            },
+          }
+        : {}),
+      ...(wallRow !== null
+        ? {
+            palisadeTool: () => {
+              ctx.cue('confirm');
+              placement.enterPalisade(wallRow, 'wall');
             },
           }
         : {}),

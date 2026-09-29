@@ -51,6 +51,8 @@ export interface ToolPanelInputDeps {
   readonly toggleHud: () => void;
   /** Hold the road tool; absent where the game offers none, which leaves its key to the page. */
   readonly roadTool?: () => void;
+  /** Hold the palisade wall tool; absent where the game offers none. */
+  readonly palisadeTool?: () => void;
   /** The GUI click: a held mode called off by right-click or Esc fails (Esc is an approximation: only
    *  the mouse cancel is original behavior). */
   readonly cue: (cue: UiCue) => void;
@@ -192,6 +194,12 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       if (modalOwned(e)) return;
       consume(e);
       deps.roadTool();
+      return;
+    }
+    if (deps.palisadeTool !== undefined && isActionHotkey(e, deps.bindings, 'palisadeTool')) {
+      if (modalOwned(e)) return;
+      consume(e);
+      deps.palisadeTool();
       return;
     }
     if (isActionHotkey(e, deps.bindings, 'pauseToggle')) {

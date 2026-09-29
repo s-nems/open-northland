@@ -48,6 +48,7 @@ export const KEYBINDING_ACTIONS = [
   'attackMove',
   'workFlagOrder',
   'roadTool',
+  'palisadeTool',
   ...CONTROL_GROUP_BINDING_ACTIONS,
 ] as const;
 
@@ -88,6 +89,7 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   attackMove: 'KeyA',
   workFlagOrder: 'Primary+Mouse2',
   roadTool: 'KeyS',
+  palisadeTool: 'KeyD',
   ...controlGroupDefaults,
 };
 
