@@ -488,6 +488,16 @@ export const plContent = {
       summary:
         'Czerwoną osadą kieruje strategiczne AI z włączonym samym planem wojskowym. Podnosi alarm nad kwaterą, gdy niebieska drużyna podchodzi, obsadza wieżę trzema z czterech łuczników - czwarty zostaje w armii polowej - i rzuca wszystkich wolnych żołnierzy na najeźdźców. Obie drużyny są przesadnie wytrzymałe, więc scena kończy się trwającą bitwą, a nie liczeniem trupów.',
     },
+    'ai-siege-march': {
+      title: 'Marsz oblężniczy AI',
+      summary:
+        'Czerwone AI sadza dwóch nieuzbrojonych żołnierzy na katapultach i wysyła pierwszą falę przez mapę. Fala maszeruje odcinkami i zwiera szyk na każdym postoju: katapulty z przodu, miecznicy za nimi, łucznicy na końcu. Pod niebieską osadą katapulty i łucznicy burzą wieżę, a miecznicy czekają, po czym wszyscy ruszają na kwaterę główną.',
+    },
+    'ai-siege-charge': {
+      title: 'Szarża oblężnicza AI',
+      summary:
+        'Marsz oblężniczy AI z wytrzymałym niebieskim oddziałem na drodze fali. Katapulty ostrzeliwują go, gdy fala się zbliża, a gdy oddział jest dość blisko, cała fala szarżuje, zanim ruszy dalej na wieżę.',
+    },
     'tower-garrison': {
       title: 'Załoga wieży',
       summary:

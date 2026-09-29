@@ -1,4 +1,5 @@
 import { aiDefenceScene } from './ai-defence.js';
+import { aiSiegeChargeScene, aiSiegeMarchScene } from './ai-siege-march.js';
 import { alchemyScene } from './alchemy.js';
 import { amuletsScene } from './amulets.js';
 import { armedIdleScene } from './armed-idle.js';
@@ -116,6 +117,8 @@ export const SCENES: readonly SceneDefinition[] = [
   armorScene,
   towerGarrisonScene,
   aiDefenceScene,
+  aiSiegeMarchScene,
+  aiSiegeChargeScene,
   deathLootScene,
   victoryScene,
   tradeScene,

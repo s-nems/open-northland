@@ -490,6 +490,16 @@ export const enContent = {
       summary:
         'The red seat is handed to the strategic AI with only its military plan running. It rings its own alarm over the headquarters as the blue warband closes, walls three of its four archers into the watchtower - the fourth is left to the field army - and throws everyone still free at the raiders. Both warbands are over-tough, so the scene settles into a standing fight instead of a body count.',
     },
+    'ai-siege-march': {
+      title: 'AI siege march',
+      summary:
+        'The red AI seat drafts its two bare-handed men as catapult drivers and sends its first wave across the map. It marches in legs, closing up at each stop, catapults in front, swordsmen behind them and archers last. At the blue settlement the catapults and archers break the watchtower while the swordsmen hold back, then everybody goes in on the headquarters.',
+    },
+    'ai-siege-charge': {
+      title: 'AI siege charge',
+      summary:
+        'The AI siege march with a tough blue band standing across the route. The catapults shell it as the wave closes in, and once the band is near enough the whole wave charges it before marching on to the watchtower.',
+    },
     'tower-garrison': {
       title: 'Tower garrison',
       summary:
