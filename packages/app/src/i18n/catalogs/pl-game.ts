@@ -33,6 +33,7 @@ export const plGame = {
     hoverCard: {
       construction: 'Budynek jest budowany',
       upgrade: 'Budynek jest ulepszany',
+      allProducts: 'wszystko',
     },
     workFlag: 'Flaga robocza',
     specialization: 'Specjalizacja {id}',

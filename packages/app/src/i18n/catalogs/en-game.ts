@@ -34,6 +34,8 @@ export const enGame = {
     hoverCard: {
       construction: 'Building under construction',
       upgrade: 'Building is being upgraded',
+      /** A worker set to make every product open to it. */
+      allProducts: 'everything',
     },
     workFlag: 'Work flag',
     specialization: 'Specialization {id}',

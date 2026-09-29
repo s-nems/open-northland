@@ -16,8 +16,8 @@ import { createMeterRow } from './parts/meter-row.js';
 
 /**
  * The parchment card the cursor opens over the world: a settler's name and trade, or a building's name,
- * construction state and store; another seat's adds its owner, and a building its health. It rides the DOM plane in
- * design px and never takes pointer events, so the press under it still reaches the map.
+ * construction state, health and store; another seat's adds its owner. It rides the DOM plane in design px
+ * and never takes pointer events, so the press under it still reaches the map.
  */
 
 /** Design px between the cursor and the card's near corner, so the card never covers what is pointed at. */
@@ -154,7 +154,9 @@ export function createHoverCard(deps: HoverCardDeps): HoverCard {
 
   /** The second line: a settler's trade, or how far a site or an upgrade has come. */
   const captionOf = (model: HoverCardModel): string | null => {
-    if (model.kind === 'settler') return model.profession;
+    if (model.kind === 'settler') {
+      return model.products === null ? model.profession : `${model.profession} - ${model.products}`;
+    }
     if (model.state === null) return null;
     const fallback = messages().hud.hoverCard[model.state.kind];
     const label = deps.uiString('misc', STATE_STRING_ID[model.state.kind], fallback);

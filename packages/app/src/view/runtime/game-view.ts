@@ -49,7 +49,7 @@ import { createHoverCard } from '../../hud/dom/hover-card.js';
 import { mountHudDomRoot } from '../../hud/dom/root.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-card/building.js';
 import type { HoverOwnerContext } from '../../hud/hover-card/owner.js';
-import { settlerHoverModel } from '../../hud/hover-card/settler.js';
+import { type SettlerHoverContext, settlerHoverModel } from '../../hud/hover-card/settler.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
@@ -795,6 +795,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       diplomacyStance: (owner) => host.diplomacyStance(viewerPlayer(), owner),
       playerColourOf: deps.playerColourOf,
     };
+    const settlerHoverContext: SettlerHoverContext = { ...controls.panelModelContext, ...hoverOwners };
     const hoverContext: BuildingHoverContext = {
       buildings: host.content.buildings,
       goods: host.content.goods,
@@ -821,9 +822,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...chestTooltipLines(host.content, toolPanel.controller.uiString, viewerPlayer, controls.selectedIds),
       card: hoverCard,
       buildingModel: (snapshot, entityId) => buildingHoverModel(snapshot, entityId, hoverContext),
-      settlerModel: (snapshot, entityId) =>
-        settlerHoverModel(snapshot, entityId, { jobs: host.content.jobs, mapText, ...hoverOwners }),
-      modelVersion: viewer.version,
+      settlerModel: (snapshot, entityId) => settlerHoverModel(snapshot, entityId, settlerHoverContext),
+      // Both only grow, so their sum moves whenever either does.
+      modelVersion: () => viewer.version() + answers.versions.unitPanel(),
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       pointer: pointerAt,
       suppressed: (clientX, clientY) =>

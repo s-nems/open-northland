@@ -3,8 +3,8 @@ import type { PanelBar } from '../details-panel/model/bars.js';
 
 /**
  * What the cursor card says about the thing under it. A settler and a building share one card: a title,
- * one line under it, and the good rows only a store fills. Another seat's building or person also names
- * its owner; its building shows its health and keeps its store to itself.
+ * one line under it, and the good rows only a store fills. A building shows its health; another seat's
+ * building or person also names its owner, and its building keeps its store to itself.
  */
 
 /** The seat another seat's building or person belongs to. */
@@ -50,6 +50,9 @@ export interface SettlerHoverModel {
   readonly title: string;
   /** The trade it works, beside its name on the card's one line. */
   readonly profession: string;
+  /** What the viewer's own worker is set to make, after its trade: the products' names, or "everything".
+   *  Null for a person without products to set, one with all of them stopped and another seat's person. */
+  readonly products: string | null;
   /** Another seat's person, on a second line under the name; null for the viewer's own. */
   readonly owner: HoverOwner | null;
 }

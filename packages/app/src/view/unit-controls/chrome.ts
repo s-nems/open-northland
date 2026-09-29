@@ -2,7 +2,12 @@ import type { UiCue } from '@open-northland/audio';
 import { type Entity, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
 import { technologyReason } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
-import { mountUnitPanel, type PortraitBox, type UnitPanel } from '../../hud/details-panel/index.js';
+import {
+  mountUnitPanel,
+  type PortraitBox,
+  type UnitPanel,
+  type UnitPanelModelContext,
+} from '../../hud/details-panel/index.js';
 import { createBuildingPanel } from '../../hud/dom/building-panel/view.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
@@ -66,6 +71,8 @@ export interface UnitChromeCallbacks {
 }
 
 export interface UnitChromeHandle {
+  /** The content and sim reads every details panel's model is built from. */
+  readonly modelContext: UnitPanelModelContext;
   panel(): UnitPanel;
   actions(): SettlerActions;
   /** The live cutouts' boxes on the canvas: the selection's (a DOM panel's frame, else the Pixi
@@ -287,48 +294,52 @@ export async function createUnitChrome(
     return portraitsMemo.list;
   };
 
+  const modelContext: UnitPanelModelContext = {
+    viewer: opts.viewer,
+    technologyReason:
+      opts.technologyStatus === undefined
+        ? undefined
+        : (kind, typeId, tribe, player) =>
+            technologyReason(
+              opts.content,
+              opts.technologyStatus?.(kind, typeId, tribe, player) ?? UNANSWERED_STATUS,
+            ),
+    goodAllowed: (good, tribe, player) =>
+      opts.technologyStatus === undefined ||
+      opts.technologyStatus('good', good, tribe, player)?.allowed === true,
+    buildings: opts.content.buildings,
+    goods: opts.content.goods,
+    jobs: opts.content.jobs,
+    jobExperience: opts.content.jobExperience,
+    tribes: opts.content.tribes,
+    ...(opts.standsTo !== undefined ? { standsTo: opts.standsTo } : {}),
+    vehicles: opts.content.vehicles,
+    isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
+    usesWorkFlag: (jobType) => systems.jobUsesWorkFlag({ content: opts.content }, jobType),
+    livestockTribeOfGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType),
+    edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
+    isTraderJob: (jobType) => systems.isTraderJob(opts.content, jobType),
+    ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
+    ...(opts.traderView !== undefined ? { traderView: opts.traderView } : {}),
+    ...(opts.tradeOffersAt !== undefined ? { tradeOffersAt: opts.tradeOffersAt } : {}),
+    ...(opts.workStatus !== undefined ? { workStatus: opts.workStatus } : {}),
+    ...(opts.diplomacyStance !== undefined ? { diplomacyStance: opts.diplomacyStance } : {}),
+  };
+
   const mountPanel = (uiscale: number): Promise<UnitPanel> =>
     mountUnitPanel({
+      ...modelContext,
       app: opts.app,
       canvas: opts.canvas,
       uiscale,
       lang: opts.lang,
-      viewer: opts.viewer,
       backingScale: (canvas) => screenScale(canvas, opts.app.renderer.resolution),
-      technologyReason:
-        opts.technologyStatus === undefined
-          ? undefined
-          : (kind, typeId, tribe, player) =>
-              technologyReason(
-                opts.content,
-                opts.technologyStatus?.(kind, typeId, tribe, player) ?? UNANSWERED_STATUS,
-              ),
-      goodAllowed: (good, tribe, player) =>
-        opts.technologyStatus === undefined ||
-        opts.technologyStatus('good', good, tribe, player)?.allowed === true,
-      buildings: opts.content.buildings,
-      goods: opts.content.goods,
-      jobs: opts.content.jobs,
-      jobExperience: opts.content.jobExperience,
-      tribes: opts.content.tribes,
-      ...(opts.standsTo !== undefined ? { standsTo: opts.standsTo } : {}),
       ...(opts.panelAnswersVersion !== undefined ? { answersVersion: opts.panelAnswersVersion } : {}),
-      vehicles: opts.content.vehicles,
-      isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
-      usesWorkFlag: (jobType) => systems.jobUsesWorkFlag({ content: opts.content }, jobType),
-      livestockTribeOfGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType),
-      edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
-      isTraderJob: (jobType) => systems.isTraderJob(opts.content, jobType),
-      ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
       onUiCue: callbacks.cue,
       onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
       onDemolishPalisade: (id) => opts.enqueue({ kind: 'demolishPalisade', palisade: id as Entity }),
       onSetPalisadeGate: (id, open) =>
         opts.enqueue({ kind: 'setPalisadeGate', palisade: id as Entity, open }),
-      ...(opts.traderView !== undefined ? { traderView: opts.traderView } : {}),
-      ...(opts.tradeOffersAt !== undefined ? { tradeOffersAt: opts.tradeOffersAt } : {}),
-      ...(opts.workStatus !== undefined ? { workStatus: opts.workStatus } : {}),
-      ...(opts.diplomacyStance !== undefined ? { diplomacyStance: opts.diplomacyStance } : {}),
       onModel: (model) => {
         settlerPanel.update(model);
         vehiclePanel.update(model);
@@ -394,6 +405,7 @@ export async function createUnitChrome(
     next.actions.update(opts.camera(), snapshot);
   });
   return {
+    modelContext,
     panel: () => mounts.current().panel,
     actions: () => mounts.current().actions,
     portraits,

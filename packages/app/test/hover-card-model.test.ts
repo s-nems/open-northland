@@ -1,6 +1,6 @@
 import { ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_CHILD_MALE, JOB_JOINER } from '../src/catalog/jobs.js';
+import { JOB_CHILD_MALE, JOB_COLLECTOR, JOB_JOINER } from '../src/catalog/jobs.js';
 import { playerSwatchHex } from '../src/catalog/roster.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import {
@@ -8,7 +8,10 @@ import {
   BUILDING_JOINERY_01,
   BUILDING_WAREHOUSE_00,
   BUILDING_WATCHTOWER,
+  GOOD_GOLD,
   GOOD_IRON,
+  GOOD_MUD,
+  GOOD_MUSHROOM,
   GOOD_STONE,
   GOOD_WOOD,
 } from '../src/game/sandbox/ids/index.js';
@@ -133,13 +136,17 @@ describe('building hover card model', () => {
     expect(site?.state).toEqual({ kind: 'construction', pct: 50 });
   });
 
-  it('lists the own store without a health line, and every store on the whole map', () => {
+  it('lists the own store beside its health, and every store on the whole map', () => {
     const snapshot = snapshotOf([
       buildingEntity(8, BUILDING_WAREHOUSE_00, {
         components: { Health: { hitpoints: 30, max: 120 }, ...stockpile([[GOOD_WOOD, 4]]) },
       }),
       buildingEntity(9, BUILDING_WAREHOUSE_00, {
-        components: { Owner: { player: OTHER_PLAYER }, ...stockpile([[GOOD_STONE, 1]]) },
+        components: {
+          Owner: { player: OTHER_PLAYER },
+          Health: { hitpoints: 60, max: 120 },
+          ...stockpile([[GOOD_STONE, 1]]),
+        },
       }),
     ]);
 
@@ -147,10 +154,10 @@ describe('building hover card model', () => {
     const overseen = buildingHoverModel(snapshot, 9, hoverCtx(overseerViewerSeat(HUMAN_PLAYER)));
 
     expect(own?.owner).toBeNull();
-    expect(own?.health).toBeNull();
+    expect(own?.health).toEqual({ label: 'Zdrowie', pct: 25, hover: '30/120' });
     expect(own?.rows).toEqual([{ goodId: 'wood', label: 'wood', amount: 4 }]);
     expect(overseen?.owner).toBeNull();
-    expect(overseen?.health).toBeNull();
+    expect(overseen?.health).toEqual({ label: 'Zdrowie', pct: 50, hover: '60/120' });
     expect(overseen?.rows).toEqual([{ goodId: 'stone', label: 'stone', amount: 1 }]);
   });
 
@@ -228,6 +235,24 @@ describe('settler hover card model', () => {
       stance: 'enemy',
       colour: playerSwatchHex(OTHER_PLAYER),
     });
+  });
+
+  it("names the goods the own worker is set to make, or everything, and nothing for another seat's", () => {
+    const ctx = hoverCtx();
+    const stopped = [GOOD_WOOD, GOOD_STONE, GOOD_MUD, GOOD_GOLD, GOOD_MUSHROOM].map((good) => [good, 0]);
+    const narrowed = {
+      WorkFlag: { flag: 9, radius: 24 },
+      ProductionCounters: { counters: stopped, cursor: 0 },
+    };
+    const snapshot = snapshotOf([
+      settlerEntity(6, JOB_COLLECTOR, narrowed),
+      settlerEntity(7, JOB_COLLECTOR, { WorkFlag: { flag: 9, radius: 24 } }),
+      settlerEntity(8, JOB_COLLECTOR, { ...narrowed, Owner: { player: OTHER_PLAYER } }),
+    ]);
+
+    expect(settlerHoverModel(snapshot, 6, ctx)?.products).toBe('iron');
+    expect(settlerHoverModel(snapshot, 7, ctx)?.products).toBe('wszystko');
+    expect(settlerHoverModel(snapshot, 8, ctx)?.products).toBeNull();
   });
 
   it('calls a growing child by its life stage, which is the only trade it has', () => {

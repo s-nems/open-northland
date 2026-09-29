@@ -16,9 +16,9 @@ import { foreignOwner, type HoverOwnerContext } from './owner.js';
  * What the cursor card over a building says. Original behavior: the engine draws a tooltip overlay for
  * the house under the cursor with its name, its construction or upgrade state as a percentage, and one
  * line per good it holds, sorted by the localized good name; goods at zero are left out. A site's lines
- * additionally carry what the bill still needs, which the original leaves to its own window. Owner rule:
- * another seat's building, ally or enemy, names its owner and shows its health in place of its goods or
- * bill.
+ * additionally carry what the bill still needs, which the original leaves to its own window. Owner rules:
+ * every building shows its health, whoever reads it; another seat's building, ally or enemy, also names
+ * its owner and keeps its goods and bill to itself.
  */
 
 export interface BuildingHoverContext extends BuildingStockContext, HoverOwnerContext {}
@@ -41,7 +41,7 @@ export function buildingHoverModel(
     title: buildingTitle(ctx, typeId),
     state: hoverState(ent),
     owner,
-    health: owner !== null ? healthBar(ent) : null,
+    health: healthBar(ent),
     rows: owner !== null ? [] : sortByLabel(site ? billRows(ctx, def, ent) : held(ctx, def, ent)),
   };
 }

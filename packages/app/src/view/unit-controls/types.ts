@@ -22,7 +22,7 @@ import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
 import type { UiString } from '../../content/gui-gfx.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
-import type { PortraitBox } from '../../hud/details-panel/index.js';
+import type { PortraitBox, UnitPanelModelContext } from '../../hud/details-panel/index.js';
 import type { DiplomacyStance, SettlerWorkStatus } from '../../hud/details-panel/model/index.js';
 import type { BuildingPanelWindows } from '../../hud/dom/building-panel/actions.js';
 import type { CentralWindows } from '../../hud/dom/trade-window/window.js';
@@ -137,6 +137,8 @@ export interface UnitControlsOptions {
 }
 
 export interface UnitControls {
+  /** The content and sim reads the details panels' models are built from, for other views of a unit. */
+  readonly panelModelContext: UnitPanelModelContext;
   readonly selectedIds: () => ReadonlySet<number>;
   readonly selectionVersion: () => number;
   /** Replace the selection with one entity, as a click on it would. */

@@ -448,6 +448,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   window.addEventListener('keydown', onKeyDown);
 
   return {
+    panelModelContext: chrome.modelContext,
     selectedIds: selection.ids,
     selectionVersion: selection.version,
     selectEntity: (id) => applySelection([id], false),
