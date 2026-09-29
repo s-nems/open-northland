@@ -138,5 +138,12 @@ function verifyIndex(world: World): string[] {
       out.push(`road site ${e} is indexed stale`);
     }
   }
+  for (const owner of new Set([...fresh.openByOwner.keys(), ...index.openByOwner.keys()])) {
+    const want = fresh.openByOwner.get(owner);
+    const held = index.openByOwner.get(owner);
+    if ((want?.unstocked ?? 0) !== (held?.unstocked ?? 0) || (want?.stocked ?? 0) !== (held?.stocked ?? 0)) {
+      out.push(`open road sites of owner ${owner} are tallied stale`);
+    }
+  }
   return out;
 }

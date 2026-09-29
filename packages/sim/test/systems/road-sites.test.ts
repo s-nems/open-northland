@@ -10,6 +10,7 @@ import {
   Stockpile,
   SupplyRun,
   setStockAmount,
+  stampOwner,
   UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -26,6 +27,7 @@ import {
 import { constructionSystem } from '../../src/systems/economy/construction.js';
 import { claimSite, releaseSiteClaim } from '../../src/systems/economy/site-claim.js';
 import { palisadePlacementProbe as palisadeProbe } from '../../src/systems/palisades/index.js';
+import { openRoadSites } from '../../src/systems/roads/site-index.js';
 import { pickRoadSite } from '../../src/systems/roads/site-pick.js';
 import { roadSitePlacementProbe } from '../../src/systems/roads/sites.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
@@ -549,6 +551,32 @@ describe('road site pick', () => {
     expect(sites.indexOf(pick)).toBe(4);
     const lone = pickRoadSite(sim.world, terrain, seeker, here, west, (site) => site === west);
     expect(lone).toBe(west);
+  });
+});
+
+describe('road site index', () => {
+  it('moves a site between owners when its owner changes in place', () => {
+    const sim = roadSim();
+    orderRoads(sim, [CENTRE, { hx: 30, hy: ROW }]);
+    const terrain = sim.terrain;
+    const site = siteAt(sim, CENTRE.hx, CENTRE.hy);
+    if (terrain === undefined || site === undefined) throw new Error('expected a road site');
+    setStockAmount(sim.world, site, STONE, 1);
+    expect(openRoadSites(sim.world, terrain, HUMAN)).toEqual({ unstocked: 1, stocked: 1 });
+
+    stampOwner(sim.world, site, RIVAL);
+    expect(openRoadSites(sim.world, terrain, HUMAN)).toEqual({ unstocked: 1, stocked: 0 });
+    expect(openRoadSites(sim.world, terrain, RIVAL)).toEqual({ unstocked: 0, stocked: 1 });
+    expect(sim.world.verifyCaches()).toEqual([]);
+
+    sim.world.remove(site, Owner);
+    expect(openRoadSites(sim.world, terrain, RIVAL)).toEqual({ unstocked: 0, stocked: 0 });
+    expect(openRoadSites(sim.world, terrain, undefined)).toEqual({ unstocked: 1, stocked: 1 });
+    expect(sim.world.verifyCaches()).toEqual([]);
+
+    // The verifier checks the tallies themselves, not only the per-site entries they sum.
+    openRoadSites(sim.world, terrain, HUMAN).unstocked++;
+    expect(sim.world.verifyCaches()).toEqual([`open road sites of owner ${HUMAN} are tallied stale`]);
   });
 });
 
