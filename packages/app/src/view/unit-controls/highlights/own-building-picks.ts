@@ -1,6 +1,13 @@
 import type { BuildingType } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
-import { entitiesWith, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import {
+  entitiesWith,
+  entityById,
+  groupedBy,
+  indexesOf,
+  systems,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import {
   builderCrewHasRoom,
   buildingTypeOf,
@@ -40,8 +47,8 @@ export interface OwnBuildingPick {
 }
 
 interface PickRule {
-  /** The components whose entities may be candidates; a building's alone when absent. */
-  readonly kinds?: readonly string[];
+  /** `owner`'s entities that may be candidates; every building, filtered by owner, when absent. */
+  readonly ownedBy?: (snapshot: WorldSnapshot, owner: number) => readonly SnapshotEntity[];
   /** Which buildings are candidates at all; the rest are skipped, never tinted. */
   readonly candidate: (building: SnapshotEntity, byType: ReadonlyMap<number, BuildingInfo>) => boolean;
   /** Whether a candidate of the settler's own tribe takes this settler. */
@@ -49,7 +56,6 @@ interface PickRule {
 }
 
 function ownBuildingPick(rule: PickRule): OwnBuildingPick {
-  const kinds = rule.kinds ?? BUILDINGS_ONLY;
   const fits = (building: SnapshotEntity, settler: SnapshotEntity, snapshot: WorldSnapshot): boolean =>
     siteTribeOf(building) === settlerTribeOf(settler) && rule.accepts(building, settler, snapshot);
   return {
@@ -57,11 +63,21 @@ function ownBuildingPick(rule: PickRule): OwnBuildingPick {
       const settlers = settlersIn(snapshot, settlerIds);
       const items: BuildingHighlightItem[] = [];
       if (settlers.length === 0) return items;
-      for (const kind of kinds) {
-        for (const e of entitiesWith(snapshot, kind)) {
+      if (rule.ownedBy === undefined) {
+        for (const e of entitiesWith(snapshot, 'Building')) {
           if (!rule.candidate(e, byType)) continue;
           const owned = settlers.filter((settler) => ownerPlayerOf(e) === ownerPlayerOf(settler));
           if (owned.length > 0)
+            items.push({ id: e.id, ok: owned.some((settler) => fits(e, settler, snapshot)) });
+        }
+        return items;
+      }
+      const owners = new Set(settlers.map(ownerPlayerOf));
+      for (const owner of owners) {
+        if (owner === undefined) continue;
+        const owned = settlers.filter((settler) => ownerPlayerOf(settler) === owner);
+        for (const e of rule.ownedBy(snapshot, owner)) {
+          if (rule.candidate(e, byType))
             items.push({ id: e.id, ok: owned.some((settler) => fits(e, settler, snapshot)) });
         }
       }
@@ -78,16 +94,30 @@ function ownBuildingPick(rule: PickRule): OwnBuildingPick {
   };
 }
 
-const BUILDINGS_ONLY: readonly string[] = ['Building'];
+function isBuilderSite(site: SnapshotEntity): boolean {
+  return isBuilding(site)
+    ? site.components.UnderConstruction !== undefined || site.components.Damaged !== undefined
+    : isRoadSite(site) || (isPalisade(site) && site.components.UnderConstruction !== undefined);
+}
+
+/** Each owner's foundations, damaged buildings, wall sites and road sites, kept per change: a settled
+ *  map's standing walls never enter it. */
+const BUILDER_SITES_BY_OWNER = groupedBy(
+  (e) => (isBuilderSite(e) ? ownerPlayerOf(e) : undefined),
+  'builder sites by owner',
+  { values: ['Owner'], presence: ['Building', 'Palisade', 'RoadSite', 'UnderConstruction', 'Damaged'] },
+);
+
+/** `owner`'s sites a builder may be pinned to. */
+export function builderSitesOf(snapshot: WorldSnapshot, owner: number): readonly SnapshotEntity[] {
+  return indexesOf(snapshot).get(BUILDER_SITES_BY_OWNER).get(owner) ?? [];
+}
 
 /** The foundations, damaged buildings, wall sites and road sites a builder may be pinned to; a full
  *  repair crew refuses more. */
 export const sitePick: OwnBuildingPick = ownBuildingPick({
-  kinds: ['Building', 'Palisade', 'RoadSite'],
-  candidate: (site) =>
-    isBuilding(site)
-      ? site.components.UnderConstruction !== undefined || site.components.Damaged !== undefined
-      : isRoadSite(site) || (isPalisade(site) && site.components.UnderConstruction !== undefined),
+  ownedBy: builderSitesOf,
+  candidate: isBuilderSite,
   accepts: (building, settler, snapshot) => builderCrewHasRoom(snapshot, building, settler),
 });
 

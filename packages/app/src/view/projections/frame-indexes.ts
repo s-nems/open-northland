@@ -11,6 +11,7 @@ import {
   staffOf,
 } from '../../game/snapshot.js';
 import { ownRoadSiteAt } from '../runtime/own-road-sites.js';
+import { builderSitesOf } from '../unit-controls/highlights/own-building-picks.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
 
 /** A box holding no tile: a read that only registers the position index. */
@@ -31,6 +32,8 @@ export const FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   { name: 'staff', read: (snapshot) => staffOf(snapshot, NO_ENTITY) },
   // The road tool's cancel line reads it per frame while Alt is held.
   { name: 'road sites by node', read: (snapshot) => ownRoadSiteAt(snapshot, NO_ENTITY, 0, 0) },
+  // The builder site pick's highlight reads it per frame while the pick is armed.
+  { name: 'builder sites by owner', read: (snapshot) => builderSitesOf(snapshot, NO_ENTITY) },
   {
     name: 'families',
     // The grouping registers on the first home anybody lives in, as a door badge's read does; a one-off

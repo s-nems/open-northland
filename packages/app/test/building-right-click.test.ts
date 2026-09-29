@@ -387,6 +387,25 @@ describe("the action ring's site pick", () => {
   });
 });
 
+describe("the builder site pick's highlight", () => {
+  it("lights the seat's damaged buildings and sites, and drops one once repaired or another seat's", () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const byType = lastByTypeId(sim.content.buildings);
+    const home = damagedAt(sim, BUILDING_HOME_00);
+    const foundation = siteAt(sim, BUILDING_HOME_00);
+    const standing = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const foreign = damagedAt(sim, BUILDING_HOME_00);
+    sim.world.mut(foreign, Owner).player = NEIGHBOUR;
+    const builder = settlerAt(sim, JOB_BUILDER);
+    const lit = () => sitePick.highlight(sim.snapshot(), [builder], byType).map((item) => item.id);
+
+    expect(lit()).toEqual([home, foundation]);
+    expect(lit()).not.toContain(standing);
+    sim.world.remove(home, Damaged);
+    expect(lit()).toEqual([foundation]);
+  });
+});
+
 /** Where {@link riddenVehicle} stands its vehicle; the click never reads it. */
 const VEHICLE_AT = { x: 2, y: 2 } as const;
 
