@@ -5,10 +5,13 @@ import {
   type MissionScript,
   type Simulation,
   SUCCESSFUL_IF,
+  setupCommand,
+  systems,
 } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_ARCHER, JOB_SOLDIER_SWORD, JOB_SOLDIER_UNARMED } from '../catalog/jobs.js';
-import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
+import { ENEMY_PLAYER, HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
+import { weaponEquipmentFor } from '../game/sandbox/ids/index.js';
 import {
   BUILDING_BARRACKS,
   BUILDING_HEADQUARTERS,
@@ -25,7 +28,8 @@ import type { SceneCheck, SceneDefinition } from './types.js';
 // The red AI seat sends its first wave across the map: two catapults take the two bare-handed men as
 // drivers, the wave marches east in legs with the catapults in front, and at the blue settlement the
 // catapults and archers break the watchtower while the swordsmen wait, then everybody goes in on the HQ.
-// The charge variant stands a blue band in the wave's path, big enough that the wave charges it.
+// The charge variant sends a blue band down the wave's path, big enough that the wave charges it once the
+// band walks into it through the catapults' stones.
 
 const MAP_W = 96;
 const MAP_H = 36;
@@ -79,26 +83,38 @@ const MIDFIELD_BAND: readonly Tile[] = [
   [48, 18],
 ];
 
-/** Four times a swordsman's: tough enough to outlast the catapults' opening stones, so the wave closes in
- *  and charges before they fall. */
-const MIDFIELD_HITPOINTS = 20_000;
+/** Twice a swordsman's: tough enough to outlast the catapults' opening stones, so the band walks into the
+ *  wave and it charges before they fall. */
+const MIDFIELD_HITPOINTS = 10_000;
+
+/** When the midfield band sets out on the red barracks: the wave is a leg or two out by then, so they meet
+ *  halfway rather than at the door. */
+const BAND_SETS_OUT_TICK = 600;
+
+/** The scene's scripted orders take the last positions of their tick, counting down, after any player's. */
+const SCRIPTED_SEQUENCE = Number.MAX_SAFE_INTEGER;
 
 /** Between the barracks and the first leg, so the browser opens on the boarding and the launch. */
 const CAMERA_AT = { hx: 40, hy: 36 } as const;
 
-/** Past the HQ's fall: the boarding, the march, the tower and the assault. */
+/** Past the HQ's fall: the boarding, the march, the tower and the assault. Short of the catapults' drive
+ *  home, which the check on how far they went in reads at the end. */
 const RUN_TICKS = 4500;
+
+/** Past the tower's fall: the charge costs the wave its time and some men. */
+const CHARGE_RUN_TICKS = 5400;
 
 const { Building, isAboardVehicle, Owner, Settler, Vehicle, vehicleCommander } = components;
 
 interface SiegeSetup {
   readonly reserve: boolean;
-  /** The blue men standing in the field: the HQ guards, or the band the wave charges. */
+  /** The blue men standing in the field beside the HQ. */
   readonly blueField: readonly Tile[];
-  readonly blueFieldHitpoints?: number;
+  /** The band that sets out on the red barracks at {@link BAND_SETS_OUT_TICK}, instead of the field. */
+  readonly band?: { readonly at: readonly Tile[]; readonly hitpoints: number };
 }
 
-function buildWith({ reserve, blueField, blueFieldHitpoints }: SiegeSetup): (sim: Simulation) => void {
+function buildWith({ reserve, blueField, band }: SiegeSetup): (sim: Simulation) => void {
   return (sim) => {
     placeBuiltSandboxBuilding(sim, BUILDING_BARRACKS, BARRACKS.x, BARRACKS.y, ENEMY_PLAYER);
     for (const [x, y] of CATAPULTS) spawnVehicleDirect(sim, VEHICLE_CATAPULT, x, y, { owner: ENEMY_PLAYER });
@@ -115,7 +131,8 @@ function buildWith({ reserve, blueField, blueFieldHitpoints }: SiegeSetup): (sim
       const archer = spawnSettlerDirect(sim, JOB_ARCHER, x, y, HUMAN_PLAYER);
       sim.enqueueSetup({ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [JOB_ARCHER] });
     }
-    for (const [x, y] of blueField) swordsman(sim, x, y, HUMAN_PLAYER, blueFieldHitpoints);
+    for (const [x, y] of blueField) swordsman(sim, x, y, HUMAN_PLAYER);
+    if (band !== undefined) sendBand(sim, band);
 
     // Only the military module, and no peace: the wave launches as soon as it has formed up.
     sim.enqueueSetup({
@@ -135,11 +152,36 @@ function buildWith({ reserve, blueField, blueFieldHitpoints }: SiegeSetup): (sim
   };
 }
 
-function swordsman(sim: Simulation, x: number, y: number, owner: number, hitpoints?: number): void {
-  spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, x, y, owner, {
+function swordsman(sim: Simulation, x: number, y: number, owner: number): void {
+  spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, x, y, owner, { weaponTypeId: WEAPON_SWORD });
+}
+
+/** The blue band, set out on an attack-move to the red barracks door at {@link BAND_SETS_OUT_TICK}. */
+function sendBand(sim: Simulation, band: NonNullable<SiegeSetup['band']>): void {
+  const door = cellAnchorNode(BARRACKS.x, BARRACKS.y);
+  for (const [i, [x, y]] of band.at.entries()) {
+    const entity = bandSwordsman(sim, x, y, band.hitpoints);
+    const order = setupCommand({ kind: 'attackMoveUnit', entity, x: door.hx, y: door.hy });
+    sim.enqueueAt(order, BAND_SETS_OUT_TICK, SCRIPTED_SEQUENCE - i);
+  }
+}
+
+/** A blue swordsman spawned directly, so the scene can order him. */
+function bandSwordsman(sim: Simulation, x: number, y: number, hitpoints: number): Entity {
+  const node = cellAnchorNode(x, y);
+  const equipment = weaponEquipmentFor(JOB_SOLDIER_SWORD, sim.content.goods);
+  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
+    jobType: JOB_SOLDIER_SWORD,
+    x: node.hx,
+    y: node.hy,
+    tribe: PRIMARY_TRIBE,
+    owner: HUMAN_PLAYER,
     weaponTypeId: WEAPON_SWORD,
-    ...(hitpoints === undefined ? {} : { hitpoints }),
+    hitpoints,
+    ...(equipment === undefined ? {} : { equipment }),
   });
+  if (e === null) throw new Error('ai-siege-charge: no swordsman job');
+  return e;
 }
 
 function blueBuilding(sim: Simulation, buildingType: number): Entity | undefined {
@@ -227,9 +269,13 @@ export const aiSiegeChargeScene: SceneDefinition = {
   id: 'ai-siege-charge',
   seed: 7,
   terrain: grassTerrain(MAP_W, MAP_H),
-  build: buildWith({ reserve: true, blueField: MIDFIELD_BAND, blueFieldHitpoints: MIDFIELD_HITPOINTS }),
+  build: buildWith({
+    reserve: true,
+    blueField: [],
+    band: { at: MIDFIELD_BAND, hitpoints: MIDFIELD_HITPOINTS },
+  }),
   missions: CAMERA_SCRIPT,
-  runTicks: RUN_TICKS,
+  runTicks: CHARGE_RUN_TICKS,
   initialZoom: 0.8,
   checks: [
     CREWED_CHECK,

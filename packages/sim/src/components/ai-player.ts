@@ -65,13 +65,15 @@ export interface WaveMarchState {
   waypoints: HalfCellNode[];
   /** The index of the leg end the wave is ordered to. */
   leg: number;
-  /** The tick the current leg was ordered, the wave arrived or it last charged: the leg and siege
-   *  timeouts count from it. */
+  /** The tick the current leg was ordered, the wave arrived, or it last charged or held for its catapults'
+   *  fight: the leg and siege timeouts count from it. */
   legSince: number;
   /** Whether the wave has closed up on its last leg end and now besieges or assaults. */
   arrived: boolean;
+  /** The tick the wave's catapults opened the fight it holds for on the way, null while none fights. */
+  holdSince: number | null;
   /** The men and catapults the wave marched with, ascending id; the dead and the stragglers a leg timeout
-   *  leaves behind drop out at the next leg. */
+   *  leaves behind drop out at the next leg, a catapult still fighting when the hold times out at once. */
   men: Entity[];
   catapults: Entity[];
 }

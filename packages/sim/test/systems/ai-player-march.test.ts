@@ -1,6 +1,14 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Owner, Position, Settler, WaveMarch } from '../../src/components/index.js';
+import {
+  Building,
+  Owner,
+  PlayerOrder,
+  Position,
+  Settler,
+  Vehicle,
+  WaveMarch,
+} from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command, PlayerCommand } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -20,12 +28,14 @@ import {
   ASSAULT_RING_RADIUS_NODES,
   CHARGE_ARMY_DIVISOR,
   CHARGE_MIN_ENEMIES,
+  FIGHT_HOLD_TIMEOUT_TICKS,
   LEG_TIMEOUT_TICKS,
   militaryModule,
   RALLY_HOLD_RADIUS_NODES,
   SIEGE_TIMEOUT_TICKS,
 } from '../../src/systems/ai-player/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
+import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { entityNode } from '../../src/systems/spatial/nodes.js';
 import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
@@ -351,6 +361,96 @@ describe('military module - the wave marches in legs', () => {
     expect(state.catapults).toEqual([]);
     expect([...walks(next).keys()]).toEqual(fast);
     expect(drives(next).filter((c) => c.attackMove === true)).toEqual([]);
+  });
+});
+
+describe('military module - the wave holds while its catapults fight', () => {
+  /** A launched wave of two catapults, spearmen and bowmen standing on their places, with the first
+   *  catapult firing at `target` on its own and the leg already due to time out. */
+  function fighting(target: 'tower' | 'man') {
+    const sim = marchSim();
+    const rally = rallyOf(sim);
+    const catapults = [
+      catapultAt(sim, { x: rally.x + 4, y: rally.y + 10 }),
+      catapultAt(sim, { x: rally.x - 6, y: rally.y + 10 }),
+    ];
+    const spearmen = pack(sim, BAND, SPEARMAN);
+    const bowmen = pack(sim, 2, BOWMAN, BAND);
+    for (const [e, goal] of walks(run(sim))) {
+      teleport(sim, e, goal);
+      sim.world.remove(e, PlayerOrder);
+    }
+    place(sim, TOWER_TYPE, FOE_TOWER, FOE);
+    const tower = foeBuilding(sim, TOWER_TYPE);
+    const [foe] = spawnAt(sim, [FOE_CAMP], SPEARMAN, FOE);
+    const [shooter, other] = catapults;
+    if (shooter === undefined || other === undefined || foe === undefined) throw new Error('setup');
+    const entity = target === 'tower' ? tower : foe;
+    sim.world.mut(shooter, Vehicle).attack = {
+      target: { kind: 'entity', entity },
+      ordered: false,
+      clipStart: null,
+    };
+    sim.world.mut(barracksOf(sim), WaveMarch).legSince = sim.tick - LEG_TIMEOUT_TICKS;
+    return { sim, catapults, shooter, other, spearmen, bowmen, tower };
+  }
+
+  function stances(commands: readonly Command[], men: readonly Entity[]): number[] {
+    return men.map((e) => {
+      const set = commands.find((c) => c.kind === 'setStance' && c.entity === e);
+      return set?.kind === 'setStance' ? set.mode : -1;
+    });
+  }
+
+  it('holds its leg, the archers and the idle catapult join the fight on a tower, the melee waits', () => {
+    const { sim, catapults, shooter, other, spearmen, bowmen, tower } = fighting('tower');
+    const commands = run(sim);
+    const state = march(sim);
+    expect(state.leg).toBe(0);
+    expect(state.catapults).toEqual(catapults);
+    expect(state.holdSince).toBe(sim.tick);
+    expect(state.legSince).toBe(sim.tick);
+    expect(commands.filter((c) => c.kind === 'attackWithVehicle')).toEqual([
+      { kind: 'attackWithVehicle', vehicle: other, target: { kind: 'entity', entity: tower } },
+    ]);
+    expect(drives(commands)).toEqual([]);
+    const focused = commands.flatMap((c) => (c.kind === 'attackUnit' ? [c] : []));
+    expect(focused).toEqual(bowmen.map((entity) => ({ kind: 'attackUnit', entity, target: tower })));
+    expect(walks(commands).size).toBe(0);
+    expect(stances(commands, spearmen)).toEqual(spearmen.map(() => MILITARY_MODE.IGNORE));
+
+    // The fight ends: the wave keeps its catapults, gives the one out of its place a whole leg to drive
+    // back, and forms up again.
+    sim.world.mut(shooter, Vehicle).attack = null;
+    sim.world.mut(other, Vehicle).attack = null;
+    teleport(sim, shooter, { hx: FOE_TOWER.x, hy: FOE_TOWER.y + 8 });
+    const after = run(sim);
+    const reformed = march(sim);
+    expect(reformed.holdSince).toBeNull();
+    expect(reformed.catapults).toEqual(catapults);
+    expect(reformed.leg).toBe(0);
+    expect(drives(after).map((c) => c.vehicle)).toContain(shooter);
+  });
+
+  it('leaves the fight with men to the archers and the melee on their places', () => {
+    const { sim, catapults, spearmen, bowmen } = fighting('man');
+    const commands = run(sim);
+    expect(march(sim).leg).toBe(0);
+    expect(march(sim).catapults).toEqual(catapults);
+    expect(commands.some((c) => c.kind === 'attackUnit' || c.kind === 'attackWithVehicle')).toBe(false);
+    const men = [...spearmen, ...bowmen];
+    expect(stances(commands, men)).toEqual(men.map(() => MILITARY_MODE.DEFEND));
+  });
+
+  it('marches on without the catapult still fighting once the hold has lasted too long', () => {
+    const { sim, shooter, other } = fighting('man');
+    run(sim);
+    sim.world.mut(barracksOf(sim), WaveMarch).holdSince = sim.tick - FIGHT_HOLD_TIMEOUT_TICKS;
+    run(sim);
+    const state = march(sim);
+    expect(state.holdSince).toBeNull();
+    expect(sim.world.get(shooter, Vehicle).attack).not.toBeNull();
+    expect(state.catapults).toEqual([other]);
   });
 });
 

@@ -58,32 +58,66 @@ export function arrivalOrders(
     const attack = world.get(vehicle, Vehicle).attack;
     if (attack?.ordered === true && attack.target.kind === 'entity' && towerSet.has(attack.target.entity))
       continue;
-    const at = vehicleAnchor(world, vehicle);
-    if (at === null) continue;
-    const continent = continentOf(terrain, at);
-    const reachable = towers.filter((t) => t.continent === continent).map(({ tower }) => tower);
-    const tower = nearestTower(world, terrain, reachable, at);
-    if (tower !== null)
-      commands.push({ kind: 'attackWithVehicle', vehicle, target: { kind: 'entity', entity: tower } });
+    const command = catapultOnNearest(world, terrain, vehicle, towers);
+    if (command !== null) commands.push(command);
   }
+  const archers = archersOn(world, ctx, terrain, wave.men, [...towerSet]);
+  // IGNORE, not DEFEND: a tower inside a defender's search would draw the melee into its fire.
+  const places = formation(world, ctx, terrain, state, wave.members, wave.catapults);
+  return [
+    ...commands,
+    ...archers.commands,
+    ...placeOrders(world, ctx, terrain, archers.melee, places, fire, MILITARY_MODE.IGNORE),
+  ];
+}
+
+/** A building the catapults may drive up to, with the continent its door stands on. */
+export interface SiegeTarget {
+  readonly tower: Entity;
+  readonly continent: number;
+}
+
+/** `vehicle` on the target nearest it whose door stands on its own continent, or null when none does. */
+export function catapultOnNearest(
+  world: World,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  targets: readonly SiegeTarget[],
+): PlayerCommand | null {
+  const at = vehicleAnchor(world, vehicle);
+  if (at === null) return null;
+  const continent = continentOf(terrain, at);
+  const reachable = targets.filter((t) => t.continent === continent).map(({ tower }) => tower);
+  const tower = nearestTower(world, terrain, reachable, at);
+  return tower === null
+    ? null
+    : { kind: 'attackWithVehicle', vehicle, target: { kind: 'entity', entity: tower } };
+}
+
+/** Each orderable archer of `men` on the target nearest him, and the melee men left over. */
+export function archersOn(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  men: readonly Entity[],
+  targets: readonly Entity[],
+): { readonly commands: PlayerCommand[]; readonly melee: Entity[] } {
+  const commands: PlayerCommand[] = [];
   const melee: Entity[] = [];
-  const all = [...towerSet];
-  for (const e of wave.men) {
+  for (const e of men) {
     if (!isRangedFighter(world, ctx, e)) {
       melee.push(e);
       continue;
     }
     if (!orderable(world, e)) continue;
-    const tower = nearestTower(world, terrain, all, nodeOf(terrain, entityNode(world, terrain, e)));
+    const tower = nearestTower(world, terrain, targets, nodeOf(terrain, entityNode(world, terrain, e)));
     if (tower !== null) commands.push({ kind: 'attackUnit', entity: e, target: tower });
   }
-  // IGNORE, not DEFEND: a tower inside a defender's search would draw the melee into its fire.
-  const places = formation(world, ctx, terrain, state, wave.members, wave.catapults);
-  return [...commands, ...placeOrders(world, ctx, terrain, melee, places, fire, MILITARY_MODE.IGNORE)];
+  return { commands, melee };
 }
 
-/** The towers near `objective` whose door stands on the continent of one of `catapults`, ascending id:
- *  the ones a catapult may drive up to. A tower on another continent is left to the assault. */
+/** The towers near `objective` a catapult may drive up to, ascending id; a tower on another continent is
+ *  left to the assault. */
 function siegeableTowers(
   world: World,
   ctx: SystemContext,
@@ -91,14 +125,31 @@ function siegeableTowers(
   player: number,
   objective: NodeId,
   catapults: readonly Entity[],
-): { readonly tower: Entity; readonly continent: number }[] {
+): SiegeTarget[] {
+  return onCatapultContinents(
+    world,
+    ctx,
+    terrain,
+    enemyTowersNear(world, ctx, terrain, player, objective),
+    catapults,
+  );
+}
+
+/** Those of `buildings` whose door stands on the continent of one of `catapults`, in their order. */
+export function onCatapultContinents(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  buildings: readonly Entity[],
+  catapults: readonly Entity[],
+): SiegeTarget[] {
   const continents = new Set<number>();
   for (const vehicle of catapults) {
     const at = vehicleAnchor(world, vehicle);
     const continent = at === null ? NO_COMPONENT : continentOf(terrain, at);
     if (continent !== NO_COMPONENT) continents.add(continent);
   }
-  return enemyTowersNear(world, ctx, terrain, player, objective).flatMap((tower) => {
+  return buildings.flatMap((tower) => {
     const continent = terrain.componentOf(interactionCell(world, ctx, terrain, tower));
     return continents.has(continent) ? [{ tower, continent }] : [];
   });

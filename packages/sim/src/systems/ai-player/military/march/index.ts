@@ -1,5 +1,6 @@
 import {
   AttackOrder,
+  Building,
   Engagement,
   Health,
   Vehicle,
@@ -27,7 +28,14 @@ import { formation, type WaveMarchView } from './formation.js';
 import { manhattanOf, nodeOf } from './geometry.js';
 import { catapultOrders, driveCatapult, type Fire, placeOrders, ringOrders, type Wave } from './orders.js';
 import { routeTo } from './route.js';
-import { arrivalOrders, enemyTowerNodesNear } from './siege.js';
+import {
+  archersOn,
+  arrivalOrders,
+  catapultOnNearest,
+  enemyTowerNodesNear,
+  onCatapultContinents,
+  SIEGE_TIMEOUT_TICKS,
+} from './siege.js';
 
 export { RANKS_BEHIND_CATAPULTS_NODES } from './formation.js';
 export { LEG_NODES, SIEGE_STANDOFF_NODES, SIEGE_TOWER_STANDOFF_NODES } from './route.js';
@@ -43,6 +51,10 @@ export const REGROUP_SLACK_NODES = 4;
 /** How long a leg waits for its stragglers before the wave marches on without them: a man left behind
  *  falls back to the muster, a catapult out of the wave to be parked at home. */
 export const LEG_TIMEOUT_TICKS = 60 * TICKS_PER_SECOND;
+
+/** How long the wave holds on the way for its catapults' fight before it marches on without them: as long
+ *  as a siege, since a catapult fighting what it cannot hit would otherwise hold the wave forever. */
+export const FIGHT_HOLD_TIMEOUT_TICKS = SIEGE_TIMEOUT_TICKS;
 
 /** How far around the wave's centre enemy fighters count toward a charge. */
 export const CHARGE_RADIUS_NODES = 24;
@@ -115,15 +127,17 @@ export function launchWave(
     leg: 0,
     legSince: ctx.tick,
     arrived: route.length === 0,
+    holdSince: null,
     men: [...men],
     catapults,
   });
 }
 
 /**
- * One decision for the marching wave: a charge when enough enemy fighters stand near it, else the next leg
- * once it has closed up on the last, else the siege or the assault once it has arrived. `field` holds the
- * wave's men this decision may count on; a man in a fight still belongs to it, anyone else has left it.
+ * One decision for the marching wave: a charge when enough enemy fighters stand near it, else a hold while
+ * its catapults fight on the way, else the next leg once it has closed up on the last, else the siege or
+ * the assault once it has arrived. `field` holds the wave's men this decision may count on; a man in a
+ * fight still belongs to it, anyone else has left it.
  * A new `target` routes the wave again from where it stands, and a wave no longer {@link waveWorthy} is
  * spent: its men fall back to the muster.
  */
@@ -155,7 +169,8 @@ export function advanceWave(
   if (held.target !== target)
     retarget(world, ctx, terrain, barracks, player, { target, objective }, centre, men, catapults);
   const state = world.get(barracks, WaveMarch);
-  const wave: Wave = { men: men.filter((e) => inField.has(e)), members: men, catapults, centre };
+  const marching: Wave = { men: men.filter((e) => inField.has(e)), members: men, catapults, centre };
+  const wave = state.arrived ? marching : withoutStaleFighters(world, ctx, barracks, marching);
 
   const charge = chargePoint(world, ctx, terrain, player, wave);
   if (charge !== null) {
@@ -164,6 +179,8 @@ export function advanceWave(
     return { commands: chargeOrders(world, terrain, wave, charge), active: true };
   }
   if (!state.arrived) {
+    const hold = holdOrders(world, ctx, terrain, barracks, player, wave);
+    if (hold !== null) return { commands: hold, active: true };
     const commands = legOrders(world, ctx, terrain, barracks, player, state, wave);
     if (commands !== null) return { commands, active: true };
   }
@@ -209,6 +226,7 @@ function retarget(
   live.leg = 0;
   live.legSince = ctx.tick;
   live.arrived = route.length === 0;
+  live.holdSince = null;
 }
 
 /** The node of the man standing nearest `centre`, the lowest id on a tie: a walkable start for the route. */
@@ -283,6 +301,87 @@ function legOrders(
     ...placeOrders(world, ctx, terrain, march.men, places, fire, MILITARY_MODE.DEFEND),
     ...catapultOrders(world, march.catapults, places),
   ];
+}
+
+/** `wave` without the catapults still fighting once the hold has lasted {@link FIGHT_HOLD_TIMEOUT_TICKS}:
+ *  they go home to be parked, and the wave marches on. */
+function withoutStaleFighters(world: World, ctx: SystemContext, barracks: Entity, wave: Wave): Wave {
+  const since = world.get(barracks, WaveMarch).holdSince;
+  if (since === null || ctx.tick - since < FIGHT_HOLD_TIMEOUT_TICKS) return wave;
+  const stale = new Set(wave.catapults.filter((v) => world.get(v, Vehicle).attack !== null));
+  const live = world.mut(barracks, WaveMarch);
+  live.catapults = live.catapults.filter((v) => !stale.has(v));
+  live.holdSince = null;
+  return { ...wave, catapults: wave.catapults.filter((v) => !stale.has(v)) };
+}
+
+/**
+ * The wave's orders while a catapult of it fights on the way, or null once none fights. The wave holds its
+ * leg and the leg clock restarts when the fight ends, so a catapult that left its place to fire is no
+ * straggler. On a building the idle catapults and the archers join in and the melee holds behind on IGNORE,
+ * as in the siege; on men the archers and the melee answer them from their places on DEFEND.
+ */
+function holdOrders(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  barracks: Entity,
+  player: number,
+  wave: Wave,
+): PlayerCommand[] | null {
+  const state = world.get(barracks, WaveMarch);
+  const targets = fightTargets(world, wave.catapults);
+  if (targets === null) {
+    if (state.holdSince !== null) world.mut(barracks, WaveMarch).holdSince = null;
+    return null;
+  }
+  const live = world.mut(barracks, WaveMarch);
+  live.holdSince ??= ctx.tick;
+  live.legSince = ctx.tick;
+  const buildings = onCatapultContinents(world, ctx, terrain, targets.buildings, wave.catapults);
+  const commands: PlayerCommand[] = [];
+  const idle: Entity[] = [];
+  for (const vehicle of wave.catapults) {
+    if (world.get(vehicle, Vehicle).attack !== null) continue;
+    const command = catapultOnNearest(world, terrain, vehicle, buildings);
+    if (command === null) idle.push(vehicle);
+    else commands.push(command);
+  }
+  const places = formation(world, ctx, terrain, live, wave.members, wave.catapults);
+  const fire = fireOver(world, ctx, terrain, player, wave);
+  if (targets.buildings.length === 0) {
+    return [
+      ...commands,
+      ...placeOrders(world, ctx, terrain, wave.men, places, fire, MILITARY_MODE.DEFEND),
+      ...catapultOrders(world, idle, places),
+    ];
+  }
+  const archers = archersOn(world, ctx, terrain, wave.men, targets.buildings);
+  return [
+    ...commands,
+    ...archers.commands,
+    ...placeOrders(world, ctx, terrain, archers.melee, places, fire, MILITARY_MODE.IGNORE),
+    ...catapultOrders(world, idle, places),
+  ];
+}
+
+/** What the fighting catapults of `catapults` fire at, the standing buildings among it ascending id, or
+ *  null while none fights. */
+function fightTargets(
+  world: World,
+  catapults: readonly Entity[],
+): { readonly buildings: readonly Entity[] } | null {
+  let fights = false;
+  const buildings = new Set<Entity>();
+  for (const vehicle of catapults) {
+    const attack = world.get(vehicle, Vehicle).attack;
+    if (attack === null) continue;
+    fights = true;
+    const target = attack.target.kind === 'entity' ? attack.target.entity : null;
+    if (target !== null && world.has(target, Building) && (world.tryGet(target, Health)?.hitpoints ?? 0) > 0)
+      buildings.add(target);
+  }
+  return fights ? { buildings: [...buildings].sort((a, b) => a - b) } : null;
 }
 
 /** The leg whose end lies nearest `centre`, searching forward from the current one: a wave a charge has
