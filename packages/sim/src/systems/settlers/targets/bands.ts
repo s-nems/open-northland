@@ -18,7 +18,7 @@ import { isFinishedPrayerSite } from '../../readviews/index.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { FetchableStock } from './stores/fetchable-stock.js';
 import { StoreSinks } from './stores/sinks.js';
-import { buriedUnderBuilding } from './stores/stock.js';
+import { strandedPile } from './stores/stock.js';
 
 /**
  * Tick-local memo of question-keyed candidate bands: the candidates passing one question's
@@ -59,7 +59,7 @@ export class TargetBands {
       const walls = buildingBlockedCells(world, this.ctx, terrain);
       const members: Entity[] = [];
       for (const e of FetchableStock.of(world, this.ctx).holders(goodType)) {
-        if (!buriedUnderBuilding(world, terrain, walls, e)) members.push(e);
+        if (!strandedPile(world, this.ctx, terrain, walls, e)) members.push(e);
       }
       index = this.indexOver(members.sort((a, b) => a - b));
       this.holdingByGood.set(goodType, index);

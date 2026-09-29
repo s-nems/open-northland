@@ -133,9 +133,9 @@ export function nearestHarvestableFor(
 /**
  * The nearest {@link GroundDrop} pile across `lists` whose good `pick` selects, with its Manhattan
  * distance. Every `targets.groundDrops` entry already carries GroundDrop+Stockpile+Position, so the scan
- * re-checks no markers. The good `pick` returns then faces the work-cell reachability and signpost gates.
- * A pile may sit in several lists: each list is ascending-id and the winners merge by the scan's total
- * order, so the pick matches one scan over their sorted union.
+ * re-checks no markers. The good `pick` returns then faces the work-cell reachability, signpost and
+ * sealed-pocket gates. A pile may sit in several lists: each list is ascending-id and the winners merge
+ * by the scan's total order, so the pick matches one scan over their sorted union.
  */
 function nearestDropFor(
   plan: PlannerContext,
@@ -148,6 +148,7 @@ function nearestDropFor(
   const gate = plan.limit ?? undefined; // signpost confinement
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const gates: WorkCellGates = { terrain, blocked, memo: unreachableGoals(world, ctx, plan.entity) };
+  const regions = routeRegions(world, ctx, terrain);
   const resolve = (e: Entity): CellMatch<number> | null => {
     const good = pick(e);
     if (good === null) return null;
@@ -156,6 +157,7 @@ function nearestDropFor(
     if (within !== undefined && manhattan(terrain, within.center, cell) > within.radius) return null;
     if (unreachableWorkCell(gates, here, cell)) return null; // the walk there would fail
     if (gate !== undefined && !gate.allowsNode(cell)) return null;
+    if (regions.unroutable(here, cell)) return null; // a pile sealed in a pocket the settler is not in
     return { cell, payload: good };
   };
   let best: NearestByCell<number> | null = null;

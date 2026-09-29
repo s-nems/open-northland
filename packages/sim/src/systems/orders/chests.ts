@@ -44,7 +44,7 @@ export function orderOpenChest(
   const e = command.entity;
   if (!isOrderableSettler(world, e) || !world.has(e, Position)) return;
   if (!canOpenChest(world, ctx, e, command.chest)) return;
-  const stance = resourceWorkCell(world, terrain, command.chest, entityNode(world, terrain, e));
+  const stance = resourceWorkCell(world, ctx, terrain, command.chest, entityNode(world, terrain, e));
   // Refused ahead of the park, like the walk's own confinement check, so a refused order neither parks
   // nor displaces an earlier parked one.
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
@@ -82,7 +82,7 @@ export const chestOrderSystem: System = (world, ctx) => {
     }
     world.remove(e, OpenChestOrder);
     const here = entityNode(world, terrain, e);
-    if (resourceWorkCell(world, terrain, chest, here) !== here) continue; // the walk ended elsewhere
+    if (resourceWorkCell(world, ctx, terrain, chest, here) !== here) continue; // the walk ended elsewhere
     const settler = world.get(e, Settler);
     const p = world.get(chest, Position);
     const target = nodeOfPosition(p.x, p.y);

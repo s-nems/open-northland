@@ -21,6 +21,7 @@ export {
   type InteractionNode,
   interactionNode,
   positionedInteractionCell,
+  positionedStanceCells,
   resourceStanceCells,
   resourceWorkCell,
 } from './interaction.js';

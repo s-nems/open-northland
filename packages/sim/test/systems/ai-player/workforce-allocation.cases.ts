@@ -79,7 +79,7 @@ import {
 import { SpareForce } from '../../../src/systems/ai-player/workforce/pool.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
 import { resourceStanceCells, resourceWorkCell } from '../../../src/systems/footprint/interaction.js';
-import { canPlaceWorkFlag, type SystemContext } from '../../../src/systems/index.js';
+import { canPlaceWorkFlag, dynamicBlockOverlay, type SystemContext } from '../../../src/systems/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { gatherPick } from '../../fixtures/production-counters.js';
 import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
@@ -1433,7 +1433,7 @@ describe('workforce module (collectResources)', () => {
     const stance = [
       anchor,
       ...terrain.walkableNeighbours(anchor),
-      ...resourceStanceCells(sim.world, terrain, buried),
+      ...resourceStanceCells(sim.world, ctxOf(sim), terrain, buried),
     ];
     wallOver(
       sim,
@@ -1453,7 +1453,7 @@ describe('workforce module (collectResources)', () => {
     );
   });
 
-  it('moves a flag whose deposit the holder cannot reach from it, though another side is clear', () => {
+  it('keeps a flag whose deposit a shed covers on one stance, digging from a clear side instead', () => {
     const content = shedContent();
     const sim = aiSim(1, content);
     const ctxAt = (tick = 0): SystemContext => ({ ...ctxOf(sim, tick), content });
@@ -1469,36 +1469,22 @@ describe('workforce module (collectResources)', () => {
     if (terrain === undefined || deposit === undefined || holder === undefined) throw new Error('setup');
     const flagAt = sim.world.get(sim.world.get(holder, WorkFlag).flag, Position);
     const flagNode = nodeOfPosition(flagAt.x, flagAt.y);
-    // The live patch leaves the deposit as its witness, which the verdict below must not trust blindly.
-    const workedRadius = sim.world.get(holder, WorkFlag).radius;
-    expect(
-      gathererReach(sim.world, ctxAt(), terrain).patchHarvestable(
-        holder,
-        flagNode,
-        workedRadius,
-        (g) => g === MUD,
-      ),
-    ).toBe(true);
+    const flagCell = terrain.nodeAt(flagNode.hx, flagNode.hy);
 
-    // A shed on the one stance cell the gatherer walks to from his flag: the deposit keeps clear sides, but
-    // he would never dig it from here. A fresh deposit waits across the map.
-    const stance = resourceWorkCell(sim.world, terrain, deposit, terrain.nodeAt(flagNode.hx, flagNode.hy));
-    const x = terrain.xOf(stance);
-    const y = terrain.yOf(stance);
+    // A shed on the stance cell nearest the flag: the deposit keeps clear sides, and the work cell moves
+    // to one of them rather than pointing the gatherer at the covered one.
+    const covered = resourceWorkCell(sim.world, ctxAt(), terrain, deposit, flagCell);
+    const x = terrain.xOf(covered);
+    const y = terrain.yOf(covered);
     sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SHED_TYPE, x, y, tribe: VIKING, owner: SEAT });
-    const FRESH = { x: 50, y: 8 };
-    placeResources(sim, [{ ...RESOURCE_SPOTS.mud, ...FRESH }]);
     sim.step();
-    expect(workableResourceTest(sim.world, ctxAt(), terrain)(deposit)).toBe(true);
+    const moved = resourceWorkCell(sim.world, ctxAt(), terrain, deposit, flagCell);
+    expect(moved).not.toBe(covered);
+    expect(dynamicBlockOverlay(sim.world, ctxAt(), terrain).has(moved)).toBe(false);
     const radius = sim.world.get(holder, WorkFlag).radius;
-    const reach = gathererReach(sim.world, ctxAt(), terrain);
-    expect(reach.patchHarvestable(holder, flagNode, radius, (g) => g === MUD)).toBe(false);
-
-    const move = [...collectModule.run(sim.world, ctxAt(AI_DECISION_INTERVAL_TICKS), SEAT)];
-    const flag = move.find((c) => c.kind === 'setWorkFlag' && c.entity === holder);
-    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the flag to move');
-    expect(flag.x !== flagNode.hx || flag.y !== flagNode.hy).toBe(true);
-    expect(reach.patchHarvestable(holder, { hx: flag.x, hy: flag.y }, radius, (g) => g === MUD)).toBe(true);
+    expect(
+      gathererReach(sim.world, ctxAt(), terrain).patchHarvestable(holder, flagNode, radius, (g) => g === MUD),
+    ).toBe(true);
   });
 
   it('moves a flag whose deposit a blocker ring seals off, though the ring leaves the stance cells clear', () => {

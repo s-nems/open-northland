@@ -104,16 +104,3 @@ export function nearestHexCell(
   }
   return best;
 }
-
-export function nearestFreeNeighbour(
-  terrain: TerrainGraph,
-  anchor: NodeId,
-  blocked: ReadonlySet<NodeId>,
-  from: NodeId | undefined,
-): NodeId | null {
-  return nearestCell(
-    terrain,
-    terrain.walkableNeighbours(anchor).filter((cell) => !blocked.has(cell)),
-    from,
-  );
-}

@@ -5,7 +5,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { siftDown, siftUp } from '../../nav/pathfinding/heap.js';
 import { latticeDistanceTo, type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
-import type { System } from '../context.js';
+import type { ContentContext, System } from '../context.js';
 import {
   dynamicBlockOverlay,
   interactionNode,
@@ -106,12 +106,13 @@ function probeRoute(
  *  mid-swing or a bystander on the work cell can never read as stranded. */
 function fieldWorkable(
   world: World,
+  ctx: ContentContext,
   terrain: TerrainGraph,
   field: Entity,
   door: NodeId,
   overlay: BlockOverlay,
 ): boolean {
-  for (const stance of resourceStanceCells(world, terrain, field)) {
+  for (const stance of resourceStanceCells(world, ctx, terrain, field)) {
     if (!terrain.isWalkable(stance) || overlay.has(stance)) continue;
     // A static split needs no probe: the overlay only ever removes edges, never joins components.
     if (terrain.componentOf(stance) !== terrain.componentOf(door)) continue;
@@ -141,7 +142,7 @@ export const fieldReclaimSystem: System = (world, ctx) => {
     }
     const door = terrain.nodeAtClamped(at.x, at.y);
     overlay ??= dynamicBlockOverlay(world, ctx, terrain);
-    if (fieldWorkable(world, terrain, e, door, overlay)) {
+    if (fieldWorkable(world, ctx, terrain, e, door, overlay)) {
       world.remove(e, StrandedField);
       continue;
     }

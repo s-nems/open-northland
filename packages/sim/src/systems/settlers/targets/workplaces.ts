@@ -59,6 +59,6 @@ export function interactionCell(
 ): NodeId {
   const interaction = interactionNode(world, ctx, entity);
   if (interaction !== null) return terrain.nodeAtClamped(interaction.x, interaction.y);
-  if (world.has(entity, Resource)) return resourceWorkCell(world, terrain, entity, from);
-  return positionedInteractionCell(world, terrain, entity, from);
+  if (world.has(entity, Resource)) return resourceWorkCell(world, ctx, terrain, entity, from);
+  return positionedInteractionCell(world, ctx, terrain, entity, from);
 }

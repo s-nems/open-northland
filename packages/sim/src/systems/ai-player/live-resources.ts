@@ -40,7 +40,7 @@ export function workableResourceTest(world: World, ctx: SystemContext, terrain: 
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   return (e) =>
     !world.has(e, ResourceFootprint) ||
-    resourceStanceCells(world, terrain, e).some((cell) => !blocked.has(cell));
+    resourceStanceCells(world, ctx, terrain, e).some((cell) => !blocked.has(cell));
 }
 
 /**

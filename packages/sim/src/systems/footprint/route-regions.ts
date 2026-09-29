@@ -3,7 +3,7 @@ import { landscapeTopologyRevision } from '../../components/landscape.js';
 import type { World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext } from '../context.js';
 import { structureBlockOverlay } from './blocked.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 
@@ -60,9 +60,17 @@ const cacheByWorld = new WeakMap<World, RouteRegionCache>();
 export class RouteRegions {
   constructor(
     private readonly world: World,
-    private readonly ctx: SystemContext,
+    private readonly ctx: ContentContext,
     private readonly cache: RouteRegionCache,
   ) {}
+
+  /** Whether a unit could stand on `node` under the structure overlay the verdicts read: walkable and
+   *  clear of every building, resource and landscape block. Vehicles are left out, like the labels. */
+  standable(node: NodeId): boolean {
+    const cache = this.cache;
+    this.refresh(cache);
+    return cache.terrain.isWalkable(node) && !cache.blocked.has(node);
+  }
 
   /**
    * Whether a walk from `from` to `to` provably has no route under the overlay: one endpoint sits in a
@@ -169,7 +177,7 @@ export class RouteRegions {
  * ground, otherwise one flood of at most {@link ROUTE_REGION_POCKET_CAP} expansions; every blocker change
  * re-opens the whole map's labels, so the veto belongs last in a pick's gate chain.
  */
-export function routeRegions(world: World, ctx: SystemContext, terrain: TerrainGraph): RouteRegions {
+export function routeRegions(world: World, ctx: ContentContext, terrain: TerrainGraph): RouteRegions {
   let cache = cacheByWorld.get(world);
   if (cache === undefined || cache.terrain !== terrain) {
     cache = {

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Position, Resource, Stranded, UnreachableGoals } from '../../src/components/index.js';
+import {
+  CurrentAtomic,
+  GroundDrop,
+  Position,
+  Resource,
+  Stockpile,
+  Stranded,
+  UnreachableGoals,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { positionOfNode, type Simulation } from '../../src/index.js';
 import { stampResourceFootprintData } from '../../src/systems/index.js';
@@ -106,5 +114,33 @@ describe('the harvest pick against enclosed resource nodes', () => {
     stepUntilWithoutRouteFailure(s, e, 800, () => harvestedResource(s, e) !== null);
     expect(harvestedResource(s, e)).toBe(far);
     for (const tree of enclosed) expect(s.world.get(tree, Resource).remaining).toBe(UNTOUCHED);
+  });
+
+  it('leaves a trunk sealed in a pocket for a reachable tree, with no route failure', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 0, 0);
+    const UNTOUCHED = 5;
+    const TRUNK_UNITS = 3;
+    const WOOD = s.world.get(woodAt(s, 8, 0, UNTOUCHED), Resource).goodType;
+    const far = [...s.world.query(Resource)][0];
+    // A trunk on node (9, 2), nearer than the tree, whose eight step neighbours the ring blocks.
+    const trunk = s.world.create();
+    s.world.add(trunk, Position, positionOfNode(9, 2));
+    s.world.add(trunk, Stockpile, { amounts: new Map([[WOOD, TRUNK_UNITS]]) });
+    s.world.add(trunk, GroundDrop, { goodType: WOOD });
+    wallAt(s, 9, 2, [
+      { dx: 1, dy: 0 },
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 2 },
+      { dx: 1, dy: -2 },
+      { dx: -1, dy: 2 },
+      { dx: -1, dy: -2 },
+    ]);
+
+    stepUntilWithoutRouteFailure(s, e, 400, () => harvestedResource(s, e) !== null);
+    expect(harvestedResource(s, e)).toBe(far);
+    expect(s.world.get(trunk, Stockpile).amounts.get(WOOD)).toBe(TRUNK_UNITS);
   });
 });

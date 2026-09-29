@@ -5,7 +5,6 @@ export { nearestFood, storedFoodGood } from './food.js';
 export { unreachableSiteStand, unreachableWorkCell, type WorkCellGates } from './reachability.js';
 export { nearestCollectablePileFor, nearestHarvestableFor, nearestOwnDropFor } from './resources.js';
 export {
-  buriedUnderBuilding,
   FetchableStock,
   hasHaulableOutput,
   nearestBuilderSite,
@@ -15,5 +14,6 @@ export {
   nearestStoreHolding,
   nearestWorkplaceOutput,
   storeYieldsGood,
+  strandedPile,
 } from './stores/index.js';
 export { boundWorkplaceTarget, interactionCell, jobAtomics } from './workplaces.js';

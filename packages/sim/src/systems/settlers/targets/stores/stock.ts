@@ -11,6 +11,7 @@ import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js'
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../../../context.js';
+import { positionedStanceCells } from '../../../footprint/index.js';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import {
   accessibleStockAmounts,
@@ -170,20 +171,23 @@ export function nearestFreeYardNode(
 }
 
 /**
- * Whether a loose pile lies on a cell standing buildings make unwalkable, making it a source no fetcher
- * can reach: the walk path-fails, the settler strands and re-picks the same nearest pile. Scoped to
- * building walls only, since a trunk under a standing resource resolves to that resource's work cell and
- * a {@link Building} store is never buried by its own walls. `walls` is resolved once per scan.
+ * Whether a loose pile is a source no fetcher can reach: it lies on a cell standing buildings make
+ * unwalkable, or no unit can stand on or beside it, such as ore left on an exhausted deposit's cell that
+ * neighbouring stones cover. The walk would path-fail and the settler re-pick the same nearest pile. A
+ * trunk under a standing resource is judged by that resource's work cells, and a {@link Building} store is
+ * never stranded by its own walls. `walls` is resolved once per scan.
  */
-export function buriedUnderBuilding(
+export function strandedPile(
   world: World,
+  ctx: ContentContext,
   terrain: TerrainGraph,
   walls: ReadonlySet<NodeId>,
   entity: Entity,
 ): boolean {
   if (world.has(entity, Building)) return false;
   const p = world.get(entity, Position);
-  return walls.has(terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y)));
+  if (walls.has(terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y)))) return true;
+  return positionedStanceCells(world, ctx, terrain, entity).length === 0;
 }
 
 /**
@@ -239,6 +243,6 @@ export function storeYieldsGood(
   return (
     (stock?.get(goodType) ?? 0) > 0 &&
     mayFetchGoodFrom(world, ctx, store, goodType) &&
-    !buriedUnderBuilding(world, terrain, walls, store)
+    !strandedPile(world, ctx, terrain, walls, store)
   );
 }

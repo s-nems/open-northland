@@ -144,7 +144,9 @@ describe('resource footprints', () => {
     const blocked = dynamicBlockOverlay(sim.world, ctxOf(sim), terrain);
 
     expect(blocked.has(terrain.nodeAt(2, 1))).toBe(false);
-    expect(resourceWorkCell(sim.world, terrain, mushroom, terrain.nodeAt(0, 1))).toBe(terrain.nodeAt(2, 1));
+    expect(resourceWorkCell(sim.world, ctxOf(sim), terrain, mushroom, terrain.nodeAt(0, 1))).toBe(
+      terrain.nodeAt(2, 1),
+    );
   });
 
   it('keeps building bodies out of a resource build zone while allowing footprint-empty patches', () => {
@@ -173,7 +175,7 @@ describe('resource footprints', () => {
     expect(canPlaceWorkFlag(sim.world, ctxOf(sim), terrain, terrain.nodeAt(5, 2))).toBe(false);
     expect(canPlaceWorkFlag(sim.world, ctxOf(sim), terrain, terrain.nodeAt(4, 3))).toBe(true);
     // Worked from a cell of its record's work area, never from its own blocked node.
-    const stance = terrain.coordsOf(resourceWorkCell(sim.world, terrain, chest));
+    const stance = terrain.coordsOf(resourceWorkCell(sim.world, ctxOf(sim), terrain, chest));
     expect(stance.y).toBe(3);
     expect([4, 5]).toContain(stance.x);
 
@@ -305,7 +307,7 @@ describe('resource footprints', () => {
     const node = placeResource(sim, CLAY, CLAY_ATOMIC, 2, 1);
     const drop = placeGroundDrop(sim, CLAY, 1, 2, 1);
 
-    expect(resourceWorkCell(sim.world, terrainOf(sim), node, terrainOf(sim).nodeAt(1, 1))).toBe(
+    expect(resourceWorkCell(sim.world, ctxOf(sim), terrainOf(sim), node, terrainOf(sim).nodeAt(1, 1))).toBe(
       terrainOf(sim).nodeAt(2, 1),
     );
 
@@ -324,7 +326,7 @@ describe('resource footprints', () => {
     const drop = placeGroundDrop(sim, CLAY, 1, 2, 1);
     sim.world.mut(drop, GroundDrop).goodType = STONE;
 
-    expect(resourceWorkCell(sim.world, terrainOf(sim), node, terrainOf(sim).nodeAt(1, 1))).toBe(
+    expect(resourceWorkCell(sim.world, ctxOf(sim), terrainOf(sim), node, terrainOf(sim).nodeAt(1, 1))).toBe(
       terrainOf(sim).nodeAt(2, 1),
     );
 

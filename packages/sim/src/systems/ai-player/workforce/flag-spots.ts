@@ -95,7 +95,7 @@ export function flagGround(
     walkOut: (resource) => {
       let flood = fromResource.get(resource);
       if (flood === undefined) {
-        const cells = resourceStanceCells(world, terrain, resource);
+        const cells = resourceStanceCells(world, ctx, terrain, resource);
         flood = new WalkFlood(terrain, blocked, cells, RESOURCE_FLOOD_BUDGET_NODES);
         fromResource.set(resource, flood);
       }

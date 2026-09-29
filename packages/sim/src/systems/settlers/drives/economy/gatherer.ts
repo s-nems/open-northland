@@ -233,7 +233,7 @@ function startHarvestFromNode(
   const passes = stanceGates(plan, bound);
   let stance = drawn !== undefined && passes(drawn) ? drawn : undefined;
   if (stance === undefined) {
-    const open = resourceStanceCells(world, terrain, node.entity).filter(passes);
+    const open = resourceStanceCells(world, ctx, terrain, node.entity).filter(passes);
     stance = open.length > 0 ? open[ctx.rng.int(open.length)] : node.cell;
     if (stance === undefined) {
       world.remove(e, HarvestFocus);

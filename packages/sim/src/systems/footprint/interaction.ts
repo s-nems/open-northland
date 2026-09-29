@@ -10,13 +10,14 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { MapContext, SystemContext } from '../context.js';
-import { nearestCell, nearestFreeNeighbour } from '../spatial/metric.js';
+import type { ContentContext, MapContext, SystemContext } from '../context.js';
+import { nearestCell } from '../spatial/metric.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 import { resourceAtTile } from './resource-tile-cache.js';
+import { type RouteRegions, routeRegions } from './route-regions.js';
 
 // INTERACTION - where a unit stands to use a building or resource: a building's door node, and the
 // walkable work cell adjacent to (or on) a resource/ground drop.
@@ -183,18 +184,20 @@ function stockedGoodAt(world: World, entity: Entity): number | null {
 
 /**
  * Every cell {@link resourceWorkCell} could pick as this resource's work stance, over ALL possible `from`
- * positions - the pool, with the nearest pick left to the caller. Never empty: the last fallback is the
- * bare anchor.
+ * positions - the pool, with the nearest pick left to the caller. A cell qualifies only where a unit can
+ * stand under the structure overlay (buildings, resources, landscapes), so the pool is empty for a node
+ * those structures wall in whole.
  *
  * A walkable deposit whose work area lists its own anchor is worked standing ON the deposit, as observed
  * of the original's clay digger. That anchor listing comes from the sandbox's invented work areas, NOT the
  * real clay records: those list the anchor only in their partial states, and the sim collapses `workAreas`
  * to the FULL state (`fullStateBlockAreaCells`), whose rows exclude `(0,0)`, so real records feeding this
  * would silently revert the digger to an adjacent stance. A blocking node's anchor never survives the
- * walkable filter, so trees, stones and ore keep the adjacent stance.
+ * standable filter, so trees, stones and ore keep the adjacent stance.
  */
 export function resourceStanceCells(
   world: World,
+  ctx: ContentContext,
   terrain: TerrainGraph,
   resource: Entity,
 ): readonly NodeId[] {
@@ -202,20 +205,56 @@ export function resourceStanceCells(
   const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
   const anchor = terrain.nodeAtClamped(ax, ay);
   const footprint = world.get(resource, ResourceFootprint);
-  const blocked = resourceBlockedCells(world, terrain);
+  const resources = resourceBlockedCells(world, terrain);
   const work = translatedCells(terrain, footprint.work, ax, ay).filter(
-    (cell) => terrain.isWalkable(cell) && !blocked.has(cell),
+    (cell) => terrain.isWalkable(cell) && !resources.has(cell),
   );
-  if (work.includes(anchor)) return [anchor];
-  if (work.length > 0) return work;
-  const fallback = terrain.walkableNeighbours(anchor).filter((cell) => !blocked.has(cell));
-  return fallback.length > 0 ? fallback : [anchor];
+  const pool = work.includes(anchor)
+    ? [anchor]
+    : work.length > 0
+      ? work
+      : terrain.walkableNeighbours(anchor).filter((cell) => !resources.has(cell));
+  return standableOnly(world, ctx, terrain, pool);
+}
+
+/** `pool` without the cells a building or landscape covers. The pool itself is chosen against the resource
+ *  layer alone, so a deposit a house buries keeps its covered anchor stance and ends up with none, instead
+ *  of being worked from beside the house. */
+function standableOnly(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  pool: readonly NodeId[],
+): NodeId[] {
+  const regions = routeRegions(world, ctx, terrain);
+  return pool.filter((cell) => regions.standable(cell));
+}
+
+/**
+ * The `pool` member nearest `from`, node-id tie-break, skipping a cell sealed in a pocket `from` is not in.
+ * Null when every member is sealed away. A pocketed `from` keeps the open cells, since a caller may pass a
+ * stand-in node for the walker (a flag, a door), and without `from` no cell is judged.
+ */
+function nearestOpenStance(
+  terrain: TerrainGraph,
+  regions: RouteRegions,
+  pool: readonly NodeId[],
+  from: NodeId | undefined,
+): NodeId | null {
+  return nearestCell(
+    terrain,
+    pool,
+    from,
+    (cell) => from === undefined || !regions.pocketed(cell) || !regions.unroutable(from, cell),
+  );
 }
 
 /** The cell a collector stands on to work a resource: the {@link resourceStanceCells} pool member nearest
- *  `from`, node-id tie-break. The pool is never empty, so the anchor fallback is unreachable in practice. */
+ *  `from` that a walk from there can enter. With none, the bare anchor, which a blocking node's own
+ *  footprint blocks, so the pickers' overlay gate refuses it. */
 export function resourceWorkCell(
   world: World,
+  ctx: ContentContext,
   terrain: TerrainGraph,
   resource: Entity,
   from?: NodeId,
@@ -223,31 +262,53 @@ export function resourceWorkCell(
   const p = world.get(resource, Position);
   const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
   const anchor = terrain.nodeAtClamped(ax, ay);
-  return nearestCell(terrain, resourceStanceCells(world, terrain, resource), from) ?? anchor;
+  const pool = resourceStanceCells(world, ctx, terrain, resource);
+  return nearestOpenStance(terrain, routeRegions(world, ctx, terrain), pool, from) ?? anchor;
 }
 
 /**
- * The interaction cell for a plain positioned target. A loose ground drop under a still-standing resource
- * is collected from that resource's work cell, which keeps mined goods on the intended cadence: one chip
- * drops one ore or clay at the deposit, then the collector picks it up before starting another chip.
- * Blocking deposits get the adjacent stance because their anchor is unwalkable; low non-blocking deposits
- * (clay) still use the same work-cell rule so they are not mined dry before the first pickup.
+ * Every cell {@link positionedInteractionCell} could pick for a plain positioned target, over all `from`
+ * positions. Empty when no unit can stand on or beside it, such as a pile left on an exhausted deposit's
+ * cell that neighbouring stones still cover.
+ */
+export function positionedStanceCells(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  entity: Entity,
+): readonly NodeId[] {
+  const p = world.get(entity, Position);
+  const { hx: x, hy: y } = nodeOfPosition(p.x, p.y);
+  const drop = world.tryGet(entity, GroundDrop);
+  if (drop !== undefined) {
+    const resource = resourceAtTile(world, x, y, stockedGoodAt(world, entity) ?? drop.goodType);
+    if (resource !== null) return resourceStanceCells(world, ctx, terrain, resource);
+  }
+  const anchor = terrain.nodeAtClamped(x, y);
+  const resources = resourceBlockedCells(world, terrain);
+  const pool = resources.has(anchor)
+    ? terrain.walkableNeighbours(anchor).filter((cell) => !resources.has(cell))
+    : [anchor];
+  return standableOnly(world, ctx, terrain, pool);
+}
+
+/**
+ * The interaction cell for a plain positioned target: its anchor when a unit can stand there, else the
+ * nearest cell beside it. A loose ground drop under a still-standing resource is collected from that
+ * resource's work cell, which keeps mined goods on the intended cadence: one chip drops one ore or clay at
+ * the deposit, then the collector picks it up before starting another chip. Blocking deposits get the
+ * adjacent stance because their anchor is unwalkable; low non-blocking deposits (clay) still use the same
+ * work-cell rule so they are not mined dry before the first pickup. With no enterable cell, the anchor.
  */
 export function positionedInteractionCell(
   world: World,
+  ctx: ContentContext,
   terrain: TerrainGraph,
   entity: Entity,
   from?: NodeId,
 ): NodeId {
   const p = world.get(entity, Position);
-  const { hx: x, hy: y } = nodeOfPosition(p.x, p.y);
-  const anchor = terrain.nodeAtClamped(x, y);
-  const drop = world.tryGet(entity, GroundDrop);
-  if (drop !== undefined) {
-    const resource = resourceAtTile(world, x, y, stockedGoodAt(world, entity) ?? drop.goodType);
-    if (resource !== null) return resourceWorkCell(world, terrain, resource, from);
-  }
-  const blocked = resourceBlockedCells(world, terrain);
-  if (!blocked.has(anchor)) return anchor;
-  return nearestFreeNeighbour(terrain, anchor, blocked, from) ?? anchor;
+  const anchor = terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
+  const pool = positionedStanceCells(world, ctx, terrain, entity);
+  return nearestOpenStance(terrain, routeRegions(world, ctx, terrain), pool, from) ?? anchor;
 }

@@ -58,7 +58,7 @@ describe('flag-bound gatherer - returning to the node its stroke cadence left pa
     plannerSystem(sim.world, ctxOf(sim));
 
     const goal = sim.world.get(gatherer, MoveGoal).cell;
-    expect(resourceStanceCells(sim.world, terrain, remembered)).toContain(goal);
+    expect(resourceStanceCells(sim.world, ctxOf(sim), terrain, remembered)).toContain(goal);
     expect(sim.world.has(gatherer, HarvestFocus)).toBe(true);
   });
 
@@ -91,7 +91,9 @@ describe('flag-bound gatherer - returning to the node its stroke cadence left pa
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(resourceStanceCells(sim.world, terrain, near)).toContain(sim.world.get(gatherer, MoveGoal).cell);
+    expect(resourceStanceCells(sim.world, ctxOf(sim), terrain, near)).toContain(
+      sim.world.get(gatherer, MoveGoal).cell,
+    );
     expect(sim.world.get(gatherer, HarvestFocus).node).toBe(near); // the scan's pick is the new approach
   });
 
@@ -133,7 +135,9 @@ describe('flag-bound gatherer - returning to the node its stroke cadence left pa
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(gatherer, HarvestFocus).node).toBe(other);
-    expect(resourceStanceCells(sim.world, terrain, other)).toContain(sim.world.get(gatherer, MoveGoal).cell);
+    expect(resourceStanceCells(sim.world, ctxOf(sim), terrain, other)).toContain(
+      sim.world.get(gatherer, MoveGoal).cell,
+    );
   });
 
   it('a stance its routes failed on drops the remembered node before the next approach', () => {

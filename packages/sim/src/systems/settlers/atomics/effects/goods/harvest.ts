@@ -13,8 +13,10 @@ import {
 } from '../../../../../components/index.js';
 import { eventAt } from '../../../../../core/events.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
+import { nodeOfPosition } from '../../../../../nav/halfcell.js';
 import type { SystemContext } from '../../../../context.js';
 import { stampCarcassFootprint } from '../../../../economy/carcasses.js';
+import { landStrandedDrops } from '../../../../economy/goods-evict.js';
 import { toolWorkFactorPct } from '../../../../equipment/index.js';
 import { stampResourceFootprintOrFallback, unstampResourceFootprint } from '../../../../footprint/index.js';
 import { jobExperiencePercent, strokesPerUnit, workRepeatsFor } from '../../../../progression/index.js';
@@ -103,7 +105,7 @@ export function harvestFromNode(
   const remaining = res.remaining - took;
   world.mut(node, Resource).remaining = remaining;
   if (remaining <= 0) {
-    depleteNode(world, ctx, node, res.goodType);
+    depleteNode(world, ctx, settler, node, res.goodType);
   } else if (world.has(node, MineDeposit)) {
     // A shrunk deposit must move from the map view's static decor layer to its live sprite pool.
     const pos = world.get(node, Position);
@@ -150,6 +152,26 @@ function removeResourceNode(world: World, node: Entity): void {
   world.destroy(node);
 }
 
+/** {@link removeResourceNode} for a node `harvester` worked out, carrying the drops its neighbours leave
+ *  covered on its cell over to the harvester's stance. Approximation: where the original leaves them is
+ *  unconfirmed; left in place, no settler could ever fetch them. */
+function removeWorkedNode(world: World, ctx: SystemContext, harvester: Entity, node: Entity): void {
+  const cell = world.get(node, Position);
+  removeResourceNode(world, node);
+  const terrain = ctx.terrain;
+  const stance = world.tryGet(harvester, Position);
+  if (terrain === undefined || stance === undefined) return;
+  const at = nodeOfPosition(cell.x, cell.y);
+  const landing = nodeOfPosition(stance.x, stance.y);
+  landStrandedDrops(
+    world,
+    ctx,
+    terrain,
+    terrain.nodeAtClamped(at.hx, at.hy),
+    terrain.nodeAtClamped(landing.hx, landing.hy),
+  );
+}
+
 /**
  * Reap a ripe {@link Crop} field: drop its whole yield as a ground pile and remove the field, freeing the
  * tile to sow again. The field leaves no stump.
@@ -182,7 +204,7 @@ function fellNode(
   const stump = world.create();
   world.add(stump, Position, { x, y });
   world.add(stump, Stump, { goodType });
-  removeResourceNode(world, node);
+  removeWorkedNode(world, ctx, feller, node);
   ctx.events.emit({
     kind: 'resourceFelled',
     node,
@@ -220,7 +242,13 @@ function markHarvestedBy(world: World, drop: Entity, harvester: Entity): void {
  * the same body and cell, and only the last layer's drain removes the node. Decals differ per good, so
  * each stage re-stamps the footprint.
  */
-function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: number): void {
+function depleteNode(
+  world: World,
+  ctx: SystemContext,
+  harvester: Entity,
+  node: Entity,
+  goodType: number,
+): void {
   const buried = world.tryGet(node, ResourceLayers);
   const layer = buried?.layers[0];
   if (buried !== undefined && layer !== undefined) {
@@ -243,6 +271,6 @@ function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: n
   }
   const pos = world.get(node, Position);
   const at = eventAt(pos.x, pos.y);
-  removeResourceNode(world, node);
+  removeWorkedNode(world, ctx, harvester, node);
   ctx.events.emit({ kind: 'resourceDepleted', node, goodType, at });
 }

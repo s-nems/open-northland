@@ -4,7 +4,7 @@ import type { SystemContext } from '../../../context.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
 import { buildingProduces, lowestStockedGood } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
-import { buriedUnderBuilding } from '../../targets/index.js';
+import { strandedPile } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { deliverableGoodProbe } from './delivery-targets.js';
 import { isFarmCarrierHaulOutRole } from './store-policy.js';
@@ -12,8 +12,8 @@ import { isFarmCarrierHaulOutRole } from './store-policy.js';
 /**
  * The nearest ground pile a porter should collect from and the good to lift, or null when none is within
  * reach. A ground pile is a positioned `Stockpile` with no `Building`, not buried under a building's
- * walls; the good lifted is its lowest-id stocked one, and the scan is canonical by Manhattan distance
- * then ascending cell id. A pile whose good this porter could not deliver is skipped, since lifting it
+ * walls or out of every unit's reach; the good lifted is its lowest-id stocked one, and the scan is
+ * canonical by Manhattan distance then ascending cell id. A pile whose good this porter could not deliver is skipped, since lifting it
  * would only make it shed the load at its feet. The pile tests run per candidate, so a lift earlier in
  * the pass is seen by the next porter.
  *
@@ -34,7 +34,7 @@ export function nearestGroundPile(
       if (stock === undefined || world.has(e, Building) || !world.has(e, Position)) return null;
       const good = lowestStockedGood(stock);
       if (good === null || !deliverable(good)) return null;
-      return buriedUnderBuilding(world, terrain, walls, e) ? null : { payload: good };
+      return strandedPile(world, ctx, terrain, walls, e) ? null : { payload: good };
     },
     plan.limit ?? undefined, // the porter's confinement: an out-of-area pile is not one it fetches
     unreachableGoalVeto(world, ctx, plan.entity),

@@ -4,8 +4,14 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
-import { buildingDoorNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
+import type { ContentContext, SystemContext } from '../context.js';
+import {
+  buildingDoorNodes,
+  dynamicBlockOverlay,
+  positionedStanceCells,
+  routeRegions,
+  walkBlockedBodyOf,
+} from '../footprint/index.js';
 import { canonicalById } from '../spatial/nodes.js';
 import { stockpilesAtNode } from '../spatial/stockpiles.js';
 
@@ -62,17 +68,42 @@ export function evictLooseGoodsFromCells(
       doors,
     );
     if (landing === null) continue; // boxed in - the pile stays where it lies
-    const c = terrain.coordsOf(landing);
-    const at = positionOfNode(c.x, c.y);
-    const moved = world.create();
-    world.add(moved, Position, { x: at.x, y: at.y });
-    world.add(moved, Stockpile, { amounts: world.get(pile, Stockpile).amounts });
-    const trunk = world.tryGet(pile, GroundDrop);
-    if (trunk !== undefined) world.add(moved, GroundDrop, { goodType: trunk.goodType });
-    const harvested = world.tryGet(pile, HarvestedBy);
-    if (harvested !== undefined) world.add(moved, HarvestedBy, { by: harvested.by });
-    world.destroy(pile);
+    movePile(world, terrain, pile, landing);
   }
+}
+
+/**
+ * Move the ground drops at `cell` that no unit can stand on or beside onto `landing`, the stance a
+ * harvester worked a just-removed node from. A node's neighbours can keep its cell covered after it goes,
+ * and a drop left there is a source every fetcher path-fails on. Drops are visited in ascending id order.
+ */
+export function landStrandedDrops(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  cell: NodeId,
+  landing: NodeId,
+): void {
+  const { x, y } = terrain.coordsOf(cell);
+  const stranded = stockpilesAtNode(world, x, y).filter(
+    (e) => world.has(e, GroundDrop) && positionedStanceCells(world, ctx, terrain, e).length === 0,
+  );
+  if (stranded.length === 0 || !routeRegions(world, ctx, terrain).standable(landing)) return;
+  for (const pile of canonicalById(stranded)) movePile(world, terrain, pile, landing);
+}
+
+/** Re-create `pile` at `landing`, since a positioned stockpile never moves in the node index. */
+function movePile(world: World, terrain: TerrainGraph, pile: Entity, landing: NodeId): void {
+  const c = terrain.coordsOf(landing);
+  const at = positionOfNode(c.x, c.y);
+  const moved = world.create();
+  world.add(moved, Position, { x: at.x, y: at.y });
+  world.add(moved, Stockpile, { amounts: world.get(pile, Stockpile).amounts });
+  const trunk = world.tryGet(pile, GroundDrop);
+  if (trunk !== undefined) world.add(moved, GroundDrop, { goodType: trunk.goodType });
+  const harvested = world.tryGet(pile, HarvestedBy);
+  if (harvested !== undefined) world.add(moved, HarvestedBy, { by: harvested.by });
+  world.destroy(pile);
 }
 
 /**
