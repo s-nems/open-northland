@@ -90,7 +90,7 @@ export function resolveConstructionDraws(
 
 /**
  * The stage stack of an upgrading building whose tribe has no upgrade rows for its type, or `null`: the
- * next tier's from-scratch construction stack at the upgrade progress, drawn in place of the old body.
+ * next tier's from-scratch construction stack at the upgrade progress, drawn over the old body.
  * Only the viking skin carries upgrade rows, so this is every other civilization's upgrade site; raising
  * the next tier as a fresh build is a named approximation.
  */
