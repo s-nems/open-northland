@@ -126,8 +126,9 @@ export class TerrainGraph extends TerrainEdges {
 
   /**
    * The factor a route step onto `node` is weighed by, for a node the caller has bounds-checked. Original
-   * behavior: the search charges each step the resistance of the node it enters, so walkers keep to roads
-   * and round sand and snow. Ships sail unweighted.
+   * behavior: the search charges each step the resistance of the node it leaves, so walkers keep to roads
+   * and round sand and snow. Weighing the entered node by the step's world length is an approximation;
+   * on even steps it only shifts every route between two fixed ends by a constant. Ships sail unweighted.
    */
   routeWeightAt(node: NodeId, traversal: Traversal): Fixed {
     return traversal === 'land' ? (this.routeWeights[node] ?? ONE) : ONE;
