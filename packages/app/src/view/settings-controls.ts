@@ -136,3 +136,112 @@ export function settingRow(label: string, control: HTMLElement, options?: Settin
   }
   return row;
 }
+
+export interface DropdownChoice<T extends string> {
+  readonly id: T;
+  readonly label: string;
+  readonly image?: string;
+}
+
+export interface DropdownHandle<T extends string> {
+  readonly root: HTMLDivElement;
+  setActive(id: T): void;
+}
+
+function dropdownFace(choice: DropdownChoice<string>, className: string): HTMLElement[] {
+  const text = document.createElement('span');
+  text.className = `${className}-label`;
+  text.textContent = choice.label;
+  if (choice.image === undefined) return [text];
+  // A background, so a caller's stylesheet can frame the part of the art that tells choices apart.
+  const image = document.createElement('span');
+  image.className = `${className}-image`;
+  image.style.backgroundImage = `url("${choice.image}")`;
+  return [image, text];
+}
+
+/** One button showing the current choice; the list opens under it, for choices too wide for a row. */
+export function dropdownControl<T extends string>(
+  label: string,
+  choices: readonly DropdownChoice<T>[],
+  active: T,
+  onPick: (id: T) => void,
+): DropdownHandle<T> {
+  const root = document.createElement('div');
+  root.className = 'main-menu__dropdown';
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'main-menu__dropdown-btn';
+  toggle.setAttribute('aria-haspopup', 'listbox');
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-label', label);
+  const list = document.createElement('div');
+  list.className = 'main-menu__dropdown-list';
+  list.setAttribute('role', 'listbox');
+  list.setAttribute('aria-label', label);
+  list.hidden = true;
+  const options = new Map<T, HTMLButtonElement>();
+  for (const choice of choices) {
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = 'main-menu__dropdown-option';
+    option.setAttribute('role', 'option');
+    option.append(...dropdownFace(choice, 'main-menu__dropdown-option'));
+    option.addEventListener('click', () => {
+      close(true);
+      onPick(choice.id);
+    });
+    options.set(choice.id, option);
+    list.append(option);
+  }
+  let current = active;
+  const onOutsidePress = (event: PointerEvent): void => {
+    if (event.target instanceof Node && !root.contains(event.target)) close(false);
+  };
+  function open(): void {
+    list.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', onOutsidePress, true);
+    options.get(current)?.focus();
+  }
+  function close(refocus: boolean): void {
+    if (list.hidden) return;
+    list.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', onOutsidePress, true);
+    if (refocus) toggle.focus();
+  }
+  toggle.addEventListener('click', () => {
+    if (list.hidden) open();
+    else close(true);
+  });
+  root.addEventListener('keydown', (event) => {
+    if (list.hidden) return;
+    if (event.key === 'Escape') {
+      // The settings window closes on Escape too; only the list closes here.
+      event.stopPropagation();
+      event.preventDefault();
+      close(true);
+      return;
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    const all = [...options.values()];
+    const focused = document.activeElement;
+    const index = focused instanceof HTMLButtonElement ? all.indexOf(focused) : -1;
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    all[(index + step + all.length) % all.length]?.focus();
+  });
+  root.addEventListener('focusout', (event) => {
+    if (!(event.relatedTarget instanceof Node) || !root.contains(event.relatedTarget)) close(false);
+  });
+  const setActive = (id: T): void => {
+    current = id;
+    const choice = choices.find((entry) => entry.id === id);
+    if (choice !== undefined) toggle.replaceChildren(...dropdownFace(choice, 'main-menu__dropdown-btn'));
+    for (const [key, option] of options) option.setAttribute('aria-selected', String(key === id));
+  };
+  setActive(active);
+  root.append(toggle, list);
+  return { root, setActive };
+}

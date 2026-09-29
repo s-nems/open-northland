@@ -1,9 +1,10 @@
-# Minimapa Atlas
+# Minimapa
 
-Zatwierdzony wygląd to Atlas w tonie **Przygaszony pergamin**: ciepła szarobrązowa oprawa,
-ciemna skórzana krawędź, brązowe kontrolki i delikatne ornamenty. Wspólny kontrakt wyglądu znajduje
-się w [FOUNDATION.md](../ingame-menu/FOUNDATION.md#minimap-direction), a źródło grafiki i dokładne
-prompty w [generation.md](generation.md).
+Minimapa ma trzy ciemne ramki do wyboru w ustawieniach grafiki (sekcja „Interfejs”): **Żelazo**
+(domyślna, okuty ciemny dąb), **Księga** (rzeźbiony dąb i mosiężne narożniki jak w księdze misji)
+oraz **Urnes** (wędzony dąb z rzeźbioną bestią w narożnikach). Zmiana działa w grze od razu. Wspólny
+kontrakt wyglądu znajduje się w [FOUNDATION.md](../ingame-menu/FOUNDATION.md#minimap-direction),
+a pochodzenie grafik i prompty w [generation.md](generation.md).
 
 ## Rozmiary i układ
 
@@ -13,8 +14,9 @@ prompty w [generation.md](generation.md).
 - Krótszy bok dopasowuje się do rzutowanej mapy, lecz skraca najwyżej o jedną trzecią dłuższego;
   maksymalne proporcje zewnętrzne to 1,5:1. Oba boki mają minimum 124 px projektu. Jeśli minimum
   nie mieści się na ekranie, minimapa jest ukryta.
-- Narożniki mają stałe wycinki 32 px projektu. Teren zachowuje jednakową skalę osi X i Y.
-  Niewykorzystane pasy wypełnia pergamin; jego wewnętrzna krawędź podąża za widocznym obszarem mapy.
+- Listwa ramki kończy się 20 px projektu wewnątrz panelu; narożniki zachowują rozmiar, a zmiana
+  proporcji rozciąga tylko listwy. Teren zachowuje jednakową skalę osi X i Y. Niewykorzystane pasy
+  wypełnia ciemne drewno w odcieniu ramki, a brązowa linia z cieniem podąża za krawędzią mapy.
 
 ## Obsługa
 
@@ -31,7 +33,7 @@ Trzeci przycisk używa symbolu czterech narożników.
 | Rozmiar | Przełączenie S → M → L → XL |
 | Warstwy | Pokazanie lub ukrycie ludzi i budynków |
 
-Pergaminowe warstwy rozwijają się po prawej i w razie potrzeby unoszą nad nawigacją. Escape zamyka
+Panel warstw z ciemnego drewna rozwija się po prawej i w razie potrzeby unosi nad nawigacją. Escape zamyka
 panel i przywraca fokus. Podgląd świata po najechaniu jest wyłączony. Obowiązują dotychczasowe
 reguły mgły, rozkazów i pierwszeństwa aktywnego trybu wskazania celu.
 
@@ -39,7 +41,8 @@ reguły mgły, rozkazów i pierwszeństwa aktywnego trybu wskazania celu.
 
 Geometrię i projekcję utrzymuje [model.ts](../../../packages/app/src/hud/minimap/model.ts), gesty
 [input.ts](../../../packages/app/src/hud/minimap/input.ts), a kontrolki
-[chrome.ts](../../../packages/app/src/hud/minimap/chrome.ts). [Testy modelu](../../../packages/app/test/minimap-model.test.ts)
+[chrome.ts](../../../packages/app/src/hud/minimap/chrome.ts), a listę ramek
+[frames.ts](../../../packages/app/src/hud/minimap/frames.ts). [Testy modelu](../../../packages/app/test/minimap-model.test.ts)
 obejmują dopasowanie, krawędzie i odwrotną projekcję; [testy wejścia](../../../packages/app/test/minimap-input.test.ts)
 sprawdzają gesty i ich rozdzielenie od kamery świata.
 

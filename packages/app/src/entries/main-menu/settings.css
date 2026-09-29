@@ -38,6 +38,16 @@
   height: 24px;
 }
 
+/* The top-left corner of each frame, where the three differ most. */
+.main-menu__minimap-frames .main-menu__dropdown-btn-image,
+.main-menu__minimap-frames .main-menu__dropdown-option-image {
+  width: 56px;
+  height: 40px;
+  background-color: #0008;
+  background-position: 0 0;
+  background-size: 180px 180px;
+}
+
 .main-menu__settings-page {
   flex: 1;
   min-height: 0;

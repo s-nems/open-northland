@@ -7,24 +7,60 @@
 .on-hud[data-chrome="hidden"] .on-minimap-chrome {
   display: none;
 }
-.on-hud .on-minimap-chrome::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border: 1px solid #9c825a;
-  border-radius: 3px;
-  box-shadow:
-    0 0 0 1px #211a11,
-    inset 0 0 0 1px #f2d29a59;
-  pointer-events: none;
-}
+/* The frame art's rails end 26 design px in from its outer edge, 20 px inside the panel, where the map
+   hole starts; each slice is 1.5 rail widths so the corner ornament stays unstretched. */
 .on-hud .on-minimap-chrome__frame {
   position: absolute;
   inset: -6px;
-  border: 32px solid transparent;
-  border-image: url("../../assets/ui/minimap/atlas-frame.png") 190 / 32px stretch;
-  filter: saturate(0.56) brightness(0.72) drop-shadow(0 3px 3px #0009);
+  border: 39px solid transparent;
+  filter: drop-shadow(0 3px 4px #000a);
   pointer-events: none;
+}
+.on-hud .on-minimap-chrome[data-frame="zelazo"] .on-minimap-chrome__frame {
+  border-image: url("../../assets/ui/minimap/frames/zelazo.webp") 166 / 39px stretch;
+}
+.on-hud .on-minimap-chrome[data-frame="ksiega"] .on-minimap-chrome__frame {
+  border-image: url("../../assets/ui/minimap/frames/ksiega.webp") 123 / 39px stretch;
+}
+.on-hud .on-minimap-chrome[data-frame="urnes"] .on-minimap-chrome__frame {
+  border-image: url("../../assets/ui/minimap/frames/urnes.webp") 141 / 39px stretch;
+}
+/* Starts under the frame's rails, so no gap shows between the wood and the frame. */
+.on-hud .on-minimap-backing {
+  --backing-tint: #9c8c7c;
+  position: absolute;
+  inset: 12px;
+  background:
+    url("../../assets/ui/minimap/wood.webp") 0 0 / 160px 160px,
+    var(--backing-tint);
+  background-blend-mode: multiply;
+  mask:
+    linear-gradient(#000 0 0),
+    linear-gradient(#000 0 0) calc(var(--map-x) - 12px) calc(var(--map-y) - 12px) / var(--map-w) var(--map-h)
+    no-repeat;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.on-hud .on-minimap-chrome[data-frame="ksiega"] .on-minimap-backing {
+  --backing-tint: #b08a64;
+}
+.on-hud .on-minimap-chrome[data-frame="urnes"] .on-minimap-backing {
+  --backing-tint: #a88058;
+}
+.on-hud .on-minimap-backing[hidden] {
+  display: none;
+}
+/* A bronze rule and a cast shadow where the backing meets the map, drawn outside the map rectangle. */
+.on-hud .on-minimap-backing__edge {
+  position: absolute;
+  left: calc(var(--map-x) - 12px);
+  top: calc(var(--map-y) - 12px);
+  width: var(--map-w);
+  height: var(--map-h);
+  box-shadow:
+    0 0 0 1px #c9a46a88,
+    0 0 0 2px #120c07,
+    0 0 8px 2px #0009;
 }
 .on-hud .on-minimap-chrome__rail {
   position: absolute;
@@ -118,14 +154,16 @@
   min-width: 0;
   margin: 0;
   padding: 10px 10px 8px;
-  border: 1px solid #9c825a;
-  border-radius: 3px 7px 7px 3px;
-  color: #2b261d;
-  background: var(--paper-grain), linear-gradient(110deg, #756446 0, #a99570 7px, #c0ae87 15px, #9f8a65);
+  border: 1px solid #7a6040;
+  border-radius: 3px;
+  color: #ecdcb4;
+  background:
+    url("../../assets/ui/minimap/wood.webp") 0 0 / 160px 160px,
+    #9c8c7c;
+  background-blend-mode: multiply;
   box-shadow:
     0 5px 12px #0008,
-    inset 0 0 0 2px #b6a17a,
-    inset 5px 0 7px #0003;
+    inset 0 0 0 1px #c9a46a55;
   pointer-events: auto;
 }
 .on-hud .on-minimap-chrome__filters[hidden] {
@@ -134,8 +172,8 @@
 .on-hud .on-minimap-chrome__legend {
   margin: 0 0 7px;
   padding: 0 0 7px;
-  border-bottom: 1px solid #66553366;
-  color: #2b261d;
+  border-bottom: 1px solid #c9a46a44;
+  color: #f0dfb9;
   font: 600 10px / 1.3 var(--font-title);
   letter-spacing: 0.03em;
 }
@@ -144,7 +182,7 @@
   align-items: center;
   gap: 8px;
   min-height: 28px;
-  border-bottom: 1px dotted #66553366;
+  border-bottom: 1px dotted #c9a46a33;
   cursor: pointer;
   font-size: 10px;
 }
@@ -156,7 +194,7 @@
   place-items: center;
   width: 20px;
   height: 20px;
-  color: #655333;
+  color: #c9a46a;
 }
 .on-hud .on-minimap-chrome__filter-symbol svg {
   width: 16px;
@@ -176,8 +214,8 @@
   margin: 0 0 0 auto;
   border: 1px solid #80603a;
   border-radius: 3px;
-  background: #fcf0cd77;
-  box-shadow: inset 0 1px 2px #74553233;
+  background: #120c0799;
+  box-shadow: inset 0 1px 2px #0008;
   cursor: pointer;
 }
 .on-hud .on-minimap-chrome__filter input:checked {
@@ -199,7 +237,7 @@
   transform: rotate(45deg);
 }
 .on-hud .on-minimap-chrome__filter input:focus-visible {
-  outline: 2px solid #604725;
+  outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
 .on-hud .on-minimap-tip {

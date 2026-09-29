@@ -125,6 +125,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setCameraInputSettings: deps.camera.setInputSettings,
     setDebugToolsEnabled: deps.setDebugToolsEnabled,
     setGraphicsEnhancements: deps.setGraphicsEnhancements,
+    setMinimapFrame: deps.minimap.setFrame,
   });
 
   return {

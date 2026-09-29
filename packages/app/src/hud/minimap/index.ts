@@ -6,6 +6,7 @@ import type { Rect } from '../geometry.js';
 import { createMinimapChrome } from './chrome.js';
 import { forEachMinimapDot, type MinimapDotSink, type MinimapFilters } from './dots.js';
 import { createFogMaskLayer } from './fog-mask.js';
+import type { MinimapFrame } from './frames.js';
 import { createMinimapInput } from './input.js';
 import {
   type MinimapSize,
@@ -19,6 +20,9 @@ import {
 import { createDotReplotGate } from './replot-gate.js';
 import { createMinimapSurface } from './surface.js';
 
+/** Under the map while the DOM backing loads: the dark wood of the frames' backing. */
+const BACKDROP_COLOUR = 0x2a2018;
+
 export interface MinimapOptions {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
@@ -28,6 +32,7 @@ export interface MinimapOptions {
   readonly colourOf?: ((typeId: number) => number | undefined) | undefined;
   readonly playerColourOf?: ((player: number) => number) | undefined;
   readonly uiscale: number;
+  readonly frame: MinimapFrame;
   readonly camera: () => Camera;
   readonly onJump: (worldX: number, worldY: number) => void;
   readonly onOrder?: (worldX: number, worldY: number, event: MouseEvent) => boolean;
@@ -41,6 +46,7 @@ export interface MinimapHandle {
   update(snapshot: WorldSnapshot, fog?: FogView | null): void;
   setHidden(hidden: boolean): void;
   setUiScale(uiscale: number): Promise<void>;
+  setFrame(frame: MinimapFrame): void;
   dispose(): void;
 }
 
@@ -122,24 +128,28 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     dirtyDots = true;
     refreshLayout();
   };
-  const chrome = createMinimapChrome(plane, {
-    onZoom: (delta) => zoomAt(delta),
-    onReset: () => {
-      zoom = 1;
-      dirtyDots = true;
-      refreshLayout();
+  const chrome = createMinimapChrome(
+    plane,
+    {
+      onZoom: (delta) => zoomAt(delta),
+      onReset: () => {
+        zoom = 1;
+        dirtyDots = true;
+        refreshLayout();
+      },
+      onSize: () => {
+        size = size === 's' ? 'm' : size === 'm' ? 'l' : size === 'l' ? 'xl' : 's';
+        dirtyDots = true;
+        refreshLayout();
+      },
+      onFilter: (key) => {
+        filters = { ...filters, [key]: !filters[key] };
+        dirtyDots = true;
+        chrome.setState({ size, zoom, filters });
+      },
     },
-    onSize: () => {
-      size = size === 's' ? 'm' : size === 'm' ? 'l' : size === 'l' ? 'xl' : 's';
-      dirtyDots = true;
-      refreshLayout();
-    },
-    onFilter: (key) => {
-      filters = { ...filters, [key]: !filters[key] };
-      dirtyDots = true;
-      chrome.setState({ size, zoom, filters });
-    },
-  });
+    opts.frame,
+  );
   let lastPanel = '';
   let lastView = '';
   let screenKey = '';
@@ -157,7 +167,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     if (key !== lastPanel) {
       lastPanel = key;
       const { inner } = base;
-      backdrop.clear().rect(inner.x, inner.y, inner.w, inner.h).fill(0x827459);
+      backdrop.clear().rect(inner.x, inner.y, inner.w, inner.h).fill(BACKDROP_COLOUR);
       clip.clear().rect(inner.x, inner.y, inner.w, inner.h).fill(0xffffff);
       setMinimapReserve(plane, hidden ? null : base.panel, uiScale);
       dirtyDots = true;
@@ -239,6 +249,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       uiScale = next;
       refreshLayout();
     },
+    setFrame: (frame) => chrome.setFrame(frame),
     dispose: () => {
       input.dispose();
       chrome.dispose();

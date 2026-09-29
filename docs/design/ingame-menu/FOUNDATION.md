@@ -13,11 +13,10 @@ tokens below are the shared language for every screen, including a future main-m
 
 ## Minimap direction
 
-The approved [Atlas minimap](../minimap-study/README.md) uses a warm parchment perimeter,
-fine aged bronze edging, dark leather binding and small ink ornaments, related to the mission book.
-The original A concept is the material reference; [art provenance](../minimap-study/generation.md)
-records the delivered frame. The approved **Muted parchment** tone uses saturation 0.56 and brightness 0.72,
-with warm grey-brown paper (`#827459`) and matching muted bronze controls and filter drawer.
+The [minimap](../minimap-study/README.md) sits in one of three dark frames the player picks in the
+graphics settings: **Żelazo** (iron-bound dark oak, the default), **Księga** (the mission book's carved
+oak and brass corners) and **Urnes** (smoked oak with carved beast corners). [Art provenance](../minimap-study/generation.md)
+records the delivered frames. A light frame drew the eye away from the dark HUD, so none is offered.
 
 - Provide S/M/L/XL sizes with nominal longest sides of 224/280/344/416 design px.
   Anchor the panel flush to the bottom-left screen corner. Cap its
@@ -25,22 +24,21 @@ with warm grey-brown paper (`#827459`) and matching muted bronze controls and fi
   selection panel clear. Both dimensions have a 124 design-px minimum. Hide the panel when that
   minimum cannot fit rather than covering adjacent controls.
 - Trim the shorter frame side toward the projected map's proportions, by at most one third of the
-  longer side (outer aspect at most 1.5:1). Use the same scale on both terrain axes. Parchment fills unused bands and its torn inner
-  edge follows the visible terrain during zoom. Sample the existing paper and torn edge separately;
-  keep the outer corners fixed and use the same asset at every viewport size.
-- Give all four edges the same parchment border. Nine-slice corner glyphs remain 32 design px;
-  aspect changes stretch the intervening edges, never the corner ornaments. All five small round
+  longer side (outer aspect at most 1.5:1). Use the same scale on both terrain axes. Dark wood, tinted to the frame, fills unused bands;
+  a bronze rule and a soft shadow follow the visible terrain's edge during zoom.
+- Every frame is a nine-slice with the same 20 design-px rail inside the panel; corner ornaments keep
+  their size and aspect changes stretch only the rails between them. All five small round
   bronze controls sit on the right frame edge: zoom out, zoom in, whole map, size and filters.
-  There is no header bar or separate toolbar inside the atlas.
+  There is no header bar or separate toolbar inside the frame.
 - Include independent minimap zoom (1–4×), small +/− controls and a return to the whole map.
   The third control uses a fit-corners icon and the short hint “Show all” (“Pokaż całą”).
   Show short hints on hover and keyboard focus; accessible zoom labels also include the current scale
-  and zoom limits. Middle drag pans the atlas.
-- Put people/building filters in a compact parchment disclosure opening to the right of the minimap.
+  and zoom limits. Middle drag pans the zoomed map.
+- Put people/building filters in a compact dark-wood disclosure opening to the right of the minimap.
   Lift it above the bottom navigation when needed. Keep fog gating and return focus on closing it.
 - Do not include a hover preview of map areas.
 - Defer terrain appearance until the actual game maps can be compared in the renderer.
-- The compact minimap artwork is approved. The separate large-map frame remains undecided;
+- The three compact minimap frames are approved. The separate large-map frame remains undecided;
   [ticket 19](../../tickets/app/ingame-ui-19-map-overview.md) owns its design and implementation.
 
 ## Tokens
@@ -103,7 +101,7 @@ filters are an explicit exception in this mouse/keyboard study.
 - Selection: the settler, vehicle and building panels are 318 px on the DOM plane; a signpost, a
   palisade and a group keep the legacy 322 px panel until ticket 10 replaces it.
 - Notifications: 173 px, no opaque background in unused column space.
-- Minimap: S/M/L/XL Atlas with bounded aspect trim, flush to the bottom-left corner; capped before the centred
+- Minimap: S/M/L/XL with bounded aspect trim, flush to the bottom-left corner; capped before the centred
   navigation beam with a 6 design-px gap, as specified in [Minimap direction](#minimap-direction).
 
 At 125% the catalogue scrolls within available height to avoid bottom navigation. The intended minimum

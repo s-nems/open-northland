@@ -29,6 +29,13 @@ it('hands the renderer a newly picked pixel-art filter', async () => {
   });
 });
 
+it('reframes the mounted minimap when another frame is picked', async () => {
+  const h = harness();
+  await h.settings.update({ minimapFrame: 'urnes' });
+  expect(h.setMinimapFrame).toHaveBeenCalledWith('urnes');
+  expect(h.persist).toHaveBeenCalledWith({ minimapFrame: 'urnes' });
+});
+
 function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const persist = vi.fn();
   const setUiScaleFactor = vi.fn(async () => true);
@@ -40,6 +47,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setCameraInputSettings = vi.fn();
   const setDebugToolsEnabled = vi.fn();
   const setGraphicsEnhancements = vi.fn();
+  const setMinimapFrame = vi.fn();
   const settings = createGameSettingsRuntime({
     initial: {
       ...defaultSettings(),
@@ -59,6 +67,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setCameraInputSettings,
     setDebugToolsEnabled,
     setGraphicsEnhancements,
+    setMinimapFrame,
     ...overrides,
   });
   return {
@@ -73,6 +82,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setCameraInputSettings,
     setDebugToolsEnabled,
     setGraphicsEnhancements,
+    setMinimapFrame,
   };
 }
 

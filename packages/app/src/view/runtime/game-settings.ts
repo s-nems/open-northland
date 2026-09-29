@@ -25,6 +25,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setCameraInputSettings: (settings: CameraInputSettings) => void;
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
+  readonly setMinimapFrame: (frame: MenuSettings['minimapFrame']) => void;
 }
 
 /** An explicit session URL choice wins over the persisted sound preference. */
@@ -59,6 +60,7 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
       deps.setCameraInputSettings(current);
     }
     if (patch.debugToolsEnabled !== undefined) deps.setDebugToolsEnabled(patch.debugToolsEnabled);
+    if (patch.minimapFrame !== undefined) deps.setMinimapFrame(patch.minimapFrame);
     if (ENHANCEMENT_KEYS.some((key) => patch[key] !== undefined)) {
       deps.setGraphicsEnhancements(enhancementsOf(current));
     }

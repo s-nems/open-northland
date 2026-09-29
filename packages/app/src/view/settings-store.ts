@@ -6,6 +6,7 @@ import {
   type KeyBindings,
   parseKeyBindings,
 } from '../hud/keybindings.js';
+import { DEFAULT_MINIMAP_FRAME, type MinimapFrame, parseMinimapFrame } from '../hud/minimap/frames.js';
 import { clampUiScaleFactor, DEFAULT_UI_SCALE_FACTOR } from '../hud/ui-scale.js';
 import { defaultLocale, isLocale, type Locale } from '../i18n/index.js';
 import {
@@ -54,6 +55,7 @@ export interface MenuSettings {
   readonly fpsLimit: FpsLimit;
   readonly cursorTheme: CursorTheme;
   readonly cursorSize: CursorSize;
+  readonly minimapFrame: MinimapFrame;
   /** Mirrors the `?sound` param: `false` starts the game's audio driver muted. */
   readonly soundEnabled: boolean;
   /** Game-sounds volume, 0..1 (effects, jingles, voices - the original `fx_volume`). */
@@ -91,6 +93,7 @@ export function defaultSettings(): MenuSettings {
     fpsLimit: null,
     cursorTheme: DEFAULT_CURSOR_THEME,
     cursorSize: DEFAULT_CURSOR_SIZE,
+    minimapFrame: DEFAULT_MINIMAP_FRAME,
     soundEnabled: true,
     soundVolume: DEFAULT_SFX_VOLUME,
     musicVolume: DEFAULT_MUSIC_VOLUME,
@@ -164,6 +167,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     fpsLimit: parseFpsLimit(record.fpsLimit),
     cursorTheme: parseCursorTheme(record.cursorTheme),
     cursorSize: parseCursorSize(record.cursorSize),
+    minimapFrame: parseMinimapFrame(record.minimapFrame),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
     soundVolume: clampVolume(record.soundVolume, defaults.soundVolume),
     musicVolume: clampVolume(record.musicVolume, defaults.musicVolume),

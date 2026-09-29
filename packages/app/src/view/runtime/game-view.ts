@@ -613,6 +613,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       colourOf: deps.terrainColour,
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
       uiscale,
+      frame: storedSettings.minimapFrame,
       camera: () => cameraCtl.camera(),
       onJump: jumpToWorld,
       onOrder: (worldX, worldY, event) => overviewPress?.(worldX, worldY, event) ?? false,

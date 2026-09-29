@@ -42,6 +42,7 @@ describe('parseStoredSettings', () => {
       fpsLimit: 30,
       cursorTheme: 'amber',
       cursorSize: 24,
+      minimapFrame: 'urnes',
       soundEnabled: false,
       soundVolume: 0.35,
       musicVolume: 0.6,

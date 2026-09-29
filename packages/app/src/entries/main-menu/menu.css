@@ -499,6 +499,107 @@
   color: rgba(219, 232, 227, 0.25);
 }
 
+/* A choice list behind one button, for choices too wide to sit side by side in a row. */
+.main-menu__dropdown {
+  position: relative;
+}
+
+.main-menu__dropdown-btn,
+.main-menu__dropdown-option {
+  all: unset;
+  box-sizing: border-box;
+  cursor: var(--cursor-pointer, pointer);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 14);
+  font:
+    500 calc(var(--u) * 21) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-body);
+}
+
+.main-menu__dropdown-btn {
+  min-width: calc(var(--u) * 260);
+  padding: calc(var(--u) * 6) calc(var(--u) * 44) calc(var(--u) * 6) calc(var(--u) * 8);
+  border: 2px solid rgb(var(--accent-rgb) / 0.3);
+  border-radius: 6px;
+  position: relative;
+  transition: border-color 150ms ease-out;
+}
+
+.main-menu__dropdown-btn::after {
+  content: "";
+  position: absolute;
+  right: calc(var(--u) * 18);
+  top: 50%;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: translateY(-70%) rotate(45deg);
+}
+
+.main-menu__dropdown-btn[aria-expanded="true"]::after {
+  transform: translateY(-20%) rotate(-135deg);
+}
+
+.main-menu__dropdown-btn:hover,
+.main-menu__dropdown-btn[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+
+.main-menu__dropdown-btn:focus-visible,
+.main-menu__dropdown-option:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: -2px;
+}
+
+.main-menu__dropdown-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 2px solid rgb(var(--accent-rgb) / 0.5);
+  border-radius: 6px;
+  background: var(--bg-base);
+  box-shadow: 0 8px 18px #000a;
+}
+
+.main-menu__dropdown-list[hidden] {
+  display: none;
+}
+
+.main-menu__dropdown-option {
+  padding: calc(var(--u) * 6) calc(var(--u) * 8);
+  border-radius: 4px;
+}
+
+.main-menu__dropdown-option:hover {
+  color: var(--accent-bright);
+  background: rgb(var(--accent-rgb) / 0.12);
+}
+
+.main-menu__dropdown-option[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--bg-base);
+  font-weight: 700;
+}
+
+.main-menu__dropdown-btn-image,
+.main-menu__dropdown-option-image {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 3px;
+  background: center / contain no-repeat;
+}
+
 /* Styled hover/focus tooltip under a host carrying `data-tip`; the raised host lifts over its
    siblings so the bubble never hides behind the next control. --tip-delay is the host's hover
    grace before the bubble fades in. */

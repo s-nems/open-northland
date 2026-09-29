@@ -1,41 +1,56 @@
-# Atlas frame provenance
+# Minimap frame provenance
 
-Delivered asset: [atlas-frame.png](../../../packages/app/src/assets/ui/minimap/atlas-frame.png).
-SHA-256: `f7d4a269fcbbf6806f58a5ae7a25f9736368437ed41e511adb18b77c7f566df3`.
+The three frames and the backing texture in `packages/app/src/assets/ui/minimap/` were generated for
+this project with the OpenAI Images API (`gpt-image-1.5`, quality `high`, 1024 × 1024,
+`background: transparent`); no seed is exposed. No original-game artwork was supplied to the generator.
 
-The built-in `image_gen` tool generated the frame as a 1254 × 1254 RGBA image with a transparent
-centre and exterior. The delivered file preserves the generated alpha. The recorded response did
-not identify a model, quality or seed. No original-game artwork was supplied to the generator.
+| File | SHA-256 | Input image |
+| --- | --- | --- |
+| `frames/zelazo.webp` | `2f9bc3b96a4979336c87f964e2abf297126142d1e13b9cde8daaf2800655e1fe` | none |
+| `frames/ksiega.webp` | `12b194de16eb80bc82d6d93138ae63e029ea201f47dca8540bcc964308347fc9` | the mission book spread |
+| `frames/urnes.webp` | `d0e1b4396e291b312aa783075da2feb5b40f81bf07a8aeeb0c1ba43f2618806c` | none |
+| `wood.webp` | `c33b2ff6916be4110bcde96dae5d92fa6b8fb21b4712d82083cf11ecbe5f7d6c` | none |
 
-The sole input image was the generated six-direction concept board described below; its upper-left
-A panel supplied the material reference. Reference SHA-256:
-`db955823c1bc7ee14c105ec0dbcdf0fc890970ac0ff3d9deb125b4f28b4c1651`.
-The other concepts and the board's terrain are not runtime assets.
+The Księga frame used the project's own `assets/ui/mission-book/spread.webp`, converted to PNG, as a
+style reference through the edits endpoint.
 
-## Runtime presentation
+## Post-processing
 
-The asset is used without a destructive recolour. [chrome.css](../../../packages/app/src/hud/minimap/chrome.css)
-uses a 190-source-pixel border slice, rendered with fixed 32 design-pixel corners, and the approved
-muted parchment treatment: saturation 0.56 and brightness 0.72. Aspect changes stretch the rails
-between the corners. The [paper layer](../../../packages/app/src/hud/minimap/paper.ts) reuses paper and
-torn-edge regions of the same source; the visible map is drawn separately. Controls and labels remain
-independent DOM elements. See [the approved direction](../ingame-menu/FOUNDATION.md#minimap-direction).
+Each frame was cropped to its opaque outer square, scaled to 768 × 768 and saved as WebP (quality 90,
+full-quality alpha). The rails were measured on the delivered alpha; [chrome.css](../../../packages/app/src/hud/minimap/chrome.css)
+slices each frame at 1.5 rail widths (Żelazo 166, Księga 123, Urnes 141 source px) and renders the slice
+at 39 design px, so each rail ends 20 px inside the panel. The backing tile was generated opaque at
+`medium` quality, scaled to 256 px and mirrored into a seamless 512 px tile; CSS multiplies it with a
+per-frame tint.
 
 ## Frame prompt
 
+Every frame prompt is the shared text followed by its design sentence.
+
 ```text
-Use case: ui-mockup.
-Asset type: production UI frame texture for an interactive square minimap, isolated with a genuinely transparent central aperture and transparent exterior.
-Input image 1 is STYLE REFERENCE ONLY: the board's A panel, upper left. Recreate its warm aged parchment edge, slender dark leather outer binding and softly worn bronze rim, with restrained Nordic ink corner ornaments. Ignore the other five panels and all reference map terrain.
-Create ONE perfectly square atlas frame, straight orthographic front view, all edges axis aligned. Outer square fills the image nearly edge to edge with only 8px transparent exterior margin in a 1024x1024 composition. The central empty transparent SQUARE aperture extends from x=66,y=66 to x=958,y=958. All visible material is confined to that narrow perimeter. A thin dark leather binding along the outside, a fine aged bronze rule inside it, a softly uneven warm ivory parchment border around the aperture. Parchment edge should look like an actual map sheet with fibers, lightly weathered edges, subtle cartographer measuring ticks, and a tiny ink interlaced knot at upper-left and lower-right, plus small restrained diamond cartography marks along sides. Beautiful handmade atlas rather than a metal dashboard. Slim material bands, visible craftsmanship at small UI size. Warm but muted ivory/tan/aged bronze against dark brown leather. Subtle tactile relief and soft side-light, no perspective or outer drop shadow.
-IMPORTANT: No terrain, no ocean, no geography, no game screenshot, no controls, no buttons, no toolbar, no lettering or words, no compass labels. Empty fully transparent central aperture, actual alpha not checkerboard. One frame only. Keep all ornaments within the frame band, do not invade usable map opening. Preserve the shape and material identity of reference A; do not make a generic green HUD or a solid metal picture frame.
+Production UI frame texture for an interactive minimap in a dark Nordic economic RTS HUD (dark oak, blackened leather, muted aged bronze). One perfectly square frame, straight orthographic front view, all edges axis aligned, filling a 1024x1024 canvas edge to edge with about 8px transparent margin. The central opening is a large empty fully TRANSPARENT square from about x=80,y=80 to x=944,y=944: all material is confined to a slim perimeter band of about 70px. It must be 9-slice friendly: four decorated corners of about 150px, and the four straight rails between them uniform along their length (repeatable or cleanly stretchable, no unique centered ornaments on the rails). Dark, low-key, restrained values so it sits quietly next to a dark UI; no bright or pale material dominating. Soft top-left light, subtle tactile relief, no perspective, no outer drop shadow. IMPORTANT: no terrain, no map, no geography inside, no buttons, no lettering, no words, no numbers; genuinely transparent center and exterior (real alpha, not a checkerboard). Design:
 ```
 
-## Reference-board prompt
-
-The board was generated without input images, with `transparent_background: false`; its opaque
-background was intentional. The tool did not expose model, quality or seed.
+Żelazo:
 
 ```text
-Use case: ui-mockup. Create one high-resolution landscape art direction board, SIX clearly distinct minimap UI concepts for a modern Nordic economic RTS, arranged in a clean 3-column 2-row grid on a nearly black forest slate background. This is original UI concept artwork, no existing game assets. All six have IDENTICAL readable stylized top-down synthetic coastal island geography, muted moss terrain, teal water, ivory camera rectangle, a few simple cyan village dots and ochre objective diamonds; subordinate terrain detail to markers. Each map about 300px wide, generous spacing. At top of each tile typeset only one simple large identifier A, B, C, D, E, F. A: ATLAS, a warm parchment square map with an elegant very thin aged bronze inner rim, dark slate outer rim, two tiny restrained Nordic corner details; sophisticated and quiet. B: SLATE, crisply squared dark charcoal slate map panel, low profile, precise hairline warm bronze edge and a small tab, most modern and minimal. C: TRAVELLER, softly folded parchment sheet secured at two corners by dark leather, no heavy frame, field cartographer feel. D: CARTOGRAPHER, landscape 4:3 map inset in slim warm dark oak with small bronze instrument dial outside the usable map, practical crafted precision. E: MEDALLION, circular cartographic disk in a narrow bronze ring, restrained compass tick marks; obvious round silhouette. F: SAGA, a compact little open atlas book, single continuous mapped spread, dark leather binding, subtle page edges and one burgundy fabric bookmark, matching a saga mission book without large ornaments. Under each map a neat small low-profile toolbar with minus, plus and expand vector-like symbols, no prose. Use materially convincing softly worn wood/leather/bronze/parchment but modern readable UI hierarchy. Straight-on orthographic UI plates, not perspective objects. No photoreal world, no cinematic backgrounds, no dragons, no swords, no fantasy portraits, no neon, no bright gold, no huge runes. Keep map interiors unobstructed and decorative frames very thin. Consistent scale and lighting, crisp product UI concept board. No titles other than A B C D E F.
+IRON-BOUND CHEST. The rails are dark almost black oak planks with visible grain, edged by thin blackened forged iron straps; at each corner an L-shaped hand-forged iron bracket with round rivets and a small curled scroll end. Heavy but slim, like the lid of a Viking sea chest.
+```
+
+Księga (plus the reference sentence):
+
+```text
+BOOK COVER. The rails are dark weathered oak board with a shallow carved Nordic interlace band, exactly the material of the reference book cover; each corner has a triangular aged brass-bronze corner protector with three domed rivets and a small punched knot. Slim, crafted, calm. Input image 1 is a STYLE REFERENCE ONLY for material, carving, fittings and colour: a mission book cover of the same game. Do not copy its pages or its layout.
+```
+
+Urnes:
+
+```text
+URNES CARVING. The rails are dark smoked oak with two parallel carved grooves, plain and uniform; each corner is a compact deep-relief carving of an interlaced Urnes-style beast biting its own tail, in the same dark wood with faint worn highlights. Museum-quality woodcarving, all one dark wood colour.
+```
+
+## Backing prompt
+
+```text
+Seamless tileable texture, straight-on flat scan: dark smoked oak board surface with fine horizontal grain, very low contrast, deep brown-black, subtle wear. No knots, no planks seams, no carving, no objects. Must tile seamlessly on all edges.
 ```

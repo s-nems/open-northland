@@ -11,8 +11,9 @@ import {
 } from '../dom/parts/dom.js';
 import { attachTipLayer } from '../dom/parts/tip-layer.js';
 import type { Rect } from '../geometry.js';
+import { createMinimapBacking } from './backing.js';
+import type { MinimapFrame } from './frames.js';
 import type { MinimapSize } from './model.js';
-import { createMinimapPaper } from './paper.js';
 import './chrome.css';
 
 export type MinimapFilterKey = 'people' | 'buildings';
@@ -35,6 +36,7 @@ export interface MinimapChrome {
   setLayout(panel: Rect, visibleMap: Rect, uiScale: number): void;
   setState(state: MinimapChromeState): void;
   setHidden(hidden: boolean): void;
+  setFrame(frame: MinimapFrame): void;
   dispose(): void;
 }
 
@@ -48,12 +50,17 @@ const ICONS = {
 };
 
 /** The map hole stays transparent to pointer input; only the narrow rails and controls claim it. */
-export function createMinimapChrome(plane: HTMLElement, callbacks: MinimapChromeCallbacks): MinimapChrome {
+export function createMinimapChrome(
+  plane: HTMLElement,
+  callbacks: MinimapChromeCallbacks,
+  initialFrame: MinimapFrame,
+): MinimapChrome {
   const copy = messages().hud.minimap;
   const root = element('section', 'on-minimap-chrome');
   root.setAttribute('aria-label', copy.label);
   root.setAttribute('aria-description', copy.interaction);
-  const paper = createMinimapPaper(root);
+  root.dataset.frame = initialFrame;
+  const backing = createMinimapBacking(root);
   let uiScale = 1;
   const tooltip = element('div', 'on-minimap-tip');
   tooltip.setAttribute('role', 'tooltip');
@@ -195,7 +202,7 @@ export function createMinimapChrome(plane: HTMLElement, callbacks: MinimapChrome
   return {
     setLayout: (panel, visibleMap, scale) => {
       uiScale = scale;
-      paper.setLayout(panel, visibleMap, scale);
+      backing.setLayout(panel, visibleMap, scale);
       const layout = `${panel.x},${panel.y},${panel.w},${panel.h},${uiScale}`;
       if (layout === lastLayout) return;
       lastLayout = layout;
@@ -241,12 +248,14 @@ export function createMinimapChrome(plane: HTMLElement, callbacks: MinimapChrome
       }
       setHidden(root, hidden);
     },
+    setFrame: (next) => {
+      root.dataset.frame = next;
+    },
     dispose: () => {
       showFilters(false);
       document.removeEventListener('pointerdown', onOutsidePress, true);
       tips.dispose();
       tooltip.remove();
-      paper.dispose();
       root.remove();
     },
   };
