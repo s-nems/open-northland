@@ -5,7 +5,7 @@ import type { LandscapeProps } from './landscape-props.js';
 import type { LandscapeMapInput } from './landscapes.js';
 import type { Traversal } from './lattice.js';
 import type { NodeId } from './node-id.js';
-import { fillRoadDistances, NO_ROAD_DISTANCE } from './road-distance.js';
+import { NO_ROAD_DISTANCE, RoadDistanceField } from './road-distance.js';
 import { StepBuffer } from './step-buffer.js';
 
 /** The two mover classes in the order their continents are labelled. */
@@ -56,7 +56,7 @@ export class TerrainGraph extends TerrainEdges {
   private roadNodes: NodeId[] = [];
   private roadRevision = UNSYNCED_ROAD_REVISION;
   /** Per-node lattice distance to the nearest road, allocated with the first road. */
-  private roadDistances: Int32Array | undefined;
+  private roadDistances: RoadDistanceField | undefined;
   /** Per-node land route weight: the node's resistance, at least {@link MIN_ROUTE_RESISTANCE}, as a
    *  multiple of ONE. */
   private readonly routeWeights: Fixed[];
@@ -121,7 +121,7 @@ export class TerrainGraph extends TerrainEdges {
    *  {@link NO_ROAD_DISTANCE} on a map without roads; for a node the caller has bounds-checked. */
   roadDistanceAt(node: NodeId): Fixed {
     // The lane stores Fixed values; a typed array only drops the brand.
-    return (this.roadDistances?.[node] ?? NO_ROAD_DISTANCE) as Fixed;
+    return (this.roadDistances?.distances[node] ?? NO_ROAD_DISTANCE) as Fixed;
   }
 
   /**
@@ -136,8 +136,9 @@ export class TerrainGraph extends TerrainEdges {
   /**
    * Mirror the world's road network into the per-node lanes, once per road revision; a repeat call with
    * the revision already mirrored costs nothing. The world owns the network (`systems/roads`); these
-   * lanes only serve the per-step reads and the route heuristic. A change rebuilds the road distances,
-   * O(map nodes): about 2 ms on a 480 x 380 node map.
+   * lanes only serve the per-step reads and the route heuristic. A change rebuilds the lanes in
+   * O(map nodes), about 2 ms on a 480 x 380 node map: the path for a restore, a first road or a removal;
+   * {@link extendRoads} mirrors a laid road.
    */
   syncRoads(revision: number, nodes: Iterable<NodeId>): void {
     if (revision === this.roadRevision) return;
@@ -149,10 +150,28 @@ export class TerrainGraph extends TerrainEdges {
       this.roadNodes.push(node);
     }
     if (this.roadNodes.length > 0 || this.roadDistances !== undefined) {
-      this.roadDistances ??= new Int32Array(this.nodeCount);
-      fillRoadDistances(this.roadDistances, this.width, this.height, this.roadNodes);
+      this.roadDistances ??= new RoadDistanceField(this.width, this.height);
+      this.roadDistances.rebuild(this.roadNodes);
     }
     this.roadRevision = revision;
+  }
+
+  /**
+   * Mirror roads laid over `added` that took the network from revision `from` to `revision`, at a cost
+   * that follows the added nodes and the ground they now serve rather than the map. Returns false, with
+   * nothing changed, when the lanes do not hold revision `from` or no road was mirrored yet; the caller
+   * then rebuilds through {@link syncRoads}.
+   */
+  extendRoads(from: number, revision: number, added: Iterable<NodeId>): boolean {
+    if (from !== this.roadRevision || this.roadDistances === undefined) return false;
+    for (const node of added) {
+      if (this.roads[node] === 1) continue;
+      this.setRoad(node, true);
+      this.roadNodes.push(node);
+    }
+    this.roadDistances.lower(added, this.roadNodes);
+    this.roadRevision = revision;
+    return true;
   }
 
   private setRoad(node: NodeId, road: boolean): void {

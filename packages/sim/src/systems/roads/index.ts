@@ -27,11 +27,12 @@ export function layRoad(world: World, terrain: TerrainGraph, nodes: Iterable<Nod
     if (!known.has(node)) fresh.add(node);
   }
   if (fresh.size === 0) return;
+  const from = roadRevision(world);
   writeRoadNetwork(world, (state) => {
     for (const node of fresh) state.nodes.set(node, true);
     state.revision += 1;
   });
-  syncRoadLane(world, terrain);
+  if (!terrain.extendRoads(from, roadRevision(world), fresh)) syncRoadLane(world, terrain);
 }
 
 /** Mirror the world's road network into its simulation's own `terrain` when the revision moved: before

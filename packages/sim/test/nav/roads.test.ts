@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { Rng } from '../../src/core/rng.js';
 import {
   exportSaveGame,
   findPath,
@@ -8,10 +9,10 @@ import {
   type TerrainMap,
 } from '../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
-import { NO_ROAD_DISTANCE } from '../../src/nav/terrain/road-distance.js';
+import { fillRoadDistances, NO_ROAD_DISTANCE } from '../../src/nav/terrain/road-distance.js';
 import { isRoad, layRoad, roadRevision } from '../../src/systems/roads/index.js';
 import { testContent } from '../fixtures/content.js';
-import { grassNodeMap, roughNodeMap } from '../fixtures/terrain.js';
+import { grassNodeMap, roughNodeMap, waterColumnMap } from '../fixtures/terrain.js';
 
 const LAND = 2;
 const SAND = 3;
@@ -26,6 +27,11 @@ const ROAD_ROW = 6;
 /** A map wide enough that a road at {@link FAR_ROAD_HX} lies farther from every node of the route than its goal. */
 const FAR_MAP_WIDTH = 160;
 const FAR_ROAD_HX = 140;
+/** The random laying run: a water-split map in cells, its batch count and the largest batch, a
+ *  construction unit's node and six neighbours plus one. */
+const RANDOM_MAP_CELLS = { width: 17, height: 13, waterColumn: 6 };
+const RANDOM_BATCHES = 40;
+const MAX_BATCH = 8;
 
 function mappedSim(map: TerrainMap): { sim: Simulation; terrain: TerrainGraph } {
   const sim = new Simulation({ seed: 1, content: testContent(), map });
@@ -136,5 +142,42 @@ describe('road network', () => {
     const offRoad = terrain.nodeAt(TO.hx, 0);
     expect(terrain.roadDistanceAt(offRoad)).toBeLessThan(NO_ROAD_DISTANCE);
     expect(terrain.roadDistanceAt(offRoad)).toBe(live.terrain.roadDistanceAt(offRoad));
+  });
+
+  it('lowers the distances as roads are laid to exactly what a full rebuild computes, whatever the batching', () => {
+    const { width, height, waterColumn } = RANDOM_MAP_CELLS;
+    const { sim, terrain } = mappedSim(waterColumnMap(width, height, waterColumn));
+    const rng = new Rng(7);
+    const laid = new Set<NodeId>();
+    const rebuilt = new Int32Array(terrain.nodeCount);
+    const syncs = vi.spyOn(terrain, 'syncRoads');
+    for (let batch = 0; batch < RANDOM_BATCHES; batch++) {
+      const size = 1 + rng.int(MAX_BATCH);
+      // A cluster round a random centre, repeats and nodes already laid included.
+      const hx = rng.int(terrain.width);
+      const hy = rng.int(terrain.height);
+      const nodes: NodeId[] = [];
+      for (let i = 0; i < size; i++) {
+        const x = Math.min(terrain.width - 1, Math.max(0, hx + rng.int(5) - 2));
+        const y = Math.min(terrain.height - 1, Math.max(0, hy + rng.int(5) - 2));
+        nodes.push(terrain.nodeAt(x, y));
+      }
+      layRoad(sim.world, terrain, nodes);
+      for (const node of nodes) laid.add(node);
+      fillRoadDistances(rebuilt, terrain.width, terrain.height, laid);
+      for (let node = 0 as NodeId; node < terrain.nodeCount; node++) {
+        expect(terrain.roadDistanceAt(node)).toBe(rebuilt[node]);
+      }
+    }
+    // Only the first road rebuilds the lanes; every later batch is extended in place.
+    expect(syncs).toHaveBeenCalledTimes(1);
+    const restored = restoreSimulation(exportSaveGame(sim), {
+      content: testContent(),
+      map: waterColumnMap(width, height, waterColumn),
+    }).terrain;
+    if (restored === undefined) throw new Error('restored sim has no terrain');
+    for (let node = 0 as NodeId; node < terrain.nodeCount; node++) {
+      expect(restored.roadDistanceAt(node)).toBe(rebuilt[node]);
+    }
   });
 });
