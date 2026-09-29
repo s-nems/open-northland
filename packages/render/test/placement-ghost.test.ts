@@ -127,6 +127,73 @@ describe('PlacementGhostLayer', () => {
     ]);
   });
 
+  it('lays a road plan along a band, outlines the plots it orders and marks a refused one red', () => {
+    const roads = { open: new Texture(), blocked: new Texture(), claimed: new Texture() };
+    const layer = new PlacementGhostLayer(sheet, new TextureCache(), undefined, roads);
+    layer.set(
+      {
+        kind: 'line',
+        anchored: true,
+        marker: 'road',
+        nodes: [
+          { col: 4, row: 6, state: 'built' },
+          { col: 5, row: 6, state: 'open' },
+          { col: 6, row: 6, state: 'blocked' },
+        ],
+      },
+      FLAT,
+    );
+    const [band, ring, open, rim, refused, ...rest] = layer.container.children;
+    expect(rest).toEqual([]);
+    expect(band).toBeInstanceOf(Graphics);
+    expect(ring).toBeInstanceOf(Graphics);
+    expect(open instanceof Sprite ? open.texture : null).toBe(roads.open);
+    expect(rim).toBeInstanceOf(Graphics);
+    // A refused plot is its art tinted red under a cross.
+    const [plot, cross] = refused?.children ?? [];
+    if (!(plot instanceof Sprite)) throw new Error('expected the plot sprite');
+    expect(plot.texture).toBe(roads.blocked);
+    expect(plot.tint).not.toBe(0xffffff);
+    expect(cross).toBeInstanceOf(Graphics);
+  });
+
+  it('crosses out only the sites a cancel line withdraws, with no plot of its own', () => {
+    const roads = { open: new Texture(), blocked: new Texture(), claimed: new Texture() };
+    const layer = new PlacementGhostLayer(sheet, new TextureCache(), undefined, roads);
+    layer.set(
+      {
+        kind: 'line',
+        anchored: true,
+        marker: 'roadCancel',
+        nodes: [
+          { col: 4, row: 6, state: 'built' },
+          { col: 5, row: 6, state: 'open' },
+          { col: 6, row: 6, state: 'built' },
+        ],
+      },
+      FLAT,
+    );
+    const children = layer.container.children;
+    expect(children).toHaveLength(3);
+    expect(children.every((child) => child instanceof Graphics)).toBe(true);
+    // The same nodes as a road plan draw anew.
+    const [band] = children;
+    layer.set(
+      {
+        kind: 'line',
+        anchored: true,
+        marker: 'road',
+        nodes: [
+          { col: 4, row: 6, state: 'built' },
+          { col: 5, row: 6, state: 'open' },
+          { col: 6, row: 6, state: 'built' },
+        ],
+      },
+      FLAT,
+    );
+    expect(layer.container.children[0]).not.toBe(band);
+  });
+
   it('keeps a line built while each frame hands the same plan anew, and rebuilds when it changes', () => {
     const layer = new PlacementGhostLayer(sheet, new TextureCache());
     const line = (state: 'open' | 'blocked') => ({

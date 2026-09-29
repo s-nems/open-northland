@@ -70,6 +70,11 @@ export function drawPlotCross(g: Graphics, x: number, y: number): Graphics {
   return g;
 }
 
+/** The plot's rim at `(x, y)` grown by `grow` world px, for an outline around it. */
+export function plotRim(g: Graphics, x: number, y: number, grow: number): Graphics {
+  return g.ellipse(x, y, PLOT_WIDTH / 2 + grow, PLOT_HEIGHT / 2 + grow);
+}
+
 /** One plot with its ground point at the display object's origin. */
 export function mintPlanRoad(art: PlanRoadTextures | undefined, look: PlanRoadLook): Container {
   const plot = mintPlot(art, look);

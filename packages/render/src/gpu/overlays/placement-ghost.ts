@@ -4,7 +4,7 @@ import type { DrawItem } from '../../data/scene/index.js';
 import { type PalisadeLayout, planShiftX } from '../../data/scene/palisade-connections.js';
 import { palisadeStaggerX } from '../../data/scene/palisade-stagger.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/terrain/index.js';
-import { mintPlanRoad, type PlanRoadTextures } from '../plan-road.js';
+import { drawPlotCross, mintPlanRoad, type PlanRoadTextures, plotRim } from '../plan-road.js';
 import {
   mintPlanStake,
   type PlanStakeTextures,
@@ -49,18 +49,28 @@ export type PlacementGhost =
       readonly kind: 'line';
       readonly nodes: readonly PlanNode[];
       readonly anchored: boolean;
-      /** `road` plans pegged plots with no string between them, on the plain lattice; a wall's stakes
-       *  stagger with the walls they will stand in. Defaults to `stake`. */
-      readonly marker?: 'stake' | 'road';
+      /** `road` plans outlined pegged plots joined by a band on the ground, on the plain lattice;
+       *  `roadCancel` crosses out the road sites a cancel line withdraws (its `open` nodes) along a red
+       *  band. A wall's stakes stagger with the walls they will stand in. Defaults to `stake`. */
+      readonly marker?: LineMarker;
     }
   /** A gatherer's work flag about to be planted: the delivery-flag sprite, unowned. */
   | { readonly kind: 'flag'; readonly col: number; readonly row: number };
+
+export type LineMarker = 'stake' | 'road' | 'roadCancel';
 
 /** `open` gets a stake, `built` already holds a piece the string only passes, `blocked` a red stake. */
 export interface PlanNode {
   readonly col: number;
   readonly row: number;
   readonly state: 'open' | 'built' | 'blocked';
+}
+
+/** A line node on screen, lifted onto the ground it stands on. */
+interface PlanPoint {
+  readonly x: number;
+  readonly y: number;
+  readonly state: PlanNode['state'];
 }
 
 /** The ghosts drawn as one sprite; a line is stakes and string, built apart. */
@@ -119,6 +129,17 @@ const PLACEHOLDER_COLOR = 0xc8a04a;
 /** The ring on the ground under a started line's first node. */
 const ANCHOR_RING = 0xf2c14e;
 const ANCHOR_RING_RADIUS = { x: 9, y: 4.5 } as const;
+/** A planned road plot's outline, which sets the plan apart from the sites already ordered. Tuned by eye. */
+const ROAD_PLAN_RIM = 0xfff4d0;
+const ROAD_PLAN_RIM_GROW = 1.5;
+const ROAD_PLAN_RIM_WIDTH = 1.5;
+/** The band a planned road lies along on the ground, over a darker underlay. Tuned by eye. */
+const ROAD_BAND = 0xf0e2b8;
+const ROAD_BAND_WIDTH = 4;
+const ROAD_BAND_ALPHA = 0.5;
+const BAND_SHADOW = 0x000000;
+const BAND_SHADOW_WIDTH = 6;
+const BAND_SHADOW_ALPHA = 0.2;
 
 /** {@link PlacementGhostLayer}'s built key while it shows a line, whose plan it tracks by value. */
 const LINE_KEY = 'line';
@@ -148,8 +169,8 @@ export class PlacementGhostLayer {
     nodes: readonly PlanNode[] | null;
     anchored: boolean;
     walls: PalisadeLayout | undefined;
-    road: boolean;
-  } = { nodes: null, anchored: false, walls: undefined, road: false };
+    marker: LineMarker;
+  } = { nodes: null, anchored: false, walls: undefined, marker: 'stake' };
   private lineShifts: readonly number[] = [];
 
   constructor(
@@ -170,11 +191,12 @@ export class PlacementGhostLayer {
     }
     if (ghost.kind === 'line') {
       const planned = this.shiftsFor;
-      const road = ghost.marker === 'road';
+      const marker = ghost.marker ?? 'stake';
+      const road = marker !== 'stake';
       const samePlan =
         planned.nodes !== null &&
         planned.anchored === ghost.anchored &&
-        planned.road === road &&
+        planned.marker === marker &&
         samePlanNodes(planned.nodes, ghost.nodes);
       let shifts = this.lineShifts;
       if (!samePlan || planned.walls !== walls) {
@@ -193,7 +215,7 @@ export class PlacementGhostLayer {
       planned.nodes = ghost.nodes;
       planned.anchored = ghost.anchored;
       planned.walls = walls;
-      planned.road = road;
+      planned.marker = marker;
       this.container.position.set(0, 0);
       // A plan is a cursor mark: it reads over the settlers and walls standing on its nodes.
       this.container.zIndex = Number.MAX_SAFE_INTEGER;
@@ -225,7 +247,7 @@ export class PlacementGhostLayer {
   ): void {
     for (const child of this.container.removeChildren()) child.destroy();
     const g = new Graphics();
-    const points = ghost.nodes.map((node, i) => {
+    const points = ghost.nodes.map((node, i): PlanPoint => {
       const point = halfCellToScreen(node.col, node.row);
       return {
         x: point.x + (shifts[i] ?? 0),
@@ -242,10 +264,14 @@ export class PlacementGhostLayer {
         alpha: 0.95,
       });
     }
-    const road = ghost.marker === 'road';
+    const marker = ghost.marker ?? 'stake';
+    if (marker !== 'stake') {
+      this.drawRoadPlan(g, points, marker);
+      return;
+    }
     // The string runs knot to knot under the stakes, coloured by the node it leads to, with a dark
-    // underline that keeps it readable over pale ground. Road plots lie apart, with no string.
-    for (let i = 1; i < points.length && !road; i++) {
+    // underline that keeps it readable over pale ground.
+    for (let i = 1; i < points.length; i++) {
       const from = points[i - 1];
       const to = points[i];
       if (from === undefined || to === undefined) continue;
@@ -261,10 +287,58 @@ export class PlacementGhostLayer {
     // Back to front, so a nearer marker covers the one behind it.
     const stakes = points.filter((point) => point.state !== 'built').sort((a, b) => a.y - b.y);
     for (const point of stakes) {
-      const look = point.state === 'open' ? 'open' : 'blocked';
-      const stake = road ? mintPlanRoad(this.roads, look) : mintPlanStake(this.stakes, look);
+      const stake = mintPlanStake(this.stakes, point.state === 'open' ? 'open' : 'blocked');
       stake.position.set(point.x, point.y);
       this.container.addChild(stake);
+    }
+  }
+
+  /**
+   * A road line lies on the ground: a band joins each accepted node to the next, so the plan reads as one
+   * road, and every plot it would order wears an outline the ordered sites lack. A cancel line runs red
+   * and crosses out the sites it withdraws.
+   */
+  private drawRoadPlan(ring: Graphics, points: readonly PlanPoint[], marker: 'road' | 'roadCancel'): void {
+    const cancel = marker === 'roadCancel';
+    const colour = cancel ? STRING_BLOCKED : ROAD_BAND;
+    const band = new Graphics();
+    for (let i = 1; i < points.length; i++) {
+      const from = points[i - 1];
+      const to = points[i];
+      if (from === undefined || to === undefined || from.state === 'blocked' || to.state === 'blocked')
+        continue;
+      band
+        .moveTo(from.x, from.y)
+        .lineTo(to.x, to.y)
+        .stroke({ color: BAND_SHADOW, width: BAND_SHADOW_WIDTH, alpha: BAND_SHADOW_ALPHA, cap: 'round' })
+        .moveTo(from.x, from.y)
+        .lineTo(to.x, to.y)
+        .stroke({ color: colour, width: ROAD_BAND_WIDTH, alpha: ROAD_BAND_ALPHA, cap: 'round' });
+    }
+    // The start ring over the band, under the plots.
+    this.container.addChild(band, ring);
+    // Back to front, so a nearer marker covers the one behind it.
+    const plots = points.filter((point) => point.state !== 'built').sort((a, b) => a.y - b.y);
+    for (const point of plots) {
+      if (cancel) {
+        // A cancel line's open node is a site it withdraws: the site already draws its plot.
+        const mark = plotRim(new Graphics(), point.x, point.y, ROAD_PLAN_RIM_GROW).stroke({
+          color: STRING_BLOCKED,
+          width: ROAD_PLAN_RIM_WIDTH,
+        });
+        this.container.addChild(drawPlotCross(mark, point.x, point.y));
+        continue;
+      }
+      const plot = mintPlanRoad(this.roads, point.state === 'open' ? 'open' : 'blocked');
+      plot.position.set(point.x, point.y);
+      this.container.addChild(plot);
+      if (point.state === 'open') {
+        const rim = plotRim(new Graphics(), point.x, point.y, ROAD_PLAN_RIM_GROW).stroke({
+          color: ROAD_PLAN_RIM,
+          width: ROAD_PLAN_RIM_WIDTH,
+        });
+        this.container.addChild(rim);
+      }
     }
   }
 
