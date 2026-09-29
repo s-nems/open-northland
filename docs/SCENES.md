@@ -62,6 +62,10 @@ feet anchor, the walk cycle follows ground travel, and animals retain their head
 Original sprite movement remains tick-anchored to preserve foot contact; authored smooth clips keep
 their own interpolation.
 
+`?scene=armed-idle` stands the spearman, swordsman, two-hander, shortbow and longbow of each
+civilization in rows: viking, frank, byzantine, saracen, egyptian. Watch them for a while: every idle
+fidget keeps the weapon in hand.
+
 `?scene=creatures` places weresnakes and werewolves opposite four swordsmen, with wolves, lions,
 lionesses, brown bears and polar bears nearby. Watch the monsters' repeated strikes, the predators'
 walk and run cycles, and the animals turning before attacking. Order a soldier to attack a brown bear

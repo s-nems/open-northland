@@ -1,6 +1,7 @@
 import { aiDefenceScene } from './ai-defence.js';
 import { alchemyScene } from './alchemy.js';
 import { amuletsScene } from './amulets.js';
+import { armedIdleScene } from './armed-idle.js';
 import { armorScene } from './armor.js';
 import { attackMoveScene } from './attack-move.js';
 import { barracksScene } from './barracks.js';
@@ -73,6 +74,7 @@ export const SCENES: readonly SceneDefinition[] = [
   battleScene,
   bowFlightScene,
   weaponFacingsScene,
+  armedIdleScene,
   battleWearyScene,
   siegeScene,
   repairScene,
