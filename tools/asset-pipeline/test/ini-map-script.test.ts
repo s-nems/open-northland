@@ -435,7 +435,7 @@ describe('extractMapScript [misc_weather]', () => {
 [misc_weather]
 
 setsnowrectangle 0 0 40 40 35
-setsandrectangle 90 12 30 60 700 
+setsandrectangle 90 12 30 60 700${' '}
 setrainrectangle 10 20 30 5 20000
 setfogrectangle 0 0 10 10 100
 setrainrectangle 1 2 3 4
