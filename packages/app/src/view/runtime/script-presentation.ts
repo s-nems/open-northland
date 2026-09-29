@@ -90,7 +90,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
             },
       );
     }
-    for (const region of saved.weather) weather.write(region);
+    weather.writeAll(saved.weather);
   };
   void host.missionPresentation().then((saved) => {
     if (!disposed) restore(saved);

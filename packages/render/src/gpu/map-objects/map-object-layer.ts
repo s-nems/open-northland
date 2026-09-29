@@ -266,6 +266,12 @@ export class MapObjectLayer {
     this.tall.destroy();
     this.lastInputs = null;
   }
+
+  /** {@link destroy} for good: also frees the weather cover texture every map shares. */
+  dispose(): void {
+    this.destroy();
+    this.decorStyle.cover.texture.destroy();
+  }
 }
 
 function destroyDecorChunk(chunk: DecorChunk): void {

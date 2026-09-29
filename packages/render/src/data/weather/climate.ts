@@ -220,7 +220,7 @@ export class WeatherClimate {
 
   step(input: ClimateInput): WeatherConditions {
     if (!input.enabled) {
-      this.reset();
+      if (this.lastSeconds !== null) this.reset();
       return this.out;
     }
     const now = input.gameSeconds;
@@ -242,7 +242,9 @@ export class WeatherClimate {
 
   private stepAmounts(input: ClimateInput, dt: number | null): void {
     const target = input.field === null ? null : viewWeatherAmounts(input.field, input.viewport);
-    const blend = dt === null ? 1 : 1 - Math.exp(-dt / WEATHER_FADE_SECONDS);
+    // A still clock (a pause) follows the view at once, so panning a paused game keeps the sky, sound
+    // and sway in step with the particles, which read the field directly.
+    const blend = dt === null || dt === 0 ? 1 : 1 - Math.exp(-dt / WEATHER_FADE_SECONDS);
     let storm = 0;
     for (const kind of WEATHER_KINDS) {
       const current = this.out.amounts[kind];

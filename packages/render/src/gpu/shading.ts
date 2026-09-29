@@ -298,6 +298,8 @@ const VERTEX_VERTEX = `#version 300 es
   }
 `;
 
+// highp: the weather cover uniforms are shared with the highp vertex stage, and a precision
+// mismatch fails to link.
 const VERTEX_FRAGMENT = `#version 300 es
   precision highp float;
   precision highp int;

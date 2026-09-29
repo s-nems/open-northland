@@ -32,6 +32,14 @@ describe('weather cover', () => {
     expect(cover.texels()[1]).toBe(255);
   });
 
+  it('opens at the equilibrium of the last field set before the first step', () => {
+    const cover = new WeatherCover();
+    cover.setField(fieldOf(0, 0, 0.3));
+    cover.setField(fieldOf(0, 0.3, 0));
+    cover.advance(0);
+    expect(cover.sector(0).snow).toBe(1);
+  });
+
   it('wets under rain within a minute and dries over minutes after', () => {
     const cover = new WeatherCover();
     cover.setField(fieldOf(0, 0, 0));

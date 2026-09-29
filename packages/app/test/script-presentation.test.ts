@@ -70,7 +70,12 @@ function harness(
     startEarthquake: (seconds) => calls.push(`quake:${seconds}`),
     jitter: () => null,
   };
-  const weather: WeatherFeed = { write: (region) => calls.push(`weather:${region.weather}`) };
+  const weather: WeatherFeed = {
+    write: (region) => calls.push(`weather:${region.weather}`),
+    writeAll: (regions) => {
+      for (const region of regions) calls.push(`weather:${region.weather}`);
+    },
+  };
   const presentation = createScriptPresentation({
     host,
     seat,

@@ -137,9 +137,9 @@ export class WeatherCover {
     const field = this.field;
     if (field === null) return false;
     const last = this.stepped;
+    // The first step of a map snaps too: a map's regions may arrive over several fields before it.
     if (last === null || gameSeconds < last || gameSeconds - last > COVER_SNAP_SECONDS) {
       this.stepped = gameSeconds;
-      if (last === null) return true;
       this.snapToEquilibrium();
       return true;
     }

@@ -793,8 +793,9 @@ order, including zero-density clears, with repeated extents replacing their earl
 `[misc_weather]` rectangles (`set<rain|snow|sand>rectangle <x1> <y1> <x2> <y2> <density>`, half-cell
 nodes, raw density) are seeded into the singleton in file order while the world is built, so a later
 `SetWeather` over the same extent wins; like the original, reversed corners are ordered and the
-density is clamped to 10000. Sand comes only from these rows. The point overlay and weather squares
-remain approximations of the original's entities and sector fields.
+density is clamped to 10000. Sand comes only from these rows. The point overlay remains an
+approximation of the original's entities; the renderer lays the weather squares onto the original's
+sector field (10 half-cell nodes per sector, bilinear between sector centres).
 
 Mission records also retain the first and last execution ticks and an execution count. Goal-only
 `CheckMission` probes do not increment them, and later failed checks do not erase them. The optional

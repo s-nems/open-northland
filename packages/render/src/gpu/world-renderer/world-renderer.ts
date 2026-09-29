@@ -508,7 +508,7 @@ export class WorldRenderer {
     this.weatherGround.destroy();
     this.weatherSky.destroy();
     this.terrain.destroy();
-    this.mapObjects.destroy();
+    this.mapObjects.dispose();
     this.pool.destroy();
     this.marks.destroy();
     this.fog.destroy();

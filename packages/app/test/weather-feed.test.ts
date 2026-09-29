@@ -41,3 +41,19 @@ describe('weather override', () => {
     expect(weatherAmountAt(built, 'rain', 50, 50)).toBe(0);
   });
 });
+
+describe('writeAll', () => {
+  it('replays a list in order with one rebuild', () => {
+    const fields: WeatherField[] = [];
+    const feed = createWeatherFeed(MAP, (next) => fields.push(next));
+    feed.writeAll([
+      { weather: 'sand', ...WHOLE, density: 700 },
+      { weather: 'snow', ...CORNER, density: 700 },
+    ]);
+    expect(fields).toHaveLength(1);
+    const [built] = fields;
+    if (built === undefined) throw new Error('no field');
+    expect(weatherAmountAt(built, 'snow', 5, 5)).toBeCloseTo(0.07);
+    expect(weatherAmountAt(built, 'sand', 95, 95)).toBeCloseTo(0.07);
+  });
+});

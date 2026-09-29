@@ -40,7 +40,7 @@ export class WeatherSky {
   private windTravelY = 0;
   private lastSeconds: number | null = null;
 
-  constructor(parent?: Container) {
+  constructor() {
     this.container.label = 'weather-sky';
     this.atmosphere = new WeatherAtmosphere(this.container);
     const layers = {
@@ -51,7 +51,6 @@ export class WeatherSky {
     for (const kind of PARTICLE_ORDER) this.container.addChild(layers[kind].mesh);
     this.layers = layers;
     this.bolt = new LightningBolt(this.container);
-    parent?.addChild(this.container);
   }
 
   /** The map's weather; call on map load and whenever a script rewrites it. A change cross-fades. */

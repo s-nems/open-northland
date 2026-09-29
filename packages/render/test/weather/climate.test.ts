@@ -57,13 +57,14 @@ describe('weather climate amounts', () => {
     expect(after.amounts.rain).toBeLessThan(0.2 * 0.45);
   });
 
-  it('holds still while paused', () => {
+  it('follows the view at once while paused, so a paused pan keeps every layer in step', () => {
     const climate = new WeatherClimate();
     climate.step({ field: field('snow', 0), viewport: WHOLE_MAP, gameSeconds: 5, enabled: true });
     const snow = field('snow', 0.3);
     const a = climate.step({ field: snow, viewport: WHOLE_MAP, gameSeconds: 6, enabled: true }).amounts.snow;
+    expect(a).toBeLessThan(0.3);
     const b = climate.step({ field: snow, viewport: WHOLE_MAP, gameSeconds: 6, enabled: true }).amounts.snow;
-    expect(b).toBe(a);
+    expect(b).toBeCloseTo(0.3);
   });
 
   it('snaps on a fast-forward jump or a backwards seek', () => {

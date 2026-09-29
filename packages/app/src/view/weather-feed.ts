@@ -5,6 +5,8 @@ import type { WeatherParam } from './params.js';
 /** Mirrors the sim's weather regions into the renderer's sector field. */
 export interface WeatherFeed {
   write(region: WeatherRegionInput): void;
+  /** Several writes in order with one rebuild, for restoring a saved or seeded list. */
+  writeAll(regions: readonly WeatherRegionInput[]): void;
 }
 
 const regionKey = (r: WeatherRegionInput): string =>
@@ -39,11 +41,19 @@ export function createWeatherFeed(
   const over = override === null ? [] : overrideRegions(override, nodesX, nodesY);
   const rebuild = (): void => apply(buildWeatherField([...regions.values(), ...over], nodesX, nodesY));
   if (over.length > 0) rebuild();
+  const retain = (region: WeatherRegionInput): void => {
+    const key = regionKey(region);
+    regions.delete(key);
+    regions.set(key, region);
+  };
   return {
     write(region) {
-      const key = regionKey(region);
-      regions.delete(key);
-      regions.set(key, region);
+      retain(region);
+      rebuild();
+    },
+    writeAll(list) {
+      if (list.length === 0) return;
+      for (const region of list) retain(region);
       rebuild();
     },
   };
