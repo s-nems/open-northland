@@ -88,4 +88,14 @@ describe('home holy fire projection', () => {
     });
     expect(culled.items).toEqual([]);
   });
+
+  it('stages no fire on the map for a home drawn only for a portrait inset', () => {
+    const fogged = collectSpriteScene(snapshot(), {
+      holyFire: lookup,
+      fogVisible: () => false,
+      insetRefs: [HOME],
+    });
+    expect(fogged.items.find((item) => item.ref === HOME)?.portraitOnly).toBe(true);
+    expect(fogged.items.filter((item) => item.kind === 'craftfx')).toEqual([]);
+  });
 });

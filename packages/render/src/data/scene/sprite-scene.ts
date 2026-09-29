@@ -3,7 +3,7 @@ import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
 import type { GhostSource } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import type { ElevationField } from '../terrain/index.js';
-import { pushBuildingFxItems, pushCraftFxItems, pushGhostItems } from './collect-fields.js';
+import { pushEffectItems, pushGhostItems } from './collect-fields.js';
 import type { MutableSpriteDrawItem, SpriteDrawItem } from './draw-item.js';
 import { emitEntities } from './entity-source.js';
 import { type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
@@ -182,25 +182,18 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     // instead of soloing a hidden sprite, but an offscreen or fogged subject still draws for it alone.
     if (isPortrait && (offscreen || fogged || (indoorSettler && inHouse === undefined)))
       item.portraitOnly = true;
+    // A subject kept only for the portrait stages nothing: its effects would paint on the map the culls
+    // just kept it off.
+    const stagesEffects = item.portraitOnly !== true;
     if (inHouse !== undefined) {
       applyInHousePose(item, inHouse.inHouse);
-      // A subject kept only for the portrait stages nothing: its effects would paint on the map the culls
-      // just kept it off.
-      if (item.portraitOnly !== true) {
-        pushCraftFxItems(items, collected, item, inHouse.overlays, screen, tileX, tileY);
-      }
+      if (stagesEffects) pushEffectItems(items, collected, item, inHouse.overlays, screen, tileX, tileY);
     }
     // Only a kept or forced settler gets this far indoors without a craft to show.
     else if (indoorSettler) item.frozen = true;
-    if (kind === 'building') {
-      pushBuildingFxItems(
-        items,
-        collected,
-        item,
-        holyFireOverlays(snapshot, entity.id, components, holyFire),
-        tileX,
-        tileY,
-      );
+    if (kind === 'building' && stagesEffects) {
+      const fire = holyFireOverlays(snapshot, entity.id, components, holyFire);
+      pushEffectItems(items, collected, item, fire, screen, tileX, tileY);
     }
     if (kind === 'vehicle' && item.portraitOnly !== true) {
       liveVehicles ??= new Set();

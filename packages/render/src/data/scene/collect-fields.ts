@@ -164,63 +164,35 @@ export function pushSignpostItems(
 }
 
 /**
- * Append the effects a worker's program stages this moment, each at its own offset from the workplace
- * anchor the worker itself is drawn against, and depth-sorted on that anchor like the worker. A program
- * beyond the ref stride's slots stages only the first ones; the extracted programs stage at most two.
+ * Append the looping landscape effects an entity stages this moment (a worker's craft program, a home's
+ * holy fire), each at its own offset from `anchor`, the screen point of the building they belong to, and
+ * depth-sorted on that building's tile like their owner. The synthetic refs belong to `owner`; a list
+ * beyond the ref stride's slots stages only the first ones, and the extracted programs stage at most two.
  */
-export function pushCraftFxItems(
+export function pushEffectItems(
   items: MutableSpriteDrawItem[],
   liveRefs: Set<number>,
-  worker: MutableSpriteDrawItem,
+  owner: MutableSpriteDrawItem,
   overlays: readonly InHouseOverlay[],
-  house: { x: number; y: number },
+  anchor: { x: number; y: number },
   tileX: number,
   tileY: number,
 ): void {
   for (let slot = 0; slot < overlays.length && slot < EXTRA_ITEM_SLOTS; slot++) {
     const overlay = overlays[slot];
     if (overlay === undefined) continue;
-    const ref = extraItemRef(worker.ref, slot);
+    const ref = extraItemRef(owner.ref, slot);
     liveRefs.add(ref);
     const fx: MutableSpriteDrawItem = {
       kind: 'craftfx',
       ref,
-      x: house.x + overlay.dx,
-      y: house.y + overlay.dy,
+      x: anchor.x + overlay.dx,
+      y: anchor.y + overlay.dy,
       depth: spriteDepth(tileX, tileY, 'craftfx'),
       state: 'idle',
       fxName: overlay.name,
     };
-    if (worker.lift !== undefined) fx.lift = worker.lift;
-    items.push(fx);
-  }
-}
-
-/** Append persistent effects anchored to a building. They reuse the same looping landscape-effect kind
- * as in-house craft overlays, but their synthetic refs belong to the building itself. */
-export function pushBuildingFxItems(
-  items: MutableSpriteDrawItem[],
-  liveRefs: Set<number>,
-  building: MutableSpriteDrawItem,
-  overlays: readonly InHouseOverlay[],
-  tileX: number,
-  tileY: number,
-): void {
-  for (let slot = 0; slot < overlays.length && slot < EXTRA_ITEM_SLOTS; slot++) {
-    const overlay = overlays[slot];
-    if (overlay === undefined) continue;
-    const ref = extraItemRef(building.ref, slot);
-    liveRefs.add(ref);
-    const fx: MutableSpriteDrawItem = {
-      kind: 'craftfx',
-      ref,
-      x: building.x + overlay.dx,
-      y: building.y + overlay.dy,
-      depth: spriteDepth(tileX, tileY, 'craftfx'),
-      state: 'idle',
-      fxName: overlay.name,
-    };
-    if (building.lift !== undefined) fx.lift = building.lift;
+    if (owner.lift !== undefined) fx.lift = owner.lift;
     items.push(fx);
   }
 }
