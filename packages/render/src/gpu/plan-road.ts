@@ -15,7 +15,7 @@ export interface PlanRoadTextures {
 export type PlanRoadLook = keyof PlanRoadTextures;
 
 /** World px across the plot; the art is generated for this project, sized by eye against a settler. */
-const PLOT_WIDTH = 30;
+const PLOT_WIDTH = 15;
 /** Where the plot's centre meets the ground, as fractions of the art: the middle of the rim's ellipse. */
 const ART_GROUND = { x: 0.499, y: 0.435 } as const;
 const ART_WIDTH_PX = 112;
