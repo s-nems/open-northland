@@ -36,6 +36,8 @@ export interface PrecipitationFrame {
   readonly windX: number;
   readonly windY: number;
   readonly storm: number;
+  /** 0..1 gust strength on top of the steady wind. */
+  readonly gust: number;
   readonly sizeScale: number;
 }
 
@@ -47,6 +49,7 @@ type PrecipitationUniforms = UniformGroup & {
     readonly uWindTravel: Float32Array;
     readonly uWind: Float32Array;
     uStorm: number;
+    uGust: number;
     readonly uField: Float32Array;
     readonly uChannel: Float32Array;
     readonly uIntensity: Float32Array;
@@ -98,6 +101,7 @@ export class PrecipitationLayer {
       uWindTravel: { value: new Float32Array(4), type: 'vec4<f32>' },
       uWind: { value: new Float32Array(2), type: 'vec2<f32>' },
       uStorm: { value: 0, type: 'f32' },
+      uGust: { value: 0, type: 'f32' },
       uField: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
       uChannel: { value: channel, type: 'vec3<f32>' },
       uIntensity: {
@@ -136,6 +140,7 @@ export class PrecipitationLayer {
     u.uWindTravel.set([coarseX, coarseY, frame.windTravelX - coarseX, frame.windTravelY - coarseY]);
     u.uWind.set([frame.windX, frame.windY]);
     u.uStorm = frame.storm;
+    u.uGust = frame.gust;
     u.uField.set([this.field.nodeSpanX, this.field.nodeSpanY, this.field.mix]);
     u.uDraw.set([drawn, intensity, frame.sizeScale]);
     this.uniforms.update();

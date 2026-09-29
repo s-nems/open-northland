@@ -31,10 +31,10 @@ export const MIST_SCALE_PX = 230;
 const MIST_STRETCH_X = 2;
 /** Streaks of blowing dust or snow: long thin noise cells, world px. */
 const STREAK_CELL_PX = [520, 110] as const;
-/** The flash lights the whole screen by this share and the rest around the strike, within this share of
- *  the screen's larger side, so a strike off one edge lights that side. */
-const FLASH_FLOOR = 0.35;
-const FLASH_REACH_SHARE = 0.8;
+/** The flash lifts the whole screen by this share and the rest around the strike, within this share of
+ *  the screen's larger side, so a strike off one edge lights that side and the rest of the view barely. */
+const FLASH_FLOOR = 0.2;
+const FLASH_REACH_SHARE = 0.6;
 
 const NOISE = `
   const float PERIOD = ${ATMOSPHERE_NOISE_PERIOD}.0;

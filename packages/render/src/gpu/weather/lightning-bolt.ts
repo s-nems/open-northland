@@ -11,8 +11,8 @@ import type { LightningStrike, WeatherConditions } from '../../data/weather/type
  * tuned by eye.
  */
 
-/** Strikes farther than this (0..1) flash the sky without a visible bolt: about one strike in six. */
-const BOLT_MAX_DISTANCE = 0.4;
+/** Strikes farther than this (0..1) flash the sky without a visible bolt: about one strike in ten. */
+const BOLT_MAX_DISTANCE = 0.3;
 /** Halvings of the main channel (2^levels segments), and its first sideways displacement as a share of
  *  its length; each halving keeps this share of the previous displacement. */
 const MAIN_LEVELS = 7;
@@ -35,14 +35,14 @@ const BOLT_TOP = -0.1;
 const BOLT_LEAN = 0.25;
 /** Stroke layers from the widest glow to the core: width px per generation, colour, alpha. */
 const STROKES = [
-  { widths: [14, 7, 4], colour: 0x6f86ff, alpha: 0.14 },
-  { widths: [4.5, 2.5, 2], colour: 0xa9bcff, alpha: 0.35 },
-  { widths: [1.8, 1, 1], colour: 0xf6f9ff, alpha: 1 },
+  { widths: [8, 4, 3], colour: 0x6f86ff, alpha: 0.08 },
+  { widths: [3, 1.8, 1.4], colour: 0xa9bcff, alpha: 0.25 },
+  { widths: [1.3, 0.9, 0.8], colour: 0xf2f6ff, alpha: 0.9 },
 ] as const;
 /** Alpha of each branch generation relative to the main channel. */
 const GENERATION_ALPHA: readonly number[] = [1, 0.6, 0.4];
 /** The bolt shows brighter than the flash that carries it; at the visible limit it keeps this share. */
-const BOLT_FLASH_GAIN = 1.6;
+const BOLT_FLASH_GAIN = 1.3;
 const BOLT_FAR_SHARE = 0.5;
 const BOLT_SALT = 0x3b0a57;
 const BOLT_ID_MIX = 0x2c1b3c6d;

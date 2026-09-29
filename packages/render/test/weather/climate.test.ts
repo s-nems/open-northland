@@ -278,7 +278,7 @@ describe('weather climate lightning', () => {
     expect(jumped.strikes).toHaveLength(0);
   });
 
-  it('flickers: a strike flashes more than once and dims with distance', () => {
+  it('flickers at most twice per strike and dims with distance', () => {
     let near = null;
     for (let bucket = 0; near === null; bucket++) {
       const strike = strikeInBucket(0, bucket, 1);
@@ -289,11 +289,36 @@ describe('weather climate lightning', () => {
     const peaks = samples.filter(
       (v, i) => i > 0 && v > (samples[i - 1] ?? 0) && v >= (samples[i + 1] ?? 0) && v > 0.1,
     );
-    expect(peaks.length).toBeGreaterThanOrEqual(2);
+    expect(peaks.length).toBeGreaterThanOrEqual(1);
+    expect(peaks.length).toBeLessThanOrEqual(2);
     const far = { ...near, distance: 1 };
     expect(strikeFlash(0, far, near.atSeconds + 0.03)).toBeLessThan(
       strikeFlash(0, near, near.atSeconds + 0.03),
     );
     expect(thunderDelaySeconds(far)).toBe(THUNDER_MAX_DELAY_SECONDS);
+  });
+
+  it('never flashes more than three times in any second', () => {
+    const FLASHES_PER_SECOND_LIMIT = 3;
+    const dt = 1 / 240;
+    const climate = new WeatherClimate(9);
+    const onsets: number[] = [];
+    let previous = 0;
+    let rising = false;
+    for (let t = 0; t < 300; t += dt) {
+      const { flash } = climate.step({
+        field: thunderstorm,
+        viewport: WHOLE_MAP,
+        gameSeconds: t,
+        enabled: true,
+      });
+      if (flash > previous && !rising) onsets.push(t);
+      rising = flash > previous;
+      previous = flash;
+    }
+    expect(onsets.length).toBeGreaterThan(10);
+    for (let i = FLASHES_PER_SECOND_LIMIT; i < onsets.length; i++) {
+      expect((onsets[i] ?? 0) - (onsets[i - FLASHES_PER_SECOND_LIMIT] ?? 0)).toBeGreaterThan(1);
+    }
   });
 });

@@ -10,8 +10,10 @@ import type { WeatherKind } from '../../data/weather/types.js';
  * The airborne precipitation shaders: one instanced quad per particle, placed entirely on the GPU from
  * game time, the integrated wind and the camera. Each particle reads the regional amount of its kind
  * from the weather field texture at its own screen point and shows only while its rank is under that
- * amount, so rain stops at a region's edge instead of following the screen. All look constants are
- * tuned by eye; the original drew single-pixel dashes and plus signs (see the weather spec).
+ * amount, so rain stops at a region's edge instead of following the screen. Heavy weather reads through
+ * motion, depth and gust fronts rather than cover: particles stay faint, and near ones thin out over the
+ * middle of the view. All look constants are tuned by eye; the original drew single-pixel dashes and plus
+ * signs (see the weather spec).
  */
 
 /** Game seconds and wind displacement reach the shader split into a coarse and a fine part, each wrapped
@@ -33,35 +35,40 @@ interface PrecipitationLook {
   readonly colour: readonly [number, number, number];
   /** Storm adds this share of alpha. */
   readonly stormAlpha: number;
+  /** How strongly gust fronts gather and thin the particles, in calm air and in a full storm or gust. */
+  readonly fronts: readonly [number, number];
 }
 
 const LOOKS: Readonly<Record<WeatherKind, PrecipitationLook>> = {
   rain: {
-    fall: [360, 820],
+    fall: [340, 860],
     windResponse: 1.6,
     parallax: [1.05, 1.5],
-    alpha: [0.16, 0.5],
-    size: [1, 1.4],
-    colour: [0.68, 0.76, 0.87],
-    stormAlpha: 0.3,
+    alpha: [0.12, 0.4],
+    size: [1, 1.5],
+    colour: [0.72, 0.78, 0.86],
+    stormAlpha: 0.2,
+    fronts: [0.2, 0.55],
   },
   snow: {
     fall: [18, 70],
     windResponse: 1.2,
     parallax: [0.95, 1.5],
-    alpha: [0.9, 1],
-    size: [1.8, 8],
+    alpha: [0.75, 0.85],
+    size: [1.6, 7.5],
     colour: [1.0, 1.0, 1.0],
     stormAlpha: 0,
+    fronts: [0.2, 0.5],
   },
   sand: {
     fall: [6, 22],
     windResponse: 1.25,
     parallax: [1.0, 1.3],
-    alpha: [0.3, 0.7],
+    alpha: [0.18, 0.45],
     size: [1, 1.4],
     colour: [1.0, 0.9, 0.72],
     stormAlpha: 0,
+    fronts: [0.4, 0.7],
   },
 };
 
@@ -77,7 +84,8 @@ function lookDefines(look: PrecipitationLook): string {
   const vec2 ALPHA = ${vec2Of(look.alpha)};
   const vec2 SIZE = ${vec2Of(look.size)};
   const vec3 COLOUR = vec3(${look.colour.map(glslFloat).join(', ')});
-  const float STORM_ALPHA = ${glslFloat(look.stormAlpha)};`;
+  const float STORM_ALPHA = ${glslFloat(look.stormAlpha)};
+  const vec2 FRONTS = ${vec2Of(look.fronts)};`;
 }
 
 /** Shared head: attributes, uniforms, wrap motion and the regional density gate. */
@@ -106,6 +114,7 @@ const VERTEX_HEAD = `#version 300 es
   // Current wind px/s.
   uniform vec2 uWind;
   uniform float uStorm;
+  uniform float uGust;
   uniform sampler2D uFieldPrev;
   uniform sampler2D uFieldCur;
   // Node span x, y of the field texture, cross-fade 0 previous .. 1 current.
@@ -124,6 +133,20 @@ const VERTEX_HEAD = `#version 300 es
   const float SPEED_JITTER = 0.18;
   // Density gate softness in intensity units: particles near the threshold fade instead of popping.
   const float GATE_SOFT = 0.08;
+  // Gust fronts: bands across the wind, long and short wavelength px, leaning down the screen by this
+  // share, carried along by the wind and wavering along their length.
+  const vec2 FRONT_WAVELENGTH = vec2(1100.0, 380.0);
+  const float FRONT_LEAN = 0.35;
+  const float FRONT_WAVER_PX = 1400.0;
+  const float FRONT_WAVER = 0.18;
+  // Share of the long band in the front pattern; the short one takes the rest.
+  const float FRONT_LONG_WEIGHT = 0.65;
+  // Near particles thin by up to this share over the middle of the view, fading out to the edges, so
+  // the place the player looks at stays clear without a visible hole.
+  const float CENTRE_CLEAR = 0.25;
+  const vec2 CENTRE_REACH = vec2(0.15, 0.95);
+  // The clear middle is wider than tall by this factor over the screen's own aspect.
+  const float CENTRE_WIDEN = 1.4;
 
   float speedOf(float jitter) {
     return mix(1.0 - SPEED_JITTER, 1.0 + SPEED_JITTER, jitter) * uDraw.z;
@@ -157,20 +180,45 @@ const VERTEX_HEAD = `#version 300 es
   }
 `;
 
-/** Thin slanted streaks along the fall velocity, brightest at the head: far ones short, dim and slow,
- *  near ones long and brighter. A storm sweeps heavier sheets of rain across the screen with the wind. */
+/** Gust fronts and the clear middle, which read the per-kind look. */
+const VERTEX_FRONTS = `
+  // Band phase at 'p' for one wavelength; wrapped per wavelength so float32 keeps long games smooth.
+  float frontPhase(vec2 p, float wavelength) {
+    float carried = mod(uWindTravel.x + FRONT_LEAN * uWindTravel.y, wavelength)
+      + uWindTravel.z + FRONT_LEAN * uWindTravel.w
+      + mod(uCamera.x + FRONT_LEAN * uCamera.y, wavelength);
+    return (p.x + FRONT_LEAN * p.y - carried) / wavelength + FRONT_WAVER * sin(TAU * p.y / FRONT_WAVER_PX);
+  }
+
+  // Alpha gain of passing gust fronts at 'p', averaging 1 over the screen: calm air carries faint
+  // bands, a storm or a gust sweeps denser sheets across the view with thinner air between.
+  float gustFront(vec2 p) {
+    float front = FRONT_LONG_WEIGHT * (0.5 + 0.5 * sin(TAU * frontPhase(p, FRONT_WAVELENGTH.x)))
+      + (1.0 - FRONT_LONG_WEIGHT) * (0.5 + 0.5 * sin(TAU * frontPhase(p, FRONT_WAVELENGTH.y)));
+    float strength = mix(FRONTS.x, FRONTS.y, max(uStorm, uGust));
+    return max(0.0, 1.0 + strength * (2.0 * front - 1.0));
+  }
+
+  // Alpha share left to a particle of 'depth' at 'p' by the clear middle of the view.
+  float centreClear(vec2 p, float depth) {
+    vec2 offset = (p / uScreen - 0.5) * 2.0;
+    float fromCentre = length(offset * vec2(1.0, uScreen.y / uScreen.x * CENTRE_WIDEN));
+    return 1.0 - CENTRE_CLEAR * depth * depth * (1.0 - smoothstep(CENTRE_REACH.x, CENTRE_REACH.y, fromCentre));
+  }
+
+`;
+
+/** Thin slanted streaks along the fall velocity, a raindrop's motion blur: far ones short, dim, sharp
+ *  and slow, near ones long, fast and slightly out of focus. Each streak leans a little on its own. */
 const RAIN_VERTEX = `
   // Streak length px at zoom 1, far to near.
-  const vec2 STREAK_LENGTH = vec2(7.0, 40.0);
+  const vec2 STREAK_LENGTH = vec2(7.0, 42.0);
   // Brightness far to near: distant rain melts into the air.
-  const vec2 BRIGHTNESS = vec2(0.78, 1.1);
-  // Storm sheets: bands of heavier rain, px per band, whole cycles per time split, and how much a full
-  // storm thins the rain between the bands.
-  const vec2 SHEET_WAVELENGTH = vec2(460.0, 190.0);
-  const vec2 SHEET_CYCLES = vec2(9.0, 23.0);
-  const float SHEET_DEPTH = 0.75;
-  // The bands lean down to the right, like rain blown across the view.
-  const vec2 SHEET_SLANT = vec2(1.0, 0.35);
+  const vec2 BRIGHTNESS = vec2(0.78, 1.08);
+  // Across-streak blur px of a near streak, which is out of focus.
+  const float NEAR_BLUR = 0.9;
+  // Each streak's lean jitters by this share of its fall speed.
+  const float SLANT_JITTER = 0.08;
   void main(void) {
     float depth = aSeedA.z;
     vec2 box = uScreen + 2.0 * MARGIN;
@@ -180,32 +228,31 @@ const RAIN_VERTEX = `
     vec2 centre = wrapped(box, fallVel, windShare, mix(PARALLAX.x, PARALLAX.y, depth));
     float gate = densityGate(centre);
     if (gate <= 0.0) { cull(); return; }
-    vec2 velocity = fallVel + uWind * windShare;
+    vec2 velocity = fallVel + uWind * windShare + vec2(SLANT_JITTER * speed * (aSeedB.w - 0.5), 0.0);
     vec2 dir = normalize(velocity);
     vec2 across = vec2(-dir.y, dir.x);
     float len = mix(STREAK_LENGTH.x, STREAK_LENGTH.y, depth) * (0.75 + 0.5 * aSeedB.y) * uDraw.z
       * (1.0 + 0.3 * uStorm);
     float core = 0.5 * mix(SIZE.x, SIZE.y, depth) * uDraw.z;
-    float halfWidth = core + 1.0;
-    float phase = uTime.y / TIME_SPLIT;
-    float band = dot(centre, SHEET_SLANT);
-    float sheet = 0.6 * (0.5 + 0.5 * sin(TAU * (band / SHEET_WAVELENGTH.x - SHEET_CYCLES.x * phase)))
-      + 0.4 * (0.5 + 0.5 * sin(TAU * (band / SHEET_WAVELENGTH.y - SHEET_CYCLES.y * phase)));
-    float sheetGain = mix(1.0, mix(1.0 - SHEET_DEPTH, 1.0 + 0.5 * SHEET_DEPTH, sheet), uStorm);
+    float blur = NEAR_BLUR * depth * depth;
+    float halfWidth = core + blur + 1.0;
     vLocal = vec2(aPosition.x * halfWidth, aPosition.y);
-    vShape = vec4(core, 0.0, 0.0, 0.0);
+    vShape = vec4(core, blur, 0.0, 0.0);
     vShade = vec2(0.0);
-    vColour = COLOUR * mix(BRIGHTNESS.x, BRIGHTNESS.y, depth) * (0.92 + 0.16 * aSeedB.z);
-    vAlpha = mix(ALPHA.x, ALPHA.y, depth) * (1.0 + STORM_ALPHA * uStorm) * sheetGain * gate;
+    vColour = COLOUR * mix(BRIGHTNESS.x, BRIGHTNESS.y, depth) * (0.9 + 0.2 * aSeedB.z);
+    vAlpha = mix(ALPHA.x, ALPHA.y, depth) * (1.0 + STORM_ALPHA * uStorm) * gustFront(centre)
+      * centreClear(centre, depth) * gate;
     place(centre + dir * aPosition.y * len * 0.5 + across * aPosition.x * halfWidth);
   }
 `;
 
 const RAIN_FRAGMENT = `
+  // The streak head softens over this last share of its length instead of ending in a hard cap.
+  const float HEAD_SOFT = 0.12;
   void main(void) {
-    float coverage = clamp(vShape.x + 0.5 - abs(vLocal.x), 0.0, 1.0);
+    float coverage = 1.0 - smoothstep(vShape.x - 0.5, vShape.x + 0.5 + vShape.y, abs(vLocal.x));
     float along = 0.5 * (vLocal.y + 1.0);
-    float a = vAlpha * coverage * along * sqrt(along);
+    float a = vAlpha * coverage * along * sqrt(along) * (1.0 - smoothstep(1.0 - HEAD_SOFT, 1.0, along));
     finalColor = vec4(vColour * a, a);
   }
 `;
@@ -230,7 +277,7 @@ const SNOW_VERTEX = `
   const float CROSS_SHARE = 0.16;
   const float CROSS_MAX = 4.5;
   // Edge softness px of a soft flake, far to near: near flakes are out of focus.
-  const vec2 SOFT_PX = vec2(0.6, 2.2);
+  const vec2 SOFT_PX = vec2(0.6, 2.4);
   // The shade sits this many px under the flake.
   const float SHADE_DROP = 1.0;
   // Far flakes are this much dimmer and follow this share of a near flake's wind.
@@ -255,7 +302,7 @@ const SNOW_VERTEX = `
     vec2 dir = normalize(velocity);
     vec2 across = vec2(-dir.y, dir.x);
     vColour = COLOUR * mix(FAR_BRIGHTNESS, 1.0, depth);
-    vAlpha = mix(ALPHA.x, ALPHA.y, depth) * gate;
+    vAlpha = mix(ALPHA.x, ALPHA.y, depth) * gustFront(centre) * centreClear(centre, depth) * gate;
     vShade = vec2(0.0);
     if (size < PIXEL_FLAKE) {
       // A whole-pixel square snapped to the pixel grid, with its shade row under it.
@@ -289,8 +336,8 @@ const SNOW_VERTEX = `
 `;
 
 const SNOW_FRAGMENT = `
-  const vec3 SHADE_COLOUR = vec3(0.3, 0.36, 0.5);
-  const float SHADE_ALPHA = 0.6;
+  const vec3 SHADE_COLOUR = vec3(0.42, 0.47, 0.6);
+  const float SHADE_ALPHA = 0.4;
   float plusAt(vec2 p, float arm) {
     vec2 d = abs(p);
     return (max(d.x, d.y) <= arm + 0.5 && min(d.x, d.y) < 0.5) ? 1.0 : 0.0;
@@ -316,14 +363,15 @@ const SNOW_FRAGMENT = `
       // A brighter heart: soft flakes are densest in the middle.
       glow = 0.9 + 0.1 * (1.0 - clamp(length(vLocal / vShape.zw), 0.0, 1.0));
     }
-    float under = shade * SHADE_ALPHA * (1.0 - flake);
+    // The shade only rims the flake's lower edge; inside a soft flake's blur it would read as a grey blot.
+    float under = shade * SHADE_ALPHA * (1.0 - smoothstep(0.0, 0.5, flake));
     float a = (flake + under) * vAlpha;
     finalColor = vec4((vColour * glow * flake + SHADE_COLOUR * under) * vAlpha, a);
   }
 `;
 
-/** Fine sideways dust dashes plus a few slow, large, faint dust puffs; a sandstorm lengthens the dashes
- *  and thickens them, while the atmosphere's streaked dust wall carries the rest. */
+/** Fine sideways dust dashes plus a few slow, large, faint wisps drawn out along the wind, both gathered
+ *  into streaming sheets by the gust fronts; a sandstorm lengthens the dashes and the wisps. */
 const SAND_VERTEX = `
   const vec2 STREAK_LENGTH = vec2(4.0, 20.0);
   const float STREAK_SECONDS = 0.045;
@@ -331,7 +379,9 @@ const SAND_VERTEX = `
   const float STORM_STRETCH = 0.6;
   const float PUFF_SHARE = 0.14;
   const vec2 PUFF_SIZE = vec2(36.0, 110.0);
-  const float PUFF_ALPHA = 0.18;
+  const float PUFF_ALPHA = 0.09;
+  // A wisp is this many times longer along the wind than across it.
+  const float WISP_STRETCH = 2.6;
   const float PUFF_WIND = 0.45;
   const vec3 PUFF_COLOUR = vec3(0.82, 0.68, 0.48);
   // Vertical wobble of a dash, whole cycles per time split.
@@ -350,18 +400,19 @@ const SAND_VERTEX = `
     float gate = densityGate(centre);
     if (gate <= 0.0) { cull(); return; }
     vShade = vec2(0.0);
+    vec2 velocity = fallVel + uWind * windShare;
+    vec2 dir = normalize(velocity + vec2(1e-3, 0.0));
+    vec2 across = vec2(-dir.y, dir.x);
+    float sheet = gustFront(centre) * centreClear(centre, depth);
     if (puff) {
       float r = 0.5 * mix(PUFF_SIZE.x, PUFF_SIZE.y, aSeedB.y) * uDraw.z * (1.0 + 0.5 * uStorm);
       vLocal = aPosition;
       vShape = vec4(1.0 + aSeedB.z, 0.0, 0.0, 0.0);
       vColour = PUFF_COLOUR;
-      vAlpha = PUFF_ALPHA * (0.6 + 0.8 * depth) * (1.0 + STORM_ALPHA * uStorm) * gate;
-      place(centre + aPosition * r);
+      vAlpha = PUFF_ALPHA * (0.6 + 0.8 * depth) * (1.0 + STORM_ALPHA * uStorm) * sheet * gate;
+      place(centre + dir * aPosition.x * r * WISP_STRETCH + across * aPosition.y * r);
       return;
     }
-    vec2 velocity = fallVel + uWind * windShare;
-    vec2 dir = normalize(velocity + vec2(1e-3, 0.0));
-    vec2 across = vec2(-dir.y, dir.x);
     float len = clamp(length(velocity) * STREAK_SECONDS * (0.6 + 0.8 * aSeedB.y),
       STREAK_LENGTH.x * uDraw.z, STREAK_LENGTH.y * uDraw.z) * (1.0 + STORM_STRETCH * uStorm);
     float core = 0.5 * mix(SIZE.x, SIZE.y, depth) * uDraw.z;
@@ -369,7 +420,7 @@ const SAND_VERTEX = `
     vLocal = vec2(aPosition.x * halfWidth, aPosition.y);
     vShape = vec4(-core, 0.0, 0.0, 0.0);
     vColour = COLOUR * (0.85 + 0.3 * aSeedB.z);
-    vAlpha = mix(ALPHA.x, ALPHA.y, depth) * (1.0 + STORM_ALPHA * uStorm) * gate;
+    vAlpha = mix(ALPHA.x, ALPHA.y, depth) * (1.0 + STORM_ALPHA * uStorm) * sheet * gate;
     place(centre + dir * aPosition.y * len * 0.5 + across * aPosition.x * halfWidth);
   }
 `;
@@ -418,7 +469,7 @@ export function precipitationProgram(kind: WeatherKind): GlProgram {
   if (program === undefined) {
     const body = BODIES[kind];
     program = new GlProgram({
-      vertex: VERTEX_HEAD + lookDefines(LOOKS[kind]) + body.vertex,
+      vertex: VERTEX_HEAD + lookDefines(LOOKS[kind]) + VERTEX_FRONTS + body.vertex,
       fragment: FRAGMENT_HEAD + body.fragment,
       name: `weather-${kind}`,
     });

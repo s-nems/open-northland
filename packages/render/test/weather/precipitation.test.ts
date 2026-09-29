@@ -8,10 +8,11 @@ import {
 } from '../../src/data/weather/precipitation.js';
 
 describe('weather intensity', () => {
-  it('makes light real-map weather clearly visible and saturates at the heaviest', () => {
+  it('shows light real-map weather gently and saturates at the heaviest', () => {
     expect(weatherIntensity('rain', 0)).toBe(0);
-    expect(weatherIntensity('rain', 0.05)).toBeGreaterThan(0.25);
-    expect(weatherIntensity('sand', 0.02)).toBeGreaterThan(0.35);
+    expect(weatherIntensity('rain', 0.05)).toBeGreaterThan(0.15);
+    expect(weatherIntensity('rain', 0.05)).toBeLessThan(0.3);
+    expect(weatherIntensity('sand', 0.02)).toBeGreaterThan(0.3);
     expect(weatherIntensity('snow', 0.3)).toBeGreaterThan(0.85);
     expect(weatherIntensity('rain', 1)).toBe(1);
   });

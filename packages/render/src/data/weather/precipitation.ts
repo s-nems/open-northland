@@ -18,8 +18,9 @@ export const WEATHER_FULL_AMOUNT: Readonly<Record<WeatherKind, number>> = {
   sand: 0.08,
 };
 
-/** Below 1 lifts light weather: 5% rain already shows well over a third of the heaviest density. */
-export const WEATHER_INTENSITY_GAMMA = 0.5;
+/** Below 1 lifts light weather a little: 5% rain shows about a quarter of the heaviest density, a light
+ *  shower rather than a downpour. */
+export const WEATHER_INTENSITY_GAMMA = 0.75;
 
 /** 0..1 visual strength of `amount` of `kind`. */
 export function weatherIntensity(kind: WeatherKind, amount: number): number {
@@ -48,9 +49,9 @@ export function stormOf(kind: WeatherKind, amount: number): number {
   return smoothstep(range.start, range.full, amount);
 }
 
-/** Screen px² per particle at full intensity and zoom 1. Rain and sand count streaks, snow flakes. Rain
- *  reads through fewer, better-shaped streaks; snow needs many flakes, most of them far and tiny. */
-export const PARTICLE_AREA_PX: Readonly<Record<WeatherKind, number>> = { rain: 560, snow: 190, sand: 480 };
+/** Screen px² per particle at full intensity and zoom 1. Rain and sand count streaks, snow flakes. Fewer,
+ *  fainter particles keep the ground readable; most are far, small and slow, a few near, large and fast. */
+export const PARTICLE_AREA_PX: Readonly<Record<WeatherKind, number>> = { rain: 700, snow: 260, sand: 700 };
 
 /** Particles wrap in a box this much larger than the screen on every side, so a long streak or a swaying
  *  flake never pops at the edge. */
@@ -84,12 +85,12 @@ export function particleWrapArea(screenW: number, screenH: number): number {
   return (screenW + 2 * PARTICLE_WRAP_MARGIN_PX) * (screenH + 2 * PARTICLE_WRAP_MARGIN_PX);
 }
 
-/** A full storm draws this share more particles than the heaviest calm weather: a blizzard is thick with
- *  flakes, a sandstorm's dust wall carries the rest. */
+/** A full storm draws this share more particles than the heaviest calm weather; the rest of a storm's
+ *  weight comes from wind, speed and gust fronts, not from covering the ground. */
 export const PARTICLE_STORM_BONUS: Readonly<Record<WeatherKind, number>> = {
-  rain: 0.7,
-  snow: 1.4,
-  sand: 0.3,
+  rain: 0.35,
+  snow: 0.7,
+  sand: 0.25,
 };
 
 /** Particles of `kind` to draw for the strongest `intensity` on screen and the view's `storm`. */

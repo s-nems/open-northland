@@ -94,6 +94,7 @@ export class WeatherSky {
       windX: conditions.windX,
       windY: conditions.windY,
       storm: conditions.storm,
+      gust: conditions.gust,
       sizeScale: zoomSize(zoom),
       flashX: flashing?.screenX ?? FLASH_UNPLACED,
       flashY: flashing?.screenY ?? FLASH_UNPLACED,

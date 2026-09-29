@@ -49,26 +49,30 @@ const GUST_CALM_SHARE = 0.35;
 const GUST_GAIN = 0.9;
 
 /** Lightning: strike chances are rolled per bucket of game seconds, and at most one strike per bucket. */
-export const LIGHTNING_BUCKET_SECONDS = 1.25;
-/** Rain storm strength where lightning starts, and the per-bucket chance in a full thunderstorm. */
+export const LIGHTNING_BUCKET_SECONDS = 3;
+/** Rain storm strength where lightning starts, and the per-bucket chance in a full thunderstorm: about
+ *  one strike in ten seconds, most of them distant. */
 const LIGHTNING_MIN_STORM = 0.3;
 const LIGHTNING_MAX_CHANCE = 0.3;
-/** A strike lands in the first part of its bucket, so consecutive strikes are never back to back. */
-const STRIKE_BUCKET_SHARE = 0.8;
+/** A strike lands in the first part of its bucket, so consecutive strikes are at least
+ *  {@link LIGHTNING_MIN_GAP_SECONDS} apart: with two pulses per strike, no second of play holds more than
+ *  three flashes (the WCAG 2.3.1 general flash limit). */
+const STRIKE_BUCKET_SHARE = 0.5;
+export const LIGHTNING_MIN_GAP_SECONDS = LIGHTNING_BUCKET_SECONDS * (1 - STRIKE_BUCKET_SHARE);
 /** Strike ground points spread past the screen edges, so some bolts are off screen. */
 const STRIKE_SPREAD_X = { min: -0.3, max: 1.3 } as const;
 const STRIKE_SPREAD_Y = { min: -0.15, max: 1.0 } as const;
 /** How far past the screen edge (in screen fractions) a strike reads as fully distant. */
 const STRIKE_OFFSCREEN_FAR = 0.3;
-/** Flash pulses after a strike: offset in seconds and peak; a third pulse only on some strikes. */
+/** Flash pulses after a strike: offset in seconds and peak; the second (a re-strike down the same
+ *  channel) only on some strikes. */
 const FLASH_PULSES: readonly { readonly at: number; readonly peak: number }[] = [
   { at: 0, peak: 1 },
-  { at: 0.11, peak: 0.6 },
-  { at: 0.26, peak: 0.45 },
+  { at: 0.14, peak: 0.5 },
 ];
-const THIRD_PULSE_CHANCE = 0.45;
+const SECOND_PULSE_CHANCE = 0.45;
 const FLASH_ATTACK_SECONDS = 0.02;
-const FLASH_DECAY_SECONDS = 0.06;
+const FLASH_DECAY_SECONDS = 0.05;
 /** A pulse is spent after this many decay constants. */
 const FLASH_TAIL_DECAYS = 6;
 const LAST_PULSE_AT = FLASH_PULSES.reduce((last, pulse) => Math.max(last, pulse.at), 0);
@@ -86,7 +90,7 @@ const SALT_HEADING = 0x51ed27;
 const SALT_GUST = 0x7a3b91;
 const SALT_GUST_DETAIL = 0x2c9e45;
 const SALT_STRIKE = 0x6d2f13;
-/** Hash draws per strike bucket: chance, time, x, y, distance, third pulse. */
+/** Hash draws per strike bucket: chance, time, x, y, distance, second pulse. */
 const STRIKE_DRAWS = 6;
 const TWO_PI = 2 * Math.PI;
 
@@ -155,15 +159,15 @@ export function strikeInBucket(seed: number, bucket: number, chance: number): Li
   };
 }
 
-function hasThirdPulse(seed: number, strike: LightningStrike): boolean {
-  return frac(seed ^ SALT_STRIKE, strike.id * STRIKE_DRAWS + 5) < THIRD_PULSE_CHANCE;
+function hasSecondPulse(seed: number, strike: LightningStrike): boolean {
+  return frac(seed ^ SALT_STRIKE, strike.id * STRIKE_DRAWS + 5) < SECOND_PULSE_CHANCE;
 }
 
 /** 0..1 flash brightness of one strike at `seconds`: a fast rise and decay per pulse, dimmer when far. */
 export function strikeFlash(seed: number, strike: LightningStrike, seconds: number): number {
   const age = seconds - strike.atSeconds;
   if (age < 0 || age > LIGHTNING_FLASH_SECONDS) return 0;
-  const pulses = hasThirdPulse(seed, strike) ? FLASH_PULSES.length : FLASH_PULSES.length - 1;
+  const pulses = hasSecondPulse(seed, strike) ? FLASH_PULSES.length : FLASH_PULSES.length - 1;
   let flash = 0;
   for (let i = 0; i < pulses; i++) {
     const pulse = FLASH_PULSES[i];

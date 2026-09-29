@@ -2,9 +2,12 @@ import { stormOf, weatherIntensity } from '../../data/weather/precipitation.js';
 import { WEATHER_KINDS, type WeatherAmounts, type WeatherKind } from '../../data/weather/types.js';
 
 /**
- * What the air does to the whole picture for the view's smoothed weather: a multiply grade, drifting
- * cloud shadows, a haze veil with moving mist, a storm vignette and the lightning flash. An
- * OpenNorthland enhancement (the original had no tint at all); every constant is tuned by eye.
+ * What the air does to the whole picture for the view's smoothed weather: a light tinted grade, drifting
+ * cloud shadows, a thin haze veil with moving mist, a faint storm vignette and the lightning flash. An
+ * OpenNorthland enhancement (the original had no tint at all); every constant is tuned by eye within a
+ * readability budget: weather is an accent over the game, so the heaviest storm dims the scene by about
+ * a tenth and veils it by at most {@link MAX_HAZE_ALPHA}. Mood comes from a cool or warm shift and a
+ * grey veil that mutes colour, not from darkness.
  */
 
 type Rgb = readonly [number, number, number];
@@ -16,7 +19,8 @@ interface KindAir {
   /** 0..1 darkening under drifting clouds, at full intensity and extra at full storm. */
   readonly cloudShadow: number;
   readonly stormCloudShadow: number;
-  /** Haze veil colour, its alpha at full intensity and the extra at full storm (whiteout, dust wall). */
+  /** Haze veil colour, its alpha at full intensity and the extra at full storm (whiteout, dust wall).
+   *  A colour near the scene's own mid-tone mutes saturation without darkening or washing it out. */
   readonly haze: Rgb;
   readonly hazeAlpha: number;
   readonly stormHazeAlpha: number;
@@ -28,46 +32,54 @@ interface KindAir {
 
 const AIR: Readonly<Record<WeatherKind, KindAir>> = {
   rain: {
-    grade: [0.8, 0.85, 0.92],
-    stormGrade: [0.66, 0.7, 0.8],
-    cloudShadow: 0.16,
-    stormCloudShadow: 0.18,
-    haze: [0.58, 0.64, 0.72],
-    hazeAlpha: 0.1,
-    stormHazeAlpha: 0.16,
-    mist: 0.55,
+    // Overcast and cool: blue kept, reds and greens lowered a little.
+    grade: [0.93, 0.95, 0.99],
+    stormGrade: [0.96, 0.97, 0.99],
+    cloudShadow: 0.05,
+    stormCloudShadow: 0.05,
+    haze: [0.5, 0.55, 0.6],
+    hazeAlpha: 0.05,
+    stormHazeAlpha: 0.07,
+    mist: 0.5,
     streaks: 0.15,
   },
   snow: {
-    // Overcast: the ground dims a little so the white flakes stand out against snow cover.
-    grade: [0.83, 0.86, 0.93],
-    stormGrade: [0.92, 0.94, 0.98],
-    cloudShadow: 0.08,
-    stormCloudShadow: 0.06,
-    haze: [0.9, 0.93, 0.98],
-    hazeAlpha: 0.06,
-    stormHazeAlpha: 0.34,
-    mist: 0.65,
+    // Flat winter light: nearly no dimming, a cold cast, and a pale blizzard veil.
+    grade: [0.96, 0.97, 1],
+    stormGrade: [0.98, 0.98, 1],
+    cloudShadow: 0.04,
+    stormCloudShadow: 0.03,
+    haze: [0.84, 0.87, 0.92],
+    hazeAlpha: 0.04,
+    stormHazeAlpha: 0.1,
+    mist: 0.55,
     streaks: 0.5,
   },
   sand: {
-    grade: [1, 0.93, 0.8],
-    stormGrade: [0.9, 0.8, 0.66],
+    // Warm dust light: blue absorbed, the veil a muted ochre that mutes the greens.
+    grade: [1, 0.96, 0.88],
+    stormGrade: [0.97, 0.93, 0.87],
     cloudShadow: 0,
-    stormCloudShadow: 0.05,
-    haze: [0.84, 0.66, 0.44],
-    hazeAlpha: 0.14,
-    stormHazeAlpha: 0.3,
-    mist: 0.75,
-    streaks: 0.85,
+    stormCloudShadow: 0.03,
+    haze: [0.7, 0.58, 0.42],
+    hazeAlpha: 0.06,
+    stormHazeAlpha: 0.08,
+    mist: 0.6,
+    streaks: 0.8,
   },
 };
 
-/** Vignette corner darkening at a full storm. */
-const STORM_VIGNETTE = 0.38;
-/** Additive cool flash colour at full flash, and how much of the grade's darkening a full flash lifts:
- *  a strike lights the scene up to about its clear-day look with a cold edge, never a white wash. */
-const FLASH_COLOUR: Rgb = [0.09, 0.11, 0.18];
+/** Ceiling of the combined mean veil alpha, whatever mix of kinds the view holds. */
+export const MAX_HAZE_ALPHA = 0.15;
+/** Floor of the grade's luminance when several kinds meet in one view and their grades multiply. */
+const MIN_GRADE_LUMINANCE = 0.9;
+/** Rec. 709 luma weights. */
+const LUMA: Rgb = [0.2126, 0.7152, 0.0722];
+/** Vignette corner darkening at a full storm: a faint frame, never a tunnel. */
+const STORM_VIGNETTE = 0.08;
+/** Additive cool flash colour at full flash, and how much of the grade's dimming a full flash lifts: a
+ *  soft cold lift of the sky, low in contrast, never a white wash. */
+const FLASH_COLOUR: Rgb = [0.035, 0.045, 0.07];
 const FLASH_LIFT = 0.75;
 /** Below this the air is left undrawn. */
 const VISIBLE_EPSILON = 0.002;
@@ -113,9 +125,14 @@ export function atmosphereLook(amounts: WeatherAmounts, flash: number): Atmosphe
     streaks = Math.max(streaks, air.streaks * kindStorm);
     strongest = Math.max(strongest, intensity);
   }
-  for (let c = 0; c < grade.length; c++)
-    grade[c] = (grade[c] ?? 1) + (1 - (grade[c] ?? 1)) * FLASH_LIFT * flash;
-  const hazeAlpha = 1 - clear;
+  const gradeLuminance = grade[0] * LUMA[0] + grade[1] * LUMA[1] + grade[2] * LUMA[2];
+  const keep = gradeLuminance < MIN_GRADE_LUMINANCE ? (1 - MIN_GRADE_LUMINANCE) / (1 - gradeLuminance) : 1;
+  const lift = FLASH_LIFT * flash;
+  for (let c = 0; c < grade.length; c++) {
+    const dimming = (1 - (grade[c] ?? 1)) * keep;
+    grade[c] = 1 - dimming * (1 - lift);
+  }
+  const hazeAlpha = Math.min(MAX_HAZE_ALPHA, 1 - clear);
   const norm = hazeWeight > 0 ? 1 / hazeWeight : 0;
   return {
     visible: strongest > VISIBLE_EPSILON || flash > 0,
