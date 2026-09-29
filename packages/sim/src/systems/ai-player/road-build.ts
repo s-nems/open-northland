@@ -54,7 +54,7 @@ const TRAFFIC_TURN = 1;
 
 /** Off-road walks a bucket counts, after the halving of {@link TRAFFIC_HALF_LIFE_TICKS}, before the seat
  *  paves from it (authored): a way a few men walk to work and back for minutes, not a passing errand. */
-export const TRAFFIC_ROAD_WALKS = 32;
+export const TRAFFIC_ROAD_WALKS = 20;
 
 /** How far from a bucket's average entry node its route may start, in map points (authored): half a
  *  bucket, so the start stays on the ground the walks crossed. */

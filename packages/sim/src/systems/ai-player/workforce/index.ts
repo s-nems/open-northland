@@ -62,6 +62,7 @@ export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.j
 export { builderJobOf } from './pool.js';
 export {
   BACKLOG_ROAD_CREW,
+  LATE_BACKLOG_ROAD_CREW,
   ROAD_BACKLOG_RELEASE_SITES,
   ROAD_BACKLOG_SITES,
   ROAD_CREW,

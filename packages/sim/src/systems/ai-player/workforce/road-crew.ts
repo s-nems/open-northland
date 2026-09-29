@@ -5,6 +5,7 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { type OwnedRoadSite, ownedRoadSites } from '../../roads/site-index.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
+import { LATE_ROAD_CREW_FROM_TICKS } from '../game-phase.js';
 import { anchorNodeOf } from '../node-geometry.js';
 import type { SpareForce } from './pool.js';
 
@@ -14,16 +15,21 @@ export const ROAD_CREW = 1;
 /** The road crew while the pending road sites pile up (authored). */
 export const BACKLOG_ROAD_CREW = 2;
 
+/** The backlog road crew from {@link LATE_ROAD_CREW_FROM_TICKS} on, when the grown seat has men to spare
+ *  and a network wide enough to keep a third builder paving (authored). */
+export const LATE_BACKLOG_ROAD_CREW = 3;
+
 /** From how many pending road sites the seat puts {@link BACKLOG_ROAD_CREW} builders on roads, and under
  *  how many it lets the extra ones go again (authored): the gap keeps a crew from flipping at one line. */
 export const ROAD_BACKLOG_SITES = 12;
 export const ROAD_BACKLOG_RELEASE_SITES = 6;
 
-/** The road crew the seat wants with `pending` road sites and `held` builders already on a run. */
-export function roadCrewTarget(pending: number, held: number): number {
+/** The road crew the seat wants at `tick` with `pending` road sites and `held` builders already on a run. */
+export function roadCrewTarget(pending: number, held: number, tick: number): number {
   if (pending === 0) return 0;
-  if (pending >= ROAD_BACKLOG_SITES) return BACKLOG_ROAD_CREW;
-  if (held > ROAD_CREW && pending >= ROAD_BACKLOG_RELEASE_SITES) return Math.min(held, BACKLOG_ROAD_CREW);
+  const backlogCrew = tick >= LATE_ROAD_CREW_FROM_TICKS ? LATE_BACKLOG_ROAD_CREW : BACKLOG_ROAD_CREW;
+  if (pending >= ROAD_BACKLOG_SITES) return backlogCrew;
+  if (held > ROAD_CREW && pending >= ROAD_BACKLOG_RELEASE_SITES) return Math.min(held, backlogCrew);
   return ROAD_CREW;
 }
 
@@ -45,7 +51,7 @@ export function allocateRoadCrew(
   const terrain = ctx.terrain;
   if (terrain === undefined || builderJob === null) return { commands: [], crew: roadsters.length };
   const sites = ownedRoadSites(world, terrain, player);
-  const target = roadCrewTarget(sites.size, roadsters.length);
+  const target = roadCrewTarget(sites.size, roadsters.length, ctx.tick);
   const commands: PlayerCommand[] = [];
   for (const e of roadsters.slice(target)) {
     if (!atomicHoldsSettler(world, e)) commands.push({ kind: 'unassignBuilder', entity: e });

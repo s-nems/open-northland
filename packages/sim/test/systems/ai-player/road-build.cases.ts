@@ -5,7 +5,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
 import { spotAcceptor } from '../../../src/systems/ai-player/build-order/placement.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
-import { ROADS_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
+import { LATE_ROAD_CREW_FROM_TICKS, ROADS_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
 import {
   BACKLOG_ROAD_CREW,
   DEFAULT_BUILD_ORDER,
@@ -24,6 +24,10 @@ import {
   ROAD_SITE_SHORTAGE_POSTS,
   wantedCollectorGoods,
 } from '../../../src/systems/ai-player/workforce/collectors/index.js';
+import {
+  LATE_BACKLOG_ROAD_CREW,
+  roadCrewTarget,
+} from '../../../src/systems/ai-player/workforce/road-crew.js';
 import { createSignpost } from '../../../src/systems/index.js';
 import { layRoad, roadNodeCount, roadNodes } from '../../../src/systems/roads/index.js';
 import { roadSitesByNode } from '../../../src/systems/roads/site-index.js';
@@ -345,5 +349,12 @@ describe('road build module (roadBuild)', () => {
     it('same seed twice gives byte-identical state', { timeout: 60_000 }, () => {
       expect(layingRun(5).hashState()).toBe(layingRun(5).hashState());
     });
+  });
+
+  it('takes a third roadster on a backlog only from the late road crew time', () => {
+    const early = LATE_ROAD_CREW_FROM_TICKS - 1;
+    expect(roadCrewTarget(ROAD_BACKLOG_SITES, 0, early)).toBe(BACKLOG_ROAD_CREW);
+    expect(roadCrewTarget(ROAD_BACKLOG_SITES, 0, LATE_ROAD_CREW_FROM_TICKS)).toBe(LATE_BACKLOG_ROAD_CREW);
+    expect(roadCrewTarget(1, 0, LATE_ROAD_CREW_FROM_TICKS)).toBe(ROAD_CREW);
   });
 });
