@@ -136,6 +136,8 @@ function refusals(s: Simulation): string[] {
     .flatMap((ev) => (ev.kind === 'vehicleMoveRefused' ? [`${ev.entity}:${ev.reason}:${ev.player}`] : []));
 }
 
+/** Sixteen map points at the catapult's grass period, with room for its turns. */
+const CATAPULT_CROSSING_TICKS = 400;
 /** Ticks a shoved settler's walk may take once the drive has ended. */
 const SHOVE_WALK_TICKS = 20;
 
@@ -395,9 +397,10 @@ describe('moveVehicle', () => {
     const s = sim();
     const terrain = s.terrain;
     if (terrain === undefined) throw new Error('map missing');
-    // A fence with a one-node gap at (10, 8): a cart's width, not a catapult's.
+    // A fence three posts thick with a one-row gap at y 8: a cart's width, while the catapult's disc at
+    // (10, 8) takes four posts, past the tree tolerance.
     for (let y = 0; y < 2 * MAP_CELLS; y++) {
-      if (y !== 8) post(s, 10, y);
+      if (y !== 8) for (const x of [9, 10, 11]) post(s, x, y);
     }
     const cart = commanded(s, HANDCART, 4, 8);
     const catapult = commanded(s, CATAPULT, 4, 12);
@@ -409,6 +412,19 @@ describe('moveVehicle', () => {
     expect(refusals(s)).toEqual([`${catapult}:noPath:${P0}`]);
     driveOut(s, cart);
     expect(anchorOf(s, cart)).toEqual({ hx: 20, hy: 8 });
+  });
+
+  it('squeezes a catapult through a one-node gap in a single line of trees', () => {
+    const s = sim();
+    for (let y = 0; y < 2 * MAP_CELLS; y++) {
+      if (y !== 8) post(s, 10, y);
+    }
+    const catapult = commanded(s, CATAPULT, 4, 8);
+    order(s, catapult, 20, 8);
+    s.step();
+    expect(refusals(s)).toEqual([]);
+    driveOut(s, catapult, CATAPULT_CROSSING_TICKS);
+    expect(anchorOf(s, catapult)).toEqual({ hx: 20, hy: 8 });
   });
 
   it('stops on the node it is crossing with the interrupted task and takes a fresh order after', () => {

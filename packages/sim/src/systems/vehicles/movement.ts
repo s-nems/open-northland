@@ -26,7 +26,7 @@ import {
   vehicleBlockedCells,
   vehicleFootprintNodes,
 } from '../footprint/index.js';
-import { groundBlockOverlay, vehicleClearance } from '../footprint/vehicle-clearance.js';
+import { groundBlockOverlay, landVehicleFits, vehicleClearance } from '../footprint/vehicle-clearance.js';
 import { isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { walkTurnSteps } from '../movement/turning.js';
 import {
@@ -97,9 +97,22 @@ function continentOf(terrain: TerrainGraph, node: NodeId): number {
   return terrain.componentOf(node);
 }
 
+/** Whether `type` may stand on a node by its size: a ship by the water's free-size class, a land
+ *  vehicle by {@link landVehicleFits}. */
+function vehicleFits(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  type: VehicleType,
+): (node: NodeId) => boolean {
+  if (vehicleTraversal(type) === 'land') return landVehicleFits(world, ctx, terrain, type.logicSize);
+  const clearance = vehicleClearance(world, ctx, terrain);
+  return (node) => clearance.classOf(node) >= type.logicSize;
+}
+
 /**
- * The walk-block a vehicle routes under: ground blockers, nodes whose free-size class is below the
- * vehicle's `logicSize`, and every other vehicle's standing cells. Its own cells are exempt so a
+ * The walk-block a vehicle routes under: ground blockers, nodes its size does not fit
+ * ({@link vehicleFits}), and every other vehicle's standing cells. Its own cells are exempt so a
  * catapult can step through its own ring.
  */
 export function vehicleWalkBlocks(
@@ -110,12 +123,11 @@ export function vehicleWalkBlocks(
   type: VehicleType,
 ): BlockOverlay {
   const ground = groundBlockOverlay(world, ctx, terrain);
-  const clearance = vehicleClearance(world, ctx, terrain);
+  const fits = vehicleFits(world, ctx, terrain, type);
   const vehicles = vehicleBlockedCells(world, ctx, terrain);
   const own = new Set(vehicleFootprintNodes(world, ctx.content, terrain, vehicle));
   return {
-    has: (node) =>
-      ground.has(node) || clearance.classOf(node) < type.logicSize || (vehicles.has(node) && !own.has(node)),
+    has: (node) => ground.has(node) || !fits(node) || (vehicles.has(node) && !own.has(node)),
     size: ground.size + vehicles.size + 1, // never empty: the clearance term is not a set
   };
 }

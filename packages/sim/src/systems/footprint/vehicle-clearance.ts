@@ -11,6 +11,8 @@ import { landscapeBlocks } from '../landscape/view.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
+import { hexDisc } from './vehicle-footprint.js';
+import { standingWallCells } from './wall-joints.js';
 
 // The per-world free-size classes vehicles route by, on land and on water, over the ground walk-block
 // (buildings and walls, resources, landscapes; never vehicles, which the mover judges against each other
@@ -195,4 +197,64 @@ function isFresh(world: World, memo: ClearanceMemo): boolean {
     world.componentValueGeneration(Building) === memo.buildingValueGen &&
     SOURCES.every((source) => world.componentGeneration(source) === (memo.gens.get(source) ?? 0))
   );
+}
+
+/** Resource cells (trees, stones) a land vehicle's disc may overlap beyond its anchor. */
+export const TREE_TOLERANCE_NEIGHBOURS = 2;
+/** Building cells a land vehicle's disc may overlap beyond its anchor. Walls never count here. */
+export const BUILDING_TOLERANCE_NEIGHBOURS = 2;
+
+/**
+ * Whether a land vehicle of `logicSize` may stand on a node: its free-size class admits it, or the
+ * anchor is open and the rest of its disc is open land of the anchor's component except for at most
+ * {@link TREE_TOLERANCE_NEIGHBOURS} resource cells and {@link BUILDING_TOLERANCE_NEIGHBOURS} building
+ * cells. Landscapes, water, unwalkable ground and walls stay hard; a building cell touching a wall cell
+ * counts as wall, which also covers the wall joint seals. Deviation from the original, whose class
+ * test admits no overlap: the catapult squeezes between trees and houses like a settler walking by.
+ * Read within one decision, like {@link vehicleClearance}.
+ */
+export function landVehicleFits(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  logicSize: number,
+): (node: NodeId) => boolean {
+  const clearance = vehicleClearance(world, ctx, terrain);
+  if (logicSize < 1) return (node) => clearance.classOf(node) >= logicSize;
+  const buildings = buildingBlockedCells(world, ctx, terrain);
+  const resources = resourceBlockedCells(world, terrain);
+  const landscapes = landscapeBlocks(world, terrain).walk;
+  const walls = standingWallCells(world, terrain).walls;
+  const touchesWall = (node: NodeId): boolean => {
+    if (walls.has(node)) return true;
+    const centre = { hx: terrain.xOf(node), hy: terrain.yOf(node) };
+    for (const { hx, hy } of hexDisc(centre, 1)) {
+      if (terrain.inBounds(hx, hy) && walls.has(terrain.nodeAt(hx, hy))) return true;
+    }
+    return false;
+  };
+  return (node) => {
+    if (clearance.classOf(node) >= logicSize) return true;
+    if (!terrain.isWalkable(node) || buildings.has(node) || resources.has(node) || landscapes.has(node)) {
+      return false;
+    }
+    const component = terrain.componentOf(node);
+    const centre = { hx: terrain.xOf(node), hy: terrain.yOf(node) };
+    let trees = 0;
+    let houses = 0;
+    for (const { hx, hy } of hexDisc(centre, logicSize)) {
+      if (!terrain.inBounds(hx, hy)) return false;
+      const cell = terrain.nodeAt(hx, hy);
+      if (cell === node) continue;
+      if (!terrain.isWalkable(cell) || terrain.componentOf(cell) !== component || landscapes.has(cell)) {
+        return false;
+      }
+      if (buildings.has(cell)) {
+        if (touchesWall(cell) || ++houses > BUILDING_TOLERANCE_NEIGHBOURS) return false;
+      } else if (resources.has(cell) && ++trees > TREE_TOLERANCE_NEIGHBOURS) {
+        return false;
+      }
+    }
+    return true;
+  };
 }

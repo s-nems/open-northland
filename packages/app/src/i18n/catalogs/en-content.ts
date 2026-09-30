@@ -323,6 +323,11 @@ export const enContent = {
       summary:
         'Two crewed catapults are marched east with an attack-move. Neither enemy hut is in reach at the start; each comes into sight on the way, so the catapults stop, raze it and drive on to their goals. Select a catapult, press the attack-move key and click a spot to march it yourself.',
     },
+    'vehicle-tight-gap': {
+      title: 'Vehicle tight gaps',
+      summary:
+        'A palisade runs across the map, broken by lanes from west to east: two houses 1, 2, 3 and 4 nodes apart, tree lines with gaps of 1, 2 and 3 nodes, a sparse forest, and bare wall openings of 2 and 3 nodes. Four catapults, two ox carts and a handcart drive across, some north to south, some back. A catapult fits between houses two nodes apart and through any single tree gap, but not between houses one node apart, where it goes round by the next lane, nor through a wall opening narrower than three. Carts pass every gap. Select a vehicle and send it through a lane yourself.',
+    },
     school: {
       title: 'Learning a profession',
       summary:

@@ -58,10 +58,24 @@ export function placeBuiltSandboxBuilding(
   owner: number = HUMAN_PLAYER,
   opts: { readonly fillStock?: boolean; readonly tribe?: number } = {},
 ): Entity {
+  const node = cellAnchorNode(x, y);
+  return placeBuiltSandboxBuildingAtNode(sim, ref, node.hx, node.hy, owner, opts);
+}
+
+/** {@link placeBuiltSandboxBuilding} anchored at half-cell node `(hx, hy)`, for a scene that spaces
+ *  buildings node by node. */
+export function placeBuiltSandboxBuildingAtNode(
+  sim: Simulation,
+  ref: number | string,
+  hx: number,
+  hy: number,
+  owner: number = HUMAN_PLAYER,
+  opts: { readonly fillStock?: boolean; readonly tribe?: number } = {},
+): Entity {
   const { Building, Health, Owner, Position, Stockpile } = components;
   const typeId = resolveVikingBuilding(ref).typeId;
   const def = buildingDef(sim, typeId);
-  const node = cellAnchorNode(x, y);
+  const node = { hx, hy };
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(node.hx, node.hy));
   const level = buildingLevelForType(sim.content, typeId);

@@ -7,6 +7,7 @@ export {
   buildingDef,
   buildingDoorNode,
   placeBuiltSandboxBuilding,
+  placeBuiltSandboxBuildingAtNode,
   placeSandboxBuilding,
   placeSandboxSite,
   spawnWorkersAtDoor,

@@ -19,7 +19,7 @@ Seven records, ids 1..6 (0 is "none"). `logicdefines.inc` names them `CART_HAND 
 
 | Key | Runtime meaning |
 | --- | --- |
-| `logicsize` | Clearance class the vehicle needs: a node is passable when its free-size class `>= logicsize`. Also the footprint radius (hex disc) and the ruin-scatter radius. Carts 0, catapult 1, ships 2. |
+| `logicsize` | Clearance class the vehicle needs: a node is passable when its free-size class `>= logicsize` (land vehicles: see "Movement" for the tolerance). Also the footprint radius (hex disc) and the ruin-scatter radius. Carts 0, catapult 1, ships 2. |
 | `stockslots` | One shared unit budget across all goods (15, 30, 50, 200, catapult 0). |
 | `logicgood n` | Storable good ids (1..55). Storage is a byte per allowed good: current, wanted, reserved. Goods 18, 19, 22 alias onto 16 and 20 onto 17 when not listed themselves. |
 | `passengerslots` | Ordinary passenger slots. The commander occupies one extra slot at index `passengerslots`, so real capacity is `passengerslots + 1`. |
@@ -248,7 +248,11 @@ settler, cart or catapult walks the land nodes, a ship sails the water nodes (un
 land vertex claims), and the static component labels land and water bodies in one key space, land
 first, so the goto's continent test and the dock ring search compare the same key on either side.
 The free-size class is the largest hex-disc radius of open same-continent nodes around the node,
-capped at 7, one field for land and water (`nav/clearance.ts`); `g` is the roughness of the node a leg
+capped at 7, one field for land and water (`nav/clearance.ts`). Deviation (owner's choice): a land
+vehicle whose class falls short still fits an open node when the rest of its disc holds at most two
+resource cells (trees, stones) and at most two building cells, none touching a wall; walls, landscapes
+and water stay hard, so the catapult squeezes between trees and houses but never through a narrower
+wall gap (`landVehicleFits`); ships keep the plain class test. `g` is the roughness of the node a leg
 leaves (`TerrainGraph.roughnessAt`; a map without the lane reads 2 on land and 1 on water, the corpus's
 common values); the walk range is a hexagon
 distance gate on the goto; an off-continent or out-of-range target raises `vehicleNoPath` instead of

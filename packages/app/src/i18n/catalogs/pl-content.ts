@@ -322,6 +322,11 @@ export const plContent = {
       summary:
         'Dwie obsadzone katapulty dostają rozkaz ataku z marszu na wschód. Na starcie żadna wroga chata nie jest w zasięgu; każda pojawia się po drodze, więc katapulty stają, burzą ją i jadą dalej do celu. Zaznacz katapultę, naciśnij klawisz ataku z marszu i kliknij punkt, aby poprowadzić ją samemu.',
     },
+    'vehicle-tight-gap': {
+      title: 'Wąskie przejazdy',
+      summary:
+        'Przez mapę biegnie palisada z przejściami od zachodu na wschód: dwa domy w odstępie 1, 2, 3 i 4 węzłów, rzędy drzew z lukami 1, 2 i 3 węzłów, rzadki las oraz gołe przerwy w murze na 2 i 3 węzły. Cztery katapulty, dwa wozy z wołem i taczka przejeżdżają na drugą stronę, jedne z północy na południe, inne z powrotem. Katapulta mieści się między domami oddalonymi o dwa węzły i przez każdą lukę w rzędzie drzew, ale nie między domami oddalonymi o jeden węzeł, gdzie objeżdża sąsiednim przejściem, ani przez przerwę w murze węższą niż trzy. Wozy przejadą każdą luką. Zaznacz pojazd i sam poślij go przez wybrane przejście.',
+    },
     school: {
       title: 'Nauka zawodu',
       summary:

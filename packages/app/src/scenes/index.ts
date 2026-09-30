@@ -58,6 +58,7 @@ import { vehicleOxScene } from './vehicle-ox.js';
 import { vehicleShipColumnScene } from './vehicle-ship-column.js';
 import { vehicleShipsScene } from './vehicle-ships.js';
 import { vehicleShipyardScene } from './vehicle-shipyard.js';
+import { vehicleTightGapScene } from './vehicle-tight-gap.js';
 import { vehicleYardScene } from './vehicle-yard.js';
 import { vehiclesScene } from './vehicles.js';
 import { victoryScene } from './victory.js';
@@ -138,6 +139,7 @@ export const SCENES: readonly SceneDefinition[] = [
   vehicleCargoScene,
   vehicleCatapultScene,
   vehicleAttackMoveScene,
+  vehicleTightGapScene,
 ];
 
 export function getScene(id: string): SceneDefinition | undefined {
