@@ -17,6 +17,49 @@ const A = defineComponent<{ n: number }>('CacheA', 'economy');
 const B = defineComponent<{ n: number }>('CacheB', 'economy');
 
 describe('World cache coherence', () => {
+  it('keeps value revisions and write generations isolated across world registration, removal and restore', () => {
+    const first = new World();
+    const second = new World();
+    const a = first.create();
+    const b = second.create();
+    first.add(a, A, { n: 1 });
+    first.add(a, B, { n: 2 });
+    second.add(b, B, { n: 3 });
+    second.add(b, A, { n: 4 });
+    const secondRevision = second.revisionOf(b, A);
+
+    first.mut(a, A).n = 5;
+    expect(first.get(a, A)).toEqual({ n: 5 });
+    expect(first.componentValueGeneration(A)).toBe(1);
+    expect(second.get(b, A)).toEqual({ n: 4 });
+    expect(second.revisionOf(b, A)).toBe(secondRevision);
+    expect(second.componentValueGeneration(A)).toBe(0);
+    expect(first.componentValueGeneration(B)).toBe(0);
+
+    const writtenRevision = first.revisionOf(a, A);
+    first.remove(a, A);
+    expect(first.revisionOf(a, A)).toBeUndefined();
+    expect(first.tryMut(a, A)).toBeUndefined();
+    expect(first.componentValueGeneration(A)).toBe(1);
+    first.add(a, A, { n: 6 });
+    expect(first.revisionOf(a, A)).toBeGreaterThan(writtenRevision ?? 0);
+    expect(first.componentValueGeneration(A)).toBe(1);
+    expect(second.get(b, A)).toEqual({ n: 4 });
+
+    const restored = new World();
+    const c = restored.create();
+    restored.restoreStore(A, [[c, { n: 7 }]]);
+    expect(restored.revisionOf(c, A)).toBe(2);
+    expect(restored.componentValueGeneration(A)).toBe(0);
+    restored.mut(c, A).n = 8;
+    expect(restored.get(c, A)).toEqual({ n: 8 });
+    expect(restored.revisionOf(c, A)).toBe(3);
+    expect(restored.componentValueGeneration(A)).toBe(1);
+    expect(first.get(a, A)).toEqual({ n: 6 });
+    expect(second.get(b, A)).toEqual({ n: 4 });
+    expect(second.revisionOf(b, A)).toBe(secondRevision);
+  });
+
   it('verifyCaches reports a consumer that reversed the shared canonicalEntities list', () => {
     const w = new World();
     w.create();

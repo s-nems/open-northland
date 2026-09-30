@@ -52,7 +52,7 @@ export class World {
   private readonly componentGenerations = new Map<Component<unknown>, number>();
   /** Per-component in-place value-write generation (see {@link mut}), separate from the membership
    *  generations above so spatial indexes keyed on add/remove stay unaffected. */
-  private readonly componentValueGenerations = new Map<Component<unknown>, number>();
+  private readonly componentValueGenerations: Array<number | undefined> = [];
   private readonly componentRevisions = new ComponentRevisions();
   private readonly membershipJournals = new GenerationJournals();
   private readonly valueJournals = new GenerationJournals();
@@ -195,7 +195,7 @@ export class World {
 
   private recordValueWrite(component: Component<unknown>, entity: Entity): void {
     this.recordComponentWrite(component, entity);
-    this.componentValueGenerations.set(component, (this.componentValueGenerations.get(component) ?? 0) + 1);
+    this.componentValueGenerations[component.id] = (this.componentValueGenerations[component.id] ?? 0) + 1;
     this.valueJournals.record(component, entity);
     this.changeFeeds.valueWritten(component, entity);
   }
@@ -208,7 +208,7 @@ export class World {
   /** In-place value writes seen by `component`'s store so far. A cache over stored VALUES memoizes against
    *  this; one over membership uses {@link componentGeneration}. */
   componentValueGeneration(component: Component<unknown>): number {
-    return this.componentValueGenerations.get(component) ?? 0;
+    return this.componentValueGenerations[component.id] ?? 0;
   }
 
   /** The revision of `entity`'s stored `component` value, undefined while it carries none. A fresh value
