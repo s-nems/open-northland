@@ -183,20 +183,22 @@ export function targetBodyNodes(
  * Nothing readable records how the original filtered candidates, so refusing one here is an approximation
  * (source basis "Combat chase"), held to the chase's own release rule so the two cannot disagree.
  */
-export function reachableTargetGate(
+export function targetReachable(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   here: NodeId,
   weapon: WeaponBand,
-): (t: Entity) => boolean {
-  const bank = terrain.isWalkable(here) ? terrain.componentOf(here) : -1;
-  if (bank < 0) return () => true;
-  return (t) => {
-    const body = targetBodyNodes(world, ctx, terrain, t);
-    if (body === null) return firingCellIn(terrain, bank, here, entityNode(world, terrain, t), weapon);
-    return body.some((wall) => firingCellIn(terrain, bank, here, wall, weapon));
-  };
+  target: Entity,
+  bank: number,
+): boolean {
+  if (bank < 0) return true;
+  const body = targetBodyNodes(world, ctx, terrain, target);
+  if (body === null) return firingCellIn(terrain, bank, here, entityNode(world, terrain, target), weapon);
+  for (const wall of body) {
+    if (firingCellIn(terrain, bank, here, wall, weapon)) return true;
+  }
+  return false;
 }
 
 /** Whether walk component `component` holds a cell in `weapon`'s band around `target`. */

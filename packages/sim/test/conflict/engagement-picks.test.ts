@@ -7,12 +7,20 @@ import {
   MoveGoal,
   Owner,
   Position,
+  Settler,
   Stance,
+  Weapon,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { hexNeighboursOf, nodeOfPosition } from '../../src/nav/halfcell.js';
-import { RESCAN_PERIOD_TICKS, RESCAN_WALK_STEPS } from '../../src/systems/conflict/engagement.js';
+import { CombatIndex } from '../../src/systems/conflict/combat-index.js';
+import {
+  EngagementSpecs,
+  RESCAN_PERIOD_TICKS,
+  RESCAN_WALK_STEPS,
+} from '../../src/systems/conflict/engagement.js';
+import { attackerWeapon } from '../../src/systems/conflict/weapons.js';
 import {
   combatSystem,
   DEFEND_LEASH_NODES,
@@ -549,4 +557,40 @@ describe('engagement - two fighters closing on each other', () => {
       expect(swung).toBe(true);
     }
   });
+});
+
+it('reuses a pass spec without retaining a preceding unit owner or leash', () => {
+  const s = sim();
+  const terrain = s.terrain;
+  if (terrain === undefined) throw new Error('map missing');
+  const defender = unit(s, 0, P0, MILITARY_MODE.DEFEND);
+  const attacker = unit(s, 40, P0, MILITARY_MODE.ATTACK);
+  const enemy = unit(s, 20, P1, MILITARY_MODE.ATTACK);
+  const ctx = ctxOf(s);
+  const specs = new EngagementSpecs(s.world, ctx, terrain, new CombatIndex(s.world, ctx, terrain));
+  const build = (e: Entity, mode: MilitaryMode) => {
+    const person = s.world.get(e, Settler);
+    const weapon = attackerWeapon(ctx, person.tribe, person.jobType, s.world.tryGet(e, Weapon)?.weaponTypeId);
+    if (weapon === null) throw new Error('fixture weapon missing');
+    const p = s.world.get(e, Position);
+    const node = nodeOfPosition(p.x, p.y);
+    return specs.forUnit(
+      e,
+      terrain.nodeAt(node.hx, node.hy),
+      { owned: true, ordered: false, mode, post: null },
+      person,
+      weapon,
+    );
+  };
+  const first = build(defender, MILITARY_MODE.DEFEND);
+  expect(first.defend).not.toBeNull();
+  expect(first.accept(enemy)).toBe(false);
+  const second = build(attacker, MILITARY_MODE.ATTACK);
+  expect(second).toBe(first);
+  expect(second.defend).toBeNull();
+  expect(second.accept(enemy)).toBe(true);
+  const third = build(enemy, MILITARY_MODE.ATTACK);
+  expect(third.player).toBe(P1);
+  expect(third.accept(enemy)).toBe(false);
+  expect(third.accept(attacker)).toBe(true);
 });

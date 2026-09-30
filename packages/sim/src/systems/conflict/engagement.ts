@@ -37,7 +37,7 @@ import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
 import { type Crowding, type OwnClaims, type Side, type WeaponBand, withinBand } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
-import { combatTargetNode, reachableTargetGate } from './target-node.js';
+import { combatTargetNode, targetReachable } from './target-node.js';
 import {
   ANIMAL_AGGRO_RADIUS_NODES,
   ANIMAL_LEASH_NODES,
@@ -83,201 +83,243 @@ function stanceAnchor(world: World, e: Entity, here: NodeId): NodeId {
   return world.tryGet(e, Stance)?.anchorCell ?? here;
 }
 
-/**
- * How a combatant acquires a target this tick, resolved from its stance: the nearest-search `accept` filter, the
- * near/far reach band (`minDist`/`searchRadius`), and the anchor leash the chase respects (a DEFEND post, a
- * hunter's ground). A search radius past `mayEngage`'s bound (`acting.ts`) must widen it and
- * `presenceBound` too.
- */
-export function engageSpec(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  index: CombatIndex,
-  e: Entity,
-  here: NodeId,
-  stance: CombatantStance,
-  attacker: SettlerIdentity,
-  weapon: ArmedWith,
-): EngageSpec {
-  const { owned, ordered } = stance;
-  // Only a melee fighter on its feet forms a front: a bow keeps its standoff and a garrison never leaves
-  // its tower, so neither weighs crowding, turns after a blow or steps along a seam.
-  const contact = stance.post === null && !isRangedWeapon(weapon.weapon);
-  // Fog gate (authored): an owned unit auto-acquires only targets its player currently sees. The
-  // explicit-AttackOrder path stays ungated - an ordered chase follows its target into fog. Unowned
-  // combatants have no fog.
-  const viewer = owned ? world.tryGet(e, Owner) : undefined;
-  const seesTarget = (t: Entity): boolean =>
-    viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t);
-  // Probed last, behind the cheap hostility and fog reads: it can walk a candidate's whole reach band.
-  const reachable = reachableTargetGate(world, ctx, terrain, here, weapon);
-  const hostileInSight = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t) && seesTarget(t);
-  const generalAccept = (t: Entity): boolean => hostileInSight(t) && reachable(t);
-  // The default deprioritized tier: plain buildings fall behind units and high-value structures.
-  const lowPriorityBuildings = (t: Entity): boolean => index.isLowPriorityBuilding(t);
-  const minDist = weapon.minRange;
-  // Original behavior: an advancing search starts at the unit's own node, so an archer sees an enemy inside
-  // its dead zone and the chase steps it back out to its reach.
-  const advanceNear = 0;
-
-  const hunts = isHunterJob(ctx.content, attacker.jobType);
-  // A hunter is never presence-gated, in any stance: its prey filter admits the passive wildlife the
-  // presence grid discounts.
-  const player = hunts ? null : (viewer?.player ?? null);
-
-  // A held enemy stays held while it is still a live hostile it can reach, without the fog gate: the
-  // original keeps its target until it is gone.
-  const holdable = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t) && reachable(t);
-
-  // A garrison outranks every stance: its search band is the tower-boosted reach (`weapon` already carries
-  // the bonus), never the advance sight radius.
-  if (stance.post !== null) {
-    return {
-      accept: adultOnly(world, generalAccept),
-      minDist,
-      searchRadius: weapon.maxRange,
-      player,
-      lowPriority: lowPriorityBuildings,
-      lock: null,
-      defend: null,
-      hold: {
-        keep: (t) => holdable(t) && inReachOf(terrain, world, ctx, here, t, weapon.maxRange),
-        band: weapon,
-        contact,
-      },
-    };
-  }
-
-  // An advancing seeker also skips the enemies its chase gave up as sealed off, unless one stands inside its
-  // band: only the walk is refused, so the swing lands the moment a defender steps out of its compound.
-  const givenUp = givenUpTargetVeto(world, ctx, e);
-  const inBand = (t: Entity): boolean =>
-    withinBand(weapon, hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, t)));
-  const advanceAccept =
-    givenUp === undefined
-      ? generalAccept
-      : (t: Entity): boolean => hostileInSight(t) && (!givenUp(t) || inBand(t)) && reachable(t);
-
-  if (owned && !ordered && stance.mode === MILITARY_MODE.DEFEND) {
-    const anchor = stanceAnchor(world, e, here);
-    const nearAnchor = (t: Entity, reach: number): boolean =>
-      hexNodeDistance(terrain, anchor, entityNode(world, terrain, t)) <= reach;
-    // The radius clause leads: it is a subtraction, while `advanceAccept` ends in a walk of the candidate's
-    // reach band.
-    const accept = (t: Entity): boolean => nearAnchor(t, DEFEND_RADIUS_NODES) && advanceAccept(t);
-    return {
-      accept: adultOnly(world, accept),
-      minDist: advanceNear,
-      // Every node within the radius of the anchor lies within this of `here`.
-      searchRadius: hexNodeDistance(terrain, here, anchor) + DEFEND_RADIUS_NODES,
-      player,
-      lowPriority: lowPriorityBuildings,
-      lock: null,
-      defend: { anchorCell: anchor, leash: DEFEND_LEASH_NODES + weapon.maxRange, metric: 'hex', hold: true },
-      hold: { keep: (t) => nearAnchor(t, DEFEND_LEASH_NODES) && holdable(t), band: weapon, contact },
-    };
-  }
-
-  // Original behavior: a fighter under IGNORE strikes an enemy inside its weapon's reach where it stands,
-  // and lets one go that strays past its leash.
-  if (
-    owned &&
-    !ordered &&
-    stance.mode === MILITARY_MODE.IGNORE &&
-    isFighterJob(ctx.content, attacker.jobType)
-  ) {
-    const anchor = stanceAnchor(world, e, here);
-    return {
-      accept: adultOnly(world, (t) => inBand(t) && advanceAccept(t)),
-      minDist,
-      searchRadius: weapon.maxRange,
-      player,
-      lowPriority: lowPriorityBuildings,
-      lock: null,
-      defend: { anchorCell: anchor, leash: IGNORE_LEASH_NODES + weapon.maxRange, metric: 'hex', hold: true },
-      hold: {
-        keep: (t) =>
-          hexNodeDistance(terrain, anchor, entityNode(world, terrain, t)) <= IGNORE_LEASH_NODES &&
-          holdable(t),
-        band: weapon,
-        contact,
-      },
-    };
-  }
-
-  if (
-    owned &&
-    !ordered &&
-    stance.mode === MILITARY_MODE.IGNORE &&
-    isHunterJob(ctx.content, attacker.jobType)
-  ) {
-    return hunterEngageSpec(
-      world,
-      ctx,
-      terrain,
-      index,
-      e,
-      here,
-      attacker.jobType,
-      seesTarget,
-      givenUp,
-      minDist,
-      SIGHT_RADIUS_NODES,
-    );
-  }
-
-  if (owned) {
-    return {
-      accept: adultOnly(world, advanceAccept),
-      minDist: advanceNear,
-      searchRadius: SIGHT_RADIUS_NODES,
-      player,
-      lowPriority: lowPriorityBuildings,
-      lock: null,
-      defend: null,
-      hold: { keep: holdable, band: weapon, contact },
-    };
-  }
-  // An unowned hostile animal advances on what its herd takes up; any other unowned combatant (a scenario
-  // civ) swings in place, its search capped at weapon reach.
-  if (isAnimalTribe(ctx.content, attacker.tribe)) {
-    const pursuit = wildPursuit(world, ctx, terrain, e, here, attacker);
-    const wild = { minDist: advanceNear, player, animalSeeker: true, lowPriority: lowPriorityBuildings };
-    switch (pursuit.kind) {
-      case 'hold':
-        // Approximation: the chase stops short of the leash rather than a point past it, and one it gives
-        // up walks home too.
-        return {
-          ...wild,
-          ...NO_SEARCH,
-          lock: { target: pursuit.target },
-          defend: pursuit.stay === undefined ? null : wildLeash(pursuit.stay),
-        };
-      case 'search':
-        return {
-          ...wild,
-          accept: advanceAccept,
-          searchRadius: ANIMAL_AGGRO_RADIUS_NODES,
-          searchCenter: pursuit.center,
-          lock: null,
-          defend: null,
-        };
-      case 'return':
-        return { ...wild, ...NO_SEARCH, lock: null, defend: wildLeash(pursuit.stay) };
-      case 'idle':
-        return { ...wild, ...NO_SEARCH, lock: null, defend: null };
-    }
-  }
-  return {
-    accept: advanceAccept,
-    minDist,
-    searchRadius: weapon.maxRange,
-    player,
-    lowPriority: lowPriorityBuildings,
-    lock: null,
-    defend: null,
+/** The callbacks and spec belong to one synchronous combat pass; no caller retains them beyond a
+ * unit's turn. Hunter subqueries use their own prey callbacks and never replace this seeker's input. */
+export class EngagementSpecs {
+  private input:
+    | {
+        e: Entity;
+        here: NodeId;
+        attacker: SettlerIdentity;
+        weapon: ArmedWith;
+        viewer: number | undefined;
+        bank: number;
+        givenUp: ((t: Entity) => boolean) | undefined;
+        anchor: NodeId;
+        kind: 'advance' | 'post' | 'defend' | 'ignore';
+      }
+    | undefined;
+  private readonly seesTarget = (t: Entity): boolean => {
+    const i = this.current();
+    return i.viewer === undefined || playerSeesEntity(this.world, this.ctx.fog, i.viewer, t);
   };
+  private readonly reachable = (t: Entity): boolean => {
+    const i = this.current();
+    return targetReachable(this.world, this.ctx, this.terrain, i.here, i.weapon, t, i.bank);
+  };
+  private readonly hostile = (t: Entity): boolean => {
+    const i = this.current();
+    return isValidTarget(this.world, this.ctx, i.e, i.attacker, t);
+  };
+  private readonly inBand = (t: Entity): boolean => {
+    const i = this.current();
+    return withinBand(
+      i.weapon,
+      hexNodeDistance(this.terrain, i.here, combatTargetNode(this.world, this.ctx, this.terrain, i.here, t)),
+    );
+  };
+  private readonly advanceAccept = (t: Entity): boolean => {
+    const i = this.current();
+    return (
+      this.hostile(t) &&
+      this.seesTarget(t) &&
+      (i.givenUp === undefined || !i.givenUp(t) || this.inBand(t)) &&
+      this.reachable(t)
+    );
+  };
+  private readonly accept = (t: Entity): boolean => {
+    if (this.world.has(t, Age)) return false;
+    const i = this.current();
+    if (
+      i.kind === 'defend' &&
+      hexNodeDistance(this.terrain, i.anchor, entityNode(this.world, this.terrain, t)) > DEFEND_RADIUS_NODES
+    )
+      return false;
+    if (i.kind === 'ignore' && !this.inBand(t)) return false;
+    return this.advanceAccept(t);
+  };
+  // A held hostile bypasses fog, retaining the original target until its stance leash or reach rejects it.
+  private readonly keep = (t: Entity): boolean => {
+    const i = this.current();
+    if (i.kind === 'post')
+      return (
+        this.hostile(t) &&
+        this.reachable(t) &&
+        inReachOf(this.terrain, this.world, this.ctx, i.here, t, i.weapon.maxRange)
+      );
+    if (
+      i.kind === 'ignore' &&
+      hexNodeDistance(this.terrain, i.anchor, entityNode(this.world, this.terrain, t)) > IGNORE_LEASH_NODES
+    )
+      return false;
+    if (
+      i.kind === 'defend' &&
+      hexNodeDistance(this.terrain, i.anchor, entityNode(this.world, this.terrain, t)) > DEFEND_LEASH_NODES
+    )
+      return false;
+    return this.hostile(t) && this.reachable(t);
+  };
+
+  private readonly lowPriority = (t: Entity): boolean => this.index.isLowPriorityBuilding(t);
+  private spec:
+    | {
+        accept: (t: Entity) => boolean;
+        minDist: number;
+        searchRadius: number;
+        player: number | null;
+        lowPriority: (t: Entity) => boolean;
+        lock: null;
+        defend: { anchorCell: NodeId; leash: number; metric: 'hex'; hold: boolean } | null;
+        hold: { keep: (t: Entity) => boolean; band: ArmedWith; contact: boolean };
+      }
+    | undefined;
+  private leash: NonNullable<NonNullable<EngagementSpecs['spec']>['defend']> | undefined;
+
+  constructor(
+    private readonly world: World,
+    private readonly ctx: SystemContext,
+    private readonly terrain: TerrainGraph,
+    private readonly index: CombatIndex,
+  ) {}
+
+  private current(): NonNullable<EngagementSpecs['input']> {
+    if (this.input === undefined) throw new Error('engagement spec used before its unit turn');
+    return this.input;
+  }
+
+  forUnit(
+    e: Entity,
+    here: NodeId,
+    stance: CombatantStance,
+    attacker: SettlerIdentity,
+    weapon: ArmedWith,
+  ): EngageSpec {
+    const { world, ctx, terrain, index } = this;
+    const { owned, ordered } = stance;
+    const viewer = owned ? world.tryGet(e, Owner)?.player : undefined;
+    const bank = terrain.isWalkable(here) ? terrain.componentOf(here) : -1;
+    const givenUp = stance.post === null ? givenUpTargetVeto(world, ctx, e) : undefined;
+    const anchor = stanceAnchor(world, e, here);
+    // A posted fighter acquires only within its boosted weapon band, regardless of stance.
+    const kind =
+      stance.post !== null
+        ? 'post'
+        : owned && !ordered && stance.mode === MILITARY_MODE.DEFEND
+          ? 'defend'
+          : owned &&
+              !ordered &&
+              stance.mode === MILITARY_MODE.IGNORE &&
+              isFighterJob(ctx.content, attacker.jobType)
+            ? 'ignore'
+            : 'advance';
+    this.input ??= { e, here, attacker, weapon, viewer, bank, givenUp, anchor, kind };
+    const input = this.input;
+    input.e = e;
+    input.here = here;
+    input.attacker = attacker;
+    input.weapon = weapon;
+    input.viewer = viewer;
+    input.bank = bank;
+    input.givenUp = givenUp;
+    input.anchor = anchor;
+    input.kind = kind;
+    if (
+      owned &&
+      stance.post === null &&
+      !ordered &&
+      stance.mode === MILITARY_MODE.IGNORE &&
+      isHunterJob(ctx.content, attacker.jobType)
+    ) {
+      return hunterEngageSpec(
+        world,
+        ctx,
+        terrain,
+        index,
+        e,
+        here,
+        attacker.jobType,
+        this.seesTarget,
+        givenUp,
+        weapon.minRange,
+        SIGHT_RADIUS_NODES,
+      );
+    }
+    if (owned || kind === 'post') {
+      this.spec ??= {
+        accept: this.accept,
+        minDist: 0,
+        searchRadius: 0,
+        player: null,
+        lowPriority: this.lowPriority,
+        lock: null,
+        defend: null,
+        hold: { keep: this.keep, band: weapon, contact: false },
+      };
+      const spec = this.spec;
+      if (kind === 'defend' || kind === 'ignore') {
+        this.leash ??= { anchorCell: anchor, leash: 0, metric: 'hex', hold: true };
+        this.leash.anchorCell = anchor;
+        this.leash.leash = (kind === 'defend' ? DEFEND_LEASH_NODES : IGNORE_LEASH_NODES) + weapon.maxRange;
+        spec.defend = this.leash;
+      } else spec.defend = null;
+      // Original behavior: advancing acquisition includes the bow's dead zone; IGNORE strikes in place.
+      spec.minDist = kind === 'post' || kind === 'ignore' ? weapon.minRange : 0;
+      spec.searchRadius =
+        kind === 'post' || kind === 'ignore'
+          ? weapon.maxRange
+          : kind === 'defend'
+            ? hexNodeDistance(terrain, here, anchor) + DEFEND_RADIUS_NODES
+            : SIGHT_RADIUS_NODES;
+      spec.player = isHunterJob(ctx.content, attacker.jobType) ? null : (viewer ?? null);
+      spec.hold.band = weapon;
+      spec.hold.contact = stance.post === null && !isRangedWeapon(weapon.weapon);
+      return spec;
+    }
+    const minDist = weapon.minRange;
+    const advanceNear = 0;
+    const player = null;
+    const lowPriorityBuildings = (t: Entity): boolean => index.isLowPriorityBuilding(t);
+    const advanceAccept = this.advanceAccept;
+    // An unowned hostile animal advances on what its herd takes up; any other unowned combatant (a scenario
+    // civ) swings in place, its search capped at weapon reach.
+    if (isAnimalTribe(ctx.content, attacker.tribe)) {
+      const pursuit = wildPursuit(world, ctx, terrain, e, here, attacker);
+      const wild = { minDist: advanceNear, player, animalSeeker: true, lowPriority: lowPriorityBuildings };
+      switch (pursuit.kind) {
+        case 'hold':
+          // Approximation: the chase stops short of the leash rather than a point past it, and one it gives
+          // up walks home too.
+          return {
+            ...wild,
+            ...NO_SEARCH,
+            lock: { target: pursuit.target },
+            defend: pursuit.stay === undefined ? null : wildLeash(pursuit.stay),
+          };
+        case 'search':
+          return {
+            ...wild,
+            accept: advanceAccept,
+            searchRadius: ANIMAL_AGGRO_RADIUS_NODES,
+            searchCenter: pursuit.center,
+            lock: null,
+            defend: null,
+          };
+        case 'return':
+          return { ...wild, ...NO_SEARCH, lock: null, defend: wildLeash(pursuit.stay) };
+        case 'idle':
+          return { ...wild, ...NO_SEARCH, lock: null, defend: null };
+      }
+    }
+    return {
+      accept: advanceAccept,
+      minDist,
+      searchRadius: weapon.maxRange,
+      player,
+      lowPriority: lowPriorityBuildings,
+      lock: null,
+      defend: null,
+    };
+  }
 }
 
 /** A search that admits nothing, over the seeker's own node alone. */
@@ -286,11 +328,6 @@ const NO_SEARCH = { accept: (): boolean => false, searchRadius: 0 } as const;
 /** A wild animal's leash on its stay point, which it walks back to once it lets its target go. */
 function wildLeash(stay: NodeId): NonNullable<EngageSpec['defend']> {
   return { anchorCell: stay, leash: ANIMAL_LEASH_NODES, metric: 'hex', hold: true };
-}
-
-/** `accept` narrowed to grown targets. Original behavior: a fighter picks no child for a target. */
-function adultOnly(world: World, accept: (t: Entity) => boolean): (t: Entity) => boolean {
-  return (t) => !world.has(t, Age) && accept(t);
 }
 
 /** Whether `t`'s combat node lies within `reach` map points of `here`. */

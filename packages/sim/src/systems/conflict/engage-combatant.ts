@@ -50,7 +50,7 @@ import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { type ApproachBand, breakOff, type ChaseTarget, chase, disengage, REPATH_CADENCE } from './chase.js';
 import type { CombatIndex } from './combat-index.js';
-import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
+import { type CombatantStance, EngagementSpecs, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive, runsFromBlows, startBlowRun } from './flee.js';
 import { breaksHuntForNeed, holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
 import { type MeleeSlots, withinBand } from './melee-slots.js';
@@ -157,7 +157,9 @@ export function engageCombatant(
   if (preySearchResting(world, ctx, e, attacker.jobType, stance)) return;
 
   const here = entityNode(world, terrain, e);
-  const spec = engageSpec(world, ctx, terrain, index, e, here, stance, attacker, weapon);
+  pass.specs ??= new EngagementSpecs(world, ctx, terrain, index);
+  const specs = pass.specs;
+  const spec = specs.forUnit(e, here, stance, attacker, weapon);
   const moving = travelling && !arrivedAtGoal(world, e, terrain);
   const found = resolveTarget(world, ctx, terrain, pass, e, here, spec, weapon, moving);
   if (found === null) {
