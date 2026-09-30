@@ -3,11 +3,25 @@ import type { ServerMessage } from '../messages.js';
 import { asArray, asCount, asRecord } from '../untrusted.js';
 import { parseWireCommands } from './wire.js';
 
-/** Three bytes per UTF-16 unit conservatively bounds UTF-8 without platform APIs. */
+/** The budget covers serialized UTF-8, including JSON escaping and frame metadata. */
 export function saveOrdersText(value: unknown): string {
   const text = JSON.stringify(value);
-  if (text === undefined || text.length > Math.floor(MAX_SAVE_ORDERS_BYTES / 3))
+  if (text === undefined || text.length > MAX_SAVE_ORDERS_BYTES)
     throw new Error(`saveOrders exceeds ${MAX_SAVE_ORDERS_BYTES} byte budget`);
+  if (text.length <= Math.floor(MAX_SAVE_ORDERS_BYTES / 3)) return text;
+  let bytes = 0;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code <= 0x7f) bytes++;
+    else if (code <= 0x7ff) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff) {
+      // JSON.stringify escapes lone surrogates, so this starts a complete pair.
+      bytes += 4;
+      i++;
+    } else bytes += 3;
+    if (bytes > MAX_SAVE_ORDERS_BYTES)
+      throw new Error(`saveOrders exceeds ${MAX_SAVE_ORDERS_BYTES} byte budget`);
+  }
   return text;
 }
 

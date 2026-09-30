@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 14` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 15` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -279,7 +279,7 @@ after the request belongs to a later capture. The client stores the frames as th
 continuation, with their apply ticks and within-tick order, against the world it captured before
 asking.
 
-A reply over `MAX_SAVE_ORDERS_BYTES` (16 MiB of JSON) is refused whole. A refusal carries
+A reply over `MAX_SAVE_ORDERS_BYTES` (16 MiB of serialized UTF-8 JSON) is refused whole. A refusal carries
 `rejected { of: "saveOrders", requestId, reason }` whenever the request named a valid id, parser
 refusals included.
 

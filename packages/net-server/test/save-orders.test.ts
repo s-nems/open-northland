@@ -1,4 +1,9 @@
-import { type ServerMessage, TICK_MS } from '@open-northland/net-protocol';
+import {
+  MAX_SAVE_ORDERS_BYTES,
+  parseServerMessage,
+  type ServerMessage,
+  TICK_MS,
+} from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import { createMember } from '../src/relay/member.js';
 import { Resync } from '../src/relay/resync.js';
@@ -85,7 +90,7 @@ describe('accepted order capture', () => {
       code: 'saveUnsynced',
     });
   });
-  it('refuses an oversized capture atomically instead of returning a truncated order list', () => {
+  it('delivers an ASCII capture larger than a third of the budget without losing orders', () => {
     const member = createMember('token', 'Nick', 0, { delayTicks: 1, roundTripMs: 0 });
     member.loaded = true;
     const clock = new RoomClock(1);
@@ -100,6 +105,44 @@ describe('accepted order capture', () => {
     };
     for (let tick = 1; tick <= 6000; tick++)
       expect(history.record({ tick, commands: [{ sequence: 0, envelope }] }, 0)).toBe(true);
+    const capture = new SaveOrders(
+      clock,
+      history,
+      () => 0,
+      (_m, message) => sent.push(message),
+    );
+    expect(capture.capture(member, { kind: 'saveOrders', id: 1, tick: 0, world: 0 })).toBeNull();
+    const message = sent[0];
+    if (message?.kind !== 'saveOrders') throw new Error('missing capture');
+    expect(Buffer.byteLength(JSON.stringify(message))).toBeGreaterThan(MAX_SAVE_ORDERS_BYTES / 3);
+    const parsed = parseServerMessage(message, () => {
+      throw new Error('unexpected descriptor');
+    });
+    expect(parsed).toEqual(message);
+    expect(message.frames).toHaveLength(6000);
+    expect(message.frames.at(-1)).toEqual({ tick: 6000, commands: [{ sequence: 0, envelope }] });
+  });
+
+  it('refuses retained and pending orders over the byte budget atomically', () => {
+    const member = createMember('token', 'Nick', 0, { delayTicks: 1, roundTripMs: 0 });
+    member.loaded = true;
+    const sent: ServerMessage[] = [];
+    const history = new Resync(new Map([['token', member]]), (_m, message) => sent.push(message), 0);
+    const envelope = {
+      v: 1,
+      origin: 'player' as const,
+      player: 0,
+      command: { kind: 'opaque', padding: 'x'.repeat(900) },
+    };
+    let nextTick = 1;
+    while (history.record({ tick: nextTick, commands: [{ sequence: 0, envelope }] }, 0)) nextTick++;
+    const clock = new RoomClock(1);
+    clock.startAt(nextTick - 1);
+    expect(clock.schedule(member.token, envelope, clock.tick, 1)).toEqual({ applyTick: nextTick });
+    const frames = [...(history.framesAfter(0) ?? []), ...clock.pendingFrames()];
+    expect(Buffer.byteLength(JSON.stringify({ kind: 'saveOrders', id: 1, tick: 0, frames }))).toBeGreaterThan(
+      MAX_SAVE_ORDERS_BYTES,
+    );
     const capture = new SaveOrders(
       clock,
       history,

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_SAVE_ORDERS_BYTES, parseClientMessage, parseServerMessage } from '../src/index.js';
+import {
+  MAX_SAVE_ORDERS_BYTES,
+  parseClientMessage,
+  parseServerMessage,
+  saveOrdersText,
+} from '../src/index.js';
 
 const command = {
   sequence: 0,
@@ -61,7 +66,7 @@ describe('saved accepted order wire contract', () => {
                 ...command,
                 envelope: {
                   ...command.envelope,
-                  command: { kind: 'opaque', data: 'x'.repeat(Math.floor(MAX_SAVE_ORDERS_BYTES / 3)) },
+                  command: { kind: 'opaque', data: 'x'.repeat(MAX_SAVE_ORDERS_BYTES) },
                 },
               },
             ],
@@ -69,5 +74,31 @@ describe('saved accepted order wire contract', () => {
         ],
       }),
     ).toThrow(/byte budget/);
+  });
+
+  it.each(['x', 'ą', '雪', '😀', '\ud800'])('counts serialized UTF-8 bytes at the limit for %j', (unit) => {
+    const withText = (data: string) => ({
+      ...response,
+      frames: [
+        {
+          tick: 7,
+          commands: [
+            {
+              ...command,
+              envelope: { ...command.envelope, command: { kind: 'opaque', data } },
+            },
+          ],
+        },
+      ],
+    });
+    const available = MAX_SAVE_ORDERS_BYTES - Buffer.byteLength(JSON.stringify(withText('')));
+    const unitBytes = Buffer.byteLength(JSON.stringify(unit)) - 2;
+    const data = unit.repeat(Math.floor(available / unitBytes)) + 'x'.repeat(available % unitBytes);
+    const message = withText(data);
+    const serialized = JSON.stringify(message);
+    expect(Buffer.byteLength(serialized)).toBe(MAX_SAVE_ORDERS_BYTES);
+    expect(saveOrdersText(message)).toBe(serialized);
+    expect(parse(message)).toEqual(message);
+    expect(() => saveOrdersText(withText(`${data}x`))).toThrow(/byte budget/);
   });
 });
