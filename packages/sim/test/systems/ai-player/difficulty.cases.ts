@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { AiPlayer, aiPlayerEntity } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
-import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
+import {
+  LATE_GAME_FROM_TICKS,
+  MID_GAME_FROM_TICKS,
+  SITES_GROW_FROM_TICKS,
+} from '../../../src/systems/ai-player/game-phase.js';
 import {
   AI_PROFILES,
   type BuildOrderEntry,
@@ -52,12 +56,10 @@ describe('AI difficulty profiles', () => {
     expect(profileBuildOrder(DEFAULT_BUILD_ORDER, AI_PROFILES.easy)).toBe(easy);
   });
 
-  it('keeps one construction site on easy in every phase', () => {
-    for (const tick of [0, SITES_GROW_FROM_TICKS, LATE_GAME_FROM_TICKS]) {
+  it('keeps one construction site on easy in every phase and on medium through the opening hour', () => {
+    for (const tick of [0, SITES_GROW_FROM_TICKS, MID_GAME_FROM_TICKS, LATE_GAME_FROM_TICKS]) {
       expect(sitePace(AI_PROFILES.easy, tick).sites).toBe(1);
-      expect(sitePace(AI_PROFILES.medium, tick).sites).toBeLessThanOrEqual(
-        sitePace(AI_PROFILES.hard, tick).sites,
-      );
+      expect(sitePace(AI_PROFILES.medium, tick).sites).toBe(tick < MID_GAME_FROM_TICKS ? 1 : 2);
     }
   });
 

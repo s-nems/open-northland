@@ -7,7 +7,12 @@ import {
   SITE_PACE_STEPS,
   type SitePace,
 } from './build-order/entries.js';
-import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from './game-phase.js';
+import {
+  LATE_GAME_FROM_TICKS,
+  MID_GAME_FROM_TICKS,
+  minutesToTicks,
+  SITES_GROW_FROM_TICKS,
+} from './game-phase.js';
 import { ARMY_CAP_SOLDIERS } from './military/plan.js';
 import {
   AI_CATAPULT_CAP,
@@ -58,8 +63,14 @@ export interface AiProfile {
   /** Whether recruits may be armed with a class's weaker weapons too, not only its best. */
   readonly weakerWeapons: boolean;
   /** The army at which the barracks sends the whole band. With `draftToCap`, also the most fighters the
-   *  seat drafts. `floorShare` is the part of the strongest enemy's army the seat keeps as its floor. */
-  readonly army: { readonly cap: number; readonly draftToCap: boolean; readonly floorShare: Share };
+   *  seat drafts. `floorShare` is the part of the strongest enemy's army the seat keeps as its floor.
+   *  No wave marches before `firstWaveFromTick`, nor before the seat's peace ends. */
+  readonly army: {
+    readonly cap: number;
+    readonly draftToCap: boolean;
+    readonly floorShare: Share;
+    readonly firstWaveFromTick: number;
+  };
 }
 
 /** How many builders a hard seat's pool keeps (authored), enough for the build order's opening sites at
@@ -78,6 +89,7 @@ export const LATE_GAME_BUILDER_CAP = 16;
 const WHOLE: Share = { num: 1, den: 1 };
 const HALF: Share = { num: 1, den: 2 };
 const QUARTER: Share = { num: 1, den: 4 };
+const EIGHTH: Share = { num: 1, den: 8 };
 const THREE_QUARTERS: Share = { num: 3, den: 4 };
 
 const HARD: AiProfile = {
@@ -91,24 +103,33 @@ const HARD: AiProfile = {
   craftPlans: CRAFT_PLANS_BY_BUILDING_ID,
   joineryRolePlans: CRAFT_PLANS_BY_JOINERY_ROLE,
   weakerWeapons: false,
-  army: { cap: ARMY_CAP_SOLDIERS, draftToCap: false, floorShare: WHOLE },
+  army: { cap: ARMY_CAP_SOLDIERS, draftToCap: false, floorShare: WHOLE, firstWaveFromTick: 0 },
 };
+
+/** The one construction site of the easy seat in every phase, and of the medium one in its opening hour. */
+const ONE_SITE = 1;
 
 const MEDIUM_CATAPULT_CAP = 8;
 const MEDIUM_CATAPULT_RESUME = 6;
+const MEDIUM_FIRST_WAVE_FROM_TICKS = minutesToTicks(90);
 
 const MEDIUM: AiProfile = {
   difficulty: 'medium',
   sitePace: [
-    { fromTick: 0, sites: MAX_ACTIVE_CONSTRUCTION_SITES, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES },
+    { fromTick: 0, sites: ONE_SITE, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES },
     {
-      fromTick: LATE_GAME_FROM_TICKS,
-      sites: MAX_ACTIVE_CONSTRUCTION_SITES + 1,
+      fromTick: MID_GAME_FROM_TICKS,
+      sites: MAX_ACTIVE_CONSTRUCTION_SITES,
       lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 1,
     },
+    {
+      fromTick: LATE_GAME_FROM_TICKS,
+      sites: MAX_ACTIVE_CONSTRUCTION_SITES,
+      lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 2,
+    },
   ],
-  builders: { opening: 9, grown: 11, late: 12 },
-  birthShare: HALF,
+  builders: { opening: 6, grown: 8, late: 10 },
+  birthShare: QUARTER,
   buildingCaps: {
     home_level_04: 8,
     work_smithy_01: 4,
@@ -124,21 +145,25 @@ const MEDIUM: AiProfile = {
   craftPlans: CRAFT_PLANS_BY_BUILDING_ID,
   joineryRolePlans: joineryRolePlans(MEDIUM_CATAPULT_CAP, MEDIUM_CATAPULT_RESUME),
   weakerWeapons: false,
-  army: { cap: 100, draftToCap: true, floorShare: THREE_QUARTERS },
+  army: {
+    cap: 100,
+    draftToCap: true,
+    floorShare: THREE_QUARTERS,
+    firstWaveFromTick: MEDIUM_FIRST_WAVE_FROM_TICKS,
+  },
 };
 
-/** The easy seat's one construction site, in every phase, with the lookahead growing as the hard one's. */
-const EASY_SITES = 1;
+const EASY_FIRST_WAVE_FROM_TICKS = minutesToTicks(120);
 
 const EASY: AiProfile = {
   difficulty: 'easy',
   sitePace: [
-    { fromTick: 0, sites: EASY_SITES, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES },
-    { fromTick: SITES_GROW_FROM_TICKS, sites: EASY_SITES, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 1 },
-    { fromTick: LATE_GAME_FROM_TICKS, sites: EASY_SITES, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 2 },
+    { fromTick: 0, sites: ONE_SITE, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES },
+    { fromTick: SITES_GROW_FROM_TICKS, sites: ONE_SITE, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 1 },
+    { fromTick: LATE_GAME_FROM_TICKS, sites: ONE_SITE, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 2 },
   ],
   builders: { opening: 6, grown: 8, late: 8 },
-  birthShare: QUARTER,
+  birthShare: EIGHTH,
   buildingCaps: {
     home_level_04: 5,
     work_smithy_01: 2,
@@ -154,7 +179,7 @@ const EASY: AiProfile = {
   craftPlans: { ...CRAFT_PLANS_BY_BUILDING_ID, ...EASY_CRAFT_PLANS },
   joineryRolePlans: joineryRolePlans(0, 0),
   weakerWeapons: true,
-  army: { cap: 60, draftToCap: true, floorShare: HALF },
+  army: { cap: 60, draftToCap: true, floorShare: HALF, firstWaveFromTick: EASY_FIRST_WAVE_FROM_TICKS },
 };
 
 export const AI_PROFILES: Readonly<Record<AiDifficulty, AiProfile>> = {

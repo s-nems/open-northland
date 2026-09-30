@@ -43,7 +43,8 @@ const NO_CAMPAIGN: CampaignDecision = { commands: [], waiting: [] };
  * One strategic decision for the seat's campaign: the marching wave takes its next step
  * ({@link advanceWave}), then the rest of `army` is sorted around the barracks door ({@link musterAround})
  * and, with no wave out, the launch is judged ({@link decideWave}). Until the peace ends
- * ({@link peaceEndsAt}) the army only gathers at the door, as it does with no target. The men at the door
+ * ({@link peaceEndsAt}) and the difficulty's first wave may march, the army only gathers at the door, as
+ * it does with no target. The men at the door
  * set out as a wave when the muster is the one it was gathering and the target's owner does not outnumber
  * the seat; a body already nearer the objective goes in whatever the muster says, having nowhere safe to
  * wait; everybody else is called in.
@@ -62,7 +63,8 @@ export function runOffensive(
   const atHome = army.length > 0 || awaitingWeapon.length > 0;
   if (!atHome && !world.has(barracks, WaveMarch)) return NO_CAMPAIGN;
   const home = interactionCell(world, ctx, terrain, barracks);
-  const peaceEnd = peaceEndsAt(world, player);
+  const { army: armyProfile } = aiProfileOf(world, player);
+  const peaceEnd = Math.max(peaceEndsAt(world, player), armyProfile.firstWaveFromTick);
   const target = ctx.tick < peaceEnd ? null : campaignTarget(world, ctx, terrain, player, home);
   if (target === null) {
     abandonWave(world, barracks);
@@ -114,7 +116,7 @@ export function runOffensive(
       core,
       peaceEnd,
       strength,
-      aiProfileOf(world, player).army.cap,
+      armyProfile.cap,
     );
   const launch = charges
     ? launchedWaveOrders(world, ctx, terrain, { barracks, player, home, target, objective }, formed)

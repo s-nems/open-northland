@@ -3,7 +3,7 @@ import { TICKS_PER_SECOND } from '../../core/loop.js';
 const SECONDS_PER_MINUTE = 60;
 
 /** Game minutes to sim ticks. */
-function minutesToTicks(minutes: number): number {
+export function minutesToTicks(minutes: number): number {
   return minutes * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 }
 
