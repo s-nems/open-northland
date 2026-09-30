@@ -1,13 +1,14 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, Palisade, PalisadeBlocking, Position, ResourceFootprint } from '../../components/index.js';
 import { landscapeEditState } from '../../components/landscape.js';
+import type { ChangeFeed } from '../../ecs/change-feed.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { ClearanceField, type ClearanceProbe } from '../../nav/clearance.js';
 import { HEX_NEIGHBOUR_OFFSETS, hexDistanceBetween, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
-import { landscapeBlocks } from '../landscape/view.js';
+import { type LandscapeBlocks, landscapeBlocks } from '../landscape/view.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
@@ -15,7 +16,7 @@ import { standingWallCells } from './wall-joints.js';
 
 // The per-world free-size classes vehicles stand by and ships route by, over the ground walk-block
 // (buildings and walls, resources, landscapes; never vehicles, which the mover judges against each other
-// at step time). The classes are kept current by replaying the footprinted stores' membership journals: a
+// at step time). Membership changes replay through journals and a resource feed: a
 // placed, finished, swung or razed blocker re-derives the classes around its own cells, so the update cost
 // is local to the change. Land vehicles pass narrower gaps (`landVehicleFits`). Derived state, never hashed.
 
@@ -25,6 +26,7 @@ interface ClearanceMemo {
   readonly field: ClearanceField;
   /** Held membership generations of the journal-replayed stores. */
   readonly gens: Map<Component<unknown>, number>;
+  readonly resources: ChangeFeed;
   /** The tier upgrade swaps `buildingType` in place, a value bump with no membership entry; the value
    *  journal and the held type per building narrow that bump to the buildings whose cells moved. */
   buildingValueGen: number;
@@ -32,11 +34,25 @@ interface ClearanceMemo {
   /** The scripted landscape edits the probe's landscape layer keys on; a resource-backed placement
    *  reaches the memo through the `ResourceFootprint` journal instead. */
   landscapeRevision: number;
+  landscapes: LandscapeBlocks;
+  readonly landscapeCells: Set<NodeId>;
   /** The cells each blocker last contributed, so its removal knows what region to re-derive. */
   readonly records: Map<Entity, readonly NodeId[]>;
 }
 
 const memoByWorld = new WeakMap<World, ClearanceMemo>();
+const resourceFeeds = new WeakMap<World, ChangeFeed>();
+
+function resourceFeedOf(world: World): ChangeFeed {
+  let feed = resourceFeeds.get(world);
+  if (feed === undefined) {
+    feed = world.watchChanges([ResourceFootprint], []);
+    resourceFeeds.set(world, feed);
+  }
+  return feed;
+}
+
+const ignoreChange = (): void => {};
 
 /** A wall's gate swing and finish re-add `Palisade` or `PalisadeBlocking`, so membership journals see them. */
 const SOURCES: readonly Component<unknown>[] = [Building, ResourceFootprint, Palisade, PalisadeBlocking];
@@ -103,18 +119,23 @@ function resyncEntity(world: World, memo: ClearanceMemo, e: Entity, changed: Set
 function rebuild(world: World, ctx: ContentContext, terrain: TerrainGraph): ClearanceMemo {
   const gens = new Map<Component<unknown>, number>();
   for (const source of SOURCES) {
-    world.journalMembership(source);
+    if (source !== ResourceFootprint) world.journalMembership(source);
     gens.set(source, world.componentGeneration(source));
   }
   world.journalValueWrites(Building);
+  const resources = resourceFeedOf(world);
+  resources.drain(ignoreChange);
   const memo: ClearanceMemo = {
     content: ctx.content,
     terrain,
     field: new ClearanceField(terrain, probeOf(world, ctx, terrain)),
     gens,
+    resources,
     buildingValueGen: world.componentValueGeneration(Building),
     buildingTypes: new Map(),
     landscapeRevision: landscapeEditState(world).topologyRevision,
+    landscapes: landscapeBlocks(world, terrain),
+    landscapeCells: new Set(landscapeBlocks(world, terrain).walk),
     records: new Map(),
   };
   const ignored = new Set<NodeId>(); // the field was just built over the live overlay
@@ -124,11 +145,50 @@ function rebuild(world: World, ctx: ContentContext, terrain: TerrainGraph): Clea
   return memo;
 }
 
-/** Catch the memo up through the journals; false demands a rebuild (a journal gap or a landscape edit). */
+/** Replay the landscape layer's retained cell changes. Sparse reads can outlive the chain; comparing
+ * its held cells with the current set still limits clearance recomputation to cells that changed. */
+function catchUpLandscapes(world: World, memo: ClearanceMemo, changed: Set<NodeId>): void {
+  const revision = landscapeEditState(world).topologyRevision;
+  if (revision === memo.landscapeRevision) return;
+  const current = landscapeBlocks(world, memo.terrain);
+  let view = memo.landscapes;
+  while (view !== current && view.next !== undefined) {
+    view = view.next;
+    for (const change of view.changes) {
+      if (change.channel !== 'walk') continue;
+      changed.add(change.node);
+      if (change.entered) memo.landscapeCells.add(change.node);
+      else memo.landscapeCells.delete(change.node);
+    }
+  }
+  if (view !== current) {
+    for (const node of memo.landscapeCells) {
+      if (!current.walk.has(node)) {
+        changed.add(node);
+        memo.landscapeCells.delete(node);
+      }
+    }
+    for (const node of current.walk) {
+      if (!memo.landscapeCells.has(node)) {
+        changed.add(node);
+        memo.landscapeCells.add(node);
+      }
+    }
+  }
+  memo.landscapes = current;
+  memo.landscapeRevision = revision;
+}
+
+/** Catch the memo up through the journals; false demands a rebuild after an unrecoverable membership gap. */
 function catchUp(world: World, ctx: ContentContext, memo: ClearanceMemo): boolean {
-  if (landscapeEditState(world).topologyRevision !== memo.landscapeRevision) return false;
   const changed = new Set<NodeId>();
+  catchUpLandscapes(world, memo, changed);
+  if (memo.resources.pending && memo.resources.drain((e) => resyncEntity(world, memo, e, changed))) {
+    return false;
+  }
+  memo.gens.set(ResourceFootprint, world.componentGeneration(ResourceFootprint));
   for (const source of SOURCES) {
+    if (source === ResourceFootprint) continue;
     const gen = world.componentGeneration(source);
     const held = memo.gens.get(source) ?? 0;
     if (gen === held) continue;
@@ -192,6 +252,7 @@ function verifyMemo(world: World, ctx: ContentContext, terrain: TerrainGraph): s
 
 function isFresh(world: World, memo: ClearanceMemo): boolean {
   return (
+    !memo.resources.pending &&
     landscapeEditState(world).topologyRevision === memo.landscapeRevision &&
     world.componentValueGeneration(Building) === memo.buildingValueGen &&
     SOURCES.every((source) => world.componentGeneration(source) === (memo.gens.get(source) ?? 0))
