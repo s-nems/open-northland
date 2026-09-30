@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { BuildMode, RoadSite, Settler, Stockpile, setStockAmount } from '../../../src/components/index.js';
+import {
+  BuildMode,
+  RoadSite,
+  Settler,
+  SiteAssignment,
+  Stockpile,
+  setStockAmount,
+} from '../../../src/components/index.js';
 import type { PlayerCommand } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
@@ -31,6 +38,7 @@ import {
 import { createSignpost } from '../../../src/systems/index.js';
 import { layRoad, roadNodeCount, roadNodes } from '../../../src/systems/roads/index.js';
 import { roadSitesByNode } from '../../../src/systems/roads/site-index.js';
+import { placeRoadSite } from '../../../src/systems/roads/sites.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import {
   apply,
@@ -277,8 +285,44 @@ describe('road build module (roadBuild)', () => {
     expect(sim.world.get(roadster, Settler).jobType).toBe(BUILDER);
 
     placeSites(sim, 1);
+    const terrain = terrainOf(sim);
+    const newNode = terrain.nodeAt(FIRST_SITE_X, SITE_ROW);
+    const newSite = roadSitesByNode(sim.world, terrain).get(newNode);
+    if (newSite === undefined) throw new Error('setup: the new road site is gone');
+    // Finished building approaches no longer hold him up: his ordinary builder drive already
+    // claimed this site during placement's step, so AI must not post another builder over him.
+    expect(sim.world.get(roadster, SiteAssignment).site).toBe(newSite);
+    expect(sim.world.get(newSite, RoadSite).reservation?.builder).toBe(roadster);
+    expect(
+      collectModule.run(sim.world, ctxOf(sim, sim.tick), SEAT).filter((c) => c.kind === 'assignBuilder'),
+    ).toEqual([]);
+    sim.run(LAYING_RUN_TICKS);
+    expect(sim.world.has(newSite, RoadSite)).toBe(false);
+    expect(terrain.isRoad(newNode)).toBe(true);
+
+    // Place an open site without advancing the builder drives: the AI can post its road crew
+    // when it sees the work before an ordinary builder claims it.
+    const openNode = terrain.nodeAt(FIRST_SITE_X + SITE_SPACING, SITE_ROW);
+    placeRoadSite(sim.world, ctxOf(sim, sim.tick), {
+      kind: 'placeRoadSite',
+      x: FIRST_SITE_X + SITE_SPACING,
+      y: SITE_ROW,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    const openSite = roadSitesByNode(sim.world, terrain).get(openNode);
+    if (openSite === undefined) throw new Error('setup: no open road site');
+    expect(sim.world.get(openSite, RoadSite).reservation).toBeNull();
     const again = collectModule.run(sim.world, ctxOf(sim, sim.tick), SEAT);
-    expect(again.filter((c) => c.kind === 'assignBuilder')).toHaveLength(ROAD_CREW);
+    const reposted = again.filter((c) => c.kind === 'assignBuilder');
+    expect(reposted).toHaveLength(ROAD_CREW);
+    expect(reposted.map((c) => c.site)).toEqual([openSite]);
+    apply(sim, again);
+    for (const c of reposted) {
+      expect(sim.world.get(c.entity, Settler).jobType).toBe(BUILDER);
+      expect(sim.world.get(c.entity, BuildMode).kind).toBe('roads');
+      expect(sim.world.get(c.entity, SiteAssignment).site).toBe(openSite);
+    }
   });
 
   it("counts the road sites' stone as owed, so a stone shortage hires more gatherers", () => {

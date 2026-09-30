@@ -23,10 +23,12 @@ import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
+import { interactionNodeId } from '../footprint/interaction.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { settleClosedWall, travellerOnClosing } from '../palisades/index.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
 import { cancelRoadSitesUnder, finishRoadSite } from '../roads/sites.js';
+import { retargetHomeErrands } from '../settlers/drives/home-upgrade.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
 import {
   constructionBillOf,
@@ -40,6 +42,7 @@ import { createVehicle } from '../vehicles/create.js';
 import { awakeSitesOf } from './awake-sites.js';
 import { destroyBerryBushesInReserved } from './berries.js';
 import { evictCarcassesFromFootprint } from './carcasses.js';
+import { retireCompletedSiteErrands } from './completed-site-errands.js';
 import { destroyFieldsUnderBuilding } from './fields.js';
 import { evictLooseGoodsFromFootprint } from './goods-evict.js';
 import { scatterSpilledStock, spilledStockOf } from './goods-spill.js';
@@ -152,6 +155,7 @@ function advanceWallSite(
 function advanceRoadSite(world: World, ctx: SystemContext, e: Entity): void {
   if (world.get(e, UnderConstruction).labor < ONE || !constructionMaterialsPresent(world, ctx, e)) return;
   consumeMaterials(world, e, constructionBillOf(world, ctx, e));
+  retireCompletedSiteErrands(world, ctx, e);
   finishRoadSite(world, ctx, e);
 }
 
@@ -163,6 +167,7 @@ function builtProgress(world: World, ctx: SystemContext, e: Entity, labor: Fixed
 
 /** Raise a wall site: it starts blocking and settles the ground it closes. */
 function finishWall(world: World, ctx: SystemContext, e: Entity): void {
+  retireCompletedSiteErrands(world, ctx, e);
   const wall = world.mut(e, Palisade);
   wall.built = ONE;
   wall.reservation = null;
@@ -183,7 +188,12 @@ function finishBuilding(
   e: Entity,
   building: DeepReadonly<BuildingState>,
 ): void {
+  retireCompletedSiteErrands(world, ctx, e);
   const upgrading = world.tryGet(e, Upgrading);
+  const previousDoor =
+    upgrading !== undefined && ctx.terrain !== undefined
+      ? interactionNodeId(world, ctx, ctx.terrain, e)
+      : null;
   let adoptedTier = false;
   if (upgrading !== undefined) {
     const type = contentIndex(ctx.content).buildings.get(building.buildingType);
@@ -211,6 +221,7 @@ function finishBuilding(
   world.mut(e, Building).built = ONE;
   world.remove(e, UnderConstruction);
   fillHealth(world, e);
+  if (adoptedTier) retargetHomeErrands(world, ctx, e, previousDoor);
   settleFootprint(world, ctx, e);
   ctx.events.emit(
     adoptedTier
@@ -256,6 +267,7 @@ function launchVehicle(world: World, ctx: SystemContext, site: Entity): void {
   const { hx, hy } = nodeOfPosition(p.x, p.y);
   const owner = ownerOf(world, site);
   const spill = spilledStockOf(world, site);
+  // The yard spends its rotation turn when its drive releases the worker's SiteAssignment.
   world.destroy(site);
   scatterSpilledStock(world, ctx, spill);
   createVehicle(world, ctx, {
@@ -291,7 +303,10 @@ export function forceFinishConstruction(world: World, ctx: SystemContext, site: 
   const building = world.tryGet(site, Building);
   if (building !== undefined) finishBuilding(world, ctx, site, building);
   else if (world.has(site, Palisade)) finishWall(world, ctx, site);
-  else if (world.has(site, RoadSite)) finishRoadSite(world, ctx, site);
+  else if (world.has(site, RoadSite)) {
+    retireCompletedSiteErrands(world, ctx, site);
+    finishRoadSite(world, ctx, site);
+  }
 }
 
 /** Ramp a site's {@link Health} for a rise from `before` to `after`: the pool gains what the ceiling gained

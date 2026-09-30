@@ -13,6 +13,7 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isFood } from '../readviews/index.js';
+import { EntityReferences } from '../spatial/entity-references.js';
 import { accessibleStockAmounts, setAccessibleStockAmount } from '../stores/index.js';
 
 /** The `home`-kind {@link BuildingType} of a house entity, including one still under construction. */
@@ -32,12 +33,17 @@ export function builtHomeType(world: World, ctx: SystemContext, house: Entity): 
 }
 
 /** The settlers living in `house`, ascending entity id. */
-function residentsOf(world: World, house: Entity): Entity[] {
-  const out: Entity[] = [];
-  for (const e of world.canonicalQuery(Residence)) {
-    if (world.get(e, Residence).home === house) out.push(e);
+const residentIndexes = new WeakMap<World, EntityReferences<{ home: Entity }>>();
+
+export function residentsOf(world: World, house: Entity): readonly Entity[] {
+  let index = residentIndexes.get(world);
+  if (index === undefined) {
+    const created = new EntityReferences(world, Residence, (value) => value.home);
+    world.registerCacheVerifier('residentsOf', () => created.verify());
+    residentIndexes.set(world, created);
+    index = created;
   }
-  return out;
+  return index.at(house);
 }
 
 /** Unhouse every family living in `house`, for a home leaving the map. */
