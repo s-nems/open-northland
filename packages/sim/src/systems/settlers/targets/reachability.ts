@@ -4,6 +4,7 @@ import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { constructionWorkCell } from '../../footprint/index.js';
+import type { RouteRegions } from '../../footprint/route-regions.js';
 import { isUnreachableGoal } from '../unreachable-goals.js';
 
 /** The reachability layers {@link unreachableWorkCell} probes. */
@@ -11,6 +12,7 @@ export interface WorkCellGates {
   readonly terrain: TerrainGraph;
   readonly blocked: BlockOverlay;
   readonly memo: readonly UnreachableGoal[] | null;
+  readonly regions?: RouteRegions;
 }
 
 /**
@@ -21,12 +23,13 @@ export interface WorkCellGates {
  */
 export function unreachableWorkCell(gates: WorkCellGates, here: NodeId, cell: NodeId): boolean {
   if (cell === here) return false;
-  const { terrain, blocked, memo } = gates;
+  const { terrain, blocked, memo, regions } = gates;
   return (
     !terrain.isWalkable(cell) ||
     blocked.has(cell) ||
     isUnreachableGoal(memo, cell) ||
-    terrain.componentOf(here) !== terrain.componentOf(cell)
+    terrain.componentOf(here) !== terrain.componentOf(cell) ||
+    regions?.unroutable(here, cell) === true
   );
 }
 

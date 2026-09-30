@@ -18,7 +18,7 @@ import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { type FarmingSpec, farmWorkGood } from '../../../economy/fields.js';
-import { dynamicBlockOverlay } from '../../../footprint/index.js';
+import { dynamicBlockOverlay, routeRegions } from '../../../footprint/index.js';
 import { workplaceStaffable } from '../../../progression/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { closer, manhattan } from '../../../spatial/metric.js';
@@ -102,6 +102,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     terrain,
     blocked: dynamicBlockOverlay(world, ctx, terrain),
     memo: unreachableGoals(world, ctx, e),
+    regions: routeRegions(world, ctx, terrain),
   };
 
   // One pass over this farm's fields serves the plot cap and both picks over the canonical list: the
