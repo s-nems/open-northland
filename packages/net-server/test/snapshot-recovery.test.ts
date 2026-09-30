@@ -6,6 +6,40 @@ const divergentBytes = Buffer.from('divergent snapshot').toString('base64');
 const correctedBytes = Buffer.from('corrected snapshot').toString('base64');
 
 describe('snapshot recovery', () => {
+  it('advances the world generation on repeated resyncs before admitting a donor again', () => {
+    const s = startedRoom();
+    s.advance(TICK_MS * 3);
+    ackThrough(s.a, 1, 1);
+    ackThrough(s.b, 1, 1, 2);
+    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, world: 0, bytes: correctedBytes });
+    ackThrough(s.a, 2, 2);
+    ackThrough(s.b, 2, 2, 2, 1);
+    expect(s.b.of('desync')).toHaveLength(2);
+
+    // The reference reloads the older cache while the diverged member keeps waiting.
+    s.relay.disconnect(s.a.handle);
+    const reference = s.introduce(TOKEN_A, 'Ania');
+    reference.send({ kind: 'loaded', tick: null });
+    expect(reference.last('blob')).toMatchObject({ tick: 1, bytes: correctedBytes });
+    reference.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, world: 1, bytes: correctedBytes });
+    expect(s.b.of('blob')).toHaveLength(1);
+    reference.send({ kind: 'blob', type: 'snapshot', to: null, tick: 2, world: 1, bytes: correctedBytes });
+    expect(s.b.last('blob')).toMatchObject({ tick: 2, bytes: correctedBytes });
+    s.b.send({ kind: 'blob', type: 'snapshot', to: null, tick: 3, world: 1, bytes: divergentBytes });
+    ackThrough(s.b, 3, 3, 2, 1);
+    ackThrough(reference, 2, 3, 1, 1);
+    ackThrough(s.b, 3, 3, 1, 2);
+    expect(s.b.of('desync')).toHaveLength(2);
+    expect(reference.of('rejected')).toEqual([]);
+
+    s.relay.disconnect(s.b.handle);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    back.send({ kind: 'loaded', tick: null });
+    expect(back.last('blob')).toMatchObject({ from: 'Ania', tick: 2, bytes: correctedBytes });
+    expect(back.of('frame').map(({ tick }) => tick)).toEqual([3]);
+    expect(s.b.of('rejected')).toEqual([]);
+  });
+
   it('accepts a newer snapshot captured from the corrected world', () => {
     const s = startedRoom();
     s.advance(TICK_MS * 2);

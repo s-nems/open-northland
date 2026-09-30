@@ -76,7 +76,11 @@ export class Resync {
 
   /** Hand `member` the snapshot, or queue it while a held-back cache can still be replaced. */
   serve(member: Member, snapshot: CachedSnapshot, now: number): void {
-    if (this.snapshotInvalid && this.anySynced()) {
+    // Reusing a discarded generation would make its in-flight reports and uploads current again.
+    if (
+      (member.outOfSync !== null && snapshot.tick <= member.world) ||
+      (this.snapshotInvalid && this.anySynced())
+    ) {
       this.queue(member, now);
       return;
     }

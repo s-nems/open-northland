@@ -362,6 +362,10 @@ keep waiting for the next donor. The held copy's tick still marks the start of r
 history. A same-tick upload can replace it. Otherwise the first copy of a tick stays cached, so a
 delayed same-tick duplicate cannot undo a correction.
 
+A diverged member is served only a snapshot whose tick is later than its discarded world generation.
+Otherwise it keeps waiting for a fresh donor upload, so a repeated resync cannot make that world's
+in-flight acknowledgements or snapshot uploads current again.
+
 If the age limit is reached or the next frame would exceed the byte limit, the relay ends that room:
 connected members receive `error` with the `historyBytes` or `historyAge` reason, then `left`. All members,
 including disconnected ones, lose their room association, and the snapshot and history are released.
