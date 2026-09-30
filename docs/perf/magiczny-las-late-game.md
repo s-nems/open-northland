@@ -11,13 +11,15 @@ assessment, not a measured speedup guarantee. This subset has not had its own ti
 
 | Change | Commit | Why it is in this branch |
 | --- | --- | --- |
-| perf(sim): retain AI traversal storage | `111a31a29e` | Paged traversal storage and reused queue capacity; search order, budgets and cadence stay the same. |
-| perf(render): retain scene depth order and numeric sort keys | `f306c163bf` | Retained numeric sort keys and order repair preserve the existing total comparator; oracle tests cover reordering and fallback. |
-| perf(sim): select the minimum stocked good without sorting | `947f2586bb` | An order-independent minimum scan replaces a temporary sorted array; no retained cache is added. |
-| perf(sim): reuse engagement specifications within a combat pass | `81a614926f` | One synchronous pass owns the context; target/chase consumers do not retain the spec or replace its active unit. |
-| perf(render): reuse per-entity presentation clocks and poses | `b821196b41` | Each entity or card owns its clocks and detached pose; layer resolution consumes values synchronously. No shadow atlas or GPU upload changes. |
+| perf(sim): retain AI traversal storage | `44e6a9d5b` | Paged traversal storage and reused queue capacity; search order, budgets and cadence stay the same. |
+| perf(render): retain scene depth order and numeric sort keys | `7f66fbf81` | Retained numeric sort keys and order repair preserve the existing total comparator; oracle tests cover reordering and fallback. |
+| perf(sim): select the minimum stocked good without sorting | `3677c429e` | An order-independent minimum scan replaces a temporary sorted array; no retained cache is added. |
+| perf(sim): reuse engagement specifications within a combat pass | `8857e22e4` | One synchronous pass owns the context; target/chase consumers do not retain the spec or replace its active unit. |
+| perf(render): reuse per-entity presentation clocks and poses | `786064621` | Each entity or card owns its clocks and detached pose; layer resolution consumes values synchronously. No shadow atlas or GPU upload changes. |
 
-`research/magiczny-las-performance` is based on this branch and adds six higher-risk scopes:
+`perf/magiczny-las-low-risk` has been rebased onto the current main.
+`research/magiczny-las-performance` retains the previous base at
+`backup/magiczny-perf-low-before-main` and adds six higher-risk scopes:
 
 - Tick-derived clocks and separate needs: a broad change to state representation, timing readers and save format.
 - Shared shadow pages: texture ownership, sampling and higher allocated GPU memory.
@@ -31,9 +33,13 @@ of unfinished tickets. Existing timing results describe the combined implementat
 The higher-risk branch needs the clocks/needs change before the delta change because its hot clone
 reads `SettlerNeeds`. None of the five lower-risk runtime changes requires that save-format change.
 
-Compare the branches with `git diff perf/magiczny-las-low-risk...research/magiczny-las-performance`.
-Keep performance measurements separate from compilation/tests. Before integrating either branch,
-measure its actual candidate tree against the intended control and check the final gameplay hash.
+Inspect the retained research work with
+`git diff backup/magiczny-perf-low-before-main..research/magiczny-las-performance`.
+Before integrating that branch, rebase it onto current main and reconcile its persisted layout: the
+research clocks change and main currently use version 65 for different layouts. The rebased clocks
+change must bump the current version and regenerate the fixture without migration.
+Keep performance measurements separate from compilation/tests. Before claiming an isolated speedup,
+measure the actual candidate tree against the intended control and check the final gameplay hash.
 
 ## Scenario and measurement conditions
 
@@ -294,7 +300,7 @@ summaries and PNGs sit beside it. Node baselines are `ml6-growth.json`, `ml6-mid
 
 ## Split validation
 
-The expanded five-change lower-risk runtime tree passed the production build, typecheck, 18 script
+Before rebasing onto main, the five-change lower-risk runtime tree passed the production build, typecheck, 18 script
 tests and the default suite (9506 passed, 3 skipped). Formatting/lint passed with 155 existing warnings
 and no errors; documentation and asset-policy checks passed.
 
@@ -306,3 +312,11 @@ between posted, ranged, hunter and animal units. The full suite provides broader
 The combined branch preserves the previous complete implementation's runtime sources. Earlier
 combined-stack test and performance results remain applicable to those sources, but this expanded
 subset still needs its own timing comparison before an isolated speedup can be claimed.
+
+## Integration verification
+
+On main's `94d9bc7b8` base, the lower-risk candidate passed build/typecheck, 25 script tests and the
+standard suite (9652 passed, 3 skipped). Lint passed with 155 existing warnings and no errors;
+documentation and asset-policy checks passed.
+The headed Chromium map check loaded 37278 entities, stepped the worker, rendered the settlement
+and changed camera zoom without console, page or HTTP errors. This was a smoke check, not a timing run.
