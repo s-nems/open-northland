@@ -2,6 +2,7 @@ import './ai-player/build-order-execution.cases.js';
 import './ai-player/build-order-fleet.cases.js';
 import './ai-player/build-order-placement.cases.js';
 import './ai-player/contested-rebuild.cases.js';
+import './ai-player/difficulty.cases.js';
 import './ai-player/experience-retention.cases.js';
 import './ai-player/fishers.cases.js';
 import './ai-player/garrison-and-craft.cases.js';

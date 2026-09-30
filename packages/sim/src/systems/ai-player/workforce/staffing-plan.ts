@@ -5,9 +5,10 @@ import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/fields.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { buildingTypeByContentId, goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
+import type { AiProfile } from '../difficulty.js';
 import { CORE_CREW_FROM_TICKS, LATE_GAME_FROM_TICKS, STORE_CARRIERS_FROM_TICKS } from '../game-phase.js';
 import { COLLECTED_GOOD_IDS, COLLECTOR_WORKSHOP_BY_GOOD_ID } from './collectors/index.js';
-import { CRAFT_PLANS_BY_BUILDING_ID, craftGlutPending, openingRunPending, productsOf } from './craft.js';
+import { craftGlutPending, openingRunPending, productsOf } from './craft.js';
 import type { SeatSupply } from './supply.js';
 
 /** A building's staffing plan: workers per operator trade and total transport carriers, filled tier by
@@ -154,6 +155,7 @@ export interface SeatStaffing {
   readonly player: number;
   readonly owned: readonly Entity[];
   readonly supply: SeatSupply;
+  readonly profile: AiProfile;
 }
 
 /** The operators a workplace type's plan staffs at the target tier, each operator trade capped by its
@@ -213,7 +215,7 @@ export function buildingStaffing(
   const gate = gated === null ? null : Math.max(gated, gateFloor);
   if (opening) plan = capOperators(plan, 1);
   else if (gate !== null) {
-    const crafting = craftGlutPending(ctx, seat.supply, type, held.operators > gate);
+    const crafting = craftGlutPending(ctx, seat.supply, seat.profile, type, held.operators > gate);
     plan = capOperators(plan, gate, crafting ? Number.POSITIVE_INFINITY : gate);
   }
   const holdsCarrier = held.carriers > 0;
@@ -275,7 +277,7 @@ function gatedOperators(
 
 /**
  * Whether a workshop has nothing worth making before {@link CORE_CREW_FROM_TICKS}: it has no craft sink
- * ({@link CRAFT_PLANS_BY_BUILDING_ID}) and sows no fields, every product has supply lines, and each lies at
+ * (the profile's craft plans) and sows no fields, every product has supply lines, and each lies at
  * its glut line, or, once its crew has gone, none is short yet. A product without supply lines keeps the
  * crew on, as does a type with no product at all. A farm never rests, since a resting farm loses its sown
  * fields, and from the core-crew time no workshop does: its first craftsman keeps his experience.
@@ -289,7 +291,7 @@ function productsRest(
   operators: number,
 ): boolean {
   if (ctx.tick >= CORE_CREW_FROM_TICKS) return false;
-  if (CRAFT_PLANS_BY_BUILDING_ID[type.id]?.sink !== undefined) return false;
+  if (seat.profile.craftPlans[type.id]?.sink !== undefined) return false;
   if (farmWorkGood(world, ctx, building) !== null) return false;
   const products = productsOf(ctx, type);
   if (products.length === 0 || products.some((good) => seat.supply.lines(good) === undefined)) return false;

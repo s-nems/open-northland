@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 const {
+  AI_PROFILES,
   BASE_REPLACEMENT_ENTRY,
   COLLECTOR_TARGET_BY_GOOD_ID,
   COLLECTOR_WORKSHOP_BY_GOOD_ID,
   CRAFT_PLANS_BY_BUILDING_ID,
-  CRAFT_PLANS_BY_JOINERY_ROLE,
   DEFAULT_BUILD_ORDER,
   HEADQUARTERS_BUILDING_ID,
   SOLDIER_OUTFIT_GOOD_IDS,
@@ -15,6 +15,7 @@ const {
   SUPPLY_CARRIER_GOODS_BY_BUILDING_ID,
   TOWER_CONTENT_IDS,
   hunterJobType,
+  profileBuildOrder,
   supplyLines,
 } = systems;
 
@@ -285,13 +286,23 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       }
       return ids;
     };
-    const plans = [
-      ...Object.entries(CRAFT_PLANS_BY_BUILDING_ID),
-      ...Object.entries(CRAFT_PLANS_BY_JOINERY_ROLE).flatMap(([id, roles]) =>
-        Object.values(roles).map((plan) => [id, plan] as const),
-      ),
-    ];
-    for (const [id, plan] of plans) {
+    // Every difficulty's plans resolve. A lower one shares a hard plan and staffs only its first seats, so
+    // only a plan of its own must fit the buildings its trimmed order raises.
+    const plans = Object.values(AI_PROFILES).flatMap((profile) => {
+      const order = profileBuildOrder(DEFAULT_BUILD_ORDER, profile);
+      return [
+        ...Object.entries(profile.craftPlans).map(([id, plan]) => ({
+          id,
+          plan,
+          order,
+          own: profile.difficulty === 'hard' || plan !== CRAFT_PLANS_BY_BUILDING_ID[id],
+        })),
+        ...Object.entries(profile.joineryRolePlans).flatMap(([id, roles]) =>
+          Object.values(roles).map((plan) => ({ id, plan, order, own: true })),
+        ),
+      ];
+    });
+    for (const { id, plan, order, own } of plans) {
       const building = buildingById.get(id);
       expect(building, `craft restriction ${id}`).toBeDefined();
       const produced = new Set(building?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
@@ -300,16 +311,19 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       const operatorSeats = building?.workers
         .filter((w) => w.jobType !== carrierJob)
         .reduce((most, w) => Math.max(most, w.count), 0);
-      const planned = DEFAULT_BUILD_ORDER.reduce(
+      const planned = order.reduce(
         (most, entry) =>
           (entry.kind === 'place' || entry.kind === 'upgrade') && tiersFrom(entry.building).has(id)
             ? Math.max(most, entry.count)
             : most,
         0,
       );
-      expect((operatorSeats ?? 0) * planned, `operator seats of every planned ${id}`).toBeGreaterThanOrEqual(
-        plan.seats.length,
-      );
+      if (own) {
+        expect(
+          (operatorSeats ?? 0) * planned,
+          `operator seats of every planned ${id}`,
+        ).toBeGreaterThanOrEqual(plan.seats.length);
+      }
       const listed: string[] = [...(plan.alone ?? []), ...(plan.sink ?? [])];
       for (const seat of plan.seats) {
         listed.push(...seatGoods(seat));

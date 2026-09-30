@@ -6,6 +6,7 @@ import type { SystemContext } from '../../context.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { entityNode } from '../../spatial/nodes.js';
 import { seatBarracksOf } from '../base.js';
+import { aiProfileOf } from '../difficulty.js';
 import { campaignTarget, objectiveNode } from './campaign.js';
 import { defendingStrength, fighterStrength, weaponMix } from './census.js';
 import { spokenFor } from './errand.js';
@@ -104,7 +105,17 @@ export function runOffensive(
   // One wave at a time: the next gathers at the door while the last one marches.
   const charges =
     !marchOn.active &&
-    decideWave(world, ctx, barracks, weaponMix(world, ctx, formed), door, core, peaceEnd, strength);
+    decideWave(
+      world,
+      ctx,
+      barracks,
+      weaponMix(world, ctx, formed),
+      door,
+      core,
+      peaceEnd,
+      strength,
+      aiProfileOf(world, player).army.cap,
+    );
   const launch = charges
     ? launchedWaveOrders(world, ctx, terrain, { barracks, player, home, target, objective }, formed)
     : [];

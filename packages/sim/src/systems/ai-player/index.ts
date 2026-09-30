@@ -15,6 +15,7 @@ import { workforceModule } from './workforce/index.js';
 export * from './base.js';
 export * from './build-order/index.js';
 export * from './cadence.js';
+export * from './difficulty.js';
 export * from './diplomacy.js';
 export * from './military/index.js';
 export * from './population.js';

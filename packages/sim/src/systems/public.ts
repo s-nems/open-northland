@@ -12,6 +12,8 @@ export {
 } from './ai-player/build-order/index.js';
 // The scripted handlers' round, so a real-content probe can step to a seat's turn.
 export { AI_HANDLER_ROUND_TICKS } from './ai-player/cadence.js';
+// The difficulty profiles, whose craft plans and trimmed build orders the real-content suite resolves too.
+export { AI_PROFILES, profileBuildOrder } from './ai-player/difficulty.js';
 // The garrison an acceptance scene pins, and the outfit the real-content plan test resolves.
 export { SOLDIER_OUTFIT_GOOD_IDS, TOWER_GARRISON_ARCHERS } from './ai-player/military/index.js';
 export {

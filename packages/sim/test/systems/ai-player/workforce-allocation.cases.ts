@@ -22,6 +22,7 @@ import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
 import type { NodeId } from '../../../src/nav/terrain/index.js';
 import type { EntryStatus } from '../../../src/systems/ai-player/build-order/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
+import { AI_PROFILES } from '../../../src/systems/ai-player/difficulty.js';
 import {
   BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS,
   BUILDING_GOODS_GROW_FROM_TICKS,
@@ -392,7 +393,7 @@ describe('workforce module (collectResources)', () => {
     expect(builders()).toHaveLength(BUILDER_CAP);
     // From the growth clock the sites justify their shortage posts, one per good per decision, out of the
     // reserve.
-    const sites = siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS);
+    const sites = siteShortagePosts(AI_PROFILES.hard, BUILDING_GOODS_GROW_FROM_TICKS);
     for (let post = 0; post < sites; post++) {
       expect(posted(decideAt(BUILDING_GOODS_GROW_FROM_TICKS))).toEqual([STONE, WOOD]);
     }
@@ -458,8 +459,8 @@ describe('workforce module (collectResources)', () => {
       { target: woodBase, min: woodBase },
       { target: stoneBase, min: stoneBase },
     ]);
-    const wood = woodBase + siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS);
-    const stone = stoneBase + siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS);
+    const wood = woodBase + siteShortagePosts(AI_PROFILES.hard, BUILDING_GOODS_GROW_FROM_TICKS);
+    const stone = stoneBase + siteShortagePosts(AI_PROFILES.hard, BUILDING_GOODS_GROW_FROM_TICKS);
     expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS, empty)).toEqual([
       { target: wood, min: wood },
       { target: stone, min: stone },
@@ -585,7 +586,7 @@ describe('workforce module (collectResources)', () => {
     expect(posted(decideAt(0))).toEqual([]);
     // Every post past the row's one, up to the target plus the shortage posts: the gap to the glut spans
     // more units than the sites' cap, which the joinery's one post lies inside.
-    const extra = siteShortagePosts(MID_GAME_FROM_TICKS);
+    const extra = siteShortagePosts(AI_PROFILES.hard, MID_GAME_FROM_TICKS);
     for (let post = woodBase; post < woodTarget + extra; post++) expect(posted(mid())).toEqual([WOOD]);
     expect(posted(mid())).toEqual([]);
     expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget + extra);
@@ -667,7 +668,7 @@ describe('workforce module (collectResources)', () => {
     spawnMen(sim, SHORTAGE_BUILDER_FLOOR + 3, BUILDER);
     sim.step();
     const tick = BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS;
-    expect(siteShortagePosts(tick)).toBe(2);
+    expect(siteShortagePosts(AI_PROFILES.hard, tick)).toBe(2);
     const decide = () => {
       const commands = [...collectModule.run(sim.world, ctxOf(sim, tick), SEAT)];
       for (const c of commands) sim.enqueueSetup(c);
@@ -1048,24 +1049,32 @@ describe('workforce module (collectResources)', () => {
   });
 
   it('grows the builder reserve with the settlement, and again from the late game whatever its size', () => {
-    expect(builderCap(LATE_GAME_CIVILIANS - 1, 0)).toBe(BUILDER_CAP);
-    expect(builderCap(LATE_GAME_CIVILIANS, 0)).toBe(GROWN_SEAT_BUILDER_CAP);
-    expect(builderCap(LATE_GAME_CIVILIANS, LATE_GAME_FROM_TICKS - 1)).toBe(GROWN_SEAT_BUILDER_CAP);
-    expect(builderCap(0, LATE_GAME_FROM_TICKS)).toBe(LATE_GAME_BUILDER_CAP);
+    expect(builderCap(AI_PROFILES.hard, LATE_GAME_CIVILIANS - 1, 0)).toBe(BUILDER_CAP);
+    expect(builderCap(AI_PROFILES.hard, LATE_GAME_CIVILIANS, 0)).toBe(GROWN_SEAT_BUILDER_CAP);
+    expect(builderCap(AI_PROFILES.hard, LATE_GAME_CIVILIANS, LATE_GAME_FROM_TICKS - 1)).toBe(
+      GROWN_SEAT_BUILDER_CAP,
+    );
+    expect(builderCap(AI_PROFILES.hard, 0, LATE_GAME_FROM_TICKS)).toBe(LATE_GAME_BUILDER_CAP);
     expect(LATE_GAME_BUILDER_CAP).toBeGreaterThan(GROWN_SEAT_BUILDER_CAP);
   });
 
   it("follows one site's drain from the growth clock and every open site's from the follow-sites clock", () => {
-    expect(siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS - 1)).toBe(0);
-    expect(siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS)).toBe(OPENING_SITE_SHORTAGE_POSTS);
-    expect(siteShortagePosts(BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS - 1)).toBe(OPENING_SITE_SHORTAGE_POSTS);
-    expect(siteShortagePosts(BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS)).toBe(
-      sitePace(BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS).sites,
-    );
-    expect(sitePace(BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS).sites).toBeGreaterThan(
+    expect(siteShortagePosts(AI_PROFILES.hard, BUILDING_GOODS_GROW_FROM_TICKS - 1)).toBe(0);
+    expect(siteShortagePosts(AI_PROFILES.hard, BUILDING_GOODS_GROW_FROM_TICKS)).toBe(
       OPENING_SITE_SHORTAGE_POSTS,
     );
-    expect(siteShortagePosts(LATE_GAME_FROM_TICKS)).toBe(sitePace(LATE_GAME_FROM_TICKS).sites);
+    expect(siteShortagePosts(AI_PROFILES.hard, BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS - 1)).toBe(
+      OPENING_SITE_SHORTAGE_POSTS,
+    );
+    expect(siteShortagePosts(AI_PROFILES.hard, BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS)).toBe(
+      sitePace(AI_PROFILES.hard, BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS).sites,
+    );
+    expect(sitePace(AI_PROFILES.hard, BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS).sites).toBeGreaterThan(
+      OPENING_SITE_SHORTAGE_POSTS,
+    );
+    expect(siteShortagePosts(AI_PROFILES.hard, LATE_GAME_FROM_TICKS)).toBe(
+      sitePace(AI_PROFILES.hard, LATE_GAME_FROM_TICKS).sites,
+    );
   });
 
   it('claims at most the builder reserve; leftover men keep their trade', () => {

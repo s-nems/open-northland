@@ -37,7 +37,8 @@ export function setPlayerAi(world: World, command: Extract<Command, { kind: 'set
   const scripted = command.scripted ?? true;
   if (carrier === null) {
     const created = world.create();
-    world.add(created, AiPlayer, { player: command.player, modules, scripted });
+    const difficulty = command.difficulty ?? 'hard';
+    world.add(created, AiPlayer, { player: command.player, modules, scripted, difficulty });
     if (command.peaceUntil !== undefined) world.add(created, AiPeace, { untilTick: command.peaceUntil });
     return;
   }
@@ -52,6 +53,7 @@ export function setPlayerAi(world: World, command: Extract<Command, { kind: 'set
   const seat = world.mut(carrier, AiPlayer);
   seat.modules = modules;
   seat.scripted = scripted;
+  if (command.difficulty !== undefined) seat.difficulty = command.difficulty;
 }
 
 /** Lower every alarm the seat is standing on, a hand-raised one included: the seat that would have called

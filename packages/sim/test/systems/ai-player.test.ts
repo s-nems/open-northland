@@ -148,6 +148,7 @@ function worldWithSeats(...players: readonly number[]): World {
         roadBuild: true,
       },
       scripted: true,
+      difficulty: 'hard',
     });
   }
   return world;

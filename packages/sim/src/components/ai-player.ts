@@ -11,6 +11,11 @@ export const AI_MODULE_IDS: readonly MapAiModule[] = MapAiModuleSchema.options;
 
 export type AiModuleId = MapAiModule;
 
+/** How hard a computer seat plays (authored): `hard` is the full strategy, `medium` and `easy` the same
+ *  modules paced slower and stopped earlier (`systems/ai-player/difficulty.ts`). */
+export const AI_DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
+export type AiDifficulty = (typeof AI_DIFFICULTIES)[number];
+
 /** Which modules run for one AI seat - a full record (every id present), so it hashes canonically. */
 export type AiModuleEnables = Record<AiModuleId, boolean>;
 
@@ -36,6 +41,7 @@ export const AiPlayer = defineComponent<{
   modules: AiModuleEnables;
   /** Whether the seat's scripted handler runs. */
   scripted: boolean;
+  difficulty: AiDifficulty;
 }>('AiPlayer', 'players');
 
 export interface MusterPlanState {

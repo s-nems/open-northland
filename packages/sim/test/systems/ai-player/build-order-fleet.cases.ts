@@ -13,6 +13,7 @@ import type { Command } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation, type TerrainMap } from '../../../src/index.js';
 import { withinNodeRadius } from '../../../src/nav/node-circle.js';
+import { AI_PROFILES } from '../../../src/systems/ai-player/difficulty.js';
 import {
   type BuildOrderEntry,
   buildOrderModule,
@@ -628,7 +629,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
     const ctx = fleetCtx(sim);
     const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), DEFAULT_BUILD_ORDER);
     const byWorkplace = new Map<Entity, (readonly number[])[]>();
-    for (const c of tuneCraftCounters(sim.world, ctx, SEAT, supply)) {
+    for (const c of tuneCraftCounters(sim.world, ctx, SEAT, supply, AI_PROFILES.hard)) {
       if (c.kind !== 'setProductionGoods') continue;
       const workplace = sim.world.get(c.entity, JobAssignment).workplace;
       byWorkplace.set(workplace, [...(byWorkplace.get(workplace) ?? []), c.goods]);

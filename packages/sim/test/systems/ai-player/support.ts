@@ -1,5 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import {
+  type AiDifficulty,
   type AiModuleEnables,
   AiPlayer,
   aiModuleEnables,
@@ -189,8 +190,18 @@ export function completeSites(sim: Simulation): void {
 }
 
 /** Flag `player`'s seat AI-driven - the state `setPlayerAi` lands, which the garrison hire reads. */
-export function makeAiSeat(sim: Simulation, player: number, modules?: Partial<AiModuleEnables>): void {
-  sim.world.add(sim.world.create(), AiPlayer, { player, modules: aiModuleEnables(modules), scripted: true });
+export function makeAiSeat(
+  sim: Simulation,
+  player: number,
+  modules?: Partial<AiModuleEnables>,
+  difficulty: AiDifficulty = 'hard',
+): void {
+  sim.world.add(sim.world.create(), AiPlayer, {
+    player,
+    modules: aiModuleEnables(modules),
+    scripted: true,
+    difficulty,
+  });
 }
 
 /** Stand the seat's post at a node-centred `position` (see `positionOfNode`), linked as the erect would. */

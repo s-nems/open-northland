@@ -5,6 +5,7 @@ import type { Command } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
 import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
+import { AI_PROFILES } from '../../../src/systems/ai-player/difficulty.js';
 import {
   type BuildOrderEntry,
   buildOrderModule,
@@ -387,7 +388,7 @@ describe('build-order module - rebuilding under the enemy', () => {
       sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: built });
       sim.step();
     }
-    expect(sitePace(0).lookahead).toBe(3);
+    expect(sitePace(AI_PROFILES.hard, 0).lookahead).toBe(3);
     expect(act()?.buildingType).toBe(MILL_TYPE);
   });
 

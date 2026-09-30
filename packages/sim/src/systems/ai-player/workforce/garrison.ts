@@ -25,6 +25,7 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import { assistantCounterCommand } from '../assistant-counters.js';
 import { seatBarracksOf } from '../base.js';
+import { type AiProfile, shareOf } from '../difficulty.js';
 import { fighterStrength, fighterWeaponClass, strongestEnemyStrength } from '../military/census.js';
 import { WAVE_MIN_SOLDIERS } from '../military/muster.js';
 import { peaceEndsAt, WAVE_GATHER_TICKS } from '../military/plan.js';
@@ -70,9 +71,14 @@ export interface GarrisonArms {
   classesFor(barracks: Entity, next: Entity): readonly AssistantRecruitIntent[];
 }
 
-export function garrisonArms(world: World, ctx: SystemContext, player: number): GarrisonArms {
+export function garrisonArms(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  profile: AiProfile,
+): GarrisonArms {
   const vetoed = playerGoodList(world, AssistantWeaponVetoes, player);
-  const pendingVetoes = missingWeaponVetoes(world, ctx, player, vetoed);
+  const pendingVetoes = profile.weakerWeapons ? [] : missingWeaponVetoes(world, ctx, player, vetoed);
   // The vetoes land a tick later, so this decision's draft already judges the arms without them.
   const judged = [...vetoed, ...pendingVetoes];
   let classes: readonly AssistantRecruitIntent[] | undefined;
@@ -87,11 +93,12 @@ export function garrisonArms(world: World, ctx: SystemContext, player: number): 
 
 /**
  * The army floor: once the seat's peace is within {@link ARMY_FLOOR_LEAD_TICKS} of its end ({@link
- * peaceEndsAt}, the start when there is none), the seat keeps as many fighters as its strongest enemy
- * fields ({@link strongestEnemyStrength}), one to one and never fewer than {@link ARMY_FLOOR_MIN}. Its
- * fighters and the recruits already in drill count toward it, so only the missing men are claimed out of
- * `force`, which the ladder calls after the target-tier posts and ahead of the surplus ones: a seat staffs
- * what it built, and the trades that could absorb every man still leave an army. Capped by the
+ * peaceEndsAt}, the start when there is none), the seat keeps its profile's share of the fighters its
+ * strongest enemy fields ({@link strongestEnemyStrength}), never fewer than {@link ARMY_FLOOR_MIN} and never
+ * past a cap it drafts to. Its fighters and the recruits already in drill count toward it, so only the
+ * missing men are claimed out of `force`, which the ladder calls after the target-tier posts and ahead of
+ * the surplus ones: a seat staffs what it built, and the trades that could absorb every man still leave
+ * an army. Capped by the
  * {@link bachelorSurplus} and by the men draftable at all, and nobody is claimed while the draft has no
  * class to put him in.
  * Returns the claimed men for {@link trainGarrison} to publish.
@@ -102,6 +109,7 @@ export function claimArmyFloor(
   player: number,
   force: SpareForce,
   arms: GarrisonArms,
+  profile: AiProfile,
 ): readonly Entity[] {
   const barracks = drillFloorOf(world, ctx, player);
   if (barracks === null) return [];
@@ -109,8 +117,11 @@ export function claimArmyFloor(
   // The seat's own roster settles the draftable count before the enemies' rosters are walked.
   const surplus = bachelorSurplus(world, ctx, player);
   if (surplus <= 0) return [];
-  const floor = Math.max(ARMY_FLOOR_MIN, strongestEnemyStrength(world, ctx, player));
-  const missing = floor - armyOnHand(world, ctx, player);
+  const floor = Math.max(
+    ARMY_FLOOR_MIN,
+    shareOf(strongestEnemyStrength(world, ctx, player), profile.army.floorShare),
+  );
+  const missing = draftCeiling(profile, floor) - armyOnHand(world, ctx, player);
   const claim = Math.min(missing, surplus);
   if (claim <= 0) return [];
   const next = force.remaining().find((e) => isDraftable(world, e));
@@ -126,9 +137,9 @@ export function claimArmyFloor(
 
 /**
  * The garrison sizing: this rung only holds the assistant's training counters at the number of men the
- * settlement can spare, and the dispatcher (`systems/assistant/`) drafts, walks and drills them. The
- * army has no size cap (authored), so its real bound is breeding: a fighter neither marries nor fathers
- * children and the conversion is one-way, so the allowance counts only unmarried spare men beyond the
+ * settlement can spare, and the dispatcher (`systems/assistant/`) drafts, walks and drills them. Only a
+ * lower difficulty caps the army ({@link AiProfile.army}); otherwise its real bound is breeding: a fighter
+ * neither marries nor fathers children and the conversion is one-way, so the allowance counts only unmarried spare men beyond the
  * seat's waiting brides ({@link bachelorSurplus}). Runs last in the workforce ladder, so it sees the men
  * the army floor claimed (`floorMen`, {@link claimArmyFloor}) and the men left unclaimed by every post,
  * reserve and flag.
@@ -140,8 +151,16 @@ export function trainGarrison(
   force: SpareForce,
   floorMen: readonly Entity[],
   arms: GarrisonArms,
+  profile: AiProfile,
 ): PlayerCommand[] {
-  const wants = standingOrder(world, ctx, player, [...floorMen, ...draftableSpare(world, force)], arms);
+  const wants = standingOrder(
+    world,
+    ctx,
+    player,
+    [...floorMen, ...draftableSpare(world, force)],
+    arms,
+    profile,
+  );
   const counters = GARRISON_INTENTS.flatMap((intent) => {
     const command = assistantCounterCommand(world, player, intent, wants.get(intent) ?? 0, false);
     return command === null ? [] : [command];
@@ -158,6 +177,11 @@ function drillFloorOf(world: World, ctx: SystemContext, player: number): Entity 
   if (!aiModuleRuns(world, player, 'military')) return null;
   if (baseSoldierJobType(ctx.content) === null) return null;
   return seatBarracksOf(world, ctx, player);
+}
+
+/** The most fighters `profile`'s seat drafts toward: `wanted`, or its army cap where it drafts to one. */
+function draftCeiling(profile: AiProfile, wanted: number): number {
+  return profile.army.draftToCap ? Math.min(wanted, profile.army.cap) : wanted;
 }
 
 /** The seat's army as the floor counts it: its live fighters ({@link fighterStrength}) plus the booked
@@ -217,6 +241,7 @@ function standingOrder(
   player: number,
   draftable: readonly Entity[],
   arms: GarrisonArms,
+  profile: AiProfile,
 ): Map<AssistantRecruitIntent, number> {
   const wants = new Map<AssistantRecruitIntent, number>();
   const barracks = drillFloorOf(world, ctx, player);
@@ -225,7 +250,10 @@ function standingOrder(
   const booked = bookedByIntent(world, ctx, player);
   for (const intent of GARRISON_INTENTS) wants.set(intent, booked.get(intent) ?? 0);
 
-  const allowance = Math.min(draftable.length, Math.max(0, bachelorSurplus(world, ctx, player)));
+  const headroom = profile.army.draftToCap
+    ? profile.army.cap - armyOnHand(world, ctx, player)
+    : Number.POSITIVE_INFINITY;
+  const allowance = Math.max(0, Math.min(draftable.length, bachelorSurplus(world, ctx, player), headroom));
   const next = draftable[0];
   if (allowance === 0 || next === undefined) return wants; // nobody to draft: the classes need no probe
   const drafting = arms.classesFor(barracks, next);

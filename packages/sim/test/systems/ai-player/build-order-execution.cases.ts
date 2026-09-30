@@ -13,6 +13,7 @@ import {
 import type { Command } from '../../../src/core/commands/index.js';
 import { Simulation } from '../../../src/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
+import { AI_PROFILES } from '../../../src/systems/ai-player/difficulty.js';
 import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
 import {
   type BuildOrderEntry,
@@ -368,13 +369,13 @@ describe('build-order module (houseBuild)', () => {
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.iron]);
     sim.step();
-    expect(sitePace(0)).toEqual({ fromTick: 0, sites: 2, lookahead: 3 });
-    expect(sitePace(SITES_GROW_FROM_TICKS)).toEqual({
+    expect(sitePace(AI_PROFILES.hard, 0)).toEqual({ fromTick: 0, sites: 2, lookahead: 3 });
+    expect(sitePace(AI_PROFILES.hard, SITES_GROW_FROM_TICKS)).toEqual({
       fromTick: SITES_GROW_FROM_TICKS,
       sites: 3,
       lookahead: 4,
     });
-    expect(sitePace(LATE_GAME_FROM_TICKS)).toEqual({
+    expect(sitePace(AI_PROFILES.hard, LATE_GAME_FROM_TICKS)).toEqual({
       fromTick: LATE_GAME_FROM_TICKS,
       sites: 4,
       lookahead: 5,
@@ -383,16 +384,16 @@ describe('build-order module (houseBuild)', () => {
     const openAt = (tick: number): Command | undefined =>
       [...module.run(sim.world, ctxOf(sim, tick), SEAT)][0];
     const sites = (): number => [...sim.world.query(UnderConstruction)].length;
-    for (let open = 0; open < sitePace(LATE_GAME_FROM_TICKS).sites; open++) {
+    for (let open = 0; open < sitePace(AI_PROFILES.hard, LATE_GAME_FROM_TICKS).sites; open++) {
       expect(sites()).toBe(open);
       // Each step holds at its own cap while the next one opens another site.
-      if (open >= sitePace(0).sites) expect(openAt(0)).toBeUndefined();
-      if (open >= sitePace(SITES_GROW_FROM_TICKS).sites)
+      if (open >= sitePace(AI_PROFILES.hard, 0).sites) expect(openAt(0)).toBeUndefined();
+      if (open >= sitePace(AI_PROFILES.hard, SITES_GROW_FROM_TICKS).sites)
         expect(openAt(SITES_GROW_FROM_TICKS)).toBeUndefined();
       const tick =
-        open < sitePace(0).sites
+        open < sitePace(AI_PROFILES.hard, 0).sites
           ? 0
-          : open < sitePace(SITES_GROW_FROM_TICKS).sites
+          : open < sitePace(AI_PROFILES.hard, SITES_GROW_FROM_TICKS).sites
             ? SITES_GROW_FROM_TICKS
             : LATE_GAME_FROM_TICKS;
       const next = openAt(tick);
@@ -440,7 +441,7 @@ describe('build-order module (houseBuild)', () => {
     expect(placed().sort((a, b) => a - b)).toEqual([FARM_TYPE, HOME_TYPE, TOWER_TYPE].sort((a, b) => a - b));
     expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: HOME_TYPE });
     expect(act()).toBeUndefined();
-    expect(placed()).toHaveLength(sitePace(LATE_GAME_FROM_TICKS).sites);
+    expect(placed()).toHaveLength(sitePace(AI_PROFILES.hard, LATE_GAME_FROM_TICKS).sites);
   });
 
   it('never holds the list on a lane with no room for its building', () => {

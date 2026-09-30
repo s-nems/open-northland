@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  type AiDifficulty,
   AiPeace,
   ASSISTANT_RECRUIT_INTENTS,
   type AssistantCounterKind,
@@ -23,6 +24,7 @@ import type { PlayerCommand } from '../../../src/core/commands/index.js';
 import type { Entity, World } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/assistant-counters.js';
+import { AI_PROFILES } from '../../../src/systems/ai-player/difficulty.js';
 import {
   gamePhase,
   MID_GAME_FROM_TICKS,
@@ -118,6 +120,7 @@ interface SeatOptions {
   readonly barracks?: { x: number; y: number };
   /** Turn signpost navigation on, so that reach confines anything at all. */
   readonly confined?: boolean;
+  readonly difficulty?: AiDifficulty;
 }
 
 /** The barracks a few nodes off the HQ: one settlement, everything inside one walk range. */
@@ -154,7 +157,7 @@ function armedSeat(arms: readonly { good: number; amount: number }[], options: S
     owner: SEAT,
   });
   spawnMen(sim, men);
-  makeAiSeat(sim, SEAT);
+  makeAiSeat(sim, SEAT, undefined, options.difficulty);
   sim.step();
   return { sim, ctx: { ...ctxOf(sim), content }, men };
 }
@@ -449,7 +452,7 @@ function glutOf(buildingId: string, index: number, goodId: string): number {
 /** One decision's craft selections, over the seat's supply at the time. */
 function tune(world: World, ctx: SystemContext): PlayerCommand[] {
   const supply = SeatSupply.of(world, ctx, SEAT, ownedBuildings(world, SEAT), DEFAULT_BUILD_ORDER);
-  return tuneCraftCounters(world, ctx, SEAT, supply);
+  return tuneCraftCounters(world, ctx, SEAT, supply, AI_PROFILES.hard);
 }
 
 /** A recast joinery at (40, 16) with `crew` builders hired as its joiners, lowest id first; the
@@ -778,6 +781,13 @@ describe('workforce module - the barracks and craft selections', () => {
     const again = collectModule.run(seat.sim.world, seat.ctx, SEAT);
     expect(again.some((c) => c.kind === 'setAssistantWeaponVeto')).toBe(false);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSoldiers: sparePool(seat) });
+  });
+
+  it('arms with the weaker weapon on the easy difficulty instead of vetoing it', () => {
+    const seat = armedSeat([{ good: SWORD, amount: 1 }], { content: longSwordContent(), difficulty: 'easy' });
+    const first = collectModule.run(seat.sim.world, seat.ctx, SEAT);
+    expect(first.some((c) => c.kind === 'setAssistantWeaponVeto')).toBe(false);
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: sparePool(seat) });
   });
 
   it('lifts its weapon vetoes when the AI lets go of the seat or its military module', () => {

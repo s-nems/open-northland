@@ -1,4 +1,5 @@
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
+import type { AiProfile } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../game-phase.js';
 import type { JoineryRole } from '../joinery-role.js';
 
@@ -356,10 +357,10 @@ export interface SitePace {
   readonly lookahead: number;
 }
 
-/** The pace by game clock (authored): the opening's two sites, a third with one more entry of lookahead
- *  from {@link SITES_GROW_FROM_TICKS}, a fourth with one more again from the late game, when the builder
- *  reserve grows to match (`workforce/staffing.ts`). */
-const SITE_PACE_STEPS: readonly SitePace[] = [
+/** The hard seat's pace by game clock (authored): the opening's two sites, a third with one more entry of
+ *  lookahead from {@link SITES_GROW_FROM_TICKS}, a fourth with one more again from the late game, when the
+ *  builder reserve grows to match (`workforce/staffing.ts`). */
+export const SITE_PACE_STEPS: readonly SitePace[] = [
   { fromTick: 0, sites: MAX_ACTIVE_CONSTRUCTION_SITES, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES },
   {
     fromTick: SITES_GROW_FROM_TICKS,
@@ -373,11 +374,11 @@ const SITE_PACE_STEPS: readonly SitePace[] = [
   },
 ];
 
-/** The {@link SITE_PACE_STEPS} step reached at `tick`. */
-export function sitePace(tick: number): SitePace {
-  let pace = SITE_PACE_STEPS[0];
-  if (pace === undefined) throw new Error('SITE_PACE_STEPS is empty');
-  for (const step of SITE_PACE_STEPS) {
+/** The step of `profile`'s pace reached at `tick`. */
+export function sitePace(profile: AiProfile, tick: number): SitePace {
+  let pace = profile.sitePace[0];
+  if (pace === undefined) throw new Error(`the ${profile.difficulty} site pace is empty`);
+  for (const step of profile.sitePace) {
     if (tick >= step.fromTick) pace = step;
   }
   return pace;

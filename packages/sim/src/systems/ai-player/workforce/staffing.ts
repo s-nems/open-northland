@@ -5,6 +5,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isCarrierJob } from '../../stores/index.js';
+import type { AiProfile } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
 import { isBuilt, ownedSettlers } from '../seat-roster.js';
 import { byExperience, experienceRank, tradeExperience } from './experience.js';
@@ -21,26 +22,15 @@ import { incrementStaffing, type StaffingTally } from './tally.js';
 /** Whichever tier a staffing pass fills toward - see {@link staffBuildings}. */
 export type StaffingTier = 'min' | 'target' | 'surplus';
 
-/** How many builders the pool keeps (authored), enough for the build order's opening sites at once.
- *  Claimed right after minimum staffing, so construction never starves, and before every top-up tier, so
- *  the surplus ladder distributes only what is beyond the reserve. */
-export const BUILDER_CAP = 12;
-
-/** The reserve of a grown settlement, from {@link LATE_GAME_CIVILIANS} civilians on (authored). */
-export const GROWN_SEAT_BUILDER_CAP = 14;
-
-/** The reserve from the late game on, whatever the head count (authored): the build order then keeps
- *  four sites open (`build-order/entries.ts`). */
-export const LATE_GAME_BUILDER_CAP = 16;
-
 /** The reserve while a build-order placement finds no spot (authored): the few sites the stall leaves
  *  need few hands, and every other man fells and digs the room the placement waits for. */
 export const STALLED_BUILDER_CAP = 4;
 
-/** The builder reserve for a seat of `civilians` non-fighting settlers deciding at `tick`. */
-export function builderCap(civilians: number, tick: number): number {
-  if (tick >= LATE_GAME_FROM_TICKS) return LATE_GAME_BUILDER_CAP;
-  return civilians >= LATE_GAME_CIVILIANS ? GROWN_SEAT_BUILDER_CAP : BUILDER_CAP;
+/** The builder reserve of `profile`'s seat of `civilians` non-fighting settlers deciding at `tick`. */
+export function builderCap(profile: AiProfile, civilians: number, tick: number): number {
+  const { builders } = profile;
+  if (tick >= LATE_GAME_FROM_TICKS) return builders.late;
+  return civilians >= LATE_GAME_CIVILIANS ? builders.grown : builders.opening;
 }
 
 /**

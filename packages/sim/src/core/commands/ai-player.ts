@@ -1,4 +1,4 @@
-import type { AiModuleEnables } from '../../components/ai-player.js';
+import type { AiDifficulty, AiModuleEnables } from '../../components/ai-player.js';
 
 /** Commands that attach or detach the computer player on a seat. */
 export type AiPlayerCommand = {
@@ -7,6 +7,7 @@ export type AiPlayerCommand = {
    * carrier. `modules` narrows which strategic concerns run for the seat (an omitted module defaults
    * to enabled) and `scripted` switches its scripted handler, on when omitted. `peaceUntil` holds the
    * seat's waves at home before that tick; omitted, the seat keeps whatever peace it had, a new seat none.
+   * `difficulty` sets how hard the seat plays; omitted, the seat keeps its own, a new seat `hard`.
    */
   readonly kind: 'setPlayerAi';
   /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
@@ -15,4 +16,5 @@ export type AiPlayerCommand = {
   readonly modules?: Partial<AiModuleEnables>;
   readonly scripted?: boolean;
   readonly peaceUntil?: number;
+  readonly difficulty?: AiDifficulty;
 };

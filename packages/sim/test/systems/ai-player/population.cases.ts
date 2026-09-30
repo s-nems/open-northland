@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  type AiDifficulty,
   AssistantRecruit,
   JobAssignment,
   Marriage,
@@ -10,6 +11,7 @@ import {
 import type { PlayerCommand } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
+import { AI_PROFILES } from '../../../src/systems/ai-player/difficulty.js';
 import { populationModule } from '../../../src/systems/ai-player/index.js';
 import { IDLE_MEN_HOLD_BIRTHS } from '../../../src/systems/ai-player/population.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
@@ -21,6 +23,7 @@ import {
   entityOfBuilding,
   HOME_TYPE,
   HQ_TYPE,
+  makeAiSeat,
   placeHq,
   SEAT,
   spawnMen,
@@ -151,6 +154,57 @@ describe('population module (homeExpansion)', () => {
     ]);
   });
 
+  it('caps the pregnancies at a share of the family slots below the hard difficulty', () => {
+    const counters = (sim: Simulation): PlayerCommand[] =>
+      [...populationModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setAssistantCounter');
+    const housedSeat = (difficulty: AiDifficulty): Simulation => {
+      const sim = populationSim();
+      makeAiSeat(sim, SEAT, undefined, difficulty);
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x: 36,
+        y: 16,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      for (const woman of womenOf(sim)) sim.enqueueSetup({ kind: 'marry', entity: woman });
+      for (let i = 0; i < 3000 && womenOf(sim).some((w) => !sim.world.has(w, Marriage)); i++) sim.step();
+      for (const c of populationModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+      sim.step();
+      return sim;
+    };
+    const secondHome = (sim: Simulation): void => {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x: 24,
+        y: 16,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      sim.step();
+    };
+
+    // Two slots, a quarter of them rounds to none: the easy seat still keeps one child on the way.
+    const easy = housedSeat('easy');
+    expect(easy.assistantCounters(SEAT).extraMen).toEqual({ value: 1, infinite: false });
+    // Four slots with two daughters missing: the one birth goes to a daughter.
+    secondHome(easy);
+    expect(counters(easy)).toEqual([
+      { kind: 'setAssistantCounter', player: SEAT, counter: 'extraWomen', value: 1, infinite: false },
+      { kind: 'setAssistantCounter', player: SEAT, counter: 'extraMen', value: 0, infinite: false },
+    ]);
+
+    // Half of four slots: both missing daughters at once, and no son.
+    const medium = housedSeat('medium');
+    secondHome(medium);
+    expect(counters(medium)).toEqual([
+      { kind: 'setAssistantCounter', player: SEAT, counter: 'extraWomen', value: 2, infinite: false },
+      { kind: 'setAssistantCounter', player: SEAT, counter: 'extraMen', value: 0, infinite: false },
+    ]);
+  });
+
   it('re-houses the families of a razed home in the next free one', () => {
     const sim = populationSim();
     sim.enqueueSetup({
@@ -247,7 +301,7 @@ describe('population module (homeExpansion)', () => {
     }
 
     // The seat's civilians are its builders alone, well under the grown-settlement reserve.
-    const reserve = builderCap(0, 0);
+    const reserve = builderCap(AI_PROFILES.hard, 0, 0);
 
     it('holds the sons at zero while idle builders stand beyond the reserve', () => {
       const idleBeyondReserve = 5;

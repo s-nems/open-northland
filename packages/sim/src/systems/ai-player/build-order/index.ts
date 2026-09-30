@@ -16,6 +16,7 @@ import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { seatBaseOf } from '../base.js';
 import { buildingTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
+import { aiProfileOf, profileBuildOrder } from '../difficulty.js';
 import type { AiPlayerModule } from '../index.js';
 import type { EnemyFire } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf } from '../node-geometry.js';
@@ -93,13 +94,15 @@ function runBuildOrder(
   world: World,
   ctx: SystemContext,
   player: number,
-  order: readonly BuildOrderEntry[],
+  fullOrder: readonly BuildOrderEntry[],
 ): readonly PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
+  const profile = aiProfileOf(world, player);
+  const order = profileBuildOrder(fullOrder, profile);
   const owned = ownedBuildings(world, player);
   const base = seatBaseOf(world, ctx, player);
-  const siteCap = base === null ? BASELESS_CONSTRUCTION_SITES : sitePace(ctx.tick).sites;
+  const siteCap = base === null ? BASELESS_CONSTRUCTION_SITES : sitePace(profile, ctx.tick).sites;
   const sites = constructionSites(world, ctx, owned);
   if (sites.length >= siteCap) return [];
 
@@ -425,7 +428,7 @@ function outrunsSites(
   entryIndex: number,
   memo: DecisionMemo,
 ): boolean {
-  const { lookahead } = sitePace(ctx.tick);
+  const { lookahead } = sitePace(aiProfileOf(world, player), ctx.tick);
   if (entryIndex <= lookahead) return false;
   const standing = owned.filter((e) => !world.has(e, UnderConstruction) || world.has(e, Upgrading));
   let oldest = -1;

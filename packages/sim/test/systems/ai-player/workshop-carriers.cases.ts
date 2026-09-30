@@ -17,6 +17,7 @@ import type { Command } from '../../../src/core/commands/index.js';
 import { contentIndex } from '../../../src/core/content-index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
+import { AI_PROFILES } from '../../../src/systems/ai-player/difficulty.js';
 import {
   CORE_CREW_FROM_TICKS,
   type GamePhase,
@@ -289,7 +290,7 @@ function selections(seat: Seat, building: Entity, job: number): (readonly number
   const { world } = seat.sim;
   const ctx = { ...ctxOf(seat.sim), content: workshopsContent() };
   const supply = SeatSupply.of(world, ctx, SEAT, ownedBuildings(world, SEAT), DEFAULT_BUILD_ORDER);
-  seat.apply(tuneCraftCounters(world, ctx, SEAT, supply));
+  seat.apply(tuneCraftCounters(world, ctx, SEAT, supply, AI_PROFILES.hard));
   const recipes = contentIndex(ctx.content).recipeByProductByBuilding.get(
     world.get(building, Building).buildingType,
   );
@@ -804,6 +805,7 @@ function planOf(
     player: SEAT,
     owned,
     supply: SeatSupply.of(world, ctx, SEAT, owned, DEFAULT_BUILD_ORDER),
+    profile: AI_PROFILES.hard,
   };
   const type = contentIndex(content).buildings.get(world.get(building, Building).buildingType);
   const plan = type === undefined ? null : buildingStaffing(world, ctx, staffing, building, type, held);

@@ -23,6 +23,7 @@ import {
   sitePace,
 } from '../../build-order/index.js';
 import { goodTypeByContentId } from '../../content-lookup.js';
+import { type AiProfile, aiProfileOf } from '../../difficulty.js';
 import {
   BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS,
   BUILDING_GOODS_GROW_FROM_TICKS,
@@ -91,10 +92,10 @@ export const OPENING_SITE_SHORTAGE_POSTS = 1;
  *  the only thing that adds one, {@link OPENING_SITE_SHORTAGE_POSTS} until
  *  {@link BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS}, then one per site the clock lets draw the good at once
  *  ({@link sitePace}). */
-export function siteShortagePosts(tick: number): number {
+export function siteShortagePosts(profile: AiProfile, tick: number): number {
   if (tick < BUILDING_GOODS_GROW_FROM_TICKS) return 0;
   if (tick < BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS) return OPENING_SITE_SHORTAGE_POSTS;
-  return sitePace(tick).sites;
+  return sitePace(profile, tick).sites;
 }
 
 /** The shortage posts the paving good gains while the seat has road sites pending (authored): a road
@@ -232,6 +233,7 @@ export function wantedCollectorGoods(
     if (!goodIds.includes(goodId)) goodIds.push(goodId);
   }
   const phase = gamePhase(ctx.tick);
+  const profile = aiProfileOf(world, player);
   const roadGood = roadPavingGood(ctx.content);
   const wanted: WantedGood[] = [];
   for (const goodId of goodIds) {
@@ -251,7 +253,7 @@ export function wantedCollectorGoods(
           scheduled
         : Math.max(fixed + scheduled, entryCount);
     const sitePosts =
-      (fixed === undefined ? 0 : siteShortagePosts(ctx.tick)) +
+      (fixed === undefined ? 0 : siteShortagePosts(profile, ctx.tick)) +
       (good.typeId === roadGood ? roadShortagePosts(world, ctx, player) : 0);
     const mostExtra = Math.max(sitePosts, Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER));
     // A building good's row stands whole before the reserve (authored): the standard one gatherer

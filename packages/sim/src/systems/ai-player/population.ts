@@ -19,6 +19,7 @@ import { homeQualityUseFor, householdGoodAllowed } from '../family/home-quality.
 import { familiesOf } from '../family/households.js';
 import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
+import { type AiProfile, aiProfileOf, shareOf } from './difficulty.js';
 import type { AiPlayerModule } from './index.js';
 import { isBuilt, ownedBuildings, ownedSettlers } from './seat-roster.js';
 import { builderJobOf, civilianCount, isAllocatableMan } from './workforce/pool.js';
@@ -30,7 +31,8 @@ export const IDLE_MEN_HOLD_BIRTHS = 3;
 /**
  * The HomeExpansion module (authored): who marries, which family takes a free home slot, and the birth
  * counters the settlement assistant is held at - daughters up to the housing stock, sons unbounded
- * unless idle men stand beyond the builder reserve ({@link idleMenHoldBirths}). It also lets its homes
+ * unless idle men stand beyond the builder reserve ({@link idleMenHoldBirths}), both capped together on
+ * a lower difficulty ({@link birthCounters}). It also lets its homes
  * burn the holy oil its druid boils, which a player's policy leaves off by default.
  */
 
@@ -83,16 +85,12 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
     // already accounted inside the counter itself.
     if (world.tryGet(e, ChildOrder)?.child === 'female' && !world.has(e, AssistantChildOrder)) femaleStock++;
   }
-  const daughters = assistantCounterCommand(
-    world,
-    player,
-    'extraWomen',
-    familySlotsTotal - femaleStock,
-    false,
-  );
+  const profile = aiProfileOf(world, player);
+  const held = idleMenHoldBirths(world, ctx, player, profile);
+  const births = birthCounters(profile, familySlotsTotal, familySlotsTotal - femaleStock, held);
+  const daughters = assistantCounterCommand(world, player, 'extraWomen', births.daughters, false);
   if (daughters !== null) commands.push(daughters);
-  const held = idleMenHoldBirths(world, ctx, player);
-  const sons = assistantCounterCommand(world, player, 'extraMen', 0, !held);
+  const sons = assistantCounterCommand(world, player, 'extraMen', births.sons ?? 0, births.sons === null);
   if (sons !== null) commands.push(sons);
   if (homeQualityUseFor(ctx, 'piety') !== undefined && !householdGoodAllowed(world, player, 'piety')) {
     commands.push({ kind: 'setHouseholdGoodUse', player, effect: 'piety', allowed: true });
@@ -106,7 +104,7 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
  * can post or arm is a mouth, so more sons wait until posts or arms open up. It reads no clock, so the
  * opening, where every man is placed, is never held.
  */
-function idleMenHoldBirths(world: World, ctx: SystemContext, player: number): boolean {
+function idleMenHoldBirths(world: World, ctx: SystemContext, player: number, profile: AiProfile): boolean {
   const builderJob = builderJobOf(ctx);
   if (builderJob === null) return false;
   let idle = 0;
@@ -115,7 +113,25 @@ function idleMenHoldBirths(world: World, ctx: SystemContext, player: number): bo
     if (world.has(e, JobAssignment) || world.has(e, AssistantRecruit)) continue;
     if (liveWorkFlag(world, e) === undefined) idle++;
   }
-  return idle - builderCap(civilianCount(world, ctx, player), ctx.tick) >= IDLE_MEN_HOLD_BIRTHS;
+  return idle - builderCap(profile, civilianCount(world, ctx, player), ctx.tick) >= IDLE_MEN_HOLD_BIRTHS;
+}
+
+/**
+ * The two birth counters: daughters up to the `wantedDaughters` the homes lack, sons unbounded (null)
+ * unless `held`. A profile with a {@link AiProfile.birthShare} caps both together at that share of its
+ * `familySlots`, at least one, daughters first: the assistant counts its booked child orders against the
+ * counters (`systems/assistant/`), so that many pregnancies run at once.
+ */
+function birthCounters(
+  profile: AiProfile,
+  familySlots: number,
+  wantedDaughters: number,
+  held: boolean,
+): { readonly daughters: number; readonly sons: number | null } {
+  if (profile.birthShare === null) return { daughters: wantedDaughters, sons: held ? 0 : null };
+  const limit = Math.max(1, shareOf(familySlots, profile.birthShare));
+  const daughters = Math.min(wantedDaughters, limit);
+  return { daughters, sons: held ? 0 : limit - Math.max(0, daughters) };
 }
 
 /** Married to a living spouse - narrower than the family rule's `isMarried`, which also counts a widow

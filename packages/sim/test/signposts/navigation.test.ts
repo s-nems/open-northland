@@ -421,7 +421,12 @@ describe('a computer seat leads its lost settlers back', () => {
   }
 
   function computerSeat(sim: Simulation): void {
-    sim.world.add(sim.world.create(), AiPlayer, { player: P0, modules: NO_MODULES, scripted: false });
+    sim.world.add(sim.world.create(), AiPlayer, {
+      player: P0,
+      modules: NO_MODULES,
+      scripted: false,
+      difficulty: 'hard',
+    });
   }
 
   function tileX(sim: Simulation, e: Entity): number {

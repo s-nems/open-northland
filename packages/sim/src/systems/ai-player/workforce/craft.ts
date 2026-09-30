@@ -19,6 +19,7 @@ import { vehicleHouseOfGood } from '../../readviews/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { goodTypeByContentId } from '../content-lookup.js';
+import type { AiProfile } from '../difficulty.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
 import { type JoineryRole, joineryRoles, ROLE_JOINERY_ID } from '../joinery-role.js';
 import { rivalOverSea } from '../sea-route.js';
@@ -139,6 +140,9 @@ const MINT_SEATS: readonly CraftSeat[] = [
   STRENGTH_AMULET_SEAT,
 ];
 
+/** The bows and wooden spears in stock at which the first armourer drops that line (authored). */
+const ARMOURY_GLUT_UNITS = 20;
+
 /** How many druids a seat's six huts employ; one boils the temple's oil, the rest brew the big potion. */
 const DRUID_SEATS = 12;
 
@@ -208,7 +212,10 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   // the spear the smithy's iron spear needs or the bow, gets his whole time; the rest make long bows.
   work_armory_01: {
     seats: [
-      { goods: ['bow_long', 'spear_wooden'], glut: { bow_long: 20, spear_wooden: 20 } },
+      {
+        goods: ['bow_long', 'spear_wooden'],
+        glut: { bow_long: ARMOURY_GLUT_UNITS, spear_wooden: ARMOURY_GLUT_UNITS },
+      },
       ['bow_long'],
       ['bow_long'],
       ['bow_long'],
@@ -223,29 +230,54 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_coin_mint: { seats: MINT_SEATS },
 };
 
-/** The catapults a seat keeps at most (authored): at this many, standing or in a yard, the catapult
+/** The catapults a hard seat keeps at most (authored): at this many, standing or in a yard, the catapult
  *  joinery's crew turns to iron tools. */
 export const AI_CATAPULT_CAP = 15;
 
-/** The catapults a seat has fallen back to when the catapult joinery's crew takes catapults up again
+/** The catapults a hard seat has fallen back to when the catapult joinery's crew takes catapults up again
  *  (authored), a band under {@link AI_CATAPULT_CAP} so one loss does not flip the crew. */
 export const AI_CATAPULT_RESUME = 12;
 
-const CATAPULT_SEAT: FleetSeat = {
-  fleet: 'catapult',
-  cap: AI_CATAPULT_CAP,
-  resume: AI_CATAPULT_RESUME,
-  otherwise: ['tool_iron'],
-};
+/** The plans per role of a workplace type whose buildings each take a role by where they stand
+ *  ({@link joineryRoles}), by stable content id. */
+export type JoineryRolePlans = Readonly<Record<string, Readonly<Record<JoineryRole, CraftPlan>>>>;
 
-/** The plans of a workplace type whose buildings each take a role by where they stand
- *  ({@link joineryRoles}), per role (authored); the type takes no {@link CRAFT_PLANS_BY_BUILDING_ID} row.
- *  The top-tier joinery's whole crew builds catapults up to the seat's cap and iron tools past it, or
- *  small ships. */
-export const CRAFT_PLANS_BY_JOINERY_ROLE: Readonly<Record<string, Readonly<Record<JoineryRole, CraftPlan>>>> =
-  {
-    [ROLE_JOINERY_ID]: { catapult: { seats: [CATAPULT_SEAT] }, ship: { seats: [['ship_small']] } },
+/** The role plans of a seat keeping `cap` catapults and building again from `resume` (authored): the
+ *  top-tier joinery's whole crew builds catapults up to the cap and iron tools past it, or small ships.
+ *  Such a type takes no {@link CRAFT_PLANS_BY_BUILDING_ID} row. */
+export function joineryRolePlans(cap: number, resume: number): JoineryRolePlans {
+  const catapultSeat: FleetSeat = { fleet: 'catapult', cap, resume, otherwise: ['tool_iron'] };
+  return {
+    [ROLE_JOINERY_ID]: { catapult: { seats: [catapultSeat] }, ship: { seats: [['ship_small']] } },
   };
+}
+
+/** The hard seat's role plans. */
+export const CRAFT_PLANS_BY_JOINERY_ROLE: JoineryRolePlans = joineryRolePlans(
+  AI_CATAPULT_CAP,
+  AI_CATAPULT_RESUME,
+);
+
+/**
+ * The easy seat's plans over {@link CRAFT_PLANS_BY_BUILDING_ID} (authored): its one mint strikes coins
+ * only, and its smithies and armoury make each class's weaker weapon beside the best, since it arms its
+ * recruits with either: the short sword takes less iron than the long one, the wooden spear and the short
+ * bow only wood.
+ */
+export const EASY_CRAFT_PLANS: Readonly<Record<string, CraftPlan>> = {
+  work_coin_mint: { seats: [['coin']] },
+  work_smithy_01: { seats: [['sword_shord'], ['armor_chain'], ['sword_long'], ['spear_iron']] },
+  work_armory_01: {
+    seats: [
+      {
+        goods: ['bow_short', 'spear_wooden'],
+        glut: { bow_short: ARMOURY_GLUT_UNITS, spear_wooden: ARMOURY_GLUT_UNITS },
+        otherwise: ['bow_long'],
+      },
+      ['bow_long'],
+    ],
+  },
+};
 
 /** The run a workshop opens with once built, by stable content ids (authored): its whole crew works only
  *  `good` until that building has finished `cycles` of it, then the seat lists apply. Tiles and marble come
@@ -266,8 +298,8 @@ interface RestrictedCrew {
 }
 
 /**
- * Keep every operator of a restricted workplace on its plan's product list for his seat: the type's plan,
- * or for a type whose buildings take roles, the plan of his building's role.
+ * Keep every operator of a restricted workplace on its plan's product list for his seat: the type's plan in
+ * `profile`, or for a type whose buildings take roles, the plan of his building's role.
  * `ProductionCounters` is per worker, not per building, and any employment change clears it (`reidleAsJob`),
  * so the check runs every decision and issues a command only when the live counters differ from "these
  * products unlimited, every other one stopped". An empty result issues nothing, because
@@ -282,6 +314,7 @@ export function tuneCraftCounters(
   ctx: SystemContext,
   player: number,
   supply: SeatSupply,
+  profile: AiProfile,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
@@ -307,9 +340,8 @@ export function tuneCraftCounters(
     const building = world.tryGet(assignment.workplace, Building);
     const type = building === undefined ? undefined : index.buildings.get(building.buildingType);
     if (type === undefined) continue;
-    const roles = CRAFT_PLANS_BY_JOINERY_ROLE[type.id];
-    const plan =
-      roles === undefined ? CRAFT_PLANS_BY_BUILDING_ID[type.id] : roles[roleOf(assignment.workplace)];
+    const roles = profile.joineryRolePlans[type.id];
+    const plan = roles === undefined ? profile.craftPlans[type.id] : roles[roleOf(assignment.workplace)];
     if (plan === undefined) continue;
     const seated = crews.get(plan);
     if (seated !== undefined) {
@@ -435,10 +467,11 @@ function shortFirst(
 export function craftGlutPending(
   ctx: SystemContext,
   supply: SeatSupply,
+  profile: AiProfile,
   type: BuildingType,
   engaged: boolean,
 ): boolean {
-  const plan = CRAFT_PLANS_BY_BUILDING_ID[type.id];
+  const plan = profile.craftPlans[type.id];
   if (plan === undefined) return false;
   return plan.seats.some(
     (seat) =>

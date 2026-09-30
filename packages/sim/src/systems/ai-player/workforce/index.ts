@@ -15,6 +15,7 @@ import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { seatBaseOf } from '../base.js';
 import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
+import { type AiProfile, aiProfileOf, BUILDER_CAP, profileBuildOrder } from '../difficulty.js';
 import type { AiPlayerModule } from '../index.js';
 import { reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
@@ -39,7 +40,6 @@ import { allocateOpeningHunter } from './hunter.js';
 import { builderJobOf, civilianCount, classifyWorkforce, isAllocatableMan, SpareForce } from './pool.js';
 import { allocateRoadCrew } from './road-crew.js';
 import {
-  BUILDER_CAP,
   builderCap,
   releaseSurplusCarriers,
   releaseSurplusOperators,
@@ -68,12 +68,7 @@ export {
   ROAD_CREW,
   roadCrewTarget,
 } from './road-crew.js';
-export {
-  BUILDER_CAP,
-  GROWN_SEAT_BUILDER_CAP,
-  LATE_GAME_BUILDER_CAP,
-  STALLED_BUILDER_CAP,
-} from './staffing.js';
+export { STALLED_BUILDER_CAP } from './staffing.js';
 export {
   LATE_GAME_CIVILIANS,
   STAFFING_BY_BUILDING_ID,
@@ -92,11 +87,13 @@ function runWorkforce(
   world: World,
   ctx: SystemContext,
   player: number,
-  order: readonly BuildOrderEntry[],
+  fullOrder: readonly BuildOrderEntry[],
 ): readonly PlayerCommand[] {
+  const profile = aiProfileOf(world, player);
+  const order = profileBuildOrder(fullOrder, profile);
   const builderJob = builderJobOf(ctx);
   const base = seatBaseOf(world, ctx, player);
-  if (base === null) return rebuildCrew(world, ctx, player, order, builderJob);
+  if (base === null) return rebuildCrew(world, ctx, player, order, profile, builderJob);
   const owned = ownedBuildings(world, player);
   const supply = SeatSupply.of(world, ctx, player, owned, order);
   const statuses = entryStatuses(world, ctx, player, order);
@@ -116,7 +113,7 @@ function runWorkforce(
   const force = new SpareForce(pool);
   const tally = buildStaffingTally(world);
   const taken: TakenFlagNodes = new Set();
-  const seat: SeatStaffing = { player, owned, supply };
+  const seat: SeatStaffing = { player, owned, supply, profile };
   const ground = collectorGround(world, ctx, player, seat.owned, baseNode);
   const fishing = fishingPlan(world, ctx, player, ground?.flags ?? null, fishers);
   const generic = (): PlayerCommand[] =>
@@ -166,7 +163,10 @@ function runWorkforce(
       world,
       force,
       builderJob,
-      Math.max(0, (clearing > 0 ? STALLED_BUILDER_CAP : builderCap(civilians, ctx.tick)) - roadCrew.crew),
+      Math.max(
+        0,
+        (clearing > 0 ? STALLED_BUILDER_CAP : builderCap(profile, civilians, ctx.tick)) - roadCrew.crew,
+      ),
       ctx,
     ),
   ];
@@ -180,16 +180,16 @@ function runWorkforce(
     ...staffBuildings(world, ctx, seat, force, tally, 'target'),
     ...(ground === null ? [] : topUpCollectors(world, ctx, ground, wanted, collectorsByGood, force, taken)),
   ];
-  const arms = garrisonArms(world, ctx, player);
-  const armyFloor = claimArmyFloor(world, ctx, player, force, arms);
+  const arms = garrisonArms(world, ctx, player, profile);
+  const armyFloor = claimArmyFloor(world, ctx, player, force, arms, profile);
   return [
     ...essentials,
     ...targets,
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'topUp'),
     ...staffBuildings(world, ctx, seat, force, tally, 'surplus'),
     ...(clearing > 0 ? [] : generic()),
-    ...trainGarrison(world, ctx, player, force, armyFloor, arms),
-    ...tuneCraftCounters(world, ctx, player, supply),
+    ...trainGarrison(world, ctx, player, force, armyFloor, arms, profile),
+    ...tuneCraftCounters(world, ctx, player, supply, profile),
   ];
 }
 
@@ -236,12 +236,14 @@ function rebuildCrew(
   ctx: SystemContext,
   player: number,
   order: readonly BuildOrderEntry[],
+  profile: AiProfile,
   builderJob: number | null,
 ): readonly PlayerCommand[] {
   const owned = ownedBuildings(world, player);
   if (!owned.some((e) => world.has(e, UnderConstruction))) return [];
   const force = new SpareForce(rebuildHands(world, ctx, player));
-  const seat: SeatStaffing = { player, owned, supply: SeatSupply.of(world, ctx, player, owned, order) };
+  const supply = SeatSupply.of(world, ctx, player, owned, order);
+  const seat: SeatStaffing = { player, owned, supply, profile };
   return [
     ...reserveBuilders(world, force, builderJob, BUILDER_CAP, ctx),
     ...staffBuildings(world, ctx, seat, force, buildStaffingTally(world), 'min'),

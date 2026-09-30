@@ -21,7 +21,7 @@ export const OPENING_WAVE: WaveBand = { min: WAVE_MIN_SOLDIERS, max: 10 };
 /** The late-game assault the band grows into (authored). */
 export const LATE_WAVE: WaveBand = { min: 50, max: 100 };
 
-/** The army the seat never holds past (authored): from this many live fighters the door sends the
+/** The army a hard seat never holds past (authored): from this many live fighters the door sends the
  *  band it has, whatever size the wave was drawn to and whatever the odds, so a seat whose build order
  *  has settled does not hoard two hundred men at its barracks. It still waits for the men walking in,
  *  up to one gather window from the tick the cap was first reached, so the army leaves as one wave and
@@ -87,8 +87,8 @@ function outnumbered({ own, opposing }: Strength): boolean {
  * Nothing marches while the target's owner {@link outnumbered} the seat by `strength`, not even on a spent
  * window: the band keeps gathering and the plan is kept. Both sides are whole armies, the seat's own beyond
  * `door.mustered`, since a garrison defends what a wave would take and the seat's towers should not bench
- * the band at its door. The one rule above all of that is the {@link ARMY_CAP_SOLDIERS}: an army that
- * size goes in whole, once its men walking in have arrived or the window has run out on a man who never
+ * the band at its door. The one rule above all of that is the seat's `armyCap` ({@link ARMY_CAP_SOLDIERS}
+ * on hard): an army that size goes in whole, once its men walking in have arrived or the window has run out on a man who never
  * does. A first strength judgement: head counts and tower posts, blind to weapons, armour, amulets,
  * potions and experience.
  */
@@ -101,6 +101,7 @@ export function decideWave(
   meleeCore: number,
   peaceEnd: number,
   strength: Strength,
+  armyCap: number,
 ): boolean {
   if (door.mustered < WAVE_MIN_SOLDIERS) {
     abandonWave(world, barracks);
@@ -109,7 +110,7 @@ export function decideWave(
   if (!waveWorthy(band, meleeCore)) return false;
   const plan = wavePlan(world, ctx, barracks, peaceEnd);
   const windowOpen = ctx.tick - plan.drawnAt < WAVE_GATHER_TICKS;
-  if (strength.own >= ARMY_CAP_SOLDIERS) {
+  if (strength.own >= armyCap) {
     const cappedAt = plan.cappedAt ?? ctx.tick;
     if (plan.cappedAt === null) world.mut(barracks, MusterPlan).cappedAt = cappedAt;
     if (door.walkingIn > 0 && ctx.tick - cappedAt < WAVE_GATHER_TICKS) return false;
