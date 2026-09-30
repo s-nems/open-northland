@@ -1,7 +1,9 @@
-import { MoveGoal, PathRequest } from '../components/index.js';
+import { MoveGoal, PathRequest, Position } from '../components/index.js';
 import type { Component, DeepReadonly, Entity, World } from '../ecs/world.js';
-import type { TerrainGraph } from '../nav/terrain/index.js';
-import { clearNavState, isTravelling } from './movement/nav-state.js';
+import type { SystemContext } from './context.js';
+import { dynamicBlockOverlay, routeRegions } from './footprint/index.js';
+import { clearNavState, isTravelling, stopAtNextNode } from './movement/nav-state.js';
+import { routeStartCell } from './movement/route-start.js';
 import { startAtomic } from './settlers/atomics/start.js';
 
 // The shared skeleton for "two settlers meet and perform a mirrored ritual": each half carries the ritual
@@ -40,21 +42,51 @@ export function driveMirroredPairs<R extends { partner: Entity }>(
  */
 export function approachPartner(
   world: World,
-  terrain: TerrainGraph | undefined,
+  ctx: SystemContext,
   a: Entity,
   b: Entity,
   target: { hx: number; hy: number },
   onUnreachable: () => void,
 ): void {
+  const terrain = ctx.terrain;
   if (world.tryGet(a, PathRequest)?.failed === true || world.tryGet(b, PathRequest)?.failed === true) {
-    clearNavState(world, a);
-    clearNavState(world, b);
+    if (terrain !== undefined) {
+      stopAtNextNode(world, terrain, a);
+      stopAtNextNode(world, terrain, b);
+    } else {
+      clearNavState(world, a);
+      clearNavState(world, b);
+    }
     onUnreachable();
     return;
   }
   if (terrain === undefined) return;
-  if (isTravelling(world, b)) clearNavState(world, b);
-  if (!isTravelling(world, a)) world.add(a, MoveGoal, { cell: terrain.nodeAtClamped(target.hx, target.hy) });
+  if (stopAtNextNode(world, terrain, b) || isTravelling(world, a)) return;
+  const position = world.get(a, Position);
+  const from = routeStartCell(terrain, position.x, position.y);
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const regions = routeRegions(world, ctx, terrain);
+  // Prefer the partner's centre, preserving ordinary meetings; a blocked centre can still be met
+  // from one of the eight adjacent nodes under the same adjacency rule as the paired action.
+  const candidates = [terrain.nodeAtClamped(target.hx, target.hy)];
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      if (terrain.inBounds(target.hx + dx, target.hy + dy))
+        candidates.push(terrain.nodeAt(target.hx + dx, target.hy + dy));
+    }
+  const goal = candidates.find(
+    (node) =>
+      terrain.isWalkable(node) &&
+      !blocked.has(node) &&
+      terrain.componentOf(from) === terrain.componentOf(node) &&
+      !regions.unroutable(from, node),
+  );
+  if (goal === undefined) {
+    onUnreachable();
+    return;
+  }
+  world.add(a, MoveGoal, { cell: goal });
 }
 
 /**

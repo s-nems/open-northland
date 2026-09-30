@@ -31,7 +31,7 @@ import { nearestUnblockedNode } from '../../nav/nearest.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
-import { clearNavState, isTravelling } from '../movement/nav-state.js';
+import { isTravelling, stopAtNextNode } from '../movement/nav-state.js';
 import { breakThroughWall } from '../palisades/breach.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
@@ -60,12 +60,6 @@ function reachableMoveGoal(world: World, ctx: SystemContext, terrain: TerrainGra
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   if (terrain.isWalkable(clicked) && !blocked.has(clicked)) return clicked;
   return nearestUnblockedNode(terrain, clicked, blocked) ?? clicked;
-}
-
-/** Drop a player order and the nav state it drove, returning the unit to full autonomy. */
-function clearPlayerOrder(world: World, e: Entity): void {
-  world.remove(e, PlayerOrder);
-  clearNavState(world, e);
 }
 
 /**
@@ -229,7 +223,8 @@ export const playerOrderSystem: System = (world, ctx) => {
       // A signpost errand is the original's build-guide task, whose failure is a plain task failure,
       // never a lost note.
       if (!world.has(e, ErectSignpostOrder)) markLostWay(world, ctx, e);
-      clearPlayerOrder(world, e);
+      world.remove(e, PlayerOrder);
+      stopAtNextNode(world, ctx.terrain, e);
       continue;
     }
     if (world.has(e, CurrentAtomic)) {

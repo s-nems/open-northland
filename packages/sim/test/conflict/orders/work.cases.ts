@@ -22,6 +22,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, nodeOfPosition } from '../../../src/index.js';
+import type { NodeId } from '../../../src/nav/terrain/index.js';
 import { setJob } from '../../../src/systems/index.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { gatherPick } from '../../fixtures/production-counters.js';
@@ -82,7 +83,7 @@ describe('setJob order', () => {
     const e = ownedWoodcutter(s, 0, 0);
     // A frozen worker: its walk failed (parked by the planner's stranded recovery) mid supply errand.
     s.world.add(e, MoveGoal, { cell: 3 });
-    s.world.add(e, PathRequest, { start: 0, goal: 3, failed: true });
+    s.world.add(e, PathRequest, { start: 0 as NodeId, goal: 3 as NodeId, failed: true });
     s.world.add(e, Stranded, { retryAt: 9999 });
     s.world.add(e, SupplyRun, { site: 999 as Entity, goodType: WOOD, amount: 1, source: null });
 
@@ -244,7 +245,7 @@ describe('PlayerOrder abandonment', () => {
     // directly (an all-grass fixture can't produce an unreachable cell through normal routing).
     s.world.add(e, MoveGoal, { cell: 3 });
     s.world.add(e, PlayerOrder, {});
-    s.world.add(e, PathRequest, { start: 0, goal: 3, failed: true });
+    s.world.add(e, PathRequest, { start: 0 as NodeId, goal: 3 as NodeId, failed: true });
 
     s.step();
     expect(s.world.has(e, PlayerOrder)).toBe(false); // order abandoned

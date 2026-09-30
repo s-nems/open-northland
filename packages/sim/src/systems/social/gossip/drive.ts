@@ -8,6 +8,7 @@ import {
   FamilyDuty,
   Fleeing,
   LISTEN_ATOMIC_ID,
+  PathRequest,
   PlayerOrder,
   Position,
   removeCurrentAtomic,
@@ -22,6 +23,7 @@ import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { System, SystemContext } from '../../context.js';
 import { carriesNeeds, NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
+import { stopAtNextNode } from '../../movement/nav-state.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../../rendezvous.js';
 
@@ -128,7 +130,13 @@ function drivePair(
   }
   const na = nodeOfPosition(pa.x, pa.y);
   const nb = nodeOfPosition(pb.x, pb.y);
+  if (world.tryGet(a, PathRequest)?.failed === true || world.tryGet(b, PathRequest)?.failed === true) {
+    approachPartner(world, ctx, a, b, nb, () => endChat(world, ctx.tick, a));
+    return;
+  }
+  if (terrain !== undefined && stopAtNextNode(world, terrain, b)) return;
   if (nodesAdjacent(na, nb)) {
+    if (terrain !== undefined && stopAtNextNode(world, terrain, a)) return;
     // Standing together: run one talk/listen round on a shared clock, the longer of the two bound clips.
     const talker = ca.speaks ? a : b;
     const listener = ca.speaks ? b : a;
@@ -144,5 +152,5 @@ function drivePair(
     return;
   }
   // Apart: the seeker walks, the sought half waits; an unreachable partner ends the chat.
-  approachPartner(world, terrain, a, b, nb, () => endChat(world, ctx.tick, a));
+  approachPartner(world, ctx, a, b, nb, () => endChat(world, ctx.tick, a));
 }

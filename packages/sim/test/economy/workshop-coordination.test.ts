@@ -16,6 +16,7 @@ import {
   SupplyRun,
 } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
+import type { NodeId } from '../../src/nav/terrain/index.js';
 import { plannerSystem, productionSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { pinProducts } from '../fixtures/production-counters.js';
@@ -371,7 +372,7 @@ it.each(['order', 'failed route'])(
     productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(shop, Production)).toBe(false);
     if (reason === 'order') sim.world.add(incoming, PlayerOrder, {});
-    else sim.world.add(incoming, PathRequest, { start: 6, goal: 0, failed: true });
+    else sim.world.add(incoming, PathRequest, { start: 6 as NodeId, goal: 0 as NodeId, failed: true });
     productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(shop, Production).cycles[0]?.goodType).toBe(PLANK);
   },

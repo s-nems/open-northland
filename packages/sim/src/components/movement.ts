@@ -89,10 +89,13 @@ export const MoveGoal = defineComponent<{ cell: NodeId }>('MoveGoal', 'movement'
  * dead query every tick. `start`/`goal` are branded row-major node ids (`y*width + x`); the brand is
  * compile-time only, so the component stays plain-number serializable.
  */
-export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed: boolean }>(
-  'PathRequest',
-  'movement',
-);
+export const PathRequest = defineComponent<{
+  start: NodeId;
+  goal: NodeId;
+  failed: boolean;
+  /** Finish the retained safe prefix before the detour from `start` after topology changes. */
+  retainRoute?: true | undefined;
+}>('PathRequest', 'movement');
 
 /**
  * A stranded walker's retry pacing: its route failed and no drive with its own failure protocol owns it, so

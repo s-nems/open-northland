@@ -6,6 +6,7 @@ import {
   PathRoute,
   PlayerOrder,
   Position,
+  Stranded,
   WalkFacing,
   type Waypoint,
 } from '../../components/index.js';
@@ -134,12 +135,20 @@ export function drainPathRequests(
         continue;
       }
 
-      const waypoints = pathToWaypoints(terrain, path);
+      let waypoints = pathToWaypoints(terrain, path);
       // Keep a route's start when it is still ahead of an active step: skipping it would also skip its
       // terrain and node charge. A start behind the new heading is bypassed rather than backing up;
       // a blocked start only permits escape, never a return to its centre.
       const previous = world.tryGet(e, PathFollow);
       const previousStops = world.tryGet(e, PathRoute)?.waypoints;
+      // A topology reroute starts at the end of the retained safe prefix. Finish that prefix
+      // before the detour, including any diagonal midpoint on the way back from a closed edge.
+      if (req.retainRoute && previous !== undefined && previousStops?.at(-1)?.node === req.start) {
+        world.mut(e, PathRoute).waypoints = [...previousStops, ...waypoints.slice(1)];
+        world.remove(e, PathRequest);
+        world.remove(e, Stranded);
+        continue;
+      }
       const oldTarget = previous && previousStops?.[previous.index];
       const oldStart = previous && previousStops?.[previous.index - 1];
       const activeCost = previous?.legCost ?? 0;
@@ -158,7 +167,7 @@ export function drainPathRequests(
                 )
               : undefined))
           : undefined;
-      const index =
+      let index =
         waypoints.length < 2 ||
         (activeCost > 0 &&
           position !== undefined &&
@@ -167,6 +176,18 @@ export function drainPathRequests(
           startIsAhead(position, waypoints))
           ? 0
           : 1;
+      // Keep the departed leg in the route history when its new start is still ahead. A later
+      // closure needs that history to turn back safely, including the far half of a diagonal.
+      if (index === 0 && oldStart !== undefined && previous !== undefined) {
+        const centre = positionOfNode(terrain.xOf(oldStart.node), terrain.yOf(oldStart.node));
+        const before = previousStops?.[previous.index - 2];
+        const history =
+          before !== undefined && (oldStart.x !== centre.x || oldStart.y !== centre.y)
+            ? [before, oldStart]
+            : [oldStart];
+        waypoints = [...history, ...waypoints];
+        index = history.length;
+      }
       world.add(e, PathRoute, { waypoints });
       world.add(e, PathFollow, {
         index,
@@ -180,6 +201,7 @@ export function drainPathRequests(
         beginWalkTurn(world, e, position, firstTarget);
       }
       world.remove(e, PathRequest);
+      world.remove(e, Stranded);
     }
   } finally {
     // The post counts are a shared scratch.

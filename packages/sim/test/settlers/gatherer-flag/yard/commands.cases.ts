@@ -16,6 +16,7 @@ import type { Command } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, nodeOfPosition, ONE, Simulation } from '../../../../src/index.js';
 import { positionOfNode } from '../../../../src/nav/halfcell.js';
+import type { NodeId } from '../../../../src/nav/terrain/index.js';
 import {
   anchorOnlyFootprint,
   setGatherGood,
@@ -126,7 +127,7 @@ describe('setWorkFlag command - place / move a gatherer flag (Ctrl+Right-Click)'
     const gatherer = ownedGatherer(sim, 0, 0);
     setWorkFlag(sim.world, ctxOf(sim), cmd(gatherer, 5));
     sim.world.add(gatherer, MoveGoal, { cell: 10 });
-    sim.world.add(gatherer, PathRequest, { start: 0, goal: 10, failed: true });
+    sim.world.add(gatherer, PathRequest, { start: 0 as NodeId, goal: 10 as NodeId, failed: true });
 
     setWorkFlag(sim.world, ctxOf(sim), cmd(gatherer, 11));
 

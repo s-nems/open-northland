@@ -59,7 +59,7 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = travellerAt(sim, 0, 0, anchorCell(sim, 3, 0));
     // Pre-seed a live request so the planner sees the entity as already travelling.
-    sim.world.add(e, PathRequest, { start: 0, goal: 1, failed: false });
+    sim.world.add(e, PathRequest, { start: 0 as NodeId, goal: 1 as NodeId, failed: false });
     plannerSystem(sim.world, ctxOf(sim));
     // Still the pre-seeded request (start 0, goal 1) - the planner did not overwrite/duplicate it.
     expect(sim.world.get(e, PathRequest).goal).toBe(1);
@@ -204,7 +204,7 @@ describe('plannerSystem - navigation planner: later passes over the same world',
   it('re-issues a failed request once another system drops it, and not before', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = travellerAt(sim, 0, 0, anchorCell(sim, 3, 0));
-    sim.world.add(e, PathRequest, { start: 0, goal: 1, failed: true });
+    sim.world.add(e, PathRequest, { start: 0 as NodeId, goal: 1 as NodeId, failed: true });
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, PathRequest).failed).toBe(true);
     sim.world.remove(e, PathRequest);

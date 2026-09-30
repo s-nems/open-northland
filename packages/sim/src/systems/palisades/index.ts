@@ -28,7 +28,7 @@ import { dynamicBlockOverlay } from '../footprint/index.js';
 import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
 import { canPlacePalisadeAnchor, type PlacementProbe } from '../footprint/placement/index.js';
 import { wallClosingCells } from '../footprint/wall-joints.js';
-import { anyRouteFollowed, invalidateRoutesThrough } from '../landscape/routes.js';
+import { anyRouteFollowed, invalidateRoutesThrough, retryFailedRoutes } from '../landscape/routes.js';
 import { landscapeTypes } from '../landscape/view.js';
 import { evictSettlersFromCells, settlersByNode } from '../movement/evict.js';
 import { isTravelling } from '../movement/nav-state.js';
@@ -164,6 +164,7 @@ export function setPalisadeGate(
   }
   if (blocking) world.add(command.palisade, PalisadeBlocking, {});
   if (blocking && !command.open) settleClosedWall(world, ctx, terrain, command.palisade);
+  if (blocking && command.open) retryFailedRoutes(world, terrain);
   return true;
 }
 

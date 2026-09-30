@@ -137,7 +137,7 @@ export function settleLandscapePass(pass: MissionPass): void {
   const blocked = dynamicBlockOverlay(pass.world, pass.ctx, terrain);
   for (const node of pass.landscapeFreed) {
     if (!blocked.has(node)) {
-      forgetRouteFailures(pass.world);
+      forgetRouteFailures(pass.world, terrain);
       return;
     }
   }
@@ -159,7 +159,8 @@ function announceLandscapeChange(
 ): void {
   if (revision === landscapeTopologyRevision(pass.world)) return;
   const blocked = dynamicBlockOverlay(pass.world, pass.ctx, terrain);
-  if (openBefore.some((node) => blocked.has(node))) invalidateLandscapeRoutes(pass.world, terrain);
+  const closed = new Set(openBefore.filter((node) => blocked.has(node)));
+  if (closed.size > 0) invalidateLandscapeRoutes(pass.world, terrain, closed);
   pass.ctx.events.emit({ kind: 'missionLandscapeChanged' });
 }
 

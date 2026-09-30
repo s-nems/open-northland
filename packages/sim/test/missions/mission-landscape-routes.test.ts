@@ -7,13 +7,14 @@ import {
   Position,
   Stranded,
 } from '../../src/components/index.js';
-import { positionOfNode, Simulation, type TerrainMap } from '../../src/index.js';
+import { fx, positionOfNode, Simulation, type TerrainMap } from '../../src/index.js';
 import { hexDistance } from '../../src/nav/halfcell.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { invalidateLandscapeRoutes } from '../../src/systems/landscape/routes.js';
 import type { MissionPass } from '../../src/systems/missions/pass.js';
 import { setRandomChest } from '../../src/systems/missions/results/chests.js';
 import { editScriptedLandscape, settleLandscapePass } from '../../src/systems/missions/results/landscape.js';
+import { pathfindingSystem } from '../../src/systems/movement/routing.js';
 import { ctxOf } from '../fixtures/context.js';
 import { stopAt } from '../fixtures/waypoints.js';
 import { fresh, map, POINT, terrainOf, WALL } from './landscape-support.js';
@@ -66,8 +67,8 @@ function walking(sim: Simulation) {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(4, 4));
   sim.world.add(e, MoveGoal, { cell: terrain.nodeAt(5, 6) });
-  sim.world.add(e, PathRoute, { waypoints: [stopAt(terrain, 5, 6)] });
-  sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+  sim.world.add(e, PathRequest, { start: terrain.nodeAt(4, 4), goal: terrain.nodeAt(5, 6), failed: false });
+  pathfindingSystem(sim.world, ctxOf(sim));
   return e;
 }
 
@@ -80,7 +81,7 @@ describe('script landscape route invalidation', () => {
     sim.world.add(e, MoveGoal, { cell: terrain.nodeAt(12, 8) });
     sim.world.add(e, PathRoute, { waypoints: [stopAt(terrain, 8, 8), stopAt(terrain, 12, 8)] });
     sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
-    invalidateLandscapeRoutes(sim.world, terrain);
+    invalidateLandscapeRoutes(sim.world, terrain, new Set([terrain.nodeAt(8, 8)]));
     expect(sim.world.has(e, PathFollow)).toBe(false);
     expect(sim.world.get(e, PathRequest)).toEqual({
       start: terrain.nodeAt(4, 8),
@@ -108,24 +109,37 @@ describe('script landscape route invalidation', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, positionOfNode(4, 4));
     sim.world.add(e, MoveGoal, { cell: goal });
-    sim.world.add(e, PathRoute, { waypoints: [stopAt(terrainOf(sim), 5, 6)] });
-    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathRoute, {
+      waypoints: [
+        stopAt(terrain, 4, 4),
+        { x: fx.fromInt(2), y: fx.fromFloat(2.5), node: terrain.nodeAt(4, 5) },
+        stopAt(terrain, 5, 6),
+      ],
+    });
+    sim.world.add(e, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
     const blocked = dynamicBlockOverlay(sim.world, ctxOf(sim), terrain);
     expect(blocked.has(start)).toBe(false);
     expect(blocked.has(goal)).toBe(false);
     expect(terrain.steps(start, blocked).some((step) => step.node === goal)).toBe(false);
-    invalidateLandscapeRoutes(sim.world, terrain);
-    expect(sim.world.has(e, PathFollow)).toBe(false);
-    expect(sim.world.get(e, PathRequest)).toEqual({ start, goal, failed: false });
+    invalidateLandscapeRoutes(sim.world, terrain, new Set([terrain.nodeAt(4, 5), terrain.nodeAt(5, 5)]));
+    expect(sim.world.get(e, PathRoute).waypoints.at(-1)?.node).toBe(terrainOf(sim).nodeAt(4, 4));
+    expect(sim.world.get(e, PathRequest)).toEqual({ start, goal, failed: false, retainRoute: true });
   });
 
   it('preserves active paths when decoration changes no effective walk blockers', () => {
     const sim = fresh();
+    const terrain = terrainOf(sim);
     const e = sim.world.create();
     sim.world.add(e, Position, positionOfNode(4, 4));
     sim.world.add(e, MoveGoal, { cell: terrainOf(sim).nodeAt(5, 6) });
-    sim.world.add(e, PathRoute, { waypoints: [stopAt(terrainOf(sim), 5, 6)] });
-    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathRoute, {
+      waypoints: [
+        stopAt(terrain, 4, 4),
+        { x: fx.fromInt(2), y: fx.fromFloat(2.5), node: terrain.nodeAt(4, 5) },
+        stopAt(terrain, 5, 6),
+      ],
+    });
+    sim.world.add(e, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
     editScriptedLandscape(passOf(sim), 0, {
       opcode: 'SetLandscape',
       point: { hx: 3, hy: 3 },
@@ -143,7 +157,7 @@ describe('script landscape route invalidation', () => {
       level: 0,
       flag: false,
     });
-    expect(sim.world.has(e, PathFollow)).toBe(false);
+    expect(sim.world.get(e, PathRoute).waypoints.at(-1)?.node).toBe(terrainOf(sim).nodeAt(4, 4));
     expect(sim.world.has(e, PathRequest)).toBe(true);
   });
 
@@ -155,8 +169,14 @@ describe('script landscape route invalidation', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, positionOfNode(4, 4));
     sim.world.add(e, MoveGoal, { cell: terrain.nodeAt(5, 6) });
-    sim.world.add(e, PathRoute, { waypoints: [stopAt(terrainOf(sim), 5, 6)] });
-    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathRoute, {
+      waypoints: [
+        stopAt(terrain, 4, 4),
+        { x: fx.fromInt(2), y: fx.fromFloat(2.5), node: terrain.nodeAt(4, 5) },
+        stopAt(terrain, 5, 6),
+      ],
+    });
+    sim.world.add(e, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
     const pass = passOf(sim);
     editScriptedLandscape(pass, 0, { opcode: 'RemoveLandscape', point: POINT });
     editScriptedLandscape(pass, 0, {
@@ -176,7 +196,8 @@ describe('script landscape route invalidation', () => {
       level: 0,
       flag: false,
     });
-    expect(sim.world.has(e, PathFollow)).toBe(false);
+    expect(sim.world.has(e, PathFollow)).toBe(true);
+    expect(sim.world.has(e, PathRequest)).toBe(false);
   });
 
   it('clears the plain area removal one ring short of its range, the group removals not', () => {
@@ -254,13 +275,20 @@ describe('script landscape route invalidation', () => {
       point: { hx: 5, hy: 5 },
     });
     expect(sim.landscapeEdits().added).toHaveLength(1);
-    expect(sim.world.has(e, PathFollow)).toBe(false);
+    expect(sim.world.get(e, PathRoute).waypoints.at(-1)?.node).toBe(terrainOf(sim).nodeAt(4, 4));
     expect(sim.world.has(e, PathRequest)).toBe(true);
   });
 
   it('lets a stranded settler retry once a pass leaves a cleared cell open, not when it lays it back', () => {
     const sim = chestSim();
     const lost = sim.world.create();
+    const terrain = terrainOf(sim);
+    const goal = terrain.nodeAt(9, 8);
+    sim.world.add(lost, Position, positionOfNode(4, 4));
+    sim.world.add(lost, MoveGoal, { cell: goal });
+    sim.world.add(lost, PathRequest, { start: terrain.nodeAt(4, 4), goal, failed: false });
+    pathfindingSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(lost, PathRequest).failed).toBe(true);
     sim.world.add(lost, Stranded, { retryAt: 1000 });
     // The pressure plate: removed and laid again, so nothing stays open.
     const plate = passOf(sim);
@@ -274,6 +302,7 @@ describe('script landscape route invalidation', () => {
     });
     settleLandscapePass(plate);
     expect(sim.world.has(lost, Stranded)).toBe(true);
+    expect(sim.world.get(lost, PathRequest).failed).toBe(true);
     // The tribute: the two-cell wall goes and a one-cell chest takes its point, so a cell stays open.
     const tribute = passOf(sim);
     editScriptedLandscape(tribute, 0, { opcode: 'RemoveLandscape', point: POINT });
@@ -284,5 +313,8 @@ describe('script landscape route invalidation', () => {
     });
     settleLandscapePass(tribute);
     expect(sim.world.has(lost, Stranded)).toBe(false);
+    expect(sim.world.get(lost, PathRequest).failed).toBe(false);
+    pathfindingSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(lost, PathFollow)).toBe(true);
   });
 });

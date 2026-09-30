@@ -10,21 +10,32 @@ import {
   type Waypoint,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import { positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { dropPath } from '../movement/nav-state.js';
+import { routeStartCell } from '../movement/route-start.js';
 
-/** A script changes topology immediately; existing paths and remembered failures must not outlive it. */
-export function invalidateLandscapeRoutes(world: World, terrain: TerrainGraph): void {
-  forgetRouteFailures(world);
-  // A diagonal can close through its midpoint flanks without either endpoint becoming blocked.
-  // Requeue active routes through the normal search budget, including travellers already mid-leg.
-  for (const e of [...world.query(PathFollow, Position)]) requeueRoute(world, terrain, e);
+/** A script closes topology immediately; keep the same safe stopping path as a wall closure. */
+export function invalidateLandscapeRoutes(
+  world: World,
+  terrain: TerrainGraph,
+  closed: ReadonlySet<NodeId>,
+): void {
+  forgetRouteFailures(world, terrain);
+  invalidateRoutesThrough(world, terrain, closed);
+}
+
+/** An opening may invalidate a pending refusal. Keep its recovery deadline until budgeted routing
+ * proves the walk works; unrelated openings therefore cannot keep a genuine failure parked forever. */
+export function retryFailedRoutes(world: World, terrain: TerrainGraph): void {
+  const failed = [...world.query(PathRequest, Position)].filter((e) => world.get(e, PathRequest).failed);
+  for (const e of failed) requestFromHere(world, terrain, e, world.get(e, PathRequest).retainRoute === true);
 }
 
 /** Drop every remembered unreachable goal, stranded park and refused vehicle yard, so a way or ground a
  *  script opened is tried again at once rather than when the memo runs out. */
-export function forgetRouteFailures(world: World): void {
+export function forgetRouteFailures(world: World, terrain: TerrainGraph): void {
+  retryFailedRoutes(world, terrain);
   for (const e of [...world.query(Stranded)]) world.remove(e, Stranded);
   for (const e of [...world.query(UnreachableGoals)]) world.remove(e, UnreachableGoals);
   for (const e of [...world.query(VehicleYardRefusals)]) world.remove(e, VehicleYardRefusals);
@@ -185,20 +196,22 @@ function haltBefore(world: World, terrain: TerrainGraph, e: Entity, stop: number
       route.departureCharged = undefined;
     }
   }
-  requestFromHere(world, terrain, e);
+  requestFromHere(world, terrain, e, true);
 }
 
-/** Drop the followed route and, for a walker with a goal, request a fresh one from where it stands. */
-function requeueRoute(world: World, terrain: TerrainGraph, e: Entity): void {
-  dropPath(world, e);
-  requestFromHere(world, terrain, e);
-}
-
-function requestFromHere(world: World, terrain: TerrainGraph, e: Entity): void {
+function requestFromHere(world: World, terrain: TerrainGraph, e: Entity, retainSafePrefix: boolean): void {
   world.remove(e, PathRequest);
   const goal = world.tryGet(e, MoveGoal)?.cell;
   if (goal === undefined) return;
   const p = world.get(e, Position);
-  const start = nodeOfPosition(p.x, p.y);
-  world.add(e, PathRequest, { start: terrain.nodeAtClamped(start.hx, start.hy), goal, failed: false });
+  // A closing may have turned the live leg back. Search from the end of that safe prefix,
+  // not a nearby bracket which could lie on or beyond the newly closed cells.
+  const safeEnd =
+    retainSafePrefix && world.has(e, PathFollow) ? world.get(e, PathRoute).waypoints.at(-1)?.node : undefined;
+  world.add(e, PathRequest, {
+    start: safeEnd ?? routeStartCell(terrain, p.x, p.y),
+    goal,
+    failed: false,
+    retainRoute: safeEnd === undefined ? undefined : true,
+  });
 }

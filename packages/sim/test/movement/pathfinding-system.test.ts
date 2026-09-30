@@ -22,6 +22,7 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
+import type { NodeId } from '../../src/nav/terrain/index.js';
 import { worldDistance } from '../../src/nav/world-metric.js';
 import { drainPathRequests, pathfindingSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -49,7 +50,7 @@ function mappedSim(map: TerrainMap): { sim: Simulation; request: (start: number,
   const sim = new Simulation({ seed: 1, content: testContent(), map });
   const request = (start: number, goal: number): Entity => {
     const e = sim.world.create();
-    sim.world.add(e, PathRequest, { start, goal, failed: false });
+    sim.world.add(e, PathRequest, { start: start as NodeId, goal: goal as NodeId, failed: false });
     return e;
   };
   return { sim, request };
@@ -179,8 +180,8 @@ describe('pathfindingSystem - failure handling', () => {
     });
     sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
     sim.world.add(e, PathRequest, {
-      start: sim.terrain?.nodeAt(0, 0) as number,
-      goal: sim.terrain?.nodeAt(2, 0) as number,
+      start: sim.terrain?.nodeAt(0, 0) as NodeId,
+      goal: sim.terrain?.nodeAt(2, 0) as NodeId,
       failed: false,
     });
     sim.step();
@@ -434,8 +435,8 @@ describe('pathfindingSystem - mid-walk reroute', () => {
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(e, WalkFacing, { direction: 3, target: 3 }); // west, about to turn east
     sim.world.add(e, PathRequest, {
-      start: sim.terrain?.nodeAt(0, 0) as number,
-      goal: sim.terrain?.nodeAt(2, 0) as number,
+      start: sim.terrain?.nodeAt(0, 0) as NodeId,
+      goal: sim.terrain?.nodeAt(2, 0) as NodeId,
       failed: false,
     });
     sim.step();
@@ -443,8 +444,8 @@ describe('pathfindingSystem - mid-walk reroute', () => {
     expect(sim.world.get(e, PathFollow).legTicks).toBe(0);
     const beforeRedirect = { ...sim.world.get(e, Position) };
     sim.world.add(e, PathRequest, {
-      start: sim.terrain?.nodeAt(0, 0) as number,
-      goal: sim.terrain?.nodeAt(0, 1) as number,
+      start: sim.terrain?.nodeAt(0, 0) as NodeId,
+      goal: sim.terrain?.nodeAt(0, 1) as NodeId,
       failed: false,
     });
     sim.step();
@@ -466,8 +467,8 @@ describe('pathfindingSystem - mid-walk reroute', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(e, PathRequest, {
-      start: sim.terrain?.nodeAt(0, 0) as number,
-      goal: sim.terrain?.nodeAt(goalHx, 0) as number,
+      start: sim.terrain?.nodeAt(0, 0) as NodeId,
+      goal: sim.terrain?.nodeAt(goalHx, 0) as NodeId,
       failed: false,
     });
     for (let i = 0; i < ticks; i++) sim.step();
@@ -479,8 +480,8 @@ describe('pathfindingSystem - mid-walk reroute', () => {
     const p = sim.world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
     sim.world.add(e, PathRequest, {
-      start: sim.terrain?.nodeAtClamped(n.hx, n.hy) as number,
-      goal: sim.terrain?.nodeAt(goalHx, 0) as number,
+      start: sim.terrain?.nodeAtClamped(n.hx, n.hy) as NodeId,
+      goal: sim.terrain?.nodeAt(goalHx, 0) as NodeId,
       failed: false,
     });
   }
@@ -515,7 +516,7 @@ describe('pathfindingSystem - mapless no-op', () => {
     const sim = new Simulation({ seed: 1, content: testContent() }); // mapless
     expect(sim.terrain).toBeUndefined();
     const e = sim.world.create();
-    sim.world.add(e, PathRequest, { start: 0, goal: 5, failed: false });
+    sim.world.add(e, PathRequest, { start: 0 as NodeId, goal: 5 as NodeId, failed: false });
     sim.step();
     // Untouched: no path written, request not flagged (there is no graph to fail against).
     expect(sim.world.has(e, PathFollow)).toBe(false);
@@ -525,7 +526,7 @@ describe('pathfindingSystem - mapless no-op', () => {
   it('no-ops when invoked directly with a terrain-less context', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();
-    sim.world.add(e, PathRequest, { start: 0, goal: 1, failed: false });
+    sim.world.add(e, PathRequest, { start: 0 as NodeId, goal: 1 as NodeId, failed: false });
     const ctx: SystemContext = {
       content: testContent(),
       rng: sim.rng,

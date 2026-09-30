@@ -16,6 +16,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
+import type { NodeId } from '../../../src/nav/terrain/index.js';
 import {
   NEED_DRAIN_UNITS_PER_TICK,
   NEED_DRIVE_THRESHOLD,
@@ -102,8 +103,8 @@ describe('movementSystem - worn boots', () => {
     expect(spentPoints(sim, e)).toBe(LAND_ROUGHNESS);
     for (let i = 0; i < 4; i++) {
       sim.world.add(e, PathRequest, {
-        start: sim.terrain?.nodeAt(0, 0) as number,
-        goal: sim.terrain?.nodeAt(6 + (i & 1), 0) as number,
+        start: sim.terrain?.nodeAt(0, 0) as NodeId,
+        goal: sim.terrain?.nodeAt(6 + (i & 1), 0) as NodeId,
         failed: false,
       });
       sim.step();

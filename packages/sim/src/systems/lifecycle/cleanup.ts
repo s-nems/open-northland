@@ -5,6 +5,7 @@ import { unbindWorkersOf } from '../command/placement.js';
 import type { System, SystemContext } from '../context.js';
 import { scatterSpilledStock, spilledStockOf } from '../economy/goods-spill.js';
 import { evictResidentsOf } from '../family/households.js';
+import { retryFailedRoutes } from '../landscape/routes.js';
 import { releaseWallBreaches } from '../palisades/breach.js';
 import { razeSalvageOf } from '../stores/index.js';
 import { removeVehicle } from '../vehicles/remove.js';
@@ -68,6 +69,7 @@ export function removeBuildingSilently(world: World, ctx: SystemContext, e: Enti
   unbindWorkersOf(world, ctx, e);
   evictResidentsOf(world, e);
   world.destroy(e);
+  if (ctx.terrain !== undefined) retryFailedRoutes(world, ctx.terrain);
 }
 
 /** Shared combat and owner-demolition teardown for a palisade or gate. */
@@ -76,5 +78,6 @@ export function razePalisade(world: World, ctx: SystemContext, e: Entity): void 
   const spill = spilledStockOf(world, e);
   releaseWallBreaches(world, ctx, e);
   world.destroy(e);
+  if (ctx.terrain !== undefined) retryFailedRoutes(world, ctx.terrain);
   scatterSpilledStock(world, ctx, spill);
 }

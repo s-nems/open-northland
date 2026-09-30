@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AttackOrder, CurrentAtomic, PlayerOrder, Position } from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
 import {
   cellAnchorNode,
   exportSaveGame,
@@ -22,12 +23,18 @@ function restored(original: Simulation, width: number, height: number): Simulati
   return copy;
 }
 
-function continueTogether(original: Simulation, copy: Simulation, ticks: number): void {
+function continueTogether(
+  original: Simulation,
+  copy: Simulation,
+  ticks: number,
+  afterStep?: () => void,
+): void {
   for (let i = 0; i < ticks; i++) {
     original.step();
     copy.step();
     expect(copy.hashState(), `tick ${original.tick}`).toBe(original.hashState());
     expect(copy.events.current()).toEqual(original.events.current());
+    afterStep?.();
   }
 }
 
@@ -46,15 +53,20 @@ describe('save an army with already executing orders', () => {
       expect(original.world.get(entity, Position).x).toBeLessThan(fx.fromInt(5));
     }
     const copy = restored(original, 8, 3);
-    continueTogether(original, copy, 105);
-    army.forEach((entity, y) => {
-      // Arrival releases the order; idle separation may shift soldiers slightly within the tile.
-      const position = copy.world.get(entity, Position);
-      expect(worldDistance(position.x, position.y, fx.fromInt(5), fx.fromInt(y))).toBeLessThan(
-        fx.div(fx.fromInt(1), fx.fromInt(4)),
-      );
-      expect(copy.world.has(entity, PlayerOrder)).toBe(false);
+    const arrived = new Set<Entity>();
+    continueTogether(original, copy, 105, () => {
+      army.forEach((entity, y) => {
+        if (arrived.has(entity) || copy.world.has(entity, PlayerOrder)) return;
+        // Check arrival when the order ends; autonomous chat may send an idler walking afterward.
+        const position = copy.world.get(entity, Position);
+        expect(worldDistance(position.x, position.y, fx.fromInt(5), fx.fromInt(y))).toBeLessThan(
+          fx.div(fx.fromInt(1), fx.fromInt(4)),
+        );
+        arrived.add(entity);
+      });
     });
+    expect(arrived.size).toBe(army.length);
+    for (const entity of army) expect(copy.world.has(entity, PlayerOrder)).toBe(false);
   });
 
   it('retains an explicit target and an unfinished attack swing, then finishes the fight', () => {

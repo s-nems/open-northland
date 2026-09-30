@@ -590,6 +590,7 @@ describe('moveVehicle', () => {
     const twin = run().s;
     twin.run(440);
     expect(twin.hashState()).toBe(s.hashState());
-    expect(s.hashState()).toBe('779d4f91');
+    // Chat approaches finish their legal step before talking; the resulting idle state is hashed too.
+    expect(s.hashState()).toBe('7a5e3f70');
   });
 });
