@@ -1,6 +1,13 @@
-import { Building, Position, SiteAssignment, UnderConstruction } from '../../../../components/index.js';
+import {
+  Building,
+  Position,
+  SiteAssignment,
+  UnderConstruction,
+  VehicleYardRefusals,
+} from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
-import type { Entity } from '../../../../ecs/world.js';
+import { liveEntries, remember } from '../../../../core/expiring-list.js';
+import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import { assembleBuilding } from '../../../command/placement.js';
 import { advanceRotation, nextRotationPick, spendRotationPick } from '../../../economy/production.js';
@@ -12,7 +19,7 @@ import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, startAtomic } from '../../atomics/star
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { interactionCell } from '../../targets/index.js';
-import { isUnreachableGoal, noteUnreachableGoal, unreachableGoals } from '../../unreachable-goals.js';
+import { UNREACHABLE_GOAL_MEMO_TICKS } from '../../unreachable-goals.js';
 import { fetchNeededMaterial } from './site-supply.js';
 
 /**
@@ -25,12 +32,14 @@ import { fetchNeededMaterial } from './site-supply.js';
  * vehicle when the site finishes; the worker then moves its rotation past the vehicle good.
  *
  * Returns whether the operator's turn was a vehicle's. A search that finds nowhere raises the refusal
- * once per failed-goal memo span and skips the turn; while the memo holds, the turn is skipped unsearched.
+ * once per refusal span of the workshop and skips the turn; while the refusal holds, every workmate skips
+ * that house's turn unsearched.
  */
 export function planVehicleYard(plan: PlannerContext, workplace: Entity, spacing: PlannerSpacing): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const recipes = recipesByProductOf(world, ctx, workplace);
   if (recipes === undefined) return false;
+  pruneYardRefusals(world, ctx.tick, workplace);
   releaseFinishedSite(plan, workplace, recipes);
   const pick = nextRotationPick(world, ctx, workplace, e, recipes);
   const houseType = pick === null ? undefined : vehicleHouseOfGood(ctx.content, pick.good);
@@ -120,15 +129,11 @@ function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): En
     onShore,
   );
   if (reused !== null) return reused;
-  // The work centre stands in for the failed search in the memo: it is the worker's bound workplace, which
-  // no target scan vetoes, so the entry only spaces the searches out.
-  const centreNode = terrain.nodeAtClamped(centre.hx, centre.hy);
-  if (isUnreachableGoal(unreachableGoals(world, ctx, e), centreNode)) return null;
+  if (yardRefused(world, workplace, houseType)) return null;
   const verdict = findVehicleSite(world, ctx, terrain, houseType, plan.tribe, centre, here);
   if (verdict.kind !== 'site') {
-    if (noteUnreachableGoal(world, ctx, e, centreNode)) {
-      ctx.events.emit({ kind: 'vehicleSiteRefused', entity: e, reason: verdict.kind });
-    }
+    noteYardRefused(world, ctx.tick, workplace, houseType);
+    ctx.events.emit({ kind: 'vehicleSiteRefused', entity: e, reason: verdict.kind });
     return null;
   }
   const site = assembleBuilding(world, ctx, house, {
@@ -143,4 +148,42 @@ function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): En
   });
   if (site !== null) targets.vehicleSites.push(site);
   return site;
+}
+
+/** How long a workshop's failed yard search holds: the failed-goal memo's span. */
+const YARD_REFUSAL_TICKS = UNREACHABLE_GOAL_MEMO_TICKS;
+/** No bound past the one entry per yard house that {@link remember} already keeps. */
+const YARD_REFUSALS_UNBOUNDED = Number.POSITIVE_INFINITY;
+
+/** Drop `workplace`'s lapsed refusals, shedding the component once none is left. Runs on every plan of a
+ *  worker there, whatever its rotation picks, so a workshop that stopped making vehicles carries no dead
+ *  state into the hash. */
+function pruneYardRefusals(world: World, tick: number, workplace: Entity): void {
+  const refusals = world.tryGet(workplace, VehicleYardRefusals);
+  if (refusals === undefined) return;
+  const live = liveEntries(refusals.entries, tick);
+  if (live.length === 0) world.remove(workplace, VehicleYardRefusals);
+  else if (live !== refusals.entries) world.mut(workplace, VehicleYardRefusals).entries = [...live];
+}
+
+/** Whether `workplace` gave up on a site of `houseType` within the span, read after {@link pruneYardRefusals}. */
+function yardRefused(world: World, workplace: Entity, houseType: number): boolean {
+  return (
+    world.tryGet(workplace, VehicleYardRefusals)?.entries.some((entry) => entry.houseType === houseType) ===
+    true
+  );
+}
+
+/** Record that `workplace` found no site for `houseType`. */
+function noteYardRefused(world: World, tick: number, workplace: Entity, houseType: number): void {
+  const entries = remember(
+    world.tryGet(workplace, VehicleYardRefusals)?.entries ?? [],
+    tick,
+    { houseType, until: tick + YARD_REFUSAL_TICKS },
+    (held) => held.houseType === houseType,
+    YARD_REFUSALS_UNBOUNDED,
+  );
+  if (world.has(workplace, VehicleYardRefusals))
+    world.mut(workplace, VehicleYardRefusals).entries = [...entries];
+  else world.add(workplace, VehicleYardRefusals, { entries: [...entries] });
 }

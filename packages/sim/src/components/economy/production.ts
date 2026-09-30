@@ -77,6 +77,16 @@ export function productionCountOf(
 }
 
 /**
+ * A workshop's vehicle yard searches that found no site, per yard house: until tick `until` its workers
+ * skip that house's turn unsearched. Kept on the workshop so its crew searches once, not once each, and
+ * per house so a ship with no water beside it does not hold up the catapult. Lapsed entries are shed
+ * by the next plan of a worker there; a landscape edit clears the component outright.
+ */
+export const VehicleYardRefusals = defineComponent<{
+  entries: readonly { readonly houseType: number; readonly until: number }[];
+}>('VehicleYardRefusals', 'economy');
+
+/**
  * A workplace's banked bonus output - the tenths past a whole unit of "an experienced baker bakes 2.5
  * bread per cycle". A remainder moves into the {@link Stockpile} as a whole unit the moment it reaches ten
  * tenths, so only whole units are ever visible to withdrawal (original behavior: the house keeps the

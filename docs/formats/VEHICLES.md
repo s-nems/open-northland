@@ -55,7 +55,7 @@ type 6, the ox-less cart. The worker producing that good:
    beside the shipyard (Open Northland reads the class at the anchor alone for a ship site, since
    the hull's shoreward rows lie against the land its door stands on; approximation, the original's
    per-node test is read for land sites only). Open Northland searches wider by design: one ring
-   bound for reuse and placement, `r < 30` for a land yard and `r < 80` for a ship yard, so a
+   bound for reuse and placement, `r < 20` for a land yard and `r < 40` for a ship yard, so a
    crowded joinery still finds room and launched ships do not cap a shipyard's output; a reused
    site's work point must lie on the worker's continent;
 2. fetches and carries the house's construction goods like building materials (the IR's

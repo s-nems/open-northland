@@ -24,16 +24,17 @@ import { canPlaceBuilding } from './building.js';
 // beside the yard with its work point on the worker's shore.
 
 /**
- * Hex rings of the work centre a land vehicle's site is reused from and opened in (`r < 30`). Owner
- * ruling, wider than the original's (placement `r < 10`, reuse `r < 20`): a joinery hemmed in by its
- * own town searches further out for room instead of refusing the cart or catapult.
+ * Hex rings of the work centre a land vehicle's site is reused from and opened in (`r < 20`, about ten
+ * cells). Owner ruling, wider than the original's (placement `r < 10`, reuse `r < 20`): a joinery hemmed
+ * in by its own town searches further out for room instead of refusing the cart or catapult.
  */
-export const VEHICLE_SITE_RINGS = 30;
+export const VEHICLE_SITE_RINGS = 20;
 /**
- * Hex rings a ship yard's site is reused from and opened in (`r < 80`). Owner ruling: far wider than a
- * land yard's, so launched ships filling the water beside the joinery do not cap how many it builds.
+ * Hex rings a ship yard's site is reused from and opened in (`r < 40`, about twenty cells). Owner ruling:
+ * a joinery on a straight shore fits about 14 moored small ships in them where the original's ten rings
+ * fit 2, so launched ships no longer cap its output.
  */
-export const SHIP_SITE_RINGS = 80;
+export const SHIP_SITE_RINGS = 40;
 
 /** The rings a site of `house` is searched in: a ship house's, else a land vehicle's. */
 export function vehicleSiteRings(house: { readonly ignoreContinents?: boolean | undefined }): number {

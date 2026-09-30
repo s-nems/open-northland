@@ -13,6 +13,7 @@ import {
   Stockpile,
   UnderConstruction,
   Vehicle,
+  VehicleYardRefusals,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation, type TerrainMap } from '../../src/index.js';
@@ -21,6 +22,7 @@ import { findVehicleSite, SHIP_SITE_RINGS, VEHICLE_SITE_RINGS } from '../../src/
 import { plannerSystem } from '../../src/systems/index.js';
 import { setBuildForbidden } from '../../src/systems/landscape/edits.js';
 import { setProductionGoods } from '../../src/systems/orders/index.js';
+import { UNREACHABLE_GOAL_MEMO_TICKS } from '../../src/systems/settlers/unreachable-goals.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -82,13 +84,15 @@ const MAP_CELLS = 24;
 /** Open water cell rows at the top of the far-shore map: enough for the small ship's hull. */
 const SHALLOW_SHORE_ROWS = 4;
 /** The cell column of the river that splits the reuse map into two banks, east of the workshop. */
-const RIVER_COLUMN = 17;
+const RIVER_COLUMN = 14;
 /** Well past the 2-wood site's fetch, delivery and hammering. */
 const BUILD_BUDGET_TICKS = 3000;
 /** The original's yard placement ring (`r < 10`), which the wider owner-ruled search outgrows. */
 const ORIGINAL_PLACEMENT_RINGS = 10;
 /** Well past the first plan and the plank batch it starts. */
 const PLANK_START_BUDGET_TICKS = 200;
+/** Well past the refused ship turn and the cart turn after it. */
+const CART_TURN_BUDGET_TICKS = 200;
 
 /** The shared fixture plus the yard rows; local to this file so the save fixture's content fingerprint
  *  stays put. */
@@ -299,7 +303,7 @@ describe('the yard site search', () => {
     const s = sim();
     const { shop, worker } = yardWorld(s);
     const centre = anchorOf(s, shop);
-    const near = siteAt(s, HANDCART_YARD, 12 + 11, 12); // 22 hex steps east, inside r < 30
+    const near = siteAt(s, HANDCART_YARD, 12 + 7, 12); // 14 hex steps east, inside r < 20
     expect(hexDistance(centre, anchorOf(s, near))).toBeLessThan(VEHICLE_SITE_RINGS);
     plannerSystem(s.world, ctxOf(s));
     expect(sitesOf(s, HANDCART_YARD)).toEqual([near]);
@@ -309,7 +313,7 @@ describe('the yard site search', () => {
   it('leaves an unfinished yard across the water to its own bank and opens one on the worker’s', () => {
     const s = sim(waterColumnMap(MAP_CELLS, MAP_CELLS, RIVER_COLUMN));
     const { shop, worker } = yardWorld(s);
-    const across = siteAt(s, HANDCART_YARD, RIVER_COLUMN + 3, 12);
+    const across = siteAt(s, HANDCART_YARD, RIVER_COLUMN + 2, 12);
     expect(hexDistance(anchorOf(s, shop), anchorOf(s, across))).toBeLessThan(VEHICLE_SITE_RINGS);
     plannerSystem(s.world, ctxOf(s));
     const mine = s.world.get(worker, SiteAssignment).site;
@@ -333,7 +337,7 @@ describe('the yard site search', () => {
     const s = sim(grassCellMap(2 * MAP_CELLS, MAP_CELLS));
     const { shop } = yardWorld(s);
     const centre = anchorOf(s, shop);
-    const far = siteAt(s, HANDCART_YARD, 12 + 16, 12); // 32 hex steps east, past r < 30
+    const far = siteAt(s, HANDCART_YARD, 12 + 11, 12); // 22 hex steps east, past r < 20
     expect(hexDistance(centre, anchorOf(s, far))).toBeGreaterThanOrEqual(VEHICLE_SITE_RINGS);
     const rival = siteAt(s, HANDCART_YARD, 12, 12 + 4, P1);
     plannerSystem(s.world, ctxOf(s));
@@ -447,6 +451,52 @@ describe('the yard site search', () => {
     expect(s.events.current().filter((ev) => ev.kind === 'vehicleSiteRefused')).toEqual([
       { kind: 'vehicleSiteRefused', entity: worker, reason: 'notFound' },
     ]);
+  });
+
+  it('refuses the ship once for the whole crew, which then skips it unsearched', () => {
+    const s = sim();
+    const { shop, worker } = yardWorld(s, [SHIP_GOOD]);
+    const mate = carpenterAt(s, 13, 13, shop);
+    craftOnly(s, mate, [SHIP_GOOD]);
+    const refusals = () => s.events.current().filter((ev) => ev.kind === 'vehicleSiteRefused').length;
+    s.step();
+    expect(refusals()).toBe(1);
+    expect(s.world.get(shop, VehicleYardRefusals).entries.map((entry) => entry.houseType)).toEqual([
+      SHIP_YARD,
+    ]);
+    s.step();
+    expect(refusals()).toBe(0);
+    expect(s.world.has(worker, SiteAssignment) || s.world.has(mate, SiteAssignment)).toBe(false);
+  });
+
+  it('searches again once the refusal lapses, and sheds it when the crew stops making vehicles', () => {
+    const s = sim();
+    const { shop, worker } = yardWorld(s, [SHIP_GOOD]);
+    const refused = () => s.events.current().some((ev) => ev.kind === 'vehicleSiteRefused');
+    s.step();
+    expect(refused()).toBe(true);
+    let again = false;
+    for (let i = 0; i <= UNREACHABLE_GOAL_MEMO_TICKS && !again; i++) {
+      s.step();
+      again = refused();
+    }
+    expect(again).toBe(true);
+    craftOnly(s, worker, [PLANK]);
+    for (let i = 0; i <= 2 * UNREACHABLE_GOAL_MEMO_TICKS && s.world.has(shop, VehicleYardRefusals); i++)
+      s.step();
+    expect(s.world.has(shop, VehicleYardRefusals)).toBe(false);
+  });
+
+  it('still opens the cart yard of a shipyard whose ship found no water', () => {
+    const s = sim();
+    const { shop, worker } = yardWorld(s, [SHIP_GOOD]);
+    s.step();
+    craftOnly(s, worker, [SHIP_GOOD, HANDCART_GOOD]);
+    for (let i = 0; i < CART_TURN_BUDGET_TICKS && sitesOf(s, HANDCART_YARD).length === 0; i++) s.step();
+    expect(s.world.get(shop, VehicleYardRefusals).entries.map((entry) => entry.houseType)).toEqual([
+      SHIP_YARD,
+    ]);
+    expect(sitesOf(s, HANDCART_YARD)).toHaveLength(1);
   });
 
   it('skips the ship turn of a shipyard with no water in reach and makes its planks', () => {

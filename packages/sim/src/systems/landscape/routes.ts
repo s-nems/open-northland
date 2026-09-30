@@ -6,6 +6,7 @@ import {
   Position,
   Stranded,
   UnreachableGoals,
+  VehicleYardRefusals,
   type Waypoint,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -21,11 +22,12 @@ export function invalidateLandscapeRoutes(world: World, terrain: TerrainGraph): 
   for (const e of [...world.query(PathFollow, Position)]) requeueRoute(world, terrain, e);
 }
 
-/** Drop every remembered unreachable goal and stranded park, so a way a script opened is tried again
- *  at once rather than when the memo runs out. */
+/** Drop every remembered unreachable goal, stranded park and refused vehicle yard, so a way or ground a
+ *  script opened is tried again at once rather than when the memo runs out. */
 export function forgetRouteFailures(world: World): void {
   for (const e of [...world.query(Stranded)]) world.remove(e, Stranded);
   for (const e of [...world.query(UnreachableGoals)]) world.remove(e, UnreachableGoals);
+  for (const e of [...world.query(VehicleYardRefusals)]) world.remove(e, VehicleYardRefusals);
 }
 
 /** Whether any walker follows a route, which a closing could cut. */
