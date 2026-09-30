@@ -399,7 +399,8 @@ replaces the client's world, and the frames that follow are applied through the 
 ## Chat
 
 `chat { text }` is broadcast to the room as `chat { from, text }`. One printable line, at most
-`MAX_CHAT_LENGTH` (500) characters, like every other string that reaches another person.
+`MAX_CHAT_LENGTH` (500) characters, like every other string that reaches another person. Unicode line
+and paragraph separators are refused along with control characters.
 
 ## Limits
 

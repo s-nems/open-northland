@@ -2,8 +2,8 @@ import { MAX_NICK_LENGTH, MAX_TOKEN_LENGTH, MIN_TOKEN_LENGTH } from '../limits.j
 import { asNonNegativeNumber, asString } from '../untrusted.js';
 
 const TOKEN_SHAPE = /^[A-Za-z0-9_-]+$/;
-/** No control characters, so a nick or chat line cannot carry a newline or terminal escape. */
-const PRINTABLE = /^\P{C}+$/u;
+/** Unicode line and paragraph separators are outside the control-character categories. */
+const PRINTABLE = /^[^\p{C}\p{Zl}\p{Zp}]+$/u;
 
 export function parseToken(value: unknown, at: string): string {
   const token = asString(value, at, MAX_TOKEN_LENGTH);
@@ -21,7 +21,7 @@ export function parseNick(value: unknown, at: string): string {
 export function parseLine(value: unknown, at: string, maxLength: number): string {
   const line = asString(value, at, maxLength).trim();
   if (line.length === 0) throw new Error(`${at}: empty`);
-  if (!PRINTABLE.test(line)) throw new Error(`${at}: holds a control character`);
+  if (!PRINTABLE.test(line)) throw new Error(`${at}: expected one printable line without control characters`);
   return line;
 }
 
