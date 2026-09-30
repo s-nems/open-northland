@@ -14,6 +14,7 @@ import {
   OVERSEER_SEAT,
   type RosterState,
   setSlotColor,
+  setSlotDifficulty,
   setSlotTribe,
   setVacantMode,
 } from '../src/entries/main-menu/lobby/roster-state.js';
@@ -233,6 +234,31 @@ describe('lobby civilization picks', () => {
   it('keeps a monster seat its own tribe whatever the state holds', () => {
     const state = setSlotTribe(initialLobbyState(players), 2, SARACEN);
     expect(lobbySession('zatoka', state, players, OPTIONS, SEED).seats[2]?.tribe).toBeUndefined();
+  });
+});
+
+describe('lobby computer levels', () => {
+  const players = [
+    slot(0, { claimable: true, type: 'human' }),
+    slot(1, { claimable: true }),
+    slot(2, { claimable: true, tribeId: WEREWOLF_TRIBE }),
+    slot(3),
+  ];
+
+  it('offers a level only on a free seat handed to the computer, medium until picked', () => {
+    const state = initialLobbyState(players);
+    // Seat 1 plays as computer, seat 2 is a monster tribe and seat 3 is the map's own camp.
+    expect(lobbySlotRows(players, state).map((row) => row.difficulty)).toEqual([null, 'medium', null, null]);
+    expect(lobbySlotRows(players, setVacantMode(state, 1, 'idle'))[1]?.difficulty).toBeNull();
+  });
+
+  it('carries the picked level from the lobby to the launched session', () => {
+    const state = setSlotDifficulty(initialLobbyState(players), 1, 'easy');
+    const session = lobbySession('zatoka', state, players, OPTIONS, SEED);
+    expect(session.seats.map((seat) => seat.difficulty)).toEqual([undefined, 'easy', undefined, undefined]);
+    const entry = new URLSearchParams(lobbyStartEntry('zatoka', state, players, OPTIONS, SEED));
+    expect(entry.get('difficulty')).toBe('1:easy');
+    expect(mapSession(entry, players)).toEqual(session);
   });
 });
 

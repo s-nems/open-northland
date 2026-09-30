@@ -7,7 +7,7 @@ export interface SavedSessionSeat {
 }
 
 /** Bumped with any change to the recorded descriptor's layout. */
-const SAVED_SESSION_VERSION = 2;
+const SAVED_SESSION_VERSION = 3;
 
 export interface SavedSessionMetadata {
   readonly version: typeof SAVED_SESSION_VERSION;

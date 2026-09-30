@@ -17,6 +17,7 @@ import {
   type RosterState,
   type SeatChoice,
   setSlotColor,
+  setSlotDifficulty,
   setSlotTribe,
   setVacantMode,
 } from './roster-state.js';
@@ -52,11 +53,13 @@ export function lobbyScreen(
   tribeHead.textContent = lobby.tribe;
   const controlHead = document.createElement('span');
   controlHead.textContent = lobby.controlHeader;
+  const difficultyHead = document.createElement('span');
   cols.append(
     document.createElement('span'),
     slotHead,
     tribeHead,
     controlHead,
+    difficultyHead,
     document.createElement('span'),
   );
   const list = document.createElement('div');
@@ -166,6 +169,9 @@ export function lobbyScreen(
       pickTribe(player, tribe) {
         update(setSlotTribe(state, player, tribe));
       },
+      pickDifficulty(player, difficulty) {
+        update(setSlotDifficulty(state, player, difficulty));
+      },
       claim(player) {
         pickerSlot = null;
         refocus = `chip:${player}`;
@@ -173,10 +179,15 @@ export function lobbyScreen(
       },
     });
     const rows: HTMLElement[] = [];
-    for (const row of lobbySlotRows(item.players, state)) {
+    const slotRows = lobbySlotRows(item.players, state);
+    for (const row of slotRows) {
       rows.push(seats.row(row));
       if (pickerSlot === row.slot.player) rows.push(seats.picker(row));
     }
+    // The level column is headed only while some seat plays at one.
+    difficultyHead.textContent = slotRows.some((row) => row.difficulty !== null)
+      ? lobby.difficultyHeader
+      : '';
     list.replaceChildren(...rows);
     watchList.replaceChildren(
       watchRow(OBSERVER_SEAT, lobby.observerName, lobby.observerDetail, lobby.observerTaken),

@@ -1,7 +1,10 @@
 import { components } from '@open-northland/sim';
 import { type InitialSaveIdentity, parseInitialSaveIdentity } from './initial-save.js';
 
-const { isValidPlayer, isFogMode } = components;
+const { AI_DIFFICULTIES, isValidPlayer, isFogMode } = components;
+
+/** How hard a computer seat plays; the sim's own difficulty ids. */
+export type AiDifficulty = (typeof AI_DIFFICULTIES)[number];
 
 /** What a roster seat does for a whole session: `human` is played by a person, `ai` by the strategic AI
  *  player, and `idle` sits out. `absent` also sits out, and a fresh world places none of the seat's
@@ -20,6 +23,8 @@ export interface SessionSeat {
   readonly team?: number | null;
   /** The civilization the lobby chose for the seat; absent keeps the map's roster tribe. */
   readonly tribe?: number;
+  /** How hard an `ai` seat plays; absent plays the full strategy, `hard`. */
+  readonly difficulty?: AiDifficulty;
 }
 
 /** The two spectator choices watch the whole map: `observer` issues no command, `overseer` commands
@@ -185,12 +190,17 @@ function parseSeats(value: unknown): readonly SessionSeat[] {
     const tribe = raw.tribe === undefined ? undefined : integer(raw.tribe, 'seat.tribe');
     // Which ids are civilizations is the content's to say; a non-positive id has no reading anywhere.
     if (tribe !== undefined && tribe <= 0) throw new Error(`session seat ${player} has tribe ${tribe}`);
+    const mode = parseSeatMode(raw.mode);
+    const difficulty = raw.difficulty === undefined ? undefined : parseDifficulty(raw.difficulty);
+    if (difficulty !== undefined && mode !== 'ai')
+      throw new Error(`session seat ${player} has a difficulty but no computer player`);
     seats.push({
       player,
-      mode: parseSeatMode(raw.mode),
+      mode,
       color,
       ...(team === undefined ? {} : { team }),
       ...(tribe === undefined ? {} : { tribe }),
+      ...(difficulty === undefined ? {} : { difficulty }),
     });
   }
   return seats;
@@ -207,6 +217,12 @@ function parseSeatMode(value: unknown): SeatMode {
   const mode = SEAT_MODES.find((known) => known === value);
   if (mode === undefined) throw new Error(`unknown seat mode ${JSON.stringify(value)}`);
   return mode;
+}
+
+function parseDifficulty(value: unknown): AiDifficulty {
+  const difficulty = AI_DIFFICULTIES.find((known) => known === value);
+  if (difficulty === undefined) throw new Error(`unknown AI difficulty ${JSON.stringify(value)}`);
+  return difficulty;
 }
 
 function parseLocalSeat(value: unknown, seats: readonly SessionSeat[]): LocalSeat {

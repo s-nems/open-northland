@@ -1,6 +1,8 @@
+import type { AiDifficulty } from '@open-northland/lockstep';
 import { localizedMapText } from '../../../game/map-strings.js';
 import { currentLocale, formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import { colorChip, colorPalette } from '../lobby-controls/color.js';
+import { difficultyControl } from '../lobby-controls/difficulty.js';
 import { seatRow } from '../lobby-controls/seat.js';
 import { seatModeControl } from '../lobby-controls/seat-mode.js';
 import { tribePicker } from '../lobby-controls/tribe.js';
@@ -13,6 +15,7 @@ interface SeatActions {
   readonly pickColor: (player: number, color: number) => void;
   readonly setMode: (player: number, mode: VacantMode) => void;
   readonly pickTribe: (player: number, tribe: number) => void;
+  readonly pickDifficulty: (player: number, difficulty: AiDifficulty) => void;
   readonly claim: (player: number) => void;
 }
 
@@ -105,6 +108,16 @@ export function localSeatElements(
     return picker.root;
   };
 
+  // Empty while no computer plays the seat.
+  const difficultyCell = (row: LobbySlotRow): HTMLElement => {
+    if (row.difficulty === null) return document.createElement('div');
+    const control = difficultyControl(row.slot.player, (difficulty) =>
+      actions.pickDifficulty(row.slot.player, difficulty),
+    );
+    control.update(row.difficulty);
+    return control.root;
+  };
+
   const slotRow = (row: LobbySlotRow): HTMLElement => {
     const title =
       localizedMapText(row.slot.name, currentLocale()) ??
@@ -131,7 +144,7 @@ export function localSeatElements(
       nameClass: 'main-menu__lobby-name',
       detailClass: 'main-menu__lobby-sub',
       beforeLabel: [chipButton(row)],
-      controls: [tribeCell(row), controlCell(row), action],
+      controls: [tribeCell(row), controlCell(row), difficultyCell(row), action],
     });
     // The control cell says who plays the seat; only a monster seat's people get a detail line.
     seat.update(title, row.offersTribe ? '' : tribeName(row.tribe), row.kind === 'yours');

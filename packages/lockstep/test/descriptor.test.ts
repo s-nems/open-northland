@@ -99,6 +99,22 @@ describe('game session descriptor', () => {
     }
   });
 
+  it('preserves a computer seat’s level and refuses one on any other seat', () => {
+    const configured = session({
+      seats: [
+        { player: 0, mode: 'human', color: 0 },
+        { player: 1, mode: 'ai', color: 1, difficulty: 'easy' },
+      ],
+    });
+    expect(roundTrip(configured)).toEqual(configured);
+    expect(() =>
+      parseGameSession({ ...session(), seats: [{ player: 0, mode: 'human', color: 0, difficulty: 'easy' }] }),
+    ).toThrow(/difficulty/);
+    expect(() =>
+      parseGameSession({ ...session(), seats: [{ player: 0, mode: 'ai', color: 0, difficulty: 'brutal' }] }),
+    ).toThrow(/difficulty/);
+  });
+
   it('refuses a payload that would assemble a different world', () => {
     expect(() => parseGameSession(session({ seed: 1.5 }))).toThrow(/seed/);
     expect(() => parseGameSession(session({ speed: 0 }))).toThrow(/speed/);

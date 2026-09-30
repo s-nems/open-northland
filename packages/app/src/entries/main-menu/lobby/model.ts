@@ -1,4 +1,5 @@
 import {
+  type AiDifficulty,
   DEFAULT_LOCAL_PLAYER,
   DEFAULT_WEATHER_MODE,
   type GameSession,
@@ -8,7 +9,12 @@ import {
 } from '@open-northland/lockstep';
 import { FOG_MODE_BY_NAME, type FogModeName } from '../../../game/fog.js';
 import { onOffParam, weatherModeParam } from '../../../game/session-rules.js';
-import { DEFAULT_SESSION_SPEED, seatMode, sessionSearch } from '../../../game/session-url.js';
+import {
+  DEFAULT_SESSION_SPEED,
+  isMapComputerSeat,
+  seatMode,
+  sessionSearch,
+} from '../../../game/session-url.js';
 import { formatSearch } from '../../../view/params.js';
 import {
   absentSeats,
@@ -19,6 +25,7 @@ import {
   type MapPlayerSlot,
   offersTribeChoice,
   type RosterState,
+  slotDifficulty,
   type VacantMode,
 } from './roster-state.js';
 
@@ -68,6 +75,9 @@ export interface LobbySlotRow {
   readonly tribe: number;
   /** False for a monster seat, which keeps its own tribe. */
   readonly offersTribe: boolean;
+  /** How hard the seat plays; null while no computer plays it, or for a monster seat, which runs no
+   *  strategic AI. */
+  readonly difficulty: AiDifficulty | null;
 }
 
 /** The listed slot rows in authored order; hidden slots never render. */
@@ -84,7 +94,15 @@ export function lobbySlotRows(
       vacantMode: state.vacantModes.get(slot.player) ?? authoredVacantMode(slot),
       tribe: state.tribes.get(slot.player) ?? slot.tribeId,
       offersTribe: offersTribeChoice(slot),
+      difficulty: playsAtDifficulty(slot, state) ? slotDifficulty(state, slot.player) : null,
     }));
+}
+
+/** Whether the lobby hands `slot` to the strategic AI, which then plays at a level: a free seat set to
+ *  computer, of a civilization rather than a monster tribe. The map's own computer seats are its script's
+ *  camps and take no level. */
+function playsAtDifficulty(slot: MapPlayerSlot, state: RosterState): boolean {
+  return state.seat !== null && offersTribeChoice(slot) && aiSeats(state, [slot]).length > 0;
 }
 
 /**
@@ -107,11 +125,15 @@ export function lobbySession(
   const seats: SessionSeat[] = players.map((slot) => {
     const tribe = state.tribes.get(slot.player);
     const retribed = tribe !== undefined && tribe !== slot.tribeId && offersTribeChoice(slot);
+    const mode = seatMode(slot, localSeat, lists);
+    const difficulty =
+      lists.ai.has(slot.player) && offersTribeChoice(slot) ? slotDifficulty(state, slot.player) : undefined;
     return {
       player: slot.player,
-      mode: seatMode(slot, localSeat, lists),
+      mode,
       color: state.colors.get(slot.player) ?? slot.colorId,
       ...(retribed ? { tribe } : {}),
+      ...(difficulty === undefined ? {} : { difficulty }),
     };
   });
   // A seatless roster falls back to a seat the map may not list; the launched game plays it, so the

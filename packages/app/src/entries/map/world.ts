@@ -74,6 +74,8 @@ export interface MapWorldOptions extends SimSessionRules {
   /** The AI seats a person set to computer in the lobby, as against the map's own computer players, which
    *  its scripts drive; only these keep {@link LOBBY_AI_PEACE_TICKS}. */
   readonly lobbyAiSeats?: readonly number[];
+  /** How hard each computer seat the session names plays; an unnamed one plays hard. */
+  readonly aiDifficulties?: ReadonlyMap<number, components.AiDifficulty>;
   readonly playerRoster?: MapScript['players'];
   /** The tribes a changed seat's authored placements take; the map's own when omitted. */
   readonly seatTribes?: SeatTribeRemap;
@@ -199,6 +201,7 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
     const strategicOff = authored?.disabled || TRIBES_WITHOUT_STRATEGIC_AI.has(playerTribe(roster, seat));
     const off = strategicOff ? components.AI_MODULE_IDS : (authored?.strategicOff ?? []);
     if (components.AI_MODULE_IDS.every((id) => off.includes(id))) scriptedOnly.add(seat);
+    const difficulty = options.aiDifficulties?.get(seat);
     sim.enqueueSetup({
       kind: 'setPlayerAi',
       player: seat,
@@ -206,6 +209,7 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
       ...(off.length > 0 ? { modules: Object.fromEntries(off.map((id) => [id, false])) } : {}),
       ...(authored?.disabled ? { scripted: false } : {}),
       ...(options.lobbyAiSeats?.includes(seat) ? { peaceUntil: LOBBY_AI_PEACE_TICKS } : {}),
+      ...(difficulty === undefined ? {} : { difficulty }),
     });
   }
   // Original behavior: the assistant's switches start off for every player and only a chest-window

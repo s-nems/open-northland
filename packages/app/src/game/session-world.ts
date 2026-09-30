@@ -8,7 +8,7 @@ import type { MapScriptWorld } from './world/build.js';
 
 /**
  * The session's share of a map world's options: who plays, who is left off the map, which computer seats
- * the lobby chose rather than the map, who assists, whom the match counts, the stances between them, who
+ * the lobby chose rather than the map and how hard each plays, who assists, whom the match counts, the stances between them, who
  * shares a fog mask and the rule overrides. One derivation serves a fresh
  * boot and the child world a sub-mission opens, so a seat reads the same on both sides of the
  * transition.
@@ -32,6 +32,11 @@ export function sessionWorldOptions(session: GameSession, script: MapScript | nu
     aiSeats: roles.aiSeats,
     absentSeats: absentSeatsOf(session),
     lobbyAiSeats: roles.aiSeats.filter((seat) => !mapComputer.has(seat)),
+    aiDifficulties: new Map(
+      session.seats.flatMap((seat) =>
+        seat.difficulty === undefined ? [] : [[seat.player, seat.difficulty]],
+      ),
+    ),
     assistantSeats: roles.assistantSeats,
     matchParticipants,
     diplomacy: sessionDiplomacy(session, script?.diplomacy ?? []),

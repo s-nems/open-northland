@@ -92,6 +92,10 @@ export const plSurfaces = {
       teamColour: 'Kolor drużyny',
       teamColourLocked: 'ta mapa ma stałe kolory',
       tribe: 'Nacja',
+      difficultyHeader: 'Poziom',
+      difficultyTitle:
+        'Jak mocno komputer gra tym miejscem: Łatwy i Średni budują wolniej, mają mniej dzieci i wcześniej kończą rozbudowę; Trudny to pełna strategia.',
+      difficulty: { easy: 'Łatwy', medium: 'Średni', hard: 'Trudny' },
       tribeMapDefault: 'ustawienia mapy',
       tribeMapChoice: 'Mapa zaleca: {tribe}',
       tribeTitle:

@@ -93,6 +93,10 @@ export const enSurfaces = {
       teamColour: 'Team colour',
       teamColourLocked: 'this map fixes its colours',
       tribe: 'Nation',
+      difficultyHeader: 'Level',
+      difficultyTitle:
+        'How hard the computer plays this seat: Easy and Medium build slower, raise fewer children and stop expanding earlier; Hard is the full strategy.',
+      difficulty: { easy: 'Easy', medium: 'Medium', hard: 'Hard' },
       tribeMapDefault: 'map default',
       tribeMapChoice: 'The map recommends {tribe}',
       tribeTitle:

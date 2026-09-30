@@ -133,7 +133,7 @@ describe('sceneSession', () => {
 
 describe('sessionSearch', () => {
   it('round-trips every parameter a session carries', () => {
-    const search = `map=magiczny_las&player=2&seed=42&colors=0:3&tribes=1:${BYZANTINE}&ai=1&fog=recon-fow&progression=off&needs=on&weathermode=winter&speed=1.5`;
+    const search = `map=magiczny_las&player=2&seed=42&colors=0:3&tribes=1:${BYZANTINE}&difficulty=1:easy&ai=1&fog=recon-fow&progression=off&needs=on&weathermode=winter&speed=1.5`;
     const parsed = session(search);
     expect(mapSession(sessionSearch(parsed, ROSTER), ROSTER)).toEqual(parsed);
   });
@@ -149,6 +149,11 @@ describe('sessionSearch', () => {
     const search = sessionSearch(parsed, ROSTER);
     expect(search.get('tribes')).toBe(`0:${BYZANTINE}`);
     expect(sessionSearch(session('map=zatoka'), ROSTER).has('tribes')).toBe(false);
+  });
+
+  it('gives a level only to a computer seat, and drops one it cannot read', () => {
+    const parsed = session('map=zatoka&player=0&ai=2&difficulty=1:easy,2:hard,0:hard,2:brutal');
+    expect(parsed.seats.map((seat) => seat.difficulty)).toEqual([undefined, undefined, 'hard']);
   });
 
   it('leaves the map’s own computer seats out of `?ai=`, which lists the person’s choices', () => {

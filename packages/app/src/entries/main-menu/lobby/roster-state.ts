@@ -1,5 +1,5 @@
 import { isCivilizationTribe, type MapsIndexPlayerSlot } from '@open-northland/data';
-import type { LocalSeat } from '@open-northland/lockstep';
+import type { AiDifficulty, LocalSeat } from '@open-northland/lockstep';
 
 /**
  * Pure roster state behind the lobby screen: seats, colours, civilizations and vacant modes over the slots
@@ -14,6 +14,9 @@ export type MapPlayerSlot = MapsIndexPlayerSlot;
 export type VacantMode = 'idle' | 'ai' | 'absent';
 
 export { OBSERVER_SEAT, OVERSEER_SEAT } from '@open-northland/lockstep';
+
+/** How hard a seat the lobby hands to the computer plays until the person picks another level. */
+export const DEFAULT_LOBBY_AI_DIFFICULTY: AiDifficulty = 'medium';
 
 /** What the lobby lets a person claim, which is what the session then plays. */
 export type SeatChoice = LocalSeat;
@@ -54,6 +57,8 @@ export interface RosterState {
   readonly tribes: ReadonlyMap<number, number>;
   /** Per-slot vacant mode, initialised from the authored type. */
   readonly vacantModes: ReadonlyMap<number, VacantMode>;
+  /** The level picked per slot; an unpicked computer seat plays {@link DEFAULT_LOBBY_AI_DIFFICULTY}. */
+  readonly difficulties: ReadonlyMap<number, AiDifficulty>;
 }
 
 export function initialRosterState(players: readonly MapPlayerSlot[]): RosterState {
@@ -62,6 +67,7 @@ export function initialRosterState(players: readonly MapPlayerSlot[]): RosterSta
     colors: new Map(players.map((p) => [p.player, p.colorId])),
     tribes: new Map(players.map((p) => [p.player, p.tribeId])),
     vacantModes: new Map(players.map((p) => [p.player, authoredVacantMode(p)])),
+    difficulties: new Map(),
   };
 }
 
@@ -80,6 +86,17 @@ export function setSlotTribe(state: RosterState, slot: number, tribe: number): R
   const tribes = new Map(state.tribes);
   tribes.set(slot, tribe);
   return { ...state, tribes };
+}
+
+export function setSlotDifficulty(state: RosterState, slot: number, difficulty: AiDifficulty): RosterState {
+  const difficulties = new Map(state.difficulties);
+  difficulties.set(slot, difficulty);
+  return { ...state, difficulties };
+}
+
+/** How hard `slot` plays should the computer take it. */
+export function slotDifficulty(state: RosterState, slot: number): AiDifficulty {
+  return state.difficulties.get(slot) ?? DEFAULT_LOBBY_AI_DIFFICULTY;
 }
 
 /** Real maps author duplicate colours freely, so "worn" is always relative to the asking slot. */

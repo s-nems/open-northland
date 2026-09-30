@@ -1,5 +1,6 @@
 import { MAP_PLAYER_COLOR_COUNT, type MapsIndexPlayerSlot } from '@open-northland/data';
 import {
+  type AiDifficulty,
   DEFAULT_LOCAL_PLAYER,
   type GameSession,
   type LocalSeat,
@@ -62,7 +63,8 @@ export function mapIdParam(params: URLSearchParams): string | null {
 }
 
 /** The session a `?map=` search describes. The roster supplies each seat's authored colour, which
- *  `?colors=` then overrides; `?tribes=` names the seats played as another civilization. A search
+ *  `?colors=` then overrides; `?tribes=` names the seats played as another civilization and
+ *  `?difficulty=` how hard each computer seat plays. A search
  *  naming no seed draws one. */
 export function mapSession(params: URLSearchParams, roster: readonly SessionRosterSlot[]): GameSession {
   const localSeat = localSeatParam(params);
@@ -116,6 +118,10 @@ export function sessionSearch(
         : [`${seat.player}:${seat.tribe}`],
     );
     if (retribed.length > 0) params.set('tribes', retribed.join(','));
+    const levels = session.seats.flatMap((seat) =>
+      seat.difficulty === undefined ? [] : [`${seat.player}:${seat.difficulty}`],
+    );
+    if (levels.length > 0) params.set('difficulty', levels.join(','));
     // The map's own computer seats play without being named, so `?ai=` lists the person's choices only.
     const mapComputer = new Set(roster.filter(isMapComputerSeat).map((slot) => slot.player));
     const ai = session.seats
@@ -159,6 +165,7 @@ function rosterSeats(
 ): readonly SessionSeat[] {
   const overrides = colorOverridesParam(params);
   const tribes = seatPairsParam(params, 'tribes', (tribe) => tribe > 0);
+  const difficulties = seatDifficultiesParam(params);
   const lists: SeatLists = {
     ai: new Set(seatListParam(params, 'ai').filter(isValidPlayer)),
     absent: new Set(seatListParam(params, 'absent').filter(isValidPlayer)),
@@ -171,11 +178,15 @@ function rosterSeats(
       // A seat the map never authored is a claimable one that keeps its slot id as its colour.
       const slot = authored.get(player) ?? { player, colorId: player, type: 'human', claimable: true };
       const tribe = tribes.get(player);
+      const mode = seatMode(slot, localSeat, lists);
+      // Only a computer seat plays at a difficulty; a stale pair for another seat is dropped.
+      const difficulty = mode === 'ai' ? difficulties.get(player) : undefined;
       return {
         player,
-        mode: seatMode(slot, localSeat, lists),
+        mode,
         color: overrides.get(player) ?? slot.colorId,
         ...(tribe === undefined ? {} : { tribe }),
+        ...(difficulty === undefined ? {} : { difficulty }),
       };
     }),
   );
@@ -207,6 +218,18 @@ function colorOverridesParam(params: URLSearchParams): ReadonlyMap<number, numbe
 }
 
 /** A `<slot>:<value>,…` list, dropping malformed pairs and values `valid` refuses. */
+/** `?difficulty=slot:level,...`: how hard each named computer seat plays. */
+function seatDifficultiesParam(params: URLSearchParams): ReadonlyMap<number, AiDifficulty> {
+  const out = new Map<number, AiDifficulty>();
+  for (const pair of (params.get('difficulty') ?? '').split(',')) {
+    const [slotRaw, level] = pair.split(':');
+    const slot = Number.parseInt(slotRaw ?? '', 10);
+    const difficulty = components.AI_DIFFICULTIES.find((known) => known === level);
+    if (isValidPlayer(slot) && difficulty !== undefined) out.set(slot, difficulty);
+  }
+  return out;
+}
+
 function seatPairsParam(
   params: URLSearchParams,
   key: string,
