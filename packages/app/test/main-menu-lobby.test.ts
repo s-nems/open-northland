@@ -86,7 +86,7 @@ describe('initialLobbyOptions', () => {
       fog: 'classic',
       professionProgression: true,
       settlerNeeds: true,
-      weather: 'variable',
+      weather: 'map',
     });
     expect(
       initialLobbyOptions(new URLSearchParams('fog=recon-fow&progression=off&needs=off&weathermode=winter')),
@@ -96,7 +96,7 @@ describe('initialLobbyOptions', () => {
       settlerNeeds: false,
       weather: 'winter',
     });
-    expect(initialLobbyOptions(new URLSearchParams('weathermode=bogus')).weather).toBe('variable');
+    expect(initialLobbyOptions(new URLSearchParams('weathermode=bogus')).weather).toBe('map');
     // The revealed map is a debug-menu pick, never a lobby one.
     expect(initialLobbyOptions(new URLSearchParams('fog=off')).fog).toBe('classic');
     expect(initialLobbyOptions(new URLSearchParams('fog=bogus')).fog).toBe('classic');
@@ -109,7 +109,7 @@ const OPTIONS = {
   fog: 'classic',
   professionProgression: true,
   settlerNeeds: true,
-  weather: 'variable',
+  weather: 'winter',
 } as const;
 
 /** The offered seats the launched session declares as AI, which is what `?ai=` carries. */
@@ -274,6 +274,6 @@ describe('lobbyStartEntry', () => {
     const players = [slot(0, { claimable: true, type: 'human' })];
     const entry = lobbyStartEntry('zatoka', initialLobbyState(players), players, OPTIONS, SEED);
     expect(new URLSearchParams(entry).get('needs')).toBe('on');
-    expect(new URLSearchParams(entry).get('weathermode')).toBe('variable');
+    expect(new URLSearchParams(entry).get('weathermode')).toBe('winter');
   });
 });

@@ -41,7 +41,7 @@ export type WeatherMode = 'map' | 'variable' | 'winter';
 export const WEATHER_MODES = ['map', 'variable', 'winter'] as const satisfies readonly WeatherMode[];
 
 /** The weather mode a session with no choice of its own plays. */
-export const DEFAULT_WEATHER_MODE: WeatherMode = 'variable';
+export const DEFAULT_WEATHER_MODE: WeatherMode = 'map';
 
 /** The world rules the session overrides; null keeps whatever the world set for itself. */
 export interface SessionRules {
