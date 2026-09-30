@@ -1856,6 +1856,81 @@ describe('flagSpotNear', () => {
     return flagGround(sim.world, ctxOf(sim), sim.terrain, SEAT, origin);
   };
 
+  it('keeps the first walked candidate on equal costs and queries resource before origin', () => {
+    const sim = aiSim();
+    const centre = { hx: 20, hy: 16 };
+    sim.enqueueSetup({
+      kind: 'placeResource',
+      good: MUD,
+      x: centre.hx,
+      y: centre.hy,
+      remaining: 5,
+      harvestAtomic: RESOURCE_SPOTS.mud.harvest,
+    });
+    sim.step();
+    const ground = groundOf(sim, centre);
+    const queries: string[] = [];
+    const controlled = {
+      ...ground,
+      placeable: () => true,
+      sealedFrom: () => false,
+      walkOut: () => ({
+        costTo: () => {
+          queries.push('resource');
+          return fx.fromInt(0);
+        },
+      }),
+      walkFrom: () => ({
+        costTo: () => {
+          queries.push('origin');
+          return fx.fromInt(0);
+        },
+      }),
+    };
+    expect(flagSpotNear(sim.world, controlled, depositOf(sim), centre, new Set())).toEqual({
+      hx: 16,
+      hy: 16,
+    });
+    expect(queries.length).toBeGreaterThan(0);
+    for (let i = 0; i < queries.length; i += 2)
+      expect(queries.slice(i, i + 2)).toEqual(['resource', 'origin']);
+  });
+
+  it('ranks unreached legs by weighted distance and searches the fallback after a blocked band', () => {
+    const sim = aiSim();
+    const centre = { hx: 20, hy: 16 };
+    sim.enqueueSetup({
+      kind: 'placeResource',
+      good: MUD,
+      x: centre.hx,
+      y: centre.hy,
+      remaining: 5,
+      harvestAtomic: RESOURCE_SPOTS.mud.harvest,
+    });
+    sim.step();
+    const ground = groundOf(sim, centre);
+    const controlled = {
+      ...ground,
+      placeable: () => true,
+      sealedFrom: () => false,
+      walkOut: () => ({ costTo: () => undefined }),
+      walkFrom: () => ({ costTo: () => undefined }),
+    };
+    expect(flagSpotNear(sim.world, controlled, depositOf(sim), { hx: 60, hy: 16 }, new Set())).toEqual({
+      hx: 24,
+      hy: 16,
+    });
+    const terrain = ground.terrain;
+    const fallback = {
+      ...controlled,
+      placeable: (node: ReturnType<typeof terrain.nodeAt>) => node === terrain.nodeAt(20, 16),
+    };
+    expect(flagSpotNear(sim.world, fallback, depositOf(sim), centre, new Set())).toEqual(centre);
+    expect(
+      flagSpotNear(sim.world, { ...controlled, placeable: () => false }, depositOf(sim), centre, new Set()),
+    ).toBeNull();
+  });
+
   it('plants the flag in the band on the origin side of the resource, the shortest walk from both', () => {
     const sim = aiSim();
     const resource = { hx: 20, hy: 16 };

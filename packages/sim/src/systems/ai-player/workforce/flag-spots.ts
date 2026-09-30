@@ -170,14 +170,15 @@ export function flagSpotNear(
   const unreached = fx.fromInt(UNREACHED_WALK_PENALTY_TILES);
   const cost = (x: number, y: number): Fixed => {
     const node = terrain.nodeAt(x, y);
-    const at = { hx: x, hy: y };
     // A straight-line leg is measured in half columns, the lattice's own E/W step.
-    const legOf = (flood: WalkDistances, from: HalfCellNode): Fixed =>
-      flood.costTo(node) ?? fx.add(unreached, fx.mul(fx.fromInt(nodeDistance(at, from)), HALF_COLUMN));
-    return fx.add(
-      fx.mul(fx.fromInt(GATHERER_LEG_WEIGHT), legOf(fromResource, centre)),
-      legOf(fromOrigin, origin),
-    );
+    const resourceLeg =
+      fromResource.costTo(node) ??
+      fx.add(unreached, fx.mul(fx.fromInt(Math.abs(x - centre.hx) + Math.abs(y - centre.hy)), HALF_COLUMN));
+    const weightedResourceLeg = fx.mul(fx.fromInt(GATHERER_LEG_WEIGHT), resourceLeg);
+    const originLeg =
+      fromOrigin.costTo(node) ??
+      fx.add(unreached, fx.mul(fx.fromInt(Math.abs(x - origin.hx) + Math.abs(y - origin.hy)), HALF_COLUMN));
+    return fx.add(weightedResourceLeg, originLeg);
   };
   return (
     cheapestRingNode(centre, FLAG_MIN_DISTANCE_NODES, FLAG_MAX_DISTANCE_NODES, legal, cost) ??
@@ -194,7 +195,8 @@ function cheapestRingNode(
   accept: (x: number, y: number) => boolean,
   cost: (x: number, y: number) => Fixed,
 ): HalfCellNode | null {
-  let best: HalfCellNode | null = null;
+  let bestX = 0;
+  let bestY = 0;
   let bestCost: Fixed | null = null;
   for (let r = minRadius; r <= maxRadius; r++) {
     for (let dx = -r; dx <= r; dx++) {
@@ -205,12 +207,13 @@ function cheapestRingNode(
         if (!accept(x, y)) continue;
         const c = cost(x, y);
         if (bestCost !== null && c >= bestCost) continue;
-        best = { hx: x, hy: y };
+        bestX = x;
+        bestY = y;
         bestCost = c;
       }
     }
   }
-  return best;
+  return bestCost === null ? null : { hx: bestX, hy: bestY };
 }
 
 /** The flag spot beside the good's workable live resource nearest `anchor`, or null when the map holds
