@@ -154,14 +154,16 @@ export class RouteRegions {
     const { terrain, labels, stamps, epoch, queue, steps, blocked } = this.cache;
     const known = labels[node];
     if (stamps[node] === epoch && known !== undefined) return known;
-    queue.length = 0;
-    queue.push(node);
+    let queued = 1;
+    queue[0] = node;
     stamps[node] = epoch;
     labels[node] = PENDING_REGION;
     let expanded = 0;
     let sealed = true;
-    // The array iterator re-reads `length`, so `queue` is a live BFS queue AND the visited list.
-    for (const cur of queue) {
+    // Reuse the queue backing store; only its active prefix belongs to this flood.
+    for (let cursor = 0; cursor < queued; cursor++) {
+      const cur = queue[cursor];
+      if (cur === undefined) throw new Error('route region queue missing an active node');
       if (expanded >= ROUTE_REGION_POCKET_CAP) {
         sealed = false;
         break;
@@ -175,13 +177,16 @@ export class RouteRegions {
         } else {
           stamps[next] = epoch;
           labels[next] = PENDING_REGION;
-          queue.push(next);
+          queue[queued++] = next;
         }
       }
       if (!sealed) break;
     }
     const label = sealed ? this.cache.nextPocket++ : OPEN_REGION;
-    for (const visited of queue) labels[visited] = label;
+    for (let i = 0; i < queued; i++) {
+      const visited = queue[i];
+      if (visited !== undefined) labels[visited] = label;
+    }
     return label;
   }
 }

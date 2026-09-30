@@ -1,4 +1,4 @@
-import { type Fixed, fx } from '../../core/fixed.js';
+import { type Fixed, fx, ZERO } from '../../core/fixed.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
@@ -83,6 +83,37 @@ class WalkFrontier {
   }
 }
 
+const COST_PAGE_SHIFT = 8;
+const COST_PAGE_SIZE = 1 << COST_PAGE_SHIFT;
+const COST_PAGE_MASK = COST_PAGE_SIZE - 1;
+interface CostPage {
+  readonly costs: Array<Fixed | undefined>;
+  readonly settled: Uint8Array;
+}
+
+/** Pages are allocated only where this bounded flood visits. Indexed costs avoid a pair of per-node
+ * Maps without allocating full-map buffers for each resource's small flood. */
+class WalkCosts {
+  private readonly pages: Array<CostPage | undefined> = [];
+  settledCount = 0;
+
+  page(node: NodeId): CostPage {
+    const index = node >> COST_PAGE_SHIFT;
+    let page = this.pages[index];
+    if (page === undefined) {
+      page = { costs: new Array<Fixed | undefined>(COST_PAGE_SIZE), settled: new Uint8Array(COST_PAGE_SIZE) };
+      this.pages[index] = page;
+    }
+    return page;
+  }
+
+  settledCost(node: NodeId): Fixed | undefined {
+    const page = this.pages[node >> COST_PAGE_SHIFT];
+    const at = node & COST_PAGE_MASK;
+    return page?.settled[at] === 1 ? page.costs[at] : undefined;
+  }
+}
+
 /**
  * Dijkstra from `seeds` over the walkable nodes the `blocked` overlay leaves, run lazily: a query floods
  * on only until its node settles, so a near candidate costs a small disc and only an unreachable one
@@ -91,10 +122,7 @@ class WalkFrontier {
  * own ground is not checked: {@link walkSeedNear} finds a walkable one.
  */
 export class WalkFlood implements WalkDistances {
-  private readonly settled = new Map<NodeId, Fixed>();
-  /** The least cost queued for each unsettled node: a step that cannot beat it would only pop after it
-   *  and be skipped, so it is never queued. */
-  private readonly queued = new Map<NodeId, Fixed>();
+  private readonly costs = new WalkCosts();
   private readonly frontier = new WalkFrontier();
   private readonly steps = new StepBuffer();
 
@@ -104,27 +132,32 @@ export class WalkFlood implements WalkDistances {
     seeds: readonly NodeId[],
     private readonly budget: number,
   ) {
-    for (const seed of seeds) this.frontier.push(fx.fromInt(0), seed);
+    for (const seed of seeds) this.frontier.push(ZERO, seed);
   }
 
   costTo(node: NodeId): Fixed | undefined {
-    const known = this.settled.get(node);
+    const known = this.costs.settledCost(node);
     if (known !== undefined) return known;
-    const { settled, queued, frontier, steps } = this;
-    while (frontier.size > 0 && settled.size < this.budget) {
+    const { costs, frontier, steps } = this;
+    while (frontier.size > 0 && costs.settledCount < this.budget) {
       const next = frontier.pop();
       const cost = frontier.poppedCost;
-      if (settled.has(next)) continue;
-      settled.set(next, cost);
-      queued.delete(next);
+      const page = costs.page(next);
+      const at = next & COST_PAGE_MASK;
+      if (page.settled[at] === 1) continue;
+      page.settled[at] = 1;
+      page.costs[at] = cost;
+      costs.settledCount++;
       this.terrain.stepsInto(next, this.blocked, steps);
       for (let i = 0; i < steps.length; i++) {
         const step = steps.at(i);
-        if (settled.has(step.node)) continue;
+        const candidate = costs.page(step.node);
+        const offset = step.node & COST_PAGE_MASK;
+        if (candidate.settled[offset] === 1) continue;
         const stepCost = fx.add(cost, step.cost);
-        const best = queued.get(step.node);
+        const best = candidate.costs[offset];
         if (best !== undefined && best <= stepCost) continue;
-        queued.set(step.node, stepCost);
+        candidate.costs[offset] = stepCost;
         frontier.push(stepCost, step.node);
       }
       if (next === node) return cost;
