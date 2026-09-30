@@ -161,7 +161,8 @@ lobby's map setting, with `-fow` for fog of war; `off` reveals the map), `player
 `intro=off` (skip all automatic briefing windows, including script chapters), `fullscreen=off`,
 `weather=<rain|snow|sand|clear>[:<percent>]` (whole-map weather in this view only, default 30; the sim's
 weather is untouched; `weather=ambient[:<percent>]` holds the game's own weather, 100 a light episode, 300 a storm), and
-`weathermode=<map|variable|winter>` (the lobby's match weather, `map` when no param names one). `ai=<seat,...>`
+`weathermode=<map|variable|winter>` (the lobby's match weather, `map` when no param names one), and
+`tint=<palette index>` (a map script's whole-map vertex tint held in this view only). `ai=<seat,...>`
 names the seats a person could have taken that the strategic AI plays instead; a map's own computer
 seats (authored `ai`, offered to nobody) play without being named. `seed=<n>` picks
 the world seed a `?map=` session runs on, so two clients of one session start from the same world;

@@ -19,7 +19,8 @@ const NEUTRAL_GRADE: LightGrade = [1, 1, 1];
 export interface ScriptTintSplit {
   /** The palette colour the whole-map tint asks for; null for daylight or no whole-map tint. */
   readonly scene: LightGrade | null;
-  /** RGB terrain multipliers per node id, relative to {@link scene}; neutral nodes are 1. */
+  /** RGB terrain multipliers per node id over the scene's multiply, which is {@link scene} clamped
+   *  to 1; a node of the whole-map tint is 1, so the ground brightens only as the scene pass does. */
   readonly colors: Float32Array;
 }
 
@@ -42,27 +43,31 @@ function dominantIndex(tints: Uint8Array): number | null {
 
 /**
  * The dominant index is the scene tint, the colour the script author gave the whole map. Every other
- * index is a local tint, its palette colour divided by the scene grade, so the product on screen is
- * the colour the script asked for. The dominant index and the neutral entry leave the ground at 1.
- * `out` is reused when it fits.
+ * index is a local tint, its palette colour divided by the scene's multiply, so the product on screen
+ * is the colour the script asked for. The dominant index and the neutral entry leave the ground at 1.
+ * `pinned` replaces the dominant index (`?tint=`); `out` is reused when it fits.
  */
 export function splitScriptTints(
   tints: Uint8Array,
   palette: readonly number[],
   out?: Float32Array,
+  pinned: number | null = null,
 ): ScriptTintSplit {
   const colors = out?.length === tints.length * RGB ? out : new Float32Array(tints.length * RGB);
-  const sceneIndex = dominantIndex(tints);
+  const sceneIndex = pinned ?? dominantIndex(tints);
   const sceneColor = sceneIndex === null ? undefined : palette[sceneIndex];
   const scene = sceneIndex !== NEUTRAL_INDEX && sceneColor !== undefined ? channels(sceneColor) : null;
-  const divisor = scene ?? NEUTRAL_GRADE;
-  const byIndex = new Float32Array(VERTEX_PALETTE_ENTRIES * RGB).fill(1);
+  const grade = scene ?? NEUTRAL_GRADE;
+  const byIndex = new Float32Array(VERTEX_PALETTE_ENTRIES * RGB);
   for (let index = 0; index < VERTEX_PALETTE_ENTRIES; index++) {
     const color = palette[index];
-    if (index === NEUTRAL_INDEX || index === sceneIndex || color === undefined) continue;
-    const local = channels(color);
-    for (let c = 0; c < RGB; c++)
-      byIndex[index * RGB + c] = (local[c] ?? 1) / Math.max(MIN_SCENE_CHANNEL, divisor[c] ?? 1);
+    const local =
+      index === NEUTRAL_INDEX || index === sceneIndex || color === undefined ? null : channels(color);
+    for (let c = 0; c < RGB; c++) {
+      const channel = grade[c] ?? 1;
+      byIndex[index * RGB + c] =
+        local === null ? 1 : (local[c] ?? 1) / Math.max(MIN_SCENE_CHANNEL, Math.min(1, channel));
+    }
   }
   for (let node = 0; node < tints.length; node++) {
     const from = (tints[node] ?? NEUTRAL_INDEX) * RGB;
@@ -85,14 +90,20 @@ export interface ScriptTints {
   readonly dispose: () => void;
 }
 
+export interface ScriptTintOptions {
+  /** `?tint=`: the palette index held as the whole-map tint in this view. */
+  readonly pinnedIndex?: number | null;
+}
+
 export async function mountScriptTints(
   host: Pick<SessionHost, 'missions' | 'landscapeEdits'>,
   surface: ScriptTintSurface,
+  { pinnedIndex = null }: ScriptTintOptions = {},
 ): Promise<ScriptTints> {
   const hasColors = host.missions?.missions.some((mission) =>
     mission.results.some((op) => op.opcode === 'SetVertexColor' || op.opcode === 'SetVertexColorOnLand'),
   );
-  const palette = hasColors === true ? await loadVertexPalette() : null;
+  const palette = hasColors === true || pinnedIndex !== null ? await loadVertexPalette() : null;
   if (palette === null) return { onEvents: () => undefined, dispose: () => undefined };
   let colors: Float32Array = new Float32Array(0);
   // Each answer is the whole tint state, so only the latest asked is applied, and none once disposed.
@@ -102,7 +113,7 @@ export async function mountScriptTints(
     const request = ++asked;
     void host.landscapeEdits().then((edits) => {
       if (request !== asked || disposed) return;
-      const split = splitScriptTints(edits.tints, palette, colors);
+      const split = splitScriptTints(edits.tints, palette, colors, pinnedIndex);
       colors = split.colors;
       surface.setSceneLight(split.scene);
       surface.applyTerrainVertexColors(colors);

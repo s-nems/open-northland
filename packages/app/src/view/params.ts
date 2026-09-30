@@ -2,6 +2,7 @@
  * The one home for `window.location.search` handling, shared by the app entries and the menu-to-game
  * launch, so no entry re-declares its own parser.
  */
+import { VERTEX_PALETTE_ENTRIES } from '@open-northland/data';
 
 /** The player-facing settings that survive a menu/game switch; every other param is dropped. The
  *  `?uiscale` diagnostic pin is deliberately not carried: sticky, it would mask the scale setting. */
@@ -106,6 +107,15 @@ const WEATHER_PARAM_DEFAULT_PERCENT = 30;
 const WEATHER_PARAM_AMBIENT_PERCENT = 100;
 const WEATHER_PARAM_AMBIENT_MAX_PERCENT = 300;
 export const PERCENT_FULL = 100;
+
+/** `?tint=<palette index>` holds a map script's whole-map vertex tint in this view only, for captures and
+ *  visual review; null when absent or not a palette index. */
+export function tintParam(params: URLSearchParams): number | null {
+  const raw = params.get('tint');
+  if (raw === null) return null;
+  const index = Number.parseInt(raw, 10);
+  return Number.isInteger(index) && index >= 0 && index < VERTEX_PALETTE_ENTRIES ? index : null;
+}
 
 /** `?weather=<rain|snow|sand|clear|ambient>[:<percent>]` overrides the map's weather in this view only, for
  *  captures and visual review; the sim's weather state is untouched. */

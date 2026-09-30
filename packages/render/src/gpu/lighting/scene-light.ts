@@ -11,7 +11,7 @@ import { type LightGrade, NEUTRAL_GRADE } from '../../data/lighting/types.js';
  */
 
 /** Share of a grade channel's excess over 1 the additive quad adds. Tuned by eye. */
-const OVERBRIGHT_SHARE = 0.5;
+const OVERBRIGHT_SHARE = 0.25;
 const CHANNEL_MAX = 255;
 const RED_SHIFT = 16;
 const GREEN_SHIFT = 8;

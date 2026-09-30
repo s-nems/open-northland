@@ -45,10 +45,22 @@ describe('splitScriptTints', () => {
 
   it('passes a brightening tint through above 1 and reuses a fitting buffer', () => {
     const warm = new Uint8Array(10).fill(WARM);
+    warm[9] = TORCH;
     const out = new Float32Array(30);
     const split = splitScriptTints(warm, palette, out);
-    expect(split.scene?.map((c) => Number(c.toFixed(3)))).toEqual([1.344, 1.148, 0.898]);
+    const rounded = (values: number[]) => values.map((c) => Number(c.toFixed(3)));
+    expect(rounded([...(split.scene ?? [])])).toEqual([1.344, 1.148, 0.898]);
+    expect(rgbAt(split.colors, 0)).toEqual([1, 1, 1]);
+    // A torch under it shows its own colour: its palette over the scene's (1, 1, 0.898) multiply.
+    expect(rounded(rgbAt(split.colors, 9))).toEqual([1.5, 1, 0.557]);
     expect(split.colors).toBe(out);
+  });
+
+  it('holds a pinned index as the whole-map tint', () => {
+    const split = splitScriptTints(tints, palette, undefined, WARM);
+    expect(split.scene?.[0]).toBeGreaterThan(1);
+    // 0x40 grey over the scene's (1, 1, 0.898) multiply.
+    expect(rgbAt(split.colors, 0).map((c) => Number(c.toFixed(3)))).toEqual([0.5, 0.5, 0.557]);
   });
 });
 

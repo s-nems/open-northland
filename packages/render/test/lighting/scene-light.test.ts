@@ -51,7 +51,7 @@ describe('SceneLight', () => {
     expect(shade.visible).toBe(true);
     expect(shade.tint).toBe(0xffffe6);
     expect(overbright.visible).toBe(true);
-    expect(overbright.tint).toBe(0x2b1300); // half the excess: 0.17, 0.075, 0
+    expect(overbright.tint).toBe(0x160a00); // a quarter of the excess: 0.085, 0.0375, 0
     light.setTarget([1.2, 1.1, 1]);
     light.update(frameAt(30));
     expect(shade.visible).toBe(false);

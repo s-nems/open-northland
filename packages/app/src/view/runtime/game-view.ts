@@ -81,7 +81,7 @@ import {
   palisadeToolsOf,
 } from '../game-tool-panel.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
-import { floatParam, introParam, weatherParam } from '../params.js';
+import { floatParam, introParam, tintParam, weatherParam } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
 import { nodeBounds } from '../picking.js';
 import {
@@ -590,7 +590,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       });
     }
     // Assembled below, once the controls and the camera it steers exist.
-    const scriptTints = await mountScriptTints(host, renderer);
+    const scriptTints = await mountScriptTints(host, renderer, { pinnedIndex: tintParam(params) });
     cleanup.push(() => scriptTints.dispose());
     let presentation: ReturnType<typeof createScriptPresentation> | null = null;
     const subMissions = createSubMissions({
