@@ -7,7 +7,6 @@ import {
   ResourceFootprint,
   RoadSite,
   Stockpile,
-  stockpileEntries,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
@@ -178,10 +177,12 @@ export function constructionWorkCell(
 function stockedGoodAt(world: World, entity: Entity): number | null {
   const stock = world.tryGet(entity, Stockpile);
   if (stock === undefined) return null;
-  for (const [goodType, amount] of stockpileEntries(stock)) {
-    if (amount > 0) return goodType;
-  }
-  return null;
+  let good: number | null = null;
+  // The minimum positive good is independent of the stockpile's insertion order.
+  stock.amounts.forEach((amount, goodType) => {
+    if (amount > 0 && (good === null || goodType < good)) good = goodType;
+  });
+  return good;
 }
 
 /**
