@@ -36,7 +36,11 @@ export function clonePlain(value: unknown): unknown {
   if (!isPlainRecord(value)) throw uncloneable(value);
   const out: Record<string, unknown> = {};
   for (const k of Object.keys(value)) {
-    if (value[k] !== undefined) out[k] = clonePlain(value[k]);
+    if (value[k] === undefined) continue;
+    const cloned = clonePlain(value[k]);
+    if (k === '__proto__') {
+      Object.defineProperty(out, k, { value: cloned, enumerable: true, writable: true, configurable: true });
+    } else out[k] = cloned;
   }
   return out;
 }

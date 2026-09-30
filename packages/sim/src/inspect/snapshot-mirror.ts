@@ -138,11 +138,29 @@ function created(entry: EntityDelta): EntitySnapshot {
 /** The new object of a held entity: the previous clones of the components the entry left alone, the
  *  entry's fresh clones over them, without the components it removed. */
 function patched(held: EntitySnapshot, entry: EntityDelta): EntitySnapshot {
-  const components = { ...held.components, ...entry.components };
-  if (entry.removed.length === 0) return { id: entry.id, components };
-  const kept: Record<string, unknown> = {};
-  for (const name of Object.keys(components)) {
-    if (!entry.removed.includes(name)) kept[name] = components[name];
+  if (entry.removed.length === 0) {
+    return { id: entry.id, components: { ...held.components, ...entry.components } };
   }
-  return { id: entry.id, components: kept };
+  const components: Record<string, unknown> = {};
+  for (const name of Object.keys(held.components)) {
+    if (!entry.removed.includes(name)) {
+      copyComponent(
+        components,
+        name,
+        Object.hasOwn(entry.components, name) ? entry.components[name] : held.components[name],
+      );
+    }
+  }
+  for (const name of Object.keys(entry.components)) {
+    if (!Object.hasOwn(held.components, name) && !entry.removed.includes(name))
+      copyComponent(components, name, entry.components[name]);
+  }
+  return { id: entry.id, components };
+}
+
+function copyComponent(target: Record<string, unknown>, name: string, value: unknown): void {
+  // Match object spread's own data property semantics for this inherited setter.
+  if (name === '__proto__') {
+    Object.defineProperty(target, name, { value, enumerable: true, configurable: true, writable: true });
+  } else target[name] = value;
 }

@@ -109,7 +109,7 @@ export class World {
       this.canonicalQueries.entered(component as Component<unknown>, entity);
     }
     this.bumpComponentGeneration(component as Component<unknown>, entity);
-    this.recordComponentWrite(component as Component<unknown>, entity);
+    this.recordComponentWrite(component as Component<unknown>, entity, entering);
     return value;
   }
 
@@ -120,7 +120,7 @@ export class World {
       this.bumpComponentGeneration(component as Component<unknown>, entity);
       // Revision removal and the touch jointly prevent a removed component's cached clone from surviving.
       this.componentRevisions.remove(component as Component<unknown>, entity);
-      this.touched.record(entity);
+      this.touched.record(entity, component as Component<unknown>, true);
       this.mutations?.componentWritten(component as Component<unknown>, entity);
     }
   }
@@ -200,8 +200,8 @@ export class World {
     this.changeFeeds.valueWritten(component, entity);
   }
 
-  private recordComponentWrite(component: Component<unknown>, entity: Entity): void {
-    this.componentRevisions.record(component, entity, this.touched.record(entity));
+  private recordComponentWrite(component: Component<unknown>, entity: Entity, membership = false): void {
+    this.componentRevisions.record(component, entity, this.touched.record(entity, component, membership));
     this.mutations?.componentWritten(component, entity);
   }
 
@@ -228,7 +228,15 @@ export class World {
     this.mutations = sink;
   }
 
-  drainTouched(consume: (entity: Entity) => void): boolean {
+  /** Enable component details for the snapshot cache's lifetime, including after streams close. */
+  trackTouchedComponents(): void {
+    this.touched.trackComponents();
+  }
+
+  /** Component sets are borrowed only for the duration of `consume`. */
+  drainTouched(
+    consume: (entity: Entity, components: ReadonlySet<Component<unknown>>, membership: boolean) => void,
+  ): boolean {
     return this.touched.drain(consume);
   }
 
@@ -375,6 +383,11 @@ export class World {
       if (revision === undefined) throw new Error(`entity ${entity} has no revision for component ${c.name}`);
       visit(c.name, v, revision);
     }
+  }
+
+  /** Stable first-registration order for canonical component output. */
+  componentOrder(component: Component<unknown>): number {
+    return this.registrationIndex.get(component) ?? -1;
   }
 
   /** {@link forEachComponent} collected into an array. */

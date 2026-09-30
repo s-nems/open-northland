@@ -1,6 +1,6 @@
 import type { SimEvent } from '../core/events.js';
 import { TOUCHED_LOG_OVERFLOW_LIMIT } from '../ecs/touched-log.js';
-import type { Entity, World } from '../ecs/world.js';
+import type { Component, Entity, World } from '../ecs/world.js';
 import { type DeltaDigest, EntityDigest } from './entity-digest.js';
 import { clonePlain } from './plain-clone.js';
 import type { EntitySnapshot } from './snapshot.js';
@@ -39,12 +39,11 @@ export interface EntityDelta {
   readonly removed: readonly string[];
 }
 
-/** A cache entry: untouched entities reuse the whole entry; touched entities reuse every component
- *  whose per-entity revision still matches. */
+/** Untouched entities and unwritten components retain their detached clone identities. */
 interface CachedEntity {
   readonly snap: EntitySnapshot;
-  readonly componentRevisions: Readonly<Record<string, number>>;
-  dirty: boolean;
+  readonly written: Set<Component<unknown>>;
+  membershipChanged: boolean;
 }
 
 /** What one open stream has accumulated since its last delta. */
@@ -52,6 +51,7 @@ interface PendingDelta {
   /** Alive entities mutated since the base. */
   readonly touched: Set<Entity>;
   readonly removed: Set<Entity>;
+  readonly written: Map<Entity, Set<Component<unknown>>>;
   rebuild: boolean;
 }
 
@@ -66,6 +66,7 @@ class SnapshotClones {
   private readonly streams = new Set<PendingDelta>();
 
   constructor(private readonly world: World) {
+    world.trackTouchedComponents();
     world.registerCacheVerifier('snapshotClones', () => this.verify());
   }
 
@@ -74,19 +75,28 @@ class SnapshotClones {
    *  the same bound (nobody took its deltas) starts over alone. */
   refresh(): void {
     const world = this.world;
-    const overflowed = world.drainTouched((e) => {
+    const overflowed = world.drainTouched((e, written, membership) => {
       const alive = world.isAlive(e);
       const cached = this.entries.get(e);
       if (cached !== undefined) {
-        if (alive) cached.dirty = true;
-        else this.entries.delete(e);
+        if (alive) {
+          for (const component of written) cached.written.add(component);
+          cached.membershipChanged ||= membership;
+        } else this.entries.delete(e);
       }
       for (const stream of this.streams) {
         if (stream.rebuild) continue; // the next delta carries every alive entity anyway
         if (alive) {
           stream.touched.add(e);
+          let names = stream.written.get(e);
+          if (names === undefined) {
+            names = new Set();
+            stream.written.set(e, names);
+          }
+          for (const component of written) names.add(component);
         } else {
           stream.touched.delete(e);
+          stream.written.delete(e);
           stream.removed.add(e);
         }
       }
@@ -96,6 +106,7 @@ class SnapshotClones {
       if (stream.rebuild) continue;
       if (overflowed || stream.touched.size + stream.removed.size > TOUCHED_LOG_OVERFLOW_LIMIT) {
         stream.touched.clear();
+        stream.written.clear();
         stream.removed.clear();
         stream.rebuild = true;
       }
@@ -105,7 +116,7 @@ class SnapshotClones {
   /** The cached clone of an alive entity, remade when a drained mutation marked it dirty. */
   entryOf(id: Entity): CachedEntity {
     let cached = this.entries.get(id);
-    if (cached === undefined || cached.dirty) {
+    if (cached === undefined || cached.membershipChanged || cached.written.size > 0) {
       cached = cloneEntity(this.world, id, cached);
       this.entries.set(id, cached);
     }
@@ -114,7 +125,12 @@ class SnapshotClones {
 
   /** Open a stream whose first delta rebuilds. */
   open(): PendingDelta {
-    const pending: PendingDelta = { touched: new Set(), removed: new Set(), rebuild: true };
+    const pending: PendingDelta = {
+      touched: new Set(),
+      removed: new Set(),
+      written: new Map(),
+      rebuild: true,
+    };
     this.streams.add(pending);
     return pending;
   }
@@ -138,14 +154,24 @@ class SnapshotClones {
 }
 
 function cloneEntity(world: World, id: Entity, previous?: CachedEntity): CachedEntity {
-  const components: Record<string, unknown> = {};
-  const componentRevisions: Record<string, number> = {};
-  world.forEachComponent(id, (name, value, revision) => {
-    components[name] =
-      previous?.componentRevisions[name] === revision ? previous.snap.components[name] : clonePlain(value);
-    componentRevisions[name] = revision;
-  });
-  return { snap: { id: id as number, components }, componentRevisions, dirty: false };
+  const components: Record<string, unknown> =
+    previous === undefined || previous.membershipChanged ? {} : { ...previous.snap.components };
+  if (previous === undefined || previous.membershipChanged) {
+    const writtenNames = new Set([...(previous?.written ?? [])].map((component) => component.name));
+    world.forEachComponent(id, (name, value) => {
+      components[name] =
+        previous !== undefined && !writtenNames.has(name) && Object.hasOwn(previous.snap.components, name)
+          ? previous.snap.components[name]
+          : clonePlain(value);
+    });
+  } else {
+    for (const component of previous.written) {
+      components[component.name] = clonePlain(world.get(id, component));
+    }
+  }
+  const written = previous?.written ?? new Set<Component<unknown>>();
+  written.clear();
+  return { snap: { id: id as number, components }, written, membershipChanged: false };
 }
 
 const clonesByWorld = new WeakMap<World, SnapshotClones>();
@@ -190,9 +216,8 @@ export interface SnapshotDeltaStreamOptions {
 export class SnapshotDeltaStream {
   private readonly clones: SnapshotClones;
   private readonly pending: PendingDelta;
-  /** Per entity the mirror holds, the component revisions of the clones the last delta carried: what a
-   *  touched entity's next entry is diffed against, so no value is compared and no world pass is made. */
-  private readonly sent = new Map<Entity, Readonly<Record<string, number>>>();
+  /** Last sent component record supplies presence at each stream's independent base. */
+  private readonly sent = new Map<Entity, Readonly<Record<string, unknown>>>();
   private lastTick = NO_TICK;
   private lastVersion = NO_VERSION;
   private sequence = 0;
@@ -245,6 +270,7 @@ export class SnapshotDeltaStream {
       ...(this.digest === null ? {} : { digest: { entities: world.entityCount, hash: this.digest.hash } }),
     };
     pending.touched.clear();
+    pending.written.clear();
     pending.removed.clear();
     pending.rebuild = false;
     this.lastTick = tick;
@@ -262,32 +288,32 @@ export class SnapshotDeltaStream {
   /** The entity with all of its components, as a rebuild and a creation carry it. */
   private whole(id: Entity): EntityDelta {
     const cached = this.clones.entryOf(id);
-    this.sent.set(id, cached.componentRevisions);
+    this.sent.set(id, cached.snap.components);
     this.digest?.fold(cached.snap);
     return { id, components: cached.snap.components, removed: NO_COMPONENT_NAMES };
   }
 
-  /** The components whose revision moved since the last delta carried the entity, and the ones it lost. */
+  /** Emit only the components written since this stream last drained. */
   private changesOf(id: Entity): EntityDelta {
     const base = this.sent.get(id);
     if (base === undefined) return this.whole(id);
     const cached = this.clones.entryOf(id);
-    this.sent.set(id, cached.componentRevisions);
+    this.sent.set(id, cached.snap.components);
     this.digest?.fold(cached.snap);
-    const revisions = cached.componentRevisions;
     const components: Record<string, unknown> = {};
-    let stillCarried = 0;
-    for (const name of Object.keys(revisions)) {
-      const before = base[name];
-      if (before !== undefined) stillCarried++;
-      if (before !== revisions[name]) components[name] = cached.snap.components[name];
+    let removed: string[] | undefined;
+    // Preserve the component registration order carried by complete snapshots.
+    const written = [...(this.pending.written.get(id) ?? [])];
+    written.sort((a, b) => this.source.world.componentOrder(a) - this.source.world.componentOrder(b));
+    for (const component of written) {
+      const name = component.name;
+      if (Object.hasOwn(cached.snap.components, name)) components[name] = cached.snap.components[name];
+      else if (Object.hasOwn(base, name)) {
+        removed ??= [];
+        removed.push(name);
+      }
     }
-    const baseNames = Object.keys(base);
-    const removed =
-      stillCarried === baseNames.length
-        ? NO_COMPONENT_NAMES
-        : baseNames.filter((name) => !Object.hasOwn(revisions, name));
-    return { id, components, removed };
+    return { id, components, removed: removed ?? NO_COMPONENT_NAMES };
   }
 }
 
