@@ -27,7 +27,8 @@ decoder and its tests.
 
 `corrections/<id>.json` fixes an authoring error in one mod file that no data rule can express, such
 as a map script that swaps two seats' gathering points. The file names the mod-relative path, the
-SHA-256 of the shipped file, and whole-line `from`/`to` swaps, with a `reason` in Polish for the
+SHA-256 of the shipped file, and whole-line `from`/`to` swaps (`"every": true` when the line repeats
+and each copy takes the same fix), with a `reason` in Polish for the
 owner reviewing the list. The stage reading the file goes through `readSourceFile`, which applies the
 swaps only while the hash still matches.
 

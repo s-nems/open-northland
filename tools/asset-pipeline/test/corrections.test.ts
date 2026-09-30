@@ -74,10 +74,10 @@ describe('source corrections', () => {
     expect(() => corrections.assertApplied()).toThrow(/swap .*never read/);
   });
 
-  it('fails the run for a line matching no line or several', async () => {
-    const shipped = 'a\r\na\r\n';
+  it('fails the run for a line matching no line or several, unless the edit names every one', async () => {
+    const shipped = 'a\r\na\r\nb\r\n';
     const path = await writeMod(AI_INC, shipped);
-    for (const from of ['a', 'b']) {
+    for (const from of ['a', 'x']) {
       await writeCorrection('lines', {
         reason: 'test',
         file: AI_INC,
@@ -88,6 +88,18 @@ describe('source corrections', () => {
       expect(Buffer.from(await corrections.read(path)).toString('latin1')).toBe(shipped);
       expect(() => corrections.assertApplied()).toThrow(/instead of one/);
     }
+    await writeCorrection('lines', {
+      reason: 'test',
+      file: AI_INC,
+      sha256: sha256(shipped),
+      lines: [
+        { from: 'a', to: 'c', every: true },
+        { from: 'b', to: 'd' },
+      ],
+    });
+    const corrections = await loadSourceCorrections(dir, mod);
+    expect(Buffer.from(await corrections.read(path)).toString('latin1')).toBe('c\r\nc\r\nd\r\n');
+    expect(() => corrections.assertApplied()).not.toThrow();
   });
 
   it('refuses a malformed correction or two naming one file', async () => {
@@ -97,6 +109,7 @@ describe('source corrections', () => {
       [{ ...valid, sha256: 'ABC' }, /sha256/],
       [{ ...valid, lines: [] }, /at least one edit/],
       [{ ...valid, lines: [{ from: 'ż', to: 'z' }] }, /printable-ASCII/],
+      [{ ...valid, lines: [{ from: 'a', to: 'z', every: false }] }, /"every"/],
       [{ ...valid, note: 'x' }, /unknown key "note"/],
     ];
     for (const [correction, why] of refused) {

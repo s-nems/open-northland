@@ -1,0 +1,15 @@
+{
+  "reason": "Cykl dnia i nocy tej mapy (misje 'Pogoda - dzień' ... 'Pogoda - poranek') wpisano jako SetVertexColor 0 0 0 <indeks>: punkt (0,0) i zasięg 0, czyli w oryginale jedna komórka w rogu mapy, przez co cykl nie jest widoczny. Ten sam szablon na Strażnikach Północy i Zimnej Wojnie ma punkt 180 260 i zasięg 900, który pokrywa całą mapę. Poprawiamy same współrzędne, indeksy zostają.",
+  "file": "CnModMaps/WIELKA INWAZJA/mission.inc",
+  "sha256": "ae69a4dd61374232f255ced77d89fbe977c6e2858285d62c8de7f284ba4d33c0",
+  "lines": [
+    { "from": "result \"SetVertexColor\" 0 0 0 0", "to": "result \"SetVertexColor\" 180 260 900 0" },
+    { "from": "result \"SetVertexColor\" 0 0 0 125", "to": "result \"SetVertexColor\" 180 260 900 125" },
+    { "from": "result \"SetVertexColor\" 0 0 0 124", "to": "result \"SetVertexColor\" 180 260 900 124" },
+    { "from": "result \"SetVertexColor\" 0 0 0 126", "to": "result \"SetVertexColor\" 180 260 900 126" },
+    { "from": "result \"SetVertexColor\" 0 0 0 64", "to": "result \"SetVertexColor\" 180 260 900 64" },
+    { "from": "result \"SetVertexColor\" 0 0 0 79", "to": "result \"SetVertexColor\" 180 260 900 79" },
+    { "from": "result \"SetVertexColor\" 0 0 0 133", "to": "result \"SetVertexColor\" 180 260 900 133", "every": true },
+    { "from": "result \"SetVertexColor\" 0 0 0 58", "to": "result \"SetVertexColor\" 180 260 900 58" }
+  ]
+}
