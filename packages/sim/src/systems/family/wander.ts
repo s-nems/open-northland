@@ -3,7 +3,9 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { routeRegions } from '../footprint/index.js';
 import type { PlannerSpacing } from '../settlers/planner/spacing.js';
+import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
 import { navigationLimitFor } from '../signposts/index.js';
 
 /**
@@ -42,5 +44,16 @@ export function planChildWander(
   // Checked after the rolls, so the RNG stream is identical whether or not confinement is on.
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
   if (limit !== null && !limit.allowsNode(target)) return;
+  const position = world.tryGet(e, Position);
+  if (position === undefined) return;
+  const node = nodeOfPosition(position.x, position.y);
+  const here = terrain.nodeAtClamped(node.hx, node.hy);
+  if (
+    target !== here &&
+    (terrain.componentOf(here) !== terrain.componentOf(target) ||
+      isUnreachableGoal(unreachableGoals(world, ctx, e), target) ||
+      routeRegions(world, ctx, terrain).unroutable(here, target))
+  )
+    return;
   world.add(e, MoveGoal, { cell: target });
 }
