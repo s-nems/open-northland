@@ -8,8 +8,7 @@ its frame has not been selected. The minimap retains the existing terrain render
 
 Follow the [approved design workflow](../../design/ingame-menu/README.md) and
 [shared minimap decisions](../../design/ingame-menu/FOUNDATION.md#minimap-direction).
-The [minimap reference](../../design/minimap-study/README.md) describes the implemented compact view.
-Its approval does not select the large-map frame.
+The approved compact minimap does not select the large-map frame.
 
 ## Scope
 

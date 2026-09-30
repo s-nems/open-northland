@@ -13,10 +13,9 @@ tokens below are the shared language for every screen, including a future main-m
 
 ## Minimap direction
 
-The [minimap](../minimap-study/README.md) sits in one of three dark frames the player picks in the
+The minimap sits in one of three dark frames the player picks in the
 graphics settings: **Żelazo** (iron-bound dark oak, the default), **Księga** (the mission book's carved
-oak and brass corners) and **Urnes** (smoked oak with carved beast corners). [Art provenance](../minimap-study/generation.md)
-records the delivered frames. A light frame drew the eye away from the dark HUD, so none is offered.
+oak and brass corners) and **Urnes** (smoked oak with carved beast corners). A light frame drew the eye away from the dark HUD, so none is offered.
 
 - Provide S/M/L/XL sizes with nominal longest sides of 224/280/344/416 design px.
   Anchor the panel flush to the bottom-left screen corner. Cap its
