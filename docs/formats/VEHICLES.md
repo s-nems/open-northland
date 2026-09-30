@@ -249,10 +249,14 @@ land vertex claims), and the static component labels land and water bodies in on
 first, so the goto's continent test and the dock ring search compare the same key on either side.
 The free-size class is the largest hex-disc radius of open same-continent nodes around the node,
 capped at 7, one field for land and water (`nav/clearance.ts`). Deviation (owner's choice): a land
-vehicle whose class falls short still fits an open node when the rest of its disc holds at most two
-resource cells (trees, stones) and at most two building cells, none touching a wall; walls, landscapes
-and water stay hard, so the catapult squeezes between trees and houses but never through a narrower
-wall gap (`landVehicleFits`); ships keep the plain class test. `g` is the roughness of the node a leg
+vehicle whose class falls short still passes an open node when the rest of its disc holds at most two
+resource cells (any resource's walk cells: trees, stones, carcasses) and at most two building cells,
+none on or beside a wall; walls, landscapes and water stay hard, so the catapult squeezes between trees
+and houses but never through a narrower wall gap (`landVehicleFits`); ships keep the plain class test.
+The tolerance is for transit only: a goto's snapped goal and a firing spot need the plain class
+(`vehicleStandable`, `vehicleRestBlocks`), and a land vehicle whose drive ends in such a gap anyway,
+given up or its goal closed meanwhile, drives on to the nearest node within 3 rings it may stand on,
+since a standing vehicle's disc blocks settlers. A player's stop leaves it where it stops. `g` is the roughness of the node a leg
 leaves (`TerrainGraph.roughnessAt`; a map without the lane reads 2 on land and 1 on water, the corpus's
 common values); the walk range is a hexagon
 distance gate on the goto; an off-continent or out-of-range target raises `vehicleNoPath` instead of

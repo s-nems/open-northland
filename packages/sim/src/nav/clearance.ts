@@ -24,9 +24,9 @@ const SCAN_DISC_NODES = 1 + 3 * SCAN_RADIUS * (SCAN_RADIUS + 1);
 /**
  * Per-node free-size classes over a terrain graph: a node's class is the largest hexagon-disc radius
  * around it whose every map point is in bounds, open (`probe`) and in the node's own static
- * component, capped at {@link MAX_CLEARANCE_CLASS}. A vehicle of `logicSize` s may enter a node
- * whose class is at least s; one field serves carts on land and ships at sea, since a water node's
- * disc holds only water of its own body. A node that is not open reads 0.
+ * component, capped at {@link MAX_CLEARANCE_CLASS}. A vehicle of `logicSize` s may stand on a node
+ * whose class is at least s, and a ship sails only such nodes; one field serves land and sea, since a
+ * water node's disc holds only water of its own body. A node that is not open reads 0.
  *
  * Computed as a multi-source breadth-first distance over the six map-point neighbours: an open node
  * with a hemming neighbour (off the map, not open, or of another component) is at distance 0, and the

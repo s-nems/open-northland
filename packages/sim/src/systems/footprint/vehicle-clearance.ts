@@ -4,21 +4,20 @@ import { landscapeEditState } from '../../components/landscape.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { ClearanceField, type ClearanceProbe } from '../../nav/clearance.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { HEX_NEIGHBOUR_OFFSETS, hexDistanceBetween, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
 import { landscapeBlocks } from '../landscape/view.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
-import { hexDisc } from './vehicle-footprint.js';
 import { standingWallCells } from './wall-joints.js';
 
-// The per-world free-size classes vehicles route by, on land and on water, over the ground walk-block
+// The per-world free-size classes vehicles stand by and ships route by, over the ground walk-block
 // (buildings and walls, resources, landscapes; never vehicles, which the mover judges against each other
 // at step time). The classes are kept current by replaying the footprinted stores' membership journals: a
 // placed, finished, swung or razed blocker re-derives the classes around its own cells, so the update cost
-// is local to the change. Derived state, never hashed.
+// is local to the change. Land vehicles pass narrower gaps (`landVehicleFits`). Derived state, never hashed.
 
 interface ClearanceMemo {
   readonly content: ContentSet;
@@ -199,19 +198,69 @@ function isFresh(world: World, memo: ClearanceMemo): boolean {
   );
 }
 
-/** Resource cells (trees, stones) a land vehicle's disc may overlap beyond its anchor. */
-export const TREE_TOLERANCE_NEIGHBOURS = 2;
-/** Building cells a land vehicle's disc may overlap beyond its anchor. Walls never count here. */
+/** Resource cells a land vehicle's disc may overlap beyond its anchor in transit. */
+export const RESOURCE_TOLERANCE_NEIGHBOURS = 2;
+/** Building cells a land vehicle's disc may overlap beyond its anchor in transit. Walls never count here. */
 export const BUILDING_TOLERANCE_NEIGHBOURS = 2;
 
 /**
- * Whether a land vehicle of `logicSize` may stand on a node: its free-size class admits it, or the
+ * Whether a vehicle of `logicSize` may stop and stand on a node: its free-size class admits it. A
+ * standing vehicle's disc blocks settlers, so it never rests in a gap it may only pass
+ * ({@link landVehicleFits}). Read within one decision, like {@link vehicleClearance}.
+ */
+export function vehicleStandable(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  logicSize: number,
+): (node: NodeId) => boolean {
+  const clearance = vehicleClearance(world, ctx, terrain);
+  return (node) => clearance.classOf(node) >= logicSize;
+}
+
+/** Per-terrain answers of the slow {@link landVehicleFits} test, valid for the predicate whose epoch
+ *  stamped them, so one route search tests each node once without allocating per search. */
+class FitMemo {
+  readonly stamps: Uint32Array;
+  readonly fits: Uint8Array;
+  private epoch = 0;
+
+  constructor(nodeCount: number) {
+    this.stamps = new Uint32Array(nodeCount);
+    this.fits = new Uint8Array(nodeCount);
+  }
+
+  nextEpoch(): number {
+    if (this.epoch === MAX_EPOCH) {
+      this.stamps.fill(0);
+      this.epoch = 0;
+    }
+    return ++this.epoch;
+  }
+}
+
+const MAX_EPOCH = 0xffffffff;
+const fitMemos = new WeakMap<TerrainGraph, FitMemo>();
+
+function fitMemoOf(terrain: TerrainGraph): FitMemo {
+  let memo = fitMemos.get(terrain);
+  if (memo === undefined) {
+    memo = new FitMemo(terrain.nodeCount);
+    fitMemos.set(terrain, memo);
+  }
+  return memo;
+}
+
+/**
+ * Whether a land vehicle of `logicSize` may pass through a node: it is {@link vehicleStandable}, or the
  * anchor is open and the rest of its disc is open land of the anchor's component except for at most
- * {@link TREE_TOLERANCE_NEIGHBOURS} resource cells and {@link BUILDING_TOLERANCE_NEIGHBOURS} building
- * cells. Landscapes, water, unwalkable ground and walls stay hard; a building cell touching a wall cell
- * counts as wall, which also covers the wall joint seals. Deviation from the original, whose class
+ * {@link RESOURCE_TOLERANCE_NEIGHBOURS} resource cells and {@link BUILDING_TOLERANCE_NEIGHBOURS} building
+ * cells. Landscapes, water, unwalkable ground and walls stay hard; a building cell on or beside a wall
+ * cell counts as wall, which also covers the wall joint seals. Deviation from the original, whose class
  * test admits no overlap: the catapult squeezes between trees and houses like a settler walking by.
- * Read within one decision, like {@link vehicleClearance}.
+ * Allocation-free and memoized per predicate, since an A* search asks it for every neighbour it relaxes;
+ * an older predicate read after a newer one was made loses memo hits, never answers. Read within one
+ * decision, like {@link vehicleClearance}.
  */
 export function landVehicleFits(
   world: World,
@@ -219,42 +268,58 @@ export function landVehicleFits(
   terrain: TerrainGraph,
   logicSize: number,
 ): (node: NodeId) => boolean {
-  const clearance = vehicleClearance(world, ctx, terrain);
-  if (logicSize < 1) return (node) => clearance.classOf(node) >= logicSize;
+  const standable = vehicleStandable(world, ctx, terrain, logicSize);
+  if (logicSize < 1) return standable;
   const buildings = buildingBlockedCells(world, ctx, terrain);
   const resources = resourceBlockedCells(world, terrain);
   const landscapes = landscapeBlocks(world, terrain).walk;
   const walls = standingWallCells(world, terrain).walls;
   const touchesWall = (node: NodeId): boolean => {
     if (walls.has(node)) return true;
-    const centre = { hx: terrain.xOf(node), hy: terrain.yOf(node) };
-    for (const { hx, hy } of hexDisc(centre, 1)) {
-      if (terrain.inBounds(hx, hy) && walls.has(terrain.nodeAt(hx, hy))) return true;
+    const x = terrain.xOf(node);
+    const y = terrain.yOf(node);
+    for (const offset of HEX_NEIGHBOUR_OFFSETS) {
+      const nx = x + footprintCellDx(y, offset);
+      const ny = y + offset.dy;
+      if (terrain.inBounds(nx, ny) && walls.has(terrain.nodeAt(nx, ny))) return true;
     }
     return false;
   };
+  const memo = fitMemoOf(terrain);
+  const epoch = memo.nextEpoch();
   return (node) => {
-    if (clearance.classOf(node) >= logicSize) return true;
+    if (standable(node)) return true;
+    if (memo.stamps[node] === epoch) return memo.fits[node] === 1;
+    const fits = squeezes(node);
+    memo.stamps[node] = epoch;
+    memo.fits[node] = fits ? 1 : 0;
+    return fits;
+  };
+  function squeezes(node: NodeId): boolean {
     if (!terrain.isWalkable(node) || buildings.has(node) || resources.has(node) || landscapes.has(node)) {
       return false;
     }
     const component = terrain.componentOf(node);
-    const centre = { hx: terrain.xOf(node), hy: terrain.yOf(node) };
-    let trees = 0;
-    let houses = 0;
-    for (const { hx, hy } of hexDisc(centre, logicSize)) {
-      if (!terrain.inBounds(hx, hy)) return false;
-      const cell = terrain.nodeAt(hx, hy);
-      if (cell === node) continue;
-      if (!terrain.isWalkable(cell) || terrain.componentOf(cell) !== component || landscapes.has(cell)) {
-        return false;
-      }
-      if (buildings.has(cell)) {
-        if (touchesWall(cell) || ++houses > BUILDING_TOLERANCE_NEIGHBOURS) return false;
-      } else if (resources.has(cell) && ++trees > TREE_TOLERANCE_NEIGHBOURS) {
-        return false;
+    const cx = terrain.xOf(node);
+    const cy = terrain.yOf(node);
+    let resourceCells = 0;
+    let buildingCells = 0;
+    // The disc's bounding box: `logicSize` rows either way and one column of odd-row lean beyond it.
+    for (let y = cy - logicSize; y <= cy + logicSize; y++) {
+      for (let x = cx - logicSize - 1; x <= cx + logicSize + 1; x++) {
+        if (hexDistanceBetween(cx, cy, x, y) > logicSize || (x === cx && y === cy)) continue;
+        if (!terrain.inBounds(x, y)) return false;
+        const cell = terrain.nodeAt(x, y);
+        if (!terrain.isWalkable(cell) || terrain.componentOf(cell) !== component || landscapes.has(cell)) {
+          return false;
+        }
+        if (buildings.has(cell)) {
+          if (++buildingCells > BUILDING_TOLERANCE_NEIGHBOURS || touchesWall(cell)) return false;
+        } else if (resources.has(cell) && ++resourceCells > RESOURCE_TOLERANCE_NEIGHBOURS) {
+          return false;
+        }
       }
     }
     return true;
-  };
+  }
 }

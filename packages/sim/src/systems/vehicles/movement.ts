@@ -26,7 +26,7 @@ import {
   vehicleBlockedCells,
   vehicleFootprintNodes,
 } from '../footprint/index.js';
-import { groundBlockOverlay, landVehicleFits, vehicleClearance } from '../footprint/vehicle-clearance.js';
+import { groundBlockOverlay, landVehicleFits, vehicleStandable } from '../footprint/vehicle-clearance.js';
 import { isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { walkTurnSteps } from '../movement/turning.js';
 import {
@@ -50,11 +50,12 @@ import {
 
 // The mover of docs/formats/VEHICLES.md "Movement": a goto is refused without a commander or for a
 // target off the vehicle's continent or walk range, the route runs over the shared graph, on land or
-// on water by the vehicle's traversal class, through nodes whose free-size class admits the vehicle's
-// `logicSize`, each leg takes the ground's move period per map point it crosses plus its turn (a ship
-// turns under way, `helm.ts`), the footprint travels with the anchor and shoves the settlers it lands
-// on. A ship that starts a drive leaves its mooring; one on a dock drive moors again where it arrives
-// (`dock.ts`).
+// on water by the vehicle's traversal class, through nodes the vehicle passes (`vehicleWalkBlocks`: a
+// land vehicle squeezes through narrow gaps) to a goal it may stand on (`vehicleRestBlocks`: the plain
+// free-size class). Each leg takes the ground's move period per map point it crosses plus its turn (a
+// ship turns under way, `helm.ts`), the footprint travels with the anchor and shoves the settlers it
+// lands on. A ship that starts a drive leaves its mooring; one on a dock drive moors again where it
+// arrives (`dock.ts`).
 
 /** The walk range of a vehicle goto in map-point steps from where it stands (original behavior,
  *  the vehicle twin of the humans' 50/63). */
@@ -97,22 +98,21 @@ function continentOf(terrain: TerrainGraph, node: NodeId): number {
   return terrain.componentOf(node);
 }
 
-/** Whether `type` may stand on a node by its size: a ship by the water's free-size class, a land
- *  vehicle by {@link landVehicleFits}. */
-function vehicleFits(
+/** Whether `type` may pass a node by its size: a ship by the water's free-size class, a land vehicle by
+ *  {@link landVehicleFits}. */
+function vehiclePasses(
   world: World,
   ctx: ContentContext,
   terrain: TerrainGraph,
   type: VehicleType,
 ): (node: NodeId) => boolean {
   if (vehicleTraversal(type) === 'land') return landVehicleFits(world, ctx, terrain, type.logicSize);
-  const clearance = vehicleClearance(world, ctx, terrain);
-  return (node) => clearance.classOf(node) >= type.logicSize;
+  return vehicleStandable(world, ctx, terrain, type.logicSize);
 }
 
 /**
- * The walk-block a vehicle routes under: ground blockers, nodes its size does not fit
- * ({@link vehicleFits}), and every other vehicle's standing cells. Its own cells are exempt so a
+ * The walk-block a vehicle routes under: ground blockers, nodes its size does not pass
+ * ({@link vehiclePasses}), and every other vehicle's standing cells. Its own cells are exempt so a
  * catapult can step through its own ring.
  */
 export function vehicleWalkBlocks(
@@ -122,8 +122,32 @@ export function vehicleWalkBlocks(
   vehicle: Entity,
   type: VehicleType,
 ): BlockOverlay {
+  return blocksUnder(world, ctx, terrain, vehicle, vehiclePasses(world, ctx, terrain, type));
+}
+
+/**
+ * The walk-block a vehicle's stopping place is chosen under: {@link vehicleWalkBlocks} with the plain
+ * free-size class, so a vehicle never parks in a gap it may only pass, where its disc would seal the
+ * settlers' lane. For goals, parking and firing spots; a route still runs under the walk-block.
+ */
+export function vehicleRestBlocks(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  type: VehicleType,
+): BlockOverlay {
+  return blocksUnder(world, ctx, terrain, vehicle, vehicleStandable(world, ctx, terrain, type.logicSize));
+}
+
+function blocksUnder(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  fits: (node: NodeId) => boolean,
+): BlockOverlay {
   const ground = groundBlockOverlay(world, ctx, terrain);
-  const fits = vehicleFits(world, ctx, terrain, type);
   const vehicles = vehicleBlockedCells(world, ctx, terrain);
   const own = new Set(vehicleFootprintNodes(world, ctx.content, terrain, vehicle));
   return {
@@ -135,8 +159,9 @@ export function vehicleWalkBlocks(
 /**
  * Snap a clicked target to the node the vehicle may stand on: the target itself, else the first node in
  * hexagon-ring order out to `radius` ({@link VEHICLE_TARGET_SNAP_RADIUS} by default) that is on the map,
- * open under the vehicle's walk-block, on the vehicle's continent and not `exclude`d. Null when nothing
- * qualifies. Shared by the goto order, the map script's `SendVehicle` and the trader's move near a house.
+ * open under the vehicle's rest block ({@link vehicleRestBlocks}), on the vehicle's continent and not
+ * `exclude`d. Null when nothing qualifies. Shared by the goto order, the map script's `SendVehicle` and
+ * the trader's move near a house.
  */
 export function snapVehicleTarget(
   world: World,
@@ -153,7 +178,7 @@ export function snapVehicleTarget(
   if (type === undefined) return null;
   const continent = continentOf(terrain, terrain.nodeAt(anchor.hx, anchor.hy));
   if (continent < 0) return null;
-  const blocked = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
+  const blocked = vehicleRestBlocks(world, ctx, terrain, vehicle, type);
   const radius = options.radius ?? VEHICLE_TARGET_SNAP_RADIUS;
   for (let r = 0; r <= radius; r++) {
     for (const { point } of hexagonRing(target, r)) {
@@ -439,6 +464,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
       continue;
     }
     if (next === undefined) {
+      if (state.task !== 'interrupted' && settleOutOfGap(world, ctx, terrain, e)) continue;
       world.remove(e, VehicleDrive); // arrived, or stopped on its node
       if (state.task === 'docks') moorVehicle(world, ctx, e);
       reanchorGuard(world, e);
@@ -457,7 +483,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
         world.remove(e, VehicleDrive);
         refuseMove(world, ctx, e, 'noPath');
         abandonDock(world, e);
-        reanchorGuard(world, e);
+        if (!settleOutOfGap(world, ctx, terrain, e)) reanchorGuard(world, e);
       }
       continue; // the fresh route's first leg starts next tick
     }
@@ -490,6 +516,24 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     if (live.helm !== null) sailLeg(world, e, facing, shipCourse(next, live.route), true);
   }
 };
+
+/** How far a land vehicle left in a gap looks for a node to stand on, in hexagon rings. */
+const VEHICLE_SETTLE_RADIUS = 3;
+
+/**
+ * A land vehicle whose drive ends on a node it may only pass, given up or its goal closed meanwhile,
+ * drives on to the nearest node it may stand on, so its disc does not seal the gap for settlers. True
+ * when that drive starts; a player's stop, or no such node in reach, leaves it where it is.
+ */
+function settleOutOfGap(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): boolean {
+  const type = contentIndex(ctx.content).vehicles.get(world.get(e, Vehicle).vehicleType);
+  const anchor = vehicleAnchor(world, e);
+  if (type === undefined || anchor === null || vehicleTraversal(type) !== 'land') return false;
+  const here = terrain.nodeAtClamped(anchor.hx, anchor.hy);
+  if (vehicleStandable(world, ctx, terrain, type.logicSize)(here)) return false;
+  const spot = snapVehicleTarget(world, ctx, terrain, e, anchor, { radius: VEHICLE_SETTLE_RADIUS });
+  return spot !== null && startVehicleDrive(world, ctx, terrain, e, spot);
+}
 
 /** Wherever a drive ends, arrived, stopped or given up, is the new guard position a holding or
  *  defending siege vehicle scans around, unless the drive was its own chase, which must not walk the

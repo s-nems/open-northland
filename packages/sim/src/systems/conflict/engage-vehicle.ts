@@ -26,7 +26,7 @@ import { FIGHT_EXPERIENCE_TYPE } from '../progression/index.js';
 import { isAreaWeapon } from '../readviews/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 import { facingOfStep } from '../vehicles/helm.js';
-import { crewInside, refuseMove, startVehicleDrive, vehicleWalkBlocks } from '../vehicles/movement.js';
+import { crewInside, refuseMove, startVehicleDrive, vehicleRestBlocks } from '../vehicles/movement.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { CombatPass } from './pass.js';
 import { mapPointDistance, shotFlightTicks, shotLandDelay } from './shot-aim.js';
@@ -306,10 +306,10 @@ function aimNode(
 }
 
 /**
- * The node nearest `here` (map points, then node id) that the vehicle may stand on, lies on its own
- * continent and is `band` map points from `target`. Approximation: the original walks its own move-point
- * search near the target and floods a radius-5 disc for a firing spot across a continent seam; a
- * target with no such node on this continent is unreachable here too.
+ * The node nearest `here` (map points, then node id) that the vehicle may stand on (never a gap it may
+ * only pass), lies on its own continent and is `band` map points from `target`. Approximation: the
+ * original walks its own move-point search near the target and floods a radius-5 disc for a firing spot
+ * across a continent seam; a target with no such node on this continent is unreachable here too.
  */
 function firingNode(
   world: World,
@@ -323,7 +323,7 @@ function firingNode(
   const state = world.get(e, Vehicle);
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (type === undefined) return null;
-  const blocked = vehicleWalkBlocks(world, ctx, terrain, e, type);
+  const blocked = vehicleRestBlocks(world, ctx, terrain, e, type);
   const continent = terrain.componentOf(here);
   const t = terrain.coordsOf(target);
   let best: NodeId | null = null;
