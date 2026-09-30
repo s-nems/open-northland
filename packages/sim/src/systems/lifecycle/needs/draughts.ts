@@ -1,4 +1,4 @@
-import { NeedOrder, Settler } from '../../../components/index.js';
+import { NeedOrder, SettlerNeeds } from '../../../components/index.js';
 import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -19,14 +19,14 @@ const pressing = (level: Fixed): boolean => level >= NEED_DRIVE_THRESHOLD;
  * pending.
  */
 export function drinkPressingDraughts(world: World, ctx: SystemContext, e: Entity): void {
-  const bars = world.tryGet(e, Settler);
+  const bars = world.tryGet(e, SettlerNeeds);
   if (bars === undefined || !(pressing(bars.hunger) || pressing(bars.fatigue))) return;
   if (world.has(e, NeedOrder) || !carriesNeeds(world, ctx.content, e)) return;
   for (const need of ['hunger', 'fatigue'] as const) {
-    if (!pressing(world.get(e, Settler)[need])) continue;
+    if (!pressing(world.get(e, SettlerNeeds)[need])) continue;
     const draught = draughtFor(world, ctx, e, need);
     if (draught === null) continue;
-    const s = world.mut(e, Settler);
+    const s = world.mut(e, SettlerNeeds);
     const { hunger, fatigue } = draught.restore;
     if (hunger !== undefined) s.hunger = applyNeedUnits(s.hunger, reserveUnits(hunger));
     if (fatigue !== undefined) s.fatigue = applyNeedUnits(s.fatigue, reserveUnits(fatigue));

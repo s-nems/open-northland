@@ -17,6 +17,7 @@ import {
   trackFor,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { nextTickCtxOf } from '../../fixtures/context.js';
 import { settleStrokeCadence } from '../../fixtures/strokes.js';
 import { ctxOf, GENERAL_TRACK, MINER, makeSettler, WOOD, WOOD_TRACK, WOODCUTTER } from './support.js';
 
@@ -111,7 +112,7 @@ describe('AtomicSystem grants XP on a completed harvest', () => {
         targetEntity: null,
         targetTile: null,
       });
-      atomicSystem(sim.world, ctxOf(sim));
+      atomicSystem(sim.world, nextTickCtxOf(sim));
       settleStrokeCadence(sim, e);
     }
     expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 1 }); // harvest still happens
@@ -136,7 +137,7 @@ describe('AtomicSystem grants XP on a completed harvest', () => {
         targetEntity: null,
         targetTile: null,
       });
-      atomicSystem(sim.world, ctxOf(sim));
+      atomicSystem(sim.world, nextTickCtxOf(sim));
       removeCurrentAtomic(sim.world, e); // each swing starts clean
     };
     for (let stroke = 1; stroke < strokes; stroke++) swing(); // nothing extracted yet

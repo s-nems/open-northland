@@ -144,7 +144,7 @@ describe('human turning', () => {
     expect(sim.world.get(e, WalkFacing)).toEqual({ direction: 7, target: 0 });
     sim.step();
     expect(sim.world.get(e, WalkFacing).direction).toBe(1);
-    expect(sim.world.get(e, PathFollow).legTicks).toBe(0);
+    expect(sim.world.get(e, PathFollow).legElapsed).toBe(0);
     sim.step();
     expect(sim.world.get(e, WalkFacing).direction).toBe(0);
     expect(pos(sim, e).x).toBe(0.0625);
@@ -154,7 +154,7 @@ describe('human turning', () => {
     expect(ticksToArrive(sim, e)).toBe(6); // 8 move ticks + 2 held turn ticks total
     expect(sim.world.get(e, WalkFacing)).toEqual({ direction: 0, target: 0 });
     sim.world.add(e, PathRoute, { waypoints: [waypointAt(sim, 0.5, 0), waypointAt(sim, 0, 0)] });
-    sim.world.add(e, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathFollow, { index: 1, legElapsed: 0, legCost: 0 });
     expect(ticksToArrive(sim, e)).toBe(11); // four-sector reversal adds three ticks
   });
 

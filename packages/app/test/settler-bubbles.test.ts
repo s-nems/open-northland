@@ -62,7 +62,8 @@ describe('computeSettlerBubbles', () => {
         // used to light up half the map.
         id: 1,
         components: {
-          Settler: { jobType: MAN, hunger: systems.NEED_DRIVE_THRESHOLD, fatigue: sated, piety: 0 },
+          Settler: { jobType: MAN },
+          SettlerNeeds: { hunger: systems.NEED_DRIVE_THRESHOLD, fatigue: sated, piety: 0 },
           Position: { x: fx.fromInt(1), y: fx.fromInt(1) },
         },
       },
@@ -70,7 +71,8 @@ describe('computeSettlerBubbles', () => {
         // Still climbing well past the eat trigger - it has been looking for food and not finding it.
         id: 2,
         components: {
-          Settler: { jobType: MAN, hunger: systems.NEED_CRITICAL_THRESHOLD, fatigue: sated, piety: 0 },
+          Settler: { jobType: MAN },
+          SettlerNeeds: { hunger: systems.NEED_CRITICAL_THRESHOLD, fatigue: sated, piety: 0 },
           Position: { x: fx.fromInt(2), y: fx.fromInt(1) },
         },
       },
@@ -81,11 +83,11 @@ describe('computeSettlerBubbles', () => {
 
   it('floats no need bubble over a computer seat’s settler, however far its bars have climbed', () => {
     const COMPUTER_SEAT = 3;
-    const starving = { jobType: MAN, hunger: ONE, fatigue: ONE, piety: 0 };
+    const starving = { hunger: ONE, fatigue: ONE, piety: 0 };
     const snap = snapshotOf([
       { id: 1, components: { AiPlayer: { player: COMPUTER_SEAT, modules: {}, scripted: true } } },
-      settlerAt(2, MAN, 1, 1, { Settler: starving, Owner: { player: COMPUTER_SEAT } }),
-      settlerAt(3, MAN, 2, 1, { Settler: starving, Owner: { player: 0 } }),
+      settlerAt(2, MAN, 1, 1, { SettlerNeeds: starving, Owner: { player: COMPUTER_SEAT } }),
+      settlerAt(3, MAN, 2, 1, { SettlerNeeds: starving, Owner: { player: 0 } }),
     ]);
 
     expect(computeSettlerBubbles(snap).map((b) => [b.id, b.kind])).toEqual([[3, 'hungry']]);
@@ -118,6 +120,8 @@ describe('computeSettlerBubbles', () => {
         components: {
           Settler: {
             jobType: MAN,
+          },
+          SettlerNeeds: {
             hunger: fx.div(ONE, fx.fromInt(2)),
             fatigue: systems.NEED_DRIVE_THRESHOLD,
             piety: 0,
@@ -136,7 +140,8 @@ describe('computeSettlerBubbles', () => {
       {
         id: 1,
         components: {
-          Settler: { jobType: MAN, hunger: sated, fatigue: systems.NEED_CRITICAL_THRESHOLD, piety: 0 },
+          Settler: { jobType: MAN },
+          SettlerNeeds: { hunger: sated, fatigue: systems.NEED_CRITICAL_THRESHOLD, piety: 0 },
           Position: { x: fx.fromInt(1), y: fx.fromInt(1) },
         },
       },
@@ -144,14 +149,16 @@ describe('computeSettlerBubbles', () => {
         // Starving AND exhausted: hunger wins, like the planner's eat-before-sleep rung order.
         id: 2,
         components: {
-          Settler: { jobType: MAN, hunger: ONE, fatigue: ONE, piety: 0 },
+          Settler: { jobType: MAN },
+          SettlerNeeds: { hunger: ONE, fatigue: ONE, piety: 0 },
           Position: { x: fx.fromInt(2), y: fx.fromInt(1) },
         },
       },
       {
         id: 3,
         components: {
-          Settler: { jobType: MAN, hunger: sated, fatigue: sated, piety: 0 },
+          Settler: { jobType: MAN },
+          SettlerNeeds: { hunger: sated, fatigue: sated, piety: 0 },
           Position: { x: fx.fromInt(3), y: fx.fromInt(1) },
         },
       },
@@ -168,7 +175,8 @@ describe('computeSettlerBubbles', () => {
       {
         id: 1,
         components: {
-          Settler: { jobType: WOMAN, hunger: ONE, fatigue: ONE, piety: 0 },
+          Settler: { jobType: WOMAN },
+          SettlerNeeds: { hunger: ONE, fatigue: ONE, piety: 0 },
           Position: { x: fx.fromInt(1), y: fx.fromInt(1) },
           Wedding: { partner: 2, kissing: false },
         },

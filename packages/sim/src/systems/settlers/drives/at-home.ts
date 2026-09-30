@@ -4,9 +4,10 @@ import {
   Residence,
   Settler,
   type SettlerIdentity,
+  SettlerNeeds,
 } from '../../../components/index.js';
 import type { AtomicEffect } from '../../../core/atomic-effect.js';
-import { type Fixed, ZERO } from '../../../core/fixed.js';
+import { ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { homeQualityActive } from '../../family/home-quality.js';
@@ -55,16 +56,17 @@ function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound |
   const home = world.tryGet(e, Residence)?.home;
   const settler = world.tryGet(e, Settler);
   if (home === undefined || settler === undefined || !isInside(world, e, home)) return null;
-  if (settler.fatigue > NEED_SATED_THRESHOLD && homeClipServes(ctx, settler, SLEEP_ATOMIC_ID, REST)) {
+  const needs = world.get(e, SettlerNeeds);
+  if (needs.fatigue > NEED_SATED_THRESHOLD && homeClipServes(ctx, settler, SLEEP_ATOMIC_ID, REST)) {
     return { atomicId: SLEEP_ATOMIC_ID, effect: { kind: 'sleep' }, target: e };
   }
-  if (settler.hunger > NEED_SATED_THRESHOLD && homeClipServes(ctx, settler, EAT_ATOMIC_ID, HUNGER)) {
+  if (needs.hunger > NEED_SATED_THRESHOLD && homeClipServes(ctx, settler, EAT_ATOMIC_ID, HUNGER)) {
     const goodType = larderGood(world, ctx, home);
     if (goodType !== null)
       return { atomicId: EAT_ATOMIC_ID, effect: { kind: 'eat', goodType, from: home }, target: home };
   }
   if (
-    settler.piety > NEED_SATED_THRESHOLD &&
+    needs.piety > NEED_SATED_THRESHOLD &&
     jobNeedsReligion(ctx.content, settler.jobType) &&
     homeClipServes(ctx, settler, PRAY_ATOMIC_ID, PIETY) &&
     homeQualityActive(world, ctx, home, 'piety')
@@ -100,11 +102,12 @@ export function planHomeTopUp(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  settler: SettlerIdentity & { enjoyment: Fixed },
+  settler: SettlerIdentity,
 ): boolean {
   const round = nextHomeRound(world, ctx, e);
   if (round === null) return false;
-  if (world.has(e, Marriage) && settler.enjoyment !== ZERO) world.mut(e, Settler).enjoyment = ZERO;
+  if (world.has(e, Marriage) && world.get(e, SettlerNeeds).enjoyment !== ZERO)
+    world.mut(e, SettlerNeeds).enjoyment = ZERO;
   startAtomic(
     world,
     e,

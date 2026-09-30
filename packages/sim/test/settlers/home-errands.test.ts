@@ -9,7 +9,7 @@ import {
   Position,
   Residence,
   Resting,
-  Settler,
+  SettlerNeeds,
   Stockpile,
   setMissionBehaviour,
 } from '../../src/components/index.js';
@@ -234,7 +234,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     expect(entries).toBe(1);
     expect(inside.filter(Boolean).length).toBeGreaterThanOrEqual(HOME_SLEEP_TICKS);
     expect(inside.at(-1)).toBe(false); // stepped back outside
-    expect(sim.world.get(settler, Settler).fatigue).toBeLessThan(TIRED); // and slept it off
+    expect(sim.world.get(settler, SettlerNeeds).fatigue).toBeLessThan(TIRED); // and slept it off
     expect(sim.checkInvariants()).toEqual([]);
   });
 
@@ -270,7 +270,7 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
 
     expect(ateIndoors).toBe(true);
     expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(1); // one unit off the family shelf
-    const fed = sim.world.get(settler, Settler);
+    const fed = sim.world.get(settler, SettlerNeeds);
     expect(fed.hunger).toBeLessThan(HALF_SPENT); // and both bars came down before it left
     expect(fed.fatigue).toBeLessThan(TIRED);
     expect(sim.world.has(settler, Resting)).toBe(false);
@@ -314,7 +314,7 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
 
     for (let i = 0; i < 60; i++) sim.step();
 
-    expect(sim.world.get(settler, Settler).hunger).toBeGreaterThanOrEqual(HALF_SPENT); // nothing to eat
+    expect(sim.world.get(settler, SettlerNeeds).hunger).toBeGreaterThanOrEqual(HALF_SPENT); // nothing to eat
     expect(sim.world.has(settler, Resting)).toBe(false); // and it did not wait indoors for food
   });
 });

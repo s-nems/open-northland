@@ -12,11 +12,10 @@ import {
   PlayerOrder,
   Position,
   Resting,
-  Settler,
   type SettlerIdentity,
+  SettlerNeeds,
   Wedding,
 } from '../../../components/index.js';
-import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
@@ -79,7 +78,7 @@ function freeForChat(world: World, e: Entity): boolean {
   ) {
     return false;
   }
-  const s = world.get(e, Settler);
+  const s = world.get(e, SettlerNeeds);
   return s.hunger < NEED_DRIVE_THRESHOLD && s.fatigue < NEED_DRIVE_THRESHOLD;
 }
 
@@ -124,7 +123,7 @@ export function planGossipSeek(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  settler: SettlerIdentity & { enjoyment: Fixed },
+  settler: SettlerIdentity,
   hx: number,
   hy: number,
   candidates: GossipCandidates,
@@ -134,7 +133,7 @@ export function planGossipSeek(
    *  the cheap bars above, so a settlement at peace never pays for the answer. */
   holdsGround?: () => boolean,
 ): boolean {
-  if (!ordered && settler.enjoyment < NEED_DRIVE_THRESHOLD) return false;
+  if (!ordered && world.get(e, SettlerNeeds).enjoyment < NEED_DRIVE_THRESHOLD) return false;
   if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
   // A bar that does not move, such as one a script froze, is one no chat could ever satisfy.
   if (!carriesNeeds(world, ctx.content, e)) return false;

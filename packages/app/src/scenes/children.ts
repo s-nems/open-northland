@@ -19,7 +19,7 @@ const INITIAL_ZOOM = 1.2;
 /** Squarely inside the child stage: past baby, well short of adulthood. */
 const CHILD_SPAWN_AGE_TICKS = systems.CHILD_AGE_TICKS + 100;
 
-const { Age, BerryBush, Settler } = components;
+const { SettlerNeeds, Age, BerryBush, Settler } = components;
 
 function spawnYoung(
   sim: Simulation,
@@ -31,7 +31,7 @@ function spawnYoung(
 ): Entity {
   const e = spawnSettlerDirect(sim, jobType, x, y);
   sim.world.add(e, Age, { ticks: ageTicks });
-  sim.world.mut(e, Settler).hunger = hunger;
+  sim.world.mut(e, SettlerNeeds).hunger = hunger;
   return e;
 }
 
@@ -73,7 +73,7 @@ export const childrenScene: SceneDefinition = {
         return (
           children.length === 2 &&
           babies.length === 1 &&
-          young.every((e) => sim.world.get(e, Settler).hunger === HUNGRY)
+          young.every((e) => sim.world.get(e, SettlerNeeds).hunger === HUNGRY)
         );
       },
     },

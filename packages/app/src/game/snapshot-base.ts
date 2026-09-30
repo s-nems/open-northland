@@ -389,7 +389,7 @@ export function ownerTribeKeyOf(e: SnapshotEntity): string {
 export function settlerNeedsOf(
   e: SnapshotEntity,
 ): { hunger: Fixed; fatigue: Fixed; piety: Fixed } | undefined {
-  const settler = e.components.Settler as
+  const settler = e.components.SettlerNeeds as
     | { hunger?: unknown; fatigue?: unknown; piety?: unknown }
     | undefined;
   const hunger = num(settler?.hunger);

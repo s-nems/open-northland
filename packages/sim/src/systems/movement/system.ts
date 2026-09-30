@@ -8,6 +8,7 @@ import {
   PathFollow,
   PathRoute,
   Position,
+  pathLegTicks,
   Settler,
   type Waypoint,
 } from '../../components/index.js';
@@ -74,7 +75,7 @@ export const movementSystem: System = (world, ctx) => {
   }
   const countTraffic = trafficCounter(world, ctx);
   for (const e of world.query(Position, PathFollow)) {
-    const pf = world.mut(e, PathFollow);
+    const pf = world.get(e, PathFollow);
     const stops = world.get(e, PathRoute).waypoints;
     const p = world.mut(e, Position);
     syncAnimalGait(world, ctx, e, pf);
@@ -95,7 +96,7 @@ export const movementSystem: System = (world, ctx) => {
         ? stepTowardPoint(p, target, budget)
         : period === undefined
           ? walkHumanLeg(world, ctx, e, pf, stops, p, target)
-          : walkPeriodicLeg(pf, stops, p, target, period);
+          : walkPeriodicLeg(world, ctx, e, pf, stops, p, target, period);
       if (!arrived) break;
       const from = stops[pf.index - 1];
       if (countTraffic !== null && !paced && period === undefined && from !== undefined) {
@@ -107,11 +108,13 @@ export const movementSystem: System = (world, ctx) => {
         world.remove(e, AnimalRunning);
         break;
       }
-      pf.index += 1;
-      pf.legTicks = 0;
-      pf.legCost = 0;
-      pf.legPace = undefined;
-      pf.departureCharged = undefined;
+      const next = world.mut(e, PathFollow);
+      next.index += 1;
+      next.legElapsed = 0;
+      next.legStartedAt = undefined;
+      next.legCost = 0;
+      next.legPace = undefined;
+      next.departureCharged = undefined;
       if (!paced) break;
       // A creature spends the unused portion of this tick's pace on its next leg. Dropping that
       // remainder at every waypoint made short edges and frequent reroutes slow it down.
@@ -168,7 +171,7 @@ function resistanceAt(terrain: TerrainGraph | undefined, waypoint: { node: NodeI
  *  walks the default. */
 function departureResistance(
   terrain: TerrainGraph | undefined,
-  pf: FollowState,
+  pf: Readonly<FollowState>,
   stops: readonly Waypoint[],
 ): number {
   const from = stops[pf.index > 0 ? pf.index - 1 : 0];
@@ -180,7 +183,7 @@ function walkHumanLeg(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  pf: FollowState,
+  pf: Readonly<FollowState>,
   stops: readonly Waypoint[],
   p: { x: Fixed; y: Fixed },
   target: { x: Fixed; y: Fixed },
@@ -190,7 +193,7 @@ function walkHumanLeg(
   if (pf.legCost === 0) {
     const resistance = departureResistance(ctx.terrain, pf, stops);
     beginTimedLeg(
-      pf,
+      world.mut(e, PathFollow),
       stops,
       p,
       target,
@@ -201,17 +204,27 @@ function walkHumanLeg(
     beginWalkTurn(world, e, pf.legPace === undefined ? (stops[pf.index - 1] ?? p) : p, target);
     if (pf.departureCharged !== true) {
       chargeNode(world, ctx, e, resistance);
-      pf.departureCharged = true;
+      world.mut(e, PathFollow).departureCharged = true;
     }
   }
   // Rotate before the first advancing tick as well as later ones. Moving once and only then holding
   // for the rest of a turn made rapid redirects visibly jerk and left the first step facing sideways.
-  if (!finishWalkTurn(world, e)) return false;
-  return advanceTimedLeg(pf, p, target, MAX_STEP_PER_TICK);
+  if (!finishWalkTurn(world, e)) {
+    if (pf.legStartedAt !== undefined) {
+      const held = world.mut(e, PathFollow);
+      held.legElapsed = pathLegTicks(pf, ctx.tick - 1);
+      held.legStartedAt = undefined;
+    }
+    return false;
+  }
+  return advanceTimedLeg(world, ctx, e, pf, p, target, MAX_STEP_PER_TICK);
 }
 
 function walkPeriodicLeg(
-  pf: FollowState,
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  pf: Readonly<FollowState>,
   stops: readonly Waypoint[],
   p: { x: Fixed; y: Fixed },
   target: { x: Fixed; y: Fixed },
@@ -219,9 +232,9 @@ function walkPeriodicLeg(
 ): boolean {
   if (pf.legCost === 0) {
     if (p.x === target.x && p.y === target.y) return true;
-    beginTimedLeg(pf, stops, p, target, period);
+    beginTimedLeg(world.mut(e, PathFollow), stops, p, target, period);
   }
-  return advanceTimedLeg(pf, p, target);
+  return advanceTimedLeg(world, ctx, e, pf, p, target);
 }
 
 function beginTimedLeg(
@@ -242,12 +255,17 @@ function beginTimedLeg(
 }
 
 function advanceTimedLeg(
-  pf: FollowState,
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  pf: Readonly<FollowState>,
   p: { x: Fixed; y: Fixed },
   target: { x: Fixed; y: Fixed },
   maxPerTick?: Fixed,
 ): boolean {
-  pf.legTicks += 1;
+  if (pf.legStartedAt === undefined) {
+    world.mut(e, PathFollow).legStartedAt = ctx.tick - 1 - pf.legElapsed;
+  }
   if (pf.legPace !== undefined) {
     return stepTowardPoint(
       p,
@@ -255,7 +273,7 @@ function advanceTimedLeg(
       maxPerTick !== undefined && pf.legPace > maxPerTick ? maxPerTick : pf.legPace,
     );
   }
-  const remaining = pf.legCost - pf.legTicks;
+  const remaining = pf.legCost - pathLegTicks(pf, ctx.tick);
   const dist = worldDistance(p.x, p.y, target.x, target.y);
   // The equal share of what is left; on the last tick the whole of it, so the walker lands exactly. A
   // push can leave more than the cap to cover, which then delays the arrival but never prevents it.

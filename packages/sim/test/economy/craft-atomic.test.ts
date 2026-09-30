@@ -2,6 +2,7 @@ import type { ContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   AtomicClock,
+  atomicElapsed,
   CurrentAtomic,
   DeferredOrder,
   IdleStand,
@@ -11,7 +12,7 @@ import {
   Production,
   Resting,
   removeCurrentAtomic,
-  Settler,
+  SettlerNeeds,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -29,6 +30,7 @@ import {
   wakeIdle,
 } from '../../src/systems/settlers/planner/idle-replan.js';
 import { testContent } from '../fixtures/content.js';
+import { fixtureTick, nextTickCtxOf } from '../fixtures/context.js';
 import { justAbove, NEED_DRIVE_THRESHOLD } from '../settlers/needs/support.js';
 import {
   buildingAt,
@@ -86,7 +88,7 @@ function staffedKitchen(stock: number): Shop {
 
 /** One whole tick of the three systems this mechanic spans, in `SYSTEM_ORDER`. */
 function tick({ sim }: Shop): void {
-  const ctx = ctxOf(sim);
+  const ctx = nextTickCtxOf(sim);
   plannerSystem(sim.world, ctx);
   atomicSystem(sim.world, ctx);
   productionSystem(sim.world, ctx);
@@ -117,7 +119,7 @@ describe('a workshop operator performing its craft', () => {
     // rather than back at frame zero whenever the crew re-plans.
     const elapsed = shop.sim.world.get(shop.shop, Production).cycles[0]?.elapsed;
     expect(elapsed).toBe(3);
-    expect(shop.sim.world.get(shop.cook, AtomicClock).elapsed).toBe(elapsed);
+    expect(atomicElapsed(shop.sim.world.get(shop.cook, AtomicClock), fixtureTick(shop.sim))).toBe(elapsed);
   });
 
   it('performs nothing while the shop is starved, leaving the operator waiting inside', () => {
@@ -164,7 +166,9 @@ describe('a workshop operator performing its craft', () => {
     const seatOf = (seat: number): number | null => {
       removeCurrentAtomic(world, shop.cook);
       startCraftAtomic(world, ctxOf(shop.sim), shop.cook, shop.shop, seat);
-      return world.tryGet(shop.cook, AtomicClock)?.elapsed ?? null;
+      return world.has(shop.cook, AtomicClock)
+        ? atomicElapsed(world.get(shop.cook, AtomicClock), fixtureTick(shop.sim))
+        : null;
     };
     expect(seatOf(0)).toBe(3);
     expect(seatOf(1)).toBe(11);
@@ -191,7 +195,7 @@ describe('a workshop operator performing its craft', () => {
 
     expect(world.has(walker, Resting)).toBe(false);
     expect(world.has(walker, CurrentAtomic)).toBe(false);
-    expect(world.get(inside, AtomicClock).elapsed).toBe(3);
+    expect(atomicElapsed(world.get(inside, AtomicClock), fixtureTick(sim))).toBe(3);
   });
 
   it('lets a player order take the operator over at once instead of parking behind the clip', () => {
@@ -233,7 +237,7 @@ describe('a seated crafter between its idle beats', () => {
       if (world.componentGeneration(CurrentAtomic) !== before) clipWrites++;
     }
     expect(clipWrites).toBeLessThanOrEqual(1); // the workshop's own beat
-    expect(world.get(shop.cook, AtomicClock).elapsed).toBe(
+    expect(atomicElapsed(world.get(shop.cook, AtomicClock), fixtureTick(shop.sim))).toBe(
       world.get(shop.shop, Production).cycles[0]?.elapsed,
     );
   });
@@ -247,7 +251,7 @@ describe('a seated crafter between its idle beats', () => {
     const shop = { sim, shop: kitchen, cook: settlerAt(sim, 1, 0, CARPENTER, kitchen) };
     seat(shop);
 
-    sim.world.mut(shop.cook, Settler).hunger = justAbove(NEED_DRIVE_THRESHOLD);
+    sim.world.mut(shop.cook, SettlerNeeds).hunger = justAbove(NEED_DRIVE_THRESHOLD);
     const eating = (): boolean => sim.world.tryGet(shop.cook, CurrentAtomic)?.effect.kind === 'eat';
     for (let i = 0; i < IDLE_REPLAN_PERIOD_TICKS && !eating(); i++) sim.step();
 
@@ -284,7 +288,7 @@ describe('a seated crafter between its idle beats', () => {
     productionSystem(sim.world, offBeat); // batch 0 lands; the one left advances to 6
     plannerSystem(sim.world, offBeat);
 
-    expect(sim.world.get(first, AtomicClock).elapsed).toBe(6);
+    expect(atomicElapsed(sim.world.get(first, AtomicClock), fixtureTick(sim))).toBe(6);
     expect(sim.world.has(second, CurrentAtomic)).toBe(false); // a hand beyond the batches
   });
 
@@ -298,8 +302,8 @@ describe('a seated crafter between its idle beats', () => {
     wakeIdle(sim.world, first); // an order or errand addressed to it alone
     plannerSystem(sim.world, offBeat);
 
-    expect(sim.world.get(first, AtomicClock).elapsed).toBe(3);
-    expect(sim.world.get(second, AtomicClock).elapsed).toBe(11);
+    expect(atomicElapsed(sim.world.get(first, AtomicClock), fixtureTick(sim))).toBe(3);
+    expect(atomicElapsed(sim.world.get(second, AtomicClock), fixtureTick(sim))).toBe(11);
   });
 
   it('hands a hand arriving between beats the next batch, not the one a seated crafter keeps', () => {
@@ -322,7 +326,7 @@ describe('a seated crafter between its idle beats', () => {
 
     plannerSystem(world, offBeat);
 
-    expect(world.get(seated, AtomicClock).elapsed).toBe(3); // left on its seat
-    expect(world.get(arriving, AtomicClock).elapsed).toBe(11);
+    expect(atomicElapsed(world.get(seated, AtomicClock), fixtureTick(sim))).toBe(3); // left on its seat
+    expect(atomicElapsed(world.get(arriving, AtomicClock), fixtureTick(sim))).toBe(11);
   });
 });

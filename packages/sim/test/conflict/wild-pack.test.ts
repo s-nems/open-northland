@@ -16,6 +16,7 @@ import { ANIMAL_AGGRO_RADIUS_NODES, ANIMAL_LEASH_NODES } from '../../src/systems
 import { atomicSystem, cleanupSystem, combatSystem, herdingSystem } from '../../src/systems/index.js';
 import { hexNodeDistance } from '../../src/systems/spatial/metric.js';
 import { testContent } from '../fixtures/content.js';
+import { nextTickCtxOf } from '../fixtures/context.js';
 import {
   ATTACK_ATOMIC,
   BEAR,
@@ -93,7 +94,7 @@ describe('wild pack targeting', () => {
       targetTile: null,
     });
 
-    atomicSystem(sim.world, ctxOf(sim)); // the blow lands and provokes the follower
+    atomicSystem(sim.world, nextTickCtxOf(sim)); // the blow lands and provokes the follower
     combatSystem(sim.world, ctxOf(sim));
 
     expect(swingTarget(sim, follower)).toBe(viking);
@@ -115,7 +116,7 @@ describe('wild pack targeting', () => {
       targetTile: null,
     });
 
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.tryGet(follower, Engagement)?.target).toBeUndefined();
   });

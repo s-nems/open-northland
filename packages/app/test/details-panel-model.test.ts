@@ -189,11 +189,13 @@ describe('selection details panel model', () => {
             Settler: {
               tribe: 1,
               jobType: JOB_COLLECTOR,
+              experience: [],
+            },
+            SettlerNeeds: {
               hunger: 0,
               fatigue: 0,
               piety: 0,
               enjoyment: 0,
-              experience: [],
             },
             JobAssignment: { workplace: 1 },
             CurrentAtomic: { targetEntity: 1 },
@@ -701,12 +703,19 @@ describe('selection details panel model', () => {
       {
         id: 1,
         components: {
-          Settler: { tribe: 1, hunger: ONE / 4, fatigue: ONE / 2, enjoyment: 0, piety: (ONE * 9) / 10 },
+          Settler: { tribe: 1 },
+          SettlerNeeds: { hunger: ONE / 4, fatigue: ONE / 2, enjoyment: 0, piety: (ONE * 9) / 10 },
           Health: { hitpoints: 300, max: 1000 },
         },
       },
       // The same needs without a Health component - the Zdrowie bar must be omitted, not zeroed.
-      { id: 2, components: { Settler: { tribe: 1, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 } } },
+      {
+        id: 2,
+        components: {
+          Settler: { tribe: 1 },
+          SettlerNeeds: { hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+        },
+      },
     ]);
 
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
@@ -729,7 +738,8 @@ describe('selection details panel model', () => {
 
   it('drops every need bar while the needs rule is off, leaving only Zdrowie', () => {
     const settler = {
-      Settler: { tribe: 1, hunger: ONE / 4, fatigue: ONE / 2, enjoyment: 0, piety: (ONE * 9) / 10 },
+      Settler: { tribe: 1 },
+      SettlerNeeds: { hunger: ONE / 4, fatigue: ONE / 2, enjoyment: 0, piety: (ONE * 9) / 10 },
       Health: { hitpoints: 300, max: 1000 },
     };
     const off = snapshotOf([
@@ -756,7 +766,8 @@ describe('selection details panel model', () => {
       {
         id: 1,
         components: {
-          Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+          Settler: { tribe: 1, jobType: JOB_CHILD_MALE },
+          SettlerNeeds: { hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
           Age: { ticks: systems.CHILD_AGE_TICKS },
         },
       },
@@ -764,7 +775,8 @@ describe('selection details panel model', () => {
       {
         id: 2,
         components: {
-          Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+          Settler: { tribe: 1, jobType: JOB_CHILD_MALE },
+          SettlerNeeds: { hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
           Age: { ticks: systems.ADULT_AGE_TICKS - 1 },
         },
       },
@@ -817,7 +829,8 @@ describe('selection details panel model', () => {
         {
           id: 1,
           components: {
-            Settler: { tribe: 1, jobType: JOB_BABY_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+            Settler: { tribe: 1, jobType: JOB_BABY_MALE },
+            SettlerNeeds: { hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
             Age: { ticks: 0 },
             Health: { hitpoints: 300, max: 300 },
           },
@@ -825,7 +838,8 @@ describe('selection details panel model', () => {
         {
           id: 2,
           components: {
-            Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+            Settler: { tribe: 1, jobType: JOB_CHILD_MALE },
+            SettlerNeeds: { hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
             Age: { ticks: systems.CHILD_AGE_TICKS },
             Health: { hitpoints: 300, max: 300 },
           },
@@ -853,7 +867,8 @@ describe('selection details panel model', () => {
       {
         id: 3,
         components: {
-          Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+          Settler: { tribe: 1, jobType: JOB_CHILD_MALE },
+          SettlerNeeds: { hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
           Age: { ticks: systems.CHILD_AGE_TICKS },
           Residence: { home: 9 },
         },
@@ -890,7 +905,8 @@ describe('selection details panel model', () => {
       {
         id: 3,
         components: {
-          Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+          Settler: { tribe: 1, jobType: JOB_CHILD_MALE },
+          SettlerNeeds: { hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
           Age: { ticks: systems.CHILD_AGE_TICKS },
           JobAssignment: { workplace: 9 },
         },
@@ -1222,11 +1238,13 @@ describe('selection details panel model', () => {
           Settler: {
             tribe: 1,
             jobType: JOB_HERO_SABER,
+            experience: [],
+          },
+          SettlerNeeds: {
             hunger: ONE,
             fatigue: ONE,
             piety: ONE,
             enjoyment: ONE,
-            experience: [],
           },
           Health: { hitpoints: 300, max: 300 },
           Owner: { player: 0 },

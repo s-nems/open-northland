@@ -22,7 +22,7 @@ import {
   stampResourceFootprintData,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { ctxOf, nextTickCtxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
@@ -84,7 +84,7 @@ function chopOnce(sim: Simulation, settler: Entity, node: Entity): void {
     targetEntity: node,
     targetTile: null,
   });
-  atomicSystem(sim.world, ctxOf(sim));
+  atomicSystem(sim.world, nextTickCtxOf(sim));
 }
 
 /** Every entity that carries a {@link Stump}. */
@@ -207,7 +207,7 @@ describe('felling - ground drop cleanup', () => {
       targetTile: null,
     });
 
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.has(pile, Stockpile)).toBe(false); // emptied drop vanished
     expect(sim.world.get(cutter, Carrying).amount).toBe(1); // the unit moved onto the collector
@@ -229,7 +229,7 @@ describe('felling - ground drop cleanup', () => {
       targetTile: null,
     });
 
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.has(heap, Stockpile)).toBe(false); // emptied loose heap vanished
     expect(sim.world.get(cutter, Carrying).amount).toBe(1);
@@ -250,7 +250,7 @@ describe('felling - ground drop cleanup', () => {
       targetTile: null,
     });
 
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.has(store, Stockpile)).toBe(true); // the warehouse persists as a collection point
     expect(sim.world.get(store, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);

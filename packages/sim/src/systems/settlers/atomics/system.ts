@@ -1,5 +1,6 @@
 import {
   AtomicClock,
+  atomicElapsed,
   CurrentAtomic,
   DeferredOrder,
   HarvestFocus,
@@ -32,10 +33,12 @@ export const atomicSystem: System = (world, ctx) => {
   // self-removal on completion stays the only membership change, which Map iteration tolerates.
   const pendingReactions: PendingHitReaction[] = [];
   for (const e of world.query(CurrentAtomic)) {
-    // Only the clock is written every tick; the atomic itself is acquired for writing at a boundary.
-    const clock = world.mut(e, AtomicClock);
-    clock.elapsed += 1;
-    const elapsed = clock.elapsed;
+    let clock = world.get(e, AtomicClock);
+    if ('pendingElapsed' in clock) {
+      clock = { startedAt: ctx.tick - 1 - clock.pendingElapsed };
+      world.add(e, AtomicClock, clock);
+    }
+    const elapsed = atomicElapsed(clock, ctx.tick);
     const running = world.get(e, CurrentAtomic);
     const duration = Math.max(1, running.duration);
 
@@ -86,7 +89,8 @@ export const atomicSystem: System = (world, ctx) => {
       if (takeUp === 'followThrough') {
         rememberHarvestNode(world, e, node);
         if (!parked) {
-          armStrokeFollowThrough(atomic, clock, node);
+          armStrokeFollowThrough(atomic, node);
+          world.add(e, AtomicClock, { startedAt: ctx.tick });
           continue;
         }
       } else if (takeUp === 'inPlace') {
@@ -95,7 +99,8 @@ export const atomicSystem: System = (world, ctx) => {
         world.remove(e, HarvestFocus);
       }
     } else if (atomic.effect.kind === 'harvestFollowThrough' && !parked) {
-      armStrokeRest(world, ctx, e, atomic, clock);
+      armStrokeRest(world, ctx, e, atomic);
+      world.add(e, AtomicClock, { startedAt: ctx.tick });
       continue;
     }
     removeCurrentAtomic(world, e);

@@ -44,7 +44,7 @@ describe('integration: deterministic over many ticks', () => {
     expect(a.rng.getState()).not.toBe(1); // the stream advanced: the sim really drew from it
     const needsOf = (sim: Simulation) => {
       const settler = sim.snapshot().entities.find((e) => e.components.Settler !== undefined);
-      return settler?.components.Settler as { hunger: number; fatigue: number } | undefined;
+      return settler?.components.SettlerNeeds as { hunger: number; fatigue: number } | undefined;
     };
     const [na, nb] = [needsOf(a), needsOf(b)];
     expect(na).toBeDefined();
@@ -65,7 +65,7 @@ describe('e2e game-level: scenario harness', () => {
     // (which would silently drop out of every human system) and a bear carrying one.
     const sim = new Simulation({ seed: 1, content: testContent() });
     const stray = sim.world.create();
-    sim.world.add(stray, components.Settler, {
+    components.addSettler(sim.world, stray, {
       tribe: VIKING,
       jobType: null,
       hunger: fx.fromInt(0),
@@ -93,9 +93,9 @@ describe('e2e game-level: scenario harness', () => {
   it('the split-halves invariant names a half left without its partner', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const walker = sim.world.create();
-    sim.world.add(walker, components.PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(walker, components.PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
     const clock = sim.world.create();
-    sim.world.add(clock, components.AtomicClock, { elapsed: 0 });
+    sim.world.add(clock, components.AtomicClock, { pendingElapsed: 0 });
 
     expect(sim.checkInvariants()).toEqual([
       `entity ${walker}: PathFollow without a PathRoute`,

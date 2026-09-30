@@ -18,6 +18,7 @@ import {
 } from '../../../src/systems/settlers/atomics/effects/goods/harvest.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../../src/systems/spatial/resources.js';
 import { testContent } from '../../fixtures/content.js';
+import { nextTickCtxOf } from '../../fixtures/context.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap } from '../../fixtures/terrain.js';
 import { ctxOf, startAtomic } from './support.js';
@@ -77,7 +78,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
     const cow = prey(sim, COW, 3, 0, 20);
     startAtomic(sim, hunter, { kind: 'attack', target: cow, damage: 100 }, 1, 81); // overkill - lethal
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(cow, Health).hitpoints).toBe(0); // felled
     // The cow's carcass: one meat node holding its whole fixture yield, at the node it fell on
     // (visual cell (3,0) → half-cell node (6,0)); the hunter carries nothing off the blow itself.
@@ -97,7 +98,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
     const deer = prey(sim, DEER, 3, 0, 20);
     startAtomic(sim, hunter, { kind: 'attack', target: deer, damage: 100 }, 1, 81);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     // One node where the deer fell (user rule: one body, one decal). The open good is the first unit of
     // the meat-first interleave; the rest is buried as layers (leather, then the second meat).
     expect(carcasses(sim)).toEqual([
@@ -116,7 +117,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
     const deer = prey(sim, DEER, 3, 0, 20);
     startAtomic(sim, hunter, { kind: 'attack', target: deer, damage: 100 }, 1, 81);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     const node = [...sim.world.query(Resource)][0];
     if (node === undefined) throw new Error('carcass missing');
 
@@ -131,7 +132,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
       expect(resourceAtTile(sim.world, hx, hy, other)).toBeNull();
       expect(sim.world.verifyCaches()).toEqual([]);
       startAtomic(sim, hunter, { kind: 'harvest', resource: node, goodType: expected }, 1, HARVEST_CADAVER);
-      atomicSystem(sim.world, ctxOf(sim));
+      atomicSystem(sim.world, nextTickCtxOf(sim));
       expect(sim.world.get(hunter, Carrying)).toEqual({ goodType: expected, amount: 1 });
       sim.world.remove(hunter, Carrying); // banked off-screen - the next pluck lifts a different good
     }
@@ -145,7 +146,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
     const deer = prey(sim, DEER, 3, 0, 20);
     startAtomic(sim, hunter, { kind: 'attack', target: deer, damage: 100 }, 1, 81);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     const node = [...sim.world.query(Resource)][0];
     if (node === undefined) throw new Error('carcass missing');
     const OTHER_ATOMIC = 24; // a stand-in: no carcass good in the fixture harvests with another atomic
@@ -153,7 +154,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     expect(resourcesNearNode(sim.world, 6, 0, 0, new Set([HARVEST_CADAVER]))).toEqual([node]); // indexed
 
     startAtomic(sim, hunter, { kind: 'harvest', resource: node, goodType: MEAT }, 1, HARVEST_CADAVER);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.get(node, Resource).harvestAtomic).toBe(OTHER_ATOMIC);
     expect(resourcesNearNode(sim.world, 6, 0, 0, new Set([OTHER_ATOMIC]))).toEqual([node]);
@@ -176,12 +177,12 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
     const cow = prey(sim, COW, 3, 0, 20);
     startAtomic(sim, hunter, { kind: 'attack', target: cow, damage: 100 }, 1, 81);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     const node = [...sim.world.query(Resource)][0];
     if (node === undefined) throw new Error('carcass missing');
 
     startAtomic(sim, hunter, { kind: 'harvest', resource: node, goodType: MEAT }, 1, HARVEST_CADAVER);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(hunter, Carrying)).toEqual({ goodType: MEAT, amount: 1 });
     expect(sim.world.get(node, Resource).remaining).toBe(3); // one unit off the cow's four
     expect(sim.world.get(node, Resource).strikes).toBeUndefined();
@@ -196,7 +197,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
     const deer = prey(sim, DEER, 3, 0, 20);
     startAtomic(sim, hunter, { kind: 'attack', target: deer, damage: 100 }, 1, 81);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     const node = [...sim.world.query(Resource)][0];
     if (node === undefined) throw new Error('carcass missing');
 
@@ -212,7 +213,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
     const cow = prey(sim, COW, 3, 0, 20);
     startAtomic(sim, hunter, { kind: 'attack', target: cow, damage: 100 }, 1, 81);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     const node = [...sim.world.query(Resource)][0];
     if (node === undefined) throw new Error('carcass missing');
 
@@ -231,7 +232,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
     const cow = prey(sim, COW, 3, 0, 1000);
     startAtomic(sim, hunter, { kind: 'attack', target: cow, damage: 50 }, 1, 81); // survivable
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(cow, Health).hitpoints).toBe(950); // wounded, not dead
     expect(carcasses(sim)).toEqual([]); // no carcass while the prey lives
   });
@@ -241,7 +242,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const woodcutter = combatant(sim, VIKING, WOODCUTTER, 0, 0);
     const cow = prey(sim, COW, 3, 0, 20);
     startAtomic(sim, woodcutter, { kind: 'attack', target: cow, damage: 100 }, 1, 81);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(cow, Health).hitpoints).toBe(0); // still felled
     expect(carcasses(sim)).toEqual([]); // but no carcass - not a hunter's kill
   });
@@ -251,7 +252,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
     const wolf = prey(sim, WOLVES, 3, 0, 20);
     startAtomic(sim, hunter, { kind: 'attack', target: wolf, damage: 100 }, 1, 81);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(wolf, Health).hitpoints).toBe(0);
     expect(carcasses(sim)).toEqual([]); // a wolf is not huntable prey
   });
@@ -262,7 +263,7 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const e = settlerAt(sim, { jobType: null, tribe: COW });
     sim.world.add(e, Health, { hitpoints: 20, max: 20 });
     startAtomic(sim, hunter, { kind: 'attack', target: e, damage: 100 }, 1, 81);
-    expect(() => atomicSystem(sim.world, ctxOf(sim))).not.toThrow();
+    expect(() => atomicSystem(sim.world, nextTickCtxOf(sim))).not.toThrow();
     expect([...sim.world.query(Resource)]).toEqual([]); // nowhere to fall - nothing spawned
   });
 });

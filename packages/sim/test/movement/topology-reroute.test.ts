@@ -103,7 +103,8 @@ describe('topology reroutes', () => {
     if (change === 'redirect-sealed') {
       const follow = sim.world.mut(e, PathFollow);
       follow.legCost = 8;
-      follow.legTicks = 4;
+      follow.legElapsed = 4;
+      follow.legStartedAt = undefined;
       goal = terrain.nodeAt(7, 8);
       sim.world.add(e, MoveGoal, { cell: goal });
       navigationPlanner(sim.world, terrain);

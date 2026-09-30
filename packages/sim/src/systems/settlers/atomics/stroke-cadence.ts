@@ -1,5 +1,4 @@
 import {
-  type AtomicClock,
   Crop,
   type CurrentAtomicState,
   HarvestFocus,
@@ -18,8 +17,6 @@ import { atomicDuration, isTransformAtomic } from '../../readviews/animations.js
 // target and stance afresh; a split-up stroke (stone, clay, ore) starts the next clip at once from the
 // same stance, and it counts. A field's reap stroke (wheat, herb) ends the farmer's task instead: the
 // field loop picks the field again and walks in from a fresh stance, and that next stroke counts.
-
-type Clock = NonNullable<(typeof AtomicClock)['__value']>;
 
 /** How a gatherer takes its node up again after a counted stroke that left it standing. */
 export type StrokeTakeUp = 'followThrough' | 'inPlace' | 'fresh';
@@ -61,9 +58,8 @@ export function holdHarvestStance(world: World, ctx: SystemContext, settler: Ent
 }
 
 /** Re-arm the just-completed counted stroke as its follow-through: the same clip, no effect. */
-export function armStrokeFollowThrough(atomic: CurrentAtomicState, clock: Clock, node: Entity): void {
+export function armStrokeFollowThrough(atomic: CurrentAtomicState, node: Entity): void {
   atomic.effect = { kind: 'harvestFollowThrough', resource: node };
-  clock.elapsed = 0;
 }
 
 /** Re-arm the just-completed follow-through as the stroke's rest: a short idle slot drawn from the
@@ -73,7 +69,6 @@ export function armStrokeRest(
   ctx: SystemContext,
   settler: Entity,
   atomic: CurrentAtomicState,
-  clock: Clock,
 ): void {
   const identity: SettlerIdentity = world.get(settler, Settler);
   const atomicId = STROKE_REST_ATOMIC_IDS[ctx.rng.int(STROKE_REST_ATOMIC_IDS.length)];
@@ -82,5 +77,4 @@ export function armStrokeRest(
   atomic.duration = atomicDuration(ctx.content, identity, atomicId);
   atomic.effect = { kind: 'idle' };
   atomic.targetEntity = null;
-  clock.elapsed = 0;
 }

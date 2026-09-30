@@ -6,6 +6,7 @@ import {
   PathRoute,
   PlayerOrder,
   Position,
+  pathLegTicks,
   Stranded,
   WalkFacing,
   type Waypoint,
@@ -191,7 +192,7 @@ export function drainPathRequests(
       world.add(e, PathRoute, { waypoints });
       world.add(e, PathFollow, {
         index,
-        legTicks: activeCost > 0 ? (previous?.legTicks ?? 0) : 0,
+        legElapsed: activeCost > 0 && previous !== undefined ? pathLegTicks(previous, ctx.tick - 1) : 0,
         legCost: activeCost,
         legPace: oldPace,
         departureCharged: previous?.departureCharged,

@@ -21,7 +21,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../src/index.js';
 import { atomicSystem, cleanupSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { ctxOf, nextTickCtxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 import { startAtomic } from '../settlers/atomic-system/support.js';
@@ -89,7 +89,7 @@ function killWithOneBlow(sim: Simulation, jobType: number | null): Entity {
   const cow = settlerAt(sim, { jobType: null, tribe: COW, position: { x: fx.fromInt(4), y: fx.fromInt(5) } });
   sim.world.add(cow, Health, { hitpoints: 20, max: 20 });
   startAtomic(sim, attacker, { kind: 'attack', target: cow, damage: 100 }, 1, ATTACK_ATOMIC);
-  atomicSystem(sim.world, ctxOf(sim));
+  atomicSystem(sim.world, nextTickCtxOf(sim));
   return cow;
 }
 

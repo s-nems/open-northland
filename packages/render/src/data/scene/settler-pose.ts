@@ -89,8 +89,9 @@ export interface InHouseDraw {
 export function craftAnchorOf(
   components: Readonly<Record<string, unknown>>,
   positions: ReadonlyMap<number, { x: number; y: number }>,
+  tick: number,
 ): CraftAnchor | undefined {
-  const craft = readCraftPerformance(components);
+  const craft = readCraftPerformance(components, tick);
   if (craft === null) return undefined; // the common indoor case: no craft, no further reads
   const action = readActingAtomic(components);
   const tribe = readSettlerTribe(components);

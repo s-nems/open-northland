@@ -19,6 +19,7 @@ import {
   Projectile,
   Resting,
   Settler,
+  SettlerNeeds,
   Stance,
   Stockpile,
 } from '../../src/components/index.js';
@@ -351,7 +352,7 @@ describe('the tower garrison - calling the posting off', () => {
     sim.world.add(tower, Stockpile, { amounts: new Map([[FOOD_GOOD, 5]]) });
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
-    sim.world.mut(soldier, Settler).hunger = STARVING;
+    sim.world.mut(soldier, SettlerNeeds).hunger = STARVING;
     for (let i = 0; i < WALK_TICKS && !sim.world.has(soldier, CurrentAtomic); i++) sim.step();
     expect(sim.world.has(soldier, CurrentAtomic)).toBe(true); // eating at his post
 
@@ -576,7 +577,7 @@ describe('the tower garrison - its needs', () => {
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
     const post = tileOf(sim, soldier);
-    sim.world.mut(soldier, Settler).fatigue = EXHAUSTED;
+    sim.world.mut(soldier, SettlerNeeds).fatigue = EXHAUSTED;
 
     run(sim, 10);
 
@@ -591,11 +592,11 @@ describe('the tower garrison - its needs', () => {
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
     const post = tileOf(sim, soldier);
-    sim.world.mut(soldier, Settler).hunger = STARVING;
+    sim.world.mut(soldier, SettlerNeeds).hunger = STARVING;
 
     run(sim, 60);
 
-    expect(sim.world.get(soldier, Settler).hunger).toBeLessThan(STARVING); // fed
+    expect(sim.world.get(soldier, SettlerNeeds).hunger).toBeLessThan(STARVING); // fed
     expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower); // and never left the wall
     expect(tileOf(sim, soldier)).toEqual(post);
     expect(sim.world.get(tower, Stockpile).amounts.get(FOOD_GOOD)).toBeLessThan(5); // off its own shelf
@@ -607,7 +608,7 @@ describe('the tower garrison - its needs', () => {
     sim.world.add(tower, Stockpile, { amounts: new Map([[FOOD_GOOD, 5]]) });
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
-    sim.world.mut(soldier, Settler).hunger = STARVING;
+    sim.world.mut(soldier, SettlerNeeds).hunger = STARVING;
     sim.world.add(soldier, Engagement, { repathAt: sim.tick });
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -622,7 +623,7 @@ describe('the tower garrison - its needs', () => {
     const tower = towerAt(sim, 6, 3);
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
-    sim.world.mut(soldier, Settler).fatigue = EXHAUSTED;
+    sim.world.mut(soldier, SettlerNeeds).fatigue = EXHAUSTED;
     sim.world.add(soldier, Engagement, { repathAt: sim.tick });
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -637,7 +638,7 @@ describe('the tower garrison - its needs', () => {
     larderAt(sim, 18, 3);
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
-    sim.world.mut(soldier, Settler).hunger = STARVING;
+    sim.world.mut(soldier, SettlerNeeds).hunger = STARVING;
     sim.world.add(soldier, Engagement, { repathAt: sim.tick });
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -652,13 +653,13 @@ describe('the tower garrison - its needs', () => {
     larderAt(sim, 18, 3);
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
-    sim.world.mut(soldier, Settler).hunger = STARVING;
+    sim.world.mut(soldier, SettlerNeeds).hunger = STARVING;
 
     run(sim, 30);
     expect(sim.world.has(soldier, Garrison)).toBe(false); // off the wall, walking to the larder
 
     run(sim, 600);
-    expect(sim.world.get(soldier, Settler).hunger).toBeLessThan(STARVING); // it ate
+    expect(sim.world.get(soldier, SettlerNeeds).hunger).toBeLessThan(STARVING); // it ate
     expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower); // and went back up
   });
 });

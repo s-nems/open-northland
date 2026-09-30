@@ -40,6 +40,7 @@ const SPLIT_HALVES = [
   'PathFollow',
   'PathRoute',
   'Settler',
+  'SettlerNeeds',
   'SettlerProgress',
   'CurrentAtomic',
   'AtomicClock',
@@ -267,7 +268,7 @@ describe('sync digest', () => {
     expect(differingDomains(digestOf(a), digestOf(b))).toContain('fog');
   });
 
-  it('re-folds a walk step, an atomic tick and the needs drain without their rarely written halves', () => {
+  it('folds the needs drain without rewriting settled atomic and path clocks', () => {
     const sim = watchedWorld();
     const settler = [...sim.world.query(Settler)][0];
     const terrain = sim.terrain;
@@ -295,9 +296,7 @@ describe('sync digest', () => {
     sim.world.setMutationSink(null);
 
     expect(sim.world.has(walker, PathFollow)).toBe(true);
-    expect([...written].filter((name) => SPLIT_HALVES.includes(name)).sort()).toEqual(
-      ['AtomicClock', 'PathFollow', 'Settler'].sort(),
-    );
+    expect([...written].filter((name) => SPLIT_HALVES.includes(name)).sort()).toEqual(['SettlerNeeds']);
   });
 
   it.each([

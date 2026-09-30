@@ -9,6 +9,7 @@ import {
   Resource,
   ResourceFootprint,
   Settler,
+  SettlerNeeds,
   setSettlerJob,
   Wedding,
 } from '../../src/components/index.js';
@@ -24,7 +25,7 @@ import { gossipSystem } from '../../src/systems/social/gossip/drive.js';
 import { planGossipSeek } from '../../src/systems/social/gossip/plan.js';
 import { ownedWoodcutter } from '../conflict/orders/support.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { ctxOf, fixtureTick, nextTickCtxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 it.each(['water', 'resource'] as const)(
@@ -44,7 +45,7 @@ it.each(['water', 'resource'] as const)(
     }
     const a = ownedWoodcutter(s, 0, 0);
     s.world.add(a, Position, positionOfNode(10, 8));
-    s.world.mut(a, Settler).enjoyment = fx.fromInt(1);
+    s.world.mut(a, SettlerNeeds).enjoyment = fx.fromInt(1);
     const b = ownedWoodcutter(s, 0, 0);
     setSettlerJob(s.world, b, 6);
     s.world.add(b, Position, positionOfNode(4, 4));
@@ -52,7 +53,7 @@ it.each(['water', 'resource'] as const)(
     navigationPlanner(s.world, terrain);
     pathfindingSystem(s.world, ctxOf(s));
     for (let i = 0; i < 30; i++) {
-      movementSystem(s.world, ctxOf(s));
+      movementSystem(s.world, nextTickCtxOf(s));
       const p = s.world.get(b, Position);
       const n = nodeOfPosition(p.x, p.y);
       const node = terrain.nodeAt(n.hx, n.hy);
@@ -84,6 +85,8 @@ it.each(['water', 'resource'] as const)(
     expect(s.world.has(b, PathFollow)).toBe(true);
     expect(s.world.get(b, Position)).toEqual(before);
     expect(s.world.has(a, MoveGoal)).toBe(false);
+    // The isolated movement setup has already executed these ticks; resume the full schedule after them.
+    s.restoreTick(fixtureTick(s));
     let talking = false;
     for (let tick = 0; tick < 100 && !talking; tick++) {
       s.step();
@@ -113,7 +116,7 @@ it.each(['gossip', 'wedding'] as const)(
     if (terrain === undefined) throw new Error('terrain');
     const a = ownedWoodcutter(sim, 0, 0);
     sim.world.add(a, Position, positionOfNode(5, 6));
-    sim.world.mut(a, Settler).enjoyment = fx.fromInt(1);
+    sim.world.mut(a, SettlerNeeds).enjoyment = fx.fromInt(1);
     const b = ownedWoodcutter(sim, 0, 0);
     setSettlerJob(sim.world, b, 6);
     sim.world.add(b, Position, positionOfNode(4, 4));
@@ -121,7 +124,7 @@ it.each(['gossip', 'wedding'] as const)(
     navigationPlanner(sim.world, terrain);
     pathfindingSystem(sim.world, ctxOf(sim));
     for (let i = 0; i < 30; i++) {
-      movementSystem(sim.world, ctxOf(sim));
+      movementSystem(sim.world, nextTickCtxOf(sim));
       const p = sim.world.get(b, Position);
       if (nodeOfPosition(p.x, p.y).hy === 5) break;
     }
@@ -156,7 +159,7 @@ it.each(['gossip', 'wedding'] as const)(
     expect(sim.world.has(a, Wedding)).toBe(false);
     expect(sim.world.has(b, Wedding)).toBe(false);
     for (let tick = 0; tick < 30 && sim.world.has(b, PathFollow); tick++)
-      movementSystem(sim.world, ctxOf(sim));
+      movementSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(b, PathFollow)).toBe(false);
     expect(sim.world.get(b, Position)).toEqual(positionOfNode(5, 6));
     expect(sim.checkInvariants()).toEqual([]);

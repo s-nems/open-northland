@@ -38,7 +38,7 @@ export function followerAt(
   // Pace fixtures start facing east; turn timing and the engine's initial SW heading have separate tests.
   sim.world.add(e, WalkFacing, { direction: 0, target: 0 });
   sim.world.add(e, PathRoute, { waypoints: waypoints.map((w) => waypointAt(sim, w.x, w.y)) });
-  sim.world.add(e, PathFollow, { index: waypoints.length >= 2 ? 1 : 0, legTicks: 0, legCost: 0 });
+  sim.world.add(e, PathFollow, { index: waypoints.length >= 2 ? 1 : 0, legElapsed: 0, legCost: 0 });
   return e;
 }
 

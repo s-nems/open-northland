@@ -12,7 +12,7 @@ export function ctxOf(sim: Simulation): SystemContext {
   return {
     content: sim.content,
     rng: sim.rng,
-    tick: sim.tick,
+    tick: fixtureTick(sim),
     events: sim.events,
     commands: sim.commands,
     ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
@@ -28,4 +28,17 @@ export function fleeCheckCtxOf(sim: Simulation, e: Entity): SystemContext {
   const wait =
     (FLEE_CHECK_STRIDE_TICKS - ((ctx.tick + e) % FLEE_CHECK_STRIDE_TICKS)) % FLEE_CHECK_STRIDE_TICKS;
   return { ...ctx, tick: ctx.tick + wait };
+}
+
+const manualTicks = new WeakMap<Simulation, number>();
+
+/** Current tick of a fixture driven one system at a time, or the full simulation tick. */
+export function fixtureTick(sim: Simulation): number {
+  return Math.max(sim.tick, manualTicks.get(sim) ?? 0);
+}
+
+/** Advance a direct-system fixture's time once; reuse the result for systems sharing that tick. */
+export function nextTickCtxOf(sim: Simulation): SystemContext {
+  manualTicks.set(sim, fixtureTick(sim) + 1);
+  return ctxOf(sim);
 }

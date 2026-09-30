@@ -13,6 +13,7 @@ import {
   Position,
   removeCurrentAtomic,
   Settler,
+  SettlerNeeds,
   Sheltering,
   TALK_ATOMIC_ID,
   Wedding,
@@ -97,7 +98,10 @@ function drivePair(
     endChat(world, ctx.tick, a);
     return;
   }
-  if (chatOutranked(world, a, sa) || chatOutranked(world, b, sb)) {
+  if (
+    chatOutranked(world, a, world.get(a, SettlerNeeds)) ||
+    chatOutranked(world, b, world.get(b, SettlerNeeds))
+  ) {
     endChat(world, ctx.tick, a);
     return;
   }
@@ -111,7 +115,10 @@ function drivePair(
     if (world.has(a, CurrentAtomic) || world.has(b, CurrentAtomic)) return; // the round plays out
     // The pair parts once the seeker's need is met, or can no longer be (a script froze its bars), but
     // never before the partner has had its own speaking turn, so every chat is at least one full exchange.
-    if (!ca.speaks && (sa.enjoyment < NEED_DRIVE_THRESHOLD || !carriesNeeds(world, ctx.content, a))) {
+    if (
+      !ca.speaks &&
+      (world.get(a, SettlerNeeds).enjoyment < NEED_DRIVE_THRESHOLD || !carriesNeeds(world, ctx.content, a))
+    ) {
       endChat(world, ctx.tick, a);
       return;
     }

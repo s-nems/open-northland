@@ -4,7 +4,7 @@ import {
   Building,
   Health,
   Position,
-  Settler,
+  SettlerNeeds,
   Stockpile,
   UnderConstruction,
 } from '../../src/components/index.js';
@@ -149,7 +149,7 @@ describe('debugSetNeeds', () => {
     sim.enqueueSetup({ kind: 'debugSetNeeds', target: settler, hunger: 100, fatigue: 50 });
     sim.step();
 
-    const s = sim.world.get(settler, Settler);
+    const s = sim.world.get(settler, SettlerNeeds);
     expect(s.hunger).toBe(ONE); // 100% → maxed
     expect(s.fatigue).toBe(fx.mulDiv(ONE, fx.fromInt(50), fx.fromInt(100))); // 50% → ONE/2
     expect(s.piety).toBe(start); // omitted - untouched

@@ -6,7 +6,7 @@ import {
   DeliveryFlag,
   Engagement,
   Position,
-  Settler,
+  SettlerNeeds,
   StayPoint,
   WorkFlag,
 } from '../../src/components/index.js';
@@ -74,7 +74,7 @@ describe('hunter - a pressing need breaks off the hunt', () => {
     let guard = 200;
     while (!sim.world.has(hunter, Engagement) && guard-- > 0) sim.step();
     expect(sim.world.has(hunter, Engagement)).toBe(true); // drawn on the cow
-    sim.world.mut(hunter, Settler).hunger = justAbove(NEED_DRIVE_THRESHOLD);
+    sim.world.mut(hunter, SettlerNeeds).hunger = justAbove(NEED_DRIVE_THRESHOLD);
 
     let ate = false;
     for (let i = 0; i < 400 && !ate; i++) {
@@ -95,7 +95,7 @@ describe('hunter - a pressing need breaks off the hunt', () => {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('test map missing');
     sim.world.add(cow, StayPoint, { cell: entityNode(sim.world, terrain, cow) });
-    sim.world.mut(hunter, Settler).hunger = justAbove(NEED_DRIVE_THRESHOLD);
+    sim.world.mut(hunter, SettlerNeeds).hunger = justAbove(NEED_DRIVE_THRESHOLD);
 
     let guard = 1200;
     while (sim.world.isAlive(cow) && guard-- > 0) sim.step();

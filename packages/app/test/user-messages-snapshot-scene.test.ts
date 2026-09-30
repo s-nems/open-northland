@@ -84,7 +84,7 @@ describe('user messages read off real scene snapshots', () => {
     sim.run(2);
     const [subject] = adultsOf(sim.snapshot());
     if (subject === undefined) throw new Error('no adult to test with');
-    const s = sim.world.mut(subject as Entity, components.Settler);
+    const s = sim.world.mut(subject as Entity, components.SettlerNeeds);
     s.hunger = ONE;
     s.fatigue = systems.NEED_CRITICAL_THRESHOLD;
     sim.run(1);

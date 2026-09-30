@@ -11,7 +11,7 @@ import {
   PlayerOrder,
   Position,
   removeCurrentAtomic,
-  Settler,
+  SettlerNeeds,
   setMissionBehaviour,
   setNeedsEnabled,
   setSettlerJob,
@@ -351,10 +351,10 @@ describe('gossip chat rounds (GossipSystem)', () => {
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(a, Chat)).toMatchObject({ partner: b, seeker: true });
 
-    const before = sim.world.get(a, Settler).enjoyment;
+    const before = sim.world.get(a, SettlerNeeds).enjoyment;
     // Half the 20-tick round: some (not all) of the five +800 pulses have landed.
     for (let i = 0; i < 10; i++) sim.step();
-    const midway = sim.world.get(a, Settler).enjoyment;
+    const midway = sim.world.get(a, SettlerNeeds).enjoyment;
     expect(midway).toBeLessThan(before);
     expect(midway).toBeGreaterThan(fx.fromInt(0));
 
@@ -366,7 +366,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
       backToWork = !sim.world.has(a, Chat) && sim.world.has(a, MoveGoal);
     }
     expect(backToWork).toBe(true);
-    expect(sim.world.get(a, Settler).enjoyment).toBeLessThan(fx.div(ONE, fx.fromInt(10)));
+    expect(sim.world.get(a, SettlerNeeds).enjoyment).toBeLessThan(fx.div(ONE, fx.fromInt(10)));
   });
 
   it('the seeker walks to a distant partner, then the pair talks', () => {
@@ -397,7 +397,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     plannerSystem(sim.world, ctxOf(sim));
     gossipSystem(sim.world, ctxOf(sim)); // the round starts
 
-    sim.world.mut(b, Settler).hunger = justAbove(NEED_DRIVE_THRESHOLD);
+    sim.world.mut(b, SettlerNeeds).hunger = justAbove(NEED_DRIVE_THRESHOLD);
     gossipSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(a, Chat)).toBe(false);

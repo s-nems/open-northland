@@ -8,7 +8,7 @@ import {
   Health,
   MISC_EQUIP_SLOTS,
   MoveGoal,
-  Settler,
+  SettlerNeeds,
   WALK_DIRECTION,
   WalkFacing,
 } from '../../src/components/index.js';
@@ -205,7 +205,7 @@ describe('need amulets', () => {
     plannerSystem(s.world, ctxOf(s));
     expect(s.world.has(settler, MoveGoal)).toBe(false);
     expect(s.world.has(settler, CurrentAtomic)).toBe(false);
-    expect(s.world.get(settler, Settler).hunger).toBe(fx.sub(PRESSING, RESTORE_40));
+    expect(s.world.get(settler, SettlerNeeds).hunger).toBe(fx.sub(PRESSING, RESTORE_40));
     expect(s.world.get(settler, Equipment).misc[0]).toEqual(worn(AMULET_FOOD));
   });
 
@@ -214,7 +214,7 @@ describe('need amulets', () => {
     const settler = needsSettlerAt(s, 0, 0, { fatigue: PRESSING });
     carry(s, settler, [worn(AMULET_STAMINA)]);
     plannerSystem(s.world, ctxOf(s));
-    expect(s.world.get(settler, Settler).fatigue).toBe(fx.sub(PRESSING, RESTORE_40));
+    expect(s.world.get(settler, SettlerNeeds).fatigue).toBe(fx.sub(PRESSING, RESTORE_40));
     expect(s.world.get(settler, Equipment).misc[0]).toEqual(worn(AMULET_STAMINA));
   });
 
@@ -226,9 +226,9 @@ describe('need amulets', () => {
     carry(s, opened, [worn(AMULET_FOOD), worn(POTION_FOOD, HALF)]);
     plannerSystem(s.world, ctxOf(s));
     expect(s.world.get(fresh, Equipment).misc[0]).toEqual(worn(POTION_FOOD));
-    expect(s.world.get(fresh, Settler).hunger).toBe(fx.sub(PRESSING, RESTORE_40));
+    expect(s.world.get(fresh, SettlerNeeds).hunger).toBe(fx.sub(PRESSING, RESTORE_40));
     expect(s.world.get(opened, Equipment).misc[1]).toBeNull();
-    expect(s.world.get(opened, Settler).hunger).toBe(fx.sub(PRESSING, ONE));
+    expect(s.world.get(opened, SettlerNeeds).hunger).toBe(fx.sub(PRESSING, ONE));
   });
 });
 

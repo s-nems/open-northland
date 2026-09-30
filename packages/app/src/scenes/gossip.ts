@@ -43,7 +43,7 @@ const REFILLED: Fixed = fx.div(ONE, fx.fromInt(4));
 const RUN_TICKS = 2400;
 const INITIAL_ZOOM = 0.9;
 
-const { Settler } = components;
+const { SettlerNeeds, Settler } = components;
 
 /** Authors every need, since the spawn's seeded random levels would blur the thresholds. */
 function spawnActor(
@@ -54,7 +54,7 @@ function spawnActor(
   needs: { hunger?: Fixed; fatigue?: Fixed; enjoyment?: Fixed },
 ): Entity {
   const e = spawnSettlerDirect(sim, jobType, x, y);
-  const s = sim.world.mut(e, Settler);
+  const s = sim.world.mut(e, SettlerNeeds);
   s.hunger = needs.hunger ?? fx.fromInt(0);
   s.fatigue = needs.fatigue ?? fx.fromInt(0);
   s.piety = fx.fromInt(0);
@@ -82,7 +82,7 @@ function ofJob(sim: Simulation, jobType: number): { enjoyment: Fixed; hunger: Fi
   const out: { enjoyment: Fixed; hunger: Fixed; fatigue: Fixed }[] = [];
   for (const e of sim.world.query(Settler)) {
     const s = sim.world.get(e, Settler);
-    if (s.jobType === jobType) out.push(s);
+    if (s.jobType === jobType) out.push(sim.world.get(e, SettlerNeeds));
   }
   return out;
 }
@@ -122,7 +122,7 @@ export const gossipScene: SceneDefinition = {
       label: 'the hungry settler foraged the bush and the sleepy one napped (both needs met)',
       predicate: (sim) => {
         for (const e of sim.world.query(Settler)) {
-          const s = sim.world.get(e, Settler);
+          const s = sim.world.get(e, SettlerNeeds);
           if (s.hunger >= systems.NEED_DRIVE_THRESHOLD || s.fatigue >= systems.NEED_DRIVE_THRESHOLD)
             return false;
         }

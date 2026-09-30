@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health } from '../../../../src/components/index.js';
 import { Simulation } from '../../../../src/index.js';
 import { atomicSystem } from '../../../../src/systems/index.js';
+import { nextTickCtxOf } from '../../../fixtures/context.js';
 import {
   ATTACK_ATOMIC,
   ATTACKED_ATOMIC,
   combatCadenceContent,
-  ctxOf,
   fighterAt,
   grass,
   OTHER,
@@ -24,7 +24,7 @@ describe('atomicSystem - a struck civilian staggers (data-driven `82` ATTACKED a
     const woman = fighterAt(sim, 1, 0, VIKING, WOMAN, { hitpoints: 10_000 }); // survives the blow
     startSwing(sim, attacker, { target: woman, damage: 2090, hitFrames: [1] }, 27);
 
-    atomicSystem(sim.world, ctxOf(sim)); // frame 1 = the blow lands
+    atomicSystem(sim.world, nextTickCtxOf(sim)); // frame 1 = the blow lands
 
     const flinch = sim.world.get(woman, CurrentAtomic);
     expect(flinch.atomicId).toBe(ATTACKED_ATOMIC); // she is staggering
@@ -38,7 +38,7 @@ describe('atomicSystem - a struck civilian staggers (data-driven `82` ATTACKED a
     const soldier = fighterAt(sim, 1, 0, OTHER, SOLDIER_SWORD_SHORT, { hitpoints: 10_000 });
     startSwing(sim, attacker, { target: soldier, damage: 2090, hitFrames: [1] }, 27);
 
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.has(soldier, CurrentAtomic)).toBe(false); // soldiers don't flinch
   });
@@ -51,7 +51,7 @@ describe('atomicSystem - a struck civilian staggers (data-driven `82` ATTACKED a
     startSwing(sim, woman, { target: attacker, damage: 0 }, 100);
     startSwing(sim, attacker, { target: woman, damage: 2090, hitFrames: [1] }, 27);
 
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.get(woman, CurrentAtomic).atomicId).toBe(ATTACK_ATOMIC); // still her own swing, not a flinch
     expect(sim.world.get(woman, Health).hitpoints).toBe(10_000 - 2090); // but the blow still landed (damage applies)

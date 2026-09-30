@@ -8,6 +8,7 @@ import {
   ownerOf,
   Settler,
   type SettlerIdentity,
+  SettlerNeeds,
 } from '../../../components/index.js';
 import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -53,12 +54,13 @@ import { eatAtPost, sleepAtPost } from './tower-post.js';
 export function anyNeedPressing(world: World, content: ContentSet, e: Entity): boolean {
   if (!carriesNeeds(world, content, e)) return false;
   const settler = world.get(e, Settler);
+  const needs = world.get(e, SettlerNeeds);
   const ordered = orderedNeed(world, e);
   return (
     ordered !== undefined ||
-    settler.hunger >= NEED_DRIVE_THRESHOLD ||
-    settler.fatigue >= NEED_DRIVE_THRESHOLD ||
-    (settler.piety >= NEED_DRIVE_THRESHOLD && jobNeedsReligion(content, settler.jobType))
+    needs.hunger >= NEED_DRIVE_THRESHOLD ||
+    needs.fatigue >= NEED_DRIVE_THRESHOLD ||
+    (needs.piety >= NEED_DRIVE_THRESHOLD && jobNeedsReligion(content, settler.jobType))
   );
 }
 
@@ -87,7 +89,7 @@ function maySeek(world: World, e: Entity, ordered: NeedKind | undefined, need: N
 /** The hunger and fatigue bars once carried draughts have answered them. */
 function barsAfterDraughts(world: World, ctx: SystemContext, e: Entity): { hunger: Fixed; fatigue: Fixed } {
   drinkPressingDraughts(world, ctx, e);
-  return world.get(e, Settler);
+  return world.get(e, SettlerNeeds);
 }
 
 /**
@@ -156,7 +158,7 @@ export function planNeeds(
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
-  settler: SettlerIdentity & { piety: Fixed },
+  settler: SettlerIdentity,
   here: NodeId,
   load: { goodType: number; amount: number } | undefined,
   targets: TargetCandidates,
@@ -220,7 +222,7 @@ export function planNeeds(
 
   // A trade that does not pray has no prayer rung of its own; a player's order gives it one.
   const prays =
-    pressing(settler.piety, ordered, 'piety') &&
+    pressing(world.get(e, SettlerNeeds).piety, ordered, 'piety') &&
     (ordered === 'piety' || jobNeedsReligion(ctx.content, settler.jobType)) &&
     maySeek(world, e, ordered, 'piety') &&
     !onAlert();
@@ -269,8 +271,8 @@ export function planNeeds(
  * forbade starts no task there, so that bar falls to the seat's refill (`lifecycle/needs`).
  */
 function settleUnservedNeedForAi(world: World, e: Entity, need: 'hunger' | 'fatigue' | 'piety'): void {
-  if (world.get(e, Settler)[need] <= NEED_SATED_THRESHOLD) return;
+  if (world.get(e, SettlerNeeds)[need] <= NEED_SATED_THRESHOLD) return;
   const player = ownerOf(world, e);
   if (player === undefined || !isAiPlayer(world, player)) return;
-  world.mut(e, Settler)[need] = NEED_SATED_THRESHOLD;
+  world.mut(e, SettlerNeeds)[need] = NEED_SATED_THRESHOLD;
 }

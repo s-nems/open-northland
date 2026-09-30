@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { PathFollow, PathRoute, Position } from '../../../src/components/index.js';
+import { PathFollow, PathRoute, Position, pathLegTicks } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, Simulation } from '../../../src/index.js';
+import { exportSaveGame, fx, restoreSimulation, Simulation } from '../../../src/index.js';
 import { worldX } from '../../../src/nav/world-metric.js';
 import { movementSystem } from '../../../src/systems/index.js';
 import { stepTowardPoint } from '../../../src/systems/movement/stepping.js';
@@ -57,8 +57,24 @@ describe('movementSystem - path following', () => {
     sim.step();
     expect(sim.world.get(e, Position).x).toBe(fx.fromFloat(0.5)); // the last tick lands exactly
     expect(sim.world.get(e, PathFollow).index).toBe(2);
-    expect(sim.world.get(e, PathFollow).legTicks).toBe(0); // the next leg's cost is read when it starts
+    expect(sim.world.get(e, PathFollow).legElapsed).toBe(0); // the next leg's cost is read when it starts
     expect(sim.world.get(e, PathFollow).legCost).toBe(0);
+  });
+
+  it('does not rewrite the route clock between leg boundaries and resumes it from a save', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const e = followerAt(sim, 0, 0, halfSteps(1));
+    sim.step();
+    const revision = sim.world.revisionOf(e, PathFollow);
+    sim.run(3);
+    expect(sim.world.revisionOf(e, PathFollow)).toBe(revision);
+    expect(pathLegTicks(sim.world.get(e, PathFollow), sim.tick)).toBe(4);
+    const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content, map: grassMap(8, 1) });
+    sim.run(4);
+    restored.run(4);
+    expect(restored.world.get(e, Position).x).toBe(fx.fromFloat(0.5));
+    expect(restored.world.get(e, PathFollow).index).toBe(2);
+    expect(restored.hashState()).toBe(sim.hashState());
   });
 
   it('crosses a cell (two steps) in 16 ticks bare on land, every cell the same', () => {
@@ -105,7 +121,7 @@ describe('movementSystem - path following', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromFloat(0.25), y: fx.fromInt(0) });
     sim.world.add(e, PathRoute, { waypoints: [waypointAt(sim, 0.5, 0)] });
-    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
     expect(ticksToArrive(sim, e)).toBe(LAND_STEP_TICKS + 2); // initial SW → E
     expect(pos(sim, e)).toEqual({ x: 0.5, y: 0 });
   });
@@ -147,7 +163,7 @@ describe('movementSystem - arrival in place', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(e, PathRoute, { waypoints: [waypointAt(sim, 0, 0)] });
-    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
     sim.step();
     expect(pos(sim, e)).toEqual({ x: 0, y: 0 });
     expect(sim.world.has(e, PathFollow)).toBe(false);

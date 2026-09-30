@@ -101,7 +101,7 @@ describe('leading a walker', () => {
     s.world.add(walker, MoveSpeed, { perTick: pace });
     const end = positionOfNode(30, 10);
     s.world.add(walker, PathRoute, { waypoints: [{ x: end.x, y: end.y, node: 0 as NodeId }] });
-    s.world.add(walker, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    s.world.add(walker, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
     const from = positionOfNode(10, 2);
 
     const lead = leadPoint(s.world, ctxOf(s), from, walker, BOW_SPEED);
@@ -138,7 +138,7 @@ describe('leading a walker', () => {
         { x: end.x, y: end.y, node: 0 as NodeId },
       ],
     });
-    s.world.add(walker, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
+    s.world.add(walker, PathFollow, { index: 1, legElapsed: 0, legCost: 0 });
 
     const lead = leadPoint(s.world, ctxOf(s), positionOfNode(10, 2), walker, BOW_SPEED);
     expect(lead.x).toBeGreaterThan(start.x);

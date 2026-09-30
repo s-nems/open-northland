@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { addCurrentAtomic, Carrying, CurrentAtomic, MoveGoal, Settler } from '../../src/components/index.js';
+import {
+  addCurrentAtomic,
+  Carrying,
+  CurrentAtomic,
+  MoveGoal,
+  SettlerNeeds,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { atomicSystem, NEED_DRAIN_UNITS_PER_TICK, needBar, plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { nextTickCtxOf } from '../fixtures/context.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt, treeAt } from './needs/support.js';
 
 /**
@@ -87,10 +94,10 @@ describe('sleep atomic - relieving fatigue on completion (AtomicSystem)', () => 
       targetTile: null,
     });
 
-    for (let i = 0; i < SLEEP_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < SLEEP_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
 
     // One sleep is a partial refill, not a reset - a settler run to the top of its bar beds down again.
-    expect(sim.world.get(settler, Settler).fatigue).toBe(fx.sub(TIRED, SLEEP));
+    expect(sim.world.get(settler, SettlerNeeds).fatigue).toBe(fx.sub(TIRED, SLEEP));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
   });
 });
@@ -101,11 +108,11 @@ describe('sleep drive - closing the rise→sleep→relief loop through the real 
     // Start the settler already near the threshold so it crosses within a short headless run.
     const settler = settlerAt(sim, 0, 0, NEED_DRIVE_THRESHOLD);
 
-    let peakFatigue = sim.world.get(settler, Settler).fatigue;
+    let peakFatigue = sim.world.get(settler, SettlerNeeds).fatigue;
     let troughFatigue = peakFatigue;
     for (let i = 0; i < 200; i++) {
       sim.step();
-      const f = sim.world.get(settler, Settler).fatigue;
+      const f = sim.world.get(settler, SettlerNeeds).fatigue;
       if (f > peakFatigue) peakFatigue = f;
       if (f < troughFatigue) troughFatigue = f;
     }

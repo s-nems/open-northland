@@ -84,7 +84,7 @@ describe('buildScene - settler facing derivation', () => {
     const attacker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 81, targetEntity: 2, targetTile: null },
-      AtomicClock: { elapsed: 3 },
+      AtomicClock: { pendingElapsed: 3 },
       PathFollow: { index: 0 },
       PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] },
     });
@@ -99,7 +99,7 @@ describe('buildScene - settler facing derivation', () => {
     const chopper = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 24, targetEntity: 2, targetTile: null },
-      AtomicClock: { elapsed: 3 },
+      AtomicClock: { pendingElapsed: 3 },
       PathFollow: { index: 0 },
       PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] }, // west → block 1
     });
@@ -112,7 +112,7 @@ describe('buildScene - settler facing derivation', () => {
     const fisher = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId, targetEntity: 2, targetTile: null },
-      AtomicClock: { elapsed: 3 },
+      AtomicClock: { pendingElapsed: 3 },
       PathFollow: { index: 0 },
       PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] }, // stale westward walk
     });
@@ -125,7 +125,7 @@ describe('buildScene - settler facing derivation', () => {
     const worker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 44, targetEntity: 2, targetTile: null },
-      AtomicClock: { elapsed: 30 },
+      AtomicClock: { pendingElapsed: 30 },
       PathFollow: { index: 0 },
       PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] },
     });
@@ -140,7 +140,7 @@ describe('buildScene - settler facing derivation', () => {
     const builder = entity(1, 2, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 39, targetEntity: 2, targetTile: null },
-      AtomicClock: { elapsed: 3 },
+      AtomicClock: { pendingElapsed: 3 },
       PathFollow: { index: 0 },
       PathRoute: { waypoints: [{ x: 3 * ONE, y: 1 * ONE }] },
     });
@@ -153,7 +153,7 @@ describe('buildScene - settler facing derivation', () => {
     const builder = entity(1, 2, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 42, targetEntity: 2, targetTile: null },
-      AtomicClock: { elapsed: 3 },
+      AtomicClock: { pendingElapsed: 3 },
       PathFollow: { waypoints: [{ x: 3 * ONE, y: 1 * ONE }], index: 0 },
     });
     const segment = entity(2, 1, 1, { Palisade: { gfxIndex: 691, built: 0 }, UnderConstruction: {} });
@@ -168,12 +168,12 @@ describe('buildScene - settler facing derivation', () => {
     const talker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 14, targetEntity: 2, targetTile: null },
-      AtomicClock: { elapsed: 3 },
+      AtomicClock: { pendingElapsed: 3 },
     });
     const listener = entity(2, 1.25, 1.5, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 15, targetEntity: 1, targetTile: null },
-      AtomicClock: { elapsed: 3 },
+      AtomicClock: { pendingElapsed: 3 },
     });
     const scene = buildScene(snapshotOf([talker, listener]), FLAT_3x2);
     const settlers = scene.filter((d) => d.kind === 'settler');
@@ -186,7 +186,7 @@ describe('buildScene - settler facing derivation', () => {
     const depositor = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 23, targetEntity: 2, targetTile: null },
-      AtomicClock: { elapsed: 3 },
+      AtomicClock: { pendingElapsed: 3 },
       PathFollow: { index: 0 },
       PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] }, // west → block 1
     });

@@ -10,6 +10,7 @@ import {
   SOLDIER_GENERAL_EXPERIENCE_TYPE,
   WEAPON_MAIN_TYPE,
 } from '../../../../src/systems/index.js';
+import { nextTickCtxOf } from '../../../fixtures/context.js';
 import {
   ARMOR_BLOCKING,
   AXE_MAIN_TYPE,
@@ -42,7 +43,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
       4,
     );
 
-    atomicSystem(sim.world, ctxOf(sim)); // the blow lands (frame 1) and trains the weapon class
+    atomicSystem(sim.world, nextTickCtxOf(sim)); // the blow lands (frame 1) and trains the weapon class
 
     const xp = sim.world.get(attacker, SettlerProgress).experience;
     expect(xp.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1); // soldier-general factor 1 per swing
@@ -56,7 +57,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
       const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_UNARMED);
       const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
       startSwing(sim, attacker, { target, damage: 100, hitFrames: [1], weaponMainType: mainType }, 2);
-      atomicSystem(sim.world, ctxOf(sim));
+      atomicSystem(sim.world, nextTickCtxOf(sim));
       expect(sim.world.get(attacker, SettlerProgress).experience.get(bucket)).toBe(1);
     };
     check(WEAPON_MAIN_TYPE.SWORD, FIGHT_EXPERIENCE_TYPE.SWORD);
@@ -74,14 +75,14 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
       { target, damage: 0, hitFrames: [1], weaponMainType: WEAPON_MAIN_TYPE.SPEAR },
       2,
     );
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(attacker, SettlerProgress).experience.size).toBe(0);
 
     // The data's saber and axe classes have no fight bucket, but a soldier-band hit still feeds the
     // class-gate track (69).
     for (const mainType of [SABER_MAIN_TYPE, AXE_MAIN_TYPE]) {
       startSwing(sim, attacker, { target, damage: 400, hitFrames: [1], weaponMainType: mainType }, 2);
-      atomicSystem(sim.world, ctxOf(sim));
+      atomicSystem(sim.world, nextTickCtxOf(sim));
     }
     const xp = sim.world.get(attacker, SettlerProgress).experience;
     expect(xp.get(SOLDIER_GENERAL_EXPERIENCE_TYPE)).toBe(2);
@@ -99,7 +100,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
         { target, damage, hitFrames: [1], weaponMainType: WEAPON_MAIN_TYPE.SPEAR },
         2,
       );
-      atomicSystem(sim.world, ctxOf(sim));
+      atomicSystem(sim.world, nextTickCtxOf(sim));
     };
 
     swing(ARMOR_BLOCKING); // the whole blow blocked: no damage, no experience
@@ -124,7 +125,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
       { target, damage: 100, hitFrames: [1], weaponMainType: WEAPON_MAIN_TYPE.SPEAR },
       2,
     );
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     const xp = sim.world.get(attacker, SettlerProgress).experience;
     expect(xp.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(FIGHT_EXPERIENCE_MAX);
   });
@@ -135,7 +136,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
 
     const hero = fighterAt(sim, 0, 0, VIKING, HERO);
     startSwing(sim, hero, { target, damage: 400, hitFrames: [1], weaponMainType: WEAPON_MAIN_TYPE.SWORD }, 2);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     const heroXp = sim.world.get(hero, SettlerProgress).experience;
     expect(heroXp.get(FIGHT_EXPERIENCE_TYPE.SWORD)).toBe(1);
     expect(heroXp.get(HERO_GENERAL_EXPERIENCE_TYPE)).toBe(1); // the hero band's own track
@@ -148,7 +149,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
       { target, damage: 100, hitFrames: [1], weaponMainType: WEAPON_MAIN_TYPE.UNARMED },
       2,
     );
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     const civXp = sim.world.get(civilian, SettlerProgress).experience;
     expect(civXp.get(FIGHT_EXPERIENCE_TYPE.FIST)).toBe(1); // the weapon bucket still trains
     expect(civXp.size).toBe(1); // but no band track for a non-fighter
@@ -163,7 +164,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     startSwing(sim, killer, blow, 4);
     startSwing(sim, late, blow, 4);
 
-    atomicSystem(sim.world, ctxOf(sim)); // both blows reach their frame this tick; the first one kills
+    atomicSystem(sim.world, nextTickCtxOf(sim)); // both blows reach their frame this tick; the first one kills
 
     expect(sim.world.get(killer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
     expect(sim.world.get(late, SettlerProgress).experience.size).toBe(0);
@@ -184,7 +185,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
       { target, damage: 100, hitFrames: [1], weaponMainType: WEAPON_MAIN_TYPE.UNARMED },
       2,
     );
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(wolf, SettlerProgress).experience.size).toBe(0);
   });
 });

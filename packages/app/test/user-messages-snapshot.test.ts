@@ -81,6 +81,8 @@ function components(a: Actor): Record<string, unknown> {
     Settler: {
       tribe: 1,
       jobType: a.jobless === true ? null : WORKER_JOB,
+    },
+    SettlerNeeds: {
       hunger: a.hunger ?? 0,
       fatigue: a.fatigue ?? 0,
       piety: a.piety ?? 0,

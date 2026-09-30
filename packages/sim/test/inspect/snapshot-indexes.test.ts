@@ -276,7 +276,7 @@ describe('a spec that declares its reads', () => {
       sequence: 0,
       rebuild: true,
       touched: [
-        entry(1, { Settler: { hunger: 0 }, Position: { x: 0, y: 0 } }),
+        entry(1, { Settler: {}, SettlerNeeds: { hunger: 0 }, Position: { x: 0, y: 0 } }),
         entry(2, { Mark: { kind: 1 } }),
         entry(3, { Position: { x: 0, y: 0 } }),
       ],
@@ -290,7 +290,7 @@ describe('a spec that declares its reads', () => {
       sequence: 1,
       rebuild: false,
       touched: [
-        entry(1, { Settler: { hunger: 1 }, Position: { x: 1, y: 0 } }),
+        entry(1, { Settler: {}, SettlerNeeds: { hunger: 1 }, Position: { x: 1, y: 0 } }),
         entry(2, { Mark: { kind: 2 } }),
         entry(3, { Position: { x: 1, y: 0 } }),
       ],
@@ -303,7 +303,7 @@ describe('a spec that declares its reads', () => {
       tick: 3,
       sequence: 2,
       rebuild: false,
-      touched: [entry(1, {}, ['Settler']), entry(3, { Settler: { hunger: 0 } })],
+      touched: [entry(1, {}, ['Settler']), entry(3, { Settler: {}, SettlerNeeds: { hunger: 0 } })],
       removed: [],
       events: [],
     });

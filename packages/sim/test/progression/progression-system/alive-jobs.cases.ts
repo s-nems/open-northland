@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { addPerson, Settler, SettlerProgress, setSettlerJob } from '../../../src/components/index.js';
+import {
+  addPerson,
+  Settler,
+  SettlerNeeds,
+  SettlerProgress,
+  setSettlerJob,
+} from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
 import { goodEnabled } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -52,7 +58,7 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
     addPerson(
       sim.world,
       cutter,
-      { ...sim.world.get(cutter, Settler), tribe: OTHER_TRIBE },
+      { ...sim.world.get(cutter, Settler), ...sim.world.get(cutter, SettlerNeeds), tribe: OTHER_TRIBE },
       {
         learned: { job: [...(progress.learned?.job ?? [])], good: [...(progress.learned?.good ?? [])] },
         experience: new Map(progress.experience),

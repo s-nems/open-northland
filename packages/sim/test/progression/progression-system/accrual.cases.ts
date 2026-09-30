@@ -17,6 +17,7 @@ import {
   MAX_EXPERIENCE_REPEATS,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { nextTickCtxOf } from '../../fixtures/context.js';
 import {
   CARPENTER,
   CARPENTER_GENERAL_TRACK,
@@ -127,7 +128,7 @@ describe('AtomicSystem grants carry XP on a completed pileup', () => {
     const hq = headquarters(sim, 0);
     const e = makeSettler(sim, CARRIER);
     pileupAtomic(sim, e, hq);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(1); // the delivery landed
     expect(sim.world.get(e, SettlerProgress).experience.get(CARRIER_TRACK)).toBe(50);
   });
@@ -137,7 +138,7 @@ describe('AtomicSystem grants carry XP on a completed pileup', () => {
     const hq = headquarters(sim, 150); // at the wood capacity - no room
     const e = makeSettler(sim, CARRIER);
     pileupAtomic(sim, e, hq);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 1 }); // still on the back
     expect(sim.world.get(e, SettlerProgress).experience.size).toBe(0);
   });

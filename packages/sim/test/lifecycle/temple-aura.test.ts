@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Building, Health, Owner, Position, Settler, UnderConstruction } from '../../src/components/index.js';
+import {
+  Building,
+  Health,
+  Owner,
+  Position,
+  SettlerNeeds,
+  UnderConstruction,
+} from '../../src/components/index.js';
 import { setNeedsEnabled } from '../../src/components/rules.js';
 import { ULP } from '../../src/core/fixed.js';
 import { TICKS_PER_SECOND } from '../../src/core/loop.js';
@@ -72,7 +79,7 @@ function blessAt(sim: Simulation, tick: number): void {
 }
 
 const hp = (sim: Simulation, e: Entity): number => sim.world.get(e, Health).hitpoints;
-const piety = (sim: Simulation, e: Entity): Fixed => sim.world.get(e, Settler).piety;
+const piety = (sim: Simulation, e: Entity): Fixed => sim.world.get(e, SettlerNeeds).piety;
 
 describe('templeAuraSystem - the temple blesses its owner people once a game second', () => {
   it('adds hitpoints above the max and religion to a worn bar, on the second boundary only', () => {

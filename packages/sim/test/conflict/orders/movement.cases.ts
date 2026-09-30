@@ -13,6 +13,7 @@ import {
   PathRoute,
   PlayerOrder,
   Position,
+  pathLegTicks,
   SupplyRun,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -97,7 +98,7 @@ describe('moveUnit order', () => {
     const after = s.world.get(e, PathFollow);
     expect(after.index).toBe(before.index);
     expect(after.legCost).toBe(before.legCost);
-    expect(after.legTicks).toBe(before.legTicks + 1);
+    expect(pathLegTicks(after, s.tick)).toBe(pathLegTicks(before, s.tick - 1) + 1);
     expect(s.world.get(e, Position).x).toBeGreaterThan(position);
   });
 

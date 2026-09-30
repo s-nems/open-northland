@@ -55,7 +55,7 @@ export function assembleItem(
   };
   switch (kind) {
     case 'settler':
-      assignSettlerFields(item, components, pose.actingAtomic, pose.targetFacing);
+      assignSettlerFields(item, components, pose.actingAtomic, pose.targetFacing, build.snapshot.tick);
       break;
     case 'vehicle':
       readVehicleFields(item, components); // its `state` came with the pose

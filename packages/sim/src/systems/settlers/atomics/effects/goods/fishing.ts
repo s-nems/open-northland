@@ -84,7 +84,7 @@ function transition(
 ): void {
   const settler = world.get(fisher, Settler);
   atomic.atomicId = atomicId;
-  world.mut(fisher, AtomicClock).elapsed = 0;
+  world.add(fisher, AtomicClock, { startedAt: ctx.tick });
   atomic.duration = atomicDuration(ctx.content, settler, atomicId);
   atomic.effect = effect;
 }

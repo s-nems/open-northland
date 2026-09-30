@@ -18,7 +18,7 @@ import { movementSystem } from '../../src/systems/movement/system.js';
 import { placePalisade, setPalisadeGate } from '../../src/systems/palisades/index.js';
 import { navigationPlanner } from '../../src/systems/settlers/planner/navigation.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { ctxOf, nextTickCtxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 describe('pending failed routes', () => {
@@ -210,8 +210,8 @@ it('does not promote an ordinary retained route to a topology safe prefix on reo
   sim.world.add(e, MoveGoal, { cell: oldGoal });
   navigationPlanner(sim.world, terrain);
   pathfindingSystem(sim.world, ctxOf(sim));
-  movementSystem(sim.world, ctxOf(sim));
-  movementSystem(sim.world, ctxOf(sim));
+  movementSystem(sim.world, nextTickCtxOf(sim));
+  movementSystem(sim.world, nextTickCtxOf(sim));
   sim.world.add(e, MoveGoal, { cell: newGoal });
   navigationPlanner(sim.world, terrain);
   pathfindingSystem(sim.world, ctxOf(sim));
@@ -225,7 +225,7 @@ it('does not promote an ordinary retained route to a topology safe prefix on reo
   pathfindingSystem(sim.world, ctxOf(sim));
   let visitsOldGoal = false;
   for (let i = 0; i < 130; i++) {
-    movementSystem(sim.world, ctxOf(sim));
+    movementSystem(sim.world, nextTickCtxOf(sim));
     const p = sim.world.get(e, Position);
     const old = positionOfNode(14, 2);
     visitsOldGoal ||= p.x === old.x && p.y === old.y;

@@ -8,8 +8,8 @@ import {
   Owner,
   PathRequest,
   PlayerOrder,
-  Settler,
   type SettlerIdentity,
+  SettlerNeeds,
   Sheltering,
 } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
@@ -343,6 +343,6 @@ function allThreats(threats: readonly NodeCoords[], x: number, y: number): numbe
 /** Whether a settler's hunger or fatigue has reached the {@link NEED_COLLAPSE_THRESHOLD}, at which it stops
  *  to eat or sleep even in danger. */
 function needCollapsing(world: World, e: Entity): boolean {
-  const s = world.get(e, Settler);
+  const s = world.get(e, SettlerNeeds);
   return s.hunger >= NEED_COLLAPSE_THRESHOLD || s.fatigue >= NEED_COLLAPSE_THRESHOLD;
 }

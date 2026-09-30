@@ -190,7 +190,8 @@ function haltBefore(world: World, terrain: TerrainGraph, e: Entity, stop: number
       path.waypoints =
         beforeBack !== undefined && isEdgeMidpoint(terrain, back) ? [back, beforeBack] : [back];
       route.index = 0;
-      route.legTicks = 0;
+      route.legElapsed = 0;
+      route.legStartedAt = undefined;
       route.legCost = 0;
       route.legPace = undefined;
       route.departureCharged = undefined;

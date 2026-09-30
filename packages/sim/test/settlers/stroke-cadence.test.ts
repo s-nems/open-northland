@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AtomicClock,
   addCurrentAtomic,
+  atomicElapsed,
   CurrentAtomic,
   DeferredOrder,
   Equipment,
@@ -21,7 +22,7 @@ import { wearStepOf } from '../../src/systems/equipment/index.js';
 import { anchorOnlyFootprint, atomicSystem, stampResourceFootprintData } from '../../src/systems/index.js';
 import { STROKE_REST_ATOMIC_IDS } from '../../src/systems/settlers/atomics/stroke-cadence.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { ctxOf, fixtureTick, nextTickCtxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -111,7 +112,7 @@ function startChop(sim: Simulation, cutter: Entity, tree: Entity, clip: number):
 }
 
 function run(sim: Simulation, ticks: number): void {
-  for (let t = 0; t < ticks; t++) atomicSystem(sim.world, ctxOf(sim));
+  for (let t = 0; t < ticks; t++) atomicSystem(sim.world, nextTickCtxOf(sim));
 }
 
 describe('stroke cadence - what follows a counted stroke that leaves the node standing', () => {
@@ -127,7 +128,7 @@ describe('stroke cadence - what follows a counted stroke that leaves the node st
     expect(followThrough.effect.kind).toBe('harvestFollowThrough');
     expect(followThrough.atomicId).toBe(CHOP_ATOMIC);
     expect(followThrough.duration).toBe(clip);
-    expect(sim.world.get(cutter, AtomicClock).elapsed).toBe(0);
+    expect(atomicElapsed(sim.world.get(cutter, AtomicClock), fixtureTick(sim))).toBe(0);
     expect(sim.world.get(cutter, HarvestFocus).node).toBe(tree);
 
     run(sim, clip); // the follow-through

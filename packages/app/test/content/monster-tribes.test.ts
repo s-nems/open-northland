@@ -7,7 +7,7 @@ import { createSceneSim } from '../../src/scenes/runtime.js';
 import { characterTablesUnderTest, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 import { realMapPath, realMapWorld } from './real-map-world.js';
 
-const { MissionBehaviour, Person, Settler } = components;
+const { SettlerNeeds, MissionBehaviour, Person, Settler } = components;
 
 /** A decoded map whose `sethuman` records are 400 weresnakes on one seat and two saracen heroes on
  *  another - the monster placement the synthetic fixtures can only approximate. */
@@ -124,7 +124,7 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('the monster trib
       const settler = sim.world.get(e, Settler);
       // A monster is a person, not wildlife: it is an owned combatant the AI must still see and answer.
       if (monsterTypes.has(settler.tribe)) expect(sim.world.has(e, Person)).toBe(true);
-      hungerByEntity.set(e, { tribe: settler.tribe, hunger: settler.hunger });
+      hungerByEntity.set(e, { tribe: settler.tribe, hunger: sim.world.get(e, SettlerNeeds).hunger });
     }
     const monsters = [...hungerByEntity.values()].filter((r) => monsterTypes.has(r.tribe));
     expect(monsters.length).toBeGreaterThan(0);
@@ -134,7 +134,7 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('the monster trib
     let civiliansRisen = 0;
     for (const [e, before] of hungerByEntity) {
       if (!sim.world.has(e, Settler)) continue;
-      const after = sim.world.get(e, Settler).hunger;
+      const after = sim.world.get(e, SettlerNeeds).hunger;
       if (monsterTypes.has(before.tribe)) expect(after).toBe(before.hunger);
       else if (after > before.hunger) civiliansRisen += 1;
     }

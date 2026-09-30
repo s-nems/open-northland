@@ -6,6 +6,7 @@ import {
   MISSION_BEHAVIOUR,
   MissionBehaviour,
   Settler,
+  SettlerNeeds,
   Weapon,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -122,7 +123,7 @@ export function isCarryingGood(world: World, e: Entity): boolean {
 export function walkStepModifiersOf(world: World, e: Entity, content: ContentSet): WalkStepModifiers {
   const flags = world.tryGet(e, MissionBehaviour)?.flags ?? 0;
   const settler = world.tryGet(e, Settler);
-  const fatigue = settler?.fatigue;
+  const fatigue = world.tryGet(e, SettlerNeeds)?.fatigue;
   const index = contentIndex(content);
   const job = settler?.jobType ?? null;
   const reduction = settler === undefined ? undefined : index.tribes.get(settler.tribe)?.walkStepReduction;

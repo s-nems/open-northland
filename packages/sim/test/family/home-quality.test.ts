@@ -11,6 +11,7 @@ import {
   Residence,
   Resting,
   Settler,
+  SettlerNeeds,
   Stockpile,
   setStockAmount,
 } from '../../src/components/index.js';
@@ -43,7 +44,7 @@ import { applyAtomicNeedEvents } from '../../src/systems/settlers/atomics/effect
 import { atomicSystem } from '../../src/systems/settlers/atomics/system.js';
 import { planHomeTopUp } from '../../src/systems/settlers/drives/at-home.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { ctxOf, nextTickCtxOf } from '../fixtures/context.js';
 
 const FOOD = 1;
 const CROCKERY = 2;
@@ -175,7 +176,7 @@ describe('household quality goods', () => {
 
     applyAtomicNeedEvents(sim.world, ctxOf(sim), settler, { atomicId: 8, effect: { kind: 'sleep' } }, 1);
 
-    expect(sim.world.get(settler, Settler).fatigue).toBe(applyNeedUnits(ONE, 2000));
+    expect(sim.world.get(settler, SettlerNeeds).fatigue).toBe(applyNeedUnits(ONE, 2000));
     expect(sim.world.get(home, HomeQuality).rest).toBe(95);
   });
 
@@ -307,7 +308,7 @@ describe('household quality goods', () => {
     sim.world.add(sleeper, Residence, { home });
     sim.world.add(sleeper, Resting, { at: home });
     applyAtomicNeedEvents(sim.world, ctxOf(sim), sleeper, { atomicId: 8, effect: { kind: 'sleep' } }, 1);
-    expect(sim.world.get(sleeper, Settler).fatigue).toBe(applyNeedUnits(ONE, 1000));
+    expect(sim.world.get(sleeper, SettlerNeeds).fatigue).toBe(applyNeedUnits(ONE, 1000));
     expect(sim.world.get(home, HomeQuality).rest).toBe(100);
 
     const blocked = sim.world.create();
@@ -366,7 +367,7 @@ describe('household quality goods', () => {
       ),
     ).toBe(true);
     expect(sim.world.get(woman, CurrentAtomic).effect.kind).toBe('drop');
-    for (let i = 0; i < 4; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < 4; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.has(woman, Carrying)).toBe(false);
     expect(
       [...sim.world.query(Stockpile, Position)]

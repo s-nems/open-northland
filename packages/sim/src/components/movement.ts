@@ -51,8 +51,9 @@ export interface Waypoint {
 }
 
 /**
- * A walker's progress along its {@link PathRoute}: the index of the stop it walks toward. `legTicks` counts
- * movement ticks spent on the current leg (excluding held turn ticks) and `legCost` its movement cost,
+ * A walker's progress along its {@link PathRoute}: the index of the stop it walks toward. `legStartedAt` anchors
+ * its executed movement ticks; while turning or awaiting its first step, `legElapsed` holds them.
+ * `legCost` is its movement cost,
  * fixed when the leg starts and 0 until then. A {@link MoveStepPeriod} follower uses the same counters;
  * a {@link MoveSpeed} follower leaves them at 0 and walks its constant distance per tick. `legPace`
  * captures the full-step pace when a route starts between nodes. `departureCharged` follows an active
@@ -60,11 +61,20 @@ export interface Waypoint {
  */
 export const PathFollow = defineComponent<{
   index: number;
-  legTicks: number;
+  legStartedAt?: number | undefined;
+  legElapsed: number;
   legCost: number;
   legPace?: Fixed | undefined;
   departureCharged?: true | undefined;
 }>('PathFollow', 'movement');
+
+/** Executed movement ticks, excluding any pending or held turn ticks. */
+export function pathLegTicks(
+  follow: { readonly legStartedAt?: number | undefined; readonly legElapsed: number },
+  tick: number,
+): number {
+  return follow.legStartedAt === undefined ? follow.legElapsed : tick - follow.legStartedAt;
+}
 
 /**
  * The stops of the route a {@link PathFollow} walks, present exactly while it is. Written only when a

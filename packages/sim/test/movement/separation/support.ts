@@ -61,7 +61,7 @@ export function walkStraightTo(simulation: Simulation, entity: Entity, x: number
   simulation.world.add(entity, PathRoute, {
     waypoints: [{ ...positionOfNode(x, y), node: terrain.nodeAt(x, y) }],
   });
-  simulation.world.add(entity, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+  simulation.world.add(entity, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
 }
 
 export function nodeOf(simulation: Simulation, entity: Entity): { x: number; y: number } {

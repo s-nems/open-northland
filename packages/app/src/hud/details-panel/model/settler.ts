@@ -43,7 +43,7 @@ export function satisfactionBars(
 ): PanelBar[] {
   const hud = messages().hud;
   const comps: Comp = ent.components;
-  const s = (comps.Settler ?? {}) as Comp;
+  const s = (comps.SettlerNeeds ?? {}) as Comp;
   const bars: PanelBar[] = [];
   const health = healthBar(ent);
   if (health !== null) bars.push(health);

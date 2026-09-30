@@ -16,6 +16,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../src/index.js';
 import { atomicSystem, combatSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { fixtureTick, nextTickCtxOf } from '../../fixtures/context.js';
 
 import {
   ATTACK_ATOMIC,
@@ -340,7 +341,7 @@ describe('combatSystem - provoked anger (getAngry/angryGameTime)', () => {
       targetEntity: target,
       targetTile: null,
     });
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
   }
 
   it('a passive boar (not yet struck) neither attacks nor is attacked', () => {
@@ -362,15 +363,15 @@ describe('combatSystem - provoked anger (getAngry/angryGameTime)', () => {
     strike(sim, viking, boar, 50);
 
     expect(sim.world.get(boar, Health).hitpoints).toBe(950); // the hit landed
-    // angryGameTime 10, struck at tick 0 -> hostile until tick 10.
-    expect(sim.world.get(boar, Anger)).toEqual({ until: sim.tick + 10 });
+    // angryGameTime 10, struck at tick 1 -> hostile until tick 11.
+    expect(sim.world.get(boar, Anger)).toEqual({ until: fixtureTick(sim) + 10 });
   });
 
   it('an ANGRY boar fights a nearby civilization back (the provoked-aggression drive)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
     const boar = fighterAt(sim, 1, 0, BOAR, null, 1000);
-    sim.world.add(boar, Anger, { until: sim.tick + 10 }); // already provoked, still angry
+    sim.world.add(boar, Anger, { until: fixtureTick(sim) + 10 }); // already provoked, still angry
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -383,7 +384,7 @@ describe('combatSystem - provoked anger (getAngry/angryGameTime)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
     const boar = fighterAt(sim, 1, 0, BOAR, null, 1000);
-    sim.world.add(boar, Anger, { until: sim.tick + 10 }); // the boar is harassing the viking
+    sim.world.add(boar, Anger, { until: fixtureTick(sim) + 10 }); // the boar is harassing the viking
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -428,7 +429,7 @@ describe('combatSystem - provoked anger (getAngry/angryGameTime)', () => {
     strike(sim, viking, boar, 50); // struck again at the current tick
 
     // Refreshed to tick+10 (the new provocation), not left at the older tick+3.
-    expect(sim.world.get(boar, Anger).until).toBe(sim.tick + 10);
+    expect(sim.world.get(boar, Anger).until).toBe(fixtureTick(sim) + 10);
   });
 
   it('a non-provokable animal (wolf, a record without getAngry) gets no Anger when struck', () => {

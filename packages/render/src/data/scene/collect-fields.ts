@@ -39,11 +39,12 @@ export function assignSettlerFields(
   components: Readonly<Record<string, unknown>>,
   actingAtomic: number | null,
   targetFacing: number | undefined,
+  tick: number,
 ): void {
   if (actingAtomic !== null) {
     item.atomicId = actingAtomic;
     // The clock only rides with the atomic: a stale `CurrentAtomic` must not leave an orphan elapsed.
-    const elapsed = readAtomicElapsed(components);
+    const elapsed = readAtomicElapsed(components, tick);
     if (elapsed !== null) item.elapsed = elapsed;
     const duration = readAtomicDuration(components);
     if (duration !== null) item.atomicDuration = duration;

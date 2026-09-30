@@ -32,6 +32,7 @@ import {
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
 } from '../../../../src/systems/readviews/animations.js';
 import { lungeForward } from '../../../../src/systems/settlers/atomics/effects/combat/index.js';
+import { fixtureTick, nextTickCtxOf } from '../../../fixtures/context.js';
 import {
   ADULT_ANIMAL_JOB,
   ATTACK_ATOMIC,
@@ -116,7 +117,7 @@ describe('combatSystem - the swing carries the ATTACK-event hit-frame + the weap
     });
     // No walk facing is left behind for a later walk to show stale.
     expect(sim.world.has(wolf, WalkFacing)).toBe(false);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.events.current()).toContainEqual({ kind: 'atomicSound', entity: wolf, soundType: CUED_SOUND });
   });
 
@@ -214,10 +215,10 @@ describe('combatSystem - the swing carries the ATTACK-event hit-frame + the weap
       quietArmed.weapon,
     );
     expect(sim.world.get(quiet, CurrentAtomic).effect).toMatchObject({ hitFrames: [] });
-    for (let i = 0; i < 4; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < 4; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(quietTarget, Health).hitpoints).toBe(1000);
     // Past the animal clip's forward event: the person form has not moved.
-    for (let i = 4; i < 22; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 4; i < 22; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(form, Position)).toEqual(positionOfNode(0, 0));
   });
 
@@ -251,7 +252,7 @@ describe('combatSystem - the swing carries the ATTACK-event hit-frame + the weap
       const landed: number[] = [];
       let priorHp = run.world.get(target, Health).hitpoints;
       for (let frame = from; frame <= to; frame++) {
-        atomicSystem(run.world, ctxOf(run));
+        atomicSystem(run.world, nextTickCtxOf(run));
         const hp = run.world.get(target, Health).hitpoints;
         if (hp < priorHp) landed.push(frame);
         priorHp = hp;
@@ -259,7 +260,11 @@ describe('combatSystem - the swing carries the ATTACK-event hit-frame + the weap
       return landed;
     };
     expect(hitFrames(sim, 1, firstBlow)).toEqual([firstBlow]);
-    const restored = restoreSimulation(exportSaveGame(sim), { content, map: grass(3, 1) });
+    const saved = exportSaveGame(sim);
+    const restored = restoreSimulation(
+      { ...saved, header: { ...saved.header, tick: fixtureTick(sim) } },
+      { content, map: grass(3, 1) },
+    );
     expect(hitFrames(restored, firstBlow + 1, clipLength)).toEqual(blows.slice(1));
     expect(restored.world.has(attacker, CurrentAtomic)).toBe(false);
   });
@@ -296,15 +301,15 @@ describe('atomicSystem - the blow lands at the ATTACK-event frame, not at comple
     startSwing(sim, attacker, { target, damage: 2090, hitFrames: [17] }, 27);
 
     // Frames 1..16: the swing is winding up - the target is untouched.
-    for (let i = 0; i < 16; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < 16; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(target, Health).hitpoints).toBe(10_000);
 
     // Frame 17: the blow lands.
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(target, Health).hitpoints).toBe(10_000 - 2090);
 
     // Frames 18..27 (follow-through): no second hit, and the swing completes at 27 (attacker freed).
-    for (let i = 0; i < 10; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < 10; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(target, Health).hitpoints).toBe(10_000 - 2090); // still one blow only
     expect(sim.world.has(attacker, CurrentAtomic)).toBe(false); // completed
   });
@@ -315,10 +320,10 @@ describe('atomicSystem - the blow lands at the ATTACK-event frame, not at comple
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
     startSwing(sim, attacker, { target, damage: 400 }, 4); // no attack event -> resolve at completion
 
-    for (let i = 0; i < 3; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < 3; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(target, Health).hitpoints).toBe(10_000); // untouched until the last frame
 
-    atomicSystem(sim.world, ctxOf(sim)); // frame 4 = completion
+    atomicSystem(sim.world, nextTickCtxOf(sim)); // frame 4 = completion
     expect(sim.world.get(target, Health).hitpoints).toBe(10_000 - 400);
     expect(sim.world.has(attacker, CurrentAtomic)).toBe(false);
   });
@@ -386,11 +391,15 @@ describe("atomicSystem - an animal attack clip's forward event", () => {
     const target = fighterAtNode(sim, 3, 0, OTHER, null);
     const lunge = { frames: [LUNGE_FRAME], direction: WALK_DIRECTION.E };
     startSwing(sim, wolf, { target, damage: 0, hitFrames: [], lunge }, SWING_LENGTH);
-    for (let frame = 1; frame < LUNGE_FRAME; frame++) atomicSystem(sim.world, ctxOf(sim));
+    for (let frame = 1; frame < LUNGE_FRAME; frame++) atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(nodeOf(sim, wolf)).toEqual([1, 0]);
 
-    const restored = restoreSimulation(exportSaveGame(sim), { content, map: grass(3, 1) });
-    atomicSystem(restored.world, ctxOf(restored));
+    const saved = exportSaveGame(sim);
+    const restored = restoreSimulation(
+      { ...saved, header: { ...saved.header, tick: fixtureTick(sim) } },
+      { content, map: grass(3, 1) },
+    );
+    atomicSystem(restored.world, nextTickCtxOf(restored));
     expect(nodeOf(restored, wolf)).toEqual([2, 0]);
   });
 

@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { addPerson, addWildlife, Position, type SettlerState } from '../../src/components/index.js';
+import { addPerson, addWildlife, Position, type SettlerInitialState } from '../../src/components/index.js';
 import { ZERO } from '../../src/core/fixed.js';
 import type { Entity, World } from '../../src/ecs/world.js';
 import type { Fixed, Simulation } from '../../src/index.js';
@@ -62,7 +62,7 @@ export function settlerAt(sim: Simulation, spec: SettlerSpec): Entity {
 export function addSettlerOfTribe(
   sim: { world: World; content: ContentSet },
   e: Entity,
-  state: SettlerState,
+  state: SettlerInitialState,
 ): void {
   if (!isAnimalTribe(sim.content, state.tribe)) {
     addPerson(sim.world, e, state);

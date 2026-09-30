@@ -49,7 +49,7 @@ describe.runIf(hasRealIr())('real-content human walking', () => {
           { x: fx.fromFloat(0.5), y: fx.fromInt(0), node: terrain.nodeAtClamped(1, 0) },
         ],
       });
-      sim.world.add(e, components.PathFollow, { index: 1, legCost: 0, legTicks: 0 });
+      sim.world.add(e, components.PathFollow, { index: 1, legCost: 0, legElapsed: 0 });
       sim.step();
       expect(sim.world.get(e, components.PathFollow).legCost).toBe(8);
     },

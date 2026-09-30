@@ -36,7 +36,7 @@ describe('targetPositionsOf', () => {
       entity(1, 1, 1, {
         Settler: { tribe: 0 },
         CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, targetEntity: 2 },
-        AtomicClock: { elapsed: 1 },
+        AtomicClock: { pendingElapsed: 1 },
       }),
       entity(2, 2, 1, { Settler: { tribe: 1 } }),
       entity(3, 3, 1, { Resource: { level: 3 } }),
@@ -60,7 +60,7 @@ describe('targetPositionsOf', () => {
       entity(1, 1, 1, {
         Settler: { tribe: 0 },
         CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, targetEntity: 99 },
-        AtomicClock: { elapsed: 1 },
+        AtomicClock: { pendingElapsed: 1 },
       }),
     ]);
     expect(targetPositionsOf(snap).size).toBe(0);
@@ -71,7 +71,7 @@ describe('targetPositionsOf', () => {
       entity(1, 1, 1, {
         Settler: { tribe: 0 },
         CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, targetEntity: 2 },
-        AtomicClock: { elapsed: 1 },
+        AtomicClock: { pendingElapsed: 1 },
       }),
       entity(2, 2, 1, { Settler: { tribe: 1 } }),
     ]);
@@ -89,7 +89,7 @@ describe('the shared scene walk', () => {
       entity(1, 1, 1, {
         Settler: { tribe: 0 },
         CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, targetEntity: 2 },
-        AtomicClock: { elapsed: 1 },
+        AtomicClock: { pendingElapsed: 1 },
       }),
       entity(2, 2, 1, { Settler: { tribe: 1 } }),
       entity(3, 3, 1, { Building: { buildingType: 7, tribe: 0 } }),
@@ -141,7 +141,7 @@ describe('the views over a mirror', () => {
     expect(targetPositionsOf(mirror.snapshot()).size).toBe(0);
     const swing = {
       CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, targetEntity: 2 },
-      AtomicClock: { elapsed: 1 },
+      AtomicClock: { pendingElapsed: 1 },
     };
     const next = advance(
       mirror,

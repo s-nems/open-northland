@@ -74,7 +74,7 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
         { x: fx.fromInt(3), y: fx.fromInt(0), node: anchorCell(sim, 3, 0) }, // destination === the goal centre
       ],
     });
-    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(e, PathRequest)).toBe(false);
   });
@@ -86,7 +86,7 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
     sim.world.add(e, PathRoute, {
       waypoints: [{ x: fx.fromInt(1), y: fx.fromInt(0), node: anchorCell(sim, 1, 0) }],
     });
-    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
     plannerSystem(sim.world, ctxOf(sim));
     // A fresh request is issued right away; the stale path keeps the walker moving until the
     // routing splice replaces it (carrying its momentum through the turn - movement inertia).
@@ -175,7 +175,7 @@ describe('plannerSystem - navigation planner: later passes over the same world',
   function settledWalker(sim: Simulation, goal: NodeId): Entity {
     const e = travellerAt(sim, 0, 0, goal);
     sim.world.add(e, PathRoute, { waypoints: [{ x: fx.fromInt(3), y: fx.fromInt(0), node: goal }] });
-    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(e, PathRequest)).toBe(false);
     return e;

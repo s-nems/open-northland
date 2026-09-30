@@ -22,12 +22,12 @@ const INITIAL_ZOOM = 1.2;
 /** Clearly over the drive threshold - these settlers seek food before anything else. */
 const HUNGRY = fx.div(fx.fromInt(9), fx.fromInt(10));
 
-const { BerryBush, Settler } = components;
+const { SettlerNeeds, BerryBush, Settler } = components;
 
 /** With no gatherable resource on the map, an authored-hungry collector forages and then idles. */
 function spawnHungryForager(sim: Simulation, x: number, y: number): void {
   const e = spawnSettlerDirect(sim, JOB_COLLECTOR, x, y);
-  sim.world.mut(e, Settler).hunger = HUNGRY;
+  sim.world.mut(e, SettlerNeeds).hunger = HUNGRY;
 }
 
 function build(sim: Simulation): void {
@@ -70,7 +70,7 @@ export const berriesScene: SceneDefinition = {
         // the berry's own event could have brought it back under.
         for (const e of sim.world.query(Settler)) {
           total++;
-          if (sim.world.get(e, Settler).hunger < systems.NEED_DRIVE_THRESHOLD) fed++;
+          if (sim.world.get(e, SettlerNeeds).hunger < systems.NEED_DRIVE_THRESHOLD) fed++;
         }
         return total === STATIONS && fed === STATIONS;
       },

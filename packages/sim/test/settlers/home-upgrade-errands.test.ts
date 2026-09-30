@@ -13,6 +13,7 @@ import {
   ResourceFootprint,
   Resting,
   Settler,
+  SettlerNeeds,
   SiteAssignment,
   Stockpile,
   Stranded,
@@ -213,7 +214,7 @@ describe('home errands during an entrance-changing upgrade', () => {
 
   it('retargets an eat errand at the resident home', () => {
     const { sim, home, resident, terrain, oldDoor } = scenario();
-    const needs = sim.world.mut(resident, Settler);
+    const needs = sim.world.mut(resident, SettlerNeeds);
     needs.fatigue = ZERO;
     needs.hunger = ONE;
     plannerSystem(sim.world, ctxOf(sim));

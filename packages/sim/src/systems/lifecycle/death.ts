@@ -7,6 +7,7 @@ import {
   Rider,
   recordHumanDeath,
   Settler,
+  SettlerNeeds,
   unseatPassenger,
   Vehicle,
   Wedding,
@@ -40,7 +41,7 @@ export function reap(world: World, ctx: SystemContext, e: Entity): void {
   ctx.events.emit({
     kind: 'settlerDied',
     entity: e,
-    cause: causeOf(settler),
+    cause: causeOf(world.tryGet(e, SettlerNeeds)),
     player: owner?.player ?? null,
     ...(animal ? { animal: true } : {}),
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),

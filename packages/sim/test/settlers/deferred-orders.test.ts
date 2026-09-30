@@ -3,6 +3,7 @@ import {
   AtomicClock,
   addCurrentAtomic,
   addPerson,
+  atomicElapsed,
   CurrentAtomic,
   DeferredOrder,
   EquipOrder,
@@ -27,6 +28,7 @@ import {
   stampResourceFootprintData,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { fixtureTick } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -100,7 +102,7 @@ describe('moveUnit during a non-interruptible atomic', () => {
     // The half-eaten meal survives the order: same atomic, ticking on, no walk started.
     const atomic = sim.world.get(e, CurrentAtomic);
     expect(atomic.atomicId).toBe(EAT_ATOMIC);
-    expect(sim.world.get(e, AtomicClock).elapsed).toBe(1); // advanced, not restarted
+    expect(atomicElapsed(sim.world.get(e, AtomicClock), fixtureTick(sim))).toBe(1); // advanced, not restarted
     expect(sim.world.has(e, MoveGoal)).toBe(false);
     expect(sim.world.has(e, PlayerOrder)).toBe(false);
     expect(sim.world.get(e, DeferredOrder).command.kind).toBe('moveUnit');

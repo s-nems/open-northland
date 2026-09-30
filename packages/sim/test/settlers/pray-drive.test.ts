@@ -11,7 +11,7 @@ import {
   Position,
   Residence,
   Resting,
-  Settler,
+  SettlerNeeds,
   UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -21,6 +21,7 @@ import { atomicSystem, NEED_SATED_THRESHOLD, needBar, plannerSystem } from '../.
 import { isServedAtHome } from '../../src/systems/settlers/drives/home-errands.js';
 import { TEMPLE_PREFERRED_RANGE } from '../../src/systems/settlers/targets/stores/buildings.js';
 import { testContent } from '../fixtures/content.js';
+import { nextTickCtxOf } from '../fixtures/context.js';
 import {
   cellOf,
   ctxOf,
@@ -199,10 +200,10 @@ describe('pray atomic - taking one prayer off piety (AtomicSystem)', () => {
       targetTile: null,
     });
 
-    for (let i = 0; i < PRAY_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < PRAY_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
 
     // A prayer is a partial refill, not a reset: a smith comes back to the temple every few items.
-    expect(sim.world.get(settler, Settler).piety).toBe(fx.sub(DEVOUT, PRAYER));
+    expect(sim.world.get(settler, SettlerNeeds).piety).toBe(fx.sub(DEVOUT, PRAYER));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
   });
 });
@@ -214,11 +215,11 @@ describe('pray drive - closing the forge→pray→relief loop through the real s
     const settler = settlerAt(sim, 0, 0, NEED_DRIVE_THRESHOLD);
     templeAt(sim, 3, 0);
 
-    const peakPiety = sim.world.get(settler, Settler).piety;
+    const peakPiety = sim.world.get(settler, SettlerNeeds).piety;
     let troughPiety = peakPiety;
     for (let i = 0; i < 400; i++) {
       sim.step();
-      const p = sim.world.get(settler, Settler).piety;
+      const p = sim.world.get(settler, SettlerNeeds).piety;
       if (p < troughPiety) troughPiety = p;
     }
 
@@ -404,7 +405,7 @@ describe('where a devout settler prays: its holy fire, then a temple, then the h
       .snapshot()
       .events.flatMap((ev) => (ev.kind === 'prayerSiteMissing' ? [ev.entity] : []));
     expect(missing).toEqual([human]);
-    expect(sim.world.get(computer, Settler).piety).toBe(NEED_SATED_THRESHOLD);
+    expect(sim.world.get(computer, SettlerNeeds).piety).toBe(NEED_SATED_THRESHOLD);
   });
 
   it('warns a human seat whose ordered prayer finds nowhere to go, whatever its bar reads', () => {

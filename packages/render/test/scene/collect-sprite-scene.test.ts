@@ -150,7 +150,7 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
           entity(1, 1, 1, {
             Settler: { tribe: 0 },
             CurrentAtomic: { atomicId: 24, targetEntity: 2, targetTile: null },
-            AtomicClock: { elapsed: 3 },
+            AtomicClock: { pendingElapsed: 3 },
             PathFollow: { index: 0 },
             PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] },
           }),

@@ -13,6 +13,7 @@ import {
   PlayerOrder,
   Position,
   Settler,
+  SettlerNeeds,
   SettlerProgress,
   setMissionBehaviour,
   WALK_DIRECTION,
@@ -156,11 +157,11 @@ describe('the bits the sim reads', () => {
     const frozen = only(sim, OWNER);
     const ordinary = only(sim, OWNER + 1);
     // Every settler opens on a seeded deficit, so the tell is the change, not the value.
-    const frozenAt = sim.world.get(frozen, Settler).hunger;
-    const ordinaryAt = sim.world.get(ordinary, Settler).hunger;
+    const frozenAt = sim.world.get(frozen, SettlerNeeds).hunger;
+    const ordinaryAt = sim.world.get(ordinary, SettlerNeeds).hunger;
     sim.run(200);
-    expect(sim.world.get(frozen, Settler).hunger).toBe(frozenAt);
-    expect(sim.world.get(ordinary, Settler).hunger).toBeGreaterThan(ordinaryAt);
+    expect(sim.world.get(frozen, SettlerNeeds).hunger).toBe(frozenAt);
+    expect(sim.world.get(ordinary, SettlerNeeds).hunger).toBeGreaterThan(ordinaryAt);
     // Frozen needs leave the hitpoints alone: a wounded one still heals.
     sim.world.mut(frozen, Health).hitpoints = 1;
     sim.run(200);

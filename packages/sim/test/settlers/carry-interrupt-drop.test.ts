@@ -240,7 +240,7 @@ describe('a move order on a carrying settler - drop first, then walk', () => {
     sim.world.add(e, PathRoute, {
       waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(1), node: anchorNodeId(sim, 9, 1) }],
     });
-    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
     const startX = sim.world.get(e, Position).x;
 
     const dest = cellAnchorNode(8, 1);

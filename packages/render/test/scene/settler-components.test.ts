@@ -9,7 +9,7 @@ describe('buildScene - settler stance & component reads', () => {
     const attacker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 81, duration: 12, targetEntity: 2, targetTile: null },
-      AtomicClock: { elapsed: 6 },
+      AtomicClock: { pendingElapsed: 6 },
     });
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
     const idleTwin = entity(4, 1, 1, { Settler: { tribe: 0 } });
@@ -27,7 +27,7 @@ describe('buildScene - settler stance & component reads', () => {
     const archer = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 81, targetEntity: 2, targetTile: null },
-      AtomicClock: { elapsed: 3 },
+      AtomicClock: { pendingElapsed: 3 },
     });
     const target = entity(2, 6, 1, { Settler: { tribe: 0 } });
     const scene = buildScene(snapshotOf([archer, target]), FLAT_3x2);
@@ -70,7 +70,7 @@ describe('buildScene - settler stance & component reads', () => {
         entity(3, 2, 0, {
           Settler: { tribe: 0 },
           CurrentAtomic: { atomicId: 24 },
-          AtomicClock: { elapsed: 6 },
+          AtomicClock: { pendingElapsed: 6 },
           PathFollow: { index: 0 },
         }),
       ]),
@@ -181,12 +181,12 @@ describe('buildScene - settler stance & component reads', () => {
         entity(1, 2, 0, {
           Settler: { tribe: 0 },
           CurrentAtomic: { atomicId: 24 },
-          AtomicClock: { elapsed: 3 },
+          AtomicClock: { pendingElapsed: 3 },
         }),
         entity(2, 2, 0, {
           Settler: { tribe: 0 },
           CurrentAtomic: { atomicId: 23 },
-          AtomicClock: { elapsed: 3 },
+          AtomicClock: { pendingElapsed: 3 },
         }),
       ]),
       FLAT_3x2,

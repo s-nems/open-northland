@@ -15,7 +15,7 @@ import {
   Position,
   Projectile,
   Resting,
-  Settler,
+  SettlerNeeds,
   Sheltering,
   Stance,
 } from '../../src/components/index.js';
@@ -636,7 +636,7 @@ describe('defence mode', () => {
 
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
-    const s = sim.world.mut(farmer, Settler);
+    const s = sim.world.mut(farmer, SettlerNeeds);
     s.hunger = ONE;
     s.fatigue = ONE;
     s.piety = ONE;
@@ -654,13 +654,13 @@ describe('defence mode', () => {
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
     sim.world.add(farmer, Carrying, { goodType: RATION, amount: 1 });
-    sim.world.mut(farmer, Settler).hunger = ONE;
+    sim.world.mut(farmer, SettlerNeeds).hunger = ONE;
 
     // Eating takes it nowhere, so it is an answer a settler under cover may give - the alarm only bars
     // the walk to a larder.
-    stepUntil(sim, 200, () => sim.world.get(farmer, Settler).hunger < ONE);
+    stepUntil(sim, 200, () => sim.world.get(farmer, SettlerNeeds).hunger < ONE);
 
-    expect(sim.world.get(farmer, Settler).hunger).toBeLessThan(ONE);
+    expect(sim.world.get(farmer, SettlerNeeds).hunger).toBeLessThan(ONE);
     expect(insideOf(sim, farmer)).toBe(tower);
   });
 });

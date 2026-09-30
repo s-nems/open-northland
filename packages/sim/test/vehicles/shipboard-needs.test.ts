@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Health, Settler, seatPassenger, VehicleStock } from '../../src/components/index.js';
+import { Health, Settler, SettlerNeeds, seatPassenger, VehicleStock } from '../../src/components/index.js';
 import { ONE, ZERO } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
@@ -65,7 +65,7 @@ function setBars(
   e: Entity,
   bars: { hunger?: typeof ONE; fatigue?: typeof ONE; enjoyment?: typeof ONE },
 ): void {
-  const settler = s.world.mut(e, Settler);
+  const settler = s.world.mut(e, SettlerNeeds);
   settler.hunger = bars.hunger ?? ZERO;
   settler.fatigue = bars.fatigue ?? ZERO;
   settler.enjoyment = bars.enjoyment ?? ZERO;
@@ -84,7 +84,7 @@ describe('needs aboard a ship', () => {
     if (rider === undefined) throw new Error('no rider');
     setBars(s, rider, { hunger: ONE });
     s.run(VOYAGE_TICKS);
-    expect(s.world.get(rider, Settler).hunger).toBeLessThan(NEED_DRIVE_THRESHOLD);
+    expect(s.world.get(rider, SettlerNeeds).hunger).toBeLessThan(NEED_DRIVE_THRESHOLD);
     expect(foodAboard(s, ship)).toBeLessThan(5);
     expect(foodAboard(s, ship)).toBeGreaterThan(0);
   });
@@ -96,7 +96,7 @@ describe('needs aboard a ship', () => {
     if (rider === undefined) throw new Error('no rider');
     setBars(s, rider, { hunger: ONE });
     s.run(VOYAGE_TICKS);
-    expect(s.world.get(rider, Settler).hunger).toBe(ONE);
+    expect(s.world.get(rider, SettlerNeeds).hunger).toBe(ONE);
   });
 
   it('rests a tired passenger aboard', () => {
@@ -106,7 +106,7 @@ describe('needs aboard a ship', () => {
     if (rider === undefined) throw new Error('no rider');
     setBars(s, rider, { fatigue: ONE });
     s.run(VOYAGE_TICKS);
-    expect(s.world.get(rider, Settler).fatigue).toBeLessThan(ONE);
+    expect(s.world.get(rider, SettlerNeeds).fatigue).toBeLessThan(ONE);
   });
 
   it('has a lonely passenger chat with a fellow one, who listens', () => {
@@ -116,10 +116,10 @@ describe('needs aboard a ship', () => {
     if (talker === undefined || listener === undefined) throw new Error('no riders');
     setBars(s, talker, { enjoyment: ONE });
     setBars(s, listener, { enjoyment: NEED_DRIVE_THRESHOLD });
-    const before = s.world.get(listener, Settler).enjoyment;
+    const before = s.world.get(listener, SettlerNeeds).enjoyment;
     s.run(VOYAGE_TICKS);
-    expect(s.world.get(talker, Settler).enjoyment).toBeLessThan(ONE);
-    expect(s.world.get(listener, Settler).enjoyment).toBeLessThan(before);
+    expect(s.world.get(talker, SettlerNeeds).enjoyment).toBeLessThan(ONE);
+    expect(s.world.get(listener, SettlerNeeds).enjoyment).toBeLessThan(before);
   });
 
   it("keeps a cart rider's bars where they stood", () => {
@@ -130,8 +130,8 @@ describe('needs aboard a ship', () => {
     if (rider === undefined) throw new Error('no rider');
     setBars(s, rider, { hunger: ONE, fatigue: ONE });
     s.run(VOYAGE_TICKS);
-    expect(s.world.get(rider, Settler).hunger).toBe(ONE);
-    expect(s.world.get(rider, Settler).fatigue).toBe(ONE);
+    expect(s.world.get(rider, SettlerNeeds).hunger).toBe(ONE);
+    expect(s.world.get(rider, SettlerNeeds).fatigue).toBe(ONE);
     expect(foodAboard(s, cart)).toBe(5);
   });
 

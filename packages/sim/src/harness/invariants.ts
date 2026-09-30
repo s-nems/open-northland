@@ -10,6 +10,7 @@ import {
   PathRoute,
   Person,
   Settler,
+  SettlerNeeds,
   SettlerProgress,
   Stockpile,
   stockpileEntries,
@@ -48,8 +49,8 @@ const stockNonNegative: Invariant = (world) => {
 /** Every {@link CLAMPED_NEEDS} need stays within `[NEED_OVERFILL_FLOOR, ONE]`. */
 const needsInRange: Invariant = (world) => {
   const out: string[] = [];
-  for (const e of world.query(Settler)) {
-    const s = world.get(e, Settler);
+  for (const e of world.query(SettlerNeeds)) {
+    const s = world.get(e, SettlerNeeds);
     for (const need of CLAMPED_NEEDS) {
       const v = s[need];
       if (v < NEED_OVERFILL_FLOOR || v > ONE) out.push(`entity ${e}: ${need} out of range (${v})`);
@@ -110,6 +111,7 @@ const personhoodMatchesTribe: Invariant = (world, content) => {
 const SPLIT_PAIRS: readonly (readonly [Component<unknown>, Component<unknown>])[] = [
   [PathFollow, PathRoute],
   [Settler, SettlerProgress],
+  [Settler, SettlerNeeds],
   [CurrentAtomic, AtomicClock],
 ];
 

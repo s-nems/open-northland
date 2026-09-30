@@ -6,7 +6,7 @@ import {
   ownerOf,
   Person,
   Position,
-  Settler,
+  SettlerNeeds,
   UnderConstruction,
 } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
@@ -89,8 +89,8 @@ function bless(world: World, ctx: SystemContext, e: Entity, piety: boolean): voi
     if (raised > health.hitpoints) world.mut(e, Health).hitpoints = raised;
   }
   if (!piety || !carriesNeeds(world, ctx.content, e)) return;
-  if (world.get(e, Settler).piety < NEED_SATED_THRESHOLD) return;
-  const s = world.mut(e, Settler);
+  if (world.get(e, SettlerNeeds).piety < NEED_SATED_THRESHOLD) return;
+  const s = world.mut(e, SettlerNeeds);
   s.piety = applyNeedUnits(s.piety, TEMPLE_AURA_PIETY_UNITS);
 }
 

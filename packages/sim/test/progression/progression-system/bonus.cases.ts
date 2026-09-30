@@ -34,7 +34,7 @@ import {
   withFightExperience,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { ctxOf } from '../../fixtures/context.js';
+import { ctxOf, nextTickCtxOf } from '../../fixtures/context.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { settleStrokeCadence } from '../../fixtures/strokes.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
@@ -214,7 +214,7 @@ describe("strokes rule wiring - experience and a tool cut a gatherer's strokes p
         targetEntity: tree,
         targetTile: null,
       });
-      atomicSystem(sim.world, ctxOf(sim));
+      atomicSystem(sim.world, nextTickCtxOf(sim));
       strokes += 1;
       settleStrokeCadence(sim, e);
     }

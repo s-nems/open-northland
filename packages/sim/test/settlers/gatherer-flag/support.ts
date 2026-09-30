@@ -1,3 +1,4 @@
+import { nextTickCtxOf } from '../../fixtures/context.js';
 import { grassNodeMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
@@ -174,5 +175,5 @@ export function chopFully(sim: Simulation, settler: Entity, node: Entity): void 
     targetEntity: node,
     targetTile: null,
   });
-  atomicSystem(sim.world, ctxOf(sim));
+  atomicSystem(sim.world, nextTickCtxOf(sim));
 }

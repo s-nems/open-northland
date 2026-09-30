@@ -2,7 +2,7 @@ import { CurrentAtomic } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import type { Simulation } from '../../src/index.js';
 import { atomicSystem } from '../../src/systems/index.js';
-import { ctxOf } from './context.js';
+import { nextTickCtxOf } from './context.js';
 
 /** Ticks the executor may spend on one stroke's follow-through and rest before the helper gives up. */
 const CADENCE_GUARD_TICKS = 1000;
@@ -14,6 +14,6 @@ const CADENCE_GUARD_TICKS = 1000;
  */
 export function settleStrokeCadence(sim: Simulation, settler: Entity): void {
   for (let tick = 0; tick < CADENCE_GUARD_TICKS && sim.world.has(settler, CurrentAtomic); tick++) {
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
   }
 }

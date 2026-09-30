@@ -155,7 +155,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: Sp
     // resolved here; the choreography itself waits until the cull below has kept the worker.
     const indoorSettler = kind === 'settler' && isIndoorSettler(snapshot, components);
     const hiddenIndoors = indoorSettler && keepIndoorSettlers !== true;
-    const craft = hiddenIndoors ? craftAnchorOf(components, posByRef) : undefined;
+    const craft = hiddenIndoors ? craftAnchorOf(components, posByRef, snapshot.tick) : undefined;
     if (hiddenIndoors && craft === undefined && !isPortrait) return;
     // A driving vehicle draws part-way along its leg; everything else stands on its Position.
     const drawn = kind === 'vehicle' ? vehicleDrawTile(components, pos) : undefined;

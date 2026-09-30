@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AtomicClock,
   addCurrentAtomic,
+  atomicElapsed,
   CurrentAtomic,
   Felling,
   Position,
@@ -12,7 +13,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { anchorOnlyFootprint, atomicSystem, stampResourceFootprintData } from '../../src/systems/index.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { fixtureTick, nextTickCtxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
@@ -114,7 +115,7 @@ function cuesOverSwing(
   const fired: { tick: number; soundType: number }[] = [];
   for (let tick = 1; tick <= CHOP_LENGTH; tick++) {
     sim.events.clear();
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     for (const ev of sim.events.current()) {
       if (ev.kind === 'atomicSound') fired.push({ tick, soundType: ev.soundType });
     }
@@ -183,9 +184,13 @@ describe('atomicSystem - authored sound cues', () => {
     for (let tick = 0; tick < 60; tick++) {
       if (!sim.world.has(cutter, CurrentAtomic)) break;
       const atomic = sim.world.get(cutter, CurrentAtomic);
-      if (atomic.atomicId === CHOP_ATOMIC && sim.world.get(cutter, AtomicClock).elapsed === 0) chopClips += 1;
+      if (
+        atomic.atomicId === CHOP_ATOMIC &&
+        atomicElapsed(sim.world.get(cutter, AtomicClock), fixtureTick(sim)) === 0
+      )
+        chopClips += 1;
       sim.events.clear();
-      atomicSystem(sim.world, ctxOf(sim));
+      atomicSystem(sim.world, nextTickCtxOf(sim));
       cues += sim.events.current().filter((ev) => ev.kind === 'atomicSound').length;
     }
 

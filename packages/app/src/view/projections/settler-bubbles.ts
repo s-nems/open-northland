@@ -34,8 +34,8 @@ const BUBBLE_CARRIERS = listedWhere(
   (e) => isSettler(e) && (familyBubbleOf(e) ?? needBubbleOf(e)) !== undefined,
   'bubble carriers',
   {
-    values: ['Settler', 'ChildOrder'],
-    presence: ['Wedding'],
+    values: ['SettlerNeeds', 'ChildOrder'],
+    presence: ['Settler', 'Wedding'],
   },
 );
 

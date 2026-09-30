@@ -5,7 +5,7 @@ import {
   Carrying,
   Health,
   Resource,
-  Settler,
+  SettlerNeeds,
   Stockpile,
 } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
@@ -17,7 +17,8 @@ import {
 } from '../../../src/systems/index.js';
 import { shrinkCarry } from '../../../src/systems/settlers/atomics/effects/goods/carry.js';
 import { testContent } from '../../fixtures/content.js';
-import { ctxOf, PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
+import { nextTickCtxOf } from '../../fixtures/context.js';
+import { PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
 
 /** The eat slot, its fixture clip's length, and the one `event 3 2 +4000` meal that clip pays out. */
 const EAT_ATOMIC = 10;
@@ -44,7 +45,7 @@ describe('atomicSystem - effects', () => {
     sim.world.add(resource, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
     stampResourceFootprintData(sim.world, resource, anchorOnlyFootprint());
     startAtomic(sim, e, { kind: 'harvest', resource, goodType: WOOD }, 1);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 1 });
     expect(sim.world.get(resource, Resource).remaining).toBe(4); // node lost exactly what was taken
   });
@@ -56,7 +57,7 @@ describe('atomicSystem - effects', () => {
     sim.world.add(resource, Resource, { goodType: WOOD, remaining: 0, harvestAtomic: 24 });
     stampResourceFootprintData(sim.world, resource, anchorOnlyFootprint());
     startAtomic(sim, e, { kind: 'harvest', resource, goodType: WOOD }, 1);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(resource, Resource).remaining).toBe(0); // stays at floor, no negative
   });
 
@@ -65,7 +66,7 @@ describe('atomicSystem - effects', () => {
     const e = sim.world.create();
     const resource = sim.world.create(); // never given a Resource component (felled/destroyed already)
     startAtomic(sim, e, { kind: 'harvest', resource, goodType: WOOD }, 1);
-    atomicSystem(sim.world, ctxOf(sim)); // must not throw on the missing node
+    atomicSystem(sim.world, nextTickCtxOf(sim)); // must not throw on the missing node
     // A vanished node means the swing hit nothing - no unit is conjured onto the back (a chop that
     // landed after another collector already felled the tree carries nothing).
     expect(sim.world.has(e, Carrying)).toBe(false);
@@ -76,7 +77,7 @@ describe('atomicSystem - effects', () => {
     const e = sim.world.create();
     sim.world.add(e, Carrying, { goodType: WOOD, amount: 2 });
     startAtomic(sim, e, { kind: 'pickup', goodType: WOOD, amount: 3, from: null }, 1);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 5 });
   });
 
@@ -86,7 +87,7 @@ describe('atomicSystem - effects', () => {
     sim.world.add(e, Carrying, { goodType: WOOD, amount: 2 });
     startAtomic(sim, e, { kind: 'pickup', goodType: PLANK, amount: 1, from: null }, 1);
     // Overwriting the load would destroy the carried wood - that's a planner bug, so it throws.
-    expect(() => atomicSystem(sim.world, ctxOf(sim))).toThrow(/already carries good/);
+    expect(() => atomicSystem(sim.world, nextTickCtxOf(sim))).toThrow(/already carries good/);
   });
 
   it('pileup deposits the carried load into the store stockpile and unloads the settler', () => {
@@ -97,7 +98,7 @@ describe('atomicSystem - effects', () => {
     sim.world.add(store, Building, { buildingType: SAWMILL, tribe: 1, built: ONE, level: 0 });
     sim.world.add(store, Stockpile, { amounts: new Map([[WOOD, 0]]) });
     startAtomic(sim, settler, { kind: 'pileup', store }, 1);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(store, Stockpile).amounts.get(WOOD)).toBe(5);
     expect(sim.world.has(settler, Carrying)).toBe(false); // fully unloaded
   });
@@ -111,7 +112,7 @@ describe('atomicSystem - effects', () => {
     sim.world.add(store, Building, { buildingType: SAWMILL, tribe: 1, built: ONE, level: 0 });
     sim.world.add(store, Stockpile, { amounts: new Map([[WOOD, 18]]) });
     startAtomic(sim, settler, { kind: 'pileup', store }, 1);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(store, Stockpile).amounts.get(WOOD)).toBe(20); // capped
     expect(sim.world.get(settler, Carrying).amount).toBe(3); // 3 still carried, not dropped
   });
@@ -126,7 +127,7 @@ describe('atomicSystem - effects', () => {
     sim.world.add(store, Building, { buildingType: SAWMILL, tribe: 1, built: ONE, level: 0 });
     sim.world.add(store, Stockpile, { amounts: new Map() });
     startAtomic(sim, settler, { kind: 'pileup', store }, 1);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(store, Stockpile).amounts.get(0)).toBeUndefined();
     expect(sim.world.get(settler, Carrying).amount).toBe(5); // nothing moved
   });
@@ -143,8 +144,8 @@ describe('atomicSystem - effects', () => {
       enjoyment: fx.fromInt(0),
     });
     startAtomic(sim, settler, { kind: 'eat', goodType: WOOD, from: null }, EAT_CLIP_TICKS, EAT_ATOMIC);
-    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(ONE, MEAL));
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
+    expect(sim.world.get(settler, SettlerNeeds).hunger).toBe(fx.sub(ONE, MEAL));
   });
 
   it('attack drains the swing damage from the target hitpoints', () => {
@@ -154,7 +155,7 @@ describe('atomicSystem - effects', () => {
     sim.world.add(target, Health, { hitpoints: 1000, max: 1000 });
     // 35 = the weapon's damage column for the target's armor material, pre-resolved on the swing.
     startAtomic(sim, attacker, { kind: 'attack', target, damage: 35 }, 1, 81);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(target, Health).hitpoints).toBe(965); // 1000 - 35
     expect(sim.world.get(target, Health).max).toBe(1000); // pool ceiling untouched
   });
@@ -165,7 +166,7 @@ describe('atomicSystem - effects', () => {
     const target = sim.world.create();
     sim.world.add(target, Health, { hitpoints: 20, max: 1000 });
     startAtomic(sim, attacker, { kind: 'attack', target, damage: 100 }, 1, 81); // overkill
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(target, Health).hitpoints).toBe(0); // floored at 0, not negative
   });
 
@@ -174,7 +175,7 @@ describe('atomicSystem - effects', () => {
     const attacker = sim.world.create();
     const target = sim.world.create(); // never given a Health component
     startAtomic(sim, attacker, { kind: 'attack', target, damage: 50 }, 1, 81);
-    expect(() => atomicSystem(sim.world, ctxOf(sim))).not.toThrow(); // missing target must not throw
+    expect(() => atomicSystem(sim.world, nextTickCtxOf(sim))).not.toThrow(); // missing target must not throw
     expect(sim.world.has(target, Health)).toBe(false);
   });
 
@@ -184,7 +185,7 @@ describe('atomicSystem - effects', () => {
     const target = sim.world.create();
     sim.world.add(target, Health, { hitpoints: 500, max: 500 });
     startAtomic(sim, attacker, { kind: 'attack', target, damage: 0 }, 1, 81); // a material column the weapon does no harm to
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(target, Health).hitpoints).toBe(500); // no harm
   });
 });

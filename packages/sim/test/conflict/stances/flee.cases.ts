@@ -7,7 +7,7 @@ import {
   PathFollow,
   PathRoute,
   Position,
-  Settler,
+  SettlerNeeds,
   WalkFacing,
 } from '../../../src/components/index.js';
 import { fx, ONE } from '../../../src/core/fixed.js';
@@ -24,6 +24,7 @@ import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { hexNodeDistance } from '../../../src/systems/spatial/metric.js';
 import { entityNode } from '../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../fixtures/content.js';
+import { nextTickCtxOf } from '../../fixtures/context.js';
 import {
   cell,
   combatant,
@@ -81,7 +82,7 @@ describe('FLEE - civilians run from danger', () => {
     combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE); // a lasting threat in sight
     combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
     expect(sim.world.has(civ, Fleeing)).toBe(true); // fleeing at first
-    sim.world.mut(civ, Settler).hunger = ONE; // pin hunger at ONE (collapse)
+    sim.world.mut(civ, SettlerNeeds).hunger = ONE; // pin hunger at ONE (collapse)
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(false); // yielded to the need despite the threat
   });
@@ -181,7 +182,7 @@ describe('FLEE - civilians run from danger', () => {
     sim.world.destroy(threat); // threat gone → the cool-down begins
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(true); // still cooling down (no collapse yet)
-    sim.world.mut(civ, Settler).hunger = ONE; // collapse mid-cool-down
+    sim.world.mut(civ, SettlerNeeds).hunger = ONE; // collapse mid-cool-down
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(false); // shed at once, not after FLEE_COOLDOWN_TICKS
   });
@@ -229,21 +230,21 @@ describe('FLEE pace - a Fleeing unit moves at its normal pace (no sprint exists)
     const walker = sim.world.create();
     sim.world.add(walker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(walker, PathRoute, { waypoints: [{ ...stop }] });
-    sim.world.add(walker, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(walker, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
     const runner = sim.world.create();
     sim.world.add(runner, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(runner, PathRoute, { waypoints: [{ ...stop }] });
-    sim.world.add(runner, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(runner, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
     sim.world.add(runner, Fleeing, { repathAt: 0, calmUntil: null });
 
     // Fleeing grants no speed boost: both read the same step cost and advance step-for-step alike.
-    movementSystem(sim.world, ctxOf(sim));
+    movementSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(runner, PathFollow).legCost).toBe(sim.world.get(walker, PathFollow).legCost);
     expect(sim.world.get(runner, Position).x).toBe(sim.world.get(walker, Position).x);
     // Both turn from the default SW facing before translating. The last turn tick starts the step.
-    movementSystem(sim.world, ctxOf(sim));
+    movementSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(runner, Position).x).toBe(sim.world.get(walker, Position).x);
-    movementSystem(sim.world, ctxOf(sim));
+    movementSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(runner, Position).x).toBe(sim.world.get(walker, Position).x);
     expect(sim.world.get(runner, Position).x).toBeGreaterThan(fx.fromInt(0));
   });

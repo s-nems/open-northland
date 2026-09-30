@@ -7,7 +7,7 @@ import {
   MoveGoal,
   Position,
   Resource,
-  Settler,
+  SettlerNeeds,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -25,6 +25,7 @@ import {
   stampResourceFootprintData,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { fixtureTick, nextTickCtxOf } from '../fixtures/context.js';
 import { cellOf, ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /**
@@ -174,13 +175,13 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
       targetTile: null,
     });
 
-    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
 
     const b = sim.world.get(bush, BerryBush);
     expect(b.stage).toBe('bare'); // one serving eaten
-    expect(b.nextStageAtTick).toBe(sim.tick + BERRY_STAGE_TICKS); // first regrow step (bloom) scheduled
+    expect(b.nextStageAtTick).toBe(fixtureTick(sim) + BERRY_STAGE_TICKS); // first regrow step (bloom) scheduled
     // One berry is a partial meal, worth the same as a stored one (observed original).
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
+    expect(sim.world.get(settler, SettlerNeeds).hunger).toBe(fx.sub(HUNGRY, MEAL));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
     expect(sim.events.current().some((e) => e.kind === 'berryForaged')).toBe(true);
   });
@@ -212,11 +213,11 @@ describe('forage drive - closing the rise→forage→relief loop through the rea
     const bush = bushAt(sim, 1, 0); // one tile over
 
     let wentBare = false;
-    let peakHunger = sim.world.get(settler, Settler).hunger;
+    let peakHunger = sim.world.get(settler, SettlerNeeds).hunger;
     let troughHunger = peakHunger;
     for (let i = 0; i < 400; i++) {
       sim.step();
-      const h = sim.world.get(settler, Settler).hunger;
+      const h = sim.world.get(settler, SettlerNeeds).hunger;
       if (h > peakHunger) peakHunger = h;
       if (h < troughHunger) troughHunger = h;
       if (sim.world.get(bush, BerryBush).stage !== 'ripe') wentBare = true;

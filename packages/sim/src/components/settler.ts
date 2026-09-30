@@ -15,6 +15,9 @@ export const Settler = defineComponent<{
   readonly tribe: number;
   /** Written only through {@link setSettlerJob}. */
   readonly jobType: number | null;
+}>('Settler', 'settlers');
+
+export const SettlerNeeds = defineComponent<{
   /** 0..ONE; rises over time. */
   hunger: Fixed;
   /** 0..ONE; rises over time, cleared by the `sleep` atomic (id 8, `tribetypes` `setatomic <job> 8`). */
@@ -30,7 +33,11 @@ export const Settler = defineComponent<{
    * by a building (the original's channel 3, leisure/social).
    */
   enjoyment: Fixed;
-}>('Settler', 'settlers');
+}>('SettlerNeeds', 'settlers');
+
+export type SettlerNeedsState = NonNullable<(typeof SettlerNeeds)['__value']>;
+export type SettlerNeedsView = DeepReadonly<SettlerNeedsState>;
+export type SettlerInitialState = SettlerIdentity & SettlerNeedsState;
 
 export type SettlerState = NonNullable<(typeof Settler)['__value']>;
 
@@ -38,8 +45,8 @@ export type SettlerState = NonNullable<(typeof Settler)['__value']>;
 export type SettlerView = DeepReadonly<SettlerState>;
 
 /**
- * What a settler has learned, carried by every {@link Settler}. Kept apart from the needs the drain
- * rewrites every tick, so those writes do not re-fold the experience map into the sync digest.
+ * What a settler has learned, carried by every {@link Settler}; bar writes leave its experience map
+ * untouched in the sync digest.
  */
 export const SettlerProgress = defineComponent<{
   /** specialization id -> experience points (humanjobexperiencetypes). */
@@ -66,21 +73,32 @@ export const GivenName = defineComponent<{ name: string }>('GivenName', 'settler
  *  removed, so `query(Person, …)` is a human-only system's filter. */
 export const Person = defineComponent<{ readonly person: true }>('Person', 'settlers');
 
+/** Mint separate identity and need payloads so a bar write leaves the identity revision unchanged. */
+export function addSettler(world: World, entity: Entity, state: SettlerInitialState): void {
+  world.add(entity, Settler, { tribe: state.tribe, jobType: state.jobType });
+  world.add(entity, SettlerNeeds, {
+    hunger: state.hunger,
+    fatigue: state.fatigue,
+    piety: state.piety,
+    enjoyment: state.enjoyment,
+  });
+}
+
 /** Add a person: a {@link Settler} carrying the {@link Person} marker. The only path that mints one. */
 export function addPerson(
   world: World,
   entity: Entity,
-  state: SettlerState,
+  state: SettlerInitialState,
   progress: SettlerProgressState = { experience: new Map() },
 ): void {
-  world.add(entity, Settler, state);
+  addSettler(world, entity, state);
   world.add(entity, SettlerProgress, progress);
   world.add(entity, Person, { person: true });
 }
 
 /** Add a creature of an animal `tribe`: a {@link Settler} with no {@link Person} and no trade. */
 export function addWildlife(world: World, entity: Entity, tribe: number): void {
-  world.add(entity, Settler, {
+  addSettler(world, entity, {
     tribe,
     jobType: null,
     hunger: fx.fromInt(0),
@@ -110,9 +128,9 @@ export function setSettlerJob(world: World, entity: Entity, jobType: number | nu
 
 /**
  * Per world, the settlers whose trade, experience or learned lists were written in place since the
- * technology sweep last drained the log. The needs drain writes every Settler each tick, so its change
- * channels cannot single out a trade change; the write paths report here instead. Derived
- * bookkeeping, never hashed or saved; a world whose log was never opened records nothing.
+ * technology sweep last drained the log. The write paths report trade and progress changes together,
+ * independently of their component channels. Derived bookkeeping, never hashed or saved; a world
+ * whose log was never opened records nothing.
  */
 const progressLogs = new WeakMap<World, Set<Entity>>();
 
@@ -169,11 +187,15 @@ export const CurrentAtomic = defineComponent<{
 
 export type CurrentAtomicState = NonNullable<(typeof CurrentAtomic)['__value']>;
 
-/**
- * Whole ticks the {@link CurrentAtomic} has executed; completion is the exact `elapsed >= duration`. Kept
- * apart so the per-tick count does not re-fold the atomic's effect into the sync digest.
- */
-export const AtomicClock = defineComponent<{ elapsed: number }>('AtomicClock', 'settlers');
+/** The executor stamps the first advancing tick. Pending clocks can be created before or after that
+ * tick's executor without coupling callers to the system schedule. */
+export type AtomicClockState = { startedAt: number } | { pendingElapsed: number };
+export const AtomicClock = defineComponent<AtomicClockState>('AtomicClock', 'settlers');
+
+/** Whole executed ticks at a settled snapshot or during the executor's current tick. */
+export function atomicElapsed(clock: Readonly<AtomicClockState>, tick: number): number {
+  return 'startedAt' in clock ? tick - clock.startedAt : clock.pendingElapsed;
+}
 
 /** Start `atomic` on `settler` with its clock at `elapsed` ticks, replacing any it was running. */
 export function addCurrentAtomic(
@@ -183,7 +205,7 @@ export function addCurrentAtomic(
   elapsed = 0,
 ): void {
   world.add(settler, CurrentAtomic, atomic);
-  world.add(settler, AtomicClock, { elapsed });
+  world.add(settler, AtomicClock, { pendingElapsed: elapsed });
 }
 
 /** End the atomic `settler` is running, if any, with its clock. */

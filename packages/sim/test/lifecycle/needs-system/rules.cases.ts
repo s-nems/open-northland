@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../../src/components/index.js';
-import { Settler, setNeedsEnabled } from '../../../src/components/index.js';
+import { SettlerNeeds, setNeedsEnabled } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
 import { chargeMilitaryPiety, NEED_DRAIN_UNITS_PER_TICK, needBar } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -13,7 +13,7 @@ describe('needsSystem - the setNeedsEnabled world rule (the dev/admin toggle)', 
 
     sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     for (let i = 0; i < 50; i++) sim.step();
-    const frozen = sim.world.get(e, Settler);
+    const frozen = sim.world.get(e, SettlerNeeds);
     expect(frozen.hunger).toBe(fx.fromInt(0));
     expect(frozen.fatigue).toBe(fx.fromInt(0));
     expect(frozen.piety).toBe(fx.fromInt(0));
@@ -21,7 +21,7 @@ describe('needsSystem - the setNeedsEnabled world rule (the dev/admin toggle)', 
 
     sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: true });
     sim.step(); // the toggle applies (commandSystem) before needsSystem the same tick
-    expect(sim.world.get(e, Settler).hunger).toBe(needBar(NEED_DRAIN_UNITS_PER_TICK));
+    expect(sim.world.get(e, SettlerNeeds).hunger).toBe(needBar(NEED_DRAIN_UNITS_PER_TICK));
     expect(sim.checkInvariants()).toEqual([]);
   });
 
@@ -33,11 +33,11 @@ describe('needsSystem - the setNeedsEnabled world rule (the dev/admin toggle)', 
     const FORGE_PIETY_UNITS = -1500;
     setNeedsEnabled(sim.world, false);
     chargeMilitaryPiety(sim.world, e, FORGE_PIETY_UNITS);
-    expect(sim.world.get(e, Settler).piety).toBe(fx.fromInt(0));
+    expect(sim.world.get(e, SettlerNeeds).piety).toBe(fx.fromInt(0));
 
     setNeedsEnabled(sim.world, true);
     chargeMilitaryPiety(sim.world, e, FORGE_PIETY_UNITS);
-    expect(sim.world.get(e, Settler).piety).toBe(needBar(-FORGE_PIETY_UNITS));
+    expect(sim.world.get(e, SettlerNeeds).piety).toBe(needBar(-FORGE_PIETY_UNITS));
   });
 
   it('reuses the one WorldRules singleton across repeated toggles', () => {

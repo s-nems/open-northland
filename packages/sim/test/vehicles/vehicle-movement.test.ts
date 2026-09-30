@@ -590,7 +590,7 @@ describe('moveVehicle', () => {
     const twin = run().s;
     twin.run(440);
     expect(twin.hashState()).toBe(s.hashState());
-    // Chat approaches finish their legal step before talking; the resulting idle state is hashed too.
-    expect(s.hashState()).toBe('7a5e3f70');
+    // Includes detached settler needs and tick-derived clocks after the chat approaches finish.
+    expect(s.hashState()).toBe('87b9d156');
   });
 });

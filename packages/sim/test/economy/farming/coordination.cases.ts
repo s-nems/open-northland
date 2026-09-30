@@ -194,7 +194,7 @@ it('keeps a carried sheaf through berry foraging and deposits it before harvesti
   sim.world.add(bush, Position, { x: fx.fromInt(2), y: fx.fromInt(4) });
   sim.world.add(bush, components.BerryBush, { stage: 'ripe', nextStageAtTick: 0 });
   sim.world.add(farmer, Carrying, { goodType: WHEAT, amount: 1 });
-  sim.world.mut(farmer, components.Settler).hunger = fx.fromInt(1);
+  sim.world.mut(farmer, components.SettlerNeeds).hunger = fx.fromInt(1);
 
   plannerSystem(sim.world, ctxOf(sim));
   expect(sim.world.get(farmer, components.CurrentAtomic).effect).toEqual({ kind: 'forage', bush });

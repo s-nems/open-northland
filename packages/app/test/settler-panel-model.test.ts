@@ -323,7 +323,8 @@ describe('the settler panel model', () => {
           id: SETTLER,
           components: {
             Owner: { player: OTHER_SEAT },
-            Settler: { tribe: 1, jobType: JOB_COLLECTOR, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+            SettlerNeeds: { hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
             Health: { hitpoints: 10, max: 10 },
             JobAssignment: { workplace: WORKSHOP },
             Residence: { home: HOME },

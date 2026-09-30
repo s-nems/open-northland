@@ -275,7 +275,7 @@ describe('restoreSimulation rejection', () => {
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: 0, x: 4, y: 4, tribe: VIKING, owner: P0 });
     sim.run(4);
     const doc = docOf(sim);
-    const settlers = doc.sections.find((s) => s.id === 'component' && s.name === 'Settler');
+    const settlers = doc.sections.find((s) => s.id === 'component' && s.name === 'SettlerNeeds');
     if (settlers === undefined) throw new Error('exported save must hold the settler store');
     const entry = (settlers.entries as Array<[number, Record<string, unknown>]>)[0];
     if (entry === undefined) throw new Error('exported save must hold a settler');

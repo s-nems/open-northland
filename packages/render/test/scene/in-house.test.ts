@@ -2,6 +2,7 @@ import type { GfxInHouseProgram } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { inHouseOverlays, inHousePose } from '../../src/data/scene/in-house.js';
 import { collectSpriteScene } from '../../src/data/scene/index.js';
+import { readAtomicElapsed } from '../../src/data/scene/snapshot-readers/unit-readers.js';
 import { ONE, tileToScreen } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
@@ -95,7 +96,7 @@ function bakingSnapshot(elapsed = 30, duration = 100) {
       effect: { kind: 'produce', recipeOutput: BREAD },
       targetEntity: 10,
     },
-    AtomicClock: { elapsed },
+    AtomicClock: { pendingElapsed: elapsed },
   });
   return snapshotOf([bakery, baker]);
 }
@@ -104,6 +105,47 @@ const lookup = (tribe: number, job: number, action: number): GfxInHouseProgram |
   tribe === VIKING && job === BAKER && action === MAKE_BREAD ? BAKER_PROGRAM : undefined;
 
 describe('a choreographed worker in the sprite scene', () => {
+  it('advances a started craft clock with snapshot ticks while its component objects stay unchanged', () => {
+    const bakery = entity(10, 4, 4, { Building: { buildingType: 1, tribe: VIKING, built: ONE, level: 0 } });
+    const baker = entity(1, 6, 6, {
+      Settler: { tribe: VIKING, jobType: BAKER },
+      Resting: { at: 10 },
+      CurrentAtomic: {
+        atomicId: MAKE_BREAD,
+        duration: 100,
+        effect: { kind: 'produce', recipeOutput: BREAD },
+        targetEntity: 10,
+      },
+      AtomicClock: { startedAt: 12 },
+    });
+    const entities = [bakery, baker];
+    const house = tileToScreen(4, 4);
+    for (const [tick, elapsed, dx, dy] of [
+      [17, 5, 60, 33],
+      [18, 6, 57, 33.8],
+    ] as const) {
+      const scene = collectSpriteScene(snapshotOf(entities, tick), { inHousePrograms: lookup });
+      const drawn = scene.items.find((i) => i.ref === baker.id);
+      expect(readAtomicElapsed(baker.components, tick)).toBe(elapsed);
+      expect(drawn).toMatchObject({ inHouse: true, state: 'moving', carryGood: FLOUR });
+      expect(drawn?.x).toBeCloseTo(house.x + dx);
+      expect(drawn?.y).toBeCloseTo(house.y + dy);
+    }
+    for (const [tick, elapsed, progress] of [
+      [42, 30, 0.25],
+      [43, 31, 0.275],
+    ] as const) {
+      const scene = collectSpriteScene(snapshotOf(entities, tick), { inHousePrograms: lookup });
+      const drawn = scene.items.find((i) => i.ref === baker.id);
+      expect(readAtomicElapsed(baker.components, tick)).toBe(elapsed);
+      expect(drawn).toMatchObject({ inHouse: true, state: 'acting' });
+      expect(drawn?.craftClip).toEqual({ action: MAKE_BREAD, subId: 1, progress });
+      expect(drawn?.x).toBe(house.x + 15);
+      expect(drawn?.y).toBe(house.y + 45);
+    }
+    expect(baker.components.AtomicClock).toEqual({ startedAt: 12 });
+  });
+
   it('draws the worker against its workplace’s anchor, offset by the program', () => {
     const scene = collectSpriteScene(bakingSnapshot(), { inHousePrograms: lookup });
     const drawn = scene.items.find((i) => i.kind === 'settler');

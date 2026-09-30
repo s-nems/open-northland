@@ -1,5 +1,4 @@
 import { MoveGoal, ownerOf, Position, type SettlerIdentity, Sheltering } from '../../../components/index.js';
-import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, positionOfNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -28,7 +27,7 @@ export function planShelter(
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
-  settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed },
+  settler: SettlerIdentity,
   here: NodeId,
   from: HalfCellNode,
   limit: NavigationLimit | null,
@@ -98,7 +97,7 @@ function walkInto(
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
-  settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed },
+  settler: SettlerIdentity,
   shelter: Entity,
   here: NodeId,
   limit: NavigationLimit | null,

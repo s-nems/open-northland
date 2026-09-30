@@ -25,7 +25,7 @@ import {
   strokesPerUnit,
 } from '../../src/systems/progression/index.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { nextTickCtxOf } from '../fixtures/context.js';
 import { settleStrokeCadence } from '../fixtures/strokes.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -93,7 +93,7 @@ function harvestOnce(sim: Simulation, settler: Entity, node: Entity, good: numbe
     targetEntity: node,
     targetTile: null,
   });
-  atomicSystem(sim.world, ctxOf(sim));
+  atomicSystem(sim.world, nextTickCtxOf(sim));
 }
 
 /** Chip one unit off `deposit`: the fixture MINER's pairing has no track, so a unit costs the record's

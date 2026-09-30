@@ -11,7 +11,7 @@ import {
   PathRequest,
   PathRoute,
   Position,
-  Settler,
+  SettlerNeeds,
   WalkFacing,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -185,13 +185,13 @@ describe('movementSystem - worn boots', () => {
     const e = settlerAt(sim, { jobType: 1, position: { x: fx.fromInt(0), y: fx.fromInt(0) } });
     sim.world.add(e, WalkFacing, { direction: 0, target: 0 });
     sim.world.add(e, PathRoute, { waypoints: WALK.slice(0, 2).map((w) => waypointAt(sim, w.x, w.y)) });
-    sim.world.add(e, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathFollow, { index: 1, legElapsed: 0, legCost: 0 });
     wearBoots(sim, e, SHOES, fx.div(fx.fromInt(SHOE_POINTS - 1), fx.fromInt(SHOE_POINTS)));
     sim.step();
     expect(sim.world.get(e, Equipment).boots).toBeNull();
     expect(sim.world.get(e, PathFollow).legCost).toBe(LAND_STEP_TICKS_SHOD);
     expect(ticksToArrive(sim, e)).toBe(LAND_STEP_TICKS_SHOD - 1);
-    expect(sim.world.get(e, Settler).hunger).toBe(
+    expect(sim.world.get(e, SettlerNeeds).hunger).toBe(
       fx.add(fx.mul(needBar(NEED_DRAIN_UNITS_PER_TICK), fx.fromInt(LAND_STEP_TICKS_SHOD)), needBar(2)),
     );
   });
@@ -249,14 +249,14 @@ describe('movementSystem - worn boots', () => {
       const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
       const e = settlerAt(sim, { jobType: 1, position: { x: fx.fromInt(0), y: fx.fromInt(0) } });
       sim.world.add(e, PathRoute, { waypoints: WALK.map((w) => waypointAt(sim, w.x, w.y)) });
-      sim.world.add(e, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
+      sim.world.add(e, PathFollow, { index: 1, legElapsed: 0, legCost: 0 });
       if (carrying) sim.world.add(e, Carrying, { goodType: 1, amount: 1 });
       if (shod) wearBoots(sim, e, SHOES);
       if (flags !== 0) sim.world.add(e, MissionBehaviour, { flags });
       const ticks = ticksToArrive(sim, e);
       // Net of the bar's own rise over the walk (one truncated quantum a tick), which every walker pays alike.
       return fx.sub(
-        sim.world.get(e, Settler).hunger,
+        sim.world.get(e, SettlerNeeds).hunger,
         fx.mul(needBar(NEED_DRAIN_UNITS_PER_TICK), fx.fromInt(ticks)),
       );
     };

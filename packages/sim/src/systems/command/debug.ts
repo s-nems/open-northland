@@ -1,4 +1,4 @@
-import { Building, Health, Settler, Stockpile, Vehicle } from '../../components/index.js';
+import { Building, Health, Settler, SettlerNeeds, Stockpile, Vehicle } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
@@ -23,7 +23,7 @@ export function debugKill(world: World, command: Extract<Command, { kind: 'debug
 /** Set the needs the panel names to whole-percent levels (0 sated … 100 maxed). A non-settler target is a
  *  no-op. */
 export function debugSetNeeds(world: World, command: Extract<Command, { kind: 'debugSetNeeds' }>): void {
-  const settler = world.tryMut(command.target, Settler);
+  const settler = world.tryMut(command.target, SettlerNeeds);
   if (settler === undefined) return;
   if (command.hunger !== undefined) settler.hunger = needFixedFromPct(command.hunger);
   if (command.fatigue !== undefined) settler.fatigue = needFixedFromPct(command.fatigue);

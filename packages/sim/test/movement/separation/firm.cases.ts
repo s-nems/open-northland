@@ -42,7 +42,7 @@ describe('unit body collision - firm routing and resolution', () => {
     s.world.add(runner, PathRoute, {
       waypoints: [8, 9, 10].map((hx) => ({ ...positionOfNode(hx, 6), node: terrain.nodeAt(hx, 6) })),
     });
-    s.world.add(runner, PathFollow, { index: 1, legCost: 8, legTicks: 6, departureCharged: true });
+    s.world.add(runner, PathFollow, { index: 1, legCost: 8, legElapsed: 6, departureCharged: true });
     settlerAt(s, 9, 6, SOLDIER, P0);
     s.world.add(runner, PathRequest, { start: blocked, goal, failed: false });
 

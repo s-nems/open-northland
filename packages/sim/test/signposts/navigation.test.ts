@@ -16,6 +16,7 @@ import {
   Resource,
   ResourceFootprint,
   Settler,
+  SettlerNeeds,
   SettlerProgress,
   stampOwner,
   WALK_RANGE_NODES,
@@ -533,7 +534,7 @@ describe('navigationLimitFor, the per-settler memo', () => {
     addPerson(
       sim.world,
       u,
-      { ...sim.world.get(u, Settler), jobType: SOLDIER },
+      { ...sim.world.get(u, Settler), ...sim.world.get(u, SettlerNeeds), jobType: SOLDIER },
       {
         learned: { job: [...(progress.learned?.job ?? [])], good: [...(progress.learned?.good ?? [])] },
         experience: new Map(progress.experience),

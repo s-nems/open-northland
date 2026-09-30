@@ -12,7 +12,7 @@ import {
   MoveGoal,
   NeedOrder,
   Position,
-  Settler,
+  SettlerNeeds,
   Stockpile,
   WALK_DIRECTION,
   WalkFacing,
@@ -99,7 +99,7 @@ describe('drink drive - hunger and fatigue draughts', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(settler, MoveGoal)).toBe(false);
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(PRESSING, ONE));
+    expect(sim.world.get(settler, SettlerNeeds).hunger).toBe(fx.sub(PRESSING, ONE));
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_FOOD, degreeOfUse: HALF });
   });
 
@@ -118,7 +118,7 @@ describe('drink drive - hunger and fatigue draughts', () => {
     carryDraughts(sim, settler, [fresh(MEAD)]);
 
     plannerSystem(sim.world, ctxOf(sim));
-    const s = sim.world.get(settler, Settler);
+    const s = sim.world.get(settler, SettlerNeeds);
     expect(s.hunger).toBe(fx.sub(PRESSING, HALF));
     expect(s.fatigue).toBe(fx.fromInt(0));
   });
@@ -130,7 +130,7 @@ describe('drink drive - hunger and fatigue draughts', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(settler, MoveGoal)).toBe(false);
-    expect(sim.world.get(settler, Settler).fatigue).toBe(fx.sub(PRESSING, ONE));
+    expect(sim.world.get(settler, SettlerNeeds).fatigue).toBe(fx.sub(PRESSING, ONE));
   });
 
   it('answers hunger and fatigue in the same pass, each with its own bottle', () => {
@@ -139,7 +139,7 @@ describe('drink drive - hunger and fatigue draughts', () => {
     carryDraughts(sim, settler, [fresh(POTION_STAMINA), fresh(POTION_FOOD)]);
 
     plannerSystem(sim.world, ctxOf(sim));
-    const s = sim.world.get(settler, Settler);
+    const s = sim.world.get(settler, SettlerNeeds);
     expect(s.hunger).toBe(fx.sub(PRESSING, ONE));
     expect(s.fatigue).toBe(fx.sub(PRESSING, ONE));
   });
@@ -173,7 +173,7 @@ describe('drink drive - hunger and fatigue draughts', () => {
     carryDraughts(sim, settler, [fresh(POTION_FOOD)]);
 
     plannerSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(PRESSING, ONE));
+    expect(sim.world.get(settler, SettlerNeeds).hunger).toBe(fx.sub(PRESSING, ONE));
     expect(sim.world.get(settler, Carrying).amount).toBe(1);
   });
 
@@ -196,7 +196,7 @@ describe('drink drive - hunger and fatigue draughts', () => {
 
       plannerSystem(sim.world, ctxOf(sim));
       expect(sim.world.get(settler, Equipment).misc[0]).toEqual(fresh(POTION_FOOD));
-      expect(sim.world.get(settler, Settler).hunger).toBe(PRESSING);
+      expect(sim.world.get(settler, SettlerNeeds).hunger).toBe(PRESSING);
       if (need === 'hunger') expect(sim.world.has(settler, MoveGoal)).toBe(true);
     }
   });
@@ -214,7 +214,7 @@ describe('drink drive - hunger and fatigue draughts', () => {
       sim.step();
     }
     expect(sim.world.get(settler, Equipment).misc[0]?.degreeOfUse).toBe(HALF);
-    expect(sim.world.get(settler, Settler).fatigue).toBeLessThan(NEED_DRIVE_THRESHOLD);
+    expect(sim.world.get(settler, SettlerNeeds).fatigue).toBeLessThan(NEED_DRIVE_THRESHOLD);
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
     expect(sim.world.has(settler, MoveGoal)).toBe(true);
   });
@@ -312,7 +312,7 @@ describe('healing draught - below half of max hitpoints', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const half = HP_MAX / 2;
     const settler = woundedBearer(sim, half, [fresh(POTION_HEAL)]);
-    sim.world.mut(settler, Settler).hunger = ONE; // starving: this tick bites
+    sim.world.mut(settler, SettlerNeeds).hunger = ONE; // starving: this tick bites
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(settler, Health).hitpoints).toBe(half - STARVATION_HITPOINTS_PER_TICK + SIP_HP);
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_HEAL, degreeOfUse: HALF });

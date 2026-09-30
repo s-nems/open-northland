@@ -9,7 +9,8 @@ import {
   ownerOf,
   Person,
   Settler,
-  type SettlerView,
+  SettlerNeeds,
+  type SettlerNeedsView,
 } from '../../../components/index.js';
 import { type Fixed, ONE, ZERO } from '../../../core/fixed.js';
 import type { Rng } from '../../../core/rng.js';
@@ -47,7 +48,7 @@ export function chargeMilitaryPiety(world: World, settler: Entity, units: number
   )
     return;
   if (!world.has(settler, Settler)) return;
-  const s = world.mut(settler, Settler);
+  const s = world.mut(settler, SettlerNeeds);
   s.piety = applyNeedUnits(s.piety, units);
 }
 
@@ -68,7 +69,7 @@ export function chargeBarefootStep(
   carrying: boolean,
 ): void {
   if (roughness === 0 || !needsEnabled(world) || !carriesNeeds(world, ctx.content, e)) return;
-  const s = world.mut(e, Settler);
+  const s = world.mut(e, SettlerNeeds);
   s.hunger = applyNeedUnits(s.hunger, -(carrying ? roughness * CARRYING_HUNGER_FACTOR : roughness));
 }
 
@@ -147,10 +148,11 @@ function seatRefillingAt(world: World, tick: number): number | null {
 function refillCriticalNeeds(world: World, ctx: SystemContext, e: Entity): void {
   const settler = world.tryGet(e, Settler);
   if (settler === undefined || !isFighterJob(ctx.content, settler.jobType)) return;
-  const hungry = settler.hunger > NEED_CRITICAL_THRESHOLD;
-  const tired = settler.fatigue > NEED_CRITICAL_THRESHOLD;
+  const needs = world.get(e, SettlerNeeds);
+  const hungry = needs.hunger > NEED_CRITICAL_THRESHOLD;
+  const tired = needs.fatigue > NEED_CRITICAL_THRESHOLD;
   if (!hungry && !tired) return;
-  const s = world.mut(e, Settler);
+  const s = world.mut(e, SettlerNeeds);
   if (hungry) s.hunger = ZERO;
   if (tired) s.fatigue = ZERO;
 }
@@ -170,17 +172,17 @@ export function carriesNeeds(world: World, content: ContentSet, e: Entity): bool
 /** Drain one tick off the three needs time alone moves, and hand back the drained bars so the hitpoint
  *  step reads them without a second lookup; a fighter's company need is frozen instead. A settler whose
  *  bars have all pinned is left unwritten. */
-function drainNeeds(world: World, ctx: SystemContext, e: Entity): SettlerView {
-  const settler = world.get(e, Settler);
-  const hunger = applyNeedUnits(settler.hunger, -NEED_DRAIN_UNITS_PER_TICK);
-  const fatigue = applyNeedUnits(settler.fatigue, -NEED_DRAIN_UNITS_PER_TICK);
-  const enjoyment = isFighterJob(ctx.content, settler.jobType)
-    ? settler.enjoyment
-    : applyNeedUnits(settler.enjoyment, -NEED_DRAIN_UNITS_PER_TICK);
-  if (hunger === settler.hunger && fatigue === settler.fatigue && enjoyment === settler.enjoyment) {
-    return settler;
+function drainNeeds(world: World, ctx: SystemContext, e: Entity): SettlerNeedsView {
+  const needs = world.get(e, SettlerNeeds);
+  const hunger = applyNeedUnits(needs.hunger, -NEED_DRAIN_UNITS_PER_TICK);
+  const fatigue = applyNeedUnits(needs.fatigue, -NEED_DRAIN_UNITS_PER_TICK);
+  const enjoyment = isFighterJob(ctx.content, world.get(e, Settler).jobType)
+    ? needs.enjoyment
+    : applyNeedUnits(needs.enjoyment, -NEED_DRAIN_UNITS_PER_TICK);
+  if (hunger === needs.hunger && fatigue === needs.fatigue && enjoyment === needs.enjoyment) {
+    return needs;
   }
-  const drained = world.mut(e, Settler);
+  const drained = world.mut(e, SettlerNeeds);
   drained.hunger = hunger;
   drained.fatigue = fatigue;
   drained.enjoyment = enjoyment;
@@ -193,10 +195,10 @@ function drainNeeds(world: World, ctx: SystemContext, e: Entity): SettlerView {
  * drive lives in the job planner, which skips it, so nothing could feed it. The 0-HP reap is
  * CleanupSystem's.
  */
-function stepHealth(world: World, ctx: SystemContext, e: Entity, settler: SettlerView | undefined): void {
+function stepHealth(world: World, ctx: SystemContext, e: Entity, needs: SettlerNeedsView | undefined): void {
   const health = world.tryGet(e, Health);
   if (health === undefined || health.hitpoints <= 0) return;
-  if (settler !== undefined && settler.hunger === ONE && settler.jobType !== null) {
+  if (needs !== undefined && needs.hunger === ONE && world.get(e, Settler).jobType !== null) {
     if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.INVULNERABLE)) return;
     woundBearer(world, ctx, e, STARVATION_HITPOINTS_PER_TICK);
     return;

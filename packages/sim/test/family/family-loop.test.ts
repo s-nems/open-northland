@@ -17,6 +17,7 @@ import {
   Residence,
   Resting,
   Settler,
+  SettlerNeeds,
   Stockpile,
   TrainingOrder,
   UnderConstruction,
@@ -549,11 +550,11 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueueSetup({ kind: 'debugSetNeeds', target: stranger, hunger: 100 });
     for (let i = 0; i < 60; i++) sim.step();
     expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(2); // untouched - not his larder
-    expect(sim.world.get(stranger, Settler).hunger).toBe(ONE); // still starving (no other food)
+    expect(sim.world.get(stranger, SettlerNeeds).hunger).toBe(ONE); // still starving (no other food)
     // Move him in: now it IS his larder and he eats.
     sim.enqueueSetup({ kind: 'assignHouse', entity: stranger, house: home });
     runUntil(sim, () => (sim.world.get(home, Stockpile).amounts.get(FOOD) ?? 0) < 2, 200, 'resident meal');
-    expect(sim.world.get(stranger, Settler).hunger).toBeLessThan(ONE);
+    expect(sim.world.get(stranger, SettlerNeeds).hunger).toBeLessThan(ONE);
   });
 
   it('a hungry wife feeds herself before waiting, then bears the child (no home↔store starvation loop)', () => {
@@ -587,12 +588,12 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.step();
 
     // Hunger only ever falls by eating, so a meal-sized dip below its peak proves she reached the store.
-    let minHunger = sim.world.get(woman, Settler).hunger;
+    let minHunger = sim.world.get(woman, SettlerNeeds).hunger;
     let peakHunger = minHunger;
     runUntil(
       sim,
       () => {
-        const hunger = sim.world.get(woman, Settler).hunger;
+        const hunger = sim.world.get(woman, SettlerNeeds).hunger;
         if (hunger < minHunger) minHunger = hunger;
         if (hunger > peakHunger) peakHunger = hunger;
         return sim.world.get(woman, Marriage).child !== null;

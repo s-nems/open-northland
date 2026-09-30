@@ -77,7 +77,7 @@ describe('pathfindingSystem - request to PathFollow handoff', () => {
       { x: Q(6), y: Q(0), node: node(3) },
     ]);
     // The walker stands on the first stop, so the walk starts toward the second.
-    expect(sim.world.get(e, PathFollow)).toMatchObject({ index: 1, legTicks: 0, legCost: 0 });
+    expect(sim.world.get(e, PathFollow)).toMatchObject({ index: 1, legElapsed: 0, legCost: 0 });
   });
 
   it('a start===goal request yields a single-node path at the node position', () => {
@@ -178,7 +178,7 @@ describe('pathfindingSystem - failure handling', () => {
     sim.world.add(e, PathRoute, {
       waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(9), node: sim.terrain.nodeAt(0, 0) }],
     });
-    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
     sim.world.add(e, PathRequest, {
       start: sim.terrain?.nodeAt(0, 0) as NodeId,
       goal: sim.terrain?.nodeAt(2, 0) as NodeId,
@@ -362,7 +362,7 @@ describe('pathfindingSystem - mid-walk reroute', () => {
     const e = cruisingWalker(sim, 2, 1);
     const position = { ...sim.world.get(e, Position) };
     const facing = { ...sim.world.get(e, WalkFacing) };
-    expect(sim.world.get(e, PathFollow).legTicks).toBe(0);
+    expect(sim.world.get(e, PathFollow).legElapsed).toBe(0);
 
     reorder(sim, e, 0);
     sim.step();
@@ -441,7 +441,7 @@ describe('pathfindingSystem - mid-walk reroute', () => {
     });
     sim.step();
     expect(sim.world.get(e, Position).y).toBe(0);
-    expect(sim.world.get(e, PathFollow).legTicks).toBe(0);
+    expect(sim.world.get(e, PathFollow).legElapsed).toBe(0);
     const beforeRedirect = { ...sim.world.get(e, Position) };
     sim.world.add(e, PathRequest, {
       start: sim.terrain?.nodeAt(0, 0) as NodeId,

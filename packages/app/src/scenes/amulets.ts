@@ -7,7 +7,7 @@ import { spawnSettlerDirect } from '../game/sandbox/index.js';
 import { goodBySlug } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-const { Equipment, Health, MISC_EQUIP_SLOTS, Position, Settler } = components;
+const { SettlerNeeds, Equipment, Health, MISC_EQUIP_SLOTS, Position, Settler } = components;
 
 const MAP_W = 40;
 const MAP_H = 18;
@@ -52,7 +52,7 @@ function build(sim: Simulation): void {
 
   const wearer = spawnSettlerDirect(sim, JOB_COLLECTOR, WEARER.x, WEARER.y, HUMAN_PLAYER);
   carrying(sim, wearer, ['amulet_food', 'amulet_stamina']);
-  const needs = sim.world.mut(wearer, Settler);
+  const needs = sim.world.mut(wearer, SettlerNeeds);
   needs.hunger = PRESSING_NEED;
   needs.fatigue = PRESSING_NEED;
 }
@@ -109,7 +109,7 @@ export const amuletsScene: SceneDefinition = {
       predicate: (sim) => {
         const wearer = carriers(sim, 'amulet_food')[0];
         if (wearer === undefined) return false;
-        const s = sim.world.get(wearer, Settler);
+        const s = sim.world.get(wearer, SettlerNeeds);
         const whole = sim.world
           .get(wearer, Equipment)
           .misc.every((slot) => slot === null || slot.degreeOfUse === fx.fromInt(0));

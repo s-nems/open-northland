@@ -33,11 +33,13 @@ function needsWorld(
           Settler: {
             tribe: 1,
             jobType: 1,
+            experience: { $map: [] },
+          },
+          SettlerNeeds: {
             hunger: needs.hunger ?? 0,
             fatigue: needs.fatigue ?? 0,
             piety: needs.piety ?? 0,
             enjoyment: 0,
-            experience: { $map: [] },
           },
           ...(ordered === null ? {} : { NeedOrder: { need: ordered } }),
         },

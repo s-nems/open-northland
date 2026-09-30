@@ -3,7 +3,8 @@ import { Building, Carrying, Resource, Stockpile } from '../../../src/components
 import { ONE, Simulation } from '../../../src/index.js';
 import { anchorOnlyFootprint, atomicSystem, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { ctxOf, PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
+import { nextTickCtxOf } from '../../fixtures/context.js';
+import { PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
 
 describe('atomicSystem - end-to-end: harvest -> carry -> pileup', () => {
   it('a settler harvests wood then piles it up at a store via two atomics', () => {
@@ -19,14 +20,14 @@ describe('atomicSystem - end-to-end: harvest -> carry -> pileup', () => {
 
     // Atomic 1: harvest wood (2-tick animation).
     startAtomic(sim, settler, { kind: 'harvest', resource, goodType: WOOD }, 2, 24);
-    atomicSystem(sim.world, ctxOf(sim)); // tick 1: progress 1/2
+    atomicSystem(sim.world, nextTickCtxOf(sim)); // tick 1: progress 1/2
     expect(sim.world.has(settler, Carrying)).toBe(false);
-    atomicSystem(sim.world, ctxOf(sim)); // tick 2: completes, +1 wood
+    atomicSystem(sim.world, nextTickCtxOf(sim)); // tick 2: completes, +1 wood
     expect(sim.world.get(settler, Carrying)).toEqual({ goodType: WOOD, amount: 1 });
 
     // Atomic 2: pileup at the store.
     startAtomic(sim, settler, { kind: 'pileup', store }, 1, 23);
-    atomicSystem(sim.world, ctxOf(sim));
+    atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(store, Stockpile).amounts.get(WOOD)).toBe(1);
     expect(sim.world.has(settler, Carrying)).toBe(false);
   });

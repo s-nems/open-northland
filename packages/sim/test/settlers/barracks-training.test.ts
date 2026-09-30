@@ -12,6 +12,7 @@ import {
   Position,
   Resting,
   Settler,
+  SettlerNeeds,
   SettlerProgress,
   Sheltering,
   Stockpile,
@@ -299,7 +300,7 @@ describe('trainSoldier - the barracks drill', () => {
     const house = barracksAt(sim, 3, 3);
     const larder = larderAt(sim, 8, 3);
     const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3);
-    sim.world.mut(recruit, Settler).hunger = STARVING;
+    sim.world.mut(recruit, SettlerNeeds).hunger = STARVING;
 
     sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();

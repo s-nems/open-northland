@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Settler } from '../../../src/components/index.js';
+import { SettlerNeeds } from '../../../src/components/index.js';
 import { Rng } from '../../../src/core/rng.js';
 import { World } from '../../../src/ecs/world.js';
 import { fx, ONE } from '../../../src/index.js';
@@ -45,7 +45,7 @@ describe('createSettler - every settler spawns with seeded random needs', () => 
     const world = new World();
     const e = createSettler(world, testContent(), new Rng(3), spec);
     if (e === null) throw new Error('spawn failed');
-    const s = world.get(e, Settler);
+    const s = world.get(e, SettlerNeeds);
     for (const need of [s.hunger, s.fatigue, s.piety, s.enjoyment]) {
       expect(need).toBeGreaterThanOrEqual(fx.fromInt(0));
       expect(need).toBeLessThanOrEqual(HALF);
@@ -58,8 +58,8 @@ describe('createSettler - every settler spawns with seeded random needs', () => 
     const ea = createSettler(wa, testContent(), new Rng(42), spec);
     const eb = createSettler(wb, testContent(), new Rng(42), spec);
     if (ea === null || eb === null) throw new Error('spawn failed');
-    const a = wa.get(ea, Settler);
-    const b = wb.get(eb, Settler);
+    const a = wa.get(ea, SettlerNeeds);
+    const b = wb.get(eb, SettlerNeeds);
     expect(a.hunger).toBe(b.hunger);
     expect(a.fatigue).toBe(b.fatigue);
     expect(a.piety).toBe(b.piety);

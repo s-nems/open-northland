@@ -31,7 +31,7 @@ const EXPECTED_COUNTS: readonly { tribe: number; count: number }[] = buildSandbo
   .filter((a) => HERDS.some((h) => h.tribe === a.tribeType))
   .map((a) => ({ tribe: a.tribeType, count: a.maximumGroupSize }));
 
-const { MoveStepPeriod, Owner, Position, Settler, StayPoint } = components;
+const { MoveStepPeriod, Owner, Position, Settler, SettlerNeeds, StayPoint } = components;
 
 function build(sim: Simulation): void {
   for (const herd of HERDS) {
@@ -122,7 +122,7 @@ export const wildlifeScene: SceneDefinition = {
         return (
           animals.length > 0 &&
           animals.every((e) => {
-            const needs = sim.world.get(e, Settler);
+            const needs = sim.world.get(e, SettlerNeeds);
             return (
               needs.hunger === NEED_EMPTY && needs.fatigue === NEED_EMPTY && needs.enjoyment === NEED_EMPTY
             );

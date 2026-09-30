@@ -8,10 +8,15 @@ export function readActingAtomic(components: Readonly<Record<string, unknown>>):
   return readNumFieldOrNull(components, 'CurrentAtomic', 'atomicId');
 }
 
-/** Whole ticks executed in the current atomic (`AtomicClock.elapsed`, a plain integer with no
- *  fixed-point rescale), or `null` when not mid-atomic. */
-export function readAtomicElapsed(components: Readonly<Record<string, unknown>>): number | null {
-  return readNumFieldOrNull(components, 'AtomicClock', 'elapsed');
+/** Whole executed ticks, derived at this snapshot's tick; pending clips have not reached the executor. */
+export function readAtomicElapsed(
+  components: Readonly<Record<string, unknown>>,
+  tick: number,
+): number | null {
+  const startedAt = readNumFieldOrNull(components, 'AtomicClock', 'startedAt');
+  return startedAt === null
+    ? readNumFieldOrNull(components, 'AtomicClock', 'pendingElapsed')
+    : tick - startedAt;
 }
 
 /** The running atomic's length in ticks (`CurrentAtomic.duration`), or `null` when not mid-atomic. */
@@ -46,13 +51,16 @@ export interface CraftPerformance {
 
 /** A settler's running craft: the workplace it is inside and the clip clock an in-house program reads,
  *  or `null` when its atomic is anything else. */
-export function readCraftPerformance(components: Readonly<Record<string, unknown>>): CraftPerformance | null {
+export function readCraftPerformance(
+  components: Readonly<Record<string, unknown>>,
+  tick: number,
+): CraftPerformance | null {
   const a = components.CurrentAtomic as
     | { effect?: { kind?: unknown }; targetEntity?: unknown; duration?: unknown }
     | undefined;
   if (a?.effect?.kind !== 'produce') return null;
   const { targetEntity, duration } = a;
-  const elapsed = readAtomicElapsed(components);
+  const elapsed = readAtomicElapsed(components, tick);
   if (typeof targetEntity !== 'number' || elapsed === null || typeof duration !== 'number') return null;
   return { workplace: targetEntity, elapsed, duration };
 }

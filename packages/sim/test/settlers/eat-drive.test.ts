@@ -11,7 +11,7 @@ import {
   PathRequest,
   Position,
   Resource,
-  Settler,
+  SettlerNeeds,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -32,6 +32,7 @@ import {
 import { dropPath } from '../../src/systems/movement/nav-state.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
+import { nextTickCtxOf } from '../fixtures/context.js';
 import { settlerAt as fixtureSettlerAt } from '../fixtures/settler.js';
 import { cellOf, ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
@@ -195,9 +196,9 @@ describe('eatDrive - the planner choosing to eat', () => {
     sim.enqueueSetup({ kind: 'setPlayerAi', player: IDLE_SEAT, enabled: true, scripted: false });
     sim.step(); // the seat flags land, and the planner finds no food for anyone
 
-    expect(sim.world.get(computer, Settler).hunger).toBe(NEED_SATED_THRESHOLD);
-    expect(sim.world.get(idle, Settler).hunger).toBe(NEED_SATED_THRESHOLD);
-    expect(sim.world.get(human, Settler).hunger).toBeGreaterThan(HUNGRY);
+    expect(sim.world.get(computer, SettlerNeeds).hunger).toBe(NEED_SATED_THRESHOLD);
+    expect(sim.world.get(idle, SettlerNeeds).hunger).toBe(NEED_SATED_THRESHOLD);
+    expect(sim.world.get(human, SettlerNeeds).hunger).toBeGreaterThan(HUNGRY);
   });
 
   it('leaves a computer seat soldier forbidden to regenerate hungry where he stands, for the seat’s refill', () => {
@@ -212,7 +213,7 @@ describe('eatDrive - the planner choosing to eat', () => {
     sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
     sim.step();
 
-    expect(sim.world.get(soldier, Settler).hunger).toBeGreaterThan(HUNGRY);
+    expect(sim.world.get(soldier, SettlerNeeds).hunger).toBeGreaterThan(HUNGRY);
     expect(sim.world.has(soldier, MoveGoal)).toBe(false);
   });
 
@@ -244,11 +245,11 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
       targetTile: null,
     });
 
-    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.get(store, Stockpile).amounts.get(FOOD)).toBe(2); // one unit eaten
     // One meal is a partial refill, not a reset - the eater is left hungry enough to come back.
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
+    expect(sim.world.get(settler, SettlerNeeds).hunger).toBe(fx.sub(HUNGRY, MEAL));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
   });
 
@@ -264,10 +265,10 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
       targetTile: null,
     });
 
-    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.has(settler, Carrying)).toBe(false); // last carried unit eaten
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
+    expect(sim.world.get(settler, SettlerNeeds).hunger).toBe(fx.sub(HUNGRY, MEAL));
   });
 
   it('reaps a loose ground heap eaten down to zero (no dead pile entity lingers)', () => {
@@ -285,10 +286,10 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
       targetTile: null,
     });
 
-    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.isAlive(heap)).toBe(false); // emptied heap vanished, no zero-stock artifact
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
+    expect(sim.world.get(settler, SettlerNeeds).hunger).toBe(fx.sub(HUNGRY, MEAL));
   });
 
   it('keeps a building store alive after its last food unit is eaten (only loose piles reap)', () => {
@@ -303,7 +304,7 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
       targetTile: null,
     });
 
-    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.isAlive(store)).toBe(true); // the warehouse persists empty
     expect(sim.world.get(store, Stockpile).amounts.get(FOOD) ?? 0).toBe(0);
@@ -318,11 +319,11 @@ describe('eat drive - closing the rise→eat→relief loop through the real sche
     const FOOD_START = 10;
     const larder = storeAt(sim, 1, 0, FOOD_START); // one tile over
 
-    let peakHunger = sim.world.get(settler, Settler).hunger;
+    let peakHunger = sim.world.get(settler, SettlerNeeds).hunger;
     let troughHunger = peakHunger;
     for (let i = 0; i < 400; i++) {
       sim.step();
-      const h = sim.world.get(settler, Settler).hunger;
+      const h = sim.world.get(settler, SettlerNeeds).hunger;
       if (h > peakHunger) peakHunger = h;
       if (h < troughHunger) troughHunger = h;
     }
