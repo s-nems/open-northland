@@ -48,6 +48,7 @@ import type { PlannerSpacing } from '../../planner/spacing.js';
 import { interactionCell, jobAtomics } from '../../targets/index.js';
 import { deliverableGoodProbe } from '../economy/delivery-targets.js';
 import { planProducer, type WorkSeatClaims } from '../economy/index.js';
+import { livestockApproach } from './approach.js';
 
 /** How close the breeder gets before it takes an animal in hand: the original puts one into
  *  house-interaction mode from within 2 map points. */
@@ -265,7 +266,7 @@ function planSlay(plan: PlannerContext, farm: Entity, good: number): boolean {
   const at = entityNode(world, terrain, target);
   if (held.summoner !== e) {
     if (hexRange(plan, here, at) > SUMMON_RANGE) {
-      world.add(e, MoveGoal, { cell: at });
+      world.add(e, MoveGoal, { cell: livestockApproach(plan, at, SUMMON_RANGE) });
       return true;
     }
     world.mut(target, FarmAnimal).summoner = e;
@@ -273,7 +274,9 @@ function planSlay(plan: PlannerContext, farm: Entity, good: number): boolean {
   }
   if (at !== door) {
     // Stay with it on its way in; it is the summon system that walks it.
-    if (hexRange(plan, here, at) > SUMMON_RANGE) world.add(e, MoveGoal, { cell: at });
+    if (hexRange(plan, here, at) > SUMMON_RANGE) {
+      world.add(e, MoveGoal, { cell: livestockApproach(plan, at, SUMMON_RANGE) });
+    }
     return true;
   }
   if (here !== door) {
