@@ -326,6 +326,36 @@ describe('the cut-off mark', () => {
     expect(sim.world.has(stranded, MoveGoal)).toBe(false);
   });
 
+  it.each([SCOUT, 2])('clears an obsolete cut-off mark after changing to job %i', (jobType) => {
+    const sim = confinedSim();
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    building(sim, 2, 2);
+    const worker = ownedUnit(sim, 60, 4, WOODCUTTER);
+    expect(cutOffWithinOneCadence(sim)).toEqual([worker]);
+    expect(cutOff(sim, worker)).toBe(true);
+
+    sim.enqueueSetup({ kind: 'setJob', entity: worker, jobType });
+    building(sim, 62, 2);
+    expect(cutOffWithinOneCadence(sim)).toEqual([]);
+    expect(sim.world.get(worker, Settler).jobType).toBe(jobType);
+    expect(sim.world.has(worker, LostWay)).toBe(false);
+    expect(sim.world.has(worker, MoveGoal)).toBe(false);
+  });
+
+  it('keeps a failed-order mark after a job change brings a door into reach', () => {
+    const sim = confinedSim();
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    building(sim, 2, 2);
+    const worker = ownedUnit(sim, 60, 4, WOODCUTTER);
+    sim.enqueueSetup({ kind: 'moveUnit', entity: worker, x: 240, y: 4 });
+    sim.step();
+    expect(sim.world.get(worker, LostWay).cutOff).toBe(false);
+    sim.enqueueSetup({ kind: 'setJob', entity: worker, jobType: 2 });
+    building(sim, 62, 2);
+    expect(cutOffWithinOneCadence(sim)).toEqual([]);
+    expect(sim.world.get(worker, LostWay).cutOff).toBe(false);
+  });
+
   it('a refused order stands through the check: only the seat-reach kind is lifted by a door', () => {
     const sim = confinedSim();
     building(sim, 2, 2);

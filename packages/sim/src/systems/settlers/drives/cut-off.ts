@@ -75,7 +75,11 @@ export function reconcileCutOff(
   doors: SeatDoors,
 ): void {
   const owner = ownerOf(world, e);
-  if (owner === undefined || !world.has(e, Person) || !hasWorkToReach(ctx, jobType)) return;
-  if (limit !== null && noDoorInReach(doors.of(owner), limit)) markCutOff(world, ctx, e);
-  else if (world.tryGet(e, LostWay)?.cutOff === true) clearLostWay(world, e);
+  if (owner === undefined || !world.has(e, Person)) return;
+  const marked = world.tryGet(e, LostWay)?.cutOff === true;
+  const works = hasWorkToReach(ctx, jobType);
+  if (!works && !marked) return;
+  if (limit !== null && noDoorInReach(doors.of(owner), limit)) {
+    if (works) markCutOff(world, ctx, e);
+  } else if (marked) clearLostWay(world, e);
 }
