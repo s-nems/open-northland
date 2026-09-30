@@ -31,36 +31,36 @@ it('waits for drawn targets and refreshes a paused view when its camera or point
   vi.stubGlobal('window', new EventTarget());
   const camera = { offsetX: 0, offsetY: 0, scale: 1 };
   let blocked = false;
-  let drawnTarget: number | null = 7;
-  const selectionAt = vi.fn(() => drawnTarget);
+  let drawnTarget = true;
+  const hasSelectableAt = vi.fn(() => drawnTarget);
   const cursor = createSelectionCursor({
     canvas: canvas as unknown as HTMLCanvasElement,
     camera: () => camera,
     viewerVersion: () => 0,
     blocked: () => blocked,
     toWorld: (x, y) => ({ x, y }),
-    selectionAt,
+    hasSelectableAt,
   });
   const snapshot = snapshotOf([]);
   try {
     canvas.dispatchEvent(
       Object.assign(new Event('pointermove'), { pointerType: 'mouse', clientX: 20, clientY: 30 }),
     );
-    expect(selectionAt).not.toHaveBeenCalled();
+    expect(hasSelectableAt).not.toHaveBeenCalled();
     cursor.update(snapshot);
     expect(canvas.getAttribute('data-cursor-hover')).toBe('select');
     cursor.update(snapshot);
-    expect(selectionAt).toHaveBeenCalledTimes(1);
+    expect(hasSelectableAt).toHaveBeenCalledTimes(1);
 
     camera.offsetX = 20;
-    drawnTarget = null;
+    drawnTarget = false;
     cursor.update(snapshot);
     expect(canvas.getAttribute('data-cursor-hover')).toBeNull();
     expect(properties.has('--world-cursor-hover')).toBe(false);
 
     blocked = true;
     cursor.update(snapshot);
-    drawnTarget = 8;
+    drawnTarget = true;
     blocked = false;
     cursor.update(snapshot);
     expect(canvas.getAttribute('data-cursor-hover')).toBe('select');

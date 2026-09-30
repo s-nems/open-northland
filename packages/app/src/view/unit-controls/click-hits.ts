@@ -8,7 +8,7 @@ import {
   pickTopAt,
   topTargetAt,
 } from '../picking.js';
-import type { UnitTargets } from './unit-targets.js';
+import type { SelectionHitTargets, UnitTargets } from './unit-targets.js';
 
 /** A door marker's click owner: a sign row stands for its settler, a garrison flag for its building. */
 export type DoorMarkerHit =
@@ -17,13 +17,14 @@ export type DoorMarkerHit =
 
 export interface ClickHitDeps {
   readonly doorBadges?: () => readonly DoorBadge[];
-  readonly targets: Pick<UnitTargets, 'owned' | 'flags' | 'signposts'>;
+  readonly targets: Pick<UnitTargets, 'owned' | 'flags' | 'signposts'> & SelectionHitTargets;
   readonly viewer: ViewerSeat;
   readonly elevation?: ElevationField;
 }
 
 export interface ClickHits {
   readonly doorMarkerAt: (wx: number, wy: number) => DoorMarkerHit | null;
+  readonly hasSelectableAt: (wx: number, wy: number) => boolean;
   readonly selectionAt: (wx: number, wy: number) => number | null;
 }
 
@@ -75,6 +76,11 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
 
   return {
     doorMarkerAt,
+    hasSelectableAt: (wx, wy) =>
+      doorMarkerAt(wx, wy) !== null ||
+      deps.targets.hasFlagAt(wx, wy) ||
+      deps.targets.hasOwnedAt(wx, wy) ||
+      deps.targets.hasSignpostAt(wx, wy),
     selectionAt: (wx, wy) =>
       doorMarkerAt(wx, wy)?.ref ??
       unitOrPlotAt(wx, wy) ??

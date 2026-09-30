@@ -154,17 +154,27 @@ const PICK_BOX = {
 } as const;
 
 function hits(t: Pickable, wx: number, wy: number): boolean {
-  const inBox =
-    t.box !== undefined
-      ? wx >= t.box.minX && wx <= t.box.maxX && wy >= t.box.minY && wy <= t.box.maxY
-      : boxFallbackHit(t, wx, wy);
-  if (!inBox) return false;
+  if (!containsTargetPoint(t.kind ?? 'settler', t.x, t.y, t.box, wx, wy)) return false;
   return t.pixelHit?.(wx, wy) ?? true;
 }
 
-function boxFallbackHit(t: Pickable, wx: number, wy: number): boolean {
-  const box = PICK_BOX[t.kind ?? 'settler'];
-  return Math.abs(wx - t.x) <= box.halfW && wy >= t.y - box.up && wy <= t.y + box.down;
+/** Shared click/hover geometry. Margin grows exact sprite bounds only; fallback boxes keep their size. */
+export function containsTargetPoint(
+  kind: NonNullable<Pickable['kind']>,
+  x: number,
+  y: number,
+  box: EntityBounds | undefined,
+  wx: number,
+  wy: number,
+  margin = 0,
+): boolean {
+  if (box !== undefined) {
+    return (
+      wx >= box.minX - margin && wx <= box.maxX + margin && wy >= box.minY - margin && wy <= box.maxY + margin
+    );
+  }
+  const fallback = PICK_BOX[kind];
+  return Math.abs(wx - x) <= fallback.halfW && wy >= y - fallback.up && wy <= y + fallback.down;
 }
 
 /** Whether `a` is drawn over `b`: the larger screen `y` is drawn last, tie-broken by the higher entity id. */

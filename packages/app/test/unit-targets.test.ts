@@ -6,11 +6,7 @@ import { isSettler, ownerPlayerOf } from '../src/game/snapshot.js';
 import { fixedViewerSeat, overseerViewerSeat } from '../src/game/viewer-seat.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import { pickInRect, pickTopAt } from '../src/view/picking.js';
-import {
-  createUnitTargets,
-  type UnitTargets,
-  type UnitTargetsDeps,
-} from '../src/view/unit-controls/unit-targets.js';
+import { createUnitTargets, type UnitTargetsDeps } from '../src/view/unit-controls/unit-targets.js';
 import { snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
 
 /**
@@ -36,7 +32,7 @@ describe('unit-controls targets over the renderer frame', () => {
     hostileToward: (owner: number) => boolean = () => true,
     resourceVisible?: (tileX: number, tileY: number) => boolean,
     boundsOf?: UnitTargetsDeps['boundsOf'],
-  ): UnitTargets =>
+  ): ReturnType<typeof createUnitTargets> =>
     createUnitTargets({
       snapshot: () => snapshot,
       viewer: fixedViewerSeat(HUMAN_PLAYER),
@@ -57,6 +53,94 @@ describe('unit-controls targets over the renderer frame', () => {
     if (item === undefined) throw new Error(`siege scene drew no ${kind} for player ${player}`);
     return item;
   };
+
+  it('hover uses current ownership, fog gates and bounds without selecting wildlife or livestock', () => {
+    const own = { ...firstDrawn('settler', HUMAN_PLAYER), x: 100, y: 200 };
+    const enemy = { ...firstDrawn('settler', ENEMY_PLAYER), x: 100, y: 200 };
+    expect(targetsOver([own]).hasOwnedAt(100, 200)).toBe(true);
+    expect(targetsOver([enemy]).hasOwnedAt(100, 200)).toBe(false);
+    const observer = createUnitTargets({
+      snapshot: () => snapshot,
+      viewer: overseerViewerSeat(HUMAN_PLAYER),
+      hostileToward: () => true,
+      drawnItems: () => [enemy],
+      boundsOf: undefined,
+      pixelHitOf: undefined,
+    });
+    expect(observer.hasOwnedAt(100, 200)).toBe(true);
+    for (const gate of [{ ghost: true }, { portraitOnly: true }, { inHouse: true }])
+      expect(targetsOver([{ ...own, ...gate }]).hasOwnedAt(100, 200)).toBe(false);
+    snapshot = {
+      ...snapshot,
+      entities: [
+        ...snapshot.entities,
+        { id: 90010, components: { Settler: {} } },
+        { id: 90011, components: { Settler: {}, Owner: { player: HUMAN_PLAYER }, Livestock: {} } },
+      ],
+    };
+    expect(
+      targetsOver([
+        { ...own, ref: 90010 },
+        { ...own, ref: 90011 },
+      ]).hasOwnedAt(100, 200),
+    ).toBe(false);
+    let drawn: readonly DrawItem[] = [own];
+    let box = { minX: 90, maxX: 110, minY: 180, maxY: 210 };
+    let verdict: boolean | undefined;
+    const targets = createUnitTargets({
+      snapshot: () => snapshot,
+      viewer: fixedViewerSeat(HUMAN_PLAYER),
+      hostileToward: () => true,
+      drawnItems: () => drawn,
+      boundsOf: () => box,
+      pixelHitOf: () => verdict,
+    });
+    expect(targets.hasOwnedAt(100, 200)).toBe(true);
+    box = { minX: 300, maxX: 320, minY: 380, maxY: 410 };
+    expect(targets.hasOwnedAt(100, 200)).toBe(false);
+    drawn = [{ ...own, kind: 'building', x: 310, y: 400 }];
+    verdict = false;
+    expect(targets.hasOwnedAt(310, 400)).toBe(false);
+    verdict = undefined;
+    expect(targets.hasOwnedAt(310, 400)).toBe(true);
+    for (const kind of ['settler', 'building', 'palisade', 'roadsite', 'vehicle'] as const) {
+      drawn = [{ ...own, kind }];
+      for (const [x, y] of [
+        [310, 400],
+        [322, 400],
+        [323, 400],
+        [100, 200],
+      ] as const)
+        expect(targets.hasOwnedAt(x, y)).toBe(pickTopAt(targets.owned(kind), x, y) !== null);
+    }
+    drawn = [{ ...own, kind: 'roadsite' }];
+    expect(targets.hasOwnedAt(322, 400)).toBe(true);
+    expect(targets.hasOwnedAt(323, 400)).toBe(false);
+    drawn = [];
+    expect(targets.hasOwnedAt(310, 400)).toBe(false);
+  });
+
+  it('hover excludes synthetic and enemy signposts and keeps the ungrown road fallback', () => {
+    const own = {
+      ...firstDrawn('settler', HUMAN_PLAYER),
+      kind: 'signpost',
+      x: 100,
+      y: 200,
+    } satisfies DrawItem;
+    const enemy = {
+      ...firstDrawn('settler', ENEMY_PLAYER),
+      kind: 'signpost',
+      x: 100,
+      y: 200,
+    } satisfies DrawItem;
+    expect(targetsOver([own]).hasSignpostAt(100, 200)).toBe(true);
+    expect(targetsOver([enemy]).hasSignpostAt(100, 200)).toBe(false);
+    expect(targetsOver([{ ...own, ref: -own.ref }]).hasSignpostAt(100, 200)).toBe(false);
+    expect(targetsOver([{ ...own, ghost: true }]).hasSignpostAt(100, 200)).toBe(false);
+    const road = { ...own, kind: 'roadsite' } satisfies DrawItem;
+    expect(targetsOver([road]).hasOwnedAt(109, 200)).toBe(true);
+    expect(targetsOver([road]).hasOwnedAt(110, 200)).toBe(false);
+  });
 
   it('splits the drawn frame into our units and the enemy, with nothing in both', () => {
     const targets = targetsOver(fullScene);
@@ -250,6 +334,8 @@ describe('unit-controls targets over the renderer frame', () => {
     );
 
     expect(pickTopAt(targets.flags(), 205, flag.y - LIFT - 40)).toBe(GATHERER);
+    expect(targets.hasFlagAt(205, flag.y - LIFT - 40)).toBe(true);
+    expect(targets.hasFlagAt(flag.x, flag.y)).toBe(false);
     expect(pickTopAt(targets.flags(), flag.x, flag.y)).toBeNull(); // the ground the flag was lifted off
   });
 

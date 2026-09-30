@@ -7,7 +7,7 @@ import {
 } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { fixedViewerSeat, overseerViewerSeat } from '../src/game/viewer-seat.js';
-import type { Pickable } from '../src/view/picking.js';
+import { type Pickable, pickTopAt } from '../src/view/picking.js';
 import { type ClickHitDeps, createClickHits } from '../src/view/unit-controls/click-hits.js';
 
 /**
@@ -72,6 +72,9 @@ const targetsOf = (arms: Arms): ClickHitDeps['targets'] => ({
       : (arms.owned ?? []).filter((t) => kind === undefined || t.kind === kind),
   flags: () => [...(arms.flags ?? [])],
   signposts: () => [...(arms.signposts ?? [])],
+  hasOwnedAt: (wx, wy) => pickTopAt([...(arms.owned ?? []), ...(arms.vehicles ?? [])], wx, wy) !== null,
+  hasFlagAt: (wx, wy) => pickTopAt(arms.flags ?? [], wx, wy) !== null,
+  hasSignpostAt: (wx, wy) => pickTopAt(arms.signposts ?? [], wx, wy) !== null,
 });
 
 const hitsFor = (arms: Arms): ReturnType<typeof createClickHits> =>
@@ -271,5 +274,37 @@ describe('click hits on another player’s door', () => {
 
   it('opens every player’s markers to an observer', () => {
     expect(selected({ badges: [mannedDoor(ENEMY_PLAYER)], observer: true })).toBe(SIGN_ROW_SETTLER);
+  });
+});
+
+describe('hover selection existence', () => {
+  it.each([
+    { badges: [mannedDoor()] },
+    { badges: [flagOnlyDoor()] },
+    { owned: OWNED_ARM },
+    { flags: FLAG_ARM },
+    { vehicles: VEHICLE_ARM },
+    { signposts: SIGNPOST_ARM },
+    { owned: [under(OWNED_ROAD_SITE, 'roadsite')] },
+    ALL,
+    {},
+    { badges: [mannedDoor(ENEMY_PLAYER)] },
+    { owned: [{ ...under(OWNED_BUILDING, 'building'), pixelHit: () => false }] },
+  ] satisfies Arms[])('agrees with click existence for each selection arm and their overlaps: %j', (arms) => {
+    const hits = hitsFor(arms);
+    for (const dx of [0, 400])
+      expect(hits.hasSelectableAt(CLICK.x + dx, CLICK.y)).toBe(
+        hits.selectionAt(CLICK.x + dx, CLICK.y) !== null,
+      );
+  });
+  it('includes observer door markers and rejects an enemy marker for a fixed viewer', () => {
+    expect(hitsFor({ badges: [mannedDoor(ENEMY_PLAYER)] }).hasSelectableAt(CLICK.x, CLICK.y)).toBe(false);
+    expect(
+      hitsFor({ badges: [mannedDoor(ENEMY_PLAYER)], observer: true }).hasSelectableAt(CLICK.x, CLICK.y),
+    ).toBe(true);
+    expect(hitsFor({ flags: FLAG_ARM }).hasSelectableAt(CLICK.x, CLICK.y)).toBe(true);
+    expect(hitsFor({ owned: [under(OWNED_ROAD_SITE, 'roadsite')] }).hasSelectableAt(CLICK.x, CLICK.y)).toBe(
+      true,
+    );
   });
 });

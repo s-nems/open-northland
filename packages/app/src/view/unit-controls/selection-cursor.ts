@@ -7,7 +7,7 @@ export interface SelectionCursorOptions {
   readonly viewerVersion: () => number;
   readonly blocked: (clientX: number, clientY: number) => boolean;
   readonly toWorld: (clientX: number, clientY: number) => { readonly x: number; readonly y: number };
-  readonly selectionAt: (wx: number, wy: number) => number | null;
+  readonly hasSelectableAt: (wx: number, wy: number) => boolean;
 }
 
 /** Reuse click selection, including door badges and work flags, only when its inputs change. */
@@ -53,7 +53,7 @@ export function createSelectionCursor(opts: SelectionCursorOptions): {
     cameraScale = camera.scale ?? 1;
     viewerVersion = version;
     const point = opts.toWorld(clientX, clientY);
-    setCanvasCursor(opts.canvas, 'hover', opts.selectionAt(point.x, point.y) === null ? null : 'select');
+    setCanvasCursor(opts.canvas, 'hover', opts.hasSelectableAt(point.x, point.y) ? 'select' : null);
   };
   const move = (event: PointerEvent): void => {
     if (event.pointerType !== 'mouse') return;

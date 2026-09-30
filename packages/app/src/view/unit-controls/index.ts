@@ -182,7 +182,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     camera: opts.camera,
     viewerVersion: opts.viewer.version,
     toWorld,
-    selectionAt: clickHits.selectionAt,
+    hasSelectableAt: clickHits.hasSelectableAt,
     blocked: (x, y) =>
       pickMode.isArmed() ||
       opts.claimPointer?.(x, y) === true ||

@@ -17,7 +17,7 @@ import {
   type SnapshotEntity,
 } from '../../game/snapshot.js';
 import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
-import { isHitTarget, type Pickable } from '../picking.js';
+import { containsTargetPoint, isHitTarget, type Pickable } from '../picking.js';
 import type { FormationUnit } from './formation.js';
 
 /** What the pickable target sets need from the unit-controls options (a subset threaded through). */
@@ -96,8 +96,16 @@ export interface UnitTargets {
   ownedSettlersIn(refs: ReadonlySet<number>): FormationUnit[];
 }
 
+/** Point queries for hover; the order target API retains its array contracts. */
+export interface SelectionHitTargets {
+  /** Any owned selectable kind under the point, including vehicles, using this frame's bounds. */
+  hasOwnedAt(wx: number, wy: number): boolean;
+  hasFlagAt(wx: number, wy: number): boolean;
+  hasSignpostAt(wx: number, wy: number): boolean;
+}
+
 /** Turns the frame the player is looking at into the {@link Pickable}s a click hit-tests against. */
-export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
+export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets & SelectionHitTargets {
   /** The owner of a drawn item's entity; a synthetic ref or a departed entity has none. */
   const ownerOfRef = (snapshot: WorldSnapshot, ref: number): number | undefined => {
     const e = entityById(snapshot, ref);
@@ -125,6 +133,8 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       ? item.kind
       : null;
 
+  const usesPixels = (kind: UnitTargetKind): boolean => kind === 'building' || kind === 'vehicle';
+
   /** A building or vehicle refines to solid pixels, since its sprite box overhangs the footprint. A palisade
    *  keeps its sprite box: the gaps between its posts are part of the wall a player aims at. A road plot's
    *  box grows a little, so the small flat plot stays easy to hit. */
@@ -137,27 +147,71 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       y: item.y,
       kind,
       box: kind === 'roadsite' && box !== undefined ? grownBox(box, ROAD_PLOT_PICK_MARGIN) : box,
-      ...((kind === 'building' || kind === 'vehicle') && pixelHitOf !== undefined
+      ...(usesPixels(kind) && pixelHitOf !== undefined
         ? { pixelHit: (wx: number, wy: number) => pixelHitOf(item.ref, wx, wy) }
         : {}),
     };
   };
 
+  const itemHits = (item: DrawItem, kind: UnitTargetKind | 'signpost', wx: number, wy: number): boolean => {
+    const box = deps.boundsOf?.(item.ref);
+    if (
+      !containsTargetPoint(kind, item.x, item.y, box, wx, wy, kind === 'roadsite' ? ROAD_PLOT_PICK_MARGIN : 0)
+    )
+      return false;
+    return kind === 'signpost' || !usesPixels(kind) || (deps.pixelHitOf?.(item.ref, wx, wy) ?? true);
+  };
+
+  const visitOwned = (
+    kind: UnitTargetKind | 'all' | undefined,
+    visit: (item: DrawItem, kind: UnitTargetKind) => boolean,
+  ): boolean => {
+    const snapshot = deps.snapshot();
+    for (const item of deps.drawnItems()) {
+      const itemKind = unitKindOf(item);
+      if (itemKind === null) continue;
+      if (kind === undefined ? itemKind === 'vehicle' : kind !== 'all' && itemKind !== kind) continue;
+      if (!isHitTarget(item)) continue;
+      const entity = entityById(snapshot, item.ref);
+      if (entity === undefined || !pickableOwner(ownerPlayerOf(entity)) || isLivestock(entity)) continue;
+      if (visit(item, itemKind)) return true;
+    }
+    return false;
+  };
+
+  const visitFlags = (visit: (item: DrawItem, gatherer: number) => boolean): boolean => {
+    const gathererOf = gathererByFlag(deps.snapshot(), pickableSeat(deps.viewer) ?? 'any');
+    if (gathererOf.size === 0) return false;
+    for (const item of deps.drawnItems()) {
+      if (item.isFlag !== true || !isHitTarget(item)) continue;
+      const gatherer = gathererOf.get(item.ref);
+      if (gatherer !== undefined && visit(item, gatherer)) return true;
+    }
+    return false;
+  };
+
+  const visitSignposts = (visit: (item: DrawItem) => boolean): boolean => {
+    const snapshot = deps.snapshot();
+    for (const item of deps.drawnItems()) {
+      if (item.kind !== 'signpost' || item.ref <= 0 || !isHitTarget(item)) continue;
+      if (!pickableOwner(ownerOfRef(snapshot, item.ref))) continue;
+      if (visit(item)) return true;
+    }
+    return false;
+  };
+
   return {
     owned(kind?: UnitTargetKind): Pickable[] {
-      const snapshot = deps.snapshot();
       const out: Pickable[] = [];
-      for (const it of deps.drawnItems()) {
-        const itemKind = unitKindOf(it);
-        if (itemKind === null) continue;
-        if (kind === undefined ? itemKind === 'vehicle' : itemKind !== kind) continue;
-        if (!isHitTarget(it)) continue;
-        const e = entityById(snapshot, it.ref);
-        if (e === undefined || !pickableOwner(ownerPlayerOf(e)) || isLivestock(e)) continue;
-        out.push(hitTarget(it, itemKind));
-      }
+      visitOwned(kind, (item, itemKind) => {
+        out.push(hitTarget(item, itemKind));
+        return false;
+      });
       return out;
     },
+    hasOwnedAt: (wx, wy) => visitOwned('all', (item, kind) => itemHits(item, kind, wx, wy)),
+    hasFlagAt: (wx, wy) => visitFlags((item) => itemHits(item, 'settler', wx, wy)),
+    hasSignpostAt: (wx, wy) => visitSignposts((item) => itemHits(item, 'signpost', wx, wy)),
 
     buildings(): Pickable[] {
       const out: Pickable[] = [];
@@ -195,18 +249,12 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
     },
 
     flags(): Pickable[] {
-      // flag-id → owning gatherer-id (not a player id); a whole-map viewer picks every player's flags
-      const gathererOf = gathererByFlag(deps.snapshot(), pickableSeat(deps.viewer) ?? 'any');
-      if (gathererOf.size === 0) return [];
       const out: Pickable[] = [];
-      for (const it of deps.drawnItems()) {
-        if (it.isFlag !== true || !isHitTarget(it)) continue;
-        const gatherer = gathererOf.get(it.ref);
-        if (gatherer === undefined) continue; // an unbound / non-human flag - not a selection proxy
-        // The flag's own drawn bounds: the feet anchor is pre-lift, so a box around it misses a flag on
-        // raised ground.
-        out.push({ ref: gatherer, x: it.x, y: it.y, kind: 'settler', box: deps.boundsOf?.(it.ref) });
-      }
+      visitFlags((item, gatherer) => {
+        // The flag's bounds follow terrain lift; its selection proxy is the gatherer.
+        out.push({ ref: gatherer, x: item.x, y: item.y, kind: 'settler', box: deps.boundsOf?.(item.ref) });
+        return false;
+      });
       return out;
     },
 
@@ -224,14 +272,11 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
     },
 
     signposts(): Pickable[] {
-      const snapshot = deps.snapshot();
       const out: Pickable[] = [];
-      for (const it of deps.drawnItems()) {
-        // Only the post itself - its direction boards ride synthetic negative refs (see sprite-scene.ts).
-        if (it.kind !== 'signpost' || it.ref <= 0 || !isHitTarget(it)) continue;
-        if (!pickableOwner(ownerOfRef(snapshot, it.ref))) continue;
-        out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
-      }
+      visitSignposts((item) => {
+        out.push({ ref: item.ref, x: item.x, y: item.y, kind: 'signpost', box: deps.boundsOf?.(item.ref) });
+        return false;
+      });
       return out;
     },
 
