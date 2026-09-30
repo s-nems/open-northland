@@ -24,7 +24,8 @@ of that at speed 3.
   (`WAVE_GATHER_TICKS`, `WAVE_RAMP_TICKS`, the supply governor by game clock).
 - Behaviour change: AI goldens, the AI acceptance scenes and every state hash a test pins over an AI
   seat move in the same commit, which names this change.
-- Independent of [bounding one seat's pass](ai-decision-tick-slicing.md), which cuts what a pass costs;
+- Independent of [cheaper AI traversal](../../perf/magiczny-las-late-game.md#fresh-simulation-comparison),
+  which cuts what a pass costs;
   this halves how often it is paid.
 
 ## Verify

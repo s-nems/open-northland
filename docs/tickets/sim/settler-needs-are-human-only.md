@@ -1,35 +1,45 @@
-# Move the human-only halves of `Settler` off the shared component
+# Omit default wildlife needs and progression records while preserving reader behavior
 
-**Area:** sim · **Priority:** P3
+**Area:** sim, app · **Priority:** P3
 
-`Settler` is the shared creature component: people and wildlife both carry it, and the `Person` marker
-(`components/settler.ts`) is what separates them. Four of its six fields are human-only, though -
-`hunger`, `fatigue`, `piety`, `enjoyment` - and so is the `SettlerProgress` experience map both
-constructors stamp beside it. `addWildlife` writes them all as inert zeros or an empty map, nothing
-raises them (`systems/lifecycle/needs/system.ts` sweeps `Person`), nothing reads them
-(`systems/progression/experience.ts` returns early on wildlife), and `hashSimState` mixes them for
-every creature on the map. A monster-tribe person carries the same inert fields: `needsSystem`
-skips a recorded tribe with no `jobEnables`, because no building can employ it.
+`addWildlife` creates zero `SettlerNeeds` bars and an empty `SettlerProgress.experience` map. Ordinary
+needs updates select `Person`, and fight experience explicitly excludes wildlife. These records are
+unchanging in the measured world, but their values are observable: animal melee reads progression
+in `engage-combatant.ts`; walking reads fatigue in `walk-cost.ts`; death events read hunger in
+`death.ts`. `debugSetNeeds` can write wildlife bars, which can then affect walking and death hints.
+The paired-component invariant and the wildlife acceptance scene also require their presence.
+Removing the records only in the constructor would break those contracts.
 
-Making them human-only components drops the dead fields per creature out of the hash, and turns the
-two remaining conventional gates structural: `grantFightExperience` still asks `isWildlife` at
-runtime, where an XP grant keyed on `SettlerProgress` could not reach a creature at all, and
-`needsSystem` still asks `declaresNoTrades` per entity, where the stamp could answer it once. `tribe`
-and `jobType` stay shared - `conflict/weapons.ts` reads a creature's null `jobType` to pick its animal weapon.
+At tick 97200, the current reference checkpoint has 2470 `Settler` entities: 2133 people and 337
+wildlife, including 81 with owners. All 337 wildlife needs records contain four zeros and all their
+progression maps are empty. Omitting both would remove 674 records, save 29,836 bytes in compact
+save serialization, and about 33,700 bytes in a complete JSON snapshot. This is principally storage
+and initial/rebuild snapshot work: unchanged components are already omitted from normal deltas.
+No tick-time or frame-time improvement has been measured for this change.
 
 ## Scope
 
-- Extract `Needs { hunger, fatigue, piety, enjoyment }` off `Settler` and stop `addWildlife` stamping
-  `SettlerProgress`; keep the two constructors as the only stamp path, and stamp `Needs` only for a
-  tribe that declares trades. A creature's swing reads no experience then (`engage-combatant.ts`).
-- Retarget `needsSystem`, `experience.ts`, `alive-jobs.ts`, the `needsInRange` invariant and the
-  `Settler`/`SettlerProgress` pair of `splitHalvesPaired` at the new components, and drop the `Person` requirement where the new component already implies it.
-- The state hash moves (fewer hashed fields per creature); the atomic trace must not.
-- Optional in the same pass, decide separately: `Settler` now names the shared creature, not a person.
-  Renaming it `Creature` is mechanical and behavior-free, but touches every query site, so it is worth
-  doing only alongside a change that already reads those files.
+- Keep `Settler` identity and `Person` classification unchanged. People from tribes without trades
+  retain both records; their needs and progression readers are a separate decision.
+- Let absent wildlife records mean the same zero bars and empty experience as the current constructor.
+  Audit every direct reader before changing construction; retain the same animal damage, movement,
+  fleeing, death hints, and event timing.
+- Preserve `debugSetNeeds` by materializing a fresh needs record before its first wildlife write.
+  Explicitly supplied non-default wildlife records remain observable. Read defaults must never be
+  shared mutable payloads installed into multiple entities.
+- Replace the universal `Settler` pairing with a contract requiring both records on `Person` and
+  allowing explicit records on wildlife. Update the wildlife scene to assert effective defaults.
+- Bump the save format and regenerate its fixture without migration. Explain hash differences through
+  omitted default wildlife records; do not change commands or simulation decisions.
 
 ## Verify
 
-- `npm run check`, `npm run build`, `npm test`. Re-baseline the one golden state hash
-  (`test/core/golden-trace.test.ts`) and confirm `GOLDEN_TRACE` and `run.produced` are untouched.
+Run standard gates, wildlife combat and experience scenarios, needs invariants, worker parity and
+save/restore checks. Cover an animal with omitted defaults, explicit non-default records, and a
+`debugSetNeeds` command that materializes bars. Compare action/event traces and gameplay state after
+projecting absent records to the old defaults. Measure save and complete-snapshot bytes on equivalent
+worlds; make a runtime speed claim only with a guarded comparison.
+
+The small static reduction alone does not establish a reason to replace fresh checkpoints or expand
+an otherwise validated performance change. Revisit this task when reducing persisted or cold snapshot
+size is a measured priority.
