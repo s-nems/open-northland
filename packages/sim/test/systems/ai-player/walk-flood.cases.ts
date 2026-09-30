@@ -5,7 +5,7 @@ import { CountedBlocks } from '../../../src/nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
 import { WalkFlood } from '../../../src/systems/ai-player/walk-distance.js';
 import { aiContent } from '../../fixtures/ai-content.js';
-import { waterColumnMap } from '../../fixtures/terrain.js';
+import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
 
 // The lazy walk flood behind the flag spot search: the same costs whatever is asked first, and a budget
 // that cuts the far side off.
@@ -69,6 +69,30 @@ describe('ai-player walk flood', () => {
     if (near === undefined || far === undefined) throw new Error('the seed bank is walkable');
     expect(near).toBeLessThan(far);
     expect(walk.costTo(terrain.nodeAt(EAST.hx, EAST.hy))).toBeUndefined();
+  });
+
+  it('keeps exact costs across a page boundary in either query order and honors the settle budget', () => {
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(48, 12) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    // These adjacent horizontal nodes straddle the 128-slot page boundary.
+    const nodes = [30, 31, 32, 33].map((hx) => terrain.nodeAt(hx, 2));
+    const seed = nodes[0];
+    if (seed === undefined) throw new Error('seed expected');
+    expect(nodes).toEqual([126, 127, 128, 129]);
+    const expected = [0, 0.5, 1, 1.5].map((cost) => fx.fromFloat(cost));
+    const forward = new WalkFlood(terrain, NO_BLOCKS, [seed], WHOLE_BANK);
+    const backward = new WalkFlood(terrain, NO_BLOCKS, [seed], WHOLE_BANK);
+    expect(nodes.map((node) => forward.costTo(node))).toEqual(expected);
+    expect(
+      [...nodes]
+        .reverse()
+        .map((node) => backward.costTo(node))
+        .reverse(),
+    ).toEqual(expected);
+    const limited = new WalkFlood(terrain, NO_BLOCKS, [seed], 1);
+    expect(limited.costTo(terrain.nodeAt(32, 2))).toBeUndefined();
+    expect(limited.costTo(seed)).toBe(fx.fromInt(0));
   });
 
   it('reads a node past the budget as unreached, the settled ones as before', () => {

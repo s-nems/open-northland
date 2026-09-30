@@ -83,7 +83,7 @@ class WalkFrontier {
   }
 }
 
-const COST_PAGE_SHIFT = 8;
+const COST_PAGE_SHIFT = 7;
 const COST_PAGE_SIZE = 1 << COST_PAGE_SHIFT;
 const COST_PAGE_MASK = COST_PAGE_SIZE - 1;
 interface CostPage {
