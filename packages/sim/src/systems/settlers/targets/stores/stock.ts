@@ -1,6 +1,7 @@
 import {
   Building,
   GroundDrop,
+  Palisade,
   Position,
   Stockpile,
   sameSideAs,
@@ -79,7 +80,7 @@ export function canStoreGood(
 /** {@link canStoreGood}'s good-independent rejects: whether `entity` is a store any deposit may land in. */
 export function takesDeposits(world: World, entity: Entity): boolean {
   if (!world.has(entity, Stockpile) || !world.has(entity, Position)) return false;
-  if (world.has(entity, GroundDrop)) return false;
+  if (world.has(entity, GroundDrop) || world.has(entity, Palisade)) return false;
   if (isYardHeap(world, entity)) return false;
   // A site takes material only through the delivery rules that count inbound errands. As a general sink
   // it would accept a distant load against a bill line a nearer fetch already covers, and that fetch
