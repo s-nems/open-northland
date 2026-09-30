@@ -23,7 +23,7 @@ import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 import { realMapPath, realMapScript } from './real-map-world.js';
 
 /**
- * The worker host on a late, heavy world: the six-AI magiczny_las benchmark checkpoint at tick 40000,
+ * The worker host on a late, heavy world: a six-AI magiczny_las benchmark checkpoint,
  * restored inline and in the worker, stepped under the same player orders, stays hash-identical.
  */
 
@@ -32,11 +32,11 @@ const { Owner, Position, Settler } = components;
 const MAP_ID = 'magiczny_las';
 /** The benchmark session the checkpoint was taken under. */
 const SEARCH = `map=${MAP_ID}&player=observer&ai=0,1,2,3,4,5&fog=classic`;
-// A local benchmark artefact, ignored by Git, so the test skips where it was never taken.
-const CHECKPOINT = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  '../../../../bench-out/ml6-s53.t40000.checkpoint',
-);
+// The default local artifact may be absent; an explicitly requested checkpoint must be usable.
+const requestedCheckpoint = process.env.ON_WORKER_CHECKPOINT;
+const CHECKPOINT = requestedCheckpoint
+  ? resolve(requestedCheckpoint)
+  : resolve(dirname(fileURLToPath(import.meta.url)), '../../../../bench-out/ml6-s53.t40000.checkpoint');
 /** The seat whose settlers take the orders. */
 const ORDERED_SEAT = 0;
 /** Ticks after the restore at which one order is submitted, each walking a settler to the next one. */
@@ -44,10 +44,15 @@ const ORDER_OFFSETS = [10, 60, 150, 260] as const;
 const RUN_TICKS = 400;
 const CHECKPOINT_TIMEOUT_MS = 240_000;
 
-/** A checkpoint from another save format is as absent as a missing one: this build cannot read it. */
 function checkpointReadable(): boolean {
-  if (!existsSync(CHECKPOINT)) return false;
+  if (!existsSync(CHECKPOINT)) {
+    if (requestedCheckpoint) throw new Error(`Worker checkpoint is missing: ${CHECKPOINT}`);
+    return false;
+  }
   const head = JSON.parse(readFileSync(CHECKPOINT, 'utf8')) as { header?: { formatVersion?: unknown } };
+  if (requestedCheckpoint && head.header?.formatVersion !== SAVE_FORMAT_VERSION) {
+    throw new Error(`Worker checkpoint must use save format ${SAVE_FORMAT_VERSION}: ${CHECKPOINT}`);
+  }
   return head.header?.formatVersion === SAVE_FORMAT_VERSION;
 }
 

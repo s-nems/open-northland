@@ -38,7 +38,8 @@ const SCENE_HASH_EVERY = 20;
 
 /** No audio, and no fullscreen prompt to take the session's first gesture away from the probe. */
 const COMMON_QUERY = 'sound=off&fullscreen=off';
-const MAP_QUERY = `map=${MAP_ID}&ai=${AI_SEATS.join(',')}&player=observer&${COMMON_QUERY}`;
+// An omitted map seed is randomized separately by each entry and the Node reference.
+const MAP_QUERY = `map=${MAP_ID}&seed=7&ai=${AI_SEATS.join(',')}&player=observer&${COMMON_QUERY}`;
 
 function scene() {
   const found = getScene(SCENE_ID);

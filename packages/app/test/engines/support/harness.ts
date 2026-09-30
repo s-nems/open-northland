@@ -74,16 +74,25 @@ export interface EngineSession {
 export class EngineUnavailableError extends Error {}
 
 export async function openEngine(engine: EngineId, url: string): Promise<EngineSession> {
-  if (engine === 'electron') return openElectron(url);
+  const headless = process.env.ON_ENGINE_HEADLESS;
+  if (headless !== undefined && headless !== 'on' && headless !== 'off') {
+    throw new Error(`ON_ENGINE_HEADLESS must be on or off, got '${headless}'`);
+  }
+  const muted = new URL(url);
+  muted.searchParams.set('sound', 'off');
+  if (engine === 'electron') return openElectron(muted.href);
   const playwright = await import('playwright');
   const browserType = playwright[engine];
   if (!installed(() => browserType.executablePath())) {
     throw new EngineUnavailableError(`${engine} is not installed; run: npx playwright install ${engine}`);
   }
-  const browser = await browserType.launch();
+  const browser = await browserType.launch({
+    headless: headless !== 'off',
+    ...(engine === 'chromium' ? { args: ['--mute-audio'] } : {}),
+  });
   const page = await browser.newPage({ viewport: VIEWPORT });
   const errors = watchErrors(page);
-  await page.goto(url, { waitUntil: 'load' });
+  await page.goto(muted.href, { waitUntil: 'load' });
   return { page, errors, close: () => browser.close() };
 }
 
@@ -101,7 +110,7 @@ async function openElectron(url: string): Promise<EngineSession> {
   const profile = await mkdtemp(join(tmpdir(), 'northland-engine-'));
   const removeProfile = () => rm(profile, { recursive: true, force: true });
   const app = await _electron
-    .launch({ args: [ELECTRON_MAIN, `--profile=${profile}`] })
+    .launch({ args: ['--mute-audio', ELECTRON_MAIN, `--profile=${profile}`] })
     .catch(async (err: unknown) => {
       await removeProfile();
       throw new EngineUnavailableError(`electron did not launch: ${String(err)}`);

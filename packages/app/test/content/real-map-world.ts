@@ -19,7 +19,7 @@ import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
  * half is skipped, and `?speed=` with it - speed multiplies the RAF loop, not the sim.
  */
 
-/** The seed the browser's map entry runs on (`WORLD_SEED` in `entries/map.ts`). */
+/** Repeatable default for this fixture builder; browser URLs must provide a seed explicitly. */
 const MAP_SEED = 7;
 
 export interface RealMapWorldOptions {
@@ -31,7 +31,7 @@ export interface RealMapWorldOptions {
   /** Seats people play, on this client or another: the match participants and assistant grants a
    *  relayed session declares on every client alike. Omitted runs the observer's world. */
   readonly humanSeats?: readonly number[];
-  /** Omitted runs on the browser entry's default seed. */
+  /** Defaults to 7 for this fixture builder. */
   readonly seed?: number;
   /** Seats the lobby left off the map, as the browser's `?absent=` does. */
   readonly absentSeats?: readonly number[];

@@ -143,6 +143,17 @@ npm run test:engines                              # Electron, Chromium, WebKit, 
 ON_ENGINES=electron,chromium npm run test:engines # a subset
 ```
 
+Playwright browsers run headless by default. If a local software GPU stalls before the game boots,
+run the same hash comparison in visible browser windows:
+
+```bash
+ON_ENGINE_HEADLESS=off npm run test:engines
+```
+
+`ON_ENGINE_HEADLESS` accepts `on` or `off`; unset keeps headless mode. It does not change Electron's
+launch. Browser output stays muted. A headed result validates that browser configuration; it does
+not establish that the failing software GPU boots correctly or that the default headless run passed.
+
 It needs generated content (the browser entries halt without it) and the Playwright browsers of the
 repository's Playwright version: `npm ci` installs none of them, so run `npx playwright install chromium webkit firefox` once; Electron comes with the
 desktop package. Electron and Chromium are gates, so a mismatch fails the run. WebKit and Firefox
@@ -152,7 +163,7 @@ instead of passing with nothing compared.
 
 The workloads are the `sandbox` scene over its acceptance run, hashed every 20 ticks, and 2000 ticks
 of `magiczny_las` with six AI seats, hashed every 100 because a full hash of that world is slow. The
-map workload boots the `?map=` entry, so its sim runs in the worker host there. A divergence names
+map workload pins seed 7 and boots the `?map=` entry, so its sim runs in the worker host there. A divergence names
 the first compared tick that differs. `ON_CONTENT_DIR` is refused: the app serves the checkout's
 `content/` only.
 
@@ -166,7 +177,9 @@ The in-process `session-worker-idle-poll.test.ts` checks that a worker waiting f
 polls at its idle period instead of spinning.
 `test:content` repeats the parity check in `session-worker-checkpoint.test.ts` on a late six-AI
 `magiczny_las` checkpoint under player orders; the checkpoint is a local `bench-out/` file, so the
-test skips where it was never written.
+test skips where it was never written. Set `ON_WORKER_CHECKPOINT` to a checkpoint path (absolute or
+relative to the checkout) to select a freshly generated late-game save. An explicitly selected file
+that is missing, malformed or uses another save format fails the test instead of skipping it.
 
 `packages/app/test/net/network-worker*.test.ts` run the page's `NetworkConnection` against the
 worker's `serveRelay` in process over a scripted relay link:
