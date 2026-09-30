@@ -273,7 +273,7 @@ const FIELD_FRAGMENT = `#version 300 es
     if (uCover > 0.5) {
       vec4 cover = texture(uCoverTex, vCoverUV);
       cover.rgb *= 1.0 - clamp(vWater.x, 0.0, 1.0);
-      texel.rgb = weatherCover(texel.rgb, texel.a, lane, cover);
+      texel.rgb = weatherCover(texel.rgb, texel.a, lane, cover, cover.g > 0.0 ? groundNeighbourhood() : vec3(0.0));
     }
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
     finalColor = vec4(texel.rgb * lane * vVertexColor, texel.a) * uColor;

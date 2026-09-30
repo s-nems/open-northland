@@ -11,8 +11,8 @@ import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
  *
  * The cover texture is the `WeatherCover` grid, one texel per weather sector (r wet, g snow, b dust,
  * a rain falling), linear-filtered so its texel centres land on sector centres. `uCover` gates the
- * whole pass: 0 draws the ground exactly as before. The pass adds no texture sample to a fragment
- * beyond the cover texel; its noise is arithmetic.
+ * whole pass: 0 draws the ground exactly as before. Beyond the cover texel the pass reads four ground
+ * taps to classify the ground under snow; its noise is arithmetic.
  */
 
 /** Rec. 601 luma weights, the published grey the grades pivot on. */
@@ -94,23 +94,22 @@ const RING_MARGIN = PUDDLE_RING_RADIUS_PX / PUDDLE_RING_CELL_PX;
 const RING_SQUASH = 2.0;
 
 /** Snow lies in drifts at three scales (world px) with these weights: broad drifts, patches, and
- *  the fine breakup of an edge. */
+ *  the wandering of a drift's edge. No octave is finer than a few px, so the snow reads as a smooth
+ *  field with soft edges rather than pixel speckle. */
 const SNOW_DRIFT_SCALE_PX = 140;
 const SNOW_PATCH_SCALE_PX = 36;
-const SNOW_FINE_SCALE_PX = 9;
-const SNOW_DRIFT_WEIGHT = 0.45;
-const SNOW_PATCH_WEIGHT = 0.35;
-const SNOW_FINE_WEIGHT = 0.2;
-/** Zoomed out, the pixel-scale snow detail (fine breakup, grain, grass tips) fades out between these
- *  zooms, so drifts stay drifts instead of breaking into speckle; at default zoom it is all there. */
+const SNOW_EDGE_SCALE_PX = 15;
+const SNOW_DRIFT_WEIGHT = 0.47;
+const SNOW_PATCH_WEIGHT = 0.38;
+const SNOW_EDGE_WEIGHT = 0.15;
+/** Zoomed out, the edge octave fades out between these zooms, so drifts stay drifts instead of
+ *  breaking into speckle; at default zoom it is all there. */
 const SNOW_DETAIL_FULL_ZOOM = 0.85;
 const SNOW_DETAIL_GONE_ZOOM = 0.45;
 /** Mean of the value noise, which a faded octave settles on. */
 const NOISE_MEAN = 0.5;
-/** Half-width of the snow edge in noise units. */
-const SNOW_EDGE = 0.07;
-/** Per-pixel grain breaking the edge into the ground's own pixel grid. */
-const SNOW_GRAIN = 0.08;
+/** Half-width of the snow edge in noise units: a few px of feathering at default zoom. */
+const SNOW_EDGE = 0.045;
 /** The noise level snow starts at under the lightest cover, and under full cover. The full level
  *  leaves the highest-lying and steepest ground bare, so even deep snow never becomes a sheet. */
 const SNOW_NONE_THRESHOLD = 0.78;
@@ -119,31 +118,34 @@ const SNOW_FULL_THRESHOLD = 0.33;
  *  noise a full slope takes off. */
 const SNOW_SLOPE_FALLOFF = 3.0;
 const SNOW_SLOPE_PENALTY = 0.22;
-/** Bright grass tips poke through: the luma band over which a grass texel counts as a tip, and the
- *  noise a tip takes off. */
-const SNOW_TIP_LUMA_LOW = 0.28;
-const SNOW_TIP_LUMA_HIGH = 0.5;
-const SNOW_TIP_PENALTY = 0.22;
-/** Zoomed out, grass takes this share of the tip penalty everywhere instead of per texel, so the snow
- *  keeps about its cover without the per-pixel breakup. Approximation, by eye. */
-const SNOW_TIP_MEAN = 0.25;
-/** Bare rock sheds snow: the saturation band below which a texel counts as grey stone, and the noise
+/** The ground is classified from the average of four taps this many texels out, not per texel, so a
+ *  bright grass blade or a grey pebble in the pattern cannot switch the snow on or off by itself. */
+const GROUND_TAP_TEXELS = 3;
+/** Tall grass holds snow up off the ground: the noise grassy ground takes off, so its drifts lie a
+ *  little thinner. */
+const SNOW_GRASS_PENALTY = 0.08;
+/** Bare rock sheds snow: the saturation band below which ground counts as grey stone, and the noise
  *  stone takes off. */
 const SNOW_ROCK_SATURATION_LOW = 0.06;
 const SNOW_ROCK_SATURATION_HIGH = 0.16;
-const SNOW_ROCK_PENALTY = 0.15;
-/** Snow colour: a cool white that survives the warm post grade. */
+const SNOW_ROCK_PENALTY = 0.12;
+/** Snow colour on a drift's crest: a cool white that survives the warm post grade. */
 const SNOW_COLOUR = 'vec3(0.94, 0.97, 1.06)';
+/** Thin snow and the hollows between crests read blue-grey: the tint there, and the noise units above
+ *  the drift's start over which it turns to crest white. */
+const SNOW_HOLLOW_TINT = 'vec3(0.8, 0.85, 0.95)';
+const SNOW_CREST_LOW = 0.02;
+const SNOW_CREST_HIGH = 0.2;
+/** Where a drift thins out its edge reads a touch darker, as packed snow over damp ground: the
+ *  darkening and its width in noise units inside the edge. */
+const SNOW_RIM_DARKEN = 0.1;
+const SNOW_RIM_WIDTH = 0.05;
 /** Shaded snow turns blue: the tint of snow in full shade and the lane at which shade is full. */
 const SNOW_SHADE_TINT = 'vec3(0.84, 0.9, 1.04)';
 const SNOW_SHADE_LANE = 0.75;
-/** Snow brightness follows the ground texel's luma about this pivot, so the pixel art's relief
- *  still reads through; clamped so dark ground cannot grey the snow out. */
-const SNOW_TONE_PIVOT = 0.3;
-const SNOW_TONE_BASE = 0.86;
-const SNOW_RELIEF = 0.9;
-const SNOW_TONE_MIN = 0.74;
-const SNOW_TONE_MAX = 1.0;
+/** A trace of the ground's own pixel relief shows through the snow body, measured against its
+ *  neighbourhood so dark ground does not grey the snow out. */
+const SNOW_RELIEF = 0.25;
 /** How much of the terrain lighting (the lane multiplier) the snow takes: full lighting blows a
  *  lit slope's snow out to flat white. */
 const SNOW_LIGHT_RESPONSE = 0.55;
@@ -151,13 +153,13 @@ const SNOW_LIGHT_RESPONSE = 0.55;
 const MIN_LANE = 0.05;
 /** Snow opacity at a drift's thin edge, and in its deep middle under full cover: the ground's hue
  *  and relief always show through. */
-const SNOW_THIN_OPACITY = 0.35;
-const SNOW_DEEP_OPACITY = 0.8;
+const SNOW_THIN_OPACITY = 0.4;
+const SNOW_DEEP_OPACITY = 0.82;
 /** Noise units from a drift's edge to its deep middle. */
-const SNOW_DEEPEN = 0.12;
+const SNOW_DEEPEN = 0.14;
 /** Bare ground between the drifts dulls under frost: saturation it loses and the cool lift it takes
  *  under full cover, so the drifts sit on a wintry ground instead of on summer green. */
-const FROST_DESATURATE = 0.3;
+const FROST_DESATURATE = 0.38;
 const FROST_LIFT = 'vec3(0.02, 0.03, 0.05)';
 /** Ground this bright, pale and cool already is painted snow, its blue-grey shading included; cover
  *  keeps off most of it so the painted relief survives. Warm pale ground (sand, dry grass) is not. */
@@ -168,28 +170,47 @@ const SNOWY_SATURATION_HIGH = 0.35;
 const SNOWY_WARMTH_MAX = 0.06;
 const SNOWY_KEEP = 0.9;
 
-/** Decor dusting: snow settles only on a sprite's lit, upward faces and its top rim, a little further
- *  down as the cover deepens; the shaded body keeps its own colours. */
-const DECOR_SHADE_LUMA = 0.12;
-const DECOR_LIGHT_LUMA = 0.55;
+/** Snow on a sprite gathers where the rows above it are clear: the weights of the first three rows
+ *  above in that test, so a cap fades over a few rows instead of stopping at one. */
+const CAP_ROW_WEIGHTS = [0.5, 0.3, 0.2] as const;
+/** A cap needs a surface to lie on: the share of the cap a texel with clear sides keeps (a blade tip),
+ *  against one with filled sides (a mushroom top, a stone). */
+const CAP_BARE_SIDE_SHARE = 0.25;
+/** Luma band from shade to lit: lit faces face up to the sky and hold more of the snow. */
+const CAP_SHADE_LUMA = 0.12;
+const CAP_LIGHT_LUMA = 0.55;
+const CAP_LIGHT_SHARE = 0.35;
+/** Snow opacity on a full cap, and the tone its shaded side keeps. */
+const CAP_OPACITY = 0.85;
+/** The raw claim band a cap turns from bare to full snow over: a soft lower edge, a solid top. */
+const CAP_CLAIM_LOW = 0.12;
+const CAP_CLAIM_HIGH = 0.6;
+const CAP_SHADE_TONE = 0.78;
+/** Zoomed out, a cap's few rows shrink under a pixel and would read as speckle: between these texels
+ *  per screen px the decor's caps fade to this share. */
+const CAP_MINIFY_FULL = 1.0;
+const CAP_MINIFY_GONE = 2.2;
+const CAP_MINIFIED_SHARE = 0.35;
+/** Decor: the share of full cover its upper part takes as a soft lightening over the sprite height,
+ *  and the share of the sprite height, from the top, it reaches down. */
+const DECOR_UPPER_GAIN = 0.35;
+const DECOR_UPPER_REACH = 0.55;
+/** Decor on a snowed drift sinks in: the share of its height from the ground that blends toward the
+ *  lying snow, the share of that blend its top keeps (flat decor is all foot), and its strongest
+ *  opacity. */
+const DECOR_BURY_HEIGHT = 0.45;
+const DECOR_BURY_TOP_SHARE = 0.15;
+const DECOR_BURY_OPACITY = 0.55;
 /** Share of its ground drift's snow a sprite still takes on bare ground: snow settles on stone and
- *  bark before the ground holds it. */
+ *  leaves before the ground holds it. */
 const DECOR_BARE_SHARE = 0.5;
-/** Weights of a texel's light, its top rim and its pixel grain in its claim on the snow. */
-const DECOR_LIGHT_WEIGHT = 0.6;
-const DECOR_RIM_WEIGHT = 0.6;
-const DECOR_GRAIN = 0.2;
-/** The claim a texel needs under the lightest dusting and under full cover; the soft edge around it. */
-const DECOR_CLAIM_LIGHT = 1.05;
-const DECOR_CLAIM_FULL = 0.55;
-const DECOR_CLAIM_EDGE = 0.15;
-/** Opacity of the settled snow, and the tone its shaded side keeps. */
-const DECOR_SNOW_OPACITY = 0.78;
-const DECOR_SNOW_SHADE = 0.72;
 /** The faint frosted look the rest of the sprite takes: a cooled, desaturated lift. */
-const DECOR_FROST = 0.12;
+const DECOR_FROST = 0.15;
 const DECOR_FROST_TINT = 'vec3(0.82, 0.86, 0.92)';
 const DECOR_FROST_LIFT = 0.1;
+/** The decor quad writes its two top corners first (decor-batch). */
+const QUAD_CORNERS = 4;
+const QUAD_TOP_CORNERS = 2;
 
 /** Dust streaks run along the wind: long in x, short in y (world px). */
 const DUST_STREAK_X_PX = 90;
@@ -249,13 +270,13 @@ const COVER_NOISE = `
     float push = ${f(TRANSITION_JITTER)} * (coverNoise(p / ${f(TRANSITION_SCALE_PX)} + 31.0) - 0.5);
     return clamp(cover + push * 4.0 * cover * (1.0 - cover), 0.0, 1.0);
   }
-  // The drift noise at a ground-plane px, before any grain or ground penalty; 'detail' 0..1 keeps the
-  // fine octave, which settles on its mean without it.
+  // The drift noise at a ground-plane px, before any ground penalty; 'detail' 0..1 keeps the edge
+  // octave, which settles on its mean without it.
   float snowNoise(vec2 p, float detail) {
-    float fine = detail > 0.0 ? coverNoise(p / ${f(SNOW_FINE_SCALE_PX)} + 97.0) : ${f(NOISE_MEAN)};
+    float edge = detail > 0.0 ? coverNoise(p / ${f(SNOW_EDGE_SCALE_PX)} + 97.0) : ${f(NOISE_MEAN)};
     return ${f(SNOW_DRIFT_WEIGHT)} * coverNoise(p / ${f(SNOW_DRIFT_SCALE_PX)})
       + ${f(SNOW_PATCH_WEIGHT)} * coverNoise(p / ${f(SNOW_PATCH_SCALE_PX)} + 53.0)
-      + ${f(SNOW_FINE_WEIGHT)} * mix(${f(NOISE_MEAN)}, fine, detail);
+      + ${f(SNOW_EDGE_WEIGHT)} * mix(${f(NOISE_MEAN)}, edge, detail);
   }
   // The noise level a drift starts at under snow cover g: above any noise for none.
   float snowThreshold(float g) {
@@ -263,6 +284,28 @@ const COVER_NOISE = `
   }
   float snowMask(float n, float threshold) {
     return smoothstep(threshold - ${f(SNOW_EDGE)}, threshold + ${f(SNOW_EDGE)}, n);
+  }
+`;
+
+/**
+ * A sprite texel's claim on settled snow, 0..1, from how clear the rows above it are, the alpha beside
+ * it and its luma: snow lies on the top surfaces and lit faces, fading down over a few rows. Every
+ * input is a smooth weight, so no single texel flips on alone.
+ */
+const SNOW_CAP = `
+  // How clear the three rows above a texel are, nearest first.
+  float capClear(vec3 above) {
+    return 1.0 - dot(above, vec3(${CAP_ROW_WEIGHTS.map(f).join(', ')}));
+  }
+  float snowCap(float clear, float sides, float luma) {
+    float support = mix(${f(CAP_BARE_SIDE_SHARE)}, 1.0, sides);
+    float light = smoothstep(${f(CAP_SHADE_LUMA)}, ${f(CAP_LIGHT_LUMA)}, luma);
+    return smoothstep(${f(CAP_CLAIM_LOW)}, ${f(CAP_CLAIM_HIGH)},
+      clear * support * mix(1.0 - ${f(CAP_LIGHT_SHARE)}, 1.0, light));
+  }
+  vec3 snowCapColour(float luma, float lit) {
+    return ${SNOW_COLOUR} * mix(${f(CAP_SHADE_TONE)}, 1.0,
+      smoothstep(${f(CAP_SHADE_LUMA)}, ${f(CAP_LIGHT_LUMA)}, luma)) * lit;
   }
 `;
 
@@ -291,6 +334,21 @@ export const COVER_FRAGMENT_DECLARATIONS = `
   flat in float vCoverZoom;
   ${COVER_NOISE}
 
+  // The ground's straight colour averaged over four taps round the fragment, kept inside its tile.
+  // Needs the terrain shader's uTexture, vUV and vSampleBounds.
+  vec3 groundNeighbourhood() {
+    vec2 size = vec2(textureSize(uTexture, 0));
+    vec2 centre = (vSampleBounds.xy + vSampleBounds.zw) * 0.5;
+    vec2 low = min(vSampleBounds.xy + 0.5 / size, centre);
+    vec2 high = max(vSampleBounds.zw - 0.5 / size, centre);
+    vec2 d = ${f(GROUND_TAP_TEXELS)} / size;
+    vec4 sum = textureLod(uTexture, clamp(vUV + d, low, high), 0.0)
+      + textureLod(uTexture, clamp(vUV - d, low, high), 0.0)
+      + textureLod(uTexture, clamp(vUV + vec2(d.x, -d.y), low, high), 0.0)
+      + textureLod(uTexture, clamp(vUV + vec2(-d.x, d.y), low, high), 0.0);
+    return sum.rgb / max(sum.a, ${f(MIN_ALPHA)});
+  }
+
   // Rain rings on a puddle's open water around drawn ground px p: one candidate per grid cell and cycle.
   float puddleRings(vec2 p, float rain) {
     vec2 cellPos = p / ${f(PUDDLE_RING_CELL_PX)};
@@ -311,8 +369,9 @@ export const COVER_FRAGMENT_DECLARATIONS = `
     return ring * (1.0 - age);
   }
 
-  // rgb is premultiplied by alpha; lane is the fragment's brightness multiplier (1 = level ground).
-  vec3 weatherCover(vec3 rgb, float alpha, float lane, vec4 cover) {
+  // rgb is premultiplied by alpha; lane is the fragment's brightness multiplier (1 = level ground);
+  // near is the ground's straight colour averaged over its neighbourhood.
+  vec3 weatherCover(vec3 rgb, float alpha, float lane, vec4 cover, vec3 near) {
     vec2 px = floor(vGroundPos) + 0.5;
     vec2 p = coverPlane(px);
     cover.rgb = coverJitter(cover.rgb, p);
@@ -353,29 +412,32 @@ export const COVER_FRAGMENT_DECLARATIONS = `
       }
     }
     if (cover.g > 0.0) {
-      vec3 straight = rgb * inv;
-      float saturation = max(straight.r, max(straight.g, straight.b)) - min(straight.r, min(straight.g, straight.b));
-      float snowy = smoothstep(${f(SNOWY_LUMA_LOW)}, ${f(SNOWY_LUMA_HIGH)}, luma)
-        * (1.0 - smoothstep(${f(SNOWY_SATURATION_LOW)}, ${f(SNOWY_SATURATION_HIGH)}, saturation))
-        * (1.0 - smoothstep(0.0, ${f(SNOWY_WARMTH_MAX)}, straight.r - straight.b));
-      float rock = (1.0 - smoothstep(${f(SNOW_ROCK_SATURATION_LOW)}, ${f(SNOW_ROCK_SATURATION_HIGH)}, saturation))
+      // Classified from the neighbourhood, never the texel, so no single pixel flips the snow.
+      float nearLuma = dot(near, ${LUMA});
+      float nearSaturation = max(near.r, max(near.g, near.b)) - min(near.r, min(near.g, near.b));
+      float nearGrass = smoothstep(0.0, ${f(GRASS_GREEN_LEAD)}, near.g - max(near.r, near.b));
+      float snowy = smoothstep(${f(SNOWY_LUMA_LOW)}, ${f(SNOWY_LUMA_HIGH)}, nearLuma)
+        * (1.0 - smoothstep(${f(SNOWY_SATURATION_LOW)}, ${f(SNOWY_SATURATION_HIGH)}, nearSaturation))
+        * (1.0 - smoothstep(0.0, ${f(SNOWY_WARMTH_MAX)}, near.r - near.b));
+      float rock = (1.0 - smoothstep(${f(SNOW_ROCK_SATURATION_LOW)}, ${f(SNOW_ROCK_SATURATION_HIGH)}, nearSaturation))
         * (1.0 - snowy);
-      float tip = grass * smoothstep(${f(SNOW_TIP_LUMA_LOW)}, ${f(SNOW_TIP_LUMA_HIGH)}, luma);
       float detail = smoothstep(${f(SNOW_DETAIL_GONE_ZOOM)}, ${f(SNOW_DETAIL_FULL_ZOOM)}, vCoverZoom);
-      float n = snowNoise(p, detail) + (coverHash(ivec2(px)) - 0.5) * ${f(SNOW_GRAIN)} * detail
+      float n = snowNoise(p, detail)
         - ${f(SNOW_SLOPE_PENALTY)} * clamp(abs(lane - 1.0) * ${f(SNOW_SLOPE_FALLOFF)}, 0.0, 1.0)
-        - ${f(SNOW_TIP_PENALTY)} * mix(grass * ${f(SNOW_TIP_MEAN)}, tip, detail) - ${f(SNOW_ROCK_PENALTY)} * rock;
+        - ${f(SNOW_GRASS_PENALTY)} * nearGrass - ${f(SNOW_ROCK_PENALTY)} * rock;
       float threshold = snowThreshold(cover.g);
       float mask = snowMask(n, threshold) * (1.0 - ${f(SNOWY_KEEP)} * snowy);
-      float depth = mix(${f(SNOW_THIN_OPACITY)}, mix(${f(SNOW_THIN_OPACITY)}, ${f(SNOW_DEEP_OPACITY)}, cover.g),
-        smoothstep(threshold, threshold + ${f(SNOW_DEEPEN)}, n));
-      float tone = clamp(${f(SNOW_TONE_BASE)} + ${f(SNOW_RELIEF)} * (luma - ${f(SNOW_TONE_PIVOT)}),
-        ${f(SNOW_TONE_MIN)}, ${f(SNOW_TONE_MAX)});
+      float body = smoothstep(threshold, threshold + ${f(SNOW_DEEPEN)}, n);
+      float depth = mix(${f(SNOW_THIN_OPACITY)}, mix(${f(SNOW_THIN_OPACITY)}, ${f(SNOW_DEEP_OPACITY)}, cover.g), body);
+      float crest = smoothstep(threshold + ${f(SNOW_CREST_LOW)}, threshold + ${f(SNOW_CREST_HIGH)}, n);
+      float rim = 1.0 - smoothstep(threshold, threshold + ${f(SNOW_RIM_WIDTH)}, n);
+      float tone = (1.0 + ${f(SNOW_RELIEF)} * (luma - nearLuma)) * (1.0 - ${f(SNOW_RIM_DARKEN)} * rim);
+      vec3 colour = mix(${SNOW_HOLLOW_TINT}, ${SNOW_COLOUR}, crest);
       vec3 shade = mix(${SNOW_SHADE_TINT}, vec3(1.0), smoothstep(${f(SNOW_SHADE_LANE)}, 1.0, lane));
       // The caller multiplies by the lane afterwards, so divide it back out of the snow's own share.
       float lit = mix(1.0, lane, ${f(SNOW_LIGHT_RESPONSE)}) / max(lane, ${f(MIN_LANE)});
       rgb = mix(rgb, vec3(dot(rgb, ${LUMA})), ${f(FROST_DESATURATE)} * cover.g) + ${FROST_LIFT} * (cover.g * alpha);
-      rgb = mix(rgb, ${SNOW_COLOUR} * shade * (tone * lit * alpha), mask * depth);
+      rgb = mix(rgb, colour * shade * (tone * lit * alpha), mask * depth);
     }
     if (cover.b > 0.0) {
       vec3 straight = rgb * inv;
@@ -407,43 +469,67 @@ export const DECOR_COVER_VERTEX_DECLARATIONS = `
   uniform float uCover;
   uniform vec2 uCoverNodeScale; // half-cell node to cover UV
   flat out float vSnow;
+  flat out float vCoverSnow;
+  out float vUp;
+  out vec2 vDecorPos;
   ${COVER_NOISE}
 `;
 
 /** Decor vertex body: the anchor's cover and the ground's drift there, once per vertex. */
 export const DECOR_COVER_VERTEX_BODY = `
     vSnow = 0.0;
+    vCoverSnow = 0.0;
+    vUp = 0.0;
+    vDecorPos = vec2(0.0);
     if (uCover > 0.5) {
+      // 1 on the quad's top edge, 0 on its bottom.
+      vUp = gl_VertexID % ${QUAD_CORNERS} < ${QUAD_TOP_CORNERS} ? 1.0 : 0.0;
+      vDecorPos = aPosition;
       vec2 node = vec2(aAnchor.x / ${f(TILE_HALF_W)}, 2.0 * aAnchor.y / ${f(TILE_HALF_H)});
       vec2 p = coverPlane(floor(aAnchor) + 0.5);
       float g = coverJitter(textureLod(uCoverTex, node * uCoverNodeScale, 0.0).rgb, p).g;
-      if (g > 0.0) vSnow = mix(${f(DECOR_BARE_SHARE)}, 1.0, snowMask(snowNoise(p, 1.0), snowThreshold(g))) * g;
+      if (g > 0.0) {
+        vCoverSnow = g;
+        vSnow = mix(${f(DECOR_BARE_SHARE)}, 1.0, snowMask(snowNoise(p, 1.0), snowThreshold(g))) * g;
+      }
     }
 `;
 
 export const DECOR_COVER_FRAGMENT_DECLARATIONS = `
   flat in float vSnow;
+  flat in float vCoverSnow;
+  in float vUp;
+  in vec2 vDecorPos;
   ${COVER_NOISE}
+  ${SNOW_CAP}
 
-  // Dust a decor texel (premultiplied rgb) with snow. uv is its page UV; lane its brightness multiplier.
+  // Snow a decor texel (premultiplied rgb): a soft cap on its top surfaces and upper part, its foot
+  // sunk into a snowed drift. uv is its page UV; lane its brightness multiplier.
   vec3 decorSnow(vec3 rgb, float alpha, vec2 uv, float lane) {
     vec2 size = vec2(textureSize(uTexture, 0));
+    vec2 texel = 1.0 / size;
+    // vSnow is flat across the quad, so the branch around this call keeps derivatives defined.
+    vec2 footprint = fwidth(uv * size);
+    float minified = smoothstep(${f(CAP_MINIFY_FULL)}, ${f(CAP_MINIFY_GONE)}, max(footprint.x, footprint.y));
     vec3 straight = rgb / max(alpha, ${f(MIN_ALPHA)});
     float luma = dot(straight, ${LUMA});
-    // The page keeps a transparent gutter round every frame, so one texel up never reads a neighbour.
-    float above = texture(uTexture, uv - vec2(0.0, 1.0 / size.y)).a;
-    float rim = alpha > 0.0 ? 1.0 - above : 0.0;
-    float light = smoothstep(${f(DECOR_SHADE_LUMA)}, ${f(DECOR_LIGHT_LUMA)}, luma);
-    float grain = coverHash(ivec2(floor(uv * size)));
-    float claim = ${f(DECOR_LIGHT_WEIGHT)} * light + ${f(DECOR_RIM_WEIGHT)} * rim
-      + ${f(DECOR_GRAIN)} * (grain - 0.5);
-    float needed = mix(${f(DECOR_CLAIM_LIGHT)}, ${f(DECOR_CLAIM_FULL)}, vSnow);
-    float settled = smoothstep(needed - ${f(DECOR_CLAIM_EDGE)}, needed + ${f(DECOR_CLAIM_EDGE)}, claim)
-      * ${f(DECOR_SNOW_OPACITY)};
-    vec3 frosted = mix(straight, vec3(luma) * ${DECOR_FROST_TINT} + ${f(DECOR_FROST_LIFT)}, ${f(DECOR_FROST)} * vSnow);
+    // The page keeps a one-texel transparent gutter round every frame, so a row further up counts only
+    // while the rows between are filled: past a clear row it could be a neighbour frame.
+    vec3 above = vec3(texture(uTexture, uv - vec2(0.0, texel.y)).a, 0.0, 0.0);
+    if (above.x > 0.0) above.y = texture(uTexture, uv - vec2(0.0, 2.0 * texel.y)).a;
+    if (above.y > 0.0) above.z = texture(uTexture, uv - vec2(0.0, 3.0 * texel.y)).a;
+    float sides = 0.5 * (texture(uTexture, uv - vec2(texel.x, 0.0)).a + texture(uTexture, uv + vec2(texel.x, 0.0)).a);
+    float upper = smoothstep(1.0 - ${f(DECOR_UPPER_REACH)}, 1.0, vUp);
+    float cap = max(snowCap(capClear(above), sides, luma) * mix(1.0, ${f(CAP_MINIFIED_SHARE)}, minified),
+      ${f(DECOR_UPPER_GAIN)} * upper) * vSnow;
+    // Flat decor lies on the ground it is drawn over, so the drift there is the one it sinks into.
+    float drift = snowMask(snowNoise(coverPlane(floor(vDecorPos) + 0.5), 1.0), snowThreshold(vCoverSnow));
+    float buried = mix(1.0, ${f(DECOR_BURY_TOP_SHARE)}, smoothstep(0.0, ${f(DECOR_BURY_HEIGHT)}, vUp))
+      * drift * vCoverSnow;
     float lit = mix(1.0, lane, ${f(SNOW_LIGHT_RESPONSE)}) / max(lane, ${f(MIN_LANE)});
-    vec3 snow = ${SNOW_COLOUR} * mix(${f(DECOR_SNOW_SHADE)}, 1.0, max(light, rim)) * lit;
-    return mix(frosted, snow, settled) * alpha;
+    vec3 frosted = mix(straight, vec3(luma) * ${DECOR_FROST_TINT} + ${f(DECOR_FROST_LIFT)}, ${f(DECOR_FROST)} * vSnow);
+    vec3 capped = mix(frosted, snowCapColour(luma, lit), cap * ${f(CAP_OPACITY)});
+    return mix(capped, ${SNOW_HOLLOW_TINT} * lit, buried * ${f(DECOR_BURY_OPACITY)}) * alpha;
   }
 `;
 
@@ -472,10 +558,14 @@ export function makeDecorCoverUniforms(): DecorCoverUniforms {
   }) as DecorCoverUniforms;
 }
 
+/** Cover texels are RGBA bytes, snow in green. */
+const COVER_TEXEL_BYTES = 4;
+export const COVER_SNOW_CHANNEL = 1;
+
 /** A cover texture of `width` by `height` sectors, all clear. */
 export function makeGroundCoverTexture(width: number, height: number): BufferImageSource {
   return new BufferImageSource({
-    resource: new Uint8Array(Math.max(1, width) * Math.max(1, height) * 4),
+    resource: new Uint8Array(Math.max(1, width) * Math.max(1, height) * COVER_TEXEL_BYTES),
     width: Math.max(1, width),
     height: Math.max(1, height),
     // The cover is a smooth field between sector centres, not pixel art.
