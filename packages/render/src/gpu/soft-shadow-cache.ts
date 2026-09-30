@@ -11,6 +11,18 @@ export const SHADOW_BLUR_PADDING = SHADOW_BLUR_RADIUS + 1;
 export const SHADOW_BLUR_KERNEL_SUM = SHADOW_BLUR_KERNEL.reduce((sum, tap) => sum + tap, 0);
 const MAX_PIXELS = 2 * 1024 * 1024;
 const MAX_FRAME_PIXELS = 512 * 512;
+const PAGE_SIDE = 512;
+type BakeContext = NonNullable<ReturnType<typeof readable2dContext>>;
+interface ShadowRow {
+  x: number;
+  readonly y: number;
+  readonly height: number;
+}
+interface ShadowPage {
+  readonly ctx: BakeContext;
+  readonly source: CanvasSource;
+  readonly rows: ShadowRow[];
+}
 /** Pixels one budgeted frame may bake. A bake is synchronous, so without a ceiling, switching the
  *  enhancement on over a settled town softens every visible caster inside that one frame. One frame of
  *  the largest allowed silhouette still fits, so a backlog always drains. */
@@ -47,10 +59,12 @@ export function softenShadowAlpha(data: Uint8ClampedArray, width: number, height
   }
 }
 
-/** Demand-baked frames have a fixed 8 MiB RGBA budget (plus the CPU canvas copies).
+/** Demand-baked frames have a fixed 8 MiB useful RGBA budget, plus atlas gaps and CPU canvas copies.
  * Overflow uses the original: evicting textures could invalidate retained off-screen sprites. */
 export class SoftShadowCache {
   private readonly textures = new Map<AtlasFrame, Texture>();
+  private readonly pages: ShadowPage[] = [];
+  private scratch: BakeContext | null = null;
   private unavailable = new WeakSet<AtlasFrame>();
   private pixels = 0;
   private framePixels = 0;
@@ -89,12 +103,24 @@ export class SoftShadowCache {
       this.unavailable.add(frame);
       return null;
     }
-    const ctx = readable2dContext(width, height);
+    this.scratch ??= readable2dContext(width, height);
+    const ctx = this.scratch;
     if (ctx === null) {
       this.unavailable.add(frame);
       return null;
     }
     try {
+      const scratchWidth = Math.max(ctx.canvas.width, width);
+      const scratchHeight = Math.max(ctx.canvas.height, height);
+      if (scratchWidth * scratchHeight > MAX_FRAME_PIXELS) {
+        ctx.canvas.width = 1;
+        ctx.canvas.height = height;
+        ctx.canvas.width = width;
+      } else {
+        if (ctx.canvas.width < width) ctx.canvas.width = width;
+        if (ctx.canvas.height < height) ctx.canvas.height = height;
+      }
+      ctx.clearRect(0, 0, width, height);
       ctx.drawImage(
         resource,
         frame.x,
@@ -108,9 +134,17 @@ export class SoftShadowCache {
       );
       const image = ctx.getImageData(0, 0, width, height);
       softenShadowAlpha(image.data, width, height);
-      ctx.putImageData(image, 0, 0);
+      const placement = this.pageFor(width, height);
+      if (placement === null) return null;
+      const { page, row } = placement;
+      const x = row.x,
+        y = row.y;
+      page.ctx.putImageData(image, x, y);
+      page.source.update();
+      row.x += width;
       const texture = new Texture({
-        source: new CanvasSource({ resource: ctx.canvas, scaleMode: 'linear' }),
+        source: page.source,
+        frame: new Rectangle(x, y, width, height),
         orig: new Rectangle(0, 0, frame.width, frame.height),
         // Negative trim extends the sprite geometry while retaining the original feet anchor.
         trim: new Rectangle(-SHADOW_BLUR_PADDING, -SHADOW_BLUR_PADDING, width, height),
@@ -125,8 +159,40 @@ export class SoftShadowCache {
     }
   }
 
+  private pageFor(width: number, height: number): { page: ShadowPage; row: ShadowRow } | null {
+    for (const page of this.pages) {
+      for (const row of page.rows) {
+        // Similar-height frames share fixed shelves; a thin frame cannot consume a tall shelf's width.
+        if (height > row.height || height * 2 < row.height) continue;
+        if (row.x + width <= page.ctx.canvas.width) return { page, row };
+      }
+      const last = page.rows[page.rows.length - 1];
+      const y = last === undefined ? 0 : last.y + last.height;
+      if (width <= page.ctx.canvas.width && y + height <= page.ctx.canvas.height) {
+        const row = { x: 0, y, height };
+        page.rows.push(row);
+        return { page, row };
+      }
+    }
+    // An oversized thin frame owns a tight page rather than padding its other axis to 512 pixels.
+    const oversized = width > PAGE_SIDE || height > PAGE_SIDE;
+    const ctx = readable2dContext(oversized ? width : PAGE_SIDE, oversized ? height : PAGE_SIDE);
+    if (ctx === null) return null;
+    const row = { x: 0, y: 0, height };
+    const page: ShadowPage = {
+      ctx,
+      source: new CanvasSource({ resource: ctx.canvas, scaleMode: 'linear' }),
+      rows: [row],
+    };
+    this.pages.push(page);
+    return { page, row };
+  }
+
   clear(): void {
-    for (const texture of this.textures.values()) texture.destroy(true);
+    for (const texture of this.textures.values()) texture.destroy(false);
+    for (const page of this.pages) page.source.destroy();
+    this.pages.length = 0;
+    this.scratch = null;
     this.textures.clear();
     this.unavailable = new WeakSet();
     this.pixels = 0;
