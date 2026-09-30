@@ -180,6 +180,40 @@ describe('script landscape state and blockers', () => {
     expect(sim.landscapeEdits().tints).toEqual(expected);
   });
 
+  it("paints a tint as cells: the point's cell plus range/2 less one rings, clamped to the map", () => {
+    const sim = fresh();
+    const terrain = terrainOf(sim);
+    const tinted = () => sim.landscapeEdits().tints.filter((value) => value !== 0).length;
+    // Every range under 4 is the centre cell alone, four nodes of the lattice.
+    setVertexColors(sim.world, terrain, POINT, 3, 100, false);
+    expect(tinted()).toBe(4);
+    // Range 6: two rings, 1 + 6 + 12 cells.
+    setVertexColors(sim.world, terrain, POINT, 6, 100, false);
+    expect(tinted()).toBe(4 * 19);
+    // A point off the map paints the part of its disc that lies on the map, here all of it.
+    setVertexColors(sim.world, terrain, { hx: -40, hy: 8 }, 900, 100, false);
+    expect(tinted()).toBe(terrain.nodeCount);
+  });
+
+  it('applies a scripted tint whose point lies off the map', () => {
+    const sim = missionSim(
+      [
+        {
+          active: true,
+          visible: false,
+          successfullIf: SUCCESSFUL_IF.all,
+          goals: [],
+          results: [{ opcode: 'SetVertexColor', point: { hx: 255, hy: 255 }, range: 900, amount: 5 }],
+        },
+      ],
+      houseContent(),
+      map(),
+    );
+    sim.run(LOAD_PASS);
+    expect(sim.landscapeEdits().tints.every((value) => value === 5)).toBe(true);
+    expect(sim.events.current().some((event) => event.kind === 'missionVertexColor')).toBe(true);
+  });
+
   it('saves sparse edits and restores identical collision and detached presentation', () => {
     const sim = fresh();
     const terrain = terrainOf(sim);

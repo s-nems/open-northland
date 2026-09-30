@@ -3,7 +3,13 @@ import { Position, ResourceFootprint } from '../../components/index.js';
 import { landscapeEditState, writeLandscapeEdits } from '../../components/landscape.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../nav/halfcell.js';
+import {
+  cellOfNode,
+  type HalfCellNode,
+  hexDistance,
+  hexDistanceBetween,
+  nodeOfPosition,
+} from '../../nav/halfcell.js';
 import type {
   LandscapeRemovalGroup,
   NodeId,
@@ -222,6 +228,34 @@ export function setBuildForbidden(
   });
 }
 
+/**
+ * Visit every node of the cells within `radius` cell steps of `centre`. The cell grid is the same
+ * odd-rows-right hexagon lattice as the nodes, so {@link hexDistanceBetween} applies to cell coordinates
+ * as it does to node coordinates. A cell owns the nodes {@link cellOfNode} maps onto it: its two rows
+ * and, after the four-row nudge, two columns, all inside the box walked here.
+ */
+function forNodesOfCellDisc(
+  terrain: TerrainGraph,
+  centre: { readonly cx: number; readonly cy: number },
+  radius: number,
+  apply: (node: NodeId) => void,
+): void {
+  const lastHy = Math.min(terrain.height - 1, 2 * (centre.cy + radius) + 1);
+  const lastHx = Math.min(terrain.width - 1, 2 * (centre.cx + radius + 1) + 1);
+  for (let hy = Math.max(0, 2 * (centre.cy - radius)); hy <= lastHy; hy++) {
+    for (let hx = Math.max(0, 2 * (centre.cx - radius - 1)); hx <= lastHx; hx++) {
+      const cell = cellOfNode(hx, hy);
+      if (hexDistanceBetween(cell.cx, cell.cy, centre.cx, centre.cy) <= radius) apply(terrain.nodeAt(hx, hy));
+    }
+  }
+}
+
+/**
+ * Original behavior: the point's cell takes the index, and so do `range >> 1` less one rings of cells
+ * around it, so a range under 4 paints one cell and 900 the whole map; a point off the map still paints
+ * the cells of its disc that lie on it. Approximation: the original keeps one index per cell, while
+ * this lattice keeps one per node, so every node a painted cell owns takes the index.
+ */
 export function setVertexColors(
   world: World,
   terrain: TerrainGraph,
@@ -234,7 +268,7 @@ export function setVertexColors(
   const value = Math.max(0, Math.min(255, amount));
   const current = landscapeEditState(world);
   const changed: NodeId[] = [];
-  forNodesInArea(terrain, point, range, (node) => {
+  forNodesOfCellDisc(terrain, cellOfNode(point.hx, point.hy), Math.max(0, (range >> 1) - 1), (node) => {
     if ((!onLand || terrain.landVertices?.[node] === true) && current.tints.get(node) !== value)
       changed.push(node);
   });

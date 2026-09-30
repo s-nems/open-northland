@@ -60,14 +60,11 @@ type LandscapeOp = Extract<
 
 export function editScriptedLandscape(pass: MissionPass, mission: number, op: LandscapeOp): void {
   const terrain = pass.ctx.terrain;
-  if (terrain === undefined || !terrain.inBounds(op.point.hx, op.point.hy)) {
+  if (terrain === undefined) {
     pass.reportFailed(mission, op.opcode);
     return;
   }
-  if (op.opcode === 'SetHouseBuildForbiddenArea') {
-    setBuildForbidden(pass.world, terrain, op.point, op.range, op.flag);
-    return;
-  }
+  // A tint's disc is clamped to the map, so its point may lie off it (`setVertexColors`).
   if (op.opcode === 'SetVertexColor' || op.opcode === 'SetVertexColorOnLand') {
     if (
       !setVertexColors(
@@ -83,6 +80,14 @@ export function editScriptedLandscape(pass: MissionPass, mission: number, op: La
       return;
     }
     pass.ctx.events.emit({ kind: 'missionVertexColor' });
+    return;
+  }
+  if (!terrain.inBounds(op.point.hx, op.point.hy)) {
+    pass.reportFailed(mission, op.opcode);
+    return;
+  }
+  if (op.opcode === 'SetHouseBuildForbiddenArea') {
+    setBuildForbidden(pass.world, terrain, op.point, op.range, op.flag);
     return;
   }
   if (terrain.landscapes === undefined) {
