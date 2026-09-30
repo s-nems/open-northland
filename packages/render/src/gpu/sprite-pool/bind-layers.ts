@@ -214,7 +214,7 @@ export class LayerBinder {
         if (layer.cast === true) {
           this.placeShadow(spr, layer, box, tint, shadowStyle);
         } else {
-          this.bindPlainLayer(pe, spriteSlot, layer, revealTexture, box, tint, enhanceBuilding);
+          this.bindPlainLayer(spr, layer, revealTexture, box, tint, enhanceBuilding);
         }
         spriteSlot++;
       }
@@ -437,15 +437,13 @@ export class LayerBinder {
   }
 
   private bindPlainLayer(
-    pe: PlainPooledEntity,
-    i: number,
+    spr: Sprite,
     layer: ResolvedLayer,
     revealTexture: Texture | null,
     box: LayerDrawBox,
     tint: number,
     enhanceBuilding: boolean,
   ): void {
-    const spr = this.plainSlot(pe, i);
     const grounded =
       layer.groundFoot === undefined
         ? null
