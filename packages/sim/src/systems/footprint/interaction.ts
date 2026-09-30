@@ -1,19 +1,23 @@
-import { footprintCellDx } from '@open-northland/data';
+import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import {
   Building,
   GroundDrop,
   Palisade,
   Position,
+  Resource,
   ResourceFootprint,
   RoadSite,
   Stockpile,
 } from '../../components/index.js';
+import { landscapeTopologyRevision } from '../../components/landscape.js';
+import type { ChangeFeed } from '../../ecs/change-feed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, MapContext, SystemContext } from '../context.js';
 import { nearestCell } from '../spatial/metric.js';
+import { buildingBlockedCells } from './building-blocked-cache.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 import { resourceAtTile } from './resource-tile-cache.js';
@@ -198,7 +202,7 @@ function stockedGoodAt(world: World, entity: Entity): number | null {
  * would silently revert the digger to an adjacent stance. A blocking node's anchor never survives the
  * standable filter, so trees, stones and ore keep the adjacent stance.
  */
-export function resourceStanceCells(
+function deriveResourceStanceCells(
   world: World,
   ctx: ContentContext,
   terrain: TerrainGraph,
@@ -323,4 +327,145 @@ export function positionedInteractionCell(
   const anchor = terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
   const pool = positionedStanceCells(world, ctx, terrain, entity);
   return nearestOpenStance(terrain, routeRegions(world, ctx, terrain), pool, from) ?? anchor;
+}
+
+interface StancePoolEntry {
+  epoch: number;
+  position: number | undefined;
+  footprint: number | undefined;
+  cells: readonly NodeId[];
+}
+interface StancePools {
+  validatedAt: number;
+  epoch: number;
+  readonly terrain: TerrainGraph;
+  readonly content: ContentSet;
+  buildings: ReadonlySet<NodeId>;
+  resources: number;
+  resourceMembers: number;
+  landscape: number;
+  readonly removed: ChangeFeed;
+  readonly resource: Map<Entity, StancePoolEntry>;
+}
+const stancePoolsByWorld = new WeakMap<World, StancePools>();
+
+function stancePools(world: World, ctx: ContentContext, terrain: TerrainGraph): StancePools {
+  let pools = stancePoolsByWorld.get(world);
+  if (
+    pools !== undefined &&
+    pools.terrain === terrain &&
+    pools.content === ctx.content &&
+    pools.validatedAt === world.mutationVersion
+  )
+    return pools;
+  const buildings = buildingBlockedCells(world, ctx, terrain);
+  const resources = world.componentGeneration(ResourceFootprint);
+  const landscape = landscapeTopologyRevision(world);
+  const resourceMembers = world.componentGeneration(Resource);
+  if (pools === undefined || pools.terrain !== terrain || pools.content !== ctx.content) {
+    const removed = pools?.removed ?? world.watchChanges([Position], []);
+    pools = {
+      validatedAt: world.mutationVersion,
+      epoch: 0,
+      terrain,
+      content: ctx.content,
+      buildings,
+      resources,
+      resourceMembers,
+      landscape,
+      removed,
+      resource: new Map(),
+    };
+    stancePoolsByWorld.set(world, pools);
+    world.registerCacheVerifier('interactionStancePools', () => verifyStancePools(world, ctx, terrain));
+  }
+  if (
+    pools.buildings !== buildings ||
+    pools.resources !== resources ||
+    pools.resourceMembers !== resourceMembers ||
+    pools.landscape !== landscape
+  ) {
+    // Keep records for reuse; callers may still hold their previous cells arrays.
+    if (pools.epoch === Number.MAX_SAFE_INTEGER) {
+      pools.resource.clear();
+      pools.epoch = 0;
+    } else pools.epoch += 1;
+    pools.buildings = buildings;
+    pools.resources = resources;
+    pools.resourceMembers = resourceMembers;
+    pools.landscape = landscape;
+  }
+  pools.validatedAt = world.mutationVersion;
+  if (pools.removed.pending) drainRemovedPositions(world, pools);
+  return pools;
+}
+
+function drainRemovedPositions(world: World, pools: StancePools): void {
+  const overflow = pools.removed.drain((entity) => {
+    if (!world.has(entity, Position)) {
+      pools.resource.delete(entity);
+    }
+  });
+  if (overflow) {
+    pools.resource.clear();
+  }
+}
+
+/** Resource stance pools share only within an unchanged structure overlay. The nearest pick and
+ * pocket veto still run for every origin. */
+export function resourceStanceCells(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  resource: Entity,
+): readonly NodeId[] {
+  const pools = stancePools(world, ctx, terrain);
+  const position = world.revisionOf(resource, Position);
+  const footprint = world.revisionOf(resource, ResourceFootprint);
+  const held = pools.resource.get(resource);
+  if (
+    held !== undefined &&
+    held.epoch === pools.epoch &&
+    held.position === position &&
+    held.footprint === footprint
+  )
+    return held.cells;
+  const cells = deriveResourceStanceCells(world, ctx, terrain, resource);
+  if (held === undefined) pools.resource.set(resource, { epoch: pools.epoch, position, footprint, cells });
+  else {
+    held.epoch = pools.epoch;
+    held.position = position;
+    held.footprint = footprint;
+    held.cells = cells;
+  }
+  return cells;
+}
+
+function verifyStancePools(world: World, ctx: ContentContext, terrain: TerrainGraph): string[] {
+  const pools = stancePoolsByWorld.get(world);
+  if (
+    pools === undefined ||
+    pools.terrain !== terrain ||
+    pools.content !== ctx.content ||
+    pools.resources !== world.componentGeneration(ResourceFootprint) ||
+    pools.resourceMembers !== world.componentGeneration(Resource) ||
+    pools.landscape !== landscapeTopologyRevision(world) ||
+    pools.buildings !== buildingBlockedCells(world, ctx, terrain)
+  )
+    return [];
+
+  for (const [entity, held] of pools.resource) {
+    if (
+      held.epoch !== pools.epoch ||
+      !world.has(entity, Position) ||
+      held.position !== world.revisionOf(entity, Position) ||
+      held.footprint !== world.revisionOf(entity, ResourceFootprint)
+    )
+      continue;
+    const fresh = deriveResourceStanceCells(world, ctx, terrain, entity);
+    if (fresh.length !== held.cells.length || fresh.some((cell, i) => cell !== held.cells[i])) {
+      return [`interaction stance pool differs for entity ${entity}`];
+    }
+  }
+  return [];
 }
