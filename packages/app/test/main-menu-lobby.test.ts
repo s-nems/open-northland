@@ -241,12 +241,13 @@ describe('lobbyStartEntry', () => {
     const players = [slot(0, { claimable: true, type: 'human' }), slot(1, { claimable: true })];
     const state = initialLobbyState(players);
     const params = new URLSearchParams(
-      lobbyStartEntry('zatoka', state, players, {
-        fog: 'recon-fow',
-        professionProgression: false,
-        settlerNeeds: false,
-        weather: 'map',
-      }),
+      lobbyStartEntry(
+        'zatoka',
+        state,
+        players,
+        { fog: 'recon-fow', professionProgression: false, settlerNeeds: false, weather: 'map' },
+        SEED,
+      ),
     );
     expect(params.get('map')).toBe('zatoka');
     expect(params.get('player')).toBe('0');
