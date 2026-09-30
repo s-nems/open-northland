@@ -47,6 +47,24 @@ describe('saved multiplayer roster', () => {
     ]);
     expect(savedRoster(save)?.roster[0]?.nick).toBe('Ania');
   });
+  it('keeps a saved computer seat’s level, and hard where the save names none', () => {
+    const levelled = authored.map((seat) => ({ ...seat, difficulty: 'medium' as const }));
+    const withLevel = createSavedSessionMetadata(
+      {
+        ...descriptor,
+        seats: [
+          { player: 0, mode: 'ai', color: 3, difficulty: 'easy' },
+          { player: 1, mode: 'ai', color: 4 },
+        ],
+      },
+      [
+        { player: 0, nick: null },
+        { player: 1, nick: null },
+      ],
+    );
+    const restored = restoreSavedSeats({ ...save, header: { ...save.header, session: withLevel } }, levelled);
+    expect(restored.map((seat) => seat.difficulty)).toEqual(['easy', 'hard']);
+  });
   it('preserves the legacy fallback and distinguishes absent metadata from corrupt metadata', () => {
     expect(restoreSavedSeats({ ...save, header: { ...save.header, session: null } }, authored)).toEqual(
       authored,

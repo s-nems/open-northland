@@ -15,7 +15,7 @@ import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { seatBaseOf } from '../base.js';
 import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
-import { type AiProfile, aiProfileOf, BUILDER_CAP, profileBuildOrder } from '../difficulty.js';
+import { type AiProfile, aiProfileOf, profileBuildOrder } from '../difficulty.js';
 import type { AiPlayerModule } from '../index.js';
 import { reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
@@ -245,7 +245,7 @@ function rebuildCrew(
   const supply = SeatSupply.of(world, ctx, player, owned, order);
   const seat: SeatStaffing = { player, owned, supply, profile };
   return [
-    ...reserveBuilders(world, force, builderJob, BUILDER_CAP, ctx),
+    ...reserveBuilders(world, force, builderJob, profile.builders.opening, ctx),
     ...staffBuildings(world, ctx, seat, force, buildStaffingTally(world), 'min'),
   ];
 }

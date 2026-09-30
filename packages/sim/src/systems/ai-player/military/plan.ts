@@ -88,9 +88,9 @@ function outnumbered({ own, opposing }: Strength): boolean {
  * window: the band keeps gathering and the plan is kept. Both sides are whole armies, the seat's own beyond
  * `door.mustered`, since a garrison defends what a wave would take and the seat's towers should not bench
  * the band at its door. The one rule above all of that is the seat's `armyCap` ({@link ARMY_CAP_SOLDIERS}
- * on hard): an army that size goes in whole, once its men walking in have arrived or the window has run out on a man who never
- * does. A first strength judgement: head counts and tower posts, blind to weapons, armour, amulets,
- * potions and experience.
+ * on hard): an army that size goes in whole, once its men walking in have arrived or the window has run
+ * out on a man who never does. A first strength judgement: head counts and tower posts, blind to weapons,
+ * armour, amulets, potions and experience.
  */
 export function decideWave(
   world: World,

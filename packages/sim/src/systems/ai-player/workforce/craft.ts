@@ -246,7 +246,10 @@ export type JoineryRolePlans = Readonly<Record<string, Readonly<Record<JoineryRo
  *  top-tier joinery's whole crew builds catapults up to the cap and iron tools past it, or small ships.
  *  Such a type takes no {@link CRAFT_PLANS_BY_BUILDING_ID} row. */
 export function joineryRolePlans(cap: number, resume: number): JoineryRolePlans {
-  const catapultSeat: FleetSeat = { fleet: 'catapult', cap, resume, otherwise: ['tool_iron'] };
+  // A seat that keeps no catapults works tools alone: a fleet seat capped at none would take catapults
+  // up again at every decision its fleet lies at the resume line.
+  const catapultSeat: CraftSeat =
+    cap === 0 ? ['tool_iron'] : { fleet: 'catapult', cap, resume, otherwise: ['tool_iron'] };
   return {
     [ROLE_JOINERY_ID]: { catapult: { seats: [catapultSeat] }, ship: { seats: [['ship_small']] } },
   };

@@ -18,6 +18,9 @@ export { OBSERVER_SEAT, OVERSEER_SEAT } from '@open-northland/lockstep';
 /** How hard a seat the lobby hands to the computer plays until the person picks another level. */
 export const DEFAULT_LOBBY_AI_DIFFICULTY: AiDifficulty = 'medium';
 
+/** How hard a saved world's computer seat plays when the save names no level: `setPlayerAi`'s own. */
+export const SAVED_WORLD_AI_DIFFICULTY: AiDifficulty = 'hard';
+
 /** What the lobby lets a person claim, which is what the session then plays. */
 export type SeatChoice = LocalSeat;
 

@@ -98,9 +98,8 @@ export function garrisonArms(
  * past a cap it drafts to. Its fighters and the recruits already in drill count toward it, so only the
  * missing men are claimed out of `force`, which the ladder calls after the target-tier posts and ahead of
  * the surplus ones: a seat staffs what it built, and the trades that could absorb every man still leave
- * an army. Capped by the
- * {@link bachelorSurplus} and by the men draftable at all, and nobody is claimed while the draft has no
- * class to put him in.
+ * an army. Capped by the {@link bachelorSurplus} and by the men draftable at all, and nobody is claimed
+ * while the draft has no class to put him in.
  * Returns the claimed men for {@link trainGarrison} to publish.
  */
 export function claimArmyFloor(
@@ -139,10 +138,10 @@ export function claimArmyFloor(
  * The garrison sizing: this rung only holds the assistant's training counters at the number of men the
  * settlement can spare, and the dispatcher (`systems/assistant/`) drafts, walks and drills them. Only a
  * lower difficulty caps the army ({@link AiProfile.army}); otherwise its real bound is breeding: a fighter
- * neither marries nor fathers children and the conversion is one-way, so the allowance counts only unmarried spare men beyond the
- * seat's waiting brides ({@link bachelorSurplus}). Runs last in the workforce ladder, so it sees the men
- * the army floor claimed (`floorMen`, {@link claimArmyFloor}) and the men left unclaimed by every post,
- * reserve and flag.
+ * neither marries nor fathers children and the conversion is one-way, so the allowance counts only
+ * unmarried spare men beyond the seat's waiting brides ({@link bachelorSurplus}). Runs last in the
+ * workforce ladder, so it sees the men the army floor claimed (`floorMen`, {@link claimArmyFloor}) and
+ * the men left unclaimed by every post, reserve and flag.
  */
 export function trainGarrison(
   world: World,

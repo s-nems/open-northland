@@ -6,6 +6,7 @@ import {
   Female,
   JobAssignment,
   Marriage,
+  ownerOf,
   Residence,
   Settler,
 } from '../../components/index.js';
@@ -87,7 +88,9 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   }
   const profile = aiProfileOf(world, player);
   const held = idleMenHoldBirths(world, ctx, player, profile);
-  const births = birthCounters(profile, familySlotsTotal, familySlotsTotal - femaleStock, held);
+  const births = birthCounters(profile, familySlotsTotal, familySlotsTotal - femaleStock, held, () =>
+    bookedBirths(world, player),
+  );
   const daughters = assistantCounterCommand(world, player, 'extraWomen', births.daughters, false);
   if (daughters !== null) commands.push(daughters);
   const sons = assistantCounterCommand(world, player, 'extraMen', births.sons ?? 0, births.sons === null);
@@ -119,19 +122,33 @@ function idleMenHoldBirths(world: World, ctx: SystemContext, player: number, pro
 /**
  * The two birth counters: daughters up to the `wantedDaughters` the homes lack, sons unbounded (null)
  * unless `held`. A profile with a {@link AiProfile.birthShare} caps both together at that share of its
- * `familySlots`, at least one, daughters first: the assistant counts its booked child orders against the
- * counters (`systems/assistant/`), so that many pregnancies run at once.
+ * `familySlots`, at least one, daughters first. The assistant counts each counter's own sex's booked
+ * child orders against it (`systems/assistant/`), so each counter leaves room for the other sex's
+ * bookings already running.
  */
 function birthCounters(
   profile: AiProfile,
   familySlots: number,
   wantedDaughters: number,
   held: boolean,
+  booked: () => { readonly daughters: number; readonly sons: number },
 ): { readonly daughters: number; readonly sons: number | null } {
   if (profile.birthShare === null) return { daughters: wantedDaughters, sons: held ? 0 : null };
   const limit = Math.max(1, shareOf(familySlots, profile.birthShare));
-  const daughters = Math.min(wantedDaughters, limit);
-  return { daughters, sons: held ? 0 : limit - Math.max(0, daughters) };
+  const running = booked();
+  const daughters = Math.min(wantedDaughters, limit - running.sons);
+  return { daughters, sons: held ? 0 : Math.max(0, limit - Math.max(daughters, running.daughters)) };
+}
+
+/** The seat's child orders the assistant booked and a mother still carries, by the child's sex. */
+function bookedBirths(world: World, player: number): { daughters: number; sons: number } {
+  const booked = { daughters: 0, sons: 0 };
+  for (const e of world.query(AssistantChildOrder)) {
+    if (ownerOf(world, e) !== player) continue;
+    if (world.get(e, AssistantChildOrder).sex === 'female') booked.daughters++;
+    else booked.sons++;
+  }
+  return booked;
 }
 
 /** Married to a living spouse - narrower than the family rule's `isMarried`, which also counts a widow

@@ -2,7 +2,9 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   type AiDifficulty,
+  AssistantChildOrder,
   AssistantRecruit,
+  ChildOrder,
   JobAssignment,
   Marriage,
   Residence,
@@ -189,12 +191,17 @@ describe('population module (homeExpansion)', () => {
     // Two slots, a quarter of them rounds to none: the easy seat still keeps one child on the way.
     const easy = housedSeat('easy');
     expect(easy.assistantCounters(SEAT).extraMen).toEqual({ value: 1, infinite: false });
-    // Four slots with two daughters missing: the one birth goes to a daughter.
+    // A son the assistant booked on that counter is on the way when two more slots open that both want a
+    // daughter: he still fills the one birth, so the counters stay where they were - no daughter, and the
+    // son counter he already fills.
+    const mother = womenOf(easy)[0];
+    if (mother === undefined) throw new Error('setup: no wife');
+    easy.world.add(mother, ChildOrder, { child: 'male' });
+    easy.world.add(mother, AssistantChildOrder, { sex: 'male' });
     secondHome(easy);
-    expect(counters(easy)).toEqual([
-      { kind: 'setAssistantCounter', player: SEAT, counter: 'extraWomen', value: 1, infinite: false },
-      { kind: 'setAssistantCounter', player: SEAT, counter: 'extraMen', value: 0, infinite: false },
-    ]);
+    expect(counters(easy)).toEqual([]);
+    expect(easy.assistantCounters(SEAT).extraWomen.value).toBe(0);
+    expect(easy.assistantCounters(SEAT).extraMen).toEqual({ value: 1, infinite: false });
 
     // Half of four slots: both missing daughters at once, and no son.
     const medium = housedSeat('medium');

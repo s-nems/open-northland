@@ -217,7 +217,6 @@ function colorOverridesParam(params: URLSearchParams): ReadonlyMap<number, numbe
   return seatPairsParam(params, 'colors', (color) => color >= 0 && color < MAP_PLAYER_COLOR_COUNT);
 }
 
-/** A `<slot>:<value>,…` list, dropping malformed pairs and values `valid` refuses. */
 /** `?difficulty=slot:level,...`: how hard each named computer seat plays. */
 function seatDifficultiesParam(params: URLSearchParams): ReadonlyMap<number, AiDifficulty> {
   const out = new Map<number, AiDifficulty>();
@@ -230,6 +229,7 @@ function seatDifficultiesParam(params: URLSearchParams): ReadonlyMap<number, AiD
   return out;
 }
 
+/** A `<slot>:<value>,…` list, dropping malformed pairs and values `valid` refuses. */
 function seatPairsParam(
   params: URLSearchParams,
   key: string,

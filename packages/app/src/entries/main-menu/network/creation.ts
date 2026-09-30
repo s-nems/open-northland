@@ -1,4 +1,5 @@
 import { type MapsIndexEntry, mapLobbySlots } from '@open-northland/data';
+import type { AiDifficulty, SessionSeat } from '@open-northland/lockstep';
 import { prepareInitialSave } from '@open-northland/net-client';
 import type { RoomSeatSetup, RoomSettings } from '@open-northland/net-protocol';
 import { loadMapList } from '../../../content/maps-index.js';
@@ -15,6 +16,7 @@ import {
   authoredVacantMode,
   DEFAULT_LOBBY_AI_DIFFICULTY,
   offersDifficulty,
+  SAVED_WORLD_AI_DIFFICULTY,
   vacantOffers,
 } from '../lobby/roster-state.js';
 import type { CreateChoice } from './create-card.js';
@@ -51,6 +53,9 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
       ? []
       : mapSession(new URLSearchParams(save.header.entry), players).seats.map((seat) => [seat.player, seat]),
   );
+  // A save's computer seats play the level its entry names, and `setPlayerAi`'s hard where it names none.
+  const startLevel = (saved: SessionSeat | undefined): AiDifficulty =>
+    saved?.difficulty ?? (save === null ? DEFAULT_LOBBY_AI_DIFFICULTY : SAVED_WORLD_AI_DIFFICULTY);
   const authoredSeats: RoomSeatSetup[] = script.players.map((slot) => {
     const saved = savedSeats.get(slot.player);
     const listed = roster.get(slot.player);
@@ -61,9 +66,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
       offers: offers(slot),
       authoredTribe: slot.tribeId,
       ...(saved?.tribe === undefined ? {} : { tribe: saved.tribe }),
-      ...(listed === undefined || !offersDifficulty(listed)
-        ? {}
-        : { difficulty: saved?.difficulty ?? DEFAULT_LOBBY_AI_DIFFICULTY }),
+      ...(listed === undefined || !offersDifficulty(listed) ? {} : { difficulty: startLevel(saved) }),
     };
   });
   const seats = save === null ? authoredSeats : restoreSavedSeats(save, authoredSeats);
