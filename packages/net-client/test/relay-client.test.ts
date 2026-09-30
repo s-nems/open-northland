@@ -427,6 +427,26 @@ function fixtureWorld(tick = 0): OpenedWorld {
 }
 
 describe('RelayClient world operation ownership', () => {
+  it.each([DESCRIPTOR_WORLD, RESTORED_TICK])(
+    'uploads the snapshot tick and world generation captured before compression (world %i)',
+    async (world) => {
+      const opened = fixtureWorld(world);
+      opened.sim.run(2);
+      const tick = opened.sim.tick;
+      const { client, sent } = harness({ open: async () => opened });
+      start(client, world === DESCRIPTOR_WORLD ? null : world);
+      await client.settled();
+      sent.length = 0;
+      client.receive({ kind: 'snapshotRequest' });
+      opened.sim.step();
+      await client.settled();
+      const upload = sent.find((message) => message.kind === 'blob');
+      expect(upload).toMatchObject({ type: 'snapshot', tick, world });
+      if (upload?.kind !== 'blob') throw new Error('missing uploaded snapshot');
+      expect((await decodeSnapshot(upload.bytes)).header.tick).toBe(tick);
+    },
+  );
+
   it('does not upload a snapshot compressed after its world was invalidated', async () => {
     const { client, sent } = harness({ open: async () => fixtureWorld() });
     start(client, null);

@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 13` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 14` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -289,6 +289,10 @@ refusals included.
 (16 MiB) decoded, `type` is `snapshot`, `save`, `initialSave`, or `map`, `to` names one member's nick or null for
 everyone else in the room, and `tick` is required for a snapshot or a save. The relay never decodes
 the bytes; it delivers them as `blob { type, from, tick, bytes }` with the sender's nick.
+
+A `snapshot` upload also requires `world`, the donor's world generation at capture, as on an
+acknowledgement. An upload from another generation is stale and ignored, even if its tick is newer
+than the corrected cache; compression and delivery may have started before the donor's resync.
 
 A `map` is accepted only from the current creator in the lobby, with a null tick and an explicit
 immutable `mapOrigin: "mod" | "user"`. It is relayed as addressed. `requestMap` sends the connected

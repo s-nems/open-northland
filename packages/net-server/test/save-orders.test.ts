@@ -66,7 +66,7 @@ describe('accepted order capture', () => {
     s.advance(TICK_MS * 4);
     ackThrough(s.a, 1, 4);
     ackThrough(s.b, 1, 4);
-    s.a.send({ kind: 'blob', type: 'snapshot', tick: 3, to: null, bytes: 'AAAA' });
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, tick: 3, to: null, bytes: 'AAAA' });
     s.a.send(ask(1));
     expect(s.a.last('rejected')?.reason).toEqual({ code: 'saveExpired' });
     const member = createMember('token', 'Nick', 0, { delayTicks: 1, roundTripMs: 0 });

@@ -1,12 +1,7 @@
-import type { BlobType, ServerMessage } from '@open-northland/net-protocol';
+import type { BlobUpload, ServerMessage } from '@open-northland/net-protocol';
 import type { Deliver, Member, Refusal } from './member.js';
 
-export interface BlobUpload {
-  readonly type: BlobType;
-  readonly to: string | null;
-  readonly tick: number | null;
-  readonly bytes: string;
-}
+export type { BlobUpload } from '@open-northland/net-protocol';
 
 /** Hand a blob to the member `to` names, or to everyone but the sender. One message object, so the
  *  host serialises it once. */

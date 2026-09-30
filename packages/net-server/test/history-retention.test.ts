@@ -31,7 +31,14 @@ function play(s: MessageStage, peers: readonly Peer[], seconds: number): void {
 }
 
 function snapshot(peer: Peer): void {
-  peer.send({ kind: 'blob', type: 'snapshot', to: null, tick: peer.last('frame')?.tick ?? 1, bytes: BLOB });
+  peer.send({
+    kind: 'blob',
+    type: 'snapshot',
+    world: 0,
+    to: null,
+    tick: peer.last('frame')?.tick ?? 1,
+    bytes: BLOB,
+  });
 }
 
 describe('catch-up retention budgets', () => {

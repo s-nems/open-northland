@@ -1,4 +1,5 @@
 import {
+  type BlobUpload,
   type ClientMessage,
   type LobbyCompatibility,
   type LobbySettings,
@@ -11,7 +12,6 @@ import {
 import { RelayState } from './relay-state.js';
 
 type SeatChange = Omit<Extract<ClientMessage, { kind: 'setSeat' }>, 'kind' | 'player'>;
-type BlobUpload = Omit<Extract<ClientMessage, { kind: 'blob' }>, 'kind'>;
 
 export class RelayLobby {
   readonly token: string;

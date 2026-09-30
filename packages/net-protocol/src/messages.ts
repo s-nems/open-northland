@@ -150,6 +150,15 @@ export const DESCRIPTOR_WORLD = 0;
 /** What a blob holds; the relay reads the type and the tick, never the bytes. */
 export type BlobType = 'snapshot' | 'save' | 'map' | 'initialSave';
 
+export type BlobUpload = {
+  readonly to: string | null;
+  readonly tick: number | null;
+  readonly bytes: string;
+} & (
+  | { readonly type: 'snapshot'; readonly world: number }
+  | { readonly type: Exclude<BlobType, 'snapshot'> }
+);
+
 export type ClientMessage =
   | { readonly kind: 'hello'; readonly protocol: number; readonly token: string; readonly nick: string }
   | { readonly kind: 'listRooms' }
@@ -189,13 +198,7 @@ export type ClientMessage =
   | { readonly kind: 'kick'; readonly player: number }
   /** `to` names one member's nick, or null for everyone else in the room. `tick` is required for a
    *  snapshot or a save, since the relay serves the frames after it. */
-  | {
-      readonly kind: 'blob';
-      readonly type: BlobType;
-      readonly to: string | null;
-      readonly tick: number | null;
-      readonly bytes: string;
-    }
+  | ({ readonly kind: 'blob' } & BlobUpload)
   | { readonly kind: 'chat'; readonly text: string }
   | { readonly kind: 'pong'; readonly t: number };
 

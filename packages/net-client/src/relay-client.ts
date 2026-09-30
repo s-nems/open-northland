@@ -472,11 +472,12 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     const sim = this.sim;
     if (sim === null) return;
     const tick = sim.tick;
+    const world = this.world;
     void this.track(
       'snapshot',
       encodeSnapshot(exportSaveGame(sim, this.saveHeader())).then((bytes) => {
         if (this.sim !== sim) return;
-        this.sendBlob({ type: 'snapshot', to: null, tick, bytes });
+        this.sendBlob({ type: 'snapshot', to: null, tick, world, bytes });
       }),
     );
   }

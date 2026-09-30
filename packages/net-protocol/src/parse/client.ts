@@ -145,13 +145,15 @@ export function parseClientMessage(value: unknown): ClientMessage {
       const type = asOneOf(raw.type, BLOB_TYPES, 'blob.type');
       const tick = raw.tick === null ? null : asCount(raw.tick, 'blob.tick');
       if (type !== 'map' && tick === null) throw new Error(`blob.tick: a ${type} names its tick`);
-      return {
+      const payload = {
         kind,
-        type,
         to: raw.to === null ? null : parseNick(raw.to, 'blob.to'),
         tick,
         bytes: parseBlobBytes(raw.bytes, 'blob.bytes'),
       };
+      return type === 'snapshot'
+        ? { ...payload, type, world: asCount(raw.world, 'blob.world') }
+        : { ...payload, type };
     }
     case 'chat':
       return { kind, text: parseLine(raw.text, 'chat.text', MAX_CHAT_LENGTH) };

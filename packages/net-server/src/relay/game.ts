@@ -197,6 +197,7 @@ export class Game {
 
   /** Snapshots refresh the recovery cache; manual saves are relayed as addressed. */
   blob(sender: Member, upload: BlobUpload, now: number): Refusal {
+    if (upload.type === 'snapshot' && upload.world !== sender.world) return null;
     if (upload.type !== 'map' && upload.tick !== null) {
       if (!isSynced(sender)) return { code: 'snapshotUnsynced' };
       if (upload.tick < 1 || upload.tick > this.clock.tick)

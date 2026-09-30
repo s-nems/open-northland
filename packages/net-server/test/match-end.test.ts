@@ -41,7 +41,7 @@ describe('terminal room consensus', () => {
       s.advance(i === 0 ? 1 : SNAPSHOT_REFRESH_MS);
       const donor = s.a.of('snapshotRequest').length > s.b.of('snapshotRequest').length ? s.a : s.b;
       expect(donor.last('snapshotRequest')).toBeDefined();
-      donor.send({ kind: 'blob', type: 'snapshot', tick: 1, to: null, bytes });
+      donor.send({ kind: 'blob', type: 'snapshot', world: 0, tick: 1, to: null, bytes });
       expect(s.relay.roomCount).toBe(1);
       expect(s.a.last('room')?.room.state).toBe('ended');
     }
@@ -63,7 +63,7 @@ describe('terminal room consensus', () => {
     back.send({ kind: 'loaded', tick: null });
     back.send({ kind: 'leaveRoom' });
     expect(back.last('left')).toEqual({ kind: 'left' });
-    s.a.send({ kind: 'blob', type: 'snapshot', tick: 1, to: null, bytes: 'AAAA' });
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, tick: 1, to: null, bytes: 'AAAA' });
     expect(back.of('blob')).toEqual([]);
   });
 

@@ -465,7 +465,7 @@ describe('digests and resync', () => {
 
     s.b.send({ kind: 'ack', load: LOAD, tick: 4, digest: digest(1), world: 0 });
     expect(s.b.of('rejected')).toEqual([]);
-    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 2, bytes: BLOB });
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 2, bytes: BLOB });
     expect(s.b.last('blob')).toEqual({ kind: 'blob', type: 'snapshot', from: 'Ania', tick: 2, bytes: BLOB });
     expect(
       s.b
@@ -487,7 +487,7 @@ describe('digests and resync', () => {
     ackThrough(s.b, 1, 3);
     s.b.send({ kind: 'ack', load: LOAD, tick: 4, digest: digest(9), world: 0 });
     s.relay.disconnect(s.b.handle);
-    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 2, bytes: BLOB });
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 2, bytes: BLOB });
     const back = s.introduce(TOKEN_B, 'Bartek');
     back.send({ kind: 'loaded', tick: 1, world: 0 });
     expect(back.of('blob').map((blob) => blob.tick)).toEqual([2]);
@@ -575,7 +575,7 @@ describe('digests and resync', () => {
     s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
     expect(s.b.of('desync')).toHaveLength(1);
     s.relay.disconnect(s.b.handle);
-    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 1, bytes: BLOB });
     const back = s.introduce(TOKEN_B, 'Bartek');
     expect(back.of('desync')).toHaveLength(1);
     expect(back.last('start')?.snapshotTick).toBe(1);
@@ -598,7 +598,7 @@ describe('digests and resync', () => {
     const back = s.introduce(TOKEN_B, 'Bartek');
     expect(back.last('start')?.snapshotTick).toBeNull();
     // The requested snapshot lands while the returning client's own request is still on its way.
-    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 1, bytes: BLOB });
     expect(back.of('blob')).toEqual([]);
     back.send({ kind: 'loaded', tick: null });
     expect(back.of('rejected')).toEqual([]);
@@ -612,7 +612,7 @@ describe('digests and resync', () => {
     s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
     const back = s.introduce(TOKEN_B, 'Bartek');
     expect(back.of('desync')).toHaveLength(1);
-    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 1, bytes: BLOB });
     expect(back.of('blob')).toEqual([]);
     back.send({ kind: 'loaded', tick: null });
     expect(back.of('rejected')).toEqual([]);
@@ -628,7 +628,7 @@ describe('digests and resync', () => {
     const back = s.introduce(TOKEN_B, 'Bartek');
     back.send({ kind: 'loaded', tick: null });
     expect(back.of('rejected')).toEqual([]);
-    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 1, bytes: BLOB });
     expect(back.of('blob').map((blob) => blob.tick)).toEqual([1]);
   });
 
@@ -651,7 +651,7 @@ describe('digests and resync', () => {
     s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(2), world: 0 });
     s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
     s.relay.disconnect(s.b.handle);
-    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 1, bytes: BLOB });
     tick(s, [s.a], SNAPSHOT_RETRY_MS * 3);
     expect(s.a.of('snapshotRequest')).toHaveLength(1);
   });
@@ -678,11 +678,11 @@ describe('digests and resync', () => {
   it('refuses a snapshot from a client out of sync or from the future', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
-    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 5, bytes: BLOB });
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 5, bytes: BLOB });
     expect(s.a.last('rejected')?.reason).toMatchObject({ code: 'tickNotEmitted' });
     s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(2), world: 0 });
     s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
-    s.b.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
+    s.b.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 1, bytes: BLOB });
     expect(s.b.last('rejected')?.reason).toEqual({ code: 'snapshotUnsynced' });
   });
 });
@@ -712,7 +712,7 @@ describe('catching up', () => {
     const first = s.introduce(TOKEN_B, 'Bartek');
     first.send({ kind: 'loaded', tick: null });
     expect(first.last('rejected')?.reason).toEqual({ code: 'noSnapshot' });
-    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 3, bytes: BLOB });
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 3, bytes: BLOB });
     s.relay.disconnect(first.handle);
     const back = s.introduce(TOKEN_B, 'Bartek');
     expect(back.last('start')?.snapshotTick).toBe(3);

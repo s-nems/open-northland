@@ -7,6 +7,7 @@ export {
 export * from './limits.js';
 export type {
   BlobType,
+  BlobUpload,
   ClientLoad,
   ClientMessage,
   ClientMessageKind,

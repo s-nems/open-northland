@@ -127,7 +127,7 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
   { kind: 'clock', speed: 2 },
   { kind: 'clock', paused: true },
   { kind: 'kick', player: 1 },
-  { kind: 'blob', type: 'snapshot', to: null, tick: 40, bytes: BLOB },
+  { kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 40, bytes: BLOB },
   { kind: 'blob', type: 'save', to: 'Ania', tick: 40, bytes: BLOB },
   { kind: 'blob', type: 'map', to: null, tick: null, bytes: BLOB },
   { kind: 'chat', text: 'gotowi?' },
@@ -135,6 +135,15 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
 ];
 
 describe('client messages', () => {
+  it.each([undefined, null, -1, 0.5, '0', Number.MAX_SAFE_INTEGER + 1])(
+    'rejects a snapshot upload with invalid world generation %j',
+    (world) => {
+      expect(() =>
+        parseClientMessage({ kind: 'blob', type: 'snapshot', to: null, tick: 40, bytes: BLOB, world }),
+      ).toThrow(/blob.world/);
+    },
+  );
+
   for (const message of CLIENT_MESSAGES) {
     it(`round-trips ${message.kind}`, () => {
       expect(parseClientMessage(wire(message))).toEqual(message);
