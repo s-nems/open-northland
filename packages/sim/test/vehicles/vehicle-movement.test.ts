@@ -26,6 +26,7 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
+import { findPath } from '../../src/nav/pathfinding/index.js';
 import {
   canPlaceWorkFlag,
   placementBlockerVersion,
@@ -34,6 +35,7 @@ import {
 } from '../../src/systems/footprint/index.js';
 import { vehicleClearance } from '../../src/systems/footprint/vehicle-clearance.js';
 import { walkTurnSteps } from '../../src/systems/movement/turning.js';
+import { vehicleTraversal } from '../../src/systems/readviews/vehicles.js';
 import {
   boardRider,
   createVehicle,
@@ -46,6 +48,7 @@ import {
   vehicleMovePeriod,
   vehicleProgressPerTick,
 } from '../../src/systems/vehicles/index.js';
+import { nodeOf, vehicleRouteTo, vehicleWalkBlocks } from '../../src/systems/vehicles/movement.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap, waterColumnMap } from '../fixtures/terrain.js';
@@ -475,6 +478,37 @@ describe('moveVehicle', () => {
     queries.mockRestore();
     expect(s.world.has(catapult, VehicleDrive)).toBe(false);
     expect(s.world.has(bystander, MoveGoal)).toBe(true);
+  });
+
+  it('keeps direct route answers and refreshes blockers between searches', () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const cart = spawn(s, HANDCART, 4, 8);
+    const ctx = ctxOf(s);
+    const type = ctx.content.vehicles.find((v) => v.typeId === HANDCART);
+    if (type === undefined) throw new Error('cart type missing');
+    const goal = terrain.nodeAt(12, 8);
+    const reference = () => {
+      const path = findPath(
+        terrain,
+        terrain.nodeAt(4, 8),
+        goal,
+        vehicleWalkBlocks(s.world, ctxOf(s), terrain, cart, type),
+        undefined,
+        vehicleTraversal(type),
+      );
+      return path === null ? null : path.slice(1).map((node) => nodeOf(terrain, node));
+    };
+    const before = vehicleRouteTo(s.world, ctxOf(s), terrain, cart, goal);
+    expect(before).not.toBeNull(); // Leaving the cart's own footprint stays legal.
+    expect(before).toEqual(reference());
+    const blocker = spawn(s, CATAPULT, 12, 8);
+    expect(vehicleRouteTo(s.world, ctxOf(s), terrain, cart, goal)).toBeNull();
+    expect(vehicleRouteTo(s.world, ctxOf(s), terrain, cart, goal)).toEqual(reference());
+    s.world.destroy(blocker);
+    expect(vehicleRouteTo(s.world, ctxOf(s), terrain, cart, goal)).toEqual(before);
+    expect(vehicleRouteTo(s.world, ctxOf(s), terrain, cart, goal)).toEqual(reference());
   });
 
   it('parks where another vehicle stands only outside its cells and routes around it', () => {

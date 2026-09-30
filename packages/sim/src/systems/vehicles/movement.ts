@@ -146,12 +146,19 @@ function blocksUnder(
   terrain: TerrainGraph,
   vehicle: Entity,
   fits: (node: NodeId) => boolean,
+  answers?: Map<NodeId, boolean>,
 ): BlockOverlay {
   const ground = groundBlockOverlay(world, ctx, terrain);
   const vehicles = vehicleBlockedCells(world, ctx, terrain);
   const own = new Set(vehicleFootprintNodes(world, ctx.content, terrain, vehicle));
   return {
-    has: (node) => ground.has(node) || !fits(node) || (vehicles.has(node) && !own.has(node)),
+    has: (node) => {
+      const held = answers?.get(node);
+      if (held !== undefined) return held;
+      const answer = ground.has(node) || !fits(node) || (vehicles.has(node) && !own.has(node));
+      answers?.set(node, answer);
+      return answer;
+    },
     size: ground.size + vehicles.size + 1, // never empty: the clearance term is not a set
   };
 }
@@ -261,7 +268,15 @@ export function vehicleRouteTo(
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (anchor === null || type === undefined) return null;
   const start = terrain.nodeAtClamped(anchor.hx, anchor.hy);
-  const blocked = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
+  // The synchronous search cannot change these blockers; keep its repeated node probes local.
+  const blocked = blocksUnder(
+    world,
+    ctx,
+    terrain,
+    vehicle,
+    vehiclePasses(world, ctx, terrain, type),
+    new Map<NodeId, boolean>(),
+  );
   const path = findPath(terrain, start, goal, blocked, undefined, vehicleTraversal(type));
   return path === null ? null : path.slice(1).map((node) => nodeOf(terrain, node));
 }
