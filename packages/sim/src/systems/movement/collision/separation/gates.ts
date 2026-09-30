@@ -19,23 +19,18 @@ export class SeparationGates {
     private readonly world: World,
     private readonly ctx: SystemContext,
     private readonly terrain: TerrainGraph,
-    private readonly ghostMemo: Map<Entity, boolean>,
   ) {}
 
   /** Whether `e` stands inside its own player's calm zone. */
   isGhost(e: Entity): boolean {
-    let ghost = this.ghostMemo.get(e);
-    if (ghost === undefined) {
-      this.zones ??= calmZonesByPlayer(this.world, this.terrain);
-      const p = this.world.get(e, Position);
-      const hx = nodeHxOfPosition(p.x, p.y);
-      const hy = nodeHyOfPosition(p.y);
-      ghost =
-        this.terrain.inBounds(hx, hy) &&
-        (this.zones.get(this.world.get(e, Owner).player)?.has(this.terrain.nodeAt(hx, hy)) ?? false);
-      this.ghostMemo.set(e, ghost);
-    }
-    return ghost;
+    this.zones ??= calmZonesByPlayer(this.world, this.terrain);
+    const p = this.world.get(e, Position);
+    const hx = nodeHxOfPosition(p.x, p.y);
+    const hy = nodeHyOfPosition(p.y);
+    return (
+      this.terrain.inBounds(hx, hy) &&
+      (this.zones.get(this.world.get(e, Owner).player)?.has(this.terrain.nodeAt(hx, hy)) ?? false)
+    );
   }
 
   allowsLanding(x: Fixed, y: Fixed): boolean {

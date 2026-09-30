@@ -64,7 +64,7 @@ export const separationSystem: System = (world, ctx) => {
   const colliders = collectColliders(world, ctx, scratch);
   if (colliders === null) return; // nobody walking, so nothing can overlap anything
   const { movers, before, moverIndex, postIndex } = colliders;
-  const gates = new SeparationGates(world, ctx, terrain, scratch.ghostMemo);
+  const gates = new SeparationGates(world, ctx, terrain);
   const { nearMovers, nearPosts, push, candidate } = scratch;
 
   for (const e of movers) {

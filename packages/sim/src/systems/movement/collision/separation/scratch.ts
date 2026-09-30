@@ -39,7 +39,6 @@ export interface SeparationScratch {
   /** Per-mover neighbour lists, valid up to the counts the resolve keeps beside them. */
   readonly nearMovers: Entity[];
   readonly nearPosts: Entity[];
-  readonly ghostMemo: Map<Entity, boolean>;
   readonly push: ScratchPoint;
   readonly candidate: ScratchPoint;
 }
@@ -60,12 +59,10 @@ export function separationScratch(world: World): SeparationScratch {
       census: 0,
       nearMovers: [],
       nearPosts: [],
-      ghostMemo: new Map(),
       push: { x: ZERO, y: ZERO },
       candidate: { x: ZERO, y: ZERO },
     };
     scratchByWorld.set(world, scratch);
   }
-  scratch.ghostMemo.clear();
   return scratch;
 }
