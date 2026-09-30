@@ -109,10 +109,7 @@ function splitVehicleSites(world: World, ctx: SystemContext): SiteSplit {
  *  build matches a tick-start one: the pass sows, harvests and razes nothing, and its only stock writes
  *  are a farm's herd rows and drops onto a yard heap, which is why the yard occupancy is caught up here. */
 export function collectTargets(world: World, ctx: SystemContext, terrain: TerrainGraph): TargetCandidates {
-  const harvestAtomicByGood = new Map<number, number>();
-  for (const good of ctx.content.goods) {
-    if (good.atomics.harvest !== undefined) harvestAtomicByGood.set(good.typeId, good.atomics.harvest);
-  }
+  const { harvestAtomicByGood } = contentIndex(ctx.content);
 
   const stockpiles = world.canonicalQuery(Stockpile, Position);
   const buildings = world.canonicalQuery(Building, Position);

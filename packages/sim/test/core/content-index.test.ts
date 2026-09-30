@@ -113,3 +113,31 @@ describe('contentIndex class weapons', () => {
     expect(index.houseBowByTribe.get(VIKING)?.id).toBe('house_bow');
   });
 });
+
+describe('contentIndex harvest atomics', () => {
+  it('keeps key order and the last defined harvest, including atomic zero', () => {
+    const base = testContent();
+    const good = base.goods[0];
+    if (good === undefined) throw new Error('fixture needs a good');
+    const content: ContentSet = {
+      ...base,
+      goods: [
+        { ...good, typeId: 12, atomics: { harvest: 8 } },
+        { ...good, typeId: 7, atomics: { harvest: 5 } },
+        { ...good, typeId: 12, atomics: { harvest: 0 } },
+        { ...good, typeId: 7, atomics: {} },
+        { ...good, typeId: 99, atomics: {} },
+      ],
+    };
+    expect([...contentIndex(content).harvestAtomicByGood]).toEqual([
+      [12, 0],
+      [7, 5],
+    ]);
+    const other: ContentSet = { ...content, goods: [{ ...good, typeId: 12, atomics: { harvest: 3 } }] };
+    expect([...contentIndex(other).harvestAtomicByGood]).toEqual([[12, 3]]);
+    expect([...contentIndex(content).harvestAtomicByGood]).toEqual([
+      [12, 0],
+      [7, 5],
+    ]);
+  });
+});

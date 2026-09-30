@@ -143,6 +143,8 @@ export interface ContentIndex {
   /** The flag-gathering trades: jobs whose {@link atomicsByJob} include a non-farmed good's harvest
    *  atomic. */
   readonly harvestJobs: ReadonlySet<number>;
+  /** Good type → harvest atomic; later defined harvests replace earlier ones without reordering keys. */
+  readonly harvestAtomicByGood: ReadonlyMap<number, number>;
   /** The trades of each {@link jobRoleSets} role, by job typeId. */
   readonly soldierJobs: ReadonlySet<number>;
   readonly heroJobs: ReadonlySet<number>;
@@ -234,6 +236,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     atomicsByJob: resolveJobAtomics(content.jobs),
     constructionBillByBuilding: constructionBills(content),
     harvestJobs: harvestCapableJobs(content),
+    harvestAtomicByGood: harvestAtomicsByGood(content),
     soldierJobs: roles.soldier,
     heroJobs: roles.hero,
     scoutJobs: roles.scout,
@@ -318,6 +321,14 @@ function levelBelowTypes(content: ContentSet): ReadonlyMap<number, number> {
   for (const building of content.buildings) {
     const above = building.upgradeTarget;
     if (above !== undefined && !out.has(above)) out.set(above, building.typeId);
+  }
+  return out;
+}
+
+function harvestAtomicsByGood(content: ContentSet): ReadonlyMap<number, number> {
+  const out = new Map<number, number>();
+  for (const good of content.goods) {
+    if (good.atomics.harvest !== undefined) out.set(good.typeId, good.atomics.harvest);
   }
   return out;
 }
