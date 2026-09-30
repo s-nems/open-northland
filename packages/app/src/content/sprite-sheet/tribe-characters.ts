@@ -212,6 +212,8 @@ export interface TribeCharacterInputs {
   readonly layersByBody: ReadonlyMap<string, LoadedLook>;
   readonly sequencesByBody: ReadonlyMap<string, ReadonlyMap<string, BobSeqRow>>;
   readonly sequences: ReadonlyMap<string, BobSeqRow>;
+  /** The base tribe's `[gfxanimatomic]` programs, for the clips this tribe authors none for. */
+  readonly basePrograms?: ReadonlyMap<number, ReadonlyMap<string, GfxAtomicProgram>>;
 }
 
 /**
@@ -259,6 +261,7 @@ export function tribeCharacters(
         // plain soldier body), then the classes it degrades through.
         tribeSeqs,
         programsByAction,
+        ...(inputs.basePrograms !== undefined ? { basePrograms: inputs.basePrograms } : {}),
         waitBySeq,
         walkLists,
         subClips,

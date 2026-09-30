@@ -368,6 +368,29 @@ describe('characterBinding', () => {
     });
   });
 
+  it("plays the base tribe's program for a clip without facing blocks the tribe authors none for", () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 100, length: 8 }],
+      ['kiss', { name: 'kiss', start: 106, length: 60 }],
+      ['talk', { name: 'talk', start: 200, length: 16 }],
+    ]);
+    const spec = {
+      gfxJobs: [5],
+      waitSeq: 'wait',
+      atomics: { 20: { seq: 'kiss' }, 14: { seq: 'talk' } },
+    } as const;
+    const basePrograms = new Map([
+      [20, new Map([['kiss', { dirFrames: [[40, 41, 49]] }]])],
+      [14, new Map([['talk', { dirFrames: [[0, 1]] }]])],
+    ]);
+    // The 60-frame kiss would otherwise sweep every facing as one strip; the 16-frame talk splits into
+    // eight facings and keeps its own reading.
+    expect(characterBinding(spec, seqs, [], { basePrograms })?.byAtomic).toEqual({
+      20: { start: 106, frameLists: [[40, 41, 49]] },
+      14: { start: 200, dirs: 8, stride: 2 },
+    });
+  });
+
   it('uses the tribe-authored pickup variant when its well action has no fountain program', () => {
     const seqs = new Map([
       ['human_man_generic_wait', { name: 'human_man_generic_wait', start: 100, length: 8 }],

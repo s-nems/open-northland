@@ -6,6 +6,7 @@ import { ANIMAL_BODY_IMAGELIB } from '../../src/catalog/animal-roster.js';
 import { INDEXED_CHARACTER_PALETTE } from '../../src/catalog/roster.js';
 import {
   bodySequences,
+  gfxAtomicProgramsByAction,
   humanSequences,
   playableSequences,
   sequencesFor,
@@ -146,6 +147,7 @@ export function characterTablesUnderTest(
   );
   // As the sheet does, the first civilization is the base every other one fills its missing looks from.
   const tables = new Map<number, CharacterTableUnderTest>();
+  const basePrograms = gfxAtomicProgramsByAction(ir, civilizations[0]);
   let base: CharacterTableUnderTest;
   for (const tribe of civilizations) {
     const inputs = {
@@ -154,6 +156,7 @@ export function characterTablesUnderTest(
       layersByBody,
       sequencesByBody,
       sequences: allSequences,
+      basePrograms,
     };
     const table = tribeCharacters(ir, goods, tribe, inputs, base);
     base ??= table;

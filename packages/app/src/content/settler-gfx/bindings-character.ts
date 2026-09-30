@@ -22,6 +22,9 @@ export interface CharacterGfx {
   readonly carrySeqBySlug?: ReadonlyMap<string, string>;
   /** Every `[gfxanimatomic]` program of the tribe: action → body seq name → program. */
   readonly programsByAction?: ReadonlyMap<number, ReadonlyMap<string, GfxAtomicProgram>>;
+  /** The base tribe's programs, for a clip this tribe authors none for that cannot split into facings,
+   *  such as the woman's kiss and the trader's herb picking, which only the vikings author. */
+  readonly basePrograms?: ReadonlyMap<number, ReadonlyMap<string, GfxAtomicProgram>>;
   /** The standing-wait program per wait bobseq name (the `gfxanimmode 1` base wait preferred). */
   readonly waitBySeq?: ReadonlyMap<string, GfxAtomicProgram>;
   /** The `gfxwalkframelist` lists per walk bobseq name. */
@@ -148,7 +151,16 @@ export function characterBinding(
   goods: readonly GoodRef[],
   gfx: CharacterGfx = {},
 ): SettlerStateBinding | null {
-  const { carrySeqBySlug, programsByAction, waitBySeq, walkLists, tribeSeqs, bodyAtlas, subClips } = gfx;
+  const {
+    carrySeqBySlug,
+    programsByAction,
+    basePrograms,
+    waitBySeq,
+    walkLists,
+    tribeSeqs,
+    bodyAtlas,
+    subClips,
+  } = gfx;
   const walkSeq = pickSeq(seqByName, spec.walkSeq, tribeSeqs?.walk);
   const waitSeq = pickSeq(seqByName, spec.waitSeq, tribeSeqs?.wait);
   const walk = eightDirAnim(seqByName, walkSeq, walkLists);
@@ -184,12 +196,16 @@ export function characterBinding(
     if (clip === undefined) continue;
     const row = seqByName.get(clip.seq);
     if (row === undefined || row.length <= 0) continue;
-    const lists = playableLists(clip.program, row, bodyAtlas);
+    // A clip that cannot split into facings borrows the base tribe's program for it rather than playing
+    // through every facing in turn.
+    const program =
+      clip.program ?? (row.length % DIRS === 0 ? undefined : basePrograms?.get(atomicId)?.get(clip.seq));
+    const lists = playableLists(program, row, bodyAtlas);
     if (lists !== undefined) {
       byAtomic[atomicId] = {
         start: row.start,
         frameLists: lists,
-        ...(clip.program?.mode === GFX_ANIM_MODE_LOOP || action?.loop === true ? { loop: true } : {}),
+        ...(program?.mode === GFX_ANIM_MODE_LOOP || action?.loop === true ? { loop: true } : {}),
         ...(action?.ticksPerFrame !== undefined ? { ticksPerFrame: action.ticksPerFrame } : {}),
         ...(action?.spansAtomic === true ? { spansAtomic: true } : {}),
       };

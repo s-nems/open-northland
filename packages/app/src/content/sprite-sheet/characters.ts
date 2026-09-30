@@ -1,7 +1,13 @@
 import type { ByJobTable, SettlerCharacter, SettlerCharacterSet } from '@open-northland/render';
 import { ANIMAL_BODY_IMAGELIB } from '../../catalog/animal-roster.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
-import { bodySequences, humanSequences, playableSequences, sequencesFor } from '../ir/joins.js';
+import {
+  bodySequences,
+  gfxAtomicProgramsByAction,
+  humanSequences,
+  playableSequences,
+  sequencesFor,
+} from '../ir/joins.js';
 import type { ContentIr } from '../ir/rows.js';
 import { type GoodRef, isAnimalBody } from '../settler-gfx/index.js';
 import { loadLookLayers, resolveAnimalJobLooks, resolveLooks } from './character-looks.js';
@@ -44,12 +50,14 @@ export async function loadCharacters(
     ]),
   );
 
+  const basePrograms = gfxAtomicProgramsByAction(ir, tribes[0]);
   const inputsFor = (tribe: number): TribeCharacterInputs => ({
     looks: looksByTribe.get(tribe) ?? new Map(),
     animalJobs: animalJobsByTribe.get(tribe) ?? new Map(),
     layersByBody,
     sequencesByBody,
     sequences,
+    basePrograms,
   });
   const baseTable = tribeCharacters(ir, goods, tribes[0], inputsFor(tribes[0]));
   if (baseTable === undefined) return undefined;
