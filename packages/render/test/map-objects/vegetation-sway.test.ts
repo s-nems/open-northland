@@ -5,7 +5,7 @@ import { MapObjectLayer, type MapObjectSprite } from '../../src/gpu/map-objects/
 import { resolveLayers } from '../../src/gpu/sprite-pool/resolve-layers.js';
 import type { SpriteSheet } from '../../src/gpu/sprite-sheet.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
-import { castShadowShear, vegetationShear } from '../../src/gpu/vegetation-sway.js';
+import { castShadowShear, setVegetationShear, vegetationShear } from '../../src/gpu/vegetation-sway.js';
 import { WIDE } from './support.js';
 
 const frame = { x: 0, y: 0, width: 8, height: 8, offsetX: -4, offsetY: -7 };
@@ -214,4 +214,33 @@ describe('own vegetation breeze', () => {
     for (let tick = 0; tick < 300; tick++)
       expect(Math.abs(vegetationShear(tick, 20, 40, 0.01))).toBeLessThanOrEqual(0.01);
   });
+});
+
+describe('vegetation shear transform', () => {
+  it('restores the unsheared transform after bends in either direction', () => {
+    const sprite = new Sprite(Texture.WHITE);
+    for (const shear of [0.25, 0, -0.25, 0]) {
+      setVegetationShear(sprite, 0.5, shear);
+      expect(sprite.skew.x).toBe(Math.atan(shear));
+      expect(sprite.scale.x).toBe(0.5);
+      expect(sprite.scale.y).toBe(0.5 * Math.hypot(1, shear));
+    }
+    sprite.destroy();
+  });
+
+  it.each([0, -0, 0.5, -0.5, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'preserves zero-shear numeric scale behavior for %s',
+    (scale) => {
+      const sprite = new Sprite(Texture.WHITE);
+      for (const shear of [0, -0]) {
+        // Start away from zero so Pixi observes the signed-zero assignment in either case.
+        sprite.skew.x = 0.25;
+        setVegetationShear(sprite, scale, shear);
+        expect(sprite.skew.x).toBe(Math.atan(shear));
+        expect(sprite.scale.x).toBe(scale);
+        expect(sprite.scale.y).toBe(scale * Math.hypot(1, shear));
+      }
+      sprite.destroy();
+    },
+  );
 });

@@ -64,6 +64,12 @@ export function castShadowShear(bodyShear: number, bodyTop: number, shadowTop: n
 }
 
 export function setVegetationShear(sprite: Sprite, scale: number, shear: number): void {
+  if (shear === 0) {
+    // atan preserves signed zero; hypot(1, ±0) is exactly 1 for every numeric scale.
+    sprite.skew.x = shear;
+    sprite.scale.set(scale, scale);
+    return;
+  }
   sprite.skew.x = Math.atan(shear);
   sprite.scale.set(scale, scale * Math.hypot(1, shear));
 }
