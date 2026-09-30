@@ -29,9 +29,14 @@ import {
 import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import * as seaRoute from '../../../src/systems/ai-player/sea-route.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
-import { tuneCraftCounters } from '../../../src/systems/ai-player/workforce/craft.js';
+import {
+  AI_CATAPULT_CAP,
+  AI_CATAPULT_RESUME,
+  tuneCraftCounters,
+} from '../../../src/systems/ai-player/workforce/craft.js';
 import { findVehicleSite } from '../../../src/systems/footprint/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
+import { createVehicle, removeVehicle } from '../../../src/systems/vehicles/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import {
   BARRACKS_TYPE,
@@ -46,6 +51,7 @@ import {
   MILL_TYPE,
   SEAT,
   spawnMen,
+  TOOL_IRON,
   TOWER_TYPE,
   VIKING,
   WELL_TYPE,
@@ -109,7 +115,7 @@ const CATAPULT_DOOR = { dx: -1, dy: 2 };
 
 /** The AI fixture with the joinery chain up to its top tier, the druid hut, and the yards of a small ship
  *  raised on water, whose `logicSize` the shore affinity reads, and of a catapult. The top tier's three
- *  joiners build the two vehicles out of the stores' wood. */
+ *  joiners build the two vehicles out of the stores' wood, and iron tools. */
 function fleetContent(): ContentSet {
   const base = aiContent();
   const bill = [{ goodType: WOOD, amount: 2 }];
@@ -141,8 +147,8 @@ function fleetContent(): ContentSet {
           { jobType: JOINER, count: TOP_JOINERY_JOINERS },
           { jobType: CARRIER, count: 1 },
         ],
-        produces: [SHIP_GOOD, CATAPULT_GOOD],
-        recipes: [SHIP_GOOD, CATAPULT_GOOD].map((goodType) => ({
+        produces: [SHIP_GOOD, CATAPULT_GOOD, TOOL_IRON],
+        recipes: [SHIP_GOOD, CATAPULT_GOOD, TOOL_IRON].map((goodType) => ({
           inputs: [],
           outputs: [{ goodType, amount: 1 }],
           ticks: 180,
@@ -679,6 +685,43 @@ describe('workforce - the top-tier joineries’ roles', () => {
       asked.mockRestore();
     }
   });
+
+  it('turns the catapult crew to iron tools at the catapult cap, and back only once the fleet falls to the resume line', () => {
+    const { sim, joineries } = crewedJoineries(landMap(), [BY_BARRACKS]);
+    const [joinery] = joineries;
+    if (joinery === undefined) throw new Error('setup: one joinery');
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(CATAPULT_GOOD)]]));
+    const fleet = Array.from({ length: AI_CATAPULT_CAP - 1 }, (_, i) => fleetCatapult(sim, i));
+    expect(tuned(sim)).toEqual(new Map());
+    fleet.push(fleetCatapult(sim, fleet.length));
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(TOOL_IRON)]]));
+    // Under the cap but over the resume line the crew stays on tools.
+    const lose = (count: number): void => {
+      for (const vehicle of fleet.splice(0, count))
+        removeVehicle(sim.world, fleetCtx(sim), vehicle, 'script');
+    };
+    lose(AI_CATAPULT_CAP - AI_CATAPULT_RESUME - 1);
+    expect(tuned(sim)).toEqual(new Map());
+    lose(1);
+    expect(fleet).toHaveLength(AI_CATAPULT_RESUME);
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(CATAPULT_GOOD)]]));
+  });
+
+  /** A catapult of the seat's standing in a row along the map's southern edge, the `i`-th of it. */
+  function fleetCatapult(sim: Simulation, i: number): Entity {
+    const e = createVehicle(sim.world, fleetCtx(sim), {
+      vehicleType: CATAPULT,
+      x: FLEET_ROW.x + FLEET_SPACING * (i % FLEET_ROW_LENGTH),
+      y: FLEET_ROW.y + FLEET_SPACING * Math.floor(i / FLEET_ROW_LENGTH),
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    if (e === null) throw new Error('setup: no catapult');
+    return e;
+  }
+  const FLEET_ROW = { x: 4, y: 52 };
+  const FLEET_SPACING = 6;
+  const FLEET_ROW_LENGTH = 8;
 
   function vehiclesOf(sim: Simulation, vehicleType: number): Entity[] {
     return [...sim.world.query(Vehicle)].filter((e) => sim.world.get(e, Vehicle).vehicleType === vehicleType);

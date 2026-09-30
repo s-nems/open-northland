@@ -25,9 +25,10 @@ import {
 } from '../game/sandbox/index.js';
 import type { SceneCheck, SceneDefinition } from './types.js';
 
-// The red AI seat sends its first wave across the map: two catapults take the two bare-handed men as
-// drivers, the wave marches east in legs with the catapults in front, and at the blue settlement the
-// catapults and archers break the watchtower while the swordsmen wait, then everybody goes in on the HQ.
+// The red AI seat sends its first wave across the map: four catapults, the fewest that make a siege
+// march, take the four bare-handed men as drivers, the wave marches east in legs with the catapults in
+// front, and at the blue settlement the catapults and archers break the watchtower while the swordsmen
+// wait, then everybody goes in on the HQ.
 // The charge variant sends a blue band down the wave's path, big enough that the wave charges it once the
 // band walks into it through the catapults' stones.
 
@@ -37,15 +38,19 @@ const MAP_H = 36;
 type Tile = readonly [number, number];
 
 const BARRACKS = { x: 14, y: 18 } as const;
-/** Inside the park band of the barracks door, so both join the launching wave. */
+/** Inside the park band of the barracks door, so all four join the launching wave. */
 const CATAPULTS: readonly Tile[] = [
   [18, 13],
   [18, 23],
+  [21, 16],
+  [21, 20],
 ];
 /** One bare-handed man beside each catapult: the least kitted-out men are the ones drafted to drive. */
 const DRIVERS: readonly Tile[] = [
   [16, 11],
   [16, 25],
+  [23, 14],
+  [23, 22],
 ];
 /** West of the barracks, behind it from the objective: the men walk in to the door while the drivers
  *  board, so the catapults are crewed when the wave forms up. */
@@ -98,8 +103,8 @@ const SCRIPTED_SEQUENCE = Number.MAX_SAFE_INTEGER;
 const CAMERA_AT = { hx: 40, hy: 36 } as const;
 
 /** Past the HQ's fall: the boarding, the march, the tower and the assault. Short of the catapults' drive
- *  home, which the check on how far they went in reads at the end. */
-const RUN_TICKS = 4500;
+ *  home once the wave is spent, which the check on how far they went in reads at the end. */
+const RUN_TICKS = 3500;
 
 /** Past the tower's fall: the charge costs the wave its time and some men. */
 const CHARGE_RUN_TICKS = 5400;
@@ -226,7 +231,7 @@ function catapultWentIn(sim: Simulation): boolean {
 }
 
 const CREWED_CHECK: SceneCheck = {
-  label: 'both catapults are driven by the bare-handed men',
+  label: 'every catapult is driven by a bare-handed man',
   predicate: catapultsCrewed,
 };
 const TOWER_CHECK: SceneCheck = {
@@ -265,9 +270,12 @@ export const aiSiegeMarchScene: SceneDefinition = {
   ],
 };
 
+/** A seed whose opening wave draw sends the whole army out, so the wave outweighs the band it meets. */
+const CHARGE_SEED = 3;
+
 export const aiSiegeChargeScene: SceneDefinition = {
   id: 'ai-siege-charge',
-  seed: 7,
+  seed: CHARGE_SEED,
   terrain: grassTerrain(MAP_W, MAP_H),
   build: buildWith({
     reserve: true,

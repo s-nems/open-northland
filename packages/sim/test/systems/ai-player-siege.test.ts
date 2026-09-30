@@ -1,10 +1,19 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Owner, Rider, Settler, Vehicle, VehicleDrive } from '../../src/components/index.js';
+import {
+  Building,
+  Owner,
+  Rider,
+  Settler,
+  Vehicle,
+  VehicleDrive,
+  WaveMarch,
+} from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command, PlayerCommand } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { EventBuffer, playerCommand, Rng, Simulation } from '../../src/index.js';
+import { hexDistance } from '../../src/nav/halfcell.js';
 import {
   crewedCatapults,
   militaryModule,
@@ -12,9 +21,12 @@ import {
   PARK_RING_MIN_NODES,
   PARK_SPACING_NODES,
   RALLY_HOLD_RADIUS_NODES,
+  SIEGE_MARCH_MIN_CATAPULTS,
   takeCensus,
   WAVE_MIN_SOLDIERS,
 } from '../../src/systems/ai-player/index.js';
+import { VEHICLE_SCAN_RADIUS_POINTS } from '../../src/systems/conflict/engage-vehicle.js';
+import { vehicleAnchor } from '../../src/systems/footprint/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
@@ -28,6 +40,7 @@ const VIKING = 1;
 const SEAT = 2;
 const FOE = 3;
 const HQ_TYPE = 1;
+const TOWER_TYPE = 15;
 const BARRACKS_TYPE = 12;
 const FIST = 31;
 const SPEARMAN = 32;
@@ -137,6 +150,20 @@ function crew(sim: Simulation, driver: Entity, vehicle: Entity): void {
   sim.step();
   boardRider(sim.world, driver, vehicle);
 }
+
+/** A catapult at `at` with a fresh driver aboard. */
+function crewedAt(sim: Simulation, at: { x: number; y: number }): Entity {
+  const vehicle = catapultAt(sim, at);
+  crew(sim, spawnOne(sim, { x: at.x, y: at.y + 4 }, FIST), vehicle);
+  return vehicle;
+}
+
+/** Park spots around the barracks door besides `inPark`'s, spaced apart inside the park band. */
+const MORE_PARKS = [
+  { x: -6, y: 8 },
+  { x: 4, y: -8 },
+  { x: -6, y: -8 },
+];
 
 function rallyOf(sim: Simulation): { x: number; y: number } {
   const terrain = sim.terrain;
@@ -292,6 +319,81 @@ describe('military module - the parked catapults', () => {
   });
 });
 
+describe('military module - the catapults defend the settlement', () => {
+  /** Two towers flanking the barracks, their doors well apart from its own. */
+  const TOWERS = [
+    { x: 30, y: 60 },
+    { x: 60, y: 20 },
+  ];
+
+  it('spreads the idle catapults over the barracks and the towers', () => {
+    const sim = siegeSim();
+    for (const at of TOWERS) place(sim, TOWER_TYPE, at, SEAT);
+    const catapults = [0, 1, 2, 3].map((i) => crewedAt(sim, { x: YARD.x + 6 * i, y: YARD.y }));
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    const doors = [...sim.world.query(Building, Owner)]
+      .filter((e) => sim.world.get(e, Owner).player === SEAT)
+      .map((e) => terrain.coordsOf(interactionCell(sim.world, ctxOf(sim), terrain, e)));
+    const goals = run(sim).flatMap((c) => (c.kind === 'moveVehicle' ? [c] : []));
+    expect(goals.map((c) => c.vehicle)).toEqual(catapults);
+    const nearestDoor = (goal: { x: number; y: number }): number => {
+      let best = 0;
+      doors.forEach((door, i) => {
+        const bestDoor = doors[best];
+        if (bestDoor !== undefined && manhattan(goal, door) < manhattan(goal, bestDoor)) best = i;
+      });
+      return best;
+    };
+    expect(new Set(goals.map(nearestDoor)).size).toBe(doors.length);
+  });
+
+  /** A catapult parked by the barracks, an outlying building of the seat's far off, and a raider beside it:
+   *  at the settlement, beyond the catapult's own scan. */
+  function raidBeyondScan() {
+    const sim = siegeSim();
+    const rally = rallyOf(sim);
+    const vehicle = crewedAt(sim, { x: rally.x + 4, y: rally.y + 8 });
+    sim.enqueue(playerCommand(SEAT, { kind: 'setVehicleStance', vehicle, stance: 'attack' }));
+    sim.step();
+    place(sim, HQ_TYPE, OUTPOST, SEAT);
+    const raider = spawnOne(sim, { x: OUTPOST.x + 6, y: OUTPOST.y }, SPEARMAN, FOE);
+    return { sim, vehicle, raider };
+  }
+  const OUTPOST = { x: 100, y: 40 };
+
+  it('drives a parked catapult out at a raid beyond its scan, and parks it again once the raid is over', () => {
+    const { sim, vehicle, raider } = raidBeyondScan();
+    const at = vehicleAnchor(sim.world, vehicle);
+    if (at === null) throw new Error('setup');
+    expect(hexDistance(at, { hx: OUTPOST.x + 6, hy: OUTPOST.y })).toBeGreaterThan(VEHICLE_SCAN_RADIUS_POINTS);
+    const sortie = run(sim).filter((c) => c.kind === 'moveVehicle' && c.vehicle === vehicle);
+    expect(sortie).toEqual([expect.objectContaining({ kind: 'moveVehicle', vehicle, attackMove: true })]);
+    apply(sim, sortie);
+    expect(sim.world.get(vehicle, Vehicle).march).not.toBeNull();
+
+    sim.enqueueSetup({ kind: 'debugKill', target: raider });
+    sim.step();
+    const home = run(sim).filter((c) => c.kind === 'moveVehicle' && c.vehicle === vehicle);
+    expect(home).toHaveLength(1);
+    const [park] = home;
+    if (park?.kind !== 'moveVehicle') throw new Error('expected a park order');
+    expect(park.attackMove).toBeUndefined();
+    const rally = rallyOf(sim);
+    expect(manhattan(park, rally)).toBeLessThanOrEqual(PARK_RING_MAX_NODES);
+  });
+
+  it('leaves a raider within its scan to the parked catapult itself', () => {
+    const sim = siegeSim();
+    const rally = rallyOf(sim);
+    const vehicle = crewedAt(sim, { x: rally.x + 4, y: rally.y + 8 });
+    spawnOne(sim, { x: BARRACKS.x + 10, y: BARRACKS.y + 10 }, SPEARMAN, FOE);
+    expect(run(sim).some((c) => c.kind === 'moveVehicle' && c.vehicle === vehicle && c.attackMove)).toBe(
+      false,
+    );
+  });
+});
+
 describe('military module - the parked driver outfit', () => {
   /** A seat whose headquarters holds one potion, with one catapult and its driver aboard at `at`. */
   function outfitSim(at: (rally: { x: number; y: number }) => { x: number; y: number }): {
@@ -337,8 +439,8 @@ describe('military module - the parked driver outfit', () => {
     expect(run(sim).some((c) => c.kind === 'equipGood')).toBe(false);
   });
 
-  it('keeps aboard the driver of a catapult the launching wave takes', () => {
-    const { sim, driver, vehicle } = outfitSim(inPark);
+  /** The foe's headquarters to march on and a band formed up at the barracks door. */
+  function readyToLaunch(sim: Simulation): void {
     place(sim, HQ_TYPE, FOE_HQ, FOE);
     const rally = rallyOf(sim);
     spawnAt(
@@ -349,11 +451,34 @@ describe('military module - the parked driver outfit', () => {
       })),
       SPEARMAN,
     );
+  }
+
+  it('keeps aboard the driver of a catapult the launching wave takes', () => {
+    const { sim, driver, vehicle } = outfitSim(inPark);
+    const rally = rallyOf(sim);
+    for (const { x, y } of MORE_PARKS) crewedAt(sim, { x: rally.x + x, y: rally.y + y });
+    readyToLaunch(sim);
     const commands = run(sim);
     expect(commands.some((c) => c.kind === 'moveVehicle' && c.vehicle === vehicle && c.attackMove)).toBe(
       true,
     );
     expect(commands.some((c) => c.kind === 'equipGood' && c.entity === driver)).toBe(false);
+  });
+
+  it('keeps fewer than four catapults parked at home when the wave launches', () => {
+    const { sim, vehicle } = outfitSim(inPark);
+    const rally = rallyOf(sim);
+    const [spot] = MORE_PARKS;
+    if (spot === undefined) throw new Error('setup');
+    crewedAt(sim, { x: rally.x + spot.x, y: rally.y + spot.y });
+    expect(crewedCatapults(sim.world, ctxOf(sim), SEAT).length).toBeLessThan(SIEGE_MARCH_MIN_CATAPULTS);
+    readyToLaunch(sim);
+    const commands = run(sim);
+    expect(commands.some((c) => c.kind === 'attackMoveUnit')).toBe(true);
+    const barracks = [...sim.world.query(WaveMarch)][0];
+    if (barracks === undefined) throw new Error('expected a launched wave');
+    expect(sim.world.get(barracks, WaveMarch).catapults).toEqual([]);
+    expect(commands.some((c) => c.kind === 'moveVehicle' && c.vehicle === vehicle)).toBe(false);
   });
 
   it('keeps the parked driver aboard while a raid stands at the gates', () => {

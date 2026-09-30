@@ -270,6 +270,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     /** The goods a seat may list, its fallback seats included. */
     const seatGoods = (seat: Seat): string[] => {
       if ('firstFed' in seat) return seat.firstFed.map((line) => line.good);
+      if ('fleet' in seat) return [seat.fleet, ...seatGoods(seat.otherwise)];
       if (!('goods' in seat)) return [...seat];
       return [...seat.goods, ...(seat.otherwise === undefined ? [] : seatGoods(seat.otherwise))];
     };

@@ -1411,11 +1411,7 @@ describe('workforce module - the barracks and craft selections', () => {
     const seats = CRAFT_PLANS_BY_BUILDING_ID.work_druid_01?.seats ?? [];
     expect(seats).toHaveLength(12);
     expect(seats[0]).toEqual(['holy_oil']);
-    expect(
-      seats
-        .slice(1)
-        .every((seat) => !('goods' in seat) && !('firstFed' in seat) && seat[0] === 'potion_heal_big'),
-    ).toBe(true);
+    expect(seats.slice(1).every((seat) => Array.isArray(seat) && seat[0] === 'potion_heal_big')).toBe(true);
   });
 
   /** One pottery past its opening run with both potters hired, deciding at `tick`; the bricks' lines then. */

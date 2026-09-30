@@ -10,6 +10,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistance, hexDistanceBetween } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import { VEHICLE_SCAN_RADIUS_POINTS } from '../../conflict/engage-vehicle.js';
 import type { SystemContext } from '../../context.js';
 import { vehicleAnchor } from '../../footprint/index.js';
 import { isSiegeVehicle } from '../../readviews/index.js';
@@ -18,7 +19,7 @@ import { canAttachToVehicle } from '../../vehicles/crew.js';
 import {
   VEHICLE_TARGET_SNAP_RADIUS,
   VEHICLE_WALK_RANGE_NODES,
-  vehicleWalkBlocks,
+  vehicleRestBlocks,
 } from '../../vehicles/movement.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { seatBarracksOf } from '../base.js';
@@ -26,11 +27,12 @@ import { anchorNodeOf, nearestRingNode, towardNode } from '../node-geometry.js';
 import { isBuilt } from '../seat-roster.js';
 import { fighterWeaponClass } from './census.js';
 import { garrisonSlots } from './defence/posts.js';
+import type { Raider } from './defence/threat.js';
 import { spokenFor } from './errand.js';
 
 // The seat's catapults: a soldier drives each one, and one idle at home parks on the attack stance by the
-// barracks or a tower, where its own scan (`conflict/engage-vehicle.ts`) answers what comes near. Every
-// distance here is authored.
+// barracks or a tower, where its own scan (`conflict/engage-vehicle.ts`) answers what comes near; a raid
+// beyond that scan draws it out on an attack-move. Every distance here is authored.
 
 /** The band around a barracks or tower door (Manhattan half-cell nodes) a catapult parks in: off the
  *  door and its approach, still inside the settlement. */
@@ -90,8 +92,9 @@ function crewedOf(world: World, catapults: readonly Entity[]): CrewedCatapult[] 
 
 /**
  * One decision for the seat's catapults at home: a driver for each one without, taken from `free` (the men
- * no tower, raid or fight holds), then the idle ones parked ({@link parkingOrders}). The catapults of a
- * marching wave (`marching`) are its own: one that loses its driver on the way stays where it stands.
+ * no tower, raid or fight holds), then the idle ones sent at a `raid` beyond their scan
+ * ({@link raidOrders}) or parked ({@link parkingOrders}). The catapults of a marching wave (`marching`) are
+ * its own: one that loses its driver on the way stays where it stands.
  */
 export function siegeCrewOrders(
   world: World,
@@ -101,13 +104,16 @@ export function siegeCrewOrders(
   owned: readonly Entity[],
   free: readonly Entity[],
   marching: ReadonlySet<Entity>,
+  raid: Raider | null,
 ): SiegeCrewDecision {
   const catapults = seatCatapults(world, ctx, player).filter((e) => !marching.has(e));
   if (catapults.length === 0) return NO_CREW;
   const draft = draftDrivers(world, ctx, catapults, free);
-  const park = parkingOrders(world, ctx, terrain, player, owned, crewedOf(world, catapults));
+  const crewed = crewedOf(world, catapults);
+  const sortie = raid === null ? [] : raidOrders(world, terrain, crewed, raid);
+  const park = parkingOrders(world, ctx, terrain, player, owned, crewed, raid !== null);
   return {
-    commands: [...draft.commands, ...park.commands],
+    commands: [...draft.commands, ...sortie, ...park.commands],
     drafted: draft.drafted,
     parkedDrivers: park.parkedDrivers,
   };
@@ -213,11 +219,44 @@ function spacedFrom(node: HalfCellNode, taken: readonly HalfCellNode[]): boolean
 }
 
 /**
+ * Send each idle crewed catapult standing beyond its own scan ({@link VEHICLE_SCAN_RADIUS_POINTS}) of the
+ * `raider` at him on an attack-move, in hops past the walk range; one within it answers him on its own. The
+ * raid is at the settlement's buildings, which bounds the drive, and {@link parkingOrders} brings it home
+ * once the raid is over.
+ */
+function raidOrders(
+  world: World,
+  terrain: TerrainGraph,
+  crewed: readonly CrewedCatapult[],
+  raider: Raider,
+): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
+  const goal = { hx: raider.x, hy: raider.y };
+  for (const { vehicle } of crewed) {
+    const state = world.get(vehicle, Vehicle);
+    const at = vehicleAnchor(world, vehicle);
+    if (at === null || state.attack !== null || state.march !== null || state.heldGoal !== null) continue;
+    if (world.has(vehicle, VehicleDrive) || continentOf(terrain, at) !== raider.component) continue;
+    if (hexDistance(at, goal) <= VEHICLE_SCAN_RADIUS_POINTS) continue;
+    const hop = hexDistance(at, goal) > VEHICLE_HOP_NODES ? towardNode(at, goal, VEHICLE_HOP_NODES) : goal;
+    if (state.stance !== 'attack') commands.push({ kind: 'setVehicleStance', vehicle, stance: 'attack' });
+    commands.push({ kind: 'moveVehicle', vehicle, x: hop.hx, y: hop.hy, attackMove: true });
+  }
+  return commands;
+}
+
+function continentOf(terrain: TerrainGraph, at: HalfCellNode): number {
+  return terrain.componentOf(terrain.nodeAtClamped(at.hx, at.hy));
+}
+
+/**
  * Park the idle crewed catapults on the attack stance, one spot each in the band around a barracks or
  * tower door ({@link PARK_RING_MIN_NODES}..{@link PARK_RING_MAX_NODES}), {@link PARK_SPACING_NODES} apart.
  * A catapult already driving keeps its goal and one fighting is left to it; one standing in the band clear
  * of the others stays, so a parked catapult is never ordered again. The rest drive to the nearest free
  * spot around the door with the fewest catapults, or a hop toward the nearest door beyond the walk range.
+ * Once no raid stands (`raid` false), a catapult still on an attack-move, sent at a raid or come home from
+ * a wave, is parked too.
  */
 export function parkingOrders(
   world: World,
@@ -226,6 +265,7 @@ export function parkingOrders(
   player: number,
   owned: readonly Entity[],
   crewed: readonly CrewedCatapult[],
+  raid = false,
 ): { commands: PlayerCommand[]; parkedDrivers: Entity[] } {
   const commands: PlayerCommand[] = [];
   const parkedDrivers: Entity[] = [];
@@ -233,22 +273,25 @@ export function parkingOrders(
   const doors = parkAnchors(world, ctx, terrain, player, owned);
   const taken: HalfCellNode[] = [];
   const standing: { crew: CrewedCatapult; at: HalfCellNode }[] = [];
+  const unparkedHome: { crew: CrewedCatapult; at: HalfCellNode }[] = [];
   for (const crew of crewed) {
     const state = world.get(crew.vehicle, Vehicle);
     if (state.stance !== 'attack') {
       commands.push({ kind: 'setVehicleStance', vehicle: crew.vehicle, stance: 'attack' });
     }
+    const at = vehicleAnchor(world, crew.vehicle);
+    const homing = !raid && state.march !== null && state.attack === null;
     const goal = world.tryGet(crew.vehicle, VehicleDrive)?.goal ?? state.heldGoal;
-    if (goal !== null) {
+    if (goal !== null && !homing) {
       taken.push(goal);
       continue;
     }
-    const at = vehicleAnchor(world, crew.vehicle);
-    if (state.attack !== null || state.march !== null || at === null) continue;
-    standing.push({ crew, at });
+    if (state.attack !== null || (state.march !== null && !homing) || at === null) continue;
+    if (homing) unparkedHome.push({ crew, at });
+    else standing.push({ crew, at });
   }
   if (doors.length === 0) return { commands, parkedDrivers };
-  const unparked: { crew: CrewedCatapult; at: HalfCellNode }[] = [];
+  const unparked = [...unparkedHome];
   for (const entry of standing) {
     if (!inParkBand(entry.at, doors) || !spacedFrom(entry.at, taken)) {
       unparked.push(entry);
@@ -286,7 +329,7 @@ function parkGoal(
 ): HalfCellNode | null {
   const type = contentIndex(ctx.content).vehicles.get(world.get(vehicle, Vehicle).vehicleType);
   if (type === undefined || !terrain.inBounds(at.hx, at.hy)) return null;
-  const blocks = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
+  const blocks = vehicleRestBlocks(world, ctx, terrain, vehicle, type);
   const continent = terrain.componentOf(terrain.nodeAt(at.hx, at.hy));
   const onContinent = (door: HalfCellNode): boolean =>
     terrain.inBounds(door.hx, door.hy) && terrain.componentOf(terrain.nodeAt(door.hx, door.hy)) === continent;

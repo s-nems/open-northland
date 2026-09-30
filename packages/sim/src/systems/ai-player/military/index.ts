@@ -36,6 +36,7 @@ export {
   towerPostOrders,
 } from './defence/index.js';
 export {
+  CATAPULT_REGROUP_SLACK_NODES,
   CHARGE_ARMY_DIVISOR,
   CHARGE_MIN_ENEMIES,
   CHARGE_RADIUS_NODES,
@@ -44,6 +45,7 @@ export {
   LEG_TIMEOUT_TICKS,
   RANKS_BEHIND_CATAPULTS_NODES,
   REGROUP_SLACK_NODES,
+  SIEGE_MARCH_MIN_CATAPULTS,
   SIEGE_STANDOFF_NODES,
   SIEGE_TIMEOUT_TICKS,
   SIEGE_TOWER_RADIUS_NODES,
@@ -108,7 +110,7 @@ function runMilitary(
   // A raid benches the campaign: it takes the same band the muster would have gathered.
   const marchable: readonly Entity[] = raid === null ? free : [];
   const siege = campaign
-    ? siegeCrewOrders(world, ctx, terrain, player, owned, marchable, wave?.catapults ?? NONE_MARCHING)
+    ? siegeCrewOrders(world, ctx, terrain, player, owned, marchable, wave?.catapults ?? NONE_MARCHING, raid)
     : null;
   const field = siege === null ? marchable : marchable.filter((e) => !siege.drafted.has(e));
   const offensive = campaign

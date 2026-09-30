@@ -1,4 +1,14 @@
-import { PlayerOrder, Stance, Vehicle, VehicleDrive } from '../../../../components/index.js';
+import {
+  AttackOrder,
+  Building,
+  EquipOrder,
+  NeedOrder,
+  PlayerOrder,
+  Stance,
+  TrainingOrder,
+  Vehicle,
+  VehicleDrive,
+} from '../../../../components/index.js';
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, hexDistance, hexDistanceBetween } from '../../../../nav/halfcell.js';
@@ -6,6 +16,8 @@ import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { vehicleAnchor } from '../../../footprint/index.js';
 import { MILITARY_MODE } from '../../../readviews/index.js';
+import { anotherSystemOwns } from '../../../settlers/action-owner.js';
+import { atomicHoldsSettler } from '../../../settlers/atomics/busy.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { towardNode } from '../../node-geometry.js';
 import { isRangedFighter } from '../census.js';
@@ -31,10 +43,20 @@ export interface Wave {
   readonly centre: HalfCellNode;
 }
 
-/** Whether the wave may order `e` now: free, or walking out one of its own attack-moves, which a new order
- *  replaces. */
+/** Whether the wave may order `e` now: free, walking out one of its own attack-moves, which a new order
+ *  replaces, or on a walk no order, errand, need or fight owns, as a guard's stale way back to his anchor,
+ *  which would otherwise hold its leg until the timeout. */
 export function orderable(world: World, e: Entity): boolean {
-  return !spokenFor(world, e) || world.tryGet(e, PlayerOrder)?.attackMove !== undefined;
+  if (!spokenFor(world, e)) return true;
+  const order = world.tryGet(e, PlayerOrder);
+  if (order !== undefined) return order.attackMove !== undefined;
+  return (
+    !anotherSystemOwns(world, e) &&
+    !world.has(e, TrainingOrder) &&
+    !world.has(e, EquipOrder) &&
+    !world.has(e, NeedOrder) &&
+    !atomicHoldsSettler(world, e)
+  );
 }
 
 /** A shooter the wave's melee may be caught by: a manned tower post, whose tower is what a man can
@@ -89,6 +111,37 @@ export function placeOrders(
       continue;
     }
     if (stance?.mode !== MILITARY_MODE.ATTACK) {
+      commands.push({ kind: 'setStance', entity: e, mode: MILITARY_MODE.ATTACK });
+    }
+    commands.push({ kind: 'attackMoveUnit', entity: e, x: place.hx, y: place.hy });
+  }
+  return commands;
+}
+
+/**
+ * Walk back to his place each man of `members` still on a building the wave's hold or siege set him at,
+ * unless a shooter of that building's in `fire` reaches him, whom {@link placeOrders} sets him at again. His
+ * focus outlasts the fight that gave it, and the leg would wait on him while the building stands.
+ */
+export function recallOrders(
+  world: World,
+  terrain: TerrainGraph,
+  members: readonly Entity[],
+  places: ReadonlyMap<Entity, HalfCellNode>,
+  fire: readonly Fire[],
+): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
+  for (const e of members) {
+    const order = world.tryGet(e, AttackOrder);
+    const place = places.get(e);
+    if (order === undefined || order.breach !== undefined || place === undefined) continue;
+    if (!world.has(order.target, Building)) continue;
+    const { x, y } = terrain.coordsOf(entityNode(world, terrain, e));
+    const shotAt = fire.some(
+      (s) => s.target === order.target && hexDistanceBetween(s.x, s.y, x, y) <= s.reach,
+    );
+    if (shotAt) continue;
+    if (world.tryGet(e, Stance)?.mode !== MILITARY_MODE.ATTACK) {
       commands.push({ kind: 'setStance', entity: e, mode: MILITARY_MODE.ATTACK });
     }
     commands.push({ kind: 'attackMoveUnit', entity: e, x: place.hx, y: place.hy });

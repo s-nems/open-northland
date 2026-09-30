@@ -9,17 +9,20 @@ import {
   productionCountOf,
   Settler,
   UnderConstruction,
+  Vehicle,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
+import { vehicleHouseOfGood } from '../../readviews/index.js';
 import { isCarrierJob } from '../../stores/index.js';
+import { vehicleIndex } from '../../vehicles/registry.js';
 import { goodTypeByContentId } from '../content-lookup.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
 import { type JoineryRole, joineryRoles, ROLE_JOINERY_ID } from '../joinery-role.js';
 import { rivalOverSea } from '../sea-route.js';
-import { ownedSettlers } from '../seat-roster.js';
+import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import type { SeatSupply, SupplyLine } from './supply.js';
 
 /**
@@ -38,7 +41,21 @@ export type CraftSeat =
       readonly glut: Readonly<Record<string, number>>;
       readonly otherwise?: CraftSeat;
     }
-  | { readonly firstFed: readonly { readonly good: string; readonly input: string }[] };
+  | { readonly firstFed: readonly { readonly good: string; readonly input: string }[] }
+  | FleetSeat;
+
+/**
+ * A seat on a vehicle good (`fleet`) with a cap on the seat's fleet of it, counting the vehicles standing
+ * and the yards still building one: the seat works `otherwise` from `cap` on, and takes the vehicle back
+ * once the fleet has fallen to `resume`. In between it keeps its current selection, so no state beyond the
+ * live selection is kept.
+ */
+export interface FleetSeat {
+  readonly fleet: string;
+  readonly cap: number;
+  readonly resume: number;
+  readonly otherwise: CraftSeat;
+}
 
 /** A workplace type's product plan, by stable content ids (authored). */
 export interface CraftPlan {
@@ -206,12 +223,28 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_coin_mint: { seats: MINT_SEATS },
 };
 
+/** The catapults a seat keeps at most (authored): at this many, standing or in a yard, the catapult
+ *  joinery's crew turns to iron tools. */
+export const AI_CATAPULT_CAP = 15;
+
+/** The catapults a seat has fallen back to when the catapult joinery's crew takes catapults up again
+ *  (authored), a band under {@link AI_CATAPULT_CAP} so one loss does not flip the crew. */
+export const AI_CATAPULT_RESUME = 12;
+
+const CATAPULT_SEAT: FleetSeat = {
+  fleet: 'catapult',
+  cap: AI_CATAPULT_CAP,
+  resume: AI_CATAPULT_RESUME,
+  otherwise: ['tool_iron'],
+};
+
 /** The plans of a workplace type whose buildings each take a role by where they stand
  *  ({@link joineryRoles}), per role (authored); the type takes no {@link CRAFT_PLANS_BY_BUILDING_ID} row.
- *  The top-tier joinery's whole crew builds catapults, or small ships. */
+ *  The top-tier joinery's whole crew builds catapults up to the seat's cap and iron tools past it, or
+ *  small ships. */
 export const CRAFT_PLANS_BY_JOINERY_ROLE: Readonly<Record<string, Readonly<Record<JoineryRole, CraftPlan>>>> =
   {
-    [ROLE_JOINERY_ID]: { catapult: { seats: [['catapult']] }, ship: { seats: [['ship_small']] } },
+    [ROLE_JOINERY_ID]: { catapult: { seats: [CATAPULT_SEAT] }, ship: { seats: [['ship_small']] } },
   };
 
 /** The run a workshop opens with once built, by stable content ids (authored): its whole crew works only
@@ -253,6 +286,15 @@ export function tuneCraftCounters(
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
   const roleOf = joineryRoles(world, ctx, player, () => rivalOverSea(world, ctx, player));
+  const fleets = new Map<number, number>();
+  const fleetOf = (good: number): number => {
+    let owned = fleets.get(good);
+    if (owned === undefined) {
+      owned = seatFleet(world, ctx, player, good);
+      fleets.set(good, owned);
+    }
+    return owned;
+  };
   // Restricted plan -> its operators across the seat, gathered first because a seat's share depends on
   // how many men the plan employs. Insertion follows the canonical settler walk, so the seats and the
   // emitted command order are both deterministic.
@@ -304,7 +346,7 @@ export function tuneCraftCounters(
         toGoods(
           crew.length === 1 && plan.alone !== undefined
             ? plan.alone
-            : seatProducts(ctx, supply, current[seat] ?? [], seats[seat % seats.length] ?? []),
+            : seatProducts(ctx, supply, fleetOf, current[seat] ?? [], seats[seat % seats.length] ?? []),
         ),
       );
     }
@@ -441,9 +483,18 @@ function selectedGoods(
 function seatProducts(
   ctx: SystemContext,
   supply: SeatSupply,
+  fleetOf: (good: number) => number,
   current: readonly number[],
   seat: CraftSeat,
 ): readonly string[] {
+  if ('fleet' in seat) {
+    const good = goodTypeByContentId(ctx.content, seat.fleet);
+    if (good === undefined) return [seat.fleet];
+    const limit = current.includes(good.typeId) ? seat.cap : seat.resume + 1;
+    return fleetOf(good.typeId) < limit
+      ? [seat.fleet]
+      : seatProducts(ctx, supply, fleetOf, current, seat.otherwise);
+  }
   if ('firstFed' in seat) {
     const fed = seat.firstFed.find((line) => {
       const input = goodTypeByContentId(ctx.content, line.input);
@@ -460,7 +511,26 @@ function seatProducts(
     return !supply.exceeds(good.typeId, dropAt - 1);
   });
   if (kept.length > 0) return kept;
-  return seat.otherwise === undefined ? seat.goods : seatProducts(ctx, supply, current, seat.otherwise);
+  return seat.otherwise === undefined
+    ? seat.goods
+    : seatProducts(ctx, supply, fleetOf, current, seat.otherwise);
+}
+
+/** How many of the vehicle made as `good` the seat owns: standing on the map or carried, and in its yards
+ *  still under construction. The cost is the seat's vehicles and buildings. */
+function seatFleet(world: World, ctx: SystemContext, player: number, good: number): number {
+  const house = vehicleHouseOfGood(ctx.content, good);
+  const vehicleType =
+    house === undefined ? undefined : contentIndex(ctx.content).buildings.get(house)?.vehicleType;
+  if (house === undefined || vehicleType === undefined) return 0;
+  let owned = 0;
+  for (const e of vehicleIndex(world).ownedBy(player)) {
+    if (world.get(e, Vehicle).vehicleType === vehicleType) owned++;
+  }
+  for (const e of ownedBuildings(world, player)) {
+    if (world.get(e, Building).buildingType === house && world.has(e, UnderConstruction)) owned++;
+  }
+  return owned;
 }
 
 /** Whether `workplace`'s opening run is still unfinished; false for a type without one. */
