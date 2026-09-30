@@ -27,6 +27,7 @@ import {
   worldShadowStyle,
 } from './pixel-art-registry.js';
 import { type ShadowStyle, shadowTintChannels } from './shadow-style.js';
+import { WorldAttributeBuffer } from './world-attribute-buffer.js';
 
 /** Pixi hard-codes its default batcher per instruction set; a world sprite opts into this one by name. */
 const WORLD_BATCHER = 'world';
@@ -131,7 +132,7 @@ let worldBatcherClass: WorldBatcherClass | undefined;
 function defineWorldBatcher(): WorldBatcherClass {
   class WorldBatchGeometry extends Geometry {
     constructor() {
-      const attributeBuffer = new Buffer({
+      const attributeBuffer = new WorldAttributeBuffer({
         data: new Float32Array(1),
         label: 'world-batch-attributes',
         usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
@@ -451,6 +452,13 @@ ${PIXEL_ART_MAGNIFY_GLSL}
     /** Paletted elements packed by the running {@link break}, before their batch's texture list is final. */
     private readonly unslotted: BatchableElement[] = [];
     private breaking = false;
+
+    override updateElement(element: BatchableElement): void {
+      const buffer = this.geometry.buffers[0];
+      if (buffer instanceof WorldAttributeBuffer)
+        buffer.changed(element._attributeStart * 4, element.attributeSize * this.vertexSize * 4);
+      super.updateElement(element);
+    }
 
     /** Pixi always passes the renderer's texture limit. The flags address at most
      *  {@link WORLD_LUT_SLOT_MASK} + 1 slots, so a larger limit is capped rather than overflowing the

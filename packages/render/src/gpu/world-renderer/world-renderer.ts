@@ -17,6 +17,7 @@ import {
 } from '../../data/weather/climate.js';
 import type { WeatherField } from '../../data/weather/field.js';
 import type { WeatherConditions } from '../../data/weather/types.js';
+import { DepthSortedLayer } from '../depth-sorted-layer.js';
 import { GroundTone } from '../ground-foot/index.js';
 import { type GroundWave, GroundWaveLayer } from '../ground-waves/index.js';
 import { MapObjectLayer, type MapObjectSprite } from '../map-objects/index.js';
@@ -72,7 +73,7 @@ export class WorldRenderer {
   private readonly worldLayer = new Container();
   /** The one depth-sorted layer: anything that must occlude like a sprite joins it instead of taking a
    *  painter-order slot. */
-  private readonly spriteLayer = new Container();
+  private readonly spriteLayer = new DepthSortedLayer();
   private readonly textureCache = new TextureCache();
   private readonly terrain = new TerrainLayer();
   private readonly weatherSky = new WeatherSky();
@@ -410,6 +411,7 @@ export class WorldRenderer {
       tick,
       this.enhancements.environmentMotion,
     );
+    this.spriteLayer.sortChildren();
     this.app.render();
     this.groundWaves.suspend(true);
     this.portrait.draw(camera, {
