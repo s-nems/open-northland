@@ -9,6 +9,12 @@ objects, whichever rungs it goes on to read. Measured on `krwawa_rzeka` at t100k
 166 KB a tick under `ON_BENCH_PROFILE=alloc`, garbage the scavenger pays for. The spec is also held by
 `resolveTarget`, `chase`, `breakOff`, `restPreySearch` and `holdPrey` for the rest of the unit's turn.
 
+The [late-game reference](../../perf/magiczny-las-late-game.md), `magiczny_las`, seed 7,
+AI seats 0-6, profiles 500 ticks after restoring tick 97200 and warming for 200 ticks. It measures
+235 KiB per tick allocated directly by `engageSpec`, 246 KiB including its callees, out of
+4658 KiB per tick overall. This run includes active fighting. Allocation sampling includes collected
+objects; these are estimated allocation volumes, not retained heap sizes.
+
 ## Scope
 
 - Build the filters once per pass instead: a reusable spec whose accept, keep and low-priority
@@ -20,7 +26,8 @@ objects, whichever rungs it goes on to read. Measured on `krwawa_rzeka` at t100k
 ## Verify
 
 - `engageSpec` KB per tick from the reference's t100k checkpoint with `ON_BENCH_PROFILE=alloc`, before
-  and after.
+  and after. Repeat on the `magiczny_las` reference's tick-97200 checkpoint with 200 warm-up ticks
+  and 500 measured ticks; compare direct and inclusive allocations separately.
 - State hash unchanged over 2000 ticks from the t80k and t100k checkpoints; the conflict tests and
   goldens unchanged.
 - `npm test`, `npm run check`.

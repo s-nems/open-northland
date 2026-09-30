@@ -22,6 +22,14 @@ Measured on `krwawa_rzeka`, 12 AI seats, t100k (`docs/perf/heavy-load-krwawa-rze
 In the live worker profile at 82k, `takeBatch` is 14% of the worker (`changesOf` 12%, `cloneEntity`
 11%), and `forEachComponent` is 5.4% self.
 
+The [late-game reference](../../perf/magiczny-las-late-game.md), `magiczny_las`, seed 7,
+AI seats 0-6, restores tick 97200, warms for 200 ticks and measures 500 ticks. Its Node mirror
+probe includes all 700 deltas in these medians: 2124 changed entities, 5268 written components and
+397 KiB serialized per delta; take 8.31 ms, serialize 1.24 ms, deserialize 2.56 ms, bare apply
+1.31 ms and apply with frame indexes 3.73 ms. The probe checks mirror and index parity at the
+window end. It runs independent mirror copies sequentially, so these stage timings are proxies
+for their individual cost, not a live browser's total frame time.
+
 ## Scope
 
 - The ECS records, per entity, which components were written or removed since the stream last drained
@@ -37,6 +45,7 @@ In the live worker profile at 82k, `takeBatch` is 14% of the worker (`changesOf`
 ## Verify
 
 - `ON_BENCH_MIRROR=on` from the reference's t100k checkpoint: take and apply p50 against the numbers
-  above, and the probe's per-window mirror check passes.
+  above, and the probe's per-window mirror check passes. Also repeat the `magiczny_las` tick-97200
+  reference with its 200 warm-up and 500 measured ticks, keeping the delta sample basis identical.
 - The snapshot mirror and snapshot structured-clone tests, the cache verifier, `npm test`,
   `npm run check`.

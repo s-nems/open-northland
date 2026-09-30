@@ -12,6 +12,13 @@ keep their depth between ticks. In the late-game `krwawa_rzeka` session
 (`docs/perf/heavy-load-krwawa-rzeka-12ai.md`, t82k, speed 10) `collectSpriteScene` is 5% of the main
 thread, nearly all of it the viewport query `positionedWithin`.
 
+The headed [magiczny_las measurement](../../perf/magiczny-las-late-game.md), from tick 97200 at x3,
+samples 225 MB at the scene sort comparator in 1351 dense-view frames and 480 MB in 340 widest-view
+frames, over 15 s windows. `assembleItem` adds 82 and 190 MB respectively. These are sampled
+allocation totals including collected objects, not retained heap or evidence of a leak; split
+sorting scratch from item assembly before
+choosing the implementation.
+
 ## Scope
 
 - Measure first with `?debug=trace` how the rebuild splits between item assembly and the sort at ~1500

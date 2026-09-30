@@ -21,6 +21,14 @@ needs; `Settler` is written 1321 times a tick and is 107 KB of a 267 KB delta (4
 thread at t100k (`ON_BENCH_MIRROR_SPLIT=on`), HUD totals' upkeep is 0.43 ms per delta and the bubble
 carriers' 0.14 ms, the settler re-checks a part of each.
 
+The [late-game reference](../../perf/magiczny-las-late-game.md), `magiczny_las`, seed 7,
+AI seats 0-6, confirms the broader delta pressure: median 2124 changed entities, 5268 written
+components and 397 KiB serialized per delta. Its Node probe's independent reader copies measure
+HUD-total upkeep at 0.649 ms and bubble upkeep at 0.250 ms median over bare apply. Samples include
+200 warm-up deltas and 500 measured deltas after restoring tick 97200. These are individual
+Node-stage proxies; this run has no component histogram establishing which fraction comes from
+the counters, so the earlier attribution above must be remeasured before claiming their saving.
+
 ## Scope
 
 - Move the three need bars out of `Settler` into their own component, so the job, tribe and home data

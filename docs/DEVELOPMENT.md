@@ -325,10 +325,53 @@ frame. Replace a file there to change the rotation.
 | does one axis (settlers, fighters) drive a system's cost? | `npm run bench:sim` |
 | did my change make it slower? | `npm run bench:compare` |
 | what does a live session spend a frame on, sim or render? | `?debug=profile` and `window.__opennorthland.perf()` |
+| how does a developed checkpoint render at different speeds and zooms? | `npm run bench:browser` against a running development server |
 | how much JavaScript does a URL mode download and parse before it starts? | the table `npm run build` prints |
 
 Every report judges the machine that produced it. Numbers under an untrustworthy banner are void
 rather than weak: re-run on an idle box instead of reading them.
+
+The headed browser benchmark consumes a normal `bench:map` checkpoint with its state-hash stamp:
+
+```bash
+npm run bench:browser -- bench-out/late.t100000.checkpoint http://127.0.0.1:5174 bench-out/browser 15
+```
+
+The arguments are checkpoint, development-server origin, output directory (default
+`bench-out/browser`) and seconds per measurement window (default 15). Start the server separately in
+this checkout. `ON_BENCH_BROWSER_MODE=baseline` runs only the baseline matrix;
+`ON_BENCH_BROWSER_MODE=profile` runs only diagnostics; the default `all` runs both. Diagnostics cover
+the dense and widest views at x3, each with its own CPU, allocation and GPU files. The probe verifies
+its checkout, client build and generated content, derives map,
+seed, AI seats and rules from the checkpoint, and checks the restored hash before every condition.
+It opens muted headed Chromium at 1440×900, device scale 1, with fullscreen disabled. Each window
+restores the same state and warms for five seconds. Run it after other benchmarks finish on an idle
+machine; recorded OS load and a repeated dense x3 window help assess stability, but do not certify
+an idle machine or calibrate CPU speed. A window whose one-minute load per CPU exceeds 1.5 at either
+boundary is invalid; the report distinguishes this from camera drift or browser failure. Platforms
+without load-average support report the gate unavailable.
+
+The baseline matrix covers a dense settlement at pause and x1/x3/x10; zoom 0.35 at pause and x3/x10;
+zoom 0.7 and 0.5 at x3; an off-map camera at x3; and a repeated dense x3 window. `report.json` records
+exact RAF interval quantiles, existing `perf()` figures, observed camera and canvas, tick ranges,
+visibility, hardware and errors. The `perf().frame` CPU/draw figures are recent EMAs, while RAF
+quantiles cover the whole window. A window hidden at any point is invalid. Screenshots identify the
+chosen view. Camera gestures are suspended and input is blocked on the probe's page; every measured
+RAF checks camera scale/offset, canvas dimensions and device scale for drift. Dense placement is
+selected once from the greatest nearby building count.
+
+Separate x3 windows write a CPU profile and allocation profile with summary tables and
+elapsed time, ticks and frame counts. CPU sampling runs with a GPU timer query around the main Pixi
+stage (world, HUD and weather)
+submission when the browser exposes `EXT_disjoint_timer_query_webgl2`; disjoint results are discarded.
+GPU capture has its own tick/time boundaries, stops before output writes, and drains outstanding
+queries for at most twelve frames or two seconds, reporting discarded queries.
+That GPU diagnostic excludes subsequent portrait/inset draws and compositor work. An unavailable
+extension is reported explicitly. `perf().frame.gpuMs` is the RAF interval minus measured app CPU,
+including idle time, vsync and compositor work; it is not a GPU execution measurement. Diagnostic
+timings include instrumentation overhead and must not replace baseline measurements. Failures leave
+metadata and completed windows in the output directory before the browser closes.
+Browser errors and hidden or invalid windows make the command fail with a nonzero exit status.
 
 The benchmarks run as plain Node programs over the compiled `dist/` of the workspace packages, with
 no test runner in the process: a runner wraps every cross-module import, and that wrapper lands in a

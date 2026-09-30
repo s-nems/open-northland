@@ -27,6 +27,7 @@
     "bench:map": "node scripts/bench-map.mjs",
     "bench:profile": "node scripts/bench-profile.mjs",
     "bench:compare": "node scripts/bench-compare.mjs",
+    "bench:browser": "node scripts/bench-browser.mjs",
     "test:content": "node scripts/test-content.mjs",
     "test:pipeline": "node scripts/test-pipeline.mjs",
     "test:engines": "node scripts/test-engines.mjs",

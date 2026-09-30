@@ -1,11 +1,12 @@
-# Measure and bound the graphics enhancements at the x3 frame budget
+# Reduce measured graphics enhancement and presentation costs
 
 **Area:** render · **Focus:** performance · **Priority:** P2
 
 The world enhancements (original art filter, enhanced shadows, enhanced water, environment motion) ship
 measured only for correctness. Every cost below is reasoned from tap counts, vertex sizes and Pixi's
-batcher behaviour, never from a real GPU, and `packages/render/AGENTS.md` says headless Chromium cannot
-answer it. The budget is 120 FPS at game speed x3.
+batcher behaviour, rather than enhancement A/B on a real GPU, and `packages/render/AGENTS.md` says
+headless Chromium cannot answer it. Improve measured frame cost across hardware without changing
+simulation speed, population or gameplay rules.
 
 Two of them are baseline costs: they are paid with every enhancement off, which the settings promise to
 make free.
@@ -46,7 +47,15 @@ plus GPU frame time, following the A/B rules in `docs/DEVELOPMENT.md`.
 - **Per-frame allocation** (`gpu/sprite-pool`). The pool reuses its resolved layers now, measured only
   in a Node harness over presentItem and the binder: 761 -> 65 B per drawn entity per frame. Still
   allocating per entity per frame: a swaying resource's sheared body, each construction or upgrade
-  stage's reveal record, each fish's offset record, and `motionClocks`' return object.
+  stage's reveal record, each fish's offset record, and `motionClocks`' return object. The headed
+  [late-game measurement](../../perf/magiczny-las-late-game.md), from tick 97200 at x3, samples
+  309 MB attributed to `presentItem` over 1351 dense-view frames and 257 MB over 340 widest-view
+  frames (15 s each), about 229 and 757 KB/frame. These totals include collected objects and separate
+  call paths; they measure allocation churn, not retained heap or a leak, and do not identify which
+  temporary dominates. Trace its allocation stacks before
+  retaining the clock, pose/reveal and layer-offset records on `PresentationTrack` or its layer buffer.
+  Preserve the binder's stamp semantics: mutable retained records must not make a changed layer
+  appear unchanged. The default-setting profile does not establish any individual enhancement's cost.
 
 ## Verify
 

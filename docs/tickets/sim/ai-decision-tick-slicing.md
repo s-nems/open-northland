@@ -8,25 +8,31 @@ The nearest-resource search folds the wanted good's region buckets (`nearestReso
 `spatial/resources.ts`), and the scout hire asks for scout work only when the answer decides something.
 One seat still runs all five modules in one tick.
 
-On `magiczny_las`, AI seats 0-5 plus the map's seat 6, 1500 ticks from a 60k checkpoint, on a busy box
-(load 2.5 and 4.5 per cpu, so the numbers only rank): before these changes the four slowest ticks were
-single-seat passes at 60-70 ms; after them one pass still took 61 ms (tick 60292) and the rest stayed
-under 32 ms, with ordinary passes at 17-21 ms.
+On the [late-game reference](../../perf/magiczny-las-late-game.md), `magiczny_las`, seed 7,
+AI seats 0-6, two 2000-tick repeats from tick 97200 after 200 warm-up ticks put `aiPlayer` at
+3.071 and 3.077 ms mean per tick, p95 16.85 and 17.20 ms, and maximum 47.57 and 45.89 ms.
+The plain repeats attribute about 19.2% of summed system time to AI. `WalkFlood.costTo` is
+6.4% of sampled CPU time and `RouteRegions.regionOf` 7.5% inclusive across their callers; these
+overlap their parent systems and cannot be added as separate savings.
 
 ## Scope
 
-- Measure before and after on an idle box and name what the remaining 60 ms pass and the 17-21 ms
-  ordinary passes spend their time on (`bench:profile` over the same ticks).
-- Candidates left from the earlier profile: `patchWorked` flooding `RouteRegions.pocketed` from a flag
-  centre after the building overlay changed, and the `replantSpot` flag-spot walk floods. A walk-flood
-  cache that outlives one decision keys on the dynamic block overlay, which moves with every resource or
-  building change; measure its hit rate before building it.
+- Cut repeated collector reach and flag-spot traversal inside one seat's pass. The matching profile
+  puts `allocateCollectors` and `upkeepHolders` at 9.5% inclusive each, and `replantSpot` at 6.7%.
+- Count route-region epochs, flooded nodes, repeated origins and walk-flood cache opportunities.
+  `RouteRegions.refresh` invalidates all region labels when building cells, resource-footprint
+  generation or landscape topology changes. A cache that outlives a decision needs all relevant
+  overlay inputs; measure its hit rate before building it.
+- Origin-independent interaction stance pools have their own
+  [ticket](interaction-stance-pool-recomputation.md); keep reachability and walking-cost work here.
 - The pass rate is [its own ticket](ai-decision-interval-48.md).
 
 ## Verify
 
 - On an idle box, from a late checkpoint of one run (`docs/DEVELOPMENT.md`, Measuring performance):
   `ON_BENCH_MAP=magiczny_las ON_BENCH_SEATS=0,1,2,3,4,5 ON_BENCH_CHECKPOINT=<checkpoint>
-  ON_BENCH_TICKS=1500 npm run bench:map` before and after, then `npm run bench:compare`. The slowest
-  single-seat pass falls toward 10 ms; a hash-identical step keeps the printed state hash.
+  ON_BENCH_WARMUP=200 ON_BENCH_TICKS=2000 npm run bench:map` before and after, then
+  `npm run bench:compare`. Reduce AI mean, p95 and maximum against the reference without increasing
+  another system's cost. Repeated before/after runs retain the same state hash; exercise cache
+  invalidation after construction, resource changes and landscape edits in focused tests.
 - `npm test`, `npm run check`, `npm run build`.

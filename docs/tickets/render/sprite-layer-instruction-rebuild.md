@@ -15,6 +15,14 @@ a third the batcher's `break` and pack, and about 1 MB of vertex data goes up pe
 the drawn order held in 18 to 45% of rebuilds (30 to 60 `zIndex` writes a frame); a rebuild with the
 same order and no added, removed or hidden node is avoidable outright.
 
+The headed [magiczny_las measurement](../../perf/magiczny-las-late-game.md), from tick 97200 at x3,
+confirms the instruction path remains material: in the widest view, `collectRenderables` has 3.17%
+of CPU samples, one `collectRenderablesSimple` site 2.15%, batch `break` 3.54%, and `_getGpuSprite`
+2.04%. `sortChildren` allocation sites total 100 MB in the dense view and 119 MB in the widest view,
+over 15 s windows, including collected objects rather than retained heap. These samples establish
+costs, not the number or duration of instruction rebuilds;
+measure those with the wrapper below before selecting a change.
+
 ## Scope
 
 - Skip a rebuild whose drawn order held. Pixi's `zIndex` setter flags the structure dirty on any
