@@ -23,7 +23,8 @@ export interface CharacterGfx {
   /** Every `[gfxanimatomic]` program of the tribe: action → body seq name → program. */
   readonly programsByAction?: ReadonlyMap<number, ReadonlyMap<string, GfxAtomicProgram>>;
   /** The base tribe's programs, for a clip this tribe authors none for that cannot split into facings,
-   *  such as the woman's kiss and the trader's herb picking, which only the vikings author. */
+   *  such as the woman's kiss and the trader's herb picking, which only the vikings author. Approximation:
+   *  what the original plays for such a tribe is unconfirmed. */
   readonly basePrograms?: ReadonlyMap<number, ReadonlyMap<string, GfxAtomicProgram>>;
   /** The standing-wait program per wait bobseq name (the `gfxanimmode 1` base wait preferred). */
   readonly waitBySeq?: ReadonlyMap<string, GfxAtomicProgram>;

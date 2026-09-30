@@ -49,6 +49,18 @@ const ARMED_JOBS: readonly number[] = [
   ...Array.from({ length: JOB_HEROINE_BOW - JOB_HERO_UNARMED }, (_, i) => JOB_HERO_UNARMED + 1 + i),
 ];
 
+/**
+ * Head looks the source authors no frames for in a clip without six facing blocks, so no own head frame can
+ * stand in. Original behavior, unconfirmed in the running game: it draws them headless too. Each pattern
+ * matches `tribe <id> <look>: <slot>`.
+ */
+const SOURCE_HEADLESS: readonly RegExp[] = [
+  // The scout's and the druid's hats: other trades' indoor clips, which neither plays.
+  /^tribe 1 job (27|30): sub-clip /,
+  // One of the two byzantine civilian head looks: the clay dig.
+  /^tribe 3 (default|job 25): atomic 26$/,
+];
+
 /** Each slot's body clip beside the head clip its overlay reads, by slot name. */
 function* clipPairs(
   body: SettlerStateBinding,
@@ -143,7 +155,7 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
         for (const slot of headlessSlots(char)) gaps.push(`tribe ${tribe} ${key}: ${slot}`);
       }
     }
-    expect(gaps).toEqual([]);
+    expect(gaps.filter((gap) => !SOURCE_HEADLESS.some((known) => known.test(gap)))).toEqual([]);
   });
 
   it('swings the unarmed punch and the longbow shot at N and S out of their own clip', () => {

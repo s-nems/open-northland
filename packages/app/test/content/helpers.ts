@@ -6,7 +6,6 @@ import { ANIMAL_BODY_IMAGELIB } from '../../src/catalog/animal-roster.js';
 import { INDEXED_CHARACTER_PALETTE } from '../../src/catalog/roster.js';
 import {
   bodySequences,
-  gfxAtomicProgramsByAction,
   humanSequences,
   playableSequences,
   sequencesFor,
@@ -15,7 +14,7 @@ import type { ContentIr } from '../../src/content/ir/rows.js';
 import { loadRealContent, mergeRealContent, type RealContentMerge } from '../../src/content/real-content.js';
 import { isAnimalBody } from '../../src/content/settler-gfx/index.js';
 import { resolveAnimalJobLooks, resolveLooks } from '../../src/content/sprite-sheet/character-looks.js';
-import { tribeCharacters } from '../../src/content/sprite-sheet/tribe-characters.js';
+import { tribeAtomicPrograms, tribeCharacters } from '../../src/content/sprite-sheet/tribe-characters.js';
 import type { WorldTribes } from '../../src/game/world-tribes.js';
 import { checkoutRoot } from '../support/checkout-root.js';
 
@@ -147,7 +146,7 @@ export function characterTablesUnderTest(
   );
   // As the sheet does, the first civilization is the base every other one fills its missing looks from.
   const tables = new Map<number, CharacterTableUnderTest>();
-  const basePrograms = gfxAtomicProgramsByAction(ir, civilizations[0]);
+  const basePrograms = tribeAtomicPrograms(ir, civilizations[0]);
   let base: CharacterTableUnderTest;
   for (const tribe of civilizations) {
     const inputs = {

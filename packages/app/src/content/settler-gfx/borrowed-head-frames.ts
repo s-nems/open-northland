@@ -7,28 +7,29 @@ function drawn(atlas: SpriteAtlas, id: number): AtlasFrame | undefined {
   return frame !== undefined && frame.width > 0 && frame.height > 0 ? frame : undefined;
 }
 
-/** The `stand` frame facing the same way as entry `offset` of `clip`, or undefined when either clip does
- *  not lay out six equal facing blocks. */
-function standInId(clip: BobSeqRow, offset: number, stand: BobSeqRow): number | undefined {
+/** The first `walk` frame facing the same way as entry `offset` of `clip`, or undefined when either clip
+ *  does not lay out six equal facing blocks. */
+function walkFrameId(clip: BobSeqRow, offset: number, walk: BobSeqRow): number | undefined {
   const clipBlock = clip.length / HEX_FACINGS;
-  const standBlock = stand.length / HEX_FACINGS;
-  if (!Number.isInteger(clipBlock) || !Number.isInteger(standBlock)) return undefined;
-  return stand.start + Math.floor(offset / clipBlock) * standBlock;
+  const walkBlock = walk.length / HEX_FACINGS;
+  if (!Number.isInteger(clipBlock) || !Number.isInteger(walkBlock)) return undefined;
+  return walk.start + Math.floor(offset / clipBlock) * walkBlock;
 }
 
 /**
- * `head` with every body clip it draws no frame of filled from `donors`, the other head sets on the same
- * body: the head's own `stand` frame in that facing, placed where the first donor drawing the frame puts
- * its head, less the two heads' anchor difference in that stand frame. A clip without six facing blocks
- * draws the donor's head itself. The frankish, saracen and byzantine women's head sets draw no kiss frames,
- * and the byzantine one no sleep frames, over the shared woman body. Approximation: the head keeps its
- * upright stand pose through the body's lean. Returns `head` by identity when nothing borrows.
+ * `head` with every six-facing body clip it draws no frame of filled from `donors`, the other head sets on
+ * the same body: the head's own first `walk` frame in that facing, placed where the first donor drawing the
+ * frame puts its head, less the two heads' anchor difference in that walk frame. Only the head's own frames
+ * are used, since each head set is its own sheet. The frankish, saracen and byzantine women's head sets
+ * draw no kiss frames, and the byzantine one no sleep frames, over the shared woman body. Approximation:
+ * the head keeps its upright walk pose through the body's lean. Returns `head` by identity when nothing
+ * borrows.
  */
 export function borrowedHeadAtlas(
   head: SpriteAtlas,
   donors: readonly SpriteAtlas[],
   clips: Iterable<BobSeqRow>,
-  stand: BobSeqRow,
+  walk: BobSeqRow,
 ): SpriteAtlas {
   let frames: Map<number, AtlasFrame> | undefined;
   for (const clip of clips) {
@@ -38,24 +39,20 @@ export function borrowedHeadAtlas(
     }
     if (!blank) continue;
     for (let offset = 0; offset < clip.length; offset++) {
-      const standId = standInId(clip, offset, stand);
-      const own = standId === undefined ? undefined : drawn(head, standId);
+      const walkId = walkFrameId(clip, offset, walk);
+      const own = walkId === undefined ? undefined : drawn(head, walkId);
+      if (walkId === undefined || own === undefined) continue;
       const id = clip.start + offset;
       for (const donor of donors) {
         const pose = drawn(donor, id);
-        if (pose === undefined) continue;
-        const donorStand = standId === undefined ? undefined : drawn(donor, standId);
+        const donorWalk = drawn(donor, walkId);
+        if (pose === undefined || donorWalk === undefined) continue;
         frames ??= new Map(head.frames);
-        frames.set(
-          id,
-          own === undefined || donorStand === undefined
-            ? pose
-            : {
-                ...own,
-                offsetX: pose.offsetX + own.offsetX - donorStand.offsetX,
-                offsetY: pose.offsetY + own.offsetY - donorStand.offsetY,
-              },
-        );
+        frames.set(id, {
+          ...own,
+          offsetX: pose.offsetX + own.offsetX - donorWalk.offsetX,
+          offsetY: pose.offsetY + own.offsetY - donorWalk.offsetY,
+        });
         break;
       }
     }

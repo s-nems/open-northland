@@ -162,6 +162,15 @@ describe('borrowedHeadAtlas', () => {
     expect(borrowed.frames.get(STAND.start)).toBe(hat.frames.get(STAND.start));
   });
 
+  it('leaves a clip without six facing blocks blank rather than drawing from the donor sheet', () => {
+    const swing = row('swing', 60, 7);
+    const donorSwing = indexAtlasFrames(64, 64, [
+      ...standFrames(0, -40),
+      ...Array.from({ length: swing.length }, (_, i) => frame(swing.start + i, 40, 0, -30)),
+    ]);
+    expect(borrowedHeadAtlas(hat, [donorSwing], [STAND, swing], STAND)).toBe(hat);
+  });
+
   it('returns the atlas by identity when no donor draws what it leaves blank', () => {
     expect(borrowedHeadAtlas(hat, [], [STAND, KISS], STAND)).toBe(hat);
     expect(borrowedHeadAtlas(donor, [hat], [STAND, KISS], STAND)).toBe(donor);

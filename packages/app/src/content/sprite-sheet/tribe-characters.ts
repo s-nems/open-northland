@@ -98,6 +98,16 @@ function repeatMushroomPluck(
   programsByAction.set(MUSHROOM_HARVEST_ATOMIC, repeated);
 }
 
+/** A tribe's `[gfxanimatomic]` programs as its looks play them, the mushroom pluck repeated. */
+export function tribeAtomicPrograms(
+  ir: ContentIr | null,
+  tribe: number,
+): Map<number, Map<string, GfxAtomicProgram>> {
+  const programsByAction = gfxAtomicProgramsByAction(ir, tribe);
+  repeatMushroomPluck(programsByAction, tribe);
+  return programsByAction;
+}
+
 /** The head overlay's binding when it differs from the body's: the source's head clips, then the walk's
  *  head for a carry gait whose head clip is blank. */
 function headBindingFor(
@@ -234,8 +244,7 @@ export function tribeCharacters(
   inputs: TribeCharacterInputs,
   base?: ByJobTable<SettlerCharacter>,
 ): ByJobTable<SettlerCharacter> | undefined {
-  const programsByAction = gfxAtomicProgramsByAction(ir, tribe);
-  repeatMushroomPluck(programsByAction, tribe);
+  const programsByAction = tribeAtomicPrograms(ir, tribe);
   const waitBySeq = gfxWaitProgramsBySeq(ir, tribe);
   const walkLists = gfxWalkFrameLists(ir, tribe);
   // This civilization's indoor craft clips; each body keeps the ones its own atlas holds sequences for.
