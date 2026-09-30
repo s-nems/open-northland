@@ -47,13 +47,13 @@ plus GPU frame time, following the A/B rules in `docs/DEVELOPMENT.md`.
 - **Per-frame allocation** (`gpu/sprite-pool`). The pool reuses its resolved layers now, measured only
   in a Node harness over presentItem and the binder: 761 -> 65 B per drawn entity per frame. Still
   allocating per entity per frame: a swaying resource's sheared body, each construction or upgrade
-  stage's reveal record, each fish's offset record, and `motionClocks`' return object. The headed
+  stage's reveal record and each fish's offset record. Per-track clocks and interpolated atomic poses are now reused. The headed
   [late-game measurement](../../perf/magiczny-las-late-game.md), from tick 97200 at x3, samples
   309 MB attributed to `presentItem` over 1351 dense-view frames and 257 MB over 340 widest-view
   frames (15 s each), about 229 and 757 KB/frame. These totals include collected objects and separate
   call paths; they measure allocation churn, not retained heap or a leak, and do not identify which
   temporary dominates. Trace its allocation stacks before
-  retaining the clock, pose/reveal and layer-offset records on `PresentationTrack` or its layer buffer.
+  retaining further reveal and layer-offset records on `PresentationTrack` or its layer buffer.
   Preserve the binder's stamp semantics: mutable retained records must not make a changed layer
   appear unchanged. The default-setting profile does not establish any individual enhancement's cost.
 

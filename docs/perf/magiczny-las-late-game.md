@@ -14,12 +14,13 @@ assessment, not a measured speedup guarantee. This subset has not had its own ti
 | perf(sim): retain AI traversal storage | `111a31a29e` | Paged traversal storage and reused queue capacity; search order, budgets and cadence stay the same. |
 | perf(render): retain scene depth order and numeric sort keys | `f306c163bf` | Retained numeric sort keys and order repair preserve the existing total comparator; oracle tests cover reordering and fallback. |
 | perf(sim): select the minimum stocked good without sorting | `947f2586bb` | An order-independent minimum scan replaces a temporary sorted array; no retained cache is added. |
+| perf(sim): reuse engagement specifications within a combat pass | `81a614926f` | One synchronous pass owns the context; target/chase consumers do not retain the spec or replace its active unit. |
+| perf(render): reuse per-entity presentation clocks and poses | `b821196b41` | Each entity or card owns its clocks and detached pose; layer resolution consumes values synchronously. No shadow atlas or GPU upload changes. |
 
-`research/magiczny-las-performance` is based on this branch and adds seven higher-risk scopes:
+`research/magiczny-las-performance` is based on this branch and adds six higher-risk scopes:
 
 - Tick-derived clocks and separate needs: a broad change to state representation, timing readers and save format.
-- Reused combat contexts: mutable callbacks and records depend on strict per-unit lifetime.
-- Retained presentation and shadow pages: ownership, graphics precision and texture-memory tradeoffs.
+- Shared shadow pages: texture ownership, sampling and higher allocated GPU memory.
 - Retained GPU instructions and partial uploads: child hooks, invalidation and upload ownership.
 - Local vehicle clearance: topology invalidation and an unresolved sparse journal rollover.
 - Cached interaction candidates: invalidation complexity and measured validation CPU overhead.
@@ -28,16 +29,15 @@ assessment, not a measured speedup guarantee. This subset has not had its own ti
 The last three also retain unfinished work. The higher-risk classification is broader than the list
 of unfinished tickets. Existing timing results describe the combined implementation, not this subset.
 The higher-risk branch needs the clocks/needs change before the delta change because its hot clone
-reads `SettlerNeeds`. None of the three lower-risk runtime changes requires that save-format change.
+reads `SettlerNeeds`. None of the five lower-risk runtime changes requires that save-format change.
 
 Compare the branches with `git diff perf/magiczny-las-low-risk...research/magiczny-las-performance`.
 Keep performance measurements separate from compilation/tests. Before integrating either branch,
 measure its actual candidate tree against the intended control and check the final gameplay hash.
 
-
 ## Scenario and measurement conditions
 
-- Engine revision `fa9978e40`; task changes are benchmark tooling and documentation only.
+- Baseline engine revision `fa9978e40`; the original measurement added benchmark tooling and documentation only.
 - Apple M2 Pro, 10 CPU cores, 32 GiB RAM, macOS arm64, Node 26.5.0.
 - `magiczny_las`, seed **7**, observer, requested AI seats 0–5; the map adds seat 6.
   Progression and needs retain map defaults; no sync digest. The supplied `fog=reveal` is an
@@ -294,5 +294,15 @@ summaries and PNGs sit beside it. Node baselines are `ml6-growth.json`, `ml6-mid
 
 ## Split validation
 
-The lower-risk runtime tree passed the production build, typecheck, 18 script tests and the default
-suite (9504 passed, 3 skipped). The split does not establish a standalone timing improvement.
+The expanded five-change lower-risk runtime tree passed the production build, typecheck, 18 script
+tests and the default suite (9506 passed, 3 skipped). Formatting/lint passed with 155 existing warnings
+and no errors; documentation and asset-policy checks passed.
+
+An independent review traced combat spec/callback ownership and synchronous target/chase consumers,
+and the per-track presentation data through layer resolution. No blocker was found. The existing
+combat reuse test covers owner and leash transitions; it does not directly exercise every transition
+between posted, ranged, hunter and animal units. The full suite provides broader behavior coverage.
+
+The combined branch preserves the previous complete implementation's runtime sources. Earlier
+combined-stack test and performance results remain applicable to those sources, but this expanded
+subset still needs its own timing comparison before an isolated speedup can be claimed.

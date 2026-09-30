@@ -1,33 +1,18 @@
-# Stop the combat ladder building a closure set per acting unit per tick
+# Verify isolated combat context reuse
 
-**Area:** sim · **Focus:** conflict · **Priority:** P3
+**Area:** sim · **Focus:** conflict · **Priority:** P2
 
-Each unit that runs the engage ladder builds its `EngageSpec` (`engageSpec` in `conflict/engagement.ts`,
-`hunterEngageSpec` in `conflict/hunting/`): about ten closures plus the spec, `hold` and `defend`
-objects, whichever rungs it goes on to read. Measured on `krwawa_rzeka` at t100k
-(`docs/perf/heavy-load-krwawa-rzeka-12ai.md`): about 346 units act a tick, and `engageSpec` allocates
-166 KB a tick under `ON_BENCH_PROFILE=alloc`, garbage the scavenger pays for. The spec is also held by
-`resolveTarget`, `chase`, `breakOff`, `restPreySearch` and `holdPrey` for the rest of the unit's turn.
-
-The [late-game reference](../../perf/magiczny-las-late-game.md), `magiczny_las`, seed 7,
-AI seats 0-6, profiles 500 ticks after restoring tick 97200 and warming for 200 ticks. It measures
-235 KiB per tick allocated directly by `engageSpec`, 246 KiB including its callees, out of
-4658 KiB per tick overall. This run includes active fighting. Allocation sampling includes collected
-objects; these are estimated allocation volumes, not retained heap sizes.
+Per-pass context reuse is implemented on `perf/magiczny-las-low-risk`. Its callbacks and specification
+are consumed synchronously before the next unit replaces their inputs; no record is stored in a
+simulation component. The combined implementation's allocation result does not isolate its tick cost.
 
 ## Scope
 
-- Build the filters once per pass instead: a reusable spec whose accept, keep and low-priority
-  functions read per-unit fields set before the unit's search, or closures built only on the rung that
-  reads them. A nested query inside `accept` (the hunter's last-resort gate) must still see its own
-  seeker's fields.
-- Hash-identical: the same filters in the same order.
+Measure the lower-risk subset against the control before closing the standalone performance claim.
+Keep target filters, stance ranges, fog rules and attack order unchanged.
 
 ## Verify
 
-- `engageSpec` KB per tick from the reference's t100k checkpoint with `ON_BENCH_PROFILE=alloc`, before
-  and after. Repeat on the `magiczny_las` reference's tick-97200 checkpoint with 200 warm-up ticks
-  and 500 measured ticks; compare direct and inclusive allocations separately.
-- State hash unchanged over 2000 ticks from the t80k and t100k checkpoints; the conflict tests and
-  goldens unchanged.
-- `npm test`, `npm run check`.
+Compare repeated late-game CPU and allocation windows with matching world, seed and warm-up.
+Check final gameplay hashes and the conflict tests, including owner and leash transitions.
+See the [branch split](../../perf/magiczny-las-late-game.md#branches-for-separate-review).
