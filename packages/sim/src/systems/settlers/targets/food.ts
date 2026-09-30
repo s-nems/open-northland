@@ -15,6 +15,7 @@ import type { SystemContext } from '../../context.js';
 import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { lowestStockedFood } from '../../family/food-sources.js';
 import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
+import { routeRegions } from '../../footprint/index.js';
 import { bushesNearNode } from '../../spatial/bushes.js';
 import { closer, manhattan } from '../../spatial/metric.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
@@ -116,6 +117,7 @@ function nearestRipeBush(
   gate?: SpatialGate,
 ): { bush: Entity; dist: number; cell: NodeId } | null {
   const { x: hx, y: hy } = terrain.coordsOf(here);
+  const regions = routeRegions(world, ctx, terrain);
   const candidates = bushesNearNode(world, hx, hy, BERRY_FORAGE_RADIUS + BUSH_INTERACTION_SLACK_NODES);
   // No same-side gate: a wild BerryBush is a neutral map feature foraged in place, so any settler may
   // pick it, unlike an owned store's larder.
@@ -124,6 +126,7 @@ function nearestRipeBush(
     if (bush === undefined || bush.stage !== 'ripe') return null; // bare or blooming
     const cell = interactionCell(world, ctx, terrain, e, here);
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null; // walled off
+    if (cell !== here && (!regions.standable(cell) || regions.unroutable(here, cell))) return null;
     if (cell !== here && isUnreachableGoal(memo, cell)) return null; // a goal this eater's route just failed on
     if (manhattan(terrain, here, cell) > BERRY_FORAGE_RADIUS) return null; // beyond forage reach
     if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
