@@ -18,17 +18,14 @@ async function main(argv) {
   if (command !== 'diff' || args.length !== 2) fail(USAGE);
   const { diffDigestInputs, digestInputsFromJson } = await simExports();
   const [pathA, pathB] = args;
-  const disputeA = disputeOf(pathA);
-  const disputeB = disputeOf(pathB);
+  const disputeA = disputeOf(pathA, digestInputsFromJson);
+  const disputeB = disputeOf(pathB, digestInputsFromJson);
   if (disputeA.tick !== disputeB.tick) {
     fail(
       `the bundles hold verdicts for different ticks: ${disputeA.tick} in ${pathA}, ${disputeB.tick} in ${pathB}`,
     );
   }
-  const difference = diffDigestInputs(
-    digestInputsFromJson(disputeA.inputs),
-    digestInputsFromJson(disputeB.inputs),
-  );
+  const difference = diffDigestInputs(disputeA.inputs, disputeB.inputs);
   console.log(`tick ${disputeA.tick}: ${describe(difference)}`);
   return difference === null ? EXIT_SAME : EXIT_DIFFERENT;
 }
@@ -48,7 +45,7 @@ async function simExports() {
 }
 
 /** The bundle's `game.net.dispute`, which must carry the fold inputs of its tick. */
-function disputeOf(path) {
+function disputeOf(path, digestInputsFromJson) {
   let bundle;
   try {
     bundle = JSON.parse(readFileSync(path, 'utf8'));
@@ -58,10 +55,22 @@ function disputeOf(path) {
   const dispute = bundle?.game?.net?.dispute;
   if (dispute === undefined || dispute === null)
     fail(`${path} has no game.net.dispute: not a relayed session with a verdict`);
+  if (!Number.isSafeInteger(dispute.tick) || dispute.tick < 0) {
+    fail(`${path}: verdict tick must be a non-negative safe integer`);
+  }
   if (dispute.inputs === null || dispute.inputs === undefined) {
     fail(`${path}: the verdict for tick ${dispute.tick} arrived after its inputs left the window`);
   }
-  return dispute;
+  let inputs;
+  try {
+    inputs = digestInputsFromJson(dispute.inputs);
+  } catch (err) {
+    fail(`${path}: ${String(err)}`);
+  }
+  if (inputs.tick !== dispute.tick) {
+    fail(`${path}: inputs for tick ${inputs.tick} do not match the verdict for tick ${dispute.tick}`);
+  }
+  return { tick: dispute.tick, inputs };
 }
 
 function describe(difference) {
