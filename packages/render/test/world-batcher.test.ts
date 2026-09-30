@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   markPalettedTexture,
   markShadowTexture,
+  setPixelArtMagnification,
   setWorldShadowStyle,
 } from '../src/gpu/pixel-art-registry.js';
 import { DEFAULT_SHADOW_STYLE } from '../src/gpu/shadow-style.js';
@@ -25,6 +26,7 @@ import {
   WORLD_VERTEX_SIZE,
   worldBatched,
 } from '../src/gpu/world-batcher.js';
+import { useHeadlessShaderContext } from './support/shader-context.js';
 
 /** One page slot plus the slot each batch keeps for a palette LUT. */
 const PAGES_AND_LUT = 2;
@@ -196,5 +198,47 @@ describe('world batcher palette LUT', () => {
     expect(flagsOf(0)).toBe(body | WORLD_FLAG_GLOW);
     expect(flagsOf(1)).toBe(body);
     batcher.destroy();
+  });
+});
+
+describe('world batcher shader selection', () => {
+  useHeadlessShaderContext();
+  afterEach(() => {
+    setWorldShadowStyle(null);
+    setPixelArtMagnification('off');
+  });
+
+  it('updates the compiled variant when live settings or the texture limit change', () => {
+    setWorldShadowStyle(null);
+    setPixelArtMagnification('off');
+    const WorldBatcher = installWorldBatcher();
+    const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT });
+    const wider = new WorldBatcher({ maxTextures: PAGES_AND_LUT + 1 });
+    const plain = batcher.shader;
+    expect(batcher.shader).toBe(plain);
+    setPixelArtMagnification('sharp');
+    const sharp = batcher.shader;
+    expect(sharp).not.toBe(plain);
+    const style = { ...DEFAULT_SHADOW_STYLE };
+    setWorldShadowStyle(style);
+    const shaded = batcher.shader;
+    expect(shaded).not.toBe(sharp);
+    style.alphaGain += 0.25;
+    const gain = batcher.shader;
+    expect(gain).not.toBe(shaded);
+    style.maxAlpha *= 0.5;
+    const alpha = batcher.shader;
+    expect(alpha).not.toBe(gain);
+    style.tint = 0x123456;
+    const tinted = batcher.shader;
+    expect(tinted).not.toBe(alpha);
+    expect(wider.shader).not.toBe(tinted);
+    expect(batcher.shader).toBe(tinted);
+    setWorldShadowStyle(null);
+    expect(batcher.shader).toBe(sharp);
+    setPixelArtMagnification('off');
+    expect(batcher.shader).toBe(plain);
+    batcher.destroy();
+    wider.destroy();
   });
 });

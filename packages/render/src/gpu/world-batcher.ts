@@ -361,12 +361,32 @@ ${PIXEL_ART_MAGNIFY_GLSL}
   // combination, shared by every batcher on the page. The shadow style is one fixed value or absent,
   // so the map holds at most two programs per magnification mode.
   const shaders = new Map<string, Shader>();
+  let lastShader:
+    | {
+        readonly maxTextures: number;
+        readonly mode: number;
+        readonly alphaGain: number | undefined;
+        readonly maxAlpha: number | undefined;
+        readonly tint: number | undefined;
+        readonly shader: Shader;
+      }
+    | undefined;
 
   function shadowKey(shadow: ShadowStyle | null): string {
     return shadow === null ? 'off' : `${shadow.alphaGain}/${shadow.maxAlpha}/${shadow.tint.toString(16)}`;
   }
 
   function shaderFor(maxTextures: number, mode: number, shadow: ShadowStyle | null): Shader {
+    // Most batches use the same variant; avoid formatting its cache key on every bind.
+    if (
+      lastShader !== undefined &&
+      lastShader.maxTextures === maxTextures &&
+      lastShader.mode === mode &&
+      lastShader.alphaGain === shadow?.alphaGain &&
+      lastShader.maxAlpha === shadow?.maxAlpha &&
+      lastShader.tint === shadow?.tint
+    )
+      return lastShader.shader;
     const shading = shadowKey(shadow);
     const key = `${maxTextures}:${mode}:${shading}`;
     let shader = shaders.get(key);
@@ -381,6 +401,14 @@ ${PIXEL_ART_MAGNIFY_GLSL}
       });
       shaders.set(key, shader);
     }
+    lastShader = {
+      maxTextures,
+      mode,
+      alphaGain: shadow?.alphaGain,
+      maxAlpha: shadow?.maxAlpha,
+      tint: shadow?.tint,
+      shader,
+    };
     return shader;
   }
 
