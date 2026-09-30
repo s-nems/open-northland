@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { DrawItem } from '../../src/data/scene/index.js';
 import { resolveSettlerBobId } from '../../src/data/sprites/settler.js';
-import { type AtomicPoseTrack, atomicPose } from '../../src/gpu/sprite-pool/atomic-pose.js';
+import {
+  type AtomicPoseTrack,
+  atomicPose,
+  type InterpolationTrack,
+  interpolateAtomicPose,
+} from '../../src/gpu/sprite-pool/atomic-pose.js';
 
 const idle: DrawItem = { kind: 'settler', ref: 1, x: 20, y: 30, depth: 0, state: 'idle', facing: 0 };
 const swing: DrawItem = { ...idle, state: 'acting', atomicId: 39, elapsed: 14, facing: 4 };
@@ -9,6 +14,22 @@ const binding = { idle: 0, moving: 1, byAtomic: { 39: { start: 100, dirs: 8, str
 const fresh = (): AtomicPoseTrack => ({ tick: -1, item: undefined });
 
 describe('atomic completion pose', () => {
+  it('reuses only the presentation pose without changing the snapshot or carrying optional fields into the next tick', () => {
+    const track: InterpolationTrack = { source: undefined, pose: undefined };
+    const first = interpolateAtomicPose({ ...swing, atomicDuration: 15 }, 0.25, track);
+    expect(first.elapsed).toBe(14.25);
+    const source = track.source;
+    if (source === undefined) throw new Error('acting pose not retained');
+    const second = interpolateAtomicPose(source, 0.75, track);
+    expect(second).toBe(first);
+    expect(second.elapsed).toBe(14.75);
+    expect(source.elapsed).toBe(14);
+    const next = interpolateAtomicPose({ ...swing, elapsed: 1 }, 0.5, track);
+    expect(next).not.toBe(first);
+    expect(next.elapsed).toBe(1.5);
+    expect(next.atomicDuration).toBeUndefined();
+    expect(interpolateAtomicPose(idle, 0.5, track)).toBe(idle);
+  });
   it('plays the final swing frame across the planner gap without standing or turning away', () => {
     const track = fresh();
     const frames = [

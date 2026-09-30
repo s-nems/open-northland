@@ -1,5 +1,11 @@
 import { clamp01 } from '../../data/math.js';
+import type { MutableDrawItem } from '../../data/scene/draw-item.js';
 import type { DrawItem } from '../../data/scene/index.js';
+
+export interface InterpolationTrack {
+  source: DrawItem | undefined;
+  pose: MutableDrawItem | undefined;
+}
 
 export interface AtomicPoseTrack {
   tick: number;
@@ -7,7 +13,7 @@ export interface AtomicPoseTrack {
 }
 
 /** Own-art work advances within the current sim tick, including the final planner-gap tick. */
-export function interpolateAtomicPose(item: DrawItem, alpha: number): DrawItem {
+export function interpolateAtomicPose(item: DrawItem, alpha: number, track?: InterpolationTrack): DrawItem {
   if (
     item.kind !== 'settler' ||
     item.state !== 'acting' ||
@@ -19,7 +25,14 @@ export function interpolateAtomicPose(item: DrawItem, alpha: number): DrawItem {
     item.ghost === true
   )
     return item;
-  return { ...item, elapsed: Math.max(1, item.elapsed + clamp01(alpha)) };
+  const elapsed = Math.max(1, item.elapsed + clamp01(alpha));
+  if (track === undefined) return { ...item, elapsed };
+  if (track.source !== item || track.pose === undefined) {
+    track.source = item;
+    track.pose = { ...item };
+  }
+  track.pose.elapsed = elapsed;
+  return track.pose;
 }
 
 /** The executor retires a completed atomic one tick before the planner can start its successor. */

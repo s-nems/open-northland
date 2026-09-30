@@ -2,11 +2,16 @@ import type { DrawItem } from '../../data/scene/index.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { WindSway } from '../../data/weather/climate.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
-import { type AtomicPoseTrack, atomicPose, interpolateAtomicPose } from './atomic-pose.js';
+import {
+  type AtomicPoseTrack,
+  atomicPose,
+  type InterpolationTrack,
+  interpolateAtomicPose,
+} from './atomic-pose.js';
 import { cartDriveLook } from './cart-drive.js';
 import { characterGaitRate, characterInterpolatesMotion } from './character-layers.js';
 import { drawAlphaForKind, type MotionTrack, snapDistanceForKind, trackMotion } from './motion.js';
-import { easeReveal, motionClocks, revealedItem, walkPose } from './presentation.js';
+import { easeReveal, revealedItem, walkPose, writeMotionClocks } from './presentation.js';
 import { resolveLayersInto } from './resolve-layers.js';
 import { LayerBuffer, type ResolvedLayer } from './resolved-layer.js';
 
@@ -30,6 +35,8 @@ export interface PresentationTrack {
   reveal: number | undefined;
   /** Holds the list {@link presentItem} returns, refilled by its next call on this track. */
   readonly layers: LayerBuffer;
+  readonly clocks: { animation: number; gait: number };
+  readonly interpolation: InterpolationTrack;
 }
 
 export function createPresentationTrack(kind: SpriteKind): PresentationTrack {
@@ -37,6 +44,8 @@ export function createPresentationTrack(kind: SpriteKind): PresentationTrack {
     kind,
     reveal: undefined,
     layers: new LayerBuffer(),
+    clocks: { animation: 0, gait: 0 },
+    interpolation: { source: undefined, pose: undefined },
     atomicPose: { tick: -1, item: undefined },
     idleActive: false,
     idleStartTick: 0,
@@ -87,7 +96,7 @@ export function presentItem(
   // A cart drawn as its driver plays that walker's clip, so it keeps the walker's tick anchor too.
   const walkerClip = track.kind === 'vehicle' && cartDriveLook(sheet, item) !== undefined;
   const alpha = held || walkerClip ? 1 : drawAlphaForKind(track.kind, frameAlpha, smooth);
-  const pose = smooth ? interpolateAtomicPose(atomic, alpha) : atomic;
+  const pose = smooth ? interpolateAtomicPose(atomic, alpha, track.interpolation) : atomic;
   // A remembered/portrait pose must not finish a pending movement or resume it when watched again.
   if (held) track.motion.tick = -1;
   trackMotion(
@@ -104,7 +113,8 @@ export function presentItem(
   // `upgradePct` and `builtPct` are mutually exclusive by construction, so an upgrade site rides the
   // same eased reveal as a from-scratch one.
   track.reveal = easeReveal(track.reveal, item.builtPct ?? item.upgradePct);
-  const clocks = motionClocks(item, tick, frameAlpha, track.motion, smooth, environmentMotion);
+  const clocks = track.clocks;
+  writeMotionClocks(clocks, item, tick, frameAlpha, track.motion, smooth, environmentMotion);
   const displayed = revealedItem(walkPose(pose, track.kind, track.motion, track.lastFacing), track.reveal);
   const idleElapsed = idleClipElapsed(track, displayed, tick);
   return resolveLayersInto(

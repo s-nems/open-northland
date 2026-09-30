@@ -41,21 +41,37 @@ export function motionClocks(
   smooth: boolean,
   continuousAnimation = false,
 ) {
-  if (item.ghost === true || item.frozen === true) return { animation: 0, gait: 0 };
+  const clocks = { animation: 0, gait: 0 };
+  writeMotionClocks(clocks, item, tick, alpha, motion, smooth, continuousAnimation);
+  return clocks;
+}
+
+export function writeMotionClocks(
+  out: { animation: number; gait: number },
+  item: DrawItem,
+  tick: number,
+  alpha: number,
+  motion: MotionTrack,
+  smooth: boolean,
+  continuousAnimation = false,
+): void {
+  if (item.ghost === true || item.frozen === true) {
+    out.animation = 0;
+    out.gait = 0;
+    return;
+  }
   const clock = smooth
     ? Math.max(0, tick - 1 + clamp01(alpha))
     : continuousAnimation
       ? tick + clamp01(alpha)
       : tick;
-  return {
-    animation: animationClock(item, clock),
-    gait:
-      item.inHouse === true
-        ? clock
-        : smooth
-          ? lerp(motion.prevGaitPhase, motion.gaitPhase, clamp01(alpha))
-          : Math.floor(motion.gaitPhase),
-  };
+  out.animation = animationClock(item, clock);
+  out.gait =
+    item.inHouse === true
+      ? clock
+      : smooth
+        ? lerp(motion.prevGaitPhase, motion.gaitPhase, clamp01(alpha))
+        : Math.floor(motion.gaitPhase);
 }
 
 /**
