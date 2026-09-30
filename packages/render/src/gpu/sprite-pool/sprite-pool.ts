@@ -8,6 +8,7 @@ import {
   snapToDevicePixels,
   type Viewport,
 } from '../../data/projection/index.js';
+import { SpriteDepthOrder } from '../../data/scene/depth-order.js';
 import {
   buildSpriteScene,
   collectSpriteScene,
@@ -151,6 +152,7 @@ export class SpritePool {
   private reapCursor: MapIterator<number> | undefined;
   private frameId = 0;
   private readonly sceneCache = new SpriteSceneCache();
+  private readonly depthOrder = new SpriteDepthOrder();
   private lastItems: readonly SpriteDrawItem[] = [];
   private readonly damaged: DamagedBuilding[] = [];
   private readonly ships: ShipAfloat[] = [];
@@ -309,19 +311,23 @@ export class SpritePool {
   private sceneFor(frame: PoolFrame): SpriteScene {
     const cached = this.sceneCache.lookup(frame);
     if (cached !== null) return cached;
-    const scene = collectSpriteScene(frame.snapshot, {
-      viewport: frame.viewport,
-      elevation: frame.elevation,
-      staticRefs: frame.staticRefs,
-      fogVisible: frame.fogVisible,
-      ghosts: frame.ghosts,
-      ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
-      ...(this.sheet?.holyFire !== undefined ? { holyFire: this.sheet.holyFire } : {}),
-      ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
-      ...(frame.portraitHouse !== undefined ? { portraitHouse: frame.portraitHouse } : {}),
-      ...(frame.insetRefs !== undefined ? { insetRefs: frame.insetRefs } : {}),
-      ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
-    });
+    const scene = collectSpriteScene(
+      frame.snapshot,
+      {
+        viewport: frame.viewport,
+        elevation: frame.elevation,
+        staticRefs: frame.staticRefs,
+        fogVisible: frame.fogVisible,
+        ghosts: frame.ghosts,
+        ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
+        ...(this.sheet?.holyFire !== undefined ? { holyFire: this.sheet.holyFire } : {}),
+        ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
+        ...(frame.portraitHouse !== undefined ? { portraitHouse: frame.portraitHouse } : {}),
+        ...(frame.insetRefs !== undefined ? { insetRefs: frame.insetRefs } : {}),
+        ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
+      },
+      this.depthOrder,
+    );
     this.sceneCache.store(frame, scene);
     return scene;
   }

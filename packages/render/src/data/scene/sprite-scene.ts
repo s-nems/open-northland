@@ -4,6 +4,7 @@ import type { GhostSource } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import type { ElevationField } from '../terrain/index.js';
 import { pushEffectItems, pushGhostItems } from './collect-fields.js';
+import type { SpriteDepthOrder } from './depth-order.js';
 import type { MutableSpriteDrawItem, SpriteDrawItem } from './draw-item.js';
 import { emitEntities } from './entity-source.js';
 import { type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
@@ -96,11 +97,15 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: DrawListOptions 
  * classify every entity twice per frame. The emitted order is total and stable, so neither culling nor
  * the entity source (full walk or the position index's arbitrary bucket order) changes the list.
  */
-export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
-  return collectScene(snapshot, opts);
+export function collectSpriteScene(
+  snapshot: WorldSnapshot,
+  opts: SpriteSceneOptions = {},
+  order?: SpriteDepthOrder,
+): SpriteScene {
+  return collectScene(snapshot, opts, order);
 }
 
-function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteScene {
+function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: SpriteDepthOrder): SpriteScene {
   const {
     viewport,
     elevation,
@@ -207,7 +212,8 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
   const liveRefs: LiveRefs =
     ghosts === undefined ? emitted : { has: (ref) => emitted.has(ref) || ghosts.has(ref) };
   // `depth` carries the feet anchor plus the per-kind paint bias; id breaks a remaining exact tie.
-  items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
+  if (order !== undefined) order.sort(items);
+  else items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
   return { items, liveRefs };
 }
 
