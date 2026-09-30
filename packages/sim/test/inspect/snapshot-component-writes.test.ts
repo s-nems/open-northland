@@ -101,17 +101,29 @@ describe('snapshot component write tracking', () => {
     const { sim, id } = fixture();
     const fast = sim.snapshotDeltas();
     const slow = sim.snapshotDeltas();
-    fast.next();
+    const held = fast.next()?.touched[0]?.components;
     slow.next();
-    sim.world.mut(id, Position).x = fx.fromInt(2);
-    sim.snapshot();
-    expect(Object.keys(fast.next()?.touched[0]?.components ?? {})).toEqual(['Position']);
+    // Write in reverse registration order, then repeat writes across separate drains.
+    sim.world.mut(id, Resource).remaining = 4;
+    const heldWrite = fast.next()?.touched[0]?.components;
+    for (const x of [1, 2]) {
+      sim.world.mut(id, Position).x = fx.fromInt(x);
+      sim.world.mut(id, Resource).remaining = 4 - x;
+      sim.snapshot();
+      expect(Object.keys(fast.next()?.touched[0]?.components ?? {})).toEqual(['Position', 'Resource']);
+    }
     sim.world.remove(id, Resource);
     sim.snapshot();
     expect(fast.next()?.touched[0]?.removed).toEqual(['Resource']);
     sim.world.add(id, Resource, { goodType: 1, remaining: 7, harvestAtomic: 24 });
     const delta = slow.next();
     expect(delta?.touched[0]?.removed).toEqual([]);
+    expect(Object.keys(delta?.touched[0]?.components ?? {})).toEqual(['Position', 'Resource']);
+    expect(heldWrite).toEqual({ Resource: { goodType: 1, remaining: 4, harvestAtomic: 24 } });
+    expect(held).toEqual({
+      Position: { x: 0, y: 0 },
+      Resource: { goodType: 1, remaining: 5, harvestAtomic: 24 },
+    });
     expect(delta?.touched[0]?.components).toEqual({
       Position: { x: fx.fromInt(2), y: 0 },
       Resource: { goodType: 1, remaining: 7, harvestAtomic: 24 },

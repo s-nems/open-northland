@@ -51,7 +51,7 @@ interface PendingDelta {
   /** Alive entities mutated since the base. */
   readonly touched: Set<Entity>;
   readonly removed: Set<Entity>;
-  readonly written: Map<Entity, Set<Component<unknown>>>;
+  readonly written: Map<Entity, Component<unknown>[]>;
   rebuild: boolean;
 }
 
@@ -90,10 +90,12 @@ class SnapshotClones {
           stream.touched.add(e);
           let names = stream.written.get(e);
           if (names === undefined) {
-            names = new Set();
+            names = [];
             stream.written.set(e, names);
           }
-          for (const component of written) names.add(component);
+          for (const component of written) {
+            if (!names.includes(component)) names.push(component);
+          }
         } else {
           stream.touched.delete(e);
           stream.written.delete(e);
@@ -303,8 +305,9 @@ export class SnapshotDeltaStream {
     const components: Record<string, unknown> = {};
     let removed: string[] | undefined;
     // Preserve the component registration order carried by complete snapshots.
-    const written = [...(this.pending.written.get(id) ?? [])];
-    written.sort((a, b) => this.source.world.componentOrder(a) - this.source.world.componentOrder(b));
+    const written = this.pending.written.get(id) ?? [];
+    if (written.length > 1)
+      written.sort((a, b) => this.source.world.componentOrder(a) - this.source.world.componentOrder(b));
     for (const component of written) {
       const name = component.name;
       if (Object.hasOwn(cached.snap.components, name)) components[name] = cached.snap.components[name];
