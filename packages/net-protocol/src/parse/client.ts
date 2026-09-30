@@ -3,6 +3,7 @@ import type { ClientMessage, ClientMessageKind } from '../messages.js';
 import { asBoolean, asCount, asOneOf, asPositiveNumber, asRecord, asString, keysOf } from '../untrusted.js';
 import { parseCompatibility } from './compatibility.js';
 import {
+  AI_DIFFICULTIES,
   parseClientLoad,
   parseLobbySettings,
   parseRoomSettings,
@@ -83,6 +84,9 @@ export function parseClientMessage(value: unknown): ClientMessage {
         ...(raw.color !== undefined ? { color: asCount(raw.color, 'setSeat.color') } : {}),
         ...(raw.team !== undefined ? { team: parseTeam(raw.team, 'setSeat.team') } : {}),
         ...(raw.tribe !== undefined ? { tribe: parseTribe(raw.tribe, 'setSeat.tribe') } : {}),
+        ...(raw.difficulty !== undefined
+          ? { difficulty: asOneOf(raw.difficulty, AI_DIFFICULTIES, 'setSeat.difficulty') }
+          : {}),
       };
     case 'setSettings':
       if (

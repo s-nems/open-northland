@@ -23,6 +23,7 @@ import {
   claimSeat,
   initialRosterState,
   type MapPlayerSlot,
+  offersDifficulty,
   offersTribeChoice,
   type RosterState,
   slotDifficulty,
@@ -98,11 +99,9 @@ export function lobbySlotRows(
     }));
 }
 
-/** Whether the lobby hands `slot` to the strategic AI, which then plays at a level: a free seat set to
- *  computer, of a civilization rather than a monster tribe. The map's own computer seats are its script's
- *  camps and take no level. */
+/** Whether the lobby hands `slot` to the computer at a level. */
 function playsAtDifficulty(slot: MapPlayerSlot, state: RosterState): boolean {
-  return state.seat !== null && offersTribeChoice(slot) && aiSeats(state, [slot]).length > 0;
+  return state.seat !== null && offersDifficulty(slot) && aiSeats(state, [slot]).length > 0;
 }
 
 /**
@@ -127,7 +126,7 @@ export function lobbySession(
     const retribed = tribe !== undefined && tribe !== slot.tribeId && offersTribeChoice(slot);
     const mode = seatMode(slot, localSeat, lists);
     const difficulty =
-      lists.ai.has(slot.player) && offersTribeChoice(slot) ? slotDifficulty(state, slot.player) : undefined;
+      lists.ai.has(slot.player) && offersDifficulty(slot) ? slotDifficulty(state, slot.player) : undefined;
     return {
       player: slot.player,
       mode,

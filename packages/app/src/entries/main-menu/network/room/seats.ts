@@ -4,6 +4,7 @@ import {
   type RoomView,
   type VacantSeatMode,
 } from '@open-northland/net-protocol';
+import { components } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../../i18n/index.js';
 import { memberLoadText } from '../../../../view/net/member-load.js';
 import { node } from '../../dom.js';
@@ -12,8 +13,17 @@ import { seatRow as createSeatRow } from '../../lobby-controls/seat.js';
 import { seatModeControl } from '../../lobby-controls/seat-mode.js';
 import { tribePicker } from '../../lobby-controls/tribe.js';
 import { button, selectControl } from './controls.js';
-import { canClaimSeat, canSetSeatTribe, roomPermissions, savedSeatHint, seatCivilization } from './model.js';
+import {
+  canClaimSeat,
+  canSetSeatDifficulty,
+  canSetSeatTribe,
+  roomPermissions,
+  savedSeatHint,
+  seatCivilization,
+} from './model.js';
 import type { NetworkRoomDeps } from './types.js';
+
+const { AI_DIFFICULTIES } = components;
 
 const ROOM_VACANT_ORDER: readonly VacantSeatMode[] = ['idle', 'ai', 'absent'];
 
@@ -113,6 +123,15 @@ export function roomSeats(deps: NetworkRoomDeps) {
       'select',
     );
     const tribe = civilization === null ? null : seatTribe(player, civilization);
+    const levels = messages().mainMenu.lobby.difficulty;
+    const difficulty = selectControl(
+      messages().mainMenu.lobby.difficultyHeader,
+      AI_DIFFICULTIES.map((id) => [id, levels[id]] as const),
+      (value) => {
+        const level = AI_DIFFICULTIES.find((id) => id === value);
+        if (level !== undefined) client.setSeat(player, { difficulty: level });
+      },
+    );
     const take = button(copy.takeSeat, () => client.claimSeat(player));
     take.classList.add('network-room__claim');
     const row = createSeatRow({
@@ -120,7 +139,14 @@ export function roomSeats(deps: NetworkRoomDeps) {
       nameClass: 'network-room__seat-name',
       detailClass: 'network-room__muted',
       action: take,
-      controls: [color, team.root, mode.root, ...(tribe === null ? [] : [tribe.root]), palette],
+      controls: [
+        color,
+        team.root,
+        mode.root,
+        difficulty.root,
+        ...(tribe === null ? [] : [tribe.root]),
+        palette,
+      ],
     });
     return {
       row: row.root,
@@ -154,6 +180,10 @@ export function roomSeats(deps: NetworkRoomDeps) {
         team.update(String(seat.team ?? ''), frozen);
         mode.update(seat.mode, !permissions.creator || seat.nick !== null);
         tribe?.update(seat, !canSetSeatTribe(room, seat, client.nick, connected));
+        // Only a seat the computer plays takes a level.
+        difficulty.root.classList.toggle('is-unused', seat.difficulty === undefined || seat.mode !== 'ai');
+        if (seat.difficulty !== undefined)
+          difficulty.update(seat.difficulty, !canSetSeatDifficulty(room, client.nick, connected));
         take.disabled = !canClaimSeat(room, seat, client.nick, connected);
         take.hidden = seat.nick !== null;
       },

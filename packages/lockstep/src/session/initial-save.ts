@@ -35,6 +35,12 @@ export function applyInitialSaveSeats(sim: Simulation, session: GameSession): vo
   for (const seat of session.seats) {
     const enabled = seat.mode === 'ai';
     if (components.isAiPlayer(sim.world, seat.player) === enabled) continue;
-    sim.enqueueSetup({ kind: 'setPlayerAi', player: seat.player, enabled });
+    const { difficulty } = seat;
+    sim.enqueueSetup({
+      kind: 'setPlayerAi',
+      player: seat.player,
+      enabled,
+      ...(difficulty === undefined ? {} : { difficulty }),
+    });
   }
 }

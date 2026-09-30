@@ -36,6 +36,7 @@ export const plNetworkRelay = {
     seatTaken: 'miejsce {seat} zajmuje {nick}',
     seatModeUnavailable: 'miejsca {seat} nie można ustawić na: {mode}',
     seatTribeUnavailable: 'miejsce {seat} nie ma nacji do wyboru',
+    seatDifficultyUnavailable: 'miejsce {seat} nie ma poziomu komputera do wyboru',
     seatRequired: 'najpierw zajmij miejsce',
     memberUnseated: 'gracz {nick} nie ma miejsca',
     memberNotReady: 'gracz {nick} nie jest gotowy',

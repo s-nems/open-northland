@@ -71,7 +71,7 @@
 .network-room__seat {
   display: grid;
   grid-template-columns:
-    minmax(calc(var(--u) * 120), 1fr) repeat(3, minmax(calc(var(--u) * 95), calc(var(--u) * 130)))
+    minmax(calc(var(--u) * 120), 1fr) repeat(4, minmax(calc(var(--u) * 95), calc(var(--u) * 130)))
     max-content;
   gap: calc(var(--u) * 8);
   align-items: end;
@@ -99,6 +99,10 @@
   flex-direction: column;
   gap: calc(var(--u) * 4);
   min-width: 0;
+}
+/* A field the seat does not use keeps its cell, so every row's columns line up. */
+.network-room__field.is-unused {
+  visibility: hidden;
 }
 /* The civilization button matches the room's select height. */
 .network-room__seat .lobby-tribe__button {

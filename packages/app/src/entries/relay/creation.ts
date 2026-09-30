@@ -5,7 +5,12 @@ import { assertMultiplayerMap } from '../../game/multiplayer-map.js';
 import { sessionRuleOverrides } from '../../game/session-rules.js';
 import { DEFAULT_SESSION_SPEED, drawSessionSeed, seedParam } from '../../game/session-url.js';
 import { floatParam } from '../../view/params.js';
-import { authoredVacantMode, vacantOffers } from '../main-menu/lobby/roster-state.js';
+import {
+  authoredVacantMode,
+  DEFAULT_LOBBY_AI_DIFFICULTY,
+  offersDifficulty,
+  vacantOffers,
+} from '../main-menu/lobby/roster-state.js';
 
 interface RoomCreation {
   readonly settings: RoomSettings;
@@ -31,6 +36,7 @@ export async function roomCreation(params: URLSearchParams, mapId: string): Prom
       offers: vacantOffers(slot),
       color: slot.colorId,
       authoredTribe: slot.tribeId,
+      ...(offersDifficulty(slot) ? { difficulty: DEFAULT_LOBBY_AI_DIFFICULTY } : {}),
     })),
   };
 }

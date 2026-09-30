@@ -1,4 +1,5 @@
 import type {
+  AiDifficulty,
   GameSession,
   InitialSaveIdentity,
   SeatMode,
@@ -44,6 +45,8 @@ export interface RoomSeatSetup {
   readonly authoredTribe?: number;
   /** The tribe the seat starts as when it is not `authoredTribe`: a saved world's choice. */
   readonly tribe?: number;
+  /** Present on a seat the lobby may hand to the computer at a level: the level it starts at. */
+  readonly difficulty?: AiDifficulty;
 }
 
 export interface RoomSeatView {
@@ -55,6 +58,8 @@ export interface RoomSeatView {
   /** Present together: the map's tribe for the seat and the one it plays. */
   readonly authoredTribe?: number;
   readonly tribe?: number;
+  /** Present on a seat that takes a level: how hard it plays while the computer has it. */
+  readonly difficulty?: AiDifficulty;
   readonly nick: string | null;
   readonly ready: boolean;
 }
@@ -175,6 +180,7 @@ export type ClientMessage =
       readonly color?: number;
       readonly team?: number | null;
       readonly tribe?: number;
+      readonly difficulty?: AiDifficulty;
     }
   | { readonly kind: 'setReady'; readonly ready: boolean }
   | { readonly kind: 'setCompatibility'; readonly compatibility: LobbyCompatibility | null }

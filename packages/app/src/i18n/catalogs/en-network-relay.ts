@@ -36,6 +36,7 @@ export const enNetworkRelay = {
     seatTaken: 'seat {seat} is taken by {nick}',
     seatModeUnavailable: 'seat {seat} cannot be set to {mode}',
     seatTribeUnavailable: 'seat {seat} has no civilization to choose',
+    seatDifficultyUnavailable: 'seat {seat} takes no computer level',
     seatRequired: 'take a seat first',
     memberUnseated: '{nick} has no seat',
     memberNotReady: '{nick} is not ready',

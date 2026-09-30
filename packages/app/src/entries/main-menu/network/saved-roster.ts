@@ -28,7 +28,7 @@ export function restoreSavedSeats(save: SaveGame, authored: readonly RoomSeatSet
   if (seats.length !== players.size || seats.some((seat) => !players.has(seat.player)))
     throw new Error('Saved roster does not match its map');
   const byPlayer = new Map(authored.map((seat) => [seat.player, seat]));
-  return seats.map(({ player, color, team, mode, tribe }) => {
+  return seats.map(({ player, color, team, mode, tribe, difficulty }) => {
     const vacant = mode === 'human' ? 'idle' : mode;
     const map = byPlayer.get(player);
     const offered = map?.offers ?? [];
@@ -42,6 +42,7 @@ export function restoreSavedSeats(save: SaveGame, authored: readonly RoomSeatSet
       // The saved world already plays its tribes, so the room starts from them and keeps them.
       ...(map?.authoredTribe === undefined ? {} : { authoredTribe: map.authoredTribe }),
       ...(map?.authoredTribe === undefined || tribe === undefined ? {} : { tribe }),
+      ...(map?.difficulty === undefined ? {} : { difficulty: difficulty ?? map.difficulty }),
     };
   });
 }

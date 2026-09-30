@@ -1,4 +1,4 @@
-import type { SessionSeat } from '@open-northland/lockstep';
+import type { AiDifficulty, SessionSeat } from '@open-northland/lockstep';
 import type {
   DepartedSeatMode,
   RoomSeatSetup,
@@ -16,6 +16,8 @@ interface Seat {
   team?: number | null;
   /** The map's tribe for the seat and the one it plays; absent on a seat that offers no choice. */
   readonly tribes?: { readonly authored: number; current: number };
+  /** How hard the computer plays the seat; absent on a seat that takes no level. */
+  difficulty?: AiDifficulty;
   member: Member | null;
 }
 
@@ -24,6 +26,7 @@ export interface SeatChange {
   readonly color?: number;
   readonly team?: number | null;
   readonly tribe?: number;
+  readonly difficulty?: AiDifficulty;
 }
 
 /** The room's seats: who sits where, and what a vacant seat does. */
@@ -40,6 +43,7 @@ export class SeatTable {
       ...(seat.authoredTribe === undefined
         ? {}
         : { tribes: { authored: seat.authoredTribe, current: seat.tribe ?? seat.authoredTribe } }),
+      ...(seat.difficulty === undefined ? {} : { difficulty: seat.difficulty }),
       member: null,
     }));
   }
@@ -88,6 +92,8 @@ export class SeatTable {
     if (seat === null) return { code: 'noSeat', player };
     if (change.tribe !== undefined && seat.tribes === undefined)
       return { code: 'seatTribeUnavailable', player };
+    if (change.difficulty !== undefined && seat.difficulty === undefined)
+      return { code: 'seatDifficultyUnavailable', player };
     if (change.mode !== undefined) {
       if (seat.member !== null) return { code: 'seatTaken', player, nick: seat.member.nick };
       if (!seat.offers.includes(change.mode))
@@ -97,6 +103,7 @@ export class SeatTable {
     if (change.color !== undefined) seat.color = change.color;
     if (change.team !== undefined && change.team !== (seat.team ?? null)) seat.team = change.team;
     if (change.tribe !== undefined && seat.tribes !== undefined) seat.tribes.current = change.tribe;
+    if (change.difficulty !== undefined) seat.difficulty = change.difficulty;
     return null;
   }
 
@@ -112,6 +119,7 @@ export class SeatTable {
       ...(seat.tribes === undefined
         ? {}
         : { authoredTribe: seat.tribes.authored, tribe: seat.tribes.current }),
+      ...(seat.difficulty === undefined ? {} : { difficulty: seat.difficulty }),
       nick: seat.member?.nick ?? null,
       ready: seat.member?.ready ?? false,
     }));
@@ -121,15 +129,18 @@ export class SeatTable {
     return this.seats.find((seat) => seat.player === player) ?? null;
   }
 
-  /** A seat's tribe reaches the descriptor only as a change from the map's. */
+  /** A seat's tribe reaches the descriptor only as a change from the map's, its level only while the
+   *  computer plays it. */
   private sessionSeat(seat: Seat): SessionSeat {
     const tribes = seat.tribes;
+    const mode = seat.member === null ? seat.vacantMode : 'human';
     return {
       player: seat.player,
-      mode: seat.member === null ? seat.vacantMode : 'human',
+      mode,
       color: seat.color,
       ...(seat.team === undefined ? {} : { team: seat.team }),
       ...(tribes === undefined || tribes.current === tribes.authored ? {} : { tribe: tribes.current }),
+      ...(mode !== 'ai' || seat.difficulty === undefined ? {} : { difficulty: seat.difficulty }),
     };
   }
 }

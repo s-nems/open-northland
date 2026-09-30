@@ -1,4 +1,10 @@
-import type { SeatMode, SessionRules, SessionWorld, WeatherMode } from '@open-northland/lockstep';
+import type {
+  AiDifficulty,
+  SeatMode,
+  SessionRules,
+  SessionWorld,
+  WeatherMode,
+} from '@open-northland/lockstep';
 import {
   FOG_MODES,
   MAX_REPORTED_BUFFERED,
@@ -44,6 +50,7 @@ const SEAT_MODES = keysOf<SeatMode>({ human: true, ai: true, idle: true, absent:
 const WEATHER_MODES = keysOf<WeatherMode>({ map: true, variable: true, winter: true });
 export const VACANT_SEAT_MODES = keysOf<VacantSeatMode>({ ai: true, idle: true, absent: true });
 export const DEPARTED_SEAT_MODES = keysOf<DepartedSeatMode>({ ai: true, idle: true });
+export const AI_DIFFICULTIES = keysOf<AiDifficulty>({ easy: true, medium: true, hard: true });
 
 export function parseRoomSettings(value: unknown, at: string): RoomSettings {
   const raw = asRecord(value, at);
@@ -127,6 +134,7 @@ export function parseSeatSetups(value: unknown, at: string): readonly RoomSeatSe
       color: asCount(raw.color, `${at}[${i}].color`),
       ...(raw.team === undefined ? {} : { team: parseTeam(raw.team, `${at}[${i}].team`) }),
       ...parseSeatTribes(raw, `${at}[${i}]`, false),
+      ...parseSeatDifficulty(raw, `${at}[${i}]`),
     };
   });
 }
@@ -165,6 +173,15 @@ export function parseRoomView(value: unknown, at: string): RoomView {
   };
 }
 
+function parseSeatDifficulty(
+  raw: Record<string, unknown>,
+  at: string,
+): { readonly difficulty?: AiDifficulty } {
+  return raw.difficulty === undefined
+    ? {}
+    : { difficulty: asOneOf(raw.difficulty, AI_DIFFICULTIES, `${at}.difficulty`) };
+}
+
 function parseSeatOffers(value: unknown, at: string): readonly VacantSeatMode[] {
   const offers = asArray(value, at).map((mode, i) => asOneOf(mode, VACANT_SEAT_MODES, `${at}[${i}]`));
   if (offers.length === 0) throw new Error(`${at}: a seat offers at least one mode`);
@@ -181,6 +198,7 @@ function parseRoomSeatView(value: unknown, at: string): RoomSeatView {
     color: asCount(raw.color, `${at}.color`),
     ...(raw.team === undefined ? {} : { team: parseTeam(raw.team, `${at}.team`) }),
     ...parseSeatTribes(raw, at, true),
+    ...parseSeatDifficulty(raw, at),
     nick: raw.nick === null ? null : parseNick(raw.nick, `${at}.nick`),
     ready: asBoolean(raw.ready, `${at}.ready`),
   };

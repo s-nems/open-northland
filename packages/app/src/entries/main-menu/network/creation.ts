@@ -11,7 +11,12 @@ import { FOG_MODE_BY_NAME } from '../../../game/fog.js';
 import { assertMultiplayerMap } from '../../../game/multiplayer-map.js';
 import { DEFAULT_SESSION_SPEED, drawSessionSeed, mapSession } from '../../../game/session-url.js';
 import { initialLobbyOptions } from '../lobby/model.js';
-import { authoredVacantMode, vacantOffers } from '../lobby/roster-state.js';
+import {
+  authoredVacantMode,
+  DEFAULT_LOBBY_AI_DIFFICULTY,
+  offersDifficulty,
+  vacantOffers,
+} from '../lobby/roster-state.js';
 import type { CreateChoice } from './create-card.js';
 import { type PreparedNetworkSave, readNetworkSave, validateNetworkSave } from './save.js';
 import { restoreSavedSeats, savedRoster } from './saved-roster.js';
@@ -48,6 +53,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
   );
   const authoredSeats: RoomSeatSetup[] = script.players.map((slot) => {
     const saved = savedSeats.get(slot.player);
+    const listed = roster.get(slot.player);
     return {
       player: slot.player,
       color: saved?.color ?? slot.colorId,
@@ -55,6 +61,9 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
       offers: offers(slot),
       authoredTribe: slot.tribeId,
       ...(saved?.tribe === undefined ? {} : { tribe: saved.tribe }),
+      ...(listed === undefined || !offersDifficulty(listed)
+        ? {}
+        : { difficulty: saved?.difficulty ?? DEFAULT_LOBBY_AI_DIFFICULTY }),
     };
   });
   const seats = save === null ? authoredSeats : restoreSavedSeats(save, authoredSeats);

@@ -71,11 +71,15 @@ export class Lobby {
       change.tribe !== undefined &&
       change.mode === undefined &&
       change.color === undefined &&
-      change.team === undefined;
+      change.team === undefined &&
+      change.difficulty === undefined;
     if (member !== this.creator() && !ownTribe) return { code: 'creatorOnly' };
     if (
       this.settings.initialSave !== undefined &&
-      (change.color !== undefined || change.team !== undefined || change.tribe !== undefined)
+      (change.color !== undefined ||
+        change.team !== undefined ||
+        change.tribe !== undefined ||
+        change.difficulty !== undefined)
     )
       return { code: 'savedSeatsFixed' };
     if (this.settings.initialSave !== undefined && change.mode === 'absent')
@@ -88,7 +92,8 @@ export class Lobby {
       before?.mode === after?.mode &&
       before?.color === after?.color &&
       (before?.team ?? null) === (after?.team ?? null) &&
-      before?.tribe === after?.tribe
+      before?.tribe === after?.tribe &&
+      before?.difficulty === after?.difficulty
     )
       return null;
     this.invalidateReady();

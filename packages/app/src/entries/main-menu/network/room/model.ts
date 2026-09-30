@@ -55,6 +55,12 @@ export function canSetSeatTribe(
   return permissions.creator || (seat.nick !== null && seat.nick === nick);
 }
 
+/** The creator sets a computer seat's level while the room is set up; a saved world's levels stand. */
+export function canSetSeatDifficulty(room: RoomView, nick: string, connected: boolean): boolean {
+  const permissions = roomPermissions(room, nick, connected);
+  return permissions.canSetupSeats && permissions.creator && room.settings.initialSave === undefined;
+}
+
 export function savedSeatHint(metadata: SavedSessionMetadata | null, player: number, nick: string) {
   const saved = metadata?.roster.find((seat) => seat.player === player);
   if (saved?.nick == null) return null;
