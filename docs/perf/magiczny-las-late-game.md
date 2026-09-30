@@ -4,6 +4,37 @@ Reference workload for the performance tickets linked below. The simulation runs
 100202, about 2 h 19 min at 12 ticks/s, with a checkpoint at **97200 (2 h 15 min)**.
 No gameplay settings, population limits or simulation algorithms were changed for this measurement.
 
+## Branches for separate review
+
+`perf/magiczny-las-low-risk` contains the smaller-scope candidates below. "Lower risk" is a relative
+assessment, not a measured speedup guarantee. This subset has not had its own timing comparison.
+
+| Change | Commit | Why it is in this branch |
+| --- | --- | --- |
+| perf(sim): retain AI traversal storage | `111a31a29e` | Paged traversal storage and reused queue capacity; search order, budgets and cadence stay the same. |
+| perf(render): retain scene depth order and numeric sort keys | `f306c163bf` | Retained numeric sort keys and order repair preserve the existing total comparator; oracle tests cover reordering and fallback. |
+| perf(sim): select the minimum stocked good without sorting | `947f2586bb` | An order-independent minimum scan replaces a temporary sorted array; no retained cache is added. |
+
+`research/magiczny-las-performance` is based on this branch and adds seven higher-risk scopes:
+
+- Tick-derived clocks and separate needs: a broad change to state representation, timing readers and save format.
+- Reused combat contexts: mutable callbacks and records depend on strict per-unit lifetime.
+- Retained presentation and shadow pages: ownership, graphics precision and texture-memory tradeoffs.
+- Retained GPU instructions and partial uploads: child hooks, invalidation and upload ownership.
+- Local vehicle clearance: topology invalidation and an unresolved sparse journal rollover.
+- Cached interaction candidates: invalidation complexity and measured validation CPU overhead.
+- Written-component deltas: snapshot ownership, independent streams and measured bookkeeping/apply overhead.
+
+The last three also retain unfinished work. The higher-risk classification is broader than the list
+of unfinished tickets. Existing timing results describe the combined implementation, not this subset.
+The higher-risk branch needs the clocks/needs change before the delta change because its hot clone
+reads `SettlerNeeds`. None of the three lower-risk runtime changes requires that save-format change.
+
+Compare the branches with `git diff perf/magiczny-las-low-risk...research/magiczny-las-performance`.
+Keep performance measurements separate from compilation/tests. Before integrating either branch,
+measure its actual candidate tree against the intended control and check the final gameplay hash.
+
+
 ## Scenario and measurement conditions
 
 - Engine revision `fa9978e40`; task changes are benchmark tooling and documentation only.
@@ -260,3 +291,8 @@ and [preview cleanup](../DEVELOPMENT.md#worktree-previews) for stopping the owne
 The accepted browser report is `bench-out/browser-stable/report.json`; CPU, allocation and GPU
 summaries and PNGs sit beside it. Node baselines are `ml6-growth.json`, `ml6-mid-repeat.json`,
 `ml6-late-a.json`, `ml6-late-b.json` and `ml6-late-mirror.json` under `bench-out/`.
+
+## Split validation
+
+The lower-risk runtime tree passed the production build, typecheck, 18 script tests and the default
+suite (9504 passed, 3 skipped). The split does not establish a standalone timing improvement.
