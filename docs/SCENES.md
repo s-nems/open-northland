@@ -96,3 +96,9 @@ unsupported and refused results remain in the diagnostic log.
 Another collector is available for choosing a course through the school dialog.
 
 `?scene=technology` shows map permission followed by a player-owned profession unlocking housing.
+
+`?scene=idle-work` places three bakeries and a collector on empty grass. Ingrid's bakery lacks water
+and flour; Sigrid has bread production set to zero; Freya's bread shelf is full; Bjorn has no resources
+to collect. Select a worker or bakery and hover or keyboard-focus the status strip to read the full
+reason. An idle notification selects its worker and opens the current diagnosis. Enable Sigrid's bread
+production to see the reason change to missing ingredients.

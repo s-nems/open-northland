@@ -28,6 +28,7 @@ import { gossipScene } from './gossip.js';
 import { hitAlarmScene } from './hit-alarm.js';
 import { householdGoodsScene } from './household-goods.js';
 import { huntingScene } from './hunting.js';
+import { idleWorkScene } from './idle-work.js';
 import { livestockScene } from './livestock.js';
 import { meleeFrontScene } from './melee-front.js';
 import { movementContinuityScene } from './movement-continuity.js';
@@ -108,6 +109,7 @@ export const SCENES: readonly SceneDefinition[] = [
   movementContinuityScene,
   huntingScene,
   householdGoodsScene,
+  idleWorkScene,
   livestockScene,
   palisadeScene,
   roadsScene,

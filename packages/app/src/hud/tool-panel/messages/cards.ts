@@ -1,4 +1,14 @@
+import { messages } from '../../../i18n/index.js';
 import { type PendingMessage, USER_MESSAGE_TYPE, type UserMessage, type UserMessageType } from './types.js';
+
+/** Idle notes link to the selected worker's live diagnosis rather than retaining a stale reason. */
+export function noticeFullText(note: Pick<UserMessage, 'type' | 'subject' | 'text'>): string {
+  const idle =
+    note.type === USER_MESSAGE_TYPE.nothingToDo || note.type === USER_MESSAGE_TYPE.workplaceNotFound;
+  return idle && note.subject?.kind === 'settler'
+    ? `${note.text.full} ${messages().hud.notices.idleReasonHint}`
+    : note.text.full;
+}
 
 /** The column's order: the weightiest first, then the newest within a weight. */
 export function orderNotes(notes: readonly UserMessage[]): UserMessage[] {

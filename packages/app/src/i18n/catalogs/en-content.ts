@@ -333,6 +333,11 @@ export const enContent = {
       summary:
         'One collector goes to school to learn carpentry, a trade already known to the settlement. Select the other collector and right-click the school to choose a course yourself.',
     },
+    'idle-work': {
+      title: 'Why workers are idle',
+      summary:
+        'Select Ingrid at the empty bakery, Sigrid at the stopped bakery, Freya beside the full bread shelf, and Bjorn on the empty grass. Their status explains what prevents work.',
+    },
     technology: {
       title: 'Mission technologies',
       summary:

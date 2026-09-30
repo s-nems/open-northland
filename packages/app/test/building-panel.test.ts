@@ -152,8 +152,7 @@ describe('building status', () => {
     crafting: null,
     seats: null,
     garrison: null,
-    work: undefined,
-    workGood: null,
+    workDetail: null,
     families: null,
   };
   const status = messages().hud.buildingPanel.status;
@@ -190,17 +189,16 @@ describe('building status', () => {
       buildingStatus({
         ...idle,
         seats: 1,
-        work: { kind: 'waitingInput', goodType: 3 },
-        workGood: 'Żelazo',
+        workDetail: 'Brakuje żelaza ×2 (jest 0/2)',
       }),
     ).toEqual({
       label: status.idle,
-      detail: messages().hud.settlerPanel.idleReasons.waitingInput.replace('{good}', 'Żelazo'),
+      detail: 'Brakuje żelaza ×2 (jest 0/2)',
       tone: 'trouble',
     });
     expect(buildingStatus({ ...idle, seats: 1 })).toMatchObject({
-      label: status.working,
-      tone: 'ok',
+      label: status.standing,
+      tone: 'neutral',
     });
   });
 
@@ -359,7 +357,14 @@ describe('building panel orders and alerts', () => {
         { id: 2, components: { Settler: { jobType: craft?.jobType }, JobAssignment: { workplace: 1 } } },
       ],
       1,
-      { ...sandboxCtx(), workStatus: () => ({ kind: 'waitingInput', goodType: GOOD_WHEAT }) },
+      {
+        ...sandboxCtx(),
+        workStatus: () => ({
+          kind: 'waitingInput',
+          goodType: GOOD_FLOUR,
+          missingInputs: [{ goodType: GOOD_WHEAT, available: 0, required: 2, missing: 2 }],
+        }),
+      },
     );
     const alert = (good: number) => model.stock.find((row) => row.goodType === good)?.alert;
     expect(alert(GOOD_WHEAT)).toBe('waiting');

@@ -4,6 +4,7 @@ import { HarvestedBy, Position, Resource } from '../../src/components/index.js';
 import { contentIndex } from '../../src/core/content-index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type NodeId, positionOfNode, Simulation } from '../../src/index.js';
+import * as footprint from '../../src/systems/footprint/index.js';
 import { anchorOnlyFootprint, stampResourceFootprintData } from '../../src/systems/index.js';
 import { dropGroundPile } from '../../src/systems/settlers/atomics/effects/goods/piles.js';
 import type { PlannerContext } from '../../src/systems/settlers/planner/context.js';
@@ -13,7 +14,6 @@ import {
   nearestHarvestableFor,
   nearestOwnDropFor,
 } from '../../src/systems/settlers/targets/index.js';
-import * as workplaces from '../../src/systems/settlers/targets/workplaces.js';
 import { GossipCandidates } from '../../src/systems/social/index.js';
 import { collectInboundSupply } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -180,7 +180,7 @@ describe('bounded harvest scan', () => {
     const corner = resourceAt(sim, cx + radius + offset, cy + radius + offset, WOOD, CHOP);
     const past = resourceAt(sim, cx - radius - offset - 1, cy, WOOD, CHOP, [{ dx: offset, dy: 0 }]);
     const plan = planFor(sim, WOODCUTTER, cx, cy);
-    const resolve = vi.spyOn(workplaces, 'interactionCell');
+    const resolve = vi.spyOn(footprint, 'resourceStanceCells');
 
     const found = nearestHarvestableFor(plan, { area: { center: node(sim, cx, cy), radius } });
     expect(found).toEqual({ entity: edge, cell: node(sim, cx + radius, cy), dist: radius });
@@ -188,5 +188,24 @@ describe('bounded harvest scan', () => {
     expect(resolved.has(edge)).toBe(true);
     expect(resolved.has(corner)).toBe(false);
     expect(resolved.has(past)).toBe(false);
+  });
+});
+
+describe('collector signpost stance boundary', () => {
+  it('uses an alternate allowed stance without drawing from the random stream', () => {
+    const sim = newSim();
+    const tree = resourceAt(sim, 7, 1, WOOD, CHOP, [
+      { dx: -1, dy: 0 },
+      { dx: 1, dy: 0 },
+    ]);
+    const plan = planFor(sim, WOODCUTTER, 1, 1);
+    const far = node(sim, 8, 1);
+    const confined = {
+      ...plan,
+      limit: { allowsNode: (cell: NodeId) => cell === far, bounds: { minX: 8, maxX: 8, minY: 1, maxY: 1 } },
+    };
+    const rng = sim.rng.getState();
+    expect(nearestHarvestableFor(confined)).toEqual({ entity: tree, cell: far, dist: 7 });
+    expect(sim.rng.getState()).toEqual(rng);
   });
 });

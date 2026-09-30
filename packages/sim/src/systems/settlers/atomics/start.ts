@@ -166,9 +166,9 @@ export function startPickup(
   );
 }
 
-export function walkPickupBatch(plan: PlannerContext, from: Entity, goodType: number): void {
+export function walkPickupBatch(plan: PlannerContext, from: Entity, goodType: number, cell?: NodeId): void {
   const { world, ctx, terrain, entity: e, here } = plan;
-  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, from, here), () =>
+  atOrWalk(world, e, here, cell ?? interactionCell(world, ctx, terrain, from, here), () =>
     startPickup(world, ctx, e, plan, from, goodType, CARRY_CAPACITY),
   );
 }

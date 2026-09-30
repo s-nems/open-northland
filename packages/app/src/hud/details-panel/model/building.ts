@@ -50,6 +50,7 @@ import {
 } from './context.js';
 import type { SeatControl } from './settler-household.js';
 import { offerSide, type TradeOfferSide } from './trade.js';
+import { workStatusDetail } from './work-status.js';
 
 export * from './building-materials.js';
 export * from './building-production.js';
@@ -287,7 +288,9 @@ function markedStock(
   const waiting = new Set<number>();
   for (const worker of staffOf(snapshot, building)) {
     const status = ctx.workStatus?.(worker.id);
-    if (status?.kind === 'waitingInput') waiting.add(status.goodType);
+    if (status?.kind === 'waitingInput') {
+      for (const input of status.missingInputs) waiting.add(input.goodType);
+    }
   }
   const products = new Set(recipeOutputs(ctx, def).map((output) => output.goodType));
   const marked = rows.map((row): StockRow => {
@@ -305,16 +308,19 @@ function stockLayoutOf(def: BuildingDef | undefined, rows: readonly StockRow[]):
   return products > 0 && products < rows.length ? 'split' : 'list';
 }
 
-/** The good the first posted worker's reading names, labelled; null when it names none. */
+/** Prefer an operator's diagnosis to a carrier's unrelated activity. */
 function firstWorkerStatus(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
   building: number,
-): { status: SettlerWorkStatus | undefined; good: string | null } {
-  const worker = staffOf(snapshot, building).find((e) => settlerJobType(e) !== undefined);
-  const status = worker === undefined ? undefined : ctx.workStatus?.(worker.id);
-  const good = status !== undefined && 'goodType' in status ? goodLabel(ctx, status.goodType) : null;
-  return { status, good };
+): SettlerWorkStatus | undefined {
+  const workers = staffOf(snapshot, building);
+  const operator = workers.find((worker) => {
+    const job = settlerJobType(worker);
+    return job !== undefined && workerRoleOf(job) !== 'carrier';
+  });
+  const worker = operator ?? workers[0];
+  return worker === undefined ? undefined : ctx.workStatus?.(worker.id);
 }
 
 /** The product of the craft cycle furthest along, labelled; null while none runs. */
@@ -354,7 +360,7 @@ export function buildingPanelModel(
   const alarm = ent.components.DefenceMode !== undefined ? { sheltered, capacity: shelterCapacity } : null;
   const staff = foreign ? null : buildingStaff(ctx, snapshot, def, ent, site);
   const seats = staff?.kind === 'workers' && staff.count !== null ? staff.count.filled : null;
-  const work = foreign || site ? { status: undefined, good: null } : firstWorkerStatus(ctx, snapshot, ent.id);
+  const work = foreign || site ? undefined : firstWorkerStatus(ctx, snapshot, ent.id);
   const health = healthOf(ent);
   const kind = def?.kind;
   const status = buildingStatus({
@@ -364,8 +370,7 @@ export function buildingPanelModel(
     crafting: site ? null : craftingNow(ctx, ent),
     seats,
     garrison: site ? null : garrisonPosts(snapshot, def, ent.id),
-    work: work.status,
-    workGood: work.good,
+    workDetail: work === undefined ? null : workStatusDetail(ctx, work),
     families: kind === 'home' && !site ? (homeFamiliesOf(snapshot, ent.id)?.length ?? 0) : null,
   });
   const level = num(b.level) ?? 0;

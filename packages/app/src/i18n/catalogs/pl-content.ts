@@ -332,6 +332,11 @@ export const plContent = {
       summary:
         'Jeden zbieracz idzie do szkoły uczyć się ciesielstwa, które osada już zna. Wybierz drugiego zbieracza i kliknij szkołę prawym przyciskiem, aby samodzielnie wybrać kurs.',
     },
+    'idle-work': {
+      title: 'Dlaczego pracownicy są bezczynni',
+      summary:
+        'Wybierz Ingrid przy pustej piekarni, Sigrid przy zatrzymanej piekarni, Freyę obok pełnej półki chleba i Bjorna na pustej trawie. Ich status wyjaśnia, co uniemożliwia pracę.',
+    },
     technology: {
       title: 'Technologie misji',
       summary:

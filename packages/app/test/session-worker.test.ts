@@ -11,6 +11,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { diagCadenceAt, HASH_TRACE_EVERY_TICKS } from '../src/diag/session.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
+import { IDLE_WORK_NAMES, idleWorkScene, idleWorkWorker } from '../src/scenes/idle-work.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import type { SessionHost } from '../src/session/host.js';
 import { inlineSessionHost } from '../src/session/inline-host.js';
@@ -104,6 +105,33 @@ describe('session worker host', () => {
       }
     });
   }
+
+  it('carries detailed idle reasons over the worker host without changing the simulation', async () => {
+    const session = await startTestSession(bundle.path, { kind: 'scene', id: idleWorkScene.id });
+    try {
+      await pumpWhile(session, session.host.run(idleWorkScene.runTicks));
+      const direct = createSceneSim(idleWorkScene);
+      direct.run(idleWorkScene.runTicks);
+      const before = await session.host.hashState();
+      for (const name of Object.values(IDLE_WORK_NAMES)) {
+        const worker = idleWorkWorker(direct, name);
+        if (worker === undefined) throw new Error(`Missing scene worker ${name}`);
+        expect(await session.host.workStatus(worker)).toEqual(direct.workStatus(worker));
+      }
+      const baker = idleWorkWorker(direct, IDLE_WORK_NAMES.ingredients);
+      if (baker === undefined) throw new Error('Missing baker');
+      expect(await session.host.workStatus(baker)).toMatchObject({
+        kind: 'waitingInput',
+        missingInputs: [
+          { required: 1, available: 0, missing: 1 },
+          { required: 1, available: 0, missing: 1 },
+        ],
+      });
+      expect(await session.host.hashState()).toEqual(before);
+    } finally {
+      session.dispose();
+    }
+  });
 
   it('runs its own clock over the loopback driver as the inline driver runs the same stream', async () => {
     const session = await startTestSession(

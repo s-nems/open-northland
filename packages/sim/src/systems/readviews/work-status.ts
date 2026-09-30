@@ -11,6 +11,7 @@ import {
   Stockpile,
   UnderConstruction,
 } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { jobGatherGoods } from '../economy/gather-goods.js';
@@ -18,43 +19,52 @@ import { canStartCycle, outputRoomForCycles, waitingForRecipeInput } from '../ec
 import { craftablePool } from '../economy/production/rotation.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 import { recipeOutputsEnabled } from '../progression/index.js';
-import {
-  isWorkplaceOperator,
-  recipesByProductOf,
-  workplaceStocksGood,
-  workplaceStoredGoods,
-} from '../stores/index.js';
+import { isWorkplaceOperator, recipesByProductOf, stockCapacity } from '../stores/index.js';
+import { gatherWorkStatus } from './gather-work-status.js';
 
-/**
- * Why a craft worker or gatherer works or stands idle, for the settler panel's status line. A gatherer
- * reports only `nothingSelected`, `noJob` and `workplaceUnderConstruction`.
- *
- * - `crafting`: its workplace has a running cycle of `goodType`. Approximation: cycles are not attributed
- *   to an operator, so this names the workplace's newest cycle.
- * - `waitingInput`: no product can start and `goodType`, the next one the rotation would make, lacks
- *   inputs.
- * - `outputFull`: every product in its rotation that could start has a full shelf.
- * - `nothingSelected`: every production counter is `0`: of the workplace's products, or of the goods a
- *   gatherer would gather.
- * - `noTool`: reserved for a trade that cannot work without a tool. No trade requires one today (a tool
- *   only adds the production credit), so the sim never reports it.
- * - `noJob`: an adult without a trade, or the generic civilian a grown boy becomes.
- * - `workplaceUnderConstruction`: its workplace is still a construction site or being upgraded.
- */
+export interface MissingWorkInput {
+  readonly goodType: number;
+  readonly required: number;
+  readonly available: number;
+  readonly missing: number;
+}
+
+export interface BlockedWorkOutput {
+  readonly goodType: number;
+  readonly required: number;
+  readonly available: number;
+  readonly capacity: number;
+}
+
+/** Selected-worker diagnostics are derived on demand, never persisted or used by the planner. */
 export type WorkStatus =
   | { readonly kind: 'crafting'; readonly goodType: number }
-  | { readonly kind: 'waitingInput'; readonly goodType: number }
-  | { readonly kind: 'outputFull' }
+  | {
+      readonly kind: 'waitingInput';
+      readonly goodType: number;
+      readonly missingInputs: readonly MissingWorkInput[];
+    }
+  | { readonly kind: 'outputFull'; readonly outputs: readonly BlockedWorkOutput[] }
   | { readonly kind: 'nothingSelected' }
+  | { readonly kind: 'productsLocked'; readonly goodTypes: readonly number[] }
+  | {
+      readonly kind: 'noEligibleResource';
+      readonly goodTypes: readonly number[];
+      readonly scope: 'workArea' | 'map';
+    }
+  | { readonly kind: 'resourceRouteBlocked'; readonly goodTypes: readonly number[] }
+  | {
+      readonly kind: 'noOutputDestination';
+      readonly goodType: number;
+      readonly reason: 'noStorage' | 'unknown';
+    }
+  | { readonly kind: 'noWorkplace' }
+  | { readonly kind: 'unknown'; readonly reason: 'unsupportedWorkplace' | 'productionGate' | 'gatherSearch' }
   | { readonly kind: 'noTool' }
   | { readonly kind: 'noJob' }
   | { readonly kind: 'workplaceUnderConstruction' };
 
-/**
- * The {@link WorkStatus} of `entity`, or undefined when none applies: not a person, neither a gatherer nor
- * a craft operator of a recipe workplace, or about to start a cycle. Reads the settler and its workplace
- * only.
- */
+/** Read current workplace blockers and a bounded resource search for one selected person. */
 export function workStatus(world: World, ctx: SystemContext, entity: Entity): WorkStatus | undefined {
   if (!world.isAlive(entity) || !world.has(entity, Person)) return undefined;
   const jobType = world.get(entity, Settler).jobType;
@@ -66,12 +76,18 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
     return { kind: 'workplaceUnderConstruction' };
   }
   const gathered = jobGatherGoods(ctx, jobType);
-  if (gathered.length > 0) return gatherStatus(world, ctx, entity, workplace, gathered);
-  if (workplace === undefined) return undefined;
+  if (gathered.length > 0) return gatherWorkStatus(world, ctx, entity, workplace, gathered);
+  if (workplace === undefined) {
+    const index = contentIndex(ctx.content);
+    const requiresWorkshop = [...index.operatorJobsByBuilding].some(
+      ([type, jobs]) => jobs.has(jobType) && (index.recipeByProductByBuilding.get(type)?.size ?? 0) > 0,
+    );
+    return requiresWorkshop ? { kind: 'noWorkplace' } : { kind: 'unknown', reason: 'unsupportedWorkplace' };
+  }
   if (!world.has(workplace, Stockpile) || !isWorkplaceOperator(world, ctx, workplace, jobType))
-    return undefined;
+    return { kind: 'unknown', reason: 'unsupportedWorkplace' };
   const recipes = recipesByProductOf(world, ctx, workplace);
-  if (recipes === undefined) return undefined;
+  if (recipes === undefined) return { kind: 'unknown', reason: 'unsupportedWorkplace' };
 
   const newest = world.tryGet(workplace, Production)?.cycles.at(-1);
   if (newest !== undefined) return { kind: 'crafting', goodType: newest.goodType };
@@ -80,39 +96,51 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   if (pool.length === 0) {
     const selection = world.tryGet(entity, ProductionCounters);
     const allStopped = [...recipes.keys()].every((good) => productionCountOf(selection, good) === 0);
-    return allStopped ? { kind: 'nothingSelected' } : undefined;
+    return allStopped
+      ? { kind: 'nothingSelected' }
+      : {
+          kind: 'productsLocked',
+          goodTypes: [...recipes.keys()].filter((good) => productionCountOf(selection, good) > 0),
+        };
   }
   const inRotation = rotationOrder(world, entity, pool, recipes);
-  if (inRotation.some((entry) => canStartCycle(world, ctx, workplace, entry.recipe))) return undefined;
+  let held: PoolEntry | undefined;
+  for (const entry of inRotation) {
+    if (canStartCycle(world, ctx, workplace, entry.recipe)) return undefined;
+    if (waitingForRecipeInput(world, ctx, workplace, entry.recipe)) {
+      held = entry;
+      break;
+    }
+  }
   // The rotation holds its turn on a partly stocked product, so that one is next; otherwise the first
   // product with shelf room is the one waiting for its inputs.
-  const waiting =
-    inRotation.find((entry) => waitingForRecipeInput(world, ctx, workplace, entry.recipe)) ??
-    inRotation.find((entry) => hasShelfRoom(world, ctx, workplace, entry.recipe));
-  if (waiting !== undefined) return { kind: 'waitingInput', goodType: waiting.good };
-  return inRotation.some((entry) => recipeEnabled(world, ctx, workplace, entry.recipe))
-    ? { kind: 'outputFull' }
-    : undefined;
-}
-
-/**
- * A gatherer's status: `nothingSelected` when its counters stop every good it would gather - its trade's
- * goods, narrowed for a gatherer posted to a stocking building to the goods that building stocks.
- */
-function gatherStatus(
-  world: World,
-  ctx: SystemContext,
-  entity: Entity,
-  workplace: Entity | undefined,
-  gathered: readonly number[],
-): WorkStatus | undefined {
-  const counters = world.tryGet(entity, ProductionCounters);
-  if (counters === undefined) return undefined;
-  const stored = workplace === undefined ? undefined : workplaceStoredGoods(world, ctx, workplace);
-  const wanted =
-    stored === undefined ? gathered : gathered.filter((good) => workplaceStocksGood(ctx, stored, good));
-  const allStopped = wanted.length > 0 && wanted.every((good) => productionCountOf(counters, good) === 0);
-  return allStopped ? { kind: 'nothingSelected' } : undefined;
+  const waiting = held ?? inRotation.find((entry) => hasShelfRoom(world, ctx, workplace, entry.recipe));
+  if (waiting !== undefined) {
+    const stock = world.get(workplace, Stockpile).amounts;
+    const missingInputs = waiting.recipe.inputs.flatMap((input) => {
+      const available = stock.get(input.goodType) ?? 0;
+      return available < input.amount
+        ? [{ goodType: input.goodType, required: input.amount, available, missing: input.amount - available }]
+        : [];
+    });
+    return missingInputs.length > 0
+      ? { kind: 'waitingInput', goodType: waiting.good, missingInputs }
+      : { kind: 'unknown', reason: 'productionGate' };
+  }
+  const enabled = inRotation.filter((entry) => recipeEnabled(world, ctx, workplace, entry.recipe));
+  if (enabled.length === 0) return { kind: 'productsLocked', goodTypes: pool.slice() };
+  const stock = world.get(workplace, Stockpile).amounts;
+  const outputs = enabled
+    .flatMap((entry) =>
+      entry.recipe.outputs.map((output) => ({
+        goodType: output.goodType,
+        required: output.amount,
+        available: stock.get(output.goodType) ?? 0,
+        capacity: stockCapacity(world, ctx, workplace, output.goodType),
+      })),
+    )
+    .filter((output) => output.capacity - output.available < output.required);
+  return outputs.length > 0 ? { kind: 'outputFull', outputs } : { kind: 'unknown', reason: 'productionGate' };
 }
 
 interface PoolEntry {

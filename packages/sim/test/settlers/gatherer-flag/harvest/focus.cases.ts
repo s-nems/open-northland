@@ -3,6 +3,7 @@ import {
   Building,
   CurrentAtomic,
   DeliveryFlag,
+  HarvestedBy,
   HarvestFocus,
   MoveGoal,
   Owner,
@@ -17,6 +18,7 @@ import { ONE, positionOfNode, Simulation } from '../../../../src/index.js';
 import { plannerSystem, resourceStanceCells, stampResourceFootprint } from '../../../../src/systems/index.js';
 import { setJob } from '../../../../src/systems/orders/index.js';
 import { setGatherGood, setWorkFlag } from '../../../../src/systems/orders/work/selection.js';
+import { dropGroundPile } from '../../../../src/systems/settlers/atomics/effects/goods/piles.js';
 import { grassCellMap } from '../../../fixtures/terrain.js';
 import {
   CLAY_DIGGER,
@@ -222,4 +224,59 @@ describe('flag-bound gatherer - returning to the node its stroke cadence left pa
 
     expect(sim.world.has(gatherer, HarvestFocus)).toBe(false);
   });
+});
+
+describe('fresh collector scans consider alternate work stances', () => {
+  for (const exclusion of [
+    'failed nearest goal',
+    'flag boundary',
+    'both goals failed',
+    'own drop',
+  ] as const) {
+    it(exclusion, () => {
+      const results: unknown[] = [];
+      for (let repeat = 0; repeat < 2; repeat++) {
+        const sim = new Simulation({ seed: 7, content: content(), map: grassCellMap(12, 5) });
+        const terrain = terrainOf(sim);
+        const gatherer = placeWoodcutter(sim, 1, 1);
+        const tree = placeFootprintedTree(sim, 7, 1);
+        const flag = sim.world.create();
+        sim.world.add(flag, Position, positionOfNode(exclusion === 'flag boundary' ? 9 : 1, 1));
+        sim.world.add(flag, DeliveryFlag, {});
+        sim.world.add(gatherer, WorkFlag, { flag, radius: exclusion === 'flag boundary' ? 1 : 40 });
+        const near = terrain.nodeAt(6, 1);
+        const far = terrain.nodeAt(8, 1);
+        if (exclusion !== 'flag boundary') {
+          sim.world.add(gatherer, UnreachableGoals, {
+            entries: (exclusion === 'both goals failed' ? [near, far] : [near]).map((cell) => ({
+              cell,
+              until: 10_000,
+            })),
+          });
+        }
+        if (exclusion === 'own drop') {
+          const at = positionOfNode(7, 1);
+          const pile = dropGroundPile(sim.world, at.x, at.y, WOOD, 1);
+          sim.world.add(pile, HarvestedBy, { by: gatherer });
+        }
+        expect(sim.world.has(gatherer, HarvestFocus)).toBe(false);
+        plannerSystem(sim.world, ctxOf(sim));
+        if (exclusion === 'both goals failed') {
+          expect(sim.world.has(gatherer, HarvestFocus)).toBe(false);
+          expect(sim.world.tryGet(gatherer, MoveGoal)?.cell).not.toBe(near);
+          expect(sim.world.tryGet(gatherer, MoveGoal)?.cell).not.toBe(far);
+        } else {
+          expect(sim.world.get(gatherer, MoveGoal).cell).toBe(far);
+          if (exclusion !== 'own drop')
+            expect(sim.world.get(gatherer, HarvestFocus)).toEqual({ node: tree, stance: far });
+        }
+        results.push([
+          sim.world.tryGet(gatherer, MoveGoal),
+          sim.world.tryGet(gatherer, HarvestFocus),
+          sim.hashState(),
+        ]);
+      }
+      expect(results[0]).toEqual(results[1]);
+    });
+  }
 });

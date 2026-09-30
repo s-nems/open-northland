@@ -19,7 +19,7 @@ import { createNoticeArt, noticeTint } from '../../dom/notice-art.js';
 import { createNoticeColumn, type NoticeCardView } from '../../dom/notice-column.js';
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText, playerLabel } from '../diplomacy/model.js';
-import { noticeThumb, orderNotes } from './cards.js';
+import { noticeFullText, noticeThumb, orderNotes } from './cards.js';
 import type { MessageFeedState } from './feed.js';
 import type { FigureFrames } from './figure-frames.js';
 import { type NoticeFigureSlot, NoticeFigures } from './figures.js';
@@ -186,7 +186,7 @@ function cardOf(m: UserMessage, snapshot: WorldSnapshot): NoticeCardView {
     id: m.id,
     level: m.priority,
     short: m.text.short,
-    full: m.text.full,
+    full: noticeFullText(m),
     thumb: noticeThumb(m, buildingTypeIn(snapshot), vehicleOnMapIn(snapshot)),
     canGo: m.subject !== null || m.at !== null,
     fresh: snapshot.tick - m.tick < FRESH_NOTE_TICKS,

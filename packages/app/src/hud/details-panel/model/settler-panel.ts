@@ -46,6 +46,7 @@ import { type UnlockProgressRowModel, unlockProgressRows } from './settler-unloc
 import { type SettlerVehicleRow, vehicleRow } from './settler-vehicle.js';
 import { type SettlerProductionModel, type SettlerWorkModel, settlerWork } from './settler-work.js';
 import { type TradePanelModel, tradePanelModel } from './trade.js';
+import { workStatusDetail } from './work-status.js';
 
 /** The good a settler carries, for the status line's "niesie" well. */
 export interface CarriedGoodModel {
@@ -169,25 +170,8 @@ function statusDetail(
   const idle = state === 'idle' || state === 'awaitingWorkplace';
   const status = ctx.workStatus?.(entityId);
   if (status === undefined) return idle && role === 'civilian' ? copy.idleReasons.noJob : null;
-  switch (status.kind) {
-    case 'crafting':
-      return state === 'working' ? goodLabel(ctx, status.goodType) : null;
-    case 'waitingInput':
-      return idle
-        ? formatMessage(copy.idleReasons.waitingInput, { good: goodLabel(ctx, status.goodType) })
-        : null;
-    case 'outputFull':
-    case 'nothingSelected':
-    case 'noTool':
-    case 'noJob':
-      return idle ? copy.idleReasons[status.kind] : null;
-    case 'workplaceUnderConstruction':
-      return null;
-    default: {
-      const unreachable: never = status;
-      return unreachable;
-    }
-  }
+  if (status.kind === 'crafting') return state === 'working' ? goodLabel(ctx, status.goodType) : null;
+  return idle ? workStatusDetail(ctx, status) : null;
 }
 
 export function settlerPanelModel(

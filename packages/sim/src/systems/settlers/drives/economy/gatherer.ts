@@ -8,10 +8,9 @@ import {
   huntingGround,
 } from '../../../conflict/hunting/index.js';
 import { nodeHoldsOpenGood, openGatherGoods } from '../../../economy/gather-goods.js';
-import { dynamicBlockOverlay, resourceStanceCells, routeRegions } from '../../../footprint/index.js';
+import { resourceStanceCells } from '../../../footprint/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { isHunterJob } from '../../../readviews/index.js';
-import { manhattan } from '../../../spatial/metric.js';
 import { workplaceStocksGood, workplaceStoredGoods } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, walkPickupBatch } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
@@ -23,6 +22,7 @@ import {
   nearestHarvestableFor,
   nearestOwnDropFor,
 } from '../../targets/index.js';
+import { collectorStanceGates } from '../../targets/resource-stances.js';
 import { isUnreachableGoal, unreachableGoals } from '../../unreachable-goals.js';
 import type { HarvestClaims } from './harvest-claims.js';
 
@@ -94,7 +94,7 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
   const nodeDist = node !== null ? node.dist : Number.POSITIVE_INFINITY;
   // On a tie prefer the already-felled trunk over a fresh tree.
   if (trunk !== null && trunk.dist <= nodeDist) {
-    walkPickupBatch(plan, trunk.pile, trunk.goodType);
+    walkPickupBatch(plan, trunk.pile, trunk.goodType, trunk.cell);
     return true;
   }
   if (node !== null) return startHarvestFromNode(plan, node, harvestClaims, huntArea);
@@ -119,7 +119,7 @@ function planFlagGatherer(
 
   const own = nearestOwnDropFor(plan);
   if (own !== null) {
-    walkPickupBatch(plan, own.pile, own.goodType);
+    walkPickupBatch(plan, own.pile, own.goodType, own.cell);
     return true;
   }
   const hunter = isHunterJob(ctx.content, plan.jobType);
@@ -230,7 +230,7 @@ function startHarvestFromNode(
   const res = world.get(node.entity, Resource);
   const focus = world.tryGet(e, HarvestFocus);
   const drawn = focus?.node === node.entity ? focus.stance : undefined;
-  const passes = stanceGates(plan, bound);
+  const passes = collectorStanceGates(plan, bound);
   let stance = drawn !== undefined && passes(drawn) ? drawn : undefined;
   if (stance === undefined) {
     const open = resourceStanceCells(world, ctx, terrain, node.entity).filter(passes);
@@ -253,29 +253,4 @@ function startHarvestFromNode(
     ),
   );
   return true;
-}
-
-/**
- * The gates a stance must pass for this settler to walk there, the same ones the harvest scan applies
- * to its proven cell: open under the walk-block overlay, not a goal its routes just failed on, in its
- * static component and routable from where it stands, inside its signpost area and inside `bound`.
- * The settler's own cell always passes.
- */
-function stanceGates(
-  plan: PlannerContext,
-  bound: { center: NodeId; radius: number } | undefined,
-): (cell: NodeId) => boolean {
-  const { world, ctx, terrain, entity: e, here } = plan;
-  const blocked = dynamicBlockOverlay(world, ctx, terrain);
-  const unreachable = unreachableGoals(world, ctx, e);
-  const regions = routeRegions(world, ctx, terrain);
-  const gate = plan.limit ?? undefined;
-  return (cell) =>
-    cell === here ||
-    (!blocked.has(cell) &&
-      !isUnreachableGoal(unreachable, cell) &&
-      terrain.componentOf(cell) === terrain.componentOf(here) &&
-      !regions.unroutable(here, cell) &&
-      (gate === undefined || gate.allowsNode(cell)) &&
-      (bound === undefined || manhattan(terrain, bound.center, cell) <= bound.radius));
 }

@@ -287,9 +287,32 @@ describe('the settler panel model', () => {
     const def = ctx.goods.find((g) => g.typeId === good);
     expect(working.status.detail).toBe(def?.name ?? def?.id);
 
-    const full = settlerModel(world({}), withStatus({ kind: 'outputFull' }));
+    const full = settlerModel(
+      world({}),
+      withStatus({
+        kind: 'outputFull',
+        outputs: [{ goodType: good, available: 20, capacity: 20, required: 1 }],
+      }),
+    );
     expect(full.status).toMatchObject({ state: 'idle', trouble: true });
-    expect(full.status.detail).toBe(messages().hud.settlerPanel.idleReasons.outputFull);
+    expect(full.status.detail).toContain('20/20');
+    expect(full.status.detail).toContain(def?.name ?? def?.id);
+
+    const waiting = {
+      kind: 'waitingInput',
+      goodType: good,
+      missingInputs: [
+        { goodType: GOOD_WOOD, available: 1, required: 3, missing: 2 },
+        { goodType: GOOD_IRON, available: 0, required: 1, missing: 1 },
+      ],
+    } as const;
+    const waitingModel = settlerModel(world({}), withStatus(waiting));
+    expect(waitingModel.status.detail).toBe(
+      `${goodLabel(ctx, good)}: brakuje w warsztacie ${goodLabel(ctx, GOOD_WOOD)} ×2 (jest 1/3), ${goodLabel(ctx, GOOD_IRON)} ×1 (jest 0/1)`,
+    );
+    const fetching = settlerModel(world({ MoveGoal: { cell: 5 } }), withStatus(waiting));
+    expect(fetching.status.state).toBe('walking');
+    expect(fetching.status.detail).toBeNull();
   });
 
   it('shows another seat’s person read-only: health, workplace, owner line, no controls', () => {

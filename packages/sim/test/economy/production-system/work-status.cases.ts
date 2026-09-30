@@ -6,6 +6,7 @@ import {
   Position,
   Stockpile,
   setSettlerJob,
+  setStockAmount,
   UnderConstruction,
 } from '../../../src/components/index.js';
 import { ZERO } from '../../../src/core/fixed.js';
@@ -48,7 +49,50 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { smith } = forge(sim, 0);
     setProductionGoods(sim.world, ctxOf(sim), { kind: 'setProductionGoods', entity: smith, goods: [FOOD] });
-    expect(sim.workStatus(smith)).toEqual({ kind: 'waitingInput', goodType: FOOD });
+    expect(sim.workStatus(smith)).toEqual({
+      kind: 'waitingInput',
+      goodType: FOOD,
+      missingInputs: [{ goodType: WOOD, required: 1, available: 0, missing: 1 }],
+    });
+  });
+
+  it('updates missing quantities without mutating state and resumes after inputs arrive', () => {
+    const base = testContent();
+    const content = {
+      ...base,
+      buildings: base.buildings.map((building) =>
+        building.typeId === FORGE
+          ? {
+              ...building,
+              recipes: building.recipes.map((recipe) => ({
+                ...recipe,
+                inputs: [
+                  { goodType: WOOD, amount: 3 },
+                  { goodType: 4, amount: 2 },
+                ],
+              })),
+            }
+          : building,
+      ),
+    };
+    const sim = new Simulation({ seed: 1, content });
+    const { forge: f, smith } = forge(sim, 1);
+    setProductionGoods(sim.world, ctxOf(sim), { kind: 'setProductionGoods', entity: smith, goods: [FOOD] });
+    const before = sim.hashState();
+    expect(sim.workStatus(smith)).toEqual({
+      kind: 'waitingInput',
+      goodType: FOOD,
+      missingInputs: [
+        { goodType: WOOD, required: 3, available: 1, missing: 2 },
+        { goodType: 4, required: 2, available: 0, missing: 2 },
+      ],
+    });
+    expect(sim.hashState()).toBe(before);
+    setStockAmount(sim.world, f, WOOD, 3);
+    setStockAmount(sim.world, f, 4, 2);
+    expect(sim.workStatus(smith)).toBeUndefined();
+    productionSystem(sim.world, ctxOf(sim));
+    expect(sim.workStatus(smith)).toEqual({ kind: 'crafting', goodType: FOOD });
   });
 
   it('reports a full output when every product in the rotation has no shelf room', () => {
@@ -57,7 +101,15 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
     const stock = sim.world.mut(f, Stockpile).amounts;
     stock.set(PLANK, SHELF_CAPACITY);
     stock.set(FOOD, SHELF_CAPACITY);
-    expect(sim.workStatus(smith)).toEqual({ kind: 'outputFull' });
+    expect(sim.workStatus(smith)).toEqual({
+      kind: 'outputFull',
+      outputs: [PLANK, FOOD].map((goodType) => ({
+        goodType,
+        available: SHELF_CAPACITY,
+        capacity: SHELF_CAPACITY,
+        required: 1,
+      })),
+    });
   });
 
   it('reports nothing selected when every counter is 0', () => {
@@ -81,10 +133,10 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
     expect(sim.workStatus(smith)).toEqual({ kind: 'workplaceUnderConstruction' });
   });
 
-  it('reports a tradeless adult, and nothing for a settler with no workplace', () => {
+  it('reports a tradeless adult and an unposted craft worker', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const unposted = spawnSettler(sim, CARPENTER, 0, 0);
-    expect(sim.workStatus(unposted)).toBeUndefined();
+    expect(sim.workStatus(unposted)).toEqual({ kind: 'noWorkplace' });
     const tradeless = spawnSettler(sim, CARPENTER, 1, 0);
     setSettlerJob(sim.world, tradeless, null);
     expect(sim.workStatus(tradeless)).toEqual({ kind: 'noJob' });

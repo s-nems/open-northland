@@ -3,16 +3,23 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
-import { dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
+import { positionedStanceCells, resourceStanceCells } from '../../footprint/index.js';
+import { resourceApproachCells } from '../../footprint/interaction.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { manhattan } from '../../spatial/metric.js';
 import { anyHarvestAtomicPresent, resourcesNearNode } from '../../spatial/resources.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner/context.js';
-import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import { type CellMatch, type NearestByCell, nearerOf, nearestByCell } from './cell-index.js';
-import { unreachableWorkCell, type WorkCellGates } from './reachability.js';
-import { interactionCell, jobAtomics } from './workplaces.js';
+import { collectorStanceGates, nearestEligibleStance } from './resource-stances.js';
+import { jobAtomics } from './workplaces.js';
+
+export type HarvestSearchContext = Pick<
+  PlannerContext,
+  'world' | 'ctx' | 'terrain' | 'entity' | 'here' | 'limit' | 'jobType'
+> & {
+  readonly targets: Pick<PlannerContext['targets'], 'resources'>;
+};
 
 /**
  * The nearest {@link Resource} this settler may harvest, by Manhattan distance with an ascending-cell-id
@@ -22,7 +29,7 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  * on the buried anchor, and mined from the side when it does not.
  */
 export function nearestHarvestableFor(
-  plan: PlannerContext,
+  plan: HarvestSearchContext,
   opts: {
     /** Bound the scan to this circle and rank from its centre, so a flag-bound gatherer sweeps outward
      *  from its flag rather than from wherever it stands. */
@@ -38,6 +45,9 @@ export function nearestHarvestableFor(
     readonly reserved?: (node: Entity) => boolean;
     /** The settler's own per-node gate, such as its production counters; a node it rejects is skipped. */
     readonly admits?: (node: Entity) => boolean;
+    /** Selected-worker diagnostics cap the candidate list and report incomplete searches explicitly. */
+    readonly candidates?: readonly Entity[];
+    readonly diagnostic?: { eligibleInArea: boolean };
   } = {},
 ): { entity: Entity; cell: NodeId; dist: number } | null {
   const { world, ctx, terrain, here, targets } = plan;
@@ -78,12 +88,8 @@ export function nearestHarvestableFor(
       scanned = resourcesNearNode(world, cx, cy, half + maxWorkOffset, allowed);
     }
   }
-  // Resolved once per scan, behind the dormancy early-return. Both block layers matter: a building can
-  // bury a deposit's work cell, and a hemmed-in deposit falls back to its own resource-blocked anchor.
-  const blocked = dynamicBlockOverlay(world, ctx, terrain);
-  const unreachable = unreachableGoals(world, ctx, plan.entity);
-  // Probed last in the accept, so a candidate rejected by the cheap gates never costs a region flood.
-  const regions = routeRegions(world, ctx, terrain);
+  if (opts.candidates !== undefined) scanned = opts.candidates;
+  const passes = collectorStanceGates(plan, bound);
   const subject = needSubjectOf(world, plan.entity);
   // The XP gate depends only on the good, so it is resolved once per good per scan.
   const meetsNeedByGood = new Map<number, boolean>();
@@ -112,18 +118,19 @@ export function nearestHarvestableFor(
       meetsNeedByGood.set(res.goodType, meetsNeed);
     }
     if (!meetsNeed) return null;
-    const cell = interactionCell(world, ctx, terrain, e, here); // work cell the settler walks to (from here)
-    // A resource across static terrain sits in a different connected component, and `findPath` answers
-    // "no route" from the same `componentOf` verdict. Limitation: bridges are not walkable yet, so the
-    // two banks of a river are genuinely separate components.
-    if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null;
-    // An overlay-blocked work cell is a goal `findPath` rejects. The settler's own cell is never
-    // blocked for itself, so a deposit it already stands on still qualifies.
-    if (cell !== here && blocked.has(cell)) return null;
-    if (cell !== here && isUnreachableGoal(unreachable, cell)) return null;
-    if (bound !== undefined && manhattan(terrain, bound.center, cell) > bound.radius) return null;
-    if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
-    if (regions.unroutable(here, cell)) return null; // a clear cell sealed off from the settler
+    const stances = resourceStanceCells(world, ctx, terrain, e);
+    if (opts.diagnostic !== undefined) {
+      for (const stance of resourceApproachCells(world, terrain, e)) {
+        if (
+          stance === here ||
+          ((bound === undefined || manhattan(terrain, bound.center, stance) <= bound.radius) &&
+            (gate === undefined || gate.allowsNode(stance)))
+        )
+          opts.diagnostic.eligibleInArea = true;
+      }
+    }
+    const cell = nearestEligibleStance(plan, stances, passes);
+    if (cell === undefined) return null;
     return { cell, payload: null };
   });
   // No same-side gate: a standing Resource is never Owner-stamped, so the test would always pass.
@@ -142,27 +149,22 @@ function nearestDropFor(
   lists: readonly (readonly Entity[])[],
   pick: (e: Entity) => number | null,
   within?: { center: NodeId; radius: number },
-): { pile: Entity; goodType: number; dist: number } | null {
+): { pile: Entity; goodType: number; cell: NodeId; dist: number } | null {
   const { world, ctx, terrain, here } = plan;
   if (lists.every((piles) => piles.length === 0)) return null;
-  const gate = plan.limit ?? undefined; // signpost confinement
-  const blocked = dynamicBlockOverlay(world, ctx, terrain);
-  const gates: WorkCellGates = { terrain, blocked, memo: unreachableGoals(world, ctx, plan.entity) };
-  const regions = routeRegions(world, ctx, terrain);
+  const passes = collectorStanceGates(plan, within);
   const resolve = (e: Entity): CellMatch<number> | null => {
     const good = pick(e);
     if (good === null) return null;
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    // Cheapest first: an out-of-area pile never pays the reachability probe below.
-    if (within !== undefined && manhattan(terrain, within.center, cell) > within.radius) return null;
-    if (unreachableWorkCell(gates, here, cell)) return null; // the walk there would fail
-    if (gate !== undefined && !gate.allowsNode(cell)) return null;
-    if (regions.unroutable(here, cell)) return null; // a pile sealed in a pocket the settler is not in
+    const cell = nearestEligibleStance(plan, positionedStanceCells(world, ctx, terrain, e), passes);
+    if (cell === undefined) return null;
     return { cell, payload: good };
   };
   let best: NearestByCell<number> | null = null;
   for (const piles of lists) best = nearerOf(best, nearestByCell(terrain, piles, here, resolve));
-  return best === null ? null : { pile: best.entity, goodType: best.payload, dist: best.distance };
+  return best === null
+    ? null
+    : { pile: best.entity, goodType: best.payload, cell: best.cell, dist: best.distance };
 }
 
 /**
@@ -178,7 +180,7 @@ export function nearestCollectablePileFor(
     readonly goodFilter?: ReadonlySet<number>;
     readonly within?: { center: NodeId; radius: number };
   } = {},
-): { pile: Entity; goodType: number; dist: number } | null {
+): { pile: Entity; goodType: number; cell: NodeId; dist: number } | null {
   const { world, ctx, targets } = plan;
   const { goodFilter } = opts;
   const allowed = jobAtomics(ctx, plan.jobType);
@@ -211,7 +213,7 @@ export function nearestCollectablePileFor(
  */
 export function nearestOwnDropFor(
   plan: PlannerContext,
-): { pile: Entity; goodType: number; dist: number } | null {
+): { pile: Entity; goodType: number; cell: NodeId; dist: number } | null {
   const { world, entity: gatherer, targets } = plan;
   return nearestDropFor(plan, [targets.groundDropsByHarvester.get(gatherer) ?? []], (e) => {
     const mark = world.tryGet(e, HarvestedBy);

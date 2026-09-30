@@ -54,6 +54,7 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
   const bagRow = element('div', 'on-equip-row');
   equipment.append(wornRow, bagRow);
   const status = element('div', 'on-status-strip', '<i class="on-status-strip__dot"></i><span></span>');
+  status.tabIndex = 0;
   const statusHead = status.children[1];
   if (statusHead === undefined) throw new Error('portrait: status');
   const carrying = element(
@@ -118,7 +119,10 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
       setTip(frame, copy.centre);
       setAttribute(frame, 'aria-label', copy.centre);
       updateSockets(model);
-      write(statusHead, statusText(model.status));
+      const words = statusText(model.status);
+      write(statusHead, words);
+      setTip(status, words);
+      setAttribute(status, 'aria-label', words);
       const tone = statusTone(model.status);
       setClass(status, 'on-status-strip--trouble', tone === 'trouble');
       setClass(status, 'on-status-strip--neutral', tone === 'neutral');

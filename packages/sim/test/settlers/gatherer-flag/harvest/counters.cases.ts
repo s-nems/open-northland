@@ -168,7 +168,11 @@ describe('flag-bound gatherer - production counters', () => {
 
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: null });
     expect(sim.world.has(gatherer, ProductionCounters)).toBe(false);
-    expect(sim.workStatus(gatherer)).toBeUndefined();
+    expect(sim.workStatus(gatherer)).toEqual({
+      kind: 'noEligibleResource',
+      goodTypes: [WOOD, STONE, MUSHROOM],
+      scope: 'workArea',
+    });
   });
 
   it('a trade whose production the player cannot set refuses the orders and gathers past stale counters', () => {
@@ -201,6 +205,10 @@ describe('flag-bound gatherer - production counters', () => {
 
     setCount(sim, gatherer, STONE, 3);
     expect(productionCountOf(sim.world.get(gatherer, ProductionCounters), STONE)).toBe(3);
-    expect(sim.workStatus(gatherer)).toBeUndefined();
+    expect(sim.workStatus(gatherer)).toEqual({
+      kind: 'noEligibleResource',
+      goodTypes: [WOOD, STONE, MUSHROOM],
+      scope: 'workArea',
+    });
   });
 });

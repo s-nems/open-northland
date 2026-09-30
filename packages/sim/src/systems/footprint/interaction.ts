@@ -203,6 +203,15 @@ export function resourceStanceCells(
   terrain: TerrainGraph,
   resource: Entity,
 ): readonly NodeId[] {
+  return standableOnly(world, ctx, terrain, resourceApproachCells(world, terrain, resource));
+}
+
+/** Resource approaches before buildings and landscapes cover them, for selected-work diagnostics. */
+export function resourceApproachCells(
+  world: World,
+  terrain: TerrainGraph,
+  resource: Entity,
+): readonly NodeId[] {
   const p = world.get(resource, Position);
   const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
   const anchor = terrain.nodeAtClamped(ax, ay);
@@ -216,7 +225,7 @@ export function resourceStanceCells(
     : work.length > 0
       ? work
       : terrain.walkableNeighbours(anchor).filter((cell) => !resources.has(cell));
-  return standableOnly(world, ctx, terrain, pool);
+  return pool;
 }
 
 /** `pool` without the cells a building or landscape covers. The pool itself is chosen against the resource

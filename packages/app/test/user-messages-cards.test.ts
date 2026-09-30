@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fanOverlap, noticeThumb, orderNotes } from '../src/hud/tool-panel/messages/cards.js';
+import { fanOverlap, noticeFullText, noticeThumb, orderNotes } from '../src/hud/tool-panel/messages/cards.js';
 import {
   type MessagePriorityLevel,
   type MessageSubject,
@@ -7,6 +7,7 @@ import {
   type UserMessage,
   type UserMessageType,
 } from '../src/hud/tool-panel/messages/types.js';
+import { messages } from '../src/i18n/index.js';
 
 function note(id: number, priority: MessagePriorityLevel, tick: number): UserMessage {
   return {
@@ -154,4 +155,14 @@ describe('notice cards', () => {
     expect(fanOverlap([68, 68, 68, 68], 100, 7, 32)).toBe(43);
     expect(fanOverlap([68, 40, 68], 100, 7, 32)).toBe(15);
   });
+});
+
+it('links an idle notification to the current diagnosis without changing other messages', () => {
+  const subject = { kind: 'settler', entity: 7 } as const;
+  const text = { short: 'Bjorn', full: 'Bjorn nie ma zajęcia.' };
+  expect(noticeFullText({ type: USER_MESSAGE_TYPE.nothingToDo, subject, text })).toBe(
+    `${text.full} ${messages().hud.notices.idleReasonHint}`,
+  );
+  expect(noticeFullText({ type: USER_MESSAGE_TYPE.hungry, subject, text })).toBe(text.full);
+  expect(noticeFullText({ type: USER_MESSAGE_TYPE.nothingToDo, subject: null, text })).toBe(text.full);
 });
