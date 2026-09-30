@@ -68,14 +68,13 @@ export {
   type ScenarioResult,
   scenario,
 } from './harness/scenario.js';
+export { type DigestInputDifference, diffDigestInputs } from './inspect/digest-inputs-diff.js';
 export {
   type DigestComponentInputsJson,
-  type DigestInputDifference,
-  diffDigestInputs,
   digestInputsFromJson,
   digestInputsToJson,
   type SyncDigestInputsJson,
-} from './inspect/digest-inputs-diff.js';
+} from './inspect/digest-inputs-json.js';
 export {
   type DeltaDigest,
   type DigestMismatch,
