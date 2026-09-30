@@ -29,11 +29,11 @@ sealed-target or breach searches as the cause. See [the comparison](../../perf/m
 
 ## Scope
 
-- For the measured vehicle case, evaluate memoizing the complete walk-block verdict only during
-  one synchronous `vehicleRouteTo` search. `landVehicleFits` already memoizes squeeze tests; it
-  still repeats standability and the surrounding blocker checks. Keep exported overlay readers
-  live, preserve route answers and re-check after any blocker change. Measure CPU and allocation
-  before retaining a cache; do not add cross-search invalidation machinery without evidence.
+- The vehicle search already memoizes complete walk-block verdicts within one synchronous call;
+  [its measured result](../../perf/vehicle-route-predicate.md) reduces combat maxima while preserving
+  route answers. Profile the remaining search cost before adding another cache. Keep exported
+  overlay behavior and fresh answers after blocker changes; cross-search reuse needs a proven
+  invalidation boundary.
 - Measure the other paths on the `ON_BENCH_FIGHTERS` battle of `npm run bench:sim` with a palisade in the way: the tick share and max of
   `palisadeBarring` and `sealedByStructures`. Drop the unmeasured breach/sealed-target scope if neither spikes.
 - Otherwise, without changing answers: build the standing-wall map once per tick, keyed on the
@@ -44,6 +44,7 @@ sealed-target or breach searches as the cause. See [the comparison](../../perf/m
 
 ## Verify
 
-- Same state hash on the 00 battle checkpoint before and after.
-- The 00 report, before and after: the pathfinding and combat max per tick fall.
+- Same complete state and route answers on the measured checkpoint before and after.
+- Guarded before/after reports: reduce the targeted pathfinding or combat cost without a repeatable
+  regression in ordinary tick time; report allocation and tail-latency tradeoffs.
 - `npm test`, `npm run check`, `npm run build`.
