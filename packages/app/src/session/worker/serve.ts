@@ -541,6 +541,8 @@ export class ServedSession<E> {
       case 'settle':
         return null;
       case 'captureSave':
+        // A save of the failed tick's writes would carry the fault into every later load.
+        if (this.broken) throw new Error(BROKEN_SESSION_MESSAGE);
         return this.driver.captureSave(call.options);
       case 'profileRows':
         return this.profile?.rows() ?? [];

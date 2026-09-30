@@ -262,7 +262,7 @@ describe('failures between the ends', () => {
   const HEARTBEATS_WATCHED = 5;
   const UNMEASURED_MS = 0;
 
-  it('steps no further a world whose tick threw', async () => {
+  it('steps and saves no further a world whose tick threw', async () => {
     const replies = new Map<number, FromWorker<null>>();
     let deliver: (message: ToWorker<TestWorldBoot>) => void = () => undefined;
     const port: SessionPort = {
@@ -295,6 +295,8 @@ describe('failures between the ends', () => {
     expect(await answer(2)).toMatchObject({ ok: false, error: { message: BROKEN_SESSION_MESSAGE } });
     deliver({ kind: 'call', id: 3, call: { method: 'hashState' } });
     expect(await answer(3)).toMatchObject({ ok: true, value: { tick: faultTick } });
+    deliver({ kind: 'call', id: 4, call: { method: 'captureSave', options: {} } });
+    expect(await answer(4)).toMatchObject({ ok: false, error: { message: BROKEN_SESSION_MESSAGE } });
   });
 
   it('replies with an error when the answer itself cannot be posted', async () => {
