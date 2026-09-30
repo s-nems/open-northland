@@ -1,15 +1,7 @@
 import type { Buffer, MeshGeometry } from 'pixi.js';
 
-export interface TerrainVertexColor {
-  readonly hx: number;
-  readonly hy: number;
-  readonly value: number;
-}
-
-const NEUTRAL_COLOR = 0x808080;
-// Approximation: vertexcolors.pcx channels use 128 as neutral and multiply the existing ground shade.
-const NEUTRAL_CHANNEL = 128;
-const BUCKET_NODES = 64;
+const RGB = 3;
+/** The lattice coordinates each registered mesh vertex sits on, `(hx, hy)` pairs. */
 const nodeCoordinates = new WeakMap<MeshGeometry, Int32Array>();
 
 export function registerTerrainNodes(geometry: MeshGeometry, nodes: readonly number[]): void {
@@ -19,98 +11,114 @@ export function registerTerrainNodes(geometry: MeshGeometry, nodes: readonly num
 interface ColorMesh {
   readonly buffer: Buffer;
   readonly colors: Float32Array;
+  /** Node id per vertex, -1 for a border vertex outside the lattice. */
   readonly nodes: Int32Array;
-  offsets: ReadonlyMap<string, readonly number[]> | null;
 }
 
-function offsetsFor(mesh: ColorMesh): ReadonlyMap<string, readonly number[]> {
-  if (mesh.offsets !== null) return mesh.offsets;
-  const offsets = new Map<string, number[]>();
-  for (let i = 0; i < mesh.nodes.length; i += 2) {
-    const key = `${mesh.nodes[i]},${mesh.nodes[i + 1]}`;
-    let list = offsets.get(key);
-    if (list === undefined) {
-      list = [];
-      offsets.set(key, list);
-    }
-    list.push((i / 2) * 3);
-  }
-  mesh.offsets = offsets;
-  return offsets;
+/** Per node, the mesh vertices drawn on it: `entries[2 * i]` a mesh index, `entries[2 * i + 1]` the
+ *  offset of its colour in that mesh's buffer, for `i` in `nodeStart[node] .. nodeStart[node + 1]`. */
+interface NodeVertices {
+  readonly nodeStart: Int32Array;
+  readonly entries: Int32Array;
 }
 
+/**
+ * The terrain's per-vertex RGB multipliers, addressed by lattice node id (`hy * nodesX + hx`). The
+ * node-to-vertex index is built on the first {@link apply}, so a map without script tints pays nothing.
+ */
 export class TerrainVertexColors {
-  private readonly buckets = new Map<string, ColorMesh[]>();
-  private readonly values = new Map<string, number>();
-  private palette: readonly number[] | undefined;
+  private meshes: readonly ColorMesh[] = [];
+  private nodeCount = 0;
+  private index: NodeVertices | null = null;
+  /** The multipliers last written per node; every vertex starts at neutral 1. */
+  private applied = new Float32Array(0);
 
-  bind(geometry: MeshGeometry): void {
-    const nodes = nodeCoordinates.get(geometry);
-    if (nodes === undefined) return;
-    const buffer = geometry.getBuffer('aVertexColor');
-    const colors = buffer.data;
-    if (!(colors instanceof Float32Array)) return;
-    const keys = new Set<string>();
-    for (let i = 0; i < nodes.length; i += 2) {
-      keys.add(
-        `${Math.floor((nodes[i] ?? 0) / BUCKET_NODES)},${Math.floor((nodes[i + 1] ?? 0) / BUCKET_NODES)}`,
-      );
-    }
-    const mesh: ColorMesh = { buffer, colors, nodes, offsets: null };
-    for (const key of keys) {
-      let bucket = this.buckets.get(key);
-      if (bucket === undefined) {
-        bucket = [];
-        this.buckets.set(key, bucket);
+  bind(geometries: readonly MeshGeometry[], nodesX: number, nodesY: number): void {
+    this.clear();
+    this.nodeCount = nodesX * nodesY;
+    const meshes: ColorMesh[] = [];
+    for (const geometry of geometries) {
+      const coordinates = nodeCoordinates.get(geometry);
+      if (coordinates === undefined) continue;
+      const buffer = geometry.getBuffer('aVertexColor');
+      const colors = buffer.data;
+      if (!(colors instanceof Float32Array)) continue;
+      const nodes = new Int32Array(coordinates.length / 2);
+      for (let v = 0; v < nodes.length; v++) {
+        const hx = coordinates[2 * v] ?? -1;
+        const hy = coordinates[2 * v + 1] ?? -1;
+        nodes[v] = hx >= 0 && hx < nodesX && hy >= 0 && hy < nodesY ? hy * nodesX + hx : -1;
       }
-      bucket.push(mesh);
+      meshes.push({ buffer, colors, nodes });
     }
+    this.meshes = meshes;
   }
 
-  apply(updates: readonly TerrainVertexColor[], palette?: readonly number[]): void {
-    const dirty = new Set<Buffer>();
-    const write = (key: string, value: number): void => {
-      const [hx = 0, hy = 0] = key.split(',').map(Number);
-      const meshes = this.buckets.get(`${Math.floor(hx / BUCKET_NODES)},${Math.floor(hy / BUCKET_NODES)}`);
-      const color = palette?.[value] ?? NEUTRAL_COLOR;
-      const r = ((color >>> 16) & 255) / NEUTRAL_CHANNEL;
-      const g = ((color >>> 8) & 255) / NEUTRAL_CHANNEL;
-      const b = (color & 255) / NEUTRAL_CHANNEL;
-      for (const mesh of meshes ?? []) {
-        const { colors } = mesh;
-        for (const offset of offsetsFor(mesh).get(key) ?? []) {
-          if (colors[offset] === r && colors[offset + 1] === g && colors[offset + 2] === b) continue;
-          colors[offset] = r;
-          colors[offset + 1] = g;
-          colors[offset + 2] = b;
-          dirty.add(mesh.buffer);
-        }
+  /**
+   * Write `colors` (RGB per node id) to every vertex on a node whose multiplier differs from the last
+   * applied one, and upload only the buffers that changed.
+   */
+  apply(colors: Float32Array): void {
+    const index = this.indexed();
+    const { applied } = this;
+    const nodes = Math.min(this.nodeCount, Math.floor(colors.length / RGB));
+    const dirty = new Set<ColorMesh>();
+    for (let node = 0; node < nodes; node++) {
+      const at = node * RGB;
+      const r = colors[at] ?? 1;
+      const g = colors[at + 1] ?? 1;
+      const b = colors[at + 2] ?? 1;
+      if (applied[at] === r && applied[at + 1] === g && applied[at + 2] === b) continue;
+      applied[at] = r;
+      applied[at + 1] = g;
+      applied[at + 2] = b;
+      const end = index.nodeStart[node + 1] ?? 0;
+      for (let entry = index.nodeStart[node] ?? 0; entry < end; entry++) {
+        const mesh = this.meshes[index.entries[2 * entry] ?? 0];
+        if (mesh === undefined) continue;
+        const offset = index.entries[2 * entry + 1] ?? 0;
+        mesh.colors[offset] = r;
+        mesh.colors[offset + 1] = g;
+        mesh.colors[offset + 2] = b;
+        dirty.add(mesh);
       }
-    };
-    if (this.palette !== palette) {
-      this.palette = palette;
-      for (const [key, value] of this.values) write(key, value);
     }
-    for (const { hx, hy, value } of updates) {
-      if (
-        !Number.isInteger(hx) ||
-        !Number.isInteger(hy) ||
-        !Number.isInteger(value) ||
-        value < 0 ||
-        value > 255
-      )
-        continue;
-      const key = `${hx},${hy}`;
-      if (this.values.get(key) === value) continue;
-      this.values.set(key, value);
-      write(key, value);
-    }
-    for (const buffer of dirty) buffer.update();
+    for (const mesh of dirty) mesh.buffer.update();
   }
 
   clear(): void {
-    this.buckets.clear();
-    this.values.clear();
-    this.palette = undefined;
+    this.meshes = [];
+    this.nodeCount = 0;
+    this.index = null;
+    this.applied = new Float32Array(0);
+  }
+
+  private indexed(): NodeVertices {
+    if (this.index !== null) return this.index;
+    const nodeStart = new Int32Array(this.nodeCount + 1);
+    for (const { nodes } of this.meshes) {
+      for (let v = 0; v < nodes.length; v++) {
+        const node = nodes[v] ?? -1;
+        if (node >= 0) nodeStart[node + 1] = (nodeStart[node + 1] ?? 0) + 1;
+      }
+    }
+    for (let node = 0; node < this.nodeCount; node++)
+      nodeStart[node + 1] = (nodeStart[node + 1] ?? 0) + (nodeStart[node] ?? 0);
+    const entries = new Int32Array(2 * (nodeStart[this.nodeCount] ?? 0));
+    const fill = nodeStart.slice(0, this.nodeCount);
+    for (let m = 0; m < this.meshes.length; m++) {
+      const nodes = this.meshes[m]?.nodes ?? new Int32Array(0);
+      for (let v = 0; v < nodes.length; v++) {
+        const node = nodes[v] ?? -1;
+        if (node < 0) continue;
+        const entry = fill[node] ?? 0;
+        fill[node] = entry + 1;
+        entries[2 * entry] = m;
+        entries[2 * entry + 1] = v * RGB;
+      }
+    }
+    this.applied = new Float32Array(this.nodeCount * RGB).fill(1);
+    this.index = { nodeStart, entries };
+    return this.index;
   }
 }

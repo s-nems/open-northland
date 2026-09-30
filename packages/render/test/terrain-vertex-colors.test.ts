@@ -13,8 +13,17 @@ function meshes(layer: TerrainLayer): Mesh[] {
   );
 }
 
-const palette = Array.from({ length: 256 }, (_, i) => (i === 1 ? 0x408020 : 0x808080));
 const terrain = { width: 65, height: 2, typeIds: Array.from({ length: 130 }, () => 0) };
+const NODES_X = 2 * terrain.width;
+const NODE_COUNT = NODES_X * 2 * terrain.height;
+const TINT = [0.5, 1, 0.25] as const;
+
+/** Neutral multipliers everywhere but `tinted`, which take {@link TINT}. */
+function colorsWith(...tinted: readonly (readonly [number, number])[]): Float32Array {
+  const colors = new Float32Array(NODE_COUNT * 3).fill(1);
+  for (const [hx, hy] of tinted) colors.set(TINT, (hy * NODES_X + hx) * 3);
+  return colors;
+}
 
 const boundTextures: TerrainTextureSet = {
   pages: new Map([['white', Texture.WHITE.source]]),
@@ -35,15 +44,15 @@ for (const [name, textures, brightness] of [
       const calls = before.map((mesh) => vi.spyOn(mesh.geometry.getBuffer('aVertexColor'), 'update'));
       const initial = before[0]?.geometry.getBuffer('aVertexColor').data;
       expect(initial).toBeInstanceOf(Float32Array);
-      layer.applyVertexColors([{ hx: 0, hy: 0, value: 1 }], palette);
+      layer.applyVertexColors(colorsWith([0, 0]));
       expect(meshes(layer)).toEqual(before);
       expect(calls[0]).toHaveBeenCalledOnce();
       expect(calls.slice(1).every((call) => call.mock.calls.length === 0)).toBe(true);
       const colors = before[0]?.geometry.getBuffer('aVertexColor').data;
-      expect(Array.from(colors?.slice(0, 3) ?? [])).toEqual([0.5, 1, 0.25]);
-      layer.applyVertexColors([{ hx: 0, hy: 0, value: 1 }], palette);
+      expect(Array.from(colors?.slice(0, 3) ?? [])).toEqual(TINT);
+      layer.applyVertexColors(colorsWith([0, 0]));
       expect(calls[0]).toHaveBeenCalledOnce();
-      layer.applyVertexColors([{ hx: 0, hy: 0, value: 0 }], palette);
+      layer.applyVertexColors(colorsWith());
       expect(Array.from(colors?.slice(0, 3) ?? [])).toEqual([1, 1, 1]);
       layer.destroy();
     });
@@ -71,30 +80,29 @@ it('updates all copies of a shared vertex at a chunk boundary', () => {
     throw new Error('expected three chunk meshes');
   // Node 64 is the seam between the first two 32-tile chunks: each keeps its own copies of it, and a
   // copy left behind keeps the old shade as a visible crack down the chunk edge.
-  layer.applyVertexColors([{ hx: 64, hy: 0, value: 1 }], palette);
+  layer.applyVertexColors(colorsWith([64, 0]));
   const seamLeft = colorsAtNode(left, 64, 0);
   const seamRight = colorsAtNode(right, 64, 0);
   expect(seamLeft.length).toBeGreaterThan(0);
   expect(seamRight.length).toBeGreaterThan(0);
-  for (const copy of [...seamLeft, ...seamRight]) expect(copy).toEqual([0.5, 1, 0.25]);
+  for (const copy of [...seamLeft, ...seamRight]) expect(copy).toEqual(TINT);
   // The third chunk never carries the node, so every one of its vertices keeps the neutral white.
   const untouched = far.geometry.getBuffer('aVertexColor').data;
   expect([...untouched].every((channel) => channel === 1)).toBe(true);
   layer.destroy();
 });
 
-it('uses neutral colors without a palette and applies saved values when the palette arrives', () => {
+it('starts a rebuilt map neutral and ignores border vertices outside the lattice', () => {
   const layer = new TerrainLayer();
   layer.set(terrain);
-  layer.applyVertexColors([{ hx: 0, hy: 0, value: 1 }]);
+  layer.applyVertexColors(colorsWith([0, 0]));
+  layer.set(terrain);
   const colors = meshes(layer)[0]?.geometry.getBuffer('aVertexColor').data;
   expect(Array.from(colors?.slice(0, 3) ?? [])).toEqual([1, 1, 1]);
-  layer.applyVertexColors([], palette);
-  expect(Array.from(colors?.slice(0, 3) ?? [])).toEqual([0.5, 1, 0.25]);
-  layer.set(terrain);
-  layer.applyVertexColors([], palette);
-  expect(Array.from(meshes(layer)[0]?.geometry.getBuffer('aVertexColor').data.slice(0, 3) ?? [])).toEqual([
-    1, 1, 1,
-  ]);
+  // Every node tinted: the vertices a border cell's triangles push past the lattice keep neutral white.
+  layer.applyVertexColors(new Float32Array(NODE_COUNT * 3).fill(TINT[0]));
+  const channels = meshes(layer).flatMap((mesh) => [...mesh.geometry.getBuffer('aVertexColor').data]);
+  expect(channels.filter((channel) => channel === 1).length).toBeGreaterThan(0);
+  expect(channels.every((channel) => channel === 1 || channel === TINT[0])).toBe(true);
   layer.destroy();
 });

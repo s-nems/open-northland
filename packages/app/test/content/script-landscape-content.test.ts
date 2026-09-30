@@ -32,6 +32,8 @@ describe.runIf(hasRealIr())('script landscape content joins', () => {
     () => {
       const palette = VertexPalette.parse(JSON.parse(readFileSync(palettePath, 'utf8')));
       expect(palette.some((rgb) => ((rgb >> 16) & 255) !== (rgb & 255))).toBe(true);
+      // The scene lighting reads a node never tinted as entry 0, so it must be the neutral grey.
+      expect(palette[0]).toBe(0x808080);
     },
   );
 });

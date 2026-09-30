@@ -48,10 +48,12 @@ export const terrainEditsScene: SceneDefinition = {
     {
       label: 'both terrain regions retain their scripted palette entries',
       predicate: (sim) => {
+        const { terrain } = sim;
         const tints = sim.landscapeEdits().tints;
         return (
-          tints.some((t) => t.hx === WEST.hx && t.hy === WEST.hy && t.value === BROWN_PALETTE_INDEX) &&
-          tints.some((t) => t.hx === EAST.hx && t.hy === EAST.hy && t.value === GREEN_PALETTE_INDEX)
+          terrain !== undefined &&
+          tints[terrain.nodeAt(WEST.hx, WEST.hy)] === BROWN_PALETTE_INDEX &&
+          tints[terrain.nodeAt(EAST.hx, EAST.hy)] === GREEN_PALETTE_INDEX
         );
       },
     },

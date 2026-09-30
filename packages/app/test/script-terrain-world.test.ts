@@ -54,7 +54,7 @@ it('fresh and restored map worlds share editable landscape input and saved terra
   expect(sim.terrain?.landscapes?.placements).toHaveLength(1);
   sim.run(systems.MISSION_EVALUATION_TICKS);
   expect(sim.landscapeEdits().removed).toEqual([0]);
-  expect(sim.landscapeEdits().tints.length).toBeGreaterThan(0);
+  expect(sim.landscapeEdits().tints.some((value) => value !== 0)).toBe(true);
   const { sim: restored } = restoreMapWorld(options, exportSaveGame(sim));
   expect(restored.hashState()).toBe(sim.hashState());
   expect(restored.landscapeEdits()).toEqual({

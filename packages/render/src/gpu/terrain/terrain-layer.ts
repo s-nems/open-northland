@@ -31,7 +31,7 @@ import {
 } from './geometry.js';
 import { padLaneRows } from './lane-texture.js';
 import { RoadLayer } from './road-layer.js';
-import { type TerrainVertexColor, TerrainVertexColors } from './vertex-colors.js';
+import { TerrainVertexColors } from './vertex-colors.js';
 
 /**
  * The retained terrain layer: the static ground, meshed once per map into world-space AABB blocks and
@@ -137,11 +137,13 @@ export class TerrainLayer {
       textures !== undefined
         ? buildTextured(this.container, terrain, textures, elevation, brightness, lane)
         : buildFlat(this.container, terrain, elevation, brightness);
-    for (const chunk of this.chunks) {
-      for (const child of chunk.container.children) {
-        if (child instanceof Mesh) this.vertexColors.bind(child.geometry);
-      }
-    }
+    this.vertexColors.bind(
+      this.chunks.flatMap((chunk) =>
+        chunk.container.children.flatMap((child) => (child instanceof Mesh ? [child.geometry] : [])),
+      ),
+      2 * terrain.width,
+      2 * terrain.height,
+    );
     if (textures !== undefined) {
       this.roads = RoadLayer.create(
         terrain,
@@ -218,8 +220,9 @@ export class TerrainLayer {
     previous.destroy();
   }
 
-  applyVertexColors(updates: readonly TerrainVertexColor[], palette?: readonly number[]): void {
-    this.vertexColors.apply(updates, palette);
+  /** RGB multipliers per half-cell node id, 3 per node; only the nodes that changed are rewritten. */
+  applyVertexColors(colors: Float32Array): void {
+    this.vertexColors.apply(colors);
   }
 
   /** The flat tint of the map's most-common ground typeId (grass until a map is {@link set}) - the

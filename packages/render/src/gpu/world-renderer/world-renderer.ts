@@ -1,5 +1,6 @@
 import { type FogView, type SimEvent, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container } from 'pixi.js';
+import type { LightGrade } from '../../data/lighting/types.js';
 import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
 import {
   type DrawItem,
@@ -20,6 +21,7 @@ import type { WeatherConditions } from '../../data/weather/types.js';
 import { DepthSortedLayer } from '../depth-sorted-layer.js';
 import { GroundTone } from '../ground-foot/index.js';
 import { type GroundWave, GroundWaveLayer } from '../ground-waves/index.js';
+import { SceneLight } from '../lighting/scene-light.js';
 import { MapObjectLayer, type MapObjectSprite } from '../map-objects/index.js';
 import {
   type BuildingSignGfx,
@@ -41,7 +43,6 @@ import { setPixelArtMagnification, setWorldShadowStyle } from '../pixel-art-regi
 import { DEFAULT_SHADOW_STYLE } from '../shadow-style.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
 import { TerrainLayer } from '../terrain/index.js';
-import type { TerrainVertexColor } from '../terrain/vertex-colors.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { TextureCache } from '../texture-cache.js';
 import { WeatherGround } from '../weather/ground-weather.js';
@@ -77,6 +78,7 @@ export class WorldRenderer {
   private readonly textureCache = new TextureCache();
   private readonly terrain = new TerrainLayer();
   private readonly weatherSky = new WeatherSky();
+  private readonly sceneLight = new SceneLight();
   private climate = new WeatherClimate();
   private weatherField: WeatherField | null = null;
   private weatherEnabled = true;
@@ -157,6 +159,8 @@ export class WorldRenderer {
     // Screen-space like the chrome, but under its vignette and pause wash.
     app.stage.addChild(this.weatherSky.container);
     this.weatherSky.watchFog(this.fog.washMask);
+    // Over the world and the weather, so rain takes the grade; framed world renders never include it.
+    app.stage.addChild(this.sceneLight.container);
     this.chrome = new WorldChrome(this.textureCache, opts?.postFx === true, opts?.spriteSmoothing);
     this.chrome.attach(app.stage);
     app.stage.addChild(this.hud.container);
@@ -228,8 +232,14 @@ export class WorldRenderer {
     if (changes !== null) this.terrain.updateRoads(changes);
   }
 
-  applyTerrainVertexColors(updates: readonly TerrainVertexColor[], palette?: readonly number[]): void {
-    this.terrain.applyVertexColors(updates, palette);
+  /** The script's local ground tints: RGB multipliers per half-cell node id, 3 per node. */
+  applyTerrainVertexColors(colors: Float32Array): void {
+    this.terrain.applyVertexColors(colors);
+  }
+
+  /** The script's whole-map tint, faded toward on game time over everything drawn; null is daylight. */
+  setSceneLight(target: LightGrade | null): void {
+    this.sceneLight.setTarget(target);
   }
 
   brightnessField(): BrightnessField {
@@ -359,6 +369,7 @@ export class WorldRenderer {
     // The fog first: the sky reads the band it just drew.
     const fogFrame = this.fog.update(snapshot, vp, this.elevation);
     this.weatherSky.update(this.weather, weatherView, gameSeconds);
+    this.sceneLight.update({ screenW, screenH, gameSeconds });
     this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch, tick + alpha, this.wind);
     const portrait = this.portrait.subjects();
     this.pool.reconcile({
@@ -517,6 +528,7 @@ export class WorldRenderer {
     this.groundWaves.destroy();
     this.weatherGround.destroy();
     this.weatherSky.destroy();
+    this.sceneLight.destroy();
     this.terrain.destroy();
     this.mapObjects.dispose();
     this.pool.destroy();

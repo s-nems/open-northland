@@ -121,7 +121,7 @@ import { roadBuiltAt } from './road-nodes.js';
 import { createSaveLoadSession, type SaveLoadSessionOptions } from './save-load/index.js';
 import { relatedWorldLoader } from './save-load/related-world.js';
 import { createScriptPresentation } from './script-presentation.js';
-import { mountScriptTerrainColors } from './script-terrain-colors.js';
+import { mountScriptTints } from './script-tints.js';
 import { createSubMissions, type PrepareSubMission } from './sub-missions.js';
 import { createWorldEventHandler } from './world-events.js';
 import { createWorldTeardown } from './world-teardown.js';
@@ -590,8 +590,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       });
     }
     // Assembled below, once the controls and the camera it steers exist.
-    const terrainColors = await mountScriptTerrainColors(host, renderer);
-    cleanup.push(() => terrainColors.dispose());
+    const scriptTints = await mountScriptTints(host, renderer);
+    cleanup.push(() => scriptTints.dispose());
     let presentation: ReturnType<typeof createScriptPresentation> | null = null;
     const subMissions = createSubMissions({
       host,
@@ -610,7 +610,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
     const onEvents = createWorldEventHandler({
       forward: (events) => deps.onEvents?.(events),
-      terrainColors: terrainColors.onEvents,
+      scriptTints: scriptTints.onEvents,
       subMissions: (events) => !sharedClock && subMissions.onEvents(events),
       verdict: (events) => {
         if (deps.observer !== true) verdict?.onEvents(events);

@@ -16,7 +16,7 @@ it('hydrates saved replacements and reconciles later removals without rebuilding
     revision: 1,
     removed: [0],
     added: [{ id: 10, typeId: 7, hx: 2, hy: 2, level: 1 }],
-    tints: [],
+    tints: new Uint8Array(0),
   };
   const initial = sprite();
   const replacement = sprite();
@@ -54,8 +54,8 @@ it('applies only the latest of two asks when they land out of order', async () =
     new Map(),
   );
   landscapes.onEvents([{ kind: 'missionLandscapeChanged' }]);
-  answers[1]?.({ revision: 2, removed: [], added: [], tints: [] });
-  answers[0]?.({ revision: 1, removed: [1], added: [], tints: [] });
+  answers[1]?.({ revision: 2, removed: [], added: [], tints: new Uint8Array(0) });
+  answers[0]?.({ revision: 1, removed: [1], added: [], tints: new Uint8Array(0) });
   await landed();
   expect(surface.removeMapObject).not.toHaveBeenCalled();
 });
@@ -69,7 +69,7 @@ it('leaves scripted harvestables to the live entity renderer', async () => {
         Promise.resolve({
           revision: 1,
           removed: [],
-          tints: [],
+          tints: new Uint8Array(0),
           added: [{ id: 10, typeId: 7, hx: 2, hy: 2, level: 1, resourceBacked: true }],
         }),
     },
@@ -87,7 +87,10 @@ it("takes a removed placement's shore wave off the ground", async () => {
   const surface = { addMapObjects: vi.fn(), removeMapObject: vi.fn(), removeGroundWave: vi.fn() };
   const wave: GroundWave = { x: 0, y: 0, source: Texture.EMPTY.source, frames: [], phase: 0 };
   bindScriptLandscapes(
-    { landscapeEdits: () => Promise.resolve({ revision: 1, removed: [3], added: [], tints: [] }) },
+    {
+      landscapeEdits: () =>
+        Promise.resolve({ revision: 1, removed: [3], added: [], tints: new Uint8Array(0) }),
+    },
     surface,
     new Map(),
     vi.fn(sprite),
@@ -101,7 +104,10 @@ it("takes a removed placement's shore wave off the ground", async () => {
 it('applies nothing that lands after disposal', async () => {
   const surface = { addMapObjects: vi.fn(), removeMapObject: vi.fn(), removeGroundWave: vi.fn() };
   const landscapes = bindScriptLandscapes(
-    { landscapeEdits: () => Promise.resolve({ revision: 1, removed: [1], added: [], tints: [] }) },
+    {
+      landscapeEdits: () =>
+        Promise.resolve({ revision: 1, removed: [1], added: [], tints: new Uint8Array(0) }),
+    },
     surface,
     new Map([[1, sprite()]]),
     vi.fn(sprite),

@@ -8,6 +8,7 @@
  */
 
 export { type FrameIndexReader, RENDER_FRAME_INDEX_READERS } from './frame-indexes.js';
+export { gradeLuminance, type LightGrade, NEUTRAL_GRADE } from './lighting/types.js';
 export {
   aabbIntersects,
   type Box,

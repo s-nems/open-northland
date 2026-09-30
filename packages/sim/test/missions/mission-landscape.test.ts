@@ -172,8 +172,12 @@ describe('script landscape state and blockers', () => {
     expect(placementProbe(sim.world, sim.content, terrain, HUT, undefined, []).canPlace(3, 3)).toBe(true);
     setVertexColors(sim.world, terrain, POINT, 1_000_000_000, 100, false);
     setVertexColors(sim.world, terrain, POINT, 1_000_000_000, 200, true);
-    expect(sim.landscapeEdits().tints).toHaveLength(256);
-    expect(sim.landscapeEdits().tints.every((t) => t.value === (t.hx < 8 ? 200 : 100))).toBe(true);
+    const expected = new Uint8Array(terrain.nodeCount);
+    for (let hy = 0; hy < terrain.height; hy++) {
+      for (let hx = 0; hx < terrain.width; hx++) expected[terrain.nodeAt(hx, hy)] = hx < 8 ? 200 : 100;
+    }
+    expect(expected).toHaveLength(256);
+    expect(sim.landscapeEdits().tints).toEqual(expected);
   });
 
   it('saves sparse edits and restores identical collision and detached presentation', () => {
