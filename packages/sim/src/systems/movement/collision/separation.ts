@@ -2,7 +2,7 @@ import { Position } from '../../../components/index.js';
 import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition, positionXOfWorld } from '../../../nav/halfcell.js';
-import { worldDistance, worldX } from '../../../nav/world-metric.js';
+import { ROW_STEP, worldDistance, worldX } from '../../../nav/world-metric.js';
 import type { System } from '../../context.js';
 import { REFERENCE_PACE_PER_TICK } from '../system.js';
 import { collectColliders } from './separation/colliders.js';
@@ -158,10 +158,14 @@ function resolveMoverPush(
     if (n === undefined) continue;
     const other = before.get(n);
     if (other === undefined) continue;
-    const dist = worldDistance(start.x, start.y, other.x, other.y);
+    const otherWX = worldX(other.x, other.y);
+    const dwx = fx.sub(otherWX, startWX);
+    // Scale the row difference before rounding, as worldDistance does. Subtracting rounded world Y
+    // positions instead would change fractional-row distances by an ulp.
+    const dwy = fx.mul(fx.sub(other.y, start.y), ROW_STEP);
+    const dist = fx.isqrt(fx.add(fx.mul(dwx, dwx), fx.mul(dwy, dwy)));
     if (dist >= UNIT_SEPARATION_RADIUS) continue;
     const half = fx.div(fx.sub(UNIT_SEPARATION_RADIUS, dist), fx.fromInt(2));
-    const otherWX = worldX(other.x, other.y);
     const otherWY = worldYOf(other.y);
     // (0, 0) is the "no established heading" sentinel: such a pair falls through to the radial split.
     if ((start.hx !== ZERO || start.hy !== ZERO) && (other.hx !== ZERO || other.hy !== ZERO)) {

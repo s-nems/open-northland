@@ -6,10 +6,14 @@ import {
   Owner,
   PathFollow,
   PathRequest,
+  PathRoute,
   Position,
 } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import { positionOfNode } from '../../../src/index.js';
+import { worldX } from '../../../src/nav/world-metric.js';
+import { separationSystem } from '../../../src/systems/movement/collision/separation.js';
+import { ctxOf } from '../../fixtures/context.js';
 import {
   ANY_BUILDING_TYPE,
   nodeOf,
@@ -26,6 +30,41 @@ import {
 } from './support.js';
 
 describe('unit body collision - soft and civilian traffic', () => {
+  it.each([
+    { row: 2, lowerEndpoint: { x: 195141, y: 119946 }, upperEndpoint: { x: 195143, y: 142195 } },
+    { row: 3, lowerEndpoint: { x: 198075, y: 185482 }, upperEndpoint: { x: 198074, y: 207731 } },
+  ])(
+    'separates vertically across the fractional-row cusp at row $row',
+    ({ row, lowerEndpoint, upperEndpoint }) => {
+      const s = sim();
+      const a = settlerAt(s, 6, 4, WOODCUTTER, P0);
+      const b = settlerAt(s, 6, 4, WOODCUTTER, P0);
+      const lower = { x: fx.fromInt(3), y: fx.fromFloat(row - 0.125) };
+      const upper = { x: fx.fromInt(3), y: fx.fromFloat(row + 0.125) };
+      for (const [entity, position] of [
+        [a, lower],
+        [b, upper],
+      ] as const) {
+        s.world.add(entity, Position, { ...position });
+        // No established heading: overlapping walkers use the radial split.
+        s.world.add(entity, PathRoute, { waypoints: [] });
+        s.world.add(entity, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
+      }
+      separationSystem(s.world, ctxOf(s));
+      const pa = s.world.get(a, Position);
+      const pb = s.world.get(b, Position);
+      expect(pa.y).toBeLessThan(lower.y);
+      expect(pb.y).toBeGreaterThan(upper.y);
+      // Vertical world motion crosses the stagger cusp without acquiring a lateral push.
+      expect(Math.abs(worldX(pa.x, pa.y) - worldX(lower.x, lower.y))).toBeLessThanOrEqual(1);
+      expect(Math.abs(worldX(pb.x, pb.y) - worldX(upper.x, upper.y))).toBeLessThanOrEqual(1);
+      // Original fixed-point radial split endpoints. Integer sqrt truncation makes the normalized
+      // push 1639 units here despite the nominal 1638-unit cap; grid conversion rounds again.
+      expect(pa).toEqual(lowerEndpoint);
+      expect(pb).toEqual(upperEndpoint);
+    },
+  );
+
   it('civilians never collide: a worker walks straight through an enemy line, untouched', () => {
     const s = sim();
     wallAt(s, 10, P1);
