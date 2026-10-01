@@ -3,7 +3,6 @@ import type { World } from '../../ecs/world.js';
 import {
   BUILD_ORDER_LOOKAHEAD_ENTRIES,
   type BuildOrderEntry,
-  MAX_ACTIVE_CONSTRUCTION_SITES,
   SITE_PACE_STEPS,
   type SitePace,
 } from './build-order/entries.js';
@@ -68,7 +67,8 @@ export interface AiProfile {
   readonly weakerWeapons: boolean;
   /** The army at which the barracks sends the whole band. With `draftToCap`, also the most fighters the
    *  seat drafts. `floorShare` is the part of the strongest enemy's army the seat keeps as its floor.
-   *  No wave marches before `firstWaveFromTick`, nor before the seat's peace ends. */
+   *  No wave marches before `firstWaveFromTick`, nor before the seat's peace ends, and the wave band
+   *  grows from the later of the two (`military/plan.ts`). */
   readonly army: {
     readonly cap: number;
     readonly draftToCap: boolean;
@@ -112,6 +112,8 @@ const HARD: AiProfile = {
 
 /** The one construction site of the easy seat in every phase, and of the medium one in its opening hour. */
 const ONE_SITE = 1;
+/** The medium seat's construction sites from its second hour on. */
+const MEDIUM_GROWN_SITES = 2;
 
 const MEDIUM_CATAPULT_CAP = 8;
 const MEDIUM_CATAPULT_RESUME = 6;
@@ -124,12 +126,12 @@ const MEDIUM: AiProfile = {
     { fromTick: 0, sites: ONE_SITE, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES },
     {
       fromTick: MID_GAME_FROM_TICKS,
-      sites: MAX_ACTIVE_CONSTRUCTION_SITES,
+      sites: MEDIUM_GROWN_SITES,
       lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 1,
     },
     {
       fromTick: LATE_GAME_FROM_TICKS,
-      sites: MAX_ACTIVE_CONSTRUCTION_SITES,
+      sites: MEDIUM_GROWN_SITES,
       lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 2,
     },
   ],

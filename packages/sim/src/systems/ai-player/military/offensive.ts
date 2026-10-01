@@ -44,10 +44,9 @@ const NO_CAMPAIGN: CampaignDecision = { commands: [], waiting: [] };
  * ({@link advanceWave}), then the rest of `army` is sorted around the barracks door ({@link musterAround})
  * and, with no wave out, the launch is judged ({@link decideWave}). Until the peace ends
  * ({@link peaceEndsAt}) and the difficulty's first wave may march, the army only gathers at the door, as
- * it does with no target. The men at the door
- * set out as a wave when the muster is the one it was gathering and the target's owner does not outnumber
- * the seat; a body already nearer the objective goes in whatever the muster says, having nowhere safe to
- * wait; everybody else is called in.
+ * it does with no target. The men at the door set out as a wave when the muster is the one it was
+ * gathering and the target's owner does not outnumber the seat; a body already nearer the objective goes
+ * in whatever the muster says, having nowhere safe to wait; everybody else is called in.
  */
 export function runOffensive(
   world: World,

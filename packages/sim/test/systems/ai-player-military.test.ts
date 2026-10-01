@@ -32,6 +32,7 @@ import {
 import { cellAnchorNode, cellOfAnchorNode } from '../../src/nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import {
+  AI_PROFILES,
   ARMY_CAP_SOLDIERS,
   ASSAULT_RING_RADIUS_NODES,
   campaignTarget,
@@ -429,6 +430,23 @@ describe('military module - the campaign', () => {
     expect(sim.world.has(buildingOfType(sim, BARRACKS_TYPE, SEAT), MusterPlan)).toBe(false);
     // The band is still the opening one, since the growth counts from the end of the peace.
     expect(assaulting(sim, run(sim, EAGER_SEED, PEACE_END), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
+  });
+
+  it('keeps the first wave at home until its difficulty lets it march, easy longer than medium', () => {
+    for (const difficulty of ['medium', 'easy'] as const) {
+      const sim = bandSim(WAVE_MIN_SOLDIERS);
+      sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true, difficulty });
+      sim.step();
+      const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+      const firstWave = AI_PROFILES[difficulty].army.firstWaveFromTick;
+
+      expect(assaulting(sim, run(sim, EAGER_SEED, firstWave - 1), foeHq)).toEqual([]);
+      expect(assaulting(sim, run(sim, EAGER_SEED, firstWave), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
+    }
+    expect(AI_PROFILES.easy.army.firstWaveFromTick).toBeGreaterThan(
+      AI_PROFILES.medium.army.firstWaveFromTick,
+    );
+    expect(AI_PROFILES.hard.army.firstWaveFromTick).toBe(0);
   });
 
   it('spreads the wave over the ring instead of walking it onto one node', () => {

@@ -89,12 +89,15 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   }
   const profile = aiProfileOf(world, player);
   const held = idleMenHoldBirths(world, ctx, player, profile);
-  const family = {
-    wives: women.filter((e) => hasLivingSpouse(world, e)).length,
-    minors: minorsOf(world, settlers),
-  };
-  const births = birthCounters(profile, family, familySlotsTotal - femaleStock, held, () =>
-    bookedBirths(world, player),
+  const births = birthCounters(
+    profile,
+    () => ({
+      wives: women.filter((e) => hasLivingSpouse(world, e)).length,
+      minors: minorsOf(world, settlers),
+    }),
+    familySlotsTotal - femaleStock,
+    held,
+    () => bookedBirths(world, player),
   );
   const daughters = assistantCounterCommand(world, player, 'extraWomen', births.daughters, false);
   if (daughters !== null) commands.push(daughters);
@@ -133,13 +136,14 @@ function idleMenHoldBirths(world: World, ctx: SystemContext, player: number, pro
  */
 function birthCounters(
   profile: AiProfile,
-  family: { readonly wives: number; readonly minors: number },
+  family: () => { readonly wives: number; readonly minors: number },
   wantedDaughters: number,
   held: boolean,
   booked: () => { readonly daughters: number; readonly sons: number },
 ): { readonly daughters: number; readonly sons: number | null } {
   if (profile.birthShare === null) return { daughters: wantedDaughters, sons: held ? 0 : null };
-  const limit = Math.max(1, shareOf(family.wives, profile.birthShare)) - family.minors;
+  const { wives, minors } = family();
+  const limit = Math.max(1, shareOf(wives, profile.birthShare)) - minors;
   const running = booked();
   const daughters = Math.max(0, Math.min(wantedDaughters, limit - running.sons));
   return { daughters, sons: held ? 0 : Math.max(0, limit - Math.max(daughters, running.daughters)) };
