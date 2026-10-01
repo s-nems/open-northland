@@ -1,4 +1,5 @@
 import type { DrawItem } from '../../data/scene/index.js';
+import { planSiteOf } from './bind-layers.js';
 import type { MotionTrack } from './motion.js';
 import type { ResolvedLayer } from './resolved-layer.js';
 import type { PoolFrame } from './sprite-pool.js';
@@ -118,7 +119,7 @@ export class BindStamp {
       this.x === item.x &&
       this.y === item.y &&
       this.lift === (item.lift ?? 0) &&
-      this.site === siteOf(item) &&
+      this.site === planSiteOf(item) &&
       this.builtPct === item.builtPct &&
       this.upgradePct === item.upgradePct &&
       this.player === item.player
@@ -184,7 +185,7 @@ export class BindStamp {
     this.x = item.x;
     this.y = item.y;
     this.lift = item.lift ?? 0;
-    this.site = siteOf(item);
+    this.site = planSiteOf(item);
     this.builtPct = item.builtPct;
     this.upgradePct = item.upgradePct;
     this.player = item.player;
@@ -206,9 +207,4 @@ export class BindStamp {
     }
     this.layers = bound;
   }
-}
-
-/** The plan-site state a wall segment or road site binds its marker by. */
-function siteOf(item: DrawItem): DrawItem['palisadeSite'] | DrawItem['roadSite'] {
-  return item.kind === 'palisade' ? item.palisadeSite : item.kind === 'roadsite' ? item.roadSite : undefined;
 }

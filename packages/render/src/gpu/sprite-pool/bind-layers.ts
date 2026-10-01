@@ -51,6 +51,11 @@ function fadeAlpha(layer: ResolvedLayer, reveal: number | undefined): number {
   return clamp(1 - (reveal - from) / (1 - from), 0, 1);
 }
 
+/** The plan-site state a wall segment or road site binds its marker by. */
+export function planSiteOf(item: DrawItem): DrawItem['palisadeSite'] | DrawItem['roadSite'] {
+  return item.kind === 'palisade' ? item.palisadeSite : item.kind === 'roadsite' ? item.roadSite : undefined;
+}
+
 function entityTint(ref: number, ghost: boolean, highlight?: ReadonlyMap<number, boolean>): number {
   if (ghost) return FOG_GHOST_TINT;
   const ok = highlight?.get(ref);
@@ -116,8 +121,7 @@ export class LayerBinder {
     frame: BindFrame,
     frameId: number,
   ): void {
-    const site =
-      item.kind === 'palisade' ? item.palisadeSite : item.kind === 'roadsite' ? item.roadSite : undefined;
+    const site = planSiteOf(item);
     if (site === 'unclaimed') {
       this.showSiteMarker(pe, item.kind === 'roadsite', frameId);
       return;

@@ -288,6 +288,7 @@ export class SpritePool {
     stamp.alpha = frame.alpha;
     if (
       steady &&
+      // The present may have started a construction reveal, which binds every frame.
       pe.reveal === undefined &&
       stamp.bindHolds(item, this.epoch.bind, highlight) &&
       stamp.presents(pe.motion, layers) &&

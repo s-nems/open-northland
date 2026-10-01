@@ -2,14 +2,18 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import { Container, Sprite, TextureSource } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Camera, Viewport } from '../../src/data/projection/index.js';
+import type { SpriteDrawItem } from '../../src/data/scene/index.js';
+import type { SpriteKind } from '../../src/data/sprites/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
 import { DEFAULT_SHADOW_STYLE } from '../../src/gpu/shadow-style.js';
-import { LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
-import { FrameEpoch } from '../../src/gpu/sprite-pool/bind-stamp.js';
+import { type BindFrame, LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
+import { BindStamp, FrameEpoch } from '../../src/gpu/sprite-pool/bind-stamp.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
+import { createPooled } from '../../src/gpu/sprite-pool/pooled-entity.js';
+import type { ResolvedLayer } from '../../src/gpu/sprite-pool/resolved-layer.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
-import type { SpriteAtlas, SpriteSheet } from '../../src/index.js';
-import { entity, snapshotOf } from '../support/fixtures.js';
+import type { DrawItem, SpriteAtlas, SpriteSheet } from '../../src/index.js';
+import { drawItem, entity, snapshotOf } from '../support/fixtures.js';
 
 /**
  * A still frame (paused, or a still camera over a quiet town) must not present and bind every drawn
@@ -221,5 +225,73 @@ describe('FrameEpoch', () => {
     expect(epoch.bind).toBe(bind);
     epoch.advance({ ...base, tick: 1, environmentMotion: true, snapResolution: 2 }, 0);
     expect(epoch.bind).toBe(bind + 1);
+  });
+});
+
+describe('BindStamp.bindHolds', () => {
+  const frame = atlas.frames.get(BODY_BOB);
+  if (frame === undefined) throw new Error('the body bob has no frame');
+  const LAYERS: readonly ResolvedLayer[] = [{ source, frame, scale: 1 }];
+  const BIND_FRAME: BindFrame = { camera: CAMERA, screenW: 800, screenH: 600, enhancedSampling: true };
+  const OTHER_PLAYER = 2;
+  /** The pool keys a stamp by its entity's ref, so a bind and its stamp always share it. */
+  const KEYED_BY_POOL = 'ref';
+
+  /** `item` reporting each field a reader looks up into `keys`. */
+  function recording(item: DrawItem, keys: Set<string>): DrawItem {
+    return new Proxy(item, {
+      get(target, key, receiver) {
+        if (typeof key === 'string') keys.add(key);
+        return Reflect.get(target, key, receiver);
+      },
+    });
+  }
+
+  function spriteItem(kind: SpriteKind, fields: Partial<DrawItem> = {}): SpriteDrawItem {
+    return { ...drawItem(kind, fields), kind };
+  }
+
+  function stampOf(item: SpriteDrawItem) {
+    const pe = createPooled(item.kind, undefined);
+    const epoch = new FrameEpoch();
+    const stamp = new BindStamp();
+    stamp.record(item, epoch, undefined, pe.motion, LAYERS);
+    return { pe, epoch, stamp };
+  }
+
+  it('compares every item field a plain bind reads', () => {
+    const items: SpriteDrawItem[] = [
+      spriteItem('settler', { lift: 1 }),
+      spriteItem('settler', { ghost: true }),
+      spriteItem('building', { builtPct: 40 }),
+      spriteItem('building', { upgradePct: 40 }),
+      spriteItem('palisade', { palisadeSite: 'unclaimed' }),
+      spriteItem('palisade', { palisadeSite: 'claimed' }),
+      spriteItem('roadsite', { roadSite: 'unclaimed' }),
+      spriteItem('roadsite', { roadSite: 'claimed' }),
+    ];
+    const binder = new LayerBinder(new TextureCache(), undefined);
+    const bound = new Set<string>();
+    const compared = new Set<string>([KEYED_BY_POOL]);
+    for (const item of items) {
+      for (const layers of [LAYERS, null]) {
+        binder.bind(createPooled(item.kind, undefined), recording(item, bound), layers, BIND_FRAME, 0);
+      }
+      const { epoch, stamp } = stampOf(item);
+      expect(stamp.bindHolds(recording(item, compared), epoch.bind, undefined)).toBe(true);
+    }
+    expect([...bound].filter((key) => !compared.has(key))).toEqual([]);
+  });
+
+  it.each([
+    ['the highlight', {}, true],
+    ['the team colour', { player: OTHER_PLAYER }, undefined],
+    ['the fog ghost', { ghost: true }, undefined],
+  ] as const)('binds again over the same layers when %s changes', (_, fields, highlight) => {
+    const item = spriteItem('settler');
+    const { pe, epoch, stamp } = stampOf(item);
+    expect(stamp.presents(pe.motion, LAYERS)).toBe(true);
+    expect(stamp.bindHolds({ ...item }, epoch.bind, undefined)).toBe(true);
+    expect(stamp.bindHolds({ ...item, ...fields }, epoch.bind, highlight)).toBe(false);
   });
 });
