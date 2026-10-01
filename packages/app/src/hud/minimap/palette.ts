@@ -4,8 +4,7 @@ import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 /** The rim every owned marker wears; the marker fills below are chosen to stand out against it. */
 export const MARKER_RIM_COLOUR = 0x1a120a;
 
-/** Stance colours, after the self/ally/enemy modes of other strategy games: self white, friends teal,
- *  enemies red, anyone else amber. Authored. */
+/** Stance colours: self white, friends teal, enemies red, anyone else amber. Authored. */
 export const STANCE_SELF_COLOUR = 0xf4f4f4;
 export const STANCE_COLOURS: Readonly<Record<DiplomacyState, number>> = {
   friend: 0x2fd7ff,
@@ -27,7 +26,7 @@ const GREY_LIGHTNESS_SPAN = 0.5;
 /** A blue, violet or red fill at the band's floor is still dark against the rim and the forest; lift it
  *  until it reaches this WCAG contrast. Well over the 3:1 floor for non-text graphics: at 3.5 the own blue
  *  still sank into dark green ground. Tuned by eye. */
-const MIN_RIM_CONTRAST = 4.5;
+export const MIN_RIM_CONTRAST = 4.5;
 const LIGHTNESS_STEP = 0.02;
 /** Ceiling for that lift, so a fill never washes out to white. */
 const LIFT_CEILING_LIGHTNESS = 0.8;

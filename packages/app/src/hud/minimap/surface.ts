@@ -21,7 +21,7 @@ import { createSeenStandingObjects } from './live-objects.js';
 /** The least wall time between two looks for a change of the seen forest and ore, in ms. */
 export const OBJECT_REBAKE_INTERVAL_MS = 4000;
 /** The widest bake in raster widths per display px; a map shown wider upscales it. Measured on
- *  magiczny_las at DPR 2: the capped 2640x1172 bake takes about 400 ms on the worker. */
+ *  magiczny_las at DPR 2: the capped 2640x1172 bake takes about 930 ms on the worker. */
 export const MAX_BAKE_ZOOM = 2;
 /** Wall ms a new bake size must hold before it bakes, so a wheel-zoom burst asks for one bake. */
 export const BAKE_SIZE_SETTLE_MS = 250;

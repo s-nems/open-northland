@@ -52,6 +52,10 @@ const MIN_DIAMOND_RADIUS_PX = 1;
 /** A rim keeps at least one raster px on each side. */
 const MIN_RIM_PX = 1;
 
+/** Which part of a mark a stamp paints: `rims` under every fill of a replot, then `fills`, so a crowd's
+ *  rims never cut into its neighbours' fills; `both` paints one mark whole. */
+export type MinimapStampPart = 'both' | 'rims' | 'fills';
+
 /**
  * Stamp `mark` centred on raster px `(cx, cy)`. `pxPerMinimapPx` converts the marker's authored minimap
  * size to raster px at the current zoom and UI scale; `markerScale` is the player's marker size choice,
@@ -65,15 +69,18 @@ export function stampMark(
   colour: number,
   pxPerMinimapPx: number,
   markerScale = 1,
+  part: MinimapStampPart = 'both',
 ): void {
+  const rims = part !== 'fills';
+  const fills = part !== 'rims';
   const size = (minimapPx: number): number => Math.max(MIN_HALF_PX, minimapPx * markerScale * pxPerMinimapPx);
   const rim = Math.max(MIN_RIM_PX, RIM * pxPerMinimapPx);
   const square = (half: number, fill: number): void =>
     stampDot(raster.rgba, raster.width, raster.height, cx, cy, half, fill);
   const rimmedSquare = (minimapHalf: number, rimColour: number): void => {
     const half = size(minimapHalf);
-    square(half + rim, rimColour);
-    square(half, colour);
+    if (rims) square(half + rim, rimColour);
+    if (fills) square(half, colour);
   };
   switch (mark) {
     case 'civilian':
@@ -85,24 +92,26 @@ export function stampMark(
     case 'vehicle':
       rimmedSquare(VEHICLE_HALF, VEHICLE_RIM_COLOUR);
       return;
+    case 'roadSite':
+      rimmedSquare(ROAD_HALF, MARKER_RIM_COLOUR);
+      return;
     case 'animal':
-      square(size(ANIMAL_HALF), colour);
+      if (fills) square(size(ANIMAL_HALF), colour);
       return;
     case 'road':
-    case 'roadSite':
-      square(size(ROAD_HALF), colour);
+      if (fills) square(size(ROAD_HALF), colour);
       return;
     case 'soldier': {
       const radius = Math.max(MIN_DIAMOND_RADIUS_PX, SOLDIER_RADIUS * markerScale * pxPerMinimapPx);
-      stampDiamond(raster, cx, cy, radius + rim * DIAMOND_RIM_REACH, MARKER_RIM_COLOUR);
-      stampDiamond(raster, cx, cy, radius, colour);
+      if (rims) stampDiamond(raster, cx, cy, radius + rim * DIAMOND_RIM_REACH, MARKER_RIM_COLOUR);
+      if (fills) stampDiamond(raster, cx, cy, radius, colour);
       return;
     }
     case 'signpost': {
       const halfW = size(SIGNPOST_HALF_W);
       const halfH = size(SIGNPOST_HALF_H);
-      stampRect(raster, cx, cy, halfW + rim, halfH + rim, MARKER_RIM_COLOUR);
-      stampRect(raster, cx, cy, halfW, halfH, colour);
+      if (rims) stampRect(raster, cx, cy, halfW + rim, halfH + rim, MARKER_RIM_COLOUR);
+      if (fills) stampRect(raster, cx, cy, halfW, halfH, colour);
       return;
     }
   }

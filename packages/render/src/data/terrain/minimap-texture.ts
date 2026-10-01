@@ -21,7 +21,7 @@ export function textureFade(periodCells: number, cellPx: number): number {
 /** How far a dome's centre strays from its lattice cell's middle, in lattice units; with radii up to
  *  {@link DOME_MAX_RADIUS} every dome over a point sits in the 2×2 cells nearest it. */
 const DOME_JITTER = 0.25;
-export const DOME_MAX_RADIUS = 0.75;
+const DOME_MAX_RADIUS = 0.75;
 /** Ten-bit fields of one lattice hash: centre x, centre y, radius. */
 const FIELD_BITS = 10;
 const FIELD_MAX = (1 << FIELD_BITS) - 1;
@@ -34,7 +34,7 @@ export interface Dome {
 
 /**
  * Round domes on a jittered unit lattice, as tree crowns or rocks seen from above: `radius` in lattice
- * units (at most {@link DOME_MAX_RADIUS}), shrunk per dome by up to `radiusJitter` of itself; `edge`
+ * units (clamped to {@link DOME_MAX_RADIUS}), shrunk per dome by up to `radiusJitter` of itself; `edge`
  * the anti-aliasing width in lattice units; `(lx, ly, lz)` the unit vector toward the light. The
  * highest dome over `(u, v)` wins, lit as a hemisphere. Writes `out`; off every dome, cover is 0.
  */
@@ -52,13 +52,14 @@ export function sampleDomes(
 ): void {
   const i0 = Math.floor(u - 0.5);
   const j0 = Math.floor(v - 0.5);
+  const fullRadius = Math.min(radius, DOME_MAX_RADIUS);
   let top = 0;
   let cover = 0;
   let light = 1;
   for (let j = j0; j <= j0 + 1; j++) {
     for (let i = i0; i <= i0 + 1; i++) {
       const h = hashBits(i, j, seed);
-      const r = radius * (1 - radiusJitter * (((h >>> (2 * FIELD_BITS)) & FIELD_MAX) / FIELD_MAX));
+      const r = fullRadius * (1 - radiusJitter * (((h >>> (2 * FIELD_BITS)) & FIELD_MAX) / FIELD_MAX));
       const dx = u - (i + 0.5 + DOME_JITTER * (2 * ((h & FIELD_MAX) / FIELD_MAX) - 1));
       const dy = v - (j + 0.5 + DOME_JITTER * (2 * (((h >>> FIELD_BITS) & FIELD_MAX) / FIELD_MAX) - 1));
       const d2 = dx * dx + dy * dy;

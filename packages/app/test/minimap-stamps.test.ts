@@ -14,7 +14,7 @@ const COLOUR = 0x3366cc;
 
 /** Large enough that each size step crosses a whole raster px even for the smallest mark. */
 const SIZE_TEST_PX_PER_MINIMAP_PX = 5;
-const OWNED_MARKS = ['civilian', 'soldier', 'building', 'vehicle', 'signpost'] as const;
+const OWNED_MARKS = ['civilian', 'soldier', 'building', 'vehicle', 'signpost', 'roadSite'] as const;
 
 function stamped(
   mark: MinimapMark,
@@ -80,15 +80,30 @@ describe('stampMark', () => {
     expect(colourAt(post, CENTRE - 3, CENTRE)).not.toBe(COLOUR);
   });
 
-  it('rims every owned mark, in dark but for the pale vehicle rim, and leaves animals and roads bare', () => {
+  it('rims every owned mark, in dark but for the pale vehicle rim, and leaves animals and laid roads bare', () => {
     for (const mark of OWNED_MARKS) {
       const rims = [...rimColours(stamped(mark))];
       expect(rims, mark).toHaveLength(1);
       if (mark === 'vehicle') expect(rims[0]).not.toBe(MARKER_RIM_COLOUR);
       else expect(rims[0], mark).toBe(MARKER_RIM_COLOUR);
     }
-    for (const mark of ['animal', 'road', 'roadSite'] as const)
-      expect(rimColours(stamped(mark)).size).toBe(0);
+    for (const mark of ['animal', 'road'] as const) expect(rimColours(stamped(mark)).size).toBe(0);
+  });
+
+  it('paints a mark in two parts, rims then fills, that together make the whole mark', () => {
+    for (const mark of [...OWNED_MARKS, 'animal', 'road'] as const) {
+      const whole = stamped(mark);
+      const parts = { rgba: new Uint8Array(SIDE * SIDE * 4), width: SIDE, height: SIDE };
+      stampMark(parts, CENTRE, CENTRE, mark, COLOUR, 2, 1, 'rims');
+      expect(painted(parts, COLOUR), mark).toBe(0);
+      stampMark(parts, CENTRE, CENTRE, mark, COLOUR, 2, 1, 'fills');
+      expect(parts.rgba, mark).toEqual(whole.rgba);
+    }
+    // A neighbour's rim stamped later would cut into this fill; stamped first, the fill covers it.
+    const crowd = { rgba: new Uint8Array(SIDE * SIDE * 4), width: SIDE, height: SIDE };
+    for (const part of ['rims', 'fills'] as const)
+      for (const dx of [0, 3]) stampMark(crowd, CENTRE + dx, CENTRE, 'civilian', COLOUR, 2, 1, part);
+    expect(painted(crowd, COLOUR)).toBe(2 * painted(stamped('civilian'), COLOUR) - 1 * 4);
   });
 
   it('scales the marker body with the size choice, never the rim', () => {

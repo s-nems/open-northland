@@ -31,7 +31,7 @@ import {
 } from './model.js';
 import { createDotReplotGate } from './replot-gate.js';
 import { createRoadLayer } from './road-layer.js';
-import { MARKER_SIZE_SCALES, stampMark } from './stamps.js';
+import { MARKER_SIZE_SCALES, type MinimapStampPart, stampMark } from './stamps.js';
 import { createMinimapSurface } from './surface.js';
 
 /** Under the map while the DOM backing loads: the dark wood of the frames' backing. */
@@ -238,8 +238,13 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   const claimDotReplot = createDotReplotGate(() => performance.now());
   const dotRaster = { rgba: pixels, width: dotsW, height: dotsH };
   const stampScale = (): number => uiScale / world.scale.x;
-  const stamp: MinimapDotSink = (x, y, mark, colour) =>
-    stampMark(dotRaster, x, y, mark, colour, stampScale(), MARKER_SIZE_SCALES[filters.markerSize]);
+  const stampPart =
+    (part: MinimapStampPart): MinimapDotSink =>
+    (x, y, mark, colour) =>
+      stampMark(dotRaster, x, y, mark, colour, stampScale(), MARKER_SIZE_SCALES[filters.markerSize], part);
+  // Every rim goes under every fill, so a crowd reads as a rimmed blob of colour, not a dark mass.
+  const stampRims = stampPart('rims');
+  const stampFills = stampPart('fills');
 
   return {
     claimsPointer: (x, y) => {
@@ -279,7 +284,8 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
           stanceToward: opts.stanceToward,
           playerColourOf: opts.playerColourOf,
         };
-        forEachMinimapDot(snapshot, context, stamp);
+        forEachMinimapDot(snapshot, context, stampRims);
+        forEachMinimapDot(snapshot, context, stampFills);
         texture.source.update();
         dirtyDots = false;
       }

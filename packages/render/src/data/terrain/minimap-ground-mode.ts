@@ -18,8 +18,7 @@ interface GroundGrade {
 
 const MID_GREY = 128;
 
-/** Tuned by eye on magiczny_las; an approximation. Reference points: 0 A.D. draws minimap terrain at
- *  67 to 100% value, and StarCraft II darkens it in its colour-blind mode. */
+/** Tuned by eye on magiczny_las; an approximation. */
 const MUTED_GRADE: GroundGrade = { saturation: 0.4, waterSaturation: 0.7, value: 0.6, contrast: 1, pivot: 0 };
 /** Barely there: the relief survives as faint grey shading around mid-grey, the water as a dim blue. */
 const DARK_GRADE: GroundGrade = {
@@ -38,9 +37,13 @@ const LUMA_G = 150;
 const LUMA_B = 29;
 const LUMA_SHIFT = 8;
 const LUMA_LEVELS = 256;
-/** How far, in byte levels, blue must lead red and green for a pixel to count as wholly water; less
- *  lead blends toward the land's saturation, so the coast's foam and banks fade smoothly. */
+/** How far, in byte levels, blue must lead red and the green share below for a pixel to count as wholly
+ *  water; less lead blends toward the land's saturation, so the coast's foam and banks fade smoothly. */
 const WATER_BLUE_LEAD = 40;
+/** Turquoise shallows carry nearly as much green as blue, so blue is measured against this share of the
+ *  green; grass and sand keep more green than that and stay land. In 1/256ths. */
+const WATER_GREEN_SHARE = 205;
+const SHARE_SHIFT = 8;
 const RGBA = 4;
 
 const GRADES: Readonly<Record<'muted' | 'dark', GroundGrade>> = { muted: MUTED_GRADE, dark: DARK_GRADE };
@@ -96,7 +99,8 @@ function grade(
     const b = source[i + 2] ?? 0;
     const y = (LUMA_R * r + LUMA_G * g + LUMA_B * b) >> LUMA_SHIFT;
     const base = lumaOut[y] ?? 0;
-    const lead = Math.min(WATER_BLUE_LEAD, Math.max(0, b - (r > g ? r : g)));
+    const greenShare = (g * WATER_GREEN_SHARE) >> SHARE_SHIFT;
+    const lead = Math.min(WATER_BLUE_LEAD, Math.max(0, b - (r > greenShare ? r : greenShare)));
     const chroma = landChroma + waterChromaPerLead * lead;
     out[i] = base + chroma * (r - y);
     out[i + 1] = base + chroma * (g - y);

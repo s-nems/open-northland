@@ -105,16 +105,41 @@ export type MinimapGroundBake = (
  * The ground in a mode, each call a fresh buffer the caller may transfer. The natural raster of the
  * last size and objects is kept, so a bake that changes only the mode grades it again instead of
  * rasterizing: on a 1880x834 raster a grade costs 8 to 9 ms of CPU (Node, M2 Pro), the full bake
- * about 260 ms.
+ * about 445 ms. The hidden mode draws no ground, so it skips the raster and keeps any objects it was
+ * handed for the next mode that needs them.
  */
 export function createCachedMinimapBake(rasterize: MinimapRasterizer): MinimapGroundBake {
   let natural: { readonly width: number; readonly height: number; readonly rgba: Uint8Array } | null = null;
+  let heldObjects: MinimapObjects | undefined;
   return (width, height, mode, objects) => {
-    if (objects !== undefined || natural === null || natural.width !== width || natural.height !== height) {
-      natural = { width, height, rgba: rasterize(width, height, objects) };
+    if (mode === 'hidden') {
+      if (objects !== undefined) {
+        heldObjects = objects;
+        natural = null;
+      }
+      return applyMinimapGroundMode(opaqueRaster(width, height), mode);
+    }
+    const nextObjects = objects ?? heldObjects;
+    heldObjects = undefined;
+    if (
+      nextObjects !== undefined ||
+      natural === null ||
+      natural.width !== width ||
+      natural.height !== height
+    ) {
+      natural = { width, height, rgba: rasterize(width, height, nextObjects) };
     }
     return applyMinimapGroundMode(natural.rgba, mode, new Uint8Array(natural.rgba.length));
   };
+}
+
+const RGBA = 4;
+const OPAQUE = 0xff;
+
+function opaqueRaster(width: number, height: number): Uint8Array {
+  const rgba = new Uint8Array(width * height * RGBA);
+  for (let i = RGBA - 1; i < rgba.length; i += RGBA) rgba[i] = OPAQUE;
+  return rgba;
 }
 
 /** A baker on the calling thread, for tests. */
@@ -138,9 +163,9 @@ const spawnBakeWorker = (): MinimapBakeWorker =>
   new Worker(new URL('./bake-worker.ts', import.meta.url), { type: 'module' });
 
 /**
- * A baker on a dedicated worker. Measured on magiczny_las at DPR 2, a bake takes 45 ms for the S panel
- * (460x204), 75 to 120 ms for M to XL (760 to 940 px wide) and 260 ms for XL at 2x zoom (1880x834); on
- * the main thread that would stall frames at boot, on a resize and on a zoom. A worker error fails
+ * A baker on a dedicated worker. Measured on magiczny_las at DPR 2 (Node, M2 Pro), a bake takes 37 ms
+ * for the S panel (460x204), 60 to 105 ms for M to XL (760 to 940 px wide) and 445 ms for XL at 2x zoom
+ * (1880x834); on the main thread that would stall frames at boot, on a resize and on a zoom. A worker error fails
  * the client for good: the pending bakes and every later one reject at once.
  */
 export function createWorkerMinimapBaker(

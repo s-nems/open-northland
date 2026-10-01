@@ -114,11 +114,23 @@ describe('cached minimap bake', () => {
     const hidden = bake(3, 2, 'hidden');
     expect(calls).toHaveLength(1);
     expect(dark).toEqual(applyMinimapGroundMode(natural.slice(), 'dark'));
-    expect(hidden).toEqual(applyMinimapGroundMode(natural.slice(), 'hidden'));
+    // The flat fill is always opaque, whatever the fake raster's alpha.
+    expect(hidden).toEqual(applyMinimapGroundMode(new Uint8Array(natural.length).fill(0xff), 'hidden'));
     // Each answer is its own buffer, so a transfer of one leaves the kept raster whole.
     expect(new Set([natural.buffer, dark.buffer, hidden.buffer]).size).toBe(3);
     expect(bake(3, 2, 'natural')).toEqual(natural);
     expect(calls).toHaveLength(1);
+  });
+
+  it('skips the raster while the ground is hidden and keeps the objects for the next look', () => {
+    const { rasterize, calls } = countingRasterizer();
+    const bake = createCachedMinimapBake(rasterize);
+    const hidden = bake(3, 2, 'hidden', NO_OBJECTS);
+    expect(calls).toHaveLength(0);
+    expect(hidden).toEqual(applyMinimapGroundMode(new Uint8Array(3 * 2 * 4).fill(0xff), 'hidden'));
+    bake(3, 2, 'natural');
+    bake(3, 2, 'muted');
+    expect(calls.map(({ objects }) => objects)).toEqual([NO_OBJECTS]);
   });
 
   it('rasterizes again for a new size or new objects', () => {

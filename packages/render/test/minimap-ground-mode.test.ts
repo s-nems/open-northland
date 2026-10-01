@@ -7,6 +7,8 @@ import {
 
 const GRASS = [74, 118, 50] as const;
 const WATER = [38, 84, 132] as const;
+/** The raster's shallow water: nearly as green as blue. */
+const SHALLOW = [58, 156, 164] as const;
 const SAND = [200, 168, 110] as const;
 /** A partly transparent pixel, so the alpha check sees more than the opaque raster's 255. */
 const SEMI_ALPHA = 77;
@@ -26,6 +28,12 @@ function saturationAndValue(rgba: Uint8Array, index: number): { saturation: numb
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   return { saturation: max === 0 ? 0 : (max - min) / max, value: max / 255 };
+}
+
+/** Byte chroma: the spread between the strongest and weakest channel. */
+function chroma(rgba: Uint8Array, index: number): number {
+  const [r, g, b] = pixel(rgba, index);
+  return Math.max(r, g, b) - Math.min(r, g, b);
 }
 
 const graded = (mode: MinimapGroundMode, source: Uint8Array): Uint8Array =>
@@ -62,14 +70,17 @@ describe('minimap ground mode', () => {
     }
   });
 
-  it('keeps water bluer than grass in the dark look', () => {
-    const out = graded('dark', raster(GRASS, WATER));
+  it('keeps water, shallows included, bluer than grass in the dark look', () => {
+    const out = graded('dark', raster(GRASS, WATER, SHALLOW, SAND));
     const blueness = (index: number): number => {
       const [r, g, b] = pixel(out, index);
       return b - Math.max(r, g);
     };
     expect(blueness(1)).toBeGreaterThan(0);
     expect(blueness(1)).toBeGreaterThan(blueness(0));
+    expect(blueness(2)).toBeGreaterThan(blueness(0));
+    // Land keeps the land saturation: the shallows keep more of their chroma than sand of its own.
+    expect(chroma(out, 2)).toBeGreaterThan(chroma(out, 3));
   });
 
   it('draws one flat colour with no ground', () => {

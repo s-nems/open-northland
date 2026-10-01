@@ -4,6 +4,7 @@ import { ANIMAL_DOT_COLOUR, ROAD_SITE_DOT_COLOUR } from '../src/hud/minimap/dots
 import {
   contrastRatio,
   MARKER_RIM_COLOUR,
+  MIN_RIM_CONTRAST,
   MINIMAP_PLAYER_COLOURS,
   minimapPlayerColour,
   STANCE_COLOURS,
@@ -11,8 +12,8 @@ import {
 } from '../src/hud/minimap/palette.js';
 import { ROAD_DOT_COLOUR } from '../src/hud/minimap/road-layer.js';
 
-/** The WCAG floor for non-text graphics against their outline. */
-const MIN_CONTRAST = 3;
+/** The lift's own floor, well over the 3:1 WCAG floor for non-text graphics. */
+const MIN_CONTRAST = MIN_RIM_CONTRAST;
 /** A CIE76 colour difference well past "just noticeable", so a fill never passes for a fauna or road dot. */
 const MIN_DELTA_E = 15;
 /** Rounding to 8-bit channels moves the hue of a saturated fill by a degree or so. */
@@ -62,7 +63,7 @@ const hex = (colour: number): string => `#${colour.toString(16).padStart(6, '0')
 describe('minimap palette', () => {
   const fills = [...MINIMAP_PLAYER_COLOURS, STANCE_SELF_COLOUR, ...Object.values(STANCE_COLOURS)];
 
-  it('keeps every marker fill at least 3:1 against the dark rim', () => {
+  it('keeps every marker fill at the lift floor against the dark rim', () => {
     for (const fill of fills)
       expect(contrastRatio(fill, MARKER_RIM_COLOUR), hex(fill)).toBeGreaterThanOrEqual(MIN_CONTRAST);
   });
