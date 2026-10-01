@@ -45,8 +45,9 @@ oak and brass corners) and **Urnes** (smoked oak with carved beast corners). A l
 - Do not include a hover preview of map areas.
 - The terrain is the shared styled raster (`rasterizeMinimap` in render): lane colours under a
   three-scale relief light from the upper left, water deepening from pale shallows to a navy open sea
-  with ripples and a surf line, forest as lit tree crowns with a canopy shadow, ground micro-texture by
-  class, and ore as rocks, all from the standing resource nodes. The same raster makes the lobby's map
+  with ripples, a surf line and a wet line on the shore, forest as a soft lit canopy that resolves into
+  tree crowns on large bakes, ground micro-texture by class, and ore as rocks, all from the standing
+  resource nodes. In the game, unexplored ground under the fog is a dark slate, not black. The same raster makes the lobby's map
   preview, so the lobby and the game show one picture; the lobby keeps it natural.
 - The three compact minimap frames are approved. The separate large-map frame remains undecided;
   [ticket 19](../../tickets/app/ingame-ui-19-map-overview.md) owns its design and implementation.
