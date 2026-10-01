@@ -16,6 +16,7 @@ export {
 } from './blocked.js';
 export { buildingBlockedCells } from './building-blocked-cache.js';
 export {
+  anchoredStanceCells,
   atInteractionNode,
   constructionWorkCell,
   constructionWorkCells,
@@ -25,6 +26,7 @@ export {
   positionedStanceCells,
   resourceStanceCells,
   resourceWorkCell,
+  stanceOverlayEpoch,
 } from './interaction.js';
 export {
   canPlaceBuilding,

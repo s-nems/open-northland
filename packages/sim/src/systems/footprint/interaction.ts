@@ -506,7 +506,17 @@ export function positionedStanceCells(
   const y = nodeHyOfPosition(p.y);
   const resource = resourceUnderDrop(world, entity, x, y);
   if (resource !== null) return resourceStanceCells(world, ctx, terrain, resource);
-  const anchor = terrain.nodeAtClamped(x, y);
+  return anchoredStanceCells(world, ctx, terrain, terrain.nodeAtClamped(x, y));
+}
+
+/** {@link positionedStanceCells} for a target on `anchor` that is no ground drop under a standing
+ *  resource. */
+export function anchoredStanceCells(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  anchor: NodeId,
+): readonly NodeId[] {
   const pools = stancePools(world, ctx, terrain);
   const held = pools.anchored.get(anchor);
   if (held?.epoch === pools.epoch) return held.cells;
@@ -518,6 +528,12 @@ export function positionedStanceCells(
     held.cells = cells;
   }
   return cells;
+}
+
+/** The structure overlay revision the stance pools are derived under: while it holds, so does every
+ *  {@link anchoredStanceCells} answer. */
+export function stanceOverlayEpoch(world: World, ctx: ContentContext, terrain: TerrainGraph): number {
+  return stancePools(world, ctx, terrain).epoch;
 }
 
 /** A plain target's stance pool, a function of its anchor and the structure overlay alone: the anchor

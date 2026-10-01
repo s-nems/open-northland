@@ -174,6 +174,50 @@ describe('TargetBands kept across passes', () => {
   });
 });
 
+describe('TargetBands.holding kept off the holder ledger', () => {
+  function houseOn(sim: Simulation, hx: number, hy: number): Entity {
+    const house = sim.world.create(); // a built HOUSE: walls on its own node and two half-cells east
+    sim.world.add(house, Position, positionOfNode(hx, hy));
+    sim.world.add(house, Building, { buildingType: HOUSE, tribe: VIKING, built: ONE, level: 0 });
+    return house;
+  }
+
+  it('matches a cold judgement after stock, pile and wall changes between passes', () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent(), map: grassMap(16, 4) });
+    const [west, middle, east] = [pileOnNode(sim, 4, 4), pileOnNode(sim, 10, 4), pileOnNode(sim, 20, 4)];
+    expect(holdingMatchesYield(sim, [west, middle, east], [STONE])).toEqual([west, middle, east]);
+
+    const house = houseOn(sim, 10, 4);
+    expect(holdingMatchesYield(sim, [west, middle, east], [STONE])).toEqual([west, east]);
+    const buried = pileOnNode(sim, 12, 4); // laid under standing walls, judged as a changed holder
+    setStockAmount(sim.world, west, STONE, 0);
+    sim.world.destroy(east);
+    expect(holdingMatchesYield(sim, [west, middle, buried], [STONE])).toEqual([]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+
+    sim.world.destroy(house);
+    setStockAmount(sim.world, west, STONE, 1);
+    expect(holdingMatchesYield(sim, [west, middle, buried], [STONE])).toEqual([west, middle, buried]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('reports a pile that moved without the ledger seeing it', () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent(), map: grassMap(16, 4) });
+    houseOn(sim, 10, 4);
+    const pile = pileOnNode(sim, 20, 4);
+    expect(holdingMatchesYield(sim, [pile], [STONE])).toEqual([pile]);
+
+    // A positioned stockpile never moves: an in-place write onto the walls breaks that invariant.
+    const onWall = positionOfNode(10, 4);
+    const position = sim.world.mut(pile, Position);
+    position.x = onWall.x;
+    position.y = onWall.y;
+    expect(sim.world.verifyCaches()).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^targetBands holding \d+: members \[\d+\] differ/)]),
+    );
+  });
+});
+
 function pileOnNode(sim: Simulation, hx: number, hy: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(hx, hy));

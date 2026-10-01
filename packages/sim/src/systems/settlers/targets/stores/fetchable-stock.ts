@@ -1,5 +1,6 @@
 import {
   Building,
+  GroundDrop,
   Owner,
   ownerOf,
   Position,
@@ -7,6 +8,7 @@ import {
   UnderConstruction,
   Upgrading,
 } from '../../../../components/index.js';
+import { ChangeFeed } from '../../../../ecs/change-feed.js';
 import { JournaledCaptures } from '../../../../ecs/journaled-captures.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { ContentContext } from '../../../context.js';
@@ -43,6 +45,7 @@ const NO_HOLDERS: ReadonlySet<Entity> = new Set();
 export class FetchableStock {
   private readonly totals = new Map<number, GoodTotal>();
   private readonly holdersByGood = new Map<number, Set<Entity>>();
+  private readonly holderFeeds = new Map<number, ChangeFeed>();
   private readonly captures: JournaledCaptures<Contribution>;
 
   private constructor(
@@ -52,7 +55,8 @@ export class FetchableStock {
     this.captures = new JournaledCaptures(
       world,
       {
-        membership: [Stockpile, Position, Owner, Building, Upgrading, UnderConstruction],
+        // GroundDrop is read by no capture: it recaptures a pile so the holding band re-judges its burial.
+        membership: [Stockpile, Position, Owner, Building, Upgrading, UnderConstruction, GroundDrop],
         values: [Stockpile, Owner, Building, Upgrading],
       },
       () => world.canonicalQuery(Stockpile, Position),
@@ -60,15 +64,22 @@ export class FetchableStock {
         capture: (e) => contributionOf(world, content, e),
         apply: (e, c) => {
           foldInto(this.totals, c, 1);
-          for (const good of c.held) holdersOf(this.holdersByGood, good).add(e);
+          for (const good of c.held) {
+            holdersOf(this.holdersByGood, good).add(e);
+            this.holderFeeds.get(good)?.record(e);
+          }
         },
         withdraw: (e, c) => {
           foldInto(this.totals, c, -1);
-          for (const good of c.held) this.holdersByGood.get(good)?.delete(e);
+          for (const good of c.held) {
+            this.holdersByGood.get(good)?.delete(e);
+            this.holderFeeds.get(good)?.record(e);
+          }
         },
         clear: () => {
           this.totals.clear();
           this.holdersByGood.clear();
+          for (const feed of this.holderFeeds.values()) feed.lose();
         },
       },
     );
@@ -99,6 +110,14 @@ export class FetchableStock {
    *  never keep it past the next catch-up. */
   holders(goodType: number): ReadonlySet<Entity> {
     return this.holdersByGood.get(goodType) ?? NO_HOLDERS;
+  }
+
+  /** A feed of the stores entering or leaving {@link holders} of `goodType`, or recaptured while in it,
+   *  from now on. One reader per good: a new watch replaces the previous feed. */
+  watchHolders(goodType: number): ChangeFeed {
+    const feed = new ChangeFeed();
+    this.holderFeeds.set(goodType, feed);
+    return feed;
   }
 
   private verify(): string[] {

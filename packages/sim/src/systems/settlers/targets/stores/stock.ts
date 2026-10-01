@@ -12,7 +12,7 @@ import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js'
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../../../context.js';
-import { positionedStanceCells } from '../../../footprint/index.js';
+import { anchoredStanceCells, positionedStanceCells } from '../../../footprint/index.js';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import {
   accessibleStockAmounts,
@@ -189,6 +189,17 @@ export function strandedPile(
   const p = world.get(entity, Position);
   if (walls.has(terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y)))) return true;
   return positionedStanceCells(world, ctx, terrain, entity).length === 0;
+}
+
+/** {@link strandedPile} for a pile on `anchor` that is neither a {@link Building} nor a {@link GroundDrop}. */
+export function strandedPlainPile(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  walls: ReadonlySet<NodeId>,
+  anchor: NodeId,
+): boolean {
+  return walls.has(anchor) || anchoredStanceCells(world, ctx, terrain, anchor).length === 0;
 }
 
 /**
