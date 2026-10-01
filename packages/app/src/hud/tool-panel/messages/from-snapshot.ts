@@ -10,9 +10,11 @@ import {
 } from '@open-northland/sim';
 import {
   actorsOf,
+  childOrderWaitOf,
   healthOf,
   isAdult,
   isInvulnerable,
+  marriageOf,
   needsRuleEnabled,
   num,
   ownerPlayerOf,
@@ -230,10 +232,19 @@ function raiseIdleNote(
   else if (lacksTradeCart(e)) raiser.settler(USER_MESSAGE_TYPE.noVehicleForWork, e);
 }
 
+/** A woman whose standing child order waits on something only the player can change. */
+function raiseFamilyBlock(raiser: MessageRaiser, snapshot: WorldSnapshot, e: SnapshotEntity): void {
+  const wait = childOrderWaitOf(e);
+  if (wait === undefined) return;
+  const spouse = marriageOf(e)?.spouse;
+  raiser.family(e, wait, spouse === undefined ? undefined : entityById(snapshot, spouse));
+}
+
 /**
- * The local player's messages read off the snapshot itself: pressing needs, a settler near death, and an
- * idle worker. One pass over the world's actors per sweep interval, filtering to the seat inside the
- * loop, so the cost follows the actor count and the cadence rather than the frame rate.
+ * The local player's messages read off the snapshot itself: pressing needs, a settler near death, an
+ * idle worker, and a child order that cannot start. One pass over the world's actors per sweep interval,
+ * filtering to the seat inside the loop, so the cost follows the actor count and the cadence rather than
+ * the frame rate.
  */
 export function createSnapshotMessageSource(localPlayer: number): SnapshotMessageSource {
   let lastSweepTick: number | null = null;
@@ -253,6 +264,7 @@ export function createSnapshotMessageSource(localPlayer: number): SnapshotMessag
         if (needsOn) raiseNeeds(raiser, e);
         raiseDying(raiser, e);
         if (isLost(e)) raiser.settler(USER_MESSAGE_TYPE.lostWithoutSignposts, e);
+        raiseFamilyBlock(raiser, snapshot, e);
         // The original gates only this note on age, alongside its player-type and vehicle checks.
         if (isAdult(e)) raiseIdleNote(raiser, snapshot, e, streaks, posts);
       }

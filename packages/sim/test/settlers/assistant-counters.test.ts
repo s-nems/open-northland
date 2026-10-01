@@ -21,6 +21,7 @@ import {
   Settler,
   Stockpile,
   setNeedsEnabled,
+  setSettlerJob,
   TrainingOrder,
   Weapon,
 } from '../../src/components/index.js';
@@ -593,6 +594,7 @@ function birthContent(): ContentSet {
       { typeId: 4, id: 'child_male' },
       { typeId: WOMAN, id: 'woman' },
       { typeId: CIVILIST, id: 'civilist' },
+      { typeId: SOLDIER, id: 'soldier_unarmed', ignoresHomeHouse: true },
     ],
     landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
     buildings: [
@@ -707,6 +709,33 @@ describe('the birth queue', () => {
 
     for (const wife of wives) expect(sim.world.get(wife, ChildOrder).child).toBe('male');
     expect(sim.assistantCounters(PLAYER).extraMen).toEqual({ value: 0, infinite: true });
+  });
+
+  it('passes over a family whose husband never comes home for one that can have the child', () => {
+    const { sim, wives } = coupleSim(2);
+    const [away, home] = wives;
+    if (away === undefined || home === undefined) throw new Error('setup');
+    setSettlerJob(sim.world, sim.world.get(away, Marriage).spouse, SOLDIER);
+    setCounter(sim, 'extraWomen', 1);
+    run(sim, BEAT_TICKS);
+
+    expect(sim.world.has(away, ChildOrder)).toBe(false);
+    expect(sim.world.get(home, AssistantChildOrder).sex).toBe('female');
+  });
+
+  it('gives back a booking once the husband takes up a trade that never comes home', () => {
+    const { sim, wives } = coupleSim(2);
+    const [first, second] = wives;
+    if (first === undefined || second === undefined) throw new Error('setup');
+    setCounter(sim, 'extraWomen', 1);
+    run(sim, BEAT_TICKS);
+    expect(sim.world.has(first, AssistantChildOrder)).toBe(true);
+
+    setSettlerJob(sim.world, sim.world.get(first, Marriage).spouse, SOLDIER);
+    run(sim, 2 * BEAT_TICKS);
+
+    expect(sim.world.has(first, ChildOrder)).toBe(false);
+    expect(sim.world.get(second, AssistantChildOrder).sex).toBe('female');
   });
 
   it("a player's own makeChild never pays the assistant's counters", () => {

@@ -12,7 +12,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { isFood } from '../readviews/index.js';
+import { isFood, jobIgnoresHomeHouse } from '../readviews/index.js';
 import { EntityReferences } from '../spatial/entity-references.js';
 import { accessibleStockAmounts, setAccessibleStockAmount } from '../stores/index.js';
 
@@ -23,6 +23,17 @@ function homeType(world: World, ctx: SystemContext, house: Entity): BuildingType
   if (b === undefined) return undefined;
   const type = contentIndex(ctx.content).buildings.get(b.buildingType);
   return type?.kind === 'home' ? type : undefined;
+}
+
+/**
+ * The house `e` goes back to for sleep, prayer and food: its residence, unless its trade is one
+ * `jobtypes.ini` marks `ignoresHomeHouseFlag` (scout, trader, every soldier and hero). Original behavior:
+ * such a settler keeps its family's house but serves every need away from it.
+ */
+export function homeUsedBy(world: World, ctx: SystemContext, e: Entity): Entity | undefined {
+  const home = world.tryGet(e, Residence)?.home;
+  if (home === undefined || jobIgnoresHomeHouse(ctx.content, world.get(e, Settler).jobType)) return undefined;
+  return home;
 }
 
 /** The `home`-kind {@link BuildingType} of a completed house entity. */

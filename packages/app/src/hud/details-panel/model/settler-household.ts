@@ -2,6 +2,7 @@ import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { JOB_CIVILIST, JOB_IDLE, JOB_SCOUT } from '../../../catalog/jobs.js';
 import {
   buildingTypeOf,
+  childOrderWaitOf,
   fatherOf,
   isAdult,
   isBoundByMarriage,
@@ -14,7 +15,7 @@ import {
   trainingHouseOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
-import { messages } from '../../../i18n/index.js';
+import { formatMessage, messages } from '../../../i18n/index.js';
 import { buildingTitle, type UnitPanelModelContext } from './context.js';
 import { settlerDisplayName, settlerGivenName } from './settler-name.js';
 import type { SettlerPlace } from './settler-work.js';
@@ -66,6 +67,8 @@ export interface SettlerFamilyModel {
   /** The find-a-partner button: live for a grown person free to marry, faded while a wedding it started
    *  is under way, null when the person may not marry. */
   readonly marry: SeatControl | null;
+  /** The couple's child order, while it waits on the player: what holds it, and the whole sentence. */
+  readonly childOnHold: { readonly label: string; readonly tooltip: string } | null;
 }
 
 /**
@@ -142,5 +145,25 @@ export function familyModel(
     child:
       child === undefined || isAdult(child) ? null : { id: child.id, label: settlerGivenName(ctx, child) },
     marry: !eligible ? null : isMarrying(ent) ? messages().hud.settlerPanel.weddingUnderWay : true,
+    childOnHold: childOnHold(ctx, snapshot, ent, spouse),
+  };
+}
+
+/** The wife carries the order, so both spouses read it off her. */
+function childOnHold(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  ent: SnapshotEntity,
+  spouse: SnapshotEntity | undefined,
+): SettlerFamilyModel['childOnHold'] {
+  const wife = isFemale(ent) ? ent : spouse;
+  const husband = wife === ent ? spouse : ent;
+  const wait = wife === undefined ? undefined : childOrderWaitOf(wife);
+  if (wife === undefined || wait === undefined) return null;
+  const copy = messages().userMessages.familyBlocked;
+  const partner = husband === undefined ? '' : settlerDisplayName(ctx, snapshot, husband);
+  return {
+    label: copy.short[wait],
+    tooltip: `${settlerDisplayName(ctx, snapshot, wife)} ${formatMessage(copy.full[wait], { partner })}`,
   };
 }

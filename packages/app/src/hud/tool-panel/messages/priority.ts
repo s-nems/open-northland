@@ -59,6 +59,7 @@ const NOTABLE: readonly UserMessageTypeName[] = [
   'vehicleCannotNearShip',
   'cannotLeaveVehicle',
   'vehicleNoCarrier',
+  'familyBlocked',
 ];
 
 const IMPORTANT_LEVEL: MessagePriorityLevel = 2;

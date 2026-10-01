@@ -22,6 +22,7 @@ import {
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { childOrderBlocker } from '../family/children/index.js';
 import { isMarried } from '../family/eligibility.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 import { mayBearChild } from '../orders/family.js';
@@ -61,7 +62,7 @@ export const assistantSystem: System = (world, ctx) => {
     const { player, counters } = world.get(carrier, AssistantCounters);
     if (seen.has(player)) continue; // lowest-id carrier wins (the rules-singleton convention)
     seen.add(player);
-    dispatchBirths(world, player, counters, scans);
+    dispatchBirths(world, ctx, player, counters, scans);
     dispatchTraining(world, ctx, player, counters, scans);
   }
 };
@@ -87,13 +88,22 @@ function beatScans(world: World): BeatScans {
 }
 
 /**
- * Drop bookings whose underlying order vanished, so they stop holding an in-flight slot and the queue
- * re-dispatches. A recruit still drilling, or already enlisted as a soldier, keeps its booking.
+ * Drop bookings whose underlying order vanished or waits on the player, so they stop holding an in-flight
+ * slot and the queue re-dispatches. A recruit still drilling, or already enlisted as a soldier, keeps its
+ * booking.
  */
 function sweepStaleBookings(world: World, ctx: SystemContext): void {
   // Copies, not sorts: removal here is order-independent; the copy only guards the live iteration.
   for (const e of [...world.query(AssistantChildOrder)]) {
-    if (!world.has(e, ChildOrder)) world.remove(e, AssistantChildOrder);
+    if (!world.has(e, ChildOrder)) {
+      world.remove(e, AssistantChildOrder);
+      continue;
+    }
+    const spouse = world.tryGet(e, Marriage)?.spouse;
+    if (spouse === undefined || !world.isAlive(spouse)) continue; // the family pass drops a widow's order
+    if (childOrderBlocker(world, ctx, e, spouse) === undefined) continue;
+    world.remove(e, ChildOrder);
+    world.remove(e, AssistantChildOrder);
   }
   for (const e of [...world.query(AssistantRecruit)]) {
     if (world.has(e, TrainingOrder)) continue;
@@ -108,6 +118,7 @@ function sweepStaleBookings(world: World, ctx: SystemContext): void {
  */
 function dispatchBirths(
   world: World,
+  ctx: SystemContext,
   player: number,
   counters: AssistantCounterValues,
   scans: BeatScans,
@@ -125,6 +136,7 @@ function dispatchBirths(
     if (ownerOf(world, woman) !== player) continue;
     if (world.has(woman, ChildOrder)) continue; // her own or an earlier booking - one at a time
     if (!mayBearChild(world, woman)) continue;
+    if (childOrderBlocker(world, ctx, woman, world.get(woman, Marriage).spouse) !== undefined) continue;
     const sex = girlsWanted > 0 ? 'female' : 'male';
     world.add(woman, ChildOrder, { child: sex });
     world.add(woman, AssistantChildOrder, { sex });

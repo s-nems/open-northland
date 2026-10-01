@@ -19,6 +19,7 @@ import {
   Settler,
   SettlerNeeds,
   Stockpile,
+  setSettlerJob,
   TrainingOrder,
   UnderConstruction,
   Wedding,
@@ -87,7 +88,8 @@ function familyContent(): ContentSet {
       { typeId: 4, id: 'child_male' },
       { typeId: WOMAN, id: 'woman' },
       { typeId: CIVILIST, id: 'civilist' },
-      { typeId: SOLDIER, id: 'soldier_unarmed' },
+      // Every real soldier trade carries `ignoresHomeHouseFlag 1`.
+      { typeId: SOLDIER, id: 'soldier_unarmed', ignoresHomeHouse: true },
     ],
     landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
     buildings: [
@@ -267,6 +269,46 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
       expect(sim.world.has(e, FamilyDuty)).toBe(false);
     }
     expect(sim.world.has(woman(), ChildOrder)).toBe(true); // resumes once the family is housed again
+    expect(sim.world.get(woman(), ChildOrder).blocked).toBe('noHome'); // and says why it waits
+  });
+
+  it('forgets a missed food search once the child fund is stocked, whoever stocked it', () => {
+    const { sim, woman, man, home } = familySim(3);
+    sim.world.add(woman(), Marriage, { spouse: man(), child: null });
+    sim.world.add(man(), Marriage, { spouse: woman(), child: null });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman(), child: 'female' });
+    sim.step();
+    sim.world.mut(woman(), ChildOrder).foodSearchMissed = true;
+    sim.world.mut(home(), Stockpile).amounts.set(FOOD, CHILD_FOOD_UNITS);
+    sim.step();
+    expect(sim.world.get(woman(), ChildOrder).foodSearchMissed).toBeUndefined();
+  });
+
+  it('holds the order while the husband serves a trade that never comes home, and resumes after', () => {
+    const { sim, woman, man, home } = familySim(3);
+    sim.enqueueSetup({ kind: 'marry', entity: woman() });
+    runUntil(sim, () => sim.world.has(woman(), Marriage), 800, 'wedding');
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+    setSettlerJob(sim.world, man(), SOLDIER);
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman(), child: 'female' });
+    sim.step();
+    expect(sim.world.get(woman(), ChildOrder).blocked).toBe('husbandAway');
+
+    // He keeps the family's house, but nothing calls him into it: the order waits with its reason.
+    let enteredHome = false;
+    for (let i = 0; i < 600; i++) {
+      sim.step();
+      if (sim.world.tryGet(man(), Resting)?.at === home()) enteredHome = true;
+    }
+    expect(enteredHome).toBe(false);
+    expect(sim.world.get(man(), Residence).home).toBe(home());
+    expect(sim.world.has(home(), MakingLove)).toBe(false);
+    expect(sim.world.get(woman(), ChildOrder).blocked).toBe('husbandAway');
+
+    setSettlerJob(sim.world, man(), CIVILIST);
+    runUntil(sim, () => sim.world.get(woman(), Marriage).child !== null, 4000, 'child after he came home');
   });
 
   it('marrying after one spouse is already housed moves the other in (co-housed as one household)', () => {
@@ -555,6 +597,20 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueueSetup({ kind: 'assignHouse', entity: stranger, house: home });
     runUntil(sim, () => (sim.world.get(home, Stockpile).amounts.get(FOOD) ?? 0) < 2, 200, 'resident meal');
     expect(sim.world.get(stranger, SettlerNeeds).hunger).toBeLessThan(ONE);
+  });
+
+  it('a resident whose trade never comes home leaves the family larder alone', () => {
+    const sim = new Simulation({ seed: 11, content: familyContent(), map: grassMap(28, 4) });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SOLDIER, x: 8, y: 0, tribe: VIKING, owner: PLAYER });
+    sim.step();
+    const soldier = [...sim.world.query(Settler)][0] as Entity;
+    const home = homeOf(sim);
+    sim.world.add(soldier, Residence, { home });
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, 2);
+    sim.enqueueSetup({ kind: 'debugSetNeeds', target: soldier, hunger: 100 });
+    for (let i = 0; i < 60; i++) sim.step();
+    expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(2);
   });
 
   it('a hungry wife feeds herself before waiting, then bears the child (no home↔store starvation loop)', () => {

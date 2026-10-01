@@ -1047,6 +1047,24 @@ export const plGame = {
     shortUnknownHeroDied: 'Nieznany poległ',
     shortBecameSoldier: 'Żołnierz',
     shortLearnedProfession: 'Fach: {profession}',
+    familyBlocked: {
+      short: {
+        husbandAway: 'Mąż poza domem',
+        noHome: 'Brak domu',
+        homeUnbuilt: 'Dom w budowie',
+        livesApart: 'Osobne domy',
+        noFood: 'Brak jedzenia dla dziecka',
+      },
+      full: {
+        husbandAway:
+          'nie może mieć dziecka: jej mąż {partner} nie wraca do domu, jego zawód trzyma go z dala od rodziny. Gdy znów obejmie cywilny zawód, będą mogli mieć dziecko.',
+        noHome: 'nie może mieć dziecka: para nie ma domu. Przydziel im dom.',
+        homeUnbuilt: 'nie może mieć dziecka, dopóki dom nie zostanie ukończony.',
+        livesApart:
+          'nie może mieć dziecka: jej mąż {partner} mieszka w innym domu. Przenieś rodzinę do jednego domu.',
+        noFood: 'nie może mieć dziecka: w zasięgu nie ma jedzenia, którym mogłaby zaopatrzyć dom.',
+      },
+    },
     rows: {
       '33': 'w odniesieniu do swojego doświadczenia może teraz wykonywać następujące prace',
       '34': 'Nowe zawody',

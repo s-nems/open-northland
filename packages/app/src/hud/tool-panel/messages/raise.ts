@@ -1,15 +1,17 @@
 import { type DiplomacyState, nodeOfPosition, type Paper, type WorldSnapshot } from '@open-northland/sim';
-import { num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
-import type { MessageText, MessageTextParts } from './text.js';
-import type { MessageSubject, PendingMessage, UserMessageType } from './types.js';
+import { type ChildOrderWait, num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
+import type { MessageText, MessageTextParts, NamedSettler } from './text.js';
+import {
+  type MessageSubject,
+  type PendingMessage,
+  USER_MESSAGE_TYPE,
+  type UserMessageType,
+} from './types.js';
 
 /** How a source names what it saw; the strings and catalogs stay outside the sources. */
 export interface MessageNaming {
   /** A person's display name and the trade label shown after it (null for no label). */
-  settler(
-    e: SnapshotEntity,
-    snapshot: WorldSnapshot,
-  ): { readonly name: string; readonly jobLabel: string | null };
+  settler(e: SnapshotEntity, snapshot: WorldSnapshot): NamedSettler;
   building(e: SnapshotEntity): string | null;
   /** A vehicle's type name, or null for a type the catalog does not know. */
   vehicle(e: SnapshotEntity): string | null;
@@ -86,6 +88,36 @@ export class MessageRaiser {
           this.naming.settler(e, this.snapshot).name,
           this.naming.technology('job', jobType),
         ),
+    );
+  }
+
+  /** A woman's child order held by `wait`, naming `partner`, her husband, where the reason is his. */
+  family(e: SnapshotEntity, wait: ChildOrderWait, partner: SnapshotEntity | undefined): void {
+    const type = USER_MESSAGE_TYPE.familyBlocked;
+    this.raise(
+      `${type}|settler:${e.id}`,
+      {
+        type,
+        subject: { kind: 'settler', entity: e.id },
+        at: nodeOf(e),
+        about: null,
+        goodType: null,
+        technologies: null,
+        jobType: jobTypeOf(e),
+      },
+      () => {
+        const named = this.naming.settler(e, this.snapshot);
+        return this.naming.text(type, {
+          subjectName: named.name,
+          jobLabel: named.jobLabel,
+          goodName: null,
+          stanceName: null,
+          family: {
+            wait,
+            partner: partner === undefined ? null : this.naming.settler(partner, this.snapshot),
+          },
+        });
+      },
     );
   }
 

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { UiString } from '../src/content/gui-gfx.js';
 import {
   composeMessageText,
+  type DecodedMessageTypeName,
+  type FamilyLines,
   MESSAGE_STRING_ID,
   type MessageTextDeps,
   type ShortLabels,
@@ -41,7 +43,29 @@ const SHORT: ShortLabels = {
   withStance: { playerSighted: 'Met: {stance}' },
   unknownHeroDied: 'short:unknown',
 };
-const deps: MessageTextDeps = { uiString: decoded, fallbackRow: (id) => `<${id}>`, short: SHORT };
+/** Synthetic family lines: the wait's own name, and the partner slot in each sentence. */
+const FAMILY: FamilyLines = {
+  short: {
+    husbandAway: 'short:away',
+    noHome: 'short:home',
+    homeUnbuilt: 'short:site',
+    livesApart: 'short:apart',
+    noFood: 'short:food',
+  },
+  full: {
+    husbandAway: 'away {partner}',
+    noHome: 'home',
+    homeUnbuilt: 'site',
+    livesApart: 'apart {partner}',
+    noFood: 'food',
+  },
+};
+const deps: MessageTextDeps = {
+  uiString: decoded,
+  fallbackRow: (id) => `<${id}>`,
+  short: SHORT,
+  family: FAMILY,
+};
 
 const compose = (
   type: (typeof USER_MESSAGE_TYPE)[UserMessageTypeName],
@@ -64,11 +88,39 @@ const compose = (
   ).full;
 
 describe('user message text', () => {
-  it('maps every type to a messages row', () => {
-    for (const name of Object.keys(USER_MESSAGE_TYPE) as UserMessageTypeName[]) {
+  it('maps every decoded type to a messages row', () => {
+    for (const name of Object.keys(MESSAGE_STRING_ID) as DecodedMessageTypeName[]) {
       expect(MESSAGE_STRING_ID[name]).toBeGreaterThan(0);
       expect(userMessageTypeName(USER_MESSAGE_TYPE[name])).toBe(name);
     }
+    expect(Object.keys(MESSAGE_STRING_ID)).toHaveLength(Object.keys(USER_MESSAGE_TYPE).length - 1);
+  });
+
+  it('words a held child order from the catalog, naming the husband where the reason is his', () => {
+    const away = composeMessageText(
+      USER_MESSAGE_TYPE.familyBlocked,
+      {
+        subjectName: 'Astrid',
+        jobLabel: null,
+        goodName: null,
+        stanceName: null,
+        family: { wait: 'husbandAway', partner: { name: 'Olaf', jobLabel: 'Zwiadowca' } },
+      },
+      deps,
+    );
+    expect(away).toEqual({ short: 'short:away', full: 'Astrid away Olaf (Zwiadowca)' });
+    const homeless = composeMessageText(
+      USER_MESSAGE_TYPE.familyBlocked,
+      {
+        subjectName: 'Astrid',
+        jobLabel: null,
+        goodName: null,
+        stanceName: null,
+        family: { wait: 'noHome', partner: null },
+      },
+      deps,
+    );
+    expect(homeless.full).toBe('Astrid home');
   });
 
   it('leads with the settler and its trade in parentheses', () => {
@@ -133,6 +185,7 @@ describe('user message text', () => {
       uiString: (_t, _i, fallback) => fallback,
       fallbackRow: (id) => `<${id}>`,
       short: SHORT,
+      family: FAMILY,
     };
     expect(
       composeMessageText(

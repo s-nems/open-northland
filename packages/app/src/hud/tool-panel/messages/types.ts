@@ -8,6 +8,9 @@ import type { MessageText } from './text.js';
  * The original never raises six of them: `taskCompleted`, `waitingForGood`, `bored`, `wasBorn`, and
  * the two `gaveBirth` ids. Nothing here raises them either. It never raises `cannotAttachVehicle`
  * either, which here stands in for the silently refused load of a vehicle into a ship (approximation).
+ *
+ * `familyBlocked` is this game's own, past the original's range: the original fails a child order it
+ * cannot start without a word. Its wording comes from the app catalog, not a decoded row.
  */
 export const USER_MESSAGE_TYPE = {
   taskCompleted: 0x01,
@@ -73,6 +76,7 @@ export const USER_MESSAGE_TYPE = {
   diplomacyChanged: 0x3d,
   playerDied: 0x3e,
   specialItemFound: 0x3f,
+  familyBlocked: 0x80,
 } as const;
 
 export type UserMessageTypeName = keyof typeof USER_MESSAGE_TYPE;

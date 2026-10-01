@@ -168,7 +168,7 @@ describe('the settler panel’s rows', () => {
 
   it('offers the rings to a person free to marry and fades them while the wedding runs', () => {
     const copy = messages().hud.settlerPanel;
-    const free = { partner: null, child: null, marry: true } as const;
+    const free = { partner: null, child: null, marry: true, childOnHold: null } as const;
     expect(familyButton(free)).toMatchObject({ enabled: true, tooltip: copy.noPartnerTooltip });
     expect(familyButton({ ...free, marry: copy.weddingUnderWay })).toMatchObject({
       enabled: false,
@@ -212,20 +212,36 @@ describe('the settler panel’s rows', () => {
 
   it('offers "bez pary" as the partner search only to a person free to marry', () => {
     const copy = messages().hud.settlerPanel;
-    expect(familyValue({ partner: null, child: null, marry: true })[0]).toMatchObject({
+    expect(familyValue({ partner: null, child: null, marry: true, childOnHold: null })[0]).toMatchObject({
       text: copy.noPartner,
       link: true,
       tone: 'missing',
     });
-    expect(familyValue({ partner: null, child: null, marry: null })[0]?.link).toBeUndefined();
-    expect(familyValue({ partner: null, child: null, marry: copy.weddingUnderWay })[0]?.link).toBeUndefined();
+    expect(
+      familyValue({ partner: null, child: null, marry: null, childOnHold: null })[0]?.link,
+    ).toBeUndefined();
+    expect(
+      familyValue({ partner: null, child: null, marry: copy.weddingUnderWay, childOnHold: null })[0]?.link,
+    ).toBeUndefined();
     expect(
       familyValue({
         partner: { id: 2, label: 'Astrid' },
         child: { id: 3, label: 'Tove' },
         marry: null,
+        childOnHold: null,
       }).map((segment) => segment.text),
     ).toEqual(['Astrid', 'Tove']);
+  });
+
+  it("names what holds the couple's child order after the spouse, in amber with the whole sentence", () => {
+    const held = familyValue({
+      partner: { id: 2, label: 'Olaf' },
+      child: null,
+      marry: null,
+      childOnHold: { label: 'Husband away', tooltip: 'Astrid cannot have a child' },
+    });
+    expect(held.map((segment) => segment.text)).toEqual(['Olaf', 'Husband away']);
+    expect(held[1]).toMatchObject({ tone: 'missing', tooltip: 'Astrid cannot have a child' });
   });
 
   it('links the vehicle with its hold, else offers the pick in amber while the player may assign', () => {

@@ -2,6 +2,7 @@ import {
   Carrying,
   CHILD_FOOD_UNITS,
   ChildOrder,
+  type ChildOrderBlocker,
   Engagement,
   FamilyDuty,
   Fleeing,
@@ -20,7 +21,7 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isTravelling } from '../../movement/nav-state.js';
-import { isFood } from '../../readviews/index.js';
+import { isFood, jobIgnoresHomeHouse } from '../../readviews/index.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { startDrop } from '../../settlers/atomics/start.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
@@ -28,7 +29,6 @@ import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors
 import { interactionCell } from '../../settlers/targets/index.js';
 import { unreachableGoalVeto } from '../../settlers/unreachable-goals.js';
 import { navigationLimitFor } from '../../signposts/index.js';
-import { isOnMission } from '../eligibility.js';
 import { deliverHome, fetchFrom } from '../food-haul.js';
 import type { ExternalFoodIndex } from '../food-search.js';
 import { builtHomeType, consumeFoodUnits, isMinor, setFoodReserve, storedFoodUnits } from '../households.js';
@@ -77,12 +77,9 @@ export function driveOrder(
   }
 
   const home = world.tryGet(woman, Residence)?.home;
-  const homeType = home !== undefined ? builtHomeType(world, ctx, home) : undefined;
-  const together = home !== undefined && world.tryGet(husband, Residence)?.home === home;
-  const husbandAway = isOnMission(ctx.content, world.get(husband, Settler).jobType);
-  // No capacity gate: `homeSize` caps families, and the newborn joins its parents' existing household.
-  const active = home !== undefined && homeType !== undefined && together && !husbandAway;
-  if (!active) {
+  const blocked = childOrderBlocker(world, ctx, woman, husband);
+  if (world.get(woman, ChildOrder).blocked !== blocked) world.mut(woman, ChildOrder).blocked = blocked;
+  if (home === undefined || blocked !== undefined) {
     if (home !== undefined) standDown(world, woman, husband, home);
     return;
   }
@@ -105,6 +102,9 @@ export function driveOrder(
     haulFood(world, ctx, terrain, woman, home, pass);
     return;
   }
+  // The fund is stocked, whoever filled it, so a search that once found nothing is no longer news.
+  if (world.get(woman, ChildOrder).foodSearchMissed === true)
+    world.mut(woman, ChildOrder).foodSearchMissed = undefined;
 
   claimDuty(world, woman, pass);
   if (!ensureInside(world, ctx, terrain, woman, home)) return;
@@ -121,6 +121,25 @@ export function driveOrder(
     elapsed: 0,
     duration: makeLoveDuration(ctx, world.get(woman, Settler).tribe),
   });
+}
+
+/**
+ * What keeps a married couple from starting a child, or undefined when nothing does. No capacity gate:
+ * `homeSize` caps families, and the newborn joins its parents' existing household. Original behavior:
+ * the child task fails while the husband's trade is one `jobtypes.ini` marks `ignoresHomeHouseFlag`.
+ */
+export function childOrderBlocker(
+  world: World,
+  ctx: SystemContext,
+  woman: Entity,
+  husband: Entity,
+): ChildOrderBlocker | undefined {
+  const home = world.tryGet(woman, Residence)?.home;
+  if (home === undefined) return 'noHome';
+  if (builtHomeType(world, ctx, home) === undefined) return 'homeUnbuilt';
+  if (jobIgnoresHomeHouse(ctx.content, world.get(husband, Settler).jobType)) return 'husbandAway';
+  if (world.tryGet(husband, Residence)?.home !== home) return 'livesApart';
+  return undefined;
 }
 
 /** Drop an order that can never complete, and let its holder out of the house. */

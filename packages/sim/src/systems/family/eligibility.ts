@@ -34,9 +34,9 @@ export function isFemaleJobId(id: string | undefined): boolean {
 }
 
 /**
- * Whether a settler of `jobType` is away on a mission, a fighter or the scout: it neither marries nor
- * comes home to its family, and reverting to a civilian trade restores family life. Authored, over the
- * content-derived job roles.
+ * Whether a settler of `jobType` is away on a mission, a fighter or the scout: it does not marry, and
+ * reverting to a civilian trade lets it again. Authored, over the content-derived job roles. Whether it
+ * comes home is the data's own flag (`homeUsedBy`).
  */
 export function isOnMission(content: ContentSet, jobType: number | null): boolean {
   return isFighterJob(content, jobType) || isScoutJob(content, jobType);

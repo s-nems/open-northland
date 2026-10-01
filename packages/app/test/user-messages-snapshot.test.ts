@@ -44,6 +44,11 @@ interface Actor {
   /** A trader's route with this many houses, and whether it rides a vehicle. */
   readonly tradeStops?: number;
   readonly rider?: boolean;
+  /** A standing child order and the sim's recorded reason it waits, if any. */
+  readonly childOrder?: { readonly blocked?: string; readonly foodSearchMissed?: true };
+  /** The order is the assistant's booking. */
+  readonly assistantOrder?: boolean;
+  readonly spouse?: number;
 }
 
 function doingComponents(doing: Doing): Record<string, unknown> {
@@ -98,6 +103,9 @@ function components(a: Actor): Record<string, unknown> {
       ? {}
       : { TradeRoute: { stops: Array.from({ length: a.tradeStops }, (_, house) => ({ house })) } }),
     ...(a.rider === true ? { Rider: { vehicle: 50, boarding: false } } : {}),
+    ...(a.childOrder === undefined ? {} : { ChildOrder: { child: 'female', ...a.childOrder } }),
+    ...(a.spouse === undefined ? {} : { Marriage: { spouse: a.spouse, child: null } }),
+    ...(a.assistantOrder === true ? { AssistantChildOrder: { sex: 'female' } } : {}),
     ...(a.invulnerable === true
       ? { MissionBehaviour: { flags: sim.components.MISSION_BEHAVIOUR.INVULNERABLE } }
       : {}),
@@ -367,5 +375,27 @@ describe('user messages read off the snapshot', () => {
       const from = IDLE_SWEEPS_BEFORE_MESSAGE + 1;
       expect(sweep(source, snapshot(from * SNAPSHOT_SWEEP_INTERVAL_TICKS, hired))).toEqual([]);
     });
+  });
+
+  it('raises a held child order on the wife, naming her husband, and leaves a running one alone', () => {
+    const couple: Actor[] = [
+      { id: 1, childOrder: { blocked: 'husbandAway' }, spouse: 2, doing: 'work' },
+      { id: 2, spouse: 1, doing: 'work' },
+      { id: 3, childOrder: {}, spouse: 4, doing: 'work' },
+      { id: 4, spouse: 3, doing: 'work' },
+      { id: 5, childOrder: { foodSearchMissed: true }, doing: 'work' },
+      // The assistant gives a blocked booking of its own back on its next beat: nothing to tell.
+      { id: 6, childOrder: { blocked: 'husbandAway' }, assistantOrder: true, spouse: 2, doing: 'work' },
+    ];
+    const source = createSnapshotMessageSource(LOCAL);
+    const raised = source.sweep(snapshot(0, couple), {
+      ...naming,
+      text: (type, parts) =>
+        plain(`${parts.subjectName}:${type}:${parts.family?.wait}:${parts.family?.partner?.name}`),
+    });
+    expect(raised.map((r) => r.compose().full)).toEqual([
+      `S1:${USER_MESSAGE_TYPE.familyBlocked}:husbandAway:S2`,
+      `S5:${USER_MESSAGE_TYPE.familyBlocked}:noFood:undefined`,
+    ]);
   });
 });

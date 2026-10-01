@@ -1,5 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  type components,
   entityById,
   firstDifference,
   groupedBy,
@@ -118,6 +119,28 @@ export function residenceHomeOf(e: SnapshotEntity): number | undefined {
 export function childOrderOf(e: SnapshotEntity): 'female' | 'male' | undefined {
   const o = e.components.ChildOrder as { child?: unknown } | undefined;
   return o?.child === 'female' || o?.child === 'male' ? o.child : undefined;
+}
+
+/** Why a standing child order is not moving: the sim's recorded blocker, or a larder no food reaches. */
+export type ChildOrderWait = components.ChildOrderBlocker | 'noFood';
+
+const CHILD_ORDER_BLOCKERS: readonly components.ChildOrderBlocker[] = [
+  'noHome',
+  'homeUnbuilt',
+  'livesApart',
+  'husbandAway',
+];
+
+/**
+ * Why a woman's standing child order waits, or undefined while it runs or none stands. A blocked
+ * assistant booking reads as running: the assistant gives it back on its next beat.
+ */
+export function childOrderWaitOf(e: SnapshotEntity): ChildOrderWait | undefined {
+  const order = e.components.ChildOrder as { blocked?: unknown; foodSearchMissed?: unknown } | undefined;
+  if (order === undefined) return undefined;
+  const blocked = CHILD_ORDER_BLOCKERS.find((reason) => reason === order.blocked);
+  if (blocked !== undefined) return e.components.AssistantChildOrder === undefined ? blocked : undefined;
+  return order.foodSearchMissed === true ? 'noFood' : undefined;
 }
 
 /** True while a resident couple makes love in this home (the hearts overlay reads it). */

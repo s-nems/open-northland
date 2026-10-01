@@ -1,7 +1,6 @@
 import {
   Marriage,
   needsEnabled,
-  Residence,
   Settler,
   type SettlerIdentity,
   SettlerNeeds,
@@ -11,7 +10,7 @@ import { ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { homeQualityActive } from '../../family/home-quality.js';
-import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
+import { homeUsedBy, reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
 import { carriesNeeds, NEED_SATED_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { atomicClipNameAtHome, atomicEventChannelDelta } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, jobNeedsReligion } from '../../readviews/index.js';
@@ -46,16 +45,17 @@ interface HomeRound {
 
 /**
  * The round the at-home chain serves `e` next, rest first, then a meal off the family larder, then a
- * prayer; null when `e` is not indoors at home, another system holds it there, or no bar it can still
- * top up. A round whose clip moves no bar is skipped, or the chain would hold the settler in its house
- * for good.
+ * prayer; null when `e` is not indoors in a home it uses, another system holds it there, or no bar it
+ * can still top up. A round whose clip moves no bar is skipped, or the chain would hold the settler in its
+ * house for good.
  */
 function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound | null {
   if (!needsEnabled(world) || !carriesNeeds(world, ctx.content, e)) return null;
   if (heldIndoors(world, e)) return null;
-  const home = world.tryGet(e, Residence)?.home;
   const settler = world.tryGet(e, Settler);
-  if (home === undefined || settler === undefined || !isInside(world, e, home)) return null;
+  if (settler === undefined) return null;
+  const home = homeUsedBy(world, ctx, e);
+  if (home === undefined || !isInside(world, e, home)) return null;
   const needs = world.get(e, SettlerNeeds);
   if (needs.fatigue > NEED_SATED_THRESHOLD && homeClipServes(ctx, settler, SLEEP_ATOMIC_ID, REST)) {
     return { atomicId: SLEEP_ATOMIC_ID, effect: { kind: 'sleep' }, target: e };

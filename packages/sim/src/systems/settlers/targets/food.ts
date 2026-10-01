@@ -2,7 +2,6 @@ import {
   BerryBush,
   Building,
   ownerOf,
-  Residence,
   Stockpile,
   sameSideAs,
   type UnreachableGoal,
@@ -14,7 +13,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { lowestStockedFood } from '../../family/food-sources.js';
-import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
+import { homeUsedBy, reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
 import { routeRegions } from '../../footprint/index.js';
 import { bushesNearNode } from '../../spatial/bushes.js';
 import { closer, manhattan } from '../../spatial/metric.js';
@@ -41,7 +40,7 @@ function nearestFoodStore(
   memo: readonly UnreachableGoal[] | null,
   gate?: SpatialGate,
 ): { store: Entity; goodType: number; dist: number; cell: NodeId } | null {
-  const home = world.tryGet(eater, Residence)?.home ?? null;
+  const home = homeUsedBy(world, ctx, eater) ?? null;
   const component = terrain.componentOf(here);
   const avoid = (cell: NodeId): boolean =>
     terrain.componentOf(cell) !== component || isUnreachableGoal(memo, cell);
@@ -59,8 +58,8 @@ function nearestFoodStore(
 
 /**
  * The food good `eater` may eat from `store`, or null. Beyond {@link storedFoodGood}'s "holds an
- * edible", a home larder feeds only its own residents, and the resident share stops at the home's
- * {@link reservedFoodUnits}, the child fund nobody eats.
+ * edible", a home larder feeds only the residents that use it ({@link homeUsedBy}), and the resident
+ * share stops at the home's {@link reservedFoodUnits}, the child fund nobody eats.
  */
 function edibleFoodGoodFor(
   world: World,

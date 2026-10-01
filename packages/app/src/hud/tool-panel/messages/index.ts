@@ -30,7 +30,7 @@ import { galleryMessages, type NoticeGallery } from './gallery.js';
 import type { MessageNaming } from './raise.js';
 import { isNoteOver, isSubjectGone } from './retire.js';
 import { createSeatFeeds } from './seat-feeds.js';
-import { composeMessageText, type MessageText, type ShortLabels } from './text.js';
+import { composeMessageText, type FamilyLines, type MessageText, type ShortLabels } from './text.js';
 import type { UserMessage } from './types.js';
 
 export type { MessageFeedState } from './feed.js';
@@ -116,6 +116,11 @@ function shortLabels(): ShortLabels {
   };
 }
 
+function familyLines(): FamilyLines {
+  const copy = messages().userMessages.familyBlocked;
+  return { short: copy.short, full: copy.full };
+}
+
 function makeNaming(deps: MessageCenterDeps): MessageNaming {
   return {
     settler: (e: SnapshotEntity, snapshot) => {
@@ -164,7 +169,12 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
       return { short, full: `${subjectName} ${body}` };
     },
     text: (type, parts) =>
-      composeMessageText(type, parts, { uiString: deps.ctx.uiString, fallbackRow, short: shortLabels() }),
+      composeMessageText(type, parts, {
+        uiString: deps.ctx.uiString,
+        fallbackRow,
+        short: shortLabels(),
+        family: familyLines(),
+      }),
   };
 }
 

@@ -439,6 +439,11 @@ export const plContent = {
       title: 'Śluby i dzieci',
       summary: 'Para bierze ślub z pocałunkiem; żona znosi jedzenie do domu i rodzi dziecko.',
     },
+    'family-away': {
+      title: 'Mąż, który nie wraca do domu',
+      summary:
+        'Mąż z domem, który został zwiadowcą, śpi na dworze, a żona dostaje powiadomienie, dlaczego nie mogą mieć dziecka.',
+    },
     children: {
       title: 'Dzieci jedzą same',
       summary: 'Głodne dzieci podchodzą do dzikich krzaków i jedzą; niemowlę pod opieką samo się nie karmi.',

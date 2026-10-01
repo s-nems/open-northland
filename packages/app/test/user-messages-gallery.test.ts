@@ -58,6 +58,7 @@ const naming: MessageNaming = {
         withStance: en.userMessages.shortWithStance,
         unknownHeroDied: en.userMessages.shortUnknownHeroDied,
       },
+      family: en.userMessages.familyBlocked,
     }),
 };
 

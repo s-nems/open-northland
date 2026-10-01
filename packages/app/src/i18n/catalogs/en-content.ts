@@ -441,6 +441,11 @@ export const enContent = {
       title: 'Marriage and children',
       summary: 'A couple weds with a kiss; a married wife stocks the home with food and bears a child.',
     },
+    'family-away': {
+      title: 'A husband who never comes home',
+      summary:
+        'A housed husband turned scout sleeps outside, and his wife gets a note saying why they cannot have a child.',
+    },
     children: {
       title: 'Children feed themselves',
       summary: 'Hungry children walk to wild bushes and eat; the cared-for baby never self-feeds.',

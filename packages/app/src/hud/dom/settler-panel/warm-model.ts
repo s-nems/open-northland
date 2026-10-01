@@ -61,7 +61,7 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     buildRun: 'roads',
     home: { target: null, assign: true, remove: null },
     vehicle: { target: { id: 2, label: 'Warm', load: 'Warm' }, assign: true, remove: true },
-    family: { partner: null, child: null, marry: true },
+    family: { partner: null, child: null, marry: true, childOnHold: null },
     production: {
       kind: 'craft',
       rows: [

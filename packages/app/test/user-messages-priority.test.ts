@@ -13,7 +13,10 @@ import {
   type UserMessageTypeName,
 } from '../src/hud/tool-panel/messages/types.js';
 
-const ALL_TYPES = Object.values(USER_MESSAGE_TYPE) as UserMessageType[];
+/** The original's types; this game's own `familyBlocked` is pinned on its own. */
+const ALL_TYPES = (Object.values(USER_MESSAGE_TYPE) as UserMessageType[]).filter(
+  (type) => type !== USER_MESSAGE_TYPE.familyBlocked,
+);
 
 function typesAt(level: MessagePriorityLevel, jobType: number | null): UserMessageType[] {
   return ALL_TYPES.filter((t) => messagePriority(t, jobType) === level);
@@ -79,6 +82,10 @@ describe('user message priority (original behavior)', () => {
     expect(typesAt(1, null)).toHaveLength(26);
     expect(messagePriority(USER_MESSAGE_TYPE.hungry, JOB_BUILDER)).toBe(0);
     expect(messagePriority(USER_MESSAGE_TYPE.starving, JOB_BUILDER)).toBe(2);
+  });
+
+  it('ranks a held child order notable, beside the task failures it stands in for', () => {
+    expect(messagePriority(USER_MESSAGE_TYPE.familyBlocked, null)).toBe(1);
   });
 
   it('raises a missing good to notable for a collector only', () => {

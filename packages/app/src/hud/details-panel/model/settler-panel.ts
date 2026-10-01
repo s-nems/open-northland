@@ -1,6 +1,7 @@
 import { indoorHouseOf } from '@open-northland/render';
 import { systems, type WorldSnapshot } from '@open-northland/sim';
 import {
+  childOrderWaitOf,
   isPlayerControllable,
   needsRuleEnabled,
   num,
@@ -150,12 +151,12 @@ function carriedGood(ctx: UnitPanelModelContext, comps: Comp): CarriedGoodModel 
 
 /**
  * The detail after the state's dot: a lesson's progress, a trader's destination, the product being
- * made, or the reason a tradesman stands idle. The product and the idle reason are the sim's
- * `workStatus` reading for the settler's workplace.
+ * made, or the reason a tradesman stands idle, or a wife her held child order. The product and the
+ * idle reason are the sim's `workStatus` reading for the settler's workplace.
  */
 function statusDetail(
   ctx: UnitPanelModelContext,
-  entityId: number,
+  ent: SnapshotEntity,
   state: SettlerState,
   role: SettlerRole,
   work: SettlerWorkModel,
@@ -168,7 +169,9 @@ function statusDetail(
     return formatMessage(copy.towards, { place: heading.label });
   }
   const idle = state === 'idle' || state === 'awaitingWorkplace';
-  const status = ctx.workStatus?.(entityId);
+  const wait = childOrderWaitOf(ent);
+  if (idle && wait !== undefined) return messages().userMessages.familyBlocked.short[wait];
+  const status = ctx.workStatus?.(ent.id);
   if (status === undefined) return idle && role === 'civilian' ? copy.idleReasons.noJob : null;
   if (status.kind === 'crafting') return state === 'working' ? goodLabel(ctx, status.goodType) : null;
   return idle ? workStatusDetail(ctx, status) : null;
@@ -195,7 +198,7 @@ export function settlerPanelModel(
   const status: SettlerStatusModel = {
     state,
     label: messages().hud.statuses[state],
-    detail: statusDetail(ctx, ent.id, state, role, work, trade),
+    detail: statusDetail(ctx, ent, state, role, work, trade),
     trouble:
       (state === 'idle' || state === 'awaitingWorkplace') && (role === 'worker' || role === 'civilian'),
     carrying: carriedGood(ctx, comps),

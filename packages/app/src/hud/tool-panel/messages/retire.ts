@@ -1,5 +1,6 @@
 import { entityById, ONE, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import {
+  childOrderWaitOf,
   needsRuleEnabled,
   orderedNeedOf,
   settlerNeedsOf,
@@ -56,7 +57,8 @@ export function isSubjectGone(m: UserMessage, snapshot: WorldSnapshot): boolean 
   return m.subject !== null && entityById(snapshot, m.subject.entity) === undefined;
 }
 
-/** Whether a note's reason is gone: its subject left the world, or the sim's `LostWay` marker came off. */
+/** Whether a note's reason is gone: its subject left the world, the state a polled note reports ended, or
+ *  the sim's `LostWay` marker came off. */
 export function isNoteOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
   if (m.subject === null) return false;
   const e = entityById(snapshot, m.subject.entity);
@@ -72,6 +74,7 @@ export function isNoteOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
   if (m.type === USER_MESSAGE_TYPE.nothingToDo || m.type === USER_MESSAGE_TYPE.workplaceNotFound) {
     return isIdleNoteOver(m, snapshot);
   }
+  if (m.type === USER_MESSAGE_TYPE.familyBlocked) return childOrderWaitOf(e) === undefined;
   if (!isStandingNote(m.type)) return false;
   return snapshot.tick - m.tick >= LOST_NOTE_HOLD_TICKS && e.components.LostWay === undefined;
 }

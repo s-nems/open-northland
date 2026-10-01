@@ -1067,6 +1067,25 @@ export const enGame = {
     shortUnknownHeroDied: 'Unknown hero fell',
     shortBecameSoldier: 'Soldier',
     shortLearnedProfession: 'Trade: {profession}',
+    /** A couple's wish for a child that waits on the player: the card line, and the sentence after the woman's name. */
+    familyBlocked: {
+      short: {
+        husbandAway: 'Husband away',
+        noHome: 'No home',
+        homeUnbuilt: 'House unbuilt',
+        livesApart: 'Living apart',
+        noFood: 'No food for a child',
+      },
+      full: {
+        husbandAway:
+          'cannot have a child: her husband {partner} never comes home, his trade keeps him away from the family. Once he takes up a civilian trade again, they can have one.',
+        noHome: 'cannot have a child: the couple has no home. Assign them a house.',
+        homeUnbuilt: 'cannot have a child until the house is finished.',
+        livesApart:
+          'cannot have a child: her husband {partner} lives in another house. Move the family into one home.',
+        noFood: 'cannot have a child: no food in reach to stock the house for it.',
+      },
+    },
     /** Stand-ins for the decoded `messages` rows the notes read, keyed by row id. */
     rows: {
       '33': 'can now do the following based on experience',

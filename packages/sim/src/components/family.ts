@@ -33,14 +33,22 @@ export const Wedding = defineComponent<{ partner: Entity; kissing: boolean }>('W
 export const Residence = defineComponent<{ home: Entity }>('Residence', 'settlers');
 
 /**
+ * Why a standing child order waits undriven: the wife has no home, it is still a building site, the
+ * husband lives in another one, or his trade never comes home.
+ */
+export type ChildOrderBlocker = 'noHome' | 'homeUnbuilt' | 'livesApart' | 'husbandAway';
+
+/**
  * A married woman's standing make-a-child order. The player picks the sex - the one readable
  * sex-determination seam, so no RNG is needed at birth. It persists until the birth succeeds; other orders
- * interrupt but never cancel it.
+ * interrupt but never cancel it, and only the assistant gives back a booking of its own that blocks.
  */
 export const ChildOrder = defineComponent<{
   child: 'female' | 'male';
   /** Her last search for food outside the home found none, so she searches again only on retry ticks. */
   foodSearchMissed?: true | undefined;
+  /** Set while the order waits on something only the player can change, so the HUD can say what. */
+  blocked?: ChildOrderBlocker | undefined;
 }>('ChildOrder', 'settlers');
 
 /**

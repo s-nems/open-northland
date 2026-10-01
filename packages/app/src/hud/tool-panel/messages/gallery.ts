@@ -1,9 +1,11 @@
-import type { DiplomacyState, Paper, WorldSnapshot } from '@open-northland/sim';
+import { type DiplomacyState, entityById, type Paper, type WorldSnapshot } from '@open-northland/sim';
 import {
   actorsOf,
   buildingTypeOf,
+  type ChildOrderWait,
   isBuilding,
   isFemale,
+  marriageOf,
   ownerPlayerOf,
   type SnapshotEntity,
   settlerJobType,
@@ -34,6 +36,8 @@ export interface NoticeGallery {
 const STANDIN_STANCE: DiplomacyState = 'enemy';
 /** The seat the seat rows are about when none is met: the next slot, whatever it holds. */
 const NEXT_SEAT = 1;
+/** The wait the child-order row reports; any would do, this one names the husband. */
+const STANDIN_FAMILY_WAIT: ChildOrderWait = 'husbandAway';
 /** The found-item row's paper; the indulgence names no type, so it needs no catalog id. */
 const STANDIN_PAPER: Paper = { kind: 'indulgence', param: 0 };
 
@@ -57,6 +61,7 @@ const GOOD_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>
 const BIRTH_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
   'gaveBirthToSon',
   'gaveBirthToDaughter',
+  'familyBlocked',
 ]);
 
 const NO_PARTS = { jobLabel: null, goodName: null, stanceName: null } as const;
@@ -181,7 +186,10 @@ export function galleryMessages(
     const e = nextPerson(BIRTH_ROWS.has(name) && women.length > 0 ? women : people);
     if (e === undefined) continue;
     if (name === 'humanDied') raiseDeath(e);
-    else if (name === 'experienceUnlocks') raiseUnlocks(e);
+    else if (name === 'familyBlocked') {
+      const spouse = marriageOf(e)?.spouse;
+      raiser.family(e, STANDIN_FAMILY_WAIT, spouse === undefined ? undefined : entityById(snapshot, spouse));
+    } else if (name === 'experienceUnlocks') raiseUnlocks(e);
     else if (name === 'canDoNewJob') {
       const jobType = settlerJobType(e);
       if (jobType !== undefined) raiser.trained(type, e, 'school', jobType);

@@ -165,4 +165,22 @@ describe('note retirement', () => {
     expect(isNoteOver(lost, world(HELD, 'found'))).toBe(false);
     expect(isNoteOver(lost, world(RELEASED, 'found'))).toBe(true);
   });
+
+  it('ends a held child order note once the order runs again or is gone', () => {
+    const order = (childOrder: Record<string, unknown> | null): WorldSnapshot => ({
+      tick: RELEASED,
+      events: [],
+      entities: [
+        {
+          id: SETTLER,
+          components: childOrder === null ? {} : { ChildOrder: { child: 'male', ...childOrder } },
+        },
+      ],
+    });
+    const held = note(USER_MESSAGE_TYPE.familyBlocked);
+    expect(isNoteOver(held, order({ blocked: 'livesApart' }))).toBe(false);
+    expect(isNoteOver(held, order({ foodSearchMissed: true }))).toBe(false);
+    expect(isNoteOver(held, order({}))).toBe(true);
+    expect(isNoteOver(held, order(null))).toBe(true);
+  });
 });

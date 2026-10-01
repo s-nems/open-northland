@@ -3,7 +3,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { homeQualityActive } from '../../family/home-quality.js';
-import { builtHomeType } from '../../family/households.js';
+import { builtHomeType, homeUsedBy } from '../../family/households.js';
 import { ATOMIC_EVENT_CHANNEL } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
 import { atHomeDuration, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
@@ -30,8 +30,9 @@ import { homeClipServes } from './at-home.js';
 
 /**
  * Send `e` to bed in its own house: walk to the home's door, step inside and run the sleep atomic there.
- * Returns `false` when the settler has no home, its home is gone or still a building site, or the door
- * lies outside its signpost area - the caller then falls back to the open-ground rule.
+ * Returns `false` when the settler has no home it uses ({@link homeUsedBy}), its home is gone or still a
+ * building site, or the door lies outside its signpost area - the caller then falls back to the
+ * open-ground rule.
  */
 export function sleepAtHome(
   world: World,
@@ -42,7 +43,7 @@ export function sleepAtHome(
   here: NodeId,
   limit: NavigationLimit | null,
 ): boolean {
-  const home = world.tryGet(e, Residence)?.home;
+  const home = homeUsedBy(world, ctx, e);
   if (home === undefined || builtHomeType(world, ctx, home) === undefined) return false;
   return goHomeFor(world, ctx, terrain, e, home, here, limit, () =>
     startAtomic(
@@ -57,8 +58,9 @@ export function sleepAtHome(
 }
 
 /**
- * Send `e` home to pray at its holy fire. Returns `false` when the fire is out or forbidden, the settler's
- * indoor clip pays no religion, or the door is out of reach - the caller then looks for a temple.
+ * Send `e` home to pray at its holy fire. Returns `false` when it uses no home, the fire is out or
+ * forbidden, the settler's indoor clip pays no religion, or the door is out of reach - the caller then
+ * looks for a temple.
  */
 export function prayAtHome(
   world: World,
@@ -69,7 +71,7 @@ export function prayAtHome(
   here: NodeId,
   limit: NavigationLimit | null,
 ): boolean {
-  const home = world.tryGet(e, Residence)?.home;
+  const home = homeUsedBy(world, ctx, e);
   if (home === undefined || !homeQualityActive(world, ctx, home, 'piety')) return false;
   if (!homeClipServes(ctx, settler, PRAY_ATOMIC_ID, ATOMIC_EVENT_CHANNEL.PIETY)) return false;
   return goHomeFor(world, ctx, terrain, e, home, here, limit, () =>

@@ -35,6 +35,7 @@ import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from
 const VIKING = 1;
 const HOME_TYPE = 90;
 const FOOD = 3; // the fixture's `food_simple`
+const TRADER = 25; // the fixture's trade marked `ignoresHomeHouse`
 const OUTDOOR_SLEEP_TICKS = 6; // the fixture's "viking_sleep" length
 const HOME_SLEEP_TICKS = 2; // the fixture's "viking_sleep_home" length
 const TIRED: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
@@ -172,6 +173,19 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     const site = homeAt(sim, 3, 2);
     sim.world.mut(site, Building).built = fx.div(ONE, fx.fromInt(2)); // half-raised - no roof yet
     sim.world.add(settler, Residence, { home: site });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(settler, Resting)).toBe(false);
+    expect(sim.world.get(settler, CurrentAtomic).duration).toBe(OUTDOOR_SLEEP_TICKS);
+  });
+
+  it('beds a housed settler down outside when its trade never goes home', () => {
+    // A worker housed with his family who then took up such a trade keeps the house but sleeps out,
+    // as the original does for every trade `jobtypes.ini` marks `ignoresHomeHouseFlag`.
+    const sim = simWithHomes();
+    const settler = needsSettlerAt(sim, 3, 2, { fatigue: TIRED }, TRADER);
+    sim.world.add(settler, Residence, { home: homeAt(sim, 3, 2) });
 
     plannerSystem(sim.world, ctxOf(sim));
 

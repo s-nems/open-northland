@@ -146,11 +146,40 @@ describe('the settler panel model', () => {
     expect(model.family?.marry).toBeNull();
   });
 
+  it("tells both spouses what holds the wife's child order", () => {
+    const couple = (blocked: string | undefined): EntitySnapshot[] => [
+      {
+        id: SETTLER,
+        components: owned({
+          Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+          Marriage: { spouse: PARTNER, child: null },
+        }),
+      },
+      {
+        id: PARTNER,
+        components: owned({
+          Settler: { tribe: 1, jobType: JOB_WOMAN },
+          Female: { female: true },
+          Marriage: { spouse: SETTLER, child: null },
+          ChildOrder: { child: 'female', ...(blocked === undefined ? {} : { blocked }) },
+        }),
+      },
+    ];
+    const copy = messages().userMessages.familyBlocked;
+    const husband = settlerModel(couple('husbandAway'));
+    expect(husband.family?.childOnHold?.label).toBe(copy.short.husbandAway);
+    expect(husband.family?.childOnHold?.tooltip).toContain(husband.name);
+    const wife = settlerModel(couple('husbandAway'), sandboxCtx(), PARTNER);
+    expect(wife.family?.childOnHold?.tooltip.startsWith(wife.name)).toBe(true);
+    expect(wife.status.detail).toBe(copy.short.husbandAway); // what she stands idle for
+    expect(settlerModel(couple(undefined)).family?.childOnHold).toBeNull();
+  });
+
   it('offers the partner search to a free grown man, fades it while he weds, keeps it from a soldier', () => {
     const single = settlerModel([
       { id: SETTLER, components: owned({ Settler: { tribe: 1, jobType: JOB_COLLECTOR } }) },
     ]);
-    expect(single.family).toEqual({ partner: null, child: null, marry: true });
+    expect(single.family).toEqual({ partner: null, child: null, marry: true, childOnHold: null });
 
     const wedding = settlerModel([
       {

@@ -61,7 +61,7 @@ export function familyButton(family: SettlerFamilyModel): RoundButtonModel | nul
 }
 
 /** The Rodzina value: the spouse and the child as links, or "bez pary", a link while the person may go
- *  and find a partner. */
+ *  and find a partner; after them what holds the couple's child order, while something does. */
 export function familyValue(family: SettlerFamilyModel): LedgerSegment[] {
   const copy = messages().hud.settlerPanel;
   if (family.partner === null) {
@@ -74,6 +74,8 @@ export function familyValue(family: SettlerFamilyModel): LedgerSegment[] {
   const people: LedgerSegment[] = [{ text: family.partner.label, link: true, tooltip: copy.partnerTooltip }];
   if (family.child !== null)
     people.push({ text: family.child.label, link: true, tooltip: copy.childTooltip });
+  if (family.childOnHold !== null)
+    people.push({ text: family.childOnHold.label, tone: 'missing', tooltip: family.childOnHold.tooltip });
   return people;
 }
 

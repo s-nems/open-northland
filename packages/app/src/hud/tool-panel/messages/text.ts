@@ -1,15 +1,19 @@
 import type { UiString } from '../../../content/gui-gfx.js';
+import type { ChildOrderWait } from '../../../game/snapshot.js';
 import { formatMessage } from '../../../i18n/index.js';
 import { USER_MESSAGE_TYPE, type UserMessageType, type UserMessageTypeName } from './types.js';
 
 /** The ingamegui string table the message texts read. */
 export const MESSAGE_STRINGS_TABLE = 'messages';
 
+/** The types worded by a decoded row; `familyBlocked` is worded by the app catalog alone. */
+export type DecodedMessageTypeName = Exclude<UserMessageTypeName, 'familyBlocked'>;
+
 /**
  * The `messages` row each type reads. The pairing follows the original's message wording; the
  * rows themselves are the owned copy's decoded `ingameguimessages.cif`.
  */
-export const MESSAGE_STRING_ID: Readonly<Record<UserMessageTypeName, number>> = {
+export const MESSAGE_STRING_ID: Readonly<Record<DecodedMessageTypeName, number>> = {
   taskCompleted: 15,
   taskFailed: 16,
   lostWithoutSignposts: 18,
@@ -134,14 +138,33 @@ export interface MessageTextParts {
   };
   /** The found paper's name, appended after a dash as the original formats its found-object note. */
   readonly detail?: string;
+  /** What holds a `familyBlocked` note's child order, and the spouse it names. */
+  readonly family?: { readonly wait: ChildOrderWait; readonly partner: NamedSettler | null };
+}
+
+/** A settler as a note names it: its name and the trade label shown after it (null for none). */
+export interface NamedSettler {
+  readonly name: string;
+  readonly jobLabel: string | null;
+}
+
+function nameWithTrade(named: NamedSettler): string {
+  return named.jobLabel === null ? named.name : `${named.name} (${named.jobLabel})`;
+}
+
+/** The catalog wording of a `familyBlocked` note per wait: the card line, and the sentence after the
+ *  woman's name with a `{partner}` slot. */
+export interface FamilyLines {
+  readonly short: Readonly<Record<ChildOrderWait, string>>;
+  readonly full: Readonly<Record<ChildOrderWait, string>>;
 }
 
 /** The card lines, from the app catalog: one per type, and `{good}` / `{stance}` templates for the rows
  *  whose card names what they are about. */
 export interface ShortLabels {
-  readonly byType: Readonly<Record<UserMessageTypeName, string>>;
-  readonly withGood: Readonly<Partial<Record<UserMessageTypeName, string>>>;
-  readonly withStance: Readonly<Partial<Record<UserMessageTypeName, string>>>;
+  readonly byType: Readonly<Record<DecodedMessageTypeName, string>>;
+  readonly withGood: Readonly<Partial<Record<DecodedMessageTypeName, string>>>;
+  readonly withStance: Readonly<Partial<Record<DecodedMessageTypeName, string>>>;
   /** The death of a hero the seat cannot name. */
   readonly unknownHeroDied: string;
 }
@@ -151,6 +174,7 @@ export interface MessageTextDeps {
   /** The app catalog's stand-in for a `messages` row when the decoded strings are absent. */
   readonly fallbackRow: (id: number) => string;
   readonly short: ShortLabels;
+  readonly family: FamilyLines;
 }
 
 /** A message as the card shows it and as it reads in full. */
@@ -167,15 +191,21 @@ export function composeMessageText(
   deps: MessageTextDeps,
 ): MessageText {
   const name = userMessageTypeName(type);
+  const who =
+    parts.subjectName === null ? null : nameWithTrade({ name: parts.subjectName, jobLabel: parts.jobLabel });
+  const lead = (text: string): string => (who === null ? text : `${who} ${text}`);
+  if (name === 'familyBlocked') {
+    if (parts.family === undefined) throw new Error('user-messages: a familyBlocked note needs its wait');
+    const { wait, partner } = parts.family;
+    return {
+      short: deps.family.short[wait],
+      full: lead(
+        formatMessage(deps.family.full[wait], { partner: partner === null ? '' : nameWithTrade(partner) }),
+      ),
+    };
+  }
   const row = (id: number): string => deps.uiString(MESSAGE_STRINGS_TABLE, id, deps.fallbackRow(id));
   const base = row(MESSAGE_STRING_ID[name]);
-  const who =
-    parts.subjectName === null
-      ? null
-      : parts.jobLabel === null
-        ? parts.subjectName
-        : `${parts.subjectName} (${parts.jobLabel})`;
-  const lead = (text: string): string => (who === null ? text : `${who} ${text}`);
   const short = shortLabel(name, parts, deps.short);
   const led = (body: string): MessageText => ({ short, full: lead(body) });
 
@@ -218,7 +248,7 @@ export function composeMessageText(
 }
 
 /** The card's line: the type's label, or its template with the good or stance the row is about. */
-function shortLabel(name: UserMessageTypeName, parts: MessageTextParts, labels: ShortLabels): string {
+function shortLabel(name: DecodedMessageTypeName, parts: MessageTextParts, labels: ShortLabels): string {
   const withGood = labels.withGood[name];
   if (withGood !== undefined && parts.goodName !== null)
     return formatMessage(withGood, { good: parts.goodName });

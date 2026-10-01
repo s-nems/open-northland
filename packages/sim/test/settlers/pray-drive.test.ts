@@ -336,6 +336,21 @@ describe('where a devout settler prays: its holy fire, then a temple, then the h
     expect(isServedAtHome(sim.world, settler)).toBe(false);
   });
 
+  it('passes its burning holy fire by for the temple when its trade never goes home', () => {
+    const base = oilContent();
+    const content = parseContentSet({
+      ...base,
+      jobs: base.jobs.map((job) => (job.typeId === SMITH ? { ...job, ignoresHomeHouse: true } : job)),
+    });
+    const sim = new Simulation({ seed: 1, content, map: grassMap(8, 1) });
+    ownedAt(sim, 3, TEMPLE_TYPE);
+    const settler = devoutAt(sim, 2, litHomeAt(sim, 6));
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
+  });
+
   it('goes to the temple when its home fire is out', () => {
     const sim = new Simulation({ seed: 1, content: oilContent(), map: grassMap(8, 1) });
     ownedAt(sim, 3, TEMPLE_TYPE);
