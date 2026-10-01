@@ -14,9 +14,9 @@ const status = document.querySelector('#asset-status');
 const copy = {
   pl: {
     buildTitle: 'Budowanie',
-    peopleTitle: 'Mieszkańcy',
+    peopleTitle: 'Poddani',
     buildNav: 'Buduj',
-    peopleNav: 'Mieszkańcy',
+    peopleNav: 'Poddani',
   },
   en: {
     buildTitle: 'Construction',

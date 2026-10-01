@@ -179,6 +179,15 @@ export function buildingPeersOf(snapshot: WorldSnapshot, ent: SnapshotEntity): r
   return peers?.map((e) => e.id) ?? [];
 }
 
+/** `owner`'s buildings of type `type`, ascending by id. An index read. */
+export function ownedBuildingsOfType(
+  snapshot: WorldSnapshot,
+  owner: number,
+  type: number,
+): readonly SnapshotEntity[] {
+  return indexesOf(snapshot).get(BUILDINGS_BY_OWNER_TYPE).get(ownerKey(owner, type)) ?? [];
+}
+
 /** Whether `owner` keeps buildings of more than one civilization, so each house names its own. */
 function ownsSeveralTribes(snapshot: WorldSnapshot, owner: number | undefined): boolean {
   const low = ownerKey(owner, 0);

@@ -1,6 +1,11 @@
 import { PRODUCTION_COUNT_MAX, PRODUCTION_UNLIMITED } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { COUNTER_TENS_STEP, counterStep, counterText } from '../src/hud/dom/parts/counter.js';
+import {
+  COUNTER_TENS_STEP,
+  counterModifiers,
+  counterStep,
+  counterText,
+} from '../src/hud/dom/parts/counter.js';
 import {
   METER_CRITICAL_BELOW_PCT,
   METER_LOW_BELOW_PCT,
@@ -64,6 +69,16 @@ describe('the counter part', () => {
     expect(counterStep(reserve, 4, 1, JUMP)).toBe(reserve.max);
     expect(counterStep(reserve, 4, -1, JUMP)).toBe(0);
     expect(counterText(reserve, 0)).toBe('0');
+  });
+
+  it('reads Shift as the jump by default and Ctrl or Cmd as the jump on a production counter', () => {
+    const click = (mods: Partial<MouseEvent>): MouseEvent =>
+      ({ shiftKey: false, ctrlKey: false, metaKey: false, ...mods }) as MouseEvent;
+    expect(counterModifiers(click({ shiftKey: true }))).toEqual(JUMP);
+    expect(counterModifiers(click({ ctrlKey: true }))).toEqual(TENS);
+    expect(counterModifiers(click({ ctrlKey: true }), 'ctrl')).toEqual(JUMP);
+    expect(counterModifiers(click({ metaKey: true }), 'ctrl')).toEqual(JUMP);
+    expect(counterModifiers(click({ shiftKey: true }), 'ctrl')).toEqual(TENS);
   });
 
   it('shows unlimited as the infinity sign', () => {

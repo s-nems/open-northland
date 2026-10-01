@@ -196,6 +196,9 @@ export interface ToolPanelOptions {
   /** That same overlay's box, which the pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
   readonly onSystemMenu?: () => void;
+  /** Open the game menu on its load or save page; load is absent where the session cannot swap worlds. */
+  readonly onLoadGame?: () => void;
+  readonly onSaveGame?: () => void;
   /** The HUD-toggle hotkey was pressed. */
   readonly onToggleHud?: () => void;
   /** True while the system menu owns the keyboard, so Escape is not the shell's to take. */
@@ -460,6 +463,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           : null;
     const roadOffered = opts.canPlaceRoadAt !== undefined;
     const wallRow = palisadeToolRow('palisade');
+    const gateRow = palisadeToolRow('gate');
     const toolOffered = (tool: ConstructionTool): boolean =>
       tool === 'road' ? roadOffered : palisadeToolRow(tool) !== null;
     const keyLabel = (action: 'roadTool' | 'palisadeTool'): string | null => {
@@ -719,6 +723,25 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       togglePause: () => {
         speed.togglePause();
       },
+      cycleSpeed: () => {
+        speed.cycleRunning();
+      },
+      ...(opts.onLoadGame !== undefined
+        ? {
+            openLoad: () => {
+              ctx.cue('confirm');
+              opts.onLoadGame?.();
+            },
+          }
+        : {}),
+      ...(opts.onSaveGame !== undefined
+        ? {
+            openSave: () => {
+              ctx.cue('confirm');
+              opts.onSaveGame?.();
+            },
+          }
+        : {}),
       toggleHud: () => opts.onToggleHud?.(),
       ...(roadOffered
         ? {
@@ -733,6 +756,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
             palisadeTool: () => {
               ctx.cue('confirm');
               placement.enterPalisade(wallRow, 'wall');
+            },
+          }
+        : {}),
+      ...(gateRow !== null
+        ? {
+            gateTool: () => {
+              ctx.cue('confirm');
+              placement.enterPalisade(gateRow, 'gate');
             },
           }
         : {}),

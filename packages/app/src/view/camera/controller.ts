@@ -27,6 +27,18 @@ const MAX_PAN_STEP_MS = 100;
 
 type PanAction = 'panLeft' | 'panRight' | 'panUp' | 'panDown';
 const PAN_ACTIONS: readonly PanAction[] = ['panLeft', 'panRight', 'panUp', 'panDown'];
+/** Original behavior: the numpad scrolls beside the bindable pan keys, its corners diagonally. Fixed, but a
+ *  numpad key the player bound to another action is that action's alone. */
+const NUMPAD_PAN: Readonly<Record<string, readonly PanAction[]>> = {
+  Numpad8: ['panUp'],
+  Numpad2: ['panDown'],
+  Numpad4: ['panLeft'],
+  Numpad6: ['panRight'],
+  Numpad7: ['panUp', 'panLeft'],
+  Numpad9: ['panUp', 'panRight'],
+  Numpad1: ['panDown', 'panLeft'],
+  Numpad3: ['panDown', 'panRight'],
+};
 
 export interface CameraController {
   camera(): Camera;
@@ -79,6 +91,12 @@ export function createCameraController(
     return binding === null ? undefined : PAN_ACTIONS.find((action) => activeBindings[action] === binding);
   };
   const held = new Set<PanAction>();
+  const heldNumpad = new Set<string>();
+  const numpadPans = (e: KeyboardEvent): boolean => {
+    if (NUMPAD_PAN[e.code] === undefined || e.ctrlKey || e.altKey || e.metaKey) return false;
+    const binding = bindingFromKeyboardEvent(e);
+    return !Object.values(activeBindings).some((bound) => bound === binding);
+  };
   let dragging = false;
   let pointerGuard: ((clientX: number, clientY: number) => boolean) | null = null;
   let edgeHold: (() => boolean) | null = null;
@@ -142,13 +160,15 @@ export function createCameraController(
     zoomAnchorY = y;
   };
   const onKeyDown = (e: KeyboardEvent): void => {
-    if (suspended) return;
+    if (suspended || isFieldKey(e)) return;
     const action = panActionFor(e);
-    if (action === undefined || isFieldKey(e)) return;
-    held.add(action);
+    if (action !== undefined) held.add(action);
+    else if (numpadPans(e)) heldNumpad.add(e.code);
+    else return;
     e.preventDefault(); // arrow keys (the default bindings) would otherwise scroll the page
   };
   const onKeyUp = (e: KeyboardEvent): void => {
+    heldNumpad.delete(e.code);
     const releasedModifier = e.code.startsWith('Control')
       ? 'Ctrl'
       : e.code.startsWith('Shift')
@@ -173,6 +193,7 @@ export function createCameraController(
   // `dragging` stuck true.
   const onBlur = (): void => {
     held.clear();
+    heldNumpad.clear();
     endMiddleDrag();
     pointerSample = null;
   };
@@ -212,6 +233,7 @@ export function createCameraController(
       suspended = next;
       if (!next) return;
       held.clear();
+      heldNumpad.clear();
       endMiddleDrag();
       pointerSample = null;
       targetScale = cam.scale ?? 1;
@@ -234,10 +256,15 @@ export function createCameraController(
       let desiredX = 0;
       let desiredY = 0;
       const keyboardSpeed = tuning.arrowPanSpeed * activeInputSettings.keyboardScrollSpeed;
-      if (held.has('panLeft')) desiredX += keyboardSpeed;
-      if (held.has('panRight')) desiredX -= keyboardSpeed;
-      if (held.has('panUp')) desiredY += keyboardSpeed;
-      if (held.has('panDown')) desiredY -= keyboardSpeed;
+      const panning = (action: PanAction): boolean => {
+        if (held.has(action)) return true;
+        for (const code of heldNumpad) if (NUMPAD_PAN[code]?.includes(action) === true) return true;
+        return false;
+      };
+      if (panning('panLeft')) desiredX += keyboardSpeed;
+      if (panning('panRight')) desiredX -= keyboardSpeed;
+      if (panning('panUp')) desiredY += keyboardSpeed;
+      if (panning('panDown')) desiredY -= keyboardSpeed;
       // Edge scroll is suppressed while the window is unfocused and while a drag steers the camera (a
       // middle-drag or an edge hold), never by HUD surfaces over the margin. A left-drag marquee is
       // deliberately not suppressed, so dragging a selection box into the margin pans under it.

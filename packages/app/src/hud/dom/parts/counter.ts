@@ -10,7 +10,7 @@ export interface CounterRange {
   readonly unlimited?: number;
 }
 
-/** The keys held with an arrow press: Shift jumps to that arrow's end, Ctrl steps by tens. */
+/** What the keys held with an arrow press ask for: a jump to that arrow's end, or a step by tens. */
 export interface CounterModifiers {
   readonly jump: boolean;
   readonly tens: boolean;
@@ -22,8 +22,9 @@ export const COUNTER_TENS_STEP = 10;
 /**
  * One press of a counter arrow. Original behavior (the human window's production counter): − at the
  * bottom wraps to unlimited, + past the finite top reaches unlimited and + at unlimited wraps to the
- * bottom, Shift jumps to that arrow's end. Ctrl moves by tens inside the finite range, wrapping at its
- * ends as a single step does. A range without the unlimited sentinel clamps at both ends instead.
+ * bottom, and the jump key reaches that arrow's end. The tens key moves by tens inside the finite
+ * range, wrapping at its ends as a single step does. A range without the unlimited sentinel clamps at
+ * both ends instead.
  */
 export function counterStep(
   range: CounterRange,
@@ -51,8 +52,13 @@ export function counterText(range: CounterRange, value: number): string {
   return range.unlimited !== undefined && value >= range.unlimited ? '∞' : String(value);
 }
 
-export function counterModifiers(event: MouseEvent): CounterModifiers {
-  return { jump: event.shiftKey, tens: event.ctrlKey || event.metaKey };
+/** Which key jumps to the end: Shift by default, Ctrl (or Cmd) on a production counter, where Shift then
+ *  steps by tens. Original behavior: Ctrl takes a worker's production straight to unlimited or none. */
+export type CounterJumpKey = 'shift' | 'ctrl';
+
+export function counterModifiers(event: MouseEvent, jumpKey: CounterJumpKey = 'shift'): CounterModifiers {
+  const ctrl = event.ctrlKey || event.metaKey;
+  return jumpKey === 'ctrl' ? { jump: ctrl, tens: event.shiftKey } : { jump: event.shiftKey, tens: ctrl };
 }
 
 export interface CounterModel {
@@ -72,7 +78,11 @@ export interface Counter {
   update(model: CounterModel): void;
 }
 
-export function createCounter(range: CounterRange, onChange: (next: number) => void): Counter {
+export function createCounter(
+  range: CounterRange,
+  onChange: (next: number) => void,
+  jumpKey: CounterJumpKey = 'shift',
+): Counter {
   const root = element('span', 'on-counter');
   const less = button('on-counter__step', GLYPH.minus);
   const value = element('b', 'on-counter__value');
@@ -82,7 +92,7 @@ export function createCounter(range: CounterRange, onChange: (next: number) => v
   let current = 0;
   const press = (delta: 1 | -1, event: MouseEvent): void => {
     if (isDisabled(delta > 0 ? more : less)) return;
-    const next = counterStep(range, current, delta, counterModifiers(event));
+    const next = counterStep(range, current, delta, counterModifiers(event, jumpKey));
     if (next !== current) onChange(next);
   };
   onPress(less, (event) => press(-1, event));

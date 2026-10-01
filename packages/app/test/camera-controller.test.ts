@@ -301,6 +301,34 @@ describe('createCameraController pan bindings', () => {
     ctl.dispose();
   });
 
+  it('scrolls on the numpad beside the bindings, its corners diagonally', () => {
+    const { ctl, press, release } = install();
+    const step = (): { x: number; y: number } => {
+      const before = ctl.camera();
+      ctl.update(16);
+      return { x: ctl.camera().offsetX - before.offsetX, y: ctl.camera().offsetY - before.offsetY };
+    };
+    press('Numpad4');
+    expect(step().x).toBeGreaterThan(0);
+    release('Numpad4');
+    press('Numpad3');
+    const corner = step();
+    expect(corner.x).toBeLessThan(0);
+    expect(corner.y).toBeLessThan(0);
+    release('Numpad3');
+    expect(step()).toEqual({ x: 0, y: 0 });
+    press('Numpad4', { ctrlKey: true });
+    expect(step().x).toBe(0);
+    ctl.dispose();
+  });
+
+  it('leaves a numpad key the player bound to another action to that action', () => {
+    const { ctl, press } = install({ ...DEFAULT_KEY_BINDINGS, selectHeroes: 'Numpad4' });
+    press('Numpad4');
+    expect(panStep(ctl)).toBe(0);
+    ctl.dispose();
+  });
+
   it('never pans on an unbound action', () => {
     const { ctl, press } = install({ ...DEFAULT_KEY_BINDINGS, panLeft: null });
     press('ArrowLeft');

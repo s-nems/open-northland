@@ -5,6 +5,7 @@ import {
   effectiveGameSpeedSpec,
   GAME_SPEED_STATES,
   gameSpeedSpec,
+  nextRunningSpeed,
   toggleGameSpeedPause,
 } from '../src/hud/tool-panel/game-speed.js';
 import { createSpeedControl } from '../src/hud/tool-panel/speed-control.js';
@@ -93,6 +94,16 @@ describe('speed control', () => {
     expect(control.state().paused).toBe(true);
   });
 
+  it('steps the speed key on from the shown speed, and from a clock stopped elsewhere back to ×1', () => {
+    const { clock, control } = mount(1);
+    control.setRunning('fast');
+    clock.setPaused(true); // another member paused the relayed game
+    expect(control.cycleRunning()).toBe(true);
+    expect(control.state()).toEqual({ running: 'normal', paused: false });
+    expect(control.cycleRunning()).toBe(true);
+    expect(clock.state).toEqual({ paused: false, speed: 2 });
+  });
+
   it('resumes with one press a clock stopped from elsewhere', () => {
     const { clock, control } = mount(1);
     clock.setPaused(true); // a sub-mission paused the session, not the bar
@@ -138,5 +149,14 @@ describe('speed control', () => {
     expect(shown).toEqual(['faster/paused']);
     expect(clock.state).toEqual({ paused: false, speed: 0.5 });
     expect(control.state()).toEqual({ running: 'faster', paused: true });
+  });
+});
+
+describe('the speed key', () => {
+  it('cycles ×1, ×2, ×3 and back, and resumes a pause at ×1', () => {
+    expect(nextRunningSpeed({ running: 'normal', paused: false })).toBe('fast');
+    expect(nextRunningSpeed({ running: 'fast', paused: false })).toBe('faster');
+    expect(nextRunningSpeed({ running: 'faster', paused: false })).toBe('normal');
+    expect(nextRunningSpeed({ running: 'faster', paused: true })).toBe('normal');
   });
 });

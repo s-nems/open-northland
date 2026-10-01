@@ -99,7 +99,11 @@ export function createProductionSection(
       deps.icons,
     );
     const name = element('span', 'on-prod-row__name');
-    const counter = createCounter(COUNTER_RANGE, (next) => actions.setProductionCount(id(), goodType, next));
+    const counter = createCounter(
+      COUNTER_RANGE,
+      (next) => actions.setProductionCount(id(), goodType, next),
+      'ctrl',
+    );
     // A marker, not a control: the good's button beside it already says why the product is locked.
     const lock = element('span', 'on-prod-row__lock', GLYPH.lock);
     lock.setAttribute('role', 'img');

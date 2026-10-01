@@ -13,6 +13,8 @@ import type { MenuSettings } from './settings-store.js';
 
 /** The group-recall keys, whose rows also explain the centring press. */
 const RECALL_ACTIONS: ReadonlySet<string> = new Set(CONTROL_GROUP_ACTIONS);
+/** The camera's fixed numpad scrolling, as its row names the keys. */
+const NUMPAD_PAN_KEYS = 'Num 8 2 4 6 / 7 9 1 3';
 
 export interface ControlsTab {
   rows(): HTMLElement[];
@@ -124,6 +126,7 @@ export function createControlsTab(opts: {
     return [
       ...rebindable,
       fixedRow(text.bindings.cancel, 'Esc'),
+      fixedRow(text.bindings.numpadPan, NUMPAD_PAN_KEYS),
       fixedRow(text.bindings.toggleSelection, text.shiftClick),
       fixedRow(text.bindings.queueOrder, text.shiftOrder),
       fixedRow(text.bindings.selectJobMates, text.doubleClick),

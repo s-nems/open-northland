@@ -4,6 +4,7 @@ import {
   type GameSpeedChangeCause,
   type GameSpeedControl,
   type GameSpeedStateSpec,
+  nextRunningSpeed,
   type RunningGameSpeed,
   toggleGameSpeedPause,
 } from './game-speed.js';
@@ -26,6 +27,8 @@ export interface SpeedControl {
   togglePause(): boolean;
   /** Pick a running speed; a pick while paused resumes at it. False when a hold refused the press. */
   setRunning(running: RunningGameSpeed): boolean;
+  /** The speed key: the next running speed after the shown one, ×1 from a pause. */
+  cycleRunning(): boolean;
   /** Per frame: show a pause the clock took or dropped by itself, such as a hold's. */
   refresh(): void;
   /** The player's own choice, which a released hold returns the bar to. */
@@ -54,6 +57,15 @@ export function createSpeedControl(deps: SpeedControlDeps): SpeedControl {
     if (cause !== null) deps.onSpeedChange(effectiveGameSpeedSpec(control), cause);
   };
   const held = (): boolean => deps.held?.() === true;
+  const setRunning = (running: RunningGameSpeed): boolean => {
+    if (held()) return false;
+    // Resuming at the remembered speed only flips the pause flag, like the pause key; any other pick
+    // hands the clock its multiplier.
+    const cause: GameSpeedChangeCause =
+      current().paused && control.running === running ? 'pause-toggle' : 'cycle';
+    apply({ running, paused: false }, cause);
+    return true;
+  };
   return {
     // Toggled from what the bar shows, so a pause the clock took by itself ends with one press.
     togglePause: () => {
@@ -61,15 +73,8 @@ export function createSpeedControl(deps: SpeedControlDeps): SpeedControl {
       apply(toggleGameSpeedPause(current()), 'pause-toggle');
       return true;
     },
-    setRunning: (running) => {
-      if (held()) return false;
-      // Resuming at the remembered speed only flips the pause flag, like the pause key; any other pick
-      // hands the clock its multiplier.
-      const cause: GameSpeedChangeCause =
-        current().paused && control.running === running ? 'pause-toggle' : 'cycle';
-      apply({ running, paused: false }, cause);
-      return true;
-    },
+    setRunning,
+    cycleRunning: () => setRunning(nextRunningSpeed(current())),
     refresh: show,
     state: () => control,
     restore: (next) => apply(next, null),

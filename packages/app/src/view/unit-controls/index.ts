@@ -2,11 +2,13 @@ import type { UiCue } from '@open-northland/audio';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { settlerJobType } from '../../game/snapshot.js';
 import { pickableSeat } from '../../game/viewer-seat.js';
+import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import { isActionHotkey, isFieldKey, isOrderHotkey } from '../../hud/hotkeys.js';
 import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
 import { setCanvasCursor } from '../cursors/element.js';
 import { pickInRect, screenToWorld, type Tile, worldToTile } from '../picking.js';
+import { entityAnchor } from '../projections/entity-anchor.js';
 import { orderRecipients } from './action-ring/index.js';
 import { createAnsweredOrders } from './answered-orders.js';
 import { createUnitChrome } from './chrome.js';
@@ -20,6 +22,7 @@ import {
 } from './control-groups.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { jobMateArea, jobMatesIn } from './job-mates.js';
+import { createKeyboardOrders } from './keyboard-orders.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createOrderMarkers } from './order-markers.js';
 import { createUnitOrderController } from './orders.js';
@@ -86,6 +89,14 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return job !== undefined && systems.jobUsesWorkFlag({ content: opts.content }, job);
   };
   // `pickMode` is built below; the arrows defer the reads to click time.
+  const ringCommand = (id: ActionOrderId, targets: readonly number[]): void =>
+    issueRingCommand(id, orderRecipients(opts.content, opts.snapshot(), targets, id), {
+      enqueue: opts.enqueue,
+      pickMode,
+      openEquipment: (settlers) => equipPicker?.openAll(settlers),
+      toggleWorkArea: workArea.toggle,
+      siegeVehicles: () => vehicleOrders.selectedSiegeVehicles(),
+    });
   const chrome = await createUnitChrome(opts, selection, equipPicker, {
     assignWorkplace: (id) =>
       pickMode.arm({ kind: worksFromFlag(id) ? 'workplace-or-flag' : 'workplace', units: [id] }),
@@ -96,14 +107,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     armedPick: () => pickMode.armed(),
     selectGroup: (ids) => applySelection(ids, false),
     answered,
-    ringCommand: (id, targets) =>
-      issueRingCommand(id, orderRecipients(opts.content, opts.snapshot(), targets, id), {
-        enqueue: opts.enqueue,
-        pickMode,
-        openEquipment: (settlers) => equipPicker?.openAll(settlers),
-        toggleWorkArea: workArea.toggle,
-        siegeVehicles: () => vehicleOrders.selectedSiegeVehicles(),
-      }),
+    ringCommand,
     cue,
   });
 
@@ -202,6 +206,31 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     chrome.actions().close();
     pickMode.arm({ kind: 'attack-move', units, vehicles });
   };
+
+  const keyboardOrders = createKeyboardOrders({
+    bindings: opts.bindings,
+    snapshot: opts.snapshot,
+    content: opts.content,
+    player: opts.viewer.seat,
+    selected: selection.ids,
+    select: (ids, add) => applySelection(ids, add),
+    camera: opts.camera,
+    centreOn: (id) => {
+      const at = entityAnchor(opts.snapshot(), id, opts.elevation);
+      if (at !== null) opts.centerOn(at.x, at.y);
+      return at !== null;
+    },
+    enqueue: opts.enqueue,
+    // The ring's own gate decides who takes the order, so the key and the ring button agree.
+    ringOrder: (id) => {
+      const ids = [...selection.ids()];
+      if (orderRecipients(opts.content, opts.snapshot(), ids, id).length === 0) return false;
+      chrome.actions().close();
+      ringCommand(id, ids);
+      return true;
+    },
+    cue,
+  });
 
   /** The one selected entity no longer stands in the world. */
   const selectionGone = (snapshot: WorldSnapshot): boolean => {
@@ -435,6 +464,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (isOrderHotkey(e, opts.bindings, 'attackMove')) {
       e.preventDefault();
       armAttackMove();
+    } else if (keyboardOrders(e)) {
+      e.preventDefault();
     } else if (e.code === 'Tab' && browsesTrade(e) && chrome.browse(e.shiftKey ? -1 : 1)) {
       e.preventDefault();
     } else if (e.code === 'Escape') {

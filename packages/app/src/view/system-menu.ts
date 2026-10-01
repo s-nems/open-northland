@@ -13,10 +13,14 @@ export interface SystemMenu {
   /** Delivered against requested speed while a sustained shortfall holds; null delivered hides it. */
   updateSpeedStatus: SpeedStatusLine['update'];
   toggle(): void;
+  /** Open the menu straight on its save or load page; a refused load page leaves it shut. */
+  openPage(page: SystemMenuPage): void;
   /** True while the dimmed menu is up; it owns the keyboard until it hides. */
   isOpen(): boolean;
   dispose(): void;
 }
+
+export type SystemMenuPage = 'save' | 'load';
 
 export interface SystemMenuDeps {
   /** Leave the running game and return to the main menu. */
@@ -209,6 +213,13 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   backdrop.append(panel, savePanel.el, loadPanel.el, settingsPanel.el);
   document.body.append(backdrop);
 
+  const show = (): void => {
+    // The whole menu holds the pause, so the sim never runs behind the dimmed backdrop.
+    deps.saveLoad.forcePause();
+    deps.setCameraSuspended(true);
+    backdrop.style.display = 'grid';
+  };
+
   return {
     updateNetStatus(rows, readout): void {
       netStatus ??= mountNetStatusPanel(panel);
@@ -218,10 +229,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     isOpen: () => backdrop.style.display !== 'none',
     toggle(): void {
       if (backdrop.style.display === 'none') {
-        // The whole menu holds the pause, so the sim never runs behind the dimmed backdrop.
-        deps.saveLoad.forcePause();
-        deps.setCameraSuspended(true);
-        backdrop.style.display = 'grid';
+        show();
         (returnFocus ?? save).focus();
         requestAnimationFrame(() => {
           if (backdrop.style.display !== 'none') (returnFocus ?? save).focus();
@@ -229,6 +237,12 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
       } else {
         hide();
       }
+    },
+    openPage(page): void {
+      if (page === 'load' && deps.canLoad === false) return;
+      if (backdrop.style.display === 'none') show();
+      if (page === 'save') showPanel(savePanel, save);
+      else showPanel(loadPanel, load);
     },
     dispose(): void {
       deps.setCameraSuspended(false);

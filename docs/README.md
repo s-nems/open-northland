@@ -22,7 +22,6 @@ Other references:
 - [`GLOSSARY.md`](GLOSSARY.md): project and format terms
 - [`formats/`](formats/): notes about decoded file formats
 - [`ORIGINAL-INGAME-MENU-BAR.md`](ORIGINAL-INGAME-MENU-BAR.md): the original in-game menu bar
-- [`ORIGINAL-CONTROLS.md`](ORIGINAL-CONTROLS.md): the original keys, mouse, selection and window buttons
 - [`design/`](design/): UI design references, such as the [in-game menu](design/ingame-menu/)
 
 ## Work tracker

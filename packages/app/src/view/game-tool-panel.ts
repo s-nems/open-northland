@@ -124,6 +124,8 @@ export interface GameToolPanelDeps {
   /** That overlay's screen-px box, which the panel's pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
   readonly onSystemMenu?: () => void;
+  readonly onLoadGame?: () => void;
+  readonly onSaveGame?: () => void;
   readonly onToggleHud?: () => void;
   /** True while the system menu is open and owns the keyboard. */
   readonly systemMenuOpen?: () => boolean;
@@ -291,6 +293,8 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.deferToOverlay !== undefined ? { deferToOverlay: deps.deferToOverlay } : {}),
       ...(deps.overlayReserve !== undefined ? { overlayReserve: deps.overlayReserve } : {}),
       ...(deps.onSystemMenu !== undefined ? { onSystemMenu: deps.onSystemMenu } : {}),
+      ...(deps.onLoadGame !== undefined ? { onLoadGame: deps.onLoadGame } : {}),
+      ...(deps.onSaveGame !== undefined ? { onSaveGame: deps.onSaveGame } : {}),
       ...(deps.onToggleHud !== undefined ? { onToggleHud: deps.onToggleHud } : {}),
       ...(deps.systemMenuOpen !== undefined ? { systemMenuOpen: deps.systemMenuOpen } : {}),
       ...(deps.escapeClaimed !== undefined ? { escapeClaimed: deps.escapeClaimed } : {}),

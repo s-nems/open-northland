@@ -181,7 +181,7 @@ keeps the assistant alone.
 
 ### Residents window
 
-The seat's people as one list (ticket 07), in the construction window's frame and width. Mieszkańcy
+The seat's people as one list (ticket 07), in the construction window's frame and width. Poddani
 on the beam opens it at once.
 
 - Listed: the local seat's humans. Animals, vehicles and other seats' people stay out. The list
@@ -544,7 +544,7 @@ saying what the press does or why it is refused.
   medallion stays blank and keeps the heading centred.
 - Portrait row: the live building in the 96 × 92 px frame is the centre-view button, with the 7 px
   wear bar under it (Wytrzymałość in its tooltip), as the vehicle's. Beside it up to four labelled
-  order tiles in two rows, each in a fixed place so the hand learns it: Pracownicy (opens Mieszkańcy
+  order tiles in two rows, each in a fixed place so the hand learns it: Pracownicy (opens Poddani
   filtered to who could take the trade: a site's builders, a store's traders, else the house's own
   craft, one with a free seat first, never its carriers or collectors; faded for a house employing
   none), Wiedza (the type's Knowledge entry), Zburz in red, which asks in the confirmation dialog
@@ -569,7 +569,7 @@ saying what the press does or why it is refused.
 - Pracownicy: a line per declared seat trade, its label over a dotted leader and a well per seat, the
   posted people then the free seats empty, six to a row; the sheltering crowd under an alarm
   and the recruits drilling there follow as their own lines (a worker sheltering where it works stays
-  on its trade's line). A press on a trade's free seat opens Mieszkańcy filtered to that trade. A line
+  on its trade's line). A press on a trade's free seat opens Poddani filtered to that trade. A line
   holds twelve wells: free seats give way first, and people past that read
   "+N" in the last well. The rule carries
   the posts filled of all. Mieszkańcy for a home: the families side by side (the man, the woman, the
@@ -659,7 +659,7 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 
 | Region | Placement | Content today |
 | --- | --- | --- |
-| Navigation beam | bottom centre, 420 × 72, seven 56 × 64 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
+| Navigation beam | bottom centre, 420 × 72, seven 56 × 64 actions | Buduj, Poddani, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
 | System bar | top right, flush with both edges | residents and five stock counters with breakdowns, the sim clock, pause / ×1 / ×2 / ×3 segments, menu medallion (rules below) |
 | Notifications | left 10, top 18, width 173, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
 | Central window | centred on the screen's vertical axis, the beam's; top 96, floor at the beam, slid right of the minimap when a narrow screen would put it over the corner | one window at a time; Wiedza shows a framed pending note |
@@ -671,7 +671,7 @@ Rules the shell enforces:
 - A beam action shows no focus ring: its pressed art and its label are the cues.
 - One central window at a time. A beam entry closes the other window and toggles its own; the same
   entry pressed again closes it. Buduj, Asystent and Misja drop a held placement or paper first;
-  Statystyki, Dyplomacja, Mieszkańcy and Wiedza leave a running placement alone.
+  Statystyki, Dyplomacja, Poddani and Wiedza leave a running placement alone.
 - Esc steps back one level per press: a held placement or paper, then the open central window, then
   the unit controls' own ladder (job list, armed order, selection). The shell handles Esc before the
   other listeners and stops it once it consumed the press. With every rung clear, Esc opens the game

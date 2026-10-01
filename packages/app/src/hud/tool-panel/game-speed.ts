@@ -8,7 +8,7 @@ export type RunningGameSpeed = 'normal' | 'fast' | 'faster';
 
 export interface GameSpeedStateSpec {
   readonly state: GameSpeedState;
-  /** The original speed factor (`DAT_1003a6488 / 12`): 1/2/3 = ×1/×2/×3, 0 = paused. */
+  /** The original speed factor: 1/2/3 = ×1/×2/×3, 0 = paused. */
   readonly factor: number;
   /** Real-time → sim-time multiplier fed to the fixed-timestep accumulator (0 pauses the sim). */
   readonly tickMultiplier: number;
@@ -42,6 +42,15 @@ export const DEFAULT_GAME_SPEED_CONTROL: GameSpeedControl = { running: 'normal',
 
 export function toggleGameSpeedPause(control: GameSpeedControl): GameSpeedControl {
   return { running: control.running, paused: !control.paused };
+}
+
+const RUNNING_SPEED_CYCLE: readonly RunningGameSpeed[] = ['normal', 'fast', 'faster'];
+
+/** Original behavior of the speed key: ×1 → ×2 → ×3 → ×1, and a press while paused resumes at ×1. */
+export function nextRunningSpeed(control: GameSpeedControl): RunningGameSpeed {
+  if (control.paused) return 'normal';
+  const index = RUNNING_SPEED_CYCLE.indexOf(control.running);
+  return RUNNING_SPEED_CYCLE[(index + 1) % RUNNING_SPEED_CYCLE.length] ?? 'normal';
 }
 
 /**

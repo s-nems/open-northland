@@ -50,9 +50,9 @@ describe('parseKeyBindings', () => {
     const earlier = parseKeyBindings({ panLeft: 'KeyP' });
     expect(earlier.panLeft).toBe('KeyP');
     expect(earlier.pauseToggle).toBeNull();
-    // Residents comes first in action order, yet its default must not take the player's F2.
-    const later = parseKeyBindings({ attackMove: 'F2' });
-    expect(later.attackMove).toBe('F2');
+    // Subjects comes first in action order, yet its default must not take the player's F7.
+    const later = parseKeyBindings({ attackMove: 'F7' });
+    expect(later.attackMove).toBe('F7');
     expect(later.residents).toBeNull();
   });
 

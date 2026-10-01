@@ -25,11 +25,11 @@ See [resume instructions](FOUNDATION.md#resume-the-local-review).
 - Economic RTS for mouse and keyboard. No controller/touch redesign in this scope.
 - Modern, readable UI with a restrained Nordic character and original assets. Keep decoration
   subordinate to gameplay information; match the world without copying original GUI art.
-- Seven direct bottom-bar entries: **Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja,
+- Seven direct bottom-bar entries: **Buduj, Poddani, Asystent, Statystyki, Misja, Dyplomacja,
   Wiedza**. No intermediate Osada/Wyprawa menus and no second navigation row.
 - Buduj opens the catalog immediately. Roads, stockades, gates and Papiery are reachable inside
   construction. Papiery retains all paper types, not only building permits.
-- Mieszkańcy opens the residents list immediately. Selecting an object has a separate bottom-right
+- Poddani opens the residents list immediately. Selecting an object has a separate bottom-right
   detail panel for a person, building or group.
 - Main content windows occupy the space between the side regions, have their own close control and
   retain visible navigation. Selecting a construction item exposes the map for placement.

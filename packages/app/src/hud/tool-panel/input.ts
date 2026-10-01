@@ -49,14 +49,21 @@ export interface ToolPanelInputDeps {
    *  selection), the rungs of the cancel ladder below the shell's own. */
   readonly escapeClaimed?: () => boolean;
   readonly openMenu: () => void;
+  /** Open the game menu straight on its load or save page; absent where the session offers none. */
+  readonly openLoad?: () => void;
+  readonly openSave?: () => void;
   /** Toggle a beam entry's window, as a press on the beam does. */
   readonly toggleNav: (id: NavEntryId) => void;
   readonly togglePause: () => void;
+  /** Step the running speed ×1 → ×2 → ×3 → ×1; a pause resumes at ×1. */
+  readonly cycleSpeed: () => void;
   readonly toggleHud: () => void;
   /** Hold the road tool; absent where the game offers none, which leaves its key to the page. */
   readonly roadTool?: () => void;
   /** Hold the palisade wall tool; absent where the game offers none. */
   readonly palisadeTool?: () => void;
+  /** Hold the gate tool; absent where the game offers none. */
+  readonly gateTool?: () => void;
   /** The GUI click: a held mode called off by right-click or Esc fails (Esc is an approximation: only
    *  the mouse cancel is original behavior). */
   readonly cue: (cue: UiCue) => void;
@@ -212,21 +219,29 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
         return;
       }
     }
-    if (deps.roadTool !== undefined && isActionHotkey(e, deps.bindings, 'roadTool')) {
+    const pressed: readonly [KeybindingAction, (() => void) | undefined][] = [
+      ['roadTool', deps.roadTool],
+      ['palisadeTool', deps.palisadeTool],
+      ['gateTool', deps.gateTool],
+      ['loadGame', deps.openLoad],
+      ['saveGame', deps.openSave],
+    ];
+    for (const [action, run] of pressed) {
+      if (run === undefined || !isActionHotkey(e, deps.bindings, action)) continue;
       if (modalOwned(e)) return;
       consume(e);
-      deps.roadTool();
+      run();
       return;
     }
-    if (deps.palisadeTool !== undefined && isActionHotkey(e, deps.bindings, 'palisadeTool')) {
-      if (modalOwned(e)) return;
-      consume(e);
-      deps.palisadeTool();
-      return;
-    }
+    // A modal dialog types its letters into its own search, so P and L stay its.
     if (isActionHotkey(e, deps.bindings, 'pauseToggle')) {
+      if (modalOwned(e)) return;
       e.preventDefault();
       deps.togglePause();
+    } else if (isActionHotkey(e, deps.bindings, 'speedCycle')) {
+      if (modalOwned(e)) return;
+      e.preventDefault();
+      deps.cycleSpeed();
     }
   };
 

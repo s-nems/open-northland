@@ -60,7 +60,11 @@ function wornSlots(ent: SnapshotEntity): WornSlots {
   };
 }
 
-function kindOf(content: ContentSet, ent: SnapshotEntity, jobType: number | null): ResidentKind {
+export function residentKindOf(
+  content: ContentSet,
+  ent: SnapshotEntity,
+  jobType: number | null,
+): ResidentKind {
   if (!isAdult(ent)) return 'child';
   if (systems.isHeroJob(content, jobType)) return 'hero';
   if (systems.isSoldierJob(content, jobType)) return 'soldier';
@@ -148,7 +152,7 @@ export function residentRows(snapshot: WorldSnapshot, ctx: ResidentsProjectionCo
   for (const ent of actorsOf(snapshot)) {
     if (!isSettler(ent) || isWildlife(ent) || ownerPlayerOf(ent) !== ctx.localPlayer) continue;
     const jobType = settlerJobType(ent) ?? null;
-    const kind = kindOf(ctx.content, ent, jobType);
+    const kind = residentKindOf(ctx.content, ent, jobType);
     const workplace = workplaceOf(ent);
     const workplaceEnt = workplace === undefined ? undefined : entityById(snapshot, workplace);
     const ageTicks = num((ent.components.Age as { ticks?: unknown } | undefined)?.ticks);

@@ -541,6 +541,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
       overlayReserve: () => minimap?.panelRect() ?? null,
       onSystemMenu: () => systemMenu?.toggle(),
+      onSaveGame: () => systemMenu?.openPage('save'),
+      ...(sharedClock ? {} : { onLoadGame: () => systemMenu?.openPage('load') }),
       onToggleHud: () => toggleHud?.(),
       systemMenuOpen: () => systemMenu?.isOpen() === true,
       escapeClaimed: () => escapeClaimed?.() === true,

@@ -234,6 +234,20 @@ export function supplyRunsTo(snapshot: WorldSnapshot, site: number): readonly Sn
   return indexesOf(snapshot).get(SUPPLY_RUNS).get(site) ?? NO_ENTITIES;
 }
 
+const SETTLERS_BY_OWNER = groupedBy(
+  (e) => (isSettler(e) ? ownerPlayerOf(e) : undefined),
+  'settlers by owner',
+  {
+    values: ['Owner'],
+    presence: ['Settler'],
+  },
+);
+
+/** The settlers `player` owns, people and livestock alike, ascending by id. */
+export function settlersOwnedBy(snapshot: WorldSnapshot, player: number): readonly SnapshotEntity[] {
+  return indexesOf(snapshot).get(SETTLERS_BY_OWNER).get(player) ?? NO_ENTITIES;
+}
+
 const SHELTERERS = groupedBy((e) => (isSettler(e) ? shelterOf(e) : undefined), 'shelterers', {
   values: ['Sheltering'],
   presence: ['Settler'],
