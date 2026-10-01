@@ -2,7 +2,7 @@ import { FNV_OFFSET_BASIS, fnvMixWord } from '@open-northland/data';
 import { ABSENT_WORD, stringWord } from '../core/hash-value.js';
 import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
 import { entityById } from './snapshot.js';
-import type { SnapshotDelta } from './snapshot-clones.js';
+import type { SnapshotDelta } from './snapshot-delta.js';
 
 /** A set of entities in two words: how many there are, and the XOR of one word per component. */
 export interface DeltaDigest {
@@ -144,7 +144,7 @@ export class MirrorTruth {
       for (const entity of snapshot.entities) digest.fold(entity);
     } else {
       for (const id of delta.removed) digest.drop(id);
-      for (const { id } of delta.touched) {
+      for (const id of delta.touched) {
         const entity = entityById(snapshot, id);
         if (entity === undefined) digest.drop(id);
         else digest.fold(entity);

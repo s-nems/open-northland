@@ -8,8 +8,8 @@ import {
   heapReach,
   IDLE_JOB,
   nodeOfPosition,
+  packSnapshotDelta,
   Simulation,
-  type SnapshotDelta,
   SnapshotMirror,
   systems,
   type TerrainMap,
@@ -243,7 +243,9 @@ describe('buildHud over a mirror', () => {
   it('keeps the walked figures through every hand-built change', () => {
     const mirror = new SnapshotMirror();
     const opening = OPENING.map((entity) => touch(entity.id, entity.components));
-    mirror.apply({ tick: 1, sequence: 0, rebuild: true, touched: opening, removed: [], events: [] });
+    mirror.apply(
+      packSnapshotDelta({ tick: 1, sequence: 0, rebuild: true, touched: opening, removed: [], events: [] }),
+    );
     expectMatchesWalk(mirror.snapshot());
     const heldBefore = buildHud(mirror.snapshot(), PLAYER);
     expect(heldBefore.stocks).toEqual([
@@ -252,14 +254,14 @@ describe('buildHud over a mirror', () => {
     ]);
     for (const [i, step] of STEPS.entries()) {
       const tick = i + 2;
-      const delta: SnapshotDelta = {
+      const delta = packSnapshotDelta({
         tick,
         sequence: tick - 1,
         rebuild: false,
         touched: step.touched ?? [],
         removed: step.removed ?? [],
         events: [],
-      };
+      });
       mirror.apply(delta);
       expectMatchesWalk(mirror.snapshot());
       expect(mirror.verifyIndexes()).toEqual([]);
@@ -275,7 +277,9 @@ describe('buildHud over a mirror', () => {
     const NEW_HEAP_ID = LATE_BUILDING_ID + 2;
     const mirror = new SnapshotMirror();
     const opening = OPENING.map((entity) => touch(entity.id, entity.components));
-    mirror.apply({ tick: 1, sequence: 0, rebuild: true, touched: opening, removed: [], events: [] });
+    mirror.apply(
+      packSnapshotDelta({ tick: 1, sequence: 0, rebuild: true, touched: opening, removed: [], events: [] }),
+    );
     // One read registers the maintained totals; every later delta is applied without reading them.
     expectMatchesWalk(mirror.snapshot());
     const building = (site: { x: number; y: number }) => ({
@@ -304,14 +308,16 @@ describe('buildHud over a mirror', () => {
     ];
     for (const [i, step] of steps.entries()) {
       const tick = i + 2;
-      mirror.apply({
-        tick,
-        sequence: tick - 1,
-        rebuild: false,
-        touched: step.touched ?? [],
-        removed: step.removed ?? [],
-        events: [],
-      });
+      mirror.apply(
+        packSnapshotDelta({
+          tick,
+          sequence: tick - 1,
+          rebuild: false,
+          touched: step.touched ?? [],
+          removed: step.removed ?? [],
+          events: [],
+        }),
+      );
       expect(mirror.verifyIndexes()).toEqual([]);
     }
     const snapshot = mirror.snapshot();

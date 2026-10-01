@@ -1,6 +1,6 @@
 import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
-import { indexOfEntity } from './snapshot.js';
-import type { EntityDelta, SnapshotDelta } from './snapshot-clones.js';
+import { indexOfEntity, indexOfEntityFrom } from './snapshot.js';
+import { changeAt, deltaValues, type EntityChange, type SnapshotDelta } from './snapshot-delta.js';
 import { attachIndexes, SnapshotIndexes } from './snapshot-indexes.js';
 
 /**
@@ -39,7 +39,13 @@ export class SnapshotMirror {
     this.dropped = [];
     if (delta.rebuild) {
       this.entities.length = 0;
-      for (const entry of delta.touched) this.entities.push(created(entry));
+      const values = deltaValues(delta);
+      let at = 0;
+      for (let i = 0; i < delta.touched.length; i++) {
+        const change = changeAt(delta, i);
+        this.entities.push(created(delta.touched[i] as number, change, values, at));
+        at += change.written.length;
+      }
       this.indexes.reset();
     } else {
       const current = this.current;
@@ -50,7 +56,7 @@ export class SnapshotMirror {
         );
       }
       this.drop(delta.removed);
-      this.merge(delta.touched);
+      this.merge(delta);
     }
     this.lastSequence = delta.sequence;
     this.current = { tick: delta.tick, entities: this.entities, events: delta.events };
@@ -96,22 +102,33 @@ export class SnapshotMirror {
 
   /** Patch the touched entities the list holds in place and merge the new ones in back to front, so
    *  the list grows in place and only the suffix from the first insertion moves. */
-  private merge(touched: readonly EntityDelta[]): void {
+  private merge(delta: SnapshotDelta): void {
     const list = this.entities;
     const inserts: EntitySnapshot[] = [];
-    for (const entry of touched) {
-      const at = indexOfEntity(list, entry.id);
-      const held = at >= 0 ? list[at] : undefined;
+    const { touched } = delta;
+    const values = deltaValues(delta);
+    this.indexes.beginDelta(delta.changes);
+    let at = 0;
+    let from = 0;
+    for (let i = 0; i < touched.length; i++) {
+      const id = touched[i] as number;
+      const change = changeAt(delta, i);
+      const found = indexOfEntityFrom(list, id, from);
+      const held = found >= 0 ? list[found] : undefined;
       if (held !== undefined) {
-        const next = patched(held, entry);
-        list[at] = next;
-        this.indexes.replaced(held, next, entry);
+        const next = patched(held, change, values, at);
+        list[found] = next;
+        this.indexes.replaced(held, next, delta.changeOf[i] as number);
+        from = found + 1;
       } else {
-        const entity = created(entry);
+        const entity = created(id, change, values, at);
         inserts.push(entity);
         this.indexes.added(entity);
+        from = -found - 1;
       }
+      at += change.written.length;
     }
+    this.indexes.endDelta();
     if (inserts.length === 0) return;
     let read = list.length - 1;
     for (const entity of inserts) list.push(entity); // placeholders; the merge below overwrites them
@@ -131,27 +148,32 @@ export class SnapshotMirror {
   }
 }
 
-function created(entry: EntityDelta): EntitySnapshot {
-  return { id: entry.id, components: entry.components };
+function created(id: number, change: EntityChange, values: readonly unknown[], at: number): EntitySnapshot {
+  const components: Record<string, unknown> = {};
+  const { written } = change;
+  for (let k = 0; k < written.length; k++) components[written[k] as string] = values[at + k];
+  return { id, components };
 }
 
-/** The new object of a held entity: the previous clones of the components the entry left alone, the
- *  entry's fresh clones over them, without the components it removed. */
-function patched(held: EntitySnapshot, entry: EntityDelta): EntitySnapshot {
-  if (entry.removed.length === 0) {
-    return { id: entry.id, components: { ...held.components, ...entry.components } };
-  }
-  const components: Record<string, unknown> = {};
-  for (const name of Object.keys(held.components)) {
-    if (!entry.removed.includes(name)) {
-      components[name] = Object.hasOwn(entry.components, name)
-        ? entry.components[name]
-        : held.components[name];
+/** The new object of a held entity: the previous clones of the components the change left alone, the
+ *  change's fresh clones over them, without the components it removed. A name the entity did not hold
+ *  lands last. */
+function patched(
+  held: EntitySnapshot,
+  change: EntityChange,
+  values: readonly unknown[],
+  at: number,
+): EntitySnapshot {
+  const { written, removed } = change;
+  let components: Record<string, unknown>;
+  // Object.assign onto an empty literal copies the record's shape whole; a spread copies key by key.
+  if (removed.length === 0) components = Object.assign({}, held.components);
+  else {
+    components = {};
+    for (const name in held.components) {
+      if (!removed.includes(name)) components[name] = held.components[name];
     }
   }
-  for (const name of Object.keys(entry.components)) {
-    if (!Object.hasOwn(held.components, name) && !entry.removed.includes(name))
-      components[name] = entry.components[name];
-  }
-  return { id: entry.id, components };
+  for (let k = 0; k < written.length; k++) components[written[k] as string] = values[at + k];
+  return { id: held.id, components };
 }

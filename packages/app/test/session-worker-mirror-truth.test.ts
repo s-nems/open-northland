@@ -1,5 +1,11 @@
 import { MessageChannel } from 'node:worker_threads';
-import { type EntitySnapshot, entitiesWith, type SnapshotDelta } from '@open-northland/sim';
+import {
+  type EntitySnapshot,
+  entitiesWith,
+  entityDeltas,
+  packSnapshotDelta,
+  type SnapshotDelta,
+} from '@open-northland/sim';
 import { afterEach, describe, expect, it } from 'vitest';
 import { diag } from '../src/diag/log.js';
 import { INVARIANT_CHECK_EVERY_TICKS } from '../src/diag/session.js';
@@ -39,13 +45,14 @@ function sandbox(_boot: null, options: WorkerSessionOptions): HostedBuild<null> 
 /** The delta with the first component of its first non-empty entry left out, as a stream that lost
  *  one write would carry it. */
 function withLostWrite(delta: SnapshotDelta): SnapshotDelta | null {
-  const at = delta.touched.findIndex((entry) => Object.keys(entry.components).length > 0);
-  const entry = delta.touched[at];
+  const entries = entityDeltas(delta);
+  const at = entries.findIndex((entry) => Object.keys(entry.components).length > 0);
+  const entry = entries[at];
   if (entry === undefined) return null;
   const [lost] = Object.keys(entry.components);
   const kept = Object.fromEntries(Object.entries(entry.components).filter(([name]) => name !== lost));
-  const touched = delta.touched.map((each, i) => (i === at ? { ...entry, components: kept } : each));
-  return { ...delta, touched };
+  const touched = entries.map((each, i) => (i === at ? { ...entry, components: kept } : each));
+  return packSnapshotDelta({ ...delta, touched });
 }
 
 let session: WorkerSession<null> | null = null;

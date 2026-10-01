@@ -105,11 +105,17 @@ export {
 } from './inspect/snapshot.js';
 export {
   cloneEvents,
-  type EntityDelta,
-  type SnapshotDelta,
   SnapshotDeltaStream,
   type SnapshotDeltaStreamOptions,
 } from './inspect/snapshot-clones.js';
+export {
+  type EntityChange,
+  type EntityDelta,
+  type EntitySnapshotDelta,
+  entityDeltas,
+  packSnapshotDelta,
+  type SnapshotDelta,
+} from './inspect/snapshot-delta.js';
 export {
   type ChangedEntity,
   type ComponentChange,

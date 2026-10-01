@@ -140,9 +140,8 @@ export class MirrorProbe {
     this.serializeUs.push((t2 - t1) * US_PER_MS);
     this.deserializeUs.push((t3 - t2) * US_PER_MS);
     this.touched.push(delta.touched.length + delta.removed.length);
-    let components = 0;
-    for (const entry of delta.touched)
-      components += Object.keys(entry.components).length + entry.removed.length;
+    let components = delta.valueKinds.length;
+    for (const change of delta.changeOf) components += delta.changes[change]?.removed.length ?? 0;
     this.components.push(components);
     this.kilobytes.push(bytes.byteLength / BYTES_PER_KB);
   }

@@ -1,6 +1,7 @@
 import {
   type EntityDelta,
   type EntitySnapshot,
+  packSnapshotDelta,
   SnapshotMirror,
   type WorldSnapshot,
 } from '@open-northland/sim';
@@ -116,14 +117,23 @@ describe('the shared scene walk', () => {
 function mirrorOf(entities: readonly EntitySnapshot[]): SnapshotMirror {
   const mirror = new SnapshotMirror();
   const touched = entities.map((e) => ({ id: e.id, components: e.components, removed: [] }));
-  mirror.apply({ tick: 1, sequence: 0, rebuild: true, touched, removed: [], events: [] });
+  mirror.apply(packSnapshotDelta({ tick: 1, sequence: 0, rebuild: true, touched, removed: [], events: [] }));
   return mirror;
 }
 
 function advance(mirror: SnapshotMirror, touched: readonly EntityDelta[], removed: readonly number[] = []) {
   const lastTick = mirror.tick ?? 0;
   // One delta per tick from the tick-1 rebuild at sequence 0: the last tick is the next sequence.
-  mirror.apply({ tick: lastTick + 1, sequence: lastTick, rebuild: false, touched, removed, events: [] });
+  mirror.apply(
+    packSnapshotDelta({
+      tick: lastTick + 1,
+      sequence: lastTick,
+      rebuild: false,
+      touched,
+      removed,
+      events: [],
+    }),
+  );
   return mirror.snapshot();
 }
 

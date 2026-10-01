@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Position, Resource, SettlerNeeds } from '../../src/components/index.js';
-import { fx, Simulation } from '../../src/index.js';
+import { entityDeltas, fx, Simulation, type SnapshotDelta } from '../../src/index.js';
 import { clonePlain } from '../../src/inspect/plain-clone.js';
 import { testContent } from '../fixtures/content.js';
+
+/** The first entity a delta touched, as `entityDeltas` lists it. */
+function firstTouched(delta: SnapshotDelta | null | undefined) {
+  return delta === null || delta === undefined ? undefined : entityDeltas(delta)[0];
+}
 
 function fixture() {
   const sim = new Simulation({ seed: 7, content: testContent() });
@@ -27,7 +32,7 @@ describe('snapshot component write tracking', () => {
     position.extra.label = 'after';
     sim.world.mut(id, SettlerNeeds).hunger = fx.fromInt(1);
     needs.extra.label = 'after';
-    const written = stream.next()?.touched[0]?.components;
+    const written = firstTouched(stream.next())?.components;
     if (written === undefined) throw new Error('expected a component delta');
     expect(written?.Position).toEqual({ y: zero, extra: { label: 'after' }, x: fx.fromInt(3) });
     expect(Object.keys(written?.Position as object)).toEqual(['y', 'extra', 'x']);
@@ -68,7 +73,7 @@ describe('snapshot component write tracking', () => {
     sim.world.mut(id, Resource).remaining = 4;
     const stream = sim.snapshotDeltas();
     const first = stream.next();
-    expect(first?.touched[0]?.components.Resource).toMatchObject({ remaining: 4 });
+    expect(firstTouched(first)?.components.Resource).toMatchObject({ remaining: 4 });
     const held = sim.snapshot().entities[0];
     stream.close();
     sim.world.mut(id, Resource).remaining = 3;
@@ -89,7 +94,7 @@ describe('snapshot component write tracking', () => {
     const delta = stream.next();
     const after = sim.snapshot().entities[0];
     expect(walk).not.toHaveBeenCalled();
-    expect(delta?.touched[0]?.components).toEqual({ Position: { x: fx.fromInt(3), y: 0 } });
+    expect(firstTouched(delta)?.components).toEqual({ Position: { x: fx.fromInt(3), y: 0 } });
     expect(after).not.toBe(before);
     expect(after?.components.Resource).toBe(before?.components.Resource);
     expect(before?.components.Position).toEqual({ x: 0, y: 0 });
@@ -101,30 +106,30 @@ describe('snapshot component write tracking', () => {
     const { sim, id } = fixture();
     const fast = sim.snapshotDeltas();
     const slow = sim.snapshotDeltas();
-    const held = fast.next()?.touched[0]?.components;
+    const held = firstTouched(fast.next())?.components;
     slow.next();
     // Write in reverse registration order, then repeat writes across separate drains.
     sim.world.mut(id, Resource).remaining = 4;
-    const heldWrite = fast.next()?.touched[0]?.components;
+    const heldWrite = firstTouched(fast.next())?.components;
     for (const x of [1, 2]) {
       sim.world.mut(id, Position).x = fx.fromInt(x);
       sim.world.mut(id, Resource).remaining = 4 - x;
       sim.snapshot();
-      expect(Object.keys(fast.next()?.touched[0]?.components ?? {})).toEqual(['Position', 'Resource']);
+      expect(Object.keys(firstTouched(fast.next())?.components ?? {})).toEqual(['Position', 'Resource']);
     }
     sim.world.remove(id, Resource);
     sim.snapshot();
-    expect(fast.next()?.touched[0]?.removed).toEqual(['Resource']);
+    expect(firstTouched(fast.next())?.removed).toEqual(['Resource']);
     sim.world.add(id, Resource, { goodType: 1, remaining: 7, harvestAtomic: 24 });
     const delta = slow.next();
-    expect(delta?.touched[0]?.removed).toEqual([]);
-    expect(Object.keys(delta?.touched[0]?.components ?? {})).toEqual(['Position', 'Resource']);
+    expect(firstTouched(delta)?.removed).toEqual([]);
+    expect(Object.keys(firstTouched(delta)?.components ?? {})).toEqual(['Position', 'Resource']);
     expect(heldWrite).toEqual({ Resource: { goodType: 1, remaining: 4, harvestAtomic: 24 } });
     expect(held).toEqual({
       Position: { x: 0, y: 0 },
       Resource: { goodType: 1, remaining: 5, harvestAtomic: 24 },
     });
-    expect(delta?.touched[0]?.components).toEqual({
+    expect(firstTouched(delta)?.components).toEqual({
       Position: { x: fx.fromInt(2), y: 0 },
       Resource: { goodType: 1, remaining: 7, harvestAtomic: 24 },
     });

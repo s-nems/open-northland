@@ -1,7 +1,7 @@
 import { ONE } from '../core/fixed.js';
 import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
-import { indexOfEntity } from './snapshot.js';
-import type { EntityDelta } from './snapshot-clones.js';
+import { indexOfEntity, indexOfEntityFrom } from './snapshot.js';
+import type { EntityChange } from './snapshot-delta.js';
 import { type TileBox, TileBuckets } from './tile-buckets.js';
 
 /** The components a spec places an entity by. */
@@ -29,8 +29,12 @@ export interface SnapshotIndexSpec<T> {
   /** The new object of a touched entity the snapshot already held; defaults to remove then add. */
   replace?(state: T, previous: EntitySnapshot, next: EntitySnapshot): void;
   /** The new object of a touched entity whose `reads` it left alone, for a state that hands out entity
-   *  objects; without it the entity costs the state nothing. */
+   *  objects; without it and `swapAll` the entity costs the state nothing. */
   swap?(state: T, previous: EntitySnapshot, next: EntitySnapshot): void;
+  /** `swap` once per delta, over the new objects of every held entity it touched, ascending by id; it
+   *  also meets the ones `replace` just placed, which it leaves where they are. Taken over `swap`, so a
+   *  state can merge the run instead of searching per entity. */
+  swapAll?(state: T, nexts: readonly EntitySnapshot[]): void;
   /** Where a maintained state says something a fresh walk (`fresh`) does not, or null; defaults to
    *  {@link firstDifference}. A state holding read-through caches or an order its history set compares
    *  what its readers see; `current` reads the other specs fresh over the same entities. */
@@ -44,16 +48,24 @@ export interface SnapshotIndexReader {
 
 type Replacement = (state: unknown, previous: EntitySnapshot, next: EntitySnapshot) => void;
 
-/** A held state with its spec's upkeep resolved once, one shape for every spec: the per-change loop
- *  reads these fields for every held index and every touched entity. */
+/** A held state with its spec's upkeep resolved once, one shape for every spec. */
 interface HeldIndex {
   readonly spec: SnapshotIndexSpec<unknown>;
   readonly state: unknown;
   readonly gated: boolean;
   readonly replace: Replacement;
+  /** Null when the spec swaps per delta or not at all. */
   readonly swap: Replacement | null;
-  /** The last change that touched something the spec reads. */
-  marked: number;
+  readonly swapAll: ((state: unknown, nexts: readonly EntitySnapshot[]) => void) | null;
+}
+
+/** What one change of a delta costs each held index, resolved on its first entity: the indexes that
+ *  replace the entity, the ones that swap it one by one, and the written names whose presence readers
+ *  replace it too when the entity did not carry the name before. */
+interface ChangePlan {
+  readonly replace: readonly HeldIndex[];
+  readonly swap: readonly HeldIndex[];
+  readonly presence: readonly (readonly [string, readonly HeldIndex[]])[];
 }
 
 function heldIndex(spec: SnapshotIndexSpec<unknown>, state: unknown): HeldIndex {
@@ -67,8 +79,8 @@ function heldIndex(spec: SnapshotIndexSpec<unknown>, state: unknown): HeldIndex 
         spec.remove(held, previous);
         spec.add(held, next);
       }),
-    swap: spec.swap?.bind(spec) ?? null,
-    marked: 0,
+    swap: spec.swapAll === undefined ? (spec.swap?.bind(spec) ?? null) : null,
+    swapAll: spec.swapAll?.bind(spec) ?? null,
   };
 }
 
@@ -82,7 +94,11 @@ export class SnapshotIndexes implements SnapshotIndexReader {
   private readonly order: HeldIndex[] = [];
   private readonly valueReaders = new Map<string, HeldIndex[]>();
   private readonly presenceReaders = new Map<string, HeldIndex[]>();
-  private changes = 0;
+  /** The changes of the delta being applied, and the plans resolved for them so far. */
+  private changes: readonly EntityChange[] = [];
+  private readonly plans: (ChangePlan | undefined)[] = [];
+  /** The new objects of the held entities the delta touched so far, ascending, for `swapAll`. */
+  private readonly nexts: EntitySnapshot[] = [];
 
   constructor(private readonly entities: () => readonly EntitySnapshot[]) {}
 
@@ -132,22 +148,67 @@ export class SnapshotIndexes implements SnapshotIndexReader {
     for (const { spec, state } of this.order) spec.remove(state, entity);
   }
 
-  /** `next` replaces `previous` after `change`, which names what the entity wrote and removed. */
-  replaced(previous: EntitySnapshot, next: EntitySnapshot, change: EntityDelta): void {
-    const mark = ++this.changes;
-    for (const name in change.components) {
-      markAll(this.valueReaders.get(name), mark);
+  /** The next replacements come from a delta whose changes are `changes`. */
+  beginDelta(changes: readonly EntityChange[]): void {
+    this.changes = changes;
+    this.plans.length = 0;
+    this.nexts.length = 0;
+  }
+
+  /** `next` replaces `previous` after the current delta's change `change`; entities come ascending. */
+  replaced(previous: EntitySnapshot, next: EntitySnapshot, change: number): void {
+    const plan = this.plans[change] ?? this.planOf(change);
+    let added: HeldIndex[] | null = null;
+    for (const [name, readers] of plan.presence) {
+      if (name in previous.components) continue;
+      for (const index of readers) {
+        if (plan.replace.includes(index)) continue;
+        if (added === null) added = [];
+        added.push(index);
+      }
+    }
+    for (const index of plan.replace) index.replace(index.state, previous, next);
+    if (added !== null) for (const index of added) index.replace(index.state, previous, next);
+    for (const index of plan.swap) {
+      if (added === null || !added.includes(index)) index.swap?.(index.state, previous, next);
+    }
+    this.nexts.push(next);
+  }
+
+  /** The delta's replacements are done: the states that swap per delta take them. */
+  endDelta(): void {
+    const { nexts } = this;
+    if (nexts.length > 0) {
+      for (const index of this.order) {
+        if (index.gated) index.swapAll?.(index.state, nexts);
+      }
+    }
+    nexts.length = 0;
+    this.changes = [];
+  }
+
+  private planOf(at: number): ChangePlan {
+    const change = this.changes[at];
+    if (change === undefined) throw new Error(`snapshot indexes: the delta has no change ${at}`);
+    const marked = new Set<HeldIndex>();
+    const presence: [string, readonly HeldIndex[]][] = [];
+    for (const name of change.written) {
+      for (const index of this.valueReaders.get(name) ?? []) marked.add(index);
       const testers = this.presenceReaders.get(name);
-      if (testers !== undefined && !(name in previous.components)) markAll(testers, mark);
+      if (testers !== undefined) presence.push([name, testers]);
     }
     for (const name of change.removed) {
-      markAll(this.valueReaders.get(name), mark);
-      markAll(this.presenceReaders.get(name), mark);
+      for (const index of this.valueReaders.get(name) ?? []) marked.add(index);
+      for (const index of this.presenceReaders.get(name) ?? []) marked.add(index);
     }
-    for (const index of this.order) {
-      if (!index.gated || index.marked === mark) index.replace(index.state, previous, next);
-      else if (index.swap !== null) index.swap(index.state, previous, next);
-    }
+    const replaces = (index: HeldIndex): boolean => !index.gated || marked.has(index);
+    const plan: ChangePlan = {
+      replace: this.order.filter(replaces),
+      swap: this.order.filter((index) => !replaces(index) && index.swap !== null),
+      presence,
+    };
+    this.plans[at] = plan;
+    return plan;
   }
 }
 
@@ -158,11 +219,6 @@ function listUnder(readers: Map<string, HeldIndex[]>, name: string): HeldIndex[]
     readers.set(name, list);
   }
   return list;
-}
-
-function markAll(indexes: readonly HeldIndex[] | undefined, mark: number): void {
-  if (indexes === undefined) return;
-  for (const index of indexes) index.marked = mark;
 }
 
 const INDEXES = new WeakMap<WorldSnapshot, SnapshotIndexes>();
@@ -262,7 +318,7 @@ export function listedWhere(
         list.splice(at, 1);
       }
     },
-    swap: (list, _previous, next) => swapHeld(list, next),
+    swapAll: swapAllHeld,
   };
 }
 
@@ -327,13 +383,15 @@ export function groupedBy(
   name?: string,
   reads?: SnapshotIndexReads,
 ): SnapshotIndexSpec<EntityGroups> {
-  const add = (groups: EntityGroups, entity: EntitySnapshot): void => {
-    const key = keyOf(entity);
-    if (key === undefined) return;
+  const place = (groups: EntityGroups, key: number, entity: EntitySnapshot): void => {
     groups.keyOfId.set(entity.id, key);
     const group = groups.get(key);
     if (group === undefined) groups.set(key, [entity]);
     else insertSorted(group, entity);
+  };
+  const add = (groups: EntityGroups, entity: EntitySnapshot): void => {
+    const key = keyOf(entity);
+    if (key !== undefined) place(groups, key, entity);
   };
   const remove = (groups: EntityGroups, id: number): void => {
     const key = groups.keyOfId.get(id);
@@ -352,29 +410,37 @@ export function groupedBy(
     remove: (groups, entity) => remove(groups, entity.id),
     replace: (groups, _previous, next) => {
       const key = keyOf(next);
-      const group = key === undefined ? undefined : groups.get(key);
-      if (group !== undefined && groups.keyOfId.get(next.id) === key) {
-        replaceSorted(group, next);
+      const held = groups.keyOfId.get(next.id);
+      if (key === held) {
+        const group = key === undefined ? undefined : groups.get(key);
+        if (group !== undefined) replaceSorted(group, next);
         return;
       }
       remove(groups, next.id);
-      add(groups, next);
+      if (key !== undefined) place(groups, key, next);
     },
-    swap: (groups, _previous, next) => {
-      const key = groups.keyOfId.get(next.id);
-      const group = key === undefined ? undefined : groups.get(key);
-      if (group !== undefined) swapHeld(group, next);
+    swapAll: (groups, nexts) => {
+      // Walk whichever side is smaller: the held entities group by group, or the run id by id.
+      if (groups.keyOfId.size < nexts.length) {
+        for (const group of groups.values()) swapAllHeld(group, nexts);
+        return;
+      }
+      for (const next of nexts) {
+        const key = groups.keyOfId.get(next.id);
+        const group = key === undefined ? undefined : groups.get(key);
+        if (group !== undefined) swapHeld(group, next);
+      }
     },
     differs: (held, fresh) =>
       firstDifference(held, fresh) ?? firstDifference(held.keyOfId, fresh.keyOfId, 'the keys'),
   };
 }
 
-/** The snapshot's `Position` as tile coordinates, or null for an unpositioned entity. */
-function tileOf(entity: EntitySnapshot): { x: number; y: number } | null {
+/** The snapshot's `Position` record, or null for an unpositioned entity; its fields are fixed-point. */
+function positionOf(entity: EntitySnapshot): { readonly x: number; readonly y: number } | null {
   const pos = entity.components.Position as { x?: unknown; y?: unknown } | undefined;
   if (pos === undefined || typeof pos.x !== 'number' || typeof pos.y !== 'number') return null;
-  return { x: pos.x / ONE, y: pos.y / ONE };
+  return pos as { readonly x: number; readonly y: number };
 }
 
 /** Every positioned entity bucketed by its `Position`, in fractional tile units. */
@@ -384,19 +450,19 @@ const BY_POSITION: SnapshotIndexSpec<TileBuckets<EntitySnapshot>> = {
   empty: () => new TileBuckets(),
   differs: (held, fresh) => held.differenceFrom(fresh),
   add: (buckets, entity) => {
-    const tile = tileOf(entity);
-    if (tile !== null) buckets.set(entity.id, entity, tile.x, tile.y);
+    const pos = positionOf(entity);
+    if (pos !== null) buckets.set(entity.id, entity, pos.x / ONE, pos.y / ONE);
   },
   remove: (buckets, entity) => {
     buckets.delete(entity.id);
   },
   replace: (buckets, previous, next) => {
-    const tile = tileOf(next);
-    if (tile === null) buckets.delete(previous.id);
-    else buckets.set(next.id, next, tile.x, tile.y);
+    const pos = positionOf(next);
+    if (pos === null) buckets.delete(previous.id);
+    else buckets.set(next.id, next, pos.x / ONE, pos.y / ONE);
   },
-  swap: (buckets, _previous, next) => {
-    buckets.replace(next.id, next);
+  swapAll: (buckets, nexts) => {
+    for (const next of nexts) buckets.replace(next.id, next);
   },
 };
 
@@ -434,6 +500,26 @@ function replaceSorted(list: EntitySnapshot[], entity: EntitySnapshot): void {
 function swapHeld(list: EntitySnapshot[], entity: EntitySnapshot): void {
   const at = indexOfEntity(list, entity.id);
   if (at >= 0) list[at] = entity;
+}
+
+/** Put each of `nexts` (ascending) in the slot its id takes in `list` (ascending), where `list` holds
+ *  it: walks the shorter of the two and gallops through the longer. */
+function swapAllHeld(list: EntitySnapshot[], nexts: readonly EntitySnapshot[]): void {
+  let from = 0;
+  if (list.length <= nexts.length) {
+    for (let at = 0; at < list.length && from < nexts.length; at++) {
+      const found = indexOfEntityFrom(nexts, (list[at] as EntitySnapshot).id, from);
+      if (found >= 0) list[at] = nexts[found] as EntitySnapshot;
+      from = found >= 0 ? found + 1 : -found - 1;
+    }
+    return;
+  }
+  for (let at = 0; at < nexts.length && from < list.length; at++) {
+    const next = nexts[at] as EntitySnapshot;
+    const found = indexOfEntityFrom(list, next.id, from);
+    if (found >= 0) list[found] = next;
+    from = found >= 0 ? found + 1 : -found - 1;
+  }
 }
 
 function removeSorted(list: EntitySnapshot[], id: number): void {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addPerson, Settler, SettlerNeeds } from '../../src/components/index.js';
-import { fx, Simulation } from '../../src/index.js';
+import { entityDeltas, fx, Simulation } from '../../src/index.js';
 import { needsSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -24,7 +24,9 @@ describe('settler need ownership', () => {
     expect(sim.world.get(id, Settler)).toBe(identity);
     expect(sim.world.revisionOf(id, Settler)).toBe(revision);
     expect(Object.keys(identity)).toEqual(['tribe', 'jobType']);
-    expect(Object.keys(delta?.touched[0]?.components ?? {})).toEqual(['SettlerNeeds']);
+    expect(Object.keys((delta === null ? undefined : entityDeltas(delta)[0])?.components ?? {})).toEqual([
+      'SettlerNeeds',
+    ]);
     expect(after?.components.Settler).toBe(before?.components.Settler);
     expect(after?.components.SettlerNeeds).not.toBe(before?.components.SettlerNeeds);
     expect(sim.world.get(id, SettlerNeeds).hunger).toBeGreaterThan(zero);

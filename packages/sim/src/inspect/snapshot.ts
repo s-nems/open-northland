@@ -53,7 +53,7 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
   const clones = snapshotClonesFor(world);
   clones.refresh();
   const entities: EntitySnapshot[] = [];
-  for (const id of world.canonicalEntities()) entities.push(clones.entryOf(id).snap);
+  for (const id of world.canonicalEntities()) entities.push(clones.snapOf(id));
   return { tick, entities, events: cloneEvents(events) };
 }
 
@@ -77,6 +77,28 @@ export function indexOfEntity(entities: readonly EntitySnapshot[], id: number): 
     const mid = (lo + hi) >> 1;
     const found = entities[mid];
     if (found === undefined) break; // unreachable: mid is always within bounds
+    if (found.id === id) return mid;
+    if (found.id < id) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return -lo - 1;
+}
+
+/** {@link indexOfEntity} over the ascending list from index `from` on, for ids looked up in ascending
+ *  order: it gallops from `from`, so a run of nearby ids costs a few probes each. */
+export function indexOfEntityFrom(list: readonly EntitySnapshot[], id: number, from: number): number {
+  let lo = from;
+  let step = 1;
+  let hi = from;
+  while (hi < list.length && (list[hi] as EntitySnapshot).id < id) {
+    lo = hi + 1;
+    hi = from + step;
+    step *= 2;
+  }
+  hi = Math.min(hi, list.length - 1);
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const found = list[mid] as EntitySnapshot;
     if (found.id === id) return mid;
     if (found.id < id) lo = mid + 1;
     else hi = mid - 1;

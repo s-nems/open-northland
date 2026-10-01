@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { defineComponent } from '../../src/ecs/world.js';
-import { type Command, Simulation, SnapshotMirror, type WorldSnapshot } from '../../src/index.js';
+import {
+  type Command,
+  entityDeltas,
+  Simulation,
+  SnapshotMirror,
+  type WorldSnapshot,
+} from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { expectSameWorld } from '../fixtures/snapshot-parity.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
@@ -58,7 +64,7 @@ describe('snapshot delta is structured-cloneable (Web-Worker boundary)', () => {
       expect(cloned).toEqual(delta);
       expect(JSON.stringify(cloned)).toBe(JSON.stringify(delta));
       mirror.apply(cloned);
-      for (const entry of delta.touched) {
+      for (const entry of entityDeltas(delta)) {
         const held = mirror.snapshot().entities.find((e) => e.id === entry.id);
         if (held === undefined) throw new Error(`touched entity ${entry.id} left the mirror`);
         if (Object.keys(entry.components).length < Object.keys(held.components).length) partialAcrossRun++;

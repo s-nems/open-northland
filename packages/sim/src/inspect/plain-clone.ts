@@ -36,8 +36,10 @@ export function clonePlain(value: unknown): unknown {
   if (!isPlainRecord(value)) throw uncloneable(value);
   const out: Record<string, unknown> = {};
   for (const k of Object.keys(value)) {
-    if (value[k] === undefined) continue;
-    const cloned = clonePlain(value[k]);
+    const field = value[k];
+    if (field === undefined) continue;
+    // A number field, the common case, is its own clone: no call for it.
+    const cloned = typeof field === 'number' ? field : clonePlain(field);
     if (k === '__proto__') {
       Object.defineProperty(out, k, { value: cloned, enumerable: true, writable: true, configurable: true });
     } else out[k] = cloned;

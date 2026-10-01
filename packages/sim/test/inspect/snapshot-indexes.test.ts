@@ -9,6 +9,7 @@ import {
   indexesOf,
   isPositioned,
   ONE,
+  packSnapshotDelta,
   positionedWithin,
   Simulation,
   type SnapshotDelta,
@@ -205,7 +206,7 @@ describe('snapshot indexes over a mirror', () => {
     let tick = 0;
     const next = (touched: EntityDelta[], removed: number[] = [], rebuild = false): SnapshotDelta => {
       tick++;
-      return { tick, sequence: tick, rebuild, touched, removed, events: [] };
+      return packSnapshotDelta({ tick, sequence: tick, rebuild, touched, removed, events: [] });
     };
     const mirror = new SnapshotMirror();
     const check = (): void => {
@@ -265,49 +266,68 @@ describe('a spec that declares its reads', () => {
       replace: (calls, _previous, next) => calls.replaced.push(next.id),
       swap: (calls, _previous, next) => calls.swapped.push(next.id),
     };
+    // The same spec swapping per delta: one run of every touched held entity, the replaced ones too.
+    const runSpy: SnapshotIndexSpec<number[][]> = {
+      reads: { values: ['Mark'], presence: ['Settler'] },
+      empty: () => [],
+      add: () => {},
+      remove: () => {},
+      swapAll: (runs, nexts) => runs.push(nexts.map((next) => next.id)),
+    };
     const entry = (id: number, components: Record<string, unknown>, removed: string[] = []): EntityDelta => ({
       id,
       components,
       removed,
     });
     const mirror = new SnapshotMirror();
-    mirror.apply({
-      tick: 1,
-      sequence: 0,
-      rebuild: true,
-      touched: [
-        entry(1, { Settler: {}, SettlerNeeds: { hunger: 0 }, Position: { x: 0, y: 0 } }),
-        entry(2, { Mark: { kind: 1 } }),
-        entry(3, { Position: { x: 0, y: 0 } }),
-      ],
-      removed: [],
-      events: [],
-    });
+    mirror.apply(
+      packSnapshotDelta({
+        tick: 1,
+        sequence: 0,
+        rebuild: true,
+        touched: [
+          entry(1, { Settler: {}, SettlerNeeds: { hunger: 0 }, Position: { x: 0, y: 0 } }),
+          entry(2, { Mark: { kind: 1 } }),
+          entry(3, { Position: { x: 0, y: 0 } }),
+        ],
+        removed: [],
+        events: [],
+      }),
+    );
     const calls = indexesOf(mirror.snapshot()).get(spy);
+    const runs = indexesOf(mirror.snapshot()).get(runSpy);
     // A rewrite of a presence-read component and a write of an unread one swap; a value read replaces.
-    mirror.apply({
-      tick: 2,
-      sequence: 1,
-      rebuild: false,
-      touched: [
-        entry(1, { Settler: {}, SettlerNeeds: { hunger: 1 }, Position: { x: 1, y: 0 } }),
-        entry(2, { Mark: { kind: 2 } }),
-        entry(3, { Position: { x: 1, y: 0 } }),
-      ],
-      removed: [],
-      events: [],
-    });
+    mirror.apply(
+      packSnapshotDelta({
+        tick: 2,
+        sequence: 1,
+        rebuild: false,
+        touched: [
+          entry(1, { Settler: {}, SettlerNeeds: { hunger: 1 }, Position: { x: 1, y: 0 } }),
+          entry(2, { Mark: { kind: 2 } }),
+          entry(3, { Position: { x: 1, y: 0 } }),
+        ],
+        removed: [],
+        events: [],
+      }),
+    );
     expect(calls).toEqual({ replaced: [2], swapped: [1, 3] });
     // Gaining or dropping a presence-read component replaces.
-    mirror.apply({
-      tick: 3,
-      sequence: 2,
-      rebuild: false,
-      touched: [entry(1, {}, ['Settler']), entry(3, { Settler: {}, SettlerNeeds: { hunger: 0 } })],
-      removed: [],
-      events: [],
-    });
+    mirror.apply(
+      packSnapshotDelta({
+        tick: 3,
+        sequence: 2,
+        rebuild: false,
+        touched: [entry(1, {}, ['Settler']), entry(3, { Settler: {}, SettlerNeeds: { hunger: 0 } })],
+        removed: [],
+        events: [],
+      }),
+    );
     expect(calls).toEqual({ replaced: [2, 1, 3], swapped: [1, 3] });
+    expect(runs).toEqual([
+      [1, 2, 3],
+      [1, 3],
+    ]);
   });
 });
 

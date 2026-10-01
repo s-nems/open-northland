@@ -5,11 +5,13 @@ import {
   type EntityDelta,
   type EntitySnapshot,
   entitiesWith,
+  entityDeltas,
   firstDifference,
   groupedBy,
   indexesOf,
   isPositioned,
   MirrorTruth,
+  packSnapshotDelta,
   Simulation,
   type SnapshotDelta,
   SnapshotMirror,
@@ -61,7 +63,7 @@ function stepSettlement(sim: Simulation, tick: number, planted: Planted): void {
 
 /** The first entry that rewrites a component the mirror already holds, and that component's name. */
 function rewrittenComponent(delta: SnapshotDelta, mirror: SnapshotMirror): [EntityDelta, string] | null {
-  for (const entry of delta.touched) {
+  for (const entry of entityDeltas(delta)) {
     const held = mirror.snapshot().entities.find((entity) => entity.id === entry.id);
     const name = Object.keys(entry.components).find((key) => held !== undefined && key in held.components);
     if (name !== undefined) return [entry, name];
@@ -70,7 +72,8 @@ function rewrittenComponent(delta: SnapshotDelta, mirror: SnapshotMirror): [Enti
 }
 
 function withEntry(delta: SnapshotDelta, replaced: EntityDelta): SnapshotDelta {
-  return { ...delta, touched: delta.touched.map((entry) => (entry.id === replaced.id ? replaced : entry)) };
+  const touched = entityDeltas(delta).map((entry) => (entry.id === replaced.id ? replaced : entry));
+  return packSnapshotDelta({ ...delta, touched });
 }
 
 describe('mirror truth digest', () => {
