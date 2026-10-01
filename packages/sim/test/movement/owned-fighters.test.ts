@@ -2,15 +2,22 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   Owner,
+  PathFollow,
   PathRequest,
   Position,
   Settler,
   setSettlerJob,
 } from '../../src/components/index.js';
-import { ONE } from '../../src/core/fixed.js';
+import { type Fixed, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { positionOfNode, type Simulation } from '../../src/index.js';
-import { ownedFighters, standingFighterPosts, unitWalkBlocks } from '../../src/systems/index.js';
+import {
+  ownedFighters,
+  type StandingPostGrid,
+  standingFighterPosts,
+  standingPostGrid,
+  unitWalkBlocks,
+} from '../../src/systems/index.js';
 import {
   ANY_BUILDING_TYPE,
   P0,
@@ -23,6 +30,21 @@ import {
 } from './separation/support.js';
 
 const fightersOf = (s: Simulation): readonly Entity[] => [...ownedFighters(s.world, s.content)];
+
+/** A half-cell column west of the lattice. */
+const OFF_LATTICE = -1;
+
+function postsAt(grid: StandingPostGrid, hx: number, hy: number): Entity[] {
+  const out: Entity[] = [];
+  out.length = grid.collect(hx, hy, out, 0);
+  return out;
+}
+
+function gridOf(s: Simulation): StandingPostGrid {
+  const terrain = s.terrain;
+  if (terrain === undefined) throw new Error('fixture map missing');
+  return standingPostGrid(s.world, s.content, terrain);
+}
 
 describe('ownedFighters index', () => {
   it('follows trade, owner, death and spawn changes between reads, in ascending id', () => {
@@ -109,5 +131,38 @@ describe('ownedFighters index', () => {
     expect(s.world.verifyCaches()).toEqual([]);
     units = unitWalkBlocks(s.world, s.content, terrain);
     expect([units.postTotal, units.townByPlayer.size]).toEqual([1, 0]);
+  });
+
+  it('collects the posts on a node in ascending id, on or off the lattice, through stands and moves', () => {
+    const s = sim();
+    const lower = settlerAt(s, 4, 2, SOLDIER, P0);
+    const higher = settlerAt(s, 4, 2, SOLDIER, P1);
+    const stray = settlerAt(s, 8, 2, SOLDIER, P0);
+    walkStraightTo(s, higher, 6, 2);
+    expect(postsAt(gridOf(s), 4, 2)).toEqual([lower]);
+
+    // Stands again after the lower id was listed, so a newest-first list would put it in front.
+    s.world.remove(higher, PathFollow);
+    s.world.mut(stray, Position).x = positionOfNode(OFF_LATTICE, 2).x;
+    const grid = gridOf(s);
+    expect(postsAt(grid, 4, 2)).toEqual([lower, higher]);
+    expect(postsAt(grid, 8, 2)).toEqual([]);
+    expect(postsAt(grid, OFF_LATTICE, 2)).toEqual([stray]);
+    expect(s.world.verifyCaches()).toEqual([]);
+  });
+
+  it('reports a post that moved past the change feed to the cache verifier', () => {
+    const s = sim();
+    const west = settlerAt(s, 2, 2, SOLDIER, P0);
+    const east = settlerAt(s, 6, 2, SOLDIER, P0);
+    expect(postsAt(gridOf(s), 2, 2)).toEqual([west]);
+
+    // Swapped behind the mut seam: the counts and players still match, only the bodies differ.
+    const unjournaled = (e: Entity): { x: Fixed } => s.world.get(e, Position) as { x: Fixed };
+    const westX = unjournaled(west).x;
+    unjournaled(west).x = unjournaled(east).x;
+    unjournaled(east).x = westX;
+
+    expect(s.world.verifyCaches()).toEqual(['standingPosts collects other posts by node than a fresh scan']);
   });
 });

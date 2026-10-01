@@ -1,5 +1,6 @@
 import { type Fixed, ZERO } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import type { StandingPostGrid } from '../standing-posts.js';
 import { SlotGrid } from './slot-grid.js';
 
 /**
@@ -49,11 +50,12 @@ export interface SeparationScratch {
   /** The census's walker ids, sorted in place before they become mover slots. */
   order: Int32Array;
   readonly movers: MoverColumns;
-  readonly posts: ColliderColumns;
+  /** The posts firm movers resolve against, read only when this census holds a firm mover. */
+  posts: StandingPostGrid | undefined;
   census: number;
-  /** Per-mover neighbour slot lists, valid up to the counts the resolve keeps beside them. */
+  /** Per-mover neighbour mover slots and post ids, valid up to the counts the resolve keeps beside them. */
   readonly nearMovers: number[];
-  readonly nearPosts: number[];
+  readonly nearPosts: Entity[];
   readonly push: ScratchPoint;
   readonly candidate: ScratchPoint;
   /** Argument holders for the heading derivation, so it allocates no point. */
@@ -83,7 +85,7 @@ export function separationScratch(world: World): SeparationScratch {
         headingY: [],
         headingCensus: [],
       },
-      posts: colliderColumns(),
+      posts: undefined,
       census: 0,
       nearMovers: [],
       nearPosts: [],

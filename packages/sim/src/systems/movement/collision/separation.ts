@@ -1,6 +1,6 @@
 import { Position } from '../../../components/index.js';
 import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
-import type { Entity } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import { positionXOfWorld } from '../../../nav/halfcell.js';
 import { ROW_STEP, worldDistance, worldX } from '../../../nav/world-metric.js';
 import type { System } from '../../context.js';
@@ -16,7 +16,6 @@ import {
   updateObstruction,
 } from './separation/obstruction.js';
 import {
-  type ColliderColumns,
   type MoverColumns,
   type ScratchPoint,
   type SeparationScratch,
@@ -81,12 +80,14 @@ export const separationSystem: System = (world, ctx) => {
 
     // The radius is below both bucket pitches, so every body within reach lives in the 3x3 node block
     // around the mover's own node. Posts matter only to a firm mover.
+    const postGrid = isFirm ? posts : undefined;
     let moverCount = 0;
     let postCount = 0;
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         moverCount = movers.grid.collect(nodeHx + dx, nodeHy + dy, nearMovers, moverCount);
-        if (isFirm) postCount = posts.grid.collect(nodeHx + dx, nodeHy + dy, nearPosts, postCount);
+        if (postGrid !== undefined)
+          postCount = postGrid.collect(nodeHx + dx, nodeHy + dy, nearPosts, postCount);
       }
     }
     // The mover's own slot sits in its own node's list; neighbours are the rest.
@@ -110,7 +111,7 @@ export const separationSystem: System = (world, ctx) => {
     }
 
     // Only a firm mover outside its own calm zone ejects off posts; everyone else keeps the soft candidate.
-    if (!ghost) resolveAgainstPosts(e, candidate, posts, nearPosts, postCount);
+    if (!ghost) resolveAgainstPosts(world, e, candidate, nearPosts, postCount);
 
     // Drop the offending axis, then the whole displacement: the walker's own path point always stands.
     // Mut only on a landed displacement, so a crowd standing in equilibrium does not churn the touched log.
@@ -229,20 +230,20 @@ function resolveMoverPush(
  * caller passes `nearPosts` in, so the last overlapped post in that order wins a conflict.
  */
 function resolveAgainstPosts(
+  world: World,
   e: Entity,
   cand: ScratchPoint,
-  posts: ColliderColumns,
-  nearPosts: readonly number[],
+  nearPosts: readonly Entity[],
   postCount: number,
 ): void {
   for (let i = 0; i < postCount; i++) {
-    const slot = nearPosts[i];
-    if (slot === undefined) continue;
-    const s = posts.entity[slot] ?? 0;
-    const dist = worldDistance(cand.x, cand.y, posts.x[slot] ?? ZERO, posts.y[slot] ?? ZERO);
+    const s = nearPosts[i];
+    if (s === undefined) continue;
+    const post = world.get(s, Position);
+    const dist = worldDistance(cand.x, cand.y, post.x, post.y);
     if (dist >= UNIT_SEPARATION_RADIUS) continue;
-    const postWX = posts.worldX[slot] ?? ZERO;
-    const postWY = posts.worldY[slot] ?? ZERO;
+    const postWX = worldX(post.x, post.y);
+    const postWY = worldYOf(post.y);
     let outX: Fixed;
     let outY: Fixed;
     if (dist === ZERO) {

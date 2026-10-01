@@ -6,8 +6,9 @@ import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import { worldX } from '../../../../nav/world-metric.js';
 import type { SystemContext } from '../../../context.js';
 import { writeLegHeading } from '../../stepping.js';
-import { hasSoftCollision, isStanding } from '../bodies.js';
-import { hasBodyCollision, ownedFighters } from '../owned-fighters.js';
+import { hasSoftCollision } from '../bodies.js';
+import { hasBodyCollision } from '../owned-fighters.js';
+import { standingPostGrid } from '../standing-posts.js';
 import { worldYOf } from './geometry.js';
 import type { ColliderColumns, MoverColumns, SeparationScratch } from './scratch.js';
 
@@ -15,8 +16,8 @@ import type { ColliderColumns, MoverColumns, SeparationScratch } from './scratch
 const MIN_ORDER_CAPACITY = 256;
 
 /**
- * Fill this tick's mover and post columns and their node grids. False when nobody is walking - the
- * dormancy exit, since nothing can overlap anything.
+ * Fill this tick's mover columns and node grid, and hand over the post grid when a firm mover needs it.
+ * False when nobody is walking - the dormancy exit, since nothing can overlap anything.
  */
 export function collectColliders(
   world: World,
@@ -24,7 +25,7 @@ export function collectColliders(
   terrain: TerrainGraph,
   scratch: SeparationScratch,
 ): boolean {
-  const { movers, posts } = scratch;
+  const { movers } = scratch;
   scratch.census++;
   let moverCount = 0;
   for (const e of world.query(PathFollow, Position)) {
@@ -58,17 +59,9 @@ export function collectColliders(
   }
   movers.grid.fill(terrain, moverCount, movers.hx, movers.hy);
 
-  // The immovable posts firm movers resolve against, ascending like the fighter index, gathered only when a
-  // firm mover exists: soft-only traffic (a civilian economy tick) never reads the post grid.
-  let postCount = 0;
-  if (firmCount > 0) {
-    for (const e of ownedFighters(world, ctx.content)) {
-      const p = world.tryGet(e, Position);
-      if (p !== undefined && isStanding(world, e)) place(posts, postCount++, e, p.x, p.y);
-    }
-  }
-  posts.count = postCount;
-  posts.grid.fill(terrain, postCount, posts.hx, posts.hy);
+  // Read once per census: posts never walk, so the resolve cannot move one, and a mover the grind halts
+  // mid-pass stays out of the grid until the next census. Soft-only traffic never brings it up to date.
+  scratch.posts = firmCount > 0 ? standingPostGrid(world, ctx.content, terrain) : undefined;
   return true;
 }
 

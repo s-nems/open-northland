@@ -7,6 +7,7 @@ import {
   Settler,
   settlerTradeLog,
 } from '../../../components/index.js';
+import { insertSortedById, removeSortedById } from '../../../core/sorted-id.js';
 import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
@@ -31,9 +32,19 @@ export interface UnitWalkBlocks {
   readonly townTotalByPlayer: ReadonlyMap<number, number>;
 }
 
+/** The standing colliders by half-cell node, for a reader that needs the bodies rather than the counts. */
+export interface StandingPostGrid {
+  /** Append the posts on node `(hx, hy)`, on or off the lattice, to `out` from index `at` in ascending
+   *  id, and return the new count. Valid until the next read of the index. */
+  collect(hx: number, hy: number, out: Entity[], at: number): number;
+}
+
 /** One standing owned fighter, linked into its node's list so a shared node can name its highest id. */
 interface Post {
   readonly entity: Entity;
+  /** The half-cell node of its Position, on or off the lattice. */
+  hx: number;
+  hy: number;
   /** Undefined while it stands off the map, where it blocks nothing. */
   node: NodeId | undefined;
   player: number;
@@ -47,7 +58,7 @@ interface Post {
  * standing test reads, an in-place PathRequest or Owner write, or a logged trade change re-tests that
  * entity; a Position write re-tests only an entity already standing, since moving cannot start a stand.
  */
-interface PostIndex extends UnitWalkBlocks {
+interface PostIndex extends UnitWalkBlocks, StandingPostGrid {
   readonly content: ContentSet;
   readonly terrain: TerrainGraph;
   readonly feed: ChangeFeed;
@@ -57,8 +68,10 @@ interface PostIndex extends UnitWalkBlocks {
   readonly byEntity: Map<Entity, Post>;
   /** 1 at each id in {@link byEntity}: the per-write test for the far more common Position writes. */
   standingIds: Uint8Array;
-  /** Each counted node's list of posts, newest first. */
+  /** Each counted node's list of posts, ascending id. */
   readonly byNode: Map<NodeId, Post>;
+  /** The posts standing off the lattice, ascending id. */
+  readonly offMap: Post[];
   /** Each counted node's player: the highest id standing there. */
   readonly playerAt: Map<NodeId, number>;
   postTotal: number;
@@ -67,6 +80,7 @@ interface PostIndex extends UnitWalkBlocks {
 }
 
 const indexes = new WeakMap<World, PostIndex>();
+const postId = (post: Post): number => post.entity;
 
 /** The zones a fresh index sorts by until a walk-block read hands it the real ones. */
 const NO_ZONES: ReadonlyMap<number, ReadonlySet<NodeId>> = new Map();
@@ -106,6 +120,7 @@ function rebuild(world: World, content: ContentSet, terrain: TerrainGraph): Post
     posts = new Uint16Array(terrain.nodeCount);
   }
   const index: PostIndex = {
+    collect: (hx, hy, out, at) => collectPosts(index, hx, hy, out, at),
     content,
     terrain,
     feed,
@@ -116,6 +131,7 @@ function rebuild(world: World, content: ContentSet, terrain: TerrainGraph): Post
     byEntity: new Map(),
     standingIds: new Uint8Array(world.nextEntityId),
     byNode: new Map(),
+    offMap: [],
     playerAt: new Map(),
     townByPlayer: new Map(),
     townTotalByPlayer: new Map(),
@@ -143,13 +159,15 @@ function restowPost(world: World, index: PostIndex, e: Entity): void {
   const node = index.terrain.inBounds(hx, hy) ? index.terrain.nodeAt(hx, hy) : undefined;
   const player = world.get(e, Owner).player;
   if (held === undefined) {
-    const post: Post = { entity: e, node, player, inTown: false, next: undefined };
+    const post: Post = { entity: e, hx, hy, node, player, inTown: false, next: undefined };
     index.byEntity.set(e, post);
     if (e >= index.standingIds.length) index.standingIds = grownFlags(index.standingIds, e);
     index.standingIds[e] = 1;
     link(index, post);
-  } else if (held.node !== node || held.player !== player) {
+  } else if (held.hx !== hx || held.hy !== hy || held.player !== player) {
     unlink(index, held);
+    held.hx = hx;
+    held.hy = hy;
     held.node = node;
     held.player = player;
     link(index, held);
@@ -164,11 +182,22 @@ function grownFlags(flags: Uint8Array, e: Entity): Uint8Array {
 
 function link(index: PostIndex, post: Post): void {
   const { node } = post;
-  if (node === undefined) return;
+  if (node === undefined) {
+    insertSortedById(index.offMap, post, postId);
+    return;
+  }
   index.posts[node] = (index.posts[node] ?? 0) + 1;
   index.postTotal++;
-  post.next = index.byNode.get(node);
-  index.byNode.set(node, post);
+  const head = index.byNode.get(node);
+  if (head === undefined || head.entity > post.entity) {
+    post.next = head;
+    index.byNode.set(node, post);
+  } else {
+    let at = head;
+    while (at.next !== undefined && at.next.entity < post.entity) at = at.next;
+    post.next = at.next;
+    at.next = post;
+  }
   settleNodePlayer(index, node);
   post.inTown = index.zones.get(post.player)?.has(node) ?? false;
   if (post.inTown) addTown(index, post.player, node, 1);
@@ -176,7 +205,10 @@ function link(index: PostIndex, post: Post): void {
 
 function unlink(index: PostIndex, post: Post): void {
   const { node } = post;
-  if (node === undefined) return;
+  if (node === undefined) {
+    removeSortedById(index.offMap, post.entity, postId);
+    return;
+  }
   index.posts[node] = (index.posts[node] ?? 0) - 1;
   index.postTotal--;
   let head = index.byNode.get(node);
@@ -198,15 +230,27 @@ function unlink(index: PostIndex, post: Post): void {
   post.inTown = false;
 }
 
-/** Two soft-stacked bodies on one node keep the higher id's player. */
+/** Two soft-stacked bodies on one node keep the higher id's player: the list's last. */
 function settleNodePlayer(index: PostIndex, node: NodeId): void {
   let top = index.byNode.get(node);
   if (top === undefined) {
     index.playerAt.delete(node);
     return;
   }
-  for (let at = top.next; at !== undefined; at = at.next) if (at.entity > top.entity) top = at;
+  while (top.next !== undefined) top = top.next;
   index.playerAt.set(node, top.player);
+}
+
+function collectPosts(index: PostIndex, hx: number, hy: number, out: Entity[], at: number): number {
+  let count = at;
+  if (index.terrain.inBounds(hx, hy)) {
+    const node = index.terrain.nodeAt(hx, hy);
+    if (index.posts[node] === 0) return count;
+    for (let post = index.byNode.get(node); post !== undefined; post = post.next) out[count++] = post.entity;
+    return count;
+  }
+  for (const post of index.offMap) if (post.hx === hx && post.hy === hy) out[count++] = post.entity;
+  return count;
 }
 
 function addTown(index: PostIndex, player: number, node: NodeId, delta: number): void {
@@ -251,6 +295,11 @@ export function standingFighterPosts(
   return postIndex(world, content, terrain).playerAt;
 }
 
+/** The standing colliders by node, for the separation pass's firm movers. */
+export function standingPostGrid(world: World, content: ContentSet, terrain: TerrainGraph): StandingPostGrid {
+  return postIndex(world, content, terrain);
+}
+
 /** Only this read refreshes the calm zones, so a posts-only read never pays a zone rebuild. */
 export function unitWalkBlocks(world: World, content: ContentSet, terrain: TerrainGraph): UnitWalkBlocks {
   const index = postIndex(world, content, terrain);
@@ -265,15 +314,20 @@ function derivePosts(
   content: ContentSet,
   terrain: TerrainGraph,
   zones: ReadonlyMap<number, ReadonlySet<NodeId>>,
-): { counts: Map<NodeId, number>; playerAt: Map<NodeId, number>; town: Map<number, Map<NodeId, number>> } {
+): FreshPosts {
   const counts = new Map<NodeId, number>();
   const playerAt = new Map<NodeId, number>();
   const town = new Map<number, Map<NodeId, number>>();
+  const grid: Map<string, Entity[]> = new Map();
   for (const e of world.canonicalQuery(Owner, Settler)) {
     const p = world.tryGet(e, Position);
     if (p === undefined || !isStanding(world, e) || !hasBodyCollision(world, content, e)) continue;
     const hx = nodeHxOfPosition(p.x, p.y);
     const hy = nodeHyOfPosition(p.y);
+    const key = nodeKey(hx, hy);
+    const listed = grid.get(key);
+    if (listed === undefined) grid.set(key, [e]);
+    else listed.push(e);
     if (!terrain.inBounds(hx, hy)) continue;
     const node = terrain.nodeAt(hx, hy);
     const player = world.get(e, Owner).player;
@@ -287,7 +341,30 @@ function derivePosts(
     }
     own.set(node, (own.get(node) ?? 0) + 1);
   }
-  return { counts, playerAt, town };
+  return { counts, playerAt, town, grid };
+}
+
+interface FreshPosts {
+  readonly counts: Map<NodeId, number>;
+  readonly playerAt: Map<NodeId, number>;
+  readonly town: Map<number, Map<NodeId, number>>;
+  /** Each occupied node's posts in ascending id, keyed by {@link nodeKey}, on or off the lattice. */
+  readonly grid: Map<string, Entity[]>;
+}
+
+const nodeKey = (hx: number, hy: number): string => `${hx},${hy}`;
+
+/** Whether every node the index lists, on or off the lattice, collects exactly a fresh scan's posts. */
+function sameGrid(index: PostIndex, fresh: ReadonlyMap<string, readonly Entity[]>): boolean {
+  const listed = new Set<string>();
+  for (const post of index.byEntity.values()) listed.add(nodeKey(post.hx, post.hy));
+  if (listed.size !== fresh.size) return false;
+  return [...fresh].every(([key, posts]) => {
+    const [hx = 0, hy = 0] = key.split(',').map(Number);
+    const out: Entity[] = [];
+    out.length = index.collect(hx, hy, out, 0);
+    return listed.has(key) && out.length === posts.length && out.every((e, i) => e === posts[i]);
+  });
 }
 
 function sameCounts(a: ReadonlyMap<number, number>, b: ReadonlyMap<number, number>): boolean {
@@ -326,6 +403,8 @@ function verifyIndex(world: World): string[] {
       return own !== undefined && sameCounts(own, town) && index.townTotalByPlayer.get(player) === total;
     });
   if (!townSame) problems.push('standingPosts town garrison diverges from a fresh scan');
+  if (!sameGrid(index, fresh.grid))
+    problems.push('standingPosts collects other posts by node than a fresh scan');
   return problems;
 }
 
