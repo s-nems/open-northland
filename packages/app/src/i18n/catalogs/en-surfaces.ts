@@ -62,6 +62,8 @@ export const enSurfaces = {
       empty: 'No decoded maps. Generate content/ or browse the test scenes.',
       noMatch: 'Nothing matches this search or filter.',
       noPreview: 'test scene · no map preview',
+      previewSwitch: 'Map preview',
+      previewViews: { picture: 'Picture', map: 'Map' },
       next: 'Next',
       startLesson: 'Start lesson',
       run: 'Run',

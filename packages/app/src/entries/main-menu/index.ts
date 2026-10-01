@@ -11,7 +11,6 @@ import { mountFullscreenPrompt } from './fullscreen-prompt.js';
 import { loadSelectScreen } from './load-select.js';
 import { lobbyScreen } from './lobby/index.js';
 import type { RosterState } from './lobby/roster-state.js';
-import { releaseMapPreviews } from './map-preview.js';
 import { mapSelectScreen } from './map-select.js';
 import { initialMapSelectMemory, type MapSelectItem } from './map-select-model.js';
 import {
@@ -122,7 +121,6 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     scope.abort();
     root.remove();
     canvas.hidden = false;
-    releaseMapPreviews();
   };
   // Set from the click, not from the handover: the entry's module has to download first, and the
   // screens must not start another game or walk back to a different map in the meantime.

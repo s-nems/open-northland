@@ -61,6 +61,8 @@ export const plSurfaces = {
       empty: 'Brak zdekodowanych map. Wygeneruj content/ albo przejrzyj sceny testowe.',
       noMatch: 'Nic nie pasuje do tego wyszukiwania ani filtra.',
       noPreview: 'scena testowa · bez podglądu mapy',
+      previewSwitch: 'Podgląd mapy',
+      previewViews: { picture: 'Ilustracja', map: 'Mapa' },
       next: 'Dalej',
       startLesson: 'Rozpocznij lekcję',
       run: 'Uruchom',

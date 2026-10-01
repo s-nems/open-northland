@@ -2,6 +2,7 @@ import type { MapsIndexEntry, MapsIndexPlayerSlot, MapTextLanguage } from '@open
 import { MAP_TYPE } from '@open-northland/data';
 import { localizedMapText } from '../../game/map-strings.js';
 import { compareLabels, currentLocale } from '../../i18n/index.js';
+import type { MapPreviewView } from '../../view/settings-store.js';
 
 /**
  * Pure state for the map list: the row items it renders, which menu lists a map, the segmented
@@ -56,7 +57,9 @@ export interface MapSelectItem {
   /** Mission number inside the authored tutorial campaign; absent for every other map and scene. */
   readonly tutorialStep?: number;
   readonly description?: string;
-  /** `/maps/<id>.png` exists, so rows and the preview can use the decoded minimap. */
+  /** The authored illustration `/maps/<id>.png` exists. */
+  readonly picture: boolean;
+  /** The terrain minimap `/maps/<id>.map.png` exists. */
   readonly minimap: boolean;
 }
 
@@ -78,6 +81,7 @@ export function mapItem(entry: MapsIndexEntry, lang: MapTextLanguage = currentLo
     fixedColors: entry.fixedColors === true,
     ...(tutorialStep !== undefined ? { tutorialStep } : {}),
     ...(description !== undefined ? { description } : {}),
+    picture: entry.picture,
     minimap: entry.minimap,
   };
 }
@@ -93,8 +97,30 @@ export function sceneItem(id: string, title: string, summary: string): MapSelect
     players: [],
     fixedColors: false,
     description: summary,
+    picture: false,
     minimap: false,
   };
+}
+
+/** The previews a map offers, illustration first; the card shows a switch only when there are two. */
+export function mapPreviewViews(item: MapSelectItem): readonly MapPreviewView[] {
+  if (item.kind === 'scene') return [];
+  const views: MapPreviewView[] = [];
+  if (item.picture) views.push('picture');
+  if (item.minimap) views.push('map');
+  return views;
+}
+
+/** The preview the card and every thumb show: the remembered choice when the map has it, else the
+ *  one it has. */
+export function shownMapPreview(item: MapSelectItem, preferred: MapPreviewView): MapPreviewView | null {
+  const views = mapPreviewViews(item);
+  return views.includes(preferred) ? preferred : (views[0] ?? null);
+}
+
+export function mapPreviewUrl(mapId: string, view: MapPreviewView): string {
+  const stem = `/maps/${encodeURIComponent(mapId)}`;
+  return view === 'picture' ? `${stem}.png` : `${stem}.map.png`;
 }
 
 /** Survives leaving the screen, so a lobby round trip re-enters with the same filter and selection. */

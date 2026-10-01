@@ -1,7 +1,14 @@
 import { playerSwatchHex } from '../../catalog/roster.js';
 import { bcp47Tag, formatMessage, messages, pluralForm, tribeName } from '../../i18n/index.js';
-import { generatedMapPreview } from './map-preview.js';
-import { type MapSelectItem, mapCategory } from './map-select-model.js';
+import { segControl } from '../../view/settings-controls.js';
+import { type MapPreviewView, patchStoredSettings, readStoredSettings } from '../../view/settings-store.js';
+import {
+  type MapSelectItem,
+  mapCategory,
+  mapPreviewUrl,
+  mapPreviewViews,
+  shownMapPreview,
+} from './map-select-model.js';
 
 /**
  * The map details card shown by both map select and the lobby. The owning screen appends its own
@@ -14,6 +21,28 @@ export interface MapDetailsCard {
   readonly actions: HTMLElement;
   show(item: MapSelectItem): void;
   hide(): void;
+}
+
+export interface MapDetailsCardOptions {
+  /** The player switched between illustration and minimap; the choice is already stored. */
+  readonly onPreviewView?: (view: MapPreviewView) => void;
+}
+
+/** Fills a row or room thumb with the preview the card would show for `item`, or leaves it empty. */
+export function paintMapThumb(thumb: HTMLElement, item: MapSelectItem, preferred: MapPreviewView): void {
+  const view = shownMapPreview(item, preferred);
+  if (view === null) {
+    thumb.replaceChildren();
+    return;
+  }
+  const img = document.createElement('img');
+  img.src = mapPreviewUrl(item.id, view);
+  img.alt = '';
+  img.loading = 'lazy';
+  img.dataset.view = view;
+  // A missing file leaves the thumb's gradient instead of a broken-image glyph.
+  img.addEventListener('error', () => img.remove());
+  thumb.replaceChildren(img);
 }
 
 /** The row/card meta line: category name, plus the roster size when the map ships one. */
@@ -41,7 +70,7 @@ function seatChip(tribeId: number, colorId: number): HTMLElement {
   return chip;
 }
 
-export function createMapDetailsCard(): MapDetailsCard {
+export function createMapDetailsCard(options: MapDetailsCardOptions = {}): MapDetailsCard {
   const select = messages().mainMenu.mapSelect;
 
   const card = document.createElement('div');
@@ -54,7 +83,25 @@ export function createMapDetailsCard(): MapDetailsCard {
   previewImg.hidden = true;
   const frameLabel = document.createElement('div');
   frameLabel.className = 'main-menu__map-preview-label';
-  frame.append(previewImg, frameLabel);
+  let preferred = readStoredSettings().mapPreview;
+  let shown: MapSelectItem | null = null;
+  const viewSwitch = segControl<MapPreviewView>(
+    [
+      { id: 'picture', label: select.previewViews.picture },
+      { id: 'map', label: select.previewViews.map },
+    ],
+    preferred,
+    (view) => {
+      preferred = view;
+      patchStoredSettings({ mapPreview: view });
+      if (shown !== null) showPreview(shown);
+      options.onPreviewView?.(view);
+    },
+  );
+  viewSwitch.root.classList.add('main-menu__map-preview-switch');
+  viewSwitch.root.setAttribute('role', 'group');
+  viewSwitch.root.setAttribute('aria-label', select.previewSwitch);
+  frame.append(previewImg, frameLabel, viewSwitch.root);
   const details = document.createElement('div');
   details.className = 'main-menu__map-details';
   const name = document.createElement('div');
@@ -70,39 +117,25 @@ export function createMapDetailsCard(): MapDetailsCard {
   details.append(name, meta, seats, description, actions);
   card.append(frame, details);
 
-  // Guards a stale async preview from painting over a newer selection.
-  let previewGeneration = 0;
+  // A missing file collapses to the empty frame instead of a broken-image glyph.
+  previewImg.addEventListener('error', () => {
+    previewImg.hidden = true;
+  });
 
   const showPreview = (item: MapSelectItem): void => {
-    const generation = ++previewGeneration;
-    previewImg.hidden = true;
-    previewImg.removeAttribute('src');
-    if (item.kind === 'scene') {
-      frameLabel.textContent = select.noPreview;
+    shown = item;
+    const view = shownMapPreview(item, preferred);
+    viewSwitch.root.hidden = mapPreviewViews(item).length < 2;
+    viewSwitch.setActive(view ?? preferred);
+    frameLabel.textContent = item.kind === 'scene' ? select.noPreview : '';
+    if (view === null) {
+      previewImg.hidden = true;
+      previewImg.removeAttribute('src');
       return;
     }
-    frameLabel.textContent = '';
-    const applyGenerated = (): void => {
-      void generatedMapPreview(item.id).then((source) => {
-        if (generation !== previewGeneration || source === null) return;
-        previewImg.src = source;
-        previewImg.hidden = false;
-      });
-    };
-    if (item.minimap) {
-      // A broken decoded PNG falls back to the client-side rasterized preview.
-      previewImg.src = `/maps/${encodeURIComponent(item.id)}.png`;
-      previewImg.hidden = false;
-    } else {
-      applyGenerated();
-    }
-    previewImg.onerror = () => {
-      if (generation !== previewGeneration) return;
-      // One hop only: a failing generated blob must not re-enter this handler.
-      previewImg.onerror = null;
-      previewImg.hidden = true;
-      applyGenerated();
-    };
+    previewImg.dataset.view = view;
+    previewImg.src = mapPreviewUrl(item.id, view);
+    previewImg.hidden = false;
   };
 
   return {
@@ -123,8 +156,9 @@ export function createMapDetailsCard(): MapDetailsCard {
     },
     hide() {
       card.hidden = true;
-      previewGeneration += 1;
+      shown = null;
       previewImg.hidden = true;
+      previewImg.removeAttribute('src');
       frameLabel.textContent = '';
     },
   };

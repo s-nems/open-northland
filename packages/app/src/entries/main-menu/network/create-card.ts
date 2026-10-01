@@ -7,8 +7,9 @@ import { pickSaveFile } from '../../../view/runtime/save-load/file-access.js';
 import { browserSaveStore } from '../../../view/runtime/save-load/store-browser.js';
 import { SCENE_TOKEN_PREFIX } from '../../../view/runtime/save-load/world-names.js';
 import { segControl } from '../../../view/settings-controls.js';
+import { readStoredSettings } from '../../../view/settings-store.js';
 import { node } from '../dom.js';
-import { metaLine } from '../map-card.js';
+import { metaLine, paintMapThumb } from '../map-card.js';
 import type { MapSelectItem } from '../map-select-model.js';
 import { button, field } from './parts.js';
 
@@ -151,13 +152,8 @@ export function createRoomCard(options: CreateCardOptions) {
       mapsEmpty = item === null;
       mapName.textContent = item?.title ?? copy.noMaps;
       mapMeta.textContent = item === null ? '' : metaLine(item);
-      thumb.replaceChildren();
-      if (item?.minimap) {
-        const img = document.createElement('img');
-        img.src = `/maps/${encodeURIComponent(item.id)}.png`;
-        img.alt = '';
-        thumb.append(img);
-      }
+      if (item === null) thumb.replaceChildren();
+      else paintMapThumb(thumb, item, readStoredSettings().mapPreview);
       if (source === 'map') status.textContent = item === null ? copy.noMaps : '';
       sync();
     },

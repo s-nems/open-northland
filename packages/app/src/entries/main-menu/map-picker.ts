@@ -2,8 +2,8 @@ import { loadMapList } from '../../content/maps-index.js';
 import { quietTextField } from '../../hud/dom/parts/text-field.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../i18n/index.js';
 import { MAP_SCENES, SCENES } from '../../scenes/index.js';
-import { createMapDetailsCard, metaLine } from './map-card.js';
-import { generatedMapPreview } from './map-preview.js';
+import { readStoredSettings } from '../../view/settings-store.js';
+import { createMapDetailsCard, metaLine, paintMapThumb } from './map-card.js';
 import {
   filterItems,
   listedIn,
@@ -13,11 +13,9 @@ import {
   type MapSelectItem,
   type MapSelectMemory,
   mapItem,
+  mapPreviewViews,
   sceneItem,
 } from './map-select-model.js';
-
-/** Rows rasterize their thumb this far before entering the viewport. */
-const THUMB_PRELOAD_MARGIN = '200px';
 
 export interface MapPickerOptions {
   readonly memory: MapSelectMemory;
@@ -120,7 +118,16 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
 
   const previewCol = document.createElement('div');
   previewCol.className = 'main-menu__map-preview-col';
-  const card = createMapDetailsCard();
+  // Thumbs follow the card's illustration/minimap switch, so the list reads like the card.
+  let previewView = readStoredSettings().mapPreview;
+  const rowThumbs = new Map<MapSelectItem, HTMLElement>();
+  const card = createMapDetailsCard({
+    onPreviewView: (view) => {
+      previewView = view;
+      for (const [item, thumb] of rowThumbs)
+        if (mapPreviewViews(item).length > 1) paintMapThumb(thumb, item, view);
+    },
+  });
   const primary = document.createElement('button');
   primary.type = 'button';
   primary.className = 'main-menu__primary';
@@ -134,31 +141,6 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
   let selected: MapSelectItem | null = null;
   let mapsLoaded = false;
   const rowButtons = new Map<MapSelectItem, HTMLButtonElement>();
-
-  // Maps without a decoded PNG rasterize a thumb only once their row nears the viewport: each
-  // preview needs the full terrain JSON, so an eager pass would pull tens of megabytes.
-  const pendingThumbs = new Map<Element, string>();
-  const fillThumb = (thumb: Element, mapId: string): void => {
-    void generatedMapPreview(mapId).then((source) => {
-      if (source === null || !thumb.isConnected) return;
-      const img = document.createElement('img');
-      img.src = source;
-      img.alt = '';
-      thumb.replaceChildren(img);
-    });
-  };
-  const thumbObserver = new IntersectionObserver(
-    (observed) => {
-      for (const entry of observed) {
-        if (!entry.isIntersecting) continue;
-        thumbObserver.unobserve(entry.target);
-        const mapId = pendingThumbs.get(entry.target);
-        pendingThumbs.delete(entry.target);
-        if (mapId !== undefined) fillThumb(entry.target, mapId);
-      }
-    },
-    { root: listScroll, rootMargin: THUMB_PRELOAD_MARGIN },
-  );
 
   const selectItem = (item: MapSelectItem): void => {
     selected = item;
@@ -192,22 +174,8 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
     button.className = 'main-menu__map-row';
     const thumb = document.createElement('div');
     thumb.className = 'main-menu__map-thumb';
-    if (item.kind === 'map' && item.minimap) {
-      const img = document.createElement('img');
-      img.src = `/maps/${encodeURIComponent(item.id)}.png`;
-      img.alt = '';
-      img.loading = 'lazy';
-      // A stale minimap flag falls back to the rasterized thumb; removing the img shows the
-      // gradient placeholder instead of a broken-image glyph.
-      img.addEventListener('error', () => {
-        img.remove();
-        fillThumb(thumb, item.id);
-      });
-      thumb.append(img);
-    } else if (item.kind === 'map') {
-      pendingThumbs.set(thumb, item.id);
-      thumbObserver.observe(thumb);
-    }
+    paintMapThumb(thumb, item, previewView);
+    rowThumbs.set(item, thumb);
     const text = document.createElement('div');
     text.className = 'main-menu__map-row-text';
     const rowName = document.createElement('div');
@@ -251,9 +219,7 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
       { maps: mapsText },
     );
     rowButtons.clear();
-    // The old rows leave the DOM below, so stop watching their thumbs.
-    thumbObserver.disconnect();
-    pendingThumbs.clear();
+    rowThumbs.clear();
     if (rows.length === 0) {
       // Only a settled empty result means "no decoded maps"; before that the list is still loading.
       const notice = document.createElement('p');
@@ -286,7 +252,7 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
   paintTabs();
   renderList();
   void loadMapList().then((entries) => {
-    // A navigation away detaches the list; a late response must not rasterize previews for it.
+    // A navigation away detaches the list; a late response must not build rows for it.
     if (!body.isConnected) return;
     mapsLoaded = true;
     const maps = entries.map((entry) => mapItem(entry)).filter((item) => options.include?.(item) ?? true);

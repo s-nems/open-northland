@@ -7,11 +7,15 @@ import {
   type MapSelectItem,
   mapCategory,
   mapItem,
+  mapPreviewUrl,
+  mapPreviewViews,
   ROOM_TABS,
   SINGLE_PLAYER_TABS,
   sceneItem,
+  shownMapPreview,
 } from '../src/entries/main-menu/map-select-model.js';
 import { pluralForm } from '../src/i18n/index.js';
+import { defaultSettings, parseStoredSettings } from '../src/view/settings-store.js';
 
 function slot(player: number, hidden = false): MapsIndexPlayerSlot {
   return {
@@ -59,6 +63,7 @@ describe('mapItem', () => {
     });
     expect(mapCategory(arena)).toBe('multiplayer');
     expect(arena.seats).toEqual([]);
+    expect(arena.picture).toBe(true);
     expect(arena.minimap).toBe(true);
     expect(arena.fixedColors).toBe(true);
     const bare = mapItem({ id: 'arena', picture: false, minimap: false });
@@ -153,6 +158,45 @@ describe('listedIn', () => {
       scene,
     ].filter((item) => listedIn(item, 'single'));
     expect(single).toEqual([tutorial, free, userFree, multi, untyped, scene]);
+  });
+});
+
+describe('map preview switch', () => {
+  const illustrated = mapItem({ id: 'szeol', picture: true, minimap: true });
+  const terrainOnly = mapItem({ id: 'cn_1', picture: false, minimap: true });
+  const scene = sceneItem('battle', 'Bitwa', 'pokaz walki wręcz');
+
+  it('offers both views only for a map with an illustration, and none for a scene', () => {
+    expect(mapPreviewViews(illustrated)).toEqual(['picture', 'map']);
+    expect(mapPreviewViews(terrainOnly)).toEqual(['map']);
+    expect(mapPreviewViews(scene)).toEqual([]);
+    expect(scene.picture).toBe(false);
+  });
+
+  it('opens on the illustration, and on the minimap where there is none', () => {
+    const preferred = defaultSettings().mapPreview;
+    expect(preferred).toBe('picture');
+    expect(shownMapPreview(illustrated, preferred)).toBe('picture');
+    expect(shownMapPreview(terrainOnly, preferred)).toBe('map');
+    expect(shownMapPreview(scene, preferred)).toBeNull();
+  });
+
+  it('keeps the minimap once chosen, for every map', () => {
+    expect(shownMapPreview(illustrated, 'map')).toBe('map');
+    expect(shownMapPreview(terrainOnly, 'map')).toBe('map');
+  });
+
+  it('names the illustration and the minimap files apart', () => {
+    expect(mapPreviewUrl('szeol', 'picture')).toBe('/maps/szeol.png');
+    expect(mapPreviewUrl('szeol', 'map')).toBe('/maps/szeol.map.png');
+    expect(mapPreviewUrl('a b', 'map')).toBe('/maps/a%20b.map.png');
+  });
+
+  it('remembers the choice across reloads through the stored settings', () => {
+    const stored = JSON.stringify({ ...defaultSettings(), mapPreview: 'map' });
+    expect(parseStoredSettings(stored).mapPreview).toBe('map');
+    expect(parseStoredSettings('{"mapPreview":"globe"}').mapPreview).toBe('picture');
+    expect(parseStoredSettings(null).mapPreview).toBe('picture');
   });
 });
 

@@ -46,7 +46,16 @@ function transport(local: boolean, kind = 'user'): typeof fetch {
     if (path === '/maps-index.json')
       return new Response(
         JSON.stringify(
-          local ? [{ id: 'island', minimap: false, provenance: { kind, folder: 'UserMaps/island' } }] : [],
+          local
+            ? [
+                {
+                  id: 'island',
+                  picture: false,
+                  minimap: false,
+                  provenance: { kind, folder: 'UserMaps/island' },
+                },
+              ]
+            : [],
         ),
       );
     return local && path === '/maps/island.json'
@@ -166,7 +175,12 @@ it('vetoes delivery of a locally known unknown-origin map even when its id casin
     String(input) === '/maps-index.json'
       ? new Response(
           JSON.stringify([
-            { id: 'ISLAND', minimap: false, provenance: { kind: 'unknown', folder: 'Data/maps/island' } },
+            {
+              id: 'ISLAND',
+              picture: false,
+              minimap: false,
+              provenance: { kind: 'unknown', folder: 'Data/maps/island' },
+            },
           ]),
         )
       : new Response('', { status: 404 });

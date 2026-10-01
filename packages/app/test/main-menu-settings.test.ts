@@ -56,6 +56,7 @@ describe('parseStoredSettings', () => {
         },
         scope: 'hostile',
       },
+      mapPreview: 'map',
       soundEnabled: false,
       soundVolume: 0.35,
       musicVolume: 0.6,

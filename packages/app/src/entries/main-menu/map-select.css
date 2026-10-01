@@ -165,6 +165,13 @@
   image-rendering: pixelated;
 }
 
+/* The terrain minimap is drawn at display resolution; only the small authored illustration
+ * reads better with hard pixels. */
+.main-menu__map-thumb img[data-view="map"],
+.main-menu__map-preview img[data-view="map"] {
+  image-rendering: auto;
+}
+
 .main-menu__map-row-text {
   flex: 1;
   min-width: 0;
@@ -260,13 +267,15 @@
   display: none;
 }
 
-/* The card's preview section. The image keeps a bounded upscale: the decoded PNGs are 160-330 px
- * sources, so a full-column stretch turns to mush. */
+/* The card's preview section. The image keeps a bounded upscale: the authored illustrations are
+ * 160-330 px sources, so a full-column stretch turns to mush. */
 .main-menu__map-preview {
   min-height: calc(var(--u) * 200);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: calc(var(--u) * 14);
   padding: calc(var(--u) * 20);
   background: rgba(10, 18, 30, 0.55);
   border-bottom: 1px solid rgb(var(--accent-rgb) / 0.25);
@@ -287,12 +296,27 @@
   display: none;
 }
 
+.main-menu__map-preview-switch .main-menu__seg-btn {
+  padding: calc(var(--u) * 7) calc(var(--u) * 16);
+  font-size: calc(var(--u) * 18);
+}
+
+/* `display: flex` from the shared segment outweighs the UA's `[hidden]`. */
+.main-menu__map-preview-switch[hidden] {
+  display: none;
+}
+
 .main-menu__map-preview-label {
   font:
     400 calc(var(--u) * 19) / 1 ui-monospace,
     Menlo,
     monospace;
   color: rgba(190, 215, 225, 0.5);
+}
+
+/* An empty label would still take a gap in the column. */
+.main-menu__map-preview-label:empty {
+  display: none;
 }
 
 .main-menu__map-details {
