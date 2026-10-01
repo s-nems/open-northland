@@ -13,6 +13,11 @@ import { standingNodesRevision, standingObjects } from './live-objects.js';
 
 /** The least wall time between two bakes for a change of the standing forest and ore, in ms. */
 export const OBJECT_REBAKE_INTERVAL_MS = 4000;
+/** The most minimap zoom the ground bakes for; deeper zoom upscales. Measured: a 2x bake on a 2x display
+ *  takes about half a second on the worker, and 4x would bake four times its pixels. */
+export const MAX_BAKE_ZOOM = 2;
+/** Wall ms a new bake size must hold before it bakes, so a wheel-zoom burst asks for one bake. */
+export const BAKE_SIZE_SETTLE_MS = 250;
 /** The revision no snapshot reports, so the first sync bakes the object lanes. */
 const UNBAKED = -1;
 
@@ -26,20 +31,24 @@ export interface MinimapSurfaceDeps {
   /** Whole-map raster space; the owner transforms and clips all map layers together. */
   readonly map: Rect;
   readonly resolution: () => number;
+  /** The minimap's own zoom, 1 showing the whole map. */
+  readonly zoom: () => number;
   readonly baker: MinimapBakerFactory;
   /** Wall-clock ms. */
   readonly now: () => number;
 }
 
 export interface MinimapSurface {
-  /** Rebake when the display resolution changed, or the standing forest and ore did at most once per
-   *  {@link OBJECT_REBAKE_INTERVAL_MS}. A bake runs on the baker; its picture lands on a later sync. */
+  /** Rebake when the bake size, the display resolution times the zoom up to {@link MAX_BAKE_ZOOM},
+   *  settled on a new value, or the standing forest and ore changed, at most once per
+   *  {@link OBJECT_REBAKE_INTERVAL_MS}. A bake runs on the baker, one at a time; the shown picture stays
+   *  until the next lands on a later sync. */
   sync(snapshot: WorldSnapshot): void;
   dispose(): void;
 }
 
 export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
-  const { terrain, cellColours, colourOf, featureOfGoodType, map, resolution } = deps;
+  const { terrain, cellColours, colourOf, featureOfGoodType, map, resolution, zoom } = deps;
   const colours = cellColourResolver(cellColours, (id) => colourOf?.(id) ?? flatTileColour(id));
   const baker: MinimapBaker = deps.baker(minimapBakeScene(terrain, colours));
   let texture: Texture | null = null;
@@ -47,7 +56,9 @@ export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
   ground.visible = false;
   ground.position.set(map.x, map.y);
   deps.container.addChild(ground);
-  let bakedResolution = 0;
+  let bakedScale = 0;
+  let wantedScale = 0;
+  let wantedSince = Number.NEGATIVE_INFINITY;
   let bakedRevision = UNBAKED;
   let objectsBakedAt = Number.NEGATIVE_INFINITY;
   let baking = false;
@@ -68,12 +79,18 @@ export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
 
   return {
     sync: (snapshot) => {
-      if (baking || failed || disposed) return;
-      const scale = resolution();
-      const revision = standingNodesRevision(snapshot, featureOfGoodType);
+      const scale = resolution() * Math.min(zoom(), MAX_BAKE_ZOOM);
       const now = deps.now();
+      if (scale !== wantedScale) {
+        wantedScale = scale;
+        wantedSince = now;
+      }
+      if (baking || failed || disposed) return;
+      // The first bake goes at once; a later size waits for the zoom or resolution to settle.
+      const sizeDue = scale !== bakedScale && (bakedScale === 0 || now - wantedSince >= BAKE_SIZE_SETTLE_MS);
+      const revision = standingNodesRevision(snapshot, featureOfGoodType);
       const objectsDue = revision !== bakedRevision && now - objectsBakedAt >= OBJECT_REBAKE_INTERVAL_MS;
-      if (scale === bakedResolution && !objectsDue) return;
+      if (!sizeDue && !objectsDue) return;
       const width = Math.max(1, Math.round(map.w * scale));
       const height = Math.max(1, Math.round(map.h * scale));
       const objects = objectsDue ? standingObjects(snapshot, featureOfGoodType) : undefined;
@@ -86,7 +103,7 @@ export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
         (rgba) => {
           baking = false;
           if (disposed) return;
-          bakedResolution = scale;
+          bakedScale = scale;
           show(rgba, width, height);
         },
         (err: unknown) => {

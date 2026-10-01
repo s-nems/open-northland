@@ -115,6 +115,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     featureOfGoodType: opts.featureOfGoodType,
     map: raster,
     resolution: () => app.renderer.resolution,
+    zoom: () => zoom,
     baker: createWorkerMinimapBaker,
     now: () => performance.now(),
   });
