@@ -147,7 +147,7 @@ owner refusals of attach raise `cannotEnterVehicle` and a full vehicle `vehicleN
 refused load raises `cannotAttachVehicle`, which the original never raises; a rider refused off a
 ship at sea raises `cannotLeaveVehicle`; settlers walk through a standing vehicle as in the original,
 but an entry point inside the disc always takes the original's ring fallback, so the crew boards from
-beside the vehicle, the first open ground node on the anchor's continent around the ring just outside the
+beside the vehicle rather than walking onto its sprite, the first open ground node on the anchor's continent around the ring just outside the
 disc, tested in the original's order, with the entry point kept when the ring has none
 (`vehicleDoorPoint`; the original blocks nothing and walks the crew onto the cart, and its scan is the
 radius-1 ring only, where a catapult's door here lies on ring 2); a rider boards from and steps out

@@ -8,8 +8,8 @@ import { dynamicBlockOverlay } from './blocked.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 
 // The lazy route-region memo over the building, resource and landscape walk-block overlay: the "clear cell
-// sealed inside blocker walls" signal that static terrain components cannot give. Vehicles are left out
-// like unit bodies: the labels key on the structures only. Derived state, never hashed.
+// sealed inside blocker walls" signal that static terrain components cannot give. Unit bodies are left
+// out: the labels key on the structures only. Derived state, never hashed.
 
 /**
  * The flood cap that separates a provable pocket from the open world, in expanded nodes. Approximation:
@@ -67,7 +67,7 @@ export class RouteRegions {
   ) {}
 
   /** Whether a unit could stand on `node` under the structure overlay the verdicts read: walkable and
-   *  clear of every building, resource and landscape block. Vehicles are left out, like the labels. */
+   *  clear of every building, resource and landscape block. */
   standable(node: NodeId): boolean {
     const cache = this.cache;
     this.refresh(cache);
@@ -77,7 +77,7 @@ export class RouteRegions {
   /**
    * Whether a walk from `from` to `to` provably has no route under the overlay: one endpoint sits in a
    * sealed pocket the other is not in. True is a proof; false is not a routability promise, since two open
-   * endpoints may be walled apart beyond the cap, and unit bodies and vehicles are not in this overlay. A
+   * endpoints may be walled apart beyond the cap, and unit bodies are not in this overlay. A
    * blocked `from` is judged by the nodes it can step out to, as findPath exempts a blocked start, and
    * reads false with none; a blocked `to` reads false, since findPath rejects that goal first.
    */

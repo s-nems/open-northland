@@ -112,7 +112,7 @@ function signpostBlockerCells(world: World, e: Entity, visit: BlockerVisit): voi
 
 /** One parked vehicle's contribution: its `logicSize` hex disc as OBSTACLE cells, so no house rises over
  *  it (the original refuses a vehicle site with a parked vehicle inside; a house site is the named
- *  approximation, since a vehicle's disc is a walk-block like a wall). */
+ *  approximation, owner's choice, so a house never swallows a vehicle). */
 export function vehicleBlockerCells(world: World, content: ContentSet, e: Entity, visit: BlockerVisit): void {
   const vehicle = world.tryGet(e, Vehicle);
   const anchor = vehicleAnchor(world, e);

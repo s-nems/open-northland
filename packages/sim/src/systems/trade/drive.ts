@@ -165,7 +165,7 @@ function driveCartTo(plan: PlannerContext, cart: TradeCart, house: Entity): bool
   const doorNode = terrain.nodeAtClamped(door.hx, door.hy);
   if (isUnreachableGoal(unreachableGoals(world, ctx, e), doorNode)) return false;
   const doors = buildingDoorNodes(world, ctx, terrain);
-  // A house with no authored door is worked at its anchor, where a parked cart would block the trader.
+  // A house with no authored door is worked at its anchor, which the cart leaves free like a door.
   const goal = snapVehicleTarget(world, ctx, terrain, cart.vehicle, door, {
     radius: TRADE_CART_SEARCH_RADIUS,
     exclude: (node) => node === doorNode || doors.has(node),

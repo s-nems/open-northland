@@ -3,12 +3,12 @@ import { Building, Palisade, PalisadeBlocking, Position, ResourceFootprint } fro
 import { landscapeEditState } from '../../components/landscape.js';
 import type { ChangeFeed } from '../../ecs/change-feed.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
-import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { ClearanceField, type ClearanceProbe } from '../../nav/clearance.js';
 import { HEX_NEIGHBOUR_OFFSETS, hexDistanceBetween, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
 import { type LandscapeBlocks, landscapeBlocks } from '../landscape/view.js';
+import { dynamicBlockOverlay } from './blocked.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
@@ -57,17 +57,8 @@ const ignoreChange = (): void => {};
 /** A wall's gate swing and finish re-add `Palisade` or `PalisadeBlocking`, so membership journals see them. */
 const SOURCES: readonly Component<unknown>[] = [Building, ResourceFootprint, Palisade, PalisadeBlocking];
 
-/** The ground walk-block a vehicle's clearance is measured against: every dynamic layer but the vehicles. */
-export function groundBlockOverlay(world: World, ctx: ContentContext, terrain: TerrainGraph): BlockOverlay {
-  return new LayeredBlocks([
-    buildingBlockedCells(world, ctx, terrain),
-    resourceBlockedCells(world, terrain),
-    landscapeBlocks(world, terrain).walk,
-  ]);
-}
-
 function probeOf(world: World, ctx: ContentContext, terrain: TerrainGraph): ClearanceProbe {
-  const blocked = groundBlockOverlay(world, ctx, terrain);
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
   return (node) => (terrain.isWalkable(node) || terrain.isWater(node)) && !blocked.has(node);
 }
 

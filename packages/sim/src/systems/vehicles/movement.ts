@@ -29,7 +29,7 @@ import {
   vehicleBlockedCells,
   vehicleFootprintNodes,
 } from '../footprint/index.js';
-import { groundBlockOverlay, landVehicleFits, vehicleStandable } from '../footprint/vehicle-clearance.js';
+import { landVehicleFits, vehicleStandable } from '../footprint/vehicle-clearance.js';
 import { isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { walkTurnSteps } from '../movement/turning.js';
 import {
@@ -153,7 +153,7 @@ function blocksUnder(
   fits: (node: NodeId) => boolean,
   answers?: Map<NodeId, boolean>,
 ): BlockOverlay {
-  const ground = groundBlockOverlay(world, ctx, terrain);
+  const ground = dynamicBlockOverlay(world, ctx, terrain);
   const vehicles = vehicleBlockedCells(world, ctx, terrain);
   const own = new Set(vehicleFootprintNodes(world, ctx.content, terrain, vehicle));
   return {

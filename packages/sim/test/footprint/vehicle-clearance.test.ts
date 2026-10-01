@@ -8,7 +8,8 @@ import type { Component } from '../../src/ecs/world.js';
 import { fx, ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { ClearanceField } from '../../src/nav/clearance.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
-import { groundBlockOverlay, vehicleClearance } from '../../src/systems/footprint/vehicle-clearance.js';
+import { dynamicBlockOverlay } from '../../src/systems/footprint/blocked.js';
+import { vehicleClearance } from '../../src/systems/footprint/vehicle-clearance.js';
 import { removeLandscapes } from '../../src/systems/landscape/edits.js';
 import { landscapeBlocks, RETAINED_VIEWS } from '../../src/systems/landscape/view.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -152,7 +153,7 @@ function resourceFootprint(dx = 0) {
 function expectFreshClearance(sim: Simulation): void {
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('map missing');
-  const overlay = groundBlockOverlay(sim.world, ctxOf(sim), terrain);
+  const overlay = dynamicBlockOverlay(sim.world, ctxOf(sim), terrain);
   const fresh = new ClearanceField(
     terrain,
     (node) => (terrain.isWalkable(node) || terrain.isWater(node)) && !overlay.has(node),
