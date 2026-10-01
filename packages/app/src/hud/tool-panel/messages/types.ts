@@ -101,7 +101,6 @@ export type IdleReasonKind =
   | 'noResource'
   | 'resourceRouteBlocked'
   | 'nothingAtFlag'
-  | 'nothingToCarry'
   | 'noGame'
   | 'gameOutOfReach';
 

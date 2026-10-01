@@ -8,8 +8,8 @@ const NO_GOODS: readonly number[] = [];
  * panel words it; null when the diagnosis names none the note can put in words: nothing in the way, a
  * search too large to finish or a workplace it does not diagnose. A craft operator's gates (inputs,
  * shelves, locked products) never reach the note, since a resting workshop's operators leave it to the
- * stall note, nor do a missing workplace or trade, since the note needs a finished workplace; the sim
- * reports no missing tool.
+ * stall note, nor do a missing workplace or trade, since the note needs a finished workplace, nor a store
+ * carrier's empty round, which is no blocker; the sim reports no missing tool.
  */
 export function idleReasonOf(status: WorkStatus | undefined): IdleReason | null {
   switch (status?.kind) {
@@ -29,10 +29,10 @@ export function idleReasonOf(status: WorkStatus | undefined): IdleReason | null 
     case 'resourceRouteBlocked':
       return { kind: 'resourceRouteBlocked', goodTypes: status.goodTypes };
     case 'nothingAtFlag':
-    case 'nothingToCarry':
     case 'noGame':
     case 'gameOutOfReach':
       return { kind: status.kind, goodTypes: NO_GOODS };
+    case 'nothingToCarry':
     case 'waitingInput':
     case 'outputFull':
     case 'productsLocked':

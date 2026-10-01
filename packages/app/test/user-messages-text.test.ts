@@ -255,9 +255,6 @@ describe('notice text', () => {
     expect(idle({ goodName: null, idle: { kind: 'gameOutOfReach', goodTypes: [] } }).short).toBe(
       'Zwierz odcięty',
     );
-    expect(idle({ female: true, goodName: null, idle: { kind: 'nothingToCarry', goodTypes: [] } }).full).toBe(
-      'Bjorn nie ma nic do roboty. W zasięgu nie ma towarów, które mogłaby zanieść do magazynu. Jeśli tragarzy jest za dużo, nadaj jej inny zawód.',
-    );
     expect(idle({ idle: null })).toEqual({
       short: 'Nic do roboty',
       full: 'Bjorn nie ma nic do roboty. Przyczyny nie widać. Sprawdź, czy miejsce pracy ma w zasięgu magazyn i potrzebne towary.',

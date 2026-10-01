@@ -244,16 +244,14 @@ describe('user messages read off real scene snapshots', () => {
     expect(raised).toEqual([USER_MESSAGE_TYPE.starving, USER_MESSAGE_TYPE.tired]);
   });
 
-  it('reports every carrier of a store with nothing to haul, once it has idled long enough', () => {
+  it('raises no card for the carriers of a store with nothing to haul, however long they idle', () => {
     const { firstAt, last } = firstIdleNotes(IDLE_CREW, 4 * IDLE_SWEEPS_BEFORE_MESSAGE);
     const carriers = adultsOf(last).filter((id) => {
       const e = last.entities.find((x) => x.id === id);
       return e !== undefined && workplaceOf(e) !== undefined;
     });
     expect(carriers.length).toBeGreaterThan(0);
-    expect([...firstAt.keys()].sort((a, b) => a - b)).toEqual(carriers);
-    for (const sweep of firstAt.values())
-      expect(sweep).toBeGreaterThanOrEqual(IDLE_SWEEPS_BEFORE_MESSAGE - 1);
+    expect(firstAt.size).toBe(0);
   });
 
   it('leaves the warehouse crew alone while it is hauling', () => {
@@ -287,8 +285,13 @@ describe('user messages read off real scene snapshots', () => {
     expect(idleReasonsIn(FAR_GAME_HUNTER)).toEqual(['noGame']);
   });
 
-  it('names why the carriers of a store with nothing to haul stand idle', () => {
-    expect(idleReasonsIn(IDLE_CREW)).toEqual(['nothingToCarry']);
+  it('names why a store carrier has nothing to haul on its panel only', () => {
+    expect(idleReasonsIn(IDLE_CREW)).toEqual([]);
+    const sim = createSceneSim(IDLE_CREW);
+    sim.run(IDLE_SWEEPS_BEFORE_MESSAGE * SNAPSHOT_SWEEP_INTERVAL_TICKS);
+    const carrier = adultsOf(sim.snapshot())[0];
+    if (carrier === undefined) throw new Error('no carrier');
+    expect(sim.workStatus(carrier as Entity)).toEqual({ kind: 'nothingToCarry' });
   });
 
   it('reports both store-reach bakeries stalled, naming why, once the grace has passed', () => {

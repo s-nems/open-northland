@@ -1320,7 +1320,6 @@ export const plGame = {
         noResource: 'Brak zasobów',
         resourceRouteBlocked: 'Brak dojścia',
         nothingAtFlag: 'Nic do zebrania',
-        nothingToCarry: 'Nic do noszenia',
         noGame: 'Brak zwierzyny',
         gameOutOfReach: 'Zwierz odcięty',
       },
@@ -1339,10 +1338,6 @@ export const plGame = {
           'Nie ma dojścia do zasobów: {good}. Otwórz przejście albo wskaż flagą roboczą inne miejsce.',
         nothingAtFlag:
           'Przy chorągiewce nie ma nic do zebrania. Przenieś chorągiewkę tam, gdzie leżą towary, albo ją zabierz.',
-        nothingToCarry: {
-          he: 'W zasięgu nie ma towarów, które mógłby zanieść do magazynu. Jeśli tragarzy jest za dużo, nadaj mu inny zawód.',
-          she: 'W zasięgu nie ma towarów, które mogłaby zanieść do magazynu. Jeśli tragarzy jest za dużo, nadaj jej inny zawód.',
-        },
         noGame:
           'W terenie łowieckim nie widać wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
         gameOutOfReach:
@@ -1363,10 +1358,6 @@ export const plGame = {
           'Nie ma dojścia do zasobów. Otwórz przejście albo wskaż flagą roboczą inne miejsce.',
         nothingAtFlag:
           'Przy chorągiewce nie ma nic do zebrania. Przenieś chorągiewkę tam, gdzie leżą towary, albo ją zabierz.',
-        nothingToCarry: {
-          he: 'W zasięgu nie ma towarów, które mógłby zanieść do magazynu. Jeśli tragarzy jest za dużo, nadaj mu inny zawód.',
-          she: 'W zasięgu nie ma towarów, które mogłaby zanieść do magazynu. Jeśli tragarzy jest za dużo, nadaj jej inny zawód.',
-        },
         noGame:
           'W terenie łowieckim nie widać wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
         gameOutOfReach:

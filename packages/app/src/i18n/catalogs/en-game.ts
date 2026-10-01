@@ -1353,7 +1353,6 @@ export const enGame = {
         noResource: 'No resources',
         resourceRouteBlocked: 'No way through',
         nothingAtFlag: 'Flag is empty',
-        nothingToCarry: 'Nothing to carry',
         noGame: 'No game',
         gameOutOfReach: 'Game cut off',
       },
@@ -1370,10 +1369,6 @@ export const enGame = {
         },
         resourceRouteBlocked: 'No way through to {good}. Clear a path or mark another spot with a work flag.',
         nothingAtFlag: 'Nothing to collect at the flag. Move the flag to where goods lie, or take it away.',
-        nothingToCarry: {
-          he: 'Nothing in reach for him to take to a store. If there are too many carriers, give him another trade.',
-          she: 'Nothing in reach for her to take to a store. If there are too many carriers, give her another trade.',
-        },
         noGame:
           'No free game in sight in the hunting ground. Mark a spot where game grazes with a work flag.',
         gameOutOfReach:
@@ -1393,10 +1388,6 @@ export const enGame = {
         resourceRouteBlocked:
           'No way through to the resources. Clear a path or mark another spot with a work flag.',
         nothingAtFlag: 'Nothing to collect at the flag. Move the flag to where goods lie, or take it away.',
-        nothingToCarry: {
-          he: 'Nothing in reach for him to take to a store. If there are too many carriers, give him another trade.',
-          she: 'Nothing in reach for her to take to a store. If there are too many carriers, give her another trade.',
-        },
         noGame:
           'No free game in sight in the hunting ground. Mark a spot where game grazes with a work flag.',
         gameOutOfReach:

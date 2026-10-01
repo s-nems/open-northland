@@ -8,6 +8,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { isSoldierJob } from '../../../catalog/professions.js';
+import { workerRoleOf } from '../../../game/sandbox/index.js';
 import {
   actorsOf,
   type ChildOrderWait,
@@ -288,6 +289,13 @@ export function idleNoteHeldByStall(e: SnapshotEntity, stalls: StallReader | nul
   return workplace !== undefined && stalls?.holdsIdleNote(workplace) === true;
 }
 
+/** A carrier with no pickup flag idles between loads while logistics runs as it should, so its pause is
+ *  never the player's to fix; only the panel says it has nothing to carry. */
+function idlesBetweenLoads(e: SnapshotEntity): boolean {
+  const job = settlerJobType(e);
+  return job !== undefined && workerRoleOf(job) === 'carrier' && e.components.HaulFlag === undefined;
+}
+
 /** What the idle notes read beside the snapshot. */
 interface IdleNoteContext {
   readonly streaks: IdleStreaks;
@@ -316,7 +324,8 @@ function raiseIdleNote(
   const count = streaks.advance(e.id, occupation, atPost);
   const due = count >= IDLE_SWEEPS_BEFORE_MESSAGE;
   if (hasWorkplaceToWorkAt(snapshot, e)) {
-    if (count < IDLE_SWEEPS_BEFORE_MESSAGE - 1 || idleNoteHeldByStall(e, stalls)) return;
+    if (count < IDLE_SWEEPS_BEFORE_MESSAGE - 1 || idleNoteHeldByStall(e, stalls) || idlesBetweenLoads(e))
+      return;
     if (dismissed(idleNotePending(e, null))) return;
     const reason = streaks.reason(e.id, asks?.status(e.id));
     if (due) raiser.idle(e, reason);
