@@ -2,37 +2,34 @@ import { Container } from 'pixi.js';
 
 const ordinaryDepthChanged = Container.prototype.depthOfChildModified;
 
-/** Numeric depth changes invalidate instructions only when the stable painter order changes. */
+/** A child's depth write marks its layer for sorting instead of Pixi's whole-group invalidation. */
+const layerDepthChanged: Container['depthOfChildModified'] = function (this: Container) {
+  const parent = this.parent;
+  if (parent instanceof DepthSortedLayer) parent.sortDirty = true;
+  else ordinaryDepthChanged.call(this);
+};
+
+/** Numeric depth changes invalidate instructions only when the stable painter order changes.
+ *  Undocumented Pixi behaviour, verified on pixi.js 8.21, re-verify on a bump: a zIndex write calls the
+ *  child's own `depthOfChildModified`, a render group runs `onRender` hooks before it tests
+ *  `structureDidChange`, and Pixi sorts children only while rebuilding instructions. */
 export class DepthSortedLayer extends Container {
   private readonly scratch: (Container | undefined)[] = [];
   // Capture each mutable depth once; merge comparisons use the retained numeric keys.
   private depths = new Float64Array(0);
   private scratchDepths = new Float64Array(0);
-  private readonly hooks = new WeakMap<Container, Container['depthOfChildModified']>();
 
   constructor() {
     super();
     this.sortableChildren = true;
+    // Every render sorts first, so a portrait or map-view pass draws the current painter order too.
+    this.onRender = () => this.sortChildren();
     this.on('childAdded', (child) => {
       // Custom notifications keep their side effects and ordinary Pixi invalidation.
-      if (child.depthOfChildModified !== ordinaryDepthChanged) return;
-      const original = child.depthOfChildModified;
-      const layer = this;
-      const hook: Container['depthOfChildModified'] = function (this: Container) {
-        if (this.parent !== layer) {
-          original.call(this);
-          return;
-        }
-        layer.sortDirty = true;
-      };
-      this.hooks.set(child, hook);
-      child.depthOfChildModified = hook;
+      if (child.depthOfChildModified === ordinaryDepthChanged) child.depthOfChildModified = layerDepthChanged;
     });
     this.on('childRemoved', (child) => {
-      if (child.depthOfChildModified === this.hooks.get(child)) {
-        child.depthOfChildModified = ordinaryDepthChanged;
-      }
-      this.hooks.delete(child);
+      if (child.depthOfChildModified === layerDepthChanged) child.depthOfChildModified = ordinaryDepthChanged;
     });
   }
 

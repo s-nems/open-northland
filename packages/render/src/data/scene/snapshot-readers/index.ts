@@ -31,6 +31,7 @@ export {
   readBehaviourGlow,
   readCarrying,
   readCraftPerformance,
+  readCraftWorkplace,
   readEngaged,
   readEquipmentArmorGood,
   readEquipmentWeaponGood,

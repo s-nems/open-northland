@@ -12,6 +12,8 @@ export const SHADOW_BLUR_KERNEL_SUM = SHADOW_BLUR_KERNEL.reduce((sum, tap) => su
 const MAX_PIXELS = 2 * 1024 * 1024;
 const MAX_FRAME_PIXELS = 512 * 512;
 const PAGE_SIDE = 512;
+/** A frame shares a shelf at most this many times its own height, so thin frames keep tall shelves free. */
+const MAX_SHELF_HEIGHT_RATIO = 2;
 type BakeContext = NonNullable<ReturnType<typeof readable2dContext>>;
 interface ShadowRow {
   x: number;
@@ -135,7 +137,10 @@ export class SoftShadowCache {
       const image = ctx.getImageData(0, 0, width, height);
       softenShadowAlpha(image.data, width, height);
       const placement = this.pageFor(width, height);
-      if (placement === null) return null;
+      if (placement === null) {
+        this.unavailable.add(frame);
+        return null;
+      }
       const { page, row } = placement;
       const x = row.x,
         y = row.y;
@@ -163,7 +168,7 @@ export class SoftShadowCache {
     for (const page of this.pages) {
       for (const row of page.rows) {
         // Similar-height frames share fixed shelves; a thin frame cannot consume a tall shelf's width.
-        if (height > row.height || height * 2 < row.height) continue;
+        if (height > row.height || height * MAX_SHELF_HEIGHT_RATIO < row.height) continue;
         if (row.x + width <= page.ctx.canvas.width) return { page, row };
       }
       const last = page.rows[page.rows.length - 1];

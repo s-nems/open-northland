@@ -14,7 +14,7 @@ import {
   readActingAtomic,
   readAtomicTargetEntity,
   readBuiltPct,
-  readCraftPerformance,
+  readCraftWorkplace,
   readPosition,
   readStoreExchangeRef,
 } from './snapshot-readers/index.js';
@@ -125,7 +125,7 @@ function countTarget(counts: Map<number, number>, id: number | null, step: numbe
 /** The workplace a worker performs its craft at: it is drawn against that building's own anchor, not
  *  its doorstep. */
 function craftWorkplaceOf(components: Readonly<Record<string, unknown>>): number | null {
-  return readCraftPerformance(components, 0)?.workplace ?? null;
+  return readCraftWorkplace(components);
 }
 
 function countTargetsOf(counts: Map<number, number>, entity: EntitySnapshot, step: number): void {

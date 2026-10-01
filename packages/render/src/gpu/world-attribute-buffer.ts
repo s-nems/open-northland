@@ -1,6 +1,9 @@
 import { Buffer } from 'pixi.js';
 
-/** Pixi repacks individual elements in place; upload their enclosing byte range. */
+/** Pixi repacks individual elements in place; upload their enclosing byte range.
+ *  Undocumented Pixi behaviour, verified on pixi.js 8.21, re-verify on a bump: WebGL uploads the
+ *  `_updateOffset`/`_updateSize` range with `bufferSubData` and records the consumed `_updateID` per GPU
+ *  buffer, while WebGPU uploads eagerly on `update` and keeps no `updateID`. */
 export class WorldAttributeBuffer extends Buffer {
   private first = Number.POSITIVE_INFINITY;
   private end = 0;

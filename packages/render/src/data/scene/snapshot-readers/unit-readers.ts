@@ -49,20 +49,33 @@ export interface CraftPerformance {
   readonly duration: number;
 }
 
+function craftAtomicOf(
+  components: Readonly<Record<string, unknown>>,
+): Omit<CraftPerformance, 'elapsed'> | null {
+  const a = components.CurrentAtomic as
+    | { effect?: { kind?: unknown }; targetEntity?: unknown; duration?: unknown }
+    | undefined;
+  if (a?.effect?.kind !== 'produce') return null;
+  const { targetEntity, duration } = a;
+  if (typeof targetEntity !== 'number' || typeof duration !== 'number') return null;
+  return { workplace: targetEntity, duration };
+}
+
 /** A settler's running craft: the workplace it is inside and the clip clock an in-house program reads,
  *  or `null` when its atomic is anything else. */
 export function readCraftPerformance(
   components: Readonly<Record<string, unknown>>,
   tick: number,
 ): CraftPerformance | null {
-  const a = components.CurrentAtomic as
-    | { effect?: { kind?: unknown }; targetEntity?: unknown; duration?: unknown }
-    | undefined;
-  if (a?.effect?.kind !== 'produce') return null;
-  const { targetEntity, duration } = a;
+  const craft = craftAtomicOf(components);
+  if (craft === null) return null;
   const elapsed = readAtomicElapsed(components, tick);
-  if (typeof targetEntity !== 'number' || elapsed === null || typeof duration !== 'number') return null;
-  return { workplace: targetEntity, elapsed, duration };
+  return elapsed === null ? null : { ...craft, elapsed };
+}
+
+/** The workplace a crafting settler performs inside, whatever its clock reads. */
+export function readCraftWorkplace(components: Readonly<Record<string, unknown>>): number | null {
+  return craftAtomicOf(components)?.workplace ?? null;
 }
 
 /** Whether a settler carries the `Engagement` marker (advancing on or fighting an enemy). Presence is

@@ -97,6 +97,21 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
     expect(liveOf(scene, [1, 2, 10])).toEqual([1, 2, 10]);
   });
 
+  it('derives an outdoor actor’s elapsed ticks from its clock and the snapshot tick', () => {
+    const entities = [
+      entity(1, 1, 1, {
+        Settler: { tribe: 0 },
+        CurrentAtomic: { atomicId: 24, targetEntity: 2, targetTile: null },
+        AtomicClock: { startedAt: 10 },
+      }),
+      entity(2, 2, 1, { Resource: { goodType: 1, remaining: 3 } }),
+    ];
+    const elapsedAt = (tick: number): number | undefined =>
+      collectSpriteScene(snapshotOf(entities, tick)).items.find((d) => d.ref === 1)?.elapsed;
+    expect(elapsedAt(13)).toBe(3);
+    expect(elapsedAt(20)).toBe(10);
+  });
+
   it('keepIndoorSettlers keeps the indoor settlers, forcing away a lingering gait/swing', () => {
     // Each indoor settler carries state the forcing must override, not a bare settler that would read
     // idle anyway: a stale PathFollow reads `moving`, and a live pickup atomic reads `acting` and drags

@@ -116,9 +116,8 @@ export class WorldRenderer {
     if (gl !== undefined) opts?.sheet?.palette?.fitTo(gl.getParameter(gl.MAX_TEXTURE_SIZE) as number);
     this.viewSmoothing = opts?.viewSmoothing === true;
     this.playerColourOf = opts?.playerColourOf;
-    this.spriteLayer.sortableChildren = true;
-    // Own Pixi render group: moving sprites re-write zIndex every frame, and that must re-sort and
-    // re-build only this layer's instruction set, not the whole stage's.
+    // Own Pixi render group: moving sprites re-write zIndex every frame, and a changed painter order
+    // must re-build only this layer's instruction set, not the whole stage's.
     this.spriteLayer.isRenderGroup = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.weatherGround = new WeatherGround([this.terrain, this.mapObjects]);
@@ -411,7 +410,6 @@ export class WorldRenderer {
       tick,
       this.enhancements.environmentMotion,
     );
-    this.spriteLayer.sortChildren();
     this.app.render();
     this.groundWaves.suspend(true);
     this.portrait.draw(camera, {

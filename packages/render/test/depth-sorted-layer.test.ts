@@ -81,6 +81,22 @@ describe('depth sorted retained instructions', () => {
     expect(layer.children).toEqual(finite);
   });
 
+  it('sorts a depth-only reorder on its render group’s onRender pass, before the structure check', () => {
+    const layer = new DepthSortedLayer();
+    layer.isRenderGroup = true;
+    const a = layer.addChild(new Container()),
+      b = layer.addChild(new Container());
+    a.zIndex = 1;
+    b.zIndex = 2;
+    layer.sortChildren();
+    layer.renderGroup.structureDidChange = false;
+    b.zIndex = 0;
+    expect(layer.children).toEqual([a, b]);
+    layer.renderGroup.runOnRender(undefined as never);
+    expect(layer.children).toEqual([b, a]);
+    expect(layer.renderGroup.structureDidChange).toBe(true);
+  });
+
   it('preserves custom depth notifications on attachment and reattachment', () => {
     const layer = new DepthSortedLayer();
     layer.isRenderGroup = true;

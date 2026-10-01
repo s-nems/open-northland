@@ -484,7 +484,10 @@ ${PIXEL_ART_MAGNIFY_GLSL}
     override updateElement(element: BatchableElement): void {
       const buffer = this.geometry.buffers[0];
       if (buffer instanceof WorldAttributeBuffer)
-        buffer.changed(element._attributeStart * 4, element.attributeSize * this.vertexSize * 4);
+        buffer.changed(
+          element._attributeStart * Float32Array.BYTES_PER_ELEMENT,
+          element.attributeSize * this.vertexSize * Float32Array.BYTES_PER_ELEMENT,
+        );
       super.updateElement(element);
     }
 
