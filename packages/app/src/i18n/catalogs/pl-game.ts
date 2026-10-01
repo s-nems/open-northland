@@ -1170,6 +1170,8 @@ export const plGame = {
       experienceUnlocks: 'Nowa wiedza',
       experienceBuilding: 'Nowy budynek',
       experienceBuildings: 'Nowe budynki',
+      experienceVehicle: 'Nowy pojazd',
+      experienceVehicles: 'Nowe pojazdy',
       canProduceNewGood: 'Umie: {good}',
       canDoNewJob: 'Fach: {profession}',
       becameSoldier: 'Nowy żołnierz',
@@ -1294,6 +1296,7 @@ export const plGame = {
       jobs: 'Nowe zawody',
       goods: 'Nowe towary',
       houses: 'Nowe budynki',
+      vehicles: 'Nowe pojazdy',
     },
     unnamed: {
       building: 'Budynek',
@@ -1323,6 +1326,29 @@ export const plGame = {
           '{name} nie może mieć dziecka: jej mąż{partner} mieszka w innym domu. Przenieś ich do jednego domu.',
         noFood:
           '{name} nie może mieć dziecka: w zasięgu nie ma jedzenia, którym zaopatrzy dom. Dostarcz jedzenie do pobliskiego magazynu.',
+      },
+    },
+    productionStalled: {
+      short: {
+        missingInput: 'Brak: {good}',
+        inputOutOfReach: 'Surowiec daleko',
+        outputFull: 'Pełne półki',
+        outputOutOfReach: 'Magazyn daleko',
+        productsLocked: 'Wyrób nieodkryty',
+        unknown: 'Produkcja stoi',
+      },
+      full: {
+        missingInput:
+          '{building}: produkcja stoi, brakuje surowca: {good}. Dostarcz go do magazynu w zasięgu warsztatu.',
+        inputOutOfReach:
+          '{building}: produkcja stoi, brakuje surowca: {good}. Mają go tylko magazyny poza zasięgiem drogowskazów. Połącz je drogowskazami albo zbuduj magazyn bliżej.',
+        outputFull:
+          '{building}: produkcja stoi, bo półki są pełne (towar: {good}). Zbuduj magazyn w zasięgu albo przydziel więcej tragarzy.',
+        outputOutOfReach:
+          '{building}: produkcja stoi, nie ma gdzie oddać towaru: {good}. Magazyny, które go przyjmą, leżą poza zasięgiem drogowskazów. Połącz je drogowskazami albo zbuduj magazyn bliżej.',
+        productsLocked:
+          '{building}: produkcja stoi, wybrany wyrób nie jest jeszcze dostępny: {good}. Wybierz w warsztacie inny wyrób.',
+        unknown: '{building}: produkcja stoi. Zaznacz warsztat: jego panel pokaże przyczynę.',
       },
     },
   },

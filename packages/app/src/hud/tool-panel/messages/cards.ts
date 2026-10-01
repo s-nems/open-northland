@@ -1,11 +1,16 @@
 import { messages } from '../../../i18n/index.js';
 import { type PendingMessage, USER_MESSAGE_TYPE, type UserMessage, type UserMessageType } from './types.js';
 
+/** The idle notes, which link to the selected worker's live diagnosis. */
+const IDLE_NOTES: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
+  USER_MESSAGE_TYPE.nothingToDo,
+  USER_MESSAGE_TYPE.workplaceNotFound,
+  USER_MESSAGE_TYPE.noVehicleForWork,
+]);
+
 /** Idle notes link to the selected worker's live diagnosis rather than retaining a stale reason. */
 export function noticeFullText(note: Pick<UserMessage, 'type' | 'subject' | 'text'>): string {
-  const idle =
-    note.type === USER_MESSAGE_TYPE.nothingToDo || note.type === USER_MESSAGE_TYPE.workplaceNotFound;
-  return idle && note.subject?.kind === 'settler'
+  return IDLE_NOTES.has(note.type) && note.subject?.kind === 'settler'
     ? `${note.text.full} ${messages().hud.notices.idleReasonHint}`
     : note.text.full;
 }
@@ -31,6 +36,7 @@ export type NoticeThumb =
 const GLYPH_BY_TYPE: ReadonlyMap<UserMessageType, NoticeGlyph> = new Map<UserMessageType, NoticeGlyph>([
   [USER_MESSAGE_TYPE.houseFinished, 'house'],
   [USER_MESSAGE_TYPE.houseUpgraded, 'house'],
+  [USER_MESSAGE_TYPE.productionStalled, 'house'],
   [USER_MESSAGE_TYPE.settlementAttacked, 'swords'],
   [USER_MESSAGE_TYPE.peopleAttacked, 'swords'],
   [USER_MESSAGE_TYPE.humanDied, 'skull'],

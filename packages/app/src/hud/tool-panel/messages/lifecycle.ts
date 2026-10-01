@@ -11,8 +11,9 @@ export type NoticeLifecycle = 'state' | 'event';
 const LIFECYCLE: Readonly<Record<UserMessageTypeName, NoticeLifecycle>> = {
   lostWithoutSignposts: 'state',
   workplaceNotFound: 'state',
-  vehicleSiteNotFound: 'event',
-  vehicleSiteOccupied: 'event',
+  // The workshop's refusal memo stands while the search keeps failing (`retire.ts`).
+  vehicleSiteNotFound: 'state',
+  vehicleSiteOccupied: 'state',
   nothingToDo: 'state',
   noVehicleForWork: 'state',
   experienceUnlocks: 'event',
@@ -47,6 +48,7 @@ const LIFECYCLE: Readonly<Record<UserMessageTypeName, NoticeLifecycle>> = {
   // A fight stands while blows keep landing in its area (`fight-areas.ts`).
   settlementAttacked: 'state',
   peopleAttacked: 'state',
+  productionStalled: 'state',
 };
 
 const LIFECYCLE_BY_TYPE: ReadonlyMap<UserMessageType, NoticeLifecycle> = new Map(

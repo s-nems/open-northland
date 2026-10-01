@@ -8,8 +8,10 @@ import {
   TICKS_PER_SECOND,
   type WorldSnapshot,
 } from '@open-northland/sim';
+import { isSoldierJob } from '../../../catalog/professions.js';
 import {
   actorsOf,
+  type ChildOrderWait,
   childOrderWaitOf,
   healthOf,
   isAdult,
@@ -26,6 +28,7 @@ import {
 } from '../../../game/snapshot.js';
 import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
 import { USER_MESSAGE_TYPE } from './types.js';
+import { type StallReader, type WorkshopSeam, WorkshopStalls } from './workshop-stalls.js';
 
 /** Ticks between two sweeps of the snapshot for the conditions no sim event announces; the feed's
  *  duplicate check absorbs the repeats a condition that persists keeps raising. Approximation. */
@@ -33,6 +36,10 @@ export const SNAPSHOT_SWEEP_INTERVAL_TICKS = TICKS_PER_SECOND;
 
 /** Sweeps a worker spends without work before the note, about ten seconds idle. Approximation. */
 export const IDLE_SWEEPS_BEFORE_MESSAGE = 10;
+
+/** Sweeps a child order's food search must keep missing before its note: one missed search is food
+ *  still on its way more often than none in reach, and the search retries each second. Approximation. */
+export const NO_FOOD_SWEEPS_BEFORE_MESSAGE = 5;
 
 const NO_MESSAGES: readonly RaisedMessage[] = [];
 
@@ -48,6 +55,8 @@ export type Occupation = 'idle' | 'walking' | 'busy';
 export interface SnapshotMessageSource {
   /** The messages due at this snapshot; empty between sweeps. */
   sweep(snapshot: WorldSnapshot, naming: MessageNaming): readonly RaisedMessage[];
+  /** The seat's stalled workshops as the sweeps judged them; null without the workshop seam. */
+  readonly stalls: StallReader | null;
 }
 
 type Components = SnapshotEntity['components'];
@@ -60,7 +69,8 @@ function isEffectlessAtomic(components: Components): boolean {
 
 /**
  * Approximation: a producer parked outside for missing inputs and a gatherer whose resource ran out carry
- * no component either and read as idle, so they get this note in place of one naming the missing good.
+ * no component either and read as idle. A gatherer gets the idle note in place of one naming the missing
+ * good; a craft workshop's operator leaves it to the stall note, which names it (`workshop-stalls.ts`).
  */
 export function occupationOf(snapshot: WorldSnapshot, e: SnapshotEntity): Occupation {
   const c = e.components;
@@ -118,6 +128,29 @@ class IdleStreaks {
   }
 
   /** A worker not advanced this sweep, busy or gone, starts over. */
+  end(): void {
+    this.counts = this.next;
+  }
+}
+
+/** Consecutive sweeps each woman's child order has found no food, so a single missed search raises
+ *  nothing. */
+class FoodWaits {
+  private counts = new Map<number, number>();
+  private next = new Map<number, number>();
+
+  begin(): void {
+    this.next = new Map();
+  }
+
+  /** Count one more sweep of `entity` waiting on food; returns the run so far. */
+  advance(entity: number): number {
+    const count = (this.counts.get(entity) ?? 0) + 1;
+    this.next.set(entity, count);
+    return count;
+  }
+
+  /** A woman not advanced this sweep starts over. */
   end(): void {
     this.counts = this.next;
   }
@@ -229,6 +262,19 @@ export function lacksTradeCart(e: SnapshotEntity): boolean {
   );
 }
 
+/** A soldier stands between orders by trade, and one taken off a tower lost no work to speak of. */
+export function isSoldier(e: SnapshotEntity): boolean {
+  const job = settlerJobType(e);
+  return job !== undefined && isSoldierJob(job);
+}
+
+/** Whether the stall note speaks for this worker: its workshop runs no cycle, so the note naming why
+ *  says more than one saying it has nothing to do. */
+export function idleNoteHeldByStall(e: SnapshotEntity, stalls: StallReader | null): boolean {
+  const workplace = workplaceOf(e);
+  return workplace !== undefined && stalls?.holdsIdleNote(workplace) === true;
+}
+
 /** The note an idle adult earns: with a post to work at it has nothing to do, having lost one it has
  *  nowhere to go, and a trader without a cart cannot work its route. */
 function raiseIdleNote(
@@ -237,38 +283,60 @@ function raiseIdleNote(
   e: SnapshotEntity,
   streaks: IdleStreaks,
   posts: PostHistory,
+  stalls: StallReader | null,
 ): void {
   const atPost = workplaceOf(e) !== undefined;
   // Tracked ahead of the early-outs, since a settler is at its post precisely while it looks busy.
   const everEmployed = posts.track(e.id, atPost);
-  if (holdsPost(e)) return;
+  if (holdsPost(e) || isSoldier(e)) return;
   const occupation = occupationOf(snapshot, e);
   if (occupation === 'busy') return;
   if (streaks.advance(e.id, occupation, atPost) < IDLE_SWEEPS_BEFORE_MESSAGE) return;
-  if (hasWorkplaceToWorkAt(snapshot, e)) raiser.settler(USER_MESSAGE_TYPE.nothingToDo, e);
-  else if (lostItsWorkplace(e, everEmployed)) raiser.settler(USER_MESSAGE_TYPE.workplaceNotFound, e);
+  if (hasWorkplaceToWorkAt(snapshot, e)) {
+    if (!idleNoteHeldByStall(e, stalls)) raiser.settler(USER_MESSAGE_TYPE.nothingToDo, e);
+  } else if (lostItsWorkplace(e, everEmployed)) raiser.settler(USER_MESSAGE_TYPE.workplaceNotFound, e);
   else if (lacksTradeCart(e)) raiser.settler(USER_MESSAGE_TYPE.noVehicleForWork, e);
 }
 
-/** A woman whose standing child order waits on something only the player can change. */
-function raiseFamilyBlock(raiser: MessageRaiser, snapshot: WorldSnapshot, e: SnapshotEntity): void {
+/** The child-order wait a note reports. The assistant's booking waiting on food is the assistant's to
+ *  wait out, not an order the player gave, so only the panel shows it. */
+export function familyNoteWaitOf(e: SnapshotEntity): ChildOrderWait | undefined {
   const wait = childOrderWaitOf(e);
+  return wait === 'noFood' && e.components.AssistantChildOrder !== undefined ? undefined : wait;
+}
+
+/** A woman whose standing child order waits on something only the player can change; a food search
+ *  must keep missing for {@link NO_FOOD_SWEEPS_BEFORE_MESSAGE} sweeps. */
+function raiseFamilyBlock(
+  raiser: MessageRaiser,
+  snapshot: WorldSnapshot,
+  e: SnapshotEntity,
+  foodWaits: FoodWaits,
+): void {
+  const wait = familyNoteWaitOf(e);
   if (wait === undefined) return;
+  if (wait === 'noFood' && foodWaits.advance(e.id) < NO_FOOD_SWEEPS_BEFORE_MESSAGE) return;
   const spouse = marriageOf(e)?.spouse;
   raiser.family(e, wait, spouse === undefined ? undefined : entityById(snapshot, spouse));
 }
 
 /**
  * The local player's messages read off the snapshot itself: pressing needs, a settler near death, an
- * idle worker, and a child order that cannot start. One pass over the world's actors per sweep interval,
- * filtering to the seat inside the loop, so the cost follows the actor count and the cadence rather than
- * the frame rate.
+ * idle worker, a child order that cannot start and, given `workshops`, a stalled workshop. One pass over
+ * the world's actors per sweep interval, filtering to the seat inside the loop, so the cost follows the
+ * actor count and the cadence rather than the frame rate.
  */
-export function createSnapshotMessageSource(localPlayer: number): SnapshotMessageSource {
+export function createSnapshotMessageSource(
+  localPlayer: number,
+  workshops?: WorkshopSeam,
+): SnapshotMessageSource {
   let lastSweepTick: number | null = null;
   const streaks = new IdleStreaks();
   const posts = new PostHistory();
+  const foodWaits = new FoodWaits();
+  const stalls = workshops === undefined ? null : new WorkshopStalls(localPlayer, workshops);
   return {
+    stalls,
     sweep: (snapshot, naming) => {
       const since = lastSweepTick === null ? null : snapshot.tick - lastSweepTick;
       // A tick that moved backwards (a reload behind the same source) sweeps rather than waiting forever.
@@ -276,17 +344,21 @@ export function createSnapshotMessageSource(localPlayer: number): SnapshotMessag
       lastSweepTick = snapshot.tick;
       const raiser = new MessageRaiser(snapshot, naming);
       const needsOn = needsRuleEnabled(snapshot);
+      // Ahead of the idle notes, which leave a stalled workshop's operators to its note.
+      stalls?.sweep(snapshot, raiser, naming);
       streaks.begin();
+      foodWaits.begin();
       for (const e of actorsOf(snapshot)) {
         if (!isLocalPerson(e, localPlayer)) continue;
         if (needsOn) raiseNeeds(raiser, e);
         raiseDying(raiser, e);
         if (isLost(e)) raiser.settler(USER_MESSAGE_TYPE.lostWithoutSignposts, e);
-        raiseFamilyBlock(raiser, snapshot, e);
+        raiseFamilyBlock(raiser, snapshot, e, foodWaits);
         // The original gates only this note on age, alongside its player-type and vehicle checks.
-        if (isAdult(e)) raiseIdleNote(raiser, snapshot, e, streaks, posts);
+        if (isAdult(e)) raiseIdleNote(raiser, snapshot, e, streaks, posts, stalls);
       }
       streaks.end();
+      foodWaits.end();
       posts.end();
       return raiser.out;
     },

@@ -1201,6 +1201,8 @@ export const enGame = {
       experienceUnlocks: 'New skills',
       experienceBuilding: 'New building',
       experienceBuildings: 'New buildings',
+      experienceVehicle: 'New vehicle',
+      experienceVehicles: 'New vehicles',
       canProduceNewGood: 'Learned: {good}',
       canDoNewJob: 'Trade: {profession}',
       becameSoldier: 'New soldier',
@@ -1322,6 +1324,7 @@ export const enGame = {
       jobs: 'New professions',
       goods: 'New goods',
       houses: 'New buildings',
+      vehicles: 'New vehicles',
     },
     /** Stand-ins for a building or vehicle whose type the catalog does not name. */
     unnamed: {
@@ -1355,6 +1358,31 @@ export const enGame = {
           '{name} cannot have a child: her husband{partner} lives in another house. Move them into one home.',
         noFood:
           '{name} cannot have a child: there is no food in reach to stock the house. Bring food to a store nearby.',
+      },
+    },
+    /** A workshop that stands still, per reason: the card line, and the whole message. `{good}` is the
+     *  good the reason is about. */
+    productionStalled: {
+      short: {
+        missingInput: 'No {good}',
+        inputOutOfReach: 'Input too far',
+        outputFull: 'Shelves full',
+        outputOutOfReach: 'Store too far',
+        productsLocked: 'Product locked',
+        unknown: 'Workshop stalled',
+      },
+      full: {
+        missingInput:
+          "{building}: production has stopped for lack of {good}. Bring it to a store within the workshop's reach.",
+        inputOutOfReach:
+          '{building}: production has stopped for lack of {good}, which only stores outside signpost reach hold. Link them with signposts or build a store closer.',
+        outputFull:
+          '{building}: production has stopped, its shelves are full ({good}). Build a store within reach or assign more carriers.',
+        outputOutOfReach:
+          '{building}: production has stopped with nowhere to deliver {good}: the stores that take it lie outside signpost reach. Link them with signposts or build a store closer.',
+        productsLocked:
+          '{building}: production has stopped, the chosen product is not available yet: {good}. Pick another product in the workshop.',
+        unknown: '{building}: production has stopped. Select the workshop: its panel shows why.',
       },
     },
   },

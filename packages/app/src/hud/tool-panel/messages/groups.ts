@@ -43,7 +43,7 @@ const STAGE_BY_TYPE: ReadonlyMap<UserMessageType, number> = new Map(
  *  się"): such a line carries no detail, so the type stacks as one. */
 function shortLineIsSexOnly(type: UserMessageType): boolean {
   const name = userMessageTypeName(type);
-  if (name === 'familyBlocked') return false;
+  if (name === 'familyBlocked' || name === 'productionStalled') return false;
   return typeof messages().userMessages.short[name] !== 'string';
 }
 

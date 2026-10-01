@@ -71,7 +71,7 @@ describe('notice cards', () => {
     });
   });
 
-  it('pictures a finished or upgraded building by its body while its type is known, else the house glyph', () => {
+  it('pictures a finished, upgraded or stalled building by its body while its type is known, else the house glyph', () => {
     const building = { kind: 'building', entity: 3 } as const;
     const typeOf = (entity: number): number | undefined => (entity === 3 ? 27 : undefined);
     expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseFinished, building), typeOf, onMap)).toEqual({
@@ -79,6 +79,10 @@ describe('notice cards', () => {
       typeId: 27,
     });
     expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseUpgraded, building), typeOf, onMap)).toEqual({
+      kind: 'building',
+      typeId: 27,
+    });
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.productionStalled, building), typeOf, onMap)).toEqual({
       kind: 'building',
       typeId: 27,
     });
@@ -174,6 +178,9 @@ it('links an idle notification to the current diagnosis without changing other m
   const subject = { kind: 'settler', entity: 7 } as const;
   const text = { short: 'Bjorn', full: 'Bjorn nie ma zajęcia.' };
   expect(noticeFullText({ type: USER_MESSAGE_TYPE.nothingToDo, subject, text })).toBe(
+    `${text.full} ${messages().hud.notices.idleReasonHint}`,
+  );
+  expect(noticeFullText({ type: USER_MESSAGE_TYPE.noVehicleForWork, subject, text })).toBe(
     `${text.full} ${messages().hud.notices.idleReasonHint}`,
   );
   expect(noticeFullText({ type: USER_MESSAGE_TYPE.hungry, subject, text })).toBe(text.full);

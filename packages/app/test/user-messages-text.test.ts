@@ -5,7 +5,11 @@ import {
   type MessageTextParts,
   type NoticeCopy,
 } from '../src/hud/tool-panel/messages/text.js';
-import { USER_MESSAGE_TYPE, type UserMessageTypeName } from '../src/hud/tool-panel/messages/types.js';
+import {
+  type ProductionStallReason,
+  USER_MESSAGE_TYPE,
+  type UserMessageTypeName,
+} from '../src/hud/tool-panel/messages/types.js';
 import { en } from '../src/i18n/en.js';
 import { pl } from '../src/i18n/pl.js';
 
@@ -30,8 +34,9 @@ function partsFor(name: UserMessageTypeName, female: boolean): MessageTextParts 
     goodName: 'Chleb',
     stanceName: 'wrogi',
     detail: 'Prolongata',
-    technologySections: { jobs: ['Młynarz'], goods: [], houses: [] },
+    technologySections: { jobs: ['Młynarz'], goods: [], houses: [], vehicles: [] },
     training: { course: 'school', profession: 'Młynarz' },
+    stall: 'missingInput',
     ...(name === 'familyBlocked'
       ? { family: { wait: 'livesApart', partner: { name: 'Olaf', jobLabel: 'Zwiadowca', female: false } } }
       : {}),
@@ -55,6 +60,8 @@ function shortLines(copy: NoticeCopy): Map<string, Set<string>> {
   }
   for (const [wait, line] of Object.entries(copy.familyBlocked.short))
     lines.set(`family:${wait}`, new Set([line]));
+  for (const [reason, line] of Object.entries(copy.productionStalled.short))
+    lines.set(`stall:${reason}`, new Set([line]));
   return lines;
 }
 
@@ -144,7 +151,7 @@ describe('notice text', () => {
   it('lists an experience unlock under one heading per kind, leaving empty kinds out', () => {
     const text = compose(en.userMessages, 'experienceUnlocks', {
       ...BARE,
-      technologySections: { jobs: ['Miller'], goods: ['Flour', 'Bread'], houses: [] },
+      technologySections: { jobs: ['Miller'], goods: ['Flour', 'Bread'], houses: [], vehicles: [] },
     });
     expect(text.full).toBe(
       'Bjorn has gained experience.\n\nNew professions:\n- Miller\n\nNew goods:\n- Flour\n- Bread',
@@ -152,11 +159,48 @@ describe('notice text', () => {
   });
 
   it('heads an unlock that opens buildings as such, and lists every one in full', () => {
-    const opening = (houses: string[]) => ({ ...BARE, technologySections: { jobs: [], goods: [], houses } });
+    const opening = (houses: string[]) => ({
+      ...BARE,
+      technologySections: { jobs: [], goods: [], houses, vehicles: [] },
+    });
     const two = compose(en.userMessages, 'experienceUnlocks', opening(['Pottery', 'School']));
     expect(two.short).toBe('New buildings');
     expect(two.full).toBe('Bjorn has gained experience.\n\nNew buildings:\n- Pottery\n- School');
     expect(compose(pl.userMessages, 'experienceUnlocks', opening(['Garncarnia'])).short).toBe('Nowy budynek');
+  });
+
+  it('lists vehicle build sites as vehicles, under their own heading', () => {
+    const text = compose(pl.userMessages, 'experienceUnlocks', {
+      ...BARE,
+      technologySections: { jobs: [], goods: [], houses: ['Szkoła'], vehicles: ['Wózek'] },
+    });
+    expect(text.short).toBe('Nowy budynek');
+    expect(text.full).toBe(
+      'Bjorn zdobył doświadczenie.\n\nNowe budynki:\n- Szkoła\n\nNowe pojazdy:\n- Wózek',
+    );
+    const carts = compose(en.userMessages, 'experienceUnlocks', {
+      ...BARE,
+      technologySections: { jobs: [], goods: [], houses: [], vehicles: ['Handcart', 'Oxcart'] },
+    });
+    expect(carts.short).toBe('New vehicles');
+  });
+
+  it('words a stalled workshop by its reason and the good it names', () => {
+    const stall = (reason: ProductionStallReason) =>
+      compose(pl.userMessages, 'productionStalled', {
+        ...BARE,
+        subjectName: 'Młyn',
+        goodName: 'Zboże',
+        stall: reason,
+      });
+    expect(stall('missingInput')).toEqual({
+      short: 'Brak: Zboże',
+      full: 'Młyn: produkcja stoi, brakuje surowca: Zboże. Dostarcz go do magazynu w zasięgu warsztatu.',
+    });
+    expect(stall('outputFull').short).toBe('Pełne półki');
+    expect(stall('unknown').full).toBe(
+      'Młyn: produkcja stoi. Zaznacz warsztat: jego panel pokaże przyczynę.',
+    );
   });
 
   it("counts a fight's hit bodies in the catalog's plural forms and names who struck", () => {

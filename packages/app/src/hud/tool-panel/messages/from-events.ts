@@ -50,6 +50,11 @@ const RIDER_REFUSAL_MESSAGE = {
  *  (a vehicle's building site), which no unlock pictures. */
 export type BuildingTrades = (typeId: number) => readonly number[] | undefined;
 
+/** Whether a building type is a vehicle's build site, which an unlock lists among the vehicles. */
+export type VehicleSiteTest = (typeId: number) => boolean;
+
+const NO_VEHICLE_SITES: VehicleSiteTest = () => false;
+
 /** The two notes one settler's discoveries make: the trades and goods it learned, and the buildings
  *  they open. */
 export type UnlockGroup = 'work' | 'buildings';
@@ -74,9 +79,22 @@ export function pictureOfUnlocks(
   return (worksIn(newJobs) ?? worksIn(ownJob === undefined ? [] : [ownJob]) ?? buildings[0])?.typeId;
 }
 
+/** The technologies of `batch` that `group`'s note lists: those a catalog names. */
+function unlocksIn(
+  naming: MessageNaming,
+  group: UnlockGroup,
+  batch: readonly MessageTechnology[],
+): MessageTechnology[] {
+  return batch.filter(
+    (t) =>
+      (t.kind === 'house') === (group === 'buildings') && naming.technology(t.kind, t.typeId) !== undefined,
+  );
+}
+
 /**
  * Raise `group`'s note about the discoveries `e` made in one batch, leaving out what no catalog names.
- * The buildings note pictures the building {@link pictureOfUnlocks} picks and lists it first.
+ * The buildings note pictures the building {@link pictureOfUnlocks} picks and lists it first, and lists
+ * vehicle build sites apart, as vehicles.
  */
 export function raiseUnlocks(
   raiser: MessageRaiser,
@@ -86,11 +104,9 @@ export function raiseUnlocks(
   e: SnapshotEntity,
   group: UnlockGroup,
   batch: readonly MessageTechnology[],
+  isVehicleSite: VehicleSiteTest = NO_VEHICLE_SITES,
 ): void {
-  const named = batch.filter(
-    (t) =>
-      (t.kind === 'house') === (group === 'buildings') && naming.technology(t.kind, t.typeId) !== undefined,
-  );
+  const named = unlocksIn(naming, group, batch);
   if (named.length === 0) return;
   // The trades the batch discovered pick the picture, though the buildings note does not list them.
   const pictured = batch.filter((t) => t.kind !== 'house' || named.includes(t));
@@ -115,15 +131,21 @@ export function raiseUnlocks(
     },
     () => {
       const settler = naming.settler(e, snapshot);
-      const labels = (kind: MessageTechnology['kind']): string[] =>
-        technologies.filter((t) => t.kind === kind).flatMap((t) => naming.technology(t.kind, t.typeId) ?? []);
+      const labels = (listed: (t: MessageTechnology) => boolean): string[] =>
+        technologies.filter(listed).flatMap((t) => naming.technology(t.kind, t.typeId) ?? []);
+      const house = (t: MessageTechnology): boolean => t.kind === 'house' && !isVehicleSite(t.typeId);
       return naming.text(type, {
         subjectName: settler.name,
         jobLabel: settler.jobLabel,
         female: settler.female,
         goodName: null,
         stanceName: null,
-        technologySections: { jobs: labels('job'), goods: labels('good'), houses: labels('house') },
+        technologySections: {
+          jobs: labels((t) => t.kind === 'job'),
+          goods: labels((t) => t.kind === 'good'),
+          houses: labels(house),
+          vehicles: labels((t) => t.kind === 'house' && !house(t)),
+        },
       });
     },
   );
@@ -187,6 +209,24 @@ function ownedBy(e: SnapshotEntity, player: number): boolean {
   return ownerPlayerOf(e) === player;
 }
 
+/** A course's lesson as a discovery would list it. */
+function lessonOf(ev: Extract<SimEvent, { kind: 'settlerTrained' }>): MessageTechnology {
+  return { kind: ev.target, typeId: ev.typeId };
+}
+
+/**
+ * Which note tells more when a course's lesson is also a discovery of the same batch: the course note
+ * when the discovery is the lesson alone, since it names the course too, else the unlock note, which
+ * lists the lesson among the rest. Both stand when the batch did not discover the lesson.
+ */
+export function courseNoteKeeps(
+  lesson: MessageTechnology,
+  work: readonly MessageTechnology[],
+): 'course' | 'unlock' | 'both' {
+  if (!work.some((t) => t.kind === lesson.kind && t.typeId === lesson.typeId)) return 'both';
+  return work.length === 1 ? 'course' : 'unlock';
+}
+
 /**
  * The local player's messages raised by one frame's sim events. `departed` holds the entities the
  * frame's steps removed, as the world last held them: the only place a settler reaped this frame can
@@ -202,10 +242,15 @@ export function messagesFromEvents(
   naming: MessageNaming,
   buildingTrades: BuildingTrades,
   fights: FightAreas,
+  isVehicleSite: VehicleSiteTest = NO_VEHICLE_SITES,
 ): RaisedMessage[] {
   const raiser = new MessageRaiser(snapshot, naming);
   const discoveries = new Map<number, MessageTechnology[]>();
+  // A course and the discoveries it made land in one tick: the training drive plans ahead of the
+  // discovery pass that reads the lesson.
+  const lessons = new Map<number, MessageTechnology>();
   for (const ev of events) {
+    if (ev.kind === 'settlerTrained') lessons.set(ev.entity, lessonOf(ev));
     if (ev.kind !== 'technologyDiscovered' || ev.player !== localPlayer) continue;
     const grouped = discoveries.get(ev.entity) ?? [];
     if (!grouped.some((technology) => technology.kind === ev.technology && technology.typeId === ev.typeId)) {
@@ -213,6 +258,11 @@ export function messagesFromEvents(
       discoveries.set(ev.entity, grouped);
     }
   }
+  const keeps = (entity: number): 'course' | 'unlock' | 'both' => {
+    const lesson = lessons.get(entity);
+    if (lesson === undefined) return 'both';
+    return courseNoteKeeps(lesson, unlocksIn(naming, 'work', discoveries.get(entity) ?? []));
+  };
   const announcedDiscoveries = new Set<number>();
   const ownedPerson = (id: number): SnapshotEntity | undefined => {
     const e = entityById(snapshot, id);
@@ -284,6 +334,8 @@ export function messagesFromEvents(
         break;
       }
       case 'buildingUpgraded': {
+        // A script that takes a house down its chain has nothing to announce.
+        if (ev.lowered === true) break;
         const e = ownedBuilding(ev.entity);
         if (e !== undefined) raiser.building(USER_MESSAGE_TYPE.houseUpgraded, e);
         break;
@@ -325,8 +377,10 @@ export function messagesFromEvents(
         const e = ownedPerson(ev.entity);
         if (e === undefined) break;
         const batch = discoveries.get(ev.entity) ?? [];
-        raiseUnlocks(raiser, snapshot, naming, buildingTrades, e, 'work', batch);
-        raiseUnlocks(raiser, snapshot, naming, buildingTrades, e, 'buildings', batch);
+        if (keeps(ev.entity) !== 'course') {
+          raiseUnlocks(raiser, snapshot, naming, buildingTrades, e, 'work', batch, isVehicleSite);
+        }
+        raiseUnlocks(raiser, snapshot, naming, buildingTrades, e, 'buildings', batch, isVehicleSite);
         break;
       }
       case 'settlerTrained': {
@@ -335,6 +389,7 @@ export function messagesFromEvents(
         // The barracks note names no trade; any other course's note is about the one thing it taught.
         const nameless = naming.technology(ev.target, ev.typeId) === undefined;
         if (nameless && !(ev.course === 'barracks' && ev.target === 'job')) break;
+        if (keeps(ev.entity) === 'unlock') break;
         if (ev.target === 'job') raiser.trained(USER_MESSAGE_TYPE.canDoNewJob, e, ev.course, ev.typeId);
         else raiser.settler(USER_MESSAGE_TYPE.canProduceNewGood, e, ev.typeId);
         break;

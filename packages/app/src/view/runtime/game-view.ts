@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import type { MapRelationFlag } from '@open-northland/data';
+import { BUILDING_KIND, type MapRelationFlag } from '@open-northland/data';
 import type { SessionDriver } from '@open-northland/lockstep';
 import type {
   DoorBadge,
@@ -470,6 +470,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // The DOM plane the redesigned HUD regions mount on; it scales with the Pixi parts.
     const hudDom = mountHudDomRoot(uiscale);
     cleanup.push(() => hudDom.dispose());
+    const vehicleSiteTypes = new Set(
+      host.content.buildings.filter((b) => b.kind === BUILDING_KIND.vehicle).map((b) => b.typeId),
+    );
     const toolPanel = await mountGameToolPanel({
       app,
       canvas,
@@ -583,6 +586,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(hasDebugFlag(params, NOTICE_GALLERY_DEBUG_FLAG)
         ? { noticeGallery: { goodType: goodLabelByType.keys().next().value ?? null } }
         : {}),
+      workshops: {
+        types: host.content.buildings.filter((b) => b.recipes.length > 0).map((b) => b.typeId),
+        workStatus: answers.workStatus,
+      },
+      isVehicleSite: (typeId) => vehicleSiteTypes.has(typeId),
       onUiCue: uiCue,
     });
 

@@ -1,7 +1,6 @@
 import { entityById, ONE, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import { JOB_CARRIER } from '../../../catalog/jobs.js';
 import {
-  childOrderWaitOf,
   marriageOf,
   needsRuleEnabled,
   orderedNeedOf,
@@ -15,13 +14,16 @@ import {
 } from '../../../game/snapshot.js';
 import { type FightAreas, isFightNote } from './fight-areas.js';
 import {
+  familyNoteWaitOf,
   hasWorkplaceToWorkAt,
   holdsPost,
+  idleNoteHeldByStall,
   isStillDying,
   lacksTradeCart,
   occupationOf,
 } from './from-snapshot.js';
 import { USER_MESSAGE_TYPE, type UserMessage } from './types.js';
+import { type StallReader, sameStall } from './workshop-stalls.js';
 
 /** Ticks a lost note stays up whatever the sim says: a worker that shrugs a refused order off and walks on
  *  at its next re-plan would otherwise take the note with it before it was read. Approximation. */
@@ -42,10 +44,8 @@ function isNeedNoteOver(m: UserMessage, snapshot: WorldSnapshot, e: SnapshotEnti
     case USER_MESSAGE_TYPE.tired:
       return needs.fatigue < systems.NEED_CRITICAL_THRESHOLD;
     case USER_MESSAGE_TYPE.wantsToPray:
-      // A failed search for somewhere to pray raises it below the critical level, so it lasts until a
-      // prayer takes the bar back under the level the search started at. An ordered prayer searches at
-      // any bar level, so its note stands with the order.
-      return needs.piety < systems.NEED_DRIVE_THRESHOLD && orderedNeedOf(e) !== 'piety';
+      // An ordered prayer searches at any bar level, so its note stands with the order.
+      return needs.piety < systems.NEED_CRITICAL_THRESHOLD && orderedNeedOf(e) !== 'piety';
     default:
       return false;
   }
@@ -53,9 +53,16 @@ function isNeedNoteOver(m: UserMessage, snapshot: WorldSnapshot, e: SnapshotEnti
 
 /** The polled idle notes last as long as the sweep's idle run would: a walk keeps the run, so it keeps
  *  the note too, while work, an order or a held post ends both. */
-function isIdleNoteOver(m: UserMessage, snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
+function isIdleNoteOver(
+  m: UserMessage,
+  snapshot: WorldSnapshot,
+  e: SnapshotEntity,
+  stalls: StallReader | null,
+): boolean {
   if (occupationOf(snapshot, e) === 'busy' || holdsPost(e)) return true;
-  if (m.type === USER_MESSAGE_TYPE.nothingToDo) return !hasWorkplaceToWorkAt(snapshot, e);
+  if (m.type === USER_MESSAGE_TYPE.nothingToDo) {
+    return !hasWorkplaceToWorkAt(snapshot, e) || idleNoteHeldByStall(e, stalls);
+  }
   if (m.type === USER_MESSAGE_TYPE.workplaceNotFound) {
     return workplaceOf(e) !== undefined || workFlagOf(e) !== undefined;
   }
@@ -73,6 +80,21 @@ function hasCargoHand(snapshot: WorldSnapshot, vehicle: SnapshotEntity): boolean
   });
 }
 
+/** A workshop's refusal memo of a vehicle yard search stands for as long as the search keeps failing:
+ *  it lapses only to be searched again, in the same plan when the turn is the vehicle's. */
+function yardRefusalStands(snapshot: WorldSnapshot, worker: SnapshotEntity): boolean {
+  const workplace = workplaceOf(worker);
+  if (workplace === undefined) return false;
+  return entityById(snapshot, workplace)?.components.VehicleYardRefusals !== undefined;
+}
+
+/** A stall note ends when its workshop runs a cycle again, or once the sweep judges it otherwise. */
+function isStallOver(m: UserMessage, workshop: SnapshotEntity, stalls: StallReader | null): boolean {
+  if (workshop.components.Production !== undefined || stalls === null) return true;
+  const verdict = stalls.verdict(workshop.id);
+  return verdict !== undefined && !sameStall(verdict, m.stall);
+}
+
 function isDriving(vehicle: SnapshotEntity): boolean {
   return vehicle.components.VehicleDrive !== undefined;
 }
@@ -84,7 +106,7 @@ export function isSubjectGone(m: UserMessage, snapshot: WorldSnapshot): boolean 
 
 /**
  * Whether a note's reason is gone: its subject left the world, the state a state note reports ended, a
- * fight went quiet in `fights`, or a refusal was answered. One instance serves a feed, since a refused
+ * fight went quiet in `fights`, `stalls` judged a workshop's stall otherwise, or a refusal was answered. One instance serves a feed, since a refused
  * drive is answered only by a drive that starts after the vehicle stood: the drive under way at the
  * refusal, if any, is not the answer.
  * Call {@link endPass} after each expiry pass, so the notes that left stop being watched.
@@ -94,7 +116,10 @@ export class NoteRetirement {
   private stood = new Map<number, boolean>();
   private watched = new Set<number>();
 
-  constructor(private readonly fights: FightAreas) {}
+  constructor(
+    private readonly fights: FightAreas,
+    private readonly stalls: StallReader | null = null,
+  ) {}
 
   isOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
     if (isFightNote(m)) return !this.fights.isActive(m.about, snapshot.tick);
@@ -112,12 +137,17 @@ export class NoteRetirement {
       case USER_MESSAGE_TYPE.nothingToDo:
       case USER_MESSAGE_TYPE.workplaceNotFound:
       case USER_MESSAGE_TYPE.noVehicleForWork:
-        return isIdleNoteOver(m, snapshot, e);
+        return isIdleNoteOver(m, snapshot, e, this.stalls);
+      case USER_MESSAGE_TYPE.productionStalled:
+        return isStallOver(m, e, this.stalls);
+      case USER_MESSAGE_TYPE.vehicleSiteNotFound:
+      case USER_MESSAGE_TYPE.vehicleSiteOccupied:
+        return !yardRefusalStands(snapshot, e);
       case USER_MESSAGE_TYPE.lostWithoutSignposts:
         return snapshot.tick - m.tick >= LOST_NOTE_HOLD_TICKS && e.components.LostWay === undefined;
       case USER_MESSAGE_TYPE.familyBlocked:
         // A new reason retires the note, so it raises its own with its own text.
-        return childOrderWaitOf(e) !== m.familyWait;
+        return familyNoteWaitOf(e) !== m.familyWait;
       case USER_MESSAGE_TYPE.noOneToMarry:
         return marriageOf(e) !== undefined;
       case USER_MESSAGE_TYPE.vehicleNoCommander:

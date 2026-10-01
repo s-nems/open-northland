@@ -15,10 +15,12 @@ import { type BuildingTrades, raiseFight, raiseUnlocks } from './from-events.js'
 import { type MessageNaming, MessageRaiser, nodeOf, type RaisedMessage } from './raise.js';
 import {
   type MessageTechnology,
+  type ProductionStall,
   USER_MESSAGE_TYPE,
   type UserMessageType,
   type UserMessageTypeName,
 } from './types.js';
+import { raiseStall } from './workshop-stalls.js';
 
 /**
  * `?debug=notices`: the seat's own settlers and buildings raise one note of every type, for checking the
@@ -177,6 +179,14 @@ export function galleryMessages(
     }
     if (HOUSE_ROWS.has(name)) {
       if (house !== undefined) raiser.building(type, house);
+      continue;
+    }
+    if (name === 'productionStalled') {
+      const stall: ProductionStall =
+        gallery.goodType === null
+          ? { reason: 'unknown', goodType: null }
+          : { reason: 'missingInput', goodType: gallery.goodType };
+      if (house !== undefined) raiseStall(raiser, naming, house, stall);
       continue;
     }
     if (name === 'settlementAttacked') {

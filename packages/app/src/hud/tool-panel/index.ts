@@ -67,6 +67,7 @@ import {
   type MessageTarget,
   type MetSeat,
   type NoticeGallery,
+  type WorkshopSeam,
 } from './messages/index.js';
 import { applyNavEntry, NAV_ENTRY_IDS, type NavEntryId, navEntryForWindow } from './nav-effects.js';
 import type { PapersSeam } from './paper-cards.js';
@@ -236,6 +237,10 @@ export interface ToolPanelOptions {
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
   /** Set, the notification column shows one note of every type (`?debug=notices`). */
   readonly noticeGallery?: NoticeGallery;
+  /** The seat's workshops and the sim's diagnosis of their workers, for the stalled-workshop notes. */
+  readonly workshops?: WorkshopSeam;
+  /** The vehicle build sites, which an unlock note lists as vehicles. */
+  readonly isVehicleSite?: (typeId: number) => boolean;
   /** The GUI click feedback: every pressed button confirms, a cancelled hold fails. Absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
 }
@@ -692,6 +697,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       metSeats: opts.metSeats,
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
       gallery: opts.noticeGallery,
+      workshops: opts.workshops,
+      isVehicleSite: opts.isVehicleSite,
     });
     domParts.push(messageCenter);
 

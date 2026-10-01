@@ -12,9 +12,10 @@ import {
   type UserMessageTypeName,
 } from '../src/hud/tool-panel/messages/types.js';
 
-/** The original's types; this game's own `familyBlocked` is pinned on its own. */
+/** The original's types and the attack notes; this game's own `familyBlocked` and `productionStalled`
+ *  are pinned on their own. */
 const ALL_TYPES = (Object.values(USER_MESSAGE_TYPE) as UserMessageType[]).filter(
-  (type) => type !== USER_MESSAGE_TYPE.familyBlocked,
+  (type) => type !== USER_MESSAGE_TYPE.familyBlocked && type !== USER_MESSAGE_TYPE.productionStalled,
 );
 
 function typesAt(level: MessagePriorityLevel): UserMessageType[] {
@@ -59,8 +60,9 @@ describe('user message priority (original behavior)', () => {
     expect(messagePriority(USER_MESSAGE_TYPE.starving)).toBe(2);
   });
 
-  it('ranks a held child order notable', () => {
+  it('ranks a held child order and a stalled workshop notable', () => {
     expect(messagePriority(USER_MESSAGE_TYPE.familyBlocked)).toBe(1);
+    expect(messagePriority(USER_MESSAGE_TYPE.productionStalled)).toBe(1);
   });
 
   it('shows a message when its priority reaches the filter level', () => {

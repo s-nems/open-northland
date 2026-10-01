@@ -17,6 +17,7 @@ import {
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
+import { PRODUCTION_STALL_GRACE_TICKS } from '../src/hud/tool-panel/messages/workshop-stalls.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import type { SceneWorld } from '../src/scenes/types.js';
 
@@ -109,5 +110,25 @@ describe('user messages read off real scene snapshots', () => {
   it('leaves the warehouse crew alone while it is hauling', () => {
     const { firstAt } = firstIdleNotes(registeredScene('warehouse'), 8 * IDLE_SWEEPS_BEFORE_MESSAGE);
     expect(firstAt.size).toBe(0);
+  });
+
+  it('reports both store-reach bakeries stalled, naming why, once the grace has passed', () => {
+    const sim = createSceneSim(registeredScene('store-reach'));
+    sim.run(2);
+    const source = createSnapshotMessageSource(HUMAN_PLAYER, {
+      types: sim.content.buildings.filter((b) => b.recipes.length > 0).map((b) => b.typeId),
+      workStatus: (entity) => sim.workStatus(entity as Entity),
+    });
+    const reasons = new Map<number, string>();
+    const sweeps = PRODUCTION_STALL_GRACE_TICKS / SNAPSHOT_SWEEP_INTERVAL_TICKS + 2;
+    for (let i = 0; i < sweeps; i++) {
+      sim.run(SNAPSHOT_SWEEP_INTERVAL_TICKS);
+      for (const r of source.sweep(sim.snapshot(), naming)) {
+        expect(r.pending.type).not.toBe(USER_MESSAGE_TYPE.nothingToDo);
+        if (r.pending.type !== USER_MESSAGE_TYPE.productionStalled) continue;
+        reasons.set(r.pending.subject?.entity ?? -1, r.pending.stall?.reason ?? '');
+      }
+    }
+    expect([...reasons.values()].sort()).toEqual(['inputOutOfReach', 'outputOutOfReach']);
   });
 });

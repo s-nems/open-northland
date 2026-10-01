@@ -8,8 +8,9 @@ import type { MessageText } from './text.js';
  *
  * The original never raises `cannotAttachVehicle`, which here stands in for the silently refused load of
  * a vehicle into a ship (approximation). The types past the original's range are this game's own: the
- * original fails a child order it cannot start without a word, and reports every attacked body alone
- * where the two attack notes report one fight area each.
+ * original fails a child order it cannot start without a word, reports every attacked body alone where
+ * the two attack notes report one fight area each, and has a worker report each product it failed to
+ * make where `productionStalled` reports the workshop once, with the reason.
  */
 export const USER_MESSAGE_TYPE = {
   lostWithoutSignposts: 0x03,
@@ -47,6 +48,7 @@ export const USER_MESSAGE_TYPE = {
   familyBlocked: 0x80,
   settlementAttacked: 0x81,
   peopleAttacked: 0x82,
+  productionStalled: 0x83,
 } as const;
 
 export type UserMessageTypeName = keyof typeof USER_MESSAGE_TYPE;
@@ -66,6 +68,23 @@ export type MessageSubject =
 export interface MessageTechnology {
   readonly kind: 'job' | 'good' | 'house';
   readonly typeId: number;
+}
+
+/** Why a workshop stands still, as its note names it: an input missing or held in stores out of
+ *  reach, a full shelf or out-of-reach stores for a product, products set the seat cannot make yet,
+ *  or a gate the diagnosis cannot name. */
+export type ProductionStallReason =
+  | 'missingInput'
+  | 'inputOutOfReach'
+  | 'outputFull'
+  | 'outputOutOfReach'
+  | 'productsLocked'
+  | 'unknown';
+
+/** A stalled workshop's reason and the good it names, if any. */
+export interface ProductionStall {
+  readonly reason: ProductionStallReason;
+  readonly goodType: number | null;
 }
 
 /** What one fight area has hit so far: distinct bodies of the seat's per kind, and who struck them. */
@@ -102,6 +121,8 @@ export interface PendingMessage {
   readonly jobType: number | null;
   /** A family note's reason, part of its identity: a new reason retires the old note and raises its own. */
   readonly familyWait?: ChildOrderWait;
+  /** A stall note's reason; a new one retires the note, which comes back with its own text. */
+  readonly stall?: ProductionStall;
   /** An attack note's area so far; not part of the identity, since every new hit updates it. */
   readonly fight?: FightTally;
 }

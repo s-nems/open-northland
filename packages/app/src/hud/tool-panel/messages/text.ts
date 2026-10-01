@@ -1,6 +1,11 @@
 import type { ChildOrderWait } from '../../../game/snapshot.js';
 import { bcp47Tag, formatMessage, type Messages, pluralForm } from '../../../i18n/index.js';
-import { USER_MESSAGE_TYPE, type UserMessageType, type UserMessageTypeName } from './types.js';
+import {
+  type ProductionStallReason,
+  USER_MESSAGE_TYPE,
+  type UserMessageType,
+  type UserMessageTypeName,
+} from './types.js';
 
 /** The catalog section that words every notice, short and full. */
 export type NoticeCopy = Messages['userMessages'];
@@ -8,8 +13,9 @@ export type NoticeCopy = Messages['userMessages'];
 /** A catalog line, or a pair whose wording agrees with a settler subject's sex. */
 type CopyLine = string | { readonly he: string; readonly she: string };
 
-/** The types worded by the per-type tables; `familyBlocked` has its own table per wait. */
-type TabledTypeName = Exclude<UserMessageTypeName, 'familyBlocked'>;
+/** The types worded by the per-type tables; `familyBlocked` and `productionStalled` have their own
+ *  table per reason. */
+type TabledTypeName = Exclude<UserMessageTypeName, 'familyBlocked' | 'productionStalled'>;
 
 const TYPE_NAME_BY_ID: ReadonlyMap<UserMessageType, UserMessageTypeName> = new Map(
   (Object.keys(USER_MESSAGE_TYPE) as UserMessageTypeName[]).map((name) => [USER_MESSAGE_TYPE[name], name]),
@@ -32,16 +38,20 @@ export interface MessageTextParts {
   readonly goodName: string | null;
   /** The stance a note about another seat reports; null for every note that names none. */
   readonly stanceName: string | null;
-  /** Localized lists carried by one experience-unlock notification. */
+  /** Localized lists carried by one experience-unlock notification; a vehicle's build site is listed
+   *  among the vehicles, not the buildings. */
   readonly technologySections?: {
     readonly jobs: readonly string[];
     readonly goods: readonly string[];
     readonly houses: readonly string[];
+    readonly vehicles: readonly string[];
   };
   /** The found paper's name. */
   readonly detail?: string;
   /** The course a `canDoNewJob` note reports, and the trade it taught. */
   readonly training?: { readonly course: 'barracks' | 'school'; readonly profession: string };
+  /** Why a `productionStalled` note's workshop stands still; `goodName` names the good it is about. */
+  readonly stall?: ProductionStallReason;
   /** What holds a `familyBlocked` note's child order, and the spouse it names. */
   readonly family?: { readonly wait: ChildOrderWait; readonly partner: NamedSettler | null };
   /** What an attack note's fight has hit, and the named seats and creatures that struck. */
@@ -92,9 +102,14 @@ function linesOf(
   if (name === 'canDoNewJob' && parts.training?.course === 'barracks') {
     return [copy.short.becameSoldier, copy.full.becameSoldier];
   }
-  const houses = name === 'experienceUnlocks' ? (parts.technologySections?.houses.length ?? 0) : 0;
+  const sections = name === 'experienceUnlocks' ? parts.technologySections : undefined;
+  const houses = sections?.houses.length ?? 0;
   if (houses > 0) {
     return [houses === 1 ? copy.short.experienceBuilding : copy.short.experienceBuildings, copy.full[name]];
+  }
+  const vehicles = sections?.vehicles.length ?? 0;
+  if (vehicles > 0) {
+    return [vehicles === 1 ? copy.short.experienceVehicle : copy.short.experienceVehicles, copy.full[name]];
   }
   return [copy.short[name], copy.full[name]];
 }
@@ -107,6 +122,7 @@ function experienceLists(
     [copy.experience.jobs, sections.jobs],
     [copy.experience.goods, sections.goods],
     [copy.experience.houses, sections.houses],
+    [copy.experience.vehicles, sections.vehicles],
   ] as const;
   return lists
     .filter(([, values]) => values.length > 0)
@@ -158,6 +174,14 @@ export function composeMessageText(
     return {
       short: copy.familyBlocked.short[wait],
       full: formatMessage(copy.familyBlocked.full[wait], { name: subject, partner: husband }),
+    };
+  }
+  if (name === 'productionStalled') {
+    if (parts.stall === undefined)
+      throw new Error('user-messages: a productionStalled note needs its reason');
+    return {
+      short: formatMessage(copy.productionStalled.short[parts.stall], values),
+      full: formatMessage(copy.productionStalled.full[parts.stall], values),
     };
   }
   const [shortLine, fullLine] = linesOf(name, parts, copy);

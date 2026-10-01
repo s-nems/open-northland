@@ -5,6 +5,7 @@ import { createMessageFeed } from '../src/hud/tool-panel/messages/feed.js';
 import {
   createSnapshotMessageSource,
   IDLE_SWEEPS_BEFORE_MESSAGE,
+  NO_FOOD_SWEEPS_BEFORE_MESSAGE,
   SNAPSHOT_SWEEP_INTERVAL_TICKS,
 } from '../src/hud/tool-panel/messages/from-snapshot.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
@@ -395,7 +396,6 @@ describe('user messages read off the snapshot', () => {
       { id: 2, spouse: 1, doing: 'work' },
       { id: 3, childOrder: {}, spouse: 4, doing: 'work' },
       { id: 4, spouse: 3, doing: 'work' },
-      { id: 5, childOrder: { foodSearchMissed: true }, doing: 'work' },
       // The assistant gives a blocked booking of its own back on its next beat: nothing to tell.
       { id: 6, childOrder: { blocked: 'husbandAway' }, assistantOrder: true, spouse: 2, doing: 'work' },
     ];
@@ -407,7 +407,35 @@ describe('user messages read off the snapshot', () => {
     });
     expect(raised.map((r) => r.compose().full)).toEqual([
       `S1:${USER_MESSAGE_TYPE.familyBlocked}:husbandAway:S2`,
-      `S5:${USER_MESSAGE_TYPE.familyBlocked}:noFood:undefined`,
     ]);
+  });
+
+  it('raises a missed food search only once it keeps missing, and never for an assistant booking', () => {
+    const waiting: Actor[] = [
+      { id: 5, childOrder: { foodSearchMissed: true }, doing: 'work' },
+      { id: 6, childOrder: { foodSearchMissed: true }, assistantOrder: true, doing: 'work' },
+    ];
+    const source = createSnapshotMessageSource(LOCAL);
+    const firstNotes: number[] = [];
+    for (let i = 0; i < NO_FOOD_SWEEPS_BEFORE_MESSAGE; i++) {
+      const raised = sweep(source, snapshot(i * SNAPSHOT_SWEEP_INTERVAL_TICKS, waiting));
+      if (raised.some(([type]) => type === USER_MESSAGE_TYPE.familyBlocked)) firstNotes.push(i);
+      expect(raised.every(([, subject]) => subject === 5)).toBe(true);
+    }
+    expect(firstNotes).toEqual([NO_FOOD_SWEEPS_BEFORE_MESSAGE - 1]);
+  });
+
+  it('starts a missed food search over when one sweep finds food', () => {
+    const missed: Actor[] = [{ id: 5, childOrder: { foodSearchMissed: true }, doing: 'work' }];
+    const found: Actor[] = [{ id: 5, childOrder: {}, doing: 'work' }];
+    const source = createSnapshotMessageSource(LOCAL);
+    let tick = 0;
+    for (let i = 1; i < NO_FOOD_SWEEPS_BEFORE_MESSAGE; i++) {
+      sweep(source, snapshot(tick, missed));
+      tick += SNAPSHOT_SWEEP_INTERVAL_TICKS;
+    }
+    sweep(source, snapshot(tick, found));
+    tick += SNAPSHOT_SWEEP_INTERVAL_TICKS;
+    expect(sweep(source, snapshot(tick, missed))).toEqual([]);
   });
 });

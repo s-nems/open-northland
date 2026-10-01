@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FightAreas } from '../src/hud/tool-panel/messages/fight-areas.js';
 import {
   type BuildingTrades,
+  courseNoteKeeps,
   messagesFromEvents,
   pictureOfUnlocks,
 } from '../src/hud/tool-panel/messages/from-events.js';
@@ -537,5 +538,83 @@ describe('user messages from sim events', () => {
       snap,
     );
     expect(out).toEqual([]);
+  });
+
+  it('announces nothing when a script takes a house down its chain', () => {
+    const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'building' }]);
+    expect(run([{ kind: 'buildingUpgraded', entity: e(1), level: 0, lowered: true }], snap)).toEqual([]);
+  });
+
+  it('lists a vehicle build site among the vehicles of an unlock, not the buildings', () => {
+    const CART_SITE = 42;
+    const SCHOOL = 38;
+    const sections: string[] = [];
+    const listing: MessageNaming = {
+      ...naming,
+      text: (type, parts) => {
+        const t = parts.technologySections;
+        if (t !== undefined) sections.push(`${t.houses.join(',')}|${t.vehicles.join(',')}`);
+        return plain(String(type));
+      },
+    };
+    const discovered = (typeId: number): SimEvent => ({
+      kind: 'technologyDiscovered',
+      entity: e(1),
+      player: LOCAL,
+      tribe: 1,
+      technology: 'house',
+      typeId,
+    });
+    const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'person' }]);
+    const raised = messagesFromEvents(
+      [discovered(SCHOOL), discovered(CART_SITE)],
+      snap,
+      [],
+      LOCAL,
+      listing,
+      NO_MENU,
+      new FightAreas(),
+      (typeId) => typeId === CART_SITE,
+    );
+    for (const r of raised) r.compose();
+    expect(sections).toEqual([`house:${SCHOOL}|house:${CART_SITE}`]);
+  });
+
+  describe('a school course that discovers what it taught', () => {
+    const taught = (typeId: number): SimEvent => ({
+      kind: 'settlerTrained',
+      entity: e(1),
+      course: 'school',
+      target: 'job',
+      typeId,
+    });
+    const found = (technology: 'job' | 'good', typeId: number): SimEvent => ({
+      kind: 'technologyDiscovered',
+      entity: e(1),
+      player: LOCAL,
+      tribe: 1,
+      technology,
+      typeId,
+    });
+    const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'person' }]);
+    const types = (events: SimEvent[]) => run(events, snap).map((m) => m.type);
+
+    it('keeps the course note alone when the discovery is the lesson alone', () => {
+      expect(courseNoteKeeps({ kind: 'job', typeId: 12 }, [{ kind: 'job', typeId: 12 }])).toBe('course');
+      expect(types([taught(12), found('job', 12)])).toEqual([USER_MESSAGE_TYPE.canDoNewJob]);
+    });
+
+    it('keeps the unlock note alone when it lists more than the lesson', () => {
+      expect(types([taught(12), found('job', 12), found('good', 26)])).toEqual([
+        USER_MESSAGE_TYPE.experienceUnlocks,
+      ]);
+    });
+
+    it('keeps both when the batch did not discover the lesson', () => {
+      expect(types([taught(12), found('good', 26)])).toEqual([
+        USER_MESSAGE_TYPE.canDoNewJob,
+        USER_MESSAGE_TYPE.experienceUnlocks,
+      ]);
+    });
   });
 });

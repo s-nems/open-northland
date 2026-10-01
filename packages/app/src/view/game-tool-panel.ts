@@ -27,7 +27,12 @@ import {
   type ToolPanelController,
   type ToolPanelOptions,
 } from '../hud/tool-panel/index.js';
-import type { MessageTarget, MetSeat, NoticeGallery } from '../hud/tool-panel/messages/index.js';
+import type {
+  MessageTarget,
+  MetSeat,
+  NoticeGallery,
+  WorkshopSeam,
+} from '../hud/tool-panel/messages/index.js';
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
 import type { GateSites, PalisadeGateProbeView, PlacementClickAsks } from '../hud/tool-panel/placement.js';
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
@@ -156,6 +161,10 @@ export interface GameToolPanelDeps {
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
   /** Set, the notification column shows one note of every type (`?debug=notices`). */
   readonly noticeGallery?: NoticeGallery;
+  /** The seat's workshops and the sim's diagnosis of their workers, for the stalled-workshop notes. */
+  readonly workshops?: WorkshopSeam;
+  /** The vehicle build sites, which an unlock note lists as vehicles. */
+  readonly isVehicleSite?: (typeId: number) => boolean;
   /** The GUI click feedback for the panel's buttons and held modes; absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
 }
@@ -324,6 +333,8 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
         ? { onSelectMessageTarget: deps.onSelectMessageTarget }
         : {}),
       ...(deps.noticeGallery !== undefined ? { noticeGallery: deps.noticeGallery } : {}),
+      ...(deps.workshops !== undefined ? { workshops: deps.workshops } : {}),
+      ...(deps.isVehicleSite !== undefined ? { isVehicleSite: deps.isVehicleSite } : {}),
       ...(deps.onUiCue !== undefined ? { onUiCue: deps.onUiCue } : {}),
     });
 

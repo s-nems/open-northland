@@ -131,13 +131,12 @@ describe('note retirement', () => {
   it('ends tired and prayer notes when the corresponding need is answered', () => {
     const answered = systems.NEED_CRITICAL_THRESHOLD - 1;
     expect(isNoteOver(note(USER_MESSAGE_TYPE.tired), needsWorld({ fatigue: answered }))).toBe(true);
-    const prayed = systems.NEED_DRIVE_THRESHOLD - 1;
-    expect(isNoteOver(note(USER_MESSAGE_TYPE.wantsToPray), needsWorld({ piety: prayed }))).toBe(true);
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.wantsToPray), needsWorld({ piety: answered }))).toBe(true);
   });
 
-  it('keeps a prayer note a failed search raised below the critical level until a prayer answers it', () => {
-    const pressing = systems.NEED_DRIVE_THRESHOLD;
-    expect(isNoteOver(note(USER_MESSAGE_TYPE.wantsToPray), needsWorld({ piety: pressing }))).toBe(false);
+  it('keeps a prayer note at the level the sim warns from, the one the HUD marks a need at', () => {
+    const marked = systems.NEED_CRITICAL_THRESHOLD;
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.wantsToPray), needsWorld({ piety: marked }))).toBe(false);
   });
 
   it('keeps the prayer note of an ordered prayer with nowhere to go while the order stands', () => {
@@ -280,5 +279,26 @@ describe('note retirement', () => {
     expect(isNoteOver(noCart, trader({}))).toBe(false);
     expect(isNoteOver(noCart, trader({ Rider: { vehicle: SETTLER + 1 } }))).toBe(true);
     expect(isNoteOver(noCart, subjectWorld({ TradeRoute: { stops: [] } }))).toBe(true);
+  });
+
+  it('keeps a vehicle site note while the workshop holds its refused search, and ends it after', () => {
+    const WORKSHOP = SETTLER + 1;
+    const yard = (refusals: boolean): WorldSnapshot => ({
+      tick: RELEASED,
+      events: [],
+      entities: [
+        { id: SETTLER, components: { JobAssignment: { workplace: WORKSHOP } } },
+        {
+          id: WORKSHOP,
+          components: refusals
+            ? { VehicleYardRefusals: { entries: [{ houseType: 42, until: RELEASED }] } }
+            : {},
+        },
+      ],
+    });
+    for (const type of [USER_MESSAGE_TYPE.vehicleSiteNotFound, USER_MESSAGE_TYPE.vehicleSiteOccupied]) {
+      expect(isNoteOver(note(type), yard(true))).toBe(false);
+      expect(isNoteOver(note(type), yard(false))).toBe(true);
+    }
   });
 });
