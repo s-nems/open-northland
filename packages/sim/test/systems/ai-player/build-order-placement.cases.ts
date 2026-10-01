@@ -1,8 +1,15 @@
 import { footprintCellDx, parseContentSet } from '@open-northland/data';
 import { describe, expect, it, vi } from 'vitest';
-import { Position, Resource, setStockAmount } from '../../../src/components/index.js';
+import {
+  aiPlayerEntity,
+  Position,
+  Resource,
+  StalledPlacements,
+  setStockAmount,
+} from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import { positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
+import { grassScarce } from '../../../src/systems/ai-player/build-order/grass-reserve.js';
 import {
   buildReach,
   FRONT_EDGE_STEP_NODES,
@@ -87,6 +94,111 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(firstCommandOf(barren, DEFAULT_BUILD_ORDER)).toBeUndefined();
     const home = firstCommandOf(barren, [{ kind: 'place', building: 'home_level_00', count: 1 }]);
     expect(home?.kind).toBe('placeBuilding');
+  });
+
+  it('keeps a home off the grass on a seat short of it, and builds on the grass once nothing else is left', () => {
+    // A grass patch round the HQ, far under the scarcity line, and sand beyond it.
+    const GRASS_RADIUS = 8;
+    const onPatch = (x: number, y: number) => Math.abs(x - HQ_X) + Math.abs(y - HQ_Y) <= GRASS_RADIUS;
+    const home: BuildOrderEntry[] = [{ kind: 'place', building: 'home_level_00', count: 1 }];
+    const scarce = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: mapWithSand(64, 32, (x, y) => !onPatch(x, y)),
+    });
+    placeHq(scarce);
+    scarce.step();
+    const terrain = scarce.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped sim');
+    expect(grassScarce(terrain, { hx: HQ_X, hy: HQ_Y })).toBe(true);
+    const offGrass = firstCommandOf(scarce, home);
+    if (offGrass?.kind !== 'placeBuilding') throw new Error('expected the home placement');
+    expect(onPatch(offGrass.x, offGrass.y)).toBe(false);
+
+    // The same patch ringed by water: no other ground in reach, so the home takes the grass.
+    const WATER = 1;
+    const typeIds = new Array<number>(64 * 32);
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 64; x++) typeIds[y * 64 + x] = onPatch(x, y) ? 0 : WATER;
+    const island = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: { resolution: 'half-cell', width: 64, height: 32, typeIds },
+    });
+    placeHq(island);
+    island.step();
+    expect(firstCommandOf(island, home)?.kind).toBe('placeBuilding');
+  });
+
+  it('takes the grass in reach before the off-grass ground past it', () => {
+    // A grass patch round the HQ, moor nothing can stand on out to past the reach, sand beyond: the sand
+    // only the overflow reaches loses to the reserved grass in reach.
+    const MOOR = 3;
+    const base = aiContent();
+    const content = parseContentSet({
+      ...base,
+      landscape: [...base.landscape, { typeId: MOOR, id: 'moor', walkable: true, buildable: false }],
+    });
+    const GRASS_RADIUS = 8;
+    const BELT = BUILD_SEARCH_MAX_RADIUS_NODES + 4;
+    const WIDE = 2 * (HQ_X + OVERFLOW_BUILD_REACH_NODES);
+    const typeIds = new Array<number>(WIDE * 32);
+    for (let y = 0; y < 32; y++) {
+      for (let x = 0; x < WIDE; x++) {
+        const distance = Math.abs(x - HQ_X) + Math.abs(y - HQ_Y);
+        typeIds[y * WIDE + x] = distance <= GRASS_RADIUS ? 0 : distance <= BELT ? MOOR : SAND;
+      }
+    }
+    const sim = new Simulation({
+      seed: 1,
+      content,
+      map: { resolution: 'half-cell', width: WIDE, height: 32, typeIds },
+    });
+    placeHq(sim);
+    sim.step();
+    const home = [
+      ...buildOrderModule([{ kind: 'place', building: 'home_level_00', count: 1 }]).run(
+        sim.world,
+        { ...ctxOf(sim), content },
+        SEAT,
+      ),
+    ][0];
+    if (home?.kind !== 'placeBuilding') throw new Error('expected the home placement');
+    expect(Math.abs(home.x - HQ_X) + Math.abs(home.y - HQ_Y)).toBeLessThanOrEqual(GRASS_RADIUS);
+  });
+
+  it('lets a home take the grass beside the HQ where grass is plentiful', () => {
+    // A patch wide enough to clear the scarcity line, sand beyond it as before.
+    const GRASS_RADIUS = 20;
+    const onPatch = (x: number, y: number) => Math.abs(x - HQ_X) + Math.abs(y - HQ_Y) <= GRASS_RADIUS;
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: mapWithSand(64, 32, (x, y) => !onPatch(x, y)),
+    });
+    placeHq(sim);
+    sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped sim');
+    expect(grassScarce(terrain, { hx: HQ_X, hy: HQ_Y })).toBe(false);
+    const home = firstCommandOf(sim, [{ kind: 'place', building: 'home_level_00', count: 1 }]);
+    if (home?.kind !== 'placeBuilding') throw new Error('expected the home placement');
+    expect(onPatch(home.x, home.y)).toBe(true);
+  });
+
+  it('passes over a well with no grass in reach and calls no clearing gatherers for it', () => {
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: mapWithSand(64, 32, () => true) });
+    placeHq(sim);
+    sim.step();
+    makeAiSeat(sim, SEAT);
+    const command = firstCommandOf(sim, [
+      { kind: 'place', building: 'work_well_00', count: 1 },
+      { kind: 'place', building: 'home_level_00', count: 1 },
+    ]);
+    expect(command).toMatchObject({ kind: 'placeBuilding', buildingType: HOME_TYPE });
+    // The clearing gatherers answer only a search that holds the list.
+    const carrier = aiPlayerEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI carrier');
+    expect(sim.world.tryGet(carrier, StalledPlacements)?.holding ?? null).toBeNull();
   });
 
   it('builds past a barren belt wider than the reach, on its own land only', () => {

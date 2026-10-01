@@ -74,7 +74,8 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
  * {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and an upgrade holds while a bill good only it or
  * another site could make is not yet in store, or while it would idle a good's last working maker
  * ({@link upgradeKeepsSupply}). The exceptions are passed over instead ({@link Verdict}): a serving
- * placement with no room beside what it serves, and a coverage entry with no target it can cover.
+ * placement with no room beside what it serves, a well or a hive with no grass left in reach, and a
+ * coverage entry with no target it can cover.
  * Builders are never pinned to a site; the builder drive picks its own.
  *
  * Three rules keep a site from rising under the enemy's bows only to be knocked down again, and a razed
@@ -135,7 +136,7 @@ function runBuildOrder(
     if (known !== undefined) return known;
     const entry = order[entryIndex];
     let verdict = ACTS;
-    if (entry !== undefined && passesOver(entry)) {
+    if (entry !== undefined && passesOver(ctx, entry)) {
       if (searches.waits(entryIndex, ctx.tick)) verdict = PASSED_OVER;
       else {
         verdict = searchVerdict(
@@ -243,8 +244,9 @@ type PlaceCommand = Extract<PlayerCommand, { kind: 'placeBuilding' }>;
 
 /**
  * What the list makes of an unmet entry this decision. A serving placement with no room beside what it
- * serves, or a coverage entry with no target it can cover, is passed over: the workshop still
- * runs, slower, and the goods still travel, only farther, while a stalled list would not. A passed-over
+ * serves, a bio-pattern building with no grass left for it, or a coverage entry with no target it can
+ * cover, is passed over: the workshop still runs, slower, and the goods still travel, only farther, while
+ * a stalled list would not, and gatherers felling trees free no grass where the map has none. A passed-over
  * entry holds neither the list nor the lanes and moves neither the frontier nor the stall record. Every
  * other unmet entry acts, carrying the placement its search found when it is one of those kinds.
  */
@@ -254,15 +256,20 @@ const ACTS: Verdict = { kind: 'act', placement: null };
 const PASSED_OVER: Verdict = { kind: 'pass' };
 
 /** Whether an unmet `entry` is one the list passes over rather than stalls on when its search finds nothing. */
-function passesOver(entry: BuildOrderEntry): boolean {
+function passesOver(ctx: SystemContext, entry: BuildOrderEntry): boolean {
   if (entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') return true;
-  return entry.kind === 'place' && servesPlacement(entry);
+  return entry.kind === 'place' && placementPassesOver(ctx, entry);
 }
 
-/** A placement that exists to serve something beside it: a workshop an `unlessWithin` entry supplies, or
- *  the ships a `shore` workshop launches. */
-function servesPlacement(entry: Extract<BuildOrderEntry, { kind: 'place' }>): boolean {
-  return entry.unlessWithin !== undefined || (entry.near?.some((a) => a.kind === 'shore') ?? false);
+/** A placement that exists to serve something beside it, a workshop an `unlessWithin` entry supplies or
+ *  the ships a `shore` workshop launches, or one the engine lets stand only on grass. The farm and the
+ *  herb hut keep to grass by the list's own `ground` rule, not the engine's, and stall as before. */
+function placementPassesOver(
+  ctx: SystemContext,
+  entry: Extract<BuildOrderEntry, { kind: 'place' }>,
+): boolean {
+  if (entry.unlessWithin !== undefined || (entry.near?.some((a) => a.kind === 'shore') ?? false)) return true;
+  return buildingTypeByContentId(ctx.content, entry.building)?.buildOnBioPattern === true;
 }
 
 function searchVerdict(
@@ -279,7 +286,7 @@ function searchVerdict(
   if (tribe === undefined) return ACTS;
   switch (entry.kind) {
     case 'place': {
-      if (!servesPlacement(entry)) return ACTS;
+      if (!placementPassesOver(ctx, entry)) return ACTS;
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined || !buildingEnabled(world, ctx, player, tribe, type.typeId)) return ACTS;
       const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, tribe, entry, underFire);
@@ -373,7 +380,7 @@ function coverageCommand(
  * Whether the acting entry is a razed building's, fallen back below the seat's frontier, still inside
  * {@link REBUILD_DELAY_TICKS} of the decision that first saw it or, later, of the last one that saw the
  * seat `attacked`. Only a counted building entry regresses this way; a coverage entry re-arms by design
- * and a collector is hired, not built, so neither moves the frontier. A passed-over serving entry that
+ * and a collector is hired, not built, so neither moves the frontier. A passed-over placement that
  * finds room again falls below the frontier the same way and waits the delay once. A seat with no AI
  * carrier (a module run directly) keeps no frontier and never waits.
  */

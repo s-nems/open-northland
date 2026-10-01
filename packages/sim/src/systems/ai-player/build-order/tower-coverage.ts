@@ -12,6 +12,7 @@ import type { EnemyFire } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
 import { ownedSettlers } from '../seat-roster.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, type BuildOrderEntry } from './entries.js';
+import { grassBound, grassScarce } from './grass-reserve.js';
 import { buildReach, spotAcceptor } from './placement.js';
 
 // The coverage circle is a planning heuristic only; what a tower does under an alarm is
@@ -125,7 +126,8 @@ export function seatCovered(
  * and the seat's Manhattan build reach. It needs the full ring budget because the world metric is
  * anisotropic (34 px E/W against 19 px N/S), so a covering node can sit almost twice the coverage radius
  * in rows from the target. A target no building's reach comes near enough to cover, a flag far out on the
- * map, is turned down before the walk.
+ * map, is turned down before the walk. A seat short of grass looks off the grass first, as
+ * `placementSpot` does.
  */
 export function coverageSpotSearch(
   world: World,
@@ -147,18 +149,22 @@ export function coverageSpotSearch(
   const box = nodeBoxOfCircles([{ x: 0, y: 0, r: coverage.radius }]);
   // Every node covering a target lies within this Manhattan span of it.
   const coverageSpan = box.maxX + box.maxY;
+  const spareGrass = !grassBound(type) && grassScarce(terrain, anchor);
   return (target) => {
     if (!settlement.meets(target, coverageSpan)) return null;
     const seed =
       coverage.by === 'tower' ? outwardNode(centroid ?? target, target, TOWER_OUTSKIRTS_PUSH_NODES) : target;
-    const accept = acceptor.around(underFire, seed, fan);
     const reach = settlement.around(seed, fan);
-    return firstRingNode(seed.hx, seed.hy, fan, (x, y) => {
-      // Coverage first: one distance test, and it passes only nodes near the target, itself in the reach.
-      if (!withinNodeRadius(x, y, target.hx, target.hy, coverage.radius)) return false;
-      if (apartFrom.some((c) => withinNodeRadius(c.hx, c.hy, x, y, coverage.radius))) return false;
-      if (!reach.contains(x, y)) return false;
-      return accept(x, y);
-    });
+    const search = (offGrass: boolean) => {
+      const accept = acceptor.around(underFire, seed, fan, offGrass);
+      return firstRingNode(seed.hx, seed.hy, fan, (x, y) => {
+        // Coverage first: one distance test, and it passes only nodes near the target, itself in the reach.
+        if (!withinNodeRadius(x, y, target.hx, target.hy, coverage.radius)) return false;
+        if (apartFrom.some((c) => withinNodeRadius(c.hx, c.hy, x, y, coverage.radius))) return false;
+        if (!reach.contains(x, y)) return false;
+        return accept(x, y);
+      });
+    };
+    return (spareGrass ? search(true) : null) ?? search(false);
   };
 }

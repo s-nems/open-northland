@@ -202,6 +202,8 @@ export function aiContent(): ContentSet {
         typeId: 6,
         id: 'work_well_00',
         kind: 'workplace',
+        // Grass only, as the decoded well is.
+        buildOnBioPattern: true,
         workers: [{ jobType: 24, count: 1 }],
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 5, initial: 0 }],

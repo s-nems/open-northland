@@ -19,6 +19,7 @@ import {
   HQ_X,
   HQ_Y,
   placeHq,
+  SAND,
   SEAT,
   STOCK_TOP_TYPE,
   TOWER_TYPE,
@@ -75,6 +76,37 @@ describe('build-order tower and store coverage', () => {
     });
     sim.step();
     expect([...coverage.run(sim.world, ctxOf(sim), SEAT)]).toHaveLength(1);
+  });
+
+  it('keeps a covering tower off the grass on a seat short of it', () => {
+    // Grass round the HQ and round an outlying home, far under the scarcity line together; sand elsewhere.
+    const FAR = { x: HQ_X + 31, y: HQ_Y };
+    const HQ_PATCH = 8;
+    const FAR_PATCH = 12;
+    const onGrass = (x: number, y: number) =>
+      Math.abs(x - HQ_X) + Math.abs(y - HQ_Y) <= HQ_PATCH ||
+      Math.abs(x - FAR.x) + Math.abs(y - FAR.y) <= FAR_PATCH;
+    const typeIds = new Array<number>(64 * 32);
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 64; x++) typeIds[y * 64 + x] = onGrass(x, y) ? 0 : SAND;
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: { resolution: 'half-cell', width: 64, height: 32, typeIds },
+    });
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: FAR.x,
+      y: FAR.y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const order = [...coverage.run(sim.world, ctxOf(sim), SEAT)][0];
+    if (order?.kind !== 'placeBuilding') throw new Error('expected a tower placement');
+    expect(onGrass(order.x, order.y)).toBe(false);
+    expect(withinNodeRadius(order.x, order.y, FAR.x, FAR.y, TOWER_DEFENCE_RADIUS_NODES)).toBe(true);
   });
 
   it('never counts the defence wall (shared kind, different id) as a covering tower', () => {

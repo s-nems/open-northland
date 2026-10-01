@@ -21,6 +21,7 @@ import { anchorNodeOf, bestRingNode, firstRingNode, towardNode } from '../node-g
 import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, OVERFLOW_BUILD_REACH_NODES } from './entries.js';
+import { coversGrass, grassBound, grassScarce } from './grass-reserve.js';
 
 /** One affinity other than `shore` ({@link shoreTarget}) resolved to a node, or null when it cannot be. A
  *  `building` affinity takes the seat's lowest-id building of that id or a tier above it, so the pick is
@@ -433,10 +434,16 @@ function wallSpan(ctx: SystemContext, buildingTypeId: number, tribe: number): nu
  * The seat's placement test for one building type, built once a search: the anchors every building on
  * the map holds, the seat's own placement probe, and the deposit zone. {@link SpotAcceptor.around} narrows
  * it to one search's fan: a node is accepted when the building may anchor there, the anchor is free, and
- * no enemy shooter reaches the site.
+ * no enemy shooter reaches the site. With `spareGrass` the building's reserved zone must also keep off
+ * every grass node ({@link grassScarce}).
  */
 export interface SpotAcceptor {
-  around(underFire: EnemyFire, centre: HalfCellNode, fan: number): (x: number, y: number) => boolean;
+  around(
+    underFire: EnemyFire,
+    centre: HalfCellNode,
+    fan: number,
+    spareGrass?: boolean,
+  ): (x: number, y: number) => boolean;
 }
 
 export function spotAcceptor(
@@ -464,12 +471,13 @@ export function spotAcceptor(
   const body = buildingFlagBody(ctx.content, buildingTypeId, tribe);
   const roadSites = roadSitesByNode(world, terrain);
   return {
-    around(underFire, centre, fan) {
+    around(underFire, centre, fan, spareGrass = false) {
       const fire = underFire.around(centre.hx, centre.hy, fan, span);
       return (x, y) => {
         if (!terrain.inBounds(x, y)) return false;
         const node = terrain.nodeAt(x, y);
         if (!terrain.isBuildable(node) || occupied.has(node) || fire.reaches(x, y, span)) return false;
+        if (spareGrass && coversGrass(terrain, zone, x, y)) return false;
         return (
           probe.canPlace(x, y) &&
           !coversLiveDeposit(world, deposits, zone, x, y) &&
@@ -531,9 +539,12 @@ export const HQ_PULL_DIVISOR_NODES = 4;
  *
  * An affinity pull that finds nothing yields to the same search from `anchor` (authored): a
  * settlement wider than the fan keeps room on its far side that the pulled centre never reaches, and a
- * barracks or a mint anywhere in it beats a list stalled for half an hour. When neither finds a spot for
- * an entry with no spot bound, the pulled search runs once more over {@link OVERFLOW_BUILD_REACH_NODES}, on
- * the base's own land component only, since the wider reach can span a strait the builders cannot walk.
+ * barracks or a mint anywhere in it beats a list stalled for half an hour. A seat short of grass
+ * ({@link grassScarce}) runs both searches off the grass first for a building that does not need it, so
+ * the grass stays for the farm, the wells and the hives, and takes grass only when no other ground is
+ * left in reach. When nothing in reach takes an entry with no spot bound, the pulled search runs once more
+ * over {@link OVERFLOW_BUILD_REACH_NODES}, on the base's own land component only, since the wider reach can
+ * span a strait the builders cannot walk.
  */
 export function placementSpot(
   world: World,
@@ -565,15 +576,33 @@ export function placementSpot(
   );
   if (search === null) return null;
   const { centre, within } = search;
-  const near = (reach: BuildReach, from: HalfCellNode, bound: SpotBound, fan: number) =>
-    spotAround(ctx, terrain, reach, acceptor, anchor, from, bound, fan, type, tribe, entry, underFire);
+  const near = (reach: BuildReach, from: HalfCellNode, bound: SpotBound, fan: number, spareGrass = false) =>
+    spotAround(
+      ctx,
+      terrain,
+      reach,
+      acceptor,
+      anchor,
+      from,
+      bound,
+      fan,
+      type,
+      tribe,
+      entry,
+      underFire,
+      spareGrass,
+    );
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
-  const pulled = near(settlement, centre, within, fan);
-  if (pulled !== null) return pulled;
-  const fromAnchor =
-    centre.hx === anchor.hx && centre.hy === anchor.hy ? null : near(settlement, anchor, within, fan);
+  const inReach = (spareGrass: boolean) =>
+    near(settlement, centre, within, fan, spareGrass) ??
+    (centre.hx === anchor.hx && centre.hy === anchor.hy
+      ? null
+      : near(settlement, anchor, within, fan, spareGrass));
+  const offGrass = !grassBound(type, entry) && grassScarce(terrain, anchor) ? inReach(true) : null;
+  if (offGrass !== null) return offGrass;
+  const found = inReach(false);
   // A bounded entry's disc already lies in the usual reach, so only an unbounded one overflows.
-  if (fromAnchor !== null || within !== null) return fromAnchor;
+  if (found !== null || within !== null) return found;
   const home = baseComponent(world, ctx, terrain, player);
   if (home === NO_COMPONENT) return null;
   const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;
@@ -594,8 +623,9 @@ function spotAround(
   tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   underFire: EnemyFire,
+  spareGrass: boolean,
 ): HalfCellNode | null {
-  const accept = acceptor.around(underFire, centre, fan);
+  const accept = acceptor.around(underFire, centre, fan, spareGrass);
   const reach = settlement.around(centre, fan);
   const hqPull = (x: number, y: number): number =>
     Math.floor((Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy)) / HQ_PULL_DIVISOR_NODES);
