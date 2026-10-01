@@ -10,11 +10,6 @@ export function noticeFullText(note: Pick<UserMessage, 'type' | 'subject' | 'tex
     : note.text.full;
 }
 
-/** The column's order: the weightiest first, then the newest within a weight. */
-export function orderNotes(notes: readonly UserMessage[]): UserMessage[] {
-  return [...notes].sort((a, b) => b.priority - a.priority || b.tick - a.tick || b.id - a.id);
-}
-
 /** The emblems a card without a live settler shows on its thumbnail; each has a line glyph fallback. */
 export type NoticeGlyph = 'house' | 'swords' | 'skull' | 'shield' | 'banner' | 'chest' | 'scroll';
 
@@ -90,4 +85,25 @@ export function fanOverlap(heights: readonly number[], room: number, gap: number
   if (natural <= room) return 0;
   const cap = Math.min(...heights) - minStrip + gap;
   return Math.max(0, Math.min(cap, Math.ceil((natural - room) / (heights.length - 1))));
+}
+
+/**
+ * The overlap of the cards below an open stack's rows. The cards down to the open one keep the overlap
+ * `above` they had when it opened, so nothing above the pointer moves; the rows never fan; the cards
+ * after them fan in the room left, the first of them clear of the rows.
+ */
+export function fanBelowOpen(
+  heights: readonly number[],
+  openIndex: number,
+  rowsHeight: number,
+  above: number,
+  room: number,
+  gap: number,
+  minStrip: number,
+): number {
+  let used = rowsHeight + gap;
+  for (let i = 0; i <= openIndex && i < heights.length; i++) {
+    used += (heights[i] ?? 0) + gap - (i === 0 ? 0 : above);
+  }
+  return fanOverlap(heights.slice(openIndex + 1), room - used, gap, minStrip);
 }

@@ -1,29 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { fanOverlap, noticeFullText, noticeThumb, orderNotes } from '../src/hud/tool-panel/messages/cards.js';
 import {
-  type MessagePriorityLevel,
+  fanBelowOpen,
+  fanOverlap,
+  noticeFullText,
+  noticeThumb,
+} from '../src/hud/tool-panel/messages/cards.js';
+import {
   type MessageSubject,
   USER_MESSAGE_TYPE,
-  type UserMessage,
   type UserMessageType,
 } from '../src/hud/tool-panel/messages/types.js';
 import { messages } from '../src/i18n/index.js';
-
-function note(id: number, priority: MessagePriorityLevel, tick: number): UserMessage {
-  return {
-    id,
-    priority,
-    tick,
-    type: USER_MESSAGE_TYPE.hungry,
-    subject: null,
-    at: null,
-    about: null,
-    goodType: null,
-    technologies: null,
-    jobType: null,
-    text: { short: '', full: '' },
-  };
-}
 
 const noBuilding = (): number | undefined => undefined;
 const onMap = (): boolean => true;
@@ -46,12 +33,6 @@ function fightNote(type: UserMessageType, seats: readonly number[]) {
 }
 
 describe('notice cards', () => {
-  it('orders the weightiest first and the newest within a weight', () => {
-    const ordered = orderNotes([note(1, 0, 10), note(2, 2, 5), note(3, 1, 20), note(4, 2, 9), note(5, 2, 9)]);
-    // Two notes raised on one tick keep arrival order reversed, so the later id stands first.
-    expect(ordered.map((m) => m.id)).toEqual([5, 4, 2, 3, 1]);
-  });
-
   it('draws a live settler subject', () => {
     const settler = { kind: 'settler', entity: 7 } as const;
     expect(noticeThumb(raised(USER_MESSAGE_TYPE.hungry, settler), noBuilding, onMap)).toEqual({
@@ -173,6 +154,19 @@ describe('notice cards', () => {
     // The cap: a card may lose no more than its height minus the strip, plus the gap it no longer needs.
     expect(fanOverlap([68, 68, 68, 68], 100, 7, 32)).toBe(43);
     expect(fanOverlap([68, 40, 68], 100, 7, 32)).toBe(15);
+  });
+
+  it('keeps the cards down to an open stack where they were and fans the ones below its rows', () => {
+    // Open at index 1 with no overlap above: two cards, 100 px of rows and three gaps use 213 px of 400,
+    // so the two cards below (106 px with their gaps) stay apart.
+    expect(fanBelowOpen([46, 46, 46, 46], 1, 100, 0, 400, 7, 27)).toBe(0);
+    // 300 px leaves 87 for the 106 they need: the one seam below takes the 19 px shortfall.
+    expect(fanBelowOpen([46, 46, 46, 46], 1, 100, 0, 300, 7, 27)).toBe(19);
+    // The overlap kept above frees its room for the cards below.
+    expect(fanBelowOpen([46, 46, 46, 46], 1, 100, 10, 300, 7, 27)).toBe(9);
+    // Past the strip cap the cards below stop folding and the list scrolls; one card below never folds.
+    expect(fanBelowOpen([46, 46, 46, 46], 1, 200, 0, 300, 7, 27)).toBe(26);
+    expect(fanBelowOpen([46, 46, 46], 1, 200, 0, 100, 7, 27)).toBe(0);
   });
 });
 

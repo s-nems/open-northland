@@ -1126,9 +1126,11 @@ body.on-drag-scroll * {
 .on-hud .on-notices--overflowing .on-notices__list {
   mask-image: linear-gradient(#000 calc(100% - 30px), transparent);
 }
-/* `--covered`: how much of the card's top the card before it lies over. */
+/* `--covered`: how much of the card's top the card before it lies over. `--edge-room`: the strip under
+   a stack's card its edges take. */
 .on-hud .on-notice {
   --covered: 0px;
+  --edge-room: 0px;
   position: relative;
   z-index: var(--z);
   margin-bottom: 7px;
@@ -1319,7 +1321,7 @@ body.on-drag-scroll * {
 .on-hud .on-notice__dismiss {
   position: absolute;
   right: 3px;
-  top: calc(var(--covered) + (100% - var(--covered)) / 2 - 8px);
+  top: calc(var(--covered) + (100% - var(--covered) - var(--edge-room)) / 2 - 8px);
   width: 16px;
   height: 16px;
   padding: 0;
@@ -1410,6 +1412,303 @@ body.on-drag-scroll * {
   border: 5px solid transparent;
   border-right-color: var(--bronze-lo);
   border-left: 0;
+}
+/* A stack's hover box: what it holds above the lead's message, and how to list or dismiss it below. */
+.on-hud .on-notices__full-head {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--bronze-hi);
+  font-weight: 700;
+}
+.on-hud .on-notices__full-text {
+  display: block;
+}
+.on-hud .on-notices__full-hint {
+  display: block;
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid #c9a26233;
+  color: var(--muted);
+  font-size: 11px;
+}
+/* A stack: notes that share a topic under one card, faced by the heaviest. One slate edge under the
+   card for a pair, two for three or more, each a lighter slate with a bronze lip set in from the sides;
+   they thin when the column fans, so a stack costs the fan little more than a card. */
+.on-hud .on-notice--stack {
+  --edge-room: 10px;
+  --seal-size: 18px;
+  padding-bottom: var(--edge-room);
+}
+.on-hud .on-notice--pair {
+  --edge-room: 5px;
+}
+.on-hud .on-notices--stacked .on-notice--stack {
+  --edge-room: 6px;
+}
+.on-hud .on-notices--stacked .on-notice--pair {
+  --edge-room: 3px;
+}
+.on-hud .on-notice--stack > .on-notice__card {
+  box-shadow:
+    0 1px 0 #000c,
+    0 2px 4px #0007;
+}
+.on-hud .on-notice__edge {
+  position: absolute;
+  z-index: -1;
+  top: 5px;
+  bottom: calc(var(--edge-room) - 5px);
+  left: calc(var(--thumb-edge) + 6px);
+  right: 7px;
+  border-radius: 0 0 5px 5px;
+  border-bottom: 1px solid #c9a26288;
+  background: linear-gradient(90deg, #34493f, #2c3f36 70%, color-mix(in srgb, #2c3f36 40%, transparent));
+  box-shadow: 0 2px 3px #000a;
+  pointer-events: none;
+}
+.on-hud .on-notice__edge--2 {
+  top: 10px;
+  bottom: 0;
+  left: calc(var(--thumb-edge) + 12px);
+  right: 14px;
+  border-bottom-color: #c9a26255;
+  background: linear-gradient(90deg, #26362f, #1f2d27 70%, color-mix(in srgb, #1f2d27 40%, transparent));
+}
+.on-hud .on-notice--pair .on-notice__edge--2 {
+  display: none;
+}
+.on-hud .on-notices--stacked .on-notice__edge {
+  top: 3px;
+  bottom: calc(var(--edge-room) - 3px);
+  background: linear-gradient(90deg, #34493f, #2c3f36);
+}
+.on-hud .on-notices--stacked .on-notice__edge--2 {
+  top: 6px;
+  bottom: 0;
+  background: linear-gradient(90deg, #26362f, #1f2d27);
+}
+/* The count seal carries the stack's size as a filter seal carries its tally, and is the button that
+   lists the members in the column; the bronze tick under it marks it as one. */
+.on-hud .on-notice__toggle {
+  position: absolute;
+  left: calc(var(--thumb-edge) + var(--seal-gap) - 3px);
+  top: calc(var(--covered) + (100% - var(--covered) - var(--edge-room)) / 2 - 12px);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: top 0.14s;
+}
+.on-hud .on-notice__toggle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  margin-left: -3px;
+  border: 3px solid transparent;
+  border-top: 3px solid var(--bronze);
+  border-bottom: 0;
+  transition: transform 0.14s;
+}
+.on-hud .on-notice__toggle[aria-expanded="true"]::after {
+  transform: rotate(180deg);
+}
+.on-hud .on-seal--count {
+  display: grid;
+  place-items: center;
+  font: 700 10.5px / 1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+  color: var(--text-hi);
+  text-shadow: 0 1px 1px #000d;
+}
+.on-hud .on-seal--wide {
+  font-size: 8.5px;
+  letter-spacing: -0.4px;
+}
+.on-hud .on-notice__toggle:hover .on-seal,
+.on-hud .on-notice__toggle:focus-visible .on-seal,
+.on-hud .on-notice__toggle[aria-expanded="true"] .on-seal {
+  box-shadow:
+    0 0 0 1.5px #0d100d,
+    0 0 0 3px var(--bronze-hi),
+    inset 0 -2px 3px #0006;
+}
+/* A stack that takes in a fresh member bumps its count once. */
+.on-hud .on-notice--grew .on-notice__toggle .on-seal {
+  animation: on-seal-bump 0.45s ease-out;
+}
+@keyframes on-seal-bump {
+  40% {
+    transform: scale(1.22);
+  }
+}
+/* The open stack keeps its place: the gap above it takes up what the thinner fanned edges gave back. */
+.on-hud .on-notices__list .on-notice--open {
+  margin-top: calc(var(--anchor-shift, 0px) - var(--covered));
+}
+.on-hud .on-notice--open > .on-notice__card {
+  box-shadow: 0 0 0 1px #c9a26266;
+}
+/* The open stack's members, as compact rows inside the column under its card; they never fan. */
+.on-hud .on-members {
+  position: relative;
+  z-index: var(--z);
+  margin: -3px 0 7px 14px;
+  padding: 0 0 0 7px;
+  border-left: 1px solid #c9a26255;
+}
+.on-hud .on-members__rows {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.on-hud .on-member {
+  position: relative;
+  height: 26px;
+  margin-bottom: 2px;
+}
+.on-hud .on-member__go {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  height: 100%;
+  padding: 0 22px 0 1px;
+  border: 0;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--deep) 94%, transparent),
+    color-mix(in srgb, var(--deep) 80%, transparent) 90%,
+    transparent
+  );
+  color: var(--text-hi);
+  text-align: left;
+}
+.on-hud .on-member__go:hover,
+.on-hud .on-member__go:focus-visible {
+  background: linear-gradient(
+    90deg,
+    var(--fill),
+    color-mix(in srgb, var(--fill) 85%, transparent) 90%,
+    transparent
+  );
+}
+/* A row's thumbnail crops a card-sized figure canvas to the head and shoulders, so one painter and one
+   box serve cards and rows; a building or emblem fits whole. */
+.on-hud .on-member__thumb {
+  position: relative;
+  flex: none;
+  width: 22px;
+  height: 24px;
+  overflow: hidden;
+  border: 1px solid #c9a26233;
+  border-radius: 4px;
+  background: #18252188;
+}
+.on-hud .on-member__thumb .on-notice__preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 1px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.on-hud .on-member__thumb .on-notice__preview--figure {
+  inset: auto;
+  left: -12px;
+  top: -2px;
+  width: 46px;
+  height: 48px;
+  padding: 0;
+}
+.on-hud .on-member__thumb .on-notice__preview--glyph {
+  place-items: center;
+  padding: 0;
+}
+.on-hud .on-member__thumb .on-notice__preview--glyph .on-glyph {
+  width: 15px;
+  height: 15px;
+}
+.on-hud .on-member .on-seal {
+  --seal-size: 8px;
+  flex: none;
+}
+.on-hud .on-member__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+.on-hud .on-member__label,
+.on-hud .on-member__meta {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.on-hud .on-member__label {
+  font-size: 10px;
+}
+.on-hud .on-member__meta {
+  font-size: 9px;
+  color: var(--muted);
+}
+.on-hud .on-member__dismiss {
+  position: absolute;
+  right: 3px;
+  top: 5px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #0009;
+  color: var(--muted);
+  opacity: 0.65;
+  transition: opacity 0.12s;
+}
+.on-hud .on-member__dismiss .on-glyph {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2.4;
+}
+.on-hud .on-member:hover .on-member__dismiss,
+.on-hud .on-member:focus-within .on-member__dismiss {
+  opacity: 1;
+}
+.on-hud .on-member__dismiss:hover,
+.on-hud .on-member__dismiss:focus-visible {
+  color: var(--text-hi);
+  background: #000d;
+}
+.on-hud .on-members__more {
+  display: block;
+  width: 100%;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  background: #0007;
+  color: var(--bronze-hi);
+  font: 700 10px / 22px var(--font-body);
+  text-align: center;
+}
+.on-hud .on-members__more[hidden] {
+  display: none;
+}
+.on-hud .on-members__more:hover,
+.on-hud .on-members__more:focus-visible {
+  background: var(--fill);
 }
 
 /* ---------- the top-right bar: counters, breakdowns, clock, speed ---------- */
@@ -1964,6 +2263,9 @@ body.on-drag-scroll * {
   .on-hud .on-notice__card,
   .on-hud .on-seal {
     animation: none;
+  }
+  .on-hud .on-notice__toggle::after {
+    transition: none;
   }
 }
 

@@ -60,6 +60,8 @@ export interface MessageFeed {
   ): MessageAddOutcome;
   /** Dismiss one note on `tick`; its repeat stays away while its state lasts, or for the event block. */
   remove(id: number, tick: number): boolean;
+  /** Dismiss several notes on `tick` as one change, each remembered on its own as `remove` does. */
+  removeMany(ids: ReadonlySet<number>, tick: number): boolean;
   /** Dismiss every note the level shows; the ones hidden under it were never seen, so they stay. */
   removeAll(tick: number): void;
   /** Hand a standing note, shown or dismissed, the place, fight tally and text of its repeat `pending`;
@@ -238,6 +240,7 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
       return 'accepted';
     },
     remove: (id, tick) => dismiss((m) => m.id !== id, tick),
+    removeMany: (ids, tick) => dismiss((m) => !ids.has(m.id), tick),
     revise: (pending, compose) => {
       const update = <T extends UserMessage>(m: T): T => ({
         ...m,

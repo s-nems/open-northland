@@ -201,3 +201,30 @@ export function galleryMessages(
   }
   return raiser.out;
 }
+
+/** The extra hungry settlers that fill the gallery's hunger family past the rows an open stack lists,
+ *  and the size of its same-type stacks. */
+const GALLERY_HUNGER_EXTRA = 6;
+const GALLERY_SAME_TYPE_STACK = 3;
+
+/**
+ * Extra notes for `?debug=notices` that stack: hungry settlers beside the gallery's starving and dying
+ * ones (one family past the short list), tired settlers and finished buildings (stacks of one type).
+ * Raised from the last of the seat's people, so they spread over other figures than the rows above.
+ */
+export function galleryStackMessages(
+  snapshot: WorldSnapshot,
+  localPlayer: number,
+  naming: MessageNaming,
+): readonly RaisedMessage[] {
+  const raiser = new MessageRaiser(snapshot, naming);
+  const owned = actorsOf(snapshot).filter((e) => ownerPlayerOf(e) === localPlayer);
+  const people = owned.filter(isPerson).reverse();
+  for (const e of people.slice(0, GALLERY_HUNGER_EXTRA)) raiser.settler(USER_MESSAGE_TYPE.hungry, e);
+  const tired = people.slice(GALLERY_HUNGER_EXTRA, GALLERY_HUNGER_EXTRA + GALLERY_SAME_TYPE_STACK);
+  for (const e of tired) raiser.settler(USER_MESSAGE_TYPE.tired, e);
+  for (const b of owned.filter(isBuilding).slice(0, GALLERY_SAME_TYPE_STACK)) {
+    raiser.building(USER_MESSAGE_TYPE.houseFinished, b);
+  }
+  return raiser.out;
+}

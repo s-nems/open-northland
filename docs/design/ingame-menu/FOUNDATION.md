@@ -849,7 +849,32 @@ lifetime, dedupe and priority table.
 - A fresh card slides in and an urgent fresh seal pulses three times. Figures are painted only on
   cards inside the list's visible area; a paused game holds their frame. Reduced motion drops the
   slide and the pulse, never the figure's activity, which is game content like the map.
-- Every row at once, for a check of the column: `?scene=sandbox&debug=notices` (DEVELOPMENT.md).
+- Similar notes stack under one card. The hunger family (dying, starving, hungry) and the idle family
+  (lost workplace, no cart, nothing to do) stack across their types; every other note stacks with
+  notes of its type and card line (a good, a stance, a family reason make their own stack; a line
+  that only agrees with the settler's sex does not). A stack needs two notes; a lone note is a plain
+  card. The face is the heaviest member (by weight, then by family stage); among equals the state note
+  standing longest or the newest event. Stacks order by their face's weight, then by their newest
+  member, so a new member lifts its stack. The filters count notes and run before the stacking, so
+  "only urgent" leaves the hunger family its dying and starving members.
+- A stack's seal grows from 12 to 18 px and carries the count, as the filter seals carry their tallies;
+  the event line moves 6 px right. One slate edge under the card shows a pair, two show three or more,
+  thinned from 5 to 3 px each when the column fans. Hover or focus shows the breakdown ("1 umiera ·
+  3 głodują · 9 głodnych") over the face's whole message and a hint line.
+- The count seal is the stack's disclosure button (a bronze tick under it, `aria-expanded`); → opens
+  and ← closes from the card or a row. The members list inside the column as 26 px rows (thumbnail
+  cropped to head and shoulders, weight seal, name or the whole message, the member's own card line
+  when they differ, age), six of them, then a "jeszcze N w grupie" button lists the rest. One stack is
+  open at a time; Esc or a press on another card closes it. Opening keeps the card under the pointer:
+  the cards above keep their overlap, the rows never fan, the card after them sits clear of them and
+  the cards below fan in the room left; closing restores the fan.
+- A card press or Enter goes to the face. ×, right click or Delete on a card dismisses every member it
+  stands for, one by one, so each stays dismissed only while its own cause lasts; on a row they
+  dismiss that member, and a row press goes to it. ↑ ↓ walk the rows. Shift and the bin keep meaning
+  every shown note. A leaving member lowers the count; a pair down to one note is a plain card again,
+  and an open stack down to one note closes.
+- Every row at once, for a check of the column: `?scene=sandbox&debug=notices` (DEVELOPMENT.md); it
+  also raises a hunger family past six rows and stacks of tired settlers and finished buildings.
 
 ### Hover card
 

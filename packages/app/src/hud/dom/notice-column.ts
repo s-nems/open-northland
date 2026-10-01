@@ -1,9 +1,23 @@
 import { formatMessage, messages } from '../../i18n/index.js';
 import { NOTICE_COLUMN } from '../regions.js';
-import { fanOverlap, type NoticeGlyph, type NoticeThumb } from '../tool-panel/messages/cards.js';
+import { fanBelowOpen, fanOverlap } from '../tool-panel/messages/cards.js';
 import type { NoticeFigureBox, NoticeFigureSlot } from '../tool-panel/messages/figures.js';
 import type { MessagePriorityLevel } from '../tool-panel/messages/types.js';
 import { GLYPH } from './icons.js';
+import {
+  cardInnerMarkup,
+  cardShape,
+  fillCard,
+  glyphMarkup,
+  isStack,
+  type NoticeStackView,
+  type NoticeThumbPainters,
+  paintNoticeThumb,
+  STACK,
+} from './notice-card.js';
+import { createNoticeMembers, MEMBERS_ID } from './notice-members.js';
+
+export type { NoticeCardView, NoticeMemberView, NoticeStackView } from './notice-card.js';
 
 /** Below this visible strip per card (design px) the fan stops and the list scrolls instead. */
 const MIN_CARD_STRIP = 27;
@@ -16,55 +30,37 @@ const MORE_SCROLL_KEEP = 40;
 const STACKED = 'on-notices--stacked';
 const OVERFLOWING = 'on-notices--overflowing';
 const FRESH = 'on-notice--fresh';
+/** A stack that took in a fresh member bumps its count seal once. */
+const GREW = 'on-notice--grew';
 /** The arrival animations whose end retires the fresh state: the seal pulse outlasts the slide. */
-const ARRIVAL_ANIMATION = { card: 'on-notice-in', seal: 'on-seal-pulse' } as const;
+const ARRIVAL_ANIMATION = { card: 'on-notice-in', seal: 'on-seal-pulse', bump: 'on-seal-bump' } as const;
 
 /** The level whose seal pulses on arrival; the others only slide their card in. */
 const IMPORTANT_LEVEL: MessagePriorityLevel = 2;
-const SEAL_BY_LEVEL: Readonly<Record<MessagePriorityLevel, string>> = { 0: '', 1: 'warn', 2: 'danger' };
 const FILTER_CLASS_BY_LEVEL: Readonly<Record<MessagePriorityLevel, string>> = {
   0: 'low',
   1: 'medium',
   2: 'high',
 };
 const FILTER_LEVELS: readonly MessagePriorityLevel[] = [0, 1, 2];
+/** The parts of a card focus can rest on, so a rebuilt card gives focus back to the same one. */
+const CARD_PARTS = ['on-notice__card', 'on-notice__toggle', 'on-notice__dismiss'] as const;
 
-/** One card as the column shows it; the message centre projects its feed into these. */
-export interface NoticeCardView {
-  readonly id: number;
-  readonly level: MessagePriorityLevel;
-  /** The event line, short enough to fit the card. */
-  readonly short: string;
-  /** The whole message, shown beside the column on hover or focus. */
-  readonly full: string;
-  readonly thumb: NoticeThumb;
-  /** True when the card has a place to send the view to. */
-  readonly canGo: boolean;
-  /** True for a card raised moments ago: it slides in, and an urgent one pulses its seal. */
-  readonly fresh: boolean;
-}
-
-export interface NoticeColumnDeps {
+export interface NoticeColumnDeps extends NoticeThumbPainters {
   readonly plane: HTMLElement;
   /** Design px the column keeps clear above the plane's bottom edge, for the minimap. */
   readonly bottomInset: number | (() => number);
   readonly onLevel: (level: MessagePriorityLevel) => void;
+  /** Centre the view on one note: a card's lead or a row's member. */
   readonly onGo: (id: number) => void;
+  /** Dismiss one member of an open stack. */
   readonly onDismiss: (id: number) => void;
+  /** Dismiss every note a card stands for, a lone note or a whole stack. */
+  readonly onDismissGroup: (key: string) => void;
   readonly onDismissAll: () => void;
-  /** Paint a building's body into a card's canvas; false leaves the house glyph in its place. */
-  readonly paintBuilding: (canvas: HTMLCanvasElement, typeId: number) => boolean;
-  /** Paint a glyph's artwork into a card's canvas, in `seat`'s colour when the card is about one;
-   *  false leaves the line glyph in its place, and `onFail` asks for it after a true return. */
-  readonly paintGlyph: (
-    canvas: HTMLCanvasElement,
-    glyph: NoticeGlyph,
-    seat: number | null,
-    onFail: () => void,
-  ) => boolean;
+  /** Open the stack `key` in the column, or close the open one (null). */
+  readonly onOpen: (key: string | null) => void;
 }
-
-export type NoticeThumbPainters = Pick<NoticeColumnDeps, 'paintBuilding' | 'paintGlyph'>;
 
 /** The figure canvases inside the list's visible area and their shared size on screen. */
 export interface NoticeFigureSlots {
@@ -72,83 +68,28 @@ export interface NoticeFigureSlots {
   readonly box: NoticeFigureBox;
 }
 
-/** The notification column: the seal filters with their tallies, the fanning card list, the "more"
- *  badge and the whole message beside the hovered card. */
+/** The notification column: the seal filters with their tallies, the fanning card list with the open
+ *  stack's rows, the "more" badge and the whole message beside the hovered card or row. */
 export interface NoticeColumn {
-  /** Rebuild for `cards` in column order; call only when the feed changed. */
-  render(cards: readonly NoticeCardView[], tally: readonly number[], level: MessagePriorityLevel): void;
-  /** The settler and vehicle figures to paint this frame: only the cards on screen cost a draw. */
+  /** Rebuild for `stacks` in column order with `open` listing its rows; call only when either changed. */
+  render(
+    stacks: readonly NoticeStackView[],
+    tally: readonly number[],
+    level: MessagePriorityLevel,
+    open: string | null,
+  ): void;
+  /** The settler and vehicle figures to paint this frame: only the cards and rows on screen cost a draw. */
   figures(): NoticeFigureSlots;
   /** Swap a figure canvas whose subject is no longer drawn for the scroll glyph. */
   unpicture(canvas: HTMLCanvasElement): void;
   dispose(): void;
 }
 
-/** The line glyphs that stand in for a thumbnail the painters cannot draw. */
-const NOTICE_GLYPH: Readonly<Record<NoticeGlyph, string>> = {
-  house: GLYPH.house,
-  swords: GLYPH.swords,
-  skull: GLYPH.skull,
-  shield: GLYPH.shield,
-  banner: GLYPH.banner,
-  chest: GLYPH.chest,
-  scroll: GLYPH.scroll,
-};
-
-const DIM = ' on-notice__preview--dim';
-
-function glyphMarkup(glyph: NoticeGlyph, dim: boolean): string {
-  return `<span class="on-notice__preview on-notice__preview--glyph${dim ? DIM : ''}" aria-hidden="true">${NOTICE_GLYPH[glyph]}</span>`;
-}
-
-function previewMarkup(thumb: NoticeThumb): string {
-  switch (thumb.kind) {
-    case 'settler':
-    case 'vehicle':
-      return '<canvas class="on-notice__preview on-notice__preview--figure" aria-hidden="true"></canvas>';
-    case 'building':
-      return '<canvas class="on-notice__preview on-notice__preview--building" aria-hidden="true"></canvas>';
-    case 'glyph':
-      return `<canvas class="on-notice__preview on-notice__preview--art${thumb.dim ? DIM : ''}" aria-hidden="true"></canvas>`;
-  }
-}
-
-/** Paint a new card's building or glyph canvas; one the painters cannot draw becomes a line glyph. */
-export function paintNoticeThumb(li: Element, thumb: NoticeThumb, painters: NoticeThumbPainters): void {
-  if (thumb.kind === 'settler' || thumb.kind === 'vehicle') return;
-  const canvas = li.querySelector('canvas.on-notice__preview');
-  if (!(canvas instanceof HTMLCanvasElement)) return;
-  if (thumb.kind === 'building') {
-    if (!painters.paintBuilding(canvas, thumb.typeId)) canvas.outerHTML = glyphMarkup('house', false);
-  } else {
-    const toLineGlyph = (): void => {
-      canvas.outerHTML = glyphMarkup(thumb.glyph, thumb.dim);
-    };
-    if (!painters.paintGlyph(canvas, thumb.glyph, thumb.seat, toLineGlyph)) toLineGlyph();
-  }
-}
-
-/** The markup of one card, shared with the gallery board's sample column. */
-export function noticeCardMarkup(card: NoticeCardView, dismissLabel: string): string {
-  const seal = SEAL_BY_LEVEL[card.level];
-  const li = document.createElement('li');
-  li.className = `on-notice${seal === '' ? '' : ` on-notice--${seal}`}${card.fresh ? ` ${FRESH}` : ''}`;
-  li.dataset.id = String(card.id);
-  if (card.thumb.kind === 'settler' || card.thumb.kind === 'vehicle')
-    li.dataset.entity = String(card.thumb.entity);
-  li.innerHTML = `<button type="button" class="on-notice__card">${previewMarkup(card.thumb)}<b class="on-notice__event"></b><i class="on-seal${seal === '' ? '' : ` on-seal--${seal}`}" aria-hidden="true"></i>${card.canGo ? GLYPH.go : ''}</button><button type="button" class="on-notice__dismiss">${GLYPH.close}</button>`;
-  const button = li.querySelector('.on-notice__card');
-  const event = li.querySelector('.on-notice__event');
-  const dismiss = li.querySelector('.on-notice__dismiss');
-  if (button === null || event === null || dismiss === null) {
-    throw new Error('notice column: card markup incomplete');
-  }
-  button.setAttribute('aria-label', card.full);
-  // A card with no target is a disclosure: a press pins its whole message.
-  if (!card.canGo) button.setAttribute('aria-expanded', 'false');
-  event.textContent = card.short;
-  dismiss.setAttribute('aria-label', dismissLabel);
-  return li.outerHTML;
+function bubbleLine(className: string, text: string): HTMLElement {
+  const line = document.createElement('span');
+  line.className = className;
+  line.textContent = text;
+  return line;
 }
 
 export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
@@ -198,14 +139,38 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   });
   deps.plane.append(column);
 
-  const cardsById = new Map<number, HTMLLIElement>();
-  const viewsById = new Map<number, NoticeCardView>();
+  const cardsByKey = new Map<string, HTMLLIElement>();
+  const viewsByKey = new Map<string, NoticeStackView>();
+  const shapes = new Map<HTMLLIElement, string>();
+  const members = createNoticeMembers(copy);
+  /** The stack whose rows the column lists, as last rendered. */
+  let openKey: string | null = null;
+  /** Where the card the player opened stood in the list's view (design px), until the layout that
+   *  lists its rows has put it back there. */
+  let anchor: { readonly key: string; readonly top: number } | null = null;
+  /** The overlap the cards down to the open one keep while it is open. */
+  let openAbove = 0;
+
   const items = (): HTMLLIElement[] =>
-    [...list.children].filter((c): c is HTMLLIElement => c instanceof HTMLLIElement);
-  const idOf = (li: HTMLElement): number => Number(li.dataset.id);
+    [...list.children].filter(
+      (c): c is HTMLLIElement => c instanceof HTMLLIElement && c.classList.contains('on-notice'),
+    );
+  const keyOf = (li: HTMLElement): string => li.dataset.key ?? '';
   const itemOf = (target: EventTarget | null): HTMLLIElement | null => {
     const li = target instanceof Element ? target.closest('.on-notice') : null;
     return li instanceof HTMLLIElement ? li : null;
+  };
+  const rowOf = (target: EventTarget | null): HTMLLIElement | null => {
+    const row = target instanceof Element ? target.closest('.on-member') : null;
+    return row instanceof HTMLLIElement ? row : null;
+  };
+  /** An element's top in the list's scrolled content (design px). */
+  const topInList = (el: HTMLElement): number => {
+    let y = 0;
+    for (let at: Element | null = el; at instanceof HTMLElement && at !== list; at = at.offsetParent) {
+      y += at.offsetTop;
+    }
+    return y;
   };
 
   const updateMore = (): void => {
@@ -217,93 +182,219 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     column.classList.toggle(OVERFLOWING, list.scrollHeight > list.clientHeight + 1);
   };
 
-  /** How far each fanned card lies under the one before it (design px); 0 when the cards fit. */
+  /** How much of each card's top the card before it covers (design px), for its figure. */
+  const covered = new Map<HTMLLIElement, number>();
+  /** The overlap of the cards that fan as one: every card while no stack is open, else those down to it. */
   let overlap = 0;
-  /** Fan the cards so they all fit: one uniform overlap, weightier cards in front. Fanned cards keep
-   *  one event line, so the heights are measured again once the fan is on. */
+  /**
+   * Fan the cards so they all fit: one uniform overlap, weightier cards in front. Fanned cards keep one
+   * event line, so the heights are measured again once the fan is on. With a stack open, the cards down
+   * to it keep the overlap they had, its rows never fan, and the cards below fan in the room left.
+   */
   const layout = (): void => {
     const shown = items();
     shown.forEach((li, i) => {
       li.style.setProperty('--z', String(shown.length - i));
+      li.style.removeProperty('--overlap');
     });
     const styles = getComputedStyle(list);
     const room =
       column.clientHeight - list.offsetTop - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
-    column.classList.remove(STACKED);
     const heights = (): number[] => shown.map((li) => li.offsetHeight);
-    overlap = fanOverlap(heights(), room, CARD_GAP, MIN_CARD_STRIP);
-    if (overlap > 0) {
-      column.classList.add(STACKED);
+    const openLi = openKey === null ? undefined : cardsByKey.get(openKey);
+    const openIndex = openLi === undefined || !members.element.isConnected ? -1 : shown.indexOf(openLi);
+    let below = 0;
+    if (openIndex < 0) {
+      column.classList.remove(STACKED);
       overlap = fanOverlap(heights(), room, CARD_GAP, MIN_CARD_STRIP);
+      if (overlap > 0) {
+        column.classList.add(STACKED);
+        overlap = fanOverlap(heights(), room, CARD_GAP, MIN_CARD_STRIP);
+      }
+    } else {
+      overlap = openAbove;
+      column.classList.toggle(STACKED, overlap > 0);
+      members.element.style.setProperty('--z', String(shown.length - openIndex));
+      const rows = (): number => members.element.offsetHeight;
+      below = fanBelowOpen(heights(), openIndex, rows(), overlap, room, CARD_GAP, MIN_CARD_STRIP);
+      if (below > 0 && !column.classList.contains(STACKED)) {
+        column.classList.add(STACKED);
+        below = fanBelowOpen(heights(), openIndex, rows(), overlap, room, CARD_GAP, MIN_CARD_STRIP);
+      }
+      shown.forEach((li, i) => {
+        if (i > openIndex) li.style.setProperty('--overlap', `${below}px`);
+      });
     }
     list.style.setProperty('--overlap', `${overlap}px`);
+    covered.clear();
+    shown.forEach((li, i) => {
+      covered.set(li, i === 0 || i === openIndex + 1 ? 0 : i > openIndex && openIndex >= 0 ? below : overlap);
+    });
+    if (openLi !== undefined && anchor?.key === openKey) {
+      // The thinner fanned edges of the stacks above can lift the open card; it goes back under the
+      // pointer, with the gap above it or the list scrolled.
+      const drift = anchor.top - (openLi.offsetTop - list.scrollTop);
+      if (drift > 0) openLi.style.setProperty('--anchor-shift', `${drift}px`);
+      else if (drift < 0) list.scrollTop -= drift;
+      anchor = null;
+    }
     updateMore();
   };
 
-  let pinned: HTMLLIElement | null = null;
-  const showFull = (li: HTMLLIElement): void => {
-    full.textContent = viewsById.get(idOf(li))?.full ?? '';
+  let pinned: HTMLElement | null = null;
+  const bubbleOf = (el: HTMLElement): HTMLElement[] => {
+    if (el.classList.contains('on-member')) {
+      const view = members.memberView(el as HTMLLIElement);
+      return view === undefined ? [] : [bubbleLine('on-notices__full-text', view.full)];
+    }
+    const stack = viewsByKey.get(keyOf(el));
+    if (stack === undefined) return [];
+    const text = bubbleLine('on-notices__full-text', stack.lead.full);
+    if (!isStack(stack)) return [text];
+    return [
+      bubbleLine('on-notices__full-head', stack.breakdown),
+      text,
+      bubbleLine('on-notices__full-hint', copy.groupHint),
+    ];
+  };
+  const showFull = (el: HTMLElement): void => {
+    full.replaceChildren(...bubbleOf(el));
     full.hidden = false;
-    full.style.top = `${list.offsetTop + li.offsetTop - list.scrollTop}px`;
+    full.style.top = `${list.offsetTop + topInList(el) - list.scrollTop}px`;
   };
   const hideFull = (): void => {
     if (pinned === null) full.hidden = true;
   };
-  const pinFull = (li: HTMLLIElement | null): void => {
-    pinned = li;
-    if (li === null) full.hidden = true;
-    else showFull(li);
-    for (const each of items()) {
-      const face = each.querySelector('.on-notice__card');
-      if (face?.hasAttribute('aria-expanded')) face.setAttribute('aria-expanded', String(each === pinned));
+  const pinFull = (el: HTMLElement | null): void => {
+    pinned = el;
+    if (el === null) full.hidden = true;
+    else showFull(el);
+    for (const face of list.querySelectorAll(
+      '.on-notice__card[aria-expanded], .on-member__go[aria-expanded]',
+    )) {
+      face.setAttribute('aria-expanded', String(face.closest('.on-notice, .on-member') === pinned));
     }
   };
-  /** The card whose face `target` is on: the dismiss button is outside it. */
-  const faceOf = (target: EventTarget | null): HTMLLIElement | null => {
-    const li = itemOf(target);
-    if (li === null) return null;
-    return target instanceof Element && target.closest('.on-notice__card') !== null ? li : null;
+  /** The card or row whose hover target `target` is; the dismiss buttons are outside both. */
+  const hoverOf = (target: EventTarget | null): HTMLElement | null => {
+    if (!(target instanceof Element)) return null;
+    if (target.closest('.on-member__go') !== null) return rowOf(target);
+    if (target.closest('.on-notice__card, .on-notice__toggle') !== null) return itemOf(target);
+    return null;
+  };
+
+  const toggleOf = (key: string): HTMLElement | null => {
+    const toggle = cardsByKey.get(key)?.querySelector('.on-notice__toggle');
+    return toggle instanceof HTMLElement ? toggle : null;
+  };
+  const open = (li: HTMLLIElement): void => {
+    const key = keyOf(li);
+    if (key === openKey || !li.classList.contains(STACK)) return;
+    anchor = { key, top: li.offsetTop - list.scrollTop };
+    openAbove = overlap;
+    deps.onOpen(key);
+  };
+  const close = (): void => {
+    if (openKey !== null) deps.onOpen(null);
+  };
+  const dismissCard = (li: HTMLLIElement, all: boolean): void => {
+    if (all) deps.onDismissAll();
+    else deps.onDismissGroup(keyOf(li));
+  };
+  const dismissRow = (row: HTMLLIElement, all: boolean): void => {
+    if (all) deps.onDismissAll();
+    else deps.onDismiss(Number(row.dataset.id));
   };
 
   list.addEventListener('click', (event) => {
-    const li = itemOf(event.target);
-    if (li === null || !(event.target instanceof Element)) return;
-    if (event.target.closest('.on-notice__dismiss') !== null) {
-      if (event.shiftKey) deps.onDismissAll();
-      else deps.onDismiss(idOf(li));
+    const { target } = event;
+    if (!(target instanceof Element)) return;
+    const row = rowOf(target);
+    if (row !== null) {
+      if (target.closest('.on-member__dismiss') !== null) dismissRow(row, event.shiftKey);
+      else if (target.closest('.on-member__go') !== null) {
+        const view = members.memberView(row);
+        if (view?.canGo === true) deps.onGo(view.id);
+        else pinFull(pinned === row ? null : row);
+      }
       return;
     }
-    if (event.target.closest('.on-notice__card') === null) return;
-    const view = viewsById.get(idOf(li));
-    if (view?.canGo === true) deps.onGo(view.id);
+    if (target.closest('.on-members__more') !== null) {
+      members.extend();
+      layout();
+      return;
+    }
+    const li = itemOf(target);
+    if (li === null) return;
+    if (target.closest('.on-notice__dismiss') !== null) {
+      dismissCard(li, event.shiftKey);
+      return;
+    }
+    if (target.closest('.on-notice__toggle') !== null) {
+      if (keyOf(li) === openKey) close();
+      else open(li);
+      return;
+    }
+    if (target.closest('.on-notice__card') === null) return;
+    if (openKey !== null && keyOf(li) !== openKey) close();
+    const lead = viewsByKey.get(keyOf(li))?.lead;
+    if (lead?.canGo === true) deps.onGo(lead.id);
     else pinFull(pinned === li ? null : li);
   });
   list.addEventListener('contextmenu', (event) => {
+    const row = rowOf(event.target);
     const li = itemOf(event.target);
-    if (li === null) return;
+    if (row === null && li === null) return;
     event.preventDefault();
-    if (event.shiftKey) deps.onDismissAll();
-    else deps.onDismiss(idOf(li));
+    if (row !== null) dismissRow(row, event.shiftKey);
+    else if (li !== null) dismissCard(li, event.shiftKey);
   });
+  const isStackItem = (li: HTMLLIElement): boolean => li.classList.contains(STACK);
+  /** Move focus along the open stack's rows by `step`, from the card onto the first row and back. */
+  const stepRows = (from: Element, step: number): boolean => {
+    if (openKey === null) return false;
+    const stops = members.focusables();
+    const toggle = toggleOf(openKey);
+    const at = from instanceof HTMLElement ? stops.indexOf(from) : -1;
+    const onCard = from === toggle || from === cardsByKey.get(openKey)?.querySelector('.on-notice__card');
+    if (at < 0 && !onCard) return false;
+    const next = at < 0 ? (step > 0 ? stops[0] : undefined) : at + step < 0 ? toggle : stops[at + step];
+    next?.focus();
+    return next !== undefined && next !== null;
+  };
   list.addEventListener('keydown', (event) => {
-    if (event.key === 'Delete') {
-      const li = itemOf(event.target);
-      if (li === null) return;
-      event.preventDefault();
-      if (event.shiftKey) deps.onDismissAll();
-      else deps.onDismiss(idOf(li));
-    } else if (event.key === 'Escape' && pinned !== null) {
-      event.preventDefault();
-      event.stopPropagation();
-      pinFull(null);
-    }
+    const { target } = event;
+    if (!(target instanceof Element)) return;
+    const row = rowOf(target);
+    const li = itemOf(target);
+    let handled = true;
+    if (event.key === 'Delete' && row !== null) dismissRow(row, event.shiftKey);
+    else if (event.key === 'Delete' && li !== null) dismissCard(li, event.shiftKey);
+    else if (event.key === 'ArrowRight' && li !== null && keyOf(li) !== openKey && isStackItem(li)) open(li);
+    else if (
+      event.key === 'ArrowLeft' &&
+      openKey !== null &&
+      (row !== null || (li !== null && keyOf(li) === openKey))
+    ) {
+      toggleOf(openKey)?.focus();
+      close();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      handled = stepRows(target, event.key === 'ArrowDown' ? 1 : -1);
+    } else if (event.key === 'Escape' && openKey !== null) {
+      if (row !== null || target.closest('.on-members') !== null) toggleOf(openKey)?.focus();
+      close();
+    } else if (event.key === 'Escape' && pinned !== null) pinFull(null);
+    else handled = false;
+    if (!handled) return;
+    event.preventDefault();
+    event.stopPropagation();
   });
   const onEnter = (event: Event): void => {
-    const li = faceOf(event.target);
-    if (li !== null && pinned === null) showFull(li);
+    const el = hoverOf(event.target);
+    if (el !== null && pinned === null) showFull(el);
   };
   const onLeave = (event: Event): void => {
-    if (faceOf(event.target) !== null) hideFull();
+    if (hoverOf(event.target) !== null) hideFull();
   };
   list.addEventListener('mouseover', onEnter);
   list.addEventListener('mouseout', onLeave);
@@ -322,51 +413,118 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   const resize = new ResizeObserver(layout);
   resize.observe(column);
 
+  /** Build a card's inside for its shape, keeping focus on the same part when it held it. */
+  const shapeCard = (li: HTMLLIElement, stack: NoticeStackView): void => {
+    const focused = document.activeElement;
+    const part = li.contains(focused)
+      ? CARD_PARTS.find((name) => focused?.classList.contains(name))
+      : undefined;
+    if (pinned === li) pinFull(null);
+    li.innerHTML = cardInnerMarkup(stack);
+    li.style.removeProperty('--anchor-shift');
+    shapes.set(li, cardShape(stack));
+    paintNoticeThumb(li, stack.lead.thumb, deps);
+    if (part !== undefined) {
+      const back = li.querySelector(`.${part}`) ?? li.querySelector('.on-notice__card');
+      if (back instanceof HTMLElement) back.focus();
+    }
+  };
+  const newCard = (stack: NoticeStackView): HTMLLIElement => {
+    const li = document.createElement('li');
+    li.className = 'on-notice';
+    shapeCard(li, stack);
+    if (stack.lead.fresh) {
+      li.classList.add(FRESH);
+      // Retire the class once the arrival has played, so a later reorder does not replay it.
+      const last = stack.lead.level === IMPORTANT_LEVEL ? ARRIVAL_ANIMATION.seal : ARRIVAL_ANIMATION.card;
+      li.addEventListener('animationend', (event) => {
+        if (event.animationName === last) li.classList.remove(FRESH);
+        if (event.animationName === ARRIVAL_ANIMATION.bump) li.classList.remove(GREW);
+      });
+    } else {
+      li.addEventListener('animationend', (event) => {
+        if (event.animationName === ARRIVAL_ANIMATION.bump) li.classList.remove(GREW);
+      });
+    }
+    return li;
+  };
+
   return {
-    render: (cards, tally, level): void => {
+    render: (stacks, tally, level, nextOpen): void => {
       const focused = document.activeElement;
-      let lostFocus = false;
-      const keep = new Set(cards.map((card) => card.id));
-      for (const [id, li] of cardsById) {
-        if (keep.has(id)) continue;
-        if (li.contains(focused)) lostFocus = true;
+      const focusInRows = members.element.contains(focused);
+      // A dismissed row hands focus to the row that takes its place, then to its stack's card.
+      const focusedRow = focusInRows ? members.focusables().findIndex((stop) => stop.contains(focused)) : -1;
+      const rowsKey = openKey;
+      let lostFocus: string | null = null;
+      const keep = new Set(stacks.map((stack) => stack.key));
+      for (const [key, li] of cardsByKey) {
+        if (keep.has(key)) continue;
+        if (li.contains(focused)) lostFocus = key;
         if (li === pinned) pinFull(null);
         li.remove();
-        cardsById.delete(id);
-        viewsById.delete(id);
+        cardsByKey.delete(key);
+        viewsByKey.delete(key);
+        shapes.delete(li);
       }
-      cards.forEach((card, i) => {
-        viewsById.set(card.id, card);
-        let li = cardsById.get(card.id);
+      const openStack = nextOpen === null ? undefined : stacks.find((stack) => stack.key === nextOpen);
+      const openMembers = openStack !== undefined && isStack(openStack) ? openStack.members : null;
+      const opened = openMembers === null ? null : nextOpen;
+      if (opened !== openKey) {
+        cardsByKey.get(openKey ?? '')?.style.removeProperty('--anchor-shift');
+        if (opened === null) anchor = null;
+        if (pinned !== null && members.element.contains(pinned)) pinFull(null);
+        openKey = opened;
+      }
+      let at = 0;
+      for (const stack of stacks) {
+        const before = viewsByKey.get(stack.key);
+        let li = cardsByKey.get(stack.key);
         if (li === undefined) {
-          const holder = document.createElement('ul');
-          holder.innerHTML = noticeCardMarkup(card, copy.dismiss);
-          const made = holder.firstElementChild;
-          if (!(made instanceof HTMLLIElement)) throw new Error('notice column: card markup');
-          li = made;
-          cardsById.set(card.id, li);
-          paintNoticeThumb(li, card.thumb, deps);
-          if (card.fresh) {
-            // Retire the class once the arrival has played, so a later reorder does not replay it.
-            const last = card.level === IMPORTANT_LEVEL ? ARRIVAL_ANIMATION.seal : ARRIVAL_ANIMATION.card;
-            const fresh = li;
-            fresh.addEventListener('animationend', (event) => {
-              if (event.animationName === last) fresh.classList.remove(FRESH);
-            });
-          }
+          li = newCard(stack);
+          cardsByKey.set(stack.key, li);
+        } else if (shapes.get(li) !== cardShape(stack)) shapeCard(li, stack);
+        if (before !== undefined && stack.count > before.count && stack.lead.fresh) {
+          li.classList.remove(GREW);
+          // Restart the bump: a class re-added in the same frame would not replay it.
+          void li.offsetWidth;
+          li.classList.add(GREW);
         }
-        const at = list.children[i];
-        if (at !== li) list.insertBefore(li, at ?? null);
-      });
-      if (lostFocus) {
-        const next = list.querySelector('.on-notice__card');
-        if (next instanceof HTMLElement) next.focus();
-        else filterButtons[level]?.focus();
+        viewsByKey.set(stack.key, stack);
+        fillCard(li, stack, stack.key === openKey, copy);
+        if (list.children[at] !== li) list.insertBefore(li, list.children[at] ?? null);
+        at++;
+        if (stack.key === openKey && openMembers !== null) {
+          members.sync(stack.key, openMembers);
+          if (list.children[at] !== members.element)
+            list.insertBefore(members.element, list.children[at] ?? null);
+          toggleOf(stack.key)?.setAttribute('aria-controls', MEMBERS_ID);
+          at++;
+        }
+      }
+      if (openKey === null) members.element.remove();
+      // Moving a card that held focus (a stack lifted by a new member) blurs it; give it back.
+      if (focused instanceof HTMLElement && focused.isConnected && list.contains(focused)) {
+        if (document.activeElement !== focused) focused.focus({ preventScroll: true });
+      }
+      if (focusInRows && !members.element.contains(document.activeElement)) {
+        const stops = openKey === null ? [] : members.focusables();
+        const card = cardsByKey.get(rowsKey ?? '');
+        const back =
+          stops[Math.min(focusedRow, stops.length - 1)] ??
+          (rowsKey === null ? null : toggleOf(rowsKey)) ??
+          card?.querySelector('.on-notice__card');
+        if (back instanceof HTMLElement) back.focus();
+        else lostFocus = rowsKey;
+      }
+      if (lostFocus !== null && !list.contains(document.activeElement)) {
+        const back = list.querySelector('.on-notice__card') ?? filterButtons[level];
+        if (back instanceof HTMLElement) back.focus();
       }
       const total = tally.reduce((sum, n) => sum + n, 0);
       count.textContent = formatMessage(copy.count, { count: total });
       empty.hidden = total > 0;
-      clear.disabled = cards.length === 0;
+      clear.disabled = stacks.length === 0;
       filterButtons.forEach((button, i) => {
         const filter = filterNames[i] ?? '';
         const label = formatMessage(copy.tally, {
@@ -393,12 +551,16 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       const bottom = top + list.clientHeight;
       const slots: NoticeFigureSlot[] = [];
       let box: NoticeFigureBox = { width: 0, height: 0, pixelScale: 0 };
-      items().forEach((li, i) => {
-        if (li.offsetTop + li.offsetHeight <= top || li.offsetTop >= bottom) return;
-        const canvas = li.querySelector('.on-notice__preview--figure');
+      const take = (
+        holder: HTMLElement,
+        holderTop: number,
+        visible: (canvas: HTMLCanvasElement) => number,
+      ) => {
+        if (holderTop + holder.offsetHeight <= top || holderTop >= bottom) return;
+        const canvas = holder.querySelector('.on-notice__preview--figure');
         if (!(canvas instanceof HTMLCanvasElement)) return;
-        // One rect read serves every card: the plane's scale is theirs. The bitmap fills the content
-        // box inside the thumbnail's border.
+        // One rect read serves every card and row: the plane's scale is theirs, and a row's canvas has
+        // a card's size, cropped by its smaller box. The bitmap fills the canvas's content box.
         if (box.pixelScale === 0) {
           box = {
             width: canvas.clientWidth,
@@ -406,9 +568,19 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
             pixelScale: (canvas.getBoundingClientRect().width / canvas.offsetWidth) * devicePixelRatio,
           };
         }
-        const covered = i === 0 ? 0 : overlap;
-        slots.push({ entity: Number(li.dataset.entity), canvas, visible: li.offsetHeight - covered });
-      });
+        slots.push({ entity: Number(holder.dataset.entity), canvas, visible: visible(canvas) });
+      };
+      for (const li of items()) {
+        const face = li.firstElementChild;
+        const height = face instanceof HTMLElement ? face.offsetHeight : li.offsetHeight;
+        take(li, li.offsetTop, () => height - (covered.get(li) ?? 0));
+      }
+      if (openKey !== null) {
+        members.paintVisible(top, bottom, deps);
+        for (const row of members.rows()) {
+          if (row.dataset.entity !== undefined) take(row, topInList(row), (canvas) => canvas.clientHeight);
+        }
+      }
       return { slots, box };
     },
     unpicture: (canvas): void => {

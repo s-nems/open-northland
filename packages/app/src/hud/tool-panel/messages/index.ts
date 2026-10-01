@@ -13,21 +13,33 @@ import { characterName } from '../../../game/character-names/index.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { isFemale, num, type SnapshotEntity, surnameSourceOf } from '../../../game/snapshot.js';
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
-import { messages, professionLabel } from '../../../i18n/index.js';
+import { bcp47Tag, formatMessage, messages, professionLabel } from '../../../i18n/index.js';
 import type { BuildingThumbs } from '../../dom/building-thumb.js';
 import { createNoticeArt, noticeTint } from '../../dom/notice-art.js';
-import { createNoticeColumn, type NoticeCardView } from '../../dom/notice-column.js';
+import {
+  createNoticeColumn,
+  type NoticeCardView,
+  type NoticeMemberView,
+  type NoticeStackView,
+} from '../../dom/notice-column.js';
 import type { FigureFrames } from '../../figures/figure-frames.js';
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText, playerLabel } from '../diplomacy/model.js';
-import { noticeFullText, noticeThumb, orderNotes } from './cards.js';
+import { noticeFullText, noticeThumb } from './cards.js';
 import type { MessageFeedState } from './feed.js';
 import { FightAreas } from './fight-areas.js';
 import { type NoticeFigureSlot, NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
 import { type BuildingTrades, messagesFromEvents } from './from-events.js';
 import { createSnapshotMessageSource, SNAPSHOT_SWEEP_INTERVAL_TICKS } from './from-snapshot.js';
-import { galleryMessages, type NoticeGallery } from './gallery.js';
+import { galleryMessages, galleryStackMessages, type NoticeGallery } from './gallery.js';
+import {
+  groupBreakdown,
+  groupMixesLines,
+  groupNotes,
+  MIN_STACK_MEMBERS,
+  type NoticeGroup,
+} from './groups.js';
 import type { MessageNaming } from './raise.js';
 import { isSubjectGone, NoteRetirement } from './retire.js';
 import { createSeatFeeds } from './seat-feeds.js';
@@ -43,6 +55,11 @@ const FRESH_NOTE_TICKS = 2 * TICKS_PER_SECOND;
 /** The building body's canvas box on a note (design px): the thumbnail's content height at rest;
  *  `object-fit: contain` fits it to whatever the padding leaves. */
 const NOTICE_THUMB_BOX_PX = 40;
+/** How often an open stack's rows count their ages again. */
+const AGE_REFRESH_TICKS = 5 * TICKS_PER_SECOND;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+const TICKS_PER_MINUTE = SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 
 /** Where a note's press centres the view: the subject while it lives, else the spot it was raised at. */
 export interface MessageTarget {
@@ -155,6 +172,15 @@ function vehicleOnMapIn(snapshot: WorldSnapshot): (entity: number) => boolean {
   return (entity) => entityById(snapshot, entity)?.components.Position !== undefined;
 }
 
+/** How long ago a note was raised, as a row shows it: now, in minutes, then in hours. */
+function ageLabel(ticks: number): string {
+  const copy = messages().hud.notices;
+  const minutes = Math.floor(ticks / TICKS_PER_MINUTE);
+  if (minutes < 1) return copy.ageNow;
+  if (minutes < MINUTES_PER_HOUR) return formatMessage(copy.ageMinutes, { count: minutes });
+  return formatMessage(copy.ageHours, { count: Math.floor(minutes / MINUTES_PER_HOUR) });
+}
+
 function cardOf(m: UserMessage, snapshot: WorldSnapshot): NoticeCardView {
   return {
     id: m.id,
@@ -179,6 +205,57 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   // The tick of the last presented snapshot, which a dismissal is stamped with.
   let presentedTick = 0;
   const select = (m: UserMessage): void => deps.onSelect({ entity: m.subject?.entity ?? null, at: m.at });
+  // The stack listed in the column, the stacks last shown by key (a card's dismissal takes the members
+  // it showed) and each listed note's row label, named once.
+  let openKey: string | null = null;
+  let shownGroups = new Map<string, NoticeGroup>();
+  const rowLabels = new Map<number, string>();
+  let ageBucket = -1;
+  /** Who a row is about: the subject's name while it lives, else the note's whole message. */
+  const rowLabel = (m: UserMessage, snapshot: WorldSnapshot): string => {
+    const known = rowLabels.get(m.id);
+    if (known !== undefined) return known;
+    const e = m.subject === null ? undefined : entityById(snapshot, m.subject.entity);
+    let label = noticeFullText(m);
+    if (e !== undefined && m.subject !== null) {
+      if (m.subject.kind === 'settler') label = naming.settler(e, snapshot).name;
+      else if (m.subject.kind === 'building') label = naming.building(e);
+      else label = naming.vehicle(e);
+    }
+    rowLabels.set(m.id, label);
+    return label;
+  };
+  const membersOf = (group: NoticeGroup, snapshot: WorldSnapshot): NoticeMemberView[] => {
+    const mixed = groupMixesLines(group);
+    const listed = new Set(group.members.map((m) => m.id));
+    for (const id of rowLabels.keys()) if (!listed.has(id)) rowLabels.delete(id);
+    return group.members.map((m) => {
+      const card = cardOf(m, snapshot);
+      return {
+        id: m.id,
+        level: m.priority,
+        label: rowLabel(m, snapshot),
+        detail: mixed ? m.text.short : '',
+        age: ageLabel(snapshot.tick - m.tick),
+        full: card.full,
+        thumb: card.thumb,
+        canGo: card.canGo,
+      };
+    });
+  };
+  const stackOf = (group: NoticeGroup, snapshot: WorldSnapshot): NoticeStackView => {
+    const [first] = group.members;
+    if (first === undefined) throw new Error('message centre: an empty notice group');
+    const count = group.members.length;
+    const stacked = count >= MIN_STACK_MEMBERS;
+    return {
+      key: group.key,
+      lead: { ...cardOf(first, snapshot), fresh: snapshot.tick - group.newest.tick < FRESH_NOTE_TICKS },
+      count,
+      breakdown: stacked ? groupBreakdown(group, messages().hud.notices, bcp47Tag()) : '',
+      members: stacked && group.key === openKey ? membersOf(group, snapshot) : null,
+    };
+  };
   const art = createNoticeArt();
   const column = createNoticeColumn({
     plane: deps.plane,
@@ -200,6 +277,18 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     onDismiss: (id) => {
       ctx.cue('confirm');
       feeds.current.remove(id, presentedTick);
+    },
+    // Member by member, so each stays dismissed only while its own cause lasts.
+    onDismissGroup: (key) => {
+      const group = shownGroups.get(key);
+      if (group === undefined) return;
+      ctx.cue('confirm');
+      feeds.current.removeMany(new Set(group.members.map((m) => m.id)), presentedTick);
+    },
+    onOpen: (key) => {
+      ctx.cue('confirm');
+      openKey = key;
+      renderedVersion = -1;
     },
     onDismissAll: () => {
       ctx.cue('confirm');
@@ -270,6 +359,9 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
           )) {
             feeds.current.add(raised.pending, snapshot.tick, raised.compose, true);
           }
+          for (const raised of galleryStackMessages(snapshot, seat, naming)) {
+            feeds.current.add(raised.pending, snapshot.tick, raised.compose, true);
+          }
         }
         // The gallery's notes have no cause in the sim to check against, so they stand until dismissed or
         // their subject is gone; retiring them would bring each back a sweep later as a new card.
@@ -279,12 +371,18 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
         } else feeds.current.expire(snapshot.tick, (m) => isSubjectGone(m, snapshot), true);
         previous = snapshot;
       }
-      if (feeds.current.version() !== renderedVersion) {
+      const bucket = Math.floor(snapshot.tick / AGE_REFRESH_TICKS);
+      if (feeds.current.version() !== renderedVersion || (openKey !== null && bucket !== ageBucket)) {
         renderedVersion = feeds.current.version();
+        ageBucket = bucket;
+        const groups = groupNotes(feeds.current.displayed());
+        shownGroups = new Map(groups.map((group) => [group.key, group]));
+        if ((shownGroups.get(openKey ?? '')?.members.length ?? 0) < MIN_STACK_MEMBERS) openKey = null;
         column.render(
-          orderNotes(feeds.current.displayed()).map((m) => cardOf(m, snapshot)),
+          groups.map((group) => stackOf(group, snapshot)),
           feeds.current.tally(),
           feeds.current.level(),
+          openKey,
         );
       }
       // The figures are painted into their cards every frame, so they move as the map's settlers do and
