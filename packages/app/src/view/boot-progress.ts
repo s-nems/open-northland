@@ -1,6 +1,6 @@
 import { diag } from '../diag/log.js';
 import { messages } from '../i18n/index.js';
-import { lastShownStill } from './backdrop-stills.js';
+import { BACKDROP_STILLS, lastShownStill, randomStill, rememberStill } from './backdrop-stills.js';
 import { BRAND_BACKDROP } from './brand-art.js';
 
 /**
@@ -67,9 +67,16 @@ function nextPaint(): Promise<void> {
   });
 }
 
-/** The still the menu was showing as a CSS `<bg-image>`, or `none` before any menu visit. */
-export function bootStillImage(remembered: string | null): string {
-  return remembered === null ? 'none' : `url("${remembered}")`;
+/** A still as a CSS `<bg-image>`, or `none` when the pool has none. */
+export function bootStillImage(still: string | null): string {
+  return still === null ? 'none' : `url("${still}")`;
+}
+
+/** A random still for this load, never the one shown last, remembered so the next screen differs too. */
+function pickBootStill(): string | null {
+  const still = randomStill(BACKDROP_STILLS, lastShownStill(), Math.random);
+  if (still !== null) rememberStill(still);
+  return still;
 }
 
 function node(className: string, ...children: readonly HTMLElement[]): HTMLDivElement {
@@ -86,7 +93,7 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
   const label = node('boot-card__label');
   const root = node('boot-card', node('boot-card__frame', node('boot-card__track', bar)), label);
   root.style.setProperty('--boot-backdrop', `url("${BRAND_BACKDROP}")`);
-  root.style.setProperty('--boot-still', bootStillImage(lastShownStill()));
+  root.style.setProperty('--boot-still', bootStillImage(pickBootStill()));
   root.setAttribute('role', 'status');
   label.setAttribute('aria-live', 'polite');
   document.body.append(root);

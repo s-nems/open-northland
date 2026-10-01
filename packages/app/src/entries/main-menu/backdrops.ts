@@ -1,21 +1,19 @@
 import { diag } from '../../diag/index.js';
-import { lastShownStill, rememberStill } from '../../view/backdrop-stills.js';
+import {
+  lastShownStill,
+  randomStill,
+  rememberStill,
+  BACKDROP_STILLS as STILLS,
+} from '../../view/backdrop-stills.js';
 import { BRAND_BACKDROP } from '../../view/brand-art.js';
 import { rotationOrder } from './rotation.js';
 
 /**
- * The menu's settlement backdrop: the stills bundled from `assets/menu-backdrops`, one on the scene
- * layer from the first frame and the rest crossfading in above it. Never throws: a still that fails
- * to load leaves the static brand art standing.
+ * The menu's settlement backdrop: the bundled stills, one on the scene layer from the first frame and
+ * the rest crossfading in above it. Never throws: a still that fails to load leaves the static brand
+ * art standing.
  */
 
-const STILLS: readonly string[] = Object.values(
-  import.meta.glob<string>('../../assets/menu-backdrops/*.jpg', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-);
 /** How long one still stays before the next crossfades in; menu.css sizes the matching push-in. */
 const DWELL_MS = 14_000;
 /** How far a still drifts during its push-in, in % of the layer; inside menu.css's 7% zoom overhang
@@ -29,17 +27,6 @@ export function backdropDrift(random: () => number): { readonly x: string; reado
     x: `${(Math.cos(angle) * DRIFT_PERCENT).toFixed(2)}%`,
     y: `${(Math.sin(angle) * DRIFT_PERCENT).toFixed(2)}%`,
   };
-}
-
-/** A still drawn at random from `pool`, never `avoid` while the pool holds anything else. */
-export function randomStill(
-  pool: readonly string[],
-  avoid: string | null,
-  random: () => number,
-): string | null {
-  const others = pool.filter((file) => file !== avoid);
-  const choices = others.length > 0 ? others : pool;
-  return choices[Math.floor(random() * choices.length)] ?? null;
 }
 
 /**
