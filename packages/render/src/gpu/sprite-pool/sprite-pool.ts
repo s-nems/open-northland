@@ -14,6 +14,7 @@ import {
   collectSpriteScene,
   type DrawItem,
   type LiveRefs,
+  SceneItemMemo,
   type SpriteDrawItem,
   type SpriteScene,
   screenDepth,
@@ -158,6 +159,7 @@ export class SpritePool {
   private frameId = 0;
   private readonly sceneCache = new SpriteSceneCache();
   private readonly depthOrder = new SpriteDepthOrder();
+  private readonly itemMemo = new SceneItemMemo();
   private lastItems: readonly SpriteDrawItem[] = [];
   private readonly damaged: DamagedBuilding[] = [];
   private readonly ships: ShipAfloat[] = [];
@@ -356,6 +358,7 @@ export class SpritePool {
         ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
       },
       this.depthOrder,
+      this.itemMemo,
     );
     this.sceneCache.store(frame, scene);
     return scene;

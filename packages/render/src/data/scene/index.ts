@@ -11,6 +11,7 @@ export type {
 } from './draw-item.js';
 export { type HolyFireBinding, type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
 export type { InHouseProgramLookup } from './in-house.js';
+export { SceneItemMemo } from './item-memo.js';
 export { type PalisadeLayout, palisadeLayoutOf } from './palisade-connections.js';
 export { palisadeStaggerX } from './palisade-stagger.js';
 export {

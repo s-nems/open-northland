@@ -10,6 +10,7 @@ import { emitEntities } from './entity-source.js';
 import { type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
 import type { InHousePose, InHouseProgramLookup } from './in-house.js';
 import { assembleItem, type SceneBuild } from './item-assembly.js';
+import type { SceneItemMemo } from './item-memo.js';
 import { palisadeLayoutOf } from './palisade-connections.js';
 import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose, vehiclePose } from './settler-pose.js';
 import { isIndoorSettler, targetPositionsOf } from './snapshot-index.js';
@@ -107,11 +108,17 @@ export function collectSpriteScene(
   snapshot: WorldSnapshot,
   opts: SpriteSceneOptions = {},
   order?: SpriteDepthOrder,
+  memo?: SceneItemMemo,
 ): SpriteScene {
-  return collectScene(snapshot, opts, order);
+  return collectScene(snapshot, opts, order, memo);
 }
 
-function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: SpriteDepthOrder): SpriteScene {
+function collectScene(
+  snapshot: WorldSnapshot,
+  opts: DrawListOptions,
+  order?: SpriteDepthOrder,
+  memo?: SceneItemMemo,
+): SpriteScene {
   const {
     viewport,
     elevation,
@@ -144,9 +151,31 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: Sp
     palisades: palisadeLayoutOf(snapshot, elevation),
   };
 
+  memo?.begin(elevation, playerColourOf);
   const emit = (entity: EntitySnapshot): void => {
     // Drawn by the retained static layer instead, or not yet - skip before paying for a classify.
     if (staticRefs?.has(entity.id) || withheldRefs?.has(entity.id)) return;
+    const isPortrait =
+      (portraitRef !== undefined && entity.id === portraitRef) ||
+      (portraitHouse !== undefined && entity.id === portraitHouse) ||
+      (insetRefs?.includes(entity.id) ?? false);
+    const known = isPortrait ? undefined : memo?.get(entity);
+    if (known !== undefined) {
+      collected.add(entity.id);
+      if (viewport !== undefined && !isVisible(viewport, known.screen.x, known.screen.y)) return;
+      if (fogVisible !== undefined && !fogVisible(known.tileX, known.tileY)) return;
+      known.item ??= assembleItem(
+        build,
+        entity,
+        known.kind,
+        known.tileX,
+        known.tileY,
+        known.screen,
+        STANDING_POSE,
+      );
+      items.push(known.item);
+      return;
+    }
     const components = entity.components;
     const kind = classify(components);
     if (kind === null) return;
@@ -154,10 +183,6 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: Sp
       kind === 'settler' && keepAboardRiders === true ? aboardVehicleOf(snapshot, components) : null;
     const pos = readPosition(components) ?? (aboard === null ? null : readPosition(aboard.components));
     if (pos === null) return;
-    const isPortrait =
-      (portraitRef !== undefined && entity.id === portraitRef) ||
-      (portraitHouse !== undefined && entity.id === portraitHouse) ||
-      (insetRefs?.includes(entity.id) ?? false);
     collected.add(entity.id);
     // An indoor settler stays live and pooled but draws nothing, unless kept or forced here - or unless
     // it is performing a craft the content choreographs, which the house then shows it doing. The portrait
@@ -172,6 +197,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: Sp
     const tileX = craft?.tileX ?? drawn?.x ?? pos.x / ONE;
     const tileY = craft?.tileY ?? drawn?.y ?? pos.y / ONE;
     const screen = tileToScreen(tileX, tileY);
+    const record = isPortrait ? undefined : memo?.remember(entity, kind, tileX, tileY, screen);
     // Culls on the drawn anchor; the caller pre-inflates the box to cover a tall sprite's extent, so a
     // building straddling the edge still draws.
     const offscreen = viewport !== undefined && !isVisible(viewport, screen.x, screen.y);
@@ -193,6 +219,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: Sp
           ? vehiclePose(components)
           : STANDING_POSE);
     const item = assembleItem(build, entity, kind, tileX, tileY, screen, pose);
+    if (record !== undefined) record.item = item;
     // Being choreographed excuses only the indoor hiding: the portrait frames the worker at his craft
     // instead of soloing a hidden sprite, but an offscreen or fogged subject still draws for it alone.
     if (isPortrait && (offscreen || fogged || (indoorSettler && inHouse === undefined)))
