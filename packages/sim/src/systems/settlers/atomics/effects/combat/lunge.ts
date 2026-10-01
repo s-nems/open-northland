@@ -27,8 +27,8 @@ const LUNGE_STEPS: Readonly<Record<WalkDirection, readonly HexDirection[]>> = {
 
 /**
  * One forward event of an animal attack clip. Original behavior: the creature moves one map point along
- * its facing when that point is walkable, whoever stands on it. Walkable here also excludes the dynamic
- * blocks (buildings, resources, landscape objects, vehicles).
+ * its facing when that point is walkable, whoever or whatever vehicle stands on it. Walkable here also
+ * excludes the dynamic blocks (buildings, resources, landscape objects).
  */
 export function lungeForward(world: World, ctx: SystemContext, e: Entity, direction: WalkDirection): void {
   const terrain = ctx.terrain;
