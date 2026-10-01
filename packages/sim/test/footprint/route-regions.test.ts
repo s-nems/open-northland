@@ -232,7 +232,9 @@ describe('routeRegions', () => {
 });
 
 describe('routeRegions under changing blockers', () => {
-  it('answers like a cold flood after every random wall build and teardown', { timeout: RANDOM_TEST_TIMEOUT_MS }, () => {
+  it('answers like a cold flood after every random wall build and teardown', {
+    timeout: RANDOM_TEST_TIMEOUT_MS,
+  }, () => {
     const sim = mappedSim(grassMap(RANDOM_MAP_COLS, RANDOM_MAP_ROWS));
     const terrain = terrainOf(sim);
     const ctx = ctxOf(sim);
