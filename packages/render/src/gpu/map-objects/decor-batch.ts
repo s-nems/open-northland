@@ -161,21 +161,27 @@ export interface AnimatedDecorBatch {
   readonly objects: (MapObjectSprite | null)[];
   readonly buffers: QuadBuffers;
   readonly geometry: MeshGeometry;
+  /** The pose each quad last drew, `undefined` for a collapsed one; the build writes the tick-0 pose. */
+  readonly written: (AtlasFrame | undefined)[];
 }
 
-/** Rewrite quad `q` of an animated batch for `tick`; a pose without a frame collapses the quad. */
+/** Rewrite quad `q` of an animated batch for `tick`; a pose without a frame collapses the quad. False
+ *  when the quad already shows that pose, which leaves its buffers untouched. */
 export function writeAnimatedQuad(
   batch: AnimatedDecorBatch,
   q: number,
   obj: MapObjectSprite,
   tick: number,
-): void {
+): boolean {
   const frame = laneFrameAt(obj, batch.lane, tick);
+  if (batch.written[q] === frame) return false;
+  batch.written[q] = frame;
   if (frame === undefined) {
     batch.buffers.positions.fill(0, q * FLOATS_PER_QUAD, (q + 1) * FLOATS_PER_QUAD);
-    return;
+    return true;
   }
   writeObjectQuad(batch.buffers, q, obj, frame, laneMargin(batch.lane));
+  return true;
 }
 
 /** Upload an animated batch's rewritten quads. */
@@ -256,7 +262,8 @@ function buildLane(
       container.addChild(batch.mesh);
       let animBatch: AnimatedDecorBatch | null = null;
       if (objects === group.moving) {
-        animBatch = { lane, objects, buffers: batch.buffers, geometry: batch.geometry };
+        const written = objects.map((obj) => laneFrameAt(obj, lane, 0));
+        animBatch = { lane, objects, buffers: batch.buffers, geometry: batch.geometry, written };
         animated.push(animBatch);
       }
       for (const [q, obj] of objects.entries()) {

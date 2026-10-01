@@ -282,17 +282,17 @@ export class MapObjectLayer {
       if (!visible || chunk.animated.length === 0 || chunk.lastWrittenTick === tick) continue;
       chunk.lastWrittenTick = tick;
       for (const batch of chunk.animated) {
+        let rewritten = false;
         for (let q = 0; q < batch.objects.length; q++) {
           const obj = batch.objects[q];
           if (obj === null || obj === undefined) continue; // removed - its quad stays zeroed
-          // The loop rewrites every on-screen animated quad each tick anyway, so a frozen quad just
-          // re-writes its fixed-clock frame and needs no extra state.
+          // A frozen quad asks for its fixed-clock frame each tick, which it already shows.
           const cell = screenToCell(obj.x, obj.y);
           const watched =
             fogStateOfCell === undefined || fogStateOfCell(cell.col, cell.row) === FOG_STATE.VISIBLE;
-          writeAnimatedQuad(batch, q, obj, watched ? tick : 0);
+          if (writeAnimatedQuad(batch, q, obj, watched ? tick : 0)) rewritten = true;
         }
-        uploadAnimatedBatch(batch);
+        if (rewritten) uploadAnimatedBatch(batch);
       }
     }
     this.tall.update(vp, tick, fogStateOfCell, motionTime, this.environmentMotion, wind);

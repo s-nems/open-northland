@@ -1,6 +1,6 @@
 import { FOG_STATE } from '@open-northland/sim';
-import { Container, Texture } from 'pixi.js';
-import { describe, expect, it } from 'vitest';
+import { Container, type Geometry, Texture } from 'pixi.js';
+import { describe, expect, it, vi } from 'vitest';
 import { FOG_GHOST_TINT } from '../../src/data/fog/index.js';
 import { MapObjectLayer, type MapObjectSprite } from '../../src/gpu/map-objects/index.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
@@ -107,5 +107,21 @@ describe('MapObjectLayer fog gate (tall objects)', () => {
     // Re-watched, the sway resumes on the live clock.
     layer.update(WIDE, 5, () => FOG_STATE.VISIBLE);
     expect([...decorUVs(layer)]).not.toEqual(frame0UVs);
+  });
+
+  it('uploads an animated decor batch only on the ticks a quad changes pose', () => {
+    const layer = new MapObjectLayer(new Container(), new TextureCache());
+    layer.set([wavingBush()]);
+    layer.update(WIDE, 0, () => FOG_STATE.VISIBLE);
+    const mesh = layer.decorContainer.children[0]?.children[0] as { geometry: Geometry } | undefined;
+    if (mesh === undefined) throw new Error('expected one decor batch mesh');
+    const upload = vi.spyOn(mesh.geometry.getBuffer('aUV'), 'update');
+
+    // Frozen on explored ground, the quad keeps its fixed-clock pose across ticks.
+    layer.update(WIDE, 1, () => FOG_STATE.EXPLORED);
+    layer.update(WIDE, 2, () => FOG_STATE.EXPLORED);
+    expect(upload).not.toHaveBeenCalled();
+    layer.update(WIDE, 3, () => FOG_STATE.VISIBLE);
+    expect(upload).toHaveBeenCalledTimes(1);
   });
 });
