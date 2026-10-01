@@ -3678,26 +3678,69 @@ body.on-drag-scroll * {
 }
 
 /* ---------- group panel: kind tabs, the roster of live wells, gear lines ---------- */
-/* One tab per kind in the group, the whole group first; the lit tab scopes everything under it. */
+/* One tab per kind in the group, the whole group first, all on one line over a rule. A tab names its
+   kind while every name fits; otherwise each shows the kind's icon and count, the name in its tooltip
+   and over the roster, and a line still too long scrolls sideways. */
 .on-hud .on-scopes {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin: 2px 0 2px;
+  gap: 2px;
+  margin: 2px 0 4px;
+  padding: 0 2px;
+  border-bottom: 1px solid var(--bronze-lo);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
 .on-hud .on-scope {
   display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-  height: 22px;
-  padding: 3px 9px 0;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 1px 6px 0;
   border: 1px solid var(--wood-lo);
-  border-radius: 11px;
+  border-bottom: 0;
+  border-radius: 5px 5px 0 0;
   background: linear-gradient(var(--wood-hi), var(--wood-lo));
-  box-shadow: inset 0 1px #fff2;
   color: #e6d9bd;
-  font: 600 11.5px / 1.2 var(--font-body);
+  font: 600 10.5px / 1 var(--font-body);
   white-space: nowrap;
+}
+.on-hud .on-scope__icon,
+.on-hud .on-scope .on-good {
+  display: none;
+  flex: none;
+}
+.on-hud .on-scopes--icons {
+  gap: 1px;
+}
+/* Icon tabs share the line: each gives up its side room before the line has to scroll. */
+.on-hud .on-scopes--icons .on-scope {
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 1px 2px 0;
+}
+.on-hud .on-scopes--icons .on-scope__label {
+  display: none;
+}
+.on-hud .on-scopes--icons .on-scope__icon {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+}
+.on-hud .on-scopes--icons .on-scope .on-good {
+  display: grid;
+}
+.on-hud .on-scope__glyph {
+  width: 14px;
+  height: 14px;
+}
+.on-hud .on-scope__glyph--child {
+  width: 11px;
+  height: 11px;
 }
 .on-hud .on-scope__count {
   font-weight: 500;
@@ -3710,39 +3753,37 @@ body.on-drag-scroll * {
   color: #fff4d8;
 }
 .on-hud .on-scope[aria-selected="true"] {
+  border-color: var(--bronze-lo);
   background: linear-gradient(#e8c479, #b58a3f);
   color: var(--ink);
-  box-shadow: inset 0 1px 3px #0006;
 }
 .on-hud .on-scope[aria-selected="true"] .on-scope__count {
   opacity: 0.85;
 }
-/* Eight 32 x 46 wells to a row, a vehicle across two; past the row cap the grid scrolls in place. */
+/* Eight 32 x 46 wells to a row, a vehicle across two; past the row cap (`--roster-rows`, set from TS to
+   what the plane leaves) the grid scrolls in place. A big list turns compact: ten 24 x 34 wells, which
+   leave room for the scrollbar. */
 .on-hud .on-roster {
   --roster-rows: 4;
+  --roster-row: 46px;
   --roster-health: #9fcf72;
   --roster-hunger: #74aee6;
   /* The wells' offsets measure against the grid, which tells the painter which are in view. */
   position: relative;
   display: grid;
   grid-template-columns: repeat(8, 32px);
-  grid-auto-rows: 46px;
+  grid-auto-rows: var(--roster-row);
   justify-content: space-between;
   gap: 3px;
-  max-height: calc(var(--roster-rows) * 46px + (var(--roster-rows) - 1) * 3px);
+  max-height: calc(var(--roster-rows) * var(--roster-row) + (var(--roster-rows) - 1) * 3px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-color: var(--bronze-lo) transparent;
   scrollbar-width: thin;
 }
-.on-hud .on-roster--rows3 {
-  --roster-rows: 3;
-}
-.on-hud .on-roster--rows2 {
-  --roster-rows: 2;
-}
-.on-hud .on-roster--rows1 {
-  --roster-rows: 1;
+.on-hud .on-roster--compact {
+  --roster-row: 34px;
+  grid-template-columns: repeat(10, 24px);
 }
 .on-hud .on-roster--more {
   mask-image: linear-gradient(#000 calc(100% - 14px), transparent);
@@ -3750,6 +3791,10 @@ body.on-drag-scroll * {
 .on-hud .on-seat-well.on-roster__well {
   width: 32px;
   height: 46px;
+}
+.on-hud .on-roster--compact .on-seat-well.on-roster__well {
+  width: 24px;
+  height: 34px;
 }
 .on-hud .on-seat-well.on-roster__well--vehicle {
   grid-column: span 2;
@@ -3768,6 +3813,14 @@ body.on-drag-scroll * {
 .on-hud .on-roster__bar--health {
   bottom: 6px;
   background: linear-gradient(90deg, var(--roster-health) var(--health, 100%), transparent 0), #0009;
+}
+.on-hud .on-roster--compact .on-roster__bar {
+  left: 2px;
+  right: 2px;
+  height: 2px;
+}
+.on-hud .on-roster--compact .on-roster__bar--health {
+  bottom: 5px;
 }
 .on-hud .on-roster__bar--hunger {
   bottom: 2px;

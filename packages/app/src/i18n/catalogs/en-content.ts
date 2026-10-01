@@ -535,6 +535,11 @@ export const enContent = {
       summary:
         'A company to box-select: archers in leather armour carrying potions, swordsmen in chain mail, wounded spearmen, builders with tools, women, civilians, two catapults and a handcart. The group panel shows the thumbnails, the kind tabs, the stats and the shared orders.',
     },
+    'group-panel-army': {
+      title: 'Group panel: army',
+      summary:
+        'A hundred and twenty soldiers in three blocks: archers, swordsmen and spearmen, some wounded. Boxed together they show compact thumbnails, since the group passes 99.',
+    },
     'equipment-effects': {
       title: 'Equipment effects',
       summary:

@@ -7,7 +7,7 @@ import {
   type UnitPanelModel,
 } from '../../details-panel/model/index.js';
 import { type FigureSlot, NO_FIGURE_SLOTS } from '../../figures/live-figures.js';
-import { setClass } from '../parts/dom.js';
+import { setStyleVar } from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
 import { createSelectionPanel, type SelectionHeadModel } from '../selection-panel.js';
 import type { GroupPanelDeps } from './actions.js';
@@ -36,8 +36,9 @@ export interface GroupPanel {
   dispose(): void;
 }
 
-/** The roster's heights, tallest first: on a short plane the grid gives up rows, never a section. */
-const ROSTER_ROWS = [4, 3, 2, 1] as const;
+/** The roster's heights, tallest first: the grid takes what the plane leaves between the summary bar and
+ *  the beam, giving up rows on a short plane; no section folds for it. */
+const ROSTER_ROWS = [7, 6, 5, 4, 3, 2, 1] as const;
 
 function groupHead(model: GroupPanelModel, ordersKey: string): SelectionHeadModel {
   const copy = messages().hud.settlerPanel;
@@ -66,6 +67,7 @@ function warmModel(): GroupPanelModel {
   const scope = (key: string, ids: readonly number[]): GroupScopeModel => ({
     key,
     label: key,
+    icon: { glyph: 'people' },
     ids,
     gear: [],
     military: {
@@ -142,7 +144,7 @@ export function createGroupPanel(deps: GroupPanelDeps): GroupPanel {
     }
   };
 
-  const tabs = createScopeTabs(onScope);
+  const tabs = createScopeTabs(onScope, deps.icons);
   const rosterTitle = createSection();
   const roster = createMemberRoster(onMember);
   const military = createGroupMilitarySection(deps, scope);
@@ -152,7 +154,7 @@ export function createGroupPanel(deps: GroupPanelDeps): GroupPanel {
   /** Fit the panel to the plane: the roster gives up rows until the panel fits. */
   const fit = (): void => {
     for (const rows of ROSTER_ROWS) {
-      for (const each of ROSTER_ROWS) setClass(roster.element, `on-roster--rows${each}`, each === rows);
+      setStyleVar(roster.element, '--roster-rows', String(rows));
       if (frame.overflow() === 0) break;
     }
     roster.invalidate();
@@ -170,7 +172,9 @@ export function createGroupPanel(deps: GroupPanelDeps): GroupPanel {
     if (current === null) return;
     const copy = messages().hud.groupPanel;
     tabs.update(model.scopes, current.key);
-    rosterTitle.update(copy.members);
+    rosterTitle.update(
+      current.key === ALL_SCOPE ? copy.members : formatMessage(copy.membersOf, { label: current.label }),
+    );
     const ids = new Set(current.ids);
     roster.update(current.key === ALL_SCOPE ? model.members : model.members.filter((m) => ids.has(m.id)));
     military.update(current, model.orders);

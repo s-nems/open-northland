@@ -53,6 +53,7 @@ export {
   type GroupGear,
   type GroupGearItem,
   type GroupGearRow,
+  type GroupKindIcon,
   type GroupMemberModel,
   type GroupMilitaryModel,
   type GroupPanelModel,

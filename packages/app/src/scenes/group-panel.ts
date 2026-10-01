@@ -21,14 +21,20 @@ import type { SceneDefinition } from './types.js';
 
 const MAP_W = 30;
 const MAP_H = 24;
+const ARMY_MAP_W = 36;
+const ARMY_MAP_H = 34;
 const INITIAL_ZOOM = 0.9;
+const ARMY_ZOOM = 0.7;
 const RUN_TICKS = 200;
 
-/** One rank of the company: its trade, how many, the cell column it stands in from `firstRow`. */
+/** One rank: its trade, how many, and its block: the first cell column, the columns abreast (two unless
+ *  set), the first cell row (`FIRST_ROW` unless set); files stand a row apart. */
 interface Rank {
   readonly job: number;
   readonly count: number;
   readonly x: number;
+  readonly width?: number;
+  readonly y?: number;
   readonly armor?: string;
   /** Every n-th of the rank carries this bag, starting with the first. */
   readonly bag?: { readonly every: number; readonly goods: readonly string[] };
@@ -37,6 +43,8 @@ interface Rank {
 }
 
 const FIRST_ROW = 6;
+const ABREAST = 2;
+const FILE_STEP = 2;
 const RANKS: readonly Rank[] = [
   {
     job: JOB_ARCHER,
@@ -63,6 +71,32 @@ const CATAPULTS = [
   { x: 6, y: 13 },
 ] as const;
 const HANDCART = { x: 22, y: 9 } as const;
+
+/** A big army, past the roster's compact threshold: three blocks of forty. */
+const ARMY_BLOCK = 40;
+const ARMY_ABREAST = 8;
+const ARMY: readonly Rank[] = [
+  {
+    job: JOB_ARCHER,
+    count: ARMY_BLOCK,
+    x: 3,
+    width: ARMY_ABREAST,
+    y: 4,
+    armor: 'armor_leather',
+    bag: { every: 2, goods: ['potion_heal_big'] },
+    wounded: { every: 5, pct: 40 },
+  },
+  {
+    job: JOB_SOLDIER_SWORD,
+    count: ARMY_BLOCK,
+    x: 14,
+    width: ARMY_ABREAST,
+    y: 4,
+    armor: 'armor_chain',
+    wounded: { every: 7, pct: 18 },
+  },
+  { job: JOB_SOLDIER_SPEAR, count: ARMY_BLOCK, x: 25, width: ARMY_ABREAST, y: 4 },
+];
 const PERCENT = 100;
 
 const { Equipment, Health } = components;
@@ -96,24 +130,30 @@ function wound(sim: Simulation, e: Entity, rank: Rank, index: number): void {
   health.hitpoints = Math.max(1, Math.round((health.max * rank.wounded.pct) / PERCENT));
 }
 
-function build(sim: Simulation): void {
-  for (const rank of RANKS) {
+function spawnRanks(sim: Simulation, ranks: readonly Rank[]): void {
+  for (const rank of ranks) {
+    const width = rank.width ?? ABREAST;
     for (let index = 0; index < rank.count; index++) {
       const e = spawnSettlerDirect(
         sim,
         rank.job,
-        rank.x + (index % 2),
-        FIRST_ROW + Math.floor(index / 2) * 2,
+        rank.x + (index % width),
+        (rank.y ?? FIRST_ROW) + Math.floor(index / width) * FILE_STEP,
       );
       outfit(sim, e, rank, index);
       wound(sim, e, rank, index);
     }
   }
+}
+
+function build(sim: Simulation): void {
+  spawnRanks(sim, RANKS);
   for (const at of CATAPULTS) spawnVehicleDirect(sim, VEHICLE_CATAPULT, at.x, at.y);
   spawnVehicleDirect(sim, VEHICLE_HANDCART, HANDCART.x, HANDCART.y);
 }
 
 const SETTLERS = RANKS.reduce((sum, rank) => sum + rank.count, 0);
+const ARMY_SETTLERS = ARMY.reduce((sum, rank) => sum + rank.count, 0);
 
 export const groupPanelScene: SceneDefinition = {
   id: 'group-panel',
@@ -137,6 +177,22 @@ export const groupPanelScene: SceneDefinition = {
           const health = sim.world.get(e, Health);
           return health.hitpoints < health.max;
         }),
+    },
+  ],
+};
+
+export const groupPanelArmyScene: SceneDefinition = {
+  id: 'group-panel-army',
+  seed: 23,
+  terrain: grassTerrain(ARMY_MAP_W, ARMY_MAP_H),
+  needs: true,
+  initialZoom: ARMY_ZOOM,
+  build: (sim) => spawnRanks(sim, ARMY),
+  runTicks: RUN_TICKS,
+  checks: [
+    {
+      label: 'the whole army stands, more than the roster shows at full size',
+      predicate: (sim) => [...sim.world.query(components.Settler)].length === ARMY_SETTLERS,
     },
   ],
 };

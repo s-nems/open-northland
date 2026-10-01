@@ -42,6 +42,23 @@ type GroupCopy = ReturnType<typeof messages>['hud']['groupPanel'];
 export type GroupStance = 'attack' | 'defend' | 'ignore';
 export type GroupGear = 'weapon' | 'armor' | 'tool' | 'misc';
 
+/** A kind's tab icon while the names do not fit: a soldier class shows its weapon, the rest a glyph. */
+export type GroupKindIcon =
+  | { readonly good: string }
+  | {
+      readonly glyph:
+        | 'people'
+        | 'banner'
+        | 'swords'
+        | 'tool'
+        | 'man'
+        | 'woman'
+        | 'child'
+        | 'siege'
+        | 'ship'
+        | 'cart';
+    };
+
 /** One selected settler or vehicle as its well shows it. */
 export interface GroupMemberModel {
   readonly id: number;
@@ -92,6 +109,7 @@ export interface GroupSiegeModel {
 export interface GroupScopeModel {
   readonly key: string;
   readonly label: string;
+  readonly icon: GroupKindIcon;
   readonly ids: readonly number[];
   readonly gear: readonly GroupGearRow[];
   readonly military: GroupMilitaryModel | null;
@@ -134,6 +152,14 @@ const SOLDIER_CLASS: ReadonlyMap<number, keyof GroupCopy['soldierClasses']> = ne
   [JOB_ARCHER_LONG, 'soldier_bow_long'],
 ]);
 
+const ROLE_GLYPH: Readonly<Record<Exclude<SettlerRole, 'soldier'>, GroupKindIcon>> = {
+  hero: { glyph: 'banner' },
+  worker: { glyph: 'tool' },
+  civilian: { glyph: 'man' },
+  woman: { glyph: 'woman' },
+  child: { glyph: 'child' },
+};
+
 /** Tab order: who fights first, then the machines, then the village. */
 const KIND_RANK: Readonly<Record<SettlerRole | 'siege' | 'ship' | 'cart', number>> = {
   hero: 0,
@@ -165,6 +191,7 @@ interface MemberFacts {
   readonly rank: number;
   readonly order: number;
   readonly plural: string;
+  readonly icon: GroupKindIcon;
   readonly model: GroupMemberModel;
   readonly fighter: boolean;
   readonly worker: boolean;
@@ -246,12 +273,20 @@ function settlerFacts(
     return goodType === null ? [] : [{ goodType, used: num(slot?.degreeOfUse) }];
   });
   const mode = stanceModeOf(ent);
+  const weaponGood = fighter ? (wornWeapon ?? (weapon?.goodType || null)) : null;
+  const weaponId = weaponGood === null ? undefined : goodDef(ctx, weaponGood)?.id;
   return {
     id: ent.id,
     kind,
     rank: KIND_RANK[role],
     order: jobType ?? 0,
     plural,
+    icon:
+      role !== 'soldier'
+        ? ROLE_GLYPH[role]
+        : weaponId === undefined
+          ? { glyph: 'swords' }
+          : { good: weaponId },
     model: {
       id: ent.id,
       look: 'settler',
@@ -264,7 +299,7 @@ function settlerFacts(
     fighter,
     worker: role === 'worker' || role === 'civilian',
     owned,
-    weapon: fighter ? (wornWeapon ?? (weapon?.goodType || null)) : null,
+    weapon: weaponGood,
     armor: fighter ? armorGood(ctx, ent, slotGood(eq?.armor)) : null,
     tool: slotGood(eq?.tool),
     misc,
@@ -293,6 +328,7 @@ function vehicleFacts(ctx: UnitPanelModelContext, ent: SnapshotEntity, owned: bo
     rank: KIND_RANK[vehicleClass],
     order: typeId ?? 0,
     plural,
+    icon: { glyph: vehicleClass },
     model: {
       id: ent.id,
       look: 'vehicle',
@@ -412,6 +448,7 @@ function scopeOf(
   return {
     key,
     label,
+    icon: key === ALL_SCOPE ? { glyph: 'people' } : (facts[0]?.icon ?? { glyph: 'people' }),
     ids: facts.map((f) => f.id),
     gear: gearRows(ctx, facts),
     military: militaryOf(facts),

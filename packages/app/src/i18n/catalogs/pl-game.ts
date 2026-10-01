@@ -536,11 +536,14 @@ export const plGame = {
       tabTooltip:
         '{label} · statystyki i rozkazy tylko dla nich. Dwuklik: zaznacz tylko ich. Shift+klik: usuń z grupy',
       members: 'Zaznaczeni',
+      membersOf: 'Zaznaczeni · {label}',
       memberTooltip: '{name} · {type}',
       memberMeter: '{label} {pct}%',
       memberHint:
         'Klik: tylko on · Dwuklik: pokaż na mapie\nShift+klik: usuń z grupy · Ctrl+klik: cały ten rodzaj',
       overview: 'Przegląd',
+      overviewShow: 'pokaż',
+      overviewHide: 'schowaj',
       weapons: 'Broń',
       armor: 'Zbroja',
       equipment: 'Ekwipunek',

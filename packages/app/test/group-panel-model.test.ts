@@ -58,6 +58,13 @@ describe('group panel model', () => {
     );
   });
 
+  it('gives a soldier class its weapon for a tab icon and the rest a glyph', () => {
+    expect(scope(model, 'Łucznicy').icon).toEqual({ good: 'bow_short' });
+    expect(scope(model, 'Katapulty').icon).toEqual({ glyph: 'siege' });
+    expect(scope(model, 'Kobiety').icon).toEqual({ glyph: 'woman' });
+    expect(model.scopes[0]?.icon).toEqual({ glyph: 'people' });
+  });
+
   it('counts the gear a scope wears and carries, with the sips its draughts hold', () => {
     const archers = scope(model, 'Łucznicy');
     const gear = Object.fromEntries(archers.gear.map((row) => [row.gear, row]));

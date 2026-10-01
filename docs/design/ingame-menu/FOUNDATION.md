@@ -542,15 +542,19 @@ selected; stats and shared orders follow.
   kind's name and count, "Łucznicy · 12"), no rename, no browse. The gold medallion opens the action
   ring for the group while any member is a settler the viewer orders; a vehicle-only group blanks
   it. The close clears the selection.
-- Kind tabs: "Wszyscy" then one pill per kind, fighters first (heroes, each soldier class by its
-  weapon, siege engines, ships, carts), then the village (each trade, civilians, women, children),
-  each with its count. The lit tab scopes everything under it: the wells, the orders and the gear.
+- Kind tabs: "Wszyscy" then one small tab per kind on a single line over a rule, fighters first
+  (heroes, each soldier class by its weapon, siege engines, ships, carts), then the village (each
+  trade, civilians, women, children), each with its count. While every name fits the line a tab shows
+  it; otherwise every tab shows the kind's icon (a soldier class its weapon, the rest a glyph) and
+  count, the name in its tooltip and in the roster title ("Zaznaczeni · Łucznicy"); a line still too
+  long scrolls sideways. The lit tab scopes everything under it: the wells, the orders and the gear.
   A double click on a kind's tab selects only that kind, Shift+click drops it from the group. A
   group of one kind shows no tabs.
 - Zaznaczeni, the panel's main field: the scope's members as 32 × 46 px live wells, eight to a row,
-  a vehicle across two. Two hairlines run along each well's floor, health in green over hunger in
-  blue; a vehicle has only the health. Four rows show, then the grid scrolls in place and fades at
-  the bottom. Only the wells in view are painted. A click selects that member alone (after a short
+  a vehicle across two; past 99 members on the list they turn compact, 24 × 34 px and ten to a row.
+  Two hairlines run along each well's floor, health in green over hunger in blue; a vehicle has only
+  the health. Up to seven rows show, as many as fit between the summary bar and the beam, then the
+  grid scrolls in place and fades at the bottom. Only the wells in view are painted. A click selects that member alone (after a short
   wait, so a double click is not taken for one), a double click brings it into view and keeps the
   group, Shift+click drops it, Ctrl+click selects every member of its kind. The tooltip names the
   member and its kind, its health and hunger, and the gestures. The cursor on a well lights that
@@ -559,10 +563,11 @@ selected; stats and shared orders follow.
   value and unlit while they differ (the label's tooltip gives the split, "Atak 20 · Obrona 6"); each
   option's tooltip says how many it reaches and an option nobody takes is faded. Siege engines get
   their own Katapulty strip.
-- Przegląd, at the foot in a smaller type: Broń and Zbroja for the fighters, Narzędzia for the
+- Przegląd, at the foot in a smaller type, folded on a new map; opening or folding it holds for every
+  group until the map ends: Broń and Zbroja for the fighters, Narzędzia for the
   village's workers, Ekwipunek for everyone, each a row of 16 px good icons with how many hold them
   (a draught also gives the sips left in its tooltip) and "bez: N" for those holding nothing there.
-- Fit: on a short plane the grid gives up rows (four, three, two, one); no section folds.
+- Fit: on a short plane the grid gives up rows, down to one; no section folds for it.
 - First paint at map start: a made-up group lights every section once.
 
 ### Building panel

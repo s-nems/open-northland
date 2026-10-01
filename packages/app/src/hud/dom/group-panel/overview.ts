@@ -1,7 +1,7 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { GroupGear, GroupGearRow, GroupScopeModel } from '../../details-panel/model/index.js';
 import { goodIconMarkup } from '../good-art.js';
-import { element, setHidden, setTip, write } from '../parts/dom.js';
+import { button, element, setAttribute, setHidden, setTip, write } from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
 import type { GroupPanelDeps } from './actions.js';
 
@@ -62,17 +62,30 @@ function createGearLine(deps: GroupPanelDeps): { element: HTMLElement; update(ro
   };
 }
 
-/** Przegląd, at the panel's foot: what the scope wears and carries, one compact line per slot. */
+/** Przegląd, at the panel's foot: what the scope wears and carries, one compact line per slot. Folded
+ *  under its title on a new map; the player's open or fold press holds for every group until the next. */
 export interface OverviewSection {
   readonly element: HTMLElement;
   update(scope: GroupScopeModel): void;
 }
 
 export function createOverviewSection(deps: GroupPanelDeps): OverviewSection {
-  const root = element('div', '');
-  const title = createSection();
+  const toggle = button('on-more');
+  const title = createSection(toggle);
   const gear = element('div', 'on-gear-list');
+  const root = element('div', '');
   root.append(title.element, gear);
+  let open = false;
+  const paintToggle = (): void => {
+    const copy = messages().hud.groupPanel;
+    write(toggle, open ? copy.overviewHide : copy.overviewShow);
+    setAttribute(toggle, 'aria-expanded', String(open));
+    setHidden(gear, !open);
+  };
+  toggle.addEventListener('click', () => {
+    open = !open;
+    paintToggle();
+  });
   let gearKey = '';
   let lines: ReturnType<typeof createGearLine>[] = [];
   return {
@@ -80,6 +93,7 @@ export function createOverviewSection(deps: GroupPanelDeps): OverviewSection {
     update(model): void {
       setHidden(root, model.gear.length === 0);
       title.update(messages().hud.groupPanel.overview);
+      paintToggle();
       const shape = model.gear.map((row) => row.gear).join(',');
       if (shape !== gearKey) {
         gearKey = shape;

@@ -554,11 +554,14 @@ export const enGame = {
       tabTooltip:
         '{label} · stats and orders for them only. Double-click: select only them. Shift+click: drop from the group',
       members: 'Selected',
+      membersOf: 'Selected · {label}',
       memberTooltip: '{name} · {type}',
       memberMeter: '{label} {pct}%',
       memberHint:
         'Click: only this one · Double-click: show on the map\nShift+click: drop from the group · Ctrl+click: all of this kind',
       overview: 'Overview',
+      overviewShow: 'show',
+      overviewHide: 'hide',
       weapons: 'Weapons',
       armor: 'Armour',
       equipment: 'Equipment',

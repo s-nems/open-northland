@@ -15,6 +15,10 @@ import {
 /** A roster well (foundation.css `.on-roster__well`, 32 x 46 design px) shows its person a little larger
  *  than a crew seat, feet above the two bars on its floor; a vehicle fits itself to its double-width well. */
 const ROSTER_FIT: WellFigureFit = { zoom: 0.66, feetInset: 10 };
+/** A compact well (`.on-roster--compact`, 24 x 34 design px), ten to a row, for a big list. */
+const COMPACT_FIT: WellFigureFit = { zoom: 0.5, feetInset: 7 };
+/** Past this many members on the list the wells turn compact, so a big army stays a few rows tall. */
+export const ROSTER_COMPACT_ABOVE = 99;
 
 /** Ms a press waits for a second one before it selects the member alone, so a double press can bring the
  *  member into view without the panel giving way under the cursor first. Shorter than the platforms'
@@ -66,6 +70,7 @@ export function createMemberRoster(
   let stale = true;
   let pending: { readonly id: number; readonly timer: ReturnType<typeof setTimeout> } | null = null;
   let hovered: number | null = null;
+  let compact = false;
 
   const settle = (): void => {
     if (pending === null) return;
@@ -97,7 +102,7 @@ export function createMemberRoster(
     const vehicle = member.look === 'vehicle';
     const well = createFigureWell(
       `on-seat-well on-roster__well${vehicle ? ' on-roster__well--vehicle' : ''}`,
-      ROSTER_FIT,
+      compact ? COMPACT_FIT : ROSTER_FIT,
     );
     well.glyph.innerHTML = vehicle ? GLYPH.wheel : FIGURE.man;
     well.node.append(
@@ -133,6 +138,17 @@ export function createMemberRoster(
     update(members): void {
       const copy = messages().hud.groupPanel;
       const key = members.map((member) => member.id).join(',');
+      const nextCompact = members.length > ROSTER_COMPACT_ABOVE;
+      if (nextCompact !== compact) {
+        // A well's figure fit is fixed when it is made, so the other size starts from new wells.
+        compact = nextCompact;
+        setClass(root, 'on-roster--compact', compact);
+        settle();
+        hovered = null;
+        for (const entry of wells.values()) entry.well.node.remove();
+        wells.clear();
+        shownKey = '';
+      }
       order = members.map(wellOf);
       if (key !== shownKey) {
         shownKey = key;

@@ -533,6 +533,11 @@ export const plContent = {
       summary:
         'Oddział do zaznaczenia ramką: łucznicy w skórzanych zbrojach z miksturami, miecznicy w kolczugach, ranni włócznicy, budowniczowie z narzędziami, kobiety, cywile, dwie katapulty i wózek. Panel grupy pokazuje miniatury, zakładki rodzajów, statystyki i wspólne rozkazy.',
     },
+    'group-panel-army': {
+      title: 'Panel grupy: armia',
+      summary:
+        'Sto dwudziestu żołnierzy w trzech blokach: łucznicy, miecznicy i włócznicy, część rannych. Zaznaczeni ramką pokazują małe miniatury, bo grupa przekracza 99 osób.',
+    },
     'equipment-effects': {
       title: 'Efekty ekwipunku',
       summary:
