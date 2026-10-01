@@ -458,6 +458,11 @@ export const plContent = {
       summary:
         'Niedźwiedzie, jelenie i wilki pojawiają się stadami na trawie, rysowane ciałami swoich gatunków wraz z cieniami.',
     },
+    'wolf-pack': {
+      title: 'Wataha wilków',
+      summary:
+        'Wilki gonią zwiadowcę daleko od legowiska, w drodze powrotnej trafiają na mieczników i po pierwszym ciosie rzuca się na nich cała wataha.',
+    },
     creatures: {
       title: 'Potwory i drapieżniki',
       summary:

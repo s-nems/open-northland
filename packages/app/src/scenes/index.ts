@@ -69,6 +69,7 @@ import { victoryScene } from './victory.js';
 import { warehouseScene } from './warehouse.js';
 import { weaponFacingsScene } from './weapon-facings.js';
 import { wildlifeScene } from './wildlife.js';
+import { wolfPackScene } from './wolf-pack.js';
 
 export { MAP_SCENES, mapSceneParams } from './map-scenes.js';
 export { createSceneSim, createSceneWorld, enableSceneScript, restoreSceneSim } from './runtime.js';
@@ -108,6 +109,7 @@ export const SCENES: readonly SceneDefinition[] = [
   childrenScene,
   gossipScene,
   wildlifeScene,
+  wolfPackScene,
   creaturesScene,
   creatureFormsScene,
   movementContinuityScene,

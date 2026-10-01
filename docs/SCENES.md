@@ -71,6 +71,11 @@ lionesses, brown bears and polar bears nearby. Watch the monsters' repeated stri
 walk and run cycles, and the animals turning before attacking. Order a soldier to attack a brown bear
 to check its retaliation. Reload the scene to repeat the encounter with the same seed.
 
+`?scene=wolf-pack` lets a wolf pack run a scout down to the end of its leash, then sends three
+swordsmen on an attack-move into the pack as it walks home. Watch the first blow turn every wolf,
+the leader included, on the swordsmen while they are still far from the pack's stay point; no wolf
+walks on past them.
+
 `?scene=creature-forms` lines up the five animal-body looks authored for the weresnake tribe: sheep,
 chicken, lion, wolf and bear. The lion, wolf and bear forms have soldiers nearby for observing their
 combat motions; the sheep and chicken forms remain clear for inspecting their idle and walk poses.

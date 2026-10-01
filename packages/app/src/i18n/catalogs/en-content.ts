@@ -460,6 +460,11 @@ export const enContent = {
       summary:
         'Bears, stags and wolves spawn as herds on open grass, drawn with their species bodies and shadows.',
     },
+    'wolf-pack': {
+      title: 'Wolf pack',
+      summary:
+        'Wolves chase a scout away from home, then meet swordsmen on the way back and the whole pack fights back from the first blow.',
+    },
     creatures: {
       title: 'Monsters and predators',
       summary:
