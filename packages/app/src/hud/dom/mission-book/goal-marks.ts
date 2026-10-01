@@ -107,6 +107,34 @@ export function openGoalCount(goals: readonly MissionGoal[]): number {
   return count;
 }
 
+/**
+ * How long each marked row has stood on the open slip. A row that leaves the slip, or a slip that
+ * folds or hides, restarts its clock.
+ */
+export class SlipReadClock {
+  private readonly since = new Map<string, number>();
+
+  constructor(private readonly readMs: number) {}
+
+  /** The marked rows the slip now shows, at `now` ms. */
+  shown(keys: readonly string[], now: number): void {
+    for (const key of this.since.keys()) if (!keys.includes(key)) this.since.delete(key);
+    for (const key of keys) if (!this.since.has(key)) this.since.set(key, now);
+  }
+
+  /** The rows that have stood `readMs`; they leave the clock. */
+  due(now: number): readonly string[] {
+    const due: string[] = [];
+    for (const [key, since] of this.since) if (now - since >= this.readMs) due.push(key);
+    for (const key of due) this.since.delete(key);
+    return due;
+  }
+
+  clear(): void {
+    this.since.clear();
+  }
+}
+
 export interface SlipRow {
   readonly goal: MissionGoal;
   readonly mark: GoalMark | null;

@@ -3,11 +3,14 @@ import type { MissionGoal } from '../../../game/mission-brief.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { GOAL_SLIP, TOP_BAR_HEIGHT } from '../../regions.js';
 import { escapeHtml, setHidden } from '../parts/dom.js';
-import { type GoalMarks, openGoalCount, slipRows } from './goal-marks.js';
+import { type GoalMarks, openGoalCount, SlipReadClock, type SlipRow, slipRows } from './goal-marks.js';
 import { goalMarkMarkup, goalTextMarkup } from './goal-markup.js';
 
 /** Open goals the slip lists before it points to the book. */
 const SLIP_OPEN_ROWS = 4;
+/** How long the open slip shows a done or new goal before it counts as read: the done goal leaves,
+ *  the new one loses its tag. Real time, so a paused game reads it too. */
+const SLIP_READ_MS = 10_000;
 /** Room it keeps under the script's info lines when they stand under the bar. */
 const INFO_LINES_GAP = 6;
 
@@ -24,7 +27,8 @@ export interface GoalSlipDeps {
 
 /**
  * The goal slip on the map: a vellum list of the open goals under the top bar that folds up into
- * its band tab. A goal change never unfolds it; unfolding acknowledges the rows it shows.
+ * its band tab. A goal change never unfolds it; the open slip acknowledges a row it has shown for
+ * `SLIP_READ_MS`.
  */
 export interface GoalSlip {
   /** Show the goals as they stand; nothing changes the markup unless the list, a mark or the fold did. */
@@ -47,6 +51,11 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
   deps.plane.append(dock);
   let drop = Number.NaN;
   let folded = false;
+  /** The sheet unrolls once per unfold, not on every repaint. */
+  let unroll = false;
+  /** Done goals the last paint showed; only a goal newly shown done is stamped. */
+  let stamped = new Set<string>();
+  const clock = new SlipReadClock(SLIP_READ_MS);
   let shownKey = '';
   /** What the slip was last updated with, so an unchanged frame reads nothing. */
   let seen: {
@@ -57,7 +66,12 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
     bookKey: string | null;
   } | null = null;
 
-  const markup = (goals: readonly MissionGoal[], marks: GoalMarks): string => {
+  const markup = (
+    goals: readonly MissionGoal[],
+    marks: GoalMarks,
+    rows: readonly SlipRow[],
+    more: number,
+  ): string => {
     const open = openGoalCount(goals);
     const tab = `<button type="button" class="on-slip__tab${folded ? '' : ' on-slip__tab--open'}" data-fold aria-expanded="${!folded}" aria-label="${escapeHtml(folded ? copy.slipOpen : copy.slipFold)}">
       <span class="on-slip__label">${escapeHtml(copy.slipTab)}</span><span class="on-tab__count">${open}</span>${
@@ -66,12 +80,12 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
           : ''
       }${FOLD}</button>`;
     if (folded) return tab;
-    const { rows, more } = slipRows(goals, marks, SLIP_OPEN_ROWS);
     const items = rows
       .map(({ goal, mark }) => {
         const tag =
           mark === null ? '' : `<em>${escapeHtml(mark === 'new' ? copy.goalNew : copy.goalDone)}</em>`;
-        return `<li class="on-slip__row${mark === null ? '' : ` on-slip__row--${mark}`}">${goalMarkMarkup(goal)}<span>${tag}${goalTextMarkup(goal)}</span></li>`;
+        const stamp = mark === 'done' && !stamped.has(goal.key) ? ' on-slip__row--stamp' : '';
+        return `<li class="on-slip__row${mark === null ? '' : ` on-slip__row--${mark}`}${stamp}">${goalMarkMarkup(goal)}<span>${tag}${goalTextMarkup(goal)}</span></li>`;
       })
       .join('');
     const empty =
@@ -80,7 +94,7 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
         : '';
     const key = deps.bookKey();
     const moreText = more > 0 ? escapeHtml(formatMessage(copy.slipMore, { count: more })) : '';
-    return `<aside class="on-slip__sheet" aria-label="${escapeHtml(copy.slipLabel)}">
+    return `<aside class="on-slip__sheet${unroll ? ' on-slip__sheet--unroll' : ''}" aria-label="${escapeHtml(copy.slipLabel)}">
         <ul class="on-slip__list">${items}${empty}</ul>
         <button type="button" class="on-slip__book" data-book><span>${moreText}</span><span>${escapeHtml(copy.openBook)}${
           key === null ? '' : ` <kbd class="on-key">${escapeHtml(key)}</kbd>`
@@ -96,15 +110,28 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
   const paint = (goals: readonly MissionGoal[], marks: GoalMarks, bookOpen: boolean): void => {
     const hidden = bookOpen || goals.length === 0;
     setHidden(dock, hidden);
-    if (hidden) return;
+    if (hidden) {
+      clock.clear();
+      stamped = new Set();
+      return;
+    }
     const key = keyOf(goals, marks);
     if (key === shownKey) return;
     shownKey = key;
-    dock.innerHTML = markup(goals, marks);
+    const { rows, more } = folded ? { rows: [], more: 0 } : slipRows(goals, marks, SLIP_OPEN_ROWS);
+    dock.innerHTML = markup(goals, marks, rows, more);
+    unroll = false;
+    stamped = new Set(rows.filter(({ mark }) => mark === 'done').map(({ goal }) => goal.key));
+    clock.shown(
+      rows.filter(({ mark }) => mark !== null).map(({ goal }) => goal.key),
+      performance.now(),
+    );
   };
 
   const update = (goals: readonly MissionGoal[], marks: GoalMarks, bookOpen: boolean): void => {
     lastMarks = marks;
+    const read = clock.due(performance.now());
+    if (read.length > 0) marks.read(read);
     // The key is rebound live from the settings, without a remount.
     const bookKey = deps.bookKey();
     if (
@@ -131,14 +158,8 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
     if (target.closest('[data-fold]') !== null) {
       deps.cue('confirm');
       folded = !folded;
+      unroll = !folded;
       repaint();
-      if (!folded && seen !== null && lastMarks !== null) {
-        const { rows } = slipRows(seen.goals, lastMarks, SLIP_OPEN_ROWS);
-        lastMarks.read(rows.map(({ goal }) => goal.key));
-        // Keep the rows just painted until the list changes, including newly completed goals.
-        seen.version = lastMarks.version;
-        shownKey = keyOf(seen.goals, lastMarks);
-      }
     } else if (target.closest('[data-book]') !== null) {
       deps.cue('confirm');
       deps.onOpenBook();

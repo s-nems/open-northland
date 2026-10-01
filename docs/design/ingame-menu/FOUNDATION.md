@@ -647,9 +647,10 @@ size and shrinks whole on a screen that cannot hold it.
   stand there: a leaf of the book's vellum (`vellum.webp`) under a strip of the cover's carved band
   (`band.webp`), with bronze fittings at its lower corners. It folds up into its band tab "Cele" with
   the open count. It lists the goals just done,
-  then the open ones with the new first, up to four, and "Otwórz księgę" with the book's key. A goal
-  change never unfolds it: the folded tab and the beam's Misja entry carry a wax seal until the goal
-  page shows the change. The slip hides while the book is open and with the HUD.
+  then the open ones with the new first, up to four, and "Otwórz księgę" with the book's key. The open
+  slip shows a change for ten seconds of real time: then a done goal leaves and a new one loses its
+  tag. A goal change never unfolds it: the folded tab and the beam's Misja entry carry a wax seal until
+  the open slip or the goal page shows the change. The slip hides while the book is open and with the HUD.
 
 ## HUD shell
 

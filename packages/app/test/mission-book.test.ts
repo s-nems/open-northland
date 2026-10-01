@@ -6,7 +6,13 @@ import type {
 } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import type { MissionGoal } from '../src/game/mission-brief.js';
-import { GoalMarks, goalLists, openGoalCount, slipRows } from '../src/hud/dom/mission-book/goal-marks.js';
+import {
+  GoalMarks,
+  goalLists,
+  openGoalCount,
+  SlipReadClock,
+  slipRows,
+} from '../src/hud/dom/mission-book/goal-marks.js';
 import { flowMarkup, roman } from '../src/hud/dom/mission-book/markup.js';
 import { displayTitle, openingWords, pageSegments } from '../src/hud/dom/mission-book/page-segments.js';
 import { columnCount, spreadCount, turnPage } from '../src/hud/dom/mission-book/paging.js';
@@ -202,6 +208,33 @@ describe('GoalMarks', () => {
     expect(marks.read()).toBe(true);
     expect(marks.unread).toBe(false);
     expect(marks.read()).toBe(false);
+  });
+});
+
+describe('SlipReadClock', () => {
+  const READ_MS = 1000;
+
+  it('reads a row once it has stood the read time on the slip, once', () => {
+    const clock = new SlipReadClock(READ_MS);
+    clock.shown(['0'], 0);
+    clock.shown(['0', '1'], 400);
+    expect(clock.due(999)).toEqual([]);
+    expect(clock.due(1000)).toEqual(['0']);
+    expect(clock.due(1400)).toEqual(['1']);
+    expect(clock.due(5000)).toEqual([]);
+  });
+
+  it('restarts the clock of a row that left the slip or of a slip that folded', () => {
+    const clock = new SlipReadClock(READ_MS);
+    clock.shown(['0', '1'], 0);
+    clock.shown(['1'], 600);
+    clock.shown(['0', '1'], 700);
+    expect(clock.due(1000)).toEqual(['1']);
+    clock.clear();
+    expect(clock.due(5000)).toEqual([]);
+    clock.shown(['0'], 5000);
+    expect(clock.due(5999)).toEqual([]);
+    expect(clock.due(6000)).toEqual(['0']);
   });
 });
 

@@ -4968,8 +4968,10 @@ body.on-drag-scroll * {
   box-shadow:
     0 6px 14px #000a,
     inset 0 0 0 1px #f4ead066;
-  animation: on-slip-unroll 0.25s ease-out;
   transform-origin: top;
+}
+.on-hud .on-slip__sheet--unroll {
+  animation: on-slip-unroll 0.25s ease-out;
 }
 /* Bronze corner fittings on the lower edge, as on the book's cover. */
 .on-hud .on-slip__sheet::after {
@@ -5030,7 +5032,7 @@ body.on-drag-scroll * {
   width: 11px;
   height: 11px;
 }
-.on-hud .on-slip__row--done .on-book__seal {
+.on-hud .on-slip__row--stamp .on-book__seal {
   animation: on-slip-stamp 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 0.2s both;
 }
 @keyframes on-slip-stamp {
@@ -5055,8 +5057,9 @@ body.on-drag-scroll * {
 }
 .on-hud .on-slip__row--new {
   margin: 0 -7px;
-  padding: 4px 7px;
-  background: linear-gradient(90deg, #c98a3a33, transparent);
+  padding: 4px 7px 4px 5px;
+  border-left: 2px solid #a0522d99;
+  background: #c98a3a1f;
 }
 .on-hud .on-slip .on-book__goal-text--emphasis {
   color: #7a2e1d;
@@ -5176,7 +5179,7 @@ body.on-drag-scroll * {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .on-hud :is(.on-slip__sheet, .on-book__seal, .on-action__mark) {
+  .on-hud :is(.on-slip__sheet, .on-slip__row--stamp .on-book__seal, .on-book__seal, .on-action__mark) {
     animation: none;
   }
 }
