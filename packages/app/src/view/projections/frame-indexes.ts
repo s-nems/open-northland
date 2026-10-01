@@ -10,6 +10,7 @@ import {
   needsRuleEnabled,
   staffOf,
 } from '../../game/snapshot.js';
+import { readMinimapIndexes } from '../../hud/minimap/dots.js';
 import { ownRoadSiteAt } from '../runtime/own-road-sites.js';
 import { builderSitesOf } from '../unit-controls/highlights/own-building-picks.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
@@ -26,6 +27,7 @@ export const FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   ...RENDER_FRAME_INDEX_READERS,
   { name: 'needs rule', read: (snapshot) => needsRuleEnabled(snapshot) },
   { name: 'actors', read: (snapshot) => actorsOf(snapshot) },
+  { name: 'minimap layers', read: (snapshot) => readMinimapIndexes(snapshot) },
   { name: 'construction signs', read: (snapshot) => entitiesWith(snapshot, 'UnderConstruction') },
   { name: 'settler bubbles', read: (snapshot) => computeSettlerBubbles(snapshot) },
   { name: 'position buckets', read: (snapshot) => positionedWithin(snapshot, NO_TILES) },

@@ -9,8 +9,9 @@ export const REPLOT_MIN_MS = 200;
  * true, which spends that window's slot. Keyed on snapshot identity rather than `snapshot.tick`, since a
  * same-tick world mutation hands out a new snapshot under an unchanged tick: an already-plotted snapshot
  * costs nothing however long it is held, and a plot the window refused still lands within
- * `REPLOT_MIN_MS` instead of waiting for the next tick. `viewer` is the fog's seat (null with fog off):
- * a spectator switching seats under a held snapshot sees different dots.
+ * `REPLOT_MIN_MS` instead of waiting for the next tick. `viewer` is the seat the dots are plotted for
+ * (the fog's, else the view's, null on a whole-map view): a spectator switching seats under a held
+ * snapshot sees different fog and owner scope.
  */
 export function createDotReplotGate(
   now: () => number,

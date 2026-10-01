@@ -33,7 +33,9 @@ oak and brass corners) and **Urnes** (smoked oak with carved beast corners). A l
   The third control uses a fit-corners icon and the short hint “Show all” (“Pokaż całą”).
   Show short hints on hover and keyboard focus; accessible zoom labels also include the current scale
   and zoom limits. Middle drag pans the zoomed map.
-- Put people/building filters in a compact dark-wood disclosure opening to the right of the minimap.
+- Put the marker filters in a compact dark-wood disclosure opening to the right of the minimap: one
+  switch per layer (civilians, soldiers, buildings, vehicles and ships, animals, roads, signposts and
+  flags) under a show/hide-all action, then an owner scope (all, mine, friendly, hostile). The choice persists.
   Lift it above the bottom navigation when needed. Keep fog gating and return focus on closing it.
 - Do not include a hover preview of map areas.
 - Defer terrain appearance until the actual game maps can be compared in the renderer.

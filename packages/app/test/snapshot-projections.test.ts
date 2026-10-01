@@ -5,6 +5,7 @@ import { workerRoleOf } from '../src/game/sandbox/index.js';
 import { trainingOccupancyOf } from '../src/game/snapshot.js';
 import { fixedViewerSeat, switchableViewerSeat } from '../src/game/viewer-seat.js';
 import { forEachMinimapDot } from '../src/hud/minimap/dots.js';
+import { DEFAULT_MINIMAP_FILTERS } from '../src/hud/minimap/filters.js';
 import { createFogGates, createSnapshotProjections } from '../src/view/projections/index.js';
 import { building, type Ent, settler, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
 
@@ -184,7 +185,20 @@ describe('per-tick projections - one walk of the map between them', () => {
       doorBadgesFor(snapshot, SCREEN);
       settlerBubblesFor(snapshot);
       lifeHeartsFor(snapshot, SCREEN);
-      forEachMinimapDot(snapshot, null, terrainWorldBounds(8, 8), 0.5, undefined, () => undefined);
+      forEachMinimapDot(
+        snapshot,
+        {
+          fog: null,
+          bounds: terrainWorldBounds(8, 8),
+          scale: 0.5,
+          nodeWidth: 16,
+          filters: DEFAULT_MINIMAP_FILTERS,
+          isFighterJob: () => false,
+          viewer: PLAYER,
+          stanceToward: () => 'neutral',
+        },
+        () => undefined,
+      );
     };
 
     project(); // builds each index once; a mirror then maintains them per change

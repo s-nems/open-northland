@@ -12,23 +12,31 @@ import {
 import { attachTipLayer } from '../dom/parts/tip-layer.js';
 import type { Rect } from '../geometry.js';
 import { createMinimapBacking } from './backing.js';
+import {
+  allMinimapLayersShown,
+  MINIMAP_LAYERS,
+  MINIMAP_SCOPES,
+  type MinimapFilters,
+  type MinimapLayer,
+  type MinimapScope,
+} from './filters.js';
 import type { MinimapFrame } from './frames.js';
 import type { MinimapSize } from './model.js';
 import './chrome.css';
 
-export type MinimapFilterKey = 'people' | 'buildings';
-
 export interface MinimapChromeState {
   readonly zoom: number;
   readonly size: MinimapSize;
-  readonly filters: Readonly<Record<MinimapFilterKey, boolean>>;
+  readonly filters: MinimapFilters;
 }
 
 export interface MinimapChromeCallbacks {
   readonly onZoom: (delta: number) => void;
   readonly onReset: () => void;
   readonly onSize: () => void;
-  readonly onFilter: (key: MinimapFilterKey) => void;
+  readonly onLayer: (layer: MinimapLayer) => void;
+  readonly onAllLayers: (shown: boolean) => void;
+  readonly onScope: (scope: MinimapScope) => void;
 }
 
 export interface MinimapChrome {
@@ -47,6 +55,17 @@ const ICONS = {
   plus: icon('<path d="M5 10h10M10 5v10"/>'),
   reset: icon('<path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/><rect x="7" y="7" width="6" height="6"/>'),
   filters: icon('<path d="M3 5h14M3 10h14M3 15h14"/><path d="M7 3v4M13 8v4M8 13v4"/>'),
+};
+const LAYER_ICONS: Readonly<Record<MinimapLayer, string>> = {
+  civilians: icon('<circle cx="10" cy="5" r="2.5"/><path d="M5 17v-4a5 5 0 0 1 10 0v4M8 17v-4m4 4v-4"/>'),
+  soldiers: icon('<path d="M10 2 4 4.5V9c0 4 2.6 6.6 6 9 3.4-2.4 6-5 6-9V4.5z"/><path d="M10 6v8M7 9h6"/>'),
+  buildings: icon('<path d="m2 9 8-6 8 6M5 8v9h10V8M8 17v-5h4v5"/>'),
+  vehicles: icon('<path d="M2 13h16l-3 4H5zM10 3v10"/><path d="M10 4l5 7h-5"/>'),
+  animals: icon(
+    '<circle cx="10" cy="13" r="3"/><circle cx="4.5" cy="8.5" r="1.5"/><circle cx="8" cy="5" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/>',
+  ),
+  roads: icon('<path d="M7 2 4 18M13 2l3 16M10 3v2m0 4v2m0 4v2"/>'),
+  signposts: icon('<path d="M6 18V2M6 3h9l-2 3 2 3H6"/>'),
 };
 
 /** The map hole stays transparent to pointer input; only the narrow rails and controls claim it. */
@@ -115,29 +134,68 @@ export function createMinimapChrome(
   const popover = element('section', 'on-minimap-chrome__filters');
   popover.setAttribute('aria-label', copy.filters);
   popover.hidden = true;
+  const head = element('div', 'on-minimap-chrome__filters-head');
   const legend = element('h3', 'on-minimap-chrome__legend');
+  legend.id = 'on-minimap-layers-legend';
   legend.textContent = copy.filters;
-  popover.append(legend);
-  const filterInputs = new Map<MinimapFilterKey, HTMLInputElement>();
-  for (const key of ['people', 'buildings'] as const) {
+  let allShown = true;
+  const allToggle = button('on-minimap-chrome__all');
+  allToggle.addEventListener('click', () => callbacks.onAllLayers(!allShown));
+  head.append(legend, allToggle);
+  const layerGroup = element('div', 'on-minimap-chrome__layers');
+  layerGroup.setAttribute('role', 'group');
+  layerGroup.setAttribute('aria-labelledby', legend.id);
+  const filterInputs = new Map<MinimapLayer, HTMLInputElement>();
+  for (const layer of MINIMAP_LAYERS) {
     const row = element('label', 'on-minimap-chrome__filter');
     const input = document.createElement('input');
     input.type = 'checkbox';
-    input.addEventListener('change', () => callbacks.onFilter(key));
-    const text = document.createElement('span');
-    text.textContent = copy.layers[key];
-    const symbol = element(
-      'span',
-      'on-minimap-chrome__filter-symbol',
-      key === 'people'
-        ? icon('<circle cx="10" cy="5" r="2.5"/><path d="M5 17v-4a5 5 0 0 1 10 0v4M8 17v-4m4 4v-4"/>')
-        : icon('<path d="m2 9 8-6 8 6M5 8v9h10V8M8 17v-5h4v5"/>'),
-    );
+    input.addEventListener('change', () => callbacks.onLayer(layer));
+    const text = element('span', 'on-minimap-chrome__filter-text');
+    text.textContent = copy.layers[layer];
+    const symbol = element('span', 'on-minimap-chrome__filter-symbol', LAYER_ICONS[layer]);
     symbol.setAttribute('aria-hidden', 'true');
     row.append(symbol, text, input);
-    popover.append(row);
-    filterInputs.set(key, input);
+    setTip(row, copy.layerTips[layer]);
+    layerGroup.append(row);
+    filterInputs.set(layer, input);
   }
+  const scopeLegend = element('h3', 'on-minimap-chrome__legend on-minimap-chrome__legend--scope');
+  scopeLegend.id = 'on-minimap-scope-legend';
+  scopeLegend.textContent = copy.scope;
+  setTip(scopeLegend, copy.scopeNote);
+  const scopeGroup = element('div', 'on-minimap-chrome__scope');
+  scopeGroup.setAttribute('role', 'radiogroup');
+  scopeGroup.setAttribute('aria-labelledby', scopeLegend.id);
+  scopeGroup.setAttribute('aria-description', copy.scopeNote);
+  const scopeButtons = new Map<MinimapScope, HTMLButtonElement>();
+  for (const scope of MINIMAP_SCOPES) {
+    const option = button('on-minimap-chrome__scope-option');
+    option.setAttribute('role', 'radio');
+    option.textContent = copy.scopes[scope];
+    setTip(option, copy.scopeTips[scope]);
+    option.addEventListener('click', () => callbacks.onScope(scope));
+    scopeGroup.append(option);
+    scopeButtons.set(scope, option);
+  }
+  // A radio group is one tab stop; the arrow keys move the choice, as native radios do.
+  scopeGroup.addEventListener('keydown', (event) => {
+    const step =
+      event.key === 'ArrowRight' || event.key === 'ArrowDown'
+        ? 1
+        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+          ? -1
+          : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const at = MINIMAP_SCOPES.findIndex((scope) => scopeButtons.get(scope) === document.activeElement);
+    const next = MINIMAP_SCOPES[(Math.max(0, at) + step + MINIMAP_SCOPES.length) % MINIMAP_SCOPES.length];
+    if (next === undefined) return;
+    callbacks.onScope(next);
+    scopeButtons.get(next)?.focus();
+  });
+  popover.append(head, layerGroup, scopeLegend, scopeGroup);
 
   const placeFilters = (): void => {
     const bounds = plane.getBoundingClientRect();
@@ -184,7 +242,7 @@ export function createMinimapChrome(
       document.addEventListener('keydown', onEscape, true);
     } else document.removeEventListener('keydown', onEscape, true);
     if (moveFocus) {
-      if (open) filterInputs.get('people')?.focus();
+      if (open) filterInputs.get(MINIMAP_LAYERS[0])?.focus();
       else filterButton.focus();
     }
   }
@@ -236,8 +294,15 @@ export function createMinimapChrome(
       const sizeLabel = formatMessage(copy.sizeState, { size: copy.sizes[state.size] });
       setTip(size, copy.size);
       setAttribute(size, 'aria-label', sizeLabel);
-      for (const [key, input] of filterInputs) {
-        if (input.checked !== state.filters[key]) input.checked = state.filters[key];
+      for (const [layer, input] of filterInputs) {
+        if (input.checked !== state.filters.layers[layer]) input.checked = state.filters.layers[layer];
+      }
+      allShown = allMinimapLayersShown(state.filters);
+      write(allToggle, allShown ? copy.hideAll : copy.showAll);
+      for (const [scope, option] of scopeButtons) {
+        const chosen = scope === state.filters.scope;
+        setAttribute(option, 'aria-checked', String(chosen));
+        option.tabIndex = chosen ? 0 : -1;
       }
       tips.refresh();
     },

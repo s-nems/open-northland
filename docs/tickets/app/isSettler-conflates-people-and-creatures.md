@@ -10,8 +10,8 @@ Its 25 call sites ask two different questions and the name hides which:
 
 - "a person" - shelter occupancy (`hud/details-panel/model/building-staff.ts`), building workers, the house
   and assign highlights, the action-ring menu state, the family reads in `game/snapshot-family.ts`;
-- "anything with a body" - selection and order targets (`view/unit-controls/`), the life hearts, the
-  minimap dots. A claimed cow the player can click is correct there.
+- "anything with a body" - selection and order targets (`view/unit-controls/`), the life hearts. A
+  claimed cow the player can click is correct there.
 
 Nothing is wrong on today's content: no decoded animal tribe shares an id with a civilization. The cost
 is that a reader cannot tell which meaning a call site intends, and the two drift apart the moment one
@@ -27,4 +27,4 @@ of them matters.
 ## Verify
 
 - `npm run check`, `npm run build`, `npm test`.
-- Selection, the action ring, and the minimap are player-visible: name the scene and what to click.
+- Selection and the action ring are player-visible: name the scene and what to click.

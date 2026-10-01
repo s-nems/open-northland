@@ -1,10 +1,16 @@
 import { type Camera, cameraViewport, type SceneTerrain, terrainWorldBounds } from '@open-northland/render';
-import type { FogView, WorldSnapshot } from '@open-northland/sim';
+import type { DiplomacyState, FogView, WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { setMinimapReserve } from '../dom/minimap-reserve.js';
 import type { Rect } from '../geometry.js';
 import { createMinimapChrome } from './chrome.js';
-import { forEachMinimapDot, type MinimapDotSink, type MinimapFilters } from './dots.js';
+import { forEachMinimapDot, type MinimapDotContext, type MinimapDotSink } from './dots.js';
+import {
+  DEFAULT_MINIMAP_FILTERS,
+  type MinimapFilters,
+  toggleMinimapLayer,
+  withAllMinimapLayers,
+} from './filters.js';
 import { createFogMaskLayer } from './fog-mask.js';
 import type { MinimapFrame } from './frames.js';
 import { createMinimapInput } from './input.js';
@@ -12,12 +18,12 @@ import {
   type MinimapSize,
   minimapLayout,
   pointOverMinimap,
-  stampDot,
   viewportRectOnMinimap,
   visibleMinimapRect,
   zoomMinimapLayout,
 } from './model.js';
 import { createDotReplotGate } from './replot-gate.js';
+import { stampMark } from './stamps.js';
 import { createMinimapSurface } from './surface.js';
 
 /** Under the map while the DOM backing loads: the dark wood of the frames' backing. */
@@ -31,6 +37,14 @@ export interface MinimapOptions {
   readonly cellColours?: Uint32Array | undefined;
   readonly colourOf?: ((typeId: number) => number | undefined) | undefined;
   readonly playerColourOf?: ((player: number) => number) | undefined;
+  /** The stored layer and owner choices; they persist through `onFiltersChange`. */
+  readonly filters?: MinimapFilters | undefined;
+  readonly onFiltersChange?: ((filters: MinimapFilters) => void) | undefined;
+  readonly isFighterJob: (jobType: number) => boolean;
+  /** The seat the view shows, null on a whole-map view. */
+  readonly viewer: () => number | null;
+  /** The viewer seat's stance toward `owner`. */
+  readonly stanceToward: (owner: number) => DiplomacyState;
   readonly uiscale: number;
   readonly frame: MinimapFrame;
   readonly camera: () => Camera;
@@ -59,7 +73,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   let zoom = 1;
   let center = { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2 };
   let zoomFocus = center;
-  let filters: MinimapFilters = { people: true, buildings: true };
+  let filters: MinimapFilters = opts.filters ?? DEFAULT_MINIMAP_FILTERS;
   let hidden = false;
   let dirtyDots = true;
   let base = minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width);
@@ -142,14 +156,18 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
         dirtyDots = true;
         refreshLayout();
       },
-      onFilter: (key) => {
-        filters = { ...filters, [key]: !filters[key] };
-        dirtyDots = true;
-        chrome.setState({ size, zoom, filters });
-      },
+      onLayer: (layer) => setFilters(toggleMinimapLayer(filters, layer)),
+      onAllLayers: (shown) => setFilters(withAllMinimapLayers(filters, shown)),
+      onScope: (scope) => setFilters({ ...filters, scope }),
     },
     opts.frame,
   );
+  function setFilters(next: MinimapFilters): void {
+    filters = next;
+    dirtyDots = true;
+    chrome.setState({ size, zoom, filters });
+    opts.onFiltersChange?.(next);
+  }
   let lastPanel = '';
   let lastView = '';
   let screenKey = '';
@@ -197,8 +215,11 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     },
   });
   const claimDotReplot = createDotReplotGate(() => performance.now());
-  const stamp: MinimapDotSink = (x, y, half, colour) =>
-    stampDot(pixels, dotsW, dotsH, x, y, Math.max(0.6, (half / world.scale.x) * uiScale), colour);
+  const dotRaster = { rgba: pixels, width: dotsW, height: dotsH };
+  const stamp: MinimapDotSink = (x, y, mark, colour) =>
+    stampMark(dotRaster, x, y, mark, colour, uiScale / world.scale.x);
+  // The half-cell lattice is two nodes per cell across.
+  const nodeWidth = 2 * terrain.width;
 
   return {
     claimsPointer: (x, y) => {
@@ -219,9 +240,21 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       }
       surface.syncResolution();
       fogMask.draw(fog);
-      if (claimDotReplot(snapshot, fog?.player ?? null) || dirtyDots) {
+      const viewer = opts.viewer();
+      if (claimDotReplot(snapshot, fog?.player ?? viewer) || dirtyDots) {
         pixels.fill(0);
-        forEachMinimapDot(snapshot, fog, bounds, rasterScale, opts.playerColourOf, stamp, filters);
+        const context: MinimapDotContext = {
+          fog,
+          bounds,
+          scale: rasterScale,
+          nodeWidth,
+          filters,
+          isFighterJob: opts.isFighterJob,
+          viewer,
+          stanceToward: opts.stanceToward,
+          playerColourOf: opts.playerColourOf,
+        };
+        forEachMinimapDot(snapshot, context, stamp);
         texture.source.update();
         dirtyDots = false;
       }

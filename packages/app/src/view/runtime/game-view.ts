@@ -20,6 +20,7 @@ import {
   playerCommand,
   type SaveGame,
   type SimEvent,
+  systems,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { type Application, Container } from 'pixi.js';
@@ -96,7 +97,7 @@ import {
 } from '../projections/index.js';
 import { createScriptEffects } from '../script-effects.js';
 import { createScriptMarkers } from '../script-markers.js';
-import { readStoredSettings } from '../settings-store.js';
+import { patchStoredSettings, readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createUnitControls, type UnitControls } from '../unit-controls/index.js';
 import { createWeatherFeed } from '../weather-feed.js';
@@ -644,6 +645,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       cellColours: deps.minimapCellColours,
       colourOf: deps.terrainColour,
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+      filters: storedSettings.minimapFilters,
+      onFiltersChange: (minimapFilters) => patchStoredSettings({ minimapFilters }),
+      isFighterJob: (jobType) => systems.isFighterJob(host.content, jobType),
+      viewer: () => viewer.seat(),
+      stanceToward: (owner) => host.diplomacyStance(viewerPlayer(), owner),
       uiscale,
       frame: storedSettings.minimapFrame,
       camera: () => cameraCtl.camera(),

@@ -1,148 +1,260 @@
-import { terrainWorldBounds, tileToScreen } from '@open-northland/render';
-import { FOG_MODE, FOG_STATE, type FogView, fx } from '@open-northland/sim';
+import { halfCellToScreen, terrainWorldBounds, tileToScreen } from '@open-northland/render';
+import { type DiplomacyState, FOG_MODE, FOG_STATE, type FogView, fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
-import { DEFAULT_MINIMAP_FILTERS, forEachMinimapDot, type MinimapFilters } from '../src/hud/minimap/dots.js';
-import { type Ent, snapshotOf } from './support/snapshot.js';
+import {
+  ANIMAL_DOT_COLOUR,
+  forEachMinimapDot,
+  type MinimapDotContext,
+  ROAD_DOT_COLOUR,
+  ROAD_SITE_DOT_COLOUR,
+} from '../src/hud/minimap/dots.js';
+import {
+  DEFAULT_MINIMAP_FILTERS,
+  type MinimapFilters,
+  type MinimapLayer,
+  withAllMinimapLayers,
+} from '../src/hud/minimap/filters.js';
+import type { MinimapMark } from '../src/hud/minimap/stamps.js';
+import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
 
-const BOUNDS = terrainWorldBounds(8, 8);
+const MAP_CELLS = 8;
+const NODE_WIDTH = 2 * MAP_CELLS;
+const BOUNDS = terrainWorldBounds(MAP_CELLS, MAP_CELLS);
 const SCALE = 0.5;
-const SETTLER_HALF = 1; // SETTLER_DOT_PX / 2
-const BUILDING_HALF = 1.5; // BUILDING_DOT_PX / 2
+const SOLDIER_JOB = 31;
+const CIVILIAN_JOB = 7;
+const VIEWER = 0;
+const FRIEND = 1;
+const FOE = 2;
+const STANCES: Readonly<Record<number, DiplomacyState>> = { [FRIEND]: 'friend', [FOE]: 'enemy' };
 
 interface Dot {
   bx: number;
   by: number;
-  half: number;
+  mark: MinimapMark;
   colour: number;
 }
 
-function dotsOf(
-  entities: readonly Ent[],
-  fog: FogView | null = null,
-  playerColourOf?: (player: number) => number,
-  filters?: MinimapFilters,
-): Dot[] {
+function dotsOf(entities: readonly Ent[], overrides: Partial<MinimapDotContext> = {}): Dot[] {
   const out: Dot[] = [];
-  forEachMinimapDot(
-    snapshotOf(entities),
-    fog,
-    BOUNDS,
-    SCALE,
-    playerColourOf,
-    (bx, by, half, colour) => out.push({ bx, by, half, colour }),
-    filters,
+  forEachMinimapDot(snapshotOf(entities), contextWith(overrides), (bx, by, mark, colour) =>
+    out.push({ bx, by, mark, colour }),
   );
   return out;
 }
 
-/** Where the raster stamps a force standing on tile `(x, y)` - the projection the dots must reproduce. */
+function contextWith(overrides: Partial<MinimapDotContext>): MinimapDotContext {
+  return {
+    fog: null,
+    bounds: BOUNDS,
+    scale: SCALE,
+    nodeWidth: NODE_WIDTH,
+    filters: DEFAULT_MINIMAP_FILTERS,
+    isFighterJob: (jobType) => jobType === SOLDIER_JOB,
+    viewer: VIEWER,
+    stanceToward: (owner) => STANCES[owner] ?? 'neutral',
+    ...overrides,
+  };
+}
+
+function only(layer: MinimapLayer, scope: MinimapFilters['scope'] = 'everyone'): MinimapFilters {
+  const none = withAllMinimapLayers(DEFAULT_MINIMAP_FILTERS, false);
+  return { scope, layers: { ...none.layers, [layer]: true } };
+}
+
+/** Where the raster stamps a thing standing on tile `(x, y)` - the projection the dots must reproduce. */
 function pxAt(x: number, y: number): { bx: number; by: number } {
   const s = tileToScreen(x, y);
   return { bx: (s.x - BOUNDS.minX) * SCALE, by: (s.y - BOUNDS.minY) * SCALE };
 }
 
-function owned(id: number, kind: 'Settler' | 'Building', player: number, x: number, y: number): Ent {
+const at = (x: number, y: number) => ({ Position: { x: fx.fromInt(x), y: fx.fromInt(y) } });
+
+function person(id: number, player: number, x: number, y: number, jobType = CIVILIAN_JOB): Ent {
   return {
     id,
-    components: { [kind]: {}, Owner: { player }, Position: { x: fx.fromInt(x), y: fx.fromInt(y) } },
+    components: { Settler: { jobType }, Person: { person: true }, Owner: { player }, ...at(x, y) },
   };
 }
 
-/** A FogView whose visibility is decided per cell by `visible` (missing cells read as EXPLORED). */
-function fogWhere(visible: (cellX: number, cellY: number) => boolean): FogView {
+function building(id: number, player: number, x: number, y: number): Ent {
+  return { id, components: { Building: {}, Owner: { player }, ...at(x, y) } };
+}
+
+function animal(id: number, x: number, y: number, player?: number): Ent {
   return {
-    player: 0,
+    id,
+    components: {
+      Settler: { jobType: 0 },
+      ...(player === undefined ? {} : { Owner: { player }, Livestock: {} }),
+      ...at(x, y),
+    },
+  };
+}
+
+function vehicle(id: number, player: number, x: number, y: number, carrier: number | null = null): Ent {
+  return { id, components: { Vehicle: { carrier }, Owner: { player }, ...at(x, y) } };
+}
+
+const colour = (player: number): number => PLAYER_SWATCH_COLORS[player] ?? 0;
+
+/** A FogView whose state is decided per cell (missing cells read as EXPLORED). */
+function fogWhere(state: (cellX: number, cellY: number) => number): FogView {
+  return {
+    player: VIEWER,
     mode: FOG_MODE.RECON_FOG_OF_WAR,
-    cellsWide: 8,
-    cellsHigh: 8,
+    cellsWide: MAP_CELLS,
+    cellsHigh: MAP_CELLS,
     generation: 1,
-    stateAt: (cx, cy) => (visible(cx, cy) ? FOG_STATE.VISIBLE : FOG_STATE.EXPLORED),
+    stateAt: state,
   };
 }
 
 describe('forEachMinimapDot', () => {
-  it('projects each owned settler and building at its raster px, sized and coloured by kind and player', () => {
-    const dots = dotsOf([owned(1, 'Settler', 0, 2, 3), owned(2, 'Building', 1, 4, 5)]);
-    expect(dots).toEqual([
-      { ...pxAt(2, 3), half: SETTLER_HALF, colour: PLAYER_SWATCH_COLORS[0] },
-      { ...pxAt(4, 5), half: BUILDING_HALF, colour: PLAYER_SWATCH_COLORS[1] },
-    ]);
-  });
-
-  it('plots only owned settlers and buildings that have a position', () => {
+  it('marks each kind with its own shape in its owner colour, animals in the fauna tint', () => {
     const dots = dotsOf([
-      { id: 1, components: { Building: {}, Position: { x: fx.fromInt(1), y: fx.fromInt(1) } } }, // no owner
-      {
-        id: 2,
-        components: { Signpost: {}, Owner: { player: 0 }, Position: { x: fx.fromInt(2), y: fx.fromInt(2) } },
-      }, // neither settler nor building
-      { id: 3, components: { Settler: {}, Owner: { player: 0 } } }, // no position
-      owned(4, 'Settler', 0, 6, 6),
+      person(1, 0, 2, 3),
+      person(2, 1, 3, 3, SOLDIER_JOB),
+      building(3, 1, 4, 5),
+      vehicle(4, 0, 5, 5),
+      animal(5, 6, 6),
     ]);
-    expect(dots).toEqual([{ ...pxAt(6, 6), half: SETTLER_HALF, colour: PLAYER_SWATCH_COLORS[0] }]);
+    expect(dots).toEqual([
+      { ...pxAt(4, 5), mark: 'building', colour: colour(1) },
+      { ...pxAt(2, 3), mark: 'civilian', colour: colour(0) },
+      { ...pxAt(3, 3), mark: 'soldier', colour: colour(1) },
+      { ...pxAt(6, 6), mark: 'animal', colour: ANIMAL_DOT_COLOUR },
+      { ...pxAt(5, 5), mark: 'vehicle', colour: colour(0) },
+    ]);
   });
 
-  it('drops forces on fogged ground and keeps the visible ones', () => {
-    const forces = [owned(1, 'Settler', 0, 2, 2), owned(2, 'Settler', 0, 6, 6)];
-    const nearHalfVisible = fogWhere((cellX) => cellX < 4);
-    expect(dotsOf(forces, nearHalfVisible)).toEqual([
-      { ...pxAt(2, 2), half: SETTLER_HALF, colour: PLAYER_SWATCH_COLORS[0] },
-    ]);
-    expect(dotsOf(forces, null)).toHaveLength(2); // no fog view: every force shows
+  it('stacks the layers bottom to top: roads, signposts, buildings, people, vehicles', () => {
+    const marks = dotsOf([
+      vehicle(1, 0, 1, 1),
+      person(2, 0, 1, 1),
+      building(3, 0, 1, 1),
+      { id: 4, components: { Signpost: {}, Owner: { player: 0 }, ...at(1, 1) } },
+      { id: 5, components: { RoadShard: { block: 0, nodes: [2 * NODE_WIDTH + 2], revision: 1 } } },
+    ]).map((dot) => dot.mark);
+    expect(marks).toEqual(['road', 'signpost', 'building', 'civilian', 'vehicle']);
   });
 
-  it('hides people and buildings independently without changing the remaining dots', () => {
-    const entities = [owned(1, 'Settler', 0, 2, 2), owned(2, 'Building', 1, 4, 4)];
-    expect(dotsOf(entities, null, undefined, { ...DEFAULT_MINIMAP_FILTERS, people: false })).toEqual([
-      { ...pxAt(4, 4), half: BUILDING_HALF, colour: PLAYER_SWATCH_COLORS[1] },
+  it('skips unowned people and buildings, positionless entities and vehicles a ship carries', () => {
+    const dots = dotsOf([
+      { id: 1, components: { Building: {}, ...at(1, 1) } },
+      { id: 2, components: { Settler: {}, Person: { person: true }, ...at(1, 1) } },
+      { id: 3, components: { Settler: {}, Person: { person: true }, Owner: { player: 0 } } },
+      vehicle(4, 0, 2, 2, 9),
+      person(5, 0, 6, 6),
     ]);
-    expect(dotsOf(entities, null, undefined, { ...DEFAULT_MINIMAP_FILTERS, buildings: false })).toEqual([
-      { ...pxAt(2, 2), half: SETTLER_HALF, colour: PLAYER_SWATCH_COLORS[0] },
-    ]);
-    expect(dotsOf(entities, null, undefined, { people: false, buildings: false })).toEqual([]);
+    expect(dots).toEqual([{ ...pxAt(6, 6), mark: 'civilian', colour: colour(0) }]);
   });
 
-  it('never exposes actors on fogged ground when filters change', () => {
-    const entities = [
-      owned(1, 'Settler', 0, 2, 2),
-      owned(2, 'Settler', 1, 6, 6),
-      owned(3, 'Building', 0, 2, 3),
-      owned(4, 'Building', 1, 6, 5),
-    ];
-    const fog = fogWhere((cellX) => cellX < 4);
-    expect(dotsOf(entities, fog, undefined, { ...DEFAULT_MINIMAP_FILTERS, people: false })).toEqual([
-      { ...pxAt(2, 3), half: BUILDING_HALF, colour: PLAYER_SWATCH_COLORS[0] },
-    ]);
-    expect(dotsOf(entities, fog, undefined, { ...DEFAULT_MINIMAP_FILTERS, buildings: false })).toEqual([
-      { ...pxAt(2, 2), half: SETTLER_HALF, colour: PLAYER_SWATCH_COLORS[0] },
-    ]);
-    expect(dotsOf(entities, fog, undefined, DEFAULT_MINIMAP_FILTERS)).toHaveLength(2);
-  });
-
-  it('keeps standalone vehicles outside the existing actor lane', () => {
-    const entities = [
+  it('plots road nodes at their half-cell spot on explored ground and road sites like entities', () => {
+    const node = (hx: number, hy: number): number => hy * NODE_WIDTH + hx;
+    const roads: Ent[] = [
       {
         id: 1,
-        components: {
-          Vehicle: {},
-          Owner: { player: 0 },
-          Position: { x: fx.fromInt(2), y: fx.fromInt(2) },
-        },
+        components: { RoadShard: { block: 0, nodes: [node(4, 4), node(5, 4), node(12, 12)], revision: 1 } },
       },
-      owned(2, 'Settler', 0, 4, 4),
+      { id: 2, components: { RoadSite: {}, Owner: { player: 0 }, ...at(2, 6) } },
     ];
-    const expected = [{ ...pxAt(4, 4), half: SETTLER_HALF, colour: PLAYER_SWATCH_COLORS[0] }];
-    expect(dotsOf(entities)).toEqual(expected);
-    expect(dotsOf(entities, null, undefined, DEFAULT_MINIMAP_FILTERS)).toEqual(expected);
+    const roadPx = (hx: number, hy: number) => {
+      const s = halfCellToScreen(hx, hy);
+      return { bx: (s.x - BOUNDS.minX) * SCALE, by: (s.y - BOUNDS.minY) * SCALE };
+    };
+    // Unexplored beyond column 4: the far road node hides, the near ones show though only explored.
+    const fog = fogWhere((cellX) => (cellX < 4 ? FOG_STATE.EXPLORED : FOG_STATE.UNEXPLORED));
+    expect(dotsOf(roads, { fog, filters: only('roads') })).toEqual([
+      { ...roadPx(4, 4), mark: 'road', colour: ROAD_DOT_COLOUR },
+      { ...roadPx(5, 4), mark: 'road', colour: ROAD_DOT_COLOUR },
+    ]);
+    expect(dotsOf(roads, { filters: only('roads') })).toContainEqual({
+      ...pxAt(2, 6),
+      mark: 'roadSite',
+      colour: ROAD_SITE_DOT_COLOUR,
+    });
+  });
+
+  it("plots signposts and a gatherer's work flag in the gatherer's colour", () => {
+    const dots = dotsOf(
+      [
+        { id: 1, components: { Signpost: {}, Owner: { player: 1 }, ...at(2, 2) } },
+        { id: 2, components: { DeliveryFlag: {}, ...at(5, 5) } },
+        { id: 3, components: { ...person(3, 0, 1, 1).components, WorkFlag: { flag: 2, radius: 24 } } },
+      ],
+      { filters: only('signposts') },
+    );
+    expect(dots).toEqual([
+      { ...pxAt(2, 2), mark: 'signpost', colour: colour(1) },
+      { ...pxAt(5, 5), mark: 'signpost', colour: colour(0) },
+    ]);
+  });
+
+  it('hides each layer on its own switch', () => {
+    const world = [
+      person(1, 0, 1, 1),
+      person(2, 0, 2, 2, SOLDIER_JOB),
+      building(3, 0, 3, 3),
+      vehicle(4, 0, 4, 4),
+      animal(5, 5, 5),
+      { id: 6, components: { RoadShard: { block: 0, nodes: [2 * NODE_WIDTH + 2], revision: 1 } } },
+      { id: 7, components: { Signpost: {}, Owner: { player: 0 }, ...at(6, 6) } },
+    ];
+    const markOf: Readonly<Record<MinimapLayer, MinimapMark>> = {
+      civilians: 'civilian',
+      soldiers: 'soldier',
+      buildings: 'building',
+      vehicles: 'vehicle',
+      animals: 'animal',
+      roads: 'road',
+      signposts: 'signpost',
+    };
+    for (const [layer, mark] of Object.entries(markOf) as [MinimapLayer, MinimapMark][]) {
+      const without = {
+        ...DEFAULT_MINIMAP_FILTERS,
+        layers: { ...DEFAULT_MINIMAP_FILTERS.layers, [layer]: false },
+      };
+      const marks = dotsOf(world, { filters: without }).map((dot) => dot.mark);
+      expect(marks).not.toContain(mark);
+      expect(marks).toHaveLength(Object.keys(markOf).length - 1);
+      expect(dotsOf(world, { filters: only(layer) }).map((dot) => dot.mark)).toEqual([mark]);
+    }
+    expect(dotsOf(world, { filters: withAllMinimapLayers(DEFAULT_MINIMAP_FILTERS, false) })).toEqual([]);
+  });
+
+  it('drops entities on merely explored ground and keeps the visible ones, whatever the filters', () => {
+    const world = [person(1, 0, 2, 2), person(2, 1, 6, 6), building(3, 0, 2, 3), building(4, 1, 6, 5)];
+    const fog = fogWhere((cellX) => (cellX < 4 ? FOG_STATE.VISIBLE : FOG_STATE.EXPLORED));
+    expect(dotsOf(world, { fog })).toEqual([
+      { ...pxAt(2, 3), mark: 'building', colour: colour(0) },
+      { ...pxAt(2, 2), mark: 'civilian', colour: colour(0) },
+    ]);
+    expect(dotsOf(world, { fog, filters: only('buildings') })).toHaveLength(1);
+    expect(dotsOf(world)).toHaveLength(4); // no fog view: everything shows
   });
 
   it('remaps the swatch through playerColourOf and wraps the raw player index modulo the table', () => {
-    const remapped = dotsOf([owned(1, 'Settler', 5, 0, 0)], null, () => 1);
-    expect(remapped[0]?.colour).toBe(PLAYER_SWATCH_COLORS[1]);
+    expect(dotsOf([person(1, 5, 0, 0)], { playerColourOf: () => 1 })[0]?.colour).toBe(colour(1));
+    expect(dotsOf([person(1, PLAYER_SWATCH_COLORS.length, 0, 0)])[0]?.colour).toBe(colour(0));
+  });
 
-    const wrapped = dotsOf([owned(1, 'Settler', PLAYER_SWATCH_COLORS.length, 0, 0)]);
-    expect(wrapped[0]?.colour).toBe(PLAYER_SWATCH_COLORS[0]);
+  it('walks only its layer indexes on a replot, never the entity lane again', () => {
+    const scenery: Ent[] = Array.from({ length: 500 }, (_, i) => ({
+      id: 100 + i,
+      components: { Tree: {}, ...at(1, 1) },
+    }));
+    const counted = countingSnapshot(snapshotOf([...scenery, person(1, 0, 2, 2), building(2, 0, 3, 3)]));
+    const plot = (): number => {
+      let dots = 0;
+      forEachMinimapDot(counted.snapshot, contextWith({}), () => dots++);
+      return dots;
+    };
+    expect(plot()).toBe(2);
+    const scansAfterFirst = counted.scans();
+    expect(plot()).toBe(2);
+    expect(counted.scans()).toBe(scansAfterFirst);
   });
 
   it('emits nothing for an empty world', () => {

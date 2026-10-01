@@ -150,10 +150,10 @@
 .on-hud .on-minimap-chrome__filters {
   position: absolute;
   z-index: 2;
-  width: 160px;
+  width: 184px;
   min-width: 0;
   margin: 0;
-  padding: 10px 10px 8px;
+  padding: 8px 10px;
   border: 1px solid #7a6040;
   border-radius: 3px;
   color: #ecdcb4;
@@ -169,19 +169,55 @@
 .on-hud .on-minimap-chrome__filters[hidden] {
   display: none;
 }
-.on-hud .on-minimap-chrome__legend {
-  margin: 0 0 7px;
-  padding: 0 0 7px;
+.on-hud .on-minimap-chrome__filters-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  padding: 0 0 5px;
   border-bottom: 1px solid #c9a46a44;
+}
+.on-hud .on-minimap-chrome__legend {
+  flex: 1;
+  margin: 0;
   color: #f0dfb9;
   font: 600 10px / 1.3 var(--font-title);
   letter-spacing: 0.03em;
 }
+.on-hud .on-minimap-chrome__legend--scope {
+  margin: 6px 0 5px;
+  padding: 5px 0 0;
+  border-top: 1px solid #c9a46a44;
+  cursor: help;
+}
+/* Smaller than the layer switches, so the quick action never reads as one of them. */
+.on-hud .on-minimap-chrome__all {
+  flex: none;
+  min-width: 0;
+  min-height: 0;
+  padding: 2px 5px;
+  border: 1px solid #80603a;
+  border-radius: 3px;
+  background: #120c0766;
+  color: #ecdcb4;
+  cursor: pointer;
+  font: 600 9px / 1.2 var(--font-title);
+  letter-spacing: 0.02em;
+}
+.on-hud .on-minimap-chrome__all:hover {
+  background: #80603a99;
+  color: #fff7db;
+}
+.on-hud .on-minimap-chrome__all:focus-visible,
+.on-hud .on-minimap-chrome__scope-option:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
 .on-hud .on-minimap-chrome__filter {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 28px;
+  gap: 7px;
+  min-height: 22px;
   border-bottom: 1px dotted #c9a46a33;
   cursor: pointer;
   font-size: 10px;
@@ -189,16 +225,60 @@
 .on-hud .on-minimap-chrome__filter:last-child {
   border-bottom: 0;
 }
+.on-hud .on-minimap-chrome__filter-text {
+  flex: 1;
+  min-width: 0;
+}
 .on-hud .on-minimap-chrome__filter-symbol {
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   color: #c9a46a;
 }
+/* A segmented control: two rows of two cells, wide enough for the longest label in either language,
+   the chosen cell lit like a checked box. */
+.on-hud .on-minimap-chrome__scope {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  border: 1px solid #80603a;
+  border-radius: 3px;
+  background: #120c0799;
+  box-shadow: inset 0 1px 2px #0008;
+  overflow: hidden;
+}
+.on-hud .on-minimap-chrome__scope-option {
+  min-width: 0;
+  min-height: 0;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #d9c69c;
+  cursor: pointer;
+  font: 600 9px / 1.2 var(--font-title);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.on-hud .on-minimap-chrome__scope-option:nth-child(even) {
+  border-left: 1px solid #80603a66;
+}
+.on-hud .on-minimap-chrome__scope-option:nth-child(n + 3) {
+  border-top: 1px solid #80603a66;
+}
+.on-hud .on-minimap-chrome__scope-option:hover {
+  background: #80603a66;
+  color: #fff7db;
+}
+.on-hud .on-minimap-chrome__scope-option[aria-checked="true"] {
+  background: linear-gradient(#879267, #536548);
+  color: #fff1c9;
+  box-shadow: inset 0 1px #cfdf9e55;
+}
 .on-hud .on-minimap-chrome__filter-symbol svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.4;

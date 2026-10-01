@@ -44,6 +44,18 @@ describe('parseStoredSettings', () => {
       cursorTheme: 'amber',
       cursorSize: 24,
       minimapFrame: 'urnes',
+      minimapFilters: {
+        layers: {
+          civilians: true,
+          soldiers: true,
+          buildings: false,
+          vehicles: true,
+          animals: false,
+          roads: true,
+          signposts: true,
+        },
+        scope: 'hostile',
+      },
       soundEnabled: false,
       soundVolume: 0.35,
       musicVolume: 0.6,
