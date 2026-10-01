@@ -27,7 +27,8 @@ const PENDING_REGION = -2;
  *  collide with a reused value - the pathfinding-scratch rule. */
 const MAX_STAMP = 2 ** 31 - 1;
 
-/** Pocket ids minted before the labels start over, bounding {@link RouteRegionCache.retired}. */
+/** Pocket ids minted before the labels start over, bounding {@link RouteRegionCache.retired}. Checked
+ *  only between verdicts, so one verdict's few floods may overshoot it by a handful of ids. */
 const POCKET_ID_LIMIT = 2 ** 20;
 
 /** Every node whose step edges a block flip at the origin can add or remove, as offsets from it: the
@@ -128,9 +129,11 @@ export class RouteRegions {
   private refresh(cache: RouteRegionCache): BlockOverlay {
     const flips = cache.flips;
     flips.length = 0;
-    if (!cache.mask.takeFlips(flips)) dropLabels(cache);
+    if (!cache.mask.takeFlips(flips) || cache.nextPocket >= POCKET_ID_LIMIT) dropLabels(cache);
     const blocked = cache.mask.levelled();
     if (flips.length > 0) this.applyFlips(cache, blocked);
+    // A verdict holds pocket ids across floods, so ids start over only here, never inside one.
+    if (cache.nextPocket >= POCKET_ID_LIMIT) dropLabels(cache);
     return blocked;
   }
 
@@ -275,9 +278,6 @@ export class RouteRegions {
 
   private mintPocket(): number {
     const cache = this.cache;
-    // Ids past the limit start over, and every label with them. The flood being labeled keeps its
-    // verdict but none of its labels.
-    if (cache.nextPocket >= POCKET_ID_LIMIT) dropLabels(cache);
     if (cache.nextPocket >= cache.retired.length) {
       const grown = new Uint8Array(cache.retired.length * 2);
       grown.set(cache.retired);

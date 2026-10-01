@@ -1,17 +1,23 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it, vi } from 'vitest';
 import { Building, Position } from '../../src/components/index.js';
+import { writeLandscapeEdits } from '../../src/components/landscape.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { type BlockOverlay, LayeredBlocks } from '../../src/nav/block-overlay.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../src/nav/terrain/index.js';
-import { resourceBlockedCells, vehicleBlockedCells } from '../../src/systems/footprint/index.js';
+import {
+  buildingBlockedCells,
+  resourceBlockedCells,
+  vehicleBlockedCells,
+} from '../../src/systems/footprint/index.js';
 import {
   ROUTE_REGION_POCKET_CAP,
   routeRegions,
   stampResourceFootprintData,
   unstampResourceFootprint,
 } from '../../src/systems/index.js';
+import { landscapeBlocks } from '../../src/systems/landscape/view.js';
 import { createVehicle, removeVehicle } from '../../src/systems/vehicles/index.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -215,6 +221,27 @@ describe('routeRegions', () => {
     expect(regions.unroutable(corridorFarEnd, field)).toBe(false);
   });
 
+  it('keeps two pockets apart when the pocket ids run out within a verdict', () => {
+    const sim = mappedSim(grassMap(14, 6));
+    const terrain = terrainOf(sim);
+    wallAt(sim, 4, 6, SEAL_RING);
+    wallAt(sim, 20, 6, SEAL_RING);
+    const regions = routeRegions(sim.world, ctxOf(sim), terrain);
+    const first = terrain.nodeAt(4, 6);
+    const second = terrain.nodeAt(20, 6);
+    expect(regions.unroutable(second, first)).toBe(true);
+
+    // A long session's id counter at the limit, with the first pocket's low id still valid and the
+    // second's retired, so the next verdict reads the one label and re-floods the other.
+    const cache = (regions as unknown as { cache: PocketIdState }).cache;
+    const secondLabel = cache.labels[second];
+    if (secondLabel === undefined) throw new Error('second pocket unlabeled');
+    cache.retired[secondLabel] = 1;
+    cache.nextPocket = POCKET_ID_LIMIT;
+
+    expect(regions.unroutable(second, first)).toBe(true);
+  });
+
   it('reads a pocket larger than the flood cap as open (fail-open to the route + memo path)', () => {
     // 80×40 nodes; the perimeter seals a (38-2)×(20-2) = 648-node interior - beyond the cap.
     const sim = mappedSim(grassMap(40, 20));
@@ -232,15 +259,28 @@ describe('routeRegions', () => {
 });
 
 describe('routeRegions under changing blockers', () => {
-  it('answers like a cold flood after every random wall build and teardown', {
+  it('answers like a cold flood after every random wall, building and landscape change', {
     timeout: RANDOM_TEST_TIMEOUT_MS,
   }, () => {
-    const sim = mappedSim(grassMap(RANDOM_MAP_COLS, RANDOM_MAP_ROWS));
+    const sim = new Simulation({
+      seed: 1,
+      content: blockerContent(),
+      map: {
+        ...grassMap(RANDOM_MAP_COLS, RANDOM_MAP_ROWS),
+        landscapes: {
+          types: [{ typeId: WALL_LANDSCAPE, walk: SEAL_RING, build: [], groups: [] }],
+          placements: [],
+        },
+      },
+    });
     const terrain = terrainOf(sim);
     const ctx = ctxOf(sim);
     const regions = routeRegions(sim.world, ctx, terrain);
     const random = lcg(RANDOM_SEED);
     const pick = (n: number): number => Math.floor(random() * n);
+    const sites = Array.from({ length: RANDOM_SITES }, () =>
+      siteAt(sim, pick(terrain.width), pick(terrain.height), RING_TYPE),
+    );
     const walls: Entity[] = [];
     let pocketsSeen = 0;
     for (let round = 0; round < RANDOM_ROUNDS; round++) {
@@ -257,7 +297,22 @@ describe('routeRegions under changing blockers', () => {
           walls.push(wallAt(sim, pick(terrain.width - width), pick(terrain.height - height), shape));
         }
       }
-      const layers = new LayeredBlocks([resourceBlockedCells(sim.world, terrain)]);
+      const site = sites[pick(sites.length)];
+      if (site !== undefined)
+        sim.world.mut(site, Building).buildingType = SITE_TYPES[pick(SITE_TYPES.length)] ?? OPEN_TYPE;
+      const hx = pick(terrain.width);
+      const hy = pick(terrain.height);
+      // A moved placement takes a fresh id, as a script edit mints one.
+      writeLandscapeEdits(sim.world, (edit) => {
+        edit.topologyRevision++;
+        edit.added =
+          pick(LANDSCAPE_ODDS) === 0 ? [] : [{ id: round, typeId: WALL_LANDSCAPE, hx, hy, level: 0 }];
+      });
+      const layers = new LayeredBlocks([
+        resourceBlockedCells(sim.world, terrain),
+        buildingBlockedCells(sim.world, ctx, terrain),
+        landscapeBlocks(sim.world, terrain).walk,
+      ]);
       const reference = coldRegions(terrain, layers);
       for (let q = 0; q < QUERIES_PER_ROUND; q++) {
         const a = terrain.nodeAt(pick(terrain.width), pick(terrain.height));
@@ -367,6 +422,15 @@ const MAX_WALL_SPAN = 12;
 /** One wall node in this many is left out, opening gaps that some walls seal and some leak through. */
 const GAP_ODDS = 12;
 
+/** The cache fields the pocket-id test drives directly. */
+interface PocketIdState {
+  readonly labels: Int32Array;
+  readonly retired: Uint8Array;
+  nextPocket: number;
+}
+/** Mirrors the module's private id ceiling. */
+const POCKET_ID_LIMIT = 2 ** 20;
+
 const VIKING = 1;
 const HANDCART = 1;
 const CART_MAP_CELLS = 16;
@@ -380,10 +444,16 @@ const CART_GAP_Y = YARD_Y + (YARD_HEIGHT - 1) / 2;
 
 const RING_TYPE = 30; // walls off its anchor node alone
 const OPEN_TYPE = 31; // no walk-block
+const YARD_TYPE = 32; // walls off a five-node column
+const SITE_TYPES = [RING_TYPE, OPEN_TYPE, YARD_TYPE];
+/** Construction sites the randomized walk swaps one type of per round. */
+const RANDOM_SITES = 4;
+const WALL_LANDSCAPE = 1;
+/** One landscape edit in this many clears the script placement instead of moving it. */
+const LANDSCAPE_ODDS = 4;
 
-/** A construction site whose footprint is {@link SEAL_RING} around node (10, 6). */
-function ringSite(): { sim: Simulation; site: Entity } {
-  const content = parseContentSet({
+function blockerContent() {
+  return parseContentSet({
     manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [{ typeId: 0, id: 'idle' }],
@@ -391,11 +461,21 @@ function ringSite(): { sim: Simulation; site: Entity } {
     buildings: [
       { typeId: RING_TYPE, id: 'ring', kind: 'storage', footprint: { blocked: SEAL_RING } },
       { typeId: OPEN_TYPE, id: 'open', kind: 'storage' },
+      { typeId: YARD_TYPE, id: 'yard', kind: 'storage', footprint: { blocked: rectangleWall(3, 7) } },
     ],
   });
-  const sim = new Simulation({ seed: 1, content, map: grassNodeMap(24, 12) });
+}
+
+/** An unbuilt construction site of `buildingType` anchored at half-cell NODE (x, y). */
+function siteAt(sim: Simulation, x: number, y: number, buildingType: number): Entity {
   const site = sim.world.create();
-  sim.world.add(site, Position, positionOfNode(10, 6));
-  sim.world.add(site, Building, { buildingType: RING_TYPE, tribe: 1, built: fx.fromInt(0), level: 0 });
-  return { sim, site };
+  sim.world.add(site, Position, positionOfNode(x, y));
+  sim.world.add(site, Building, { buildingType, tribe: 1, built: fx.fromInt(0), level: 0 });
+  return site;
+}
+
+/** A construction site whose footprint is {@link SEAL_RING} around node (10, 6). */
+function ringSite(): { sim: Simulation; site: Entity } {
+  const sim = new Simulation({ seed: 1, content: blockerContent(), map: grassNodeMap(24, 12) });
+  return { sim, site: siteAt(sim, 10, 6, RING_TYPE) };
 }
