@@ -84,6 +84,7 @@ import {
   stopVehicle,
   unloadPeople,
 } from '../vehicles/index.js';
+import { VehicleOrderRoutes } from '../vehicles/order-routes.js';
 import { authorizedCommand } from './authority.js';
 import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
 import { cancelUpgrade, placeBuilding, upgradeBuilding } from './placement.js';
@@ -95,10 +96,12 @@ import { demolish, demolishSignpost, dropGood, placeResource } from './world-edi
  * validation and treat stale ids as recoverable input, so one rejected order cannot abort the tick.
  */
 export const commandSystem: System = (world, ctx) => {
+  // The pass's vehicle gotos share their long routes, so a group order costs about one search.
+  const orders = new VehicleOrderRoutes();
   for (const queued of ctx.commands.drain(ctx.tick)) {
     const command = authorizedCommand(world, queued, ctx.terrain);
     if (command !== undefined) {
-      applyCommand(world, ctx, command);
+      applyCommand(world, ctx, command, orders);
       wakeAddressed(world, command);
     }
     ctx.commands.record(ctx.tick, queued);
@@ -112,11 +115,11 @@ function wakeAddressed(world: World, command: Command): void {
   if ('members' in command) for (const member of command.members) wakeIdle(world, member.entity);
 }
 
-function applyCommand(world: World, ctx: SystemContext, command: Command): void {
+function applyCommand(world: World, ctx: SystemContext, command: Command, orders: VehicleOrderRoutes): void {
   // A vehicle's commander hands a walk order to the vehicle. Any other settler crewing a vehicle is
   // taken off it before an order sends it elsewhere; one that may not leave (aboard a ship at sea)
   // keeps its seat and the order is dropped.
-  if (isCommanderWalkOrder(command) && driveCommandedVehicle(world, ctx, command)) return;
+  if (isCommanderWalkOrder(command) && driveCommandedVehicle(world, ctx, command, orders)) return;
   if (forcesDetach(command) && !detachBeforeOrder(world, ctx, command.entity)) return;
   switch (command.kind) {
     case 'placeBuilding':
@@ -171,7 +174,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       moveUnit(world, ctx, command);
       return;
     case 'moveVehicle':
-      moveVehicle(world, ctx, command);
+      moveVehicle(world, ctx, command, orders);
       return;
     case 'dockVehicle':
       dockVehicle(world, ctx, command);

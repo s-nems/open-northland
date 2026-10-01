@@ -7,6 +7,8 @@ import {
   Rider,
   Vehicle,
   VehicleDrive,
+  VehicleMarchRoute,
+  VehicleRoute,
   type VehicleStateView,
   vehicleCommander,
 } from '../../components/index.js';
@@ -15,7 +17,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { type HalfCellNode, hexagonRing, hexDistance, positionOfNode } from '../../nav/halfcell.js';
-import { findPath } from '../../nav/pathfinding/index.js';
+import { findPath, joinCorridor } from '../../nav/pathfinding/index.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, System, SystemContext } from '../context.js';
@@ -47,6 +49,7 @@ import {
   swingHull,
   VEHICLE_TURN_TICKS_PER_DIRECTION,
 } from './helm.js';
+import type { VehicleOrderRoutes } from './order-routes.js';
 import { seaRegions } from './sea-regions.js';
 
 // The mover of docs/formats/VEHICLES.md "Movement": a goto is refused without a commander or for a
@@ -58,6 +61,9 @@ import { seaRegions } from './sea-regions.js';
 // ship turns under way, `helm.ts`), the footprint travels with the anchor and shoves the settlers it
 // lands on. A ship that starts a drive leaves its mooring; one on a dock drive moors again where it
 // arrives (`dock.ts`).
+
+/** The longest lattice edge, in map points: the most a route's first node lies from where it leaves. */
+const LATTICE_EDGE_MAX_POINTS = 2;
 
 /** How far around a clicked target the goto looks for a node the vehicle may stand on, in hexagon rings. */
 export const VEHICLE_TARGET_SNAP_RADIUS = 9;
@@ -222,34 +228,169 @@ export function startVehicleDrive(
   terrain: TerrainGraph,
   vehicle: Entity,
   goal: NodeId,
+  orders?: VehicleOrderRoutes,
 ): boolean {
-  const route = vehicleRouteTo(world, ctx, terrain, vehicle, goal);
+  const route = vehicleRouteTo(world, ctx, terrain, vehicle, goal, orders);
   if (route === null) return false;
+  castOff(world, vehicle);
+  deliverRoute(world, ctx, vehicle, nodeOf(terrain, goal), route);
+  return true;
+}
+
+/** Casting off: a walk that starts clears the moored flag (original behavior), and a goal held for
+ *  boarding is consumed by the drive that replaces it. */
+function castOff(world: World, vehicle: Entity): void {
   const state = world.get(vehicle, Vehicle);
-  if (state.moored || state.heldGoal !== null) {
-    // Casting off: a walk that starts clears the moored flag (original behavior), and a goal held for
-    // boarding is consumed by the drive that replaces it.
-    const live = world.mut(vehicle, Vehicle);
-    live.moored = false;
-    live.heldGoal = null;
-  }
+  if (!state.moored && state.heldGoal === null) return;
+  const live = world.mut(vehicle, Vehicle);
+  live.moored = false;
+  live.heldGoal = null;
+}
+
+/** Hand `vehicle` `route` to `goal`: a drive starts, or one under way finishes its leg, a ship keeping
+ *  its way, and follows the new route beyond it. */
+function deliverRoute(
+  world: World,
+  ctx: ContentContext,
+  vehicle: Entity,
+  goal: HalfCellNode,
+  route: readonly HalfCellNode[],
+): void {
   const drive = world.tryMut(vehicle, VehicleDrive);
   if (drive === undefined) {
+    const state = world.get(vehicle, Vehicle);
     const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
     world.add(vehicle, VehicleDrive, {
-      goal: nodeOf(terrain, goal),
-      route,
+      goal,
+      step: 0,
       from: null,
       progress: 0,
       increment: 0,
       helm: type !== undefined && isShipVehicle(type) ? restingHelm(state.facing) : null,
     });
   } else {
-    // A leg under way finishes on its node, a ship keeping its way; only the route beyond it is replaced.
-    drive.goal = nodeOf(terrain, goal);
-    drive.route = route;
+    drive.goal = goal;
+    drive.step = 0;
+  }
+  const held = world.tryGet(vehicle, VehicleRoute);
+  if (held === undefined) world.add(vehicle, VehicleRoute, { nodes: route });
+  else if (held.nodes !== route) world.mut(vehicle, VehicleRoute).nodes = route; // a held route drives on as is
+}
+
+/**
+ * Start the drive to `goal` a held goto found its route for when the crew was asked in: the vehicle has
+ * stood still since, so the route still leads from its node, and a node that closed meanwhile re-routes
+ * at step time. Without such a route, ending at `goal` and leaving from beside the vehicle, the route is
+ * found now. False when none exists.
+ */
+export function startHeldDrive(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  goal: NodeId,
+): boolean {
+  const held = world.tryGet(vehicle, VehicleRoute)?.nodes;
+  const anchor = vehicleAnchor(world, vehicle);
+  const first = held?.[0];
+  const last = held?.at(-1);
+  const fits =
+    held !== undefined &&
+    !world.has(vehicle, VehicleDrive) &&
+    anchor !== null &&
+    first !== undefined &&
+    last !== undefined &&
+    terrain.nodeAtClamped(last.hx, last.hy) === goal &&
+    hexDistance(anchor, first) <= LATTICE_EDGE_MAX_POINTS;
+  if (!fits) return startVehicleDrive(world, ctx, terrain, vehicle, goal);
+  castOff(world, vehicle);
+  deliverRoute(world, ctx, vehicle, nodeOf(terrain, goal), held);
+  return true;
+}
+
+/** End `vehicle`'s drive, its route with it. */
+export function endDrive(world: World, vehicle: Entity): void {
+  world.remove(vehicle, VehicleDrive);
+  world.remove(vehicle, VehicleRoute);
+}
+
+/** Cut a drive's route after the leg under way. False when no drive stands. */
+export function cutRoute(world: World, vehicle: Entity): boolean {
+  if (!world.has(vehicle, VehicleDrive)) return false;
+  if (routeAhead(world, vehicle) > 0) {
+    world.mut(vehicle, VehicleRoute).nodes = [];
+    world.mut(vehicle, VehicleDrive).step = 0;
   }
   return true;
+}
+
+/** How far (Manhattan half-cell nodes) a march may stand from its kept route and still rejoin it.
+ *  Authored: past a chase within a catapult's range band, far under a route across a continent. */
+const MARCH_REJOIN_HOP_NODES = 48;
+
+/** Keep the rest of `vehicle`'s march route when a fight is about to cut it: only a drive to the march's
+ *  own goal is the march's, a chase is not. */
+export function keepMarchRoute(world: World, vehicle: Entity): void {
+  const { march } = world.get(vehicle, Vehicle);
+  const drive = world.tryGet(vehicle, VehicleDrive);
+  const route = world.tryGet(vehicle, VehicleRoute);
+  if (march === null || drive === undefined || route === undefined) return;
+  if (drive.goal.hx !== march.goal.hx || drive.goal.hy !== march.goal.hy) return;
+  if (drive.step >= route.nodes.length) return;
+  const kept = { goal: { hx: march.goal.hx, hy: march.goal.hy }, nodes: route.nodes.slice(drive.step) };
+  if (world.has(vehicle, VehicleMarchRoute)) {
+    const live = world.mut(vehicle, VehicleMarchRoute);
+    live.goal = kept.goal;
+    live.nodes = kept.nodes;
+  } else world.add(vehicle, VehicleMarchRoute, kept);
+}
+
+/**
+ * Drive `vehicle` back onto the march route to `goal` a fight cut short: a short hop onto the kept
+ * route near where it stands, then the kept rest of the way (`joinCorridor`, which also bounds the hop
+ * and cuts any loop). False with no kept route to `goal` or no short way onto it, which leaves a full
+ * route to the caller; the kept route is used once.
+ */
+export function rejoinMarch(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  goal: HalfCellNode,
+): boolean {
+  const kept = world.tryGet(vehicle, VehicleMarchRoute);
+  if (kept === undefined) return false;
+  world.remove(vehicle, VehicleMarchRoute);
+  const type = contentIndex(ctx.content).vehicles.get(world.get(vehicle, Vehicle).vehicleType);
+  const anchor = vehicleAnchor(world, vehicle);
+  if (type === undefined || anchor === null || kept.goal.hx !== goal.hx || kept.goal.hy !== goal.hy) {
+    return false;
+  }
+  const joined = joinCorridor(
+    terrain,
+    kept.nodes.map(({ hx, hy }) => terrain.nodeAtClamped(hx, hy)),
+    terrain.nodeAtClamped(anchor.hx, anchor.hy),
+    terrain.nodeAtClamped(goal.hx, goal.hy),
+    vehicleWalkBlocks(world, ctx, terrain, vehicle, type),
+    { explored: 0 },
+    MARCH_REJOIN_HOP_NODES,
+    vehicleTraversal(type),
+  );
+  if (joined === null) return false;
+  deliverRoute(
+    world,
+    ctx,
+    vehicle,
+    { hx: goal.hx, hy: goal.hy },
+    joined.slice(1).map((node) => nodeOf(terrain, node)),
+  );
+  return true;
+}
+
+/** The nodes a drive still has to enter. */
+function routeAhead(world: World, vehicle: Entity): number {
+  const nodes = world.tryGet(vehicle, VehicleRoute)?.nodes.length ?? 0;
+  return Math.max(0, nodes - (world.tryGet(vehicle, VehicleDrive)?.step ?? 0));
 }
 
 /** The nodes a drive from the vehicle's anchor to `goal` would enter, the first next, over the vehicle's
@@ -260,6 +401,7 @@ export function vehicleRouteTo(
   terrain: TerrainGraph,
   vehicle: Entity,
   goal: NodeId,
+  orders?: VehicleOrderRoutes,
 ): HalfCellNode[] | null {
   const state = world.get(vehicle, Vehicle);
   const anchor = vehicleAnchor(world, vehicle);
@@ -278,7 +420,11 @@ export function vehicleRouteTo(
   const traversal = vehicleTraversal(type);
   if (traversal === 'water' && start !== goal && !sailsTo(world, ctx, terrain, type, start, goal))
     return null;
+  const group = `${world.tryGet(vehicle, Owner)?.player ?? -1}:${traversal}:${type.logicSize}`;
+  const borrowed = orders?.borrow(terrain, group, blocked, start, goal, traversal) ?? null;
+  if (borrowed !== null) return borrowed.slice(1).map((node) => nodeOf(terrain, node));
   const path = findPath(terrain, start, goal, blocked, undefined, traversal);
+  if (path !== null) orders?.offer(group, path);
   return path === null ? null : path.slice(1).map((node) => nodeOf(terrain, node));
 }
 
@@ -326,7 +472,7 @@ export function abandonDock(world: World, vehicle: Entity): void {
   if (state.task !== 'docks') return;
   const live = world.mut(vehicle, Vehicle);
   live.task = 'none';
-  live.heldGoal = null;
+  dropHeldGoal(world, vehicle);
   if (!live.moored) live.mooring = null;
 }
 
@@ -343,6 +489,7 @@ export function moveVehicle(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'moveVehicle' }>,
+  orders?: VehicleOrderRoutes,
 ): boolean {
   const terrain = ctx.terrain;
   if (terrain === undefined) return false; // mapless sim: nothing to drive over
@@ -365,7 +512,7 @@ export function moveVehicle(
     refuseMove(world, ctx, e, 'noPath');
     return false;
   }
-  if (!sendVehicleTo(world, ctx, terrain, e, goal)) return false;
+  if (!sendVehicleTo(world, ctx, terrain, e, goal, orders)) return false;
   if (command.attackMove === true && type !== undefined && isSiegeVehicle(type)) {
     world.mut(e, Vehicle).march = { goal: nodeOf(terrain, goal), restUntil: 0 };
   }
@@ -384,18 +531,26 @@ export function sendVehicleTo(
   terrain: TerrainGraph,
   vehicle: Entity,
   goal: NodeId,
+  orders?: VehicleOrderRoutes,
 ): boolean {
   if (!crewInside(world.get(vehicle, Vehicle))) {
-    if (vehicleRouteTo(world, ctx, terrain, vehicle, goal) === null) {
+    const route = vehicleRouteTo(world, ctx, terrain, vehicle, goal, orders);
+    if (route === null) {
       refuseMove(world, ctx, vehicle, 'noPath');
       return false;
     }
     const live = world.mut(vehicle, Vehicle);
     live.heldGoal = nodeOf(terrain, goal);
     live.task = 'waitsForHuman';
+    // Held for the boarding to drive on, so a route that may cross a whole sea is found once; a drive
+    // still under way keeps its own.
+    if (!world.has(vehicle, VehicleDrive)) {
+      if (world.has(vehicle, VehicleRoute)) world.mut(vehicle, VehicleRoute).nodes = route;
+      else world.add(vehicle, VehicleRoute, { nodes: route });
+    }
     return true;
   }
-  if (!startVehicleDrive(world, ctx, terrain, vehicle, goal)) {
+  if (!startVehicleDrive(world, ctx, terrain, vehicle, goal, orders)) {
     refuseMove(world, ctx, vehicle, 'noPath');
     return false;
   }
@@ -408,12 +563,25 @@ export function sendVehicleTo(
 /** A player's goto or stop supersedes whatever the vehicle was firing at and its march; the stance
  *  stays. */
 function dropAttack(world: World, e: Entity): void {
+  endMarch(world, e);
   const state = world.get(e, Vehicle);
-  if (state.attack === null && state.march === null) return;
+  if (state.attack === null) return;
   const live = world.mut(e, Vehicle);
   live.attack = null;
-  live.march = null;
   if (live.task === 'attacks') live.task = 'none';
+}
+
+/** End an attack-move, the route a fight kept for it with it. */
+export function endMarch(world: World, e: Entity): void {
+  if (world.get(e, Vehicle).march !== null) world.mut(e, Vehicle).march = null;
+  world.remove(e, VehicleMarchRoute);
+}
+
+/** Drop a goto or dock point held for the crew, and the route a held goto was judged by; a drive under
+ *  way keeps its own. */
+export function dropHeldGoal(world: World, e: Entity): void {
+  if (world.get(e, Vehicle).heldGoal !== null) world.mut(e, Vehicle).heldGoal = null;
+  if (!world.has(e, VehicleDrive)) world.remove(e, VehicleRoute);
 }
 
 /** Whether every seated rider, the commander among them, is inside. */
@@ -430,18 +598,18 @@ export function stopVehicle(world: World, command: Extract<Command, { kind: 'sto
   if (state === undefined) return;
   const held = state.heldGoal !== null || state.task === 'waitsForHuman';
   dropAttack(world, e);
-  const drive = world.tryMut(e, VehicleDrive);
+  const drive = world.tryGet(e, VehicleDrive);
   if (drive === undefined && !held) return;
   if (drive !== undefined) {
-    drive.route.length = 0;
+    cutRoute(world, e);
     if (drive.from === null) {
-      world.remove(e, VehicleDrive);
+      endDrive(world, e);
       reanchorGuard(world, e);
     }
   }
   if (held) stopAskingCrewIn(world, state);
+  dropHeldGoal(world, e);
   const live = world.mut(e, Vehicle);
-  live.heldGoal = null;
   live.task = 'interrupted';
   if (!live.moored) live.mooring = null;
 }
@@ -469,10 +637,11 @@ export const vehicleMovementSystem: System = (world, ctx) => {
   let standing: NodeBuckets | undefined;
   for (const e of world.canonicalQuery(VehicleDrive, Vehicle, Position)) {
     const drive = world.get(e, VehicleDrive);
+    const route = world.tryGet(e, VehicleRoute)?.nodes ?? [];
     if (drive.from !== null && drive.helm !== null) {
       const end = vehicleAnchor(world, e);
       if (end === null) continue;
-      sailLeg(world, e, facingOfStep(drive.from, end), shipCourse(end, drive.route), false);
+      sailLeg(world, e, facingOfStep(drive.from, end), shipCourse(end, route, drive.step), false);
       continue;
     }
     if (drive.from !== null) {
@@ -484,7 +653,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
       }
       continue;
     }
-    const next = drive.route[0];
+    const next = route[drive.step];
     const state = world.get(e, Vehicle);
     if (next === undefined && drive.helm !== null && state.facing !== drive.helm.heading) {
       const helm = world.mut(e, VehicleDrive).helm;
@@ -493,7 +662,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     }
     if (next === undefined) {
       if (state.task !== 'interrupted' && settleOutOfGap(world, ctx, terrain, e)) continue;
-      world.remove(e, VehicleDrive); // arrived, or stopped on its node
+      endDrive(world, e); // arrived, or stopped on its node
       if (state.task === 'docks') moorVehicle(world, ctx, e);
       reanchorGuard(world, e);
       continue;
@@ -501,14 +670,14 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
     const anchor = vehicleAnchor(world, e);
     if (type === undefined || anchor === null) {
-      world.remove(e, VehicleDrive);
+      endDrive(world, e);
       continue;
     }
     const nextNode = terrain.nodeAtClamped(next.hx, next.hy);
     if (vehicleWalkBlocks(world, ctx, terrain, e, type).has(nextNode)) {
       const goal = terrain.nodeAtClamped(drive.goal.hx, drive.goal.hy);
       if (!startVehicleDrive(world, ctx, terrain, e, goal)) {
-        world.remove(e, VehicleDrive);
+        endDrive(world, e);
         refuseMove(world, ctx, e, 'noPath');
         abandonDock(world, e);
         if (!settleOutOfGap(world, ctx, terrain, e)) reanchorGuard(world, e);
@@ -518,9 +687,9 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     const here = terrain.nodeAtClamped(anchor.hx, anchor.hy);
     const period = vehicleMovePeriod(terrain.resistanceAt(here), isSiegeVehicle(type));
     const facing = facingOfStep(anchor, next);
-    const course = shipCourse(anchor, drive.route) ?? facing;
+    const course = shipCourse(anchor, route, drive.step) ?? facing;
     const live = world.mut(e, VehicleDrive);
-    live.route.shift();
+    live.step += 1;
     live.from = anchor;
     live.increment = vehicleProgressPerTick(vehicleLegTicks(period, hexDistance(anchor, next)));
     // Written on every node entered, a ship holding its heading included: the blocker caches learn
@@ -540,8 +709,8 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     pos.x = at.x;
     pos.y = at.y;
     standing ??= stationaryOwnedSettlers(world);
-    shoveSettlers(world, ctx, terrain, standing, next, live.route, type.logicSize);
-    if (live.helm !== null) sailLeg(world, e, facing, shipCourse(next, live.route), true);
+    shoveSettlers(world, ctx, terrain, standing, next, route, live.step, type.logicSize);
+    if (live.helm !== null) sailLeg(world, e, facing, shipCourse(next, route, live.step), true);
   }
 };
 
@@ -574,20 +743,38 @@ function reanchorGuard(world: World, e: Entity): void {
   world.mut(e, Vehicle).guard = anchor;
 }
 
-/** The nodes the footprints of a drive's remaining route cover, `entered` included. */
-function routeFootprint(
-  terrain: TerrainGraph,
-  entered: HalfCellNode,
-  route: readonly HalfCellNode[],
-  logicSize: number,
-): Set<NodeId> {
-  const ahead = new Set<NodeId>();
-  for (const centre of [entered, ...route]) {
-    for (const { hx, hy } of hexDisc(centre, logicSize)) {
-      if (terrain.inBounds(hx, hy)) ahead.add(terrain.nodeAt(hx, hy));
+/** Each route's nodes by their index, so a shove asks whether a node lies ahead in a few lookups. Keyed
+ *  by the route array, which a drive replaces and never edits; derived, so it cannot change a result. */
+const routeIndexes = new WeakMap<readonly HalfCellNode[], Map<NodeId, number>>();
+
+function routeIndexOf(terrain: TerrainGraph, route: readonly HalfCellNode[]): Map<NodeId, number> {
+  let index = routeIndexes.get(route);
+  if (index === undefined) {
+    index = new Map();
+    for (const [i, { hx, hy }] of route.entries()) {
+      if (terrain.inBounds(hx, hy)) index.set(terrain.nodeAt(hx, hy), i);
     }
+    routeIndexes.set(route, index);
   }
-  return ahead;
+  return index;
+}
+
+/** Whether `node` lies under the footprint of `entered` or of a route node from index `step` on: some
+ *  footprint centre lies within `logicSize` of it. */
+function underRouteFootprint(
+  terrain: TerrainGraph,
+  node: NodeId,
+  entered: NodeId,
+  index: ReadonlyMap<NodeId, number>,
+  step: number,
+  logicSize: number,
+): boolean {
+  for (const { hx, hy } of hexDisc({ hx: terrain.xOf(node), hy: terrain.yOf(node) }, logicSize)) {
+    if (!terrain.inBounds(hx, hy)) continue;
+    const centre = terrain.nodeAt(hx, hy);
+    if (centre === entered || (index.get(centre) ?? -1) >= step) return true;
+  }
+  return false;
 }
 
 /**
@@ -605,21 +792,24 @@ function shoveSettlers(
   standing: NodeBuckets,
   entered: HalfCellNode,
   route: readonly HalfCellNode[],
+  step: number,
   logicSize: number,
 ): void {
-  let ahead: Set<NodeId> | undefined;
   let blocked: BlockOverlay | undefined;
+  const enteredNode = terrain.nodeAtClamped(entered.hx, entered.hy);
   const claimed = new Set<NodeId>();
   for (const { hx, hy } of hexDisc(entered, logicSize)) {
     for (const settler of standing.at(hx, hy)) {
       if (isTravelling(world, settler) || atomicHoldsSettler(world, settler)) continue;
       const from = terrain.nodeAtClamped(hx, hy);
-      ahead ??= routeFootprint(terrain, entered, route, logicSize);
       blocked ??= dynamicBlockOverlay(world, ctx, terrain);
-      const onRoute = ahead;
       const walls = blocked;
+      const index = routeIndexOf(terrain, route);
       const free = ringSearch(terrain, from, STAND_SEARCH_CAP, {
-        accept: (n) => !onRoute.has(n) && !walls.has(n) && !claimed.has(n),
+        accept: (n) =>
+          !walls.has(n) &&
+          !claimed.has(n) &&
+          !underRouteFootprint(terrain, n, enteredNode, index, step, logicSize),
       });
       if (free === null) continue; // boxed in - the settler stays
       claimed.add(free);

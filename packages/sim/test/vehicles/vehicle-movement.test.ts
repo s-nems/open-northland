@@ -9,10 +9,12 @@ import {
   seatPassenger,
   Vehicle,
   VehicleDrive,
+  VehicleRoute,
   WALK_DIRECTION,
 } from '../../src/components/index.js';
 import type { Component, Entity } from '../../src/ecs/world.js';
 import {
+  checkInvariants,
   exportSaveGame,
   type HalfCellNode,
   halfCellMapFromCells,
@@ -51,6 +53,7 @@ import { nodeOf, vehicleRouteTo, vehicleWalkBlocks } from '../../src/systems/veh
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap, waterColumnMap } from '../fixtures/terrain.js';
+import { routeAhead } from '../fixtures/vehicle-route.js';
 
 /**
  * The land mover of docs/formats/VEHICLES.md "Movement": the goto's refusals (no commander, off the
@@ -365,6 +368,53 @@ describe('moveVehicle', () => {
     expect(anchorOf(s, cart)).toEqual(far);
   });
 
+  it('lets a vehicle ordered in the same tick borrow the long route another of its class found', () => {
+    const s = sim(grassCellMap(LONG_MAP_CELLS, 12));
+    const lead = commanded(s, CATAPULT, 4, 6);
+    const wing = commanded(s, CATAPULT, 4, 16);
+    order(s, lead, 2 * LONG_MAP_CELLS - 10, 6);
+    order(s, wing, 2 * LONG_MAP_CELLS - 10, 16);
+    s.step();
+    expect(refusals(s)).toEqual([]);
+    const key = ({ hx, hy }: HalfCellNode) => `${hx},${hy}`;
+    const leadNodes = new Set(routeAhead(s, lead).map(key));
+    const shared = routeAhead(s, wing).filter((node) => leadNodes.has(key(node)));
+    // Alone, the wing's route would run its own row ten nodes south and share none of the lead's.
+    expect(shared.length).toBeGreaterThan(OLD_WALK_RANGE_NODES);
+    driveOut(s, wing, 2 * LONG_DRIVE_TICKS); // a catapult crosses a node in twice a cart's period
+    expect(anchorOf(s, wing)).toEqual({ hx: 2 * LONG_MAP_CELLS - 10, hy: 16 });
+  });
+
+  it('lets no unrelated drive of the same tick borrow a long route, whoever owns it', () => {
+    const s = sim(grassCellMap(LONG_MAP_CELLS, 40));
+    const lead = commanded(s, CATAPULT, 4, 6);
+    const own = commanded(s, CATAPULT, 60, 40);
+    const rival = commanded(s, CATAPULT, 60, 50, P1);
+    order(s, lead, 2 * LONG_MAP_CELLS - 10, 6);
+    order(s, own, 90, 40);
+    order(s, rival, 90, 50, P1);
+    s.step();
+    expect(refusals(s)).toEqual([]);
+    // Alone, each runs its own 30 nodes; a borrowed corridor would drag it up to row 6 and back.
+    expect(routeAhead(s, own).every(({ hy }) => hy >= 36)).toBe(true);
+    expect(routeAhead(s, rival).every(({ hy }) => hy >= 46)).toBe(true);
+  });
+
+  it('drops the route a held goto was judged by when the goto is stopped', () => {
+    const s = sim();
+    const cart = spawn(s, HANDCART, 12, 6);
+    const scout = spawnSettler(s, 2, 6);
+    s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: scout, vehicle: cart }));
+    s.step();
+    order(s, cart, 4, 12);
+    s.step();
+    expect(s.world.has(cart, VehicleRoute)).toBe(true);
+    s.enqueue(playerCommand(P0, { kind: 'stopVehicle', vehicle: cart }));
+    s.step();
+    expect(s.world.has(cart, VehicleRoute)).toBe(false);
+    expect(checkInvariants(s.world, s.content)).toEqual([]);
+  });
+
   it('closes a wall stood up after the clearance field was read, and reopens it once razed', () => {
     const wallAt = { hx: 10, hy: 8 };
     const wall = { maxHitpoints: WALL_HITPOINTS, repairPerStrike: 1, construction: [] };
@@ -442,7 +492,7 @@ describe('moveVehicle', () => {
     s.enqueue(playerCommand(P0, { kind: 'stopVehicle', vehicle: cart }));
     s.step();
     expect(s.world.get(cart, Vehicle).task).toBe('interrupted');
-    expect(s.world.get(cart, VehicleDrive).route).toEqual([]);
+    expect(routeAhead(s, cart)).toEqual([]);
     driveOut(s, cart);
     expect(anchorOf(s, cart)).toEqual({ hx: 5, hy: 8 });
     order(s, cart, 8, 8);

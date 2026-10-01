@@ -7,7 +7,6 @@ import {
   Settler,
   stampOwner,
   Vehicle,
-  VehicleDrive,
 } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -21,7 +20,7 @@ import { vehicleTraversal } from '../../readviews/vehicles.js';
 import { spawnSettler } from '../../spawn/index.js';
 import { createVehicle } from '../../vehicles/create.js';
 import { attachToVehicle, boardRider, detachFromVehicle, passengerJobAllowed } from '../../vehicles/crew.js';
-import { vehicleWalkBlocks } from '../../vehicles/movement.js';
+import { dropHeldGoal, endDrive, endMarch, vehicleWalkBlocks } from '../../vehicles/movement.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { removeVehicle } from '../../vehicles/remove.js';
 import type { MissionPass } from '../pass.js';
@@ -261,10 +260,10 @@ function teleportVehicle(
   const pos = world.mut(e, Position);
   pos.x = at.x;
   pos.y = at.y;
-  world.remove(e, VehicleDrive);
+  endDrive(world, e);
+  dropHeldGoal(world, e);
+  endMarch(world, e); // a march would drive the vehicle straight back from where the script set it
   const live = world.mut(e, Vehicle);
-  live.heldGoal = null;
-  live.march = null; // a march would drive the vehicle straight back from where the script set it
   live.moored = false;
   live.mooring = null;
   live.guard = { hx: x, hy: y };

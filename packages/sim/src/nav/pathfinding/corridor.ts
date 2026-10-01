@@ -1,6 +1,12 @@
 import { fx } from '../../core/fixed.js';
 import type { BlockOverlay } from '../block-overlay.js';
-import { latticeDistanceTo, type NodeId, nodeLatticeDistance, type TerrainGraph } from '../terrain/index.js';
+import {
+  latticeDistanceTo,
+  type NodeId,
+  nodeLatticeDistance,
+  type TerrainGraph,
+  type Traversal,
+} from '../terrain/index.js';
 import { findPathWithin, type SearchStats } from './find-path.js';
 
 /**
@@ -26,6 +32,7 @@ export function joinCorridor(
   blocked: BlockOverlay,
   stats: SearchStats,
   maxHopNodes: number,
+  traversal: Traversal = 'land',
 ): NodeId[] | null {
   // Only the corridor's own start can be blocked, by the walker-exempt rule; no hop may end there.
   const entry = nearestStop(graph, corridor, start, 0, blocked);
@@ -33,9 +40,9 @@ export function joinCorridor(
   const exit = nearestStop(graph, corridor, goal, entry.index, blocked);
   if (exit === undefined || exit.index === entry.index) return null;
   if (manhattanNodes(graph, exit.node, goal) > maxHopNodes) return null;
-  const onto = findPathWithin(graph, start, entry.node, blocked, stats, CORRIDOR_LEG_MAX_EXPLORED);
+  const onto = findPathWithin(graph, start, entry.node, blocked, stats, CORRIDOR_LEG_MAX_EXPLORED, traversal);
   if (typeof onto === 'string' || !isHop(graph, onto)) return null;
-  const off = findPathWithin(graph, exit.node, goal, blocked, stats, CORRIDOR_LEG_MAX_EXPLORED);
+  const off = findPathWithin(graph, exit.node, goal, blocked, stats, CORRIDOR_LEG_MAX_EXPLORED, traversal);
   if (typeof off === 'string' || !isHop(graph, off)) return null;
   return withoutLoops([...onto, ...corridor.slice(entry.index + 1, exit.index), ...off]);
 }

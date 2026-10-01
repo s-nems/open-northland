@@ -14,6 +14,10 @@ import {
   SettlerProgress,
   Stockpile,
   stockpileEntries,
+  Vehicle,
+  VehicleDrive,
+  VehicleMarchRoute,
+  VehicleRoute,
 } from '../components/index.js';
 import { ONE } from '../core/fixed.js';
 import type { Component, World } from '../ecs/world.js';
@@ -128,6 +132,21 @@ const splitHalvesPaired: Invariant = (world) => {
   return out;
 };
 
+/** A vehicle's route lives with its drive or its goto held for the crew, and a kept march route with its
+ *  march, so neither outlives what it was found for into saves and hashes. */
+const vehicleRoutesOwned: Invariant = (world) => {
+  const out: string[] = [];
+  for (const e of world.query(VehicleRoute)) {
+    if (world.has(e, VehicleDrive) || world.tryGet(e, Vehicle)?.heldGoal != null) continue;
+    out.push(`entity ${e}: VehicleRoute with neither a drive nor a held goal`);
+  }
+  for (const e of world.query(VehicleMarchRoute)) {
+    if (world.tryGet(e, Vehicle)?.march != null) continue;
+    out.push(`entity ${e}: VehicleMarchRoute without a march`);
+  }
+  return out;
+};
+
 export const CORE_INVARIANTS: readonly Invariant[] = [
   stockNonNegative,
   needsInRange,
@@ -135,6 +154,7 @@ export const CORE_INVARIANTS: readonly Invariant[] = [
   preyHoldWithinEngagement,
   personhoodMatchesTribe,
   splitHalvesPaired,
+  vehicleRoutesOwned,
   cachesCoherent,
   playerPlacementRulesValid,
 ];

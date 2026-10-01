@@ -31,6 +31,7 @@ import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { stepOut } from '../settlers/indoors.js';
 import { endChat } from '../social/gossip/drive.js';
 import { abandonCargoRun } from './cargo.js';
+import { dropHeldGoal, endMarch } from './movement.js';
 
 // The crew of docs/formats/VEHICLES.md "Crew": who may attach, where a rider boards and leaves, and what
 // a rider gives up when it joins. The boarding drives live in `boarding.ts`.
@@ -304,9 +305,9 @@ export function unloadPeople(
     if (seat.inside) setDownRider(world, seat.entity, landing);
     releaseRider(world, seat.entity, vehicle);
   }
+  dropHeldGoal(world, vehicle);
+  endMarch(world, vehicle);
   const live = world.mut(vehicle, Vehicle);
-  live.heldGoal = null;
-  live.march = null;
   if (live.task === 'waitsForHuman' || live.task === 'docks') live.task = 'none';
 }
 

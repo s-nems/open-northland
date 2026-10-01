@@ -139,7 +139,7 @@ export function findPath(
 }
 
 /**
- * One capped forward A* for a land walker, with no pocket probe: `'unreachable'` is exact, `'aborted'` means the cap ran out
+ * One capped forward A* with no pocket probe: `'unreachable'` is exact, `'aborted'` means the cap ran out
  * first. For short searches that fall back to {@link findPath} on anything but a route.
  */
 export function findPathWithin(
@@ -149,8 +149,11 @@ export function findPathWithin(
   blocked: BlockOverlay,
   stats: SearchStats,
   maxExplored: number,
+  traversal: Traversal = 'land',
 ): NodeId[] | 'unreachable' | 'aborted' {
-  if (!graph.isWalkable(start) || !graph.isWalkable(goal) || blocked.has(goal)) return 'unreachable';
+  if (!graph.traversable(start, traversal) || !graph.traversable(goal, traversal) || blocked.has(goal)) {
+    return 'unreachable';
+  }
   if (start === goal) return [start];
   if (graph.componentOf(start) !== graph.componentOf(goal)) return 'unreachable';
   return new ResumableSearch(
@@ -160,7 +163,7 @@ export function findPathWithin(
     goal,
     blocked,
     stats,
-    'land',
+    traversal,
   ).advance(maxExplored);
 }
 

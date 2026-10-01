@@ -21,14 +21,17 @@ import {
   UnreachableTargets,
   Vehicle,
   VehicleDrive,
+  VehicleMarchRoute,
   vehicleCommander,
   wasAttackedBy,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
+  checkInvariants,
   exportSaveGame,
   fx,
   halfCellMapFromCells,
+  nodeOfPosition,
   ONE,
   parseSaveGame,
   playerCommand,
@@ -39,6 +42,7 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
+import { findPath } from '../../src/nav/pathfinding/index.js';
 import { combatSystem } from '../../src/systems/conflict/combat.js';
 import { projectileSystem } from '../../src/systems/conflict/projectile.js';
 import { isFleeThreat } from '../../src/systems/conflict/targeting.js';
@@ -50,6 +54,7 @@ import { ARMOR_MATERIAL, MILITARY_MODE } from '../../src/systems/readviews/index
 import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { routeAhead } from '../fixtures/vehicle-route.js';
 
 // The catapult's fight (docs/formats/VEHICLES.md "Catapult"): the stance scans, the band's back-off
 // and approach, the scatter roll, the ground burst on whatever stands on the landing node (the owner's
@@ -388,7 +393,8 @@ describe('the guard position', () => {
     for (let i = 0; i < DRIVE_TICKS; i++) {
       s.step();
       const drive = s.world.tryGet(vehicle, VehicleDrive);
-      if (drive?.from === null && drive.route.length > 0 && anchorOf(s, vehicle).hx > pastHx) return;
+      if (drive?.from === null && routeAhead(s, vehicle).length > 0 && anchorOf(s, vehicle).hx > pastHx)
+        return;
     }
     throw new Error('the drive never stood between legs');
   }
@@ -426,8 +432,8 @@ describe('the guard position', () => {
     s.enqueue(playerCommand(P1, { kind: 'moveVehicle', vehicle: cart, x: 28, y: 8 }));
     stepToLegEnd(s, cart, 4);
     // Another cart parks on the next node and the goal moves across the strait: no way leads on.
+    const next = routeAhead(s, cart)[0];
     const drive = s.world.mut(cart, VehicleDrive);
-    const next = drive.route[0];
     if (next === undefined) throw new Error('no next node');
     drive.goal = { hx: 70, hy: 8 };
     createVehicle(s.world, ctxOf(s), {
@@ -636,6 +642,56 @@ describe('the attack-move march', () => {
     expect(state.march).toBeNull();
     expect(state.attack).toBeNull();
     expect(s.world.get(catapult, Position)).toEqual(positionOfNode(GOAL.hx, GOAL.hy));
+  });
+
+  it('rejoins the march route the fight cut short instead of routing to the goal anew', () => {
+    const s = sim(grass(40, 12));
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const catapult = catapultAt(s, 4, 8, P1);
+    houseAt(s, ROADSIDE_HOUSE.hx, ROADSIDE_HOUSE.hy, P2, FRAIL_HOUSE);
+    march(s, catapult, true);
+    let kept: readonly { hx: number; hy: number }[] | undefined;
+    for (let i = 0; i < MARCH_TICKS && kept === undefined; i++) {
+      s.step();
+      kept = s.world.tryGet(catapult, VehicleMarchRoute)?.nodes;
+    }
+    const first = kept?.[0];
+    if (first === undefined) throw new Error('the fight kept no march route');
+    // A roundabout kept way through a far waypoint: a fresh route to the goal would never pass it.
+    const via = { hx: 44, hy: 20 };
+    const node = (p: { hx: number; hy: number }) => terrain.nodeAt(p.hx, p.hy);
+    const toVia = findPath(terrain, node(first), node(via)) ?? [];
+    const toGoal = findPath(terrain, node(via), node(GOAL)) ?? [];
+    const roundabout = [...toVia, ...toGoal.slice(1)].map((n) => ({
+      hx: terrain.xOf(n),
+      hy: terrain.yOf(n),
+    }));
+    s.world.mut(catapult, VehicleMarchRoute).nodes = roundabout;
+    let passedVia = false;
+    for (let i = 0; i < MARCH_TICKS; i++) {
+      s.step();
+      const at = nodeOfPosition(s.world.get(catapult, Position).x, s.world.get(catapult, Position).y);
+      passedVia ||= at.hx === via.hx && at.hy === via.hy;
+      if (s.world.get(catapult, Vehicle).march === null && !s.world.has(catapult, VehicleDrive)) break;
+    }
+    expect(passedVia).toBe(true);
+    expect(s.world.has(catapult, VehicleMarchRoute)).toBe(false);
+    expect(s.world.get(catapult, Position)).toEqual(positionOfNode(GOAL.hx, GOAL.hy));
+  });
+
+  it('drops the route a fight kept once the march ends otherwise', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 4, 8, P1);
+    houseAt(s, ROADSIDE_HOUSE.hx, ROADSIDE_HOUSE.hy, P2, FRAIL_HOUSE);
+    march(s, catapult, true);
+    for (let i = 0; i < MARCH_TICKS && !s.world.has(catapult, VehicleMarchRoute); i++) s.step();
+    expect(s.world.has(catapult, VehicleMarchRoute)).toBe(true);
+    s.enqueue(playerCommand(P1, { kind: 'unloadPeople', vehicle: catapult }));
+    s.step();
+    expect(s.world.get(catapult, Vehicle).march).toBeNull();
+    expect(s.world.has(catapult, VehicleMarchRoute)).toBe(false);
+    expect(checkInvariants(s.world, s.content)).toEqual([]);
   });
 
   it('a plain goto drives past the same house without a shot', () => {

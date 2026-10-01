@@ -101,26 +101,31 @@ describe('ClearanceField', () => {
     expectMatchesDefinition(graph, field, open);
     expect(field.classOf(first)).toBe(3); // four steps from the remaining post: a disc of radius 3
   });
-  it('moves its water revision on a water class edit and never on a land one', () => {
+  it('moves the water revision of the classes a water edit crosses, and never on a land edit', () => {
     // 20x20 cells, grass west of cell 6 and open water from there: node 30 lies deep in the sea.
     const typeIds = Array.from({ length: 20 * 20 }, (_, i) => (i % 20 < 6 ? GRASS : WATER));
     const graph = buildTerrainGraph(testContent(), halfCellMapFromCells({ width: 20, height: 20, typeIds }));
     const blocked = new Set<NodeId>();
     const open = (n: NodeId): boolean => (graph.isWalkable(n) || graph.isWater(n)) && !blocked.has(n);
     const field = new ClearanceField(graph, open);
-    const built = field.waterRevision;
+    const revisions = (): number[] =>
+      Array.from({ length: MAX_CLEARANCE_CLASS }, (_, k) => field.waterRevision(k + 1));
+    const built = revisions();
 
     const land = graph.nodeAt(8, 20); // a post on the shore, beside the water
     blocked.add(land);
     field.recompute(open, [land]);
     expect(field.classOf(land)).toBe(0);
-    expect(field.waterRevision).toBe(built);
+    expect(revisions()).toEqual(built);
 
     const water = graph.nodeAt(30, 20);
     blocked.add(water);
     field.recompute(open, [water]);
     expect(field.classOf(water)).toBe(0);
-    expect(field.waterRevision).toBeGreaterThan(built);
+    // Open sea all round: the blocked node and its rings fall through every class.
+    const after = revisions();
+    for (const [k, revision] of after.entries())
+      expect(revision, `class ${k + 1}`).toBeGreaterThan(built[k] ?? 0);
     expectMatchesDefinition(graph, field, open);
   });
 });

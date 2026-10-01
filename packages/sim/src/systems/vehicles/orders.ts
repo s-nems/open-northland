@@ -13,7 +13,7 @@ import { orderedAttack } from '../conflict/engage-vehicle.js';
 import { vehicleWeapon } from '../conflict/weapons.js';
 import type { SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
-import { crewInside, refuseMove } from './movement.js';
+import { crewInside, dropHeldGoal, endMarch, refuseMove } from './movement.js';
 
 // The player's siege orders on a vehicle: its stance and what it fires at. The combat pass acts on
 // both (`conflict/engage-vehicle.ts`).
@@ -70,11 +70,11 @@ export function attackWithVehicle(
     const body = world.has(t, Building) || world.has(t, Palisade) || world.has(t, Vehicle);
     if (!body && !world.has(t, Settler)) return;
   }
+  endMarch(world, e); // the player's own target ends an attack-move
   const live = world.mut(e, Vehicle);
   live.attack = orderedAttack(target);
-  live.march = null; // the player's own target ends an attack-move
   if (!crewInside(state)) {
-    live.heldGoal = null; // the attack supersedes a goto held for the same boarding
+    dropHeldGoal(world, e); // the attack supersedes a goto held for the same boarding
     live.task = 'waitsForHuman';
   } else if (live.task === 'attacks') live.task = 'none';
 }

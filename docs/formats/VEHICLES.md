@@ -264,7 +264,11 @@ leaves (`TerrainGraph.roughnessAt`; a map without the lane reads 2 on land and 1
 common values); an off-continent target raises `vehicleNoPath` instead of being ignored, and so does
 a ship's target in a part of its sea past a strait too narrow for the hull, judged from the sea labels
 before any search; a goto held for a crew still outside is refused at once when no route exists at order
-time, where the original's pathfinder runs after the boarding; the anchor and footprint move at the
+time, where the original's pathfinder runs after the boarding, and the route found then is the one the
+drive takes once the crew is in; vehicles of one hull class ordered in the same tick share a long route
+when their starts and goals lie near it (each joins it by a short hop, as a settler group does), so a
+fleet's order costs about one search; an attack-move that stops to fight keeps the rest of its route and
+rejoins it by a short search afterwards; the anchor and footprint move at the
 start of a leg, not halfway; a lattice edge of two map points takes two periods; the vehicle faces
 its lattice step's screen heading at once, among the eight walk headings, and holds on the node it
 leaves for the turn's 2 ticks per step of that ring, drawn there while its progress stays below zero.

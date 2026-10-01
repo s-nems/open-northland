@@ -1,16 +1,25 @@
 import type { VehicleType } from '@open-northland/data';
-import { Vehicle, VehicleDrive, vehicleCommander } from '../../components/index.js';
+import { Vehicle, vehicleCommander } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { MAX_CLEARANCE_CLASS } from '../../nav/clearance.js';
 import { type HalfCellNode, hexagonRing } from '../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
 import { vehicleClearance } from '../footprint/vehicle-clearance.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
-import { crewInside, moorVehicle, refuseMove, startVehicleDrive, vehicleWalkBlocks } from './movement.js';
+import {
+  crewInside,
+  dropHeldGoal,
+  endDrive,
+  moorVehicle,
+  refuseMove,
+  startVehicleDrive,
+  vehicleWalkBlocks,
+} from './movement.js';
 import { type SeaRegions, seaRegions } from './sea-regions.js';
 
 // The dock order of docs/formats/VEHICLES.md "Ships and docking": a commanded ship boards its crew,
@@ -66,21 +75,50 @@ export function startDock(
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (anchor === null || type === undefined) return false;
   const here = terrain.nodeAt(anchor.hx, anchor.hy);
+  // After one candidate finds no route, the water the ship can reach is flooded once and only the
+  // candidates in it are searched, instead of a sea-wide search per ring node another ship cut off.
+  let reached: Uint8Array | undefined;
   for (const node of dockCandidates(world, ctx, terrain, vehicle, type, anchor, point)) {
-    if (node !== here && !startVehicleDrive(world, ctx, terrain, vehicle, node)) continue;
-    if (node === here) world.remove(vehicle, VehicleDrive); // a goto under way ends here, moored
+    if (reached !== undefined && reached[node] !== REACHED) continue;
+    if (node !== here && !startVehicleDrive(world, ctx, terrain, vehicle, node)) {
+      reached ??= reachableWater(terrain, vehicleWalkBlocks(world, ctx, terrain, vehicle, type), here);
+      continue;
+    }
+    if (node === here) endDrive(world, vehicle); // a goto under way ends here, moored
+    dropHeldGoal(world, vehicle);
     const live = world.mut(vehicle, Vehicle);
     live.task = 'docks';
-    live.heldGoal = null;
     live.mooring = { hx: point.hx, hy: point.hy };
     if (node === here) moorVehicle(world, ctx, vehicle);
     return true;
   }
   refuseMove(world, ctx, vehicle, 'noPath');
+  dropHeldGoal(world, vehicle);
   const live = world.mut(vehicle, Vehicle);
-  live.heldGoal = null;
   if (live.task === 'docks') live.task = 'none';
   return false;
+}
+
+const REACHED = 1;
+
+/** The nodes a ship on `start` can sail to under `blocked`, marked {@link REACHED}; the start counts,
+ *  as the pathfinder lets a vehicle leave a node that closed under it. */
+function reachableWater(terrain: TerrainGraph, blocked: BlockOverlay, start: NodeId): Uint8Array {
+  const reached = new Uint8Array(terrain.nodeCount);
+  reached[start] = REACHED;
+  const queue: NodeId[] = [start];
+  const edges = new StepBuffer();
+  // The array iterator re-reads `length`, so `queue` is a live breadth-first queue.
+  for (const current of queue) {
+    terrain.stepsInto(current, blocked, edges, 'water');
+    for (let i = 0; i < edges.length; i++) {
+      const { node } = edges.at(i);
+      if (reached[node] === REACHED) continue;
+      reached[node] = REACHED;
+      queue.push(node);
+    }
+  }
+  return reached;
 }
 
 /**

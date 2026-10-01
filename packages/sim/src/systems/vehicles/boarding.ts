@@ -36,7 +36,14 @@ import {
   setDownRider,
 } from './crew.js';
 import { startDock } from './dock.js';
-import { refuseMove, startVehicleDrive } from './movement.js';
+import {
+  dropHeldGoal,
+  endDrive,
+  endMarch,
+  refuseMove,
+  startHeldDrive,
+  startVehicleDrive,
+} from './movement.js';
 import { type VehicleWorkFilter, vehiclesAtWork } from './registry.js';
 import { cargoHandHasWork } from './stock.js';
 
@@ -250,8 +257,8 @@ export function loadIntoVehicle(
   const live = world.mut(vehicle, Vehicle);
   live.carrier = carrier;
   live.task = 'boardsShip';
-  live.heldGoal = null;
-  live.march = null;
+  dropHeldGoal(world, vehicle);
+  endMarch(world, vehicle);
   return true;
 }
 
@@ -286,11 +293,13 @@ function resumeHeldGoal(world: World, ctx: SystemContext, terrain: TerrainGraph,
   live.task = 'none';
   if (goal === null) return;
   if (vehicleCommander(live) === null) {
+    dropHeldGoal(world, vehicle);
     refuseMove(world, ctx, vehicle, 'noCommander');
     return;
   }
   const node = terrain.nodeAtClamped(goal.hx, goal.hy);
-  if (!startVehicleDrive(world, ctx, terrain, vehicle, node)) {
+  if (!startHeldDrive(world, ctx, terrain, vehicle, node)) {
+    dropHeldGoal(world, vehicle);
     refuseMove(world, ctx, vehicle, 'noPath'); // still moored where it lay, its door on the old mooring
     return;
   }
@@ -304,9 +313,8 @@ function resumeHeldDock(world: World, ctx: SystemContext, terrain: TerrainGraph,
   const point = state.heldGoal;
   if (point === null) return;
   if (vehicleCommander(state) === null) {
-    const live = world.mut(vehicle, Vehicle);
-    live.heldGoal = null;
-    live.task = 'none';
+    dropHeldGoal(world, vehicle);
+    world.mut(vehicle, Vehicle).task = 'none';
     refuseMove(world, ctx, vehicle, 'noCommander');
     return;
   }
@@ -376,7 +384,7 @@ function rideInside(world: World, carrier: Entity, vehicle: Entity): void {
   if (slot < 0) return;
   const seat = world.mut(carrier, Vehicle).vehicles[slot];
   if (seat !== null && seat !== undefined) seat.inside = true;
-  world.remove(vehicle, VehicleDrive);
+  endDrive(world, vehicle);
   world.remove(vehicle, Position);
   world.mut(vehicle, Vehicle).task = 'none';
 }

@@ -40,7 +40,9 @@ export class ClearanceField {
   private readonly classes: Uint8Array;
   private readonly distance: Int16Array;
   private readonly queue: NodeId[] = [];
-  private waterClassEdits = 0;
+  /** Per class `k`, how many times a water node's class crossed `k`: went from below it to at least it,
+   *  or back. */
+  private readonly waterCrossings = new Uint32Array(MAX_CLEARANCE_CLASS + 1);
 
   constructor(
     private readonly graph: TerrainGraph,
@@ -57,10 +59,11 @@ export class ClearanceField {
     return value;
   }
 
-  /** Changes whenever a water node's class changes, and never for land, where blockers come and go
-   *  all game: a cache over the sea outlives every edit on shore. */
-  get waterRevision(): number {
-    return this.waterClassEdits;
+  /** Changes whenever a water node's class crosses `logicSize`, which is all a hull of that size reads
+   *  of it, and never for land, where blockers come and go all game: a cache over the sea outlives every
+   *  edit on shore and every narrowing too slight to matter. */
+  waterRevision(logicSize: number): number {
+    return this.waterCrossings[logicSize] ?? 0;
   }
 
   /**
@@ -111,9 +114,13 @@ export class ClearanceField {
     for (const node of rewrite ?? scanned()) {
       const d = distance[node] ?? UNREACHED;
       const value = !probe(node) ? 0 : d === UNREACHED ? MAX_CLEARANCE_CLASS : d;
-      if (this.classes[node] === value) continue;
+      const held = this.classes[node] ?? 0;
+      if (held === value) continue;
       this.classes[node] = value;
-      if (graph.isWater(node)) this.waterClassEdits += 1;
+      if (!graph.isWater(node)) continue;
+      for (let k = Math.min(held, value) + 1; k <= Math.max(held, value); k++) {
+        this.waterCrossings[k] = (this.waterCrossings[k] ?? 0) + 1;
+      }
     }
     queue.length = 0;
   }

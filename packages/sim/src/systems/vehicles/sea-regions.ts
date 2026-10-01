@@ -8,8 +8,8 @@ import { vehicleClearance } from '../footprint/vehicle-clearance.js';
 // The parts of the sea a hull of one size can sail between: the water nodes whose free-size class
 // admits it, split where a strait narrows below it, over the pathfinder's own edges. Other vehicles are
 // left out, since they close a route for a moment and never a sea. The labels change only with a water
-// class (`ClearanceField.waterRevision`), so a ship's reach over a whole sea is a lookup, not a flood.
-// Derived state, never hashed.
+// class crossing the hull's size (`ClearanceField.waterRevision`), so a ship's reach over a whole sea
+// is a lookup, not a flood. Derived state, never hashed.
 
 const NO_REGION = -1;
 
@@ -58,14 +58,20 @@ export function seaRegions(
     held !== undefined &&
     held.field === field &&
     held.terrain === terrain &&
-    held.waterRevision === field.waterRevision
+    held.waterRevision === field.waterRevision(logicSize)
   ) {
     return held.regions;
   }
   memo.labellings += 1;
   const labels = labelSea(terrain, field, logicSize);
   const regions = regionsOver(terrain, field, logicSize, labels, `${memo.labellings}`);
-  memo.bySize.set(logicSize, { field, terrain, waterRevision: field.waterRevision, labels, regions });
+  memo.bySize.set(logicSize, {
+    field,
+    terrain,
+    waterRevision: field.waterRevision(logicSize),
+    labels,
+    regions,
+  });
   return regions;
 }
 
@@ -74,7 +80,7 @@ export function seaRegions(
 function verifyLabels(memo: WorldLabels): string[] {
   const errors: string[] = [];
   for (const [logicSize, held] of memo.bySize) {
-    if (held.field.waterRevision !== held.waterRevision) continue; // relabelled on the next read
+    if (held.field.waterRevision(logicSize) !== held.waterRevision) continue; // relabelled on the next read
     const fresh = labelSea(held.terrain, held.field, logicSize);
     if (fresh.some((region, node) => held.labels[node] !== region)) {
       errors.push(

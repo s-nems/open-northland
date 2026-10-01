@@ -169,9 +169,9 @@ export function createPlacementGates(
   };
   const askMooring = (vehicle: number) => (): Promise<MooringProbe | null> =>
     host.mooringProbe(vehicle as Entity).then((answer) => (answer === null ? null : mooringProbeOf(answer)));
-  // Asked every tick besides: the ship's own position is an input too.
+  // The sim answers from its memo, keyed on the sea's labels, and the blocker version moves with them.
   const mooring = (vehicle: number): MooringProbe | null | undefined =>
-    moorings.read(`${vehicle}`, askMooring(vehicle), blockerVersion(), true);
+    moorings.read(`${vehicle}`, askMooring(vehicle), blockerVersion());
   const askOwnNodes = (owner: number) => (): Promise<NodeSetAnswer> => host.ownPalisadeNodes(owner);
   const askSites = (): Promise<readonly PalisadeGateProbeResult[]> =>
     host.palisadeGateSites(closedGates, localPlayer);

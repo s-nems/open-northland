@@ -93,7 +93,7 @@ export function makeLitOverlaySource(
 /**
  * The dock-pick twin of {@link makeSignpostOverlaySource}: the shore a ship's dock order would moor at,
  * lit, and the rest of the band dimmed. Memoized on the sim's mooring probe key, which changes with the
- * ship's position and the walk-blockers, so an armed pick over a still sea re-walks nothing.
+ * parts of the sea the ship can sail into, so an armed pick re-walks nothing while ships move.
  */
 export function makeDockOverlaySource(
   probes: Pick<PlacementProbeViews, 'mooring'>,

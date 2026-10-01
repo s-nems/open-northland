@@ -48,10 +48,15 @@ const SHIP_LANDFALL_WAY = 300;
 const SHIP_CORNER_BRAKING = NODE_PROGRESS_FULL / 2;
 const SHIP_LANDFALL_BRAKING = NODE_PROGRESS_FULL;
 
-/** The course a ship steers from `from` with `ahead` the nodes still to enter, the next first: toward
+/** The course a ship steers from `from` with `route` the nodes to enter from index `step` on: toward
  *  the node {@link SHIP_AIM_LEGS} legs on, or the last one. Null with nothing ahead. */
-export function shipCourse(from: HalfCellNode, ahead: readonly HalfCellNode[]): WalkDirection | null {
-  const aim = ahead[Math.min(SHIP_AIM_LEGS, ahead.length) - 1];
+export function shipCourse(
+  from: HalfCellNode,
+  route: readonly HalfCellNode[],
+  step: number,
+): WalkDirection | null {
+  if (step >= route.length) return null;
+  const aim = route[Math.min(step + SHIP_AIM_LEGS, route.length) - 1];
   return aim === undefined ? null : facingOfStep(from, aim);
 }
 

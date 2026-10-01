@@ -26,7 +26,16 @@ import { FIGHT_EXPERIENCE_TYPE } from '../progression/index.js';
 import { isAreaWeapon } from '../readviews/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 import { facingOfStep } from '../vehicles/helm.js';
-import { crewInside, refuseMove, startVehicleDrive, vehicleRestBlocks } from '../vehicles/movement.js';
+import {
+  crewInside,
+  cutRoute,
+  endMarch,
+  keepMarchRoute,
+  refuseMove,
+  rejoinMarch,
+  startVehicleDrive,
+  vehicleRestBlocks,
+} from '../vehicles/movement.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { CombatPass } from './pass.js';
 import { mapPointDistance, shotFlightTicks, shotLandDelay } from './shot-aim.js';
@@ -84,7 +93,7 @@ export function engageVehicle(
   if (state.carrier !== null || !crewInside(state) || vehicleCommander(state) === null) {
     const boarding = state.task === 'waitsForHuman';
     if (!(boarding && state.attack?.ordered === true)) dropTarget(world, e);
-    if (!boarding && state.march !== null) world.mut(e, Vehicle).march = null;
+    if (!boarding) endMarch(world, e);
     return;
   }
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
@@ -152,20 +161,21 @@ function marchOn(
 ): void {
   if (world.has(e, VehicleDrive)) return;
   const goalNode = terrain.nodeAtClamped(goal.hx, goal.hy);
-  if (goalNode !== here && startVehicleDrive(world, ctx, terrain, e, goalNode)) return;
-  const live = world.mut(e, Vehicle);
-  live.march = null;
+  if (goalNode !== here) {
+    if (rejoinMarch(world, ctx, terrain, e, goal) || startVehicleDrive(world, ctx, terrain, e, goalNode))
+      return;
+  }
+  endMarch(world, e);
   if (goalNode === here) return;
-  live.guard = pointOf(terrain, here);
+  world.mut(e, Vehicle).guard = pointOf(terrain, here);
   refuseMove(world, ctx, e, 'noPath');
 }
 
-/** End a drive's route after the leg under way. False when no drive stands. */
+/** End a drive's route after the leg under way, keeping a march's rest to rejoin. False when no drive
+ *  stands. */
 function finishLeg(world: World, e: Entity): boolean {
-  const drive = world.tryGet(e, VehicleDrive);
-  if (drive === undefined) return false;
-  if (drive.route.length > 0) world.mut(e, VehicleDrive).route.length = 0;
-  return true;
+  keepMarchRoute(world, e);
+  return cutRoute(world, e);
 }
 
 function sameTarget(a: VehicleAttackTarget, b: VehicleAttackTarget): boolean {

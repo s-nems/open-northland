@@ -7,13 +7,13 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
  * Authored: wide enough that a hundred men, spread over the player's formation or an AI assault ring,
  * reach one route from its far corner.
  */
-const GROUP_AREA_RADIUS_NODES = 48;
+export const GROUP_AREA_RADIUS_NODES = 48;
 
 /**
  * The shortest route, in nodes, another group member may borrow. Below it a member's own search costs
  * about what the hops on and off the corridor would, so it routes alone. Authored.
  */
-const SHARED_ROUTE_MIN_NODES = 96;
+export const SHARED_ROUTE_MIN_NODES = 96;
 
 interface GroupRoute {
   readonly blocked: BlockOverlay;

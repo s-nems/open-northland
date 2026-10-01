@@ -27,6 +27,7 @@ import {
 } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { routeAhead } from '../fixtures/vehicle-route.js';
 
 /**
  * A ship's helm (`systems/vehicles/helm.ts`): it turns under way instead of pivoting on its node,
@@ -157,7 +158,7 @@ describe('ship helm', () => {
       const helm = s.world.tryGet(ship, VehicleDrive)?.helm;
       if (helm == null) continue;
       underWay ||= helm.way === SHIP_FULL_WAY;
-      if (!underWay || s.world.get(ship, VehicleDrive).route.length === 0) continue;
+      if (!underWay || routeAhead(s, ship).length === 0) continue;
       expect(helm.way).toBeGreaterThanOrEqual(ZIGZAG_MIN_WAY);
       facings.add(s.world.get(ship, Vehicle).facing);
     }

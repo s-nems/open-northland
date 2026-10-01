@@ -123,21 +123,37 @@ export interface ShipHelm {
 }
 
 /**
- * A vehicle's drive to `goal`, the movement twin of a settler's `PathFollow`. `route` holds the nodes
- * still to enter, the next first; `Position` already stands on the node of the current leg, and `from`
- * is the node that leg left (null between legs), so the renderer interpolates from it to `Position` by
- * `progress / NODE_PROGRESS_FULL`. `increment` is the progress a tick adds at full way, fixed when the
- * leg starts. A land vehicle's `progress` starts below zero while it turns on `from`, so readers clamp
- * it; a ship turns under way through its `helm` instead (null for a land vehicle).
+ * A vehicle's drive to `goal`, the movement twin of a settler's `PathFollow`. `step` indexes the next node
+ * of its {@link VehicleRoute} to enter; `Position` already stands on the node of the current leg, and
+ * `from` is the node that leg left (null between legs), so the renderer interpolates from it to
+ * `Position` by `progress / NODE_PROGRESS_FULL`. `increment` is the progress a tick adds at full way,
+ * fixed when the leg starts. A land vehicle's `progress` starts below zero while it turns on `from`, so
+ * readers clamp it; a ship turns under way through its `helm` instead (null for a land vehicle).
  */
 export const VehicleDrive = defineComponent<{
   goal: HalfCellNode;
-  route: HalfCellNode[];
+  step: number;
   from: HalfCellNode | null;
   progress: number;
   increment: number;
   helm: ShipHelm | null;
 }>('VehicleDrive', 'movement');
+
+/**
+ * The nodes a {@link VehicleDrive} enters in order, present while it is, and while a standing vehicle's
+ * goto waits for its crew (the route it will then drive). Written only when a route is found, held or
+ * cut, so a drive's per-tick progress does not re-clone a route that may cross a whole sea into every
+ * snapshot delta and sync digest.
+ */
+export const VehicleRoute = defineComponent<{ nodes: readonly HalfCellNode[] }>('VehicleRoute', 'movement');
+
+/** The rest of an attack-move's route to `goal` that a fight cut short, kept so the march rejoins it
+ *  nearby instead of routing to a goal that may lie a whole continent away again. Present only while the
+ *  march is. */
+export const VehicleMarchRoute = defineComponent<{ goal: HalfCellNode; nodes: readonly HalfCellNode[] }>(
+  'VehicleMarchRoute',
+  'movement',
+);
 
 /**
  * Storage is a byte per allowed good in the original: `current` units aboard, `wanted` units the player

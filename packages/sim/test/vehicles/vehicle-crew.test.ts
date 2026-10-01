@@ -9,6 +9,7 @@ import {
   Settler,
   Vehicle,
   VehicleDrive,
+  VehicleRoute,
   VehicleStock,
   vehicleCommander,
   vehiclePassengers,
@@ -282,12 +283,16 @@ describe('boarding', () => {
     expect(s.world.get(cart, Vehicle).task).toBe('waitsForHuman');
     expect(s.world.get(cart, Vehicle).heldGoal).toEqual({ hx: 4, hy: 12 });
     expect(s.world.has(cart, VehicleDrive)).toBe(false);
+    // The route the order was judged by is held, and the boarding drives on it without a second search.
+    const held = s.world.get(cart, VehicleRoute).nodes;
+    expect(held.at(-1)).toEqual({ hx: 4, hy: 12 });
     boardOut(s, cart, scout);
     expect(s.world.has(scout, Position)).toBe(false);
     expect(s.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false });
     s.step();
     expect(s.world.get(cart, Vehicle).task).toBe('none');
     expect(s.world.has(cart, VehicleDrive)).toBe(true);
+    expect(s.world.get(cart, VehicleRoute).nodes).toBe(held);
     s.run(SAIL_TICKS);
     expect(nodeOf(s, cart)).toEqual({ hx: 4, hy: 12 });
     expect(s.world.has(scout, Position)).toBe(false);
