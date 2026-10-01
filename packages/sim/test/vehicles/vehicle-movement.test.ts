@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it, vi } from 'vitest';
 import {
   Health,
@@ -31,6 +32,7 @@ import {
 import { findPath } from '../../src/nav/pathfinding/index.js';
 import {
   canPlaceWorkFlag,
+  interactionNode,
   placementBlockerVersion,
   stampResourceFootprintData,
   vehicleBlockedCells,
@@ -49,7 +51,12 @@ import {
   vehicleMovePeriod,
   vehicleProgressPerTick,
 } from '../../src/systems/vehicles/index.js';
-import { nodeOf, vehicleRouteTo, vehicleWalkBlocks } from '../../src/systems/vehicles/movement.js';
+import {
+  nodeOf,
+  startVehicleDrive,
+  vehicleRouteTo,
+  vehicleWalkBlocks,
+} from '../../src/systems/vehicles/movement.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap, waterColumnMap } from '../fixtures/terrain.js';
@@ -679,5 +686,88 @@ describe('moveVehicle', () => {
     expect(twin.hashState()).toBe(s.hashState());
     // Includes detached settler needs and tick-derived clocks after the chat approaches finish.
     expect(s.hashState()).toBe('87b9d156');
+  });
+});
+
+/** A workplace whose door sits in a notch of its body, reached through one open node south of it: the
+ *  joinery's door layout. */
+const NOTCHED_HOUSE = 90;
+const NOTCHED_BODY = [
+  { dx: -1, dy: -1 },
+  { dx: 0, dy: -1 },
+  { dx: -1, dy: 0 },
+  { dx: 0, dy: 0 },
+  { dx: 1, dy: 0 },
+  { dx: -1, dy: 1 },
+  { dx: 1, dy: 1 },
+];
+const NOTCHED_AT = { hx: 16, hy: 12 } as const;
+
+function doorwayContent(): ContentSet {
+  const base = testContent();
+  return parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: NOTCHED_HOUSE,
+        id: 'notched_house',
+        kind: 'workplace',
+        hitpoints: 100,
+        footprint: {
+          blocked: NOTCHED_BODY,
+          familyBody: NOTCHED_BODY,
+          reserved: NOTCHED_BODY,
+          door: { dx: 0, dy: 1 },
+        },
+      },
+    ],
+  });
+}
+
+/** A grass map with the notched house standing, and its door node. */
+function doorwaySim(): { s: Simulation; door: HalfCellNode } {
+  const s = new Simulation({ seed: 3, content: doorwayContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
+  s.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: NOTCHED_HOUSE,
+    x: NOTCHED_AT.hx,
+    y: NOTCHED_AT.hy,
+    tribe: VIKING,
+    owner: P0,
+    force: true,
+  });
+  s.step();
+  const house = [...s.world.query(Position)].find((e) => !s.world.has(e, Settler));
+  const at = house === undefined ? null : interactionNode(s.world, ctxOf(s), house);
+  if (at === null) throw new Error('house missing');
+  return { s, door: { hx: at.x, hy: at.y } };
+}
+
+describe('doorways', () => {
+  it('parks a vehicle sent onto a door clear of it and of the ground beside it', () => {
+    for (const [type, logicSize] of [
+      [HANDCART, 0],
+      [CATAPULT, 1],
+    ] as const) {
+      const { s, door } = doorwaySim();
+      const vehicle = commanded(s, type, 4, 20);
+      order(s, vehicle, door.hx, door.hy);
+      driveOut(s, vehicle, 1000);
+      const at = anchorOf(s, vehicle);
+      expect(hexDistanceBetween(at.hx, at.hy, door.hx, door.hy)).toBeGreaterThan(logicSize + 1);
+    }
+  });
+
+  it('rolls a cart whose drive ends beside a door off the doorway', () => {
+    const { s, door } = doorwaySim();
+    const exit = { hx: door.hx, hy: door.hy + 1 };
+    const cart = spawn(s, HANDCART, exit.hx, exit.hy);
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    expect(startVehicleDrive(s.world, ctxOf(s), terrain, cart, terrain.nodeAt(exit.hx, exit.hy))).toBe(true);
+    driveOut(s, cart);
+    const at = anchorOf(s, cart);
+    expect(hexDistanceBetween(at.hx, at.hy, door.hx, door.hy)).toBeGreaterThan(1);
   });
 });

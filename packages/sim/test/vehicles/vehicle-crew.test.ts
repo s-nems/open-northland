@@ -461,6 +461,27 @@ describe('leaving', () => {
     expect(nodeOf(s, scout)).toEqual({ hx: 2, hy: 6 }); // the order ran after the detach
   });
 
+  it('halts a cart whose only commander is taken off it mid-drive by a job order', () => {
+    const s = sim();
+    const cart = spawn(s, HANDCART, 12, 6);
+    const scout = spawnSettler(s, 2, 6);
+    attach(s, scout, cart);
+    s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: cart, x: 4, y: 26 }));
+    boardOut(s, cart, scout);
+    for (let t = 0; t < SAIL_TICKS && !s.world.has(cart, VehicleDrive); t++) s.step();
+    s.run(ATTACH_WALK_TICKS); // a few legs under way
+    s.enqueue(playerCommand(P0, { kind: 'setJob', entity: scout, jobType: WOODCUTTER }));
+    s.step();
+    expect(s.world.has(scout, Rider)).toBe(false);
+    expect(vehicleCommander(s.world.get(cart, Vehicle))).toBeNull();
+    s.run(SAIL_TICKS);
+    expect(s.world.has(cart, VehicleDrive)).toBe(false);
+    const stopped = nodeOf(s, cart);
+    expect(stopped).not.toEqual({ hx: 4, hy: 26 });
+    s.run(SAIL_TICKS);
+    expect(nodeOf(s, cart)).toEqual(stopped);
+  });
+
   it("hands the commander's walk order to its vehicle, which boards it and drives, cargo and all", () => {
     const s = sim();
     const cart = spawn(s, HANDCART, 12, 6);

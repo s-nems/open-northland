@@ -16,11 +16,19 @@ import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
-import { type HalfCellNode, hexagonRing, hexDistance, positionOfNode } from '../../nav/halfcell.js';
+import {
+  type HalfCellNode,
+  hexagonRing,
+  hexDistance,
+  positionOfNode,
+  rowReachLeft,
+  rowReachRight,
+} from '../../nav/halfcell.js';
 import { findPath, joinCorridor } from '../../nav/pathfinding/index.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, System, SystemContext } from '../context.js';
+import { buildingOpenings } from '../footprint/building-blocked-cache.js';
 import {
   dynamicBlockOverlay,
   hexDisc,
@@ -131,8 +139,9 @@ export function vehicleWalkBlocks(
 
 /**
  * The walk-block a vehicle's stopping place is chosen under: {@link vehicleWalkBlocks} with the plain
- * free-size class, so a vehicle never parks in a gap it may only pass, where its disc would seal the
- * settlers' lane. For goals, parking and firing spots; a route still runs under the walk-block.
+ * free-size class and clear of doorways ({@link vehicleRests}), so a standing vehicle's disc seals
+ * neither a lane it may only pass nor a door. For goals, parking and firing spots; a route still runs
+ * under the walk-block.
  */
 export function vehicleRestBlocks(
   world: World,
@@ -141,7 +150,36 @@ export function vehicleRestBlocks(
   vehicle: Entity,
   type: VehicleType,
 ): BlockOverlay {
-  return blocksUnder(world, ctx, terrain, vehicle, vehicleStandable(world, ctx, terrain, type.logicSize));
+  return blocksUnder(world, ctx, terrain, vehicle, vehicleRests(world, ctx, terrain, type.logicSize));
+}
+
+/**
+ * Whether a vehicle of `logicSize` may stop with its anchor on a node: its free-size class admits it and
+ * its disc touches no building's door, door passage or the ground beside them. Deviation: the original's
+ * settlers walk through a parked cart, so it parks anywhere; here the disc blocks settlers and a cart
+ * on a doorway would shut the house's workers out.
+ */
+function vehicleRests(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  logicSize: number,
+): (node: NodeId) => boolean {
+  const standable = vehicleStandable(world, ctx, terrain, logicSize);
+  const openings = buildingOpenings(world, ctx.content, terrain);
+  const reach = logicSize + 1;
+  return (node) => {
+    if (!standable(node)) return false;
+    const centre = nodeOf(terrain, node);
+    const last = Math.min(terrain.height - 1, centre.hy + reach);
+    for (let hy = Math.max(0, centre.hy - reach); hy <= last; hy++) {
+      const right = Math.min(terrain.width - 1, rowReachRight(centre, hy, reach));
+      for (let hx = Math.max(0, rowReachLeft(centre, hy, reach)); hx <= right; hx++) {
+        if (openings.has(terrain.nodeAt(hx, hy))) return false;
+      }
+    }
+    return true;
+  };
 }
 
 function blocksUnder(
@@ -560,6 +598,14 @@ export function sendVehicleTo(
   return true;
 }
 
+/** A vehicle whose last commander left stops after the leg under way, since no commander means no
+ *  drive, and its march and target lapse with it. The drive's end still settles it out of a gap or
+ *  off a doorway. */
+export function haltDriverless(world: World, vehicle: Entity): void {
+  dropAttack(world, vehicle);
+  cutRoute(world, vehicle);
+}
+
 /** A player's goto or stop supersedes whatever the vehicle was firing at and its march; the stance
  *  stays. */
 function dropAttack(world: World, e: Entity): void {
@@ -718,16 +764,17 @@ export const vehicleMovementSystem: System = (world, ctx) => {
 const VEHICLE_SETTLE_RADIUS = 3;
 
 /**
- * A land vehicle whose drive ends on a node it may only pass, given up or its goal closed meanwhile,
- * drives on to the nearest node it may stand on, so its disc does not seal the gap for settlers. True
- * when that drive starts; a player's stop, or no such node in reach, leaves it where it is.
+ * A land vehicle whose drive ends where it may not rest ({@link vehicleRests}), given up, halted without
+ * its commander or its goal closed meanwhile, drives on to the nearest node it may rest on, so its disc
+ * seals neither a gap nor a door. True when that drive starts; a player's stop, or no such node in
+ * reach, leaves it where it is.
  */
 function settleOutOfGap(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): boolean {
   const type = contentIndex(ctx.content).vehicles.get(world.get(e, Vehicle).vehicleType);
   const anchor = vehicleAnchor(world, e);
   if (type === undefined || anchor === null || vehicleTraversal(type) !== 'land') return false;
   const here = terrain.nodeAtClamped(anchor.hx, anchor.hy);
-  if (vehicleStandable(world, ctx, terrain, type.logicSize)(here)) return false;
+  if (vehicleRests(world, ctx, terrain, type.logicSize)(here)) return false;
   const spot = snapVehicleTarget(world, ctx, terrain, e, anchor, { radius: VEHICLE_SETTLE_RADIUS });
   return spot !== null && startVehicleDrive(world, ctx, terrain, e, spot);
 }
