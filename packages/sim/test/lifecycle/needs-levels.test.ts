@@ -45,6 +45,8 @@ const GATE_ODDS = 3_000;
 /** A pool no starvation in the span can empty, so hitpoints keep moving the whole run. */
 const POOL = 1_000_000;
 const SEED = 20_251_001;
+/** Ticks between cache checks of the needs wake list. */
+const VERIFY_EVERY = 500;
 /** A stretch of passes far short of any band threshold. */
 const DRAINED_TICKS = 50;
 
@@ -182,6 +184,7 @@ describe('needs stored as level-at-tick', () => {
             expect(stored[need] >= threshold).toBe(derived[need] >= threshold);
         }
       });
+      if (tick % VERIFY_EVERY === 0) expect(sim.world.verifyCaches()).toEqual([]);
     }
 
     expect(derivedCrossings).toEqual(referenceCrossings);

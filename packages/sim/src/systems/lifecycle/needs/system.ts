@@ -1,9 +1,6 @@
-import type { ContentSet } from '@open-northland/data';
 import {
-  Age,
   Health,
   hasMissionBehaviour,
-  isAboardVehicle,
   MISSION_BEHAVIOUR,
   type NeedDrain,
   needsEnabled,
@@ -20,10 +17,11 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { handlerTurn, scriptedSeatOnTurn } from '../../ai-player/cadence.js';
 import type { System, SystemContext } from '../../context.js';
 import { woundBearer } from '../../equipment/index.js';
-import { declaresNoTrades, isFighterJob, isHeroJob } from '../../readviews/index.js';
-import { isAboardShip } from '../../readviews/vehicles.js';
+import { isFighterJob } from '../../readviews/index.js';
+import { carriedDrain, carriesNeeds, frozenInCart, settlerCarriesNeeds } from './drain-class.js';
 import { drainReachesBand, mutNeeds, needLevel } from './levels.js';
 import { applyNeedUnits, NEED_CRITICAL_THRESHOLD, NEED_RESERVE_UNITS, needBar } from './scale.js';
+import { type NeedsWake, needsWakeOf } from './wake.js';
 import { woundedPersonsOf } from './wounded.js';
 
 /** The spread of a settler's starting deficit, half a bar, so a map opens with varied satisfaction instead
@@ -102,32 +100,50 @@ export function isNearDeath(hitpoints: number, max: number): boolean {
  * Hitpoints move for everyone, fed or not: a settler whose hunger has pinned loses them until it eats or
  * the pool empties, and any other wounded settler regains them. With the needs rule off nobody hungers,
  * so everyone regains them as a fed settler does.
+ *
+ * With needs on, the pass reads only the persons {@link NeedsWake} names; for any other the pass is a no-op.
  */
 export const needsSystem: System = (world, ctx) => {
   const before = ctx.tick - 1;
+  const wake = needsWakeOf(world);
   if (!needsEnabled(world)) {
+    wake.invalidate();
     haltAllDrains(world, before);
     // Nobody hungers, so only the wounded move: the pass reads them alone.
     for (const e of woundedPersonsOf(world)) {
-      if (!frozenInCart(world, ctx, e)) stepHealth(world, ctx, e, undefined, undefined);
+      if (!frozenInCart(world, ctx.content, e)) stepHealth(world, ctx, e, undefined, undefined);
     }
     return;
   }
   drainsHalted.delete(world);
   const refilling = seatRefillingAt(world, ctx.tick);
-  for (const e of world.query(Person)) {
-    if (frozenInCart(world, ctx, e)) {
-      setDrain(world, e, 'none', before);
-      continue;
+  const visits = wake.take(ctx.tick, ctx.content, refilling !== null);
+  if (visits === null) {
+    for (const e of world.query(Person)) passPerson(world, ctx, e, refilling);
+  } else {
+    // Indexed: `for...of` over the list allocates an iterator result per visit on this path.
+    for (let i = 0; i < visits.length; i++) {
+      const e = visits[i];
+      if (e !== undefined) passPerson(world, ctx, e, refilling);
     }
-    if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, ctx, e, before);
-    const settler = world.tryGet(e, Settler);
-    const carries = settler !== undefined && settlerCarriesNeeds(world, ctx.content, e, settler);
-    const drain: NeedDrain = !carries ? 'none' : isFighterJob(ctx.content, settler.jobType) ? 'body' : 'all';
-    const needs = drainNeeds(world, ctx.tick, e, drain);
-    stepHealth(world, ctx, e, carries ? needLevel(needs, 'hunger', ctx.tick) : undefined, settler);
   }
+  wake.settle(ctx.tick, ctx.content, visits === null);
 };
+
+/** One person's pass: the cart freeze, a seat's refill, the drain, then the hitpoint step. */
+function passPerson(world: World, ctx: SystemContext, e: Entity, refilling: number | null): void {
+  const before = ctx.tick - 1;
+  if (frozenInCart(world, ctx.content, e)) {
+    setDrain(world, e, 'none', before);
+    return;
+  }
+  if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, ctx, e, before);
+  const settler = world.tryGet(e, Settler);
+  const carries = settler !== undefined && settlerCarriesNeeds(world, ctx.content, e, settler);
+  const drain: NeedDrain = carries ? carriedDrain(ctx.content, settler) : 'none';
+  const needs = drainNeeds(world, ctx.tick, e, drain);
+  stepHealth(world, ctx, e, carries ? needLevel(needs, 'hunger', ctx.tick) : undefined, settler);
+}
 
 /**
  * The worlds whose bars were all stopped since needs were last on, so a disabled pass stops them once
@@ -148,11 +164,6 @@ function setDrain(world: World, e: Entity, drain: NeedDrain, drainedThrough: num
   if (needs === undefined || needs.drain === drain) return;
   const s = mutNeeds(world, e, drainedThrough);
   s.drain = drain;
-}
-
-/** Frozen inside a cart, hitpoints included (approximation); a ship's passengers eat and sleep aboard. */
-function frozenInCart(world: World, ctx: SystemContext, e: Entity): boolean {
-  return isAboardVehicle(world, e) && !isAboardShip(world, ctx.content, e);
 }
 
 /**
@@ -183,21 +194,6 @@ function refillCriticalNeeds(world: World, ctx: SystemContext, e: Entity, draine
   const s = mutNeeds(world, e, drainedThrough);
   if (hungry) s.hunger = ZERO;
   if (tired) s.fatigue = ZERO;
-}
-
-/** Whether `e`'s bars move at all - the one gate the drain and the clip events share. */
-export function carriesNeeds(world: World, content: ContentSet, e: Entity): boolean {
-  const settler = world.tryGet(e, Settler);
-  return settler !== undefined && settlerCarriesNeeds(world, content, e, settler);
-}
-
-function settlerCarriesNeeds(world: World, content: ContentSet, e: Entity, settler: SettlerView): boolean {
-  return (
-    !hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NEEDS_FROZEN) &&
-    !world.has(e, Age) &&
-    !isHeroJob(content, settler.jobType) &&
-    !declaresNoTrades(content, settler.tribe)
-  );
 }
 
 /**

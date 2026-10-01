@@ -1,3 +1,4 @@
+export { carriesNeeds } from './drain-class.js';
 export { drinkPressingDraughts } from './draughts.js';
 export {
   mutNeeds,
@@ -18,7 +19,6 @@ export {
 } from './scale.js';
 export {
   AI_NEED_REFILL_TURNS,
-  carriesNeeds,
   chargeBarefootStep,
   chargeMilitaryPiety,
   isNearDeath,

@@ -3,9 +3,9 @@ import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { draughtFor, spendSip } from '../../equipment/index.js';
+import { carriesNeeds } from './drain-class.js';
 import { mutNeeds, needLevel } from './levels.js';
 import { applyNeedUnits, NEED_DRIVE_THRESHOLD, NEED_RESERVE_UNITS } from './scale.js';
-import { carriesNeeds } from './system.js';
 
 /** A restore percent in need reserve units. */
 const reserveUnits = (pct: number): number => (pct * NEED_RESERVE_UNITS) / 100;

@@ -92,6 +92,27 @@ export function drainReachesBand(needs: SettlerNeedsView, tick: number): boolean
   );
 }
 
+/** The tick of the first drain pass at or after `fromTick` that raises one of the bars onto a band
+ *  threshold, the next tick {@link drainReachesBand} holds; infinite when no draining bar is short of ONE. */
+export function nextBandTick(needs: SettlerNeedsView, fromTick: number): number {
+  if (needs.drain === 'none') return Number.POSITIVE_INFINITY;
+  const firstPass = Math.max(1, fromTick - needs.asOf);
+  let passes = Math.min(passesToBand(needs.hunger, firstPass), passesToBand(needs.fatigue, firstPass));
+  if (needs.drain === 'all') passes = Math.min(passes, passesToBand(needs.enjoyment, firstPass));
+  return needs.asOf + passes;
+}
+
+/** The pass, counted from the stored bar, that raises a bar stored at `stored` onto the lowest threshold
+ *  above where `firstPass - 1` passes leave it. */
+function passesToBand(stored: Fixed, firstPass: number): number {
+  const from = fx.add(stored, fx.mulInt(DRAIN_RISE, firstPass - 1));
+  let target = Number.POSITIVE_INFINITY;
+  for (const threshold of NEED_BAND_THRESHOLDS) {
+    if (threshold > from && threshold < target) target = threshold;
+  }
+  return Math.ceil((target - stored) / DRAIN_RISE);
+}
+
 /** Whether one more pass raises a bar stored at `stored`, already risen by `risenBefore`, onto a band
  *  threshold. Every threshold is at most ONE, so the unclamped rise compares the same as the clamped. */
 function risesOntoBand(stored: Fixed, risenBefore: Fixed): boolean {
