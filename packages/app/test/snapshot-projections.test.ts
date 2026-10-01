@@ -191,7 +191,6 @@ describe('per-tick projections - one walk of the map between them', () => {
           fog: null,
           bounds: terrainWorldBounds(8, 8),
           scale: 0.5,
-          nodeWidth: 16,
           filters: DEFAULT_MINIMAP_FILTERS,
           isFighterJob: () => false,
           viewer: PLAYER,

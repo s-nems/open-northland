@@ -1,18 +1,8 @@
+import { fogTileVisible, ONE, tileToScreenX, tileToScreenY, type WorldBounds } from '@open-northland/render';
 import {
-  fogTileVisible,
-  halfCellToScreen,
-  ONE,
-  tileToScreenX,
-  tileToScreenY,
-  type WorldBounds,
-} from '@open-northland/render';
-import { roadShardOf } from '@open-northland/render/data';
-import {
-  cellOfNode,
   type DiplomacyState,
   entitiesWith,
   entityById,
-  FOG_STATE,
   type FogView,
   type WorldSnapshot,
 } from '@open-northland/sim';
@@ -32,8 +22,7 @@ import type { MinimapMark } from './stamps.js';
 const UNKNOWN_PLAYER_DOT_COLOUR = 0xffffff;
 /** Animals keep one fauna tint whoever owns them, so a herd never reads as a crowd of settlers. */
 export const ANIMAL_DOT_COLOUR = 0xd8c595;
-/** Laid roads are ground, drawn as a faint earth line; ordered road sites a shade darker. */
-export const ROAD_DOT_COLOUR = 0xd2bf8f;
+/** Ordered road sites, a shade darker than the laid roads of `road-layer.ts`. */
 export const ROAD_SITE_DOT_COLOUR = 0x9a8a6a;
 
 export interface MinimapDotContext {
@@ -41,8 +30,6 @@ export interface MinimapDotContext {
   readonly bounds: WorldBounds;
   /** Raster px per projected world px. */
   readonly scale: number;
-  /** The map's width in half-cell nodes, the stride of a road shard's node ids. */
-  readonly nodeWidth: number;
   readonly filters: MinimapFilters;
   /** A soldier or hero trade, read from the running content's job roles. */
   readonly isFighterJob: (jobType: number) => boolean;
@@ -77,9 +64,9 @@ export function readMinimapIndexes(snapshot: WorldSnapshot): void {
 }
 
 /**
- * Plot the enabled layers of `snapshot` in the ground raster's px, bottom to top: roads, signposts and
- * flags, buildings, animals and people, vehicles. Each layer walks only its own component index, so a
- * replot costs the plotted entities and road nodes, never the whole entity list.
+ * Plot the enabled layers of `snapshot` in the ground raster's px, bottom to top: road sites, signposts
+ * and flags, buildings, animals and people, vehicles. Each layer walks only its own component index, so
+ * a replot costs the plotted entities, never the whole entity list. Laid roads are the road layer's.
  */
 export function forEachMinimapDot(
   snapshot: WorldSnapshot,
@@ -108,21 +95,8 @@ export function forEachMinimapDot(
   };
 
   if (layers.roads) {
-    // Laid roads are ground paint: they show wherever the ground does, explored or visible.
-    for (const carrier of entitiesWith(snapshot, 'RoadShard')) {
-      const shard = roadShardOf(carrier);
-      if (shard === null) continue;
-      for (const node of shard.nodes) {
-        const hx = node % ctx.nodeWidth;
-        const hy = (node - hx) / ctx.nodeWidth;
-        if (fog !== null) {
-          const cell = cellOfNode(hx, hy);
-          if (fog.stateAt(cell.cx, cell.cy) === FOG_STATE.UNEXPLORED) continue;
-        }
-        const at = halfCellToScreen(hx, hy);
-        sink((at.x - bounds.minX) * scale, (at.y - bounds.minY) * scale, 'road', ROAD_DOT_COLOUR);
-      }
-    }
+    // Few and transient, and like any owned marker they follow the scope and the visible ground, which
+    // moves with every sighting; the static laid roads are baked apart.
     for (const site of entitiesWith(snapshot, 'RoadSite')) {
       const owner = ownerPlayerOf(site);
       if (owner === undefined || admits(owner)) plot(site, 'roadSite', ROAD_SITE_DOT_COLOUR);

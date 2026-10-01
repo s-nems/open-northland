@@ -58,7 +58,7 @@ describe('the owner scope on the plot', () => {
     { id: 2, components: { Building: {}, Owner: { player: FOE }, ...at(2) } },
     { id: 3, components: { Settler: { jobType: 0 }, ...at(3) } }, // wildlife
     { id: 4, components: { Settler: { jobType: 0 }, Livestock: {}, Owner: { player: FOE }, ...at(4) } },
-    { id: 5, components: { RoadShard: { block: 0, nodes: [34], revision: 1 } } },
+    { id: 5, components: { RoadSite: {}, Owner: { player: FOE }, ...at(6) } },
     { id: 6, components: { Vehicle: { carrier: null }, Owner: { player: FRIEND }, ...at(5) } },
   ];
   const marksUnder = (scope: MinimapScope): MinimapMark[] => {
@@ -69,7 +69,6 @@ describe('the owner scope on the plot', () => {
         fog: null,
         bounds: terrainWorldBounds(8, 8),
         scale: 1,
-        nodeWidth: 16,
         filters: { ...DEFAULT_MINIMAP_FILTERS, scope },
         isFighterJob: () => false,
         viewer: VIEWER,
@@ -80,10 +79,17 @@ describe('the owner scope on the plot', () => {
     return marks;
   };
 
-  it('keeps wild animals and laid roads under every scope and filters owned markers', () => {
-    expect(marksUnder('everyone')).toEqual(['road', 'building', 'civilian', 'animal', 'animal', 'vehicle']);
-    expect(marksUnder('mine')).toEqual(['road', 'civilian', 'animal']);
-    expect(marksUnder('friendly')).toEqual(['road', 'animal', 'vehicle']);
-    expect(marksUnder('hostile')).toEqual(['road', 'building', 'animal', 'animal']);
+  it('keeps wild animals under every scope and filters owned markers, road sites included', () => {
+    expect(marksUnder('everyone')).toEqual([
+      'roadSite',
+      'building',
+      'civilian',
+      'animal',
+      'animal',
+      'vehicle',
+    ]);
+    expect(marksUnder('mine')).toEqual(['civilian', 'animal']);
+    expect(marksUnder('friendly')).toEqual(['animal', 'vehicle']);
+    expect(marksUnder('hostile')).toEqual(['roadSite', 'building', 'animal', 'animal']);
   });
 });

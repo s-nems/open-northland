@@ -1,4 +1,4 @@
-import { halfCellToScreen, terrainWorldBounds, tileToScreen } from '@open-northland/render';
+import { terrainWorldBounds, tileToScreen } from '@open-northland/render';
 import { type DiplomacyState, FOG_MODE, FOG_STATE, type FogView, fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
@@ -6,7 +6,6 @@ import {
   ANIMAL_DOT_COLOUR,
   forEachMinimapDot,
   type MinimapDotContext,
-  ROAD_DOT_COLOUR,
   ROAD_SITE_DOT_COLOUR,
 } from '../src/hud/minimap/dots.js';
 import {
@@ -19,7 +18,6 @@ import type { MinimapMark } from '../src/hud/minimap/stamps.js';
 import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
 
 const MAP_CELLS = 8;
-const NODE_WIDTH = 2 * MAP_CELLS;
 const BOUNDS = terrainWorldBounds(MAP_CELLS, MAP_CELLS);
 const SCALE = 0.5;
 const SOLDIER_JOB = 31;
@@ -49,7 +47,6 @@ function contextWith(overrides: Partial<MinimapDotContext>): MinimapDotContext {
     fog: null,
     bounds: BOUNDS,
     scale: SCALE,
-    nodeWidth: NODE_WIDTH,
     filters: DEFAULT_MINIMAP_FILTERS,
     isFighterJob: (jobType) => jobType === SOLDIER_JOB,
     viewer: VIEWER,
@@ -97,6 +94,10 @@ function vehicle(id: number, player: number, x: number, y: number, carrier: numb
   return { id, components: { Vehicle: { carrier }, Owner: { player }, ...at(x, y) } };
 }
 
+function roadSite(id: number, player: number, x: number, y: number): Ent {
+  return { id, components: { RoadSite: {}, Owner: { player }, ...at(x, y) } };
+}
+
 const colour = (player: number): number => PLAYER_SWATCH_COLORS[player] ?? 0;
 
 /** A FogView whose state is decided per cell (missing cells read as EXPLORED). */
@@ -129,15 +130,15 @@ describe('forEachMinimapDot', () => {
     ]);
   });
 
-  it('stacks the layers bottom to top: roads, signposts, buildings, people, vehicles', () => {
+  it('stacks the layers bottom to top: road sites, signposts, buildings, people, vehicles', () => {
     const marks = dotsOf([
       vehicle(1, 0, 1, 1),
       person(2, 0, 1, 1),
       building(3, 0, 1, 1),
       { id: 4, components: { Signpost: {}, Owner: { player: 0 }, ...at(1, 1) } },
-      { id: 5, components: { RoadShard: { block: 0, nodes: [2 * NODE_WIDTH + 2], revision: 1 } } },
+      roadSite(5, 0, 1, 1),
     ]).map((dot) => dot.mark);
-    expect(marks).toEqual(['road', 'signpost', 'building', 'civilian', 'vehicle']);
+    expect(marks).toEqual(['roadSite', 'signpost', 'building', 'civilian', 'vehicle']);
   });
 
   it('skips unowned people and buildings, positionless entities and vehicles a ship carries', () => {
@@ -151,30 +152,16 @@ describe('forEachMinimapDot', () => {
     expect(dots).toEqual([{ ...pxAt(6, 6), mark: 'civilian', colour: colour(0) }]);
   });
 
-  it('plots road nodes at their half-cell spot on explored ground and road sites like entities', () => {
-    const node = (hx: number, hy: number): number => hy * NODE_WIDTH + hx;
+  it('plots road sites like owned entities, on visible ground under the scope, and no laid road', () => {
     const roads: Ent[] = [
-      {
-        id: 1,
-        components: { RoadShard: { block: 0, nodes: [node(4, 4), node(5, 4), node(12, 12)], revision: 1 } },
-      },
-      { id: 2, components: { RoadSite: {}, Owner: { player: 0 }, ...at(2, 6) } },
+      { id: 1, components: { RoadShard: { block: 0, nodes: [4], revision: 1 } } },
+      roadSite(2, 0, 2, 6),
+      roadSite(3, FOE, 6, 6),
     ];
-    const roadPx = (hx: number, hy: number) => {
-      const s = halfCellToScreen(hx, hy);
-      return { bx: (s.x - BOUNDS.minX) * SCALE, by: (s.y - BOUNDS.minY) * SCALE };
-    };
-    // Unexplored beyond column 4: the far road node hides, the near ones show though only explored.
-    const fog = fogWhere((cellX) => (cellX < 4 ? FOG_STATE.EXPLORED : FOG_STATE.UNEXPLORED));
-    expect(dotsOf(roads, { fog, filters: only('roads') })).toEqual([
-      { ...roadPx(4, 4), mark: 'road', colour: ROAD_DOT_COLOUR },
-      { ...roadPx(5, 4), mark: 'road', colour: ROAD_DOT_COLOUR },
-    ]);
-    expect(dotsOf(roads, { filters: only('roads') })).toContainEqual({
-      ...pxAt(2, 6),
-      mark: 'roadSite',
-      colour: ROAD_SITE_DOT_COLOUR,
-    });
+    const fog = fogWhere((cellX) => (cellX < 4 ? FOG_STATE.VISIBLE : FOG_STATE.EXPLORED));
+    const site = { ...pxAt(2, 6), mark: 'roadSite', colour: ROAD_SITE_DOT_COLOUR };
+    expect(dotsOf(roads, { fog, filters: only('roads') })).toEqual([site]);
+    expect(dotsOf(roads, { filters: only('roads', 'mine') })).toEqual([site]);
   });
 
   it("plots signposts and a gatherer's work flag in the gatherer's colour", () => {
@@ -199,7 +186,7 @@ describe('forEachMinimapDot', () => {
       building(3, 0, 3, 3),
       vehicle(4, 0, 4, 4),
       animal(5, 5, 5),
-      { id: 6, components: { RoadShard: { block: 0, nodes: [2 * NODE_WIDTH + 2], revision: 1 } } },
+      roadSite(6, 0, 5, 6),
       { id: 7, components: { Signpost: {}, Owner: { player: 0 }, ...at(6, 6) } },
     ];
     const markOf: Readonly<Record<MinimapLayer, MinimapMark>> = {
@@ -208,7 +195,7 @@ describe('forEachMinimapDot', () => {
       buildings: 'building',
       vehicles: 'vehicle',
       animals: 'animal',
-      roads: 'road',
+      roads: 'roadSite',
       signposts: 'signpost',
     };
     for (const [layer, mark] of Object.entries(markOf) as [MinimapLayer, MinimapMark][]) {

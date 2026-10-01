@@ -30,6 +30,7 @@ import {
   zoomMinimapLayout,
 } from './model.js';
 import { createDotReplotGate } from './replot-gate.js';
+import { createRoadLayer } from './road-layer.js';
 import { stampMark } from './stamps.js';
 import { createMinimapSurface } from './surface.js';
 
@@ -117,6 +118,8 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     now: () => performance.now(),
   });
   const fogMask = createFogMaskLayer(world, raster);
+  // The half-cell lattice is two nodes per cell across.
+  const roads = createRoadLayer(world, raster, { bounds, scale: rasterScale, nodeWidth: 2 * terrain.width });
   const dotsW = Math.max(1, Math.round(raster.w));
   const dotsH = Math.max(1, Math.round(raster.h));
   const pixels = new Uint8Array(dotsW * dotsH * 4);
@@ -228,10 +231,9 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   });
   const claimDotReplot = createDotReplotGate(() => performance.now());
   const dotRaster = { rgba: pixels, width: dotsW, height: dotsH };
+  const stampScale = (): number => uiScale / world.scale.x;
   const stamp: MinimapDotSink = (x, y, mark, colour) =>
-    stampMark(dotRaster, x, y, mark, colour, uiScale / world.scale.x);
-  // The half-cell lattice is two nodes per cell across.
-  const nodeWidth = 2 * terrain.width;
+    stampMark(dotRaster, x, y, mark, colour, stampScale());
 
   return {
     claimsPointer: (x, y) => {
@@ -254,12 +256,12 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       fogMask.draw(fog);
       const viewer = opts.viewer();
       if (claimDotReplot(snapshot, fog?.player ?? viewer) || dirtyDots) {
+        roads.draw(snapshot, fog, filters.layers.roads, stampScale());
         pixels.fill(0);
         const context: MinimapDotContext = {
           fog,
           bounds,
           scale: rasterScale,
-          nodeWidth,
           filters,
           isFighterJob: opts.isFighterJob,
           viewer,
@@ -301,6 +303,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       setMinimapReserve(plane, null, uiScale);
       surface.dispose();
       fogMask.dispose();
+      roads.dispose();
       container.destroy({ children: true });
       texture.destroy(true);
     },
