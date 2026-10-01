@@ -938,6 +938,8 @@ export const enGame = {
     geometryOn: 'Grid: ON (click to hide)',
     geometryOff: 'Grid: OFF (click to show)',
     zoomOutUnlocked: 'Zoom out past the normal limit',
+    speedCaption: 'Game speed',
+    speedFactor: '×{factor}',
     fogModes: {
       off: 'Map revealed',
       classic: 'Classic',

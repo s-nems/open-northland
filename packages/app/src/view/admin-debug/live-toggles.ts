@@ -6,7 +6,7 @@ import {
   fogModeOf,
   fogSettings,
 } from '@open-northland/sim';
-import { messages } from '../../i18n/index.js';
+import { formatMessage, messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
 import { ROW_STYLE, setButtonActive } from './chrome.js';
 
@@ -140,6 +140,35 @@ export function createGeometryToggle(deps: {
 }
 
 /** A checkbox that lets the wheel zoom out past the normal floor, to take in most of a large map. */
+/** The debug tempos beyond the HUD's ×1..×3, for watching a map script's slow chains. */
+export const DEBUG_GAME_SPEEDS: readonly number[] = [5, 10, 15, 20];
+
+/** A row of debug tempo buttons over the session clock; the HUD's own speed buttons bring it back. */
+export function createSpeedRow(deps: {
+  readonly speed: () => number;
+  readonly setSpeed: (multiplier: number) => void;
+}): LiveToggle {
+  const copy = messages().admin;
+  const buttons: { readonly button: HTMLButtonElement; readonly multiplier: number }[] = [];
+  const paint = (): void => {
+    const current = deps.speed();
+    for (const { button, multiplier } of buttons) setButtonActive(button, multiplier === current);
+  };
+  const row = el('div', 'display:flex;gap:8px;align-items:center;margin-top:8px');
+  row.append(el('span', 'opacity:0.8', copy.speedCaption));
+  for (const multiplier of DEBUG_GAME_SPEEDS) {
+    const button = el('button', BUTTON_STYLE, formatMessage(copy.speedFactor, { factor: multiplier }));
+    button.addEventListener('click', () => {
+      deps.setSpeed(multiplier);
+      paint();
+    });
+    buttons.push({ button, multiplier });
+    row.append(button);
+  }
+  paint();
+  return { row, refresh: paint };
+}
+
 export function createZoomOutToggle(deps: {
   readonly unlocked: () => boolean;
   readonly setUnlocked: (unlocked: boolean) => void;

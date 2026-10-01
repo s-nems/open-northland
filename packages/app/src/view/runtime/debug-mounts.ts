@@ -1,3 +1,4 @@
+import type { SessionClock } from '@open-northland/lockstep';
 import type { ElevationField, WorldRenderer } from '@open-northland/render';
 import type { Command } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
@@ -44,6 +45,8 @@ export interface DebugMountsOptions {
   readonly seatTribeOf: (player: number) => number;
   /** Hand the HUD's wall line tool a standing-wall line for `owner`; false when it cannot take one. */
   readonly enterStandingWall?: (owner: number, tribe: number) => boolean;
+  /** The session's own clock for the palette's debug tempos; absent under a shared clock. */
+  readonly clock?: Pick<SessionClock, 'speed' | 'setSpeed'>;
 }
 
 export interface DebugMounts {
@@ -151,6 +154,7 @@ function mountAdminPalette(
     goodLabel: (typeId) => opts.goodLabel(typeId),
     seatTribeOf: (player) => opts.seatTribeOf(player),
     ...(opts.enterStandingWall !== undefined ? { enterStandingWall: opts.enterStandingWall } : {}),
+    ...(opts.clock !== undefined ? { clock: opts.clock } : {}),
     goods: host.content.goods.map((g) => ({ good: g.typeId, id: g.id })),
     // Skips decorative swarms (hitpoints 0) and species with no body in the render roster; first-wins
     // dedup matches the sim's `animalRecord` read, so a listed entry is the record a spawn consumes.

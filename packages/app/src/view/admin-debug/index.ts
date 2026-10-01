@@ -1,3 +1,4 @@
+import type { SessionClock } from '@open-northland/lockstep';
 import { type Command, type Entity, type FogMode, systems } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { resourceCommand } from '../../game/sandbox/place/index.js';
@@ -27,6 +28,7 @@ import {
   createFogSwitcher,
   createGeometryToggle,
   createNeedsToggle,
+  createSpeedRow,
   createZoomOutToggle,
 } from './live-toggles.js';
 import {
@@ -86,6 +88,8 @@ export interface AdminDebugDeps {
   readonly setGeometryEnabled: (enabled: boolean) => void;
   readonly zoomOutUnlocked: () => boolean;
   readonly setZoomOutUnlocked: (unlocked: boolean) => void;
+  /** The session's own clock, for the debug tempos. Absent (a shared clock) hides the row. */
+  readonly clock?: Pick<SessionClock, 'speed' | 'setSpeed'>;
   readonly position: AdminPalettePosition;
 }
 
@@ -140,6 +144,11 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     unlocked: deps.zoomOutUnlocked,
     setUnlocked: deps.setZoomOutUnlocked,
   });
+  const clock = deps.clock;
+  const speed =
+    clock === undefined
+      ? null
+      : createSpeedRow({ speed: () => clock.speed, setSpeed: (multiplier) => clock.setSpeed(multiplier) });
 
   const panel = el('div', ADMIN_PANEL_STYLE);
   panel.style.display = 'none';
@@ -155,6 +164,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
       fog.refresh();
       geometry.refresh();
       zoomOut.refresh();
+      speed?.refresh(); // the HUD's own buttons may have moved the tempo since
     }
   };
   toggle.addEventListener('click', () => setOpen(!open));
@@ -207,6 +217,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   header.append(geometry.row);
   header.append(el('div', `${SECTION_TITLE_STYLE};margin-top:8px`, copy.camera));
   header.append(zoomOut.row);
+  if (speed !== null) header.append(speed.row);
 
   const body = el('div', BODY_STYLE);
 

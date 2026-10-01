@@ -919,6 +919,8 @@ export const plGame = {
     geometryOn: 'Siatka: WŁĄCZONA (kliknij, aby ukryć)',
     geometryOff: 'Siatka: WYŁĄCZONA (kliknij, aby pokazać)',
     zoomOutUnlocked: 'Oddalanie poza zwykły limit',
+    speedCaption: 'Szybkość gry',
+    speedFactor: '×{factor}',
     fogModes: {
       off: 'Odkryta mapa',
       classic: 'Klasyczna',

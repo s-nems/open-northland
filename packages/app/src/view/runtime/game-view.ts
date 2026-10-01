@@ -802,6 +802,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       goodLabel,
       seatTribeOf,
       enterStandingWall: (owner, tribe) => toolPanel.controller.enterStandingWall(owner, tribe),
+      ...(sharedClock ? {} : { clock: driver }),
     });
 
     cleanup.push(() => debugMounts.dispose());
