@@ -5,7 +5,7 @@ import type { SystemContext } from '../context.js';
 import { interactionCell } from '../settlers/targets/workplaces.js';
 import { navigationLimitFor } from '../signposts/index.js';
 
-/** Stores one diagnosis weighs before it stops calling the case decided. */
+/** Stores or sources of the worker's side one diagnosis weighs before it stops calling the case decided. */
 const MAX_DIAGNOSTIC_STORES = 128;
 
 /**
@@ -47,8 +47,9 @@ function reachAmong(
   let examined = 0;
   let ownSide = false;
   for (const store of stores) {
-    if (examined++ >= MAX_DIAGNOSTIC_STORES) return 'inReach';
+    // Another side's stores never count, so they cannot use up the cap before the worker's own are seen.
     if (!ownersCompatible(owner, ownerOf(world, store))) continue;
+    if (examined++ >= MAX_DIAGNOSTIC_STORES) return 'inReach';
     if (reaches === null || reaches(store)) return 'inReach';
     ownSide = true;
   }

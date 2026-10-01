@@ -1396,6 +1396,7 @@ export const plGame = {
     productionStalled: {
       short: {
         noInputSource: 'Brak: {good}',
+        noGatherer: 'Nikt nie zbiera: {good}',
         inputOutOfReach: 'Surowiec daleko',
         noOutputStore: 'Brak magazynu',
         outputOutOfReach: 'Magazyn daleko',
@@ -1405,6 +1406,8 @@ export const plGame = {
       full: {
         noInputSource:
           '{building}: produkcja stoi, brakuje surowca: {good}. Nie ma go w żadnym magazynie i żaden warsztat go nie wytwarza. Zbuduj i obsadź warsztat, który go wytwarza.',
+        noGatherer:
+          '{building}: produkcja stoi, brakuje surowca: {good}. Nie ma go w żadnym magazynie i nikt go nie zbiera. Przydziel zbieracza albo pozwól obecnym go zbierać.',
         inputOutOfReach:
           '{building}: produkcja stoi, brakuje surowca: {good}. Mają go albo wytwarzają tylko budynki poza zasięgiem drogowskazów. Połącz je drogowskazami albo zbuduj magazyn bliżej.',
         noOutputStore:

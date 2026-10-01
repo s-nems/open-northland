@@ -199,6 +199,10 @@ describe('notice text', () => {
       short: 'Brak: Zboże',
       full: 'Młyn: produkcja stoi, brakuje surowca: Zboże. Nie ma go w żadnym magazynie i żaden warsztat go nie wytwarza. Zbuduj i obsadź warsztat, który go wytwarza.',
     });
+    expect(stall('noGatherer')).toEqual({
+      short: 'Nikt nie zbiera: Zboże',
+      full: 'Młyn: produkcja stoi, brakuje surowca: Zboże. Nie ma go w żadnym magazynie i nikt go nie zbiera. Przydziel zbieracza albo pozwól obecnym go zbierać.',
+    });
     expect(stall('noOutputStore').short).toBe('Brak magazynu');
     expect(stall('unknown').full).toBe(
       'Młyn: produkcja stoi. Zaznacz warsztat: jego panel pokaże przyczynę.',

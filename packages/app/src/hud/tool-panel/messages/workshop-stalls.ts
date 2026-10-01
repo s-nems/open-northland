@@ -70,10 +70,10 @@ const NO_BUILDINGS: readonly SnapshotEntity[] = [];
 
 /**
  * The blocker a worker's diagnosis names, or null when it names none the player has to fix: an input
- * that a store or a staffed producer in reach supplies, or a full shelf a store in reach takes from, is
- * the operator's own errand. A blocker is an input nothing of the seat holds or makes, or only out of
- * signpost reach; products no store takes, or only stores out of reach; products the seat cannot make
- * yet; or a gate the diagnosis cannot name.
+ * that a store, a producer or a gatherer in reach supplies, or a full shelf a store in reach takes from,
+ * is the operator's own errand. A blocker is an input nothing of the seat holds, makes or gathers, or
+ * only out of signpost reach; products no store takes, or only stores out of reach; products the seat
+ * cannot make yet; or a gate the diagnosis cannot name.
  */
 export function stallOf(status: WorkStatus): ProductionStall | null {
   switch (status.kind) {
@@ -81,7 +81,8 @@ export function stallOf(status: WorkStatus): ProductionStall | null {
       const stranded = status.missingInputs.find((input) => input.source === 'outOfReach');
       if (stranded !== undefined) return { reason: 'inputOutOfReach', goodType: stranded.goodType };
       const unsourced = status.missingInputs.find((input) => input.source === 'none');
-      return unsourced === undefined ? null : { reason: 'noInputSource', goodType: unsourced.goodType };
+      if (unsourced === undefined) return null;
+      return { reason: unsourced.gathered ? 'noGatherer' : 'noInputSource', goodType: unsourced.goodType };
     }
     case 'outputFull': {
       // One product a store takes frees its own shelf, and the rotation makes it again.
@@ -119,20 +120,23 @@ function isUnderWay(settler: SnapshotEntity): boolean {
 
 /**
  * Whether goods move for a resting workshop: a settler on a supply errand to it is under way, or one of
- * its staff carries a load, as an operator taking its products to a store does.
+ * its staff carries a load, as an operator taking its products to a store does, or is taking up a
+ * harvest, as its own collector walking to a tree and felling it is.
  */
 function goodsMoveFor(snapshot: WorldSnapshot, workshop: number, staff: readonly SnapshotEntity[]): boolean {
   return (
     supplyRunsTo(snapshot, workshop).some(isUnderWay) ||
-    staff.some((worker) => worker.components.Carrying !== undefined)
+    staff.some(
+      (worker) => worker.components.Carrying !== undefined || worker.components.HarvestFocus !== undefined,
+    )
   );
 }
 
-/** Prefer an operator's diagnosis to a carrier's, as the building panel does. */
+/** The craftsman whose diagnosis speaks for the craft; a collector or carrier posted there only serves it. */
 function operatorOf(staff: readonly SnapshotEntity[]): SnapshotEntity | undefined {
   return staff.find((worker) => {
     const job = settlerJobType(worker);
-    return job !== undefined && workerRoleOf(job) !== 'carrier';
+    return job !== undefined && workerRoleOf(job) === 'craftsman';
   });
 }
 

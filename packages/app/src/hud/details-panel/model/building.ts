@@ -318,18 +318,21 @@ function stockLayoutOf(def: BuildingDef | undefined, rows: readonly StockRow[]):
   return products > 0 && products < rows.length ? 'split' : 'list';
 }
 
-/** Prefer an operator's diagnosis to a carrier's unrelated activity. */
+/** Prefer the craftsman's diagnosis to a collector's errand, and either to a carrier's unrelated activity. */
 function firstWorkerStatus(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
   building: number,
 ): SettlerWorkStatus | undefined {
   const workers = staffOf(snapshot, building);
-  const operator = workers.find((worker) => {
+  const roleOf = (worker: SnapshotEntity) => {
     const job = settlerJobType(worker);
-    return job !== undefined && workerRoleOf(job) !== 'carrier';
-  });
-  const worker = operator ?? workers[0];
+    return job === undefined ? undefined : workerRoleOf(job);
+  };
+  const worker =
+    workers.find((w) => roleOf(w) === 'craftsman') ??
+    workers.find((w) => roleOf(w) !== undefined && roleOf(w) !== 'carrier') ??
+    workers[0];
   return worker === undefined ? undefined : ctx.workStatus?.(worker.id);
 }
 

@@ -1,6 +1,6 @@
 import { ONE, type WorkStatus, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_CARRIER, JOB_POTTER, JOB_SOLDIER } from '../src/catalog/jobs.js';
+import { JOB_CARRIER, JOB_COLLECTOR, JOB_POTTER, JOB_SOLDIER } from '../src/catalog/jobs.js';
 import { createMessageFeed, takeRaised } from '../src/hud/tool-panel/messages/feed.js';
 import { FightAreas } from '../src/hud/tool-panel/messages/fight-areas.js';
 import {
@@ -27,14 +27,17 @@ const HOME = 2;
 const CLAY = 2;
 const POT = 24;
 const OTHER_INPUT = 3;
+const WOOD = 5;
 const WORKSHOP = 10;
 const OPERATOR = 11;
+/** The workshop's own collector, hired before the potter. */
+const COLLECTOR = 9;
 const SWEEPS_TO_GRACE = PRODUCTION_STALL_GRACE_TICKS / SNAPSHOT_SWEEP_INTERVAL_TICKS;
 
 const WAITING_FOR_CLAY: WorkStatus = {
   kind: 'waitingInput',
   goodType: POT,
-  missingInputs: [{ goodType: CLAY, required: 1, available: 0, missing: 1, source: 'none' }],
+  missingInputs: [{ goodType: CLAY, required: 1, available: 0, missing: 1, source: 'none', gathered: false }],
 };
 const SHELVES_FULL: WorkStatus = {
   kind: 'outputFull',
@@ -65,6 +68,8 @@ interface World {
   readonly carrying?: boolean;
   /** The operator walks out on a supply errand for the workshop. */
   readonly fetching?: boolean;
+  /** The workshop's own collector, standing idle or taking up a harvest. */
+  readonly collector?: 'idle' | 'harvesting';
 }
 
 function world(tick: number, w: World = {}): WorldSnapshot {
@@ -73,6 +78,23 @@ function world(tick: number, w: World = {}): WorldSnapshot {
     tick,
     events: [],
     entities: [
+      ...(w.collector === undefined
+        ? []
+        : [
+            {
+              id: COLLECTOR,
+              components: {
+                Owner: { player: w.owner ?? LOCAL },
+                Position: { x: 9 * ONE, y: 2 * ONE },
+                Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+                Person: { person: true },
+                JobAssignment: { workplace: WORKSHOP },
+                ...(w.collector === 'idle'
+                  ? { IdleStand: { standing: true } }
+                  : { HarvestFocus: { node: 97 }, CurrentAtomic: { atomicId: 24 } }),
+              },
+            },
+          ]),
       {
         id: WORKSHOP,
         components: {
@@ -151,13 +173,18 @@ function stallNote(goodType: number | null, reason: 'noInputSource' | 'noOutputS
 describe('stalled workshops', () => {
   it('reads the reason and its good off the diagnosis, and no stall off a deliberate stop', () => {
     expect(stallOf(WAITING_FOR_CLAY)).toEqual({ reason: 'noInputSource', goodType: CLAY });
+    // An input some trade gathers points at gatherers, not at a workshop to build.
+    const unsourcedWood = { goodType: WOOD, required: 1, available: 0, missing: 1, source: 'none' } as const;
+    expect(
+      stallOf({ kind: 'waitingInput', goodType: POT, missingInputs: [{ ...unsourcedWood, gathered: true }] }),
+    ).toEqual({ reason: 'noGatherer', goodType: WOOD });
     expect(
       stallOf({
         kind: 'waitingInput',
         goodType: POT,
         missingInputs: [
-          { goodType: 5, required: 1, available: 0, missing: 1, source: 'inReach' },
-          { goodType: CLAY, required: 1, available: 0, missing: 1, source: 'outOfReach' },
+          { goodType: 5, required: 1, available: 0, missing: 1, source: 'inReach', gathered: false },
+          { goodType: CLAY, required: 1, available: 0, missing: 1, source: 'outOfReach', gathered: false },
         ],
       }),
     ).toEqual({ reason: 'inputOutOfReach', goodType: CLAY });
@@ -182,7 +209,11 @@ describe('stalled workshops', () => {
     const clay = { goodType: CLAY, required: 1, available: 0, missing: 1 };
     const pots = { goodType: POT, required: 1, available: 4, capacity: 4 };
     expect(
-      stallOf({ kind: 'waitingInput', goodType: POT, missingInputs: [{ ...clay, source: 'inReach' }] }),
+      stallOf({
+        kind: 'waitingInput',
+        goodType: POT,
+        missingInputs: [{ ...clay, source: 'inReach', gathered: false }],
+      }),
     ).toBeNull();
     expect(stallOf({ kind: 'outputFull', outputs: [{ ...pots, destination: 'inReach' }] })).toBeNull();
     expect(
@@ -234,6 +265,29 @@ describe('stalled workshops', () => {
     expect(sweepTo(source, next + 1, {}, next + 1).flat()).toEqual([
       `Garncarnia:${USER_MESSAGE_TYPE.productionStalled}:noOutputStore:good:${POT}`,
     ]);
+  });
+
+  it('asks the craftsman, never a collector posted there with a lower id', () => {
+    const asked: number[] = [];
+    const source = createSnapshotMessageSource(LOCAL, {
+      types: [POTTERY],
+      workStatus: (entity, at) => {
+        asked.push(entity);
+        return { status: WAITING_FOR_CLAY, asked: at };
+      },
+    });
+    const notes = sweepTo(source, SWEEPS_TO_GRACE, { collector: 'idle' });
+    expect(new Set(asked)).toEqual(new Set([OPERATOR]));
+    expect(notes.at(-1)).toHaveLength(1);
+  });
+
+  it('starts the stand over while its own collector takes up a harvest', () => {
+    const source = createSnapshotMessageSource(
+      LOCAL,
+      seamAnswering(() => WAITING_FOR_CLAY),
+    );
+    expect(sweepTo(source, 2 * SWEEPS_TO_GRACE, { collector: 'harvesting' }).flat()).toEqual([]);
+    expect(source.stalls?.verdict(WORKSHOP)).toBeNull();
   });
 
   it('leaves out a producing workshop, an unstaffed one, a yard crew and another seat', () => {
@@ -303,7 +357,9 @@ describe('stalled workshops', () => {
     answer = {
       kind: 'waitingInput',
       goodType: POT,
-      missingInputs: [{ goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, source: 'none' }],
+      missingInputs: [
+        { goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, source: 'none', gathered: false },
+      ],
     };
     const raised = source
       .sweep(world(tick), naming)
@@ -344,7 +400,9 @@ describe('stalled workshops', () => {
     answer = {
       kind: 'waitingInput',
       goodType: POT,
-      missingInputs: [{ goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, source: 'none' }],
+      missingInputs: [
+        { goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, source: 'none', gathered: false },
+      ],
     };
     presentUntilAsked();
     expect(stallsShown()).toEqual([]);

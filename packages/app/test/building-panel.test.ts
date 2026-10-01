@@ -1,6 +1,6 @@
-import { type Entity, ONE, type PlayerCommand } from '@open-northland/sim';
+import { type Entity, ONE, type PlayerCommand, type WorkStatus } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_ARCHER, JOB_BUILDER, JOB_CARRIER, JOB_TRADER } from '../src/catalog/jobs.js';
+import { JOB_ARCHER, JOB_BUILDER, JOB_CARRIER, JOB_COLLECTOR, JOB_TRADER } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import {
   BUILDING_BARRACKS,
@@ -362,13 +362,58 @@ describe('building panel orders and alerts', () => {
         workStatus: () => ({
           kind: 'waitingInput',
           goodType: GOOD_FLOUR,
-          missingInputs: [{ goodType: GOOD_WHEAT, available: 0, required: 2, missing: 2, source: 'inReach' }],
+          missingInputs: [
+            {
+              goodType: GOOD_WHEAT,
+              available: 0,
+              required: 2,
+              missing: 2,
+              source: 'inReach',
+              gathered: false,
+            },
+          ],
         }),
       },
     );
     const alert = (good: number) => model.stock.find((row) => row.goodType === good)?.alert;
     expect(alert(GOOD_WHEAT)).toBe('waiting');
     expect(alert(GOOD_FLOUR)).toBe('full');
+  });
+
+  it('reads the diagnosis of the craftsman, not of a collector posted there with a lower id', () => {
+    if (craft === undefined) throw new Error('the mill declares a craft');
+    const MILL = 1;
+    const COLLECTOR = 2;
+    const MILLER = 3;
+    const ctx = {
+      ...sandboxCtx(),
+      workStatus: (entity: number): WorkStatus =>
+        entity === MILLER
+          ? {
+              kind: 'waitingInput',
+              goodType: GOOD_FLOUR,
+              missingInputs: [
+                {
+                  goodType: GOOD_WHEAT,
+                  available: 0,
+                  required: 2,
+                  missing: 2,
+                  source: 'inReach',
+                  gathered: false,
+                },
+              ],
+            }
+          : { kind: 'noEligibleResource', goodTypes: [GOOD_WOOD], scope: 'workArea' },
+    };
+    const posted = (id: number, jobType: number) => ({
+      id,
+      components: { Settler: { jobType }, JobAssignment: { workplace: MILL } },
+    });
+    const statusWith = (staff: readonly ReturnType<typeof posted>[]) =>
+      buildingModel([buildingEntity(MILL, BUILDING_MILL), ...staff], MILL, ctx).status;
+    expect(statusWith([posted(COLLECTOR, JOB_COLLECTOR), posted(MILLER, craft.jobType)])).toEqual(
+      statusWith([posted(MILLER, craft.jobType)]),
+    );
   });
 
   it('marks a bill line the owner holds none of beyond the site and what is carried to it', () => {

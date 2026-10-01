@@ -381,8 +381,8 @@ describe('the settler panel model', () => {
       kind: 'waitingInput',
       goodType: good,
       missingInputs: [
-        { goodType: GOOD_WOOD, available: 1, required: 3, missing: 2, source: 'inReach' },
-        { goodType: GOOD_IRON, available: 0, required: 1, missing: 1, source: 'inReach' },
+        { goodType: GOOD_WOOD, available: 1, required: 3, missing: 2, source: 'inReach', gathered: false },
+        { goodType: GOOD_IRON, available: 0, required: 1, missing: 1, source: 'inReach', gathered: false },
       ],
     } as const;
     const waitingModel = settlerModel(world({}), withStatus(waiting));

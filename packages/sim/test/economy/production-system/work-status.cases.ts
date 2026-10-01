@@ -25,8 +25,8 @@ const FOOD = 3;
 /** The forge's shelf capacity for each of its products. */
 const SHELF_CAPACITY = 20;
 
-function forge(sim: Simulation, wood: number): { forge: Entity; smith: Entity } {
-  spawnSettler(sim, WOODCUTTER, 9, 9); // the tech enabler for plank
+function forge(sim: Simulation, wood: number): { forge: Entity; smith: Entity; woodcutter: Entity } {
+  const woodcutter = spawnSettler(sim, WOODCUTTER, 9, 9); // the tech enabler for plank
   const building = sim.world.create();
   sim.world.add(building, Building, { buildingType: FORGE, tribe: 1, built: ONE, level: 0 });
   sim.world.add(building, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
@@ -34,7 +34,7 @@ function forge(sim: Simulation, wood: number): { forge: Entity; smith: Entity } 
   const smith = spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
   sim.world.add(smith, Owner, { player: 0 });
   sim.world.add(smith, JobAssignment, { workplace: building });
-  return { forge: building, smith };
+  return { forge: building, smith, woodcutter };
 }
 
 describe('Simulation.workStatus - why a craft worker works or idles', () => {
@@ -53,7 +53,10 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
     expect(sim.workStatus(smith)).toEqual({
       kind: 'waitingInput',
       goodType: FOOD,
-      missingInputs: [{ goodType: WOOD, required: 1, available: 0, missing: 1, source: 'none' }],
+      // The plank's enabling woodcutter gathers wood with nothing to confine it.
+      missingInputs: [
+        { goodType: WOOD, required: 1, available: 0, missing: 1, source: 'inReach', gathered: true },
+      ],
     });
   });
 
@@ -84,8 +87,8 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
       kind: 'waitingInput',
       goodType: FOOD,
       missingInputs: [
-        { goodType: WOOD, required: 3, available: 1, missing: 2, source: 'none' },
-        { goodType: 4, required: 2, available: 0, missing: 2, source: 'none' },
+        { goodType: WOOD, required: 3, available: 1, missing: 2, source: 'inReach', gathered: true },
+        { goodType: 4, required: 2, available: 0, missing: 2, source: 'none', gathered: true },
       ],
     });
     expect(sim.hashState()).toBe(before);
@@ -150,15 +153,24 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
   const IN_AREA = 6;
   const OUT_OF_AREA = 40;
   const HEADQUARTERS = 1;
+  const RIVAL = 1;
+  /** More rival stores than one diagnosis weighs. */
+  const RIVAL_STORES = 140;
+  const CARRIER = 36;
 
   function confinedForge(
     wood: number,
     content = testContent(),
-  ): { sim: Simulation; forge: Entity; smith: Entity } {
+  ): { sim: Simulation; forge: Entity; smith: Entity; woodcutter: Entity } {
     const sim = new Simulation({ seed: 1, content, map: grassCellMap(96, 8) });
     sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
     sim.step();
     return { sim, ...forge(sim, wood) };
+  }
+
+  /** Hand the plank's enabling woodcutter to a rival, so nobody of the forge's side gathers wood. */
+  function rivalWoodcutter(sim: Simulation, woodcutter: Entity): void {
+    sim.world.add(woodcutter, Owner, { player: RIVAL });
   }
 
   function storeAt(sim: Simulation, x: number, amounts: readonly [number, number][] = []): Entity {
@@ -193,7 +205,8 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
   });
 
   it('marks a missing input that only lies outside the area', () => {
-    const { sim, smith } = confinedForge(0);
+    const { sim, smith, woodcutter } = confinedForge(0);
+    rivalWoodcutter(sim, woodcutter);
     storeAt(sim, OUT_OF_AREA, [[WOOD, 5]]);
     expect(sim.workStatus(smith)).toMatchObject({
       kind: 'waitingInput',
@@ -215,20 +228,26 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
     };
   }
 
-  function producerAt(sim: Simulation, x: number, staffed: boolean): Entity {
+  function producerAt(sim: Simulation, x: number, staffed: boolean, jobType = CARPENTER): Entity {
     const producer = sim.world.create();
     sim.world.add(producer, Building, { buildingType: SAWMILL, tribe: 1, built: ONE, level: 0 });
     sim.world.add(producer, Position, { x: fx.fromInt(x), y: fx.fromInt(2) });
     sim.world.add(producer, Stockpile, { amounts: new Map() });
     if (staffed) {
-      const worker = spawnSettler(sim, CARPENTER, x, 2);
+      const worker = spawnSettler(sim, jobType, x, 2);
       sim.world.add(worker, JobAssignment, { workplace: producer });
     }
     return producer;
   }
 
+  function sourceOfWood(sim: Simulation, smith: Entity): string | undefined {
+    const status = sim.workStatus(smith);
+    return status?.kind === 'waitingInput' ? status.missingInputs[0]?.source : undefined;
+  }
+
   it('counts a staffed workplace in reach that makes the input as its source, though its shelf is empty', () => {
-    const { sim, smith } = confinedForge(0, woodProducingContent());
+    const { sim, smith, woodcutter } = confinedForge(0, woodProducingContent());
+    rivalWoodcutter(sim, woodcutter);
     // Reading the diagnosis leaves the state as it was.
     const sourceOfWood = () => {
       const before = sim.hashState();
@@ -242,6 +261,44 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
     expect(sourceOfWood()).toBe('outOfReach');
     producerAt(sim, IN_AREA + 1, true);
     expect(sourceOfWood()).toBe('inReach');
+  });
+
+  it('never counts a workplace staffed only by its carrier as a producer', () => {
+    const { sim, smith, woodcutter } = confinedForge(0, woodProducingContent());
+    rivalWoodcutter(sim, woodcutter);
+    producerAt(sim, IN_AREA, true, CARRIER);
+    expect(sourceOfWood(sim, smith)).toBe('none');
+  });
+
+  it('counts a gatherer of the input as its source: one banking at a store, then the workshop own', () => {
+    const { sim, forge: f, smith, woodcutter } = confinedForge(0);
+    rivalWoodcutter(sim, woodcutter);
+    expect(sourceOfWood(sim, smith)).toBe('none');
+    const remote = storeAt(sim, OUT_OF_AREA);
+    const storeGatherer = spawnSettler(sim, WOODCUTTER, OUT_OF_AREA, 2);
+    sim.world.add(storeGatherer, Owner, { player: 0 });
+    sim.world.add(storeGatherer, JobAssignment, { workplace: remote });
+    expect(sourceOfWood(sim, smith)).toBe('outOfReach');
+    const own = spawnSettler(sim, WOODCUTTER, 0, 0);
+    sim.world.add(own, Owner, { player: 0 });
+    sim.world.add(own, JobAssignment, { workplace: f });
+    const before = sim.hashState();
+    expect(sourceOfWood(sim, smith)).toBe('inReach');
+    expect(sim.hashState()).toBe(before);
+    // A trade change takes the gatherer out of the index.
+    setSettlerJob(sim.world, own, CARPENTER);
+    expect(sourceOfWood(sim, smith)).toBe('outOfReach');
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('weighs the own side stores past any number of rival stores', () => {
+    const { sim, smith, woodcutter } = confinedForge(0);
+    rivalWoodcutter(sim, woodcutter);
+    for (let i = 0; i < RIVAL_STORES; i++) {
+      sim.world.add(storeAt(sim, IN_AREA, [[WOOD, 5]]), Owner, { player: RIVAL });
+    }
+    sim.world.add(storeAt(sim, OUT_OF_AREA, [[WOOD, 5]]), Owner, { player: 0 });
+    expect(sourceOfWood(sim, smith)).toBe('outOfReach');
   });
 
   it('names a full shelf no store takes as having no destination at all', () => {

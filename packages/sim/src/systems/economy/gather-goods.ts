@@ -39,6 +39,19 @@ export function jobGatherGoods(ctx: ContentContext, jobType: number): readonly n
   return goods;
 }
 
+const gatheredGoodsByContent = new WeakMap<ContentSet, ReadonlySet<number>>();
+
+/** Whether some trade gathers `goodType` off the map ({@link jobGatherGoods}), so a gatherer rather than a
+ *  workshop brings it in. */
+export function isGatheredGood(ctx: ContentContext, goodType: number): boolean {
+  let gathered = gatheredGoodsByContent.get(ctx.content);
+  if (gathered === undefined) {
+    gathered = new Set(ctx.content.jobs.flatMap((job) => jobGatherGoods(ctx, job.typeId)));
+    gatheredGoodsByContent.set(ctx.content, gathered);
+  }
+  return gathered.has(goodType);
+}
+
 /** Whether `goodType` is one of {@link jobGatherGoods}. */
 export function jobGathersGood(ctx: ContentContext, jobType: number, goodType: number): boolean {
   return jobGatherGoods(ctx, jobType).includes(goodType);

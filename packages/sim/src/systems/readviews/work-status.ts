@@ -3,6 +3,7 @@ import {
   Building,
   IdleStand,
   JobAssignment,
+  ownerOf,
   Person,
   Production,
   ProductionCounters,
@@ -14,7 +15,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { jobGatherGoods } from '../economy/gather-goods.js';
+import { gatherGoodOpen, isGatheredGood, jobGatherGoods, jobGathersGood } from '../economy/gather-goods.js';
 import { canStartCycle, outputRoomForCycles, waitingForRecipeInput } from '../economy/production/cycles.js';
 import { craftablePool } from '../economy/production/rotation.js';
 import { liveHaulFlag } from '../economy/work-flag.js';
@@ -24,15 +25,16 @@ import { carriedGoodForm } from '../settlers/drives/economy/delivery-targets.js'
 import { isBoundToStorageSink } from '../settlers/drives/economy/store-policy.js';
 import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
 import { StoreSinks } from '../settlers/targets/stores/sinks.js';
-import { staffedWorkplaces } from '../stores/assigned-workers.js';
 import {
   isCarrierJob,
   isWorkplaceOperator,
   isWorkplaceOutput,
+  mayFetchGoodFrom,
   recipesByProductOf,
   stockCapacity,
 } from '../stores/index.js';
 import { gatherWorkStatus } from './gather-work-status.js';
+import { GoodSources } from './good-sources.js';
 import { type StoreReach, storeReach } from './store-reach.js';
 
 export interface MissingWorkInput {
@@ -40,9 +42,11 @@ export interface MissingWorkInput {
   readonly required: number;
   readonly available: number;
   readonly missing: number;
-  /** Where the worker's side keeps or makes the input: a store holding a unit or a staffed workplace
-   *  turning it out, as {@link inputSources} lists them. */
+  /** Where the worker's side keeps or brings in the input: a store holding a unit, a workplace turning
+   *  it out or a gatherer of it, as {@link inputSources} lists them. */
   readonly source: StoreReach;
+  /** Whether some trade gathers the input off the map, so a gatherer rather than a workshop supplies it. */
+  readonly gathered: boolean;
 }
 
 export interface BlockedWorkOutput {
@@ -164,7 +168,13 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
               required: input.amount,
               available,
               missing: input.amount - available,
-              source: storeReach(world, ctx, entity, inputSources(world, ctx, workplace, input.goodType)),
+              source: storeReach(
+                world,
+                ctx,
+                entity,
+                inputSources(world, ctx, entity, workplace, input.goodType),
+              ),
+              gathered: isGatheredGood(ctx, input.goodType),
             },
           ]
         : [];
@@ -207,21 +217,57 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
 
 /**
  * Where an operator may get `goodType` for `workplace`: the stores lending a unit, as its fetch searches
- * them, then the other staffed, finished workplaces turning the good out. A producer's next unit lands
- * on its own shelf, where the fetch finds it, so an empty farm next door still supplies the mill.
+ * them, then its side's sources of the good ({@link GoodSources}). A producer's next unit lands on its own
+ * shelf, where the fetch finds it, so an empty farm next door still supplies the mill.
  */
 function* inputSources(
   world: World,
   ctx: SystemContext,
+  operator: Entity,
   workplace: Entity,
   goodType: number,
 ): Generator<Entity> {
   yield* FetchableStock.of(world, ctx).holders(goodType);
-  for (const producer of staffedWorkplaces(world)) {
-    if (producer === workplace || !world.isAlive(producer) || world.has(producer, UnderConstruction))
-      continue;
-    if (isWorkplaceOutput(world, ctx, producer, goodType)) yield producer;
+  for (const source of GoodSources.of(world, ctx).sources(goodType, ownerOf(world, operator))) {
+    const found = world.has(source, Settler)
+      ? landingOf(world, ctx, source, workplace, goodType)
+      : finishedWorkplace(world, source);
+    if (found !== undefined) yield found;
   }
+}
+
+/**
+ * Where `settler`'s work lands `goodType` for `workplace`, or undefined when it brings none there: a
+ * gatherer of the good banks at its own finished workplace when that is `workplace` or lends the good,
+ * and otherwise at a store, so it stands for itself; an operator's unit lands on its finished
+ * workplace's shelf when that type turns the good out. A gatherer at another workshop whose recipe
+ * consumes the good keeps it, and a settler held off the good by its counters gathers none.
+ */
+function landingOf(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  workplace: Entity,
+  goodType: number,
+): Entity | undefined {
+  const jobType = world.get(settler, Settler).jobType;
+  if (jobType === null) return undefined;
+  const own = world.tryGet(settler, JobAssignment)?.workplace;
+  const finished = own === undefined ? undefined : finishedWorkplace(world, own);
+  if (jobGathersGood(ctx, jobType, goodType)) {
+    if (!gatherGoodOpen(world, ctx, settler, jobType, goodType)) return undefined;
+    if (finished === undefined) return settler;
+    return finished === workplace || mayFetchGoodFrom(world, ctx, finished, goodType) ? finished : undefined;
+  }
+  return finished !== undefined &&
+    isWorkplaceOperator(world, ctx, finished, jobType) &&
+    isWorkplaceOutput(world, ctx, finished, goodType)
+    ? finished
+    : undefined;
+}
+
+function finishedWorkplace(world: World, e: Entity): Entity | undefined {
+  return world.isAlive(e) && world.has(e, Building) && !world.has(e, UnderConstruction) ? e : undefined;
 }
 
 interface PoolEntry {

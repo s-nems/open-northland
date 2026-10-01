@@ -439,7 +439,7 @@ describe('user messages read off the snapshot', () => {
         idleReasonOf({
           kind: 'waitingInput',
           goodType: 9,
-          missingInputs: [{ ...input, source: 'outOfReach' }],
+          missingInputs: [{ ...input, source: 'outOfReach', gathered: false }],
         }),
       ).toBeNull();
       expect(idleReasonOf({ kind: 'noWorkplace' })).toBeNull();
