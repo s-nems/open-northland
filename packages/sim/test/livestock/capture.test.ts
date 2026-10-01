@@ -6,11 +6,12 @@ import {
   MoveGoal,
   Owner,
   setDiplomacyStance,
+  setSettlerJob,
 } from '../../src/components/index.js';
 import { positionOfNode } from '../../src/index.js';
 import { livestockCaptureSystem } from '../../src/systems/index.js';
 import { settlerAt } from '../fixtures/settler.js';
-import { BEAR_TRIBE, cowAt, ctxOf, farmAt, livestockSim, scoutAt } from './support.js';
+import { BEAR_TRIBE, cowAt, ctxOf, farmAt, livestockSim, SCOUT, scoutAt } from './support.js';
 
 const P0 = 0;
 const P1 = 1;
@@ -52,6 +53,25 @@ describe('livestock capture - a scout claims the catchable animals it passes', (
     livestockCaptureSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(cow, Owner)).toBe(false);
+  });
+
+  it('follows a trade change: a woodcutter retrained as a scout claims, a scout retrained away stops', () => {
+    const sim = livestockSim();
+    const woodcutter = settlerAt(sim, { jobType: WOODCUTTER, position: positionOfNode(10, 10) });
+    sim.world.add(woodcutter, Owner, { player: P0 });
+    const scout = scoutAt(sim, 30, 10, P1);
+    cowAt(sim, 60, 40); // out of everyone's reach: the first pass builds the scout index
+    livestockCaptureSystem(sim.world, ctxOf(sim));
+
+    setSettlerJob(sim.world, woodcutter, SCOUT);
+    setSettlerJob(sim.world, scout, WOODCUTTER);
+    const first = cowAt(sim, 10, 10);
+    const second = cowAt(sim, 30, 10);
+    livestockCaptureSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.tryGet(first, Owner)?.player).toBe(P0);
+    expect(sim.world.has(second, Owner)).toBe(false);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it("steals an enemy's stock, and leaves a neighbour's alone", () => {

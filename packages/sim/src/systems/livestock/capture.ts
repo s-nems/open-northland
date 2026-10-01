@@ -6,18 +6,15 @@ import {
   Livestock,
   Owner,
   ownerOf,
-  Person,
   Position,
-  Settler,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween } from '../../nav/halfcell.js';
-import type { NodeId } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { promoteHerdSuccessor } from '../movement/herd-leader.js';
 import { clearNavState } from '../movement/nav-state.js';
-import { isScoutJob } from '../readviews/index.js';
 import { entityNode } from '../spatial/nodes.js';
+import { claimingScouts } from './scouts.js';
 
 /** How close a scout claims from, in hex map points: the original runs the claim over the centre and the
  *  two rings around the scout's new position. */
@@ -50,31 +47,54 @@ export function claimableBy(world: World, animal: Entity, player: number): boole
 export const livestockCaptureSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return;
   const terrain = ctx.terrain;
-  // The candidate store first, so a map with no livestock never walks the settler population.
+  // The candidate store first, so a map with no livestock never syncs the scout index.
   if (world.query(Livestock, Position).next().done === true) return;
-  const scouts: Entity[] = [];
-  for (const e of world.query(Person, Owner, Position)) {
-    if (isScoutJob(ctx.content, world.get(e, Settler).jobType)) scouts.push(e);
-  }
+  const scouts = claimingScouts(world, ctx.content);
   if (scouts.length === 0) return;
-  scouts.sort((a, b) => a - b);
   // Each animal's node once per tick, not once per scout: a claim never moves it. No canonical sort:
   // every in-range animal is claimed, so order cannot change the result.
-  const herds: Array<readonly [Entity, NodeId]> = [];
-  for (const animal of world.query(Livestock, Position))
-    herds.push([animal, entityNode(world, terrain, animal)]);
+  const { animals, xs, ys } = herdScratchOf(world);
+  let count = 0;
+  for (const animal of world.query(Livestock, Position)) {
+    const on = entityNode(world, terrain, animal);
+    animals[count] = animal;
+    xs[count] = terrain.xOf(on);
+    ys[count] = terrain.yOf(on);
+    count++;
+  }
   for (const scout of scouts) {
     const player = world.get(scout, Owner).player;
     const at = entityNode(world, terrain, scout);
     const x = terrain.xOf(at);
     const y = terrain.yOf(at);
-    for (const [animal, on] of herds) {
+    for (let i = 0; i < count; i++) {
+      const animal = animals[i];
+      if (animal === undefined) continue;
+      if (hexDistanceBetween(x, y, xs[i] ?? 0, ys[i] ?? 0) > LIVESTOCK_CAPTURE_RANGE) continue;
       if (!claimableBy(world, animal, player)) continue;
-      if (hexDistanceBetween(x, y, terrain.xOf(on), terrain.yOf(on)) > LIVESTOCK_CAPTURE_RANGE) continue;
       claim(world, animal, player);
     }
   }
 };
+
+/** The livestock a pass measures and their node coordinates, kept per world at their longest length so a
+ *  pass allocates nothing per animal. Scratch: every pass overwrites what it reads. */
+interface HerdScratch {
+  readonly animals: Entity[];
+  readonly xs: number[];
+  readonly ys: number[];
+}
+
+const herdScratches = new WeakMap<World, HerdScratch>();
+
+function herdScratchOf(world: World): HerdScratch {
+  let scratch = herdScratches.get(world);
+  if (scratch === undefined) {
+    scratch = { animals: [], xs: [], ys: [] };
+    herdScratches.set(world, scratch);
+  }
+  return scratch;
+}
 
 /** Stamp the claim and cut whatever held the animal before it: a wild herd, or an enemy farm mid-summon. */
 function claim(world: World, animal: Entity, player: number): void {
