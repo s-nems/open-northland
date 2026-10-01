@@ -161,13 +161,18 @@ export interface ToolPanelOptions {
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`SessionHost.placementProbe`), which gates the placement click. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
-  readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
+  readonly canPlacePalisadeAt?: (
+    gfxIndex: number,
+    col: number,
+    row: number,
+    overUpgradeGround?: boolean,
+  ) => boolean;
   readonly palisadeBuiltAt?: (owner: number, col: number, row: number) => boolean;
   readonly palisadeAnswersKey?: () => string;
   readonly palisadeGateProbe?: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites?: () => GateSites;
   /** Where a road site may be ordered; absent, the road tool stays disabled. */
-  readonly canPlaceRoadAt?: (col: number, row: number) => boolean;
+  readonly canPlaceRoadAt?: (col: number, row: number, overUpgradeGround?: boolean) => boolean;
   /** Whether a road or a road site already lies on a node. */
   readonly roadBuiltAt?: (col: number, row: number) => boolean;
   readonly roadAnswersKey?: () => string;
@@ -433,6 +438,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       ...(opts.ownRoadSiteAt !== undefined ? { ownRoadSiteAt: opts.ownRoadSiteAt } : {}),
       ...(opts.placementClickAsks !== undefined ? { clickAsks: opts.placementClickAsks } : {}),
       ...(opts.enqueueTrusted !== undefined ? { enqueueTrusted: opts.enqueueTrusted } : {}),
+      upgradeGroundKey: () => {
+        const binding = opts.bindings.upgradeGround;
+        return binding === null ? null : keyDisplayLabel(binding);
+      },
       tribe: opts.tribe,
       owner: opts.owner,
       // A pick hid the window for the placement; its cancel brings it back where it was, and a place-any

@@ -78,20 +78,23 @@ function canPlaceAnchor(
 
 /** A wall needs only its own cells: walkable ground clear of every body, whether a building, resource,
  * signpost or another wall. It keeps no margin, so a line runs between trees and stones and up to a
- * building's wall. Project rule. */
+ * building's wall. With `overUpgradeGround` it may stand where a building only keeps room for its
+ * upgrade, which razes it when it starts. Project rule. */
 export function canPlacePalisadeAnchor(
   grid: PlacementGrid,
   body: readonly FootprintCell[],
   x: number,
   y: number,
+  overUpgradeGround = false,
 ): boolean {
-  const { terrain, obstacle, palisadeBody } = grid;
+  const { terrain, obstacle, palisadeBody, upgradeReserve } = grid;
   for (const c of body) {
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (!terrain.inBounds(cx, cy) || !terrain.isWalkable(terrain.nodeAt(cx, cy))) return false;
     const slot = cy * terrain.width + cx;
-    if ((obstacle[slot] ?? 0) > 0 || (palisadeBody[slot] ?? 0) > 0) return false;
+    const waived = overUpgradeGround ? (upgradeReserve[slot] ?? 0) : 0;
+    if ((obstacle[slot] ?? 0) > waived || (palisadeBody[slot] ?? 0) > 0) return false;
   }
   return true;
 }

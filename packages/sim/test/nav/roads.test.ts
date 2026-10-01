@@ -12,7 +12,7 @@ import {
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import { fillRoadDistances, NO_NEAREST_ROAD, NO_ROAD_DISTANCE } from '../../src/nav/terrain/road-distance.js';
 import { NO_ROAD_NETWORK } from '../../src/nav/terrain/road-networks.js';
-import { layRoad, roadNodes, roadRevision } from '../../src/systems/roads/index.js';
+import { layRoad, liftRoad, roadAreaKey, roadNodes, roadRevision } from '../../src/systems/roads/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap, roughNodeMap, waterColumnMap } from '../fixtures/terrain.js';
 
@@ -68,6 +68,27 @@ describe('road network', () => {
     expect(terrain.roughnessAt(snow)).toBe(SNOW);
     expect([...roadNodes(sim.world)]).toEqual([snow]);
     expect([terrain.isRoad(snow), terrain.isRoad(sand)]).toEqual([true, false]);
+  });
+
+  it('lifts a road off its nodes and moves every area key it touches, an emptied shard included', () => {
+    const { sim, terrain } = mappedSim(grassNodeMap(2 * ROAD_SHARD_NODES, 1));
+    const west = terrain.nodeAt(0, 0);
+    const nextWest = terrain.nodeAt(1, 0);
+    const east = terrain.nodeAt(ROAD_SHARD_NODES, 0);
+    layRoad(sim.world, terrain, [west, nextWest, east]);
+    const area = { minHx: 0, minHy: 0, maxHx: 2 * ROAD_SHARD_NODES - 1, maxHy: 0 };
+    const before = roadAreaKey(sim.world, area);
+
+    liftRoad(sim.world, terrain, [west, east]);
+
+    expect([...roadNodes(sim.world)]).toEqual([nextWest]);
+    expect([terrain.isRoad(west), terrain.isRoad(nextWest), terrain.isRoad(east)]).toEqual([
+      false,
+      true,
+      false,
+    ]);
+    expect(roadAreaKey(sim.world, area)).not.toBe(before);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it('keeps the roads of each block in its own shard, so a lay writes only the shards it touches', () => {

@@ -286,6 +286,9 @@ export const enGame = {
       cancelRoadLineHint: 'left click cancels your road sites under the line, release Alt to lay road',
       placeRoadLineHint:
         'left click lays the road, with Ctrl/Cmd it draws on, Shift keeps it straight, right click drops the line',
+      overUpgradeGround: 'over upgrade ground',
+      overUpgradeGroundHint: '{key} builds over upgrade ground, which the upgrade then razes',
+      skirtUpgradeGroundHint: '{key} skirts upgrade ground again',
       placePaperHint: 'from a plan: point at a place, the building stands finished',
       heldPaper: 'Building plan',
       heldPaperHint: 'choose a building in the window',

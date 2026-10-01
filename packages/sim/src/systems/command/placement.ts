@@ -30,6 +30,7 @@ import { destroyFieldsUnderBuilding } from '../economy/fields.js';
 import { evictLooseGoodsFromFootprint } from '../economy/goods-evict.js';
 import { releaseEmployment } from '../economy/jobs/index.js';
 import { destroyStumpsInReserved } from '../economy/stumps.js';
+import { clearUpgradeGround } from '../economy/upgrade-ground.js';
 import { evictWorkFlagsFromFootprint } from '../economy/work-flag.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { buildingEnabled } from '../progression/index.js';
@@ -244,6 +245,7 @@ export function upgradeBuilding(
   // The panel hides the defence window for a site, so an alarm left standing could be neither seen nor
   // lowered and would silently call the garrison back once the upgrade finished.
   world.remove(command.building, DefenceMode);
+  clearUpgradeGround(world, ctx, command.building, target.typeId);
   evictSettlersFromFootprint(world, ctx, command.building);
 }
 

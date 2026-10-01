@@ -69,7 +69,8 @@ export type LitAnswers = { readonly tool: 'road' } | { readonly tool: 'palisade'
 
 /**
  * The wash of a tool that lights a node set of its own: everything dims but `lit`, and ground a standing
- * building keeps for its upgrade takes its own tint, so the player sees why a wall or road skirts it.
+ * building keeps for its upgrade takes its own tint: a line skirts it, or, told to take it, loses what it
+ * builds there when the upgrade starts.
  * A set read from a line tool's `answers` refuses every node whose area is still being answered, so,
  * like the grid washes, it shows nothing until an answer over the band lands; otherwise the tool's first
  * frame dims the whole view.
@@ -133,7 +134,7 @@ export function makeDockOverlaySource(
 type NodeBand = ReturnType<typeof nodeBandOfCells>;
 
 /** What the band walk asks of a rule: a key over the band, null for no overlay at all, and node tests
- *  made once per walk. A refused node `reserves` names is upgrade ground rather than plain blocked. */
+ *  made once per walk. A node `reserves` names is upgrade ground, tinted whether or not a line takes it. */
 interface BandProbe {
   keyWithin(band: NodeBand): string | null;
   accepts(): (x: number, y: number) => boolean;
@@ -210,9 +211,8 @@ function makeBandProber(
       for (let col = range.minCol; col <= range.maxCol; col++) {
         const hidden = fog !== null && fog.stateAt(col >> 1, cellRow) !== FOG_STATE.VISIBLE;
         if (hidden) blocked.push({ col, row });
-        else if (accepts(col, row)) continue;
         else if (reserves?.(col, row) === true) reserved.push({ col, row });
-        else blocked.push({ col, row });
+        else if (!accepts(col, row)) blocked.push({ col, row });
       }
     }
     key = nextKey;

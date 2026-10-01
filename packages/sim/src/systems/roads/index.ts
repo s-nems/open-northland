@@ -102,6 +102,30 @@ export function layRoad(world: World, terrain: TerrainGraph, nodes: Iterable<Nod
   if (!terrain.extendRoads(from, roadRevision(world), fresh)) syncRoadLane(world, terrain);
 }
 
+/** Take the road off those of `nodes` that carry one and mirror the change into the terrain's lanes at
+ *  once. A shard left empty keeps its carrier, so the revisions {@link roadAreaKey} sums only grow.
+ *  System-internal, like {@link layRoad}. */
+export function liftRoad(world: World, terrain: TerrainGraph, nodes: Iterable<NodeId>): void {
+  syncRoadLane(world, terrain);
+  const gone = new Set<NodeId>();
+  for (const node of nodes) if (terrain.isRoad(node)) gone.add(node);
+  if (gone.size === 0) return;
+  const blocks = new Set<number>();
+  for (const node of gone) blocks.add(roadShardKey(terrain.xOf(node), terrain.yOf(node)));
+  writeRoadNetwork(world, (state) => {
+    state.revision += 1;
+  });
+  const carriers = carriersOf(world);
+  for (const block of blocks) {
+    const carrier = carriers.get(block);
+    if (carrier === undefined) continue;
+    const shard = world.mut(carrier, RoadShard);
+    shard.nodes = shard.nodes.filter((node) => !gone.has(node));
+    shard.revision += 1;
+  }
+  syncRoadLane(world, terrain);
+}
+
 /** Mirror the world's road network into its simulation's own `terrain` when the revision moved: before
  *  every tick and after a restore, so a restored world's roads reach the per-step readers. */
 export function syncRoadLane(world: World, terrain: TerrainGraph): void {

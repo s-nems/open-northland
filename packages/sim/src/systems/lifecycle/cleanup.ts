@@ -6,7 +6,7 @@ import type { System, SystemContext } from '../context.js';
 import { scatterSpilledStock, spilledStockOf } from '../economy/goods-spill.js';
 import { evictResidentsOf } from '../family/households.js';
 import { retryFailedRoutes } from '../landscape/routes.js';
-import { releaseWallBreaches } from '../palisades/breach.js';
+import { removePalisade } from '../palisades/index.js';
 import { razeSalvageOf } from '../stores/index.js';
 import { removeVehicle } from '../vehicles/remove.js';
 import { reap } from './death.js';
@@ -76,8 +76,6 @@ export function removeBuildingSilently(world: World, ctx: SystemContext, e: Enti
 export function razePalisade(world: World, ctx: SystemContext, e: Entity): void {
   if (!world.has(e, Palisade)) return;
   const spill = spilledStockOf(world, e);
-  releaseWallBreaches(world, ctx, e);
-  world.destroy(e);
-  if (ctx.terrain !== undefined) retryFailedRoutes(world, ctx.terrain);
+  removePalisade(world, ctx, e);
   scatterSpilledStock(world, ctx, spill);
 }

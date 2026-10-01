@@ -26,6 +26,7 @@ import { buildingOpenings } from '../footprint/building-blocked-cache.js';
 import { translatedCells } from '../footprint/geometry.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
+import { palisadeBodyCells } from '../footprint/placement/blockers.js';
 import { canPlacePalisadeAnchor, type PlacementProbe } from '../footprint/placement/index.js';
 import { wallClosingCells } from '../footprint/wall-joints.js';
 import { anyRouteFollowed, invalidateRoutesThrough, retryFailedRoutes } from '../landscape/routes.js';
@@ -34,6 +35,7 @@ import { evictSettlersFromCells, settlersByNode } from '../movement/evict.js';
 import { isTravelling } from '../movement/nav-state.js';
 import { cancelRoadSitesUnder } from '../roads/sites.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
+import { releaseWallBreaches } from './breach.js';
 
 export type PalisadeGateAxis = 0 | 1 | 2;
 
@@ -69,12 +71,41 @@ export function palisadePlacementProbe(
   content: SystemContext['content'],
   terrain: TerrainGraph,
   gfxIndex: number,
+  overUpgradeGround = false,
 ): PlacementProbe | null {
   const type = palisadeType(terrain, gfxIndex);
   if (type === undefined) return null;
   const body = placementWalkOf(terrain, type);
   const grid = placementBlockerGrid(world, content, terrain);
-  return { canPlace: (x, y) => canPlacePalisadeAnchor(grid, body, x, y) };
+  return { canPlace: (x, y) => canPlacePalisadeAnchor(grid, body, x, y, overUpgradeGround) };
+}
+
+/** Destroy a wall, gate or wall site with whatever it holds, and let the routes and sieges it stopped go on. */
+export function removePalisade(world: World, ctx: SystemContext, e: Entity): void {
+  releaseWallBreaches(world, ctx, e);
+  world.destroy(e);
+  if (ctx.terrain !== undefined) retryFailedRoutes(world, ctx.terrain);
+}
+
+/** Remove every wall, gate and wall site whose body covers one of `nodes`, with whatever it holds. */
+export function removePalisadesOn(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  nodes: ReadonlySet<NodeId>,
+): void {
+  const { palisadeBody } = placementBlockerGrid(world, ctx.content, terrain);
+  const walled = (node: NodeId): boolean =>
+    (palisadeBody[terrain.yOf(node) * terrain.width + terrain.xOf(node)] ?? 0) > 0;
+  if (![...nodes].some(walled)) return;
+  // Only reached when a wall stands there, which a reserve keeps rare.
+  const covered = new Set<Entity>();
+  for (const e of world.query(Palisade, Position)) {
+    palisadeBodyCells(world, e, (x, y) => {
+      if (terrain.inBounds(x, y) && nodes.has(terrain.nodeAt(x, y))) covered.add(e);
+    });
+  }
+  for (const e of canonicalById(covered)) removePalisade(world, ctx, e);
 }
 
 /** Assemble a wall segment from one validated map-catalog row. Used by the command and authored map boot. */
@@ -550,7 +581,13 @@ export function placePalisade(
   const type = palisadeType(terrain, command.gfxIndex);
   if (type === undefined) return;
   if (command.force !== true) {
-    const probe = palisadePlacementProbe(world, ctx.content, terrain, command.gfxIndex);
+    const probe = palisadePlacementProbe(
+      world,
+      ctx.content,
+      terrain,
+      command.gfxIndex,
+      command.overUpgradeGround === true,
+    );
     if (probe === null || !probe.canPlace(command.x, command.y)) return;
   }
   const entity = createPalisade(world, type, {

@@ -46,4 +46,19 @@ describe('the line tool wash', () => {
     expect(frame?.reserved).toEqual([GROWTH]);
     expect(frame?.blocked).toEqual([ROCK]);
   });
+
+  it('keeps tinting upgrade ground a line switched over it lights', () => {
+    const probe = roadProbe();
+    const wash = makeLitOverlaySource(
+      { road: () => probe, palisade: () => probe },
+      { fogView: () => null },
+      MAP,
+    );
+    const lit = { key: 'lit-over', has: (col: number, row: number) => col !== ROCK.col || row !== ROCK.row };
+
+    const frame = wash(lit, { tool: 'road' }, camera, SCREEN.width, SCREEN.height);
+
+    expect(frame?.reserved).toEqual([GROWTH]);
+    expect(frame?.blocked).toEqual([ROCK]);
+  });
 });

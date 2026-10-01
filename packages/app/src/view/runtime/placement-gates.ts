@@ -60,14 +60,20 @@ export interface PlacementClickGates {
 export interface PlacementGates extends PlacementClickGates {
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
-  readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
+  /** With `overUpgradeGround`, ground a building keeps for its upgrade takes a wall too. */
+  readonly canPlacePalisadeAt: (
+    gfxIndex: number,
+    col: number,
+    row: number,
+    overUpgradeGround?: boolean,
+  ) => boolean;
   /** Whether `owner`'s wall, gate or wall site stands on a node. */
   readonly palisadeBuiltAt: (owner: number, col: number, row: number) => boolean;
   /** Changes whenever `canPlacePalisadeAt` or `palisadeBuiltAt` may answer differently. */
   readonly palisadeAnswersKey: () => string;
   readonly palisadeGateProbe: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites: () => GateSites;
-  readonly canPlaceRoadAt: (col: number, row: number) => boolean;
+  readonly canPlaceRoadAt: (col: number, row: number, overUpgradeGround?: boolean) => boolean;
   /** Changes whenever `canPlaceRoadAt` may answer differently. */
   readonly roadAnswersKey: () => string;
   readonly probes: PlacementProbeViews;
@@ -205,8 +211,8 @@ export function createPlacementGates(
       return verdict === null || verdict === true;
     },
     canPlaceSignpostAt: (col, row) => fogGates.seesNode(col, row) && signpost().at(col, row) === true,
-    canPlacePalisadeAt: (gfxIndex, col, row) =>
-      fogGates.seesNode(col, row) && palisade(gfxIndex).at(col, row) === true,
+    canPlacePalisadeAt: (gfxIndex, col, row, overUpgradeGround) =>
+      fogGates.seesNode(col, row) && palisade(gfxIndex).at(col, row, overUpgradeGround) === true,
     palisadeBuiltAt: (owner, col, row) => {
       const built = ownNodes.read(`${owner}`, askOwnNodes(owner), blockerVersion());
       return built !== undefined && nodeSetHas(built, col, row);
@@ -221,7 +227,8 @@ export function createPlacementGates(
       );
     },
     palisadeGateSites: gateSites,
-    canPlaceRoadAt: (col, row) => fogGates.seesNode(col, row) && road().at(col, row) === true,
+    canPlaceRoadAt: (col, row, overUpgradeGround) =>
+      fogGates.seesNode(col, row) && road().at(col, row, overUpgradeGround) === true,
     roadAnswersKey: () => `${grids.version}:${fogKey()}`,
     askPlaceAt: (typeId, col, row, paper) =>
       fogGates.seesNode(col, row)

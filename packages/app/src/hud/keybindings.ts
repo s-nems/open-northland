@@ -49,6 +49,7 @@ export const KEYBINDING_ACTIONS = [
   'workFlagOrder',
   'roadTool',
   'palisadeTool',
+  'upgradeGround',
   ...CONTROL_GROUP_BINDING_ACTIONS,
 ] as const;
 
@@ -90,6 +91,8 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   workFlagOrder: 'Primary+Mouse2',
   roadTool: 'KeyS',
   palisadeTool: 'KeyD',
+  // Beside the road and wall keys; a rare order, so it toggles rather than taking a held modifier.
+  upgradeGround: 'KeyF',
   ...controlGroupDefaults,
 };
 

@@ -10,6 +10,7 @@ import type { TerrainGraph } from '../nav/terrain/index.js';
 import { contestedGroundFor } from '../systems/conflict/contested-ground.js';
 import { buildingFootprintOf } from '../systems/footprint/geometry.js';
 import {
+  type PlacementProbe,
   placementBlockerVersion,
   placementProbe,
   workFlagBlockerVersion,
@@ -31,15 +32,15 @@ import type { FogState } from '../systems/vision/index.js';
 /** A probe's verdict on every node of an area. */
 export interface NodeGridAnswer {
   readonly area: NodeArea;
-  /** 1 where the probe accepts the node, else 0 or a wall or road answer's {@link UPGRADE_RESERVE_REFUSAL};
-   *  row-major over the area from its minimum corner. */
+  /** 1 where the probe accepts the node, {@link UPGRADE_GROUND_ONLY} where a wall or road answer accepts
+   *  it only over upgrade ground, else 0; row-major over the area from its minimum corner. */
   readonly accepted: Uint8Array;
   /** Changes whenever an answer over the same area may differ, so a memo over the answer keys on it. */
   readonly key: string;
 }
 
-/** A wall or road answer's refused node on ground a standing building keeps for its upgrade. */
-const UPGRADE_RESERVE_REFUSAL = 2;
+/** A wall or road answer's node a line takes only over ground a standing building keeps for its upgrade. */
+const UPGRADE_GROUND_ONLY = 2;
 
 /** Half-cell nodes packed as `hy * NODE_SET_STRIDE + hx`, ascending. Holds on-map nodes only. */
 export type NodeSetAnswer = Uint32Array;
@@ -62,20 +63,27 @@ function nodeAreaHeight(area: NodeArea): number {
   return area.maxHy - area.minHy + 1;
 }
 
-/** Whether the answer accepts node `(hx, hy)`; a node outside its area is not answered and reads false. */
-export function nodeGridAccepts(answer: NodeGridAnswer, hx: number, hy: number): boolean {
+function answerAt(answer: NodeGridAnswer, hx: number, hy: number): number {
   const { area } = answer;
-  if (hx < area.minHx || hx > area.maxHx || hy < area.minHy || hy > area.maxHy) return false;
-  return answer.accepted[(hy - area.minHy) * nodeAreaWidth(area) + (hx - area.minHx)] === 1;
+  if (hx < area.minHx || hx > area.maxHx || hy < area.minHy || hy > area.maxHy) return 0;
+  return answer.accepted[(hy - area.minHy) * nodeAreaWidth(area) + (hx - area.minHx)] ?? 0;
 }
 
-/** Whether the answer refuses node `(hx, hy)` as ground a standing building keeps for its upgrade. */
+/** Whether the answer accepts node `(hx, hy)`, upgrade ground too with `overUpgradeGround`; a node outside
+ *  its area is not answered and reads false. */
+export function nodeGridAccepts(
+  answer: NodeGridAnswer,
+  hx: number,
+  hy: number,
+  overUpgradeGround = false,
+): boolean {
+  const at = answerAt(answer, hx, hy);
+  return at === 1 || (overUpgradeGround && at === UPGRADE_GROUND_ONLY);
+}
+
+/** Whether the answer takes node `(hx, hy)` only over ground a standing building keeps for its upgrade. */
 export function nodeGridUpgradeReserve(answer: NodeGridAnswer, hx: number, hy: number): boolean {
-  const { area } = answer;
-  if (hx < area.minHx || hx > area.maxHx || hy < area.minHy || hy > area.maxHy) return false;
-  return (
-    answer.accepted[(hy - area.minHy) * nodeAreaWidth(area) + (hx - area.minHx)] === UPGRADE_RESERVE_REFUSAL
-  );
+  return answerAt(answer, hx, hy) === UPGRADE_GROUND_ONLY;
 }
 
 export function nodeSetHas(set: NodeSetAnswer, hx: number, hy: number): boolean {
@@ -111,8 +119,14 @@ function gridOver(area: NodeArea, accepts: (hx: number, hy: number) => boolean):
   return grid;
 }
 
-/** Marks the refused nodes of `grid` over `area` that lie on an upgrade's ground. */
-function markUpgradeReserve(grid: Uint8Array, area: NodeArea, blockers: PlacementGrid): Uint8Array {
+/** Marks the refused nodes of `grid` over `area` on an upgrade's ground that `over`, the same probe
+ *  waiving that ground, accepts. */
+function markUpgradeGround(
+  grid: Uint8Array,
+  area: NodeArea,
+  blockers: PlacementGrid,
+  over: PlacementProbe,
+): Uint8Array {
   const width = nodeAreaWidth(area);
   const mapWidth = blockers.terrain.width;
   for (let hy = area.minHy; hy <= area.maxHy; hy++) {
@@ -121,9 +135,10 @@ function markUpgradeReserve(grid: Uint8Array, area: NodeArea, blockers: Placemen
       if (
         grid[at] === 0 &&
         blockers.terrain.inBounds(hx, hy) &&
-        (blockers.upgradeReserve[hy * mapWidth + hx] ?? 0) > 0
+        (blockers.upgradeReserve[hy * mapWidth + hx] ?? 0) > 0 &&
+        over.canPlace(hx, hy)
       ) {
-        grid[at] = UPGRADE_RESERVE_REFUSAL;
+        grid[at] = UPGRADE_GROUND_ONLY;
       }
     }
   }
@@ -261,11 +276,12 @@ export function palisadeAnswerFor(
 ): NodeGridAnswer | null {
   if (terrain === undefined) return null;
   const probe = palisadePlacementProbe(world, content, terrain, gfxIndex);
-  if (probe === null) return null;
+  const over = palisadePlacementProbe(world, content, terrain, gfxIndex, true);
+  if (probe === null || over === null) return null;
   const accepted = gridOver(area, (hx, hy) => probe.canPlace(hx, hy));
   return {
     area,
-    accepted: markUpgradeReserve(accepted, area, placementBlockerGrid(world, content, terrain)),
+    accepted: markUpgradeGround(accepted, area, placementBlockerGrid(world, content, terrain), over),
     key: placementBlockerVersion(world),
   };
 }
@@ -294,13 +310,15 @@ export function roadSiteAnswerFor(
   let held = grids.get(slot);
   if (held === undefined || held.key !== key) {
     const probe = roadSitePlacementProbe(world, content, terrain);
+    const over = roadSitePlacementProbe(world, content, terrain, true);
     if (grids.size >= MAX_FOOTPRINT_GRIDS && held === undefined) grids.clear();
     held = {
       key,
-      grid: markUpgradeReserve(
+      grid: markUpgradeGround(
         gridOver(area, (hx, hy) => probe.canPlace(hx, hy)),
         area,
         blockers,
+        over,
       ),
     };
     grids.set(slot, held);

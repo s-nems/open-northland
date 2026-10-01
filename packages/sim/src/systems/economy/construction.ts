@@ -49,6 +49,7 @@ import { scatterSpilledStock, spilledStockOf } from './goods-spill.js';
 import { clearRepairedDamage } from './repair.js';
 import { dropLapsedClaim, holdsSiteClaim, isSoloSite } from './site-claim.js';
 import { destroyStumpsInReserved } from './stumps.js';
+import { clearUpgradeGround } from './upgrade-ground.js';
 
 /**
  * Raise placed foundations into finished buildings: a site finishes once builder labor and the delivered
@@ -207,6 +208,7 @@ function finishBuilding(
       const b = world.mut(e, Building);
       b.buildingType = target.typeId;
       b.level += 1;
+      clearUpgradeGround(world, ctx, e, target.typeId);
       const health = world.tryMut(e, Health);
       const max = buildingHitpointsFor(target, b.tribe);
       if (health !== undefined && max !== undefined) health.max = max;

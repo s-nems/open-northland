@@ -16,8 +16,9 @@ import type { SceneDefinition } from './types.js';
 /**
  * Upgrade ground under the road and wall tools: a level-1 druid hut still being built beside a finished
  * one, a store of stone and two builders. Both huts keep the ground their level 2 grows over, so a road
- * or wall line skirts it, and with either tool held that ground takes its own tint. The site stays a
- * site: its brick and pillar are nowhere on the map.
+ * or wall line skirts it, and with either tool held that ground takes its own tint. The upgrade-ground
+ * key lets a line take it; upgrading the store or the finished hut then razes what stands there. The
+ * site stays a site: its brick and pillar are nowhere on the map.
  */
 
 const MAP_W = 30;
@@ -35,6 +36,8 @@ const RUN_TICKS = 600;
 const { Building, Stockpile, UnderConstruction } = components;
 
 function build(sim: Simulation): void {
+  // The scene is about the ground an upgrade takes, so the upgrade stays open without its discoveries.
+  sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: false });
   const store = placeBuiltSandboxBuilding(
     sim,
     BUILDING_WAREHOUSE_00,

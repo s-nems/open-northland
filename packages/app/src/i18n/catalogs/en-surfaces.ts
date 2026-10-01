@@ -280,6 +280,7 @@ export const enSurfaces = {
         workFlagOrder: 'Set a work flag',
         roadTool: 'Road tool',
         palisadeTool: 'Palisade tool',
+        upgradeGround: 'Wall or road over upgrade ground',
       },
       keySpace: 'Space',
       mouseLeft: 'left mouse button',

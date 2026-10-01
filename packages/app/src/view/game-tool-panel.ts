@@ -56,12 +56,17 @@ export interface GameToolPanelDeps {
   readonly enqueueTrusted?: (command: Command) => void;
   /** Gates the placement click; a closure, so it follows a scene restart. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
-  readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
+  readonly canPlacePalisadeAt: (
+    gfxIndex: number,
+    col: number,
+    row: number,
+    overUpgradeGround?: boolean,
+  ) => boolean;
   readonly palisadeBuiltAt: (owner: number, col: number, row: number) => boolean;
   readonly palisadeAnswersKey: () => string;
   readonly palisadeGateProbe: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites: () => GateSites;
-  readonly canPlaceRoadAt: (col: number, row: number) => boolean;
+  readonly canPlaceRoadAt: (col: number, row: number, overUpgradeGround?: boolean) => boolean;
   readonly roadBuiltAt: (col: number, row: number) => boolean;
   readonly roadAnswersKey: () => string;
   readonly ownRoadSiteAt: (col: number, row: number) => number | null;

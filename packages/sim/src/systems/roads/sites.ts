@@ -26,12 +26,13 @@ import {
   OBSTACLE,
   PALISADE_BODY,
   palisadeBodyCells,
+  UPGRADE_RESERVE,
   vehicleBlockerCells,
 } from '../footprint/placement/blockers.js';
 import { type PlacementProbe, placementBlockerVersion } from '../footprint/placement/index.js';
 import { vehicleAnchorRevision } from '../footprint/vehicle-anchors.js';
 import { canonicalById } from '../spatial/nodes.js';
-import { layRoad, roadRevision } from './index.js';
+import { layRoad, liftRoad, roadRevision } from './index.js';
 import { roadSitesByNode } from './site-index.js';
 
 /** The good a road is paved with, by catalog slug. Original behavior: a road site costs one stone. */
@@ -54,12 +55,14 @@ export function roadConstructionBill(content: ContentSet): { goodType: number; a
  * Where a road may be ordered, shared by the UI ghost and the command: walkable land clear of every body
  * a wall segment would also refuse - a building, a resource, a signpost, a wall, a scripted blocker - and
  * not already a road or a road site. A road is flat, so settlers, animals and parked vehicles standing
- * there never block it. Project rule, after the wall's placement.
+ * there never block it. With `overUpgradeGround` it may run where a building only keeps room for its
+ * upgrade, as a wall may. Project rule, after the wall's placement.
  */
 export function roadSitePlacementProbe(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
+  overUpgradeGround = false,
 ): PlacementProbe {
   const grid = placementBlockerGrid(world, content, terrain);
   const sites = roadSitesByNode(world, terrain);
@@ -69,9 +72,10 @@ export function roadSitePlacementProbe(
       if (!terrain.inBounds(x, y)) return false;
       const node = terrain.nodeAt(x, y);
       const slot = y * terrain.width + x;
+      const waived = (vehicles.get(slot) ?? 0) + (overUpgradeGround ? (grid.upgradeReserve[slot] ?? 0) : 0);
       return (
         terrain.isWalkable(node) &&
-        (grid.obstacle[slot] ?? 0) <= (vehicles.get(slot) ?? 0) &&
+        (grid.obstacle[slot] ?? 0) <= waived &&
         (grid.palisadeBody[slot] ?? 0) === 0 &&
         !terrain.isRoad(node) &&
         !sites.has(node)
@@ -124,7 +128,12 @@ export function placeRoadSite(
   const node = terrain.nodeAt(command.x, command.y);
   if (command.force === true) {
     if (terrain.isRoad(node) || roadSitesByNode(world, terrain).has(node)) return;
-  } else if (!roadSitePlacementProbe(world, ctx.content, terrain).canPlace(command.x, command.y)) {
+  } else if (
+    !roadSitePlacementProbe(world, ctx.content, terrain, command.overUpgradeGround === true).canPlace(
+      command.x,
+      command.y,
+    )
+  ) {
     return;
   }
   const e = world.create();
@@ -149,22 +158,40 @@ export function cancelRoadSite(world: World, ctx: SystemContext, site: Entity): 
 
 /**
  * Withdraw the road sites a newly placed building's or wall's body covers, each as its owner's cancel
- * would: the cells the road probe refuses for that body. A laid road stays under it. Project rule.
+ * would: the cells the road probe refuses for that body, less the building's own upgrade ground, where a
+ * site ordered over it waits for the upgrade. A laid road stays under it. Project rule.
  */
 export function cancelRoadSitesUnder(world: World, ctx: SystemContext, structure: Entity): void {
   const terrain = ctx.terrain;
   if (terrain === undefined) return;
   const sites = roadSitesByNode(world, terrain);
   if (sites.size === 0) return;
-  const covered: Entity[] = [];
+  const body = new Set<Entity>();
+  const growth = new Set<Entity>();
   const visit: BlockerVisit = (x, y, channel) => {
-    if ((channel !== OBSTACLE && channel !== PALISADE_BODY) || !terrain.inBounds(x, y)) return;
+    if (!terrain.inBounds(x, y)) return;
     const site = sites.get(terrain.nodeAt(x, y));
-    if (site !== undefined && !covered.includes(site)) covered.push(site);
+    if (site === undefined) return;
+    if (channel === OBSTACLE || channel === PALISADE_BODY) body.add(site);
+    else if (channel === UPGRADE_RESERVE) growth.add(site);
   };
   if (world.has(structure, Palisade)) palisadeBodyCells(world, structure, visit);
   else BUILDING_STORE.cells(world, ctx.content, structure, visit);
-  for (const site of canonicalById(covered)) cancelRoadSite(world, ctx, site);
+  for (const site of canonicalById([...body].filter((site) => !growth.has(site)))) {
+    cancelRoadSite(world, ctx, site);
+  }
+}
+
+/** Remove the road sites on `nodes` with any stone delivered to them, and lift the road laid there. */
+export function clearRoadsOn(world: World, terrain: TerrainGraph, nodes: ReadonlySet<NodeId>): void {
+  const sites = roadSitesByNode(world, terrain);
+  const covered: Entity[] = [];
+  for (const node of nodes) {
+    const site = sites.get(node);
+    if (site !== undefined) covered.push(site);
+  }
+  for (const site of canonicalById(covered)) removeRoadSite(world, site);
+  liftRoad(world, terrain, nodes);
 }
 
 /**

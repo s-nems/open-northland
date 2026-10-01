@@ -29,7 +29,7 @@ import { createPlacementController, PALISADE_LINE_MAX_EDGES } from '../src/hud/t
 import { INITIAL_RESIDENTS_STATE, NO_RESIDENT_FILTERS } from '../src/hud/tool-panel/residents/rows.js';
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
 import { createToolWindows } from '../src/hud/tool-panel/windows.js';
-import { messages } from '../src/i18n/index.js';
+import { formatMessage, messages } from '../src/i18n/index.js';
 import { type ConstructionWindowStub, stubConstructionWindow } from './support/construction-window-stub.js';
 import { stubMissionBook } from './support/mission-book-stub.js';
 import { stubPendingWindow } from './support/pending-window-stub.js';
@@ -782,6 +782,65 @@ describe('placement controller', () => {
     placement.handleClick(0, 0);
     expect(placement.activeLine()).toBeNull();
     expect(cues).toEqual(['fail', 'fail']);
+  });
+
+  it('runs a road over upgrade ground only while its key is switched on, and orders it so', () => {
+    let tile = { col: 4, row: 2 };
+    /** Column 6 of row 2 is a building's upgrade ground. */
+    const growth = (col: number, row: number): boolean => col === 6 && row === 2;
+    const { placement, commands, strip } = mount(() => tile, undefined, undefined, undefined, {
+      canPlaceRoadAt: (col, row, overUpgradeGround) => overUpgradeGround === true || !growth(col, row),
+      upgradeGroundKey: () => 'F',
+    });
+    const copy = messages().hud.construction;
+    expect(placement.toggleUpgradeGround()).toBe(false);
+    placement.enterRoad();
+    expect(strip.shown?.hint).toBe(
+      `${copy.placeRoadHint}, ${formatMessage(copy.overUpgradeGroundHint, { key: 'F' })}`,
+    );
+    placement.handleClick(0, 0);
+    tile = { col: 8, row: 2 };
+    expect(placement.roadPreview(tile)?.nodes.some((node) => growth(node.col, node.row))).toBe(false);
+
+    expect(placement.toggleUpgradeGround()).toBe(true);
+    expect(strip.shown?.label).toBe(`${copy.road}: ${copy.overUpgradeGround}`);
+    expect(placement.roadPreview(tile)?.nodes.map((node) => [node.col, node.row])).toEqual(
+      [4, 5, 6, 7, 8].map((col) => [col, 2]),
+    );
+    placement.handleClick(10, 0);
+    expect(commands).toEqual(
+      [4, 5, 6, 7, 8].map((x) => ({
+        kind: 'placeRoadSite',
+        x,
+        y: 2,
+        tribe: 1,
+        owner: 0,
+        overUpgradeGround: true,
+      })),
+    );
+
+    // Picking the tool up again starts with the switch off.
+    placement.enterRoad();
+    expect(strip.shown?.label).toBe(copy.road);
+  });
+
+  it('orders a wall line over upgrade ground once switched, but not a gate', () => {
+    let tile = { col: 4, row: 2 };
+    const growth = (col: number, row: number): boolean => col === 6 && row === 2;
+    const { placement, commands } = mount(() => tile, undefined, undefined, undefined, {
+      canPlacePalisadeAt: (_gfx, col, row, overUpgradeGround) =>
+        overUpgradeGround === true || !growth(col, row),
+    });
+    placement.enterPalisade(691, 'gate');
+    expect(placement.toggleUpgradeGround()).toBe(false);
+    placement.enterPalisade(691, 'wall');
+    expect(placement.toggleUpgradeGround()).toBe(true);
+    placement.handleClick(0, 0);
+    tile = { col: 8, row: 2 };
+    placement.handleClick(10, 0);
+    expect(
+      commands.map((command) => command.kind === 'placePalisade' && [command.x, command.overUpgradeGround]),
+    ).toEqual([4, 5, 6, 7, 8].map((x) => [x, true]));
   });
 
   it('cancels the own road sites under an Alt line and keeps the road tool', () => {

@@ -20,6 +20,8 @@ export interface HeldMode {
   setStraight?(on: boolean): void;
   /** Alt is held: the road tool's line cancels road sites instead of ordering them. */
   setErase?(on: boolean): void;
+  /** The upgrade-ground key: a wall or road line takes or skirts that ground; false when no line is held. */
+  toggleUpgradeGround?(): boolean;
 }
 
 /** The action whose key toggles each beam entry. */
@@ -203,6 +205,12 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       consume(e);
       deps.toggleNav(entry);
       return;
+    }
+    if (isActionHotkey(e, deps.bindings, 'upgradeGround') && !modalOwned(e)) {
+      if (held.some((m) => m.isActive() && m.toggleUpgradeGround?.() === true)) {
+        consume(e);
+        return;
+      }
     }
     if (deps.roadTool !== undefined && isActionHotkey(e, deps.bindings, 'roadTool')) {
       if (modalOwned(e)) return;

@@ -47,6 +47,8 @@ export interface PlacePalisadeCommand {
   /** Trusted authored-map durability/valency; ignored for a construction site. */
   readonly valency?: number;
   readonly force?: boolean;
+  /** Stand where a building only keeps room for its upgrade; that upgrade razes the segment. */
+  readonly overUpgradeGround?: boolean;
 }
 
 /** Order a road on one half-cell node: a site a builder lays with the road's stone. Seat envelopes own
@@ -59,6 +61,8 @@ export interface PlaceRoadSiteCommand {
   readonly owner?: number;
   /** Trusted setup only: skip the ground and blocker test, never the one-site-per-node rule. */
   readonly force?: boolean;
+  /** Run where a building only keeps room for its upgrade; that upgrade lifts the road. */
+  readonly overUpgradeGround?: boolean;
 }
 
 /** Withdraw a road site not yet laid; any stone already delivered drops beside it. */

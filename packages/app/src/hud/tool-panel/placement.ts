@@ -1,5 +1,5 @@
 import type { Command, Entity, Paper, PlayerCommand } from '@open-northland/sim';
-import { messages } from '../../i18n/index.js';
+import { formatMessage, messages } from '../../i18n/index.js';
 import type { PlacementStrip } from '../dom/placement-strip.js';
 import type { PanelContext } from './context.js';
 import {
@@ -114,21 +114,31 @@ export interface PlacementDeps {
   /** The sim's live placement rule for the held type at a tile (`SessionHost.placementProbe`); a click on
    *  a rejecting tile is inert, so build mode only ends on a placement that lands. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
-  readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
+  /** Where a wall segment may stand; with `overUpgradeGround`, on ground a building keeps for its
+   *  upgrade too. */
+  readonly canPlacePalisadeAt?: (
+    gfxIndex: number,
+    col: number,
+    row: number,
+    overUpgradeGround?: boolean,
+  ) => boolean;
   /** Whether `owner`'s wall, gate or wall site already stands on a node. */
   readonly palisadeBuiltAt?: (owner: number, col: number, row: number) => boolean;
   /** Changes whenever the two rules above may answer differently. */
   readonly palisadeAnswersKey?: () => string;
   readonly palisadeGateProbe?: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites?: () => GateSites;
-  /** Where a road site may be ordered; absent, the road tool refuses every node. */
-  readonly canPlaceRoadAt?: (col: number, row: number) => boolean;
+  /** Where a road site may be ordered, upgrade ground too with `overUpgradeGround`; absent, the road tool
+   *  refuses every node. */
+  readonly canPlaceRoadAt?: (col: number, row: number, overUpgradeGround?: boolean) => boolean;
   /** Whether a road or a road site already lies on a node, which a road line passes without ordering. */
   readonly roadBuiltAt?: (col: number, row: number) => boolean;
   /** Changes whenever the two road rules above may answer differently. */
   readonly roadAnswersKey?: () => string;
   /** The seat's own road site on a node, which an Alt line cancels; absent, it cancels none. */
   readonly ownRoadSiteAt?: (col: number, row: number) => number | null;
+  /** The label of the key that lets a wall or road line over upgrade ground, for the strip; null unbound. */
+  readonly upgradeGroundKey?: () => string | null;
   /** The admin channel a standing-wall line commits through; absent, that tool lays nothing. */
   readonly enqueueTrusted?: (command: Command) => void;
   /** The rules a click decides on, asked of the sim as it lands; absent, a click decides on the
@@ -171,6 +181,9 @@ export interface PlacementController {
   setStraight(on: boolean): void;
   /** Alt held: the road tool draws a line that cancels the seat's road sites under it. */
   setErase(on: boolean): void;
+  /** Let a held wall or road line run over the ground buildings keep for their upgrades, or skirt it
+   *  again; false outside those tools. */
+  toggleUpgradeGround(): boolean;
   /** Route a left-click while placing; a rejecting or off-map tile still consumes it, so a mis-click
    *  cannot drop the mode. Returns true when consumed. */
   handleClick(clientX: number, clientY: number, mods?: { readonly keep: boolean }): boolean;
@@ -203,6 +216,8 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   let placementPaper: Paper | null = null;
   let straight = false;
   let erase = false;
+  /** A wall or road line may take upgrade ground; dropped with the tool. */
+  let overUpgradeGround = false;
   let palisade: {
     readonly gfxIndex: number;
     readonly mode: PalisadePlacementMode;
@@ -210,6 +225,18 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     readonly line: LineTool;
   } | null = null;
   let road: LineTool | null = null;
+
+  /** The line tool's strip with the upgrade-ground switch's state and key. */
+  const withUpgradeGround = (shown: { label: string; hint: string }): { label: string; hint: string } => {
+    const { construction } = messages().hud;
+    const key = deps.upgradeGroundKey?.() ?? null;
+    const label = overUpgradeGround ? `${shown.label}: ${construction.overUpgradeGround}` : shown.label;
+    if (key === null) return { label, hint: shown.hint };
+    const toggle = overUpgradeGround
+      ? construction.skirtUpgradeGroundHint
+      : construction.overUpgradeGroundHint;
+    return { label, hint: `${shown.hint}, ${formatMessage(toggle, { key })}` };
+  };
 
   const showRoadStrip = (): void => {
     if (road === null) return;
@@ -224,7 +251,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       return;
     }
     const hint = road.anchor() === null ? construction.placeRoadHint : construction.placeRoadLineHint;
-    strip.show({ label: construction.road, hint });
+    strip.show(withUpgradeGround({ label: construction.road, hint }));
   };
 
   const showPalisadeStrip = (): void => {
@@ -242,7 +269,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
         : palisade.mode === 'standingWall'
           ? messages().admin.standingPalisade
           : copy.palisade;
-    strip.show({ label, hint });
+    strip.show(palisade.mode === 'gate' ? { label, hint } : withUpgradeGround({ label, hint }));
   };
 
   const exitPlacement = (): void => {
@@ -250,6 +277,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     placementPaper = null;
     palisade = null;
     road = null;
+    overUpgradeGround = false;
     roadCancel.stepBack();
     strip.clear();
   };
@@ -258,12 +286,19 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     createLineTool({
       tool: `palisade:${gfxIndex}`,
       maxEdges: PALISADE_LINE_MAX_EDGES,
-      canPlace: (node) => deps.canPlacePalisadeAt?.(gfxIndex, node.col, node.row) === true,
+      canPlace: (node) => deps.canPlacePalisadeAt?.(gfxIndex, node.col, node.row, overUpgradeGround) === true,
       built: (node) => deps.palisadeBuiltAt?.(side.owner, node.col, node.row) === true,
-      answersKey: () => deps.palisadeAnswersKey?.() ?? '',
+      answersKey: () => `${deps.palisadeAnswersKey?.() ?? ''}:${overUpgradeGround}`,
       commit: (nodes) => {
         for (const node of nodes) {
-          const place = { kind: 'placePalisade', gfxIndex, x: node.col, y: node.row, ...side } as const;
+          const place = {
+            kind: 'placePalisade',
+            gfxIndex,
+            x: node.col,
+            y: node.row,
+            ...side,
+            ...(overUpgradeGround ? { overUpgradeGround } : {}),
+          } as const;
           if (standing) deps.enqueueTrusted?.({ ...place, underConstruction: false });
           else deps.enqueue({ ...place, underConstruction: true });
         }
@@ -275,9 +310,9 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     createLineTool({
       tool: 'road',
       maxEdges: ROAD_LINE_MAX_EDGES,
-      canPlace: (node) => deps.canPlaceRoadAt?.(node.col, node.row) === true,
+      canPlace: (node) => deps.canPlaceRoadAt?.(node.col, node.row, overUpgradeGround) === true,
       built: (node) => deps.roadBuiltAt?.(node.col, node.row) === true,
-      answersKey: () => deps.roadAnswersKey?.() ?? '',
+      answersKey: () => `${deps.roadAnswersKey?.() ?? ''}:${overUpgradeGround}`,
       commit: (nodes) => {
         for (const node of nodes) {
           deps.enqueue({
@@ -286,6 +321,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
             y: node.row,
             tribe: deps.tribe,
             owner: deps.owner,
+            ...(overUpgradeGround ? { overUpgradeGround } : {}),
           });
         }
         ctx.cue('confirm');
@@ -415,6 +451,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     placementPaper = null;
     const held = side ?? { owner: deps.owner, tribe: deps.tribe };
     road = null;
+    overUpgradeGround = false;
     palisade = { gfxIndex, mode, side: held, line: wallLine(gfxIndex, mode === 'standingWall', held) };
     showPalisadeStrip();
   };
@@ -424,6 +461,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     placementPaper = null;
     palisade = null;
     road = roadLine();
+    overUpgradeGround = false;
     roadCancel.stepBack();
     showRoadStrip();
   };
@@ -456,6 +494,13 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     },
     setStraight: (on): void => {
       straight = on;
+    },
+    toggleUpgradeGround: (): boolean => {
+      if (road === null && (palisade === null || palisade.mode === 'gate')) return false;
+      overUpgradeGround = !overUpgradeGround;
+      if (road !== null) showRoadStrip();
+      else showPalisadeStrip();
+      return true;
     },
     setErase: (on): void => {
       if (erase === on) return;

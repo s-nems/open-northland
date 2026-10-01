@@ -17,7 +17,8 @@ export const PROBE_AREA_NODES = 32;
  *  `null` when the host has no such probe, as a mapless world has none. */
 export interface NodeGridProbe {
   answerAt(hx: number, hy: number): NodeGridAnswer | null | undefined;
-  at(hx: number, hy: number): boolean | null | undefined;
+  /** The verdict at a node; a wall or road answer takes upgrade ground too with `overUpgradeGround`. */
+  at(hx: number, hy: number, overUpgradeGround?: boolean): boolean | null | undefined;
   /** The verdict at a node as of now, for a click: asks the host unless its answer is current. */
   freshAt(hx: number, hy: number): Promise<boolean | null>;
   /** The answers' keys over a node box, so a memo over the box re-walks once one of them changes or
@@ -47,9 +48,11 @@ export function nodeGridProbe(
     answerOfArea(areaIndex(hx), areaIndex(hy), inputs());
   return {
     answerAt,
-    at: (hx, hy) => {
+    at: (hx, hy, overUpgradeGround) => {
       const answer = answerAt(hx, hy);
-      return answer === undefined || answer === null ? answer : nodeGridAccepts(answer, hx, hy);
+      return answer === undefined || answer === null
+        ? answer
+        : nodeGridAccepts(answer, hx, hy, overUpgradeGround);
     },
     freshAt: (hx, hy) => {
       const ax = areaIndex(hx);

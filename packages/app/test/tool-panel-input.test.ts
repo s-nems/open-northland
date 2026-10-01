@@ -309,6 +309,24 @@ describe('tool panel Escape ladder', () => {
     input.dispose();
   });
 
+  it('switches a held line over upgrade ground on its key, and leaves the key alone with no line held', () => {
+    const { input, windowTarget, held, arm } = mount();
+    let switched = 0;
+    held.toggleUpgradeGround = (): boolean => {
+      switched++;
+      return true;
+    };
+    const idle = key('KeyF');
+    windowTarget.dispatchEvent(idle);
+    expect(idle.defaultPrevented).toBe(false);
+    arm();
+    const press = key('KeyF');
+    windowTarget.dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(true);
+    expect(switched).toBe(1);
+    input.dispose();
+  });
+
   it('leaves a field its letters, but takes an F-key from inside one', () => {
     const { input, windowTarget, navToggled } = mount();
     // A focused `<select>` keeps its letters: they run its own type-ahead, not a game action.
