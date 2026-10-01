@@ -156,7 +156,8 @@ export type SettlerTradeReader =
   | 'combatReady'
   | 'gossipCandidates'
   | 'tribeUnlocks'
-  | 'livestockScouts';
+  | 'livestockScouts'
+  | 'standingPosts';
 
 /** Per world and reader, the settlers whose trade {@link setSettlerJob} wrote since that reader last
  *  drained its log: the progress log's narrower twin, for a reader that ignores experience. */

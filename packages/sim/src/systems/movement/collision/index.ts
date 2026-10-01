@@ -3,3 +3,4 @@
 export * from './bodies.js';
 export * from './owned-fighters.js';
 export * from './separation.js';
+export * from './standing-posts.js';

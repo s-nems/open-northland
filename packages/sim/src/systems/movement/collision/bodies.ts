@@ -1,10 +1,7 @@
-import type { ContentSet } from '@open-northland/data';
 import { Building, Owner, PathFollow, PathRequest, Position, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { BlockOverlay } from '../../../nav/block-overlay.js';
-import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../../nav/halfcell.js';
+import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { ownedFighters } from './owned-fighters.js';
 
 /**
  * Unit body collision is an authored deviation: the original is observed letting walkers pass through each
@@ -134,112 +131,4 @@ export function calmZonesByPlayer(world: World, terrain: TerrainGraph): Map<numb
   zonesMemo.set(world, memo);
   world.registerCacheVerifier('calmZonesByPlayer', () => verifyZonesMemo(world, terrain));
   return memo.zones;
-}
-
-/**
- * The nodes standing colliders block for routing, split by who is asking: every post blocks every collider
- * requester, except that a post inside its owner's calm zone is town garrison, which its own player routes
- * through while an enemy is steered around it. Membership-only and never hashed.
- *
- * `posts` is a per-graph scratch shared by every build, so a holder calls `release` before the next one.
- */
-export interface UnitWalkBlocks {
-  /** Row-major posts per node, field and town alike, zero off every post. */
-  readonly posts: Uint16Array;
-  /** How many posts {@link posts} counts in total. */
-  readonly postTotal: number;
-  /** Per player, its own town posts per node: the share of {@link posts} that never blocks that player. */
-  readonly townByPlayer: ReadonlyMap<number, ReadonlyMap<NodeId, number>>;
-  /** Zero the counted nodes again, invalidating this view. */
-  release(): void;
-}
-
-const postScratch = new WeakMap<TerrainGraph, Uint16Array>();
-
-/** Visit every post with its in-bounds node and owning player, in ascending id. */
-function eachStandingFighter(
-  world: World,
-  content: ContentSet,
-  terrain: TerrainGraph,
-  visit: (e: Entity, node: NodeId, player: number) => void,
-): void {
-  for (const e of ownedFighters(world, content)) {
-    const p = world.tryGet(e, Position);
-    if (p === undefined || !isStanding(world, e)) continue;
-    const hx = nodeHxOfPosition(p.x, p.y);
-    const hy = nodeHyOfPosition(p.y);
-    if (!terrain.inBounds(hx, hy)) continue;
-    visit(e, terrain.nodeAt(hx, hy), world.get(e, Owner).player);
-  }
-}
-
-/**
- * The nodes standing colliders occupy regardless of calm zones, each with the player standing there: an
- * approach cell someone already stands on is a taken melee slot even inside a town garrison. Two soft-
- * stacked bodies on one node keep the higher id's player.
- */
-export function standingFighterPosts(
-  world: World,
-  content: ContentSet,
-  terrain: TerrainGraph,
-): ReadonlyMap<NodeId, number> {
-  const posts = new Map<NodeId, number>();
-  eachStandingFighter(world, content, terrain, (_e, node, player) => posts.set(node, player));
-  return posts;
-}
-
-export function unitWalkBlocks(world: World, content: ContentSet, terrain: TerrainGraph): UnitWalkBlocks {
-  let posts = postScratch.get(terrain);
-  if (posts === undefined) {
-    posts = new Uint16Array(terrain.nodeCount);
-    postScratch.set(terrain, posts);
-  }
-  const counts = posts;
-  const stamped: NodeId[] = [];
-  const zones = calmZonesByPlayer(world, terrain);
-  const townByPlayer = new Map<number, Map<NodeId, number>>();
-  eachStandingFighter(world, content, terrain, (_e, node, player) => {
-    counts[node] = (counts[node] ?? 0) + 1;
-    stamped.push(node);
-    if (!zones.get(player)?.has(node)) return;
-    let town = townByPlayer.get(player);
-    if (town === undefined) {
-      town = new Map();
-      townByPlayer.set(player, town);
-    }
-    town.set(node, (town.get(node) ?? 0) + 1);
-  });
-  return {
-    posts: counts,
-    postTotal: stamped.length,
-    townByPlayer,
-    release: () => {
-      for (const node of stamped) counts[node] = 0;
-    },
-  };
-}
-
-/**
- * A collider requester's walk overlay: `dynamic` plus every post except its own player's town garrison.
- * A membership test is two array reads, touching the town map only on a post.
- */
-export class ColliderWalkBlocks implements BlockOverlay {
-  private readonly dynamic: BlockOverlay;
-  private readonly posts: Uint16Array;
-  private readonly ownTown: ReadonlyMap<NodeId, number> | undefined;
-  readonly size: number;
-  constructor(dynamic: BlockOverlay, units: UnitWalkBlocks, player: number) {
-    this.dynamic = dynamic;
-    this.posts = units.posts;
-    this.ownTown = units.townByPlayer.get(player);
-    let ownPosts = 0;
-    for (const count of this.ownTown?.values() ?? []) ownPosts += count;
-    // 0 exactly when nothing blocks this requester, which lets the search skip its pocket probe.
-    this.size = dynamic.size + units.postTotal - ownPosts;
-  }
-  has(node: NodeId): boolean {
-    if (this.dynamic.has(node)) return true;
-    const posts = this.posts[node] ?? 0;
-    return posts > 0 && posts > (this.ownTown?.get(node) ?? 0);
-  }
 }

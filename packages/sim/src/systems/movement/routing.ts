@@ -94,138 +94,132 @@ export function drainPathRequests(
     }
     return view;
   };
-  try {
-    for (const e of world.canonicalQuery(PathRequest)) {
-      // Past the budget only a group member that borrows a route already served this tick still starts, so
-      // a march whose first route spent the budget sets off together; every full search waits.
-      const overBudget = spent.explored >= nodeBudget;
-      if (overBudget && !world.has(e, PlayerOrder)) continue;
-      const req = world.get(e, PathRequest);
-      if (req.failed) continue;
-      mask?.catchUp();
+  for (const e of world.canonicalQuery(PathRequest)) {
+    // Past the budget only a group member that borrows a route already served this tick still starts, so
+    // a march whose first route spent the budget sets off together; every full search waits.
+    const overBudget = spent.explored >= nodeBudget;
+    if (overBudget && !world.has(e, PlayerOrder)) continue;
+    const req = world.get(e, PathRequest);
+    if (req.failed) continue;
+    mask?.catchUp();
 
-      const collides = hasBodyCollision(world, ctx.content, e);
-      const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
-      const stepEnd =
-        req.retainRoute || !finishesStepOnReroute(world, e)
-          ? undefined
-          : freeStepEnd(world, terrain, e, blocked);
-      const start = stepEnd ?? req.start;
-      // A goal blocked only by a standing unit is recoverable: re-aim at the nearest free node so a charge
-      // fans out around a crowded target. Collider-only, since a ghost's goal must stay exact.
-      let goal = req.goal;
-      let standIn = false;
-      if (
-        collides &&
-        goal !== start && // a walker already standing there has arrived, however crowded
-        isValidNodeId(terrain, goal) &&
-        blocked.has(goal) &&
-        !dynamicOnly().has(goal)
-      ) {
-        const free = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
-        if (free !== null) {
-          goal = free;
-          standIn = true;
-        }
+    const collides = hasBodyCollision(world, ctx.content, e);
+    const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
+    const stepEnd =
+      req.retainRoute || !finishesStepOnReroute(world, e)
+        ? undefined
+        : freeStepEnd(world, terrain, e, blocked);
+    const start = stepEnd ?? req.start;
+    // A goal blocked only by a standing unit is recoverable: re-aim at the nearest free node so a charge
+    // fans out around a crowded target. Collider-only, since a ghost's goal must stay exact.
+    let goal = req.goal;
+    let standIn = false;
+    if (
+      collides &&
+      goal !== start && // a walker already standing there has arrived, however crowded
+      isValidNodeId(terrain, goal) &&
+      blocked.has(goal) &&
+      !dynamicOnly().has(goal)
+    ) {
+      const free = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
+      if (free !== null) {
+        goal = free;
+        standIn = true;
       }
-      // Only a player's order moves a group; economy walks keep their own exact routes.
-      const group =
-        world.has(e, PlayerOrder) && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
-      let path = group ? groupRoutes.borrow(blocked, start, goal, spent) : null;
-      if (path === null) {
-        if (overBudget) continue;
-        path = resolvePath(terrain, start, goal, blocked, spent);
-        if (path !== null && group) groupRoutes.offer(blocked, path);
-      }
-      if (path !== null && standIn) {
-        claimedStandIns.add(goal);
-        // Keep the intent in step with the delivered route, or the planner would re-route back at the
-        // occupied original every tick.
-        const goalIntent = world.tryMut(e, MoveGoal);
-        if (goalIntent !== undefined) goalIntent.cell = goal;
-      }
-      if (path === null) {
-        world.mut(e, PathRequest).failed = true;
-        // A failed mid-walk reroute keeps the live path, so the walker plays its old route out and parks on
-        // a cell centre rather than freezing mid-leg.
-        continue;
-      }
+    }
+    // Only a player's order moves a group; economy walks keep their own exact routes.
+    const group = world.has(e, PlayerOrder) && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
+    let path = group ? groupRoutes.borrow(blocked, start, goal, spent) : null;
+    if (path === null) {
+      if (overBudget) continue;
+      path = resolvePath(terrain, start, goal, blocked, spent);
+      if (path !== null && group) groupRoutes.offer(blocked, path);
+    }
+    if (path !== null && standIn) {
+      claimedStandIns.add(goal);
+      // Keep the intent in step with the delivered route, or the planner would re-route back at the
+      // occupied original every tick.
+      const goalIntent = world.tryMut(e, MoveGoal);
+      if (goalIntent !== undefined) goalIntent.cell = goal;
+    }
+    if (path === null) {
+      world.mut(e, PathRequest).failed = true;
+      // A failed mid-walk reroute keeps the live path, so the walker plays its old route out and parks on
+      // a cell centre rather than freezing mid-leg.
+      continue;
+    }
 
-      let waypoints = pathToWaypoints(terrain, path);
-      // Keep a route's start when it is still ahead of an active step: skipping it would also skip its
-      // terrain and node charge. A start behind the new heading is bypassed rather than backing up;
-      // a blocked start only permits escape, never a return to its centre.
-      const previous = world.tryGet(e, PathFollow);
-      const previousStops = world.tryGet(e, PathRoute)?.waypoints;
-      // A topology reroute starts at the end of the retained safe prefix. Finish that prefix
-      // before the detour, including any diagonal midpoint on the way back from a closed edge.
-      if (req.retainRoute && previous !== undefined && previousStops?.at(-1)?.node === req.start) {
-        world.mut(e, PathRoute).waypoints = [...previousStops, ...waypoints.slice(1)];
-        world.remove(e, PathRequest);
-        world.remove(e, Stranded);
-        continue;
-      }
-      const oldTarget = previous && previousStops?.[previous.index];
-      const oldStart = previous && previousStops?.[previous.index - 1];
-      const activeCost = previous?.legCost ?? 0;
-      const position = world.tryGet(e, Position);
-      const moved =
-        oldStart !== undefined &&
-        position !== undefined &&
-        (position.x !== oldStart.x || position.y !== oldStart.y);
-      const oldPace =
-        activeCost > 0
-          ? (previous?.legPace ??
-            (moved && oldTarget !== undefined && oldStart !== undefined
-              ? fx.divCeil(
-                  worldDistance(oldStart.x, oldStart.y, oldTarget.x, oldTarget.y),
-                  fx.fromInt(activeCost),
-                )
-              : undefined))
-          : undefined;
-      // A walker partway through a step finishes it along its edge before the new route, however sharply
-      // that route then turns.
-      const finishesStep = moved && stepEnd !== undefined && waypoints[0]?.node === stepEnd;
-      let index =
-        waypoints.length < 2 ||
-        finishesStep ||
-        (activeCost > 0 &&
-          position !== undefined &&
-          waypoints[0] !== undefined &&
-          !blocked.has(waypoints[0].node) &&
-          startIsAhead(position, waypoints))
-          ? 0
-          : 1;
-      // Keep the departed leg in the route history when its new start is still ahead. A later
-      // closure needs that history to turn back safely, including the far half of a diagonal.
-      if (index === 0 && oldStart !== undefined && previous !== undefined) {
-        const centre = positionOfNode(terrain.xOf(oldStart.node), terrain.yOf(oldStart.node));
-        const before = previousStops?.[previous.index - 2];
-        const history =
-          before !== undefined && (oldStart.x !== centre.x || oldStart.y !== centre.y)
-            ? [before, oldStart]
-            : [oldStart];
-        waypoints = [...history, ...waypoints];
-        index = history.length;
-      }
-      world.add(e, PathRoute, { waypoints });
-      world.add(e, PathFollow, {
-        index,
-        legElapsed: activeCost > 0 && previous !== undefined ? pathLegTicks(previous, ctx.tick - 1) : 0,
-        legCost: activeCost,
-        legPace: oldPace,
-        departureCharged: previous?.departureCharged,
-      });
-      const firstTarget = waypoints[index];
-      if (position !== undefined && firstTarget !== undefined && world.has(e, WalkFacing)) {
-        beginWalkTurn(world, e, position, firstTarget);
-      }
+    let waypoints = pathToWaypoints(terrain, path);
+    // Keep a route's start when it is still ahead of an active step: skipping it would also skip its
+    // terrain and node charge. A start behind the new heading is bypassed rather than backing up;
+    // a blocked start only permits escape, never a return to its centre.
+    const previous = world.tryGet(e, PathFollow);
+    const previousStops = world.tryGet(e, PathRoute)?.waypoints;
+    // A topology reroute starts at the end of the retained safe prefix. Finish that prefix
+    // before the detour, including any diagonal midpoint on the way back from a closed edge.
+    if (req.retainRoute && previous !== undefined && previousStops?.at(-1)?.node === req.start) {
+      world.mut(e, PathRoute).waypoints = [...previousStops, ...waypoints.slice(1)];
       world.remove(e, PathRequest);
       world.remove(e, Stranded);
+      continue;
     }
-  } finally {
-    // The post counts are a shared scratch.
-    units?.release();
+    const oldTarget = previous && previousStops?.[previous.index];
+    const oldStart = previous && previousStops?.[previous.index - 1];
+    const activeCost = previous?.legCost ?? 0;
+    const position = world.tryGet(e, Position);
+    const moved =
+      oldStart !== undefined &&
+      position !== undefined &&
+      (position.x !== oldStart.x || position.y !== oldStart.y);
+    const oldPace =
+      activeCost > 0
+        ? (previous?.legPace ??
+          (moved && oldTarget !== undefined && oldStart !== undefined
+            ? fx.divCeil(
+                worldDistance(oldStart.x, oldStart.y, oldTarget.x, oldTarget.y),
+                fx.fromInt(activeCost),
+              )
+            : undefined))
+        : undefined;
+    // A walker partway through a step finishes it along its edge before the new route, however sharply
+    // that route then turns.
+    const finishesStep = moved && stepEnd !== undefined && waypoints[0]?.node === stepEnd;
+    let index =
+      waypoints.length < 2 ||
+      finishesStep ||
+      (activeCost > 0 &&
+        position !== undefined &&
+        waypoints[0] !== undefined &&
+        !blocked.has(waypoints[0].node) &&
+        startIsAhead(position, waypoints))
+        ? 0
+        : 1;
+    // Keep the departed leg in the route history when its new start is still ahead. A later
+    // closure needs that history to turn back safely, including the far half of a diagonal.
+    if (index === 0 && oldStart !== undefined && previous !== undefined) {
+      const centre = positionOfNode(terrain.xOf(oldStart.node), terrain.yOf(oldStart.node));
+      const before = previousStops?.[previous.index - 2];
+      const history =
+        before !== undefined && (oldStart.x !== centre.x || oldStart.y !== centre.y)
+          ? [before, oldStart]
+          : [oldStart];
+      waypoints = [...history, ...waypoints];
+      index = history.length;
+    }
+    world.add(e, PathRoute, { waypoints });
+    world.add(e, PathFollow, {
+      index,
+      legElapsed: activeCost > 0 && previous !== undefined ? pathLegTicks(previous, ctx.tick - 1) : 0,
+      legCost: activeCost,
+      legPace: oldPace,
+      departureCharged: previous?.departureCharged,
+    });
+    const firstTarget = waypoints[index];
+    if (position !== undefined && firstTarget !== undefined && world.has(e, WalkFacing)) {
+      beginWalkTurn(world, e, position, firstTarget);
+    }
+    world.remove(e, PathRequest);
+    world.remove(e, Stranded);
   }
 }
 
