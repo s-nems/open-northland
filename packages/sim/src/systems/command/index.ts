@@ -86,7 +86,7 @@ import {
 } from '../vehicles/index.js';
 import { VehicleOrderRoutes } from '../vehicles/order-routes.js';
 import { authorizedCommand } from './authority.js';
-import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
+import { debugFillStockpile, debugKill, debugSetNeeds, debugTeleport } from './debug.js';
 import { cancelUpgrade, placeBuilding, upgradeBuilding } from './placement.js';
 import { demolish, demolishSignpost, dropGood, placeResource } from './world-edit.js';
 
@@ -378,6 +378,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       return;
     case 'debugCompleteConstruction':
       forceFinishConstruction(world, ctx, command.target);
+      return;
+    case 'debugTeleport':
+      debugTeleport(world, ctx, command);
       return;
     default:
       assertNever(command);

@@ -163,6 +163,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
     required: { target: 'integer' },
     optional: { hunger: 'integer', fatigue: 'integer', piety: 'integer', enjoyment: 'integer' },
   },
+  debugTeleport: { required: { target: 'integer', ...NODE } },
   demolish: { required: { building: 'integer' } },
   demolishPalisade: { required: { palisade: 'integer' } },
   demolishSignpost: { required: { signpost: 'integer' } },

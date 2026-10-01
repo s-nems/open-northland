@@ -303,7 +303,12 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   // Click-a-target tools, inert without an entity picker.
   addPaletteSection(
     copy.actions,
-    DEBUG_ACTIONS.map((action) => ({ label: labels.action(action), armed: { kind: 'action', action } })),
+    [
+      ...DEBUG_ACTIONS.map(
+        (action) => ({ label: labels.action(action), armed: { kind: 'action', action } }) as const,
+      ),
+      { label: copy.teleport, armed: { kind: 'teleport', target: null } },
+    ],
     false,
   );
 
@@ -331,7 +336,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   }
 
   const spawnAtTile = (col: number, row: number): void => {
-    if (armed === null || armed.kind === 'action') return;
+    if (armed === null || armed.kind === 'action' || armed.kind === 'teleport') return;
     if (armed.kind === 'animal') {
       deps.enqueue(animalSpawnCommand(armed.entry.tribe, col, row));
       return;
@@ -374,6 +379,20 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     if (ref !== null) deps.enqueue(action.command(ref as Entity));
   };
 
+  /** First click picks the settler, the next sends it to the clicked node and re-arms for another pick.
+   *  The sim drops a destination on unwalkable ground, so a miss there leaves the settler where it was. */
+  const teleportAt = (clientX: number, clientY: number, target: Entity | null): void => {
+    if (target === null) {
+      const ref = deps.pickEntity?.(clientX, clientY, 'settler') ?? null;
+      if (ref !== null) setArmed({ kind: 'teleport', target: ref as Entity });
+      return;
+    }
+    const tile = deps.clientToTile(clientX, clientY);
+    if (tile === null) return;
+    deps.enqueue({ kind: 'debugTeleport', target, x: tile.col, y: tile.row });
+    setArmed({ kind: 'teleport', target: null });
+  };
+
   // Capture on `window` runs before the canvas's RTS-control listeners, so an armed press can consume
   // the click and act instead of selecting.
   const onPointerDown = (e: MouseEvent): void => {
@@ -390,6 +409,8 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     // Consume the armed left-press even when it hits nothing, so it never clears the unit selection.
     if (armed.kind === 'action') {
       applyActionAt(e.clientX, e.clientY, armed.action);
+    } else if (armed.kind === 'teleport') {
+      teleportAt(e.clientX, e.clientY, armed.target);
     } else {
       const tile = deps.clientToTile(e.clientX, e.clientY);
       if (tile !== null) spawnAtTile(tile.col, tile.row);

@@ -1,12 +1,11 @@
 import { Person, Position, Resting, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { type HalfCellNode, hexDistance, nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
+import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { evictSettlerFromBlockedSpawn } from '../../movement/evict.js';
-import { clearNavState, isTravelling } from '../../movement/nav-state.js';
+import { isTravelling } from '../../movement/nav-state.js';
 import { sendUnit } from '../../orders/movement.js';
-import { stepOut } from '../../settlers/indoors.js';
+import { teleportHuman } from '../../orders/teleport.js';
 import { dockVehicle } from '../../vehicles/dock.js';
 import { moveVehicle } from '../../vehicles/movement.js';
 import type { MissionPass } from '../pass.js';
@@ -54,7 +53,7 @@ export function teleportScriptedHumans(pass: MissionPass, id: number, point: Hal
   if (!landable(pass, point)) return;
   const claimed = new Set<NodeId>();
   for (const e of missionHumans(pass.world, id).slice(0, TELEPORT_CAP)) {
-    teleportAndSettle(pass, e, point, claimed);
+    teleportHuman(pass.world, pass.ctx, e, point, claimed);
   }
 }
 
@@ -81,7 +80,7 @@ export function moveUnitsInArea(
       (e) =>
         !world.has(e, Resting) && ownedBy(world, e, op.player) && withinRange(world, e, op.point, op.range),
     );
-  for (const e of crowd.slice(0, TELEPORT_CAP)) teleportAndSettle(pass, e, destination, claimed);
+  for (const e of crowd.slice(0, TELEPORT_CAP)) teleportHuman(world, pass.ctx, e, destination, claimed);
   teleportVehiclesInArea(pass, op.player, op.point, op.range, destination);
 }
 
@@ -97,31 +96,6 @@ export function stopPlayerHumans(pass: MissionPass, player: number): void {
     const at = world.get(e, Position);
     walkTo(world, pass.ctx, e, nodeOfPosition(at.x, at.y));
   }
-}
-
-/**
- * Put `e` on the destination node, push it off if the landing is blocked, and hand it the same walk
- * order the original issues after its own teleport, so the planner takes the unit back from there.
- * That order carries a player walk's whole teardown: a guard's post moves to the destination, and a
- * carrier sets its load down where it lands rather than where it was lifted. `claimed` threads one
- * line's batch so a group fans out instead of stacking. The destination needs no explicit reveal: the
- * moved unit's own eye covers it on the next vision pass, which is what the original's explore
- * result achieves. Approximation: a unit inside a non-interruptible clip finishes it where it no longer
- * stands, because the walk order parks behind that clip rather than cancelling it.
- */
-function teleportAndSettle(pass: MissionPass, e: Entity, point: HalfCellNode, claimed: Set<NodeId>): void {
-  const { world, ctx } = pass;
-  const at = world.tryMut(e, Position);
-  if (at === undefined) return;
-  // Landing outdoors, so the marker that says it is inside a building goes with the old position.
-  stepOut(world, e);
-  const centre = positionOfNode(point.hx, point.hy);
-  at.x = centre.x;
-  at.y = centre.y;
-  // The route it was walking points back at where it came from, so it goes before anything re-aims.
-  clearNavState(world, e);
-  evictSettlerFromBlockedSpawn(world, ctx, e, claimed);
-  walkTo(world, ctx, e, point);
 }
 
 function walkTo(world: World, ctx: SystemContext, e: Entity, point: HalfCellNode): void {

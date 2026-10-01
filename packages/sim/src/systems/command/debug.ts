@@ -1,9 +1,18 @@
-import { Building, Health, Settler, SettlerNeeds, Stockpile, Vehicle } from '../../components/index.js';
+import {
+  Building,
+  Health,
+  Person,
+  Settler,
+  SettlerNeeds,
+  Stockpile,
+  Vehicle,
+} from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { teleportHuman } from '../orders/teleport.js';
 
 // The `debug*` commands are real commands, logged and replayed like any other, so each is a no-op on a
 // target of the wrong kind rather than a throw.
@@ -51,4 +60,18 @@ export function debugFillStockpile(
   if (type === undefined) return;
   const stock = world.mut(command.target, Stockpile).amounts;
   for (const slot of type.stock) stock.set(slot.goodType, slot.capacity);
+}
+
+/** Teleport a human onto walkable ground; any other target, or an off-map or unwalkable node, is a
+ *  no-op. A mapless sim has no ground to judge, so it refuses too. */
+export function debugTeleport(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'debugTeleport' }>,
+): void {
+  const { target, x, y } = command;
+  const terrain = ctx.terrain;
+  if (terrain === undefined || !world.has(target, Person)) return;
+  if (!terrain.inBounds(x, y) || !terrain.isWalkable(terrain.nodeAt(x, y))) return;
+  teleportHuman(world, ctx, target, { hx: x, hy: y });
 }

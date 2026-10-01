@@ -87,6 +87,7 @@ export const COMMAND_ISSUER: {
   debugFillStockpile: 'trusted',
   debugKill: 'trusted',
   debugSetNeeds: 'trusted',
+  debugTeleport: 'trusted',
   declareDiplomacy: 'seat',
   demolish: 'seat',
   demolishPalisade: 'seat',

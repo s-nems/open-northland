@@ -911,6 +911,9 @@ export const plGame = {
     armedResource: 'Wybrano złoże „{label}” - klikaj świat (PPM/Esc anuluje).',
     armedGood: 'Wybrano stos „{label}” - klikaj świat (PPM/Esc anuluje).',
     armedAction: 'Wybrano: {label} - kliknij {target} (PPM/Esc anuluje).',
+    armedTeleportPick: 'Wybrano: teleport - kliknij osadnika (PPM/Esc anuluje).',
+    armedTeleportDestination:
+      'Teleport: kliknij cel; woda i inny nieprzechodni teren odpadają (PPM/Esc anuluje).',
     armedUnit: 'Wybrano: {label} (gracz {player} - {name}) - klikaj świat (PPM/Esc anuluje).',
     armedAnimal: 'Wybrano stado „{label}” - klikaj świat (PPM/Esc anuluje).',
     resourceFallback: 'surowiec',
@@ -963,6 +966,7 @@ export const plGame = {
       fill: 'Napełnij magazyn',
       finish: 'Dokończ budowę',
     },
+    teleport: 'Teleportuj osadnika',
     armorClasses: ['Brak', 'Klasa 1', 'Klasa 2', 'Klasa 3', 'Klasa 4'],
   },
   userMessages: {

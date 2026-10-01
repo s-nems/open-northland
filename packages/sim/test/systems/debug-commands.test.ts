@@ -11,13 +11,15 @@ import {
 import type { Fixed } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
+import { type HalfCellNode, nodeOfPosition, positionOfNode } from '../../src/nav/halfcell.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { waterColumnMap } from '../fixtures/terrain.js';
 
 /**
- * The DEBUG / cheat commands the admin panel issues - `debugKill`, `debugSetNeeds`, `debugFillStockpile`
- * and `debugCompleteConstruction`. Each is a real serializable command applied through the ONE command
+ * The DEBUG / cheat commands the admin panel issues - `debugKill`, `debugSetNeeds`, `debugFillStockpile`,
+ * `debugCompleteConstruction` and `debugTeleport`. Each is a real serializable command applied through the ONE command
  * path (so it replays/hashes like any order), issued only by the debug panel. These prove the EFFECT of
  * each (the panel's own click→command wiring is browser-verified); the determinism/replay half is locked
  * by the fuzz-determinism generator (each variant is fuzzed there). Bad/wrong-kind targets must be a
@@ -216,5 +218,68 @@ describe('debugCompleteConstruction', () => {
     sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: built });
     expect(() => sim.step()).not.toThrow();
     expect(sim.world.has(built, UnderConstruction)).toBe(false);
+  });
+});
+
+describe('debugTeleport', () => {
+  const MAP_CELLS = 12;
+  const RIVER_COLUMN = 6;
+  const WEST_BANK: HalfCellNode = { hx: 4, hy: 4 };
+  const EAST_BANK: HalfCellNode = { hx: 18, hy: 10 };
+  /** Cell (`RIVER_COLUMN`, 4)'s own node: open water. */
+  const RIVER: HalfCellNode = { hx: 2 * RIVER_COLUMN, hy: 8 };
+
+  function riverSim(): Simulation {
+    return new Simulation({
+      seed: 1,
+      content: testContent(),
+      map: waterColumnMap(MAP_CELLS, MAP_CELLS, RIVER_COLUMN),
+    });
+  }
+
+  function personAt(sim: Simulation, node: HalfCellNode): Entity {
+    const e = sim.world.create();
+    const at = positionOfNode(node.hx, node.hy);
+    sim.world.add(e, Position, { x: at.x, y: at.y });
+    addPerson(sim.world, e, {
+      tribe: VIKING,
+      jobType: null,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
+    });
+    return e;
+  }
+
+  function nodeOf(sim: Simulation, e: Entity): HalfCellNode {
+    const at = sim.world.get(e, Position);
+    return nodeOfPosition(at.x, at.y);
+  }
+
+  it('lands a human on walkable ground across water no walk could cross', () => {
+    const sim = riverSim();
+    const settler = personAt(sim, WEST_BANK);
+    sim.enqueueSetup({ kind: 'debugTeleport', target: settler, x: EAST_BANK.hx, y: EAST_BANK.hy });
+    sim.step();
+    expect(nodeOf(sim, settler)).toEqual(EAST_BANK);
+  });
+
+  it('refuses a destination in the water or off the map', () => {
+    const sim = riverSim();
+    const settler = personAt(sim, WEST_BANK);
+    sim.enqueueSetup({ kind: 'debugTeleport', target: settler, x: RIVER.hx, y: RIVER.hy });
+    sim.enqueueSetup({ kind: 'debugTeleport', target: settler, x: -1, y: EAST_BANK.hy });
+    sim.step();
+    expect(nodeOf(sim, settler)).toEqual(WEST_BANK);
+  });
+
+  it('a non-human target is a no-op', () => {
+    const sim = riverSim();
+    const notAHuman = healthOnlyEntity(sim, 10);
+    const before = { ...sim.world.get(notAHuman, Position) };
+    sim.enqueueSetup({ kind: 'debugTeleport', target: notAHuman, x: EAST_BANK.hx, y: EAST_BANK.hy });
+    sim.step();
+    expect(sim.world.get(notAHuman, Position)).toEqual(before);
   });
 });

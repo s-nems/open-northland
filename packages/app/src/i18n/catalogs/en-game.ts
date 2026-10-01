@@ -930,6 +930,9 @@ export const enGame = {
     armedResource: 'Armed: “{label}” resource - click the world (right click/Esc cancels).',
     armedGood: 'Armed: “{label}” ground pile - click the world (right click/Esc cancels).',
     armedAction: 'Armed: {label} - click a {target} (right click/Esc cancels).',
+    armedTeleportPick: 'Armed: teleport - click a settler (right click/Esc cancels).',
+    armedTeleportDestination:
+      'Teleport: click the destination; water and other unwalkable ground is refused (right click/Esc cancels).',
     armedUnit: 'Armed: {label} (player {player} - {name}) - click the world (right click/Esc cancels).',
     armedAnimal: 'Armed: “{label}” herd - click the world (right click/Esc cancels).',
     resourceFallback: 'resource',
@@ -982,6 +985,7 @@ export const enGame = {
       fill: 'Fill stockpile',
       finish: 'Finish construction',
     },
+    teleport: 'Teleport settler',
     armorClasses: ['None', 'Class 1', 'Class 2', 'Class 3', 'Class 4'],
   },
   userMessages: {

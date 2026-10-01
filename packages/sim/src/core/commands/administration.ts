@@ -112,4 +112,8 @@ export type DebugCommand =
   | { readonly kind: 'debugFillStockpile'; readonly target: Entity }
   /** Finish `target`'s construction now, regardless of delivered material or builder labor: full
    *  `Health`, marker removed, `buildingFinished` emitted. An already-built building is a no-op. */
-  | { readonly kind: 'debugCompleteConstruction'; readonly target: Entity };
+  | { readonly kind: 'debugCompleteConstruction'; readonly target: Entity }
+  /** Teleport `target`, a human standing on the map, to half-cell node (`x`, `y`) as a script's teleport
+   *  does. Dropped when the node is off the map or its terrain is unwalkable (water, cliffs), so a click
+   *  in the sea never strands anyone; a landing on a building body is pushed to the nearest free node. */
+  | { readonly kind: 'debugTeleport'; readonly target: Entity; readonly x: number; readonly y: number };

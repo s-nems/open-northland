@@ -1,3 +1,4 @@
+import type { Entity } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { VEHICLE_HANDCART, VEHICLE_SHIP_SMALL } from '../src/game/sandbox/ids/index.js';
 import { formatMessage, messages, professionLabel } from '../src/i18n/index.js';
@@ -68,6 +69,12 @@ describe('sameArmed', () => {
     expect(sameArmed(kill, fill)).toBe(false);
   });
 
+  it('keeps the teleport button lit through both of its clicks', () => {
+    const picked: Armed = { kind: 'teleport', target: 7 as Entity };
+    expect(sameArmed({ kind: 'teleport', target: null }, picked)).toBe(true);
+    expect(sameArmed({ kind: 'teleport', target: null }, kill)).toBe(false);
+  });
+
   it('rejects a different kind and a null other', () => {
     expect(sameArmed(spear, { kind: 'resource', good: 1 })).toBe(false);
     expect(sameArmed({ kind: 'good', good: 5 }, { kind: 'resource', good: 5 })).toBe(false);
@@ -102,6 +109,11 @@ describe('createAdminLabels status line', () => {
     expect(labels.status({ kind: 'action', action: fill }, 0)).toBe(
       formatMessage(copy.armedAction, { label: labels.action(fill), target: copy.targetBuilding }),
     );
+  });
+
+  it('asks for the settler, then for its destination, on the teleport arm', () => {
+    expect(labels.status({ kind: 'teleport', target: null }, 0)).toBe(copy.armedTeleportPick);
+    expect(labels.status({ kind: 'teleport', target: 7 as Entity }, 0)).toBe(copy.armedTeleportDestination);
   });
 
   it('resolves a dropped-good arm from the live goods, else the fallback', () => {

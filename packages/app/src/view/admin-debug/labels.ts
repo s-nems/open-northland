@@ -1,3 +1,4 @@
+import type { Entity } from '@open-northland/sim';
 import { formatMessage, type Messages, professionLabel } from '../../i18n/index.js';
 import type { DebugAction, DebugTargetKind } from './actions-catalog.js';
 import {
@@ -18,7 +19,9 @@ export type Armed =
   | { readonly kind: 'animal'; readonly entry: AnimalEntry }
   | { readonly kind: 'resource'; readonly good: number }
   | { readonly kind: 'good'; readonly good: number }
-  | { readonly kind: 'action'; readonly action: DebugAction };
+  | { readonly kind: 'action'; readonly action: DebugAction }
+  /** Two clicks: the settler to move (`target` null until picked), then its destination. */
+  | { readonly kind: 'teleport'; readonly target: Entity | null };
 
 export function sameArmed(a: Armed, b: Armed | null): boolean {
   if (b === null) return false;
@@ -29,6 +32,7 @@ export function sameArmed(a: Armed, b: Armed | null): boolean {
   if (a.kind === 'resource' && b.kind === 'resource') return a.good === b.good;
   if (a.kind === 'good' && b.kind === 'good') return a.good === b.good;
   if (a.kind === 'action' && b.kind === 'action') return a.action.id === b.action.id;
+  if (a.kind === 'teleport' && b.kind === 'teleport') return true; // one tool, whichever step it is on
   return false;
 }
 
@@ -89,6 +93,9 @@ export function createAdminLabels(
       const entry = goods.find((candidate) => candidate.good === good);
       const label = entry === undefined ? copy.goodFallback : localizedGood(entry);
       return formatMessage(copy.armedGood, { label });
+    }
+    if (armed.kind === 'teleport') {
+      return armed.target === null ? copy.armedTeleportPick : copy.armedTeleportDestination;
     }
     if (armed.kind === 'action') {
       return formatMessage(copy.armedAction, {
