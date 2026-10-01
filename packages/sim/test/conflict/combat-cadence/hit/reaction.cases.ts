@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Health } from '../../../../src/components/index.js';
+import { CurrentAtomic, Health, MoveGoal } from '../../../../src/components/index.js';
 import { Simulation } from '../../../../src/index.js';
 import { atomicSystem } from '../../../../src/systems/index.js';
 import { nextTickCtxOf } from '../../../fixtures/context.js';
@@ -30,6 +30,22 @@ describe('atomicSystem - a struck civilian staggers (data-driven `82` ATTACKED a
     expect(flinch.atomicId).toBe(ATTACKED_ATOMIC); // she is staggering
     expect(flinch.duration).toBe(50); // woman_attacked length
     expect(flinch.effect).toEqual({ kind: 'idle' }); // purely visual - no state mutation
+  });
+
+  it('does NOT stagger a struck woman on the move: she walks on instead of sliding under a standing clip', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(6, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    const woman = fighterAt(sim, 1, 0, VIKING, WOMAN, { hitpoints: 10_000 });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    sim.world.add(woman, MoveGoal, { cell: terrain.nodeAt(10, 0) }); // walking off east
+    startSwing(sim, attacker, { target: woman, damage: 2090, hitFrames: [1] }, 27);
+
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+
+    expect(sim.world.get(woman, Health).hitpoints).toBe(10_000 - 2090); // the blow landed
+    expect(sim.world.has(woman, CurrentAtomic)).toBe(false); // but no flinch holds her
+    expect(sim.world.get(woman, MoveGoal).cell).toBe(terrain.nodeAt(10, 0)); // and her walk stands
   });
 
   it('does NOT stagger a struck soldier (no 82 binding for the soldier class)', () => {

@@ -65,7 +65,10 @@ export function applyPendingHitReactions(world: World, pending: readonly Pending
  * Interruptibility is checked here, at the hit, not at the deferred apply. A victim mid-swing or already
  * mid-flinch is `interruptable 0` in the data and is not re-staggered, so there is no stunlock. A blow ends
  * a sleep whatever the data says about the clip, and whoever the sleeper is: no stance, order or missing
- * flinch binding makes being cut down in one's sleep sensible behavior.
+ * flinch binding makes being cut down in one's sleep sensible behavior. A victim on the move does not
+ * flinch: the clip stands still while the walk carries the body on, which reads as sliding, and it would
+ * hold back the order or run that keeps it moving. Whether the original stops a walker for its flinch is
+ * unconfirmed.
  */
 export function collectHitReaction(
   world: World,
@@ -77,7 +80,7 @@ export function collectHitReaction(
   if (victim === undefined) return;
   const current = world.tryGet(target, CurrentAtomic);
   const staggerAnim = boundAtomicAnimation(ctx.content, victim, ATTACKED_ATOMIC_ID);
-  if (staggerAnim !== undefined && interruptible(ctx, victim, current)) {
+  if (staggerAnim !== undefined && !isTravelling(world, target) && interruptible(ctx, victim, current)) {
     pending.push({
       kind: 'flinch',
       victim: target,
