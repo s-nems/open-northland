@@ -405,6 +405,7 @@ export const enGame = {
       lessTooltip: 'Fewer · Shift: by 10 · Ctrl: stop',
       moreTooltip: 'More · Shift: by 10 · Ctrl: never stop',
       goodLock: 'Needs experience: {current}/{required} ({track})',
+      productLocked: 'locked',
       military: 'Military',
       stance: 'Stance',
       regeneration: 'Food and sleep',

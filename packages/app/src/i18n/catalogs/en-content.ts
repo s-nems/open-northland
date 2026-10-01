@@ -363,6 +363,11 @@ export const enContent = {
       summary:
         'A collector fells the two trees beside his flag with the assistant moving gatherer flags. Once they are gone, the flag moves 3-5 tiles from a tree of the grove to the east, between the grove and the headquarters, and he goes on felling there.',
     },
+    'gatherer-goods': {
+      title: 'What the collector gathers',
+      summary:
+        'A novice collector beside trees, a stone deposit and an iron deposit. Stone and clay are stopped, iron and gold are locked until he gains experience, so his Production list shows a gathered, a stopped and a locked good side by side, and he fells only the trees.',
+    },
     'idle-work': {
       title: 'Why workers are idle',
       summary:

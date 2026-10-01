@@ -124,7 +124,8 @@ export function placeFlag(sim: Simulation, x: number, y: number): Entity {
 /**
  * Direct scene assembly, valid pre-tick-0 only: `WorkFlag` must reference the flag entity, and a
  * command-spawned settler has no known id until its command runs. `goodType` pins the gatherer to one
- * resource so neighbouring camps never poach each other's nodes.
+ * resource so neighbouring camps never poach each other's nodes. `fresh` spawns a novice, whom real
+ * content's `needforgood` gate keeps off iron and gold.
  */
 export function spawnBoundGatherer(
   sim: Simulation,
@@ -132,10 +133,15 @@ export function spawnBoundGatherer(
   x: number,
   y: number,
   flag: Entity,
-  opts: { readonly radius?: number; readonly owner?: number; readonly goodType?: number } = {},
+  opts: {
+    readonly radius?: number;
+    readonly owner?: number;
+    readonly goodType?: number;
+    readonly fresh?: boolean;
+  } = {},
 ): Entity {
   const node = cellAnchorNode(x, y);
-  const mastery = gatherMasteryExperience(sim);
+  const mastery = opts.fresh === true ? [] : gatherMasteryExperience(sim);
   const e = systems.createSettler(sim.world, sim.content, sim.rng, {
     jobType,
     x: node.hx,

@@ -39,6 +39,7 @@ interface RowView {
   readonly name: HTMLElement;
   readonly counter: Counter;
   readonly lock: HTMLElement;
+  readonly lockedNote: HTMLElement;
 }
 
 /** The rows a folded Produkcja keeps; the fold is the last resort when the panel would run past the
@@ -46,8 +47,9 @@ interface RowView {
 export const PRODUCTION_FOLDED_MAX = 3;
 
 /** Produkcja: one row per product the trade makes or gathers here, the good's button, its name, and
- *  its counter or a locked product's lock. Open in full for every person; folds behind "jeszcze N"
- *  only on the owner's word, and opens again for another person. */
+ *  its counter, or for a locked product a lock seal on the good and a note in the counter's place. Open
+ *  in full for every person; folds behind "jeszcze N" only on the owner's word, and opens again for
+ *  another person. */
 export interface ProductionSection {
   readonly element: HTMLElement;
   /** True when the rows changed shape, so the owner asks the frame whether everything fits. */
@@ -104,11 +106,12 @@ export function createProductionSection(
       (next) => actions.setProductionCount(id(), goodType, next),
       'ctrl',
     );
-    // A marker, not a control: the good's button beside it already says why the product is locked.
+    // A seal over the good's button, not a control: the button's tooltip already says why it is locked.
     const lock = element('span', 'on-prod-row__lock', GLYPH.lock);
-    lock.setAttribute('role', 'img');
-    item.append(good.element, name, counter.element, lock);
-    return { item, good, name, counter, lock };
+    lock.setAttribute('aria-hidden', 'true');
+    const lockedNote = element('span', 'on-prod-row__locked');
+    item.append(good.element, lock, name, counter.element, lockedNote);
+    return { item, good, name, counter, lock, lockedNote };
   };
 
   return {
@@ -139,9 +142,10 @@ export function createProductionSection(
         setClass(view.item, 'on-prod-row--locked', row.locked !== null);
         setClass(view.item, 'on-prod-row--stopped', row.count === 0);
         setHidden(view.lock, row.locked === null);
+        setHidden(view.lockedNote, row.locked === null);
         if (row.locked !== null) {
-          setTip(view.lock, row.locked);
-          setAttribute(view.lock, 'aria-label', row.locked);
+          write(view.lockedNote, copy.settlerPanel.productLocked);
+          setTip(view.lockedNote, row.locked);
         }
         setHidden(view.counter.element, row.locked !== null);
         view.counter.update({

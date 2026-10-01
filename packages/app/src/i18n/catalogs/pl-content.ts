@@ -362,6 +362,11 @@ export const plContent = {
       summary:
         'Zbieracz ścina dwa drzewa przy swojej fladze, a asystent przenosi flagi zbieraczy. Gdy ich zabraknie, flaga przenosi się na 3-5 pól od drzewa w zagajniku na wschodzie, od strony kwatery głównej, i zbieracz ścina dalej tam.',
     },
+    'gatherer-goods': {
+      title: 'Co zbiera zbieracz',
+      summary:
+        'Świeży zbieracz przy drzewach, złożu kamienia i złożu żelaza. Kamień i glina są wyłączone, żelazo i złoto zablokowane do czasu zdobycia doświadczenia, więc lista Produkcja pokazuje obok siebie dobro zbierane, wyłączone i zablokowane, a on ścina tylko drzewa.',
+    },
     'idle-work': {
       title: 'Dlaczego pracownicy są bezczynni',
       summary:

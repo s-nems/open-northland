@@ -391,6 +391,7 @@ export const plGame = {
       lessTooltip: 'Mniej · Shift: o 10 · Ctrl: zatrzymaj',
       moreTooltip: 'Więcej · Shift: o 10 · Ctrl: bez końca',
       goodLock: 'Wymaga doświadczenia: {current}/{required} ({track})',
+      productLocked: 'zablokowane',
       military: 'Wojsko',
       stance: 'Postawa',
       regeneration: 'Jedzenie i sen',

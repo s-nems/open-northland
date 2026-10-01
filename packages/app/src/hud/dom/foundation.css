@@ -3060,6 +3060,7 @@ body.on-drag-scroll * {
   list-style: none;
 }
 .on-hud .on-prod-row {
+  position: relative;
   display: grid;
   grid-template-columns: 22px 1fr auto;
   align-items: center;
@@ -3082,26 +3083,77 @@ body.on-drag-scroll * {
   font-size: 12px;
   color: var(--text-hi);
 }
-.on-hud .on-prod-row--stopped .on-prod-row__name,
+/* The good's chip carries the row's state on its own: a gold ring while the good is made or gathered,
+   a grey dashed rim while its counter stands at 0, a dark grey face under a red lock seal while locked. */
+.on-hud .on-prod-row .on-round--good {
+  border-color: var(--bronze);
+  box-shadow:
+    0 0 0 1px var(--bronze-lo),
+    0 0 6px #e3b86866;
+}
+.on-hud .on-prod-row .on-round--good:hover {
+  border-color: var(--bronze-hi);
+  box-shadow:
+    0 0 0 1px var(--bronze),
+    0 0 8px #e3b868aa;
+}
 .on-hud .on-prod-row--stopped .on-round--good {
-  opacity: 0.5;
+  border: 1px dashed #c1baa866;
+  box-shadow: none;
+}
+.on-hud .on-prod-row--stopped .on-good__frame {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+.on-hud .on-prod-row--stopped .on-prod-row__name {
+  color: var(--muted);
+  opacity: 0.7;
 }
 .on-hud .on-prod-row--stopped .on-counter__value {
   color: var(--muted);
 }
-.on-hud .on-prod-row--locked .on-prod-row__name,
-.on-hud .on-prod-row--locked .on-round--good {
-  opacity: 0.45;
+/* Undoes the disabled chip's fade, so only the good's face greys and the seal stays vivid. */
+.on-hud .on-prod-row--locked .on-round--good[aria-disabled="true"] {
+  opacity: 1;
+  filter: none;
+  border: 1px solid #00000066;
+  box-shadow: none;
 }
-.on-hud .on-prod-row__lock {
-  display: inline-flex;
-  align-items: center;
+.on-hud .on-prod-row--locked .on-good__frame {
+  filter: grayscale(1) brightness(0.55);
+  opacity: 0.6;
+}
+.on-hud .on-prod-row--locked .on-prod-row__name {
   color: var(--muted);
+  opacity: 0.55;
 }
-.on-hud .on-prod-row__lock .on-glyph {
+/* The lock seal over the chip's lower right, where the eye reads the good. */
+.on-hud .on-prod-row__lock {
+  position: absolute;
+  left: 12px;
+  top: 50%;
   width: 13px;
   height: 13px;
-  stroke-width: 2;
+  display: grid;
+  place-items: center;
+  border: 1px solid #0009;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #c8563f, var(--wax-danger) 70%);
+  box-shadow: 0 1px 2px #000a;
+  color: var(--parchment-hi);
+  pointer-events: none;
+}
+.on-hud .on-prod-row__lock .on-glyph {
+  width: 8px;
+  height: 8px;
+  stroke-width: 2.6;
+}
+.on-hud .on-prod-row__locked {
+  padding-right: 6px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--danger);
+  opacity: 0.85;
 }
 /* Handel: one row per route slot, the A/B badge, the house as a link, the heading arrow and the
    detach; a free slot's badge is dashed. */
