@@ -44,6 +44,10 @@ const BANK_SHADE = 0.22;
 const DETAIL_FADE_START_PX = SAMPLES_PER_CELL;
 const DETAIL_FADE_SPAN_PX = 3;
 
+/** The cell pitch in px up to which fine relief and grain keep full strength; above it they scale by
+ *  `TEXTURE_FULL_PX / pitch`, down to the floor, since texture at one px per cell is noise at three. */
+const TEXTURE_FULL_PX = 1.2;
+const TEXTURE_MIN_SCALE = 0.2;
 /** Texture amplitudes and periods: per-pixel grain, canopy crowns, water ripples, surf breaks. */
 const GRAIN = 0.05;
 const CROWN_DEPTH = 0.25;
@@ -79,11 +83,13 @@ export function rasterizeMinimap(scene: MinimapScene, pxW: number, pxH: number):
   if (scene.width <= 0 || scene.height <= 0 || pxW <= 0 || pxH <= 0) return out;
   // Writes through the clamped view round and clamp each channel to a byte.
   const bytes = new Uint8ClampedArray(out.buffer);
-  const field = buildMinimapCellField(scene);
   const bounds = terrainWorldBounds(scene.width, scene.height);
   const worldPerPxX = bounds.width / pxW;
   const worldPerPxY = bounds.height / pxH;
   const cellPx = Math.min((2 * TILE_HALF_W) / worldPerPxX, (2 * TILE_HALF_H) / worldPerPxY);
+  const textureScale = clamp(TEXTURE_FULL_PX / cellPx, TEXTURE_MIN_SCALE, 1);
+  const field = buildMinimapCellField(scene, textureScale);
+  const grainAmount = GRAIN * textureScale;
   const samples = clamp(Math.ceil(SAMPLES_PER_CELL / cellPx), 1, MAX_SAMPLES);
   const coastEdge = Math.min(1, COAST_EDGE_SAMPLES / (cellPx * samples));
   const foamBand = Math.min(FOAM_MAX_BAND, FOAM_PX / cellPx);
@@ -178,7 +184,7 @@ export function rasterizeMinimap(scene: MinimapScene, pxW: number, pxH: number):
           b += sb;
         }
       }
-      const grain = inv * (1 + GRAIN * (hash2(px, py, SEED_GRAIN) - 0.5));
+      const grain = inv * (1 + grainAmount * (hash2(px, py, SEED_GRAIN) - 0.5));
       const o = (py * pxW + px) * 4;
       bytes[o] = r * grain;
       bytes[o + 1] = g * grain;

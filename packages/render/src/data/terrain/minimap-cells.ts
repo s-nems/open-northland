@@ -38,6 +38,8 @@ const COAST_KEEP = 0.12;
 const DEPTH_FALLOFF_HOPS = 2.5;
 /** Floor on the depth term of the painter's deep-water patterns. */
 const DEEP_PATTERN_DEPTH = 0.6;
+/** Floor on the depth term of a lake (a water body off the map edge), so a narrow lake is not all shallows. */
+const LAKE_DEPTH = 0.65;
 /** The depth ramp's tints, and how much of the texture's own colour each keeps. */
 const SHALLOW_WATER = 0x3b7f8a;
 const DEEP_WATER = 0x173f66;
@@ -48,11 +50,19 @@ const MOTTLE = 0.08;
 const WATER_MOTTLE = 0.1;
 const MOTTLE_PERIOD_CELLS = 3.5;
 /** A slight lift of the land, which the relief and valley terms otherwise leave a little darker. */
-const LAND_EXPOSURE = 1.06;
+const LAND_EXPOSURE = 1.12;
+/** Lighting soft-clips into this gain range around the base colour, so no ridge blows out to white and
+ *  no valley crushes to black; wooded ground has a higher floor, so canopy in shade stays green. */
+const LIGHT_GAIN_MIN = 0.6;
+const LIGHT_GAIN_MAX = 1.35;
+const CANOPY_GAIN_MIN = 0.82;
+/** Channel values above the knee roll off toward the ceiling instead of clipping at a byte. */
+const HIGHLIGHT_KNEE = 185;
+const HIGHLIGHT_CEILING = 238;
 const SEED_MOTTLE = 0x7f4a7c15;
 
 /** The canopy tint and how much of a fully wooded cell it covers. */
-const CANOPY = 0x23401f;
+const CANOPY = 0x2a4b24;
 const CANOPY_COVER = 0.72;
 
 /** Ore tints. */
@@ -68,14 +78,20 @@ function channel(colour: number, shift: number): number {
   return (colour >> shift) & 0xff;
 }
 
-export function buildMinimapCellField(scene: MinimapScene): Float32Array {
+/**
+ * Build the interleaved cell field. `textureScale` in (0, 1] scales the fine per-cell relief, which
+ * reads as texture at about one px per cell and as noise or streaks well above it.
+ */
+export function buildMinimapCellField(scene: MinimapScene, textureScale = 1): Float32Array {
   const { width, height } = scene;
   const cells = width * height;
   const field = new Float32Array(cells * FIELD_STRIDE);
-  const light = cellLight(scene);
+  const { light, edge } = cellLight(scene, textureScale);
   const depth = waterDepth(scene);
   const water = laneOf(scene.water, cells);
-  const forestLane = laneOf(scene.forest, cells);
+  const forestInput = laneOf(scene.forest, cells);
+  // One more blur than the caller's density, so per-cell tree counts do not tile the canopy into a mosaic.
+  const forestLane = forestInput === undefined ? undefined : staggerBlur(forestInput, width, height);
   const oreKind = laneOf(scene.depositKind, cells);
   const oreDensity = laneOf(scene.depositDensity, cells);
   // Cell centre in world px times the mottle frequency: x = (2c + (r & 1))·TILE_HALF_W, y = r·TILE_HALF_H.
@@ -89,7 +105,9 @@ export function buildMinimapCellField(scene: MinimapScene): Float32Array {
     const row = Math.floor(cell / width);
     const x = (2 * (cell - row * width) + (row & 1)) * mottleScale;
     const mottle = valueNoise(x, row * mottleScaleY, SEED_MOTTLE) - 0.5;
-    const shade = (light[cell] ?? 1) * LAND_EXPOSURE * (1 + MOTTLE * mottle);
+    const lit = (light[cell] ?? 1) * LAND_EXPOSURE * (1 + MOTTLE * mottle);
+    const floor = LIGHT_GAIN_MIN + (CANOPY_GAIN_MIN - LIGHT_GAIN_MIN) * forest;
+    const shade = softClip(lit, floor, LIGHT_GAIN_MAX) * (edge[cell] ?? 1);
     const waterShade = 1 + WATER_MOTTLE * mottle;
     const t = depth[cell] ?? 0;
     const kind = MINIMAP_DEPOSIT_KINDS[(oreKind?.[cell] ?? 0) - 1];
@@ -101,7 +119,7 @@ export function buildMinimapCellField(scene: MinimapScene): Float32Array {
     for (let ch = 0; ch < 3; ch++) {
       const shift = 16 - 8 * ch;
       const base = channel(colour, shift);
-      field[o + FIELD_LAND_R + ch] = (base + (channel(CANOPY, shift) - base) * canopy) * shade;
+      field[o + FIELD_LAND_R + ch] = rollOff((base + (channel(CANOPY, shift) - base) * canopy) * shade);
       const shallow = channel(SHALLOW_WATER, shift);
       const ramp = shallow + (channel(DEEP_WATER, shift) - shallow) * t;
       field[o + FIELD_WATER_R + ch] = (ramp + (base - ramp) * WATER_TEXTURE_WEIGHT) * waterShade;
@@ -111,6 +129,20 @@ export function buildMinimapCellField(scene: MinimapScene): Float32Array {
   if (oreKind !== undefined && oreDensity !== undefined) blurOre(field, width, height);
   smoothCoast(field, width, height);
   return field;
+}
+
+/** Soft-clip a light gain into `[lo, hi]` around 1: near 1 it passes through, far out it saturates. */
+function softClip(gain: number, lo: number, hi: number): number {
+  return gain >= 1
+    ? 1 + (hi - 1) * Math.tanh((gain - 1) / (hi - 1))
+    : 1 - (1 - lo) * Math.tanh((1 - gain) / (1 - lo));
+}
+
+/** Roll a channel value off above {@link HIGHLIGHT_KNEE} so it approaches {@link HIGHLIGHT_CEILING}. */
+function rollOff(v: number): number {
+  if (v <= HIGHLIGHT_KNEE) return v;
+  const span = HIGHLIGHT_CEILING - HIGHLIGHT_KNEE;
+  return HIGHLIGHT_KNEE + span * Math.tanh((v - HIGHLIGHT_KNEE) / span);
 }
 
 /**
@@ -166,10 +198,41 @@ function waterDepth(scene: MinimapScene): Float32Array {
       }
     });
   }
+  const lake = lakeCells(water, width, height);
   for (let i = 0; i < cells; i++) {
     const t = 1 - Math.exp(-(hops[i] ?? 0) / DEPTH_FALLOFF_HOPS);
     const deepPattern = (deepWater?.[i] ?? 0) >= WATER_CELL;
-    depth[i] = deepPattern ? Math.max(t, DEEP_PATTERN_DEPTH) : t;
+    const floor = Math.max(deepPattern ? DEEP_PATTERN_DEPTH : 0, lake[i] === 1 ? LAKE_DEPTH : 0);
+    depth[i] = (hops[i] ?? 0) > 0 ? Math.max(t, floor) : t;
   }
   return depth;
+}
+
+/** 1 for every water cell whose connected water body never touches the map edge. */
+function lakeCells(water: ArrayLike<number>, width: number, height: number): Uint8Array {
+  const cells = width * height;
+  const lake = new Uint8Array(cells);
+  const seen = new Uint8Array(cells);
+  const queue = new Int32Array(cells);
+  for (let seed = 0; seed < cells; seed++) {
+    if (seen[seed] === 1 || (water[seed] ?? 0) < WATER_CELL) continue;
+    let tail = 0;
+    queue[tail++] = seed;
+    seen[seed] = 1;
+    let enclosed = true;
+    for (let head = 0; head < tail; head++) {
+      const cell = queue[head] ?? 0;
+      const col = cell % width;
+      const row = Math.floor(cell / width);
+      if (col === 0 || row === 0 || col === width - 1 || row === height - 1) enclosed = false;
+      forEachStaggerNeighbour(col, row, width, height, (n) => {
+        if (seen[n] === 1 || (water[n] ?? 0) < WATER_CELL) return;
+        seen[n] = 1;
+        queue[tail++] = n;
+      });
+    }
+    if (!enclosed) continue;
+    for (let i = 0; i < tail; i++) lake[queue[i] ?? 0] = 1;
+  }
+  return lake;
 }
