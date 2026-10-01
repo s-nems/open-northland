@@ -916,6 +916,8 @@ export const enGame = {
     camera: 'Camera',
     cursorNode: 'Cursor: node {x}, {y} (cell {cx}, {cy})',
     cursorOffMap: 'Cursor: off the map',
+    copyCursor: 'Copy',
+    copiedCursor: 'Copied',
     warriors: 'Warriors',
     civilians: 'Civilians',
     creatures: 'Monsters',

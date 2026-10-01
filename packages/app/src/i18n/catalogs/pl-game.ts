@@ -897,6 +897,8 @@ export const plGame = {
     camera: 'Kamera',
     cursorNode: 'Kursor: węzeł {x}, {y} (komórka {cx}, {cy})',
     cursorOffMap: 'Kursor: poza mapą',
+    copyCursor: 'Kopiuj',
+    copiedCursor: 'Skopiowano',
     warriors: 'Wojownicy',
     civilians: 'Cywile',
     creatures: 'Potwory',

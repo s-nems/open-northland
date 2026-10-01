@@ -100,6 +100,9 @@ export interface AdminDebugHandle {
   dispose(): void;
 }
 
+/** How long the copy button reads "copied" before it turns back. */
+const COPIED_FLASH_MS = 1500;
+
 /** The pool an untouched spawn gets, so the field shows it. */
 const DEFAULT_HITPOINTS = systems.HUMAN_HITPOINTS;
 
@@ -218,12 +221,27 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   header.append(el('div', `${SECTION_TITLE_STYLE};margin-top:8px`, copy.camera));
   header.append(zoomOut.row);
   if (speed !== null) header.append(speed.row);
+  const cursorRow = el('div', 'display:flex;gap:8px;align-items:center;margin-top:6px');
   const cursor = el(
-    'div',
-    'opacity:0.85;margin-top:6px;font-variant-numeric:tabular-nums',
+    'span',
+    'opacity:0.85;font-variant-numeric:tabular-nums;user-select:text',
     copy.cursorOffMap,
   );
-  header.append(cursor);
+  const copyCursor = el('button', BUTTON_STYLE, copy.copyCursor);
+  copyCursor.addEventListener('click', () => {
+    const text = cursor.textContent ?? '';
+    navigator.clipboard.writeText(text).then(
+      () => {
+        copyCursor.textContent = copy.copiedCursor;
+        setTimeout(() => {
+          copyCursor.textContent = copy.copyCursor;
+        }, COPIED_FLASH_MS);
+      },
+      () => undefined, // no clipboard access: the text stays selectable
+    );
+  });
+  cursorRow.append(cursor, copyCursor);
+  header.append(cursorRow);
 
   const body = el('div', BODY_STYLE);
 
@@ -434,10 +452,11 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   };
   window.addEventListener('keydown', onKeyDown, { capture: true });
 
-  /** The half-cell node under the pointer, so a spot on the map can be named exactly. */
+  /** The half-cell node under the pointer, so a spot on the map can be named exactly. Leaving the map
+   *  for the panel keeps the last spot, so it can be copied. */
   const onPointerMove = (e: MouseEvent): void => {
-    if (!open) return;
-    const tile = e.target === canvas ? deps.clientToTile(e.clientX, e.clientY) : null;
+    if (!open || e.target !== canvas) return;
+    const tile = deps.clientToTile(e.clientX, e.clientY);
     const text =
       tile === null
         ? copy.cursorOffMap
