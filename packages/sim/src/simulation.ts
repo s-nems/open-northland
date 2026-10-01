@@ -536,8 +536,9 @@ export class Simulation {
   }
 
   /**
-   * Why a craft worker or gatherer works or stands idle, for the settler panel; undefined when no status
-   * applies. Reads the settler and its workplace only, never a scan.
+   * Why a craft worker, gatherer or store carrier works or stands idle, for the settler panel and the idle
+   * note; undefined when no status applies. Read-only, with at most one bounded search: a gatherer's
+   * capped harvest scan or a hunter's prey scan over its hunting ground.
    */
   workStatus(entity: Entity): WorkStatus | undefined {
     return workStatus(this.world, this.context(), entity);

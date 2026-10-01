@@ -431,6 +431,9 @@ describe('user messages read off the snapshot', () => {
       });
       expect(idleReasonOf({ kind: 'nothingSelected' })).toEqual({ kind: 'nothingSelected', goodTypes: [] });
       expect(idleReasonOf({ kind: 'nothingAtFlag' })).toEqual({ kind: 'nothingAtFlag', goodTypes: [] });
+      expect(idleReasonOf({ kind: 'nothingToCarry' })).toEqual({ kind: 'nothingToCarry', goodTypes: [] });
+      expect(idleReasonOf({ kind: 'noGame' })).toEqual({ kind: 'noGame', goodTypes: [] });
+      expect(idleReasonOf({ kind: 'gameOutOfReach' })).toEqual({ kind: 'gameOutOfReach', goodTypes: [] });
       // A craft operator's gates are the stall note's, and the note needs a workplace and a trade.
       expect(
         idleReasonOf({

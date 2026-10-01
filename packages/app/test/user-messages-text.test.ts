@@ -209,6 +209,7 @@ describe('notice text', () => {
     const kinds = Object.keys(copy.idleReason.short) as IdleReasonKind[];
     expect(new Set(kinds)).toEqual(new Set(Object.keys(copy.idleReason.full)));
     expect(new Set(kinds)).toEqual(new Set(Object.keys(copy.idleReason.withoutGood)));
+    expect(new Set(Object.values(copy.idleReason.short)).size).toBe(kinds.length);
     const cases = [...kinds.map((kind) => ({ kind, goodTypes: [4] })), null].flatMap((idle) =>
       ['Chleb', null].map((goodName) => ({ idle, goodName })),
     );
@@ -243,6 +244,16 @@ describe('notice text', () => {
       short: 'Nic do zebrania',
       full: 'Bjorn nie ma nic do roboty. Przy chorągiewce nie ma nic do zebrania. Przenieś chorągiewkę tam, gdzie leżą towary, albo ją zabierz.',
     });
+    expect(idle({ goodName: null, idle: { kind: 'noGame', goodTypes: [] } })).toEqual({
+      short: 'Brak zwierzyny',
+      full: 'Bjorn nie ma nic do roboty. W terenie łowieckim nie widać wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
+    });
+    expect(idle({ goodName: null, idle: { kind: 'gameOutOfReach', goodTypes: [] } }).short).toBe(
+      'Zwierz odcięty',
+    );
+    expect(idle({ female: true, goodName: null, idle: { kind: 'nothingToCarry', goodTypes: [] } }).full).toBe(
+      'Bjorn nie ma nic do roboty. W zasięgu nie ma towarów, które mogłaby zanieść do magazynu. Jeśli tragarzy jest za dużo, nadaj jej inny zawód.',
+    );
     expect(idle({ idle: null })).toEqual({
       short: 'Nic do roboty',
       full: 'Bjorn nie ma nic do roboty. Przyczyny nie widać. Sprawdź, czy miejsce pracy ma w zasięgu magazyn i potrzebne towary.',

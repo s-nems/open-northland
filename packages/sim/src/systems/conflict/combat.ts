@@ -2,7 +2,7 @@ import { Health, Position, Settler, Vehicle } from '../../components/index.js';
 import type { System } from '../context.js';
 import { mayEngage } from './acting.js';
 import { BattleFront } from './battle-alert.js';
-import { CombatIndex, holdPassIndex } from './combat-index.js';
+import { CombatIndex, holdDormantTick, holdPassIndex } from './combat-index.js';
 import { combatPossible } from './dormancy.js';
 import { engageCandidates } from './engage-candidates.js';
 import { engageCombatant } from './engage-combatant.js';
@@ -41,7 +41,10 @@ export const combatSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
 
   // The dormancy gate is order-independent, so it runs over the raw query.
-  if (!combatPossible(world, ctx, world.query(Settler, Health, Position))) return;
+  if (!combatPossible(world, ctx, world.query(Settler, Health, Position))) {
+    holdDormantTick(world, ctx.tick);
+    return;
+  }
 
   const pass: CombatPass = {
     // Attackable buildings and vehicles join the target index but never the seeker loop: a warrior can

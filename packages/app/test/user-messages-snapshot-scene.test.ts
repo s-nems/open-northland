@@ -72,6 +72,22 @@ const BARE_COLLECTOR: SceneWorld = {
   },
 };
 
+/** Some 120 half-cell nodes east of the store, well past its hunters' 48-node ground. */
+const FAR_HERD_CELL = { x: 80, y: 8 } as const;
+
+/** A hunter posted at a store on grass, with the only game a herd far past its hunting ground. */
+const FAR_GAME_HUNTER: SceneWorld = {
+  seed: 7,
+  terrain: grassTerrain(90, 16),
+  build: (sim) => {
+    const store = placeBuiltSandboxBuilding(sim, BUILDING_WAREHOUSE_00, 12, 6, HUMAN_PLAYER);
+    const hunter = spawnSettlerDirect(sim, JOB_HUNTER, 12, 10, HUMAN_PLAYER);
+    sim.world.add(hunter, components.JobAssignment, { workplace: store });
+    const herd = cellAnchorNode(FAR_HERD_CELL.x, FAR_HERD_CELL.y);
+    sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: ANIMAL_TRIBE_HARES, x: herd.hx, y: herd.hy });
+  },
+};
+
 /** A settler whose company bar sits on the seek line: it leaves its work for one exchange of chat, which
  *  outlasts the sweeps before the note. */
 function makeLonely(sim: Simulation, e: Entity): void {
@@ -192,6 +208,24 @@ function firstIdleNotes(
   return { firstAt, last: sim.snapshot() };
 }
 
+/** The reasons the nothing-to-do notes give over two idle runs, with the sim answering every ask. */
+function idleReasonsIn(scene: SceneWorld): string[] {
+  const sim = createSceneSim(scene);
+  sim.run(2);
+  const source = createSnapshotMessageSource(HUMAN_PLAYER, {
+    types: [],
+    workStatus: (entity, asked) => ({ status: sim.workStatus(entity as Entity), asked }),
+  });
+  const reasons = new Set<string>();
+  for (let i = 0; i < 2 * IDLE_SWEEPS_BEFORE_MESSAGE; i++) {
+    sim.run(SNAPSHOT_SWEEP_INTERVAL_TICKS);
+    for (const r of source.sweep(sim.snapshot(), naming)) {
+      if (r.pending.type === USER_MESSAGE_TYPE.nothingToDo) reasons.add(r.pending.idle?.kind ?? 'none');
+    }
+  }
+  return [...reasons];
+}
+
 /** The snapshot source against the sim's real serialization, so the component keys it reads stay honest. */
 describe('user messages read off real scene snapshots', () => {
   it('reads the need bars of the sim snapshot', () => {
@@ -246,20 +280,15 @@ describe('user messages read off real scene snapshots', () => {
   });
 
   it('names why a collector of a store on bare grass stands idle', () => {
-    const sim = createSceneSim(BARE_COLLECTOR);
-    sim.run(2);
-    const source = createSnapshotMessageSource(HUMAN_PLAYER, {
-      types: [],
-      workStatus: (entity, asked) => ({ status: sim.workStatus(entity as Entity), asked }),
-    });
-    const reasons = new Set<string>();
-    for (let i = 0; i < 2 * IDLE_SWEEPS_BEFORE_MESSAGE; i++) {
-      sim.run(SNAPSHOT_SWEEP_INTERVAL_TICKS);
-      for (const r of source.sweep(sim.snapshot(), naming)) {
-        if (r.pending.type === USER_MESSAGE_TYPE.nothingToDo) reasons.add(r.pending.idle?.kind ?? 'none');
-      }
-    }
-    expect([...reasons]).toEqual(['noResourceInArea']);
+    expect(idleReasonsIn(BARE_COLLECTOR)).toEqual(['noResourceInArea']);
+  });
+
+  it('names why a hunter of a store with no game in its ground stands idle', () => {
+    expect(idleReasonsIn(FAR_GAME_HUNTER)).toEqual(['noGame']);
+  });
+
+  it('names why the carriers of a store with nothing to haul stand idle', () => {
+    expect(idleReasonsIn(IDLE_CREW)).toEqual(['nothingToCarry']);
   });
 
   it('reports both store-reach bakeries stalled, naming why, once the grace has passed', () => {

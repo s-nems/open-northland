@@ -98,7 +98,10 @@ export type IdleReasonKind =
   | 'noResourceInArea'
   | 'noResource'
   | 'resourceRouteBlocked'
-  | 'nothingAtFlag';
+  | 'nothingAtFlag'
+  | 'nothingToCarry'
+  | 'noGame'
+  | 'gameOutOfReach';
 
 /** An idle worker's reason and the goods it names, possibly none. */
 export interface IdleReason {

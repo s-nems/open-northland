@@ -47,6 +47,19 @@ export function passIndexOf(world: World, tick: number): CombatIndex | null {
   return index !== undefined && index.tick === tick ? index : null;
 }
 
+/** The tick each world's combat system last found no fight possible on. */
+const dormantTicks = new WeakMap<World, number>();
+
+export function holdDormantTick(world: World, tick: number): void {
+  dormantTicks.set(world, tick);
+}
+
+/** Whether the combat system's dormancy gate found no fight possible on `tick`, so no pass ran: no hunter
+ *  stood beside huntable prey anywhere on the map. */
+export function combatDormantOn(world: World, tick: number): boolean {
+  return dormantTicks.get(world) === tick;
+}
+
 /**
  * The combat tick's target index over every combatant (a Settler with a Health pool and a Position), every
  * vehicle and every building with a Health pool, a felled one included until cleanup reaps it: the coarse

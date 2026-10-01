@@ -14,6 +14,8 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
+import { surveyHuntingGame } from '../conflict/hunting/index.js';
 import type { SystemContext } from '../context.js';
 import { nodeHoldsOpenGood, openGatherGoods } from '../economy/gather-goods.js';
 import { nearestHarvestableFor } from '../settlers/targets/resources.js';
@@ -83,14 +85,18 @@ export function gatherWorkStatus(
       reason: canHold ? 'unknown' : 'noStorage',
     };
   }
+  const stopped = stocked.length > 0 && counters !== undefined && wanted.length === 0;
+  // A hunter's ladder takes the piles and carcasses in its ground before it stands idle, so for an idle
+  // hunter the reason lies in the prey search alone.
+  if (isHunterJob(ctx.content, jobType)) {
+    return stopped ? { kind: 'nothingSelected' } : huntWorkStatus(world, ctx, terrain, entity, jobType);
+  }
   // Already-harvested piles remain work even after a gathering counter stops. Their own delivery and
   // reachability policies need a separate diagnosis; never call a harvest-only search proof of no work.
   if (world.canonicalQuery(GroundDrop, Stockpile, Position).length > 0)
     return { kind: 'unknown', reason: 'gatherSearch' };
-  if (stocked.length > 0 && counters !== undefined && wanted.length === 0) {
-    return { kind: 'nothingSelected' };
-  }
-  // Hunters seek live prey, fishers use shore targets, and farmers can sow new plots.
+  if (stopped) return { kind: 'nothingSelected' };
+  // Fishers use shore targets, and farmers can sow new plots.
   if (resourceSearchUnsupported) return { kind: 'unknown', reason: 'gatherSearch' };
   const node = nodeOfPosition(position.x, position.y);
   const here = terrain.nodeAtClamped(node.hx, node.hy);
@@ -143,4 +149,22 @@ export function gatherWorkStatus(
     goodTypes: wanted.slice(),
     scope: area !== undefined || limit !== null ? 'workArea' : 'map',
   };
+}
+
+function huntWorkStatus(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  entity: Entity,
+  jobType: number,
+): WorkStatus {
+  switch (surveyHuntingGame(world, ctx, terrain, entity, jobType)) {
+    case 'none':
+      return { kind: 'noGame' };
+    case 'cutOff':
+      return { kind: 'gameOutOfReach' };
+    case 'game':
+    case null:
+      return { kind: 'unknown', reason: 'gatherSearch' };
+  }
 }

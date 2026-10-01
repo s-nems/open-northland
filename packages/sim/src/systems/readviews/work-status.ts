@@ -1,6 +1,7 @@
 import type { Recipe } from '@open-northland/data';
 import {
   Building,
+  IdleStand,
   JobAssignment,
   Person,
   Production,
@@ -20,10 +21,12 @@ import { liveHaulFlag } from '../economy/work-flag.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 import { operatorRecipeEnabled } from '../progression/index.js';
 import { carriedGoodForm } from '../settlers/drives/economy/delivery-targets.js';
+import { isBoundToStorageSink } from '../settlers/drives/economy/store-policy.js';
 import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
 import { StoreSinks } from '../settlers/targets/stores/sinks.js';
 import { staffedWorkplaces } from '../stores/assigned-workers.js';
 import {
+  isCarrierJob,
   isWorkplaceOperator,
   isWorkplaceOutput,
   recipesByProductOf,
@@ -80,7 +83,13 @@ export type WorkStatus =
   | { readonly kind: 'noJob' }
   | { readonly kind: 'workplaceUnderConstruction' }
   /** A carrier holding a pickup flag finds nothing to lift around it. */
-  | { readonly kind: 'nothingAtFlag' };
+  | { readonly kind: 'nothingAtFlag' }
+  /** A store's carrier left idle by its ladder: nothing in reach for it to take to a store. */
+  | { readonly kind: 'nothingToCarry' }
+  /** A hunter's prey search finds no free game it sees in its hunting ground. */
+  | { readonly kind: 'noGame' }
+  /** The only game in a hunter's ground stands across a terrain seam or was given up as unreachable. */
+  | { readonly kind: 'gameOutOfReach' };
 
 /** Read current workplace blockers and a bounded resource search for one selected person. */
 export function workStatus(world: World, ctx: SystemContext, entity: Entity): WorkStatus | undefined {
@@ -96,6 +105,14 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   const gathered = jobGatherGoods(ctx, jobType);
   if (gathered.length > 0) return gatherWorkStatus(world, ctx, entity, workplace, gathered);
   if (liveHaulFlag(world, entity) !== undefined) return { kind: 'nothingAtFlag' };
+  // A store's carrier reaches the idle tail of its ladder only after the porter and haul rungs found
+  // nothing in reach a store would take.
+  if (
+    isCarrierJob(ctx, jobType) &&
+    isBoundToStorageSink(world, ctx, entity) &&
+    world.tryGet(entity, IdleStand)?.standing === true
+  )
+    return { kind: 'nothingToCarry' };
   if (workplace === undefined) {
     const index = contentIndex(ctx.content);
     const requiresWorkshop = [...index.operatorJobsByBuilding].some(

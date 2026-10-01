@@ -402,6 +402,9 @@ export const enGame = {
         outputFull: 'No room for output: {outputs}',
         nothingSelected: 'All products set to 0',
         nothingAtFlag: 'Nothing to collect at the flag',
+        nothingToCarry: 'Nothing to carry in reach',
+        noGame: 'No free game in the hunting ground',
+        gameOutOfReach: 'No way through to the game in the hunting ground',
         noTool: 'no tool',
         noJob: 'no profession',
         inputAmount: '{good} ×{missing} (has {available}/{required})',
@@ -1350,6 +1353,9 @@ export const enGame = {
         noResource: 'No resources',
         resourceRouteBlocked: 'No way through',
         nothingAtFlag: 'Flag is empty',
+        nothingToCarry: 'Nothing to carry',
+        noGame: 'No game',
+        gameOutOfReach: 'Game cut off',
       },
       full: {
         noStorage: 'No store takes {good}. Build a store or make room in one.',
@@ -1364,6 +1370,14 @@ export const enGame = {
         },
         resourceRouteBlocked: 'No way through to {good}. Clear a path or mark another spot with a work flag.',
         nothingAtFlag: 'Nothing to collect at the flag. Move the flag to where goods lie, or take it away.',
+        nothingToCarry: {
+          he: 'Nothing in reach for him to take to a store. If there are too many carriers, give him another trade.',
+          she: 'Nothing in reach for her to take to a store. If there are too many carriers, give her another trade.',
+        },
+        noGame:
+          'No free game in sight in the hunting ground. Mark a spot where game grazes with a work flag.',
+        gameOutOfReach:
+          'The game in the hunting ground stands across water or a wall, with no way through. Clear a path or mark another spot with a work flag.',
       },
       withoutGood: {
         noStorage: 'No store takes the load. Build a store or make room in one.',
@@ -1379,6 +1393,14 @@ export const enGame = {
         resourceRouteBlocked:
           'No way through to the resources. Clear a path or mark another spot with a work flag.',
         nothingAtFlag: 'Nothing to collect at the flag. Move the flag to where goods lie, or take it away.',
+        nothingToCarry: {
+          he: 'Nothing in reach for him to take to a store. If there are too many carriers, give him another trade.',
+          she: 'Nothing in reach for her to take to a store. If there are too many carriers, give her another trade.',
+        },
+        noGame:
+          'No free game in sight in the hunting ground. Mark a spot where game grazes with a work flag.',
+        gameOutOfReach:
+          'The game in the hunting ground stands across water or a wall, with no way through. Clear a path or mark another spot with a work flag.',
       },
       unknown: 'The cause is unclear. Check that the workplace has a store and the goods it needs in reach.',
     },

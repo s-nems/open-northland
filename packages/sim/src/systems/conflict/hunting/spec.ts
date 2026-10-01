@@ -49,12 +49,7 @@ export function hunterEngageSpec(
     colleagueHolds ??= preyHeldByOthers(world, e);
     return colleagueHolds(t);
   };
-  // An animal across a static terrain seam is not this hunter's game, and deliberately with none of the
-  // in-reach tolerance the general acquisition gate allows a soldier: a hunter wants the meat, and a kill it
-  // cannot walk to is a carcass no hunter may ever bank.
-  const reachablePrey = (t: Entity): boolean =>
-    isHuntTarget(world, ctx, t, jobType) &&
-    terrain.componentOf(entityNode(world, terrain, t)) === hunterComponent;
+  const reachablePrey = (t: Entity): boolean => preyOnBank(world, ctx, terrain, t, jobType, hunterComponent);
   // A hunter whose production counters stop every good it plucks takes no game at all; resolved on the
   // first candidate like the colleague lookup.
   let huntsAny: boolean | null = null;
@@ -71,10 +66,7 @@ export function hunterEngageSpec(
     !heldByColleague(t) &&
     seesTarget(t) &&
     (givenUp === undefined || !givenUp(t));
-  const lastResortLivestock = (t: Entity): boolean => {
-    const s = world.tryGet(t, Settler);
-    return s !== undefined && isLastResortPrey(ctx.content, s.tribe);
-  };
+  const lastResortLivestock = (t: Entity): boolean => isLastResortAnimal(world, ctx, t);
   // `player` is null in every hunter spec: a hunter is never presence-gated, in any stance.
   const ground = huntingGround(world, terrain, e);
   if (ground === null) {
@@ -131,6 +123,29 @@ export function hunterEngageSpec(
 }
 
 /**
+ * Whether `t` is game `jobType` may hunt standing on terrain component `bank`. An animal across a static
+ * terrain seam is not this hunter's game, and deliberately with none of the in-reach tolerance the general
+ * acquisition gate allows a soldier: a hunter wants the meat, and a kill it cannot walk to is a carcass no
+ * hunter may ever bank.
+ */
+export function preyOnBank(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  t: Entity,
+  jobType: number | null,
+  bank: number,
+): boolean {
+  return isHuntTarget(world, ctx, t, jobType) && terrain.componentOf(entityNode(world, terrain, t)) === bank;
+}
+
+/** Whether `t` is a head of last-resort livestock (huntPrey `lastResort`). */
+export function isLastResortAnimal(world: World, ctx: SystemContext, t: Entity): boolean {
+  const s = world.tryGet(t, Settler);
+  return s !== undefined && isLastResortPrey(ctx.content, s.tribe);
+}
+
+/**
  * Admits any candidate but a `lastResort` head, and admits one of those only once no normal game stands
  * within {@link HUNT_LAST_RESORT_SCAN_FACTOR} x `radius` of `at` - a ring walk answered at most once per
  * engage, because it costs a multiple of the acquisition band.
@@ -139,7 +154,7 @@ export function hunterEngageSpec(
  * counts, and so does game under fog - the one unfogged read in the hunting policy, because whether a
  * settlement may eat its own stock must not turn on the session's fog mode.
  */
-function lastResortGate(
+export function lastResortGate(
   terrain: TerrainGraph,
   index: CombatIndex,
   at: NodeId,

@@ -29,7 +29,10 @@ export function idleReasonOf(status: WorkStatus | undefined): IdleReason | null 
     case 'resourceRouteBlocked':
       return { kind: 'resourceRouteBlocked', goodTypes: status.goodTypes };
     case 'nothingAtFlag':
-      return { kind: 'nothingAtFlag', goodTypes: NO_GOODS };
+    case 'nothingToCarry':
+    case 'noGame':
+    case 'gameOutOfReach':
+      return { kind: status.kind, goodTypes: NO_GOODS };
     case 'waitingInput':
     case 'outputFull':
     case 'productsLocked':
