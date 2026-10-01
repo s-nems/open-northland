@@ -1,4 +1,9 @@
+import type { MinimapObjects } from '@open-northland/render';
 import {
+  cellOfNode,
+  FOG_MODE,
+  FOG_STATE,
+  type FogView,
   halfCellMapFromCells,
   positionOfNode,
   Simulation,
@@ -14,9 +19,9 @@ import { GOOD_IRON, GOOD_WHEAT, GOOD_WOOD } from '../src/game/sandbox/ids/index.
 import { resourceCommand } from '../src/game/sandbox/place/index.js';
 import { MINIMAP_OBJECT_TYPES } from '../src/hud/minimap/bake.js';
 import {
+  createSeenStandingObjects,
   minimapFeatureOfGoodTypes,
   standingNodesRevision,
-  standingObjects,
 } from '../src/hud/minimap/live-objects.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
@@ -30,6 +35,26 @@ const FOREST_TYPE = MINIMAP_OBJECT_TYPES.indexOf('forest');
 const IRON_TYPE = MINIMAP_OBJECT_TYPES.indexOf('iron');
 /** Ticks a novice collector takes at most to fell a tree. */
 const MAX_FELL_TICKS = 4000;
+
+/** The forest and ore of `snapshot` with fog off: every standing node. */
+function standingObjects(snapshot: WorldSnapshot, features: typeof FEATURES): MinimapObjects {
+  const seen = createSeenStandingObjects(features);
+  seen.refresh(snapshot, null);
+  return seen.objects();
+}
+
+/** A fog view of the viewer seat where `seenCells` are visible and every other cell explored. */
+function fogSeeing(seenCells: readonly { cx: number; cy: number }[], generation: number): FogView {
+  const visible = new Set(seenCells.map(({ cx, cy }) => cy * MAP_CELLS + cx));
+  return {
+    player: HUMAN_PLAYER,
+    mode: FOG_MODE.RECON_FOG_OF_WAR,
+    cellsWide: MAP_CELLS,
+    cellsHigh: MAP_CELLS,
+    generation,
+    stateAt: (cx, cy) => (visible.has(cy * MAP_CELLS + cx) ? FOG_STATE.VISIBLE : FOG_STATE.EXPLORED),
+  };
+}
 
 function standing(id: number, goodType: number, hx: number, hy: number): Ent {
   const { x, y } = positionOfNode(hx, hy);
@@ -92,5 +117,47 @@ describe('minimap standing objects', () => {
     expect(standingNodesRevision(after, features)).toBeGreaterThan(before);
     expect(standingObjects(after, features).placements).toEqual([]);
     expect(mirror.verifyIndexes()).toEqual([]);
+  });
+});
+
+describe('minimap seen standing objects', () => {
+  const NEAR = { hx: 4, hy: 4 };
+  const FAR = { hx: 10, hy: 8 };
+  const nearCell = cellOfNode(NEAR.hx, NEAR.hy);
+  const farCell = cellOfNode(FAR.hx, FAR.hy);
+  const both = snapshotOf([standing(1, GOOD_WOOD, NEAR.hx, NEAR.hy), standing(2, GOOD_WOOD, FAR.hx, FAR.hy)]);
+
+  it('drops a tree felled in a visible cell on the next refresh', () => {
+    const seen = createSeenStandingObjects(FEATURES);
+    const fog = fogSeeing([nearCell], 1);
+    expect(seen.refresh(both, fog)).toBe(true);
+    const felled = snapshotOf([standing(2, GOOD_WOOD, FAR.hx, FAR.hy)]);
+    expect(seen.refresh(felled, fog)).toBe(true);
+    expect(seen.objects().placements).toEqual([FAR.hx, FAR.hy, FOREST_TYPE]);
+  });
+
+  it('keeps a tree felled in an explored but hidden cell until the cell is seen', () => {
+    const seen = createSeenStandingObjects(FEATURES);
+    const hiding = fogSeeing([nearCell], 1);
+    // The first refresh takes the standing forest everywhere, fog or not.
+    seen.refresh(both, hiding);
+    const felled = snapshotOf([standing(1, GOOD_WOOD, NEAR.hx, NEAR.hy)]);
+    expect(seen.refresh(felled, hiding)).toBe(false);
+    expect(seen.objects().placements).toEqual([NEAR.hx, NEAR.hy, FOREST_TYPE, FAR.hx, FAR.hy, FOREST_TYPE]);
+    expect(seen.stale(felled, hiding)).toBe(false);
+
+    const seeing = fogSeeing([nearCell, farCell], 2);
+    expect(seen.stale(felled, seeing)).toBe(true);
+    expect(seen.refresh(felled, seeing)).toBe(true);
+    expect(seen.objects().placements).toEqual([NEAR.hx, NEAR.hy, FOREST_TYPE]);
+    expect(seen.stale(felled, fogSeeing([nearCell], 3))).toBe(false);
+  });
+
+  it('takes every change with fog off', () => {
+    const seen = createSeenStandingObjects(FEATURES);
+    seen.refresh(both, fogSeeing([], 1));
+    const replanted = snapshotOf([standing(3, GOOD_IRON, FAR.hx, FAR.hy)]);
+    expect(seen.refresh(replanted, null)).toBe(true);
+    expect(seen.objects().placements).toEqual([FAR.hx, FAR.hy, IRON_TYPE]);
   });
 });

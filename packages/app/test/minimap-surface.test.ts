@@ -1,5 +1,5 @@
 import type { MinimapObjects, SceneTerrain } from '@open-northland/render';
-import { positionOfNode } from '@open-northland/sim';
+import { positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import { BufferImageSource, Container, Sprite } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { GOOD_WOOD } from '../src/game/sandbox/ids/index.js';
@@ -8,7 +8,7 @@ import {
   createMinimapRasterizer,
   minimapBakeScene,
 } from '../src/hud/minimap/bake.js';
-import { minimapFeatureOfGoodTypes, standingObjects } from '../src/hud/minimap/live-objects.js';
+import { createSeenStandingObjects, minimapFeatureOfGoodTypes } from '../src/hud/minimap/live-objects.js';
 import {
   BAKE_SIZE_SETTLE_MS,
   createMinimapSurface,
@@ -35,6 +35,12 @@ function tree(id: number, hx: number, hy: number): Ent {
       Position: positionOfNode(hx, hy),
     },
   };
+}
+
+function standingObjects(snapshot: WorldSnapshot): MinimapObjects {
+  const seen = createSeenStandingObjects(FEATURES);
+  seen.refresh(snapshot, null);
+  return seen.objects();
 }
 
 function expectedRaster(objects: MinimapObjects): Uint8Array {
@@ -75,19 +81,19 @@ describe('minimap ground surface', () => {
     const ground = groundOf(host);
     expect(ground.visible).toBe(false);
     const snapshot = snapshotOf([tree(1, 2, 2)]);
-    surface.sync(snapshot);
+    surface.sync(snapshot, null);
     await settle();
     expect(ground.visible).toBe(true);
-    expect(pixelsOf(ground)).toEqual(expectedRaster(standingObjects(snapshot, FEATURES)));
+    expect(pixelsOf(ground)).toEqual(expectedRaster(standingObjects(snapshot)));
     const first = ground.texture;
-    surface.sync(snapshot);
+    surface.sync(snapshot, null);
     await settle();
     expect(ground.texture).toBe(first);
 
     resolution = 2;
-    surface.sync(snapshot);
+    surface.sync(snapshot, null);
     now = BAKE_SIZE_SETTLE_MS;
-    surface.sync(snapshot);
+    surface.sync(snapshot, null);
     await settle();
     expect(first.destroyed).toBe(true);
     expect([ground.texture.width, ground.texture.height]).toEqual([MAP.w * 2, MAP.h * 2]);
@@ -115,19 +121,19 @@ describe('minimap ground surface', () => {
     });
     const ground = groundOf(host);
     // Separate snapshots build their own indexes, so the counts stand in for a mirror's growing revision.
-    surface.sync(snapshotOf([tree(1, 2, 2), tree(2, 4, 4)]));
+    surface.sync(snapshotOf([tree(1, 2, 2), tree(2, 4, 4)]), null);
     await settle();
     const forested = ground.texture;
     const felled = snapshotOf([tree(1, 2, 2)]);
     now = OBJECT_REBAKE_INTERVAL_MS - 1;
-    surface.sync(felled);
+    surface.sync(felled, null);
     await settle();
     expect(ground.texture).toBe(forested);
     now = OBJECT_REBAKE_INTERVAL_MS;
-    surface.sync(felled);
+    surface.sync(felled, null);
     await settle();
     expect(ground.texture).not.toBe(forested);
-    expect(pixelsOf(ground)).toEqual(expectedRaster(standingObjects(felled, FEATURES)));
+    expect(pixelsOf(ground)).toEqual(expectedRaster(standingObjects(felled)));
     surface.dispose();
     host.destroy();
   });
@@ -161,12 +167,12 @@ describe('minimap ground surface', () => {
     const snapshot = snapshotOf([tree(1, 2, 2)]);
     const zoomTo = async (next: number): Promise<void> => {
       zoom = next;
-      surface.sync(snapshot);
+      surface.sync(snapshot, null);
       now += BAKE_SIZE_SETTLE_MS;
-      surface.sync(snapshot);
+      surface.sync(snapshot, null);
       await settle();
     };
-    surface.sync(snapshot);
+    surface.sync(snapshot, null);
     await settle();
     expect(widths).toEqual([MAP.w]);
 
@@ -174,12 +180,12 @@ describe('minimap ground surface', () => {
     for (const step of [1.4, 1.7, 2]) {
       zoom = step;
       now += BAKE_SIZE_SETTLE_MS / 4;
-      surface.sync(snapshot);
+      surface.sync(snapshot, null);
     }
     await settle();
     expect(widths).toEqual([MAP.w]);
     now += BAKE_SIZE_SETTLE_MS;
-    surface.sync(snapshot);
+    surface.sync(snapshot, null);
     await settle();
     expect(widths).toEqual([MAP.w, MAP.w * MAX_BAKE_ZOOM]);
     expect([ground.width, ground.height]).toEqual([MAP.w, MAP.h]);

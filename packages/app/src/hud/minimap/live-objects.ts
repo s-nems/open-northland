@@ -1,5 +1,8 @@
 import { type MinimapFeature, type MinimapObjects, minimapFeatureOfGood } from '@open-northland/render/data';
 import {
+  cellOfNode,
+  FOG_STATE,
+  type FogView,
   firstDifference,
   indexesOf,
   nodeOfPosition,
@@ -98,22 +101,125 @@ export function standingNodesRevision(
   return revision;
 }
 
-/** The standing nodes of the drawn goods as a baker's objects: one pass over them. */
-export function standingObjects(
-  snapshot: WorldSnapshot,
+/** Count by node key, per sim good type. */
+type CountsByGood = Map<number, Map<number, number>>;
+
+export interface SeenStandingObjects {
+  /** Whether {@link refresh} may change the picture: the standing nodes changed since the last refresh,
+   *  or a difference still hidden may have come into view under a new fog view. */
+  stale(snapshot: WorldSnapshot, fog: FogView | null): boolean;
+  /** Take each node's live count where the viewer sees its cell now, or everywhere without fog; true
+   *  when the picture changed. A full refresh walks the drawn goods' standing and seen nodes; a refresh
+   *  under unchanged nodes rechecks only the differences fog hid. */
+  refresh(snapshot: WorldSnapshot, fog: FogView | null): boolean;
+  /** The picture as a baker's objects: one pass over the seen nodes. */
+  objects(): MinimapObjects;
+}
+
+/**
+ * The minimap's forest and ore as the viewer last saw them, so felling and mining in explored but
+ * unseen ground stay hidden as the world view's fog ghosts keep them. Approximation: the first refresh
+ * takes the standing nodes everywhere, so the mount-time picture is the authored or saved forest,
+ * including what a rival worked before a save in ground the viewer never saw again.
+ */
+export function createSeenStandingObjects(
   featureOfGoodType: ReadonlyMap<number, MinimapFeature>,
-): MinimapObjects {
-  const state = indexesOf(snapshot).get(STANDING_NODES);
-  const placements: number[] = [];
-  for (const [goodType, feature] of featureOfGoodType) {
-    const nodes = state.get(goodType);
-    if (nodes === undefined) continue;
-    const type = MINIMAP_OBJECT_TYPES.indexOf(feature);
-    for (const [node, standing] of nodes.countByNode) {
-      const hx = node % NODE_KEY_ROW;
-      const hy = Math.floor(node / NODE_KEY_ROW);
-      for (let i = 0; i < standing; i++) placements.push(hx, hy, type);
+): SeenStandingObjects {
+  const seen: CountsByGood = new Map();
+  /** Nodes whose live count differs from the seen one while fog hides their cell. */
+  const hidden = new Map<number, Set<number>>();
+  let seeded = false;
+  let refreshedRevision = 0;
+  /** The fog view the last refresh saw, by its seat and generation; null seat when fog was off. */
+  let refreshedSeat: number | null = null;
+  let refreshedGeneration = 0;
+
+  const seenOf = (goodType: number): Map<number, number> => {
+    let nodes = seen.get(goodType);
+    if (nodes === undefined) {
+      nodes = new Map();
+      seen.set(goodType, nodes);
     }
-  }
-  return { types: MINIMAP_OBJECT_TYPES, placements };
+    return nodes;
+  };
+  const visible = (fog: FogView | null, node: number): boolean => {
+    if (fog === null) return true;
+    const { cx, cy } = cellOfNode(node % NODE_KEY_ROW, Math.floor(node / NODE_KEY_ROW));
+    return fog.stateAt(cx, cy) === FOG_STATE.VISIBLE;
+  };
+  /** Apply a differing live count where it shows; otherwise remember it as hidden. True when applied. */
+  const take = (
+    fog: FogView | null,
+    nodes: Map<number, number>,
+    hiddenNodes: Set<number>,
+    node: number,
+    live: number,
+  ): boolean => {
+    if (!visible(fog, node)) {
+      hiddenNodes.add(node);
+      return false;
+    }
+    if (live > 0) nodes.set(node, live);
+    else nodes.delete(node);
+    hiddenNodes.delete(node);
+    return true;
+  };
+
+  return {
+    stale: (snapshot, fog) => {
+      if (!seeded || standingNodesRevision(snapshot, featureOfGoodType) !== refreshedRevision) return true;
+      if (hidden.size === 0) return false;
+      return (
+        (fog?.player ?? null) !== refreshedSeat || (fog !== null && fog.generation !== refreshedGeneration)
+      );
+    },
+    refresh: (snapshot, fog) => {
+      const state = indexesOf(snapshot).get(STANDING_NODES);
+      const revision = standingNodesRevision(snapshot, featureOfGoodType);
+      const full = !seeded || revision !== refreshedRevision;
+      const view = seeded ? fog : null;
+      let changed = !seeded;
+      for (const goodType of featureOfGoodType.keys()) {
+        const live = state.get(goodType)?.countByNode;
+        const nodes = seenOf(goodType);
+        const hiddenNodes = hidden.get(goodType) ?? new Set<number>();
+        if (full) {
+          hiddenNodes.clear();
+          for (const [node, count] of live ?? []) {
+            if (nodes.get(node) !== count && take(view, nodes, hiddenNodes, node, count)) changed = true;
+          }
+          for (const node of nodes.keys()) {
+            if (live?.has(node) !== true && take(view, nodes, hiddenNodes, node, 0)) changed = true;
+          }
+        } else {
+          for (const node of hiddenNodes) {
+            const count = live?.get(node) ?? 0;
+            if ((nodes.get(node) ?? 0) === count) hiddenNodes.delete(node);
+            else if (take(view, nodes, hiddenNodes, node, count)) changed = true;
+          }
+        }
+        if (hiddenNodes.size > 0) hidden.set(goodType, hiddenNodes);
+        else hidden.delete(goodType);
+      }
+      seeded = true;
+      refreshedRevision = revision;
+      refreshedSeat = fog?.player ?? null;
+      refreshedGeneration = fog?.generation ?? 0;
+      return changed;
+    },
+    objects: () => {
+      const placements: number[] = [];
+      for (const [goodType, feature] of featureOfGoodType) {
+        const nodes = seen.get(goodType);
+        if (nodes === undefined) continue;
+        const type = MINIMAP_OBJECT_TYPES.indexOf(feature);
+        for (const [node, standing] of nodes) {
+          const hx = node % NODE_KEY_ROW;
+          const hy = Math.floor(node / NODE_KEY_ROW);
+          for (let i = 0; i < standing; i++) placements.push(hx, hy, type);
+        }
+      }
+      return { types: MINIMAP_OBJECT_TYPES, placements };
+    },
+  };
 }

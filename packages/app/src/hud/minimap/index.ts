@@ -254,7 +254,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
         lastView = '';
         return;
       }
-      surface.sync(snapshot);
+      surface.sync(snapshot, fog);
       fogMask.draw(fog);
       const viewer = opts.viewer();
       // A spectator can switch between watching a seat and the whole map.
