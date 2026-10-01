@@ -542,7 +542,7 @@ describe('trainSoldier - the barracks drill', () => {
     expect(sim.world.has(recruit, TrainingOrder)).toBe(true);
   });
 
-  it('refuses a woman, a wrong-tribe house, and a target that is not a training house', () => {
+  it("refuses a woman and a target that is not a training house, but drills at another tribe's barracks", () => {
     const sim = simWithBarracks();
     const house = barracksAt(sim, 6, 3);
     const woman = settlerAt(sim, CIVILIST_JOB, 2, 3);
@@ -557,6 +557,6 @@ describe('trainSoldier - the barracks drill', () => {
     sim.step();
 
     expect(sim.world.has(woman, TrainingOrder)).toBe(false);
-    expect(sim.world.has(stranger, TrainingOrder)).toBe(false);
+    expect(sim.world.get(stranger, TrainingOrder).house).toBe(foreignHouse);
   });
 });

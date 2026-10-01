@@ -114,7 +114,6 @@ export function garrisonSlots(world: World, ctx: SystemContext, building: Entity
  *  class it keeps before sending one out, where its door is, and who holds it, counted as men are posted. */
 interface Wall {
   readonly tower: Entity;
-  readonly tribe: number;
   readonly door: NodeId;
   readonly want: ReadonlyMap<number, number>;
   readonly keep: ReadonlyMap<number, number>;
@@ -145,7 +144,6 @@ function standingWalls(
     if (rule === 'strategic') {
       walls.push({
         tower,
-        tribe,
         door,
         want: slots,
         keep: slots,
@@ -167,7 +165,6 @@ function standingWalls(
     for (const [job, count] of slots) peace.set(job, Math.min(count, SCRIPTED_PEACE_ARCHERS_PER_CLASS));
     walls.push({
       tower,
-      tribe,
       door,
       want: threatened ? slots : peace,
       keep: calm ? peace : slots,
@@ -239,7 +236,7 @@ function nearestFreeArcher(
     if (claimed.has(e)) continue;
     const settler = world.get(e, Settler);
     const jobType = settler.jobType;
-    if (jobType === null || settler.tribe !== wall.tribe) continue;
+    if (jobType === null) continue;
     const want = wall.want.get(jobType);
     const held = wall.crew.get(jobType) ?? 0;
     if (want === undefined || held >= want) continue;

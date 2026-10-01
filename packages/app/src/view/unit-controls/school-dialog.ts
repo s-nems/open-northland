@@ -9,7 +9,6 @@ import {
 } from '@open-northland/sim';
 import { professionDefForJob } from '../../catalog/professions.js';
 import {
-  buildingTribeOf,
   buildingTypeOf,
   ownerPlayerOf,
   type SnapshotEntity,
@@ -235,7 +234,6 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
     const valid = new Set(schoolStudents(content, state, students));
     const invalid =
       students.some((id) => !valid.has(id)) ||
-      buildingTribeOf(building) !== tribeId ||
       ownerPlayerOf(building) !== player ||
       learners.some(
         (learner) =>

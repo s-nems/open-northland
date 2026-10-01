@@ -108,7 +108,7 @@ function boundBreederFarm(
   if (binding === undefined) return null;
   const farm = binding.workplace;
   const building = world.tryGet(farm, Building);
-  if (building === undefined || building.tribe !== tribe || building.built < ONE) return null;
+  if (building === undefined || building.built < ONE) return null;
   if (world.has(farm, UnderConstruction) || !world.has(farm, Position)) return null;
   if (!isLivestockWorkplaceType(ctx.content, building.buildingType)) return null;
   if (!buildingWorkerJobs(world, ctx, farm).has(jobType)) return null;

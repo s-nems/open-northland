@@ -37,6 +37,8 @@ import {
 
 /** The grafted fixture farmer-wheat track id (the base fixture carries no farmer track at all). */
 const FARMER_WHEAT_TRACK = 90;
+/** Another tribe than the farmer's own. */
+const FRANK = VIKING + 1;
 
 /** The fixture plus a farmer-wheat track (rate 1) pinning `strokes` per reaped field. */
 /** Two counted strokes with a re-plan and a walk to a fresh stance between them. */
@@ -290,6 +292,17 @@ describe('planFarmer - the drive ladder', () => {
     const spawned = [...sim.world.query(Settler)];
     expect(spawned).toHaveLength(1);
     expect(sim.world.tryGet(spawned[0] as Entity, components.WorkFlag)).toBeUndefined();
+  });
+
+  it("works its own player's farm of another tribe", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
+    const farm = farmAt(sim, 4, 4);
+    sim.world.mut(farm, components.Building).tribe = FRANK;
+    const farmer = farmerAt(sim, 4, 4, farm);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(farmer, components.FarmTask).sow).toBe(true);
   });
 
   it('a farm still under construction fields no crew (jobtypes.ini mustHaveFinishedWorkHouseFlag 1)', () => {

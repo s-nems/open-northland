@@ -134,10 +134,10 @@ function toOwnDeliveryFlag(plan: PlannerContext): DeliveryVerdict {
  * for every producing building, so a recipe test would turn this rung off under extracted content.
  */
 function toStorageOffFarm(plan: PlannerContext, goodType: number, area: DeliverySearchArea): DeliveryVerdict {
-  const { world, ctx, here, jobType, tribe, owner, targets } = plan;
+  const { world, ctx, here, jobType, owner, targets } = plan;
   const home = boundWorkplace(plan);
   if (home === undefined) return null;
-  if (!isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe)) return null;
+  if (!isFarmCarrierHaulOutRole(world, ctx, home, jobType)) return null;
   if (!buildingProduces(world, ctx, home).includes(goodType)) return null;
   const store = nearestStoreFor(
     targets.bands,

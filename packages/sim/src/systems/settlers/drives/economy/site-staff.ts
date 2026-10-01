@@ -31,10 +31,10 @@ export function planSiteStaff(
   return true;
 }
 
-/** The settler's bound workplace while it is still a construction site of its own tribe, else null. */
+/** The settler's bound workplace while it is still a construction site, else null. */
 export function boundConstructionSite(plan: PlannerContext): Entity | null {
-  const { world, entity, tribe } = plan;
+  const { world, entity } = plan;
   const workplace = world.tryGet(entity, JobAssignment)?.workplace;
   if (workplace === undefined || !world.has(workplace, UnderConstruction)) return null;
-  return world.tryGet(workplace, Building)?.tribe === tribe ? workplace : null;
+  return world.has(workplace, Building) ? workplace : null;
 }

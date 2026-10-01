@@ -48,7 +48,7 @@ function boundFarmTarget(
   if (binding === undefined) return null;
   const b = binding.workplace;
   const building = world.tryGet(b, Building);
-  if (building === undefined || building.tribe !== tribe) return null;
+  if (building === undefined) return null;
   // `jobtypes.ini` farmer `mustHaveFinishedWorkHouseFlag 1`: a farm still being raised fields no crew.
   if (world.has(b, UnderConstruction)) return null;
   const spec = farmWorkGood(world, ctx, b);

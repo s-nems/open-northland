@@ -10,7 +10,7 @@ import { canonicalJobType } from '../../../game/sandbox/ids/index.js';
 import {
   buildingTypeOf,
   isBuilding,
-  ownerTribeKeyOf,
+  ownerKeyOf,
   type SnapshotEntity,
   settlerJobType,
   settlersIn,
@@ -80,7 +80,7 @@ function crewOf(settlers: readonly SnapshotEntity[]): Crew {
   for (const e of settlers) {
     const job = settlerJobType(e);
     if (job === undefined) continue;
-    const team = ownerTribeKeyOf(e);
+    const team = ownerKeyOf(e);
     const key = seatKey(team, job);
     teams.add(team);
     bump(all, key);
@@ -106,7 +106,7 @@ function slotsOf(
 }
 
 /**
- * Whether `building` employs anyone of a member's owner and tribe, and whether it has a free seat for a
+ * Whether `building` employs anyone of a member's owner, and whether it has a free seat for a
  * member the order would post there. A building under construction is a candidate, since its slots take
  * staff from the moment the foundation is placed.
  */
@@ -117,7 +117,7 @@ function workplaceVerdict(
   buildingsByType: ReadonlyMap<number, AssignBuildingInfo>,
 ): { readonly candidate: boolean; readonly ok: boolean } {
   const slots = slotsOf(building, buildingsByType);
-  const team = ownerTribeKeyOf(building);
+  const team = ownerKeyOf(building);
   if (slots.length === 0 || !crew.teams.has(team)) return { candidate: false, ok: false };
   const seats = slots.map((slot) => ({ slot, key: seatKey(team, slot.jobType) }));
   const unemployedHere = seats.some(({ key }) => (crew.unemployed.get(key) ?? 0) > 0);
@@ -133,7 +133,7 @@ function workplaceVerdict(
 
 /**
  * The highlight verdicts for a selected group over every own building: green when it has a free seat
- * for a member the order would post there. Buildings employing nobody of a member's owner and tribe are
+ * for a member the order would post there. Buildings employing nobody of a member's owner are
  * skipped, not tinted.
  */
 export function computeAssignHighlight(
@@ -168,11 +168,11 @@ export function workerGroupAt(
   const settlers = settlersIn(snapshot, settlerIds);
   if (!workplaceVerdict(snapshot, building, crewOf(settlers), buildingsByType).ok) return null;
   const slots = slotsOf(building, buildingsByType);
-  const team = ownerTribeKeyOf(building);
+  const team = ownerKeyOf(building);
   const workers: GroupWorker[] = [];
   for (const settler of settlers) {
     const jobPriority = tradeSlotsOf(settlerJobType(settler), slots);
-    if (ownerTribeKeyOf(settler) === team && jobPriority.length > 0) {
+    if (ownerKeyOf(settler) === team && jobPriority.length > 0) {
       workers.push({ entity: settler.id as Entity, jobPriority });
     }
   }

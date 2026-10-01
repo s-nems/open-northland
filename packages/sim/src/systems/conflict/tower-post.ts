@@ -26,7 +26,7 @@ import { buildingWorkerJobs } from '../stores/index.js';
 export const TOWER_RANGE_BONUS_NODES = 5;
 
 /**
- * The post `e` is entitled to man: the built, same-tribe building its {@link JobAssignment} binds it to,
+ * The post `e` is entitled to man: the built building its {@link JobAssignment} binds it to,
  * when that building offers its exact fighting class as a worker slot (the towers' `logicworker 40/41`
  * bow-soldier posts; `jobtypes.ini` marks those classes `canHaveWorkHouseFlag 1`). Null for every settler
  * that is not a posted fighter. Re-derived rather than remembered, so a garrison whose tower fell or whose
@@ -37,7 +37,7 @@ export function towerPostFor(world: World, ctx: SystemContext, e: Entity, jobTyp
   const workplace = world.tryGet(e, JobAssignment)?.workplace;
   if (workplace === undefined || !world.isAlive(workplace)) return null;
   const b = world.tryGet(workplace, Building);
-  if (b === undefined || b.tribe !== world.get(e, Settler).tribe) return null;
+  if (b === undefined) return null;
   // `jobtypes.ini` gives every soldier class `mustHaveFinishedWorkHouseFlag 1`: the post has to be raised
   // before it can be manned.
   if (world.has(workplace, UnderConstruction)) return null;

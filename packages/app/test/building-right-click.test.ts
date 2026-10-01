@@ -397,14 +397,13 @@ describe("the action ring's site pick", () => {
     expect(sitePick.assignableAt(sim.snapshot(), foundation, builder, byType)).toBe(true);
   });
 
-  it("keeps the drill pick to barracks of the settler's own tribe", () => {
+  it("offers its seat's barracks of another tribe to the drill pick", () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const barracks = siteAt(sim, BUILDING_BARRACKS);
     const settler = settlerAt(sim, null);
     const byType = lastByTypeId(sim.content.buildings);
-    expect(drillPick.assignableAt(sim.snapshot(), barracks, settler, byType)).toBe(true);
     sim.world.mut(barracks, Building).tribe = OTHER_TRIBE;
-    expect(drillPick.assignableAt(sim.snapshot(), barracks, settler, byType)).toBe(false);
+    expect(drillPick.assignableAt(sim.snapshot(), barracks, settler, byType)).toBe(true);
   });
 });
 

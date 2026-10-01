@@ -19,8 +19,6 @@ import {
   ownerPlayerOf,
   type SnapshotEntity,
   settlersIn,
-  settlerTribeOf,
-  siteTribeOf,
   trainingHouseOf,
 } from '../../../game/snapshot.js';
 
@@ -110,17 +108,13 @@ export function builderSitesOf(snapshot: WorldSnapshot, owner: number): readonly
   return indexesOf(snapshot).get(BUILDER_SITES_BY_OWNER).get(owner) ?? [];
 }
 
-/** The foundations, damaged buildings, wall sites and road sites a builder may be pinned to, whatever
- *  their tribe; a full repair crew refuses more. */
+/** The foundations, damaged buildings, wall sites and road sites a builder may be pinned to; a full
+ *  repair crew refuses more. */
 export const sitePick: OwnBuildingPick = ownBuildingPick({
   ownedBy: builderSitesOf,
   candidate: isBuilderSite,
   accepts: (building, settler, snapshot) => builderCrewHasRoom(snapshot, building, settler),
 });
-
-function sameTribe(building: SnapshotEntity, settler: SnapshotEntity): boolean {
-  return siteTribeOf(building) === settlerTribeOf(settler);
-}
 
 /** A standing house of the type or its foundation: a settler sent to a foundation waits at its door. */
 const houseOrFoundationOfType =
@@ -136,11 +130,11 @@ const houseOrFoundationOfType =
 /** The barracks a settler may drill at; the one it already drills at refuses a repeat. */
 export const drillPick: OwnBuildingPick = ownBuildingPick({
   candidate: houseOrFoundationOfType(systems.isBarracksType),
-  accepts: (building, settler) => sameTribe(building, settler) && trainingHouseOf(settler) !== building.id,
+  accepts: (building, settler) => trainingHouseOf(settler) !== building.id,
 });
 
 /** The schools; the course dialog a pick opens decides per course who may still learn it. */
 export const schoolPick: OwnBuildingPick = ownBuildingPick({
   candidate: houseOrFoundationOfType(systems.isSchoolType),
-  accepts: sameTribe,
+  accepts: () => true,
 });

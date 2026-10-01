@@ -1,4 +1,4 @@
-import { Building, JobAssignment, Position, Stockpile } from '../../../../components/index.js';
+import { JobAssignment, Position, Stockpile } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { farmWorkGood } from '../../../economy/fields.js';
@@ -12,8 +12,8 @@ function isFieldWorkerOf(world: World, ctx: SystemContext, building: Entity, job
 }
 
 /**
- * Whether `home` is a farm whose output this settler hauls out to storage: a field producer of `tribe`
- * whose carrier, not field worker, this settler is. Shared by the pickup and delivery-routing sides, which
+ * Whether `home` is a farm whose output this settler hauls out to storage: a field producer whose
+ * carrier, not field worker, this settler is. Shared by the pickup and delivery-routing sides, which
  * must agree or a carrier lifts a farm's output and then cannot route it. A farmer banks its reaped crop
  * into the farm; only the carrier clears it to central storage.
  */
@@ -22,13 +22,8 @@ export function isFarmCarrierHaulOutRole(
   ctx: SystemContext,
   home: Entity,
   jobType: number,
-  tribe: number,
 ): boolean {
-  return (
-    world.tryGet(home, Building)?.tribe === tribe &&
-    farmWorkGood(world, ctx, home) !== null &&
-    !isFieldWorkerOf(world, ctx, home, jobType)
-  );
+  return farmWorkGood(world, ctx, home) !== null && !isFieldWorkerOf(world, ctx, home, jobType);
 }
 
 /** Whether a settler is posted to a storage fixture rather than to a producing workplace. */

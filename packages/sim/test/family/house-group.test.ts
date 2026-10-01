@@ -32,6 +32,7 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
  */
 
 const VIKING = 1;
+const FRANK = VIKING + 1;
 const PLAYER = 0;
 const WOMAN = 5;
 const CIVILIST = 6;
@@ -88,6 +89,19 @@ function sendGroup(sim: Simulation, house: Entity, entities: readonly Entity[]):
 }
 
 const homeOf = (sim: Simulation, e: Entity): Entity | undefined => sim.world.tryGet(e, Residence)?.home;
+
+describe('assignHouse - a home of another tribe', () => {
+  it("reserves its own player's home of another tribe for the settler", () => {
+    const sim = new Simulation({ seed: 1, content: content() });
+    const frankHome = homeAt(sim, 10);
+    sim.world.mut(frankHome, Building).tribe = FRANK;
+    const settler = adultAt(sim, 11);
+
+    assignHouse(sim.world, ctxOf(sim), { kind: 'assignHouse', entity: settler, house: frankHome });
+
+    expect(homeOf(sim, settler)).toBe(frankHome);
+  });
+});
 
 describe('assignHouseGroup - send a group to one home', () => {
   it('houses homeless members before one housed elsewhere, even a nearer one listed first', () => {

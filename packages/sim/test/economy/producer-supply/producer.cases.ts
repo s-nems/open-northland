@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Building,
   Carrying,
   Chat,
   CurrentAtomic,
@@ -42,6 +43,7 @@ import {
   settlerAt,
   siteAt,
   TWIN_MILL,
+  VIKING,
   WHEAT,
   WOOD,
   WOOD_TRACK,
@@ -59,6 +61,18 @@ describe('producer self-service - fetching a missing recipe input', () => {
 
     // Can't produce (no wood), nothing to haul out - so it heads for the store that holds the input.
     expect(sim.world.has(smith, MoveGoal)).toBe(true);
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 5, 0));
+  });
+
+  it("works its own player's workshop of another tribe", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const mill = buildingAt(sim, SAWMILL, 3, 0);
+    sim.world.mut(mill, Building).tribe = VIKING + 1;
+    buildingAt(sim, HEADQUARTERS, 5, 0, [[WOOD, 3]]);
+    const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 5, 0));
   });
 

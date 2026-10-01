@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Building,
   Carrying,
   CurrentAtomic,
   DraughtAnimal,
@@ -45,6 +46,8 @@ import {
 } from './support.js';
 
 const P0 = 0;
+/** Another civilization than the farm's own (tribe 1). */
+const FRANK_TRIBE = 2;
 const FARM_AT = { hx: 20, hy: 20 } as const;
 
 /** A farm with a breeder on its door, and whatever breeding stock the case needs. */
@@ -74,6 +77,17 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     expect(sim.world.tryGet(near, FarmAnimal)?.farm).toBe(farm);
     expect(sim.world.has(far, FarmAnimal)).toBe(false);
     expect(herdRow(sim, farm)).toBe(1);
+  });
+
+  it("adopts for its own player's animal farm of another tribe", () => {
+    const sim = livestockSim();
+    const { farm } = farmWithBreeder(sim);
+    sim.world.mut(farm, Building).tribe = FRANK_TRIBE;
+    const cow = cowAt(sim, 24, 20, { owner: P0 });
+
+    plan(sim);
+
+    expect(sim.world.tryGet(cow, FarmAnimal)?.farm).toBe(farm);
   });
 
   it("never adopts another player's animal, nor one already held by a farm", () => {

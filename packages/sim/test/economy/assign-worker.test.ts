@@ -18,9 +18,9 @@ import { ctxOf } from '../fixtures/context.js';
 /**
  * The `assignWorker` command - the one way a settler becomes employed: bind an OWNED settler to a
  * SPECIFIC building as a worker (set its `jobType` to the building's open slot + stamp its
- * {@link JobAssignment} binding). It applies the same-tribe / same-owner / per-building capacity
- * gates, and enforces the per-settler XP threshold (`needforjob`) on a trade the settler does not yet hold -
- * a trade is earned by the settler, so a hand assignment cannot mint an unqualified craftsman; it falls
+ * {@link JobAssignment} binding). It applies the same-owner / per-building capacity gates, on a
+ * building of any tribe, and enforces the per-settler XP threshold (`needforjob`) on a trade the
+ * settler does not yet hold - a trade is earned by the settler, so a hand assignment cannot mint an unqualified craftsman; it falls
  * through to the next listed job (the hauler slot). The tribe-tech gate (`jobEnablesJob`) is not applied at
  * all, so a workshop is never refused for want of an enabling trade (the "mennica → tragarz" bug). See
  * openings.ts.
@@ -165,15 +165,14 @@ describe('assignWorker - bind an owned settler to a chosen building', () => {
     expect(sim.world.has(neutral, JobAssignment)).toBe(false);
   });
 
-  it('skips a workplace of ANOTHER TRIBE - the stamp on a building decides who may staff it', () => {
+  it("staffs its own side's workplace of another tribe - the owner decides, not the building's tribe", () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const frankMill = placeBuilding(sim, SAWMILL, 5, 5, FRANK);
     const viking = settler(sim);
 
     assignWorker(sim.world, ctxOf(sim), assign(viking, frankMill));
 
-    expect(sim.world.get(viking, Settler).jobType).toBeNull();
-    expect(sim.world.has(viking, JobAssignment)).toBe(false);
+    expect(sim.world.get(viking, JobAssignment).workplace).toBe(frankMill);
   });
 
   it('binds the FIRST job in the priority list that the building actually offers', () => {

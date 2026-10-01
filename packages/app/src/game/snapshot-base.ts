@@ -269,14 +269,6 @@ export function buildingTribeOf(e: SnapshotEntity): number | undefined {
   return num(b?.tribe);
 }
 
-/** The tribe a building, wall segment or road site is raised for. */
-export function siteTribeOf(e: SnapshotEntity): number | undefined {
-  const site = (e.components.Building ?? e.components.Palisade ?? e.components.RoadSite) as
-    | { tribe?: unknown }
-    | undefined;
-  return num(site?.tribe);
-}
-
 /** Fixed-point construction progress, where `ONE` is finished. */
 export function builtFractionOf(e: SnapshotEntity): number | undefined {
   const b = e.components.Building as { built?: unknown } | undefined;
@@ -411,10 +403,10 @@ export function settlerTribeOf(e: SnapshotEntity): number | undefined {
   return num(settler?.tribe);
 }
 
-/** A settler's or building's owner and tribe as one key: a building houses and employs only settlers
- *  with its key. */
-export function ownerTribeKeyOf(e: SnapshotEntity): string {
-  return `${ownerPlayerOf(e)}:${settlerTribeOf(e) ?? buildingTribeOf(e)}`;
+/** A settler's or building's owner as a key: a building houses and employs its owner's settlers of any
+ *  tribe. */
+export function ownerKeyOf(e: SnapshotEntity): string {
+  return `${ownerPlayerOf(e)}`;
 }
 
 /** The settler's need deficits, fixed-point 0..ONE where higher is worse. */

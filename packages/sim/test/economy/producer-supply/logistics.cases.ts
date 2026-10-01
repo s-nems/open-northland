@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Building,
   Carrying,
   CurrentAtomic,
   Health,
@@ -146,11 +147,25 @@ describe('carrier at a PRODUCING building - hauls the finished output OUT to a w
     const sinks = new SinkAvailability(sim.world, ctx);
     const deliverable = (good: number): boolean => sinks.has(good, /* excludeProducers */ true);
 
-    expect(boundProducerOutputToHaul(deliverable, sim.world, ctx, farmer, FARMER, VIKING)).toBeNull();
-    expect(boundProducerOutputToHaul(deliverable, sim.world, ctx, carrier, CARRIER, VIKING)).toMatchObject({
+    expect(boundProducerOutputToHaul(deliverable, sim.world, ctx, farmer, FARMER)).toBeNull();
+    expect(boundProducerOutputToHaul(deliverable, sim.world, ctx, carrier, CARRIER)).toMatchObject({
       home: farm,
       goodType: WHEAT,
     });
+  });
+
+  it("the carrier hauls out the wheat of its own player's farm of another tribe", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const farm = buildingAt(sim, FARM, 2, 0, [[WHEAT, 20]]);
+    sim.world.mut(farm, Building).tribe = VIKING + 1;
+    buildingAt(sim, GRANARY, 6, 0);
+    const carrier = settlerAt(sim, 2, 0, CARRIER, farm);
+    const ctx = ctxOf(sim);
+    const sinks = new SinkAvailability(sim.world, ctx);
+
+    const haul = boundProducerOutputToHaul((good) => sinks.has(good, true), sim.world, ctx, carrier, CARRIER);
+
+    expect(haul).toMatchObject({ home: farm, goodType: WHEAT });
   });
 
   it('does not haul when no OTHER store can take the output (never shuttles farm→farm)', () => {

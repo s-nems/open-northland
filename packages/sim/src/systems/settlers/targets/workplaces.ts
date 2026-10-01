@@ -36,7 +36,7 @@ export function boundWorkplaceTarget(
   if (binding === undefined) return null;
   const workplace = binding.workplace;
   const building = world.tryGet(workplace, Building);
-  if (building === undefined || building.tribe !== tribe) return null;
+  if (building === undefined) return null;
   // A trade needs its workhouse finished (`jobtypes.ini` `mustHaveFinishedWorkHouseFlag`, per-job data,
   // applied as a blanket because the flag is not extracted). An upgrading workplace stashes its stock,
   // which reads as empty input slots, so an ungated producer would shuttle inputs store to store.

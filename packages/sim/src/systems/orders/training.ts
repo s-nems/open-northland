@@ -1,10 +1,8 @@
 import {
-  Building,
   EquipOrder,
   GraduateWait,
   PlayerOrder,
   removeCurrentAtomic,
-  Settler,
   SiteAssignment,
   sameSide,
   TrainingOrder,
@@ -45,7 +43,6 @@ export function trainSoldier(
 export function mayDrillAt(world: World, ctx: SystemContext, e: Entity, house: Entity): boolean {
   if (!mayChangeTrade(world, e)) return false;
   if (!isBarracksOrFoundation(world, ctx, house)) return false;
-  if (world.get(e, Settler).tribe !== world.get(house, Building).tribe) return false;
   if (!sameSide(world, e, house)) return false;
   if (world.tryGet(e, TrainingOrder)?.house === house) return false; // already drilling here
   return mayWalkToDrill(world, ctx, e, house);

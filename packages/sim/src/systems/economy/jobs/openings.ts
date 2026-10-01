@@ -27,7 +27,9 @@ export interface OpeningsQuery extends NeedSubject {
  * Select the first offered, understaffed trade the worker qualifies for. Catalogs with explicit house
  * requirements separate construction discovery from staffing; a newly chosen trade must be known to
  * the player. Initial authored attachments and workers retaining their current trade keep their seats.
- * Foundation staffing and an upgrade's base-tier slot cap are authored approximations.
+ * Foundation staffing and an upgrade's base-tier slot cap are authored approximations. Original
+ * behavior: a building takes workers of any tribe on its side; only the trade is gated, by the
+ * settler's own tribe.
  */
 export function openWorkerJobFromList(
   query: OpeningsQuery,
@@ -36,7 +38,7 @@ export function openWorkerJobFromList(
 ): number | null {
   const { world, ctx, tribe } = query;
   const b = world.tryGet(building, Building);
-  if (b === undefined || b.tribe !== tribe) return null;
+  if (b === undefined) return null;
   if (!ownersCompatible(query.owner, ownerOf(world, building))) return null; // another player's workplace
   if (!query.authored && !workplaceStaffable(world, ctx, ownerOf(world, building), tribe, b.buildingType))
     return null;

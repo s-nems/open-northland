@@ -396,6 +396,13 @@ it('takes a pupil at a school foundation and teaches the lesson once the school 
   expect(sim.world.has(pupil, TrainingOrder)).toBe(false);
 });
 
+it("starts a lesson at its own player's school of another tribe", () => {
+  const { sim, pupil, school } = carpentrySchool(WOODCUTTER);
+  sim.world.mut(school, Building).tribe = TRIBE + 1;
+  learnCarpentry(sim, pupil, school);
+  expect(sim.world.get(pupil, TrainingOrder).house).toBe(school);
+});
+
 it('refuses a lesson in the trade the pupil already practises', () => {
   const { sim, pupil, school } = carpentrySchool(CARPENTER);
   learnCarpentry(sim, pupil, school);

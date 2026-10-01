@@ -4,8 +4,8 @@ import {
   buildingTypeOf,
   homeFamiliesOf,
   isBuilding,
+  ownerKeyOf,
   ownerPlayerOf,
-  ownerTribeKeyOf,
   residenceHomeOf,
   type SnapshotEntity,
   settlersIn,
@@ -18,7 +18,7 @@ export interface HouseInfo {
 }
 
 /**
- * The selected members a group home order moves, counted by owner and tribe, as the sim's
+ * The selected members a group home order moves, counted by owner, as the sim's
  * `groupPlacementOrder` picks them: the homeless while any member is homeless, otherwise everyone, less
  * the ones already living in the clicked home.
  */
@@ -38,7 +38,7 @@ function moversOf(snapshot: WorldSnapshot, settlerIds: readonly number[]): Mover
   const byKey = new Map<string, number>();
   const livingAt = new Map<number, Map<string, number>>();
   for (const e of movers) {
-    const key = ownerTribeKeyOf(e);
+    const key = ownerKeyOf(e);
     owners.add(ownerPlayerOf(e));
     byKey.set(key, (byKey.get(key) ?? 0) + 1);
     const home = residenceHomeOf(e);
@@ -63,7 +63,7 @@ function houseVerdict(
   if (info?.kind !== 'home' || !movers.owners.has(ownerPlayerOf(house))) {
     return { candidate: false, ok: false };
   }
-  const key = ownerTribeKeyOf(house);
+  const key = ownerKeyOf(house);
   const moving = (movers.byKey.get(key) ?? 0) - (movers.livingAt.get(house.id)?.get(key) ?? 0);
   const free = (homeFamiliesOf(snapshot, house.id)?.length ?? 0) < (info.homeSize ?? 0);
   return { candidate: true, ok: moving > 0 && free };

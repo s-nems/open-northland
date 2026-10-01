@@ -123,12 +123,11 @@ export function familiesOf(world: World, house: Entity): Entity[][] {
 /**
  * Reserve `house` for `e`'s household, where `e` is a settler. The reservation may be made while the home
  * is under construction; household drives continue to require {@link builtHomeType} before using it.
- * Refuses another tribe's home or one without a free family slot.
+ * Refuses a home without a free family slot; any tribe's home on the settler's side will do.
  */
 export function moveFamilyInto(world: World, ctx: SystemContext, e: Entity, house: Entity): void {
   const type = homeType(world, ctx, house);
   if (type === undefined) return;
-  if (world.get(house, Building).tribe !== world.get(e, Settler).tribe) return;
   const family = familyOf(world, e);
   const members = new Set(family);
   // The mover's own household is excluded, so a re-assign into the same home costs no extra slot.

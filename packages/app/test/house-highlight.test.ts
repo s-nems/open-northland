@@ -93,12 +93,10 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
     for (const id of [11, 14]) expect(houseAssignableAt(snap, id, [1], HOUSES)).toBe(false);
   });
 
-  it('reds an own home of ANOTHER TRIBE, which the sim’s assignHouse refuses', () => {
-    // A seat can field several tribes, so its own settlement holds homes this settler may not move
-    // into. Tinting one green would enqueue an order the sim silently drops.
+  it('greens an own home of another tribe, which the sim’s assignHouse accepts', () => {
     const snap = snapshotOf([person(1), home(10, HUMAN_PLAYER, HOME_TYPE, OTHER_TRIBE)]);
-    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, ok: false }]);
-    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(false);
+    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, ok: true }]);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(true);
   });
 
   it('verdicts stay in lockstep with the click resolver across a mixed world', () => {
@@ -124,8 +122,13 @@ describe('a home pick armed for a group', () => {
 
   it('moves only the homeless members while there are any', () => {
     // Home 20 has a free slot, but the only member who could take it is housed while another is homeless
-    // and of a tribe home 20 refuses: the sim tries the homeless alone, so the click would move nobody.
-    const snap = snapshotOf([person(1, { home: 10 }), person(2, { tribe: OTHER_TRIBE }), home(10), home(20)]);
+    // and of a seat home 20 refuses: the sim tries the homeless alone, so the click would move nobody.
+    const snap = snapshotOf([
+      person(1, { home: 10 }),
+      person(2, { player: ENEMY_PLAYER }),
+      home(10),
+      home(20),
+    ]);
     expect(houseAssignableAt(snap, 20, [1, 2], HOUSES)).toBe(false);
     expect(houseAssignableAt(snap, 20, [1], HOUSES)).toBe(true);
   });

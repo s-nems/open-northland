@@ -23,6 +23,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, ONE, Simulation } from '../../src/index.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
+import { towerPostFor } from '../../src/systems/conflict/tower-post.js';
 import { attackerWeapon } from '../../src/systems/conflict/weapons.js';
 import { combatSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
@@ -158,6 +159,14 @@ describe('engage ladder - the post rung sits above the busy rung', () => {
     sim.world.add(soldier, Engagement, { repathAt: sim.tick });
     return { sim, soldier };
   }
+
+  it("entitles a posted soldier to its own player's tower of another tribe", () => {
+    const { sim, soldier } = soldierClimbingToPost();
+    const tower = sim.world.get(soldier, JobAssignment).workplace;
+    sim.world.mut(tower, Building).tribe = FRANK;
+
+    expect(towerPostFor(sim.world, ctxOf(sim), soldier, SOLDIER)).toBe(tower);
+  });
 
   it('releases the engagement of a soldier still walking to its post, even mid-atomic', () => {
     const { sim, soldier } = soldierClimbingToPost();

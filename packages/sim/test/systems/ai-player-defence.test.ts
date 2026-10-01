@@ -40,6 +40,8 @@ import { grassNodeMap } from '../fixtures/terrain.js';
  */
 
 const VIKING = 1;
+/** Another tribe than the archers' own. */
+const FRANK = VIKING + 1;
 const SEAT = 2;
 const FOE = 3;
 const HQ_TYPE = 1;
@@ -424,6 +426,17 @@ describe('ai defence - the tower garrison', () => {
     expect(posted).toHaveLength(TOWER_GARRISON_ARCHERS);
     expect(posted.every((p) => p.building === tower)).toBe(true);
     expect(new Set(posted.map((p) => p.entity)).size).toBe(TOWER_GARRISON_ARCHERS);
+  });
+
+  it('walls its archers into its own tower of another tribe', () => {
+    const sim = aiSim();
+    const tower = place(sim, TOWER_TYPE, SEAT_TOWER);
+    sim.world.mut(tower, Building).tribe = FRANK;
+    spawn(sim, TOWER_GARRISON_ARCHERS, { x: SEAT_TOWER.x + 6, y: SEAT_TOWER.y }, BOWMAN);
+
+    const posted = postings(run(sim));
+    expect(posted).toHaveLength(TOWER_GARRISON_ARCHERS);
+    expect(posted.every((p) => p.building === tower)).toBe(true);
   });
 
   it('leaves a tower alone once its three are bound to it', () => {

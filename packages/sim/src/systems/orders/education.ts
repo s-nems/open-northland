@@ -39,7 +39,7 @@ export function learn(world: World, ctx: SystemContext, command: Extract<Command
     return;
   const settler = world.get(entity, Settler);
   const known = { jobType: settler.jobType, learned: world.get(entity, SettlerProgress).learned };
-  if (world.get(house, Building).tribe !== settler.tribe || knowsCourse(known, target, typeId)) return;
+  if (knowsCourse(known, target, typeId)) return;
   const owner = ownerOf(world, entity);
   if (!(target === 'job' ? jobEnabled : goodEnabled)(world, ctx, owner, settler.tribe, typeId)) return;
   const tribe = contentIndex(ctx.content).tribes.get(settler.tribe);

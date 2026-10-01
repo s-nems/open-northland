@@ -67,13 +67,12 @@ export function boundProducerOutputToHaul(
   ctx: SystemContext,
   settler: Entity,
   jobType: number,
-  tribe: number,
 ): { home: Entity; goodType: number } | null {
   const binding = world.tryGet(settler, JobAssignment);
   if (binding === undefined) return null;
   const home = binding.workplace;
   // The role gate is shared with `toStorageOffFarm`, so pickup and delivery routing cannot disagree.
-  if (!isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe)) return null;
+  if (!isFarmCarrierHaulOutRole(world, ctx, home, jobType)) return null;
   if (!world.has(home, Stockpile) || !world.has(home, Position)) return null;
   const stock = world.get(home, Stockpile).amounts;
   for (const goodType of buildingProduces(world, ctx, home)) {
@@ -92,14 +91,7 @@ export function boundProducerOutputToHaul(
  */
 export function porterPickupTarget(plan: PlannerContext): { from: Entity; goodType: number } | null {
   const deliverable = deliverableGoodProbe(plan);
-  const haul = boundProducerOutputToHaul(
-    deliverable,
-    plan.world,
-    plan.ctx,
-    plan.entity,
-    plan.jobType,
-    plan.tribe,
-  );
+  const haul = boundProducerOutputToHaul(deliverable, plan.world, plan.ctx, plan.entity, plan.jobType);
   if (haul !== null) return { from: haul.home, goodType: haul.goodType };
   const pile = nearestGroundPile(plan, { deliverable, area: haulFlagArea(plan) });
   return pile === null ? null : { from: pile.pile, goodType: pile.goodType };
