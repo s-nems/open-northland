@@ -4,7 +4,6 @@ import {
   GroundDrop,
   Palisade,
   Position,
-  Resource,
   ResourceFootprint,
   RoadSite,
   Stockpile,
@@ -342,7 +341,6 @@ interface StancePools {
   readonly content: ContentSet;
   buildings: ReadonlySet<NodeId>;
   resources: number;
-  resourceMembers: number;
   landscape: number;
   readonly removed: ChangeFeed;
   readonly resource: Map<Entity, StancePoolEntry>;
@@ -361,7 +359,6 @@ function stancePools(world: World, ctx: ContentContext, terrain: TerrainGraph): 
   const buildings = buildingBlockedCells(world, ctx, terrain);
   const resources = world.componentGeneration(ResourceFootprint);
   const landscape = landscapeTopologyRevision(world);
-  const resourceMembers = world.componentGeneration(Resource);
   if (pools === undefined || pools.terrain !== terrain || pools.content !== ctx.content) {
     const removed = pools?.removed ?? world.watchChanges([Position], []);
     pools = {
@@ -371,7 +368,6 @@ function stancePools(world: World, ctx: ContentContext, terrain: TerrainGraph): 
       content: ctx.content,
       buildings,
       resources,
-      resourceMembers,
       landscape,
       removed,
       resource: new Map(),
@@ -379,12 +375,7 @@ function stancePools(world: World, ctx: ContentContext, terrain: TerrainGraph): 
     stancePoolsByWorld.set(world, pools);
     world.registerCacheVerifier('interactionStancePools', () => verifyStancePools(world, ctx, terrain));
   }
-  if (
-    pools.buildings !== buildings ||
-    pools.resources !== resources ||
-    pools.resourceMembers !== resourceMembers ||
-    pools.landscape !== landscape
-  ) {
+  if (pools.buildings !== buildings || pools.resources !== resources || pools.landscape !== landscape) {
     // Keep records for reuse; callers may still hold their previous cells arrays.
     if (pools.epoch === Number.MAX_SAFE_INTEGER) {
       pools.resource.clear();
@@ -392,7 +383,6 @@ function stancePools(world: World, ctx: ContentContext, terrain: TerrainGraph): 
     } else pools.epoch += 1;
     pools.buildings = buildings;
     pools.resources = resources;
-    pools.resourceMembers = resourceMembers;
     pools.landscape = landscape;
   }
   pools.validatedAt = world.mutationVersion;
@@ -448,7 +438,6 @@ function verifyStancePools(world: World, ctx: ContentContext, terrain: TerrainGr
     pools.terrain !== terrain ||
     pools.content !== ctx.content ||
     pools.resources !== world.componentGeneration(ResourceFootprint) ||
-    pools.resourceMembers !== world.componentGeneration(Resource) ||
     pools.landscape !== landscapeTopologyRevision(world) ||
     pools.buildings !== buildingBlockedCells(world, ctx, terrain)
   )

@@ -3,7 +3,7 @@ import { fx } from '../../../src/core/fixed.js';
 import { Simulation } from '../../../src/index.js';
 import { CountedBlocks } from '../../../src/nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
-import { WalkFlood } from '../../../src/systems/ai-player/walk-distance.js';
+import { COST_PAGE_SIZE, WalkFlood } from '../../../src/systems/ai-player/walk-distance.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
 
@@ -75,11 +75,11 @@ describe('ai-player walk flood', () => {
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(48, 12) });
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim expected');
-    // These adjacent horizontal nodes straddle the 128-slot page boundary.
+    // These adjacent horizontal nodes straddle a page boundary.
     const nodes = [30, 31, 32, 33].map((hx) => terrain.nodeAt(hx, 2));
     const seed = nodes[0];
     if (seed === undefined) throw new Error('seed expected');
-    expect(nodes).toEqual([126, 127, 128, 129]);
+    expect(nodes).toEqual([COST_PAGE_SIZE - 2, COST_PAGE_SIZE - 1, COST_PAGE_SIZE, COST_PAGE_SIZE + 1]);
     const expected = [0, 0.5, 1, 1.5].map((cost) => fx.fromFloat(cost));
     const forward = new WalkFlood(terrain, NO_BLOCKS, [seed], WHOLE_BANK);
     const backward = new WalkFlood(terrain, NO_BLOCKS, [seed], WHOLE_BANK);

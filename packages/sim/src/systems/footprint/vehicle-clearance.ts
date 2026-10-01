@@ -16,9 +16,9 @@ import { standingWallCells } from './wall-joints.js';
 
 // The per-world free-size classes vehicles stand by and ships route by, over the ground walk-block
 // (buildings and walls, resources, landscapes; never vehicles, which the mover judges against each other
-// at step time). Membership changes replay through journals and a resource feed: a
-// placed, finished, swung or razed blocker re-derives the classes around its own cells, so the update cost
-// is local to the change. Land vehicles pass narrower gaps (`landVehicleFits`). Derived state, never hashed.
+// at step time). Membership changes replay through journals and a resource feed, and scripted
+// landscape edits replay the walk cells that entered or left: a placed, finished, swung or razed
+// blocker re-derives the classes around its own cells, so the update cost is local to the change. Land vehicles pass narrower gaps (`landVehicleFits`). Derived state, never hashed.
 
 interface ClearanceMemo {
   readonly content: ContentSet;
@@ -32,7 +32,7 @@ interface ClearanceMemo {
   buildingValueGen: number;
   readonly buildingTypes: Map<Entity, number>;
   /** The scripted landscape edits the probe's landscape layer keys on; a resource-backed placement
-   *  reaches the memo through the `ResourceFootprint` journal instead. */
+   *  reaches the memo through the `resources` feed instead. */
   landscapeRevision: number;
   landscapes: LandscapeBlocks;
   readonly landscapeCells: Set<NodeId>;
@@ -125,6 +125,7 @@ function rebuild(world: World, ctx: ContentContext, terrain: TerrainGraph): Clea
   world.journalValueWrites(Building);
   const resources = resourceFeedOf(world);
   resources.drain(ignoreChange);
+  const landscapes = landscapeBlocks(world, terrain);
   const memo: ClearanceMemo = {
     content: ctx.content,
     terrain,
@@ -134,8 +135,8 @@ function rebuild(world: World, ctx: ContentContext, terrain: TerrainGraph): Clea
     buildingValueGen: world.componentValueGeneration(Building),
     buildingTypes: new Map(),
     landscapeRevision: landscapeEditState(world).topologyRevision,
-    landscapes: landscapeBlocks(world, terrain),
-    landscapeCells: new Set(landscapeBlocks(world, terrain).walk),
+    landscapes,
+    landscapeCells: new Set(landscapes.walk),
     records: new Map(),
   };
   const ignored = new Set<NodeId>(); // the field was just built over the live overlay

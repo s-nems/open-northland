@@ -10,7 +10,7 @@ import { ClearanceField } from '../../src/nav/clearance.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
 import { groundBlockOverlay, vehicleClearance } from '../../src/systems/footprint/vehicle-clearance.js';
 import { removeLandscapes } from '../../src/systems/landscape/edits.js';
-import { landscapeBlocks } from '../../src/systems/landscape/view.js';
+import { landscapeBlocks, RETAINED_VIEWS } from '../../src/systems/landscape/view.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -129,7 +129,7 @@ it('replays landscape cells after the retained view chain is lost', () => {
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('map missing');
   const field = vehicleClearance(sim.world, ctxOf(sim), terrain);
-  for (let i = 0; i < 260; i++) {
+  for (let i = 0; i < RETAINED_VIEWS + 4; i++) {
     writeLandscapeEdits(sim.world, (state) => {
       state.topologyRevision++;
       state.added = i % 2 === 0 ? [{ id: 1, typeId: 1, hx: 10, hy: 6, level: 0 }] : [];

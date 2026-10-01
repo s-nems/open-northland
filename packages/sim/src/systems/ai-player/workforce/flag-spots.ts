@@ -50,7 +50,11 @@ function flagNodeKey(hx: number, hy: number): string {
 
 /** Manhattan distance between two half-cell nodes, the metric of the flag band. */
 export function nodeDistance(a: HalfCellNode, b: HalfCellNode): number {
-  return Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy);
+  return nodeDistanceFrom(a.hx, a.hy, b);
+}
+
+function nodeDistanceFrom(hx: number, hy: number, to: HalfCellNode): number {
+  return Math.abs(hx - to.hx) + Math.abs(hy - to.hy);
 }
 
 export function claimFlagNode(taken: TakenFlagNodes, spot: HalfCellNode): void {
@@ -173,11 +177,11 @@ export function flagSpotNear(
     // A straight-line leg is measured in half columns, the lattice's own E/W step.
     const resourceLeg =
       fromResource.costTo(node) ??
-      fx.add(unreached, fx.mul(fx.fromInt(Math.abs(x - centre.hx) + Math.abs(y - centre.hy)), HALF_COLUMN));
+      fx.add(unreached, fx.mul(fx.fromInt(nodeDistanceFrom(x, y, centre)), HALF_COLUMN));
     const weightedResourceLeg = fx.mul(fx.fromInt(GATHERER_LEG_WEIGHT), resourceLeg);
     const originLeg =
       fromOrigin.costTo(node) ??
-      fx.add(unreached, fx.mul(fx.fromInt(Math.abs(x - origin.hx) + Math.abs(y - origin.hy)), HALF_COLUMN));
+      fx.add(unreached, fx.mul(fx.fromInt(nodeDistanceFrom(x, y, origin)), HALF_COLUMN));
     return fx.add(weightedResourceLeg, originLeg);
   };
   return (

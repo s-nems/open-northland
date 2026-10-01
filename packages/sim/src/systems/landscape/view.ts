@@ -182,7 +182,7 @@ export interface LandscapeBlocks {
 
 /** Views kept linked behind the current one; a placement grid left unconsulted for longer re-reads
  *  the layer once rather than growing the chain for the rest of the session. */
-const RETAINED_VIEWS = 256;
+export const RETAINED_VIEWS = 256;
 
 /**
  * The counted cells behind {@link landscapeBlocks}, kept in step with the edit state one placement at
