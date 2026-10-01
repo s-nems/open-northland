@@ -554,7 +554,6 @@ export const enGame = {
         demolish: 'Demolish',
       },
       upgradeCost: 'Upgrade · {cost}',
-      upgradeTop: 'No higher tier',
       upgradeUnfinished: 'Upgrade once the building stands',
       hireTooltip: 'Who could become: {job}',
       hireNone: 'This building employs nobody',

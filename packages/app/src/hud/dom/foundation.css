@@ -5224,7 +5224,7 @@ body.on-drag-scroll * {
 }
 
 /* ---------- building panel: order tiles, alarm bell, staff wells, household wares, stock ---------- */
-/* Four labelled tiles in two rows fill the column beside the portrait, each in a fixed place. */
+/* Up to four labelled tiles in two rows fill the column beside the portrait, each in a fixed place. */
 .on-hud .on-orders--tiles {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;

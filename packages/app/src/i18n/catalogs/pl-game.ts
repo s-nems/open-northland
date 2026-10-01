@@ -536,7 +536,6 @@ export const plGame = {
         demolish: 'Zburz',
       },
       upgradeCost: 'Rozbuduj · {cost}',
-      upgradeTop: 'Nie ma wyższego poziomu',
       upgradeUnfinished: 'Rozbudowa po ukończeniu budowy',
       hireTooltip: 'Kto może zostać: {job}',
       hireNone: 'Ten budynek nikogo nie zatrudnia',

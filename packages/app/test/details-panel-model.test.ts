@@ -614,6 +614,16 @@ describe('selection details panel model', () => {
     expect(mature.homeQuality?.player).toBe(0);
   });
 
+  it('offers no Upgrade on a type without a higher tier', () => {
+    const top = buildUnitPanelModel(
+      snapshotOf([buildingEntity(1, BUILDING_MILL)], 1),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    if (top.kind !== 'building') throw new Error('expected a building panel');
+    expect(top.orders?.upgrade).toBeNull();
+  });
+
   it('offers Upgrade on a built chained home and Cancel in its place on a running upgrade site', () => {
     const built = buildUnitPanelModel(
       snapshotOf([buildingEntity(1, BUILDING_HOME_00)], 1),
@@ -649,7 +659,7 @@ describe('selection details panel model', () => {
     );
     if (upgrading.kind !== 'building') throw new Error('expected a building panel');
     // A running upgrade site offers Cancel in Upgrade's place; Upgrade itself waits for the house.
-    expect(upgrading.orders?.upgrade.control).toBe(messages().hud.buildingPanel.upgradeUnfinished);
+    expect(upgrading.orders?.upgrade?.control).toBe(messages().hud.buildingPanel.upgradeUnfinished);
     expect(upgrading.orders?.cancelUpgrade).toBe(true);
   });
 

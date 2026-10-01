@@ -83,9 +83,9 @@ export interface HomeQualityModel {
 
 /** The orders beside the portrait. A null order is not offered for this house. */
 export interface BuildingOrdersModel {
-  /** Rozbuduj: true or the refusal (no higher tier, an unfinished site, a technology), with the next
-   *  tier's bill. */
-  readonly upgrade: { readonly control: SeatControl; readonly cost: readonly UpgradeCostRow[] };
+  /** Rozbuduj: true or the refusal (an unfinished site, a technology), with the next tier's bill; null
+   *  for a type with no higher tier. */
+  readonly upgrade: { readonly control: SeatControl; readonly cost: readonly UpgradeCostRow[] } | null;
   /** Anuluj rozbudowę, while a tier is being raised; it stands in Rozbuduj's place. */
   readonly cancelUpgrade: boolean;
   /** The alarm toggle of a house that shelters civilians, and whether it is up. */
@@ -263,14 +263,13 @@ function ordersModel(
   const copy = messages().hud.buildingPanel;
   const tribe = buildingTribeOf(ent) ?? 0;
   const next = def?.upgradeTarget;
-  const blocked =
-    next === undefined ? null : (ctx.technologyReason?.('house', next, tribe, ownerPlayerOf(ent)) ?? null);
+  const upgradeControl = (target: number): SeatControl =>
+    !finished
+      ? copy.upgradeUnfinished
+      : (ctx.technologyReason?.('house', target, tribe, ownerPlayerOf(ent)) ?? true);
   const shelters = (def?.shelterCapacity ?? 0) > 0;
   return {
-    upgrade: {
-      control: next === undefined ? copy.upgradeTop : !finished ? copy.upgradeUnfinished : (blocked ?? true),
-      cost: upgradeCostRows(ctx, def),
-    },
+    upgrade: next === undefined ? null : { control: upgradeControl(next), cost: upgradeCostRows(ctx, def) },
     cancelUpgrade: ent.components.Upgrading !== undefined,
     // `shelterCapacity` is the gate the sim's `setDefenceMode` reads, so the toggle is never refused.
     alarm: shelters && finished ? { on: ent.components.DefenceMode !== undefined } : null,

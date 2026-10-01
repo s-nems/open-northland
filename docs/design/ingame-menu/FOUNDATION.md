@@ -543,13 +543,15 @@ saying what the press does or why it is refused.
   a house belongs to: tribe partitions its economy). A building has no action ring, so the gold
   medallion stays blank and keeps the heading centred.
 - Portrait row: the live building in the 96 × 92 px frame is the centre-view button, with the 7 px
-  wear bar under it (Wytrzymałość in its tooltip), as the vehicle's. Beside it four labelled order
-  tiles in two rows, each in a fixed place so the hand learns it: Rozbuduj (its tooltip the next tier's
-  bill; faded with the reason when there is no higher tier, the house is unfinished or a technology is
-  missing), Anuluj in its place while a tier is being raised, Pracownicy (opens Mieszkańcy filtered to
-  who could take the trade: a site's builders, a store's traders, else the house's own craft, one
-  with a free seat first, never its carriers or collectors; faded for a house employing none), Wiedza (the type's Knowledge entry), and Zburz in red,
-  which asks in the confirmation dialog first. Another seat's house offers Wiedza alone. The status
+  wear bar under it (Wytrzymałość in its tooltip), as the vehicle's. Beside it up to four labelled
+  order tiles in two rows, each in a fixed place so the hand learns it: Pracownicy (opens Mieszkańcy
+  filtered to who could take the trade: a site's builders, a store's traders, else the house's own
+  craft, one with a free seat first, never its carriers or collectors; faded for a house employing
+  none), Wiedza (the type's Knowledge entry), Zburz in red, which asks in the confirmation dialog
+  first, and last Rozbuduj (its tooltip the next tier's bill; faded with the reason when the house is
+  unfinished or a technology is missing), with Anuluj in its place while a tier is being raised. A
+  top tier has no Rozbuduj, so only the last place stays empty. Another seat's house offers Wiedza
+  alone. The status
   strip along the frame's floor carries the alarm bell at its end for a house that shelters civilians
   (gold while the alarm is up), shows its whole words in a tooltip when they are cut short, and names
   the first state that holds: Budowa or Rozbudowa with the percent and a proven stall (brak

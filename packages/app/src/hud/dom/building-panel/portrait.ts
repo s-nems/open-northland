@@ -1,5 +1,5 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
-import type { BuildingPanelModel } from '../../details-panel/model/index.js';
+import type { BuildingOrdersModel, BuildingPanelModel } from '../../details-panel/model/index.js';
 import { GLYPH } from '../icons.js';
 import {
   button,
@@ -28,9 +28,10 @@ export interface BuildingOrderView {
 }
 
 /**
- * The order tiles in their fixed places, so a hand learns them: Rozbuduj (Anuluj while a tier is being
- * raised), Pracownicy, Wiedza, Zburz. A refused order stays in its place, faded, its tooltip the reason.
- * Another seat's building offers Wiedza alone.
+ * The order tiles in their fixed places, so a hand learns them: Pracownicy, Wiedza, Zburz, then Rozbuduj
+ * (Anuluj while a tier is being raised), last so a top tier without it leaves no gap between the others.
+ * A refused order stays in its place, faded, its tooltip the reason. Another seat's building offers
+ * Wiedza alone.
  */
 export function orderViews(model: Pick<BuildingPanelModel, 'orders' | 'name'>): BuildingOrderView[] {
   const copy = messages().hud.buildingPanel;
@@ -44,33 +45,9 @@ export function orderViews(model: Pick<BuildingPanelModel, 'orders' | 'name'>): 
   };
   const orders = model.orders;
   if (orders === null) return [knowledge];
-  const upgrade = orders.upgrade;
-  const cost = upgrade.cost.map((line) => `${line.amount} ${line.label}`).join(', ');
-  const tier: BuildingOrderView = orders.cancelUpgrade
-    ? {
-        order: 'cancelUpgrade',
-        glyph: GLYPH.cancelUpgrade,
-        label: copy.orders.cancelUpgradeShort,
-        tooltip: copy.orders.cancelUpgrade,
-        enabled: true,
-        danger: false,
-      }
-    : {
-        order: 'upgrade',
-        glyph: GLYPH.upgrade,
-        label: copy.orders.upgrade,
-        tooltip:
-          upgrade.control !== true
-            ? upgrade.control
-            : cost === ''
-              ? copy.orders.upgrade
-              : formatMessage(copy.upgradeCost, { cost }),
-        enabled: upgrade.control === true,
-        danger: false,
-      };
   const hire = orders.hire;
+  const tier = tierView(orders);
   return [
-    tier,
     {
       order: 'workers',
       glyph: GLYPH.people,
@@ -88,7 +65,38 @@ export function orderViews(model: Pick<BuildingPanelModel, 'orders' | 'name'>): 
       enabled: true,
       danger: true,
     },
+    ...(tier === null ? [] : [tier]),
   ];
+}
+
+/** Anuluj while a tier is being raised, else Rozbuduj with its bill or refusal; null on a top tier. */
+function tierView(orders: BuildingOrdersModel): BuildingOrderView | null {
+  const copy = messages().hud.buildingPanel;
+  if (orders.cancelUpgrade)
+    return {
+      order: 'cancelUpgrade',
+      glyph: GLYPH.cancelUpgrade,
+      label: copy.orders.cancelUpgradeShort,
+      tooltip: copy.orders.cancelUpgrade,
+      enabled: true,
+      danger: false,
+    };
+  const upgrade = orders.upgrade;
+  if (upgrade === null) return null;
+  const cost = upgrade.cost.map((line) => `${line.amount} ${line.label}`).join(', ');
+  return {
+    order: 'upgrade',
+    glyph: GLYPH.upgrade,
+    label: copy.orders.upgrade,
+    tooltip:
+      upgrade.control !== true
+        ? upgrade.control
+        : cost === ''
+          ? copy.orders.upgrade
+          : formatMessage(copy.upgradeCost, { cost }),
+    enabled: upgrade.control === true,
+    danger: false,
+  };
 }
 
 /** The portrait block: the live building's frame as the centre-view button with its wear under it, and

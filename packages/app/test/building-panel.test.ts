@@ -309,7 +309,7 @@ describe('building panel orders and alerts', () => {
       1,
     );
     expect(site.orders?.hire?.jobType).toBe(JOB_BUILDER);
-    expect(site.orders?.upgrade.control).not.toBe(true);
+    expect(site.orders?.upgrade?.control).not.toBe(true);
     expect(buildingModel([buildingEntity(1, BUILDING_HOME_00)], 1).orders?.hire).toBeNull();
   });
 
@@ -403,29 +403,34 @@ describe('building orders', () => {
     ...patch,
   });
 
-  it('keeps four tiles in fixed places: the tier with its bill, Pracownicy, Wiedza, Zburz in red', () => {
+  it('keeps four tiles in fixed places: Pracownicy, Wiedza, Zburz in red, then the tier with its bill', () => {
     const views = orderViews({ orders: orders({}), name: 'Młyn' });
-    expect(views.map((view) => view.order)).toEqual(['upgrade', 'workers', 'knowledge', 'demolish']);
-    expect(views[0]?.tooltip).toBe(formatMessage(copy.upgradeCost, { cost: '4 Drewno' }));
-    expect(views[1]).toMatchObject({
+    expect(views.map((view) => view.order)).toEqual(['workers', 'knowledge', 'demolish', 'upgrade']);
+    expect(views[0]).toMatchObject({
       enabled: true,
       tooltip: formatMessage(copy.hireTooltip, { job: 'Tragarz' }),
     });
-    expect(views[2]?.tooltip).toBe(formatMessage(copy.knowledgeTooltip, { name: 'Młyn' }));
-    expect(views[3]).toMatchObject({ enabled: true, danger: true });
+    expect(views[1]?.tooltip).toBe(formatMessage(copy.knowledgeTooltip, { name: 'Młyn' }));
+    expect(views[2]).toMatchObject({ enabled: true, danger: true });
+    expect(views[3]?.tooltip).toBe(formatMessage(copy.upgradeCost, { cost: '4 Drewno' }));
   });
 
   it('fades a refused tile in its place with the reason, and sets Cancel where Upgrade stood', () => {
     const refused = orderViews({
-      orders: orders({ upgrade: { control: copy.upgradeTop, cost: [] }, hire: null }),
+      orders: orders({ upgrade: { control: copy.upgradeUnfinished, cost: [] }, hire: null }),
       name: 'Dom',
     });
-    expect(refused.map((view) => view.order)).toEqual(['upgrade', 'workers', 'knowledge', 'demolish']);
-    expect(refused[0]).toMatchObject({ enabled: false, tooltip: copy.upgradeTop });
-    expect(refused[1]).toMatchObject({ enabled: false, tooltip: copy.hireNone });
-    expect(orderViews({ orders: orders({ cancelUpgrade: true }), name: 'Dom' })[0]?.order).toBe(
+    expect(refused.map((view) => view.order)).toEqual(['workers', 'knowledge', 'demolish', 'upgrade']);
+    expect(refused[0]).toMatchObject({ enabled: false, tooltip: copy.hireNone });
+    expect(refused[3]).toMatchObject({ enabled: false, tooltip: copy.upgradeUnfinished });
+    expect(orderViews({ orders: orders({ cancelUpgrade: true }), name: 'Dom' })[3]?.order).toBe(
       'cancelUpgrade',
     );
+  });
+
+  it('drops the Upgrade tile on a top tier, leaving the other three in their places', () => {
+    const top = orderViews({ orders: orders({ upgrade: null }), name: 'Dom' });
+    expect(top.map((view) => view.order)).toEqual(['workers', 'knowledge', 'demolish']);
   });
 
   it("offers only Wiedza on another seat's house", () => {
