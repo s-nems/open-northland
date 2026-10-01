@@ -1,6 +1,7 @@
 import * as sim from '@open-northland/sim';
 import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { createMessageFeed } from '../src/hud/tool-panel/messages/feed.js';
 import {
   createSnapshotMessageSource,
   IDLE_SWEEPS_BEFORE_MESSAGE,
@@ -146,7 +147,7 @@ function sweep(
 const belowAlert = systems.NEED_CRITICAL_THRESHOLD - 1;
 
 describe('user messages read off the snapshot', () => {
-  it('raises hungry at the bubble threshold, starving on a pinned bar, nothing below', () => {
+  it('raises hungry at the bubble threshold, only starving on a pinned bar, nothing below', () => {
     const source = createSnapshotMessageSource(LOCAL);
     const out = sweep(
       source,
@@ -158,12 +159,11 @@ describe('user messages read off the snapshot', () => {
     );
     expect(out).toEqual([
       [USER_MESSAGE_TYPE.hungry, 2],
-      [USER_MESSAGE_TYPE.hungry, 3],
       [USER_MESSAGE_TYPE.starving, 3],
     ]);
   });
 
-  it('warns about any settler whose pool has nearly run out, fed or wounded', () => {
+  it('warns about any settler whose pool has nearly run out, fed or wounded, in place of its hunger', () => {
     const source = createSnapshotMessageSource(LOCAL);
     const out = sweep(
       source,
@@ -176,12 +176,8 @@ describe('user messages read off the snapshot', () => {
       ]),
     );
     expect(out).toEqual([
-      [USER_MESSAGE_TYPE.hungry, 1],
       [USER_MESSAGE_TYPE.starving, 1],
-      [USER_MESSAGE_TYPE.hungry, 2],
-      [USER_MESSAGE_TYPE.starving, 2],
       [USER_MESSAGE_TYPE.willDie, 2],
-      [USER_MESSAGE_TYPE.hungry, 3],
       [USER_MESSAGE_TYPE.starving, 3],
       [USER_MESSAGE_TYPE.willDie, 4],
     ]);
@@ -241,9 +237,7 @@ describe('user messages read off the snapshot', () => {
       ]),
     );
     expect(out).toEqual([
-      [USER_MESSAGE_TYPE.hungry, 1],
       [USER_MESSAGE_TYPE.starving, 1],
-      [USER_MESSAGE_TYPE.hungry, 4],
       [USER_MESSAGE_TYPE.starving, 4],
     ]);
   });
@@ -260,14 +254,33 @@ describe('user messages read off the snapshot', () => {
 
   it('sweeps once per interval and composes the text only when asked', () => {
     const source = createSnapshotMessageSource(LOCAL);
-    const actors: Actor[] = [{ id: 1, hunger: ONE }];
+    const actors: Actor[] = [{ id: 1, hunger: ONE, fatigue: ONE }];
     const first = source.sweep(snapshot(100, actors), naming);
     expect(first.map((r) => r.compose().full)).toEqual([
-      `S1:${USER_MESSAGE_TYPE.hungry}`,
       `S1:${USER_MESSAGE_TYPE.starving}`,
+      `S1:${USER_MESSAGE_TYPE.tired}`,
     ]);
     expect(sweep(source, snapshot(100 + SNAPSHOT_SWEEP_INTERVAL_TICKS - 1, actors))).toEqual([]);
     expect(sweep(source, snapshot(100 + SNAPSHOT_SWEEP_INTERVAL_TICKS, actors))).toHaveLength(2);
+  });
+
+  it('re-raises the standing states at once on a fresh mount, as after a reload', () => {
+    const late = 100 * SNAPSHOT_SWEEP_INTERVAL_TICKS;
+    const actors: Actor[] = [
+      { id: 1, lost: true },
+      { id: 2, hunger: ONE, doing: 'work' },
+      { id: 3, childOrder: { blocked: 'husbandAway' }, spouse: 4, doing: 'work' },
+      { id: 4, spouse: 3, doing: 'work' },
+    ];
+    const feed = createMessageFeed();
+    for (const r of createSnapshotMessageSource(LOCAL).sweep(snapshot(late, actors), naming)) {
+      feed.add(r.pending, late, r.compose);
+    }
+    expect(feed.live().map((m) => [m.type, m.subject?.entity])).toEqual([
+      [USER_MESSAGE_TYPE.lostWithoutSignposts, 1],
+      [USER_MESSAGE_TYPE.starving, 2],
+      [USER_MESSAGE_TYPE.familyBlocked, 3],
+    ]);
   });
 
   describe('a worker with nothing to do', () => {

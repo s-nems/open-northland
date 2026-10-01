@@ -1,3 +1,5 @@
+import { TICKS_PER_SECOND } from '@open-northland/sim';
+import { HUNGER_CHAIN, hungerStageOf, lifecycleOf } from './lifecycle.js';
 import {
   cycleMessageLevel,
   DEFAULT_MESSAGE_LEVEL,
@@ -5,59 +7,63 @@ import {
   messagePriority,
 } from './priority.js';
 import type { MessageText } from './text.js';
-import {
-  type MessagePriorityLevel,
-  type PendingMessage,
-  USER_MESSAGE_TYPE,
-  type UserMessage,
-  type UserMessageType,
-} from './types.js';
+import type { MessagePriorityLevel, MessageSubject, PendingMessage, UserMessage } from './types.js';
 
-/** Ticks a note stays on the strip, and a dismissed note keeps its repeat away (approximation
- *  of the original). */
-export const MESSAGE_LIFETIME_TICKS = 3600;
-/** Slots in each of the displayed and the history buffer; a full strip rejects arrivals (approximation
- *  of the original). */
+const SECONDS_PER_MINUTE = 60;
+/** Ticks an event note stays on the strip (approximation of the original's five minutes). */
+export const MESSAGE_LIFETIME_TICKS = 5 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+/** Ticks a dismissed event note keeps its repeat away, counted from the dismissal: as long as the note
+ *  would have stood had it just arrived. */
+export const DISMISSED_EVENT_BLOCK_TICKS = MESSAGE_LIFETIME_TICKS;
+/** Slots in each of the displayed and the history buffer; a full strip rejects arrivals and a full
+ *  history forgets its oldest dismissal (approximation of the original). */
 export const MESSAGE_SLOTS = 200;
 /** Events raised while the world is still being assembled never become notes: authored spawns land on
  *  the first step, and every adult they place would otherwise be announced as born. */
 const SETUP_TICKS_MUTED = 1;
-/** A note that reports a state the sim keeps a marker for: it ends with the marker, not with the
- *  lifetime or the selection. Departs from the original, whose lost worker is back at work within seconds;
- *  here a lost settler stands, so the note stands with it. */
-export function isStandingNote(type: UserMessageType): boolean {
-  return type === USER_MESSAGE_TYPE.lostWithoutSignposts;
+
+/** A dismissed note and the tick the player dismissed it on. */
+export interface DismissedMessage extends UserMessage {
+  readonly dismissedAt: number;
 }
 
 export interface MessageFeedState {
   readonly level: MessagePriorityLevel;
   readonly nextId: number;
   readonly live: readonly UserMessage[];
-  readonly history: readonly UserMessage[];
+  readonly history: readonly DismissedMessage[];
 }
 
-export type MessageAddOutcome = 'accepted' | 'muted' | 'duplicate' | 'full';
+/** `superseded`: a heavier stage of the settler's hunger chain is shown or dismissed. */
+export type MessageAddOutcome = 'accepted' | 'muted' | 'duplicate' | 'superseded' | 'full';
 
 /** How many live notes carry each priority, indexed by level. */
 export type MessageTally = readonly [routine: number, notable: number, important: number];
 
 /**
- * The message manager: the notes it keeps, what it remembers, and the player's filter level. The level
- * only hides: a note below the bar stays live and counted, and raising the bar back shows it again.
- * Departs from the original, which drops filtered arrivals and the displayed notes under a raised bar.
+ * The message manager: the notes it keeps, the dismissals it remembers, and the player's filter level.
+ * The level only hides: a note below the bar stays live and counted, and raising the bar back shows it
+ * again. Departs from the original, which drops filtered arrivals and the displayed notes under a raised
+ * bar.
  */
 export interface MessageFeed {
   level(): MessagePriorityLevel;
   setLevel(level: MessagePriorityLevel): void;
   cycleLevel(): MessagePriorityLevel;
-  /** `compose` runs only for an accepted message, so a flood of repeats costs no text. */
-  add(pending: PendingMessage, tick: number, compose: () => MessageText): MessageAddOutcome;
-  /** Dismiss one note; `toHistory` keeps its repeat away for the lifetime. */
-  remove(id: number, toHistory: boolean): boolean;
+  /** `compose` runs only for an accepted message, so a flood of repeats costs no text. `stackStages`
+   *  gives every hunger stage its own card, for the gallery that shows each row. */
+  add(
+    pending: PendingMessage,
+    tick: number,
+    compose: () => MessageText,
+    stackStages?: boolean,
+  ): MessageAddOutcome;
+  /** Dismiss one note on `tick`; its repeat stays away while its state lasts, or for the event block. */
+  remove(id: number, tick: number): boolean;
   /** Dismiss every note the level shows; the ones hidden under it were never seen, so they stay. */
-  removeAll(toHistory: boolean): void;
-  /** Drop notes `over` reports as ended and, unless `ageless`, notes past their lifetime (dismissed
-   *  notes then also stay remembered for good). */
+  removeAll(tick: number): void;
+  /** Drop notes and dismissals `over` reports as ended, event notes past their lifetime and event
+   *  dismissals past their block. `ageless` skips both clocks, so only `over` ends anything. */
   expire(tick: number, over: (m: UserMessage) => boolean, ageless?: boolean): void;
   /** Every live note, in arrival order. */
   live(): readonly UserMessage[];
@@ -74,31 +80,40 @@ export function defaultMessageFeedState(): MessageFeedState {
   return { level: DEFAULT_MESSAGE_LEVEL, nextId: 1, live: [], history: [] };
 }
 
-/** The original's whole-record comparison, minus the stamp fields the feed assigns and minus the
- *  position: a settler that walked between two raises still repeats one message, not two. */
+function subjectKey(subject: MessageSubject | null, about: number | null): string {
+  return subject === null ? `about:${about ?? ''}` : `${subject.kind}:${subject.entity}`;
+}
+
+/**
+ * The original's whole-record comparison, minus the stamp fields the feed assigns and minus the
+ * position: a settler that walked between two raises still repeats one message, not two. A state note
+ * is one per subject and reason, whatever trade the settler holds meanwhile.
+ */
 function identityKey(m: PendingMessage): string {
-  const subject = m.subject === null ? `about:${m.about ?? ''}` : `${m.subject.kind}:${m.subject.entity}`;
+  if (lifecycleOf(m.type) === 'state') {
+    return `${m.type}|${subjectKey(m.subject, m.about)}|${m.familyWait ?? ''}`;
+  }
   const technologies =
     m.technologies === null
       ? ''
       : m.technologies.map((technology) => `${technology.kind}:${technology.typeId}`).join(',');
-  return `${m.type}|${subject}|${m.goodType ?? ''}|${m.jobType ?? ''}|${technologies}|${m.familyWait ?? ''}`;
+  return `${m.type}|${subjectKey(m.subject, m.about)}|${m.goodType ?? ''}|${m.jobType ?? ''}|${technologies}|${m.familyWait ?? ''}`;
 }
 
-function expired(m: UserMessage, tick: number): boolean {
-  return !isStandingNote(m.type) && tick - m.tick >= MESSAGE_LIFETIME_TICKS;
+function sameSubject(a: PendingMessage, b: PendingMessage): boolean {
+  return subjectKey(a.subject, a.about) === subjectKey(b.subject, b.about);
 }
 
 /** One of the two buffers: insertion order plus an identity index for the exact-match test. */
-class MessageList {
-  readonly items: UserMessage[] = [];
+class MessageList<T extends UserMessage> {
+  readonly items: T[] = [];
   private readonly byKey = new Map<string, number>();
 
-  constructor(initial: readonly UserMessage[]) {
+  constructor(initial: readonly T[]) {
     for (const m of initial) this.push(m);
   }
 
-  push(m: UserMessage): void {
+  push(m: T): void {
     this.items.push(m);
     this.byKey.set(identityKey(m), (this.byKey.get(identityKey(m)) ?? 0) + 1);
   }
@@ -114,7 +129,7 @@ class MessageList {
   }
 
   /** Remove every entry `keep` rejects, handing each to `dropped`; true when anything went. */
-  prune(keep: (m: UserMessage) => boolean, dropped?: (m: UserMessage) => void): boolean {
+  prune(keep: (m: T) => boolean, dropped?: (m: T) => void): boolean {
     let firstDrop = -1;
     for (let i = 0; i < this.items.length; i++) {
       const m = this.items[i];
@@ -139,7 +154,7 @@ class MessageList {
     return true;
   }
 
-  private uncount(m: UserMessage): void {
+  private uncount(m: T): void {
     const key = identityKey(m);
     const count = (this.byKey.get(key) ?? 1) - 1;
     if (count <= 0) this.byKey.delete(key);
@@ -150,19 +165,26 @@ class MessageList {
 export function createMessageFeed(initial: MessageFeedState = defaultMessageFeedState()): MessageFeed {
   let level = initial.level;
   let nextId = initial.nextId;
-  const live = new MessageList(initial.live);
-  const history = new MessageList(initial.history);
+  const live = new MessageList<UserMessage>(initial.live);
+  const history = new MessageList<DismissedMessage>(initial.history);
   let version = 0;
 
-  const remember = (m: UserMessage): void => {
-    if (history.items.length >= MESSAGE_SLOTS) history.shift();
-    history.push(m);
-  };
-
-  const dropDisplayed = (keep: (m: UserMessage) => boolean, toHistory: boolean): boolean => {
-    const changed = live.prune(keep, toHistory ? remember : undefined);
+  const dismiss = (keep: (m: UserMessage) => boolean, tick: number): boolean => {
+    const changed = live.prune(keep, (m) => {
+      if (history.items.length >= MESSAGE_SLOTS) history.shift();
+      history.push({ ...m, dismissedAt: tick });
+    });
     if (changed) version++;
     return changed;
+  };
+
+  /** Whether a heavier stage of the pending note's hunger chain stands for the same settler, shown or
+   *  dismissed. A dismissed heavier card silences the lighter stages until its own cause passes. */
+  const heavierStageHeld = (pending: PendingMessage, stage: number): boolean => {
+    return HUNGER_CHAIN.slice(stage + 1).some((heavier) => {
+      const held = { ...pending, type: heavier };
+      return live.matches(held) || history.matches(held);
+    });
   };
 
   const setLevel = (next: MessagePriorityLevel): void => {
@@ -178,25 +200,33 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
       setLevel(cycleMessageLevel(level));
       return level;
     },
-    add: (pending, tick, compose): MessageAddOutcome => {
+    add: (pending, tick, compose, stackStages = false): MessageAddOutcome => {
       if (tick <= SETUP_TICKS_MUTED) return 'muted';
       if (history.matches(pending)) return 'duplicate';
-      if (live.items.length >= MESSAGE_SLOTS) return 'full';
-      const priority = messagePriority(pending.type);
+      const stage = stackStages ? undefined : hungerStageOf(pending.type);
+      if (stage !== undefined && heavierStageHeld(pending, stage)) return 'superseded';
       if (live.matches(pending)) return 'duplicate';
-      live.push({ ...pending, id: nextId, priority, tick, text: compose() });
+      if (live.items.length >= MESSAGE_SLOTS) return 'full';
+      if (stage !== undefined && stage > 0) {
+        // The heavier stage takes the lighter card's place rather than stacking beside it.
+        live.prune((m) => {
+          const lighter = hungerStageOf(m.type);
+          return lighter === undefined || lighter >= stage || !sameSubject(m, pending);
+        });
+      }
+      live.push({ ...pending, id: nextId, priority: messagePriority(pending.type), tick, text: compose() });
       nextId++;
       version++;
       return 'accepted';
     },
-    remove: (id, toHistory) => dropDisplayed((m) => m.id !== id, toHistory),
-    removeAll: (toHistory) => {
-      dropDisplayed((m) => !messagePassesFilter(m.priority, level), toHistory);
+    remove: (id, tick) => dismiss((m) => m.id !== id, tick),
+    removeAll: (tick) => {
+      dismiss((m) => !messagePassesFilter(m.priority, level), tick);
     },
     expire: (tick, over, ageless = false) => {
-      const keep = (m: UserMessage): boolean => (ageless || !expired(m, tick)) && !over(m);
-      dropDisplayed(keep, false);
-      history.prune(keep);
+      const isEvent = (m: UserMessage): boolean => !ageless && lifecycleOf(m.type) === 'event';
+      if (live.prune((m) => !(isEvent(m) && tick - m.tick >= MESSAGE_LIFETIME_TICKS) && !over(m))) version++;
+      history.prune((m) => !(isEvent(m) && tick - m.dismissedAt >= DISMISSED_EVENT_BLOCK_TICKS) && !over(m));
     },
     live: () => live.items,
     displayed: () => live.items.filter((m) => messagePassesFilter(m.priority, level)),

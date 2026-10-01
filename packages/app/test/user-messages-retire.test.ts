@@ -1,6 +1,8 @@
 import { ONE, components as simComponents, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { isNoteOver, LOST_NOTE_HOLD_TICKS } from '../src/hud/tool-panel/messages/retire.js';
+import { JOB_CARRIER, JOB_SOLDIER } from '../src/catalog/jobs.js';
+import { DYING_NOTE_RETIRE_MARGIN_PER_MILLE } from '../src/hud/tool-panel/messages/from-snapshot.js';
+import { LOST_NOTE_HOLD_TICKS, NoteRetirement } from '../src/hud/tool-panel/messages/retire.js';
 import {
   USER_MESSAGE_TYPE,
   type UserMessage,
@@ -11,6 +13,12 @@ const RAISED = 100;
 const HELD = RAISED + LOST_NOTE_HOLD_TICKS - 1;
 const RELEASED = RAISED + LOST_NOTE_HOLD_TICKS;
 const SETTLER = 7;
+const PER_MILLE = 1000;
+
+/** One fresh retirement per question: every rule but the no-path watch reads the snapshot alone. */
+function isNoteOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
+  return new NoteRetirement().isOver(m, snapshot);
+}
 
 function world(tick: number, settler: 'lost' | 'found' | 'gone'): WorldSnapshot {
   if (settler === 'gone') return { tick, events: [], entities: [] };
@@ -145,7 +153,6 @@ describe('note retirement', () => {
   it('ends nothing-to-do when the settler starts an activity or no longer has that workplace', () => {
     const idle = note(USER_MESSAGE_TYPE.nothingToDo);
     expect(isNoteOver(idle, idleWorld('idle-at-workplace'))).toBe(false);
-    expect(isNoteOver(idle, idleWorld('walking'))).toBe(true);
     expect(isNoteOver(idle, idleWorld('working'))).toBe(true);
     expect(isNoteOver(idle, idleWorld('idle-without-workplace'))).toBe(true);
   });
@@ -153,7 +160,6 @@ describe('note retirement', () => {
   it('ends workplace-not-found when the settler acts or receives a workplace substitute', () => {
     const missing = note(USER_MESSAGE_TYPE.workplaceNotFound);
     expect(isNoteOver(missing, idleWorld('idle-without-workplace'))).toBe(false);
-    expect(isNoteOver(missing, idleWorld('walking'))).toBe(true);
     expect(isNoteOver(missing, idleWorld('working'))).toBe(true);
     expect(isNoteOver(missing, idleWorld('idle-at-workplace'))).toBe(true);
     expect(isNoteOver(missing, idleWorld('has-flag'))).toBe(true);
@@ -182,11 +188,25 @@ describe('note retirement', () => {
     expect(isNoteOver(held, order(null))).toBe(true);
   });
 
-  it('ends a near-death note once the settler heals out of danger', () => {
-    const MAX = 1000;
+  it('keeps an idle note through a walk, which keeps the idle run, and ends it on a held post', () => {
+    const idle = note(USER_MESSAGE_TYPE.workplaceNotFound);
+    expect(isNoteOver(idle, idleWorld('walking'))).toBe(false);
+    const guard = subjectWorld({ Stance: { mode: systems.MILITARY_MODE.DEFEND, anchorCell: null } });
+    expect(isNoteOver(idle, guard)).toBe(true);
+  });
+
+  it('ends a near-death note only once the settler heals a margin past the line it was raised on', () => {
+    const MAX = systems.HUMAN_HITPOINTS;
     const dying = note(USER_MESSAGE_TYPE.willDie);
     const health = (hitpoints: number): WorldSnapshot => subjectWorld({ Health: { hitpoints, max: MAX } });
+    let line = 1;
+    while (systems.isNearDeath(line + 1, MAX)) line++;
+    const margin = (MAX * DYING_NOTE_RETIRE_MARGIN_PER_MILLE) / PER_MILLE;
     expect(isNoteOver(dying, health(1))).toBe(false);
+    // Regeneration ticking across the raise line between blows keeps the card.
+    expect(isNoteOver(dying, health(line + 1))).toBe(false);
+    expect(isNoteOver(dying, health(line + margin))).toBe(false);
+    expect(isNoteOver(dying, health(line + margin + 1))).toBe(true);
     expect(isNoteOver(dying, health(MAX))).toBe(true);
   });
 
@@ -205,6 +225,50 @@ describe('note retirement', () => {
     const cart = (harnessed: boolean): WorldSnapshot => subjectWorld({ Vehicle: { harnessed } });
     expect(isNoteOver(note(USER_MESSAGE_TYPE.vehicleNoAnimal, vehicle), cart(false))).toBe(false);
     expect(isNoteOver(note(USER_MESSAGE_TYPE.vehicleNoAnimal, vehicle), cart(true))).toBe(true);
+  });
+
+  it('ends a no-carrier note once a carrier or a commander boards, not for any other rider', () => {
+    const vehicle = { kind: 'vehicle', entity: SETTLER } as const;
+    const RIDER = SETTLER + 1;
+    const aboard = (slots: readonly (number | null)[], riderJob: number): WorldSnapshot => ({
+      tick: RELEASED,
+      events: [],
+      entities: [
+        {
+          id: SETTLER,
+          components: {
+            Vehicle: { passengers: slots.map((entity) => (entity === null ? null : { entity })) },
+          },
+        },
+        { id: RIDER, components: { Settler: { tribe: 1, jobType: riderJob } } },
+      ],
+    });
+    const noCarrier = note(USER_MESSAGE_TYPE.vehicleNoCarrier, vehicle);
+    expect(isNoteOver(noCarrier, aboard([null, null], JOB_CARRIER))).toBe(false);
+    expect(isNoteOver(noCarrier, aboard([RIDER, null], JOB_SOLDIER))).toBe(false);
+    expect(isNoteOver(noCarrier, aboard([RIDER, null], JOB_CARRIER))).toBe(true);
+    expect(isNoteOver(noCarrier, aboard([null, RIDER], JOB_SOLDIER))).toBe(true);
+  });
+
+  it('ends a no-path note on a drive that starts after the vehicle stood, not the one under way', () => {
+    const vehicle = { kind: 'vehicle', entity: SETTLER } as const;
+    const noPath = note(USER_MESSAGE_TYPE.vehicleNoPath, vehicle);
+    const cart = (driving: boolean): WorldSnapshot =>
+      subjectWorld({ Vehicle: { passengers: [] }, ...(driving ? { VehicleDrive: { step: 0 } } : {}) });
+    const retirement = new NoteRetirement();
+    const pass = (driving: boolean): boolean => {
+      const over = retirement.isOver(noPath, cart(driving));
+      retirement.endPass();
+      return over;
+    };
+    // A redirect refused mid-drive: the old drive runs on, then the cart stands, then drives again.
+    expect(pass(true)).toBe(false);
+    expect(pass(true)).toBe(false);
+    expect(pass(false)).toBe(false);
+    expect(pass(true)).toBe(true);
+    // A note no pass looks at any more is forgotten, so its id starts over.
+    retirement.endPass();
+    expect(pass(true)).toBe(false);
   });
 
   it('ends a no-cart note once the trader rides or its route falls short', () => {

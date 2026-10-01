@@ -90,7 +90,7 @@ export interface PendingMessage {
 export interface UserMessage extends PendingMessage {
   readonly id: number;
   readonly priority: MessagePriorityLevel;
-  /** The sim tick the feed accepted it on; lifetime and history expiry count from here. */
+  /** The sim tick the feed accepted it on; an event note's lifetime counts from here. */
   readonly tick: number;
   readonly text: MessageText;
 }

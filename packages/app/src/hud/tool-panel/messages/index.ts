@@ -28,7 +28,7 @@ import { messagesFromEvents } from './from-events.js';
 import { createSnapshotMessageSource, SNAPSHOT_SWEEP_INTERVAL_TICKS } from './from-snapshot.js';
 import { galleryMessages, type NoticeGallery } from './gallery.js';
 import type { MessageNaming } from './raise.js';
-import { isNoteOver, isSubjectGone } from './retire.js';
+import { isSubjectGone, NoteRetirement } from './retire.js';
 import { createSeatFeeds } from './seat-feeds.js';
 import { composeMessageText } from './text.js';
 import type { UserMessage } from './types.js';
@@ -170,6 +170,10 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const naming = makeNaming(deps);
   let snapshotSource = feeds.seat === null ? null : createSnapshotMessageSource(feeds.seat);
   let diplomacySource = createDiplomacyMessageSource(deps.metSeats);
+  // Keyed by note id, so it starts over with every feed it serves.
+  let retirement = new NoteRetirement();
+  // The tick of the last presented snapshot, which a dismissal is stamped with.
+  let presentedTick = 0;
   const select = (m: UserMessage): void => deps.onSelect({ entity: m.subject?.entity ?? null, at: m.at });
   const art = createNoticeArt();
   const column = createNoticeColumn({
@@ -191,11 +195,11 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     },
     onDismiss: (id) => {
       ctx.cue('confirm');
-      feeds.current.remove(id, true);
+      feeds.current.remove(id, presentedTick);
     },
     onDismissAll: () => {
       ctx.cue('confirm');
-      feeds.current.removeAll(true);
+      feeds.current.removeAll(presentedTick);
     },
   });
   const figures = new NoticeFigures(deps.sheet, deps.figureFrames, deps.playerColourOf);
@@ -208,6 +212,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     if (!feeds.switchTo(seat)) return;
     snapshotSource = seat === null ? null : createSnapshotMessageSource(seat);
     diplomacySource = createDiplomacyMessageSource(deps.metSeats);
+    retirement = new NoteRetirement();
     previous = null;
     renderedVersion = -1;
   };
@@ -222,6 +227,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     present: (snapshot, events, departed, alpha): void => {
       const seat = deps.viewer.seat();
       if (seat !== feeds.seat) switchSeat(seat);
+      presentedTick = snapshot.tick;
       // The same snapshot object means no tick ran, so nothing was raised and nothing aged.
       if (snapshot !== previous) {
         if (seat !== null && events.length > 0) {
@@ -239,13 +245,15 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
         }
         if (seat !== null && deps.gallery !== undefined && galleryDue(snapshot.tick)) {
           for (const raised of galleryMessages(snapshot, seat, naming, deps.metSeats(), deps.gallery)) {
-            feeds.current.add(raised.pending, snapshot.tick, raised.compose);
+            feeds.current.add(raised.pending, snapshot.tick, raised.compose, true);
           }
         }
         // The gallery's notes have no cause in the sim to check against, so they stand until dismissed or
         // their subject is gone; retiring them would bring each back a sweep later as a new card.
-        if (deps.gallery === undefined) feeds.current.expire(snapshot.tick, (m) => isNoteOver(m, snapshot));
-        else feeds.current.expire(snapshot.tick, (m) => isSubjectGone(m, snapshot), true);
+        if (deps.gallery === undefined) {
+          feeds.current.expire(snapshot.tick, (m) => retirement.isOver(m, snapshot));
+          retirement.endPass();
+        } else feeds.current.expire(snapshot.tick, (m) => isSubjectGone(m, snapshot), true);
         previous = snapshot;
       }
       if (feeds.current.version() !== renderedVersion) {
@@ -264,6 +272,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     state: () => feeds.current.state(),
     restore: (state): void => {
       feeds.restore(state);
+      retirement = new NoteRetirement();
       renderedVersion = -1;
     },
     dispose: (): void => {

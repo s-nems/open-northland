@@ -91,7 +91,7 @@ describe('user messages read off real scene snapshots', () => {
       .sweep(sim.snapshot(), naming)
       .filter((r) => r.pending.subject?.entity === subject)
       .map((r) => r.pending.type);
-    expect(raised).toEqual([USER_MESSAGE_TYPE.hungry, USER_MESSAGE_TYPE.starving, USER_MESSAGE_TYPE.tired]);
+    expect(raised).toEqual([USER_MESSAGE_TYPE.starving, USER_MESSAGE_TYPE.tired]);
   });
 
   it('reports every carrier of a store with nothing to haul, once it has idled long enough', () => {

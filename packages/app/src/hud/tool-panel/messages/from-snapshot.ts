@@ -72,7 +72,7 @@ export function occupationOf(snapshot: WorldSnapshot, e: SnapshotEntity): Occupa
 
 /** A unit on a DEFEND stance stands still on purpose. Added here: the original raises this note from a
  *  failed job attempt rather than from a poll, so it never has to tell standing still from idleness. */
-function holdsPost(e: SnapshotEntity): boolean {
+export function holdsPost(e: SnapshotEntity): boolean {
   const stance = e.components.Stance as { mode?: unknown } | undefined;
   return num(stance?.mode) === systems.MILITARY_MODE.DEFEND;
 }
@@ -152,6 +152,20 @@ export function isDying(e: SnapshotEntity): boolean {
   return health !== undefined && !isInvulnerable(e) && systems.isNearDeath(health.hitpoints, health.max);
 }
 
+/** Share of the pool, per mille, a dying settler heals past the sim's near-death line before its note
+ *  retires, so regeneration ticking across the line between blows does not flicker the card. On the
+ *  5000 pool that is 250 hitpoints, about twenty seconds of regeneration. Approximation. */
+export const DYING_NOTE_RETIRE_MARGIN_PER_MILLE = 50;
+const PER_MILLE = 1000;
+
+/** Whether a dying settler's note still stands: below the near-death line lifted by the retire margin. */
+export function isStillDying(e: SnapshotEntity): boolean {
+  const health = healthOf(e);
+  if (health === undefined || isInvulnerable(e) || health.hitpoints <= 0) return false;
+  const margin = Math.floor((health.max * DYING_NOTE_RETIRE_MARGIN_PER_MILLE) / PER_MILLE);
+  return health.hitpoints <= margin || systems.isNearDeath(health.hitpoints - margin, health.max);
+}
+
 /** The sim's own lost marker, so a lost settler's note is back after a reload; the sim event that raised
  *  it first covers the seconds between sweeps. */
 function isLost(e: SnapshotEntity): boolean {
@@ -164,13 +178,16 @@ function isJobless(e: SnapshotEntity): boolean {
 }
 
 /** Each note fires at the level the reserve table sets aside for marking a need to the player, which is
- *  the same level the original reads before raising these very messages. */
+ *  the same level the original reads before raising these very messages. Only the heaviest hunger stage
+ *  is raised; a dying settler's note stands in for both. */
 function raiseNeeds(raiser: MessageRaiser, e: SnapshotEntity): void {
   const needs = settlerNeedsOf(e);
   if (needs === undefined || isJobless(e)) return;
   const alert = systems.NEED_CRITICAL_THRESHOLD;
-  if (needs.hunger >= alert) raiser.settler(USER_MESSAGE_TYPE.hungry, e);
-  if (needs.hunger >= STARVING_HUNGER) raiser.settler(USER_MESSAGE_TYPE.starving, e);
+  if (!isDying(e)) {
+    if (needs.hunger >= STARVING_HUNGER) raiser.settler(USER_MESSAGE_TYPE.starving, e);
+    else if (needs.hunger >= alert) raiser.settler(USER_MESSAGE_TYPE.hungry, e);
+  }
   if (needs.fatigue >= alert) raiser.settler(USER_MESSAGE_TYPE.tired, e);
   if (needs.piety >= alert) raiser.settler(USER_MESSAGE_TYPE.wantsToPray, e);
 }
@@ -180,7 +197,8 @@ function raiseNeeds(raiser: MessageRaiser, e: SnapshotEntity): void {
  * a wounded fighter is warned about as loudly as a starving one, and holds the note back for a
  * script-invulnerable settler and while one carries a healing draught. Approximation: the draught check
  * is left out, since a bearer drinks before falling to half its pool; only a draught put in its slot
- * after the wound, and not yet drunk, would have held the note back.
+ * after the wound, and not yet drunk, would have held the note back. The note retires on
+ * {@link isStillDying}, past a margin above the line it is raised on.
  */
 function raiseDying(raiser: MessageRaiser, e: SnapshotEntity): void {
   if (isDying(e)) raiser.settler(USER_MESSAGE_TYPE.willDie, e);

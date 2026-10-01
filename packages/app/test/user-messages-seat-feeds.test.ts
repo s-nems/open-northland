@@ -19,7 +19,7 @@ describe('seat feeds', () => {
   it('keeps a left seat’s feed, dismissals included, and shows it again on return', () => {
     const feeds = createSeatFeeds(0);
     feeds.current.add(ATTACKED, TICK, TEXT);
-    feeds.current.remove(1, true);
+    feeds.current.remove(1, TICK);
     expect(feeds.switchTo(1)).toBe(true);
     expect(feeds.seat).toBe(1);
     expect(feeds.current.live()).toEqual([]);

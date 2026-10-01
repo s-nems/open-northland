@@ -102,7 +102,7 @@ describe('notice gallery', () => {
     const feed = createMessageFeed();
     const sweep = (): readonly string[] =>
       galleryMessages(world, LOCAL, naming, [], { goodType: GOOD }).map((r) =>
-        feed.add(r.pending, world.tick, r.compose),
+        feed.add(r.pending, world.tick, r.compose, true),
       );
     expect(new Set(sweep())).toEqual(new Set(['accepted']));
     expect(new Set(sweep())).toEqual(new Set(['duplicate']));

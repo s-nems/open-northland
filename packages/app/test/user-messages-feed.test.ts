@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   createMessageFeed,
+  DISMISSED_EVENT_BLOCK_TICKS,
   MESSAGE_LIFETIME_TICKS,
   MESSAGE_SLOTS,
 } from '../src/hud/tool-panel/messages/feed.js';
+import { SNAPSHOT_SWEEP_INTERVAL_TICKS } from '../src/hud/tool-panel/messages/from-snapshot.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import {
   type MessageSubject,
@@ -54,7 +56,7 @@ describe('message feed', () => {
     const feed = createMessageFeed();
     expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, TEXT)).toBe('accepted');
     expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK + 5, TEXT)).toBe('duplicate');
-    expect(feed.remove(1, true)).toBe(true);
+    expect(feed.remove(1, TICK + 5)).toBe(true);
     expect(feed.displayed()).toHaveLength(0);
     expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK + 10, TEXT)).toBe('duplicate');
     // A different settler is a different message.
@@ -68,7 +70,7 @@ describe('message feed', () => {
     const family = (familyWait: 'husbandAway' | 'noFood'): PendingMessage =>
       pending(USER_MESSAGE_TYPE.familyBlocked, undefined, { familyWait });
     expect(feed.add(family('husbandAway'), TICK, TEXT)).toBe('accepted');
-    expect(feed.remove(1, true)).toBe(true);
+    expect(feed.remove(1, TICK)).toBe(true);
     expect(feed.add(family('husbandAway'), TICK + 5, TEXT)).toBe('duplicate');
     expect(feed.add(family('noFood'), TICK + 5, TEXT)).toBe('accepted');
   });
@@ -112,7 +114,7 @@ describe('message feed', () => {
     const feed = createMessageFeed();
     feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, TEXT);
     feed.add(pending(USER_MESSAGE_TYPE.hungry), TICK, TEXT);
-    feed.remove(2, true);
+    feed.remove(2, TICK);
     feed.expire(TICK + 2 * MESSAGE_LIFETIME_TICKS, () => false, true);
     expect(feed.live().map((m) => m.id)).toEqual([1]);
     expect(feed.add(pending(USER_MESSAGE_TYPE.hungry), TICK + 2 * MESSAGE_LIFETIME_TICKS, TEXT)).toBe(
@@ -122,25 +124,30 @@ describe('message feed', () => {
     expect(feed.live()).toEqual([]);
   });
 
-  it('forgets a dismissed message after its lifetime, so it can be raised again', () => {
+  it('blocks a dismissed event for the block counted from the dismissal, not from the raise', () => {
     const feed = createMessageFeed();
-    feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, TEXT);
-    feed.remove(1, true);
-    feed.expire(TICK + MESSAGE_LIFETIME_TICKS - 1, () => false);
-    expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK + MESSAGE_LIFETIME_TICKS - 1, TEXT)).toBe(
-      'duplicate',
-    );
-    feed.expire(TICK + MESSAGE_LIFETIME_TICKS, () => false);
-    expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK + MESSAGE_LIFETIME_TICKS, TEXT)).toBe(
-      'accepted',
-    );
+    const attacked = pending(USER_MESSAGE_TYPE.humanAttacked);
+    const dismissed = TICK + MESSAGE_LIFETIME_TICKS - 10;
+    feed.add(attacked, TICK, TEXT);
+    feed.remove(1, dismissed);
+    // Past the raise's lifetime the repeat stays away.
+    feed.expire(TICK + MESSAGE_LIFETIME_TICKS + 10, () => false);
+    expect(feed.add(attacked, TICK + MESSAGE_LIFETIME_TICKS + 10, TEXT)).toBe('duplicate');
+    const released = dismissed + DISMISSED_EVENT_BLOCK_TICKS;
+    feed.expire(released - 1, () => false);
+    expect(feed.add(attacked, released - 1, TEXT)).toBe('duplicate');
+    feed.expire(released, () => false);
+    expect(feed.add(attacked, released, TEXT)).toBe('accepted');
   });
 
-  it('a dismissal without history lets the same message come straight back', () => {
+  it('lifts an event dismissal early once its reason is over', () => {
     const feed = createMessageFeed();
-    feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, TEXT);
-    feed.remove(1, false);
-    expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK + 1, TEXT)).toBe('accepted');
+    feed.add(pending(USER_MESSAGE_TYPE.vehicleNoPath, { kind: 'vehicle', entity: 4 }), TICK, TEXT);
+    feed.remove(1, TICK);
+    feed.expire(TICK + 1, () => true);
+    expect(
+      feed.add(pending(USER_MESSAGE_TYPE.vehicleNoPath, { kind: 'vehicle', entity: 4 }), TICK + 1, TEXT),
+    ).toBe('accepted');
   });
 
   it('hides the notes below the level but keeps and counts them, whatever the level does next', () => {
@@ -180,31 +187,107 @@ describe('message feed', () => {
     ).toBe('full');
   });
 
-  it('retires a note after its lifetime and when its subject is gone', () => {
+  it('retires an event note after its lifetime and when its subject is gone', () => {
     const feed = createMessageFeed();
-    feed.add(pending(USER_MESSAGE_TYPE.tired, { kind: 'settler', entity: 1 }), TICK, TEXT);
-    feed.add(pending(USER_MESSAGE_TYPE.tired, { kind: 'settler', entity: 2 }), TICK + 10, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.humanAttacked, { kind: 'settler', entity: 1 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.humanAttacked, { kind: 'settler', entity: 2 }), TICK + 10, TEXT);
     feed.expire(TICK + 20, (m) => m.subject?.entity === 1);
     expect(feed.displayed().map((m) => m.subject?.entity)).toEqual([2]);
     feed.expire(TICK + 10 + MESSAGE_LIFETIME_TICKS, () => false);
     expect(feed.displayed()).toHaveLength(0);
   });
 
-  it('a standing note outlives the lifetime and ends only when its state is over', () => {
+  it.each([
+    ['lost', USER_MESSAGE_TYPE.lostWithoutSignposts],
+    ['hungry', USER_MESSAGE_TYPE.hungry],
+    ['tired', USER_MESSAGE_TYPE.tired],
+    ['nothing to do', USER_MESSAGE_TYPE.nothingToDo],
+    ['no commander', USER_MESSAGE_TYPE.vehicleNoCommander],
+  ])('keeps one %s card through a state that outlasts the lifetime, with no re-raise', (_, type) => {
     const feed = createMessageFeed();
-    const lost = pending(USER_MESSAGE_TYPE.lostWithoutSignposts);
-    feed.add(lost, TICK, TEXT);
-    feed.expire(TICK + MESSAGE_LIFETIME_TICKS, () => false);
-    expect(feed.displayed()).toHaveLength(1);
-    feed.expire(TICK + MESSAGE_LIFETIME_TICKS, (m) => m.type === USER_MESSAGE_TYPE.lostWithoutSignposts);
-    expect(feed.displayed()).toHaveLength(0);
-    // Dismissed by hand, it keeps its repeat away while the state lasts, and no longer once it is over.
-    feed.add(lost, TICK, TEXT);
-    feed.remove(2, true);
-    feed.expire(TICK + MESSAGE_LIFETIME_TICKS, () => false);
-    expect(feed.add(lost, TICK + MESSAGE_LIFETIME_TICKS, TEXT)).toBe('duplicate');
-    feed.expire(TICK + MESSAGE_LIFETIME_TICKS, () => true);
-    expect(feed.add(lost, TICK + MESSAGE_LIFETIME_TICKS, TEXT)).toBe('accepted');
+    const end = TICK + 2 * MESSAGE_LIFETIME_TICKS;
+    // The sweep raises the state once a second while it lasts.
+    for (let tick = TICK; tick <= end; tick += SNAPSHOT_SWEEP_INTERVAL_TICKS) {
+      feed.add(pending(type), tick, TEXT);
+      feed.expire(tick, () => false);
+    }
+    expect(feed.live().map((m) => [m.id, m.tick])).toEqual([[1, TICK]]);
+    feed.expire(end, () => true);
+    expect(feed.live()).toEqual([]);
+  });
+
+  it('holds a dismissed state note while its state lasts, and lets it back once the state ended and recurs', () => {
+    const feed = createMessageFeed();
+    const hungry = pending(USER_MESSAGE_TYPE.hungry);
+    feed.add(hungry, TICK, TEXT);
+    feed.remove(1, TICK + 1);
+    const late = TICK + 3 * MESSAGE_LIFETIME_TICKS;
+    feed.expire(late, () => false);
+    expect(feed.add(hungry, late, TEXT)).toBe('duplicate');
+    // The settler ate: the sweep sees the state clear, and the next hunger is a new card.
+    feed.expire(late + 1, () => true);
+    expect(feed.add(hungry, late + 2, TEXT)).toBe('accepted');
+  });
+
+  it('keeps one state card per settler whatever trade it holds meanwhile', () => {
+    const feed = createMessageFeed();
+    expect(feed.add(pending(USER_MESSAGE_TYPE.tired, undefined, { jobType: 7 }), TICK, TEXT)).toBe(
+      'accepted',
+    );
+    expect(feed.add(pending(USER_MESSAGE_TYPE.tired, undefined, { jobType: 8 }), TICK + 1, TEXT)).toBe(
+      'duplicate',
+    );
+  });
+
+  describe('hunger chain', () => {
+    const stage = (type: UserMessageType, entity = 7): PendingMessage =>
+      pending(type, { kind: 'settler', entity });
+    const shown = (feed: ReturnType<typeof createMessageFeed>): UserMessageType[] =>
+      feed.live().map((m) => m.type);
+    const { hungry, starving, willDie, tired } = USER_MESSAGE_TYPE;
+
+    it('shows one settler only its heaviest stage, each heavier one taking the lighter card’s place', () => {
+      const feed = createMessageFeed();
+      feed.add(stage(hungry), TICK, TEXT);
+      feed.add(stage(tired), TICK, TEXT);
+      expect(feed.add(stage(starving), TICK + 1, TEXT)).toBe('accepted');
+      expect(shown(feed)).toEqual([tired, starving]);
+      expect(feed.add(stage(hungry), TICK + 2, TEXT)).toBe('superseded');
+      expect(feed.add(stage(willDie), TICK + 3, TEXT)).toBe('accepted');
+      expect(shown(feed)).toEqual([tired, willDie]);
+      expect(feed.add(stage(starving), TICK + 4, TEXT)).toBe('superseded');
+      // Another settler's chain is its own.
+      expect(feed.add(stage(hungry, 8), TICK + 4, TEXT)).toBe('accepted');
+    });
+
+    it('shows the lighter stage again once the heavier one passes', () => {
+      const feed = createMessageFeed();
+      feed.add(stage(starving), TICK, TEXT);
+      feed.add(stage(willDie), TICK + 1, TEXT);
+      feed.expire(TICK + 2, (m) => m.type === willDie);
+      expect(feed.add(stage(starving), TICK + 3, TEXT)).toBe('accepted');
+      expect(shown(feed)).toEqual([starving]);
+    });
+
+    it('keeps a dismissed lighter stage away after the heavier one passes', () => {
+      const feed = createMessageFeed();
+      feed.add(stage(hungry), TICK, TEXT);
+      feed.remove(1, TICK);
+      expect(feed.add(stage(starving), TICK + 1, TEXT)).toBe('accepted');
+      feed.expire(TICK + 2, (m) => m.type === starving);
+      expect(feed.add(stage(hungry), TICK + 3, TEXT)).toBe('duplicate');
+      expect(feed.live()).toEqual([]);
+    });
+
+    it('silences the lighter stages under a dismissed heavier card until that stage passes', () => {
+      const feed = createMessageFeed();
+      feed.add(stage(willDie), TICK, TEXT);
+      feed.remove(1, TICK);
+      feed.expire(TICK + MESSAGE_LIFETIME_TICKS * 2, () => false);
+      expect(feed.add(stage(starving), TICK + MESSAGE_LIFETIME_TICKS * 2, TEXT)).toBe('superseded');
+      feed.expire(TICK + MESSAGE_LIFETIME_TICKS * 2 + 1, (m) => m.type === willDie);
+      expect(feed.add(stage(starving), TICK + MESSAGE_LIFETIME_TICKS * 2 + 2, TEXT)).toBe('accepted');
+    });
   });
 
   it('Shift-dismiss clears the shown notes into history and leaves the ones under the level', () => {
@@ -213,12 +296,12 @@ describe('message feed', () => {
     feed.add(pending(USER_MESSAGE_TYPE.tired, { kind: 'settler', entity: 2 }), TICK, TEXT);
     feed.add(pending(USER_MESSAGE_TYPE.humanDied, null), TICK, TEXT);
     feed.setLevel(2);
-    feed.removeAll(true);
+    feed.removeAll(TICK);
     expect(feed.displayed()).toHaveLength(0);
     expect(feed.live().map((m) => m.type)).toEqual([USER_MESSAGE_TYPE.tired, USER_MESSAGE_TYPE.tired]);
     expect(feed.state().history).toHaveLength(1);
     feed.setLevel(0);
-    feed.removeAll(true);
+    feed.removeAll(TICK);
     expect(feed.live()).toHaveLength(0);
     expect(feed.state().history).toHaveLength(3);
   });
