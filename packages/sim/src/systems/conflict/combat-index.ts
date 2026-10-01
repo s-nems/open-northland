@@ -54,8 +54,8 @@ export function holdDormantTick(world: World, tick: number): void {
   dormantTicks.set(world, tick);
 }
 
-/** Whether the combat system's dormancy gate found no fight possible on `tick`, so no pass ran: no hunter
- *  stood beside huntable prey anywhere on the map. */
+/** Whether the combat system's dormancy gate found no fight possible on `tick`, so no pass ran: among
+ *  its tests, the map held no hunter and huntable prey alive together, wherever they stood. */
 export function combatDormantOn(world: World, tick: number): boolean {
   return dormantTicks.get(world) === tick;
 }
