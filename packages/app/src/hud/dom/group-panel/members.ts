@@ -17,8 +17,27 @@ import {
 const ROSTER_FIT: WellFigureFit = { zoom: 0.66, feetInset: 10 };
 /** A compact well (`.on-roster--compact`, 24 x 34 design px), ten to a row, for a big list. */
 const COMPACT_FIT: WellFigureFit = { zoom: 0.5, feetInset: 7 };
-/** Past this many members on the list the wells turn compact, so a big army stays a few rows tall. */
+/** Past this many members in the group the wells turn compact, so a big army stays a few rows tall. */
 export const ROSTER_COMPACT_ABOVE = 99;
+/** Wells to a row, full size and compact (foundation.css `.on-roster`); a vehicle takes two. */
+const ROSTER_COLUMNS = 8;
+const COMPACT_COLUMNS = 10;
+const VEHICLE_SPAN = 2;
+
+/** The rows `members` fill in grid order: a vehicle that would cross the row's end starts the next. */
+export function rosterRows(members: readonly GroupMemberModel[], columns: number): number {
+  let rows = 0;
+  let free = 0;
+  for (const member of members) {
+    const span = member.look === 'vehicle' ? VEHICLE_SPAN : 1;
+    if (span > free) {
+      rows += 1;
+      free = columns;
+    }
+    free -= span;
+  }
+  return rows;
+}
 
 /** Ms a press waits for a second one before it selects the member alone, so a double press can bring the
  *  member into view without the panel giving way under the cursor first. Shorter than the platforms'
@@ -45,7 +64,11 @@ interface RosterWell {
  *  scrolls in place. Only the wells in view are painted. */
 export interface MemberRoster {
   readonly element: HTMLElement;
-  update(members: readonly GroupMemberModel[]): void;
+  /** Show `members`, the tab's share of `group`; the well size follows the whole group, so a tab switch
+   *  keeps it. */
+  update(members: readonly GroupMemberModel[], group: readonly GroupMemberModel[]): void;
+  /** The rows the whole group fills, the most the grid needs in any tab. */
+  groupRows(): number;
   /** The wells in view, for the panel's figure painter; re-measured only after a scroll, a relist or a
    *  resize. */
   figureSlots(): readonly FigureSlot[];
@@ -71,6 +94,7 @@ export function createMemberRoster(
   let pending: { readonly id: number; readonly timer: ReturnType<typeof setTimeout> } | null = null;
   let hovered: number | null = null;
   let compact = false;
+  let groupRows = 0;
 
   const settle = (): void => {
     if (pending === null) return;
@@ -135,10 +159,11 @@ export function createMemberRoster(
 
   return {
     element: root,
-    update(members): void {
+    update(members, group): void {
       const copy = messages().hud.groupPanel;
       const key = members.map((member) => member.id).join(',');
-      const nextCompact = members.length > ROSTER_COMPACT_ABOVE;
+      const nextCompact = group.length > ROSTER_COMPACT_ABOVE;
+      groupRows = rosterRows(group, nextCompact ? COMPACT_COLUMNS : ROSTER_COLUMNS);
       if (nextCompact !== compact) {
         // A well's figure fit is fixed when it is made, so the other size starts from new wells.
         compact = nextCompact;
@@ -186,6 +211,7 @@ export function createMemberRoster(
       }
       updateMore();
     },
+    groupRows: () => groupRows,
     figureSlots(): readonly FigureSlot[] {
       if (stale) {
         stale = false;

@@ -8,9 +8,10 @@ import type { GroupPanelDeps } from './actions.js';
 /** A gear item's icon: a cargo well's size less a step, so the foot reads as a summary under the roster. */
 const GEAR_ICON_PX = 16;
 
-const GEAR_LABEL: Readonly<Record<GroupGear, 'weapons' | 'armor' | 'tools' | 'equipment'>> = {
+const GEAR_LABEL: Readonly<Record<GroupGear, 'weapons' | 'armor' | 'boots' | 'tools' | 'equipment'>> = {
   weapon: 'weapons',
   armor: 'armor',
+  boots: 'boots',
   tool: 'tools',
   misc: 'equipment',
 };
@@ -51,6 +52,13 @@ function createGearLine(deps: GroupPanelDeps): { element: HTMLElement; update(ro
         );
         return node;
       });
+      if (row.items.length === 0 && row.bare === 0) {
+        // The group has this line but the tab holds nobody it is for.
+        const none = element('span', 'on-gear__bare');
+        write(none, copy.gearNone);
+        setTip(none, copy.gearNoneTooltip);
+        nodes.push(none);
+      }
       if (row.bare > 0) {
         const bare = element('span', 'on-gear__bare');
         write(bare, formatMessage(copy.bare, { count: row.bare }));

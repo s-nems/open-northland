@@ -3761,8 +3761,8 @@ body.on-drag-scroll * {
   opacity: 0.85;
 }
 /* Eight 32 x 46 wells to a row, a vehicle across two; past the row cap (`--roster-rows`, set from TS to
-   what the plane leaves) the grid scrolls in place. A big list turns compact: ten 24 x 34 wells, which
-   leave room for the scrollbar. */
+   what the plane leaves, and as tall in every tab) the grid scrolls in place. A big group turns compact:
+   ten 24 x 34 wells, which leave room for the scrollbar. */
 .on-hud .on-roster {
   --roster-rows: 4;
   --roster-row: 46px;
@@ -3775,7 +3775,7 @@ body.on-drag-scroll * {
   grid-auto-rows: var(--roster-row);
   justify-content: space-between;
   gap: 3px;
-  max-height: calc(var(--roster-rows) * var(--roster-row) + (var(--roster-rows) - 1) * 3px);
+  height: calc(var(--roster-rows) * var(--roster-row) + (var(--roster-rows) - 1) * 3px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-color: var(--bronze-lo) transparent;

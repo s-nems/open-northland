@@ -40,7 +40,7 @@ import { vehicleClassOf, vehicleTitle } from './vehicle.js';
 type GroupCopy = ReturnType<typeof messages>['hud']['groupPanel'];
 
 export type GroupStance = 'attack' | 'defend' | 'ignore';
-export type GroupGear = 'weapon' | 'armor' | 'tool' | 'misc';
+export type GroupGear = 'weapon' | 'armor' | 'boots' | 'tool' | 'misc';
 
 /** A kind's tab icon while the names do not fit: a soldier class shows its weapon, the rest a glyph. */
 export type GroupKindIcon =
@@ -90,7 +90,7 @@ export interface GroupGearRow {
 }
 
 /** The scope's fighters, soldiers and heroes: their shared stance and regeneration rule, null when they
- *  differ, and how many hold each. */
+ *  differ or the scope has none, and how many hold each. */
 export interface GroupMilitaryModel {
   readonly count: number;
   readonly stance: GroupStance | null;
@@ -98,7 +98,7 @@ export interface GroupMilitaryModel {
   readonly regeneration: boolean | null;
 }
 
-/** The scope's siege vehicles and their shared stance, null when they differ. */
+/** The scope's siege vehicles and their shared stance, null when they differ or the scope has none. */
 export interface GroupSiegeModel {
   readonly ids: readonly number[];
   readonly stance: components.VehicleStance | null;
@@ -178,6 +178,7 @@ interface RawSlot {
   readonly degreeOfUse?: unknown;
 }
 interface RawEquipment {
+  readonly boots?: RawSlot | null;
   readonly weapon?: RawSlot | null;
   readonly armor?: RawSlot | null;
   readonly tool?: RawSlot | null;
@@ -198,6 +199,7 @@ interface MemberFacts {
   readonly owned: boolean;
   readonly weapon: number | null;
   readonly armor: number | null;
+  readonly boots: number | null;
   readonly tool: number | null;
   readonly misc: readonly { readonly goodType: number; readonly used: number | undefined }[];
   readonly stance: GroupStance | null;
@@ -301,6 +303,7 @@ function settlerFacts(
     owned,
     weapon: weaponGood,
     armor: fighter ? armorGood(ctx, ent, slotGood(eq?.armor)) : null,
+    boots: slotGood(eq?.boots),
     tool: slotGood(eq?.tool),
     misc,
     stance: mode === undefined ? null : (STANCE_OF_MODE.get(mode) ?? null),
@@ -343,6 +346,7 @@ function vehicleFacts(ctx: UnitPanelModelContext, ent: SnapshotEntity, owned: bo
     owned,
     weapon: null,
     armor: null,
+    boots: null,
     tool: null,
     misc: [],
     stance: null,
@@ -377,32 +381,58 @@ function gearItems(
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 }
 
-function gearRows(ctx: UnitPanelModelContext, facts: readonly MemberFacts[]): GroupGearRow[] {
+/** Which lines the whole group has: every scope shows the same lines, empty or faded where they do not
+ *  apply, so a tab switch never moves the panel's sections. */
+interface GroupShape {
+  readonly fighters: boolean;
+  readonly workers: boolean;
+  readonly settlers: boolean;
+  readonly siege: boolean;
+}
+
+function shapeOf(facts: readonly MemberFacts[]): GroupShape {
+  return {
+    fighters: facts.some((f) => f.fighter),
+    workers: facts.some((f) => f.worker),
+    settlers: facts.some((f) => f.vehicle === null),
+    siege: facts.some((f) => f.vehicle?.siege === true && f.owned),
+  };
+}
+
+function gearRows(
+  ctx: UnitPanelModelContext,
+  facts: readonly MemberFacts[],
+  shape: GroupShape,
+): GroupGearRow[] {
   const fighters = facts.filter((f) => f.fighter);
   const workers = facts.filter((f) => f.worker);
   const rows: GroupGearRow[] = [];
   const slotRow = (
     gear: GroupGear,
+    present: boolean,
     holders: readonly MemberFacts[],
     good: (f: MemberFacts) => number | null,
   ) => {
-    if (holders.length === 0) return;
+    if (!present) return;
     const goods = holders.flatMap((f) => {
       const goodType = good(f);
       return goodType === null ? [] : [{ goodType }];
     });
     rows.push({ gear, items: gearItems(ctx, goods), bare: holders.length - goods.length });
   };
-  slotRow('weapon', fighters, (f) => f.weapon);
-  slotRow('armor', fighters, (f) => f.armor);
-  slotRow('tool', workers, (f) => f.tool);
-  const bag = facts.filter((f) => f.vehicle === null);
-  if (bag.length > 0) {
-    const carried = bag.flatMap((f) => f.misc);
+  slotRow('weapon', shape.fighters, fighters, (f) => f.weapon);
+  slotRow('armor', shape.fighters, fighters, (f) => f.armor);
+  const settlers = facts.filter((f) => f.vehicle === null);
+  slotRow('boots', shape.settlers, settlers, (f) => f.boots);
+  slotRow('tool', shape.workers, workers, (f) => f.tool);
+  if (shape.settlers) {
     rows.push({
       gear: 'misc',
-      items: gearItems(ctx, carried),
-      bare: bag.filter((f) => f.misc.length === 0).length,
+      items: gearItems(
+        ctx,
+        settlers.flatMap((f) => f.misc),
+      ),
+      bare: settlers.filter((f) => f.misc.length === 0).length,
     });
   }
   return rows;
@@ -414,9 +444,9 @@ function shared<T>(values: readonly T[]): T | null {
   return first !== undefined && values.every((value) => value === first) ? first : null;
 }
 
-function militaryOf(facts: readonly MemberFacts[]): GroupMilitaryModel | null {
+function militaryOf(facts: readonly MemberFacts[], shape: GroupShape): GroupMilitaryModel | null {
   const fighters = facts.filter((f) => f.fighter);
-  if (fighters.length === 0) return null;
+  if (!shape.fighters) return null;
   const stances: Record<GroupStance, number> = { attack: 0, defend: 0, ignore: 0 };
   for (const f of fighters) if (f.stance !== null) stances[f.stance] += 1;
   return {
@@ -427,9 +457,9 @@ function militaryOf(facts: readonly MemberFacts[]): GroupMilitaryModel | null {
   };
 }
 
-function siegeOf(facts: readonly MemberFacts[]): GroupSiegeModel | null {
+function siegeOf(facts: readonly MemberFacts[], shape: GroupShape): GroupSiegeModel | null {
   const siege = facts.filter((f) => f.vehicle?.siege === true && f.owned);
-  if (siege.length === 0) return null;
+  if (!shape.siege) return null;
   const stances: Record<components.VehicleStance, number> = { attack: 0, defence: 0, hold: 0 };
   for (const f of siege) if (f.vehicle !== null) stances[f.vehicle.stance] += 1;
   return {
@@ -444,15 +474,16 @@ function scopeOf(
   key: string,
   label: string,
   facts: readonly MemberFacts[],
+  shape: GroupShape,
 ): GroupScopeModel {
   return {
     key,
     label,
     icon: key === ALL_SCOPE ? { glyph: 'people' } : (facts[0]?.icon ?? { glyph: 'people' }),
     ids: facts.map((f) => f.id),
-    gear: gearRows(ctx, facts),
-    military: militaryOf(facts),
-    siege: siegeOf(facts),
+    gear: gearRows(ctx, facts, shape),
+    military: militaryOf(facts, shape),
+    siege: siegeOf(facts, shape),
   };
 }
 
@@ -491,9 +522,10 @@ export function groupPanelModel(
     if (list === undefined) kinds.set(f.kind, [f]);
     else list.push(f);
   }
-  const scopes = [scopeOf(ctx, ALL_SCOPE, messages().hud.groupPanel.all, facts)];
+  const shape = shapeOf(facts);
+  const scopes = [scopeOf(ctx, ALL_SCOPE, messages().hud.groupPanel.all, facts, shape)];
   if (kinds.size > 1) {
-    for (const [kind, list] of kinds) scopes.push(scopeOf(ctx, kind, list[0]?.plural ?? kind, list));
+    for (const [kind, list] of kinds) scopes.push(scopeOf(ctx, kind, list[0]?.plural ?? kind, list, shape));
   }
   const vehicles = facts.filter((f) => f.vehicle !== null).length;
   const [only] = kinds.size === 1 ? kinds.values() : [];

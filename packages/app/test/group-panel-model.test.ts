@@ -78,28 +78,36 @@ describe('group panel model', () => {
       ['potion_food_small', 6, 12],
     ]);
     expect(gear.misc?.bare).toBe(6);
-    expect(gear.tool).toBeUndefined();
+    expect(gear.tool).toEqual({ gear: 'tool', items: [], bare: 0 });
   });
 
-  it('gives workers a tool line and fighters none', () => {
+  it("keeps the whole group's lines in every tab, empty where the tab holds nobody for them", () => {
     const builders = scope(model, 'Budowniczowie');
-    expect(builders.gear.map((row) => row.gear)).toEqual(['tool', 'misc']);
-    expect(builders.gear[0]?.items.map((i) => [i.goodId, i.count])).toEqual([['tool_iron', 4]]);
-    expect(builders.military).toBeNull();
+    const gear = Object.fromEntries(builders.gear.map((row) => [row.gear, row]));
+    expect(builders.gear.map((row) => row.gear)).toEqual(['weapon', 'armor', 'boots', 'tool', 'misc']);
+    expect(gear.weapon).toEqual({ gear: 'weapon', items: [], bare: 0 });
+    expect(gear.tool?.items.map((i) => [i.goodId, i.count])).toEqual([['tool_iron', 4]]);
+    expect(builders.military?.count).toBe(0);
+    expect(builders.siege?.ids).toEqual([]);
+  });
+
+  it('gives a group without catapults no siege strip', () => {
+    const settlers = company((kind) => kind === 'settler');
+    expect(settlers.scopes.every((s) => s.siege === null)).toBe(true);
   });
 
   it('reads the fighters stance and regeneration only over fighters', () => {
     const all = model.scopes[0];
     expect(all?.military?.count).toBe(26);
     expect(all?.military?.regeneration).toBe(true);
-    expect(scope(model, 'Kobiety').military).toBeNull();
+    expect(scope(model, 'Kobiety').military?.count).toBe(0);
   });
 
   it('offers the catapults their own stance', () => {
     const all = model.scopes[0];
     expect(all?.siege?.ids).toHaveLength(2);
     expect(all?.siege?.stance).toBe('hold');
-    expect(scope(model, 'Wózki ręczne').siege).toBeNull();
+    expect(scope(model, 'Wózki ręczne').siege?.ids).toEqual([]);
   });
 
   it('gives every member its health and every settler its hunger', () => {

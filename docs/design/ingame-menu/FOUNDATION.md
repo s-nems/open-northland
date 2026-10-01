@@ -548,10 +548,13 @@ selected; stats and shared orders follow.
   it; otherwise every tab shows the kind's icon (a soldier class its weapon, the rest a glyph) and
   count, the name in its tooltip and in the roster title ("Zaznaczeni · Łucznicy"); a line still too
   long scrolls sideways. The lit tab scopes everything under it: the wells, the orders and the gear.
+  A tab switch never resizes the panel: the grid is as tall as the whole group needs, and every line
+  the group has stays in every tab, a strip faded and a gear line showing "-" where the tab holds
+  nobody it is for.
   A double click on a kind's tab selects only that kind, Shift+click drops it from the group. A
   group of one kind shows no tabs.
 - Zaznaczeni, the panel's main field: the scope's members as 32 × 46 px live wells, eight to a row,
-  a vehicle across two; past 99 members on the list they turn compact, 24 × 34 px and ten to a row.
+  a vehicle across two; past 99 members in the group they turn compact, 24 × 34 px and ten to a row.
   Two hairlines run along each well's floor, health in green over hunger in blue; a vehicle has only
   the health. Up to seven rows show, as many as fit between the summary bar and the beam, then the
   grid scrolls in place and fades at the bottom. Only the wells in view are painted. A click selects that member alone (after a short
@@ -564,9 +567,10 @@ selected; stats and shared orders follow.
   option's tooltip says how many it reaches and an option nobody takes is faded. Siege engines get
   their own Katapulty strip.
 - Przegląd, at the foot in a smaller type, folded on a new map; opening or folding it holds for every
-  group until the map ends: Broń and Zbroja for the fighters, Narzędzia for the
-  village's workers, Ekwipunek for everyone, each a row of 16 px good icons with how many hold them
-  (a draught also gives the sips left in its tooltip) and "bez: N" for those holding nothing there.
+  group until the map ends: Broń and Zbroja for the fighters, Buty for every settler, Narzędzia for
+  the village's workers, Ekwipunek for every settler, each a row of 16 px good icons with how many
+  hold them (a draught also gives the sips left in its tooltip) and "bez: N" for those holding nothing
+  there.
 - Fit: on a short plane the grid gives up rows, down to one; no section folds for it.
 - First paint at map start: a made-up group lights every section once.
 

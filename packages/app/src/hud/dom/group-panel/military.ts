@@ -33,7 +33,8 @@ export function holdCounts<K extends string>(
 }
 
 /** Wojsko for a group: the fighters' stance and Jedzenie i sen, and the catapults' stance. A strip lights
- *  the value every member holds and none while they differ; each option says how many it reaches. */
+ *  the value every member holds and none while they differ; each option says how many it reaches. A row
+ *  the group has stays in every tab, faded where the tab holds nobody it orders. */
 export interface GroupMilitarySection {
   readonly element: HTMLElement;
   update(scope: GroupScopeModel, orders: boolean): void;
@@ -104,7 +105,9 @@ export function createGroupMilitarySection(
         write(stanceRow.label, hud.settlerPanel.stance);
         setTip(
           stanceRow.label,
-          formatMessage(copy.stanceCounts, { counts: holdCounts(military.stances, stanceLabels) }),
+          military.count === 0
+            ? ''
+            : formatMessage(copy.stanceCounts, { counts: holdCounts(military.stances, stanceLabels) }),
         );
         stance.update(
           {
@@ -127,13 +130,17 @@ export function createGroupMilitarySection(
       if (vehicles !== null) {
         const labels = hud.vehiclePanel.stances;
         write(siegeRow.label, copy.siegeStance);
+        const any = vehicles.ids.length > 0;
         setTip(
           siegeRow.label,
-          formatMessage(copy.stanceCounts, { counts: holdCounts(vehicles.stances, labels) }),
+          any ? formatMessage(copy.stanceCounts, { counts: holdCounts(vehicles.stances, labels) }) : '',
         );
         const vehicleOption = (key: components.VehicleStance): SegmentedOption => ({
           label: labels[key],
-          tooltip: hud.vehiclePanel.stanceTooltips[key],
+          enabled: any,
+          tooltip: any
+            ? hud.vehiclePanel.stanceTooltips[key]
+            : formatMessage(copy.orderReachNone, { order: labels[key] }),
         });
         siege.update(
           { attack: vehicleOption('attack'), defence: vehicleOption('defence'), hold: vehicleOption('hold') },

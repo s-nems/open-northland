@@ -151,9 +151,12 @@ export function createGroupPanel(deps: GroupPanelDeps): GroupPanel {
   const overview = createOverviewSection(deps);
   frame.body.append(tabs.element, rosterTitle.element, roster.element, military.element, overview.element);
 
-  /** Fit the panel to the plane: the roster gives up rows until the panel fits. */
+  /** Fit the panel to the plane: the roster is as tall as the whole group needs, so every tab keeps the
+   *  panel's height, and gives up rows until the panel fits. */
   const fit = (): void => {
+    const needed = Math.max(1, roster.groupRows());
     for (const rows of ROSTER_ROWS) {
+      if (rows > needed) continue;
       setStyleVar(roster.element, '--roster-rows', String(rows));
       if (frame.overflow() === 0) break;
     }
@@ -176,7 +179,10 @@ export function createGroupPanel(deps: GroupPanelDeps): GroupPanel {
       current.key === ALL_SCOPE ? copy.members : formatMessage(copy.membersOf, { label: current.label }),
     );
     const ids = new Set(current.ids);
-    roster.update(current.key === ALL_SCOPE ? model.members : model.members.filter((m) => ids.has(m.id)));
+    roster.update(
+      current.key === ALL_SCOPE ? model.members : model.members.filter((m) => ids.has(m.id)),
+      model.members,
+    );
     military.update(current, model.orders);
     overview.update(current);
     // Later value changes refit through the resize observer, when a section actually changed height.
