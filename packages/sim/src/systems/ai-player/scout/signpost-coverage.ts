@@ -159,6 +159,12 @@ function corridorGoals(
   return goals;
 }
 
+/** Whether any of `points` lies within `radius` hex nodes of `(tx, ty)`. */
+function anyWithin(points: readonly HalfCellNode[], tx: number, ty: number, radius: number): boolean {
+  for (const p of points) if (hexDistanceBetween(p.hx, p.hy, tx, ty) <= radius) return true;
+  return false;
+}
+
 /**
  * The next erectable lattice target for the seat: the first spot, rings inside-out, that is wanted (ring
  * within {@link BASE_RING}, an owned building within one lattice spacing, or a {@link corridorGoals}
@@ -189,10 +195,10 @@ export function nextSignpostTarget(
   const corridors = corridorGoals(world, ctx, player, anchor, order).map((goal) =>
     corridorSamples(anchor, goal),
   );
-  const nearCorridor = (tx: number, ty: number): boolean =>
-    corridors.some((samples) =>
-      samples.some((p) => hexDistanceBetween(p.hx, p.hy, tx, ty) <= CORRIDOR_HALF_WIDTH_NODES),
-    );
+  const nearCorridor = (tx: number, ty: number): boolean => {
+    for (const samples of corridors) if (anyWithin(samples, tx, ty, CORRIDOR_HALF_WIDTH_NODES)) return true;
+    return false;
+  };
   let probe: ReturnType<typeof signpostProbe> | null = null;
   // The sealed-pocket veto: without it a provably sealed spot wins the search and the module re-aims at
   // it every decision. Judged from the base's door because the scout's own cell is unknowable in a
@@ -210,13 +216,10 @@ export function nextSignpostTarget(
         ring === 0 && door !== null ? { hx: door.x - CENTRE_DOOR_CLEARANCE_NODES, hy: door.y } : anchor;
       const tx = centre.hx + offset.dx;
       const ty = centre.hy + offset.dy;
-      const satisfied = posts.some(
-        (s) => hexDistanceBetween(s.hx, s.hy, tx, ty) <= SIGNPOST_TARGET_TOLERANCE_NODES,
-      );
-      if (satisfied) continue;
+      if (anyWithin(posts, tx, ty, SIGNPOST_TARGET_TOLERANCE_NODES)) continue;
       const wanted =
         ring <= BASE_RING ||
-        buildings.some((b) => hexDistanceBetween(b.hx, b.hy, tx, ty) <= SIGNPOST_LATTICE_SPACING_NODES) ||
+        anyWithin(buildings, tx, ty, SIGNPOST_LATTICE_SPACING_NODES) ||
         nearCorridor(tx, ty);
       if (!wanted) continue;
       if (probe === null) {

@@ -185,13 +185,19 @@ export function flagSpotNear(
   const fromOrigin = ground.walkFrom(origin);
   const fromResource = ground.walkOut(resource);
   const unreached = fx.fromInt(UNREACHED_WALK_PENALTY_TILES);
-  const cost = (x: number, y: number): Fixed => {
+  const cost = (x: number, y: number, beat: Fixed | null): Fixed | null => {
     const node = terrain.nodeAt(x, y);
     // A straight-line leg is measured in half columns, the lattice's own E/W step.
     const resourceLeg =
       fromResource.costTo(node) ??
       fx.add(unreached, fx.mul(fx.fromInt(nodeDistanceFrom(x, y, centre)), HALF_COLUMN));
     const weightedResourceLeg = fx.mul(fx.fromInt(GATHERER_LEG_WEIGHT), resourceLeg);
+    if (beat !== null) {
+      // An unreached leg costs the penalty and more, so the floor holds for it too.
+      const floor = fromOrigin.costFloor(node);
+      const originFloor = floor === undefined || floor > unreached ? unreached : floor;
+      if (fx.add(weightedResourceLeg, originFloor) >= beat) return null;
+    }
     const originLeg =
       fromOrigin.costTo(node) ??
       fx.add(unreached, fx.mul(fx.fromInt(nodeDistanceFrom(x, y, origin)), HALF_COLUMN));
@@ -204,13 +210,14 @@ export function flagSpotNear(
 }
 
 /** The accepted node of least `cost` over the Manhattan rings `minRadius..maxRadius` around `centre`,
- *  the first walked on ties (innermost ring first, then the ring walk). */
+ *  the first walked on ties (innermost ring first, then the ring walk). `cost` is handed the cost to beat
+ *  and may answer null for a node that provably cannot, so a far candidate floods no walk. */
 function cheapestRingNode(
   centre: HalfCellNode,
   minRadius: number,
   maxRadius: number,
   accept: (x: number, y: number) => boolean,
-  cost: (x: number, y: number) => Fixed,
+  cost: (x: number, y: number, beat: Fixed | null) => Fixed | null,
 ): HalfCellNode | null {
   let bestX = 0;
   let bestY = 0;
@@ -222,8 +229,8 @@ function cheapestRingNode(
         const x = centre.hx + dx;
         const y = side === 0 ? centre.hy - dy : centre.hy + dy;
         if (!accept(x, y)) continue;
-        const c = cost(x, y);
-        if (bestCost !== null && c >= bestCost) continue;
+        const c = cost(x, y, bestCost);
+        if (c === null || (bestCost !== null && c >= bestCost)) continue;
         bestX = x;
         bestY = y;
         bestCost = c;

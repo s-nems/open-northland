@@ -236,6 +236,7 @@ export function wantedCollectorGoods(
   const profile = aiProfileOf(world, player);
   const roadGood = roadPavingGood(ctx.content);
   const wanted: WantedGood[] = [];
+  let holdersByGood: ReadonlyMap<number, number> | undefined;
   for (const goodId of goodIds) {
     const good = goodTypeByContentId(ctx.content, goodId);
     const harvestAtomic = good?.atomics?.harvest;
@@ -260,7 +261,8 @@ export function wantedCollectorGoods(
     // each is what a seat of fifteen men keeps in its first minutes, its other men building.
     let min = fixed ?? 1;
     if (mostExtra > 0) {
-      const heldExtra = Math.max(0, flagHolders(world, ctx, player, good.typeId) - target);
+      holdersByGood ??= flagHoldersByGood(world, ctx, player);
+      const heldExtra = Math.max(0, (holdersByGood.get(good.typeId) ?? 0) - target);
       const extra = shortageGatherers(supply, good.typeId, heldExtra, mostExtra, phase);
       if (extra > 0) {
         target += extra;
@@ -309,16 +311,17 @@ function shortageGatherers(
   return Math.min(Math.max(lacking, Math.min(heldExtra, lacking + 1)), mostExtra);
 }
 
-/** The seat's men holding a live flag of `goodType` with a trade that harvests it: what
+/** The seat's men holding a live flag of each good with a trade that harvests it: what
  *  `classifyWorkforce` seats on the good before its target caps them. */
-function flagHolders(world: World, ctx: SystemContext, player: number, goodType: number): number {
-  let holders = 0;
+function flagHoldersByGood(world: World, ctx: SystemContext, player: number): Map<number, number> {
+  const holders = new Map<number, number>();
   for (const e of ownedSettlers(world, player)) {
     if (world.has(e, JobAssignment)) continue;
     const job = world.get(e, Settler).jobType;
     if (job === null || liveWorkFlag(world, e) === undefined) continue;
-    if (heldGatherGood(world, ctx, e) !== goodType) continue;
-    if (jobCanHarvestGood(ctx, job, goodType)) holders++;
+    const goodType = heldGatherGood(world, ctx, e);
+    if (goodType !== undefined && jobCanHarvestGood(ctx, job, goodType))
+      holders.set(goodType, (holders.get(goodType) ?? 0) + 1);
   }
   return holders;
 }

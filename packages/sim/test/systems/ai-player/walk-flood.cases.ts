@@ -95,6 +95,26 @@ describe('ai-player walk flood', () => {
     expect(limited.costTo(seed)).toBe(fx.fromInt(0));
   });
 
+  it('floors a cost without flooding: never above the cost, exact once settled, none once spent', () => {
+    const terrain = bank();
+    const walk = flood(terrain, SEED);
+    const near = terrain.nodeAt(WEST_NEAR.hx, WEST_NEAR.hy);
+    const far = terrain.nodeAt(WEST_FAR.hx, WEST_FAR.hy);
+    const nearCost = walk.costTo(near);
+    const floor = walk.costFloor(far);
+    const farCost = flood(terrain, SEED).costTo(far);
+    if (nearCost === undefined || floor === undefined || farCost === undefined)
+      throw new Error('bank walkable');
+    expect(floor).toBeLessThanOrEqual(farCost);
+    expect(floor).toBeGreaterThanOrEqual(fx.fromInt(0));
+    expect(walk.costFloor(near)).toBe(nearCost);
+    walk.costTo(terrain.nodeAt(EAST.hx, EAST.hy)); // floods the whole bank
+    expect(walk.costFloor(terrain.nodeAt(EAST.hx, EAST.hy))).toBeUndefined();
+    const spent = flood(terrain, SEED, SMALL_BUDGET);
+    spent.costTo(far);
+    expect(spent.costFloor(far)).toBeUndefined();
+  });
+
   it('reads a node past the budget as unreached, the settled ones as before', () => {
     const terrain = bank();
     const walk = flood(terrain, SEED, SMALL_BUDGET);

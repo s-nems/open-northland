@@ -111,6 +111,22 @@ describe('player technology discoveries', () => {
     expect(buildingEnabled(sim.world, ctx, RIVAL, TRIBE, SMITHY)).toBe(false);
   });
 
+  it('answers a repeated unlock question afresh after a discovery or a permission write', () => {
+    const { sim, ctx } = setup();
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(false);
+    discoverTechnology(sim.world, PLAYER, TRIBE, 'job', CARPENTER);
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(true);
+    setMapPermission(sim.world, {
+      player: PLAYER,
+      tribe: TRIBE,
+      kind: 'job',
+      typeId: CARPENTER,
+      allowed: false,
+    });
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(false);
+    expect(jobEnabled(sim.world, ctx, RIVAL, TRIBE, CARPENTER)).toBe(false);
+  });
+
   it('attributes every discovery notification to the worker who earned it', () => {
     const { sim, worker } = setup();
     const ctx = { ...ctxOf(sim), tick: 2 };

@@ -10,6 +10,9 @@ import { firstRingNode } from './node-geometry.js';
 export interface WalkDistances {
   /** The cheapest walk from a seed to `node`, or undefined off the seeds' ground or past the flood budget. */
   costTo(node: NodeId): Fixed | undefined;
+  /** A floor under what {@link costTo} answers for `node`, read without flooding on: its cost once settled,
+   *  else the least cost still waiting to settle; undefined once no node can settle any more. */
+  costFloor(node: NodeId): Fixed | undefined;
 }
 
 /** A binary min-heap of (cost, node), ties by node id, so the settle order is byte-identical. */
@@ -19,6 +22,11 @@ class WalkFrontier {
 
   get size(): number {
     return this.nodes.length;
+  }
+
+  /** The least entry's cost, which no later pop undercuts; undefined while empty. */
+  peekCost(): Fixed | undefined {
+    return this.costs[0];
   }
 
   push(cost: Fixed, node: NodeId): void {
@@ -133,6 +141,13 @@ export class WalkFlood implements WalkDistances {
     private readonly budget: number,
   ) {
     for (const seed of seeds) this.frontier.push(ZERO, seed);
+  }
+
+  costFloor(node: NodeId): Fixed | undefined {
+    const known = this.costs.settledCost(node);
+    if (known !== undefined) return known;
+    // Every walk to an unsettled node leaves through the frontier, so it costs at least the frontier's least.
+    return this.costs.settledCount < this.budget ? this.frontier.peekCost() : undefined;
   }
 
   costTo(node: NodeId): Fixed | undefined {

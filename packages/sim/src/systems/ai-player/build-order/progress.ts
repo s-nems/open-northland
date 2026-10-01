@@ -43,10 +43,36 @@ export interface DecisionMemo {
   rivalOverSea: boolean | undefined;
   grassScarce: boolean | undefined;
   roleOf: ((joinery: Entity) => JoineryRole) | undefined;
+  /** The seat's live flags by the one good each holder gathers. */
+  flagsByGood: ReadonlyMap<number, number> | undefined;
 }
 
 export function decisionMemo(): DecisionMemo {
-  return { live: new Map(), rivalOverSea: undefined, grassScarce: undefined, roleOf: undefined };
+  return {
+    live: new Map(),
+    rivalOverSea: undefined,
+    grassScarce: undefined,
+    roleOf: undefined,
+    flagsByGood: undefined,
+  };
+}
+
+function memoFlagsByGood(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  memo: DecisionMemo,
+): ReadonlyMap<number, number> {
+  if (memo.flagsByGood === undefined) {
+    const flags = new Map<number, number>();
+    for (const e of ownedSettlers(world, player)) {
+      if (liveWorkFlag(world, e) === undefined) continue;
+      const good = heldGatherGood(world, ctx, e);
+      if (good !== undefined) flags.set(good, (flags.get(good) ?? 0) + 1);
+    }
+    memo.flagsByGood = flags;
+  }
+  return memo.flagsByGood;
 }
 
 /** {@link grassScarce} around the seat's base; false with no base or terrain. */
@@ -140,10 +166,7 @@ export function entryStatus(
     case 'collector': {
       const good = goodTypeByContentId(ctx.content, entry.good);
       if (good?.atomics?.harvest === undefined) return 'skip';
-      let holders = 0;
-      for (const e of ownedSettlers(world, player)) {
-        if (liveWorkFlag(world, e) !== undefined && heldGatherGood(world, ctx, e) === good.typeId) holders++;
-      }
+      const holders = memoFlagsByGood(world, ctx, player, memo).get(good.typeId) ?? 0;
       if (holders >= collectorCount(entry)) return 'satisfied';
       // Nothing left to collect anywhere counts as done, so the list never stalls on a dry map.
       return liveResourceNearBase(world, ctx, player, good.typeId, memo.live) ? 'unmet' : 'skip';

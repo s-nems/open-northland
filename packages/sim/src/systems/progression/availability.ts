@@ -1,8 +1,9 @@
-import type { JobEnablesKind, Recipe, TribeType, VehicleType } from '@open-northland/data';
+import type { ContentSet, JobEnablesKind, Recipe, TribeType, VehicleType } from '@open-northland/data';
 import {
   AiPlayer,
   Building,
   isAiPlayer,
+  MAX_PLAYERS,
   MapPermissions,
   mapPermission,
   ownerOf,
@@ -148,11 +149,72 @@ const TECHNOLOGY_UNLOCK_STORES: readonly Component<unknown>[] = [
  * without a table is gated by its alive trades, which this does not cover.
  */
 export function technologyUnlockGeneration(world: World): number {
+  return storesGeneration(world, TECHNOLOGY_UNLOCK_STORES);
+}
+
+/** Every store {@link typeAllowed} reads. */
+const PERMISSION_STORES: readonly Component<unknown>[] = [ScriptUnlocks, MapPermissions];
+
+function storesGeneration(world: World, stores: readonly Component<unknown>[]): number {
   let generation = 0;
-  for (const store of TECHNOLOGY_UNLOCK_STORES) {
+  for (const store of stores) {
     generation += world.componentGeneration(store) + world.componentValueGeneration(store);
   }
   return generation;
+}
+
+/** One world's memoized unlock verdicts, valid while the content and the read stores' generation hold.
+ *  Derived read state, never hashed or saved. */
+interface UnlockVerdicts {
+  content: ContentSet | null;
+  generation: number;
+  readonly verdicts: Map<number, boolean>;
+}
+
+const allowedVerdicts = new WeakMap<World, UnlockVerdicts>();
+const technologyVerdicts = new WeakMap<World, UnlockVerdicts>();
+
+const VERDICT_KINDS: readonly JobEnablesKind[] = ['job', 'house', 'good', 'vehicle'];
+/** Tribe ids a packed verdict key holds; a larger id is answered unmemoized. */
+const VERDICT_TRIBE_SLOTS = 256;
+/** Owner slots: every player plus "no owner". */
+const VERDICT_OWNER_SLOTS = MAX_PLAYERS + 1;
+
+/** One number per (owner, tribe, kind, type), or null when an id falls outside the packed ranges. */
+function verdictKey(
+  owner: number | undefined,
+  tribe: number,
+  kind: JobEnablesKind,
+  typeId: number,
+): number | null {
+  const ownerSlot = owner === undefined ? 0 : owner + 1;
+  if (!Number.isInteger(ownerSlot) || ownerSlot < 0 || ownerSlot >= VERDICT_OWNER_SLOTS) return null;
+  if (!Number.isInteger(tribe) || tribe < 0 || tribe >= VERDICT_TRIBE_SLOTS) return null;
+  if (!Number.isSafeInteger(typeId) || typeId < 0) return null;
+  const packed =
+    ((typeId * VERDICT_KINDS.length + VERDICT_KINDS.indexOf(kind)) * VERDICT_TRIBE_SLOTS + tribe) *
+      VERDICT_OWNER_SLOTS +
+    ownerSlot;
+  return Number.isSafeInteger(packed) ? packed : null;
+}
+
+/** `memo`'s verdicts for `world`, emptied when the content or `generation` moved since they were taken. */
+function currentVerdicts(
+  memo: WeakMap<World, UnlockVerdicts>,
+  world: World,
+  content: ContentSet,
+  generation: number,
+): Map<number, boolean> {
+  let held = memo.get(world);
+  if (held === undefined) {
+    held = { content, generation, verdicts: new Map() };
+    memo.set(world, held);
+  } else if (held.content !== content || held.generation !== generation) {
+    held.verdicts.clear();
+    held.content = content;
+    held.generation = generation;
+  }
+  return held.verdicts;
 }
 
 export function jobEnabled(
@@ -181,6 +243,32 @@ export function jobEnabled(
  * trades the tribe holds alive decide.
  */
 function tribeUnlockEnabled(
+  world: World,
+  ctx: ContentContext,
+  tribe: number,
+  kind: JobEnablesKind,
+  targetId: number,
+  owner?: number,
+): boolean {
+  // A technology tribe's verdict reads only the stores technologyUnlockGeneration sums; a vehicle and a
+  // tribe without a table read the alive trades, which that number does not cover.
+  const key = verdictKey(owner, tribe, kind, targetId);
+  if (
+    key === null ||
+    kind === 'vehicle' ||
+    contentIndex(ctx.content).tribes.get(tribe)?.technology === undefined
+  )
+    return tribeUnlockVerdict(world, ctx, tribe, kind, targetId, owner);
+  const verdicts = currentVerdicts(technologyVerdicts, world, ctx.content, technologyUnlockGeneration(world));
+  let verdict = verdicts.get(key);
+  if (verdict === undefined) {
+    verdict = tribeUnlockVerdict(world, ctx, tribe, kind, targetId, owner);
+    verdicts.set(key, verdict);
+  }
+  return verdict;
+}
+
+function tribeUnlockVerdict(
   world: World,
   ctx: ContentContext,
   tribe: number,
@@ -254,6 +342,30 @@ export function tribeShipsUnlocked(
  *  initial allow table, is authoritative. `Enable*` never lifts a ban (reading: the original
  *  requires the allowed flag beside the enabled one). */
 export function typeAllowed(
+  world: World,
+  ctx: ContentContext,
+  owner: number | undefined,
+  tribe: number,
+  kind: UnlockKind,
+  typeId: number,
+): boolean {
+  const key = verdictKey(owner, tribe, kind, typeId);
+  if (key === null) return typeVerdict(world, ctx, owner, tribe, kind, typeId);
+  const verdicts = currentVerdicts(
+    allowedVerdicts,
+    world,
+    ctx.content,
+    storesGeneration(world, PERMISSION_STORES),
+  );
+  let verdict = verdicts.get(key);
+  if (verdict === undefined) {
+    verdict = typeVerdict(world, ctx, owner, tribe, kind, typeId);
+    verdicts.set(key, verdict);
+  }
+  return verdict;
+}
+
+function typeVerdict(
   world: World,
   ctx: ContentContext,
   owner: number | undefined,

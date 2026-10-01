@@ -61,6 +61,17 @@ describe('setPlayerAi - the AI seat flag', () => {
     expect(seat.modules.houseBuild).toBe(true);
   });
 
+  it('follows a carrier re-seated in place after an earlier lookup', () => {
+    const sim = fresh();
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    sim.step();
+    const carrier = aiPlayerEntity(sim.world, AI_SEAT);
+    if (carrier === null) throw new Error('setup: no carrier');
+    sim.world.mut(carrier, AiPlayer).player = OTHER_SEAT;
+    expect(aiPlayerEntity(sim.world, AI_SEAT)).toBeNull();
+    expect(aiPlayerEntity(sim.world, OTHER_SEAT)).toBe(carrier);
+  });
+
   it('removes the seat on disable and skips an out-of-range player (still logged)', () => {
     const sim = fresh();
     sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });

@@ -2008,8 +2008,8 @@ describe('flagSpotNear', () => {
       ...ground,
       placeable: () => true,
       sealedFrom: () => false,
-      walkOut: () => ({ costTo: () => fx.fromInt(0) }),
-      walkFrom: () => ({ costTo: () => fx.fromInt(0) }),
+      walkOut: () => ({ costTo: () => fx.fromInt(0), costFloor: () => fx.fromInt(0) }),
+      walkFrom: () => ({ costTo: () => fx.fromInt(0), costFloor: () => fx.fromInt(0) }),
     };
     expect(flagSpotNear(sim.world, controlled, depositOf(sim), centre, new Set())).toEqual({
       hx: 16,
@@ -2034,8 +2034,8 @@ describe('flagSpotNear', () => {
       ...ground,
       placeable: () => true,
       sealedFrom: () => false,
-      walkOut: () => ({ costTo: () => undefined }),
-      walkFrom: () => ({ costTo: () => undefined }),
+      walkOut: () => ({ costTo: () => undefined, costFloor: () => undefined }),
+      walkFrom: () => ({ costTo: () => undefined, costFloor: () => undefined }),
     };
     expect(flagSpotNear(sim.world, controlled, depositOf(sim), { hx: 60, hy: 16 }, new Set())).toEqual({
       hx: 24,

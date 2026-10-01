@@ -18,7 +18,8 @@ import { SIGHT_RADIUS_NODES } from '../../../conflict/targeting.js';
 import { garrisonReach, isManningPost, standsAtPost } from '../../../conflict/tower-post.js';
 import { attackerWeapon } from '../../../conflict/weapons.js';
 import type { SystemContext } from '../../../context.js';
-import { houseBow, isFighterJob } from '../../../readviews/index.js';
+import { ownedFighters } from '../../../movement/collision/owned-fighters.js';
+import { houseBow } from '../../../readviews/index.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 
@@ -145,7 +146,10 @@ function scanRaiders(
   player: number,
 ): readonly Raider[] {
   const raiders: Raider[] = [];
-  for (const e of world.canonicalQuery(Person, Owner)) {
+  // The owned-fighter index holds every owned settler of a fighting trade, ascending id: the fighters among
+  // the people, without a walk over every civilian.
+  for (const e of ownedFighters(world, ctx.content)) {
+    if (!world.has(e, Person)) continue;
     const owner = world.get(e, Owner).player;
     if (owner === player) continue;
     // A fighter is a raid only if his player would engage this seat: an allied army walking past must
@@ -153,7 +157,6 @@ function scanRaiders(
     if (diplomacyStance(world, owner, player) !== 'enemy') continue;
     if (!world.has(e, Position)) continue;
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
-    if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) continue;
     if (standsAtPost(world, e) !== null) continue;
     const at = entityNode(world, terrain, e);
     const reach = Math.max(weaponReach(world, ctx, e), SIGHT_RADIUS_NODES);
@@ -252,12 +255,13 @@ export function raidOnTheSettlement(
   owned: readonly Entity[],
   raiders: readonly Raider[],
 ): Raider | null {
-  if (raiders.length === 0) return null;
+  const near = raidersNearAny(world, ctx, terrain, owned, raiders);
+  if (near.length === 0) return null;
   let best: { raider: Raider; distance: number } | null = null;
   for (const e of owned) {
     const at = terrain.coordsOf(entityNode(world, terrain, e));
     const door = terrain.componentOf(interactionCell(world, ctx, terrain, e));
-    const found = nearestRaiderWithin(raiders, at.x, at.y, watchBandOf(world, ctx, e), door);
+    const found = nearestRaiderWithin(near, at.x, at.y, watchBandOf(world, ctx, e), door);
     if (found === null) continue;
     if (
       best === null ||
@@ -268,4 +272,37 @@ export function raidOnTheSettlement(
     }
   }
   return best?.raider ?? null;
+}
+
+/**
+ * The `raiders` inside the box round `owned` widened by the widest watch band, in their order: a man
+ * outside it lies past every building's band, since a hex distance is never under the row span nor under
+ * the column span less one.
+ */
+function raidersNearAny(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  owned: readonly Entity[],
+  raiders: readonly Raider[],
+): readonly Raider[] {
+  if (raiders.length === 0 || owned.length === 0) return [];
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  let band = 0;
+  for (const e of owned) {
+    const at = entityNode(world, terrain, e);
+    const x = terrain.xOf(at);
+    const y = terrain.yOf(at);
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+    band = Math.max(band, watchBandOf(world, ctx, e));
+  }
+  return raiders.filter(
+    (r) => r.x >= minX - band - 1 && r.x <= maxX + band + 1 && r.y >= minY - band && r.y <= maxY + band,
+  );
 }

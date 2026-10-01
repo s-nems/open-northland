@@ -1,7 +1,7 @@
-import { Position, Resource, ResourceFootprint, Settler } from '../../components/index.js';
+import { Building, Position, Resource, ResourceFootprint, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { HalfCellNode } from '../../nav/halfcell.js';
+import { type HalfCellNode, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/blocked.js';
@@ -60,7 +60,39 @@ export function reachableResourceTest(
   const component = terrain.componentOf(origin);
   if (component === NO_COMPONENT) return workable;
   return (e) =>
-    workable(e) && terrain.componentOf(interactionCell(world, ctx, terrain, e, origin)) === component;
+    workable(e) &&
+    (stanceComponentVerdict(world, ctx, terrain, e, component) ??
+      terrain.componentOf(interactionCell(world, ctx, terrain, e, origin)) === component);
+}
+
+/**
+ * Whether a resource's work cell lies on `component` whatever origin picks it, or null when the pick
+ * decides. The work cell is one of the resource's stance cells, or its anchor when none can be entered
+ * (`resourceWorkCell`), so a pool and anchor wholly on or wholly off the component settle the verdict
+ * without the nearest-stance pick and its pocket floods.
+ */
+function stanceComponentVerdict(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  component: number,
+): boolean | null {
+  // A building's door is its interaction cell, and the pick below is the resource rule alone.
+  if (world.has(e, Building) || !world.has(e, Resource)) return null;
+  const p = world.tryGet(e, Position);
+  if (p === undefined) return null;
+  const anchor = terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
+  const anchorOn = terrain.componentOf(anchor) === component;
+  let anyOn = false;
+  let allOn = true;
+  for (const cell of resourceStanceCells(world, ctx, terrain, e)) {
+    if (terrain.componentOf(cell) === component) anyOn = true;
+    else allOn = false;
+  }
+  if (anchorOn && allOn) return true;
+  if (!anchorOn && !anyOn) return false;
+  return null;
 }
 
 /**

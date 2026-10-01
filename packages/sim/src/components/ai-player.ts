@@ -158,15 +158,38 @@ export interface RoadTrafficState {
  */
 export const RoadTraffic = defineComponent<RoadTrafficState>('RoadTraffic', 'players');
 
+/** Each seat's lowest-id {@link AiPlayer} carrier, rebuilt when the store's membership or values move.
+ *  Derived read state, never hashed or saved. */
+interface CarrierIndex {
+  generation: number;
+  valueGeneration: number;
+  readonly bySeat: Map<number, Entity>;
+}
+
+const carrierIndexByWorld = new WeakMap<World, CarrierIndex>();
+
 /** The {@link AiPlayer} carrier for `player`, or null when the seat is not AI-driven. The lowest-id
- *  carrier wins should more than one ever exist. */
+ *  carrier wins should more than one ever exist. Asked per settler by the needs and unlock rules, so the
+ *  answer comes from a per-world index rather than a store walk. */
 export function aiPlayerEntity(world: World, player: number): Entity | null {
-  let best: Entity | null = null;
-  for (const e of world.query(AiPlayer)) {
-    if (world.get(e, AiPlayer).player !== player) continue;
-    if (best === null || e < best) best = e;
+  const generation = world.componentGeneration(AiPlayer);
+  const valueGeneration = world.componentValueGeneration(AiPlayer);
+  let index = carrierIndexByWorld.get(world);
+  if (index === undefined) {
+    index = { generation: -1, valueGeneration: -1, bySeat: new Map() };
+    carrierIndexByWorld.set(world, index);
   }
-  return best;
+  if (index.generation !== generation || index.valueGeneration !== valueGeneration) {
+    index.bySeat.clear();
+    for (const e of world.query(AiPlayer)) {
+      const seat = world.get(e, AiPlayer).player;
+      const held = index.bySeat.get(seat);
+      if (held === undefined || e < held) index.bySeat.set(seat, e);
+    }
+    index.generation = generation;
+    index.valueGeneration = valueGeneration;
+  }
+  return index.bySeat.get(player) ?? null;
 }
 
 /** Whether `player` is a computer seat, whatever its handlers are set to. */

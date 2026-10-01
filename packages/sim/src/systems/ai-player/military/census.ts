@@ -6,6 +6,8 @@ import {
   Engagement,
   Health,
   MAX_PLAYERS,
+  Owner,
+  Person,
   Position,
   Rider,
   Settler,
@@ -16,6 +18,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { isManningPost, towerPostFor } from '../../conflict/tower-post.js';
 import { attackerWeapon } from '../../conflict/weapons.js';
 import type { SystemContext } from '../../context.js';
+import { ownedFighters } from '../../movement/collision/owned-fighters.js';
 import { isFighterJob, isRangedWeapon, WEAPON_MAIN_TYPE, weaponClassOf } from '../../readviews/index.js';
 import { ownedSettlers } from '../seat-roster.js';
 
@@ -92,18 +95,32 @@ function armyStrength(world: World, ctx: SystemContext, player: number, postedWe
  * The {@link fighterStrength} of the strongest player `player` holds an `enemy` stance toward, 0 when no
  * enemy fields anyone: the men he could march with, counted one to one like the seat's own, so the army
  * floor (`workforce/garrison.ts`) can be met. The weight his tower posts add is the offensive's concern
- * ({@link defendingStrength}), read for the one target it picks. One roster pass per enemy slot, so the
- * cost is the enemies' people, the same order as the campaign's target scan. Not fog-gated, like that
- * scan; that the original's AI sees through the fog too is unconfirmed.
+ * ({@link defendingStrength}), read for the one target it picks. One pass over the owned fighters, so the
+ * cost is the map's fighters, not its people. Not fog-gated, like the campaign's target scan; that the
+ * original's AI sees through the fog too is unconfirmed.
  */
 export function strongestEnemyStrength(world: World, ctx: SystemContext, player: number): number {
-  let strongest = 0;
+  const strengths: number[] = [];
+  let anyEnemy = false;
   for (let other = 0; other < MAX_PLAYERS; other++) {
-    if (other === player || diplomacyStance(world, player, other) !== 'enemy') continue;
-    strongest = Math.max(strongest, fighterStrength(world, ctx, other));
+    const enemy = other !== player && diplomacyStance(world, player, other) === 'enemy';
+    strengths.push(enemy ? 0 : NOT_AN_ENEMY);
+    anyEnemy ||= enemy;
   }
-  return strongest;
+  if (!anyEnemy) return 0;
+  for (const e of ownedFighters(world, ctx.content)) {
+    if (!world.has(e, Person)) continue;
+    const owner = world.get(e, Owner).player;
+    const held = strengths[owner];
+    if (held === undefined || held === NOT_AN_ENEMY) continue;
+    if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
+    strengths[owner] = held + 1;
+  }
+  return Math.max(0, ...strengths);
 }
+
+/** {@link strongestEnemyStrength}'s mark on a slot it does not count. */
+const NOT_AN_ENEMY = -1;
 
 /** The weapon mix of one body of fighters. A man with nothing to fight with counts as melee: he has no
  *  reach to keep, so he goes in with the front rank. */
