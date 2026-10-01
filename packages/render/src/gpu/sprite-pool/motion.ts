@@ -76,6 +76,11 @@ export interface MotionTrack {
   readonly snapDistance: number;
 }
 
+/** Whether the track draws at its tick anchor whatever the frame alpha: both anchors coincide. */
+export function atRest(m: MotionTrack): boolean {
+  return m.prevX === m.x && m.prevY === m.y && m.prevRotation === m.rotation;
+}
+
 export function isStalled(m: MotionTrack): boolean {
   return m.stillTicks >= STALL_TICKS_TO_IDLE;
 }

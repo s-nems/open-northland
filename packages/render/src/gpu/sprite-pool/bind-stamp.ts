@@ -4,11 +4,15 @@ import type { ResolvedLayer } from './resolved-layer.js';
 import type { PoolFrame } from './sprite-pool.js';
 
 /**
- * The frame-wide inputs of an entity's present and bind, reduced to a counter that bumps when any of
- * them changes. The frame alpha is kept apart, in each stamp, because a bind can outlast it.
+ * The frame-wide inputs of an entity's present and bind, reduced to counters that bump when any of them
+ * changes: {@link current} for every input, {@link bind} for those the bind itself reads. The frame alpha
+ * is kept apart, in each stamp, because a bind can outlast it.
  */
 export class FrameEpoch {
   current = 0;
+  /** Bumps with {@link current} except on the tick, wind and motion setting, which reach a bind only
+   *  through the layers a present resolves. */
+  bind = 0;
   private tick = Number.NaN;
   private enhancedSampling: PoolFrame['enhancedSampling'];
   private pixelArtScaler: PoolFrame['pixelArtScaler'];
@@ -28,12 +32,9 @@ export class FrameEpoch {
   advance(frame: PoolFrame, textureRevision: number): void {
     const camera = frame.camera;
     const windy = (frame.wind?.strength ?? 0) > 0;
-    if (
-      windy === this.windy &&
-      frame.tick === this.tick &&
+    const bindHolds =
       frame.enhancedSampling === this.enhancedSampling &&
       frame.pixelArtScaler === this.pixelArtScaler &&
-      frame.environmentMotion === this.environmentMotion &&
       frame.shadowStyle === this.shadowStyle &&
       textureRevision === this.textureRevision &&
       camera.offsetX === this.offsetX &&
@@ -41,11 +42,17 @@ export class FrameEpoch {
       camera.scale === this.scale &&
       frame.screenW === this.screenW &&
       frame.screenH === this.screenH &&
-      frame.snapResolution === this.snapResolution
+      frame.snapResolution === this.snapResolution;
+    if (
+      bindHolds &&
+      windy === this.windy &&
+      frame.tick === this.tick &&
+      frame.environmentMotion === this.environmentMotion
     ) {
       return;
     }
     this.current++;
+    if (!bindHolds) this.bind++;
     this.tick = frame.tick;
     this.enhancedSampling = frame.enhancedSampling;
     this.pixelArtScaler = frame.pixelArtScaler;
@@ -73,15 +80,75 @@ export class BindStamp {
   /** The frame alpha of the last present, which may have run without a bind. */
   alpha = Number.NaN;
   highlight: boolean | undefined;
+  private bindEpoch = -1;
   private drawX = Number.NaN;
   private drawY = Number.NaN;
   private drawRotation = Number.NaN;
   /** `null` for the placeholder marker. */
   private layers: ResolvedLayer[] | null = [];
+  /** The item fields the bind and the depth key read besides the layers: a new draw item of an
+   *  unchanged entity, which every scene build brings, binds nothing new while they hold. */
+  private kind: DrawItem['kind'] | undefined;
+  private ghost = false;
+  private isFlag = false;
+  private x = Number.NaN;
+  private y = Number.NaN;
+  private lift = 0;
+  private site: DrawItem['palisadeSite'] | DrawItem['roadSite'];
+  private builtPct: number | undefined;
+  private upgradePct: number | undefined;
+  private player: number | undefined;
+  /** Whether a bound layer leans with the vegetation clock. */
+  private sways = false;
 
   /** Whether the bind reads the same item, frame-wide inputs and highlight it last read. */
   holds(item: DrawItem, epoch: number, highlight: boolean | undefined): boolean {
     return this.item === item && this.epoch === epoch && this.highlight === highlight;
+  }
+
+  /** Whether a bind of `item` under these bind inputs reads what the last one did, apart from the layers
+   *  and the drawn anchor {@link presents} compares. */
+  bindHolds(item: DrawItem, bindEpoch: number, highlight: boolean | undefined): boolean {
+    return (
+      this.bindEpoch === bindEpoch &&
+      this.highlight === highlight &&
+      this.kind === item.kind &&
+      this.ghost === (item.ghost === true) &&
+      this.isFlag === (item.isFlag === true) &&
+      this.x === item.x &&
+      this.y === item.y &&
+      this.lift === (item.lift ?? 0) &&
+      this.site === siteOf(item) &&
+      this.builtPct === item.builtPct &&
+      this.upgradePct === item.upgradePct &&
+      this.player === item.player
+    );
+  }
+
+  /** Whether the bound layers hold still with the frame clocks: none of them sways. */
+  get clockFree(): boolean {
+    return !this.sways;
+  }
+
+  /** Whether `item` carries the same fields, each the same value, as the item last bound or carried. */
+  sameItem(item: DrawItem): boolean {
+    const last = this.item;
+    if (last === item) return true;
+    if (last === undefined) return false;
+    let fields = 0;
+    for (const key in item) {
+      if (item[key as keyof DrawItem] !== last[key as keyof DrawItem]) return false;
+      fields++;
+    }
+    for (const _ in last) fields--;
+    return fields === 0;
+  }
+
+  /** Take `item` and the frame's epoch as bound without binding: {@link bindHolds} and {@link presents}
+   *  held, so the sprites already show what a bind would set. */
+  carry(item: DrawItem, epoch: number): void {
+    this.item = item;
+    this.epoch = epoch;
   }
 
   /** Whether a fresh present resolved exactly what was bound. */
@@ -102,17 +169,29 @@ export class BindStamp {
 
   record(
     item: DrawItem,
-    epoch: number,
+    epoch: FrameEpoch,
     highlight: boolean | undefined,
     motion: MotionTrack,
     layers: readonly ResolvedLayer[] | null,
   ): void {
     this.item = item;
-    this.epoch = epoch;
+    this.epoch = epoch.current;
+    this.bindEpoch = epoch.bind;
     this.highlight = highlight;
+    this.kind = item.kind;
+    this.ghost = item.ghost === true;
+    this.isFlag = item.isFlag === true;
+    this.x = item.x;
+    this.y = item.y;
+    this.lift = item.lift ?? 0;
+    this.site = siteOf(item);
+    this.builtPct = item.builtPct;
+    this.upgradePct = item.upgradePct;
+    this.player = item.player;
     this.drawX = motion.drawX;
     this.drawY = motion.drawY;
     this.drawRotation = motion.drawRotation;
+    this.sways = false;
     if (layers === null) {
       this.layers = null;
       return;
@@ -121,8 +200,15 @@ export class BindStamp {
     bound.length = layers.length;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
-      if (layer !== undefined) bound[i] = layer;
+      if (layer === undefined) continue;
+      bound[i] = layer;
+      if (layer.shear !== undefined) this.sways = true;
     }
     this.layers = bound;
   }
+}
+
+/** The plan-site state a wall segment or road site binds its marker by. */
+function siteOf(item: DrawItem): DrawItem['palisadeSite'] | DrawItem['roadSite'] {
+  return item.kind === 'palisade' ? item.palisadeSite : item.kind === 'roadsite' ? item.roadSite : undefined;
 }

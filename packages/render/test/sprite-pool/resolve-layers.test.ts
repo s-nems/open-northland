@@ -1,5 +1,6 @@
 import type { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import { resolvesWithoutClock } from '../../src/gpu/sprite-pool/resolve-layers.js';
 import {
   type DrawItem,
   type ResolvedLayer,
@@ -690,5 +691,51 @@ describe('resolveLayers - one scale rule for every settler path', () => {
     const FREE_TICK = 0;
     const GAIT_CLOCK = 3;
     expect(resolveLayers(sheet, walker, FREE_TICK, GAIT_CLOCK)?.[0]?.frame.x).toBe(WALK_START + GAIT_CLOCK);
+  });
+});
+
+describe('resolvesWithoutClock - the layers it vouches for read no clock', () => {
+  const FLAG_BOB = 80;
+  const WAVED_FLAG_BOB = 81;
+  const atlas: SpriteAtlas = {
+    width: 100,
+    height: 10,
+    frames: new Map([frame(70), frame(FLAG_BOB), frame(WAVED_FLAG_BOB)]),
+  };
+  const sheet: SpriteSheet = {
+    source,
+    atlas: { width: 0, height: 0, frames: new Map() },
+    bindings: {
+      settler: 1,
+      resource: 70,
+      building: 1,
+      stockpile: {
+        byGood: { 5: [{ layer: 'goods', bob: 70 }] },
+        flag: [
+          { layer: 'goods', bob: FLAG_BOB },
+          { layer: 'goods', bob: WAVED_FLAG_BOB },
+        ],
+        default: 0,
+      },
+    },
+    kindLayers: { resource: { source, atlas } },
+    families: { goods: { source, atlas } },
+  };
+  const LATER_TICK = 997;
+  const pile: DrawItem = { kind: 'stockpile', ref: 1, x: 0, y: 0, depth: 0, goodType: 5, fill: 1 };
+  const tree: DrawItem = { kind: 'resource', ref: 2, x: 0, y: 0, depth: 0 };
+  const flag: DrawItem = { kind: 'stockpile', ref: 3, x: 0, y: 0, depth: 0 };
+
+  it('vouches for a goods pile and a tree, which resolve the same layers at any tick', () => {
+    for (const item of [pile, tree]) {
+      expect(resolvesWithoutClock(item)).toBe(true);
+      expect(resolveLayers(sheet, item, LATER_TICK, LATER_TICK, LATER_TICK)).toEqual(
+        resolveLayers(sheet, item, 0),
+      );
+    }
+  });
+
+  it('leaves out the delivery flag, which waves with the clock', () => {
+    expect(resolvesWithoutClock(flag)).toBe(false);
   });
 });

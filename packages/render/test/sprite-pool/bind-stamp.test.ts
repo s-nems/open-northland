@@ -139,11 +139,59 @@ describe('SpritePool - an entity whose inputs held still keeps its bind', () => 
     expect(bind).toHaveBeenCalledTimes(2);
   });
 
-  it('binds a new draw item, which a new snapshot brings', () => {
+  it('keeps the bind across a new snapshot and tick that leave the entity as it was', () => {
+    const { layer, pool, bind, snapshot } = setup();
+    pool.reconcile(frameOf(snapshot));
+    const body = bodySprite(layer);
+    pool.reconcile(frameOf(snapshotOf([entity(SETTLER, 0, 0, { Settler: { tribe: 0 } })]), { tick: 1 }));
+    expect(bind).toHaveBeenCalledTimes(1);
+    expect(bodySprite(layer)).toBe(body);
+  });
+
+  it('binds a new draw item that moved the entity', () => {
     const { pool, bind, snapshot } = setup();
     pool.reconcile(frameOf(snapshot));
-    pool.reconcile(frameOf(snapshotOf([entity(SETTLER, 0, 0, { Settler: { tribe: 0 } })])));
+    pool.reconcile(frameOf(snapshotOf([entity(SETTLER, 1, 0, { Settler: { tribe: 0 } })]), { tick: 1 }));
     expect(bind).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('SpritePool - a still clockless entity skips its present', () => {
+  const TREE = 2;
+  /** Counts the resolves that read the tree's binding: one per present of the tree. */
+  function countingPool() {
+    let presents = 0;
+    const counted: SpriteSheet = {
+      ...sheet,
+      bindings: {
+        ...sheet.bindings,
+        get resource() {
+          presents++;
+          return sheet.bindings.resource;
+        },
+      },
+    };
+    const pool = new SpritePool(new Container(), new TextureCache(), counted);
+    return { pool, presents: () => presents };
+  }
+  const tree = (tileX: number) => snapshotOf([entity(TREE, tileX, 0, { Resource: { goodType: 3 } })]);
+
+  it('resolves an unchanged tree once across new snapshots, ticks and frame alphas', () => {
+    const { pool, presents } = countingPool();
+    pool.reconcile(frameOf(tree(0), { tick: 0 }));
+    const first = presents();
+    pool.reconcile(frameOf(tree(0), { tick: 1, alpha: 0.5 }));
+    pool.reconcile(frameOf(tree(0), { tick: 2, alpha: 0.25 }));
+    expect(presents()).toBe(first);
+    expect(pool.boundsOf(TREE)).toBeDefined();
+  });
+
+  it('resolves the tree again once its item changes', () => {
+    const { pool, presents } = countingPool();
+    pool.reconcile(frameOf(tree(0), { tick: 0 }));
+    const first = presents();
+    pool.reconcile(frameOf(tree(1), { tick: 1 }));
+    expect(presents()).toBeGreaterThan(first);
   });
 });
 
@@ -160,5 +208,18 @@ describe('FrameEpoch', () => {
     expect(epoch.current).toBe(first + 1);
     epoch.advance({ ...base, camera: { offsetX: 1, offsetY: 0 } }, 1);
     expect(epoch.current).toBe(first + 2);
+  });
+
+  it('keeps the bind epoch over a new tick, which reaches a bind only through the layers', () => {
+    const epoch = new FrameEpoch();
+    const base = frameOf(snapshotOf([]));
+    epoch.advance(base, 0);
+    const { current, bind } = epoch;
+
+    epoch.advance({ ...base, tick: 1, environmentMotion: true }, 0);
+    expect(epoch.current).toBe(current + 1);
+    expect(epoch.bind).toBe(bind);
+    epoch.advance({ ...base, tick: 1, environmentMotion: true, snapResolution: 2 }, 0);
+    expect(epoch.bind).toBe(bind + 1);
   });
 });

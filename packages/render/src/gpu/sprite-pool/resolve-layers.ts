@@ -28,6 +28,25 @@ import {
 import { LayerBuffer, type ResolvedLayer } from './resolved-layer.js';
 import { pushVehicleLayers } from './vehicle-layers.js';
 
+/** Kinds whose layers read no clock: see {@link resolvesWithoutClock}. */
+const CLOCKLESS_KINDS: ReadonlySet<DrawItem['kind']> = new Set<DrawItem['kind']>([
+  'resource',
+  'stump',
+  'berrybush',
+  'chest',
+  'grounddrop',
+  'signpost',
+]);
+
+/**
+ * Whether `item`'s layers resolve from the item alone, reading no clock, so a still one presents the
+ * same layers on every frame: a goods pile, unlike the waving delivery flag, and the kinds above. A
+ * swaying resource is the exception: its body carries a `shear` off the vegetation clock.
+ */
+export function resolvesWithoutClock(item: DrawItem): boolean {
+  return CLOCKLESS_KINDS.has(item.kind) || (item.kind === 'stockpile' && item.goodType !== undefined);
+}
+
 /**
  * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder. Returns layer
  * data, never display objects, so the pool keeps reusing its sprites.

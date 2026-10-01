@@ -31,11 +31,13 @@ import type { TextureCache } from '../texture-cache.js';
 import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
 import { LayerBinder } from './bind-layers.js';
 import { FrameEpoch } from './bind-stamp.js';
+import { atRest } from './motion.js';
 import { anchorOf, boundsOf, type DamagedBuilding, keelOf, pixelHit, type ShipAfloat } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
 import { PortraitSubject } from './portrait-subject.js';
 import { presentEntity } from './present-entity.js';
 import { reconcileSprites } from './reconcile.js';
+import { resolvesWithoutClock } from './resolve-layers.js';
 import { SpriteSceneCache } from './scene-cache.js';
 
 /** The retained per-entity sprite pool, keyed by the entity's monotonic, never-reused id. */
@@ -248,30 +250,53 @@ export class SpritePool {
 
   /**
    * Present and bind `pe` for this frame, unless what it last bound on the previous frame still stands:
-   * the same inputs keep it without a present, and a present that only moved the frame alpha keeps it
-   * when it resolved exactly what was bound. A construction site always binds: its eased reveal moves
-   * every frame, and a reveal bake left unbound may be evicted.
+   * the same inputs keep it without a present, as does an equal item that resolves without a clock under
+   * the same bind inputs, and a present under the same bind inputs keeps it when it resolved exactly
+   * what was bound, as a new tick does for most of a still town. A construction site always binds: its
+   * eased reveal moves every frame, and a reveal bake left unbound may be evicted.
    */
   private presentPooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame, continuous: boolean): void {
     const stamp = pe.bound;
     const highlight = frame.highlight?.get(item.ref);
-    const holds =
-      continuous &&
-      pe.reveal === undefined &&
+    const steady = continuous && pe.reveal === undefined;
+    if (
+      steady &&
+      stamp.alpha === frame.alpha &&
       stamp.holds(item, this.epoch.current, highlight) &&
-      this.binder.paletteHolds(pe, item);
-    if (holds && stamp.alpha === frame.alpha) {
+      this.binder.paletteHolds(pe, item)
+    ) {
+      this.keepBound(pe);
+      return;
+    }
+    if (
+      steady &&
+      resolvesWithoutClock(item) &&
+      stamp.clockFree &&
+      atRest(pe.motion) &&
+      stamp.bindHolds(item, this.epoch.bind, highlight) &&
+      stamp.sameItem(item) &&
+      this.binder.paletteHolds(pe, item)
+    ) {
+      stamp.carry(item, this.epoch.current);
+      stamp.alpha = frame.alpha;
       this.keepBound(pe);
       return;
     }
     const layers = presentEntity(pe, item, frame, this.sheet);
     stamp.alpha = frame.alpha;
-    if (holds && stamp.presents(pe.motion, layers)) {
+    if (
+      steady &&
+      pe.reveal === undefined &&
+      stamp.bindHolds(item, this.epoch.bind, highlight) &&
+      stamp.presents(pe.motion, layers) &&
+      this.binder.paletteHolds(pe, item)
+    ) {
+      stamp.carry(item, this.epoch.current);
       this.keepBound(pe);
       return;
     }
     this.binder.bind(pe, item, layers, frame, this.frameId);
-    stamp.record(item, this.epoch.current, highlight, pe.motion, layers);
+    stamp.record(item, this.epoch, highlight, pe.motion, layers);
     pe.container.zIndex = pooledDepth(pe, item);
   }
 
