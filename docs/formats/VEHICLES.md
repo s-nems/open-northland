@@ -154,8 +154,10 @@ radius-1 ring only, where a catapult's door here lies on ring 2); a rider boards
 onto that door node or, where another blocker covers it, the nearest open node beside it; a rider
 whose walk to the door fails is dropped with a
 lost note; the ordinary orders that detach first are the walk, attack, work, trade, home, school,
-drill, marriage, need, equipment, explore, signpost and chest orders; a vehicle left with no commander
-mid-drive stops after the leg under way, its march and target lapsing (`vacateSeat`). Deviation (owner's choice): a walk or attack-position order given to a
+drill, marriage, need, equipment, explore, signpost and chest orders; a land vehicle left with no
+commander mid-drive stops after the leg under way, its march and target lapsing (`vacateSeat`), except on
+its own drive into a ship, which the load order runs without a crew; a ship sails on, since nobody could
+board one at sea. Deviation (owner's choice): a walk or attack-position order given to a
 vehicle's commander, aboard or standing beside it, is handed to the vehicle as its goto
 (`systems/vehicles/commander.ts`), so a trader ordered somewhere takes the cart and its cargo along;
 the vehicle's refusals apply and a refused point leaves the commander seated. The original detaches

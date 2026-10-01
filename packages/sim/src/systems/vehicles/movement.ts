@@ -561,12 +561,18 @@ export function sendVehicleTo(
   return true;
 }
 
-/** Free `rider`'s seat on `vehicle`. A vehicle left with no commander stops after the leg under way,
- *  since no commander means no drive, and its march and target lapse with it; the drive's end still
- *  settles it out of a gap. */
+/**
+ * Free `rider`'s seat on `vehicle`. A land vehicle left with no commander stops after the leg under way,
+ * since no commander means no drive, and its march and target lapse with it; the drive's end still
+ * settles it out of a gap. Its own drive into a ship goes on, as the load order needs no crew. A ship
+ * sails on: nobody can board one at sea, so stopping it there would strand it for good.
+ */
 export function vacateSeat(world: World, vehicle: Entity, rider: Entity): void {
   unseatPassenger(world, vehicle, rider);
-  if (vehicleCommander(world.get(vehicle, Vehicle)) !== null) return;
+  const state = world.get(vehicle, Vehicle);
+  if (vehicleCommander(state) !== null || state.task === 'boardsShip') return;
+  const helm = world.tryGet(vehicle, VehicleDrive)?.helm;
+  if (helm !== undefined && helm !== null) return;
   dropAttack(world, vehicle);
   cutRoute(world, vehicle);
 }

@@ -10,6 +10,7 @@ import {
   Vehicle,
   VehicleDrive,
   VehicleStock,
+  vehicleCommander,
   vehiclePassengers,
 } from '../../src/components/index.js';
 import { playerTally } from '../../src/components/statistics.js';
@@ -35,6 +36,7 @@ import { stepHex } from '../../src/nav/halfcell.js';
 import { findPath } from '../../src/nav/pathfinding/index.js';
 import { vehicleDoorNode } from '../../src/systems/footprint/index.js';
 import { vehicleClearance } from '../../src/systems/footprint/vehicle-clearance.js';
+import { removeSettlerSilently } from '../../src/systems/lifecycle/death.js';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { boardRider, createVehicle, mooringProbe, removeVehicle } from '../../src/systems/vehicles/index.js';
 import { stockVehicleGoods } from '../../src/systems/vehicles/stock.js';
@@ -280,6 +282,21 @@ describe('dockVehicle', () => {
     ).toBeGreaterThanOrEqual(SHIP_SIZE);
     expect(vehicleDoorNode(s.world, ctxOf(s), ship)).toEqual(point);
     expect(docked(s)).toEqual([point]);
+  });
+
+  it('sails on and moors on the shore when its last rider is removed at sea', () => {
+    const s = sim();
+    const { ship, riders } = crewedShip(s, 20, MID_ROW);
+    const point = { hx: EAST_SHORE_X + 1, hy: MID_ROW };
+    dock(s, ship, point.hx, point.hy);
+    s.run(3);
+    const [rider] = riders;
+    if (rider === undefined) throw new Error('no rider');
+    removeSettlerSilently(s.world, rider);
+    expect(vehicleCommander(s.world.get(ship, Vehicle))).toBeNull();
+    sailOut(s, ship);
+    expect(s.world.get(ship, Vehicle).moored).toBe(true);
+    expect(distanceTo(anchorOf(s, ship), point)).toBe(DOOR_DISTANCE); // moored at the shore, not mid-strait
   });
 
   it('unloads the crew onto the far shore once moored there', () => {

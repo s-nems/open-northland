@@ -683,6 +683,22 @@ describe('carried vehicles', () => {
     expect(seatOf(s, cart, scout)?.inside).toBe(true);
   });
 
+  it('drives on into the ship without a pause when its commander is removed on the way', () => {
+    const s = sim();
+    const { ship, cart, scout } = loadedCart(s);
+    s.enqueue(playerCommand(P0, { kind: 'loadIntoVehicle', vehicle: cart, carrier: ship }));
+    for (let t = 0; t < SAIL_TICKS && !s.world.has(cart, VehicleDrive); t++) s.step();
+    s.run(ATTACH_WALK_TICKS);
+    removeSettlerSilently(s.world, scout);
+    let paused = false;
+    for (let t = 0; t < SAIL_TICKS && s.world.has(cart, Position); t++) {
+      s.step();
+      if (s.world.has(cart, Position) && !s.world.has(cart, VehicleDrive)) paused = true;
+    }
+    expect(paused).toBe(false);
+    expect(s.world.get(ship, Vehicle).vehicles).toEqual([{ entity: cart, inside: true }]);
+  });
+
   it('refuses a carrier that does not list the vehicle, and drops a load the ship cannot take', () => {
     const s = sim();
     const { ship, cart } = loadedCart(s);
