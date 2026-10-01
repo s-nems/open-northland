@@ -25,7 +25,7 @@ export interface LedgerModel {
 }
 
 export interface LedgerOptions {
-  /** Round buttons after the value (assign, remove), 0 to 2. */
+  /** Round buttons after the value (centre, assign, remove), 0 to 3. */
   readonly buttons?: number;
   readonly onLink?: (index: number, event: MouseEvent) => void;
   /** The cursor entered (an event) or left (null) the link at `index`. */

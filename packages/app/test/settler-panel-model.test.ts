@@ -148,6 +148,15 @@ describe('the settler panel model', () => {
     expect(model.family?.marry).toBeNull();
   });
 
+  it("offers to centre on a flag gatherer's flag from the work row", () => {
+    const gatherer = (components: Record<string, unknown>): SettlerPanelModel =>
+      settlerModel([
+        { id: SETTLER, components: owned({ Settler: { tribe: 1, jobType: JOB_COLLECTOR }, ...components }) },
+      ]);
+    expect(gatherer({ WorkFlag: { flag: 77, radius: 32 } }).workplace?.centreFlag).toBe(77);
+    expect(gatherer({}).workplace?.centreFlag).toBeNull();
+  });
+
   it('gives a warehouse carrier the work area row, with the remove button once a flag stands', () => {
     const content = sandboxContent();
     const ctx: UnitPanelModelContext = {
@@ -165,9 +174,9 @@ describe('the settler panel model', () => {
         }),
       },
     ];
-    expect(settlerModel(carrier({}), ctx).workArea).toEqual({ flagged: false, assign: true, remove: null });
+    expect(settlerModel(carrier({}), ctx).workArea).toEqual({ flag: null, assign: true, remove: null });
     expect(settlerModel(carrier({ HaulFlag: { flag: 99, radius: 32 } }), ctx).workArea).toEqual({
-      flagged: true,
+      flag: 99,
       assign: true,
       remove: true,
     });

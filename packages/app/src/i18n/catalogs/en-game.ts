@@ -371,6 +371,8 @@ export const enGame = {
       assignWorkAreaHint: 'Pick the spot the carrier collects goods around · Esc cancels',
       clearWorkArea: 'Take the flag away',
       clearWorkAreaHint: 'The carrier collects goods anywhere within signpost reach again',
+      centreFlag: 'Show the flag',
+      centreFlagHint: 'Centre the view on the flag',
       buildRun: 'Task',
       buildRuns: { roads: 'Paving roads', walls: 'Building palisades' },
       endBuildRun: 'End the task',

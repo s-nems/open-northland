@@ -13,7 +13,7 @@ import {
   type SnapshotEntity,
   settlerJobType,
   trainingHouseOf,
-  workAreaOf,
+  workFlagOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
@@ -54,12 +54,15 @@ export interface SettlerSeatRow {
  *  also plants the flag on the ground, so the row always offers it. */
 export interface SettlerWorkplaceRow extends SettlerSeatRow {
   readonly flag: boolean;
+  /** The flag a gatherer or fisher works from, which the centre button brings into view; null without one. */
+  readonly centreFlag: number | null;
 }
 
 /** The Obszar row of a carrier whose post takes a pickup flag: whether a flag stands, the button
  *  that plants or moves it, and the one that takes it away. */
 export interface SettlerWorkAreaRow {
-  readonly flagged: boolean;
+  /** The flag the centre button brings into view; null while the carrier holds none. */
+  readonly flag: number | null;
   readonly assign: SeatControl;
   readonly remove: SeatControl | null;
 }
@@ -102,6 +105,8 @@ export function workplaceRow(
     assign: employed || flag ? control : null,
     remove: workplaceOf(ent) === undefined ? null : control,
     flag,
+    // A carrier's flag belongs to its Obszar row.
+    centreFlag: ent.components.HaulFlag === undefined ? (workFlagOf(ent) ?? null) : null,
   };
 }
 
@@ -113,8 +118,8 @@ export function workAreaRow(
   control: SeatControl,
 ): SettlerWorkAreaRow | null {
   if (ctx.holdsHaulFlagPost?.(snapshot, ent) !== true) return null;
-  const flagged = workAreaOf(ent) !== undefined;
-  return { flagged, assign: control, remove: flagged ? control : null };
+  const flag = workFlagOf(ent) ?? null;
+  return { flag, assign: control, remove: flag === null ? null : control };
 }
 
 /** The Dom row: a grown person's own, a child's read-only (it lives where its parents do). */

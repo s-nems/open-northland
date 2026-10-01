@@ -30,6 +30,14 @@ export function seatButton(
   };
 }
 
+/** The button that centres the view on the settler's work flag; a blank slot without one. */
+function flagButton(flag: number | null): RoundButtonModel | null {
+  const copy = messages().hud.settlerPanel;
+  return flag === null
+    ? null
+    : { face: { glyph: GLYPH.center }, label: copy.centreFlag, tooltip: copy.centreFlagHint };
+}
+
 /** The value of a Miejsce pracy or Dom row: the building as a link, plain for another seat's person,
  *  or "brak" in amber when the player can fill it. */
 export function seatValue(row: SettlerSeatRow, linkTooltip: string, foreign: boolean): LedgerSegment[] {
@@ -96,18 +104,30 @@ export function createWorkSection(
   const title = createSection();
   const workplaceCard = createHouseCardLink(deps.hoverCard, deps.buildingHover);
 
+  /** The centre button leads a row so the assign and remove columns stay aligned with the other rows. */
+  const centreOn = (flag: number | null | undefined): void => {
+    if (flag != null) actions.centre(flag);
+  };
   const workplace = createLedger({
-    buttons: 2,
+    buttons: 3,
     onLink: () => {
       const target = current()?.workplace?.target?.id;
       if (target != null) actions.select(target);
     },
     onLinkHover: (_index, event) => workplaceCard.hover(current()?.workplace?.target?.id ?? null, event),
-    onButton: (index) => (index === 0 ? actions.assignWorkplace(id()) : actions.unassignWorkplace(id())),
+    onButton: (index) => {
+      if (index === 0) centreOn(current()?.workplace?.centreFlag);
+      else if (index === 1) actions.assignWorkplace(id());
+      else actions.unassignWorkplace(id());
+    },
   });
   const workArea = createLedger({
-    buttons: 2,
-    onButton: (index) => (index === 0 ? actions.assignWorkArea(id()) : actions.clearWorkArea(id())),
+    buttons: 3,
+    onButton: (index) => {
+      if (index === 0) centreOn(current()?.workArea?.flag);
+      else if (index === 1) actions.assignWorkArea(id());
+      else actions.clearWorkArea(id());
+    },
   });
   const buildRun = createLedger({ buttons: 1, onButton: () => actions.endBuildRun(id()) });
   const home = createLedger({
@@ -167,6 +187,7 @@ export function createWorkSection(
           // The workplace link shows its hover card alone; a tip would only cover it.
           value: seatValue(model.workplace, '', model.foreign),
           buttons: [
+            flagButton(model.workplace.centreFlag),
             seatButton(
               model.workplace.assign,
               model.workplace.flag ? GLYPH.banner : GLYPH.house,
@@ -186,8 +207,9 @@ export function createWorkSection(
       if (model.workArea !== null) {
         workArea.update({
           label: panel.workArea,
-          value: [{ text: model.workArea.flagged ? panel.workAreaFlag : panel.workAreaReach }],
+          value: [{ text: model.workArea.flag !== null ? panel.workAreaFlag : panel.workAreaReach }],
           buttons: [
+            flagButton(model.workArea.flag),
             seatButton(model.workArea.assign, GLYPH.banner, panel.assignWorkArea, panel.assignWorkAreaHint),
             seatButton(model.workArea.remove, GLYPH.close, panel.clearWorkArea, panel.clearWorkAreaHint),
           ],

@@ -357,6 +357,8 @@ export const plGame = {
       assignWorkAreaHint: 'Wskaż miejsce, wokół którego tragarz zbiera towary · Esc anuluje',
       clearWorkArea: 'Zabierz chorągiewkę',
       clearWorkAreaHint: 'Tragarz znów zbiera towary w całym zasięgu drogowskazów',
+      centreFlag: 'Pokaż chorągiewkę',
+      centreFlagHint: 'Wyśrodkuj widok na chorągiewce',
       buildRun: 'Zadanie',
       buildRuns: { roads: 'Brukuje drogi', walls: 'Stawia palisady' },
       endBuildRun: 'Zakończ zadanie',

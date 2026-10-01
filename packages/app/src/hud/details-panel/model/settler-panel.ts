@@ -226,7 +226,10 @@ export function settlerPanelModel(
     return {
       ...base,
       renamable: false,
-      workplace: work.place === null ? null : { target: work.place, assign: null, remove: null, flag: false },
+      workplace:
+        work.place === null
+          ? null
+          : { target: work.place, assign: null, remove: null, flag: false, centreFlag: null },
       workArea: null,
       buildRun: null,
       home: null,
