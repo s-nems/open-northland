@@ -53,6 +53,12 @@ export interface AiHouseRecord {
   hy: number;
 }
 
+/** One gate the handler watches, and whether it last opened it (true) or shut it (false). */
+export interface AiGateRecord {
+  gate: Entity;
+  open: boolean;
+}
+
 export interface AiDefaultPosition {
   hx: number;
   hy: number;
@@ -78,10 +84,14 @@ export interface AiProgramState {
   groups: AiAttackGroupRecord[];
   /** The rebuild list, at most {@link AI_REBUILD_LIST_LIMIT} buildings in entity order. */
   houses: AiHouseRecord[];
+  /** The gates it opens and shuts, at most {@link AI_GATE_LIST_LIMIT}, nearest its centre first. */
+  gates: AiGateRecord[];
 }
 
 /** How many of its first-turn buildings a seat remembers for rebuilding. Original behavior. */
 export const AI_REBUILD_LIST_LIMIT = 100;
+/** How many gates a seat watches. Original behavior. */
+export const AI_GATE_LIST_LIMIT = 50;
 
 export const AiProgram = defineComponent<AiProgramState>('AiProgram', 'players');
 

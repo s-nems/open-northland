@@ -620,10 +620,13 @@ nearest free archer it can reach for the peace posts and only one within 20 poin
 and reads defence mode per tower as an enemy fighter inside its watch band, the extra men leaving once
 none stands within a further margin (`ai-player/military/defence/posts.ts`).
 
-The scripted AI also keeps its town (this build: `systems/ai-program/town.ts`, `families.ts` and
-`rebuild.ts`, each pass only while the strategic module owning that concern is off):
+The scripted AI also keeps its town (this build: `systems/ai-program/town.ts`, `families.ts`,
+`rebuild.ts` and `gates.ts`, each pass only while the strategic module owning that concern is off):
 
-- First turn: it remembers the seat's first 100 houses.
+- First turn: it remembers the seat's first 100 houses, and the first 50 gates of any player out from
+  the seat's centre, each as it stands, open or shut.
+- Every turn: each remembered gate the seat holds is shut while an enemy stands within 40 points and
+  opened once none does. It opens only a gate it shut itself, so a gate a script shut in peace stays shut.
 - Every third turn, while fewer than three of the seat's houses are unfinished: a site for each
   remembered house with no house of its upgrade line within 12 points, on a free spot within 12
   points, when no enemy stands within 40 points and one of the seat's civilians does. A tier without a
@@ -651,9 +654,11 @@ This build departs from it here:
 - Each finished workshop's recipe inputs are filled to capacity and its products cut to half their slot,
   so a craftsman always works; the original's workshops run on what the carriers haul.
 - The gatherers' and fishers' posts stay open, since their holders would roam without a flag.
-- Enemy vehicles are left out of the enemy tests.
-- Not run here: the gates closing while an enemy is within 40 points, the remembered walls raised
-  again, builders for road plans, and the houses a mission result hands the seat joining its list.
+- Enemy vehicles are left out of the enemy tests, except the gates'.
+- A gate shuts only for an enemy fighter, not for every enemy adult, and while the enemy stays an open
+  gate is shut again every turn, so a shut refused for someone standing in it is retried.
+- Gates are taken out from the centre in order of distance, ties by entity, not ring by ring.
+- Not run here: the remembered walls raised again, builders for road plans, and the houses a mission result hands the seat joining its list.
 
 ## Tributes
 
