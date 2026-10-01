@@ -1423,7 +1423,9 @@ export const enGame = {
     productionStalled: {
       short: {
         noInputSource: 'No {good}',
-        noGatherer: 'Nobody gathers {good}',
+        noCollector: 'Nobody gathers {good}',
+        noHunter: 'Nobody hunts for {good}',
+        noFisher: 'Nobody catches {good}',
         inputOutOfReach: 'Input too far',
         noOutputStore: 'No store',
         outputOutOfReach: 'Store too far',
@@ -1433,8 +1435,12 @@ export const enGame = {
       full: {
         noInputSource:
           '{building}: production has stopped for lack of {good}. No store holds it and no workshop makes it. Build and staff a workshop that makes it.',
-        noGatherer:
-          '{building}: production has stopped for lack of {good}. No store holds it and nobody gathers it. Assign a gatherer, or let the ones you have gather it.',
+        noCollector:
+          '{building}: production has stopped for lack of {good}. No store holds it and nobody gathers it. Assign a collector, or turn this good on for the collectors you have.',
+        noHunter:
+          '{building}: production has stopped for lack of {good}. No store holds it and nobody hunts for it. Assign a hunter, or turn this good on for the hunters you have.',
+        noFisher:
+          '{building}: production has stopped for lack of {good}. No store holds it and nobody fishes for it. Assign a fisher, or turn this good on for the fishers you have.',
         inputOutOfReach:
           '{building}: production has stopped for lack of {good}. Only buildings outside signpost reach hold or make it. Link them with signposts or build a store closer.',
         noOutputStore:

@@ -1,4 +1,4 @@
-import { ONE, type WorkStatus, type WorldSnapshot } from '@open-northland/sim';
+import { type GatheringTrade, ONE, type WorkStatus, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_CARRIER, JOB_COLLECTOR, JOB_POTTER, JOB_SOLDIER } from '../src/catalog/jobs.js';
 import { createMessageFeed, takeRaised } from '../src/hud/tool-panel/messages/feed.js';
@@ -37,7 +37,9 @@ const SWEEPS_TO_GRACE = PRODUCTION_STALL_GRACE_TICKS / SNAPSHOT_SWEEP_INTERVAL_T
 const WAITING_FOR_CLAY: WorkStatus = {
   kind: 'waitingInput',
   goodType: POT,
-  missingInputs: [{ goodType: CLAY, required: 1, available: 0, missing: 1, source: 'none', gathered: false }],
+  missingInputs: [
+    { goodType: CLAY, required: 1, available: 0, missing: 1, source: 'none', gatheredBy: null },
+  ],
 };
 const SHELVES_FULL: WorkStatus = {
   kind: 'outputFull',
@@ -173,18 +175,20 @@ function stallNote(goodType: number | null, reason: 'noInputSource' | 'noOutputS
 describe('stalled workshops', () => {
   it('reads the reason and its good off the diagnosis, and no stall off a deliberate stop', () => {
     expect(stallOf(WAITING_FOR_CLAY)).toEqual({ reason: 'noInputSource', goodType: CLAY });
-    // An input some trade gathers points at gatherers, not at a workshop to build.
+    // An input only a trade gathers points at that trade, not at a workshop to build.
     const unsourcedWood = { goodType: WOOD, required: 1, available: 0, missing: 1, source: 'none' } as const;
-    expect(
-      stallOf({ kind: 'waitingInput', goodType: POT, missingInputs: [{ ...unsourcedWood, gathered: true }] }),
-    ).toEqual({ reason: 'noGatherer', goodType: WOOD });
+    const unsourcedBy = (gatheredBy: GatheringTrade) =>
+      stallOf({ kind: 'waitingInput', goodType: POT, missingInputs: [{ ...unsourcedWood, gatheredBy }] });
+    expect(unsourcedBy('collector')).toEqual({ reason: 'noCollector', goodType: WOOD });
+    expect(unsourcedBy('hunter')).toEqual({ reason: 'noHunter', goodType: WOOD });
+    expect(unsourcedBy('fisher')).toEqual({ reason: 'noFisher', goodType: WOOD });
     expect(
       stallOf({
         kind: 'waitingInput',
         goodType: POT,
         missingInputs: [
-          { goodType: 5, required: 1, available: 0, missing: 1, source: 'inReach', gathered: false },
-          { goodType: CLAY, required: 1, available: 0, missing: 1, source: 'outOfReach', gathered: false },
+          { goodType: 5, required: 1, available: 0, missing: 1, source: 'inReach', gatheredBy: null },
+          { goodType: CLAY, required: 1, available: 0, missing: 1, source: 'outOfReach', gatheredBy: null },
         ],
       }),
     ).toEqual({ reason: 'inputOutOfReach', goodType: CLAY });
@@ -212,7 +216,7 @@ describe('stalled workshops', () => {
       stallOf({
         kind: 'waitingInput',
         goodType: POT,
-        missingInputs: [{ ...clay, source: 'inReach', gathered: false }],
+        missingInputs: [{ ...clay, source: 'inReach', gatheredBy: null }],
       }),
     ).toBeNull();
     expect(stallOf({ kind: 'outputFull', outputs: [{ ...pots, destination: 'inReach' }] })).toBeNull();
@@ -267,17 +271,13 @@ describe('stalled workshops', () => {
     ]);
   });
 
-  it('asks the craftsman, never a collector posted there with a lower id', () => {
-    const asked: number[] = [];
+  it('judges the craftsman, never a collector posted there with a lower id', () => {
     const source = createSnapshotMessageSource(LOCAL, {
       types: [POTTERY],
-      workStatus: (entity, at) => {
-        asked.push(entity);
-        return { status: WAITING_FOR_CLAY, asked: at };
-      },
+      // The collector's own diagnosis names nothing in the way, so only the craftsman's raises the note.
+      workStatus: (entity, at) => ({ status: entity === OPERATOR ? WAITING_FOR_CLAY : undefined, asked: at }),
     });
     const notes = sweepTo(source, SWEEPS_TO_GRACE, { collector: 'idle' });
-    expect(new Set(asked)).toEqual(new Set([OPERATOR]));
     expect(notes.at(-1)).toHaveLength(1);
   });
 
@@ -324,6 +324,54 @@ describe('stalled workshops', () => {
     expect(nothingToDo({ producing: true })).toBe(true);
   });
 
+  it('lets an idle collector of a resting workshop name its own blocker until a stall stands', () => {
+    const NO_TREES: WorkStatus = { kind: 'noEligibleResource', goodTypes: [WOOD], scope: 'workArea' };
+    /** A collector whose search still finds work, as one pausing on a full shelf does. */
+    const PAUSED: WorkStatus = { kind: 'unknown', reason: 'gatherSearch' };
+    const WOOD_IN_REACH: WorkStatus = {
+      kind: 'waitingInput',
+      goodType: POT,
+      missingInputs: [
+        { goodType: WOOD, required: 1, available: 0, missing: 1, source: 'inReach', gatheredBy: 'collector' },
+      ],
+    };
+    const watch = (operator: WorkStatus, collector: WorkStatus) => {
+      const source = createSnapshotMessageSource(LOCAL, {
+        types: [POTTERY],
+        workStatus: (entity, asked) => ({ status: entity === COLLECTOR ? collector : operator, asked }),
+      });
+      const notes = (to: number, from = 0): number => {
+        let raised = 0;
+        for (let i = from; i <= to; i++) {
+          const out = source.sweep(world(i * SNAPSHOT_SWEEP_INTERVAL_TICKS, { collector: 'idle' }), naming);
+          raised += out.filter(
+            (r) =>
+              r.pending.type === USER_MESSAGE_TYPE.nothingToDo && r.pending.subject?.entity === COLLECTOR,
+          ).length;
+        }
+        return raised;
+      };
+      return { source, notes };
+    };
+    const noTrees = watch(WOOD_IN_REACH, NO_TREES);
+    expect(noTrees.notes(SWEEPS_TO_GRACE + 2)).toBeGreaterThan(0);
+    expect(noTrees.source.stalls?.verdict(WORKSHOP)).toBeNull();
+    expect(watch(WOOD_IN_REACH, PAUSED).notes(SWEEPS_TO_GRACE + 2)).toBe(0);
+    // Once a stall stands, its note speaks for the collector, whose own note retires.
+    const stalled = watch(WAITING_FOR_CLAY, NO_TREES);
+    expect(stalled.notes(IDLE_SWEEPS_BEFORE_MESSAGE)).toBeGreaterThan(0);
+    expect(stalled.notes(SWEEPS_TO_GRACE + 2, SWEEPS_TO_GRACE)).toBe(0);
+    const retirement = new NoteRetirement(new FightAreas(), stalled.source.stalls);
+    const { stall: _stall, ...note } = stallNote(null, 'noInputSource');
+    const idleNote: UserMessage = {
+      ...note,
+      type: USER_MESSAGE_TYPE.nothingToDo,
+      subject: { kind: 'settler', entity: COLLECTOR },
+    };
+    const tick = (SWEEPS_TO_GRACE + 2) * SNAPSHOT_SWEEP_INTERVAL_TICKS;
+    expect(retirement.isOver(idleNote, world(tick, { collector: 'idle' }))).toBe(true);
+  });
+
   it('retires the note when production resumes or the reason changes, not before the sweep judges', () => {
     let answer: WorkStatus = WAITING_FOR_CLAY;
     const source = createSnapshotMessageSource(
@@ -358,7 +406,7 @@ describe('stalled workshops', () => {
       kind: 'waitingInput',
       goodType: POT,
       missingInputs: [
-        { goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, source: 'none', gathered: false },
+        { goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, source: 'none', gatheredBy: null },
       ],
     };
     const raised = source
@@ -401,7 +449,7 @@ describe('stalled workshops', () => {
       kind: 'waitingInput',
       goodType: POT,
       missingInputs: [
-        { goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, source: 'none', gathered: false },
+        { goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, source: 'none', gatheredBy: null },
       ],
     };
     presentUntilAsked();

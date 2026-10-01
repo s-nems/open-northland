@@ -8,10 +8,13 @@ import {
   setSettlerJob,
   setStockAmount,
   UnderConstruction,
+  WorkFlag,
 } from '../../../src/components/index.js';
 import { ZERO } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
+import { gatheringTradeOf } from '../../../src/systems/economy/gather-goods.js';
+import { bindFreshFlag, relocateWorkFlag } from '../../../src/systems/economy/work-flag.js';
 import { productionSystem } from '../../../src/systems/index.js';
 import { setProductionCount, setProductionGoods } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -55,7 +58,7 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
       goodType: FOOD,
       // The plank's enabling woodcutter gathers wood with nothing to confine it.
       missingInputs: [
-        { goodType: WOOD, required: 1, available: 0, missing: 1, source: 'inReach', gathered: true },
+        { goodType: WOOD, required: 1, available: 0, missing: 1, source: 'inReach', gatheredBy: 'collector' },
       ],
     });
   });
@@ -87,8 +90,8 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
       kind: 'waitingInput',
       goodType: FOOD,
       missingInputs: [
-        { goodType: WOOD, required: 3, available: 1, missing: 2, source: 'inReach', gathered: true },
-        { goodType: 4, required: 2, available: 0, missing: 2, source: 'none', gathered: true },
+        { goodType: WOOD, required: 3, available: 1, missing: 2, source: 'inReach', gatheredBy: 'collector' },
+        { goodType: 4, required: 2, available: 0, missing: 2, source: 'none', gatheredBy: 'collector' },
       ],
     });
     expect(sim.hashState()).toBe(before);
@@ -145,6 +148,22 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
     const tradeless = spawnSettler(sim, CARPENTER, 1, 0);
     setSettlerJob(sim.world, tradeless, null);
     expect(sim.workStatus(tradeless)).toEqual({ kind: 'noJob' });
+  });
+
+  it('names the kind of trade that gathers a missing input, and none for one a building type makes', () => {
+    const MEAT = 21;
+    const content = testContent();
+    const ctx = { content };
+    expect(gatheringTradeOf(ctx, WOOD)).toBe('collector');
+    expect(gatheringTradeOf(ctx, MEAT)).toBe('hunter');
+    expect(gatheringTradeOf(ctx, PLANK)).toBeNull();
+    const meatFarm = {
+      content: {
+        ...content,
+        buildings: content.buildings.map((b) => (b.typeId === SAWMILL ? { ...b, produces: [MEAT] } : b)),
+      },
+    };
+    expect(gatheringTradeOf(meatFarm, MEAT)).toBeNull();
   });
 });
 
@@ -289,6 +308,47 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
     setSettlerJob(sim.world, own, CARPENTER);
     expect(sourceOfWood(sim, smith)).toBe('outOfReach');
     expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('counts no gatherer posted where its good is not stocked, nor one posted at a site still going up', () => {
+    const GRANARY = 6;
+    const WAREHOUSE = 7;
+    const { sim, smith, woodcutter } = confinedForge(0);
+    rivalWoodcutter(sim, woodcutter);
+    const postedAt = (buildingType: number): Entity => {
+      const building = sim.world.create();
+      sim.world.add(building, Building, { buildingType, tribe: 1, built: ONE, level: 0 });
+      sim.world.add(building, Position, { x: fx.fromInt(IN_AREA), y: fx.fromInt(2) });
+      sim.world.add(building, Stockpile, { amounts: new Map() });
+      const gatherer = spawnSettler(sim, WOODCUTTER, IN_AREA, 2);
+      sim.world.add(gatherer, Owner, { player: 0 });
+      sim.world.add(gatherer, JobAssignment, { workplace: building });
+      return building;
+    };
+    // The granary stocks only wheat, so its woodcutter forages nothing.
+    postedAt(GRANARY);
+    expect(sourceOfWood(sim, smith)).toBe('none');
+    const site = postedAt(WAREHOUSE);
+    sim.world.add(site, UnderConstruction, { labor: ZERO });
+    expect(sourceOfWood(sim, smith)).toBe('none');
+    sim.world.remove(site, UnderConstruction);
+    expect(sourceOfWood(sim, smith)).toBe('inReach');
+  });
+
+  it('judges an unposted gatherer by the flag it banks at, not by where it fells', () => {
+    // The flag stands inside the area, its woodcutter fells within its radius just past the area's edge.
+    const FLAG_IN_AREA = 20;
+    const FELLING_OUT_OF_AREA = 34;
+    const { sim, smith, woodcutter } = confinedForge(0);
+    rivalWoodcutter(sim, woodcutter);
+    storeAt(sim, IN_AREA);
+    const roamer = spawnSettler(sim, WOODCUTTER, FELLING_OUT_OF_AREA, 2);
+    sim.world.add(roamer, Owner, { player: 0 });
+    bindFreshFlag(sim.world, ctxOf(sim), roamer, { x: fx.fromInt(FLAG_IN_AREA), y: fx.fromInt(2) });
+    expect(sourceOfWood(sim, smith)).toBe('inReach');
+    const flag = sim.world.get(roamer, WorkFlag).flag;
+    relocateWorkFlag(sim.world, flag, { x: fx.fromInt(OUT_OF_AREA), y: fx.fromInt(2) }, roamer);
+    expect(sourceOfWood(sim, smith)).toBe('outOfReach');
   });
 
   it('weighs the own side stores past any number of rival stores', () => {

@@ -369,7 +369,7 @@ describe('building panel orders and alerts', () => {
               required: 2,
               missing: 2,
               source: 'inReach',
-              gathered: false,
+              gatheredBy: null,
             },
           ],
         }),
@@ -399,7 +399,7 @@ describe('building panel orders and alerts', () => {
                   required: 2,
                   missing: 2,
                   source: 'inReach',
-                  gathered: false,
+                  gatheredBy: null,
                 },
               ],
             }

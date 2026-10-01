@@ -1389,7 +1389,9 @@ export const plGame = {
     productionStalled: {
       short: {
         noInputSource: 'Brak: {good}',
-        noGatherer: 'Nikt nie zbiera: {good}',
+        noCollector: 'Nikt nie zbiera: {good}',
+        noHunter: 'Nikt nie poluje: {good}',
+        noFisher: 'Nikt nie łowi: {good}',
         inputOutOfReach: 'Surowiec daleko',
         noOutputStore: 'Brak magazynu',
         outputOutOfReach: 'Magazyn daleko',
@@ -1399,8 +1401,12 @@ export const plGame = {
       full: {
         noInputSource:
           '{building}: produkcja stoi, brakuje surowca: {good}. Nie ma go w żadnym magazynie i żaden warsztat go nie wytwarza. Zbuduj i obsadź warsztat, który go wytwarza.',
-        noGatherer:
-          '{building}: produkcja stoi, brakuje surowca: {good}. Nie ma go w żadnym magazynie i nikt go nie zbiera. Przydziel zbieracza albo pozwól obecnym go zbierać.',
+        noCollector:
+          '{building}: produkcja stoi, brakuje surowca: {good}. Nie ma go w żadnym magazynie i nikt go nie zbiera. Przydziel zbieracza albo włącz ten surowiec u obecnych zbieraczy.',
+        noHunter:
+          '{building}: produkcja stoi, brakuje surowca: {good}. Nie ma go w żadnym magazynie i nikt na niego nie poluje. Przydziel myśliwego albo włącz ten surowiec u obecnych myśliwych.',
+        noFisher:
+          '{building}: produkcja stoi, brakuje surowca: {good}. Nie ma go w żadnym magazynie i nikt go nie łowi. Przydziel rybaka albo włącz ten surowiec u obecnych rybaków.',
         inputOutOfReach:
           '{building}: produkcja stoi, brakuje surowca: {good}. Mają go albo wytwarzają tylko budynki poza zasięgiem drogowskazów. Połącz je drogowskazami albo zbuduj magazyn bliżej.',
         noOutputStore:

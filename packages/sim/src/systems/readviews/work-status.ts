@@ -15,10 +15,16 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { gatherGoodOpen, isGatheredGood, jobGatherGoods, jobGathersGood } from '../economy/gather-goods.js';
+import {
+  type GatheringTrade,
+  gatherGoodOpen,
+  gatheringTradeOf,
+  jobGatherGoods,
+  jobGathersGood,
+} from '../economy/gather-goods.js';
 import { canStartCycle, outputRoomForCycles, waitingForRecipeInput } from '../economy/production/cycles.js';
 import { craftablePool } from '../economy/production/rotation.js';
-import { liveHaulFlag } from '../economy/work-flag.js';
+import { liveHaulFlag, liveWorkFlag } from '../economy/work-flag.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 import { operatorRecipeEnabled } from '../progression/index.js';
 import { carriedGoodForm } from '../settlers/drives/economy/delivery-targets.js';
@@ -32,6 +38,8 @@ import {
   mayFetchGoodFrom,
   recipesByProductOf,
   stockCapacity,
+  workplaceStocksGood,
+  workplaceStoredGoods,
 } from '../stores/index.js';
 import { gatherWorkStatus } from './gather-work-status.js';
 import { GoodSources } from './good-sources.js';
@@ -45,8 +53,9 @@ export interface MissingWorkInput {
   /** Where the worker's side keeps or brings in the input: a store holding a unit, a workplace turning
    *  it out or a gatherer of it, as {@link inputSources} lists them. */
   readonly source: StoreReach;
-  /** Whether some trade gathers the input off the map, so a gatherer rather than a workshop supplies it. */
-  readonly gathered: boolean;
+  /** The kind of trade that gathers the input off the map when no building type makes it, so only a
+   *  gatherer of that trade supplies it; null otherwise. */
+  readonly gatheredBy: GatheringTrade | null;
 }
 
 export interface BlockedWorkOutput {
@@ -174,7 +183,7 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
                 entity,
                 inputSources(world, ctx, entity, workplace, input.goodType),
               ),
-              gathered: isGatheredGood(ctx, input.goodType),
+              gatheredBy: gatheringTradeOf(ctx, input.goodType),
             },
           ]
         : [];
@@ -237,11 +246,12 @@ function* inputSources(
 }
 
 /**
- * Where `settler`'s work lands `goodType` for `workplace`, or undefined when it brings none there: a
- * gatherer of the good banks at its own finished workplace when that is `workplace` or lends the good,
- * and otherwise at a store, so it stands for itself; an operator's unit lands on its finished
- * workplace's shelf when that type turns the good out. A gatherer at another workshop whose recipe
- * consumes the good keeps it, and a settler held off the good by its counters gathers none.
+ * Where `settler`'s work lands `goodType` for `workplace`, or undefined when it brings none there. A
+ * gatherer of the good posted at a finished workplace forages it only when that workplace stocks it, as
+ * its planner does, and banks it there, which counts when that is `workplace` or lends the good rather
+ * than consuming it; one posted at a site still going up brings nothing. An unposted gatherer banks at its
+ * flag, or stands for itself when it has none. A settler held off the good by its counters gathers none.
+ * An operator's unit lands on its finished workplace's shelf when that type turns the good out.
  */
 function landingOf(
   world: World,
@@ -256,7 +266,8 @@ function landingOf(
   const finished = own === undefined ? undefined : finishedWorkplace(world, own);
   if (jobGathersGood(ctx, jobType, goodType)) {
     if (!gatherGoodOpen(world, ctx, settler, jobType, goodType)) return undefined;
-    if (finished === undefined) return settler;
+    if (own === undefined) return liveWorkFlag(world, settler)?.flag ?? settler;
+    if (finished === undefined || !foragesFor(world, ctx, finished, goodType)) return undefined;
     return finished === workplace || mayFetchGoodFrom(world, ctx, finished, goodType) ? finished : undefined;
   }
   return finished !== undefined &&
@@ -264,6 +275,13 @@ function landingOf(
     isWorkplaceOutput(world, ctx, finished, goodType)
     ? finished
     : undefined;
+}
+
+/** Whether a gatherer posted at `workplace` forages `goodType`: a workplace declaring no stock slots
+ *  leaves its gatherers unfiltered. */
+function foragesFor(world: World, ctx: SystemContext, workplace: Entity, goodType: number): boolean {
+  const stored = workplaceStoredGoods(world, ctx, workplace);
+  return stored === undefined || workplaceStocksGood(ctx, stored, goodType);
 }
 
 function finishedWorkplace(world: World, e: Entity): Entity | undefined {

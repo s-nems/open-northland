@@ -537,9 +537,10 @@ export class Simulation {
 
   /**
    * Why a craft worker, gatherer or store carrier works or stands idle, for the settler panel and the idle
-   * and stall notes; undefined when no status applies. Read-only, and every search is bounded: a gatherer's
-   * capped harvest scan, a hunter's prey scan over its hunting ground, or, per missing input and per full
-   * product, a signpost-reach check over a capped number of its side's stores and sources.
+   * and stall notes; undefined when no status applies. Read-only. A gatherer's harvest scan is capped and a
+   * hunter's prey scan covers its hunting ground. Per missing input and per full product, the signpost-reach
+   * check weighs at most a capped number of its own side's stores and sources, but walks past rival stores
+   * and the sources that bring the good elsewhere without counting them.
    */
   workStatus(entity: Entity): WorkStatus | undefined {
     return workStatus(this.world, this.context(), entity);

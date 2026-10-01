@@ -7,9 +7,10 @@ import {
   Settler,
   writeProductionGoods,
 } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
-import { isFisherJob, jobChangesProduction } from '../readviews/index.js';
+import { isFisherJob, isHunterJob, jobChangesProduction } from '../readviews/index.js';
 import { fishGoodOf } from './fish.js';
 import { jobCanHarvestGood } from './work-flag.js';
 
@@ -39,17 +40,60 @@ export function jobGatherGoods(ctx: ContentContext, jobType: number): readonly n
   return goods;
 }
 
-const gatheredGoodsByContent = new WeakMap<ContentSet, ReadonlySet<number>>();
+/** The kind of trade that brings a good in off the map, for the player to assign. */
+export type GatheringTrade = 'collector' | 'hunter' | 'fisher';
 
-/** Whether some trade gathers `goodType` off the map ({@link jobGatherGoods}), so a gatherer rather than a
- *  workshop brings it in. */
-export function isGatheredGood(ctx: ContentContext, goodType: number): boolean {
-  let gathered = gatheredGoodsByContent.get(ctx.content);
-  if (gathered === undefined) {
-    gathered = new Set(ctx.content.jobs.flatMap((job) => jobGatherGoods(ctx, job.typeId)));
-    gatheredGoodsByContent.set(ctx.content, gathered);
+/** Which kind names a good several kinds gather. */
+const GATHERING_TRADE_ORDER: readonly GatheringTrade[] = ['collector', 'hunter', 'fisher'];
+
+const gatheringTradeByContent = new WeakMap<ContentSet, ReadonlyMap<number, GatheringTrade>>();
+
+/**
+ * The kind of trade that gathers `goodType` off the map ({@link jobGatherGoods}), or null when none does
+ * or some building type turns it out too, so a workshop can supply it as well. A good several kinds
+ * gather names the first of {@link GATHERING_TRADE_ORDER}.
+ */
+export function gatheringTradeOf(ctx: ContentContext, goodType: number): GatheringTrade | null {
+  let byGood = gatheringTradeByContent.get(ctx.content);
+  if (byGood === undefined) {
+    byGood = gatheringTrades(ctx);
+    gatheringTradeByContent.set(ctx.content, byGood);
   }
-  return gathered.has(goodType);
+  return byGood.get(goodType) ?? null;
+}
+
+function gatheringTrades(ctx: ContentContext): ReadonlyMap<number, GatheringTrade> {
+  const index = contentIndex(ctx.content);
+  const made = new Set<number>();
+  for (const building of ctx.content.buildings) {
+    for (const good of building.produces) made.add(good);
+    for (const output of index.mergedRecipeByBuilding.get(building.typeId)?.outputs ?? [])
+      made.add(output.goodType);
+  }
+  const kinds = new Map<number, Set<GatheringTrade>>();
+  for (const job of ctx.content.jobs) {
+    const kind = tradeKindOf(ctx, job.typeId);
+    for (const good of jobGatherGoods(ctx, job.typeId)) {
+      if (made.has(good)) continue;
+      let found = kinds.get(good);
+      if (found === undefined) {
+        found = new Set();
+        kinds.set(good, found);
+      }
+      found.add(kind);
+    }
+  }
+  const byGood = new Map<number, GatheringTrade>();
+  for (const [good, found] of kinds) {
+    const kind = GATHERING_TRADE_ORDER.find((k) => found.has(k));
+    if (kind !== undefined) byGood.set(good, kind);
+  }
+  return byGood;
+}
+
+function tradeKindOf(ctx: ContentContext, jobType: number): GatheringTrade {
+  if (isHunterJob(ctx.content, jobType)) return 'hunter';
+  return isFisherJob(ctx.content, jobType) ? 'fisher' : 'collector';
 }
 
 /** Whether `goodType` is one of {@link jobGatherGoods}. */

@@ -1,4 +1,5 @@
 import {
+  type GatheringTrade,
   groupedBy,
   indexesOf,
   TICKS_PER_SECOND,
@@ -16,7 +17,7 @@ import {
   supplyRunsTo,
 } from '../../../game/snapshot.js';
 import { type MessageNaming, type MessageRaiser, nodeOf } from './raise.js';
-import { type ProductionStall, USER_MESSAGE_TYPE } from './types.js';
+import { type ProductionStall, type ProductionStallReason, USER_MESSAGE_TYPE } from './types.js';
 import type { WorkStatusAsks, WorkStatusRead } from './work-asks.js';
 
 /**
@@ -41,9 +42,9 @@ export type StallVerdict = ProductionStall | null | undefined;
 /** Read side for the retire rules. */
 export interface StallReader {
   verdict(building: number): StallVerdict;
-  /** Whether a note about one of the workshop's operators standing idle leaves the word to the stall
-   *  note: true while the workshop runs no cycle, whether or not a stall was found. */
-  holdsIdleNote(workplace: number): boolean;
+  /** Whether the workshop runs no cycle, whether or not a stall was found: its staff's idle notes then
+   *  leave the word to the stall note. */
+  isResting(workplace: number): boolean;
 }
 
 const OWNER_KEY_SPAN = 1 << 16;
@@ -68,6 +69,13 @@ const RESTING_BUILDINGS = groupedBy(
 
 const NO_BUILDINGS: readonly SnapshotEntity[] = [];
 
+/** The reason an input only a trade gathers names when nobody gathers it: the trade to assign. */
+const NO_GATHERER: Readonly<Record<GatheringTrade, ProductionStallReason>> = {
+  collector: 'noCollector',
+  hunter: 'noHunter',
+  fisher: 'noFisher',
+};
+
 /**
  * The blocker a worker's diagnosis names, or null when it names none the player has to fix: an input
  * that a store, a producer or a gatherer in reach supplies, or a full shelf a store in reach takes from,
@@ -82,7 +90,8 @@ export function stallOf(status: WorkStatus): ProductionStall | null {
       if (stranded !== undefined) return { reason: 'inputOutOfReach', goodType: stranded.goodType };
       const unsourced = status.missingInputs.find((input) => input.source === 'none');
       if (unsourced === undefined) return null;
-      return { reason: unsourced.gathered ? 'noGatherer' : 'noInputSource', goodType: unsourced.goodType };
+      const reason = unsourced.gatheredBy === null ? 'noInputSource' : NO_GATHERER[unsourced.gatheredBy];
+      return { reason, goodType: unsourced.goodType };
     }
     case 'outputFull': {
       // One product a store takes frees its own shelf, and the rotation makes it again.
@@ -183,7 +192,7 @@ export class WorkshopStalls implements StallReader {
     return this.swept ? null : undefined;
   }
 
-  holdsIdleNote(workplace: number): boolean {
+  isResting(workplace: number): boolean {
     return this.watched.has(workplace);
   }
 

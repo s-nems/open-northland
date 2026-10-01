@@ -283,10 +283,31 @@ export function isSoldier(e: SnapshotEntity): boolean {
 }
 
 /** Whether the stall note speaks for this worker: its workshop runs no cycle, so the note naming why
- *  says more than one saying it has nothing to do. */
+ *  says more than one saying it has nothing to do. A gatherer posted there leaves the word to the stall
+ *  note only while a stall stands; otherwise its own note names what keeps it from foraging. */
 export function idleNoteHeldByStall(e: SnapshotEntity, stalls: StallReader | null): boolean {
+  const workplace = restingWorkplaceOf(e, stalls);
+  if (workplace === undefined || stalls === null) return false;
+  if (!isGatherer(e)) return true;
+  const verdict = stalls.verdict(workplace);
+  return verdict !== null && verdict !== undefined;
+}
+
+/** A gatherer at a resting workshop with no stall speaks only for a reason the player can fix, so a
+ *  pause on a full shelf stays silent. */
+function idleNoteNeedsReason(e: SnapshotEntity, stalls: StallReader | null): boolean {
+  return isGatherer(e) && restingWorkplaceOf(e, stalls) !== undefined;
+}
+
+/** The worker's workplace while it is a workshop running no cycle. */
+function restingWorkplaceOf(e: SnapshotEntity, stalls: StallReader | null): number | undefined {
   const workplace = workplaceOf(e);
-  return workplace !== undefined && stalls?.holdsIdleNote(workplace) === true;
+  return workplace !== undefined && stalls?.isResting(workplace) === true ? workplace : undefined;
+}
+
+function isGatherer(e: SnapshotEntity): boolean {
+  const job = settlerJobType(e);
+  return job !== undefined && workerRoleOf(job) === 'gatherer';
 }
 
 /** A carrier with no pickup flag idles between loads while logistics runs as it should, so its pause is
@@ -328,7 +349,7 @@ function raiseIdleNote(
       return;
     if (dismissed(idleNotePending(e, null))) return;
     const reason = streaks.reason(e.id, asks?.status(e.id));
-    if (due) raiser.idle(e, reason);
+    if (due && (reason !== null || !idleNoteNeedsReason(e, stalls))) raiser.idle(e, reason);
   } else if (!due) return;
   else if (lostItsWorkplace(e, everEmployed)) raiser.settler(USER_MESSAGE_TYPE.workplaceNotFound, e);
   else if (lacksTradeCart(e)) raiser.settler(USER_MESSAGE_TYPE.noVehicleForWork, e);

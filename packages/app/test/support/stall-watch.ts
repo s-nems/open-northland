@@ -25,14 +25,16 @@ const naming: MessageNaming = {
   text: (type) => ({ short: String(type), full: String(type) }),
 };
 
-/** One stretch of a watched run: every stall note raised meanwhile, and the ones standing after. */
+/** One stretch of a watched run: every stall note raised meanwhile, the ones standing after, and every
+ *  idle note standing after. */
 export interface StallWatchRun {
   readonly raised: readonly ProductionStall[];
   readonly standing: readonly UserMessage[];
+  readonly idle: readonly UserMessage[];
 }
 
 /**
- * The human seat's stall notes over a headless run, in the message centre's raise, feed and retire
+ * The human seat's stall and idle notes over a headless run, in the message centre's raise, feed and retire
  * order, with the sim's own diagnosis answering every ask at once.
  */
 export function watchStalls(sim: Simulation): { run(sweeps: number): StallWatchRun } {
@@ -55,8 +57,12 @@ export function watchStalls(sim: Simulation): { run(sweeps: number): StallWatchR
         feed.expire(snapshot.tick, (m) => retirement.isOver(m, snapshot));
         retirement.endPass();
       }
-      const standing = feed.live().filter((m) => m.type === USER_MESSAGE_TYPE.productionStalled);
-      return { raised, standing };
+      const live = feed.live();
+      return {
+        raised,
+        standing: live.filter((m) => m.type === USER_MESSAGE_TYPE.productionStalled),
+        idle: live.filter((m) => m.type === USER_MESSAGE_TYPE.nothingToDo),
+      };
     },
   };
 }

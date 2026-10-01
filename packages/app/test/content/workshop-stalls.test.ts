@@ -118,6 +118,25 @@ const UNGATHERED_JOINERY: SceneWorld = {
   },
 };
 
+/** A joinery staffed by a joiner and its own collector beside an empty warehouse, with no tree anywhere. */
+const BARE_JOINERY: SceneWorld = {
+  seed: 23,
+  terrain: grassTerrain(30, 24),
+  build: (sim) => {
+    const joinery = placeBuiltSandboxBuilding(sim, BUILDING_JOINERY, JOINERY_AT.x, JOINERY_AT.y);
+    sim.world.mut(joinery, components.Stockpile).amounts.clear();
+    spawnWorkersAtDoor(sim, joinery, 1);
+    spawnWorkersAtDoor(sim, joinery, 1, { jobType: JOB_COLLECTOR });
+    const store = placeBuiltSandboxBuilding(
+      sim,
+      BUILDING_WAREHOUSE_00,
+      JOINERY_STORE_AT.x,
+      JOINERY_STORE_AT.y,
+    );
+    sim.world.mut(store, components.Stockpile).amounts.clear();
+  },
+};
+
 /** A mill beside an empty warehouse and a farm staffed only by its carrier: nobody grows wheat. */
 const CARRIER_ONLY_FARM: SceneWorld = {
   seed: 12,
@@ -169,7 +188,18 @@ describe.runIf(hasRealIr())('stalled workshop notes on real content', () => {
     const sim = createSceneSim(UNGATHERED_JOINERY, { content: merge.content });
     sim.run(2);
     const { standing } = watchStalls(sim).run(BLOCKED_SWEEPS);
-    expect(standing.map((m) => m.stall)).toEqual([{ reason: 'noGatherer', goodType: GOOD_WOOD }]);
+    expect(standing.map((m) => m.stall)).toEqual([{ reason: 'noCollector', goodType: GOOD_WOOD }]);
+  });
+
+  it('let the collector of a joinery with no tree in reach say so itself', async () => {
+    const { merge } = await loadContentUnderTest();
+    const sim = createSceneSim(BARE_JOINERY, { content: merge.content });
+    sim.run(2);
+    const { standing, idle } = watchStalls(sim).run(BLOCKED_SWEEPS);
+    // The collector stands for the wood, so the stall note leaves the word to its own note.
+    expect(standing).toEqual([]);
+    expect(idle.map((m) => m.idle?.kind)).toEqual(['noResourceInArea']);
+    expect(idle[0]?.jobType).toBe(JOB_COLLECTOR);
   });
 
   it('count no farm staffed only by its carrier as the mill wheat source', async () => {
