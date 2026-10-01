@@ -43,6 +43,7 @@ export const enGame = {
       },
       scope: 'Owners',
       scopeNote: 'Wild animals and laid roads belong to no tribe and always show.',
+      scopeNoSeat: 'Without a seat everyone shows',
       scopes: { everyone: 'All', mine: 'Mine', friendly: 'Friendly', hostile: 'Hostile' },
       scopeTips: {
         everyone: 'Markers of every tribe.',

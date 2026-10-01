@@ -28,6 +28,8 @@ export interface MinimapChromeState {
   readonly zoom: number;
   readonly size: MinimapSize;
   readonly filters: MinimapFilters;
+  /** False on a whole-map view, where every owner shows and the scope cannot narrow it. */
+  readonly hasSeat: boolean;
 }
 
 export interface MinimapChromeCallbacks {
@@ -174,7 +176,9 @@ export function createMinimapChrome(
     option.setAttribute('role', 'radio');
     option.textContent = copy.scopes[scope];
     setTip(option, copy.scopeTips[scope]);
-    option.addEventListener('click', () => callbacks.onScope(scope));
+    option.addEventListener('click', () => {
+      if (!isDisabled(scopeGroup)) callbacks.onScope(scope);
+    });
     scopeGroup.append(option);
     scopeButtons.set(scope, option);
   }
@@ -189,13 +193,17 @@ export function createMinimapChrome(
     if (step === 0) return;
     event.preventDefault();
     event.stopPropagation();
+    if (isDisabled(scopeGroup)) return;
     const at = MINIMAP_SCOPES.findIndex((scope) => scopeButtons.get(scope) === document.activeElement);
     const next = MINIMAP_SCOPES[(Math.max(0, at) + step + MINIMAP_SCOPES.length) % MINIMAP_SCOPES.length];
     if (next === undefined) return;
     callbacks.onScope(next);
     scopeButtons.get(next)?.focus();
   });
-  popover.append(head, layerGroup, scopeLegend, scopeGroup);
+  const noSeatNote = element('p', 'on-minimap-chrome__scope-note');
+  noSeatNote.textContent = copy.scopeNoSeat;
+  noSeatNote.hidden = true;
+  popover.append(head, layerGroup, scopeLegend, scopeGroup, noSeatNote);
 
   const placeFilters = (): void => {
     const bounds = plane.getBoundingClientRect();
@@ -304,6 +312,8 @@ export function createMinimapChrome(
         setAttribute(option, 'aria-checked', String(chosen));
         option.tabIndex = chosen ? 0 : -1;
       }
+      setDisabled(scopeGroup, !state.hasSeat);
+      if (setHidden(noSeatNote, state.hasSeat) && !popover.hidden) placeFilters();
       tips.refresh();
     },
     setHidden: (hidden) => {

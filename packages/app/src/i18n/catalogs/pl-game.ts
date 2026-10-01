@@ -43,6 +43,7 @@ export const plGame = {
       },
       scope: 'Właściciele',
       scopeNote: 'Dzikie zwierzęta i ułożone drogi nie należą do żadnego plemienia i są zawsze widoczne.',
+      scopeNoSeat: 'Bez miejsca gracza widać wszystkich',
       scopes: { everyone: 'Wszystkie', mine: 'Moje', friendly: 'Przyjazne', hostile: 'Wrogie' },
       scopeTips: {
         everyone: 'Znaczniki wszystkich plemion.',

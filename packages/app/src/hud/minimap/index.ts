@@ -85,6 +85,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   let zoomFocus = center;
   let filters: MinimapFilters = opts.filters ?? DEFAULT_MINIMAP_FILTERS;
   let hidden = false;
+  let hasSeat = opts.viewer() !== null;
   let dirtyDots = true;
   let base = minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width);
   let layout = zoomMinimapLayout(base, bounds, zoom, center);
@@ -180,7 +181,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   function setFilters(next: MinimapFilters): void {
     filters = next;
     dirtyDots = true;
-    chrome.setState({ size, zoom, filters });
+    chrome.setState({ size, zoom, filters, hasSeat });
     opts.onFiltersChange?.(next);
   }
   let lastPanel = '';
@@ -211,7 +212,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     const visible = !hidden && layout.scaleX > 0 && layout.scaleY > 0;
     container.visible = visible;
     chrome.setHidden(!visible);
-    chrome.setState({ zoom, size, filters });
+    chrome.setState({ zoom, size, filters, hasSeat });
   }
   refreshLayout();
   const input = createMinimapInput({
@@ -255,6 +256,11 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       surface.sync(snapshot);
       fogMask.draw(fog);
       const viewer = opts.viewer();
+      // A spectator can switch between watching a seat and the whole map.
+      if ((viewer !== null) !== hasSeat) {
+        hasSeat = viewer !== null;
+        chrome.setState({ zoom, size, filters, hasSeat });
+      }
       if (claimDotReplot(snapshot, fog?.player ?? viewer) || dirtyDots) {
         roads.draw(snapshot, fog, filters.layers.roads, stampScale());
         pixels.fill(0);
