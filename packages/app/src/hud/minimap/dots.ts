@@ -74,6 +74,16 @@ class HeldMarks {
   }
 }
 
+/** The four stamping groups of a layer, kept across walks so a replot grows no arrays once a game has
+ *  shown its largest layer; a walk clears them first and after each layer. One walk runs at a time. */
+const HELD = {
+  plain: new HeldMarks(),
+  soldiers: new HeldMarks(),
+  hostiles: new HeldMarks(),
+  hostileSoldiers: new HeldMarks(),
+} as const;
+const HELD_GROUPS: readonly HeldMarks[] = [HELD.plain, HELD.soldiers, HELD.hostiles, HELD.hostileSoldiers];
+
 /** A plotted marker part: raster-px centre `(bx, by)`, its shape, packed `0xRRGGBB` colour and which
  *  part to paint; each layer sends every rim, then every fill. Loose primitives keep the sink itself
  *  free of allocation. */
@@ -131,11 +141,8 @@ export function forEachMinimapDot(
       UNKNOWN_PLAYER_DOT_COLOUR
     );
   };
-  const plain = new HeldMarks();
-  const soldiers = new HeldMarks();
-  const hostiles = new HeldMarks();
-  const hostileSoldiers = new HeldMarks();
-  const groups = [plain, soldiers, hostiles, hostileSoldiers];
+  const { plain, soldiers, hostiles, hostileSoldiers } = HELD;
+  for (const group of HELD_GROUPS) group.clear();
   // Only currently-visible ground plots an entity; the viewer's own forces always see their own cell.
   const place = (e: SnapshotEntity, mark: MinimapMark, colour: number, group: HeldMarks): void => {
     const at = positionOf(e);
@@ -161,8 +168,8 @@ export function forEachMinimapDot(
     );
   };
   const endLayer = (): void => {
-    for (const group of groups) group.emit(sink, 'rims');
-    for (const group of groups) {
+    for (const group of HELD_GROUPS) group.emit(sink, 'rims');
+    for (const group of HELD_GROUPS) {
       group.emit(sink, 'fills');
       group.clear();
     }

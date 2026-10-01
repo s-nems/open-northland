@@ -3,9 +3,8 @@ import type { SceneGround } from '../scene/terrain-scene.js';
 
 /**
  * The minimap's world bounds and preview size, and the ground-lane → cell-colour join its raster samples.
- * Named approximation: a cell takes the mean
- * texel of its two triangles' pattern rects, ignoring transition overlays, elevation shading and the
- * `embr` brightness lane.
+ * Named approximation: a cell takes the mean texel of its two triangles' pattern rects, ignoring
+ * transition overlays; `rasterizeMinimap` then lights the raster from the elevation and `embr` lanes.
  */
 
 /** The world-space (projected px, pre-camera) axis-aligned bounds of a whole terrain grid. */

@@ -5,10 +5,11 @@ import {
   type MinimapGroundMode,
   type MinimapObjectLanes,
   type MinimapObjects,
+  type MinimapScene,
   minimapObjectLanes,
+  minimapScene,
   rasterizeMinimap,
   type SceneTerrain,
-  waterCellFractions,
 } from '@open-northland/render/data';
 
 /** The object types a baker's placements name, each a minimap feature by its own name. */
@@ -19,16 +20,10 @@ const FEATURE_BY_TYPE: ReadonlyMap<string, MinimapFeature> = new Map(MINIMAP_OBJ
  * The minimap scene as plain lanes a worker can take: each cell's ground colour is resolved up front,
  * since the scene's colour callback cannot cross threads.
  */
-export interface MinimapBakeScene {
-  readonly width: number;
-  readonly height: number;
-  readonly typeIds: readonly number[];
+export interface MinimapBakeScene
+  extends Omit<MinimapScene, 'colourOfCell' | 'forest' | 'depositKind' | 'depositDensity'> {
   /** `0xRRGGBB` per cell, row-major. */
   readonly colours: Uint32Array;
-  readonly elevation?: readonly number[];
-  readonly brightness?: readonly number[];
-  readonly water?: Float32Array;
-  readonly deepWater?: Float32Array;
 }
 
 export type MinimapBakeRequest =
@@ -62,20 +57,12 @@ export function minimapBakeScene(
   terrain: SceneTerrain,
   colourOfCell: (cell: number, typeId: number) => number,
 ): MinimapBakeScene {
-  const water = waterCellFractions(terrain.ground, terrain.width, terrain.height);
-  const colours = new Uint32Array(terrain.width * terrain.height);
+  const { colourOfCell: resolve, ...lanes } = minimapScene(terrain, colourOfCell);
+  const colours = new Uint32Array(lanes.width * lanes.height);
   for (let cell = 0; cell < colours.length; cell++) {
-    colours[cell] = colourOfCell(cell, terrain.typeIds[cell] ?? 0);
+    colours[cell] = resolve(cell, lanes.typeIds[cell] ?? 0);
   }
-  return {
-    width: terrain.width,
-    height: terrain.height,
-    typeIds: terrain.typeIds,
-    colours,
-    ...(terrain.elevation !== undefined ? { elevation: terrain.elevation } : {}),
-    ...(terrain.brightness !== undefined ? { brightness: terrain.brightness } : {}),
-    ...(water !== undefined ? { water: water.water, deepWater: water.deep } : {}),
-  };
+  return { ...lanes, colours };
 }
 
 /** The raster of a packed scene with the objects last given, binning them into lanes on arrival. */
