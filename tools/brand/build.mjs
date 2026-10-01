@@ -277,7 +277,7 @@ function webManifest(screenshot) {
           sizes: `${screenshot.width}x${screenshot.height}`,
           type: 'image/webp',
           form_factor: 'wide',
-          label: 'A Viking settlement',
+          label: 'A coastal town',
         },
       ],
     },
