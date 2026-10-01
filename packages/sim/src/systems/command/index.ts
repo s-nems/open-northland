@@ -43,6 +43,7 @@ import {
   renameSettler,
   setAssistantCounter,
   setAssistantGrant,
+  setAssistantMoveFlags,
   setAssistantPostGraduates,
   setAssistantWeaponVeto,
   setDefenceMode,
@@ -329,6 +330,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       return;
     case 'setAssistantPostGraduates':
       setAssistantPostGraduates(world, command);
+      return;
+    case 'setAssistantMoveFlags':
+      setAssistantMoveFlags(world, command);
       return;
     case 'setPlayerPlacementTribes':
       setPlayerPlacementTribes(world, ctx.content, command.player, command.tribes);

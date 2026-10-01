@@ -122,6 +122,8 @@ export interface SessionHost {
   assistantWeaponVetoes(player: number): readonly number[];
   /** Whether `player`'s assistant sends graduates straight to a free workplace. */
   assistantPostsGraduates(player: number): boolean;
+  /** Whether `player`'s gatherers move their own flags after the resources. */
+  assistantMovesFlags(player: number): boolean;
   needsEnabled(): boolean;
   fogMode(): FogMode;
   matchOutcome(player: number): MatchOutcome;

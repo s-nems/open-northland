@@ -24,6 +24,7 @@ import { equipmentEffectsScene } from './equipment-effects.js';
 import { familyScene } from './family.js';
 import { familyAwayScene } from './family-away.js';
 import { farmConstructionScene } from './farm-construction.js';
+import { gathererFlagFollowScene } from './gatherer-flag-follow.js';
 import { goodsCatalogScene } from './goods-catalog.js';
 import { gossipScene } from './gossip.js';
 import { hitAlarmScene } from './hit-alarm.js';
@@ -146,6 +147,7 @@ export const SCENES: readonly SceneDefinition[] = [
   schoolScene,
   learningFoundationsScene,
   schoolGraduatesScene,
+  gathererFlagFollowScene,
   vehiclesScene,
   vehicleYardScene,
   vehicleOxScene,

@@ -106,6 +106,10 @@ slot and stays in the school yard, and walks back there whenever it has nothing 
 
 `?scene=technology` shows map permission followed by a player-owned profession unlocking housing.
 
+`?scene=gatherer-flag-follow` turns on the assistant's "gatherers move flags to resources" switch for a
+collector with two trees beside his flag. Once both are felled the flag moves 3-5 tiles from a tree of
+the grove to the east, between the grove and the headquarters, and he goes on felling there.
+
 `?scene=idle-work` places three bakeries and a collector on empty grass. Ingrid's bakery lacks water
 and flour; Sigrid has bread production set to zero; Freya's bread shelf is full; Bjorn has no resources
 to collect. Select a worker or bakery and hover or keyboard-focus the status strip to read the full

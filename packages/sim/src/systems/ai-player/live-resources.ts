@@ -84,6 +84,14 @@ export interface GathererReach {
     radius: number,
     wanted: (goodType: number) => boolean,
   ): boolean;
+  /** {@link patchHarvestable}'s proof: a live resource of a good `wanted` accepts that {@link canWork}
+   *  takes, or null when none is. Which one is a hint that varies with the search history. */
+  patchWitness(
+    holder: Entity,
+    flag: HalfCellNode,
+    radius: number,
+    wanted: (goodType: number) => boolean,
+  ): Entity | null;
 }
 
 const NO_ATOMICS: ReadonlySet<number> = new Set();
@@ -140,39 +148,47 @@ export function gathererReach(world: World, ctx: SystemContext, terrain: Terrain
       const center = centerOf(flag);
       return reachesFlag(center) && takes(center, radius, resource, () => true);
     },
-    patchHarvestable: (holder, flag, radius, wanted) => {
-      const { allowed, reachesFlag, takes } = judge(holder);
-      const center = centerOf(flag);
-      if (!reachesFlag(center)) return false;
-      const reach = radius + contentIndex(ctx.content).maxResourceWorkOffset;
-      const witnesses = patchWitnesses(world);
-      const witness = witnesses.get(holder);
-      if (
-        witness !== undefined &&
-        world.has(witness, Resource) &&
-        inBox(world, witness, flag, reach) &&
-        takes(center, radius, witness, wanted)
-      ) {
-        return true;
-      }
-      let found: Entity | undefined;
-      const worked = anyResourceNear(
-        world,
-        flag.hx,
-        flag.hy,
-        reach,
-        (e) => {
-          if (!takes(center, radius, e, wanted)) return false;
-          found = e;
-          return true;
-        },
-        allowed,
-      );
-      if (found === undefined) witnesses.delete(holder);
-      else witnesses.set(holder, found);
-      return worked;
-    },
+    patchHarvestable: (holder, flag, radius, wanted) => patchWitness(holder, flag, radius, wanted) !== null,
+    patchWitness,
   };
+
+  function patchWitness(
+    holder: Entity,
+    flag: HalfCellNode,
+    radius: number,
+    wanted: (goodType: number) => boolean,
+  ): Entity | null {
+    const { allowed, reachesFlag, takes } = judge(holder);
+    const center = centerOf(flag);
+    if (!reachesFlag(center)) return null;
+    const reach = radius + contentIndex(ctx.content).maxResourceWorkOffset;
+    const witnesses = patchWitnesses(world);
+    const witness = witnesses.get(holder);
+    if (
+      witness !== undefined &&
+      world.has(witness, Resource) &&
+      inBox(world, witness, flag, reach) &&
+      takes(center, radius, witness, wanted)
+    ) {
+      return witness;
+    }
+    let found: Entity | undefined;
+    anyResourceNear(
+      world,
+      flag.hx,
+      flag.hy,
+      reach,
+      (e) => {
+        if (!takes(center, radius, e, wanted)) return false;
+        found = e;
+        return true;
+      },
+      allowed,
+    );
+    if (found === undefined) witnesses.delete(holder);
+    else witnesses.set(holder, found);
+    return found ?? null;
+  }
 }
 
 /**
@@ -240,6 +256,29 @@ export function nearestLiveResource(
   return (
     nearestResourceOfGood(world, goodType, from.hx, from.hy, undefined, undefined, accept)?.entity ?? null
   );
+}
+
+/** {@link nearestLiveResource} over several goods: the nearest of the goods' winners, ties to the lower
+ *  entity id. */
+export function nearestLiveResourceOfGoods(
+  world: World,
+  goodTypes: readonly number[],
+  from: HalfCellNode,
+  workable?: WorkableTest,
+): Entity | null {
+  let best: Entity | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const goodType of goodTypes) {
+    const hit = nearestLiveResource(world, goodType, from, workable);
+    const node = hit === null ? null : anchorNodeOf(world, hit);
+    if (hit === null || node === null) continue;
+    const distance = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
+    if (distance < bestDistance || (distance === bestDistance && best !== null && hit < best)) {
+      best = hit;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
 
 /**

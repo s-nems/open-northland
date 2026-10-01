@@ -10,7 +10,7 @@ import {
   routeRegions,
   workFlagPlacementTest,
 } from '../../footprint/index.js';
-import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
+import type { NavigationLimit } from '../../signposts/index.js';
 import { type GathererReach, nearestLiveResource, type WorkableTest } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
 import { type WalkDistances, WalkFlood, walkSeedNear } from '../walk-distance.js';
@@ -18,8 +18,21 @@ import { type WalkDistances, WalkFlood, walkSeedNear } from '../walk-distance.js
 /** A collector's flag stands 2-3 tiles from its resource (authored) - 4..6 half-cell nodes. */
 export const FLAG_MIN_DISTANCE_NODES = 4;
 export const FLAG_MAX_DISTANCE_NODES = 6;
-/** When the whole 2-3-tile band is blocked, any legal node this close still serves. */
-const FLAG_FALLBACK_MAX_DISTANCE_NODES = 12;
+
+/** The Manhattan rings around a resource a flag may stand on, in half-cell nodes, and how far out any
+ *  legal node still serves once the whole band is blocked. */
+export interface FlagBand {
+  readonly min: number;
+  readonly max: number;
+  readonly fallbackMax: number;
+}
+
+/** The AI collector's band: 2-3 tiles, any legal node within 6 tiles when it is blocked (authored). */
+export const COLLECTOR_FLAG_BAND: FlagBand = {
+  min: FLAG_MIN_DISTANCE_NODES,
+  max: FLAG_MAX_DISTANCE_NODES,
+  fallbackMax: 12,
+};
 /** How many nearest resources one re-plant tries (authored): a resource whose best flag spot is taken or
  *  from which the holder could not work it gives way to the next nearest. */
 const REPLANT_ATTEMPTS = 3;
@@ -62,10 +75,10 @@ export function claimFlagNode(taken: TakenFlagNodes, spot: HalfCellNode): void {
 }
 
 /**
- * One decision's ground for the seat's flags: the terrain, the walks over the live walk-block overlay,
- * the placement test, and the seat's signpost confinement from `baseNode`, which every flag must
- * lie inside, since the engine snaps a `setWorkFlag` only within that reach and drops one aimed past it
- * (`orders/work/selection.ts`). Null while navigation is unconfined.
+ * One search's ground for gatherer flags: the terrain, the walks over the live walk-block overlay, the
+ * placement test, and the signpost confinement every flag must lie inside, since the engine snaps a
+ * `setWorkFlag` only within that reach and drops one aimed past it (`orders/work/selection.ts`). Null
+ * while navigation is unconfined.
  */
 export interface FlagGround {
   readonly terrain: TerrainGraph;
@@ -84,8 +97,7 @@ export function flagGround(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  player: number,
-  baseNode: HalfCellNode,
+  limit: NavigationLimit | null,
 ): FlagGround {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const regions = routeRegions(world, ctx, terrain);
@@ -104,7 +116,7 @@ export function flagGround(
   const fromResource = new Map<Entity, WalkDistances>();
   return {
     terrain,
-    limit: networkLimitAt(world, terrain, player, baseNode.hx, baseNode.hy),
+    limit,
     placeable: workFlagPlacementTest(world, ctx.content, terrain),
     // A seed pocketed behind its building stands in for carriers who leave by the door, so it vetoes nothing.
     sealedFrom: (origin, node) => {
@@ -147,7 +159,7 @@ export function legalFlagNodeTest(
 }
 
 /**
- * The legal work-flag node in the 2-3-tile band around `resource` the shortest walk away: the gatherer's
+ * The legal work-flag node in `band` around `resource` the shortest walk away: the gatherer's
  * leg from the spot to the resource's work cells, weighed {@link GATHERER_LEG_WEIGHT}, plus the carriers'
  * leg from `origin`, the base or workshop they walk out from, both floods over the live walk-block
  * overlay, so a spot behind a ridge or on the far side of the deposit loses to one the men reach straight.
@@ -161,6 +173,7 @@ export function flagSpotNear(
   resource: Entity,
   origin: HalfCellNode,
   taken: TakenFlagNodes,
+  band: FlagBand = COLLECTOR_FLAG_BAND,
 ): HalfCellNode | null {
   const centre = anchorNodeOf(world, resource);
   if (centre === null) return null;
@@ -185,8 +198,8 @@ export function flagSpotNear(
     return fx.add(weightedResourceLeg, originLeg);
   };
   return (
-    cheapestRingNode(centre, FLAG_MIN_DISTANCE_NODES, FLAG_MAX_DISTANCE_NODES, legal, cost) ??
-    cheapestRingNode(centre, 0, FLAG_FALLBACK_MAX_DISTANCE_NODES, legal, cost)
+    cheapestRingNode(centre, band.min, band.max, legal, cost) ??
+    cheapestRingNode(centre, 0, band.fallbackMax, legal, cost)
   );
 }
 
@@ -236,8 +249,9 @@ export function collectorSpot(
 
 /** A re-plant: the resource the flag moves after and the spot beside it, `dry` when the map holds no
  *  candidate at all, or null when none of the nearest {@link REPLANT_ATTEMPTS} was one the holder could
- *  work. On null the holder keeps his post and the upkeep retries on a backoff, retiring him only after
- *  several misses: retiring him at once would churn (hire, dead patch, retire, hire) every decision. */
+ *  work. On either miss the flag stays and the assistant's flag follow retries on a backoff; the AI retires
+ *  its holder only after several misses, since retiring him at once would churn (hire, dead patch, retire,
+ *  hire) every decision. */
 export type Replant = { readonly target: HalfCellNode; readonly spot: HalfCellNode } | 'dry' | null;
 
 /**
@@ -256,6 +270,7 @@ export function replantSpot(
   origin: HalfCellNode,
   reach: GathererReach,
   taken: TakenFlagNodes,
+  band: FlagBand = COLLECTOR_FLAG_BAND,
 ): Replant {
   const tried = new Set<Entity>();
   const open = (e: Entity): boolean => !tried.has(e);
@@ -263,7 +278,7 @@ export function replantSpot(
     const resource = nearest(open);
     if (resource === null) return attempt === 0 ? 'dry' : null;
     const target = anchorNodeOf(world, resource);
-    const spot = target === null ? null : flagSpotNear(world, ground, resource, origin, taken);
+    const spot = target === null ? null : flagSpotNear(world, ground, resource, origin, taken, band);
     if (target !== null && spot !== null && reach.canWork(holder, spot, radius, resource)) {
       return { target, spot };
     }

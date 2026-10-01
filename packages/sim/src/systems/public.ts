@@ -26,6 +26,8 @@ export {
   SUPPLY_CARRIER_GOODS_BY_BUILDING_ID,
   supplyLines,
 } from './ai-player/workforce/index.js';
+// The band the assistant's flag follow keeps a gatherer's flag in.
+export { FOLLOW_FLAG_BAND } from './assistant/flag-follow.js';
 export {
   CHEST_CONTENTS,
   type ChestReward,

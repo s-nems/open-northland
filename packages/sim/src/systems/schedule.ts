@@ -1,5 +1,6 @@
 import { aiDiplomacySystem, aiPlayerSystem } from './ai-player/index.js';
 import { aiProgramSystem } from './ai-program/index.js';
+import { flagFollowSystem } from './assistant/flag-follow.js';
 import { assistantSystem } from './assistant/index.js';
 import { commandSystem } from './command/index.js';
 import { combatSystem } from './conflict/combat.js';
@@ -94,6 +95,8 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // The assistant dispatches before family and the planner, so a fresh child order is driven and a
   // fresh drill routed the same tick it was booked.
   { name: 'assistant', system: assistantSystem },
+  // Before the planner, so a gatherer whose flag moved plans his next harvest from it the same tick.
+  { name: 'flagFollow', system: flagFollowSystem },
   // Family runs before the planner so its walks route the same tick and its duty/wedding fences are fresh.
   { name: 'family', system: familySystem },
   // Before the planner for the same reason as family: its walks route this tick and its Chat fence is

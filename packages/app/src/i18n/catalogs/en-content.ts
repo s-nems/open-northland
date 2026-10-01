@@ -353,6 +353,11 @@ export const enContent = {
       summary:
         "Two collectors learn carpentry with the assistant sending graduates to work. The first takes the joinery's only joiner slot. The second finds no free slot, stays in the school yard and walks back there whenever it has nothing to do.",
     },
+    'gatherer-flag-follow': {
+      title: 'Flags follow the resources',
+      summary:
+        'A collector fells the two trees beside his flag with the assistant moving gatherer flags. Once they are gone, the flag moves 3-5 tiles from a tree of the grove to the east, between the grove and the headquarters, and he goes on felling there.',
+    },
     'idle-work': {
       title: 'Why workers are idle',
       summary:

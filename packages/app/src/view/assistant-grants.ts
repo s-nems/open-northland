@@ -7,9 +7,13 @@ import type { SessionHost } from '../session/index.js';
 type WeaponSwitchId = Extract<AssistantGrantId, `allow${string}`>;
 type GiveSwitchId = Extract<AssistantGrantId, `give${string}`>;
 type GoodSwitchId = GiveSwitchId | WeaponSwitchId;
-/** The one switch that maps to no good: it flips the sim's graduate posting. */
-const POST_GRADUATES = 'postGraduates' satisfies Exclude<AssistantGrantId, GoodSwitchId>;
-const GOOD_SWITCH_IDS = GRANT_IDS.filter((id): id is GoodSwitchId => id !== POST_GRADUATES);
+/** The switches that map to no good: each flips one sim assistant switch. */
+type SimSwitchId = Exclude<AssistantGrantId, GoodSwitchId>;
+const SIM_SWITCH_COMMANDS: Readonly<
+  Record<SimSwitchId, 'setAssistantPostGraduates' | 'setAssistantMoveFlags'>
+> = { postGraduates: 'setAssistantPostGraduates', moveFlags: 'setAssistantMoveFlags' };
+const isSimSwitch = (id: AssistantGrantId): id is SimSwitchId => id in SIM_SWITCH_COMMANDS;
+const GOOD_SWITCH_IDS = GRANT_IDS.filter((id): id is GoodSwitchId => !isSimSwitch(id));
 
 /**
  * Which goods each chest-window switch flips, keyed by catalog slug because the sandbox catalog and real
@@ -59,7 +63,10 @@ function resolveGrantGoods(content: GrantContent): Record<GoodSwitchId, readonly
  *  spectator session (`writable: false`) rejects every write, so the window never echoes a command
  *  the sim would drop. */
 export function assistantGrantsSeam(
-  host: Pick<SessionHost, 'assistantGrants' | 'assistantWeaponVetoes' | 'assistantPostsGraduates'>,
+  host: Pick<
+    SessionHost,
+    'assistantGrants' | 'assistantWeaponVetoes' | 'assistantPostsGraduates' | 'assistantMovesFlags'
+  >,
   content: GrantContent,
   player: () => number | null,
   enqueue: (command: PlayerCommand) => void,
@@ -72,9 +79,11 @@ export function assistantGrantsSeam(
       const granted = new Set(seat === null ? [] : host.assistantGrants(seat));
       const vetoed = new Set(seat === null ? [] : host.assistantWeaponVetoes(seat));
       const on = (id: AssistantGrantId): boolean => {
-        if (id === POST_GRADUATES) return seat !== null && host.assistantPostsGraduates(seat);
+        if (seat === null) return false;
+        if (id === 'postGraduates') return host.assistantPostsGraduates(seat);
+        if (id === 'moveFlags') return host.assistantMovesFlags(seat);
         const goods = grantGoods[id];
-        if (seat === null || goods.length === 0) return false;
+        if (goods.length === 0) return false;
         return isWeaponSwitch(id) ? goods.every((g) => !vetoed.has(g)) : goods.every((g) => granted.has(g));
       };
       return Object.fromEntries(GRANT_IDS.map((id) => [id, on(id)])) as Record<AssistantGrantId, boolean>;
@@ -82,8 +91,8 @@ export function assistantGrantsSeam(
     set: (id, enabled) => {
       const seat = player();
       if (!writable || seat === null) return false;
-      if (id === POST_GRADUATES) {
-        enqueue({ kind: 'setAssistantPostGraduates', player: seat, enabled });
+      if (isSimSwitch(id)) {
+        enqueue({ kind: SIM_SWITCH_COMMANDS[id], player: seat, enabled });
         return true;
       }
       const goods = grantGoods[id];

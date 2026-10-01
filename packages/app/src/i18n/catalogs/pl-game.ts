@@ -798,6 +798,7 @@ export const plGame = {
       allowWoodenSpears: 'Pozwól na drewniane włócznie',
       allowShortBows: 'Pozwól na krótkie łuki',
       postGraduates: 'Kieruj absolwentów do pracy',
+      moveFlags: 'Zbieracze przenoszą flagi za surowcami',
       on: 'Wł.',
       off: 'Wył.',
       papers: {

@@ -60,6 +60,7 @@ import {
   STORE_CARRIERS,
 } from '../../../src/systems/ai-player/workforce/staffing-plan.js';
 import { EAT_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
+import { networkLimitAt } from '../../../src/systems/signposts/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import {
   aiSim,
@@ -703,7 +704,7 @@ describe('workforce module - stone gatherers keep the anchor their flag serves',
     if (low === undefined || high === undefined) throw new Error('setup: two gatherers');
     // The lower id works the base's stone, the higher one the hut's: the reverse of their rank order.
     const taken = new Set<string>();
-    const ground = flagGround(sim.world, ctx, terrain, SEAT, { hx: HQ_X, hy: HQ_Y });
+    const ground = flagGround(sim.world, ctx, terrain, networkLimitAt(sim.world, terrain, SEAT, HQ_X, HQ_Y));
     for (const [man, stone] of [
       [low, BASE_STONE],
       [high, HUT_STONE],

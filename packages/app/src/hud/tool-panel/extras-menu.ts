@@ -15,12 +15,13 @@ import {
 /**
  * The extras ("chest") window model: the assistant tab, the counter and grant controls, their layout
  * and hit-test. Grants drive the sim's auto-equip, the weapon switches its recruit arming, the graduate
- * switch its posting of school leavers, counters its birth and training queues. The papers the original
- * lists on this window's second tab are the construction window's page.
+ * switch its posting of school leavers, the flag switch its moving of gatherer flags after the resources,
+ * counters its birth and training queues. The papers the original lists on this window's second tab are
+ * the construction window's page.
  *
  * The decoded `miscwindow` table carries the original window's labels (500 the title, 502 the block
  * header, 503-509 the grant commands); the row wording, counter set and geometry are an approximation,
- * and the weapon and graduate switches are this project's addition.
+ * and the weapon, graduate and flag switches are this project's addition.
  */
 
 /** The assistant's six production counters: two birth queues and four training queues. */
@@ -87,6 +88,7 @@ export function defaultAssistantState(): AssistantState {
       allowWoodenSpears: true,
       allowShortBows: true,
       postGraduates: false,
+      moveFlags: false,
     },
   };
 }
@@ -233,6 +235,7 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
     allowWoodenSpears: labels.allowWoodenSpears,
     allowShortBows: labels.allowShortBows,
     postGraduates: labels.postGraduates,
+    moveFlags: labels.moveFlags,
   };
 
   const counters: ExtrasCounterRow[] = COUNTER_IDS.map((id, i) => {

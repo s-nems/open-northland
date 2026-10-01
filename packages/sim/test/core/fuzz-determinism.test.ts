@@ -445,7 +445,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(73);
+  const roll = rng.int(74);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -1046,6 +1046,10 @@ function nextCommand(rng: Rng): Command {
       // Debug teleport at a random id and node: live humans land and re-route, the wall rows' blocked
       // nodes push the landing aside, and non-human / dead ids are skipped.
       return { kind: 'debugTeleport', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+    case 73:
+      // The flag-follow switch: valid players turn the follow on and off under the fuzzed gatherers, so it
+      // moves their flags mid-stream; the out-of-range player is the owner refusal.
+      return { kind: 'setAssistantMoveFlags', player: pick(rng, OWNERS), enabled: rng.int(2) === 0 };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }

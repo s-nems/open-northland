@@ -5,7 +5,8 @@ export type AssistantCommand =
   | AssistantGrantCommand
   | AssistantWeaponVetoCommand
   | AssistantCounterCommand
-  | AssistantPostGraduatesCommand;
+  | AssistantPostGraduatesCommand
+  | AssistantMoveFlagsCommand;
 
 type AssistantGrantCommand = {
   /**
@@ -56,6 +57,17 @@ type AssistantPostGraduatesCommand = {
    * carrier. While on, a settler finishing a school course is bound to a free workplace slot in its trade.
    */
   readonly kind: 'setAssistantPostGraduates';
+  /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
+  readonly player: number;
+  readonly enabled: boolean;
+};
+
+type AssistantMoveFlagsCommand = {
+  /**
+   * Switch `player`'s "gatherers move their flags" on or off, held on the per-player `AssistantMovesFlags`
+   * carrier. While on, a flag gatherer's flag is kept within 3-5 tiles of a resource he can work.
+   */
+  readonly kind: 'setAssistantMoveFlags';
   /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
   readonly player: number;
   readonly enabled: boolean;

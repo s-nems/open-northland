@@ -47,11 +47,11 @@ export const YardDeliveryRoute = defineComponent<{
 }>('YardDeliveryRoute', 'economy');
 
 /**
- * The default work radius a newly placed gatherer flag gets: 24 half-cell nodes, about 12 tiles. A named
- * approximation - the original's collector work-area size is unknown - sized so a gatherer reaches a
- * decent patch around its flag without roaming the whole map.
+ * The default work radius a newly placed gatherer flag gets: 32 half-cell nodes, about 16 tiles. Original
+ * behavior, unconfirmed against the running original: a collector searches a walk flood of about 20 steps
+ * around its work centre. This radius is deliberately wider (owner's balance choice).
  */
-export const DEFAULT_WORK_FLAG_RADIUS = 24;
+export const DEFAULT_WORK_FLAG_RADIUS = 32;
 
 /**
  * The hunter's work radius in the same node-distance, wider than the gatherer default because a hunter
@@ -60,3 +60,13 @@ export const DEFAULT_WORK_FLAG_RADIUS = 24;
  * taken per sweep and how far the crew ends up standing from its flag.
  */
 export const HUNTER_WORK_FLAG_RADIUS = 48;
+
+/**
+ * How many re-plant searches in a row found nothing for a gatherer whose patch is worked out, held on
+ * the gatherer while his flag stands on half-cell node (`hx`, `hy`). A record for another node is stale
+ * and counts as none. Written by the assistant's flag follow, read by the AI to retire a hopeless post.
+ */
+export const ReplantMisses = defineComponent<{ hx: number; hy: number; misses: number }>(
+  'ReplantMisses',
+  'economy',
+);

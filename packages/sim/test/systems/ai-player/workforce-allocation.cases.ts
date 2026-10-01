@@ -65,7 +65,6 @@ import {
   NODES_PER_CLEARING_GATHERER,
   OPENING_SITE_SHORTAGE_POSTS,
   REPLANT_MISSES_BEFORE_RETIRE,
-  REPLANT_RETRY_EVERY_DECISIONS,
   SHORTAGE_BUILDER_FLOOR,
   siteShortagePosts,
   type WantedGood,
@@ -79,8 +78,16 @@ import {
 } from '../../../src/systems/ai-player/workforce/flag-spots.js';
 import { SpareForce } from '../../../src/systems/ai-player/workforce/pool.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
+import {
+  FLAG_FOLLOW_CHECK_PERIOD_TICKS,
+  FOLLOW_FLAG_BAND,
+  flagFollowSystem,
+  REPLANT_RETRY_EVERY_CHECKS,
+} from '../../../src/systems/assistant/flag-follow.js';
 import { resourceStanceCells, resourceWorkCell } from '../../../src/systems/footprint/interaction.js';
 import { canPlaceWorkFlag, dynamicBlockOverlay, type SystemContext } from '../../../src/systems/index.js';
+import { setAssistantMoveFlags } from '../../../src/systems/orders/assistant.js';
+import { networkLimitAt } from '../../../src/systems/signposts/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { gatherPick } from '../../fixtures/production-counters.js';
 import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
@@ -263,6 +270,28 @@ const holdersOf = (sim: Simulation, good: number) =>
   [...sim.world.query(Settler, WorkFlag)].filter((e) => gatherPick(sim, e) === good);
 
 /** The allocator's hiring ladder: collector posts, workshop staffing tiers, scout, builder reserve. */
+
+/** Run the assistant's flag follow once on a beat that is both `holder`'s check and his retry phase, with
+ *  the seat's switch on, and return where his flag stands after it. */
+function followFlag(sim: Simulation, holder: Entity): { hx: number; hy: number } {
+  if (!sim.assistantMovesFlags(SEAT))
+    setAssistantMoveFlags(sim.world, { kind: 'setAssistantMoveFlags', player: SEAT, enabled: true });
+  let round = 1;
+  while ((round + holder) % REPLANT_RETRY_EVERY_CHECKS !== 0) round++;
+  flagFollowSystem(sim.world, ctxOf(sim, followCheckTick(sim, holder, round)));
+  return flagNodeOf(sim, holder);
+}
+
+/** The tick of `holder`'s flag-follow check in `round`: his slice of the ascending flag gatherers. */
+function followCheckTick(sim: Simulation, holder: Entity, round: number): number {
+  const slice = sim.world.canonicalQuery(WorkFlag).indexOf(holder) % FLAG_FOLLOW_CHECK_PERIOD_TICKS;
+  return round * FLAG_FOLLOW_CHECK_PERIOD_TICKS + slice;
+}
+
+function flagNodeOf(sim: Simulation, holder: Entity): { hx: number; hy: number } {
+  const at = sim.world.get(sim.world.get(holder, WorkFlag).flag, Position);
+  return nodeOfPosition(at.x, at.y);
+}
 
 describe('workforce module (collectResources)', () => {
   it("counts the heaps in reach of the seat's buildings as its supply, like the summary bar", () => {
@@ -839,22 +868,24 @@ describe('workforce module (collectResources)', () => {
     sim.enqueueSetup({ kind: 'setGatherGood', entity: gatherer, goodType: null });
     sim.step();
 
+    // Nothing to follow: the flag follow misses once, and the decision after it retires him.
+    followFlag(sim, gatherer);
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     expect(commands.filter((c) => c.kind === 'setJob' && c.entity === gatherer)).toEqual([
       { kind: 'setJob', entity: gatherer, jobType: BUILDER },
     ]);
 
-    // With a collected good standing past the circle, the flag moves there instead.
+    // With a collected good standing past the circle, he keeps his post and the flag follow moves the
+    // flag there.
     const FAR = { x: 56, y: 28 };
     placeResources(sim, [{ ...RESOURCE_SPOTS.wood, ...FAR }]);
     sim.step();
-    const moved = [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
+    const own = [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
       (c) => (c.kind === 'setJob' || c.kind === 'setWorkFlag') && c.entity === gatherer,
     );
-    expect(moved).toHaveLength(1);
-    const [flag] = moved;
-    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the generic flag to move');
-    expect(Math.abs(flag.x - FAR.x) + Math.abs(flag.y - FAR.y)).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
+    expect(own).toEqual([]);
+    const flag = followFlag(sim, gatherer);
+    expect(Math.abs(flag.hx - FAR.x) + Math.abs(flag.hy - FAR.y)).toBeLessThanOrEqual(FOLLOW_FLAG_BAND.max);
   });
 
   it('moves a generic flag whose circle holds only a good the holder lacks the experience for', () => {
@@ -874,13 +905,39 @@ describe('workforce module (collectResources)', () => {
     sim.step();
 
     // His trade digs iron, but a fresh hire has no XP for it: the circle is dead to him.
-    const moved = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)].filter(
-      (c) => (c.kind === 'setJob' || c.kind === 'setWorkFlag') && c.entity === gatherer,
+    const flag = followFlag(sim, gatherer);
+    expect(Math.abs(flag.hx - FAR.x) + Math.abs(flag.hy - FAR.y)).toBeLessThanOrEqual(FOLLOW_FLAG_BAND.max);
+  });
+
+  it('follows past deposits the generic holder lacks the experience for, however many stand nearer', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    const FAR = { x: 56, y: 28 };
+    const IRON = RESOURCE_SPOTS.iron;
+    placeResources(sim, [
+      IRON,
+      { ...IRON, x: IRON.x + 2 },
+      { ...IRON, x: IRON.x + 4 },
+      { ...IRON, x: IRON.x + 6 },
+      { ...RESOURCE_SPOTS.wood, ...FAR },
+    ]);
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: COLLECTOR, x: 14, y: 24, tribe: VIKING, owner: SEAT });
+    sim.step();
+    const gatherer = [...sim.world.query(Settler)].find(
+      (e) => sim.world.get(e, Settler).jobType === COLLECTOR,
     );
-    expect(moved).toHaveLength(1);
-    const [flag] = moved;
-    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the generic flag to move');
-    expect(Math.abs(flag.x - FAR.x) + Math.abs(flag.y - FAR.y)).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
+    if (gatherer === undefined) throw new Error('setup: gatherer missing');
+    sim.enqueueSetup({
+      kind: 'setWorkFlag',
+      entity: gatherer,
+      x: IRON.x - FLAG_MIN_DISTANCE_NODES,
+      y: IRON.y,
+    });
+    sim.enqueueSetup({ kind: 'setGatherGood', entity: gatherer, goodType: null });
+    sim.step();
+
+    const flag = followFlag(sim, gatherer);
+    expect(Math.abs(flag.hx - FAR.x) + Math.abs(flag.hy - FAR.y)).toBeLessThanOrEqual(FOLLOW_FLAG_BAND.max);
   });
 
   it('moves a working generic flag beside a collected good standing well nearer the base, on the upkeep', () => {
@@ -1117,17 +1174,17 @@ describe('workforce module (collectResources)', () => {
       harvestAtomic: WOOD_HARVEST,
     });
     sim.step();
-    const move = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
-    const flag = move.find((c) => c.kind === 'setWorkFlag');
-    if (flag === undefined) throw new Error('expected the flag to move to the fresh resource');
-    const dist = Math.abs(flag.x - FAR.x) + Math.abs(flag.y - FAR.y);
-    expect(dist).toBeGreaterThanOrEqual(FLAG_MIN_DISTANCE_NODES);
-    expect(dist).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
-
-    // With every wood node gone the collector rejoins the builder pool.
-    for (const e of sim.world.query(Resource)) sim.world.mut(e, Resource).remaining = 0;
-    const retire = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const collector = [...sim.world.query(Settler, WorkFlag)][0];
+    if (collector === undefined) throw new Error('setup: the collector');
+    const flag = followFlag(sim, collector);
+    const dist = Math.abs(flag.hx - FAR.x) + Math.abs(flag.hy - FAR.y);
+    expect(dist).toBeGreaterThanOrEqual(FOLLOW_FLAG_BAND.min);
+    expect(dist).toBeLessThanOrEqual(FOLLOW_FLAG_BAND.max);
+
+    // With every wood node gone the follow misses, and the collector rejoins the builder pool.
+    for (const e of sim.world.query(Resource)) sim.world.mut(e, Resource).remaining = 0;
+    followFlag(sim, collector);
+    const retire = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     expect(retire).toEqual([{ kind: 'setJob', entity: collector, jobType: BUILDER }]);
   });
 
@@ -1408,7 +1465,12 @@ describe('workforce module (collectResources)', () => {
       {
         anchors: collectorAnchors(sim.world, ctx, ownedBuildings(sim.world, SEAT), baseNode),
         baseNode,
-        flags: flagGround(sim.world, ctx, terrain, SEAT, baseNode),
+        flags: flagGround(
+          sim.world,
+          ctx,
+          terrain,
+          networkLimitAt(sim.world, terrain, SEAT, baseNode.hx, baseNode.hy),
+        ),
         workable: workableResourceTest(sim.world, ctx, terrain),
       },
       wanted.filter((w) => w !== undefined),
@@ -1453,12 +1515,12 @@ describe('workforce module (collectResources)', () => {
     sim.step();
     expect(workableResourceTest(sim.world, ctxOf(sim), terrain)(buried)).toBe(false);
 
-    // An ordinary decision, not the periodic upkeep: a patch with nothing workable left is a dry one.
-    const move = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
-    const flag = move.find((c) => c.kind === 'setWorkFlag');
-    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the flag to move to the fresh deposit');
-    expect(Math.abs(flag.x - FRESH.x) + Math.abs(flag.y - FRESH.y)).toBeLessThanOrEqual(
-      FLAG_MAX_DISTANCE_NODES,
+    // A patch with nothing workable left is a worked-out one.
+    const [holder] = holdersOf(sim, MUD);
+    if (holder === undefined) throw new Error('setup: the clay holder');
+    const flag = followFlag(sim, holder);
+    expect(Math.abs(flag.hx - FRESH.x) + Math.abs(flag.hy - FRESH.y)).toBeLessThanOrEqual(
+      FOLLOW_FLAG_BAND.max,
     );
   });
 
@@ -1546,10 +1608,9 @@ describe('workforce module (collectResources)', () => {
     const reach = gathererReach(sim.world, ctxOf(sim), terrain);
     expect(reach.patchHarvestable(holder, flagNode, radius, (g) => g === MUD)).toBe(false);
 
-    const move = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
-    const flag = move.find((c) => c.kind === 'setWorkFlag' && c.entity === holder);
-    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the flag to leave the sealed deposit');
-    expect(reach.patchHarvestable(holder, { hx: flag.x, hy: flag.y }, radius, (g) => g === MUD)).toBe(true);
+    const flag = followFlag(sim, holder);
+    const after = gathererReach(sim.world, ctxOf(sim), terrain);
+    expect(after.patchHarvestable(holder, flag, radius, (g) => g === MUD)).toBe(true);
   });
 
   it('moves a flag a blocker ring seals in a pocket with its deposit, the holder left outside', () => {
@@ -1603,10 +1664,8 @@ describe('workforce module (collectResources)', () => {
     const reach = gathererReach(sim.world, ctxOf(sim), terrain);
     expect(reach.patchHarvestable(holder, flagNode, radius, (g) => g === MUD)).toBe(false);
 
-    const move = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
-    const flag = move.find((c) => c.kind === 'setWorkFlag' && c.entity === holder);
-    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the flag to leave the pocket');
-    expect(inside(terrain.nodeAt(flag.x, flag.y))).toBe(false);
+    const flag = followFlag(sim, holder);
+    expect(inside(terrain.nodeAt(flag.hx, flag.hy))).toBe(false);
   });
 
   it('moves a clay holder off a spent deposit beside the next live one', () => {
@@ -1626,13 +1685,68 @@ describe('workforce module (collectResources)', () => {
     placeResources(sim, [{ ...RESOURCE_SPOTS.mud, ...NEXT }]);
     sim.step();
 
-    const move = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
-    const flag = move.find((c) => c.kind === 'setWorkFlag' && c.entity === holder);
-    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the flag to follow the next deposit');
-    expect(Math.abs(flag.x - NEXT.x) + Math.abs(flag.y - NEXT.y)).toBeLessThanOrEqual(
-      FLAG_MAX_DISTANCE_NODES,
+    // The seat keeps him at his post and leaves the worked-out flag to the flag follow.
+    const decision = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
+    expect(decision.filter((c) => 'entity' in c && c.entity === holder)).toEqual([]);
+    const flag = followFlag(sim, holder);
+    expect(Math.abs(flag.hx - NEXT.x) + Math.abs(flag.hy - NEXT.y)).toBeLessThanOrEqual(FOLLOW_FLAG_BAND.max);
+    // The seat's own re-aim accepts a flag the follow placed: it never moves the flag a second time.
+    sim.enqueueSetup({ kind: 'setAssistantMoveFlags', player: SEAT, enabled: true });
+    sim.step();
+    const upkeep = [...collectModule.run(sim.world, ctxOf(sim, flagRelocationTick(holder)), SEAT)];
+    expect(upkeep.filter((c) => c.kind === 'setWorkFlag' && c.entity === holder)).toEqual([]);
+  });
+
+  it('spreads generic posts the flag follow bunched on one grove over the clearing resources', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    const NORTH = [
+      { x: 28, y: 6 },
+      { x: 30, y: 6 },
+    ];
+    const SOUTH = [
+      { x: 30, y: 28 },
+      { x: 32, y: 28 },
+    ];
+    placeResources(
+      sim,
+      [...NORTH, ...SOUTH].map((at) => ({ ...RESOURCE_SPOTS.wood, ...at })),
     );
-    expect(move.filter((c) => c.kind === 'setJob' && c.entity === holder)).toEqual([]);
+    const STARTS = [
+      { x: 29, y: 10 },
+      { x: 31, y: 10 },
+    ];
+    for (const at of STARTS) {
+      sim.enqueueSetup({ kind: 'spawnSettler', jobType: COLLECTOR, ...at, tribe: VIKING, owner: SEAT });
+    }
+    sim.step();
+    const gatherers = [...sim.world.query(Settler)].filter(
+      (e) => sim.world.get(e, Settler).jobType === COLLECTOR,
+    );
+    expect(gatherers).toHaveLength(STARTS.length);
+    // Both flags stand by the north grove, as two follows aimed at the nearest wood leave them.
+    for (const [i, g] of gatherers.entries()) {
+      const at = STARTS[i];
+      if (at === undefined) throw new Error('setup: a start');
+      sim.enqueueSetup({ kind: 'setWorkFlag', entity: g, x: at.x, y: at.y });
+      sim.enqueueSetup({ kind: 'setGatherGood', entity: g, goodType: null });
+    }
+    sim.step();
+
+    const moved = gatherers.flatMap((g) =>
+      [...collectModule.run(sim.world, ctxOf(sim, flagRelocationTick(g)), SEAT)].filter(
+        (c) => c.kind === 'setWorkFlag' && c.entity === g,
+      ),
+    );
+    expect(moved.length).toBeGreaterThan(0);
+    const south = SOUTH.map((at) => ({ hx: at.x, hy: at.y }));
+    expect(
+      moved.some(
+        (c) =>
+          c.kind === 'setWorkFlag' &&
+          south.some((t) => Math.abs(t.hx - c.x) + Math.abs(t.hy - c.y) <= FLAG_MAX_DISTANCE_NODES),
+      ),
+    ).toBe(true);
   });
 
   it('never aims a clay flag at a deposit across water: the good is dry for the seat and the holder retires', () => {
@@ -1662,6 +1776,7 @@ describe('workforce module (collectResources)', () => {
       reach.patchHarvestable(holder, nodeOfPosition(flagAt.x, flagAt.y), flag.radius, (g) => g === MUD),
     ).toBe(false);
 
+    followFlag(sim, holder); // nothing on his bank to follow: a miss
     const decision = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
     expect(decision.filter((c) => 'entity' in c && c.entity === holder)).toEqual([
       { kind: 'setJob', entity: holder, jobType: BUILDER },
@@ -1690,14 +1805,19 @@ describe('workforce module (collectResources)', () => {
     const refusing = { canWork: () => false, patchHarvestable: () => false };
     const { radius } = sim.world.get(holder, WorkFlag);
     const origin = { hx: HQ_X, hy: HQ_Y };
-    const ground = flagGround(sim.world, ctx, terrain, SEAT, origin);
+    const ground = flagGround(
+      sim.world,
+      ctx,
+      terrain,
+      networkLimitAt(sim.world, terrain, SEAT, origin.hx, origin.hy),
+    );
     expect(replantSpot(sim.world, ground, holder, radius, nearest, origin, refusing, new Set())).toBeNull();
     expect(replantSpot(sim.world, ground, holder, radius, () => null, origin, refusing, new Set())).toBe(
       'dry',
     );
   });
 
-  it('re-plants a worked-out holder on his own phase after a miss, and retires him after the last', () => {
+  it('retires a worked-out holder once the flag follow has missed on his phases often enough', () => {
     const sim = aiSim();
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.mud]);
@@ -1707,6 +1827,7 @@ describe('workforce module (collectResources)', () => {
     sim.step();
     const [holder] = holdersOf(sim, MUD);
     if (holder === undefined) throw new Error('setup: the clay holder');
+    expect(sim.assistantMovesFlags(SEAT)).toBe(true);
 
     // The home deposit is dug out; the one left takes an atomic the collector's trade lacks, so every
     // re-plant finds it and turns it down.
@@ -1714,17 +1835,21 @@ describe('workforce module (collectResources)', () => {
     placeResources(sim, [{ ...RESOURCE_SPOTS.mud, x: 14, y: 8, harvest: FARM_ATOMIC }]);
     sim.step();
 
-    let firstPhase = 2;
-    while ((firstPhase + holder) % REPLANT_RETRY_EVERY_DECISIONS !== 0) firstPhase++;
-    // Between searches he is caught mid-nap once: an action that is no harvest keeps his misses.
-    const napDecision = firstPhase === 2 ? 3 : 2;
+    const retires = (): boolean =>
+      [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)].some(
+        (c) => c.kind === 'setJob' && c.entity === holder && c.jobType === BUILDER,
+      );
     const searchedOn: number[] = [];
-    let retiredOn: number | null = null;
-    const lastDecision = 1 + REPLANT_MISSES_BEFORE_RETIRE * REPLANT_RETRY_EVERY_DECISIONS;
-    for (let decision = 1; decision <= lastDecision && retiredOn === null; decision++) {
+    const lastRound = 1 + REPLANT_MISSES_BEFORE_RETIRE * REPLANT_RETRY_EVERY_CHECKS;
+    let napRound: number | null = null;
+    for (let round = 1; round <= lastRound; round++) {
+      if (searchedOn.length === REPLANT_MISSES_BEFORE_RETIRE) break;
+      expect(retires()).toBe(false);
       const before = sim.world.tryGet(holder, ReplantMisses)?.misses ?? 0;
-      const ctx = ctxOf(sim, decision * AI_DECISION_INTERVAL_TICKS);
-      if (decision === napDecision) {
+      // Once on his retry phase he is caught mid-nap: an action that is no harvest keeps his misses.
+      const napping = before > 0 && napRound === null && (round + holder) % REPLANT_RETRY_EVERY_CHECKS === 0;
+      if (napping) {
+        napRound = round;
         sim.world.add(holder, CurrentAtomic, {
           atomicId: 0,
           duration: 1,
@@ -1733,24 +1858,17 @@ describe('workforce module (collectResources)', () => {
           targetTile: null,
         });
       }
-      const own = [...collectModule.run(sim.world, ctx, SEAT)].filter(
-        (c) => 'entity' in c && c.entity === holder,
-      );
-      if (decision === napDecision) sim.world.remove(holder, CurrentAtomic);
-      if (own.length > 0) {
-        expect(own).toEqual([{ kind: 'setJob', entity: holder, jobType: BUILDER }]);
-        expect(sim.world.has(holder, ReplantMisses)).toBe(false);
-        retiredOn = decision;
-      } else if ((sim.world.tryGet(holder, ReplantMisses)?.misses ?? 0) > before) {
-        searchedOn.push(decision);
-      }
+      flagFollowSystem(sim.world, ctxOf(sim, followCheckTick(sim, holder, round)));
+      if (napping) sim.world.remove(holder, CurrentAtomic);
+      if ((sim.world.tryGet(holder, ReplantMisses)?.misses ?? 0) > before) searchedOn.push(round);
     }
-    // The first miss comes at once; each later search waits for his phase of the retry cycle.
-    const phased = Array.from(
-      { length: REPLANT_MISSES_BEFORE_RETIRE - 1 },
-      (_, i) => firstPhase + i * REPLANT_RETRY_EVERY_DECISIONS,
-    );
-    expect([...searchedOn, retiredOn]).toEqual([1, ...phased]);
+    expect(napRound).not.toBeNull();
+    // The first miss comes on his first check; each later search waits for his phase of the retry cycle.
+    expect(searchedOn).toHaveLength(REPLANT_MISSES_BEFORE_RETIRE);
+    expect(searchedOn[0]).toBe(1);
+    for (const round of searchedOn.slice(1)) expect((round + holder) % REPLANT_RETRY_EVERY_CHECKS).toBe(0);
+    expect(searchedOn).not.toContain(napRound);
+    expect(retires()).toBe(true);
   });
 
   it('re-aims a live flag at its drifted patch on the periodic upkeep decision', () => {
@@ -1842,7 +1960,10 @@ describe('workforce module (collectResources)', () => {
     plantPostAtHq(sim); // the centre target is satisfied; every ring target falls off this small map
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const scout = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === SCOUT);
-    expect(commands).toEqual([{ kind: 'setJob', entity: scout, jobType: BUILDER }]);
+    expect(commands).toEqual([
+      { kind: 'setAssistantMoveFlags', player: SEAT, enabled: true },
+      { kind: 'setJob', entity: scout, jobType: BUILDER },
+    ]);
   });
 
   it('idles a seat without a built headquarters - no HQ, no AI', () => {
@@ -1862,7 +1983,12 @@ describe('flagSpotNear', () => {
   };
   const groundOf = (sim: Simulation, origin: { hx: number; hy: number }) => {
     if (sim.terrain === undefined) throw new Error('mapped sim');
-    return flagGround(sim.world, ctxOf(sim), sim.terrain, SEAT, origin);
+    return flagGround(
+      sim.world,
+      ctxOf(sim),
+      sim.terrain,
+      networkLimitAt(sim.world, sim.terrain, SEAT, origin.hx, origin.hy),
+    );
   };
 
   it('keeps the first walked candidate on equal costs', () => {

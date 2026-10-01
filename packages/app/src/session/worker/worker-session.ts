@@ -473,6 +473,7 @@ class WorkerClient<E> {
       assistantGrants: (player) => assistantFacts(facts(), player).grants,
       assistantWeaponVetoes: (player) => assistantFacts(facts(), player).weaponVetoes,
       assistantPostsGraduates: (player) => assistantFacts(facts(), player).postsGraduates,
+      assistantMovesFlags: (player) => assistantFacts(facts(), player).movesFlags,
       needsEnabled: () => facts().needsEnabled,
       fogMode: () => facts().fogMode,
       matchOutcome: (player) => facts().matchOutcomes[player] ?? 'undecided',
@@ -589,6 +590,7 @@ function assistantFacts(facts: WorldFacts, player: number): AssistantFacts {
       grants: [],
       weaponVetoes: [],
       postsGraduates: false,
+      movesFlags: false,
     }
   );
 }

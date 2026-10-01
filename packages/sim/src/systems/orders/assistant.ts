@@ -4,11 +4,13 @@ import {
   type AssistantCounterKind,
   AssistantCounters,
   AssistantGrants,
+  AssistantMovesFlags,
   AssistantPostsGraduates,
+  type AssistantSwitch,
   AssistantWeaponVetoes,
   assistantCountersAtDefault,
   assistantCountersEntity,
-  assistantPostsGraduatesEntity,
+  assistantSwitchEntity,
   defaultAssistantCounters,
   INFINITE_COUNTER_KINDS,
   type PlayerGoodList,
@@ -33,15 +35,32 @@ export function setAssistantGrant(
   setListed(world, AssistantGrants, command.player, command.goodType, command.enabled);
 }
 
-/** Switch `player`'s graduate posting on or off - see the command doc. The carrier exists while it is on. */
+/** Switch `player`'s graduate posting on or off - see the command doc. */
 export function setAssistantPostGraduates(
   world: World,
   command: Extract<Command, { kind: 'setAssistantPostGraduates' }>,
 ): void {
-  const carrier = assistantPostsGraduatesEntity(world, command.player);
-  if (command.enabled && carrier === null)
-    world.add(world.create(), AssistantPostsGraduates, { player: command.player });
-  else if (!command.enabled && carrier !== null) world.destroy(carrier);
+  setAssistantSwitch(world, AssistantPostsGraduates, command.player, command.enabled);
+}
+
+/** Switch whether `player`'s gatherers move their own flags - see the command doc. */
+export function setAssistantMoveFlags(
+  world: World,
+  command: Extract<Command, { kind: 'setAssistantMoveFlags' }>,
+): void {
+  setAssistantSwitch(world, AssistantMovesFlags, command.player, command.enabled);
+}
+
+/** Turn `player`'s `toggle` on or off: the carrier exists while it is on. */
+export function setAssistantSwitch(
+  world: World,
+  toggle: AssistantSwitch,
+  player: number,
+  enabled: boolean,
+): void {
+  const carrier = assistantSwitchEntity(world, toggle, player);
+  if (enabled && carrier === null) world.add(world.create(), toggle, { player });
+  else if (!enabled && carrier !== null) world.destroy(carrier);
 }
 
 /** Veto or allow one weapon good in `player`'s recruit arming - see the command doc. */

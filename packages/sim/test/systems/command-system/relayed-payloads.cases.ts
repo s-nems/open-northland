@@ -217,6 +217,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     setAssistantCounter: [{ player: SEAT, counter: 'extraMen', value: 3, infinite: false }],
     setAssistantGrant: [{ player: SEAT, goodType: SHOES, enabled: true }],
     setAssistantPostGraduates: [{ player: SEAT, enabled: true }],
+    setAssistantMoveFlags: [{ player: SEAT, enabled: true }],
     setAssistantWeaponVeto: [{ player: SEAT, goodType: SWORD, vetoed: true }],
     setProductionGoods: [{ entity: t.worker, goods: [WOOD] }],
     setProductionCount: [{ entity: t.worker, goodType: WOOD, count: 3 }],

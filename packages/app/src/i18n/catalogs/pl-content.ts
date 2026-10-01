@@ -352,6 +352,11 @@ export const plContent = {
       summary:
         'Dwóch zbieraczy uczy się ciesielstwa, a asystent kieruje absolwentów do pracy. Pierwszy zajmuje jedyne miejsce cieśli w stolarni. Drugi nie znajduje wolnego miejsca, zostaje przy szkole i wraca tam, gdy nie ma nic do roboty.',
     },
+    'gatherer-flag-follow': {
+      title: 'Flagi idą za surowcami',
+      summary:
+        'Zbieracz ścina dwa drzewa przy swojej fladze, a asystent przenosi flagi zbieraczy. Gdy ich zabraknie, flaga przenosi się na 3-5 pól od drzewa w zagajniku na wschodzie, od strony kwatery głównej, i zbieracz ścina dalej tam.',
+    },
     'idle-work': {
       title: 'Dlaczego pracownicy są bezczynni',
       summary:

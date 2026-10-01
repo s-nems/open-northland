@@ -47,6 +47,7 @@ describe('assistant state', () => {
       allowWoodenSpears: true,
       allowShortBows: true,
       postGraduates: false,
+      moveFlags: false,
     });
   });
 
@@ -118,6 +119,7 @@ describe('extras menu layout', () => {
       'allowWoodenSpears',
       'allowShortBows',
       'postGraduates',
+      'moveFlags',
     ]);
 
     // The grant block starts a visible gap below the last counter row (the requested "lekki odstęp").

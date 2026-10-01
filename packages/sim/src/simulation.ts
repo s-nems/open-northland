@@ -7,6 +7,7 @@ import {
   AssistantWeaponVetoes,
   assistantCountersEntity,
   assistantGrantedGoods,
+  assistantMovesFlags,
   assistantPostsGraduatesEntity,
   Building,
   type DiplomacyState,
@@ -562,6 +563,11 @@ export class Simulation {
   /** Whether `player`'s assistant sends graduates straight to a free workplace. */
   assistantPostsGraduates(player: number): boolean {
     return assistantPostsGraduatesEntity(this.world, player) !== null;
+  }
+
+  /** Whether `player`'s gatherers move their own flags after the resources. */
+  assistantMovesFlags(player: number): boolean {
+    return assistantMovesFlags(this.world, player);
   }
 
   /** `player`'s assistant production counters as a detached copy; all-default when the carrier is absent. */

@@ -1,4 +1,5 @@
 import {
+  assistantMovesFlags,
   CurrentAtomic,
   ErectSignpostOrder,
   JobAssignment,
@@ -13,6 +14,7 @@ import { isMarried } from '../../family/eligibility.js';
 import { scoutJobType } from '../../readviews/index.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { interactionCell } from '../../settlers/targets/index.js';
+import { networkLimitAt } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
 import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
 import { type AiProfile, aiProfileOf, profileBuildOrder } from '../difficulty.js';
@@ -183,6 +185,7 @@ function runWorkforce(
   const arms = garrisonArms(world, ctx, player, profile);
   const armyFloor = claimArmyFloor(world, ctx, player, force, arms, profile);
   return [
+    ...flagFollowSwitch(world, player),
     ...essentials,
     ...targets,
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'topUp'),
@@ -191,6 +194,12 @@ function runWorkforce(
     ...trainGarrison(world, ctx, player, force, armyFloor, arms, profile),
     ...tuneCraftCounters(world, ctx, player, supply, profile),
   ];
+}
+
+/** The command turning the seat's "gatherers move their flags" switch on, until it is: the seat's worked-out
+ *  flags move by the same assistant feature a player switches on. */
+function flagFollowSwitch(world: World, player: number): PlayerCommand[] {
+  return assistantMovesFlags(world, player) ? [] : [{ kind: 'setAssistantMoveFlags', player, enabled: true }];
 }
 
 /** The decision's {@link CollectorGround}, or null on a mapless sim or a base with no node. A resource
@@ -205,7 +214,12 @@ function collectorGround(
 ): CollectorGround | null {
   if (ctx.terrain === undefined || baseNode === null) return null;
   const terrain = ctx.terrain;
-  const flags = flagGround(world, ctx, terrain, player, baseNode);
+  const flags = flagGround(
+    world,
+    ctx,
+    terrain,
+    networkLimitAt(world, terrain, player, baseNode.hx, baseNode.hy),
+  );
   const reachable = reachableResourceTest(
     world,
     ctx,

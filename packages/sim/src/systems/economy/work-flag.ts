@@ -6,6 +6,7 @@ import {
   HUNTER_WORK_FLAG_RADIUS,
   JobAssignment,
   Position,
+  ReplantMisses,
   removeCurrentAtomic,
   Settler,
   WorkFlag,
@@ -188,6 +189,7 @@ export function removeWorkFlag(world: World, e: Entity): void {
   if (world.isAlive(wf.flag)) world.destroy(wf.flag);
   world.remove(e, WorkFlag);
   world.remove(e, YardDeliveryRoute);
+  world.remove(e, ReplantMisses); // a record of misses from a flag that is gone
 }
 
 /**

@@ -17,6 +17,7 @@ import { SpareForce } from '../../../src/systems/ai-player/workforce/pool.js';
 import { addFishSwarms } from '../../../src/systems/economy/fish.js';
 import { liveWorkFlag } from '../../../src/systems/economy/work-flag.js';
 import { razeBuilding } from '../../../src/systems/lifecycle/cleanup.js';
+import { networkLimitAt } from '../../../src/systems/signposts/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
 import {
@@ -257,9 +258,13 @@ describe('workforce module - the fishers', () => {
     const terrain = sim.terrain;
     const baseNode = anchorNodeOf(sim.world, entityOfBuilding(sim, HQ_TYPE));
     if (terrain === undefined || baseNode === null) throw new Error('setup: mapped HQ missing');
-    const plan = fishingPlan(sim.world, ctx, SEAT, flagGround(sim.world, ctx, terrain, SEAT, baseNode), [
-      fisher,
-    ]);
+    const plan = fishingPlan(
+      sim.world,
+      ctx,
+      SEAT,
+      flagGround(sim.world, ctx, terrain, networkLimitAt(sim.world, terrain, SEAT, baseNode.hx, baseNode.hy)),
+      [fisher],
+    );
     // The store beside its own water is the nearest stand; another decision phase has taken its bank.
     const store = shoreOf(sim, STORE_SWARM);
     expect(plan?.stands.map((stand) => terrain.coordsOf(stand.shore))).toEqual([

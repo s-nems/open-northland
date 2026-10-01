@@ -17,19 +17,23 @@ const CONTENT = {
   ],
 };
 
-/** A sim face granting `granted`, vetoing `vetoed`, and posting graduates when `posts`. */
+/** A sim face granting `granted`, vetoing `vetoed`, posting graduates when `posts` and moving flags when
+ *  `movesFlags`. */
 const simGranting = (
   granted: readonly number[],
   vetoed: readonly number[] = [],
   posts = false,
+  movesFlags = false,
 ): {
   assistantGrants: () => readonly number[];
   assistantWeaponVetoes: () => readonly number[];
   assistantPostsGraduates: () => boolean;
+  assistantMovesFlags: () => boolean;
 } => ({
   assistantGrants: () => granted,
   assistantWeaponVetoes: () => vetoed,
   assistantPostsGraduates: () => posts,
+  assistantMovesFlags: () => movesFlags,
 });
 
 const SHOES = 30;
@@ -69,6 +73,7 @@ describe('assistantGrantsSeam', () => {
       allowWoodenSpears: true,
       allowShortBows: true,
       postGraduates: false,
+      moveFlags: false,
     });
   });
 
@@ -83,6 +88,19 @@ describe('assistantGrantsSeam', () => {
     expect(seam.read().postGraduates).toBe(true);
     expect(seam.set('postGraduates', false)).toBe(true);
     expect(sent).toEqual([{ kind: 'setAssistantPostGraduates', player: 1, enabled: false }]);
+  });
+
+  it('reads and writes the flag switch through its own command', () => {
+    const sent: Command[] = [];
+    const seam = assistantGrantsSeam(
+      simGranting([], [], false, true),
+      CONTENT,
+      () => 2,
+      (c) => sent.push(c),
+    );
+    expect(seam.read().moveFlags).toBe(true);
+    expect(seam.set('moveFlags', false)).toBe(true);
+    expect(sent).toEqual([{ kind: 'setAssistantMoveFlags', player: 2, enabled: false }]);
   });
 
   it('reads a weapon switch as OFF while its good is vetoed, and writes the veto on a flip', () => {
@@ -138,6 +156,7 @@ describe('assistantGrantsSeam', () => {
       false,
     );
     expect(seam.set('giveBoots', true)).toBe(false);
+    expect(seam.set('moveFlags', true)).toBe(false);
     expect(sent).toEqual([]);
   });
 });

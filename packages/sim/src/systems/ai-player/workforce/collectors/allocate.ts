@@ -25,11 +25,8 @@ import { type CollectorAnchors, type SeatedHolders, seatHolders } from './anchor
 import {
   everyResource,
   flagRelocateDue,
-  forgetReplantMisses,
-  forgetReplantMissesWhileHarvesting,
+  hopelessPost,
   patchWorked,
-  replantDue,
-  replantMissed,
   retireToBuilder,
   upkeepHolders,
 } from './upkeep.js';
@@ -270,9 +267,10 @@ export function topUpCollectors(
  * Generic gatherers: up to `target` collect-anything posts, a flag with no good filter, so the holder
  * picks up whatever its trade may harvest inside the circle. Each is hired beside a {@link clearingResource}
  * of its own, so extra posts clear the ground a stalled placement needs, in as many directions as there
- * are posts. Once the holder would find nothing to harvest from his flag, and on the periodic upkeep once
- * the clearing resource stands more than the band nearer than his flag, the flag moves beside it; the
- * gatherer retires to builder when no clearing good is left or his re-plants keep finding nothing
+ * are posts. On the periodic upkeep, once the clearing resource stands more than the band nearer than a
+ * working holder's flag, or the flag stands within {@link CLEARING_SPREAD_NODES} of another post's, the
+ * flag moves beside a clearing resource of its own. A worked-out flag is the flag follow's to move; its
+ * holder retires to builder when no clearing good is left or the follow's re-plants keep finding nothing
  * (authored).
  */
 export function allocateGenericCollectors(
@@ -303,23 +301,25 @@ export function allocateGenericCollectors(
     const job = world.get(g, Settler).jobType;
     if (job === null) continue;
     const harvests = (goodType: number): boolean => jobCanHarvestGood(ctx, job, goodType);
-    const alive = patchWorked(world, reach, g, flagNode, flag.radius, harvests);
-    if (alive) forgetReplantMissesWhileHarvesting(world, g);
-    if (alive ? !flagRelocateDue(ctx, g) : !replantDue(world, ctx, g, flagNode)) continue;
     const others = [...flags].flatMap(([holder, f]) => (holder === g ? [] : [f]));
     const nearest = (open: WorkableTest): Entity | null =>
       clearingResource(world, ctx, baseNode, (e) => workable(e) && open(e) && clearOfFlags(world, e, others));
-    if (alive && !farFromNearest(world, baseNode, flagNode, nearest(everyResource))) continue;
-    const replant = replantSpot(world, ground.flags, g, flag.radius, nearest, baseNode, reach, taken);
-    if (replant === 'dry' || replant === null) {
-      if (!alive && (replant === 'dry' || replantMissed(world, g, flagNode)) && builderJob !== null)
+    if (!patchWorked(world, reach, g, flagNode, flag.radius, harvests)) {
+      // The flag follow moves a worked-out flag; the upkeep only retires a hopeless post.
+      if (builderJob !== null && hopelessPost(world, g, flagNode, nearest))
         retireToBuilder(world, g, builderJob, commands);
-      continue; // on a miss short of retiring he keeps his post, see Replant
+      continue;
     }
-    forgetReplantMisses(world, g);
+    if (!flagRelocateDue(ctx, g)) continue;
+    // The flag follow aims at whatever stands nearest, so posts may bunch up on one grove: a crowded post
+    // re-aims at a clearing resource of its own, as a far one does at the nearer one.
+    const crowded = others.some((f) => nodeDistance(f, flagNode) < CLEARING_SPREAD_NODES);
+    if (!crowded && !farFromNearest(world, baseNode, flagNode, nearest(everyResource))) continue;
+    const replant = replantSpot(world, ground.flags, g, flag.radius, nearest, baseNode, reach, taken);
+    if (replant === 'dry' || replant === null) continue;
     const { target: resource, spot } = replant;
     if (spot.hx === flagNode.hx && spot.hy === flagNode.hy) continue;
-    if (alive && nodeDistance(spot, resource) >= nodeDistance(flagNode, resource)) continue; // no nearer spot
+    if (nodeDistance(spot, resource) >= nodeDistance(flagNode, resource)) continue; // no nearer spot
     commands.push({ kind: 'setWorkFlag', entity: g, x: spot.hx, y: spot.hy });
     claimFlagNode(taken, spot);
     flags.set(g, spot);
