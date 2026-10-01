@@ -183,7 +183,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     cursorSize: parseCursorSize(record.cursorSize),
     minimapFrame: parseMinimapFrame(record.minimapFrame),
     minimapFilters: parseMinimapFilters(record.minimapFilters),
-    mapPreview: record.mapPreview === 'map' ? 'map' : 'picture',
+    mapPreview: record.mapPreview === 'map' ? 'map' : defaults.mapPreview,
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
     soundVolume: clampVolume(record.soundVolume, defaults.soundVolume),
     musicVolume: clampVolume(record.musicVolume, defaults.musicVolume),

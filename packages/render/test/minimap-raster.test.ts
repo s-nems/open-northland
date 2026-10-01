@@ -4,12 +4,8 @@ import {
   averagePatternColour,
   cellColoursFromGround,
   MINIMAP_CELL_UNRESOLVED,
-  rasterizeTerrain,
   terrainWorldBounds,
 } from '../src/data/terrain/minimap.js';
-
-const GRID_4 = { width: 4, height: 4, typeIds: Array.from({ length: 16 }, (_, i) => i % 4) };
-const FLAT = (typeId: number): number => [0xaa0000, 0x00bb00, 0x0000cc, 0xdddddd][typeId] ?? 0;
 
 describe('terrainWorldBounds', () => {
   it('covers every cell diamond, including the odd-row half-cell stagger', () => {
@@ -23,44 +19,6 @@ describe('terrainWorldBounds', () => {
         expect(center.y + TILE_HALF_H).toBeLessThanOrEqual(bounds.minY + bounds.height);
       }
     }
-  });
-});
-
-describe('rasterizeTerrain', () => {
-  const colourAt = (rgba: Uint8Array, pxW: number, px: number, py: number): number => {
-    const offset = (py * pxW + px) * 4;
-    return ((rgba[offset] ?? 0) << 16) | ((rgba[offset + 1] ?? 0) << 8) | (rgba[offset + 2] ?? 0);
-  };
-
-  it('paints each pixel with its containing cell diamond and full alpha', () => {
-    const pxW = 90;
-    const pxH = 50;
-    const rgba = rasterizeTerrain(GRID_4, (_cell, typeId) => FLAT(typeId), pxW, pxH);
-    expect(rgba.length).toBe(pxW * pxH * 4);
-    const bounds = terrainWorldBounds(GRID_4.width, GRID_4.height);
-    for (let row = 0; row < GRID_4.height; row++) {
-      for (let col = 0; col < GRID_4.width; col++) {
-        const center = tileToScreen(col, row);
-        const px = Math.floor(((center.x - bounds.minX) / bounds.width) * pxW);
-        const py = Math.floor(((center.y - bounds.minY) / bounds.height) * pxH);
-        expect(colourAt(rgba, pxW, px, py)).toBe(FLAT(GRID_4.typeIds[row * GRID_4.width + col] ?? 0));
-        expect(rgba[(py * pxW + px) * 4 + 3]).toBe(0xff);
-      }
-    }
-  });
-
-  it('feeds the winning cell index alongside its typeId', () => {
-    const seen = new Set<number>();
-    rasterizeTerrain(
-      GRID_4,
-      (cell) => {
-        seen.add(cell);
-        return 0;
-      },
-      40,
-      20,
-    );
-    expect(seen.size).toBe(GRID_4.typeIds.length);
   });
 });
 

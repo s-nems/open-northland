@@ -2,8 +2,8 @@ import { TILE_HALF_H, TILE_HALF_W } from '../projection/iso.js';
 import type { SceneGround } from '../scene/terrain-scene.js';
 
 /**
- * The pure minimap raster: cell grid → RGBA picture, plus the ground-lane → cell-colour join it samples.
- * One owner, so every consumer rasterises a map identically. Named approximation: a cell takes the mean
+ * The minimap's world bounds and preview size, and the ground-lane → cell-colour join its raster samples.
+ * Named approximation: a cell takes the mean
  * texel of its two triangles' pattern rects, ignoring transition overlays, elevation shading and the
  * `embr` brightness lane.
  */
@@ -52,55 +52,6 @@ export function mapPreviewSize(
     width: Math.max(1, Math.round(bounds.width * scale)),
     height: Math.max(1, Math.round(bounds.height * scale)),
   };
-}
-
-/**
- * Rasterize the whole terrain into an RGBA byte grid (`pxW × pxH`, row-major, 4 bytes/px), built once
- * per map. Each pixel takes the cell diamond containing its world point, picked among the two nearest
- * rows by the diamond metric `|dx|/TILE_HALF_W + |dy|/TILE_HALF_H` (≤ 1 inside the diamond, and the
- * diamonds tile the plane, so the minimum is the containing cell). `colourOfCell` maps the winning cell
- * to `0xRRGGBB`.
- */
-export function rasterizeTerrain(
-  terrain: TerrainCells,
-  colourOfCell: (cell: number, typeId: number) => number,
-  pxW: number,
-  pxH: number,
-): Uint8Array {
-  const bounds = terrainWorldBounds(terrain.width, terrain.height);
-  const out = new Uint8Array(pxW * pxH * 4);
-  for (let py = 0; py < pxH; py++) {
-    const wy = bounds.minY + ((py + 0.5) / pxH) * bounds.height;
-    // The two rows whose diamonds can contain this y (rows interlock at half-diamond spacing).
-    const rowLo = Math.floor(wy / TILE_HALF_H);
-    for (let px = 0; px < pxW; px++) {
-      const wx = bounds.minX + ((px + 0.5) / pxW) * bounds.width;
-      let bestCol = 0;
-      let bestRow = 0;
-      let bestDist = Number.POSITIVE_INFINITY;
-      for (let candidate = 0; candidate < 2; candidate++) {
-        const clampedRow = Math.min(terrain.height - 1, Math.max(0, rowLo + candidate));
-        const stagger = clampedRow % 2 === 0 ? 0 : 1; // odd rows sit half a cell right (tileToScreen)
-        const col = Math.min(terrain.width - 1, Math.max(0, Math.round((wx / TILE_HALF_W - stagger) / 2)));
-        const cx = (2 * col + stagger) * TILE_HALF_W;
-        const cy = clampedRow * TILE_HALF_H;
-        const dist = Math.abs(wx - cx) / TILE_HALF_W + Math.abs(wy - cy) / TILE_HALF_H;
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestCol = col;
-          bestRow = clampedRow;
-        }
-      }
-      const cell = bestRow * terrain.width + bestCol;
-      const colour = colourOfCell(cell, terrain.typeIds[cell] ?? 0);
-      const o = (py * pxW + px) * 4;
-      out[o] = (colour >> 16) & 0xff;
-      out[o + 1] = (colour >> 8) & 0xff;
-      out[o + 2] = colour & 0xff;
-      out[o + 3] = 0xff;
-    }
-  }
-  return out;
 }
 
 /** Sentinel above any `0xRRGGBB` marking "no lane colour - fall back to the typeId palette". */

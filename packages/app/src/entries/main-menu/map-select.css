@@ -165,8 +165,8 @@
   image-rendering: pixelated;
 }
 
-/* The terrain minimap is drawn at display resolution; only the small authored illustration
- * reads better with hard pixels. */
+/* The terrain minimap is a fixed preview of at most `mapPreviewSize` (720x420) and scales smoothly;
+ * only the small authored illustration reads better with hard pixels. */
 .main-menu__map-thumb img[data-view="map"],
 .main-menu__map-preview img[data-view="map"] {
   image-rendering: auto;

@@ -129,7 +129,6 @@ export {
   projectNode,
   projectTile,
   rasterizeMinimap,
-  rasterizeTerrain,
   type TerrainCells,
   terrainLiftAt,
   terrainWorldBounds,

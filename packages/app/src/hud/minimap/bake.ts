@@ -4,9 +4,9 @@ import {
   type MinimapObjectLanes,
   type MinimapObjects,
   minimapObjectLanes,
-  minimapScene,
   rasterizeMinimap,
   type SceneTerrain,
+  waterCellFractions,
 } from '@open-northland/render/data';
 
 /** The object types a baker's placements name, each a minimap feature by its own name. */
@@ -59,20 +59,19 @@ export function minimapBakeScene(
   terrain: SceneTerrain,
   colourOfCell: (cell: number, typeId: number) => number,
 ): MinimapBakeScene {
-  const scene = minimapScene(terrain, colourOfCell);
+  const water = waterCellFractions(terrain.ground, terrain.width, terrain.height);
   const colours = new Uint32Array(terrain.width * terrain.height);
   for (let cell = 0; cell < colours.length; cell++) {
     colours[cell] = colourOfCell(cell, terrain.typeIds[cell] ?? 0);
   }
   return {
-    width: scene.width,
-    height: scene.height,
-    typeIds: scene.typeIds,
+    width: terrain.width,
+    height: terrain.height,
+    typeIds: terrain.typeIds,
     colours,
     ...(terrain.elevation !== undefined ? { elevation: terrain.elevation } : {}),
     ...(terrain.brightness !== undefined ? { brightness: terrain.brightness } : {}),
-    ...(scene.water instanceof Float32Array ? { water: scene.water } : {}),
-    ...(scene.deepWater instanceof Float32Array ? { deepWater: scene.deepWater } : {}),
+    ...(water !== undefined ? { water: water.water, deepWater: water.deep } : {}),
   };
 }
 

@@ -19,7 +19,6 @@ export {
   cellColoursFromGround,
   MINIMAP_CELL_UNRESOLVED,
   mapPreviewSize,
-  rasterizeTerrain,
   type TerrainCells,
   terrainWorldBounds,
   type WorldBounds,

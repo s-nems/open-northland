@@ -11,9 +11,9 @@ export interface HarvestJoinPipeline {
 }
 
 /** A harvestable placed-object `EditName`'s good and its own harvest-stage record. */
-export interface HarvestObject<Record> {
+export interface HarvestObject<Row> {
   readonly goodId: string;
-  readonly record: Record;
+  readonly record: Row;
 }
 
 /**
@@ -22,15 +22,15 @@ export interface HarvestObject<Record> {
  * inverting that list (index to EditName to goodId) names them, and decor is absent by construction.
  * A name two pipelines list resolves to the later one.
  */
-export function harvestObjectsByEditName<Record extends HarvestJoinRecord>(
-  landscapeGfx: readonly Record[],
+export function harvestObjectsByEditName<Row extends HarvestJoinRecord>(
+  landscapeGfx: readonly Row[],
   pipelines: readonly HarvestJoinPipeline[],
-): ReadonlyMap<string, HarvestObject<Record>> {
-  const recordByIndex = new Map<number, Record>();
+): ReadonlyMap<string, HarvestObject<Row>> {
+  const recordByIndex = new Map<number, Row>();
   for (const record of landscapeGfx) {
     if (record.editName !== undefined) recordByIndex.set(record.index, record);
   }
-  const out = new Map<string, HarvestObject<Record>>();
+  const out = new Map<string, HarvestObject<Row>>();
   for (const pipeline of pipelines) {
     for (const index of pipeline.harvest?.gfxIndices ?? []) {
       const record = recordByIndex.get(index);
