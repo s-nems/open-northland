@@ -221,8 +221,9 @@ export function planNeeds(
   }
 
   // A trade that does not pray has no prayer rung of its own; a player's order gives it one.
+  const piety = world.get(e, SettlerNeeds).piety;
   const prays =
-    pressing(world.get(e, SettlerNeeds).piety, ordered, 'piety') &&
+    pressing(piety, ordered, 'piety') &&
     (ordered === 'piety' || jobNeedsReligion(ctx.content, settler.jobType)) &&
     maySeek(world, e, ordered, 'piety') &&
     !onAlert();
@@ -251,10 +252,12 @@ export function planNeeds(
       return true;
     }
     // Nowhere to pray: a human seat's settler falls through to work with its bar or its order standing,
-    // and its player hears of it.
+    // and its player hears of it once the bar reaches the level the HUD marks a need at, or at once for
+    // an ordered prayer.
     settleUnservedNeedForAi(world, e, 'piety');
     const player = ownerOf(world, e);
-    if (player !== undefined && !isAiPlayer(world, player)) {
+    const marked = ordered === 'piety' || piety >= NEED_CRITICAL_THRESHOLD;
+    if (marked && player !== undefined && !isAiPlayer(world, player)) {
       ctx.events.emit({ kind: 'prayerSiteMissing', entity: e });
     }
   }

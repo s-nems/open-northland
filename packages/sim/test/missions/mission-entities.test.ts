@@ -295,6 +295,32 @@ describe('the house results', () => {
       { kind: 'buildingUpgraded', entity: house, level: 1 },
     ]);
   });
+
+  it('marks a rebuild down the chain as lowered', () => {
+    const sim = firingSim(
+      [
+        {
+          opcode: 'SetHouse',
+          player: 1,
+          houseName: { typeId: HUT, tribe: VIKING },
+          level: 0,
+          built: true,
+          point: POINT,
+          objectId: 5,
+        },
+        { opcode: 'SetHouseExtensionLevel', objectId: 5, amount: 1 },
+        { opcode: 'SetHouseExtensionLevel', objectId: 5, amount: 0 },
+      ],
+      houseContent(),
+    );
+    sim.run(LOAD_PASS);
+    const house = only(missionObjects(sim.world, 5));
+    expect(sim.world.get(house, Building).buildingType).toBe(HUT);
+    expect(sim.events.current().filter((e) => e.kind === 'buildingUpgraded')).toEqual([
+      { kind: 'buildingUpgraded', entity: house, level: 1 },
+      { kind: 'buildingUpgraded', entity: house, level: 0, lowered: true },
+    ]);
+  });
 });
 
 describe('the removal results', () => {

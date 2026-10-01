@@ -101,7 +101,13 @@ export type SimEvent =
       readonly entity: Entity;
       readonly player: number;
     }
-  | { readonly kind: 'buildingUpgraded'; readonly entity: Entity; readonly level: number }
+  | {
+      readonly kind: 'buildingUpgraded';
+      readonly entity: Entity;
+      readonly level: number;
+      /** A script moved the house down its chain rather than up. */
+      readonly lowered?: true;
+    }
   | { readonly kind: 'settlerBorn'; readonly entity: Entity }
   | {
       /** A child reached adulthood this tick and took its first grown-up trade. */

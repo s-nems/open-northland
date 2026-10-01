@@ -74,6 +74,7 @@ function rebuildAtLevel(
   const wanted = Math.min(Math.max(level, 0), MAX_BUILDING_LEVEL);
   let typeId = world.get(e, Building).buildingType;
   let at = buildingLevelOf(index, typeId);
+  const lowered = wanted < at;
   for (; at < wanted; at++) {
     const above = index.commandBuildings.get(typeId)?.upgradeTarget;
     if (above === undefined) return; // the chain tops out below the level the script asked for
@@ -103,7 +104,7 @@ function rebuildAtLevel(
   if (rising) clearUpgradeGround(world, ctx, e, typeId);
   if (!world.has(e, UnderConstruction)) {
     settleFootprint(world, ctx, e);
-    ctx.events.emit({ kind: 'buildingUpgraded', entity: e, level: at });
+    ctx.events.emit({ kind: 'buildingUpgraded', entity: e, level: at, ...(lowered ? { lowered } : {}) });
   }
 }
 

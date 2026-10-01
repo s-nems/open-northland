@@ -17,7 +17,13 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { setHouseholdGoodUse } from '../../src/systems/family/home-quality.js';
-import { atomicSystem, NEED_SATED_THRESHOLD, needBar, plannerSystem } from '../../src/systems/index.js';
+import {
+  atomicSystem,
+  NEED_CRITICAL_THRESHOLD,
+  NEED_SATED_THRESHOLD,
+  needBar,
+  plannerSystem,
+} from '../../src/systems/index.js';
 import { isServedAtHome } from '../../src/systems/settlers/drives/home-errands.js';
 import { TEMPLE_PREFERRED_RANGE } from '../../src/systems/settlers/targets/stores/buildings.js';
 import { testContent } from '../fixtures/content.js';
@@ -409,7 +415,8 @@ describe('where a devout settler prays: its holy fire, then a temple, then the h
 
   it('warns a human seat whose settler has nowhere to pray, and settles a computer seat one instead', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
-    const human = devoutAt(sim, 2);
+    const human = settlerAt(sim, 2, 0, NEED_CRITICAL_THRESHOLD);
+    sim.world.add(human, Owner, { player: PLAYER });
     const computer = settlerAt(sim, 4, 0, DEVOUT);
     sim.world.add(computer, Owner, { player: RIVAL });
     sim.enqueueSetup({ kind: 'setPlayerAi', player: RIVAL, enabled: true });
@@ -421,6 +428,15 @@ describe('where a devout settler prays: its holy fire, then a temple, then the h
       .events.flatMap((ev) => (ev.kind === 'prayerSiteMissing' ? [ev.entity] : []));
     expect(missing).toEqual([human]);
     expect(sim.world.get(computer, SettlerNeeds).piety).toBe(NEED_SATED_THRESHOLD);
+  });
+
+  it('warns no one while the bar searches below the level the HUD marks a need at', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    devoutAt(sim, 2);
+
+    sim.step();
+
+    expect(sim.snapshot().events.some((ev) => ev.kind === 'prayerSiteMissing')).toBe(false);
   });
 
   it('warns a human seat whose ordered prayer finds nowhere to go, whatever its bar reads', () => {
