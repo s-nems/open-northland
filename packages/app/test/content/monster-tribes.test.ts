@@ -28,8 +28,12 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('the monster trib
     const wolf = tables?.get(6);
     expect(snake?.byJob[31]?.binding.byAtomic?.[81]).toBeDefined();
     expect(wolf?.byJob[31]?.binding.byAtomic?.[81]).toBeDefined();
-    expect(snake?.byJob[31]?.binding.idleFidgets?.length).toBeGreaterThan(0);
-    expect(wolf?.byJob[31]?.binding.idleFidgets?.length).toBeGreaterThan(0);
+    // Their base wait is one held frame, so they play their gestures back to back instead of between
+    // spells of standing frozen.
+    for (const monster of [snake, wolf]) {
+      expect(monster?.byJob[31]?.binding.idleChoices?.length).toBeGreaterThan(0);
+      expect(monster?.byJob[31]?.binding.idleFidgets).toBeUndefined();
+    }
     for (const job of [16, 18, 32, 33, 35]) {
       const character = snake?.byJob[job];
       expect(character, `monster job ${job} has no body`).toBeDefined();

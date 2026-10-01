@@ -199,6 +199,23 @@ function characterIdleFidgets(
   return out;
 }
 
+/**
+ * `bound` with its idle gestures. Approximation: a look whose base wait is one held frame, as the monster
+ * tribes author it, plays its gestures back to back the way an animal plays its waits, since standing on
+ * that frame between gestures reads as a frozen body. The source gives no cadence for either schedule.
+ */
+function withIdleGestures(
+  bound: SettlerStateBinding,
+  gestures: readonly FrameListAnim[],
+): SettlerStateBinding {
+  if (gestures.length === 0) return bound;
+  return isHeldFrame(bound.idle) ? { ...bound, idleChoices: gestures } : { ...bound, idleFidgets: gestures };
+}
+
+function isHeldFrame(ref: SettlerStateBinding['idle']): boolean {
+  return typeof ref === 'object' && 'frameLists' in ref && ref.frameLists.every((list) => list.length <= 1);
+}
+
 /** The Frankish tribe, whose heroine slot's graphics row is Santa Claus rather than a heroine. */
 const FRANK_TRIBE = 2;
 
@@ -286,7 +303,7 @@ export function tribeCharacters(
         layers.body.atlas,
         bound.idle,
       );
-      const binding = idleFidgets.length > 0 ? { ...bound, idleFidgets } : bound;
+      const binding = withIdleGestures(bound, idleFidgets);
       const authoredHeads = look.headStems
         .map((stem) => layers.headsByStem.get(stem))
         .filter((l): l is SpriteLayer => l !== undefined);

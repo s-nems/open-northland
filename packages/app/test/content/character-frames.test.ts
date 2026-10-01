@@ -200,6 +200,28 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
     expect(unarmedFidgets).toEqual([]);
   });
 
+  it('rests every civilization look in a moving wait, so none plays its gestures back to back', () => {
+    const backToBack: string[] = [];
+    for (const [tribe, table] of tables) {
+      const slots = {
+        default: { look: table?.default },
+        job: table?.byJob,
+        'young job': table?.youngByJob,
+        weapon: table?.byWeaponGood,
+        'unarmed job': table?.unarmedByJob,
+      };
+      for (const [slot, looks] of Object.entries(slots)) {
+        for (const [key, char] of Object.entries(looks ?? {})) {
+          const variants = [char, ...(char?.variants ?? [])];
+          if (variants.some((look) => look?.binding.idleChoices !== undefined)) {
+            backToBack.push(`tribe ${tribe} ${slot} ${key}`);
+          }
+        }
+      }
+    }
+    expect(backToBack).toEqual([]);
+  });
+
   it('swings the hammer per facing across every build atomic, a road site and a wall segment included', () => {
     for (const [tribe, table] of tables) {
       const builder = table?.byJob[JOB_BUILDER] ?? table?.default;

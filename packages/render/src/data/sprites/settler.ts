@@ -44,7 +44,7 @@ function heldStep(holds: readonly number[], time: number): number {
 const IDLE_FIDGET_GAP_TICKS = 180;
 /** Ticks each entity id shifts the idle schedules by, so neighbours that came to rest together do not
  *  gesture in step. */
-const IDLE_PHASE_STAGGER_TICKS = 37;
+export const IDLE_PHASE_STAGGER_TICKS = 37;
 
 /** The length of `clip`'s list for `facing`; 0 when that facing authors none. */
 function clipLength(clip: FrameListAnim, facing: number): number {

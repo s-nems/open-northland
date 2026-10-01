@@ -58,7 +58,8 @@ export type SpriteFrameRef = number | DirectionalAnim | FrameListAnim;
  *  back to. */
 export interface SettlerStateBinding {
   readonly idle: SpriteFrameRef;
-  /** Animal wait actions 2..7, each played through before the next choice. */
+  /** Wait clips played back to back, each through before the next: an animal's wait actions 2..7, or
+   *  the gestures of a look whose base wait is one held frame. */
   readonly idleChoices?: readonly FrameListAnim[];
   /** Authored one-shot idle gestures, each played to its end between spells of the base wait. */
   readonly idleFidgets?: readonly FrameListAnim[];

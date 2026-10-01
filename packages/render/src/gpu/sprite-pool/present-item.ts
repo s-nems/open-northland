@@ -1,5 +1,5 @@
 import type { DrawItem } from '../../data/scene/index.js';
-import type { SpriteKind } from '../../data/sprites/index.js';
+import { IDLE_PHASE_STAGGER_TICKS, type SpriteKind } from '../../data/sprites/index.js';
 import type { WindSway } from '../../data/weather/climate.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import {
@@ -27,6 +27,8 @@ export interface PresentationTrack {
   /** Wait actions restart when the displayed settler returns to idle. */
   idleActive: boolean;
   idleStartTick: number;
+  /** Seen at rest since it entered the draw list: it rested for an unknown while before that. */
+  sightedAtRest: boolean;
   /** Last real facing (0..7), retained through a route gap or arrival. */
   lastFacing?: number;
   /** The displayed bottom-up reveal fraction (0..1) of an under-construction building, eased toward the
@@ -49,6 +51,7 @@ export function createPresentationTrack(kind: SpriteKind): PresentationTrack {
     atomicPose: { tick: -1, item: undefined },
     idleActive: false,
     idleStartTick: 0,
+    sightedAtRest: false,
     motion: {
       tick: -1,
       x: 0,
@@ -86,6 +89,7 @@ export function presentItem(
   if (track.motion.tick === -1) {
     track.atomicPose.item = undefined;
     track.idleActive = false;
+    track.sightedAtRest = true;
   }
   const atomic = atomicPose(item, tick, track.atomicPose);
   // An original walker keeps its tick anchor under the motion setting too: its clip plays one authored
@@ -130,7 +134,8 @@ export function presentItem(
 }
 
 /** A new visible idle period restarts the idle schedules, even after a walk or attack ended mid-clip: an
- *  animal's waits from frame zero, a settler's fidgets from the base wait. */
+ *  animal's waits from frame zero, a settler's fidgets from the base wait. A figure first seen already at
+ *  rest opens at a staggered point instead, so neighbours placed together do not gesture in step. */
 export function idleClipElapsed(track: PresentationTrack, item: DrawItem, tick: number): number | undefined {
   const idle =
     track.kind === 'settler' &&
@@ -139,11 +144,13 @@ export function idleClipElapsed(track: PresentationTrack, item: DrawItem, tick: 
     item.carrying !== true;
   if (!idle) {
     track.idleActive = false;
+    track.sightedAtRest = false;
     return undefined;
   }
   if (!track.idleActive) {
     track.idleActive = true;
-    track.idleStartTick = tick;
+    track.idleStartTick = track.sightedAtRest ? tick - item.ref * IDLE_PHASE_STAGGER_TICKS : tick;
+    track.sightedAtRest = false;
   }
   return Math.max(0, tick - track.idleStartTick);
 }

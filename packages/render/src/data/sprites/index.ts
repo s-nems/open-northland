@@ -47,6 +47,7 @@ export {
   DEFAULT_FACING,
   frameOf,
   GFX_DIR_TO_FACING,
+  IDLE_PHASE_STAGGER_TICKS,
   pickByJob,
   resolveSettlerBobId,
   subClipKey,
