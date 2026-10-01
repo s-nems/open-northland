@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   BuildMode,
+  IdleStand,
   RoadSite,
   Settler,
   SiteAssignment,
@@ -39,6 +40,10 @@ import { createSignpost } from '../../../src/systems/index.js';
 import { layRoad, roadNodeCount, roadNodes } from '../../../src/systems/roads/index.js';
 import { roadSitesByNode } from '../../../src/systems/roads/site-index.js';
 import { placeRoadSite } from '../../../src/systems/roads/sites.js';
+import {
+  IDLE_REPLAN_PERIOD_TICKS,
+  idleReplanDue,
+} from '../../../src/systems/settlers/planner/idle-replan.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import {
   apply,
@@ -289,10 +294,13 @@ describe('road build module (roadBuild)', () => {
     const newNode = terrain.nodeAt(FIRST_SITE_X, SITE_ROW);
     const newSite = roadSitesByNode(sim.world, terrain).get(newNode);
     if (newSite === undefined) throw new Error('setup: the new road site is gone');
-    // Finished building approaches no longer hold him up: his ordinary builder drive already
-    // claimed this site during placement's step, so AI must not post another builder over him.
-    expect(sim.world.get(roadster, SiteAssignment).site).toBe(newSite);
-    expect(sim.world.get(newSite, RoadSite).reservation?.builder).toBe(roadster);
+    // Finished building approaches no longer hold the builders up: the first one whose idle beat
+    // comes claims this site through his ordinary builder drive, so AI must not post another over him.
+    const holder = (): Entity | undefined => sim.world.get(newSite, RoadSite).reservation?.builder;
+    for (let i = 0; i < IDLE_REPLAN_PERIOD_TICKS && holder() === undefined; i++) sim.step();
+    const builder = holder();
+    if (builder === undefined) throw new Error('no builder claimed the new road site within an idle period');
+    expect(sim.world.get(builder, SiteAssignment).site).toBe(newSite);
     expect(
       collectModule.run(sim.world, ctxOf(sim, sim.tick), SEAT).filter((c) => c.kind === 'assignBuilder'),
     ).toEqual([]);
@@ -301,7 +309,11 @@ describe('road build module (roadBuild)', () => {
     expect(terrain.isRoad(newNode)).toBe(true);
 
     // Place an open site without advancing the builder drives: the AI can post its road crew
-    // when it sees the work before an ordinary builder claims it.
+    // when it sees the work before an ordinary builder claims it. The post applies on a tick no idle
+    // builder re-plans on, since one on its beat claims the site before a higher-id roadster is visited.
+    const beatDue = (): boolean =>
+      [...sim.world.query(Settler, IdleStand)].some((e) => idleReplanDue(sim.tick + 1, e));
+    for (let i = 0; i < IDLE_REPLAN_PERIOD_TICKS && beatDue(); i++) sim.step();
     const openNode = terrain.nodeAt(FIRST_SITE_X + SITE_SPACING, SITE_ROW);
     placeRoadSite(sim.world, ctxOf(sim, sim.tick), {
       kind: 'placeRoadSite',

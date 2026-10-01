@@ -40,6 +40,7 @@ import {
   NEED_DRAIN_UNITS_PER_TICK,
   needBar,
 } from '../../src/systems/index.js';
+import { IDLE_REPLAN_PERIOD_TICKS } from '../../src/systems/settlers/planner/idle-replan.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -58,6 +59,8 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
  */
 
 const VIKING = 1;
+/** A drop clip and one step off the door. */
+const DROP_AND_STEP_OFF_TICKS = 18;
 const PLAYER = 0;
 const FOOD = 16; // slug `food_simple` - the `food_` prefix is what makes it edible (isFood)
 const FOOD_EXTRA = 17;
@@ -907,7 +910,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.world.add(woman(), Carrying, { goodType: FOOD, amount: 1 });
     sim.world.mut(home(), Stockpile).amounts.set(FOOD, 5);
 
-    sim.run(30);
+    sim.run(IDLE_REPLAN_PERIOD_TICKS + DROP_AND_STEP_OFF_TICKS); // her next idle beat, then the drop and a step
 
     expect(sim.world.has(woman(), Carrying)).toBe(false);
     const at = sim.world.get(woman(), Position);

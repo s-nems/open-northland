@@ -90,11 +90,12 @@ describe('idle re-plan cadence', () => {
     for (const tick of ticks) expect(idleReplanDue(tick, idler)).toBe(true);
   });
 
-  it('an idle settler takes up new work on its next due tick', () => {
+  it('an idle settler takes up new work on its next due tick, at most one period late', () => {
     const sim = newSim();
     const idler = woodcutterAt(sim, 10, 10);
     sim.step();
-    treeAt(sim, 16, 10);
+    while (!idleReplanDue(sim.tick, idler)) sim.step();
+    treeAt(sim, 16, 10); // just after its beat: the longest wait
 
     let waited = 0;
     while (!sim.world.has(idler, MoveGoal)) {
@@ -102,7 +103,7 @@ describe('idle re-plan cadence', () => {
       waited++;
       expect(waited).toBeLessThanOrEqual(IDLE_REPLAN_PERIOD_TICKS);
     }
-    expect(idleReplanDue(sim.tick, idler)).toBe(true);
+    expect(waited).toBe(IDLE_REPLAN_PERIOD_TICKS);
     expect(sim.world.has(idler, IdleStand)).toBe(false);
   });
 

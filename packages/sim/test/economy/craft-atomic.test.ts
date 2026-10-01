@@ -230,8 +230,11 @@ describe('a seated crafter between its idle beats', () => {
     const shop = staffedKitchen(3);
     const { world } = shop.sim;
     seat(shop);
+    // Within one batch: its end and the next batch's start rewrite the clip by design.
+    const batchLeft = (): number =>
+      KITCHEN_RECIPE_TICKS - (world.get(shop.shop, Production).cycles[0]?.elapsed ?? 0);
     let clipWrites = 0;
-    for (let i = 0; i < IDLE_REPLAN_PERIOD_TICKS; i++) {
+    for (let i = 0; i < IDLE_REPLAN_PERIOD_TICKS && batchLeft() > 1; i++) {
       const before = world.componentGeneration(CurrentAtomic);
       shop.sim.step();
       if (world.componentGeneration(CurrentAtomic) !== before) clipWrites++;

@@ -958,7 +958,9 @@ describe('producer loiter - an idle owned worker waits BESIDE the door, not insi
     sim.world.add(worker, Owner, { player: 0 });
     const idler = settlerAt(sim, 0, 0, WOODCUTTER); // no tree: idle for good
     sim.world.add(idler, Owner, { player: 0 });
-    for (let i = 0; i < 20; i++) sim.step(); // the worker settles beside its door
+    sim.step();
+    // The worker settles beside its door, before its own loiter chat may start one.
+    for (let i = 0; i < 20 && sim.world.has(worker, MoveGoal); i++) sim.step();
     expect(sim.world.has(worker, MoveGoal)).toBe(false);
 
     // The loiter rung's own idle chat, seeking the distant idler: the gossip system walks it over.

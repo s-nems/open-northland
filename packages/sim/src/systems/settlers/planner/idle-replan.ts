@@ -9,7 +9,7 @@ import { assignedWorkers } from '../../stores/assigned-workers.js';
  * new work up to this late. Approximation chosen for cost: the original's idle retry cadence is not
  * readable.
  */
-export const IDLE_REPLAN_PERIOD_TICKS = TICKS_PER_SECOND;
+export const IDLE_REPLAN_PERIOD_TICKS = 2 * TICKS_PER_SECOND;
 
 /** Whether `tick` is one on which idle `e` re-plans. */
 export function idleReplanDue(tick: number, e: Entity): boolean {

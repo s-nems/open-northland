@@ -3,6 +3,7 @@ import {
   AttackOrder,
   addPerson,
   Building,
+  ChatCooldown,
   Engagement,
   Fleeing,
   FOG_MODE,
@@ -290,9 +291,14 @@ describe('stamp memo - an eye whose footprint did not change writes nothing', ()
     return vi.spyOn(FogState.prototype, 'maskFor').mock;
   }
 
-  /** Twelve idle civilians of one player in a row, one per two cells: eyes that stay put. */
+  /** Twelve idle civilians of one player in a row, one per two cells, out of idle chat: eyes that stay
+   *  put. */
   function crowd(sim: Simulation): Entity[] {
-    return Array.from({ length: 12 }, (_, i) => unit(sim, 2 * i, 2, P0));
+    return Array.from({ length: 12 }, (_, i) => {
+      const e = unit(sim, 2 * i, 2, P0);
+      sim.world.add(e, ChatCooldown, { until: Number.MAX_SAFE_INTEGER });
+      return e;
+    });
   }
 
   it('CLASSIC: still eyes stamp once, and a rebuild stamps only the eye that moved', () => {
