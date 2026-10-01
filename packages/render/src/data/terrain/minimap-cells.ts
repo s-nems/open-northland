@@ -1,4 +1,4 @@
-import { clamp01 } from '../math.js';
+import { clamp, clamp01 } from '../math.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../projection/iso.js';
 import { forEachStaggerNeighbour, laneOf, staggerBlur } from './minimap-grid.js';
 import { cellLight } from './minimap-light.js';
@@ -7,8 +7,8 @@ import { MINIMAP_DEPOSIT_KINDS, type MinimapDepositKind, type MinimapScene } fro
 
 /**
  * The per-cell half of the minimap style: every term that varies slower than a cell (relief light,
- * valley shade, water depth, canopy and ore tone) is folded into one interleaved lane, so the pixel pass only
- * interpolates it. All tuning values here are named approximations chosen by eye on the owned maps,
+ * occlusion, water depth, canopy shade and ore tone) is folded into one interleaved lane, so the pixel
+ * pass only interpolates it. All tuning values here are named approximations chosen by eye on the owned maps,
  * not measured from the original, whose minimap is a flat per-cell picture.
  */
 
@@ -20,14 +20,16 @@ export const FIELD_LAND_B = 3;
 export const FIELD_WATER_R = 4;
 export const FIELD_WATER_G = 5;
 export const FIELD_WATER_B = 6;
-export const FIELD_FOREST = 7;
-export const FIELD_ORE_R = 8;
-export const FIELD_ORE_G = 9;
-export const FIELD_ORE_B = 10;
-export const FIELD_ORE = 11;
+/** The water's depth term in [0, 1]: 0 at the shore, toward 1 in open water. */
+export const FIELD_DEPTH = 7;
+export const FIELD_FOREST = 8;
+export const FIELD_ORE_R = 9;
+export const FIELD_ORE_G = 10;
+export const FIELD_ORE_B = 11;
+export const FIELD_ORE = 12;
 /** The smoothed water coverage the coast contour follows; {@link FIELD_WATER} stays the raw fraction. */
-export const FIELD_COVER = 12;
-export const FIELD_STRIDE = 13;
+export const FIELD_COVER = 13;
+export const FIELD_STRIDE = 14;
 
 /** A cell counts as water when at least half of it draws water. */
 const WATER_CELL = 0.5;
@@ -35,35 +37,46 @@ const WATER_CELL = 0.5;
 const COAST_KEEP = 0.12;
 
 /** Water depth: hops from land at which the depth term reaches 1 - 1/e. */
-const DEPTH_FALLOFF_HOPS = 2.5;
+const DEPTH_FALLOFF_HOPS = 4.5;
 /** Floor on the depth term of the painter's deep-water patterns. */
-const DEEP_PATTERN_DEPTH = 0.6;
+const DEEP_PATTERN_DEPTH = 0.5;
 /** Floor on the depth term of a lake (a water body off the map edge), so a narrow lake is not all shallows. */
-const LAKE_DEPTH = 0.65;
-/** The depth ramp's tints, and how much of the texture's own colour each keeps. */
-const SHALLOW_WATER = 0x3b7f8a;
-const DEEP_WATER = 0x173f66;
-const WATER_TEXTURE_WEIGHT = 0.3;
+const LAKE_DEPTH = 0.3;
+/** The depth ramp: turquoise shallows, a teal-blue shelf at {@link SHELF_DEPTH}, navy open water; and
+ *  how much of the texture's own colour each keeps. */
+const SHALLOW_WATER = 0x3a9ca4;
+const SHELF_WATER = 0x1b6488;
+const DEEP_WATER = 0x0d2f55;
+const SHELF_DEPTH = 0.4;
+const WATER_TEXTURE_WEIGHT = 0.2;
 
 /** Broad mottling, so a plain of one pattern or an open sea does not read as a flat fill. */
 const MOTTLE = 0.08;
-const WATER_MOTTLE = 0.1;
+const WATER_MOTTLE = 0.08;
 const MOTTLE_PERIOD_CELLS = 3.5;
-/** A slight lift of the land, which the relief and valley terms otherwise leave a little darker. */
-const LAND_EXPOSURE = 1.12;
+/** A slight lift of the land, which the relief and occlusion terms otherwise leave a little darker. */
+const LAND_EXPOSURE = 1.1;
 /** Lighting soft-clips into this gain range around the base colour, so no ridge blows out to white and
  *  no valley crushes to black; wooded ground has a higher floor, so canopy in shade stays green. */
-const LIGHT_GAIN_MIN = 0.6;
-const LIGHT_GAIN_MAX = 1.35;
-const CANOPY_GAIN_MIN = 0.82;
+const LIGHT_GAIN_MIN = 0.5;
+const LIGHT_GAIN_MAX = 1.4;
+const CANOPY_GAIN_MIN = 0.72;
 /** Channel values above the knee roll off toward the ceiling instead of clipping at a byte. */
 const HIGHLIGHT_KNEE = 185;
 const HIGHLIGHT_CEILING = 238;
 const SEED_MOTTLE = 0x7f4a7c15;
 
-/** The canopy tint and how much of a fully wooded cell it covers. */
-const CANOPY = 0x2a4b24;
-const CANOPY_COVER = 0.72;
+/** The canopy tint and how much of a fully wooded cell it covers; a denser stand is a darker one. */
+const CANOPY = 0x2c4f24;
+const CANOPY_COVER = 0.78;
+const CANOPY_DENSE_SHADE = 0.18;
+/** The canopy's height in elevation units for the fine relief, so a stand's edges catch the light. */
+const CANOPY_HEIGHT = 10;
+/** The shadow a stand casts on open ground beside it, away from the light: the share of the canopy
+ *  one and two cells toward the light that falls on a cell, and the darkening of a full shadow. */
+const CANOPY_SHADOW_NEAR = 1;
+const CANOPY_SHADOW_FAR = 0.6;
+const CANOPY_SHADOW = 0.3;
 
 /** Ore tints. */
 const ORE_COLOURS: Readonly<Record<MinimapDepositKind, number>> = {
@@ -78,20 +91,19 @@ function channel(colour: number, shift: number): number {
   return (colour >> shift) & 0xff;
 }
 
-/**
- * Build the interleaved cell field. `textureScale` in (0, 1] scales the fine per-cell relief, which
- * reads as texture at about one px per cell and as noise or streaks well above it.
- */
-export function buildMinimapCellField(scene: MinimapScene, textureScale = 1): Float32Array {
+/** Build the interleaved cell field. */
+export function buildMinimapCellField(scene: MinimapScene): Float32Array {
   const { width, height } = scene;
   const cells = width * height;
   const field = new Float32Array(cells * FIELD_STRIDE);
-  const { light, edge } = cellLight(scene, textureScale);
-  const depth = waterDepth(scene);
-  const water = laneOf(scene.water, cells);
   const forestInput = laneOf(scene.forest, cells);
   // One more blur than the caller's density, so per-cell tree counts do not tile the canopy into a mosaic.
   const forestLane = forestInput === undefined ? undefined : staggerBlur(forestInput, width, height);
+  const canopyHeight = forestLane?.map((f) => clamp01(f) * CANOPY_HEIGHT);
+  const { light, edge } = cellLight(scene, canopyHeight);
+  const shadow = forestLane === undefined ? undefined : canopyShadow(forestLane, width, height);
+  const depth = waterDepth(scene);
+  const water = laneOf(scene.water, cells);
   const oreKind = laneOf(scene.depositKind, cells);
   const oreDensity = laneOf(scene.depositDensity, cells);
   // Cell centre in world px times the mottle frequency: x = (2c + (r & 1))·TILE_HALF_W, y = r·TILE_HALF_H.
@@ -107,8 +119,12 @@ export function buildMinimapCellField(scene: MinimapScene, textureScale = 1): Fl
     const mottle = valueNoise(x, row * mottleScaleY, SEED_MOTTLE) - 0.5;
     const lit = (light[cell] ?? 1) * LAND_EXPOSURE * (1 + MOTTLE * mottle);
     const floor = LIGHT_GAIN_MIN + (CANOPY_GAIN_MIN - LIGHT_GAIN_MIN) * forest;
-    const shade = softClip(lit, floor, LIGHT_GAIN_MAX) * (edge[cell] ?? 1);
-    const waterShade = 1 + WATER_MOTTLE * mottle;
+    const shade =
+      softClip(lit, floor, LIGHT_GAIN_MAX) *
+      (edge[cell] ?? 1) *
+      (1 - CANOPY_DENSE_SHADE * forest * forest) *
+      (1 - (shadow?.[cell] ?? 0));
+    const waterShade = (1 + WATER_MOTTLE * mottle) * (edge[cell] ?? 1);
     const t = depth[cell] ?? 0;
     const kind = MINIMAP_DEPOSIT_KINDS[(oreKind?.[cell] ?? 0) - 1];
     const ore = kind === undefined ? 0 : clamp01(oreDensity?.[cell] ?? 0);
@@ -116,12 +132,12 @@ export function buildMinimapCellField(scene: MinimapScene, textureScale = 1): Fl
     field[o + FIELD_WATER] = clamp01(water?.[cell] ?? 0);
     field[o + FIELD_FOREST] = forest;
     field[o + FIELD_ORE] = ore;
+    field[o + FIELD_DEPTH] = t;
     for (let ch = 0; ch < 3; ch++) {
       const shift = 16 - 8 * ch;
       const base = channel(colour, shift);
       field[o + FIELD_LAND_R + ch] = rollOff((base + (channel(CANOPY, shift) - base) * canopy) * shade);
-      const shallow = channel(SHALLOW_WATER, shift);
-      const ramp = shallow + (channel(DEEP_WATER, shift) - shallow) * t;
+      const ramp = waterRamp(t, shift);
       field[o + FIELD_WATER_R + ch] = (ramp + (base - ramp) * WATER_TEXTURE_WEIGHT) * waterShade;
       field[o + FIELD_ORE_R + ch] = channel(oreColour, shift) * ore * shade;
     }
@@ -129,6 +145,37 @@ export function buildMinimapCellField(scene: MinimapScene, textureScale = 1): Fl
   if (oreKind !== undefined && oreDensity !== undefined) blurOre(field, width, height);
   smoothCoast(field, width, height);
   return field;
+}
+
+/** One channel of the water colour at depth term `t`: shallows to shelf, then shelf to open water. */
+export function waterRamp(t: number, shift: number): number {
+  if (t <= SHELF_DEPTH) {
+    const shallow = channel(SHALLOW_WATER, shift);
+    return shallow + (channel(SHELF_WATER, shift) - shallow) * (t / SHELF_DEPTH);
+  }
+  const shelf = channel(SHELF_WATER, shift);
+  return shelf + (channel(DEEP_WATER, shift) - shelf) * ((t - SHELF_DEPTH) / (1 - SHELF_DEPTH));
+}
+
+/**
+ * The darkening a cell takes from canopy toward the light: the light comes from the upper left, so a
+ * stand's shadow falls on the open ground below and right of it. Reads the touching cell up-left
+ * (half a column left, one row up) and the one beyond it; a cell under its own canopy takes none.
+ */
+export function canopyShadow(forest: ArrayLike<number>, width: number, height: number): Float32Array {
+  const out = new Float32Array(width * height);
+  for (let row = 1; row < height; row++) {
+    const left = -1 + (row & 1);
+    for (let col = 0; col < width; col++) {
+      const cell = row * width + col;
+      const nearCol = clamp(col + left, 0, width - 1);
+      const near = forest[(row - 1) * width + nearCol] ?? 0;
+      const far = row >= 2 ? (forest[(row - 2) * width + clamp(col - 1, 0, width - 1)] ?? 0) : 0;
+      const cast = Math.max(CANOPY_SHADOW_NEAR * near, CANOPY_SHADOW_FAR * far) - (forest[cell] ?? 0);
+      out[cell] = CANOPY_SHADOW * clamp01(cast);
+    }
+  }
+  return out;
 }
 
 /** Soft-clip a light gain into `[lo, hi]` around 1: near 1 it passes through, far out it saturates. */
@@ -177,7 +224,7 @@ function waterDepth(scene: MinimapScene): Float32Array {
   const deepWater = laneOf(scene.deepWater, cells);
   const depth = new Float32Array(cells);
   if (water === undefined) return depth;
-  const hops = new Int32Array(cells).fill(-1);
+  const hops = new Float32Array(cells).fill(-1);
   const queue = new Int32Array(cells);
   let tail = 0;
   for (let i = 0; i < cells; i++) {
@@ -199,8 +246,10 @@ function waterDepth(scene: MinimapScene): Float32Array {
     });
   }
   const lake = lakeCells(water, width, height);
+  // One blur, so the integer hop rings do not band the ramp.
+  const distance = staggerBlur(hops, width, height);
   for (let i = 0; i < cells; i++) {
-    const t = 1 - Math.exp(-(hops[i] ?? 0) / DEPTH_FALLOFF_HOPS);
+    const t = 1 - Math.exp(-(distance[i] ?? 0) / DEPTH_FALLOFF_HOPS);
     const deepPattern = (deepWater?.[i] ?? 0) >= WATER_CELL;
     const floor = Math.max(deepPattern ? DEEP_PATTERN_DEPTH : 0, lake[i] === 1 ? LAKE_DEPTH : 0);
     depth[i] = (hops[i] ?? 0) > 0 ? Math.max(t, floor) : t;

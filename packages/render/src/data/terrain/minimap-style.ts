@@ -1,29 +1,27 @@
-import { clamp, clamp01 } from '../math.js';
+import { clamp } from '../math.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../projection/iso.js';
 import { terrainWorldBounds } from './minimap.js';
-import {
-  buildMinimapCellField,
-  FIELD_COVER,
-  FIELD_FOREST,
-  FIELD_LAND_B,
-  FIELD_LAND_G,
-  FIELD_LAND_R,
-  FIELD_ORE,
-  FIELD_ORE_B,
-  FIELD_ORE_G,
-  FIELD_ORE_R,
-  FIELD_WATER_B,
-  FIELD_WATER_G,
-  FIELD_WATER_R,
-} from './minimap-cells.js';
-import { hash2, smoothstep, valueNoise } from './minimap-noise.js';
+import { buildMinimapCellField, FIELD_COVER } from './minimap-cells.js';
+import { LandPainter } from './minimap-land.js';
+import { MINIMAP_LIGHT } from './minimap-light.js';
+import { hash2, smoothstep, valueNoise, valueNoisePair } from './minimap-noise.js';
 import { SAMPLE_LANES, sampleField } from './minimap-sampler.js';
 import type { MinimapScene } from './minimap-scene.js';
+import { COAST, SeaPainter } from './minimap-sea.js';
+import {
+  contrastCurve,
+  lightFrame,
+  luma,
+  mixToward,
+  type Rgb,
+  saturate,
+  textureFade,
+} from './minimap-texture.js';
 
 /**
  * The styled minimap raster every consumer shares: lobby preview, pipeline card and in-game surface.
- * An Open Northland enhancement over the original's flat per-cell minimap; every look value below is a
- * named approximation tuned by eye, not a measured or extracted one.
+ * An Open Northland enhancement over the original's flat per-cell minimap, aiming at a relief-map look;
+ * every look value below is a named approximation tuned by eye, not a measured or extracted one.
  */
 
 /** Samples per cell pitch the raster aims for; smaller pictures supersample up to the cap per axis. */
@@ -39,39 +37,24 @@ const FOAM_ALPHA = 0.4;
 const BANK_PX = 1.5;
 const BANK_MAX_BAND = 0.45;
 const BANK_SHADE = 0.22;
-/** A cell's pitch in px below which sub-cell texture fades out instead of aliasing, and its fade span.
- *  It starts where supersampling does, so texture never needs to be supersampled. */
-const DETAIL_FADE_START_PX = SAMPLES_PER_CELL;
-const DETAIL_FADE_SPAN_PX = 3;
-
-/** The cell pitch in px up to which fine relief and grain keep full strength; above it they scale by
- *  `TEXTURE_FULL_PX / pitch`, down to the floor, since texture at one px per cell is noise at three. */
-const TEXTURE_FULL_PX = 1.2;
-const TEXTURE_MIN_SCALE = 0.2;
-/** Texture amplitudes and periods: per-pixel grain, canopy crowns, water ripples, surf breaks. */
-const GRAIN = 0.05;
-const CROWN_DEPTH = 0.25;
-const CROWN_PERIOD_CELLS = 0.6;
-const RIPPLE = 0.12;
-const RIPPLE_LENGTH_CELLS = 1.4;
-const RIPPLE_HEIGHT_CELLS = 0.3;
 const SURF_FLOOR = 0.6;
-/** Ore shows as glints at full detail and as an even tint once the picture is too small for them. */
-const ORE_PERIOD_CELLS = 0.45;
-const ORE_GLINT_SOFTNESS = 0.12;
-const ORE_GLINT_COVER = 0.25;
-const ORE_GLINT_STRENGTH = 0.6;
-const ORE_TINT = 0.2;
+const SURF_PERIOD_CELLS = 0.6;
+/** The cell pitch in px up to which per-pixel grain keeps full strength; above it it scales by
+ *  `GRAIN_FULL_PX / pitch`, down to the floor, since grain at one px per cell is noise at three. */
+const GRAIN_FULL_PX = 1.2;
+const GRAIN_MIN_SCALE = 0.2;
+const GRAIN = 0.05;
+
+/** Domain warp of the sample position, so ground-pattern borders and the coast do not follow the cell
+ *  diamonds: its period and its largest offset, in cells. */
+const WARP_PERIOD_CELLS = 1.6;
+const WARP_CELLS = 0.3;
+
 /** Seeds keeping the noise layers independent. */
 const SEED_GRAIN = 0x9e3779b9;
-const SEED_CROWN = 0x2545f491;
-const SEED_RIPPLE = 0x5851f42d;
-const SEED_ORE = 0x68e31da4;
+const SEED_SURF = 0x7ed55d16;
+const SEED_WARP = 0x1b873593;
 
-/** The water coverage the coast contour sits at. */
-const COAST = 0.5;
-/** Marks a per-pixel noise value not yet evaluated (every noise is ≥ 0). */
-const UNSET = -1;
 const BYTE_MAX = 255;
 
 /**
@@ -88,110 +71,96 @@ export function rasterizeMinimap(scene: MinimapScene, pxW: number, pxH: number):
   const worldPerPxX = bounds.width / pxW;
   const worldPerPxY = bounds.height / pxH;
   const cellPx = Math.min((2 * TILE_HALF_W) / worldPerPxX, (2 * TILE_HALF_H) / worldPerPxY);
-  const textureScale = clamp(TEXTURE_FULL_PX / cellPx, TEXTURE_MIN_SCALE, 1);
-  const field = buildMinimapCellField(scene, textureScale);
-  const grainAmount = GRAIN * textureScale;
+  const field = buildMinimapCellField(scene);
+  const grainAmount = GRAIN * clamp(GRAIN_FULL_PX / cellPx, GRAIN_MIN_SCALE, 1);
   const samples = clamp(Math.ceil(SAMPLES_PER_CELL / cellPx), 1, MAX_SAMPLES);
   const coastEdge = Math.min(1, COAST_EDGE_SAMPLES / (cellPx * samples));
   const foamBand = Math.min(FOAM_MAX_BAND, FOAM_PX / cellPx);
   const bankBand = Math.min(BANK_MAX_BAND, BANK_PX / cellPx);
-  const detail = clamp01((cellPx - DETAIL_FADE_START_PX) / DETAIL_FADE_SPAN_PX);
+  // Sub-cell texture fades in with the pitch and stays off while the picture supersamples, so it never
+  // needs supersampling itself.
+  const textured = samples === 1;
+  const light = lightFrame(MINIMAP_LIGHT);
+  const land = new LandPainter(cellPx, textured, light);
+  const sea = new SeaPainter(cellPx, textured, light);
+  const sample: Rgb = { r: 0, g: 0, b: 0 };
+  const seaRgb: Rgb = { r: 0, g: 0, b: 0 };
   const s = new Float64Array(SAMPLE_LANES);
+  const warp = new Float64Array(2);
+  const curve = contrastCurve();
   const inv = 1 / (samples * samples);
   const cellW = 2 * TILE_HALF_W;
-  const crownScale = 1 / (CROWN_PERIOD_CELLS * cellW);
-  const oreScale = 1 / (ORE_PERIOD_CELLS * cellW);
-  const rippleX = 1 / (RIPPLE_LENGTH_CELLS * cellW);
-  const rippleY = 1 / (RIPPLE_HEIGHT_CELLS * 2 * TILE_HALF_H);
-  const foamR = (FOAM >> 16) & 0xff;
-  const foamG = (FOAM >> 8) & 0xff;
-  const foamB = FOAM & 0xff;
+  const warpScale = 1 / (WARP_PERIOD_CELLS * cellW);
+  const warpReach = textured ? 2 * WARP_CELLS * cellW * textureFade(WARP_PERIOD_CELLS, cellPx) : 0;
+  const surfScale = 1 / (SURF_PERIOD_CELLS * cellW);
   for (let py = 0; py < pxH; py++) {
-    const cy = bounds.minY + (py + 0.5) * worldPerPxY;
+    const rowY = bounds.minY + (py + 0.5) * worldPerPxY;
     for (let px = 0; px < pxW; px++) {
-      const cx = bounds.minX + (px + 0.5) * worldPerPxX;
-      // Texture noise is evaluated at most once per pixel, and only where a sample needs it; sub-cell
-      // texture is off (detail 0) whenever the picture supersamples, so this never aliases.
-      let crownNoise = UNSET;
-      let ripple = UNSET;
-      let oreNoise = UNSET;
+      let x = bounds.minX + (px + 0.5) * worldPerPxX;
+      let y = rowY;
+      if (warpReach > 0) {
+        valueNoisePair(x * warpScale, y * warpScale, SEED_WARP, warp);
+        x += ((warp[0] ?? 0.5) - 0.5) * warpReach;
+        y += ((warp[1] ?? 0.5) - 0.5) * warpReach;
+      }
       let r = 0;
       let g = 0;
       let b = 0;
       for (let sy = 0; sy < samples; sy++) {
-        const wy = bounds.minY + (py + (sy + 0.5) / samples) * worldPerPxY;
+        const wy = y + ((sy + 0.5) / samples - 0.5) * worldPerPxY;
         for (let sx = 0; sx < samples; sx++) {
-          const wx = bounds.minX + (px + (sx + 0.5) / samples) * worldPerPxX;
+          const wx = x + ((sx + 0.5) / samples - 0.5) * worldPerPxX;
           sampleField(field, scene.width, scene.height, wx, wy, s);
           const water = s[FIELD_COVER] ?? 0;
-          const forest = s[FIELD_FOREST] ?? 0;
-          const ore = s[FIELD_ORE] ?? 0;
           const edgeT = (water - COAST) / coastEdge + 0.5;
           const cover = edgeT <= 0 ? 0 : edgeT >= 1 ? 1 : smoothstep(edgeT);
-          let sr = 0;
-          let sg = 0;
-          let sb = 0;
+          sample.r = 0;
+          sample.g = 0;
+          sample.b = 0;
           if (cover < 1) {
-            let landR = s[FIELD_LAND_R] ?? 0;
-            let landG = s[FIELD_LAND_G] ?? 0;
-            let landB = s[FIELD_LAND_B] ?? 0;
-            if (ore > 0) {
-              let share = ORE_TINT * ore;
-              if (detail > 0) {
-                if (oreNoise === UNSET) oreNoise = valueNoise(cx * oreScale, cy * oreScale, SEED_ORE);
-                const glint = smoothstep(
-                  clamp01((oreNoise - 1 + ore * ORE_GLINT_COVER) / ORE_GLINT_SOFTNESS),
-                );
-                share += glint * ORE_GLINT_STRENGTH * detail;
-              }
-              // The ore lanes are premultiplied by density; dividing restores the tint.
-              const mix = share / ore;
-              landR += (s[FIELD_ORE_R] ?? 0) * mix - landR * share;
-              landG += (s[FIELD_ORE_G] ?? 0) * mix - landG * share;
-              landB += (s[FIELD_ORE_B] ?? 0) * mix - landB * share;
-            }
+            land.paint(s, wx, wy, px, py, sample);
             const bank = 1 - (COAST - water) / bankBand;
-            let mul = bank > 0 ? (1 - cover) * (1 - BANK_SHADE * Math.min(1, bank)) : 1 - cover;
-            if (forest > 0 && detail > 0) {
-              if (crownNoise === UNSET) crownNoise = valueNoise(cx * crownScale, cy * crownScale, SEED_CROWN);
-              mul *= 1 - CROWN_DEPTH * detail * crownNoise * forest;
-            }
-            sr = landR * mul;
-            sg = landG * mul;
-            sb = landB * mul;
+            const share = bank > 0 ? (1 - cover) * (1 - BANK_SHADE * Math.min(1, bank)) : 1 - cover;
+            sample.r *= share;
+            sample.g *= share;
+            sample.b *= share;
           }
           if (cover > 0) {
-            let mul = cover;
-            if (detail > 0) {
-              if (ripple === UNSET)
-                ripple = 1 + RIPPLE * detail * (valueNoise(cx * rippleX, cy * rippleY, SEED_RIPPLE) - 0.5);
-              mul *= ripple;
-            }
+            sea.paint(s, wx, wy, seaRgb);
+            sample.r += seaRgb.r * cover;
+            sample.g += seaRgb.g * cover;
+            sample.b += seaRgb.b * cover;
             const edge = 1 - (water - COAST) / foamBand;
-            let foam = 0;
             if (edge > 0) {
-              // The surf breaks on the crown noise: the two never overlap, one is land and one water.
-              if (crownNoise === UNSET) crownNoise = valueNoise(cx * crownScale, cy * crownScale, SEED_CROWN);
-              foam = cover * Math.min(1, edge) * FOAM_ALPHA * (SURF_FLOOR + (1 - SURF_FLOOR) * crownNoise);
+              // Foam paints over the whole sample, land share included.
+              const surf = valueNoise(wx * surfScale, wy * surfScale, SEED_SURF);
+              mixToward(
+                sample,
+                FOAM,
+                cover * Math.min(1, edge) * FOAM_ALPHA * (SURF_FLOOR + (1 - SURF_FLOOR) * surf),
+              );
             }
-            // Foam paints over the whole sample, land share included.
-            const keep = 1 - foam;
-            sr = (sr + (s[FIELD_WATER_R] ?? 0) * mul) * keep + foamR * foam;
-            sg = (sg + (s[FIELD_WATER_G] ?? 0) * mul) * keep + foamG * foam;
-            sb = (sb + (s[FIELD_WATER_B] ?? 0) * mul) * keep + foamB * foam;
           }
-          r += sr;
-          g += sg;
-          b += sb;
+          r += sample.r;
+          g += sample.g;
+          b += sample.b;
         }
       }
       const grain = inv * (1 + grainAmount * (hash2(px, py, SEED_GRAIN) - 0.5));
+      r *= grain;
+      g *= grain;
+      b *= grain;
+      const y0 = luma(r, g, b);
       const o = (py * pxW + px) * 4;
-      bytes[o] = r * grain;
-      bytes[o + 1] = g * grain;
-      bytes[o + 2] = b * grain;
+      bytes[o] = curve[toByte(saturate(r, y0))] ?? 0;
+      bytes[o + 1] = curve[toByte(saturate(g, y0))] ?? 0;
+      bytes[o + 2] = curve[toByte(saturate(b, y0))] ?? 0;
       bytes[o + 3] = BYTE_MAX;
     }
   }
   return out;
+}
+
+function toByte(v: number): number {
+  return v <= 0 ? 0 : v >= BYTE_MAX ? BYTE_MAX : (v + 0.5) | 0;
 }

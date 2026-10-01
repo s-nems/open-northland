@@ -1,6 +1,7 @@
 import { TILE_HALF_H, TILE_HALF_W } from '../projection/iso.js';
 import {
   FIELD_COVER,
+  FIELD_DEPTH,
   FIELD_FOREST,
   FIELD_LAND_B,
   FIELD_LAND_R,
@@ -8,7 +9,6 @@ import {
   FIELD_ORE_R,
   FIELD_STRIDE,
   FIELD_WATER,
-  FIELD_WATER_B,
   FIELD_WATER_R,
 } from './minimap-cells.js';
 
@@ -18,8 +18,8 @@ export const SAMPLE_LANES = FIELD_STRIDE;
 /**
  * Sample the cell field at world px `(x, y)` into `out`: barycentric over the triangle between the three
  * cell centres around the point, the same tessellation the ground mesh draws, so the picture has no
- * row-wise smear. Land and ore lanes are weighted by each cell's squared raw land share and water
- * colours by its squared water share, so only the smoothed coverage decides which side shows; a side
+ * row-wise smear. Land and ore lanes are weighted by each cell's squared raw land share, water colours
+ * and depth by its squared water share, so only the smoothed coverage decides which side shows; a side
  * with no weight reads as zeros, which the coverage then hides.
  */
 export function sampleField(
@@ -90,7 +90,7 @@ export function sampleField(
     out[lane] = blend(field, o0, o1, o2, lane, l0, l1, l2);
   for (let lane = FIELD_ORE_R; lane <= FIELD_ORE; lane++)
     out[lane] = blend(field, o0, o1, o2, lane, l0, l1, l2);
-  for (let lane = FIELD_WATER_R; lane <= FIELD_WATER_B; lane++)
+  for (let lane = FIELD_WATER_R; lane <= FIELD_DEPTH; lane++)
     out[lane] = blend(field, o0, o1, o2, lane, v0, v1, v2);
 }
 

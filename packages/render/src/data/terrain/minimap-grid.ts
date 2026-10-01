@@ -19,23 +19,33 @@ export function boxBlur(
   const radiusRows = Math.round((radiusCols * 2 * TILE_HALF_W) / TILE_HALF_H);
   const tmp = new Float32Array(width * height);
   const out = new Float32Array(width * height);
+  const lastCol = width - 1;
+  const lastRow = height - 1;
+  const colNorm = 1 / (2 * radiusCols + 1);
+  const rowNorm = 1 / (2 * radiusRows + 1);
   for (let row = 0; row < height; row++) {
     const base = row * width;
-    const at = (col: number): number => values[base + clamp(col, 0, width - 1)] ?? 0;
     let sum = 0;
-    for (let d = -radiusCols; d <= radiusCols; d++) sum += at(d);
+    for (let d = -radiusCols; d <= radiusCols; d++) sum += values[base + clamp(d, 0, lastCol)] ?? 0;
     for (let col = 0; col < width; col++) {
-      tmp[base + col] = sum / (2 * radiusCols + 1);
-      sum += at(col + radiusCols + 1) - at(col - radiusCols);
+      tmp[base + col] = sum * colNorm;
+      const enter = col + radiusCols + 1;
+      const leave = col - radiusCols;
+      sum +=
+        (values[base + (enter > lastCol ? lastCol : enter)] ?? 0) -
+        (values[base + (leave < 0 ? 0 : leave)] ?? 0);
     }
   }
   for (let col = 0; col < width; col++) {
-    const at = (row: number): number => tmp[clamp(row, 0, height - 1) * width + col] ?? 0;
     let sum = 0;
-    for (let d = -radiusRows; d <= radiusRows; d++) sum += at(d);
+    for (let d = -radiusRows; d <= radiusRows; d++) sum += tmp[clamp(d, 0, lastRow) * width + col] ?? 0;
     for (let row = 0; row < height; row++) {
-      out[row * width + col] = sum / (2 * radiusRows + 1);
-      sum += at(row + radiusRows + 1) - at(row - radiusRows);
+      out[row * width + col] = sum * rowNorm;
+      const enter = row + radiusRows + 1;
+      const leave = row - radiusRows;
+      sum +=
+        (tmp[(enter > lastRow ? lastRow : enter) * width + col] ?? 0) -
+        (tmp[(leave < 0 ? 0 : leave) * width + col] ?? 0);
     }
   }
   return out;
@@ -56,27 +66,45 @@ export function staggerBlur(
   offset = 0,
 ): Float32Array {
   const out = new Float32Array(width * height);
-  const at = (cell: number): number => values[cell * stride + offset] ?? 0;
   for (let row = 0; row < height; row++) {
     // The touching cells of the rows above and below sit at columns `col + shift` and `col + shift + 1`.
     const shift = -1 + (row & 1);
+    const hasUp = row > 0;
+    const hasDown = row < height - 1;
     for (let col = 0; col < width; col++) {
       const cell = row * width + col;
-      let sum = BLUR_CENTRE_WEIGHT * at(cell);
+      let sum = BLUR_CENTRE_WEIGHT * (values[cell * stride + offset] ?? 0);
       let weight = BLUR_CENTRE_WEIGHT;
       if (col > 0) {
-        sum += at(cell - 1);
+        sum += values[(cell - 1) * stride + offset] ?? 0;
         weight++;
       }
       if (col < width - 1) {
-        sum += at(cell + 1);
+        sum += values[(cell + 1) * stride + offset] ?? 0;
         weight++;
       }
-      for (let r = row - 1; r <= row + 1; r += 2) {
-        if (r < 0 || r >= height) continue;
-        for (let c = col + shift; c <= col + shift + 1; c++) {
-          if (c < 0 || c >= width) continue;
-          sum += at(r * width + c);
+      const left = col + shift;
+      const leftIn = left >= 0;
+      const rightIn = left + 1 < width;
+      if (hasUp) {
+        const up = cell - width + shift;
+        if (leftIn) {
+          sum += values[up * stride + offset] ?? 0;
+          weight++;
+        }
+        if (rightIn) {
+          sum += values[(up + 1) * stride + offset] ?? 0;
+          weight++;
+        }
+      }
+      if (hasDown) {
+        const down = cell + width + shift;
+        if (leftIn) {
+          sum += values[down * stride + offset] ?? 0;
+          weight++;
+        }
+        if (rightIn) {
+          sum += values[(down + 1) * stride + offset] ?? 0;
           weight++;
         }
       }
