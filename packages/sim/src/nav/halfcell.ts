@@ -35,12 +35,14 @@ export function nodeOfPosition(x: Fixed, y: Fixed): HalfCellNode {
 
 /** {@link nodeOfPosition}'s `hx` alone, so a per-tick loop allocates no node object per call. */
 export function nodeHxOfPosition(x: Fixed, y: Fixed): number {
-  return fx.toInt(fx.mul(worldX(x, y), TWO));
+  // Doubled by an add: `fx.mul(wx, TWO)` exactly, without the product, on a per-entity per-tick path.
+  const wx = worldX(x, y);
+  return fx.toInt(fx.add(wx, wx));
 }
 
 /** {@link nodeOfPosition}'s `hy` alone. */
 export function nodeHyOfPosition(y: Fixed): number {
-  return fx.toInt(fx.mul(y, TWO));
+  return fx.toInt(fx.add(y, y));
 }
 
 /**

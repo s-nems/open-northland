@@ -56,7 +56,8 @@ export function closer(dist: number, cell: number, bestDist: number, bestCell: n
 
 /** The {@link closer} winner over a candidate list, measured from `from` (all candidates tie at 0 when
  *  `from` is undefined, so the min id wins). `accept` skips candidates (a taken melee slot, an occupied
- *  work cell); null when none qualify. */
+ *  work cell); null when none qualify. `accept` must be a pure read: it runs only on a candidate that
+ *  would beat the best so far, so an expensive check skips every candidate the winner already beats. */
 export function nearestCell(
   terrain: TerrainGraph,
   candidates: readonly NodeId[],
@@ -69,19 +70,17 @@ export function nearestCell(
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   for (const cell of candidates) {
-    if (accept !== undefined && !accept(cell)) continue;
     const dist = from === undefined ? 0 : Math.abs(terrain.xOf(cell) - fx) + Math.abs(terrain.yOf(cell) - fy);
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = cell;
-      bestDist = dist;
-      bestCell = cell;
-    }
+    if (!closer(dist, cell, bestDist, bestCell) || (accept !== undefined && !accept(cell))) continue;
+    best = cell;
+    bestDist = dist;
+    bestCell = cell;
   }
   return best;
 }
 
 /** {@link nearestCell} measured in map points ({@link hexDistanceBetween}), the metric weapon reach counts
- *  in, with the same `(distance, id)` tie-break. */
+ *  in, with the same `(distance, id)` tie-break and lazy `accept`. */
 export function nearestHexCell(
   terrain: TerrainGraph,
   candidates: readonly NodeId[],
@@ -94,13 +93,11 @@ export function nearestHexCell(
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   for (const cell of candidates) {
-    if (accept !== undefined && !accept(cell)) continue;
     const dist = hexDistanceBetween(fx, fy, terrain.xOf(cell), terrain.yOf(cell));
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = cell;
-      bestDist = dist;
-      bestCell = cell;
-    }
+    if (!closer(dist, cell, bestDist, bestCell) || (accept !== undefined && !accept(cell))) continue;
+    best = cell;
+    bestDist = dist;
+    bestCell = cell;
   }
   return best;
 }

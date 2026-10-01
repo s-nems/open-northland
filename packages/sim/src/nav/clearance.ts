@@ -16,8 +16,12 @@ export type ClearanceProbe = (node: NodeId) => boolean;
 /** The class of a node no open node hemmed in within the cap, and of a node that is not open itself. */
 const UNREACHED = -1;
 
+/** How far a change reaches in the result: a node's class depends on the points this close to it. */
+const REWRITE_RADIUS = MAX_CLEARANCE_CLASS + 1;
 /** How far a change reaches in the scan: the rewritten disc's radius again beyond it. */
-const SCAN_RADIUS = 2 * (MAX_CLEARANCE_CLASS + 1);
+const SCAN_RADIUS = 2 * REWRITE_RADIUS;
+/** Disc stamps are Int32; on the wrap the stamps clear so no stale slot matches a reused generation. */
+const MAX_DISC_GENERATION = 2 ** 31 - 1;
 /** Map points in a hexagon disc of the scan radius: `1 + 3 r (r + 1)`. */
 const SCAN_DISC_NODES = 1 + 3 * SCAN_RADIUS * (SCAN_RADIUS + 1);
 
@@ -40,6 +44,12 @@ export class ClearanceField {
   private readonly classes: Uint8Array;
   private readonly distance: Int16Array;
   private readonly queue: NodeId[] = [];
+  /** The last local recompute's scan disc: its nodes, each stamped with the generation and its map-point
+   *  depth from the nearest change, so membership and the rewrite cut are array reads. */
+  private readonly disc: NodeId[] = [];
+  private readonly discStamps: Int32Array;
+  private readonly discDepths: Uint8Array;
+  private discGeneration = 0;
   /** Per class `k`, how many times a water node's class crossed `k`: went from below it to at least it,
    *  or back. */
   private readonly waterCrossings = new Uint32Array(MAX_CLEARANCE_CLASS + 1);
@@ -50,6 +60,8 @@ export class ClearanceField {
   ) {
     this.classes = new Uint8Array(graph.nodeCount);
     this.distance = new Int16Array(graph.nodeCount);
+    this.discStamps = new Int32Array(graph.nodeCount);
+    this.discDepths = new Uint8Array(graph.nodeCount);
     this.recompute(probe, null);
   }
 
@@ -79,19 +91,15 @@ export class ClearanceField {
     // Past the point where the changes' scan discs outnumber the map, one full pass is the cheaper scan.
     const centres = changed === null ? null : [...changed];
     const local = centres !== null && centres.length * SCAN_DISC_NODES < graph.nodeCount;
-    const rewrite = local ? this.discAround(centres, MAX_CLEARANCE_CLASS + 1) : null;
-    const scan = local ? this.discAround(centres, SCAN_RADIUS) : null;
-    const inScan = (node: NodeId): boolean => scan === null || scan.has(node);
-    const scanned = (): Iterable<NodeId> => scan ?? nodeRange(graph.nodeCount);
+    if (local) this.markDisc(centres);
+    const { disc, discStamps, discDepths } = this;
+    const scanned = this.discGeneration;
 
     queue.length = 0;
-    for (const node of scanned()) {
-      if (!probe(node)) {
-        distance[node] = UNREACHED;
-        continue;
-      }
-      distance[node] = this.hemmed(node, probe) ? 0 : UNREACHED;
-      if (distance[node] === 0) queue.push(node);
+    if (local) {
+      for (const node of disc) this.seed(node, probe);
+    } else {
+      for (let node = 0 as NodeId; node < graph.nodeCount; node++) this.seed(node, probe);
     }
     // The array iterator re-reads `length`, so `queue` is a live breadth-first queue.
     for (const current of queue) {
@@ -105,24 +113,39 @@ export class ClearanceField {
         const ny = y + offset.dy;
         if (!graph.inBounds(nx, ny)) continue;
         const neighbour = graph.nodeAt(nx, ny);
-        if (!inScan(neighbour) || distance[neighbour] !== UNREACHED) continue;
+        if ((local && discStamps[neighbour] !== scanned) || distance[neighbour] !== UNREACHED) continue;
         if (!probe(neighbour) || graph.componentOf(neighbour) !== component) continue;
         distance[neighbour] = next;
         queue.push(neighbour);
       }
     }
-    for (const node of rewrite ?? scanned()) {
-      const d = distance[node] ?? UNREACHED;
-      const value = !probe(node) ? 0 : d === UNREACHED ? MAX_CLEARANCE_CLASS : d;
-      const held = this.classes[node] ?? 0;
-      if (held === value) continue;
-      this.classes[node] = value;
-      if (!graph.isWater(node)) continue;
-      for (let k = Math.min(held, value) + 1; k <= Math.max(held, value); k++) {
-        this.waterCrossings[k] = (this.waterCrossings[k] ?? 0) + 1;
-      }
+    if (local) {
+      for (const node of disc)
+        if ((discDepths[node] ?? SCAN_RADIUS) <= REWRITE_RADIUS) this.write(node, probe);
+    } else {
+      for (let node = 0 as NodeId; node < graph.nodeCount; node++) this.write(node, probe);
     }
     queue.length = 0;
+  }
+
+  /** Start `node`'s breadth-first distance: 0 and queued for an open node a hemming point touches. */
+  private seed(node: NodeId, probe: ClearanceProbe): void {
+    const hemmed = probe(node) && this.hemmed(node, probe);
+    this.distance[node] = hemmed ? 0 : UNREACHED;
+    if (hemmed) this.queue.push(node);
+  }
+
+  /** Store `node`'s settled class, counting the water class crossings it makes. */
+  private write(node: NodeId, probe: ClearanceProbe): void {
+    const d = this.distance[node] ?? UNREACHED;
+    const value = !probe(node) ? 0 : d === UNREACHED ? MAX_CLEARANCE_CLASS : d;
+    const held = this.classes[node] ?? 0;
+    if (held === value) return;
+    this.classes[node] = value;
+    if (!this.graph.isWater(node)) return;
+    for (let k = Math.min(held, value) + 1; k <= Math.max(held, value); k++) {
+      this.waterCrossings[k] = (this.waterCrossings[k] ?? 0) + 1;
+    }
   }
 
   /** Whether an open node touches a hemming map point: off the map, not open, or of another component. */
@@ -141,37 +164,44 @@ export class ClearanceField {
     return false;
   }
 
-  /** The in-bounds nodes within `radius` map-point steps of any of `centres`, as one set. */
-  private discAround(centres: Iterable<NodeId>, radius: number): Set<NodeId> {
-    const { graph } = this;
-    const disc = new Set<NodeId>();
-    const ring: NodeId[] = [];
+  /**
+   * Stamp the in-bounds nodes within {@link SCAN_RADIUS} map-point steps of any of `centres` into
+   * {@link disc}, each with its depth from the nearest centre: one breadth-first flood from all centres
+   * over the six neighbours, ignoring passability, so a disc rather than a region. Its depths are each
+   * node's least distance to a centre, so the nodes within any radius are the union of the per-centre
+   * discs of that radius.
+   */
+  private markDisc(centres: readonly NodeId[]): void {
+    const { graph, disc, discStamps, discDepths } = this;
+    if (this.discGeneration >= MAX_DISC_GENERATION) {
+      discStamps.fill(0);
+      this.discGeneration = 0;
+    }
+    this.discGeneration += 1;
+    const generation = this.discGeneration;
+    disc.length = 0;
     for (const centre of centres) {
-      // A breadth-first flood over the six neighbours, ignoring passability: a disc, not a region.
-      const depth = new Map<NodeId, number>([[centre, 0]]);
-      ring.length = 0;
-      ring.push(centre);
-      for (const current of ring) {
-        disc.add(current);
-        const d = depth.get(current) ?? 0;
-        if (d >= radius) continue;
-        const x = graph.xOf(current);
-        const y = graph.yOf(current);
-        for (const offset of HEX_NEIGHBOUR_OFFSETS) {
-          const nx = x + footprintCellDx(y, offset);
-          const ny = y + offset.dy;
-          if (!graph.inBounds(nx, ny)) continue;
-          const neighbour = graph.nodeAt(nx, ny);
-          if (depth.has(neighbour)) continue;
-          depth.set(neighbour, d + 1);
-          ring.push(neighbour);
-        }
+      if (discStamps[centre] === generation) continue;
+      discStamps[centre] = generation;
+      discDepths[centre] = 0;
+      disc.push(centre);
+    }
+    // The array iterator re-reads `length`, so `disc` is its own breadth-first queue.
+    for (const current of disc) {
+      const d = discDepths[current] ?? SCAN_RADIUS;
+      if (d >= SCAN_RADIUS) continue;
+      const x = graph.xOf(current);
+      const y = graph.yOf(current);
+      for (const offset of HEX_NEIGHBOUR_OFFSETS) {
+        const nx = x + footprintCellDx(y, offset);
+        const ny = y + offset.dy;
+        if (!graph.inBounds(nx, ny)) continue;
+        const neighbour = graph.nodeAt(nx, ny);
+        if (discStamps[neighbour] === generation) continue;
+        discStamps[neighbour] = generation;
+        discDepths[neighbour] = d + 1;
+        disc.push(neighbour);
       }
     }
-    return disc;
   }
-}
-
-function* nodeRange(count: number): Generator<NodeId> {
-  for (let node = 0; node < count; node++) yield node as NodeId;
 }

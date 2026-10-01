@@ -22,7 +22,7 @@ import { findPath, type SearchStats } from '../../nav/pathfinding/index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { ROW_STEP, worldDistance, worldX } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
-import { dynamicBlockOverlay } from '../footprint/index.js';
+import { type WalkBlockMask, walkBlockMask } from '../footprint/walk-block-mask.js';
 import { isValidNodeId } from '../spatial/nodes.js';
 import {
   ColliderWalkBlocks,
@@ -68,6 +68,9 @@ export function drainPathRequests(
   // Walk-block overlays, built lazily so only a tick that actually routes pays for them. The standing-unit
   // stamp applies only to a requester that itself collides: a ghost walks through bodies, and detouring it
   // would break the economy's exact node-coincidence walks. Player -1 keys an unowned collider.
+  // `dynamic` is the mask's levelled view, which skips the per-read level check; each request levels it
+  // once before reading it, since the previous request's writes may have moved the version.
+  let mask: WalkBlockMask | undefined;
   let dynamic: BlockOverlay | undefined;
   let units: UnitWalkBlocks | undefined;
   const combinedByPlayer = new Map<number, BlockOverlay>();
@@ -76,7 +79,10 @@ export function drainPathRequests(
   const claimedStandIns = new Set<NodeId>();
   const groupRoutes = new GroupRoutes(terrain);
   const dynamicOnly = (): BlockOverlay => {
-    dynamic ??= dynamicBlockOverlay(world, ctx, terrain);
+    if (dynamic === undefined) {
+      mask = walkBlockMask(world, ctx, terrain);
+      dynamic = mask.levelled();
+    }
     return dynamic;
   };
   const blockedFor = (player: number): BlockOverlay => {
@@ -96,6 +102,7 @@ export function drainPathRequests(
       if (overBudget && !world.has(e, PlayerOrder)) continue;
       const req = world.get(e, PathRequest);
       if (req.failed) continue;
+      mask?.catchUp();
 
       const collides = hasBodyCollision(world, ctx.content, e);
       const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
@@ -276,24 +283,29 @@ function startIsAhead(position: { x: Fixed; y: Fixed }, waypoints: readonly Wayp
  */
 function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Waypoint[] {
   const waypoints: Waypoint[] = [];
-  let prev: { x: number; y: number } | undefined;
-  for (const node of path) {
-    const c = terrain.coordsOf(node);
-    if (prev !== undefined && Math.abs(c.y - prev.y) === 2) {
+  let prevX = 0;
+  let prevY = 0;
+  for (let i = 0; i < path.length; i++) {
+    const node = path[i];
+    if (node === undefined) continue;
+    const x = terrain.xOf(node);
+    const y = terrain.yOf(node);
+    if (i > 0 && Math.abs(y - prevY) === 2) {
       // (hy₁+hy₂)/4 is the row the leg's middle lies on; the middle's world x is (hx₁+hx₂)/4 columns, a
       // quarter and so exact in fixed point.
-      const rowY = fx.fromInt((prev.y + c.y) / 4);
-      const midWorldX = fx.div(fx.fromInt(prev.x + c.x), fx.fromInt(4));
-      const midX = c.x > prev.x ? prev.x + (prev.y & 1) : prev.x + (prev.y & 1) - 1;
+      const rowY = fx.fromInt((prevY + y) / 4);
+      const midWorldX = fx.div(fx.fromInt(prevX + x), fx.fromInt(4));
+      const midX = x > prevX ? prevX + (prevY & 1) : prevX + (prevY & 1) - 1;
       waypoints.push({
         x: positionXOfWorld(midWorldX, rowY),
         y: rowY,
-        node: terrain.nodeAt(midX, (prev.y + c.y) / 2),
+        node: terrain.nodeAt(midX, (prevY + y) / 2),
       });
     }
-    const p = positionOfNode(c.x, c.y);
+    const p = positionOfNode(x, y);
     waypoints.push({ x: p.x, y: p.y, node });
-    prev = c;
+    prevX = x;
+    prevY = y;
   }
   return waypoints;
 }

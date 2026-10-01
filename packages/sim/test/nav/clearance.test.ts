@@ -101,6 +101,23 @@ describe('ClearanceField', () => {
     expectMatchesDefinition(graph, field, open);
     expect(field.classOf(first)).toBe(3); // four steps from the remaining post: a disc of radius 3
   });
+  it('recomputes several changes in one local pass, their discs overlapping and clipped by the edge', () => {
+    const side = 120; // wide enough that a handful of scan discs stay a local recompute
+    const graph = buildTerrainGraph(testContent(), grassNodeMap(side, side));
+    const wall = new Set<NodeId>();
+    const open = (n: NodeId): boolean => !wall.has(n);
+    const field = new ClearanceField(graph, open);
+    const posts = [graph.nodeAt(1, 2), graph.nodeAt(40, 40), graph.nodeAt(44, 41), graph.nodeAt(50, 37)];
+    for (const post of posts) wall.add(post);
+    field.recompute(open, posts);
+    expectMatchesDefinition(graph, field, open);
+    const [, middle] = posts;
+    if (middle === undefined) throw new Error('fixture lost its posts');
+    wall.delete(middle);
+    field.recompute(open, [middle, graph.nodeAt(1, 2)]);
+    expectMatchesDefinition(graph, field, open);
+  });
+
   it('moves the water revision of the classes a water edit crosses, and never on a land edit', () => {
     // 20x20 cells, grass west of cell 6 and open water from there: node 30 lies deep in the sea.
     const typeIds = Array.from({ length: 20 * 20 }, (_, i) => (i % 20 < 6 ? GRASS : WATER));

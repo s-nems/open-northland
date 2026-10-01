@@ -1,4 +1,4 @@
-import { type NodeId, StepBuffer, type TerrainGraph } from '../terrain/index.js';
+import { StepBuffer, type TerrainGraph } from '../terrain/index.js';
 
 /** `cameFrom` of the start node, which has no predecessor. */
 export const NO_NODE = -1;
@@ -26,8 +26,10 @@ export interface SearchScratch {
   /** Position in `heap` while open, kept by the sift ops so a relaxation can decrease-key in place;
    *  {@link SETTLED} once popped. */
   readonly heapIdx: Int32Array;
-  /** The open set, a binary min-heap of node ids. */
-  readonly heap: NodeId[];
+  /** The open set, a binary min-heap of node ids in its first {@link heapSize} slots. A node enters it at
+   *  most once per search, so one slot per node never overflows, and a reused array never regrows. */
+  readonly heap: Int32Array;
+  heapSize: number;
   /** The settled node's outgoing edges, re-filled per expansion. */
   readonly steps: StepBuffer;
   /** Generation counter, incremented per query. */
@@ -51,7 +53,8 @@ function freshScratch(graph: TerrainGraph): SearchScratch {
     dev: new Float64Array(n),
     cameFrom: new Int32Array(n),
     heapIdx: new Int32Array(n),
-    heap: [],
+    heap: new Int32Array(n),
+    heapSize: 0,
     steps: new StepBuffer(),
     query: 0,
   };

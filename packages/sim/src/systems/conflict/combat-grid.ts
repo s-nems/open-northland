@@ -10,6 +10,7 @@ import {
   Settler,
 } from '../../components/index.js';
 import type { ChangeFeed, Component, Entity, World } from '../../ecs/world.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../context.js';
 import {
@@ -447,9 +448,9 @@ export class CombatGrid {
       if (held !== undefined) this.dropUnit(e, held);
       return;
     }
-    const node = entityNode(world, this.terrain, e);
-    const x = this.terrain.xOf(node);
-    const y = this.terrain.yOf(node);
+    const p = world.get(e, Position);
+    const x = this.terrain.clampX(nodeHxOfPosition(p.x, p.y));
+    const y = this.terrain.clampY(nodeHyOfPosition(p.y));
     const owner = world.tryGet(e, Owner);
     const bit = owner === undefined ? 0 : playerBit(owner.player);
     const unowned = owner === undefined ? world.get(e, Settler) : undefined;
@@ -472,9 +473,10 @@ export class CombatGrid {
   private moveUnit(world: World, e: Entity): void {
     const held = this.units.get(e);
     if (held === undefined) return;
-    const node = entityNode(world, this.terrain, e);
-    const x = this.terrain.xOf(node);
-    const y = this.terrain.yOf(node);
+    // `entityNode`'s clamped coordinates, read without minting the id and dividing it apart again.
+    const p = world.get(e, Position);
+    const x = this.terrain.clampX(nodeHxOfPosition(p.x, p.y));
+    const y = this.terrain.clampY(nodeHyOfPosition(p.y));
     const units = held.cell.units;
     if (units.x[held.slot] === x && units.y[held.slot] === y) return;
     const cell = this.cellFor(x, y);

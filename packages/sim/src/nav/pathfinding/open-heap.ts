@@ -20,13 +20,13 @@ function better(s: SearchScratch, a: NodeId, b: NodeId): boolean {
 /** Move the node at `heap[start]` toward the root until its parent is no better. */
 export function siftUp(s: SearchScratch, start: number): void {
   const { heap, heapIdx } = s;
-  const node = heap[start];
-  if (node === undefined) return;
+  if (start >= s.heapSize) return;
+  const node = (heap[start] ?? 0) as NodeId;
   let index = start;
   while (index > 0) {
     const parentIndex = (index - 1) >> 1;
-    const parent = heap[parentIndex];
-    if (parent === undefined || !better(s, node, parent)) break;
+    const parent = (heap[parentIndex] ?? 0) as NodeId;
+    if (!better(s, node, parent)) break;
     heap[index] = parent;
     heapIdx[parent] = index;
     index = parentIndex;
@@ -38,16 +38,15 @@ export function siftUp(s: SearchScratch, start: number): void {
 /** Move the node at `heap[start]` toward the leaves until neither child beats it. */
 export function siftDown(s: SearchScratch, start: number): void {
   const { heap, heapIdx } = s;
-  const node = heap[start];
-  if (node === undefined) return;
-  const size = heap.length;
+  if (start >= s.heapSize) return;
+  const node = (heap[start] ?? 0) as NodeId;
+  const size = s.heapSize;
   let index = start;
   for (;;) {
     let childIndex = 2 * index + 1;
     if (childIndex >= size) break;
-    let child = heap[childIndex];
-    if (child === undefined) break;
-    const right = childIndex + 1 < size ? heap[childIndex + 1] : undefined;
+    let child = (heap[childIndex] ?? 0) as NodeId;
+    const right = childIndex + 1 < size ? ((heap[childIndex + 1] ?? 0) as NodeId) : undefined;
     if (right !== undefined && better(s, right, child)) {
       child = right;
       childIndex += 1;

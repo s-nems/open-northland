@@ -85,6 +85,12 @@ export const fx = {
     // Deterministic rounding toward zero of the scaled product.
     return Math.trunc(p / ONE) as Fixed;
   },
+  /** A Fixed times an integer count: `mul(fromInt(n), a)` exactly, without the scaled intermediate. */
+  mulInt(a: Fixed, n: number): Fixed {
+    const v = a * n;
+    assertSafe(v, 'mulInt');
+    return v as Fixed;
+  },
   /** Divide two Fixeds. */
   div(a: Fixed, b: Fixed): Fixed {
     if (b === 0) throw new Error('fixed-point division by zero');

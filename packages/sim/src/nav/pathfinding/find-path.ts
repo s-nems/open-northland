@@ -228,7 +228,6 @@ class ResumableSearch {
     }
     scratch.query += 1;
     this.query = scratch.query;
-    scratch.heap.length = 0;
     this.startX = graph.xOf(start);
     this.startY = graph.yOf(start);
     this.goalX = graph.xOf(goal);
@@ -239,7 +238,8 @@ class ResumableSearch {
     scratch.dev[start] = 0; // the start sits on its own line
     scratch.cameFrom[start] = NO_NODE;
     scratch.heapIdx[start] = 0;
-    scratch.heap.push(start);
+    scratch.heap[0] = start;
+    scratch.heapSize = 1;
   }
 
   /** Settle until a verdict, or return `'aborted'` once this search has settled `maxExplored` in total. */
@@ -250,8 +250,9 @@ class ResumableSearch {
     const lineHX = this.goalX - this.startX;
     const lineHY = this.goalY - this.startY;
     for (;;) {
-      const current = heap[0];
-      if (current === undefined) return 'unreachable';
+      if (scratch.heapSize === 0) return 'unreachable';
+      // The heap holds node ids; a typed array only drops the brand.
+      const current = (heap[0] ?? 0) as NodeId;
       if (this.explored >= maxExplored) return 'aborted';
 
       this.explored += 1;
@@ -260,18 +261,21 @@ class ResumableSearch {
 
       // The popped minimum is closed for good; see LAND_HEURISTIC_WEIGHT for what that costs on land.
       heapIdx[current] = SETTLED;
-      const last = heap.pop();
-      if (last !== undefined && heap.length > 0) {
-        heap[0] = last;
+      scratch.heapSize -= 1;
+      if (scratch.heapSize > 0) {
+        heap[0] = heap[scratch.heapSize] ?? 0;
         siftDown(scratch, 0);
       }
 
       const currentG = g[current] ?? 0;
       graph.stepsInto(current, blocked, steps, traversal);
       for (let i = 0; i < steps.length; i++) {
-        const { node: next, cost: length } = steps.at(i);
-        const tentativeG = currentG + fx.mul(length, graph.routeWeightAt(next, traversal));
-        if (stamps[next] !== query) {
+        const next = steps.nodeAt(i);
+        const discovered = stamps[next] === query;
+        // Settled nodes are never relaxed, so they skip the step's cost.
+        if (discovered && heapIdx[next] === SETTLED) continue;
+        const tentativeG = currentG + fx.mul(steps.costAt(i), graph.routeWeightAt(next, traversal));
+        if (!discovered) {
           stamps[next] = query;
           g[next] = tentativeG;
           f[next] = tentativeG + this.heuristic(next);
@@ -279,16 +283,17 @@ class ResumableSearch {
             (graph.xOf(next) - this.startX) * lineHY - (graph.yOf(next) - this.startY) * lineHX,
           );
           cameFrom[next] = current;
-          heap.push(next);
-          siftUp(scratch, heap.length - 1);
+          heap[scratch.heapSize] = next;
+          scratch.heapSize += 1;
+          siftUp(scratch, scratch.heapSize - 1);
           continue;
         }
         // A relaxation only decreases the key, so restoring the heap invariant is a sift toward the root.
-        // Settled nodes are never relaxed. Water's heuristic is consistent, so their g is optimal there;
-        // on land the inflated heuristic can settle a node early, a loss the two weights' notes quantify.
+        // Water's heuristic is consistent, so a settled node's g is optimal there; on land the inflated
+        // heuristic can settle a node early, a loss the two weights' notes quantify.
         const index = heapIdx[next] ?? SETTLED;
         const knownG = g[next] ?? 0;
-        if (index === SETTLED || tentativeG >= knownG) continue;
+        if (tentativeG >= knownG) continue;
         f[next] = tentativeG + ((f[next] ?? 0) - knownG);
         g[next] = tentativeG;
         cameFrom[next] = current;

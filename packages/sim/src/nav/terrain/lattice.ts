@@ -98,9 +98,17 @@ export abstract class TerrainLattice {
    * throws, so a border-seam transient clamps to the nearest border node rather than crashing a tick.
    */
   nodeAtClamped(x: number, y: number): NodeId {
-    const cx = x < 0 ? 0 : x >= this.width ? this.width - 1 : x;
-    const cy = y < 0 ? 0 : y >= this.height ? this.height - 1 : y;
-    return this.idAt(cx, cy);
+    return this.idAt(this.clampX(x), this.clampY(y));
+  }
+
+  /** {@link nodeAtClamped}'s column, for a caller that wants the coordinates rather than the id. */
+  clampX(x: number): number {
+    return x < 0 ? 0 : x >= this.width ? this.width - 1 : x;
+  }
+
+  /** {@link nodeAtClamped}'s row. */
+  clampY(y: number): number {
+    return y < 0 ? 0 : y >= this.height ? this.height - 1 : y;
   }
 
   /** A per-node value from one of the row-major arrays, throwing on an id outside the grid. */

@@ -27,11 +27,11 @@ export function latticeDistanceTo(g: TerrainGraph, bx: number, by: number, a: No
 export function latticeOffsetDistance(ax: number, ay: number): Fixed {
   if (2 * ax <= ay) {
     // Vertical dominates: every half-column crosses diagonally, the leftover rows are half-row steps.
-    return fx.add(fx.mul(fx.fromInt(ax), DIAGONAL_STEP), fx.mul(fx.fromInt(ay - 2 * ax), HALF_ROW));
+    return fx.add(fx.mulInt(DIAGONAL_STEP, ax), fx.mulInt(HALF_ROW, ay - 2 * ax));
   }
   // Sideways dominates: the diagonals absorb the rows, leaving one half-row when `ay` is odd.
   const d = ay >> 1;
-  const straight = fx.mul(fx.fromInt(ax - d), HALF_COLUMN);
+  const straight = fx.mulInt(HALF_COLUMN, ax - d);
   const oddRow = (ay & 1) === 1 ? HALF_ROW : ZERO;
-  return fx.add(fx.add(fx.mul(fx.fromInt(d), DIAGONAL_STEP), straight), oddRow);
+  return fx.add(fx.add(fx.mulInt(DIAGONAL_STEP, d), straight), oddRow);
 }
