@@ -69,6 +69,15 @@ const RESTING_BUILDINGS = groupedBy(
 
 const NO_BUILDINGS: readonly SnapshotEntity[] = [];
 
+/** The `owner`'s finished buildings of `type` running no production cycle. */
+export function restingBuildingsOf(
+  snapshot: WorldSnapshot,
+  owner: number,
+  type: number,
+): readonly SnapshotEntity[] {
+  return indexesOf(snapshot).get(RESTING_BUILDINGS).get(restingKey(owner, type)) ?? NO_BUILDINGS;
+}
+
 /** The reason an input only a trade gathers names when nobody gathers it: the trade to assign. */
 const NO_GATHERER: Readonly<Record<GatheringTrade, ProductionStallReason>> = {
   collector: 'noCollector',
@@ -174,10 +183,9 @@ export class WorkshopStalls implements StallReader {
 
   /** Judge the resting workshops and raise a note for each one stalled. */
   sweep(snapshot: WorldSnapshot, raiser: MessageRaiser, naming: MessageNaming): void {
-    const resting = indexesOf(snapshot).get(RESTING_BUILDINGS);
     const next = new Map<number, Watch>();
     for (const type of this.types) {
-      for (const workshop of resting.get(restingKey(this.seat, type)) ?? NO_BUILDINGS) {
+      for (const workshop of restingBuildingsOf(snapshot, this.seat, type)) {
         const watch = this.watched.get(workshop.id) ?? { since: snapshot.tick, verdict: undefined };
         next.set(workshop.id, watch);
         this.judge(snapshot, workshop, watch);

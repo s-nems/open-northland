@@ -13,9 +13,11 @@ import {
   isSettler,
   needsRuleEnabled,
   staffOf,
+  supplyRunsTo,
 } from '../../game/snapshot.js';
 import { readMinimapIndexes } from '../../hud/minimap/dots.js';
 import { standingNodesRevision } from '../../hud/minimap/live-objects.js';
+import { restingBuildingsOf } from '../../hud/tool-panel/messages/workshop-stalls.js';
 import { ownRoadSiteAt } from '../runtime/own-road-sites.js';
 import { builderSitesOf } from '../unit-controls/highlights/own-building-picks.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
@@ -24,6 +26,9 @@ import { computeSettlerBubbles } from './settler-bubbles.js';
 const NO_TILES: TileBox = { minX: 0, minY: 0, maxX: -1, maxY: -1 };
 /** An id no entity takes: a read that only registers its index. */
 const NO_ENTITY = -1;
+/** A seat and a building type nothing has: a read that only registers its index. */
+const NO_SEAT = -1;
+const NO_TYPE = -1;
 /** No good: a read that only registers its index. */
 const NO_GOODS: ReadonlyMap<number, MinimapFeature> = new Map();
 
@@ -40,6 +45,9 @@ export const FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   { name: 'settler bubbles', read: (snapshot) => computeSettlerBubbles(snapshot) },
   { name: 'position buckets', read: (snapshot) => positionedWithin(snapshot, NO_TILES) },
   { name: 'staff', read: (snapshot) => staffOf(snapshot, NO_ENTITY) },
+  // The workshop stall sweep reads both once a second.
+  { name: 'resting buildings', read: (snapshot) => restingBuildingsOf(snapshot, NO_SEAT, NO_TYPE) },
+  { name: 'supply runs', read: (snapshot) => supplyRunsTo(snapshot, NO_ENTITY) },
   // The road tool's cancel line reads it per frame while Alt is held.
   { name: 'road sites by node', read: (snapshot) => ownRoadSiteAt(snapshot, NO_ENTITY, 0, 0) },
   // The builder site pick's highlight reads it per frame while the pick is armed.

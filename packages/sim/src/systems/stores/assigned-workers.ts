@@ -24,11 +24,6 @@ export function assignedWorkers(world: World, workplace: Entity): readonly Entit
   return assignedIndex(world).byWorkplace.get(workplace) ?? NO_WORKERS;
 }
 
-/** The workplaces at least one settler is bound to, in no particular order; a dead one may linger. */
-export function staffedWorkplaces(world: World): Iterable<Entity> {
-  return assignedIndex(world).byWorkplace.keys();
-}
-
 function assignedIndex(world: World): AssignedIndex {
   const generation = world.componentGeneration(JobAssignment);
   let index = indexes.get(world);

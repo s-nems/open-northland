@@ -804,7 +804,8 @@ medallion, with no divider frame between them.
 ### Notifications
 
 The column (ticket 03) is the DOM message centre; the runtime feed keeps the original's 200 slots,
-lifetime, dedupe and priority table.
+dedupe and priority table. An event note lasts the original's lifetime; a state note stands while
+its cause lasts.
 
 - The three seals are filter and tally in one: each shows how many live notes carry its weight,
   filtered or not, so the filter only hides (the original drops filtered notes). Levels: all,
@@ -836,8 +837,8 @@ lifetime, dedupe and priority table.
   without parting the fan. Nothing else the player does removes a card: selecting or deselecting its
   subject leaves it, against the original, which clears a human's notes on deselect. A card goes only
   by dismissal, when its cause ends or when its lifetime runs out.
-- The whole message in the original's wording unfolds in a box to the right of the column on hover
-  or focus of any card, and a press pins it when the card has no target.
+- The whole message unfolds in a box to the right of the column on hover or focus of any card, and a
+  press pins it when the card has no target.
 - When the cards do not fit above the minimap they fan: each slides under the one before it by one
   uniform overlap, weightier cards in front, leaving the event line visible with the seal at the top
   of the strip. The covered part of a card is clipped, never drawn over the card in front. A covered
@@ -854,10 +855,11 @@ lifetime, dedupe and priority table.
   (lost workplace, no cart, nothing to do) stack across their types; every other note stacks with
   notes of its type and card line (a good, a stance, a family reason make their own stack; the lost
   line, which only agrees with the settler's sex, does not, while grown men and grown women stack
-  apart). Unlock notes never stack. A stack needs two notes; a lone note is a plain card. The face is the heaviest member (by weight, then by family stage); among equals the state note
-  standing longest or the newest event. Stacks order by their face's weight, then by their newest
-  member, so a new member lifts its stack. The filters count notes and run before the stacking, so
-  "only urgent" leaves the hunger family its dying and starving members.
+  apart). Unlock notes never stack. A stack needs two notes; a lone note is a plain card. The face
+  is the heaviest member (by weight, then by family stage); among equals the state note standing
+  longest or the newest event. Stacks order by their face's weight, then by their newest member, so
+  a new member lifts its stack. The filters count notes and run before the stacking, so "only
+  urgent" leaves the hunger family its dying and starving members.
 - A stack's seal grows from 12 to 18 px and carries the count, as the filter seals carry their tallies;
   the event line moves 6 px right. One slate edge under the card shows a pair, two show three or more,
   thinned from 5 to 3 px each when the column fans. Hover or focus shows the breakdown ("1 umiera ·

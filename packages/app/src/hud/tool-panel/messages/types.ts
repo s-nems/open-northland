@@ -72,9 +72,9 @@ export interface MessageTechnology {
 
 /** Why a workshop stands still, as its note names it: an input nothing of the seat holds or makes
  *  (`noInputSource`), or that only a trade gathers and nobody gathers (`noCollector`, `noHunter`,
- *  `noFisher`), or only out of signpost reach; a product no store takes,
- *  or only stores out of reach; products set the seat cannot make yet; or a gate the diagnosis cannot
- *  name. */
+ *  `noFisher`), or only out of signpost reach; a product no store takes, or only stores out of reach;
+ *  products set the seat cannot make yet; a breeder with no animals (`noLivestock`) or one short of a
+ *  grown pair (`tooFewLivestock`); or a gate the diagnosis cannot name. */
 export type ProductionStallReason =
   | 'noInputSource'
   | 'noCollector'
