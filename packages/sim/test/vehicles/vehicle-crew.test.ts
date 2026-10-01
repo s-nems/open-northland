@@ -28,6 +28,7 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
+import { removeSettlerSilently } from '../../src/systems/lifecycle/death.js';
 import { createVehicle, stockVehicleGoods } from '../../src/systems/vehicles/index.js';
 import { type VehicleWorkFilter, vehiclesAtWork } from '../../src/systems/vehicles/registry.js';
 import { testContent } from '../fixtures/content.js';
@@ -480,6 +481,21 @@ describe('leaving', () => {
     expect(stopped).not.toEqual({ hx: 4, hy: 26 });
     s.run(SAIL_TICKS);
     expect(nodeOf(s, cart)).toEqual(stopped);
+  });
+
+  it('halts a cart whose only commander is removed mid-drive', () => {
+    const s = sim();
+    const cart = spawn(s, HANDCART, 12, 6);
+    const scout = spawnSettler(s, 2, 6);
+    attach(s, scout, cart);
+    s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: cart, x: 4, y: 26 }));
+    boardOut(s, cart, scout);
+    for (let t = 0; t < SAIL_TICKS && !s.world.has(cart, VehicleDrive); t++) s.step();
+    s.run(ATTACH_WALK_TICKS);
+    removeSettlerSilently(s.world, scout);
+    s.run(SAIL_TICKS);
+    expect(s.world.has(cart, VehicleDrive)).toBe(false);
+    expect(nodeOf(s, cart)).not.toEqual({ hx: 4, hy: 26 });
   });
 
   it("hands the commander's walk order to its vehicle, which boards it and drives, cargo and all", () => {

@@ -8,7 +8,6 @@ import {
   recordHumanDeath,
   Settler,
   SettlerNeeds,
-  unseatPassenger,
   Vehicle,
   Wedding,
   YoungAnimal,
@@ -26,6 +25,7 @@ import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js
 import { setLandscape } from '../landscape/edits.js';
 import { animalRecord, firstLandscapeGfxOf, isSoldierJob, MEAT_LANDSCAPE_SLUG } from '../readviews/index.js';
 import { abandonCargoRun } from '../vehicles/cargo.js';
+import { vacateSeat } from '../vehicles/movement.js';
 
 // A settler's death and silent removal: a leaf below the cleanup system, so a vehicle sinking its crew
 // and the cleanup reaping a vehicle do not import each other.
@@ -92,7 +92,7 @@ export function removeSettlerSilently(world: World, e: Entity): void {
   removeWorkFlag(world, e); // a work flag has no owner once its gatherer is gone
   releaseSiteClaim(world, e);
   const rider = world.tryGet(e, Rider);
-  if (rider !== undefined && world.has(rider.vehicle, Vehicle)) unseatPassenger(world, rider.vehicle, e);
+  if (rider !== undefined && world.has(rider.vehicle, Vehicle)) vacateSeat(world, rider.vehicle, e);
   abandonCargoRun(world, e);
   const marriage = world.tryGet(e, Marriage);
   const wedding = world.tryGet(e, Wedding);

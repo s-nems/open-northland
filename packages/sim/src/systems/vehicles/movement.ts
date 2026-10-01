@@ -5,6 +5,7 @@ import {
   Owner,
   Position,
   Rider,
+  unseatPassenger,
   Vehicle,
   VehicleDrive,
   VehicleMarchRoute,
@@ -598,10 +599,12 @@ export function sendVehicleTo(
   return true;
 }
 
-/** A vehicle whose last commander left stops after the leg under way, since no commander means no
- *  drive, and its march and target lapse with it. The drive's end still settles it out of a gap or
- *  off a doorway. */
-export function haltDriverless(world: World, vehicle: Entity): void {
+/** Free `rider`'s seat on `vehicle`. A vehicle left with no commander stops after the leg under way,
+ *  since no commander means no drive, and its march and target lapse with it; the drive's end still
+ *  settles it out of a gap or off a doorway. */
+export function vacateSeat(world: World, vehicle: Entity, rider: Entity): void {
+  unseatPassenger(world, vehicle, rider);
+  if (vehicleCommander(world.get(vehicle, Vehicle)) !== null) return;
   dropAttack(world, vehicle);
   cutRoute(world, vehicle);
 }
@@ -776,7 +779,11 @@ function settleOutOfGap(world: World, ctx: SystemContext, terrain: TerrainGraph,
   const here = terrain.nodeAtClamped(anchor.hx, anchor.hy);
   if (vehicleRests(world, ctx, terrain, type.logicSize)(here)) return false;
   const spot = snapVehicleTarget(world, ctx, terrain, e, anchor, { radius: VEHICLE_SETTLE_RADIUS });
-  return spot !== null && startVehicleDrive(world, ctx, terrain, e, spot);
+  if (spot === null || !startVehicleDrive(world, ctx, terrain, e, spot)) return false;
+  // A march that reached its goal is over, so it does not drive back onto a goal that closed.
+  const march = world.get(e, Vehicle).march;
+  if (march !== null && march.goal.hx === anchor.hx && march.goal.hy === anchor.hy) endMarch(world, e);
+  return true;
 }
 
 /** Wherever a drive ends, arrived, stopped or given up, is the new guard position a holding or

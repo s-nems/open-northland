@@ -10,9 +10,7 @@ import {
   Settler,
   seatPassenger,
   setSeatInside,
-  unseatPassenger,
   Vehicle,
-  vehicleCommander,
   vehiclePassengers,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
@@ -32,7 +30,7 @@ import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { stepOut } from '../settlers/indoors.js';
 import { endChat } from '../social/gossip/drive.js';
 import { abandonCargoRun } from './cargo.js';
-import { dropHeldGoal, endMarch, haltDriverless } from './movement.js';
+import { dropHeldGoal, endMarch, vacateSeat } from './movement.js';
 
 // The crew of docs/formats/VEHICLES.md "Crew": who may attach, where a rider boards and leaves, and what
 // a rider gives up when it joins. The boarding drives live in `boarding.ts`.
@@ -190,10 +188,7 @@ export function detachFromVehicle(
 /** Drop `rider`'s seat, marker and any cargo booking; the vehicle promotes the next commander and,
  *  with nobody left to command it, halts. */
 export function releaseRider(world: World, rider: Entity, vehicle: Entity): void {
-  if (world.has(vehicle, Vehicle)) {
-    unseatPassenger(world, vehicle, rider);
-    if (vehicleCommander(world.get(vehicle, Vehicle)) === null) haltDriverless(world, vehicle);
-  }
+  if (world.has(vehicle, Vehicle)) vacateSeat(world, vehicle, rider);
   abandonCargoRun(world, rider);
   world.remove(rider, Rider);
 }

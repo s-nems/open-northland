@@ -155,7 +155,7 @@ onto that door node or, where another blocker covers it, the nearest open node b
 whose walk to the door fails is dropped with a
 lost note; the ordinary orders that detach first are the walk, attack, work, trade, home, school,
 drill, marriage, need, equipment, explore, signpost and chest orders; a vehicle left with no commander
-mid-drive stops after the leg under way, its march and target lapsing (`haltDriverless`). Deviation (owner's choice): a walk or attack-position order given to a
+mid-drive stops after the leg under way, its march and target lapsing (`vacateSeat`). Deviation (owner's choice): a walk or attack-position order given to a
 vehicle's commander, aboard or standing beside it, is handed to the vehicle as its goto
 (`systems/vehicles/commander.ts`), so a trader ordered somewhere takes the cart and its cargo along;
 the vehicle's refusals apply and a refused point leaves the commander seated. The original detaches
@@ -262,7 +262,7 @@ given up, halted without its commander or its goal closed meanwhile, drives on t
 within 3 rings it may stand on, since a standing vehicle's disc blocks settlers. Deviation (the
 original's settlers walk through a parked cart): a vehicle also never rests with its disc on a
 building's door, the passage from it or a node beside either, so it cannot shut a house's workers out,
-and a drive ending there rolls off the same way. A player's stop leaves it where it stops. `g` is the roughness of the node a leg
+and a drive ending there rolls off the same way, an attack-move that reached its goal ending as it does. A player's stop leaves it where it stops. `g` is the roughness of the node a leg
 leaves (`TerrainGraph.roughnessAt`; a map without the lane reads 2 on land and 1 on water, the corpus's
 common values); an off-continent target raises `vehicleNoPath` instead of being ignored, and so does
 a ship's target in a part of its sea past a strait too narrow for the hull, judged from the sea labels
