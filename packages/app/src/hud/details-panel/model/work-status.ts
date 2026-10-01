@@ -6,7 +6,7 @@ export function workStatusDetail(ctx: UnitPanelModelContext, status: SettlerWork
   const copy = messages().hud.settlerPanel.idleReasons;
   switch (status.kind) {
     case 'waitingInput': {
-      const stranded = status.missingInputs.filter((input) => input.outOfReach);
+      const stranded = status.missingInputs.filter((input) => input.source === 'outOfReach');
       if (stranded.length > 0) {
         return formatMessage(copy.inputOutOfReach, {
           product: goodLabel(ctx, status.goodType),

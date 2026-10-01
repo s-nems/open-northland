@@ -70,13 +70,13 @@ export interface MessageTechnology {
   readonly typeId: number;
 }
 
-/** Why a workshop stands still, as its note names it: an input missing or held in stores out of
- *  reach, a full shelf or out-of-reach stores for a product, products set the seat cannot make yet,
- *  or a gate the diagnosis cannot name. */
+/** Why a workshop stands still, as its note names it: an input nothing of the seat holds or makes, or
+ *  only out of signpost reach; a product no store takes, or only stores out of reach; products set the
+ *  seat cannot make yet; or a gate the diagnosis cannot name. */
 export type ProductionStallReason =
-  | 'missingInput'
+  | 'noInputSource'
   | 'inputOutOfReach'
-  | 'outputFull'
+  | 'noOutputStore'
   | 'outputOutOfReach'
   | 'productsLocked'
   | 'unknown';

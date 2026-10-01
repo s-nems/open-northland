@@ -1407,20 +1407,20 @@ export const enGame = {
      *  good the reason is about. */
     productionStalled: {
       short: {
-        missingInput: 'No {good}',
+        noInputSource: 'No {good}',
         inputOutOfReach: 'Input too far',
-        outputFull: 'Shelves full',
+        noOutputStore: 'No store',
         outputOutOfReach: 'Store too far',
         productsLocked: 'Product locked',
         unknown: 'Workshop stalled',
       },
       full: {
-        missingInput:
-          "{building}: production has stopped for lack of {good}. Bring it to a store within the workshop's reach.",
+        noInputSource:
+          '{building}: production has stopped for lack of {good}. No store holds it and no workshop makes it. Build and staff a workshop that makes it.',
         inputOutOfReach:
-          '{building}: production has stopped for lack of {good}. Only stores outside signpost reach hold it. Link them with signposts or build a store closer.',
-        outputFull:
-          '{building}: production has stopped, its shelves are full ({good}). Build a store within reach or assign more carriers.',
+          '{building}: production has stopped for lack of {good}. Only buildings outside signpost reach hold or make it. Link them with signposts or build a store closer.',
+        noOutputStore:
+          '{building}: production has stopped, its shelves are full and no store takes {good}. Build a store or free some room in one.',
         outputOutOfReach:
           '{building}: production has stopped with nowhere to deliver {good}: the stores that take it lie outside signpost reach. Link them with signposts or build a store closer.',
         productsLocked:

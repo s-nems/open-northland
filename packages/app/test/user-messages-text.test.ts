@@ -38,7 +38,7 @@ function partsFor(name: UserMessageTypeName, female: boolean): MessageTextParts 
     detail: 'Prolongata',
     technologySections: { jobs: ['Młynarz'], goods: [], houses: [], vehicles: [] },
     training: { course: 'school', profession: 'Młynarz' },
-    stall: 'missingInput',
+    stall: 'noInputSource',
     ...(name === 'familyBlocked'
       ? { family: { wait: 'livesApart', partner: { name: 'Olaf', jobLabel: 'Zwiadowca', female: false } } }
       : {}),
@@ -195,11 +195,11 @@ describe('notice text', () => {
         goodName: 'Zboże',
         stall: reason,
       });
-    expect(stall('missingInput')).toEqual({
+    expect(stall('noInputSource')).toEqual({
       short: 'Brak: Zboże',
-      full: 'Młyn: produkcja stoi, brakuje surowca: Zboże. Dostarcz go do magazynu w zasięgu warsztatu.',
+      full: 'Młyn: produkcja stoi, brakuje surowca: Zboże. Nie ma go w żadnym magazynie i żaden warsztat go nie wytwarza. Zbuduj i obsadź warsztat, który go wytwarza.',
     });
-    expect(stall('outputFull').short).toBe('Pełne półki');
+    expect(stall('noOutputStore').short).toBe('Brak magazynu');
     expect(stall('unknown').full).toBe(
       'Młyn: produkcja stoi. Zaznacz warsztat: jego panel pokaże przyczynę.',
     );

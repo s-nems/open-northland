@@ -1373,20 +1373,20 @@ export const plGame = {
     },
     productionStalled: {
       short: {
-        missingInput: 'Brak: {good}',
+        noInputSource: 'Brak: {good}',
         inputOutOfReach: 'Surowiec daleko',
-        outputFull: 'Pełne półki',
+        noOutputStore: 'Brak magazynu',
         outputOutOfReach: 'Magazyn daleko',
         productsLocked: 'Wyrób nieodkryty',
         unknown: 'Produkcja stoi',
       },
       full: {
-        missingInput:
-          '{building}: produkcja stoi, brakuje surowca: {good}. Dostarcz go do magazynu w zasięgu warsztatu.',
+        noInputSource:
+          '{building}: produkcja stoi, brakuje surowca: {good}. Nie ma go w żadnym magazynie i żaden warsztat go nie wytwarza. Zbuduj i obsadź warsztat, który go wytwarza.',
         inputOutOfReach:
-          '{building}: produkcja stoi, brakuje surowca: {good}. Mają go tylko magazyny poza zasięgiem drogowskazów. Połącz je drogowskazami albo zbuduj magazyn bliżej.',
-        outputFull:
-          '{building}: produkcja stoi, bo półki są pełne (towar: {good}). Zbuduj magazyn w zasięgu albo przydziel więcej tragarzy.',
+          '{building}: produkcja stoi, brakuje surowca: {good}. Mają go albo wytwarzają tylko budynki poza zasięgiem drogowskazów. Połącz je drogowskazami albo zbuduj magazyn bliżej.',
+        noOutputStore:
+          '{building}: produkcja stoi, półki są pełne, a żaden magazyn nie przyjmie towaru: {good}. Zbuduj magazyn albo zrób w nim miejsce.',
         outputOutOfReach:
           '{building}: produkcja stoi, nie ma gdzie oddać towaru: {good}. Magazyny, które go przyjmą, leżą poza zasięgiem drogowskazów. Połącz je drogowskazami albo zbuduj magazyn bliżej.',
         productsLocked:

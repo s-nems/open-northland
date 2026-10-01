@@ -370,7 +370,7 @@ describe('the settler panel model', () => {
       world({}),
       withStatus({
         kind: 'outputFull',
-        outputs: [{ goodType: good, available: 20, capacity: 20, required: 1 }],
+        outputs: [{ goodType: good, available: 20, capacity: 20, required: 1, destination: 'inReach' }],
       }),
     );
     expect(full.status).toMatchObject({ state: 'idle', trouble: true });
@@ -381,8 +381,8 @@ describe('the settler panel model', () => {
       kind: 'waitingInput',
       goodType: good,
       missingInputs: [
-        { goodType: GOOD_WOOD, available: 1, required: 3, missing: 2, outOfReach: false },
-        { goodType: GOOD_IRON, available: 0, required: 1, missing: 1, outOfReach: false },
+        { goodType: GOOD_WOOD, available: 1, required: 3, missing: 2, source: 'inReach' },
+        { goodType: GOOD_IRON, available: 0, required: 1, missing: 1, source: 'inReach' },
       ],
     } as const;
     const waitingModel = settlerModel(world({}), withStatus(waiting));

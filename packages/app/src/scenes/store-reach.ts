@@ -60,7 +60,7 @@ export const storeReachScene: SceneDefinition = {
         return (
           status?.kind === 'waitingInput' &&
           status.missingInputs.length > 0 &&
-          status.missingInputs.every((input) => input.outOfReach)
+          status.missingInputs.every((input) => input.source === 'outOfReach')
         );
       },
     },

@@ -19,19 +19,27 @@ import { craftablePool } from '../economy/production/rotation.js';
 import { liveHaulFlag } from '../economy/work-flag.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 import { operatorRecipeEnabled } from '../progression/index.js';
+import { carriedGoodForm } from '../settlers/drives/economy/delivery-targets.js';
 import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
 import { StoreSinks } from '../settlers/targets/stores/sinks.js';
-import { isWorkplaceOperator, recipesByProductOf, stockCapacity } from '../stores/index.js';
+import { staffedWorkplaces } from '../stores/assigned-workers.js';
+import {
+  isWorkplaceOperator,
+  isWorkplaceOutput,
+  recipesByProductOf,
+  stockCapacity,
+} from '../stores/index.js';
 import { gatherWorkStatus } from './gather-work-status.js';
-import { storesOnlyOutOfReach } from './store-reach.js';
+import { type StoreReach, storeReach } from './store-reach.js';
 
 export interface MissingWorkInput {
   readonly goodType: number;
   readonly required: number;
   readonly available: number;
   readonly missing: number;
-  /** Stores hold the input, but all of them outside the worker's signpost area. */
-  readonly outOfReach: boolean;
+  /** Where the worker's side keeps or makes the input: a store holding a unit or a staffed workplace
+   *  turning it out, as {@link inputSources} lists them. */
+  readonly source: StoreReach;
 }
 
 export interface BlockedWorkOutput {
@@ -39,6 +47,8 @@ export interface BlockedWorkOutput {
   readonly required: number;
   readonly available: number;
   readonly capacity: number;
+  /** Where the worker's side has stores that take the product in the form it is carried. */
+  readonly destination: StoreReach;
 }
 
 /** Selected-worker diagnostics are derived on demand, never persisted or used by the planner. */
@@ -137,12 +147,7 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
               required: input.amount,
               available,
               missing: input.amount - available,
-              outOfReach: storesOnlyOutOfReach(
-                world,
-                ctx,
-                entity,
-                FetchableStock.of(world, ctx).holders(input.goodType),
-              ),
+              source: storeReach(world, ctx, entity, inputSources(world, ctx, workplace, input.goodType)),
             },
           ]
         : [];
@@ -156,6 +161,7 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   );
   if (enabled.length === 0) return { kind: 'productsLocked', goodTypes: pool.slice() };
   const stock = world.get(workplace, Stockpile).amounts;
+  const sinks = StoreSinks.of(world, ctx);
   const outputs = enabled
     .flatMap((entry) =>
       entry.recipe.outputs.map((output) => ({
@@ -165,15 +171,40 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
         capacity: stockCapacity(world, ctx, workplace, output.goodType),
       })),
     )
-    .filter((output) => output.capacity - output.available < output.required);
+    .filter((output) => output.capacity - output.available < output.required)
+    .map((output) => ({
+      ...output,
+      destination: storeReach(
+        world,
+        ctx,
+        entity,
+        sinks.sinks(carriedGoodForm(world, ctx, entity, output.goodType), false),
+      ),
+    }));
   if (outputs.length === 0) return { kind: 'unknown', reason: 'productionGate' };
-  const sinks = StoreSinks.of(world, ctx);
-  const stranded = outputs.find((output) =>
-    storesOnlyOutOfReach(world, ctx, entity, sinks.sinks(output.goodType, false)),
-  );
+  const stranded = outputs.find((output) => output.destination === 'outOfReach');
   return stranded !== undefined
     ? { kind: 'noOutputDestination', goodType: stranded.goodType, reason: 'outOfReach' }
     : { kind: 'outputFull', outputs };
+}
+
+/**
+ * Where an operator may get `goodType` for `workplace`: the stores lending a unit, as its fetch searches
+ * them, then the other staffed, finished workplaces turning the good out. A producer's next unit lands
+ * on its own shelf, where the fetch finds it, so an empty farm next door still supplies the mill.
+ */
+function* inputSources(
+  world: World,
+  ctx: SystemContext,
+  workplace: Entity,
+  goodType: number,
+): Generator<Entity> {
+  yield* FetchableStock.of(world, ctx).holders(goodType);
+  for (const producer of staffedWorkplaces(world)) {
+    if (producer === workplace || !world.isAlive(producer) || world.has(producer, UnderConstruction))
+      continue;
+    if (isWorkplaceOutput(world, ctx, producer, goodType)) yield producer;
+  }
 }
 
 interface PoolEntry {

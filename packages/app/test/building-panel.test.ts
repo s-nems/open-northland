@@ -362,7 +362,7 @@ describe('building panel orders and alerts', () => {
         workStatus: () => ({
           kind: 'waitingInput',
           goodType: GOOD_FLOUR,
-          missingInputs: [{ goodType: GOOD_WHEAT, available: 0, required: 2, missing: 2, outOfReach: false }],
+          missingInputs: [{ goodType: GOOD_WHEAT, available: 0, required: 2, missing: 2, source: 'inReach' }],
         }),
       },
     );

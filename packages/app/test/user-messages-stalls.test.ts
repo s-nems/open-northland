@@ -34,11 +34,11 @@ const SWEEPS_TO_GRACE = PRODUCTION_STALL_GRACE_TICKS / SNAPSHOT_SWEEP_INTERVAL_T
 const WAITING_FOR_CLAY: WorkStatus = {
   kind: 'waitingInput',
   goodType: POT,
-  missingInputs: [{ goodType: CLAY, required: 1, available: 0, missing: 1, outOfReach: false }],
+  missingInputs: [{ goodType: CLAY, required: 1, available: 0, missing: 1, source: 'none' }],
 };
 const SHELVES_FULL: WorkStatus = {
   kind: 'outputFull',
-  outputs: [{ goodType: POT, required: 1, available: 4, capacity: 4 }],
+  outputs: [{ goodType: POT, required: 1, available: 4, capacity: 4, destination: 'none' }],
 };
 
 const plain = (full: string): MessageText => ({ short: full, full });
@@ -61,6 +61,10 @@ interface World {
   readonly operatorJob?: number | null;
   /** The operator crews the workshop's vehicle yard site. */
   readonly yard?: boolean;
+  /** The operator carries a load, as one taking a product to a store does. */
+  readonly carrying?: boolean;
+  /** The operator walks out on a supply errand for the workshop. */
+  readonly fetching?: boolean;
 }
 
 function world(tick: number, w: World = {}): WorldSnapshot {
@@ -93,6 +97,14 @@ function world(tick: number, w: World = {}): WorldSnapshot {
                 Stance: { mode: 0, anchorCell: null },
                 JobAssignment: { workplace: WORKSHOP },
                 ...(w.yard === true ? { SiteAssignment: { site: 99, pinned: false } } : {}),
+                ...(w.carrying === true || w.fetching === true ? {} : { IdleStand: { standing: true } }),
+                ...(w.carrying === true ? { Carrying: { goodType: POT, amount: 1 } } : {}),
+                ...(w.fetching === true
+                  ? {
+                      SupplyRun: { site: WORKSHOP, goodType: CLAY, amount: 1, source: 98 },
+                      MoveGoal: { cell: 5 },
+                    }
+                  : {}),
               },
             },
           ]),
@@ -119,7 +131,7 @@ function sweepTo(source: SnapshotMessageSource, count: number, w: World = {}, fr
   return out;
 }
 
-function stallNote(goodType: number | null, reason: 'missingInput' | 'outputFull'): UserMessage {
+function stallNote(goodType: number | null, reason: 'noInputSource' | 'noOutputStore'): UserMessage {
   return {
     id: 1,
     type: USER_MESSAGE_TYPE.productionStalled,
@@ -138,18 +150,22 @@ function stallNote(goodType: number | null, reason: 'missingInput' | 'outputFull
 
 describe('stalled workshops', () => {
   it('reads the reason and its good off the diagnosis, and no stall off a deliberate stop', () => {
-    expect(stallOf(WAITING_FOR_CLAY)).toEqual({ reason: 'missingInput', goodType: CLAY });
+    expect(stallOf(WAITING_FOR_CLAY)).toEqual({ reason: 'noInputSource', goodType: CLAY });
     expect(
       stallOf({
         kind: 'waitingInput',
         goodType: POT,
         missingInputs: [
-          { goodType: 5, required: 1, available: 0, missing: 1, outOfReach: false },
-          { goodType: CLAY, required: 1, available: 0, missing: 1, outOfReach: true },
+          { goodType: 5, required: 1, available: 0, missing: 1, source: 'inReach' },
+          { goodType: CLAY, required: 1, available: 0, missing: 1, source: 'outOfReach' },
         ],
       }),
     ).toEqual({ reason: 'inputOutOfReach', goodType: CLAY });
-    expect(stallOf(SHELVES_FULL)).toEqual({ reason: 'outputFull', goodType: POT });
+    expect(stallOf(SHELVES_FULL)).toEqual({ reason: 'noOutputStore', goodType: POT });
+    expect(stallOf({ kind: 'noOutputDestination', goodType: POT, reason: 'noStorage' })).toEqual({
+      reason: 'noOutputStore',
+      goodType: POT,
+    });
     expect(stallOf({ kind: 'noOutputDestination', goodType: POT, reason: 'outOfReach' })).toEqual({
       reason: 'outputOutOfReach',
       goodType: POT,
@@ -162,7 +178,25 @@ describe('stalled workshops', () => {
     expect(stallOf({ kind: 'crafting', goodType: POT })).toBeNull();
   });
 
-  it('raises one note per workshop once it has run no cycle for the grace period', () => {
+  it('names no stall for an input a source in reach supplies, nor for shelves a store in reach empties', () => {
+    const clay = { goodType: CLAY, required: 1, available: 0, missing: 1 };
+    const pots = { goodType: POT, required: 1, available: 4, capacity: 4 };
+    expect(
+      stallOf({ kind: 'waitingInput', goodType: POT, missingInputs: [{ ...clay, source: 'inReach' }] }),
+    ).toBeNull();
+    expect(stallOf({ kind: 'outputFull', outputs: [{ ...pots, destination: 'inReach' }] })).toBeNull();
+    expect(
+      stallOf({
+        kind: 'outputFull',
+        outputs: [
+          { ...pots, destination: 'none' },
+          { ...pots, goodType: OTHER_INPUT, destination: 'inReach' },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it('raises one note per workshop once it has stood for the grace period', () => {
     const source = createSnapshotMessageSource(
       LOCAL,
       seamAnswering(() => WAITING_FOR_CLAY),
@@ -170,7 +204,7 @@ describe('stalled workshops', () => {
     const notes = sweepTo(source, SWEEPS_TO_GRACE);
     expect(notes.slice(0, -1).flat()).toEqual([]);
     expect(notes.at(-1)).toEqual([
-      `Garncarnia:${USER_MESSAGE_TYPE.productionStalled}:missingInput:good:${CLAY}`,
+      `Garncarnia:${USER_MESSAGE_TYPE.productionStalled}:noInputSource:good:${CLAY}`,
     ]);
   });
 
@@ -198,7 +232,7 @@ describe('stalled workshops', () => {
     expect(sweepTo(source, next, {}, next).flat()).toEqual([]);
     landed = { status: SHELVES_FULL, asked: asks[1] ?? -1 };
     expect(sweepTo(source, next + 1, {}, next + 1).flat()).toEqual([
-      `Garncarnia:${USER_MESSAGE_TYPE.productionStalled}:outputFull:good:${POT}`,
+      `Garncarnia:${USER_MESSAGE_TYPE.productionStalled}:noOutputStore:good:${POT}`,
     ]);
   });
 
@@ -243,7 +277,7 @@ describe('stalled workshops', () => {
       seamAnswering(() => answer),
     );
     const retirement = new NoteRetirement(new FightAreas(), source.stalls);
-    const note = stallNote(CLAY, 'missingInput');
+    const note = stallNote(CLAY, 'noInputSource');
     const tick = SWEEPS_TO_GRACE * SNAPSHOT_SWEEP_INTERVAL_TICKS;
     // A fresh source has not judged the workshop: a note restored from an earlier mount stands.
     source.sweep(world(0), naming);
@@ -269,15 +303,15 @@ describe('stalled workshops', () => {
     answer = {
       kind: 'waitingInput',
       goodType: POT,
-      missingInputs: [{ goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, outOfReach: false }],
+      missingInputs: [{ goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, source: 'none' }],
     };
     const raised = source
       .sweep(world(tick), naming)
       .filter((r) => r.pending.type === USER_MESSAGE_TYPE.productionStalled);
     expect(raised.map((r) => [r.pending.stall, r.updatesStanding])).toEqual([
-      [{ reason: 'missingInput', goodType: OTHER_INPUT }, true],
+      [{ reason: 'noInputSource', goodType: OTHER_INPUT }, true],
     ]);
-    expect(retirement.isOver(stallNote(CLAY, 'missingInput'), world(tick))).toBe(false);
+    expect(retirement.isOver(stallNote(CLAY, 'noInputSource'), world(tick))).toBe(false);
   });
 
   it('raises a dismissed stall anew under a new reason, but keeps it dismissed through a new good', () => {
@@ -304,24 +338,42 @@ describe('stalled workshops', () => {
     };
     const stallsShown = () => feed.live().map((m) => m.stall);
     while (feed.live().length === 0) present();
-    expect(stallsShown()).toEqual([{ reason: 'missingInput', goodType: CLAY }]);
+    expect(stallsShown()).toEqual([{ reason: 'noInputSource', goodType: CLAY }]);
     feed.remove(feed.live()[0]?.id ?? -1, sweeps * SNAPSHOT_SWEEP_INTERVAL_TICKS);
 
     answer = {
       kind: 'waitingInput',
       goodType: POT,
-      missingInputs: [{ goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, outOfReach: false }],
+      missingInputs: [{ goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, source: 'none' }],
     };
     presentUntilAsked();
     expect(stallsShown()).toEqual([]);
     expect(feed.state().history.map((m) => m.stall)).toEqual([
-      { reason: 'missingInput', goodType: OTHER_INPUT },
+      { reason: 'noInputSource', goodType: OTHER_INPUT },
     ]);
 
     answer = SHELVES_FULL;
     presentUntilAsked();
-    expect(stallsShown()).toEqual([{ reason: 'outputFull', goodType: POT }]);
+    expect(stallsShown()).toEqual([{ reason: 'noOutputStore', goodType: POT }]);
     expect(feed.state().history).toEqual([]);
+  });
+
+  it('starts the stand over while goods move for the workshop, retiring a standing note', () => {
+    for (const moving of [{ carrying: true }, { fetching: true }] satisfies World[]) {
+      const source = createSnapshotMessageSource(
+        LOCAL,
+        seamAnswering(() => WAITING_FOR_CLAY),
+      );
+      const retirement = new NoteRetirement(new FightAreas(), source.stalls);
+      expect(sweepTo(source, SWEEPS_TO_GRACE).at(-1)).toHaveLength(1);
+      const tick = (SWEEPS_TO_GRACE + 1) * SNAPSHOT_SWEEP_INTERVAL_TICKS;
+      const raised = source.sweep(world(tick, moving), naming);
+      expect(raised.filter((r) => r.pending.type === USER_MESSAGE_TYPE.productionStalled)).toEqual([]);
+      expect(retirement.isOver(stallNote(CLAY, 'noInputSource'), world(tick, moving))).toBe(true);
+      const after = sweepTo(source, 2 * SWEEPS_TO_GRACE + 1, {}, SWEEPS_TO_GRACE + 2);
+      expect(after.slice(0, -1).flat(), JSON.stringify(moving)).toEqual([]);
+      expect(after.at(-1)).toHaveLength(1);
+    }
   });
 
   it('judges a crew building a vehicle on the yard as no stall, so the standing note retires', () => {
@@ -334,7 +386,7 @@ describe('stalled workshops', () => {
     const tick = (SWEEPS_TO_GRACE + 1) * SNAPSHOT_SWEEP_INTERVAL_TICKS;
     source.sweep(world(tick, { yard: true }), naming);
     expect(source.stalls?.verdict(WORKSHOP)).toBeNull();
-    expect(retirement.isOver(stallNote(CLAY, 'missingInput'), world(tick, { yard: true }))).toBe(true);
+    expect(retirement.isOver(stallNote(CLAY, 'noInputSource'), world(tick, { yard: true }))).toBe(true);
   });
 });
 

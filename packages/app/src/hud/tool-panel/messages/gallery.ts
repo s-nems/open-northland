@@ -185,7 +185,7 @@ export function galleryMessages(
       const stall: ProductionStall =
         gallery.goodType === null
           ? { reason: 'unknown', goodType: null }
-          : { reason: 'missingInput', goodType: gallery.goodType };
+          : { reason: 'noInputSource', goodType: gallery.goodType };
       if (house !== undefined) raiseStall(raiser, naming, house, stall);
       continue;
     }

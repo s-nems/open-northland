@@ -412,7 +412,7 @@ describe('user messages read off the snapshot', () => {
       expect(idleReasonOf({ kind: 'nothingAtFlag' })).toEqual({ kind: 'nothingAtFlag', goodTypes: [] });
       // A craft operator's gates are the stall note's, and the note needs a workplace and a trade.
       expect(
-        idleReasonOf({ kind: 'waitingInput', goodType: 9, missingInputs: [{ ...input, outOfReach: true }] }),
+        idleReasonOf({ kind: 'waitingInput', goodType: 9, missingInputs: [{ ...input, source: 'outOfReach' }] }),
       ).toBeNull();
       expect(idleReasonOf({ kind: 'noWorkplace' })).toBeNull();
       expect(idleReasonOf({ kind: 'noJob' })).toBeNull();

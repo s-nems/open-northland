@@ -13,14 +13,20 @@ import {
   type SnapshotEntity,
   settlerJobType,
   staffOf,
+  supplyRunsTo,
 } from '../../../game/snapshot.js';
 import { type MessageNaming, type MessageRaiser, nodeOf } from './raise.js';
 import { type ProductionStall, USER_MESSAGE_TYPE } from './types.js';
 import type { WorkStatusAsks, WorkStatusRead } from './work-asks.js';
 
-/** Ticks a workshop runs no production cycle before its stall note: long enough for an operator to
- *  fetch inputs or carry products off between two cycles of fifteen seconds. Approximation. */
-export const PRODUCTION_STALL_GRACE_TICKS = 60 * TICKS_PER_SECOND;
+/**
+ * Ticks a workshop stands - no cycle, nobody fetching for it or carrying a load off it - before its
+ * operator's diagnosis is weighed: about an operator's longest ordinary pause, the walk back from a
+ * store at the edge of its signpost reach (25 cells at 18 ticks a cell) and an idle beat before its next
+ * errand. Ordinary pauses then cost no ask, and a blocker that clears within it raises nothing.
+ * Approximation.
+ */
+export const PRODUCTION_STALL_GRACE_TICKS = 45 * TICKS_PER_SECOND;
 
 /** What the stall notes read about the seat's workshops, and the idle notes about their workers. */
 export interface WorkshopSeam {
@@ -63,23 +69,28 @@ const RESTING_BUILDINGS = groupedBy(
 const NO_BUILDINGS: readonly SnapshotEntity[] = [];
 
 /**
- * The stall a worker's diagnosis names, or null when it names none: a cycle that can start, products
- * the player stopped, or a status about anything but a craft.
+ * The blocker a worker's diagnosis names, or null when it names none the player has to fix: an input
+ * that a store or a staffed producer in reach supplies, or a full shelf a store in reach takes from, is
+ * the operator's own errand. A blocker is an input nothing of the seat holds or makes, or only out of
+ * signpost reach; products no store takes, or only stores out of reach; products the seat cannot make
+ * yet; or a gate the diagnosis cannot name.
  */
 export function stallOf(status: WorkStatus): ProductionStall | null {
   switch (status.kind) {
     case 'waitingInput': {
-      const stranded = status.missingInputs.find((input) => input.outOfReach);
+      const stranded = status.missingInputs.find((input) => input.source === 'outOfReach');
       if (stranded !== undefined) return { reason: 'inputOutOfReach', goodType: stranded.goodType };
-      return { reason: 'missingInput', goodType: status.missingInputs[0]?.goodType ?? null };
+      const unsourced = status.missingInputs.find((input) => input.source === 'none');
+      return unsourced === undefined ? null : { reason: 'noInputSource', goodType: unsourced.goodType };
     }
-    case 'outputFull':
-      return { reason: 'outputFull', goodType: status.outputs[0]?.goodType ?? null };
+    case 'outputFull': {
+      // One product a store takes frees its own shelf, and the rotation makes it again.
+      if (status.outputs.some((output) => output.destination !== 'none')) return null;
+      return { reason: 'noOutputStore', goodType: status.outputs[0]?.goodType ?? null };
+    }
     case 'noOutputDestination':
-      return {
-        reason: status.reason === 'outOfReach' ? 'outputOutOfReach' : 'outputFull',
-        goodType: status.goodType,
-      };
+      if (status.reason === 'outOfReach') return { reason: 'outputOutOfReach', goodType: status.goodType };
+      return status.reason === 'noStorage' ? { reason: 'noOutputStore', goodType: status.goodType } : null;
     case 'productsLocked':
       return { reason: 'productsLocked', goodType: status.goodTypes[0] ?? null };
     case 'unknown':
@@ -89,10 +100,32 @@ export function stallOf(status: WorkStatus): ProductionStall | null {
   }
 }
 
-/** One resting workshop's watch: since when it rests, and the verdict. */
+/** One resting workshop's watch: since when it stands, and the verdict. */
 interface Watch {
   since: number;
   verdict: StallVerdict;
+}
+
+/** Whether a settler is under way with goods: carrying a load, or walking out on a supply errand. */
+function isUnderWay(settler: SnapshotEntity): boolean {
+  const c = settler.components;
+  return (
+    c.Carrying !== undefined ||
+    c.MoveGoal !== undefined ||
+    c.PathRequest !== undefined ||
+    c.PathFollow !== undefined
+  );
+}
+
+/**
+ * Whether goods move for a resting workshop: a settler on a supply errand to it is under way, or one of
+ * its staff carries a load, as an operator taking its products to a store does.
+ */
+function goodsMoveFor(snapshot: WorldSnapshot, workshop: number, staff: readonly SnapshotEntity[]): boolean {
+  return (
+    supplyRunsTo(snapshot, workshop).some(isUnderWay) ||
+    staff.some((worker) => worker.components.Carrying !== undefined)
+  );
 }
 
 /** Prefer an operator's diagnosis to a carrier's, as the building panel does. */
@@ -104,11 +137,13 @@ function operatorOf(staff: readonly SnapshotEntity[]): SnapshotEntity | undefine
 }
 
 /**
- * The seat's workshops that stand still, each judged once its rest outlasts
- * {@link PRODUCTION_STALL_GRACE_TICKS} by the sim's own diagnosis of its operator. A sweep visits the
- * seat's resting workshops off a maintained index, so its cost follows those, not the building count.
- * A workshop without an operator is never stalled: nobody was hired, which its panel shows. A crew
- * building a vehicle on its yard site runs no cycle, but is working, so its rest starts over.
+ * The seat's workshops that stand still for a blocker the player has to fix. A workshop stands while it
+ * runs no cycle and no goods move for it; once it has stood {@link PRODUCTION_STALL_GRACE_TICKS}, the
+ * sim's diagnosis of its operator names the blocker, if any. Goods moving again, a cycle, or a diagnosis
+ * with nothing in the way ends the verdict, which retires the note. A sweep visits the seat's resting
+ * workshops off a maintained index, so its cost follows those, not the building count. A workshop
+ * without an operator is never stalled: nobody was hired, which its panel shows. A crew building a
+ * vehicle on its yard site runs no cycle, but is working, so its stand starts over.
  */
 export class WorkshopStalls implements StallReader {
   private watched = new Map<number, Watch>();
@@ -149,13 +184,17 @@ export class WorkshopStalls implements StallReader {
   }
 
   private judge(snapshot: WorldSnapshot, workshop: SnapshotEntity, watch: Watch): void {
-    if (snapshot.tick - watch.since < PRODUCTION_STALL_GRACE_TICKS) return;
     const staff = staffOf(snapshot, workshop.id);
-    if (staff.some((worker) => worker.components.SiteAssignment !== undefined)) {
+    const working =
+      staff.some((worker) => worker.components.SiteAssignment !== undefined) ||
+      goodsMoveFor(snapshot, workshop.id, staff);
+    if (working) {
       watch.since = snapshot.tick;
       watch.verdict = null;
       return;
     }
+    // A workshop not yet judged keeps an undefined verdict, so a note restored from an earlier mount stands.
+    if (snapshot.tick - watch.since < PRODUCTION_STALL_GRACE_TICKS) return;
     const operator = operatorOf(staff);
     if (operator === undefined) {
       watch.verdict = null;

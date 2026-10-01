@@ -273,7 +273,7 @@ describe('message feed', () => {
         { kind: 'building', entity: 10 },
         {
           goodType,
-          stall: { reason: 'missingInput', goodType },
+          stall: { reason: 'noInputSource', goodType },
         },
       );
 
