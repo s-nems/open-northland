@@ -12,7 +12,7 @@ import type { EnemyFire } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
 import { ownedSettlers } from '../seat-roster.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, type BuildOrderEntry } from './entries.js';
-import { grassBound, grassScarce } from './grass-reserve.js';
+import { grassBound } from './grass-reserve.js';
 import { buildReach, spotAcceptor } from './placement.js';
 
 // The coverage circle is a planning heuristic only; what a tower does under an alarm is
@@ -126,7 +126,7 @@ export function seatCovered(
  * and the seat's Manhattan build reach. It needs the full ring budget because the world metric is
  * anisotropic (34 px E/W against 19 px N/S), so a covering node can sit almost twice the coverage radius
  * in rows from the target. A target no building's reach comes near enough to cover, a flag far out on the
- * map, is turned down before the walk. A seat short of grass looks off the grass first, as
+ * map, is turned down before the walk. With `reserveGrass` it looks off the grass first, as
  * `placementSpot` does.
  */
 export function coverageSpotSearch(
@@ -140,6 +140,7 @@ export function coverageSpotSearch(
   tribe: number,
   coverage: Coverage,
   underFire: EnemyFire,
+  reserveGrass: boolean,
 ): (target: HalfCellNode) => HalfCellNode | null {
   const centroid = anchorCentroid(world, owned);
   const apartFrom = coverage.by === 'tower' ? [] : coverageCentres(world, ctx, player, owned, coverage);
@@ -149,7 +150,7 @@ export function coverageSpotSearch(
   const box = nodeBoxOfCircles([{ x: 0, y: 0, r: coverage.radius }]);
   // Every node covering a target lies within this Manhattan span of it.
   const coverageSpan = box.maxX + box.maxY;
-  const spareGrass = !grassBound(type) && grassScarce(terrain, anchor);
+  const spareGrass = reserveGrass && !grassBound(type);
   return (target) => {
     if (!settlement.meets(target, coverageSpan)) return null;
     const seed =

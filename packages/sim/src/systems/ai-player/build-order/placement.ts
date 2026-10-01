@@ -21,7 +21,7 @@ import { anchorNodeOf, bestRingNode, firstRingNode, towardNode } from '../node-g
 import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, OVERFLOW_BUILD_REACH_NODES } from './entries.js';
-import { coversGrass, grassBound, grassScarce } from './grass-reserve.js';
+import { coversGrass, grassBound } from './grass-reserve.js';
 
 /** One affinity other than `shore` ({@link shoreTarget}) resolved to a node, or null when it cannot be. A
  *  `building` affinity takes the seat's lowest-id building of that id or a tier above it, so the pick is
@@ -435,7 +435,7 @@ function wallSpan(ctx: SystemContext, buildingTypeId: number, tribe: number): nu
  * the map holds, the seat's own placement probe, and the deposit zone. {@link SpotAcceptor.around} narrows
  * it to one search's fan: a node is accepted when the building may anchor there, the anchor is free, and
  * no enemy shooter reaches the site. With `spareGrass` the building's reserved zone must also keep off
- * every grass node ({@link grassScarce}).
+ * every grass node (`grassReserved`).
  */
 export interface SpotAcceptor {
   around(
@@ -539,10 +539,10 @@ export const HQ_PULL_DIVISOR_NODES = 4;
  *
  * An affinity pull that finds nothing yields to the same search from `anchor` (authored): a
  * settlement wider than the fan keeps room on its far side that the pulled centre never reaches, and a
- * barracks or a mint anywhere in it beats a list stalled for half an hour. A seat short of grass
- * ({@link grassScarce}) runs both searches off the grass first for a building that does not need it, so
- * the grass stays for the farm, the wells and the hives, and takes grass only when no other ground is
- * left in reach. When nothing in reach takes an entry with no spot bound, the pulled search runs once more
+ * barracks or a mint anywhere in it beats a list stalled for half an hour. While `reserveGrass`
+ * (`grassReserved`) both searches run off the grass first for a building that does not need it, so
+ * the grass stays for the list's grass buildings, and take grass only when no other ground is left in
+ * reach. When nothing in reach takes an entry with no spot bound, the pulled search runs once more
  * over {@link OVERFLOW_BUILD_REACH_NODES}, on the base's own land component only, since the wider reach can
  * span a strait the builders cannot walk.
  */
@@ -557,6 +557,7 @@ export function placementSpot(
   tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   underFire: EnemyFire,
+  reserveGrass: boolean,
 ): HalfCellNode | null {
   const settlement = buildReach(world, owned, anchor);
   const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
@@ -598,7 +599,7 @@ export function placementSpot(
     (centre.hx === anchor.hx && centre.hy === anchor.hy
       ? null
       : near(settlement, anchor, within, fan, spareGrass));
-  const offGrass = !grassBound(type, entry) && grassScarce(terrain, anchor) ? inReach(true) : null;
+  const offGrass = reserveGrass && !grassBound(type, entry) ? inReach(true) : null;
   if (offGrass !== null) return offGrass;
   const found = inReach(false);
   // A bounded entry's disc already lies in the usual reach, so only an unbounded one overflows.

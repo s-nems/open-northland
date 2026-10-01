@@ -103,7 +103,12 @@ describe('build-order tower and store coverage', () => {
       owner: SEAT,
     });
     sim.step();
-    const order = [...coverage.run(sim.world, ctxOf(sim), SEAT)][0];
+    // A well still to place keeps the reservation on.
+    const reserving = buildOrderModule([
+      { kind: 'towerCoverage', building: 'tower_01' },
+      { kind: 'place', building: 'work_well_00', count: 1 },
+    ]);
+    const order = [...reserving.run(sim.world, ctxOf(sim), SEAT)][0];
     if (order?.kind !== 'placeBuilding') throw new Error('expected a tower placement');
     expect(onGrass(order.x, order.y)).toBe(false);
     expect(withinNodeRadius(order.x, order.y, FAR.x, FAR.y, TOWER_DEFENCE_RADIUS_NODES)).toBe(true);

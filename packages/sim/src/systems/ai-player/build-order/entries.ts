@@ -25,7 +25,9 @@ export type BuildOrderEntry =
    *  the seat's named buildings (at that tier or above) has one of the buildings the entry counts within
    *  `radius` world-metric nodes, or while the seat has none of those; a `near` affinity on the same id
    *  then pulls the spot toward the first one lacking. `onlyWhen: 'rivalOverSea'` skips the entry while
-   *  the headquarters the seat sails for (`../sea-route.ts`) can be reached by land. `belowTier` stops the
+   *  the headquarters the seat sails for (`../sea-route.ts`) can be reached by land, `'grassScarce'` while
+   *  the seat has grass enough (`./grass-reserve.ts`). An entry of a grass building with no grass left
+   *  for it is passed over unless `essential`, which holds the list until it stands. `belowTier` stops the
    *  count below that tier of the chain, so buildings placed straight at it never meet the entry. `role` counts only the top-tier
    *  joineries holding that role (`../joinery-role.ts`). */
   | {
@@ -36,7 +38,8 @@ export type BuildOrderEntry =
       readonly ground?: 'plantable';
       readonly needsResources?: readonly string[];
       readonly unlessWithin?: { readonly building: string; readonly radius: number };
-      readonly onlyWhen?: 'rivalOverSea';
+      readonly onlyWhen?: 'rivalOverSea' | 'grassScarce';
+      readonly essential?: true;
       readonly belowTier?: string;
       readonly role?: JoineryRole;
     }
@@ -152,7 +155,8 @@ function druidHuts(count: number): BuildOrderEntry {
  * rather than the tail, since the garrison rung publishes only the classes it can arm right now.
  */
 export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
-  { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable' },
+  // Every bakery and brewery downstream waits on the grain, so the list holds for the farm.
+  { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable', essential: true },
   { kind: 'place', building: 'home_level_00', count: 3 },
   { kind: 'place', building: 'work_pottery_00', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
   { kind: 'place', building: 'work_mason_hut_00', count: 1, near: [{ kind: 'resource', good: 'stone' }] },
@@ -174,6 +178,17 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_brewery', count: 1, near: [{ kind: 'building', id: 'work_well_00' }] },
   { kind: 'place', building: 'work_hive_00', count: 1, near: [{ kind: 'building', id: 'work_brewery' }] },
   wellBeside('work_brewery', 2),
+  // A seat short of grass puts its herb hut on the grass it keeps now, after which its other buildings
+  // may take the rest; a green seat raises it with the druids further down.
+  {
+    kind: 'place',
+    building: 'work_herb_hut',
+    count: 1,
+    near: [{ kind: 'building', id: 'work_well_00' }],
+    ground: 'plantable',
+    needsResources: ['mushroom', 'gold'],
+    onlyWhen: 'grassScarce',
+  },
   // Tiles and marble come only from these tiers, and homes, the armory and the bakeries all wait on them,
   // so the upgrades land well before the first bill that needs them.
   { kind: 'upgrade', building: 'work_pottery_01', count: 1 },

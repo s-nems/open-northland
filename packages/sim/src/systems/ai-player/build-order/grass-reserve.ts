@@ -1,13 +1,17 @@
 import { type BuildingType, type FootprintCell, footprintCellDx } from '@open-northland/data';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { SystemContext } from '../../context.js';
+import { buildingTypeByContentId } from '../content-lookup.js';
 import type { BuildOrderEntry } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
+import type { EntryStatus } from './progress.js';
 
 /** A seat with fewer buildable grass nodes than this within {@link BUILD_SEARCH_MAX_RADIUS_NODES} of its
- *  base keeps its other buildings off the grass (authored): about the reserved zones of the full list's
- *  farm, wells, hives and herb hut. On the decoded maps the snow-corner seats of zimna_wojna hold
- *  140-480 such nodes, the green starts 1000-1900. */
+ *  base is short of grass (authored): about the reserved zones of the full list's farm, wells, hives and
+ *  herb hut. On the decoded maps the snow-corner seats of zimna_wojna hold 140-480 such nodes, the green
+ *  starts 1000-1900. Such a seat raises one building of each bio-pattern type
+ *  (`progress.ts`) and keeps the rest off the grass while {@link grassReserved}. */
 export const GRASS_SCARCE_BELOW_NODES = 600;
 
 /** Whether the building only stands on grass: the engine's bio-pattern rule (the well, the hive) or the
@@ -46,6 +50,27 @@ export function grassScarce(terrain: TerrainGraph, base: HalfCellNode): boolean 
   const scarce = grass < GRASS_SCARCE_BELOW_NODES;
   byBase.set(key, scarce);
   return scarce;
+}
+
+/** Whether `entry` places a {@link grassBound} building. */
+export function grassBoundEntry(ctx: SystemContext, entry: BuildOrderEntry): boolean {
+  if (entry.kind !== 'place') return false;
+  const type = buildingTypeByContentId(ctx.content, entry.building);
+  return type !== undefined && grassBound(type, entry);
+}
+
+/** Whether a seat short of grass still keeps it for the list: while some grass-bound entry of `order`
+ *  stands unmet. Once the last of them is placed, the herb hut on the default list, the other buildings
+ *  may take the grass that is left. */
+export function grassReserved(
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  base: HalfCellNode,
+  order: readonly BuildOrderEntry[],
+  statuses: readonly EntryStatus[],
+): boolean {
+  if (!grassScarce(terrain, base)) return false;
+  return order.some((entry, i) => statuses[i] === 'unmet' && grassBoundEntry(ctx, entry));
 }
 
 /** Whether the zone `cells` anchored at `(x, y)` covers a grass node. */

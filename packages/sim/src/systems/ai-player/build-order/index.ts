@@ -30,6 +30,7 @@ import {
   REBUILD_DELAY_TICKS,
   sitePace,
 } from './entries.js';
+import { grassBoundEntry, grassReserved } from './grass-reserve.js';
 import { placementSpot } from './placement.js';
 import {
   type DecisionMemo,
@@ -74,8 +75,8 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
  * {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and an upgrade holds while a bill good only it or
  * another site could make is not yet in store, or while it would idle a good's last working maker
  * ({@link upgradeKeepsSupply}). The exceptions are passed over instead ({@link Verdict}): a serving
- * placement with no room beside what it serves, a well or a hive with no grass left in reach, and a
- * coverage entry with no target it can cover.
+ * placement with no room beside what it serves, a grass building other than an `essential` one with no
+ * grass left in reach, and a coverage entry with no target it can cover.
  * Builders are never pinned to a site; the builder drive picks its own.
  *
  * Three rules keep a site from rising under the enemy's bows only to be knocked down again, and a razed
@@ -128,6 +129,7 @@ function runBuildOrder(
 
   const memo = decisionMemo();
   const statuses = order.map((entry) => entryStatus(world, ctx, player, owned, entry, memo));
+  const reserveGrass = grassReserved(ctx, terrain, anchor, order, statuses);
   const searches = new StalledSearches(world, player, statuses);
   // One search per entry a decision: the lanes and the list share each verdict.
   const verdicts = new Map<number, Verdict>();
@@ -149,6 +151,7 @@ function runBuildOrder(
           tribe,
           entry,
           siegeOf().underFire,
+          reserveGrass,
         );
         if (tribe !== undefined) searches.searched(entryIndex, ctx.tick, verdict.kind === 'act', false);
       }
@@ -173,6 +176,7 @@ function runBuildOrder(
       tribe,
       lane.entry,
       siegeOf().underFire,
+      reserveGrass,
     );
     searches.searched(lane.entryIndex, ctx.tick, placed !== null, false);
     if (placed !== null) return started(placed);
@@ -202,7 +206,19 @@ function runBuildOrder(
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
         if (searches.waits(entryIndex, ctx.tick)) return [];
-        const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, tribe, entry, underFire);
+        const spot = placementSpot(
+          world,
+          ctx,
+          terrain,
+          player,
+          owned,
+          anchor,
+          type,
+          tribe,
+          entry,
+          underFire,
+          reserveGrass,
+        );
         searches.searched(entryIndex, ctx.tick, spot !== null, true);
         return spot === null ? [] : started(siteCommand(type, spot, tribe, player));
       }
@@ -244,7 +260,7 @@ type PlaceCommand = Extract<PlayerCommand, { kind: 'placeBuilding' }>;
 
 /**
  * What the list makes of an unmet entry this decision. A serving placement with no room beside what it
- * serves, a bio-pattern building with no grass left for it, or a coverage entry with no target it can
+ * serves, a grass building with no grass left for it, or a coverage entry with no target it can
  * cover, is passed over: the workshop still runs, slower, and the goods still travel, only farther, while
  * a stalled list would not, and gatherers felling trees free no grass where the map has none. A passed-over
  * entry holds neither the list nor the lanes and moves neither the frontier nor the stall record. Every
@@ -262,14 +278,13 @@ function passesOver(ctx: SystemContext, entry: BuildOrderEntry): boolean {
 }
 
 /** A placement that exists to serve something beside it, a workshop an `unlessWithin` entry supplies or
- *  the ships a `shore` workshop launches, or one the engine lets stand only on grass. The farm and the
- *  herb hut keep to grass by the list's own `ground` rule, not the engine's, and stall as before. */
+ *  the ships a `shore` workshop launches, or a {@link grassBoundEntry} the list can go on without. */
 function placementPassesOver(
   ctx: SystemContext,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): boolean {
   if (entry.unlessWithin !== undefined || (entry.near?.some((a) => a.kind === 'shore') ?? false)) return true;
-  return buildingTypeByContentId(ctx.content, entry.building)?.buildOnBioPattern === true;
+  return entry.essential !== true && grassBoundEntry(ctx, entry);
 }
 
 function searchVerdict(
@@ -282,6 +297,7 @@ function searchVerdict(
   tribe: number | undefined,
   entry: BuildOrderEntry,
   underFire: EnemyFire,
+  reserveGrass: boolean,
 ): Verdict {
   if (tribe === undefined) return ACTS;
   switch (entry.kind) {
@@ -289,12 +305,35 @@ function searchVerdict(
       if (!placementPassesOver(ctx, entry)) return ACTS;
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined || !buildingEnabled(world, ctx, player, tribe, type.typeId)) return ACTS;
-      const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, tribe, entry, underFire);
+      const spot = placementSpot(
+        world,
+        ctx,
+        terrain,
+        player,
+        owned,
+        anchor,
+        type,
+        tribe,
+        entry,
+        underFire,
+        reserveGrass,
+      );
       return spot === null ? PASSED_OVER : { kind: 'act', placement: siteCommand(type, spot, tribe, player) };
     }
     case 'towerCoverage':
     case 'storeCoverage': {
-      const placed = coverageCommand(world, ctx, terrain, player, owned, anchor, tribe, entry, underFire);
+      const placed = coverageCommand(
+        world,
+        ctx,
+        terrain,
+        player,
+        owned,
+        anchor,
+        tribe,
+        entry,
+        underFire,
+        reserveGrass,
+      );
       return placed === null ? PASSED_OVER : { kind: 'act', placement: placed };
     }
     case 'upgrade':
@@ -352,6 +391,7 @@ function coverageCommand(
   tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' }>,
   underFire: EnemyFire,
+  reserveGrass: boolean,
 ): PlaceCommand | null {
   const type = buildingTypeByContentId(ctx.content, entry.building);
   if (type === undefined) return null; // unreachable after 'skip', kept for the type system
@@ -368,6 +408,7 @@ function coverageCommand(
     tribe,
     coverage,
     underFire,
+    reserveGrass,
   );
   for (const target of uncoveredTargets(world, ctx, player, owned, coverage)) {
     const spot = spotFor(target);
@@ -510,6 +551,7 @@ function replaceMissingBase(
     tribe,
     BASE_REPLACEMENT_ENTRY,
     underFire,
+    false,
   );
   if (spot === null) return [];
   return [siteCommand(type, spot, tribe, player)];

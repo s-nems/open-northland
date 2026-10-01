@@ -14,6 +14,7 @@ import { anchorNodeOf } from '../node-geometry.js';
 import { rivalOverSea } from '../sea-route.js';
 import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import { type BuildOrderEntry, isLaneEntry } from './entries.js';
+import { grassScarce } from './grass-reserve.js';
 import { unservedAnchor } from './placement.js';
 import { coverageOf, seatCovered } from './tower-coverage.js';
 
@@ -35,16 +36,27 @@ function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingT
 }
 
 /** One decision's answers, so the entries that ask the same question work it out once: whether the map
- *  holds a live resource, per good type, whether a rival lies over the sea, and the top-tier joineries'
- *  roles. */
+ *  holds a live resource, per good type, whether a rival lies over the sea, whether the seat is short of
+ *  grass, and the top-tier joineries' roles. */
 export interface DecisionMemo {
   readonly live: Map<number, boolean>;
   rivalOverSea: boolean | undefined;
+  grassScarce: boolean | undefined;
   roleOf: ((joinery: Entity) => JoineryRole) | undefined;
 }
 
 export function decisionMemo(): DecisionMemo {
-  return { live: new Map(), rivalOverSea: undefined, roleOf: undefined };
+  return { live: new Map(), rivalOverSea: undefined, grassScarce: undefined, roleOf: undefined };
+}
+
+/** {@link grassScarce} around the seat's base; false with no base or terrain. */
+function memoGrassScarce(world: World, ctx: SystemContext, player: number, memo: DecisionMemo): boolean {
+  if (memo.grassScarce === undefined) {
+    const base = seatBaseOf(world, ctx, player);
+    const node = base === null ? null : anchorNodeOf(world, base);
+    memo.grassScarce = node !== null && ctx.terrain !== undefined && grassScarce(ctx.terrain, node);
+  }
+  return memo.grassScarce;
 }
 
 function memoOverSea(world: World, ctx: SystemContext, player: number, memo: DecisionMemo): boolean {
@@ -90,8 +102,14 @@ export function entryStatus(
         const matches = type.kind === 'home' ? ownedType.kind === 'home' : counted.has(ownedType.typeId);
         if (matches && (roleOf === undefined || roleOf(e) === entry.role)) have++;
       }
-      if (have >= entry.count) return 'satisfied';
+      // A seat short of grass raises one of each bio-pattern building, the grass holding no more.
+      const wanted =
+        type.buildOnBioPattern && entry.count > 1 && memoGrassScarce(world, ctx, player, memo)
+          ? 1
+          : entry.count;
+      if (have >= wanted) return 'satisfied';
       if (entry.onlyWhen === 'rivalOverSea' && !memoOverSea(world, ctx, player, memo)) return 'skip';
+      if (entry.onlyWhen === 'grassScarce' && !memoGrassScarce(world, ctx, player, memo)) return 'skip';
       if (
         entry.unlessWithin !== undefined &&
         unservedAnchor(world, index, owned, counted, entry.unlessWithin) === null

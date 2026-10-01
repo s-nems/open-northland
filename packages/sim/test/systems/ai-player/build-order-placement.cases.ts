@@ -96,11 +96,17 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(home?.kind).toBe('placeBuilding');
   });
 
+  /** A home first, then a well still to place, which keeps a grass-short seat's reservation on. */
+  const HOME_BEFORE_WELL: readonly BuildOrderEntry[] = [
+    { kind: 'place', building: 'home_level_00', count: 1 },
+    { kind: 'place', building: 'work_well_00', count: 1 },
+  ];
+
   it('keeps a home off the grass on a seat short of it, and builds on the grass once nothing else is left', () => {
     // A grass patch round the HQ, far under the scarcity line, and sand beyond it.
     const GRASS_RADIUS = 8;
     const onPatch = (x: number, y: number) => Math.abs(x - HQ_X) + Math.abs(y - HQ_Y) <= GRASS_RADIUS;
-    const home: BuildOrderEntry[] = [{ kind: 'place', building: 'home_level_00', count: 1 }];
+    const home = HOME_BEFORE_WELL;
     const scarce = new Simulation({
       seed: 1,
       content: aiContent(),
@@ -155,13 +161,7 @@ describe('build-order placement - affinity and ground rules', () => {
     });
     placeHq(sim);
     sim.step();
-    const home = [
-      ...buildOrderModule([{ kind: 'place', building: 'home_level_00', count: 1 }]).run(
-        sim.world,
-        { ...ctxOf(sim), content },
-        SEAT,
-      ),
-    ][0];
+    const home = [...buildOrderModule(HOME_BEFORE_WELL).run(sim.world, { ...ctxOf(sim), content }, SEAT)][0];
     if (home?.kind !== 'placeBuilding') throw new Error('expected the home placement');
     expect(Math.abs(home.x - HQ_X) + Math.abs(home.y - HQ_Y)).toBeLessThanOrEqual(GRASS_RADIUS);
   });
@@ -180,7 +180,7 @@ describe('build-order placement - affinity and ground rules', () => {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('expected a mapped sim');
     expect(grassScarce(terrain, { hx: HQ_X, hy: HQ_Y })).toBe(false);
-    const home = firstCommandOf(sim, [{ kind: 'place', building: 'home_level_00', count: 1 }]);
+    const home = firstCommandOf(sim, HOME_BEFORE_WELL);
     if (home?.kind !== 'placeBuilding') throw new Error('expected the home placement');
     expect(onPatch(home.x, home.y)).toBe(true);
   });
@@ -199,6 +199,74 @@ describe('build-order placement - affinity and ground rules', () => {
     const carrier = aiPlayerEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
     expect(sim.world.tryGet(carrier, StalledPlacements)?.holding ?? null).toBeNull();
+  });
+
+  it('frees the reserved grass once the last grass building of the list is placed', () => {
+    const GRASS_RADIUS = 8;
+    const onPatch = (x: number, y: number) => Math.abs(x - HQ_X) + Math.abs(y - HQ_Y) <= GRASS_RADIUS;
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: mapWithSand(64, 32, (x, y) => !onPatch(x, y)),
+    });
+    placeHq(sim);
+    sim.step();
+    const well = firstCommandOf(sim, [{ kind: 'place', building: 'work_well_00', count: 1 }]);
+    if (well?.kind !== 'placeBuilding') throw new Error('expected the well placement');
+    expect(onPatch(well.x, well.y)).toBe(true);
+    sim.enqueueSetup(well);
+    sim.step();
+    const home = firstCommandOf(sim, [
+      { kind: 'place', building: 'work_well_00', count: 1 },
+      { kind: 'place', building: 'home_level_00', count: 1 },
+    ]);
+    if (home?.kind !== 'placeBuilding') throw new Error('expected the home placement');
+    expect(onPatch(home.x, home.y)).toBe(true);
+  });
+
+  it('raises one well on a seat short of grass however many the entry counts, and every one on a green seat', () => {
+    const wells: BuildOrderEntry[] = [{ kind: 'place', building: 'work_well_00', count: 3 }];
+    const patch = (radius: number) =>
+      new Simulation({
+        seed: 1,
+        content: aiContent(),
+        map: mapWithSand(64, 32, (x, y) => Math.abs(x - HQ_X) + Math.abs(y - HQ_Y) > radius),
+      });
+    const SCARCE_RADIUS = 8;
+    const GREEN_RADIUS = 20;
+    for (const [radius, more] of [
+      [SCARCE_RADIUS, false],
+      [GREEN_RADIUS, true],
+    ] as const) {
+      const sim = patch(radius);
+      placeHq(sim);
+      sim.step();
+      const first = firstCommandOf(sim, wells);
+      if (first?.kind !== 'placeBuilding') throw new Error('expected the first well');
+      sim.enqueueSetup(first);
+      sim.step();
+      expect(firstCommandOf(sim, wells) !== undefined, `radius ${radius}`).toBe(more);
+    }
+  });
+
+  it('passes over a grass placement with no grass in reach but holds the list for an essential one', () => {
+    // The mill stands in for the herb hut, which the fixture lacks: a `plantable` entry, not essential.
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: mapWithSand(64, 32, () => true) });
+    placeHq(sim);
+    sim.step();
+    const after = { kind: 'place', building: 'home_level_00', count: 1 } as const;
+    expect(
+      firstCommandOf(sim, [
+        { kind: 'place', building: 'work_mill_00', count: 1, ground: 'plantable' },
+        after,
+      ]),
+    ).toMatchObject({ kind: 'placeBuilding', buildingType: HOME_TYPE });
+    expect(
+      firstCommandOf(sim, [
+        { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable', essential: true },
+        after,
+      ]),
+    ).toBeUndefined();
   });
 
   it('builds past a barren belt wider than the reach, on its own land only', () => {
