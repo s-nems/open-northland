@@ -1,7 +1,6 @@
 import { terrainWorldBounds, tileToScreen } from '@open-northland/render';
 import { type DiplomacyState, FOG_MODE, FOG_STATE, type FogView, fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
 import {
   ANIMAL_DOT_COLOUR,
   forEachMinimapDot,
@@ -14,6 +13,7 @@ import {
   type MinimapLayer,
   withAllMinimapLayers,
 } from '../src/hud/minimap/filters.js';
+import { MINIMAP_PLAYER_COLOURS, STANCE_COLOURS, STANCE_SELF_COLOUR } from '../src/hud/minimap/palette.js';
 import type { MinimapMark } from '../src/hud/minimap/stamps.js';
 import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
 
@@ -101,7 +101,7 @@ function roadSite(id: number, player: number, x: number, y: number): Ent {
   return { id, components: { RoadSite: {}, Owner: { player }, ...at(x, y) } };
 }
 
-const colour = (player: number): number => PLAYER_SWATCH_COLORS[player] ?? 0;
+const colour = (player: number): number => MINIMAP_PLAYER_COLOURS[player] ?? 0;
 
 /** A FogView whose state is decided per cell (missing cells read as EXPLORED). */
 function fogWhere(state: (cellX: number, cellY: number) => number): FogView {
@@ -116,7 +116,7 @@ function fogWhere(state: (cellX: number, cellY: number) => number): FogView {
 }
 
 describe('forEachMinimapDot', () => {
-  it('marks each kind with its own shape in its owner colour, animals in the fauna tint', () => {
+  it('marks each kind with its own shape in its owner colour, animals in the fauna tint, soldiers last', () => {
     const dots = dotsOf([
       person(1, 0, 2, 3),
       person(2, 1, 3, 3, SOLDIER_JOB),
@@ -127,8 +127,8 @@ describe('forEachMinimapDot', () => {
     expect(dots).toEqual([
       { ...pxAt(4, 5), mark: 'building', colour: colour(1) },
       { ...pxAt(2, 3), mark: 'civilian', colour: colour(0) },
-      { ...pxAt(3, 3), mark: 'soldier', colour: colour(1) },
       { ...pxAt(6, 6), mark: 'animal', colour: ANIMAL_DOT_COLOUR },
+      { ...pxAt(3, 3), mark: 'soldier', colour: colour(1) },
       { ...pxAt(5, 5), mark: 'vehicle', colour: colour(0) },
     ]);
   });
@@ -227,7 +227,63 @@ describe('forEachMinimapDot', () => {
 
   it('remaps the swatch through playerColourOf and wraps the raw player index modulo the table', () => {
     expect(dotsOf([person(1, 5, 0, 0)], { playerColourOf: () => 1 })[0]?.colour).toBe(colour(1));
-    expect(dotsOf([person(1, PLAYER_SWATCH_COLORS.length, 0, 0)])[0]?.colour).toBe(colour(0));
+    expect(dotsOf([person(1, MINIMAP_PLAYER_COLOURS.length, 0, 0)])[0]?.colour).toBe(colour(0));
+  });
+
+  it('paints owners by stance on request: self white, friends teal, enemies red, the rest amber', () => {
+    const NEUTRAL = 3;
+    const world = [
+      person(1, VIEWER, 1, 1),
+      person(2, FRIEND, 2, 2),
+      person(3, FOE, 3, 3),
+      person(4, NEUTRAL, 4, 4),
+    ];
+    const stance = { ...ALL_LAYERS, colours: 'stance' as const };
+    expect(dotsOf(world, { filters: stance }).map((dot) => dot.colour)).toEqual([
+      STANCE_SELF_COLOUR,
+      STANCE_COLOURS.friend,
+      STANCE_COLOURS.neutral,
+      STANCE_COLOURS.enemy,
+    ]);
+    // A whole-map view has no stance to paint and keeps the team colours.
+    expect(dotsOf(world, { filters: stance, viewer: null }).map((dot) => dot.colour)).toEqual(
+      [VIEWER, FRIEND, FOE, NEUTRAL].map(colour),
+    );
+  });
+
+  it('stamps hostile owners last in each layer, their soldiers on top of all', () => {
+    const world = [
+      building(1, FOE, 1, 1),
+      building(2, VIEWER, 2, 2),
+      person(3, FOE, 3, 3, SOLDIER_JOB),
+      person(4, FOE, 3, 4),
+      person(5, VIEWER, 4, 4, SOLDIER_JOB),
+      person(6, FRIEND, 5, 5),
+      vehicle(7, FOE, 6, 6),
+      vehicle(8, VIEWER, 6, 7),
+    ];
+    const owners = dotsOf(world).map((dot) => `${dot.mark}:${dot.colour === colour(FOE) ? 'foe' : 'own'}`);
+    expect(owners).toEqual([
+      'building:own',
+      'building:foe',
+      'civilian:own',
+      'soldier:own',
+      'civilian:foe',
+      'soldier:foe',
+      'vehicle:own',
+      'vehicle:foe',
+    ]);
+    // A whole-map view has no hostile side: only soldiers move above the civilians.
+    expect(dotsOf(world, { viewer: null }).map((dot) => dot.mark)).toEqual([
+      'building',
+      'building',
+      'civilian',
+      'civilian',
+      'soldier',
+      'soldier',
+      'vehicle',
+      'vehicle',
+    ]);
   });
 
   it('walks only its layer indexes on a replot, never the entity lane again', () => {

@@ -56,6 +56,8 @@ describe('parseStoredSettings', () => {
         },
         scope: 'hostile',
         ground: 'muted',
+        markerSize: 'small',
+        colours: 'stance',
       },
       mapPreview: 'map',
       soundEnabled: false,

@@ -6,7 +6,6 @@ import {
   type FogView,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import {
   isWildlife,
   ownerPlayerOf,
@@ -16,6 +15,7 @@ import {
   workFlagOf,
 } from '../../game/snapshot.js';
 import type { MinimapFilters, MinimapScope } from './filters.js';
+import { MINIMAP_PLAYER_COLOURS, STANCE_COLOURS, STANCE_SELF_COLOUR } from './palette.js';
 import type { MinimapMark } from './stamps.js';
 
 /** Fallback dot colour for a player outside the swatch table. */
@@ -38,6 +38,31 @@ export interface MinimapDotContext {
   /** The viewer seat's stance toward `owner`. */
   readonly stanceToward: (owner: number) => DiplomacyState;
   readonly playerColourOf?: ((player: number) => number) | undefined;
+}
+
+/** Markers a layer holds back to stamp over the rest of it, in the order they came. */
+class HeldMarks {
+  private readonly entities: SnapshotEntity[] = [];
+  private readonly marks: MinimapMark[] = [];
+  private readonly colours: number[] = [];
+
+  hold(entity: SnapshotEntity, mark: MinimapMark, colour: number): void {
+    this.entities.push(entity);
+    this.marks.push(mark);
+    this.colours.push(colour);
+  }
+
+  release(plot: (entity: SnapshotEntity, mark: MinimapMark, colour: number) => void): void {
+    for (let i = 0; i < this.entities.length; i++) {
+      const entity = this.entities[i];
+      const mark = this.marks[i];
+      const colour = this.colours[i];
+      if (entity !== undefined && mark !== undefined && colour !== undefined) plot(entity, mark, colour);
+    }
+    this.entities.length = 0;
+    this.marks.length = 0;
+    this.colours.length = 0;
+  }
 }
 
 /** A plotted marker: raster-px centre `(bx, by)`, its shape and packed `0xRRGGBB` colour. Loose primitives
@@ -67,6 +92,8 @@ export function readMinimapIndexes(snapshot: WorldSnapshot): void {
  * Plot the enabled layers of `snapshot` in the ground raster's px, bottom to top: road sites, signposts
  * and flags, buildings, animals and people, vehicles. Each layer walks only its own component index, so
  * a replot costs the plotted entities, never the whole entity list. Laid roads are the road layer's.
+ * Within a layer, hostile owners' markers stamp last and soldiers after civilians, so an enemy army is
+ * never buried under the viewer's own crowd.
  */
 export function forEachMinimapDot(
   snapshot: WorldSnapshot,
@@ -74,11 +101,19 @@ export function forEachMinimapDot(
   sink: MinimapDotSink,
 ): void {
   const { layers, scope } = ctx.filters;
-  const { fog, bounds, scale } = ctx;
-  const admits = (owner: number): boolean => scopeAdmits(scope, owner, ctx.viewer, ctx.stanceToward);
-  const colourOf = (player: number): number =>
-    PLAYER_SWATCH_COLORS[(ctx.playerColourOf?.(player) ?? player) % PLAYER_SWATCH_COLORS.length] ??
-    UNKNOWN_PLAYER_DOT_COLOUR;
+  const { fog, bounds, scale, viewer, stanceToward } = ctx;
+  const admits = (owner: number): boolean => scopeAdmits(scope, owner, viewer, stanceToward);
+  const hostile = (owner: number): boolean =>
+    viewer !== null && owner !== viewer && stanceToward(owner) === 'enemy';
+  // Without a seat there is no stance to paint, so a whole-map view keeps the team colours.
+  const byStance = ctx.filters.colours === 'stance' && viewer !== null;
+  const colourOf = (player: number): number => {
+    if (byStance) return player === viewer ? STANCE_SELF_COLOUR : STANCE_COLOURS[stanceToward(player)];
+    return (
+      MINIMAP_PLAYER_COLOURS[(ctx.playerColourOf?.(player) ?? player) % MINIMAP_PLAYER_COLOURS.length] ??
+      UNKNOWN_PLAYER_DOT_COLOUR
+    );
+  };
   // Only currently-visible ground plots an entity; the viewer's own forces always see their own cell.
   const plot = (e: SnapshotEntity, mark: MinimapMark, colour: number): void => {
     const at = positionOf(e);
@@ -93,20 +128,35 @@ export function forEachMinimapDot(
       colour,
     );
   };
+  const soldiers = new HeldMarks();
+  const hostiles = new HeldMarks();
+  const hostileSoldiers = new HeldMarks();
+  const owned = (e: SnapshotEntity, owner: number, mark: MinimapMark, colour: number): void => {
+    if (hostile(owner)) (mark === 'soldier' ? hostileSoldiers : hostiles).hold(e, mark, colour);
+    else if (mark === 'soldier') soldiers.hold(e, mark, colour);
+    else plot(e, mark, colour);
+  };
+  const endLayer = (): void => {
+    soldiers.release(plot);
+    hostiles.release(plot);
+    hostileSoldiers.release(plot);
+  };
 
   if (layers.roads) {
     // Few and transient, and like any owned marker they follow the scope and the visible ground, which
     // moves with every sighting; the static laid roads are baked apart.
     for (const site of entitiesWith(snapshot, 'RoadSite')) {
       const owner = ownerPlayerOf(site);
-      if (owner === undefined || admits(owner)) plot(site, 'roadSite', ROAD_SITE_DOT_COLOUR);
+      if (owner === undefined) plot(site, 'roadSite', ROAD_SITE_DOT_COLOUR);
+      else if (admits(owner)) owned(site, owner, 'roadSite', ROAD_SITE_DOT_COLOUR);
     }
+    endLayer();
   }
 
   if (layers.signposts) {
     for (const post of entitiesWith(snapshot, 'Signpost')) {
       const owner = ownerPlayerOf(post);
-      if (owner !== undefined && admits(owner)) plot(post, 'signpost', colourOf(owner));
+      if (owner !== undefined && admits(owner)) owned(post, owner, 'signpost', colourOf(owner));
     }
     // A delivery flag carries no owner; its gatherer's is the flag's, one gatherer per flag.
     for (const gatherer of entitiesWith(snapshot, 'WorkFlag')) {
@@ -114,15 +164,17 @@ export function forEachMinimapDot(
       const flagId = workFlagOf(gatherer);
       if (owner === undefined || flagId === undefined || !admits(owner)) continue;
       const flag = entityById(snapshot, flagId);
-      if (flag !== undefined) plot(flag, 'signpost', colourOf(owner));
+      if (flag !== undefined) owned(flag, owner, 'signpost', colourOf(owner));
     }
+    endLayer();
   }
 
   if (layers.buildings) {
     for (const building of entitiesWith(snapshot, 'Building')) {
       const owner = ownerPlayerOf(building);
-      if (owner !== undefined && admits(owner)) plot(building, 'building', colourOf(owner));
+      if (owner !== undefined && admits(owner)) owned(building, owner, 'building', colourOf(owner));
     }
+    endLayer();
   }
 
   if (layers.civilians || layers.soldiers || layers.animals) {
@@ -138,8 +190,9 @@ export function forEachMinimapDot(
       const job = settlerJobType(settler);
       const soldier = job !== undefined && ctx.isFighterJob(job);
       if (soldier ? layers.soldiers : layers.civilians)
-        plot(settler, soldier ? 'soldier' : 'civilian', colourOf(owner));
+        owned(settler, owner, soldier ? 'soldier' : 'civilian', colourOf(owner));
     }
+    endLayer();
   }
 
   if (layers.vehicles) {
@@ -147,7 +200,9 @@ export function forEachMinimapDot(
       const owner = ownerPlayerOf(vehicle);
       // A vehicle a ship carries stands nowhere on the map.
       const carrier = (vehicle.components.Vehicle as { carrier?: unknown }).carrier ?? null;
-      if (owner !== undefined && carrier === null && admits(owner)) plot(vehicle, 'vehicle', colourOf(owner));
+      if (owner !== undefined && carrier === null && admits(owner))
+        owned(vehicle, owner, 'vehicle', colourOf(owner));
     }
+    endLayer();
   }
 }

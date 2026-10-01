@@ -33,8 +33,8 @@ export const plGame = {
         signposts: 'Drogowskazy i flagi',
       },
       layerTips: {
-        civilians: 'Osadnicy jako małe kwadraty w kolorze właściciela.',
-        soldiers: 'Żołnierze i bohaterowie jako romby z ciemną obwódką.',
+        civilians: 'Osadnicy jako małe kwadraty.',
+        soldiers: 'Żołnierze i bohaterowie jako romby rysowane nad osadnikami.',
         buildings: 'Budynki i place budowy jako większe kwadraty.',
         vehicles: 'Wozy, katapulty i statki jako kwadraty z jasną obwódką.',
         animals: 'Dzikie zwierzęta i zwierzęta hodowlane jako jasne kropki.',
@@ -58,6 +58,20 @@ export const plGame = {
         muted: 'Przygaszony teren, znaczniki wyraźniejsze.',
         dark: 'Teren ledwo widoczny, znaczniki na pierwszym planie.',
         hidden: 'Bez terenu: same znaczniki na ciemnym tle.',
+      },
+      markerSize: 'Znaczniki',
+      markerSizes: { small: 'Małe', medium: 'Średnie', large: 'Duże' },
+      markerSizeTips: {
+        small: 'Małe znaczniki, więcej widocznego terenu.',
+        medium: 'Zwykły rozmiar znaczników.',
+        large: 'Duże znaczniki, czytelne na pierwszy rzut oka.',
+      },
+      colours: 'Kolory',
+      colourModes: { players: 'Graczy', stance: 'Sojuszy' },
+      colourTips: {
+        players: 'Każde plemię we własnym kolorze.',
+        stance:
+          'Ty na biało, sojusznicy na turkusowo, wrogowie na czerwono, pozostali na bursztynowo. Bez miejsca gracza kolory plemion.',
       },
     },
     changeProfession: 'Zmiana zawodu',

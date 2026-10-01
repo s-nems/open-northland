@@ -16,6 +16,8 @@ describe('minimap filters', () => {
     expect(allMinimapLayersShown(DEFAULT_MINIMAP_FILTERS)).toBe(false);
     expect(DEFAULT_MINIMAP_FILTERS.scope).toBe('everyone');
     expect(DEFAULT_MINIMAP_FILTERS.ground).toBe('natural');
+    expect(DEFAULT_MINIMAP_FILTERS.markerSize).toBe('medium');
+    expect(DEFAULT_MINIMAP_FILTERS.colours).toBe('players');
     expect(defaultSettings().minimapFilters).toEqual(DEFAULT_MINIMAP_FILTERS);
   });
 
@@ -34,6 +36,8 @@ describe('minimap filters', () => {
       ...toggleMinimapLayer(DEFAULT_MINIMAP_FILTERS, 'soldiers'),
       scope: 'hostile' as const,
       ground: 'dark' as const,
+      markerSize: 'large' as const,
+      colours: 'stance' as const,
     };
     const stored = JSON.stringify({ ...defaultSettings(), minimapFilters: chosen });
     expect(parseStoredSettings(stored).minimapFilters).toEqual(chosen);
@@ -46,11 +50,23 @@ describe('minimap filters', () => {
       layers: { soldiers: false, people: false, animals: 'no' },
       scope: 'allies',
       ground: 'black',
+      markerSize: 'huge',
+      colours: 1,
     });
     expect(parsed).toEqual({ ...toggleMinimapLayer(DEFAULT_MINIMAP_FILTERS, 'soldiers'), scope: 'everyone' });
     expect(parsed.ground).toBe('natural');
     expect(parseMinimapFilters({ scope: 'mine' }).ground).toBe('natural');
     expect(parseMinimapFilters({ ground: 'hidden' }).ground).toBe('hidden');
+    expect(parsed.markerSize).toBe('medium');
+    expect(parsed.colours).toBe('players');
+    expect(parseMinimapFilters({ scope: 'mine' })).toMatchObject({
+      markerSize: 'medium',
+      colours: 'players',
+    });
+    expect(parseMinimapFilters({ markerSize: 'small', colours: 'stance' })).toMatchObject({
+      markerSize: 'small',
+      colours: 'stance',
+    });
     expect(parsed.layers).not.toHaveProperty('people');
   });
 });

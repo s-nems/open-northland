@@ -31,7 +31,7 @@ import {
 } from './model.js';
 import { createDotReplotGate } from './replot-gate.js';
 import { createRoadLayer } from './road-layer.js';
-import { stampMark } from './stamps.js';
+import { MARKER_SIZE_SCALES, stampMark } from './stamps.js';
 import { createMinimapSurface } from './surface.js';
 
 /** Under the map while the DOM backing loads: the dark wood of the frames' backing. */
@@ -47,7 +47,7 @@ export interface MinimapOptions {
   /** The feature a standing node of each sim good type draws as on the ground. */
   readonly featureOfGoodType: ReadonlyMap<number, MinimapFeature>;
   readonly playerColourOf?: ((player: number) => number) | undefined;
-  /** The stored layer, owner and ground choices; they persist through `onFiltersChange`. */
+  /** The stored layer, owner, marker and ground choices; they persist through `onFiltersChange`. */
   readonly filters?: MinimapFilters | undefined;
   readonly onFiltersChange?: ((filters: MinimapFilters) => void) | undefined;
   readonly isFighterJob: (jobType: number) => boolean;
@@ -178,6 +178,8 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       onAllLayers: (shown) => setFilters(withAllMinimapLayers(filters, shown)),
       onScope: (scope) => setFilters({ ...filters, scope }),
       onGround: (ground) => setFilters({ ...filters, ground }),
+      onMarkerSize: (markerSize) => setFilters({ ...filters, markerSize }),
+      onColours: (colours) => setFilters({ ...filters, colours }),
     },
     opts.frame,
   );
@@ -237,7 +239,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   const dotRaster = { rgba: pixels, width: dotsW, height: dotsH };
   const stampScale = (): number => uiScale / world.scale.x;
   const stamp: MinimapDotSink = (x, y, mark, colour) =>
-    stampMark(dotRaster, x, y, mark, colour, stampScale());
+    stampMark(dotRaster, x, y, mark, colour, stampScale(), MARKER_SIZE_SCALES[filters.markerSize]);
 
   return {
     claimsPointer: (x, y) => {

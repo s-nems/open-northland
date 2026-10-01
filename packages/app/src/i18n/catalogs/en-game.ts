@@ -33,8 +33,8 @@ export const enGame = {
         signposts: 'Signposts and flags',
       },
       layerTips: {
-        civilians: "Settlers, as small squares in their owner's colour.",
-        soldiers: 'Soldiers and heroes, as diamonds with a dark rim.',
+        civilians: 'Settlers, as small squares.',
+        soldiers: 'Soldiers and heroes, as diamonds drawn over the settlers.',
         buildings: 'Buildings and construction sites, as larger squares.',
         vehicles: 'Carts, catapults and ships, as squares with a pale rim.',
         animals: 'Wild animals and livestock, as pale dots.',
@@ -58,6 +58,20 @@ export const enGame = {
         muted: 'Dimmed ground, clearer markers.',
         dark: 'The ground barely shows, the markers come first.',
         hidden: 'No ground: only the markers, on a dark field.',
+      },
+      markerSize: 'Markers',
+      markerSizes: { small: 'Small', medium: 'Medium', large: 'Large' },
+      markerSizeTips: {
+        small: 'Small markers, more ground in view.',
+        medium: 'The usual marker size.',
+        large: 'Large markers that read at a glance.',
+      },
+      colours: 'Colours',
+      colourModes: { players: 'Players', stance: 'Stance' },
+      colourTips: {
+        players: 'Every tribe in its own colour.',
+        stance:
+          'You in white, friends in teal, enemies in red, everyone else in amber. Without a seat, tribe colours.',
       },
     },
     changeProfession: 'Change profession',

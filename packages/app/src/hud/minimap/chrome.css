@@ -264,11 +264,27 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.on-hud .on-minimap-chrome__choice:nth-child(even) {
+.on-hud
+  .on-minimap-chrome__choices:not(.on-minimap-chrome__choices--inline)
+  .on-minimap-chrome__choice:nth-child(even) {
   border-left: 1px solid #80603a66;
 }
-.on-hud .on-minimap-chrome__choice:nth-child(n + 3) {
+.on-hud
+  .on-minimap-chrome__choices:not(.on-minimap-chrome__choices--inline)
+  .on-minimap-chrome__choice:nth-child(n + 3) {
   border-top: 1px solid #80603a66;
+}
+.on-hud .on-minimap-chrome__choices--inline {
+  grid-template-columns: none;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+}
+.on-hud .on-minimap-chrome__choices--inline .on-minimap-chrome__choice + .on-minimap-chrome__choice {
+  border-left: 1px solid #80603a66;
+}
+/* A second legend in the same section: no rule above it, so the marker options read as one group. */
+.on-hud .on-minimap-chrome__legend--follow {
+  margin: 5px 0 4px;
 }
 .on-hud .on-minimap-chrome__choices:not([aria-disabled="true"]) .on-minimap-chrome__choice:hover {
   background: #80603a66;

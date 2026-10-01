@@ -15,10 +15,14 @@ import type { Rect } from '../geometry.js';
 import { createMinimapBacking } from './backing.js';
 import {
   allMinimapLayersShown,
+  MINIMAP_COLOUR_MODES,
   MINIMAP_LAYERS,
+  MINIMAP_MARKER_SIZES,
   MINIMAP_SCOPES,
+  type MinimapColourMode,
   type MinimapFilters,
   type MinimapLayer,
+  type MinimapMarkerSize,
   type MinimapScope,
 } from './filters.js';
 import type { MinimapFrame } from './frames.js';
@@ -41,6 +45,8 @@ export interface MinimapChromeCallbacks {
   readonly onAllLayers: (shown: boolean) => void;
   readonly onScope: (scope: MinimapScope) => void;
   readonly onGround: (ground: MinimapGroundMode) => void;
+  readonly onMarkerSize: (markerSize: MinimapMarkerSize) => void;
+  readonly onColours: (colours: MinimapColourMode) => void;
 }
 
 export interface MinimapChrome {
@@ -78,16 +84,20 @@ interface RadioChoices<T extends string> {
   choose(chosen: T): void;
 }
 
-/** A segmented control of `values`, inert while the group is marked disabled. A radio group is one tab
- *  stop; the arrow keys move the choice, as native radios do. */
+/** A segmented control of `values`, inert while the group is marked disabled; `inline` lays it out in
+ *  one row. A radio group is one tab stop; the arrow keys move the choice, as native radios do. */
 function radioChoices<T extends string>(
   values: readonly T[],
   labelledBy: string,
   labels: Readonly<Record<T, string>>,
   tips: Readonly<Record<T, string>>,
   onChoose: (value: T) => void,
+  inline = false,
 ): RadioChoices<T> {
-  const group = element('div', 'on-minimap-chrome__choices');
+  const group = element(
+    'div',
+    inline ? 'on-minimap-chrome__choices on-minimap-chrome__choices--inline' : 'on-minimap-chrome__choices',
+  );
   group.setAttribute('role', 'radiogroup');
   group.setAttribute('aria-labelledby', labelledBy);
   const options = new Map<T, HTMLButtonElement>();
@@ -245,7 +255,41 @@ export function createMinimapChrome(
     copy.groundTips,
     callbacks.onGround,
   );
-  popover.append(head, layerGroup, scopeLegend, scopes.group, noSeatNote, groundLegend, grounds.group);
+  const markersLegend = element('h3', 'on-minimap-chrome__legend on-minimap-chrome__legend--section');
+  markersLegend.id = 'on-minimap-markers-legend';
+  markersLegend.textContent = copy.markerSize;
+  const markers = radioChoices(
+    MINIMAP_MARKER_SIZES,
+    markersLegend.id,
+    copy.markerSizes,
+    copy.markerSizeTips,
+    callbacks.onMarkerSize,
+    true,
+  );
+  const coloursLegend = element('h3', 'on-minimap-chrome__legend on-minimap-chrome__legend--follow');
+  coloursLegend.id = 'on-minimap-colours-legend';
+  coloursLegend.textContent = copy.colours;
+  const colours = radioChoices(
+    MINIMAP_COLOUR_MODES,
+    coloursLegend.id,
+    copy.colourModes,
+    copy.colourTips,
+    callbacks.onColours,
+    true,
+  );
+  popover.append(
+    head,
+    layerGroup,
+    scopeLegend,
+    scopes.group,
+    noSeatNote,
+    groundLegend,
+    grounds.group,
+    markersLegend,
+    markers.group,
+    coloursLegend,
+    colours.group,
+  );
 
   const placeFilters = (): void => {
     const bounds = plane.getBoundingClientRect();
@@ -352,6 +396,9 @@ export function createMinimapChrome(
       scopes.choose(state.filters.scope);
       setDisabled(scopes.group, !state.hasSeat);
       grounds.choose(state.filters.ground);
+      markers.choose(state.filters.markerSize);
+      colours.choose(state.filters.colours);
+      setDisabled(colours.group, !state.hasSeat);
       if (setHidden(noSeatNote, state.hasSeat)) placeFilters();
       tips.refresh();
     },

@@ -1,4 +1,6 @@
+import type { MinimapMarkerSize } from './filters.js';
 import { stampDot } from './model.js';
+import { MARKER_RIM_COLOUR } from './palette.js';
 
 /** The marker shapes the dot raster stamps, one per kind of plotted thing. */
 export type MinimapMark =
@@ -22,26 +24,38 @@ export interface DotRaster {
 const CIVILIAN_HALF = 1;
 const BUILDING_HALF = 1.5;
 const SOLDIER_RADIUS = 1.5;
-const SOLDIER_RIM = 0.5;
 const VEHICLE_HALF = 1;
-const VEHICLE_RIM = 0.6;
 const ANIMAL_HALF = 0.6;
 const ROAD_HALF = 0.75;
 const SIGNPOST_HALF_W = 0.5;
 const SIGNPOST_HALF_H = 1.25;
+/** The marker size choice as a factor on the authored extents. Approximations. */
+export const MARKER_SIZE_SCALES: Readonly<Record<MinimapMarkerSize, number>> = {
+  small: 0.75,
+  medium: 1,
+  large: 1.4,
+};
+/** The outline around every owned marker, in minimap screen px. It does not grow with the marker size:
+ *  it only has to part the fill from the ground. Authored. */
+const RIM = 1;
+/** Widening a diamond's L1 radius by `d` thickens its slanted edges by `d / sqrt 2` only. */
+const DIAMOND_RIM_REACH = Math.SQRT2;
 
-/** A dark rim sets soldiers apart from civilians in the same player colour; a pale rim marks vehicles. */
-const SOLDIER_RIM_COLOUR = 0x1a120a;
+/** Owned markers sit in a dark rim, which the light minimap fills stand out against; a vehicle's pale rim
+ *  sets it apart from a settler of the same colour. */
 const VEHICLE_RIM_COLOUR = 0xf4ead0;
 
 /** No stamp shrinks below one raster px across, or a zoomed-in marker would vanish between pixels. */
 const MIN_HALF_PX = 0.6;
 /** A diamond whose radius reaches the nearest pixel centre from any point: half a px on each axis. */
 const MIN_DIAMOND_RADIUS_PX = 1;
+/** A rim keeps at least one raster px on each side. */
+const MIN_RIM_PX = 1;
 
 /**
  * Stamp `mark` centred on raster px `(cx, cy)`. `pxPerMinimapPx` converts the marker's authored minimap
- * size to raster px at the current zoom and UI scale.
+ * size to raster px at the current zoom and UI scale; `markerScale` is the player's marker size choice,
+ * applied to the body and not the rim.
  */
 export function stampMark(
   raster: DotRaster,
@@ -50,43 +64,47 @@ export function stampMark(
   mark: MinimapMark,
   colour: number,
   pxPerMinimapPx: number,
+  markerScale = 1,
 ): void {
-  const size = (minimapPx: number): number => Math.max(MIN_HALF_PX, minimapPx * pxPerMinimapPx);
+  const size = (minimapPx: number): number => Math.max(MIN_HALF_PX, minimapPx * markerScale * pxPerMinimapPx);
+  const rim = Math.max(MIN_RIM_PX, RIM * pxPerMinimapPx);
   const square = (half: number, fill: number): void =>
-    stampDot(raster.rgba, raster.width, raster.height, cx, cy, size(half), fill);
+    stampDot(raster.rgba, raster.width, raster.height, cx, cy, half, fill);
+  const rimmedSquare = (minimapHalf: number, rimColour: number): void => {
+    const half = size(minimapHalf);
+    square(half + rim, rimColour);
+    square(half, colour);
+  };
   switch (mark) {
     case 'civilian':
-      square(CIVILIAN_HALF, colour);
+      rimmedSquare(CIVILIAN_HALF, MARKER_RIM_COLOUR);
       return;
     case 'building':
-      square(BUILDING_HALF, colour);
+      rimmedSquare(BUILDING_HALF, MARKER_RIM_COLOUR);
+      return;
+    case 'vehicle':
+      rimmedSquare(VEHICLE_HALF, VEHICLE_RIM_COLOUR);
       return;
     case 'animal':
-      square(ANIMAL_HALF, colour);
+      square(size(ANIMAL_HALF), colour);
       return;
     case 'road':
     case 'roadSite':
-      square(ROAD_HALF, colour);
-      return;
-    case 'vehicle':
-      square(VEHICLE_HALF + VEHICLE_RIM, VEHICLE_RIM_COLOUR);
-      square(VEHICLE_HALF, colour);
+      square(size(ROAD_HALF), colour);
       return;
     case 'soldier': {
-      const radius = Math.max(MIN_DIAMOND_RADIUS_PX, SOLDIER_RADIUS * pxPerMinimapPx);
-      stampDiamond(
-        raster,
-        cx,
-        cy,
-        radius + Math.max(MIN_HALF_PX, SOLDIER_RIM * pxPerMinimapPx),
-        SOLDIER_RIM_COLOUR,
-      );
+      const radius = Math.max(MIN_DIAMOND_RADIUS_PX, SOLDIER_RADIUS * markerScale * pxPerMinimapPx);
+      stampDiamond(raster, cx, cy, radius + rim * DIAMOND_RIM_REACH, MARKER_RIM_COLOUR);
       stampDiamond(raster, cx, cy, radius, colour);
       return;
     }
-    case 'signpost':
-      stampRect(raster, cx, cy, size(SIGNPOST_HALF_W), size(SIGNPOST_HALF_H), colour);
+    case 'signpost': {
+      const halfW = size(SIGNPOST_HALF_W);
+      const halfH = size(SIGNPOST_HALF_H);
+      stampRect(raster, cx, cy, halfW + rim, halfH + rim, MARKER_RIM_COLOUR);
+      stampRect(raster, cx, cy, halfW, halfH, colour);
       return;
+    }
   }
 }
 
