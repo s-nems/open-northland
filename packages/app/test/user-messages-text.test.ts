@@ -239,6 +239,10 @@ describe('notice text', () => {
     expect(idle({ female: true, goodName: null, idle: { kind: 'noResource', goodTypes: [] } }).full).toBe(
       'Bjorn nie ma nic do roboty. W zasięgu nie ma nic do zebrania. Nadaj jej inny zawód.',
     );
+    expect(idle({ goodName: null, idle: { kind: 'nothingAtFlag', goodTypes: [] } })).toEqual({
+      short: 'Nic do zebrania',
+      full: 'Bjorn nie ma nic do roboty. Przy chorągiewce nie ma nic do zebrania. Przenieś chorągiewkę tam, gdzie leżą towary, albo ją zabierz.',
+    });
     expect(idle({ idle: null })).toEqual({
       short: 'Nic do roboty',
       full: 'Bjorn nie ma nic do roboty. Przyczyny nie widać. Sprawdź, czy miejsce pracy ma w zasięgu magazyn i potrzebne towary.',

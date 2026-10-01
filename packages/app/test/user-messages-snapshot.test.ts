@@ -409,6 +409,7 @@ describe('user messages read off the snapshot', () => {
         goodTypes: [WOOD, 9],
       });
       expect(idleReasonOf({ kind: 'nothingSelected' })).toEqual({ kind: 'nothingSelected', goodTypes: [] });
+      expect(idleReasonOf({ kind: 'nothingAtFlag' })).toEqual({ kind: 'nothingAtFlag', goodTypes: [] });
       // A craft operator's gates are the stall note's, and the note needs a workplace and a trade.
       expect(
         idleReasonOf({ kind: 'waitingInput', goodType: 9, missingInputs: [{ ...input, outOfReach: true }] }),

@@ -1349,6 +1349,7 @@ export const enGame = {
         noResourceInArea: 'Nothing in area',
         noResource: 'No resources',
         resourceRouteBlocked: 'No way through',
+        nothingAtFlag: 'Flag is empty',
       },
       full: {
         noStorage: 'No store takes {good}. Build a store or make room in one.',
@@ -1362,6 +1363,7 @@ export const enGame = {
           she: 'Nothing to gather in reach: {good}. Give her another trade.',
         },
         resourceRouteBlocked: 'No way through to {good}. Clear a path or mark another spot with a work flag.',
+        nothingAtFlag: 'Nothing to collect at the flag. Move the flag to where goods lie, or take it away.',
       },
       withoutGood: {
         noStorage: 'No store takes the load. Build a store or make room in one.',
@@ -1376,6 +1378,7 @@ export const enGame = {
         },
         resourceRouteBlocked:
           'No way through to the resources. Clear a path or mark another spot with a work flag.',
+        nothingAtFlag: 'Nothing to collect at the flag. Move the flag to where goods lie, or take it away.',
       },
       unknown: 'The cause is unclear. Check that the workplace has a store and the goods it needs in reach.',
     },

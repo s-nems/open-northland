@@ -1316,6 +1316,7 @@ export const plGame = {
         noResourceInArea: 'Brak w obszarze',
         noResource: 'Brak zasobów',
         resourceRouteBlocked: 'Brak dojścia',
+        nothingAtFlag: 'Nic do zebrania',
       },
       full: {
         noStorage: 'Żaden magazyn nie przyjmie towaru: {good}. Zbuduj magazyn albo zrób w nim miejsce.',
@@ -1330,6 +1331,8 @@ export const plGame = {
         },
         resourceRouteBlocked:
           'Nie ma dojścia do zasobów: {good}. Otwórz przejście albo wskaż flagą roboczą inne miejsce.',
+        nothingAtFlag:
+          'Przy chorągiewce nie ma nic do zebrania. Przenieś chorągiewkę tam, gdzie leżą towary, albo ją zabierz.',
       },
       withoutGood: {
         noStorage: 'Żaden magazyn nie przyjmie niesionego towaru. Zbuduj magazyn albo zrób w nim miejsce.',
@@ -1344,6 +1347,8 @@ export const plGame = {
         },
         resourceRouteBlocked:
           'Nie ma dojścia do zasobów. Otwórz przejście albo wskaż flagą roboczą inne miejsce.',
+        nothingAtFlag:
+          'Przy chorągiewce nie ma nic do zebrania. Przenieś chorągiewkę tam, gdzie leżą towary, albo ją zabierz.',
       },
       unknown: 'Przyczyny nie widać. Sprawdź, czy miejsce pracy ma w zasięgu magazyn i potrzebne towary.',
     },
