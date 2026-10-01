@@ -24,26 +24,6 @@ const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [-1, 0], // W
 ] as const;
 
-/** The two E/W half-column edges (34 px). */
-const COLUMN_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
-  [1, 0], // E
-  [-1, 0], // W
-] as const;
-
-/** The four 51 px diagonal lattice edges, in screen-heading order. */
-const DIAGONAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
-  [1, -2], // NE
-  [1, 2], // SE
-  [-1, 2], // SW
-  [-1, -2], // NW
-] as const;
-
-/** The two straight vertical 19 px half-row edges, in the `THexagonDirection` tail order. */
-const VERTICAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
-  [0, -1], // N
-  [0, 1], // S
-] as const;
-
 export abstract class TerrainEdges extends TerrainLattice {
   /** The in-bounds 4-connected neighbours of a node, in canonical order. */
   neighbours(node: NodeId): NodeId[] {
@@ -96,47 +76,57 @@ export abstract class TerrainEdges extends TerrainLattice {
     return out;
   }
 
-  /** {@link steps} emitted into a caller-owned buffer, which is reset first. */
+  /**
+   * {@link steps} emitted into a caller-owned buffer, which is reset first. Headings in emit order: E
+   * `(+1, 0)`, W `(-1, 0)`, NE `(+1, -2)`, SE `(+1, +2)`, SW `(-1, +2)`, NW `(-1, -2)`, N `(0, -1)`,
+   * S `(0, +1)`. A diagonal's flanks are the N or S node it shares with the vertical step and the node
+   * one half-row along it on the far column.
+   */
   stepsInto(
     node: NodeId,
     blocked: BlockOverlay | undefined,
     out: StepBuffer,
     traversal: Traversal = 'land',
   ): void {
+    const width = this.width;
     const x = this.xOf(node);
     const y = this.yOf(node);
     out.reset();
-    for (const [dx, dy] of COLUMN_STEP_OFFSETS) {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (!this.passable(nx, ny, blocked, traversal)) continue;
-      const c = this.idAt(nx, ny);
-      out.push(c, HALF_COLUMN);
+    const east = x + 1 < width;
+    const west = x > 0;
+    const row = width;
+    const twoRows = 2 * width;
+    if (east && this.open(node + 1, blocked, traversal)) out.push((node + 1) as NodeId, HALF_COLUMN);
+    if (west && this.open(node - 1, blocked, traversal)) out.push((node - 1) as NodeId, HALF_COLUMN);
+    const north = y > 0 && this.open(node - row, blocked, traversal);
+    const south = y + 1 < this.height && this.open(node + row, blocked, traversal);
+    const northFar = y >= 2;
+    const southFar = y + 2 < this.height;
+    // Both midpoint flanks blocked is a wall joint, not a gap to slip through.
+    if (east && northFar && this.open(node + 1 - twoRows, blocked, traversal)) {
+      if (north || this.open(node + 1 - row, blocked, traversal))
+        out.push((node + 1 - twoRows) as NodeId, DIAGONAL_STEP);
     }
-    for (const [dx, dy] of DIAGONAL_STEP_OFFSETS) {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (!this.passable(nx, ny, blocked, traversal)) continue;
-      const fy = y + dy / 2;
-      // Both midpoint flanks blocked is a wall joint, not a gap to slip through.
-      if (!this.passable(x, fy, blocked, traversal) && !this.passable(nx, fy, blocked, traversal)) continue;
-      const c = this.idAt(nx, ny);
-      out.push(c, DIAGONAL_STEP);
+    if (east && southFar && this.open(node + 1 + twoRows, blocked, traversal)) {
+      if (south || this.open(node + 1 + row, blocked, traversal))
+        out.push((node + 1 + twoRows) as NodeId, DIAGONAL_STEP);
     }
-    for (const [dx, dy] of VERTICAL_STEP_OFFSETS) {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (!this.passable(nx, ny, blocked, traversal)) continue;
-      const c = this.idAt(nx, ny);
-      out.push(c, HALF_ROW);
+    if (west && southFar && this.open(node - 1 + twoRows, blocked, traversal)) {
+      if (south || this.open(node - 1 + row, blocked, traversal))
+        out.push((node - 1 + twoRows) as NodeId, DIAGONAL_STEP);
     }
+    if (west && northFar && this.open(node - 1 - twoRows, blocked, traversal)) {
+      if (north || this.open(node - 1 - row, blocked, traversal))
+        out.push((node - 1 - twoRows) as NodeId, DIAGONAL_STEP);
+    }
+    if (north) out.push((node - row) as NodeId, HALF_ROW);
+    if (south) out.push((node + row) as NodeId, HALF_ROW);
   }
 
-  /** Whether `(nx, ny)` is in bounds, open to `traversal`, and not masked by the dynamic `blocked`
+  /** Whether the in-bounds node id `c` is open to `traversal` and not masked by the dynamic `blocked`
    *  overlay. */
-  private passable(nx: number, ny: number, blocked: BlockOverlay | undefined, traversal: Traversal): boolean {
-    if (!this.inBounds(nx, ny)) return false;
-    const c = this.idAt(nx, ny);
-    return (traversal === 'land' ? this.walkableAt(c) : this.isWater(c)) && !(blocked?.has(c) ?? false);
+  private open(c: number, blocked: BlockOverlay | undefined, traversal: Traversal): boolean {
+    const id = c as NodeId;
+    return (traversal === 'land' ? this.walkableAt(id) : this.isWater(id)) && !(blocked?.has(id) ?? false);
   }
 }

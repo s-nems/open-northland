@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { Building, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, positionOfNode, Simulation } from '../../src/index.js';
-import { vehicleBlockedCells } from '../../src/systems/footprint/index.js';
+import { type BlockOverlay, LayeredBlocks } from '../../src/nav/block-overlay.js';
+import { type NodeId, StepBuffer, type TerrainGraph } from '../../src/nav/terrain/index.js';
+import { resourceBlockedCells, vehicleBlockedCells } from '../../src/systems/footprint/index.js';
 import {
   ROUTE_REGION_POCKET_CAP,
   routeRegions,
@@ -228,6 +230,138 @@ describe('routeRegions', () => {
     expect(regions.unroutable(outside, inside)).toBe(false);
   });
 });
+
+describe('routeRegions under changing blockers', () => {
+  it('answers like a cold flood after every random wall build and teardown', () => {
+    const sim = mappedSim(grassMap(RANDOM_MAP_COLS, RANDOM_MAP_ROWS));
+    const terrain = terrainOf(sim);
+    const ctx = ctxOf(sim);
+    const regions = routeRegions(sim.world, ctx, terrain);
+    const random = lcg(RANDOM_SEED);
+    const pick = (n: number): number => Math.floor(random() * n);
+    const walls: Entity[] = [];
+    let pocketsSeen = 0;
+    for (let round = 0; round < RANDOM_ROUNDS; round++) {
+      // Several changes per round, so one refresh sees blocks and frees together.
+      const changes = 1 + pick(MAX_CHANGES_PER_ROUND);
+      for (let c = 0; c < changes; c++) {
+        if (walls.length > 0 && pick(3) === 0) {
+          const [gone] = walls.splice(pick(walls.length), 1);
+          if (gone !== undefined) unstampResourceFootprint(sim.world, gone);
+        } else {
+          const width = 2 + pick(MAX_WALL_SPAN);
+          const height = 2 + pick(MAX_WALL_SPAN);
+          const shape = rectangleWall(width, height).filter(() => pick(GAP_ODDS) !== 0);
+          walls.push(wallAt(sim, pick(terrain.width - width), pick(terrain.height - height), shape));
+        }
+      }
+      const layers = new LayeredBlocks([resourceBlockedCells(sim.world, terrain)]);
+      const reference = coldRegions(terrain, layers);
+      for (let q = 0; q < QUERIES_PER_ROUND; q++) {
+        const a = terrain.nodeAt(pick(terrain.width), pick(terrain.height));
+        const b = terrain.nodeAt(pick(terrain.width), pick(terrain.height));
+        const want = reference.unroutable(a, b);
+        if (want) pocketsSeen += 1;
+        expect(regions.unroutable(a, b), `round ${round}: ${a} -> ${b}`).toBe(want);
+        expect(regions.pocketed(a), `round ${round}: ${a} pocketed`).toBe(reference.pocketed(a));
+      }
+      expect(sim.world.verifyCaches()).toEqual([]);
+    }
+    // The walk has to have exercised sealed pockets, not only open ground.
+    expect(pocketsSeen).toBeGreaterThan(0);
+  });
+
+  it('seals a pocket a new building closes around warm open labels, and frees it again', () => {
+    const { sim, site } = ringSite();
+    const terrain = terrainOf(sim);
+    sim.world.mut(site, Building).buildingType = OPEN_TYPE;
+    const regions = routeRegions(sim.world, ctxOf(sim), terrain);
+    const sealed = terrain.nodeAt(10, 6);
+    const outside = terrain.nodeAt(2, 2);
+    expect(regions.unroutable(outside, sealed)).toBe(false);
+
+    sim.world.mut(site, Building).buildingType = RING_TYPE;
+    expect(regions.unroutable(outside, sealed)).toBe(true);
+    expect(regions.pocketed(sealed)).toBe(true);
+
+    sim.world.mut(site, Building).buildingType = OPEN_TYPE;
+    expect(regions.unroutable(outside, sealed)).toBe(false);
+  });
+});
+
+/** A reference that floods every query from scratch: the region key of a passable node is its lowest
+ *  node id when the region fits within the cap, else open. */
+function coldRegions(terrain: TerrainGraph, blocked: BlockOverlay) {
+  const steps = new StepBuffer();
+  const passable = (n: NodeId): boolean => terrain.isWalkable(n) && !blocked.has(n);
+  const keys = new Map<NodeId, number | 'open'>();
+  const keyOf = (start: NodeId): number | 'open' => {
+    const known = keys.get(start);
+    if (known !== undefined) return known;
+    const key = flood(start);
+    keys.set(start, key);
+    return key;
+  };
+  const flood = (start: NodeId): number | 'open' => {
+    const seen = new Set<NodeId>([start]);
+    const queue = [start];
+    for (let at = 0; at < queue.length; at++) {
+      const cur = queue[at];
+      if (cur === undefined) break;
+      if (seen.size > ROUTE_REGION_POCKET_CAP) return 'open';
+      terrain.stepsInto(cur, blocked, steps);
+      for (let i = 0; i < steps.length; i++) {
+        const next = steps.at(i).node;
+        if (!seen.has(next)) {
+          seen.add(next);
+          queue.push(next);
+        }
+      }
+    }
+    return seen.size > ROUTE_REGION_POCKET_CAP ? 'open' : Math.min(...seen);
+  };
+  const exitKeys = (n: NodeId): Array<number | 'open'> =>
+    terrain.steps(n, blocked).map((step) => keyOf(step.node));
+  return {
+    unroutable(from: NodeId, to: NodeId): boolean {
+      if (from === to || !terrain.isWalkable(from) || !passable(to)) return false;
+      const target = keyOf(to);
+      if (passable(from)) return keyOf(from) !== target;
+      const exits = exitKeys(from);
+      return exits.length > 0 && !exits.includes(target);
+    },
+    pocketed(node: NodeId): boolean {
+      if (!terrain.isWalkable(node)) return false;
+      if (passable(node)) return keyOf(node) !== 'open';
+      const exits = exitKeys(node);
+      return exits.length > 0 && !exits.includes('open');
+    },
+  };
+}
+
+/** A deterministic [0, 1) stream for the randomized walk. */
+function lcg(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state * LCG_MULTIPLIER + LCG_INCREMENT) % LCG_MODULUS;
+    return state / LCG_MODULUS;
+  };
+}
+
+const LCG_MULTIPLIER = 1103515245;
+const LCG_INCREMENT = 12345;
+const LCG_MODULUS = 2 ** 31;
+const RANDOM_SEED = 7;
+/** Cells; the node lattice is twice as wide and tall, past the flood cap so open ground exists. */
+const RANDOM_MAP_COLS = 24;
+const RANDOM_MAP_ROWS = 16;
+const RANDOM_ROUNDS = 80;
+const MAX_CHANGES_PER_ROUND = 3;
+const QUERIES_PER_ROUND = 20;
+/** Walls up to this many nodes plus two on a side. */
+const MAX_WALL_SPAN = 12;
+/** One wall node in this many is left out, opening gaps that some walls seal and some leak through. */
+const GAP_ODDS = 12;
 
 const VIKING = 1;
 const HANDCART = 1;

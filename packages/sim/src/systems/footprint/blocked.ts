@@ -1,18 +1,16 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, Position, UnderConstruction } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type BlockOverlay, CountedBlocks } from '../../nav/block-overlay.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
-import { landscapeBlocks } from '../landscape/view.js';
-import { buildingBlockedLayer, heldBuildingTypesStand, walkBodyOf } from './building-blocked-cache.js';
+import { heldBuildingTypesStand, walkBodyOf } from './building-blocked-cache.js';
 import { ANCHOR_ONLY, buildingFootprintOf, doorNodeOf } from './geometry.js';
-import { resourceBlockedLayer } from './resource-blocked-cache.js';
+import { walkBlockMask } from './walk-block-mask.js';
 
 // Walk-block overlays for routing and render, over the memoized building cells and the incrementally
-// cached resource cells. Derived state, never hashed. The views alias the live caches, so a holder must
-// not span a stamp or unstamp.
+// cached resource cells. Derived state, never hashed.
 
 /** Every standing building's door node - the passable gates the building walk-block carves out. */
 export function buildingDoorNodes(world: World, ctx: ContentContext, terrain: TerrainGraph): Set<NodeId> {
@@ -105,14 +103,9 @@ export function walkBlockedBodyOf(
   return body.size === 0 ? null : body;
 }
 
-/** The dynamic walk-block overlay settlers route under (buildings, resources, landscapes) read through
- *  the layers' live per-node counts, so a membership test is array reads and composing it copies
- *  nothing. Standing vehicles are not in it: settlers walk through them, as in the original. */
+/** The dynamic walk-block overlay settlers route under (buildings, resources, landscapes): the world's one
+ *  live byte-per-node union of those layers. Standing vehicles are not in it: settlers walk through them,
+ *  as in the original. */
 export function dynamicBlockOverlay(world: World, ctx: ContentContext, terrain: TerrainGraph): BlockOverlay {
-  const landscape = landscapeBlocks(world, terrain);
-  return new CountedBlocks([
-    buildingBlockedLayer(world, ctx, terrain),
-    resourceBlockedLayer(world, terrain),
-    { cells: landscape.walk, counts: landscape.walkCounts },
-  ]);
+  return walkBlockMask(world, ctx, terrain);
 }

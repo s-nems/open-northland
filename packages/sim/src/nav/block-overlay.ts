@@ -34,9 +34,8 @@ export class CountedBlocks implements BlockOverlay {
     this.counts = layers.map((layer) => layer.counts);
   }
   has(node: NodeId): boolean {
-    const counts = this.counts;
-    for (let i = 0; i < counts.length; i++) {
-      if ((counts[i]?.[node] ?? 0) > 0) return true;
+    for (const counts of this.counts) {
+      if (counts[node]) return true;
     }
     return false;
   }
@@ -44,6 +43,31 @@ export class CountedBlocks implements BlockOverlay {
     let total = 0;
     for (const layer of this.layers) total += layer.cells.size;
     return total;
+  }
+}
+
+/**
+ * A walk-block overlay held as one byte per node by a reader that keeps it level with its sources
+ * itself, so a membership test is a single array read.
+ */
+export class NodeMask implements BlockOverlay {
+  private readonly blocked: Uint8Array;
+  private count = 0;
+  constructor(nodeCount: number) {
+    this.blocked = new Uint8Array(nodeCount);
+  }
+  has(node: NodeId): boolean {
+    return this.blocked[node] === 1;
+  }
+  get size(): number {
+    return this.count;
+  }
+  /** Set `node`'s membership, returning whether it changed. */
+  set(node: NodeId, blocked: boolean): boolean {
+    if ((this.blocked[node] === 1) === blocked) return false;
+    this.blocked[node] = blocked ? 1 : 0;
+    this.count += blocked ? 1 : -1;
+    return true;
   }
 }
 

@@ -16,6 +16,21 @@ interface ResourceBlockedCache extends CountedCells {
    *  Uint16 range. */
   readonly counts: Uint16Array;
   readonly entries: Map<Entity, readonly NodeId[]>;
+  /** The nodes that entered or left {@link cells} since {@link takeResourceBlockFlips} last drained them,
+   *  for its one reader; a node may repeat. Past {@link FLIP_LOG_CAP} entries the log is dropped and marked
+   *  lost, so a cache nobody drains stays bounded. */
+  readonly flips: NodeId[];
+  flipsLost: boolean;
+}
+
+const FLIP_LOG_CAP = 8192;
+
+function logFlip(cache: ResourceBlockedCache, node: NodeId): void {
+  if (cache.flips.length >= FLIP_LOG_CAP) {
+    cache.flips.length = 0;
+    cache.flipsLost = true;
+  }
+  cache.flips.push(node);
 }
 
 const resourceBlockedCache = new WeakMap<World, ResourceBlockedCache>();
@@ -36,8 +51,11 @@ function addResourceBlockedCacheEntry(
   removeResourceBlockedCacheEntryFrom(cache, resource);
   cache.entries.set(resource, cells);
   for (const cell of cells) {
-    cache.counts[cell] = (cache.counts[cell] ?? 0) + 1;
+    const count = (cache.counts[cell] ?? 0) + 1;
+    cache.counts[cell] = count;
+    if (count > 1) continue;
     cache.cells.add(cell);
+    logFlip(cache, cell);
   }
 }
 
@@ -48,7 +66,9 @@ function removeResourceBlockedCacheEntryFrom(cache: ResourceBlockedCache, resour
   for (const cell of cells) {
     const count = (cache.counts[cell] ?? 0) - 1;
     cache.counts[cell] = count;
-    if (count === 0) cache.cells.delete(cell);
+    if (count !== 0) continue;
+    cache.cells.delete(cell);
+    logFlip(cache, cell);
   }
 }
 
@@ -82,11 +102,14 @@ function deriveResourceBlockedCache(world: World, terrain: TerrainGraph): Resour
     cells: new Set<NodeId>(),
     counts: new Uint16Array(terrain.nodeCount),
     entries: new Map<Entity, readonly NodeId[]>(),
+    flips: [],
+    flipsLost: false,
   };
   for (const e of world.query(ResourceFootprint, Position)) {
     const cells = resourceBlockedCellsFor(world, terrain, e);
     if (cells !== null) addResourceBlockedCacheEntry(cache, e, cells);
   }
+  cache.flips.length = 0;
   return cache;
 }
 
@@ -129,4 +152,19 @@ export function resourceBlockedLayer(world: World, terrain: TerrainGraph): Count
   resourceBlockedCache.set(world, cache);
   world.registerCacheVerifier('resourceBlockedCells', () => verifyResourceBlockedCache(world, terrain));
   return cache;
+}
+
+/**
+ * Move the nodes {@link resourceBlockedLayer}'s cells gained or lost since the previous call into `into`,
+ * returning false when the log was dropped in between or no layer exists, so the reader must re-read the
+ * whole layer. One reader per world: the route-region labels.
+ */
+export function takeResourceBlockFlips(world: World, terrain: TerrainGraph, into: NodeId[]): boolean {
+  const cache = resourceBlockedCache.get(world);
+  if (cache === undefined || cache.terrain !== terrain) return false;
+  const kept = !cache.flipsLost;
+  if (kept) for (const node of cache.flips) into.push(node);
+  cache.flips.length = 0;
+  cache.flipsLost = false;
+  return kept;
 }
