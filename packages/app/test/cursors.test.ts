@@ -160,6 +160,8 @@ describe('cursor deliveries', () => {
 it('keeps order intent distinct and clears it when the pick is cancelled', () => {
   expect(pickCursor({ kind: 'destination', units: [1] })).toBe('move');
   expect(pickCursor({ kind: 'attack-building', units: [1] })).toBe('attack');
+  expect(pickCursor({ kind: 'attack-move', units: [1], vehicles: [] })).toBe('attack-move');
+  expect(pickCursor({ kind: 'vehicle-attack-position', vehicle: 1 })).toBe('attack-move');
   expect(pickCursor({ kind: 'workplace-or-flag', units: [1] })).toBe('work');
   expect(pickCursor({ kind: 'home', units: [1] })).toBe('crosshair');
   expect(pickCursor(null)).toBeNull();

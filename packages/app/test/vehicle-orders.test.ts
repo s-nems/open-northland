@@ -1,3 +1,4 @@
+import type { OrderMarkerKind } from '@open-northland/render';
 import { type Command, fx, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
@@ -8,7 +9,7 @@ import {
   VEHICLE_SHIP_SMALL,
 } from '../src/game/sandbox/index.js';
 import { fixedViewerSeat } from '../src/game/viewer-seat.js';
-import { type Pickable, worldToTile } from '../src/view/picking.js';
+import { type Pickable, type Tile, worldToTile } from '../src/view/picking.js';
 import { createAnsweredOrders } from '../src/view/unit-controls/answered-orders.js';
 import { createPickModeController } from '../src/view/unit-controls/pick-mode.js';
 import { issueRingCommand } from '../src/view/unit-controls/ring-commands.js';
@@ -151,6 +152,7 @@ const landed = (): Promise<void> => new Promise((resolve) => setTimeout(resolve,
 
 function harness(selected: readonly number[], arms: Arms) {
   const issued: Command[] = [];
+  const marked: [Tile, OrderMarkerKind][] = [];
   const targets = targetsOf(arms);
   const controller = createVehicleOrderController({
     answered: createAnsweredOrders(),
@@ -164,6 +166,7 @@ function harness(selected: readonly number[], arms: Arms) {
     enqueue: (command) => issued.push(command),
     askMoorAt: answering(arms.canMoorAt),
     askAttachToVehicle: answering(arms.canAttachToVehicle),
+    markOrder: (node, kind) => marked.push([node, kind]),
   });
   const pickMode = createPickModeController({
     answered: createAnsweredOrders(),
@@ -181,7 +184,7 @@ function harness(selected: readonly number[], arms: Arms) {
     setArmedCursor: () => undefined,
     canAttachToVehicle: arms.canAttachToVehicle,
   });
-  return { issued, controller, pickMode };
+  return { issued, controller, pickMode, marked };
 }
 
 const rightClick = { clientX: CLICK.x, clientY: CLICK.y, button: 2 } as MouseEvent;
@@ -364,8 +367,10 @@ describe('vehicle picks', () => {
   });
 
   it('spreads a marched group over distinct goals around the spot', () => {
-    const { issued, controller } = harness([], {});
+    const { issued, controller, marked } = harness([], {});
     expect(controller.issueAttackMove([CATAPULT, SECOND_CATAPULT], { col: 10, row: 10 })).toBe(true);
+    // One red marker on the spot the group was sent to, not one per goal.
+    expect(marked).toEqual([[{ col: 10, row: 10 }, 'attack']]);
     const goals = issued.map((command) =>
       command.kind === 'moveVehicle' ? `${command.x},${command.y}` : '',
     );
@@ -374,7 +379,7 @@ describe('vehicle picks', () => {
   });
 
   it('names the ship of an armed dock pick, and drops a dock click on a spot the mooring rule rejects', async () => {
-    const { issued, pickMode } = harness([SHIP], { canMoorAt: () => false });
+    const { issued, pickMode, marked } = harness([SHIP], { canMoorAt: () => false });
     expect(pickMode.dockVehicle()).toBeNull();
     pickMode.arm({ kind: 'vehicle-dock', vehicle: SHIP });
     expect(pickMode.dockVehicle()).toBe(SHIP);
@@ -382,6 +387,7 @@ describe('vehicle picks', () => {
     expect(pickMode.dockVehicle()).toBeNull();
     await landed();
     expect(issued).toEqual([]);
+    expect(marked).toEqual([]);
   });
 
   it('lights the own vehicles of an armed assign-vehicle pick by the attach rule and drops a red click', async () => {

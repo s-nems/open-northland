@@ -21,6 +21,7 @@ import {
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { jobMateArea, jobMatesIn } from './job-mates.js';
 import { createSelectionMarquee } from './marquee.js';
+import { createOrderMarkers } from './order-markers.js';
 import { createUnitOrderController } from './orders.js';
 import { createOverviewOrders } from './overview-orders.js';
 import { pickCursor } from './pick-cursor.js';
@@ -76,6 +77,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
           cue,
         });
   const workArea = createWorkAreaOverlay();
+  const orderMarkers = createOrderMarkers(() => performance.now());
   /** A gatherer's or a fisher's workplace pick also plants its flag, so the panel's one button serves
    *  both ways the trade works. */
   const worksFromFlag = (id: number): boolean => {
@@ -236,6 +238,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     openActions: (atClient) => chrome.actions().open(atClient),
     cue,
     askAttachTradeHouse: opts.askAttachTradeHouse,
+    markOrder: orderMarkers.place,
   });
 
   const vehicleOrders = createVehicleOrderController({
@@ -251,6 +254,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     askAttachToVehicle: opts.askAttachToVehicle,
     askMoorAt: opts.askMoorAt,
     answered,
+    markOrder: orderMarkers.place,
   });
 
   const overviewPress = createOverviewOrders({
@@ -468,6 +472,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     portraits: () => chrome.portraits(),
     flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
     workAreaRings: () => workArea.rings(opts.snapshot()),
+    orderMarkers: orderMarkers.live,
     assignHighlight: pickMode.highlight,
     signpostPlacementActive: pickMode.signpostActive,
     workFlagPlacementActive: pickMode.flagActive,

@@ -1,6 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import { type ContentSet, type EquipCategory, lastByTypeId } from '@open-northland/data';
-import type { ElevationField } from '@open-northland/render';
+import type { ElevationField, OrderMarkerKind } from '@open-northland/render';
 import {
   type Command,
   type Entity,
@@ -68,6 +68,8 @@ export interface UnitOrderDeps {
   /** The sim's trade-stop rule, asked as the click lands; absent, a trader's right-click puts no house on
    *  its route. */
   readonly askAttachTradeHouse?: ((trader: number, house: number) => Promise<boolean>) | undefined;
+  /** Acknowledges a walk or march on the ground where it was aimed; absent, nothing is drawn. */
+  readonly markOrder?: ((node: Tile, kind: OrderMarkerKind) => void) | undefined;
 }
 
 /**
@@ -180,6 +182,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         ...(queued ? { queued } : {}),
       });
     }
+    deps.markOrder?.(seat, kind === 'attackMoveUnit' ? 'attack' : 'move');
     return true;
   };
 

@@ -339,6 +339,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       lifeHearts,
       flagged: controls.flaggedFlagIds(),
       workAreas: controls.workAreaRings(),
+      orderMarkers: controls.orderMarkers(),
     });
     controls.refreshCursor(snap);
     worldHover.update(snap, nowMs); // after controls, so the pointer-claim state is current

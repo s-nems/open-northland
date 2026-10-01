@@ -44,6 +44,7 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     selection: new Set(),
     flagged: new Set(),
     workAreas: [],
+    orderMarkers: [],
     doorBadges: [],
     constructionSigns: [],
     settlerBubbles: [],

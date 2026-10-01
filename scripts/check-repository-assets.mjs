@@ -105,6 +105,7 @@ const cursorStates = [
   'not-allowed',
   'move',
   'attack',
+  'attack-move',
   'build',
   'work',
   'crosshair',

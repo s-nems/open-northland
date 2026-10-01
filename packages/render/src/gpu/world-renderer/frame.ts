@@ -7,6 +7,7 @@ import type {
   DoorBadge,
   HudFrame,
   LifeHeart,
+  OrderMarker,
   SettlerBubble,
   WorkAreaRing,
 } from '../overlays/index.js';
@@ -86,6 +87,7 @@ export const NO_SIGNS: readonly ConstructionSign[] = [];
 export const NO_BUBBLES: readonly SettlerBubble[] = [];
 export const NO_HEARTS: readonly LifeHeart[] = [];
 export const NO_WORK_AREAS: readonly WorkAreaRing[] = [];
+export const NO_ORDER_MARKERS: readonly OrderMarker[] = [];
 
 export interface WorldFrame {
   readonly snapshot: WorldSnapshot;
@@ -107,6 +109,8 @@ export interface WorldFrame {
   readonly flagged?: ReadonlySet<number> | undefined;
   /** Work-area circles the player switched on with the ring's "Show Work Area" order (default none). */
   readonly workAreas?: readonly WorkAreaRing[] | undefined;
+  /** The ground acknowledgements of the player's latest walk and march orders (default none). */
+  readonly orderMarkers?: readonly OrderMarker[] | undefined;
 }
 
 /**

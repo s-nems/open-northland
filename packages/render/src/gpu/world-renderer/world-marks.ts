@@ -16,6 +16,8 @@ import {
   GeometryDebugLayer,
   type LifeHeart,
   LifeHeartLayer,
+  type OrderMarker,
+  OrderMarkerLayer,
   SelectionLayer,
   type SettlerBubble,
   type SettlerBubbleGfx,
@@ -36,6 +38,7 @@ export type MarkSlots = Pick<
   WorldSceneLayers,
   | 'wakes'
   | 'selection'
+  | 'orderMarkers'
   | 'bones'
   | 'blood'
   | 'damageSmoke'
@@ -65,6 +68,7 @@ export interface WorldMarksFrame {
   readonly selection: ReadonlySet<number>;
   readonly flagged: ReadonlySet<number>;
   readonly workAreas: readonly WorkAreaRing[];
+  readonly orderMarkers: readonly OrderMarker[];
   readonly doorBadges: readonly DoorBadge[];
   readonly constructionSigns: readonly ConstructionSign[];
   readonly settlerBubbles: readonly SettlerBubble[];
@@ -74,6 +78,7 @@ export interface WorldMarksFrame {
 export class WorldMarks {
   private readonly wakes = new ShipWakeLayer();
   private readonly selection = new SelectionLayer();
+  private readonly orderMarkers = new OrderMarkerLayer();
   /** Two containers, because blood paints over the struck body while bones litter the ground under it. */
   private readonly effects = new CombatEffectsLayer();
   /** A razed building's sink-into-the-ground transient. Its nodes live inside the depth-sorted sprite
@@ -105,6 +110,7 @@ export class WorldMarks {
     this.slots = {
       wakes: this.wakes.container,
       selection: this.selection.container,
+      orderMarkers: this.orderMarkers.container,
       bones: this.effects.groundContainer,
       blood: this.effects.overlayContainer,
       damageSmoke: this.damageSmoke.container,
@@ -161,6 +167,7 @@ export class WorldMarks {
       frame.flagged,
       frame.workAreas,
     );
+    this.orderMarkers.draw(frame.orderMarkers, elevation, viewport);
     this.effects.draw(elevation, viewport, renderTime);
     this.collapses.draw(elevation, viewport, renderTime);
     this.shots.draw({ snapshot: frame.snapshot, drawn, elevation, viewport, renderTime });
@@ -174,6 +181,7 @@ export class WorldMarks {
   destroy(): void {
     this.wakes.destroy();
     this.selection.destroy();
+    this.orderMarkers.destroy();
     this.effects.destroy();
     this.collapses.destroy();
     this.shots.destroy();

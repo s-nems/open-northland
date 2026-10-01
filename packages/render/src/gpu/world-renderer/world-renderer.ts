@@ -56,6 +56,7 @@ import {
   NO_BADGES,
   NO_BUBBLES,
   NO_HEARTS,
+  NO_ORDER_MARKERS,
   NO_REFS,
   NO_SIGNS,
   NO_WORK_AREAS,
@@ -329,6 +330,7 @@ export class WorldRenderer {
       lifeHearts = NO_HEARTS,
       flagged = NO_REFS,
       workAreas = NO_WORK_AREAS,
+      orderMarkers = NO_ORDER_MARKERS,
     } = frame;
     // Filtered sprites can move continuously; pixel snapping would reintroduce one-pixel pan/feet
     // jumps. Keep the old alignment only for the baseline nearest-sampled presentation.
@@ -407,6 +409,7 @@ export class WorldRenderer {
       selection,
       flagged,
       workAreas,
+      orderMarkers,
       doorBadges,
       constructionSigns: signItems,
       settlerBubbles,

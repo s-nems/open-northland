@@ -1,4 +1,4 @@
-import { halfCellToScreen } from '@open-northland/render';
+import { halfCellToScreen, type OrderMarkerKind } from '@open-northland/render';
 import { type Command, fx, nodeOfPosition, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
@@ -83,8 +83,10 @@ function harness(
   selection: UnitSelection;
   orders: UnitOrderController;
   issued: Command[];
+  marked: [Tile, OrderMarkerKind][];
 } {
   const issued: Command[] = [];
+  const marked: [Tile, OrderMarkerKind][] = [];
   const selection = createUnitSelection();
   selection.apply(initiallySelected, false);
   const orders = createUnitOrderController({
@@ -98,8 +100,9 @@ function harness(
     enqueue: (command) => issued.push(command),
     selectOwnSettler: () => {},
     openActions: () => {},
+    markOrder: (node, kind) => marked.push([node, kind]),
   });
-  return { selection, orders, issued };
+  return { selection, orders, issued, marked };
 }
 
 describe('unit orders against a selection that moves under them', () => {
@@ -138,6 +141,23 @@ describe('unit orders against a selection that moves under them', () => {
     expect(issued).toEqual([
       { kind: 'moveUnit', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy, queued: true },
     ]);
+  });
+
+  it('marks the clicked spot once per walk or march, red for the march, and nothing when nobody went', () => {
+    const { selection, orders, marked } = harness([SCOUT.id, GUARD.id]);
+    const ground: Tile = { col: OPEN_GROUND.hx, row: OPEN_GROUND.hy };
+
+    orders.issueRightClick(clickOn(OPEN_GROUND));
+    orders.issueAttackMove(ground);
+    expect(marked).toEqual([
+      [ground, 'move'],
+      [ground, 'attack'],
+    ]);
+
+    marked.length = 0;
+    selection.apply([], false);
+    orders.issueMoveTo(ground);
+    expect(marked).toEqual([]);
   });
 
   it('drops a right-click once the selection has been cleared', () => {

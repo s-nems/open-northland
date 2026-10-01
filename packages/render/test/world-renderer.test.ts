@@ -53,6 +53,7 @@ const SLOTS = [
   'selection',
   'bones',
   'sprites',
+  'orderMarkers',
   'blood',
   'damageSmoke',
   'constructionSigns',

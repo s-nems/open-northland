@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import type { ElevationField } from '@open-northland/render';
+import type { ElevationField, OrderMarkerKind } from '@open-northland/render';
 import {
   type Entity,
   entityById,
@@ -44,6 +44,9 @@ export interface VehicleOrderDeps {
   readonly askMoorAt?: ((vehicle: number, x: number, y: number) => Promise<boolean>) | undefined;
   /** Where the orders a host answer decides wait for it. */
   readonly answered: AnsweredOrders;
+  /** Acknowledges a drive, mooring or bombardment on the ground where it was aimed; absent, nothing is
+   *  drawn. */
+  readonly markOrder?: ((node: Tile, kind: OrderMarkerKind) => void) | undefined;
 }
 
 /**
@@ -162,6 +165,7 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
   const issueMoveTo = (vehicle: number, target: Tile): boolean => {
     const node = clampNode(target);
     deps.enqueue({ kind: 'moveVehicle', vehicle: vehicle as Entity, x: node.col, y: node.row });
+    deps.markOrder?.(node, 'move');
     return true;
   };
 
@@ -185,6 +189,7 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
   };
 
   const driveInFormation = (vehicles: readonly number[], target: Tile, attackMove: boolean): void => {
+    if (vehicles.length === 0) return;
     const goals = formationGoals(vehicles.length, target);
     vehicles.forEach((vehicle, i) => {
       const node = goals[i] ?? clampNode(target);
@@ -196,6 +201,7 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
         ...(attackMove ? { attackMove: true } : {}),
       });
     });
+    deps.markOrder?.(clampNode(target), attackMove ? 'attack' : 'move');
   };
 
   const issueAttackMove = (vehicles: readonly number[], target: Tile): boolean => {
@@ -203,8 +209,10 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     return vehicles.length > 0;
   };
 
-  const dock = (vehicle: number, node: Tile): void =>
+  const dock = (vehicle: number, node: Tile): void => {
     deps.enqueue({ kind: 'dockVehicle', vehicle: vehicle as Entity, x: node.col, y: node.row });
+    deps.markOrder?.(node, 'move');
+  };
 
   const issueDock = (vehicle: number, target: Tile): boolean => {
     const node = clampNode(target);
@@ -224,6 +232,7 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
       vehicle: vehicle as Entity,
       target: { kind: 'ground', hx: node.col, hy: node.row },
     });
+    deps.markOrder?.(node, 'attack');
     return true;
   };
 
