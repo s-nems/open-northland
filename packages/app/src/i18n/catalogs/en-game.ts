@@ -969,6 +969,7 @@ export const enGame = {
       bow: 'Archer',
       longbow: 'Longbow archer',
       civilian: 'Civilian',
+      woman: 'Woman',
       carrier: 'Carrier',
     },
     creaturesCatalog: {

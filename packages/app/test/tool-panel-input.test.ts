@@ -296,7 +296,7 @@ describe('tool panel Escape ladder', () => {
   it('toggles each beam window on its key, unless another surface owns the keyboard', () => {
     let owned = false;
     const { input, windowTarget, navToggled, cues } = mount(() => owned);
-    for (const code of ['KeyB', 'F7', 'KeyE', 'F6', 'F1', 'F5', 'F8']) {
+    for (const code of ['KeyB', 'F2', 'KeyE', 'F6', 'F1', 'F5', 'F7']) {
       const press = key(code);
       windowTarget.dispatchEvent(press);
       expect(press.defaultPrevented, code).toBe(true);
@@ -342,7 +342,7 @@ describe('tool panel Escape ladder', () => {
     Object.defineProperty(inList, 'target', { value: new Dropdown() });
     windowTarget.dispatchEvent(inList);
     expect(inList.defaultPrevented).toBe(false);
-    const typed = key('F7');
+    const typed = key('F2');
     Object.defineProperty(typed, 'target', { value: new TextField() });
     windowTarget.dispatchEvent(typed);
     windowTarget.dispatchEvent(key('KeyB'));
@@ -353,16 +353,16 @@ describe('tool panel Escape ladder', () => {
   it('toggles the HUD on its key, from a text field too, but not under the system menu', () => {
     let owned = false;
     const { input, windowTarget, hudToggled } = mount(() => owned);
-    const hide = key('F10');
+    const hide = key('F8');
     windowTarget.dispatchEvent(hide);
     expect(hudToggled()).toBe(1);
     expect(hide.defaultPrevented).toBe(true);
-    const typed = key('F10');
+    const typed = key('F8');
     Object.defineProperty(typed, 'target', { value: new TextField() });
     windowTarget.dispatchEvent(typed);
     expect(hudToggled()).toBe(2);
     owned = true;
-    windowTarget.dispatchEvent(key('F10'));
+    windowTarget.dispatchEvent(key('F8'));
     expect(hudToggled()).toBe(2);
     input.dispose();
   });
@@ -370,7 +370,7 @@ describe('tool panel Escape ladder', () => {
   it("keeps the browser's own F-row actions off a running match, bound or not", () => {
     const { input, windowTarget, navToggled } = mount(() => true);
     const reload = key('F5');
-    const unbound = key('F2');
+    const unbound = key('F10');
     const fullscreen = key('F11');
     const closeWindow = Object.assign(key('F4'), { altKey: true });
     for (const press of [reload, unbound, fullscreen, closeWindow]) windowTarget.dispatchEvent(press);
@@ -419,7 +419,7 @@ describe('tool panel Escape ladder', () => {
     const held = Object.assign(key('F5'), { repeat: true });
     windowTarget.dispatchEvent(held);
     expect(held.defaultPrevented).toBe(true);
-    const shifted = Object.assign(key('F7'), { shiftKey: true });
+    const shifted = Object.assign(key('F2'), { shiftKey: true });
     windowTarget.dispatchEvent(shifted);
     expect(shifted.defaultPrevented).toBe(true);
     expect(navToggled).toEqual(['diplomacy']);

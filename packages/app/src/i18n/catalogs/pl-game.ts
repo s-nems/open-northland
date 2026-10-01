@@ -950,6 +950,7 @@ export const plGame = {
       bow: 'Łucznik',
       longbow: 'Łucznik z długim łukiem',
       civilian: 'Cywil',
+      woman: 'Kobieta',
       carrier: 'Tragarz',
     },
     creaturesCatalog: {

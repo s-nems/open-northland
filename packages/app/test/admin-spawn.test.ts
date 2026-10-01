@@ -36,6 +36,8 @@ import {
 } from '../src/game/sandbox/ids/index.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 import { resourceCommand } from '../src/game/sandbox/place/index.js';
+import { createSceneSim } from '../src/scenes/index.js';
+import { sandboxScene } from '../src/scenes/sandbox/index.js';
 import {
   ADMIN_DROP_AMOUNT,
   CIVILIAN_PRESETS,
@@ -60,6 +62,31 @@ describe('admin spawn command mapping', () => {
   const civilian = CIVILIAN_PRESETS.find((p) => p.id === 'civilian');
   // The running content's goods table the palette resolves weapon-good slugs against.
   const sandboxGoods = sandboxContent(grassTerrain(4, 4)).goods;
+
+  it('offers the woman among the civilians, and her spawn is female', () => {
+    const woman = CIVILIAN_PRESETS.find((p) => p.id === 'woman');
+    if (woman === undefined) throw new Error('missing woman preset');
+    const sim = createSceneSim(sandboxScene);
+    const goods = sim.content.goods;
+    sim.enqueueSetup(
+      unitSpawnCommand(woman, {
+        player: HUMAN_PLAYER,
+        tribe: PRIMARY_TRIBE,
+        hitpoints: 0,
+        armorClass: 0,
+        x: 2,
+        y: 2,
+        goods,
+      }),
+    );
+    const before = new Set(sim.snapshot().entities.map((e) => e.id));
+    sim.step();
+    const spawned = sim
+      .snapshot()
+      .entities.filter((e) => !before.has(e.id) && e.components.Settler !== undefined);
+    expect(spawned).toHaveLength(1);
+    expect(spawned[0]?.components.Female).toBeDefined();
+  });
 
   it('spawns each creature with its fixed tribe and form, selected owner and natural weapon', () => {
     expect(CREATURE_PRESETS.map(({ tribe, jobType }) => [tribe, jobType])).toEqual([

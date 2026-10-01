@@ -13,6 +13,7 @@ import {
   JOB_SOLDIER_SPEAR_WOODEN,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
+  JOB_WOMAN,
 } from '../../catalog/jobs.js';
 import {
   GATHERERS,
@@ -92,9 +93,11 @@ export const WARRIOR_PRESETS: readonly UnitPreset[] = [
   { id: 'longbow', jobType: JOB_ARCHER_LONG, weaponTypeId: WEAPON_LONG_BOW },
 ];
 
-/** The civilian trades. One collector preset covers every gathered good, since they share the trade. */
+/** The civilian trades and the woman, whose job makes the spawn female. One collector preset covers every
+ *  gathered good, since they share the trade. */
 export const CIVILIAN_PRESETS: readonly UnitPreset[] = [
   { id: 'civilian', jobType: JOB_CIVILIST },
+  { id: 'woman', jobType: JOB_WOMAN },
   { id: 'carrier', jobType: JOB_CARRIER },
   { id: 'collector', jobType: JOB_COLLECTOR },
 ];

@@ -91,10 +91,10 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   panUp: 'ArrowUp',
   panDown: 'ArrowDown',
   // The defaults follow the original's keys where it has one: F3 load, F4 save, F5 diplomacy, F6
-  // statistics, F7 subjects, F8 technology tree, B, E, S, D, Shift+D, V, Shift+V, P, L, H, the selection
-  // keys . , / M F X Y, C, W and the digit groups. Ours: Esc's game menu (the original's options sit on
-  // F2), F1 the mission (the original's help), F10 the HUD (the original's minimap), Q for the
-  // original's A (Assign Work Place), so A stays attack-move.
+  // statistics, B, E, S, D, Shift+D, V, Shift+V, P, L, H, the selection keys . , / M F X Y, C, W and the
+  // digit groups. Ours: Esc's game menu (the original's options sit on F2), F1 the mission (the
+  // original's help), F2 the subjects (the original's F7), F7 the knowledge (the original's technology
+  // tree on F8), F8 the HUD, Q for the original's A (Assign Work Place), so A stays attack-move.
   pauseToggle: 'KeyP',
   speedCycle: 'KeyL',
   gameMenu: 'Escape',
@@ -102,12 +102,12 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   saveGame: 'F4',
   mission: 'F1',
   construction: 'KeyB',
-  residents: 'F7',
+  residents: 'F2',
   assistant: 'KeyE',
   statistics: 'F6',
   diplomacy: 'F5',
-  knowledge: 'F8',
-  hudToggle: 'F10',
+  knowledge: 'F7',
+  hudToggle: 'F8',
   jumpToStore: 'KeyH',
   actionRing: 'Space',
   professionPicker: 'KeyC',
