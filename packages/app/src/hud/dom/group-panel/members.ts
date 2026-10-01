@@ -18,7 +18,7 @@ const ROSTER_FIT: WellFigureFit = { zoom: 0.66, feetInset: 10 };
 /** A compact well (`.on-roster--compact`, 24 x 34 design px), ten to a row, for a big list. */
 const COMPACT_FIT: WellFigureFit = { zoom: 0.5, feetInset: 7 };
 /** Past this many members in the group the wells turn compact, so a big army stays a few rows tall. */
-export const ROSTER_COMPACT_ABOVE = 99;
+const ROSTER_COMPACT_ABOVE = 99;
 /** Wells to a row, full size and compact (foundation.css `.on-roster`); a vehicle takes two. */
 const ROSTER_COLUMNS = 8;
 const COMPACT_COLUMNS = 10;

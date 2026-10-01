@@ -572,6 +572,7 @@ export const enGame = {
       gearNone: '-',
       gearNoneTooltip: 'Nobody in this tab wears this',
       itemTooltip: '{good} · {count}',
+      moreGoods: '+{count}',
       itemSipsTooltip: '{good} · {count} · sips: {sips}',
       military: 'Military',
       siegeStance: 'Catapults',

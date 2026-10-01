@@ -51,6 +51,17 @@ export function createScopeTabs(
 ): ScopeTabs {
   const root = element('div', 'on-scopes');
   root.setAttribute('role', 'tablist');
+  // A line too long for the panel scrolls with the plain wheel; it shows no scrollbar.
+  root.addEventListener(
+    'wheel',
+    (event) => {
+      if (root.scrollWidth <= root.clientWidth || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      root.scrollLeft += event.deltaY;
+      event.preventDefault();
+    },
+    { passive: false },
+  );
+  let opened = '';
   let shown = '';
   let measured = '';
   let tabs: { readonly key: string; readonly node: HTMLButtonElement }[] = [];
@@ -96,6 +107,14 @@ export function createScopeTabs(
         measured = text;
         setClass(root, 'on-scopes--icons', false);
         setClass(root, 'on-scopes--icons', root.scrollWidth > root.clientWidth);
+      }
+      const openTab = tabs.find((tab) => tab.key === open)?.node;
+      if (open !== opened && openTab !== undefined && !root.hidden) {
+        opened = open;
+        const { offsetLeft, offsetWidth } = openTab;
+        if (offsetLeft < root.scrollLeft) root.scrollLeft = offsetLeft;
+        else if (offsetLeft + offsetWidth > root.scrollLeft + root.clientWidth)
+          root.scrollLeft = offsetLeft + offsetWidth - root.clientWidth;
       }
     },
   };

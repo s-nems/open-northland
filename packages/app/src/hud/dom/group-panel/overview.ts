@@ -7,6 +7,9 @@ import type { GroupPanelDeps } from './actions.js';
 
 /** A gear item's icon: a cargo well's size less a step, so the foot reads as a summary under the roster. */
 const GEAR_ICON_PX = 16;
+/** Goods a line shows before the rest fold into a "+N" chip: three icons with a "bez: N" fill the line,
+ *  so a line never wraps and a tab switch never changes its height. */
+const GEAR_ITEMS_SHOWN = 3;
 
 const GEAR_LABEL: Readonly<Record<GroupGear, 'weapons' | 'armor' | 'boots' | 'tools' | 'equipment'>> = {
   weapon: 'weapons',
@@ -35,7 +38,9 @@ function createGearLine(deps: GroupPanelDeps): { element: HTMLElement; update(ro
       const key = `${row.items.map((item) => `${item.goodId}:${item.count}:${item.sips}`).join(',')}|${row.bare}`;
       if (key === shown) return;
       shown = key;
-      const nodes = row.items.map((item) => {
+      const folded = row.items.length > GEAR_ITEMS_SHOWN;
+      const shownItems = folded ? row.items.slice(0, GEAR_ITEMS_SHOWN - 1) : row.items;
+      const nodes = shownItems.map((item) => {
         const node = element(
           'span',
           'on-gear__item',
@@ -52,6 +57,18 @@ function createGearLine(deps: GroupPanelDeps): { element: HTMLElement; update(ro
         );
         return node;
       });
+      if (folded) {
+        const rest = row.items.slice(shownItems.length);
+        const more = element('span', 'on-gear__more');
+        write(more, formatMessage(copy.moreGoods, { count: rest.length }));
+        setTip(
+          more,
+          rest
+            .map((item) => formatMessage(copy.itemTooltip, { good: item.label, count: item.count }))
+            .join('\n'),
+        );
+        nodes.push(more);
+      }
       if (row.items.length === 0 && row.bare === 0) {
         // The group has this line but the tab holds nobody it is for.
         const none = element('span', 'on-gear__bare');

@@ -554,6 +554,7 @@ export const plGame = {
       gearNone: '-',
       gearNoneTooltip: 'Nikogo w tej zakładce to nie dotyczy',
       itemTooltip: '{good} · {count}',
+      moreGoods: '+{count}',
       itemSipsTooltip: '{good} · {count} · łyków: {sips}',
       military: 'Wojsko',
       siegeStance: 'Katapulty',
