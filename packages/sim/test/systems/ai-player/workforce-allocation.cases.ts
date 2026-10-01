@@ -1802,7 +1802,7 @@ describe('workforce module (collectResources)', () => {
     const nearest = (open: (e: Entity) => boolean): Entity | null => deposits.find((e) => open(e)) ?? null;
     // A reach that refuses every deposit stands in for three unworkable ones: null, not dry, and the
     // callers issue nothing on null. With no candidate at all the answer is dry.
-    const refusing = { canWork: () => false, patchHarvestable: () => false };
+    const refusing = { canWork: () => false, patchHarvestable: () => false, patchWitness: () => null };
     const { radius } = sim.world.get(holder, WorkFlag);
     const origin = { hx: HQ_X, hy: HQ_Y };
     const ground = flagGround(
