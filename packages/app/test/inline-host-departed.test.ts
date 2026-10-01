@@ -16,14 +16,13 @@ const LOCAL = 0;
 
 const plain = (full: string): MessageText => ({ short: full, full });
 const naming: MessageNaming = {
-  settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
+  settler: (e) => ({ name: `S${e.id}`, jobLabel: null, female: false }),
   building: () => 'Dom',
   vehicle: () => 'Wóz',
   player: () => 'Gracz',
   stance: (state) => state,
   paper: (paper) => `${paper.kind}:${paper.param}`,
   technology: (kind, typeId) => `${kind}:${typeId}`,
-  training: (course, subjectName, jobName) => plain(`${course}:${subjectName}:${jobName}`),
   text: (type, parts) => plain(`${parts.subjectName ?? '?'}:${type}`),
 };
 

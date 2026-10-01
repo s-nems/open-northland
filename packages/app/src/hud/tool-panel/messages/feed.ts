@@ -22,16 +22,6 @@ export const MESSAGE_SLOTS = 200;
 /** Events raised while the world is still being assembled never become notes: authored spawns land on
  *  the first step, and every adult they place would otherwise be announced as born. */
 const SETUP_TICKS_MUTED = 1;
-/** Two settlers missing the same good within this many cells raise one note (approximation: the
- *  original's range, with a Chebyshev cell metric standing in for its hex distance). */
-export const SIMILAR_MESSAGE_RANGE_CELLS = 21;
-const SIMILAR_TYPES: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
-  USER_MESSAGE_TYPE.goodNotFound,
-  USER_MESSAGE_TYPE.buildMaterialNotFound,
-  USER_MESSAGE_TYPE.homeNotFound,
-  USER_MESSAGE_TYPE.equipmentNotFound,
-]);
-const NODES_PER_CELL = 2;
 /** A note that reports a state the sim keeps a marker for: it ends with the marker, not with the
  *  lifetime or the selection. Departs from the original, whose lost worker is back at work within seconds;
  *  here a lost settler stands, so the note stands with it. */
@@ -95,16 +85,6 @@ function identityKey(m: PendingMessage): string {
   return `${m.type}|${subject}|${m.goodType ?? ''}|${m.jobType ?? ''}|${technologies}|${m.familyWait ?? ''}`;
 }
 
-/** Two "cannot find" complaints about one good from settlers standing close together. */
-function similarMessage(a: PendingMessage, b: PendingMessage): boolean {
-  if (a.type !== b.type || a.goodType !== b.goodType) return false;
-  if (a.subject?.kind !== 'settler' || b.subject?.kind !== 'settler') return false;
-  if (a.at === null || b.at === null) return false;
-  const dx = Math.abs(a.at.hx - b.at.hx) / NODES_PER_CELL;
-  const dy = Math.abs(a.at.hy - b.at.hy) / NODES_PER_CELL;
-  return Math.max(dx, dy) < SIMILAR_MESSAGE_RANGE_CELLS;
-}
-
 function expired(m: UserMessage, tick: number): boolean {
   return !isStandingNote(m.type) && tick - m.tick >= MESSAGE_LIFETIME_TICKS;
 }
@@ -130,9 +110,7 @@ class MessageList {
   }
 
   matches(pending: PendingMessage): boolean {
-    if ((this.byKey.get(identityKey(pending)) ?? 0) > 0) return true;
-    if (!SIMILAR_TYPES.has(pending.type)) return false;
-    return this.items.some((m) => similarMessage(m, pending));
+    return (this.byKey.get(identityKey(pending)) ?? 0) > 0;
   }
 
   /** Remove every entry `keep` rejects, handing each to `dropped`; true when anything went. */
@@ -204,7 +182,7 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
       if (tick <= SETUP_TICKS_MUTED) return 'muted';
       if (history.matches(pending)) return 'duplicate';
       if (live.items.length >= MESSAGE_SLOTS) return 'full';
-      const priority = messagePriority(pending.type, pending.jobType);
+      const priority = messagePriority(pending.type);
       if (live.matches(pending)) return 'duplicate';
       live.push({ ...pending, id: nextId, priority, tick, text: compose() });
       nextId++;

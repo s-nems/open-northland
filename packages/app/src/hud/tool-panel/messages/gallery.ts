@@ -12,7 +12,6 @@ import {
 } from '../../../game/snapshot.js';
 import type { MetSeat } from './from-diplomacy.js';
 import { type MessageNaming, MessageRaiser, nodeOf, type RaisedMessage } from './raise.js';
-import { GOOD_APPENDED } from './text.js';
 import {
   type MessageTechnology,
   USER_MESSAGE_TYPE,
@@ -28,7 +27,7 @@ import {
 export const NOTICE_GALLERY_DEBUG_FLAG = 'notices';
 
 export interface NoticeGallery {
-  /** The good the rows that end on one name; null leaves those rows without it. */
+  /** The good the rows that name one show; null leaves those rows out. */
   readonly goodType: number | null;
 }
 
@@ -51,18 +50,11 @@ const SEAT_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>
   'diplomacyChanged',
   'playerDied',
 ]);
-/** The rows whose text carries a good: the appended ones and the placeholder in the full-stock row. */
-const GOOD_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
-  ...GOOD_APPENDED,
-  'stockFull',
-]);
+/** The rows whose text names a good; without one to name they are left out. */
+const GOOD_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>(['canProduceNewGood']);
 
 /** The rows a woman raises; a man's name on them reads wrong in a gendered language. */
-const BIRTH_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
-  'gaveBirthToSon',
-  'gaveBirthToDaughter',
-  'familyBlocked',
-]);
+const WOMEN_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>(['familyBlocked']);
 
 const NO_PARTS = { jobLabel: null, goodName: null, stanceName: null } as const;
 
@@ -125,7 +117,12 @@ export function galleryMessages(
       { type, subject: null, at: nodeOf(e), about: e.id, goodType: null, technologies: null, jobType: null },
       () => {
         const named = naming.settler(e, snapshot);
-        return naming.text(type, { ...NO_PARTS, subjectName: named.name, jobLabel: named.jobLabel });
+        return naming.text(type, {
+          ...NO_PARTS,
+          subjectName: named.name,
+          jobLabel: named.jobLabel,
+          female: named.female,
+        });
       },
     );
   };
@@ -141,10 +138,11 @@ export function galleryMessages(
     const type = USER_MESSAGE_TYPE.experienceUnlocks;
     const jobType = settlerJobType(e);
     const houseType = house === undefined ? undefined : buildingTypeOf(house);
-    const technologies: MessageTechnology[] = [];
-    if (jobType !== undefined) technologies.push({ kind: 'job', typeId: jobType });
-    if (gallery.goodType !== null) technologies.push({ kind: 'good', typeId: gallery.goodType });
-    if (houseType !== undefined) technologies.push({ kind: 'house', typeId: houseType });
+    const candidates: MessageTechnology[] = [];
+    if (jobType !== undefined) candidates.push({ kind: 'job', typeId: jobType });
+    if (gallery.goodType !== null) candidates.push({ kind: 'good', typeId: gallery.goodType });
+    if (houseType !== undefined) candidates.push({ kind: 'house', typeId: houseType });
+    const technologies = candidates.filter((t) => naming.technology(t.kind, t.typeId) !== undefined);
     raiser.raise(
       `${type}|settler:${e.id}`,
       {
@@ -159,11 +157,14 @@ export function galleryMessages(
       () => {
         const named = naming.settler(e, snapshot);
         const labels = (kind: MessageTechnology['kind']): string[] =>
-          technologies.filter((t) => t.kind === kind).map((t) => naming.technology(t.kind, t.typeId));
+          technologies
+            .filter((t) => t.kind === kind)
+            .flatMap((t) => naming.technology(t.kind, t.typeId) ?? []);
         return naming.text(type, {
           ...NO_PARTS,
           subjectName: named.name,
           jobLabel: named.jobLabel,
+          female: named.female,
           technologySections: { jobs: labels('job'), goods: labels('good'), houses: labels('house') },
         });
       },
@@ -183,7 +184,8 @@ export function galleryMessages(
       if (house !== undefined) raiser.building(type, house);
       continue;
     }
-    const e = nextPerson(BIRTH_ROWS.has(name) && women.length > 0 ? women : people);
+    if (GOOD_ROWS.has(name) && gallery.goodType === null) continue;
+    const e = nextPerson(WOMEN_ROWS.has(name) && women.length > 0 ? women : people);
     if (e === undefined) continue;
     if (name === 'humanDied') raiseDeath(e);
     else if (name === 'familyBlocked') {
@@ -192,7 +194,9 @@ export function galleryMessages(
     } else if (name === 'experienceUnlocks') raiseUnlocks(e);
     else if (name === 'canDoNewJob') {
       const jobType = settlerJobType(e);
-      if (jobType !== undefined) raiser.trained(type, e, 'school', jobType);
+      if (jobType !== undefined && naming.technology('job', jobType) !== undefined) {
+        raiser.trained(type, e, 'school', jobType);
+      }
     } else raiser.settler(type, e, GOOD_ROWS.has(name) ? gallery.goodType : null);
   }
   return raiser.out;

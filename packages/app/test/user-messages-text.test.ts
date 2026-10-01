@@ -1,256 +1,164 @@
 import { describe, expect, it } from 'vitest';
-import type { UiString } from '../src/content/gui-gfx.js';
 import {
   composeMessageText,
-  type DecodedMessageTypeName,
-  type FamilyLines,
-  MESSAGE_STRING_ID,
-  type MessageTextDeps,
-  type ShortLabels,
-  userMessageTypeName,
+  type MessageText,
+  type MessageTextParts,
+  type NoticeCopy,
 } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE, type UserMessageTypeName } from '../src/hud/tool-panel/messages/types.js';
+import { en } from '../src/i18n/en.js';
+import { pl } from '../src/i18n/pl.js';
 
-/** Synthetic stand-ins for the `messages` rows the composer reads; the shapes matter, not the words. */
-const ROWS: Readonly<Record<number, string>> = {
-  10: 'row10',
-  61: '- row61',
-  27: 'row27 %s tail',
-  28: 'row28',
-  33: 'może teraz wykonywać następujące prace',
-  34: 'Nowe zawody',
-  35: 'Nowe towary',
-  36: 'Nowe budynki',
-  38: 'może produkować nowy towar',
-  39: 'może podjąć nowy zawód',
-  40: 'plemię może wybudować nowy budynek',
-  50: 'row50',
-  58: 'row58',
-  60: 'row60',
-  90: '- row90',
-  120: 'row120',
-  121: 'row121-unknown',
-};
+/** The most characters a card line's own words may take, placeholders left out: a proxy for the stacked
+ *  column's one 93 px line at 1080p, where 14 Polish characters measured 92 px and 16 English ones 84. */
+const SHORT_LINE_MAX_CHARS = 16;
+const PLACEHOLDER = /\{[A-Za-z]+\}/g;
 
-const decoded: UiString = (table, id, fallback) => (table === 'messages' ? (ROWS[id] ?? fallback) : fallback);
-/** Synthetic card lines: each type's own name, and templates for the rows that name a good or a stance. */
-const SHORT: ShortLabels = {
-  byType: Object.fromEntries(Object.keys(USER_MESSAGE_TYPE).map((name) => [name, `short:${name}`])) as Record<
-    UserMessageTypeName,
-    string
-  >,
-  withGood: { stockFull: 'Full: {good}' },
-  withStance: { playerSighted: 'Met: {stance}' },
-  unknownHeroDied: 'short:unknown',
-};
-/** Synthetic family lines: the wait's own name, and the partner slot in each sentence. */
-const FAMILY: FamilyLines = {
-  short: {
-    husbandAway: 'short:away',
-    noHome: 'short:home',
-    homeUnbuilt: 'short:site',
-    livesApart: 'short:apart',
-    noFood: 'short:food',
-  },
-  full: {
-    husbandAway: 'away {partner}',
-    noHome: 'home',
-    homeUnbuilt: 'site',
-    livesApart: 'apart {partner}',
-    noFood: 'food',
-  },
-};
-const deps: MessageTextDeps = {
-  uiString: decoded,
-  fallbackRow: (id) => `<${id}>`,
-  short: SHORT,
-  family: FAMILY,
-};
+const COPIES: readonly (readonly [string, NoticeCopy])[] = [
+  ['pl', pl.userMessages],
+  ['en', en.userMessages],
+];
 
-const compose = (
-  type: (typeof USER_MESSAGE_TYPE)[UserMessageTypeName],
-  subjectName: string | null,
-  jobLabel: string | null = null,
-  goodName: string | null = null,
-  stanceName: string | null = null,
-  technologySections?: { jobs: readonly string[]; goods: readonly string[]; houses: readonly string[] },
-) =>
-  composeMessageText(
-    type,
-    {
-      subjectName,
-      jobLabel,
-      goodName,
-      stanceName,
-      ...(technologySections !== undefined ? { technologySections } : {}),
+const BARE: MessageTextParts = { subjectName: 'Bjorn', jobLabel: null, goodName: null, stanceName: null };
+
+/** Every part a type can name, so no placeholder is left for want of a value. */
+function partsFor(name: UserMessageTypeName, female: boolean): MessageTextParts {
+  return {
+    ...BARE,
+    jobLabel: female ? null : 'Rolnik',
+    female,
+    goodName: 'Chleb',
+    stanceName: 'wrogi',
+    detail: 'Prolongata',
+    technologySections: { jobs: ['Młynarz'], goods: [], houses: [] },
+    training: { course: 'school', profession: 'Młynarz' },
+    ...(name === 'familyBlocked'
+      ? { family: { wait: 'livesApart', partner: { name: 'Olaf', jobLabel: 'Zwiadowca', female: false } } }
+      : {}),
+  };
+}
+
+function compose(copy: NoticeCopy, name: UserMessageTypeName, parts: MessageTextParts): MessageText {
+  return composeMessageText(USER_MESSAGE_TYPE[name], parts, copy);
+}
+
+/** Every card line a catalog holds, per key: one per type, plus the variants and the family waits. */
+function shortLines(copy: NoticeCopy): Map<string, Set<string>> {
+  const lines = new Map<string, Set<string>>();
+  for (const [key, line] of Object.entries(copy.short)) {
+    lines.set(key, new Set(typeof line === 'string' ? [line] : [line.he, line.she]));
+  }
+  for (const [wait, line] of Object.entries(copy.familyBlocked.short))
+    lines.set(`family:${wait}`, new Set([line]));
+  return lines;
+}
+
+describe('notice text', () => {
+  it.each(COPIES)(
+    'words every type in %s from the catalog alone, every placeholder filled',
+    (_lang, copy) => {
+      for (const name of Object.keys(USER_MESSAGE_TYPE) as UserMessageTypeName[]) {
+        for (const female of [false, true]) {
+          const text = compose(copy, name, partsFor(name, female));
+          for (const line of [text.short, text.full]) {
+            expect(line, name).not.toMatch(PLACEHOLDER);
+            expect(line, name).not.toMatch(/[—–]| {2}/);
+            expect(line.trim(), name).not.toBe('');
+          }
+          // The idle hint and the experience lists follow the full text as sentences of their own.
+          expect(text.full.split('\n')[0], name).toMatch(/\.$/);
+        }
+      }
     },
-    deps,
-  ).full;
+  );
 
-describe('user message text', () => {
-  it('maps every decoded type to a messages row', () => {
-    for (const name of Object.keys(MESSAGE_STRING_ID) as DecodedMessageTypeName[]) {
-      expect(MESSAGE_STRING_ID[name]).toBeGreaterThan(0);
-      expect(userMessageTypeName(USER_MESSAGE_TYPE[name])).toBe(name);
+  it.each(COPIES)('gives every type in %s its own card line, short enough for one line', (_lang, copy) => {
+    const owner = new Map<string, string>();
+    for (const [key, lines] of shortLines(copy)) {
+      for (const line of lines) {
+        expect(owner.get(line), `"${line}" on ${key}`).toBeUndefined();
+        owner.set(line, key);
+        expect(line.replace(PLACEHOLDER, '').trim().length, line).toBeLessThanOrEqual(SHORT_LINE_MAX_CHARS);
+      }
     }
-    expect(Object.keys(MESSAGE_STRING_ID)).toHaveLength(Object.keys(USER_MESSAGE_TYPE).length - 1);
   });
 
-  it('words a held child order from the catalog, naming the husband where the reason is his', () => {
-    const away = composeMessageText(
-      USER_MESSAGE_TYPE.familyBlocked,
-      {
+  it('agrees the Polish wording with the settler’s sex and leads with the name and trade', () => {
+    const he = compose(pl.userMessages, 'grewUp', { ...BARE, jobLabel: 'Rolnik', female: false });
+    const she = compose(pl.userMessages, 'grewUp', { ...BARE, subjectName: 'Astrid', female: true });
+    expect(he).toEqual({
+      short: 'Dorósł',
+      full: 'Bjorn (Rolnik) dorósł. Możesz nadać mu zawód albo go ożenić.',
+    });
+    expect(she.short).toBe('Dorosła');
+    expect(she.full.startsWith('Astrid dorosła')).toBe(true);
+    expect(compose(pl.userMessages, 'hungry', { ...BARE, subjectName: 'Astrid', female: true }).full).toBe(
+      'Astrid jest głodna. Dostarcz jedzenie do magazynu w jej zasięgu.',
+    );
+  });
+
+  it('names buildings, vehicles and seats inside the sentence', () => {
+    expect(compose(en.userMessages, 'houseFinished', { ...BARE, subjectName: 'Sawmill' }).full).toBe(
+      'Construction finished: Sawmill.',
+    );
+    expect(compose(pl.userMessages, 'vehicleNoPath', { ...BARE, subjectName: 'Wóz' }).full).toBe(
+      'Wóz: brak drogi do celu. Wskaż inny cel.',
+    );
+    const contact = compose(en.userMessages, 'playerSighted', {
+      ...BARE,
+      subjectName: 'Player 2',
+      stanceName: 'hostile',
+    });
+    expect(contact).toEqual({
+      short: 'Contact: hostile',
+      full: 'New contact: Player 2. Attitude toward you: hostile.',
+    });
+  });
+
+  it('reports a death it cannot name with its own lines', () => {
+    expect(compose(en.userMessages, 'humanDied', { ...BARE, subjectName: null })).toEqual({
+      short: en.userMessages.short.humanDiedUnknown,
+      full: en.userMessages.full.humanDiedUnknown,
+    });
+    expect(compose(en.userMessages, 'humanDied', BARE).full).toBe('Bjorn has died.');
+  });
+
+  it('tells a barracks course from a school one', () => {
+    const course = (training: NonNullable<MessageTextParts['training']>) =>
+      compose(pl.userMessages, 'canDoNewJob', { ...BARE, training });
+    expect(course({ course: 'barracks', profession: 'Żołnierz' })).toEqual({
+      short: 'Nowy żołnierz',
+      full: 'Bjorn ukończył szkolenie w koszarach i został żołnierzem.',
+    });
+    expect(course({ course: 'school', profession: 'Młynarz' })).toEqual({
+      short: 'Fach: Młynarz',
+      full: 'Bjorn ukończył szkołę i zna nowy zawód: Młynarz.',
+    });
+  });
+
+  it('lists an experience unlock under one heading per kind, leaving empty kinds out', () => {
+    const text = compose(en.userMessages, 'experienceUnlocks', {
+      ...BARE,
+      technologySections: { jobs: ['Miller'], goods: ['Flour', 'Bread'], houses: [] },
+    });
+    expect(text.full).toBe(
+      'Bjorn has gained experience.\n\nNew professions:\n- Miller\n\nNew goods:\n- Flour\n- Bread',
+    );
+  });
+
+  it('names the husband where the reason is his, and reads cleanly when he cannot be named', () => {
+    const family = (partner: { name: string; jobLabel: string | null; female: boolean } | null) =>
+      compose(pl.userMessages, 'familyBlocked', {
+        ...BARE,
         subjectName: 'Astrid',
-        jobLabel: null,
-        goodName: null,
-        stanceName: null,
-        family: { wait: 'husbandAway', partner: { name: 'Olaf', jobLabel: 'Zwiadowca' } },
-      },
-      deps,
-    );
-    expect(away).toEqual({ short: 'short:away', full: 'Astrid away Olaf (Zwiadowca)' });
-    const homeless = composeMessageText(
-      USER_MESSAGE_TYPE.familyBlocked,
-      {
-        subjectName: 'Astrid',
-        jobLabel: null,
-        goodName: null,
-        stanceName: null,
-        family: { wait: 'noHome', partner: null },
-      },
-      deps,
-    );
-    expect(homeless.full).toBe('Astrid home');
-  });
-
-  it('leads with the settler and its trade in parentheses', () => {
-    expect(compose(USER_MESSAGE_TYPE.hungry, 'Bjorn Olafson', 'Budowniczy')).toBe(
-      'Bjorn Olafson (Budowniczy) row10',
-    );
-    expect(compose(USER_MESSAGE_TYPE.wasBorn, 'Astrid')).toBe('Astrid row50');
-  });
-
-  it('names the building before its dashed row', () => {
-    expect(compose(USER_MESSAGE_TYPE.houseFinished, 'Dom')).toBe('Dom - row90');
-    expect(compose(USER_MESSAGE_TYPE.houseFinished, null)).toBe('- row90');
-  });
-
-  it('reports an unnamed death through the unknown-hero row', () => {
-    expect(compose(USER_MESSAGE_TYPE.humanDied, 'Leif')).toBe('Leif row120');
-    expect(compose(USER_MESSAGE_TYPE.humanDied, null)).toBe('row121-unknown');
-  });
-
-  it('substitutes the good into the stock-full row and appends the detail rows', () => {
-    expect(compose(USER_MESSAGE_TYPE.stockFull, 'Leif', null, 'Drewno')).toBe('Leif row27 Drewno tail');
-    expect(compose(USER_MESSAGE_TYPE.stockFull, 'Leif')).toBe('Leif row28');
-    expect(compose(USER_MESSAGE_TYPE.backpackFull, 'Leif')).toBe('Leif row58 row60');
-  });
-
-  it('appends the stance to the rows about another seat, which end on a lead-in', () => {
-    expect(compose(USER_MESSAGE_TYPE.playerSighted, 'Gracz 2', null, null, 'wrogi')).toBe(
-      'Gracz 2 <131> wrogi',
-    );
-    const sighted = composeMessageText(
-      USER_MESSAGE_TYPE.playerSighted,
-      { subjectName: 'Gracz 2', jobLabel: null, goodName: null, stanceName: 'wrogi' },
-      { ...deps, fallbackRow: (id) => `- <${id}>` },
-    );
-    expect([sighted.short, sighted.full]).toEqual(['Met: wrogi', 'Gracz 2 - <131> wrogi']);
-    expect(compose(USER_MESSAGE_TYPE.diplomacyChanged, 'Gracz 2', null, null, 'przyjazny')).toBe(
-      'Gracz 2 <132> przyjazny',
-    );
-  });
-
-  it('groups professions and goods, while a building-only record remains its own list', () => {
+        female: true,
+        family: { wait: 'husbandAway', partner },
+      });
+    const named = family({ name: 'Olaf', jobLabel: 'Zwiadowca', female: false });
+    expect(named.short).toBe('Mąż nie wraca');
     expect(
-      compose(USER_MESSAGE_TYPE.experienceUnlocks, 'Bjorn', 'Rolnik', null, null, {
-        jobs: ['Młynarz'],
-        goods: ['Mąka', 'Chleb'],
-        houses: [],
-      }),
-    ).toBe(
-      'Bjorn (Rolnik) może teraz wykonywać następujące prace:\nNowe zawody:\n- Młynarz\n\nNowe towary:\n- Mąka\n- Chleb',
-    );
-    expect(
-      compose(USER_MESSAGE_TYPE.experienceUnlocks, 'Bjorn', 'Rolnik', null, null, {
-        jobs: [],
-        goods: [],
-        houses: ['Młyn', 'Piekarnia'],
-      }),
-    ).toBe('Bjorn (Rolnik) może teraz wykonywać następujące prace:\nNowe budynki:\n- Młyn\n- Piekarnia');
-  });
-
-  it('falls back to the catalog row when the decoded strings are absent', () => {
-    const bare: MessageTextDeps = {
-      uiString: (_t, _i, fallback) => fallback,
-      fallbackRow: (id) => `<${id}>`,
-      short: SHORT,
-      family: FAMILY,
-    };
-    expect(
-      composeMessageText(
-        USER_MESSAGE_TYPE.houseUpgraded,
-        { subjectName: 'Dom', jobLabel: null, goodName: null, stanceName: null },
-        bare,
-      ).full,
-    ).toBe('Dom <91>');
-  });
-
-  it('puts the catalog label on the card, with the good it is about, never the row', () => {
-    const settler = composeMessageText(
-      USER_MESSAGE_TYPE.hungry,
-      { subjectName: 'Bjorn', jobLabel: 'Budowniczy', goodName: null, stanceName: null },
-      deps,
-    );
-    expect([settler.short, settler.full]).toEqual(['short:hungry', 'Bjorn (Budowniczy) row10']);
-    const full = composeMessageText(
-      USER_MESSAGE_TYPE.stockFull,
-      { subjectName: 'Leif', jobLabel: null, goodName: 'Drewno', stanceName: null },
-      deps,
-    );
-    expect(full.short).toBe('Full: Drewno');
-    const fullOfNothing = composeMessageText(
-      USER_MESSAGE_TYPE.stockFull,
-      { subjectName: 'Leif', jobLabel: null, goodName: null, stanceName: null },
-      deps,
-    );
-    expect(fullOfNothing.short).toBe('short:stockFull');
-    const attacked = composeMessageText(
-      USER_MESSAGE_TYPE.humanAttacked,
-      { subjectName: 'Bjorn', jobLabel: null, goodName: null, stanceName: null },
-      deps,
-    );
-    expect([attacked.short, attacked.full]).toEqual(['short:humanAttacked', 'Bjorn - row61']);
-    const house = composeMessageText(
-      USER_MESSAGE_TYPE.houseFinished,
-      { subjectName: 'Dom', jobLabel: null, goodName: null, stanceName: null },
-      deps,
-    );
-    expect([house.short, house.full]).toEqual(['short:houseFinished', 'Dom - row90']);
-    const unknown = composeMessageText(
-      USER_MESSAGE_TYPE.humanDied,
-      { subjectName: null, jobLabel: null, goodName: null, stanceName: null },
-      deps,
-    );
-    expect([unknown.short, unknown.full]).toEqual(['short:unknown', 'row121-unknown']);
-    const paper = composeMessageText(
-      USER_MESSAGE_TYPE.specialItemFound,
-      { subjectName: null, jobLabel: null, goodName: null, stanceName: null, detail: 'Pozwolenie' },
-      deps,
-    );
-    expect([paper.short, paper.full]).toEqual(['short:specialItemFound', '<134> - Pozwolenie']);
-    const unlocks = composeMessageText(
-      USER_MESSAGE_TYPE.experienceUnlocks,
-      {
-        subjectName: 'Bjorn',
-        jobLabel: null,
-        goodName: null,
-        stanceName: null,
-        technologySections: { jobs: [], goods: [], houses: ['Młyn'] },
-      },
-      deps,
-    );
-    expect(unlocks.short).toBe('short:experienceUnlocks');
-    expect(unlocks.full).toBe('Bjorn może teraz wykonywać następujące prace:\nNowe budynki:\n- Młyn');
+      named.full.startsWith('Astrid nie może mieć dziecka: jej mąż Olaf (Zwiadowca) przez swój zawód'),
+    ).toBe(true);
+    expect(family(null).full.startsWith('Astrid nie może mieć dziecka: jej mąż przez swój zawód')).toBe(true);
   });
 });

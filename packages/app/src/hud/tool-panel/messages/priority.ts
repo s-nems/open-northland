@@ -1,4 +1,3 @@
-import { JOB_COLLECTOR } from '../../../catalog/jobs.js';
 import {
   MESSAGE_PRIORITY_LEVELS,
   type MessagePriorityLevel,
@@ -7,18 +6,13 @@ import {
   type UserMessageTypeName,
 } from './types.js';
 
-/**
- * Original behavior: the base game and the CulturesNation mod give each message type the same one of
- * three groups; `goodNotFound` alone branches on the settler's trade.
- */
+/** Original behavior: the base game and the CulturesNation mod give each message type the same one of
+ *  three groups. */
 const IMPORTANT: readonly UserMessageTypeName[] = [
   'lostWithoutSignposts',
   'experienceUnlocks',
   'canProduceNewGood',
   'canDoNewJob',
-  'canBuildNewHouse',
-  'canBuildNewVehicle',
-  'canEquipNewItem',
   'starving',
   'willDie',
   'humanAttacked',
@@ -33,22 +27,12 @@ const IMPORTANT: readonly UserMessageTypeName[] = [
 ];
 
 const NOTABLE: readonly UserMessageTypeName[] = [
-  'taskCompleted',
-  'taskFailed',
-  'buildMaterialNotFound',
   'workplaceNotFound',
   'vehicleSiteNotFound',
   'vehicleSiteOccupied',
-  'noCoinsForTraining',
   'noVehicleForWork',
-  'noTradeAgreement',
-  'producedAllGoods',
-  'couldNotProduceOneGood',
-  'couldNotProduceAnyGoods',
   'wantsToPray',
   'grewUp',
-  'cannotAttachHouse',
-  'cannotDetachHouse',
   'cannotEnterVehicle',
   'houseFinished',
   'houseUpgraded',
@@ -71,11 +55,8 @@ const FIXED_PRIORITY: ReadonlyMap<UserMessageType, MessagePriorityLevel> = new M
   ...NOTABLE.map((name) => [USER_MESSAGE_TYPE[name], NOTABLE_LEVEL] as const),
 ]);
 
-/** A message's priority: fixed per type, except that a collector's missing good is notable. */
-export function messagePriority(type: UserMessageType, jobType: number | null): MessagePriorityLevel {
-  if (type === USER_MESSAGE_TYPE.goodNotFound) {
-    return jobType === JOB_COLLECTOR ? NOTABLE_LEVEL : ROUTINE_LEVEL;
-  }
+/** A message's priority, fixed per type. */
+export function messagePriority(type: UserMessageType): MessagePriorityLevel {
   return FIXED_PRIORITY.get(type) ?? ROUTINE_LEVEL;
 }
 

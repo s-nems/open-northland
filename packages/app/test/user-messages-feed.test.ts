@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { JOB_BUILDER, JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import {
   createMessageFeed,
   MESSAGE_LIFETIME_TICKS,
   MESSAGE_SLOTS,
-  SIMILAR_MESSAGE_RANGE_CELLS,
 } from '../src/hud/tool-panel/messages/feed.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import {
@@ -45,7 +43,7 @@ describe('message feed', () => {
   it('stamps id, tick and priority on an accepted message', () => {
     const feed = createMessageFeed();
     feed.add(pending(USER_MESSAGE_TYPE.humanDied, null), TICK, TEXT);
-    feed.add(pending(USER_MESSAGE_TYPE.wasBorn), TICK + 1, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.tired), TICK + 1, TEXT);
     expect(feed.displayed().map((m) => [m.id, m.tick, m.priority])).toEqual([
       [1, TICK, 2],
       [2, TICK + 1, 0],
@@ -147,7 +145,7 @@ describe('message feed', () => {
 
   it('hides the notes below the level but keeps and counts them, whatever the level does next', () => {
     const feed = createMessageFeed();
-    feed.add(pending(USER_MESSAGE_TYPE.wasBorn), TICK, TEXT); // routine
+    feed.add(pending(USER_MESSAGE_TYPE.tired), TICK, TEXT); // routine
     feed.add(pending(USER_MESSAGE_TYPE.houseFinished, { kind: 'building', entity: 3 }), TICK, TEXT); // notable
     feed.add(pending(USER_MESSAGE_TYPE.humanDied, null), TICK, TEXT); // important
     expect(feed.displayed()).toHaveLength(3);
@@ -170,35 +168,22 @@ describe('message feed', () => {
     expect(feed.displayed()).toHaveLength(4);
   });
 
-  it('applies the collector rule through the pending job', () => {
-    const feed = createMessageFeed();
-    feed.setLevel(1);
-    feed.add(pending(USER_MESSAGE_TYPE.goodNotFound, undefined, { jobType: JOB_BUILDER }), TICK, TEXT);
-    feed.add(
-      pending(USER_MESSAGE_TYPE.goodNotFound, { kind: 'settler', entity: 8 }, { jobType: JOB_COLLECTOR }),
-      TICK,
-      TEXT,
-    );
-    expect(feed.live().map((m) => m.priority)).toEqual([0, 1]);
-    expect(feed.displayed().map((m) => m.priority)).toEqual([1]);
-  });
-
   it('rejects arrivals once every slot is taken', () => {
     const feed = createMessageFeed();
     for (let i = 0; i < MESSAGE_SLOTS; i++) {
-      expect(feed.add(pending(USER_MESSAGE_TYPE.wasBorn, { kind: 'settler', entity: i }), TICK, TEXT)).toBe(
+      expect(feed.add(pending(USER_MESSAGE_TYPE.tired, { kind: 'settler', entity: i }), TICK, TEXT)).toBe(
         'accepted',
       );
     }
     expect(
-      feed.add(pending(USER_MESSAGE_TYPE.wasBorn, { kind: 'settler', entity: MESSAGE_SLOTS }), TICK, TEXT),
+      feed.add(pending(USER_MESSAGE_TYPE.tired, { kind: 'settler', entity: MESSAGE_SLOTS }), TICK, TEXT),
     ).toBe('full');
   });
 
   it('retires a note after its lifetime and when its subject is gone', () => {
     const feed = createMessageFeed();
-    feed.add(pending(USER_MESSAGE_TYPE.wasBorn, { kind: 'settler', entity: 1 }), TICK, TEXT);
-    feed.add(pending(USER_MESSAGE_TYPE.wasBorn, { kind: 'settler', entity: 2 }), TICK + 10, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.tired, { kind: 'settler', entity: 1 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.tired, { kind: 'settler', entity: 2 }), TICK + 10, TEXT);
     feed.expire(TICK + 20, (m) => m.subject?.entity === 1);
     expect(feed.displayed().map((m) => m.subject?.entity)).toEqual([2]);
     feed.expire(TICK + 10 + MESSAGE_LIFETIME_TICKS, () => false);
@@ -224,38 +209,18 @@ describe('message feed', () => {
 
   it('Shift-dismiss clears the shown notes into history and leaves the ones under the level', () => {
     const feed = createMessageFeed();
-    feed.add(pending(USER_MESSAGE_TYPE.wasBorn, { kind: 'settler', entity: 1 }), TICK, TEXT);
-    feed.add(pending(USER_MESSAGE_TYPE.wasBorn, { kind: 'settler', entity: 2 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.tired, { kind: 'settler', entity: 1 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.tired, { kind: 'settler', entity: 2 }), TICK, TEXT);
     feed.add(pending(USER_MESSAGE_TYPE.humanDied, null), TICK, TEXT);
     feed.setLevel(2);
     feed.removeAll(true);
     expect(feed.displayed()).toHaveLength(0);
-    expect(feed.live().map((m) => m.type)).toEqual([USER_MESSAGE_TYPE.wasBorn, USER_MESSAGE_TYPE.wasBorn]);
+    expect(feed.live().map((m) => m.type)).toEqual([USER_MESSAGE_TYPE.tired, USER_MESSAGE_TYPE.tired]);
     expect(feed.state().history).toHaveLength(1);
     feed.setLevel(0);
     feed.removeAll(true);
     expect(feed.live()).toHaveLength(0);
     expect(feed.state().history).toHaveLength(3);
-  });
-
-  it('merges neighbouring settlers missing the same good, but not distant ones', () => {
-    const feed = createMessageFeed();
-    const near = SIMILAR_MESSAGE_RANGE_CELLS - 1;
-    const far = SIMILAR_MESSAGE_RANGE_CELLS + 1;
-    const missing = (entity: number, hx: number, goodType: number) =>
-      pending(USER_MESSAGE_TYPE.goodNotFound, { kind: 'settler', entity }, { at: { hx, hy: 0 }, goodType });
-    expect(feed.add(missing(1, 0, 5), TICK, TEXT)).toBe('accepted');
-    expect(feed.add(missing(2, near * 2, 5), TICK, TEXT)).toBe('duplicate');
-    expect(feed.add(missing(3, far * 2, 5), TICK, TEXT)).toBe('accepted');
-    // A different good, or a type outside the rule, is never "similar".
-    expect(feed.add(missing(4, 0, 6), TICK, TEXT)).toBe('accepted');
-    expect(
-      feed.add(
-        pending(USER_MESSAGE_TYPE.hungry, { kind: 'settler', entity: 5 }, { at: { hx: 0, hy: 0 } }),
-        TICK,
-        TEXT,
-      ),
-    ).toBe('accepted');
   });
 
   it('composes the text only for an accepted message', () => {

@@ -3,62 +3,31 @@ import type { ChildOrderWait } from '../../../game/snapshot.js';
 import type { MessageText } from './text.js';
 
 /**
- * The original's message ids (`ingameguimessages.cif` rows 15-134 spell out each one). The
- * id is the key of the original's priority table and of the string-id map, so it is pinned here.
+ * The notice types the column raises. The numbers follow the original's message ids where a type has a
+ * counterpart there; they only key the feed, nothing persists them.
  *
- * The original never raises six of them: `taskCompleted`, `waitingForGood`, `bored`, `wasBorn`, and
- * the two `gaveBirth` ids. Nothing here raises them either. It never raises `cannotAttachVehicle`
- * either, which here stands in for the silently refused load of a vehicle into a ship (approximation).
- *
- * `familyBlocked` is this game's own, past the original's range: the original fails a child order it
- * cannot start without a word. Its wording comes from the app catalog, not a decoded row.
+ * The original never raises `cannotAttachVehicle`, which here stands in for the silently refused load of
+ * a vehicle into a ship (approximation). `familyBlocked` is this game's own, past the original's range:
+ * the original fails a child order it cannot start without a word.
  */
 export const USER_MESSAGE_TYPE = {
-  taskCompleted: 0x01,
-  taskFailed: 0x02,
   lostWithoutSignposts: 0x03,
-  goodNotFound: 0x04,
-  buildMaterialNotFound: 0x05,
-  homeNotFound: 0x06,
-  targetPersonNotFound: 0x07,
   workplaceNotFound: 0x08,
   vehicleSiteNotFound: 0x09,
   vehicleSiteOccupied: 0x0a,
   nothingToDo: 0x0b,
-  waitingForGood: 0x0c,
-  stockFull: 0x0d,
-  noCoinsForTraining: 0x0e,
   noVehicleForWork: 0x0f,
-  noTradeAgreement: 0x10,
-  cannotDamageTarget: 0x11,
   experienceUnlocks: 0x12,
   canProduceNewGood: 0x13,
   canDoNewJob: 0x14,
-  canBuildNewHouse: 0x15,
-  canBuildNewVehicle: 0x16,
-  canEquipNewItem: 0x17,
-  producedOneGood: 0x18,
-  producedAllGoods: 0x19,
-  couldNotProduceOneGood: 0x1a,
-  couldNotProduceAnyGoods: 0x1b,
   hungry: 0x1c,
   tired: 0x1d,
-  bored: 0x1e,
   wantsToPray: 0x1f,
   starving: 0x20,
   willDie: 0x21,
-  gaveBirthToSon: 0x22,
-  gaveBirthToDaughter: 0x23,
-  wasBorn: 0x24,
   grewUp: 0x25,
-  cannotMarry: 0x26,
   noOneToMarry: 0x27,
-  noWayToMarry: 0x28,
-  cannotAttachHouse: 0x29,
-  cannotDetachHouse: 0x2a,
   cannotEnterVehicle: 0x2b,
-  equipmentNotFound: 0x2c,
-  backpackFull: 0x2d,
   humanAttacked: 0x2e,
   houseFinished: 0x2f,
   houseUpgraded: 0x30,
@@ -88,7 +57,7 @@ export type MessagePriorityLevel = 0 | 1 | 2;
 
 export const MESSAGE_PRIORITY_LEVELS: readonly MessagePriorityLevel[] = [0, 1, 2];
 
-/** What a message is about; the subject's name prefixes the text and its liveness bounds the message. */
+/** What a message is about; the text names the subject and its liveness bounds the message. */
 export type MessageSubject =
   | { readonly kind: 'settler'; readonly entity: number }
   | { readonly kind: 'building'; readonly entity: number }
@@ -111,8 +80,8 @@ export interface PendingMessage {
   readonly goodType: number | null;
   /** Newly available capabilities carried together by the original's experience-unlock record. */
   readonly technologies: readonly MessageTechnology[] | null;
-  /** The subject settler's trade when the message was raised; the priority rule for a missing good
-   *  reads it. */
+  /** The subject settler's trade when the message was raised, or the trade a course taught; part of the
+   *  identity. */
   readonly jobType: number | null;
   /** A family note's reason, part of its identity: a new reason retires the old note and raises its own. */
   readonly familyWait?: ChildOrderWait;

@@ -142,13 +142,13 @@ describe('gui stage', () => {
     expect(manifest.frames).toHaveLength(2);
   });
 
-  it('decodes the nine ingamegui tables per language, id→text, CP1250-decoded', async () => {
+  it('decodes the eight ingamegui tables per language, id→text, CP1250-decoded', async () => {
     const res = await convertGuiStrings({ mod: game }, out);
     expect(res.map((r) => r.lang)).toEqual(['eng', 'pol']);
-    expect(res.every((r) => r.tables === 9)).toBe(true);
+    expect(res.every((r) => r.tables === 8)).toBe(true);
 
     const eng = JSON.parse(await readFile(join(out, 'gui', 'strings', 'eng.json'), 'utf8'));
-    expect(Object.keys(eng)).toHaveLength(9);
+    expect(Object.keys(eng)).toHaveLength(8);
     expect(eng.main['0']).toBe('Speed'); // `stringn 0 "Speed"` → string-id 0
     expect(eng.main['1']).toBe('Pause'); // the following bare `string` auto-increments to id 1
 
@@ -200,7 +200,7 @@ describe('gui stage', () => {
     expect(manifest.paletteLut.stem).toBe('gui-palettes-lut');
     expect(manifest.paletteLut.names).toHaveLength(14);
     expect(manifest.strings.languages).toEqual(['eng', 'pol']);
-    expect(manifest.strings.tables).toHaveLength(9);
+    expect(manifest.strings.tables).toHaveLength(8);
     expect(manifest.history.languages).toEqual([]); // no hypertext/history folder in this fixture
     expect(manifest.cursors).toHaveLength(3);
   });

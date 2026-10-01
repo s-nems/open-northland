@@ -5,13 +5,14 @@ import { writeJsonFile } from '../content-tree.js';
 import { readSourceFile } from '../source-files.js';
 import { GUI_CONTENT_DIR, GUI_LANGS } from './paths.js';
 
-/** The nine in-game GUI string tables (files are `ingamegui<table>.cif` under `Data/text/<lang>/strings/ingamegui/`). */
+/** The in-game GUI string tables the app reads (files are `ingamegui<table>.cif` under
+ *  `Data/text/<lang>/strings/ingamegui/`). The notices are worded by the app catalog, so `messages` is not
+ *  among them. */
 export const STRING_TABLES = [
   'main',
   'misc',
   'miscwindow',
   'misclogic',
-  'messages',
   'humanwindow',
   'humanlistwindow',
   'housewindow',

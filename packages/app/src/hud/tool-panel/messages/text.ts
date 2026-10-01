@@ -1,94 +1,16 @@
-import type { UiString } from '../../../content/gui-gfx.js';
 import type { ChildOrderWait } from '../../../game/snapshot.js';
-import { formatMessage } from '../../../i18n/index.js';
+import { formatMessage, type Messages } from '../../../i18n/index.js';
 import { USER_MESSAGE_TYPE, type UserMessageType, type UserMessageTypeName } from './types.js';
 
-/** The ingamegui string table the message texts read. */
-export const MESSAGE_STRINGS_TABLE = 'messages';
+/** The catalog section that words every notice, short and full. */
+export type NoticeCopy = Messages['userMessages'];
 
-/** The types worded by a decoded row; `familyBlocked` is worded by the app catalog alone. */
-export type DecodedMessageTypeName = Exclude<UserMessageTypeName, 'familyBlocked'>;
+/** A catalog line, or a pair whose wording agrees with a settler subject's sex. */
+type CopyLine = string | { readonly he: string; readonly she: string };
 
-/**
- * The `messages` row each type reads. The pairing follows the original's message wording; the
- * rows themselves are the owned copy's decoded `ingameguimessages.cif`.
- */
-export const MESSAGE_STRING_ID: Readonly<Record<DecodedMessageTypeName, number>> = {
-  taskCompleted: 15,
-  taskFailed: 16,
-  lostWithoutSignposts: 18,
-  goodNotFound: 19,
-  buildMaterialNotFound: 20,
-  homeNotFound: 21,
-  targetPersonNotFound: 22,
-  workplaceNotFound: 23,
-  vehicleSiteNotFound: 24,
-  vehicleSiteOccupied: 25,
-  nothingToDo: 17,
-  waitingForGood: 26,
-  stockFull: 27,
-  noCoinsForTraining: 29,
-  noVehicleForWork: 30,
-  noTradeAgreement: 31,
-  cannotDamageTarget: 32,
-  experienceUnlocks: 33,
-  canProduceNewGood: 38,
-  canDoNewJob: 39,
-  canBuildNewHouse: 40,
-  canBuildNewVehicle: 41,
-  canEquipNewItem: 42,
-  producedOneGood: 43,
-  producedAllGoods: 44,
-  couldNotProduceOneGood: 45,
-  couldNotProduceAnyGoods: 46,
-  hungry: 10,
-  tired: 12,
-  bored: 13,
-  wantsToPray: 14,
-  starving: 11,
-  willDie: 47,
-  gaveBirthToSon: 48,
-  gaveBirthToDaughter: 49,
-  wasBorn: 50,
-  grewUp: 51,
-  cannotMarry: 52,
-  noOneToMarry: 53,
-  noWayToMarry: 54,
-  cannotAttachHouse: 55,
-  cannotDetachHouse: 56,
-  cannotEnterVehicle: 57,
-  equipmentNotFound: 58,
-  backpackFull: 58,
-  humanAttacked: 61,
-  houseFinished: 90,
-  houseUpgraded: 91,
-  houseAttacked: 92,
-  vehicleNoPath: 100,
-  vehicleNoCommander: 101,
-  vehicleAttacked: 102,
-  vehicleNoAnimal: 103,
-  vehicleNoPassengerRoom: 104,
-  cannotAttachVehicle: 105,
-  vehicleCannotNearShip: 106,
-  cannotLeaveVehicle: 107,
-  vehicleNoCarrier: 108,
-  humanDied: 120,
-  playerSighted: 131,
-  diplomacyChanged: 132,
-  playerDied: 133,
-  specialItemFound: 134,
-};
+/** The types worded by the per-type tables; `familyBlocked` has its own table per wait. */
+type TabledTypeName = Exclude<UserMessageTypeName, 'familyBlocked'>;
 
-/** Rows a composite text appends or substitutes. */
-const STOCK_FULL_NO_GOOD_STRING_ID = 28;
-const EQUIPMENT_NOT_FOUND_DETAIL_STRING_ID = 59;
-const BACKPACK_FULL_DETAIL_STRING_ID = 60;
-const UNKNOWN_HERO_DIED_STRING_ID = 121;
-const EXPERIENCE_JOB_STRING_ID = 34;
-const EXPERIENCE_GOOD_STRING_ID = 35;
-const EXPERIENCE_HOUSE_STRING_ID = 36;
-/** The placeholder the stock-full row carries for the good's name. */
-const GOOD_PLACEHOLDER = '%s';
 const TYPE_NAME_BY_ID: ReadonlyMap<UserMessageType, UserMessageTypeName> = new Map(
   (Object.keys(USER_MESSAGE_TYPE) as UserMessageTypeName[]).map((name) => [USER_MESSAGE_TYPE[name], name]),
 );
@@ -99,36 +21,16 @@ export function userMessageTypeName(type: UserMessageType): UserMessageTypeName 
   return name;
 }
 
-/** The rows whose text ends in the good it is about. */
-export const GOOD_APPENDED: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
-  'goodNotFound',
-  'waitingForGood',
-  'canProduceNewGood',
-  'canEquipNewItem',
-  'producedOneGood',
-  'couldNotProduceOneGood',
-]);
-
-/** The rows that end on a colon or a lead-in for the diplomatic stance they are about. */
-const STANCE_APPENDED: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
-  'playerSighted',
-  'diplomacyChanged',
-]);
-
-/** The rows that name a building rather than a settler, so no trade label follows the name. */
-const HOUSE_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
-  'houseFinished',
-  'houseUpgraded',
-  'houseAttacked',
-]);
-
 export interface MessageTextParts {
-  /** The subject's display name, or null when there is no subject left to name. */
+  /** The subject's display name (a settler, building, vehicle or seat), or null when there is no subject
+   *  left to name. */
   readonly subjectName: string | null;
   /** A settler subject's trade, shown in parentheses after the name; null when it has none to show. */
   readonly jobLabel: string | null;
+  /** A settler subject's sex, which the Polish wording agrees with; absent for any other subject. */
+  readonly female?: boolean;
   readonly goodName: string | null;
-  /** The stance the row about another seat reports; null for every row that names none. */
+  /** The stance a note about another seat reports; null for every note that names none. */
   readonly stanceName: string | null;
   /** Localized lists carried by one experience-unlock notification. */
   readonly technologySections?: {
@@ -136,125 +38,101 @@ export interface MessageTextParts {
     readonly goods: readonly string[];
     readonly houses: readonly string[];
   };
-  /** The found paper's name, appended after a dash as the original formats its found-object note. */
+  /** The found paper's name. */
   readonly detail?: string;
+  /** The course a `canDoNewJob` note reports, and the trade it taught. */
+  readonly training?: { readonly course: 'barracks' | 'school'; readonly profession: string };
   /** What holds a `familyBlocked` note's child order, and the spouse it names. */
   readonly family?: { readonly wait: ChildOrderWait; readonly partner: NamedSettler | null };
 }
 
-/** A settler as a note names it: its name and the trade label shown after it (null for none). */
+/** A settler as a note names it: its name, the trade label shown after it (null for none) and its sex. */
 export interface NamedSettler {
   readonly name: string;
   readonly jobLabel: string | null;
-}
-
-function nameWithTrade(named: NamedSettler): string {
-  return named.jobLabel === null ? named.name : `${named.name} (${named.jobLabel})`;
-}
-
-/** The catalog wording of a `familyBlocked` note per wait: the card line, and the sentence after the
- *  woman's name with a `{partner}` slot. */
-export interface FamilyLines {
-  readonly short: Readonly<Record<ChildOrderWait, string>>;
-  readonly full: Readonly<Record<ChildOrderWait, string>>;
-}
-
-/** The card lines, from the app catalog: one per type, and `{good}` / `{stance}` templates for the rows
- *  whose card names what they are about. */
-export interface ShortLabels {
-  readonly byType: Readonly<Record<DecodedMessageTypeName, string>>;
-  readonly withGood: Readonly<Partial<Record<DecodedMessageTypeName, string>>>;
-  readonly withStance: Readonly<Partial<Record<DecodedMessageTypeName, string>>>;
-  /** The death of a hero the seat cannot name. */
-  readonly unknownHeroDied: string;
-}
-
-export interface MessageTextDeps {
-  readonly uiString: UiString;
-  /** The app catalog's stand-in for a `messages` row when the decoded strings are absent. */
-  readonly fallbackRow: (id: number) => string;
-  readonly short: ShortLabels;
-  readonly family: FamilyLines;
+  readonly female: boolean;
 }
 
 /** A message as the card shows it and as it reads in full. */
 export interface MessageText {
-  /** The card's event line: a short label that fits the card, never the original's sentence. */
+  /** The card's event line: a short label that fits the card. */
   readonly short: string;
-  /** The whole message in the original's wording, for the unfolded card and assistive text. */
+  /** The whole message, for the unfolded card and assistive text. */
   readonly full: string;
+}
+
+function nameWithTrade(name: string, jobLabel: string | null): string {
+  return jobLabel === null ? name : `${name} (${jobLabel})`;
+}
+
+function inflect(line: CopyLine, female: boolean): string {
+  if (typeof line === 'string') return line;
+  return female ? line.she : line.he;
+}
+
+/** The short and full lines a type reads: a nameless death and a barracks course have their own. */
+function linesOf(
+  name: TabledTypeName,
+  parts: MessageTextParts,
+  copy: NoticeCopy,
+): readonly [CopyLine, CopyLine] {
+  if (name === 'humanDied' && parts.subjectName === null) {
+    return [copy.short.humanDiedUnknown, copy.full.humanDiedUnknown];
+  }
+  if (name === 'canDoNewJob' && parts.training?.course === 'barracks') {
+    return [copy.short.becameSoldier, copy.full.becameSoldier];
+  }
+  return [copy.short[name], copy.full[name]];
+}
+
+function experienceLists(
+  sections: NonNullable<MessageTextParts['technologySections']>,
+  copy: NoticeCopy,
+): string {
+  const lists = [
+    [copy.experience.jobs, sections.jobs],
+    [copy.experience.goods, sections.goods],
+    [copy.experience.houses, sections.houses],
+  ] as const;
+  return lists
+    .filter(([, values]) => values.length > 0)
+    .map(([heading, values]) => `${heading}:\n${values.map((value) => `- ${value}`).join('\n')}`)
+    .join('\n\n');
 }
 
 export function composeMessageText(
   type: UserMessageType,
   parts: MessageTextParts,
-  deps: MessageTextDeps,
+  copy: NoticeCopy,
 ): MessageText {
   const name = userMessageTypeName(type);
-  const who =
-    parts.subjectName === null ? null : nameWithTrade({ name: parts.subjectName, jobLabel: parts.jobLabel });
-  const lead = (text: string): string => (who === null ? text : `${who} ${text}`);
+  const female = parts.female === true;
+  const subject = parts.subjectName === null ? '' : nameWithTrade(parts.subjectName, parts.jobLabel);
+  const values = {
+    name: subject,
+    building: subject,
+    vehicle: subject,
+    player: subject,
+    good: parts.goodName ?? '',
+    stance: parts.stanceName ?? '',
+    item: parts.detail ?? '',
+    profession: parts.training?.profession ?? '',
+  };
   if (name === 'familyBlocked') {
     if (parts.family === undefined) throw new Error('user-messages: a familyBlocked note needs its wait');
     const { wait, partner } = parts.family;
+    const husband = partner === null ? '' : ` ${nameWithTrade(partner.name, partner.jobLabel)}`;
     return {
-      short: deps.family.short[wait],
-      full: lead(
-        formatMessage(deps.family.full[wait], { partner: partner === null ? '' : nameWithTrade(partner) }),
-      ),
+      short: copy.familyBlocked.short[wait],
+      full: formatMessage(copy.familyBlocked.full[wait], { name: subject, partner: husband }),
     };
   }
-  const row = (id: number): string => deps.uiString(MESSAGE_STRINGS_TABLE, id, deps.fallbackRow(id));
-  const base = row(MESSAGE_STRING_ID[name]);
-  const short = shortLabel(name, parts, deps.short);
-  const led = (body: string): MessageText => ({ short, full: lead(body) });
-
-  if (name === 'humanDied') {
-    if (who !== null) return led(base);
-    const unknown = row(UNKNOWN_HERO_DIED_STRING_ID);
-    return { short: deps.short.unknownHeroDied, full: unknown };
-  }
-  if (name === 'specialItemFound') {
-    if (parts.detail === undefined) return { short, full: base };
-    return { short, full: `${base} - ${parts.detail}` };
-  }
-  if (HOUSE_ROWS.has(name)) {
-    return { short, full: parts.subjectName === null ? base : `${parts.subjectName} ${base}` };
-  }
-  if (name === 'stockFull') {
-    return led(
-      parts.goodName === null
-        ? row(STOCK_FULL_NO_GOOD_STRING_ID)
-        : base.replace(GOOD_PLACEHOLDER, parts.goodName),
-    );
-  }
-  if (name === 'equipmentNotFound') return led(`${base} ${row(EQUIPMENT_NOT_FOUND_DETAIL_STRING_ID)}`);
-  if (name === 'backpackFull') return led(`${base} ${row(BACKPACK_FULL_DETAIL_STRING_ID)}`);
+  const [shortLine, fullLine] = linesOf(name, parts, copy);
+  const short = formatMessage(inflect(shortLine, female), values);
+  const full = formatMessage(inflect(fullLine, female), values);
   if (name === 'experienceUnlocks' && parts.technologySections !== undefined) {
-    const sections = [
-      [EXPERIENCE_JOB_STRING_ID, parts.technologySections.jobs],
-      [EXPERIENCE_GOOD_STRING_ID, parts.technologySections.goods],
-      [EXPERIENCE_HOUSE_STRING_ID, parts.technologySections.houses],
-    ] as const;
-    const details = sections
-      .filter(([, values]) => values.length > 0)
-      .map(([label, values]) => `${row(label)}:\n${values.map((value) => `- ${value}`).join('\n')}`)
-      .join('\n\n');
-    return { short, full: `${lead(base)}:\n${details}` };
+    const lists = experienceLists(parts.technologySections, copy);
+    return { short, full: lists === '' ? full : `${full}\n\n${lists}` };
   }
-  if (GOOD_APPENDED.has(name) && parts.goodName !== null) return led(`${base} ${parts.goodName}`);
-  if (STANCE_APPENDED.has(name) && parts.stanceName !== null) return led(`${base} ${parts.stanceName}`);
-  return led(base);
-}
-
-/** The card's line: the type's label, or its template with the good or stance the row is about. */
-function shortLabel(name: DecodedMessageTypeName, parts: MessageTextParts, labels: ShortLabels): string {
-  const withGood = labels.withGood[name];
-  if (withGood !== undefined && parts.goodName !== null)
-    return formatMessage(withGood, { good: parts.goodName });
-  const withStance = labels.withStance[name];
-  if (withStance !== undefined && parts.stanceName !== null) {
-    return formatMessage(withStance, { stance: parts.stanceName });
-  }
-  return labels.byType[name];
+  return { short, full };
 }

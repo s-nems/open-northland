@@ -13,7 +13,7 @@ import { characterName } from '../../../game/character-names/index.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { isFemale, num, type SnapshotEntity, surnameSourceOf } from '../../../game/snapshot.js';
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
-import { formatMessage, messages, professionLabel } from '../../../i18n/index.js';
+import { messages, professionLabel } from '../../../i18n/index.js';
 import type { BuildingThumbs } from '../../dom/building-thumb.js';
 import { createNoticeArt, noticeTint } from '../../dom/notice-art.js';
 import { createNoticeColumn, type NoticeCardView } from '../../dom/notice-column.js';
@@ -30,7 +30,7 @@ import { galleryMessages, type NoticeGallery } from './gallery.js';
 import type { MessageNaming } from './raise.js';
 import { isNoteOver, isSubjectGone } from './retire.js';
 import { createSeatFeeds } from './seat-feeds.js';
-import { composeMessageText, type FamilyLines, type MessageText, type ShortLabels } from './text.js';
+import { composeMessageText } from './text.js';
 import type { UserMessage } from './types.js';
 
 export type { MessageFeedState } from './feed.js';
@@ -72,7 +72,8 @@ export interface MessageCenterDeps {
   readonly vehicleLabel: (typeId: number) => string | undefined;
   /** A paper's display name, for the note about finding one. */
   readonly paperLabel: (paper: Paper) => string;
-  readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
+  /** A discoverable's name, or undefined when no catalog names it; such an entry is left out. */
+  readonly technologyName: (kind: 'job' | 'good' | 'house', typeId: number) => string | undefined;
   readonly playerLabel: (player: number) => string | null;
   /** The seats this player has met, as the diplomacy roster lists them; a first contact and a seat that
    *  changed its stance toward this one each become a note. Read once per tick. */
@@ -100,27 +101,6 @@ export interface MessageCenter {
   dispose(): void;
 }
 
-/** The catalog's stand-in for a decoded `messages` row, keyed by the row id. */
-function fallbackRow(id: number): string {
-  const rows: Readonly<Record<string, string | undefined>> = messages().userMessages.rows;
-  return rows[String(id)] ?? '';
-}
-
-function shortLabels(): ShortLabels {
-  const copy = messages().userMessages;
-  return {
-    byType: copy.short,
-    withGood: copy.shortWithGood,
-    withStance: copy.shortWithStance,
-    unknownHeroDied: copy.shortUnknownHeroDied,
-  };
-}
-
-function familyLines(): FamilyLines {
-  const copy = messages().userMessages.familyBlocked;
-  return { short: copy.short, full: copy.full };
-}
-
 function makeNaming(deps: MessageCenterDeps): MessageNaming {
   return {
     settler: (e: SnapshotEntity, snapshot) => {
@@ -138,43 +118,24 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
       );
       // The original appends the trade for a grown man with one; women and children go by name alone.
       const def = young || female ? undefined : professionDefForJob(jobType);
-      return { name, jobLabel: def === undefined ? null : professionLabel(def.key) };
+      return { name, jobLabel: def === undefined ? null : professionLabel(def.key), female };
     },
     building: (e) => {
       const typeId = num((e.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
-      return typeId === undefined ? null : (deps.buildingLabel(typeId) ?? null);
+      const label = typeId === undefined ? undefined : deps.buildingLabel(typeId);
+      return label ?? messages().userMessages.unnamed.building;
     },
     vehicle: (e) => {
       const typeId = num((e.components.Vehicle as { vehicleType?: unknown } | undefined)?.vehicleType);
-      return typeId === undefined ? null : (deps.vehicleLabel(typeId) ?? null);
+      const label = typeId === undefined ? undefined : deps.vehicleLabel(typeId);
+      return label ?? messages().userMessages.unnamed.vehicle;
     },
     // The numbered fallback keeps a note about a nameless seat from losing its subject.
     player: (player) => playerLabel(deps.ctx.uiString, player, deps.playerLabel(player)),
     stance: (state) => diplomacyStanceText(deps.ctx.uiString, state),
     paper: deps.paperLabel,
-    technology: deps.technologyLabel,
-    training: (course, subjectName, jobName): MessageText => {
-      const body = formatMessage(
-        course === 'barracks'
-          ? messages().userMessages.becameSoldier
-          : messages().userMessages.learnedProfession,
-        { profession: jobName },
-      );
-      const short = formatMessage(
-        course === 'barracks'
-          ? messages().userMessages.shortBecameSoldier
-          : messages().userMessages.shortLearnedProfession,
-        { profession: jobName },
-      );
-      return { short, full: `${subjectName} ${body}` };
-    },
-    text: (type, parts) =>
-      composeMessageText(type, parts, {
-        uiString: deps.ctx.uiString,
-        fallbackRow,
-        short: shortLabels(),
-        family: familyLines(),
-      }),
+    technology: deps.technologyName,
+    text: (type, parts) => composeMessageText(type, parts, messages().userMessages),
   };
 }
 

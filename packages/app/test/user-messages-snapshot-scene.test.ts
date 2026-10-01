@@ -22,8 +22,7 @@ import type { SceneWorld } from '../src/scenes/types.js';
 
 const plain = (full: string): MessageText => ({ short: full, full });
 const naming: MessageNaming = {
-  settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
-  training: (course, subjectName, jobName) => plain(`${course}:${subjectName}:${jobName}`),
+  settler: (e) => ({ name: `S${e.id}`, jobLabel: null, female: false }),
   building: () => 'Dom',
   vehicle: () => 'Wóz',
   player: () => 'Gracz',

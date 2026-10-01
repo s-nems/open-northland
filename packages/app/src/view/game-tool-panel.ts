@@ -80,8 +80,8 @@ export interface GameToolPanelDeps {
   readonly buildings: readonly MenuBuildingEntry[];
   /** Every building type's localized name, catalogue or not: notes, papers and the strip name them. */
   readonly buildingLabels: ReadonlyMap<number, string>;
-  /** Localized name of a profession, good, or building announced by a discovery note. */
-  readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
+  /** Localized name of a profession, good, or building a note names; undefined when no catalog names it. */
+  readonly technologyName: (kind: 'job' | 'good' | 'house', typeId: number) => string | undefined;
   /** A good's localized name, for a produce permit's label. */
   readonly goodLabel: (typeId: number) => string | undefined;
   /** The content set's goods, for the summary bar's per-good rows. */
@@ -256,7 +256,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       uiscale,
       buildings: deps.buildings,
       buildingLabels: deps.buildingLabels,
-      technologyLabel: deps.technologyLabel,
+      technologyName: deps.technologyName,
       goodLabel: deps.goodLabel,
       goods: deps.goods,
       pack: deps.pack,

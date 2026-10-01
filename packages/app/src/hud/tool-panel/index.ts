@@ -111,8 +111,8 @@ export interface ToolPanelOptions {
   readonly buildings: readonly MenuBuildingEntry[];
   /** Every building type's localized name, for the notes, the papers and the placement strip. */
   readonly buildingLabels: ReadonlyMap<number, string>;
-  /** Localized name of a profession, good, or building announced by a discovery note. */
-  readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
+  /** Localized name of a profession, good, or building a note names; undefined when no catalog names it. */
+  readonly technologyName: (kind: 'job' | 'good' | 'house', typeId: number) => string | undefined;
   /** A good's localized name, for the paper that permits producing it. */
   readonly goodLabel: (typeId: number) => string | undefined;
   /** The content set's goods, so the summary can name a stock entry by its stable string id. */
@@ -683,7 +683,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       viewer: opts.viewer,
       buildingLabel: (typeId) => labelByType.get(typeId),
       paperLabel: nameOfPaper,
-      technologyLabel: opts.technologyLabel,
+      technologyName: opts.technologyName,
       vehicleLabel: opts.vehicleLabel,
       playerLabel: (player) =>
         opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,

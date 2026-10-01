@@ -1,6 +1,7 @@
 import { entityById, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { isBuilding, isVehicle, ownerPlayerOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
+import type { NamedSettler } from './text.js';
 import { type MessageTechnology, type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
 
 /** The note each refused move order on a vehicle raises about it. */
@@ -96,7 +97,7 @@ export function messagesFromEvents(
         jobType: null,
       },
       () => {
-        let named: { readonly name: string; readonly jobLabel: string | null } | null = null;
+        let named: NamedSettler | null = null;
         // Approximation: the surname source is read off the snapshot after the death, so a growing
         // child of a widowed parent, whose carve-out settles in the same tick, is named by its own id.
         const before = departed.find((e) => e.id === entity);
@@ -104,6 +105,7 @@ export function messagesFromEvents(
         return naming.text(USER_MESSAGE_TYPE.humanDied, {
           subjectName: named?.name ?? null,
           jobLabel: named?.jobLabel ?? null,
+          female: named?.female ?? false,
           goodName: null,
           stanceName: null,
         });
@@ -161,7 +163,9 @@ export function messagesFromEvents(
         if (e === undefined) break;
         const all = discoveries.get(ev.entity) ?? [];
         const subject = { kind: 'settler' as const, entity: e.id };
-        const raiseGroup = (key: string, technologies: readonly MessageTechnology[]): void => {
+        const raiseGroup = (key: string, group: readonly MessageTechnology[]): void => {
+          // An entry no catalog names cannot be listed, and a note with nothing to list says nothing.
+          const technologies = group.filter((t) => naming.technology(t.kind, t.typeId) !== undefined);
           if (technologies.length === 0) return;
           raiser.raise(
             `${USER_MESSAGE_TYPE.experienceUnlocks}|settler:${e.id}|${key}`,
@@ -179,10 +183,11 @@ export function messagesFromEvents(
               const labels = (kind: MessageTechnology['kind']): string[] =>
                 technologies
                   .filter((technology) => technology.kind === kind)
-                  .map((technology) => naming.technology(technology.kind, technology.typeId));
+                  .flatMap((technology) => naming.technology(technology.kind, technology.typeId) ?? []);
               return naming.text(USER_MESSAGE_TYPE.experienceUnlocks, {
                 subjectName: named.name,
                 jobLabel: named.jobLabel,
+                female: named.female,
                 goodName: null,
                 stanceName: null,
                 technologySections: { jobs: labels('job'), goods: labels('good'), houses: labels('house') },
@@ -202,10 +207,12 @@ export function messagesFromEvents(
       }
       case 'settlerTrained': {
         const e = ownedPerson(ev.entity);
-        if (e !== undefined) {
-          if (ev.target === 'job') raiser.trained(USER_MESSAGE_TYPE.canDoNewJob, e, ev.course, ev.typeId);
-          else raiser.settler(USER_MESSAGE_TYPE.canProduceNewGood, e, ev.typeId);
-        }
+        if (e === undefined) break;
+        // The barracks note names no trade; any other course's note is about the one thing it taught.
+        const nameless = naming.technology(ev.target, ev.typeId) === undefined;
+        if (nameless && !(ev.course === 'barracks' && ev.target === 'job')) break;
+        if (ev.target === 'job') raiser.trained(USER_MESSAGE_TYPE.canDoNewJob, e, ev.course, ev.typeId);
+        else raiser.settler(USER_MESSAGE_TYPE.canProduceNewGood, e, ev.typeId);
         break;
       }
       case 'playerDefeated':

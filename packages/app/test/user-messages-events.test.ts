@@ -41,21 +41,22 @@ function snapshot(tick: number, actors: readonly Actor[]): WorldSnapshot {
 
 const plain = (full: string): MessageText => ({ short: full, full });
 const naming: MessageNaming = {
-  settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
+  settler: (e) => ({ name: `S${e.id}`, jobLabel: null, female: false }),
   building: () => 'Dom',
   vehicle: () => 'Wóz',
   player: () => 'Gracz',
   stance: (state) => state,
   paper: (paper) => `${paper.kind}:${paper.param}`,
   technology: (kind, typeId) => `${kind}:${typeId}`,
-  training: (course, subjectName, jobName) => plain(`${course}:${subjectName}:${jobName}`),
   text: (type, parts) =>
     plain(
-      `${parts.subjectName ?? '?'}:${type}${
-        parts.technologySections === undefined
-          ? ''
-          : `:${parts.technologySections.jobs.join(',')}|${parts.technologySections.goods.join(',')}|${parts.technologySections.houses.join(',')}`
-      }`,
+      parts.training !== undefined
+        ? `${parts.training.course}:${parts.subjectName}:${parts.training.profession}`
+        : `${parts.subjectName ?? '?'}:${type}${
+            parts.technologySections === undefined
+              ? ''
+              : `:${parts.technologySections.jobs.join(',')}|${parts.technologySections.goods.join(',')}|${parts.technologySections.houses.join(',')}`
+          }`,
     ),
 };
 
@@ -247,6 +248,46 @@ describe('user messages from sim events', () => {
     ]);
   });
 
+  it('leaves out what no catalog names, and a note with nothing named left', () => {
+    const UNNAMED = 99;
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'person' },
+      { id: 2, player: LOCAL, kind: 'person' },
+    ]);
+    const partial: MessageNaming = {
+      ...naming,
+      technology: (kind, typeId) => (typeId === UNNAMED ? undefined : `${kind}:${typeId}`),
+    };
+    const discovered = (entity: number, technology: 'job' | 'house', typeId: number): SimEvent => ({
+      kind: 'technologyDiscovered',
+      entity: e(entity),
+      player: LOCAL,
+      tribe: 1,
+      technology,
+      typeId,
+    });
+    const out = messagesFromEvents(
+      [
+        discovered(1, 'job', 8),
+        discovered(1, 'job', UNNAMED),
+        discovered(1, 'house', UNNAMED),
+        { kind: 'settlerTrained', entity: e(2), course: 'school', target: 'job', typeId: UNNAMED },
+        { kind: 'settlerTrained', entity: e(2), course: 'school', target: 'good', typeId: UNNAMED },
+      ],
+      snap,
+      [],
+      LOCAL,
+      partial,
+    );
+    expect(out.map((r) => [r.pending.type, r.pending.technologies, r.compose().full])).toEqual([
+      [
+        USER_MESSAGE_TYPE.experienceUnlocks,
+        [{ kind: 'job', typeId: 8 }],
+        `S1:${USER_MESSAGE_TYPE.experienceUnlocks}:job:8||`,
+      ],
+    ]);
+  });
+
   it("announces this seat's completed barracks and school qualifications", () => {
     const snap = snapshot(50, [
       { id: 1, player: LOCAL, kind: 'person' },
@@ -255,7 +296,10 @@ describe('user messages from sim events', () => {
     ]);
     const trainedNaming: MessageNaming = {
       ...naming,
-      text: (type, parts) => plain(`${parts.subjectName ?? '?'}:${type}:${parts.goodName ?? '-'}`),
+      text: (type, parts) =>
+        parts.training === undefined
+          ? plain(`${parts.subjectName ?? '?'}:${type}:${parts.goodName ?? '-'}`)
+          : naming.text(type, parts),
     };
     const raised = messagesFromEvents(
       [

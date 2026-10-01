@@ -10,20 +10,20 @@ import {
 
 /** How a source names what it saw; the strings and catalogs stay outside the sources. */
 export interface MessageNaming {
-  /** A person's display name and the trade label shown after it (null for no label). */
+  /** A person's display name, the trade label shown after it (null for no label) and its sex. */
   settler(e: SnapshotEntity, snapshot: WorldSnapshot): NamedSettler;
-  building(e: SnapshotEntity): string | null;
-  /** A vehicle's type name, or null for a type the catalog does not know. */
-  vehicle(e: SnapshotEntity): string | null;
+  /** A building's type name, or a generic stand-in for a type the catalog does not know. */
+  building(e: SnapshotEntity): string;
+  /** A vehicle's type name, or a generic stand-in for a type the catalog does not know. */
+  vehicle(e: SnapshotEntity): string;
   /** A seat's name, for the messages whose subject is a player rather than an entity. */
   player(player: number): string;
   /** A diplomatic stance in the player's language, for the rows that report one. */
   stance(state: DiplomacyState): string;
   /** A paper's name, for the note about finding one. */
   paper(paper: Paper): string;
-  technology(kind: 'job' | 'good' | 'house', typeId: number): string;
-  /** Localized completion wording for barracks enlistment and school education. */
-  training(course: 'barracks' | 'school', subjectName: string, jobName: string): MessageText;
+  /** A job's, good's or house's name, or undefined when no catalog names it. */
+  technology(kind: 'job' | 'good' | 'house', typeId: number): string | undefined;
   text(type: UserMessageType, parts: MessageTextParts): MessageText;
 }
 
@@ -70,7 +70,8 @@ export class MessageRaiser {
         return this.naming.text(type, {
           subjectName: named.name,
           jobLabel: named.jobLabel,
-          goodName: goodType === null ? null : this.naming.technology('good', goodType),
+          female: named.female,
+          goodName: goodType === null ? null : (this.naming.technology('good', goodType) ?? null),
           stanceName: null,
         });
       },
@@ -82,12 +83,18 @@ export class MessageRaiser {
     this.raise(
       `${type}|settler:${e.id}`,
       { type, subject, at: nodeOf(e), about: null, goodType: null, technologies: null, jobType },
-      () =>
-        this.naming.training(
-          course,
-          this.naming.settler(e, this.snapshot).name,
-          this.naming.technology('job', jobType),
-        ),
+      () => {
+        // The note names the trade the course taught, so the name goes without the one it had.
+        const named = this.naming.settler(e, this.snapshot);
+        return this.naming.text(type, {
+          subjectName: named.name,
+          jobLabel: null,
+          female: named.female,
+          goodName: null,
+          stanceName: null,
+          training: { course, profession: this.naming.technology('job', jobType) ?? '' },
+        });
+      },
     );
   }
 
@@ -111,6 +118,7 @@ export class MessageRaiser {
         return this.naming.text(type, {
           subjectName: named.name,
           jobLabel: named.jobLabel,
+          female: named.female,
           goodName: null,
           stanceName: null,
           family: {

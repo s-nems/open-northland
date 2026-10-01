@@ -478,9 +478,8 @@ otherwise, and a red vehicle drops the click; the selected settlers' right-click
 attaches each one that rule admits (approximation, owner's choice: the original assigns through the
 pick only); a commander selected while aboard (through its well) stands for its vehicle, so a
 right-click on the ground drives the vehicle whether the commander is aboard or beside it, and the
-ring's "Remove Vehicle" (`misclogic` 32) is the detach order for any rider. Message ids 0x0f (no
-raise site, *open*) and 0x16 (no vehicle discovery event) have no raiser yet; 0x35 is the goto
-refusal above.
+ring's "Remove Vehicle" (`misclogic` 32) is the detach order for any rider. Message id 0x35 is the
+goto refusal above.
 
 ## Map scripts
 

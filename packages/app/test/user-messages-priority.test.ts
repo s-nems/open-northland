@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { JOB_BUILDER, JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import {
   cycleMessageLevel,
   DEFAULT_MESSAGE_LEVEL,
@@ -18,14 +17,14 @@ const ALL_TYPES = (Object.values(USER_MESSAGE_TYPE) as UserMessageType[]).filter
   (type) => type !== USER_MESSAGE_TYPE.familyBlocked,
 );
 
-function typesAt(level: MessagePriorityLevel, jobType: number | null): UserMessageType[] {
-  return ALL_TYPES.filter((t) => messagePriority(t, jobType) === level);
+function typesAt(level: MessagePriorityLevel): UserMessageType[] {
+  return ALL_TYPES.filter((t) => messagePriority(t) === level);
 }
 
 describe('user message priority (original behavior)', () => {
-  it('covers every one of the 63 types with one of the three levels', () => {
-    expect(ALL_TYPES).toHaveLength(63);
-    expect(typesAt(2, null).length + typesAt(1, null).length + typesAt(0, null).length).toBe(63);
+  it('covers every one of the 35 types with one of the three levels', () => {
+    expect(ALL_TYPES).toHaveLength(35);
+    expect(typesAt(2).length + typesAt(1).length + typesAt(0).length).toBe(35);
   });
 
   it('pins the important group', () => {
@@ -34,9 +33,6 @@ describe('user message priority (original behavior)', () => {
       'experienceUnlocks',
       'canProduceNewGood',
       'canDoNewJob',
-      'canBuildNewHouse',
-      'canBuildNewVehicle',
-      'canEquipNewItem',
       'starving',
       'willDie',
       'humanAttacked',
@@ -49,49 +45,23 @@ describe('user message priority (original behavior)', () => {
       'playerDied',
       'specialItemFound',
     ];
-    expect(typesAt(2, null).sort((a, b) => a - b)).toEqual(
+    expect(typesAt(2).sort((a, b) => a - b)).toEqual(
       important.map((n) => USER_MESSAGE_TYPE[n]).sort((a, b) => a - b),
     );
   });
 
   it('keeps the routine group routine, hunger included, while starving is important', () => {
-    const routine: UserMessageTypeName[] = [
-      'goodNotFound',
-      'homeNotFound',
-      'targetPersonNotFound',
-      'nothingToDo',
-      'waitingForGood',
-      'stockFull',
-      'cannotDamageTarget',
-      'producedOneGood',
-      'hungry',
-      'tired',
-      'bored',
-      'gaveBirthToSon',
-      'gaveBirthToDaughter',
-      'wasBorn',
-      'cannotMarry',
-      'noOneToMarry',
-      'noWayToMarry',
-      'equipmentNotFound',
-      'backpackFull',
-    ];
-    expect(typesAt(0, null).sort((a, b) => a - b)).toEqual(
+    const routine: UserMessageTypeName[] = ['nothingToDo', 'hungry', 'tired', 'noOneToMarry'];
+    expect(typesAt(0).sort((a, b) => a - b)).toEqual(
       routine.map((n) => USER_MESSAGE_TYPE[n]).sort((a, b) => a - b),
     );
-    expect(typesAt(1, null)).toHaveLength(26);
-    expect(messagePriority(USER_MESSAGE_TYPE.hungry, JOB_BUILDER)).toBe(0);
-    expect(messagePriority(USER_MESSAGE_TYPE.starving, JOB_BUILDER)).toBe(2);
+    expect(typesAt(1)).toHaveLength(16);
+    expect(messagePriority(USER_MESSAGE_TYPE.hungry)).toBe(0);
+    expect(messagePriority(USER_MESSAGE_TYPE.starving)).toBe(2);
   });
 
-  it('ranks a held child order notable, beside the task failures it stands in for', () => {
-    expect(messagePriority(USER_MESSAGE_TYPE.familyBlocked, null)).toBe(1);
-  });
-
-  it('raises a missing good to notable for a collector only', () => {
-    expect(messagePriority(USER_MESSAGE_TYPE.goodNotFound, JOB_COLLECTOR)).toBe(1);
-    expect(messagePriority(USER_MESSAGE_TYPE.goodNotFound, JOB_BUILDER)).toBe(0);
-    expect(messagePriority(USER_MESSAGE_TYPE.goodNotFound, null)).toBe(0);
+  it('ranks a held child order notable', () => {
+    expect(messagePriority(USER_MESSAGE_TYPE.familyBlocked)).toBe(1);
   });
 
   it('shows a message when its priority reaches the filter level', () => {

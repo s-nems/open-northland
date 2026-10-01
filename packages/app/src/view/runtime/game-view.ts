@@ -40,7 +40,7 @@ import { mapStartFocus } from '../../game/map-start.js';
 import { type MissionBriefSource, missionReader } from '../../game/mission-brief.js';
 import type { ObserverSeatEntry } from '../../game/observer-seats.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
-import { technologyLabel, vehicleLabel } from '../../game/technology.js';
+import { technologyName, vehicleLabel } from '../../game/technology.js';
 import {
   fixedViewerSeat,
   overseerViewerSeat,
@@ -529,7 +529,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         availability: (tribe) => buildAvailability(viewerPlayer(), entry.typeId, tribe),
       })),
       buildingLabels: buildingLabelsFromContent(host.content, lang),
-      technologyLabel: (kind, typeId) => technologyLabel(host.content, kind, typeId),
+      technologyName: (kind, typeId) => technologyName(host.content, kind, typeId),
       goodLabel: (typeId) => goodLabelByType.get(typeId),
       goods: host.content.goods,
       pack,

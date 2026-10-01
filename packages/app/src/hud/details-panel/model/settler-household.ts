@@ -187,9 +187,9 @@ function childOnHold(
   const wait = wife === undefined ? undefined : childOrderWaitOf(wife);
   if (wife === undefined || wait === undefined) return null;
   const copy = messages().userMessages.familyBlocked;
-  const partner = husband === undefined ? '' : settlerDisplayName(ctx, snapshot, husband);
+  const partner = husband === undefined ? '' : ` ${settlerDisplayName(ctx, snapshot, husband)}`;
   return {
     label: copy.short[wait],
-    tooltip: `${settlerDisplayName(ctx, snapshot, wife)} ${formatMessage(copy.full[wait], { partner })}`,
+    tooltip: formatMessage(copy.full[wait], { name: settlerDisplayName(ctx, snapshot, wife), partner }),
   };
 }

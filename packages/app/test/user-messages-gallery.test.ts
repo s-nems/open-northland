@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createMessageFeed } from '../src/hud/tool-panel/messages/feed.js';
 import { galleryMessages } from '../src/hud/tool-panel/messages/gallery.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
-import { composeMessageText, type MessageText } from '../src/hud/tool-panel/messages/text.js';
+import { composeMessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
 import { en } from '../src/i18n/en.js';
 
@@ -36,30 +36,17 @@ function snapshot(actors: readonly Actor[]): WorldSnapshot {
   };
 }
 
-const plain = (full: string): MessageText => ({ short: full, full });
-/** Names as the fakes in the sibling tests do, with the real composer behind `text` over synthetic rows,
- *  so every type's composition is exercised without the decoded strings. */
+/** Names as the fakes in the sibling tests do, with the real composer and catalog behind `text`, so every
+ *  type's composition is exercised. */
 const naming: MessageNaming = {
-  settler: (e) => ({ name: `S${e.id}`, jobLabel: 'drwal' }),
+  settler: (e) => ({ name: `S${e.id}`, jobLabel: 'drwal', female: false }),
   building: () => 'Dom',
   vehicle: () => 'Wóz',
   player: (player) => `Gracz ${player}`,
   stance: (state) => state,
   paper: (paper) => paper.kind,
   technology: (kind, typeId) => `${kind}:${typeId}`,
-  training: (course, subjectName, jobName) => plain(`${course}:${subjectName}:${jobName}`),
-  text: (type, parts) =>
-    composeMessageText(type, parts, {
-      uiString: (_table, _id, fallback) => fallback,
-      fallbackRow: (id) => `row${id}`,
-      short: {
-        byType: en.userMessages.short,
-        withGood: en.userMessages.shortWithGood,
-        withStance: en.userMessages.shortWithStance,
-        unknownHeroDied: en.userMessages.shortUnknownHeroDied,
-      },
-      family: en.userMessages.familyBlocked,
-    }),
+  text: (type, parts) => composeMessageText(type, parts, en.userMessages),
 };
 
 const ALL_TYPES = Object.values(USER_MESSAGE_TYPE);
@@ -96,7 +83,7 @@ describe('notice gallery', () => {
         .map((s) => s?.entity),
     );
     expect([...settlers].sort()).toEqual([1, 2]);
-    expect(byType.get(USER_MESSAGE_TYPE.goodNotFound)?.compose().full).toContain('good:5');
+    expect(byType.get(USER_MESSAGE_TYPE.canProduceNewGood)?.compose().full).toContain('good:5');
     expect(byType.get(USER_MESSAGE_TYPE.specialItemFound)?.compose().full).toContain('indulgence');
     expect(byType.get(USER_MESSAGE_TYPE.diplomacyChanged)?.compose().full).toContain('Gracz 1');
     expect(byType.get(USER_MESSAGE_TYPE.diplomacyChanged)?.compose().full).toContain('friend');
