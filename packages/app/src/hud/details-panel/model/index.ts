@@ -14,6 +14,7 @@ import { healthBar, pct } from './bars.js';
 import { type BuildingPanelModel, buildingPanelModel } from './building.js';
 import { liveAmounts } from './building-materials.js';
 import { goodLabel, type UnitPanelModelContext } from './context.js';
+import { type GroupPanelModel, groupPanelModel } from './group.js';
 import { type SettlerPanelModel, settlerPanelModel } from './settler-panel.js';
 import { type VehiclePanelModel, vehiclePanelModel } from './vehicle.js';
 
@@ -47,6 +48,21 @@ export {
   type SettlerWorkStatus,
   type UnitPanelModelContext,
 } from './context.js';
+export {
+  ALL_SCOPE,
+  type GroupDetail,
+  type GroupDetailRow,
+  type GroupGear,
+  type GroupGearItem,
+  type GroupGearRow,
+  type GroupMemberModel,
+  type GroupMilitaryModel,
+  type GroupNeedModel,
+  type GroupPanelModel,
+  type GroupScopeModel,
+  type GroupSiegeModel,
+  type GroupStance,
+} from './group.js';
 export {
   EXPERIENCE_FOLDED_MAX,
   type ExperienceRowModel,
@@ -112,16 +128,6 @@ export {
   vehicleClassOf,
 } from './vehicle.js';
 
-export interface MultiSettlerPanelModel {
-  readonly kind: 'multi-settler';
-  readonly count: number;
-}
-
-export interface GenericSelectionPanelModel {
-  readonly kind: 'generic';
-  readonly count: number;
-}
-
 export interface EmptyPanelModel {
   readonly kind: 'empty';
 }
@@ -153,8 +159,7 @@ export type UnitPanelModel =
   | SignpostPanelModel
   | PalisadePanelModel
   | VehiclePanelModel
-  | MultiSettlerPanelModel
-  | GenericSelectionPanelModel;
+  | GroupPanelModel;
 
 /** The one entity of a list holding exactly one. */
 function only(list: readonly SnapshotEntity[]): SnapshotEntity | undefined {
@@ -258,9 +263,9 @@ export function buildUnitPanelModel(
   // it. A vehicle's order window opens for it alone; settlers boxed with vehicles are a group.
   if (noUnitOrHouse && signpost !== undefined) return { kind: 'signpost', entityId: signpost.id };
   if (noUnitOrHouse && vehicle !== undefined) return vehiclePanelModel(ctx, snapshot, vehicle);
-  if (settlers.length > 0 && vehicles.length > 0) return { kind: 'generic', count: selected.size };
   if (settlers.length === 0 && building !== undefined) return buildingPanelModel(ctx, snapshot, building);
+  if (settlers.length + vehicles.length > 1)
+    return groupPanelModel(ctx, snapshot, [...settlers, ...vehicles]);
   if (settler !== undefined) return settlerPanelModel(ctx, snapshot, settler);
-  if (settlers.length > 1) return { kind: 'multi-settler', count: settlers.length };
-  return { kind: 'generic', count: selected.size };
+  return { kind: 'empty' };
 }

@@ -6,7 +6,7 @@ import type { DetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
 import { mapLayout } from './layout/index.js';
 import type { PanelHover } from './pointer-intent.js';
-import { drawCompact, drawPalisade, drawSignpost } from './sections/index.js';
+import { drawPalisade, drawSignpost } from './sections/index.js';
 import type { PanelView } from './selection-view.js';
 
 export type DrawableView = Exclude<PanelView, { kind: 'empty' }>;
@@ -60,9 +60,6 @@ export function bakePanel(opts: PanelBakeOptions): BakedPanel {
   const layers = makeLayers(offscreen);
   const chrome = createChrome(assets, ss, layers, { w: texW, h: texH });
   switch (view.kind) {
-    case 'compact':
-      drawCompact(chrome, mapLayout(view.layout, toDraw), view.model, ui, ss);
-      break;
     case 'signpost':
       drawSignpost(chrome, mapLayout(view.layout, toDraw), ui, hover.action);
       break;

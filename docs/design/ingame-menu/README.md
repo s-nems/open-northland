@@ -115,7 +115,7 @@ only diagnostics.
 | Ticket | Outcome |
 | --- | --- |
 | [08-settler-details](../../tickets/app/ingame-ui-08-settler-details.md) | Finish the settler panel's deferred affordances |
-| [10-group-details](../../tickets/app/ingame-ui-10-group-details.md) | Redesign multiple-selection details and shared orders |
+| [10-group-details](../../tickets/app/ingame-ui-10-group-details.md) | Move the signpost and palisade selections to the DOM panel family |
 | [11-assistant](../../tickets/app/ingame-ui-11-assistant.md) | Create the direct assistant window |
 | [12-statistics-data](../../tickets/app/ingame-ui-12-statistics-data.md) | Provide the real historical data required by statistics |
 | [13-statistics-window](../../tickets/app/ingame-ui-13-statistics-window.md) | Implement the designed statistics charts and lists |

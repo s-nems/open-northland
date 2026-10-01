@@ -1,6 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
-import { settlerJobType } from '../../game/snapshot.js';
+import { isSettler, isVehicle, settlerJobType } from '../../game/snapshot.js';
 import { pickableSeat } from '../../game/viewer-seat.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import { isActionHotkey, isFieldKey, isOrderHotkey } from '../../hud/hotkeys.js';
@@ -65,7 +65,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   // `click_confirm`, a cancel plays `click_fail`, and a drag select or a click on empty ground plays
   // nothing.
   const cue: (kind: UiCue) => void = opts.onUiCue ?? ((): void => undefined);
-  const selection = createUnitSelection();
+  const isUnit = (id: number): boolean => {
+    const entity = entityById(opts.snapshot(), id);
+    return entity !== undefined && (isSettler(entity) || isVehicle(entity));
+  };
+  const selection = createUnitSelection(isUnit);
   const answered = createAnsweredOrders();
   const controlGroups = createControlGroups();
   // Without the sim's pick-list seam the panel's equip and swap buttons stay inert.
@@ -232,12 +236,15 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     cue,
   });
 
-  /** The one selected entity no longer stands in the world. */
-  const selectionGone = (snapshot: WorldSnapshot): boolean => {
-    const ids = selection.ids();
-    if (ids.size !== 1) return false;
-    const [only] = ids;
-    return only !== undefined && entityById(snapshot, only) === undefined;
+  /** Members that died or left the world drop out; an emptied selection ends its pick and ring as a
+   *  cleared one does, while survivors keep theirs. */
+  const dropGoneMembers = (snapshot: WorldSnapshot): void => {
+    if (!selection.dropGone(snapshot)) return;
+    if (selection.ids().size === 0) {
+      pickMode.cancel();
+      chrome.actions().close();
+    }
+    chrome.renderPanel(snapshot);
   };
 
   const applySelection = (ids: Iterable<number>, add: boolean): void => {
@@ -362,7 +369,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   /**
    * Shift + click toggles a unit, the usual RTS convention; the original instead adds and removes with two
-   * separate modifiers.
+   * separate modifiers. A building is never added: it replaces the selection, as a unit replaces it.
    */
   const toggleSelected = (id: number): void => {
     const held = selection.ids();
@@ -441,8 +448,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         controlGroups.addExclusive(groupCommand.action, selection.ids());
       } else {
         const snapshot = opts.snapshot();
-        const ids = controlGroups.recall(groupCommand.action, (id) =>
-          isControlGroupMember(snapshot, id, pickableSeat(opts.viewer)),
+        const ids = controlGroups.recall(
+          groupCommand.action,
+          (id) => isControlGroupMember(snapshot, id, pickableSeat(opts.viewer)),
+          isUnit,
         );
         if (ids === null) return;
         if (groupRecallEffect(ids, selection.ids()) === 'centre') {
@@ -502,6 +511,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     select: (ids) => applySelection(ids, false),
     portraits: () => chrome.portraits(),
     flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
+    focusedIds: () => chrome.focusedIds(),
     workAreaRings: () => workArea.rings(opts.snapshot()),
     orderMarkers: orderMarkers.live,
     assignHighlight: pickMode.highlight,
@@ -521,8 +531,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       chrome.actions().claimsPointer(x, y),
     refreshCursor: selectionCursor.update,
     tick: (snapshot) => {
-      // A dead or removed target clears the selection, and the panel with it.
-      if (selectionGone(snapshot)) applySelection([], false);
+      dropGoneMembers(snapshot);
       orders.refresh();
       chrome.panel().tick(snapshot);
       chrome.refreshWindows();

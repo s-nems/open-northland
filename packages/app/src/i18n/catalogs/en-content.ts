@@ -530,6 +530,11 @@ export const enContent = {
       summary:
         'Three settlers for the equip window: a civilian with worn boots, tool and consumables, a soldier with sword and chain armour, and a bare settler. Spare gear lies by the HQ for the per-slot equip, swap and take-off orders.',
     },
+    'group-panel': {
+      title: 'Group panel',
+      summary:
+        'A company to box-select: archers in leather armour carrying potions, swordsmen in chain mail, wounded spearmen, builders with tools, women, civilians, two catapults and a handcart. The group panel shows the thumbnails, the kind tabs, the stats and the shared orders.',
+    },
     'equipment-effects': {
       title: 'Equipment effects',
       summary:

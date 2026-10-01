@@ -11,13 +11,6 @@ export interface ButtonHit {
   readonly rect: Rect;
   readonly enabled: boolean;
 }
-/** The multi-select / generic views: one section window with a single hint row. */
-export interface CompactLayout {
-  readonly kind: 'compact';
-  readonly panel: Rect;
-  readonly section: SectionRect;
-}
-
 /** A selected signpost: one section window whose body is the tear-down button. */
 export interface SignpostLayout {
   readonly kind: 'signpost';
@@ -37,10 +30,8 @@ export interface PalisadeLayout {
   readonly buttons: readonly ButtonHit[];
 }
 
-export type DetailsLayout = CompactLayout | SignpostLayout | PalisadeLayout;
+export type DetailsLayout = SignpostLayout | PalisadeLayout;
 
-/** One body row: the selection count lives in the headline, the body is the controls hint. */
-const COMPACT_ROWS = 1;
 /** The signpost tear-down button's height. */
 const SIGNPOST_BUTTON_H = 18;
 /** Inset between that button and its section body, on both axes. */
@@ -61,29 +52,15 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       button: { ...layout.button, rect: fn(layout.button.rect) },
     };
   }
-  if (layout.kind === 'palisade') {
-    return {
-      ...layout,
-      panel: fn(layout.panel),
-      section: sec(layout.section),
-      healthLabel: fn(layout.healthLabel),
-      health: fn(layout.health),
-      progress: layout.progress === null ? null : fn(layout.progress),
-      buttons: layout.buttons.map((button) => ({ ...button, rect: fn(button.rect) })),
-    };
-  }
-  return { ...layout, panel: fn(layout.panel), section: sec(layout.section) };
-}
-
-export function layoutCompact(
-  screen: { readonly width: number; readonly height: number },
-  s: number,
-): CompactLayout {
-  const w = Math.round(PANEL_W * s);
-  const bodyH = COMPACT_ROWS * Math.round(ROW_H * s);
-  const probe = sectionAt(0, 0, w, bodyH, s);
-  const panel = panelRect(probe.frame.h, screen, s);
-  return { kind: 'compact', panel, section: sectionAt(panel.x, panel.y, w, bodyH, s) };
+  return {
+    ...layout,
+    panel: fn(layout.panel),
+    section: sec(layout.section),
+    healthLabel: fn(layout.healthLabel),
+    health: fn(layout.health),
+    progress: layout.progress === null ? null : fn(layout.progress),
+    buttons: layout.buttons.map((button) => ({ ...button, rect: fn(button.rect) })),
+  };
 }
 
 export function layoutSignpost(

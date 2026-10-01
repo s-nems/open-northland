@@ -107,6 +107,9 @@ export interface WorldFrame {
   readonly lifeHearts?: readonly LifeHeart[] | undefined;
   /** Ids of gatherers carrying a work flag; their feet rings draw the flagged variant (default none). */
   readonly flagged?: ReadonlySet<number> | undefined;
+  /** Ids the HUD points at among the selection (a hovered group well); their rings draw the focus
+   *  variant over the green one (default none). */
+  readonly focused?: ReadonlySet<number> | undefined;
   /** Work-area circles the player switched on with the ring's "Show Work Area" order (default none). */
   readonly workAreas?: readonly WorkAreaRing[] | undefined;
   /** The ground acknowledgements of the player's latest walk and march orders (default none). */

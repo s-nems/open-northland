@@ -5,6 +5,26 @@ import { createPanelRebuildGate } from '../src/hud/details-panel/rebuild-gate.js
 import { snapshotOf } from './support/snapshot.js';
 
 const SCREEN = { width: 1600, height: 1200 };
+
+/** A group of `ids` whose members stand at `pct` health: another `pct` is a value change, other ids a
+ *  structural one. */
+function group(pct: number, ids: readonly number[] = [1, 2]): UnitPanelModel {
+  return {
+    kind: 'group',
+    title: '',
+    members: ids.map((id) => ({
+      id,
+      look: 'settler',
+      kind: 'k',
+      name: '',
+      kindLabel: '',
+      healthPct: pct,
+      tone: 'ok',
+    })),
+    scopes: [],
+    orders: true,
+  };
+}
 /** The gate's own throttle: a value rebuild is refused until this much wall clock has passed. */
 const VALUE_GAP_MS = 250;
 
@@ -58,7 +78,7 @@ describe('details panel rebuild gate', () => {
   });
 
   it('re-derives for a new snapshot object under the same tick', () => {
-    const g = gateOver({ kind: 'generic', count: 2 });
+    const g = gateOver(group(2));
     g.frame(snapshotOf([]));
     g.frame(snapshotOf([]));
 
@@ -66,17 +86,25 @@ describe('details panel rebuild gate', () => {
   });
 
   it('rebuilds a changed selection immediately, values only at the throttle', () => {
-    const g = gateOver({ kind: 'generic', count: 2 });
+    const g = gateOver(group(2));
     g.frame();
 
-    g.show({ kind: 'generic', count: 3 });
+    g.show(group(3));
     expect(g.frame()).toBeNull();
 
     g.advance(VALUE_GAP_MS);
-    expect(g.frame()).toEqual({ model: { kind: 'generic', count: 3 }, structural: false });
+    expect(g.frame()).toEqual({ model: group(3), structural: false });
 
     g.show({ kind: 'signpost', entityId: 4 });
     expect(g.frame()).toEqual({ model: { kind: 'signpost', entityId: 4 }, structural: true });
+  });
+
+  it('treats another member list as a structural change of a group', () => {
+    const g = gateOver(group(2));
+    g.frame();
+
+    g.show(group(2, [1, 3]));
+    expect(g.frame()).toEqual({ model: group(2, [1, 3]), structural: true });
   });
 
   it('treats another entity of the same kind as a structural change', () => {
@@ -88,9 +116,9 @@ describe('details panel rebuild gate', () => {
   });
 
   it('retries a throttled value change on a later frame instead of dropping it', () => {
-    const g = gateOver({ kind: 'generic', count: 2 });
+    const g = gateOver(group(2));
     g.frame();
-    g.show({ kind: 'generic', count: 3 });
+    g.show(group(3));
     expect(g.frame()).toBeNull();
 
     g.advance(VALUE_GAP_MS);
@@ -98,24 +126,24 @@ describe('details panel rebuild gate', () => {
   });
 
   it('throttles from the last rebuild, including one the panel made on its own', () => {
-    const g = gateOver({ kind: 'generic', count: 2 });
+    const g = gateOver(group(2));
     g.frame();
     g.advance(VALUE_GAP_MS);
     // A hover or stock-tab press re-bakes the current model without consulting the gate.
     g.gate.rebuilt();
 
-    g.show({ kind: 'generic', count: 3 });
+    g.show(group(3));
     expect(g.frame()).toBeNull();
   });
 
   it("fills in a new selection's landed answers at once, under the snapshot it was baked from", () => {
-    const g = gateOver({ kind: 'generic', count: 2 });
+    const g = gateOver(group(2));
     const snapshot = snapshotOf([]);
     g.frame(snapshot);
-    g.land({ kind: 'generic', count: 3 });
-    expect(g.frame(snapshot)).toEqual({ model: { kind: 'generic', count: 3 }, structural: false });
+    g.land(group(3));
+    expect(g.frame(snapshot)).toEqual({ model: group(3), structural: false });
     // A value change the next snapshot brings keeps the throttle.
-    g.show({ kind: 'generic', count: 4 });
+    g.show(group(4));
     expect(g.frame(snapshotOf([]))).toBeNull();
   });
 

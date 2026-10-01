@@ -528,6 +528,11 @@ export const plContent = {
       summary:
         'Trzej osadnicy do okna ekwipunku: cywil z założonymi butami, narzędziem i miksturami, żołnierz z mieczem i kolczugą oraz osadnik bez niczego. Przy ratuszu leży zapasowy sprzęt do rozkazów załóż, wymień i zdejmij.',
     },
+    'group-panel': {
+      title: 'Panel grupy',
+      summary:
+        'Oddział do zaznaczenia ramką: łucznicy w skórzanych zbrojach z miksturami, miecznicy w kolczugach, ranni włócznicy, budowniczowie z narzędziami, kobiety, cywile, dwie katapulty i wózek. Panel grupy pokazuje miniatury, zakładki rodzajów, statystyki i wspólne rozkazy.',
+    },
     'equipment-effects': {
       title: 'Efekty ekwipunku',
       summary:

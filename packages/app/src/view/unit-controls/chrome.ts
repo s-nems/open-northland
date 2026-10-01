@@ -11,12 +11,13 @@ import {
 } from '../../hud/details-panel/index.js';
 import { createBuildingPanel } from '../../hud/dom/building-panel/view.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
+import { createGroupPanel } from '../../hud/dom/group-panel/view.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
 import type { ClientRect } from '../../hud/dom/portrait-hole.js';
 import { createSettlerPanel } from '../../hud/dom/settler-panel/view.js';
 import { createTradeWindow, type HousePortrait } from '../../hud/dom/trade-window/window.js';
 import { createVehiclePanel } from '../../hud/dom/vehicle-panel/view.js';
-import { SettlerFigures } from '../../hud/figures/settler-figures.js';
+import { LiveFigures } from '../../hud/figures/live-figures.js';
 import { clientToCanvas } from '../../hud/geometry.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-card/building.js';
 import type { BuildingHoverModel } from '../../hud/hover-card/model.js';
@@ -30,6 +31,7 @@ import { mountSettlerActions, type SettlerActions, selectionCentre } from './act
 import type { AnsweredOrders } from './answered-orders.js';
 import { buildingPanelActions, buildingPeers } from './building-panel.js';
 import type { EquipPickController } from './equip-picker.js';
+import { groupPanelActions } from './group-panel.js';
 import type { PickMode } from './pick-mode.js';
 import { professionGates } from './profession-gates.js';
 import type { UnitSelection } from './selection.js';
@@ -94,6 +96,8 @@ export interface UnitChromeHandle {
   refreshWindows(): void;
   /** Once a frame: the shown building's or vehicle's wells draw their people as the map does. */
   presentFigures(snapshot: WorldSnapshot, alpha: number): void;
+  /** The selected unit the HUD points at (a hovered group well), whose ring the map lights. */
+  focusedIds(): ReadonlySet<number>;
   /** Show the selection on the panel, or nothing while the HUD is hidden. */
   renderPanel(snapshot: WorldSnapshot): void;
   setHudHidden(hidden: boolean): void;
@@ -217,6 +221,23 @@ export async function createUnitChrome(
     vehiclePeers: (vehicle) => vehiclePeersOf(opts.snapshot(), opts.content, vehicle),
     armedPick: (vehicle) => armedVehiclePick(callbacks.armedPick(), vehicle),
   });
+  const groupActions = groupPanelActions(opts, {
+    selectEntity: callbacks.selectEntity,
+    selectGroup: callbacks.selectGroup,
+    centre,
+    openOrders: (press) => mounts.current().actions.open({ x: press.x, y: press.y }),
+    closeOrders: () => mounts.current().actions.close(),
+    ringCommand: callbacks.ringCommand,
+    cue: callbacks.cue,
+  });
+  const groupPanel = createGroupPanel({
+    plane: opts.domHud.plane,
+    actions: groupActions,
+    icons,
+    tooltip: panelChip,
+    keyLabel,
+    reach: groupActions.reach,
+  });
   const buildingPanel = createBuildingPanel({
     plane: opts.domHud.plane,
     icons,
@@ -236,7 +257,7 @@ export async function createUnitChrome(
   });
   const figures = opts.domHud.figures;
   const wellFigures =
-    figures === undefined ? null : new SettlerFigures(figures.sheet, figures.frames, opts.playerColourOf);
+    figures === undefined ? null : new LiveFigures(figures.sheet, figures.frames, opts.playerColourOf);
   const canvasRect = (client: ClientRect): PortraitBox['rect'] => {
     const scale = screenScale(opts.canvas, opts.app.renderer.resolution);
     const { left, top, width, height } = client;
@@ -322,6 +343,8 @@ export async function createUnitChrome(
     tribes: opts.content.tribes,
     ...(opts.standsTo !== undefined ? { standsTo: opts.standsTo } : {}),
     vehicles: opts.content.vehicles,
+    weapons: opts.content.weapons,
+    armor: opts.content.armor,
     isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
     usesWorkFlag: (jobType) => systems.jobUsesWorkFlag({ content: opts.content }, jobType),
     holdsHaulFlagPost: (snapshot, ent) => holdsHaulFlagPost(opts.content, snapshot, ent),
@@ -354,6 +377,7 @@ export async function createUnitChrome(
         settlerPanel.update(model);
         vehiclePanel.update(model);
         buildingPanel.update(model);
+        groupPanel.update(model);
       },
     });
 
@@ -402,12 +426,15 @@ export async function createUnitChrome(
   };
 
   let hudHidden = false;
+  /** The one-id set the map lights, the same object while the hovered well holds. */
+  let focusMemo: ReadonlySet<number> = NO_SELECTION;
   const panelIds = (): ReadonlySet<number> => (hudHidden ? NO_SELECTION : selection.ids());
   // Behind the loading screen: the panels' styles raster once now, not on the first click.
   const warmGoods = opts.content.goods.slice(0, WARM_GOOD_ICONS).map((good) => good.id);
   settlerPanel.warm(warmGoods);
   vehiclePanel.warm(warmGoods);
   buildingPanel.warm(warmGoods);
+  groupPanel.warm();
   const mounts = createReplaceableMount(await mount(opts.uiscale ?? 1), mount, (next, previous) => {
     const snapshot = opts.snapshot();
     next.panel.render(snapshot, panelIds());
@@ -423,6 +450,7 @@ export async function createUnitChrome(
       settlerPanel.claims(x, y) ||
       vehiclePanel.claims(x, y) ||
       buildingPanel.claims(x, y) ||
+      groupPanel.claims(x, y) ||
       tradeWindow.claims(x, y) ||
       mounts.current().panel.claimsPointer(x, y),
     browse: (step) => settlerPanel.browse(step) || vehiclePanel.browse(step) || buildingPanel.browse(step),
@@ -439,16 +467,25 @@ export async function createUnitChrome(
       settlerPanel.refresh();
       vehiclePanel.refresh();
       buildingPanel.refresh();
+      groupPanel.refresh();
     },
     presentFigures: (snapshot, alpha) => {
-      // One details panel shows at a time; the hidden one answers no slots.
+      // One details panel shows at a time; the hidden ones answer no slots.
       const building = buildingPanel.figureSlots();
-      const slots = building.length > 0 ? building : vehiclePanel.figureSlots();
+      const vehicle = building.length > 0 ? building : vehiclePanel.figureSlots();
+      const slots = vehicle.length > 0 ? vehicle : groupPanel.figureSlots();
       // Painting no slots drops the tracks, so a panel shown again does not resume an old gait.
       const drawn =
         wellFigures === null ? NO_FIGURES : wellFigures.paint(snapshot, slots, snapshot.tick, alpha);
       buildingPanel.markDrawn(drawn);
       vehiclePanel.markDrawn(drawn);
+      groupPanel.markDrawn(drawn);
+    },
+    focusedIds: () => {
+      const id = groupPanel.focused();
+      if (id === null) return NO_SELECTION;
+      if (!focusMemo.has(id)) focusMemo = new Set([id]);
+      return focusMemo;
     },
     renderPanel: (snapshot) => mounts.current().panel.render(snapshot, panelIds()),
     setHudHidden: (hidden) => {
@@ -461,6 +498,7 @@ export async function createUnitChrome(
       settlerPanel.invalidate();
       vehiclePanel.invalidate();
       buildingPanel.invalidate();
+      groupPanel.invalidate();
       tradeWindow.invalidate();
       return mounts.replace(uiscale);
     },
@@ -470,6 +508,7 @@ export async function createUnitChrome(
       settlerPanel.dispose();
       vehiclePanel.dispose();
       buildingPanel.dispose();
+      groupPanel.dispose();
       hoverCard.dispose();
       panelChip.destroy();
     },

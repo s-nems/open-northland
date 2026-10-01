@@ -336,6 +336,7 @@ export class WorldRenderer {
       settlerBubbles = NO_BUBBLES,
       lifeHearts = NO_HEARTS,
       flagged = NO_REFS,
+      focused = NO_REFS,
       workAreas = NO_WORK_AREAS,
       orderMarkers = NO_ORDER_MARKERS,
     } = frame;
@@ -416,6 +417,7 @@ export class WorldRenderer {
       water: this.terrain.waterField(),
       selection,
       flagged,
+      focused,
       workAreas,
       orderMarkers,
       doorBadges,

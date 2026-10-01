@@ -7,7 +7,7 @@ import {
   showInWell,
 } from '../src/hud/dom/parts/figure-well.js';
 import { flatGlowPalette, layerColours } from '../src/hud/figures/figure-frames.js';
-import { NO_FIGURE_SLOTS } from '../src/hud/figures/settler-figures.js';
+import { NO_FIGURE_SLOTS } from '../src/hud/figures/live-figures.js';
 
 const RGB = 3;
 /** The team ramp step the glow reads, set apart from every other index of the source palette. */

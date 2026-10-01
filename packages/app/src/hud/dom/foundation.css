@@ -3676,6 +3676,135 @@ body.on-drag-scroll * {
 .on-hud .on-seat-well--soldier {
   color: #c9d2d9;
 }
+
+/* ---------- group panel: kind tabs, the roster of live wells, gear lines ---------- */
+/* One tab per kind in the group, the whole group first; the lit tab scopes everything under it. */
+.on-hud .on-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 2px 0 2px;
+}
+.on-hud .on-scope {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  height: 22px;
+  padding: 3px 9px 0;
+  border: 1px solid var(--wood-lo);
+  border-radius: 11px;
+  background: linear-gradient(var(--wood-hi), var(--wood-lo));
+  box-shadow: inset 0 1px #fff2;
+  color: #e6d9bd;
+  font: 600 11.5px / 1.2 var(--font-body);
+  white-space: nowrap;
+}
+.on-hud .on-scope__count {
+  font-weight: 500;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+.on-hud .on-scope:hover,
+.on-hud .on-scope:focus-visible {
+  background: linear-gradient(#8a6d4a, var(--wood-hi));
+  color: #fff4d8;
+}
+.on-hud .on-scope[aria-selected="true"] {
+  background: linear-gradient(#e8c479, #b58a3f);
+  color: var(--ink);
+  box-shadow: inset 0 1px 3px #0006;
+}
+.on-hud .on-scope[aria-selected="true"] .on-scope__count {
+  opacity: 0.85;
+}
+/* Eight 32 x 42 wells to a row, a vehicle across two; past the row cap the grid scrolls in place. */
+.on-hud .on-roster {
+  --roster-rows: 3;
+  /* The wells' offsets measure against the grid, which tells the painter which are in view. */
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(8, 32px);
+  grid-auto-rows: 42px;
+  justify-content: space-between;
+  gap: 3px;
+  max-height: calc(var(--roster-rows) * 42px + (var(--roster-rows) - 1) * 3px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--bronze-lo) transparent;
+  scrollbar-width: thin;
+}
+.on-hud .on-roster--rows2 {
+  --roster-rows: 2;
+}
+.on-hud .on-roster--rows1 {
+  --roster-rows: 1;
+}
+.on-hud .on-roster--more {
+  mask-image: linear-gradient(#000 calc(100% - 14px), transparent);
+}
+.on-hud .on-seat-well.on-roster__well {
+  width: 32px;
+  height: 42px;
+}
+.on-hud .on-seat-well.on-roster__well--vehicle {
+  grid-column: span 2;
+  width: auto;
+}
+/* The member's health as a hairline along the well's floor, amber and red as it runs low. */
+.on-hud .on-roster__health {
+  position: absolute;
+  z-index: 1;
+  left: 3px;
+  right: 3px;
+  bottom: 2px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--ok) var(--value, 100%), transparent 0), #0009;
+  pointer-events: none;
+}
+.on-hud .on-roster__well--warn .on-roster__health {
+  background: linear-gradient(90deg, var(--warning) var(--value, 100%), transparent 0), #0009;
+}
+.on-hud .on-roster__well--critical .on-roster__health {
+  background: linear-gradient(90deg, var(--danger) var(--value, 100%), transparent 0), #0009;
+}
+.on-hud .on-roster__well--critical {
+  box-shadow: inset 0 0 0 1px #eda08d66;
+}
+/* What the scope wears and carries: the slot's name, then each good with how many hold it. */
+.on-hud .on-gear {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  font-size: 12.5px;
+}
+.on-hud .on-gear__label {
+  flex: none;
+  width: 62px;
+  color: #c7bda3;
+}
+.on-hud .on-gear__items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 9px;
+  min-width: 0;
+}
+.on-hud .on-gear__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.on-hud .on-gear__count {
+  color: var(--text-hi);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.on-hud .on-gear__bare {
+  color: var(--muted);
+  font-size: 11.5px;
+}
 /* The hold: a load gauge (aboard, on the way, the target) over one manifest line per good. */
 .on-hud .on-load {
   display: grid;

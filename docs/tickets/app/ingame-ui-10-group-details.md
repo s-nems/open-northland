@@ -1,28 +1,24 @@
-# Redesign multiple-selection details and shared orders
+# Move the signpost and palisade selections to the DOM panel family
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [08-settler-details](ingame-ui-08-settler-details.md)
-
-`hud/details-panel/selection-view.ts` and `view/unit-controls/` own selection behavior; the wireframe's eight-person grid is only a spatial example.
+The group panel (`hud/dom/group-panel/`, FOUNDATION.md "Group panel") is on the DOM plane. A selected
+signpost (tear down) and a palisade, gate or road site (health, build progress, open/close, demolish,
+withdraw) are the last selections the legacy Pixi `mountUnitPanel` draws (`hud/details-panel/`
+`sections/`, `layout/`, `bake.ts`, `stage.ts`, `pointer-intent.ts`, `click-actions.ts`).
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
-against this checkout before starting; the reference document describes an earlier implementation.
+[session instructions](../../design/ingame-menu/AGENTS.md).
 
 ## Scope
 
-- Design small, large and mixed selections with bounded panel size, distinguishable portraits/counts and accessible per-person inspection.
-- Show only commands valid for the selection; explain partial applicability and forbidden orders rather than silently issuing misleading commands. The action ring already shows a group order when any member allows it and sends it only to those members (`orderRecipients` in `view/unit-controls/action-ring/menu-state.ts`); the panel should show which members an order will reach.
-- Preserve selection identity while members die, disappear or become ineligible; keep camera controls and interaction with the residents list consistent.
-- Use the same bottom-right component family as single-entity details, with scrolling or pagination rather than an indefinitely growing panel.
-- Move the selected signpost (tear down) and palisade or gate (health, build progress, open/close,
-  demolish) to the same family: with the groups they are the last selections the legacy Pixi
-  `mountUnitPanel` draws, which then goes, keeping only the model derive the DOM panels read.
+- Give the signpost and the palisade family DOM panels in the bottom-right component family, with the
+  same orders the Pixi panel sends today.
+- Remove the Pixi panel's drawing, layout, hit-testing and their tests, keeping only the model derive
+  and the rebuild gate the DOM panels read.
 
 ## Verify
 
-Test single-to-multiple transitions, mixed professions/owners, large groups, select-one-from-group and live removals. Review orders and camera behavior, not just the grid.
-
-For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
-not proof of runtime behavior. Apply the shared design-review step before implementation.
+Select a signpost, a palisade under construction, a finished gate and a road site; press every order
+and check the pointer no longer falls through to the map. Provide the verified preview from the
+ticket's worktree.

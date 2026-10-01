@@ -40,9 +40,9 @@ const structureKeyOf = (model: UnitPanelModel): string => {
     case 'palisade':
     case 'vehicle':
       return `${model.kind}:${model.entityId}`;
+    case 'group':
+      return `group:${model.members.map((member) => member.id).join(',')}`;
     case 'empty':
-    case 'multi-settler':
-    case 'generic':
       return model.kind;
   }
 };

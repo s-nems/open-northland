@@ -11,6 +11,7 @@ import {
   matchesKeyboardBinding,
 } from '../../hud/keybindings.js';
 import { entityAnchor } from '../projections/entity-anchor.js';
+import { type IsUnit, selectionAfter } from './selection.js';
 
 export type ControlGroupCommand = Readonly<{
   action: ControlGroupAction;
@@ -37,8 +38,13 @@ export interface ControlGroups {
   replace(action: ControlGroupAction, ids: Iterable<number>): void;
   /** Add these members here and remove them from every other group. */
   addExclusive(action: ControlGroupAction, ids: Iterable<number>): void;
-  /** Current valid members, or null when the group cannot change the selection. */
-  recall(action: ControlGroupAction, isSelectable: (id: number) => boolean): readonly number[] | null;
+  /** Current valid members, or null when the group cannot change the selection. A group holds units
+   *  or one building; stored members that mix the two recall the units. */
+  recall(
+    action: ControlGroupAction,
+    isSelectable: (id: number) => boolean,
+    isUnit: IsUnit,
+  ): readonly number[] | null;
 }
 
 /** Centre only when the current selection contains exactly the recalled group. */
@@ -96,7 +102,7 @@ export function createControlGroups(): ControlGroups {
       for (const id of moving) group.add(id);
       groups.set(action, group);
     },
-    recall: (action, isSelectable) => {
+    recall: (action, isSelectable, isUnit) => {
       const group = groups.get(action);
       if (group === undefined || group.size === 0) return null;
       const valid: number[] = [];
@@ -104,7 +110,7 @@ export function createControlGroups(): ControlGroups {
         if (isSelectable(id)) valid.push(id);
         else group.delete(id);
       }
-      return valid.length === 0 ? null : valid;
+      return valid.length === 0 ? null : selectionAfter([], valid, false, isUnit);
     },
   };
 }

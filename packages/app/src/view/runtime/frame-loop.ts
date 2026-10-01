@@ -341,6 +341,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       settlerBubbles,
       lifeHearts,
       flagged: controls.flaggedFlagIds(),
+      focused: controls.focusedIds(),
       workAreas: controls.workAreaRings(),
       orderMarkers: controls.orderMarkers(),
     });

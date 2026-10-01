@@ -1,5 +1,5 @@
 import type { BuildingPanelModel, UnitPanelModel } from '../../details-panel/model/index.js';
-import { type FigureSlot, NO_FIGURE_SLOTS } from '../../figures/settler-figures.js';
+import { type FigureSlot, NO_FIGURE_SLOTS } from '../../figures/live-figures.js';
 import { type FigureWell, FigureWellSlots, markDrawnWells } from '../parts/figure-well.js';
 import type { ClientRect } from '../portrait-hole.js';
 import { createSelectionPanel } from '../selection-panel.js';

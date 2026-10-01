@@ -30,7 +30,6 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
       }
       return null;
     case 'empty':
-    case 'compact':
       return null;
   }
 };

@@ -67,6 +67,7 @@ export interface WorldMarksFrame {
   readonly water: WaterField;
   readonly selection: ReadonlySet<number>;
   readonly flagged: ReadonlySet<number>;
+  readonly focused: ReadonlySet<number>;
   readonly workAreas: readonly WorkAreaRing[];
   readonly orderMarkers: readonly OrderMarker[];
   readonly doorBadges: readonly DoorBadge[];
@@ -166,6 +167,7 @@ export class WorldMarks {
       frame.selection,
       frame.flagged,
       frame.workAreas,
+      frame.focused,
     );
     this.orderMarkers.draw(frame.orderMarkers, elevation, viewport);
     this.effects.draw(elevation, viewport, renderTime);

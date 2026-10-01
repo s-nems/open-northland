@@ -97,8 +97,8 @@ filters are an explicit exception in this mouse/keyboard study.
 - Construction: 640 px wide, so the widest bill in the content (eight goods) sits in one row on a
   card; content-sized rather than filling the screen vertically; the catalogue scrolls
   inside it once the window would reach the beam.
-- Selection: the settler, vehicle and building panels are 318 px on the DOM plane; a signpost, a
-  palisade and a group keep the legacy 322 px panel until ticket 10 replaces it.
+- Selection: the settler, vehicle, building and group panels are 318 px on the DOM plane; a signpost
+  and a palisade keep the legacy 322 px panel until ticket 10 replaces it.
 - Notifications: 173 px, no opaque background in unused column space.
 - Minimap: S/M/L/XL with bounded aspect trim, flush to the bottom-left corner; capped before the centred
   navigation beam with a 6 design-px gap, as specified in [Minimap direction](#minimap-direction).
@@ -530,6 +530,47 @@ scrollbar, every control's tooltip is a few words saying what the press does or 
 - First paint at map start, as the settler panel's: a made-up vehicle lights every section once.
 - Another seat's vehicle: class, type, owner line with the stance, the portrait, the state and the
   crew's figures; no order, no hold, no control.
+
+### Group panel
+
+Several units selected at once: settlers, vehicles or both, in the settler panel's frame and place.
+A building is only ever selected alone (Shift+click on one replaces the selection; a control group
+holds units or one building), so a group never mixes them. The point of the panel is to see who is
+selected; stats and shared orders follow.
+
+- Head: "Grupa" as the kicker, the make-up as the title ("35 osadników · 3 wehikuły", or a single
+  kind's name and count, "Łucznicy · 12"), no rename, no browse. The gold medallion opens the action
+  ring for the group while any member is a settler the viewer orders; a vehicle-only group blanks
+  it. The close clears the selection.
+- Kind tabs: "Wszyscy" then one pill per kind, fighters first (heroes, each soldier class by its
+  weapon, siege engines, ships, carts), then the village (each trade, civilians, women, children),
+  each with its count. The lit tab scopes everything under it: the wells, the overview, the orders
+  and the details. A double click on a kind's tab selects only that kind, Shift+click drops it from
+  the group. A group of one kind shows no tabs.
+- Zaznaczeni: the scope's members as 32 × 42 px live wells, eight to a row, a vehicle across two;
+  a hairline along each well's floor carries the health (amber under half, red under a quarter, the
+  well's edge red too). Three rows show, then the grid scrolls in place and fades at the bottom. Only
+  the wells in view are painted. A click selects that member alone (after a short wait, so a double
+  click is not taken for one), a double click brings it into view and keeps the group, Shift+click
+  drops it, Ctrl+click selects every member of its kind. The tooltip names the member, its kind and
+  health, and the gestures. The cursor on a well lights that member's ring on the map in pale gold.
+- Przegląd: the scope's average Zdrowie (its numbers and how many are wounded at once in the chip),
+  then each need's average as the settler panel's meter line; a press orders that need for every
+  member the action ring's gates let take it, and the chip says how many that is. Then the gear:
+  Broń and Zbroja for the fighters, Narzędzia for the village's workers, Torba for everyone, each a
+  row of good icons with how many hold them (a draught also gives the sips left in its tooltip) and
+  "bez: N" for those holding nothing there. A vehicle scope adds Załoga, the seats taken of all.
+- Wojsko: Postawa and Jedzenie i sen for the scope's fighters, lit when every one holds the same
+  value and unlit while they differ (the label's tooltip gives the split, "Atak 20 · Obrona 6"); each
+  option's tooltip says how many it reaches and an option nobody takes is faded. Siege engines get
+  their own Katapulty strip.
+- Szczegóły, folded until opened (the choice holds while the game runs): Ranni, Ciężko ranni, Głodni,
+  Zmęczeni, Bez zbroi, Bez mikstur leczenia, W wehikułach, Uszkodzone wehikuły, each count a link
+  that selects only them; then the fighters' combat experience bonus (average and best) and the
+  healing sips carried. Only rows that hold someone show.
+- Fit: the grid gives up rows (three, two, one) before an open Szczegóły steps aside on a fresh
+  group; the player's own open press only takes rows from the grid.
+- First paint at map start: a made-up group lights every section once.
 
 ### Building panel
 

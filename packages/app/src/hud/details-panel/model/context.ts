@@ -23,6 +23,8 @@ export type JobDef = ContentSet['jobs'][number];
 export type JobExperienceDef = ContentSet['jobExperience'][number];
 export type TribeDef = ContentSet['tribes'][number];
 export type VehicleDef = ContentSet['vehicles'][number];
+export type WeaponDef = ContentSet['weapons'][number];
+export type ArmorDef = ContentSet['armor'][number];
 
 export interface UnitPanelModelContext {
   /** The seat allowed to issue player-scoped orders from this panel. */
@@ -42,6 +44,9 @@ export interface UnitPanelModelContext {
   readonly tribes: readonly TribeDef[];
   /** The content vehicle types: the window's title, hold list and order set come from the row. */
   readonly vehicles: readonly VehicleDef[];
+  /** The content weapon and armour types, so a group names the arms a scene stamped without a worn good. */
+  readonly weapons?: readonly WeaponDef[] | undefined;
+  readonly armor?: readonly ArmorDef[] | undefined;
   /** The sim's livestock-workplace classification. Absent = no filtering. */
   readonly isLivestockWorkplace?: ((typeId: number) => boolean) | undefined;
   /** The sim's flag-trade test (`jobUsesWorkFlag`): a gatherer or a fisher, whose workplace pick also

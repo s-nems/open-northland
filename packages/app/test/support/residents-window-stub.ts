@@ -1,5 +1,5 @@
 import type { ResidentsWindow } from '../../src/hud/dom/residents-window.js';
-import { NO_FIGURE_SLOTS } from '../../src/hud/figures/settler-figures.js';
+import { NO_FIGURE_SLOTS } from '../../src/hud/figures/live-figures.js';
 import { INITIAL_RESIDENTS_STATE, NO_RESIDENT_FILTERS } from '../../src/hud/tool-panel/residents/rows.js';
 
 /** A residents window without a DOM: the registry only asks it to open, close, refresh and keep its

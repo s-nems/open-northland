@@ -1,6 +1,7 @@
 import type { ResolvedLayer } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import { feetLine, growFigureBounds, vehicleFit } from '../src/hud/tool-panel/messages/figures.js';
+import { growFigureBounds, vehicleFit } from '../src/hud/figures/vehicle-fit.js';
+import { feetLine } from '../src/hud/tool-panel/messages/figures.js';
 
 const HEIGHT = 50;
 /** The usual gap under the feet (design px). */

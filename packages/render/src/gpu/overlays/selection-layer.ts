@@ -31,6 +31,10 @@ const RING_WIDTH = 2;
  *  under the flag's own sprite. */
 const FLAG_RING_COLOR = 0xffc020;
 const FLAG_RING_WIDTH = 3;
+/** The ring of the unit the HUD points at (a hovered group well): pale gold and heavy, so one member
+ *  stands out of a green crowd. */
+const FOCUS_RING_COLOR = 0xfff0b0;
+const FOCUS_RING_WIDTH = 4;
 /** The work-area circle: the flag's amber, thinner and barely filled, since it spans a whole harvest
  *  radius rather than one sprite. */
 const AREA_RING_WIDTH = 2;
@@ -69,6 +73,8 @@ export class SelectionLayer {
   private readonly rings = new Map<number, Graphics>();
   /** One persistent ring per selected gatherer's flag entity id (amber). */
   private readonly flagRings = new Map<number, Graphics>();
+  private readonly focusRings = new Map<number, Graphics>();
+  private readonly seenFocus = new Set<number>();
   /** One persistent work-area circle per shown flag entity id, keyed with the radius it was authored at
    *  so a re-sized area redraws rather than keeping a stale circle. */
   private readonly areaRings = new Map<number, { g: Graphics; radiusNodes: number }>();
@@ -78,18 +84,20 @@ export class SelectionLayer {
   private readonly seenFlags = new Set<number>();
   private readonly specs = new WeakMap<Graphics, RingSpec>();
 
-  /** Reconcile the three pools: a green ring under every `selected` entity, an amber one under every
-   *  `flagged` id (the work flags of the selected gatherers), and a work-area circle per `workAreas`
-   *  entry. */
+  /** Reconcile the four pools: a green ring under every `selected` entity, an amber one under every
+   *  `flagged` id (the work flags of the selected gatherers), a work-area circle per `workAreas` entry,
+   *  and a focus ring over the green one of every `focused` id. */
   draw(
     frame: SelectionFrame,
     selected: ReadonlySet<number>,
     flagged: ReadonlySet<number> = NO_IDS,
     workAreas: readonly WorkAreaRing[] = NO_AREAS,
+    focused: ReadonlySet<number> = NO_IDS,
   ): void {
     this.reconcile(this.rings, this.seen, selected, RING_COLOR, RING_WIDTH, frame);
     this.reconcile(this.flagRings, this.seenFlags, flagged, FLAG_RING_COLOR, FLAG_RING_WIDTH, frame);
     this.reconcileAreas(workAreas, frame);
+    this.reconcile(this.focusRings, this.seenFocus, focused, FOCUS_RING_COLOR, FOCUS_RING_WIDTH, frame);
   }
 
   /** Reconcile the work-area circles: one flat ground ellipse per shown area, retiring the rest. */
@@ -173,6 +181,7 @@ export class SelectionLayer {
     this.container.destroy({ children: true });
     this.rings.clear();
     this.flagRings.clear();
+    this.focusRings.clear();
     this.areaRings.clear();
   }
 }

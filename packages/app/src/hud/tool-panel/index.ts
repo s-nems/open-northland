@@ -47,7 +47,7 @@ import { createResidentsWindow } from '../dom/residents-window.js';
 import { createHudSystemBar } from '../dom/system-bar.js';
 import type { CentralWindows } from '../dom/trade-window/window.js';
 import { FigureFrames } from '../figures/figure-frames.js';
-import { SettlerFigures } from '../figures/settler-figures.js';
+import { LiveFigures } from '../figures/live-figures.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import { type KeyBindings, keyDisplayLabel } from '../keybindings.js';
 import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
@@ -490,7 +490,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const goodTypeById = new Map(opts.goods.map((g) => [g.id, g.typeId]));
     const thumbs = createBuildingThumbs(opts.sheet, opts.tribe);
     const figureFrames = new FigureFrames(opts.sheet);
-    const residentFigures = new SettlerFigures(opts.sheet, figureFrames, opts.playerColourOf);
+    const residentFigures = new LiveFigures(opts.sheet, figureFrames, opts.playerColourOf);
     const windows = createToolWindows({
       ctx,
       container: windowContainer,

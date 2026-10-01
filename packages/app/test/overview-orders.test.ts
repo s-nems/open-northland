@@ -77,7 +77,7 @@ function harness(
 } {
   const issued: Command[] = [];
   const cues: UiCue[] = [];
-  const selection = createUnitSelection();
+  const selection = createUnitSelection(() => true);
   selection.apply([SCOUT.id], false);
   const orders = createUnitOrderController({
     answered: createAnsweredOrders(),

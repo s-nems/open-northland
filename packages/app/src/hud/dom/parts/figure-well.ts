@@ -1,4 +1,4 @@
-import { type FigureSlot, NO_FIGURE_SLOTS } from '../../figures/settler-figures.js';
+import { type FigureSlot, NO_FIGURE_SLOTS } from '../../figures/live-figures.js';
 import { button, element, setClass } from './dom.js';
 
 /** Painted while its settler's figure is drawn: the glyph under the canvas hides (foundation.css). */

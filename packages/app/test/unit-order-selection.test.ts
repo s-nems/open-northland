@@ -87,7 +87,7 @@ function harness(
 } {
   const issued: Command[] = [];
   const marked: [Tile, OrderMarkerKind][] = [];
-  const selection = createUnitSelection();
+  const selection = createUnitSelection(() => true);
   selection.apply(initiallySelected, false);
   const orders = createUnitOrderController({
     answered: createAnsweredOrders(),

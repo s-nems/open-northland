@@ -29,9 +29,10 @@ describe('details panel layout', () => {
     expect(
       viewOfKind(modelOf([1], [{ id: 1, components: { Signpost: { player: 1 } } }]), 'signpost').model.kind,
     ).toBe('signpost');
-    // Both multi-select kinds share the one compact strip - the pairing the type keeps and the reason
-    // the discriminant is the layout's kind, not the model's.
-    expect(viewOfKind(modelOf([1, 2], [settler(1), settler(2)]), 'compact').model.kind).toBe('multi-settler');
+    // A group is the DOM group panel's as well.
+    const group = modelOf([1, 2], [settler(1), settler(2)]);
+    expect(group.kind).toBe('group');
+    expect(panelViewFor(group, PANEL_SCREEN, 1).kind).toBe('empty');
   });
 
   it('gives a road site one status row: its stone wanted, a builder coming, or the stone on site', () => {

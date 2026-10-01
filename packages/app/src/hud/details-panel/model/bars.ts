@@ -31,6 +31,9 @@ export function healthBar(ent: SnapshotEntity): PanelBar | null {
 export type BarTone = 'ok' | 'warn' | 'critical';
 const BAR_WARN_BELOW_PCT = 50;
 const BAR_CRITICAL_BELOW_PCT = 25;
+/** A need's satisfaction below this reads amber on its meter (`parts/meter-row.ts`), which the group
+ *  panel counts as hungry or tired. */
+export const NEED_LOW_BELOW_PCT = 34;
 
 /** Banding for the no-`content/` fallback only; the thresholds are an approximation, since with content
  *  the decoded `GuiBarRamp` colours the gauge instead. */

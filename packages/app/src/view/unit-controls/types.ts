@@ -156,6 +156,8 @@ export interface UnitControls {
   /** The live cutouts the frame paints: the selection's portrait and the trade window's houses. */
   readonly portraits: () => readonly PortraitBox[];
   readonly flaggedFlagIds: () => ReadonlySet<number>;
+  /** The selected unit the HUD points at, whose ring the map lights over the green one. */
+  readonly focusedIds: () => ReadonlySet<number>;
   /** The work-area circles the "Show Work Area" order has switched on. */
   readonly workAreaRings: () => readonly WorkAreaRing[];
   /** The ground acknowledgements of the latest walk and march orders still playing. */

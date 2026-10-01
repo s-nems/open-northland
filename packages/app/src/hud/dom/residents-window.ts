@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { pickerEntries } from '../../catalog/professions.js';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
-import { type FigureBox, type FigureSlot, NO_FIGURE_SLOTS } from '../figures/settler-figures.js';
+import { type FigureBox, type FigureSlot, NO_FIGURE_SLOTS } from '../figures/live-figures.js';
 import type { CanBecomeOption } from '../tool-panel/residents/can-become.js';
 import {
   filtersActive,

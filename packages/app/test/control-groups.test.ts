@@ -11,6 +11,9 @@ import {
 } from '../src/view/unit-controls/control-groups.js';
 import { building, settler, snapshotOf } from './support/snapshot.js';
 
+/** Classifies every id as a unit, for tests about membership rather than the units-only rule. */
+const ALL_UNITS = (): boolean => true;
+
 const press = (overrides: Partial<Parameters<typeof controlGroupCommand>[0]> = {}) => ({
   code: 'Digit1',
   repeat: false,
@@ -99,9 +102,9 @@ describe('control groups', () => {
     groups.replace('controlGroup3', [2, 8]);
     groups.addExclusive('controlGroup2', [2, 7]);
 
-    expect(groups.recall('controlGroup1', () => true)).toEqual([4]);
-    expect(groups.recall('controlGroup2', () => true)).toEqual([7, 9, 2]);
-    expect(groups.recall('controlGroup3', () => true)).toEqual([8]);
+    expect(groups.recall('controlGroup1', () => true, ALL_UNITS)).toEqual([4]);
+    expect(groups.recall('controlGroup2', () => true, ALL_UNITS)).toEqual([7, 9, 2]);
+    expect(groups.recall('controlGroup3', () => true, ALL_UNITS)).toEqual([8]);
   });
 
   it('Ctrl-replaces only the target group without stealing its members from others', () => {
@@ -109,26 +112,37 @@ describe('control groups', () => {
     groups.replace('controlGroup1', [1, 2]);
     groups.replace('controlGroup2', [2, 3]);
 
-    expect(groups.recall('controlGroup1', () => true)).toEqual([1, 2]);
-    expect(groups.recall('controlGroup2', () => true)).toEqual([2, 3]);
+    expect(groups.recall('controlGroup1', () => true, ALL_UNITS)).toEqual([1, 2]);
+    expect(groups.recall('controlGroup2', () => true, ALL_UNITS)).toEqual([2, 3]);
   });
 
   it('overwrites and clears a group with the current selection', () => {
     const groups = createControlGroups();
     groups.replace('controlGroup1', [1, 2]);
     groups.replace('controlGroup1', [9]);
-    expect(groups.recall('controlGroup1', () => true)).toEqual([9]);
+    expect(groups.recall('controlGroup1', () => true, ALL_UNITS)).toEqual([9]);
 
     groups.replace('controlGroup1', []);
-    expect(groups.recall('controlGroup1', () => true)).toBeNull();
+    expect(groups.recall('controlGroup1', () => true, ALL_UNITS)).toBeNull();
+  });
+
+  it('recalls a lone building, but only the units of stored members that mix them', () => {
+    const BARRACKS = 2;
+    const isUnit = (id: number): boolean => id !== BARRACKS;
+    const groups = createControlGroups();
+    groups.replace('controlGroup1', [BARRACKS]);
+    groups.replace('controlGroup2', [1, BARRACKS, 3]);
+
+    expect(groups.recall('controlGroup1', () => true, isUnit)).toEqual([BARRACKS]);
+    expect(groups.recall('controlGroup2', () => true, isUnit)).toEqual([1, 3]);
   });
 
   it('forgets invalid members and leaves selection unchanged when none remain', () => {
     const groups = createControlGroups();
     groups.replace('controlGroup1', [1, 2]);
-    expect(groups.recall('controlGroup1', (id) => id === 2)).toEqual([2]);
-    expect(groups.recall('controlGroup1', () => false)).toBeNull();
-    expect(groups.recall('controlGroup1', () => true)).toBeNull();
+    expect(groups.recall('controlGroup1', (id) => id === 2, ALL_UNITS)).toEqual([2]);
+    expect(groups.recall('controlGroup1', () => false, ALL_UNITS)).toBeNull();
+    expect(groups.recall('controlGroup1', () => true, ALL_UNITS)).toBeNull();
   });
 });
 
@@ -140,10 +154,10 @@ describe('recall of an already selected group', () => {
     expect(groupRecallEffect([1, 2], new Set())).toBe('select');
   });
 
-  it('centres on the mean ground anchor of the positioned members, buildings included', () => {
+  it('centres on the mean ground anchor of the positioned members', () => {
     const snapshot = snapshotOf([
       settler(1, 6, null), // no Position: contributes nothing
-      building(2, 1, 2, 4),
+      { id: 2, components: { Settler: {}, Position: { x: fx.fromInt(2), y: fx.fromInt(4) } } },
       { id: 3, components: { Settler: {}, Position: { x: fx.fromInt(6), y: fx.fromInt(8) } } },
     ]);
     const a = tileToScreen(2, 4);
@@ -151,5 +165,10 @@ describe('recall of an already selected group', () => {
 
     expect(groupCentre(snapshot, [1, 2, 3])).toEqual({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
     expect(groupCentre(snapshot, [1])).toBeNull();
+  });
+
+  it('centres a lone building group on the building', () => {
+    const snapshot = snapshotOf([building(2, 1, 2, 4)]);
+    expect(groupCentre(snapshot, [2])).toEqual(tileToScreen(2, 4));
   });
 });

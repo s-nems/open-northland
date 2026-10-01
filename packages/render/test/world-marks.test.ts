@@ -43,6 +43,7 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     water: NO_WATER,
     selection: new Set(),
     flagged: new Set(),
+    focused: new Set(),
     workAreas: [],
     orderMarkers: [],
     doorBadges: [],

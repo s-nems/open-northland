@@ -13,7 +13,6 @@ const panelButtons = (view: PanelView): readonly ButtonHit[] => {
     case 'palisade':
       return view.layout.buttons;
     case 'empty':
-    case 'compact':
       return [];
   }
 };
