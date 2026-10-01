@@ -15,6 +15,7 @@ import { fx, ONE, Simulation } from '../../../src/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
 import { setProductionCount, setProductionGoods } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { grassCellMap } from '../../fixtures/terrain.js';
 import { CARPENTER, ctxOf, PLANK_GATE_EARNED, spawnSettler, WOOD, WOODCUTTER } from './support.js';
 
 // The fixture forge (typeId 9): one carpenter operator, wood -> plank (2) and wood -> food_simple (3).
@@ -52,7 +53,7 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
     expect(sim.workStatus(smith)).toEqual({
       kind: 'waitingInput',
       goodType: FOOD,
-      missingInputs: [{ goodType: WOOD, required: 1, available: 0, missing: 1 }],
+      missingInputs: [{ goodType: WOOD, required: 1, available: 0, missing: 1, outOfReach: false }],
     });
   });
 
@@ -83,8 +84,8 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
       kind: 'waitingInput',
       goodType: FOOD,
       missingInputs: [
-        { goodType: WOOD, required: 3, available: 1, missing: 2 },
-        { goodType: 4, required: 2, available: 0, missing: 2 },
+        { goodType: WOOD, required: 3, available: 1, missing: 2, outOfReach: false },
+        { goodType: 4, required: 2, available: 0, missing: 2, outOfReach: false },
       ],
     });
     expect(sim.hashState()).toBe(before);
@@ -140,5 +141,58 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
     const tradeless = spawnSettler(sim, CARPENTER, 1, 0);
     setSettlerJob(sim.world, tradeless, null);
     expect(sim.workStatus(tradeless)).toEqual({ kind: 'noJob' });
+  });
+});
+
+describe('Simulation.workStatus - stores outside the signpost area', () => {
+  // The walk range is 50 hex nodes, 25 tiles east-west; the forge stands at tile 0 with no signposts.
+  const IN_AREA = 6;
+  const OUT_OF_AREA = 40;
+  const HEADQUARTERS = 1;
+
+  function confinedForge(wood: number): { sim: Simulation; forge: Entity; smith: Entity } {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(96, 8) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    return { sim, ...forge(sim, wood) };
+  }
+
+  function storeAt(sim: Simulation, x: number, amounts: readonly [number, number][] = []): Entity {
+    const store = sim.world.create();
+    sim.world.add(store, Position, { x: fx.fromInt(x), y: fx.fromInt(2) });
+    sim.world.add(store, Stockpile, { amounts: new Map(amounts) });
+    if (amounts.length === 0) {
+      sim.world.add(store, Building, { buildingType: HEADQUARTERS, tribe: 1, built: ONE, level: 0 });
+    }
+    return store;
+  }
+
+  it('names the product no store within reach takes, and a full shelf once one is in reach', () => {
+    const { sim, forge: f, smith } = confinedForge(2);
+    const stock = sim.world.mut(f, Stockpile).amounts;
+    stock.set(PLANK, SHELF_CAPACITY);
+    stock.set(FOOD, SHELF_CAPACITY);
+    storeAt(sim, OUT_OF_AREA);
+    expect(sim.workStatus(smith)).toEqual({
+      kind: 'noOutputDestination',
+      goodType: PLANK,
+      reason: 'outOfReach',
+    });
+    storeAt(sim, IN_AREA);
+    expect(sim.workStatus(smith)).toMatchObject({ kind: 'outputFull' });
+  });
+
+  it('marks a missing input that only lies outside the area', () => {
+    const { sim, smith } = confinedForge(0);
+    storeAt(sim, OUT_OF_AREA, [[WOOD, 5]]);
+    expect(sim.workStatus(smith)).toMatchObject({
+      kind: 'waitingInput',
+      missingInputs: [{ goodType: WOOD, outOfReach: true }],
+    });
+    storeAt(sim, IN_AREA, [[WOOD, 5]]);
+    expect(sim.workStatus(smith)).toMatchObject({
+      kind: 'waitingInput',
+      missingInputs: [{ goodType: WOOD, outOfReach: false }],
+    });
   });
 });

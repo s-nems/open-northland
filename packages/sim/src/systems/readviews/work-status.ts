@@ -19,14 +19,19 @@ import { canStartCycle, outputRoomForCycles, waitingForRecipeInput } from '../ec
 import { craftablePool } from '../economy/production/rotation.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 import { recipeOutputsEnabled } from '../progression/index.js';
+import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
+import { StoreSinks } from '../settlers/targets/stores/sinks.js';
 import { isWorkplaceOperator, recipesByProductOf, stockCapacity } from '../stores/index.js';
 import { gatherWorkStatus } from './gather-work-status.js';
+import { storesOnlyOutOfReach } from './store-reach.js';
 
 export interface MissingWorkInput {
   readonly goodType: number;
   readonly required: number;
   readonly available: number;
   readonly missing: number;
+  /** Stores hold the input, but all of them outside the worker's signpost area. */
+  readonly outOfReach: boolean;
 }
 
 export interface BlockedWorkOutput {
@@ -56,7 +61,8 @@ export type WorkStatus =
   | {
       readonly kind: 'noOutputDestination';
       readonly goodType: number;
-      readonly reason: 'noStorage' | 'unknown';
+      /** `outOfReach`: stores would take it, but all of them lie outside the worker's signpost area. */
+      readonly reason: 'noStorage' | 'outOfReach' | 'unknown';
     }
   | { readonly kind: 'noWorkplace' }
   | { readonly kind: 'unknown'; readonly reason: 'unsupportedWorkplace' | 'productionGate' | 'gatherSearch' }
@@ -120,7 +126,20 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
     const missingInputs = waiting.recipe.inputs.flatMap((input) => {
       const available = stock.get(input.goodType) ?? 0;
       return available < input.amount
-        ? [{ goodType: input.goodType, required: input.amount, available, missing: input.amount - available }]
+        ? [
+            {
+              goodType: input.goodType,
+              required: input.amount,
+              available,
+              missing: input.amount - available,
+              outOfReach: storesOnlyOutOfReach(
+                world,
+                ctx,
+                entity,
+                FetchableStock.of(world, ctx).holders(input.goodType),
+              ),
+            },
+          ]
         : [];
     });
     return missingInputs.length > 0
@@ -140,7 +159,14 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
       })),
     )
     .filter((output) => output.capacity - output.available < output.required);
-  return outputs.length > 0 ? { kind: 'outputFull', outputs } : { kind: 'unknown', reason: 'productionGate' };
+  if (outputs.length === 0) return { kind: 'unknown', reason: 'productionGate' };
+  const sinks = StoreSinks.of(world, ctx);
+  const stranded = outputs.find((output) =>
+    storesOnlyOutOfReach(world, ctx, entity, sinks.sinks(output.goodType, false)),
+  );
+  return stranded !== undefined
+    ? { kind: 'noOutputDestination', goodType: stranded.goodType, reason: 'outOfReach' }
+    : { kind: 'outputFull', outputs };
 }
 
 interface PoolEntry {

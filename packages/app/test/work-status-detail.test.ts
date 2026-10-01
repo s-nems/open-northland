@@ -12,7 +12,7 @@ it('names ingredient deficits separately from the product in both languages', ()
   const status = {
     kind: 'waitingInput',
     goodType: GOOD_FLOUR,
-    missingInputs: [{ goodType: GOOD_WATER, available: 1, required: 3, missing: 2 }],
+    missingInputs: [{ goodType: GOOD_WATER, available: 1, required: 3, missing: 2, outOfReach: false }],
   } as const;
   const product = goodLabel(ctx, GOOD_FLOUR);
   const input = goodLabel(ctx, GOOD_WATER);
@@ -37,4 +37,21 @@ it('distinguishes a missing resource, a blocked approach, and an unknown cause',
   );
   expect(workStatusDetail(ctx, { kind: 'nothingSelected' })).toBe('Wszystkie produkty ustawione na 0');
   expect(workStatusDetail(ctx, { kind: 'noWorkplace' })).toBe('Brak przypisanego miejsca pracy');
+});
+
+it('says when the only store for a product or an input lies outside signpost reach', () => {
+  const ctx = sandboxCtx();
+  const product = goodLabel(ctx, GOOD_FLOUR);
+  const input = goodLabel(ctx, GOOD_WATER);
+  const waiting = {
+    kind: 'waitingInput',
+    goodType: GOOD_FLOUR,
+    missingInputs: [{ goodType: GOOD_WATER, available: 0, required: 1, missing: 1, outOfReach: true }],
+  } as const;
+  expect(workStatusDetail(ctx, waiting)).toBe(
+    `Poza zasięgiem drogowskazów: ${input} (${product}). Połącz drogowskazami z magazynem`,
+  );
+  expect(
+    workStatusDetail(ctx, { kind: 'noOutputDestination', goodType: GOOD_FLOUR, reason: 'outOfReach' }),
+  ).toBe(`Brak magazynu w zasięgu drogowskazów: ${product}. Połącz drogowskazami z magazynem`);
 });

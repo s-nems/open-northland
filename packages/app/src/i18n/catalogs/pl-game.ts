@@ -324,12 +324,14 @@ export const plGame = {
       idleReasons: {
         outputDestination: {
           noStorage: 'Brak miejsca przyjmującego towar: {good}',
+          outOfReach: 'Brak magazynu w zasięgu drogowskazów: {good}. Połącz drogowskazami z magazynem',
           unknown: 'Nie ustalono miejsca oddania towaru: {good}',
         },
         noResourceInArea: 'Nie znaleziono zasobów do zebrania w obszarze pracy: {goods}',
         noEligibleResource: 'Nie znaleziono zasobów do zebrania: {goods}',
         resourceRouteBlocked: 'Brak dostępnego dojścia do zasobów: {goods}',
         waitingInput: '{product}: brakuje w warsztacie {inputs}',
+        inputOutOfReach: 'Poza zasięgiem drogowskazów: {goods} ({product}). Połącz drogowskazami z magazynem',
         outputFull: 'Brak miejsca na produkt: {outputs}',
         nothingSelected: 'Wszystkie produkty ustawione na 0',
         noTool: 'bez narzędzia',

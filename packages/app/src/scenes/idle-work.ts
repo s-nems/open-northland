@@ -23,7 +23,12 @@ export function idleWorkWorker(sim: Simulation, name: string): Entity | undefine
   return undefined;
 }
 
-function bakery(sim: Simulation, x: number, y: number, name: string): { building: Entity; worker: Entity } {
+export function idleWorkBakery(
+  sim: Simulation,
+  x: number,
+  y: number,
+  name: string,
+): { building: Entity; worker: Entity } {
   const building = placeBuiltSandboxBuilding(sim, BUILDING_BAKERY, x, y);
   sim.world.mut(building, components.Stockpile).amounts.clear();
   spawnWorkersAtDoor(sim, building, 1);
@@ -35,14 +40,14 @@ function bakery(sim: Simulation, x: number, y: number, name: string): { building
   throw new Error('The bakery has no assigned worker');
 }
 
-function bakeryDefinition(sim: Simulation) {
+export function idleWorkBakeryDefinition(sim: Simulation) {
   const definition = sim.content.buildings.find((row) => row.typeId === BUILDING_BAKERY);
   if (definition === undefined) throw new Error('The scene needs a bakery');
   return definition;
 }
 
 function bakeryRecipe(sim: Simulation) {
-  const recipe = bakeryDefinition(sim).recipes[0];
+  const recipe = idleWorkBakeryDefinition(sim).recipes[0];
   if (recipe === undefined) throw new Error('The scene needs a bakery recipe');
   return recipe;
 }
@@ -54,14 +59,14 @@ export const idleWorkScene: SceneDefinition = {
   initialZoom: 0.9,
   progression: false,
   build: (sim) => {
-    bakery(sim, 10, 9, IDLE_WORK_NAMES.ingredients);
-    const stopped = bakery(sim, 26, 9, IDLE_WORK_NAMES.selection);
-    for (const good of bakeryDefinition(sim).produces) {
+    idleWorkBakery(sim, 10, 9, IDLE_WORK_NAMES.ingredients);
+    const stopped = idleWorkBakery(sim, 26, 9, IDLE_WORK_NAMES.selection);
+    for (const good of idleWorkBakeryDefinition(sim).produces) {
       components.writeProductionCount(sim.world, stopped.worker, good, 0);
     }
-    const full = bakery(sim, 10, 20, IDLE_WORK_NAMES.storage);
+    const full = idleWorkBakery(sim, 10, 20, IDLE_WORK_NAMES.storage);
     const stock = sim.world.mut(full.building, components.Stockpile);
-    for (const slot of bakeryDefinition(sim).stock) stock.amounts.set(slot.goodType, slot.capacity);
+    for (const slot of idleWorkBakeryDefinition(sim).stock) stock.amounts.set(slot.goodType, slot.capacity);
     const collector = spawnSettlerDirect(sim, JOB_COLLECTOR, 26, 20);
     sim.world.add(collector, components.GivenName, { name: IDLE_WORK_NAMES.resources });
   },

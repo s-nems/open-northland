@@ -44,6 +44,7 @@ import { schoolGraduatesScene } from './school-graduates.js';
 import { shipWakesScene } from './ship-wakes.js';
 import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
+import { storeReachScene } from './store-reach.js';
 import { teamVisionScene } from './team-vision.js';
 import { technologyScene } from './technology.js';
 import { terrainEditsScene } from './terrain-edits.js';
@@ -119,6 +120,7 @@ export const SCENES: readonly SceneDefinition[] = [
   huntingScene,
   householdGoodsScene,
   idleWorkScene,
+  storeReachScene,
   livestockScene,
   palisadeScene,
   roadsScene,

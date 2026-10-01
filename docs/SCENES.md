@@ -111,3 +111,7 @@ and flour; Sigrid has bread production set to zero; Freya's bread shelf is full;
 to collect. Select a worker or bakery and hover or keyboard-focus the status strip to read the full
 reason. An idle notification selects its worker and opens the current diagnosis. Enable Sigrid's bread
 production to see the reason change to missing ingredients.
+
+`?scene=store-reach` places two bakeries and a headquarters 60 tiles east, with no signposts between
+them. Freya's full bakery names the bread no store in reach takes; Ingrid's empty bakery names the
+ingredients the headquarters holds outside her reach.

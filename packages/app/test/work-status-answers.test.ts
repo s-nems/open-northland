@@ -10,7 +10,7 @@ it('refreshes a nested ingredient shortage and clears a stale diagnosis when the
   let answer: WorkStatus | undefined = {
     kind: 'waitingInput',
     goodType: 3,
-    missingInputs: [{ goodType: 1, required: 3, available: 0, missing: 3 }],
+    missingInputs: [{ goodType: 1, required: 3, available: 0, missing: 3, outOfReach: false }],
   };
   const read = vi.spyOn(sim, 'workStatus').mockImplementation(() => answer);
   const host = inlineSessionHost(sim);
@@ -25,7 +25,7 @@ it('refreshes a nested ingredient shortage and clears a stale diagnosis when the
     answer = {
       kind: 'waitingInput',
       goodType: 3,
-      missingInputs: [{ goodType: 1, required: 3, available: 2, missing: 1 }],
+      missingInputs: [{ goodType: 1, required: 3, available: 2, missing: 1, outOfReach: false }],
     };
     sim.step();
     answers.workStatus(entity);

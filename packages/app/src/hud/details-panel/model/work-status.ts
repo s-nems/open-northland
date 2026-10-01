@@ -5,7 +5,14 @@ import { goodLabel, type SettlerWorkStatus, type UnitPanelModelContext } from '.
 export function workStatusDetail(ctx: UnitPanelModelContext, status: SettlerWorkStatus): string | null {
   const copy = messages().hud.settlerPanel.idleReasons;
   switch (status.kind) {
-    case 'waitingInput':
+    case 'waitingInput': {
+      const stranded = status.missingInputs.filter((input) => input.outOfReach);
+      if (stranded.length > 0) {
+        return formatMessage(copy.inputOutOfReach, {
+          product: goodLabel(ctx, status.goodType),
+          goods: stranded.map((input) => goodLabel(ctx, input.goodType)).join(', '),
+        });
+      }
       return formatMessage(copy.waitingInput, {
         product: goodLabel(ctx, status.goodType),
         inputs: status.missingInputs
@@ -19,6 +26,7 @@ export function workStatusDetail(ctx: UnitPanelModelContext, status: SettlerWork
           )
           .join(', '),
       });
+    }
     case 'outputFull':
       return formatMessage(copy.outputFull, {
         outputs: status.outputs

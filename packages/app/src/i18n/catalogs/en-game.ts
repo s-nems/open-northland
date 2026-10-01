@@ -338,12 +338,14 @@ export const enGame = {
       idleReasons: {
         outputDestination: {
           noStorage: 'No destination accepts this good: {good}',
+          outOfReach: 'No store within signpost reach: {good}. Link it to a store with signposts',
           unknown: 'No delivery destination established for: {good}',
         },
         noResourceInArea: 'No eligible resources found in the work area: {goods}',
         noEligibleResource: 'No eligible resources found: {goods}',
         resourceRouteBlocked: 'No accessible approach to resources: {goods}',
         waitingInput: '{product}: workshop is missing {inputs}',
+        inputOutOfReach: 'Outside signpost reach: {goods} ({product}). Link it to a store with signposts',
         outputFull: 'No room for output: {outputs}',
         nothingSelected: 'All products set to 0',
         noTool: 'no tool',

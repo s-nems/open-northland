@@ -24,6 +24,7 @@ import { navigationLimitFor } from '../signposts/index.js';
 import { canonicalResources, resourcesNearNode } from '../spatial/resources.js';
 import { bankedSlot, workplaceStocksGood, workplaceStoredGoods } from '../stores/index.js';
 import { isFisherJob, isHunterJob } from './jobs.js';
+import { storesOnlyOutOfReach } from './store-reach.js';
 import type { WorkStatus } from './work-status.js';
 
 /** Selected diagnostics inspect at most this many resource candidates. Absence is reported only after
@@ -58,8 +59,11 @@ export function gatherWorkStatus(
     if (world.has(entity, WorkFlag) || world.has(entity, SiteAssignment))
       return { kind: 'unknown', reason: 'gatherSearch' };
     const owner = ownerOf(world, entity);
+    const sinks = StoreSinks.of(world, ctx).sinks(load.goodType, false);
+    if (storesOnlyOutOfReach(world, ctx, entity, sinks))
+      return { kind: 'noOutputDestination', goodType: load.goodType, reason: 'outOfReach' };
     let examined = 0;
-    for (const sink of StoreSinks.of(world, ctx).sinks(load.goodType, false)) {
+    for (const sink of sinks) {
       if (examined++ >= MAX_DIAGNOSTIC_RESOURCES)
         return { kind: 'noOutputDestination', goodType: load.goodType, reason: 'unknown' };
       if (ownersCompatible(owner, ownerOf(world, sink))) return { kind: 'unknown', reason: 'gatherSearch' };
