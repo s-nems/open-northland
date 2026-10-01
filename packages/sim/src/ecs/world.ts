@@ -357,10 +357,11 @@ export class World {
     }
     const store = this.storeOrCreate(component);
     for (const [entity, value] of entries) {
-      if (!store.has(entity)) this.insertMembership(entity, component);
+      const entering = !store.has(entity);
+      if (entering) this.insertMembership(entity, component);
       store.set(entity, value);
       // Every stored value carries a revision, or the first component walk over the restored world throws.
-      this.recordComponentWrite(component, entity);
+      this.recordComponentWrite(component, entity, entering);
     }
     // One bump for the whole fill: a cache built against generation 0 must not read as current over
     // a store this call populated.
@@ -387,7 +388,9 @@ export class World {
 
   /** Stable first-registration order for canonical component output. */
   componentOrder(component: Component<unknown>): number {
-    return this.registrationIndex.get(component) ?? -1;
+    const index = this.registrationIndex.get(component);
+    if (index === undefined) throw new Error(`component '${component.name}' is not registered in this world`);
+    return index;
   }
 
   /** {@link forEachComponent} collected into an array. */

@@ -48,9 +48,8 @@ interface CachedEntity {
 
 /** What one open stream has accumulated since its last delta. */
 interface PendingDelta {
-  /** Alive entities mutated since the base. */
-  readonly touched: Set<Entity>;
   readonly removed: Set<Entity>;
+  /** The components each alive entity wrote since the base, in write order. */
   readonly written: Map<Entity, Component<unknown>[]>;
   rebuild: boolean;
 }
@@ -87,17 +86,15 @@ class SnapshotClones {
       for (const stream of this.streams) {
         if (stream.rebuild) continue; // the next delta carries every alive entity anyway
         if (alive) {
-          stream.touched.add(e);
-          let names = stream.written.get(e);
-          if (names === undefined) {
-            names = [];
-            stream.written.set(e, names);
+          let writtenComponents = stream.written.get(e);
+          if (writtenComponents === undefined) {
+            writtenComponents = [];
+            stream.written.set(e, writtenComponents);
           }
           for (const component of written) {
-            if (!names.includes(component)) names.push(component);
+            if (!writtenComponents.includes(component)) writtenComponents.push(component);
           }
         } else {
-          stream.touched.delete(e);
           stream.written.delete(e);
           stream.removed.add(e);
         }
@@ -106,8 +103,7 @@ class SnapshotClones {
     if (overflowed) this.entries.clear();
     for (const stream of this.streams) {
       if (stream.rebuild) continue;
-      if (overflowed || stream.touched.size + stream.removed.size > TOUCHED_LOG_OVERFLOW_LIMIT) {
-        stream.touched.clear();
+      if (overflowed || stream.written.size + stream.removed.size > TOUCHED_LOG_OVERFLOW_LIMIT) {
         stream.written.clear();
         stream.removed.clear();
         stream.rebuild = true;
@@ -115,7 +111,7 @@ class SnapshotClones {
     }
   }
 
-  /** The cached clone of an alive entity, remade when a drained mutation marked it dirty. */
+  /** The cached clone of an alive entity, remade after a drained write or membership change. */
   entryOf(id: Entity): CachedEntity {
     let cached = this.entries.get(id);
     if (cached === undefined || cached.membershipChanged || cached.written.size > 0) {
@@ -128,7 +124,6 @@ class SnapshotClones {
   /** Open a stream whose first delta rebuilds. */
   open(): PendingDelta {
     const pending: PendingDelta = {
-      touched: new Set(),
       removed: new Set(),
       written: new Map(),
       rebuild: true,
@@ -260,7 +255,7 @@ export class SnapshotDeltaStream {
         this.sent.delete(id);
         this.digest?.drop(id);
       }
-      touched = ascending(pending.touched).map((id) => this.changesOf(id));
+      touched = ascending(pending.written.keys()).map((id) => this.changesOf(id));
     }
     const delta: SnapshotDelta = {
       tick,
@@ -271,7 +266,6 @@ export class SnapshotDeltaStream {
       events: cloneEvents(this.source.events.current()),
       ...(this.digest === null ? {} : { digest: { entities: world.entityCount, hash: this.digest.hash } }),
     };
-    pending.touched.clear();
     pending.written.clear();
     pending.removed.clear();
     pending.rebuild = false;
@@ -320,6 +314,6 @@ export class SnapshotDeltaStream {
   }
 }
 
-function ascending(ids: ReadonlySet<Entity>): Entity[] {
+function ascending(ids: Iterable<Entity>): Entity[] {
   return [...ids].sort((a, b) => a - b);
 }

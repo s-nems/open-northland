@@ -38,6 +38,8 @@ const defined = new Map<string, Component<unknown>>();
  *  in a sync digest. */
 export function defineComponent<T>(name: string, domain: SyncDomain): Component<T> {
   if (defined.has(name)) throw new Error(`component name '${name}' is already defined`);
+  // Component names key plain snapshot records by assignment, which the prototype setter would hijack.
+  if (name === '__proto__') throw new Error(`component name '${name}' is reserved`);
   const component: Component<T> = { name, domain, id: defined.size };
   defined.set(name, component);
   return component;

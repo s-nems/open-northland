@@ -95,7 +95,7 @@ export function mayEngage(
 }
 
 /** The stores whose membership, or whose values for {@link READY_VALUES}, can flip {@link readyAnywhere}.
- *  A job change arrives through the settler trade log instead: the needs write every Settler each tick. */
+ *  A job change arrives through the settler trade log instead of a Settler value feed. */
 export const READY_MEMBERSHIP: readonly Component<unknown>[] = [
   Settler,
   Health,

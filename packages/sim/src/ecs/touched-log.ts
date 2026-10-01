@@ -29,7 +29,8 @@ export class TouchedLog {
     this.detailed = true;
   }
 
-  /** Record an entity mutation and return its unique monotonic revision. */
+  /** Record an entity mutation and return its unique monotonic revision. `membership` marks a write
+   *  that added or removed the component rather than changing its value. */
   record(entity: Entity, component?: Component<unknown>, membership = false): number {
     this.mutations++;
     if (this.entities.size >= TOUCHED_LOG_OVERFLOW_LIMIT) {

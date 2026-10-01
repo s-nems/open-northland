@@ -144,23 +144,14 @@ function patched(held: EntitySnapshot, entry: EntityDelta): EntitySnapshot {
   const components: Record<string, unknown> = {};
   for (const name of Object.keys(held.components)) {
     if (!entry.removed.includes(name)) {
-      copyComponent(
-        components,
-        name,
-        Object.hasOwn(entry.components, name) ? entry.components[name] : held.components[name],
-      );
+      components[name] = Object.hasOwn(entry.components, name)
+        ? entry.components[name]
+        : held.components[name];
     }
   }
   for (const name of Object.keys(entry.components)) {
     if (!Object.hasOwn(held.components, name) && !entry.removed.includes(name))
-      copyComponent(components, name, entry.components[name]);
+      components[name] = entry.components[name];
   }
   return { id: entry.id, components };
-}
-
-function copyComponent(target: Record<string, unknown>, name: string, value: unknown): void {
-  // Match object spread's own data property semantics for this inherited setter.
-  if (name === '__proto__') {
-    Object.defineProperty(target, name, { value, enumerable: true, configurable: true, writable: true });
-  } else target[name] = value;
 }

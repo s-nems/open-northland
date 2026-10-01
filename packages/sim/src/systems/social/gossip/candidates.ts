@@ -24,7 +24,7 @@ class ChatEligible {
   private readonly membership: ChangeFeed;
   /** Position writes, which move a held candidate but never change who is one. */
   private readonly moves: ChangeFeed;
-  /** Job changes: the needs drain writes every Settler each tick, so no feed watches its value. */
+  /** Job changes, taken from the settler trade log instead of a Settler value feed. */
   private readonly jobChanges: Set<Entity>;
   /** The pass whose catch-up the buckets hold. */
   heldFor: GossipCandidates | null = null;

@@ -421,34 +421,6 @@ describe('snapshot mirror list edits', () => {
     },
   );
 
-  it('preserves an own __proto__ component through addition, replacement and removal', () => {
-    const mirror = seeded([10]);
-    const first = { value: 1 };
-    const replacement = { value: 2 };
-    mirror.apply(delta({ touched: [{ id: 10, components: { ['__proto__']: first }, removed: [] }] }));
-    const held = entityById(mirror.snapshot(), 10);
-    expect(Object.hasOwn(held?.components ?? {}, '__proto__')).toBe(true);
-    expect(Object.getOwnPropertyDescriptor(held?.components ?? {}, '__proto__')?.value).toBe(first);
-    expect(Object.getPrototypeOf(held?.components)).toBe(Object.prototype);
-    mirror.apply(delta({ sequence: 2, touched: [{ id: 10, components: { mark: 2 }, removed: [] }] }));
-    expect(
-      Object.getOwnPropertyDescriptor(entityById(mirror.snapshot(), 10)?.components ?? {}, '__proto__')
-        ?.value,
-    ).toBe(first);
-    mirror.apply(
-      delta({ sequence: 3, touched: [{ id: 10, components: { ['__proto__']: replacement }, removed: [] }] }),
-    );
-    const updated = entityById(mirror.snapshot(), 10);
-    expect(Object.hasOwn(updated?.components ?? {}, '__proto__')).toBe(true);
-    expect(Object.getOwnPropertyDescriptor(updated?.components ?? {}, '__proto__')?.value).toBe(replacement);
-    expect(Object.getPrototypeOf(updated?.components)).toBe(Object.prototype);
-    expect(Object.getOwnPropertyDescriptor(held?.components ?? {}, '__proto__')?.value).toBe(first);
-    mirror.apply(delta({ sequence: 4, touched: [{ id: 10, components: {}, removed: ['__proto__'] }] }));
-    const removed = entityById(mirror.snapshot(), 10);
-    expect(Object.hasOwn(removed?.components ?? {}, '__proto__')).toBe(false);
-    expect(Object.getPrototypeOf(removed?.components)).toBe(Object.prototype);
-  });
-
   it('applies removals and insertions of one delta together', () => {
     const mirror = seeded([10, 20, 30]);
     mirror.apply(delta({ touched: [entity(25), entity(30, 1)], removed: [10] }));
