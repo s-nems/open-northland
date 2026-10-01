@@ -269,7 +269,7 @@ export function buildingTribeOf(e: SnapshotEntity): number | undefined {
   return num(b?.tribe);
 }
 
-/** The tribe a building, wall segment or road site is raised for, which a builder must share. */
+/** The tribe a building, wall segment or road site is raised for. */
 export function siteTribeOf(e: SnapshotEntity): number | undefined {
   const site = (e.components.Building ?? e.components.Palisade ?? e.components.RoadSite) as
     | { tribe?: unknown }

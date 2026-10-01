@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  BuildMode,
-  Palisade,
-  RoadSite,
-  SiteAssignment,
-  UnderConstruction,
-} from '../../src/components/index.js';
+import { BuildMode, Palisade, SiteAssignment, UnderConstruction } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { playerCommand, type Simulation, WALK_RANGE_NODES } from '../../src/index.js';
 import { claimSite } from '../../src/systems/economy/site-claim.js';
@@ -32,11 +26,13 @@ const ROAD_HXS = [20, 26, 32] as const;
 const RIVAL_HX = 38;
 const OTHER_TRIBE = VIKING + 1;
 const OTHER_TRIBE_HXS = [14, 15, 16, 17, 18] as const;
-/** The run's first site, then the one it must pick next past the other tribe's line. */
+/** The run's first site, and its last one past the other tribe's line. */
 const FIRST_OWN_HX = 11;
 const OWN_HX = 22;
 /** Budget for a run over three sites and the house after it. */
 const RUN_TICKS = 4 * BUILD_TICKS;
+/** Budget for the two own sites and the other tribe's line between them. */
+const MIXED_RUN_TICKS = (OTHER_TRIBE_HXS.length + 2) * BUILD_TICKS;
 /** A map wide enough for a road site past the builder's signpost walk range. */
 const WIDE_MAP_WIDTH = 128;
 /** How far past the walk range from the run's first site its second one lies, in half-cell nodes. */
@@ -89,11 +85,11 @@ describe('a road run', () => {
     expect(siteAt(sim, RIVAL_HX, ROW)).toBeDefined();
   });
 
-  it("keeps to its own tribe's road sites beside its seat's sites of another tribe", () => {
+  it("paves its seat's road sites of another tribe in the same run", () => {
     const sim = roadSim();
     storeAt(sim, STORE_HX);
     const builder = builderAt(sim, BUILDER_HX);
-    // The same seat's pending line of another tribe, within the pick radius of the run's next site.
+    // The same seat's pending line of another tribe, between the run's first site and its last.
     for (const hx of OTHER_TRIBE_HXS) {
       sim.enqueueSetup({
         kind: 'placeRoadSite',
@@ -109,16 +105,16 @@ describe('a road run', () => {
       { hx: OWN_HX, hy: ROW },
     ]);
     assign(sim, builder, siteOf(sim, FIRST_OWN_HX));
-    const others = OTHER_TRIBE_HXS.map((hx) => siteOf(sim, hx));
+    const line = [FIRST_OWN_HX, ...OTHER_TRIBE_HXS, OWN_HX];
 
-    for (let tick = 0; tick < RUN_TICKS && siteAt(sim, OWN_HX, ROW) !== undefined; tick++) {
+    for (
+      let tick = 0;
+      tick < MIXED_RUN_TICKS && line.some((hx) => siteAt(sim, hx, ROW) !== undefined);
+      tick++
+    ) {
       sim.step();
-      const site = sim.world.tryGet(builder, SiteAssignment)?.site;
-      expect(site !== undefined && others.includes(site), `tick ${tick}`).toBe(false);
     }
-    expect(roadAt(sim, FIRST_OWN_HX, ROW)).toBe(true);
-    expect(roadAt(sim, OWN_HX, ROW)).toBe(true);
-    for (const site of others) expect(sim.world.get(site, RoadSite).reservation).toBeNull();
+    for (const hx of line) expect(roadAt(sim, hx, ROW), `road at ${hx}`).toBe(true);
   });
 
   it('goes on past the signpost walk range, as a pin does', () => {

@@ -22,7 +22,7 @@ import {
 import { atomicDuration } from '../../../readviews/animations.js';
 import { pickRoadSite } from '../../../roads/site-pick.js';
 import type { NavigationLimit } from '../../../signposts/index.js';
-import { constructionTribeOf, hasInboundSupply } from '../../../stores/index.js';
+import { hasInboundSupply } from '../../../stores/index.js';
 import {
   atOrWalk,
   BUILD_HOUSE_ATOMIC_ID,
@@ -132,16 +132,7 @@ export function planBuilder(
     accepts: (site: Entity) => boolean,
     limit = plan.limit,
   ): Entity | null =>
-    nearestBuilderSite(
-      sites,
-      world,
-      here,
-      settler.tribe,
-      settler.owner,
-      limit ?? undefined,
-      avoidSite,
-      accepts,
-    );
+    nearestBuilderSite(sites, world, here, settler.owner, limit ?? undefined, avoidSite, accepts);
 
   // A road site's stone paves its pending neighbours too, so the nearest one only anchors the pick.
   const pickRoad = (
@@ -242,7 +233,7 @@ export function planBuilder(
     hammering
       ? claims.isReadyUnstaffed(candidate)
       : claims.hasHammerWork(candidate) && claims.crewSize(candidate) === 0;
-  if ((!hammering || spareHand) && claims.mayOfferHammer(settler.tribe, settler.owner, wantsHand)) {
+  if ((!hammering || spareHand) && claims.mayOfferHammer(settler.owner, wantsHand)) {
     const opening = nearestSite(
       targets.constructionSiteCells,
       (candidate) => wantsHand(candidate) && canStandAt(candidate),
@@ -324,7 +315,6 @@ function repairNearest(
       walls ? targets.wallRepairCells : targets.repairSiteCells,
       world,
       here,
-      plan.tribe,
       plan.owner,
       plan.limit ?? undefined,
       avoidSite,
@@ -457,12 +447,9 @@ function stampAssignment(
   }
 }
 
-/** Whether `site` is still a building of the builder's own tribe and side; a script can hand it away. */
+/** Whether `site` is still on the builder's side; a script can hand it away. */
 function onOwnSide(plan: PlannerContext, site: Entity): boolean {
-  return (
-    constructionTribeOf(plan.world, site) === plan.tribe &&
-    ownersCompatible(plan.owner, ownerOf(plan.world, site))
-  );
+  return ownersCompatible(plan.owner, ownerOf(plan.world, site));
 }
 
 /** Ownership, confinement to `limit` and an actual routeable perimeter cell for an assignment. */

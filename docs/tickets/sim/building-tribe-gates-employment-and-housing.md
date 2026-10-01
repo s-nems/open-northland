@@ -2,8 +2,10 @@
 
 **Area:** sim, data · **Priority:** P2
 
-`Building.tribe` must equal `Settler.tribe` before a settler may be posted, housed, or delivered to.
-The question this ticket settles is whether that is the right rule, because the field now means two
+`Building.tribe` must equal `Settler.tribe` before a settler may be posted to or housed in a building.
+Construction is settled: any builder of the owning side raises a foundation of another tribe, because
+`wybrzeze_czarow` and `wichry_zimy` script one for a seat that fields only its own builders. The
+question this ticket settles is whether the remaining rule is right, because the field now means two
 different things depending on where the building came from:
 
 - an authored building takes the `[GfxHouse]` record's `LogicTribeType`, joined in
@@ -31,8 +33,8 @@ tower garrison posts and 3 civilians, concentrated in the mixed-tribe maps.
 - Establish what the original does with a cross-tribe attachment before changing anything. Without
   that, both answers are guesses.
 - The decision governs the player and AI paths, not only the authored import, which is why it did not
-  ride along with `attachtohouse`. The consumers are workplace matching, job openings, delivery rules,
-  the farming drive, construction employment, and the house pick highlight.
+  ride along with `attachtohouse`. The consumers are workplace matching, job openings, delivery to
+  workplaces, the farming drive, staff bound to an unfinished workplace, and the house pick highlight.
 - If the gate stays, record it as an approximation with the mixed-tribe maps as the counter-evidence.
 
 ## Verify

@@ -34,6 +34,7 @@ import { TEST_MANIFEST } from '../../fixtures/content.js';
  */
 
 export const VIKING = 1;
+export const FRANK = 2;
 export const STONE = 1;
 export const WOOD = 2;
 export const HOUSE = 2; // a residence needing 2× stone + 1× wood to build (3 units → 90 steps)

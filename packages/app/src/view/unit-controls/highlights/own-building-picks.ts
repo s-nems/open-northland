@@ -29,8 +29,7 @@ type BuildingInfo = Pick<BuildingType, 'kind' | 'workers'>;
 
 /**
  * A pick over the player's own buildings: every candidate of a selected member's owner lights up, green
- * when it is one member's tribe and accepts that member, red otherwise. The simulation command re-checks
- * the walk on arrival.
+ * when it accepts one member, red otherwise. The simulation command re-checks the walk on arrival.
  */
 export interface OwnBuildingPick {
   highlight(
@@ -51,13 +50,11 @@ interface PickRule {
   readonly ownedBy?: (snapshot: WorldSnapshot, owner: number) => readonly SnapshotEntity[];
   /** Which buildings are candidates at all; the rest are skipped, never tinted. */
   readonly candidate: (building: SnapshotEntity, byType: ReadonlyMap<number, BuildingInfo>) => boolean;
-  /** Whether a candidate of the settler's own tribe takes this settler. */
+  /** Whether a candidate takes this settler. */
   readonly accepts: (building: SnapshotEntity, settler: SnapshotEntity, snapshot: WorldSnapshot) => boolean;
 }
 
 function ownBuildingPick(rule: PickRule): OwnBuildingPick {
-  const fits = (building: SnapshotEntity, settler: SnapshotEntity, snapshot: WorldSnapshot): boolean =>
-    siteTribeOf(building) === settlerTribeOf(settler) && rule.accepts(building, settler, snapshot);
   return {
     highlight(snapshot, settlerIds, byType) {
       const settlers = settlersIn(snapshot, settlerIds);
@@ -68,7 +65,7 @@ function ownBuildingPick(rule: PickRule): OwnBuildingPick {
           if (!rule.candidate(e, byType)) continue;
           const owned = settlers.filter((settler) => ownerPlayerOf(e) === ownerPlayerOf(settler));
           if (owned.length > 0)
-            items.push({ id: e.id, ok: owned.some((settler) => fits(e, settler, snapshot)) });
+            items.push({ id: e.id, ok: owned.some((settler) => rule.accepts(e, settler, snapshot)) });
         }
         return items;
       }
@@ -78,7 +75,7 @@ function ownBuildingPick(rule: PickRule): OwnBuildingPick {
         const owned = settlers.filter((settler) => ownerPlayerOf(settler) === owner);
         for (const e of rule.ownedBy(snapshot, owner)) {
           if (rule.candidate(e, byType))
-            items.push({ id: e.id, ok: owned.some((settler) => fits(e, settler, snapshot)) });
+            items.push({ id: e.id, ok: owned.some((settler) => rule.accepts(e, settler, snapshot)) });
         }
       }
       return items;
@@ -89,7 +86,7 @@ function ownBuildingPick(rule: PickRule): OwnBuildingPick {
       if (settler === undefined || !isSettler(settler) || building === undefined) return false;
       if (!rule.candidate(building, byType) || ownerPlayerOf(building) !== ownerPlayerOf(settler))
         return false;
-      return fits(building, settler, snapshot);
+      return rule.accepts(building, settler, snapshot);
     },
   };
 }
@@ -113,13 +110,17 @@ export function builderSitesOf(snapshot: WorldSnapshot, owner: number): readonly
   return indexesOf(snapshot).get(BUILDER_SITES_BY_OWNER).get(owner) ?? [];
 }
 
-/** The foundations, damaged buildings, wall sites and road sites a builder may be pinned to; a full
- *  repair crew refuses more. */
+/** The foundations, damaged buildings, wall sites and road sites a builder may be pinned to, whatever
+ *  their tribe; a full repair crew refuses more. */
 export const sitePick: OwnBuildingPick = ownBuildingPick({
   ownedBy: builderSitesOf,
   candidate: isBuilderSite,
   accepts: (building, settler, snapshot) => builderCrewHasRoom(snapshot, building, settler),
 });
+
+function sameTribe(building: SnapshotEntity, settler: SnapshotEntity): boolean {
+  return siteTribeOf(building) === settlerTribeOf(settler);
+}
 
 /** A standing house of the type or its foundation: a settler sent to a foundation waits at its door. */
 const houseOrFoundationOfType =
@@ -135,11 +136,11 @@ const houseOrFoundationOfType =
 /** The barracks a settler may drill at; the one it already drills at refuses a repeat. */
 export const drillPick: OwnBuildingPick = ownBuildingPick({
   candidate: houseOrFoundationOfType(systems.isBarracksType),
-  accepts: (building, settler) => trainingHouseOf(settler) !== building.id,
+  accepts: (building, settler) => sameTribe(building, settler) && trainingHouseOf(settler) !== building.id,
 });
 
 /** The schools; the course dialog a pick opens decides per course who may still learn it. */
 export const schoolPick: OwnBuildingPick = ownBuildingPick({
   candidate: houseOrFoundationOfType(systems.isSchoolType),
-  accepts: () => true,
+  accepts: sameTribe,
 });

@@ -12,11 +12,7 @@ import type { SystemContext } from '../../../context.js';
 import { remainingConstructionSteps } from '../../../economy/construction.js';
 import { openRoadSites } from '../../../roads/site-index.js';
 import { roadPavingGood } from '../../../roads/sites.js';
-import {
-  addUndeliveredConstructionGoods,
-  constructionMaterialsPresent,
-  constructionTribeOf,
-} from '../../../stores/index.js';
+import { addUndeliveredConstructionGoods, constructionMaterialsPresent } from '../../../stores/index.js';
 import { atomicHoldsSettler } from '../../atomics/busy.js';
 
 /**
@@ -73,18 +69,15 @@ export class ConstructionTaskClaims {
   }
 
   /**
-   * Whether some building site of `tribe` on `owner`'s side that held hammer work when the pass first asked
-   * passes `accepts`. False spares a builder the site search: claims only take steps away during the pass.
+   * Whether some building site on `owner`'s side that held hammer work when the pass first asked passes
+   * `accepts`. False spares a builder the site search: claims only take steps away during the pass.
    */
-  mayOfferHammer(tribe: number, owner: number | undefined, accepts: (site: Entity) => boolean): boolean {
+  mayOfferHammer(owner: number | undefined, accepts: (site: Entity) => boolean): boolean {
     this.hammerSites ??= [...this.world.query(UnderConstruction, Building)].filter((site) =>
       this.hasHammerWork(site),
     );
     return this.hammerSites.some(
-      (site) =>
-        constructionTribeOf(this.world, site) === tribe &&
-        ownersCompatible(owner, ownerOf(this.world, site)) &&
-        accepts(site),
+      (site) => ownersCompatible(owner, ownerOf(this.world, site)) && accepts(site),
     );
   }
 

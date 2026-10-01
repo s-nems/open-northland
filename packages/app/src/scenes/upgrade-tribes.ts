@@ -28,7 +28,7 @@ const RUN_TICKS = 12_000;
 
 const NEXT_TIER = BUILDING_HOME_00 + 1;
 
-/** Each home gets a builder of its own tribe, since a builder works only its own tribe's sites. */
+/** Each home gets a builder of its tribe, so both upgrades run side by side. */
 const HOMES = [
   { tribe: VIKING, at: VIKING_HOME, builder: { x: 10, y: 8 } },
   { tribe: FRANK, at: FRANK_HOME, builder: { x: 15, y: 8 } },

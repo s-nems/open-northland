@@ -65,15 +65,6 @@ export function razeSalvageOf(world: World, ctx: ContentContext, building: Entit
   }));
 }
 
-/** The civilization whose builders may raise this site, independent of the structure kind. */
-export function constructionTribeOf(world: World, site: Entity): number | undefined {
-  return (
-    world.tryGet(site, Building)?.tribe ??
-    world.tryGet(site, Palisade)?.tribe ??
-    world.tryGet(site, RoadSite)?.tribe
-  );
-}
-
 const EMPTY_CONSTRUCTION: readonly GoodsLine[] = [];
 
 export function constructionTotalUnits(world: World, ctx: SystemContext, site: Entity): number {

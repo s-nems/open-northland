@@ -38,6 +38,7 @@ import {
   builtBuildingAt,
   constructionContent,
   ctxOf,
+  FRANK,
   grassMap,
   HEADQUARTERS,
   HOME_L0,
@@ -793,6 +794,32 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     }
     expect(nearLaborWhenFarFinished).toBe(0);
     expect(sim.world.get(far, Building).built).toBe(ONE);
+  });
+
+  it("raises its own side's foundation of another tribe, pinned or unprompted", () => {
+    // A map script may place another nation's foundation for a seat that fields only its own builders.
+    const sim = new Simulation({ seed: 6, content: constructionContent(), map: grassMap(10, 4) });
+    builtBuildingAt(sim, HEADQUARTERS, 0, 1, [
+      [STONE, 2],
+      [WOOD, 1],
+    ]);
+    const pinned = siteAt(sim, HOUSE, 8, 1);
+    const unprompted = siteAt(sim, HOUSE, 4, 1);
+    const builder = builderAt(sim, 2, 2);
+    for (const e of [pinned, unprompted, builder]) sim.world.add(e, Owner, { player: 0 });
+    for (const site of [pinned, unprompted]) sim.world.mut(site, Building).tribe = FRANK;
+    sim.world.mut(pinned, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(pinned, Stockpile).amounts.set(WOOD, 1);
+
+    sim.enqueueSetup({ kind: 'assignBuilder', entity: builder, site: pinned });
+    sim.step();
+    expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: pinned, pinned: true });
+    for (let i = 0; i < 600 && sim.world.has(pinned, UnderConstruction); i++) sim.step();
+    expect(sim.world.get(pinned, Building).built).toBe(ONE);
+
+    // The other site starts bare, so the builder also hauls its bill from the store.
+    for (let i = 0; i < 1200 && sim.world.has(unprompted, UnderConstruction); i++) sim.step();
+    expect(sim.world.get(unprompted, Building).built).toBe(ONE);
   });
 
   it('unassignBuilder drops the pin and hands the builder back to the nearest site', () => {

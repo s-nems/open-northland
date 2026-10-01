@@ -4,7 +4,6 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { hexDistanceBetween } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
-import { constructionTribeOf } from '../../../stores/index.js';
 import type { TargetBands } from '../bands.js';
 import { ACCEPT_ALL, type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
 
@@ -52,16 +51,14 @@ function mapPointsBetween(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
 }
 
 /**
- * The nearest site in `index` a builder of `tribe` should work - a foundation to raise or a damaged
- * building to mend - by Manhattan distance from `here` with the shared ascending-cell-id tie-break, or
- * null when the side has none. A builder works only its own player's sites, since two players may field
- * the same tribe.
+ * The nearest site in `index` a builder should work - a foundation to raise or a damaged building to
+ * mend - by Manhattan distance from `here` with the shared ascending-cell-id tie-break, or null when the
+ * side has none. The side decides, not the nation: a script may hand a seat another nation's foundation.
  */
 export function nearestBuilderSite(
   index: InteractionCellIndex,
   world: World,
   here: NodeId,
-  tribe: number,
   owner: number | undefined,
   gate?: SpatialGate,
   /** The builder's failed-goal veto at the site's perimeter stand. */
@@ -74,10 +71,7 @@ export function nearestBuilderSite(
     index.nearest(
       here,
       (e) =>
-        constructionTribeOf(world, e) === tribe &&
-        ownersCompatible(owner, ownerOf(world, e)) &&
-        avoidSite?.(e) !== true &&
-        acceptsSite(e)
+        ownersCompatible(owner, ownerOf(world, e)) && avoidSite?.(e) !== true && acceptsSite(e)
           ? QUALIFIES
           : null,
       gate,

@@ -17,7 +17,7 @@ import {
 } from '../src/game/sandbox/index.js';
 import type { Pickable } from '../src/view/picking.js';
 import { createAnsweredOrders } from '../src/view/unit-controls/answered-orders.js';
-import { sitePick } from '../src/view/unit-controls/highlights/own-building-picks.js';
+import { drillPick, sitePick } from '../src/view/unit-controls/highlights/own-building-picks.js';
 import { createUnitOrderController } from '../src/view/unit-controls/orders.js';
 import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
 
@@ -47,6 +47,8 @@ const {
 /** Another tribe's player, and the mission id the map stamps on its trading house. */
 const NEIGHBOUR = HUMAN_PLAYER + 1;
 const TRADING_POST_ID = 700;
+/** A civilization other than the sandbox's own. */
+const OTHER_TRIBE = PRIMARY_TRIBE + 1;
 
 /** A bakery - the workplace whose craft slot the click should hire into. */
 const BAKERY = 'work_bakery_00';
@@ -385,6 +387,24 @@ describe("the action ring's site pick", () => {
       sim.world.add(settlerAt(sim, JOB_BUILDER), SiteAssignment, { site: home, pinned: false });
     }
     expect(sitePick.assignableAt(sim.snapshot(), home, builder, byType)).toBe(false);
+  });
+  it("offers its seat's foundation of another tribe to a builder", () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const foundation = siteAt(sim, BUILDING_HOME_00);
+    sim.world.mut(foundation, Building).tribe = OTHER_TRIBE;
+    const builder = settlerAt(sim, JOB_BUILDER);
+    const byType = lastByTypeId(sim.content.buildings);
+    expect(sitePick.assignableAt(sim.snapshot(), foundation, builder, byType)).toBe(true);
+  });
+
+  it("keeps the drill pick to barracks of the settler's own tribe", () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const barracks = siteAt(sim, BUILDING_BARRACKS);
+    const settler = settlerAt(sim, null);
+    const byType = lastByTypeId(sim.content.buildings);
+    expect(drillPick.assignableAt(sim.snapshot(), barracks, settler, byType)).toBe(true);
+    sim.world.mut(barracks, Building).tribe = OTHER_TRIBE;
+    expect(drillPick.assignableAt(sim.snapshot(), barracks, settler, byType)).toBe(false);
   });
 });
 

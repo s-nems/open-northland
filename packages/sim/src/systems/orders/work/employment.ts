@@ -35,7 +35,6 @@ import { canChooseJob, needSubjectOf } from '../../progression/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
 import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
 import { navigationLimitFor } from '../../signposts/index.js';
-import { constructionTribeOf } from '../../stores/index.js';
 import { groupPlacementOrder } from '../group-placement.js';
 import {
   deferOrderDuringAtomic,
@@ -196,7 +195,6 @@ export function assignBuilder(
   if (!world.isAlive(site)) return;
   if (!world.has(site, UnderConstruction) && !needsRepair(world, site)) return;
   const settler = world.get(e, Settler);
-  if (settler.tribe !== constructionTribeOf(world, site)) return; // not this tribe's foundation
   if (!sameSide(world, e, site)) return; // another player's foundation - not this side's
   if (settler.jobType === null || !jobCanBuild(ctx.content, settler.jobType)) return;
   if (
