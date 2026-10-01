@@ -35,13 +35,19 @@ oak and brass corners) and **Urnes** (smoked oak with carved beast corners). A l
   and zoom limits. Middle drag pans the zoomed map.
 - Put the marker filters in a compact dark-wood disclosure opening to the right of the minimap: one
   switch per layer (civilians, soldiers, buildings, vehicles and ships, animals, roads, signposts and
-  flags) under a show/hide-all action, then an owner scope (all, mine, friendly, hostile). The choice persists.
-  Lift it above the bottom navigation when needed. Keep fog gating and return focus on closing it.
+  flags) under a show/hide-all action, then an owner scope (all, mine, friendly, hostile), a ground
+  mode (natural, muted, dark, hidden), a marker size (small, medium, large) and a colour mode
+  (player colours or self/friend/enemy stance colours). Civilians, soldiers, buildings and vehicles
+  show by default; the clutter layers are opt-in. Every choice persists. Lift the disclosure above the
+  bottom navigation when needed. Keep fog gating and return focus on closing it.
+- Every owned marker wears a dark rim and a player colour lifted into a light, saturated band, so a
+  dark or dull team colour still reads on the ground; hostile markers stamp over the rest of a layer.
 - Do not include a hover preview of map areas.
 - The terrain is the shared styled raster (`rasterizeMinimap` in render): lane colours under a
-  relief light from the upper left, water deepening away from the shore with a surf line, forest
-  canopy and ore tint from the standing resource nodes. The same raster makes the lobby's map
-  preview, so the lobby and the game show one picture.
+  three-scale relief light from the upper left, water deepening from pale shallows to a navy open sea
+  with ripples and a surf line, forest as lit tree crowns with a canopy shadow, ground micro-texture by
+  class, and ore as rocks, all from the standing resource nodes. The same raster makes the lobby's map
+  preview, so the lobby and the game show one picture; the lobby keeps it natural.
 - The three compact minimap frames are approved. The separate large-map frame remains undecided;
   [ticket 19](../../tickets/app/ingame-ui-19-map-overview.md) owns its design and implementation.
 
