@@ -312,9 +312,10 @@ npm run shot -- --seed 7 --ticks 20 --out shot.png
 Useful options are `--map <id>`, `--atlas [real]`, `--terrain`, `--zoom <n>`, and `--no-hud`.
 Screenshots still need human review.
 
-The menu's backdrop stills are committed under `packages/app/src/assets/menu-backdrops/`, one
-1920x1080 JPEG per curated map: an ambient settlement of a decoded map with no HUD and no map edge in
-frame. Replace a file there to change the rotation.
+The menu's backdrop stills are committed under `packages/app/src/assets/menu-backdrops/` as
+2560x1440 JPEGs named after their map: a decoded map's settlement or landscape with no HUD and no map
+edge in frame. The boot card shows the still the menu last showed. Replace a file there to change
+the rotation, and keep `scripts/check-repository-assets.mjs` in step.
 
 ## Measuring performance
 

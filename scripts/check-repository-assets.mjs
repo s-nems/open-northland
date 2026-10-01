@@ -6,16 +6,21 @@ import { isForbiddenGameFile } from './game-asset-policy.mjs';
 const reviewedBinaryAssets = new Set([
   'docs/images/logo.webp',
   'docs/images/settlement.webp',
-  // The menu's backdrop stills: Open Northland rendering decoded maps, on the same footing as
-  // settlement.webp.
+  // The menu's backdrop stills, also the boot card's: Open Northland rendering decoded maps, on the
+  // same footing as settlement.webp.
+  'packages/app/src/assets/menu-backdrops/arabskie_wyspy.jpg',
   'packages/app/src/assets/menu-backdrops/burza_piaskowa.jpg',
-  'packages/app/src/assets/menu-backdrops/demo_mainmenu_10.jpg',
+  'packages/app/src/assets/menu-backdrops/czarnoksieznik_z_szeolu.jpg',
+  'packages/app/src/assets/menu-backdrops/gringo.jpg',
+  'packages/app/src/assets/menu-backdrops/jotunheim.jpg',
   'packages/app/src/assets/menu-backdrops/kraina_starych_bohaterow.jpg',
-  'packages/app/src/assets/menu-backdrops/mroczny_swiat.jpg',
   'packages/app/src/assets/menu-backdrops/nowa_nadzieja.jpg',
-  'packages/app/src/assets/menu-backdrops/saracen_4.jpg',
-  'packages/app/src/assets/menu-backdrops/straznicypolnocy.jpg',
-  'packages/app/src/assets/menu-backdrops/wielka_inwazja.jpg',
+  'packages/app/src/assets/menu-backdrops/oczy_weza.jpg',
+  'packages/app/src/assets/menu-backdrops/piracka_utopia.jpg',
+  'packages/app/src/assets/menu-backdrops/smocza_kraina.jpg',
+  'packages/app/src/assets/menu-backdrops/upadek_krola.jpg',
+  'packages/app/src/assets/menu-backdrops/upadek_krola_panorama.jpg',
+  'packages/app/src/assets/menu-backdrops/w_sercu_nawalnicy.jpg',
   // The in-game HUD chrome: generated for this project, no original-game input (provenance in the custom
   // art checkout's ui/foundation and ui/mission-book packages, which publish these copies).
   'packages/app/src/assets/ui/foundation/icons.png',
