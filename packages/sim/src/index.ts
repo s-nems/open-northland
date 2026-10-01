@@ -239,6 +239,7 @@ export {
 export type { PalisadeGateProbeResult } from './systems/palisades/index.js';
 export type { UnlockStatus } from './systems/progression/index.js';
 export * as systems from './systems/public.js';
+export type { HerdWait } from './systems/readviews/herd-hold.js';
 export type { EquipPickEntry, MilitaryMode } from './systems/readviews/index.js';
 export type { WorkStatus } from './systems/readviews/work-status.js';
 export type { SignpostProbe } from './systems/signposts/index.js';

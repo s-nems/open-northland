@@ -411,6 +411,12 @@ export const enGame = {
         outputAmount: '{good} (stock {available}/{capacity}, batch ×{required})',
         noWorkplace: 'No workplace assigned',
         productsLocked: 'Locked products: {goods}. Check production requirements',
+        herd: {
+          noAnimals: 'No animals: {good}. Send a scout to wild animals to claim them',
+          tooFew: 'Only one animal: {good}. Breeding needs a pair, claim another with a scout',
+          youngGrowing: 'Young growing up: {good}. Breeding resumes once a pair is grown',
+          herdFull: 'Herd full: {good}. The breeder waits for the young to grow up',
+        },
         unknown: 'The reason for idling is unknown',
       },
       needs: 'Wellbeing',
@@ -1430,6 +1436,8 @@ export const enGame = {
         noOutputStore: 'No store',
         outputOutOfReach: 'Store too far',
         productsLocked: 'Product locked',
+        noLivestock: 'No animals: {good}',
+        tooFewLivestock: 'Need a pair: {good}',
         unknown: 'Workshop stalled',
       },
       full: {
@@ -1449,6 +1457,10 @@ export const enGame = {
           '{building}: production has stopped with nowhere to deliver {good}: the stores that take it lie outside signpost reach. Link them with signposts or build a store closer.',
         productsLocked:
           '{building}: production has stopped, the chosen product is not available yet: {good}. Pick another product in the workshop.',
+        noLivestock:
+          '{building}: production has stopped for lack of animals: {good}. The breeder breeds only from a grown pair. Send a scout to wild animals to claim them, and the breeder brings them in.',
+        tooFewLivestock:
+          '{building}: production has stopped, it has only one animal: {good}. The breeder breeds only from a grown pair. Send a scout to wild animals to claim another, and the breeder brings it in.',
         unknown: '{building}: production has stopped. Select the workshop: its panel shows why.',
       },
     },

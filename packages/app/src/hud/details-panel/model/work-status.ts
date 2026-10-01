@@ -40,6 +40,8 @@ export function workStatusDetail(ctx: UnitPanelModelContext, status: SettlerWork
           )
           .join(', '),
       });
+    case 'herdNotReady':
+      return formatMessage(copy.herd[status.wait], { good: goodLabel(ctx, status.goodType) });
     case 'productsLocked':
       return formatMessage(copy.productsLocked, {
         goods: status.goodTypes.map((good) => goodLabel(ctx, good)).join(', '),

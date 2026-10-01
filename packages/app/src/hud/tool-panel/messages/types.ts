@@ -84,6 +84,8 @@ export type ProductionStallReason =
   | 'noOutputStore'
   | 'outputOutOfReach'
   | 'productsLocked'
+  | 'noLivestock'
+  | 'tooFewLivestock'
   | 'unknown';
 
 /** A stalled workshop's reason and the good it names, if any. */

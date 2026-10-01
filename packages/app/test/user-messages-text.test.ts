@@ -208,6 +208,9 @@ describe('notice text', () => {
     );
     expect(stall('noFisher').short).toBe('Nikt nie łowi: Zboże');
     expect(stall('noOutputStore').short).toBe('Brak magazynu');
+    expect(stall('noLivestock').short).toBe('Brak zwierząt: Zboże');
+    expect(stall('tooFewLivestock').short).toBe('Brak pary: Zboże');
+    expect(stall('tooFewLivestock').full).toContain('Wyślij zwiadowcę do dzikich zwierząt, by zajął drugie');
     expect(stall('unknown').full).toBe(
       'Młyn: produkcja stoi. Zaznacz warsztat: jego panel pokaże przyczynę.',
     );

@@ -81,7 +81,7 @@ const NO_GATHERER: Readonly<Record<GatheringTrade, ProductionStallReason>> = {
  * that a store, a producer or a gatherer in reach supplies, or a full shelf a store in reach takes from,
  * is the operator's own errand. A blocker is an input nothing of the seat holds, makes or gathers, or
  * only out of signpost reach; products no store takes, or only stores out of reach; products the seat
- * cannot make yet; or a gate the diagnosis cannot name.
+ * cannot make yet; a herd short of a breeding pair; or a gate the diagnosis cannot name.
  */
 export function stallOf(status: WorkStatus): ProductionStall | null {
   switch (status.kind) {
@@ -103,6 +103,10 @@ export function stallOf(status: WorkStatus): ProductionStall | null {
       return status.reason === 'noStorage' ? { reason: 'noOutputStore', goodType: status.goodType } : null;
     case 'productsLocked':
       return { reason: 'productsLocked', goodType: status.goodTypes[0] ?? null };
+    case 'herdNotReady':
+      // Young growing up and a full herd waiting for them clear by themselves; missing animals do not.
+      if (status.wait === 'noAnimals') return { reason: 'noLivestock', goodType: status.goodType };
+      return status.wait === 'tooFew' ? { reason: 'tooFewLivestock', goodType: status.goodType } : null;
     case 'unknown':
       return status.reason === 'productionGate' ? { reason: 'unknown', goodType: null } : null;
     default:

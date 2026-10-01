@@ -1,5 +1,6 @@
+import type { HerdWait } from '@open-northland/sim';
 import { afterEach, expect, it } from 'vitest';
-import { GOOD_FLOUR, GOOD_WATER } from '../src/game/sandbox/ids/index.js';
+import { GOOD_FLOUR, GOOD_SHEEP, GOOD_WATER } from '../src/game/sandbox/ids/index.js';
 import { goodLabel } from '../src/hud/details-panel/model/context.js';
 import { workStatusDetail } from '../src/hud/details-panel/model/work-status.js';
 import { setActiveLocale } from '../src/i18n/index.js';
@@ -58,4 +59,22 @@ it('says when the only store for a product or an input lies outside signpost rea
   expect(
     workStatusDetail(ctx, { kind: 'noOutputDestination', goodType: GOOD_FLOUR, reason: 'outOfReach' }),
   ).toBe(`Brak magazynu w zasięgu drogowskazów: ${product}. Połącz drogowskazami z magazynem`);
+});
+
+it('names the herd a breeder waits on in place of its water and wheat', () => {
+  const ctx = sandboxCtx();
+  const sheep = goodLabel(ctx, GOOD_SHEEP);
+  const herd = (wait: HerdWait) =>
+    workStatusDetail(ctx, { kind: 'herdNotReady', goodType: GOOD_SHEEP, wait, adults: 1, young: 0 });
+  expect(herd('noAnimals')).toBe(
+    `Brak zwierząt: ${sheep}. Wyślij zwiadowcę do dzikich zwierząt, by je zajął`,
+  );
+  expect(herd('tooFew')).toBe(
+    `Tylko jedno zwierzę: ${sheep}. Do hodowli potrzeba pary, zajmij zwiadowcą drugie`,
+  );
+  expect(herd('youngGrowing')).toBe(`Młode dorastają: ${sheep}. Hodowla ruszy, gdy para dorośnie`);
+  setActiveLocale('eng');
+  expect(herd('herdFull')).toBe(
+    `Herd full: ${goodLabel(ctx, GOOD_SHEEP)}. The breeder waits for the young to grow up`,
+  );
 });

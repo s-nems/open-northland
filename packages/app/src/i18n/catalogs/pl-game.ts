@@ -397,6 +397,12 @@ export const plGame = {
         outputAmount: '{good} (stan {available}/{capacity}, partia ×{required})',
         noWorkplace: 'Brak przypisanego miejsca pracy',
         productsLocked: 'Zablokowane produkty: {goods}. Sprawdź wymagania produkcji',
+        herd: {
+          noAnimals: 'Brak zwierząt: {good}. Wyślij zwiadowcę do dzikich zwierząt, by je zajął',
+          tooFew: 'Tylko jedno zwierzę: {good}. Do hodowli potrzeba pary, zajmij zwiadowcą drugie',
+          youngGrowing: 'Młode dorastają: {good}. Hodowla ruszy, gdy para dorośnie',
+          herdFull: 'Stado pełne: {good}. Hodowca czeka, aż młode dorosną',
+        },
         unknown: 'Nie ustalono przyczyny bezczynności',
       },
       needs: 'Samopoczucie',
@@ -1396,6 +1402,8 @@ export const plGame = {
         noOutputStore: 'Brak magazynu',
         outputOutOfReach: 'Magazyn daleko',
         productsLocked: 'Wyrób nieodkryty',
+        noLivestock: 'Brak zwierząt: {good}',
+        tooFewLivestock: 'Brak pary: {good}',
         unknown: 'Produkcja stoi',
       },
       full: {
@@ -1415,6 +1423,10 @@ export const plGame = {
           '{building}: produkcja stoi, nie ma gdzie oddać towaru: {good}. Magazyny, które go przyjmą, leżą poza zasięgiem drogowskazów. Połącz je drogowskazami albo zbuduj magazyn bliżej.',
         productsLocked:
           '{building}: produkcja stoi, wybrany wyrób nie jest jeszcze dostępny: {good}. Wybierz w warsztacie inny wyrób.',
+        noLivestock:
+          '{building}: produkcja stoi, nie ma zwierząt: {good}. Hodowca rozmnaża tylko parę dorosłych zwierząt. Wyślij zwiadowcę do dzikich zwierząt, by je zajął, a hodowca sam je sprowadzi.',
+        tooFewLivestock:
+          '{building}: produkcja stoi, jest tylko jedno zwierzę: {good}. Hodowca rozmnaża tylko parę dorosłych zwierząt. Wyślij zwiadowcę do dzikich zwierząt, by zajął drugie, a hodowca sam je sprowadzi.',
         unknown: '{building}: produkcja stoi. Zaznacz warsztat: jego panel pokaże przyczynę.',
       },
     },

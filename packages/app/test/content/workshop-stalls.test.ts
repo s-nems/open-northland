@@ -1,8 +1,11 @@
-import { components, type Simulation } from '@open-northland/sim';
+import { cellAnchorNode, components, type Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { grassTerrain } from '../../src/catalog/buildings.js';
 import { JOB_CARRIER, JOB_COLLECTOR } from '../../src/catalog/jobs.js';
+import { HUMAN_PLAYER } from '../../src/game/rules.js';
+import { ANIMAL_TRIBE_SHEEP } from '../../src/game/sandbox/content/catalog/animals.js';
 import {
+  BUILDING_ANIMAL_FARM,
   BUILDING_BAKERY,
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
@@ -33,6 +36,8 @@ const GOOD_BREAD = 19;
 const GOOD_WOOD = 5;
 const GOOD_PILLAR = 26;
 const GOOD_TOOL_WOODEN = 31;
+const GOOD_WATER = 1;
+const GOOD_SHEEP = 57;
 /** Stone the headquarters holds for the mason. */
 const STOCKED_STONE = 40;
 const FARMERS = 2;
@@ -153,6 +158,45 @@ const CARRIER_ONLY_FARM: SceneWorld = {
   },
 };
 
+const ANIMAL_FARM_AT = { x: 12, y: 10 } as const;
+/** Enough of both breeding inputs for a few cycles, so only the herd can hold the breeder back. */
+const STOCKED_WATER = 4;
+const STOCKED_WHEAT = 8;
+/** Where the player's lone sheep stands, a short walk from the farm. */
+const LONE_SHEEP_AT = { x: 20, y: 14 } as const;
+
+/** A staffed animal farm with water and wheat in stock and `sheep` animals of the player's own nearby. */
+function animalFarm(sheep: number): SceneWorld {
+  return {
+    seed: 31,
+    terrain: grassTerrain(30, 24),
+    build: (sim) => {
+      const farm = placeBuiltSandboxBuilding(
+        sim,
+        BUILDING_ANIMAL_FARM,
+        ANIMAL_FARM_AT.x,
+        ANIMAL_FARM_AT.y,
+        HUMAN_PLAYER,
+      );
+      const stock = sim.world.mut(farm, components.Stockpile).amounts;
+      stock.clear();
+      stock.set(GOOD_WATER, STOCKED_WATER);
+      stock.set(GOOD_WHEAT, STOCKED_WHEAT);
+      spawnWorkersAtDoor(sim, farm, 1);
+      if (sheep === 0) return;
+      const node = cellAnchorNode(LONE_SHEEP_AT.x, LONE_SHEEP_AT.y);
+      sim.enqueueSetup({
+        kind: 'spawnAnimalHerd',
+        tribe: ANIMAL_TRIBE_SHEEP,
+        x: node.hx,
+        y: node.hy,
+        count: sheep,
+        owner: HUMAN_PLAYER,
+      });
+    },
+  };
+}
+
 /** Sweeps past the stall grace and the first ask's answer. */
 const BLOCKED_SWEEPS = PRODUCTION_STALL_GRACE_TICKS / SNAPSHOT_SWEEP_INTERVAL_TICKS + 2;
 
@@ -200,6 +244,22 @@ describe.runIf(hasRealIr())('stalled workshop notes on real content', () => {
     expect(standing).toEqual([]);
     expect(idle.map((m) => m.idle?.kind)).toEqual(['noResourceInArea']);
     expect(idle[0]?.jobType).toBe(JOB_COLLECTOR);
+  });
+
+  it('name the sheep an animal farm lacks, not its water and wheat', async () => {
+    const { merge } = await loadContentUnderTest();
+    const sim = createSceneSim(animalFarm(0), { content: merge.content });
+    sim.run(2);
+    const { standing } = watchStalls(sim).run(BLOCKED_SWEEPS);
+    expect(standing.map((m) => m.stall)).toEqual([{ reason: 'noLivestock', goodType: GOOD_SHEEP }]);
+  });
+
+  it('say a lone sheep is no breeding pair', async () => {
+    const { merge } = await loadContentUnderTest();
+    const sim = createSceneSim(animalFarm(1), { content: merge.content });
+    sim.run(2);
+    const { standing } = watchStalls(sim).run(BLOCKED_SWEEPS);
+    expect(standing.map((m) => m.stall)).toEqual([{ reason: 'tooFewLivestock', goodType: GOOD_SHEEP }]);
   });
 
   it('count no farm staffed only by its carrier as the mill wheat source', async () => {

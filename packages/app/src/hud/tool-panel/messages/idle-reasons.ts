@@ -34,6 +34,7 @@ export function idleReasonOf(status: WorkStatus | undefined): IdleReason | null 
       return { kind: status.kind, goodTypes: NO_GOODS };
     case 'nothingToCarry':
     case 'waitingInput':
+    case 'herdNotReady':
     case 'outputFull':
     case 'productsLocked':
     case 'noWorkplace':

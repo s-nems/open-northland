@@ -43,6 +43,7 @@ import {
 } from '../stores/index.js';
 import { gatherWorkStatus } from './gather-work-status.js';
 import { GoodSources } from './good-sources.js';
+import { type HerdHold, herdHoldOf } from './herd-hold.js';
 import { type StoreReach, storeReach } from './store-reach.js';
 
 export interface MissingWorkInput {
@@ -76,6 +77,8 @@ export type WorkStatus =
       readonly missingInputs: readonly MissingWorkInput[];
     }
   | { readonly kind: 'outputFull'; readonly outputs: readonly BlockedWorkOutput[] }
+  /** A breeder whose herd keeps it from breeding, and no other product of its waits for inputs. */
+  | ({ readonly kind: 'herdNotReady' } & HerdHold)
   | { readonly kind: 'nothingSelected' }
   | { readonly kind: 'productsLocked'; readonly goodTypes: readonly number[] }
   | {
@@ -154,9 +157,19 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   }
   const inRotation = rotationOrder(world, entity, pool, recipes);
   let held: PoolEntry | undefined;
+  // A breeding recipe the herd holds back waits for animals, not inputs: its breeder fetches none.
+  const herdHeld = new Set<PoolEntry>();
+  let firstHold: HerdHold | undefined;
   for (const entry of inRotation) {
     if (!operatorRecipeEnabled(world, ctx, workplace, entity, entry.recipe)) continue;
     if (canStartCycle(world, ctx, workplace, entry.recipe)) return undefined;
+    const herd = herdHoldOf(world, ctx, workplace, entry.recipe);
+    if (herd === 'slaughter') return undefined;
+    if (herd !== null) {
+      herdHeld.add(entry);
+      firstHold ??= herd;
+      continue;
+    }
     if (waitingForRecipeInput(world, ctx, workplace, entry.recipe)) {
       held = entry;
       break;
@@ -165,7 +178,10 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   // The rotation holds its turn on a partly stocked product, so that one is next; otherwise the first
   // product with shelf room is the one waiting for its inputs.
   const waiting =
-    held ?? inRotation.find((entry) => hasShelfRoom(world, ctx, workplace, entity, entry.recipe));
+    held ??
+    inRotation.find(
+      (entry) => !herdHeld.has(entry) && hasShelfRoom(world, ctx, workplace, entity, entry.recipe),
+    );
   if (waiting !== undefined) {
     const stock = world.get(workplace, Stockpile).amounts;
     const missingInputs = waiting.recipe.inputs.flatMap((input) => {
@@ -192,6 +208,7 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
       ? { kind: 'waitingInput', goodType: waiting.good, missingInputs }
       : { kind: 'unknown', reason: 'productionGate' };
   }
+  if (firstHold !== undefined) return { kind: 'herdNotReady', ...firstHold };
   const enabled = inRotation.filter((entry) =>
     operatorRecipeEnabled(world, ctx, workplace, entity, entry.recipe),
   );

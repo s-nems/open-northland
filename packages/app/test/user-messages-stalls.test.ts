@@ -1,4 +1,10 @@
-import { type GatheringTrade, ONE, type WorkStatus, type WorldSnapshot } from '@open-northland/sim';
+import {
+  type GatheringTrade,
+  type HerdWait,
+  ONE,
+  type WorkStatus,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_CARRIER, JOB_COLLECTOR, JOB_POTTER, JOB_SOLDIER } from '../src/catalog/jobs.js';
 import { createMessageFeed, takeRaised } from '../src/hud/tool-panel/messages/feed.js';
@@ -28,6 +34,8 @@ const CLAY = 2;
 const POT = 24;
 const OTHER_INPUT = 3;
 const WOOD = 5;
+/** A breeding farm's species good. */
+const SHEEP = 57;
 const WORKSHOP = 10;
 const OPERATOR = 11;
 /** The workshop's own collector, hired before the potter. */
@@ -207,6 +215,15 @@ describe('stalled workshops', () => {
     });
     expect(stallOf({ kind: 'nothingSelected' })).toBeNull();
     expect(stallOf({ kind: 'crafting', goodType: POT })).toBeNull();
+  });
+
+  it('names the animals a breeder lacks, and no stall while its herd grows', () => {
+    const herd = (wait: HerdWait) =>
+      stallOf({ kind: 'herdNotReady', goodType: SHEEP, wait, adults: 0, young: 0 });
+    expect(herd('noAnimals')).toEqual({ reason: 'noLivestock', goodType: SHEEP });
+    expect(herd('tooFew')).toEqual({ reason: 'tooFewLivestock', goodType: SHEEP });
+    expect(herd('youngGrowing')).toBeNull();
+    expect(herd('herdFull')).toBeNull();
   });
 
   it('names no stall for an input a source in reach supplies, nor for shelves a store in reach empties', () => {
