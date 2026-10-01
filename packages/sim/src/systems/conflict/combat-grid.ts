@@ -20,6 +20,7 @@ import {
   isLastResortPrey,
   isLowPriorityBuildingTarget,
 } from '../readviews/index.js';
+import { type NodeMoveFeed, watchNodeMoves } from '../spatial/node-moves.js';
 import { entityNode } from '../spatial/nodes.js';
 import { buildingBodyNodes } from './target-node.js';
 
@@ -178,7 +179,7 @@ export function combatGridOf(world: World, ctx: SystemContext, terrain: TerrainG
     terrain,
     ctx.content,
     world.watchChanges(UNIT_MEMBERSHIP, UNIT_VALUES),
-    world.watchChanges([], [Position]),
+    watchNodeMoves(world),
   );
   grids.set(world, grid);
   for (const store of LAYER_STORES) world.journalMembership(store);
@@ -214,7 +215,7 @@ export class CombatGrid {
     readonly terrain: TerrainGraph,
     readonly content: ContentSet,
     private readonly unitFeed: ChangeFeed,
-    private readonly moveFeed: ChangeFeed,
+    private readonly moveFeed: NodeMoveFeed,
   ) {
     this.cols = Math.ceil(terrain.width / COARSE_CELL_NODES);
     this.rows = Math.ceil(terrain.height / COARSE_CELL_NODES);

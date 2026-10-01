@@ -3,6 +3,7 @@ import { Age, Person, Position, Settler, settlerTradeLog } from '../../../compon
 import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import { isFighterJob } from '../../readviews/index.js';
+import { type NodeMoveFeed, watchNodeMoves } from '../../spatial/node-moves.js';
 import { NodeBuckets } from '../../spatial/nodes.js';
 
 /** The held `hx` of an entity that is not a candidate: the Int32 minimum, which no node's `hx` reaches. An
@@ -22,8 +23,8 @@ class ChatEligible {
   private hys = new Int32Array(0);
   /** Adds and removals of the stores eligibility reads. */
   private readonly membership: ChangeFeed;
-  /** Position writes, which move a held candidate but never change who is one. */
-  private readonly moves: ChangeFeed;
+  /** Node changes, which move a held candidate but never change who is one. */
+  private readonly moves: NodeMoveFeed;
   /** Job changes, taken from the settler trade log instead of a Settler value feed. */
   private readonly jobChanges: Set<Entity>;
   /** The pass whose catch-up the buckets hold. */
@@ -34,7 +35,7 @@ class ChatEligible {
     readonly content: ContentSet,
   ) {
     this.membership = world.watchChanges([Person, Position, Settler, Age], []);
-    this.moves = world.watchChanges([], [Position]);
+    this.moves = watchNodeMoves(world);
     this.jobChanges = settlerTradeLog(world, 'gossipCandidates');
     this.buckets = new NodeBuckets(world, []);
     this.rebuild();

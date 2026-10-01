@@ -163,6 +163,8 @@ describe('ownedFighters index', () => {
     unjournaled(west).x = unjournaled(east).x;
     unjournaled(east).x = westX;
 
-    expect(s.world.verifyCaches()).toEqual(['standingPosts collects other posts by node than a fresh scan']);
+    // Other position-keyed indexes may report the bypass too; the post index names only its grid.
+    const own = s.world.verifyCaches().filter((problem) => problem.startsWith('standingPosts'));
+    expect(own).toEqual(['standingPosts collects other posts by node than a fresh scan']);
   });
 });

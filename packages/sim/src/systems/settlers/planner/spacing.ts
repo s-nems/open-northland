@@ -16,6 +16,7 @@ import type { SystemContext } from '../../context.js';
 import { translatedCells } from '../../footprint/geometry.js';
 import { constructionWorkCells, dynamicBlockOverlay } from '../../footprint/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
+import { type NodeMoveFeed, watchNodeMoves } from '../../spatial/node-moves.js';
 import { NodeBuckets } from '../../spatial/nodes.js';
 
 /**
@@ -163,23 +164,30 @@ interface NodeXY {
  * The owned settlers standing still, bucketed by node. Kept across ticks per world and caught up by
  * {@link stationaryOwnedSettlers}, at the start of a planner pass and by the vehicle shove, which runs
  * after the planner, so the pass reads the occupancy as it began while its own walks and a garrison's
- * `stepOut` land. Every walker's step feeds it, which
- * is still cheaper than re-bucketing every stationary settler each pass.
+ * `stepOut` land. A node change re-tests only a held settler: standing still is a matter of store
+ * membership, which the membership feed carries.
  */
 class StationaryOwned {
   readonly buckets: NodeBuckets;
   private readonly nodes = new Map<Entity, NodeXY>();
   private readonly feed: ChangeFeed;
+  private readonly moves: NodeMoveFeed;
   private readonly refreshEntity = (e: Entity): void => this.refresh(e);
+  private readonly moveEntity = (e: Entity): void => {
+    if (this.nodes.has(e)) this.refresh(e);
+  };
 
   constructor(private readonly world: World) {
-    this.feed = world.watchChanges([Settler, Position, Owner, MoveGoal, PathRequest, PathFollow], [Position]);
+    this.feed = world.watchChanges([Settler, Position, Owner, MoveGoal, PathRequest, PathFollow], []);
+    this.moves = watchNodeMoves(world);
     this.buckets = new NodeBuckets(world, []);
     this.rebuild();
   }
 
   catchUp(): void {
-    if (this.feed.pending && this.feed.drain(this.refreshEntity)) this.rebuild();
+    let lost = this.feed.pending && this.feed.drain(this.refreshEntity);
+    if (this.moves.pending && this.moves.drain(this.moveEntity)) lost = true;
+    if (lost) this.rebuild();
   }
 
   private refresh(e: Entity): void {

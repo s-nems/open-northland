@@ -12,6 +12,7 @@ import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { type NodeMoveFeed, watchNodeMoves } from '../../spatial/node-moves.js';
 import { calmZonesByPlayer, isStanding } from './bodies.js';
 import { hasBodyCollision, ownedFighters } from './owned-fighters.js';
 
@@ -56,17 +57,17 @@ interface Post {
 /**
  * Every standing owned fighter with a position, kept across ticks. A membership change of a store the
  * standing test reads, an in-place PathRequest or Owner write, or a logged trade change re-tests that
- * entity; a Position write re-tests only an entity already standing, since moving cannot start a stand.
+ * entity; a node change re-tests only an entity already standing, since moving cannot start a stand.
  */
 interface PostIndex extends UnitWalkBlocks, StandingPostGrid {
   readonly content: ContentSet;
   readonly terrain: TerrainGraph;
   readonly feed: ChangeFeed;
-  readonly moves: ChangeFeed;
+  readonly moves: NodeMoveFeed;
   /** The calm zones the town tally follows, refreshed by walk-block reads only. */
   zones: ReadonlyMap<number, ReadonlySet<NodeId>>;
   readonly byEntity: Map<Entity, Post>;
-  /** 1 at each id in {@link byEntity}: the per-write test for the far more common Position writes. */
+  /** 1 at each id in {@link byEntity}: the per-entry test for the far more common node changes. */
   standingIds: Uint8Array;
   /** Each counted node's list of posts, ascending id. */
   readonly byNode: Map<NodeId, Post>;
@@ -108,7 +109,7 @@ function rebuild(world: World, content: ContentSet, terrain: TerrainGraph): Post
   const feed =
     held?.feed ??
     world.watchChanges([Owner, Settler, Position, PathFollow, PathRequest], [PathRequest, Owner]);
-  const moves = held?.moves ?? world.watchChanges([], [Position]);
+  const moves = held?.moves ?? watchNodeMoves(world);
   feed.drain(() => {});
   moves.drain(() => {});
   settlerTradeLog(world, 'standingPosts').clear();
