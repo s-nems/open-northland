@@ -17,6 +17,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { hexNeighboursOf, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
+import { landStrandedDrops } from '../economy/goods-evict.js';
 import { grantFightExperience } from '../progression/index.js';
 import { weaponDamageVsMaterial } from '../readviews/index.js';
 import {
@@ -228,19 +229,22 @@ function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly
  * Topple every tree anchored on area shot `proj`'s landing point or its six neighbours. Original behavior:
  * one catapult stone fells each such tree outright, whoever's ground it stands on; a falling tree is no
  * hit, so it neither trains the shooter nor keeps the shot from thudding. The original keys this on the
- * catapult's weapon type, the content's only area weapon.
+ * catapult's weapon type, the content's only area weapon. The drops a fall leaves cut off are carried to
+ * the landing point once every tree is down, since a tree felled first is still hemmed in by the rest.
  */
 function fellTreesUnder(world: World, ctx: SystemContext, proj: Flight): void {
   const terrain = ctx.terrain;
   if (terrain === undefined) return;
   const landing = landingNode(terrain, proj);
-  const blast = { x: proj.aimX, y: proj.aimY };
+  const felled: NodeId[] = [];
   for (const node of [landing, ...inBoundsNeighbours(terrain, landing)]) {
     // Copied: felling removes the tree from the index's live bucket.
     for (const tree of [...resourcesAtNode(world, terrain.xOf(node), terrain.yOf(node))]) {
-      fellStruckTree(world, ctx, tree, blast);
+      const cell = fellStruckTree(world, ctx, tree);
+      if (cell !== null) felled.push(cell);
     }
   }
+  for (const cell of felled) landStrandedDrops(world, ctx, terrain, cell, landing);
 }
 
 /** The map point shot `proj` comes down on. */

@@ -111,6 +111,7 @@ export class WorldRenderer {
   private readonly roadShards = new RoadShardTracker();
   private readonly playerColourOf: ((player: number) => number) | undefined;
   private enhancements: WorldEnhancements = BASELINE_ENHANCEMENTS;
+  private withheldRefs: ReadonlySet<number> | undefined;
 
   constructor(app: Application, opts?: WorldRendererOptions) {
     installWorldBatcher(); // before the sprite layer's render group builds its first batch
@@ -316,6 +317,12 @@ export class WorldRenderer {
     this.fog.setStaticallyDrawnRefs(refs);
   }
 
+  /** Entities the sprite pool holds back until a presentation over them ends (a felled tree's trunk pile
+   *  and stump under its falling clip). Pass a new set on every change; an empty one holds nothing. */
+  setWithheldRefs(refs: ReadonlySet<number>): void {
+    this.withheldRefs = refs.size > 0 ? refs : undefined;
+  }
+
   update(frame: WorldFrame): void {
     this.textureCache.beginFrame();
     const {
@@ -391,6 +398,7 @@ export class WorldRenderer {
       wind: this.wind,
       shadowStyle: this.enhancements.softShadows ? DEFAULT_SHADOW_STYLE : undefined,
       ...fogFrame,
+      ...(this.withheldRefs !== undefined ? { withheldRefs: this.withheldRefs } : {}),
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
       ...(portrait.ref !== null ? { portraitRef: portrait.ref } : {}),
       ...(portrait.house !== null ? { portraitHouse: portrait.house } : {}),

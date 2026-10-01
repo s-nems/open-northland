@@ -18,7 +18,7 @@ import {
   writeAnimatedQuad,
 } from './decor-batch.js';
 import { makeDecorShadowUniforms, writeDecorShadowStyle } from './decor-shadow-shader.js';
-import type { MapObjectSprite } from './map-object-sprite.js';
+import { type MapObjectSprite, type OneShotClip, oneShotEndTick } from './map-object-sprite.js';
 import { TallObjectLayer } from './tall-blocks.js';
 
 /**
@@ -43,6 +43,13 @@ interface UpdateInputs {
   readonly fogEpoch: number | undefined;
 }
 
+/** A one-shot object still showing its clip, with the tick it ends on. */
+interface PlayingClip {
+  readonly obj: MapObjectSprite;
+  readonly once: OneShotClip;
+  readonly end: number;
+}
+
 export class MapObjectLayer {
   /** Flat map-object decor (waves, grass, mine stains). */
   readonly decorContainer = new Container();
@@ -63,6 +70,12 @@ export class MapObjectLayer {
    *  matches. `remove` needs no reset - it detaches and zeroes directly. */
   private lastInputs: UpdateInputs | null = null;
   private environmentMotion = false;
+  /** The one-shot clips still playing: the work a frame's clip check walks, and only on a tick one ends. */
+  private readonly playing: PlayingClip[] = [];
+  private nextClipEnd = Number.POSITIVE_INFINITY;
+  /** A finished clip's object to the still that replaced it, so removing the object the caller holds
+   *  (a handover, a cleared footprint) removes what stands in its place now. */
+  private readonly restOf = new Map<MapObjectSprite, MapObjectSprite>();
 
   constructor(
     spriteLayer: Container,
@@ -116,6 +129,11 @@ export class MapObjectLayer {
     for (const obj of objects) {
       if (obj.frames.length === 0 || this.objects.has(obj)) continue;
       this.objects.add(obj);
+      if (obj.once !== undefined) {
+        const end = oneShotEndTick(obj.once, obj.frames.length);
+        this.playing.push({ obj, once: obj.once, end });
+        this.nextClipEnd = Math.min(this.nextClipEnd, end);
+      }
       const key = `${Math.floor(obj.x / DECOR_CHUNK_PX)},${Math.floor(obj.y / DECOR_CHUNK_PX)}`;
       const buckets = obj.decor ? byBlock : tallByBlock;
       let block = buckets.get(key);
@@ -143,11 +161,48 @@ export class MapObjectLayer {
   }
 
   /**
-   * Take one placed object out of the built layers. A decor object's quad is zeroed in place rather than
-   * rebuilding the batch: O(block members), and only on that first-touch event, never per frame. An
-   * unknown object is a no-op.
+   * Take one placed object out of the built layers: a finished one-shot clip takes its resting still
+   * with it, a playing one stops. A decor object's quad is zeroed in place rather than rebuilding the
+   * batch: O(block members), and only on that first-touch event, never per frame. An unknown object is
+   * a no-op.
    */
   remove(obj: MapObjectSprite): void {
+    const rest = this.restOf.get(obj);
+    if (rest !== undefined) {
+      this.restOf.delete(obj);
+      this.remove(rest);
+      return;
+    }
+    const playing = this.playing.findIndex((clip) => clip.obj === obj);
+    // The cached earliest end may now name a removed clip; the next check just finds nothing due.
+    if (playing >= 0) this.playing.splice(playing, 1);
+    this.detach(obj);
+  }
+
+  /** Swap every one-shot clip that ended by `tick` for its resting still, or retire it. */
+  private finishClips(tick: number): void {
+    const rests: MapObjectSprite[] = [];
+    let kept = 0;
+    let next = Number.POSITIVE_INFINITY;
+    for (const clip of this.playing) {
+      if (clip.end > tick) {
+        this.playing[kept++] = clip;
+        next = Math.min(next, clip.end);
+        continue;
+      }
+      this.detach(clip.obj);
+      if (clip.once.rest !== null) {
+        this.restOf.set(clip.obj, clip.once.rest);
+        rests.push(clip.once.rest);
+      }
+    }
+    this.playing.length = kept;
+    this.nextClipEnd = next;
+    if (rests.length > 0) this.add(rests);
+  }
+
+  /** {@link remove} without the one-shot bookkeeping. */
+  private detach(obj: MapObjectSprite): void {
     if (!this.objects.delete(obj)) return;
     if (this.tall.remove(obj)) return;
     const key = this.decorByObject.get(obj);
@@ -170,7 +225,7 @@ export class MapObjectLayer {
    * Advance the landscape objects for one frame. Flat decor keeps drawing on ground the viewer does not
    * watch, because it reads as terrain dressing, but its animation freezes there. The weather's `wind`
    * bends the swaying vegetation only while environment motion is on; pass the same object while the
-   * wind holds still.
+   * wind holds still. A one-shot clip that ended by `tick` gives way to its resting still first.
    */
   update(
     vp: Viewport,
@@ -180,6 +235,7 @@ export class MapObjectLayer {
     timeTicks: number = tick,
     weatherWind?: WindSway,
   ): void {
+    if (tick >= this.nextClipEnd) this.finishClips(tick);
     const motionTime = this.environmentMotion ? timeTicks : tick;
     const wind = this.environmentMotion ? weatherWind : undefined;
     const shadowStyle = worldShadowStyle();
@@ -263,6 +319,9 @@ export class MapObjectLayer {
     this.decorChunks.clear();
     this.decorByObject.clear();
     this.objects.clear();
+    this.playing.length = 0;
+    this.nextClipEnd = Number.POSITIVE_INFINITY;
+    this.restOf.clear();
     this.tall.destroy();
     this.lastInputs = null;
   }

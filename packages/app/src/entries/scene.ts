@@ -2,6 +2,7 @@ import { LockstepDriver, LoopbackTransport } from '@open-northland/lockstep';
 import type { TerrainTextureSet } from '@open-northland/render';
 import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-northland/render';
 import type { Simulation } from '@open-northland/sim';
+import { loadFellingClips } from '../content/felling-clips.js';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
@@ -207,6 +208,8 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     initialViewport,
     renderer,
     sheet,
+    // A presentation pack's trees have no falling clips of their own.
+    ...(pack === null && ir !== null ? { fellingClips: await loadFellingClips(ir, sim.content.goods) } : {}),
     ...(scene.graphicTribes !== undefined ? { tribes: scene.graphicTribes } : {}),
     host,
     driver,

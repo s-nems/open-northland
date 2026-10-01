@@ -9,6 +9,7 @@ import {
 } from '@open-northland/lockstep';
 import type { Camera } from '@open-northland/render';
 import type { SaveGame } from '@open-northland/sim';
+import { loadFellingClips } from '../../content/felling-clips.js';
 import { loadMinimapCellColours } from '../../content/minimap-ground.js';
 import { loadScriptLandscapeSprites } from '../../content/script-landscape-sprites.js';
 import { playerNameMap, playerTribe } from '../../game/map-roster.js';
@@ -153,6 +154,8 @@ export async function presentMapWorld(
     initialViewport,
     renderer,
     sheet: world.sheet,
+    // A presentation pack's trees have no falling clips of their own.
+    ...(pack === null && ir !== null ? { fellingClips: await loadFellingClips(ir, host.content.goods) } : {}),
     host,
     driver: runtime.driver,
     ...(runtime.offThreadTickCost !== undefined ? { offThreadTickCost: runtime.offThreadTickCost } : {}),

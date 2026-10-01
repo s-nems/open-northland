@@ -40,6 +40,8 @@ const WOOD = 1;
 const WOODCUTTER = 1; // fixture job allowed the wood harvest atomic (24)
 const VIKING = 1;
 const HARVEST_ATOMIC = 24;
+/** An opaque `Resource.gfxIndex` tag, as a decoded map's tree carries its species record. */
+const TREE_RECORD = 290;
 
 const WOOD_TRACK_ID = 'woodcutter_wood';
 const DEFAULT_TRACK_STROKES = DEFAULT_BASE_REPEAT_COUNTER;
@@ -66,10 +68,15 @@ function makeWoodcutter(sim: Simulation, x: number, y: number): Entity {
 }
 
 /** A standing FELLABLE wood node at (x,y): the felling spec (chops + whole yield) comes from content. */
-function placeFellableTree(sim: Simulation, x: number, y: number): Entity {
+function placeFellableTree(sim: Simulation, x: number, y: number, gfxIndex?: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: WOOD, remaining: TREE_WOOD_YIELD, harvestAtomic: HARVEST_ATOMIC });
+  sim.world.add(e, Resource, {
+    goodType: WOOD,
+    remaining: TREE_WOOD_YIELD,
+    harvestAtomic: HARVEST_ATOMIC,
+    ...(gfxIndex !== undefined ? { gfxIndex } : {}),
+  });
   stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
   sim.world.add(e, Felling, { chops: 0 });
   return e;
@@ -188,6 +195,16 @@ describe('felling - chopping a tree down', () => {
       amount: TREE_WOOD_YIELD,
       at: { hx: 4, hy: 0 }, // half-cell node of tile (2,0) - every event `at` is a node
     });
+    expect(felled[0]).not.toHaveProperty('gfxIndex'); // a tree with no record tag names none
+  });
+
+  it("names the felled tree's record tag, which the presentation plays its fall from", () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const tree = placeFellableTree(sim, 2, 0, TREE_RECORD);
+    const cutter = makeWoodcutter(sim, 2, 0);
+    for (let i = 0; i < CHOPS_TO_FELL; i++) chopOnce(sim, cutter, tree);
+    const felled = sim.events.current().find((ev) => ev.kind === 'resourceFelled');
+    expect(felled).toMatchObject({ node: tree, gfxIndex: TREE_RECORD });
   });
 });
 

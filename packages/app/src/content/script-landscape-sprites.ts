@@ -43,8 +43,15 @@ export async function loadScriptLandscapeSprites(
     const key = keys[index];
     if (key !== undefined) templates.set(key, sprite);
   }
+  // Approximation: a one-shot stage the script places starts its clip on the map's first tick, as the
+  // map's own do, so one placed later rests from the start.
   return (placement) => {
     const template = templates.get(spriteKey(placement.typeId, placement.hx, placement.hy, placement.level));
-    return template === undefined ? undefined : { ...template };
+    if (template === undefined) return undefined;
+    const { once } = template;
+    // The layer keys a sprite by identity, so each copy rests as a still of its own.
+    return once === undefined || once.rest === null
+      ? { ...template }
+      : { ...template, once: { ...once, rest: { ...once.rest } } };
   };
 }

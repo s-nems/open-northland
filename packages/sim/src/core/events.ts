@@ -250,6 +250,8 @@ export type SimEvent =
       readonly goodType: number;
       readonly amount: number;
       readonly at: HalfCellNode;
+      /** The felled node's `Resource.gfxIndex`, the presentation tag of the tree it was. */
+      readonly gfxIndex?: number;
     }
   | {
       /**

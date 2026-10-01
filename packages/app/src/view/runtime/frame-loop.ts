@@ -23,6 +23,7 @@ import type { MinimapHandle } from '../../hud/minimap/index.js';
 import type { BuildingPick } from '../../hud/tool-panel/placement.js';
 import { setCanvasCursor } from '../cursors/element.js';
 import { placementPointer } from '../cursors/placement.js';
+import { createFellingPresenter } from '../felling-presenter.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type {
@@ -180,6 +181,10 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   const frameReport = () => frameStats.report();
   const visiblePlots = createVisiblePlots(() => host.constructionPlots(), fogGates.seesNode);
+  const presentFellings =
+    deps.fellingClips === undefined
+      ? null
+      : createFellingPresenter(renderer, deps.fellingClips, deps.elevation);
   // The wall and road tools light where a line starts, then the started line's reach; the gate tool the
   // spans it can cut into.
   const palisadeWash = () => {
@@ -307,6 +312,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const settlerBubbles = settlerBubblesFor(snap);
     // Blood and bones decay against the sim tick, so a pause or a screenshot reproduces.
     renderer.ingestCombatEffects(presentEvents, snap.tick);
+    // Every frame, stepped or not: a playing clip ends on the tick, and its trunk shows with that frame.
+    presentFellings?.(presentEvents, snap.tick);
     // A script's earthquake shakes the drawn world alone; picking and the HUD keep the steady frame.
     const jitter = presentation?.jitter(nowMs) ?? null;
     const camera = cameraCtl.camera();

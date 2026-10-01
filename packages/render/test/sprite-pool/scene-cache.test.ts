@@ -86,6 +86,14 @@ describe('SpritePool - scene build reuse across identical frames', () => {
     expect(pool.drawnItems().length).toBe(2);
   });
 
+  it('rebuilds when a new withheld set is handed over', () => {
+    const pool = new SpritePool(new Container(), new TextureCache(), undefined);
+    pool.reconcile(frameFor(WORLD, { withheldRefs: new Set([1]) }));
+    expect(pool.drawnItems().map((item) => item.ref)).toEqual([2]);
+    pool.reconcile(frameFor(WORLD, { withheldRefs: new Set() }));
+    expect(pool.drawnItems()).toHaveLength(2);
+  });
+
   it('rebuilds when the portrait subject changes, so the force-draw flag is never stale', () => {
     const pool = new SpritePool(new Container(), new TextureCache(), undefined);
 

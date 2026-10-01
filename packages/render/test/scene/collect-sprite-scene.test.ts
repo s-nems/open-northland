@@ -45,6 +45,18 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
     expect(released.items.map((d) => d.ref)).toEqual([1, 2]);
   });
 
+  // A felled tree's trunk pile and stump wait under its falling clip, which the map-object layer plays.
+  it('skips withheldRefs entities until a set without them is handed over', () => {
+    const snapshot = snapshotOf([
+      entity(1, 1, 1, { Stump: { goodType: 1 } }),
+      entity(2, 2, 1, { Resource: { goodType: 1 } }),
+    ]);
+    const withheld = collectSpriteScene(snapshot, { withheldRefs: new Set([1]) });
+    expect(withheld.items.map((d) => d.ref)).toEqual([2]);
+    const released = collectSpriteScene(snapshot, { withheldRefs: new Set() });
+    expect(released.items.map((d) => d.ref)).toEqual([1, 2]);
+  });
+
   // The original's carrier vanishes into the house for an exchange with a completed store (observation),
   // so it is kept pooled but not drawn for the atomic's duration. A pile, flag, or site is not enterable.
   it('hides a settler mid-exchange inside a completed building, but not at a ground pile or a site', () => {

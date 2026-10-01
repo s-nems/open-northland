@@ -11,7 +11,7 @@ export interface MapObjectSprite {
   readonly x: number;
   readonly y: number;
   readonly source: TextureSource;
-  /** More than one frame is a loop played at the sim tick rate. */
+  /** More than one frame is a loop played at the sim tick rate, or a clip played once ({@link once}). */
   readonly frames: readonly AtlasFrame[];
   readonly scale: number;
   /** Breeze shear per unit of height, authored with the art: it runs whatever the graphics switches say. */
@@ -24,7 +24,7 @@ export interface MapObjectSprite {
   /** A live creature the map places for presentation (a butterfly swarm), not landscape: it shows only
    *  on a cell the viewer currently watches, never as an explored-ground ghost. Tall objects only. */
   readonly creature?: boolean;
-  /** Starting frame offset into {@link frames}; static objects ignore it. */
+  /** Starting frame offset into {@link frames}; static objects and one-shot clips ignore it. */
   readonly phase: number;
   /**
    * Terrain-elevation lift (world px, ≥ 0), subtracted from the drawn `y`. The feet anchor {@link y}
@@ -54,11 +54,35 @@ export interface MapObjectSprite {
   };
   /** Built stonework whose foot sets into the ground like a building's. */
   readonly grounded?: true;
+  /** A clip that plays {@link frames} once instead of looping: see {@link OneShotClip}. */
+  readonly once?: OneShotClip;
 }
 
-/** Shared by the body and shadow binds, so the pair can never drift. */
+/**
+ * A one-shot clip's timing and what follows it. Its frames advance one per tick from {@link from} (the
+ * clock the loops run on), and on its {@link oneShotEndTick} the layer replaces the object with
+ * {@link rest}, or retires it when that is null.
+ */
+export interface OneShotClip {
+  /** The tick the clip shows its first frame. */
+  readonly from: number;
+  /** The still the clip rests as: the record its stage becomes, placed like the clip. Null for a
+   *  transient clip something else takes over from. */
+  readonly rest: MapObjectSprite | null;
+}
+
+/** The first tick a one-shot clip no longer draws: it shows each of its frames for one tick. */
+export function oneShotEndTick(clip: OneShotClip, frameCount: number): number {
+  return clip.from + frameCount;
+}
+
+/** Shared by the body and shadow binds, so the pair can never drift. A one-shot clip holds its first
+ *  frame before it starts and its last after it ends, a fog-frozen pose included. */
 export function objectFrameIndexAt(obj: MapObjectSprite, tick: number): number {
-  return obj.frames.length <= 1 ? 0 : (tick + obj.phase) % obj.frames.length;
+  const count = obj.frames.length;
+  if (count <= 1) return 0;
+  if (obj.once !== undefined) return Math.min(Math.max(tick - obj.once.from, 0), count - 1);
+  return (tick + obj.phase) % count;
 }
 
 /** The breeze strength in play, `undefined` for an object that stands still. */

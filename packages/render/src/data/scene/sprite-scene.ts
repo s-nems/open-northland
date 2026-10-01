@@ -40,6 +40,9 @@ export interface SpriteSceneOptions {
   /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource nodes) -
    *  skipped entirely: no draw item, excluded from {@link SpriteScene.liveRefs}. */
   readonly staticRefs?: ReadonlySet<number> | undefined;
+  /** Entities whose sprites wait for a presentation over them to end (a felled tree's trunk pile and
+   *  stump under its falling clip): skipped like {@link staticRefs}. */
+  readonly withheldRefs?: ReadonlySet<number> | undefined;
   /** The fog-of-war cull; absent = no fog. An entity whose tile it rejects is treated like a
    *  viewport-culled one: no draw item, but kept live so its pooled sprite survives until the fog
    *  lifts. */
@@ -113,6 +116,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: Sp
     viewport,
     elevation,
     staticRefs,
+    withheldRefs,
     fogVisible,
     ghosts,
     keepIndoorSettlers,
@@ -141,8 +145,8 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: Sp
   };
 
   const emit = (entity: EntitySnapshot): void => {
-    // Drawn by the retained static layer instead - skip before paying for a classify.
-    if (staticRefs?.has(entity.id)) return;
+    // Drawn by the retained static layer instead, or not yet - skip before paying for a classify.
+    if (staticRefs?.has(entity.id) || withheldRefs?.has(entity.id)) return;
     const components = entity.components;
     const kind = classify(components);
     if (kind === null) return;

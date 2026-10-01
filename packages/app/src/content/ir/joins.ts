@@ -43,6 +43,29 @@ export function drawsInGroundPass(record: Pick<LandscapeGfxRow, 'isStatic'>): bo
   return record.isStatic === true;
 }
 
+/**
+ * Whether a placed record plays its frames once and then rests as its `GfxTransition 13` stage-end record
+ * (a falling tree lying down as a trunk, a falling skeleton as bones). The clip's length times the
+ * stage. The `transition 13` lines of `landscapetypes.ini`'s `tree falling` and `skeleton_falling` end on
+ * 9 and 12 (readable data, the field otherwise undecoded): the 9-frame trees and the skeletons match it,
+ * the 7- and 8-frame trees run a tick or two short (approximation). So only a non-looping record with
+ * more than one frame plays: `cadaver_skeleton`'s one-frame bones end on 100 instead, a stage the sim
+ * would have to clock before they give way to grass, and stay drawn as themselves.
+ */
+export function playsOnceThenRests(record: {
+  readonly stageEndTarget?: number | undefined;
+  readonly loopAnimation?: boolean | undefined;
+  readonly isStatic?: boolean | undefined;
+  readonly frames?: readonly { readonly bobIds: readonly number[] }[] | undefined;
+}): boolean {
+  return (
+    record.stageEndTarget !== undefined &&
+    record.loopAnimation !== true &&
+    record.isStatic !== true &&
+    (record.frames ?? []).some((list) => list.bobIds.length > 1)
+  );
+}
+
 /** The `landscapeGfx` rows by `EditName`, the key a map's `objects` lane joins on; the first row of a
  *  repeated name wins. */
 export function landscapeRecordsByName(ir: ContentIr): ReadonlyMap<string, LandscapeGfxRow> {

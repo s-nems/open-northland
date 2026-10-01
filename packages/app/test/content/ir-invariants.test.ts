@@ -10,6 +10,7 @@ import {
   VIKING_TRIBE,
 } from '../../src/content/building-gfx/index.js';
 import { resolveBuildingSignRefs } from '../../src/content/building-signs.js';
+import { playsOnceThenRests } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG } from '../../src/content/settler-gfx/index.js';
 import { BUILDING_WATCHTOWER, WEAPON_GOOD_SLUG_BY_JOB } from '../../src/game/sandbox/ids/index.js';
@@ -262,6 +263,24 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     for (const skeleton of skeletons) {
       const rest = skeleton.stageEndTarget === undefined ? undefined : byIndex.get(skeleton.stageEndTarget);
       expect(rest?.logicType, `${labelOf(skeleton)} does not lie down as bones`).toBe(BONES_LOGIC_TYPE);
+    }
+  });
+
+  it('the falling trees and skeletons play once and rest, and their bones never chain on to grass', async () => {
+    // The presentation plays exactly the stages this gate admits; one it drops stays frozen on frame 0.
+    const { real } = await loadContentUnderTest();
+    const byIndex = new Map(real.landscapeGfx.map((g) => [g.index, g]));
+    const clipped = (g: { readonly frames: readonly { readonly bobIds: readonly number[] }[] }): boolean =>
+      g.frames.some((list) => list.bobIds.length > 1);
+    for (const g of real.landscapeGfx) {
+      const label = g.editName ?? `#${g.index}`;
+      if (g.logicType === TREE_FALLING_LOGIC_TYPE || g.logicType === SKELETON_FALLING_LOGIC_TYPE)
+        expect(playsOnceThenRests(g), `${label} does not play once`).toBe(clipped(g));
+      if (g.logicType === BONES_LOGIC_TYPE) expect(playsOnceThenRests(g), `${label} chains on`).toBe(false);
+      if (g.logicType !== TREE_LOGIC_TYPE || g.cutTarget === undefined) continue;
+      const falling = byIndex.get(g.cutTarget);
+      if (falling !== undefined && clipped(falling))
+        expect(playsOnceThenRests(falling), `${label} is felled into no clip`).toBe(true);
     }
   });
 

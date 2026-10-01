@@ -78,6 +78,9 @@ export interface PoolFrame {
   /** Entities the retained static map-object layer draws instead; the scene build skips them, so the
    *  pool never touches them. */
   readonly staticRefs?: ReadonlySet<number>;
+  /** Entities whose sprites wait for a presentation over them to end; skipped like
+   *  {@link staticRefs}. A change hands a new set, which keys the cached scene build. */
+  readonly withheldRefs?: ReadonlySet<number>;
   /** The fog-of-war cull: entities on tiles it rejects stay pooled but undrawn. Absent = no fog. */
   readonly fogVisible?: (tileX: number, tileY: number) => boolean;
   /** Version of the fog cull's answers, bumped by the fog owner whenever `fogVisible` may answer
@@ -317,6 +320,7 @@ export class SpritePool {
         viewport: frame.viewport,
         elevation: frame.elevation,
         staticRefs: frame.staticRefs,
+        withheldRefs: frame.withheldRefs,
         fogVisible: frame.fogVisible,
         ghosts: frame.ghosts,
         ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),

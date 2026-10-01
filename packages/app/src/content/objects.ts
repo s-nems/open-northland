@@ -12,11 +12,12 @@ import {
   drawsAsFlatDecor,
   drawsInGroundPass,
   landscapeRecordsByName,
+  playsOnceThenRests,
   servedAtlasStem,
   servedShadowStem,
 } from './ir/joins.js';
 import { loadLayer, MissingAtlasError } from './ir/load.js';
-import type { ContentIr } from './ir/rows.js';
+import type { ContentIr, LandscapeGfxRow } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
 import { isGroundedWall } from './object-grounding.js';
 import { footprintBrightness, unshadedLogicTypeIds } from './object-shading.js';
@@ -102,6 +103,10 @@ async function loadStillMarks(
   return frames.length > 0 ? { source: layer.source, frames } : null;
 }
 
+/** The tick a map's placed one-shot stages start their clips on: the map's first. A restored world past
+ *  their end draws them resting from its first frame. */
+const MAP_START_TICK = 0;
+
 /**
  * The resolved sprites plus a placement-ordinal → sprite map (keyed by triplet index in
  * `objects.placements`), the join the `?map=` entry uses to hand a first-worked resource node's static
@@ -140,11 +145,18 @@ export async function loadMapObjects(
   brightness?: BrightnessField,
 ): Promise<LoadedMapObjects> {
   const recordByName = landscapeRecordsByName(ir);
+  const recordByIndex = new Map((ir.landscapeGfx ?? []).map((row) => [row.index, row]));
   const unshadedLogicTypes = unshadedLogicTypeIds(ir.landscape);
   const standingVegetation = standingVegetationTypeIds(ir.landscape);
+  const typeRecords = objects.types.map((type) => recordByName.get(type));
+  // What each one-shot type rests as once its clip has played.
+  const restRecords = typeRecords.map((record) =>
+    record !== undefined && record.stageEndTarget !== undefined && playsOnceThenRests(record)
+      ? recordByIndex.get(record.stageEndTarget)
+      : undefined,
+  );
   const layerKeys = new Map<string, string | undefined>();
-  for (const type of objects.types) {
-    const record = recordByName.get(type);
+  for (const record of [...typeRecords, ...restRecords]) {
     const key = record !== undefined ? servedAtlasStem(record) : undefined;
     if (key === undefined) continue;
     const shadowStem = servedShadowStem(record?.shadowBmd);
@@ -178,10 +190,9 @@ export async function loadMapObjects(
     /** A built wall whose foot sets into the ground ({@link isGroundedWall}). */
     readonly grounded: boolean;
   }
-  // One ResolvedType per (type, state list), indexed [typeIndex][stateIndex]; a null entry means that
-  // state resolved nothing and the placement falls back to state 0.
-  const resolved: (ResolvedType | null)[][] = objects.types.map((type) => {
-    const record = recordByName.get(type);
+  // One ResolvedType per state list of a record; a null entry means that state resolved nothing and the
+  // placement falls back to state 0. A record that `playsOnce` keeps every frame for its one-shot clip.
+  const resolveStates = (record: LandscapeGfxRow | undefined, playsOnce = false): (ResolvedType | null)[] => {
     if (record === undefined) return [];
     const key = servedAtlasStem(record);
     const layer = key !== undefined ? layers.get(key) : undefined;
@@ -194,7 +205,7 @@ export async function loadMapObjects(
       if (paired === null) return null;
       const { frames, shadowFrames } = paired;
       const animated = record.loopAnimation === true && record.isStatic !== true && frames.length > 1;
-      const count = animated ? frames.length : 1;
+      const count = animated || playsOnce ? frames.length : 1;
       const shadowSource = layer.shadow?.source;
       const hasShadow =
         shadowSource !== undefined && shadowFrames.slice(0, count).some((s) => s !== undefined);
@@ -203,14 +214,23 @@ export async function loadMapObjects(
         frames: frames.slice(0, count),
         shadow: hasShadow ? { source: shadowSource, frames: shadowFrames.slice(0, count) } : undefined,
         decor: drawsAsFlatDecor(record),
-        environmentSway: stillVegetationSway(record, animated, standingVegetation),
+        environmentSway: stillVegetationSway(record, animated || playsOnce, standingVegetation),
         groundPass,
         shaded: record.logicType === undefined || !unshadedLogicTypes.has(record.logicType),
         walkFootprint,
         grounded: isGroundedWall(record),
       };
     });
-  });
+  };
+  // Indexed [typeIndex][stateIndex]. A one-shot type whose resting record drew nothing keeps to its
+  // first frame, as one that has no clip.
+  const restResolved = restRecords.map((record) => resolveStates(record));
+  const resolved = typeRecords.map((record, typeIndex) =>
+    resolveStates(
+      record,
+      (restResolved[typeIndex] ?? []).some((rest) => rest !== null),
+    ),
+  );
 
   // Only an unknown name or an atlas that failed to load is missing graphics. A record drawn by another
   // pass (a ground-lift wave) or whose own frame lists name no drawable bob (the invisible `block`s and
@@ -224,15 +244,8 @@ export async function loadMapObjects(
   const out: MapObjectSprite[] = [];
   const byPlacement = new Map<number, MapObjectSprite>();
   let skipped = 0;
-  forEachPlacement(objects.placements, (hx, hy, typeIndex, placement) => {
-    const states = resolved[typeIndex] ?? [];
-    const level = objects.levels?.[placement] ?? states.length;
-    const stateIndex = stateIndexForLevel(level, states.length);
-    const type = states[stateIndex] ?? states[0];
-    if (type === null || type === undefined) {
-      if (missing[typeIndex] === true) skipped++;
-      return;
-    }
+  /** The sprite of `type` placed at node `(hx, hy)`. */
+  const placeAt = (type: ResolvedType, hx: number, hy: number): MapObjectSprite => {
     const screen = halfCellToScreen(hx, hy);
     // The lift is a draw offset only; `y` (the feet anchor and depth key) stays pre-lift so objects
     // occlude by map row.
@@ -240,7 +253,7 @@ export async function loadMapObjects(
     // The baked `embr` multiplier over the ground this object covers, skipped for the types
     // `unshadedLogicTypeIds` exempts.
     const shade = brightness?.shaded && type.shaded ? brightness : undefined;
-    const sprite: MapObjectSprite = {
+    return {
       x: screen.x,
       y: screen.y,
       source: type.source,
@@ -260,6 +273,24 @@ export async function loadMapObjects(
       // unchanged alpha. Identical at neutral shade, divergent on embr-shaded cells.
       ...(shade !== undefined ? { brightness: footprintBrightness(shade, hx, hy, type.walkFootprint) } : {}),
     };
+  };
+  forEachPlacement(objects.placements, (hx, hy, typeIndex, placement) => {
+    const states = resolved[typeIndex] ?? [];
+    const level = objects.levels?.[placement];
+    const type = states[stateIndexForLevel(level ?? states.length, states.length)] ?? states[0];
+    if (type === null || type === undefined) {
+      if (missing[typeIndex] === true) skipped++;
+      return;
+    }
+    // Approximation: the stage it rests as keeps the placement's level, as a falling tree and its trunk
+    // both count the tree's wood (`LogicMaximumValency` 5 on each).
+    const rests = restResolved[typeIndex] ?? [];
+    const rest = rests[stateIndexForLevel(level ?? rests.length, rests.length)] ?? rests[0];
+    const placed = placeAt(type, hx, hy);
+    const sprite: MapObjectSprite =
+      rest === null || rest === undefined
+        ? placed
+        : { ...placed, once: { from: MAP_START_TICK, rest: placeAt(rest, hx, hy) } };
     out.push(sprite);
     byPlacement.set(placement, sprite);
   });

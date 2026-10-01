@@ -11,6 +11,7 @@ export interface SceneFrameKey {
   readonly viewport: Viewport;
   readonly elevation: ElevationField;
   readonly staticRefs?: ReadonlySet<number> | undefined;
+  readonly withheldRefs?: ReadonlySet<number> | undefined;
   readonly fogVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
   readonly fogEpoch?: number | undefined;
   readonly ghosts?: GhostSource | undefined;
@@ -31,6 +32,8 @@ interface StoredInputs {
   readonly elevation: ElevationField;
   readonly staticRefs: ReadonlySet<number> | undefined;
   readonly staticCount: number;
+  /** Keyed by identity: its owner hands a new set on every change. */
+  readonly withheldRefs: ReadonlySet<number> | undefined;
   readonly fogVisible: SceneFrameKey['fogVisible'];
   readonly fogEpoch: number | undefined;
   readonly ghosts: GhostSource | undefined;
@@ -73,6 +76,7 @@ export class SpriteSceneCache {
       c.elevation === frame.elevation &&
       c.staticRefs === frame.staticRefs &&
       c.staticCount === (frame.staticRefs?.size ?? 0) &&
+      c.withheldRefs === frame.withheldRefs &&
       c.fogVisible === frame.fogVisible &&
       c.fogEpoch === frame.fogEpoch &&
       c.ghosts === frame.ghosts &&
@@ -102,6 +106,7 @@ export class SpriteSceneCache {
       elevation: frame.elevation,
       staticRefs: frame.staticRefs,
       staticCount: frame.staticRefs?.size ?? 0,
+      withheldRefs: frame.withheldRefs,
       fogVisible: frame.fogVisible,
       fogEpoch: frame.fogEpoch,
       ghosts: frame.ghosts,

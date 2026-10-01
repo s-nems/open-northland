@@ -56,7 +56,7 @@ function blastTrunkAt(sim: Simulation, x: number, good: number): Entity {
   sim.world.add(tree, Resource, { goodType: good, remaining: TREE_WOOD, harvestAtomic: CHOP_ATOMIC });
   stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
   sim.world.add(tree, Felling, { chops: 0 });
-  fellStruckTree(sim.world, ctxOf(sim), tree, at);
+  fellStruckTree(sim.world, ctxOf(sim), tree);
   const [trunk] = sim.world.query(GroundDrop, Stockpile);
   if (trunk === undefined) throw new Error('the stone left no trunk');
   expect(sim.world.has(trunk, HarvestedBy)).toBe(false);

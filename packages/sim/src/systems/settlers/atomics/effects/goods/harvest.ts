@@ -15,6 +15,7 @@ import { eventAt } from '../../../../../core/events.js';
 import type { Fixed } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../../nav/halfcell.js';
+import type { NodeId } from '../../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../../context.js';
 import { stampCarcassFootprint } from '../../../../economy/carcasses.js';
 import { landStrandedDrops } from '../../../../economy/goods-evict.js';
@@ -189,19 +190,19 @@ function reapField(world: World, node: Entity, res: { goodType: number; remainin
 }
 
 /**
- * Fell a {@link Felling} node struck by a siege shot landing at `blast`, as a woodcutter's last stroke
- * would. Original behavior: the shot topples a grown tree outright. Approximation: a young tree vanishes
- * there without a trunk, but trees here carry no growth stage, so every one stands grown.
+ * Fell a {@link Felling} node struck by a siege shot, as a woodcutter's last stroke would, and return the
+ * node it stood on, or null when `node` is no standing tree. Original behavior: the shot topples a grown
+ * tree outright. Approximation: a young tree vanishes there without a trunk, but trees here carry no
+ * growth stage, so every one stands grown. The caller lands the drops the fall leaves stranded.
  */
-export function fellStruckTree(
-  world: World,
-  ctx: SystemContext,
-  node: Entity,
-  blast: { readonly x: Fixed; readonly y: Fixed },
-): void {
+export function fellStruckTree(world: World, ctx: SystemContext, node: Entity): NodeId | null {
   const res = world.tryGet(node, Resource);
-  if (res === undefined || !world.has(node, Felling)) return;
-  fellNode(world, ctx, node, res.goodType, res.remaining, blast);
+  const terrain = ctx.terrain;
+  if (res === undefined || terrain === undefined || !world.has(node, Felling)) return null;
+  const pos = world.get(node, Position);
+  const at = nodeOfPosition(pos.x, pos.y);
+  fellNode(world, ctx, node, res.goodType, res.remaining, undefined);
+  return terrain.nodeAtClamped(at.hx, at.hy);
 }
 
 /**
@@ -220,6 +221,7 @@ function fellNode(
 ): void {
   const pos = world.get(node, Position);
   const { x, y } = pos;
+  const gfxIndex = world.tryGet(node, Resource)?.gfxIndex;
   const trunk = dropGroundPile(world, x, y, goodType, yieldAmount);
   if (feller !== undefined) markHarvestedBy(world, trunk, feller);
   // The stump is pure decor: non-blocking and not harvestable.
@@ -235,6 +237,7 @@ function fellNode(
     goodType,
     amount: yieldAmount,
     at: eventAt(x, y),
+    ...(gfxIndex !== undefined ? { gfxIndex } : {}),
   });
 }
 

@@ -126,7 +126,7 @@ export function levelsRefFrom(record: LandscapeGfxRow): GatheringNodeLevelsRef |
 }
 
 /** Pick the representative (lowest-index) placeable gfx record of a pipeline stage, or `undefined`. */
-function representativeRecord(
+export function representativeRecord(
   stage: GatheringStageRow | undefined,
   byIndex: ReadonlyMap<number, LandscapeGfxRow>,
 ): LandscapeGfxRow | undefined {

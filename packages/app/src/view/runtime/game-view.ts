@@ -25,6 +25,7 @@ import {
 import { type Application, Container } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
 import { emblemBuildingType } from '../../content/building-gfx/emblems.js';
+import type { FellingClips } from '../../content/felling-clips.js';
 import { loadGuiArt } from '../../content/gui-art.js';
 import { hasDebugFlag } from '../../diag/debug-flags.js';
 import {
@@ -138,6 +139,8 @@ export interface GameViewDeps {
   readonly renderer: WorldRenderer;
   /** Absent in a checkout without decoded content, which leaves the animated worker field empty. */
   readonly sheet?: SpriteSheet;
+  /** The falling clips felled trees play; absent, a felled tree gives way to its trunk at once. */
+  readonly fellingClips?: FellingClips;
   /** The world as the runtime reads it; the entry owns the simulation behind it. */
   readonly host: SessionHost;
   /** The session this client runs: it decides which ticks run, owns tempo and pause, and is where every
