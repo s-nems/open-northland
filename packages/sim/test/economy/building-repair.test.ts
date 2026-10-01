@@ -201,6 +201,41 @@ describe('building repair', () => {
     expect(repairSite(sim, builder)).toBe(house);
   });
 
+  it('keeps a hammerer on its site when its crewmate leaves for a repair in the same pass', () => {
+    const sim = new Simulation({ seed: 8, content: constructionContent(), map: grassMap(48, 5) });
+    const owned = (e: Entity, player: number): Entity => {
+      sim.world.add(e, Owner, { player });
+      return e;
+    };
+    const supplied = (x: number, player: number): Entity => {
+      const site = owned(siteAt(sim, HOUSE, x, 1), player);
+      sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+      sim.world.mut(site, Stockpile).amounts.set(WOOD, 1);
+      return site;
+    };
+    // Another player's lone hammerer plans first and takes the pass's crew count.
+    const rivalSite = supplied(4, 1);
+    const rival = owned(builderAt(sim, 4, 3), 1);
+    sim.world.add(rival, SiteAssignment, { site: rivalSite, pinned: false });
+    const shared = supplied(12, 0);
+    const leaver = owned(builderAt(sim, 11, 3), 0);
+    const stayer = owned(builderAt(sim, 13, 3), 0);
+    for (const builder of [leaver, stayer])
+      sim.world.add(builder, SiteAssignment, { site: shared, pinned: false });
+    const house = owned(damagedHouseAt(sim, 22, 1, 300), 0);
+    // One place left in the repair crew, for the first of the pair.
+    for (let i = 0; i < REPAIR_CREW_LIMIT - 1; i++) {
+      const mender = owned(builderAt(sim, 21 + i, 3), 0);
+      sim.world.add(mender, SiteAssignment, { site: house, pinned: false });
+    }
+    supplied(36, 0);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(repairSite(sim, leaver)).toBe(house);
+    expect(repairSite(sim, stayer)).toBe(shared);
+  });
+
   it('leaves a damaged upgrade site under attack to the repair crew, not the construction crew', () => {
     const sim = new Simulation({ seed: 10, content: constructionContent(), map: grassMap(10, 3) });
     const site = siteAt(sim, HOUSE, 6, 1);

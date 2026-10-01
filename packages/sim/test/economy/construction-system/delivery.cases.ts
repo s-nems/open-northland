@@ -516,10 +516,9 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     const sim = new Simulation({ seed: 24, content: constructionContent(), map: grassMap(16, 5) });
     const near = siteAt(sim, HOUSE, 3, 1);
     const far = siteAt(sim, HOUSE, 12, 1);
-    for (const site of [near, far]) {
-      sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
-      sim.world.mut(site, Stockpile).amounts.set(WOOD, 1);
-    }
+    for (const site of [near, far]) sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+    // Only a site holding its whole bill draws a hand off a hammering crew.
+    sim.world.mut(far, Stockpile).amounts.set(WOOD, 1);
     const automatic = builderAt(sim, 2, 3);
     const pinned = builderAt(sim, 2, 4);
     sim.world.add(automatic, SiteAssignment, { site: far, pinned: false });
@@ -529,6 +528,108 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
 
     expect(sim.world.get(automatic, SiteAssignment)).toEqual({ site: far, pinned: false });
     expect(sim.world.get(pinned, SiteAssignment)).toEqual({ site: far, pinned: true });
+  });
+
+  it('draws a fetching crew builder to a farther fully supplied site nobody is hammering', () => {
+    const sim = new Simulation({ seed: 28, content: constructionContent(), map: grassMap(40, 5) });
+    const waiting = siteAt(sim, HOUSE, 4, 1);
+    const ready = siteAt(sim, HOUSE, 30, 1);
+    sim.world.mut(ready, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(ready, Stockpile).amounts.set(WOOD, 1);
+    sim.world.mut(ready, UnderConstruction).labor = fx.div(fx.fromInt(9), fx.fromInt(10));
+    builtBuildingAt(sim, HEADQUARTERS, 0, 1, [
+      [STONE, 10],
+      [WOOD, 10],
+    ]);
+    const crew = builderAt(sim, 3, 3);
+    sim.world.add(crew, SiteAssignment, { site: waiting, pinned: false });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(crew, SiteAssignment)).toEqual({ site: ready, pinned: false });
+    expect(sim.world.has(crew, SupplyRun)).toBe(false);
+  });
+
+  it('sends an idle builder past a nearer staffed site to one nobody is hammering', () => {
+    const sim = new Simulation({ seed: 31, content: constructionContent(), map: grassMap(40, 5) });
+    const staffed = siteAt(sim, HOUSE, 6, 1);
+    const unstaffed = siteAt(sim, HOUSE, 30, 1);
+    for (const site of [staffed, unstaffed]) sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+    const hammerer = builderAt(sim, 6, 3);
+    sim.world.add(hammerer, SiteAssignment, { site: staffed, pinned: false });
+    const idle = builderAt(sim, 4, 3);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(idle, SiteAssignment)).toEqual({ site: unstaffed, pinned: false });
+  });
+
+  it('sends a crew hauler to a site nobody is hammering while its hammerer stays', () => {
+    const sim = new Simulation({ seed: 32, content: constructionContent(), map: grassMap(40, 5) });
+    const shared = siteAt(sim, HOUSE, 6, 1);
+    const unstaffed = siteAt(sim, HOUSE, 30, 1);
+    for (const site of [shared, unstaffed]) sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+    builtBuildingAt(sim, HEADQUARTERS, 0, 1, [[WOOD, 10]]);
+    const hauler = builderAt(sim, 5, 3);
+    const hammerer = builderAt(sim, 7, 3);
+    for (const builder of [hauler, hammerer])
+      sim.world.add(builder, SiteAssignment, { site: shared, pinned: false });
+    addCurrentAtomic(sim.world, hammerer, {
+      atomicId: BUILD_HOUSE_ATOMIC,
+      duration: 10,
+      effect: { kind: 'construct', site: shared },
+      targetEntity: shared,
+      targetTile: null,
+    });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(hauler, SiteAssignment)).toEqual({ site: unstaffed, pinned: false });
+    expect(sim.world.get(hammerer, SiteAssignment)).toEqual({ site: shared, pinned: false });
+  });
+
+  it('sends one hauling crew builder to an unstaffed supplied site and keeps the rest hauling', () => {
+    const sim = new Simulation({ seed: 29, content: constructionContent(), map: grassMap(40, 5) });
+    const waiting = siteAt(sim, HOUSE, 4, 1);
+    const ready = siteAt(sim, HOUSE, 30, 1);
+    sim.world.mut(ready, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(ready, Stockpile).amounts.set(WOOD, 1);
+    builtBuildingAt(sim, HEADQUARTERS, 0, 1, [
+      [STONE, 10],
+      [WOOD, 10],
+    ]);
+    const builders = Array.from({ length: 3 }, (_, i) => builderAt(sim, 3 + i, 3));
+    for (const builder of builders) sim.world.add(builder, SiteAssignment, { site: waiting, pinned: false });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const moved = builders.filter((b) => sim.world.tryGet(b, SiteAssignment)?.site === ready);
+    expect(moved).toHaveLength(1);
+    const haulers = builders.filter((b) => sim.world.tryGet(b, SupplyRun)?.site === waiting);
+    expect(haulers).toHaveLength(2);
+  });
+
+  it('spares one hand from a hammering crew of two for an unstaffed supplied site, never a lone hammerer', () => {
+    const sim = new Simulation({ seed: 30, content: constructionContent(), map: grassMap(48, 5) });
+    const supplied = (x: number): Entity => {
+      const site = siteAt(sim, HOUSE, x, 1);
+      sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+      sim.world.mut(site, Stockpile).amounts.set(WOOD, 1);
+      return site;
+    };
+    const pair = supplied(4);
+    const lone = supplied(12);
+    const ready = supplied(36);
+    const pairCrew = [builderAt(sim, 3, 3), builderAt(sim, 5, 3)];
+    for (const builder of pairCrew) sim.world.add(builder, SiteAssignment, { site: pair, pinned: false });
+    const loneBuilder = builderAt(sim, 12, 3);
+    sim.world.add(loneBuilder, SiteAssignment, { site: lone, pinned: false });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const siteOf = (b: Entity): Entity | undefined => sim.world.tryGet(b, SiteAssignment)?.site;
+    expect(pairCrew.map(siteOf).sort()).toEqual([pair, ready].sort());
+    expect(siteOf(loneBuilder)).toBe(lone);
   });
 
   it('a builder fetch skips a pile buried under walls for the nearest reachable source', () => {

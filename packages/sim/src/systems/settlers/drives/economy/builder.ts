@@ -44,18 +44,19 @@ import { constructionMaterialResolver } from './site-supply.js';
 type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
 
 /**
- * BUILD - mend the nearest damaged building that is safe to reach, else keep a useful automatic crew
- * assignment stable, otherwise move the builder to the nearest reachable site with material to fetch or
- * delivered labor to install, and with no task anywhere wait beside a site. A road or wall run the
- * player started ({@link BuildMode}) goes before all of that. Walls wait while a building site holds a
- * task the builder can do, a damaged wall goes before a new segment, and road sites wait while a building
- * or a wall site holds one. Player pins and unfinished workplace bindings are strict: their builders stay
- * with that site even while another has work.
+ * BUILD - mend the nearest damaged building that is safe to reach, else hammer delivered material before
+ * fetching more and keep a useful automatic crew assignment stable, otherwise move the builder to the
+ * nearest reachable site with material to fetch or delivered labor to install, and with no task anywhere
+ * wait beside a site. A road or wall run the player started ({@link BuildMode}) goes before all of that.
+ * Walls wait while a building site holds a task the builder can do, a damaged wall goes before a new
+ * segment, and road sites wait while a building or a wall site holds one. Player pins and unfinished
+ * workplace bindings are strict: their builders stay with that site even while another has work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
  * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the
  * builder is already on included, where the original recruits only builders with no site, then walls,
- * then roads last (owner ruling).
+ * then roads last (owner ruling), and hammering ahead of hauling with a spare hand for an empty supplied
+ * site.
  */
 export function planBuilder(
   plan: PlannerContext,
@@ -66,7 +67,7 @@ export function planBuilder(
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
   if (!jobCanBuild(ctx.content, settler.jobType)) {
-    dropAssignment(plan);
+    dropAssignment(plan, claims);
     return false;
   }
   const materials = constructionMaterialResolver(plan, spacing);
@@ -87,12 +88,12 @@ export function planBuilder(
   const bound = mode === undefined ? boundConstructionSite(plan) : null;
   const locked = pinned ?? bound;
   if (locked !== null && segmentAwaitsClearance(plan, locked)) {
-    dropAssignment(plan);
+    dropAssignment(plan, claims);
     return false;
   }
   if (locked !== null) {
-    stampAssignment(plan, locked, pinned !== null);
-    if (!holdSegment(plan, locked)) return false;
+    stampAssignment(plan, claims, locked, pinned !== null);
+    if (!holdSegment(plan, claims, locked)) return false;
     // A player's pin chose the risk; a workplace binding waits out the attack like an automatic crew.
     const repairing = needsRepair(world, locked);
     if (repairing && (pinned !== null || repairs.isSafe(locked)) && startRepair(plan, spacing, locked)) {
@@ -164,17 +165,17 @@ export function planBuilder(
         ? pickRoad(targets.roadSiteCells, runStandable, null)
         : nearestSite(targets.wallSiteCells, runStandable, null));
     if (next !== null) {
-      stampAssignment(plan, next, true);
-      if (!holdSegment(plan, next)) return false;
+      stampAssignment(plan, claims, next, true);
+      if (!holdSegment(plan, claims, next)) return false;
       if (!workAtSite(plan, spacing, claims, materials, next)) waitAtSite(plan, spacing, next);
       return true;
     }
     // Nothing of the kind is left to claim: the run is over and normal priorities resume.
     world.remove(e, BuildMode);
-    dropAssignment(plan);
+    dropAssignment(plan, claims);
   }
 
-  if (repairNearest(plan, spacing, repairs, avoidSite, false)) return true;
+  if (repairNearest(plan, spacing, repairs, claims, avoidSite, false)) return true;
 
   // Walls come after buildings: an automatic builder turns to one only while no building site holds a
   // task it can do, so a house starved of material does not stall the walls. Project rule.
@@ -220,7 +221,7 @@ export function planBuilder(
   if (
     world.canonicalQuery(Damaged, Palisade, Position).length > 0 &&
     !wallsWait() &&
-    repairNearest(plan, spacing, repairs, avoidSite, true)
+    repairNearest(plan, spacing, repairs, claims, avoidSite, true)
   ) {
     return true;
   }
@@ -228,23 +229,45 @@ export function planBuilder(
   // Crew membership is sticky while it still has useful work. This avoids re-ranking builders between
   // equally valid sites every time one hammer atomic completes.
   const crewSite = assigned?.pinned === false && avoidSite?.(assigned.site) !== true ? assigned.site : null;
+  const keptCrew = crewSite !== null && hasTask(crewSite) && inTurn(crewSite) ? crewSite : null;
+  // Delivered material with nobody on it goes before fetching more. A builder not hammering at its own site,
+  // idle or hauling, takes the nearest such site first, so a crew's hauler leaves while its hammerer stays.
+  // A hammering crew of two or more spares a hand only to such a site holding its whole bill.
+  const hammering =
+    keptCrew !== null &&
+    claims.hasHammerWork(keptCrew) &&
+    (!claims.hasHammerClaim(keptCrew) || !materials.has(keptCrew));
+  const spareHand = keptCrew !== null && hammering && claims.crewSize(keptCrew) > 1;
+  const wantsHand = (candidate: Entity): boolean =>
+    hammering
+      ? claims.isReadyUnstaffed(candidate)
+      : claims.hasHammerWork(candidate) && claims.crewSize(candidate) === 0;
+  if ((!hammering || spareHand) && claims.mayOfferHammer(settler.tribe, settler.owner, wantsHand)) {
+    const opening = nearestSite(
+      targets.constructionSiteCells,
+      (candidate) => wantsHand(candidate) && canStandAt(candidate),
+    );
+    if (opening !== null && startHammer(plan, spacing, claims, opening)) {
+      stampAssignment(plan, claims, opening, false);
+      return true;
+    }
+  }
   const site =
-    crewSite !== null && hasTask(crewSite) && inTurn(crewSite)
-      ? crewSite
-      : (nearestBuildingTask() ??
-        nearestWallTask() ??
-        (claims.roadMayHaveTask(materials.canSource, settler.owner)
-          ? pickRoad(targets.roadSiteCells, hasTask)
-          : null));
+    keptCrew ??
+    nearestBuildingTask() ??
+    nearestWallTask() ??
+    (claims.roadMayHaveTask(materials.canSource, settler.owner)
+      ? pickRoad(targets.roadSiteCells, hasTask)
+      : null);
   if (site !== null && isSoloSite(world, site)) {
     // A segment or road site is claimed before any hammer or delivery, so it has one builder.
-    stampAssignment(plan, site, false);
-    if (!holdSegment(plan, site)) return false;
+    stampAssignment(plan, claims, site, false);
+    if (!holdSegment(plan, claims, site)) return false;
     if (!workAtSite(plan, spacing, claims, materials, site)) waitAtSite(plan, spacing, site);
     return true;
   }
   if (site !== null && workAtSite(plan, spacing, claims, materials, site)) {
-    stampAssignment(plan, site, false);
+    stampAssignment(plan, claims, site, false);
     return true;
   }
 
@@ -263,12 +286,12 @@ export function planBuilder(
       ? crewSite
       : nearestInTurn(canStandAt, everyWall, () => null));
   if (staging !== null) {
-    stampAssignment(plan, staging, false);
-    if (!holdSegment(plan, staging)) return false;
+    stampAssignment(plan, claims, staging, false);
+    if (!holdSegment(plan, claims, staging)) return false;
     waitAtSite(plan, spacing, staging);
     return true;
   }
-  dropAssignment(plan);
+  dropAssignment(plan, claims);
   return false;
 }
 
@@ -278,6 +301,7 @@ function repairNearest(
   plan: PlannerContext,
   spacing: PlannerSpacing,
   repairs: RepairCrews,
+  claims: ConstructionTaskClaims,
   avoidSite: ((site: Entity) => boolean) | undefined,
   walls: boolean,
 ): boolean {
@@ -308,7 +332,7 @@ function repairNearest(
     );
   if (site === null || !startRepair(plan, spacing, site)) return false;
   repairs.join(site, e);
-  stampAssignment(plan, site, false);
+  stampAssignment(plan, claims, site, false);
   return true;
 }
 
@@ -345,9 +369,9 @@ function keptRunSite(plan: PlannerContext, mode: 'roads' | 'walls', site: Entity
 
 /** Take a wall segment's single-builder claim; an ordinary building always passes. A lost claim drops
  *  the assignment. */
-function holdSegment(plan: PlannerContext, site: Entity): boolean {
+function holdSegment(plan: PlannerContext, claims: ConstructionTaskClaims, site: Entity): boolean {
   if (claimSite(plan.world, site, plan.entity)) return true;
-  dropAssignment(plan);
+  dropAssignment(plan, claims);
   return false;
 }
 
@@ -359,7 +383,8 @@ function segmentAwaitsClearance(plan: PlannerContext, site: Entity): boolean {
 }
 
 /** Leave crew membership, releasing any one-builder site claim before the assignment that anchors it. */
-function dropAssignment(plan: PlannerContext): void {
+function dropAssignment(plan: PlannerContext, claims: ConstructionTaskClaims): void {
+  claims.moveCrew(plan.world.tryGet(plan.entity, SiteAssignment)?.site, undefined);
   releaseSiteClaim(plan.world, plan.entity);
   plan.world.remove(plan.entity, SiteAssignment);
 }
@@ -417,9 +442,15 @@ function waitAtSite(plan: PlannerContext, spacing: PlannerSpacing, site: Entity)
   if (stand !== null) atOrWalk(world, e, here, stand, () => {});
 }
 
-function stampAssignment(plan: PlannerContext, site: Entity, pinned: boolean): void {
+function stampAssignment(
+  plan: PlannerContext,
+  claims: ConstructionTaskClaims,
+  site: Entity,
+  pinned: boolean,
+): void {
   const { world, entity: e } = plan;
   const assigned = world.tryGet(e, SiteAssignment);
+  claims.moveCrew(assigned?.site, site);
   if (assigned === undefined || assigned.site !== site || assigned.pinned !== pinned) {
     if (assigned?.site !== site) releaseSiteClaim(world, e);
     world.add(e, SiteAssignment, { site, pinned });
