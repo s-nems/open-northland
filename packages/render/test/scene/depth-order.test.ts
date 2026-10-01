@@ -62,6 +62,31 @@ describe('retained scene depth order', () => {
     expect(returning.map((value) => value.ref)).toEqual([1, 2]);
     const singleton = item(9, 0);
     order.sort([singleton]);
-    expect(Reflect.get(order, 'scratch')).toEqual([undefined]);
+    const scratch: unknown[] = Reflect.get(order, 'scratch');
+    expect(scratch.every((slot) => slot === undefined)).toBe(true);
+  });
+
+  it('matches the total order while members enter, leave, repeat a ref and teleport', () => {
+    const order = new SpriteDepthOrder();
+    let seed = 7;
+    const random = (): number => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    const depthOf = new Map<number, number>();
+    for (let frame = 0; frame < 60; frame++) {
+      const items: SpriteDrawItem[] = [];
+      for (let ref = 0; ref < 120; ref++) {
+        if (random() < 0.15) continue;
+        const moved = (depthOf.get(ref) ?? random() * 50) + (random() < 0.1 ? random() * 40 - 20 : 0);
+        depthOf.set(ref, moved);
+        items.push(item(ref, Math.round(moved)));
+      }
+      if (frame % 9 === 0) items.push(item(5, 3));
+      items.sort(() => random() - 0.5);
+      const expected = oracle(items);
+      order.sort(items);
+      expect(items).toEqual(expected);
+    }
   });
 });

@@ -1,8 +1,23 @@
 import type { SpriteDrawItem } from './draw-item.js';
 
-/** Retains only the last visible order; a camera jump falls back to bounded merge work. */
+/** Fresh members past which a membership change sorts them by merge rather than by insertion. */
+const FRESH_INSERTION_LIMIT = 32;
+
+/**
+ * Sorts each frame's draw list by depth, then ref, starting from the last order: members it held keep
+ * their old rank and settle by bounded insertion, members new to it are sorted apart and merged in, so
+ * a few entities entering or leaving the view cost little. A camera jump falls back to merge work.
+ */
 export class SpriteDepthOrder {
+  /** The last order's rank of each member, exactly its members. */
   private readonly ranks = new Map<number, number>();
+  /** The last order's refs by rank, to drop a departed member's rank. */
+  private ranked = new Float64Array(0);
+  private rankedCount = 0;
+  /** Per last-order rank, whether this sort seated its member again. */
+  private kept = new Uint8Array(0);
+  /** Item slots by rank while seeding, then merge scratch; emptied after each sort so it holds no item
+   *  past it. */
   private readonly scratch: (SpriteDrawItem | undefined)[] = [];
   // Numeric keys move with their object slots; buffers grow only when the visible count exceeds
   // capacity.
@@ -13,7 +28,7 @@ export class SpriteDepthOrder {
 
   sort(items: SpriteDrawItem[]): void {
     const n = items.length;
-    this.reserve(n);
+    this.reserve(Math.max(n, this.rankedCount));
     let finite = true;
     for (let i = 0; i < n; i++) {
       const item = items[i];
@@ -26,124 +41,173 @@ export class SpriteDepthOrder {
     }
     if (!finite) {
       items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
-      this.ranks.clear();
-      for (let i = 0; i < n; i++) {
-        const item = items[i];
-        if (item !== undefined) this.ranks.set(item.ref, i);
-      }
-      this.clearScratch(n);
+      for (let i = 0; i < n; i++) this.refs[i] = items[i]?.ref ?? 0;
+      this.rank(n);
       return;
     }
-    let sameMembers = n === this.ranks.size;
-    if (sameMembers) {
-      for (let i = 0; i < n; i++) {
-        const ref = this.refs[i] ?? 0;
-        const rank = this.ranks.get(ref);
-        if (rank === undefined) {
-          sameMembers = false;
-          break;
-        }
-        this.scratch[rank] = items[i];
+    const held = this.seed(items);
+    this.settle(items, 0, held);
+    if (n - held > FRESH_INSERTION_LIMIT) this.mergeSort(items, held, n);
+    else this.insert(items, held, n, Number.POSITIVE_INFINITY);
+    this.mergeRuns(items, 0, held, n);
+    this.rank(n);
+  }
+
+  /**
+   * Move the members the last order held to the front in that order and the fresh ones behind them;
+   * returns how many were held. Each held rank seats one item, so a repeated ref seeds as fresh.
+   */
+  private seed(items: SpriteDrawItem[]): number {
+    const n = items.length;
+    // Fresh items compact to the front first, never past the slot being read.
+    let fresh = 0;
+    for (let i = 0; i < n; i++) {
+      const item = items[i];
+      if (item === undefined) continue;
+      const rank = this.ranks.get(this.refs[i] ?? 0);
+      if (rank !== undefined && this.scratch[rank] === undefined) {
+        this.scratch[rank] = item;
         this.scratchDepths[rank] = this.depths[i] ?? 0;
-        this.scratchRefs[rank] = ref;
+        this.scratchRefs[rank] = this.refs[i] ?? 0;
+        this.kept[rank] = 1;
+        continue;
+      }
+      items[fresh] = item;
+      this.depths[fresh] = this.depths[i] ?? 0;
+      this.refs[fresh] = this.refs[i] ?? 0;
+      fresh++;
+    }
+    const held = n - fresh;
+    for (let i = fresh - 1; i >= 0; i--) {
+      const item = items[i];
+      if (item === undefined) continue;
+      items[held + i] = item;
+      this.depths[held + i] = this.depths[i] ?? 0;
+      this.refs[held + i] = this.refs[i] ?? 0;
+    }
+    let at = 0;
+    for (let rank = 0; rank < this.rankedCount; rank++) {
+      const item = this.scratch[rank];
+      if (item === undefined) continue;
+      this.scratch[rank] = undefined;
+      items[at] = item;
+      this.depths[at] = this.scratchDepths[rank] ?? 0;
+      this.refs[at] = this.scratchRefs[rank] ?? 0;
+      at++;
+    }
+    return held;
+  }
+
+  /** Settle a nearly sorted run by insertion; ordinary motion crosses few neighbours, and past a budget
+   *  of shifts the run is merge-sorted, so a teleport never turns this into quadratic work. */
+  private settle(items: SpriteDrawItem[], from: number, to: number): void {
+    const count = to - from;
+    const budget = count * Math.max(1, Math.ceil(Math.log2(Math.max(count, 1))));
+    if (!this.insert(items, from, to, budget)) this.mergeSort(items, from, to);
+  }
+
+  /** Insertion-sort `[from, to)`; false once the shifts pass `budget`, leaving the run unsorted. */
+  private insert(items: SpriteDrawItem[], from: number, to: number, budget: number): boolean {
+    let shifts = 0;
+    for (let i = from + 1; i < to; i++) {
+      const item = items[i];
+      if (item === undefined) continue;
+      const depth = this.depths[i] ?? 0;
+      const ref = this.refs[i] ?? 0;
+      let j = i;
+      while (j > from) {
+        const previous = items[j - 1];
+        const previousDepth = this.depths[j - 1] ?? 0;
+        if (
+          previous === undefined ||
+          previousDepth < depth ||
+          (previousDepth === depth && (this.refs[j - 1] ?? 0) <= ref)
+        )
+          break;
+        items[j] = previous;
+        this.depths[j] = previousDepth;
+        this.refs[j] = this.refs[j - 1] ?? 0;
+        j--;
+        shifts++;
+      }
+      items[j] = item;
+      this.depths[j] = depth;
+      this.refs[j] = ref;
+      if (shifts > budget) return false;
+    }
+    return true;
+  }
+
+  /** Bottom-up merge sort of `[from, to)`. */
+  private mergeSort(items: SpriteDrawItem[], from: number, to: number): void {
+    for (let width = 1; width < to - from; width *= 2) {
+      for (let start = from; start < to; start += width * 2) {
+        const mid = Math.min(to, start + width);
+        this.mergeRuns(items, start, mid, Math.min(to, mid + width));
       }
     }
-    if (sameMembers) {
-      for (let i = 0; i < n; i++) {
-        const item = this.scratch[i];
-        if (item !== undefined) items[i] = item;
-        this.depths[i] = this.scratchDepths[i] ?? 0;
-        this.refs[i] = this.scratchRefs[i] ?? 0;
-      }
-      // Ordinary motion crosses few neighbours. Teleports never turn this into quadratic work.
-      let shifts = 0;
-      const budget = n * Math.max(1, Math.ceil(Math.log2(n)));
-      for (let i = 1; i < n; i++) {
-        const item = items[i];
-        if (item === undefined) continue;
-        const depth = this.depths[i] ?? 0;
-        const ref = this.refs[i] ?? 0;
-        let j = i;
-        while (j > 0) {
-          const previous = items[j - 1];
-          const previousDepth = this.depths[j - 1] ?? 0;
-          if (
-            previous === undefined ||
-            previousDepth < depth ||
-            (previousDepth === depth && (this.refs[j - 1] ?? 0) <= ref)
-          )
-            break;
-          items[j] = previous;
-          this.depths[j] = previousDepth;
-          this.refs[j] = this.refs[j - 1] ?? 0;
-          j--;
-          shifts++;
-        }
-        items[j] = item;
-        this.depths[j] = depth;
-        this.refs[j] = ref;
-        if (shifts > budget) {
-          this.merge(items);
-          break;
-        }
-      }
-    } else this.merge(items);
-    if (!sameMembers) this.ranks.clear();
-    for (let i = 0; i < n; i++) this.ranks.set(this.refs[i] ?? 0, i);
-    this.clearScratch(n);
+  }
+
+  /** Merge the sorted runs `[from, mid)` and `[mid, to)` in place through the scratch buffers. */
+  private mergeRuns(items: SpriteDrawItem[], from: number, mid: number, to: number): void {
+    if (mid <= from || mid >= to) return;
+    const lastLeft = mid - 1;
+    // Already in order: the common case of a fresh member landing behind everything held.
+    if (
+      (this.depths[lastLeft] ?? 0) < (this.depths[mid] ?? 0) ||
+      ((this.depths[lastLeft] ?? 0) === (this.depths[mid] ?? 0) &&
+        (this.refs[lastLeft] ?? 0) <= (this.refs[mid] ?? 0))
+    )
+      return;
+    let left = from;
+    let right = mid;
+    for (let i = from; i < to; i++) {
+      const leftDepth = this.depths[left] ?? 0;
+      const rightDepth = this.depths[right] ?? 0;
+      const takeLeft =
+        right >= to ||
+        (left < mid &&
+          (leftDepth < rightDepth ||
+            (leftDepth === rightDepth && (this.refs[left] ?? 0) <= (this.refs[right] ?? 0))));
+      const at = takeLeft ? left++ : right++;
+      this.scratch[i] = items[at];
+      this.scratchDepths[i] = this.depths[at] ?? 0;
+      this.scratchRefs[i] = this.refs[at] ?? 0;
+    }
+    for (let i = from; i < to; i++) {
+      const item = this.scratch[i];
+      if (item !== undefined) items[i] = item;
+      this.scratch[i] = undefined;
+      this.depths[i] = this.scratchDepths[i] ?? 0;
+      this.refs[i] = this.scratchRefs[i] ?? 0;
+    }
+  }
+
+  /** Make the first `n` keyed refs the remembered order: departed members lose their rank, the rest
+   *  take their new one. */
+  private rank(n: number): void {
+    for (let rank = 0; rank < this.rankedCount; rank++) {
+      if (this.kept[rank] === 1) this.kept[rank] = 0;
+      else this.ranks.delete(this.ranked[rank] ?? 0);
+    }
+    for (let i = 0; i < n; i++) {
+      const ref = this.refs[i] ?? 0;
+      this.ranks.set(ref, i);
+      this.ranked[i] = ref;
+    }
+    this.rankedCount = n;
   }
 
   private reserve(n: number): void {
     if (n <= this.depths.length) return;
     const capacity = Math.max(n, this.depths.length * 2);
+    const ranked = new Float64Array(capacity);
+    ranked.set(this.ranked.subarray(0, this.rankedCount));
+    this.ranked = ranked;
+    this.kept = new Uint8Array(capacity);
     this.depths = new Float64Array(capacity);
     this.refs = new Float64Array(capacity);
     this.scratchDepths = new Float64Array(capacity);
     this.scratchRefs = new Float64Array(capacity);
-  }
-
-  private clearScratch(n: number): void {
-    this.scratch.length = n;
-    for (let i = 0; i < n; i++) this.scratch[i] = undefined;
-  }
-
-  private merge(items: SpriteDrawItem[]): void {
-    const n = items.length;
-    for (let width = 1; width < n; width *= 2) {
-      for (let start = 0; start < n; start += width * 2) {
-        const mid = Math.min(n, start + width);
-        const end = Math.min(n, mid + width);
-        let left = start,
-          right = mid;
-        for (let i = start; i < end; i++) {
-          const a = left < mid ? items[left] : undefined;
-          const b = right < end ? items[right] : undefined;
-          const leftDepth = this.depths[left] ?? 0;
-          const rightDepth = this.depths[right] ?? 0;
-          if (
-            a !== undefined &&
-            (b === undefined ||
-              leftDepth < rightDepth ||
-              (leftDepth === rightDepth && (this.refs[left] ?? 0) <= (this.refs[right] ?? 0)))
-          ) {
-            this.scratch[i] = a;
-            this.scratchDepths[i] = leftDepth;
-            this.scratchRefs[i] = this.refs[left] ?? 0;
-            left++;
-          } else if (b !== undefined) {
-            this.scratch[i] = b;
-            this.scratchDepths[i] = rightDepth;
-            this.scratchRefs[i] = this.refs[right] ?? 0;
-            right++;
-          }
-        }
-      }
-      for (let i = 0; i < n; i++) {
-        const item = this.scratch[i];
-        if (item !== undefined) items[i] = item;
-        this.depths[i] = this.scratchDepths[i] ?? 0;
-        this.refs[i] = this.scratchRefs[i] ?? 0;
-      }
-    }
   }
 }
