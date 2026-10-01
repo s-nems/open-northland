@@ -157,7 +157,7 @@ export function resourceBlockedLayer(world: World, terrain: TerrainGraph): Count
 /**
  * Move the nodes {@link resourceBlockedLayer}'s cells gained or lost since the previous call into `into`,
  * returning false when the log was dropped in between or no layer exists, so the reader must re-read the
- * whole layer. One reader per world: the route-region labels.
+ * whole layer. One reader per world: the walk-block mask's levelling.
  */
 export function takeResourceBlockFlips(world: World, terrain: TerrainGraph, into: NodeId[]): boolean {
   const cache = resourceBlockedCache.get(world);
