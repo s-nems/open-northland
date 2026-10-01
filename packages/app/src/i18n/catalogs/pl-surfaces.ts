@@ -10,7 +10,7 @@ export const plSurfaces = {
     7: 'Egipcjanie',
   } as Readonly<Record<number, string>>,
   mainMenu: {
-    eyebrow: 'Dla fanów serii Cultures',
+    eyebrow: 'Strategia ekonomiczna z czasów wikingów',
     items: {
       newGame: 'Nowa gra',
       load: 'Wczytaj grę',

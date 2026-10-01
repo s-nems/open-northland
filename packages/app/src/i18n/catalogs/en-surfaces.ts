@@ -10,7 +10,7 @@ export const enSurfaces = {
     7: 'Egyptians',
   } as Readonly<Record<number, string>>,
   mainMenu: {
-    eyebrow: 'For fans of the Cultures franchise',
+    eyebrow: 'A Viking-era economic strategy game',
     items: {
       newGame: 'New game',
       load: 'Load game',
