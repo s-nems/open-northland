@@ -18,6 +18,18 @@ const STILLS: readonly string[] = Object.values(
 );
 /** How long one still stays before the next crossfades in; menu.css sizes the matching push-in. */
 const DWELL_MS = 14_000;
+/** How far a still drifts during its push-in, in % of the layer; inside menu.css's 7% zoom overhang
+ *  (3.5% a side), so the drift never uncovers an edge. */
+const DRIFT_PERCENT = 2;
+
+/** A still's drift as CSS percentages, in a direction drawn from `random`. */
+export function backdropDrift(random: () => number): { readonly x: string; readonly y: string } {
+  const angle = random() * 2 * Math.PI;
+  return {
+    x: `${(Math.cos(angle) * DRIFT_PERCENT).toFixed(2)}%`,
+    y: `${(Math.sin(angle) * DRIFT_PERCENT).toFixed(2)}%`,
+  };
+}
 
 /** A still drawn at random from `pool`, never `avoid` while the pool holds anything else. */
 export function randomStill(
@@ -117,6 +129,9 @@ async function showOn(layer: HTMLDivElement, url: string): Promise<boolean> {
   // Drop the previous push-in while the layer is hidden, reflow, then restart it with the new still.
   layer.classList.remove('is-visible', 'is-zooming');
   layer.style.backgroundImage = `url("${url}")`;
+  const drift = backdropDrift(Math.random);
+  layer.style.setProperty('--drift-x', drift.x);
+  layer.style.setProperty('--drift-y', drift.y);
   void layer.offsetWidth;
   layer.classList.add('is-visible', 'is-zooming');
   return true;

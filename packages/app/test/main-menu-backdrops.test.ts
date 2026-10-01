@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { randomStill } from '../src/entries/main-menu/backdrops.js';
+import { backdropDrift, randomStill } from '../src/entries/main-menu/backdrops.js';
 import { rotationOrder } from '../src/entries/main-menu/rotation.js';
 
 const POOL = ['01-a.jpg', '02-b.jpg', '03-c.jpg', '04-d.jpg'];
@@ -46,5 +46,19 @@ describe('rotationOrder', () => {
   it('handles empty and single-image pools', () => {
     expect(rotationOrder([], null, () => 0.5)).toEqual([]);
     expect(rotationOrder(['01-a.jpg'], '01-a.jpg', () => 0.5)).toEqual(['01-a.jpg']);
+  });
+});
+
+describe('backdropDrift', () => {
+  const length = (d: { x: string; y: string }): number =>
+    Math.hypot(Number.parseFloat(d.x), Number.parseFloat(d.y));
+
+  it('drifts the same short distance in every direction', () => {
+    for (const r of [0, 0.125, 0.4, 0.77, 0.99]) expect(length(backdropDrift(() => r))).toBeCloseTo(2, 1);
+  });
+
+  it('turns with the injected rng', () => {
+    expect(backdropDrift(() => 0)).toEqual({ x: '2.00%', y: '0.00%' });
+    expect(backdropDrift(() => 0.25)).toEqual({ x: '0.00%', y: '2.00%' });
   });
 });

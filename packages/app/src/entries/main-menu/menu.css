@@ -138,9 +138,10 @@
   filter: saturate(0.55) brightness(0.5);
 }
 
-/* Two layers alternate so each new still arrives as a fade rather than a cut, and the slow push-in
-   makes the backdrop read as alive. The push-in runs longer than the dwell +
-   fade (backdrops.ts DWELL_MS), so the motion never visibly freezes while a still is on screen. */
+/* Two layers alternate so each new still arrives as a fade rather than a cut, and a slow push-in that
+   drifts toward each still's own --drift-x/--drift-y (backdrops.ts) makes the backdrop read as alive.
+   The drift stays inside the zoom's overhang, so no image edge enters the frame. The motion runs longer
+   than the dwell + fade (backdrops.ts DWELL_MS), so it never visibly freezes while a still is on screen. */
 .main-menu__backdrop {
   position: absolute;
   inset: 0;
@@ -155,11 +156,12 @@
 
 .main-menu__backdrop.is-zooming {
   animation: menu-backdrop-zoom 17s linear forwards;
+  will-change: transform;
 }
 
 @keyframes menu-backdrop-zoom {
   to {
-    transform: scale(1.05);
+    transform: translate(var(--drift-x, 0%), var(--drift-y, 0%)) scale(1.07);
   }
 }
 
