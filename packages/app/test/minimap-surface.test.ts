@@ -1,11 +1,13 @@
 import type { MinimapObjects, SceneTerrain } from '@open-northland/render';
 import { positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import { BufferImageSource, Container, Sprite } from 'pixi.js';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { diag } from '../src/diag/index.js';
 import { GOOD_WOOD } from '../src/game/sandbox/ids/index.js';
 import {
   createInlineMinimapBaker,
   createMinimapRasterizer,
+  type MinimapBakerFactory,
   minimapBakeScene,
 } from '../src/hud/minimap/bake.js';
 import { createSeenStandingObjects, minimapFeatureOfGoodTypes } from '../src/hud/minimap/live-objects.js';
@@ -62,7 +64,111 @@ function pixelsOf(ground: Sprite): Uint8Array {
   return source.resource as Uint8Array;
 }
 
+/** A baker whose bakes settle only when the test says so. */
+function deferredBaker(): {
+  readonly factory: MinimapBakerFactory;
+  readonly calls: { resolve: (rgba: Uint8Array) => void; reject: (err: Error) => void }[];
+  disposed: boolean;
+} {
+  const out = {
+    calls: [] as { resolve: (rgba: Uint8Array) => void; reject: (err: Error) => void }[],
+    disposed: false,
+    factory: (() => ({
+      bake: () => new Promise<Uint8Array>((resolve, reject) => out.calls.push({ resolve, reject })),
+      dispose: () => {
+        out.disposed = true;
+      },
+    })) as MinimapBakerFactory,
+  };
+  return out;
+}
+
+function surfaceOn(host: Container, baker: MinimapBakerFactory, resolution: () => number = () => 1) {
+  let now = 0;
+  const surface = createMinimapSurface({
+    container: host,
+    terrain: TERRAIN,
+    map: MAP,
+    colourOf: () => MEADOW,
+    featureOfGoodType: FEATURES,
+    resolution,
+    zoom: () => 1,
+    baker,
+    now: () => now,
+  });
+  return {
+    surface,
+    advance: (ms: number) => {
+      now += ms;
+    },
+  };
+}
+
 describe('minimap ground surface', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('asks for one bake while one is in flight', async () => {
+    const host = new Container();
+    const baker = deferredBaker();
+    const { surface, advance } = surfaceOn(host, baker.factory);
+    const snapshot = snapshotOf([tree(1, 2, 2)]);
+    surface.sync(snapshot, null);
+    advance(OBJECT_REBAKE_INTERVAL_MS);
+    surface.sync(snapshotOf([]), null);
+    surface.sync(snapshotOf([]), null);
+    expect(baker.calls).toHaveLength(1);
+    baker.calls[0]?.resolve(expectedRaster(standingObjects(snapshot)));
+    await settle();
+    expect(groundOf(host).visible).toBe(true);
+    surface.dispose();
+    host.destroy();
+  });
+
+  it('bakes once inline after a failed bake, then stops', async () => {
+    const warn = vi.spyOn(diag, 'warn').mockImplementation(() => {});
+    const host = new Container();
+    const baker = deferredBaker();
+    let resolution = 1;
+    const { surface, advance } = surfaceOn(host, baker.factory, () => resolution);
+    const snapshot = snapshotOf([tree(1, 2, 2)]);
+    surface.sync(snapshot, null);
+    baker.calls[0]?.reject(new Error('worker gone'));
+    await settle();
+    const ground = groundOf(host);
+    expect(ground.visible).toBe(true);
+    expect(pixelsOf(ground)).toEqual(expectedRaster(standingObjects(snapshot)));
+    expect(warn).toHaveBeenCalledTimes(1);
+    const fallback = ground.texture;
+
+    resolution = 2;
+    surface.sync(snapshot, null);
+    advance(OBJECT_REBAKE_INTERVAL_MS);
+    surface.sync(snapshotOf([]), null);
+    await settle();
+    expect(baker.calls).toHaveLength(1);
+    expect(ground.texture).toBe(fallback);
+    surface.dispose();
+    host.destroy();
+  });
+
+  it('lands no texture from a bake that settles after dispose', async () => {
+    const warn = vi.spyOn(diag, 'warn').mockImplementation(() => {});
+    const host = new Container();
+    const baker = deferredBaker();
+    const { surface } = surfaceOn(host, baker.factory);
+    surface.sync(snapshotOf([tree(1, 2, 2)]), null);
+    const ground = groundOf(host);
+    surface.dispose();
+    expect(baker.disposed).toBe(true);
+    baker.calls[0]?.resolve(new Uint8Array(MAP.w * MAP.h * 4));
+    await settle();
+    expect(ground.visible).toBe(false);
+    expect(warn).not.toHaveBeenCalled();
+    host.destroy();
+  });
+
   it('bakes the styled raster at the display resolution and rebakes when it changes', async () => {
     const host = new Container();
     let resolution = 1;

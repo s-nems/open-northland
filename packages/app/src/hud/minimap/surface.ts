@@ -8,7 +8,12 @@ import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { BufferImageSource, type Container, Sprite, Texture } from 'pixi.js';
 import { diag } from '../../diag/index.js';
 import type { Rect } from '../geometry.js';
-import { type MinimapBaker, type MinimapBakerFactory, minimapBakeScene } from './bake.js';
+import {
+  createMinimapRasterizer,
+  type MinimapBaker,
+  type MinimapBakerFactory,
+  minimapBakeScene,
+} from './bake.js';
 import { createSeenStandingObjects } from './live-objects.js';
 
 /** The least wall time between two looks for a change of the seen forest and ore, in ms. */
@@ -40,7 +45,8 @@ export interface MinimapSurface {
   /** Rebake when the bake size, the display resolution times the zoom up to {@link MAX_BAKE_ZOOM},
    *  settled on a new value, or the forest and ore the viewer sees through `fog` changed, looked for at
    *  most once per {@link OBJECT_REBAKE_INTERVAL_MS}. A bake runs on the baker, one at a time; the shown
-   *  picture stays until the next lands on a later sync. */
+   *  picture stays until the next lands on a later sync. A failed bake bakes once on the calling thread
+   *  and stops rebaking. */
   sync(snapshot: WorldSnapshot, fog: FogView | null): void;
   dispose(): void;
 }
@@ -48,7 +54,8 @@ export interface MinimapSurface {
 export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
   const { terrain, cellColours, colourOf, featureOfGoodType, map, resolution, zoom } = deps;
   const colours = cellColourResolver(cellColours, (id) => colourOf?.(id) ?? flatTileColour(id));
-  const baker: MinimapBaker = deps.baker(minimapBakeScene(terrain, colours));
+  const scene = minimapBakeScene(terrain, colours);
+  const baker: MinimapBaker = deps.baker(scene);
   let texture: Texture | null = null;
   const ground = new Sprite();
   ground.visible = false;
@@ -106,7 +113,10 @@ export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
         (err: unknown) => {
           baking = false;
           failed = true;
-          if (!disposed) diag.warn('hud', `minimap ground bake failed: ${String(err)}`);
+          if (disposed) return;
+          // One bake on this thread keeps the ground; the picture then holds still.
+          diag.warn('hud', `minimap ground bake failed, baking once inline: ${String(err)}`);
+          show(createMinimapRasterizer(scene)(width, height, seenObjects.objects()), width, height);
         },
       );
     },

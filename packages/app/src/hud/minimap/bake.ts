@@ -99,36 +99,58 @@ export const createInlineMinimapBaker: MinimapBakerFactory = (scene) => {
   };
 };
 
+/** The part of a `Worker` the bake client uses, so a test can stand in for the thread. */
+export interface MinimapBakeWorker {
+  addEventListener(type: 'message', listener: (event: MessageEvent<MinimapBakeReply>) => void): void;
+  addEventListener(type: 'error', listener: (event: ErrorEvent) => void): void;
+  postMessage(request: MinimapBakeRequest): void;
+  terminate(): void;
+}
+
+const spawnBakeWorker = (): MinimapBakeWorker =>
+  new Worker(new URL('./bake-worker.ts', import.meta.url), { type: 'module' });
+
 /**
  * A baker on a dedicated worker: a bake at a high-DPI display's resolution costs over 100 ms, which on
- * the main thread would stall a frame at boot and on a display-resolution change.
+ * the main thread would stall a frame at boot and on a display-resolution change. A worker error fails
+ * the client for good: the pending bakes and every later one reject at once.
  */
-export const createWorkerMinimapBaker: MinimapBakerFactory = (scene) => {
-  const worker = new Worker(new URL('./bake-worker.ts', import.meta.url), { type: 'module' });
+export function createWorkerMinimapBaker(
+  scene: MinimapBakeScene,
+  spawn: () => MinimapBakeWorker = spawnBakeWorker,
+): MinimapBaker {
+  const worker = spawn();
   const pending = new Map<number, { resolve: (rgba: Uint8Array) => void; reject: (err: Error) => void }>();
   let nextId = 0;
-  const failAll = (err: Error): void => {
+  let failure: Error | null = null;
+  const fail = (err: Error): void => {
+    failure ??= err;
+    worker.terminate();
     for (const { reject } of pending.values()) reject(err);
     pending.clear();
   };
-  worker.addEventListener('message', (event: MessageEvent<MinimapBakeReply>) => {
+  worker.addEventListener('message', (event) => {
     const { id, rgba } = event.data;
     pending.get(id)?.resolve(rgba);
     pending.delete(id);
   });
-  worker.addEventListener('error', (event) => failAll(new Error(`minimap bake worker: ${event.message}`)));
-  const post = (request: MinimapBakeRequest): void => worker.postMessage(request);
-  post({ kind: 'scene', scene });
+  worker.addEventListener('error', (event) => fail(new Error(`minimap bake worker: ${event.message}`)));
+  worker.postMessage({ kind: 'scene', scene });
   return {
-    bake: (width, height, objects) =>
-      new Promise((resolve, reject) => {
+    bake: (width, height, objects) => {
+      if (failure !== null) return Promise.reject(failure);
+      return new Promise((resolve, reject) => {
         const id = nextId++;
         pending.set(id, { resolve, reject });
-        post({ kind: 'bake', id, width, height, ...(objects !== undefined ? { objects } : {}) });
-      }),
-    dispose: () => {
-      worker.terminate();
-      failAll(new Error('minimap bake worker disposed'));
+        worker.postMessage({
+          kind: 'bake',
+          id,
+          width,
+          height,
+          ...(objects !== undefined ? { objects } : {}),
+        });
+      });
     },
+    dispose: () => fail(new Error('minimap bake worker disposed')),
   };
-};
+}
