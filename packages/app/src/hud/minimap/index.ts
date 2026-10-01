@@ -1,8 +1,15 @@
-import { type Camera, cameraViewport, type SceneTerrain, terrainWorldBounds } from '@open-northland/render';
+import {
+  type Camera,
+  cameraViewport,
+  type MinimapFeature,
+  type SceneTerrain,
+  terrainWorldBounds,
+} from '@open-northland/render';
 import type { DiplomacyState, FogView, WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { setMinimapReserve } from '../dom/minimap-reserve.js';
 import type { Rect } from '../geometry.js';
+import { createWorkerMinimapBaker } from './bake.js';
 import { createMinimapChrome } from './chrome.js';
 import { forEachMinimapDot, type MinimapDotContext, type MinimapDotSink } from './dots.js';
 import {
@@ -36,6 +43,8 @@ export interface MinimapOptions {
   readonly terrain: SceneTerrain;
   readonly cellColours?: Uint32Array | undefined;
   readonly colourOf?: ((typeId: number) => number | undefined) | undefined;
+  /** The feature a standing node of each sim good type draws as on the ground. */
+  readonly featureOfGoodType: ReadonlyMap<number, MinimapFeature>;
   readonly playerColourOf?: ((player: number) => number) | undefined;
   /** The stored layer and owner choices; they persist through `onFiltersChange`. */
   readonly filters?: MinimapFilters | undefined;
@@ -101,8 +110,11 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     terrain,
     cellColours: opts.cellColours,
     colourOf: opts.colourOf,
+    featureOfGoodType: opts.featureOfGoodType,
     map: raster,
     resolution: () => app.renderer.resolution,
+    baker: createWorkerMinimapBaker,
+    now: () => performance.now(),
   });
   const fogMask = createFogMaskLayer(world, raster);
   const dotsW = Math.max(1, Math.round(raster.w));
@@ -238,7 +250,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
         lastView = '';
         return;
       }
-      surface.syncResolution();
+      surface.sync(snapshot);
       fogMask.draw(fog);
       const viewer = opts.viewer();
       if (claimDotReplot(snapshot, fog?.player ?? viewer) || dirtyDots) {

@@ -1,41 +1,124 @@
-import { rasterizeTerrain, type SceneTerrain } from '@open-northland/render';
+import type { MinimapObjects, SceneTerrain } from '@open-northland/render';
+import { positionOfNode } from '@open-northland/sim';
 import { BufferImageSource, Container, Sprite } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { createMinimapSurface, RASTER_OVERSAMPLE } from '../src/hud/minimap/surface.js';
+import { GOOD_WOOD } from '../src/game/sandbox/ids/index.js';
+import {
+  createInlineMinimapBaker,
+  createMinimapRasterizer,
+  minimapBakeScene,
+} from '../src/hud/minimap/bake.js';
+import { minimapFeatureOfGoodTypes, standingObjects } from '../src/hud/minimap/live-objects.js';
+import { createMinimapSurface, OBJECT_REBAKE_INTERVAL_MS } from '../src/hud/minimap/surface.js';
+import { type Ent, snapshotOf } from './support/snapshot.js';
 
-const TERRAIN: SceneTerrain = { width: 4, height: 4, typeIds: Array.from({ length: 16 }, () => 0) };
+const SIZE = 4;
+const TERRAIN: SceneTerrain = {
+  width: SIZE,
+  height: SIZE,
+  typeIds: Array.from({ length: SIZE * SIZE }, () => 0),
+};
+const MEADOW = 0x426f32;
+const MAP = { x: 0, y: 0, w: 52, h: 42 };
+const FEATURES = minimapFeatureOfGoodTypes([{ id: 'wood', typeId: GOOD_WOOD }]);
 
-describe('Atlas ground surface', () => {
-  it('keeps the actual terrain palette and rebakes only when the display resolution changes', () => {
+function tree(id: number, hx: number, hy: number): Ent {
+  return {
+    id,
+    components: {
+      Resource: { goodType: GOOD_WOOD, remaining: 1, harvestAtomic: 0 },
+      Position: positionOfNode(hx, hy),
+    },
+  };
+}
+
+function expectedRaster(objects: MinimapObjects): Uint8Array {
+  return createMinimapRasterizer(minimapBakeScene(TERRAIN, () => MEADOW))(MAP.w, MAP.h, objects);
+}
+
+/** Let the baker's answer land. */
+const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+function groundOf(host: Container): Sprite {
+  const ground = host.children[0];
+  if (!(ground instanceof Sprite)) throw new Error('missing ground');
+  return ground;
+}
+
+function pixelsOf(ground: Sprite): Uint8Array {
+  const source = ground.texture.source;
+  if (!(source instanceof BufferImageSource)) throw new Error('missing pixel source');
+  return source.resource as Uint8Array;
+}
+
+describe('minimap ground surface', () => {
+  it('bakes the styled raster at the display resolution and rebakes when it changes', async () => {
     const host = new Container();
     let resolution = 1;
     const surface = createMinimapSurface({
       container: host,
       terrain: TERRAIN,
-      map: { x: 0, y: 0, w: 52, h: 42 },
-      colourOf: () => 0x426f32,
+      map: MAP,
+      colourOf: () => MEADOW,
+      featureOfGoodType: FEATURES,
       resolution: () => resolution,
+      baker: createInlineMinimapBaker,
+      now: () => 0,
     });
-    const ground = host.children[0];
-    if (!(ground instanceof Sprite)) throw new Error('missing ground');
+    const ground = groundOf(host);
+    expect(ground.visible).toBe(false);
+    const snapshot = snapshotOf([tree(1, 2, 2)]);
+    surface.sync(snapshot);
+    await settle();
+    expect(ground.visible).toBe(true);
+    expect(pixelsOf(ground)).toEqual(expectedRaster(standingObjects(snapshot, FEATURES)));
     const first = ground.texture;
-    if (!(first.source instanceof BufferImageSource)) throw new Error('missing pixel source');
-    expect(first.source.resource).toEqual(rasterizeTerrain(TERRAIN, () => 0x426f32, 104, 84));
-    host.scale.set(2);
-    host.position.set(19, 24);
-    surface.syncResolution();
+    surface.sync(snapshot);
+    await settle();
     expect(ground.texture).toBe(first);
+
     resolution = 2;
-    surface.syncResolution();
+    surface.sync(snapshot);
+    await settle();
     expect(first.destroyed).toBe(true);
-    expect(ground.texture.width).toBe(52 * RASTER_OVERSAMPLE * 2);
-    expect(ground.texture.height).toBe(42 * RASTER_OVERSAMPLE * 2);
-    expect(ground.width).toBe(52);
-    expect(ground.height).toBe(42);
+    expect([ground.texture.width, ground.texture.height]).toEqual([MAP.w * 2, MAP.h * 2]);
+    expect([ground.width, ground.height]).toEqual([MAP.w, MAP.h]);
     const last = ground.texture;
     surface.dispose();
     expect(last.destroyed).toBe(true);
     expect(host.children).toHaveLength(0);
+    host.destroy();
+  });
+
+  it('redraws a felled forest at most once per rebake interval', async () => {
+    const host = new Container();
+    let now = 0;
+    const surface = createMinimapSurface({
+      container: host,
+      terrain: TERRAIN,
+      map: MAP,
+      colourOf: () => MEADOW,
+      featureOfGoodType: FEATURES,
+      resolution: () => 1,
+      baker: createInlineMinimapBaker,
+      now: () => now,
+    });
+    const ground = groundOf(host);
+    // Separate snapshots build their own indexes, so the counts stand in for a mirror's growing revision.
+    surface.sync(snapshotOf([tree(1, 2, 2), tree(2, 4, 4)]));
+    await settle();
+    const forested = ground.texture;
+    const felled = snapshotOf([tree(1, 2, 2)]);
+    now = OBJECT_REBAKE_INTERVAL_MS - 1;
+    surface.sync(felled);
+    await settle();
+    expect(ground.texture).toBe(forested);
+    now = OBJECT_REBAKE_INTERVAL_MS;
+    surface.sync(felled);
+    await settle();
+    expect(ground.texture).not.toBe(forested);
+    expect(pixelsOf(ground)).toEqual(expectedRaster(standingObjects(felled, FEATURES)));
+    surface.dispose();
     host.destroy();
   });
 });

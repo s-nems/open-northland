@@ -1,4 +1,8 @@
-import { type FrameIndexReader, RENDER_FRAME_INDEX_READERS } from '@open-northland/render/data';
+import {
+  type FrameIndexReader,
+  type MinimapFeature,
+  RENDER_FRAME_INDEX_READERS,
+} from '@open-northland/render/data';
 import { entitiesWith, positionedWithin, type TileBox } from '@open-northland/sim';
 import {
   actorsOf,
@@ -11,6 +15,7 @@ import {
   staffOf,
 } from '../../game/snapshot.js';
 import { readMinimapIndexes } from '../../hud/minimap/dots.js';
+import { standingNodesRevision } from '../../hud/minimap/live-objects.js';
 import { ownRoadSiteAt } from '../runtime/own-road-sites.js';
 import { builderSitesOf } from '../unit-controls/highlights/own-building-picks.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
@@ -19,6 +24,8 @@ import { computeSettlerBubbles } from './settler-bubbles.js';
 const NO_TILES: TileBox = { minX: 0, minY: 0, maxX: -1, maxY: -1 };
 /** An id no entity takes: a read that only registers its index. */
 const NO_ENTITY = -1;
+/** No good: a read that only registers its index. */
+const NO_GOODS: ReadonlyMap<number, MinimapFeature> = new Map();
 
 /** Every snapshot index a running game's frame keeps on its mirror over a developed map, one entry per
  *  reader: render's, then the HUD messages' and the projections'. A bench registers them to measure the
@@ -28,6 +35,7 @@ export const FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   { name: 'needs rule', read: (snapshot) => needsRuleEnabled(snapshot) },
   { name: 'actors', read: (snapshot) => actorsOf(snapshot) },
   { name: 'minimap layers', read: (snapshot) => readMinimapIndexes(snapshot) },
+  { name: 'minimap standing nodes', read: (snapshot) => standingNodesRevision(snapshot, NO_GOODS) },
   { name: 'construction signs', read: (snapshot) => entitiesWith(snapshot, 'UnderConstruction') },
   { name: 'settler bubbles', read: (snapshot) => computeSettlerBubbles(snapshot) },
   { name: 'position buckets', read: (snapshot) => positionedWithin(snapshot, NO_TILES) },

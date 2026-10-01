@@ -55,6 +55,7 @@ import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-c
 import type { HoverOwnerContext } from '../../hud/hover-card/owner.js';
 import { type SettlerHoverContext, settlerHoverModel } from '../../hud/hover-card/settler.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
+import { minimapFeatureOfGoodTypes } from '../../hud/minimap/live-objects.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { type MetSeat, NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
@@ -644,6 +645,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       terrain: deps.terrainGrid,
       cellColours: deps.minimapCellColours,
       colourOf: deps.terrainColour,
+      featureOfGoodType: minimapFeatureOfGoodTypes(host.content.goods),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
       filters: storedSettings.minimapFilters,
       onFiltersChange: (minimapFilters) => patchStoredSettings({ minimapFilters }),

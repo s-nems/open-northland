@@ -2,6 +2,7 @@ export * from './building-tribe.js';
 export * from './content-fingerprint.js';
 export * from './fnv.js';
 export * from './footprint.js';
+export * from './harvest-objects.js';
 export * from './job-atomics.js';
 export * from './json-fingerprint.js';
 export * from './lookup.js';

@@ -1,14 +1,12 @@
-import type { TerrainObjects } from '@open-northland/data';
+import { harvestObjectsByEditName, type TerrainObjects } from '@open-northland/data';
 import { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from '@open-northland/sim';
-import type { ContentIr, LandscapeGfxRow } from './ir/rows.js';
+import type { ContentIr } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
 
 /**
- * The decoded-map → sim resource join: which placed landscape objects are harvestable, and the good each
- * yields. Each good's gathering pipeline lists the `landscapeGfx` indices of its standing harvest-stage
- * forms, so inverting that list (index → EditName → goodId) names the objects the original treats as
- * harvestable, and decor is absent by construction. The pipeline's `goodId` string bridges the IR's
- * original good numbering and the app's hand-authored one.
+ * The decoded-map → sim resource join: which placed landscape objects are harvestable
+ * (`harvestObjectsByEditName`), and the good each yields. The pipeline's `goodId` string bridges the
+ * IR's original good numbering and the app's hand-authored one.
  */
 
 /** What one harvestable object `EditName` resolves to: the good it yields and its own harvest-stage
@@ -32,25 +30,18 @@ export interface HarvestObjectRef {
  * keeps a pool-drawn node on its exact original graphic.
  */
 export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, HarvestObjectRef> {
-  const recordByIndex = new Map<number, LandscapeGfxRow>();
-  for (const g of ir.landscapeGfx ?? []) {
-    if (g.editName !== undefined) recordByIndex.set(g.index, g);
-  }
   const out = new Map<string, HarvestObjectRef>();
-  for (const p of ir.gatheringPipeline ?? []) {
-    for (const idx of p.harvest?.gfxIndices ?? []) {
-      const record = recordByIndex.get(idx);
-      if (record?.editName === undefined) continue;
-      out.set(record.editName, {
-        goodId: p.goodId,
-        gfxIndex: idx,
-        states: (record.frames ?? []).length,
-        // A 0 capacity would size an empty deposit, so it reads as absent and the spawn falls back.
-        ...(record.maxValency !== undefined && record.maxValency > 0
-          ? { maxValency: record.maxValency }
-          : {}),
-      });
-    }
+  for (const [name, { goodId, record }] of harvestObjectsByEditName(
+    ir.landscapeGfx ?? [],
+    ir.gatheringPipeline ?? [],
+  )) {
+    out.set(name, {
+      goodId,
+      gfxIndex: record.index,
+      states: (record.frames ?? []).length,
+      // A 0 capacity would size an empty deposit, so it reads as absent and the spawn falls back.
+      ...(record.maxValency !== undefined && record.maxValency > 0 ? { maxValency: record.maxValency } : {}),
+    });
   }
   return out;
 }
