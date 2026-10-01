@@ -365,7 +365,8 @@ export type UnitOrderCommand =
       /**
        * Send one owned adult settler to drill at barracks `house` for `BARRACKS_DRILL_TICKS`; it comes
        * out enlisted as the base soldier class and stays qualified for the soldier trades. A settler that
-       * already holds a fighter trade only drills. A `moveUnit` order calls the errand off.
+       * already holds a fighter trade only drills. A barracks still under construction is accepted: the
+       * settler waits beside its door until it stands. A `moveUnit` order calls the errand off.
        */
       readonly kind: 'trainSoldier';
       readonly entity: Entity;

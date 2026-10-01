@@ -36,6 +36,12 @@ describe('the settler status caption', () => {
     expect(settlerStatus(ctxOf(), snapshot, SETTLER, comps(WORKPLACE))).toBe('awaitingWorkplace');
   });
 
+  it('reads "waiting for construction" for a settler sent to learn at a foundation', () => {
+    const snapshot = snapshotOf(siteWorld(true));
+    const sentAhead = comps(null, { TrainingOrder: { house: WORKPLACE, drillTicksLeft: 1 } });
+    expect(settlerStatus(ctxOf(), snapshot, SETTLER, sentAhead)).toBe('awaitingTraining');
+  });
+
   it('reads idle for the same settler once its workplace stands', () => {
     const snapshot = snapshotOf(siteWorld(false));
     expect(settlerStatus(ctxOf(), snapshot, SETTLER, comps(WORKPLACE))).toBe('idle');

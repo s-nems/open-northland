@@ -45,7 +45,12 @@ export function isSchoolType(type: Pick<BuildingType, 'kind' | 'workers'>): bool
 
 /** A foundation still under construction is not a barracks yet. */
 export function isBarracks(world: World, ctx: SystemContext, building: Entity): boolean {
-  if (!world.isAlive(building) || world.has(building, UnderConstruction)) return false;
+  return !world.has(building, UnderConstruction) && isBarracksOrFoundation(world, ctx, building);
+}
+
+/** A barracks, standing or still a foundation: a recruit may be sent to one before it stands. */
+export function isBarracksOrFoundation(world: World, ctx: SystemContext, building: Entity): boolean {
+  if (!world.isAlive(building)) return false;
   const b = world.tryGet(building, Building);
   if (b === undefined) return false;
   const type = contentIndex(ctx.content).buildings.get(b.buildingType);

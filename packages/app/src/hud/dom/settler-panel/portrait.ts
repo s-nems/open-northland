@@ -24,6 +24,7 @@ export function statusTone(status: SettlerStatusModel): StatusTone {
     case 'walking':
     case 'idle':
     case 'awaitingWorkplace':
+    case 'awaitingTraining':
       return 'neutral';
     default:
       return 'ok';

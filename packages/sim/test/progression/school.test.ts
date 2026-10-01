@@ -9,6 +9,7 @@ import {
   SettlerProgress,
   setMapPermission,
   TrainingOrder,
+  UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../src/index.js';
@@ -20,6 +21,8 @@ import {
   TRAINING_EXPERIENCE_TYPE,
 } from '../../src/systems/progression/index.js';
 import { planTraining } from '../../src/systems/settlers/drives/training.js';
+import { IdleStands } from '../../src/systems/settlers/planner/idle-replan.js';
+import { PlannerSpacing } from '../../src/systems/settlers/planner/spacing.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
@@ -27,12 +30,32 @@ import { grassCellMap } from '../fixtures/terrain.js';
 
 const SCHOOL = 91;
 const SCHOOL_AT = { x: 4, y: 4 };
+const PUPIL_START = { x: 1, y: 1 };
 const TRIBE = 1;
 const WOODCUTTER = 1;
 const CARPENTER = 2;
 const SMITH = 5;
 const PLANK = 2;
 const WOOD_TRACK = 1;
+/** Long enough to walk to the school door and serve a one-point lesson, with slack. */
+const FOUNDATION_WAIT_TICKS = 200;
+
+/** Run the drill rung once for `pupil`, standing away from the school door. */
+function planLessonStep(sim: Simulation, pupil: Entity): void {
+  const terrain = sim.terrain;
+  if (terrain === undefined) throw new Error('missing terrain');
+  planTraining(
+    sim.world,
+    ctxOf(sim),
+    terrain,
+    pupil,
+    sim.world.get(pupil, Settler),
+    terrain.nodeAt(2, 2),
+    null,
+    PlannerSpacing.forTick(sim.world, ctxOf(sim), terrain),
+    new IdleStands(),
+  );
+}
 
 it('refuses a school course until the profession is discovered', () => {
   const base = testContent();
@@ -167,17 +190,7 @@ it('a school lesson qualifies only its chosen target and survives a saved in-pro
 
   const restored = restoreSimulation(exportSaveGame(sim), { content, map });
   restored.world.mut(pupil, TrainingOrder).drillTicksLeft = 0;
-  const terrain = restored.terrain;
-  if (terrain === undefined) throw new Error('missing terrain');
-  planTraining(
-    restored.world,
-    ctxOf(restored),
-    terrain,
-    pupil,
-    restored.world.get(pupil, Settler),
-    terrain.nodeAt(2, 2),
-    null,
-  );
+  planLessonStep(restored, pupil);
   expect(restored.world.get(pupil, Settler).jobType).toBe(CARPENTER);
   expect(restored.events.current()).toContainEqual({
     kind: 'settlerTrained',
@@ -201,15 +214,7 @@ it('a school lesson qualifies only its chosen target and survives a saved in-pro
   expect(restored.world.has(pupil, TrainingOrder)).toBe(true);
   restored.world.mut(pupil, TrainingOrder).drillTicksLeft = 0;
   restored.events.clear();
-  planTraining(
-    restored.world,
-    ctxOf(restored),
-    terrain,
-    pupil,
-    restored.world.get(pupil, Settler),
-    terrain.nodeAt(2, 2),
-    null,
-  );
+  planLessonStep(restored, pupil);
   expect(restored.world.get(pupil, SettlerProgress).learned?.good).toContain(PLANK);
   expect(restored.events.current()).toContainEqual({
     kind: 'settlerTrained',
@@ -275,17 +280,7 @@ it.each([false, true])(
         typeId: CARPENTER,
         allowed: false,
       });
-    const terrain = sim.terrain;
-    if (terrain === undefined) throw new Error('missing terrain');
-    planTraining(
-      sim.world,
-      ctxOf(sim),
-      terrain,
-      pupil,
-      sim.world.get(pupil, Settler),
-      terrain.nodeAt(2, 2),
-      null,
-    );
+    planLessonStep(sim, pupil);
     if (banned) {
       expect(sim.world.get(pupil, Settler).jobType).toBe(WOODCUTTER);
       expect(sim.world.get(pupil, SettlerProgress).learned?.good ?? []).toEqual([]);
@@ -335,17 +330,7 @@ it('keeps a served lesson when the school is razed before the pupil plans again'
   sim.world.mut(pupil, TrainingOrder).drillTicksLeft = 0; // the last repetition just completed
   sim.world.destroy(school);
 
-  const terrain = sim.terrain;
-  if (terrain === undefined) throw new Error('missing terrain');
-  planTraining(
-    sim.world,
-    ctxOf(sim),
-    terrain,
-    pupil,
-    sim.world.get(pupil, Settler),
-    terrain.nodeAt(2, 2),
-    null,
-  );
+  planLessonStep(sim, pupil);
 
   expect(sim.world.get(pupil, Settler).jobType).toBe(CARPENTER);
   expect(sim.world.get(pupil, SettlerProgress).learned?.job).toContain(CARPENTER);
@@ -391,6 +376,25 @@ function learnCarpentry(sim: Simulation, pupil: Entity, school: Entity): void {
     typeId: CARPENTER,
   });
 }
+
+it('takes a pupil at a school foundation and teaches the lesson once the school stands', () => {
+  const { sim, pupil, school } = carpentrySchool(WOODCUTTER);
+  sim.world.add(pupil, Position, { x: fx.fromInt(PUPIL_START.x), y: fx.fromInt(PUPIL_START.y) });
+  sim.world.add(school, UnderConstruction, { labor: fx.fromInt(0) });
+  sim.world.mut(school, Building).built = fx.fromInt(0);
+  learnCarpentry(sim, pupil, school);
+  expect(sim.world.has(pupil, TrainingOrder)).toBe(true);
+
+  for (let i = 0; i < FOUNDATION_WAIT_TICKS; i++) sim.step();
+  expect(sim.world.has(pupil, TrainingOrder)).toBe(true); // still waiting outside
+  expect(sim.world.get(pupil, Settler).jobType).toBe(WOODCUTTER);
+
+  sim.world.remove(school, UnderConstruction);
+  sim.world.mut(school, Building).built = ONE;
+  for (let i = 0; i < FOUNDATION_WAIT_TICKS; i++) sim.step();
+  expect(sim.world.get(pupil, Settler).jobType).toBe(CARPENTER);
+  expect(sim.world.has(pupil, TrainingOrder)).toBe(false);
+});
 
 it('refuses a lesson in the trade the pupil already practises', () => {
   const { sim, pupil, school } = carpentrySchool(CARPENTER);
@@ -485,17 +489,7 @@ function collectorLesson(): { sim: Simulation; collector: Entity; finish: () => 
   });
   const finish = (): void => {
     sim.world.mut(collector, TrainingOrder).drillTicksLeft = 0;
-    const terrain = sim.terrain;
-    if (terrain === undefined) throw new Error('missing terrain');
-    planTraining(
-      sim.world,
-      ctxOf(sim),
-      terrain,
-      collector,
-      sim.world.get(collector, Settler),
-      terrain.nodeAt(2, 2),
-      null,
-    );
+    planLessonStep(sim, collector);
   };
   return { sim, collector, finish };
 }

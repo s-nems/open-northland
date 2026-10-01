@@ -174,6 +174,7 @@ export type SettlerState =
   | 'talking'
   | 'walking'
   | 'awaitingWorkplace'
+  | 'awaitingTraining'
   | 'standingTo'
   | 'idle';
 
@@ -238,10 +239,18 @@ export function settlerStatus(
   if ('PathFollow' in components || 'MoveGoal' in components) return 'walking';
   // Waiting out a workplace still going up is by design; without its own caption it reads as idleness.
   if (awaitsItsWorkplace(snapshot, components)) return 'awaitingWorkplace';
+  // Sent ahead to a barracks or school foundation, it waits beside the door until the house stands.
+  if (awaitsItsTrainingHouse(snapshot, components)) return 'awaitingTraining';
   // A unit holding its ground under the battle alert takes no work and no rest, which without its own
   // caption reads as a soldier that has simply stopped caring about its empty bars.
   if (ctx.standsTo?.(entityId) === true) return 'standingTo';
   return 'idle';
+}
+
+function awaitsItsTrainingHouse(snapshot: WorldSnapshot, components: Comp): boolean {
+  const house = num((components.TrainingOrder as { house?: unknown } | undefined)?.house);
+  if (house === undefined) return false;
+  return entityById(snapshot, house)?.components.UnderConstruction !== undefined;
 }
 
 function awaitsItsWorkplace(snapshot: WorldSnapshot, components: Comp): boolean {

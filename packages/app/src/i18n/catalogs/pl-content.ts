@@ -332,6 +332,11 @@ export const plContent = {
       summary:
         'Jeden zbieracz idzie do szkoły uczyć się ciesielstwa, które osada już zna. Wybierz drugiego zbieracza i kliknij szkołę prawym przyciskiem, aby samodzielnie wybrać kurs.',
     },
+    'learning-foundations': {
+      title: 'Nauka w budowanym budynku',
+      summary:
+        'Cywil zostaje wysłany do budowanych koszar, a zbieracz do budowanej szkoły, zanim budowniczowie je skończą. Obaj czekają przy drzwiach, wchodzą, gdy budynek stanie, i wychodzą jako żołnierz i cieśla. Zaznacz wolnego cywila i kliknij budowę prawym przyciskiem, aby wysłać go samodzielnie.',
+    },
     'idle-work': {
       title: 'Dlaczego pracownicy są bezczynni',
       summary:

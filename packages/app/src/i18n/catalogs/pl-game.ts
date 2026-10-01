@@ -197,6 +197,7 @@ export const plGame = {
       talking: 'Rozmawia',
       walking: 'Idzie',
       awaitingWorkplace: 'Czeka na budowę warsztatu',
+      awaitingTraining: 'Czeka na koniec budowy',
       standingTo: 'Stoi na alarmie',
       idle: 'Bezczynny',
     },

@@ -11,22 +11,31 @@ import {
   SettlerProgress,
   sameSide,
   TrainingOrder,
+  UnderConstruction,
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood, holdToGatherGood, jobGathersGood } from '../../economy/gather-goods.js';
-import { isSchool, schoolMethodJob } from '../../orders/education.js';
+import { isSchoolOrFoundation, schoolMethodJob } from '../../orders/education.js';
 import { reidleAsJob } from '../../orders/work/index.js';
 import { typeAllowed } from '../../progression/unlocks.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { baseSoldierJobType, isBarracks, isFighterJob, jobChangesProduction } from '../../readviews/index.js';
+import {
+  baseSoldierJobType,
+  isBarracksOrFoundation,
+  isFighterJob,
+  jobChangesProduction,
+} from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
-import { EXERCISE_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { atOrWalk, EXERCISE_ATOMIC_ID, startAtomic } from '../atomics/start.js';
 import { enterBuilding, stepOut } from '../indoors.js';
+import type { IdleStands } from '../planner/idle-replan.js';
+import type { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
+import { loiterCell } from './spacing.js';
 
 /**
  * How long a recruit stays inside the barracks before it comes back out a soldier: 15 s of game time,
@@ -38,8 +47,9 @@ export const BARRACKS_DRILL_TICKS = 15 * TICKS_PER_SECOND;
 /**
  * The barracks-drill rung: drive a settler's live `TrainingOrder` one step forward. It walks to the
  * barracks door, steps inside and runs the exercise atomic one repetition at a time until the drill time is
- * served, then steps back out enlisted. The order is abandoned when the barracks is gone or unbuilt, or its
- * door is no longer open to the settler, rather than looping on a dead errand.
+ * served, then steps back out enlisted. A house still under construction is waited for beside its door,
+ * re-checked on the idle beat. The order is abandoned when the house is gone or its door is no longer open
+ * to the settler, rather than looping on a dead errand.
  */
 export function planTraining(
   world: World,
@@ -49,6 +59,8 @@ export function planTraining(
   settler: SettlerIdentity,
   here: NodeId,
   limit: NavigationLimit | null,
+  spacing: PlannerSpacing,
+  idle: IdleStands,
 ): boolean {
   const order = world.tryGet(e, TrainingOrder);
   if (order === undefined) return false;
@@ -123,10 +135,12 @@ export function planTraining(
     }
     return true;
   }
-  const teaches = order.lesson === undefined ? isBarracks : isSchool;
+  const teaches = order.lesson === undefined ? isBarracksOrFoundation : isSchoolOrFoundation;
   if (!teaches(world, ctx, order.house) || !sameSide(world, e, order.house)) return abandonDrill(world, e);
   const door = interactionCell(world, ctx, terrain, order.house, here);
   if (!drillDoorOpen(world, ctx, e, door, limit)) return abandonDrill(world, e);
+  if (world.has(order.house, UnderConstruction))
+    return waitBesideFoundation(world, ctx, terrain, e, here, door, spacing, idle);
   enterBuilding(world, e, order.house, here, door, () =>
     startAtomic(
       world,
@@ -137,6 +151,31 @@ export function planTraining(
       order.house,
     ),
   );
+  return true;
+}
+
+/**
+ * Wait beside an unbuilt house's door, re-checked on the idle beat. The walk goes to a yard cell, not the
+ * door, so a failed walk to any yard cell is what tells an unreachable house: the errand is then dropped
+ * as it would be at a standing house's door.
+ */
+function waitBesideFoundation(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  here: NodeId,
+  door: NodeId,
+  spacing: PlannerSpacing,
+  idle: IdleStands,
+): boolean {
+  const failed = unreachableGoals(world, ctx, e);
+  if (failed !== null) {
+    const yard = spacing.yard(door);
+    if (failed.some((goal) => yard.has(goal.cell))) return abandonDrill(world, e);
+  }
+  idle.stand(e, false);
+  atOrWalk(world, e, here, loiterCell(world, terrain, e, here, door, spacing), () => {});
   return true;
 }
 

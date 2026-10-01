@@ -234,7 +234,6 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
     }
     const valid = new Set(schoolStudents(content, state, students));
     const invalid =
-      building.components.UnderConstruction !== undefined ||
       students.some((id) => !valid.has(id)) ||
       buildingTribeOf(building) !== tribeId ||
       ownerPlayerOf(building) !== player ||

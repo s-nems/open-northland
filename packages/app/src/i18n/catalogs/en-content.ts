@@ -333,6 +333,11 @@ export const enContent = {
       summary:
         'One collector goes to school to learn carpentry, a trade already known to the settlement. Select the other collector and right-click the school to choose a course yourself.',
     },
+    'learning-foundations': {
+      title: 'Learning at a foundation',
+      summary:
+        'A civilian is sent to a barracks foundation and a collector to a school foundation before the builders finish them. Both wait beside the door, walk in once their house stands, and come out a soldier and a carpenter. Select the spare civilian and right-click a foundation to send it yourself.',
+    },
     'idle-work': {
       title: 'Why workers are idle',
       summary:

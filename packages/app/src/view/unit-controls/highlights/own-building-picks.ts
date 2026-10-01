@@ -121,23 +121,25 @@ export const sitePick: OwnBuildingPick = ownBuildingPick({
   accepts: (building, settler, snapshot) => builderCrewHasRoom(snapshot, building, settler),
 });
 
-const finishedOfType =
+/** A standing house of the type or its foundation: a settler sent to a foundation waits at its door. */
+const houseOrFoundationOfType =
   (is: (def: BuildingInfo) => boolean) =>
   (building: SnapshotEntity, byType: ReadonlyMap<number, BuildingInfo>): boolean => {
-    if (!isFinishedBuilding(building)) return false;
+    const foundation = isBuilding(building) && building.components.UnderConstruction !== undefined;
+    if (!foundation && !isFinishedBuilding(building)) return false;
     const typeId = buildingTypeOf(building);
     const def = typeId !== undefined ? byType.get(typeId) : undefined;
     return def !== undefined && is(def);
   };
 
-/** The standing barracks a settler may drill at; the one it already drills at refuses a repeat. */
+/** The barracks a settler may drill at; the one it already drills at refuses a repeat. */
 export const drillPick: OwnBuildingPick = ownBuildingPick({
-  candidate: finishedOfType(systems.isBarracksType),
+  candidate: houseOrFoundationOfType(systems.isBarracksType),
   accepts: (building, settler) => trainingHouseOf(settler) !== building.id,
 });
 
-/** The standing schools; the course dialog a pick opens decides per course who may still learn it. */
+/** The schools; the course dialog a pick opens decides per course who may still learn it. */
 export const schoolPick: OwnBuildingPick = ownBuildingPick({
-  candidate: finishedOfType(systems.isSchoolType),
+  candidate: houseOrFoundationOfType(systems.isSchoolType),
   accepts: () => true,
 });

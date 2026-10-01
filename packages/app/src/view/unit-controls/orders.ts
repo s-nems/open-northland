@@ -349,7 +349,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       }
     }
     const rest = commanded.filter((target) => !crew.has(target.ref));
-    if (def !== undefined && systems.isSchoolType(def) && !underConstruction) {
+    if (def !== undefined && systems.isSchoolType(def)) {
       if (rest.length === 0) return ordered;
       const opened = openSchool(
         building,
@@ -371,9 +371,8 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         movers.push({ entity: target.ref as Entity });
         continue;
       }
-      // Drilling needs the building standing, so a foundation falls through to employment, whose slots
-      // are open from the moment it is placed.
-      if (!underConstruction && trainsRatherThanEmploys(def, currentJob)) {
+      // A recruit sent to a foundation waits at its door until it stands.
+      if (trainsRatherThanEmploys(def, currentJob)) {
         order({ kind: 'trainSoldier', entity: target.ref as Entity, house: building as Entity });
         continue;
       }

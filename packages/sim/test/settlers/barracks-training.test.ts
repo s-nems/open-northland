@@ -6,6 +6,7 @@ import {
   EquipOrder,
   Female,
   Fleeing,
+  IdleStand,
   MISSION_BEHAVIOUR,
   MoveGoal,
   Owner,
@@ -19,15 +20,18 @@ import {
   setMissionBehaviour,
   stampOwner,
   TrainingOrder,
+  UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, type SimEvent, Simulation } from '../../src/index.js';
+import { hexDistanceBetween, nodeOfPosition } from '../../src/nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import { needSubjectOf, plannerSystem, settlerMeetsNeed } from '../../src/systems/index.js';
 import { BARRACKS_DRILL_TICKS } from '../../src/systems/settlers/drives/training.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
+import { waterColumnMap } from '../fixtures/terrain.js';
 import { ctxOf, grassMap } from './needs/support.js';
 
 /**
@@ -59,6 +63,8 @@ const FOOD_GOOD = 3;
 const LARDER_FOOD = 5;
 /** Well over the drive threshold - this recruit seeks food before anything else. */
 const STARVING = fx.div(fx.fromInt(9), fx.fromInt(10));
+/** The planner's yard around a door, where a settler waiting at a foundation stands. */
+const DOOR_YARD_RADIUS_NODES = 4;
 /** The four-cell walk to the door at the fixture's gait, with slack. */
 const WALK_TICKS = 100;
 /** Long enough for the walk plus the whole drill and its overshoot repetition. */
@@ -210,6 +216,47 @@ describe('trainSoldier - the barracks drill', () => {
     expect(qualifiesAsSoldier(sim, recruit)).toBe(false);
     expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
     expect(sim.world.has(recruit, Resting)).toBe(false); // back outside
+  });
+
+  it('waits beside a barracks foundation and drills once it stands', () => {
+    const sim = simWithBarracks();
+    const house = barracksAt(sim, 6, 3);
+    sim.world.add(house, UnderConstruction, { labor: fx.fromInt(0) });
+    sim.world.mut(house, Building).built = fx.fromInt(0);
+    const recruit = settlerAt(sim, CIVILIST_JOB, 2, 3);
+
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
+    run(sim, RUN_TICKS);
+    expect(sim.world.has(recruit, TrainingOrder)).toBe(true);
+    expect(sim.world.has(recruit, Resting)).toBe(false); // outside, not drilling
+    expect(sim.world.get(recruit, TrainingOrder).drillTicksLeft).toBe(BARRACKS_DRILL_TICKS);
+    const door = interactionCell(sim.world, ctxOf(sim), terrainOf(sim), house);
+    const at = sim.world.get(recruit, Position);
+    const here = nodeOfPosition(at.x, at.y);
+    const doorNode = terrainOf(sim).coordsOf(door);
+    const fromDoor = hexDistanceBetween(here.hx, here.hy, doorNode.x, doorNode.y);
+    expect(fromDoor).toBeGreaterThan(0); // the door node stays free
+    expect(fromDoor).toBeLessThanOrEqual(DOOR_YARD_RADIUS_NODES);
+    expect(sim.world.get(recruit, IdleStand).standing).toBe(false); // re-checks only on its idle beat
+
+    sim.world.remove(house, UnderConstruction);
+    sim.world.mut(house, Building).built = ONE;
+    const events = run(sim, RUN_TICKS);
+    expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
+    expect(events.some((event) => event.kind === 'settlerTrained')).toBe(true);
+  });
+
+  it('drops the errand when the barracks foundation lies across water', () => {
+    const sim = new Simulation({ seed: 1, content: barracksContent(), map: waterColumnMap(12, 8, 5) });
+    const house = barracksAt(sim, 8, 3);
+    sim.world.add(house, UnderConstruction, { labor: fx.fromInt(0) });
+    sim.world.mut(house, Building).built = fx.fromInt(0);
+    const recruit = settlerAt(sim, CIVILIST_JOB, 2, 3);
+
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
+    run(sim, RUN_TICKS);
+    expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
+    expect(sim.world.has(recruit, MoveGoal)).toBe(false);
   });
 
   it('leaves a serving soldier in the trade he already holds', () => {

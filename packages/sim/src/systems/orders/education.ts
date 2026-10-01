@@ -6,7 +6,6 @@ import {
   SettlerProgress,
   sameSide,
   TrainingOrder,
-  UnderConstruction,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -21,9 +20,10 @@ import { mayWalkToDrill, startDrill } from './training.js';
 /** Approximation: a lesson point takes one second of completed training atomics. */
 export const SCHOOL_LESSON_TICKS = TICKS_PER_SECOND;
 
-export function isSchool(world: World, ctx: SystemContext, house: Entity): boolean {
+/** A school, standing or still a foundation: a pupil may be sent to one before it stands. */
+export function isSchoolOrFoundation(world: World, ctx: SystemContext, house: Entity): boolean {
   const building = world.tryGet(house, Building);
-  if (building === undefined || world.has(house, UnderConstruction)) return false;
+  if (building === undefined) return false;
   const type = contentIndex(ctx.content).buildings.get(building.buildingType);
   return type !== undefined && isSchoolType(type);
 }
@@ -31,7 +31,11 @@ export function isSchool(world: World, ctx: SystemContext, house: Entity): boole
 export function learn(world: World, ctx: SystemContext, command: Extract<Command, { kind: 'learn' }>): void {
   const { entity, house, target, typeId } = command;
   if (target === 'job' && isFighterJob(ctx.content, typeId)) return;
-  if (!mayChangeTrade(world, entity) || !isSchool(world, ctx, house) || !sameSide(world, entity, house))
+  if (
+    !mayChangeTrade(world, entity) ||
+    !isSchoolOrFoundation(world, ctx, house) ||
+    !sameSide(world, entity, house)
+  )
     return;
   const settler = world.get(entity, Settler);
   const known = { jobType: settler.jobType, learned: world.get(entity, SettlerProgress).learned };

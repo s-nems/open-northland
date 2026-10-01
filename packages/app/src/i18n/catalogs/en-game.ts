@@ -202,6 +202,7 @@ export const enGame = {
       talking: 'Talking',
       walking: 'Walking',
       awaitingWorkplace: 'Waiting for the workshop',
+      awaitingTraining: 'Waiting for construction',
       standingTo: 'Standing to',
       idle: 'Idle',
     },

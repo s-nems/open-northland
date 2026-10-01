@@ -9,8 +9,8 @@ import { createPickModeController } from '../src/view/unit-controls/pick-mode.js
 import { NO_TARGETS } from './support/pick-mode.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
-/** The action ring's "assign learning place" reaches both learning houses: a barracks drills at once, a
- *  school opens its course dialog, since the course is the player's choice. */
+/** The action ring's "assign learning place" reaches both learning houses, standing or still foundations:
+ *  a barracks drills at once, a school opens its course dialog, since the course is the player's choice. */
 
 const PLAYER = 0;
 const TRIBE = 1;
@@ -22,22 +22,32 @@ const content = sandboxContent();
 const schoolType = content.buildings.find((row) => systems.isSchoolType(row))?.typeId;
 const barracksType = content.buildings.find((row) => systems.isBarracksType(row))?.typeId;
 
-const house = (id: number, buildingType: number | undefined, x: number): Ent => ({
+const house = (id: number, buildingType: number | undefined, x: number, standing: boolean): Ent => ({
   id,
   components: {
-    Building: { buildingType, tribe: TRIBE, built: ONE },
+    Building: { buildingType, tribe: TRIBE, built: standing ? ONE : fx.fromInt(0) },
     Position: { x: fx.fromInt(x), y: fx.fromInt(2) },
     Owner: { player: PLAYER },
+    ...(standing ? {} : { UnderConstruction: { labor: fx.fromInt(0) } }),
   },
 });
 
-const WORLD = snapshotOf([
-  { id: PUPIL, components: { Settler: { tribe: TRIBE, jobType: JOB_CIVILIST }, Owner: { player: PLAYER } } },
-  house(SCHOOL, schoolType, 2),
-  house(BARRACKS, barracksType, 8),
-]);
+const worldOf = (standing: boolean): ReturnType<typeof snapshotOf> =>
+  snapshotOf([
+    {
+      id: PUPIL,
+      components: { Settler: { tribe: TRIBE, jobType: JOB_CIVILIST }, Owner: { player: PLAYER } },
+    },
+    house(SCHOOL, schoolType, 2, standing),
+    house(BARRACKS, barracksType, 8, standing),
+  ]);
+const STANDING = worldOf(true);
+const FOUNDATIONS = worldOf(false);
 
-function harness(under: number): { press: () => void; issued: Command[]; schools: number[][] } {
+function harness(
+  under: number,
+  world = STANDING,
+): { press: () => void; issued: Command[]; schools: number[][] } {
   const issued: Command[] = [];
   const schools: number[][] = [];
   const orders = {
@@ -48,7 +58,7 @@ function harness(under: number): { press: () => void; issued: Command[]; schools
   } as Partial<UnitOrderController> as UnitOrderController;
   const pickMode = createPickModeController({
     answered: createAnsweredOrders(),
-    snapshot: () => WORLD,
+    snapshot: () => world,
     targets: { ...NO_TARGETS, owned: () => [{ ref: under, x: 0, y: 0 }] },
     content,
     mapSize: { width: 16, height: 16 },
@@ -89,5 +99,18 @@ it('still drills at a barracks picked as the learning place', () => {
   const { press, issued, schools } = harness(BARRACKS);
   press();
   expect(schools).toEqual([]);
+  expect(issued).toEqual([{ kind: 'trainSoldier', entity: PUPIL, house: BARRACKS }]);
+});
+
+it('opens the course dialog for a school foundation, where the pupil waits for it to stand', () => {
+  const { press, issued, schools } = harness(SCHOOL, FOUNDATIONS);
+  press();
+  expect(schools).toEqual([[SCHOOL, PUPIL]]);
+  expect(issued).toEqual([]);
+});
+
+it('drills at a barracks foundation picked as the learning place', () => {
+  const { press, issued } = harness(BARRACKS, FOUNDATIONS);
+  press();
   expect(issued).toEqual([{ kind: 'trainSoldier', entity: PUPIL, house: BARRACKS }]);
 });

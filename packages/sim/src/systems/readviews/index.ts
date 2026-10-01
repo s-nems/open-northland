@@ -21,6 +21,7 @@ export {
   buildingCombatClass,
   HEADQUARTERS_BUILDING_ID,
   isBarracks,
+  isBarracksOrFoundation,
   isBarracksType,
   isFinishedPrayerSite,
   isLowPriorityBuildingTarget,

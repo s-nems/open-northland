@@ -277,14 +277,14 @@ describe('right-clicking a construction site', () => {
     expect(posted?.jobPriority[0]).toBe(craftJob);
   });
 
-  it('staffs a barracks foundation instead of sending the settler to drill in it', async () => {
-    // Drilling needs the barracks standing (mayDrillAt), so the site takes the settler into its own
-    // transport slot instead; the drill offer comes back the moment the barracks is finished.
+  it('sends a settler to drill at a barracks foundation, where it waits for the barracks to stand', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const site = siteAt(sim, BUILDING_BARRACKS);
     const idle = settlerAt(sim, null);
 
-    expect(postedWorkers(await rightClick(sim, [idle], site), site).map((w) => w.entity)).toEqual([idle]);
+    expect(await rightClick(sim, [idle], site)).toEqual([
+      { kind: 'trainSoldier', entity: idle, house: site },
+    ]);
   });
 
   it('reserves a home foundation for the selected family', async () => {
@@ -358,10 +358,11 @@ describe('a right-click that orders nobody', () => {
 
   it('reports nothing when the foundation takes none of the selection', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
-    const site = siteAt(sim, schoolType(sim)); // a school employs nobody and teaches only once it stands
-    const idle = settlerAt(sim, null);
+    const site = siteAt(sim, schoolType(sim)); // a school employs nobody and teaches no woman
+    const woman = settlerAt(sim, null);
+    sim.world.add(woman, Female, { female: true });
 
-    expect(await pressRightClick(sim, [idle], site)).toEqual({ issued: [], ordered: false });
+    expect(await pressRightClick(sim, [woman], site)).toEqual({ issued: [], ordered: false });
   });
 
   it('reports the order a building did take', async () => {
