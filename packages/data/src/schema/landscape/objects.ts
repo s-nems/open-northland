@@ -122,6 +122,18 @@ export const LandscapeGfx = z.strictObject({
    * set's `.indexed` atlas, the value in red.
    */
   userFxMatrix: z.boolean().default(false),
+  /**
+   * `GfxTransition 11 "<EditName>"` as the named record's {@link index}: the record this one becomes
+   * when trigger 11 of `landscapetypes.ini` fires (a tree felled into its falling stage, a bush picked,
+   * a mushroom cut to its pile, a chest opened).
+   */
+  cutTarget: z.number().int().nonnegative().optional(),
+  /**
+   * `GfxTransition 13 "<EditName>"` as the named record's {@link index}: the record this one becomes
+   * when its timed stage ends, trigger 13 of logic types 5, 87 and 81 (a falling tree lies down as a
+   * trunk, a falling skeleton as bones, bones give way to grass).
+   */
+  stageEndTarget: z.number().int().nonnegative().optional(),
   source: Provenance.optional(),
 });
 export type LandscapeGfx = z.infer<typeof LandscapeGfx>;

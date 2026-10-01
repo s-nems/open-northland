@@ -303,6 +303,11 @@ describe('validateCrossReferences', () => {
       overrides: { landscapeGfx: [{ index: 0, editName: 'tree', logicType: 5 }] },
       error: /landscapeGfx "tree" references unknown landscape typeId 5/,
     },
+    {
+      name: 'a landscapeGfx transition to an absent record',
+      overrides: { landscapeGfx: [{ index: 0, editName: 'tree', cutTarget: UNKNOWN }] },
+      error: /landscapeGfx "tree" transitions to unknown landscapeGfx index 99/,
+    },
     // gathering pipeline
     {
       name: 'a pipeline naming an unknown good',

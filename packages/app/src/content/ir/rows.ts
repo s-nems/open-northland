@@ -158,6 +158,12 @@ export interface LandscapeGfxRow {
   readonly walkBlockAreas?: readonly Readonly<LandscapeBlockArea>[];
   /** Repeated `LogicBuildBlockArea` lines - the object's build-exclusion ring. */
   readonly buildBlockAreas?: readonly Readonly<LandscapeBlockArea>[];
+  /** `GfxTransition 11` - the {@link index} this record becomes when felled, picked, cut or opened
+   *  (a tree's falling stage). */
+  readonly cutTarget?: number;
+  /** `GfxTransition 13` - the {@link index} this record becomes when its timed stage ends (a falling
+   *  tree's trunk, a skeleton's bones). */
+  readonly stageEndTarget?: number;
 }
 
 /** One resolved gathering-pipeline stage (a landscape type + the `landscapeGfx` records that place it). */

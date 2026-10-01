@@ -31,6 +31,16 @@ const CORE_GOOD_IDS = ['wood', 'stone', 'wheat'] as const;
 /** The `EditName` stem of the original's bridge records (`bridge wood 01`, `bridge stone`). */
 const BRIDGE_NAME_PREFIX = 'bridge ';
 
+/** `landscapetypes.ini` logic types of the felling and skeleton chains: a standing tree is cut into its
+ *  falling stage, which lies down as a trunk; a falling skeleton lies down as bones. */
+const TREE_LOGIC_TYPE = 4;
+const TREE_FALLING_LOGIC_TYPE = 5;
+const TRUNK_LOGIC_TYPE = 6;
+const BONES_LOGIC_TYPE = 81;
+const SKELETON_FALLING_LOGIC_TYPE = 87;
+/** Falling records no standing tree is cut into: `pine 02` and `snow pine 02` fall as `dummy tree falling`. */
+const UNFELLED_FALLING_RECORDS: ReadonlySet<string> = new Set(['pine 02 falling', 'snow pine 02 falling']);
+
 // Mushroom gathering remains uncalibrated; any additional zero-balance good must fail.
 const KNOWN_UNCALIBRATED_GOOD_IDS: readonly string[] = ['mushroom'];
 
@@ -221,6 +231,37 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     for (const bridge of bridges) {
       expect(bridge.isStatic, `${bridge.editName} left the still-landscape pass`).toBe(true);
       expect(bridge.walkBlockAreas?.length ?? 0, `${bridge.editName} lost its deck`).toBeGreaterThan(0);
+    }
+  });
+
+  it('every tree is cut into a falling record that is reached from a tree and lies down as a trunk', async () => {
+    // The felling clip's chain: a dropped GfxTransition lane would leave the app nothing to play.
+    const { real } = await loadContentUnderTest();
+    const byIndex = new Map(real.landscapeGfx.map((g) => [g.index, g]));
+    const labelOf = (g: { readonly index: number; readonly editName?: string | undefined }): string =>
+      g.editName ?? `#${g.index}`;
+    const felledInto = new Set<number>();
+    for (const tree of real.landscapeGfx.filter((g) => g.logicType === TREE_LOGIC_TYPE)) {
+      const falling = tree.cutTarget === undefined ? undefined : byIndex.get(tree.cutTarget);
+      expect(falling?.logicType, `${labelOf(tree)} is not cut into a falling record`).toBe(
+        TREE_FALLING_LOGIC_TYPE,
+      );
+      if (falling !== undefined) felledInto.add(falling.index);
+    }
+    const fallingRecords = real.landscapeGfx.filter((g) => g.logicType === TREE_FALLING_LOGIC_TYPE);
+    expect(fallingRecords.length, 'no falling tree records').toBeGreaterThan(0);
+    for (const falling of fallingRecords) {
+      const label = labelOf(falling);
+      if (!UNFELLED_FALLING_RECORDS.has(label))
+        expect(felledInto.has(falling.index), `no tree is cut into ${label}`).toBe(true);
+      const rest = falling.stageEndTarget === undefined ? undefined : byIndex.get(falling.stageEndTarget);
+      expect(rest?.logicType, `${label} does not lie down as a trunk`).toBe(TRUNK_LOGIC_TYPE);
+    }
+    const skeletons = real.landscapeGfx.filter((g) => g.logicType === SKELETON_FALLING_LOGIC_TYPE);
+    expect(skeletons.length, 'no falling skeleton records').toBeGreaterThan(0);
+    for (const skeleton of skeletons) {
+      const rest = skeleton.stageEndTarget === undefined ? undefined : byIndex.get(skeleton.stageEndTarget);
+      expect(rest?.logicType, `${labelOf(skeleton)} does not lie down as bones`).toBe(BONES_LOGIC_TYPE);
     }
   });
 

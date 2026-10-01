@@ -231,13 +231,16 @@ function checkHuntPrey(set: ContentSet, { tribeIds }: IdSets): string[] {
   return errors;
 }
 
-function checkLandscapeGfx(set: ContentSet, { landscapeIds }: IdSets): string[] {
+function checkLandscapeGfx(set: ContentSet, { landscapeIds, landscapeGfxIndices }: IdSets): string[] {
   const errors: string[] = [];
   for (const g of set.landscapeGfx) {
+    const label = `landscapeGfx "${g.editName ?? `#${g.index}`}"`;
     if (g.logicType !== LOGIC_TYPE_NONE && !landscapeIds.has(g.logicType))
-      errors.push(
-        `landscapeGfx "${g.editName ?? `#${g.index}`}" references unknown landscape typeId ${g.logicType}`,
-      );
+      errors.push(`${label} references unknown landscape typeId ${g.logicType}`);
+    for (const target of [g.cutTarget, g.stageEndTarget]) {
+      if (target !== undefined && !landscapeGfxIndices.has(target))
+        errors.push(`${label} transitions to unknown landscapeGfx index ${target}`);
+    }
   }
   return errors;
 }

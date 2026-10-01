@@ -322,6 +322,59 @@ describe('extractLandscapeGfx', () => {
     ]);
   });
 
+  describe('GfxTransition', () => {
+    const CUT = 11;
+    const STAGE_END = 13;
+    const GROWTH = 7;
+    const record = (name: string, ...transitions: string[]): CifLine[] => [
+      { level: 1, text: 'GfxLandscape' },
+      { level: 2, text: `EditName "${name}"` },
+      { level: 2, text: 'LogicType 1' },
+      ...transitions.map((text) => ({ level: 2, text })),
+    ];
+
+    it('resolves the cut and stage-end kinds to the named records and skips the other kinds', () => {
+      const records = extractLandscapeGfx(
+        cifLinesToSections([
+          ...record('fir 01', `GfxTransition ${GROWTH} "fir 01"`, `GfxTransition ${CUT} "fir 01 falling"`),
+          ...record('tree trunk medium'),
+          ...record('fir 01 falling', `GfxTransition ${STAGE_END} "tree trunk medium"`),
+        ]),
+        { file: 'f.cif' },
+      );
+      expect(records.map((r) => [r.editName, r.cutTarget, r.stageEndTarget])).toEqual([
+        ['fir 01', 2, undefined],
+        ['tree trunk medium', undefined, undefined],
+        ['fir 01 falling', undefined, 1],
+      ]);
+    });
+
+    it('fails the table on a name no record carries, matching case-sensitively', () => {
+      expect(() =>
+        extractLandscapeGfx(
+          cifLinesToSections([
+            ...record('skeleton_01', `GfxTransition ${STAGE_END} "Cadaver Human Bones01"`),
+            ...record('cadaver human bones01'),
+          ]),
+          { file: 'f.cif' },
+        ),
+      ).toThrow(/"skeleton_01" GfxTransition 13 names no record "Cadaver Human Bones01"/);
+    });
+
+    it('fails the table on a kind given twice', () => {
+      expect(() =>
+        extractLandscapeGfx(
+          cifLinesToSections([
+            ...record('bush', `GfxTransition ${CUT} "a"`, `GfxTransition ${CUT} "b"`),
+            ...record('a'),
+            ...record('b'),
+          ]),
+          { file: 'f.cif' },
+        ),
+      ).toThrow(/"bush" repeats GfxTransition 11/);
+    });
+  });
+
   it('keeps a bob-less record in its positional slot (unlike the atlas work-list extractor)', () => {
     const marker: CifLine[] = [
       { level: 1, text: 'GfxLandscape' },

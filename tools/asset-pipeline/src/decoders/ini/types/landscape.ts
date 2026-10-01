@@ -8,7 +8,7 @@ import {
   type SourceRef,
   slug,
 } from '../ir-fields.js';
-import { findProp, getInt, getIntRows, getIntTuple, getStr } from '../props.js';
+import { findProp, findProps, getInt, getIntRows, getIntTuple, getStr } from '../props.js';
 
 /**
  * The `allowedon*` flags mark the placement layer, not traversal, so `walkable`/`buildable` keep
@@ -71,15 +71,53 @@ export function extractTrianglePatternTypes(
   return types;
 }
 
+type GfxTransitionTargets = Pick<LandscapeGfx, 'cutTarget' | 'stageEndTarget'>;
+
+/** The `GfxTransition` kinds the app plays, by the field each fills; the other kinds (growth, take,
+ *  put, depletion, wall strikes) stay unread. */
+const TARGET_FIELD_BY_KIND: ReadonlyMap<number, keyof GfxTransitionTargets> = new Map([
+  [11, 'cutTarget'],
+  [13, 'stageEndTarget'],
+]);
+
+/** A record's `GfxTransition <kind> "<EditName>"` lines, the name resolved to that record's index. A
+ *  name that matches no record or a kind given twice is pushed to `problems` instead of being dropped. */
+function readGfxTransitions(
+  sec: RuleSection,
+  indexByName: ReadonlyMap<string, number>,
+  problems: string[],
+): GfxTransitionTargets {
+  const targets: GfxTransitionTargets = {};
+  const label = `[GfxLandscape] "${getStr(sec, 'EditName') ?? '?'}"`;
+  for (const { values } of findProps(sec, 'GfxTransition')) {
+    const kind = Number.parseInt(values[0] ?? '', 10);
+    const field = TARGET_FIELD_BY_KIND.get(kind);
+    if (field === undefined) continue;
+    const name = values[1];
+    const target = name === undefined ? undefined : indexByName.get(name);
+    if (target === undefined) problems.push(`${label} GfxTransition ${kind} names no record "${name ?? ''}"`);
+    else if (targets[field] !== undefined) problems.push(`${label} repeats GfxTransition ${kind}`);
+    else targets[field] = target;
+  }
+  return targets;
+}
+
 /**
  * Every record keeps its slot: {@link LandscapeGfx.index} is positional, so a malformed one is read
- * defensively rather than skipped, which would renumber the rest.
+ * defensively rather than skipped, which would renumber the rest. A `GfxTransition` that does not
+ * resolve fails the table.
  */
 export function extractLandscapeGfx(sections: readonly RuleSection[], src: SourceRef): LandscapeGfx[] {
+  const gfxSections = sections.filter((sec) => sec.name === 'GfxLandscape');
+  const indexByName = new Map<string, number>();
+  gfxSections.forEach((sec, index) => {
+    const name = getStr(sec, 'EditName');
+    if (name !== undefined && !indexByName.has(name)) indexByName.set(name, index);
+  });
+  const problems: string[] = [];
   const records: LandscapeGfx[] = [];
   let index = 0;
-  for (const sec of sections) {
-    if (sec.name !== 'GfxLandscape') continue;
+  for (const sec of gfxSections) {
     const libs = findProp(sec, 'GfxBobLibs');
     const bmd = libs?.values[0];
     const shadow = libs?.values[1];
@@ -107,9 +145,12 @@ export function extractLandscapeGfx(sections: readonly RuleSection[], src: Sourc
         loopAnimation: getInt(sec, 'GfxLoopAnimation') === 1,
         dynamicBackground: getInt(sec, 'GfxDynamicBackground') === 1,
         userFxMatrix: getInt(sec, 'GfxUserFXMatrix') === 1,
+        ...readGfxTransitions(sec, indexByName, problems),
         source: makeSource(src, 'GfxLandscape'),
       }),
     );
   }
+  if (problems.length > 0)
+    throw new Error(`ini: unresolved landscape transitions in ${src.file}:\n  ${problems.join('\n  ')}`);
   return records;
 }
