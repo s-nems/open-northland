@@ -51,7 +51,22 @@ export {
   terrainWorldBounds,
   type WorldBounds,
 } from './terrain/minimap.js';
+export {
+  type MinimapFeature,
+  type MinimapObjectLanes,
+  type MinimapObjects,
+  minimapFeatureOfGood,
+  minimapObjectLanes,
+} from './terrain/minimap-features.js';
+export {
+  MINIMAP_DEPOSIT_KINDS,
+  type MinimapDepositKind,
+  type MinimapScene,
+  minimapScene,
+} from './terrain/minimap-scene.js';
+export { rasterizeMinimap } from './terrain/minimap-style.js';
 export { patternSrcRect, type SrcRect, texturePageKey } from './terrain/uv.js';
+export { type WaterCellFractions, waterCellFractions } from './terrain/water.js';
 export {
   AMBIENT_LEVEL_AMOUNTS,
   AMBIENT_NO_WEATHER,

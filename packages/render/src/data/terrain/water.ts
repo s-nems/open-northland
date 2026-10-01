@@ -49,13 +49,25 @@ const SHALLOW_PATTERN_NAME = /shallow/i;
 /** Whether a ground pattern or transition overlay of this name paints water, so takes the water shading. */
 export const paintsWater = (name: string): boolean => WATER_PATTERN_NAME.test(name);
 
-export function makeWaterField(ground: SceneGround | undefined, width: number, height: number): WaterField {
-  if (ground === undefined || width <= 0 || height <= 0) return NO_WATER;
+/** A map's per-cell water fractions over each cell's two triangles: 1 = both, 0.5 = one, 0 = neither. */
+export interface WaterCellFractions {
+  /** Drawn with any water pattern. */
+  readonly water: Float32Array;
+  /** Drawn with a deep (non-shallow) water pattern. */
+  readonly deep: Float32Array;
+}
+
+/** The per-cell water fractions of a map's ground lanes, or `undefined` when no cell draws water. */
+export function waterCellFractions(
+  ground: SceneGround | undefined,
+  width: number,
+  height: number,
+): WaterCellFractions | undefined {
+  if (ground === undefined || width <= 0 || height <= 0) return undefined;
   const waterPattern = ground.patterns.map((name) => (paintsWater(name) ? 1 : 0));
   const deepPattern = ground.patterns.map((name, i) =>
     waterPattern[i] === 1 && !SHALLOW_PATTERN_NAME.test(name) ? 1 : 0,
   );
-  // Per-cell fractions over the cell's two triangles: 1 = both, 0.5 = one, 0 = neither.
   const cells = width * height;
   const water = new Float32Array(cells);
   const deep = new Float32Array(cells);
@@ -68,7 +80,15 @@ export function makeWaterField(ground: SceneGround | undefined, width: number, h
     deep[i] = ((deepPattern[a] ?? 0) + (deepPattern[b] ?? 0)) / 2;
     if (w > 0) anyWater = true;
   }
-  if (!anyWater) return NO_WATER; // a dictionary may name water no cell draws - still a land map
+  // A dictionary may name water no cell draws - still a land map.
+  return anyWater ? { water, deep } : undefined;
+}
+
+export function makeWaterField(ground: SceneGround | undefined, width: number, height: number): WaterField {
+  const fractions = waterCellFractions(ground, width, height);
+  if (fractions === undefined) return NO_WATER;
+  const { water, deep } = fractions;
+  const cells = width * height;
   const at = clampedCellAt(water, width, height);
   // Node amplitude = the minimum water fraction over the node's 3×3 cell neighbourhood, so any node a
   // land triangle can reach stays exactly still and the coastline never warps. The shader's varying

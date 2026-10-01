@@ -25,6 +25,20 @@ export {
   type WorldBounds,
 } from './minimap.js';
 export {
+  type MinimapFeature,
+  type MinimapObjectLanes,
+  type MinimapObjects,
+  minimapFeatureOfGood,
+  minimapObjectLanes,
+} from './minimap-features.js';
+export {
+  MINIMAP_DEPOSIT_KINDS,
+  type MinimapDepositKind,
+  type MinimapScene,
+  minimapScene,
+} from './minimap-scene.js';
+export { rasterizeMinimap } from './minimap-style.js';
+export {
   type Barycentric,
   cellsNearNode,
   type HalfTriangle,
@@ -61,7 +75,9 @@ export {
   NO_WATER,
   paintsWater,
   type WaterCellFn,
+  type WaterCellFractions,
   type WaterField,
   type WaterNodeFn,
+  waterCellFractions,
   waterSurfaceAt,
 } from './water.js';
