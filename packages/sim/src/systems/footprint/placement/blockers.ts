@@ -1,9 +1,4 @@
-import {
-  type BuildingFootprint,
-  type ContentSet,
-  type FootprintCell,
-  footprintCellDx,
-} from '@open-northland/data';
+import { type ContentSet, type FootprintCell, footprintCellDx } from '@open-northland/data';
 import {
   Building,
   DeliveryFlag,
@@ -41,9 +36,9 @@ import { hexDisc, vehicleAnchor } from '../vehicle-footprint.js';
  *  - **RESOURCE_ANCHOR** - a resource's own cell, which its walk body need not cover. Blocks a work flag
  *    only.
  *  - **MARKER** - a delivery flag's cell. Blocks another marker, never a building.
- *  - **UPGRADE_RESERVE** - the FAMILY BODY cells an upgradable building's current level does not stand on:
- *    ground its later levels grow over. OBSTACLE already refuses them; a wall or road tool reads this
- *    channel only to show the player why.
+ *  - **UPGRADE_RESERVE** - the cells an upgradable building's later levels stand on and its current one
+ *    does not: ground its upgrades grow over. OBSTACLE already refuses them; a wall or road line told to
+ *    take upgrade ground waives this part of OBSTACLE, and a finishing building spares the road sites on it.
  */
 const OBSTACLE = 0;
 const EXCLUSION = 1;
@@ -109,22 +104,47 @@ export function buildingBlockerCells(
   const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
   for (const c of body) visit(hx + footprintCellDx(hy, c), hy + c.dy, OBSTACLE);
   for (const c of zone) visit(hx + footprintCellDx(hy, c), hy + c.dy, BUILDING_ZONE);
-  // A footprint without walls, as the approximate catalog's, has no growth to tell from its body.
-  if (fp === undefined || fp.blocked.length === 0) return;
-  if (contentIndex(content).buildings.get(b.buildingType)?.upgradeTarget === undefined) return;
-  for (const c of upgradeReserveCells(fp)) visit(hx + footprintCellDx(hy, c), hy + c.dy, UPGRADE_RESERVE);
+  for (const c of upgradeReserveCells(content, b.buildingType, b.tribe)) {
+    visit(hx + footprintCellDx(hy, c), hy + c.dy, UPGRADE_RESERVE);
+  }
 }
 
-const upgradeReserves = new WeakMap<BuildingFootprint, readonly FootprintCell[]>();
+const upgradeReserves = new WeakMap<ContentSet, Map<string, readonly FootprintCell[]>>();
 
-/** `familyBody` less this level's `blocked` cells, kept per footprint record. */
-function upgradeReserveCells(fp: BuildingFootprint): readonly FootprintCell[] {
-  let cells = upgradeReserves.get(fp);
-  if (cells === undefined) {
-    const standing = new Set(fp.blocked.map((c) => `${c.dx},${c.dy}`));
-    cells = fp.familyBody.filter((c) => !standing.has(`${c.dx},${c.dy}`));
-    upgradeReserves.set(fp, cells);
+/** The `blocked` cells of every level above `buildingType` in its chain, less its own, kept per content
+ *  and (type, tribe). A cell only a lower level stood on is no upgrade's ground. A footprint without walls,
+ *  as the approximate catalog's, has no growth to tell from its body. */
+function upgradeReserveCells(
+  content: ContentSet,
+  buildingType: number,
+  tribe: number,
+): readonly FootprintCell[] {
+  let byType = upgradeReserves.get(content);
+  if (byType === undefined) {
+    byType = new Map();
+    upgradeReserves.set(content, byType);
   }
+  const key = `${buildingType}:${tribe}`;
+  const held = byType.get(key);
+  if (held !== undefined) return held;
+  const standing = buildingFootprintOf(content, buildingType, tribe)?.blocked ?? [];
+  const cells: FootprintCell[] = [];
+  if (standing.length > 0) {
+    const seen = new Set(standing.map((c) => `${c.dx},${c.dy}`));
+    const buildings = contentIndex(content).buildings;
+    const climbed = new Set([buildingType]);
+    for (let next = buildings.get(buildingType)?.upgradeTarget; next !== undefined && !climbed.has(next); ) {
+      climbed.add(next);
+      for (const c of buildingFootprintOf(content, next, tribe)?.blocked ?? []) {
+        const at = `${c.dx},${c.dy}`;
+        if (seen.has(at)) continue;
+        seen.add(at);
+        cells.push(c);
+      }
+      next = buildings.get(next)?.upgradeTarget;
+    }
+  }
+  byType.set(key, cells);
   return cells;
 }
 

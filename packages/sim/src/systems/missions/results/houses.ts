@@ -7,6 +7,7 @@ import { placeBuilding } from '../../command/placement.js';
 import type { SystemContext } from '../../context.js';
 import { settleFootprint } from '../../economy/construction.js';
 import { clearRepairedDamage, markShortPool } from '../../economy/repair.js';
+import { clearUpgradeGround } from '../../economy/upgrade-ground.js';
 import { placementProbe } from '../../footprint/index.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
@@ -86,6 +87,7 @@ function rebuildAtLevel(
   const type = index.commandBuildings.get(typeId);
   if (type === undefined || typeId === world.get(e, Building).buildingType) return;
   const building = world.mut(e, Building);
+  const rising = at > building.level;
   building.buildingType = typeId;
   building.level = at;
   const max = buildingHitpointsFor(type, building.tribe);
@@ -98,6 +100,7 @@ function rebuildAtLevel(
   // A new tier's pool can leave a whole house short or a damaged one whole.
   clearRepairedDamage(world, e);
   markShortPool(world, e);
+  if (rising) clearUpgradeGround(world, ctx, e, typeId);
   if (!world.has(e, UnderConstruction)) {
     settleFootprint(world, ctx, e);
     ctx.events.emit({ kind: 'buildingUpgraded', entity: e, level: at });

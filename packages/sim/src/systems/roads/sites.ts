@@ -157,11 +157,17 @@ export function cancelRoadSite(world: World, ctx: SystemContext, site: Entity): 
 }
 
 /**
- * Withdraw the road sites a newly placed building's or wall's body covers, each as its owner's cancel
- * would: the cells the road probe refuses for that body, less the building's own upgrade ground, where a
- * site ordered over it waits for the upgrade. A laid road stays under it. Project rule.
+ * Withdraw the road sites a building's or wall's body covers, each as its owner's cancel would: the cells
+ * the road probe refuses for that body. With `spareGrowth`, as a building finishes, the sites on its own
+ * upgrade ground stay, ordered there over it to wait for the upgrade. A laid road stays under it. Project
+ * rule.
  */
-export function cancelRoadSitesUnder(world: World, ctx: SystemContext, structure: Entity): void {
+export function cancelRoadSitesUnder(
+  world: World,
+  ctx: SystemContext,
+  structure: Entity,
+  spareGrowth = false,
+): void {
   const terrain = ctx.terrain;
   if (terrain === undefined) return;
   const sites = roadSitesByNode(world, terrain);
@@ -173,7 +179,7 @@ export function cancelRoadSitesUnder(world: World, ctx: SystemContext, structure
     const site = sites.get(terrain.nodeAt(x, y));
     if (site === undefined) return;
     if (channel === OBSTACLE || channel === PALISADE_BODY) body.add(site);
-    else if (channel === UPGRADE_RESERVE) growth.add(site);
+    else if (spareGrowth && channel === UPGRADE_RESERVE) growth.add(site);
   };
   if (world.has(structure, Palisade)) palisadeBodyCells(world, structure, visit);
   else BUILDING_STORE.cells(world, ctx.content, structure, visit);

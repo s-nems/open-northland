@@ -293,7 +293,7 @@ export function settleFootprint(world: World, ctx: SystemContext, e: Entity): vo
   destroyBerryBushesInReserved(world, ctx, e);
   destroyStumpsInReserved(world, ctx, e);
   destroyFieldsUnderBuilding(world, ctx, e);
-  cancelRoadSitesUnder(world, ctx, e);
+  cancelRoadSitesUnder(world, ctx, e, true);
 }
 
 /**

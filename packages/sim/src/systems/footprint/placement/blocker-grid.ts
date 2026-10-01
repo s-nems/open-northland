@@ -40,7 +40,8 @@ export interface PlacementGrid {
   readonly exclusion: Uint16Array;
   readonly palisadeBody: Uint16Array;
   readonly buildingZone: Uint16Array;
-  /** Read only by the wall and road answers, to name the refusals an upgrade's ground causes. */
+  /** Per slot, the buildings whose upgrades grow over it: the part of `obstacle` a wall or road line told
+   *  to take upgrade ground waives. */
   readonly upgradeReserve: Uint16Array;
   readonly changes: GridChanges;
 }
