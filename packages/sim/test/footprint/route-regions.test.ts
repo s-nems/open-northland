@@ -232,7 +232,7 @@ describe('routeRegions', () => {
 });
 
 describe('routeRegions under changing blockers', () => {
-  it('answers like a cold flood after every random wall build and teardown', () => {
+  it('answers like a cold flood after every random wall build and teardown', { timeout: RANDOM_TEST_TIMEOUT_MS }, () => {
     const sim = mappedSim(grassMap(RANDOM_MAP_COLS, RANDOM_MAP_ROWS));
     const terrain = terrainOf(sim);
     const ctx = ctxOf(sim);
@@ -356,6 +356,8 @@ const RANDOM_SEED = 7;
 const RANDOM_MAP_COLS = 24;
 const RANDOM_MAP_ROWS = 16;
 const RANDOM_ROUNDS = 80;
+/** Eighty rounds of cold-flood reference checks: slow by design, and slower on a loaded machine. */
+const RANDOM_TEST_TIMEOUT_MS = 60_000;
 const MAX_CHANGES_PER_ROUND = 3;
 const QUERIES_PER_ROUND = 20;
 /** Walls up to this many nodes plus two on a side. */
