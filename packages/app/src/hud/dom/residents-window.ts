@@ -34,7 +34,7 @@ import { quietTextField } from './parts/text-field.js';
 import { professionChoices } from './profession-choices.js';
 import { centralWindowPlacer, createHudWindow } from './window.js';
 
-/** Design px (FOUNDATION.md): the central window width shared with the construction window. */
+/** Design px: the central window width shared with the construction window. */
 const RESIDENTS_WINDOW_W = 640;
 
 const LACK_GLYPH: Readonly<Record<ResidentLack, string>> = {
@@ -77,10 +77,10 @@ export interface ResidentsWindowDeps {
   readonly cue: (cue: UiCue) => void;
 }
 
-/** The residents window on the DOM plane (FOUNDATION.md, "Residents window"): the search and the two
- *  profession filters, the group row and the lacks row as one grid of chips, and the parchment list
- *  with sortable heads. It takes part in the window registry like a legacy pop-up, but the plane
- *  routes its own pointer input, so it claims no canvas point. */
+/** The residents window on the DOM plane: the search and the two profession filters, the group row and the
+ *  lacks row as one grid of chips, and the parchment list with sortable heads. It takes part in the window
+ *  registry like a legacy pop-up, but the plane routes its own pointer input, so it claims no canvas
+ *  point. */
 export interface ResidentsWindow extends ToolWindow {
   /** Once a frame: re-place an open window, relist on a new tick or selection. */
   refresh(): void;

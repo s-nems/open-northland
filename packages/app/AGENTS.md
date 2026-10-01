@@ -91,6 +91,19 @@ which the pack seam, `src/routes.ts`, `vite.config.ts` and `check:assets` load w
 repository never contains them. Keep those hooks and the pack interface working, and keep the
 original-art path complete without a pack.
 
+## In-game HUD panels
+
+Windows and panels are DOM components in `src/hud/dom/`. `hud/dom/foundation.css` is the one source of
+palette, typography, spacing and states; a new shared pattern goes there and is checked against the
+panels already using it.
+
+- A new or redesigned panel starts from the real models, commands and content. Its concrete design
+  (states, long text, real controls) is shown in a preview and approved by the owner before it is
+  built. A mockup is design evidence, not proof of runtime behavior.
+- A replacement panel deletes the legacy code, styles and tests it leaves unreachable.
+- HUD chrome is the project's own art, never the original's GUI art. Goods, buildings and settlers
+  show the game's own sprites, not generated substitutes.
+
 ## Graphics settings
 
 Player-facing graphics options belong in the shared Graphics settings, with persisted defaults,

@@ -10,7 +10,7 @@ import { WINDOW_ORNAMENTS } from './symbols.js';
 /** Design px between the summary bar and the panel's top when the panel is as tall as it gets. */
 const SELECTION_TOP_GAP_PX = 16;
 
-/** The panel's design-px width (FOUNDATION.md). */
+/** The panel's design-px width. */
 export { SELECTION_PANEL_W } from '../regions.js';
 
 /** The panel painted out of sight for its warm-up frame (foundation.css). */
@@ -68,10 +68,9 @@ export interface SelectionPanelHandlers {
 }
 
 /**
- * The bottom-right selection window (FOUNDATION.md, "Settler panel"): framed like the other windows,
- * as tall as its content up to the summary bar and never scrolled. Its owner fills `body` and says
- * which element in it the renderer paints through: the fill leaves a hole there, since the plane lies
- * over the canvas.
+ * The bottom-right selection window: framed like the other windows, as tall as its content up to the summary
+ * bar and never scrolled. Its owner fills `body` and says which element in it the renderer paints through:
+ * the fill leaves a hole there, since the plane lies over the canvas.
  */
 export interface SelectionPanel {
   readonly element: HTMLElement;

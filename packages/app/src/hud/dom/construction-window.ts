@@ -30,9 +30,8 @@ import { GLYPH, paintedIcon } from './icons.js';
 import { escapeHtml } from './parts/dom.js';
 import { centralWindowPlacer, createHudWindow } from './window.js';
 
-/** Design px (FOUNDATION.md): the window width, sized so the widest bill in the content (eight goods,
- *  the top house) sits in one row beside the picture; the head's painted icon, a card's picture box
- *  and a cost slot's icon box. */
+/** Design px: the window width, sized so the widest bill in the content (eight goods, the top house) sits in
+ *  one row beside the picture; the head's painted icon, a card's picture box and a cost slot's icon box. */
 const CONSTRUCTION_WINDOW_W = 640;
 const TITLE_ART_PX = 43;
 const THUMB_BOX_PX = 72;
@@ -78,12 +77,11 @@ export interface ConstructionWindowDeps {
   readonly cue: (cue: UiCue) => void;
 }
 
-/** The construction window on the DOM plane (FOUNDATION.md, "Construction window"): the quick row,
- *  then either the catalogue page (the category tabs with the grid or list toggle, the parchment of
- *  permit-like cards with the locked entries at the end) or the papers page (a back tab, the same
- *  toggle, the plans as cards). A pick hides the window for the placement and Esc brings it back as
- *  it was. It takes part in the window registry like a legacy pop-up, but the plane routes its own
- *  pointer input, so it claims no canvas point. */
+/** The construction window on the DOM plane: the quick row, then either the catalogue page (the category tabs
+ *  with the grid or list toggle, the parchment of permit-like cards with the locked entries at the end) or
+ *  the papers page (a back tab, the same toggle, the plans as cards). A pick hides the window for the
+ *  placement and Esc brings it back as it was. It takes part in the window registry like a legacy pop-up, but
+ *  the plane routes its own pointer input, so it claims no canvas point. */
 export interface ConstructionWindow extends ToolWindow {
   /** Re-place an open window against the plane's design-px size; call once per frame. */
   place(): void;

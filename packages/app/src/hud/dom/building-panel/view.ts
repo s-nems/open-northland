@@ -15,7 +15,7 @@ import { createStaffSection } from './staff.js';
 import { createStockSection } from './stock.js';
 import { warmBuildingModel } from './warm-model.js';
 
-/** The selected building's panel on the DOM plane (FOUNDATION.md, "Building panel"). */
+/** The selected building's panel on the DOM plane. */
 export interface BuildingPanel {
   /** Show the model when it is a single building, else hide. */
   update(model: UnitPanelModel): void;

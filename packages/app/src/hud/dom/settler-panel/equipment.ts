@@ -3,8 +3,8 @@ import type { EquipGroup, EquipRow, EquipSlotRef } from '../../details-panel/mod
 import { GLYPH } from '../icons.js';
 import type { SocketModel } from '../parts/socket.js';
 
-/** The worn slots in their fixed order (FOUNDATION.md); a person shows only the ones it has, a hero only
- *  the arms it carries. */
+/** The worn slots in their fixed order; a person shows only the ones it has, a hero only the arms it
+ *  carries. */
 const WORN_ORDER: readonly EquipGroup[] = ['weapon', 'armor', 'tool', 'boots'];
 const HERO_ORDER: readonly EquipGroup[] = ['weapon', 'armor'];
 

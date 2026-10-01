@@ -24,8 +24,8 @@ const reviewedBinaryAssets = new Set([
   'packages/app/src/assets/ui/mission-book/band.webp',
   'packages/app/src/assets/ui/mission-book/spread.webp',
   'packages/app/src/assets/ui/mission-book/vellum.webp',
-  // Minimap frames and their backing: generated for this project, no original-game input (provenance in
-  // docs/design/minimap-study/generation.md).
+  // Minimap frames and their backing: generated for this project with gpt-image-1.5, no original-game
+  // input; the ksiega frame took the project's own mission book spread as its style reference.
   'packages/app/src/assets/ui/minimap/frames/ksiega.webp',
   'packages/app/src/assets/ui/minimap/frames/urnes.webp',
   'packages/app/src/assets/ui/minimap/frames/zelazo.webp',

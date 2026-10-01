@@ -36,9 +36,9 @@ export async function goodIconSource(
 }
 
 /**
- * Icons are sized by area, not by their longest side, so a thin sword and a round loaf carry about
- * the same visual mass (FOUNDATION.md): the sprite's square root of area lands on `mass` design px,
- * capped so its longest side stays inside the box with a margin.
+ * Icons are sized by area, not by their longest side, so a thin sword and a round loaf carry about the same
+ * visual mass: the sprite's square root of area lands on `mass` design px, capped so its longest side stays
+ * inside the box with a margin.
  */
 export const GOOD_ICON_BOX_PX = 25;
 const GOOD_ICON_MASS_PX = 19.5;

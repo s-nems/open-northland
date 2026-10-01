@@ -18,8 +18,8 @@ import { createHouseColumn, type HouseColumn } from './house-column.js';
 import { windowRoute } from './model.js';
 import { createTransfersList } from './transfers.js';
 
-/** Design px (FOUNDATION.md, "Okno handlu"): two stock lists side by side, and on the 1365 px plane
- *  of a 1280 × 720 screen the centred window still clears the 318 px settler panel. */
+/** Design px: two stock lists side by side, and on the 1365 px plane of a 1280 × 720 screen the centred
+ *  window still clears the 318 px settler panel. */
 const TRADE_WINDOW_W = 720;
 /** The window painted out of sight for its warm-up frame. */
 const WARM_CLASS = 'on-window--warm';
@@ -53,11 +53,10 @@ export interface HousePortrait {
 }
 
 /**
- * The trade between a trader's two own houses, in the centre of the screen (FOUNDATION.md, "Okno
- * handlu"): each house's live portrait, name and own category tabs over its stock, an arrow per good
- * that sets up a transfer into the other house, and the transfers with their direction and limits. It
- * belongs to the selected trader: another selection, a route without two own stops or a beam window
- * opened after it closes it.
+ * The trade between a trader's two own houses, in the centre of the screen: each house's live portrait, name
+ * and own category tabs over its stock, an arrow per good that sets up a transfer into the other house, and
+ * the transfers with their direction and limits. It belongs to the selected trader: another selection, a
+ * route without two own stops or a beam window opened after it closes it.
  */
 export interface TradeWindow {
   isOpen(): boolean;

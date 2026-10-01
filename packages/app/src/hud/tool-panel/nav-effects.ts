@@ -1,6 +1,6 @@
 import type { ToolWindowId } from './windows.js';
 
-/** The seven direct entries of the navigation beam, in beam order (FOUNDATION.md). */
+/** The seven direct entries of the navigation beam, in beam order. */
 export const NAV_ENTRY_IDS = [
   'build',
   'residents',

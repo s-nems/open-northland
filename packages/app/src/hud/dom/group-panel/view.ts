@@ -16,7 +16,7 @@ import { createGroupMilitarySection } from './military.js';
 import { createOverviewSection } from './overview.js';
 import { createScopeTabs, type ScopePress } from './tabs.js';
 
-/** Several units selected at once on the DOM plane (FOUNDATION.md, "Group panel"). */
+/** Several units selected at once on the DOM plane. */
 export interface GroupPanel {
   /** Show the model when it is a group, else hide. */
   update(model: UnitPanelModel): void;

@@ -13,7 +13,7 @@ import { createMilitarySection } from './military.js';
 import { createPortraitSection } from './portrait.js';
 import { warmVehicleModel } from './warm-model.js';
 
-/** The selected vehicle's panel on the DOM plane (FOUNDATION.md, "Vehicle panel"). */
+/** The selected vehicle's panel on the DOM plane. */
 export interface VehiclePanel {
   /** Show the model when it is a single vehicle, else hide. */
   update(model: UnitPanelModel): void;

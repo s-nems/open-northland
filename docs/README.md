@@ -21,8 +21,6 @@ Other references:
 - [`LEGAL.md`](LEGAL.md): game-data, licensing, trademark rules, and acceptable evidence
 - [`GLOSSARY.md`](GLOSSARY.md): project and format terms
 - [`formats/`](formats/): notes about decoded file formats
-- [`ORIGINAL-INGAME-MENU-BAR.md`](ORIGINAL-INGAME-MENU-BAR.md): the original in-game menu bar
-- [`design/`](design/): UI design references, such as the [in-game menu](design/ingame-menu/)
 
 ## Work tracker
 

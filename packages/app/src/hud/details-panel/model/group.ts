@@ -116,7 +116,7 @@ export interface GroupScopeModel {
   readonly siege: GroupSiegeModel | null;
 }
 
-/** Several units selected at once: settlers, vehicles or both (FOUNDATION.md, "Group panel"). */
+/** Several units selected at once: settlers, vehicles or both. */
 export interface GroupPanelModel {
   readonly kind: 'group';
   readonly title: string;

@@ -918,7 +918,8 @@ graphics have one frame state: the value cannot generally mean a frame number.
 The vertex color argument is a palette index, corroborated by the result reference and the owned
 `Data/engine2d/bin/palettes/misc/vertexcolors.pcx`, whose colour table the pipeline writes to
 `terrain-palettes/vertexcolors.json`. The display applies RGB/128 as an approximated multiplier,
-pending comparison with the original. Values outside 0 to 255 are
+pending comparison with the original; [SCRIPT-TINTS.md](SCRIPT-TINTS.md) covers how the shipped maps
+use it and how the scene draws it. Values outside 0 to 255 are
 clamped, an approximation for malformed input. Land-only edits conservatively require both
 source cell triangles to have known `isWater=false`, then mark their four half-cell nodes. Shoreline
 membership and this cell-to-node projection remain approximations; missing ground metadata does not

@@ -21,8 +21,8 @@ import { buildingTitle, type UnitPanelModelContext } from './context.js';
 import { settlerDisplayName, settlerGivenName } from './settler-name.js';
 import type { SettlerPlace } from './settler-work.js';
 
-/** What the panel shows a person as: the rows and sections follow it (FOUNDATION.md, "Settler panel").
- *  The residents list's kinds, read the same way. */
+/** What the panel shows a person as: the rows and sections follow it. The residents list's kinds, read the
+ *  same way. */
 export type SettlerRole = 'worker' | 'civilian' | 'soldier' | 'hero' | 'child' | 'woman';
 
 export function settlerRole(ctx: Pick<UnitPanelModelContext, 'jobs'>, ent: SnapshotEntity): SettlerRole {

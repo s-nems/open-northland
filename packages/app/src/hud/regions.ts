@@ -2,8 +2,7 @@ import type { Rect } from './geometry.js';
 import { navBeamRect, type ScreenSize } from './nav-beam.js';
 
 /**
- * The frozen HUD regions (FOUNDATION.md, "HUD shell") in design px, resolved to screen px at a HUD
- * scale.
+ * The frozen HUD regions in design px, resolved to screen px at a HUD scale.
  */
 
 /** The selection panel column in HUD design px. */

@@ -83,7 +83,7 @@ export interface SettlerMilitaryModel {
   readonly regeneration: boolean;
 }
 
-/** The selected person's panel (FOUNDATION.md, "Settler panel"). A null section is not shown. */
+/** The selected person's panel. A null section is not shown. */
 export interface SettlerPanelModel {
   readonly kind: 'settler';
   readonly entityId: number;

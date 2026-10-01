@@ -1,4 +1,4 @@
-/* In-game HUD foundation (docs/design/ingame-menu/FOUNDATION.md): tokens and shared primitives.
+/* In-game HUD foundation: tokens and shared primitives.
    Sizes are design px; the root scales them by --hud-scale. Everything is scoped under .on-hud. */
 /* A drag scroll hides the OS cursor globally, including inline canvas cursor overrides, and keeps HUD
    chrome from hovering under it when the browser refused the pointer lock. */

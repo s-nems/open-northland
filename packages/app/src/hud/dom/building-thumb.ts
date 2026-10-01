@@ -2,9 +2,9 @@ import { isDrawableResource, lookupFrame, type SpriteSheet } from '@open-northla
 import { boundBuildingRef } from '../../content/building-gfx/index.js';
 
 /**
- * A building's picture for a card: its finished body cut from the sheet's already-loaded building
- * pages, the same frame the map draws for the seat's tribe (FOUNDATION.md: construction shows the
- * actual game building). Painted into the card's own canvas, so it needs no GPU and no second fetch.
+ * A building's picture for a card: its finished body cut from the sheet's already-loaded building pages, the
+ * same frame the map draws for the seat's tribe, so construction shows the actual game building. Painted into
+ * the card's own canvas, so it needs no GPU and no second fetch.
  */
 
 /** Backing pixels per design px, so the thumb stays crisp on a scaled plane. */

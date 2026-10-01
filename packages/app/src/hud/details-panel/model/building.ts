@@ -105,8 +105,8 @@ export interface BuildingOfferModel {
   readonly take: TradeOfferSide;
 }
 
-/** The selected building's panel (FOUNDATION.md, "Building panel"). A null or empty section is not
- *  shown; another seat's house shows its name, owner, health, state and agreements only. */
+/** The selected building's panel. A null or empty section is not shown; another seat's house shows its name,
+ *  owner, health, state and agreements only. */
 export interface BuildingPanelModel {
   readonly kind: 'building';
   readonly entityId: number;

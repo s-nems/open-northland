@@ -13,7 +13,7 @@ import { createTradeSection } from './trade.js';
 import { warmModel } from './warm-model.js';
 import { createWorkSection } from './work.js';
 
-/** The selected person's panel on the DOM plane (FOUNDATION.md, "Settler panel"). */
+/** The selected person's panel on the DOM plane. */
 export interface SettlerPanel {
   /** Show the model when it is a single settler, else hide. */
   update(model: UnitPanelModel): void;
