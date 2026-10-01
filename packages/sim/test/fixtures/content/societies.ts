@@ -68,7 +68,7 @@ export const societyContent = {
       // The XP threshold (the `needfor*` half): a `needforgood` on PLANK (good 2, 30 repeats of the
       // woodcutter-wood track typeId 1) - the accrued-XP gate on top of the `jobEnables` who-unlocks-it
       // gate, exercised by `settlerMeetsNeed`/`experienceRequirementMet` (progression-system.test.ts).
-      // It also arms the per-operator PRODUCTION gate (`startCycleFor`): a carpenter may not craft
+      // It also arms the per-operator PRODUCTION gate (`craftablePool`): a carpenter may not craft
       // planks until it earned those repeats, so production fixtures spawn their operators pre-seeded
       // (`PLANK_GATE_EARNED`) and the golden slice's carpenter spawns with the XP earned. PLANK is
       // never *harvested*, so the AI harvest-side gate (nearestHarvestableFor) stays inert here;

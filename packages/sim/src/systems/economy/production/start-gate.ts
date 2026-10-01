@@ -9,18 +9,19 @@ import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { anyCycleStartable } from './cycles.js';
 
 /**
- * One {@link anyCycleStartable} answer and what it read besides content. The batches are held by product
- * rather than by revision, since running batches write their timers every tick.
+ * One {@link anyCycleStartable} answer and what it read besides content, rewritten in place when the
+ * workshop's answer is retaken. The batches are held by product rather than by revision, since running
+ * batches write their timers every tick.
  */
 interface GateAnswer {
-  readonly open: boolean;
-  readonly stock: number | undefined;
-  readonly batches: readonly number[];
-  readonly building: number | undefined;
-  readonly owner: number | undefined;
-  readonly unlocks: number;
+  open: boolean;
+  stock: number | undefined;
+  readonly batches: number[];
+  building: number | undefined;
+  owner: number | undefined;
+  unlocks: number;
   /** The bound workers' tribes in ascending worker id: the recipe gate reads them, not the house's. */
-  readonly crew: readonly (number | undefined)[];
+  readonly crew: (number | undefined)[];
 }
 
 interface GateMemo {
@@ -31,7 +32,7 @@ interface GateMemo {
 }
 
 const memos = new WeakMap<World, GateMemo>();
-const NO_BATCHES: readonly number[] = [];
+const NO_CYCLES: readonly { readonly goodType: number }[] = [];
 
 /**
  * {@link anyCycleStartable}, answered from memory while a workshop keeps the stock, batches, building,
@@ -44,21 +45,34 @@ export function cycleStartable(
   building: Entity,
   recipes: ReadonlyMap<number, Recipe>,
 ): boolean {
-  if (!gateKeyable(world, ctx, building, recipes)) return anyCycleStartable(world, ctx, building, recipes);
   const memo = memoOf(world, ctx);
   const unlocks = technologyUnlockGeneration(world);
   const held = memo.answers.get(building);
+  // Only a keyable gate is remembered, and its answer keys on everything keyability reads (the crew
+  // tribes, the house through its revision, and the recipes through its type).
   if (held !== undefined && answerCurrent(world, building, held, unlocks)) return held.open;
+  if (!gateKeyable(world, ctx, building, recipes)) return anyCycleStartable(world, ctx, building, recipes);
   const open = anyCycleStartable(world, ctx, building, recipes);
-  memo.answers.set(building, {
+  const answer = held ?? {
     open,
-    stock: world.revisionOf(building, Stockpile),
-    batches: world.tryGet(building, Production)?.cycles.map((cycle) => cycle.goodType) ?? NO_BATCHES,
-    building: world.revisionOf(building, Building),
-    owner: world.revisionOf(building, Owner),
+    stock: undefined,
+    batches: [],
+    building: undefined,
+    owner: undefined,
     unlocks,
-    crew: assignedWorkers(world, building).map((worker) => crewTribe(world, worker)),
-  });
+    crew: [],
+  };
+  answer.open = open;
+  answer.stock = world.revisionOf(building, Stockpile);
+  answer.building = world.revisionOf(building, Building);
+  answer.owner = world.revisionOf(building, Owner);
+  answer.unlocks = unlocks;
+  const cycles = world.tryGet(building, Production)?.cycles;
+  answer.batches.length = 0;
+  for (const cycle of cycles ?? NO_CYCLES) answer.batches.push(cycle.goodType);
+  answer.crew.length = 0;
+  for (const worker of assignedWorkers(world, building)) answer.crew.push(crewTribe(world, worker));
+  if (held === undefined) memo.answers.set(building, answer);
   return open;
 }
 

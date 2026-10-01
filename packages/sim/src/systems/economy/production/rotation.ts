@@ -25,16 +25,19 @@ export function craftablePool(
   recipes: ReadonlyMap<number, Recipe>,
 ): readonly number[] {
   const subject = needSubjectOf(world, operator);
-  const earned = (good: number): boolean => settlerMeetsNeed(world, ctx, subject, 'good', good);
   const selection = world.tryGet(operator, ProductionCounters);
   const pool: number[] = [];
   let lockedLive = false;
   for (const good of recipes.keys()) {
     if (productionCountOf(selection, good) <= 0) continue;
-    if (earned(good)) pool.push(good);
+    if (settlerMeetsNeed(world, ctx, subject, 'good', good)) pool.push(good);
     else lockedLive = true;
   }
-  return pool.length > 0 || !lockedLive ? pool : [...recipes.keys()].filter(earned);
+  if (pool.length > 0 || !lockedLive) return pool;
+  for (const good of recipes.keys()) {
+    if (settlerMeetsNeed(world, ctx, subject, 'good', good)) pool.push(good);
+  }
+  return pool;
 }
 
 /** The product an operator's rotation takes next: `good` at `index` into its craftable `pool`. */
@@ -43,6 +46,9 @@ export interface RotationPick {
   readonly index: number;
   readonly pool: readonly number[];
 }
+
+/** A {@link RotationPick} with the product's recipe. */
+export type CycleChoice = RotationPick & { readonly recipe: Recipe };
 
 /**
  * The next product of `operator`'s rotation at `building`, or null when no chosen product can start: the
@@ -57,7 +63,7 @@ export function nextRotationPick(
   building: Entity,
   operator: Entity,
   recipes: ReadonlyMap<number, Recipe>,
-): RotationPick | null {
+): CycleChoice | null {
   const pool = craftablePool(world, ctx, operator, recipes);
   if (pool.length === 0) return null; // no recipes at all, or none this operator has earned yet
   const cursor = world.tryGet(operator, ProductionCounters)?.cursor ?? 0;
@@ -68,7 +74,7 @@ export function nextRotationPick(
     if (good === undefined || recipe === undefined) continue;
     if (!operatorRecipeEnabled(world, ctx, building, operator, recipe)) continue;
     if (isYardBuilt(ctx, recipe) || canStartCycle(world, ctx, building, recipe)) {
-      return { good, index, pool };
+      return { good, index, pool, recipe };
     }
     if (waitingForRecipeInput(world, ctx, building, recipe)) return null;
   }
@@ -100,17 +106,13 @@ export function spendRotationPick(world: World, operator: Entity, pick: Rotation
   world.mut(operator, ProductionCounters).cursor = size > 0 ? next % size : 0;
 }
 
-/** Start one cycle of `operator`'s next product choice, or nothing when no chosen product can start or
- *  the choice is a yard-built vehicle, whose turn the planner takes and spends. */
-export function startCycleFor(
+/** Start the cycle `operator`'s rotation chose and move the rotation past it. */
+export function startCycleChoice(
   world: World,
-  ctx: SystemContext,
   building: Entity,
   operator: Entity,
-  recipes: ReadonlyMap<number, Recipe>,
+  choice: CycleChoice,
 ): void {
-  const choice = nextCycleFor(world, ctx, building, operator, recipes);
-  if (choice === undefined) return;
   beginCycle(world, building, choice.recipe, choice.good);
   spendRotationPick(world, operator, choice);
 }
@@ -122,11 +124,10 @@ export function nextCycleFor(
   building: Entity,
   operator: Entity,
   recipes: ReadonlyMap<number, Recipe>,
-): (RotationPick & { readonly recipe: Recipe }) | undefined {
+): CycleChoice | undefined {
   const pick = nextRotationPick(world, ctx, building, operator, recipes);
-  const recipe = pick === null ? undefined : recipes.get(pick.good);
-  if (pick === null || recipe === undefined || isYardBuilt(ctx, recipe)) return undefined;
-  return { ...pick, recipe };
+  if (pick === null || isYardBuilt(ctx, pick.recipe)) return undefined;
+  return pick;
 }
 
 /** Let a startable product take the turn when the planner found no source for the next recipe's input. */

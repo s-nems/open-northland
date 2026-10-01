@@ -49,20 +49,44 @@ const UNSTAFFED_OPERATOR_COUNT = 1;
 export function presentOperators(world: World, ctx: SystemContext, building: Entity): WorkplaceOperators {
   const jobs = operatorJobsOf(world, ctx, building);
   if (jobs.size === 0) return UNSTAFFED;
-  const at = interactionNode(world, ctx, building);
-  if (at === null) return DESERTED; // a placed-but-position-less workplace can't be stood on
-  const cap = operatorSlotHeadcount(world, ctx, building, jobs);
-  if (cap <= 0) return DESERTED;
   const present: Entity[] = [];
-  for (const e of assignedWorkers(world, building)) {
-    if (present.length === cap) break; // ascending ids, so the clamp keeps the lowest
+  return scanPresent(world, ctx, building, jobs, present) > 0
+    ? { kind: 'staffed', operators: present }
+    : DESERTED;
+}
+
+/** {@link presentOperators} counted through {@link operatorCountOf}, listing nobody. */
+export function presentOperatorCount(world: World, ctx: SystemContext, building: Entity): number {
+  const jobs = operatorJobsOf(world, ctx, building);
+  if (jobs.size === 0) return UNSTAFFED_OPERATOR_COUNT;
+  return scanPresent(world, ctx, building, jobs, undefined);
+}
+
+/** How many operators stand on station, each pushed onto `present` when given. */
+function scanPresent(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  jobs: ReadonlySet<number>,
+  present: Entity[] | undefined,
+): number {
+  const at = interactionNode(world, ctx, building);
+  if (at === null) return 0; // a placed-but-position-less workplace can't be stood on
+  const cap = operatorSlotHeadcount(world, ctx, building, jobs);
+  const workers = assignedWorkers(world, building);
+  let count = 0;
+  for (let i = 0; i < workers.length && count < cap; i++) {
+    // Ascending ids, so the clamp keeps the lowest.
+    const e = workers[i] as Entity;
     if (!world.has(e, Person) || world.has(e, MoveGoal) || world.has(e, Carrying)) continue;
     const p = world.tryGet(e, Position);
     if (p === undefined || nodeHxOfPosition(p.x, p.y) !== at.x || nodeHyOfPosition(p.y) !== at.y) continue;
     const jobType = world.tryGet(e, Settler)?.jobType;
-    if (jobType !== null && jobType !== undefined && jobs.has(jobType)) present.push(e);
+    if (jobType === null || jobType === undefined || !jobs.has(jobType)) continue;
+    present?.push(e);
+    count++;
   }
-  return { kind: 'staffed', operators: present };
+  return count;
 }
 
 const UNSTAFFED: WorkplaceOperators = { kind: 'unstaffed' };
@@ -87,10 +111,6 @@ export function operatorSlotCapacity(world: World, ctx: SystemContext, building:
   const jobs = operatorJobsOf(world, ctx, building);
   if (jobs.size === 0) return UNSTAFFED_OPERATOR_COUNT;
   return operatorSlotHeadcount(world, ctx, building, jobs);
-}
-
-export function presentOperatorCount(world: World, ctx: SystemContext, building: Entity): number {
-  return operatorCountOf(presentOperators(world, ctx, building));
 }
 
 function operatorSlotHeadcount(

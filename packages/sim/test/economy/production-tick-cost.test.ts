@@ -13,6 +13,7 @@ import type { Entity, World } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import * as cycles from '../../src/systems/economy/production/cycles.js';
 import { productionSystem } from '../../src/systems/index.js';
+import { stockCapacity } from '../../src/systems/stores/index.js';
 import { workshopWorkforce } from '../../src/systems/stores/workshop-workforce.js';
 import { testContent } from '../fixtures/content.js';
 import {
@@ -148,5 +149,21 @@ describe('workshopWorkforce', () => {
     sim.world.remove(first, JobAssignment);
     expect(workshopWorkforce(sim.world, ctx).operatorsAt(shop)).toEqual([]);
     expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('keeps the shelf a workshop had at its first inbound read, and reads nothing stale', () => {
+    const sim = new Simulation({ seed: 1, content: technologyContent(), map: grassMap(8, 1) });
+    const shop = buildingAt(sim, BAKEHOUSE, 0, 0);
+    const baker = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.add(baker, Carrying, { goodType: WOOD, amount: 1 });
+    const ctx = ctxOf(sim);
+    const snapshot = workshopWorkforce(sim.world, ctx);
+    snapshot.shelveInbound(shop);
+    setStockAmount(sim.world, shop, WOOD, stockCapacity(sim.world, ctx, shop, WOOD));
+    expect(snapshot.incomingOf(shop, WOOD)).toBe(1);
+
+    const full = workshopWorkforce(sim.world, ctx);
+    expect(full.incomingOf(shop, WOOD)).toBe(0);
+    expect(() => snapshot.incomingOf(shop, WOOD)).toThrow();
   });
 });

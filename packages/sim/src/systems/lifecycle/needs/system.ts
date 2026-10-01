@@ -11,8 +11,9 @@ import {
   Settler,
   SettlerNeeds,
   type SettlerNeedsView,
+  type SettlerView,
 } from '../../../components/index.js';
-import { type Fixed, ONE, ZERO } from '../../../core/fixed.js';
+import { type Fixed, fx, ONE, ZERO } from '../../../core/fixed.js';
 import type { Rng } from '../../../core/rng.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { handlerTurn, scriptedSeatOnTurn } from '../../ai-player/cadence.js';
@@ -22,6 +23,7 @@ import { declaresNoTrades, isFighterJob, isHeroJob } from '../../readviews/index
 import { isAboardShip } from '../../readviews/vehicles.js';
 import {
   applyNeedUnits,
+  clampNeed,
   NEED_CRITICAL_THRESHOLD,
   NEED_DRAIN_UNITS_PER_TICK,
   NEED_RESERVE_UNITS,
@@ -110,7 +112,7 @@ export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) {
     // Nobody hungers, so only the wounded move: the pass reads them alone.
     for (const e of woundedPersonsOf(world)) {
-      if (!frozenInCart(world, ctx, e)) stepHealth(world, ctx, e, undefined);
+      if (!frozenInCart(world, ctx, e)) stepHealth(world, ctx, e, undefined, undefined);
     }
     return;
   }
@@ -118,8 +120,12 @@ export const needsSystem: System = (world, ctx) => {
   for (const e of world.query(Person)) {
     if (frozenInCart(world, ctx, e)) continue;
     if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, ctx, e);
-    const settler = carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
-    stepHealth(world, ctx, e, settler);
+    const settler = world.tryGet(e, Settler);
+    const needs =
+      settler !== undefined && settlerCarriesNeeds(world, ctx.content, e, settler)
+        ? drainNeeds(world, ctx, e, settler)
+        : undefined;
+    stepHealth(world, ctx, e, needs, settler);
   }
 };
 
@@ -160,25 +166,35 @@ function refillCriticalNeeds(world: World, ctx: SystemContext, e: Entity): void 
 /** Whether `e`'s bars move at all - the one gate the drain and the clip events share. */
 export function carriesNeeds(world: World, content: ContentSet, e: Entity): boolean {
   const settler = world.tryGet(e, Settler);
+  return settler !== undefined && settlerCarriesNeeds(world, content, e, settler);
+}
+
+function settlerCarriesNeeds(world: World, content: ContentSet, e: Entity, settler: SettlerView): boolean {
   return (
     !hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NEEDS_FROZEN) &&
-    settler !== undefined &&
     !world.has(e, Age) &&
     !isHeroJob(content, settler.jobType) &&
     !declaresNoTrades(content, settler.tribe)
   );
 }
 
+/** {@link applyNeedUnits}'s step for one tick's drain, taken once. */
+const DRAIN_STEP: Fixed = needBar(-NEED_DRAIN_UNITS_PER_TICK);
+
+function drainedBar(deficit: Fixed): Fixed {
+  return clampNeed(fx.sub(deficit, DRAIN_STEP));
+}
+
 /** Drain one tick off the three needs time alone moves, and hand back the drained bars so the hitpoint
  *  step reads them without a second lookup; a fighter's company need is frozen instead. A settler whose
  *  bars have all pinned is left unwritten. */
-function drainNeeds(world: World, ctx: SystemContext, e: Entity): SettlerNeedsView {
+function drainNeeds(world: World, ctx: SystemContext, e: Entity, settler: SettlerView): SettlerNeedsView {
   const needs = world.get(e, SettlerNeeds);
-  const hunger = applyNeedUnits(needs.hunger, -NEED_DRAIN_UNITS_PER_TICK);
-  const fatigue = applyNeedUnits(needs.fatigue, -NEED_DRAIN_UNITS_PER_TICK);
-  const enjoyment = isFighterJob(ctx.content, world.get(e, Settler).jobType)
+  const hunger = drainedBar(needs.hunger);
+  const fatigue = drainedBar(needs.fatigue);
+  const enjoyment = isFighterJob(ctx.content, settler.jobType)
     ? needs.enjoyment
-    : applyNeedUnits(needs.enjoyment, -NEED_DRAIN_UNITS_PER_TICK);
+    : drainedBar(needs.enjoyment);
   if (hunger === needs.hunger && fatigue === needs.fatigue && enjoyment === needs.enjoyment) {
     return needs;
   }
@@ -195,10 +211,16 @@ function drainNeeds(world: World, ctx: SystemContext, e: Entity): SettlerNeedsVi
  * drive lives in the job planner, which skips it, so nothing could feed it. The 0-HP reap is
  * CleanupSystem's.
  */
-function stepHealth(world: World, ctx: SystemContext, e: Entity, needs: SettlerNeedsView | undefined): void {
+function stepHealth(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  needs: SettlerNeedsView | undefined,
+  settler: SettlerView | undefined,
+): void {
   const health = world.tryGet(e, Health);
   if (health === undefined || health.hitpoints <= 0) return;
-  if (needs !== undefined && needs.hunger === ONE && world.get(e, Settler).jobType !== null) {
+  if (needs !== undefined && needs.hunger === ONE && settler?.jobType !== null) {
     if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.INVULNERABLE)) return;
     woundBearer(world, ctx, e, STARVATION_HITPOINTS_PER_TICK);
     return;

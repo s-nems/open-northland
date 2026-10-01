@@ -23,13 +23,6 @@ import { accessibleStockAmounts } from './inventory.js';
 import { isWorkplaceOperator } from './operators.js';
 import { mergedRecipeOf, recipeConsumes } from './workplace.js';
 
-/** One settler's unit on its way to a workplace: carried, or on a pickup leg whose source still has it. */
-export interface SupplyLoad {
-  readonly settler: Entity;
-  readonly goodType: number;
-  readonly amount: number;
-}
-
 /** A recipe input an employed settler brings its workplace: carried (`source` null) or fetched. */
 interface BoundLoad {
   readonly goodType: number;
@@ -58,10 +51,24 @@ interface WorkforceIndex {
   readonly bindings: Map<Entity, Binding>;
   /** Operators per workplace, ascending id. */
   readonly crews: Map<Entity, Entity[]>;
-  readonly loaders: Set<Entity>;
+  readonly loadsAt: Map<Entity, WorkplaceLoads>;
   readonly untracked: Set<Entity>;
   /** Bumped by every catch-up that re-derives a settler, so a snapshot can tell its crews went stale. */
   epoch: number;
+  /** Bumped by every snapshot; only the latest one reads the load stamps. */
+  snapshots: number;
+  /** The catch-up's dirty settlers, reused across calls. */
+  readonly dirty: Set<Entity>;
+}
+
+/** The loads bound for one workplace in parallel columns, unordered: an inbound read sums them. */
+interface WorkplaceLoads {
+  readonly settlers: Entity[];
+  readonly loads: BoundLoad[];
+  /** Per load, the snapshot serial it last counted at. */
+  readonly counted: number[];
+  /** The snapshot serial the loads' shelf checks were last taken at. */
+  shelved: number;
 }
 
 // Everything deriveBinding reads, by owner. The settler's own trade comes from the trade log.
@@ -86,35 +93,37 @@ const idOf = (e: Entity): number => e;
 
 /**
  * The employed settlers' crews and inbound loads as of this call. The crews are the live index, valid
- * until the next call brings it up to date; the loads are checked against stock now and kept.
+ * until the next call brings it up to date; the loads' checks are kept as {@link WorkshopWorkforce} says.
  */
 export function workshopWorkforce(world: World, ctx: SystemContext): WorkshopWorkforce {
   return new WorkshopWorkforce(world, ctx, caughtUp(world, ctx));
 }
 
-/** A phase-local snapshot of the employed settlers: each workshop's crew and its inbound loads. */
+/**
+ * A phase-local snapshot of the employed settlers: each workshop's crew and its inbound loads. A load
+ * counts while its pickup source holds the good, checked for every load at construction, and while the
+ * workplace has shelf room for it, checked at the workplace's first inbound read (see
+ * {@link shelveInbound}). The checks are stamped on the index, so inbound reads last until the next
+ * snapshot.
+ */
 export class WorkshopWorkforce {
-  private readonly inbound = new Map<Entity, SupplyLoad[]>();
   private readonly epoch: number;
+  private readonly serial: number;
 
   constructor(
-    world: World,
-    ctx: SystemContext,
+    private readonly world: World,
+    private readonly ctx: SystemContext,
     private readonly index: WorkforceIndex,
   ) {
     this.epoch = index.epoch;
-    for (const settler of index.loaders) {
-      const binding = index.bindings.get(settler);
-      const load = binding?.load;
-      if (binding === undefined || load === undefined || load === null) continue;
-      if (!inboundCounts(world, ctx, binding.workplace, load)) continue;
-      let loads = this.inbound.get(binding.workplace);
-      if (loads === undefined) {
-        loads = [];
-        this.inbound.set(binding.workplace, loads);
+    const serial = ++index.snapshots;
+    this.serial = serial;
+    index.loadsAt.forEach((column) => {
+      const { loads, counted } = column;
+      for (let i = 0; i < loads.length; i++) {
+        counted[i] = sourceHolds(world, loads[i] as BoundLoad) ? serial : NOT_COUNTED;
       }
-      loads.push({ settler, goodType: load.goodType, amount: load.amount });
-    }
+    });
   }
 
   operatorsAt(workplace: Entity): readonly Entity[] {
@@ -122,21 +131,59 @@ export class WorkshopWorkforce {
     return this.index.crews.get(workplace) ?? NO_CREW;
   }
 
+  /**
+   * Take the shelf checks of the loads bound for `workplace` now, unless this snapshot already has. The
+   * planner pass writes no workshop's stock, and the production start loop calls this before it writes
+   * the one workshop it is on, so the checks read the stock the snapshot was taken against.
+   */
+  shelveInbound(workplace: Entity): void {
+    const { serial } = this;
+    this.assertLatest();
+    const column = this.index.loadsAt.get(workplace);
+    if (column === undefined || column.shelved === serial) return;
+    column.shelved = serial;
+    const { loads, counted } = column;
+    for (let i = 0; i < loads.length; i++) {
+      if (counted[i] === serial && !shelfTakes(this.world, this.ctx, workplace, loads[i] as BoundLoad)) {
+        counted[i] = NOT_COUNTED;
+      }
+    }
+  }
+
   /** Units of `goodType` the indexed loads bring to `workplace`, leaving out the settlers `skip` names. */
   incomingOf(workplace: Entity, goodType: number, skip?: (settler: Entity) => boolean): number {
+    const column = this.index.loadsAt.get(workplace);
+    if (column === undefined) return 0;
+    this.shelveInbound(workplace);
+    const { settlers, loads, counted } = column;
     let units = 0;
-    for (const load of this.inbound.get(workplace) ?? []) {
-      if (load.goodType === goodType && skip?.(load.settler) !== true) units += load.amount;
+    for (let i = 0; i < loads.length; i++) {
+      const load = loads[i] as BoundLoad;
+      if (load.goodType !== goodType || counted[i] !== this.serial) continue;
+      if (skip?.(settlers[i] as Entity) !== true) units += load.amount;
     }
     return units;
   }
+
+  private assertLatest(): void {
+    if (this.index.epoch !== this.epoch || this.index.snapshots !== this.serial) {
+      throw new Error('WorkshopWorkforce inbound read after a newer snapshot');
+    }
+  }
 }
 
-/** Whether a bound load still counts: a pickup leg's source holds the good (on its arrival tick too,
- *  before the planner starts the pickup there), and the workplace has shelf room for it. */
-function inboundCounts(world: World, ctx: SystemContext, workplace: Entity, load: BoundLoad): boolean {
+/** A {@link WorkplaceLoads.counted} stamp no snapshot serial takes. */
+const NOT_COUNTED = 0;
+
+/** Whether a pickup leg's source still holds the good, on its arrival tick too, before the planner
+ *  starts the pickup there; a carried load always passes. */
+function sourceHolds(world: World, load: BoundLoad): boolean {
   const source = load.source;
-  if (source !== null && (accessibleStockAmounts(world, source)?.get(load.goodType) ?? 0) <= 0) return false;
+  return source === null || (accessibleStockAmounts(world, source)?.get(load.goodType) ?? 0) > 0;
+}
+
+/** Whether the workplace has shelf room for the load's good. */
+function shelfTakes(world: World, ctx: SystemContext, workplace: Entity, load: BoundLoad): boolean {
   if (bankedSlot(world, ctx, workplace, load.goodType).goodType !== load.goodType) return false;
   return (
     stockCapacity(world, ctx, workplace, load.goodType) >
@@ -172,7 +219,9 @@ function caughtUp(world: World, ctx: SystemContext): WorkforceIndex {
     return rebuild(world, ctx);
   }
   held.ctx = ctx;
-  const dirty = new Set<Entity>(held.untracked);
+  const dirty = held.dirty;
+  dirty.clear();
+  for (const e of held.untracked) dirty.add(e);
   for (const component of SETTLER_MEMBERSHIP) {
     const deltas = world.membershipDeltasSince(component, held.generations.get(component) ?? 0);
     if (deltas === null) return rebuild(world, ctx);
@@ -199,6 +248,7 @@ function caughtUp(world: World, ctx: SystemContext): WorkforceIndex {
   noteGenerations(world, held);
   if (dirty.size === 0) return held;
   for (const e of dirty) resync(world, ctx, held, e);
+  dirty.clear();
   held.epoch++;
   return held;
 }
@@ -219,9 +269,11 @@ function deriveIndex(world: World, ctx: SystemContext, epoch: number): Workforce
     valueGenerations: new Map(),
     bindings: new Map(),
     crews: new Map(),
-    loaders: new Set(),
+    loadsAt: new Map(),
     untracked: new Set(),
     epoch,
+    snapshots: 0,
+    dirty: new Set(),
   };
   noteGenerations(world, index);
   for (const e of world.canonicalQuery(JobAssignment, Settler)) resync(world, ctx, index, e);
@@ -242,7 +294,7 @@ function resync(world: World, ctx: SystemContext, index: WorkforceIndex, e: Enti
   const held = index.bindings.get(e);
   if (held !== undefined) {
     index.bindings.delete(e);
-    index.loaders.delete(e);
+    if (held.load !== null) dropLoader(index, held.workplace, e);
     const crew = held.operator ? index.crews.get(held.workplace) : undefined;
     if (crew !== undefined && removeSortedById(crew, e, idOf) && crew.length === 0) {
       index.crews.delete(held.workplace);
@@ -259,11 +311,43 @@ function resync(world: World, ctx: SystemContext, index: WorkforceIndex, e: Enti
   const binding = deriveBinding(world, ctx, e);
   if (binding === null) return;
   index.bindings.set(e, binding);
-  if (binding.load !== null) index.loaders.add(e);
+  if (binding.load !== null) {
+    const column = index.loadsAt.get(binding.workplace);
+    if (column === undefined) {
+      index.loadsAt.set(binding.workplace, {
+        settlers: [e],
+        loads: [binding.load],
+        counted: [NOT_COUNTED],
+        shelved: NOT_COUNTED,
+      });
+    } else {
+      column.settlers.push(e);
+      column.loads.push(binding.load);
+      column.counted.push(NOT_COUNTED);
+    }
+  }
   if (!binding.operator) return;
   const crew = index.crews.get(binding.workplace);
   if (crew === undefined) index.crews.set(binding.workplace, [e]);
   else insertSortedById(crew, e, idOf);
+}
+
+function dropLoader(index: WorkforceIndex, workplace: Entity, e: Entity): void {
+  const column = index.loadsAt.get(workplace);
+  const at = column === undefined ? -1 : column.settlers.indexOf(e);
+  if (column === undefined || at < 0) return;
+  if (column.settlers.length === 1) {
+    index.loadsAt.delete(workplace);
+    return;
+  }
+  swapRemove(column.settlers, at);
+  swapRemove(column.loads, at);
+  swapRemove(column.counted, at);
+}
+
+function swapRemove<T>(list: T[], at: number): void {
+  const last = list.pop() as T;
+  if (at < list.length) list[at] = last;
 }
 
 /** Brings the held index up to date, then compares it with a fresh derivation: a missed dependency

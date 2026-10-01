@@ -63,6 +63,10 @@ export class WorkSeatClaims {
   private workforce: WorkshopWorkforce | undefined;
   private readonly recipesByWorkplace = new Map<Entity, Recipe[]>();
   private readonly errands = new Map<Entity, PassErrand>();
+  /** The settler {@link inboundOf} asks for, read by the one skip filter the pass keeps. */
+  private asker: Entity | undefined;
+  private readonly skipsLoad = (settler: Entity): boolean =>
+    settler === this.asker || this.errands.has(settler);
 
   /** `keepsSeat` says whether a crafter keeps its clip through this pass without being visited. */
   constructor(private readonly keepsSeat: (e: Entity) => boolean) {}
@@ -108,8 +112,9 @@ export class WorkSeatClaims {
    *  this pass, each settler counted once. The asking settler is re-planning, so its own indexed errand no longer counts. */
   inboundOf(plan: PlannerContext, workplace: Entity, goodType: number): number {
     this.workforce ??= workshopWorkforce(plan.world, plan.ctx);
-    const skip = (settler: Entity): boolean => settler === plan.entity || this.errands.has(settler);
-    let units = this.workforce.incomingOf(workplace, goodType, skip);
+    this.asker = plan.entity;
+    let units = this.workforce.incomingOf(workplace, goodType, this.skipsLoad);
+    if (this.errands.size === 0) return units;
     for (const errand of this.errands.values()) {
       if (errand.workplace === workplace && errand.goodType === goodType) units += errand.amount;
     }
