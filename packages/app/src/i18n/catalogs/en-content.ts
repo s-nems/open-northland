@@ -353,6 +353,11 @@ export const enContent = {
       summary:
         'Select Ingrid at the empty bakery, Sigrid at the stopped bakery, Freya beside the full bread shelf, and Bjorn on the empty grass. Their status explains what prevents work.',
     },
+    'store-reach': {
+      title: 'Store beyond signpost reach',
+      summary:
+        'The headquarters stands 60 tiles from two bakeries, with no signposts between. Select Freya at the full shelf and Ingrid at the empty bakery: their status says the store lies outside their reach.',
+    },
     technology: {
       title: 'Mission technologies',
       summary:

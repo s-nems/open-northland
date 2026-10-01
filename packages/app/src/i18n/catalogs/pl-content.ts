@@ -352,6 +352,11 @@ export const plContent = {
       summary:
         'Wybierz Ingrid przy pustej piekarni, Sigrid przy zatrzymanej piekarni, Freyę obok pełnej półki chleba i Bjorna na pustej trawie. Ich status wyjaśnia, co uniemożliwia pracę.',
     },
+    'store-reach': {
+      title: 'Magazyn poza zasięgiem drogowskazów',
+      summary:
+        'Kwatera główna stoi 60 kafli od dwóch piekarni, bez drogowskazów pomiędzy. Wybierz Freyę przy pełnej półce i Ingrid przy pustej piekarni: status mówi, że magazyn leży poza ich zasięgiem.',
+    },
     technology: {
       title: 'Technologie misji',
       summary:
