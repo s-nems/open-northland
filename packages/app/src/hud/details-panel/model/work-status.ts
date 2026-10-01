@@ -57,6 +57,7 @@ export function workStatusDetail(ctx: UnitPanelModelContext, status: SettlerWork
     case 'unknown':
       return copy.unknown;
     case 'nothingSelected':
+    case 'nothingAtFlag':
     case 'noTool':
     case 'noJob':
     case 'noWorkplace':

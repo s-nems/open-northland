@@ -351,6 +351,7 @@ export const enGame = {
         inputOutOfReach: 'Outside signpost reach: {goods} ({product}). Link it to a store with signposts',
         outputFull: 'No room for output: {outputs}',
         nothingSelected: 'All products set to 0',
+        nothingAtFlag: 'Nothing to collect at the flag',
         noTool: 'no tool',
         noJob: 'no profession',
         inputAmount: '{good} ×{missing} (has {available}/{required})',

@@ -13,7 +13,9 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, ONE, Simulation } from '../../src/index.js';
+import { workStatus } from '../../src/systems/readviews/work-status.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
 /**
@@ -144,6 +146,15 @@ describe('carrier pickup flag', () => {
     plantFlag(s, porter, 10); // only the marker's position changes
     for (let t = 0; t < RUN_TICKS && s.world.isAlive(pile); t++) s.step();
     expect(s.world.isAlive(pile) && stockOf(s, pile, PLANK) > 0).toBe(false);
+  });
+
+  it('reports a flagged carrier with nothing at its flag', () => {
+    const s = world();
+    const hq = buildingAt(s, HEADQUARTERS, 0);
+    const porter = carrierAt(s, 1, hq);
+    expect(workStatus(s.world, ctxOf(s), porter)?.kind).not.toBe('nothingAtFlag');
+    plantFlag(s, porter, 24);
+    expect(workStatus(s.world, ctxOf(s), porter)).toEqual({ kind: 'nothingAtFlag' });
   });
 
   it('collects wherever its signposts reach again once the flag is cleared', () => {

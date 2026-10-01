@@ -337,6 +337,7 @@ export const plGame = {
         inputOutOfReach: 'Poza zasięgiem drogowskazów: {goods} ({product}). Połącz drogowskazami z magazynem',
         outputFull: 'Brak miejsca na produkt: {outputs}',
         nothingSelected: 'Wszystkie produkty ustawione na 0',
+        nothingAtFlag: 'Nic do zebrania przy chorągiewce',
         noTool: 'bez narzędzia',
         noJob: 'bez zawodu',
         inputAmount: '{good} ×{missing} (jest {available}/{required})',

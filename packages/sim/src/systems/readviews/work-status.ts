@@ -17,6 +17,7 @@ import type { SystemContext } from '../context.js';
 import { jobGatherGoods } from '../economy/gather-goods.js';
 import { canStartCycle, outputRoomForCycles, waitingForRecipeInput } from '../economy/production/cycles.js';
 import { craftablePool } from '../economy/production/rotation.js';
+import { liveHaulFlag } from '../economy/work-flag.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 import { recipeOutputsEnabled } from '../progression/index.js';
 import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
@@ -68,7 +69,9 @@ export type WorkStatus =
   | { readonly kind: 'unknown'; readonly reason: 'unsupportedWorkplace' | 'productionGate' | 'gatherSearch' }
   | { readonly kind: 'noTool' }
   | { readonly kind: 'noJob' }
-  | { readonly kind: 'workplaceUnderConstruction' };
+  | { readonly kind: 'workplaceUnderConstruction' }
+  /** A carrier holding a pickup flag finds nothing to lift around it. */
+  | { readonly kind: 'nothingAtFlag' };
 
 /** Read current workplace blockers and a bounded resource search for one selected person. */
 export function workStatus(world: World, ctx: SystemContext, entity: Entity): WorkStatus | undefined {
@@ -83,6 +86,7 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   }
   const gathered = jobGatherGoods(ctx, jobType);
   if (gathered.length > 0) return gatherWorkStatus(world, ctx, entity, workplace, gathered);
+  if (liveHaulFlag(world, entity) !== undefined) return { kind: 'nothingAtFlag' };
   if (workplace === undefined) {
     const index = contentIndex(ctx.content);
     const requiresWorkshop = [...index.operatorJobsByBuilding].some(
