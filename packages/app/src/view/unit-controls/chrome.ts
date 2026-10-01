@@ -88,6 +88,8 @@ export interface UnitChromeHandle {
   /** Tab and Shift+Tab: show the next or previous person of the shown settler's trade, vehicle of the
    *  shown vehicle's class, or building of the shown building's type. */
   browse(step: 1 | -1): boolean;
+  /** The upgrade key: raise the shown building's tier; false when no building is shown or it refuses. */
+  upgradeBuilding(): boolean;
   /** Escape: close the trade window or the vehicle hold's picker; false when neither was open. */
   closeWindow(): boolean;
   windowOpen(): boolean;
@@ -454,6 +456,7 @@ export async function createUnitChrome(
       tradeWindow.claims(x, y) ||
       mounts.current().panel.claimsPointer(x, y),
     browse: (step) => settlerPanel.browse(step) || vehiclePanel.browse(step) || buildingPanel.browse(step),
+    upgradeBuilding: () => buildingPanel.upgrade(),
     closeWindow: () => {
       if (tradeWindow.isOpen()) {
         tradeWindow.dismiss();

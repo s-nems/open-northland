@@ -57,6 +57,7 @@ export const KEYBINDING_ACTIONS = [
   'palisadeTool',
   'upgradeGround',
   'gateTool',
+  'upgradeBuilding',
   'defenceOn',
   'defenceOff',
   'nextCivilian',
@@ -94,7 +95,8 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   // statistics, B, E, S, D, Shift+D, V, Shift+V, P, L, H, the selection keys . , / M F X Y, C, W and the
   // digit groups. Ours: Esc's game menu (the original's options sit on F2), F1 the mission (the
   // original's help), F2 the subjects (the original's F7), F7 the knowledge (the original's technology
-  // tree on F8), F8 the HUD, Q for the original's A (Assign Work Place), so A stays attack-move.
+  // tree on F8), F8 the HUD, Q for the original's A (Assign Work Place), so A stays attack-move, R the
+  // shown building's Rozbuduj.
   pauseToggle: 'KeyP',
   speedCycle: 'KeyL',
   gameMenu: 'Escape',
@@ -121,6 +123,7 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   // toggles rather than taking a held modifier.
   upgradeGround: 'KeyG',
   gateTool: 'Shift+KeyD',
+  upgradeBuilding: 'KeyR',
   defenceOn: 'KeyV',
   defenceOff: 'Shift+KeyV',
   nextCivilian: 'Period',

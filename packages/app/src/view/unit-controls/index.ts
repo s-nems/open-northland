@@ -473,6 +473,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (isOrderHotkey(e, opts.bindings, 'attackMove')) {
       e.preventDefault();
       armAttackMove();
+    } else if (isActionHotkey(e, opts.bindings, 'upgradeBuilding')) {
+      e.preventDefault();
+      // The owned-order gate cues a sent or refused press; a selection without an upgrade tile is
+      // told here, an empty one stays silent like the other order keys.
+      if (!chrome.upgradeBuilding() && selection.ids().size > 0) cue('fail');
     } else if (keyboardOrders(e)) {
       e.preventDefault();
     } else if (e.code === 'Tab' && browsesTrade(e) && chrome.browse(e.shiftKey ? -1 : 1)) {

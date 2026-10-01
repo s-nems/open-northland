@@ -94,6 +94,14 @@ describe('parseKeyBindings', () => {
   });
 });
 
+describe('defaults', () => {
+  it("gives every default chord to one action, with R on the shown building's upgrade", () => {
+    const chords = Object.values(DEFAULT_KEY_BINDINGS).filter((chord) => chord !== null);
+    expect(new Set(chords).size).toBe(chords.length);
+    expect(DEFAULT_KEY_BINDINGS.upgradeBuilding).toBe('KeyR');
+  });
+});
+
 describe('control-group settings order', () => {
   it('lists all recalls, then replacements, then steal-add bindings', () => {
     expect(CONTROL_GROUP_BINDING_ACTIONS).toEqual([

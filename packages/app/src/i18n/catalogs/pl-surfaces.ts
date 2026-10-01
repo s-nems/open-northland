@@ -247,6 +247,7 @@ export const plSurfaces = {
         assignWorkplace: 'Przydziel miejsce pracy',
         assignHome: 'Przydziel dom',
         gateTool: 'Narzędzie bramy',
+        upgradeBuilding: 'Rozbuduj zaznaczony budynek',
         defenceOn: 'Włącz tryb obrony we wszystkich budynkach',
         defenceOff: 'Wyłącz tryb obrony we wszystkich budynkach',
         nextCivilian: 'Następny cywil',

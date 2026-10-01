@@ -107,6 +107,8 @@ export interface PortraitSection {
   /** The frame the renderer paints the live building through. */
   readonly frame: HTMLElement;
   update(model: BuildingPanelModel): void;
+  /** Press an order tile as a click would; false when the shown building lacks it or refuses it. */
+  press(order: BuildingOrder): boolean;
 }
 
 export function createPortraitSection(
@@ -143,28 +145,28 @@ export function createPortraitSection(
   let shape = '';
   let tiles: { order: BuildingOrder; element: HTMLButtonElement }[] = [];
 
-  const press = (order: BuildingOrder): void => {
+  const press = (order: BuildingOrder): boolean => {
     const shown = current();
-    if (shown === null) return;
+    if (shown === null) return false;
     const target = orderViews(shown).find((candidate) => candidate.order === order);
-    if (target === undefined || !target.enabled) return;
+    if (target === undefined || !target.enabled) return false;
     const id = shown.entityId;
     switch (order) {
       case 'upgrade':
         deps.building.upgrade(id);
-        return;
+        return true;
       case 'cancelUpgrade':
         deps.building.cancelUpgrade(id);
-        return;
+        return true;
       case 'workers':
         if (shown.orders?.hire != null) deps.windows.residentsFor(shown.orders.hire.jobType);
-        return;
+        return true;
       case 'knowledge':
         deps.windows.knowledge(shown.typeId);
-        return;
+        return true;
       case 'demolish':
         deps.building.demolish(id, shown.name);
-        return;
+        return true;
       default: {
         const unreachable: never = order;
         throw new Error(`unhandled building order: ${String(unreachable)}`);
@@ -199,6 +201,7 @@ export function createPortraitSection(
   return {
     element: row,
     frame,
+    press,
     update(model): void {
       const copy = messages().hud;
       setTip(frame, copy.buildingPanel.centre);

@@ -25,6 +25,8 @@ export interface BuildingPanel {
   claims(clientX: number, clientY: number): boolean;
   /** Tab and Shift+Tab: show the owner's next or previous building of the type; false when there is none. */
   browse(step: 1 | -1): boolean;
+  /** The upgrade key: press the shown building's Rozbuduj tile; false when none is shown or it refuses. */
+  upgrade(): boolean;
   /** The HUD scale changed: the portrait's box is measured again. */
   invalidate(): void;
   /** Once a frame, after the paint: the stock list fits again after the plane changed size, and a shown
@@ -186,6 +188,7 @@ export function createBuildingPanel(deps: BuildingPanelDeps): BuildingPanel {
     },
     claims: (clientX, clientY) => frame.claims(clientX, clientY),
     browse,
+    upgrade: () => portrait.press('upgrade'),
     invalidate: () => frame.invalidate(),
     dispose(): void {
       resizes.disconnect();

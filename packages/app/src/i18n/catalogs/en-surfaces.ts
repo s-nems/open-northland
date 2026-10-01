@@ -251,6 +251,7 @@ export const enSurfaces = {
         assignWorkplace: 'Assign work place',
         assignHome: 'Assign home',
         gateTool: 'Gate tool',
+        upgradeBuilding: 'Upgrade the selected building',
         defenceOn: 'Defence mode on in every building',
         defenceOff: 'Defence mode off in every building',
         nextCivilian: 'Next civilian',
