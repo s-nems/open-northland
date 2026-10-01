@@ -10,7 +10,9 @@ import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_ARCHER, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import {
+  GATHERERS,
   placeBuiltSandboxBuilding,
+  placeResourceNode,
   spawnSandboxSettler,
   spawnSettlerDirect,
   spawnVehicleDirect,
@@ -27,6 +29,7 @@ import type { SceneDefinition } from './types.js';
  * catapult, left in its attack stance, turns on the picket that is still shooting at it. Watch the shot
  * clip loop with its smoke, the stones arc onto the hut and burst on its roof, the scattered ones fall
  * around the archer, and the archer's arrows land on the hull, which raises the "vehicle attacked" note.
+ * A tree in the hut's yard falls to the first stone that comes down on or beside it.
  */
 
 const MAP_W = 24;
@@ -40,6 +43,15 @@ const COMMANDER_AT = { x: 3, y: 9 } as const;
 const COMMANDER_CATAPULT_HITS = 30;
 /** Eighteen nodes east: inside the 8..24 band, so the first stone flies without a drive. */
 const ENEMY_HUT: readonly [string, number, number] = ['home_level_00', 14, 9];
+/** Trees in the hut's yard, as whole tiles, where the stones meant for the hut come down. */
+const HUT_GROVE: readonly [number, number][] = [
+  [13, 10],
+  [14, 10],
+  [15, 10],
+  [16, 10],
+  [14, 11],
+  [15, 11],
+];
 /** The picket: an archer in bow reach of the hull, and a swordsman standing off. */
 const ENEMY_PICKET: readonly [number, number, number, number][] = [
   [JOB_ARCHER, WEAPON_SHORT_BOW, 9, 12],
@@ -53,7 +65,7 @@ const RUN_TICKS = 700;
 /** Between the catapult and the hut, so the browser opens on the whole exchange. */
 const CAMERA_AT = { hx: 20, hy: 19 } as const;
 
-const { Health, Owner, SettlerProgress, Vehicle } = components;
+const { Felling, Health, Owner, SettlerProgress, Vehicle } = components;
 
 function build(sim: Simulation): void {
   const catapult = spawnVehicleDirect(sim, VEHICLE_CATAPULT, CATAPULT_AT.x, CATAPULT_AT.y);
@@ -63,6 +75,9 @@ function build(sim: Simulation): void {
     .experience.set(systems.FIGHT_EXPERIENCE_TYPE.CATAPULT, COMMANDER_CATAPULT_HITS);
   sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachToVehicle', entity: commander, vehicle: catapult }));
   const hut = placeBuiltSandboxBuilding(sim, ENEMY_HUT[0], ENEMY_HUT[1], ENEMY_HUT[2], ENEMY_PLAYER);
+  const wood = GATHERERS.find((g) => g.id === 'wood');
+  if (wood === undefined) throw new Error('vehicle-catapult: no wood gatherer spec');
+  for (const [x, y] of HUT_GROVE) placeResourceNode(sim, wood, x, y);
   for (const [job, weaponTypeId, x, y] of ENEMY_PICKET) {
     spawnSandboxSettler(sim, job, x, y, ENEMY_PLAYER, { weaponTypeId });
   }
@@ -108,6 +123,10 @@ export const vehicleCatapultScene: SceneDefinition = {
     {
       label: 'the ordered hut is razed by the stones',
       predicate: (sim) => enemyBuildings(sim).length === 0,
+    },
+    {
+      label: "the stones felled trees in the hut's yard",
+      predicate: (sim) => [...sim.world.query(Felling)].length < HUT_GROVE.length,
     },
     {
       label: 'the catapult stands in its attack stance with its commander aboard',

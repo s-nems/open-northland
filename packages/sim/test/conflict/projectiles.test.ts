@@ -5,17 +5,26 @@ import {
   AttackOrder,
   Building,
   CurrentAtomic,
+  Felling,
+  GroundDrop,
   Health,
   MoveGoal,
   Owner,
   Position,
   Projectile,
+  Resource,
   SettlerProgress,
+  Stockpile,
+  Stump,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { hexNeighboursOf } from '../../src/nav/halfcell.js';
-import { FIGHT_EXPERIENCE_TYPE } from '../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  FIGHT_EXPERIENCE_TYPE,
+  stampResourceFootprintData,
+} from '../../src/systems/index.js';
 import { ARMOR_MATERIAL } from '../../src/systems/readviews/index.js';
 import { addSettlerOfTribe } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -653,6 +662,51 @@ describe('projectiles - area shots', () => {
     sim.step();
     const bow = sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW);
     expect(bow).toBe(MARKSMAN_BOW_HITS + 1);
+  });
+
+  const WOOD = 1;
+  const TREE_WOOD = 3;
+  const CHOP_ATOMIC = 24;
+
+  function treeOn(sim: Simulation, node: { hx: number; hy: number }): Entity {
+    const tree = sim.world.create();
+    sim.world.add(tree, Position, positionOfNode(node.hx, node.hy));
+    sim.world.add(tree, Resource, { goodType: WOOD, remaining: TREE_WOOD, harvestAtomic: CHOP_ATOMIC });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
+    sim.world.add(tree, Felling, { chops: 0 });
+    return tree;
+  }
+
+  it('fells every tree on the landing point and its six neighbours in one stone, and nothing further', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 6) });
+    const shooter = marksmanAt(sim, 0, 0);
+    const ring = [AIM, ...hexNeighboursOf(AIM.hx, AIM.hy)].map((node) => treeOn(sim, node));
+    const beyond = treeOn(sim, { hx: AIM.hx + 2, hy: AIM.hy });
+    stone(sim, shooter, ring[0] ?? beyond, false);
+    sim.step();
+    for (const tree of ring) expect(sim.world.isAlive(tree)).toBe(false);
+    expect(sim.world.isAlive(beyond)).toBe(true);
+    const trunks = [...sim.world.query(GroundDrop, Stockpile)];
+    expect(trunks).toHaveLength(ring.length);
+    for (const trunk of trunks) expect(sim.world.get(trunk, Stockpile).amounts.get(WOOD)).toBe(TREE_WOOD);
+    expect([...sim.world.query(Stump)]).toHaveLength(ring.length);
+    const events = sim.snapshot().events;
+    expect(events.filter((ev) => ev.kind === 'resourceFelled')).toHaveLength(ring.length);
+    // A falling tree is no hit: the stone still thuds and trains nobody.
+    expect(events.some((ev) => ev.kind === 'projectileMissed')).toBe(true);
+    expect(sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW)).toBe(
+      MARKSMAN_BOW_HITS,
+    );
+  });
+
+  it('leaves trees standing under a shot that is not an area shot', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 6) });
+    const shooter = marksmanAt(sim, 0, 0);
+    const tree = treeOn(sim, AIM);
+    const p = stone(sim, shooter, tree, false);
+    sim.world.mut(p, Projectile).area = false;
+    sim.step();
+    expect(sim.world.isAlive(tree)).toBe(true);
   });
 
   it('strikes its own side only when the weapon hits itself', () => {

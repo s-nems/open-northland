@@ -24,7 +24,9 @@ import {
   type PendingHitReaction,
   resolveCombatHit,
 } from '../settlers/atomics/effects/combat/index.js';
+import { fellStruckTree } from '../settlers/atomics/effects/goods/index.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
+import { resourcesAtNode } from '../spatial/resources.js';
 import { passIndexOf } from './combat-index.js';
 import { targetBodyNodes } from './target-node.js';
 import { isStructureTarget, mayTarget } from './targeting.js';
@@ -116,6 +118,7 @@ function land(
       missSounds: proj.missSounds,
     });
   }
+  if (proj.area) fellTreesUnder(world, ctx, proj);
   if (proj.impact !== null) {
     ctx.events.emit({
       kind: 'groundBurst',
@@ -184,7 +187,7 @@ function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly
   const terrain = ctx.terrain;
   const target = proj.target !== null && strikeable(world, proj.target) ? proj.target : null;
   if (terrain === undefined) return target === null ? [] : [target];
-  const landing = terrain.nodeAtClamped(nodeHxOfPosition(proj.aimX, proj.aimY), nodeHyOfPosition(proj.aimY));
+  const landing = landingNode(terrain, proj);
   const nodes = proj.area ? [landing, ...inBoundsNeighbours(terrain, landing)] : [landing];
   const targetThere = target !== null && nodes.some((node) => stands(world, ctx, terrain, target, node));
   const index = passIndexOf(world, ctx.tick);
@@ -219,6 +222,30 @@ function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly
     struck.add(wall);
   }
   return [...struck];
+}
+
+/**
+ * Topple every tree anchored on area shot `proj`'s landing point or its six neighbours. Original behavior:
+ * one catapult stone fells each such tree outright, whoever's ground it stands on; a falling tree is no
+ * hit, so it neither trains the shooter nor keeps the shot from thudding. The original keys this on the
+ * catapult's weapon type, the content's only area weapon.
+ */
+function fellTreesUnder(world: World, ctx: SystemContext, proj: Flight): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return;
+  const landing = landingNode(terrain, proj);
+  const blast = { x: proj.aimX, y: proj.aimY };
+  for (const node of [landing, ...inBoundsNeighbours(terrain, landing)]) {
+    // Copied: felling removes the tree from the index's live bucket.
+    for (const tree of [...resourcesAtNode(world, terrain.xOf(node), terrain.yOf(node))]) {
+      fellStruckTree(world, ctx, tree, blast);
+    }
+  }
+}
+
+/** The map point shot `proj` comes down on. */
+function landingNode(terrain: TerrainGraph, proj: Flight): NodeId {
+  return terrain.nodeAtClamped(nodeHxOfPosition(proj.aimX, proj.aimY), nodeHyOfPosition(proj.aimY));
 }
 
 /**

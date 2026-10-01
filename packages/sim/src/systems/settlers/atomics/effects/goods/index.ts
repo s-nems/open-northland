@@ -5,6 +5,7 @@ export { consumeFood, forageBerry } from './consume.js';
 export { equipFromStore, unequipWornGood } from './equip.js';
 export {
   continuesHarvest,
+  fellStruckTree,
   harvestFromNode,
   harvestStrokesPerUnit,
   PICKUP_STROKES_PER_UNIT,

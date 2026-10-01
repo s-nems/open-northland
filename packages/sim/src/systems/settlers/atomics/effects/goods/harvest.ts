@@ -12,6 +12,7 @@ import {
   WorkFlag,
 } from '../../../../../components/index.js';
 import { eventAt } from '../../../../../core/events.js';
+import type { Fixed } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../../nav/halfcell.js';
 import type { SystemContext } from '../../../../context.js';
@@ -83,7 +84,7 @@ export function harvestFromNode(
       world.mut(node, Felling).chops = felling.chops + 1;
       return 0;
     }
-    fellNode(world, ctx, settler, node, res.goodType, res.remaining);
+    fellNode(world, ctx, node, res.goodType, res.remaining, world.tryGet(settler, Position), settler);
     return res.remaining;
   }
   // A competing collector took the last unit and its own drain already removed the node.
@@ -152,14 +153,18 @@ function removeResourceNode(world: World, node: Entity): void {
   world.destroy(node);
 }
 
-/** {@link removeResourceNode} for a node `harvester` worked out, carrying the drops its neighbours leave
- *  covered on its cell over to the harvester's stance. Approximation: where the original leaves them is
- *  unconfirmed; left in place, no settler could ever fetch them. */
-function removeWorkedNode(world: World, ctx: SystemContext, harvester: Entity, node: Entity): void {
+/** {@link removeResourceNode} for a worked-out node, carrying the drops its neighbours leave covered on
+ *  its cell over to `stance`, where the harvester worked it from. Approximation: where the original leaves
+ *  them is unconfirmed; left in place, no settler could ever fetch them. */
+function removeWorkedNode(
+  world: World,
+  ctx: SystemContext,
+  node: Entity,
+  stance: { readonly x: Fixed; readonly y: Fixed } | undefined,
+): void {
   const cell = world.get(node, Position);
   removeResourceNode(world, node);
   const terrain = ctx.terrain;
-  const stance = world.tryGet(harvester, Position);
   if (terrain === undefined || stance === undefined) return;
   const at = nodeOfPosition(cell.x, cell.y);
   const landing = nodeOfPosition(stance.x, stance.y);
@@ -184,27 +189,44 @@ function reapField(world: World, node: Entity, res: { goodType: number; remainin
 }
 
 /**
- * Fell a {@link Felling} node whose completing stroke just landed: drop its whole yield as a ground trunk pile,
- * leave a {@link Stump} where it stood, and remove the node. `goodType` and `yieldAmount` are passed in
- * because `world.destroy` drops the component object from its store.
+ * Fell a {@link Felling} node struck by a siege shot landing at `blast`, as a woodcutter's last stroke
+ * would. Original behavior: the shot topples a grown tree outright. Approximation: a young tree vanishes
+ * there without a trunk, but trees here carry no growth stage, so every one stands grown.
+ */
+export function fellStruckTree(
+  world: World,
+  ctx: SystemContext,
+  node: Entity,
+  blast: { readonly x: Fixed; readonly y: Fixed },
+): void {
+  const res = world.tryGet(node, Resource);
+  if (res === undefined || !world.has(node, Felling)) return;
+  fellNode(world, ctx, node, res.goodType, res.remaining, blast);
+}
+
+/**
+ * Fell a {@link Felling} node: drop its whole yield as a ground trunk pile, leave a {@link Stump} where it
+ * stood, and remove the node, carrying the drops it leaves stranded to `stance`. `goodType` and
+ * `yieldAmount` are passed in because `world.destroy` drops the component object from its store.
  */
 function fellNode(
   world: World,
   ctx: SystemContext,
-  feller: Entity,
   node: Entity,
   goodType: number,
   yieldAmount: number,
+  stance: { readonly x: Fixed; readonly y: Fixed } | undefined,
+  feller?: Entity,
 ): void {
   const pos = world.get(node, Position);
   const { x, y } = pos;
   const trunk = dropGroundPile(world, x, y, goodType, yieldAmount);
-  markHarvestedBy(world, trunk, feller);
+  if (feller !== undefined) markHarvestedBy(world, trunk, feller);
   // The stump is pure decor: non-blocking and not harvestable.
   const stump = world.create();
   world.add(stump, Position, { x, y });
   world.add(stump, Stump, { goodType });
-  removeWorkedNode(world, ctx, feller, node);
+  removeWorkedNode(world, ctx, node, stance);
   ctx.events.emit({
     kind: 'resourceFelled',
     node,
@@ -271,6 +293,6 @@ function depleteNode(
   }
   const pos = world.get(node, Position);
   const at = eventAt(pos.x, pos.y);
-  removeWorkedNode(world, ctx, harvester, node);
+  removeWorkedNode(world, ctx, node, world.tryGet(harvester, Position));
   ctx.events.emit({ kind: 'resourceDepleted', node, goodType, at });
 }

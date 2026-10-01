@@ -325,7 +325,7 @@ export const plContent = {
     'vehicle-catapult': {
       title: 'Katapulta',
       summary:
-        'Miecznik wsiada do katapulty i dostaje rozkaz ostrzelania wrogiej chaty: klip strzału zapętla się wraz z dymem, kamienie rozbijają się o dach, aż chata upada, a katapulta w postawie ataku odwraca się przeciw łucznikowi, który wciąż strzela w jej kadłub.',
+        'Miecznik wsiada do katapulty i dostaje rozkaz ostrzelania wrogiej chaty: klip strzału zapętla się wraz z dymem, kamienie rozbijają się o dach, aż chata upada, a katapulta w postawie ataku odwraca się przeciw łucznikowi, który wciąż strzela w jej kadłub. Kamień, który spadnie na drzewo w obejściu chaty lub tuż obok, przewraca je.',
     },
     'vehicle-attack-move': {
       title: 'Katapulty w ataku z marszu',

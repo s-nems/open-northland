@@ -326,7 +326,7 @@ export const enContent = {
     'vehicle-catapult': {
       title: 'Catapult',
       summary:
-        'A swordsman boards a catapult and is ordered to batter an enemy hut: the shot clip loops with its smoke, the stones burst on the roof until the hut falls, and the catapult, left in its attack stance, turns on the archer still shooting at its hull.',
+        'A swordsman boards a catapult and is ordered to batter an enemy hut: the shot clip loops with its smoke, the stones burst on the roof until the hut falls, and the catapult, left in its attack stance, turns on the archer still shooting at its hull. A stone landing on or beside a tree by the hut fells it.',
     },
     'vehicle-attack-move': {
       title: 'Catapult attack-move',
