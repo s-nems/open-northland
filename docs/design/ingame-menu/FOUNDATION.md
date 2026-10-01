@@ -38,7 +38,10 @@ oak and brass corners) and **Urnes** (smoked oak with carved beast corners). A l
   flags) under a show/hide-all action, then an owner scope (all, mine, friendly, hostile). The choice persists.
   Lift it above the bottom navigation when needed. Keep fog gating and return focus on closing it.
 - Do not include a hover preview of map areas.
-- Defer terrain appearance until the actual game maps can be compared in the renderer.
+- The terrain is the shared styled raster (`rasterizeMinimap` in render): lane colours under a
+  relief light from the upper left, water deepening away from the shore with a surf line, forest
+  canopy and ore tint from the standing resource nodes. The same raster makes the lobby's map
+  preview, so the lobby and the game show one picture.
 - The three compact minimap frames are approved. The separate large-map frame remains undecided;
   [ticket 19](../../tickets/app/ingame-ui-19-map-overview.md) owns its design and implementation.
 

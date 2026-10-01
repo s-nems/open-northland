@@ -3,8 +3,8 @@
 **Area:** app, render · **Focus:** in-game UI redesign · **Priority:** P2
 
 The approved compact minimap has S/M/L/XL sizes, frame zoom controls, camera picking, middle-drag pan,
-people/building filters and a live HUD footprint. The separate large overview is still missing;
-its frame has not been selected. The minimap retains the existing terrain rendering.
+layer and owner filters, the styled terrain raster and a live HUD footprint. The separate large
+overview is still missing; its frame has not been selected.
 
 Follow the [approved design workflow](../../design/ingame-menu/README.md) and
 [shared minimap decisions](../../design/ingame-menu/FOUNDATION.md#minimap-direction).

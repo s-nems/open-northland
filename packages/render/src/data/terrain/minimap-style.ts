@@ -75,8 +75,9 @@ const UNSET = -1;
 const BYTE_MAX = 255;
 
 /**
- * Rasterize the styled minimap: `pxW × pxH` RGBA, row-major, opaque, spanning `terrainWorldBounds`.
- * Pure and deterministic; cost is one pass over the cells plus one over the samples.
+ * Rasterize the styled minimap: `pxW × pxH` RGBA, row-major, spanning `terrainWorldBounds`; opaque
+ * except for an empty grid or picture, which stays all zero. Pure and deterministic; cost is one pass
+ * over the cells plus one over the samples.
  */
 export function rasterizeMinimap(scene: MinimapScene, pxW: number, pxH: number): Uint8Array {
   const out = new Uint8Array(Math.max(0, pxW * pxH * 4));
