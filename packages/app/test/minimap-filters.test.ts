@@ -15,6 +15,7 @@ describe('minimap filters', () => {
     expect(shown).toEqual(['civilians', 'soldiers', 'buildings', 'vehicles']);
     expect(allMinimapLayersShown(DEFAULT_MINIMAP_FILTERS)).toBe(false);
     expect(DEFAULT_MINIMAP_FILTERS.scope).toBe('everyone');
+    expect(DEFAULT_MINIMAP_FILTERS.ground).toBe('natural');
     expect(defaultSettings().minimapFilters).toEqual(DEFAULT_MINIMAP_FILTERS);
   });
 
@@ -29,7 +30,11 @@ describe('minimap filters', () => {
   });
 
   it('survive a reload through the stored settings', () => {
-    const chosen = { ...toggleMinimapLayer(DEFAULT_MINIMAP_FILTERS, 'soldiers'), scope: 'hostile' as const };
+    const chosen = {
+      ...toggleMinimapLayer(DEFAULT_MINIMAP_FILTERS, 'soldiers'),
+      scope: 'hostile' as const,
+      ground: 'dark' as const,
+    };
     const stored = JSON.stringify({ ...defaultSettings(), minimapFilters: chosen });
     expect(parseStoredSettings(stored).minimapFilters).toEqual(chosen);
   });
@@ -40,8 +45,12 @@ describe('minimap filters', () => {
     const parsed = parseMinimapFilters({
       layers: { soldiers: false, people: false, animals: 'no' },
       scope: 'allies',
+      ground: 'black',
     });
     expect(parsed).toEqual({ ...toggleMinimapLayer(DEFAULT_MINIMAP_FILTERS, 'soldiers'), scope: 'everyone' });
+    expect(parsed.ground).toBe('natural');
+    expect(parseMinimapFilters({ scope: 'mine' }).ground).toBe('natural');
+    expect(parseMinimapFilters({ ground: 'hidden' }).ground).toBe('hidden');
     expect(parsed.layers).not.toHaveProperty('people');
   });
 });

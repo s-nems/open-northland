@@ -60,7 +60,7 @@ function contextWith(overrides: Partial<MinimapDotContext>): MinimapDotContext {
 
 function only(layer: MinimapLayer, scope: MinimapFilters['scope'] = 'everyone'): MinimapFilters {
   const none = withAllMinimapLayers(DEFAULT_MINIMAP_FILTERS, false);
-  return { scope, layers: { ...none.layers, [layer]: true } };
+  return { ...none, scope, layers: { ...none.layers, [layer]: true } };
 }
 
 /** Where the raster stamps a thing standing on tile `(x, y)` - the projection the dots must reproduce. */

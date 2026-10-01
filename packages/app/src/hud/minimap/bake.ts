@@ -1,6 +1,8 @@
 import {
+  applyMinimapGroundMode,
   MINIMAP_DEPOSIT_KINDS,
   type MinimapFeature,
+  type MinimapGroundMode,
   type MinimapObjectLanes,
   type MinimapObjects,
   minimapObjectLanes,
@@ -36,6 +38,7 @@ export type MinimapBakeRequest =
       readonly id: number;
       readonly width: number;
       readonly height: number;
+      readonly mode: MinimapGroundMode;
       /** Replaces the objects this and every later bake draws; absent keeps the last ones. */
       readonly objects?: MinimapObjects;
     };
@@ -45,10 +48,10 @@ export interface MinimapBakeReply {
   readonly rgba: Uint8Array;
 }
 
-/** Rasterizes one map's scene; objects passed to a bake persist for the later ones. Their types are
- *  {@link MINIMAP_OBJECT_TYPES}. */
+/** Rasterizes one map's scene in a ground mode; objects passed to a bake persist for the later ones.
+ *  Their types are {@link MINIMAP_OBJECT_TYPES}. */
 export interface MinimapBaker {
-  bake(width: number, height: number, objects?: MinimapObjects): Promise<Uint8Array>;
+  bake(width: number, height: number, mode: MinimapGroundMode, objects?: MinimapObjects): Promise<Uint8Array>;
   dispose(): void;
 }
 
@@ -90,11 +93,35 @@ export function createMinimapRasterizer(
   };
 }
 
+export type MinimapRasterizer = ReturnType<typeof createMinimapRasterizer>;
+export type MinimapGroundBake = (
+  width: number,
+  height: number,
+  mode: MinimapGroundMode,
+  objects?: MinimapObjects,
+) => Uint8Array;
+
+/**
+ * The ground in a mode, each call a fresh buffer the caller may transfer. The natural raster of the
+ * last size and objects is kept, so a bake that changes only the mode grades it again instead of
+ * rasterizing: on a 1880x834 raster a grade costs 8 to 9 ms of CPU (Node, M2 Pro), the full bake
+ * about 260 ms.
+ */
+export function createCachedMinimapBake(rasterize: MinimapRasterizer): MinimapGroundBake {
+  let natural: { readonly width: number; readonly height: number; readonly rgba: Uint8Array } | null = null;
+  return (width, height, mode, objects) => {
+    if (objects !== undefined || natural === null || natural.width !== width || natural.height !== height) {
+      natural = { width, height, rgba: rasterize(width, height, objects) };
+    }
+    return applyMinimapGroundMode(natural.rgba, mode, new Uint8Array(natural.rgba.length));
+  };
+}
+
 /** A baker on the calling thread, for tests. */
 export const createInlineMinimapBaker: MinimapBakerFactory = (scene) => {
-  const rasterize = createMinimapRasterizer(scene);
+  const bake = createCachedMinimapBake(createMinimapRasterizer(scene));
   return {
-    bake: async (width, height, objects) => rasterize(width, height, objects),
+    bake: async (width, height, mode, objects) => bake(width, height, mode, objects),
     dispose: () => {},
   };
 };
@@ -138,7 +165,7 @@ export function createWorkerMinimapBaker(
   worker.addEventListener('error', (event) => fail(new Error(`minimap bake worker: ${event.message}`)));
   worker.postMessage({ kind: 'scene', scene });
   return {
-    bake: (width, height, objects) => {
+    bake: (width, height, mode, objects) => {
       if (failure !== null) return Promise.reject(failure);
       return new Promise((resolve, reject) => {
         const id = nextId++;
@@ -148,6 +175,7 @@ export function createWorkerMinimapBaker(
           id,
           width,
           height,
+          mode,
           ...(objects !== undefined ? { objects } : {}),
         });
       });

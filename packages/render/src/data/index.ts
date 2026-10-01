@@ -58,6 +58,11 @@ export {
   minimapObjectLanes,
 } from './terrain/minimap-features.js';
 export {
+  applyMinimapGroundMode,
+  MINIMAP_GROUND_MODES,
+  type MinimapGroundMode,
+} from './terrain/minimap-ground-mode.js';
+export {
   MINIMAP_DEPOSIT_KINDS,
   type MinimapDepositKind,
   type MinimapScene,

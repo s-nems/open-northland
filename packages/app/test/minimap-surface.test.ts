@@ -1,4 +1,5 @@
 import type { MinimapObjects, SceneTerrain } from '@open-northland/render';
+import { applyMinimapGroundMode, type MinimapGroundMode } from '@open-northland/render/data';
 import { positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import { BufferImageSource, Container, Sprite } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -45,8 +46,9 @@ function standingObjects(snapshot: WorldSnapshot): MinimapObjects {
   return seen.objects();
 }
 
-function expectedRaster(objects: MinimapObjects): Uint8Array {
-  return createMinimapRasterizer(minimapBakeScene(TERRAIN, () => MEADOW))(MAP.w, MAP.h, objects);
+function expectedRaster(objects: MinimapObjects, mode: MinimapGroundMode = 'natural'): Uint8Array {
+  const natural = createMinimapRasterizer(minimapBakeScene(TERRAIN, () => MEADOW))(MAP.w, MAP.h, objects);
+  return applyMinimapGroundMode(natural, mode);
 }
 
 /** Let the baker's answer land. */
@@ -64,17 +66,28 @@ function pixelsOf(ground: Sprite): Uint8Array {
   return source.resource as Uint8Array;
 }
 
+interface DeferredBake {
+  readonly width: number;
+  readonly height: number;
+  readonly mode: MinimapGroundMode;
+  resolve(rgba: Uint8Array): void;
+  reject(err: Error): void;
+}
+
 /** A baker whose bakes settle only when the test says so. */
 function deferredBaker(): {
   readonly factory: MinimapBakerFactory;
-  readonly calls: { resolve: (rgba: Uint8Array) => void; reject: (err: Error) => void }[];
+  readonly calls: DeferredBake[];
   disposed: boolean;
 } {
   const out = {
-    calls: [] as { resolve: (rgba: Uint8Array) => void; reject: (err: Error) => void }[],
+    calls: [] as DeferredBake[],
     disposed: false,
     factory: (() => ({
-      bake: () => new Promise<Uint8Array>((resolve, reject) => out.calls.push({ resolve, reject })),
+      bake: (width, height, mode) =>
+        new Promise<Uint8Array>((resolve, reject) =>
+          out.calls.push({ width, height, mode, resolve, reject }),
+        ),
       dispose: () => {
         out.disposed = true;
       },
@@ -83,7 +96,12 @@ function deferredBaker(): {
   return out;
 }
 
-function surfaceOn(host: Container, baker: MinimapBakerFactory, resolution: () => number = () => 1) {
+function surfaceOn(
+  host: Container,
+  baker: MinimapBakerFactory,
+  resolution: () => number = () => 1,
+  groundMode: () => MinimapGroundMode = () => 'natural',
+) {
   let now = 0;
   const surface = createMinimapSurface({
     container: host,
@@ -94,6 +112,7 @@ function surfaceOn(host: Container, baker: MinimapBakerFactory, resolution: () =
     resolution,
     shownWidth: () => MAP.w,
     baker,
+    groundMode,
     now: () => now,
   });
   return {
@@ -182,6 +201,7 @@ describe('minimap ground surface', () => {
       resolution: () => resolution,
       shownWidth: () => MAP.w,
       baker: createInlineMinimapBaker,
+      groundMode: () => 'natural',
       now: () => now,
     });
     const ground = groundOf(host);
@@ -223,6 +243,7 @@ describe('minimap ground surface', () => {
       resolution: () => 1,
       shownWidth: () => MAP.w,
       baker: createInlineMinimapBaker,
+      groundMode: () => 'natural',
       now: () => now,
     });
     const ground = groundOf(host);
@@ -264,13 +285,14 @@ describe('minimap ground surface', () => {
       baker: (scene) => {
         const inner = createInlineMinimapBaker(scene);
         return {
-          bake: (width, height, objects) => {
+          bake: (width, height, mode, objects) => {
             widths.push(width);
-            return inner.bake(width, height, objects);
+            return inner.bake(width, height, mode, objects);
           },
           dispose: inner.dispose,
         };
       },
+      groundMode: () => 'natural',
       now: () => now,
     });
     const ground = groundOf(host);
@@ -311,6 +333,69 @@ describe('minimap ground surface', () => {
     expect(widths).toHaveLength(3);
     await zoomTo(1);
     expect(widths).toEqual([shown, shown * 2, CAP, shown]);
+    surface.dispose();
+    host.destroy();
+  });
+
+  it('rebakes at once at the baked size when the ground mode changes, holding the old picture', async () => {
+    const host = new Container();
+    const baker = deferredBaker();
+    let mode: MinimapGroundMode = 'natural';
+    let resolution = 1;
+    const { surface } = surfaceOn(
+      host,
+      baker.factory,
+      () => resolution,
+      () => mode,
+    );
+    const snapshot = snapshotOf([tree(1, 2, 2)]);
+    surface.sync(snapshot, null);
+    baker.calls[0]?.resolve(expectedRaster(standingObjects(snapshot)));
+    await settle();
+    const ground = groundOf(host);
+    const natural = ground.texture;
+
+    // The new size has not settled, so the flip grades the baked size the baker still holds.
+    mode = 'dark';
+    resolution = 2;
+    surface.sync(snapshot, null);
+    expect(baker.calls.map((call) => [call.width, call.height, call.mode])).toEqual([
+      [MAP.w, MAP.h, 'natural'],
+      [MAP.w, MAP.h, 'dark'],
+    ]);
+    expect(ground.texture).toBe(natural);
+    baker.calls[1]?.resolve(expectedRaster(standingObjects(snapshot), 'dark'));
+    await settle();
+    expect(ground.texture).not.toBe(natural);
+    expect(pixelsOf(ground)).toEqual(expectedRaster(standingObjects(snapshot), 'dark'));
+    surface.sync(snapshot, null);
+    expect(baker.calls).toHaveLength(2);
+    surface.dispose();
+    host.destroy();
+  });
+
+  it('grades the inline fallback for the chosen mode and for a later flip', async () => {
+    vi.spyOn(diag, 'warn').mockImplementation(() => {});
+    const host = new Container();
+    const baker = deferredBaker();
+    let mode: MinimapGroundMode = 'muted';
+    const { surface } = surfaceOn(
+      host,
+      baker.factory,
+      () => 1,
+      () => mode,
+    );
+    const snapshot = snapshotOf([tree(1, 2, 2)]);
+    surface.sync(snapshot, null);
+    baker.calls[0]?.reject(new Error('worker gone'));
+    await settle();
+    const ground = groundOf(host);
+    expect(pixelsOf(ground)).toEqual(expectedRaster(standingObjects(snapshot), 'muted'));
+
+    mode = 'hidden';
+    surface.sync(snapshot, null);
+    expect(baker.calls).toHaveLength(1);
+    expect(pixelsOf(ground)).toEqual(expectedRaster(standingObjects(snapshot), 'hidden'));
     surface.dispose();
     host.destroy();
   });

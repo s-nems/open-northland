@@ -47,7 +47,7 @@ export interface MinimapOptions {
   /** The feature a standing node of each sim good type draws as on the ground. */
   readonly featureOfGoodType: ReadonlyMap<number, MinimapFeature>;
   readonly playerColourOf?: ((player: number) => number) | undefined;
-  /** The stored layer and owner choices; they persist through `onFiltersChange`. */
+  /** The stored layer, owner and ground choices; they persist through `onFiltersChange`. */
   readonly filters?: MinimapFilters | undefined;
   readonly onFiltersChange?: ((filters: MinimapFilters) => void) | undefined;
   readonly isFighterJob: (jobType: number) => boolean;
@@ -117,6 +117,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     resolution: () => app.renderer.resolution,
     shownWidth: () => layout.map.w,
     baker: createWorkerMinimapBaker,
+    groundMode: () => filters.ground,
     now: () => performance.now(),
   });
   const fogMask = createFogMaskLayer(world, raster);
@@ -176,6 +177,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       onLayer: (layer) => setFilters(toggleMinimapLayer(filters, layer)),
       onAllLayers: (shown) => setFilters(withAllMinimapLayers(filters, shown)),
       onScope: (scope) => setFilters({ ...filters, scope }),
+      onGround: (ground) => setFilters({ ...filters, ground }),
     },
     opts.frame,
   );

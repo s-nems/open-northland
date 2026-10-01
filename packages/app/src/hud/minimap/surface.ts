@@ -4,11 +4,13 @@ import {
   type MinimapFeature,
   type SceneTerrain,
 } from '@open-northland/render';
+import type { MinimapGroundMode } from '@open-northland/render/data';
 import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { BufferImageSource, type Container, Sprite, Texture } from 'pixi.js';
 import { diag } from '../../diag/index.js';
 import type { Rect } from '../geometry.js';
 import {
+  createCachedMinimapBake,
   createMinimapRasterizer,
   type MinimapBaker,
   type MinimapBakerFactory,
@@ -38,14 +40,17 @@ export interface MinimapSurfaceDeps {
   /** The whole map's drawn width in screen px, its own zoom included. */
   readonly shownWidth: () => number;
   readonly baker: MinimapBakerFactory;
+  /** The ground mode chosen in the filters. */
+  readonly groundMode: () => MinimapGroundMode;
   /** Wall-clock ms. */
   readonly now: () => number;
 }
 
 export interface MinimapSurface {
-  /** Rebake when the bake size, the shown width in display px up to {@link MAX_BAKE_ZOOM} raster widths,
-   *  settled on a new value, or the forest and ore the viewer sees through `fog` changed, looked for at
-   *  most once per {@link OBJECT_REBAKE_INTERVAL_MS}. A bake runs on the baker, one at a time; the shown
+  /** Rebake when the ground mode changed, at once and at the baked size; when the bake size, the shown
+   *  width in display px up to {@link MAX_BAKE_ZOOM} raster widths, settled on a new value; or when the
+   *  forest and ore the viewer sees through `fog` changed, looked for at most once per
+   *  {@link OBJECT_REBAKE_INTERVAL_MS}. A bake runs on the baker, one at a time; the shown
    *  picture stays until the next lands on a later sync. A failed bake bakes once on the calling thread
    *  and stops rebaking. */
   sync(snapshot: WorldSnapshot, fog: FogView | null): void;
@@ -63,12 +68,14 @@ export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
   ground.position.set(map.x, map.y);
   deps.container.addChild(ground);
   let bakedWidth = 0;
+  let bakedMode: MinimapGroundMode | null = null;
   let wantedWidth = 0;
   let wantedSince = Number.NEGATIVE_INFINITY;
   const seenObjects = createSeenStandingObjects(featureOfGoodType);
   let objectsCheckedAt = Number.NEGATIVE_INFINITY;
   let baking = false;
-  let failed = false;
+  /** After the baker failed: shows the calling thread's one bake graded for a mode. */
+  let showFallback: ((mode: MinimapGroundMode) => void) | null = null;
   let disposed = false;
 
   const show = (rgba: Uint8Array, width: number, height: number): void => {
@@ -91,7 +98,13 @@ export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
         wantedWidth = width;
         wantedSince = now;
       }
-      if (baking || failed || disposed) return;
+      if (baking || disposed) return;
+      const mode = deps.groundMode();
+      const modeDue = mode !== bakedMode;
+      if (showFallback !== null) {
+        if (modeDue) showFallback(mode);
+        return;
+      }
       // The first bake goes at once; a later size waits for the shown width or resolution to settle.
       const sizeDue = width !== bakedWidth && (bakedWidth === 0 || now - wantedSince >= BAKE_SIZE_SETTLE_MS);
       let objectsDue = false;
@@ -99,24 +112,32 @@ export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
         objectsCheckedAt = now;
         objectsDue = seenObjects.refresh(snapshot, fog);
       }
-      if (!sizeDue && !objectsDue) return;
-      const height = Math.max(1, Math.round((width * map.h) / map.w));
+      if (!sizeDue && !objectsDue && !modeDue) return;
+      // A mode flip alone keeps the baked size, which the baker can grade again without rasterizing.
+      const bakeWidth = sizeDue ? width : bakedWidth;
+      const height = Math.max(1, Math.round((bakeWidth * map.h) / map.w));
       const objects = objectsDue ? seenObjects.objects() : undefined;
       baking = true;
-      baker.bake(width, height, objects).then(
+      baker.bake(bakeWidth, height, mode, objects).then(
         (rgba) => {
           baking = false;
           if (disposed) return;
-          bakedWidth = width;
-          show(rgba, width, height);
+          bakedWidth = bakeWidth;
+          bakedMode = mode;
+          show(rgba, bakeWidth, height);
         },
         (err: unknown) => {
           baking = false;
-          failed = true;
           if (disposed) return;
-          // One bake on this thread keeps the ground; the picture then holds still.
+          // One bake on this thread keeps the ground; the picture then holds still but for its mode.
           diag.warn('hud', `minimap ground bake failed, baking once inline: ${String(err)}`);
-          show(createMinimapRasterizer(scene)(width, height, seenObjects.objects()), width, height);
+          const inline = createCachedMinimapBake(createMinimapRasterizer(scene));
+          show(inline(bakeWidth, height, mode, seenObjects.objects()), bakeWidth, height);
+          bakedMode = mode;
+          showFallback = (next) => {
+            show(inline(bakeWidth, height, next), bakeWidth, height);
+            bakedMode = next;
+          };
         },
       );
     },

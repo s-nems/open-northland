@@ -1,4 +1,7 @@
-/** What the minimap plots: one switch per marker layer, plus whose markers show. Persisted in the settings. */
+/** What the minimap plots: one switch per marker layer, whose markers show and how much ground shows
+ *  under them. Persisted in the settings. */
+
+import { MINIMAP_GROUND_MODES, type MinimapGroundMode } from '@open-northland/render/data';
 
 export const MINIMAP_LAYERS = [
   'civilians',
@@ -18,6 +21,7 @@ export type MinimapScope = (typeof MINIMAP_SCOPES)[number];
 export interface MinimapFilters {
   readonly layers: Readonly<Record<MinimapLayer, boolean>>;
   readonly scope: MinimapScope;
+  readonly ground: MinimapGroundMode;
 }
 
 function layersAll(shown: boolean): Record<MinimapLayer, boolean> {
@@ -41,12 +45,16 @@ function defaultLayers(): Record<MinimapLayer, boolean> {
   return layers;
 }
 
-export const DEFAULT_MINIMAP_FILTERS: MinimapFilters = { layers: defaultLayers(), scope: 'everyone' };
+export const DEFAULT_MINIMAP_FILTERS: MinimapFilters = {
+  layers: defaultLayers(),
+  scope: 'everyone',
+  ground: 'natural',
+};
 
 /** A stored blob back to filters; a missing or deformed field keeps its default. */
 export function parseMinimapFilters(value: unknown): MinimapFilters {
   if (typeof value !== 'object' || value === null) return DEFAULT_MINIMAP_FILTERS;
-  const record = value as { layers?: unknown; scope?: unknown };
+  const record = value as { layers?: unknown; scope?: unknown; ground?: unknown };
   const stored =
     typeof record.layers === 'object' && record.layers !== null
       ? (record.layers as Record<string, unknown>)
@@ -58,7 +66,9 @@ export function parseMinimapFilters(value: unknown): MinimapFilters {
   }
   const scope =
     MINIMAP_SCOPES.find((candidate) => candidate === record.scope) ?? DEFAULT_MINIMAP_FILTERS.scope;
-  return { layers, scope };
+  const ground =
+    MINIMAP_GROUND_MODES.find((candidate) => candidate === record.ground) ?? DEFAULT_MINIMAP_FILTERS.ground;
+  return { layers, scope, ground };
 }
 
 export function toggleMinimapLayer(filters: MinimapFilters, layer: MinimapLayer): MinimapFilters {

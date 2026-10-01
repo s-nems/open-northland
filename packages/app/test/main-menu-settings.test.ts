@@ -55,6 +55,7 @@ describe('parseStoredSettings', () => {
           signposts: true,
         },
         scope: 'hostile',
+        ground: 'muted',
       },
       mapPreview: 'map',
       soundEnabled: false,

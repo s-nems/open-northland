@@ -1,3 +1,4 @@
+import { MINIMAP_GROUND_MODES, type MinimapGroundMode } from '@open-northland/render/data';
 import { formatMessage, messages } from '../../i18n/index.js';
 import {
   button,
@@ -39,6 +40,7 @@ export interface MinimapChromeCallbacks {
   readonly onLayer: (layer: MinimapLayer) => void;
   readonly onAllLayers: (shown: boolean) => void;
   readonly onScope: (scope: MinimapScope) => void;
+  readonly onGround: (ground: MinimapGroundMode) => void;
 }
 
 export interface MinimapChrome {
@@ -69,6 +71,65 @@ const LAYER_ICONS: Readonly<Record<MinimapLayer, string>> = {
   roads: icon('<path d="M7 2 4 18M13 2l3 16M10 3v2m0 4v2m0 4v2"/>'),
   signposts: icon('<path d="M6 18V2M6 3h9l-2 3 2 3H6"/>'),
 };
+
+interface RadioChoices<T extends string> {
+  readonly group: HTMLElement;
+  /** Check `chosen` and make it the group's one tab stop. */
+  choose(chosen: T): void;
+}
+
+/** A segmented control of `values`, inert while the group is marked disabled. A radio group is one tab
+ *  stop; the arrow keys move the choice, as native radios do. */
+function radioChoices<T extends string>(
+  values: readonly T[],
+  labelledBy: string,
+  labels: Readonly<Record<T, string>>,
+  tips: Readonly<Record<T, string>>,
+  onChoose: (value: T) => void,
+): RadioChoices<T> {
+  const group = element('div', 'on-minimap-chrome__choices');
+  group.setAttribute('role', 'radiogroup');
+  group.setAttribute('aria-labelledby', labelledBy);
+  const options = new Map<T, HTMLButtonElement>();
+  for (const value of values) {
+    const option = button('on-minimap-chrome__choice');
+    option.setAttribute('role', 'radio');
+    option.textContent = labels[value];
+    setTip(option, tips[value]);
+    option.addEventListener('click', () => {
+      if (!isDisabled(group)) onChoose(value);
+    });
+    group.append(option);
+    options.set(value, option);
+  }
+  group.addEventListener('keydown', (event) => {
+    const step =
+      event.key === 'ArrowRight' || event.key === 'ArrowDown'
+        ? 1
+        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+          ? -1
+          : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (isDisabled(group)) return;
+    const at = values.findIndex((value) => options.get(value) === document.activeElement);
+    const next = values[(Math.max(0, at) + step + values.length) % values.length];
+    if (next === undefined) return;
+    onChoose(next);
+    options.get(next)?.focus();
+  });
+  return {
+    group,
+    choose: (chosen) => {
+      for (const [value, option] of options) {
+        const checked = value === chosen;
+        setAttribute(option, 'aria-checked', String(checked));
+        option.tabIndex = checked ? 0 : -1;
+      }
+    },
+  };
+}
 
 /** The map hole stays transparent to pointer input; only the narrow rails and controls claim it. */
 export function createMinimapChrome(
@@ -169,44 +230,22 @@ export function createMinimapChrome(
   scopeLegend.id = 'on-minimap-scope-legend';
   scopeLegend.textContent = copy.scope;
   setTip(scopeLegend, copy.scopeNote);
-  const scopeGroup = element('div', 'on-minimap-chrome__scope');
-  scopeGroup.setAttribute('role', 'radiogroup');
-  scopeGroup.setAttribute('aria-labelledby', scopeLegend.id);
-  scopeGroup.setAttribute('aria-description', copy.scopeNote);
-  const scopeButtons = new Map<MinimapScope, HTMLButtonElement>();
-  for (const scope of MINIMAP_SCOPES) {
-    const option = button('on-minimap-chrome__scope-option');
-    option.setAttribute('role', 'radio');
-    option.textContent = copy.scopes[scope];
-    setTip(option, copy.scopeTips[scope]);
-    option.addEventListener('click', () => {
-      if (!isDisabled(scopeGroup)) callbacks.onScope(scope);
-    });
-    scopeGroup.append(option);
-    scopeButtons.set(scope, option);
-  }
-  // A radio group is one tab stop; the arrow keys move the choice, as native radios do.
-  scopeGroup.addEventListener('keydown', (event) => {
-    const step =
-      event.key === 'ArrowRight' || event.key === 'ArrowDown'
-        ? 1
-        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-          ? -1
-          : 0;
-    if (step === 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (isDisabled(scopeGroup)) return;
-    const at = MINIMAP_SCOPES.findIndex((scope) => scopeButtons.get(scope) === document.activeElement);
-    const next = MINIMAP_SCOPES[(Math.max(0, at) + step + MINIMAP_SCOPES.length) % MINIMAP_SCOPES.length];
-    if (next === undefined) return;
-    callbacks.onScope(next);
-    scopeButtons.get(next)?.focus();
-  });
+  const scopes = radioChoices(MINIMAP_SCOPES, scopeLegend.id, copy.scopes, copy.scopeTips, callbacks.onScope);
+  scopes.group.setAttribute('aria-description', copy.scopeNote);
   const noSeatNote = element('p', 'on-minimap-chrome__scope-note');
   noSeatNote.textContent = copy.scopeNoSeat;
   noSeatNote.hidden = true;
-  popover.append(head, layerGroup, scopeLegend, scopeGroup, noSeatNote);
+  const groundLegend = element('h3', 'on-minimap-chrome__legend on-minimap-chrome__legend--section');
+  groundLegend.id = 'on-minimap-ground-legend';
+  groundLegend.textContent = copy.ground;
+  const grounds = radioChoices(
+    MINIMAP_GROUND_MODES,
+    groundLegend.id,
+    copy.grounds,
+    copy.groundTips,
+    callbacks.onGround,
+  );
+  popover.append(head, layerGroup, scopeLegend, scopes.group, noSeatNote, groundLegend, grounds.group);
 
   const placeFilters = (): void => {
     const bounds = plane.getBoundingClientRect();
@@ -310,12 +349,9 @@ export function createMinimapChrome(
       }
       allShown = allMinimapLayersShown(state.filters);
       write(allToggle, allShown ? copy.hideAll : copy.showAll);
-      for (const [scope, option] of scopeButtons) {
-        const chosen = scope === state.filters.scope;
-        setAttribute(option, 'aria-checked', String(chosen));
-        option.tabIndex = chosen ? 0 : -1;
-      }
-      setDisabled(scopeGroup, !state.hasSeat);
+      scopes.choose(state.filters.scope);
+      setDisabled(scopes.group, !state.hasSeat);
+      grounds.choose(state.filters.ground);
       if (setHidden(noSeatNote, state.hasSeat)) placeFilters();
       tips.refresh();
     },
