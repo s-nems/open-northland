@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import type { UnlockStatus } from '@open-northland/sim';
+import { systems, type UnlockStatus } from '@open-northland/sim';
 import { professionDefForJob } from '../catalog/professions.js';
 import { messages, professionLabel } from '../i18n/index.js';
 
@@ -10,14 +10,15 @@ export function technologyReason(content: ContentSet, status: UnlockStatus): str
     status.requiredJobs.length > 0 || status.requiredGoods.length > 0
       ? status.requiredJobs
       : status.enablingJobs
-  ).map((id) => technologyLabel(content, 'job', id));
+  ).flatMap((id) => technologyName(content, 'job', id) ?? []);
   // A missing good names the trades whose work discovers it, so the player knows whom to assign.
-  const goods = status.requiredGoods.map(({ good, jobs: producers }) => {
-    const label = technologyLabel(content, 'good', good);
-    const byJobs = producers.filter((id) => !status.requiredJobs.includes(id));
-    return byJobs.length === 0
-      ? label
-      : `${label} (${byJobs.map((id) => technologyLabel(content, 'job', id)).join(', ')})`;
+  const goods = status.requiredGoods.flatMap(({ good, jobs: producers }) => {
+    const label = technologyName(content, 'good', good);
+    if (label === undefined) return [];
+    const byJobs = producers
+      .filter((id) => !status.requiredJobs.includes(id))
+      .flatMap((id) => technologyName(content, 'job', id) ?? []);
+    return byJobs.length === 0 ? label : `${label} (${byJobs.join(', ')})`;
   });
   return `${messages().hud.technologyRequires} ${[...jobs, ...goods].join(', ')}`;
 }
@@ -29,22 +30,49 @@ export function vehicleLabel(
 ): string | undefined {
   const row = content.vehicles.find((r) => r.typeId === typeId);
   if (row === undefined) return undefined;
-  const labels: Readonly<Record<string, string>> = messages().goods;
-  return labels[row.id] ?? row.name;
+  const labels: Readonly<Record<string, string | undefined>> = messages().goods;
+  return labels[row.id];
 }
 
+type TechnologyContent = { readonly [K in 'buildings' | 'jobs' | 'goods']: Readonly<ContentSet[K]> };
+
+/**
+ * The localized name of a discoverable job, good or house, or `undefined` when no catalog names it: a
+ * caller drops such an entry rather than print the content slug.
+ */
+export function technologyName(
+  content: TechnologyContent,
+  kind: 'job' | 'good' | 'house',
+  typeId: number,
+): string | undefined {
+  if (kind === 'job') return jobName(content, typeId);
+  const row = (kind === 'house' ? content.buildings : content.goods).find((r) => r.typeId === typeId);
+  if (row === undefined) return undefined;
+  const labels: Readonly<Record<string, string | undefined>> =
+    kind === 'house' ? messages().building : messages().goods;
+  return labels[row.id];
+}
+
+/** A job's name: the picker's profession, else a named off-roster trade, life stage or hero class. */
+function jobName(content: TechnologyContent, typeId: number): string | undefined {
+  const profession = professionDefForJob(typeId);
+  if (profession !== undefined) return professionLabel(profession.key);
+  const row = content.jobs.find((r) => r.typeId === typeId);
+  if (row === undefined) return undefined;
+  const trades: Readonly<Record<string, string | undefined>> = messages().profession;
+  const roles: Readonly<Record<string, string | undefined>> = messages().roleNames;
+  return (
+    trades[row.id] ??
+    roles[row.id] ??
+    (systems.isHeroJobRow(row) ? messages().heroNames.hero_unarmed : undefined)
+  );
+}
+
+/** {@link technologyName} for a seam that takes a plain string; an unnamed entry reads empty, never as a slug. */
 export function technologyLabel(
-  content: { readonly [K in 'buildings' | 'jobs' | 'goods']: Readonly<ContentSet[K]> },
+  content: TechnologyContent,
   kind: 'job' | 'good' | 'house',
   typeId: number,
 ): string {
-  const profession = kind === 'job' ? professionDefForJob(typeId) : undefined;
-  if (profession !== undefined) return professionLabel(profession.key);
-  const row = (kind === 'house' ? content.buildings : kind === 'job' ? content.jobs : content.goods).find(
-    (r) => r.typeId === typeId,
-  );
-  if (row === undefined) return `#${typeId}`;
-  const labels: Readonly<Record<string, string>> =
-    kind === 'house' ? messages().building : kind === 'job' ? messages().profession : messages().goods;
-  return labels[row.id] ?? ('name' in row ? row.name : undefined) ?? row.id;
+  return technologyName(content, kind, typeId) ?? '';
 }
