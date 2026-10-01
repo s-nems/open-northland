@@ -1,6 +1,5 @@
 import { isIndoorSettler } from '@open-northland/render/data';
 import {
-  type AtomicEffect,
   components,
   entityById,
   ONE,
@@ -48,9 +47,6 @@ const NO_MESSAGES: readonly RaisedMessage[] = [];
 /** Hunger pinned at the top of the bar is starvation. */
 const STARVING_HUNGER: number = ONE;
 
-/** Atomics that occupy a settler without being work, such as a paired chat. */
-const EFFECTLESS_ATOMICS: ReadonlySet<AtomicEffect['kind']> = new Set<AtomicEffect['kind']>(['idle']);
-
 /** What a settler is doing, as far as the note about having no work is concerned. */
 export type Occupation = 'idle' | 'walking' | 'busy';
 
@@ -66,23 +62,24 @@ export interface SnapshotMessageSource {
 
 type Components = SnapshotEntity['components'];
 
-function isEffectlessAtomic(components: Components): boolean {
-  const atomic = components.CurrentAtomic as { effect?: { kind?: unknown } } | undefined;
-  const kind = atomic?.effect?.kind;
-  return typeof kind === 'string' && EFFECTLESS_ATOMICS.has(kind as AtomicEffect['kind']);
+/** Idle chatter on its way to a partner: the sim starts a pastime chat only from the planner's idle tail,
+ *  and its walk lifts the planner's idle marker until the pair stands together. */
+function walksToPastimeChat(c: Components): boolean {
+  const chat = c.Chat as { kind?: unknown } | undefined;
+  return chat?.kind === 'pastime' && (c.PathFollow !== undefined || c.MoveGoal !== undefined);
 }
 
 /**
- * Approximation: a producer parked outside for missing inputs and a gatherer whose resource ran out carry
- * no component either and read as idle. A gatherer gets the idle note in place of one naming the missing
- * good; a craft workshop's operator leaves it to the stall note, which names it (`workshop-stalls.ts`).
+ * Idle is the planner's own verdict: its `IdleStand` marker stands while the drive ladder found the settler
+ * no work, at its idle tail or waiting by an empty flag, as the original raises the note when the job
+ * search fails. Everything else is busy, a standing settler included: a company chat, a stroke's rest, a
+ * meal, a farmer waiting on its fields and a builder waiting at its site are all a rung that took it.
  */
 export function occupationOf(snapshot: WorldSnapshot, e: SnapshotEntity): Occupation {
   const c = e.components;
   if (c.PlayerOrder !== undefined || c.Garrison !== undefined || isIndoorSettler(snapshot, c)) return 'busy';
-  if (c.CurrentAtomic !== undefined) return isEffectlessAtomic(c) ? 'idle' : 'busy';
-  if (c.PathFollow !== undefined || c.MoveGoal !== undefined) return 'walking';
-  return 'idle';
+  if (c.IdleStand !== undefined) return 'idle';
+  return walksToPastimeChat(c) ? 'walking' : 'busy';
 }
 
 /** A unit on a DEFEND stance stands still on purpose. Added here: the original raises this note from a
@@ -124,8 +121,8 @@ class IdleStreaks {
     this.next = new Map();
   }
 
-  /** An idle sweep adds one and a walk keeps the count, but taking or losing a post starts the run
-   *  over: the two notes this feeds ask different questions. Returns the count after this sweep. */
+  /** An idle sweep adds one and idle chatter's walk keeps the count, but taking or losing a post starts
+   *  the run over: the two notes this feeds ask different questions. Returns the count after this sweep. */
   advance(entity: number, occupation: 'idle' | 'walking', atPost: boolean): number {
     const before = this.counts.get(entity);
     const kept = before !== undefined && before.atPost === atPost ? before : undefined;

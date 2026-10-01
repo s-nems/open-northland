@@ -1,12 +1,23 @@
-import { components, type Entity, ONE, systems, type WorldSnapshot } from '@open-northland/sim';
+import {
+  cellAnchorNode,
+  components,
+  type Entity,
+  ONE,
+  type Simulation,
+  systems,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { ANIMAL_TRIBE_HARES } from '../src/catalog/animal-tribes.js';
 import { grassTerrain } from '../src/catalog/buildings.js';
-import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
+import { JOB_CIVILIST, JOB_COLLECTOR, JOB_HUNTER } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import {
+  BUILDING_FARM,
   BUILDING_WAREHOUSE_00,
   placeBuiltSandboxBuilding,
   spawnSettlerDirect,
+  spawnWorkersAtDoor,
   staffBuildingFully,
 } from '../src/game/sandbox/index.js';
 import { ownerPlayerOf, workplaceOf } from '../src/game/snapshot.js';
@@ -35,6 +46,11 @@ const naming: MessageNaming = {
   text: (type) => plain(String(type)),
 };
 
+/** Long enough for a lonely settler's chat, two talk rounds, and the work after it. */
+const HUNTER_WATCH_SWEEPS = 150;
+/** A farm's sow, water and reap rounds, with the lonely farmer's chat among them. */
+const FARM_WATCH_SWEEPS = 300;
+
 /** A staffed warehouse with nothing on the ground to haul: its carriers have no work from the first tick. */
 const IDLE_CREW: SceneWorld = {
   seed: 3,
@@ -55,6 +71,92 @@ const BARE_COLLECTOR: SceneWorld = {
     sim.world.add(collector, components.JobAssignment, { workplace: store });
   },
 };
+
+/** A settler whose company bar sits on the seek line: it leaves its work for one exchange of chat, which
+ *  outlasts the sweeps before the note. */
+function makeLonely(sim: Simulation, e: Entity): void {
+  sim.world.mut(e, components.SettlerNeeds).enjoyment = systems.NEED_DRIVE_THRESHOLD;
+}
+
+const CHAT_PARTNER_CELL = { x: 9, y: 9 } as const;
+const ENABLER_CELL = { x: 2, y: 2 } as const;
+const FARMERS = 2;
+
+/** A lonely hunter of a store, an idle civilian to chat with, and hares in its hunting ground. */
+const CHATTY_HUNTER: SceneWorld = {
+  seed: 11,
+  // A chat ends on the seeker's refilled bar, which only the needs rule refills.
+  needs: true,
+  terrain: grassTerrain(26, 20),
+  build: (sim) => {
+    const store = placeBuiltSandboxBuilding(sim, BUILDING_WAREHOUSE_00, 12, 6, HUMAN_PLAYER);
+    const hunter = spawnSettlerDirect(sim, JOB_HUNTER, 12, 10, HUMAN_PLAYER);
+    sim.world.add(hunter, components.JobAssignment, { workplace: store });
+    makeLonely(sim, hunter);
+    spawnSettlerDirect(sim, JOB_CIVILIST, CHAT_PARTNER_CELL.x, CHAT_PARTNER_CELL.y, HUMAN_PLAYER);
+    const herd = cellAnchorNode(18, 12);
+    sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: ANIMAL_TRIBE_HARES, x: herd.hx, y: herd.hy });
+  },
+};
+
+/** A farm on open grass with its two farmers, one of them lonely, and an idle civilian beside it to chat with. */
+const CHATTY_FARM: SceneWorld = {
+  seed: 13,
+  needs: true,
+  terrain: grassTerrain(26, 20),
+  build: (sim) => {
+    // The farm is `jobEnablesHouse`-gated on a collector, as in the chain scene.
+    spawnSettlerDirect(sim, JOB_COLLECTOR, ENABLER_CELL.x, ENABLER_CELL.y, HUMAN_PLAYER);
+    const farm = placeBuiltSandboxBuilding(sim, BUILDING_FARM, 12, 8, HUMAN_PLAYER);
+    spawnWorkersAtDoor(sim, farm, FARMERS);
+    const [farmer] = farmersOf(sim);
+    if (farmer === undefined) throw new Error('the farm took no farmer');
+    makeLonely(sim, farmer);
+    spawnSettlerDirect(sim, JOB_CIVILIST, CHAT_PARTNER_CELL.x, CHAT_PARTNER_CELL.y, HUMAN_PLAYER);
+  },
+};
+
+/** The farm's crew, read off its bindings. */
+function farmersOf(sim: Simulation): Entity[] {
+  return [...sim.world.query(components.JobAssignment)].filter(
+    (e) =>
+      sim.world.tryGet(sim.world.get(e, components.JobAssignment).workplace, components.Building)
+        ?.buildingType === BUILDING_FARM,
+  );
+}
+
+/** What the sweeps saw of `workers` over `sweeps` intervals: the company chats each held, the sweeps it
+ *  spent on a clip that is not a chat's, and the nothing-to-do notes raised about any of them. */
+function watchWorkers(
+  scene: SceneWorld,
+  pick: (sim: Simulation) => readonly Entity[],
+  sweeps: number,
+): { chatted: Set<number>; workedAfterChat: Set<number>; idleNotes: number[] } {
+  const sim = createSceneSim(scene);
+  sim.run(2);
+  const workers = new Set<number>(pick(sim));
+  const source = createSnapshotMessageSource(HUMAN_PLAYER);
+  const chatted = new Set<number>();
+  const workedAfterChat = new Set<number>();
+  const idleNotes: number[] = [];
+  for (let i = 0; i < sweeps; i++) {
+    sim.run(SNAPSHOT_SWEEP_INTERVAL_TICKS);
+    for (const id of workers) {
+      const e = id as Entity;
+      if ((sim.world.tryGet(e, components.Chat)?.kind ?? null) === 'company') chatted.add(id);
+      else if (chatted.has(id) && sim.world.tryGet(e, components.CurrentAtomic)?.effect.kind !== undefined) {
+        if (sim.world.get(e, components.CurrentAtomic).effect.kind !== 'idle') workedAfterChat.add(id);
+      }
+    }
+    for (const r of source.sweep(sim.snapshot(), naming)) {
+      const subject = r.pending.subject?.entity;
+      if (r.pending.type === USER_MESSAGE_TYPE.nothingToDo && subject !== undefined && workers.has(subject)) {
+        idleNotes.push(subject);
+      }
+    }
+  }
+  return { chatted, workedAfterChat, idleNotes };
+}
 
 function registeredScene(id: string): SceneWorld {
   const scene = SCENES.find((s) => s.id === id);
@@ -123,6 +225,24 @@ describe('user messages read off real scene snapshots', () => {
   it('leaves the warehouse crew alone while it is hauling', () => {
     const { firstAt } = firstIdleNotes(registeredScene('warehouse'), 8 * IDLE_SWEEPS_BEFORE_MESSAGE);
     expect(firstAt.size).toBe(0);
+  });
+
+  it('never reports a hunter idle while it chats for company and then goes hunting', () => {
+    const hunters = (sim: Simulation): Entity[] =>
+      [...sim.world.query(components.Settler)].filter(
+        (e) => sim.world.get(e, components.Settler).jobType === JOB_HUNTER,
+      );
+    const seen = watchWorkers(CHATTY_HUNTER, hunters, HUNTER_WATCH_SWEEPS);
+    expect(seen.chatted.size).toBe(1);
+    expect(seen.workedAfterChat).toEqual(seen.chatted);
+    expect(seen.idleNotes).toEqual([]);
+  });
+
+  it('never reports a farmer idle through its field cycle, its chats and its waits at the farm', () => {
+    const seen = watchWorkers(CHATTY_FARM, farmersOf, FARM_WATCH_SWEEPS);
+    expect(seen.chatted.size).toBeGreaterThan(0);
+    expect(seen.workedAfterChat).toEqual(seen.chatted);
+    expect(seen.idleNotes).toEqual([]);
   });
 
   it('names why a collector of a store on bare grass stands idle', () => {

@@ -53,8 +53,9 @@ function isNeedNoteOver(m: UserMessage, snapshot: WorldSnapshot, e: SnapshotEnti
   }
 }
 
-/** The polled idle notes last as long as the sweep's idle run would: a walk keeps the run, so it keeps
- *  the note too, while work, an order or a held post ends both. */
+/** The polled idle notes last as long as the sweep's idle run would: idle chatter's walk keeps the run,
+ *  so it keeps the note too, while anything the planner gave the settler, an order or a held post ends
+ *  both. */
 function isIdleNoteOver(
   m: UserMessage,
   snapshot: WorldSnapshot,

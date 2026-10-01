@@ -59,8 +59,11 @@ function needsWorld(
   };
 }
 
+/** The planner's marker for a settler its drive ladder found no work for. */
+const IDLE_STAND = { IdleStand: { standing: true } };
+
 function idleWorld(
-  state: 'idle-at-workplace' | 'idle-without-workplace' | 'walking' | 'working' | 'has-flag',
+  state: 'idle-at-workplace' | 'idle-without-workplace' | 'chat-walk' | 'walking' | 'working' | 'has-flag',
 ): WorldSnapshot {
   const workplace = state === 'idle-at-workplace' ? 8 : undefined;
   return {
@@ -71,7 +74,13 @@ function idleWorld(
         id: SETTLER,
         components: {
           ...(workplace === undefined ? {} : { JobAssignment: { workplace } }),
-          ...(state === 'walking' ? { MoveGoal: { cell: 12 } } : {}),
+          ...(state === 'idle-at-workplace' || state === 'idle-without-workplace' || state === 'has-flag'
+            ? IDLE_STAND
+            : {}),
+          ...(state === 'walking' || state === 'chat-walk' ? { MoveGoal: { cell: 12 } } : {}),
+          ...(state === 'chat-walk'
+            ? { Chat: { partner: 7, seeker: true, talking: false, speaks: true, kind: 'pastime' } }
+            : {}),
           ...(state === 'working'
             ? { CurrentAtomic: { atomicId: 1, effect: { kind: 'produce', recipeOutput: 3 } } }
             : {}),
@@ -201,10 +210,14 @@ describe('note retirement', () => {
     expect(isNoteOver(held, order(null))).toBe(true);
   });
 
-  it('keeps an idle note through a walk, which keeps the idle run, and ends it on a held post', () => {
+  it('keeps an idle note through idle chatter walking to its partner, and ends it on any other walk or a held post', () => {
     const idle = note(USER_MESSAGE_TYPE.workplaceNotFound);
-    expect(isNoteOver(idle, idleWorld('walking'))).toBe(false);
-    const guard = subjectWorld({ Stance: { mode: systems.MILITARY_MODE.DEFEND, anchorCell: null } });
+    expect(isNoteOver(idle, idleWorld('chat-walk'))).toBe(false);
+    expect(isNoteOver(idle, idleWorld('walking'))).toBe(true);
+    const guard = subjectWorld({
+      ...IDLE_STAND,
+      Stance: { mode: systems.MILITARY_MODE.DEFEND, anchorCell: null },
+    });
     expect(isNoteOver(idle, guard)).toBe(true);
   });
 
@@ -287,11 +300,11 @@ describe('note retirement', () => {
   it('ends a no-cart note once the trader rides or its route falls short', () => {
     const fullRoute = Array.from({ length: simComponents.TRADE_ROUTE_HOUSES }, (_, i) => ({ house: i + 1 }));
     const trader = (extra: Record<string, unknown>): WorldSnapshot =>
-      subjectWorld({ TradeRoute: { stops: fullRoute }, ...extra });
+      subjectWorld({ TradeRoute: { stops: fullRoute }, ...IDLE_STAND, ...extra });
     const noCart = note(USER_MESSAGE_TYPE.noVehicleForWork);
     expect(isNoteOver(noCart, trader({}))).toBe(false);
     expect(isNoteOver(noCart, trader({ Rider: { vehicle: SETTLER + 1 } }))).toBe(true);
-    expect(isNoteOver(noCart, subjectWorld({ TradeRoute: { stops: [] } }))).toBe(true);
+    expect(isNoteOver(noCart, subjectWorld({ TradeRoute: { stops: [] }, ...IDLE_STAND }))).toBe(true);
   });
 
   it('keeps a vehicle site note while the workshop holds its refused search, and ends it after', () => {

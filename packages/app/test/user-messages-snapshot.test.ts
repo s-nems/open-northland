@@ -29,8 +29,10 @@ const HEALTH_POOL = systems.HUMAN_HITPOINTS;
 /** The original's near-death line on a 5000 pool. */
 const NEAR_DEATH = 720;
 
-/** What a synthetic settler is doing, mapped onto the components the source reads. */
-type Doing = 'nothing' | 'work' | 'chat' | 'walk' | 'ordered' | 'guard' | 'indoors';
+/** What a synthetic settler is doing, mapped onto the components the source reads: `nothing` is the
+ *  planner's idle stand, `standing` a rung that keeps it waiting, `chat` a company chat's talk round and
+ *  `chatWalk` idle chatter walking to its partner. */
+type Doing = 'nothing' | 'standing' | 'work' | 'chat' | 'chatWalk' | 'walk' | 'ordered' | 'guard' | 'indoors';
 
 interface Actor {
   readonly id: number;
@@ -64,11 +66,21 @@ interface Actor {
 function doingComponents(doing: Doing): Record<string, unknown> {
   switch (doing) {
     case 'nothing':
+      return { IdleStand: { standing: true } };
+    case 'standing':
       return {};
     case 'work':
       return { CurrentAtomic: { atomicId: 1, effect: { kind: 'produce', recipeOutput: 3 } } };
     case 'chat':
-      return { CurrentAtomic: { atomicId: 14, effect: { kind: 'idle' } } };
+      return {
+        CurrentAtomic: { atomicId: 14, effect: { kind: 'idle' } },
+        Chat: { partner: 2, seeker: true, talking: true, speaks: true, kind: 'company' },
+      };
+    case 'chatWalk':
+      return {
+        MoveGoal: { cell: 12 },
+        Chat: { partner: 2, seeker: true, talking: false, speaks: true, kind: 'pastime' },
+      };
     case 'walk':
       return { MoveGoal: { cell: 12 } };
     case 'ordered':
@@ -321,15 +333,24 @@ describe('user messages read off the snapshot', () => {
       expect(out.at(-1)).toEqual([USER_MESSAGE_TYPE.nothingToDo]);
     });
 
-    it('counts company as idling, holds the count through a walk and resets it on work', () => {
+    it('holds the count through idle chatter walking to its partner and resets it on work', () => {
       const source = createSnapshotMessageSource(LOCAL);
-      const mostly: Doing[] = Array.from({ length: IDLE_SWEEPS_BEFORE_MESSAGE - 1 }, (): Doing => 'chat');
-      expect(run(source, [...mostly, 'walk', 'walk']).flat()).toEqual([]);
+      const mostly: Doing[] = Array.from({ length: IDLE_SWEEPS_BEFORE_MESSAGE - 1 }, (): Doing => 'nothing');
+      expect(run(source, [...mostly, 'chatWalk', 'chatWalk']).flat()).toEqual([]);
       expect(run(source, ['nothing'], mostly.length + 2).flat()).toEqual([USER_MESSAGE_TYPE.nothingToDo]);
-      expect(run(source, ['work', ...mostly, 'nothing'], mostly.length + 3).flat()).toEqual([
-        USER_MESSAGE_TYPE.nothingToDo,
-      ]);
-      expect(run(source, ['work', ...mostly], 2 * mostly.length + 5).flat()).toEqual([]);
+      expect(run(source, ['work', ...mostly], mostly.length + 3).flat()).toEqual([]);
+    });
+
+    it('counts only the planner idle stand, never a company chat, a rung that waits or a walk', () => {
+      const source = createSnapshotMessageSource(LOCAL);
+      const long = (doing: Doing): Doing[] =>
+        Array.from({ length: 2 * IDLE_SWEEPS_BEFORE_MESSAGE }, () => doing);
+      const busy: Doing[] = [...long('chat'), ...long('standing'), ...long('walk')];
+      expect(run(source, busy).flat()).toEqual([]);
+      // Each of them ends a run short of the note.
+      const mostly: Doing[] = Array.from({ length: IDLE_SWEEPS_BEFORE_MESSAGE - 1 }, (): Doing => 'nothing');
+      const broken: Doing[] = [...mostly, 'chat', ...mostly, 'standing', ...mostly, 'walk', ...mostly];
+      expect(run(source, broken, busy.length).flat()).toEqual([]);
     });
 
     it('never for a guard, an ordered unit, one indoors, or one waiting on its site', () => {
@@ -412,7 +433,11 @@ describe('user messages read off the snapshot', () => {
       expect(idleReasonOf({ kind: 'nothingAtFlag' })).toEqual({ kind: 'nothingAtFlag', goodTypes: [] });
       // A craft operator's gates are the stall note's, and the note needs a workplace and a trade.
       expect(
-        idleReasonOf({ kind: 'waitingInput', goodType: 9, missingInputs: [{ ...input, source: 'outOfReach' }] }),
+        idleReasonOf({
+          kind: 'waitingInput',
+          goodType: 9,
+          missingInputs: [{ ...input, source: 'outOfReach' }],
+        }),
       ).toBeNull();
       expect(idleReasonOf({ kind: 'noWorkplace' })).toBeNull();
       expect(idleReasonOf({ kind: 'noJob' })).toBeNull();
