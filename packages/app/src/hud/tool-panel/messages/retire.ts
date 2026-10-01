@@ -20,6 +20,7 @@ import {
   hasWorkplaceToWorkAt,
   holdsPost,
   idleNoteHeldByStall,
+  idlesBetweenLoads,
   isStillDying,
   lacksTradeCart,
   occupationOf,
@@ -64,7 +65,7 @@ function isIdleNoteOver(
 ): boolean {
   if (occupationOf(snapshot, e) === 'busy' || holdsPost(e)) return true;
   if (m.type === USER_MESSAGE_TYPE.nothingToDo) {
-    return !hasWorkplaceToWorkAt(snapshot, e) || idleNoteHeldByStall(e, stalls);
+    return !hasWorkplaceToWorkAt(snapshot, e) || idleNoteHeldByStall(e, stalls) || idlesBetweenLoads(e);
   }
   if (m.type === USER_MESSAGE_TYPE.workplaceNotFound) {
     return workplaceOf(e) !== undefined || workFlagOf(e) !== undefined;
@@ -96,7 +97,8 @@ function yardRefusalStands(snapshot: WorldSnapshot, worker: SnapshotEntity): boo
 function isStallOver(m: UserMessage, workshop: SnapshotEntity, stalls: StallReader | null): boolean {
   if (workshop.components.Production !== undefined || stalls === null) return true;
   const verdict = stalls.verdict(workshop.id);
-  return verdict !== undefined && verdict?.reason !== m.stall?.reason;
+  if (verdict === undefined) return false;
+  return verdict === null || verdict.reason !== m.stall?.reason;
 }
 
 /** A grown-up note has done its job once the player acted on it: a grown man took up a trade, a grown

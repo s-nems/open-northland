@@ -277,7 +277,7 @@ export function lacksTradeCart(e: SnapshotEntity): boolean {
 }
 
 /** A soldier stands between orders by trade, and one taken off a tower lost no work to speak of. */
-export function isSoldier(e: SnapshotEntity): boolean {
+function isSoldier(e: SnapshotEntity): boolean {
   const job = settlerJobType(e);
   return job !== undefined && isSoldierJob(job);
 }
@@ -311,8 +311,9 @@ function isGatherer(e: SnapshotEntity): boolean {
 }
 
 /** A carrier with no pickup flag idles between loads while logistics runs as it should, so its pause is
- *  never the player's to fix; only the panel says it has nothing to carry. */
-function idlesBetweenLoads(e: SnapshotEntity): boolean {
+ *  never the player's to fix and never holds a nothing-to-do note; only the panel says it has nothing to
+ *  carry. */
+export function idlesBetweenLoads(e: SnapshotEntity): boolean {
   const job = settlerJobType(e);
   return job !== undefined && workerRoleOf(job) === 'carrier' && e.components.HaulFlag === undefined;
 }

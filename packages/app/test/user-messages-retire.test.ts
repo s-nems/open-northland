@@ -1,8 +1,15 @@
 import { ONE, components as simComponents, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_CARRIER, JOB_CIVILIST, JOB_SOLDIER, JOB_WOMAN } from '../src/catalog/jobs.js';
+import { createMessageFeed, type MessageFeed, takeRaised } from '../src/hud/tool-panel/messages/feed.js';
 import { FightAreas } from '../src/hud/tool-panel/messages/fight-areas.js';
-import { DYING_NOTE_RETIRE_MARGIN_PER_MILLE } from '../src/hud/tool-panel/messages/from-snapshot.js';
+import {
+  createSnapshotMessageSource,
+  DYING_NOTE_RETIRE_MARGIN_PER_MILLE,
+  IDLE_SWEEPS_BEFORE_MESSAGE,
+  SNAPSHOT_SWEEP_INTERVAL_TICKS,
+} from '../src/hud/tool-panel/messages/from-snapshot.js';
+import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import { LOST_NOTE_HOLD_TICKS, NoteRetirement } from '../src/hud/tool-panel/messages/retire.js';
 import {
   USER_MESSAGE_TYPE,
@@ -326,5 +333,84 @@ describe('note retirement', () => {
       expect(isNoteOver(note(type), yard(true))).toBe(false);
       expect(isNoteOver(note(type), yard(false))).toBe(true);
     }
+  });
+});
+
+describe('a store carrier idle at an empty pickup flag', () => {
+  const LOCAL = 0;
+  const STORE = SETTLER + 1;
+  const FLAG = SETTLER + 2;
+  const HAUL_FLAG_RADIUS = 32;
+  const STORE_TYPE = 12;
+  const naming: MessageNaming = {
+    settler: (e) => ({ name: `S${e.id}`, jobLabel: null, female: false }),
+    building: () => 'Magazyn',
+    vehicle: () => 'Wóz',
+    player: () => 'Gracz',
+    stance: (state) => state,
+    paper: (paper) => `${paper.kind}:${paper.param}`,
+    technology: (kind, typeId) => `${kind}:${typeId}`,
+    text: (type) => ({ short: String(type), full: String(type) }),
+  };
+
+  function porterWorld(tick: number, flagged: boolean): WorldSnapshot {
+    const owned = { Owner: { player: LOCAL }, Position: { x: 3 * ONE, y: 2 * ONE } };
+    return {
+      tick,
+      events: [],
+      entities: [
+        {
+          id: SETTLER,
+          components: {
+            ...owned,
+            Settler: { tribe: 1, jobType: JOB_CARRIER },
+            Person: { person: true },
+            JobAssignment: { workplace: STORE },
+            ...IDLE_STAND,
+            ...(flagged ? { HaulFlag: { flag: FLAG, radius: HAUL_FLAG_RADIUS } } : {}),
+          },
+        },
+        { id: STORE, components: { ...owned, Building: { buildingType: STORE_TYPE, tribe: 1, built: ONE } } },
+      ],
+    };
+  }
+
+  /** The message centre's raise, feed and retire order over idle sweeps, the sim naming an empty flag,
+   *  run with the flag up until the card is due. */
+  function flaggedUntilNoted(): { feed: MessageFeed; sweep(i: number, flagged: boolean): void } {
+    const source = createSnapshotMessageSource(LOCAL, {
+      types: [],
+      workStatus: (_entity, asked) => ({ status: { kind: 'nothingAtFlag' }, asked }),
+    });
+    const retirement = new NoteRetirement(new FightAreas(), source.stalls);
+    const feed = createMessageFeed();
+    const sweep = (i: number, flagged: boolean): void => {
+      const snapshot = porterWorld(i * SNAPSHOT_SWEEP_INTERVAL_TICKS, flagged);
+      for (const raised of source.sweep(snapshot, naming)) takeRaised(feed, raised, snapshot.tick);
+      feed.expire(snapshot.tick, (m) => retirement.isOver(m, snapshot));
+      retirement.endPass();
+    };
+    for (let i = 1; i <= IDLE_SWEEPS_BEFORE_MESSAGE; i++) sweep(i, true);
+    return { feed, sweep };
+  }
+
+  it('gets the empty-flag card, which goes once the player takes the flag away', () => {
+    const { feed, sweep } = flaggedUntilNoted();
+    expect(feed.live().map((m) => [m.type, m.idle?.kind])).toEqual([
+      [USER_MESSAGE_TYPE.nothingToDo, 'nothingAtFlag'],
+    ]);
+    sweep(IDLE_SWEEPS_BEFORE_MESSAGE + 1, false);
+    expect(feed.live()).toEqual([]);
+  });
+
+  it('forgets a dismissed empty-flag card once the flag is gone', () => {
+    const { feed, sweep } = flaggedUntilNoted();
+    const [card] = feed.live();
+    if (card === undefined) throw new Error('no card');
+    feed.remove(card.id, card.tick);
+    expect(feed.dismissed(card)).toBe(true);
+    sweep(IDLE_SWEEPS_BEFORE_MESSAGE + 1, false);
+    expect(feed.dismissed(card)).toBe(false);
+    expect(feed.state().history).toEqual([]);
   });
 });

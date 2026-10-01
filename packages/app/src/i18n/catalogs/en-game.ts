@@ -1221,7 +1221,7 @@ export const enGame = {
       wantsToPray: 'Wants to pray',
       starving: 'Starving',
       willDie: 'Dying',
-      grewUp: { he: 'Grown up', she: 'Grown up' },
+      grewUp: { he: 'Grown man', she: 'Grown woman' },
       noOneToMarry: 'No match',
       cannotEnterVehicle: 'Cannot board',
       cannotLeaveVehicle: 'Stuck aboard',

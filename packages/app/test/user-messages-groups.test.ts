@@ -94,14 +94,15 @@ describe('notice groups', () => {
     }
   });
 
-  it('stacks grown men and grown women apart', () => {
+  it('stacks grown men and grown women apart in either catalog', () => {
     const grewUp = USER_MESSAGE_TYPE.grewUp;
-    const stacks = groupNotes([
-      note(1, grewUp, 1, 'Dorósł'),
-      note(2, grewUp, 2, 'Dorosła'),
-      note(3, grewUp, 3, 'Dorósł'),
-    ]);
-    expect(stacks.map((s) => ids(s.members))).toEqual([[3, 1], [2]]);
+    for (const catalog of [pl, en]) {
+      // The note carries no sex, so the card line alone keeps the two stacks apart.
+      const { he, she } = catalog.userMessages.short.grewUp;
+      expect(he).not.toBe(she);
+      const stacks = groupNotes([note(1, grewUp, 1, he), note(2, grewUp, 2, she), note(3, grewUp, 3, he)]);
+      expect(stacks.map((s) => ids(s.members))).toEqual([[3, 1], [2]]);
+    }
   });
 
   it('never stacks unlock notes', () => {
