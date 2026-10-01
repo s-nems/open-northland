@@ -31,9 +31,6 @@ export const RENDER_SCALE_MIN = 0.5;
 export const RENDER_SCALE_MAX = 2;
 const DEFAULT_RENDER_SCALE = 1;
 
-/** Which picture a map's details card shows: the authored illustration or the terrain minimap. */
-export type MapPreviewView = 'picture' | 'map';
-
 export const SCROLL_SPEED_MIN = 0.5;
 export const SCROLL_SPEED_MAX = 3;
 export const DEFAULT_SCROLL_SPEED = 1.5;
@@ -64,8 +61,6 @@ export interface MenuSettings {
   readonly minimapFrame: MinimapFrame;
   /** The minimap's marker layers and owner scope, set from its filters popover. */
   readonly minimapFilters: MinimapFilters;
-  /** The map preview last chosen in the menu; a map without an illustration shows its minimap anyway. */
-  readonly mapPreview: MapPreviewView;
   /** Mirrors the `?sound` param: `false` starts the game's audio driver muted. */
   readonly soundEnabled: boolean;
   /** Game-sounds volume, 0..1 (effects, jingles, voices - the original `fx_volume`). */
@@ -106,7 +101,6 @@ export function defaultSettings(): MenuSettings {
     cursorSize: DEFAULT_CURSOR_SIZE,
     minimapFrame: DEFAULT_MINIMAP_FRAME,
     minimapFilters: DEFAULT_MINIMAP_FILTERS,
-    mapPreview: 'picture',
     soundEnabled: true,
     soundVolume: DEFAULT_SFX_VOLUME,
     musicVolume: DEFAULT_MUSIC_VOLUME,
@@ -183,7 +177,6 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     cursorSize: parseCursorSize(record.cursorSize),
     minimapFrame: parseMinimapFrame(record.minimapFrame),
     minimapFilters: parseMinimapFilters(record.minimapFilters),
-    mapPreview: record.mapPreview === 'map' ? 'map' : defaults.mapPreview,
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
     soundVolume: clampVolume(record.soundVolume, defaults.soundVolume),
     musicVolume: clampVolume(record.musicVolume, defaults.musicVolume),

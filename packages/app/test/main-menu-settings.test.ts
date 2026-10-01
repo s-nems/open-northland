@@ -59,7 +59,6 @@ describe('parseStoredSettings', () => {
         markerSize: 'small',
         colours: 'stance',
       },
-      mapPreview: 'map',
       soundEnabled: false,
       soundVolume: 0.35,
       musicVolume: 0.6,

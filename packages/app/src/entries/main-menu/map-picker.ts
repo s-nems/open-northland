@@ -2,7 +2,6 @@ import { loadMapList } from '../../content/maps-index.js';
 import { quietTextField } from '../../hud/dom/parts/text-field.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../i18n/index.js';
 import { MAP_SCENES, SCENES } from '../../scenes/index.js';
-import { readStoredSettings } from '../../view/settings-store.js';
 import { createMapDetailsCard, metaLine, paintMapThumb } from './map-card.js';
 import {
   filterItems,
@@ -13,7 +12,6 @@ import {
   type MapSelectItem,
   type MapSelectMemory,
   mapItem,
-  mapPreviewViews,
   sceneItem,
 } from './map-select-model.js';
 
@@ -118,16 +116,7 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
 
   const previewCol = document.createElement('div');
   previewCol.className = 'main-menu__map-preview-col';
-  // Thumbs follow the card's illustration/minimap switch, so the list reads like the card.
-  let previewView = readStoredSettings().mapPreview;
-  const rowThumbs = new Map<MapSelectItem, HTMLElement>();
-  const card = createMapDetailsCard({
-    onPreviewView: (view) => {
-      previewView = view;
-      for (const [item, thumb] of rowThumbs)
-        if (mapPreviewViews(item).length > 1) paintMapThumb(thumb, item, view);
-    },
-  });
+  const card = createMapDetailsCard();
   const primary = document.createElement('button');
   primary.type = 'button';
   primary.className = 'main-menu__primary';
@@ -174,8 +163,7 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
     button.className = 'main-menu__map-row';
     const thumb = document.createElement('div');
     thumb.className = 'main-menu__map-thumb';
-    paintMapThumb(thumb, item, previewView);
-    rowThumbs.set(item, thumb);
+    paintMapThumb(thumb, item);
     const text = document.createElement('div');
     text.className = 'main-menu__map-row-text';
     const rowName = document.createElement('div');
@@ -219,7 +207,6 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
       { maps: mapsText },
     );
     rowButtons.clear();
-    rowThumbs.clear();
     if (rows.length === 0) {
       // Only a settled empty result means "no decoded maps"; before that the list is still loading.
       const notice = document.createElement('p');

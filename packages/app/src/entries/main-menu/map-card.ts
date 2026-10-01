@@ -1,13 +1,13 @@
 import { playerSwatchHex } from '../../catalog/roster.js';
 import { bcp47Tag, formatMessage, messages, pluralForm, tribeName } from '../../i18n/index.js';
 import { segControl } from '../../view/settings-controls.js';
-import { type MapPreviewView, patchStoredSettings, readStoredSettings } from '../../view/settings-store.js';
 import {
+  defaultMapPreview,
+  type MapPreviewView,
   type MapSelectItem,
   mapCategory,
   mapPreviewUrl,
   mapPreviewViews,
-  shownMapPreview,
 } from './map-select-model.js';
 
 /**
@@ -23,14 +23,9 @@ export interface MapDetailsCard {
   hide(): void;
 }
 
-export interface MapDetailsCardOptions {
-  /** The player switched between illustration and minimap; the choice is already stored. */
-  readonly onPreviewView?: (view: MapPreviewView) => void;
-}
-
-/** Fills a row or room thumb with the preview the card would show for `item`, or leaves it empty. */
-export function paintMapThumb(thumb: HTMLElement, item: MapSelectItem, preferred: MapPreviewView): void {
-  const view = shownMapPreview(item, preferred);
+/** Fills a row or room thumb with the map's default preview, or leaves it empty. */
+export function paintMapThumb(thumb: HTMLElement, item: MapSelectItem): void {
+  const view = defaultMapPreview(item);
   if (view === null) {
     thumb.replaceChildren();
     return;
@@ -70,7 +65,7 @@ function seatChip(tribeId: number, colorId: number): HTMLElement {
   return chip;
 }
 
-export function createMapDetailsCard(options: MapDetailsCardOptions = {}): MapDetailsCard {
+export function createMapDetailsCard(): MapDetailsCard {
   const select = messages().mainMenu.mapSelect;
 
   const card = document.createElement('div');
@@ -83,19 +78,16 @@ export function createMapDetailsCard(options: MapDetailsCardOptions = {}): MapDe
   previewImg.hidden = true;
   const frameLabel = document.createElement('div');
   frameLabel.className = 'main-menu__map-preview-label';
-  let preferred = readStoredSettings().mapPreview;
+  // A peek for the shown map only: every newly shown map opens on its default view again.
   let shown: MapSelectItem | null = null;
   const viewSwitch = segControl<MapPreviewView>(
     [
       { id: 'picture', label: select.previewViews.picture },
       { id: 'map', label: select.previewViews.map },
     ],
-    preferred,
+    'picture',
     (view) => {
-      preferred = view;
-      patchStoredSettings({ mapPreview: view });
-      if (shown !== null) showPreview(shown);
-      options.onPreviewView?.(view);
+      if (shown !== null) showPreview(shown, view);
     },
   );
   viewSwitch.root.classList.add('main-menu__map-preview-switch');
@@ -122,11 +114,10 @@ export function createMapDetailsCard(options: MapDetailsCardOptions = {}): MapDe
     previewImg.hidden = true;
   });
 
-  const showPreview = (item: MapSelectItem): void => {
+  const showPreview = (item: MapSelectItem, view: MapPreviewView | null): void => {
     shown = item;
-    const view = shownMapPreview(item, preferred);
     viewSwitch.root.hidden = mapPreviewViews(item).length < 2;
-    viewSwitch.setActive(view ?? preferred);
+    if (view !== null) viewSwitch.setActive(view);
     frameLabel.textContent = item.kind === 'scene' ? select.noPreview : '';
     if (view === null) {
       previewImg.hidden = true;
@@ -152,7 +143,7 @@ export function createMapDetailsCard(options: MapDetailsCardOptions = {}): MapDe
       seats.hidden = !showSeats;
       description.textContent = item.description ?? '';
       description.hidden = item.description === undefined || item.description === '';
-      showPreview(item);
+      showPreview(item, defaultMapPreview(item));
     },
     hide() {
       card.hidden = true;

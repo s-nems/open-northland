@@ -2,7 +2,6 @@ import type { MapsIndexEntry, MapsIndexPlayerSlot, MapTextLanguage } from '@open
 import { MAP_TYPE } from '@open-northland/data';
 import { localizedMapText } from '../../game/map-strings.js';
 import { compareLabels, currentLocale } from '../../i18n/index.js';
-import type { MapPreviewView } from '../../view/settings-store.js';
 
 /**
  * Pure state for the map list: the row items it renders, which menu lists a map, the segmented
@@ -13,6 +12,9 @@ import type { MapPreviewView } from '../../view/settings-store.js';
 export type MapListing = 'single' | 'multiplayer';
 
 export type MapFilter = 'all' | 'tutorial' | 'free' | 'multiplayer' | 'scenes';
+
+/** What a map's preview shows: the authored illustration or the terrain minimap. */
+export type MapPreviewView = 'picture' | 'map';
 
 /** A mode of the original this build cannot launch yet (its maps are `SINGLE_PLAYER_CAMPAIGN`,
  *  which no list takes); its tab renders greyed out with a coming-soon tooltip. */
@@ -102,20 +104,20 @@ export function sceneItem(id: string, title: string, summary: string): MapSelect
   };
 }
 
-/** The previews a map offers, illustration first; the card shows a switch only when there are two. */
+/**
+ * The previews a map offers, the default first; the card shows a switch only when there are two.
+ * An authored picture is the designer's chosen reveal, so only a multiplayer map, open to every
+ * player anyway, also offers its terrain.
+ */
 export function mapPreviewViews(item: MapSelectItem): readonly MapPreviewView[] {
   if (item.kind === 'scene') return [];
-  const views: MapPreviewView[] = [];
-  if (item.picture) views.push('picture');
-  if (item.minimap) views.push('map');
-  return views;
+  if (!item.picture) return item.minimap ? ['map'] : [];
+  return item.minimap && mapCategory(item) === 'multiplayer' ? ['picture', 'map'] : ['picture'];
 }
 
-/** The preview the card and every thumb show: the remembered choice when the map has it, else the
- *  one it has. */
-export function shownMapPreview(item: MapSelectItem, preferred: MapPreviewView): MapPreviewView | null {
-  const views = mapPreviewViews(item);
-  return views.includes(preferred) ? preferred : (views[0] ?? null);
+/** The preview a row, a room thumb and a freshly shown card open on, or null when there is none. */
+export function defaultMapPreview(item: MapSelectItem): MapPreviewView | null {
+  return mapPreviewViews(item)[0] ?? null;
 }
 
 export function mapPreviewUrl(mapId: string, view: MapPreviewView): string {

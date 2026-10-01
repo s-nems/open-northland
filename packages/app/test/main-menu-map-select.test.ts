@@ -2,6 +2,7 @@ import type { MapsIndexPlayerSlot } from '@open-northland/data';
 import { MAP_TYPE } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  defaultMapPreview,
   filterItems,
   listedIn,
   type MapSelectItem,
@@ -12,10 +13,9 @@ import {
   ROOM_TABS,
   SINGLE_PLAYER_TABS,
   sceneItem,
-  shownMapPreview,
 } from '../src/entries/main-menu/map-select-model.js';
 import { pluralForm } from '../src/i18n/index.js';
-import { defaultSettings, parseStoredSettings } from '../src/view/settings-store.js';
+import { parseStoredSettings } from '../src/view/settings-store.js';
 
 function slot(player: number, hidden = false): MapsIndexPlayerSlot {
   return {
@@ -161,29 +161,38 @@ describe('listedIn', () => {
   });
 });
 
-describe('map preview switch', () => {
-  const illustrated = mapItem({ id: 'szeol', picture: true, minimap: true });
+describe('map preview views', () => {
+  const both = { picture: true, minimap: true } as const;
+  const multi = mapItem({ id: 'four_hills', ...both, mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE] });
+  const userMulti = mapItem({ id: 'own_arena', ...both, mapTypes: [MAP_TYPE.USER_MULTI_PLAYER_FREE] });
+  const free = mapItem({ id: 'kraina', ...both, mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE] });
+  const tutorial = mapItem({ id: 'lesson', ...both, campaign: { campaignId: 100, missionId: 1 } });
   const terrainOnly = mapItem({ id: 'cn_1', picture: false, minimap: true });
+  const bare = mapItem({ id: 'bare', picture: false, minimap: false });
   const scene = sceneItem('battle', 'Bitwa', 'pokaz walki wręcz');
 
-  it('offers both views only for a map with an illustration, and none for a scene', () => {
-    expect(mapPreviewViews(illustrated)).toEqual(['picture', 'map']);
+  it('offers the terrain beside the picture only on a multiplayer map', () => {
+    expect(mapPreviewViews(multi)).toEqual(['picture', 'map']);
+    expect(mapPreviewViews(userMulti)).toEqual(['picture', 'map']);
+  });
+
+  it('keeps a single-player picture as the only view', () => {
+    expect(mapPreviewViews(free)).toEqual(['picture']);
+    expect(mapPreviewViews(tutorial)).toEqual(['picture']);
+    expect(mapPreviewViews(mapItem({ id: 'untyped', ...both }))).toEqual(['picture']);
+  });
+
+  it('shows the terrain where there is no picture, and nothing for a scene or a bare map', () => {
     expect(mapPreviewViews(terrainOnly)).toEqual(['map']);
+    expect(mapPreviewViews(bare)).toEqual([]);
     expect(mapPreviewViews(scene)).toEqual([]);
-    expect(scene.picture).toBe(false);
   });
 
-  it('opens on the illustration, and on the minimap where there is none', () => {
-    const preferred = defaultSettings().mapPreview;
-    expect(preferred).toBe('picture');
-    expect(shownMapPreview(illustrated, preferred)).toBe('picture');
-    expect(shownMapPreview(terrainOnly, preferred)).toBe('map');
-    expect(shownMapPreview(scene, preferred)).toBeNull();
-  });
-
-  it('keeps the minimap once chosen, for every map', () => {
-    expect(shownMapPreview(illustrated, 'map')).toBe('map');
-    expect(shownMapPreview(terrainOnly, 'map')).toBe('map');
+  it('opens on the picture whenever there is one', () => {
+    expect(defaultMapPreview(multi)).toBe('picture');
+    expect(defaultMapPreview(free)).toBe('picture');
+    expect(defaultMapPreview(terrainOnly)).toBe('map');
+    expect(defaultMapPreview(scene)).toBeNull();
   });
 
   it('names the illustration and the minimap files apart', () => {
@@ -192,11 +201,8 @@ describe('map preview switch', () => {
     expect(mapPreviewUrl('a b', 'map')).toBe('/maps/a%20b.map.png');
   });
 
-  it('remembers the choice across reloads through the stored settings', () => {
-    const stored = JSON.stringify({ ...defaultSettings(), mapPreview: 'map' });
-    expect(parseStoredSettings(stored).mapPreview).toBe('map');
-    expect(parseStoredSettings('{"mapPreview":"globe"}').mapPreview).toBe('picture');
-    expect(parseStoredSettings(null).mapPreview).toBe('picture');
+  it('stores no preview choice', () => {
+    expect(parseStoredSettings('{"mapPreview":"map"}')).not.toHaveProperty('mapPreview');
   });
 });
 

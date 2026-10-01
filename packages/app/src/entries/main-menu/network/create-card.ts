@@ -7,7 +7,6 @@ import { pickSaveFile } from '../../../view/runtime/save-load/file-access.js';
 import { browserSaveStore } from '../../../view/runtime/save-load/store-browser.js';
 import { SCENE_TOKEN_PREFIX } from '../../../view/runtime/save-load/world-names.js';
 import { segControl } from '../../../view/settings-controls.js';
-import { readStoredSettings } from '../../../view/settings-store.js';
 import { node } from '../dom.js';
 import { metaLine, paintMapThumb } from '../map-card.js';
 import type { MapSelectItem } from '../map-select-model.js';
@@ -153,7 +152,7 @@ export function createRoomCard(options: CreateCardOptions) {
       mapName.textContent = item?.title ?? copy.noMaps;
       mapMeta.textContent = item === null ? '' : metaLine(item);
       if (item === null) thumb.replaceChildren();
-      else paintMapThumb(thumb, item, readStoredSettings().mapPreview);
+      else paintMapThumb(thumb, item);
       if (source === 'map') status.textContent = item === null ? copy.noMaps : '';
       sync();
     },
