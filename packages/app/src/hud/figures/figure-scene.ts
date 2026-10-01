@@ -14,7 +14,7 @@ const NO_ITEMS: ReadonlyMap<number, DrawItem> = new Map();
 /**
  * The map's own presentation of a few chosen settlers and vehicles, for figures drawn outside the map:
  * their draw items, built once per snapshot and subject list, and a presentation track each, so motion,
- * atomics and gait play as they do in the world.
+ * atomics and gait play as they do in the world. A settler indoors or aboard a vehicle stands idle.
  */
 export class FigureScene {
   private readonly tracks = new Map<number, PresentationTrack>();
@@ -46,6 +46,7 @@ export class FigureScene {
       const scene = buildSpriteScene(snapshot, {
         playerColourOf: this.playerColourOf,
         keepIndoorSettlers: true,
+        keepAboardRiders: true,
         onlyRefs: new Set(subjects),
       });
       for (const it of scene) if (it.kind === 'settler' || it.kind === 'vehicle') items.set(it.ref, it);

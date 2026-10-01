@@ -1,5 +1,5 @@
 import { UNLOADED_GOOD_TYPE } from '@open-northland/data';
-import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
+import { type EntitySnapshot, entityById, type WorldSnapshot } from '@open-northland/sim';
 import type { GhostSource } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import type { ElevationField } from '../terrain/index.js';
@@ -53,6 +53,9 @@ export interface SpriteSceneOptions {
    *  (observed original: off-duty workers wait in the house). Approximation: how the original's
    *  building window presents one indoors is unverified. */
   readonly keepIndoorSettlers?: boolean;
+  /** Keep the riders aboard a vehicle, which stand nowhere on the map: each stands idle on its
+   *  vehicle's spot, for a figure drawn outside the map. */
+  readonly keepAboardRiders?: boolean;
   /** The details-panel portrait's subject: emitted even when the viewport/fog cull or the
    *  indoor-settler suppression would drop it, so its live cutout never blanks. Absent = no portrait
    *  open. */
@@ -113,6 +116,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: Sp
     fogVisible,
     ghosts,
     keepIndoorSettlers,
+    keepAboardRiders,
     portraitRef,
     portraitHouse,
     insetRefs,
@@ -142,7 +146,9 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: Sp
     const components = entity.components;
     const kind = classify(components);
     if (kind === null) return;
-    const pos = readPosition(components);
+    const aboard =
+      kind === 'settler' && keepAboardRiders === true ? aboardVehicleOf(snapshot, components) : null;
+    const pos = readPosition(components) ?? (aboard === null ? null : readPosition(aboard.components));
     if (pos === null) return;
     const isPortrait =
       (portraitRef !== undefined && entity.id === portraitRef) ||
@@ -177,7 +183,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions, order?: Sp
     if (isPortrait && hiddenIndoors && inHouse === undefined && portraitHouse !== undefined) return;
     const pose =
       inHouse?.pose ??
-      (kind === 'settler' && !indoorSettler
+      (kind === 'settler' && !indoorSettler && aboard === null
         ? settlerPose(components, tileX, tileY, posByRef)
         : kind === 'vehicle'
           ? vehiclePose(components)
@@ -227,4 +233,14 @@ function applyInHousePose(item: MutableSpriteDrawItem, pose: InHousePose): void 
   if (pose.goodType !== UNLOADED_GOOD_TYPE) item.carryGood = pose.goodType;
   else delete item.carryGood;
   if (pose.clip !== undefined) item.craftClip = pose.clip;
+}
+
+/** The vehicle a rider without a `Position` sits in, or null for anyone standing on the map. */
+function aboardVehicleOf(
+  snapshot: WorldSnapshot,
+  components: Readonly<Record<string, unknown>>,
+): EntitySnapshot | null {
+  if ('Position' in components) return null;
+  const rider = components.Rider as { vehicle?: unknown } | undefined;
+  return typeof rider?.vehicle === 'number' ? (entityById(snapshot, rider.vehicle) ?? null) : null;
 }

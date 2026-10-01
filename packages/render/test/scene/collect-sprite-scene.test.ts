@@ -138,6 +138,21 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
     expect(drawn.every((d) => d.frozen === true)).toBe(true);
   });
 
+  it('keepAboardRiders stands a rider without a Position idle on its vehicle', () => {
+    const entities = [
+      entity(20, 4, 3, {}),
+      {
+        id: 3,
+        components: { Settler: { tribe: 0 }, Rider: { vehicle: 20, boarding: false }, PathFollow: {} },
+      },
+    ];
+    expect(collectSpriteScene(snapshotOf(entities)).items.some((d) => d.ref === 3)).toBe(false);
+    const rider = collectSpriteScene(snapshotOf(entities), { keepAboardRiders: true }).items.find(
+      (d) => d.ref === 3,
+    );
+    expect(rider).toMatchObject({ kind: 'settler', state: 'idle', ...tileToScreen(4, 3) });
+  });
+
   // Narrowing the snapshot instead would blind the whole-snapshot pre-scans: no buildings (nothing reads
   // as indoor) and no action targets (nothing faces its work). It stays a `buildSpriteScene` option
   // because it also narrows `liveRefs`, which a reconcile would read as deaths.

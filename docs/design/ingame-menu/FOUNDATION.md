@@ -499,9 +499,9 @@ scrollbar, every control's tooltip is a few words saying what the press does or 
   pick that arms the pick of an own settler on the map (the sim seats the commander first, then an
   ordinary seat). A land vehicle has its role line beside the well: Woźnica / Obsługa over the
   trade, "idzie" or "Przydziel woźnicę" in amber. A ship's ordinary seats sit beside it as 28 × 36 px
-  wells, seven to a row. Every rider shows live, as the map draws it, larger in the commander's well
-  (the figure glyph stands in without a sprite sheet or for a rider the map does not draw); a rider
-  still walking to the door dashed and faded, the first free seat the amber seat pick, the rest plain. A
+  wells, seven to a row. Every rider shows live, larger in the commander's well: one aboard stands
+  idle, one still walking to the door walks as the map draws it, dashed and faded (the figure glyph
+  stands in without a sprite sheet), the first free seat the amber seat pick, the rest plain. A
   click on any rider selects it and a Ctrl click steps it out; the tooltip is the role and the name
   for the commander (Kapitan · the name), the name alone for a seat. A ship's deck is a Pojazd row:
   the carried cart as a link with the button that drives it ashore, or "brak" with the button that

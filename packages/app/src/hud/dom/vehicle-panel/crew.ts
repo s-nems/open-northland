@@ -33,7 +33,7 @@ const ROLE_GLYPH: Readonly<Record<VehicleClass, string>> = {
 
 /** The commander's well (foundation.css `.on-seat-well--helm`, 40 x 56 design px) shows its rider
  *  larger than a seat does. */
-const HELM_FIT: WellFigureFit = { zoom: 0.75, feetInset: 6 };
+const HELM_FIT: WellFigureFit = { zoom: 0.68, feetInset: 6 };
 
 /** A rider's tooltip: the commander's role and the rider's name, or only the name on an ordinary seat.
  *  Another seat's rider shows its trade in place of the name. */
