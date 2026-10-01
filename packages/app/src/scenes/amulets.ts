@@ -52,7 +52,7 @@ function build(sim: Simulation): void {
 
   const wearer = spawnSettlerDirect(sim, JOB_COLLECTOR, WEARER.x, WEARER.y, HUMAN_PLAYER);
   carrying(sim, wearer, ['amulet_food', 'amulet_stamina']);
-  const needs = sim.world.mut(wearer, SettlerNeeds);
+  const needs = systems.mutNeeds(sim.world, wearer, sim.tick);
   needs.hunger = PRESSING_NEED;
   needs.fatigue = PRESSING_NEED;
 }
@@ -109,7 +109,7 @@ export const amuletsScene: SceneDefinition = {
       predicate: (sim) => {
         const wearer = carriers(sim, 'amulet_food')[0];
         if (wearer === undefined) return false;
-        const s = sim.world.get(wearer, SettlerNeeds);
+        const s = systems.needLevels(sim.world.get(wearer, SettlerNeeds), sim.tick);
         const whole = sim.world
           .get(wearer, Equipment)
           .misc.every((slot) => slot === null || slot.degreeOfUse === fx.fromInt(0));

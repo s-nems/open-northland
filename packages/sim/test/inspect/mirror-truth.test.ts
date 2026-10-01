@@ -18,6 +18,7 @@ import {
   TileBuckets,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { keepSettlersWalking } from '../fixtures/snapshot-parity.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 /**
@@ -31,6 +32,8 @@ const HEADQUARTERS = 1;
 const WOODCUTTER = 1;
 const VIKING = 1;
 const RUN_TICKS = 300;
+/** The settlement map's last node column, the walkers' far end. */
+const EAST_HX = 7;
 const PLANT_TICK = 100;
 const FELL_TICK = 150;
 
@@ -56,16 +59,23 @@ interface Planted {
 /** Steps the settlement, minting and destroying a bare entity by hand so a delta carries a removal. */
 function stepSettlement(sim: Simulation, tick: number, planted: Planted): void {
   for (const cmd of SETUP.get(tick) ?? []) sim.enqueueSetup(cmd);
+  keepSettlersWalking(sim, EAST_HX);
   sim.step();
   if (tick === PLANT_TICK) planted.id = sim.world.create();
   if (tick === FELL_TICK) sim.world.destroy(nonNull(planted.id));
 }
 
-/** The first entry that rewrites a component the mirror already holds, and that component's name. */
+/** The first entry that changes the value of a component the mirror already holds, and that
+ *  component's name: dropping a write of the same value would leave nothing to notice. */
 function rewrittenComponent(delta: SnapshotDelta, mirror: SnapshotMirror): [EntityDelta, string] | null {
   for (const entry of entityDeltas(delta)) {
     const held = mirror.snapshot().entities.find((entity) => entity.id === entry.id);
-    const name = Object.keys(entry.components).find((key) => held !== undefined && key in held.components);
+    const name = Object.keys(entry.components).find(
+      (key) =>
+        held !== undefined &&
+        key in held.components &&
+        JSON.stringify(held.components[key]) !== JSON.stringify(entry.components[key]),
+    );
     if (name !== undefined) return [entry, name];
   }
   return null;

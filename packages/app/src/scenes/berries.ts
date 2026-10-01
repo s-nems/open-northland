@@ -27,7 +27,7 @@ const { SettlerNeeds, BerryBush, Settler } = components;
 /** With no gatherable resource on the map, an authored-hungry collector forages and then idles. */
 function spawnHungryForager(sim: Simulation, x: number, y: number): void {
   const e = spawnSettlerDirect(sim, JOB_COLLECTOR, x, y);
-  sim.world.mut(e, SettlerNeeds).hunger = HUNGRY;
+  systems.mutNeeds(sim.world, e, sim.tick).hunger = HUNGRY;
 }
 
 function build(sim: Simulation): void {
@@ -70,7 +70,11 @@ export const berriesScene: SceneDefinition = {
         // the berry's own event could have brought it back under.
         for (const e of sim.world.query(Settler)) {
           total++;
-          if (sim.world.get(e, SettlerNeeds).hunger < systems.NEED_DRIVE_THRESHOLD) fed++;
+          if (
+            systems.needLevel(sim.world.get(e, SettlerNeeds), 'hunger', sim.tick) <
+            systems.NEED_DRIVE_THRESHOLD
+          )
+            fed++;
         }
         return total === STATIONS && fed === STATIONS;
       },

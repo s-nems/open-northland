@@ -7,7 +7,6 @@ import {
   PathFollow,
   PathRoute,
   Position,
-  SettlerNeeds,
   WalkFacing,
 } from '../../../src/components/index.js';
 import { fx, ONE } from '../../../src/core/fixed.js';
@@ -25,6 +24,7 @@ import { hexNodeDistance } from '../../../src/systems/spatial/metric.js';
 import { entityNode } from '../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../fixtures/content.js';
 import { nextTickCtxOf } from '../../fixtures/context.js';
+import { setNeeds } from '../../fixtures/settler.js';
 import {
   cell,
   combatant,
@@ -82,7 +82,7 @@ describe('FLEE - civilians run from danger', () => {
     combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE); // a lasting threat in sight
     combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
     expect(sim.world.has(civ, Fleeing)).toBe(true); // fleeing at first
-    sim.world.mut(civ, SettlerNeeds).hunger = ONE; // pin hunger at ONE (collapse)
+    setNeeds(sim, civ, { hunger: ONE }); // pin hunger at ONE (collapse)
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(false); // yielded to the need despite the threat
   });
@@ -182,7 +182,7 @@ describe('FLEE - civilians run from danger', () => {
     sim.world.destroy(threat); // threat gone → the cool-down begins
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(true); // still cooling down (no collapse yet)
-    sim.world.mut(civ, SettlerNeeds).hunger = ONE; // collapse mid-cool-down
+    setNeeds(sim, civ, { hunger: ONE }); // collapse mid-cool-down
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(false); // shed at once, not after FLEE_COOLDOWN_TICKS
   });

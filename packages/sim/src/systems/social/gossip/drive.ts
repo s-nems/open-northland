@@ -18,12 +18,11 @@ import {
   TALK_ATOMIC_ID,
   Wedding,
 } from '../../../components/index.js';
-import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { System, SystemContext } from '../../context.js';
-import { carriesNeeds, NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
+import { carriesNeeds, NEED_DRIVE_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
 import { stopAtNextNode } from '../../movement/nav-state.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../../rendezvous.js';
@@ -54,10 +53,11 @@ function interruptChatAtomic(world: World, e: Entity): void {
 
 /** Whether a higher drive outranks this half's chat. Company outranks none of them, so the chat ends and
  *  the partner is freed too. */
-function chatOutranked(world: World, e: Entity, s: { hunger: Fixed; fatigue: Fixed }): boolean {
+function chatOutranked(world: World, tick: number, e: Entity): boolean {
+  const s = world.get(e, SettlerNeeds);
   return (
-    s.hunger >= NEED_DRIVE_THRESHOLD ||
-    s.fatigue >= NEED_DRIVE_THRESHOLD ||
+    needLevel(s, 'hunger', tick) >= NEED_DRIVE_THRESHOLD ||
+    needLevel(s, 'fatigue', tick) >= NEED_DRIVE_THRESHOLD ||
     world.has(e, Engagement) ||
     world.has(e, Fleeing) ||
     world.has(e, PlayerOrder) ||
@@ -98,10 +98,7 @@ function drivePair(
     endChat(world, ctx.tick, a);
     return;
   }
-  if (
-    chatOutranked(world, a, world.get(a, SettlerNeeds)) ||
-    chatOutranked(world, b, world.get(b, SettlerNeeds))
-  ) {
+  if (chatOutranked(world, ctx.tick, a) || chatOutranked(world, ctx.tick, b)) {
     endChat(world, ctx.tick, a);
     return;
   }
@@ -117,7 +114,8 @@ function drivePair(
     // never before the partner has had its own speaking turn, so every chat is at least one full exchange.
     if (
       !ca.speaks &&
-      (world.get(a, SettlerNeeds).enjoyment < NEED_DRIVE_THRESHOLD || !carriesNeeds(world, ctx.content, a))
+      (needLevel(world.get(a, SettlerNeeds), 'enjoyment', ctx.tick) < NEED_DRIVE_THRESHOLD ||
+        !carriesNeeds(world, ctx.content, a))
     ) {
       endChat(world, ctx.tick, a);
       return;

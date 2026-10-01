@@ -1,9 +1,17 @@
 import type { ContentSet } from '@open-northland/data';
-import { addPerson, addWildlife, Position, type SettlerInitialState } from '../../src/components/index.js';
+import {
+  addPerson,
+  addWildlife,
+  type NeedLevels,
+  Position,
+  type SettlerInitialState,
+  SettlerNeeds as SettlerNeedsComponent,
+} from '../../src/components/index.js';
 import { ZERO } from '../../src/core/fixed.js';
 import type { Entity, World } from '../../src/ecs/world.js';
 import type { Fixed, Simulation } from '../../src/index.js';
-import { isAnimalTribe } from '../../src/systems/index.js';
+import { isAnimalTribe, mutNeeds, needLevels } from '../../src/systems/index.js';
+import { fixtureTick } from './context.js';
 
 /** Tribe 1 in the synthetic fixtures - the default settler tribe. */
 const VIKING = 1;
@@ -72,4 +80,14 @@ export function addSettlerOfTribe(
     throw new Error(`fixture: tribe ${state.tribe} is wildlife, which holds no trade (got ${state.jobType})`);
   }
   addWildlife(sim.world, e, state.tribe);
+}
+
+/** `e`'s four bars as they stand at the fixture's current tick. */
+export function needsOf(sim: Simulation, e: Entity): NeedLevels {
+  return needLevels(sim.world.get(e, SettlerNeedsComponent), fixtureTick(sim));
+}
+
+/** Overwrite some of `e`'s bars as they stand at the fixture's current tick. */
+export function setNeeds(sim: Simulation, e: Entity, levels: SettlerNeeds): void {
+  Object.assign(mutNeeds(sim.world, e, fixtureTick(sim)), levels);
 }

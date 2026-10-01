@@ -231,7 +231,7 @@ function ensureInside(
   e: Entity,
   home: Entity,
 ): boolean {
-  if (anyNeedPressing(world, ctx.content, e)) return false;
+  if (anyNeedPressing(world, ctx, e)) return false;
   if (isInside(world, e, home)) return true;
   enterHome(world, ctx, terrain, e, home);
   return false;

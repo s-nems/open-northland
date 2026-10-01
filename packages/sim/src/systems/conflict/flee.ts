@@ -19,6 +19,7 @@ import { hexDistanceBetween } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
+import { needLevel } from '../lifecycle/needs/levels.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { isFighterJob, isHunterJob, type MilitaryMode, stanceFights } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
@@ -96,7 +97,7 @@ export function fleeDrive(
 ): void {
   // Checked first so it wins over both the threat and the cool-down. Yield only on the transition out of
   // fleeing; once yielded, leave the need-walk alone so the eat/sleep goal the AI sets each tick survives.
-  if (needCollapsing(world, e)) {
+  if (needCollapsing(world, ctx.tick, e)) {
     if (world.has(e, Fleeing)) {
       world.remove(e, Fleeing);
       clearNavState(world, e);
@@ -215,7 +216,7 @@ export function runFromBlow(
   from: NodeId,
 ): void {
   if (world.has(e, Fleeing) || world.has(e, Sheltering) || world.has(e, PlayerOrder)) return;
-  if (world.has(e, AttackOrder) || needCollapsing(world, e)) return;
+  if (world.has(e, AttackOrder) || needCollapsing(world, ctx.tick, e)) return;
   if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.PASSIVE)) return; // a script-passive unit stands and takes it
   world.add(e, Fleeing, { repathAt: ctx.tick + FLEE_REPATH_CADENCE, calmUntil: null, blow: from });
   if (!atomicHoldsSettler(world, e)) startBlowRun(world, ctx, terrain, e);
@@ -342,7 +343,10 @@ function allThreats(threats: readonly NodeCoords[], x: number, y: number): numbe
 
 /** Whether a settler's hunger or fatigue has reached the {@link NEED_COLLAPSE_THRESHOLD}, at which it stops
  *  to eat or sleep even in danger. */
-function needCollapsing(world: World, e: Entity): boolean {
+function needCollapsing(world: World, tick: number, e: Entity): boolean {
   const s = world.get(e, SettlerNeeds);
-  return s.hunger >= NEED_COLLAPSE_THRESHOLD || s.fatigue >= NEED_COLLAPSE_THRESHOLD;
+  return (
+    needLevel(s, 'hunger', tick) >= NEED_COLLAPSE_THRESHOLD ||
+    needLevel(s, 'fatigue', tick) >= NEED_COLLAPSE_THRESHOLD
+  );
 }

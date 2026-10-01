@@ -15,7 +15,6 @@ import {
   MoveGoal,
   NeedOrder,
   Position,
-  SettlerNeeds,
   Stance,
   Stockpile,
 } from '../../../src/components/index.js';
@@ -35,6 +34,7 @@ import {
 } from '../../../src/systems/settlers/atomics/effects/combat/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { stepToIdleReplan } from '../../fixtures/idle-replan.js';
+import { needsOf, setNeeds } from '../../fixtures/settler.js';
 import { BEAR, ctxOf, FRANK, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
 
 /**
@@ -76,7 +76,7 @@ const FIRST_BLOW_BUDGET_TICKS = 120;
 
 function tiredFighterAt(sim: Simulation, x: number): Entity {
   const e = fighterAt(sim, x, 0, VIKING, WOODCUTTER, { owner: P0 });
-  sim.world.mut(e, SettlerNeeds).fatigue = PRESSING;
+  setNeeds(sim, e, { fatigue: PRESSING });
   return e;
 }
 
@@ -222,7 +222,7 @@ describe('a fighting unit on alert takes no rest', () => {
       stepToIdleReplan(sim, watch);
 
       fightingEnemyAt(sim, NEAR_CELLS);
-      sim.world.mut(watch, SettlerNeeds).fatigue = PRESSING;
+      setNeeds(sim, watch, { fatigue: PRESSING });
       plannerSystem(sim.world, ctxOf(sim));
       return sleeps(sim, watch);
     };
@@ -255,13 +255,13 @@ describe('a fighting unit on alert takes no rest', () => {
     for (let t = 0; t < ORDERED_SLEEP_BUDGET_TICKS && sim.world.has(ordered, NeedOrder); t++) sim.step();
 
     expect(sim.world.has(ordered, NeedOrder)).toBe(false); // the sleep ran to its end
-    expect(sim.world.get(ordered, SettlerNeeds).fatigue).toBeLessThan(PRESSING);
+    expect(needsOf(sim, ordered).fatigue).toBeLessThan(PRESSING);
   });
 
   it('a computer seat’s fighter on alert is not handed the sated bar it never went looking for', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const hungry = fighterAt(sim, 10, 0, VIKING, WOODCUTTER, { owner: P1 });
-    sim.world.mut(hungry, SettlerNeeds).hunger = HUNGRY;
+    setNeeds(sim, hungry, { hunger: HUNGRY });
     larderAt(sim, 0);
     const foe = fighterAt(sim, 10 + NEAR_CELLS, 0, FRANK, WOODCUTTER, { owner: P0, hitpoints: 1_000_000 });
     sim.world.add(foe, Engagement, { repathAt: sim.tick });
@@ -269,28 +269,28 @@ describe('a fighting unit on alert takes no rest', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(hungry, SettlerNeeds).hunger).toBeGreaterThanOrEqual(HUNGRY);
+    expect(needsOf(sim, hungry).hunger).toBeGreaterThanOrEqual(HUNGRY);
     expect(sim.world.has(hungry, MoveGoal)).toBe(false);
   });
 
   it('a hungry fighter on alert drinks its mead where it stands', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const hungry = fighterAt(sim, 10, 0, VIKING, WOODCUTTER, { owner: P0 });
-    sim.world.mut(hungry, SettlerNeeds).hunger = PRESSING;
+    setNeeds(sim, hungry, { hunger: PRESSING });
     carryMead(sim, hungry);
     larderAt(sim, 0);
     fightingEnemyAt(sim, 10 + NEAR_CELLS);
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(hungry, SettlerNeeds).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
+    expect(needsOf(sim, hungry).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
     expect(sim.world.has(hungry, MoveGoal)).toBe(false);
   });
 
   it('a hungry fighter on alert with no rations does not walk to the larder', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const hungry = fighterAt(sim, 10, 0, VIKING, WOODCUTTER, { owner: P0 });
-    sim.world.mut(hungry, SettlerNeeds).hunger = HUNGRY;
+    setNeeds(sim, hungry, { hunger: HUNGRY });
     larderAt(sim, 0);
     fightingEnemyAt(sim, 10 + NEAR_CELLS);
 
@@ -302,7 +302,7 @@ describe('a fighting unit on alert takes no rest', () => {
   it('but once its hunger is critical it goes to eat, so a standoff cannot starve it', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const starving = fighterAt(sim, 10, 0, VIKING, WOODCUTTER, { owner: P0 });
-    sim.world.mut(starving, SettlerNeeds).hunger = NEED_CRITICAL_THRESHOLD;
+    setNeeds(sim, starving, { hunger: NEED_CRITICAL_THRESHOLD });
     larderAt(sim, 0);
     fightingEnemyAt(sim, 10 + NEAR_CELLS);
 
@@ -314,7 +314,7 @@ describe('a fighting unit on alert takes no rest', () => {
   it('an engaged fighter holds even when starving', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const engaged = fighterAt(sim, 10, 0, VIKING, WOODCUTTER, { owner: P0 });
-    sim.world.mut(engaged, SettlerNeeds).hunger = ONE;
+    setNeeds(sim, engaged, { hunger: ONE });
     sim.world.add(engaged, Engagement, { repathAt: sim.tick });
     larderAt(sim, 0);
     enemyAt(sim, 10 + NEAR_CELLS);
@@ -357,7 +357,7 @@ describe('a fighting unit on alert takes no rest', () => {
   it('an ordered meal breaks the fight off, which is how a player feeds a line that would starve', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const engaged = fighterAt(sim, 10, 0, VIKING, WOODCUTTER, { owner: P0 });
-    sim.world.mut(engaged, SettlerNeeds).hunger = ONE;
+    setNeeds(sim, engaged, { hunger: ONE });
     sim.world.add(engaged, Engagement, { repathAt: sim.tick });
     larderAt(sim, 0);
     sim.world.add(engaged, AttackOrder, { target: enemyAt(sim, 10 + NEAR_CELLS) });
@@ -372,7 +372,7 @@ describe('a fighting unit on alert takes no rest', () => {
     // back into the fight it was just pulled from.
     for (let t = 0; t < ORDERED_MEAL_BUDGET_TICKS && sim.world.has(engaged, NeedOrder); t++) sim.step();
     expect(sim.world.has(engaged, Engagement)).toBe(false);
-    expect(sim.world.get(engaged, SettlerNeeds).hunger).toBeLessThan(ONE); // it got its meal
+    expect(needsOf(sim, engaged).hunger).toBeLessThan(ONE); // it got its meal
   });
 
   it('nobody walks off to chat while the fighting is on', () => {
@@ -381,7 +381,7 @@ describe('a fighting unit on alert takes no rest', () => {
       for (const at of [0, 2]) {
         // A civilian trade a player put into a fighting stance: the fighting trades never chat at all.
         const e = fighterAt(sim, at, 0, VIKING, WOODCUTTER, { owner: P0 });
-        sim.world.mut(e, SettlerNeeds).enjoyment = NEED_DRIVE_THRESHOLD;
+        setNeeds(sim, e, { enjoyment: NEED_DRIVE_THRESHOLD });
       }
       fightingEnemyAt(sim, x);
       plannerSystem(sim.world, ctxOf(sim));
@@ -415,7 +415,7 @@ describe('a fighting unit on alert takes no rest', () => {
       const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 4) });
       for (let i = 0; i < PEACETIME_ARMY; i++) {
         const e = fighterAt(sim, i % 20, i % 4, VIKING, SOLDIER, { owner: P0 });
-        if (bar !== 'none') sim.world.mut(e, SettlerNeeds)[bar] = HUNGRY;
+        if (bar !== 'none') setNeeds(sim, e, { [bar]: HUNGRY });
       }
       let sweeps = 0;
       const world = sim.world as unknown as { query: (...c: { name?: string }[]) => unknown };
@@ -443,7 +443,7 @@ describe('a fighting unit on alert takes no rest', () => {
     // closes to the cell beside it, which is still inside.
     const enemy = enemyAt(sim, CLEAR_CELLS, 400);
     sim.step(); // the front rank engages
-    sim.world.mut(rear, SettlerNeeds).fatigue = PRESSING;
+    setNeeds(sim, rear, { fatigue: PRESSING });
 
     let sleptMidFight = false;
     for (let t = 0; t < 600 && sim.world.has(enemy, Health); t++) {

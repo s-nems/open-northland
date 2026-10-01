@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Owner, SettlerNeeds } from '../../../src/components/index.js';
+import { Owner } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
 import {
   AI_HANDLER_ROUND_TICKS,
@@ -9,6 +9,7 @@ import {
   needBar,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { needsOf, setNeeds } from '../../fixtures/settler.js';
 import { settlerWithHunger } from './support.js';
 
 const COMPUTER_SEAT = 2;
@@ -29,18 +30,19 @@ describe('needsSystem - the computer seat refill', () => {
     sim.world.add(e, Owner, { player: COMPUTER_SEAT });
     sim.enqueueSetup({ kind: 'setPlayerAi', player: COMPUTER_SEAT, enabled: true });
     sim.step();
-    const s = sim.world.mut(e, SettlerNeeds);
-    s.hunger = PAST_CRITICAL;
-    s.fatigue = PAST_CRITICAL;
-    s.piety = PAST_CRITICAL;
-    s.enjoyment = PAST_CRITICAL;
+    setNeeds(sim, e, {
+      hunger: PAST_CRITICAL,
+      fatigue: PAST_CRITICAL,
+      piety: PAST_CRITICAL,
+      enjoyment: PAST_CRITICAL,
+    });
     // Seat 2's turn is tick 6 of the minute: nothing moves before it, and the refill lands on it.
     while (sim.tick + 1 !== 3 * COMPUTER_SEAT) {
       sim.step();
-      expect(sim.world.get(e, SettlerNeeds).hunger).toBeGreaterThan(NEED_CRITICAL_THRESHOLD);
+      expect(needsOf(sim, e).hunger).toBeGreaterThan(NEED_CRITICAL_THRESHOLD);
     }
     sim.step();
-    const after = sim.world.get(e, SettlerNeeds);
+    const after = needsOf(sim, e);
     expect(after.hunger).toBeLessThan(needBar(10));
     expect(after.fatigue).toBeLessThan(needBar(10));
     expect(after.piety).toBeGreaterThan(NEED_CRITICAL_THRESHOLD);
@@ -56,11 +58,11 @@ describe('needsSystem - the computer seat refill', () => {
     sim.world.add(human, Owner, { player: HUMAN_SEAT });
     sim.enqueueSetup({ kind: 'setPlayerAi', player: COMPUTER_SEAT, enabled: true });
     sim.step();
-    sim.world.mut(computer, SettlerNeeds).hunger = SHY_OF_CRITICAL;
-    sim.world.mut(human, SettlerNeeds).hunger = PAST_CRITICAL;
+    setNeeds(sim, computer, { hunger: SHY_OF_CRITICAL });
+    setNeeds(sim, human, { hunger: PAST_CRITICAL });
     for (let i = 0; i <= REFILL_TICKS; i++) sim.step();
-    expect(sim.world.get(computer, SettlerNeeds).hunger).toBeGreaterThan(SHY_OF_CRITICAL);
-    expect(sim.world.get(human, SettlerNeeds).hunger).toBeGreaterThan(PAST_CRITICAL);
+    expect(needsOf(sim, computer).hunger).toBeGreaterThan(SHY_OF_CRITICAL);
+    expect(needsOf(sim, human).hunger).toBeGreaterThan(PAST_CRITICAL);
   });
 
   it('leaves a computer seat’s civilian to its own seeking', () => {
@@ -69,9 +71,9 @@ describe('needsSystem - the computer seat refill', () => {
     sim.world.add(civilian, Owner, { player: COMPUTER_SEAT });
     sim.enqueueSetup({ kind: 'setPlayerAi', player: COMPUTER_SEAT, enabled: true });
     sim.step();
-    sim.world.mut(civilian, SettlerNeeds).hunger = PAST_CRITICAL;
+    setNeeds(sim, civilian, { hunger: PAST_CRITICAL });
     for (let i = 0; i <= REFILL_TICKS; i++) sim.step();
-    expect(sim.world.get(civilian, SettlerNeeds).hunger).toBeGreaterThan(PAST_CRITICAL);
+    expect(needsOf(sim, civilian).hunger).toBeGreaterThan(PAST_CRITICAL);
   });
 
   it('skips a computer seat whose scripted handler the map switched off', () => {
@@ -80,8 +82,8 @@ describe('needsSystem - the computer seat refill', () => {
     sim.world.add(e, Owner, { player: IDLE_SEAT });
     sim.enqueueSetup({ kind: 'setPlayerAi', player: IDLE_SEAT, enabled: true, scripted: false });
     sim.step();
-    sim.world.mut(e, SettlerNeeds).hunger = PAST_CRITICAL;
+    setNeeds(sim, e, { hunger: PAST_CRITICAL });
     for (let i = 0; i <= REFILL_TICKS; i++) sim.step();
-    expect(sim.world.get(e, SettlerNeeds).hunger).toBeGreaterThan(PAST_CRITICAL);
+    expect(needsOf(sim, e).hunger).toBeGreaterThan(PAST_CRITICAL);
   });
 });

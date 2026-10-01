@@ -268,7 +268,7 @@ describe('sync digest', () => {
     expect(differingDomains(digestOf(a), digestOf(b))).toContain('fog');
   });
 
-  it('folds the needs drain without rewriting settled atomic and path clocks', () => {
+  it('leaves settled needs, atomic and path clocks unwritten on a quiet tick', () => {
     const sim = watchedWorld();
     const settler = [...sim.world.query(Settler)][0];
     const terrain = sim.terrain;
@@ -296,7 +296,7 @@ describe('sync digest', () => {
     sim.world.setMutationSink(null);
 
     expect(sim.world.has(walker, PathFollow)).toBe(true);
-    expect([...written].filter((name) => SPLIT_HALVES.includes(name)).sort()).toEqual(['SettlerNeeds']);
+    expect([...written].filter((name) => SPLIT_HALVES.includes(name))).toEqual([]);
   });
 
   it.each([

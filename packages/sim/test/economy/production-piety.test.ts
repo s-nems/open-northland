@@ -1,9 +1,9 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { SettlerNeeds } from '../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { needBar, productionSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { needsOf, setNeeds } from '../fixtures/settler.js';
 import { CARPENTER, CYCLE_TICKS, ctxOf, PLANK, sawmill, WOOD } from './production-system/support.js';
 
 /** The forge clip's `event <at> 4 <delta>`, the religion the maker spends on one item - the shape every
@@ -48,31 +48,31 @@ describe('productionSystem - forging a military good charges the smith piety', (
     const sim = new Simulation({ seed: 1, content: contentWithMilitaryPlank() });
     const { worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('sawmill worker missing');
-    sim.world.mut(worker, SettlerNeeds).piety = fx.fromInt(0);
+    setNeeds(sim, worker, { piety: fx.fromInt(0) });
 
     // One full cycle to completion (CYCLE_TICKS-th advance deposits the output on tick CYCLE_TICKS+1).
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(worker, SettlerNeeds).piety).toBe(needBar(-FORGE_PIETY_UNITS));
+    expect(needsOf(sim, worker).piety).toBe(needBar(-FORGE_PIETY_UNITS));
   });
 
   it('leaves piety untouched for a non-military output (a plain plank)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('sawmill worker missing');
-    sim.world.mut(worker, SettlerNeeds).piety = fx.fromInt(0);
+    setNeeds(sim, worker, { piety: fx.fromInt(0) });
 
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(worker, SettlerNeeds).piety).toBe(fx.fromInt(0));
+    expect(needsOf(sim, worker).piety).toBe(fx.fromInt(0));
   });
 
   it('clamps piety at ONE across many forged cycles', () => {
     const sim = new Simulation({ seed: 1, content: contentWithMilitaryPlank() });
     const { worker } = sawmill(sim, [[WOOD, 40]]); // 40 cycles × 10% would overflow without the clamp
     if (worker === null) throw new Error('sawmill worker missing');
-    sim.world.mut(worker, SettlerNeeds).piety = fx.fromInt(0);
+    setNeeds(sim, worker, { piety: fx.fromInt(0) });
 
     for (let t = 0; t < CYCLE_TICKS * 40 + 5; t++) productionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(worker, SettlerNeeds).piety).toBe(ONE);
+    expect(needsOf(sim, worker).piety).toBe(ONE);
   });
 
   it('spends what the heavier item costs when its clip says so', () => {
@@ -80,9 +80,9 @@ describe('productionSystem - forging a military good charges the smith piety', (
     const sim = new Simulation({ seed: 1, content: contentWithMilitaryPlank(HEAVY_PIETY_UNITS) });
     const { worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('sawmill worker missing');
-    sim.world.mut(worker, SettlerNeeds).piety = fx.fromInt(0);
+    setNeeds(sim, worker, { piety: fx.fromInt(0) });
 
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(worker, SettlerNeeds).piety).toBe(needBar(-HEAVY_PIETY_UNITS));
+    expect(needsOf(sim, worker).piety).toBe(needBar(-HEAVY_PIETY_UNITS));
   });
 });

@@ -82,7 +82,7 @@ export const SEALED_TARGET_ROUTE_FAILURES = 3;
 function returnToAnchor(world: World, ctx: SystemContext, e: Entity, here: NodeId, anchorCell: NodeId): void {
   world.remove(e, Engagement);
   world.remove(e, HuntFocus); // a post-holder holds no prey
-  if (world.has(e, EquipOrder) || anyNeedPressing(world, ctx.content, e)) return;
+  if (world.has(e, EquipOrder) || anyNeedPressing(world, ctx, e)) return;
   clearNavState(world, e);
   if (here !== anchorCell) world.add(e, MoveGoal, { cell: anchorCell });
 }

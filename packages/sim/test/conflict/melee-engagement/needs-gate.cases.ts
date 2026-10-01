@@ -15,7 +15,6 @@ import {
   NeedOrder,
   PathRequest,
   Position,
-  SettlerNeeds,
   Stockpile,
   setMissionBehaviour,
 } from '../../../src/components/index.js';
@@ -23,6 +22,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '../../../src/index.js';
 import { plannerSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { needsOf, setNeeds } from '../../fixtures/settler.js';
 import { ctxOf, FRANK, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
 
 /**
@@ -42,7 +42,7 @@ const MEAD_SIP: Fixed = fx.div(ONE, fx.fromInt(2));
 
 function hungryFighterAt(sim: Simulation, x: number, y: number): Entity {
   const e = fighterAt(sim, x, y, VIKING, WOODCUTTER, { owner: P0 });
-  sim.world.mut(e, SettlerNeeds).hunger = PRESSING;
+  setNeeds(sim, e, { hunger: PRESSING });
   return e;
 }
 
@@ -120,7 +120,7 @@ describe('an engaged unit answers a need in place, never by walking', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(besieger, MoveGoal)).toBe(false);
-    expect(sim.world.get(besieger, SettlerNeeds).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
+    expect(needsOf(sim, besieger).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
     // The sip does not release the fight.
     expect(sim.world.has(besieger, Engagement)).toBe(true);
     expect(sim.world.has(besieger, AttackOrder)).toBe(true);
@@ -136,7 +136,7 @@ describe('an engaged unit answers a need in place, never by walking', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(chaser, SettlerNeeds).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
+    expect(needsOf(sim, chaser).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
     expect(sim.world.has(chaser, CurrentAtomic)).toBe(false);
     expect(sim.world.has(chaser, MoveGoal)).toBe(true);
     expect(sim.world.has(chaser, Engagement)).toBe(true);
@@ -145,7 +145,7 @@ describe('an engaged unit answers a need in place, never by walking', () => {
   it('a CHASER ordered to eat on a fed bar keeps its mead for when it is hungry', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const chaser = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
-    sim.world.mut(chaser, SettlerNeeds).hunger = FED;
+    setNeeds(sim, chaser, { hunger: FED });
     carryMead(sim, chaser);
     sim.world.add(chaser, NeedOrder, { need: 'hunger' });
     sim.world.add(chaser, Engagement, { repathAt: sim.tick + 8 });
@@ -207,7 +207,7 @@ describe('an engaged unit answers a need in place, never by walking', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0, hitpoints: 1_000_000 });
     carryMead(sim, attacker);
-    sim.world.mut(attacker, SettlerNeeds).hunger = PRESSING;
+    setNeeds(sim, attacker, { hunger: PRESSING });
     const enemy = fighterAt(sim, 6, 0, FRANK, WOODCUTTER, { owner: P1, hitpoints: 1_000_000 });
     larderAt(sim, 0, 0);
 
@@ -221,7 +221,7 @@ describe('an engaged unit answers a need in place, never by walking', () => {
     }
 
     expect(sim.world.get(attacker, Equipment).misc[0]?.degreeOfUse).toBeGreaterThan(fx.fromInt(0));
-    expect(sim.world.get(attacker, SettlerNeeds).hunger).toBeLessThan(PRESSING); // and the bar actually fell
+    expect(needsOf(sim, attacker).hunger).toBeLessThan(PRESSING); // and the bar actually fell
     expect(sim.world.has(attacker, AttackOrder)).toBe(true); // the order survived the sip
     expect(lowestEnemy).toBeLessThan(1_000_000); // it closed and struck
   });
@@ -242,6 +242,6 @@ describe('an engaged unit answers a need in place, never by walking', () => {
     }
 
     expect(routed).toBe(0);
-    expect(sim.world.get(besieger, SettlerNeeds).hunger).toBeGreaterThanOrEqual(PRESSING); // still unfed
+    expect(needsOf(sim, besieger).hunger).toBeGreaterThanOrEqual(PRESSING); // still unfed
   });
 });

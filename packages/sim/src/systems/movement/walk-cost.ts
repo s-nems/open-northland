@@ -14,6 +14,7 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { carriedStepTicksSaved } from '../equipment/index.js';
 import { type AgeClass, ageClassOfJobId } from '../lifecycle/ageclass.js';
+import { needLevel } from '../lifecycle/needs/levels.js';
 import { NEED_DRIVE_THRESHOLD } from '../lifecycle/needs/scale.js';
 import { isHeroJob } from '../readviews/jobs.js';
 
@@ -120,10 +121,16 @@ export function isCarryingGood(world: World, e: Entity): boolean {
 }
 
 /** Read `e`'s step modifiers for the step about to start. */
-export function walkStepModifiersOf(world: World, e: Entity, content: ContentSet): WalkStepModifiers {
+export function walkStepModifiersOf(
+  world: World,
+  e: Entity,
+  content: ContentSet,
+  tick: number,
+): WalkStepModifiers {
   const flags = world.tryGet(e, MissionBehaviour)?.flags ?? 0;
   const settler = world.tryGet(e, Settler);
-  const fatigue = world.tryGet(e, SettlerNeeds)?.fatigue;
+  const needs = world.tryGet(e, SettlerNeeds);
+  const fatigue = needs === undefined ? undefined : needLevel(needs, 'fatigue', tick);
   const index = contentIndex(content);
   const job = settler?.jobType ?? null;
   const reduction = settler === undefined ? undefined : index.tribes.get(settler.tribe)?.walkStepReduction;

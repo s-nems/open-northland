@@ -9,7 +9,6 @@ import {
   Position,
   Residence,
   Resting,
-  SettlerNeeds,
   Stockpile,
   setMissionBehaviour,
 } from '../../src/components/index.js';
@@ -19,6 +18,7 @@ import { plannerSystem } from '../../src/systems/index.js';
 import { isServedAtHome } from '../../src/systems/settlers/drives/home-errands.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
+import { needsOf } from '../fixtures/settler.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /**
@@ -248,7 +248,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     expect(entries).toBe(1);
     expect(inside.filter(Boolean).length).toBeGreaterThanOrEqual(HOME_SLEEP_TICKS);
     expect(inside.at(-1)).toBe(false); // stepped back outside
-    expect(sim.world.get(settler, SettlerNeeds).fatigue).toBeLessThan(TIRED); // and slept it off
+    expect(needsOf(sim, settler).fatigue).toBeLessThan(TIRED); // and slept it off
     expect(sim.checkInvariants()).toEqual([]);
   });
 
@@ -284,7 +284,7 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
 
     expect(ateIndoors).toBe(true);
     expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(1); // one unit off the family shelf
-    const fed = sim.world.get(settler, SettlerNeeds);
+    const fed = needsOf(sim, settler);
     expect(fed.hunger).toBeLessThan(HALF_SPENT); // and both bars came down before it left
     expect(fed.fatigue).toBeLessThan(TIRED);
     expect(sim.world.has(settler, Resting)).toBe(false);
@@ -328,7 +328,7 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
 
     for (let i = 0; i < 60; i++) sim.step();
 
-    expect(sim.world.get(settler, SettlerNeeds).hunger).toBeGreaterThanOrEqual(HALF_SPENT); // nothing to eat
+    expect(needsOf(sim, settler).hunger).toBeGreaterThanOrEqual(HALF_SPENT); // nothing to eat
     expect(sim.world.has(settler, Resting)).toBe(false); // and it did not wait indoors for food
   });
 });

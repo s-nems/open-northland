@@ -8,7 +8,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { JOB_SCOUT } from '../../../catalog/jobs.js';
-import { num, type SnapshotEntity, settlerExperienceOf } from '../../../game/snapshot.js';
+import { num, type SnapshotEntity, settlerExperienceOf, settlerNeedsOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { healthBar, type PanelBar, pct } from './bars.js';
 import {
@@ -38,12 +38,13 @@ function needBar(label: string, need: NeedKind, deficit: number | undefined): Pa
  */
 export function satisfactionBars(
   ent: SnapshotEntity,
+  tick: number,
   needsEnabled: boolean,
   carriesNeeds = true,
 ): PanelBar[] {
   const hud = messages().hud;
   const comps: Comp = ent.components;
-  const s = (comps.SettlerNeeds ?? {}) as Comp;
+  const s = settlerNeedsOf(ent, tick);
   const bars: PanelBar[] = [];
   const health = healthBar(ent);
   if (health !== null) bars.push(health);
@@ -51,10 +52,10 @@ export function satisfactionBars(
   // A settler still growing carries no needs at all (`lifecycle/needs/system.ts`), so it shows its health
   // and nothing else.
   if (comps.Age !== undefined) return bars;
-  bars.push(needBar(hud.hunger, 'hunger', num(s.hunger)));
-  bars.push(needBar(hud.sleep, 'fatigue', num(s.fatigue)));
-  bars.push(needBar(hud.company, 'enjoyment', num(s.enjoyment)));
-  bars.push(needBar(hud.religion, 'piety', num(s.piety)));
+  bars.push(needBar(hud.hunger, 'hunger', s?.hunger));
+  bars.push(needBar(hud.sleep, 'fatigue', s?.fatigue));
+  bars.push(needBar(hud.company, 'enjoyment', s?.enjoyment));
+  bars.push(needBar(hud.religion, 'piety', s?.piety));
   return bars;
 }
 

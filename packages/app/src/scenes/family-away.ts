@@ -1,5 +1,5 @@
 import type { Entity, Fixed, Simulation } from '@open-northland/sim';
-import { components, fx } from '@open-northland/sim';
+import { components, fx, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_SCOUT, JOB_WOMAN } from '../catalog/jobs.js';
 import { placeSandboxBuilding, spawnSettlerDirect } from '../game/sandbox/index.js';
@@ -34,7 +34,7 @@ function build(sim: Simulation): void {
   const scout = spawnSettlerDirect(sim, JOB_SCOUT, SCOUT.x, SCOUT.y);
   sim.world.add(wife, Marriage, { spouse: scout, child: null });
   sim.world.add(scout, Marriage, { spouse: wife, child: null });
-  sim.world.mut(scout, SettlerNeeds).fatigue = TIRED;
+  systems.mutNeeds(sim.world, scout, sim.tick).fatigue = TIRED;
   placeSandboxBuilding(sim, HOME_REF, HOME.x, HOME.y);
   sim.enqueueSetup({ kind: 'assignHouse', entity: wife, house: HOME_ENTITY });
   sim.enqueueSetup({ kind: 'makeChild', entity: wife, child: 'female' });
@@ -66,7 +66,7 @@ export const familyAwayScene: SceneDefinition = {
       label: 'the scout slept off his fatigue outside, never stepping into the house',
       predicate: (sim) =>
         sim.world.tryGet(SCOUT_ENTITY, Resting)?.at !== HOME_ENTITY &&
-        sim.world.get(SCOUT_ENTITY, SettlerNeeds).fatigue < TIRED,
+        systems.needLevel(sim.world.get(SCOUT_ENTITY, SettlerNeeds), 'fatigue', sim.tick) < TIRED,
     },
   ],
 };

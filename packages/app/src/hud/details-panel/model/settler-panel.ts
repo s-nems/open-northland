@@ -207,7 +207,7 @@ export function settlerPanelModel(
     carrying: carriedGood(ctx, comps),
   };
   const hero = role === 'hero';
-  const bars = satisfactionBars(ent, needsRuleEnabled(snapshot) && !foreign, !hero);
+  const bars = satisfactionBars(ent, snapshot.tick, needsRuleEnabled(snapshot) && !foreign, !hero);
   const base = {
     kind: 'settler' as const,
     entityId: ent.id,

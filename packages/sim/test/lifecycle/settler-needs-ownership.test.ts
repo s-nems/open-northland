@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { addPerson, Settler, SettlerNeeds } from '../../src/components/index.js';
+import { addPerson, Settler } from '../../src/components/index.js';
 import { entityDeltas, fx, Simulation } from '../../src/index.js';
 import { needsSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { nextTickCtxOf } from '../fixtures/context.js';
+import { needsOf } from '../fixtures/settler.js';
 
 describe('settler need ownership', () => {
   it('drains bars while preserving identity revisions and snapshot component references', () => {
@@ -18,7 +19,7 @@ describe('settler need ownership', () => {
     stream.next();
     const before = sim.snapshot().entities[0];
 
-    needsSystem(sim.world, ctxOf(sim));
+    needsSystem(sim.world, nextTickCtxOf(sim));
     const delta = stream.next();
     const after = sim.snapshot().entities[0];
     expect(sim.world.get(id, Settler)).toBe(identity);
@@ -29,7 +30,7 @@ describe('settler need ownership', () => {
     ]);
     expect(after?.components.Settler).toBe(before?.components.Settler);
     expect(after?.components.SettlerNeeds).not.toBe(before?.components.SettlerNeeds);
-    expect(sim.world.get(id, SettlerNeeds).hunger).toBeGreaterThan(zero);
+    expect(needsOf(sim, id).hunger).toBeGreaterThan(zero);
     expect(initial.hunger).toBe(zero);
     expect(sim.world.verifyCaches()).toEqual([]);
   });

@@ -43,7 +43,7 @@ describe('human walk modifiers', () => {
     const sim = new Simulation({ seed: 1, content });
     const modifiers = (tribe: number, jobType: number) => {
       const e = settlerAt(sim, { tribe, jobType });
-      return walkStepModifiersOf(sim.world, e, content);
+      return walkStepModifiersOf(sim.world, e, content, sim.tick);
     };
     expect(modifiers(201, 101)).toMatchObject({ age: 'baby', tribeReduction: 0 });
     expect(modifiers(202, 102)).toMatchObject({ age: 'child', tribeReduction: 2 });
@@ -54,7 +54,7 @@ describe('human walk modifiers', () => {
   it('resolves combined worn weight, tribe-scoped weapons, class fallbacks and hero exemption', () => {
     const sim = new Simulation({ seed: 1, content });
     const e = settlerAt(sim, { tribe: 201, jobType: 103 });
-    const weight = () => walkStepModifiersOf(sim.world, e, content).equipmentWeight;
+    const weight = () => walkStepModifiersOf(sim.world, e, content, sim.tick).equipmentWeight;
     sim.world.add(e, Weapon, { weaponTypeId: 2 });
     sim.world.add(e, Armor, { armorClass: 1 });
     expect(weight()).toBe(7);
@@ -72,11 +72,11 @@ describe('human walk modifiers', () => {
     expect(weight()).toBe(3); // unresolved worn good does not resurrect a class default
     const other = settlerAt(sim, { tribe: 202, jobType: 103 });
     sim.world.add(other, Weapon, { weaponTypeId: 2 });
-    expect(walkStepModifiersOf(sim.world, other, content).equipmentWeight).toBe(8);
+    expect(walkStepModifiersOf(sim.world, other, content, sim.tick).equipmentWeight).toBe(8);
     const hero = settlerAt(sim, { tribe: 201, jobType: 104 });
     sim.world.add(hero, Weapon, { weaponTypeId: 2 });
     sim.world.add(hero, Armor, { armorClass: 1 });
-    expect(walkStepModifiersOf(sim.world, hero, content).equipmentWeight).toBe(0);
+    expect(walkStepModifiersOf(sim.world, hero, content, sim.tick).equipmentWeight).toBe(0);
   });
 });
 

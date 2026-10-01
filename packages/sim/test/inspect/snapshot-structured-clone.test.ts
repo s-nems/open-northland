@@ -8,7 +8,7 @@ import {
   type WorldSnapshot,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
-import { expectSameWorld } from '../fixtures/snapshot-parity.js';
+import { expectSameWorld, keepSettlersWalking } from '../fixtures/snapshot-parity.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -24,6 +24,8 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 const HEADQUARTERS = 1;
 const WOODCUTTER = 1;
 const VIKING = 1;
+/** The run map's last node column, the walker's far end. */
+const EAST_HX = 5;
 
 /**
  * Drive a short real run that exercises the snapshot's non-trivial shapes: a building (a `Stockpile`
@@ -56,6 +58,7 @@ describe('snapshot delta is structured-cloneable (Web-Worker boundary)', () => {
     let partialAcrossRun = 0;
     for (let tick = 1; tick <= 8; tick++) {
       for (const cmd of schedule.get(tick) ?? []) sim.enqueueSetup(cmd);
+      keepSettlersWalking(sim, EAST_HX);
       sim.step();
       const delta = deltas.next();
       if (delta === null) throw new Error('a stepped tick must yield a delta');

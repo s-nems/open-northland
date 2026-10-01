@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { Health, Settler, SettlerNeeds, SettlerProgress } from '../../../src/components/index.js';
+import { Health, Settler, SettlerProgress } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../../src/systems/index.js';
+import { needsOf } from '../../fixtures/settler.js';
 import {
   combatCadenceContent,
   fighterAt,
@@ -46,7 +47,7 @@ describe('two squads exchange blows at the data cadence (extended headless scena
       expect(
         sim.world.get(anyViking, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR) ?? 0,
       ).toBeGreaterThan(0);
-      expect(sim.world.get(anyViking, SettlerNeeds).fatigue).toBeGreaterThan(0);
+      expect(needsOf(sim, anyViking).fatigue).toBeGreaterThan(0);
     }
   });
 

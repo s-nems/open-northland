@@ -8,7 +8,6 @@ import {
   Health,
   MISC_EQUIP_SLOTS,
   MoveGoal,
-  SettlerNeeds,
   WALK_DIRECTION,
   WalkFacing,
 } from '../../src/components/index.js';
@@ -21,6 +20,7 @@ import {
   resolveCombatHit,
 } from '../../src/systems/settlers/atomics/effects/combat/index.js';
 import { testContent } from '../fixtures/content.js';
+import { needsOf } from '../fixtures/settler.js';
 import {
   ctxOf,
   grassMap,
@@ -205,7 +205,7 @@ describe('need amulets', () => {
     plannerSystem(s.world, ctxOf(s));
     expect(s.world.has(settler, MoveGoal)).toBe(false);
     expect(s.world.has(settler, CurrentAtomic)).toBe(false);
-    expect(s.world.get(settler, SettlerNeeds).hunger).toBe(fx.sub(PRESSING, RESTORE_40));
+    expect(needsOf(s, settler).hunger).toBe(fx.sub(PRESSING, RESTORE_40));
     expect(s.world.get(settler, Equipment).misc[0]).toEqual(worn(AMULET_FOOD));
   });
 
@@ -214,7 +214,7 @@ describe('need amulets', () => {
     const settler = needsSettlerAt(s, 0, 0, { fatigue: PRESSING });
     carry(s, settler, [worn(AMULET_STAMINA)]);
     plannerSystem(s.world, ctxOf(s));
-    expect(s.world.get(settler, SettlerNeeds).fatigue).toBe(fx.sub(PRESSING, RESTORE_40));
+    expect(needsOf(s, settler).fatigue).toBe(fx.sub(PRESSING, RESTORE_40));
     expect(s.world.get(settler, Equipment).misc[0]).toEqual(worn(AMULET_STAMINA));
   });
 
@@ -226,9 +226,9 @@ describe('need amulets', () => {
     carry(s, opened, [worn(AMULET_FOOD), worn(POTION_FOOD, HALF)]);
     plannerSystem(s.world, ctxOf(s));
     expect(s.world.get(fresh, Equipment).misc[0]).toEqual(worn(POTION_FOOD));
-    expect(s.world.get(fresh, SettlerNeeds).hunger).toBe(fx.sub(PRESSING, RESTORE_40));
+    expect(needsOf(s, fresh).hunger).toBe(fx.sub(PRESSING, RESTORE_40));
     expect(s.world.get(opened, Equipment).misc[1]).toBeNull();
-    expect(s.world.get(opened, SettlerNeeds).hunger).toBe(fx.sub(PRESSING, ONE));
+    expect(needsOf(s, opened).hunger).toBe(fx.sub(PRESSING, ONE));
   });
 });
 
@@ -236,7 +236,7 @@ describe('speed amulet', () => {
   it('saves two ticks a step, once however many are carried, and nothing once removed', () => {
     const s = sim();
     const walker = needsSettlerAt(s, 0, 0, {});
-    const saved = () => walkStepModifiersOf(s.world, walker, s.content).stepTicksSaved;
+    const saved = () => walkStepModifiersOf(s.world, walker, s.content, s.tick).stepTicksSaved;
     expect(saved()).toBe(0);
     carry(s, walker, [worn(AMULET_SPEED)]);
     expect(saved()).toBe(2);

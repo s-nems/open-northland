@@ -5,6 +5,7 @@ import {
   hasMissionBehaviour,
   isAboardVehicle,
   MISSION_BEHAVIOUR,
+  type NeedDrain,
   needsEnabled,
   ownerOf,
   Person,
@@ -13,7 +14,7 @@ import {
   type SettlerNeedsView,
   type SettlerView,
 } from '../../../components/index.js';
-import { type Fixed, fx, ONE, ZERO } from '../../../core/fixed.js';
+import { type Fixed, ONE, ZERO } from '../../../core/fixed.js';
 import type { Rng } from '../../../core/rng.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { handlerTurn, scriptedSeatOnTurn } from '../../ai-player/cadence.js';
@@ -21,14 +22,8 @@ import type { System, SystemContext } from '../../context.js';
 import { woundBearer } from '../../equipment/index.js';
 import { declaresNoTrades, isFighterJob, isHeroJob } from '../../readviews/index.js';
 import { isAboardShip } from '../../readviews/vehicles.js';
-import {
-  applyNeedUnits,
-  clampNeed,
-  NEED_CRITICAL_THRESHOLD,
-  NEED_DRAIN_UNITS_PER_TICK,
-  NEED_RESERVE_UNITS,
-  needBar,
-} from './scale.js';
+import { drainReachesBand, mutNeeds, needLevel } from './levels.js';
+import { applyNeedUnits, NEED_CRITICAL_THRESHOLD, NEED_RESERVE_UNITS, needBar } from './scale.js';
 import { woundedPersonsOf } from './wounded.js';
 
 /** The spread of a settler's starting deficit, half a bar, so a map opens with varied satisfaction instead
@@ -71,7 +66,7 @@ export function chargeBarefootStep(
   carrying: boolean,
 ): void {
   if (roughness === 0 || !needsEnabled(world) || !carriesNeeds(world, ctx.content, e)) return;
-  const s = world.mut(e, SettlerNeeds);
+  const s = mutNeeds(world, e, ctx.tick);
   s.hunger = applyNeedUnits(s.hunger, -(carrying ? roughness * CARRYING_HUNGER_FACTOR : roughness));
 }
 
@@ -109,25 +104,51 @@ export function isNearDeath(hitpoints: number, max: number): boolean {
  * so everyone regains them as a fed settler does.
  */
 export const needsSystem: System = (world, ctx) => {
+  const before = ctx.tick - 1;
   if (!needsEnabled(world)) {
+    haltAllDrains(world, before);
     // Nobody hungers, so only the wounded move: the pass reads them alone.
     for (const e of woundedPersonsOf(world)) {
       if (!frozenInCart(world, ctx, e)) stepHealth(world, ctx, e, undefined, undefined);
     }
     return;
   }
+  drainsHalted.delete(world);
   const refilling = seatRefillingAt(world, ctx.tick);
   for (const e of world.query(Person)) {
-    if (frozenInCart(world, ctx, e)) continue;
-    if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, ctx, e);
+    if (frozenInCart(world, ctx, e)) {
+      setDrain(world, e, 'none', before);
+      continue;
+    }
+    if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, ctx, e, before);
     const settler = world.tryGet(e, Settler);
-    const needs =
-      settler !== undefined && settlerCarriesNeeds(world, ctx.content, e, settler)
-        ? drainNeeds(world, ctx, e, settler)
-        : undefined;
-    stepHealth(world, ctx, e, needs, settler);
+    const carries = settler !== undefined && settlerCarriesNeeds(world, ctx.content, e, settler);
+    const drain: NeedDrain = !carries ? 'none' : isFighterJob(ctx.content, settler.jobType) ? 'body' : 'all';
+    const needs = drainNeeds(world, ctx.tick, e, drain);
+    stepHealth(world, ctx, e, carries ? needLevel(needs, 'hunger', ctx.tick) : undefined, settler);
   }
 };
+
+/**
+ * The worlds whose bars were all stopped since needs were last on, so a disabled pass stops them once
+ * rather than every tick. Only the enabled pass starts a drain, and a world missing here is scanned again,
+ * so the memo cannot change a bar.
+ */
+const drainsHalted = new WeakMap<World, true>();
+
+function haltAllDrains(world: World, drainedThrough: number): void {
+  if (drainsHalted.has(world)) return;
+  for (const e of world.query(SettlerNeeds)) setDrain(world, e, 'none', drainedThrough);
+  drainsHalted.set(world, true);
+}
+
+/** Store `e`'s bars as of `drainedThrough` under a new drain, leaving them unwritten when it holds. */
+function setDrain(world: World, e: Entity, drain: NeedDrain, drainedThrough: number): void {
+  const needs = world.tryGet(e, SettlerNeeds);
+  if (needs === undefined || needs.drain === drain) return;
+  const s = mutNeeds(world, e, drainedThrough);
+  s.drain = drain;
+}
 
 /** Frozen inside a cart, hitpoints included (approximation); a ship's passengers eat and sleep aboard. */
 function frozenInCart(world: World, ctx: SystemContext, e: Entity): boolean {
@@ -150,15 +171,16 @@ function seatRefillingAt(world: World, tick: number): number | null {
 }
 
 /** The refill itself: a fighter's hunger and fatigue only, written over whatever gate would otherwise
- *  hold the bar, as the original sets the bars directly. Company and piety are left to fall. */
-function refillCriticalNeeds(world: World, ctx: SystemContext, e: Entity): void {
+ *  hold the bar, as the original sets the bars directly. Company and piety are left to fall. Reads the bars
+ *  before this tick's drain. */
+function refillCriticalNeeds(world: World, ctx: SystemContext, e: Entity, drainedThrough: number): void {
   const settler = world.tryGet(e, Settler);
   if (settler === undefined || !isFighterJob(ctx.content, settler.jobType)) return;
   const needs = world.get(e, SettlerNeeds);
-  const hungry = needs.hunger > NEED_CRITICAL_THRESHOLD;
-  const tired = needs.fatigue > NEED_CRITICAL_THRESHOLD;
+  const hungry = needLevel(needs, 'hunger', drainedThrough) > NEED_CRITICAL_THRESHOLD;
+  const tired = needLevel(needs, 'fatigue', drainedThrough) > NEED_CRITICAL_THRESHOLD;
   if (!hungry && !tired) return;
-  const s = world.mut(e, SettlerNeeds);
+  const s = mutNeeds(world, e, drainedThrough);
   if (hungry) s.hunger = ZERO;
   if (tired) s.fatigue = ZERO;
 }
@@ -178,31 +200,19 @@ function settlerCarriesNeeds(world: World, content: ContentSet, e: Entity, settl
   );
 }
 
-/** {@link applyNeedUnits}'s step for one tick's drain, taken once. */
-const DRAIN_STEP: Fixed = needBar(-NEED_DRAIN_UNITS_PER_TICK);
-
-function drainedBar(deficit: Fixed): Fixed {
-  return clampNeed(fx.sub(deficit, DRAIN_STEP));
-}
-
-/** Drain one tick off the three needs time alone moves, and hand back the drained bars so the hitpoint
- *  step reads them without a second lookup; a fighter's company need is frozen instead. A settler whose
- *  bars have all pinned is left unwritten. */
-function drainNeeds(world: World, ctx: SystemContext, e: Entity, settler: SettlerView): SettlerNeedsView {
-  const needs = world.get(e, SettlerNeeds);
-  const hunger = drainedBar(needs.hunger);
-  const fatigue = drainedBar(needs.fatigue);
-  const enjoyment = isFighterJob(ctx.content, settler.jobType)
-    ? needs.enjoyment
-    : drainedBar(needs.enjoyment);
-  if (hunger === needs.hunger && fatigue === needs.fatigue && enjoyment === needs.enjoyment) {
-    return needs;
+/**
+ * Run this tick's drain pass over `e`: a changed drain stores the bars as they stood before it, and a bar
+ * the pass raises onto a band threshold is stored as it now stands; every other tick leaves the
+ * component unwritten, its bars derived from the stored ones. Hands back the bars for the hitpoint step.
+ */
+function drainNeeds(world: World, tick: number, e: Entity, drain: NeedDrain): SettlerNeedsView {
+  let needs = world.get(e, SettlerNeeds);
+  if (needs.drain !== drain) {
+    const s = mutNeeds(world, e, tick - 1);
+    s.drain = drain;
+    needs = s;
   }
-  const drained = world.mut(e, SettlerNeeds);
-  drained.hunger = hunger;
-  drained.fatigue = fatigue;
-  drained.enjoyment = enjoyment;
-  return drained;
+  return drainReachesBand(needs, tick) ? mutNeeds(world, e, tick) : needs;
 }
 
 /**
@@ -215,12 +225,12 @@ function stepHealth(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  needs: SettlerNeedsView | undefined,
+  hunger: Fixed | undefined,
   settler: SettlerView | undefined,
 ): void {
   const health = world.tryGet(e, Health);
   if (health === undefined || health.hitpoints <= 0) return;
-  if (needs !== undefined && needs.hunger === ONE && settler?.jobType !== null) {
+  if (hunger === ONE && settler?.jobType !== null) {
     if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.INVULNERABLE)) return;
     woundBearer(world, ctx, e, STARVATION_HITPOINTS_PER_TICK);
     return;

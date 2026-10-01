@@ -1,17 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import {
-  Age,
-  addCurrentAtomic,
-  Residence,
-  Resting,
-  SettlerNeeds,
-  setSettlerJob,
-} from '../../src/components/index.js';
+import { Age, addCurrentAtomic, Residence, Resting, setSettlerJob } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, Simulation } from '../../src/index.js';
 import { atomicSystem, CHILD_MALE, needBar } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { nextTickCtxOf } from '../fixtures/context.js';
+import { needsOf } from '../fixtures/settler.js';
 import { grassMap, needsSettlerAt } from './needs/support.js';
 
 /**
@@ -65,7 +59,7 @@ describe('atomic need events - a work swing costs what its clip says', () => {
 
     // What the swing spends is never halved - only rest a settler gains in the open is.
     for (const e of [settler, soldier]) {
-      const s = sim.world.get(e, SettlerNeeds);
+      const s = needsOf(sim, e);
       expect(s.hunger).toBe(SWING_DRAIN);
       expect(s.fatigue).toBe(SWING_DRAIN);
     }
@@ -80,8 +74,8 @@ describe('atomic need events - a work swing costs what its clip says', () => {
     playClip(sim, homeless, SLEEP_ATOMIC, SLEEP_CLIP_TICKS);
 
     // The clip pulses `+4000` twice; the soldier never goes home, so he keeps both in full.
-    expect(sim.world.get(housed, SettlerNeeds).fatigue).toBe(fx.sub(fx.fromInt(1), needBar(4000)));
-    expect(sim.world.get(homeless, SettlerNeeds).fatigue).toBe(fx.sub(fx.fromInt(1), needBar(8000)));
+    expect(needsOf(sim, housed).fatigue).toBe(fx.sub(fx.fromInt(1), needBar(4000)));
+    expect(needsOf(sim, homeless).fatigue).toBe(fx.sub(fx.fromInt(1), needBar(8000)));
   });
 
   it('moves no bar at all on a settler that is still growing', () => {
@@ -92,7 +86,7 @@ describe('atomic need events - a work swing costs what its clip says', () => {
 
     playClip(sim, child, CHOP_ATOMIC, CHOP_CLIP_TICKS);
 
-    const s = sim.world.get(child, SettlerNeeds);
+    const s = needsOf(sim, child);
     expect(s.hunger).toBe(fx.fromInt(0));
     expect(s.fatigue).toBe(fx.fromInt(0));
   });
@@ -110,7 +104,7 @@ describe('atomic need events - a meal under the settler own roof', () => {
     playClip(sim, outdoors, EAT_ATOMIC, EAT_CLIP_TICKS);
     playClip(sim, indoors, EAT_ATOMIC, EAT_CLIP_TICKS);
 
-    expect(sim.world.get(outdoors, SettlerNeeds).hunger).toBe(fx.sub(fx.fromInt(1), MEAL));
-    expect(sim.world.get(indoors, SettlerNeeds).hunger).toBe(fx.sub(fx.fromInt(1), HOME_MEAL));
+    expect(needsOf(sim, outdoors).hunger).toBe(fx.sub(fx.fromInt(1), MEAL));
+    expect(needsOf(sim, indoors).hunger).toBe(fx.sub(fx.fromInt(1), HOME_MEAL));
   });
 });

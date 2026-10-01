@@ -13,7 +13,6 @@ import {
   Position,
   Resting,
   Settler,
-  SettlerNeeds,
   SettlerProgress,
   Sheltering,
   Stockpile,
@@ -31,6 +30,7 @@ import { BARRACKS_DRILL_TICKS } from '../../src/systems/settlers/drives/training
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
+import { setNeeds } from '../fixtures/settler.js';
 import { waterColumnMap } from '../fixtures/terrain.js';
 import { ctxOf, grassMap } from './needs/support.js';
 
@@ -347,7 +347,7 @@ describe('trainSoldier - the barracks drill', () => {
     const house = barracksAt(sim, 3, 3);
     const larder = larderAt(sim, 8, 3);
     const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3);
-    sim.world.mut(recruit, SettlerNeeds).hunger = STARVING;
+    setNeeds(sim, recruit, { hunger: STARVING });
 
     sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();

@@ -12,6 +12,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { mutNeeds } from '../lifecycle/needs/levels.js';
 import { teleportHuman } from '../orders/teleport.js';
 
 // The `debug*` commands are real commands, logged and replayed like any other, so each is a no-op on a
@@ -31,9 +32,13 @@ export function debugKill(world: World, command: Extract<Command, { kind: 'debug
 
 /** Set the needs the panel names to whole-percent levels (0 sated … 100 maxed). A non-settler target is a
  *  no-op. */
-export function debugSetNeeds(world: World, command: Extract<Command, { kind: 'debugSetNeeds' }>): void {
-  const settler = world.tryMut(command.target, SettlerNeeds);
-  if (settler === undefined) return;
+export function debugSetNeeds(
+  world: World,
+  drainedThrough: number,
+  command: Extract<Command, { kind: 'debugSetNeeds' }>,
+): void {
+  if (!world.has(command.target, SettlerNeeds)) return;
+  const settler = mutNeeds(world, command.target, drainedThrough);
   if (command.hunger !== undefined) settler.hunger = needFixedFromPct(command.hunger);
   if (command.fatigue !== undefined) settler.fatigue = needFixedFromPct(command.fatigue);
   if (command.piety !== undefined) settler.piety = needFixedFromPct(command.piety);

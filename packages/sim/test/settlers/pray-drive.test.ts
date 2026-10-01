@@ -11,7 +11,6 @@ import {
   Position,
   Residence,
   Resting,
-  SettlerNeeds,
   UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -28,6 +27,7 @@ import { isServedAtHome } from '../../src/systems/settlers/drives/home-errands.j
 import { TEMPLE_PREFERRED_RANGE } from '../../src/systems/settlers/targets/stores/buildings.js';
 import { testContent } from '../fixtures/content.js';
 import { nextTickCtxOf } from '../fixtures/context.js';
+import { needsOf } from '../fixtures/settler.js';
 import {
   cellOf,
   ctxOf,
@@ -209,7 +209,7 @@ describe('pray atomic - taking one prayer off piety (AtomicSystem)', () => {
     for (let i = 0; i < PRAY_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
 
     // A prayer is a partial refill, not a reset: a smith comes back to the temple every few items.
-    expect(sim.world.get(settler, SettlerNeeds).piety).toBe(fx.sub(DEVOUT, PRAYER));
+    expect(needsOf(sim, settler).piety).toBe(fx.sub(DEVOUT, PRAYER));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
   });
 });
@@ -221,11 +221,11 @@ describe('pray drive - closing the forge→pray→relief loop through the real s
     const settler = settlerAt(sim, 0, 0, NEED_DRIVE_THRESHOLD);
     templeAt(sim, 3, 0);
 
-    const peakPiety = sim.world.get(settler, SettlerNeeds).piety;
+    const peakPiety = needsOf(sim, settler).piety;
     let troughPiety = peakPiety;
     for (let i = 0; i < 400; i++) {
       sim.step();
-      const p = sim.world.get(settler, SettlerNeeds).piety;
+      const p = needsOf(sim, settler).piety;
       if (p < troughPiety) troughPiety = p;
     }
 
@@ -427,7 +427,7 @@ describe('where a devout settler prays: its holy fire, then a temple, then the h
       .snapshot()
       .events.flatMap((ev) => (ev.kind === 'prayerSiteMissing' ? [ev.entity] : []));
     expect(missing).toEqual([human]);
-    expect(sim.world.get(computer, SettlerNeeds).piety).toBe(NEED_SATED_THRESHOLD);
+    expect(needsOf(sim, computer).piety).toBe(NEED_SATED_THRESHOLD);
   });
 
   it('warns no one while the bar searches below the level the HUD marks a need at', () => {

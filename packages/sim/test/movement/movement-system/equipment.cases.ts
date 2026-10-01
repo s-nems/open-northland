@@ -11,7 +11,6 @@ import {
   PathRequest,
   PathRoute,
   Position,
-  SettlerNeeds,
   WalkFacing,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -24,7 +23,7 @@ import {
 } from '../../../src/systems/lifecycle/needs/index.js';
 import { dropPath } from '../../../src/systems/movement/nav-state.js';
 import { testContent } from '../../fixtures/content.js';
-import { settlerAt } from '../../fixtures/settler.js';
+import { needsOf, settlerAt } from '../../fixtures/settler.js';
 import { roughNodeMap } from '../../fixtures/terrain.js';
 import {
   followerAt,
@@ -191,7 +190,7 @@ describe('movementSystem - worn boots', () => {
     expect(sim.world.get(e, Equipment).boots).toBeNull();
     expect(sim.world.get(e, PathFollow).legCost).toBe(LAND_STEP_TICKS_SHOD);
     expect(ticksToArrive(sim, e)).toBe(LAND_STEP_TICKS_SHOD - 1);
-    expect(sim.world.get(e, SettlerNeeds).hunger).toBe(
+    expect(needsOf(sim, e).hunger).toBe(
       fx.add(fx.mul(needBar(NEED_DRAIN_UNITS_PER_TICK), fx.fromInt(LAND_STEP_TICKS_SHOD)), needBar(2)),
     );
   });
@@ -255,10 +254,7 @@ describe('movementSystem - worn boots', () => {
       if (flags !== 0) sim.world.add(e, MissionBehaviour, { flags });
       const ticks = ticksToArrive(sim, e);
       // Net of the bar's own rise over the walk (one truncated quantum a tick), which every walker pays alike.
-      return fx.sub(
-        sim.world.get(e, SettlerNeeds).hunger,
-        fx.mul(needBar(NEED_DRAIN_UNITS_PER_TICK), fx.fromInt(ticks)),
-      );
+      return fx.sub(needsOf(sim, e).hunger, fx.mul(needBar(NEED_DRAIN_UNITS_PER_TICK), fx.fromInt(ticks)));
     };
     // Each step moves the bar by its own truncated quantum, so the sum is `steps` quanta, not one.
     expect(walked(false, false)).toBe(fx.mul(needBar(LAND_ROUGHNESS), fx.fromInt(WALK_STEPS + 1)));

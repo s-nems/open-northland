@@ -22,7 +22,15 @@ describe('snapshot component write tracking', () => {
     const { sim, id } = fixture();
     const zero = fx.fromInt(0);
     const position = { y: zero, extra: { label: 'before' }, x: zero, cleared: undefined };
-    const needs = { enjoyment: zero, extra: { label: 'before' }, piety: zero, fatigue: zero, hunger: zero };
+    const needs = {
+      enjoyment: zero,
+      extra: { label: 'before' },
+      piety: zero,
+      fatigue: zero,
+      hunger: zero,
+      asOf: 0,
+      drain: 'none' as const,
+    };
     sim.world.add(id, Position, position);
     sim.world.add(id, SettlerNeeds, needs);
     const stream = sim.snapshotDeltas();
@@ -42,6 +50,8 @@ describe('snapshot component write tracking', () => {
       piety: zero,
       fatigue: zero,
       hunger: fx.fromInt(1),
+      asOf: 0,
+      drain: 'none',
     });
     expect(Object.keys(written?.SettlerNeeds as object)).toEqual([
       'enjoyment',
@@ -49,6 +59,8 @@ describe('snapshot component write tracking', () => {
       'piety',
       'fatigue',
       'hunger',
+      'asOf',
+      'drain',
     ]);
     expect(held?.components.Position).toEqual({ y: zero, extra: { label: 'before' }, x: zero });
     expect(held?.components.SettlerNeeds).toMatchObject({ extra: { label: 'before' } });

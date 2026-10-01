@@ -1,5 +1,5 @@
 import type { SettlerBubble, SettlerBubbleKind } from '@open-northland/render';
-import { indexesOf, listedWhere, systems, type WorldSnapshot } from '@open-northland/sim';
+import { indexesOf, listedWhere, type NeedLevels, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
   childOrderOf,
   isMarrying,
@@ -8,6 +8,7 @@ import {
   positionOf,
   type SnapshotEntity,
   settlerNeedsOf,
+  storedNeedsOf,
 } from '../../game/snapshot.js';
 
 /**
@@ -19,7 +20,9 @@ import {
 export function computeSettlerBubbles(snapshot: WorldSnapshot): SettlerBubble[] {
   const out: SettlerBubble[] = [];
   for (const e of indexesOf(snapshot).get(BUBBLE_CARRIERS)) {
-    const kind = familyBubbleOf(e) ?? (ownedByComputerSeat(snapshot, e) ? undefined : needBubbleOf(e));
+    const kind =
+      familyBubbleOf(e) ??
+      (ownedByComputerSeat(snapshot, e) ? undefined : needBubbleOf(settlerNeedsOf(e, snapshot.tick)));
     if (kind === undefined) continue;
     const pos = positionOf(e);
     if (pos === undefined) continue;
@@ -29,9 +32,10 @@ export function computeSettlerBubbles(snapshot: WorldSnapshot): SettlerBubble[] 
 }
 
 /** The settlers some bubble would float over, whatever their seat: a small crowd, so the read scales with
- *  it rather than with the population. */
+ *  it rather than with the population. The stored bars place a settler, as the critical level is a band
+ *  threshold. */
 const BUBBLE_CARRIERS = listedWhere(
-  (e) => isSettler(e) && (familyBubbleOf(e) ?? needBubbleOf(e)) !== undefined,
+  (e) => isSettler(e) && (familyBubbleOf(e) ?? needBubbleOf(storedNeedsOf(e))) !== undefined,
   'bubble carriers',
   {
     values: ['SettlerNeeds', 'ChildOrder'],
@@ -46,8 +50,7 @@ function familyBubbleOf(e: SnapshotEntity): SettlerBubbleKind | undefined {
   return undefined;
 }
 
-function needBubbleOf(e: SnapshotEntity): SettlerBubbleKind | undefined {
-  const needs = settlerNeedsOf(e);
+function needBubbleOf(needs: NeedLevels | undefined): SettlerBubbleKind | undefined {
   if (needs === undefined) return undefined;
   if (needs.hunger >= systems.NEED_CRITICAL_THRESHOLD) return 'hungry';
   if (needs.fatigue >= systems.NEED_CRITICAL_THRESHOLD) return 'sleepy';

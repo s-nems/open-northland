@@ -17,27 +17,40 @@ export const Settler = defineComponent<{
   readonly jobType: number | null;
 }>('Settler', 'settlers');
 
+/** The bars the needs pass drains every tick: none, hunger and fatigue (a fighter's company is frozen), or
+ *  all three. Piety never drains. */
+export type NeedDrain = 'none' | 'body' | 'all';
+
+/** A settler's four need bars. A tick's drain alone leaves this unwritten, so read hunger, fatigue and
+ *  enjoyment through `needLevel` (`systems/lifecycle/needs`), never directly. */
 export const SettlerNeeds = defineComponent<{
-  /** 0..ONE; rises over time. */
+  /** 0..ONE as of {@link asOf}; rises over time. */
   hunger: Fixed;
-  /** 0..ONE; rises over time, cleared by the `sleep` atomic (id 8, `tribetypes` `setatomic <job> 8`). */
+  /** 0..ONE as of {@link asOf}; rises over time, cleared by the `sleep` atomic (id 8, `tribetypes`
+   *  `setatomic <job> 8`). */
   fatigue: Fixed;
   /**
-   * 0..ONE; does not rise with time - only forging a weapon or armor good raises it. The `pray` atomic
-   * (id 12, `setatomic 6 12`) at a lit home, a temple or the headquarters lowers it, and so does a nearby
-   * temple's blessing.
+   * 0..ONE; does not rise with time, so it is stored as it stands - only forging a weapon or armor good
+   * raises it. The `pray` atomic (id 12, `setatomic 6 12`) at a lit home, a temple or the headquarters
+   * lowers it, and so does a nearby temple's blessing.
    */
   piety: Fixed;
   /**
-   * 0..ONE; rises over time and is restored only by the talk/monologuize/listen atomics (14/13/15), never
-   * by a building (the original's channel 3, leisure/social).
+   * 0..ONE as of {@link asOf}; rises over time and is restored only by the talk/monologuize/listen atomics
+   * (14/13/15), never by a building (the original's channel 3, leisure/social).
    */
   enjoyment: Fixed;
+  /** The tick whose drain pass the stored hunger, fatigue and enjoyment include. */
+  asOf: number;
+  /** The bars each later drain pass raises; set only by the needs pass. */
+  drain: NeedDrain;
 }>('SettlerNeeds', 'settlers');
 
 export type SettlerNeedsState = NonNullable<(typeof SettlerNeeds)['__value']>;
 export type SettlerNeedsView = DeepReadonly<SettlerNeedsState>;
-export type SettlerInitialState = SettlerIdentity & SettlerNeedsState;
+/** The four bars at one tick. */
+export type NeedLevels = Pick<SettlerNeedsState, 'hunger' | 'fatigue' | 'piety' | 'enjoyment'>;
+export type SettlerInitialState = SettlerIdentity & NeedLevels;
 
 export type SettlerState = NonNullable<(typeof Settler)['__value']>;
 
@@ -81,6 +94,8 @@ export function addSettler(world: World, entity: Entity, state: SettlerInitialSt
     fatigue: state.fatigue,
     piety: state.piety,
     enjoyment: state.enjoyment,
+    asOf: 0,
+    drain: 'none',
   });
 }
 

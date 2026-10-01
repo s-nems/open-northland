@@ -4,7 +4,6 @@ import {
   Building,
   Health,
   Position,
-  SettlerNeeds,
   Stockpile,
   UnderConstruction,
 } from '../../src/components/index.js';
@@ -15,6 +14,7 @@ import { type HalfCellNode, nodeOfPosition, positionOfNode } from '../../src/nav
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { needsOf } from '../fixtures/settler.js';
 import { waterColumnMap } from '../fixtures/terrain.js';
 
 /**
@@ -151,7 +151,7 @@ describe('debugSetNeeds', () => {
     sim.enqueueSetup({ kind: 'debugSetNeeds', target: settler, hunger: 100, fatigue: 50 });
     sim.step();
 
-    const s = sim.world.get(settler, SettlerNeeds);
+    const s = needsOf(sim, settler);
     expect(s.hunger).toBe(ONE); // 100% → maxed
     expect(s.fatigue).toBe(fx.mulDiv(ONE, fx.fromInt(50), fx.fromInt(100))); // 50% → ONE/2
     expect(s.piety).toBe(start); // omitted - untouched

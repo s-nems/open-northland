@@ -8,6 +8,7 @@ import {
   recordHumanDeath,
   Settler,
   SettlerNeeds,
+  type SettlerNeedsView,
   Vehicle,
   Wedding,
   YoungAnimal,
@@ -26,6 +27,7 @@ import { setLandscape } from '../landscape/edits.js';
 import { animalRecord, firstLandscapeGfxOf, isSoldierJob, MEAT_LANDSCAPE_SLUG } from '../readviews/index.js';
 import { abandonCargoRun } from '../vehicles/cargo.js';
 import { vacateSeat } from '../vehicles/movement.js';
+import { needLevel } from './needs/levels.js';
 
 // A settler's death and silent removal: a leaf below the cleanup system, so a vehicle sinking its crew
 // and the cleanup reaping a vehicle do not import each other.
@@ -41,7 +43,7 @@ export function reap(world: World, ctx: SystemContext, e: Entity): void {
   ctx.events.emit({
     kind: 'settlerDied',
     entity: e,
-    cause: causeOf(world.tryGet(e, SettlerNeeds)),
+    cause: causeOf(world.tryGet(e, SettlerNeeds), ctx.tick),
     player: owner?.player ?? null,
     ...(animal ? { animal: true } : {}),
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
@@ -106,9 +108,12 @@ export function removeSettlerSilently(world: World, e: Entity): void {
 }
 
 /** A render/audio hint, not simulated state: hunger pinned at ONE reads as starvation, everything else as
- *  combat damage. A swing that kills a settler already pinned is the accepted ambiguity. */
-function causeOf(settler: { hunger: Fixed } | undefined): string {
-  return settler !== undefined && settler.hunger === ONE ? DEATH_CAUSE_STARVATION : DEATH_CAUSE_DAMAGE;
+ *  combat damage. A swing that kills a settler already pinned is the accepted ambiguity, and so is a
+ *  script removing a ship at sea before the needs pass, which reads its crew's bars one pass early. */
+function causeOf(needs: SettlerNeedsView | undefined, tick: number): string {
+  return needs !== undefined && needLevel(needs, 'hunger', tick) === ONE
+    ? DEATH_CAUSE_STARVATION
+    : DEATH_CAUSE_DAMAGE;
 }
 
 /** Original behavior: a meat pile is `maximumcadaversize` / 3 and at least 1, then halved for a young

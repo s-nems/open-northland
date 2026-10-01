@@ -37,7 +37,7 @@ export const LOST_NOTE_HOLD_TICKS = 5 * TICKS_PER_SECOND;
  *  taking a lighter card's place is the feed's rule, not this one. */
 function isNeedNoteOver(m: UserMessage, snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
   if (!needsRuleEnabled(snapshot)) return true;
-  const needs = settlerNeedsOf(e);
+  const needs = settlerNeedsOf(e, snapshot.tick);
   if (needs === undefined) return true;
   switch (m.type) {
     case USER_MESSAGE_TYPE.hungry:

@@ -8,7 +8,10 @@ import {
   groupedBy,
   indexesOf,
   listedWhere,
+  type NeedDrain,
+  type NeedLevels,
   ONE,
+  type SettlerNeedsView,
   systems,
   type WorldSnapshot,
 } from '@open-northland/sim';
@@ -409,19 +412,43 @@ export function ownerKeyOf(e: SnapshotEntity): string {
   return `${ownerPlayerOf(e)}`;
 }
 
-/** The settler's need deficits, fixed-point 0..ONE where higher is worse. */
-export function settlerNeedsOf(
-  e: SnapshotEntity,
-): { hunger: Fixed; fatigue: Fixed; piety: Fixed } | undefined {
-  const settler = e.components.SettlerNeeds as
-    | { hunger?: unknown; fatigue?: unknown; piety?: unknown }
-    | undefined;
-  const hunger = num(settler?.hunger);
-  const fatigue = num(settler?.fatigue);
-  const piety = num(settler?.piety);
-  return hunger !== undefined && fatigue !== undefined && piety !== undefined
-    ? { hunger: hunger as Fixed, fatigue: fatigue as Fixed, piety: piety as Fixed }
-    : undefined;
+/** The settler's need deficits at `tick`, the snapshot's own, fixed-point 0..ONE where higher is worse. */
+export function settlerNeedsOf(e: SnapshotEntity, tick: number): NeedLevels | undefined {
+  const needs = storedNeedsOf(e);
+  return needs === undefined ? undefined : systems.needLevels(needs, tick);
+}
+
+const NEED_DRAINS: readonly NeedDrain[] = ['none', 'body', 'all'];
+
+/** The bars as the sim last stored them. Each sits on the same side of the sated, drive and critical
+ *  levels and ONE as the current bar (the sim's band thresholds), so a reader without the tick may compare
+ *  them against those levels and no others. */
+export function storedNeedsOf(e: SnapshotEntity): SettlerNeedsView | undefined {
+  const stored = e.components.SettlerNeeds as Partial<Record<keyof SettlerNeedsView, unknown>> | undefined;
+  if (stored === undefined) return undefined;
+  const hunger = num(stored.hunger);
+  const fatigue = num(stored.fatigue);
+  const piety = num(stored.piety);
+  const enjoyment = num(stored.enjoyment);
+  const asOf = num(stored.asOf);
+  const drain = NEED_DRAINS.find((d) => d === stored.drain);
+  if (
+    hunger === undefined ||
+    fatigue === undefined ||
+    piety === undefined ||
+    enjoyment === undefined ||
+    asOf === undefined ||
+    drain === undefined
+  )
+    return undefined;
+  return {
+    hunger: hunger as Fixed,
+    fatigue: fatigue as Fixed,
+    piety: piety as Fixed,
+    enjoyment: enjoyment as Fixed,
+    asOf,
+    drain,
+  };
 }
 
 /** The need the player ordered the settler to answer, standing until the atomic that answers it lands. */

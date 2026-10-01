@@ -19,7 +19,7 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
-import { carriesNeeds, NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
+import { carriesNeeds, NEED_DRIVE_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { isFighterJob } from '../../readviews/index.js';
 import type { GossipCandidates } from './candidates.js';
@@ -56,17 +56,17 @@ function chatCooldownActive(world: World, tick: number, e: Entity): boolean {
  *  and not needing food or sleep more than company, since a survival need would cancel the chat at once. */
 function mayJoinChat(world: World, tick: number, e: Entity): boolean {
   if (chatCooldownActive(world, tick, e) || world.has(e, Chat) || world.has(e, CurrentAtomic)) return false;
-  return freeForChat(world, e);
+  return freeForChat(world, tick, e);
 }
 
 /** Whether a pastime chatter may be pulled into a company chat: its idle talk yields to another settler's
  *  need for company, as it yields to work. One still walking over to its partner is left to arrive. */
-function mayLeavePastimeChat(world: World, e: Entity): boolean {
-  return inPastimeChat(world, e) && !isTravelling(world, e) && freeForChat(world, e);
+function mayLeavePastimeChat(world: World, tick: number, e: Entity): boolean {
+  return inPastimeChat(world, e) && !isTravelling(world, e) && freeForChat(world, tick, e);
 }
 
 /** The holds a chat partner must be free of, whatever it is doing with its time. */
-function freeForChat(world: World, e: Entity): boolean {
+function freeForChat(world: World, tick: number, e: Entity): boolean {
   if (
     world.has(e, Wedding) ||
     world.has(e, FamilyDuty) ||
@@ -79,7 +79,10 @@ function freeForChat(world: World, e: Entity): boolean {
     return false;
   }
   const s = world.get(e, SettlerNeeds);
-  return s.hunger < NEED_DRIVE_THRESHOLD && s.fatigue < NEED_DRIVE_THRESHOLD;
+  return (
+    needLevel(s, 'hunger', tick) < NEED_DRIVE_THRESHOLD &&
+    needLevel(s, 'fatigue', tick) < NEED_DRIVE_THRESHOLD
+  );
 }
 
 /** Turn a pastime chat into one that holds both halves. */
@@ -133,7 +136,8 @@ export function planGossipSeek(
    *  the cheap bars above, so a settlement at peace never pays for the answer. */
   holdsGround?: () => boolean,
 ): boolean {
-  if (!ordered && world.get(e, SettlerNeeds).enjoyment < NEED_DRIVE_THRESHOLD) return false;
+  if (!ordered && needLevel(world.get(e, SettlerNeeds), 'enjoyment', ctx.tick) < NEED_DRIVE_THRESHOLD)
+    return false;
   if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
   // A bar that does not move, such as one a script froze, is one no chat could ever satisfy.
   if (!carriesNeeds(world, ctx.content, e)) return false;
@@ -152,7 +156,7 @@ export function planGossipSeek(
   const buckets = candidates.ensure();
   const idle = idlePartnerFilter(world, ctx.tick, e, owner);
   const chatting = (cand: Entity): boolean =>
-    cand !== e && ownerOf(world, cand) === owner && mayLeavePastimeChat(world, cand);
+    cand !== e && ownerOf(world, cand) === owner && mayLeavePastimeChat(world, ctx.tick, cand);
   const grabbable = (cand: Entity): boolean =>
     cand !== e && ownerOf(world, cand) === owner && mayJoinChat(world, ctx.tick, cand);
   const found =

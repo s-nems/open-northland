@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  Building,
-  Health,
-  Owner,
-  Position,
-  SettlerNeeds,
-  UnderConstruction,
-} from '../../src/components/index.js';
+import { Building, Health, Owner, Position, UnderConstruction } from '../../src/components/index.js';
 import { setNeedsEnabled } from '../../src/components/rules.js';
 import { ULP } from '../../src/core/fixed.js';
 import { TICKS_PER_SECOND } from '../../src/core/loop.js';
@@ -25,7 +18,7 @@ import {
 import { SYSTEM_ORDER } from '../../src/systems/schedule.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { settlerAt } from '../fixtures/settler.js';
+import { needsOf, settlerAt } from '../fixtures/settler.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 const VIKING = 1;
@@ -79,7 +72,7 @@ function blessAt(sim: Simulation, tick: number): void {
 }
 
 const hp = (sim: Simulation, e: Entity): number => sim.world.get(e, Health).hitpoints;
-const piety = (sim: Simulation, e: Entity): Fixed => sim.world.get(e, SettlerNeeds).piety;
+const piety = (sim: Simulation, e: Entity): Fixed => needsOf(sim, e).piety;
 
 describe('templeAuraSystem - the temple blesses its owner people once a game second', () => {
   it('adds hitpoints above the max and religion to a worn bar, on the second boundary only', () => {

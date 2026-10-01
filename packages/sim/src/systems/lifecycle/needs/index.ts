@@ -1,5 +1,11 @@
 export { drinkPressingDraughts } from './draughts.js';
 export {
+  mutNeeds,
+  NEED_BAND_THRESHOLDS,
+  needLevel,
+  needLevels,
+} from './levels.js';
+export {
   applyNeedUnits,
   clampNeed,
   NEED_CRITICAL_THRESHOLD,

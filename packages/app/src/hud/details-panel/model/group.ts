@@ -266,7 +266,9 @@ function settlerFacts(
       plural = copy.roles[role];
       singular = role === 'hero' ? jobDisplayName(ctx, jobType) : copy.role[role];
   }
-  const hunger = satisfactionBars(ent, needsOn, role !== 'hero').find((bar) => bar.need === 'hunger');
+  const hunger = satisfactionBars(ent, snapshot.tick, needsOn, role !== 'hero').find(
+    (bar) => bar.need === 'hunger',
+  );
   const eq = ent.components.Equipment as RawEquipment | undefined;
   const wornWeapon = slotGood(eq?.weapon);
   const weapon = fighter ? weaponRow(ctx, ent, wornWeapon) : undefined;

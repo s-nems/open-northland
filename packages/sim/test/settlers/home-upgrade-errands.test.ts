@@ -13,7 +13,6 @@ import {
   ResourceFootprint,
   Resting,
   Settler,
-  SettlerNeeds,
   SiteAssignment,
   Stockpile,
   Stranded,
@@ -30,7 +29,7 @@ import { prayAtHome } from '../../src/systems/settlers/drives/home-errands.js';
 import { interactionCell } from '../../src/systems/settlers/targets/workplaces.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { settlerAt } from '../fixtures/settler.js';
+import { setNeeds, settlerAt } from '../fixtures/settler.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 function scenario(tribe = 1, unchangedDoor = false) {
@@ -214,9 +213,7 @@ describe('home errands during an entrance-changing upgrade', () => {
 
   it('retargets an eat errand at the resident home', () => {
     const { sim, home, resident, terrain, oldDoor } = scenario();
-    const needs = sim.world.mut(resident, SettlerNeeds);
-    needs.fatigue = ZERO;
-    needs.hunger = ONE;
+    setNeeds(sim, resident, { fatigue: ZERO, hunger: ONE });
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(resident, MoveGoal).cell).toBe(oldDoor);
     finish(sim, home);

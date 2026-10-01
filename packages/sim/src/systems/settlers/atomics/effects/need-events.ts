@@ -1,15 +1,9 @@
-import {
-  needsEnabled,
-  Residence,
-  Settler,
-  type SettlerIdentity,
-  SettlerNeeds,
-} from '../../../../components/index.js';
+import { needsEnabled, Residence, Settler, type SettlerIdentity } from '../../../../components/index.js';
 import type { AtomicEffect } from '../../../../core/atomic-effect.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { homeQualityUseFor, spendHomeQuality } from '../../../family/home-quality.js';
-import { applyNeedUnits, carriesNeeds } from '../../../lifecycle/needs/index.js';
+import { applyNeedUnits, carriesNeeds, mutNeeds } from '../../../lifecycle/needs/index.js';
 import {
   atomicAnimationByName,
   atomicClipName,
@@ -78,7 +72,7 @@ export function applyAtomicNeedEvents(
       rest *= 2;
   }
 
-  const s = world.mut(e, SettlerNeeds);
+  const s = mutNeeds(world, e, ctx.tick);
   if (rest !== 0) s.fatigue = applyNeedUnits(s.fatigue, rest);
   if (food !== 0) s.hunger = applyNeedUnits(s.hunger, food);
   if (company !== 0) s.enjoyment = applyNeedUnits(s.enjoyment, company);

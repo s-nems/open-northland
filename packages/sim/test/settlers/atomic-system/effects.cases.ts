@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  addPerson,
-  Building,
-  Carrying,
-  Health,
-  Resource,
-  SettlerNeeds,
-  Stockpile,
-} from '../../../src/components/index.js';
+import { addPerson, Building, Carrying, Health, Resource, Stockpile } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import {
   anchorOnlyFootprint,
@@ -18,6 +10,7 @@ import {
 import { shrinkCarry } from '../../../src/systems/settlers/atomics/effects/goods/carry.js';
 import { testContent } from '../../fixtures/content.js';
 import { nextTickCtxOf } from '../../fixtures/context.js';
+import { needsOf } from '../../fixtures/settler.js';
 import { PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
 
 /** The eat slot, its fixture clip's length, and the one `event 3 2 +4000` meal that clip pays out. */
@@ -145,7 +138,7 @@ describe('atomicSystem - effects', () => {
     });
     startAtomic(sim, settler, { kind: 'eat', goodType: WOOD, from: null }, EAT_CLIP_TICKS, EAT_ATOMIC);
     for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
-    expect(sim.world.get(settler, SettlerNeeds).hunger).toBe(fx.sub(ONE, MEAL));
+    expect(needsOf(sim, settler).hunger).toBe(fx.sub(ONE, MEAL));
   });
 
   it('attack drains the swing damage from the target hitpoints', () => {

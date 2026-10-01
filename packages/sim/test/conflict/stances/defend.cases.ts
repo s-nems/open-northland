@@ -6,7 +6,6 @@ import {
   MoveGoal,
   Position,
   Resource,
-  SettlerNeeds,
   Stance,
   Stockpile,
 } from '../../../src/components/index.js';
@@ -22,6 +21,7 @@ import {
 } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { setNeeds } from '../../fixtures/settler.js';
 import {
   cell,
   combatant,
@@ -103,7 +103,7 @@ describe('DEFEND - hold an anchor, don’t chase past the leash', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const guard = combatant(sim, 10, 0, P0, MILITARY_MODE.DEFEND);
     sim.world.mut(guard, Stance).anchorCell = cell(sim, 10, 0);
-    sim.world.mut(guard, SettlerNeeds).hunger = fx.add(NEED_DRIVE_THRESHOLD, fx.div(ONE, fx.fromInt(100)));
+    setNeeds(sim, guard, { hunger: fx.add(NEED_DRIVE_THRESHOLD, fx.div(ONE, fx.fromInt(100))) });
     const store = sim.world.create();
     sim.world.add(store, Position, { x: fx.fromInt(16), y: fx.fromInt(0) });
     sim.world.add(store, Building, { buildingType: HEADQUARTERS, tribe: 1, built: ONE, level: 0 });

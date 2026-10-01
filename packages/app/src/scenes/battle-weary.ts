@@ -72,7 +72,7 @@ function build(sim: Simulation): void {
     // that carries the hunger, since it is the one with a larder behind it and nothing else to do.
     const reserve = weary(sim, spawnSettlerDirect(sim, JOB_SOLDIER_SPEAR, RESERVE_X, y, HUMAN_PLAYER));
     sim.world.mut(reserve, Stance).mode = systems.MILITARY_MODE.DEFEND;
-    sim.world.mut(reserve, SettlerNeeds).hunger = HUNGRY;
+    systems.mutNeeds(sim.world, reserve, sim.tick).hunger = HUNGRY;
   }
   for (const y of PICKET_ROWS) spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, PICKET_X, y, ENEMY_PLAYER);
 
@@ -92,7 +92,7 @@ function build(sim: Simulation): void {
 }
 
 function weary(sim: Simulation, e: Entity): Entity {
-  sim.world.mut(e, SettlerNeeds).fatigue = WEARY;
+  systems.mutNeeds(sim.world, e, sim.tick).fatigue = WEARY;
   return e;
 }
 
@@ -137,7 +137,9 @@ function picketAlive(sim: Simulation): boolean {
 function brokeOffMidFight(sim: Simulation): boolean {
   if (!picketAlive(sim)) return false;
   if (warband(sim).some((e) => sleeping(sim, e))) return true;
-  return reserve(sim).some((e) => sim.world.get(e, SettlerNeeds).hunger < HUNGRY);
+  return reserve(sim).some(
+    (e) => systems.needLevel(sim.world.get(e, SettlerNeeds), 'hunger', sim.tick) < HUNGRY,
+  );
 }
 
 export const battleWearyScene: SceneDefinition = {
@@ -166,8 +168,14 @@ export const battleWearyScene: SceneDefinition = {
     {
       label: 'with the fight won, the warband ate and slept off its fatigue',
       predicate: (sim) =>
-        warband(sim).every((e) => sim.world.get(e, SettlerNeeds).fatigue < systems.NEED_DRIVE_THRESHOLD) &&
-        reserve(sim).every((e) => sim.world.get(e, SettlerNeeds).hunger < HUNGRY),
+        warband(sim).every(
+          (e) =>
+            systems.needLevel(sim.world.get(e, SettlerNeeds), 'fatigue', sim.tick) <
+            systems.NEED_DRIVE_THRESHOLD,
+        ) &&
+        reserve(sim).every(
+          (e) => systems.needLevel(sim.world.get(e, SettlerNeeds), 'hunger', sim.tick) < HUNGRY,
+        ),
     },
   ],
 };

@@ -5,6 +5,7 @@ import {
   fx,
   nodeOfPosition,
   type Simulation,
+  systems,
 } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import {
@@ -122,7 +123,7 @@ export const wildlifeScene: SceneDefinition = {
         return (
           animals.length > 0 &&
           animals.every((e) => {
-            const needs = sim.world.get(e, SettlerNeeds);
+            const needs = systems.needLevels(sim.world.get(e, SettlerNeeds), sim.tick);
             return (
               needs.hunger === NEED_EMPTY && needs.fatigue === NEED_EMPTY && needs.enjoyment === NEED_EMPTY
             );

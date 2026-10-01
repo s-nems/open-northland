@@ -15,7 +15,6 @@ import {
   Position,
   Projectile,
   Resting,
-  SettlerNeeds,
   Sheltering,
   Stance,
 } from '../../src/components/index.js';
@@ -34,6 +33,7 @@ import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import * as ladder from '../../src/systems/settlers/drives/ladder.js';
 import { IDLE_REPLAN_PERIOD_TICKS, idleReplanDue } from '../../src/systems/settlers/planner/idle-replan.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
+import { needsOf, setNeeds } from '../fixtures/settler.js';
 
 // DEFENCE MODE - the alarm a player raises on a garrison building: its civilians run inside, the building
 // shoots the house bow at a rate their number sets, and they stay there until it drops. Source basis: the
@@ -636,10 +636,7 @@ describe('defence mode', () => {
 
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
-    const s = sim.world.mut(farmer, SettlerNeeds);
-    s.hunger = ONE;
-    s.fatigue = ONE;
-    s.piety = ONE;
+    setNeeds(sim, farmer, { hunger: ONE, fatigue: ONE, piety: ONE });
 
     for (let i = 0; i < 200; i++) sim.step();
 
@@ -654,13 +651,13 @@ describe('defence mode', () => {
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
     sim.world.add(farmer, Carrying, { goodType: RATION, amount: 1 });
-    sim.world.mut(farmer, SettlerNeeds).hunger = ONE;
+    setNeeds(sim, farmer, { hunger: ONE });
 
     // Eating takes it nowhere, so it is an answer a settler under cover may give - the alarm only bars
     // the walk to a larder.
-    stepUntil(sim, 200, () => sim.world.get(farmer, SettlerNeeds).hunger < ONE);
+    stepUntil(sim, 200, () => needsOf(sim, farmer).hunger < ONE);
 
-    expect(sim.world.get(farmer, SettlerNeeds).hunger).toBeLessThan(ONE);
+    expect(needsOf(sim, farmer).hunger).toBeLessThan(ONE);
     expect(insideOf(sim, farmer)).toBe(tower);
   });
 });

@@ -9,7 +9,6 @@ import {
   Resource,
   ResourceFootprint,
   Settler,
-  SettlerNeeds,
   setSettlerJob,
   Wedding,
 } from '../../src/components/index.js';
@@ -26,6 +25,7 @@ import { planGossipSeek } from '../../src/systems/social/gossip/plan.js';
 import { ownedWoodcutter } from '../conflict/orders/support.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, fixtureTick, nextTickCtxOf } from '../fixtures/context.js';
+import { setNeeds } from '../fixtures/settler.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 it.each(['water', 'resource'] as const)(
@@ -45,7 +45,7 @@ it.each(['water', 'resource'] as const)(
     }
     const a = ownedWoodcutter(s, 0, 0);
     s.world.add(a, Position, positionOfNode(10, 8));
-    s.world.mut(a, SettlerNeeds).enjoyment = fx.fromInt(1);
+    setNeeds(s, a, { enjoyment: fx.fromInt(1) });
     const b = ownedWoodcutter(s, 0, 0);
     setSettlerJob(s.world, b, 6);
     s.world.add(b, Position, positionOfNode(4, 4));
@@ -116,7 +116,7 @@ it.each(['gossip', 'wedding'] as const)(
     if (terrain === undefined) throw new Error('terrain');
     const a = ownedWoodcutter(sim, 0, 0);
     sim.world.add(a, Position, positionOfNode(5, 6));
-    sim.world.mut(a, SettlerNeeds).enjoyment = fx.fromInt(1);
+    setNeeds(sim, a, { enjoyment: fx.fromInt(1) });
     const b = ownedWoodcutter(sim, 0, 0);
     setSettlerJob(sim.world, b, 6);
     sim.world.add(b, Position, positionOfNode(4, 4));

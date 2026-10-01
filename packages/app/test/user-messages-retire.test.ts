@@ -57,6 +57,8 @@ function needsWorld(
             fatigue: needs.fatigue ?? 0,
             piety: needs.piety ?? 0,
             enjoyment: 0,
+            asOf: 0,
+            drain: 'none',
           },
           ...(ordered === null ? {} : { NeedOrder: { need: ordered } }),
         },

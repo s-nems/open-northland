@@ -17,7 +17,7 @@ import {
   type WorldSnapshot,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
-import { expectSameWorld } from '../fixtures/snapshot-parity.js';
+import { expectSameWorld, keepSettlersWalking } from '../fixtures/snapshot-parity.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 /**
@@ -45,6 +45,8 @@ const SETUP = new Map<number, Command[]>([
   [4, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 1, tribe: VIKING }]],
 ]);
 
+/** The settlement map's last node column, the walkers' far end. */
+const EAST_HX = 7;
 const PLANT_TICK = 200;
 const FELL_TICK = 250;
 
@@ -88,6 +90,7 @@ describe('snapshot mirror parity over a settlement run', () => {
     let planted: Entity | null = null;
     for (let tick = 1; tick <= 400; tick++) {
       for (const cmd of SETUP.get(tick) ?? []) sim.enqueueSetup(cmd);
+      keepSettlersWalking(sim, EAST_HX);
       sim.step();
       // Nothing dies in this short run on bare grass, so mint a bare entity and destroy it by hand
       // between two steps; no system reads it, and a snapshot lists it like any other.
@@ -133,6 +136,7 @@ describe('snapshot mirror parity over a settlement run', () => {
     let partial = 0;
     for (let tick = 1; tick <= 120; tick++) {
       for (const cmd of SETUP.get(tick) ?? []) sim.enqueueSetup(cmd);
+      keepSettlersWalking(sim, EAST_HX);
       sim.step();
       const delta = nonNull(deltas.next());
       mirror.apply(delta);
@@ -153,6 +157,7 @@ describe('snapshot mirror parity over a settlement run', () => {
     const mirror = new SnapshotMirror();
     for (let tick = 1; tick <= 60; tick++) {
       for (const cmd of SETUP.get(tick) ?? []) sim.enqueueSetup(cmd);
+      keepSettlersWalking(sim, EAST_HX);
       sim.step();
       if (tick % 2 === 0) sim.snapshot(); // drains the touched log ahead of the stream's own take
       mirror.apply(nonNull(deltas.next()));
@@ -166,6 +171,7 @@ describe('snapshot mirror parity over a settlement run', () => {
     const mirror = new SnapshotMirror();
     for (let tick = 1; tick <= 90; tick++) {
       for (const cmd of SETUP.get(tick) ?? []) sim.enqueueSetup(cmd);
+      keepSettlersWalking(sim, EAST_HX);
       sim.step();
       if (tick % 7 === 0) {
         const delta = nonNull(deltas.next());
@@ -184,6 +190,7 @@ describe('snapshot mirror parity over a settlement run', () => {
     const mirrorB = new SnapshotMirror();
     for (let tick = 1; tick <= 30; tick++) {
       for (const cmd of SETUP.get(tick) ?? []) sim.enqueueSetup(cmd);
+      keepSettlersWalking(sim, EAST_HX);
       sim.step();
       mirrorA.apply(nonNull(a.next()));
       if (tick % 3 === 0) mirrorB.apply(nonNull(b.next()));

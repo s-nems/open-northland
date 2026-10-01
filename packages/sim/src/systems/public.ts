@@ -62,12 +62,15 @@ export {
 } from './footprint/resources.js';
 export { ADULT_AGE_TICKS, CHILD_AGE_TICKS, isChild, TICKS_PER_AGE_YEAR } from './lifecycle/ageclass.js';
 // The need levels the HUD marks its bars and bubbles against, so presentation cannot drift from the
-// level the drives fire at, and the near-death line its warning reads.
+// level the drives fire at, the near-death line its warning reads, and the derivation of a stored bar.
 export {
   isNearDeath,
+  mutNeeds,
   NEED_CRITICAL_THRESHOLD,
   NEED_DRIVE_THRESHOLD,
   NEED_OVERFILL_FLOOR,
+  needLevel,
+  needLevels,
 } from './lifecycle/needs/index.js';
 // The herding ring bound, asserted by the livestock scene; the slaughter clip's wares, so the
 // real-content suite reads them the way the sim does.

@@ -11,7 +11,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { homeQualityActive } from '../../family/home-quality.js';
 import { homeUsedBy, reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
-import { carriesNeeds, NEED_SATED_THRESHOLD } from '../../lifecycle/needs/index.js';
+import { carriesNeeds, mutNeeds, NEED_SATED_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
 import { atomicClipNameAtHome, atomicEventChannelDelta } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, jobNeedsReligion } from '../../readviews/index.js';
 import {
@@ -57,10 +57,16 @@ function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound |
   const home = homeUsedBy(world, ctx, e);
   if (home === undefined || !isInside(world, e, home)) return null;
   const needs = world.get(e, SettlerNeeds);
-  if (needs.fatigue > NEED_SATED_THRESHOLD && homeClipServes(ctx, settler, SLEEP_ATOMIC_ID, REST)) {
+  if (
+    needLevel(needs, 'fatigue', ctx.tick) > NEED_SATED_THRESHOLD &&
+    homeClipServes(ctx, settler, SLEEP_ATOMIC_ID, REST)
+  ) {
     return { atomicId: SLEEP_ATOMIC_ID, effect: { kind: 'sleep' }, target: e };
   }
-  if (needs.hunger > NEED_SATED_THRESHOLD && homeClipServes(ctx, settler, EAT_ATOMIC_ID, HUNGER)) {
+  if (
+    needLevel(needs, 'hunger', ctx.tick) > NEED_SATED_THRESHOLD &&
+    homeClipServes(ctx, settler, EAT_ATOMIC_ID, HUNGER)
+  ) {
     const goodType = larderGood(world, ctx, home);
     if (goodType !== null)
       return { atomicId: EAT_ATOMIC_ID, effect: { kind: 'eat', goodType, from: home }, target: home };
@@ -106,8 +112,8 @@ export function planHomeTopUp(
 ): boolean {
   const round = nextHomeRound(world, ctx, e);
   if (round === null) return false;
-  if (world.has(e, Marriage) && world.get(e, SettlerNeeds).enjoyment !== ZERO)
-    world.mut(e, SettlerNeeds).enjoyment = ZERO;
+  if (world.has(e, Marriage) && needLevel(world.get(e, SettlerNeeds), 'enjoyment', ctx.tick) !== ZERO)
+    mutNeeds(world, e, ctx.tick).enjoyment = ZERO;
   startAtomic(
     world,
     e,

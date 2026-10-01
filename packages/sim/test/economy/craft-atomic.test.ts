@@ -12,7 +12,6 @@ import {
   Production,
   Resting,
   removeCurrentAtomic,
-  SettlerNeeds,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -31,6 +30,7 @@ import {
 } from '../../src/systems/settlers/planner/idle-replan.js';
 import { testContent } from '../fixtures/content.js';
 import { fixtureTick, nextTickCtxOf } from '../fixtures/context.js';
+import { setNeeds } from '../fixtures/settler.js';
 import { justAbove, NEED_DRIVE_THRESHOLD } from '../settlers/needs/support.js';
 import {
   buildingAt,
@@ -254,7 +254,7 @@ describe('a seated crafter between its idle beats', () => {
     const shop = { sim, shop: kitchen, cook: settlerAt(sim, 1, 0, CARPENTER, kitchen) };
     seat(shop);
 
-    sim.world.mut(shop.cook, SettlerNeeds).hunger = justAbove(NEED_DRIVE_THRESHOLD);
+    setNeeds(sim, shop.cook, { hunger: justAbove(NEED_DRIVE_THRESHOLD) });
     const eating = (): boolean => sim.world.tryGet(shop.cook, CurrentAtomic)?.effect.kind === 'eat';
     for (let i = 0; i < IDLE_REPLAN_PERIOD_TICKS && !eating(); i++) sim.step();
 

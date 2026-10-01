@@ -31,7 +31,7 @@ function spawnYoung(
 ): Entity {
   const e = spawnSettlerDirect(sim, jobType, x, y);
   sim.world.add(e, Age, { ticks: ageTicks });
-  sim.world.mut(e, SettlerNeeds).hunger = hunger;
+  systems.mutNeeds(sim.world, e, sim.tick).hunger = hunger;
   return e;
 }
 
@@ -73,7 +73,7 @@ export const childrenScene: SceneDefinition = {
         return (
           children.length === 2 &&
           babies.length === 1 &&
-          young.every((e) => sim.world.get(e, SettlerNeeds).hunger === HUNGRY)
+          young.every((e) => systems.needLevel(sim.world.get(e, SettlerNeeds), 'hunger', sim.tick) === HUNGRY)
         );
       },
     },

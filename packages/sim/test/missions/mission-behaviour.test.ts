@@ -13,7 +13,6 @@ import {
   PlayerOrder,
   Position,
   Settler,
-  SettlerNeeds,
   SettlerProgress,
   setMissionBehaviour,
   WALK_DIRECTION,
@@ -26,6 +25,7 @@ import { hexDistance, nodeOfPosition } from '../../src/nav/halfcell.js';
 import { grantWorkExperience } from '../../src/systems/progression/index.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { ctxOf } from '../fixtures/context.js';
+import { needsOf } from '../fixtures/settler.js';
 import {
   CARPENTER,
   firingSim,
@@ -157,11 +157,11 @@ describe('the bits the sim reads', () => {
     const frozen = only(sim, OWNER);
     const ordinary = only(sim, OWNER + 1);
     // Every settler opens on a seeded deficit, so the tell is the change, not the value.
-    const frozenAt = sim.world.get(frozen, SettlerNeeds).hunger;
-    const ordinaryAt = sim.world.get(ordinary, SettlerNeeds).hunger;
+    const frozenAt = needsOf(sim, frozen).hunger;
+    const ordinaryAt = needsOf(sim, ordinary).hunger;
     sim.run(200);
-    expect(sim.world.get(frozen, SettlerNeeds).hunger).toBe(frozenAt);
-    expect(sim.world.get(ordinary, SettlerNeeds).hunger).toBeGreaterThan(ordinaryAt);
+    expect(needsOf(sim, frozen).hunger).toBe(frozenAt);
+    expect(needsOf(sim, ordinary).hunger).toBeGreaterThan(ordinaryAt);
     // Frozen needs leave the hitpoints alone: a wounded one still heals.
     sim.world.mut(frozen, Health).hitpoints = 1;
     sim.run(200);

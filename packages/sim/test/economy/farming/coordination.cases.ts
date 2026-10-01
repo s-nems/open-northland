@@ -5,7 +5,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, nodeOfPosition, Simulation } from '../../../src/index.js';
 import { applySow, plannerSystem, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-
+import { setNeeds } from '../../fixtures/settler.js';
 import {
   Carrying,
   Crop,
@@ -194,7 +194,7 @@ it('keeps a carried sheaf through berry foraging and deposits it before harvesti
   sim.world.add(bush, Position, { x: fx.fromInt(2), y: fx.fromInt(4) });
   sim.world.add(bush, components.BerryBush, { stage: 'ripe', nextStageAtTick: 0 });
   sim.world.add(farmer, Carrying, { goodType: WHEAT, amount: 1 });
-  sim.world.mut(farmer, components.SettlerNeeds).hunger = fx.fromInt(1);
+  setNeeds(sim, farmer, { hunger: fx.fromInt(1) });
 
   plannerSystem(sim.world, ctxOf(sim));
   expect(sim.world.get(farmer, components.CurrentAtomic).effect).toEqual({ kind: 'forage', bush });

@@ -17,7 +17,6 @@ import {
   Residence,
   Resting,
   Settler,
-  SettlerNeeds,
   Stockpile,
   setSettlerJob,
   TrainingOrder,
@@ -45,6 +44,7 @@ import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { needsOf } from '../fixtures/settler.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -595,11 +595,11 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueueSetup({ kind: 'debugSetNeeds', target: stranger, hunger: 100 });
     for (let i = 0; i < 60; i++) sim.step();
     expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(2); // untouched - not his larder
-    expect(sim.world.get(stranger, SettlerNeeds).hunger).toBe(ONE); // still starving (no other food)
+    expect(needsOf(sim, stranger).hunger).toBe(ONE); // still starving (no other food)
     // Move him in: now it IS his larder and he eats.
     sim.enqueueSetup({ kind: 'assignHouse', entity: stranger, house: home });
     runUntil(sim, () => (sim.world.get(home, Stockpile).amounts.get(FOOD) ?? 0) < 2, 200, 'resident meal');
-    expect(sim.world.get(stranger, SettlerNeeds).hunger).toBeLessThan(ONE);
+    expect(needsOf(sim, stranger).hunger).toBeLessThan(ONE);
   });
 
   it('a resident whose trade never comes home leaves the family larder alone', () => {
@@ -647,12 +647,12 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.step();
 
     // Hunger only ever falls by eating, so a meal-sized dip below its peak proves she reached the store.
-    let minHunger = sim.world.get(woman, SettlerNeeds).hunger;
+    let minHunger = needsOf(sim, woman).hunger;
     let peakHunger = minHunger;
     runUntil(
       sim,
       () => {
-        const hunger = sim.world.get(woman, SettlerNeeds).hunger;
+        const hunger = needsOf(sim, woman).hunger;
         if (hunger < minHunger) minHunger = hunger;
         if (hunger > peakHunger) peakHunger = hunger;
         return sim.world.get(woman, Marriage).child !== null;

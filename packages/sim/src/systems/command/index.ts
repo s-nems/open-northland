@@ -383,7 +383,8 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       debugKill(world, command);
       return;
     case 'debugSetNeeds':
-      debugSetNeeds(world, command);
+      // Commands apply before the tick's needs pass.
+      debugSetNeeds(world, ctx.tick - 1, command);
       return;
     case 'debugFillStockpile':
       debugFillStockpile(world, ctx, command);

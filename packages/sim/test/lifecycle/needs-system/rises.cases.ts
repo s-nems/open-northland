@@ -6,12 +6,15 @@ import {
   BABY_MALE,
   CHILD_AGE_TICKS,
   CHILD_MALE,
+  NEED_CRITICAL_THRESHOLD,
   NEED_DRAIN_UNITS_PER_TICK,
   needBar,
   needsSystem,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { ctxOf, settlerWithHunger } from './support.js';
+import { fixtureTick, nextTickCtxOf } from '../../fixtures/context.js';
+import { needsOf, setNeeds } from '../../fixtures/settler.js';
+import { settlerWithHunger } from './support.js';
 
 /** What one tick of doing nothing costs a bar. */
 const DRAIN = needBar(NEED_DRAIN_UNITS_PER_TICK);
@@ -32,11 +35,11 @@ describe('needsSystem - hunger rises over time', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).hunger).toBe(DRAIN);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).hunger).toBe(DRAIN);
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).hunger).toBe(fx.add(DRAIN, DRAIN));
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).hunger).toBe(fx.add(DRAIN, DRAIN));
   });
 
   it('clamps hunger at ONE (never above - the needsInRange invariant ceiling)', () => {
@@ -44,26 +47,34 @@ describe('needsSystem - hunger rises over time', () => {
     // Start one step below the ceiling: the next rise would overshoot ONE and must clamp.
     const e = settlerWithHunger(sim, fx.sub(ONE, fx.div(DRAIN, fx.fromInt(2))));
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).hunger).toBe(ONE);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).hunger).toBe(ONE);
 
     // A fully-hungry settler stays pinned at ONE, never overflowing the invariant range.
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).hunger).toBe(ONE);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).hunger).toBe(ONE);
   });
 
-  it('leaves a settler whose drained bars have all pinned unwritten', () => {
+  it('writes a draining settler only when its drain starts or a bar reaches a band threshold', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    // Jobless, so a pinned hunger costs no hitpoints and the SettlerNeeds store is the only one in play.
-    const e = settlerWithHunger(sim, ONE, { jobType: null });
-    const pinned = sim.world.mut(e, SettlerNeeds);
-    pinned.fatigue = ONE;
-    pinned.enjoyment = ONE;
+    const e = settlerWithHunger(sim, fx.fromInt(0));
+    needsSystem(sim.world, nextTickCtxOf(sim)); // the first pass starts the drain
     const writes = sim.world.componentValueGeneration(SettlerNeeds);
 
-    needsSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < 100; i++) needsSystem(sim.world, nextTickCtxOf(sim));
 
     expect(sim.world.componentValueGeneration(SettlerNeeds)).toBe(writes);
+    expect(needsOf(sim, e).hunger).toBe(fx.mul(DRAIN, fx.fromInt(101)));
+  });
+
+  it('stores a bar the pass raises onto a band threshold', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.sub(NEED_CRITICAL_THRESHOLD, DRAIN));
+    needsSystem(sim.world, nextTickCtxOf(sim));
+
+    const stored = sim.world.get(e, SettlerNeeds);
+    expect(stored.hunger).toBe(NEED_CRITICAL_THRESHOLD);
+    expect(stored.asOf).toBe(fixtureTick(sim));
   });
 
   it('rises every settler independently (each reads/writes only its own hunger)', () => {
@@ -71,9 +82,9 @@ describe('needsSystem - hunger rises over time', () => {
     const a = settlerWithHunger(sim, fx.fromInt(0));
     const b = settlerWithHunger(sim, fx.div(ONE, fx.fromInt(2)));
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(a, SettlerNeeds).hunger).toBe(DRAIN);
-    expect(sim.world.get(b, SettlerNeeds).hunger).toBe(fx.add(fx.div(ONE, fx.fromInt(2)), DRAIN));
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, a).hunger).toBe(DRAIN);
+    expect(needsOf(sim, b).hunger).toBe(fx.add(fx.div(ONE, fx.fromInt(2)), DRAIN));
   });
 
   it('runs through the real Simulation.step() schedule and stays invariant-clean', () => {
@@ -82,7 +93,7 @@ describe('needsSystem - hunger rises over time', () => {
 
     for (let i = 0; i < 100; i++) sim.step();
     // 100 ticks of rise: well below ONE, monotonically increasing, invariant-clean throughout.
-    const hunger = sim.world.get(e, SettlerNeeds).hunger;
+    const hunger = needsOf(sim, e).hunger;
     expect(hunger).toBe(fx.mul(DRAIN, fx.fromInt(100)));
     expect(hunger).toBeLessThan(ONE);
     expect(sim.checkInvariants()).toEqual([]);
@@ -94,9 +105,8 @@ describe('needsSystem: the wildlife exemption, and only wildlife', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // As spawnAnimalHerd places it: an animal tribe, and wildlife takes no trade.
     const bear = settlerWithHunger(sim, fx.fromInt(0), { tribe: ANIMAL_TRIBE, jobType: null });
-    const settler = sim.world.get(bear, SettlerNeeds);
-
-    for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < 100; i++) needsSystem(sim.world, nextTickCtxOf(sim));
+    const settler = needsOf(sim, bear);
     expect(settler.hunger).toBe(fx.fromInt(0));
     expect(settler.fatigue).toBe(fx.fromInt(0));
     expect(settler.enjoyment).toBe(fx.fromInt(0));
@@ -107,8 +117,8 @@ describe('needsSystem: the wildlife exemption, and only wildlife', () => {
     const idle = settlerWithHunger(sim, fx.fromInt(0));
     setSettlerJob(sim.world, idle, null); // e.g. its workplace was just demolished
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(idle, SettlerNeeds).hunger).toBe(DRAIN);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, idle).hunger).toBe(DRAIN);
   });
 });
 
@@ -116,7 +126,7 @@ describe('needsSystem: heroes carry no needs', () => {
   it('keeps all four bars fixed for a hero of a trading civilization', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const hero = settlerWithHunger(sim, fx.fromInt(0), { jobType: HERO_JOB });
-    const initial = sim.world.get(hero, SettlerNeeds);
+    const initial = needsOf(sim, hero);
     const before = {
       hunger: initial.hunger,
       fatigue: initial.fatigue,
@@ -124,9 +134,9 @@ describe('needsSystem: heroes carry no needs', () => {
       enjoyment: initial.enjoyment,
     };
 
-    for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < 100; i++) needsSystem(sim.world, nextTickCtxOf(sim));
 
-    const after = sim.world.get(hero, SettlerNeeds);
+    const after = needsOf(sim, hero);
     expect(after.hunger).toBe(before.hunger);
     expect(after.fatigue).toBe(before.fatigue);
     expect(after.piety).toBe(before.piety);
@@ -144,8 +154,8 @@ describe('needsSystem: a person of a tribe that declares no trades', () => {
     });
     expect(sim.world.has(monster, components.Person)).toBe(true);
 
-    for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
-    const settler = sim.world.get(monster, SettlerNeeds);
+    for (let i = 0; i < 100; i++) needsSystem(sim.world, nextTickCtxOf(sim));
+    const settler = needsOf(sim, monster);
     expect(settler.hunger).toBe(fx.fromInt(0));
     expect(settler.fatigue).toBe(fx.fromInt(0));
     expect(settler.enjoyment).toBe(fx.fromInt(0));
@@ -157,8 +167,8 @@ describe('needsSystem: a person of a tribe that declares no trades', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const stranger = settlerWithHunger(sim, fx.fromInt(0), { tribe: UNRECORDED_TRIBE });
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(stranger, SettlerNeeds).hunger).toBe(DRAIN);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, stranger).hunger).toBe(DRAIN);
   });
 });
 
@@ -173,8 +183,8 @@ describe('needsSystem - a settler still growing carries no needs', () => {
       setSettlerJob(sim.world, young, jobType);
       sim.world.add(young, components.Age, { ticks: ageTicks });
 
-      for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
-      const settler = sim.world.get(young, SettlerNeeds);
+      for (let i = 0; i < 100; i++) needsSystem(sim.world, nextTickCtxOf(sim));
+      const settler = needsOf(sim, young);
       expect(settler.hunger).toBe(fx.fromInt(0));
       expect(settler.fatigue).toBe(fx.fromInt(0));
       expect(settler.enjoyment).toBe(fx.fromInt(0));
@@ -186,8 +196,8 @@ describe('needsSystem - a settler still growing carries no needs', () => {
     const adult = settlerWithHunger(sim, fx.fromInt(0));
     setSettlerJob(sim.world, adult, BABY_MALE); // an adult trade in some fixtures - no Age carried
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(adult, SettlerNeeds).hunger).toBe(DRAIN);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, adult).hunger).toBe(DRAIN);
   });
 });
 
@@ -196,24 +206,24 @@ describe('needsSystem - fatigue rises over time', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0)); // starts with fatigue 0 too
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).fatigue).toBe(DRAIN);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).fatigue).toBe(DRAIN);
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).fatigue).toBe(fx.add(DRAIN, DRAIN));
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).fatigue).toBe(fx.add(DRAIN, DRAIN));
   });
 
   it('clamps fatigue at ONE (never above - the needsInRange invariant ceiling)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
     // Start one half-step below the ceiling: the next rise would overshoot ONE and must clamp.
-    sim.world.mut(e, SettlerNeeds).fatigue = fx.sub(ONE, fx.div(DRAIN, fx.fromInt(2)));
+    setNeeds(sim, e, { fatigue: fx.sub(ONE, fx.div(DRAIN, fx.fromInt(2))) });
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).fatigue).toBe(ONE);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).fatigue).toBe(ONE);
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).fatigue).toBe(ONE);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).fatigue).toBe(ONE);
   });
 
   it('rises hunger and fatigue together in the same tick, invariant-clean', () => {
@@ -221,7 +231,7 @@ describe('needsSystem - fatigue rises over time', () => {
     const e = settlerWithHunger(sim, fx.fromInt(0));
 
     for (let i = 0; i < 100; i++) sim.step();
-    const settler = sim.world.get(e, SettlerNeeds);
+    const settler = needsOf(sim, e);
     expect(settler.hunger).toBe(fx.mul(DRAIN, fx.fromInt(100)));
     expect(settler.fatigue).toBe(settler.hunger); // same rate ⇒ equal after equal ticks
     expect(sim.checkInvariants()).toEqual([]);
@@ -233,14 +243,14 @@ describe('needsSystem - piety no longer rises over time', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0)); // starts with piety 0 too
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).piety).toBe(fx.fromInt(0));
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).piety).toBe(fx.fromInt(0));
 
     // A non-zero starting piety is also held, not decayed toward the ceiling.
     const held = fx.div(ONE, fx.fromInt(3));
-    sim.world.mut(e, SettlerNeeds).piety = held;
-    for (let i = 0; i < 50; i++) needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).piety).toBe(held);
+    setNeeds(sim, e, { piety: held });
+    for (let i = 0; i < 50; i++) needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).piety).toBe(held);
   });
 });
 
@@ -249,11 +259,11 @@ describe('needsSystem - enjoyment (company) rises for civilians, frozen for figh
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0)); // a woodcutter (civilian), enjoyment 0
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).enjoyment).toBe(DRAIN);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).enjoyment).toBe(DRAIN);
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).enjoyment).toBe(fx.add(DRAIN, DRAIN));
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).enjoyment).toBe(fx.add(DRAIN, DRAIN));
   });
 
   it('does not raise a fighter enjoyment (a soldier company need is frozen)', () => {
@@ -261,8 +271,8 @@ describe('needsSystem - enjoyment (company) rises for civilians, frozen for figh
     const e = settlerWithHunger(sim, fx.fromInt(0));
     setSettlerJob(sim.world, e, SOLDIER_JOB);
 
-    for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
-    const settler = sim.world.get(e, SettlerNeeds);
+    for (let i = 0; i < 100; i++) needsSystem(sim.world, nextTickCtxOf(sim));
+    const settler = needsOf(sim, e);
     expect(settler.enjoyment).toBe(fx.fromInt(0)); // never rose
     expect(settler.hunger).toBe(fx.mul(DRAIN, fx.fromInt(100))); // hunger still rises for all
   });
@@ -271,12 +281,12 @@ describe('needsSystem - enjoyment (company) rises for civilians, frozen for figh
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
     // Start one half-step below the ceiling: the next rise would overshoot ONE and must clamp.
-    sim.world.mut(e, SettlerNeeds).enjoyment = fx.sub(ONE, fx.div(DRAIN, fx.fromInt(2)));
+    setNeeds(sim, e, { enjoyment: fx.sub(ONE, fx.div(DRAIN, fx.fromInt(2))) });
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).enjoyment).toBe(ONE);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).enjoyment).toBe(ONE);
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, SettlerNeeds).enjoyment).toBe(ONE);
+    needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(needsOf(sim, e).enjoyment).toBe(ONE);
   });
 });

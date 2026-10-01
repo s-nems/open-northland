@@ -22,7 +22,7 @@ export const HUNT_NEED_BREAK_TICKS = 5 * TICKS_PER_SECOND;
 export function breaksHuntForNeed(world: World, ctx: SystemContext, e: Entity, ordered: boolean): boolean {
   const focus = world.tryGet(e, HuntFocus);
   if (ordered || focus === undefined || !world.has(e, Engagement)) return false;
-  if (ctx.tick < (focus.needBreakAt ?? 0) || !anyNeedPressing(world, ctx.content, e)) return false;
+  if (ctx.tick < (focus.needBreakAt ?? 0) || !anyNeedPressing(world, ctx, e)) return false;
   world.mut(e, HuntFocus).needBreakAt = ctx.tick + HUNT_NEED_BREAK_TICKS;
   clearNavState(world, e);
   return true;

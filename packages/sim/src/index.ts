@@ -25,7 +25,12 @@ export {
   fogModeOf,
   fogSettings,
 } from './components/rules.js';
-export { SETTLER_NAME_MAX_CHARS } from './components/settler.js';
+export {
+  type NeedDrain,
+  type NeedLevels,
+  SETTLER_NAME_MAX_CHARS,
+  type SettlerNeedsView,
+} from './components/settler.js';
 export { WALK_RANGE_NODES } from './components/signpost.js';
 export { TRADE_LIMIT_NONE, TRADE_ROUTE_HOUSES, type TradeImportMark } from './components/trade.js';
 export type { UnlockKind } from './components/unlocks.js';

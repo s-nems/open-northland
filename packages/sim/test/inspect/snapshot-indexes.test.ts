@@ -19,6 +19,7 @@ import {
   type WorldSnapshot,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { keepSettlersWalking } from '../fixtures/snapshot-parity.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 /**
@@ -140,6 +141,7 @@ describe('snapshot indexes over a mirror', () => {
     let touchedTicks = 0;
     for (let tick = 1; tick <= RUN_TICKS; tick++) {
       for (const cmd of SETUP.get(tick) ?? []) sim.enqueueSetup(cmd);
+      keepSettlersWalking(sim, MAP_WIDTH - 1);
       sim.step();
       const delta = nonNull(deltas.next());
       mirror.apply(delta);

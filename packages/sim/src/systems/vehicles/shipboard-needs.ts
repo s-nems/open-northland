@@ -11,7 +11,13 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { applyNeedUnits, carriesNeeds, NEED_DRIVE_THRESHOLD } from '../lifecycle/needs/index.js';
+import {
+  applyNeedUnits,
+  carriesNeeds,
+  mutNeeds,
+  NEED_DRIVE_THRESHOLD,
+  needLevel,
+} from '../lifecycle/needs/index.js';
 import { atomicClipName, atomicDuration, atomicEventChannelDelta } from '../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, isFood, jobIgnoresHomeHouse } from '../readviews/index.js';
 import { isAboardShip } from '../readviews/vehicles.js';
@@ -61,7 +67,7 @@ function clipWorth(ctx: SystemContext, world: World, e: Entity, atomicId: number
 
 function eatAboard(world: World, ctx: SystemContext, e: Entity, vehicle: Entity): boolean {
   const settler = world.get(e, Settler);
-  if (world.get(e, SettlerNeeds).hunger < NEED_DRIVE_THRESHOLD) return false;
+  if (needLevel(world.get(e, SettlerNeeds), 'hunger', ctx.tick) < NEED_DRIVE_THRESHOLD) return false;
   if (!due(ctx, e, atomicDuration(ctx.content, settler, EAT_ATOMIC_ID))) return false;
   const food = vehicleStockEntries(world.get(vehicle, VehicleStock)).find(
     ([good, line]) => line.current > 0 && isFood(ctx, good),
@@ -69,19 +75,19 @@ function eatAboard(world: World, ctx: SystemContext, e: Entity, vehicle: Entity)
   if (food === undefined) return false;
   const worth = clipWorth(ctx, world, e, EAT_ATOMIC_ID, HUNGER);
   if (worth <= 0 || !consumeVehicleGood(world, vehicle, ctx.content, food[0])) return false;
-  const s = world.mut(e, SettlerNeeds);
+  const s = mutNeeds(world, e, ctx.tick);
   s.hunger = applyNeedUnits(s.hunger, worth);
   return true;
 }
 
 function sleepAboard(world: World, ctx: SystemContext, e: Entity): boolean {
   const settler = world.get(e, Settler);
-  if (world.get(e, SettlerNeeds).fatigue < NEED_DRIVE_THRESHOLD) return false;
+  if (needLevel(world.get(e, SettlerNeeds), 'fatigue', ctx.tick) < NEED_DRIVE_THRESHOLD) return false;
   if (!due(ctx, e, atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID))) return false;
   const rest = clipWorth(ctx, world, e, SLEEP_ATOMIC_ID, REST);
   const worth = jobIgnoresHomeHouse(ctx.content, settler.jobType) ? rest : Math.trunc(rest / 2);
   if (worth <= 0) return false;
-  const s = world.mut(e, SettlerNeeds);
+  const s = mutNeeds(world, e, ctx.tick);
   s.fatigue = applyNeedUnits(s.fatigue, worth);
   return true;
 }
@@ -89,17 +95,17 @@ function sleepAboard(world: World, ctx: SystemContext, e: Entity): boolean {
 /** A talk with the first other passenger aboard, who listens: each gets what its half of a chat pays. */
 function chatAboard(world: World, ctx: SystemContext, e: Entity, riders: readonly Entity[]): boolean {
   const settler = world.get(e, Settler);
-  if (world.get(e, SettlerNeeds).enjoyment < NEED_DRIVE_THRESHOLD) return false;
+  if (needLevel(world.get(e, SettlerNeeds), 'enjoyment', ctx.tick) < NEED_DRIVE_THRESHOLD) return false;
   const listener = riders.find((other) => other !== e);
   if (listener === undefined) return false;
   if (!due(ctx, e, atomicDuration(ctx.content, settler, TALK_ATOMIC_ID))) return false;
   const talked = clipWorth(ctx, world, e, TALK_ATOMIC_ID, LEISURE);
   if (talked <= 0) return false;
-  const s = world.mut(e, SettlerNeeds);
+  const s = mutNeeds(world, e, ctx.tick);
   s.enjoyment = applyNeedUnits(s.enjoyment, talked);
   if (carriesNeeds(world, ctx.content, listener)) {
     const heard = clipWorth(ctx, world, listener, LISTEN_ATOMIC_ID, LEISURE);
-    const l = world.mut(listener, SettlerNeeds);
+    const l = mutNeeds(world, listener, ctx.tick);
     l.enjoyment = applyNeedUnits(l.enjoyment, heard);
   }
   return true;

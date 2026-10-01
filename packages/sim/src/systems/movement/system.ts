@@ -197,7 +197,7 @@ function walkHumanLeg(
       stops,
       p,
       target,
-      walkStepTicks(resistance, walkStepModifiersOf(world, e, ctx.content)),
+      walkStepTicks(resistance, walkStepModifiersOf(world, e, ctx.content, ctx.tick)),
     );
     // The planned heading is fixed for this leg. Separation can nudge the position across an octant
     // boundary; re-aiming every tick would insert fresh turn holds in the middle of a steady step.
@@ -301,7 +301,7 @@ export function walkPacePerTick(world: World, ctx: SystemContext, e: Entity): Fi
       : (period ??
         walkStepTicks(
           departureResistance(ctx.terrain, pf, stops),
-          walkStepModifiersOf(world, e, ctx.content),
+          walkStepModifiersOf(world, e, ctx.content, ctx.tick),
         ));
   return fx.div(worldDistance(from.x, from.y, to.x, to.y), fx.fromInt(ticks));
 }

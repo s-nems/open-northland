@@ -1,4 +1,3 @@
-import type { ContentSet } from '@open-northland/data';
 import {
   Carrying,
   isAiPlayer,
@@ -17,9 +16,11 @@ import type { SystemContext } from '../../context.js';
 import {
   carriesNeeds,
   drinkPressingDraughts,
+  mutNeeds,
   NEED_CRITICAL_THRESHOLD,
   NEED_DRIVE_THRESHOLD,
   NEED_SATED_THRESHOLD,
+  needLevel,
 } from '../../lifecycle/needs/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { isFood, jobNeedsReligion } from '../../readviews/index.js';
@@ -51,16 +52,16 @@ import { eatAtPost, sleepAtPost } from './tower-post.js';
  * trade's bar can pin with nothing able to serve it. A need the player ordered fires its rung whatever
  * the bar reads.
  */
-export function anyNeedPressing(world: World, content: ContentSet, e: Entity): boolean {
-  if (!carriesNeeds(world, content, e)) return false;
+export function anyNeedPressing(world: World, ctx: SystemContext, e: Entity): boolean {
+  if (!carriesNeeds(world, ctx.content, e)) return false;
   const settler = world.get(e, Settler);
   const needs = world.get(e, SettlerNeeds);
   const ordered = orderedNeed(world, e);
   return (
     ordered !== undefined ||
-    needs.hunger >= NEED_DRIVE_THRESHOLD ||
-    needs.fatigue >= NEED_DRIVE_THRESHOLD ||
-    (needs.piety >= NEED_DRIVE_THRESHOLD && jobNeedsReligion(content, settler.jobType))
+    needLevel(needs, 'hunger', ctx.tick) >= NEED_DRIVE_THRESHOLD ||
+    needLevel(needs, 'fatigue', ctx.tick) >= NEED_DRIVE_THRESHOLD ||
+    (needs.piety >= NEED_DRIVE_THRESHOLD && jobNeedsReligion(ctx.content, settler.jobType))
   );
 }
 
@@ -89,7 +90,8 @@ function maySeek(world: World, e: Entity, ordered: NeedKind | undefined, need: N
 /** The hunger and fatigue bars once carried draughts have answered them. */
 function barsAfterDraughts(world: World, ctx: SystemContext, e: Entity): { hunger: Fixed; fatigue: Fixed } {
   drinkPressingDraughts(world, ctx, e);
-  return world.get(e, SettlerNeeds);
+  const needs = world.get(e, SettlerNeeds);
+  return { hunger: needLevel(needs, 'hunger', ctx.tick), fatigue: needLevel(needs, 'fatigue', ctx.tick) };
 }
 
 /**
@@ -114,10 +116,10 @@ export function answerNeedInPlace(
     const seek = maySeek(world, e, ordered, 'hunger');
     if (seek && eatCarried(world, ctx, e, settler, world.tryGet(e, Carrying))) return true;
     if (seek && eatAtPost(world, ctx, e, settler)) return true;
-    if (seek) settleUnservedNeedForAi(world, e, 'hunger');
+    if (seek) settleUnservedNeedForAi(world, ctx.tick, e, 'hunger');
   }
   if (pressing(bars.fatigue, ordered, 'fatigue') && maySeek(world, e, ordered, 'fatigue')) {
-    settleUnservedNeedForAi(world, e, 'fatigue');
+    settleUnservedNeedForAi(world, ctx.tick, e, 'fatigue');
   }
   return false;
 }
@@ -199,7 +201,7 @@ export function planNeeds(
     // Hungry with no reachable food, or forbidden to look: a human seat's settler falls through to
     // work while hunger climbs to ONE and the starvation bite drains the pool until food appears. A
     // settler holding its ground never looked, so nothing failed to settle.
-    if (walks) settleUnservedNeedForAi(world, e, 'hunger');
+    if (walks) settleUnservedNeedForAi(world, ctx.tick, e, 'hunger');
   }
 
   if (pressing(bars.fatigue, ordered, 'fatigue')) {
@@ -254,7 +256,7 @@ export function planNeeds(
     // Nowhere to pray: a human seat's settler falls through to work with its bar or its order standing,
     // and its player hears of it once the bar reaches the level the HUD marks a need at, or at once for
     // an ordered prayer.
-    settleUnservedNeedForAi(world, e, 'piety');
+    settleUnservedNeedForAi(world, ctx.tick, e, 'piety');
     const player = ownerOf(world, e);
     const marked = ordered === 'piety' || piety >= NEED_CRITICAL_THRESHOLD;
     if (marked && player !== undefined && !isAiPlayer(world, player)) {
@@ -273,9 +275,14 @@ export function planNeeds(
  * warning message instead. A seek the seat
  * forbade starts no task there, so that bar falls to the seat's refill (`lifecycle/needs`).
  */
-function settleUnservedNeedForAi(world: World, e: Entity, need: 'hunger' | 'fatigue' | 'piety'): void {
-  if (world.get(e, SettlerNeeds)[need] <= NEED_SATED_THRESHOLD) return;
+function settleUnservedNeedForAi(
+  world: World,
+  tick: number,
+  e: Entity,
+  need: 'hunger' | 'fatigue' | 'piety',
+): void {
+  if (needLevel(world.get(e, SettlerNeeds), need, tick) <= NEED_SATED_THRESHOLD) return;
   const player = ownerOf(world, e);
   if (player === undefined || !isAiPlayer(world, player)) return;
-  world.mut(e, SettlerNeeds)[need] = NEED_SATED_THRESHOLD;
+  mutNeeds(world, e, tick)[need] = NEED_SATED_THRESHOLD;
 }

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { SettlerNeeds, setNeedsEnabled } from '../../../../src/components/index.js';
+import { setNeedsEnabled } from '../../../../src/components/index.js';
 import { fx, Simulation } from '../../../../src/index.js';
 import { atomicSystem } from '../../../../src/systems/index.js';
 import { nextTickCtxOf } from '../../../fixtures/context.js';
+import { needsOf } from '../../../fixtures/settler.js';
 import {
   combatCadenceContent,
   fighterAt,
@@ -26,8 +27,8 @@ describe('atomicSystem - the attacker pays the swing need-drain from its own cli
     // −20 on the ~10000-unit reserve → +20/10000·ONE on the 0..ONE need bar (the reserve drain raises the
     // need). A soldier never goes home, so his rest costs full strength wherever he swings.
     const expected = fx.div(fx.fromInt(20), fx.fromInt(10_000));
-    expect(sim.world.get(attacker, SettlerNeeds).fatigue).toBe(expected);
-    expect(sim.world.get(attacker, SettlerNeeds).hunger).toBe(expected);
+    expect(needsOf(sim, attacker).fatigue).toBe(expected);
+    expect(needsOf(sim, attacker).hunger).toBe(expected);
   });
 
   it('a woman swing drains 5× as much (−100 each), wherever she swings it', () => {
@@ -40,10 +41,10 @@ describe('atomicSystem - the attacker pays the swing need-drain from its own cli
 
     const soldierRise = fx.div(fx.fromInt(20), fx.fromInt(10_000));
     const womanRise = fx.div(fx.fromInt(100), fx.fromInt(10_000));
-    expect(sim.world.get(attacker, SettlerNeeds).hunger).toBe(womanRise);
+    expect(needsOf(sim, attacker).hunger).toBe(womanRise);
     expect(womanRise).toBe(soldierRise * 5); // a woman's swing costs 5× a soldier's - the data ratio
     // She has a house to go back to, which halves rest she GAINS in the open, never what a swing spends.
-    expect(sim.world.get(attacker, SettlerNeeds).fatigue).toBe(womanRise);
+    expect(needsOf(sim, attacker).fatigue).toBe(womanRise);
   });
 
   it('charges nothing while the needs rule is off, so a long battle cannot walk a fighter off to eat', () => {
@@ -55,7 +56,7 @@ describe('atomicSystem - the attacker pays the swing need-drain from its own cli
 
     for (let i = 0; i < 27; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
 
-    expect(sim.world.get(attacker, SettlerNeeds).fatigue).toBe(0);
-    expect(sim.world.get(attacker, SettlerNeeds).hunger).toBe(0);
+    expect(needsOf(sim, attacker).fatigue).toBe(0);
+    expect(needsOf(sim, attacker).hunger).toBe(0);
   });
 });

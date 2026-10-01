@@ -227,8 +227,8 @@ function isJobless(e: SnapshotEntity): boolean {
 /** Each note fires at the level the reserve table sets aside for marking a need to the player, which is
  *  the same level the original reads before raising these very messages. Only the heaviest hunger stage
  *  is raised; a dying settler's note stands in for both. */
-function raiseNeeds(raiser: MessageRaiser, e: SnapshotEntity): void {
-  const needs = settlerNeedsOf(e);
+function raiseNeeds(raiser: MessageRaiser, e: SnapshotEntity, tick: number): void {
+  const needs = settlerNeedsOf(e, tick);
   if (needs === undefined || isJobless(e)) return;
   const alert = systems.NEED_CRITICAL_THRESHOLD;
   if (!isDying(e)) {
@@ -414,7 +414,7 @@ export function createSnapshotMessageSource(
       const idle: IdleNoteContext = { streaks, posts, stalls, asks, dismissed };
       for (const e of actorsOf(snapshot)) {
         if (!isLocalPerson(e, localPlayer)) continue;
-        if (needsOn) raiseNeeds(raiser, e);
+        if (needsOn) raiseNeeds(raiser, e, snapshot.tick);
         raiseDying(raiser, e);
         if (isLost(e)) raiser.settler(USER_MESSAGE_TYPE.lostWithoutSignposts, e);
         raiseFamilyBlock(raiser, snapshot, e, foodWaits);
