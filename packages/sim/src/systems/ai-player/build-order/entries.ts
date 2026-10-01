@@ -417,4 +417,4 @@ export const OVERFLOW_BUILD_REACH_NODES = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
 /** Decisions between the spot searches of an entry whose last search found nothing, a lane's and a
  *  passed-over entry's included, about 60 s at the decision interval. It never gives up, since felled
  *  trees or a razed building can free room later. Approximation: a tuned cadence, not an original value. */
-export const STALLED_PLACEMENT_RETRY_DECISIONS = 30;
+export const STALLED_PLACEMENT_RETRY_DECISIONS = 15;

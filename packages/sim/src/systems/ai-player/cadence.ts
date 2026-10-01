@@ -2,13 +2,14 @@ import { AiPlayer } from '../../components/ai-player.js';
 import type { World } from '../../ecs/world.js';
 
 /**
- * Ticks between one seat's decision passes - 2 s at the 12 ticks/s base clock. Approximation: a
- * genre-convention seconds-scale strategy cadence, not an original value.
+ * Ticks between one seat's decision passes - 4 s at the 12 ticks/s base clock (owner ruling: combat,
+ * alarms and the scripted handlers run on their own clocks, so the strategy may notice a change this
+ * late). Approximation: a genre-convention seconds-scale strategy cadence, not an original value.
  */
-export const AI_DECISION_INTERVAL_TICKS = 24;
+export const AI_DECISION_INTERVAL_TICKS = 48;
 
 /** How far apart consecutive seats' decision slots lie, in ticks (authored). Coprime with the interval,
- *  so every seat below 24 gets a slot of its own, and seats 0-6 land at least three ticks apart. */
+ *  so every seat below 48 gets a slot of its own, and seats 0-6 land at least six ticks apart. */
 const AI_SEAT_SLOT_STEP_TICKS = 7;
 
 /** Whether `tick` is one of `player`'s strategic decisions. */

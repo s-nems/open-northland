@@ -18,7 +18,7 @@ import type { CollectorGround } from './allocate.js';
 import type { WantedGood } from './wanted-goods.js';
 
 /** Every how many of a seat's decisions a collector flag is re-aimed at the nearest live resource
- *  (authored). 30 decisions is about 60 s at the base clock. */
+ *  (authored). 30 decisions is about two minutes at the base clock. */
 export const FLAG_RELOCATE_EVERY_DECISIONS = 30;
 
 /** Whether this tick's decision re-aims `holder`'s flag. Each holder's round is offset by his id, so a

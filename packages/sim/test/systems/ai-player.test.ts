@@ -208,7 +208,7 @@ describe('AiPlayerSystem - cadence, stagger, and module gates', () => {
     for (let tick = 1; tick <= 2 * AI_DECISION_INTERVAL_TICKS; tick++) {
       runAiPlayerModules(world, ctxAt(tick, commands), [stub]);
     }
-    const OTHER_SEAT_SLOT = 11; // (5 × 7) mod 24
+    const OTHER_SEAT_SLOT = 35; // (5 × 7) mod 48
     expect(calls).toEqual([
       { tick: OTHER_SEAT_SLOT, player: OTHER_SEAT },
       { tick: AI_DECISION_INTERVAL_TICKS, player: 0 },
@@ -218,9 +218,9 @@ describe('AiPlayerSystem - cadence, stagger, and module gates', () => {
     expect(commands.pendingCount).toBe(calls.length); // every returned command was enqueued
   });
 
-  it('keeps seven seats at least three ticks apart around the interval', () => {
+  it('keeps seven seats at least six ticks apart around the interval', () => {
     const SEATS = 7;
-    const MIN_GAP_TICKS = 3;
+    const MIN_GAP_TICKS = 6;
     const slots: number[] = [];
     for (let player = 0; player < SEATS; player++) {
       const due = [];
