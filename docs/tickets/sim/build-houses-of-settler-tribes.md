@@ -5,9 +5,9 @@
 A seat places houses of its roster tribe only. `setupPlacementTribes` declares one tribe per seat
 (`playerTribe` from the map roster), the command authority refuses a `placeBuilding` of any other
 tribe, and the build menu lists that tribe's houses alone. Maps that hand a seat settlers of other
-tribes leave them nothing of their own to raise: `nowa_nadzieja` gives the Viking seat one settler of
-each tribe, `gringo_sub` gives the Frank seat Byzantine and Saracen settlers, and
-`mroczny_swiat_sub3` mixes four tribes in the Viking seat.
+tribes leave them nothing of their own to raise: `gringo_sub` gives the Frank seat 56 Byzantine and 32
+Saracen settlers, and `mroczny_swiat_sub3` mixes Frank, Byzantine and Saracen settlers into the Viking
+seat.
 
 Original behavior (read from the original's logic, unconfirmed against the running game): the build
 menu walks every tribe's houses and lists one when the seat has it both
@@ -33,5 +33,5 @@ side; only the trade itself is gated by the settler's own tribe.
 ## Verify
 
 Sim tests for the authority and the enabled set across two tribes in one seat. Browser pass on
-`nowa_nadzieja`: after the Frank settler reaches a Frank trade, a Frank house appears in the build
+`mroczny_swiat_sub3`: once a Frank settler reaches a Frank trade, a Frank house appears in the build
 menu, places, and its builders raise it.
