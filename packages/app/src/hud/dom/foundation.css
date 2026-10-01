@@ -4961,7 +4961,7 @@ body.on-drag-scroll * {
   color: var(--ink);
   background:
     radial-gradient(ellipse 75% 80% at 50% 45%, #0000 60%, #6b532a40 100%),
-    url("../../assets/ui/mission-book/vellum.webp") center / 240px auto,
+    url("../../assets/ui/mission-book/vellum.webp") center / cover,
     #e3d3ac;
   border: 1px solid #3a2c1e;
   border-top: 0;

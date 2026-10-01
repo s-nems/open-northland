@@ -10,7 +10,7 @@ import { goalMarkMarkup, goalTextMarkup } from './goal-markup.js';
 const SLIP_OPEN_ROWS = 4;
 /** How long the open slip shows a done or new goal before it counts as read: the done goal leaves,
  *  the new one loses its tag. Real time, so a paused game reads it too. */
-const SLIP_READ_MS = 10_000;
+const SLIP_READ_MS = 30_000;
 /** Room it keeps under the script's info lines when they stand under the bar. */
 const INFO_LINES_GAP = 6;
 
@@ -111,8 +111,9 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
     const hidden = bookOpen || goals.length === 0;
     setHidden(dock, hidden);
     if (hidden) {
+      // Shown again, the same rows restart their clock.
       clock.clear();
-      stamped = new Set();
+      shownKey = '';
       return;
     }
     const key = keyOf(goals, marks);
