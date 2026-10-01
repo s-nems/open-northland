@@ -19,8 +19,8 @@ export interface PlacementCursorInput {
   readonly signpostActive: boolean;
   /** The ship whose dock pick is armed, or null. */
   readonly dockVehicle: number | null;
-  /** A workplace pick armed for a flag trade: the flag follows the cursor until the click plants it or
-   *  names a building. */
+  /** A pick that plants a work flag is armed: the flag follows the cursor until the click plants it or,
+   *  for a flag trade's workplace pick, names a building. */
   readonly flagActive: boolean;
   /** Viewport-memoized band probes; each runs only when its own mode wins, so a frame never walks a
    *  band it would discard. */

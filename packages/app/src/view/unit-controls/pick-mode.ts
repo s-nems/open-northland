@@ -251,7 +251,8 @@ export interface PickModeController {
   signpostActive(): boolean;
   /** The ship whose dock pick is armed, or null: the frame loop washes the map with its mooring spots. */
   dockVehicle(): number | null;
-  /** A flag trade's workplace pick is armed, so the flag ghost follows the cursor. */
+  /** A pick that plants a work flag is armed (a flag trade's workplace pick or the work-area pick), so
+   *  the flag ghost follows the cursor. */
   flagActive(): boolean;
   /** Non-null when a mode was armed: the press resolved or cancelled it, so the caller must not fall
    *  through to selection or an order. */
@@ -539,7 +540,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     armed: () => pickMode,
     signpostActive: () => pickMode?.kind === 'signpost',
     dockVehicle: () => (pickMode?.kind === 'vehicle-dock' ? pickMode.vehicle : null),
-    flagActive: () => pickMode?.kind === 'workplace-or-flag',
+    flagActive: () => pickMode?.kind === 'workplace-or-flag' || pickMode?.kind === 'work-area',
     handleMouseDown,
     handleOverviewPress,
     endShiftChain: () => {

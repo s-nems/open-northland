@@ -59,7 +59,7 @@ const WORLD = snapshotOf([
 ]);
 
 function harness(under: number | null): {
-  pick: (units: readonly number[]) => string | null;
+  pick: (units: readonly number[], kind?: 'workplace-or-flag' | 'work-area') => string | null;
   issued: Command[];
   flags: { col: number; row: number; units: readonly number[] | undefined }[];
   flagActive: () => boolean;
@@ -88,8 +88,8 @@ function harness(under: number | null): {
     setArmedCursor: () => undefined,
   });
   return {
-    pick: (units) => {
-      pickMode.arm({ kind: 'workplace-or-flag', units });
+    pick: (units, kind = 'workplace-or-flag') => {
+      pickMode.arm({ kind, units });
       expect(pickMode.flagActive()).toBe(true);
       return pickMode.handleMouseDown({ clientX: 0, clientY: 0, button: 0 } as MouseEvent);
     },
@@ -158,4 +158,11 @@ it('lights the workplaces that employ the trade while armed', () => {
   pickMode.arm({ kind: 'workplace-or-flag', units: [GATHERER] });
   expect(pickMode.highlight()?.map((item) => item.id)).toEqual([HUT]);
   expect(issued).toEqual([]);
+});
+
+it('floats the flag under the cursor for the work-area pick too, and plants it on the press', () => {
+  const h = harness(null);
+  h.pick([GATHERER], 'work-area');
+  expect(h.flags).toEqual([{ ...SPOT, units: [GATHERER] }]);
+  expect(h.flagActive()).toBe(false);
 });
