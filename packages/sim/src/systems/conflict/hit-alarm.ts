@@ -51,7 +51,7 @@ function tickAlarms(world: World, tick: number): TickAlarms {
  * struck reaction for its side's soldiers within {@link ALARM_SOLDIER_RADIUS_NODES} and its people within
  * {@link ALARM_PEOPLE_RADIUS_NODES}. A melee blow lands before this tick's combat pass and waits for it; a
  * shot lands after it and is answered at once from the pass's index. Only a player's person raises it;
- * the original's alarm among wild animals is not modelled.
+ * a struck animal rouses its kin through `alarmKin` instead.
  *
  * An alarm on a tick whose combat pass did not run goes unanswered, since the queue is tick-scoped state no
  * save carries. The pass's gate lets a tick through whenever the striker could still be fought: another

@@ -6,8 +6,10 @@ import {
   FOG_MODE,
   Frightened,
   Owner,
+  ownerOf,
   PlayerOrder,
   Position,
+  Resting,
   recordContact,
   Settler,
   StayPoint,
@@ -62,6 +64,8 @@ export function frightenStruckAnimal(
 ): void {
   const terrain = ctx.terrain;
   if (terrain === undefined || !world.has(target, StayPoint) || !world.has(target, Position)) return;
+  // A provoked animal's kin within the scare's reach were provoked with it by the alarm.
+  if (world.has(target, Anger)) return;
   // A shot outlives a slain archer; its quarry then runs from where it stands.
   const threat = world.has(attacker, Position) ? attacker : target;
   frightenKin(world, ctx, terrain, target, entityNode(world, terrain, threat));
@@ -124,11 +128,40 @@ export function turnOnAttacker(world: World, ctx: SystemContext, attacker: Entit
   else world.mut(victim, Engagement).target = attacker;
 }
 
+/** How far (map points) a blow on an animal carries to the animals of its kind and side. Original behavior. */
+export const KIN_ALARM_RADIUS_NODES = 20;
+
 /**
- * Turn a struck wild herd follower on its attacker, the unowned twin of {@link turnOnAttacker}. Original
- * behavior: a follower holding no target takes the one who struck it, unless its leader is fleeing.
+ * Rouse a struck animal's kin as if each were struck: every animal of its species and side within
+ * {@link KIN_ALARM_RADIUS_NODES} is provoked and, holding no target, takes the attacker. Original behavior:
+ * a blow on an animal re-runs the struck reaction for those kin, so a pack fights as one. A species neither
+ * aggressive nor `getAngry` only runs, which {@link frightenStruckAnimal} covers. Approximation: the
+ * alarmed kin take no damage of their own.
  */
-export function followerTakesAttacker(
+export function alarmKin(world: World, ctx: SystemContext, attacker: Entity, struck: Entity): void {
+  const terrain = ctx.terrain;
+  const kind = world.tryGet(struck, Settler)?.tribe;
+  if (terrain === undefined || kind === undefined) return;
+  if (!world.has(struck, StayPoint) || !world.has(struck, Position)) return;
+  if (!isAggressiveAnimal(ctx.content, kind) && !isProvokableAnimal(ctx.content, kind)) return;
+  const side = ownerOf(world, struck);
+  const at = entityNode(world, terrain, struck);
+  for (const e of world.query(StayPoint, Settler, Position)) {
+    if (e === struck || world.get(e, Settler).tribe !== kind || ownerOf(world, e) !== side) continue;
+    if (world.has(e, Resting)) continue; // indoors, out of earshot
+    if (hexNodeDistance(terrain, at, entityNode(world, terrain, e)) > KIN_ALARM_RADIUS_NODES) continue;
+    provokeAnger(world, ctx, e);
+    animalTakesAttacker(world, ctx, attacker, e);
+  }
+}
+
+/**
+ * Turn a struck wild animal on its attacker, the unowned twin of {@link turnOnAttacker}. Original behavior:
+ * an animal holding no target, leader or follower, takes the one who struck it, unless its leader is
+ * fleeing. Only a hostile animal does: {@link isValidTarget} admits the attacker for an aggressive or
+ * provoked one alone.
+ */
+export function animalTakesAttacker(
   world: World,
   ctx: SystemContext,
   attacker: Entity,
@@ -136,8 +169,7 @@ export function followerTakesAttacker(
 ): void {
   const settler = world.tryGet(victim, Settler);
   if (settler === undefined || world.has(victim, Owner)) return;
-  const leader = herdLeaderOf(world, victim);
-  if (leader === victim || world.has(leader, Frightened)) return;
+  if (world.has(herdLeaderOf(world, victim), Frightened)) return;
   const engagement = world.tryGet(victim, Engagement);
   const held = engagement?.target;
   if (held !== undefined && isValidTarget(world, ctx, victim, settler, held)) return;

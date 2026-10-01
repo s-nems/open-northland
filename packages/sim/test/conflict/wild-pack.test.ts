@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Anger,
   addCurrentAtomic,
   CurrentAtomic,
   Engagement,
@@ -14,6 +15,7 @@ import { Simulation } from '../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, ANIMAL_LEASH_NODES } from '../../src/systems/conflict/targeting.js';
 import { atomicSystem, cleanupSystem, combatSystem, herdingSystem } from '../../src/systems/index.js';
+import { KIN_ALARM_RADIUS_NODES } from '../../src/systems/settlers/atomics/effects/combat/hit/reactions.js';
 import { hexNodeDistance } from '../../src/systems/spatial/metric.js';
 import { testContent } from '../fixtures/content.js';
 import { nextTickCtxOf } from '../fixtures/context.js';
@@ -55,6 +57,17 @@ function swingTarget(sim: Simulation, e: Entity): number | undefined {
   return effect?.kind === 'attack' ? effect.target : undefined;
 }
 
+/** Queue a swing of `striker` at `target` that lands on the next atomic pass. */
+function strike(sim: Simulation, striker: Entity, target: Entity): void {
+  addCurrentAtomic(sim.world, striker, {
+    atomicId: ATTACK_ATOMIC,
+    duration: 1,
+    effect: { kind: 'attack', target, damage: 50 },
+    targetEntity: target,
+    targetTile: null,
+  });
+}
+
 function node(sim: Simulation, hx: number): NodeId {
   return mapTerrain(sim).nodeAt(hx, 0);
 }
@@ -80,25 +93,59 @@ describe('wild pack targeting', () => {
     expect(swingTarget(sim, second)).toBe(viking);
   });
 
-  it('a struck follower hits back while its leader stands idle', () => {
+  it("a struck boar's herd turns on the attacker, leader and all, instead of running", () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const leader = fighterAtNode(sim, 2, 0, BOAR, null);
     const follower = fighterAtNode(sim, 4, 0, BOAR, null);
+    for (const e of [leader, follower]) sim.world.add(e, StayPoint, { cell: node(sim, 2) });
     joinHerd(sim, leader, follower);
     const viking = fighterAtNode(sim, 6, 0, VIKING, WOODCUTTER);
-    addCurrentAtomic(sim.world, viking, {
-      atomicId: ATTACK_ATOMIC,
-      duration: 1,
-      effect: { kind: 'attack', target: follower, damage: 50 },
-      targetEntity: follower,
-      targetTile: null,
-    });
+    strike(sim, viking, follower);
 
     atomicSystem(sim.world, nextTickCtxOf(sim)); // the blow lands and provokes the follower
     combatSystem(sim.world, ctxOf(sim));
 
     expect(swingTarget(sim, follower)).toBe(viking);
-    expect(sim.world.has(leader, CurrentAtomic)).toBe(false); // an unprovoked boar stays out of it
+    // The alarm provoked the leader too: it takes the striker rather than stampeding.
+    expect(sim.world.has(leader, Anger)).toBe(true);
+    expect(sim.world.has(leader, Frightened)).toBe(false);
+    expect(sim.world.get(leader, Engagement).target).toBe(viking);
+  });
+
+  it('a struck leader takes its attacker though the attacker stands off its search circle', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(24, 1) });
+    const stay = 40;
+    const leader = animalAt(sim, BEAR, 10, stay);
+    const follower = animalAt(sim, BEAR, 12, stay);
+    joinHerd(sim, leader, follower);
+    const viking = fighterAtNode(sim, 8, 0, VIKING, WOODCUTTER);
+    expect(hexNodeDistance(mapTerrain(sim), node(sim, 8), node(sim, stay))).toBeGreaterThan(
+      ANIMAL_AGGRO_RADIUS_NODES,
+    );
+    strike(sim, viking, leader);
+
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+
+    expect(sim.world.get(leader, Engagement).target).toBe(viking);
+    expect(sim.world.get(follower, Engagement).target).toBe(viking);
+  });
+
+  it('a blow alarms the kin within 20 map points of the struck animal, and no farther', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(24, 1) });
+    const struck = animalAt(sim, BEAR, 2);
+    const near = animalAt(sim, BEAR, 2 + KIN_ALARM_RADIUS_NODES);
+    const far = animalAt(sim, BEAR, 3 + KIN_ALARM_RADIUS_NODES);
+    const otherKind = animalAt(sim, BOAR, 6);
+    const viking = fighterAtNode(sim, 0, 0, VIKING, WOODCUTTER);
+    strike(sim, viking, struck);
+
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+
+    expect(sim.world.get(struck, Engagement).target).toBe(viking);
+    expect(sim.world.get(near, Engagement).target).toBe(viking);
+    expect(sim.world.has(far, Engagement)).toBe(false);
+    expect(sim.world.has(otherKind, Engagement)).toBe(false);
+    expect(sim.world.has(otherKind, Anger)).toBe(false);
   });
 
   it('a struck follower whose leader flees takes no target', () => {
@@ -108,13 +155,7 @@ describe('wild pack targeting', () => {
     joinHerd(sim, leader, follower);
     sim.world.add(leader, Frightened, { until: 100, repathAt: 0, from: node(sim, 6) });
     const viking = fighterAtNode(sim, 6, 0, VIKING, WOODCUTTER);
-    addCurrentAtomic(sim.world, viking, {
-      atomicId: ATTACK_ATOMIC,
-      duration: 1,
-      effect: { kind: 'attack', target: follower, damage: 50 },
-      targetEntity: follower,
-      targetTile: null,
-    });
+    strike(sim, viking, follower);
 
     atomicSystem(sim.world, nextTickCtxOf(sim));
 
