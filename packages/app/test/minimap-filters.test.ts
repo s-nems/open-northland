@@ -10,17 +10,20 @@ import {
 import { defaultSettings, parseStoredSettings } from '../src/view/settings-store.js';
 
 describe('minimap filters', () => {
-  it('start with every layer shown and every owner in scope', () => {
-    expect(MINIMAP_LAYERS.every((layer) => DEFAULT_MINIMAP_FILTERS.layers[layer])).toBe(true);
+  it('start with the owned forces and works shown, the clutter hidden, and every owner in scope', () => {
+    const shown = MINIMAP_LAYERS.filter((layer) => DEFAULT_MINIMAP_FILTERS.layers[layer]);
+    expect(shown).toEqual(['civilians', 'soldiers', 'buildings', 'vehicles']);
+    expect(allMinimapLayersShown(DEFAULT_MINIMAP_FILTERS)).toBe(false);
     expect(DEFAULT_MINIMAP_FILTERS.scope).toBe('everyone');
     expect(defaultSettings().minimapFilters).toEqual(DEFAULT_MINIMAP_FILTERS);
   });
 
   it('toggle one layer, or all of them at once', () => {
-    const noRoads = toggleMinimapLayer(DEFAULT_MINIMAP_FILTERS, 'roads');
-    expect(noRoads.layers.roads).toBe(false);
-    expect(allMinimapLayersShown(noRoads)).toBe(false);
-    const hidden = withAllMinimapLayers(noRoads, false);
+    const roads = toggleMinimapLayer(DEFAULT_MINIMAP_FILTERS, 'roads');
+    expect(roads.layers.roads).toBe(true);
+    expect(toggleMinimapLayer(roads, 'roads').layers.roads).toBe(false);
+    expect(allMinimapLayersShown(roads)).toBe(false);
+    const hidden = withAllMinimapLayers(roads, false);
     expect(MINIMAP_LAYERS.some((layer) => hidden.layers[layer])).toBe(false);
     expect(allMinimapLayersShown(withAllMinimapLayers(hidden, true))).toBe(true);
   });
@@ -35,10 +38,10 @@ describe('minimap filters', () => {
     expect(parseStoredSettings(null).minimapFilters).toEqual(DEFAULT_MINIMAP_FILTERS);
     expect(parseMinimapFilters('roads')).toEqual(DEFAULT_MINIMAP_FILTERS);
     const parsed = parseMinimapFilters({
-      layers: { roads: false, people: false, animals: 'no' },
+      layers: { soldiers: false, people: false, animals: 'no' },
       scope: 'allies',
     });
-    expect(parsed).toEqual({ ...toggleMinimapLayer(DEFAULT_MINIMAP_FILTERS, 'roads'), scope: 'everyone' });
+    expect(parsed).toEqual({ ...toggleMinimapLayer(DEFAULT_MINIMAP_FILTERS, 'soldiers'), scope: 'everyone' });
     expect(parsed.layers).not.toHaveProperty('people');
   });
 });

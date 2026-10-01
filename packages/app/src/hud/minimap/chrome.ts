@@ -129,13 +129,16 @@ export function createMinimapChrome(
   control('reset', copy.reset, ICONS.reset, callbacks.onReset);
   const size = control('size', copy.size, '', callbacks.onSize);
   const filterButton = control('filters', copy.filters, ICONS.filters, () =>
-    showFilters(Boolean(popover.hidden), true),
+    showFilters(!filtersOpen(), true),
   );
   filterButton.setAttribute('aria-expanded', 'false');
 
   const popover = element('section', 'on-minimap-chrome__filters');
   popover.setAttribute('aria-label', copy.filters);
-  popover.hidden = true;
+  // Closed, the popover stays laid out and painted but invisible, so its first opening is a flip, not a
+  // first layout and raster of the drawer in the middle of play.
+  popover.dataset.open = 'false';
+  const filtersOpen = (): boolean => popover.dataset.open === 'true';
   const head = element('div', 'on-minimap-chrome__filters-head');
   const legend = element('h3', 'on-minimap-chrome__legend');
   legend.id = 'on-minimap-layers-legend';
@@ -241,9 +244,9 @@ export function createMinimapChrome(
     showFilters(false, true);
   }
   function showFilters(open: boolean, moveFocus = false): void {
-    if (popover.hidden === !open) return;
+    if (filtersOpen() === open) return;
     tips.hide();
-    setHidden(popover, !open);
+    popover.dataset.open = String(open);
     setAttribute(filterButton, 'aria-expanded', String(open));
     if (open) {
       placeFilters();
@@ -278,7 +281,7 @@ export function createMinimapChrome(
         width: `${panel.w / uiScale}px`,
         height: `${panel.h / uiScale}px`,
       });
-      if (!popover.hidden) placeFilters();
+      placeFilters();
     },
     setState: (state) => {
       const zoomLabel = formatMessage(copy.zoom, { zoom: Math.round(state.zoom * 10) / 10 });
@@ -313,7 +316,7 @@ export function createMinimapChrome(
         option.tabIndex = chosen ? 0 : -1;
       }
       setDisabled(scopeGroup, !state.hasSeat);
-      if (setHidden(noSeatNote, state.hasSeat) && !popover.hidden) placeFilters();
+      if (setHidden(noSeatNote, state.hasSeat)) placeFilters();
       tips.refresh();
     },
     setHidden: (hidden) => {

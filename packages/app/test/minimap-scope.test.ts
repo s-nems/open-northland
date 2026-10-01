@@ -2,7 +2,11 @@ import { terrainWorldBounds } from '@open-northland/render';
 import { type DiplomacyState, fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { forEachMinimapDot, scopeAdmits } from '../src/hud/minimap/dots.js';
-import { DEFAULT_MINIMAP_FILTERS, type MinimapScope } from '../src/hud/minimap/filters.js';
+import {
+  DEFAULT_MINIMAP_FILTERS,
+  type MinimapScope,
+  withAllMinimapLayers,
+} from '../src/hud/minimap/filters.js';
 import type { MinimapMark } from '../src/hud/minimap/stamps.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
@@ -69,7 +73,7 @@ describe('the owner scope on the plot', () => {
         fog: null,
         bounds: terrainWorldBounds(8, 8),
         scale: 1,
-        filters: { ...DEFAULT_MINIMAP_FILTERS, scope },
+        filters: { ...withAllMinimapLayers(DEFAULT_MINIMAP_FILTERS, true), scope },
         isFighterJob: () => false,
         viewer: VIEWER,
         stanceToward,

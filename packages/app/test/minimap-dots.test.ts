@@ -17,6 +17,9 @@ import {
 import type { MinimapMark } from '../src/hud/minimap/stamps.js';
 import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
 
+/** Every layer on, so a plot test sees each kind; the shipped default hides the clutter layers. */
+const ALL_LAYERS = withAllMinimapLayers(DEFAULT_MINIMAP_FILTERS, true);
+
 const MAP_CELLS = 8;
 const BOUNDS = terrainWorldBounds(MAP_CELLS, MAP_CELLS);
 const SCALE = 0.5;
@@ -47,7 +50,7 @@ function contextWith(overrides: Partial<MinimapDotContext>): MinimapDotContext {
     fog: null,
     bounds: BOUNDS,
     scale: SCALE,
-    filters: DEFAULT_MINIMAP_FILTERS,
+    filters: ALL_LAYERS,
     isFighterJob: (jobType) => jobType === SOLDIER_JOB,
     viewer: VIEWER,
     stanceToward: (owner) => STANCES[owner] ?? 'neutral',
@@ -200,8 +203,8 @@ describe('forEachMinimapDot', () => {
     };
     for (const [layer, mark] of Object.entries(markOf) as [MinimapLayer, MinimapMark][]) {
       const without = {
-        ...DEFAULT_MINIMAP_FILTERS,
-        layers: { ...DEFAULT_MINIMAP_FILTERS.layers, [layer]: false },
+        ...ALL_LAYERS,
+        layers: { ...ALL_LAYERS.layers, [layer]: false },
       };
       const marks = dotsOf(world, { filters: without }).map((dot) => dot.mark);
       expect(marks).not.toContain(mark);

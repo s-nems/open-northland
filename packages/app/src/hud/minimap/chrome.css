@@ -166,8 +166,8 @@
     inset 0 0 0 1px #c9a46a55;
   pointer-events: auto;
 }
-.on-hud .on-minimap-chrome__filters[hidden] {
-  display: none;
+.on-hud .on-minimap-chrome__filters[data-open="false"] {
+  visibility: hidden;
 }
 .on-hud .on-minimap-chrome__filters-head {
   display: flex;

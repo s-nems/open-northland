@@ -26,7 +26,22 @@ function layersAll(shown: boolean): Record<MinimapLayer, boolean> {
   return layers;
 }
 
-export const DEFAULT_MINIMAP_FILTERS: MinimapFilters = { layers: layersAll(true), scope: 'everyone' };
+/** The layers shown out of the box: the owned forces and works; wildlife, roads and posts are clutter
+ *  a player opts into. Owner ruling. */
+const DEFAULT_SHOWN_LAYERS: ReadonlySet<MinimapLayer> = new Set<MinimapLayer>([
+  'civilians',
+  'soldiers',
+  'buildings',
+  'vehicles',
+]);
+
+function defaultLayers(): Record<MinimapLayer, boolean> {
+  const layers = {} as Record<MinimapLayer, boolean>;
+  for (const layer of MINIMAP_LAYERS) layers[layer] = DEFAULT_SHOWN_LAYERS.has(layer);
+  return layers;
+}
+
+export const DEFAULT_MINIMAP_FILTERS: MinimapFilters = { layers: defaultLayers(), scope: 'everyone' };
 
 /** A stored blob back to filters; a missing or deformed field keeps its default. */
 export function parseMinimapFilters(value: unknown): MinimapFilters {
@@ -36,7 +51,7 @@ export function parseMinimapFilters(value: unknown): MinimapFilters {
     typeof record.layers === 'object' && record.layers !== null
       ? (record.layers as Record<string, unknown>)
       : {};
-  const layers = layersAll(true);
+  const layers = defaultLayers();
   for (const layer of MINIMAP_LAYERS) {
     const shown = stored[layer];
     if (typeof shown === 'boolean') layers[layer] = shown;
