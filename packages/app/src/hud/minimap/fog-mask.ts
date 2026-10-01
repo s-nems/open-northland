@@ -1,7 +1,7 @@
 import type { FogView } from '@open-northland/sim';
 import { BufferImageSource, type Container, Sprite, Texture } from 'pixi.js';
 import type { Rect } from '../geometry.js';
-import { fillFogAlpha } from './model.js';
+import { fillFogMask } from './model.js';
 
 export interface FogMaskLayer {
   draw(fog: FogView | null): void;
@@ -9,9 +9,10 @@ export interface FogMaskLayer {
 }
 
 /**
- * The fog mask over the minimap ground: one cell-resolution alpha raster stretched over `mapRect` with
- * linear filtering, rewritten in place only when the fog generation or the viewer seat moves. The
- * sprite is parented on creation, so the caller must create this layer under the dots in draw order.
+ * The fog mask over the minimap ground: one cell-resolution premultiplied raster stretched over
+ * `mapRect` with linear filtering, rewritten in place only when the fog generation or the viewer seat
+ * moves. The sprite is parented on creation, so the caller must create this layer under the dots in
+ * draw order.
  *
  * Named approximation: the stretch ignores the odd-row half-cell stagger of the ground raster.
  */
@@ -46,10 +47,11 @@ export function createFogMaskLayer(container: Container, mapRect: Rect): FogMask
             width: fog.cellsWide,
             height: fog.cellsHigh,
             scaleMode: 'linear',
+            alphaMode: 'premultiplied-alpha',
           }),
         });
       }
-      fillFogAlpha(fog, pixels);
+      fillFogMask(fog, pixels);
       texture.source.update();
       sprite.texture = texture;
       sprite.position.set(mapRect.x, mapRect.y);

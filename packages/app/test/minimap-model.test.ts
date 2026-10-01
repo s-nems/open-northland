@@ -9,7 +9,8 @@ import { describe, expect, it } from 'vitest';
 import { PLAYER_COLOR_COUNT, PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
 import {
   ATLAS_WIDTHS,
-  fillFogAlpha,
+  FOG_UNEXPLORED_TINT,
+  fillFogMask,
   minimapLayout,
   minimapPanelWidth,
   minimapToWorld,
@@ -431,7 +432,7 @@ describe('stampDot', () => {
   });
 });
 
-describe('fillFogAlpha', () => {
+describe('fillFogMask', () => {
   /** A 3×2 grid: the three states across the top row, all-visible below - so a row-major write is
    *  distinguishable from a transposed or wrongly strided one. */
   const GRID = {
@@ -445,20 +446,26 @@ describe('fillFogAlpha', () => {
   const alphaLane = (rgba: Uint8Array): number[] =>
     Array.from({ length: rgba.length / 4 }, (_, i) => rgba[i * 4 + 3] ?? 0);
 
-  it('grades the alpha lane by fog state, row-major, and leaves the mask black', () => {
+  it('grades the alpha lane by fog state, row-major, and tints only unexplored ground', () => {
     const rgba = new Uint8Array(GRID.cellsWide * GRID.cellsHigh * 4);
-    fillFogAlpha(GRID, rgba);
+    fillFogMask(GRID, rgba);
 
     expect(alphaLane(rgba)).toEqual([0, FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA, 0, 0, 0]);
-    // Only the alpha lane is written - the colour lanes stay the buffer's black.
-    expect([rgba[0], rgba[1], rgba[2], rgba[4], rgba[8]]).toEqual([0, 0, 0, 0, 0]);
+    // Visible ground is clear and explored ground dims under black; unexplored takes the opaque tint.
+    expect(Array.from(rgba.subarray(0, 3))).toEqual([0, 0, 0]);
+    expect(Array.from(rgba.subarray(4, 7))).toEqual([0, 0, 0]);
+    expect(Array.from(rgba.subarray(8, 11))).toEqual([
+      (FOG_UNEXPLORED_TINT >> 16) & 0xff,
+      (FOG_UNEXPLORED_TINT >> 8) & 0xff,
+      FOG_UNEXPLORED_TINT & 0xff,
+    ]);
   });
 
   it('clears a cell that turned visible again on the next fill', () => {
     const rgba = new Uint8Array(4);
-    fillFogAlpha({ cellsWide: 1, cellsHigh: 1, stateAt: () => FOG_STATE.UNEXPLORED }, rgba);
+    fillFogMask({ cellsWide: 1, cellsHigh: 1, stateAt: () => FOG_STATE.UNEXPLORED }, rgba);
     expect(rgba[3]).toBe(FOG_UNEXPLORED_ALPHA);
-    fillFogAlpha({ cellsWide: 1, cellsHigh: 1, stateAt: () => FOG_STATE.VISIBLE }, rgba);
-    expect(rgba[3]).toBe(0);
+    fillFogMask({ cellsWide: 1, cellsHigh: 1, stateAt: () => FOG_STATE.VISIBLE }, rgba);
+    expect(Array.from(rgba)).toEqual([0, 0, 0, 0]);
   });
 });

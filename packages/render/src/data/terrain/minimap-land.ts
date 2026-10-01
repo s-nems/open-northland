@@ -53,6 +53,18 @@ const CROWN_RADIUS_FULL = 0.72;
 const CROWN_RADIUS_JITTER = 0.3;
 const CROWN_LIGHT = 0.32;
 const CROWN_GAP_SHADE = 0.42;
+/** Crowns fade in from this mean diameter in px over the span, so crowns near the pixel pitch do not
+ *  stipple the canopy into camouflage. */
+const CROWN_MIN_PX = 3.5;
+const CROWN_FADE_SPAN_PX = 3;
+/** Below crown scale the canopy undulates instead: a slower noise lit by its slope toward the light
+ *  (probed this far down-light) plus a little of its own tone, fading in from this period in px. */
+const CANOPY_BUMP_PERIOD_CELLS = 1.5;
+const CANOPY_BUMP_MIN_PX = 3.5;
+const CANOPY_BUMP_FADE_SPAN_PX = 2.5;
+const CANOPY_BUMP_PROBE_CELLS = 0.25;
+const CANOPY_BUMP_RELIEF = 1.1;
+const CANOPY_BUMP_TONE = 0.12;
 
 /** Deposits: an even tint, then rocks of the deposit's colour at full detail (domes sized by the
  *  density, lit like the crowns) with a glint where a rock faces the light. */
@@ -74,6 +86,7 @@ const SEED_SPECKLE = 0x6a09e667;
 const SEED_CRAG = 0xa54ff53a;
 const SEED_STRATA = 0x3c6ef372;
 const SEED_CROWN = 0x2545f491;
+const SEED_CANOPY_BUMP = 0x510e527f;
 const SEED_ORE = 0x68e31da4;
 
 /** World px per cell along a row, the unit the texture periods are given in. */
@@ -85,12 +98,16 @@ export class LandPainter {
   private readonly speckleFade: number;
   private readonly cragFade: number;
   private readonly crownFade: number;
+  private readonly bumpFade: number;
   private readonly oreFade: number;
   private readonly groundScale = 1 / (GROUND_PERIOD_CELLS * CELL_W);
   private readonly cragScale = 1 / (CRAG_PERIOD_CELLS * CELL_W);
   private readonly strataX = 1 / (STRATA_LENGTH_CELLS * CELL_W);
   private readonly strataY = 1 / (STRATA_HEIGHT_CELLS * CELL_W);
   private readonly crownScale = 1 / (CROWN_PERIOD_CELLS * CELL_W);
+  private readonly bumpScale = 1 / (CANOPY_BUMP_PERIOD_CELLS * CELL_W);
+  private readonly bumpProbeX: number;
+  private readonly bumpProbeY: number;
   private readonly oreScale = 1 / (ORE_PERIOD_CELLS * CELL_W);
   private readonly cragProbeX: number;
   private readonly cragProbeY: number;
@@ -109,7 +126,13 @@ export class LandPainter {
     this.groundFade = fade(GROUND_PERIOD_CELLS);
     this.speckleFade = fade(SPECKLE_PERIOD_CELLS);
     this.cragFade = fade(CRAG_PERIOD_CELLS);
-    this.crownFade = fade(CROWN_PERIOD_CELLS);
+    const meanCrownPx = 2 * CROWN_RADIUS_FULL * (1 - CROWN_RADIUS_JITTER / 2) * CROWN_PERIOD_CELLS * cellPx;
+    this.crownFade = textured ? clamp01((meanCrownPx - CROWN_MIN_PX) / CROWN_FADE_SPAN_PX) : 0;
+    this.bumpFade = textured
+      ? clamp01((CANOPY_BUMP_PERIOD_CELLS * cellPx - CANOPY_BUMP_MIN_PX) / CANOPY_BUMP_FADE_SPAN_PX)
+      : 0;
+    this.bumpProbeX = light.downX * CANOPY_BUMP_PROBE_CELLS * CELL_W;
+    this.bumpProbeY = light.downY * CANOPY_BUMP_PROBE_CELLS * CELL_W;
     this.oreFade = fade(ORE_PERIOD_CELLS);
     this.cragProbeX = light.downX * CRAG_PROBE_CELLS * CELL_W;
     this.cragProbeY = light.downY * CRAG_PROBE_CELLS * CELL_W;
@@ -125,6 +148,7 @@ export class LandPainter {
     out.g = s[FIELD_LAND_G] ?? 0;
     out.b = s[FIELD_LAND_B] ?? 0;
     let mul = 1 + this.groundTexture(out, x, y, px, py) * (1 - forest);
+    if (forest > 0 && this.bumpFade > 0) mul *= 1 + this.bumpFade * forest * this.canopyBumps(x, y);
     if (forest > 0 && this.crownFade > 0) mul *= 1 + this.crownFade * forest * this.crowns(forest, x, y);
     if (ore > 0) this.deposit(s, ore, x, y, out);
     out.r *= mul;
@@ -157,6 +181,18 @@ export class LandPainter {
       texture += this.cragFade * ground.rock * ((downhill - crag) * CRAG_RELIEF + strata * ROCK_STRATA);
     }
     return texture;
+  }
+
+  /** The relative brightness change of the canopy's slow undulation, lit on the faces toward the light. */
+  private canopyBumps(x: number, y: number): number {
+    const scale = this.bumpScale;
+    const bump = valueNoise(x * scale, y * scale, SEED_CANOPY_BUMP);
+    const downhill = valueNoise(
+      (x + this.bumpProbeX) * scale,
+      (y + this.bumpProbeY) * scale,
+      SEED_CANOPY_BUMP,
+    );
+    return (downhill - bump) * CANOPY_BUMP_RELIEF + (bump - 0.5) * CANOPY_BUMP_TONE;
   }
 
   /** The relative brightness change of the canopy: lit and shaded crowns, dark gaps between them. */

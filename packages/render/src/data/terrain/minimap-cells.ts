@@ -4,6 +4,7 @@ import { forEachStaggerNeighbour, laneOf, staggerBlur } from './minimap-grid.js'
 import { cellLight } from './minimap-light.js';
 import { valueNoise } from './minimap-noise.js';
 import { MINIMAP_DEPOSIT_KINDS, type MinimapDepositKind, type MinimapScene } from './minimap-scene.js';
+import { classifyGround, type GroundClass, luma } from './minimap-texture.js';
 
 /**
  * The per-cell half of the minimap style: every term that varies slower than a cell (relief light,
@@ -65,10 +66,27 @@ const CANOPY_GAIN_MIN = 0.72;
 const HIGHLIGHT_KNEE = 185;
 const HIGHLIGHT_CEILING = 238;
 const SEED_MOTTLE = 0x7f4a7c15;
+/** Bright, highly saturated greens (the lime grass of some maps) read as neon once lit: their lit colour
+ *  eases toward its luma by up to {@link GREEN_TAME}, gated by saturation, brightness and green's lead
+ *  over red and blue, so darker or duller greens, sand and rock keep their colour. */
+const GREEN_TAME = 0.25;
+const TAME_SATURATION_FROM = 0.6;
+const TAME_SATURATION_SPAN = 0.2;
+const TAME_VALUE_FROM = 80;
+const TAME_VALUE_SPAN = 50;
+const TAME_GREEN_LEAD = 0.1;
+/** Rock relief: on ground that classifies as rock, the light's swing around flat is stretched by this
+ *  much on lit faces and on shaded ones, and lit faces turn cooler (red down, blue up by this share,
+ *  in full at {@link ROCK_COOL_FULL_GAIN} gain over flat), so ridges read as rock instead of a
+ *  grey-brown smear. */
+const ROCK_LIT_BOOST = 0.3;
+const ROCK_SHADE_BOOST = 0.3;
+const ROCK_COOL = 0.08;
+const ROCK_COOL_FULL_GAIN = 0.25;
 
 /** The canopy tint and how much of a fully wooded cell it covers; a denser stand is a darker one. */
 const CANOPY = 0x2c4f24;
-const CANOPY_COVER = 0.78;
+const CANOPY_COVER = 0.88;
 const CANOPY_DENSE_SHADE = 0.18;
 /** The canopy's height in elevation units for the fine relief, so a stand's edges catch the light. */
 const CANOPY_HEIGHT = 10;
@@ -100,12 +118,13 @@ export function buildMinimapCellField(scene: MinimapScene): Float32Array {
   // One more blur than the caller's density, so per-cell tree counts do not tile the canopy into a mosaic.
   const forestLane = forestInput === undefined ? undefined : staggerBlur(forestInput, width, height);
   const canopyHeight = forestLane?.map((f) => clamp01(f) * CANOPY_HEIGHT);
-  const { light, edge } = cellLight(scene, canopyHeight);
+  const { light, edge } = cellLight(scene, canopyHeight, forestLane);
   const shadow = forestLane === undefined ? undefined : canopyShadow(forestLane, width, height);
   const depth = waterDepth(scene);
   const water = laneOf(scene.water, cells);
   const oreKind = laneOf(scene.depositKind, cells);
   const oreDensity = laneOf(scene.depositDensity, cells);
+  const ground: GroundClass = { grass: 0, soil: 0, rock: 0 };
   // Cell centre in world px times the mottle frequency: x = (2c + (r & 1))·TILE_HALF_W, y = r·TILE_HALF_H.
   const mottleScale = TILE_HALF_W / (MOTTLE_PERIOD_CELLS * 2 * TILE_HALF_W);
   const mottleScaleY = TILE_HALF_H / (MOTTLE_PERIOD_CELLS * 2 * TILE_HALF_W);
@@ -119,11 +138,13 @@ export function buildMinimapCellField(scene: MinimapScene): Float32Array {
     const mottle = valueNoise(x, row * mottleScaleY, SEED_MOTTLE) - 0.5;
     const lit = (light[cell] ?? 1) * LAND_EXPOSURE * (1 + MOTTLE * mottle);
     const floor = LIGHT_GAIN_MIN + (CANOPY_GAIN_MIN - LIGHT_GAIN_MIN) * forest;
+    classifyGround(channel(colour, 16), channel(colour, 8), channel(colour, 0), ground);
+    const rock = ground.rock * (1 - forest);
+    const gain = softClip(lit, floor, LIGHT_GAIN_MAX);
+    const rockGain = 1 + (gain - 1) * (1 + rock * (gain >= 1 ? ROCK_LIT_BOOST : ROCK_SHADE_BOOST));
+    const cool = ROCK_COOL * rock * clamp01((gain - 1) / ROCK_COOL_FULL_GAIN);
     const shade =
-      softClip(lit, floor, LIGHT_GAIN_MAX) *
-      (edge[cell] ?? 1) *
-      (1 - CANOPY_DENSE_SHADE * forest * forest) *
-      (1 - (shadow?.[cell] ?? 0));
+      rockGain * (edge[cell] ?? 1) * (1 - CANOPY_DENSE_SHADE * forest * forest) * (1 - (shadow?.[cell] ?? 0));
     const waterShade = (1 + WATER_MOTTLE * mottle) * (edge[cell] ?? 1);
     const t = depth[cell] ?? 0;
     const kind = MINIMAP_DEPOSIT_KINDS[(oreKind?.[cell] ?? 0) - 1];
@@ -136,11 +157,14 @@ export function buildMinimapCellField(scene: MinimapScene): Float32Array {
     for (let ch = 0; ch < 3; ch++) {
       const shift = 16 - 8 * ch;
       const base = channel(colour, shift);
-      field[o + FIELD_LAND_R + ch] = rollOff((base + (channel(CANOPY, shift) - base) * canopy) * shade);
+      // Red down, green kept, blue up.
+      const land = base * (1 + (ch - 1) * cool);
+      field[o + FIELD_LAND_R + ch] = rollOff((land + (channel(CANOPY, shift) - land) * canopy) * shade);
       const ramp = waterRamp(t, shift);
       field[o + FIELD_WATER_R + ch] = (ramp + (base - ramp) * WATER_TEXTURE_WEIGHT) * waterShade;
       field[o + FIELD_ORE_R + ch] = channel(oreColour, shift) * ore * shade;
     }
+    tameNeonGreen(field, o + FIELD_LAND_R);
   }
   if (oreKind !== undefined && oreDensity !== undefined) blurOre(field, width, height);
   smoothCoast(field, width, height);
@@ -176,6 +200,26 @@ export function canopyShadow(forest: ArrayLike<number>, width: number, height: n
     }
   }
   return out;
+}
+
+/** Ease a bright, highly saturated green at `field[o..o+2]` toward its luma; any other colour stays. */
+function tameNeonGreen(field: Float32Array, o: number): void {
+  const r = field[o] ?? 0;
+  const g = field[o + 1] ?? 0;
+  const b = field[o + 2] ?? 0;
+  const rival = Math.max(r, b);
+  if (g <= rival) return;
+  const saturation = (g - Math.min(r, b)) / g;
+  const t =
+    GREEN_TAME *
+    clamp01((saturation - TAME_SATURATION_FROM) / TAME_SATURATION_SPAN) *
+    clamp01((g - TAME_VALUE_FROM) / TAME_VALUE_SPAN) *
+    clamp01((g - rival) / g / TAME_GREEN_LEAD);
+  if (t <= 0) return;
+  const y = luma(r, g, b);
+  field[o] = r + (y - r) * t;
+  field[o + 1] = g + (y - g) * t;
+  field[o + 2] = b + (y - b) * t;
 }
 
 /** Soft-clip a light gain into `[lo, hi]` around 1: near 1 it passes through, far out it saturates. */

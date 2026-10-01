@@ -5,6 +5,8 @@ import {
   FIELD_COVER,
   FIELD_DEPTH,
   FIELD_FOREST,
+  FIELD_LAND_B,
+  FIELD_LAND_G,
   FIELD_LAND_R,
   FIELD_STRIDE,
   FIELD_WATER_B,
@@ -13,7 +15,7 @@ import {
   waterRamp,
 } from '../src/data/terrain/minimap-cells.js';
 import { LandPainter } from '../src/data/terrain/minimap-land.js';
-import { MINIMAP_LIGHT } from '../src/data/terrain/minimap-light.js';
+import { cellLight, MINIMAP_LIGHT } from '../src/data/terrain/minimap-light.js';
 import { valueNoisePair } from '../src/data/terrain/minimap-noise.js';
 import { SAMPLE_LANES } from '../src/data/terrain/minimap-sampler.js';
 import type { MinimapScene } from '../src/data/terrain/minimap-scene.js';
@@ -230,6 +232,60 @@ describe('canopyShadow', () => {
     expect(at(first - 1, first - 1)).toBe(0);
     expect(at(first + 2, first + 2)).toBe(0);
     expect(at(last, first - 1)).toBe(0);
+  });
+});
+
+describe('cell colour', () => {
+  const middle = SIZE / 2;
+  const landOf = (field: Float32Array, col: number, row: number): Rgb => ({
+    r: fieldAt(field, col, row, FIELD_LAND_R),
+    g: fieldAt(field, col, row, FIELD_LAND_G),
+    b: fieldAt(field, col, row, FIELD_LAND_B),
+  });
+  const channelOf = (colour: number, shift: number): number => (colour >> shift) & 0xff;
+  const greenOverRed = (colour: number): number =>
+    channelOf(colour, GREEN_SHIFT) / channelOf(colour, RED_SHIFT);
+
+  it('eases bright saturated greens toward grey and keeps dark greens and sand as they are', () => {
+    const lime = 0x508a14;
+    const darkGreen = 0x1c300a;
+    const sand = 0x907048;
+    const colours = [lime, darkGreen, sand];
+    const field = buildMinimapCellField(
+      scene({ colourOfCell: (cell) => colours[cell % colours.length] ?? GREY }),
+    );
+    const ratioAt = (col: number): number => {
+      const land = landOf(field, col, middle);
+      return land.g / land.r;
+    };
+    const near = 1e-4;
+    expect(ratioAt(0)).toBeLessThan(greenOverRed(lime) * (1 - near));
+    expect(ratioAt(1)).toBeCloseTo(greenOverRed(darkGreen), 4);
+    expect(ratioAt(2)).toBeCloseTo(greenOverRed(sand), 4);
+  });
+
+  it('stretches the light on rock and cools its lit faces, unlike soil', () => {
+    const rock = 0x606060;
+    const soil = 0x907048;
+    const ridge = lane((col) => 60 - 6 * Math.abs(col - middle));
+    const litCol = middle - 4;
+    const shadedCol = middle + 4;
+    const contrast = (colour: number): { readonly ratio: number; readonly lit: Rgb } => {
+      const field = buildMinimapCellField(scene({ colourOfCell: () => colour, elevation: ridge }));
+      const lit = landOf(field, litCol, middle);
+      return { ratio: rgbLuma(lit) / rgbLuma(landOf(field, shadedCol, middle)), lit };
+    };
+    const rockFaces = contrast(rock);
+    expect(rockFaces.ratio).toBeGreaterThan(contrast(soil).ratio);
+    expect(rockFaces.lit.b).toBeGreaterThan(rockFaces.lit.r);
+  });
+
+  it('smooths the fine relief under a closed canopy', () => {
+    const bumps = scene({ elevation: lane((col, row) => ((col * 7 + row * 3) % 5) * 8) });
+    const swing = (light: Float32Array): number => light.reduce((sum, v) => sum + Math.abs(v - 1), 0);
+    const bare = cellLight(bumps).light;
+    const wooded = cellLight(bumps, undefined, new Array<number>(SIZE * SIZE).fill(1)).light;
+    expect(swing(wooded)).toBeLessThan(swing(bare));
   });
 });
 

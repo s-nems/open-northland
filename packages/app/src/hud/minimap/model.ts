@@ -233,15 +233,29 @@ export interface FogCells {
   readonly stateAt: (cellX: number, cellY: number) => number;
 }
 
+/** Unexplored ground under the minimap mask: a dark, slightly warm slate instead of black, so the
+ *  explored map emerges from darkness against the frame's wood rather than from a hole. A tuned look. */
+export const FOG_UNEXPLORED_TINT = 0x1a1713;
+
 /**
- * Write one fog mask into `rgba` (`cellsWide × cellsHigh`, row-major, 4 bytes/px): only the alpha lane,
- * graded by state with the render layer's alphas, so the caller keeps the rgb lanes black.
+ * Write one premultiplied fog mask into `rgba` (`cellsWide × cellsHigh`, row-major, 4 bytes/px): the
+ * alpha graded by state with the render layer's alphas, explored ground dimmed by black and unexplored
+ * ground covered in {@link FOG_UNEXPLORED_TINT}.
  */
-export function fillFogAlpha(fog: FogCells, rgba: Uint8Array): void {
+export function fillFogMask(fog: FogCells, rgba: Uint8Array): void {
+  const tintR = (FOG_UNEXPLORED_TINT >> 16) & 0xff;
+  const tintG = (FOG_UNEXPLORED_TINT >> 8) & 0xff;
+  const tintB = FOG_UNEXPLORED_TINT & 0xff;
   for (let r = 0; r < fog.cellsHigh; r++) {
     for (let c = 0; c < fog.cellsWide; c++) {
       const state = fog.stateAt(c, r);
-      rgba[(r * fog.cellsWide + c) * 4 + 3] =
+      const o = (r * fog.cellsWide + c) * 4;
+      const unexplored = state !== FOG_STATE.VISIBLE && state !== FOG_STATE.EXPLORED;
+      // Premultiplied by the unexplored alpha, which is fully opaque.
+      rgba[o] = unexplored ? tintR : 0;
+      rgba[o + 1] = unexplored ? tintG : 0;
+      rgba[o + 2] = unexplored ? tintB : 0;
+      rgba[o + 3] =
         state === FOG_STATE.VISIBLE
           ? 0
           : state === FOG_STATE.EXPLORED

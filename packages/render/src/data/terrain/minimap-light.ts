@@ -28,6 +28,9 @@ const MID_RELIEF: ReliefScale = { exaggeration: 16, strength: 0.4 };
 /** The fine scale's clamp around flat (1), so a cliff cell does not punch a hole in the picture. */
 const FINE_RELIEF_MIN = 0.62;
 const FINE_RELIEF_MAX = 1.3;
+/** How much of the fine relief a full canopy hides: from above, a closed stand smooths out the ground's
+ *  small folds, which would otherwise mottle the forest into camouflage. */
+const CANOPY_FINE_DAMP = 0.7;
 /** The broad massing light: the same Lambert term over a box-blurred height. */
 const MASSING_RADIUS_COLS = 4;
 const MASSING_RELIEF: ReliefScale = { exaggeration: 20, strength: 0.5 };
@@ -63,9 +66,14 @@ export interface CellLight {
 
 /**
  * Per-cell land light. `canopyHeight` (elevation units per cell, optional) raises wooded cells for the
- * fine relief only, so a forest edge lights up on the sun side and falls into shade on the far side.
+ * fine relief only, so a forest edge lights up on the sun side and falls into shade on the far side;
+ * `canopyCover` (0..1 per cell, optional) damps the fine relief under the stand.
  */
-export function cellLight(scene: MinimapScene, canopyHeight?: ArrayLike<number>): CellLight {
+export function cellLight(
+  scene: MinimapScene,
+  canopyHeight?: ArrayLike<number>,
+  canopyCover?: ArrayLike<number>,
+): CellLight {
   const { width, height } = scene;
   const cells = width * height;
   const elevation = laneOf(scene.elevation, cells);
@@ -93,8 +101,9 @@ export function cellLight(scene: MinimapScene, canopyHeight?: ArrayLike<number>)
     mean /= cells;
     for (let i = 0; i < cells; i++) {
       const e = ground[i] ?? 0;
-      const relief =
-        clamp(fine[i] ?? 1, FINE_RELIEF_MIN, FINE_RELIEF_MAX) * (mid[i] ?? 1) * (massing[i] ?? 1);
+      const fineLight = clamp(fine[i] ?? 1, FINE_RELIEF_MIN, FINE_RELIEF_MAX);
+      const damp = CANOPY_FINE_DAMP * clamp01(canopyCover?.[i] ?? 0);
+      const relief = (fineLight + (1 - fineLight) * damp) * (mid[i] ?? 1) * (massing[i] ?? 1);
       const rise = ((e - (near[i] ?? e)) / NEAR_FULL_DEPTH + (e - (far[i] ?? e)) / FAR_FULL_DEPTH) / 2;
       const occlusion = rise < 0 ? 1 - HOLLOW_SHADE * clamp01(-rise) : 1 + RIDGE_LIGHT * clamp01(rise);
       const gain = 1 + clamp((e - mean) * HEIGHT_GAIN_PER_UNIT, -HEIGHT_GAIN_MAX, HEIGHT_GAIN_MAX);

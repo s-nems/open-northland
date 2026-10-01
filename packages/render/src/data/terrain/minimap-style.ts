@@ -1,4 +1,4 @@
-import { clamp } from '../math.js';
+import { clamp, clamp01 } from '../math.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../projection/iso.js';
 import { terrainWorldBounds } from './minimap.js';
 import { buildMinimapCellField, FIELD_COVER } from './minimap-cells.js';
@@ -39,6 +39,16 @@ const BANK_MAX_BAND = 0.45;
 const BANK_SHADE = 0.22;
 const SURF_FLOOR = 0.6;
 const SURF_PERIOD_CELLS = 0.6;
+/** A dark wet line on the land side of the coast, so islands and lakes read crisply on a small picture:
+ *  its width in px, capped in water units, and its shade, full up to {@link WET_FULL_PITCH_PX} px per
+ *  cell and easing to {@link WET_FLOOR} of that by {@link WET_FADED_PITCH_PX}, where the texture
+ *  already draws the shore. */
+const WET_PX = 1;
+const WET_MAX_BAND = 0.35;
+const WET_SHADE = 0.45;
+const WET_FULL_PITCH_PX = 3;
+const WET_FADED_PITCH_PX = 8;
+const WET_FLOOR = 0.4;
 /** The cell pitch in px up to which per-pixel grain keeps full strength; above it it scales by
  *  `GRAIN_FULL_PX / pitch`, down to the floor, since grain at one px per cell is noise at three. */
 const GRAIN_FULL_PX = 1.2;
@@ -77,6 +87,9 @@ export function rasterizeMinimap(scene: MinimapScene, pxW: number, pxH: number):
   const coastEdge = Math.min(1, COAST_EDGE_SAMPLES / (cellPx * samples));
   const foamBand = Math.min(FOAM_MAX_BAND, FOAM_PX / cellPx);
   const bankBand = Math.min(BANK_MAX_BAND, BANK_PX / cellPx);
+  const wetBand = Math.min(WET_MAX_BAND, WET_PX / cellPx);
+  const wetFade = clamp01((cellPx - WET_FULL_PITCH_PX) / (WET_FADED_PITCH_PX - WET_FULL_PITCH_PX));
+  const wetShade = WET_SHADE * (1 - (1 - WET_FLOOR) * wetFade);
   // Sub-cell texture fades in with the pitch and stays off while the picture supersamples, so it never
   // needs supersampling itself.
   const textured = samples === 1;
@@ -120,7 +133,9 @@ export function rasterizeMinimap(scene: MinimapScene, pxW: number, pxH: number):
           if (cover < 1) {
             land.paint(s, wx, wy, px, py, sample);
             const bank = 1 - (COAST - water) / bankBand;
-            const share = bank > 0 ? (1 - cover) * (1 - BANK_SHADE * Math.min(1, bank)) : 1 - cover;
+            const wet = 1 - (COAST - water) / wetBand;
+            let share = bank > 0 ? (1 - cover) * (1 - BANK_SHADE * Math.min(1, bank)) : 1 - cover;
+            if (wet > 0) share *= 1 - wetShade * Math.min(1, wet);
             sample.r *= share;
             sample.g *= share;
             sample.b *= share;
