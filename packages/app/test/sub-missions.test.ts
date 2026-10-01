@@ -41,7 +41,7 @@ function parentSave() {
 
 beforeEach(() => {
   vi.mocked(loadMapList).mockResolvedValue([
-    { id: 'child', minimap: false, campaign: { campaignId: 0, missionId: 91 } },
+    { id: 'child', picture: false, minimap: false, campaign: { campaignId: 0, missionId: 91 } },
   ]);
   vi.mocked(loadTerrainMap).mockResolvedValue(map);
   vi.mocked(loadMapScript).mockResolvedValue(source);
@@ -85,8 +85,8 @@ describe('map sub-mission worlds', () => {
     );
     const pair = { campaignId: 0, missionId: 91 };
     vi.mocked(loadMapList).mockResolvedValue([
-      { id: 'child', minimap: false, campaign: pair },
-      { id: 'twin', minimap: false, campaign: pair },
+      { id: 'child', picture: false, minimap: false, campaign: pair },
+      { id: 'twin', picture: false, minimap: false, campaign: pair },
     ]);
     await expect(load({ kind: 'start', campaignId: 0, mapId: 91, mission: 0 }, parent)).rejects.toThrow(
       'found 2',

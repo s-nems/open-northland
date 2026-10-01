@@ -134,7 +134,7 @@ export async function runPipeline(args: Args): Promise<void> {
       `${masked.length} masked overlay page(s) into ${args.out}`,
   );
 
-  // Synthesizing a missing minimap reads back the `text_NNN` pages the pictures stage emitted above.
+  // Synthesizing a minimap reads back the `text_NNN` pages the pictures stage emitted above.
   const texturesDir = join(args.out, TEXTURES_DIR);
   const synthesizeMinimap = createMinimapSynthesizer({
     gfxPatterns: ir.gfxPatterns,
@@ -149,15 +149,14 @@ export async function runPipeline(args: Args): Promise<void> {
   });
   const terrains = await convertMapDatTree(roots, args.out, synthesizeMinimap);
   const totalCells = terrains.reduce((sum, t) => sum + t.width * t.height, 0);
+  const mapPictures = terrains.filter((t) => t.picture).length;
   const minimaps = terrains.filter((t) => t.minimap).length;
-  const synthesized = terrains.filter((t) => t.minimapSynthesized).length;
   const scripts = terrains.filter((t) => t.script !== undefined).length;
   const briefings = terrains.filter((t) => t.briefing).length;
   const stringTables = terrains.filter((t) => t.strings).length;
   console.log(
     `[pipeline] map.dat -> terrain: ${terrains.length} map grid(s) ` +
-      `(${totalCells} cells total, ${minimaps} minimap(s) ` +
-      `of which ${synthesized} synthesized, ${scripts} script sidecar(s), ${stringTables} string ` +
+      `(${totalCells} cells total, ${mapPictures} picture(s), ${minimaps} minimap(s), ${scripts} script sidecar(s), ${stringTables} string ` +
       `table(s), ${briefings} briefing sidecar(s)) into ${join(args.out, MAPS_DIR)}`,
   );
 

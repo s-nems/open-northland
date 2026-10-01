@@ -15,7 +15,8 @@ content/
     <id>.meta.json        menu metadata and the map's provenance
     <id>.script.json      optional player and mission data
     <id>.strings.json     optional per-language string table
-    <id>.png              optional thumbnail
+    <id>.png              optional authored picture (the map's minimap.pcx)
+    <id>.map.png          optional minimap rasterized from the terrain
   bobs/                   atlases and colour LUTs
   textures/               ground pages and transition overlays
   sounds/                 the mod's wav tree

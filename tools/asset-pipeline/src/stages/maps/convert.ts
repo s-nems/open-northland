@@ -38,10 +38,10 @@ export interface MapDatConversion {
   readonly height: number;
   /** The terrain JSON's path relative to `outDir`. */
   readonly output: string;
-  /** Whether a `maps/<id>.png` minimap was emitted, decoded or synthesized. */
+  /** Whether the authored `minimap.pcx` picture was decoded into `maps/<id>.png`. */
+  readonly picture: boolean;
+  /** Whether a terrain minimap was rasterized from the decoded cells into `maps/<id>.map.png`. */
   readonly minimap: boolean;
-  /** The emitted minimap was synthesized from the decoded cells. */
-  readonly minimapSynthesized: boolean;
   /** The emitted `maps/<id>.meta.json`. */
   readonly meta: MapMeta;
   /** The emitted `maps/<id>.script.json`, when the map ships a decodable script. */
@@ -54,11 +54,11 @@ export interface MapDatConversion {
 
 /**
  * Decodes every `map.dat` under the mod root into `<outDir>/maps/<id>.json` plus its optional
- * meta, minimap and script sidecars, in path-sorted order so a re-run is reproducible. The id is the
- * containing folder's slug, the same collapse `decodeMapTree` applies to `map.cif`, so the artifact
- * and its `MapInfo` stay joinable and two folders with one slug write one file, last write wins. A
- * `map.dat` that fails to read or decode is logged and skipped; a write failure and a missing mod
- * root propagate.
+ * meta, picture, minimap and script sidecars, in path-sorted order so a re-run is reproducible. The
+ * id is the containing folder's slug, the same collapse `decodeMapTree` applies to `map.cif`, so the
+ * artifact and its `MapInfo` stay joinable and two folders with one slug write one file, last write
+ * wins. A `map.dat` that fails to read or decode is logged and skipped; a write failure and a missing
+ * mod root propagate.
  */
 export async function convertMapDatTree(
   roots: SourceRoots,
@@ -112,11 +112,12 @@ export async function convertMapDatTree(
     // A same-id twin converted earlier this run may have emitted sidecars; clear them so
     // last-write-wins covers the sidecars, not just the grid.
     const metaPath = join(outDir, MAPS_DIR, `${id}.meta.json`);
-    const pngPath = join(outDir, MAPS_DIR, `${id}.png`);
+    const picturePath = join(outDir, MAPS_DIR, `${id}.png`);
+    const minimapPath = join(outDir, MAPS_DIR, `${id}.map.png`);
     const scriptPath = join(outDir, MAPS_DIR, `${id}.script.json`);
     const briefingPath = join(outDir, MAPS_DIR, `${id}.briefing.json`);
     const stringsPath = join(outDir, MAPS_DIR, `${id}.strings.json`);
-    for (const sidecar of [metaPath, pngPath, scriptPath, briefingPath, stringsPath]) {
+    for (const sidecar of [metaPath, picturePath, minimapPath, scriptPath, briefingPath, stringsPath]) {
       await rm(sidecar, { force: true });
     }
     const stringTables = await loadMapStringTables(mapDir, rel);
@@ -146,26 +147,24 @@ export async function convertMapDatTree(
         briefing = true;
       }
     }
-    let minimap = false;
-    let minimapSynthesized = false;
-    const minimapPath = await findPathCaseInsensitive(mapDir, ['minimap', 'minimap.pcx']);
-    if (minimapPath !== undefined) {
+    let picture = false;
+    const picturePcx = await findPathCaseInsensitive(mapDir, ['minimap', 'minimap.pcx']);
+    if (picturePcx !== undefined) {
       try {
-        await writeFileWithParents(pngPath, await minimapToPng(await readFile(minimapPath)));
-        minimap = true;
+        await writeFileWithParents(picturePath, await minimapToPng(await readFile(picturePcx)));
+        picture = true;
       } catch (err) {
-        console.warn(`[pipeline] map ${rel}: minimap undecodable: ${errorMessage(err)}`);
+        console.warn(`[pipeline] map ${rel}: minimap picture undecodable: ${errorMessage(err)}`);
       }
     }
-    // No usable shipped card: rasterize one from the decoded cells, so the menu never has to pull
-    // the multi-MB terrain JSON just to draw a list row.
-    if (!minimap && synthesizeMinimap !== undefined) {
+    // Rasterized for every map, so the menu never has to pull the multi-MB terrain JSON to draw it.
+    let minimap = false;
+    if (synthesizeMinimap !== undefined) {
       try {
         const png = await synthesizeMinimap(terrain);
         if (png !== undefined) {
-          await writeFileWithParents(pngPath, png);
+          await writeFileWithParents(minimapPath, png);
           minimap = true;
-          minimapSynthesized = true;
         }
       } catch (err) {
         console.warn(`[pipeline] map ${rel}: minimap synthesis failed: ${errorMessage(err)}`);
@@ -176,8 +175,8 @@ export async function convertMapDatTree(
       width: terrain.width,
       height: terrain.height,
       output,
+      picture,
       minimap,
-      minimapSynthesized,
       meta: metaFile,
       ...(scriptFile !== undefined ? { script: scriptFile } : {}),
       briefing,

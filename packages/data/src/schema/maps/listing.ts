@@ -26,7 +26,9 @@ export const MapsIndexEntry = z.strictObject({
   campaign: MapMeta.shape.campaign,
   name: MapMeta.shape.name,
   description: MapMeta.shape.description,
-  /** Whether the minimap thumbnail `maps/<id>.png` exists. */
+  /** Whether the authored picture `maps/<id>.png` exists. */
+  picture: z.boolean(),
+  /** Whether the terrain minimap `maps/<id>.map.png` exists. */
   minimap: z.boolean(),
   /** Absent when the map ships no decodable roster. */
   players: z.array(MapsIndexPlayerSlot).optional(),

@@ -58,7 +58,9 @@ function seatSettlerTribes(sim: Simulation, player: number): ReadonlySet<number>
 
 describe.runIf(hasRealIr())(`${PARENT} played as franks through its sub-mission`, () => {
   beforeEach(() => {
-    vi.mocked(loadMapList).mockResolvedValue([{ id: CHILD, minimap: true, campaign: CHILD_CAMPAIGN }]);
+    vi.mocked(loadMapList).mockResolvedValue([
+      { id: CHILD, picture: true, minimap: true, campaign: CHILD_CAMPAIGN },
+    ]);
     vi.mocked(loadTerrainMap).mockImplementation(async (id) => readMap(id).map);
     vi.mocked(loadMapScript).mockImplementation(async (id) => readMap(id).script);
   });

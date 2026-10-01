@@ -12,6 +12,7 @@ describe('parseMapsIndex', () => {
     provenance: { kind: 'mod', folder: 'CnModMaps/arena' },
     name: { pol: 'Arena', eng: 'Arena' },
     description: { eng: 'Two against two.' },
+    picture: true,
     minimap: true,
     players: [
       {
@@ -42,7 +43,7 @@ describe('parseMapsIndex', () => {
   };
 
   it('keeps a well-formed listing, optional fields included', () => {
-    const listing = [arena, { id: 'bare', minimap: false }];
+    const listing = [arena, { id: 'bare', picture: false, minimap: false }];
     expect(parseMapsIndex(listing)).toEqual(listing);
   });
 
@@ -54,6 +55,6 @@ describe('parseMapsIndex', () => {
     expect(parseMapsIndex({ maps: [arena] })).toEqual([]);
     expect(parseMapsIndex([{ ...arena, provenance: { kind: 'mod', folder: '../escape' } }])).toEqual([]);
     expect(parseMapsIndex([{ ...arena, players: [{ player: 0, type: 'robot' }] }])).toEqual([]);
-    expect(parseMapsIndex([{ id: 'story', minimap: false, mapTypes: 'yes' }])).toEqual([]);
+    expect(parseMapsIndex([{ id: 'story', picture: false, minimap: false, mapTypes: 'yes' }])).toEqual([]);
   });
 });

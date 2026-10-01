@@ -108,16 +108,17 @@ describe('convertMapDatTree', () => {
   /** Raw single-byte string → bytes (for CP1250 fixtures written verbatim to disk). */
   const rawBytes = (s: string): Uint8Array => Uint8Array.from(s, (c) => c.charCodeAt(0) & 0xff);
 
-  it('emits provenance metadata even without text or minimap', async () => {
+  it('emits provenance metadata even without text, picture or minimap', async () => {
     const done = await convertMapDatTree({ mod: game }, out);
-    expect(done.find((d) => d.id === 'forteca')).toMatchObject({ minimap: false });
+    expect(done.find((d) => d.id === 'forteca')).toMatchObject({ picture: false, minimap: false });
     expect(JSON.parse(await readFile(join(out, 'maps', 'forteca.meta.json'), 'utf8'))).toEqual({
       provenance: { kind: 'mod', folder: 'CnModMaps/forteca' },
     });
     await expect(readFile(join(out, 'maps', 'forteca.png'))).rejects.toThrow();
+    await expect(readFile(join(out, 'maps', 'forteca.map.png'))).rejects.toThrow();
   });
 
-  it('emits the meta sidecar from text/pol/strings.ini (CP1250, observed 0/1 string ids) + the minimap PNG', async () => {
+  it('emits the meta sidecar from text/pol/strings.ini (CP1250, observed 0/1 string ids) + the picture PNG', async () => {
     const dir = join(game, 'CnModMaps', 'tutorial_002');
     // "BŁĘKIT" with CP1250 bytes (Ł=0xA3, Ę=0xCA) - the map strings' real codepage.
     await mkdir(join(dir, 'text', 'pol'), { recursive: true });
@@ -131,11 +132,31 @@ describe('convertMapDatTree', () => {
       encodePcx({ width: 2, height: 1, pixels: Uint8Array.from([1, 2]), palette: rampPalette() }),
     );
     const done = await convertMapDatTree({ mod: game }, out);
-    expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ minimap: true });
+    expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ picture: true, minimap: false });
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
     expect(meta).toMatchObject({ name: { pol: 'BŁĘKIT' }, description: { pol: 'Opis mapy' } });
     const png = await decodePng(await readFile(join(out, 'maps', 'tutorial_002.png')));
     expect({ width: png.width, height: png.height }).toEqual({ width: 2, height: 1 });
+  });
+
+  it('rasterizes a minimap for every map beside the authored picture, each in its own file', async () => {
+    const dir = join(game, 'CnModMaps', 'tutorial_002');
+    await mkdir(join(dir, 'minimap'), { recursive: true });
+    await writeFile(
+      join(dir, 'minimap', 'minimap.pcx'),
+      encodePcx({ width: 2, height: 1, pixels: Uint8Array.from([1, 2]), palette: rampPalette() }),
+    );
+    const synthesized = Uint8Array.of(7, 7, 7);
+    const done = await convertMapDatTree({ mod: game }, out, async () => synthesized);
+    expect(done.map(({ id, picture, minimap }) => ({ id, picture, minimap }))).toEqual([
+      { id: 'forteca', picture: false, minimap: true },
+      { id: 'tutorial_002', picture: true, minimap: true },
+    ]);
+    expect(new Uint8Array(await readFile(join(out, 'maps', 'forteca.map.png')))).toEqual(synthesized);
+    expect(new Uint8Array(await readFile(join(out, 'maps', 'tutorial_002.map.png')))).toEqual(synthesized);
+    await expect(readFile(join(out, 'maps', 'forteca.png'))).rejects.toThrow();
+    const picture = await decodePng(await readFile(join(out, 'maps', 'tutorial_002.png')));
+    expect({ width: picture.width, height: picture.height }).toEqual({ width: 2, height: 1 });
   });
 
   it('emits every shipped language and resolves the string ids from the map.cif misc_mapname header', async () => {

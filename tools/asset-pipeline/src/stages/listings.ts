@@ -29,6 +29,7 @@ function mapsIndexEntry(map: MapDatConversion): MapsIndexEntry {
     ...(campaign === undefined ? {} : { campaign }),
     ...(name === undefined ? {} : { name }),
     ...(description === undefined ? {} : { description }),
+    picture: map.picture,
     minimap: map.minimap,
     ...(players.length > 0 ? { players } : {}),
     ...(map.script?.multiplayer?.fixedColors === true ? { fixedColors: true } : {}),

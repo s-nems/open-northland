@@ -42,6 +42,7 @@ describe('mapItem', () => {
     const free = mapItem({
       id: 'dolina',
       name: { pol: 'Dolina' },
+      picture: false,
       minimap: false,
       mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE],
       players: [slot(0), slot(1, true)],
@@ -51,6 +52,7 @@ describe('mapItem', () => {
     expect(free.players).toHaveLength(2); // …but the lobby still negotiates the full roster
     const arena = mapItem({
       id: 'arena',
+      picture: true,
       minimap: true,
       mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE],
       fixedColors: true,
@@ -59,14 +61,14 @@ describe('mapItem', () => {
     expect(arena.seats).toEqual([]);
     expect(arena.minimap).toBe(true);
     expect(arena.fixedColors).toBe(true);
-    const bare = mapItem({ id: 'arena', minimap: false });
+    const bare = mapItem({ id: 'arena', picture: false, minimap: false });
     expect(bare.fixedColors).toBe(false);
     expect(bare.types).toEqual([]);
     expect(mapCategory(bare)).toBe('free');
   });
 
   it('falls back to the id stem when the map ships no display name', () => {
-    expect(mapItem({ id: 'bare_map', minimap: false }).title).toBe('bare_map');
+    expect(mapItem({ id: 'bare_map', picture: false, minimap: false }).title).toBe('bare_map');
   });
 
   it('reads the title and description in the given language, else in a shipped one', () => {
@@ -74,6 +76,7 @@ describe('mapItem', () => {
       id: 'arabskie_wyspy',
       name: { pol: 'ARABSKIE WYSPY', eng: 'ARABIAN ISLANDS' },
       description: { pol: 'Opis' },
+      picture: false,
       minimap: false,
     };
     expect(mapItem(entry, 'eng')).toMatchObject({ title: 'ARABIAN ISLANDS', description: 'Opis' });
@@ -84,6 +87,7 @@ describe('mapItem', () => {
     const lesson = mapItem({
       id: 'renamed_lesson',
       name: { pol: 'Sterowanie' },
+      picture: false,
       minimap: false,
       campaign: { campaignId: 100, missionId: 2 },
       mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
@@ -94,16 +98,18 @@ describe('mapItem', () => {
 });
 
 describe('listedIn', () => {
-  const typed = (...types: number[]) => mapItem({ id: types.join('_'), minimap: false, mapTypes: types });
+  const typed = (...types: number[]) =>
+    mapItem({ id: types.join('_'), picture: false, minimap: false, mapTypes: types });
   const campaign = typed(MAP_TYPE.SINGLE_PLAYER_CAMPAIGN);
   const free = typed(MAP_TYPE.SINGLE_PLAYER_FREE);
   const userFree = typed(MAP_TYPE.USER_SINGLE_PLAYER_FREE);
   const multi = typed(MAP_TYPE.MULTI_PLAYER_FREE);
   const userMulti = typed(MAP_TYPE.USER_MULTI_PLAYER_FREE);
   const demo = typed(MAP_TYPE.SINGLE_PLAYER_DEMO);
-  const untyped = mapItem({ id: 'untyped', minimap: false });
+  const untyped = mapItem({ id: 'untyped', picture: false, minimap: false });
   const multiOnly = mapItem({
     id: 'only',
+    picture: false,
     minimap: false,
     mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE],
     multiplayerOnly: true,
@@ -111,6 +117,7 @@ describe('listedIn', () => {
   const scene = sceneItem('battle', 'Bitwa', 'pokaz walki wręcz');
   const tutorial = mapItem({
     id: 'lesson',
+    picture: false,
     minimap: false,
     campaign: { campaignId: 100, missionId: 1 },
     mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
@@ -153,6 +160,7 @@ describe('filterItems', () => {
   const subMission = mapItem({
     id: 'gringo_sub',
     name: { pol: 'Gringo - bitwa' },
+    picture: false,
     minimap: false,
     mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
     campaign: { campaignId: 0, missionId: 66641 },
@@ -160,12 +168,14 @@ describe('filterItems', () => {
   const free = mapItem({
     id: 'dolina',
     name: { pol: 'Dolina' },
+    picture: false,
     minimap: false,
     mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE],
   });
   const arena = mapItem({
     id: 'zatoka_arena',
     name: { pol: 'Zatoka Mgieł' },
+    picture: true,
     minimap: true,
     mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE],
   });
@@ -173,6 +183,7 @@ describe('filterItems', () => {
   const secondLesson = mapItem({
     id: 'renamed_second',
     name: { pol: 'Każdy Wiking jest unikalny' },
+    picture: false,
     minimap: false,
     campaign: { campaignId: 100, missionId: 2 },
     mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
@@ -180,6 +191,7 @@ describe('filterItems', () => {
   const firstLesson = mapItem({
     id: 'renamed_first',
     name: { pol: 'Sterowanie' },
+    picture: false,
     minimap: false,
     campaign: { campaignId: 100, missionId: 1 },
     mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
@@ -202,6 +214,7 @@ describe('filterItems', () => {
     expect(filterItems(items, 'single', 'multiplayer', '')).toEqual([arena]);
     const both = mapItem({
       id: 'both',
+      picture: false,
       minimap: false,
       mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE, MAP_TYPE.MULTI_PLAYER_FREE],
       multiplayerOnly: true,
@@ -212,7 +225,13 @@ describe('filterItems', () => {
 
   it('orders maps by title as the language reads them, a number by its value', () => {
     const titled = (id: string, name: string): MapSelectItem =>
-      mapItem({ id, name: { pol: name }, minimap: false, mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE] });
+      mapItem({
+        id,
+        name: { pol: name },
+        picture: false,
+        minimap: false,
+        mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE],
+      });
     const tenth = titled('a', 'Wyspa 10');
     const second = titled('b', 'Wyspa 2');
     const accented = titled('c', 'Łąka');

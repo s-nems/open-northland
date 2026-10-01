@@ -104,7 +104,7 @@ it('running reload requires the current room fingerprint and refuses a local pro
     await loadRoomMapDocuments(room, {
       local: async () => null,
       cached,
-      list: async () => [{ id: 'ISLAND', minimap: false }],
+      list: async () => [{ id: 'ISLAND', picture: false, minimap: false }],
     }),
   ).toBeNull();
   expect(cached).not.toHaveBeenCalled();

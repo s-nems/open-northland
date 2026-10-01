@@ -33,8 +33,8 @@ function converted(id: string, extra: Partial<MapDatConversion> = {}): MapDatCon
     width: 2,
     height: 2,
     output: `maps/${id}.json`,
+    picture: false,
     minimap: false,
-    minimapSynthesized: false,
     meta: { provenance: { kind: 'mod', folder: `CnModMaps/${id}` } },
     briefing: false,
     strings: false,
@@ -54,6 +54,7 @@ describe('mapsIndexEntries', () => {
   it('joins each map with its sidecars and reads the lobby seats off the script', () => {
     const entries = mapsIndexEntries([
       converted('arena', {
+        picture: true,
         minimap: true,
         meta: {
           provenance: { kind: 'mod', folder: 'CnModMaps/arena' },
@@ -72,6 +73,7 @@ describe('mapsIndexEntries', () => {
         provenance: { kind: 'mod', folder: 'CnModMaps/arena' },
         name: { pol: 'Arena', eng: 'Arena' },
         description: { pol: 'Dwoch na dwoch.', eng: 'Two against two.' },
+        picture: true,
         minimap: true,
         players: [
           {
@@ -106,7 +108,7 @@ describe('mapsIndexEntries', () => {
 
   it('lists a bare map by id alone and leaves out an empty roster', () => {
     const bare = mapsIndexEntries([converted('bare', { meta: {}, script: MapScript.parse({}) })]);
-    expect(bare).toEqual([{ id: 'bare', minimap: false }]);
+    expect(bare).toEqual([{ id: 'bare', picture: false, minimap: false }]);
   });
 
   it('sorts by id and lets the last conversion of a repeated id win, like its files did', () => {
