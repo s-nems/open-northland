@@ -58,7 +58,8 @@ const CROWN_GAP_SHADE = 0.42;
 const CROWN_MIN_PX = 3.5;
 const CROWN_FADE_SPAN_PX = 3;
 /** Below crown scale the canopy undulates instead: a slower noise lit by its slope toward the light
- *  (probed this far down-light) plus a little of its own tone, fading in from this period in px. */
+ *  (probed this far down-light) plus a little of its own tone, fading in from this period in px and
+ *  handing over to the crowns as they fade in. */
 const CANOPY_BUMP_PERIOD_CELLS = 1.5;
 const CANOPY_BUMP_MIN_PX = 3.5;
 const CANOPY_BUMP_FADE_SPAN_PX = 2.5;
@@ -129,7 +130,8 @@ export class LandPainter {
     const meanCrownPx = 2 * CROWN_RADIUS_FULL * (1 - CROWN_RADIUS_JITTER / 2) * CROWN_PERIOD_CELLS * cellPx;
     this.crownFade = textured ? clamp01((meanCrownPx - CROWN_MIN_PX) / CROWN_FADE_SPAN_PX) : 0;
     this.bumpFade = textured
-      ? clamp01((CANOPY_BUMP_PERIOD_CELLS * cellPx - CANOPY_BUMP_MIN_PX) / CANOPY_BUMP_FADE_SPAN_PX)
+      ? clamp01((CANOPY_BUMP_PERIOD_CELLS * cellPx - CANOPY_BUMP_MIN_PX) / CANOPY_BUMP_FADE_SPAN_PX) *
+        (1 - this.crownFade)
       : 0;
     this.bumpProbeX = light.downX * CANOPY_BUMP_PROBE_CELLS * CELL_W;
     this.bumpProbeY = light.downY * CANOPY_BUMP_PROBE_CELLS * CELL_W;

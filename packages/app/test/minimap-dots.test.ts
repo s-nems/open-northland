@@ -39,8 +39,17 @@ interface Dot {
 
 function dotsOf(entities: readonly Ent[], overrides: Partial<MinimapDotContext> = {}): Dot[] {
   const out: Dot[] = [];
-  forEachMinimapDot(snapshotOf(entities), contextWith(overrides), (bx, by, mark, colour) =>
-    out.push({ bx, by, mark, colour }),
+  forEachMinimapDot(snapshotOf(entities), contextWith(overrides), (bx, by, mark, colour, part) => {
+    if (part === 'fills') out.push({ bx, by, mark, colour });
+  });
+  return out;
+}
+
+/** Every sink call as `mark:part`, in order. */
+function partsOf(entities: readonly Ent[], overrides: Partial<MinimapDotContext> = {}): string[] {
+  const out: string[] = [];
+  forEachMinimapDot(snapshotOf(entities), contextWith(overrides), (_bx, _by, mark, _colour, part) =>
+    out.push(`${mark}:${part}`),
   );
   return out;
 }
@@ -142,6 +151,18 @@ describe('forEachMinimapDot', () => {
       roadSite(5, 0, 1, 1),
     ]).map((dot) => dot.mark);
     expect(marks).toEqual(['roadSite', 'signpost', 'building', 'civilian', 'vehicle']);
+  });
+
+  it('sends each layer as all its rims, then all its fills, so a later layer still parts from the one below', () => {
+    const parts = partsOf([person(1, 0, 1, 1), person(2, 0, 2, 2), building(3, 0, 1, 1)]);
+    expect(parts).toEqual([
+      'building:rims',
+      'building:fills',
+      'civilian:rims',
+      'civilian:rims',
+      'civilian:fills',
+      'civilian:fills',
+    ]);
   });
 
   it('skips unowned people and buildings, positionless entities and vehicles a ship carries', () => {
@@ -294,7 +315,9 @@ describe('forEachMinimapDot', () => {
     const counted = countingSnapshot(snapshotOf([...scenery, person(1, 0, 2, 2), building(2, 0, 3, 3)]));
     const plot = (): number => {
       let dots = 0;
-      forEachMinimapDot(counted.snapshot, contextWith({}), () => dots++);
+      forEachMinimapDot(counted.snapshot, contextWith({}), (_bx, _by, _mark, _colour, part) => {
+        if (part === 'fills') dots++;
+      });
       return dots;
     };
     expect(plot()).toBe(2);

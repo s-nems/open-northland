@@ -78,7 +78,9 @@ describe('the owner scope on the plot', () => {
         viewer: VIEWER,
         stanceToward,
       },
-      (_x, _y, mark) => marks.push(mark),
+      (_x, _y, mark, _colour, part) => {
+        if (part === 'fills') marks.push(mark);
+      },
     );
     return marks;
   };

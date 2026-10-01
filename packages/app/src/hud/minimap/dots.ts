@@ -16,7 +16,7 @@ import {
 } from '../../game/snapshot.js';
 import type { MinimapFilters, MinimapScope } from './filters.js';
 import { MINIMAP_PLAYER_COLOURS, STANCE_COLOURS, STANCE_SELF_COLOUR } from './palette.js';
-import type { MinimapMark } from './stamps.js';
+import type { MinimapMark, MinimapStampPart } from './stamps.js';
 
 /** Fallback dot colour for a player outside the swatch table. */
 const UNKNOWN_PLAYER_DOT_COLOUR = 0xffffff;
@@ -40,34 +40,50 @@ export interface MinimapDotContext {
   readonly playerColourOf?: ((player: number) => number) | undefined;
 }
 
-/** Markers a layer holds back to stamp over the rest of it, in the order they came. */
+/** The markers of one layer in stamping order, held as raster px so the rims pass and the fills pass
+ *  cost no second position or fog lookup. */
 class HeldMarks {
-  private readonly entities: SnapshotEntity[] = [];
+  private readonly xs: number[] = [];
+  private readonly ys: number[] = [];
   private readonly marks: MinimapMark[] = [];
   private readonly colours: number[] = [];
 
-  hold(entity: SnapshotEntity, mark: MinimapMark, colour: number): void {
-    this.entities.push(entity);
+  hold(bx: number, by: number, mark: MinimapMark, colour: number): void {
+    this.xs.push(bx);
+    this.ys.push(by);
     this.marks.push(mark);
     this.colours.push(colour);
   }
 
-  release(plot: (entity: SnapshotEntity, mark: MinimapMark, colour: number) => void): void {
-    for (let i = 0; i < this.entities.length; i++) {
-      const entity = this.entities[i];
+  emit(sink: MinimapDotSink, part: MinimapStampPart): void {
+    for (let i = 0; i < this.xs.length; i++) {
+      const bx = this.xs[i];
+      const by = this.ys[i];
       const mark = this.marks[i];
       const colour = this.colours[i];
-      if (entity !== undefined && mark !== undefined && colour !== undefined) plot(entity, mark, colour);
+      if (bx !== undefined && by !== undefined && mark !== undefined && colour !== undefined)
+        sink(bx, by, mark, colour, part);
     }
-    this.entities.length = 0;
+  }
+
+  clear(): void {
+    this.xs.length = 0;
+    this.ys.length = 0;
     this.marks.length = 0;
     this.colours.length = 0;
   }
 }
 
-/** A plotted marker: raster-px centre `(bx, by)`, its shape and packed `0xRRGGBB` colour. Loose primitives
- *  keep the sink itself free of allocation. */
-export type MinimapDotSink = (bx: number, by: number, mark: MinimapMark, colour: number) => void;
+/** A plotted marker part: raster-px centre `(bx, by)`, its shape, packed `0xRRGGBB` colour and which
+ *  part to paint; each layer sends every rim, then every fill. Loose primitives keep the sink itself
+ *  free of allocation. */
+export type MinimapDotSink = (
+  bx: number,
+  by: number,
+  mark: MinimapMark,
+  colour: number,
+  part: MinimapStampPart,
+) => void;
 
 /** Whether an owned marker of `owner` passes the scope as seen from `viewer`. */
 export function scopeAdmits(
@@ -93,7 +109,8 @@ export function readMinimapIndexes(snapshot: WorldSnapshot): void {
  * and flags, buildings, animals and people, vehicles. Each layer walks only its own component index, so
  * a replot costs the plotted entities, never the whole entity list. Laid roads are the road layer's.
  * Within a layer, hostile owners' markers stamp last and soldiers after civilians, so an enemy army is
- * never buried under the viewer's own crowd.
+ * never buried under the viewer's own crowd; the layer's rims all go under its fills, so a crowd reads
+ * as one rimmed blob, while a later layer's rims still part it from the one below.
  */
 export function forEachMinimapDot(
   snapshot: WorldSnapshot,
@@ -114,32 +131,41 @@ export function forEachMinimapDot(
       UNKNOWN_PLAYER_DOT_COLOUR
     );
   };
+  const plain = new HeldMarks();
+  const soldiers = new HeldMarks();
+  const hostiles = new HeldMarks();
+  const hostileSoldiers = new HeldMarks();
+  const groups = [plain, soldiers, hostiles, hostileSoldiers];
   // Only currently-visible ground plots an entity; the viewer's own forces always see their own cell.
-  const plot = (e: SnapshotEntity, mark: MinimapMark, colour: number): void => {
+  const place = (e: SnapshotEntity, mark: MinimapMark, colour: number, group: HeldMarks): void => {
     const at = positionOf(e);
     if (at === undefined) return;
     const col = at.x / ONE;
     const row = at.y / ONE;
     if (fog !== null && !fogTileVisible(fog, col, row)) return;
-    sink(
+    group.hold(
       (tileToScreenX(col, row) - bounds.minX) * scale,
       (tileToScreenY(row) - bounds.minY) * scale,
       mark,
       colour,
     );
   };
-  const soldiers = new HeldMarks();
-  const hostiles = new HeldMarks();
-  const hostileSoldiers = new HeldMarks();
+  const plot = (e: SnapshotEntity, mark: MinimapMark, colour: number): void => place(e, mark, colour, plain);
   const owned = (e: SnapshotEntity, owner: number, mark: MinimapMark, colour: number): void => {
-    if (hostile(owner)) (mark === 'soldier' ? hostileSoldiers : hostiles).hold(e, mark, colour);
-    else if (mark === 'soldier') soldiers.hold(e, mark, colour);
-    else plot(e, mark, colour);
+    const soldier = mark === 'soldier';
+    place(
+      e,
+      mark,
+      colour,
+      hostile(owner) ? (soldier ? hostileSoldiers : hostiles) : soldier ? soldiers : plain,
+    );
   };
   const endLayer = (): void => {
-    soldiers.release(plot);
-    hostiles.release(plot);
-    hostileSoldiers.release(plot);
+    for (const group of groups) group.emit(sink, 'rims');
+    for (const group of groups) {
+      group.emit(sink, 'fills');
+      group.clear();
+    }
   };
 
   if (layers.roads) {
