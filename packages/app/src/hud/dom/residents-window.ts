@@ -5,6 +5,7 @@ import { type FigureBox, type FigureSlot, NO_FIGURE_SLOTS } from '../figures/set
 import type { CanBecomeOption } from '../tool-panel/residents/can-become.js';
 import {
   filtersActive,
+  filtersRemembered,
   INITIAL_RESIDENTS_STATE,
   listResidents,
   NO_RESIDENT_FILTERS,
@@ -58,6 +59,8 @@ export interface ResidentsWindowDeps {
   readonly plane: HTMLElement;
   /** The seat's people. A new array means a new tick's list; the same one costs nothing. */
   readonly rows: () => readonly ResidentRow[];
+  /** The current game tick, which times how long a closed window remembers its filters. */
+  readonly tick: () => number;
   /** The sim's rule behind the "can become" filter, asked only while that filter is set. */
   readonly canBecome: (id: number, pick: TradePick) => boolean;
   /** Bumped when a `canBecome` answer lands anew, which relists under unchanged rows; absent, only new
@@ -575,8 +578,15 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     if (placeWindow()) figuresStale = true;
   };
 
+  /** The last tick the window was seen open; a frame's refresh keeps it current, so it reads as the
+   *  close tick however the window closed. */
+  let lastOpenTick: number | null = null;
   const open = (): void => {
-    state = { ...state, filters: NO_RESIDENT_FILTERS, scrollTop: 0 };
+    const tick = deps.tick();
+    if (!filtersRemembered(lastOpenTick, tick)) {
+      state = { ...state, filters: NO_RESIDENT_FILTERS, scrollTop: 0 };
+    }
+    lastOpenTick = tick;
     anchor = null;
     rows = deps.rows();
     window.open();
@@ -593,6 +603,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     handleClick: () => false,
     refresh: () => {
       if (!window.isOpen()) return;
+      lastOpenTick = deps.tick();
       place();
       const next = deps.rows();
       const answers = deps.answersVersion?.() ?? 0;

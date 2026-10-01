@@ -515,6 +515,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         const window = createResidentsWindow({
           plane,
           rows: opts.residents.rows,
+          tick: opts.residents.tick,
           canBecome: opts.residents.canBecome,
           ...(opts.residents.answersVersion !== undefined
             ? { answersVersion: opts.residents.answersVersion }

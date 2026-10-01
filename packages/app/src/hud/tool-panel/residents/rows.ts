@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '@open-northland/sim';
 import { compareLabels } from '../../../i18n/index.js';
 
 /** Who a resident is, as the original subjects window groups its people: one group each. */
@@ -267,12 +268,23 @@ export function sortResidents(
   );
 }
 
-/** Window state across a HUD-scale remount. Fresh openings clear filters and scroll, while the sort
- *  remains the player's per-game choice. Never browser storage. */
+/** Window state across a HUD-scale remount. An opening after `FILTER_MEMORY_SECONDS` closed clears
+ *  filters and scroll, while the sort remains the player's per-game choice. Never browser storage. */
 export interface ResidentsWindowState {
   readonly filters: ResidentFilters;
   readonly sort: ResidentSort;
   readonly scrollTop: number;
+}
+
+/** Game seconds a closed window keeps its filters and scroll: a quick return is usually to pick
+ *  another settler from the same list. A UI choice, not the original's. */
+export const FILTER_MEMORY_SECONDS = 30;
+const FILTER_MEMORY_TICKS = FILTER_MEMORY_SECONDS * TICKS_PER_SECOND;
+
+/** Whether an opening at `tick` keeps the filters of a window last seen open at `lastOpenTick`. A tick
+ *  behind it means another game's clock. */
+export function filtersRemembered(lastOpenTick: number | null, tick: number): boolean {
+  return lastOpenTick !== null && tick >= lastOpenTick && tick - lastOpenTick < FILTER_MEMORY_TICKS;
 }
 
 /** The list opens by profession: a generated name tells the player little. */

@@ -1,6 +1,9 @@
+import { TICKS_PER_SECOND } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
+  FILTER_MEMORY_SECONDS,
   filtersActive,
+  filtersRemembered,
   listResidents,
   NO_RESIDENT_FILTERS,
   pickedGroup,
@@ -228,5 +231,21 @@ describe('residents row picks', () => {
 
   it('adds the range to the group under both modifiers', () => {
     expect(pickedGroup('add-range', 13, new Set([10, 12]), shown, 12)).toEqual([10, 12, 13]);
+  });
+});
+
+describe('filtersRemembered', () => {
+  const CLOSED_AT = 1200;
+  const MEMORY_TICKS = FILTER_MEMORY_SECONDS * TICKS_PER_SECOND;
+
+  it('keeps the filters for a reopening within the memory span of game time', () => {
+    expect(filtersRemembered(CLOSED_AT, CLOSED_AT)).toBe(true);
+    expect(filtersRemembered(CLOSED_AT, CLOSED_AT + MEMORY_TICKS - 1)).toBe(true);
+  });
+
+  it('clears them once the span has passed, on a first opening, or under another clock', () => {
+    expect(filtersRemembered(CLOSED_AT, CLOSED_AT + MEMORY_TICKS)).toBe(false);
+    expect(filtersRemembered(null, CLOSED_AT)).toBe(false);
+    expect(filtersRemembered(CLOSED_AT, CLOSED_AT - 1)).toBe(false);
   });
 });

@@ -5,6 +5,8 @@ export interface ResidentsSeam {
   /** The seat's people for the current tick; the same array until the next one. Pulled only while
    *  the window is open: it is one walk over the snapshot's actors. */
   readonly rows: () => readonly ResidentRow[];
+  /** The current game tick. */
+  readonly tick: () => number;
   /** Whether the sim would let the settler take the trade (`SessionHost.canChooseJob`) and, for a pick
    *  held to a good, has earned that good (`SessionHost.hasEarnedGood`). */
   readonly canBecome: (id: number, pick: TradePick) => boolean;
