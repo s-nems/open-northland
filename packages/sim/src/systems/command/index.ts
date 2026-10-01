@@ -31,6 +31,7 @@ import {
   attackMoveUnit,
   attackUnit,
   cancelTraining,
+  clearHaulFlag,
   declareDiplomacy,
   equipGood,
   exploreArea,
@@ -264,6 +265,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       return;
     case 'setWorkFlag':
       setWorkFlag(world, ctx, command);
+      return;
+    case 'clearHaulFlag':
+      clearHaulFlag(world, command);
       return;
     case 'setGatherGood':
       setGatherGood(world, ctx, command);

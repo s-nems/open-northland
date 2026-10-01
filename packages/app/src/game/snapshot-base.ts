@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   components,
   countedBy,
@@ -301,6 +302,19 @@ export function workplaceOf(e: SnapshotEntity): number | undefined {
   return num(a?.workplace);
 }
 
+/** Whether the settler is a carrier at a post that takes a pickup flag (the sim's `postTakesHaulFlag`). */
+export function holdsHaulFlagPost(content: ContentSet, snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
+  const jobType = settlerJobType(e);
+  const workplace = workplaceOf(e);
+  const building = workplace === undefined ? undefined : entityById(snapshot, workplace);
+  const buildingType = building === undefined ? undefined : buildingTypeOf(building);
+  return (
+    jobType !== undefined &&
+    buildingType !== undefined &&
+    systems.postTakesHaulFlag(content, jobType, buildingType)
+  );
+}
+
 /** The unit's military mode, or undefined before the simulation has stamped one. */
 export function stanceModeOf(e: SnapshotEntity): number | undefined {
   const stance = e.components.Stance as { mode?: unknown } | undefined;
@@ -374,15 +388,19 @@ export function trainingHouseOf(e: SnapshotEntity): number | undefined {
   return num(order?.house);
 }
 
-/** The drop-off flag entity a gatherer carries. */
-export function workFlagOf(e: SnapshotEntity): number | undefined {
-  const wf = e.components.WorkFlag as { flag?: unknown } | undefined;
-  return num(wf?.flag);
+/** The flag a gatherer or fisher works from, or a carrier collects around. */
+function flagBindingOf(e: SnapshotEntity): { flag?: unknown; radius?: unknown } | undefined {
+  return (e.components.WorkFlag ?? e.components.HaulFlag) as { flag?: unknown; radius?: unknown } | undefined;
 }
 
-/** A gatherer's work-area binding: the flag it works around and that area's radius in half-cell nodes. */
+/** The flag entity a gatherer drops off at, or a carrier collects around. */
+export function workFlagOf(e: SnapshotEntity): number | undefined {
+  return num(flagBindingOf(e)?.flag);
+}
+
+/** A work-area binding: the flag the settler works around and that area's radius in half-cell nodes. */
 export function workAreaOf(e: SnapshotEntity): { flag: number; radius: number } | undefined {
-  const wf = e.components.WorkFlag as { flag?: unknown; radius?: unknown } | undefined;
+  const wf = flagBindingOf(e);
   const flag = num(wf?.flag);
   const radius = num(wf?.radius);
   return flag !== undefined && radius !== undefined ? { flag, radius } : undefined;
@@ -420,8 +438,8 @@ export function orderedNeedOf(e: SnapshotEntity): unknown {
 }
 
 /**
- * Map each gatherer's drop-off flag entity to its owning gatherer, restricted to one player or `'any'`.
- * A flag stores no back-reference, so this scan is the only way to invert the edge; a gatherer binds to
+ * Map each work flag entity to the gatherer or carrier it belongs to, restricted to one player or `'any'`.
+ * A flag stores no back-reference, so this scan is the only way to invert the edge; a settler binds to
  * exactly one flag, so the map is 1:1.
  */
 export function gathererByFlag(snapshot: WorldSnapshot, player: number | 'any'): Map<number, number> {

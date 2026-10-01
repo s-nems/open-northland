@@ -17,6 +17,16 @@ import type { NodeId } from '../../nav/terrain/index.js';
 export const WorkFlag = defineComponent<{ flag: Entity; radius: number }>('WorkFlag', 'economy');
 
 /**
+ * Binds an employed carrier to a {@link DeliveryFlag} marker the player planted: it lifts loose ground
+ * goods only within `radius` nodes of `flag` and waits beside it when none lie there, still delivering to
+ * its workplace. A workshop carrier looks there for its missing inputs before the stores. Without it a
+ * carrier collects wherever its signposts reach. The flag belongs to the carrier, not to the building.
+ * Source basis: owner ruling after the CulturesNation mod's porter flag as the owner describes it; the
+ * radius and the wait at the flag are owner choices, not measured behavior.
+ */
+export const HaulFlag = defineComponent<{ flag: Entity; radius: number }>('HaulFlag', 'economy');
+
+/**
  * The node a gatherer is taking up and, once drawn, the stance it approaches it from, kept until the
  * stroke lands so a walk over several planner passes keeps one goal. The stroke cadence
  * (`atomics/stroke-cadence.ts`) decides whether the stance survives a counted stroke. Removed when the
@@ -29,10 +39,10 @@ export const HarvestFocus = defineComponent<{ node: Entity; stance?: NodeId | un
 );
 
 /**
- * Marks a positioned entity as a designated delivery flag - a gatherer's collection point, and a pure
- * marker storing no goods. The harvest delivered to it piles on the ground around it as separate loose
- * `Stockpile + Position` heaps, so relocating the flag moves only the marker, never the goods already
- * dropped. The render keys the flag graphic, drawn on top of any co-located heap, on its presence.
+ * Marks a positioned entity as a designated delivery flag - a gatherer's collection point or a carrier's
+ * pickup area, and a pure marker storing no goods. The harvest delivered to it piles on the ground around
+ * it as separate loose `Stockpile + Position` heaps, so relocating the flag moves only the marker, never
+ * the goods already dropped. The render keys the flag graphic, drawn on top of any co-located heap, on its presence.
  */
 export const DeliveryFlag = defineComponent<Record<string, never>>('DeliveryFlag', 'economy');
 

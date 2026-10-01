@@ -21,6 +21,8 @@ import {
   GOOD_WOOD,
   VEHICLE_HANDCART,
 } from '../src/game/sandbox/ids/index.js';
+import { sandboxContent } from '../src/game/sandbox/index.js';
+import { holdsHaulFlagPost } from '../src/game/snapshot.js';
 import { vehicleLabel } from '../src/game/technology.js';
 import { fixedViewerSeat } from '../src/game/viewer-seat.js';
 import { goodLabel } from '../src/hud/details-panel/model/context.js';
@@ -144,6 +146,45 @@ describe('the settler panel model', () => {
     expect(model.family?.partner?.id).toBe(PARTNER);
     expect(model.family?.child?.id).toBe(CHILD);
     expect(model.family?.marry).toBeNull();
+  });
+
+  it('gives a warehouse carrier the work area row, with the remove button once a flag stands', () => {
+    const content = sandboxContent();
+    const ctx: UnitPanelModelContext = {
+      ...sandboxCtx(),
+      holdsHaulFlagPost: (snapshot, ent) => holdsHaulFlagPost(content, snapshot, ent),
+    };
+    const carrier = (components: Record<string, unknown>): EntitySnapshot[] => [
+      buildingEntity(WORKSHOP, BUILDING_WAREHOUSE_00),
+      {
+        id: SETTLER,
+        components: owned({
+          Settler: { tribe: 1, jobType: JOB_CARRIER },
+          JobAssignment: { workplace: WORKSHOP },
+          ...components,
+        }),
+      },
+    ];
+    expect(settlerModel(carrier({}), ctx).workArea).toEqual({ flagged: false, assign: true, remove: null });
+    expect(settlerModel(carrier({ HaulFlag: { flag: 99, radius: 32 } }), ctx).workArea).toEqual({
+      flagged: true,
+      assign: true,
+      remove: true,
+    });
+    const collector = settlerModel(
+      [
+        buildingEntity(WORKSHOP, BUILDING_WAREHOUSE_00),
+        {
+          id: SETTLER,
+          components: owned({
+            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+            JobAssignment: { workplace: WORKSHOP },
+          }),
+        },
+      ],
+      ctx,
+    );
+    expect(collector.workArea).toBeNull();
   });
 
   it("tells both spouses what holds the wife's child order", () => {

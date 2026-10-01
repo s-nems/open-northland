@@ -10,6 +10,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
+import { bindHaulFlag } from '../../src/systems/economy/work-flag.js';
 import { plannerSystem } from '../../src/systems/index.js';
 import { removeLandscapes } from '../../src/systems/landscape/edits.js';
 import {
@@ -128,6 +129,34 @@ describe('porter dormancy', () => {
     markPorterDormant(plan);
     expect(porterDormant(plan)).toBe(true);
     removeLandscapes(sim.world, sim.terrain, { hx: 4, hy: 0 }, 0);
+    expect(porterDormant(plan)).toBe(false);
+  });
+
+  it("invalidates a dormant pickup scan when the porter's flag moves", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(30, 1) });
+    const hq = hqAt(sim, 0, 0);
+    const porter = porterAt(sim, 1, 0, hq);
+    bindHaulFlag(sim.world, porter, { x: fx.fromInt(20), y: fx.fromInt(0) });
+    if (sim.terrain === undefined) throw new Error('mapped fixture');
+    const ctx = ctxOf(sim);
+    const plan: PlannerContext = {
+      world: sim.world,
+      ctx,
+      terrain: sim.terrain,
+      entity: porter,
+      here: anchorCell(sim, 1, 0),
+      tribe: VIKING,
+      jobType: CARRIER,
+      experience: new Map(),
+      owner: undefined,
+      limit: null,
+      targets: collectTargets(sim.world, ctx, sim.terrain),
+      inbound: collectInboundSupply(sim.world),
+      gossipCandidates: new GossipCandidates(sim.world, sim.content),
+    };
+    markPorterDormant(plan);
+    expect(porterDormant(plan)).toBe(true);
+    bindHaulFlag(sim.world, porter, { x: fx.fromInt(5), y: fx.fromInt(0) }); // a position write only
     expect(porterDormant(plan)).toBe(false);
   });
 

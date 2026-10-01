@@ -2,6 +2,7 @@ import {
   Building,
   DeliveryFlag,
   GroundDrop,
+  HaulFlag,
   JobAssignment,
   Owner,
   ownerOf,
@@ -22,8 +23,10 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
+import { liveHaulFlag } from '../../../economy/work-flag.js';
 import { navigationLimitFor } from '../../../signposts/index.js';
 import { GossipCandidates } from '../../../social/index.js';
+import { entityNode } from '../../../spatial/nodes.js';
 import { collectInboundSupply } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { collectTargets } from '../../targets/index.js';
@@ -46,6 +49,9 @@ interface DormantEntry {
   readonly tribe: number;
   readonly owner: number | undefined;
   readonly workplace: Entity;
+  /** The node of the porter's pickup flag, or null without one: moving the marker writes its position,
+   *  which no generation tracks. */
+  readonly flagNode: NodeId | null;
   /** The confinement toggle at the failed scan; its rules singleton is written in place with no generation
    *  bump, so the toggle is compared directly. */
   readonly confined: boolean;
@@ -77,6 +83,7 @@ function porterScanVersion(world: World): number {
     world.componentGeneration(GroundDrop) +
     world.componentGeneration(DeliveryFlag) +
     world.componentGeneration(WorkFlag) +
+    world.componentGeneration(HaulFlag) +
     world.componentGeneration(JobAssignment) +
     world.componentGeneration(SiteAssignment) +
     world.componentGeneration(SupplyRun) +
@@ -89,6 +96,7 @@ function porterScanVersion(world: World): number {
 /** The entry the gate would store for `plan` right now (also the shape it compares against). */
 function entryFor(plan: PlannerContext): DormantEntry {
   const { world, entity } = plan;
+  const flag = liveHaulFlag(world, entity);
   return {
     version: porterScanVersion(world),
     node: plan.here,
@@ -96,6 +104,7 @@ function entryFor(plan: PlannerContext): DormantEntry {
     tribe: plan.tribe,
     owner: plan.owner,
     workplace: world.get(entity, JobAssignment).workplace,
+    flagNode: flag === undefined ? null : entityNode(world, plan.terrain, flag.flag),
     confined: signpostNavigationEnabled(world),
   };
 }
@@ -108,6 +117,7 @@ function sameEntry(a: DormantEntry, b: DormantEntry): boolean {
     a.tribe === b.tribe &&
     a.owner === b.owner &&
     a.workplace === b.workplace &&
+    a.flagNode === b.flagNode &&
     a.confined === b.confined
   );
 }

@@ -1,5 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import { type Entity, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
+import { holdsHaulFlagPost } from '../../game/snapshot.js';
 import { technologyReason } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import {
@@ -323,6 +324,7 @@ export async function createUnitChrome(
     vehicles: opts.content.vehicles,
     isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
     usesWorkFlag: (jobType) => systems.jobUsesWorkFlag({ content: opts.content }, jobType),
+    holdsHaulFlagPost: (snapshot, ent) => holdsHaulFlagPost(opts.content, snapshot, ent),
     livestockTribeOfGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType),
     edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
     isTraderJob: (jobType) => systems.isTraderJob(opts.content, jobType),

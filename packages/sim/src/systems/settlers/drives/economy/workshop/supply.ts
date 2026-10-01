@@ -14,6 +14,7 @@ import {
 import type { PlannerContext } from '../../../planner/context.js';
 import { FetchableStock, QUALIFIES } from '../../../targets/index.js';
 import { unreachableGoalVeto } from '../../../unreachable-goals.js';
+import type { HaulFlagArea } from '../haul-flag-area.js';
 
 // The producer supply scans: a worker fetches the recipe inputs its workplace is short on and hauls the
 // finished output out, so the loop closes without a dedicated carrier. Every choice is recipe-driven and
@@ -94,6 +95,8 @@ export function nearestMissingInputSource(
   workplace: Entity,
   recipe: Recipe,
   shortfall: InputShortfall,
+  /** Look only at the loose ground piles in a flagged carrier's pickup area, ranked from its flag. */
+  area?: HaulFlagArea,
 ): MissingInputSource | null {
   const { world, ctx, here, targets } = plan;
   const stock = world.get(workplace, Stockpile).amounts;
@@ -125,16 +128,27 @@ export function nearestMissingInputSource(
     }
     const input = inputs[pick];
     if (input === undefined) return null;
-    const winner = sideHoldsNone(plan, input.goodType)
-      ? null
-      : targets.bands.holding(input.goodType).nearest(
-          here,
-          // The workplace never supplies itself.
-          (e) => (e === workplace ? null : QUALIFIES),
-          plan.limit ?? undefined,
-          avoid,
-          sameSideAs(world, plan.owner),
-        );
+    const band = sideHoldsNone(plan, input.goodType) ? null : targets.bands.holding(input.goodType);
+    const winner =
+      band === null
+        ? null
+        : area !== undefined
+          ? band.nearestLoose(
+              here,
+              () => QUALIFIES,
+              area.gate,
+              avoid,
+              sameSideAs(world, plan.owner),
+              area.center,
+            )
+          : band.nearest(
+              here,
+              // The workplace never supplies itself.
+              (e) => (e === workplace ? null : QUALIFIES),
+              plan.limit ?? undefined,
+              avoid,
+              sameSideAs(world, plan.owner),
+            );
     if (winner !== null) return { store: winner.entity, goodType: input.goodType };
     lastIndex = pick;
     lastHave = pickHave;

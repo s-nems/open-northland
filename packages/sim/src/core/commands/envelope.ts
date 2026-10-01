@@ -83,6 +83,7 @@ export const COMMAND_ISSUER: {
   attackWithVehicle: 'seat',
   cancelTraining: 'seat',
   cancelUpgrade: 'seat',
+  clearHaulFlag: 'seat',
   debugCompleteConstruction: 'trusted',
   debugFillStockpile: 'trusted',
   debugKill: 'trusted',

@@ -48,6 +48,7 @@ export { addFishSwarms, FISH_REPRODUCTION_TICKS, MAX_FISH_PER_SWARM } from './ec
 // The gather gate, so the app's right-click on a resource names the same gatherers `setGatherGood` accepts.
 export { heldGatherGood, jobGatherGoods, jobGathersGood } from './economy/gather-goods.js';
 export { createGroundGoods, type GroundGoodsSpec } from './economy/ground-goods.js';
+export { postTakesHaulFlag } from './economy/haul-flag.js';
 export { OUTPUT_TENTHS_PER_UNIT } from './economy/production/bonus-output.js';
 // The repair crew cap, so the app's right-click and site pick fall through where assignBuilder refuses.
 export { REPAIR_CREW_LIMIT } from './economy/repair.js';

@@ -2,9 +2,11 @@ import { JobAssignment } from '../../../../components/index.js';
 import { isCarrierJob } from '../../../stores/index.js';
 import { walkPickupBatch } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
+import type { IdleStands } from '../../planner/idle-replan.js';
 import { nearestWorkplaceOutput } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { deliverableGoodProbe } from './delivery-targets.js';
+import { haulFlagArea, waitAtHaulFlag } from './haul-flag-area.js';
 import { porterPickupTarget } from './haul-targets.js';
 import { markPorterDormant, porterDormant, wakePorter } from './porter-dormancy.js';
 import { isBoundToStorageSink } from './store-policy.js';
@@ -19,15 +21,21 @@ function isPorterBoundToStore(plan: PlannerContext): boolean {
  * PORTER - a carrier bound to a storage fixture that moves loose goods. A carrier at a producing building
  * hauls its finished output out to a warehouse first, so the producer's store keeps clearing; any bound
  * carrier then brings loose ground piles in. A warehouse or HQ carrier only ever reaches the bring-in half.
+ * One holding a pickup flag lifts only around it and, with nothing there, waits at the flag rather than
+ * falling through to haul other workshops' output.
  */
-export function planPorter(plan: PlannerContext): boolean {
+export function planPorter(plan: PlannerContext, idle: IdleStands): boolean {
   const { world, entity: e } = plan;
   if (!isPorterBoundToStore(plan)) return false;
-  if (porterDormant(plan)) return false;
-  const pick = porterPickupTarget(plan);
+  const area = haulFlagArea(plan);
+  const dormant = porterDormant(plan);
+  const pick = dormant ? null : porterPickupTarget(plan);
   if (pick === null) {
-    markPorterDormant(plan);
-    return false;
+    if (!dormant) markPorterDormant(plan);
+    if (area === null) return false;
+    idle.stand(e, false);
+    waitAtHaulFlag(plan, area);
+    return true;
   }
   wakePorter(world, e);
   walkPickupBatch(plan, pick.from, pick.goodType);

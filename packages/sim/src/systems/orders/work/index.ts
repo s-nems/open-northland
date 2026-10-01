@@ -7,4 +7,10 @@ export {
   unassignBuilder,
   unassignWorker,
 } from './employment.js';
-export { setGatherGood, setProductionCount, setProductionGoods, setWorkFlag } from './selection.js';
+export {
+  clearHaulFlag,
+  setGatherGood,
+  setProductionCount,
+  setProductionGoods,
+  setWorkFlag,
+} from './selection.js';

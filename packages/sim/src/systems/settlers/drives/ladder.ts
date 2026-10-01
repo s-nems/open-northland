@@ -296,7 +296,7 @@ function planEconomy(
 
   if (planFisher(plan)) return;
   if (planGatherer(plan, pass.harvestClaims, pass.idle)) return;
-  if (planPorter(plan)) return;
+  if (planPorter(plan, pass.idle)) return;
 
   // A settler the haul rung also refuses is genuinely idle. One already chatting keeps its chat, and one
   // a script pinned stays where it is; a graduate heads back to its school's yard, and the rest step off a

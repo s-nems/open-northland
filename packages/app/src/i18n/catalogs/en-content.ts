@@ -353,6 +353,11 @@ export const enContent = {
       summary:
         "Two collectors learn carpentry with the assistant sending graduates to work. The first takes the joinery's only joiner slot. The second finds no free slot, stays in the school yard and walks back there whenever it has nothing to do.",
     },
+    'porter-flag': {
+      title: "A porter's flag at the quarry",
+      summary:
+        'A miner stacks stone at his yard far east of the headquarters. The headquarters porter holds a flag beside that yard: he carries the quarry stone home, leaves the heap by the headquarters alone and waits at the flag when nothing lies there.',
+    },
     'gatherer-flag-follow': {
       title: 'Flags follow the resources',
       summary:

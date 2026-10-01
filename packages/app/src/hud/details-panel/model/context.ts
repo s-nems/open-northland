@@ -7,10 +7,12 @@ import {
   type TradeOffer,
   type TraderView,
   type WorkStatus,
+  type WorldSnapshot,
 } from '@open-northland/sim';
 import { localizedBuildingName } from '../../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
+import type { SnapshotEntity } from '../../../game/snapshot.js';
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
 import { currentLocale, formatMessage, messages, professionLabel, tribeName } from '../../../i18n/index.js';
 import type { SettlerStateHold } from './settler.js';
@@ -45,6 +47,8 @@ export interface UnitPanelModelContext {
   /** The sim's flag-trade test (`jobUsesWorkFlag`): a gatherer or a fisher, whose workplace pick also
    *  plants the flag. Absent = no trade works from a flag. */
   readonly usesWorkFlag?: ((jobType: number) => boolean) | undefined;
+  /** Whether the settler is a carrier at a post that takes a pickup flag. Absent = none does. */
+  readonly holdsHaulFlagPost?: ((snapshot: WorldSnapshot, ent: SnapshotEntity) => boolean) | undefined;
   /** The sim's species-good seam: the animal tribe a good is a herd of, null for an ordinary ware whose
    *  stock row holds goods rather than counting a farm's animals. */
   readonly livestockTribeOfGood?: ((goodType: number) => number | null) | undefined;

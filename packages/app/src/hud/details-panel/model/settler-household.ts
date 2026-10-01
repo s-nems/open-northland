@@ -13,6 +13,7 @@ import {
   type SnapshotEntity,
   settlerJobType,
   trainingHouseOf,
+  workAreaOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
@@ -55,6 +56,14 @@ export interface SettlerWorkplaceRow extends SettlerSeatRow {
   readonly flag: boolean;
 }
 
+/** The Obszar row of a carrier whose post takes a pickup flag: whether a flag stands, the button
+ *  that plants or moves it, and the one that takes it away. */
+export interface SettlerWorkAreaRow {
+  readonly flagged: boolean;
+  readonly assign: SeatControl;
+  readonly remove: SeatControl | null;
+}
+
 export interface SettlerPersonLink {
   readonly id: number;
   readonly label: string;
@@ -94,6 +103,18 @@ export function workplaceRow(
     remove: workplaceOf(ent) === undefined ? null : control,
     flag,
   };
+}
+
+/** The Obszar row, or null for a settler whose post takes no pickup flag. */
+export function workAreaRow(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  ent: SnapshotEntity,
+  control: SeatControl,
+): SettlerWorkAreaRow | null {
+  if (ctx.holdsHaulFlagPost?.(snapshot, ent) !== true) return null;
+  const flagged = workAreaOf(ent) !== undefined;
+  return { flagged, assign: control, remove: flagged ? control : null };
 }
 
 /** The Dom row: a grown person's own, a child's read-only (it lives where its parents do). */

@@ -64,6 +64,8 @@ export function settlerPanelActions(
     orderNeed: order((id, need: NeedKind) => host.ringCommand(NEED_ORDER[need], [id])),
     assignWorkplace: order(host.assignWorkplace),
     unassignWorkplace: order((id) => enqueue({ kind: 'unassignWorker', entity: id as Entity })),
+    assignWorkArea: order((id) => host.ringCommand('assignWorkArea', [id])),
+    clearWorkArea: order((id) => enqueue({ kind: 'clearHaulFlag', entity: id as Entity })),
     endBuildRun: order((id) => enqueue({ kind: 'unassignBuilder', entity: id as Entity })),
     assignHome: order(host.assignHome),
     unassignHome: order((id) => enqueue({ kind: 'unassignHouse', entity: id as Entity })),

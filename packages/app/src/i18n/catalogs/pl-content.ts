@@ -352,6 +352,11 @@ export const plContent = {
       summary:
         'Dwóch zbieraczy uczy się ciesielstwa, a asystent kieruje absolwentów do pracy. Pierwszy zajmuje jedyne miejsce cieśli w stolarni. Drugi nie znajduje wolnego miejsca, zostaje przy szkole i wraca tam, gdy nie ma nic do roboty.',
     },
+    'porter-flag': {
+      title: 'Chorągiewka tragarza w kamieniołomie',
+      summary:
+        'Górnik układa kamień przy swojej chorągiewce daleko na wschód od kwatery głównej. Tragarz kwatery ma chorągiewkę przy tym składzie: nosi kamień z kamieniołomu, zostawia kupkę leżącą przy kwaterze i czeka przy chorągiewce, gdy nic tam nie leży.',
+    },
     'gatherer-flag-follow': {
       title: 'Flagi idą za surowcami',
       summary:

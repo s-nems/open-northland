@@ -310,14 +310,20 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Place or move one unposted field worker's flag to (x,y). A gatherer searches its radius; a fisher
-       * uses it as the yard where the catch is banked. A worker posted to a building banks there instead,
-       * so this order is ignored until it is unassigned. The flag itself holds no stockpile.
+       * Place or move one worker's flag to (x,y). An unposted gatherer searches its radius; an unposted
+       * fisher uses it as the yard where the catch is banked. A carrier posted to a warehouse or a recipe
+       * workshop collects loose goods around it for its post. Any other posted worker banks at its post, so
+       * the order is ignored. The flag itself holds no stockpile.
        */
       readonly kind: 'setWorkFlag';
       readonly entity: Entity;
       readonly x: number;
       readonly y: number;
+    }
+  | {
+      /** Take a posted carrier's pickup flag away, so it collects wherever its signposts reach again. */
+      readonly kind: 'clearHaulFlag';
+      readonly entity: Entity;
     }
   | {
       /**

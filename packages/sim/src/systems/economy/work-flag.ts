@@ -3,6 +3,7 @@ import {
   CurrentAtomic,
   DEFAULT_WORK_FLAG_RADIUS,
   DeliveryFlag,
+  HaulFlag,
   HUNTER_WORK_FLAG_RADIUS,
   JobAssignment,
   Position,
@@ -24,9 +25,10 @@ import { clearNavState } from '../movement/nav-state.js';
 import { isFisherJob, isHunterJob } from '../readviews/index.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
 
-// The field-worker flag lifecycle. Minting and removal go through `bindFreshFlag` and `removeWorkFlag`, so
-// a `DeliveryFlag` exists exactly while a live worker references it. Authored: auto-planting a flag the
-// moment a settler becomes a gatherer is a convention of this engine rather than observed behavior.
+// The work-flag lifecycle, for a field worker's `WorkFlag` and a carrier's `HaulFlag`. Minting and removal
+// go through `bindFreshFlag`, `bindHaulFlag` and `removeWorkFlag`, so a `DeliveryFlag` exists exactly while
+// a live worker references it. Authored: auto-planting a flag the moment a settler becomes a gatherer is a
+// convention of this engine rather than observed behavior.
 
 /** The field worker's flag while its marker entity still exists; a stale binding reads as undefined. */
 export function liveWorkFlag(world: World, e: Entity): { flag: Entity; radius: number } | undefined {
@@ -49,9 +51,7 @@ export function bindFreshFlag(
   pos: { x: Fixed; y: Fixed },
 ): void {
   world.remove(e, YardDeliveryRoute);
-  const flag = world.create();
-  world.add(flag, Position, { x: pos.x, y: pos.y });
-  world.add(flag, DeliveryFlag, {});
+  const flag = mintFlagMarker(world, pos);
   const radius = workFlagRadiusFor(ctx, world.tryGet(e, Settler)?.jobType ?? null);
   if (world.has(e, WorkFlag)) {
     const wf = world.mut(e, WorkFlag);
@@ -60,25 +60,56 @@ export function bindFreshFlag(
   } else world.add(e, WorkFlag, { flag, radius });
 }
 
+function mintFlagMarker(world: World, pos: { x: Fixed; y: Fixed }): Entity {
+  const flag = world.create();
+  world.add(flag, Position, { x: pos.x, y: pos.y });
+  world.add(flag, DeliveryFlag, {});
+  return flag;
+}
+
+/** The carrier's pickup flag while its marker entity still exists. */
+export function liveHaulFlag(world: World, e: Entity): { flag: Entity; radius: number } | undefined {
+  const hf = world.tryGet(e, HaulFlag);
+  return hf !== undefined && world.has(hf.flag, Position) ? hf : undefined;
+}
+
+/** Plant carrier `e`'s pickup flag at `pos`, or move the one it has, and drop its route so it re-plans
+ *  around the new area. */
+export function bindHaulFlag(world: World, e: Entity, pos: { x: Fixed; y: Fixed }): void {
+  const live = liveHaulFlag(world, e);
+  if (live !== undefined) {
+    relocateWorkFlag(world, live.flag, pos, e);
+    return;
+  }
+  removeWorkFlag(world, e); // a stale binding's marker id
+  world.add(e, HaulFlag, { flag: mintFlagMarker(world, pos), radius: DEFAULT_WORK_FLAG_RADIUS });
+  clearNavState(world, e);
+}
+
 /**
- * Move an existing flag marker to `pos` and re-plan its gatherer. Three pieces of delivery state cache the
- * old position - the sticky {@link YardDeliveryRoute} goal, an in-flight `pileup` into this flag, and the
- * live nav goal - so all three are dropped and the gatherer re-plans next tick. Omitting `gatherer` scans
- * for the one {@link WorkFlag} referencing `flag`, which the placement push-out needs since it starts from
- * the marker.
+ * Move an existing flag marker to `pos` and re-plan its owner. Three pieces of a gatherer's delivery state
+ * cache the old position - the sticky {@link YardDeliveryRoute} goal, an in-flight `pileup` into this
+ * flag, and the live nav goal - so all three are dropped and it re-plans next tick; a carrier only drops
+ * its nav goal. Omitting `owner` scans for the one {@link WorkFlag} or {@link HaulFlag} referencing `flag`,
+ * which the placement push-out needs since it starts from the marker.
  */
 export function relocateWorkFlag(
   world: World,
   flag: Entity,
   pos: { x: Fixed; y: Fixed },
-  gatherer?: Entity,
+  owner?: Entity,
 ): void {
   const p = world.mut(flag, Position);
   p.x = pos.x;
   p.y = pos.y;
   noteWorkFlagMove(world); // the flag-block overlay keys on its own counter, not a component generation
   // Each match mutates only its own state, so the scan's store order is permitted.
-  for (const e of gatherer !== undefined ? [gatherer] : world.query(WorkFlag)) {
+  const candidates = owner !== undefined ? [owner] : [...world.query(WorkFlag), ...world.query(HaulFlag)];
+  for (const e of candidates) {
+    if (world.tryGet(e, HaulFlag)?.flag === flag) {
+      clearNavState(world, e);
+      continue;
+    }
     if (world.tryGet(e, WorkFlag)?.flag !== flag) continue;
     const atomic = world.tryGet(e, CurrentAtomic);
     if (atomic?.effect.kind === 'pileup' && atomic.effect.store === flag) removeCurrentAtomic(world, e);
@@ -182,8 +213,14 @@ function plantWorkFlagAtFeet(world: World, ctx: SystemContext, e: Entity): void 
   bindFreshFlag(world, ctx, e, positionOfNode(c.x, c.y));
 }
 
-/** The single un-bind point: destroy the flag marker and remove the {@link WorkFlag} binding. */
+/** The single un-bind point: destroy the flag marker and remove the {@link WorkFlag} or {@link HaulFlag}
+ *  binding. */
 export function removeWorkFlag(world: World, e: Entity): void {
+  const hf = world.tryGet(e, HaulFlag);
+  if (hf !== undefined) {
+    if (world.isAlive(hf.flag)) world.destroy(hf.flag);
+    world.remove(e, HaulFlag);
+  }
   const wf = world.tryGet(e, WorkFlag);
   if (wf === undefined) return;
   if (world.isAlive(wf.flag)) world.destroy(wf.flag);

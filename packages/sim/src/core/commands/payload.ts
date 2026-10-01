@@ -274,6 +274,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   setStance: { required: { entity: 'integer', mode: 'integer' } },
   setVehicleStance: { required: { vehicle: 'integer', stance: { oneOf: VEHICLE_STANCES } } },
   setWorkFlag: { required: { entity: 'integer', ...NODE } },
+  clearHaulFlag: { required: { entity: 'integer' } },
   spawnAnimalHerd: {
     required: { tribe: 'integer', ...NODE },
     optional: { count: 'integer', missionId: 'integer', owner: 'integer' },

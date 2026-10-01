@@ -4,6 +4,7 @@ import { JOB_IDLE } from '../../../catalog/jobs.js';
 import {
   childOrderOf,
   hasEligiblePartner,
+  holdsHaulFlagPost,
   isAdult,
   isBoundByMarriage,
   isFemale,
@@ -95,14 +96,17 @@ function offersMode(
   return systems.isFighterJob(content, job) && (several || stanceModeOf(e) !== mode);
 }
 
-/** The trades that work a harvest area or place a fishing delivery flag. */
-function worksAnArea(content: ContentSet, e: SnapshotEntity, job: number | null): boolean {
-  return (
-    tradeAssignable(e) &&
-    workplaceOf(e) === undefined &&
-    job !== null &&
-    systems.jobUsesWorkFlag({ content }, job)
-  );
+/** The trades that work a harvest area or place a fishing delivery flag, and the carriers that collect
+ *  around a pickup flag. */
+function worksAnArea(
+  content: ContentSet,
+  snapshot: WorldSnapshot,
+  e: SnapshotEntity,
+  job: number | null,
+): boolean {
+  if (!tradeAssignable(e) || job === null) return false;
+  if (workplaceOf(e) !== undefined) return holdsHaulFlagPost(content, snapshot, e);
+  return systems.jobUsesWorkFlag({ content }, job);
 }
 
 function allows(
@@ -152,11 +156,12 @@ function allows(
       // The sim's `mayChangeEquipment`: a grown man who is no hero.
       return isAdult(e) && !isFemale(e) && !systems.isHeroJob(content, job);
     case 'assignWorkArea':
-      return worksAnArea(content, e, job);
+      return worksAnArea(content, snapshot, e, job);
     case 'showWorkArea':
       // There is a circle to draw only around a work flag: an employed gatherer roams for the nearest
-      // node instead of working a bounded area, while a fisher uses it as the delivery point.
-      return worksAnArea(content, e, job) && workAreaOf(e) !== undefined;
+      // node instead of working a bounded area, a fisher uses it as the delivery point, and a carrier
+      // without one collects wherever its signposts reach.
+      return worksAnArea(content, snapshot, e, job) && workAreaOf(e) !== undefined;
     case 'erectSignpost':
     case 'explore':
       return systems.isScoutJob(content, job);

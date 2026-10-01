@@ -3,6 +3,7 @@ import { components, fx, systems, type WorldSnapshot } from '@open-northland/sim
 import { describe, expect, it } from 'vitest';
 import {
   JOB_BUILDER,
+  JOB_CARRIER,
   JOB_CHILD_MALE,
   JOB_COLLECTOR,
   JOB_FISHER,
@@ -198,6 +199,31 @@ describe('allowedActions - one settler', () => {
       expect(employed.has('assignWorkArea')).toBe(false);
       expect(employed.has('showWorkArea')).toBe(false);
     }
+  });
+
+  it('offers a pickup flag to a carrier at a warehouse or a recipe workshop only', () => {
+    const HEADQUARTERS = 1;
+    const WELL = 10;
+    const FARM = 12;
+    const MILL = 13;
+    const postedAt = (buildingType: number, flagged = false): ReadonlySet<ActionCommandId> => {
+      const carrier = settler(1, JOB_CARRIER, { workplace: true });
+      const flag = flagged ? { HaulFlag: { flag: FLAG, radius: 32 } } : {};
+      const snapshot = snapshotOf([
+        { ...carrier, components: { ...carrier.components, ...flag } },
+        { id: WORKSHOP, components: { Building: { buildingType, tribe: TRIBE } } },
+      ]);
+      return allowedActions(content, snapshot, [1]);
+    };
+    for (const post of [HEADQUARTERS, MILL]) {
+      expect(postedAt(post).has('assignWorkArea')).toBe(true);
+      expect(postedAt(post).has('showWorkArea')).toBe(false);
+      expect(postedAt(post, true).has('showWorkArea')).toBe(true);
+    }
+    for (const post of [WELL, FARM]) expect(postedAt(post).has('assignWorkArea')).toBe(false);
+    expect(allowedActions(content, snapshotOf([settler(1, JOB_CARRIER)]), [1]).has('assignWorkArea')).toBe(
+      false,
+    );
   });
 
   it('offers the fishing delivery flag and shows it after placement', () => {

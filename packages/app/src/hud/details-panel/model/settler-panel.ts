@@ -38,8 +38,10 @@ import {
   type SettlerFamilyModel,
   type SettlerRole,
   type SettlerSeatRow,
+  type SettlerWorkAreaRow,
   type SettlerWorkplaceRow,
   settlerRole,
+  workAreaRow,
   workplaceRow,
 } from './settler-household.js';
 import { settlerDisplayName } from './settler-name.js';
@@ -103,6 +105,7 @@ export interface SettlerPanelModel {
   /** Zdrowie, then the need bars the person carries. */
   readonly bars: readonly PanelBar[];
   readonly workplace: SettlerWorkplaceRow | null;
+  readonly workArea: SettlerWorkAreaRow | null;
   /** The road or wall run a builder is on; null for another seat's person. */
   readonly buildRun: BuildRunKind | null;
   readonly home: SettlerSeatRow | null;
@@ -224,6 +227,7 @@ export function settlerPanelModel(
       ...base,
       renamable: false,
       workplace: work.place === null ? null : { target: work.place, assign: null, remove: null, flag: false },
+      workArea: null,
       buildRun: null,
       home: null,
       vehicle: null,
@@ -242,6 +246,7 @@ export function settlerPanelModel(
     ...base,
     renamable: !hero,
     workplace: role === 'worker' ? workplaceRow(ctx, ent, work.place, control) : null,
+    workArea: role === 'worker' ? workAreaRow(ctx, snapshot, ent, control) : null,
     buildRun: buildRunOf(comps),
     home: homeRow(ctx, snapshot, ent, role, control),
     vehicle: vehicleRow(ctx, snapshot, ent, role, control),

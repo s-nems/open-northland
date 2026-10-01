@@ -36,6 +36,7 @@ import { livestockScene } from './livestock.js';
 import { meleeFrontScene } from './melee-front.js';
 import { movementContinuityScene } from './movement-continuity.js';
 import { palisadeScene } from './palisade.js';
+import { porterFlagScene } from './porter-flag.js';
 import { presentationScene } from './presentation.js';
 import { repairScene } from './repair.js';
 import { roadUpgradeScene } from './road-upgrade.js';
@@ -148,6 +149,7 @@ export const SCENES: readonly SceneDefinition[] = [
   learningFoundationsScene,
   schoolGraduatesScene,
   gathererFlagFollowScene,
+  porterFlagScene,
   vehiclesScene,
   vehicleYardScene,
   vehicleOxScene,

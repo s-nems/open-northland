@@ -67,6 +67,7 @@ export type {
   SettlerPersonLink,
   SettlerRole,
   SettlerSeatRow,
+  SettlerWorkAreaRow,
 } from './settler-household.js';
 export type {
   CarriedGoodModel,

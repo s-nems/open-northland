@@ -79,7 +79,7 @@ export function familyValue(family: SettlerFamilyModel): LedgerSegment[] {
   return people;
 }
 
-/** Praca i rodzina: the workplace, home and vehicle rows with their assign and remove buttons, and the
+/** Praca i rodzina: the workplace, work area, home and vehicle rows with their assign and remove buttons, and the
  *  family. */
 export interface WorkSection {
   readonly element: HTMLElement;
@@ -104,6 +104,10 @@ export function createWorkSection(
     },
     onLinkHover: (_index, event) => workplaceCard.hover(current()?.workplace?.target?.id ?? null, event),
     onButton: (index) => (index === 0 ? actions.assignWorkplace(id()) : actions.unassignWorkplace(id())),
+  });
+  const workArea = createLedger({
+    buttons: 2,
+    onButton: (index) => (index === 0 ? actions.assignWorkArea(id()) : actions.clearWorkArea(id())),
   });
   const buildRun = createLedger({ buttons: 1, onButton: () => actions.endBuildRun(id()) });
   const home = createLedger({
@@ -140,6 +144,7 @@ export function createWorkSection(
   root.append(
     title.element,
     workplace.element,
+    workArea.element,
     buildRun.element,
     home.element,
     vehicle.element,
@@ -174,6 +179,17 @@ export function createWorkSection(
               copy.unassignWorkplace,
               copy.unassignWorkplaceHint,
             ),
+          ],
+        });
+      }
+      setHidden(workArea.element, model.workArea === null);
+      if (model.workArea !== null) {
+        workArea.update({
+          label: panel.workArea,
+          value: [{ text: model.workArea.flagged ? panel.workAreaFlag : panel.workAreaReach }],
+          buttons: [
+            seatButton(model.workArea.assign, GLYPH.banner, panel.assignWorkArea, panel.assignWorkAreaHint),
+            seatButton(model.workArea.remove, GLYPH.close, panel.clearWorkArea, panel.clearWorkAreaHint),
           ],
         });
       }

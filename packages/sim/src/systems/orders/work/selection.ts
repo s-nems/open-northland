@@ -16,7 +16,16 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { holdToGatherGood, jobGatherGoods, jobGathersGood } from '../../economy/gather-goods.js';
-import { bindFreshFlag, jobUsesWorkFlag, liveWorkFlag, relocateWorkFlag } from '../../economy/work-flag.js';
+import { holdsHaulFlagPost } from '../../economy/haul-flag.js';
+import {
+  bindFreshFlag,
+  bindHaulFlag,
+  jobUsesWorkFlag,
+  liveHaulFlag,
+  liveWorkFlag,
+  relocateWorkFlag,
+  removeWorkFlag,
+} from '../../economy/work-flag.js';
 import { nearestWorkFlagPlacement } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { jobChangesProduction } from '../../readviews/jobs.js';
@@ -33,10 +42,11 @@ import { dropOrderQueue, isOrderableSettler } from '../guards.js';
 const WORK_FLAG_SNAP_MAX_RADIUS = 6;
 
 /**
- * Place or move one unposted gatherer/fisher flag to node (x,y) - see the command doc. An existing flag is
- * relocated and only the marker moves, because a flag stores nothing and the goods already dropped stay
- * pinned to their tiles; otherwise a fresh flag is minted there and bound with the trade's radius. A
- * building-employed collector has no delivery flag: its workplace is both its work anchor and sink.
+ * Place or move one unposted gatherer/fisher flag, or a posted carrier's pickup flag, to node (x,y) - see
+ * the command doc. An existing flag is relocated and only the marker moves, because a flag stores nothing
+ * and the goods already dropped stay pinned to their tiles; otherwise a fresh flag is minted there and
+ * bound with the trade's radius. A building-employed collector has no delivery flag: its workplace is both
+ * its work anchor and sink.
  *
  * The clicked node snaps to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}, so "work this
  * iron mine" lands on the ore itself. The snap carries the settler's signpost confinement, so the flag can
@@ -52,11 +62,14 @@ export function setWorkFlag(
   if (terrain === undefined) return; // mapless: no cells to plant a flag on
   const e = command.entity;
   if (!isOrderableSettler(world, e)) return;
-  if (world.has(e, JobAssignment)) return;
-  const jobType = world.get(e, Settler).jobType;
-  if (jobType === null || !jobUsesWorkFlag(ctx, jobType)) return;
+  const hauls = holdsHaulFlagPost(world, ctx, e);
+  if (!hauls) {
+    if (world.has(e, JobAssignment)) return;
+    const jobType = world.get(e, Settler).jobType;
+    if (jobType === null || !jobUsesWorkFlag(ctx, jobType)) return;
+  }
 
-  const live = liveWorkFlag(world, e);
+  const live = hauls ? liveHaulFlag(world, e) : liveWorkFlag(world, e);
   // Confinement folds into the snap rather than filtering its winner, so a click near the band edge snaps
   // inward to allowed ground instead of being pushed out and then rejected.
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
@@ -70,6 +83,10 @@ export function setWorkFlag(
   dropOrderQueue(world, e);
   const c = terrain.coordsOf(target);
   const pos = positionOfNode(c.x, c.y);
+  if (hauls) {
+    bindHaulFlag(world, e, pos);
+    return;
+  }
 
   // A moved flag restarts the search from it: the node being approached may lie outside the new radius.
   if (world.has(e, HarvestFocus)) world.remove(e, HarvestFocus);
@@ -78,6 +95,15 @@ export function setWorkFlag(
     return;
   }
   bindFreshFlag(world, ctx, e, pos);
+  clearNavState(world, e);
+}
+
+/** Take a posted carrier's pickup flag away - see the command doc. */
+export function clearHaulFlag(world: World, command: Extract<Command, { kind: 'clearHaulFlag' }>): void {
+  const e = command.entity;
+  if (!isOrderableSettler(world, e) || liveHaulFlag(world, e) === undefined) return;
+  dropOrderQueue(world, e);
+  removeWorkFlag(world, e);
   clearNavState(world, e);
 }
 

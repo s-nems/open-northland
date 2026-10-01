@@ -29,6 +29,7 @@ import type { PlannerSpacing } from '../../../planner/spacing.js';
 import { interactionCell } from '../../../targets/index.js';
 import { loiterCell } from '../../spacing.js';
 import { deliverableGoodProbe } from '../delivery-targets.js';
+import { haulFlagArea, waitAtHaulFlag } from '../haul-flag-area.js';
 import { planVehicleYard } from '../vehicle-yard.js';
 import { startCraftAtomic } from './craft.js';
 import {
@@ -226,7 +227,8 @@ export function planProducer(
 /**
  * Ferry inputs and outputs for a carrier bound to a recipe workplace, or carry a self-filling house's
  * goods out. Input slots are topped up before output is removed so the operators do not starve; that
- * priority is the existing named approximation.
+ * priority is the existing named approximation. A carrier holding a pickup flag takes a missing input
+ * from the ground piles around it before the stores (owner ruling) and waits at the flag when idle.
  */
 export function planWorkshopSupplier(
   plan: PlannerContext,
@@ -237,8 +239,11 @@ export function planWorkshopSupplier(
   const { world, ctx } = plan;
   const worker = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
+  const area = haulFlagArea(plan);
   if (recipe !== undefined) {
-    const source = nearestMissingInputSource(plan, workplace, recipe, CARRIER_SHORTFALL);
+    const source =
+      (area === null ? null : nearestMissingInputSource(plan, workplace, recipe, CARRIER_SHORTFALL, area)) ??
+      nearestMissingInputSource(plan, workplace, recipe, CARRIER_SHORTFALL);
     if (source !== null) {
       routeToInputSource(plan, workplace, source, seatClaims);
       return;
@@ -250,7 +255,8 @@ export function planWorkshopSupplier(
   // presence gate still fires; one at a workshop run by other operators, or at a house that fills
   // itself, drives nothing and may loiter.
   const drivesProduction = recipe !== undefined && isWorkplaceOperator(world, ctx, workplace, worker.jobType);
-  loiterByDoor(plan, workplace, spacing, drivesProduction);
+  if (area !== null && !drivesProduction) waitAtHaulFlag(plan, area);
+  else loiterByDoor(plan, workplace, spacing, drivesProduction);
 }
 
 /**

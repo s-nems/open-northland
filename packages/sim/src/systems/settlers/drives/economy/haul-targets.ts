@@ -7,6 +7,7 @@ import type { PlannerContext } from '../../planner/context.js';
 import { strandedPile } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { deliverableGoodProbe } from './delivery-targets.js';
+import { type HaulFlagArea, haulFlagArea } from './haul-flag-area.js';
 import { isFarmCarrierHaulOutRole } from './store-policy.js';
 
 /**
@@ -22,10 +23,14 @@ import { isFarmCarrierHaulOutRole } from './store-policy.js';
  */
 export function nearestGroundPile(
   plan: PlannerContext,
-  opts: { readonly deliverable: (goodType: number) => boolean },
+  opts: {
+    readonly deliverable: (goodType: number) => boolean;
+    /** A flagged carrier's pickup area, ranked from its flag instead of from the carrier. */
+    readonly area?: HaulFlagArea | null;
+  },
 ): { pile: Entity; goodType: number } | null {
   const { world, ctx, terrain, here, targets } = plan;
-  const { deliverable } = opts;
+  const { deliverable, area } = opts;
   const walls = buildingBlockedCells(world, ctx, terrain);
   const best = targets.stockpileCells.nearestLoose(
     here,
@@ -36,9 +41,10 @@ export function nearestGroundPile(
       if (good === null || !deliverable(good)) return null;
       return strandedPile(world, ctx, terrain, walls, e) ? null : { payload: good };
     },
-    plan.limit ?? undefined, // the porter's confinement: an out-of-area pile is not one it fetches
+    area?.gate ?? plan.limit ?? undefined, // the porter's confinement: an out-of-area pile is not one it fetches
     unreachableGoalVeto(world, ctx, plan.entity),
     sameSideAs(world, plan.owner),
+    area?.center ?? here,
   );
   return best === null ? null : { pile: best.entity, goodType: best.payload };
 }
@@ -81,7 +87,8 @@ export function boundProducerOutputToHaul(
 
 /**
  * The porter rung's pickup decision, side-effect-free so the dormancy verifier can re-run it without
- * mutating state: the bound producer's output out first, else the nearest deliverable ground pile in.
+ * mutating state: the bound producer's output out first, else the nearest deliverable ground pile in,
+ * around the porter's flag when it holds one.
  */
 export function porterPickupTarget(plan: PlannerContext): { from: Entity; goodType: number } | null {
   const deliverable = deliverableGoodProbe(plan);
@@ -94,6 +101,6 @@ export function porterPickupTarget(plan: PlannerContext): { from: Entity; goodTy
     plan.tribe,
   );
   if (haul !== null) return { from: haul.home, goodType: haul.goodType };
-  const pile = nearestGroundPile(plan, { deliverable });
+  const pile = nearestGroundPile(plan, { deliverable, area: haulFlagArea(plan) });
   return pile === null ? null : { from: pile.pile, goodType: pile.goodType };
 }

@@ -229,6 +229,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     setStance: [{ entity: t.soldier, mode: MILITARY_MODE.ATTACK }],
     setVehicleStance: [{ vehicle: t.catapult, stance: 'hold' }],
     setWorkFlag: [{ entity: t.worker, ...node }],
+    clearHaulFlag: [{ entity: t.worker }],
     stopVehicle: [{ vehicle: t.cart }],
     setVehicleWanted: [{ vehicle: t.cart, goodType: WOOD, amount: 3 }],
     clearVehicleWanted: [{ vehicle: t.cart }],
