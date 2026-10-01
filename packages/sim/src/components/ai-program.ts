@@ -44,6 +44,15 @@ export interface AiAttackGroupRecord {
   range: number;
 }
 
+/** One building the seat stood with on its first turn: what the handler raises again once it is gone. */
+export interface AiHouseRecord {
+  buildingType: number;
+  tribe: number;
+  /** The anchor's half-cell node. */
+  hx: number;
+  hy: number;
+}
+
 export interface AiDefaultPosition {
   hx: number;
   hy: number;
@@ -67,7 +76,12 @@ export interface AiProgramState {
   tasks: AiTaskRecord[];
   soldiers: AiSoldierRecord[];
   groups: AiAttackGroupRecord[];
+  /** The rebuild list, at most {@link AI_REBUILD_LIST_LIMIT} buildings in entity order. */
+  houses: AiHouseRecord[];
 }
+
+/** How many of its first-turn buildings a seat remembers for rebuilding. Original behavior. */
+export const AI_REBUILD_LIST_LIMIT = 100;
 
 export const AiProgram = defineComponent<AiProgramState>('AiProgram', 'players');
 

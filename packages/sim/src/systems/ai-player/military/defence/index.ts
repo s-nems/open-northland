@@ -3,7 +3,13 @@
 
 export { alarmOrders } from './alarm.js';
 export { enlistOrders } from './enlist.js';
-export { TOWER_GARRISON_ARCHERS, towerPostOrders } from './posts.js';
+export {
+  SCRIPTED_DEFENCE_REACH_POINTS,
+  SCRIPTED_PEACE_ARCHERS_PER_CLASS,
+  TOWER_GARRISON_ARCHERS,
+  type TowerCrewRule,
+  towerPostOrders,
+} from './posts.js';
 export { sortieOrders } from './sortie.js';
 export {
   type EnemyFire,

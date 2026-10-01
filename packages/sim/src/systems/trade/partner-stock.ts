@@ -30,9 +30,10 @@ export const AI_STOCK_REFILL_LEVEL = 5;
 /**
  * On a computer seat's refill turn, top its warehouses' shelves up to the refill level for the goods
  * a map agreement pays out there. Approximation: the original levels every slot of every warehouse of
- * the seat, cutting a fuller shelf down too; this build keeps the refill to the traded goods, so a
- * computer seat's own economy runs on what it produces. A seat that died keeps its refill, as the
- * original's handler keeps its turns (it tests its enabled byte alone).
+ * the seat, cutting a fuller shelf down too; this build does that only for a seat whose strategic
+ * economy the map switched off (`ai-program/town.ts`), and keeps the refill to the traded goods
+ * otherwise, so the strategic economy runs on what it produces. A seat that died keeps this refill, as
+ * the original's handler keeps its turns (it tests its enabled byte alone).
  */
 export const tradePartnerStockSystem: System = (world, ctx) => {
   if (handlerTurn(ctx.tick) % AI_STOCK_REFILL_TURNS !== 0) return;

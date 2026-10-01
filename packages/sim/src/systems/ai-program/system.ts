@@ -1,6 +1,7 @@
 import type { MapAiSeat, MapAiTask } from '@open-northland/data';
 import {
   type AiDefaultPosition,
+  type AiHouseRecord,
   AiProgram,
   aiModuleRuns,
   aiProgramEntity,
@@ -9,24 +10,29 @@ import {
   Position,
   setAiExternalFlag,
 } from '../../components/index.js';
-import { aiCommand } from '../../core/commands/index.js';
+import { aiCommand, type PlayerCommand } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { handlerTurn, scriptedSeatOnTurn } from '../ai-player/cadence.js';
+import { type Raider, seatRaiders } from '../ai-player/military/defence/threat.js';
 import { takeCensus, towerPostOrders } from '../ai-player/military/index.js';
 import { ownedBuildings, ownedSettlers } from '../ai-player/seat-roster.js';
 import type { System, SystemContext } from '../context.js';
 import { CONDITION_ALWAYS, conditionsBySlot, freshConditionRecord, recheckConditions } from './conditions.js';
+import { familyOrders } from './families.js';
+import { rebuildList, rebuildOrders } from './rebuild.js';
 import { assignSoldiers, clearInvalidTasks, updateSoldierList, workOrders } from './soldiers.js';
 import { activeGroups, freshTaskRecord, recheckTasks } from './tasks.js';
+import { holdTownGoods, townStaffingOrders } from './town.js';
 
 /**
  * The scripted handler's program (`docs/formats/MISSIONS.md`, AI data): on a computer seat's handler
  * turn, judge its condition slots, re-judge its tasks when a slot changed, run the one-shots, keep its
  * soldier list, hand the men to the Defend and Attack groups on every second turn and order them on
- * every turn. The rows come from the map (`ctx.aiScript`); the state is the seat's `AiProgram`.
+ * every turn, then keep the town ({@link townOrders}). The rows come from the map (`ctx.aiScript`); the
+ * state is the seat's `AiProgram`.
  *
  * Approximation: the program runs only for a seat whose strategic military module is off, since
  * this build's campaign and the program would otherwise order the same men against each other; the
@@ -58,7 +64,9 @@ export const aiProgramSystem: System = (world, ctx) => {
   const groups = activeGroups(defs, program.tasks);
   // The towers' claim on the free archers, judged as the seat's defence will judge it.
   const owned = ownedBuildings(world, seat);
-  const wanted = towerPostOrders(world, ctx, terrain, owned, takeCensus(world, ctx, seat).ready).claimed;
+  const ready = takeCensus(world, ctx, seat).ready;
+  const raiders = seatRaiders(world, ctx, terrain, seat);
+  const wanted = towerPostOrders(world, ctx, terrain, owned, ready, 'scripted', raiders).claimed;
   updateSoldierList(world, ctx, seat, program.soldiers, wanted);
   clearInvalidTasks(defs, groups, program.soldiers);
   const commands =
@@ -78,8 +86,43 @@ export const aiProgramSystem: System = (world, ctx) => {
       program.defaultPosition,
     ),
   );
+  commands.push(...townOrders(world, ctx, terrain, seat, script, program.houses, raiders, turn));
   for (const command of commands) ctx.commands.enqueue(aiCommand(seat, command));
 };
+
+/** Handler turns between its rebuild, town and family passes. Original behavior. */
+const REBUILD_EVERY_TURNS = 3;
+const TOWN_EVERY_TURNS = 6;
+const FAMILY_EVERY_TURNS = 12;
+
+/**
+ * The handler's own economy, for the strategic modules the map switched off: it raises lost buildings
+ * again, holds its stores, staffs and houses the town, and marries and breeds its people. Every pass runs
+ * only while the strategic module owning that concern is off, so the two never order the same men.
+ */
+function townOrders(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  seat: number,
+  script: MapAiSeat | undefined,
+  houses: readonly AiHouseRecord[],
+  raiders: readonly Raider[],
+  turn: number,
+): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
+  const staff = !aiModuleRuns(world, seat, 'collectResources');
+  const house = !aiModuleRuns(world, seat, 'homeExpansion');
+  if (turn % REBUILD_EVERY_TURNS === 0 && !aiModuleRuns(world, seat, 'houseBuild')) {
+    commands.push(...rebuildOrders(world, ctx, terrain, seat, houses, raiders));
+  }
+  if (turn % TOWN_EVERY_TURNS === 0) {
+    if (staff) holdTownGoods(world, ctx, seat);
+    commands.push(...townStaffingOrders(world, ctx, terrain, seat, raiders, { staff, house }));
+  }
+  if (turn % FAMILY_EVERY_TURNS === 0 && house) commands.push(...familyOrders(world, ctx, seat, script));
+  return commands;
+}
 
 /** The map's border band in map points, where the handler refuses a default position: the outermost
  *  two macro cells (the original's one-point parity nudge is left out). The original refuses a Defend, Attack or CreateCreatures point there too, which this build
@@ -137,6 +180,7 @@ function startProgram(
     tasks: [],
     soldiers: [],
     groups: [],
+    houses: rebuildList(world, seat),
   });
   return e;
 }

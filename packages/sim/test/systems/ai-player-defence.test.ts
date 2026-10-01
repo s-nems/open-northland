@@ -20,6 +20,7 @@ import type { TerrainGraph } from '../../src/nav/terrain/index.js';
 import {
   AI_DECISION_INTERVAL_TICKS,
   militaryModule,
+  SCRIPTED_PEACE_ARCHERS_PER_CLASS,
   THREAT_STAND_DOWN_MARGIN_NODES,
   TOWER_GARRISON_ARCHERS,
   takeCensus,
@@ -349,11 +350,11 @@ describe('ai defence - the alarm', () => {
 
   it('still rings, mans the wall and sorties with the military module off', () => {
     // The original's map toggles reach only the strategic handler; the scripted handler every computer
-    // seat runs defends the home on its own.
+    // seat runs defends the home on its own, a quiet tower with one archer of each class.
     const sim = aiSim();
     const hq = place(sim, HQ_TYPE, SEAT_HQ);
     const tower = place(sim, TOWER_TYPE, SEAT_TOWER);
-    spawn(sim, TOWER_GARRISON_ARCHERS, { x: SEAT_TOWER.x + 6, y: SEAT_TOWER.y }, BOWMAN);
+    spawn(sim, SCRIPTED_PEACE_ARCHERS_PER_CLASS, { x: SEAT_TOWER.x + 6, y: SEAT_TOWER.y }, BOWMAN);
     const band = spawn(sim, 4, { x: SEAT_HQ.x, y: SEAT_HQ.y + 6 }, SPEARMAN);
     standOff(sim, hq, watchOf(sim), SPEARMAN);
 
@@ -362,7 +363,7 @@ describe('ai defence - the alarm', () => {
     const commands = [...decide(sim.world, ctxOf(sim, EAGER_SEED), SEAT)];
     expect(alarms(commands)).toEqual([{ building: hq, enabled: true }]);
     expect(postings(commands).every((p) => p.building === tower)).toBe(true);
-    expect(postings(commands)).toHaveLength(TOWER_GARRISON_ARCHERS);
+    expect(postings(commands)).toHaveLength(SCRIPTED_PEACE_ARCHERS_PER_CLASS);
     expect(attackMoves(commands).map((m) => m.entity)).toEqual(band);
 
     // The live seat dispatches that half: its first decision lands the postings in the log.
@@ -370,7 +371,7 @@ describe('ai defence - the alarm', () => {
     sim.run(AI_DECISION_INTERVAL_TICKS + 1);
     const logged = sim.commands.log.filter((entry) => entry.origin === 'ai' && entry.player === SEAT);
     expect(logged.filter((entry) => entry.command.kind === 'assignWorker')).toHaveLength(
-      TOWER_GARRISON_ARCHERS,
+      SCRIPTED_PEACE_ARCHERS_PER_CLASS,
     );
     expect(logged.some((entry) => entry.command.kind === 'setDefenceMode')).toBe(true);
   });

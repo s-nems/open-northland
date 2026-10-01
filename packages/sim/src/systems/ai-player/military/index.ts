@@ -30,6 +30,9 @@ export {
 } from './census.js';
 export {
   enemyFire,
+  SCRIPTED_DEFENCE_REACH_POINTS,
+  SCRIPTED_PEACE_ARCHERS_PER_CLASS,
+  seatRaiders,
   THREAT_STAND_DOWN_MARGIN_NODES,
   TOWER_GARRISON_ARCHERS,
   threatWatchNodes,
@@ -103,9 +106,17 @@ function runMilitary(
   // A marching wave's men answer to it alone: no tower post, raid or catapult calls them home.
   const wave = campaign ? marchingWave(world, ctx, player) : null;
   const atHome = wave === null ? army.ready : army.ready.filter((e) => !wave.men.has(e));
-  const posts = towerPostOrders(world, ctx, terrain, owned, atHome);
-  const free = atHome.filter((e) => !posts.claimed.has(e));
   const raiders = seatRaiders(world, ctx, terrain, player);
+  const posts = towerPostOrders(
+    world,
+    ctx,
+    terrain,
+    owned,
+    atHome,
+    campaign ? 'strategic' : 'scripted',
+    raiders,
+  );
+  const free = atHome.filter((e) => !posts.claimed.has(e));
   const raid = raidOnTheSettlement(world, ctx, terrain, owned, raiders);
   // A raid benches the campaign: it takes the same band the muster would have gathered.
   const marchable: readonly Entity[] = raid === null ? free : [];
