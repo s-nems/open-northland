@@ -92,7 +92,7 @@ function surfaceOn(host: Container, baker: MinimapBakerFactory, resolution: () =
     colourOf: () => MEADOW,
     featureOfGoodType: FEATURES,
     resolution,
-    zoom: () => 1,
+    shownWidth: () => MAP.w,
     baker,
     now: () => now,
   });
@@ -180,7 +180,7 @@ describe('minimap ground surface', () => {
       colourOf: () => MEADOW,
       featureOfGoodType: FEATURES,
       resolution: () => resolution,
-      zoom: () => 1,
+      shownWidth: () => MAP.w,
       baker: createInlineMinimapBaker,
       now: () => now,
     });
@@ -221,7 +221,7 @@ describe('minimap ground surface', () => {
       colourOf: () => MEADOW,
       featureOfGoodType: FEATURES,
       resolution: () => 1,
-      zoom: () => 1,
+      shownWidth: () => MAP.w,
       baker: createInlineMinimapBaker,
       now: () => now,
     });
@@ -244,8 +244,12 @@ describe('minimap ground surface', () => {
     host.destroy();
   });
 
-  it('bakes sharper ground for a settled zoom up to the cap, and the whole-map size back at 1x', async () => {
+  it('bakes the shown width at the display resolution, up to the cap, and smaller again', async () => {
     const host = new Container();
+    /** A panel that shows the whole map narrower than its raster. */
+    const PANEL_WIDTH = 30;
+    const RESOLUTION = 2;
+    const CAP = MAP.w * MAX_BAKE_ZOOM * RESOLUTION;
     let zoom = 1;
     let now = 0;
     const widths: number[] = [];
@@ -255,8 +259,8 @@ describe('minimap ground surface', () => {
       map: MAP,
       colourOf: () => MEADOW,
       featureOfGoodType: FEATURES,
-      resolution: () => 1,
-      zoom: () => zoom,
+      resolution: () => RESOLUTION,
+      shownWidth: () => PANEL_WIDTH * zoom,
       baker: (scene) => {
         const inner = createInlineMinimapBaker(scene);
         return {
@@ -280,7 +284,12 @@ describe('minimap ground surface', () => {
     };
     surface.sync(snapshot, null);
     await settle();
-    expect(widths).toEqual([MAP.w]);
+    const shown = PANEL_WIDTH * RESOLUTION;
+    expect(widths).toEqual([shown]);
+    expect([ground.texture.width, ground.texture.height]).toEqual([
+      shown,
+      Math.round((shown * MAP.h) / MAP.w),
+    ]);
 
     // A wheel burst asks for one bake, once the size has held still.
     for (const step of [1.4, 1.7, 2]) {
@@ -289,17 +298,19 @@ describe('minimap ground surface', () => {
       surface.sync(snapshot, null);
     }
     await settle();
-    expect(widths).toEqual([MAP.w]);
+    expect(widths).toEqual([shown]);
     now += BAKE_SIZE_SETTLE_MS;
     surface.sync(snapshot, null);
     await settle();
-    expect(widths).toEqual([MAP.w, MAP.w * MAX_BAKE_ZOOM]);
+    expect(widths).toEqual([shown, shown * 2]);
     expect([ground.width, ground.height]).toEqual([MAP.w, MAP.h]);
 
-    await zoomTo(3);
-    expect(widths).toHaveLength(2);
+    await zoomTo(4);
+    expect(widths).toEqual([shown, shown * 2, CAP]);
+    await zoomTo(3.5);
+    expect(widths).toHaveLength(3);
     await zoomTo(1);
-    expect(widths).toEqual([MAP.w, MAP.w * MAX_BAKE_ZOOM, MAP.w]);
+    expect(widths).toEqual([shown, shown * 2, CAP, shown]);
     surface.dispose();
     host.destroy();
   });

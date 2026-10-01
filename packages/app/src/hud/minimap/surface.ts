@@ -18,8 +18,8 @@ import { createSeenStandingObjects } from './live-objects.js';
 
 /** The least wall time between two looks for a change of the seen forest and ore, in ms. */
 export const OBJECT_REBAKE_INTERVAL_MS = 4000;
-/** The most minimap zoom the ground bakes for; deeper zoom upscales. Measured: a 2x bake on a 2x display
- *  takes about half a second on the worker, and 4x would bake four times its pixels. */
+/** The widest bake in raster widths per display px; a map shown wider upscales it. Measured on
+ *  magiczny_las at DPR 2: the capped 2640x1172 bake takes about 400 ms on the worker. */
 export const MAX_BAKE_ZOOM = 2;
 /** Wall ms a new bake size must hold before it bakes, so a wheel-zoom burst asks for one bake. */
 export const BAKE_SIZE_SETTLE_MS = 250;
@@ -33,16 +33,17 @@ export interface MinimapSurfaceDeps {
   readonly featureOfGoodType: ReadonlyMap<number, MinimapFeature>;
   /** Whole-map raster space; the owner transforms and clips all map layers together. */
   readonly map: Rect;
+  /** Display px per screen px. */
   readonly resolution: () => number;
-  /** The minimap's own zoom, 1 showing the whole map. */
-  readonly zoom: () => number;
+  /** The whole map's drawn width in screen px, its own zoom included. */
+  readonly shownWidth: () => number;
   readonly baker: MinimapBakerFactory;
   /** Wall-clock ms. */
   readonly now: () => number;
 }
 
 export interface MinimapSurface {
-  /** Rebake when the bake size, the display resolution times the zoom up to {@link MAX_BAKE_ZOOM},
+  /** Rebake when the bake size, the shown width in display px up to {@link MAX_BAKE_ZOOM} raster widths,
    *  settled on a new value, or the forest and ore the viewer sees through `fog` changed, looked for at
    *  most once per {@link OBJECT_REBAKE_INTERVAL_MS}. A bake runs on the baker, one at a time; the shown
    *  picture stays until the next lands on a later sync. A failed bake bakes once on the calling thread
@@ -52,7 +53,7 @@ export interface MinimapSurface {
 }
 
 export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
-  const { terrain, cellColours, colourOf, featureOfGoodType, map, resolution, zoom } = deps;
+  const { terrain, cellColours, colourOf, featureOfGoodType, map, resolution, shownWidth } = deps;
   const colours = cellColourResolver(cellColours, (id) => colourOf?.(id) ?? flatTileColour(id));
   const scene = minimapBakeScene(terrain, colours);
   const baker: MinimapBaker = deps.baker(scene);
@@ -61,8 +62,8 @@ export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
   ground.visible = false;
   ground.position.set(map.x, map.y);
   deps.container.addChild(ground);
-  let bakedScale = 0;
-  let wantedScale = 0;
+  let bakedWidth = 0;
+  let wantedWidth = 0;
   let wantedSince = Number.NEGATIVE_INFINITY;
   const seenObjects = createSeenStandingObjects(featureOfGoodType);
   let objectsCheckedAt = Number.NEGATIVE_INFINITY;
@@ -84,30 +85,29 @@ export function createMinimapSurface(deps: MinimapSurfaceDeps): MinimapSurface {
 
   return {
     sync: (snapshot, fog) => {
-      const scale = resolution() * Math.min(zoom(), MAX_BAKE_ZOOM);
+      const width = Math.max(1, Math.round(Math.min(shownWidth(), map.w * MAX_BAKE_ZOOM) * resolution()));
       const now = deps.now();
-      if (scale !== wantedScale) {
-        wantedScale = scale;
+      if (width !== wantedWidth) {
+        wantedWidth = width;
         wantedSince = now;
       }
       if (baking || failed || disposed) return;
-      // The first bake goes at once; a later size waits for the zoom or resolution to settle.
-      const sizeDue = scale !== bakedScale && (bakedScale === 0 || now - wantedSince >= BAKE_SIZE_SETTLE_MS);
+      // The first bake goes at once; a later size waits for the shown width or resolution to settle.
+      const sizeDue = width !== bakedWidth && (bakedWidth === 0 || now - wantedSince >= BAKE_SIZE_SETTLE_MS);
       let objectsDue = false;
       if (now - objectsCheckedAt >= OBJECT_REBAKE_INTERVAL_MS && seenObjects.stale(snapshot, fog)) {
         objectsCheckedAt = now;
         objectsDue = seenObjects.refresh(snapshot, fog);
       }
       if (!sizeDue && !objectsDue) return;
-      const width = Math.max(1, Math.round(map.w * scale));
-      const height = Math.max(1, Math.round(map.h * scale));
+      const height = Math.max(1, Math.round((width * map.h) / map.w));
       const objects = objectsDue ? seenObjects.objects() : undefined;
       baking = true;
       baker.bake(width, height, objects).then(
         (rgba) => {
           baking = false;
           if (disposed) return;
-          bakedScale = scale;
+          bakedWidth = width;
           show(rgba, width, height);
         },
         (err: unknown) => {

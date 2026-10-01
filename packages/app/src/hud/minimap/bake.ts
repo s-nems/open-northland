@@ -111,8 +111,9 @@ const spawnBakeWorker = (): MinimapBakeWorker =>
   new Worker(new URL('./bake-worker.ts', import.meta.url), { type: 'module' });
 
 /**
- * A baker on a dedicated worker: a bake at a high-DPI display's resolution costs over 100 ms, which on
- * the main thread would stall a frame at boot and on a display-resolution change. A worker error fails
+ * A baker on a dedicated worker. Measured on magiczny_las at DPR 2, a bake takes 45 ms for the S panel
+ * (460x204), 75 to 120 ms for M to XL (760 to 940 px wide) and 260 ms for XL at 2x zoom (1880x834); on
+ * the main thread that would stall frames at boot, on a resize and on a zoom. A worker error fails
  * the client for good: the pending bakes and every later one reject at once.
  */
 export function createWorkerMinimapBaker(
