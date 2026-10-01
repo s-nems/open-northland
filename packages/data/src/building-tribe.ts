@@ -18,7 +18,7 @@ export function buildingFootprintFor<F = BuildingFootprint>(
   tribe: number | undefined,
 ): F | undefined {
   if (tribe === undefined) return type.footprint;
-  return type.tribeVariants.find((v) => v.tribe === tribe)?.footprint ?? type.footprint;
+  return variantOf(type, tribe)?.footprint ?? type.footprint;
 }
 
 /** `tribe`'s own max hitpoints for `type`, else the lowest tribe's; an undefined tribe reads the lowest. */
@@ -27,5 +27,15 @@ export function buildingHitpointsFor(
   tribe: number | undefined,
 ): number | undefined {
   if (tribe === undefined) return type.hitpoints;
-  return type.tribeVariants.find((v) => v.tribe === tribe)?.hitpoints ?? type.hitpoints;
+  return variantOf(type, tribe)?.hitpoints ?? type.hitpoints;
+}
+
+/** `tribe`'s variant of `type`, found without a per-call closure: this runs per building per tick. */
+function variantOf<F>(
+  type: TribeVariants<F>,
+  tribe: number,
+): TribeVariants<F>['tribeVariants'][number] | undefined {
+  const variants = type.tribeVariants;
+  for (let i = 0; i < variants.length; i++) if (variants[i]?.tribe === tribe) return variants[i];
+  return undefined;
 }

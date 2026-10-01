@@ -17,7 +17,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, MapContext, SystemContext } from '../context.js';
 import { closer, nearestCell } from '../spatial/metric.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
-import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
+import { ANCHOR_ONLY, buildingFootprintOf } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 import { resourceAtTile } from './resource-tile-cache.js';
 import { type RouteRegions, routeRegions } from './route-regions.js';
@@ -52,6 +52,18 @@ export function interactionCellOf(
   return resolveInteractionNode(world, ctx, building) ? terrain.nodeAtClamped(resolvedX, resolvedY) : null;
 }
 
+/** Whether half-cell node `(x, y)` is the building's {@link interactionNode}, false where that is null.
+ *  Allocates nothing, for a per-settler presence test. */
+export function atInteractionNode(
+  world: World,
+  ctx: MapContext,
+  building: Entity,
+  x: number,
+  y: number,
+): boolean {
+  return resolveInteractionNode(world, ctx, building) && resolvedX === x && resolvedY === y;
+}
+
 /** The node {@link resolveInteractionNode} found, read straight after a call that answered true. */
 let resolvedX = 0;
 let resolvedY = 0;
@@ -82,13 +94,12 @@ export function interactionNodeId(
   terrain: TerrainGraph,
   building: Entity,
 ): NodeId | null {
-  const at = interactionNode(world, ctx, building);
-  if (at === null || !terrain.inBounds(at.x, at.y)) return null;
-  return terrain.nodeAt(at.x, at.y);
+  if (!resolveInteractionNode(world, ctx, building) || !terrain.inBounds(resolvedX, resolvedY)) return null;
+  return terrain.nodeAt(resolvedX, resolvedY);
 }
 
 /**
- * Walkable, dynamically unblocked nodes immediately outside a construction site's current body.
+ * Walkable, dynamically unblocked nodes immediately outside a construction site's current body, ascending.
  * Approximation until `LogicConstructionWorkArea` is extracted: the footprint perimeter, so settlers
  * approach any free side instead of queueing at the finished building's door.
  */
@@ -107,7 +118,6 @@ export function constructionWorkCells(
 
   const ax = nodeHxOfPosition(position.x, position.y);
   const ay = nodeHyOfPosition(position.y);
-  const anchor = terrain.nodeAtClamped(ax, ay);
   const footprint =
     building === undefined
       ? undefined
@@ -118,22 +128,21 @@ export function constructionWorkCells(
       : footprint !== undefined && footprint.blocked.length > 0
         ? footprint.blocked
         : ANCHOR_ONLY;
-  const bodyCells = translatedCells(terrain, bodyOffsets, ax, ay);
-  if (bodyCells.length === 0) bodyCells.push(anchor);
-  const body = new Set(bodyCells);
-  const exterior = exteriorCellsAroundBody(terrain, bodyCells, body, blocked);
-  const work = new Set<NodeId>();
-  for (let i = 0; i < bodyCells.length; i++) {
-    const cell = bodyCells[i];
-    if (cell === undefined) continue;
-    const x = terrain.xOf(cell);
-    const y = terrain.yOf(cell);
-    for (let n = 0; n < NEIGHBOUR_DX.length; n++) {
-      const neighbour = walkableAt(terrain, x + (NEIGHBOUR_DX[n] ?? 0), y + (NEIGHBOUR_DY[n] ?? 0));
-      if (neighbour !== null && exterior.has(neighbour)) work.add(neighbour);
-    }
+  bodyScratch.clear();
+  for (let i = 0; i < bodyOffsets.length; i++) {
+    const c = bodyOffsets[i];
+    if (c === undefined) continue;
+    const x = ax + footprintCellDx(ay, c);
+    const y = ay + c.dy;
+    if (terrain.inBounds(x, y)) bodyScratch.push(terrain.nodeAt(x, y));
   }
-  return [...work].sort((a, b) => a - b);
+  if (bodyScratch.length === 0) bodyScratch.push(terrain.nodeAtClamped(ax, ay));
+  workScratch.clear();
+  if (exteriorScan.frame(terrain, bodyScratch)) {
+    exteriorScan.flood(terrain, blocked);
+    exteriorScan.collectWork(terrain, bodyScratch, workScratch);
+  }
+  return workScratch.copy();
 }
 
 /** The 4-connected neighbour offsets of `TerrainGraph.walkableNeighbours`, walked without its array. */
@@ -152,68 +161,170 @@ function walkableAt(terrain: TerrainGraph, x: number, y: number): NodeId | null 
  *  only keeps a malformed hand-authored footprint from flooding the map. */
 const MAX_EXTERIOR_SCAN_AREA = 2048;
 
+/** {@link ExteriorScan} box marks. */
+const BODY_MARK = 1;
+const EXTERIOR_MARK = 2;
+const WORK_MARK = 4;
+
 /**
- * Walkable cells connected to the outside of a body's one-node bounding margin. The bounded flood excludes
- * enclosed footprint holes without scanning the map, and a dynamic block cannot turn a sealed pocket into
- * a work slot. A body whose box exceeds {@link MAX_EXTERIOR_SCAN_AREA} yields no slots at all.
+ * The walkable cells connected to the outside of a body's one-node bounding margin, flooded over marks
+ * on that box that every call reuses. The bounded flood excludes enclosed footprint holes without scanning
+ * the map, and a dynamic block cannot turn a sealed pocket into a work slot. A body whose box exceeds
+ * {@link MAX_EXTERIOR_SCAN_AREA} yields no slots at all.
  */
-function exteriorCellsAroundBody(
-  terrain: TerrainGraph,
-  bodyCells: readonly NodeId[],
-  body: ReadonlySet<NodeId>,
-  blocked: BlockOverlay,
-): ReadonlySet<NodeId> {
-  let bodyMinX = terrain.width;
-  let bodyMaxX = 0;
-  let bodyMinY = terrain.height;
-  let bodyMaxY = 0;
-  for (let i = 0; i < bodyCells.length; i++) {
-    const cell = bodyCells[i];
-    if (cell === undefined) continue;
-    const x = terrain.xOf(cell);
-    const y = terrain.yOf(cell);
-    bodyMinX = Math.min(bodyMinX, x);
-    bodyMaxX = Math.max(bodyMaxX, x);
-    bodyMinY = Math.min(bodyMinY, y);
-    bodyMaxY = Math.max(bodyMaxY, y);
+class ExteriorScan {
+  /** Row-major over the box from `(minX, minY)`. */
+  private readonly marks = new Uint8Array(MAX_EXTERIOR_SCAN_AREA);
+  private readonly frontier = new Int32Array(MAX_EXTERIOR_SCAN_AREA);
+  private frontierLength = 0;
+  private bodyMinX = 0;
+  private bodyMaxX = 0;
+  private bodyMinY = 0;
+  private bodyMaxY = 0;
+  private minX = 0;
+  private maxX = 0;
+  private minY = 0;
+  private maxY = 0;
+
+  /** Frame `body`'s box and mark its cells; false when the box is over the cap. */
+  frame(terrain: TerrainGraph, body: CellScratch): boolean {
+    this.bodyMinX = terrain.width;
+    this.bodyMaxX = 0;
+    this.bodyMinY = terrain.height;
+    this.bodyMaxY = 0;
+    for (let i = 0; i < body.length; i++) {
+      const cell = body.at(i);
+      if (cell === undefined) continue;
+      const x = terrain.xOf(cell);
+      const y = terrain.yOf(cell);
+      this.bodyMinX = Math.min(this.bodyMinX, x);
+      this.bodyMaxX = Math.max(this.bodyMaxX, x);
+      this.bodyMinY = Math.min(this.bodyMinY, y);
+      this.bodyMaxY = Math.max(this.bodyMaxY, y);
+    }
+    this.minX = Math.max(0, this.bodyMinX - 1);
+    this.maxX = Math.min(terrain.width - 1, this.bodyMaxX + 1);
+    this.minY = Math.max(0, this.bodyMinY - 1);
+    this.maxY = Math.min(terrain.height - 1, this.bodyMaxY + 1);
+    const area = (this.maxX - this.minX + 1) * (this.maxY - this.minY + 1);
+    if (area > MAX_EXTERIOR_SCAN_AREA) return false;
+    this.marks.fill(0, 0, area);
+    for (let i = 0; i < body.length; i++) {
+      const cell = body.at(i);
+      if (cell !== undefined) this.marks[this.boxIndex(terrain.xOf(cell), terrain.yOf(cell))] = BODY_MARK;
+    }
+    return true;
   }
-  const minX = Math.max(0, bodyMinX - 1);
-  const maxX = Math.min(terrain.width - 1, bodyMaxX + 1);
-  const minY = Math.max(0, bodyMinY - 1);
-  const maxY = Math.min(terrain.height - 1, bodyMaxY + 1);
-  if ((maxX - minX + 1) * (maxY - minY + 1) > MAX_EXTERIOR_SCAN_AREA) return new Set();
-  const exterior = new Set<NodeId>();
-  const frontier: NodeId[] = [];
-  const seed = (x: number, y: number): void => {
-    const cell = terrain.nodeAt(x, y);
-    if (body.has(cell) || blocked.has(cell) || !terrain.isWalkable(cell) || exterior.has(cell)) return;
-    exterior.add(cell);
-    frontier.push(cell);
-  };
 
-  if (bodyMinY > 0) for (let x = minX; x <= maxX; x++) seed(x, minY);
-  if (bodyMaxY < terrain.height - 1) for (let x = minX; x <= maxX; x++) seed(x, maxY);
-  if (bodyMinX > 0) for (let y = minY; y <= maxY; y++) seed(minX, y);
-  if (bodyMaxX < terrain.width - 1) for (let y = minY; y <= maxY; y++) seed(maxX, y);
-
-  for (let index = 0; index < frontier.length; index++) {
-    const cell = frontier[index];
-    if (cell === undefined) break;
-    const cx = terrain.xOf(cell);
-    const cy = terrain.yOf(cell);
-    for (let n = 0; n < NEIGHBOUR_DX.length; n++) {
-      const x = cx + (NEIGHBOUR_DX[n] ?? 0);
-      const y = cy + (NEIGHBOUR_DY[n] ?? 0);
-      if (x < minX || x > maxX || y < minY || y > maxY) continue;
-      const neighbour = walkableAt(terrain, x, y);
-      if (neighbour === null) continue;
-      if (body.has(neighbour) || blocked.has(neighbour) || exterior.has(neighbour)) continue;
-      exterior.add(neighbour);
-      frontier.push(neighbour);
+  /** Mark the exterior, seeded from the margin rows and columns the map edge leaves open. */
+  flood(terrain: TerrainGraph, blocked: BlockOverlay): void {
+    const { minX, maxX, minY, maxY } = this;
+    this.frontierLength = 0;
+    if (this.bodyMinY > 0) for (let x = minX; x <= maxX; x++) this.reach(terrain, blocked, x, minY);
+    if (this.bodyMaxY < terrain.height - 1)
+      for (let x = minX; x <= maxX; x++) this.reach(terrain, blocked, x, maxY);
+    if (this.bodyMinX > 0) for (let y = minY; y <= maxY; y++) this.reach(terrain, blocked, minX, y);
+    if (this.bodyMaxX < terrain.width - 1)
+      for (let y = minY; y <= maxY; y++) this.reach(terrain, blocked, maxX, y);
+    for (let index = 0; index < this.frontierLength; index++) {
+      const cell = this.frontier[index] as NodeId;
+      const cx = terrain.xOf(cell);
+      const cy = terrain.yOf(cell);
+      for (let n = 0; n < NEIGHBOUR_DX.length; n++) {
+        const x = cx + (NEIGHBOUR_DX[n] ?? 0);
+        const y = cy + (NEIGHBOUR_DY[n] ?? 0);
+        if (this.inBox(x, y)) this.reach(terrain, blocked, x, y);
+      }
     }
   }
-  return exterior;
+
+  /** Push the exterior cells 4-adjacent to `body` into `out`, ascending node id. */
+  collectWork(terrain: TerrainGraph, body: CellScratch, out: CellScratch): void {
+    for (let i = 0; i < body.length; i++) {
+      const cell = body.at(i);
+      if (cell === undefined) continue;
+      const x = terrain.xOf(cell);
+      const y = terrain.yOf(cell);
+      for (let n = 0; n < NEIGHBOUR_DX.length; n++) {
+        const nx = x + (NEIGHBOUR_DX[n] ?? 0);
+        const ny = y + (NEIGHBOUR_DY[n] ?? 0);
+        if (!this.inBox(nx, ny)) continue;
+        const index = this.boxIndex(nx, ny);
+        const mark = this.marks[index] ?? 0;
+        if ((mark & EXTERIOR_MARK) !== 0) this.marks[index] = mark | WORK_MARK;
+      }
+    }
+    // The box is row-major like node ids, so a row scan lists the work cells ascending.
+    for (let y = this.minY; y <= this.maxY; y++) {
+      for (let x = this.minX; x <= this.maxX; x++) {
+        if (((this.marks[this.boxIndex(x, y)] ?? 0) & WORK_MARK) !== 0) out.push(terrain.nodeAt(x, y));
+      }
+    }
+  }
+
+  /** Mark the in-box cell `(x, y)` exterior and queue it, unless it is body, already exterior, blocked or
+   *  unwalkable. */
+  private reach(terrain: TerrainGraph, blocked: BlockOverlay, x: number, y: number): void {
+    const index = this.boxIndex(x, y);
+    if (this.marks[index] !== 0) return;
+    const cell = terrain.nodeAt(x, y);
+    if (blocked.has(cell) || !terrain.isWalkable(cell)) return;
+    this.marks[index] = EXTERIOR_MARK;
+    this.frontier[this.frontierLength++] = cell;
+  }
+
+  private inBox(x: number, y: number): boolean {
+    return x >= this.minX && x <= this.maxX && y >= this.minY && y <= this.maxY;
+  }
+
+  private boxIndex(x: number, y: number): number {
+    return (y - this.minY) * (this.maxX - this.minX + 1) + (x - this.minX);
+  }
 }
+
+/** A reusable cell list whose first {@link length} entries are live. It is cut by count, never by
+ *  `length = 0`, which releases an array's backing store and makes the next write reallocate. */
+class CellScratch {
+  private readonly cells: NodeId[] = [];
+  length = 0;
+
+  clear(): void {
+    this.length = 0;
+  }
+
+  push(cell: NodeId): void {
+    this.cells[this.length++] = cell;
+  }
+
+  includes(cell: NodeId): boolean {
+    for (let i = 0; i < this.length; i++) if (this.cells[i] === cell) return true;
+    return false;
+  }
+
+  at(i: number): NodeId | undefined {
+    return i < this.length ? this.cells[i] : undefined;
+  }
+
+  /** Overwrite live entry `i`. */
+  set(i: number, cell: NodeId): void {
+    this.cells[i] = cell;
+  }
+
+  /** Whether the live cells are exactly `list`, in order. */
+  matches(list: readonly NodeId[]): boolean {
+    if (list.length !== this.length) return false;
+    for (let i = 0; i < this.length; i++) if (this.cells[i] !== list[i]) return false;
+    return true;
+  }
+
+  copy(): NodeId[] {
+    return this.cells.slice(0, this.length);
+  }
+}
+
+const bodyScratch = new CellScratch();
+const workScratch = new CellScratch();
+const exteriorScan = new ExteriorScan();
 
 /** The construction work cell nearest `from`, tie-broken by node id. */
 export function constructionWorkCell(
@@ -331,46 +442,6 @@ function keepStandable(regions: RouteRegions, out: CellScratch): void {
   out.length = kept;
 }
 
-/** A reusable cell list whose first {@link length} entries are live. It is cut by count, never by
- *  `length = 0`, which releases an array's backing store and makes the next write reallocate. */
-class CellScratch {
-  private readonly cells: NodeId[] = [];
-  length = 0;
-
-  clear(): void {
-    this.length = 0;
-  }
-
-  push(cell: NodeId): void {
-    this.cells[this.length++] = cell;
-  }
-
-  includes(cell: NodeId): boolean {
-    for (let i = 0; i < this.length; i++) if (this.cells[i] === cell) return true;
-    return false;
-  }
-
-  at(i: number): NodeId | undefined {
-    return i < this.length ? this.cells[i] : undefined;
-  }
-
-  /** Overwrite live entry `i`. */
-  set(i: number, cell: NodeId): void {
-    this.cells[i] = cell;
-  }
-
-  /** Whether the live cells are exactly `list`, in order. */
-  matches(list: readonly NodeId[]): boolean {
-    if (list.length !== this.length) return false;
-    for (let i = 0; i < this.length; i++) if (this.cells[i] !== list[i]) return false;
-    return true;
-  }
-
-  copy(): NodeId[] {
-    return this.cells.slice(0, this.length);
-  }
-}
-
 /**
  * The `pool` member nearest `from`, node-id tie-break, skipping a cell sealed in a pocket `from` is not in.
  * Null when every member is sealed away. A pocketed `from` keeps the open cells, since a caller may pass a
@@ -382,7 +453,8 @@ function nearestOpenStance(
   pool: readonly NodeId[],
   from: NodeId | undefined,
 ): NodeId | null {
-  // `nearestCell`'s loop and tie-break, with the pocket veto inline rather than a closure per call.
+  // `nearestCell`'s loop and tie-break, with the pocket veto inline rather than a closure per call. The
+  // veto, which can flood, runs only for a cell that would beat the best so far.
   const fx = from === undefined ? 0 : terrain.xOf(from);
   const fy = from === undefined ? 0 : terrain.yOf(from);
   let best: NodeId | null = null;
@@ -391,13 +463,12 @@ function nearestOpenStance(
   for (let i = 0; i < pool.length; i++) {
     const cell = pool[i];
     if (cell === undefined) continue;
-    if (from !== undefined && regions.pocketed(cell) && regions.unroutable(from, cell)) continue;
     const dist = from === undefined ? 0 : Math.abs(terrain.xOf(cell) - fx) + Math.abs(terrain.yOf(cell) - fy);
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = cell;
-      bestDist = dist;
-      bestCell = cell;
-    }
+    if (!closer(dist, cell, bestDist, bestCell)) continue;
+    if (from !== undefined && regions.pocketed(cell) && regions.unroutable(from, cell)) continue;
+    best = cell;
+    bestDist = dist;
+    bestCell = cell;
   }
   return best;
 }

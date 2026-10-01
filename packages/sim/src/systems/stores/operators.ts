@@ -3,7 +3,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
-import { interactionNode } from '../footprint/index.js';
+import { atInteractionNode } from '../footprint/index.js';
 import { assignedWorkers } from './assigned-workers.js';
 
 // Who is working a workplace right now: which of its declared slots (./workplace.ts) operate the craft,
@@ -70,8 +70,6 @@ function scanPresent(
   jobs: ReadonlySet<number>,
   present: Entity[] | undefined,
 ): number {
-  const at = interactionNode(world, ctx, building);
-  if (at === null) return 0; // a placed-but-position-less workplace can't be stood on
   const cap = operatorSlotHeadcount(world, ctx, building, jobs);
   const workers = assignedWorkers(world, building);
   let count = 0;
@@ -80,7 +78,12 @@ function scanPresent(
     const e = workers[i] as Entity;
     if (!world.has(e, Person) || world.has(e, MoveGoal) || world.has(e, Carrying)) continue;
     const p = world.tryGet(e, Position);
-    if (p === undefined || nodeHxOfPosition(p.x, p.y) !== at.x || nodeHyOfPosition(p.y) !== at.y) continue;
+    // A placed-but-position-less workplace has no interaction node, so nobody stands on station.
+    if (
+      p === undefined ||
+      !atInteractionNode(world, ctx, building, nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y))
+    )
+      continue;
     const jobType = world.tryGet(e, Settler)?.jobType;
     if (jobType === null || jobType === undefined || !jobs.has(jobType)) continue;
     present?.push(e);

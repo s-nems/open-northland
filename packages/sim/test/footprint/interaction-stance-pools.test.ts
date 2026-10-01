@@ -8,9 +8,17 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import { writeLandscapeEdits } from '../../src/components/landscape.js';
+import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, positionOfNode } from '../../src/index.js';
-import { positionedStanceCells, resourceStanceCells } from '../../src/systems/footprint/interaction.js';
+import type { NodeId } from '../../src/nav/terrain/index.js';
+import {
+  positionedStanceCells,
+  resourceStanceCells,
+  resourceWorkCell,
+} from '../../src/systems/footprint/interaction.js';
 import { stampResourceFootprint, unstampResourceFootprint } from '../../src/systems/footprint/resources.js';
+import { RouteRegions } from '../../src/systems/footprint/route-regions.js';
+import { nearestCell } from '../../src/systems/spatial/metric.js';
 import { CLAY, STONE, STONE_ATOMIC, TEST_HUT, VIKING } from './resource-footprint/content.js';
 import { ctxOf, mappedSim, placeGroundDrop, placeResource, terrainOf } from './resource-footprint/support.js';
 
@@ -179,5 +187,78 @@ describe('stance validation work', () => {
     expect(moved).not.toEqual(before);
     expect(held).toEqual(before);
     expect(sim.world.verifyCaches()).toEqual([]);
+  });
+});
+
+describe('stance pick', () => {
+  const FROMS: ReadonlyArray<readonly [number, number]> = [
+    [0, 0],
+    [16, 8],
+    [8, 0],
+    [3, 7],
+    [12, 4],
+  ];
+
+  function spreadStone(): { sim: ReturnType<typeof mappedSim>; resource: Entity; pool: readonly NodeId[] } {
+    const sim = mappedSim();
+    const resource = placeResource(sim, STONE, STONE_ATOMIC, 8, 4);
+    sim.world.add(resource, ResourceFootprint, {
+      ...sim.world.get(resource, ResourceFootprint),
+      work: [
+        { dx: 4, dy: 0 },
+        { dx: -4, dy: 0 },
+        { dx: 2, dy: -2 },
+        { dx: -2, dy: 2 },
+        { dx: 0, dy: -4 },
+      ],
+    });
+    const pool = resourceStanceCells(sim.world, ctxOf(sim), terrainOf(sim), resource);
+    expect(pool.length).toBeGreaterThan(3);
+    return { sim, resource, pool };
+  }
+
+  it('asks the pocket veto only of a cell that would beat the best so far', () => {
+    const { sim, resource, pool } = spreadStone();
+    const terrain = terrainOf(sim);
+    const pocketed = vi.spyOn(RouteRegions.prototype, 'pocketed');
+    try {
+      for (const [x, y] of FROMS) {
+        const from = terrain.nodeAt(x, y);
+        pocketed.mockClear();
+        expect(resourceWorkCell(sim.world, ctxOf(sim), terrain, resource, from)).toBe(
+          nearestCell(terrain, pool, from),
+        );
+        const asked: NodeId[] = [];
+        let best: { dist: number; cell: NodeId } | undefined;
+        for (const cell of pool) {
+          const dist = Math.abs(terrain.xOf(cell) - x) + Math.abs(terrain.yOf(cell) - y);
+          if (best !== undefined && (dist > best.dist || (dist === best.dist && cell >= best.cell))) continue;
+          asked.push(cell);
+          best = { dist, cell };
+        }
+        expect(pocketed.mock.calls.map(([cell]) => cell)).toEqual(asked);
+      }
+    } finally {
+      pocketed.mockRestore();
+    }
+  });
+
+  it('still skips a sealed nearest cell for the next nearest open one', () => {
+    const { sim, resource, pool } = spreadStone();
+    const terrain = terrainOf(sim);
+    const from = terrain.nodeAt(16, 8);
+    const sealed = nearestCell(terrain, pool, from);
+    const pocketed = vi
+      .spyOn(RouteRegions.prototype, 'pocketed')
+      .mockImplementation((cell) => cell === sealed);
+    const unroutable = vi.spyOn(RouteRegions.prototype, 'unroutable').mockReturnValue(true);
+    try {
+      const open = nearestCell(terrain, pool, from, (cell) => cell !== sealed);
+      expect(open).not.toBeNull();
+      expect(resourceWorkCell(sim.world, ctxOf(sim), terrain, resource, from)).toBe(open);
+    } finally {
+      pocketed.mockRestore();
+      unroutable.mockRestore();
+    }
   });
 });

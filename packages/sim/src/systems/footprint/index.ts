@@ -16,6 +16,7 @@ export {
 } from './blocked.js';
 export { buildingBlockedCells } from './building-blocked-cache.js';
 export {
+  atInteractionNode,
   constructionWorkCell,
   constructionWorkCells,
   type InteractionNode,
