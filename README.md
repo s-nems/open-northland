@@ -18,7 +18,7 @@ You can play-test it from: [game.opennorthland.org](https://game.opennorthland.o
 
 ## Status
 
-Open Northland is pre-alpha. The current build has a playable settlement economy, building,
+Open Northland is in alpha. The current build has a playable settlement economy, building,
 gathering, production, progression, combat, fog, population systems, and a basic computer player.
 It can load decoded maps and render terrain, buildings, settlers, effects, and the HUD.
 

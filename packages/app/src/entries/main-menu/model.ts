@@ -9,7 +9,7 @@ export interface MountedScreen {
   readonly dispose?: () => void;
 }
 
-export const VERSION_LINE = `pre-alpha ${GAME_VERSION} · AGPL-3.0`;
+export const VERSION_LINE = `alpha ${GAME_VERSION} · AGPL-3.0`;
 
 export type MainNavItem =
   | {
