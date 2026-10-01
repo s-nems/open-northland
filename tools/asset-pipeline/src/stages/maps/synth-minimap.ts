@@ -1,11 +1,21 @@
-import type { GfxPattern, TerrainPattern } from '@open-northland/data';
+import {
+  type GfxPattern,
+  type HarvestJoinPipeline,
+  type HarvestJoinRecord,
+  harvestObjectsByEditName,
+  type TerrainPattern,
+} from '@open-northland/data';
 import {
   averagePatternColour,
   cellColourResolver,
   cellColoursFromGround,
+  type MinimapFeature,
   mapPreviewSize,
+  minimapFeatureOfGood,
+  minimapObjectLanes,
+  minimapScene,
   patternSrcRect,
-  rasterizeTerrain,
+  rasterizeMinimap,
   texturePageKey,
 } from '@open-northland/render/data';
 import type { RgbaImage } from '../../decoders/image.js';
@@ -25,6 +35,20 @@ export interface MinimapSynthesizerSources {
   readonly terrainPatterns: readonly TerrainPattern[];
   /** Read an emitted `text_NNN` page back as RGBA; null when the page was never emitted. */
   readonly readPage: (pageKey: string) => Promise<RgbaImage | null>;
+  /** The `[GfxLandscape]` records and gathering pipelines that name a placed object's harvested good. */
+  readonly landscapeGfx: readonly HarvestJoinRecord[];
+  readonly gatheringPipeline: readonly HarvestJoinPipeline[];
+}
+
+/** The minimap feature each placed object `EditName` draws as, through the good it is harvested for. */
+export function minimapFeatureByEditName(
+  sources: Pick<MinimapSynthesizerSources, 'landscapeGfx' | 'gatheringPipeline'>,
+): (editName: string) => MinimapFeature | undefined {
+  const harvest = harvestObjectsByEditName(sources.landscapeGfx, sources.gatheringPipeline);
+  return (editName) => {
+    const goodId = harvest.get(editName)?.goodId;
+    return goodId === undefined ? undefined : minimapFeatureOfGood(goodId);
+  };
 }
 
 /**
@@ -46,6 +70,7 @@ export function createMinimapSynthesizer(
       typeColours.set(row.typeId, ((rgb[0] & 0xff) << 16) | ((rgb[1] & 0xff) << 8) | (rgb[2] & 0xff));
     }
   }
+  const featureOf = minimapFeatureByEditName(sources);
   const pages = new Map<string, Promise<RgbaImage | null>>();
   const readPage = (key: string): Promise<RgbaImage | null> => {
     let page = pages.get(key);
@@ -89,12 +114,14 @@ export function createMinimapSynthesizer(
       (index) => laneColours[index],
     );
     const { width, height } = mapPreviewSize(terrain.width, terrain.height);
-    const rgba = rasterizeTerrain(
+    const scene = minimapScene(
       terrain,
       cellColourResolver(cellColours, (typeId) => typeColours.get(typeId) ?? UNRESOLVED_CELL_COLOUR),
-      width,
-      height,
+      terrain.objects === undefined
+        ? undefined
+        : minimapObjectLanes(terrain.width, terrain.height, terrain.objects, featureOf),
     );
+    const rgba = rasterizeMinimap(scene, width, height);
     return encodePng({ width, height, rgba });
   };
 }

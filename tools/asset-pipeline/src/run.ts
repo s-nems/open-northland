@@ -139,6 +139,8 @@ export async function runPipeline(args: Args): Promise<void> {
   const synthesizeMinimap = createMinimapSynthesizer({
     gfxPatterns: ir.gfxPatterns,
     terrainPatterns: ir.terrainPatterns,
+    landscapeGfx: ir.landscapeGfx,
+    gatheringPipeline: ir.gatheringPipeline,
     readPage: async (pageKey) => {
       try {
         return await decodePng(await readFile(join(texturesDir, `${pageKey}.png`)));
