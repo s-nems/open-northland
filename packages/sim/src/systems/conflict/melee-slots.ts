@@ -1,7 +1,7 @@
 import { Engagement, MoveGoal, Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
-import { forEachRingNode } from '../../nav/halfcell.js';
+import { forEachRingNode, HEX_HEADING_COUNT } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
@@ -40,6 +40,18 @@ export function forEachNodeInBand(
     if (!forEachRingNode(at, ring, terrain.width, terrain.height, onNode)) return false;
   }
   return true;
+}
+
+/** How many nodes lie `ring` map points from a node, clipping aside: six per map point, one at the centre. */
+export function ringNodeCount(ring: number): number {
+  return ring === 0 ? 1 : HEX_HEADING_COUNT * ring;
+}
+
+/** How many nodes `band` holds around a node, clipping aside. */
+export function bandNodeCount(band: WeaponBand): number {
+  let count = 0;
+  for (let ring = band.minRange; ring <= band.maxRange; ring++) count += ringNodeCount(ring);
+  return count;
 }
 
 /** {@link MeleeSlots.crowdingAround}: `occupied` cells of the band held by the asker's own side, and

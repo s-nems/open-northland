@@ -1,42 +1,27 @@
-# Bound each fighter's per-tick target and approach search at army scale
+# Bound each fighter's per-tick target search at army scale
 
 **Area:** sim · **Focus:** conflict · **Priority:** P3
 
-Predicted from the loop shapes, not measured at army scale. The 100k `magiczny_las` run had no war; on
-`krwawa_rzeka` with 12 AI seats (`docs/perf/heavy-load-krwawa-rzeka-12ai.md`), with 39 units engaged and
-60 fleeing a tick at t100k, `bandScan` is 0.76% self (0.31% at t80k), `CombatIndex.nearest` under
-`fleeDrive` 1.08%, `faceApproach` 1.06% and `approachCell` 0.49%. The work below scales with fighters
-times the hostiles in reach, so it is the first combat term expected to grow in a melee blob.
+Measured on the `magiczny_las` six-AI checkpoints (`bench-out/ml6.t80000` and `ml6.t100000`, 625 and 885
+fighters, 3000-tick CPU profiles). `combat` is 7.5% of the tick at t80k and 13% at t100k. Its largest
+terms are the combat index build (`CombatIndex` constructor, 3.8%: `CombatGrid.syncUnits` and `moveUnit`
+2.4%, `firingBuildings` 0.5%), then `heldOrPicked` 1.2% and the chase 0.8%. The target search this ticket
+covers is `CombatIndex.bandScan` at 0.63% inclusive (`appendBand` 0.53%) and `nearestFew` at 0.65%, under
+`pickByTier`, `lessCrowdedInReach`, `fleeDrive` and the vehicle scan.
 
-- `CombatIndex.bandScan` (`conflict/combat-index.ts`) collects every hostile (member, node) key in the
-  box around a seeker and sorts them all: `keys.subarray(0, count).sort();`. Unowned members always pass
-  the hostile mask, and a building sits once per wall node. `nearest` then allocates a
-  `new Set<Entity>()` per call.
-- An owned fighter holds its target (`Engagement.target`, `heldOrPicked` in `conflict/engagement.ts`)
-  and rescans through `pickByTier` -> `index.nearestFew` when it has none, every `RESCAN_PERIOD_TICKS`
-  while it walks, and every `REPATH_CADENCE` ticks while it stands short of reach. A melee fighter scores
-  up to `PICK_CANDIDATES` of them by the bodies at each (`crowdingOf`), and before each swing asks
-  `lessCrowdedInReach`, one band scan a step wider than its reach.
-- `approachCell` (`conflict/chase.ts`) tests every cell of the `(2 * maxRange + 1)^2` box around the
-  target per repath; a second rank waiting behind a full front re-asks each tick and draws a contact
-  slot only on its `REPATH_CADENCE` stride.
-
-Measured with `ON_BENCH_FIGHTERS=300 npm run bench:sim` (4 settlements, 300 v 300, load/cpu 0.8-1.0),
-before and after the combat rework that brought held targets, crowd scoring and the blow alarm: combat
-median 0.553 -> 0.919 ms (p95 1.462 -> 2.309), projectile median 0.021 -> 0.133 ms (max 0.271 ->
-3.973), tick total median 3.874 -> 4.802 ms. The two runs fight different battles, since the rules
-changed. The projectile spikes are a lead, not a traced cause: every landed shot on a person answers
-the blow alarm at once with a 40 map point `ownedWithin` scan (`conflict/hit-alarm.ts`).
+`bandScan` (`conflict/combat-index.ts`) collects every hostile (member, node) key in the coarse cells of
+the box around a seeker before the first candidate is offered, though `nearest` and `nearestFew` mostly
+stop within a few map points.
 
 ## Scope
 
-- Measure on the `ON_BENCH_FIGHTERS` battle of `npm run bench:sim` first, the projectile system's landing and
-  alarm work included:
-  the share of `bandScan`, `nearestFew`, `crowdingOf` and `approachCell` at 100, 400 and 1000 fighters. Delete this ticket if they stay below the other combat terms.
-- Hash-identical cuts: visit the band's grid cells by increasing minimum distance and stop once no
-  remaining cell can beat the best accepted candidate, with the `(distance, id)` order kept; reuse a
-  rejected-set scratch per depth; walk `approachCell`'s band ring by ring outward from the chaser's side
-  and stop at the first ring with an open cell, keeping its tie-break.
+- Take the band's coarse cells lazily, in ascending order of a lower bound on their distance, and treat
+  the sorted keys as final only below the next untaken cell's bound, so the scan stops where the consumer
+  stops. The (distance, id) order, the per-depth reuse across tiers and the dedupe of a body admitted at
+  several nodes stay as they are. Bounds over a cell whose nodes span `dx`/`dy` from the seeker at the
+  nearest: Manhattan `dx + dy`; map points `max(dy, dx - 1 + ceil(dy / 2))`, checked against
+  `hexDistanceBetween` over every node of a cell. The cell edge lives in `conflict/combat-grid.ts`
+  (`COARSE_CELL_NODES`, unexported).
 - With the owner's ruling, measured on the same battle first: doubling the chase and flight repath
   cadences (`REPATH_CADENCE` 8, `FLEE_REPATH_CADENCE` 6, `RESCAN_PERIOD_TICKS` with them) halves the
   repath and rescan load under contact at the price of a slightly later turn toward a moving target or
@@ -45,6 +30,7 @@ the blow alarm at once with a 40 map point `ownedWithin` scan (`conflict/hit-ala
 
 ## Verify
 
-- Same state hash on the 00 battle checkpoint before and after; the combat tests unchanged.
-- The 00 report, before and after: combat share and its growth against army size fall.
+- Same state hash on both checkpoints and on `ON_BENCH_FIGHTERS=300 npm run bench:sim`; the combat
+  tests unchanged, `combat-index-search.test.ts` included.
+- A CPU profile at t100k: `bandScan` inclusive share down.
 - `npm test`, `npm run check`, `npm run build`.

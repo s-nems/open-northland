@@ -1,4 +1,12 @@
-import { CurrentAtomic, Owner, Person, Position, Resting, Settler } from '../../components/index.js';
+import {
+  CurrentAtomic,
+  Engagement,
+  Owner,
+  Person,
+  Position,
+  Resting,
+  Settler,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -120,6 +128,8 @@ function answerAlarm(
     if (isFighterJob(ctx.content, settler.jobType)) {
       // The struck fighter itself turned as the blow landed.
       if (entity === alarm.victim) continue;
+      // Already on this attacker: the turn would write nothing.
+      if (world.tryGet(entity, Engagement)?.target === alarm.attacker) continue;
       if (mode === MILITARY_MODE.ATTACK || mode === MILITARY_MODE.DEFEND) {
         turnOnAttacker(world, ctx, alarm.attacker, entity);
       }

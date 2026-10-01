@@ -14,7 +14,6 @@ import {
   Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { HEX_HEADING_COUNT } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isTravelling } from '../movement/nav-state.js';
@@ -35,7 +34,14 @@ import { onStride, REPATH_CADENCE } from './chase.js';
 import type { SearchMetric } from './combat-grid.js';
 import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
-import { type Crowding, type OwnClaims, type Side, type WeaponBand, withinBand } from './melee-slots.js';
+import {
+  bandNodeCount,
+  type Crowding,
+  type OwnClaims,
+  type Side,
+  type WeaponBand,
+  withinBand,
+} from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, targetReachable } from './target-node.js';
 import {
@@ -660,7 +666,7 @@ function lessCrowdedInReach(
     reach.minRange,
     reach.maxRange,
     (t) => t !== heldTarget && tierRank(world, ctx, index, t) <= heldRank && spec.accept(t),
-    nodesInBand(reach),
+    bandNodeCount(reach), // the most distinct units the band can hold
     spec.player,
     reach.maxRange,
     SEARCH_METRIC,
@@ -675,16 +681,6 @@ function lessCrowdedInReach(
     }
   }
   return best === null ? null : focusedOn(world, ctx, terrain, asker.here, best);
-}
-
-/** How many nodes lie in `band`, six per map point of radius: the most distinct unit targets a scan of it
- *  can return. */
-function nodesInBand(band: WeaponBand): number {
-  let count = 0;
-  for (let ring = band.minRange; ring <= band.maxRange; ring++) {
-    count += ring === 0 ? 1 : HEX_HEADING_COUNT * ring;
-  }
-  return count;
 }
 
 /**

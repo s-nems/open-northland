@@ -23,7 +23,14 @@ import { anyNeedPressing } from '../settlers/drives/needs.js';
 import { markLostWay } from '../settlers/lost-way.js';
 import { closer, hexNodeDistance, manhattan, nearestHexCell } from '../spatial/metric.js';
 import { type CombatantStance, type EngageSpec, enemyInReachFrom } from './engagement.js';
-import { forEachNodeInBand, type MeleeSlots, type OwnClaims, type WeaponBand } from './melee-slots.js';
+import {
+  bandNodeCount,
+  forEachNodeInBand,
+  type MeleeSlots,
+  type OwnClaims,
+  ringNodeCount,
+  type WeaponBand,
+} from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { noteUnreachableTarget } from './unreachable-targets.js';
 
@@ -489,17 +496,84 @@ function contactSlot(
   return choices[ctx.rng.int(choices.length)] ?? null;
 }
 
-/** The untaken cell of `band` around `targetCell` nearest `from` among the open, `reachable` ones, and
- *  whether any cell of the band is open and reachable at all. Costs the band's area. */
-function nearestFreeInBand(
+/** A band's nearest free cell from a chaser, and whether any cell of the band is open and reachable. */
+interface FreeInBand {
+  readonly free: NodeId | null;
+  readonly anyOpen: boolean;
+}
+
+/** What the free-cell search reads of the tick's melee slots. */
+type BandSlots = Pick<MeleeSlots, 'isOpen' | 'isTaken'>;
+
+/**
+ * The untaken cell of `band` around `targetCell` nearest `from` among the open, `reachable` ones, by
+ * (map points from `from`, cell id), and whether any cell of the band is open and reachable at all.
+ * Walks the rings around `from` outward first, since the winner lies on the first one holding a free band
+ * cell; when those rings would cost more than the band itself, it walks the band instead.
+ */
+export function nearestFreeInBand(
   terrain: TerrainGraph,
   from: NodeId,
   targetCell: NodeId,
   band: WeaponBand,
-  slots: MeleeSlots,
+  slots: BandSlots,
   mine: OwnClaims,
   reachable: (cell: NodeId) => boolean,
-): { free: NodeId | null; anyOpen: boolean } {
+): FreeInBand {
+  return (
+    freeOnRingsFrom(terrain, from, targetCell, band, slots, mine, reachable) ??
+    freeOverBand(terrain, from, targetCell, band, slots, mine, reachable)
+  );
+}
+
+/** {@link nearestFreeInBand} over the rings around `from` that can hold a band cell, or null once they
+ *  would visit more nodes than the band holds. Map points obey the triangle inequality, so every band cell
+ *  lies within `maxRange` of the chaser's own distance to the target. */
+function freeOnRingsFrom(
+  terrain: TerrainGraph,
+  from: NodeId,
+  targetCell: NodeId,
+  band: WeaponBand,
+  slots: BandSlots,
+  mine: OwnClaims,
+  reachable: (cell: NodeId) => boolean,
+): FreeInBand | null {
+  const at = { hx: terrain.xOf(from), hy: terrain.yOf(from) };
+  const targetX = terrain.xOf(targetCell);
+  const targetY = terrain.yOf(targetCell);
+  const toTarget = hexDistanceBetween(at.hx, at.hy, targetX, targetY);
+  let budget = bandNodeCount(band);
+  let anyOpen = false;
+  let best: NodeId | null = null;
+  const visit = (hx: number, hy: number): boolean => {
+    const reach = hexDistanceBetween(targetX, targetY, hx, hy);
+    if (reach < band.minRange || reach > band.maxRange) return true;
+    const cell = terrain.nodeAt(hx, hy);
+    if (!slots.isOpen(cell) || !reachable(cell)) return true;
+    anyOpen = true;
+    if ((best === null || cell < best) && !slots.isTaken(cell, mine.goal, mine.standingOn)) best = cell;
+    return true;
+  };
+  const last = toTarget + band.maxRange;
+  for (let ring = Math.max(0, toTarget - band.maxRange); ring <= last; ring++) {
+    budget -= ringNodeCount(ring);
+    if (budget < 0) return null;
+    forEachRingNode(at, ring, terrain.width, terrain.height, visit);
+    if (best !== null) return { free: best, anyOpen: true };
+  }
+  return { free: null, anyOpen };
+}
+
+/** {@link nearestFreeInBand} over every cell of the band. */
+function freeOverBand(
+  terrain: TerrainGraph,
+  from: NodeId,
+  targetCell: NodeId,
+  band: WeaponBand,
+  slots: BandSlots,
+  mine: OwnClaims,
+  reachable: (cell: NodeId) => boolean,
+): FreeInBand {
   const fromX = terrain.xOf(from);
   const fromY = terrain.yOf(from);
   let best: NodeId | null = null;

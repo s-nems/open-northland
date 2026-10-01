@@ -38,6 +38,12 @@ import {
 // The combat weapon layer: what an attacker fights with, which armor material a target presents, and the
 // swing itself.
 
+/** A weapon with its clamped reach band, shared by every attacker holding it. */
+type WeaponReach = { readonly minRange: number; readonly maxRange: number; readonly weapon: WeaponType };
+
+/** Content-keyed: each {@link withReach} answer, so the per-attacker lookup allocates nothing. */
+const reaches = new WeakMap<WeaponType, WeaponReach>();
+
 /**
  * The weapon an attacker of `tribe`/`jobType` fights with, resolved from content: its reach as a
  * `[minRange, maxRange]` band (map points) and the {@link WeaponType} itself. Null when no
@@ -57,7 +63,7 @@ export function attackerWeapon(
   tribe: number,
   jobType: number | null,
   wornWeaponTypeId?: number,
-): { minRange: number; maxRange: number; weapon: WeaponType } | null {
+): WeaponReach | null {
   const index = contentIndex(ctx.content);
   // Worn weapon (own tribe + typeId) overrides the class default; an unresolved worn id leaves it unarmed.
   if (wornWeaponTypeId !== undefined) {
@@ -100,10 +106,15 @@ export function vehicleWeapon(
  *  consumed verbatim as map points, the hexagonal distance of `nav/halfcell.ts`. Original behavior: a
  *  target is in reach when its map-point distance lies within the band, so a reach of 1 touches the six
  *  nodes around it. */
-function withReach(weapon: WeaponType): { minRange: number; maxRange: number; weapon: WeaponType } {
-  const maxRange = Math.max(1, weapon.maxRange);
-  const minRange = Math.min(Math.max(1, weapon.minRange), maxRange);
-  return { minRange, maxRange, weapon };
+function withReach(weapon: WeaponType): WeaponReach {
+  let reach = reaches.get(weapon);
+  if (reach === undefined) {
+    const maxRange = Math.max(1, weapon.maxRange);
+    const minRange = Math.min(Math.max(1, weapon.minRange), maxRange);
+    reach = { minRange, maxRange, weapon };
+    reaches.set(weapon, reach);
+  }
+  return reach;
 }
 
 /**
