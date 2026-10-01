@@ -23,16 +23,10 @@ import { anyNeedPressing } from '../settlers/drives/needs.js';
 import { markLostWay } from '../settlers/lost-way.js';
 import { closer, hexNodeDistance, manhattan, nearestHexCell } from '../spatial/metric.js';
 import { type CombatantStance, type EngageSpec, enemyInReachFrom } from './engagement.js';
-import {
-  bandNodeCount,
-  forEachNodeInBand,
-  type MeleeSlots,
-  type OwnClaims,
-  ringNodeCount,
-  type WeaponBand,
-} from './melee-slots.js';
+import type { MeleeSlots, OwnClaims } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { noteUnreachableTarget } from './unreachable-targets.js';
+import { bandNodeCount, forEachNodeInBand, ringNodeCount, type WeaponBand } from './weapon-band.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser
 // a distinct contact cell so a converging mass forms ranks rather than a pile, and respect the DEFEND leash.

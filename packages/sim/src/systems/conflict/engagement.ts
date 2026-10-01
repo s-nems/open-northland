@@ -34,14 +34,7 @@ import { onStride, REPATH_CADENCE } from './chase.js';
 import type { SearchMetric } from './combat-grid.js';
 import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
-import {
-  bandNodeCount,
-  type Crowding,
-  type OwnClaims,
-  type Side,
-  type WeaponBand,
-  withinBand,
-} from './melee-slots.js';
+import type { Crowding, OwnClaims, Side } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, targetReachable } from './target-node.js';
 import {
@@ -52,6 +45,7 @@ import {
   wildPursuit,
 } from './targeting.js';
 import { givenUpTargetVeto } from './unreachable-targets.js';
+import { bandNodeCount, type WeaponBand, withinBand } from './weapon-band.js';
 import type { ArmedWith } from './weapons.js';
 
 // Re-exported so the combat modules keep one import site for the stance ladder.

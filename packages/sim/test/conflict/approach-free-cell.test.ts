@@ -4,7 +4,7 @@ import { Simulation } from '../../src/index.js';
 import { hexDistanceBetween } from '../../src/nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import { nearestFreeInBand } from '../../src/systems/conflict/chase.js';
-import type { WeaponBand } from '../../src/systems/conflict/melee-slots.js';
+import type { WeaponBand } from '../../src/systems/conflict/weapon-band.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 

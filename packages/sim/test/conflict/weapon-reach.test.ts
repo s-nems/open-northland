@@ -3,7 +3,7 @@ import { CurrentAtomic, Engagement, MoveGoal, Owner, Stance } from '../../src/co
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { type HalfCellNode, hexDistanceBetween, hexNeighboursOf } from '../../src/nav/halfcell.js';
-import { forEachNodeInBand } from '../../src/systems/conflict/melee-slots.js';
+import { forEachNodeInBand } from '../../src/systems/conflict/weapon-band.js';
 import { combatSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
 import {

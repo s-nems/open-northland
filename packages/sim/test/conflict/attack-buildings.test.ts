@@ -28,6 +28,9 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
+import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
+import { encircleBands } from '../../src/systems/conflict/encircle-bands.js';
+import { MeleeSlots } from '../../src/systems/conflict/melee-slots.js';
 import { buildingBodyNodes } from '../../src/systems/conflict/target-node.js';
 import { combatSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
@@ -617,5 +620,61 @@ describe('a held building body follows its footprint', () => {
 
     expect(buildingBodyNodes(sim.world, ctx, terrain, fort)).toEqual([]);
     expect(sim.world.verifyCaches()).toEqual([]);
+  });
+});
+
+/** The static encircle band is held across ticks per target; the walk block is read fresh each tick. */
+describe('a held encircle band', () => {
+  const STRICT_MELEE = { minRange: 1, maxRange: 1 };
+
+  function siege(): { sim: Simulation; terrain: TerrainGraph; fort: Entity } {
+    const sim = new Simulation({
+      seed: 1,
+      content: siegeContent({ meleeRange: { min: 1, max: 1 } }),
+      map: grass(8, 3),
+    });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('no terrain');
+    return { sim, terrain, fort: buildingAt(sim, 4, 1, FORT, P2) };
+  }
+
+  /** The tick's open encircle cells around `target`, as a fresh combat pass deals them. */
+  function candidates(sim: Simulation, terrain: TerrainGraph, target: Entity): readonly NodeId[] {
+    const body = buildingBodyNodes(sim.world, ctxOf(sim), terrain, target);
+    return new MeleeSlots(sim.world, ctxOf(sim), terrain).encircleCandidates(target, body, STRICT_MELEE);
+  }
+
+  it('drops the cells a neighbour raised after the band was held now blocks', () => {
+    const { sim, terrain, fort } = siege();
+    const before = candidates(sim, terrain, fort);
+    const friend = buildingAt(sim, 3, 1, FORT, P1); // hugs the target's west face
+    const friendBody = buildingBodyNodes(sim.world, ctxOf(sim), terrain, friend);
+    const after = candidates(sim, terrain, fort);
+
+    expect(before.some((cell) => friendBody.includes(cell))).toBe(true);
+    expect(after.some((cell) => friendBody.includes(cell))).toBe(false);
+    expect(after.length).toBeLessThan(before.length);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('re-derives when the target body changes in place', () => {
+    const { sim, terrain, fort } = siege();
+    const asFort = candidates(sim, terrain, fort);
+    sim.world.mut(fort, Building).buildingType = HOME; // footprint-less: the door/anchor body
+    const asHome = candidates(sim, terrain, fort);
+
+    expect(asHome).not.toEqual(asFort);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('reports a held band that disagrees with a fresh derivation to the cache verifier', () => {
+    const { sim, terrain, fort } = siege();
+    const body = buildingBodyNodes(sim.world, ctxOf(sim), terrain, fort);
+    const held = encircleBands(sim.world, terrain).cellsOf(fort, body, STRICT_MELEE) as NodeId[];
+    expect(sim.world.verifyCaches()).toEqual([]);
+
+    held.pop();
+
+    expect(sim.world.verifyCaches()).toEqual([`encircleBands holds a stale band for target ${fort}`]);
   });
 });

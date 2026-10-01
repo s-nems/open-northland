@@ -53,11 +53,12 @@ import type { CombatIndex } from './combat-index.js';
 import { type CombatantStance, EngagementSpecs, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive, runsFromBlows, startBlowRun } from './flee.js';
 import { breaksHuntForNeed, holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
-import { type MeleeSlots, withinBand } from './melee-slots.js';
+import type { MeleeSlots } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, targetBodyNodes } from './target-node.js';
 import { hostileAnimalNow, isValidOrderedTarget, isValidTarget } from './targeting.js';
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
+import { withinBand } from './weapon-band.js';
 import {
   type ArmedWith,
   attackerWeapon,

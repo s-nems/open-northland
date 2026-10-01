@@ -8,7 +8,7 @@ import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
 import { interactionNode, vehicleFootprintNodes } from '../footprint/index.js';
 import { hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
-import { forEachNodeInBand, type WeaponBand } from './melee-slots.js';
+import { forEachNodeInBand, type WeaponBand } from './weapon-band.js';
 
 // The nodes combat measures a target's distance to, and paths a chaser toward, so the target index, the
 // chase drive and the mid-swing whiff check all resolve a building target's approach the same way.

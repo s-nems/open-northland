@@ -1,57 +1,20 @@
 import { Engagement, MoveGoal, Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
-import { forEachRingNode, HEX_HEADING_COUNT } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { standingFighterPosts } from '../movement/collision/index.js';
-import { hexNodeDistance } from '../spatial/metric.js';
+import { encircleBands } from './encircle-bands.js';
+import { forEachNodeInBand, type WeaponBand } from './weapon-band.js';
 
-/** A weapon's reach band in map points ({@link hexNodeDistance}). Original behavior: a target is in reach
- *  when its map-point distance lies within `[minRange, maxRange]`. */
-export interface WeaponBand {
-  readonly minRange: number;
-  readonly maxRange: number;
-}
-
-/** Whether a target `dist` map points off is inside `band`. */
-export function withinBand(band: WeaponBand, dist: number): boolean {
-  return dist >= band.minRange && dist <= band.maxRange;
-}
+/** Shared so a body-less target allocates nothing. */
+const NO_CELLS: readonly NodeId[] = [];
 
 /** The cells a chaser already holds for itself: its live goal and the node it stands on. */
 export interface OwnClaims {
   readonly goal: NodeId | undefined;
   readonly standingOn: NodeId | undefined;
-}
-
-/** Visit every node within `band` of `centre`, nearest ring first, until `visit` answers false; answers
- *  whether the walk finished. Costs the band's area, about three times `maxRange` squared. */
-export function forEachNodeInBand(
-  terrain: TerrainGraph,
-  centre: NodeId,
-  band: WeaponBand,
-  visit: (cell: NodeId) => boolean,
-): boolean {
-  const at = { hx: terrain.xOf(centre), hy: terrain.yOf(centre) };
-  const onNode = (hx: number, hy: number): boolean => visit(terrain.nodeAt(hx, hy));
-  for (let ring = band.minRange; ring <= band.maxRange; ring++) {
-    if (!forEachRingNode(at, ring, terrain.width, terrain.height, onNode)) return false;
-  }
-  return true;
-}
-
-/** How many nodes lie `ring` map points from a node, clipping aside: six per map point, one at the centre. */
-export function ringNodeCount(ring: number): number {
-  return ring === 0 ? 1 : HEX_HEADING_COUNT * ring;
-}
-
-/** How many nodes `band` holds around a node, clipping aside. */
-export function bandNodeCount(band: WeaponBand): number {
-  let count = 0;
-  for (let ring = band.minRange; ring <= band.maxRange; ring++) count += ringNodeCount(ring);
-  return count;
 }
 
 /** {@link MeleeSlots.crowdingAround}: `occupied` cells of the band held by the asker's own side, and
@@ -79,8 +42,8 @@ export class MeleeSlots {
   /** The cells dealt this tick, each with the side it was dealt to. */
   private readonly claimed = new Map<NodeId, Side>();
   private blocked?: BlockOverlay;
-  /** Encircle candidates per building and weapon band: a building never moves within a tick, so the band
-   *  scan runs once and every chaser only filters taken slots over it. */
+  /** The tick's open encircle candidates per target and weapon band, so every chaser only filters taken
+   *  slots over them. */
   private readonly bands = new Map<string, readonly NodeId[]>();
 
   constructor(
@@ -155,33 +118,17 @@ export class MeleeSlots {
   /**
    * The open in-band contact cells around a building: every {@link isOpen} cell whose distance to the body's
    * nearest wall is in the weapon band - the same nearest-wall rule the reach check uses, so a body cell
-   * (reach 0) is never dealt.
+   * (reach 0) is never dealt. The static band is held across ticks; only the walk block is read per tick.
    */
   encircleCandidates(target: Entity, body: readonly NodeId[] | null, weapon: WeaponBand): readonly NodeId[] {
     const key = `${target}:${weapon.minRange}:${weapon.maxRange}`;
     const cached = this.bands.get(key);
     if (cached !== undefined) return cached;
-    const candidates = this.buildBand(body ?? [], weapon);
+    const cells = encircleBands(this.world, this.terrain).cellsOf(target, body ?? NO_CELLS, weapon);
+    this.blocked ??= dynamicBlockOverlay(this.world, this.ctx, this.terrain);
+    const blocked = this.blocked;
+    const candidates = cells.filter((cell) => !blocked.has(cell));
     this.bands.set(key, candidates);
-    return candidates;
-  }
-
-  /** The uncached band scan behind {@link encircleCandidates} - O(bandCells × body). */
-  private buildBand(body: readonly NodeId[], weapon: WeaponBand): readonly NodeId[] {
-    const visited = new Set<NodeId>();
-    const candidates: NodeId[] = [];
-    const disc = { minRange: 0, maxRange: weapon.maxRange };
-    for (const wall of body) {
-      forEachNodeInBand(this.terrain, wall, disc, (cell) => {
-        if (visited.has(cell)) return true; // adjacent walls' discs overlap - evaluate each cell once
-        visited.add(cell);
-        if (!this.isOpen(cell)) return true;
-        const reach = distanceToBody(this.terrain, cell, body);
-        // Reach is to the NEAREST wall.
-        if (reach >= weapon.minRange && reach <= weapon.maxRange) candidates.push(cell);
-        return true;
-      });
-    }
     return candidates;
   }
 }
@@ -195,12 +142,4 @@ function enRouteChaseGoals(world: World): ReadonlyMap<NodeId, Side> {
     out.set(world.get(e, MoveGoal).cell, world.tryGet(e, Owner)?.player ?? null);
   }
   return out;
-}
-
-/** Map-point distance from `cell` to the nearest cell of `body` - how the combat reach to a building is
- *  measured. */
-function distanceToBody(terrain: TerrainGraph, cell: NodeId, body: readonly NodeId[]): number {
-  let min = Number.POSITIVE_INFINITY;
-  for (const wall of body) min = Math.min(min, hexNodeDistance(terrain, cell, wall));
-  return min;
 }
