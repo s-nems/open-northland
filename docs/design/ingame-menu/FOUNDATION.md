@@ -544,32 +544,25 @@ selected; stats and shared orders follow.
   it. The close clears the selection.
 - Kind tabs: "Wszyscy" then one pill per kind, fighters first (heroes, each soldier class by its
   weapon, siege engines, ships, carts), then the village (each trade, civilians, women, children),
-  each with its count. The lit tab scopes everything under it: the wells, the overview, the orders
-  and the details. A double click on a kind's tab selects only that kind, Shift+click drops it from
-  the group. A group of one kind shows no tabs.
-- Zaznaczeni: the scope's members as 32 × 42 px live wells, eight to a row, a vehicle across two;
-  a hairline along each well's floor carries the health (amber under half, red under a quarter, the
-  well's edge red too). Three rows show, then the grid scrolls in place and fades at the bottom. Only
-  the wells in view are painted. A click selects that member alone (after a short wait, so a double
-  click is not taken for one), a double click brings it into view and keeps the group, Shift+click
-  drops it, Ctrl+click selects every member of its kind. The tooltip names the member, its kind and
-  health, and the gestures. The cursor on a well lights that member's ring on the map in pale gold.
-- Przegląd: the scope's average Zdrowie (its numbers and how many are wounded at once in the chip),
-  then each need's average as the settler panel's meter line; a press orders that need for every
-  member the action ring's gates let take it, and the chip says how many that is. Then the gear:
-  Broń and Zbroja for the fighters, Narzędzia for the village's workers, Torba for everyone, each a
-  row of good icons with how many hold them (a draught also gives the sips left in its tooltip) and
-  "bez: N" for those holding nothing there. A vehicle scope adds Załoga, the seats taken of all.
+  each with its count. The lit tab scopes everything under it: the wells, the orders and the gear.
+  A double click on a kind's tab selects only that kind, Shift+click drops it from the group. A
+  group of one kind shows no tabs.
+- Zaznaczeni, the panel's main field: the scope's members as 32 × 46 px live wells, eight to a row,
+  a vehicle across two. Two hairlines run along each well's floor, health in green over hunger in
+  blue; a vehicle has only the health. Four rows show, then the grid scrolls in place and fades at
+  the bottom. Only the wells in view are painted. A click selects that member alone (after a short
+  wait, so a double click is not taken for one), a double click brings it into view and keeps the
+  group, Shift+click drops it, Ctrl+click selects every member of its kind. The tooltip names the
+  member and its kind, its health and hunger, and the gestures. The cursor on a well lights that
+  member's ring on the map in pale gold.
 - Wojsko: Postawa and Jedzenie i sen for the scope's fighters, lit when every one holds the same
   value and unlit while they differ (the label's tooltip gives the split, "Atak 20 · Obrona 6"); each
   option's tooltip says how many it reaches and an option nobody takes is faded. Siege engines get
   their own Katapulty strip.
-- Szczegóły, folded until opened (the choice holds while the game runs): Ranni, Ciężko ranni, Głodni,
-  Zmęczeni, Bez zbroi, Bez mikstur leczenia, W wehikułach, Uszkodzone wehikuły, each count a link
-  that selects only them; then the fighters' combat experience bonus (average and best) and the
-  healing sips carried. Only rows that hold someone show.
-- Fit: the grid gives up rows (three, two, one) before an open Szczegóły steps aside on a fresh
-  group; the player's own open press only takes rows from the grid.
+- Przegląd, at the foot in a smaller type: Broń and Zbroja for the fighters, Narzędzia for the
+  village's workers, Ekwipunek for everyone, each a row of 16 px good icons with how many hold them
+  (a draught also gives the sips left in its tooltip) and "bez: N" for those holding nothing there.
+- Fit: on a short plane the grid gives up rows (four, three, two, one); no section folds.
 - First paint at map start: a made-up group lights every section once.
 
 ### Building panel

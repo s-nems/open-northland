@@ -88,32 +88,21 @@ describe('group panel model', () => {
     expect(scope(model, 'Kobiety').military).toBeNull();
   });
 
-  it('offers the catapults their own stance and sums every vehicle crew', () => {
+  it('offers the catapults their own stance', () => {
     const all = model.scopes[0];
     expect(all?.siege?.ids).toHaveLength(2);
     expect(all?.siege?.stance).toBe('hold');
-    expect(all?.crew).toEqual({ filled: 0, capacity: 3 });
     expect(scope(model, 'Wózki ręczne').siege).toBeNull();
   });
 
-  it('lists the wounded, unarmoured and potionless as selectable details', () => {
-    const spearmen = scope(model, 'Włócznicy');
-    const rows = Object.fromEntries(spearmen.details.map((row) => [row.detail, row]));
-    expect(rows.wounded?.ids).toHaveLength(2);
-    expect(rows.critical?.ids).toHaveLength(2);
-    expect(rows.unarmored?.ids).toHaveLength(6);
-    expect(rows.noHealing?.ids).toHaveLength(6);
-    expect(rows.experience?.ids).toBeNull();
-    const archers = Object.fromEntries(scope(model, 'Łucznicy').details.map((row) => [row.detail, row]));
-    expect(archers.wounded?.ids).toHaveLength(3);
-    expect(archers.critical).toBeUndefined();
-    expect(archers.healingSips?.value).toBe('30');
-  });
-
-  it('marks a member wounded by its health tone', () => {
-    const tones = model.members.filter((m) => m.tone !== 'ok').map((m) => m.tone);
-    expect(tones.filter((t) => t === 'critical')).toHaveLength(2);
-    expect(tones.filter((t) => t === 'warn')).toHaveLength(3);
+  it('gives every member its health and every settler its hunger', () => {
+    const spearmen = new Set(scope(model, 'Włócznicy').ids);
+    const wounded = model.members.filter((m) => spearmen.has(m.id) && (m.healthPct ?? 100) < 100);
+    expect(wounded.map((m) => m.healthPct)).toEqual([18, 18]);
+    const settlers = model.members.filter((m) => m.look === 'settler');
+    expect(settlers.every((m) => m.hungerPct !== null)).toBe(true);
+    const vehicles = model.members.filter((m) => m.look === 'vehicle');
+    expect(vehicles.every((m) => m.healthPct !== null && m.hungerPct === null)).toBe(true);
   });
 
   it('titles a group of one kind by that kind', () => {

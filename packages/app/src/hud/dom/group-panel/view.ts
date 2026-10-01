@@ -11,7 +11,6 @@ import { setClass } from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
 import { createSelectionPanel, type SelectionHeadModel } from '../selection-panel.js';
 import type { GroupPanelDeps } from './actions.js';
-import { createDetailsSection } from './details.js';
 import { createMemberRoster, type MemberPress } from './members.js';
 import { createGroupMilitarySection } from './military.js';
 import { createOverviewSection } from './overview.js';
@@ -37,8 +36,8 @@ export interface GroupPanel {
   dispose(): void;
 }
 
-/** The roster's heights, tallest first: the grid gives up rows before the details fold. */
-const ROSTER_ROWS = [3, 2, 1] as const;
+/** The roster's heights, tallest first: on a short plane the grid gives up rows, never a section. */
+const ROSTER_ROWS = [4, 3, 2, 1] as const;
 
 function groupHead(model: GroupPanelModel, ordersKey: string): SelectionHeadModel {
   const copy = messages().hud.settlerPanel;
@@ -62,16 +61,13 @@ function warmModel(): GroupPanelModel {
     name: '',
     kindLabel: '',
     healthPct: 100,
-    tone: 'ok',
+    hungerPct: 100,
   });
   const scope = (key: string, ids: readonly number[]): GroupScopeModel => ({
     key,
     label: key,
     ids,
-    health: { pct: 100, wounded: 0 },
-    needs: [],
     gear: [],
-    crew: null,
     military: {
       count: ids.length,
       stance: null,
@@ -79,7 +75,6 @@ function warmModel(): GroupPanelModel {
       regeneration: true,
     },
     siege: null,
-    details: [],
   });
   return {
     kind: 'group',
@@ -150,40 +145,23 @@ export function createGroupPanel(deps: GroupPanelDeps): GroupPanel {
   const tabs = createScopeTabs(onScope);
   const rosterTitle = createSection();
   const roster = createMemberRoster(onMember);
-  const overview = createOverviewSection(deps, scope);
   const military = createGroupMilitarySection(deps, scope);
-  /** The player opened the details on this group, so the fit leaves them open. */
-  let playerOpened = false;
-  const details = createDetailsSection(deps, () => {
-    playerOpened = true;
-  });
-  frame.body.append(
-    tabs.element,
-    rosterTitle.element,
-    roster.element,
-    overview.element,
-    military.element,
-    details.element,
-  );
+  const overview = createOverviewSection(deps);
+  frame.body.append(tabs.element, rosterTitle.element, roster.element, military.element, overview.element);
 
-  /** Fit the panel to the plane: the roster gives up rows first, then the open details step aside. A
-   *  details section the player opened while squeezed stays open and only takes rows from the roster,
-   *  until the next group. */
-  const fit = (fresh: boolean): void => {
-    if (fresh) playerOpened = false;
-    details.unsqueeze();
+  /** Fit the panel to the plane: the roster gives up rows until the panel fits. */
+  const fit = (): void => {
     for (const rows of ROSTER_ROWS) {
       for (const each of ROSTER_ROWS) setClass(roster.element, `on-roster--rows${each}`, each === rows);
       if (frame.overflow() === 0) break;
     }
-    if (!playerOpened && frame.overflow() > 0) details.squeeze();
     roster.invalidate();
   };
   let refit = false;
   const resizes = new ResizeObserver(() => {
     refit = true;
   });
-  for (const node of [frame.body, tabs.element, overview.element, military.element, details.element]) {
+  for (const node of [frame.body, tabs.element, military.element, overview.element]) {
     resizes.observe(node);
   }
 
@@ -195,11 +173,10 @@ export function createGroupPanel(deps: GroupPanelDeps): GroupPanel {
     rosterTitle.update(copy.members);
     const ids = new Set(current.ids);
     roster.update(current.key === ALL_SCOPE ? model.members : model.members.filter((m) => ids.has(m.id)));
-    overview.update(current, model.orders);
     military.update(current, model.orders);
-    details.update(current);
+    overview.update(current);
     // Later value changes refit through the resize observer, when a section actually changed height.
-    if (fresh) fit(true);
+    if (fresh) fit();
   };
 
   const hide = (): void => {
@@ -240,7 +217,7 @@ export function createGroupPanel(deps: GroupPanelDeps): GroupPanel {
       frame.refreshTip();
       if (!refit || shown === null) return;
       refit = false;
-      fit(false);
+      fit();
     },
     figureSlots: () => (shown === null ? NO_FIGURE_SLOTS : roster.figureSlots()),
     markDrawn: (drawn) => roster.markDrawn(drawn),

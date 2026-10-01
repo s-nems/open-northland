@@ -19,7 +19,7 @@ function group(pct: number, ids: readonly number[] = [1, 2]): UnitPanelModel {
       name: '',
       kindLabel: '',
       healthPct: pct,
-      tone: 'ok',
+      hungerPct: pct,
     })),
     scopes: [],
     orders: true,

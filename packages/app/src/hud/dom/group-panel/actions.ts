@@ -1,4 +1,4 @@
-import type { components, NeedKind } from '@open-northland/sim';
+import type { components } from '@open-northland/sim';
 import type { ActionOrderId } from '../../action-ring/index.js';
 import type { GroupStance } from '../../details-panel/model/index.js';
 import type { GoodIconPainter } from '../good-art.js';
@@ -19,7 +19,6 @@ export interface GroupPanelActions {
   /** Open the action ring for the group around the press. */
   readonly openOrders: (press: OrdersPress) => void;
   readonly closeOrders: () => void;
-  readonly orderNeed: (ids: readonly number[], need: NeedKind) => void;
   readonly setStance: (ids: readonly number[], stance: GroupStance) => void;
   readonly setRegeneration: (ids: readonly number[], allowed: boolean) => void;
   readonly setVehicleStance: (ids: readonly number[], stance: components.VehicleStance) => void;

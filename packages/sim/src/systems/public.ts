@@ -99,7 +99,6 @@ export {
 } from './progression/bonus.js';
 export {
   FIGHT_EXPERIENCE_TYPE,
-  fightExperienceTypeFor,
   SCOUT_EXPERIENCE_TYPE,
   SOLDIER_GENERAL_EXPERIENCE_TYPE,
   TRAINING_EXPERIENCE_TYPE,

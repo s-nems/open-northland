@@ -1,5 +1,5 @@
 import type { VehicleType } from '@open-northland/data';
-import { components, type NeedKind, systems, type WorldSnapshot } from '@open-northland/sim';
+import { components, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
@@ -24,15 +24,13 @@ import {
   ownerPlayerOf,
   regeneratesInWorld,
   type SnapshotEntity,
-  settlerExperienceOf,
   settlerJobType,
   settlerTribeOf,
   stanceModeOf,
-  vehicleSeatsOf,
 } from '../../../game/snapshot.js';
 import { pickableSeat } from '../../../game/viewer-seat.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
-import { type BarTone, barTone, NEED_LOW_BELOW_PCT, pctRatio, remainingPct } from './bars.js';
+import { pctRatio, remainingPct } from './bars.js';
 import { type Comp, goodDef, goodLabel, jobDisplayName, type UnitPanelModelContext } from './context.js';
 import { satisfactionBars } from './settler.js';
 import { type SettlerRole, settlerRole } from './settler-household.js';
@@ -43,7 +41,6 @@ type GroupCopy = ReturnType<typeof messages>['hud']['groupPanel'];
 
 export type GroupStance = 'attack' | 'defend' | 'ignore';
 export type GroupGear = 'weapon' | 'armor' | 'tool' | 'misc';
-export type GroupDetail = keyof GroupCopy['detailRows'];
 
 /** One selected settler or vehicle as its well shows it. */
 export interface GroupMemberModel {
@@ -55,7 +52,8 @@ export interface GroupMemberModel {
   /** The kind in the singular, for the well's tooltip. */
   readonly kindLabel: string;
   readonly healthPct: number | null;
-  readonly tone: BarTone;
+  /** Hunger's satisfaction; null for a vehicle, or while the map's needs are off. */
+  readonly hungerPct: number | null;
 }
 
 /** One good worn or carried across the scope, with how many hold it; `sips` counts a draught's uses left. */
@@ -74,13 +72,6 @@ export interface GroupGearRow {
   readonly bare: number;
 }
 
-/** A need's average satisfaction over the members that carry it. */
-export interface GroupNeedModel {
-  readonly need: NeedKind;
-  readonly label: string;
-  readonly pct: number;
-}
-
 /** The scope's fighters, soldiers and heroes: their shared stance and regeneration rule, null when they
  *  differ, and how many hold each. */
 export interface GroupMilitaryModel {
@@ -97,26 +88,14 @@ export interface GroupSiegeModel {
   readonly stances: Readonly<Record<components.VehicleStance, number>>;
 }
 
-/** One line of the folded details: a count of members in some state, which a press selects, or a value
- *  without members to select. */
-export interface GroupDetailRow {
-  readonly detail: GroupDetail;
-  readonly value: string;
-  readonly ids: readonly number[] | null;
-}
-
 /** What one tab shows and orders: the whole group, or the members of one kind. */
 export interface GroupScopeModel {
   readonly key: string;
   readonly label: string;
   readonly ids: readonly number[];
-  readonly health: { readonly pct: number; readonly wounded: number } | null;
-  readonly needs: readonly GroupNeedModel[];
   readonly gear: readonly GroupGearRow[];
-  readonly crew: { readonly filled: number; readonly capacity: number } | null;
   readonly military: GroupMilitaryModel | null;
   readonly siege: GroupSiegeModel | null;
-  readonly details: readonly GroupDetailRow[];
 }
 
 /** Several units selected at once: settlers, vehicles or both (FOUNDATION.md, "Group panel"). */
@@ -126,7 +105,7 @@ export interface GroupPanelModel {
   readonly members: readonly GroupMemberModel[];
   /** The whole group first, then one scope per kind when there are several kinds. */
   readonly scopes: readonly GroupScopeModel[];
-  /** Whether the viewer orders any member: the medallion, the need lines and the stance strips. */
+  /** Whether the viewer orders any member: the medallion and the stance strips. */
   readonly orders: boolean;
 }
 
@@ -190,22 +169,13 @@ interface MemberFacts {
   readonly fighter: boolean;
   readonly worker: boolean;
   readonly owned: boolean;
-  readonly needs: readonly { readonly need: NeedKind; readonly label: string; readonly pct: number }[];
   readonly weapon: number | null;
   readonly armor: number | null;
   readonly tool: number | null;
   readonly misc: readonly { readonly goodType: number; readonly used: number | undefined }[];
-  readonly healing: boolean;
   readonly stance: GroupStance | null;
   readonly regenerates: boolean;
-  readonly fightBonusPct: number | null;
-  readonly aboard: boolean;
-  readonly vehicle: {
-    readonly siege: boolean;
-    readonly stance: components.VehicleStance;
-    readonly filled: number;
-    readonly capacity: number;
-  } | null;
+  readonly vehicle: { readonly siege: boolean; readonly stance: components.VehicleStance } | null;
 }
 
 const slotGood = (slot: RawSlot | null | undefined): number | null => {
@@ -267,10 +237,7 @@ function settlerFacts(
       plural = copy.roles[role];
       singular = role === 'hero' ? jobDisplayName(ctx, jobType) : copy.role[role];
   }
-  const healthPct = healthPctOf(ent);
-  const needs = satisfactionBars(ent, needsOn, role !== 'hero').flatMap((bar) =>
-    bar.need === undefined ? [] : [{ need: bar.need, label: bar.label, pct: bar.pct }],
-  );
+  const hunger = satisfactionBars(ent, needsOn, role !== 'hero').find((bar) => bar.need === 'hunger');
   const eq = ent.components.Equipment as RawEquipment | undefined;
   const wornWeapon = slotGood(eq?.weapon);
   const weapon = fighter ? weaponRow(ctx, ent, wornWeapon) : undefined;
@@ -278,10 +245,6 @@ function settlerFacts(
     const goodType = slotGood(slot);
     return goodType === null ? [] : [{ goodType, used: num(slot?.degreeOfUse) }];
   });
-  const fightTrack =
-    weapon?.mainType === undefined ? undefined : systems.fightExperienceTypeFor(weapon.mainType);
-  const fightXp = fightTrack === undefined ? undefined : settlerExperienceOf(ent.components).get(fightTrack);
-  const rider = ent.components.Rider !== undefined && ent.components.Position === undefined;
   const mode = stanceModeOf(ent);
   return {
     id: ent.id,
@@ -295,25 +258,18 @@ function settlerFacts(
       kind,
       name: settlerDisplayName(ctx, snapshot, ent),
       kindLabel: singular,
-      healthPct,
-      tone: healthPct === null ? 'ok' : barTone(healthPct),
+      healthPct: healthPctOf(ent),
+      hungerPct: hunger?.pct ?? null,
     },
     fighter,
     worker: role === 'worker' || role === 'civilian',
     owned,
-    needs,
     weapon: fighter ? (wornWeapon ?? (weapon?.goodType || null)) : null,
     armor: fighter ? armorGood(ctx, ent, slotGood(eq?.armor)) : null,
     tool: slotGood(eq?.tool),
     misc,
-    healing: misc.some((item) => (goodDef(ctx, item.goodType)?.equip?.restorePct?.healthMax ?? 0) > 0),
     stance: mode === undefined ? null : (STANCE_OF_MODE.get(mode) ?? null),
     regenerates: regeneratesInWorld(ent),
-    fightBonusPct:
-      fighter && fightTrack !== undefined
-        ? systems.withFightExperience(FULL_PCT, fightXp ?? 0) - FULL_PCT
-        : null,
-    aboard: rider,
     vehicle: null,
   };
 }
@@ -327,11 +283,9 @@ function vehicleFacts(ctx: UnitPanelModelContext, ent: SnapshotEntity, owned: bo
   const title = vehicleTitle(ctx, typeId);
   const plural =
     type === undefined ? title : (copy.vehicleKinds[type.id as keyof GroupCopy['vehicleKinds']] ?? title);
-  const healthPct = healthPctOf(ent);
   const stance = (components.VEHICLE_STANCES as readonly string[]).includes(v.stance as string)
     ? (v.stance as components.VehicleStance)
     : 'hold';
-  const capacity = Array.isArray(v.passengers) ? v.passengers.length : 0;
   const kind = `vehicle:${typeId ?? ''}`;
   return {
     id: ent.id,
@@ -345,28 +299,19 @@ function vehicleFacts(ctx: UnitPanelModelContext, ent: SnapshotEntity, owned: bo
       kind,
       name: title,
       kindLabel: title,
-      healthPct,
-      tone: healthPct === null ? 'ok' : barTone(healthPct),
+      healthPct: healthPctOf(ent),
+      hungerPct: null,
     },
     fighter: false,
     worker: false,
     owned,
-    needs: [],
     weapon: null,
     armor: null,
     tool: null,
     misc: [],
-    healing: false,
     stance: null,
     regenerates: false,
-    fightBonusPct: null,
-    aboard: false,
-    vehicle: {
-      siege: vehicleClass === 'siege',
-      stance,
-      filled: vehicleSeatsOf(v.passengers).length,
-      capacity,
-    },
+    vehicle: { siege: vehicleClass === 'siege', stance },
   };
 }
 
@@ -427,19 +372,6 @@ function gearRows(ctx: UnitPanelModelContext, facts: readonly MemberFacts[]): Gr
   return rows;
 }
 
-function needAverages(facts: readonly MemberFacts[]): GroupNeedModel[] {
-  const sums = new Map<NeedKind, { label: string; total: number; count: number }>();
-  for (const f of facts) {
-    for (const bar of f.needs) {
-      const sum = sums.get(bar.need) ?? { label: bar.label, total: 0, count: 0 };
-      sum.total += bar.pct;
-      sum.count += 1;
-      sums.set(bar.need, sum);
-    }
-  }
-  return [...sums].map(([need, sum]) => ({ need, label: sum.label, pct: Math.round(sum.total / sum.count) }));
-}
-
 /** The one value every entry shares, else null. */
 function shared<T>(values: readonly T[]): T | null {
   const first = values[0];
@@ -471,73 +403,19 @@ function siegeOf(facts: readonly MemberFacts[]): GroupSiegeModel | null {
   };
 }
 
-function detailRows(ctx: UnitPanelModelContext, facts: readonly MemberFacts[]): GroupDetailRow[] {
-  const copy = messages().hud.groupPanel;
-  const rows: GroupDetailRow[] = [];
-  const count = (detail: GroupDetail, test: (f: MemberFacts) => boolean): void => {
-    const ids = facts.filter(test).map((f) => f.id);
-    if (ids.length > 0) rows.push({ detail, value: String(ids.length), ids });
-  };
-  const settler = (f: MemberFacts): boolean => f.vehicle === null;
-  const health = (f: MemberFacts): number => f.model.healthPct ?? FULL_PCT;
-  const need = (f: MemberFacts, kind: NeedKind): number =>
-    f.needs.find((n) => n.need === kind)?.pct ?? FULL_PCT;
-  count('wounded', (f) => settler(f) && barTone(health(f)) !== 'ok');
-  count('critical', (f) => settler(f) && barTone(health(f)) === 'critical');
-  count('hungry', (f) => need(f, 'hunger') < NEED_LOW_BELOW_PCT);
-  count('tired', (f) => need(f, 'fatigue') < NEED_LOW_BELOW_PCT);
-  count('unarmored', (f) => f.fighter && f.armor === null);
-  count('noHealing', (f) => f.fighter && !f.healing);
-  count('aboard', (f) => f.aboard);
-  count('damaged', (f) => !settler(f) && health(f) < FULL_PCT);
-  const bonuses = facts.flatMap((f) => (f.fightBonusPct === null ? [] : [f.fightBonusPct]));
-  if (bonuses.length > 0) {
-    const avg = Math.round(bonuses.reduce((sum, b) => sum + b, 0) / bonuses.length);
-    rows.push({
-      detail: 'experience',
-      value: formatMessage(copy.experienceValue, { avg, max: Math.max(...bonuses) }),
-      ids: null,
-    });
-  }
-  const healing = facts.flatMap((f) =>
-    f.misc.filter((item) => (goodDef(ctx, item.goodType)?.equip?.restorePct?.healthMax ?? 0) > 0),
-  );
-  const sips = gearItems(ctx, healing).reduce((sum, item) => sum + (item.sips ?? 0), 0);
-  if (sips > 0) rows.push({ detail: 'healingSips', value: String(sips), ids: null });
-  return rows;
-}
-
 function scopeOf(
   ctx: UnitPanelModelContext,
   key: string,
   label: string,
   facts: readonly MemberFacts[],
 ): GroupScopeModel {
-  const healths = facts.flatMap((f) => (f.model.healthPct === null ? [] : [f.model.healthPct]));
-  const vehicles = facts.flatMap((f) => (f.vehicle === null ? [] : [f.vehicle]));
   return {
     key,
     label,
     ids: facts.map((f) => f.id),
-    health:
-      healths.length === 0
-        ? null
-        : {
-            pct: Math.round(healths.reduce((sum, h) => sum + h, 0) / healths.length),
-            wounded: healths.filter((h) => barTone(h) !== 'ok').length,
-          },
-    needs: needAverages(facts),
     gear: gearRows(ctx, facts),
-    crew:
-      vehicles.length === 0
-        ? null
-        : {
-            filled: vehicles.reduce((sum, v) => sum + v.filled, 0),
-            capacity: vehicles.reduce((sum, v) => sum + v.capacity, 0),
-          },
     military: militaryOf(facts),
     siege: siegeOf(facts),
-    details: detailRows(ctx, facts),
   };
 }
 

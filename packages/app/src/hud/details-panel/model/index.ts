@@ -50,14 +50,11 @@ export {
 } from './context.js';
 export {
   ALL_SCOPE,
-  type GroupDetail,
-  type GroupDetailRow,
   type GroupGear,
   type GroupGearItem,
   type GroupGearRow,
   type GroupMemberModel,
   type GroupMilitaryModel,
-  type GroupNeedModel,
   type GroupPanelModel,
   type GroupScopeModel,
   type GroupSiegeModel,

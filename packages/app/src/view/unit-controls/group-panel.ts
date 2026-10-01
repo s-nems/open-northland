@@ -6,7 +6,6 @@ import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import type { GroupStance } from '../../hud/details-panel/model/index.js';
 import type { GroupPanelActions } from '../../hud/dom/group-panel/actions.js';
 import type { OrdersPress } from '../../hud/dom/selection-panel.js';
-import { NEED_ORDER } from '../../hud/dom/settler-panel/needs.js';
 import { orderRecipients } from './action-ring/menu-state.js';
 import type { UnitControlsOptions } from './types.js';
 
@@ -69,7 +68,6 @@ export function groupPanelActions(
     clearSelection: view(() => host.selectGroup([])),
     openOrders: host.openOrders,
     closeOrders: host.closeOrders,
-    orderNeed: (ids, need) => ring(NEED_ORDER[need], ids),
     setStance: (ids, stance) => ring(STANCE_ORDER[stance], ids),
     setRegeneration: (ids, allowed) => ring(allowed ? 'allowRegeneration' : 'prohibitRegeneration', ids),
     setVehicleStance: (ids, stance) => {

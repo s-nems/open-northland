@@ -12,9 +12,9 @@ import {
   type WellFigureFit,
 } from '../parts/figure-well.js';
 
-/** A roster well (foundation.css `.on-roster__well`, 32 x 42 design px) shows its person a little larger
- *  than a crew seat; a vehicle fits itself to its double-width well. */
-const ROSTER_FIT: WellFigureFit = { zoom: 0.66, feetInset: 6 };
+/** A roster well (foundation.css `.on-roster__well`, 32 x 46 design px) shows its person a little larger
+ *  than a crew seat, feet above the two bars on its floor; a vehicle fits itself to its double-width well. */
+const ROSTER_FIT: WellFigureFit = { zoom: 0.66, feetInset: 10 };
 
 /** Ms a press waits for a second one before it selects the member alone, so a double press can bring the
  *  member into view without the panel giving way under the cursor first. Shorter than the platforms'
@@ -37,8 +37,8 @@ interface RosterWell {
   member: GroupMemberModel;
 }
 
-/** The selected members as live wells, a health line under each; past three rows the grid scrolls in
- *  place. Only the wells in view are painted. */
+/** The selected members as live wells, health and hunger lines under each; past the row cap the grid
+ *  scrolls in place. Only the wells in view are painted. */
 export interface MemberRoster {
   readonly element: HTMLElement;
   update(members: readonly GroupMemberModel[]): void;
@@ -100,7 +100,10 @@ export function createMemberRoster(
       ROSTER_FIT,
     );
     well.glyph.innerHTML = vehicle ? GLYPH.wheel : FIGURE.man;
-    well.node.append(element('i', 'on-roster__health'));
+    well.node.append(
+      element('i', 'on-roster__bar on-roster__bar--health'),
+      element('i', 'on-roster__bar on-roster__bar--hunger'),
+    );
     const entry: RosterWell = { well, member };
     onPress(well.node, (event) => press(entry, event));
     well.node.addEventListener('mouseenter', () => {
@@ -144,20 +147,26 @@ export function createMemberRoster(
         root.replaceChildren(...order.map((entry) => entry.well.node));
         stale = true;
       }
+      const hud = messages().hud;
       for (const { well, member } of order) {
-        const health = member.healthPct;
-        setStyleVar(well.node, '--value', `${health ?? 100}%`);
-        setClass(well.node, 'on-roster__well--warn', member.tone === 'warn');
-        setClass(well.node, 'on-roster__well--critical', member.tone === 'critical');
-        const who =
-          health === null
-            ? formatMessage(copy.memberTooltipNoHealth, { name: member.name, type: member.kindLabel })
-            : formatMessage(copy.memberTooltip, {
-                name: member.name,
-                type: member.kindLabel,
-                health: `${health}%`,
-              });
-        setTip(well.node, `${who}\n${copy.memberHint}`);
+        const { healthPct, hungerPct } = member;
+        setClass(well.node, 'on-roster__well--no-health', healthPct === null);
+        setClass(well.node, 'on-roster__well--no-hunger', hungerPct === null);
+        if (healthPct !== null) setStyleVar(well.node, '--health', `${healthPct}%`);
+        if (hungerPct !== null) setStyleVar(well.node, '--hunger', `${hungerPct}%`);
+        const meters = [
+          ...(healthPct === null
+            ? []
+            : [formatMessage(copy.memberMeter, { label: hud.health, pct: healthPct })]),
+          ...(hungerPct === null
+            ? []
+            : [formatMessage(copy.memberMeter, { label: hud.hunger, pct: hungerPct })]),
+        ];
+        const who = formatMessage(copy.memberTooltip, { name: member.name, type: member.kindLabel });
+        setTip(
+          well.node,
+          [who, ...(meters.length === 0 ? [] : [meters.join(' · ')]), copy.memberHint].join('\n'),
+        );
       }
       updateMore();
     },

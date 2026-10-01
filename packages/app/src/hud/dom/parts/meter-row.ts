@@ -1,9 +1,8 @@
-import { NEED_LOW_BELOW_PCT } from '../../details-panel/model/bars.js';
 import { button, element, setAttribute, setClass, setStyleVar, setTip, write } from './dom.js';
 
 /** A fill under a third reads amber and under a sixth red (FOUNDATION.md), so trouble shows without
  *  words; the percent itself carries the same colour. */
-export const METER_LOW_BELOW_PCT = NEED_LOW_BELOW_PCT;
+export const METER_LOW_BELOW_PCT = 34;
 export const METER_CRITICAL_BELOW_PCT = 17;
 
 export type MeterTone = 'ok' | 'low' | 'critical';

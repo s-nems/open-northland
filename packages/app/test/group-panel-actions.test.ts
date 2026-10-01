@@ -61,7 +61,7 @@ describe('group panel orders', () => {
 
   it('refuses an order nobody in scope takes, with the fail click', () => {
     const { actions, cues, rings, vehicles } = harness();
-    actions.orderNeed(vehicles, 'hunger');
+    actions.setRegeneration(vehicles, false);
     expect(rings).toEqual([]);
     expect(cues).toEqual(['fail']);
   });
