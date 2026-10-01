@@ -176,3 +176,22 @@ export const AssistantRecruit = defineComponent<{
   intent: AssistantRecruitIntent;
   armed: boolean;
 }>('AssistantRecruit', 'players');
+
+/**
+ * The per-player "send graduates to work" switch, on while the carrier exists: a settler leaving school is
+ * bound once to a free workplace slot in its new trade. Off by default.
+ */
+export const AssistantPostsGraduates = defineComponent<{
+  /** The player slot the switch belongs to (`[0, MAX_PLAYERS)`). */
+  player: number;
+}>('AssistantPostsGraduates', 'players');
+
+/** The {@link AssistantPostsGraduates} carrier for `player`, or null while the switch is off. */
+export function assistantPostsGraduatesEntity(world: World, player: number): Entity | null {
+  let best: Entity | null = null;
+  for (const e of world.query(AssistantPostsGraduates)) {
+    if (world.get(e, AssistantPostsGraduates).player !== player) continue;
+    if (best === null || e < best) best = e;
+  }
+  return best;
+}

@@ -9,6 +9,7 @@ import {
   EquipOrder,
   ErectSignpostOrder,
   Fleeing,
+  GraduateWait,
   HuntFocus,
   MoveGoal,
   NeedOrder,
@@ -161,6 +162,7 @@ function startPlayerWalk(
   // the walk and drag the settler back to its stale pre-order return spot.
   world.remove(e, EquipOrder);
   world.remove(e, TrainingOrder); // likewise the player's only way to call a barracks drill off
+  world.remove(e, GraduateWait); // a graduate the player moved stays where it was sent
   world.remove(e, NeedOrder); // and an ordered meal, nap, chat or prayer the walk supersedes
   clearLostWay(world, e); // an obeyed order is the way found
   // Likewise a tower posting; no other kind of worker is unemployed by a walk order.

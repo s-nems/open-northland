@@ -5,7 +5,11 @@ import type { ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 import type { SessionHost } from '../session/index.js';
 
 type WeaponSwitchId = Extract<AssistantGrantId, `allow${string}`>;
-type GiveSwitchId = Exclude<AssistantGrantId, WeaponSwitchId>;
+type GiveSwitchId = Extract<AssistantGrantId, `give${string}`>;
+type GoodSwitchId = GiveSwitchId | WeaponSwitchId;
+/** The one switch that maps to no good: it flips the sim's graduate posting. */
+const POST_GRADUATES = 'postGraduates' satisfies Exclude<AssistantGrantId, GoodSwitchId>;
+const GOOD_SWITCH_IDS = GRANT_IDS.filter((id): id is GoodSwitchId => id !== POST_GRADUATES);
 
 /**
  * Which goods each chest-window switch flips, keyed by catalog slug because the sandbox catalog and real
@@ -23,12 +27,12 @@ const WEAPON_GOOD_SLUGS: Readonly<Record<WeaponSwitchId, readonly string[]>> = {
   allowWoodenSpears: ['spear_wooden'],
   allowShortBows: ['bow_short'],
 };
-const SWITCH_GOOD_SLUGS: Readonly<Record<AssistantGrantId, readonly string[]>> = {
+const SWITCH_GOOD_SLUGS: Readonly<Record<GoodSwitchId, readonly string[]>> = {
   ...GRANT_GOOD_SLUGS,
   ...WEAPON_GOOD_SLUGS,
 };
 
-function isWeaponSwitch(id: AssistantGrantId): id is WeaponSwitchId {
+function isWeaponSwitch(id: GoodSwitchId): id is WeaponSwitchId {
   return id in WEAPON_GOOD_SLUGS;
 }
 
@@ -37,15 +41,15 @@ interface GrantContent {
 }
 
 /** A slug the content lacks resolves to nothing, so that switch reads OFF and writes nothing. */
-function resolveGrantGoods(content: GrantContent): Record<AssistantGrantId, readonly number[]> {
+function resolveGrantGoods(content: GrantContent): Record<GoodSwitchId, readonly number[]> {
   const byId = new Map(content.goods.map((g) => [g.id, g.typeId]));
-  const resolve = (id: AssistantGrantId): readonly number[] =>
+  const resolve = (id: GoodSwitchId): readonly number[] =>
     SWITCH_GOOD_SLUGS[id].flatMap((slug) => {
       const typeId = byId.get(slug);
       return typeId === undefined ? [] : [typeId];
     });
-  return Object.fromEntries(GRANT_IDS.map((id) => [id, resolve(id)])) as Record<
-    AssistantGrantId,
+  return Object.fromEntries(GOOD_SWITCH_IDS.map((id) => [id, resolve(id)])) as Record<
+    GoodSwitchId,
     readonly number[]
   >;
 }
@@ -55,7 +59,7 @@ function resolveGrantGoods(content: GrantContent): Record<AssistantGrantId, read
  *  spectator session (`writable: false`) rejects every write, so the window never echoes a command
  *  the sim would drop. */
 export function assistantGrantsSeam(
-  host: Pick<SessionHost, 'assistantGrants' | 'assistantWeaponVetoes'>,
+  host: Pick<SessionHost, 'assistantGrants' | 'assistantWeaponVetoes' | 'assistantPostsGraduates'>,
   content: GrantContent,
   player: () => number | null,
   enqueue: (command: PlayerCommand) => void,
@@ -68,6 +72,7 @@ export function assistantGrantsSeam(
       const granted = new Set(seat === null ? [] : host.assistantGrants(seat));
       const vetoed = new Set(seat === null ? [] : host.assistantWeaponVetoes(seat));
       const on = (id: AssistantGrantId): boolean => {
+        if (id === POST_GRADUATES) return seat !== null && host.assistantPostsGraduates(seat);
         const goods = grantGoods[id];
         if (seat === null || goods.length === 0) return false;
         return isWeaponSwitch(id) ? goods.every((g) => !vetoed.has(g)) : goods.every((g) => granted.has(g));
@@ -75,9 +80,14 @@ export function assistantGrantsSeam(
       return Object.fromEntries(GRANT_IDS.map((id) => [id, on(id)])) as Record<AssistantGrantId, boolean>;
     },
     set: (id, enabled) => {
-      const goods = grantGoods[id];
       const seat = player();
-      if (!writable || seat === null || goods.length === 0) return false;
+      if (!writable || seat === null) return false;
+      if (id === POST_GRADUATES) {
+        enqueue({ kind: 'setAssistantPostGraduates', player: seat, enabled });
+        return true;
+      }
+      const goods = grantGoods[id];
+      if (goods.length === 0) return false;
       for (const goodType of goods) {
         enqueue(
           isWeaponSwitch(id)
@@ -98,7 +108,7 @@ export function grantAssistantDefaults(
 ): void {
   const grantGoods = resolveGrantGoods(content);
   for (const player of new Set(players)) {
-    for (const id of GRANT_IDS) {
+    for (const id of GOOD_SWITCH_IDS) {
       if (isWeaponSwitch(id)) continue; // every weapon starts allowed: the sim default, no veto
       for (const goodType of grantGoods[id]) {
         sim.enqueueSetup({ kind: 'setAssistantGrant', player, goodType, enabled: true });

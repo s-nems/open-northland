@@ -17,13 +17,19 @@ const CONTENT = {
   ],
 };
 
-/** A sim face with nothing vetoed, granting `granted`. */
+/** A sim face granting `granted`, vetoing `vetoed`, and posting graduates when `posts`. */
 const simGranting = (
   granted: readonly number[],
   vetoed: readonly number[] = [],
-): { assistantGrants: () => readonly number[]; assistantWeaponVetoes: () => readonly number[] } => ({
+  posts = false,
+): {
+  assistantGrants: () => readonly number[];
+  assistantWeaponVetoes: () => readonly number[];
+  assistantPostsGraduates: () => boolean;
+} => ({
   assistantGrants: () => granted,
   assistantWeaponVetoes: () => vetoed,
+  assistantPostsGraduates: () => posts,
 });
 
 const SHOES = 30;
@@ -62,7 +68,21 @@ describe('assistantGrantsSeam', () => {
       allowShortSwords: true,
       allowWoodenSpears: true,
       allowShortBows: true,
+      postGraduates: false,
     });
+  });
+
+  it('reads and writes the graduate switch through its own command', () => {
+    const sent: Command[] = [];
+    const seam = assistantGrantsSeam(
+      simGranting([], [], true),
+      CONTENT,
+      () => 1,
+      (c) => sent.push(c),
+    );
+    expect(seam.read().postGraduates).toBe(true);
+    expect(seam.set('postGraduates', false)).toBe(true);
+    expect(sent).toEqual([{ kind: 'setAssistantPostGraduates', player: 1, enabled: false }]);
   });
 
   it('reads a weapon switch as OFF while its good is vetoed, and writes the veto on a flip', () => {

@@ -1,6 +1,7 @@
 import {
   AssistantRecruit,
   consumeAssistantCounter,
+  GraduateWait,
   hasMissionBehaviour,
   JobAssignment,
   MISSION_BEHAVIOUR,
@@ -16,6 +17,7 @@ import {
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { postGraduate } from '../../assistant/graduates.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood, holdToGatherGood, jobGathersGood } from '../../economy/gather-goods.js';
 import { isSchoolOrFoundation, schoolMethodJob } from '../../orders/education.js';
@@ -113,6 +115,10 @@ export function planTraining(
           world.remove(e, JobAssignment);
           reidleAsJob(world, ctx, e, job);
         }
+        // A graduate without a workplace takes a free one if the assistant posts graduates, else waits by
+        // the school.
+        if (!world.has(e, JobAssignment) && !postGraduate(world, ctx, terrain, e, here, limit, job))
+          world.add(e, GraduateWait, { school: order.house });
         // A gatherer taught a good (a collector's iron or gold) leaves school gathering only that good,
         // unless the player already held it to one.
         const good = order.lesson.typeId;

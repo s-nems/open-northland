@@ -95,6 +95,10 @@ unsupported and refused results remain in the diagnostic log.
 `?scene=school` shows a collector walking to school and acquiring an individual carpentry qualification.
 Another collector is available for choosing a course through the school dialog.
 
+`?scene=school-graduates` sends two collectors to learn carpentry with the assistant's "send graduates
+to work" switch on. The first graduate takes the joinery's only joiner slot. The second finds no free
+slot and stays in the school yard, and walks back there whenever it has nothing to do.
+
 `?scene=technology` shows map permission followed by a player-owned profession unlocking housing.
 
 `?scene=idle-work` places three bakeries and a collector on empty grass. Ingrid's bakery lacks water

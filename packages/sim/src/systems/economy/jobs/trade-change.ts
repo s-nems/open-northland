@@ -8,6 +8,7 @@ import {
   EquipOrder,
   ExploreOrder,
   Fleeing,
+  GraduateWait,
   HarvestFocus,
   HuntFocus,
   HuntRest,
@@ -56,6 +57,7 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   rememberCurrentJob(world, e, jobType);
   setSettlerJob(world, e, jobType);
   world.remove(e, TrainingOrder); // a trade change calls off a drill errand
+  world.remove(e, GraduateWait); // and a school wait: the trade it was trained for is gone
   world.remove(e, NeedOrder); // and any need the player ordered the old trade to answer
   world.remove(e, NoRegeneration); // regeneration goes back to allowed, as the original re-sets its flag
   world.remove(e, ExploreOrder); // a settler that is no longer a scout stops sweeping

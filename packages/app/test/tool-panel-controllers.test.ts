@@ -223,6 +223,7 @@ describe('tool windows registry', () => {
       allowShortSwords: true,
       allowWoodenSpears: true,
       allowShortBows: true,
+      postGraduates: false,
     }),
     set: () => true,
   };
@@ -1041,6 +1042,7 @@ describe('extras window controller', () => {
       allowShortSwords: true,
       allowWoodenSpears: true,
       allowShortBows: true,
+      postGraduates: false,
       ...initial,
     };
     const writes: [AssistantGrantId, boolean][] = [];
@@ -1169,7 +1171,7 @@ describe('extras window controller', () => {
 
   it('reads the switch faces from the sim seam on every open', () => {
     const { ctx, made } = stubContext();
-    const { seam } = stubGrantsSeam({ giveIronTools: false });
+    const { seam } = stubGrantsSeam({ giveIronTools: false, postGraduates: true });
     const extras = createExtrasWindow({
       ctx,
       container: new Container(),
@@ -1197,6 +1199,7 @@ describe('extras window controller', () => {
       allowShortSwords: true,
       allowWoodenSpears: true,
       allowShortBows: true,
+      postGraduates: true,
     };
     // The command applies on a later tick, as a queued `setAssistantGrant` does.
     const lagging: ExtrasGrantsSeam = { read: () => ({ ...live }), set: () => true };

@@ -11,3 +11,11 @@ export const TrainingOrder = defineComponent<{
   drillTicksLeft: number;
   lesson?: { kind: 'job' | 'good'; typeId: number };
 }>('TrainingOrder', 'settlers');
+
+/**
+ * A school graduate that left without a workplace: whenever its ladder finds nothing to do, it walks back
+ * and waits in the school's yard, where the player looks for the settlers just trained there. Needs and
+ * errands still take it away. A trade change, a workplace, a move order or a new course ends the wait, as
+ * does the school's loss. Owner's ruling after the original, where graduates gather beside their school.
+ */
+export const GraduateWait = defineComponent<{ school: Entity }>('GraduateWait', 'settlers');

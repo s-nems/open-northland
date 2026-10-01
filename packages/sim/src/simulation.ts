@@ -7,6 +7,7 @@ import {
   AssistantWeaponVetoes,
   assistantCountersEntity,
   assistantGrantedGoods,
+  assistantPostsGraduatesEntity,
   Building,
   type DiplomacyState,
   defaultAssistantCounters,
@@ -556,6 +557,11 @@ export class Simulation {
   /** The weapon goods `player`'s assistant never arms a recruit with, as a detached copy. */
   assistantWeaponVetoes(player: number): readonly number[] {
     return [...playerGoodList(this.world, AssistantWeaponVetoes, player)];
+  }
+
+  /** Whether `player`'s assistant sends graduates straight to a free workplace. */
+  assistantPostsGraduates(player: number): boolean {
+    return assistantPostsGraduatesEntity(this.world, player) !== null;
   }
 
   /** `player`'s assistant production counters as a detached copy; all-default when the carrier is absent. */

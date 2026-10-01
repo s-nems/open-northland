@@ -1,4 +1,4 @@
-import { JobAssignment, ProductionCounters, Settler } from '../../../components/index.js';
+import { GraduateWait, JobAssignment, ProductionCounters, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { removeWorkFlag, syncWorkFlagToJob } from '../work-flag.js';
@@ -10,6 +10,7 @@ import { removeWorkFlag, syncWorkFlagToJob } from '../work-flag.js';
  */
 export function bindEmployment(world: World, e: Entity, workplace: Entity): void {
   world.add(e, JobAssignment, { workplace });
+  world.remove(e, GraduateWait); // a posted graduate stops waiting by its school
   removeWorkFlag(world, e);
   world.remove(e, ProductionCounters);
 }

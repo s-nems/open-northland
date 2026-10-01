@@ -150,6 +150,7 @@ export interface AssistantFacts {
   readonly counters: Readonly<AssistantCounterValues>;
   readonly grants: readonly number[];
   readonly weaponVetoes: readonly number[];
+  readonly postsGraduates: boolean;
 }
 
 /** One stepped tick as the worker saw it. */

@@ -811,6 +811,7 @@ export const enGame = {
       allowShortSwords: 'Allow short swords',
       allowWoodenSpears: 'Allow wooden spears',
       allowShortBows: 'Allow short bows',
+      postGraduates: 'Send graduates to work',
       on: 'ON',
       off: 'OFF',
       /** Stand-ins for the decoded `misclogic` rows 180-186 naming each paper kind; `{name}` takes

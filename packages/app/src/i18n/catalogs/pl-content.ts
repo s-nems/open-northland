@@ -337,6 +337,11 @@ export const plContent = {
       summary:
         'Cywil zostaje wysłany do budowanych koszar, a zbieracz do budowanej szkoły, zanim budowniczowie je skończą. Obaj czekają przy drzwiach, wchodzą, gdy budynek stanie, i wychodzą jako żołnierz i cieśla. Zaznacz wolnego cywila i kliknij budowę prawym przyciskiem, aby wysłać go samodzielnie.',
     },
+    'school-graduates': {
+      title: 'Absolwenci idą do pracy',
+      summary:
+        'Dwóch zbieraczy uczy się ciesielstwa, a asystent kieruje absolwentów do pracy. Pierwszy zajmuje jedyne miejsce cieśli w stolarni. Drugi nie znajduje wolnego miejsca, zostaje przy szkole i wraca tam, gdy nie ma nic do roboty.',
+    },
     'idle-work': {
       title: 'Dlaczego pracownicy są bezczynni',
       summary:

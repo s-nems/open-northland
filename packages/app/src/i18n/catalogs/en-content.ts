@@ -338,6 +338,11 @@ export const enContent = {
       summary:
         'A civilian is sent to a barracks foundation and a collector to a school foundation before the builders finish them. Both wait beside the door, walk in once their house stands, and come out a soldier and a carpenter. Select the spare civilian and right-click a foundation to send it yourself.',
     },
+    'school-graduates': {
+      title: 'Graduates go to work',
+      summary:
+        "Two collectors learn carpentry with the assistant sending graduates to work. The first takes the joinery's only joiner slot. The second finds no free slot, stays in the school yard and walks back there whenever it has nothing to do.",
+    },
     'idle-work': {
       title: 'Why workers are idle',
       summary:

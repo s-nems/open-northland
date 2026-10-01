@@ -39,6 +39,7 @@ import { repairScene } from './repair.js';
 import { roadsScene } from './roads.js';
 import { sandboxScene } from './sandbox/index.js';
 import { schoolScene } from './school.js';
+import { schoolGraduatesScene } from './school-graduates.js';
 import { shipWakesScene } from './ship-wakes.js';
 import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
@@ -133,6 +134,7 @@ export const SCENES: readonly SceneDefinition[] = [
   technologyScene,
   schoolScene,
   learningFoundationsScene,
+  schoolGraduatesScene,
   vehiclesScene,
   vehicleYardScene,
   vehicleOxScene,

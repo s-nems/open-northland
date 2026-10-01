@@ -117,6 +117,7 @@ export const COMMAND_ISSUER: {
   renameSettler: 'seat',
   setAssistantCounter: 'seat',
   setAssistantGrant: 'seat',
+  setAssistantPostGraduates: 'seat',
   setAssistantWeaponVeto: 'seat',
   setProductionGoods: 'seat',
   setProductionCount: 'seat',

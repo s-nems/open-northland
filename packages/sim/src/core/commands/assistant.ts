@@ -1,7 +1,11 @@
 import type { AssistantCounterKind } from '../../components/assistant.js';
 
 /** Commands that configure the per-player settlement assistant. */
-export type AssistantCommand = AssistantGrantCommand | AssistantWeaponVetoCommand | AssistantCounterCommand;
+export type AssistantCommand =
+  | AssistantGrantCommand
+  | AssistantWeaponVetoCommand
+  | AssistantCounterCommand
+  | AssistantPostGraduatesCommand;
 
 type AssistantGrantCommand = {
   /**
@@ -44,4 +48,15 @@ type AssistantCounterCommand = {
   readonly counter: AssistantCounterKind;
   readonly value: number;
   readonly infinite: boolean;
+};
+
+type AssistantPostGraduatesCommand = {
+  /**
+   * Switch `player`'s "send graduates to work" on or off, held on the per-player `AssistantPostsGraduates`
+   * carrier. While on, a settler finishing a school course is bound to a free workplace slot in its trade.
+   */
+  readonly kind: 'setAssistantPostGraduates';
+  /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
+  readonly player: number;
+  readonly enabled: boolean;
 };

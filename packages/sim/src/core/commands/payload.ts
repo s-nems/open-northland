@@ -226,6 +226,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   setAssistantGrant: { required: { player: 'integer', goodType: 'integer', enabled: 'boolean' } },
   setAssistantWeaponVeto: { required: { player: 'integer', goodType: 'integer', vetoed: 'boolean' } },
+  setAssistantPostGraduates: { required: { player: 'integer', enabled: 'boolean' } },
   setProductionGoods: { required: { entity: 'integer', goods: { arrayOf: 'integer' } } },
   setProductionCount: { required: { entity: 'integer', goodType: 'integer', count: 'integer' } },
   setDefenceMode: { required: { building: 'integer', enabled: 'boolean' } },

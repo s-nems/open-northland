@@ -4,9 +4,11 @@ import {
   type AssistantCounterKind,
   AssistantCounters,
   AssistantGrants,
+  AssistantPostsGraduates,
   AssistantWeaponVetoes,
   assistantCountersAtDefault,
   assistantCountersEntity,
+  assistantPostsGraduatesEntity,
   defaultAssistantCounters,
   INFINITE_COUNTER_KINDS,
   type PlayerGoodList,
@@ -29,6 +31,17 @@ export function setAssistantGrant(
   const good = contentIndex(ctx.content).goods.get(command.goodType);
   if (good?.equip === undefined) return; // only a wearable good is grantable
   setListed(world, AssistantGrants, command.player, command.goodType, command.enabled);
+}
+
+/** Switch `player`'s graduate posting on or off - see the command doc. The carrier exists while it is on. */
+export function setAssistantPostGraduates(
+  world: World,
+  command: Extract<Command, { kind: 'setAssistantPostGraduates' }>,
+): void {
+  const carrier = assistantPostsGraduatesEntity(world, command.player);
+  if (command.enabled && carrier === null)
+    world.add(world.create(), AssistantPostsGraduates, { player: command.player });
+  else if (!command.enabled && carrier !== null) world.destroy(carrier);
 }
 
 /** Veto or allow one weapon good in `player`'s recruit arming - see the command doc. */

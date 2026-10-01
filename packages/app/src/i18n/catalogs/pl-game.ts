@@ -793,6 +793,7 @@ export const plGame = {
       allowShortSwords: 'Pozwól na krótkie miecze',
       allowWoodenSpears: 'Pozwól na drewniane włócznie',
       allowShortBows: 'Pozwól na krótkie łuki',
+      postGraduates: 'Kieruj absolwentów do pracy',
       on: 'Wł.',
       off: 'Wył.',
       papers: {

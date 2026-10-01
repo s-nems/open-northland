@@ -87,6 +87,7 @@ function mountSurfaces() {
         allowShortSwords: true,
         allowWoodenSpears: true,
         allowShortBows: true,
+        postGraduates: false,
       }),
       set: () => true,
     },

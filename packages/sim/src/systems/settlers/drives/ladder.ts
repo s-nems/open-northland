@@ -52,6 +52,7 @@ import {
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
+import { planGraduateWait } from './graduate-wait.js';
 import { isServedAtHome } from './home-errands.js';
 import { planBreeder } from './husbandry/index.js';
 import { guideLostSettler } from './lost-guide.js';
@@ -298,8 +299,8 @@ function planEconomy(
   if (planPorter(plan)) return;
 
   // A settler the haul rung also refuses is genuinely idle. One already chatting keeps its chat, and one
-  // a script pinned stays where it is; the rest step off a shared tile first so an idle crowd spreads
-  // out, then chat with a nearby idle neighbour.
+  // a script pinned stays where it is; a graduate heads back to its school's yard, and the rest step off a
+  // shared tile first so an idle crowd spreads out, then chat with a nearby idle neighbour.
   if (planCarrierHaul(plan, pass.anyHaulable)) return;
   pass.idle.stand(e, true);
   if (cutOffCheckDue(ctx)) {
@@ -307,6 +308,7 @@ function planEconomy(
     if (guideLostSettler(pass, e, plan.limit)) return;
   }
   if (world.has(e, Chat) || staysPut(world, e)) return;
+  if (planGraduateWait(world, ctx, terrain, e, plan.here, pass.spacing, plan.limit)) return;
   if (stepOffHomeDoor(world, ctx, terrain, e, plan.here, pass.spacing)) return;
   if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
     planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates, IDLE_REPLAN_PERIOD_TICKS, alert);

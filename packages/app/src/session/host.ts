@@ -120,6 +120,8 @@ export interface SessionHost {
   assistantGrants(player: number): readonly number[];
   /** The weapon goods `player`'s assistant never arms a recruit with. */
   assistantWeaponVetoes(player: number): readonly number[];
+  /** Whether `player`'s assistant sends graduates straight to a free workplace. */
+  assistantPostsGraduates(player: number): boolean;
   needsEnabled(): boolean;
   fogMode(): FogMode;
   matchOutcome(player: number): MatchOutcome;

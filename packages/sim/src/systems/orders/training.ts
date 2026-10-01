@@ -1,6 +1,7 @@
 import {
   Building,
   EquipOrder,
+  GraduateWait,
   PlayerOrder,
   removeCurrentAtomic,
   Settler,
@@ -62,6 +63,7 @@ export function mayWalkToDrill(world: World, ctx: SystemContext, e: Entity, hous
  *  {@link mayDrillAt} passed. `drillTicks` is the caller's serving length. */
 export function startDrill(world: World, e: Entity, house: Entity, drillTicks: number): void {
   world.add(e, TrainingOrder, { house, drillTicksLeft: drillTicks });
+  world.remove(e, GraduateWait); // a new course ends the wait by the last school
   wakeIdle(world, e); // an assistant-booked drill is walked this pass, like an ordered one
   removeCurrentAtomic(world, e);
   supersedeStandingOrders(world, e);
