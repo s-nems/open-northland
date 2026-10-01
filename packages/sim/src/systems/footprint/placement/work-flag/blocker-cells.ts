@@ -13,6 +13,7 @@ import {
   OBSTACLE,
   PALISADE_BODY,
   RESOURCE_ANCHOR,
+  UPGRADE_RESERVE,
 } from '../blockers.js';
 
 // Which nodes a blocker denies a work flag - ../blockers.ts channels projected onto this one rule.
@@ -29,6 +30,7 @@ const BLOCKS_WORK_FLAG: Record<BlockerChannel, boolean> = {
   [EXCLUSION]: false,
   [BUILDING_ZONE]: false,
   [PALISADE_BODY]: true,
+  [UPGRADE_RESERVE]: false,
 };
 
 /** The entity's blocked nodes under `run`'s visitor - the shared channel/bounds filter of every capturer. */

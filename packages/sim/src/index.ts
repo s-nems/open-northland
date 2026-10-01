@@ -198,6 +198,7 @@ export {
   type NodeGridAnswer,
   type NodeSetAnswer,
   nodeGridAccepts,
+  nodeGridUpgradeReserve,
   nodeSetHas,
 } from './simulation/probe-answers.js';
 export { fogViewOfMask } from './simulation/read-seams.js';

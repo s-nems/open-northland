@@ -218,6 +218,11 @@ export const enContent = {
       summary:
         'Builders raise a connected wooden stockade, a gate opens a route through it, and an enemy soldier breaks a segment to make a second breach.',
     },
+    'road-upgrade': {
+      title: 'Roads beside an upgrade',
+      summary:
+        'A druid hut site and a finished one keep the ground their next level grows over; the road and wall tools tint it and lay around it.',
+    },
     roads: {
       title: 'Roads',
       summary:

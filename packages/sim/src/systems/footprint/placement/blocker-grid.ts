@@ -6,12 +6,16 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { type LandscapeBlocks, landscapeBlocks } from '../../landscape/view.js';
 import { type BlockerJournal, startBlockerJournal } from './blocker-journal.js';
 import {
+  type BlockerChannel,
   type BlockerVisit,
   BUILDING_ZONE,
   EXCLUSION,
   eachBlockerCell,
+  MARKER,
   OBSTACLE,
   PALISADE_BODY,
+  RESOURCE_ANCHOR,
+  UPGRADE_RESERVE,
 } from './blockers.js';
 
 // The incrementally-maintained building-placement grid - the per-world count grid ./building.ts probes,
@@ -36,6 +40,8 @@ export interface PlacementGrid {
   readonly exclusion: Uint16Array;
   readonly palisadeBody: Uint16Array;
   readonly buildingZone: Uint16Array;
+  /** Read only by the wall and road answers, to name the refusals an upgrade's ground causes. */
+  readonly upgradeReserve: Uint16Array;
   readonly changes: GridChanges;
 }
 
@@ -81,6 +87,7 @@ interface StampedSlots {
   readonly exclusion: readonly number[];
   readonly palisadeBody: readonly number[];
   readonly buildingZone: readonly number[];
+  readonly upgradeReserve: readonly number[];
 }
 
 /** The scripted landscape layer the grid currently holds: the blocks view it last applied (a read
@@ -124,6 +131,7 @@ function emptyGrid(terrain: TerrainGraph): PlacementGrid {
     exclusion: new Uint16Array(size),
     palisadeBody: new Uint16Array(size),
     buildingZone: new Uint16Array(size),
+    upgradeReserve: new Uint16Array(size),
     changes: { epoch: 0, regionsWide, regionsHigh, revisions: new Uint32Array(regionsWide * regionsHigh) },
   };
 }
@@ -148,6 +156,7 @@ function applySlots(grid: PlacementGrid, slots: StampedSlots, delta: number): vo
   addCounts(grid, grid.exclusion, slots.exclusion, delta);
   addCounts(grid, grid.palisadeBody, slots.palisadeBody, delta);
   addCounts(grid, grid.buildingZone, slots.buildingZone, delta);
+  addCounts(grid, grid.upgradeReserve, slots.upgradeReserve, delta);
 }
 
 function applyLandscapeLayer(grid: PlacementGrid, layer: LandscapeLayer, delta: number): void {
@@ -185,35 +194,44 @@ function liveLandscapeLayer(world: World, terrain: TerrainGraph): LandscapeLayer
   };
 }
 
-/** The slots `run`'s (cell, channel) pairs occupy - the shared channel routing and bounds filter of every
- *  capture. RESOURCE_ANCHOR and MARKER block no building, so they stamp nothing. */
+/** The grid field a channel's counts live in; RESOURCE_ANCHOR and MARKER block no building, so they have
+ *  none. The shared channel routing of every capture and full stamp. */
+function channelField(channel: BlockerChannel): keyof StampedSlots | null {
+  switch (channel) {
+    case OBSTACLE:
+      return 'obstacle';
+    case EXCLUSION:
+      return 'exclusion';
+    case PALISADE_BODY:
+      return 'palisadeBody';
+    case BUILDING_ZONE:
+      return 'buildingZone';
+    case UPGRADE_RESERVE:
+      return 'upgradeReserve';
+    case RESOURCE_ANCHOR:
+    case MARKER:
+      return null;
+  }
+}
+
+/** The slots `run`'s (cell, channel) pairs occupy, bounds-filtered as every capture is. */
 function captureSlots(grid: PlacementGrid, run: (visit: BlockerVisit) => void): StampedSlots {
   const w = grid.terrain.width;
   const h = grid.terrain.height;
-  const obstacle: number[] = [];
-  const exclusion: number[] = [];
-  const palisadeBody: number[] = [];
-  const buildingZone: number[] = [];
+  const slots: { [K in keyof StampedSlots]: number[] } = {
+    obstacle: [],
+    exclusion: [],
+    palisadeBody: [],
+    buildingZone: [],
+    upgradeReserve: [],
+  };
   run((x, y, channel) => {
-    if (
-      channel !== OBSTACLE &&
-      channel !== EXCLUSION &&
-      channel !== BUILDING_ZONE &&
-      channel !== PALISADE_BODY
-    )
-      return;
+    const field = channelField(channel);
+    if (field === null) return;
     if (x < 0 || y < 0 || x >= w || y >= h) return; // off-map cells are never stamped (see PlacementGrid)
-    const target =
-      channel === EXCLUSION
-        ? exclusion
-        : channel === PALISADE_BODY
-          ? palisadeBody
-          : channel === BUILDING_ZONE
-            ? buildingZone
-            : obstacle;
-    target.push(y * w + x);
+    slots[field].push(y * w + x);
   });
-  return { obstacle, exclusion, palisadeBody, buildingZone };
+  return slots;
 }
 
 function rebuildGrid(
@@ -228,6 +246,7 @@ function rebuildGrid(
   grid.exclusion.fill(0);
   grid.palisadeBody.fill(0);
   grid.buildingZone.fill(0);
+  grid.upgradeReserve.fill(0);
   const landscape = liveLandscapeLayer(world, terrain);
   applyLandscapeLayer(grid, landscape, STAMP);
   return {
@@ -306,22 +325,10 @@ function stampBlockerGrid(world: World, content: ContentSet, grid: PlacementGrid
   const h = grid.terrain.height;
   applyLandscapeLayer(grid, liveLandscapeLayer(world, grid.terrain), STAMP);
   eachBlockerCell(world, content, (x, y, channel) => {
-    if (
-      channel !== OBSTACLE &&
-      channel !== EXCLUSION &&
-      channel !== BUILDING_ZONE &&
-      channel !== PALISADE_BODY
-    )
-      return;
+    const field = channelField(channel);
+    if (field === null) return;
     if (x < 0 || y < 0 || x >= w || y >= h) return; // off-map cells are never stamped (see PlacementGrid)
-    const counts =
-      channel === EXCLUSION
-        ? grid.exclusion
-        : channel === PALISADE_BODY
-          ? grid.palisadeBody
-          : channel === BUILDING_ZONE
-            ? grid.buildingZone
-            : grid.obstacle;
+    const counts = grid[field];
     const slot = y * w + x;
     counts[slot] = (counts[slot] ?? 0) + STAMP;
   });
@@ -340,13 +347,15 @@ function verifyGridMemo(world: World, content: ContentSet, terrain: TerrainGraph
   fresh.exclusion.fill(0);
   fresh.palisadeBody.fill(0);
   fresh.buildingZone.fill(0);
+  fresh.upgradeReserve.fill(0);
   stampBlockerGrid(world, content, fresh);
   for (let i = 0; i < fresh.obstacle.length; i++) {
     if (
       state.grid.obstacle[i] === fresh.obstacle[i] &&
       state.grid.exclusion[i] === fresh.exclusion[i] &&
       state.grid.palisadeBody[i] === fresh.palisadeBody[i] &&
-      state.grid.buildingZone[i] === fresh.buildingZone[i]
+      state.grid.buildingZone[i] === fresh.buildingZone[i] &&
+      state.grid.upgradeReserve[i] === fresh.upgradeReserve[i]
     ) {
       continue;
     }

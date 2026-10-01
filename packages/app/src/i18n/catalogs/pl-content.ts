@@ -212,6 +212,11 @@ export const plContent = {
       summary:
         'Budowniczowie najpierw naprawiają spokojny dom, a bliższy, przy którym trwa walka, zostawiają na później.',
     },
+    'road-upgrade': {
+      title: 'Drogi przy rozbudowie',
+      summary:
+        'Plac chaty druida i gotowa chata trzymają teren, na który urośnie ich kolejny poziom; narzędzia drogi i palisady barwią go i omijają.',
+    },
     roads: {
       title: 'Drogi',
       summary:

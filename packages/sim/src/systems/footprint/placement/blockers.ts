@@ -1,4 +1,9 @@
-import { type ContentSet, footprintCellDx } from '@open-northland/data';
+import {
+  type BuildingFootprint,
+  type ContentSet,
+  type FootprintCell,
+  footprintCellDx,
+} from '@open-northland/data';
 import {
   Building,
   DeliveryFlag,
@@ -36,6 +41,9 @@ import { hexDisc, vehicleAnchor } from '../vehicle-footprint.js';
  *  - **RESOURCE_ANCHOR** - a resource's own cell, which its walk body need not cover. Blocks a work flag
  *    only.
  *  - **MARKER** - a delivery flag's cell. Blocks another marker, never a building.
+ *  - **UPGRADE_RESERVE** - the FAMILY BODY cells an upgradable building's current level does not stand on:
+ *    ground its later levels grow over. OBSTACLE already refuses them; a wall or road tool reads this
+ *    channel only to show the player why.
  */
 const OBSTACLE = 0;
 const EXCLUSION = 1;
@@ -45,15 +53,26 @@ const BUILDING_ZONE = 4;
 /** A palisade's source walk body, present during construction for placement collision only. Rejects
  *  another wall's body and a building's FAMILY BODY; a wall keeps no margin of its own. */
 const PALISADE_BODY = 5;
+const UPGRADE_RESERVE = 6;
 type BlockerChannel =
   | typeof OBSTACLE
   | typeof EXCLUSION
   | typeof RESOURCE_ANCHOR
   | typeof MARKER
   | typeof BUILDING_ZONE
-  | typeof PALISADE_BODY;
+  | typeof PALISADE_BODY
+  | typeof UPGRADE_RESERVE;
 
-export { type BlockerChannel, BUILDING_ZONE, EXCLUSION, MARKER, OBSTACLE, PALISADE_BODY, RESOURCE_ANCHOR };
+export {
+  type BlockerChannel,
+  BUILDING_ZONE,
+  EXCLUSION,
+  MARKER,
+  OBSTACLE,
+  PALISADE_BODY,
+  RESOURCE_ANCHOR,
+  UPGRADE_RESERVE,
+};
 
 /** Opt-in for the {@link MARKER} channel. Only the work-flag rule consumes markers, so a scan that
  *  ignores the channel must not pay for the delivery-flag store walk. */
@@ -90,6 +109,23 @@ export function buildingBlockerCells(
   const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
   for (const c of body) visit(hx + footprintCellDx(hy, c), hy + c.dy, OBSTACLE);
   for (const c of zone) visit(hx + footprintCellDx(hy, c), hy + c.dy, BUILDING_ZONE);
+  // A footprint without walls, as the approximate catalog's, has no growth to tell from its body.
+  if (fp === undefined || fp.blocked.length === 0) return;
+  if (contentIndex(content).buildings.get(b.buildingType)?.upgradeTarget === undefined) return;
+  for (const c of upgradeReserveCells(fp)) visit(hx + footprintCellDx(hy, c), hy + c.dy, UPGRADE_RESERVE);
+}
+
+const upgradeReserves = new WeakMap<BuildingFootprint, readonly FootprintCell[]>();
+
+/** `familyBody` less this level's `blocked` cells, kept per footprint record. */
+function upgradeReserveCells(fp: BuildingFootprint): readonly FootprintCell[] {
+  let cells = upgradeReserves.get(fp);
+  if (cells === undefined) {
+    const standing = new Set(fp.blocked.map((c) => `${c.dx},${c.dy}`));
+    cells = fp.familyBody.filter((c) => !standing.has(`${c.dx},${c.dy}`));
+    upgradeReserves.set(fp, cells);
+  }
+  return cells;
 }
 
 export function palisadeBodyCells(world: World, e: Entity, visit: BlockerVisit): void {
@@ -184,9 +220,10 @@ export function eachBlockerCell(
  * `Signpost` and `Vehicle` membership generations, the scripted landscape placement revision, the
  * `Building` VALUE generation, since the home tier upgrade swaps `buildingType` in place invisibly to
  * membership, and the vehicles' anchor revision, which moves when a vehicle enters a node rather than
- * on every facing, task or seat write. The tier swap cannot change the cells today (`familyBody` and
- * `reserved` are level-chain unions), so the value term only guards a future per-level footprint. A
- * wall's placement body changes only by a re-add, so its in-place claim and build writes stay out.
+ * on every facing, task or seat write. The tier swap keeps the OBSTACLE and BUILDING_ZONE cells
+ * (`familyBody` and `reserved` are level-chain unions) but moves the UPGRADE_RESERVE ones, which follow
+ * each level's own `blocked`. A wall's placement body changes only by a re-add, so its in-place claim
+ * and build writes stay out.
  *
  * Exactness rests on buildings and footprinted objects never MOVING once placed, so a stored entity's
  * cells are fixed, and on a vehicle moving only through a `World.mut(e, Vehicle)` write. Completeness

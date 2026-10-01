@@ -4,10 +4,38 @@ import { describe, expect, it } from 'vitest';
 import { type PlacementCursorInput, placementCursor } from '../src/view/runtime/placement-cursor.js';
 
 /** Two distinct washes, so an assertion says which probe answered. The renderer only forwards them. */
-const BUILDING_WASH: PlacementOverlayFrame = { minCol: 0, maxCol: 8, minRow: 0, maxRow: 8, blocked: [] };
-const SIGNPOST_WASH: PlacementOverlayFrame = { minCol: 1, maxCol: 9, minRow: 1, maxRow: 9, blocked: [] };
-const LINE_WASH: PlacementOverlayFrame = { minCol: 2, maxCol: 7, minRow: 2, maxRow: 7, blocked: [] };
-const DOCK_WASH: PlacementOverlayFrame = { minCol: 2, maxCol: 10, minRow: 2, maxRow: 10, blocked: [] };
+const BUILDING_WASH: PlacementOverlayFrame = {
+  minCol: 0,
+  maxCol: 8,
+  minRow: 0,
+  maxRow: 8,
+  blocked: [],
+  reserved: [],
+};
+const SIGNPOST_WASH: PlacementOverlayFrame = {
+  minCol: 1,
+  maxCol: 9,
+  minRow: 1,
+  maxRow: 9,
+  blocked: [],
+  reserved: [],
+};
+const LINE_WASH: PlacementOverlayFrame = {
+  minCol: 2,
+  maxCol: 7,
+  minRow: 2,
+  maxRow: 7,
+  blocked: [],
+  reserved: [],
+};
+const DOCK_WASH: PlacementOverlayFrame = {
+  minCol: 2,
+  maxCol: 10,
+  minRow: 2,
+  maxRow: 10,
+  blocked: [],
+  reserved: [],
+};
 const SHIP = 31;
 
 const HOUSE = 7;

@@ -4,7 +4,13 @@ import {
   type PlacementOverlayFrame,
   visibleTileRange,
 } from '@open-northland/render';
-import { FOG_STATE, type NodeGridAnswer, nodeGridAccepts, type Paper } from '@open-northland/sim';
+import {
+  FOG_STATE,
+  type NodeGridAnswer,
+  nodeGridAccepts,
+  nodeGridUpgradeReserve,
+  type Paper,
+} from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import type { LitNodes } from '../hud/tool-panel/line-tool.js';
 import { type NodeGridProbe, PROBE_AREA_NODES, type SessionHost } from '../session/index.js';
@@ -62,9 +68,11 @@ export function makeSignpostOverlaySource(
 export type LitAnswers = { readonly tool: 'road' } | { readonly tool: 'palisade'; readonly gfxIndex: number };
 
 /**
- * The wash of a tool that lights a node set of its own: everything dims but `lit`. A set read from a line
- * tool's `answers` refuses every node whose area is still being answered, so, like the grid washes, it
- * shows nothing until an answer over the band lands; otherwise the tool's first frame dims the whole view.
+ * The wash of a tool that lights a node set of its own: everything dims but `lit`, and ground a standing
+ * building keeps for its upgrade takes its own tint, so the player sees why a wall or road skirts it.
+ * A set read from a line tool's `answers` refuses every node whose area is still being answered, so,
+ * like the grid washes, it shows nothing until an answer over the band lands; otherwise the tool's first
+ * frame dims the whole view.
  */
 export function makeLitOverlaySource(
   probes: Pick<PlacementProbeViews, 'road' | 'palisade'>,
@@ -86,7 +94,15 @@ export function makeLitOverlaySource(
       probe === null || probe.keyWithin(range.minCol, range.maxCol, range.minRow, range.maxRow) !== null
         ? lit.key
         : null;
-    return band({ keyWithin, accepts: () => lit.has }, camera, screenW, screenH);
+    const reserves = (): ((x: number, y: number) => boolean) => {
+      if (probe === null) return () => false;
+      const answerAt = areaAnswers(probe);
+      return (x, y) => {
+        const answer = answerAt(x, y);
+        return answer !== null && answer !== undefined && nodeGridUpgradeReserve(answer, x, y);
+      };
+    };
+    return band({ keyWithin, accepts: () => lit.has, reserves }, camera, screenW, screenH);
   };
 }
 
@@ -116,11 +132,30 @@ export function makeDockOverlaySource(
 
 type NodeBand = ReturnType<typeof nodeBandOfCells>;
 
-/** What the band walk asks of a rule: a key over the band, null for no overlay at all, and a node test
- *  made once per walk. */
+/** What the band walk asks of a rule: a key over the band, null for no overlay at all, and node tests
+ *  made once per walk. A refused node `reserves` names is upgrade ground rather than plain blocked. */
 interface BandProbe {
   keyWithin(band: NodeBand): string | null;
   accepts(): (x: number, y: number) => boolean;
+  reserves?(): (x: number, y: number) => boolean;
+}
+
+/** The probe's answer covering a node. The walk runs row by row, so the answer is looked up once per
+ *  area crossed rather than per node. */
+function areaAnswers(probe: NodeGridProbe): (x: number, y: number) => NodeGridAnswer | null | undefined {
+  let areaX = Number.NaN;
+  let areaY = Number.NaN;
+  let answer: NodeGridAnswer | null | undefined;
+  return (x, y) => {
+    const ax = Math.floor(x / PROBE_AREA_NODES);
+    const ay = Math.floor(y / PROBE_AREA_NODES);
+    if (ax !== areaX || ay !== areaY) {
+      answer = probe.answerAt(x, y);
+      areaX = ax;
+      areaY = ay;
+    }
+    return answer;
+  };
 }
 
 /** A grid probe as the band walk reads it: no overlay until an answer over the band lands or when the
@@ -132,18 +167,9 @@ function gridBandProbe(probe: NodeGridProbe, prefix: string): BandProbe {
       return key === null ? null : `${prefix}:${key}`;
     },
     accepts: () => {
-      // The walk runs row by row, so the answer is looked up once per area crossed rather than per node.
-      let areaX = Number.NaN;
-      let areaY = Number.NaN;
-      let answer: NodeGridAnswer | null | undefined;
+      const answerAt = areaAnswers(probe);
       return (x, y) => {
-        const ax = Math.floor(x / PROBE_AREA_NODES);
-        const ay = Math.floor(y / PROBE_AREA_NODES);
-        if (ax !== areaX || ay !== areaY) {
-          answer = probe.answerAt(x, y);
-          areaX = ax;
-          areaY = ay;
-        }
+        const answer = answerAt(x, y);
         return answer !== null && answer !== undefined && nodeGridAccepts(answer, x, y);
       };
     },
@@ -174,18 +200,23 @@ function makeBandProber(
     const nextKey = `${probeKey}:${fogKey}:${range.minCol},${range.maxCol},${range.minRow},${range.maxRow}`;
     if (nextKey === key && frame !== null) return frame;
     const accepts = probe.accepts();
+    const reserves = probe.reserves?.() ?? null;
     const blocked: { col: number; row: number }[] = [];
+    const reserved: { col: number; row: number }[] = [];
     for (let row = range.minRow; row <= range.maxRow; row++) {
       // Node (col, row) lives in cell (col>>1, row>>1); `cellOfNode` is inlined to keep this band
       // loop allocation-free.
       const cellRow = row >> 1;
       for (let col = range.minCol; col <= range.maxCol; col++) {
         const hidden = fog !== null && fog.stateAt(col >> 1, cellRow) !== FOG_STATE.VISIBLE;
-        if (hidden || !accepts(col, row)) blocked.push({ col, row });
+        if (hidden) blocked.push({ col, row });
+        else if (accepts(col, row)) continue;
+        else if (reserves?.(col, row) === true) reserved.push({ col, row });
+        else blocked.push({ col, row });
       }
     }
     key = nextKey;
-    frame = { ...range, blocked };
+    frame = { ...range, blocked, reserved };
     return frame;
   };
 }

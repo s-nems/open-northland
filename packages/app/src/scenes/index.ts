@@ -37,6 +37,7 @@ import { movementContinuityScene } from './movement-continuity.js';
 import { palisadeScene } from './palisade.js';
 import { presentationScene } from './presentation.js';
 import { repairScene } from './repair.js';
+import { roadUpgradeScene } from './road-upgrade.js';
 import { roadsScene } from './roads.js';
 import { sandboxScene } from './sandbox/index.js';
 import { schoolScene } from './school.js';
@@ -124,6 +125,7 @@ export const SCENES: readonly SceneDefinition[] = [
   livestockScene,
   palisadeScene,
   roadsScene,
+  roadUpgradeScene,
   equipmentScene,
   equipmentEffectsScene,
   amuletsScene,

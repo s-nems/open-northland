@@ -19,13 +19,15 @@ export interface PlacementOverlayCell {
 }
 
 /** One build-mode frame: the probed node band, plus which of its nodes rejected the held building's
- *  anchor. The buildable side is the band's complement of `blocked`. */
+ *  anchor - `reserved` where the ground is kept for a standing building's upgrade, `blocked` otherwise.
+ *  The two are disjoint; the buildable side is the rest of the band. */
 export interface PlacementOverlayFrame {
   readonly minCol: number;
   readonly maxCol: number;
   readonly minRow: number;
   readonly maxRow: number;
   readonly blocked: readonly PlacementOverlayCell[];
+  readonly reserved: readonly PlacementOverlayCell[];
 }
 
 /** The dim wash: near-black at a moderate alpha - enough to read "blocked" without hiding the ground. */
@@ -33,6 +35,10 @@ const DIM_COLOR = 0x000000;
 const DIM_ALPHA = 0.42;
 /** The buildable-side lift: additive white, faint - the original's slight contrast boost. */
 const BRIGHT_ALPHA = 0.08;
+/** Upgrade ground: a warm ochre, set apart from the dim so it reads as "kept for this house", not as
+ *  rough terrain. A project choice; the original draws no such hint. */
+const RESERVE_COLOR = 0xd9a03a;
+const RESERVE_ALPHA = 0.4;
 /** Half-resolution compositing - halves the fill cost. */
 const COMPOSITE_RESOLUTION = 0.5;
 /** World-px pad each diamond grows by, so adjacent same-side cells fuse without hairline seams. Must
@@ -78,11 +84,15 @@ export class PlacementOverlayLayer {
   private readonly dim = new Sprite();
   /** The buildable cells' fused diamonds, additive and faint. */
   private readonly bright = new Sprite();
+  /** The upgrade ground's fused diamonds, tinted ochre. */
+  private readonly reserve = new Sprite();
   private dimTexture: RenderTexture | null = null;
   private brightTexture: RenderTexture | null = null;
-  /** The two retained composite sources, cleared + refilled per recomposite (never re-allocated). */
+  private reserveTexture: RenderTexture | null = null;
+  /** The retained composite sources, cleared + refilled per recomposite (never re-allocated). */
   private readonly blockedG = new Graphics();
   private readonly buildableG = new Graphics();
+  private readonly reservedG = new Graphics();
   /** Signature of the frame last composited - an unchanged signature skips the rebuild. */
   private key = '';
 
@@ -94,7 +104,10 @@ export class PlacementOverlayLayer {
     this.bright.blendMode = 'add';
     this.bright.alpha = BRIGHT_ALPHA;
     this.bright.visible = false;
-    this.container.addChild(this.dim, this.bright);
+    this.reserve.tint = RESERVE_COLOR;
+    this.reserve.alpha = RESERVE_ALPHA;
+    this.reserve.visible = false;
+    this.container.addChild(this.dim, this.reserve, this.bright);
   }
 
   /** Recomposite the wash for a build-mode frame; `null` clears it. Diamonds are lifted onto the terrain
@@ -102,8 +115,7 @@ export class PlacementOverlayLayer {
   set(frame: PlacementOverlayFrame | null, elevation: ElevationField): void {
     if (frame === null || frame.minCol > frame.maxCol || frame.minRow > frame.maxRow) {
       if (this.key !== '') {
-        this.dim.visible = false;
-        this.bright.visible = false;
+        for (const spr of [this.dim, this.bright, this.reserve]) spr.visible = false;
         this.key = '';
       }
       return;
@@ -118,12 +130,17 @@ export class PlacementOverlayLayer {
     );
     const dimTexture = this.dimTexture;
     const brightTexture = this.brightTexture;
-    if (dimTexture === null || brightTexture === null) return; // ensureTextures always sets them
+    const reserveTexture = this.reserveTexture;
+    // ensureTextures always sets them
+    if (dimTexture === null || brightTexture === null || reserveTexture === null) return;
 
     const blocked = new Set<string>();
     for (const c of frame.blocked) blocked.add(`${c.col},${c.row}`);
+    const reserved = new Set<string>();
+    for (const c of frame.reserved) reserved.add(`${c.col},${c.row}`);
     const blockedG = this.blockedG.clear();
     const buildableG = this.buildableG.clear();
+    const reservedG = this.reservedG.clear();
     // The node lattice is a (HALF_W, HALF_H/2)-pitch rectangle, so a diamond of those half-extents on
     // every node covers the plane: the worst gap point between four nodes lands on four diamond edges.
     const hw = (TILE_HALF_W + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
@@ -134,31 +151,35 @@ export class PlacementOverlayLayer {
         const p = projectNode(elevation, col, row);
         const cx = (p.x - bounds.x) * COMPOSITE_RESOLUTION;
         const cy = (p.y - bounds.y) * COMPOSITE_RESOLUTION;
-        const g = blocked.has(`${col},${row}`) ? blockedG : buildableG;
+        const node = `${col},${row}`;
+        const g = blocked.has(node) ? blockedG : reserved.has(node) ? reservedG : buildableG;
         g.poly(nodeDiamondPoly(cx, cy, hw, hh));
       }
     }
     blockedG.fill(0xffffff);
     buildableG.fill(0xffffff);
+    reservedG.fill(0xffffff);
 
     // The textures may be quantized larger than the band, so `clear: true` blanks the margin and the
     // slack past the band's edge stays transparent.
     this.renderer.render({ container: blockedG, target: dimTexture, clear: true });
     this.renderer.render({ container: buildableG, target: brightTexture, clear: true });
+    this.renderer.render({ container: reservedG, target: reserveTexture, clear: true });
 
-    for (const spr of [this.dim, this.bright]) {
+    for (const spr of [this.dim, this.bright, this.reserve]) {
       spr.position.set(bounds.x, bounds.y);
       spr.scale.set(1 / COMPOSITE_RESOLUTION);
       spr.visible = true;
     }
     this.dim.texture = dimTexture;
     this.bright.texture = brightTexture;
+    this.reserve.texture = reserveTexture;
     // Marked only now: a failed alloc or lost context above retries next frame instead of skipping on a
     // stale signature.
     this.key = key;
   }
 
-  /** Grow-only quantized (re)allocation of the two composite textures. The visible col/row count flaps
+  /** Grow-only quantized (re)allocation of the composite textures. The visible col/row count flaps
    *  N↔N+1 as a smooth pan crosses tile phase, so exact-size allocation would recreate GPU textures
    *  every half tile of travel. */
   private ensureTextures(w: number, h: number): void {
@@ -170,23 +191,28 @@ export class PlacementOverlayLayer {
     const newH = Math.max(quantH, current?.height ?? 0);
     this.dimTexture?.destroy(true);
     this.brightTexture?.destroy(true);
+    this.reserveTexture?.destroy(true);
     // Linear (default) sampling upscales the half-res composite into the soft, grid-free edge.
     this.dimTexture = RenderTexture.create({ width: newW, height: newH });
     this.brightTexture = RenderTexture.create({ width: newW, height: newH });
+    this.reserveTexture = RenderTexture.create({ width: newW, height: newH });
   }
 
   destroy(): void {
     this.dimTexture?.destroy(true);
     this.brightTexture?.destroy(true);
+    this.reserveTexture?.destroy(true);
     this.blockedG.destroy();
     this.buildableG.destroy();
+    this.reservedG.destroy();
     this.container.destroy({ children: true });
   }
 }
 
-/** Order-sensitive signature of a frame - equal frames hash equal because the caller emits blocked cells
- *  in a fixed tile-scan order. */
+/** Order-sensitive signature of a frame - equal frames hash equal because the caller emits blocked and
+ *  reserved cells in a fixed tile-scan order. */
 function signatureOf(frame: PlacementOverlayFrame): string {
-  const h = hashCells(frame.blocked, frame.blocked.length);
-  return `${frame.minCol},${frame.maxCol},${frame.minRow},${frame.maxRow}:${frame.blocked.length}:${h}`;
+  const band = `${frame.minCol},${frame.maxCol},${frame.minRow},${frame.maxRow}`;
+  const blocked = `${frame.blocked.length}:${hashCells(frame.blocked, frame.blocked.length)}`;
+  return `${band}:${blocked}:${frame.reserved.length}:${hashCells(frame.reserved, frame.reserved.length)}`;
 }
