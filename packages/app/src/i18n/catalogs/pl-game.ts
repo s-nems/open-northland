@@ -895,6 +895,8 @@ export const plGame = {
     fog: 'Widoczność',
     geometry: 'Geometria budynków',
     camera: 'Kamera',
+    cursorNode: 'Kursor: węzeł {x}, {y} (komórka {cx}, {cy})',
+    cursorOffMap: 'Kursor: poza mapą',
     warriors: 'Wojownicy',
     civilians: 'Cywile',
     creatures: 'Potwory',

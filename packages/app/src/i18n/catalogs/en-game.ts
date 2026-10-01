@@ -914,6 +914,8 @@ export const enGame = {
     fog: 'Visibility',
     geometry: 'Building geometry',
     camera: 'Camera',
+    cursorNode: 'Cursor: node {x}, {y} (cell {cx}, {cy})',
+    cursorOffMap: 'Cursor: off the map',
     warriors: 'Warriors',
     civilians: 'Civilians',
     creatures: 'Monsters',

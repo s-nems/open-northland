@@ -218,6 +218,12 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   header.append(el('div', `${SECTION_TITLE_STYLE};margin-top:8px`, copy.camera));
   header.append(zoomOut.row);
   if (speed !== null) header.append(speed.row);
+  const cursor = el(
+    'div',
+    'opacity:0.85;margin-top:6px;font-variant-numeric:tabular-nums',
+    copy.cursorOffMap,
+  );
+  header.append(cursor);
 
   const body = el('div', BODY_STYLE);
 
@@ -428,6 +434,18 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   };
   window.addEventListener('keydown', onKeyDown, { capture: true });
 
+  /** The half-cell node under the pointer, so a spot on the map can be named exactly. */
+  const onPointerMove = (e: MouseEvent): void => {
+    if (!open) return;
+    const tile = e.target === canvas ? deps.clientToTile(e.clientX, e.clientY) : null;
+    const text =
+      tile === null
+        ? copy.cursorOffMap
+        : formatMessage(copy.cursorNode, { x: tile.col, y: tile.row, cx: tile.col >> 1, cy: tile.row >> 1 });
+    if (cursor.textContent !== text) cursor.textContent = text;
+  };
+  window.addEventListener('mousemove', onPointerMove, { passive: true });
+
   return {
     setVisible(visible): void {
       toggle.style.display = visible ? '' : 'none';
@@ -437,6 +455,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     dispose(): void {
       window.removeEventListener('mousedown', onPointerDown, { capture: true });
       window.removeEventListener('keydown', onKeyDown, { capture: true });
+      window.removeEventListener('mousemove', onPointerMove);
       toggle.remove();
       panel.remove();
     },
