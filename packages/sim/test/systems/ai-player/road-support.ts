@@ -3,7 +3,7 @@ import { aiCommand, type PlayerCommand } from '../../../src/core/commands/index.
 import { hexNeighboursOf, nodeOfPosition, Simulation } from '../../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
 import { ROADS_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
-import { structureBlockOverlay } from '../../../src/systems/footprint/blocked.js';
+import { dynamicBlockOverlay } from '../../../src/systems/footprint/blocked.js';
 import { layRoad } from '../../../src/systems/roads/index.js';
 import { ownedRoadSites, roadSitesByNode } from '../../../src/systems/roads/site-index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
@@ -69,7 +69,7 @@ export function paved(
 ): boolean {
   const terrain = terrainOf(sim);
   const sites = roadSitesByNode(sim.world, terrain);
-  const blocked = structureBlockOverlay(sim.world, ctxOf(sim, sim.tick), terrain);
+  const blocked = dynamicBlockOverlay(sim.world, ctxOf(sim, sim.tick), terrain);
   const carries = (node: NodeId): boolean => (terrain.isRoad(node) || sites.has(node)) && !blocked.has(node);
   const ring = (x: number, y: number): NodeId[] => [
     terrain.nodeAt(x, y),

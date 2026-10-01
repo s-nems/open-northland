@@ -145,9 +145,9 @@ waits under `waitsForHuman` like a goto's goal and the combat pass takes it up o
 only). Named approximations: the job and
 owner refusals of attach raise `cannotEnterVehicle` and a full vehicle `vehicleNoPassengerRoom`; a
 refused load raises `cannotAttachVehicle`, which the original never raises; a rider refused off a
-ship at sea raises `cannotLeaveVehicle`; a standing vehicle's whole disc is blocked for humans, so a
-settler walks around a parked cart and an entry point inside the disc always takes the original's
-ring fallback, the first open ground node on the anchor's continent around the ring just outside the
+ship at sea raises `cannotLeaveVehicle`; settlers walk through a standing vehicle as in the original,
+but an entry point inside the disc always takes the original's ring fallback, so the crew boards from
+beside the vehicle, the first open ground node on the anchor's continent around the ring just outside the
 disc, tested in the original's order, with the entry point kept when the ring has none
 (`vehicleDoorPoint`; the original blocks nothing and walks the crew onto the cart, and its scan is the
 radius-1 ring only, where a catapult's door here lies on ring 2); a rider boards from and steps out
@@ -259,10 +259,8 @@ and houses but never through a narrower wall gap (`landVehicleFits`); ships keep
 The tolerance is for transit only: a goto's snapped goal and a firing spot need the plain class
 (`vehicleStandable`, `vehicleRestBlocks`), and a land vehicle whose drive ends in such a gap anyway,
 given up, halted without its commander or its goal closed meanwhile, drives on to the nearest node
-within 3 rings it may stand on, since a standing vehicle's disc blocks settlers. Deviation (the
-original's settlers walk through a parked cart): a vehicle also never rests with its disc on a
-building's door, the passage from it or a node beside either, so it cannot shut a house's workers out,
-and a drive ending there rolls off the same way, an attack-move that reached its goal ending as it does. A player's stop leaves it where it stops. `g` is the roughness of the node a leg
+within 3 rings it may stand on, since a standing vehicle's disc blocks other vehicles; an attack-move
+that reached its goal ends there. A player's stop leaves it where it stops. `g` is the roughness of the node a leg
 leaves (`TerrainGraph.roughnessAt`; a map without the lane reads 2 on land and 1 on water, the corpus's
 common values); an off-continent target raises `vehicleNoPath` instead of being ignored, and so does
 a ship's target in a part of its sea past a strait too narrow for the hull, judged from the sea labels
@@ -285,7 +283,7 @@ Deviation (owner's choice): the original steers through the six hexagon directio
 heading up or down a column zigzags NE/NW and its N/S frames show only mid-turn; here a vertical
 half-row step faces N or S and the vehicle sails straight on those frames, and a half turn holds 8
 ticks where the original's holds 6; parked vehicles' cells are
-routed around by vehicles and humans alike (the original's humans walk through them, see "Crew"), the
+routed around by other vehicles, while settlers walk through them as in the original; the
 shove happens on entering a node only and sends a settler outside the discs of the whole remaining
 route. Open Northland shoves only owned settlers standing still (the planner's kept occupancy): one
 already walking passes on, and an unowned animal's next wander leg steps it off the disc

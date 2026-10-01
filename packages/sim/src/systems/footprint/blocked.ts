@@ -1,7 +1,7 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, Position, UnderConstruction } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type BlockOverlay, CountedBlocks, type CountedCells } from '../../nav/block-overlay.js';
+import { type BlockOverlay, CountedBlocks } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
@@ -9,7 +9,6 @@ import { landscapeBlocks } from '../landscape/view.js';
 import { buildingBlockedLayer, heldBuildingTypesStand, walkBodyOf } from './building-blocked-cache.js';
 import { ANCHOR_ONLY, buildingFootprintOf, doorNodeOf } from './geometry.js';
 import { resourceBlockedLayer } from './resource-blocked-cache.js';
-import { vehicleBlockedLayer } from './vehicle-blocked-cache.js';
 
 // Walk-block overlays for routing and render, over the memoized building cells and the incrementally
 // cached resource cells. Derived state, never hashed. The views alias the live caches, so a holder must
@@ -106,30 +105,14 @@ export function walkBlockedBodyOf(
   return body.size === 0 ? null : body;
 }
 
-function structureBlockLayers(world: World, ctx: ContentContext, terrain: TerrainGraph): CountedCells[] {
+/** The dynamic walk-block overlay settlers route under (buildings, resources, landscapes) read through
+ *  the layers' live per-node counts, so a membership test is array reads and composing it copies
+ *  nothing. Standing vehicles are not in it: settlers walk through them, as in the original. */
+export function dynamicBlockOverlay(world: World, ctx: ContentContext, terrain: TerrainGraph): BlockOverlay {
   const landscape = landscapeBlocks(world, terrain);
-  return [
+  return new CountedBlocks([
     buildingBlockedLayer(world, ctx, terrain),
     resourceBlockedLayer(world, terrain),
     { cells: landscape.walk, counts: landscape.walkCounts },
-  ];
-}
-
-/** The dynamic walk-block overlay (buildings, resources, landscapes, vehicles) read through the layers'
- *  live per-node counts, so a membership test is array reads and composing it copies nothing. */
-export function dynamicBlockOverlay(world: World, ctx: ContentContext, terrain: TerrainGraph): BlockOverlay {
-  return new CountedBlocks([
-    ...structureBlockLayers(world, ctx, terrain),
-    vehicleBlockedLayer(world, ctx, terrain),
   ]);
-}
-
-/** {@link dynamicBlockOverlay} without vehicles: the standing structures only. A vehicle moves like a
- *  unit body, so a verdict memoized past its next move must not read it. */
-export function structureBlockOverlay(
-  world: World,
-  ctx: ContentContext,
-  terrain: TerrainGraph,
-): BlockOverlay {
-  return new CountedBlocks(structureBlockLayers(world, ctx, terrain));
 }

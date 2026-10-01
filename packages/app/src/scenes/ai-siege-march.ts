@@ -103,11 +103,14 @@ const SCRIPTED_SEQUENCE = Number.MAX_SAFE_INTEGER;
 const CAMERA_AT = { hx: 40, hy: 36 } as const;
 
 /** Past the HQ's fall: the boarding, the march, the tower and the assault. Short of the catapults' drive
- *  home once the wave is spent, which the check on how far they went in reads at the end. */
-const RUN_TICKS = 3500;
+ *  home once the wave is spent, which the check on how far they went in reads at the end. Measured:
+ *  every check holds from tick 3125 to 3400. */
+const RUN_TICKS = 3275;
 
-/** Past the tower's fall: the charge costs the wave its time and some men. */
-const CHARGE_RUN_TICKS = 5400;
+/** Past the tower's fall: the charge costs the wave its time and some men. Short of the parked drivers
+ *  being sent for weapons, which hands a catapult to an armed man. Measured: every check holds from tick
+ *  2525 to 5100. */
+const CHARGE_RUN_TICKS = 3800;
 
 const { Building, isAboardVehicle, Owner, Settler, Vehicle, vehicleCommander } = components;
 

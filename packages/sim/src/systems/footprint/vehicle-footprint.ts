@@ -78,8 +78,8 @@ export function vehicleEntryPoint(
 /**
  * The door point the crew and the cargo hands stand on. The original's humans walk through a vehicle,
  * so its entry point may lie on the vehicle itself, and the original only moves on to the ring
- * around it when that point is blocked. Open Northland blocks a standing vehicle's disc for humans
- * (approximation), so an entry point inside the disc always takes that fallback: the first open ground
+ * around it when that point is blocked. Approximation: here an entry point inside the disc always takes
+ * that fallback, so the crew boards from beside the vehicle rather than on it: the first open ground
  * node on the anchor's continent around the ring just outside the disc, tested in the original's order
  * (it steps before it tests, so the north-east node comes first and the north-west start last).
  * Without a terrain, or with no such node, the entry point stands. Unclamped.

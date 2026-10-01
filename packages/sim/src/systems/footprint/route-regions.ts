@@ -4,7 +4,7 @@ import type { World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
-import { structureBlockOverlay } from './blocked.js';
+import { dynamicBlockOverlay } from './blocked.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 
 // The lazy route-region memo over the building, resource and landscape walk-block overlay: the "clear cell
@@ -137,7 +137,7 @@ export class RouteRegions {
     cache.buildingCells = buildingCells;
     cache.resourceGeneration = resourceGeneration;
     cache.landscapeGeneration = landscapeGeneration;
-    cache.blocked = structureBlockOverlay(world, this.ctx, cache.terrain);
+    cache.blocked = dynamicBlockOverlay(world, this.ctx, cache.terrain);
     cache.nextPocket = 0;
     if (cache.epoch >= MAX_EPOCH) {
       cache.stamps.fill(0);

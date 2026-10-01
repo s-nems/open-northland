@@ -267,7 +267,7 @@ export const BUILDING_TOLERANCE_NEIGHBOURS = 2;
 
 /**
  * Whether a vehicle of `logicSize` may stop and stand on a node: its free-size class admits it. A
- * standing vehicle's disc blocks settlers, so it never rests in a gap it may only pass
+ * standing vehicle's disc blocks other vehicles, so it never rests in a gap it may only pass
  * ({@link landVehicleFits}). Read within one decision, like {@link vehicleClearance}.
  */
 export function vehicleStandable(

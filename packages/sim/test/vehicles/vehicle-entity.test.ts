@@ -385,7 +385,7 @@ describe('footprint', () => {
     expect(door).toEqual(expected);
   });
 
-  it("keeps a cart parked on another cart's door blocked and boards beside both", () => {
+  it("sets a rider down on its cart's door even when another cart parks on it", () => {
     const s = sim();
     const terrain = s.terrain;
     if (terrain === undefined) throw new Error('map missing');
@@ -393,12 +393,10 @@ describe('footprint', () => {
     const firstDoor = vehicleDoorNode(s.world, ctxOf(s), first);
     if (firstDoor === null) throw new Error('cart without a door');
     const second = spawn(s, HANDCART, firstDoor.hx, firstDoor.hy);
-    const blocked = vehicleBlockedCells(s.world, ctxOf(s), terrain);
-    expect(blocked.has(terrain.nodeAt(8, 8))).toBe(true);
-    expect(blocked.has(terrain.nodeAt(firstDoor.hx, firstDoor.hy))).toBe(true);
-    const boarding = boardingNode(s.world, ctxOf(s), terrain, first);
-    if (boarding === null) throw new Error('no boarding node');
-    expect(blocked.has(boarding)).toBe(false);
+    expect(
+      vehicleBlockedCells(s.world, ctxOf(s), terrain).has(terrain.nodeAt(firstDoor.hx, firstDoor.hy)),
+    ).toBe(true); // the second cart's disc, which other vehicles route around
+    expect(boardingNode(s.world, ctxOf(s), terrain, first)).toBe(terrain.nodeAt(firstDoor.hx, firstDoor.hy));
     const rider = spawnRider(s, 8, 8);
     expect(seatPassenger(s.world, first, rider)).toBe(true);
     s.world.add(rider, Rider, { vehicle: first, boarding: false });
@@ -406,13 +404,11 @@ describe('footprint', () => {
     s.enqueue(playerCommand(P0, { kind: 'unloadPeople', vehicle: first }));
     s.step();
     const p = s.world.get(rider, Position);
-    const at = nodeOfPosition(p.x, p.y);
-    expect(blocked.has(terrain.nodeAt(at.hx, at.hy))).toBe(false); // beside the carts, on neither
-    expect(vehicleBlockedCells(s.world, ctxOf(s), terrain).has(terrain.nodeAt(at.hx, at.hy))).toBe(false);
+    expect(nodeOfPosition(p.x, p.y)).toEqual(firstDoor); // on the second cart, which settlers walk through
     expect(s.world.has(second, Vehicle)).toBe(true);
   });
 
-  it('routes a walking settler around a parked cart instead of through it', () => {
+  it('walks a settler straight through a parked cart, as the original does', () => {
     const s = sim();
     const cart = spawn(s, HANDCART, 8, 8);
     const walker = spawnRider(s, 4, 8);
@@ -426,8 +422,9 @@ describe('footprint', () => {
     }
     const p = s.world.get(walker, Position);
     expect(nodeOfPosition(p.x, p.y)).toEqual({ hx: 12, hy: 8 });
-    expect(stoodOnCart).toBe(false);
-    expect(s.world.has(cart, Vehicle)).toBe(true);
+    expect(stoodOnCart).toBe(true);
+    const at = s.world.get(cart, Position);
+    expect(nodeOfPosition(at.x, at.y)).toEqual({ hx: 8, hy: 8 }); // the cart stood still
   });
 });
 

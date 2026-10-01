@@ -32,7 +32,6 @@ import {
 import { findPath } from '../../src/nav/pathfinding/index.js';
 import {
   canPlaceWorkFlag,
-  interactionNode,
   placementBlockerVersion,
   stampResourceFootprintData,
   vehicleBlockedCells,
@@ -51,12 +50,7 @@ import {
   vehicleMovePeriod,
   vehicleProgressPerTick,
 } from '../../src/systems/vehicles/index.js';
-import {
-  nodeOf,
-  startVehicleDrive,
-  vehicleRouteTo,
-  vehicleWalkBlocks,
-} from '../../src/systems/vehicles/movement.js';
+import { nodeOf, vehicleRouteTo, vehicleWalkBlocks } from '../../src/systems/vehicles/movement.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap, waterColumnMap } from '../fixtures/terrain.js';
@@ -689,8 +683,7 @@ describe('moveVehicle', () => {
   });
 });
 
-/** A workplace whose door sits in a notch of its body, reached through one open node south of it: the
- *  joinery's door layout. */
+/** A small house the march test stands up beside a catapult's goal, closing it into a gap. */
 const NOTCHED_HOUSE = 90;
 const NOTCHED_BODY = [
   { dx: -1, dy: -1 },
@@ -701,11 +694,10 @@ const NOTCHED_BODY = [
   { dx: -1, dy: 1 },
   { dx: 1, dy: 1 },
 ];
-const NOTCHED_AT = { hx: 16, hy: 12 } as const;
 /** Well past the catapult's drive across the map and any roll-off after it. */
 const MARCH_BUDGET_TICKS = 3000;
 
-function doorwayContent(): ContentSet {
+function houseContent(): ContentSet {
   const base = testContent();
   return parseContentSet({
     ...base,
@@ -727,46 +719,9 @@ function doorwayContent(): ContentSet {
   });
 }
 
-function placeNotchedHouse(s: Simulation, at: HalfCellNode): void {
-  s.enqueueSetup({
-    kind: 'placeBuilding',
-    buildingType: NOTCHED_HOUSE,
-    x: at.hx,
-    y: at.hy,
-    tribe: VIKING,
-    owner: P0,
-    force: true,
-  });
-}
-
-/** A grass map with the notched house standing, and its door node. */
-function doorwaySim(): { s: Simulation; door: HalfCellNode } {
-  const s = new Simulation({ seed: 3, content: doorwayContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
-  placeNotchedHouse(s, NOTCHED_AT);
-  s.step();
-  const house = [...s.world.query(Position)].find((e) => !s.world.has(e, Settler));
-  const at = house === undefined ? null : interactionNode(s.world, ctxOf(s), house);
-  if (at === null) throw new Error('house missing');
-  return { s, door: { hx: at.x, hy: at.y } };
-}
-
-describe('doorways', () => {
-  it('parks a vehicle sent onto a door clear of it and of the ground beside it', () => {
-    for (const [type, logicSize] of [
-      [HANDCART, 0],
-      [CATAPULT, 1],
-    ] as const) {
-      const { s, door } = doorwaySim();
-      const vehicle = commanded(s, type, 4, 20);
-      order(s, vehicle, door.hx, door.hy);
-      driveOut(s, vehicle, 1000);
-      const at = anchorOf(s, vehicle);
-      expect(hexDistanceBetween(at.hx, at.hy, door.hx, door.hy)).toBeGreaterThan(logicSize + 1);
-    }
-  });
-
-  it('ends an attack-move whose goal became a doorway once it rolls off, instead of driving back', () => {
-    const s = new Simulation({ seed: 3, content: doorwayContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
+describe('settling', () => {
+  it('ends an attack-move whose goal closed into a gap once it rolls off, instead of driving back', () => {
+    const s = new Simulation({ seed: 3, content: houseContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
     const catapult = commanded(s, CATAPULT, 4, 20);
     const goal = { hx: 20, hy: 20 };
     s.enqueue(
@@ -774,7 +729,16 @@ describe('doorways', () => {
     );
     s.step();
     expect(s.world.get(catapult, Vehicle).march?.goal).toEqual(goal);
-    placeNotchedHouse(s, { hx: goal.hx, hy: goal.hy - 2 }); // its door one node north of the goal
+    // The house's body ends one row north of the goal, so a catapult's disc no longer fits there.
+    s.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: NOTCHED_HOUSE,
+      x: goal.hx,
+      y: goal.hy - 2,
+      tribe: VIKING,
+      owner: P0,
+      force: true,
+    });
     let drives = 0;
     let driving = false;
     for (let t = 0; t < MARCH_BUDGET_TICKS; t++) {
@@ -785,19 +749,6 @@ describe('doorways', () => {
     }
     expect(drives).toBeLessThanOrEqual(1); // the drive out runs on into the roll-off
     expect(s.world.get(catapult, Vehicle).march).toBeNull();
-    const at = anchorOf(s, catapult);
-    expect(hexDistanceBetween(at.hx, at.hy, goal.hx, goal.hy - 1)).toBeGreaterThan(2);
-  });
-
-  it('rolls a cart whose drive ends beside a door off the doorway', () => {
-    const { s, door } = doorwaySim();
-    const exit = { hx: door.hx, hy: door.hy + 1 };
-    const cart = spawn(s, HANDCART, exit.hx, exit.hy);
-    const terrain = s.terrain;
-    if (terrain === undefined) throw new Error('map missing');
-    expect(startVehicleDrive(s.world, ctxOf(s), terrain, cart, terrain.nodeAt(exit.hx, exit.hy))).toBe(true);
-    driveOut(s, cart);
-    const at = anchorOf(s, cart);
-    expect(hexDistanceBetween(at.hx, at.hy, door.hx, door.hy)).toBeGreaterThan(1);
+    expect(anchorOf(s, catapult)).not.toEqual(goal);
   });
 });

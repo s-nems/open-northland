@@ -5,7 +5,7 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { forEachRingNode, hexDistanceBetween, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { structureBlockOverlay } from '../footprint/blocked.js';
+import { dynamicBlockOverlay } from '../footprint/blocked.js';
 import { buildingFootprintOf, doorNodeOf } from '../footprint/geometry.js';
 import { ownedRoadSites, roadSitesByNode } from '../roads/site-index.js';
 import { roadSitePlacementProbe } from '../roads/sites.js';
@@ -174,7 +174,7 @@ function roadPlanner(
   base: Entity,
   room: number,
 ): RoadPlanner | null {
-  const blocked = structureBlockOverlay(world, ctx, terrain);
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const to = entranceOf(world, ctx, terrain, blocked, base);
   if (to === null) return null;
   const baseNode = nodeOfPosition(world.get(base, Position).x, world.get(base, Position).y);
