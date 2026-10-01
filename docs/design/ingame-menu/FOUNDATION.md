@@ -866,9 +866,17 @@ lifetime, dedupe and priority table.
   and ← closes from the card or a row. The members list inside the column as 26 px rows (thumbnail
   cropped to head and shoulders, weight seal, name or the whole message, the member's own card line
   when they differ, age), six of them, then a "jeszcze N w grupie" button lists the rest. One stack is
-  open at a time; Esc or a press on another card closes it. Opening keeps the card under the pointer:
-  the cards above keep their overlap, the rows never fan, the card after them sits clear of them and
-  the cards below fan in the room left; closing restores the fan.
+  open at a time; Esc, ← or a press on another card closes it. Opening keeps the card under the
+  pointer: the cards above keep their overlap, the rows never fan, the card after them sits clear of
+  them and the cards below fan in the room left; closing restores the fan.
+- A mouse resting 350 ms on a stack's card opens it as a preview, so a pointer crossing the column
+  opens nothing. The preview stays while the pointer is on the card or its rows and closes 300 ms after
+  it leaves both, so the gap between them does not flicker it; a pointer on another stack closes the
+  preview before that one may open. While a stack is pinned open hover opens nothing. The seal or →
+  pins a preview (no cue plays for a preview), and the seal again, Esc or ← closes it. After any close
+  hover opens nothing until the pointer moves 4 px, so a card that slid under a still pointer does not
+  open itself in a loop. Touch and pen keep to the seal. Reduced motion shifts the column without the
+  slide.
 - A card press or Enter goes to the face. ×, right click or Delete on a card dismisses every member it
   stands for, one by one, so each stays dismissed only while its own cause lasts; on a row they
   dismiss that member, and a row press goes to it. ↑ ↓ walk the rows. Shift and the bin keep meaning

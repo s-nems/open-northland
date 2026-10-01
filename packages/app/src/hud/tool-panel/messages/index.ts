@@ -311,8 +311,8 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       ctx.cue('confirm');
       feeds.current.removeMany(new Set(group.members.map((m) => m.id)), presentedTick);
     },
-    onOpen: (key) => {
-      ctx.cue('confirm');
+    onOpen: (key, source) => {
+      if (source === 'press') ctx.cue('confirm');
       openKey = key;
       renderedVersion = -1;
     },

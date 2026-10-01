@@ -15,9 +15,13 @@ import {
   paintNoticeThumb,
   STACK,
 } from './notice-card.js';
+import { driveStackHover } from './notice-hover.js';
 import { createNoticeMembers, MEMBERS_ID } from './notice-members.js';
 
 export type { NoticeCardView, NoticeMemberView, NoticeStackView } from './notice-card.js';
+
+/** What opened or closed a stack: a press or key, or the pointer resting on it. */
+export type NoticeOpenSource = 'press' | 'hover';
 
 /** Below this visible strip per card (design px) the fan stops and the list scrolls instead. */
 const MIN_CARD_STRIP = 27;
@@ -58,8 +62,8 @@ export interface NoticeColumnDeps extends NoticeThumbPainters {
   /** Dismiss every note a card stands for, a lone note or a whole stack. */
   readonly onDismissGroup: (key: string) => void;
   readonly onDismissAll: () => void;
-  /** Open the stack `key` in the column, or close the open one (null). */
-  readonly onOpen: (key: string | null) => void;
+  /** Open the stack `key` in the column, or close the open one (null); a hover preview is silent. */
+  readonly onOpen: (key: string | null, source: NoticeOpenSource) => void;
 }
 
 /** The figure canvases inside the list's visible area and their shared size on screen. */
@@ -307,15 +311,41 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     if (!(card instanceof HTMLElement) || !(after instanceof HTMLElement)) return 0;
     return after.offsetTop - (card.offsetTop + card.offsetHeight + CARD_GAP - overlap);
   };
-  const open = (li: HTMLLIElement): void => {
+  const open = (li: HTMLLIElement, source: NoticeOpenSource): void => {
     const key = keyOf(li);
-    if (key === openKey || !li.classList.contains(STACK)) return;
-    anchor = { key, top: li.offsetTop - list.scrollTop - rowsAbove(li) };
-    openAbove = overlap;
-    deps.onOpen(key);
+    if (!li.classList.contains(STACK)) return;
+    if (key !== openKey) {
+      anchor = { key, top: li.offsetTop - list.scrollTop - rowsAbove(li) };
+      openAbove = overlap;
+    }
+    deps.onOpen(key, source);
   };
-  const close = (): void => {
-    if (openKey !== null) deps.onOpen(null);
+  const close = (source: NoticeOpenSource): void => {
+    if (openKey !== null) deps.onOpen(null, source);
+  };
+  const hover = driveStackHover(list, {
+    over: (target) => {
+      if (target instanceof Element && target.closest('.on-members') !== null) return openKey;
+      const li = itemOf(target);
+      return li?.classList.contains(STACK) ? keyOf(li) : null;
+    },
+    open: (key) => {
+      const li = cardsByKey.get(key);
+      if (li !== undefined) open(li, 'hover');
+    },
+    close: () => close('hover'),
+  });
+  /** Open `li`'s stack for good, or keep its hover preview open. */
+  const pin = (li: HTMLLIElement): void => {
+    if (!li.classList.contains(STACK)) return;
+    hover.pin(keyOf(li));
+    open(li, 'press');
+  };
+  /** Close the open stack by a press or a key; a preview closes as silently as it opened. */
+  const closeStack = (): void => {
+    const source = openKey !== null && hover.isPinned(openKey) ? 'press' : 'hover';
+    hover.closed();
+    close(source);
   };
   const dismissCard = (li: HTMLLIElement, all: boolean): void => {
     if (all) deps.onDismissAll();
@@ -354,12 +384,12 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       return;
     }
     if (target.closest('.on-notice__toggle') !== null) {
-      if (keyOf(li) === openKey) close();
-      else open(li);
+      if (keyOf(li) === openKey && hover.isPinned(openKey)) closeStack();
+      else pin(li);
       return;
     }
     if (target.closest('.on-notice__card') === null) return;
-    if (openKey !== null && keyOf(li) !== openKey) close();
+    if (openKey !== null && keyOf(li) !== openKey) closeStack();
     const lead = viewsByKey.get(keyOf(li))?.lead;
     if (lead?.canGo === true) deps.onGo(lead.id);
     else pinFull(pinned === li ? null : li);
@@ -393,19 +423,20 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     let handled = true;
     if (event.key === 'Delete' && row !== null) dismissRow(row, event.shiftKey);
     else if (event.key === 'Delete' && li !== null) dismissCard(li, event.shiftKey);
-    else if (event.key === 'ArrowRight' && li !== null && keyOf(li) !== openKey && isStackItem(li)) open(li);
+    else if (event.key === 'ArrowRight' && li !== null && isStackItem(li) && !hover.isPinned(keyOf(li)))
+      pin(li);
     else if (
       event.key === 'ArrowLeft' &&
       openKey !== null &&
       (row !== null || (li !== null && keyOf(li) === openKey))
     ) {
       toggleOf(openKey)?.focus();
-      close();
+      closeStack();
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       handled = stepRows(target, event.key === 'ArrowDown' ? 1 : -1);
     } else if (event.key === 'Escape' && openKey !== null) {
       if (row !== null || target.closest('.on-members') !== null) toggleOf(openKey)?.focus();
-      close();
+      closeStack();
     } else if (event.key === 'Escape' && pinned !== null) pinFull(null);
     else handled = false;
     if (!handled) return;
@@ -531,6 +562,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
         }
       }
       if (openKey === null) members.element.remove();
+      hover.listing(openKey);
       // A pinned row whose member left takes its bubble with it.
       if (pinned !== null && !pinned.isConnected) pinFull(null);
       // Moving a card that held focus (a stack lifted by a new member) blurs it; give it back.
@@ -617,6 +649,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       canvas.outerHTML = glyphMarkup('scroll', false);
     },
     dispose: (): void => {
+      hover.dispose();
       resize.disconnect();
       column.remove();
     },
