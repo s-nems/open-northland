@@ -73,6 +73,7 @@ const people = snapshotOf([
   person(11, JOB_WOMAN, FEMALE),
   person(12, JOB_WOMAN, { ...FEMALE, Marriage: { spouse: 2, child: null } }),
   person(13, JOB_CHILD_MALE, { Age: { ticks: 0 } }),
+  person(14, JOB_CIVILIST, { TrainingOrder: { house: 1, drillTicksLeft: 10 } }),
 ]);
 
 const effect = (action: Parameters<typeof selectionKeyEffect>[0], selected: readonly number[] = []) =>
@@ -84,6 +85,11 @@ describe('selection keys', () => {
     expect(effect('nextCivilian', [2])).toEqual({ ids: [5], add: false, centre: 5 });
     expect(effect('nextCivilian', [5])).toEqual({ ids: [2], add: false, centre: 2 });
     expect(effect('nextScout', [3])?.ids).toEqual([8]);
+  });
+
+  it('skip a civilian already sent to a school or barracks', () => {
+    expect(effect('nextCivilian', [5])?.ids).toEqual([2]);
+    expect(effect('nextCivilian', [14])?.ids).toEqual([2]);
   });
 
   it('take the unmarried woman without a home for the single-woman key', () => {

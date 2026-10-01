@@ -8,6 +8,7 @@ import {
   type SnapshotEntity,
   settlerJobType,
   settlersOwnedBy,
+  trainingHouseOf,
 } from '../../game/snapshot.js';
 import { ownedBuildingsOfType } from '../../hud/details-panel/model/building.js';
 import type { KeybindingAction } from '../../hud/keybindings.js';
@@ -49,6 +50,13 @@ function singleWomanTest(content: ContentSet): SettlerTest {
     residenceHomeOf(ent) === undefined &&
     !isBoundByMarriage(snapshot, ent) &&
     !isMarrying(ent);
+}
+
+/** A civilian already sent to a school or barracks keeps its trade until the course ends, so the key
+ *  skips it: the player assigned it and looks for the next free one. */
+function freeCivilianTest(content: ContentSet): SettlerTest {
+  const civilian = kindTest(content, 'civilian');
+  return (snapshot, ent) => civilian(snapshot, ent) && trainingHouseOf(ent) === undefined;
 }
 
 function scoutTest(content: ContentSet): SettlerTest {
@@ -101,7 +109,7 @@ export function selectionKeyEffect(
   };
   switch (action) {
     case 'nextCivilian':
-      return next(kindTest(content, 'civilian'));
+      return next(freeCivilianTest(content));
     case 'nextScout':
       return next(scoutTest(content));
     case 'nextSingleWoman':
