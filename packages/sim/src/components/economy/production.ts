@@ -49,10 +49,10 @@ export type ProductionCount = number;
  * Gather: a good is harvested only while its counter is at least one, and a finite counter decrements by
  * each unit the gatherer's own stroke or catch lands. A gatherer ignores `cursor`.
  *
- * Authored: an absent component, or a good without an entry, reads as {@link PRODUCTION_UNLIMITED}, so a
- * fresh hire works every product or good. The original starts a fresh hire on its first product unlimited
- * and every other product at `0`. Authored: the 1:1 alternation over several live products is a design
- * choice, since the original's per-worker product scheduling is unknown.
+ * An absent component, or a good without an entry, reads as {@link PRODUCTION_UNLIMITED}. Original
+ * behavior: a fresh craft hire makes its workplace's first product unlimited and every other product `0`
+ * (`bindEmployment`). Authored: a fresh gatherer takes every good. Authored: the 1:1 alternation over
+ * several live products is a design choice, since the original's per-worker product scheduling is unknown.
  */
 export const ProductionCounters = defineComponent<{
   /** `[goodType, count]` for each good below {@link PRODUCTION_UNLIMITED}, ascending goodType; a good

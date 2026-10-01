@@ -436,6 +436,11 @@ export const plContent = {
       summary:
         'Dom wikingów i dom Franków rozbudowują się obok siebie; każdy zachowuje wygląd własnego ludu.',
     },
+    'workshop-products': {
+      title: 'Produkty warsztatu',
+      summary:
+        'Garncarz zatrudniony w garncarni robi tylko cegły, jej pierwszy produkt, i zostaje przy cegłach po rozbudowie garncarni.',
+    },
     signposts: {
       title: 'Drogowskazy',
       summary: 'Zwiadowca stawia drogowskaz; osadnicy pracują tylko w zasięgu połączonej sieci drogowskazów.',

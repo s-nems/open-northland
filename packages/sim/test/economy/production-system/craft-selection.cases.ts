@@ -13,6 +13,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
+import { bindEmployment } from '../../../src/systems/economy/jobs/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
 import { setJob, setProductionCount, setProductionGoods } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -21,6 +22,7 @@ import {
   CYCLE_TICKS,
   ctxOf,
   PLANK_GATE_EARNED,
+  PLANK_GATE_RAW_XP,
   spawnSettler,
   WOOD,
   WOOD_TRACK,
@@ -101,7 +103,7 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     expect(stock.get(FOOD)).toBe(3); // two base plus the general track's banked bonus, as above
   });
 
-  it('an empty selection removes the component (back to the all-products default)', () => {
+  it('an empty selection removes the component, making every product unlimited', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { smith } = forge(sim, 4);
     setProductionGoods(sim.world, ctxOf(sim), { kind: 'setProductionGoods', entity: smith, goods: [FOOD] });
@@ -192,6 +194,47 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     productionSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(f, Production).cycles[0]?.goodType).toBe(PLANK);
+  });
+});
+
+describe('a fresh hire - starts on the first product', () => {
+  /** The fixture forge with its smith posted through the real binding instead of a bare component. */
+  function hiredForge(sim: Simulation, wood: number): { forge: Entity; smith: Entity } {
+    const hired = forge(sim, wood);
+    sim.world.remove(hired.smith, JobAssignment);
+    bindEmployment(sim.world, ctxOf(sim), hired.smith, hired.forge);
+    return hired;
+  }
+
+  it('makes only the workplace’s first product, every other one stopped', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { forge: f, smith } = hiredForge(sim, 4);
+    expect(sim.world.get(smith, ProductionCounters).counters).toEqual([[FOOD, 0]]);
+    runCycles(sim, 4);
+    const stock = sim.world.get(f, Stockpile).amounts;
+    expect(stock.get(PLANK)).toBe(4);
+    expect(stock.get(FOOD) ?? 0).toBe(0);
+  });
+
+  it('keeps a product earned after the hire stopped', () => {
+    // The fixture's experience gate moved from the plank to the food, so the smith starts able to make
+    // only its first product and earns the second one while it works.
+    const content = testContent();
+    for (const tribe of content.tribes) {
+      for (const row of tribe.jobRequirements)
+        if (row.target === 'good' && row.targetId === PLANK) row.targetId = FOOD;
+    }
+    const sim = new Simulation({ seed: 1, content });
+    const { forge: f, smith } = forge(sim, 4);
+    sim.world.mut(smith, SettlerProgress).experience.delete(WOOD_TRACK); // the food still locked
+    sim.world.remove(smith, JobAssignment);
+    bindEmployment(sim.world, ctxOf(sim), smith, f);
+    sim.world.mut(smith, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP); // now earned
+    runCycles(sim, 4);
+    const stock = sim.world.get(f, Stockpile).amounts;
+    expect(stock.get(PLANK)).toBe(4);
+    expect(stock.get(FOOD) ?? 0).toBe(0);
+    expect(productionCountOf(sim.world.get(smith, ProductionCounters), FOOD)).toBe(0);
   });
 });
 

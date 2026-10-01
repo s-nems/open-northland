@@ -61,7 +61,7 @@ function postToWorkplace(world: World, ctx: SystemContext, e: Entity, building: 
     [settler.jobType],
   );
   if (jobType === null) return;
-  bindEmployment(world, e, building);
+  bindEmployment(world, ctx, e, building);
 }
 
 /**

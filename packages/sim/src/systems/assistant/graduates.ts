@@ -67,6 +67,6 @@ export function postGraduate(
     }
   }
   if (best === null) return false;
-  bindEmployment(world, e, best);
+  bindEmployment(world, ctx, e, best);
   return true;
 }

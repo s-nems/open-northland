@@ -601,7 +601,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
   /** Well past the crew's walk, the bill's fetch and the hammering. */
   const LAUNCH_BUDGET_TICKS = 6000;
 
-  /** Hire `TOP_JOINERY_JOINERS` fresh men at `joinery` as its joiners. */
+  /** Hire `TOP_JOINERY_JOINERS` fresh men at `joinery` as its joiners, released to every product. */
   function crew(sim: Simulation, joinery: Entity): void {
     const hired = new Set([...sim.world.query(JobAssignment)]);
     spawnMen(sim, TOP_JOINERY_JOINERS, BUILDER);
@@ -609,6 +609,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
     for (const man of [...sim.world.query(Settler)].sort((a, b) => a - b)) {
       if (hired.has(man) || sim.world.get(man, Settler).jobType !== BUILDER) continue;
       sim.enqueueSetup({ kind: 'assignWorker', entity: man, building: joinery, jobPriority: [JOINER] });
+      sim.enqueueSetup({ kind: 'setProductionGoods', entity: man, goods: [] });
     }
     sim.step();
   }

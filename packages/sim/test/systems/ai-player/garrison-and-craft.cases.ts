@@ -455,8 +455,8 @@ function tune(world: World, ctx: SystemContext): PlayerCommand[] {
   return tuneCraftCounters(world, ctx, SEAT, supply, AI_PROFILES.hard);
 }
 
-/** A recast joinery at (40, 16) with `crew` builders hired as its joiners, lowest id first; the
- *  products each decision hands them, via {@link tune}, in that order. */
+/** A recast joinery at (40, 16) with `crew` builders hired as its joiners, lowest id first, and released
+ *  to every product; the products each decision hands them, via {@link tune}, in that order. */
 function crewedWorkshop(content: ContentSet, crew: number) {
   const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
   placeHq(sim);
@@ -472,8 +472,9 @@ function crewedWorkshop(content: ContentSet, crew: number) {
   sim.step();
   const workshop = entityOfBuilding(sim, JOINERY_TYPE);
   for (const man of [...sim.world.query(Settler)].sort((a, b) => a - b)) {
-    if (sim.world.get(man, Settler).jobType === BUILDER)
-      sim.enqueueSetup({ kind: 'assignWorker', entity: man, building: workshop, jobPriority: [JOINER] });
+    if (sim.world.get(man, Settler).jobType !== BUILDER) continue;
+    sim.enqueueSetup({ kind: 'assignWorker', entity: man, building: workshop, jobPriority: [JOINER] });
+    sim.enqueueSetup({ kind: 'setProductionGoods', entity: man, goods: [] });
   }
   sim.step();
   const ctx = { ...ctxOf(sim), content };
@@ -1240,6 +1241,9 @@ describe('workforce module - the barracks and craft selections', () => {
       .filter((e) => sim.world.get(e, Settler).jobType === BREEDER)
       .sort((a, b) => a - b);
     expect(breeders).toHaveLength(2);
+    // Released to every product, as a player may leave them.
+    for (const e of breeders) sim.enqueueSetup({ kind: 'setProductionGoods', entity: e, goods: [] });
+    sim.step();
     expect(
       [...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'setProductionGoods'),
     ).toEqual([
@@ -1249,7 +1253,8 @@ describe('workforce module - the barracks and craft selections', () => {
   });
 
   /** `workshops` recast joineries of two operator seats each at 20-node steps, with `crew` builders hired
-   *  two a workshop, lowest id first, by `hire`; the products each decision at `tick` hands them. */
+   *  two a workshop, lowest id first, by `hire` and released to every product; the products each decision
+   *  at `tick` hands them. */
   function crewedWorkshops(content: ContentSet, workshops: number, crew: number, tick = 0) {
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(192, 32) });
     placeHq(sim);
@@ -1284,6 +1289,7 @@ describe('workforce module - the barracks and craft selections', () => {
           const building = buildings[Math.floor(i / 2)];
           if (man === undefined || building === undefined) throw new Error('setup: too few men or workshops');
           sim.enqueueSetup({ kind: 'assignWorker', entity: man, building, jobPriority: [JOINER] });
+          sim.enqueueSetup({ kind: 'setProductionGoods', entity: man, goods: [] });
         }
         sim.step();
       },
@@ -1506,6 +1512,25 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(seat.products()).toEqual([[LEATHER_ARMOUR]]);
   });
 
+  it('releases the crew of a workshop without a plan to every product', () => {
+    const seat = crewedWorkshop(
+      joineryRecastAs('work_smithy_00', [
+        { typeId: SHOES, id: 'shoes' },
+        { typeId: LEATHER_ARMOUR, id: 'armor_leather' },
+      ]),
+      1,
+    );
+    expect(seat.products()).toEqual([]);
+    const [smith] = [...seat.sim.world.query(Settler, JobAssignment)].filter(
+      (e) => seat.sim.world.get(e, Settler).jobType === JOINER,
+    );
+    if (smith === undefined) throw new Error('setup: one smith');
+    seat.sim.enqueueSetup({ kind: 'setProductionGoods', entity: smith, goods: [SHOES] });
+    seat.sim.step();
+    expect(seat.products()).toEqual([[]]);
+    expect(seat.sim.world.has(smith, ProductionCounters)).toBe(false);
+  });
+
   it('hands the seats out across every building of the type, not per building', () => {
     // One tailor in each of two sewing huts: counted per building each would be a lone man on the first
     // seat's shoes, counted across the type they are the pair the table splits.
@@ -1538,6 +1563,7 @@ describe('workforce module - the barracks and craft selections', () => {
       const man = men[i];
       if (man === undefined) throw new Error('setup: too few men');
       sim.enqueueSetup({ kind: 'assignWorker', entity: man, building, jobPriority: [JOINER] });
+      sim.enqueueSetup({ kind: 'setProductionGoods', entity: man, goods: [] });
     }
     sim.step();
 

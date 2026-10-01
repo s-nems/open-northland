@@ -438,6 +438,11 @@ export const enContent = {
       summary:
         "A viking home and a frank home upgrade side by side, each keeping its own civilization's look.",
     },
+    'workshop-products': {
+      title: 'Workshop products',
+      summary:
+        'A potter hired into a pottery makes only bricks, its first product, and keeps to bricks after the pottery is upgraded.',
+    },
     signposts: {
       title: 'Signposts',
       summary: 'A scout erects a signpost; settlers work only within the connected guidepost network.',

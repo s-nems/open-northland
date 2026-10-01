@@ -150,7 +150,7 @@ export function setProductionGoods(
   const goods = productionGoodsOf(world, ctx, e);
   if (goods === undefined) return; // nothing to choose
   if (command.goods.length === 0) {
-    world.remove(e, ProductionCounters); // back to the all-goods default
+    world.remove(e, ProductionCounters); // every good unlimited
     return;
   }
   const listed = new Set(command.goods.filter((g) => goods.includes(g)));

@@ -302,8 +302,9 @@ interface RestrictedCrew {
 
 /**
  * Keep every operator of a restricted workplace on its plan's product list for his seat: the type's plan in
- * `profile`, or for a type whose buildings take roles, the plan of his building's role.
- * `ProductionCounters` is per worker, not per building, and any employment change clears it (`reidleAsJob`),
+ * `profile`, or for a type whose buildings take roles, the plan of his building's role. An operator of an
+ * unplanned workplace is released to every product.
+ * `ProductionCounters` is per worker, not per building, and any employment change resets it (`bindEmployment`),
  * so the check runs every decision and issues a command only when the live counters differ from "these
  * products unlimited, every other one stopped". An empty result issues nothing, because
  * `setProductionGoods []` would mean "every product", the opposite of a restriction.
@@ -345,7 +346,12 @@ export function tuneCraftCounters(
     if (type === undefined) continue;
     const roles = profile.joineryRolePlans[type.id];
     const plan = roles === undefined ? profile.craftPlans[type.id] : roles[roleOf(assignment.workplace)];
-    if (plan === undefined) continue;
+    if (plan === undefined) {
+      // An unplanned workshop's crew works every product, while a fresh hire starts on the first alone.
+      if ((world.tryGet(e, ProductionCounters)?.counters.length ?? 0) > 0)
+        commands.push({ kind: 'setProductionGoods', entity: e, goods: [] });
+      continue;
+    }
     const seated = crews.get(plan);
     if (seated !== undefined) {
       seated.crew.push(e);
