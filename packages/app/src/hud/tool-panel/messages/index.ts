@@ -22,6 +22,7 @@ import type { PanelContext } from '../context.js';
 import { diplomacyStanceText, playerLabel } from '../diplomacy/model.js';
 import { noticeFullText, noticeThumb, orderNotes } from './cards.js';
 import type { MessageFeedState } from './feed.js';
+import { FightAreas } from './fight-areas.js';
 import { type NoticeFigureSlot, NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
 import { type BuildingTrades, messagesFromEvents } from './from-events.js';
@@ -172,8 +173,9 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const naming = makeNaming(deps);
   let snapshotSource = feeds.seat === null ? null : createSnapshotMessageSource(feeds.seat);
   let diplomacySource = createDiplomacyMessageSource(deps.metSeats);
+  let fights = FightAreas.adopt(deps.initial);
   // Keyed by note id, so it starts over with every feed it serves.
-  let retirement = new NoteRetirement();
+  let retirement = new NoteRetirement(fights);
   // The tick of the last presented snapshot, which a dismissal is stamped with.
   let presentedTick = 0;
   const select = (m: UserMessage): void => deps.onSelect({ entity: m.subject?.entity ?? null, at: m.at });
@@ -214,7 +216,8 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     if (!feeds.switchTo(seat)) return;
     snapshotSource = seat === null ? null : createSnapshotMessageSource(seat);
     diplomacySource = createDiplomacyMessageSource(deps.metSeats);
-    retirement = new NoteRetirement();
+    fights = FightAreas.adopt(feeds.current.state());
+    retirement = new NoteRetirement(fights);
     previous = null;
     renderedVersion = -1;
   };
@@ -240,8 +243,12 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
             seat,
             naming,
             deps.buildingTrades,
+            fights,
           )) {
-            feeds.current.add(raised.pending, snapshot.tick, raised.compose);
+            const outcome = feeds.current.add(raised.pending, snapshot.tick, raised.compose);
+            if (outcome === 'duplicate' && raised.updatesStanding === true) {
+              feeds.current.revise(raised.pending, raised.compose);
+            }
           }
         }
         for (const raised of snapshotSource?.sweep(snapshot, naming) ?? []) {
@@ -288,7 +295,8 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     state: () => feeds.current.state(),
     restore: (state): void => {
       feeds.restore(state);
-      retirement = new NoteRetirement();
+      fights = FightAreas.adopt(state);
+      retirement = new NoteRetirement(fights);
       renderedVersion = -1;
     },
     dispose: (): void => {

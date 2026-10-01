@@ -36,8 +36,8 @@ export type NoticeThumb =
 const GLYPH_BY_TYPE: ReadonlyMap<UserMessageType, NoticeGlyph> = new Map<UserMessageType, NoticeGlyph>([
   [USER_MESSAGE_TYPE.houseFinished, 'house'],
   [USER_MESSAGE_TYPE.houseUpgraded, 'house'],
-  [USER_MESSAGE_TYPE.houseAttacked, 'swords'],
-  [USER_MESSAGE_TYPE.vehicleAttacked, 'swords'],
+  [USER_MESSAGE_TYPE.settlementAttacked, 'swords'],
+  [USER_MESSAGE_TYPE.peopleAttacked, 'swords'],
   [USER_MESSAGE_TYPE.humanDied, 'skull'],
   [USER_MESSAGE_TYPE.playerDied, 'skull'],
   [USER_MESSAGE_TYPE.playerSighted, 'shield'],
@@ -54,34 +54,29 @@ const SEAT_ROWS: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
   USER_MESSAGE_TYPE.playerDied,
 ]);
 
-/** A note that pictures a building type (an unlock) shows its body. An attacked settler or vehicle shows
- *  the swords rather than its figure; any other settler subject is drawn, and a vehicle subject while
- *  `vehicleOnMap` finds it standing on the map (a vehicle carried on a ship has no picture of its own).
- *  A building subject that would show the house glyph shows its own body instead while `buildingTypeOf`
- *  still knows its type. */
+/** A note that pictures a building type (an unlock) shows its body. A settler subject is drawn, and a
+ *  vehicle subject while `vehicleOnMap` finds it standing on the map (a vehicle carried on a ship has no
+ *  picture of its own). A building subject that would show the house glyph shows its own body instead
+ *  while `buildingTypeOf` still knows its type. An attack note's swords take its first striking seat's
+ *  colour. */
 export function noticeThumb(
-  note: Pick<PendingMessage, 'type' | 'subject' | 'about' | 'building'>,
+  note: Pick<PendingMessage, 'type' | 'subject' | 'about' | 'building' | 'fight'>,
   buildingTypeOf: (entity: number) => number | undefined,
   vehicleOnMap: (entity: number) => boolean,
 ): NoticeThumb {
   const { type, subject } = note;
   if (note.building !== undefined) return { kind: 'building', typeId: note.building };
-  if (subject?.kind === 'settler' && type !== USER_MESSAGE_TYPE.humanAttacked) {
-    return { kind: 'settler', entity: subject.entity };
-  }
-  if (
-    subject?.kind === 'vehicle' &&
-    type !== USER_MESSAGE_TYPE.vehicleAttacked &&
-    vehicleOnMap(subject.entity)
-  ) {
+  if (subject?.kind === 'settler') return { kind: 'settler', entity: subject.entity };
+  if (subject?.kind === 'vehicle' && vehicleOnMap(subject.entity)) {
     return { kind: 'vehicle', entity: subject.entity };
   }
-  const glyph = GLYPH_BY_TYPE.get(type) ?? (subject?.kind === 'settler' ? 'swords' : 'scroll');
+  const glyph = GLYPH_BY_TYPE.get(type) ?? 'scroll';
   if (subject?.kind === 'building' && glyph === 'house') {
     const typeId = buildingTypeOf(subject.entity);
     if (typeId !== undefined) return { kind: 'building', typeId };
   }
-  return { kind: 'glyph', glyph, dim: glyph === GONE_GLYPH, seat: SEAT_ROWS.has(type) ? note.about : null };
+  const seat = SEAT_ROWS.has(type) ? note.about : (note.fight?.seats[0] ?? null);
+  return { kind: 'glyph', glyph, dim: glyph === GONE_GLYPH, seat };
 }
 
 /**

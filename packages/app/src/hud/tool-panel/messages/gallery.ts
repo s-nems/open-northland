@@ -11,7 +11,7 @@ import {
   settlerJobType,
 } from '../../../game/snapshot.js';
 import type { MetSeat } from './from-diplomacy.js';
-import { type BuildingTrades, raiseUnlocks } from './from-events.js';
+import { type BuildingTrades, raiseFight, raiseUnlocks } from './from-events.js';
 import { type MessageNaming, MessageRaiser, nodeOf, type RaisedMessage } from './raise.js';
 import {
   type MessageTechnology,
@@ -44,7 +44,6 @@ const STANDIN_PAPER: Paper = { kind: 'indulgence', param: 0 };
 const HOUSE_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
   'houseFinished',
   'houseUpgraded',
-  'houseAttacked',
 ]);
 const SEAT_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
   'playerSighted',
@@ -159,6 +158,14 @@ export function galleryMessages(
     raiseUnlocks(raiser, snapshot, naming, buildingTrades, e, 'buildings', opened);
   };
 
+  // The settlement row is a met seat's raid on the house, the other wild beasts on a settler.
+  const raiseFightRow = (type: UserMessageType, at: SnapshotEntity, settlement: boolean): void => {
+    const tally = settlement
+      ? { buildings: 1, walls: 0, settlers: 2, vehicles: 0, seats: [seat.player], wild: false }
+      : { buildings: 0, walls: 0, settlers: 1, vehicles: 0, seats: [], wild: true };
+    raiseFight(raiser, naming, type, at.id, nodeOf(at), { ...tally, lastHitTick: snapshot.tick });
+  };
+
   for (const [name, type] of Object.entries(USER_MESSAGE_TYPE) as [UserMessageTypeName, UserMessageType][]) {
     if (SEAT_ROWS.has(name)) {
       raiseSeat(type, name !== 'playerDied');
@@ -172,10 +179,15 @@ export function galleryMessages(
       if (house !== undefined) raiser.building(type, house);
       continue;
     }
+    if (name === 'settlementAttacked') {
+      if (house !== undefined) raiseFightRow(type, house, true);
+      continue;
+    }
     if (GOOD_ROWS.has(name) && gallery.goodType === null) continue;
     const e = nextPerson(WOMEN_ROWS.has(name) && women.length > 0 ? women : people);
     if (e === undefined) continue;
     if (name === 'humanDied') raiseDeath(e);
+    else if (name === 'peopleAttacked') raiseFightRow(type, e, false);
     else if (name === 'familyBlocked') {
       const spouse = marriageOf(e)?.spouse;
       raiser.family(e, STANDIN_FAMILY_WAIT, spouse === undefined ? undefined : entityById(snapshot, spouse));

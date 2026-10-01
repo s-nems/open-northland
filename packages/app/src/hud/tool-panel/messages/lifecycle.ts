@@ -27,14 +27,11 @@ const LIFECYCLE: Readonly<Record<UserMessageTypeName, NoticeLifecycle>> = {
   // A refused order: marriage ends it early, but the snapshot cannot tell when a partner comes in reach.
   noOneToMarry: 'event',
   cannotEnterVehicle: 'event',
-  humanAttacked: 'event',
   houseFinished: 'event',
   houseUpgraded: 'event',
-  houseAttacked: 'event',
   // A refused drive: a later drive ends it early, but the snapshot cannot tell when a route opens.
   vehicleNoPath: 'event',
   vehicleNoCommander: 'state',
-  vehicleAttacked: 'event',
   vehicleNoAnimal: 'state',
   vehicleNoPassengerRoom: 'event',
   cannotAttachVehicle: 'event',
@@ -47,6 +44,9 @@ const LIFECYCLE: Readonly<Record<UserMessageTypeName, NoticeLifecycle>> = {
   playerDied: 'event',
   specialItemFound: 'event',
   familyBlocked: 'state',
+  // A fight stands while blows keep landing in its area (`fight-areas.ts`).
+  settlementAttacked: 'state',
+  peopleAttacked: 'state',
 };
 
 const LIFECYCLE_BY_TYPE: ReadonlyMap<UserMessageType, NoticeLifecycle> = new Map(

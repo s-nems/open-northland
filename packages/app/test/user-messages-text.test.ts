@@ -35,7 +35,12 @@ function partsFor(name: UserMessageTypeName, female: boolean): MessageTextParts 
     ...(name === 'familyBlocked'
       ? { family: { wait: 'livesApart', partner: { name: 'Olaf', jobLabel: 'Zwiadowca', female: false } } }
       : {}),
+    fight: { buildings: 1, walls: 0, settlers: 0, vehicles: 0, enemies: ['Gracz 2'], wild: false },
   };
+}
+
+function composeIn(copy: NoticeCopy, tag: string, name: UserMessageTypeName, parts: MessageTextParts) {
+  return composeMessageText(USER_MESSAGE_TYPE[name], parts, copy, tag);
 }
 
 function compose(copy: NoticeCopy, name: UserMessageTypeName, parts: MessageTextParts): MessageText {
@@ -152,6 +157,25 @@ describe('notice text', () => {
     expect(two.short).toBe('New buildings');
     expect(two.full).toBe('Bjorn has gained experience.\n\nNew buildings:\n- Pottery\n- School');
     expect(compose(pl.userMessages, 'experienceUnlocks', opening(['Garncarnia'])).short).toBe('Nowy budynek');
+  });
+
+  it("counts a fight's hit bodies in the catalog's plural forms and names who struck", () => {
+    const NAMELESS = { ...BARE, subjectName: null };
+    const raid = composeIn(pl.userMessages, 'pl', 'settlementAttacked', {
+      ...NAMELESS,
+      fight: { buildings: 2, walls: 3, settlers: 1, vehicles: 5, enemies: ['Gracz 2'], wild: false },
+    });
+    expect(raid).toEqual({
+      short: 'Atak na osadę',
+      full: 'Twoja osada jest atakowana. Wróg: Gracz 2. Zaatakowano: 2 budynki, 3 odcinki muru, 1 osadnika, 5 pojazdów. Wyślij żołnierzy do obrony.',
+    });
+    const wolves = composeIn(en.userMessages, 'en', 'peopleAttacked', {
+      ...NAMELESS,
+      fight: { buildings: 0, walls: 0, settlers: 3, vehicles: 0, enemies: [], wild: true },
+    });
+    expect(wolves.full).toBe(
+      'Your people are under attack outside the settlement. Enemy: wild beasts. Hit: 3 settlers. Send soldiers or lead them to safety.',
+    );
   });
 
   it('names the husband where the reason is his, and reads cleanly when he cannot be named', () => {

@@ -723,6 +723,26 @@ describe('projectiles - area shots', () => {
       );
     }
   });
+
+  it("names the shooter's side on each hit and marks its own side's as collateral", () => {
+    const OWN = 0;
+    const FOE = 1;
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 6) });
+    const shooter = marksmanAt(sim, 0, 0);
+    const enemy = onNode(sim, AIM, FRANK);
+    const comrade = onNode(sim, { hx: AIM.hx + 1, hy: AIM.hy }, VIKING);
+    sim.world.add(shooter, Owner, { player: OWN });
+    sim.world.add(enemy, Owner, { player: FOE });
+    sim.world.add(comrade, Owner, { player: OWN });
+    const p = stone(sim, shooter, enemy, true);
+    sim.world.mut(p, Projectile).player = OWN;
+    sim.step();
+    const hits = sim.snapshot().events.flatMap((ev) => (ev.kind === 'projectileHit' ? [ev] : []));
+    expect(hits.map((ev) => [ev.target, ev.shooterPlayer, ev.collateral])).toEqual([
+      [enemy, OWN, undefined],
+      [comrade, OWN, true],
+    ]);
+  });
 });
 
 describe('projectiles - the first thing on the landing point', () => {

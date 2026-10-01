@@ -15,10 +15,8 @@ const IMPORTANT: readonly UserMessageTypeName[] = [
   'canDoNewJob',
   'starving',
   'willDie',
-  'humanAttacked',
-  'houseAttacked',
+  'settlementAttacked',
   'vehicleNoPath',
-  'vehicleAttacked',
   'humanDied',
   'playerSighted',
   'diplomacyChanged',
@@ -44,6 +42,7 @@ const NOTABLE: readonly UserMessageTypeName[] = [
   'cannotLeaveVehicle',
   'vehicleNoCarrier',
   'familyBlocked',
+  'peopleAttacked',
 ];
 
 const IMPORTANT_LEVEL: MessagePriorityLevel = 2;

@@ -7,8 +7,9 @@ import type { MessageText } from './text.js';
  * counterpart there; they only key the feed, nothing persists them.
  *
  * The original never raises `cannotAttachVehicle`, which here stands in for the silently refused load of
- * a vehicle into a ship (approximation). `familyBlocked` is this game's own, past the original's range:
- * the original fails a child order it cannot start without a word.
+ * a vehicle into a ship (approximation). The types past the original's range are this game's own: the
+ * original fails a child order it cannot start without a word, and reports every attacked body alone
+ * where the two attack notes report one fight area each.
  */
 export const USER_MESSAGE_TYPE = {
   lostWithoutSignposts: 0x03,
@@ -28,13 +29,10 @@ export const USER_MESSAGE_TYPE = {
   grewUp: 0x25,
   noOneToMarry: 0x27,
   cannotEnterVehicle: 0x2b,
-  humanAttacked: 0x2e,
   houseFinished: 0x2f,
   houseUpgraded: 0x30,
-  houseAttacked: 0x31,
   vehicleNoPath: 0x32,
   vehicleNoCommander: 0x33,
-  vehicleAttacked: 0x34,
   vehicleNoAnimal: 0x35,
   vehicleNoPassengerRoom: 0x36,
   cannotAttachVehicle: 0x37,
@@ -47,6 +45,8 @@ export const USER_MESSAGE_TYPE = {
   playerDied: 0x3e,
   specialItemFound: 0x3f,
   familyBlocked: 0x80,
+  settlementAttacked: 0x81,
+  peopleAttacked: 0x82,
 } as const;
 
 export type UserMessageTypeName = keyof typeof USER_MESSAGE_TYPE;
@@ -68,14 +68,29 @@ export interface MessageTechnology {
   readonly typeId: number;
 }
 
+/** What one fight area has hit so far: distinct bodies of the seat's per kind, and who struck them. */
+export interface FightTally {
+  readonly buildings: number;
+  readonly walls: number;
+  readonly settlers: number;
+  readonly vehicles: number;
+  /** The seats whose blows landed, the first striker first. */
+  readonly seats: readonly number[];
+  /** Whether an unowned creature (a wild animal or a monster) struck too. */
+  readonly wild: boolean;
+  readonly lastHitTick: number;
+}
+
 /** What a source raises: the identity the feed dedupes on, before any text is composed for it. */
 export interface PendingMessage {
   readonly type: UserMessageType;
   readonly subject: MessageSubject | null;
-  /** Where the note's Select jumps when there is no subject left to centre on (a death). */
+  /** Where the note's Select jumps when there is no subject to centre on: a death's spot, a fight's
+   *  latest hit. */
   readonly at: HalfCellNode | null;
-  /** Who a message with no live subject is about: the reaped settler's id, or the seat number for a
-   *  player-scoped note. Part of the identity, so two deaths inside one lifetime stay two notes. */
+  /** Who a message with no live subject is about: the reaped settler's id, the seat number for a
+   *  player-scoped note, or a fight area's id. Part of the identity, so two deaths inside one lifetime
+   *  stay two notes. */
   readonly about: number | null;
   readonly goodType: number | null;
   /** Newly available capabilities carried together by the original's experience-unlock record. */
@@ -87,6 +102,8 @@ export interface PendingMessage {
   readonly jobType: number | null;
   /** A family note's reason, part of its identity: a new reason retires the old note and raises its own. */
   readonly familyWait?: ChildOrderWait;
+  /** An attack note's area so far; not part of the identity, since every new hit updates it. */
+  readonly fight?: FightTally;
 }
 
 export interface UserMessage extends PendingMessage {

@@ -212,10 +212,11 @@ export type SimEvent =
        * lists no class, and `structure` marks a blow that landed on a building rather than a body.
        * `soundType` is the sound bank's `logicSoundType` of the impact the weapon lists for the victim's
        * armor material (`soundtype_Hit`); a weapon listing none lands silently. A blow that does no damage
-       * emits nothing.
+       * emits nothing. `attackerPlayer` is the striker's owner as the blow lands, absent for an unowned one.
        */
       readonly kind: 'combatHit';
       readonly attacker: Entity;
+      readonly attackerPlayer?: number;
       readonly target: Entity;
       readonly weaponMainType?: number;
       readonly soundType?: number;
@@ -281,11 +282,15 @@ export type SimEvent =
        * A projectile reached `target` at `at` and dealt its damage; the projectile entity is destroyed
        * the same tick. `structure` marks a shot that struck a building rather than a body, and
        * `soundType` names the impact as on `combatHit`. A projectile whose target died mid-flight expires
-       * silently.
+       * silently. `shooterPlayer` is the side that loosed it, absent for an unowned one, which outlives a
+       * shooter reaped mid-flight; `collateral` marks a blow on a side not at war with that one, its own
+       * included.
        */
       readonly kind: 'projectileHit';
       readonly projectile: Entity;
       readonly shooter: Entity;
+      readonly shooterPlayer?: number;
+      readonly collateral?: boolean;
       readonly target: Entity;
       readonly munitionType: number;
       readonly soundType?: number;

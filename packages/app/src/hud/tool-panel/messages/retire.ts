@@ -13,6 +13,7 @@ import {
   workFlagOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
+import { type FightAreas, isFightNote } from './fight-areas.js';
 import {
   hasWorkplaceToWorkAt,
   holdsPost,
@@ -82,9 +83,10 @@ export function isSubjectGone(m: UserMessage, snapshot: WorldSnapshot): boolean 
 }
 
 /**
- * Whether a note's reason is gone: its subject left the world, the state a state note reports ended, or
- * a refusal was answered. One instance serves a feed, since a refused drive is answered only by a drive
- * that starts after the vehicle stood: the drive under way at the refusal, if any, is not the answer.
+ * Whether a note's reason is gone: its subject left the world, the state a state note reports ended, a
+ * fight went quiet in `fights`, or a refusal was answered. One instance serves a feed, since a refused
+ * drive is answered only by a drive that starts after the vehicle stood: the drive under way at the
+ * refusal, if any, is not the answer.
  * Call {@link endPass} after each expiry pass, so the notes that left stop being watched.
  */
 export class NoteRetirement {
@@ -92,7 +94,10 @@ export class NoteRetirement {
   private stood = new Map<number, boolean>();
   private watched = new Set<number>();
 
+  constructor(private readonly fights: FightAreas) {}
+
   isOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
+    if (isFightNote(m)) return !this.fights.isActive(m.about, snapshot.tick);
     if (m.subject === null) return false;
     const e = entityById(snapshot, m.subject.entity);
     if (e === undefined) return true;

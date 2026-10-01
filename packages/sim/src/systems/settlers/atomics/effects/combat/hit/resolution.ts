@@ -143,9 +143,11 @@ export function resolveCombatHit(
   if (source === 'melee' && dealtDamage) {
     const at = world.tryGet(target, Position);
     if (at !== undefined) {
+      const attackerPlayer = ownerOf(world, attacker);
       ctx.events.emit({
         kind: 'combatHit',
         attacker,
+        ...(attackerPlayer !== undefined ? { attackerPlayer } : {}),
         target,
         at: eventAt(at.x, at.y),
         ...(weaponMainType !== undefined ? { weaponMainType } : {}),

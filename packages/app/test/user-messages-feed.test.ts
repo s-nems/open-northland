@@ -54,15 +54,15 @@ describe('message feed', () => {
 
   it('swallows a repeat of a displayed message and of a dismissed one', () => {
     const feed = createMessageFeed();
-    expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, TEXT)).toBe('accepted');
-    expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK + 5, TEXT)).toBe('duplicate');
+    expect(feed.add(pending(USER_MESSAGE_TYPE.grewUp), TICK, TEXT)).toBe('accepted');
+    expect(feed.add(pending(USER_MESSAGE_TYPE.grewUp), TICK + 5, TEXT)).toBe('duplicate');
     expect(feed.remove(1, TICK + 5)).toBe(true);
     expect(feed.displayed()).toHaveLength(0);
-    expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK + 10, TEXT)).toBe('duplicate');
+    expect(feed.add(pending(USER_MESSAGE_TYPE.grewUp), TICK + 10, TEXT)).toBe('duplicate');
     // A different settler is a different message.
-    expect(
-      feed.add(pending(USER_MESSAGE_TYPE.humanAttacked, { kind: 'settler', entity: 8 }), TICK + 10, TEXT),
-    ).toBe('accepted');
+    expect(feed.add(pending(USER_MESSAGE_TYPE.grewUp, { kind: 'settler', entity: 8 }), TICK + 10, TEXT)).toBe(
+      'accepted',
+    );
   });
 
   it('tells a family note with a new reason from the dismissed one', () => {
@@ -112,7 +112,7 @@ describe('message feed', () => {
 
   it('keeps every note and every dismissal when told to expire agelessly', () => {
     const feed = createMessageFeed();
-    feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.grewUp), TICK, TEXT);
     feed.add(pending(USER_MESSAGE_TYPE.hungry), TICK, TEXT);
     feed.remove(2, TICK);
     feed.expire(TICK + 2 * MESSAGE_LIFETIME_TICKS, () => false, true);
@@ -126,7 +126,7 @@ describe('message feed', () => {
 
   it('blocks a dismissed event for the block counted from the dismissal, not from the raise', () => {
     const feed = createMessageFeed();
-    const attacked = pending(USER_MESSAGE_TYPE.humanAttacked);
+    const attacked = pending(USER_MESSAGE_TYPE.grewUp);
     const dismissed = TICK + MESSAGE_LIFETIME_TICKS - 10;
     feed.add(attacked, TICK, TEXT);
     feed.remove(1, dismissed);
@@ -189,8 +189,8 @@ describe('message feed', () => {
 
   it('retires an event note after its lifetime and when its subject is gone', () => {
     const feed = createMessageFeed();
-    feed.add(pending(USER_MESSAGE_TYPE.humanAttacked, { kind: 'settler', entity: 1 }), TICK, TEXT);
-    feed.add(pending(USER_MESSAGE_TYPE.humanAttacked, { kind: 'settler', entity: 2 }), TICK + 10, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.grewUp, { kind: 'settler', entity: 1 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.grewUp, { kind: 'settler', entity: 2 }), TICK + 10, TEXT);
     feed.expire(TICK + 20, (m) => m.subject?.entity === 1);
     expect(feed.displayed().map((m) => m.subject?.entity)).toEqual([2]);
     feed.expire(TICK + 10 + MESSAGE_LIFETIME_TICKS, () => false);
@@ -313,9 +313,9 @@ describe('message feed', () => {
       composed++;
       return { short: 'text', full: 'text' };
     };
-    expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), 0, compose)).toBe('muted');
-    expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, compose)).toBe('accepted');
-    expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, compose)).toBe('duplicate');
+    expect(feed.add(pending(USER_MESSAGE_TYPE.grewUp), 0, compose)).toBe('muted');
+    expect(feed.add(pending(USER_MESSAGE_TYPE.grewUp), TICK, compose)).toBe('accepted');
+    expect(feed.add(pending(USER_MESSAGE_TYPE.grewUp), TICK, compose)).toBe('duplicate');
     expect(composed).toBe(1);
     expect(feed.displayed()[0]?.text.full).toBe('text');
   });

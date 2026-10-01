@@ -1,5 +1,6 @@
 import { type Entity, ONE, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { FightAreas } from '../src/hud/tool-panel/messages/fight-areas.js';
 import {
   type BuildingTrades,
   messagesFromEvents,
@@ -69,7 +70,7 @@ const NO_MENU: BuildingTrades = () => undefined;
 
 /** Raised messages flattened for assertions: the identity fields plus the composed text. */
 const run = (events: SimEvent[], snap: WorldSnapshot, departed: WorldSnapshot['entities'] = []) =>
-  messagesFromEvents(events, snap, departed, LOCAL, naming, NO_MENU).map((r) => ({
+  messagesFromEvents(events, snap, departed, LOCAL, naming, NO_MENU, new FightAreas()).map((r) => ({
     ...r.pending,
     text: r.compose().full,
   }));
@@ -117,68 +118,6 @@ describe('user messages from sim events', () => {
       [USER_MESSAGE_TYPE.humanDied, null, { hx: 4, hy: 4 }, `S1:${USER_MESSAGE_TYPE.humanDied}`],
       [USER_MESSAGE_TYPE.humanDied, null, { hx: 8, hy: 8 }, `?:${USER_MESSAGE_TYPE.humanDied}`],
     ]);
-  });
-
-  it("turns a blow on the seat's settler or building into an attack note", () => {
-    const snap = snapshot(50, [
-      { id: 1, player: LOCAL, kind: 'person' },
-      { id: 2, player: LOCAL, kind: 'building' },
-      { id: 3, player: ENEMY, kind: 'person' },
-    ]);
-    const out = run(
-      [
-        { kind: 'combatHit', attacker: e(3), target: e(1), at: { hx: 1, hy: 1 } },
-        {
-          kind: 'projectileHit',
-          projectile: e(9),
-          shooter: e(3),
-          target: e(2),
-          munitionType: 1,
-          structure: true,
-          at: { hx: 1, hy: 1 },
-        },
-        { kind: 'combatHit', attacker: e(1), target: e(3), at: { hx: 1, hy: 1 } },
-      ],
-      snap,
-    );
-    expect(out.map((m) => [m.type, m.subject])).toEqual([
-      [USER_MESSAGE_TYPE.humanAttacked, { kind: 'settler', entity: e(1) }],
-      [USER_MESSAGE_TYPE.houseAttacked, { kind: 'building', entity: e(2) }],
-    ]);
-  });
-
-  it('raises one attack note per target however many blows land in the frame', () => {
-    const snap = snapshot(50, [
-      { id: 1, player: LOCAL, kind: 'person' },
-      { id: 3, player: ENEMY, kind: 'person' },
-    ]);
-    let composed = 0;
-    const counting: MessageNaming = {
-      ...naming,
-      text: (type, parts) => plain(`${composed++}:${parts.subjectName}:${type}`),
-    };
-    const raised = messagesFromEvents(
-      [
-        { kind: 'combatHit', attacker: e(3), target: e(1), at: { hx: 1, hy: 1 } },
-        { kind: 'combatHit', attacker: e(3), target: e(1), at: { hx: 1, hy: 1 } },
-        {
-          kind: 'projectileHit',
-          projectile: e(9),
-          shooter: e(3),
-          target: e(1),
-          munitionType: 1,
-          at: { hx: 1, hy: 1 },
-        },
-      ],
-      snap,
-      [],
-      LOCAL,
-      counting,
-      NO_MENU,
-    );
-    expect(raised).toHaveLength(1);
-    expect(composed).toBe(0);
-    expect(raised[0]?.compose().full).toBe(`0:S1:${USER_MESSAGE_TYPE.humanAttacked}`);
   });
 
   it("announces the seat's own child reaching adulthood", () => {
@@ -304,6 +243,7 @@ describe('user messages from sim events', () => {
       LOCAL,
       naming,
       menu,
+      new FightAreas(),
     );
     // The pictured building leads the list its card names; a note opening only a cart site keeps its
     // settler.
@@ -345,6 +285,7 @@ describe('user messages from sim events', () => {
       LOCAL,
       partial,
       NO_MENU,
+      new FightAreas(),
     );
     expect(out.map((r) => [r.pending.type, r.pending.technologies, r.compose().full])).toEqual([
       [
@@ -380,6 +321,7 @@ describe('user messages from sim events', () => {
       LOCAL,
       trainedNaming,
       NO_MENU,
+      new FightAreas(),
     );
     expect(raised.map((r) => ({ ...r.pending, text: r.compose().full }))).toEqual([
       {
@@ -415,7 +357,12 @@ describe('user messages from sim events', () => {
     ]);
   });
 
-  it('announces an eliminated seat to everyone, naming the player rather than an entity', () => {
+  it('never tells a seat of its own defeat, which its defeat panel reports', () => {
+    const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'person' }]);
+    expect(run([{ kind: 'playerDefeated', player: LOCAL }], snap)).toEqual([]);
+  });
+
+  it('announces an eliminated seat to everyone else, naming the player rather than an entity', () => {
     const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'person' }]);
     const out = run([{ kind: 'playerDefeated', player: ENEMY }], snap);
     expect(out).toEqual([

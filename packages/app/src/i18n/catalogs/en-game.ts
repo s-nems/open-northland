@@ -1187,9 +1187,8 @@ export const enGame = {
       noOneToMarry: 'No match',
       cannotEnterVehicle: 'Cannot board',
       cannotLeaveVehicle: 'Stuck aboard',
-      humanAttacked: 'Attack: settler',
-      houseAttacked: 'Attack: building',
-      vehicleAttacked: 'Attack: vehicle',
+      settlementAttacked: 'Village attacked',
+      peopleAttacked: 'Attacked outside',
       houseFinished: 'Built',
       houseUpgraded: 'Upgraded',
       vehicleNoPath: 'No route',
@@ -1269,12 +1268,10 @@ export const enGame = {
       cannotEnterVehicle:
         '{name} cannot board this vehicle: it has no free room or the ship is at sea. Bring the ship to a shore or pick another vehicle.',
       cannotLeaveVehicle: '{name} cannot leave the ship at sea. Bring the ship to a shore first.',
-      humanAttacked: {
-        he: '{name} is under attack. Send soldiers or move him to safety.',
-        she: '{name} is under attack. Send soldiers or move her to safety.',
-      },
-      houseAttacked: 'A building is under attack: {building}. Send soldiers to defend it.',
-      vehicleAttacked: 'A vehicle is under attack: {vehicle}. Send soldiers or move it to safety.',
+      settlementAttacked:
+        'Your settlement is under attack. Enemy: {enemy}. Hit: {hits}. Send soldiers to defend it.',
+      peopleAttacked:
+        'Your people are under attack outside the settlement. Enemy: {enemy}. Hit: {hits}. Send soldiers or lead them to safety.',
       houseFinished: 'Construction finished: {building}.',
       houseUpgraded: 'Upgrade finished: {building}.',
       vehicleNoPath: '{vehicle} cannot find a way there. Pick another destination.',
@@ -1304,6 +1301,14 @@ export const enGame = {
     unnamed: {
       building: 'Building',
       vehicle: 'Vehicle',
+    },
+    /** An attack notice's hit bodies, counted per kind, and the name it gives unowned strikers. */
+    attack: {
+      buildings: { one: '{count} building', few: '{count} buildings', many: '{count} buildings' },
+      walls: { one: '{count} wall section', few: '{count} wall sections', many: '{count} wall sections' },
+      settlers: { one: '{count} settler', few: '{count} settlers', many: '{count} settlers' },
+      vehicles: { one: '{count} vehicle', few: '{count} vehicles', many: '{count} vehicles' },
+      wild: 'wild beasts',
     },
     /** A couple's wish for a child that waits on the player: the card line, and the whole message about
      *  the woman. `{partner}` is her husband's name with a leading space, or empty. */

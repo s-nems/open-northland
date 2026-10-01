@@ -92,14 +92,19 @@ function land(
   let struckAny = false;
   for (const victim of struckVictims(world, ctx, proj)) {
     const hitSoundType = hitSoundVsMaterial(proj, targetMaterial(world, ctx, victim));
+    const source = atWar(world, proj.player ?? undefined, ownerOf(world, victim))
+      ? 'projectile'
+      : 'collateral';
     // Original behavior: a shot that does its victim no damage thuds like one that strikes nothing.
-    if (!strike(world, ctx, proj, victim, pendingReactions)) continue;
+    if (!strike(world, ctx, proj, victim, source, pendingReactions)) continue;
     struckAny = true;
     // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
     ctx.events.emit({
       kind: 'projectileHit',
       projectile: p,
       shooter: proj.source,
+      ...(proj.player !== null ? { shooterPlayer: proj.player } : {}),
+      ...(source === 'collateral' ? { collateral: true } : {}),
       target: victim,
       munitionType: proj.munitionType,
       at,
@@ -145,6 +150,7 @@ function strike(
   ctx: SystemContext,
   proj: Flight,
   victim: Entity,
+  source: 'projectile' | 'collateral',
   pendingReactions: PendingHitReaction[],
 ): boolean {
   const material = targetMaterial(world, ctx, victim);
@@ -155,7 +161,6 @@ function strike(
     from: { x: proj.originX, y: proj.originY },
     vehicleShot: proj.impact !== null,
   };
-  const source = atWar(world, proj.player ?? undefined, ownerOf(world, victim)) ? 'projectile' : 'collateral';
   return resolveCombatHit(world, ctx, proj.source, victim, blow, pendingReactions, source);
 }
 

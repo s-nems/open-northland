@@ -62,6 +62,9 @@ export interface MessageFeed {
   remove(id: number, tick: number): boolean;
   /** Dismiss every note the level shows; the ones hidden under it were never seen, so they stay. */
   removeAll(tick: number): void;
+  /** Hand a standing note, shown or dismissed, the place, fight tally and text of its repeat `pending`;
+   *  false when no note matches it. */
+  revise(pending: PendingMessage, compose: () => MessageText): boolean;
   /** Drop notes and dismissals `over` reports as ended, event notes past their lifetime and event
    *  dismissals past their block. `ageless` skips both clocks, so only `over` ends anything. */
   expire(tick: number, over: (m: UserMessage) => boolean, ageless?: boolean): void;
@@ -122,6 +125,21 @@ class MessageList<T extends UserMessage> {
   shift(): void {
     const first = this.items.shift();
     if (first !== undefined) this.uncount(first);
+  }
+
+  /** Swap the entry matching `pending` for `revised(entry)`, answering both; undefined when none matches. */
+  replace(
+    pending: PendingMessage,
+    revised: (m: T) => T,
+  ): { readonly before: T; readonly after: T } | undefined {
+    if (!this.matches(pending)) return undefined;
+    const key = identityKey(pending);
+    const at = this.items.findIndex((m) => identityKey(m) === key);
+    const before = this.items[at];
+    if (before === undefined) return undefined;
+    const after = revised(before);
+    this.items[at] = after;
+    return { before, after };
   }
 
   matches(pending: PendingMessage): boolean {
@@ -220,6 +238,20 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
       return 'accepted';
     },
     remove: (id, tick) => dismiss((m) => m.id !== id, tick),
+    revise: (pending, compose) => {
+      const update = <T extends UserMessage>(m: T): T => ({
+        ...m,
+        at: pending.at,
+        ...(pending.fight === undefined ? {} : { fight: pending.fight }),
+        text: compose(),
+      });
+      const shown = live.replace(pending, update);
+      if (shown === undefined) return history.replace(pending, update) !== undefined;
+      // The place moves with every hit, but only a new text redraws the column.
+      const { before, after } = shown;
+      if (after.text.short !== before.text.short || after.text.full !== before.text.full) version++;
+      return true;
+    },
     removeAll: (tick) => {
       dismiss((m) => !messagePassesFilter(m.priority, level), tick);
     },

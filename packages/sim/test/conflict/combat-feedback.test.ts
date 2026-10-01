@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addCurrentAtomic, Health, Position } from '../../src/components/index.js';
+import { addCurrentAtomic, Health, Owner, Position } from '../../src/components/index.js';
 import { eventAt } from '../../src/core/events.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
@@ -62,6 +62,23 @@ describe('combatHit - a landed melee blow', () => {
       weaponMainType: 3,
       at: eventAt(fx.fromInt(7), fx.fromInt(5)),
     });
+    expect(hits[0]).not.toHaveProperty('attackerPlayer');
+  });
+
+  it("names the striker's owner on the blow", () => {
+    const STRIKER_SEAT = 3;
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const attacker = sim.world.create();
+    const target = sim.world.create();
+    sim.world.add(attacker, Owner, { player: STRIKER_SEAT });
+    sim.world.add(target, Position, { x: fx.fromInt(7), y: fx.fromInt(5) });
+    sim.world.add(target, Health, { hitpoints: 500, max: 500 });
+    attack(sim, attacker, target, 100, 3);
+
+    sim.step();
+
+    const hit = sim.snapshot().events.find((ev) => ev.kind === 'combatHit');
+    expect(hit).toMatchObject({ attacker, attackerPlayer: STRIKER_SEAT });
   });
 
   it('carries the weapon`s impact sound id when the swing resolved one, and none when it did not', () => {

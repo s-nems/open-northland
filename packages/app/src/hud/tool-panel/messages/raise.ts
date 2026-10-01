@@ -31,6 +31,8 @@ export interface MessageNaming {
 export interface RaisedMessage {
   readonly pending: PendingMessage;
   readonly compose: () => MessageText;
+  /** Set on a repeat that carries fresh facts: the note it repeats takes them, and the text they word. */
+  readonly updatesStanding?: true;
 }
 
 export function nodeOf(e: SnapshotEntity): PendingMessage['at'] {
@@ -161,9 +163,9 @@ export class MessageRaiser {
   }
 
   /** A message the caller keys itself, for one without a live subject to key on. */
-  raise(key: string, pending: PendingMessage, compose: () => MessageText): void {
+  raise(key: string, pending: PendingMessage, compose: () => MessageText, updatesStanding = false): void {
     if (this.seen.has(key)) return;
     this.seen.add(key);
-    this.out.push({ pending, compose });
+    this.out.push(updatesStanding ? { pending, compose, updatesStanding } : { pending, compose });
   }
 }

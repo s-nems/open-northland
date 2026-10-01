@@ -1,5 +1,6 @@
 import { type Entity, entityById, type SimEvent } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { FightAreas } from '../src/hud/tool-panel/messages/fight-areas.js';
 import { messagesFromEvents } from '../src/hud/tool-panel/messages/from-events.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
@@ -62,6 +63,7 @@ describe('inline host departed entities', () => {
       LOCAL,
       naming,
       () => undefined,
+      new FightAreas(),
     );
     expect(card?.compose().full).toBe(`S${settler.id}:${USER_MESSAGE_TYPE.humanDied}`);
   });

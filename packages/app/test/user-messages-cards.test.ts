@@ -32,6 +32,19 @@ function raised(type: UserMessageType, subject: MessageSubject | null, about: nu
   return { type, subject, about };
 }
 
+function fightNote(type: UserMessageType, seats: readonly number[]) {
+  const fight = {
+    buildings: 1,
+    walls: 0,
+    settlers: 0,
+    vehicles: 0,
+    seats,
+    wild: seats.length === 0,
+    lastHitTick: 0,
+  };
+  return { ...raised(type, null, 4), fight };
+}
+
 describe('notice cards', () => {
   it('orders the weightiest first and the newest within a weight', () => {
     const ordered = orderNotes([note(1, 0, 10), note(2, 2, 5), note(3, 1, 20), note(4, 2, 9), note(5, 2, 9)]);
@@ -39,13 +52,20 @@ describe('notice cards', () => {
     expect(ordered.map((m) => m.id)).toEqual([5, 4, 2, 3, 1]);
   });
 
-  it('draws a live settler subject and swaps in the swords for an attacked one', () => {
+  it('draws a live settler subject', () => {
     const settler = { kind: 'settler', entity: 7 } as const;
     expect(noticeThumb(raised(USER_MESSAGE_TYPE.hungry, settler), noBuilding, onMap)).toEqual({
       kind: 'settler',
       entity: 7,
     });
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.humanAttacked, settler), noBuilding, onMap)).toEqual({
+  });
+
+  it("shows a fight's swords in its first striking seat's colour, untinted for wild beasts", () => {
+    const ENEMY_SEAT = 2;
+    expect(
+      noticeThumb(fightNote(USER_MESSAGE_TYPE.settlementAttacked, [ENEMY_SEAT, 3]), noBuilding, onMap),
+    ).toEqual({ kind: 'glyph', glyph: 'swords', dim: false, seat: ENEMY_SEAT });
+    expect(noticeThumb(fightNote(USER_MESSAGE_TYPE.peopleAttacked, []), noBuilding, onMap)).toEqual({
       kind: 'glyph',
       glyph: 'swords',
       dim: false,
@@ -53,7 +73,7 @@ describe('notice cards', () => {
     });
   });
 
-  it('draws a live vehicle subject and swaps in the swords for an attacked one', () => {
+  it('draws a live vehicle subject', () => {
     const vehicle = { kind: 'vehicle', entity: 9 } as const;
     expect(noticeThumb(raised(USER_MESSAGE_TYPE.vehicleNoCarrier, vehicle), noBuilding, onMap)).toEqual({
       kind: 'vehicle',
@@ -65,12 +85,6 @@ describe('notice cards', () => {
     ).toEqual({
       kind: 'glyph',
       glyph: 'scroll',
-      dim: false,
-      seat: null,
-    });
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.vehicleAttacked, vehicle), noBuilding, onMap)).toEqual({
-      kind: 'glyph',
-      glyph: 'swords',
       dim: false,
       seat: null,
     });
@@ -90,12 +104,6 @@ describe('notice cards', () => {
     expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseFinished, building), noBuilding, onMap)).toEqual({
       kind: 'glyph',
       glyph: 'house',
-      dim: false,
-      seat: null,
-    });
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseAttacked, building), typeOf, onMap)).toEqual({
-      kind: 'glyph',
-      glyph: 'swords',
       dim: false,
       seat: null,
     });

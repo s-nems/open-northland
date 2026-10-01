@@ -1164,9 +1164,8 @@ export const plGame = {
       noOneToMarry: 'Brak pary',
       cannotEnterVehicle: 'Nie wsiądzie',
       cannotLeaveVehicle: 'Nie wysiądzie',
-      humanAttacked: 'Atak: osadnik',
-      houseAttacked: 'Atak: budynek',
-      vehicleAttacked: 'Atak: pojazd',
+      settlementAttacked: 'Atak na osadę',
+      peopleAttacked: 'Atak poza osadą',
       houseFinished: 'Budowa gotowa',
       houseUpgraded: 'Rozbudowano',
       vehicleNoPath: 'Brak trasy',
@@ -1248,13 +1247,10 @@ export const plGame = {
       cannotEnterVehicle:
         '{name} nie może wsiąść do tego pojazdu: brakuje miejsca albo statek stoi na morzu. Przybij statkiem do brzegu albo wybierz inny pojazd.',
       cannotLeaveVehicle: '{name}: nie można zejść ze statku na morzu. Najpierw przybij do brzegu.',
-      humanAttacked: {
-        he: '{name} został zaatakowany. Wyślij żołnierzy albo odprowadź go w bezpieczne miejsce.',
-        she: '{name} została zaatakowana. Wyślij żołnierzy albo odprowadź ją w bezpieczne miejsce.',
-      },
-      houseAttacked: 'Budynek jest atakowany: {building}. Wyślij żołnierzy do obrony.',
-      vehicleAttacked:
-        'Pojazd jest atakowany: {vehicle}. Wyślij żołnierzy albo odprowadź go w bezpieczne miejsce.',
+      settlementAttacked:
+        'Twoja osada jest atakowana. Wróg: {enemy}. Zaatakowano: {hits}. Wyślij żołnierzy do obrony.',
+      peopleAttacked:
+        'Twoi ludzie są atakowani poza osadą. Wróg: {enemy}. Zaatakowano: {hits}. Wyślij żołnierzy albo odprowadź ludzi w bezpieczne miejsce.',
       houseFinished: 'Budowa ukończona: {building}.',
       houseUpgraded: 'Rozbudowa ukończona: {building}.',
       vehicleNoPath: '{vehicle}: brak drogi do celu. Wskaż inny cel.',
@@ -1284,6 +1280,13 @@ export const plGame = {
     unnamed: {
       building: 'Budynek',
       vehicle: 'Pojazd',
+    },
+    attack: {
+      buildings: { one: '{count} budynek', few: '{count} budynki', many: '{count} budynków' },
+      walls: { one: '{count} odcinek muru', few: '{count} odcinki muru', many: '{count} odcinków muru' },
+      settlers: { one: '{count} osadnika', few: '{count} osadników', many: '{count} osadników' },
+      vehicles: { one: '{count} pojazd', few: '{count} pojazdy', many: '{count} pojazdów' },
+      wild: 'dzikie bestie',
     },
     familyBlocked: {
       short: {

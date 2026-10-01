@@ -1,5 +1,5 @@
 import type { ChildOrderWait } from '../../../game/snapshot.js';
-import { formatMessage, type Messages } from '../../../i18n/index.js';
+import { bcp47Tag, formatMessage, type Messages, pluralForm } from '../../../i18n/index.js';
 import { USER_MESSAGE_TYPE, type UserMessageType, type UserMessageTypeName } from './types.js';
 
 /** The catalog section that words every notice, short and full. */
@@ -44,6 +44,15 @@ export interface MessageTextParts {
   readonly training?: { readonly course: 'barracks' | 'school'; readonly profession: string };
   /** What holds a `familyBlocked` note's child order, and the spouse it names. */
   readonly family?: { readonly wait: ChildOrderWait; readonly partner: NamedSettler | null };
+  /** What an attack note's fight has hit, and the named seats and creatures that struck. */
+  readonly fight?: {
+    readonly buildings: number;
+    readonly walls: number;
+    readonly settlers: number;
+    readonly vehicles: number;
+    readonly enemies: readonly string[];
+    readonly wild: boolean;
+  };
 }
 
 /** A settler as a note names it: its name, the trade label shown after it (null for none) and its sex. */
@@ -105,10 +114,28 @@ function experienceLists(
     .join('\n\n');
 }
 
+/** A fight's hit bodies ("2 buildings, 1 settler") and its strikers, as the attack lines read them. */
+function fightValues(fight: NonNullable<MessageTextParts['fight']>, copy: NoticeCopy, localeTag: string) {
+  const counts = [
+    [fight.buildings, copy.attack.buildings],
+    [fight.walls, copy.attack.walls],
+    [fight.settlers, copy.attack.settlers],
+    [fight.vehicles, copy.attack.vehicles],
+  ] as const;
+  const hits = counts
+    .filter(([count]) => count > 0)
+    .map(([count, forms]) => formatMessage(pluralForm(count, forms, localeTag), { count }))
+    .join(', ');
+  const enemy = [...fight.enemies, ...(fight.wild ? [copy.attack.wild] : [])].join(', ');
+  return { hits, enemy };
+}
+
+/** `localeTag` is the language of `copy`, whose plural rules count a fight's hits. */
 export function composeMessageText(
   type: UserMessageType,
   parts: MessageTextParts,
   copy: NoticeCopy,
+  localeTag: string = bcp47Tag(),
 ): MessageText {
   const name = userMessageTypeName(type);
   const female = parts.female === true;
@@ -122,6 +149,7 @@ export function composeMessageText(
     stance: parts.stanceName ?? '',
     item: parts.detail ?? '',
     profession: parts.training?.profession ?? '',
+    ...(parts.fight === undefined ? {} : fightValues(parts.fight, copy, localeTag)),
   };
   if (name === 'familyBlocked') {
     if (parts.family === undefined) throw new Error('user-messages: a familyBlocked note needs its wait');

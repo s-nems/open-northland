@@ -1,14 +1,28 @@
-import { entityById, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, type HalfCellNode, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import {
   isBuilding,
+  isPalisade,
   isVehicle,
   ownerPlayerOf,
   type SnapshotEntity,
   settlerJobType,
 } from '../../../game/snapshot.js';
+import {
+  FIGHT_TYPE,
+  type FightArea,
+  type FightAreas,
+  type FightVictimKind,
+  fightPlaceOf,
+} from './fight-areas.js';
 import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
 import type { NamedSettler } from './text.js';
-import { type MessageTechnology, type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
+import {
+  type FightTally,
+  type MessageTechnology,
+  type PendingMessage,
+  USER_MESSAGE_TYPE,
+  type UserMessageType,
+} from './types.js';
 
 /** The note each refused move order on a vehicle raises about it. */
 const MOVE_REFUSAL_MESSAGE = {
@@ -115,6 +129,56 @@ export function raiseUnlocks(
   );
 }
 
+/**
+ * Raise the note about one fight area, keyed by the area: a standing card takes the fresh tally, text and
+ * latest hit through `updatesStanding`.
+ */
+export function raiseFight(
+  raiser: MessageRaiser,
+  naming: MessageNaming,
+  type: UserMessageType,
+  area: number,
+  at: PendingMessage['at'],
+  tally: FightTally,
+): void {
+  raiser.raise(
+    `${type}|area:${area}`,
+    {
+      type,
+      subject: null,
+      at,
+      about: area,
+      goodType: null,
+      technologies: null,
+      jobType: null,
+      fight: tally,
+    },
+    () =>
+      naming.text(type, {
+        subjectName: null,
+        jobLabel: null,
+        goodName: null,
+        stanceName: null,
+        fight: {
+          buildings: tally.buildings,
+          walls: tally.walls,
+          settlers: tally.settlers,
+          vehicles: tally.vehicles,
+          enemies: tally.seats.map((seat) => naming.player(seat)),
+          wild: tally.wild,
+        },
+      }),
+    true,
+  );
+}
+
+function fightVictimKind(e: SnapshotEntity): FightVictimKind | undefined {
+  if (isBuilding(e)) return 'building';
+  if (isPalisade(e)) return 'wall';
+  if (isVehicle(e)) return 'vehicle';
+  return isPerson(e) ? 'settler' : undefined;
+}
+
 function isPerson(e: SnapshotEntity): boolean {
   return e.components.Person !== undefined;
 }
@@ -126,7 +190,9 @@ function ownedBy(e: SnapshotEntity, player: number): boolean {
 /**
  * The local player's messages raised by one frame's sim events. `departed` holds the entities the
  * frame's steps removed, as the world last held them: the only place a settler reaped this frame can
- * still be named.
+ * still be named, and a body a killing blow felled can still be told. A blow on the seat's own settler,
+ * building or vehicle files a hit under `fights`, unless it is the seat's own fire or splash from a
+ * side not at war with it; each fight a frame touched raises one note.
  */
 export function messagesFromEvents(
   events: readonly SimEvent[],
@@ -135,6 +201,7 @@ export function messagesFromEvents(
   localPlayer: number,
   naming: MessageNaming,
   buildingTrades: BuildingTrades,
+  fights: FightAreas,
 ): RaisedMessage[] {
   const raiser = new MessageRaiser(snapshot, naming);
   const discoveries = new Map<number, MessageTechnology[]>();
@@ -159,19 +226,25 @@ export function messagesFromEvents(
     const e = entityById(snapshot, id);
     return e !== undefined && isVehicle(e) && ownedBy(e, localPlayer) ? e : undefined;
   };
-  const attacked = (target: number): void => {
-    const building = ownedBuilding(target);
-    if (building !== undefined) {
-      raiser.building(USER_MESSAGE_TYPE.houseAttacked, building);
-      return;
+  let departedById: Map<number, SnapshotEntity> | undefined;
+  const touchedFights = new Set<FightArea>();
+  const attacked = (
+    target: number,
+    at: HalfCellNode,
+    attacker: number | undefined,
+    collateral: boolean,
+  ): void => {
+    if (collateral || attacker === localPlayer) return;
+    let victim = entityById(snapshot, target);
+    if (victim === undefined) {
+      departedById ??= new Map(departed.map((e) => [e.id, e]));
+      victim = departedById.get(target);
     }
-    const person = ownedPerson(target);
-    if (person !== undefined) {
-      raiser.settler(USER_MESSAGE_TYPE.humanAttacked, person);
-      return;
-    }
-    const vehicle = ownedVehicle(target);
-    if (vehicle !== undefined) raiser.vehicle(USER_MESSAGE_TYPE.vehicleAttacked, vehicle);
+    if (victim === undefined || !ownedBy(victim, localPlayer)) return;
+    const kind = fightVictimKind(victim);
+    if (kind === undefined) return;
+    const hit = { victim: target, kind, at, attacker, tick: snapshot.tick };
+    touchedFights.add(fights.record(hit, fightPlaceOf(snapshot, localPlayer, kind, at)));
   };
   const died = (entity: number, at: PendingMessage['at']): void => {
     // Deaths have no subject left to key on, so the reaped id stands in.
@@ -267,8 +340,9 @@ export function messagesFromEvents(
         break;
       }
       case 'playerDefeated':
-        // Every seat hears an elimination: the original's own record carries the broadcast player id
-        // rather than one seat's.
+        // Every other seat hears an elimination: the original's own record carries the broadcast player id
+        // rather than one seat's. The defeated seat's own defeat panel already tells it.
+        if (ev.player === localPlayer) break;
         raiser.raise(
           `${USER_MESSAGE_TYPE.playerDied}|player:${ev.player}`,
           {
@@ -334,12 +408,17 @@ export function messagesFromEvents(
         break;
       }
       case 'combatHit':
+        attacked(ev.target, ev.at, ev.attackerPlayer, false);
+        break;
       case 'projectileHit':
-        attacked(ev.target);
+        attacked(ev.target, ev.at, ev.shooterPlayer, ev.collateral === true);
         break;
       default:
         break;
     }
+  }
+  for (const area of touchedFights) {
+    raiseFight(raiser, naming, FIGHT_TYPE[area.place], area.id, area.at(), area.tally());
   }
   return raiser.out;
 }

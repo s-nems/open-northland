@@ -6,7 +6,7 @@ import { type PendingMessage, USER_MESSAGE_TYPE } from '../src/hud/tool-panel/me
 const TICK = 100;
 const TEXT = (): MessageText => ({ short: 'x', full: 'x' });
 const ATTACKED: PendingMessage = {
-  type: USER_MESSAGE_TYPE.humanAttacked,
+  type: USER_MESSAGE_TYPE.grewUp,
   subject: { kind: 'settler', entity: 7 },
   at: null,
   about: null,

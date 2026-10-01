@@ -1,6 +1,7 @@
 import { ONE, components as simComponents, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_CARRIER, JOB_SOLDIER } from '../src/catalog/jobs.js';
+import { FightAreas } from '../src/hud/tool-panel/messages/fight-areas.js';
 import { DYING_NOTE_RETIRE_MARGIN_PER_MILLE } from '../src/hud/tool-panel/messages/from-snapshot.js';
 import { LOST_NOTE_HOLD_TICKS, NoteRetirement } from '../src/hud/tool-panel/messages/retire.js';
 import {
@@ -17,7 +18,7 @@ const PER_MILLE = 1000;
 
 /** One fresh retirement per question: every rule but the no-path watch reads the snapshot alone. */
 function isNoteOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
-  return new NoteRetirement().isOver(m, snapshot);
+  return new NoteRetirement(new FightAreas()).isOver(m, snapshot);
 }
 
 function world(tick: number, settler: 'lost' | 'found' | 'gone'): WorldSnapshot {
@@ -255,7 +256,7 @@ describe('note retirement', () => {
     const noPath = note(USER_MESSAGE_TYPE.vehicleNoPath, vehicle);
     const cart = (driving: boolean): WorldSnapshot =>
       subjectWorld({ Vehicle: { passengers: [] }, ...(driving ? { VehicleDrive: { step: 0 } } : {}) });
-    const retirement = new NoteRetirement();
+    const retirement = new NoteRetirement(new FightAreas());
     const pass = (driving: boolean): boolean => {
       const over = retirement.isOver(noPath, cart(driving));
       retirement.endPass();
