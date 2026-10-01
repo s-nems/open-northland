@@ -23,6 +23,7 @@ describe('roster state', () => {
       hidden: false,
       aiAllowed: true,
       noneAllowed: true,
+      strategicAi: true,
     },
     {
       player: 1,
@@ -33,6 +34,7 @@ describe('roster state', () => {
       hidden: false,
       aiAllowed: true,
       noneAllowed: true,
+      strategicAi: true,
     },
     {
       player: 2,
@@ -43,6 +45,7 @@ describe('roster state', () => {
       hidden: false,
       aiAllowed: true,
       noneAllowed: true,
+      strategicAi: true,
     },
   ] as const;
 
@@ -84,6 +87,7 @@ describe('roster state', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
       {
         player: 1,
@@ -94,6 +98,7 @@ describe('roster state', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
       {
         player: 2,
@@ -104,6 +109,7 @@ describe('roster state', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
     ] as const;
     const state = claimSeat(initialRosterState(lobby), 0);
@@ -124,6 +130,7 @@ describe('roster state', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
       {
         player: 1,
@@ -134,6 +141,7 @@ describe('roster state', () => {
         hidden: false,
         aiAllowed: false,
         noneAllowed: true,
+        strategicAi: true,
       },
     ] as const;
     const state = claimSeat(initialRosterState(lobby), 0);
@@ -149,6 +157,7 @@ describe('roster state', () => {
       colorId: 1,
       claimable: true,
       hidden: false,
+      strategicAi: true,
     } as const;
     expect(vacantOffers({ ...seat, aiAllowed: true, noneAllowed: true })).toEqual(['ai', 'idle', 'absent']);
     expect(vacantOffers({ ...seat, aiAllowed: true, noneAllowed: false })).toEqual(['ai', 'idle']);
@@ -168,6 +177,7 @@ describe('roster state', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
       {
         player: 1,
@@ -178,6 +188,7 @@ describe('roster state', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: false,
+        strategicAi: true,
       },
     ] as const;
     const state = setVacantMode(claimSeat(initialRosterState(lobby), 0), 1, 'absent');
@@ -205,6 +216,7 @@ describe('roster state', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
       {
         player: 1,
@@ -215,6 +227,7 @@ describe('roster state', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
       {
         player: 2,
@@ -225,6 +238,7 @@ describe('roster state', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
     ] as const;
     const state = initialRosterState(dupes);
@@ -245,6 +259,7 @@ describe('roster state', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
     ] as const;
     expect(hasClaimableSeat(allAi)).toBe(false);

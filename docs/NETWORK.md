@@ -68,7 +68,8 @@ names for the seat, and `tribe` the one it starts as when that differs (a saved 
 without `authoredTribe` offers no tribe choice, and `tribe` needs it. Tribe ids are integers from 1
 through `MAX_TRIBE_ID` (255); which of them name a civilization is the clients' content to say.
 `difficulty` (`easy`, `medium` or `hard`) marks a seat the computer may play at a level and is the level
-it starts at; the clients give it to a free civilization seat, never to the map's own computer seats.
+it starts at; the clients give it to a civilization seat the strategic AI plays, never to a monster seat
+or a scripted camp whose map script stops that AI.
 An `absent` seat idles, and a fresh world places none of its authored settlers,
 buildings, walls, animals or signposts. A room resumed from a save refuses `absent`, since its world
 already stands. `joinRoom { roomId }` joins a room in the lobby; a room that has started refuses. A

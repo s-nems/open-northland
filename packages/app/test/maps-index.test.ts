@@ -25,6 +25,7 @@ describe('parseMapsIndex', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
       {
         player: 1,
@@ -35,6 +36,7 @@ describe('parseMapsIndex', () => {
         hidden: true,
         aiAllowed: false,
         noneAllowed: true,
+        strategicAi: true,
       },
     ],
     fixedColors: true,

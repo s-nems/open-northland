@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MapScript, mapLobbySlots } from '../src/index.js';
+import { MapAiModule, MapScript, mapLobbySlots } from '../src/index.js';
 
 const roster = [
   { player: 0, type: 'human', tribeId: 1, colorId: 0, name: { pol: 'Ragnar' } },
@@ -21,6 +21,7 @@ describe('mapLobbySlots', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
       {
         player: 1,
@@ -31,6 +32,7 @@ describe('mapLobbySlots', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
       {
         player: 2,
@@ -41,6 +43,7 @@ describe('mapLobbySlots', () => {
         hidden: false,
         aiAllowed: true,
         noneAllowed: true,
+        strategicAi: true,
       },
     ]);
   });
@@ -68,6 +71,23 @@ describe('mapLobbySlots', () => {
       [0, true, false, true, true],
       [1, true, false, true, false],
       [2, true, true, false, true],
+    ]);
+  });
+
+  it('marks the seats whose [AIData] row stops the strategic AI, blanket or whole, as scripted camps', () => {
+    const script = MapScript.parse({
+      players: [...roster, { player: 3, type: 'ai', tribeId: 3, colorId: 2 }],
+      ai: [
+        { player: 1, disabled: false, strategicOff: MapAiModule.options },
+        { player: 2, disabled: true, strategicOff: [] },
+        { player: 3, disabled: false, strategicOff: ['military'] },
+      ],
+    });
+    expect(mapLobbySlots(script).map(({ player, strategicAi }) => [player, strategicAi])).toEqual([
+      [0, true],
+      [1, false],
+      [2, false],
+      [3, true],
     ]);
   });
 });

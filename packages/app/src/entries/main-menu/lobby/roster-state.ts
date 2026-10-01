@@ -55,11 +55,16 @@ export function offersTribeChoice(slot: MapPlayerSlot): boolean {
   return isCivilizationTribe(slot.tribeId);
 }
 
-/** A free seat of a civilization, or the map's own computer seat of one, which the computer may play at
- *  a level; a monster seat runs no strategic AI. */
+/** A seat the strategic AI plays at a level once the computer holds it: a free seat of a civilization, or
+ *  the map's own computer seat of one. A monster seat runs no strategic AI, and neither does a seat
+ *  whose map script stops it, a scripted camp. */
 export function offersDifficulty(slot: MapPlayerSlot): boolean {
   return (
-    (slot.claimable || isMapComputerSeat(slot)) && !slot.hidden && slot.aiAllowed && offersTribeChoice(slot)
+    (slot.claimable || isMapComputerSeat(slot)) &&
+    !slot.hidden &&
+    slot.aiAllowed &&
+    slot.strategicAi &&
+    offersTribeChoice(slot)
   );
 }
 

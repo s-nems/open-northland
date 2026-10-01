@@ -34,6 +34,7 @@ function slot(player: number, over: Partial<MapsIndexPlayerSlot> = {}): MapsInde
     hidden: false,
     aiAllowed: true,
     noneAllowed: true,
+    strategicAi: true,
     ...over,
   };
 }
@@ -243,16 +244,21 @@ describe('lobby computer levels', () => {
     slot(1, { claimable: true }),
     slot(2, { claimable: true, tribeId: WEREWOLF_TRIBE }),
     slot(3),
+    slot(4, { strategicAi: false }),
+    slot(5, { claimable: true, strategicAi: false }),
   ];
 
-  it("offers a level on a free seat handed to the computer, medium until picked, and on the map's own computer seat, hard until picked", () => {
+  it("offers a level on a free seat handed to the computer, medium until picked, and on the map's own computer seat, hard until picked, never on a scripted camp", () => {
     const state = initialLobbyState(players);
-    // Seat 1 plays as computer, seat 2 is a monster tribe and seat 3 is the map's own computer seat.
+    // Seat 1 plays as computer, seat 2 is a monster tribe, seat 3 is the map's own computer seat, and
+    // seats 4 and 5 are camps whose script stops the strategic AI, the map's own and a free one.
     expect(lobbySlotRows(players, state).map((row) => row.difficulty)).toEqual([
       null,
       'medium',
       null,
       'hard',
+      null,
+      null,
     ]);
     expect(lobbySlotRows(players, setVacantMode(state, 1, 'idle'))[1]?.difficulty).toBeNull();
   });
@@ -260,7 +266,14 @@ describe('lobby computer levels', () => {
   it('carries the picked levels from the lobby to the launched session', () => {
     const state = setSlotDifficulty(setSlotDifficulty(initialLobbyState(players), 1, 'easy'), 3, 'medium');
     const session = lobbySession('zatoka', state, players, OPTIONS, SEED);
-    expect(session.seats.map((seat) => seat.difficulty)).toEqual([undefined, 'easy', undefined, 'medium']);
+    expect(session.seats.map((seat) => seat.difficulty)).toEqual([
+      undefined,
+      'easy',
+      undefined,
+      'medium',
+      undefined,
+      undefined,
+    ]);
     const entry = new URLSearchParams(lobbyStartEntry('zatoka', state, players, OPTIONS, SEED));
     expect(entry.get('difficulty')).toBe('1:easy,3:medium');
     expect(mapSession(entry, players)).toEqual(session);

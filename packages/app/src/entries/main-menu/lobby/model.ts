@@ -76,8 +76,8 @@ export interface LobbySlotRow {
   readonly tribe: number;
   /** False for a monster seat, which keeps its own tribe. */
   readonly offersTribe: boolean;
-  /** How hard the seat plays; null while no computer plays it, or for a monster seat, which runs no
-   *  strategic AI. */
+  /** How hard the seat plays; null while no computer plays it, or while no strategic AI runs it: a
+   *  monster seat, or a scripted camp. */
   readonly difficulty: AiDifficulty | null;
 }
 
