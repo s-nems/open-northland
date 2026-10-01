@@ -27,10 +27,12 @@ import { craftablePool } from '../economy/production/rotation.js';
 import { liveHaulFlag, liveWorkFlag } from '../economy/work-flag.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 import { operatorRecipeEnabled } from '../progression/index.js';
+import { strandedWorkplaceDoor } from '../settlers/drives/cut-off.js';
 import { carriedGoodForm } from '../settlers/drives/economy/delivery-targets.js';
 import { isBoundToStorageSink } from '../settlers/drives/economy/store-policy.js';
 import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
 import { StoreSinks } from '../settlers/targets/stores/sinks.js';
+import { navigationLimitFor } from '../signposts/index.js';
 import {
   isCarrierJob,
   isWorkplaceOperator,
@@ -98,6 +100,9 @@ export type WorkStatus =
   | { readonly kind: 'noTool' }
   | { readonly kind: 'noJob' }
   | { readonly kind: 'workplaceUnderConstruction' }
+  /** The worker's own workplace lies beyond its signpost reach, so it stands lost until the network
+   *  reaches the building. */
+  | { readonly kind: 'workplaceOutOfReach' }
   /** A carrier holding a pickup flag finds nothing to lift around it. */
   | { readonly kind: 'nothingAtFlag' }
   /** A store's carrier left idle by its ladder: nothing in reach for it to take to a store. */
@@ -115,6 +120,20 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   const assigned = world.tryGet(entity, JobAssignment)?.workplace;
   const workplace =
     assigned !== undefined && world.isAlive(assigned) && world.has(assigned, Building) ? assigned : undefined;
+  const terrain = ctx.terrain;
+  if (
+    workplace !== undefined &&
+    terrain !== undefined &&
+    strandedWorkplaceDoor(
+      world,
+      ctx,
+      terrain,
+      entity,
+      navigationLimitFor(world, ctx.content, terrain, entity),
+    ) !== null
+  ) {
+    return { kind: 'workplaceOutOfReach' };
+  }
   if (workplace !== undefined && world.has(workplace, UnderConstruction)) {
     return { kind: 'workplaceUnderConstruction' };
   }

@@ -29,12 +29,11 @@ import {
 } from '../../economy/jobs/index.js';
 import { builderCrewSize, needsRepair, repairCrewLimit } from '../../economy/repair.js';
 import { releaseSiteClaim } from '../../economy/site-claim.js';
-import { interactionNode } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { canChooseJob, needSubjectOf } from '../../progression/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
+import { markIfPostedOutOfReach } from '../../settlers/drives/cut-off.js';
 import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
-import { navigationLimitFor } from '../../signposts/index.js';
 import { groupPlacementOrder } from '../group-placement.js';
 import {
   deferOrderDuringAtomic,
@@ -101,17 +100,6 @@ export function assignWorker(
   if (!isTradeAssignable(world, e)) return;
   const b = command.building;
   if (!world.isAlive(b) || !world.has(b, Building)) return;
-  // Signpost confinement: a workplace beyond the settler's allowed area is refused like an out-of-area
-  // move order, so the player extends the network first and staffs the far building after.
-  const terrain = ctx.terrain;
-  if (terrain !== undefined) {
-    const limit = navigationLimitFor(world, ctx.content, terrain, e);
-    if (limit !== null) {
-      const inode = interactionNode(world, ctx, b);
-      if (inode !== null && !limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y))) return;
-    }
-  }
-
   const settler = world.get(e, Settler);
   const progress = world.get(e, SettlerProgress);
   const jobType = openWorkerJobFromList(
@@ -132,6 +120,7 @@ export function assignWorker(
   world.remove(e, JobAssignment); // drop any prior binding before re-binding to the chosen building
   reidleAsJob(world, ctx, e, jobType);
   bindEmployment(world, ctx, e, b);
+  markIfPostedOutOfReach(world, ctx, e);
 }
 
 /** Employ the group at one building - see the command doc and {@link groupPlacementOrder}. */
@@ -179,9 +168,9 @@ export function unassignWorker(
  * A standing structure's repair crew takes no more than {@link repairCrewLimit}; a building's cap is the
  * original's.
  *
- * Deliberately no signpost-confinement gate, unlike {@link assignWorker}: a pinned site is how the player
- * extends the network's frontier, and the builder drive treats it as a bound sink so the crew can raise it
- * from outside the walkable-area rule.
+ * Unlike a worker posted beyond its signpost reach, who stands lost, a pinned builder walks to its site: a
+ * pinned site is how the player extends the network's frontier, and the builder drive treats it as a bound
+ * sink so the crew can raise it from outside the walkable-area rule.
  */
 export function assignBuilder(
   world: World,

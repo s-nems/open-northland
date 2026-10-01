@@ -122,6 +122,12 @@ to collect. Select a worker or bakery and hover or keyboard-focus the status str
 reason. An idle notification selects its worker and opens the current diagnosis. Enable Sigrid's bread
 production to see the reason change to missing ingredients.
 
+`?scene=far-post` posts Olaf to a bakery 52 tiles from the camp, with no signposts between. He keeps
+the post but stands lost, and his status names the workplace beyond signpost reach. Right-click the
+other settlers onto the bakery or the far home to get the same lost note; the headquarters beside the
+camp is in reach and raises none. Once the
+scout's signposts reach the bakery, Olaf walks to work on his own.
+
 `?scene=store-reach` places two bakeries and a headquarters 60 tiles east, with no signposts between
 them. Freya's full bakery names the bread no store in reach takes; Ingrid's empty bakery names the
 ingredients the headquarters holds outside her reach.

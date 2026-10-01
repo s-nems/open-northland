@@ -410,6 +410,7 @@ export const enGame = {
         inputAmount: '{good} ×{missing} (has {available}/{required})',
         outputAmount: '{good} (stock {available}/{capacity}, batch ×{required})',
         noWorkplace: 'No workplace assigned',
+        workplaceOutOfReach: 'Workplace beyond signpost reach. Link it with signposts',
         productsLocked: 'Locked products: {goods}. Check production requirements',
         herd: {
           noAnimals: 'No animals: {good}. Send a scout to wild animals to claim them',

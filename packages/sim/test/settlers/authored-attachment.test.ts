@@ -11,9 +11,7 @@ import {
 } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands/index.js';
 import { type Entity, Simulation } from '../../src/index.js';
-import { assignWorker } from '../../src/systems/orders/work/employment.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
 import { gatherPick } from '../fixtures/production-counters.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
@@ -131,32 +129,14 @@ describe('authored attachtohouse on spawn', () => {
     expect(sim.world.get(e, Settler).jobType).toBe(SMITH);
   });
 
-  // The regression guard for the confinement trap: 32 of the corpus's 180 resolvable attachments sit
-  // outside their settler's walk range, so routing this through the player's order would drop them
-  // silently. The two `assignWorker` calls bracket the cause - the far one is refused while the slot is
-  // provably still open, the near one takes it.
-  it('attaches a target the player’s own assignWorker order would refuse as out of area', () => {
+  // 32 of the corpus's 180 resolvable attachments sit outside their settler's walk range; the spawn
+  // posts them all the same.
+  it('attaches a target outside the settler’s walk range', () => {
     const sim = attachWorld(
       { type: SMITHY, x: FAR_X },
       settler(SMITH, NEAR_X, { workplace: { x: FAR_X, y: 2 } }),
-      settler(SMITH, NEAR_X),
-      settler(SMITH, FAR_X - 2),
     );
-    const smithy = only(sim, Building);
-    const [attached, far, near] = settlers(sim) as [Entity, Entity, Entity];
-    expect(sim.world.get(attached, JobAssignment).workplace).toBe(smithy);
-
-    const post = (e: Entity): void =>
-      assignWorker(sim.world, ctxOf(sim), {
-        kind: 'assignWorker',
-        entity: e,
-        building: smithy,
-        jobPriority: [SMITH],
-      });
-    post(far);
-    expect(sim.world.has(far, JobAssignment)).toBe(false);
-    post(near); // the second of two smith slots, so the refusal above was distance and not staffing
-    expect(sim.world.get(near, JobAssignment).workplace).toBe(smithy);
+    expect(sim.world.get(settlers(sim)[0] as Entity, JobAssignment).workplace).toBe(only(sim, Building));
   });
 
   it('leaves the settler unposted at a building that employs nobody', () => {

@@ -115,7 +115,8 @@ export type UnitOrderCommand =
   | {
       /**
        * Employ one owned settler at `building`: bind it to that workplace and set its `jobType` to the
-       * open worker slot it qualifies for. The only way a settler becomes employed.
+       * open worker slot it qualifies for. The only way a settler becomes employed. A workplace beyond
+       * the settler's signpost reach still binds; the settler stands lost until the network reaches it.
        */
       readonly kind: 'assignWorker';
       readonly entity: Entity;
@@ -415,7 +416,8 @@ export type UnitOrderCommand =
       /**
        * House one owned adult settler's whole family (the settler, its spouse, their still-growing child)
        * in `house`. A home holds up to `homeSize` families (`houses.ini` `logichomesize`, 1..5 by level);
-       * re-assigning moves the family out of its previous home.
+       * re-assigning moves the family out of its previous home. A home beyond the settler's signpost
+       * reach still binds, and the settler stands lost as with `assignWorker`.
        */
       readonly kind: 'assignHouse';
       readonly entity: Entity;

@@ -66,6 +66,7 @@ export function workStatusDetail(ctx: UnitPanelModelContext, status: SettlerWork
     case 'noTool':
     case 'noJob':
     case 'noWorkplace':
+    case 'workplaceOutOfReach':
       return copy[status.kind];
     case 'crafting':
     case 'workplaceUnderConstruction':

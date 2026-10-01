@@ -396,6 +396,7 @@ export const plGame = {
         inputAmount: '{good} ×{missing} (jest {available}/{required})',
         outputAmount: '{good} (stan {available}/{capacity}, partia ×{required})',
         noWorkplace: 'Brak przypisanego miejsca pracy',
+        workplaceOutOfReach: 'Miejsce pracy poza zasięgiem drogowskazów. Połącz je drogowskazami',
         productsLocked: 'Zablokowane produkty: {goods}. Sprawdź wymagania produkcji',
         herd: {
           noAnimals: 'Brak zwierząt: {good}. Wyślij zwiadowcę do dzikich zwierząt, by je zajął',

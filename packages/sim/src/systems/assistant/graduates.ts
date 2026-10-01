@@ -57,7 +57,7 @@ export function postGraduate(
     if (world.has(b, UnderConstruction)) continue;
     if (openWorkerJobFromList(query, b, [jobType]) === null) continue;
     const door = interactionCell(world, ctx, terrain, b, here);
-    if (limit !== null && !limit.allowsNode(door)) continue; // the player's own order refuses it too
+    if (limit !== null && !limit.allowsNode(door)) continue; // posted there, he would stand lost
     // Across water or walls: a bound post never gives up on its route.
     if (terrain.componentOf(door) !== terrain.componentOf(here) || regions.unroutable(here, door)) continue;
     const distance = hexNodeDistance(terrain, here, door);

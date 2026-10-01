@@ -359,7 +359,7 @@ type Rank = (e: Entity) => number | null;
 
 /** Remove and return the person of `people` on `at`'s ground within `radius` of best rank, the nearest
  *  among those and the first in canonical order on a tie, or null. A person whose signposts keep him
- *  from `at` never qualifies, since the order would be refused and the same pick repeated every pass. */
+ *  from `at` never qualifies, since the order would leave him standing lost. */
 function takeBest(people: PlacedPerson[], at: Placed, radius: number, rank: Rank): Entity | null {
   let best = -1;
   let bestRank = Number.POSITIVE_INFINITY;

@@ -22,7 +22,7 @@ import { dropOrderQueue, isOrderableSettler, mayChangeTrade, supersedeStandingOr
  * Send one owned settler to drill at a barracks - see the command doc. Validates and stamps the
  * {@link TrainingOrder} errand for the planner's drill rung to walk out.
  *
- * The gate reads the same confinement `assignWorker` applies plus the failed-goal memo the drill rung
+ * The gate reads the settler's signpost confinement plus the failed-goal memo the drill rung
  * itself reads, so an order the rung would abandon next tick is refused rather than accepted and dropped.
  * Re-issuing the same order is a no-op, because a double right-click must not throw away drill already
  * served.

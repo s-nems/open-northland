@@ -117,8 +117,8 @@ export const Stranded = defineComponent<{ retryAt: number }>('Stranded', 'moveme
 /**
  * A settler standing lost: an ordered walk, a chase or its work found no way within its signpost reach.
  * Lifted once a drive or an obeyed order gives the settler something to do. `cutOff` says the idle tail
- * found no door of its seat in reach; that tail lifts the marker once a door is back in reach. `since` is
- * the tick the episode began.
+ * found its own workplace, or every door of its seat, out of reach; that tail lifts the marker once the
+ * way is back in reach. `since` is the tick the episode began.
  */
 export const LostWay = defineComponent<{ cutOff: boolean; since: number }>('LostWay', 'movement');
 

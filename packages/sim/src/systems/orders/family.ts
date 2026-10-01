@@ -11,7 +11,7 @@ import {
   moveFamilyInto,
   startWedding,
 } from '../family/index.js';
-import { interactionNode } from '../footprint/index.js';
+import { markIfPostedOutOfReach } from '../settlers/drives/cut-off.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { groupPlacementOrder } from './group-placement.js';
 import { dropOrderQueue, isOrderableSettler } from './guards.js';
@@ -48,17 +48,8 @@ export function assignHouse(
   const e = command.entity;
   if (!isOrderableSettler(world, e) || !isAdultSettler(world, e)) return;
   const house = command.house;
-  // Signpost confinement: a home beyond the issuer's allowed area is refused like an out-of-area move
-  // order, so the player extends the network first and houses the far family after.
-  const terrain = ctx.terrain;
-  if (terrain !== undefined) {
-    const limit = navigationLimitFor(world, ctx.content, terrain, e);
-    if (limit !== null) {
-      const inode = interactionNode(world, ctx, house);
-      if (inode !== null && !limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y))) return;
-    }
-  }
   moveFamilyInto(world, ctx, e, house);
+  if (world.tryGet(e, Residence)?.home === house) markIfPostedOutOfReach(world, ctx, e);
 }
 
 /** House the group's families in one home - see the command doc and {@link groupPlacementOrder}. */

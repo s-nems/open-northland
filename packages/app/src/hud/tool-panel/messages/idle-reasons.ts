@@ -9,7 +9,8 @@ const NO_GOODS: readonly number[] = [];
  * search too large to finish or a workplace it does not diagnose. A craft operator's gates (inputs,
  * shelves, locked products) never reach the note, since a resting workshop's operators leave it to the
  * stall note, nor do a missing workplace or trade, since the note needs a finished workplace, nor a store
- * carrier's empty round, which is no blocker; the sim reports no missing tool.
+ * carrier's empty round, which is no blocker, nor a workplace beyond signpost reach, which the lost note
+ * names; the sim reports no missing tool.
  */
 export function idleReasonOf(status: WorkStatus | undefined): IdleReason | null {
   switch (status?.kind) {
@@ -42,6 +43,7 @@ export function idleReasonOf(status: WorkStatus | undefined): IdleReason | null 
     case 'noJob':
     case 'crafting':
     case 'workplaceUnderConstruction':
+    case 'workplaceOutOfReach':
     case 'unknown':
     case undefined:
       return null;

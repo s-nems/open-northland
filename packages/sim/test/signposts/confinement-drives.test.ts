@@ -5,6 +5,7 @@ import {
   Carrying,
   CurrentAtomic,
   JobAssignment,
+  LostWay,
   MoveGoal,
   Owner,
   Position,
@@ -13,10 +14,12 @@ import {
 import { type Fixed, fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
+import { CUT_OFF_CHECK_TICKS } from '../../src/systems/settlers/drives/cut-off.js';
 import { testContent } from '../fixtures/content.js';
 import { stepToIdleReplan } from '../fixtures/idle-replan.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 import { justAbove, NEED_DRIVE_THRESHOLD } from '../settlers/needs/support.js';
+import { stampPost } from './support.js';
 
 /**
  * Signpost confinement over the AUTONOMOUS drives: with `setSignpostNavigation` on, every searched
@@ -217,18 +220,28 @@ describe('confinement gates the carried-load delivery sink', () => {
   });
 });
 
-describe('confinement gates job assignment', () => {
-  it('assignWorker to an out-of-area building is refused like an out-of-area move order', () => {
+describe('a workplace beyond signpost reach', () => {
+  it('binds, but the worker stands lost until signposts link the workplace', () => {
     const sim = confinedSim();
     const u = ownedSettler(sim, 2, 2, WOODCUTTER);
     const far = sawmillAt(sim, OUT_OF_AREA, 2);
     sim.enqueueSetup({ kind: 'assignWorker', entity: u, building: far, jobPriority: [CARPENTER] });
     sim.step();
-    expect(sim.world.has(u, JobAssignment)).toBe(false);
+    expect(sim.world.get(u, JobAssignment).workplace).toBe(far);
+    expect(sim.world.get(u, LostWay).cutOff).toBe(true);
+    expect(sim.workStatus(u)).toEqual({ kind: 'workplaceOutOfReach' });
 
-    const near = sawmillAt(sim, IN_AREA, 2);
-    sim.enqueueSetup({ kind: 'assignWorker', entity: u, building: near, jobPriority: [CARPENTER] });
-    sim.step();
-    expect(sim.world.get(u, JobAssignment).workplace).toBe(near);
+    const start = sim.world.get(u, Position).x;
+    for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS; t++) sim.step();
+    expect(sim.world.get(u, Position).x).toBe(start); // no walk to the far mill
+    expect(sim.world.has(u, LostWay)).toBe(true);
+
+    // A chain of posts under the link range: settler side, midway, mill side.
+    for (const x of [2, (2 + OUT_OF_AREA) / 2, OUT_OF_AREA - 2]) stampPost(sim, x, 2);
+    for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS && !sim.world.has(u, MoveGoal); t++) sim.step();
+    expect(sim.world.has(u, MoveGoal)).toBe(true); // sets off for its workplace on its own
+    expect(sim.world.has(u, LostWay)).toBe(false);
+    for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS; t++) sim.step();
+    expect(sim.world.get(u, Position).x).toBeGreaterThan(start + ONE); // eastwards, to the mill
   });
 });

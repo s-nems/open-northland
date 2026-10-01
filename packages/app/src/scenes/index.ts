@@ -23,6 +23,7 @@ import { equipmentScene } from './equipment.js';
 import { equipmentEffectsScene } from './equipment-effects.js';
 import { familyScene } from './family.js';
 import { familyAwayScene } from './family-away.js';
+import { farPostScene } from './far-post.js';
 import { farmConstructionScene } from './farm-construction.js';
 import { gathererFlagFollowScene } from './gatherer-flag-follow.js';
 import { gathererGoodsScene } from './gatherer-goods.js';
@@ -126,6 +127,7 @@ export const SCENES: readonly SceneDefinition[] = [
   householdGoodsScene,
   idleWorkScene,
   storeReachScene,
+  farPostScene,
   livestockScene,
   palisadeScene,
   roadsScene,

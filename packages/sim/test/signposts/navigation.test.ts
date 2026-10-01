@@ -18,6 +18,7 @@ import {
   Settler,
   SettlerNeeds,
   SettlerProgress,
+  Stockpile,
   stampOwner,
   WALK_RANGE_NODES,
 } from '../../src/components/index.js';
@@ -55,6 +56,8 @@ const CARPENTER = 2;
 const CIVILIST = 6;
 const CARRIER = 24;
 const STONE = 3;
+const SAWMILL = 2; // the carpenter's workplace
+const FAR_MILL_TILE = 60;
 const RING_NODES = 2;
 const P0 = 0;
 
@@ -500,6 +503,22 @@ describe('a computer seat leads its lost settlers back', () => {
     }
     expect(sim.world.has(sealed, LostWay)).toBe(true);
     expect(walks).toBe(0);
+  });
+
+  it('walks a worker posted beyond its reach to its workplace', () => {
+    const sim = confinedSim();
+    computerSeat(sim);
+    building(sim, 2, 2); // a seat door in reach, so only the far post strands the worker
+    const mill = sim.world.create();
+    sim.world.add(mill, Position, { x: fx.fromInt(FAR_MILL_TILE), y: fx.fromInt(2) });
+    sim.world.add(mill, Building, { buildingType: SAWMILL, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(mill, Owner, { player: P0 });
+    sim.world.add(mill, Stockpile, { amounts: new Map() });
+    const worker = ownedUnit(sim, 4, 4, WOODCUTTER);
+    sim.enqueueSetup({ kind: 'assignWorker', entity: worker, building: mill, jobPriority: [CARPENTER] });
+    run(sim, LEAD_TICKS + WALK_TICKS);
+    expect(tileX(sim, worker)).toBeGreaterThan(FAR_MILL_TILE - 4);
+    expect(sim.world.has(worker, LostWay)).toBe(false);
   });
 
   it("leaves a human seat's lost settler for the player to lead", () => {

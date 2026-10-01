@@ -7,7 +7,7 @@ import { routeRegions } from '../../footprint/index.js';
 import { type NavigationLimit, networkLimitAt, signpostNetwork } from '../../signposts/index.js';
 import type { PlannerPass } from '../planner/pass.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
-import type { SeatDoors } from './cut-off.js';
+import { type SeatDoors, strandedWorkplaceDoor } from './cut-off.js';
 import { nearestFreeCell } from './spacing.js';
 
 /** How long a computer seat's settler stands lost before it is led back. Not the original's: its
@@ -16,10 +16,11 @@ export const LOST_GUIDE_DELAY_TICKS = 10 * TICKS_PER_SECOND;
 
 /**
  * Lead a computer seat's lost settler back towards its settlement: once it has stood lost for
- * {@link LOST_GUIDE_DELAY_TICKS} with no door of its seat in reach, it walks to the nearest own post from
- * which the signpost network reaches a door, or to the nearest door when no post does. The walk itself
- * ignores the confinement, as a player's order would; normal planning resumes on arrival. A settler
- * sealed in a pocket, or whose last guided walk failed, stays put. Returns whether it set the walk.
+ * {@link LOST_GUIDE_DELAY_TICKS}, a worker posted beyond its reach walks to its workplace's door, and one
+ * with no door of its seat in reach walks to the nearest own post from which the signpost network reaches
+ * a door, or to the nearest door when no post does. The walk itself ignores the confinement, as a
+ * player's order would; normal planning resumes on arrival. A settler sealed in a pocket, or whose last
+ * guided walk failed, stays put. Returns whether it set the walk.
  */
 export function guideLostSettler(pass: PlannerPass, e: Entity, limit: NavigationLimit | null): boolean {
   const { world, ctx, terrain } = pass;
@@ -33,15 +34,30 @@ export function guideLostSettler(pass: PlannerPass, e: Entity, limit: Navigation
   const here = terrain.nodeAtClamped(hx, hy);
   const component = terrain.componentOf(here);
   if (component === -1) return false;
-  const home = pass.homeward.of(owner, component);
-  if (home.doors.length === 0 || home.doors.some((door) => limit.allowsNode(door))) return false;
-  const target = nearest(terrain, hx, hy, home.posts) ?? nearest(terrain, hx, hy, home.doors);
+  const target =
+    strandedWorkplaceDoor(world, ctx, terrain, e, limit) ??
+    homewardTarget(pass, owner, component, hx, hy, limit);
   const stand = target === null ? null : nearestFreeCell(terrain, target, pass.spacing);
   if (stand === null || isUnreachableGoal(unreachableGoals(world, ctx, e), stand)) return false;
   if (routeRegions(world, ctx, terrain).unroutable(here, stand)) return false;
   pass.spacing.claim(stand);
   world.add(e, MoveGoal, { cell: stand });
   return true;
+}
+
+/** The nearest own post from which the network reaches a door of the seat, or the nearest door when no
+ *  post does; null while a door is already in reach. */
+function homewardTarget(
+  pass: PlannerPass,
+  owner: number,
+  component: number,
+  hx: number,
+  hy: number,
+  limit: NavigationLimit,
+): NodeId | null {
+  const home = pass.homeward.of(owner, component);
+  if (home.doors.length === 0 || home.doors.some((door) => limit.allowsNode(door))) return null;
+  return nearest(pass.terrain, hx, hy, home.posts) ?? nearest(pass.terrain, hx, hy, home.doors);
 }
 
 /** One seat's landmarks on one static component: its doors there, and its posts there from which the

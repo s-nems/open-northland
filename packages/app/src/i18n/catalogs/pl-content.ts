@@ -377,6 +377,11 @@ export const plContent = {
       summary:
         'Wybierz Ingrid przy pustej piekarni, Sigrid przy zatrzymanej piekarni, Freyę obok pełnej półki chleba i Bjorna na pustej trawie. Ich status wyjaśnia, co uniemożliwia pracę.',
     },
+    'far-post': {
+      title: 'Przydział poza zasięgiem drogowskazów',
+      summary:
+        'Piekarnia i dom stoją 52 kafle od obozu, bez drogowskazów pomiędzy. Olaf ma przydział do piekarni, ale stoi zgubiony. Przypisz PPM innych osadników do piekarni, domu albo kwatery, a zwiadowcą postaw drogowskazy do piekarni: Olaf sam ruszy do pracy.',
+    },
     'store-reach': {
       title: 'Magazyn poza zasięgiem drogowskazów',
       summary:

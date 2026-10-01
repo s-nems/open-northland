@@ -378,6 +378,11 @@ export const enContent = {
       summary:
         'Select Ingrid at the empty bakery, Sigrid at the stopped bakery, Freya beside the full bread shelf, and Bjorn on the empty grass. Their status explains what prevents work.',
     },
+    'far-post': {
+      title: 'Post beyond signpost reach',
+      summary:
+        'A bakery and a home stand 52 tiles from the camp, with no signposts between. Olaf is posted to the bakery but stands lost. Right-click other settlers onto the bakery, the home or the headquarters, then have the scout raise signposts to the bakery: Olaf sets off to work on his own.',
+    },
     'store-reach': {
       title: 'Store beyond signpost reach',
       summary:

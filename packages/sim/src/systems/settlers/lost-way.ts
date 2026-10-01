@@ -23,7 +23,7 @@ export function markLostWay(world: World, ctx: SystemContext, e: Entity): void {
   stamp(world, ctx, e, false);
 }
 
-/** Stamp `e` lost over a seat with no door in reach; an already lost settler only gains this kind. */
+/** Stamp `e` lost over a post or seat out of reach; an already lost settler only gains this kind. */
 export function markCutOff(world: World, ctx: SystemContext, e: Entity): void {
   stamp(world, ctx, e, true);
 }

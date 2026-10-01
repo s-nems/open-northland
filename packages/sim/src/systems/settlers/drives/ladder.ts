@@ -37,7 +37,7 @@ import type { PlannerPass } from '../planner/pass.js';
 import { combatOwnsFeet } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
 import { planHomeTopUp } from './at-home.js';
-import { cutOffCheckDue, reconcileCutOff } from './cut-off.js';
+import { cutOffCheckDue, reconcileCutOff, strandedWorkplaceDoor } from './cut-off.js';
 import {
   planBuilder,
   planCarrierHaul,
@@ -265,6 +265,13 @@ function planEconomy(
     return;
   }
 
+  // A worker posted beyond its signpost reach takes up no work until the network reaches the post. A load
+  // still goes to its bound sink above, so it is never stranded in hand.
+  if (strandedWorkplaceDoor(world, ctx, terrain, e, plan.limit) !== null) {
+    standIdle(plan, pass, settler, hx, hy, alert);
+    return;
+  }
+
   // The field loop sits above the producer rung so a farm that also carries an abstract recipe (real
   // extracted content synthesizes one from `logicproduction`) farms its fields instead of standing
   // at the station minting the good.
@@ -302,9 +309,23 @@ function planEconomy(
   // a script pinned stays where it is; a graduate heads back to its school's yard, and the rest step off a
   // shared tile first so an idle crowd spreads out, then chat with a nearby idle neighbour.
   if (planCarrierHaul(plan, pass.anyHaulable)) return;
+  standIdle(plan, pass, settler, hx, hy, alert);
+}
+
+/** The ladder's idle tail: the settler stands, its lost mark is reconciled on the cut-off cadence, and it
+ *  idles in place, by its school or among neighbours. */
+function standIdle(
+  plan: PlannerContext,
+  pass: PlannerPass,
+  settler: SettlerView,
+  hx: number,
+  hy: number,
+  alert: () => boolean,
+): void {
+  const { world, ctx, terrain, entity: e } = plan;
   pass.idle.stand(e, true);
   if (cutOffCheckDue(ctx)) {
-    reconcileCutOff(world, ctx, e, plan.jobType, plan.limit, pass.seatDoors);
+    reconcileCutOff(world, ctx, terrain, e, plan.jobType, plan.limit, pass.seatDoors);
     if (guideLostSettler(pass, e, plan.limit)) return;
   }
   if (world.has(e, Chat) || staysPut(world, e)) return;
