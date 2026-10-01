@@ -1,16 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import {
-  fanBelowOpen,
-  fanOverlap,
-  noticeFullText,
-  noticeThumb,
-} from '../src/hud/tool-panel/messages/cards.js';
+import { fanBelowOpen, fanOverlap, noticeThumb } from '../src/hud/tool-panel/messages/cards.js';
 import {
   type MessageSubject,
   USER_MESSAGE_TYPE,
   type UserMessageType,
 } from '../src/hud/tool-panel/messages/types.js';
-import { messages } from '../src/i18n/index.js';
 
 const noBuilding = (): number | undefined => undefined;
 const onMap = (): boolean => true;
@@ -172,17 +166,4 @@ describe('notice cards', () => {
     expect(fanBelowOpen([46, 46, 46, 46], 1, 200, 0, 300, 7, 27)).toBe(26);
     expect(fanBelowOpen([46, 46, 46], 1, 200, 0, 100, 7, 27)).toBe(0);
   });
-});
-
-it('links an idle notification to the current diagnosis without changing other messages', () => {
-  const subject = { kind: 'settler', entity: 7 } as const;
-  const text = { short: 'Bjorn', full: 'Bjorn nie ma zajęcia.' };
-  expect(noticeFullText({ type: USER_MESSAGE_TYPE.nothingToDo, subject, text })).toBe(
-    `${text.full} ${messages().hud.notices.idleReasonHint}`,
-  );
-  expect(noticeFullText({ type: USER_MESSAGE_TYPE.noVehicleForWork, subject, text })).toBe(
-    `${text.full} ${messages().hud.notices.idleReasonHint}`,
-  );
-  expect(noticeFullText({ type: USER_MESSAGE_TYPE.hungry, subject, text })).toBe(text.full);
-  expect(noticeFullText({ type: USER_MESSAGE_TYPE.nothingToDo, subject: null, text })).toBe(text.full);
 });

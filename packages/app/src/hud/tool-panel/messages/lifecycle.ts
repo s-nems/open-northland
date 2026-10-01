@@ -24,6 +24,7 @@ const LIFECYCLE: Readonly<Record<UserMessageTypeName, NoticeLifecycle>> = {
   wantsToPray: 'state',
   starving: 'state',
   willDie: 'state',
+  // Retires early once a grown man takes up a trade or a grown woman has a home (`retire.ts`).
   grewUp: 'event',
   // A refused order: marriage ends it early, but the snapshot cannot tell when a partner comes in reach.
   noOneToMarry: 'event',
@@ -74,4 +75,35 @@ export const HUNGER_CHAIN: readonly UserMessageType[] = [
 export function hungerStageOf(type: UserMessageType): number | undefined {
   const stage = HUNGER_CHAIN.indexOf(type);
   return stage < 0 ? undefined : stage;
+}
+
+/** The state notes the snapshot sweep raises again on every pass while their state lasts. One pushed off
+ *  a full feed comes back once there is room, so a full feed gives these up first; any other note pushed
+ *  off would be lost. */
+const POLLED: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
+  USER_MESSAGE_TYPE.lostWithoutSignposts,
+  USER_MESSAGE_TYPE.workplaceNotFound,
+  USER_MESSAGE_TYPE.nothingToDo,
+  USER_MESSAGE_TYPE.noVehicleForWork,
+  USER_MESSAGE_TYPE.hungry,
+  USER_MESSAGE_TYPE.tired,
+  USER_MESSAGE_TYPE.wantsToPray,
+  USER_MESSAGE_TYPE.starving,
+  USER_MESSAGE_TYPE.willDie,
+  USER_MESSAGE_TYPE.familyBlocked,
+  USER_MESSAGE_TYPE.productionStalled,
+]);
+
+export function isPolledNote(type: UserMessageType): boolean {
+  return POLLED.has(type);
+}
+
+/** The notes of which only the latest reading about a subject matters: a seat's newest stance takes the
+ *  earlier stance note's place, shown or dismissed. */
+const LATEST_ONLY: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
+  USER_MESSAGE_TYPE.diplomacyChanged,
+]);
+
+export function keepsLatestOnly(type: UserMessageType): boolean {
+  return LATEST_ONLY.has(type);
 }

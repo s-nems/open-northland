@@ -1,6 +1,6 @@
 import { ONE, components as simComponents, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_CARRIER, JOB_SOLDIER } from '../src/catalog/jobs.js';
+import { JOB_CARRIER, JOB_CIVILIST, JOB_SOLDIER, JOB_WOMAN } from '../src/catalog/jobs.js';
 import { FightAreas } from '../src/hud/tool-panel/messages/fight-areas.js';
 import { DYING_NOTE_RETIRE_MARGIN_PER_MILLE } from '../src/hud/tool-panel/messages/from-snapshot.js';
 import { LOST_NOTE_HOLD_TICKS, NoteRetirement } from '../src/hud/tool-panel/messages/retire.js';
@@ -14,6 +14,7 @@ const RAISED = 100;
 const HELD = RAISED + LOST_NOTE_HOLD_TICKS - 1;
 const RELEASED = RAISED + LOST_NOTE_HOLD_TICKS;
 const SETTLER = 7;
+const HOME = 30;
 const PER_MILLE = 1000;
 
 /** One fresh retirement per question: every rule but the no-path watch reads the snapshot alone. */
@@ -114,7 +115,19 @@ describe('note retirement', () => {
   });
 
   it('leaves an event note to its lifetime whether or not its settler is lost', () => {
-    expect(isNoteOver(note(USER_MESSAGE_TYPE.grewUp), world(RELEASED, 'lost'))).toBe(false);
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.canDoNewJob), world(RELEASED, 'lost'))).toBe(false);
+  });
+
+  it('ends a grown-up note once a grown man takes up a trade or a grown woman has a home', () => {
+    const grown = (jobType: number, extra: Record<string, unknown> = {}) =>
+      subjectWorld({ Settler: { tribe: 1, jobType }, ...extra });
+    const female = { Female: {} };
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.grewUp), grown(JOB_CIVILIST))).toBe(false);
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.grewUp), grown(JOB_CARRIER))).toBe(true);
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.grewUp), grown(JOB_WOMAN, female))).toBe(false);
+    expect(
+      isNoteOver(note(USER_MESSAGE_TYPE.grewUp), grown(JOB_WOMAN, { ...female, Residence: { home: HOME } })),
+    ).toBe(true);
   });
 
   it('ends hunger notes as soon as eating answers their condition', () => {

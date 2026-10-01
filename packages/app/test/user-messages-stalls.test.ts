@@ -24,6 +24,7 @@ const POTTERY = 20;
 const HOME = 2;
 const CLAY = 2;
 const POT = 24;
+const OTHER_INPUT = 3;
 const WORKSHOP = 10;
 const OPERATOR = 11;
 const SWEEPS_TO_GRACE = PRODUCTION_STALL_GRACE_TICKS / SNAPSHOT_SWEEP_INTERVAL_TICKS;
@@ -238,6 +239,42 @@ describe('stalled workshops', () => {
     answer = SHELVES_FULL;
     sweepTo(source, SWEEPS_TO_GRACE + 1, {}, SWEEPS_TO_GRACE + 1);
     expect(retirement.isOver(note, world(tick))).toBe(true);
+  });
+
+  it('keeps the note through another good of the same reason, and rewords it rather than raising anew', () => {
+    let answer: WorkStatus = WAITING_FOR_CLAY;
+    const source = createSnapshotMessageSource(
+      LOCAL,
+      seamAnswering(() => answer),
+    );
+    const retirement = new NoteRetirement(new FightAreas(), source.stalls);
+    const tick = (SWEEPS_TO_GRACE + 1) * SNAPSHOT_SWEEP_INTERVAL_TICKS;
+    sweepTo(source, SWEEPS_TO_GRACE);
+    answer = {
+      kind: 'waitingInput',
+      goodType: POT,
+      missingInputs: [{ goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, outOfReach: false }],
+    };
+    const raised = source
+      .sweep(world(tick), naming)
+      .filter((r) => r.pending.type === USER_MESSAGE_TYPE.productionStalled);
+    expect(raised.map((r) => [r.pending.stall, r.updatesStanding])).toEqual([
+      [{ reason: 'missingInput', goodType: OTHER_INPUT }, true],
+    ]);
+    expect(retirement.isOver(stallNote(CLAY, 'missingInput'), world(tick))).toBe(false);
+  });
+
+  it('judges a crew building a vehicle on the yard as no stall, so the standing note retires', () => {
+    const source = createSnapshotMessageSource(
+      LOCAL,
+      seamAnswering(() => WAITING_FOR_CLAY),
+    );
+    const retirement = new NoteRetirement(new FightAreas(), source.stalls);
+    sweepTo(source, SWEEPS_TO_GRACE);
+    const tick = (SWEEPS_TO_GRACE + 1) * SNAPSHOT_SWEEP_INTERVAL_TICKS;
+    source.sweep(world(tick, { yard: true }), naming);
+    expect(source.stalls?.verdict(WORKSHOP)).toBeNull();
+    expect(retirement.isOver(stallNote(CLAY, 'missingInput'), world(tick, { yard: true }))).toBe(true);
   });
 });
 

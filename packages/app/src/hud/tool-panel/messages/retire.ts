@@ -1,9 +1,11 @@
 import { entityById, ONE, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
-import { JOB_CARRIER } from '../../../catalog/jobs.js';
+import { JOB_CARRIER, JOB_CIVILIST } from '../../../catalog/jobs.js';
 import {
+  isFemale,
   marriageOf,
   needsRuleEnabled,
   orderedNeedOf,
+  residenceHomeOf,
   type SnapshotEntity,
   settlerJobType,
   settlerNeedsOf,
@@ -23,7 +25,7 @@ import {
   occupationOf,
 } from './from-snapshot.js';
 import { USER_MESSAGE_TYPE, type UserMessage } from './types.js';
-import { type StallReader, sameStall } from './workshop-stalls.js';
+import type { StallReader } from './workshop-stalls.js';
 
 /** Ticks a lost note stays up whatever the sim says: a worker that shrugs a refused order off and walks on
  *  at its next re-plan would otherwise take the note with it before it was read. Approximation. */
@@ -88,11 +90,18 @@ function yardRefusalStands(snapshot: WorldSnapshot, worker: SnapshotEntity): boo
   return entityById(snapshot, workplace)?.components.VehicleYardRefusals !== undefined;
 }
 
-/** A stall note ends when its workshop runs a cycle again, or once the sweep judges it otherwise. */
+/** A stall note ends when its workshop runs a cycle again, or once the sweep finds no stall or another
+ *  reason; another good under the same reason only rewords it. */
 function isStallOver(m: UserMessage, workshop: SnapshotEntity, stalls: StallReader | null): boolean {
   if (workshop.components.Production !== undefined || stalls === null) return true;
   const verdict = stalls.verdict(workshop.id);
-  return verdict !== undefined && !sameStall(verdict, m.stall);
+  return verdict !== undefined && verdict?.reason !== m.stall?.reason;
+}
+
+/** A grown-up note has done its job once the player acted on it: a grown man took up a trade, a grown
+ *  woman has a home. */
+function isGrownUpSettled(e: SnapshotEntity): boolean {
+  return isFemale(e) ? residenceHomeOf(e) !== undefined : settlerJobType(e) !== JOB_CIVILIST;
 }
 
 function isDriving(vehicle: SnapshotEntity): boolean {
@@ -150,6 +159,8 @@ export class NoteRetirement {
         return familyNoteWaitOf(e) !== m.familyWait;
       case USER_MESSAGE_TYPE.noOneToMarry:
         return marriageOf(e) !== undefined;
+      case USER_MESSAGE_TYPE.grewUp:
+        return isGrownUpSettled(e);
       case USER_MESSAGE_TYPE.vehicleNoCommander:
         return vehicleCommanderOf(e) !== undefined;
       case USER_MESSAGE_TYPE.vehicleNoAnimal:

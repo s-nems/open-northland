@@ -1,4 +1,4 @@
-import type { HalfCellNode } from '@open-northland/sim';
+import type { DiplomacyState, HalfCellNode } from '@open-northland/sim';
 import type { ChildOrderWait } from '../../../game/snapshot.js';
 import type { MessageText } from './text.js';
 
@@ -87,6 +87,30 @@ export interface ProductionStall {
   readonly goodType: number | null;
 }
 
+/** Why a worker with a workplace stands idle, as its note names it, read off the sim's diagnosis of the
+ *  worker: a craft gate (inputs, shelf, stores, products), a gatherer with nothing in reach or no way
+ *  to it, or a worker with no workshop, tool or trade. */
+export type IdleReasonKind =
+  | 'missingInput'
+  | 'inputOutOfReach'
+  | 'outputFull'
+  | 'noStorage'
+  | 'outputOutOfReach'
+  | 'nothingSelected'
+  | 'productsLocked'
+  | 'noResourceInArea'
+  | 'noResource'
+  | 'resourceRouteBlocked'
+  | 'noWorkplace'
+  | 'noTool'
+  | 'noJob';
+
+/** An idle worker's reason and the good it names, if any. */
+export interface IdleReason {
+  readonly kind: IdleReasonKind;
+  readonly goodType: number | null;
+}
+
 /** What one fight area has hit so far: distinct bodies of the seat's per kind, and who struck them. */
 export interface FightTally {
   readonly buildings: number;
@@ -121,8 +145,14 @@ export interface PendingMessage {
   readonly jobType: number | null;
   /** A family note's reason, part of its identity: a new reason retires the old note and raises its own. */
   readonly familyWait?: ChildOrderWait;
-  /** A stall note's reason; a new one retires the note, which comes back with its own text. */
+  /** A stall note's reason and good. A new reason retires the note, which comes back with its own text;
+   *  a new good under the same reason rewords the standing note. */
   readonly stall?: ProductionStall;
+  /** An idle note's reason, null while the sim names none; not part of the identity, a new one rewords
+   *  the standing note. */
+  readonly idle?: IdleReason | null;
+  /** A stance note's new stance, part of the identity: a later stance replaces the seat's earlier note. */
+  readonly stance?: DiplomacyState;
   /** An attack note's area so far; not part of the identity, since every new hit updates it. */
   readonly fight?: FightTally;
 }

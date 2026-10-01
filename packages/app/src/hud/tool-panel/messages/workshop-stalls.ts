@@ -21,7 +21,7 @@ import { type ProductionStall, USER_MESSAGE_TYPE } from './types.js';
  *  fetch inputs or carry products off between two cycles of fifteen seconds. Approximation. */
 export const PRODUCTION_STALL_GRACE_TICKS = 60 * TICKS_PER_SECOND;
 
-/** What the stall notes read about the seat's workshops. */
+/** What the stall notes read about the seat's workshops, and the idle notes about their workers. */
 export interface WorkshopSeam {
   /** The building types that craft from recipes. */
   readonly types: readonly number[];
@@ -30,7 +30,7 @@ export interface WorkshopSeam {
   readonly workStatus: (entity: number) => WorkStatus | undefined;
 }
 
-/** Whether a workshop's stall stands, and why: undefined while not judged yet, null for none. */
+/** Whether a workshop's stall stands, and why: undefined while not swept yet, null for none. */
 export type StallVerdict = ProductionStall | null | undefined;
 
 /** Read side for the retire rules. */
@@ -88,13 +88,6 @@ export function stallOf(status: WorkStatus): ProductionStall | null {
     default:
       return null;
   }
-}
-
-export function sameStall(
-  a: ProductionStall | null | undefined,
-  b: ProductionStall | null | undefined,
-): boolean {
-  return a?.reason === b?.reason && a?.goodType === b?.goodType;
 }
 
 /** One resting workshop's watch: since when it rests, whose diagnosis was asked, and the verdict. */
@@ -166,7 +159,7 @@ export class WorkshopStalls implements StallReader {
     if (staff.some((worker) => worker.components.SiteAssignment !== undefined)) {
       watch.since = snapshot.tick;
       watch.asked = null;
-      watch.verdict = undefined;
+      watch.verdict = null;
       return;
     }
     const operator = operatorOf(staff);
@@ -186,7 +179,8 @@ export class WorkshopStalls implements StallReader {
   }
 }
 
-/** Raise the note about one stalled workshop, keyed by the building. */
+/** Raise the note about one stalled workshop, keyed by the building. A new good under the same reason
+ *  rewords the standing note rather than raising another. */
 export function raiseStall(
   raiser: MessageRaiser,
   naming: MessageNaming,
@@ -214,5 +208,6 @@ export function raiseStall(
         stanceName: null,
         stall: stall.reason,
       }),
+    true,
   );
 }

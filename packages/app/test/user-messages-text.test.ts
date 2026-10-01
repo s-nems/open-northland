@@ -7,6 +7,7 @@ import {
   type NoticeCopy,
 } from '../src/hud/tool-panel/messages/text.js';
 import {
+  type IdleReasonKind,
   type ProductionStallReason,
   USER_MESSAGE_TYPE,
   type UserMessageTypeName,
@@ -78,7 +79,7 @@ describe('notice text', () => {
             expect(line, name).not.toMatch(/[—–]| {2}/);
             expect(line.trim(), name).not.toBe('');
           }
-          // The idle hint and the experience lists follow the full text as sentences of their own.
+          // An idle reason and the experience lists follow the full text as sentences of their own.
           expect(text.full.split('\n')[0], name).toMatch(/\.$/);
         }
       }
@@ -202,6 +203,40 @@ describe('notice text', () => {
     expect(stall('unknown').full).toBe(
       'Młyn: produkcja stoi. Zaznacz warsztat: jego panel pokaże przyczynę.',
     );
+  });
+
+  it.each(COPIES)('words every idle reason in %s, and a worker the sim gives none', (_lang, copy) => {
+    const kinds = Object.keys(copy.idleReason.short) as IdleReasonKind[];
+    expect(new Set(kinds)).toEqual(new Set(Object.keys(copy.idleReason.full)));
+    for (const idle of [...kinds.map((kind) => ({ kind, goodType: 4 })), null]) {
+      for (const female of [false, true]) {
+        const text = compose(copy, 'nothingToDo', { ...BARE, female, goodName: 'Chleb', idle });
+        for (const line of [text.short, text.full]) {
+          expect(line, idle?.kind).not.toMatch(PLACEHOLDER);
+          expect(line, idle?.kind).not.toMatch(/[—–]| {2}/);
+        }
+        expect(text.short.replace('Chleb', '').trim().length, text.short).toBeLessThanOrEqual(
+          SHORT_LINE_MAX_CHARS,
+        );
+        expect(text.full).toMatch(/\.$/);
+      }
+    }
+  });
+
+  it('names why an idle worker stands, with what to do, in place of a pointer to its panel', () => {
+    const idle = (parts: Partial<MessageTextParts>) =>
+      compose(pl.userMessages, 'nothingToDo', { ...BARE, goodName: 'Drewno', ...parts });
+    expect(idle({ idle: { kind: 'noResourceInArea', goodType: 4 } })).toEqual({
+      short: 'Obszar pusty',
+      full: 'Bjorn nie ma nic do roboty. W obszarze pracy nie ma już czego zbierać: Drewno. Wskaż flagą roboczą miejsce z zasobami.',
+    });
+    expect(idle({ female: true, goodName: null, idle: { kind: 'noJob', goodType: null } }).full).toBe(
+      'Bjorn nie ma nic do roboty. Nie ma zawodu. Nadaj jej zawód.',
+    );
+    expect(idle({ idle: null })).toEqual({
+      short: 'Nic do roboty',
+      full: 'Bjorn nie ma nic do roboty. Przyczyny nie widać. Sprawdź, czy miejsce pracy ma w zasięgu magazyn i potrzebne towary.',
+    });
   });
 
   it("counts a fight's hit bodies in the catalog's plural forms and names who struck", () => {

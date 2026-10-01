@@ -8,6 +8,7 @@ import {
 import { SNAPSHOT_SWEEP_INTERVAL_TICKS } from '../src/hud/tool-panel/messages/from-snapshot.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import {
+  type IdleReason,
   type MessageSubject,
   type PendingMessage,
   USER_MESSAGE_TYPE,
@@ -175,16 +176,141 @@ describe('message feed', () => {
     expect(feed.displayed()).toHaveLength(4);
   });
 
-  it('rejects arrivals once every slot is taken', () => {
-    const feed = createMessageFeed();
-    for (let i = 0; i < MESSAGE_SLOTS; i++) {
-      expect(feed.add(pending(USER_MESSAGE_TYPE.tired, { kind: 'settler', entity: i }), TICK, TEXT)).toBe(
+  describe('a full strip', () => {
+    const settler = (entity: number): MessageSubject => ({ kind: 'settler', entity });
+    const fill = (type: UserMessageType, first = 0) => {
+      const feed = createMessageFeed();
+      for (let i = first; i < MESSAGE_SLOTS; i++) feed.add(pending(type, settler(i)), TICK, TEXT);
+      return feed;
+    };
+    const subjects = (feed: ReturnType<typeof createMessageFeed>) =>
+      feed.live().map((m) => m.subject?.entity ?? null);
+
+    it('pushes the oldest lighter note off for an arrival, never a polled note for its polled peer', () => {
+      const feed = fill(USER_MESSAGE_TYPE.tired);
+      expect(feed.add(pending(USER_MESSAGE_TYPE.tired, settler(MESSAGE_SLOTS)), TICK, TEXT)).toBe('full');
+      expect(feed.add(pending(USER_MESSAGE_TYPE.settlementAttacked, null, { about: 1 }), TICK, TEXT)).toBe(
         'accepted',
       );
-    }
-    expect(
-      feed.add(pending(USER_MESSAGE_TYPE.tired, { kind: 'settler', entity: MESSAGE_SLOTS }), TICK, TEXT),
-    ).toBe('full');
+      expect(feed.live()).toHaveLength(MESSAGE_SLOTS);
+      expect(subjects(feed)).not.toContain(0);
+      expect(feed.live().at(-1)?.type).toBe(USER_MESSAGE_TYPE.settlementAttacked);
+    });
+
+    it('lets a one-off note of the same priority push a standing note off in a famine', () => {
+      const feed = fill(USER_MESSAGE_TYPE.starving);
+      expect(feed.add(pending(USER_MESSAGE_TYPE.humanDied, null, { about: 900 }), TICK, TEXT)).toBe(
+        'accepted',
+      );
+      expect(subjects(feed)).not.toContain(0);
+      expect(feed.add(pending(USER_MESSAGE_TYPE.starving, settler(MESSAGE_SLOTS)), TICK, TEXT)).toBe('full');
+      // A polled arrival pushes off neither a polled peer nor the one-off note, which would be lost.
+      expect(feed.add(pending(USER_MESSAGE_TYPE.willDie, settler(MESSAGE_SLOTS)), TICK, TEXT)).toBe('full');
+    });
+
+    it('takes a heavier hunger stage in its lighter card’s place before seeking room', () => {
+      const feed = fill(USER_MESSAGE_TYPE.starving);
+      expect(feed.add(pending(USER_MESSAGE_TYPE.willDie, settler(5)), TICK, TEXT)).toBe('accepted');
+      expect(feed.live()).toHaveLength(MESSAGE_SLOTS);
+      expect(subjects(feed)).toContain(0);
+      expect(
+        feed
+          .live()
+          .filter((m) => m.subject?.entity === 5)
+          .map((m) => m.type),
+      ).toEqual([USER_MESSAGE_TYPE.willDie]);
+    });
+
+    it('gives up a standing note before a one-off one of the same priority', () => {
+      const feed = createMessageFeed();
+      feed.add(pending(USER_MESSAGE_TYPE.houseFinished, { kind: 'building', entity: 3 }), TICK, TEXT);
+      for (let i = 1; i < MESSAGE_SLOTS; i++)
+        feed.add(pending(USER_MESSAGE_TYPE.wantsToPray, settler(i)), TICK, TEXT);
+      expect(feed.add(pending(USER_MESSAGE_TYPE.humanDied, null, { about: 900 }), TICK, TEXT)).toBe(
+        'accepted',
+      );
+      expect(feed.live()[0]?.type).toBe(USER_MESSAGE_TYPE.houseFinished);
+      expect(subjects(feed)).not.toContain(1);
+    });
+
+    it('keeps every state dismissal past a full history, forgetting the oldest event dismissal instead', () => {
+      const feed = createMessageFeed();
+      const house = pending(USER_MESSAGE_TYPE.houseFinished, { kind: 'building', entity: 3 });
+      feed.add(house, TICK, TEXT);
+      for (let i = 1; i < MESSAGE_SLOTS; i++)
+        feed.add(pending(USER_MESSAGE_TYPE.tired, settler(i)), TICK, TEXT);
+      feed.removeAll(TICK + 1);
+      feed.add(pending(USER_MESSAGE_TYPE.tired, settler(MESSAGE_SLOTS)), TICK + 2, TEXT);
+      feed.add(pending(USER_MESSAGE_TYPE.tired, settler(MESSAGE_SLOTS + 1)), TICK + 2, TEXT);
+      feed.removeAll(TICK + 3);
+      expect(feed.state().history).toHaveLength(MESSAGE_SLOTS + 1);
+      expect(feed.add(pending(USER_MESSAGE_TYPE.tired, settler(1)), TICK + 4, TEXT)).toBe('duplicate');
+      expect(feed.add(house, TICK + 4, TEXT)).toBe('accepted');
+    });
+  });
+
+  describe('a seat’s stance note', () => {
+    const stance = (towardYou: 'neutral' | 'enemy') =>
+      pending(USER_MESSAGE_TYPE.diplomacyChanged, null, { about: 2, stance: towardYou });
+
+    it('announces a newer stance in the earlier card’s place, shown or dismissed', () => {
+      const feed = createMessageFeed();
+      expect(feed.add(stance('neutral'), TICK, TEXT)).toBe('accepted');
+      expect(feed.add(stance('neutral'), TICK, TEXT)).toBe('duplicate');
+      expect(feed.add(stance('enemy'), TICK, TEXT)).toBe('accepted');
+      expect(feed.live().map((m) => m.stance)).toEqual(['enemy']);
+      feed.removeAll(TICK + 1);
+      expect(feed.add(stance('neutral'), TICK + 2, TEXT)).toBe('accepted');
+      feed.removeAll(TICK + 3);
+      expect(feed.state().history.map((m) => m.stance)).toEqual(['neutral']);
+    });
+  });
+
+  describe('revising a standing note', () => {
+    const stalled = (goodType: number) =>
+      pending(
+        USER_MESSAGE_TYPE.productionStalled,
+        { kind: 'building', entity: 10 },
+        {
+          goodType,
+          stall: { reason: 'missingInput', goodType },
+        },
+      );
+
+    it('rewords it only when a fact its text reads changed, and keeps its dismissal', () => {
+      const feed = createMessageFeed();
+      feed.add(stalled(1), TICK, TEXT);
+      let composed = 0;
+      const compose = (): MessageText => {
+        composed++;
+        return { short: `x${composed}`, full: 'x' };
+      };
+      expect(feed.revise(stalled(1), compose)).toBe(true);
+      expect(composed).toBe(0);
+      const before = feed.version();
+      expect(feed.revise(stalled(2), compose)).toBe(true);
+      expect(composed).toBe(1);
+      expect(feed.version()).toBeGreaterThan(before);
+      expect(feed.live()[0]).toMatchObject({ goodType: 2, stall: { goodType: 2 }, text: { short: 'x1' } });
+      feed.removeAll(TICK + 1);
+      expect(feed.revise(stalled(3), compose)).toBe(true);
+      expect(feed.add(stalled(3), TICK + 2, TEXT)).toBe('duplicate');
+      expect(feed.state().history[0]?.stall?.goodType).toBe(3);
+    });
+
+    it('rewords an idle note when its reason changes, and when the sim stops naming one', () => {
+      const feed = createMessageFeed();
+      const idle = (reason: IdleReason | null) =>
+        pending(USER_MESSAGE_TYPE.nothingToDo, { kind: 'settler', entity: 7 }, { idle: reason });
+      feed.add(idle({ kind: 'noResource', goodType: 4 }), TICK, TEXT);
+      let composed = 0;
+      const compose = (): MessageText => ({ short: `${++composed}`, full: 'x' });
+      feed.revise(idle({ kind: 'noResource', goodType: 4 }), compose);
+      feed.revise(idle({ kind: 'resourceRouteBlocked', goodType: 4 }), compose);
+      feed.revise(idle(null), compose);
+      expect(composed).toBe(2);
+      expect(feed.live()[0]?.idle).toBeNull();
+    });
   });
 
   it('retires an event note after its lifetime and when its subject is gone', () => {

@@ -923,7 +923,6 @@ export const plGame = {
       clock: 'Czas gry',
     },
     notices: {
-      idleReasonHint: 'Zaznacz osadnika: jego panel pokaże, dlaczego nie pracuje.',
       label: 'Powiadomienia',
       count: 'Wiadomości: {count}',
       levelLabel: 'Poziom wiadomości',
@@ -1308,6 +1307,51 @@ export const plGame = {
       settlers: { one: '{count} osadnika', few: '{count} osadników', many: '{count} osadników' },
       vehicles: { one: '{count} pojazd', few: '{count} pojazdy', many: '{count} pojazdów' },
       wild: 'dzikie bestie',
+    },
+    idleReason: {
+      short: {
+        missingInput: 'Brak: {good}',
+        inputOutOfReach: 'Surowiec daleko',
+        outputFull: 'Pełne półki',
+        noStorage: 'Brak magazynu',
+        outputOutOfReach: 'Magazyn daleko',
+        nothingSelected: 'Wyroby na 0',
+        productsLocked: 'Wyrób nieodkryty',
+        noResourceInArea: 'Obszar pusty',
+        noResource: 'Brak zasobów',
+        resourceRouteBlocked: 'Brak dojścia',
+        noWorkplace: 'Brak warsztatu',
+        noTool: 'Brak narzędzia',
+        noJob: 'Bez zawodu',
+      },
+      full: {
+        missingInput: 'W warsztacie brakuje surowca: {good}. Dostarcz go do magazynu w zasięgu.',
+        inputOutOfReach:
+          'Brakuje surowca: {good}. Mają go tylko magazyny poza zasięgiem drogowskazów. Połącz je drogowskazami albo zbuduj magazyn bliżej.',
+        outputFull:
+          'Półki są pełne (towar: {good}). Zbuduj magazyn w zasięgu albo przydziel więcej tragarzy.',
+        noStorage: 'Żaden magazyn nie przyjmie towaru: {good}. Zbuduj magazyn albo zrób w nim miejsce.',
+        outputOutOfReach:
+          'Nie ma gdzie oddać towaru: {good}. Magazyny, które go przyjmą, leżą poza zasięgiem drogowskazów. Połącz je drogowskazami albo zbuduj magazyn bliżej.',
+        nothingSelected:
+          'Wszystkie wyroby w warsztacie ustawiono na 0. Wybierz w warsztacie, co ma wytwarzać.',
+        productsLocked: 'Wybrany wyrób nie jest jeszcze dostępny: {good}. Wybierz w warsztacie inny wyrób.',
+        noResourceInArea:
+          'W obszarze pracy nie ma już czego zbierać: {good}. Wskaż flagą roboczą miejsce z zasobami.',
+        noResource: {
+          he: 'W zasięgu nie ma nic do zebrania: {good}. Nadaj mu inny zawód.',
+          she: 'W zasięgu nie ma nic do zebrania: {good}. Nadaj jej inny zawód.',
+        },
+        resourceRouteBlocked:
+          'Nie ma dojścia do zasobów: {good}. Otwórz przejście albo wskaż flagą roboczą inne miejsce.',
+        noWorkplace: {
+          he: 'Nie ma warsztatu dla swojego zawodu. Zbuduj taki warsztat albo zmień mu zawód.',
+          she: 'Nie ma warsztatu dla swojego zawodu. Zbuduj taki warsztat albo zmień jej zawód.',
+        },
+        noTool: 'Brakuje narzędzia do pracy. Wytwórz je i dostarcz do magazynu w zasięgu.',
+        noJob: { he: 'Nie ma zawodu. Nadaj mu zawód.', she: 'Nie ma zawodu. Nadaj jej zawód.' },
+      },
+      unknown: 'Przyczyny nie widać. Sprawdź, czy miejsce pracy ma w zasięgu magazyn i potrzebne towary.',
     },
     familyBlocked: {
       short: {

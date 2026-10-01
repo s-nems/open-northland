@@ -1,6 +1,7 @@
 import type { ChildOrderWait } from '../../../game/snapshot.js';
 import { bcp47Tag, formatMessage, type Messages, pluralForm } from '../../../i18n/index.js';
 import {
+  type IdleReason,
   type ProductionStallReason,
   USER_MESSAGE_TYPE,
   type UserMessageType,
@@ -52,6 +53,9 @@ export interface MessageTextParts {
   readonly training?: { readonly course: 'barracks' | 'school'; readonly profession: string };
   /** Why a `productionStalled` note's workshop stands still; `goodName` names the good it is about. */
   readonly stall?: ProductionStallReason;
+  /** Why a `nothingToDo` note's worker stands idle, null while the sim names no reason; `goodName` names
+   *  the good it is about. */
+  readonly idle?: IdleReason | null;
   /** What holds a `familyBlocked` note's child order, and the spouse it names. */
   readonly family?: { readonly wait: ChildOrderWait; readonly partner: NamedSettler | null };
   /** What an attack note's fight has hit, and the named seats and creatures that struck. */
@@ -192,6 +196,15 @@ export function composeMessageText(
     return {
       short: formatMessage(copy.productionStalled.short[parts.stall], values),
       full: formatMessage(copy.productionStalled.full[parts.stall], values),
+    };
+  }
+  if (name === 'nothingToDo') {
+    const idle = parts.idle ?? null;
+    const reason = idle === null ? copy.idleReason.unknown : copy.idleReason.full[idle.kind];
+    const idleShort = idle === null ? copy.short.nothingToDo : copy.idleReason.short[idle.kind];
+    return {
+      short: formatMessage(idleShort, values),
+      full: `${formatMessage(copy.full.nothingToDo, values)} ${formatMessage(inflect(reason, female), values)}`,
     };
   }
   const [shortLine, fullLine] = linesOf(name, parts, copy);

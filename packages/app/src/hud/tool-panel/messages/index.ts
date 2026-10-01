@@ -25,7 +25,7 @@ import {
 import type { FigureFrames } from '../../figures/figure-frames.js';
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText, playerLabel } from '../diplomacy/model.js';
-import { noticeFullText, noticeThumb } from './cards.js';
+import { noticeThumb } from './cards.js';
 import type { MessageFeedState } from './feed.js';
 import { FightAreas } from './fight-areas.js';
 import { type NoticeFigureSlot, NoticeFigures } from './figures.js';
@@ -40,7 +40,7 @@ import {
   MIN_STACK_MEMBERS,
   type NoticeGroup,
 } from './groups.js';
-import type { MessageNaming } from './raise.js';
+import type { MessageNaming, RaisedMessage } from './raise.js';
 import { isSubjectGone, NoteRetirement } from './retire.js';
 import { createSeatFeeds } from './seat-feeds.js';
 import { composeMessageText, fightSummary } from './text.js';
@@ -198,7 +198,7 @@ function cardOf(m: UserMessage, snapshot: WorldSnapshot): NoticeCardView {
     id: m.id,
     level: m.priority,
     short: m.text.short,
-    full: noticeFullText(m),
+    full: m.text.full,
     thumb: noticeThumb(m, buildingTypeIn(snapshot), vehicleOnMapIn(snapshot)),
     canGo: m.subject !== null || m.at !== null,
     fresh: snapshot.tick - m.tick < FRESH_NOTE_TICKS,
@@ -248,7 +248,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       const enemies = seats.map((seat) => naming.player(seat));
       return fightSummary({ buildings, walls, settlers, vehicles, enemies, wild }, messages().userMessages);
     }
-    return noticeFullText(m);
+    return m.text.full;
   };
   const membersOf = (group: NoticeGroup, snapshot: WorldSnapshot): NoticeMemberView[] => {
     const mixed = groupMixesLines(group);
@@ -336,6 +336,13 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     previous = null;
     renderedVersion = -1;
   };
+  /** Add a raised note; a repeat that carries fresh facts hands them to the note it repeats. */
+  const take = (raised: RaisedMessage, tick: number): void => {
+    const outcome = feeds.current.add(raised.pending, tick, raised.compose);
+    if (outcome === 'duplicate' && raised.updatesStanding === true) {
+      feeds.current.revise(raised.pending, raised.compose);
+    }
+  };
   let lastGalleryTick: number | null = null;
   const galleryDue = (tick: number): boolean => {
     if (lastGalleryTick !== null && tick - lastGalleryTick < SNAPSHOT_SWEEP_INTERVAL_TICKS) return false;
@@ -361,15 +368,10 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
             fights,
             deps.isVehicleSite,
           )) {
-            const outcome = feeds.current.add(raised.pending, snapshot.tick, raised.compose);
-            if (outcome === 'duplicate' && raised.updatesStanding === true) {
-              feeds.current.revise(raised.pending, raised.compose);
-            }
+            take(raised, snapshot.tick);
           }
         }
-        for (const raised of snapshotSource?.sweep(snapshot, naming) ?? []) {
-          feeds.current.add(raised.pending, snapshot.tick, raised.compose);
-        }
+        for (const raised of snapshotSource?.sweep(snapshot, naming) ?? []) take(raised, snapshot.tick);
         if (seat !== null) {
           for (const raised of diplomacySource.poll(naming)) {
             feeds.current.add(raised.pending, snapshot.tick, raised.compose);

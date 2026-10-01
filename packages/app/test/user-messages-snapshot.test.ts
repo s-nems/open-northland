@@ -1,5 +1,5 @@
 import * as sim from '@open-northland/sim';
-import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
+import { ONE, systems, type WorkStatus, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { createMessageFeed } from '../src/hud/tool-panel/messages/feed.js';
 import {
@@ -8,6 +8,7 @@ import {
   NO_FOOD_SWEEPS_BEFORE_MESSAGE,
   SNAPSHOT_SWEEP_INTERVAL_TICKS,
 } from '../src/hud/tool-panel/messages/from-snapshot.js';
+import { idleReasonOf } from '../src/hud/tool-panel/messages/idle-reasons.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
@@ -124,6 +125,7 @@ function snapshot(tick: number, actors: readonly Actor[], needsEnabled = true): 
 }
 
 const FLAG = 92;
+const WOOD = 4;
 
 const plain = (full: string): MessageText => ({ short: full, full });
 const naming: MessageNaming = {
@@ -387,6 +389,63 @@ describe('user messages read off the snapshot', () => {
       const hired: Actor[] = [building, { id: 1, workplace: WORKPLACE, doing: 'walk' }];
       const from = IDLE_SWEEPS_BEFORE_MESSAGE + 1;
       expect(sweep(source, snapshot(from * SNAPSHOT_SWEEP_INTERVAL_TICKS, hired))).toEqual([]);
+    });
+
+    it('reads its reason off the diagnosis, and none off one the note cannot word', () => {
+      const input = { goodType: WOOD, required: 1, available: 0, missing: 1 };
+      expect(
+        idleReasonOf({ kind: 'waitingInput', goodType: 9, missingInputs: [{ ...input, outOfReach: true }] }),
+      ).toEqual({ kind: 'inputOutOfReach', goodType: WOOD });
+      expect(idleReasonOf({ kind: 'noOutputDestination', goodType: WOOD, reason: 'noStorage' })).toEqual({
+        kind: 'noStorage',
+        goodType: WOOD,
+      });
+      expect(idleReasonOf({ kind: 'resourceRouteBlocked', goodTypes: [WOOD] })).toEqual({
+        kind: 'resourceRouteBlocked',
+        goodType: WOOD,
+      });
+      expect(idleReasonOf({ kind: 'nothingSelected' })).toEqual({ kind: 'nothingSelected', goodType: null });
+      expect(idleReasonOf({ kind: 'noOutputDestination', goodType: WOOD, reason: 'unknown' })).toBeNull();
+      expect(idleReasonOf({ kind: 'unknown', reason: 'gatherSearch' })).toBeNull();
+      expect(idleReasonOf(undefined)).toBeNull();
+    });
+
+    it('names the reason the sim gives, asked once a sweep from the sweep before the note', () => {
+      const asked: number[] = [];
+      let answer: WorkStatus | undefined = {
+        kind: 'noEligibleResource',
+        goodTypes: [WOOD],
+        scope: 'workArea',
+      };
+      const source = createSnapshotMessageSource(LOCAL, {
+        types: [],
+        workStatus: (entity) => {
+          asked.push(entity);
+          return answer;
+        },
+      });
+      const idleAt = (i: number) =>
+        source.sweep(
+          snapshot(i * SNAPSHOT_SWEEP_INTERVAL_TICKS, [building, { id: 1, workplace: WORKPLACE }]),
+          naming,
+        );
+      for (let i = 1; i < IDLE_SWEEPS_BEFORE_MESSAGE - 1; i++) idleAt(i);
+      expect(asked).toEqual([]);
+      expect(idleAt(IDLE_SWEEPS_BEFORE_MESSAGE - 1)).toEqual([]);
+      expect(asked).toEqual([1]);
+      const [raised] = idleAt(IDLE_SWEEPS_BEFORE_MESSAGE);
+      expect(asked).toEqual([1, 1]);
+      expect(raised?.pending.idle).toEqual({ kind: 'noResourceInArea', goodType: WOOD });
+      expect(raised?.pending.goodType).toBe(WOOD);
+      expect(raised?.updatesStanding).toBe(true);
+      // An unanswered read keeps the last reason; a diagnosis that names none clears it.
+      answer = undefined;
+      expect(idleAt(IDLE_SWEEPS_BEFORE_MESSAGE + 1)[0]?.pending.idle).toEqual({
+        kind: 'noResourceInArea',
+        goodType: WOOD,
+      });
+      answer = { kind: 'unknown', reason: 'unsupportedWorkplace' };
+      expect(idleAt(IDLE_SWEEPS_BEFORE_MESSAGE + 2)[0]?.pending.idle).toBeNull();
     });
   });
 

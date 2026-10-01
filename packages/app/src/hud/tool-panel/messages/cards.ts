@@ -1,19 +1,4 @@
-import { messages } from '../../../i18n/index.js';
-import { type PendingMessage, USER_MESSAGE_TYPE, type UserMessage, type UserMessageType } from './types.js';
-
-/** The idle notes, which link to the selected worker's live diagnosis. */
-const IDLE_NOTES: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
-  USER_MESSAGE_TYPE.nothingToDo,
-  USER_MESSAGE_TYPE.workplaceNotFound,
-  USER_MESSAGE_TYPE.noVehicleForWork,
-]);
-
-/** Idle notes link to the selected worker's live diagnosis rather than retaining a stale reason. */
-export function noticeFullText(note: Pick<UserMessage, 'type' | 'subject' | 'text'>): string {
-  return IDLE_NOTES.has(note.type) && note.subject?.kind === 'settler'
-    ? `${note.text.full} ${messages().hud.notices.idleReasonHint}`
-    : note.text.full;
-}
+import { type PendingMessage, USER_MESSAGE_TYPE, type UserMessageType } from './types.js';
 
 /** The emblems a card without a live settler shows on its thumbnail; each has a line glyph fallback. */
 export type NoticeGlyph = 'house' | 'swords' | 'skull' | 'shield' | 'banner' | 'chest' | 'scroll';

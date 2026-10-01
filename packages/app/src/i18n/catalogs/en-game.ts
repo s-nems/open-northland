@@ -941,7 +941,6 @@ export const enGame = {
       clock: 'Game time',
     },
     notices: {
-      idleReasonHint: 'Select the settler: their panel shows why they are not working.',
       label: 'Notifications',
       count: 'Messages: {count}',
       levelLabel: 'Message level',
@@ -1341,6 +1340,49 @@ export const enGame = {
     },
     /** A couple's wish for a child that waits on the player: the card line, and the whole message about
      *  the woman. `{partner}` is her husband's name with a leading space, or empty. */
+    idleReason: {
+      short: {
+        missingInput: 'Missing: {good}',
+        inputOutOfReach: 'Input far away',
+        outputFull: 'Shelves full',
+        noStorage: 'No storage',
+        outputOutOfReach: 'Store far away',
+        nothingSelected: 'All set to 0',
+        productsLocked: 'Product locked',
+        noResourceInArea: 'Area worked out',
+        noResource: 'No resources',
+        resourceRouteBlocked: 'No way through',
+        noWorkplace: 'No workshop',
+        noTool: 'No tool',
+        noJob: 'No trade',
+      },
+      full: {
+        missingInput: 'The workshop lacks {good}. Deliver it to a store in reach.',
+        inputOutOfReach:
+          'Missing {good}. Only stores beyond the signposts hold it. Link them with signposts or build a store closer.',
+        outputFull: 'The shelves are full ({good}). Build a store in reach or assign more carriers.',
+        noStorage: 'No store takes {good}. Build a store or make room in one.',
+        outputOutOfReach:
+          'Nowhere to take {good}: the stores that take it lie beyond the signposts. Link them with signposts or build a store closer.',
+        nothingSelected: 'Every product in the workshop is set to 0. Choose in the workshop what to make.',
+        productsLocked:
+          'The chosen product is not available yet: {good}. Choose another product in the workshop.',
+        noResourceInArea:
+          'Nothing left to gather in the work area: {good}. Mark a spot with resources with a work flag.',
+        noResource: {
+          he: 'Nothing to gather in reach: {good}. Give him another trade.',
+          she: 'Nothing to gather in reach: {good}. Give her another trade.',
+        },
+        resourceRouteBlocked: 'No way through to {good}. Clear a path or mark another spot with a work flag.',
+        noWorkplace: {
+          he: 'There is no workshop for his trade. Build one or change his trade.',
+          she: 'There is no workshop for her trade. Build one or change her trade.',
+        },
+        noTool: 'A tool is missing. Make one and deliver it to a store in reach.',
+        noJob: { he: 'Has no trade. Give him one.', she: 'Has no trade. Give her one.' },
+      },
+      unknown: 'The cause is unclear. Check that the workplace has a store and the goods it needs in reach.',
+    },
     familyBlocked: {
       short: {
         husbandAway: 'Husband away',

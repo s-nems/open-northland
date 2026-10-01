@@ -6,6 +6,7 @@ import {
   ONE,
   systems,
   TICKS_PER_SECOND,
+  type WorkStatus,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { isSoldierJob } from '../../../catalog/professions.js';
@@ -26,8 +27,9 @@ import {
   workFlagOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
+import { idleReasonOf } from './idle-reasons.js';
 import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
-import { USER_MESSAGE_TYPE } from './types.js';
+import { type IdleReason, USER_MESSAGE_TYPE } from './types.js';
 import { type StallReader, type WorkshopSeam, WorkshopStalls } from './workshop-stalls.js';
 
 /** Ticks between two sweeps of the snapshot for the conditions no sim event announces; the feed's
@@ -102,10 +104,12 @@ function isLocalPerson(e: SnapshotEntity, localPlayer: number): boolean {
   return e.components.Person !== undefined && ownerPlayerOf(e) === localPlayer;
 }
 
-/** One worker's run of workless sweeps, and the post it held while running it up. */
+/** One worker's run of workless sweeps, the post it held while running it up, and the last reason the
+ *  sim gave for it. */
 interface IdleStreak {
   readonly count: number;
   readonly atPost: boolean;
+  reason: IdleReason | null;
 }
 
 /** Consecutive sweeps each worker has spent without work. */
@@ -121,10 +125,19 @@ class IdleStreaks {
    *  over: the two notes this feeds ask different questions. Returns the count after this sweep. */
   advance(entity: number, occupation: 'idle' | 'walking', atPost: boolean): number {
     const before = this.counts.get(entity);
-    const kept = before !== undefined && before.atPost === atPost ? before.count : 0;
-    const count = kept + (occupation === 'idle' ? 1 : 0);
-    this.next.set(entity, { count, atPost });
+    const kept = before !== undefined && before.atPost === atPost ? before : undefined;
+    const count = (kept?.count ?? 0) + (occupation === 'idle' ? 1 : 0);
+    this.next.set(entity, { count, atPost, reason: kept?.reason ?? null });
     return count;
+  }
+
+  /** The reason this sweep's diagnosis gives for the run `advance` just counted. No answer keeps the
+   *  last one: an ask still in flight, or a host cache that let the answer go, is not a new reason. */
+  reason(entity: number, status: WorkStatus | undefined): IdleReason | null {
+    const streak = this.next.get(entity);
+    if (streak === undefined) return idleReasonOf(status);
+    if (status !== undefined) streak.reason = idleReasonOf(status);
+    return streak.reason;
   }
 
   /** A worker not advanced this sweep, busy or gone, starts over. */
@@ -275,8 +288,9 @@ export function idleNoteHeldByStall(e: SnapshotEntity, stalls: StallReader | nul
   return workplace !== undefined && stalls?.holdsIdleNote(workplace) === true;
 }
 
-/** The note an idle adult earns: with a post to work at it has nothing to do, having lost one it has
- *  nowhere to go, and a trader without a cart cannot work its route. */
+/** The note an idle adult earns: with a post to work at it has nothing to do, and names why; having
+ *  lost one it has nowhere to go, and a trader without a cart cannot work its route. The diagnosis is
+ *  asked once a sweep, from the sweep before the note, so the note's first text already has its answer. */
 function raiseIdleNote(
   raiser: MessageRaiser,
   snapshot: WorldSnapshot,
@@ -284,6 +298,7 @@ function raiseIdleNote(
   streaks: IdleStreaks,
   posts: PostHistory,
   stalls: StallReader | null,
+  workStatus: WorkshopSeam['workStatus'] | undefined,
 ): void {
   const atPost = workplaceOf(e) !== undefined;
   // Tracked ahead of the early-outs, since a settler is at its post precisely while it looks busy.
@@ -291,10 +306,14 @@ function raiseIdleNote(
   if (holdsPost(e) || isSoldier(e)) return;
   const occupation = occupationOf(snapshot, e);
   if (occupation === 'busy') return;
-  if (streaks.advance(e.id, occupation, atPost) < IDLE_SWEEPS_BEFORE_MESSAGE) return;
+  const count = streaks.advance(e.id, occupation, atPost);
+  const due = count >= IDLE_SWEEPS_BEFORE_MESSAGE;
   if (hasWorkplaceToWorkAt(snapshot, e)) {
-    if (!idleNoteHeldByStall(e, stalls)) raiser.settler(USER_MESSAGE_TYPE.nothingToDo, e);
-  } else if (lostItsWorkplace(e, everEmployed)) raiser.settler(USER_MESSAGE_TYPE.workplaceNotFound, e);
+    if (count < IDLE_SWEEPS_BEFORE_MESSAGE - 1 || idleNoteHeldByStall(e, stalls)) return;
+    const reason = streaks.reason(e.id, workStatus?.(e.id));
+    if (due) raiser.idle(e, reason);
+  } else if (!due) return;
+  else if (lostItsWorkplace(e, everEmployed)) raiser.settler(USER_MESSAGE_TYPE.workplaceNotFound, e);
   else if (lacksTradeCart(e)) raiser.settler(USER_MESSAGE_TYPE.noVehicleForWork, e);
 }
 
@@ -322,7 +341,8 @@ function raiseFamilyBlock(
 
 /**
  * The local player's messages read off the snapshot itself: pressing needs, a settler near death, an
- * idle worker, a child order that cannot start and, given `workshops`, a stalled workshop. One pass over
+ * idle worker, a child order that cannot start and, given `workshops`, a stalled workshop and the reason
+ * an idle worker gives. One pass over
  * the world's actors per sweep interval, filtering to the seat inside the loop, so the cost follows the
  * actor count and the cadence rather than the frame rate.
  */
@@ -355,7 +375,7 @@ export function createSnapshotMessageSource(
         if (isLost(e)) raiser.settler(USER_MESSAGE_TYPE.lostWithoutSignposts, e);
         raiseFamilyBlock(raiser, snapshot, e, foodWaits);
         // The original gates only this note on age, alongside its player-type and vehicle checks.
-        if (isAdult(e)) raiseIdleNote(raiser, snapshot, e, streaks, posts, stalls);
+        if (isAdult(e)) raiseIdleNote(raiser, snapshot, e, streaks, posts, stalls, workshops?.workStatus);
       }
       streaks.end();
       foodWaits.end();

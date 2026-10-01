@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createMessageFeed } from '../src/hud/tool-panel/messages/feed.js';
 import { createDiplomacyMessageSource, type MetSeat } from '../src/hud/tool-panel/messages/from-diplomacy.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
@@ -6,6 +7,8 @@ import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
 
 const ALLY = 1;
 const RIVAL = 2;
+/** Past the feed's setup ticks, which mute every arrival. */
+const TICK = 100;
 
 const plain = (full: string): MessageText => ({ short: full, full });
 const naming: MessageNaming = {
@@ -38,6 +41,21 @@ describe('user messages about the other seats', () => {
     expect(poll()).toEqual([[USER_MESSAGE_TYPE.diplomacyChanged, ALLY]]);
 
     expect(poll()).toEqual([]);
+  });
+
+  it('tells two stance changes of one seat apart by the stance each reports', () => {
+    let seats: readonly MetSeat[] = [{ player: ALLY, towardYou: 'friend' }];
+    const source = createDiplomacyMessageSource(() => seats);
+    source.poll(naming);
+    const feed = createMessageFeed();
+    const take = (tick: number) => source.poll(naming).map((r) => feed.add(r.pending, tick, r.compose));
+    seats = [{ player: ALLY, towardYou: 'neutral' }];
+    expect(take(TICK)).toEqual(['accepted']);
+    seats = [{ player: ALLY, towardYou: 'enemy' }];
+    expect(take(TICK + 1)).toEqual(['accepted']);
+    expect(feed.live().map((m) => m.text.full)).toEqual([
+      `Gracz ${ALLY}:${USER_MESSAGE_TYPE.diplomacyChanged}:enemy`,
+    ]);
   });
 
   it('names the seat and the stance it now holds', () => {

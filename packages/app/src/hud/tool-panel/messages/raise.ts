@@ -2,6 +2,7 @@ import { type DiplomacyState, nodeOfPosition, type Paper, type WorldSnapshot } f
 import { type ChildOrderWait, num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import type { MessageText, MessageTextParts, NamedSettler } from './text.js';
 import {
+  type IdleReason,
   type MessageSubject,
   type PendingMessage,
   USER_MESSAGE_TYPE,
@@ -97,6 +98,37 @@ export class MessageRaiser {
           training: { course, profession: this.naming.technology('job', jobType) ?? '' },
         });
       },
+    );
+  }
+
+  /** A worker idle at its workplace for `reason`; a repeat with another reason rewords the standing note. */
+  idle(e: SnapshotEntity, reason: IdleReason | null): void {
+    const type = USER_MESSAGE_TYPE.nothingToDo;
+    const goodType = reason?.goodType ?? null;
+    this.raise(
+      `${type}|settler:${e.id}`,
+      {
+        type,
+        subject: { kind: 'settler', entity: e.id },
+        at: nodeOf(e),
+        about: null,
+        goodType,
+        technologies: null,
+        jobType: jobTypeOf(e),
+        idle: reason,
+      },
+      () => {
+        const named = this.naming.settler(e, this.snapshot);
+        return this.naming.text(type, {
+          subjectName: named.name,
+          jobLabel: named.jobLabel,
+          female: named.female,
+          goodName: goodType === null ? null : (this.naming.technology('good', goodType) ?? null),
+          stanceName: null,
+          idle: reason,
+        });
+      },
+      true,
     );
   }
 

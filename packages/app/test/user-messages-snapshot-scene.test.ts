@@ -1,10 +1,12 @@
 import { components, type Entity, ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { grassTerrain } from '../src/catalog/buildings.js';
+import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import {
   BUILDING_WAREHOUSE_00,
   placeBuiltSandboxBuilding,
+  spawnSettlerDirect,
   staffBuildingFully,
 } from '../src/game/sandbox/index.js';
 import { ownerPlayerOf, workplaceOf } from '../src/game/snapshot.js';
@@ -40,6 +42,17 @@ const IDLE_CREW: SceneWorld = {
   build: (sim) => {
     const store = placeBuiltSandboxBuilding(sim, BUILDING_WAREHOUSE_00, 12, 6, HUMAN_PLAYER);
     staffBuildingFully(sim, store, HUMAN_PLAYER);
+  },
+};
+
+/** A collector posted at a store on grass with nothing to gather anywhere. */
+const BARE_COLLECTOR: SceneWorld = {
+  seed: 5,
+  terrain: grassTerrain(24, 16),
+  build: (sim) => {
+    const store = placeBuiltSandboxBuilding(sim, BUILDING_WAREHOUSE_00, 12, 6, HUMAN_PLAYER);
+    const collector = spawnSettlerDirect(sim, JOB_COLLECTOR, 12, 10, HUMAN_PLAYER);
+    sim.world.add(collector, components.JobAssignment, { workplace: store });
   },
 };
 
@@ -110,6 +123,23 @@ describe('user messages read off real scene snapshots', () => {
   it('leaves the warehouse crew alone while it is hauling', () => {
     const { firstAt } = firstIdleNotes(registeredScene('warehouse'), 8 * IDLE_SWEEPS_BEFORE_MESSAGE);
     expect(firstAt.size).toBe(0);
+  });
+
+  it('names why a collector of a store on bare grass stands idle', () => {
+    const sim = createSceneSim(BARE_COLLECTOR);
+    sim.run(2);
+    const source = createSnapshotMessageSource(HUMAN_PLAYER, {
+      types: [],
+      workStatus: (entity) => sim.workStatus(entity as Entity),
+    });
+    const reasons = new Set<string>();
+    for (let i = 0; i < 2 * IDLE_SWEEPS_BEFORE_MESSAGE; i++) {
+      sim.run(SNAPSHOT_SWEEP_INTERVAL_TICKS);
+      for (const r of source.sweep(sim.snapshot(), naming)) {
+        if (r.pending.type === USER_MESSAGE_TYPE.nothingToDo) reasons.add(r.pending.idle?.kind ?? 'none');
+      }
+    }
+    expect([...reasons]).toEqual(['noResourceInArea']);
   });
 
   it('reports both store-reach bakeries stalled, naming why, once the grace has passed', () => {

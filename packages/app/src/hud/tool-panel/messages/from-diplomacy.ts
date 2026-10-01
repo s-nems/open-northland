@@ -26,6 +26,7 @@ function seatNote(naming: MessageNaming, type: UserMessageType, seat: MetSeat): 
       goodType: null,
       technologies: null,
       jobType: null,
+      ...(type === USER_MESSAGE_TYPE.diplomacyChanged ? { stance: seat.towardYou } : {}),
     },
     compose: () =>
       naming.text(type, {

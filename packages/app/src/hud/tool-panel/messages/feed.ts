@@ -1,5 +1,5 @@
 import { TICKS_PER_SECOND } from '@open-northland/sim';
-import { HUNGER_CHAIN, hungerStageOf, lifecycleOf } from './lifecycle.js';
+import { HUNGER_CHAIN, hungerStageOf, isPolledNote, keepsLatestOnly, lifecycleOf } from './lifecycle.js';
 import {
   cycleMessageLevel,
   DEFAULT_MESSAGE_LEVEL,
@@ -15,8 +15,9 @@ export const MESSAGE_LIFETIME_TICKS = 5 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 /** Ticks a dismissed event note keeps its repeat away, counted from the dismissal: as long as the note
  *  would have stood had it just arrived. */
 export const DISMISSED_EVENT_BLOCK_TICKS = MESSAGE_LIFETIME_TICKS;
-/** Slots in each of the displayed and the history buffer; a full strip rejects arrivals and a full
- *  history forgets its oldest dismissal (approximation of the original). */
+/** Slots on the strip, and the event dismissals the history keeps. A full strip makes room by pushing a
+ *  lighter note off; a full history forgets its oldest event dismissal, while a state dismissal stays
+ *  as long as its cause, which bounds it. Approximation of the original's two buffers of this size. */
 export const MESSAGE_SLOTS = 200;
 /** Events raised while the world is still being assembled never become notes: authored spawns land on
  *  the first step, and every adult they place would otherwise be announced as born. */
@@ -34,7 +35,8 @@ export interface MessageFeedState {
   readonly history: readonly DismissedMessage[];
 }
 
-/** `superseded`: a heavier stage of the settler's hunger chain is shown or dismissed. */
+/** `superseded`: a heavier stage of the settler's hunger chain is shown or dismissed. `full`: the strip
+ *  is full and holds nothing the arrival may push off. */
 export type MessageAddOutcome = 'accepted' | 'muted' | 'duplicate' | 'superseded' | 'full';
 
 /** How many live notes carry each priority, indexed by level. */
@@ -64,8 +66,9 @@ export interface MessageFeed {
   removeMany(ids: ReadonlySet<number>, tick: number): boolean;
   /** Dismiss every note the level shows; the ones hidden under it were never seen, so they stay. */
   removeAll(tick: number): void;
-  /** Hand a standing note, shown or dismissed, the place, fight tally and text of its repeat `pending`;
-   *  false when no note matches it. */
+  /** Hand a standing note, shown or dismissed, the place, fight tally, stall or idle reason and text of
+   *  its repeat `pending`; `compose` runs only when a fact the text reads changed. False when no note
+   *  matches it. */
   revise(pending: PendingMessage, compose: () => MessageText): boolean;
   /** Drop notes and dismissals `over` reports as ended, event notes past their lifetime and event
    *  dismissals past their block. `ageless` skips both clocks, so only `over` ends anything. */
@@ -98,11 +101,40 @@ function identityKey(m: PendingMessage): string {
   if (lifecycleOf(m.type) === 'state') {
     return `${m.type}|${subjectKey(m.subject, m.about)}|${m.familyWait ?? ''}`;
   }
+  const stance = m.stance ?? '';
   const technologies =
     m.technologies === null
       ? ''
       : m.technologies.map((technology) => `${technology.kind}:${technology.typeId}`).join(',');
-  return `${m.type}|${subjectKey(m.subject, m.about)}|${m.goodType ?? ''}|${m.jobType ?? ''}|${technologies}|${m.familyWait ?? ''}`;
+  return `${m.type}|${subjectKey(m.subject, m.about)}|${m.goodType ?? ''}|${m.jobType ?? ''}|${technologies}|${m.familyWait ?? ''}|${stance}`;
+}
+
+/** The facts outside the identity a standing note's text reads; a fight's text changes with every hit. */
+function wordedFacts(m: PendingMessage): string | null {
+  if (m.fight !== undefined) return null;
+  const idle =
+    m.idle === undefined ? '' : m.idle === null ? 'none' : `${m.idle.kind}:${m.idle.goodType ?? ''}`;
+  return `${m.stall?.reason ?? ''}:${m.stall?.goodType ?? ''}|${idle}`;
+}
+
+/** The note to push off a full strip for `arrival`, or undefined when none may go: any lighter note, or
+ *  one of the arrival's own priority the sweep brings back on its own, unless the arrival is such a note
+ *  itself (two polled notes would push each other off every sweep). The lightest goes first, a polled
+ *  one before one that would be lost, the oldest before a newer one. */
+function evictionFor(live: readonly UserMessage[], arrival: PendingMessage): UserMessage | undefined {
+  const priority = messagePriority(arrival.type);
+  const arrivalPolled = isPolledNote(arrival.type);
+  const goesBefore = (m: UserMessage, other: UserMessage): boolean =>
+    m.priority !== other.priority
+      ? m.priority < other.priority
+      : isPolledNote(m.type) && !isPolledNote(other.type);
+  let victim: UserMessage | undefined;
+  for (const m of live) {
+    const mayGo =
+      m.priority < priority || (m.priority === priority && !arrivalPolled && isPolledNote(m.type));
+    if (mayGo && (victim === undefined || goesBefore(m, victim))) victim = m;
+  }
+  return victim;
 }
 
 function sameSubject(a: PendingMessage, b: PendingMessage): boolean {
@@ -123,9 +155,10 @@ class MessageList<T extends UserMessage> {
     this.byKey.set(identityKey(m), (this.byKey.get(identityKey(m)) ?? 0) + 1);
   }
 
-  /** Drop the front entry, for a full history rolling over. */
-  shift(): void {
-    const first = this.items.shift();
+  /** Drop the first entry `drop` picks, if any. */
+  dropFirst(drop: (m: T) => boolean): void {
+    const at = this.items.findIndex(drop);
+    const [first] = at < 0 ? [] : this.items.splice(at, 1);
     if (first !== undefined) this.uncount(first);
   }
 
@@ -191,7 +224,7 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
 
   const dismiss = (keep: (m: UserMessage) => boolean, tick: number): boolean => {
     const changed = live.prune(keep, (m) => {
-      if (history.items.length >= MESSAGE_SLOTS) history.shift();
+      if (history.items.length >= MESSAGE_SLOTS) history.dropFirst((d) => lifecycleOf(d.type) === 'event');
       history.push({ ...m, dismissedAt: tick });
     });
     if (changed) version++;
@@ -226,13 +259,22 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
       const stage = stackStages ? undefined : hungerStageOf(pending.type);
       if (stage !== undefined && heavierStageHeld(pending, stage)) return 'superseded';
       if (live.matches(pending)) return 'duplicate';
-      if (live.items.length >= MESSAGE_SLOTS) return 'full';
+      // A heavier stage or a newer reading takes the earlier card's place before any room is sought.
       if (stage !== undefined && stage > 0) {
-        // The heavier stage takes the lighter card's place rather than stacking beside it.
         live.prune((m) => {
           const lighter = hungerStageOf(m.type);
           return lighter === undefined || lighter >= stage || !sameSubject(m, pending);
         });
+      }
+      if (keepsLatestOnly(pending.type)) {
+        const earlier = (m: UserMessage): boolean => m.type !== pending.type || !sameSubject(m, pending);
+        live.prune(earlier);
+        history.prune(earlier);
+      }
+      if (live.items.length >= MESSAGE_SLOTS) {
+        const victim = evictionFor(live.items, pending);
+        if (victim === undefined) return 'full';
+        live.prune((m) => m !== victim);
       }
       live.push({ ...pending, id: nextId, priority: messagePriority(pending.type), tick, text: compose() });
       nextId++;
@@ -242,12 +284,18 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
     remove: (id, tick) => dismiss((m) => m.id !== id, tick),
     removeMany: (ids, tick) => dismiss((m) => !ids.has(m.id), tick),
     revise: (pending, compose) => {
-      const update = <T extends UserMessage>(m: T): T => ({
-        ...m,
-        at: pending.at,
-        ...(pending.fight === undefined ? {} : { fight: pending.fight }),
-        text: compose(),
-      });
+      const facts = wordedFacts(pending);
+      const update = <T extends UserMessage>(m: T): T =>
+        facts !== null && facts === wordedFacts(m)
+          ? m
+          : {
+              ...m,
+              at: pending.at,
+              ...(pending.fight === undefined ? {} : { fight: pending.fight }),
+              ...(pending.stall === undefined ? {} : { stall: pending.stall, goodType: pending.goodType }),
+              ...(pending.idle === undefined ? {} : { idle: pending.idle }),
+              text: compose(),
+            };
       const shown = live.replace(pending, update);
       if (shown === undefined) return history.replace(pending, update) !== undefined;
       // The place moves with every hit, but only a new text redraws the column.
