@@ -1,13 +1,9 @@
 import { FOG_STATE, type FogView } from '@open-northland/sim';
 import { BufferImageSource, Container, Mesh, MeshGeometry, Texture, type TextureSource } from 'pixi.js';
-import {
-  FOG_EXPLORED_ALPHA,
-  FOG_UNEXPLORED_ALPHA,
-  fogWashGeometry,
-  fogWashLiftRows,
-} from '../../data/fog/index.js';
+import { FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA, fogWashGeometry } from '../../data/fog/index.js';
 import { TILE_HALF_H, TILE_HALF_W, type Viewport, visibleTileRange } from '../../data/projection/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
+import { destroyMeshChildren } from '../mesh-teardown.js';
 
 /**
  * The fog-of-war wash over the ground. The sim's VisionSystem decides which cell is unexplored,
@@ -54,6 +50,8 @@ export class FogLayer {
   private texH = 0;
   /** Signature of the frame last rasterized - an unchanged signature skips the rebuild. */
   private key = '';
+  /** Signature of the vertex grid, which moves with the band and the terrain but not the mask. */
+  private geometryKey = '';
   /** The terrain the wash was last lifted over, and a count of the fields seen, for the signature. */
   private elevation: ElevationField | undefined;
   private elevationVersion = 0;
@@ -78,7 +76,8 @@ export class FogLayer {
   }
 
   /** Re-rasterize the visible band of `view`'s mask over `elevation`'s terrain; `null` clears the wash
-   *  (fog off). */
+   *  (fog off). `vp` must already reach `elevation.maxLift` past the screen's bottom edge, where lifted
+   *  ground from further south rises into view. */
   update(view: FogView | null, vp: Viewport, elevation?: ElevationField): void {
     if (view === null) {
       if (this.key !== '') {
@@ -92,12 +91,9 @@ export class FogLayer {
       this.elevation = elevation;
       this.elevationVersion++;
     }
-    const screen = visibleTileRange(vp, view.cellsWide, view.cellsHigh, FOG_BAND_MARGIN);
-    const band = {
-      ...screen,
-      maxRow: Math.min(screen.maxRow + fogWashLiftRows(elevation), view.cellsHigh - 1),
-    };
-    const key = `${band.minCol},${band.maxCol},${band.minRow},${band.maxRow}:${view.player}:${view.generation}:${view.mode}:${this.elevationVersion}`;
+    const band = visibleTileRange(vp, view.cellsWide, view.cellsHigh, FOG_BAND_MARGIN);
+    const bandKey = `${band.minCol},${band.maxCol},${band.minRow},${band.maxRow}`;
+    const key = `${bandKey}:${view.player}:${view.generation}:${view.mode}:${this.elevationVersion}`;
     if (key === this.key) return;
 
     const bandW = band.maxCol - band.minCol + 1;
@@ -121,9 +117,13 @@ export class FogLayer {
       }
     }
     texture.source.update();
-    const previous = this.mesh.geometry;
-    this.mesh.geometry = new MeshGeometry(fogWashGeometry(band, this.texW, this.texH, elevation));
-    previous.destroy();
+    const geometryKey = `${bandKey}:${this.texW}x${this.texH}:${this.elevationVersion}`;
+    if (geometryKey !== this.geometryKey) {
+      const previous = this.mesh.geometry;
+      this.mesh.geometry = new MeshGeometry(fogWashGeometry(band, this.texW, this.texH, elevation));
+      previous.destroy();
+      this.geometryKey = geometryKey;
+    }
     this.mesh.texture = texture;
     // The flat box a sampling shader maps the band to: texel (i, j) centres on cell (minCol+i, minRow+j)
     // at (2c·HALF_W, r·HALF_H), so the box starts half a texel before the first centre.
@@ -162,6 +162,7 @@ export class FogLayer {
   destroy(): void {
     this.washMask.source = null;
     this.texture?.destroy(true);
+    destroyMeshChildren(this.container);
     this.container.destroy({ children: true });
   }
 }

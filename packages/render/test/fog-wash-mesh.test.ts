@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fogWashGeometry, fogWashLiftRows } from '../src/data/fog/index.js';
+import { fogWashGeometry } from '../src/data/fog/index.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../src/data/projection/index.js';
 import { elevationLiftPerUnit, makeElevationField, projectNode } from '../src/data/terrain/index.js';
 
@@ -42,20 +42,22 @@ describe('fogWashGeometry', () => {
   it('lifts each vertex with the ground mesh under it, so a hill keeps its own cells lit', () => {
     // Row 2 is even: cell (2, 2) is a ground mesh vertex. Row 1 is odd: x = 2·HALF_W·2 lies halfway
     // along the ground edge between cells (1, 1) and (2, 1).
-    const elevation = makeElevationField([0, 0, 0, 0, 0, 10, 30, 0, 0, 20, 80, 0, 0, 0, 0, 0], 4, 4);
+    const elevation = makeElevationField([0, 0, 0, 0, 0, 10, 30, 0, 0, 20, 40, 0, 0, 0, 0, 0], 4, 4);
     const lifted = fogWashGeometry(BAND, TEX, TEX, elevation);
     expect(vertex(lifted, 2, 2).y).toBeCloseTo(projectNode(elevation, 4, 4).y, 6);
-    expect(vertex(lifted, 2, 2).y).toBeCloseTo(2 * TILE_HALF_H - 80 * LIFT, 6);
+    expect(vertex(lifted, 2, 2).y).toBeCloseTo(2 * TILE_HALF_H - 40 * LIFT, 6);
     expect(vertex(lifted, 2, 1).y).toBeCloseTo(TILE_HALF_H - 20 * LIFT, 6);
     expect(vertex(lifted, 2, 2).x).toBe(4 * TILE_HALF_W);
   });
-});
 
-describe('fogWashLiftRows', () => {
-  it('reaches as many rows below the screen as the highest hill can rise', () => {
-    expect(fogWashLiftRows(undefined)).toBe(0);
-    expect(fogWashLiftRows(makeElevationField([0, 64, 0, 0], 2, 2))).toBe(
-      Math.ceil((64 * LIFT) / TILE_HALF_H),
-    );
+  it('holds a column at the row above where a slope rises faster than a row step, never folding', () => {
+    // Cell (2, 2) rises 80 units (95 px) over cell (2, 1): flat it would draw above its northern row.
+    const cliff = makeElevationField([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0], 4, 4);
+    const geometry = fogWashGeometry(BAND, TEX, TEX, cliff);
+    for (let i = 0; i < COLS; i++) {
+      for (let j = 1; j < COLS; j++) {
+        expect(vertex(geometry, i, j).y ?? 0).toBeGreaterThanOrEqual(vertex(geometry, i, j - 1).y ?? 0);
+      }
+    }
   });
 });

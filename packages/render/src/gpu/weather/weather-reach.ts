@@ -26,7 +26,9 @@ export const MAP_EDGE_GLSL = `
 /**
  * GLSL: `weatherReach(world)`, the share of airborne weather kept at a world px point: the map edge fade
  * times what the fog leaves, none over unexplored ground and all over explored ground. It samples the
- * fog wash's own texture, so the weather ends where the black begins.
+ * fog wash's own texture, so the weather ends where the black begins on flat ground. Approximation: it
+ * samples at the unlifted world point, while the wash rides the terrain, so on a hill the weather's edge
+ * sits up to `maxLift` px off the wash's.
  */
 export const WEATHER_REACH_GLSL = `
   // Map size in half-cell nodes, zero before a map.

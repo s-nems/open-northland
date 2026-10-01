@@ -918,6 +918,7 @@ export const enGame = {
     cursorOffMap: 'Cursor: off the map',
     copyCursor: 'Copy',
     copiedCursor: 'Copied',
+    cursorHint: 'Hold Shift to keep the spot while you reach for Copy.',
     warriors: 'Warriors',
     civilians: 'Civilians',
     creatures: 'Monsters',

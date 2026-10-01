@@ -899,6 +899,7 @@ export const plGame = {
     cursorOffMap: 'Kursor: poza mapą',
     copyCursor: 'Kopiuj',
     copiedCursor: 'Skopiowano',
+    cursorHint: 'Przytrzymaj Shift, żeby zatrzymać miejsce, i kliknij Kopiuj.',
     warriors: 'Wojownicy',
     civilians: 'Cywile',
     creatures: 'Potwory',

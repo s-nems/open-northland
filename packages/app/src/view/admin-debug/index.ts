@@ -230,7 +230,8 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   const copyCursor = el('button', BUTTON_STYLE, copy.copyCursor);
   copyCursor.addEventListener('click', () => {
     const text = cursor.textContent ?? '';
-    navigator.clipboard.writeText(text).then(
+    // Absent off a secure origin, such as a preview opened by LAN address.
+    navigator.clipboard?.writeText(text).then(
       () => {
         copyCursor.textContent = copy.copiedCursor;
         setTimeout(() => {
@@ -242,6 +243,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   });
   cursorRow.append(cursor, copyCursor);
   header.append(cursorRow);
+  header.append(el('div', 'opacity:0.6;font-size:11px', copy.cursorHint));
 
   const body = el('div', BODY_STYLE);
 
@@ -452,10 +454,10 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   };
   window.addEventListener('keydown', onKeyDown, { capture: true });
 
-  /** The half-cell node under the pointer, so a spot on the map can be named exactly. Leaving the map
-   *  for the panel keeps the last spot, so it can be copied. */
+  /** The half-cell node under the pointer, so a spot on the map can be named exactly. Shift holds the
+   *  readout, so the pointer can travel to the copy button without dragging it along. */
   const onPointerMove = (e: MouseEvent): void => {
-    if (!open || e.target !== canvas) return;
+    if (!open || e.shiftKey || e.target !== canvas) return;
     const tile = deps.clientToTile(e.clientX, e.clientY);
     const text =
       tile === null

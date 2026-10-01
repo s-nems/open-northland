@@ -18,7 +18,9 @@ export interface FogWashGeometry {
  * texel, covering the same box a flat quad did without sampling past the band.
  *
  * The x lattice ignores the odd-row half-cell stagger (a named approximation, invisible under a
- * cell-wide gradient), so the lift is read where the terrain row actually passes that x.
+ * cell-wide gradient), so the lift is read where the terrain row actually passes that x. Where a slope
+ * rises toward the viewer faster than a row step, a column's vertices are held at the row above instead
+ * of folding back over it, so overlapping strips never stack the wash's alpha.
  */
 export function fogWashGeometry(
   band: TileRange,
@@ -41,7 +43,9 @@ export function fogWashGeometry(
       const col = band.minCol + Math.min(Math.max(i - 1, -0.5), bandW - 0.5);
       const v = (j * cols + i) * 2;
       positions[v] = 2 * TILE_HALF_W * col;
-      positions[v + 1] = TILE_HALF_H * row - terrainLiftAt(elevation, col - terrainColShift, row);
+      const lifted = TILE_HALF_H * row - terrainLiftAt(elevation, col - terrainColShift, row);
+      const above = j === 0 ? Number.NEGATIVE_INFINITY : (positions[v - cols * 2 + 1] ?? lifted);
+      positions[v + 1] = Math.max(lifted, above);
       uvs[v] = (texelX + 0.5) / texW;
       uvs[v + 1] = (texelY + 0.5) / texH;
     }
@@ -63,10 +67,4 @@ export function fogWashGeometry(
     }
   }
   return { positions, uvs, indices };
-}
-
-/** Rows the band must reach past the screen's bottom edge: lifted ground from that far south can rise
- *  into view, and its wash must rise with it. */
-export function fogWashLiftRows(elevation: ElevationField | undefined): number {
-  return elevation === undefined ? 0 : Math.ceil(elevation.maxLift / TILE_HALF_H);
 }
