@@ -57,12 +57,12 @@ export interface BuildingFamily {
   readonly layer: string;
 }
 
-/** What one tribe's building reducers resolve against: its rows, its preferred skin, and the atlas layers
- *  the sheet actually loaded. */
+/** What one tribe's building reducers resolve against: its rows, the skin slot being built, and the atlas
+ *  layers the sheet actually loaded. */
 export interface BuildingRefScope {
   readonly tribeId: number;
-  /** The skin preferred when a `typeId` carries rows in several - see {@link preferredPaletteFor}. */
-  readonly preferredPalette: string;
+  /** The `GfxPalette` slot these tables draw - see {@link skinPalettePool}. */
+  readonly skinSlot: number;
   /** The sheet's shared building layer; a row in it binds a bare bob id rather than a named family. */
   readonly defaultFamily: { readonly bmdBasename: string; readonly paletteName: string };
   /** The named families the sheet loaded; see {@link familyLayerFor} for what a row in any other does. */
@@ -99,35 +99,38 @@ export function buildingFamiliesFor(
   return [...families.values()].sort((a, b) => byCodepoint(a.layer, b.layer));
 }
 
-/** Codepoint order, not `localeCompare`: ICU collation varies by environment, and these orders decide
- *  which skin a tribe wears and which atlas pages load. */
+/** Codepoint order, not `localeCompare`: ICU collation varies by environment, and this order decides
+ *  which atlas pages load. */
 function byCodepoint(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
+/** A type's distinct palettes in row order, which is the `GfxPalette` line's file order. */
+function typePalettes(rows: readonly { readonly paletteName: string }[]): string[] {
+  const palettes: string[] = [];
+  for (const row of rows) if (!palettes.includes(row.paletteName)) palettes.push(row.paletteName);
+  return palettes;
+}
+
 /**
- * The palette a tribe's buildings are preferred in when one `typeId` carries rows in several skins. The
- * base tribe keeps {@link HOUSE_PALETTE}, the skin the shared building layer and {@link VIKING_HOUSE01_BOBS}
- * are built from - its two skins are near-evenly split (35 rows against 33), so a majority there would be
- * one extraction away from reskinning half the settlement. Every other tribe takes its own most common
- * skin, ties broken by name. An approximation either way: the original's skin choice is unextracted.
+ * How many skin slots a tribe's tables need so that slot `ref % count` lands every type on
+ * `palettes[ref % palettes.length]`: the least common multiple of its types' palette counts. Every
+ * record of one type lists the same palettes in CnMod 1.3.2, at most two.
  */
-export function preferredPaletteFor(rows: readonly FamilyRow[], tribeId: number): string {
-  if (tribeId === VIKING_TRIBE) return HOUSE_PALETTE;
-  const counts = new Map<string, number>();
-  for (const row of rows) {
-    if (row.tribeId !== tribeId) continue;
-    counts.set(row.paletteName, (counts.get(row.paletteName) ?? 0) + 1);
-  }
-  let best: string = HOUSE_PALETTE;
-  let bestCount = 0;
-  for (const [palette, count] of [...counts].sort((a, b) => byCodepoint(a[0], b[0]))) {
-    if (count > bestCount) {
-      best = palette;
-      bestCount = count;
-    }
-  }
-  return best;
+export function skinSlotCount(
+  rows: readonly (FamilyRow & { readonly typeId: number })[],
+  tribeId: number,
+): number {
+  let count = 1;
+  for (const list of rowsByType(rows, tribeId).values()) count = lcm(count, typePalettes(list).length);
+  return count;
+}
+
+function lcm(a: number, b: number): number {
+  let x = a;
+  let y = b;
+  while (y !== 0) [x, y] = [y, x % y];
+  return (a / x) * b;
 }
 
 /**
@@ -162,13 +165,15 @@ export function rowsByType<T extends { tribeId: number; typeId: number }>(
   return byType;
 }
 
-/** A type's rows in the preferred (loaded) palette when any exist, else all of them. */
-export function preferredPalettePool<T extends { paletteName: string }>(
+/** A type's rows in the palette skin slot `slot` draws: its `GfxPalette` skins cycle by slot in file
+ *  order, as the original cycles them by building id. */
+export function skinPalettePool<T extends { paletteName: string }>(
   rows: readonly T[],
-  paletteName: string,
+  slot: number,
 ): readonly T[] {
-  const inPreferred = rows.filter((r) => r.paletteName === paletteName);
-  return inPreferred.length > 0 ? inPreferred : rows;
+  const palettes = typePalettes(rows);
+  const palette = palettes[slot % palettes.length];
+  return rows.filter((r) => r.paletteName === palette);
 }
 
 /**
@@ -179,9 +184,9 @@ export function preferredPalettePool<T extends { paletteName: string }>(
 function pickCanonicalBuildingRow(
   typeId: number,
   rows: readonly BuildingBobRow[],
-  preferredPalette: string,
+  skinSlot: number,
 ): BuildingBobRow | undefined {
-  let candidates = preferredPalettePool(rows, preferredPalette);
+  let candidates = skinPalettePool(rows, skinSlot);
   const canonName = CANONICAL_EDIT_NAME[typeId];
   if (canonName !== undefined) {
     const named = candidates.filter((r) => r.editName === canonName);
@@ -196,16 +201,14 @@ function pickCanonicalBuildingRow(
   return best;
 }
 
-/** The one `buildingBobs` row a tribe's building of `typeId` draws, chosen as the world binding chooses it. */
+/** The `buildingBobs` row a tribe's building of `typeId` draws in its first skin slot. */
 export function canonicalBuildingRow(
   rows: readonly BuildingBobRow[],
   tribeId: number,
   typeId: number,
 ): BuildingBobRow | undefined {
   const list = rowsByType(rows, tribeId, (row) => row.typeId === typeId).get(typeId);
-  return list === undefined
-    ? undefined
-    : pickCanonicalBuildingRow(typeId, list, preferredPaletteFor(rows, tribeId));
+  return list === undefined ? undefined : pickCanonicalBuildingRow(typeId, list, 0);
 }
 
 /**
@@ -239,7 +242,7 @@ export function buildingBobRefsByType(
   const byType = rowsByType(rows, scope.tribeId);
   const out: Record<number, BuildingBobRef> = {};
   for (const [typeId, list] of byType) {
-    const row = pickCanonicalBuildingRow(typeId, list, scope.preferredPalette);
+    const row = pickCanonicalBuildingRow(typeId, list, scope.skinSlot);
     if (row === undefined) continue;
     const layer = familyLayerFor(row.bmd, row.paletteName, scope.defaultFamily, scope.families);
     if (layer === null) continue; // family not loaded → drop (the constant/default backs this typeId)

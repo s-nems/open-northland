@@ -1,6 +1,7 @@
 import type {
   BuildingBobRef,
   BuildingOverlayRef,
+  BuildingSkinTables,
   BuildingTribeTables,
   BuildingTypeBinding,
   ConstructionLayerRef,
@@ -15,14 +16,15 @@ import {
   buildingFamiliesFor,
   DEFAULT_BUILDING_FAMILY,
   HOUSE_BOB,
-  preferredPaletteFor,
+  skinSlotCount,
   VIKING_HOUSE01_BOBS,
   VIKING_TRIBE,
 } from './families.js';
 import { buildingOverlayRefsByType } from './overlays.js';
 
-/** One tribe's building tables, from its own `[GfxHouse]` rows in the families the sheet loaded. */
-function tribeTables(ir: ContentIr | null, scope: BuildingRefScope): BuildingTribeTables {
+/** One skin slot of a tribe's building tables, from its own `[GfxHouse]` rows in the families the sheet
+ *  loaded. */
+function skinTables(ir: ContentIr | null, scope: BuildingRefScope): BuildingSkinTables {
   const constructionByType = constructionRefsByType(ir?.constructionLayers ?? [], scope);
   const upgradeByType = upgradeRefsByType(ir?.constructionLayers ?? [], scope);
   const overlayByType = buildingOverlayRefsByType(ir?.buildingOverlays ?? [], scope);
@@ -40,6 +42,24 @@ function tribeTables(ir: ContentIr | null, scope: BuildingRefScope): BuildingTri
   };
 }
 
+/** Every skin slot of one tribe's building tables, slot 0 carrying the rest as `altSkins`. */
+function tribeTables(
+  ir: ContentIr | null,
+  tribeId: number,
+  families: readonly BuildingFamily[],
+): BuildingTribeTables {
+  const slots = skinSlotCount(
+    [...(ir?.buildingBobs ?? []), ...(ir?.constructionLayers ?? []), ...(ir?.buildingOverlays ?? [])],
+    tribeId,
+  );
+  const skins = Array.from({ length: slots }, (_, skinSlot) =>
+    skinTables(ir, { tribeId, skinSlot, defaultFamily: DEFAULT_BUILDING_FAMILY, families }),
+  );
+  const [first, ...altSkins] = skins;
+  if (first === undefined) throw new Error('building skins: a tribe has at least one skin slot');
+  return altSkins.length > 0 ? { ...first, altSkins } : first;
+}
+
 /**
  * The render's building binding for every tribe in `tribes`, the first of which is the base whose tables
  * serve a building of an unloaded tribe. A typeId a tribe does not skin falls back to the base tribe's
@@ -50,15 +70,9 @@ export function buildingBinding(
   tribes: WorldTribes,
   families: readonly BuildingFamily[],
 ): BuildingTypeBinding {
-  const scopeFor = (tribeId: number): BuildingRefScope => ({
-    tribeId,
-    preferredPalette: preferredPaletteFor(ir?.buildingBobs ?? [], tribeId),
-    defaultFamily: DEFAULT_BUILDING_FAMILY,
-    families,
-  });
-  const base = tribeTables(ir, scopeFor(tribes[0]));
+  const base = tribeTables(ir, tribes[0], families);
   const byTribe: Record<number, BuildingTribeTables> = { [tribes[0]]: base };
-  for (const tribe of tribes) byTribe[tribe] ??= tribeTables(ir, scopeFor(tribe));
+  for (const tribe of tribes) byTribe[tribe] ??= tribeTables(ir, tribe, families);
   const upgradeTargetByType: Record<number, number> = {};
   for (const b of ir?.buildings ?? []) {
     if (b.typeId !== undefined && b.upgradeTarget !== undefined)
@@ -88,7 +102,8 @@ export function boundBuildingRef(
 /** Every named family atlas a binding draws from, so the sheet loads exactly those pages. */
 export function referencedFamilyLayers(binding: BuildingTypeBinding): Set<string> {
   const layers = new Set<string>();
-  for (const tables of [binding, ...Object.values(binding.byTribe ?? {})]) {
+  const tribes = [binding, ...Object.values(binding.byTribe ?? {})];
+  for (const tables of tribes.flatMap((tribe) => [tribe, ...(tribe.altSkins ?? [])])) {
     for (const ref of Object.values<BuildingBobRef>(tables.byType)) {
       if (typeof ref !== 'number') layers.add(ref.layer);
     }

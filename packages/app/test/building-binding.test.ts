@@ -5,7 +5,6 @@ import {
   candidateFamilies,
   DEFAULT_BUILDING_FAMILY,
   HOUSE_BOB,
-  preferredPaletteFor,
   referencedFamilyLayers,
   VIKING_HOUSE01_BOBS,
 } from '../src/content/building-gfx/index.js';
@@ -58,14 +57,22 @@ describe('buildingFamiliesFor', () => {
   });
 });
 
-describe('preferredPaletteFor', () => {
-  it('takes each tribe its own most common skin, ties broken by name', () => {
-    expect(preferredPaletteFor(ir.buildingBobs ?? [], VIKING)).toBe('house01');
-    expect(preferredPaletteFor(ir.buildingBobs ?? [], SARACEN)).toBe('house_saracen01');
-  });
+describe('building skins', () => {
+  // A farm listing `GfxPalette "house01" "house02"` beside the single-skin mill.
+  const skinned: ContentIr = {
+    buildingBobs: [bob(VIKING, 13, 70), bob(VIKING, 12, 60), bob(VIKING, 12, 60, { paletteName: 'house02' })],
+  };
 
-  it('falls back to the default family skin for a tribe with no rows', () => {
-    expect(preferredPaletteFor(ir.buildingBobs ?? [], 99)).toBe(DEFAULT_BUILDING_FAMILY.paletteName);
+  it('carries a second skin slot only for a tribe whose types list several palettes', () => {
+    const families = candidateFamilies(skinned, [VIKING, SARACEN]);
+    const binding = buildingBinding(skinned, [VIKING, SARACEN], families);
+    const viking = binding.byTribe?.[VIKING];
+    expect(viking?.byType[12]).toBe(60);
+    expect(viking?.altSkins?.map((skin) => [skin.byType[12], skin.byType[13]])).toEqual([
+      [{ layer: 'ls_houses_viking.house02', bob: 60 }, 70],
+    ]);
+    expect(binding.byTribe?.[SARACEN]?.altSkins).toBeUndefined();
+    expect(referencedFamilyLayers(binding).has('ls_houses_viking.house02')).toBe(true);
   });
 });
 
@@ -137,15 +144,15 @@ describe('referencedFamilyLayers', () => {
     const withLoser: ContentIr = {
       buildingBobs: [
         ...(ir.buildingBobs ?? []),
-        // Same type and level as the saracen mill but a higher bob id, so the ladder drops it.
-        bob(SARACEN, 13, 99, { bmd: 'data/x/ls_houses_beduines.bmd', paletteName: 'rock03' }),
+        // Same type, skin and level as the saracen mill but a higher bob id, so the ladder drops it.
+        bob(SARACEN, 13, 99, { bmd: 'data/x/ls_houses_beduines.bmd', paletteName: 'house_saracen01' }),
       ],
     };
     const candidates = candidateFamilies(withLoser, [SARACEN]).map((f) => f.layer);
-    expect(candidates).toContain('ls_houses_beduines.rock03');
+    expect(candidates).toContain('ls_houses_beduines.house_saracen01');
     const layers = referencedFamilyLayers(
       buildingBinding(withLoser, [SARACEN], candidateFamilies(withLoser, [SARACEN])),
     );
-    expect(layers.has('ls_houses_beduines.rock03')).toBe(false);
+    expect(layers.has('ls_houses_beduines.house_saracen01')).toBe(false);
   });
 });

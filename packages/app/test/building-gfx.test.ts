@@ -8,7 +8,7 @@ import {
   constructionRefsByType,
   DEFAULT_BUILDING_FAMILY,
   OVERLAY_TICKS_PER_FRAME,
-  preferredPaletteFor,
+  skinSlotCount,
 } from '../src/content/building-gfx/index.js';
 import type { BuildingBobRow } from '../src/content/ir/rows.js';
 
@@ -44,21 +44,21 @@ const FAMILIES = [
 const VIKING2_BMD = 'data/x/ls_houses_viking2.bmd';
 const VIKING4_BMD = 'data/x/ls_houses_viking4.bmd';
 
-/** One tribe's reduction scope over a hand-built family list. */
-const scope = (tribeId: number, families: readonly BuildingFamily[]): BuildingRefScope => ({
+/** One tribe's reduction scope over a hand-built family list, in skin slot `skinSlot`. */
+const scope = (tribeId: number, families: readonly BuildingFamily[], skinSlot = 0): BuildingRefScope => ({
   tribeId,
-  preferredPalette: DEFAULT_FAMILY.paletteName,
+  skinSlot,
   defaultFamily: DEFAULT_FAMILY,
   families,
 });
 
-/** The scope the sheet builds for real rows: the families and preferred skin both derived from them. */
+/** The first-slot scope the sheet builds for real rows, the families derived from them. */
 const realScope = (
   tribeId: number,
   rows: readonly { tribeId: number; bmd: string; paletteName: string }[],
 ): BuildingRefScope => ({
   tribeId,
-  preferredPalette: preferredPaletteFor(rows, tribeId),
+  skinSlot: 0,
   defaultFamily: DEFAULT_BUILDING_FAMILY,
   families: buildingFamiliesFor(rows, [tribeId], DEFAULT_BUILDING_FAMILY),
 });
@@ -79,7 +79,7 @@ describe('buildingBobRefsByType', () => {
     // HQ (typeId 1) - viking4/house01, two editName variants; "viking headquarters" (bob 34) is canonical.
     bobRow(1, 34, { bmd: VIKING4_BMD, editName: 'viking headquarters' }),
     bobRow(1, 44, { bmd: VIKING4_BMD, editName: 'viking headquarters house' }),
-    // also in viking4/house02 - excluded by palette preference
+    // also in viking4/house02 - the second skin, drawn by slot 1
     bobRow(1, 34, { bmd: VIKING4_BMD, paletteName: 'house02', editName: 'viking headquarters' }),
     // viking2 family is NOT loaded this rung - dropped (the constant/default backs typeId 20)
     bobRow(20, 10, { bmd: VIKING2_BMD }),
@@ -130,9 +130,27 @@ describe('buildingBobRefsByType', () => {
     });
   });
 
-  it('prefers the default palette when a typeId spans recolour skins', () => {
-    const skins = [bobRow(12, 999, { paletteName: 'house02' }), bobRow(12, 60)];
-    expect(buildingBobRefsByType(skins, scope(1, FAMILIES))).toEqual({ 12: 60 });
+  it('cycles the recolour skins of a typeId by slot in file order', () => {
+    const skins = [bobRow(12, 60), bobRow(12, 60, { paletteName: 'house02' }), bobRow(11, 91)];
+    const families = [
+      ...FAMILIES,
+      { bmdBasename: 'ls_houses_viking.bmd', paletteName: 'house02', layer: 'ls_houses_viking.house02' },
+    ];
+    expect(buildingBobRefsByType(skins, scope(1, families, 0))).toEqual({ 11: 91, 12: 60 });
+    expect(buildingBobRefsByType(skins, scope(1, families, 1))).toEqual({
+      11: 91, // a single-skin type draws it in every slot
+      12: { layer: 'ls_houses_viking.house02', bob: 60 },
+    });
+    expect(buildingBobRefsByType(skins, scope(1, families, 2))).toEqual({ 11: 91, 12: 60 });
+  });
+
+  it('sizes the skin slots so every type cycles its own skins exactly', () => {
+    const three = ['a', 'b', 'c'].map((paletteName) => bobRow(13, 1, { paletteName }));
+    const two = ['house01', 'house02'].map((paletteName) => bobRow(12, 60, { paletteName }));
+    expect(skinSlotCount([bobRow(11, 91)], 1)).toBe(1);
+    expect(skinSlotCount([...two, bobRow(11, 91)], 1)).toBe(2);
+    expect(skinSlotCount([...two, ...three], 1)).toBe(6);
+    expect(skinSlotCount([...two, ...three], 2)).toBe(1);
   });
 
   it('picks the highest level then the lowest bobId, insertion-order-independent', () => {
@@ -236,13 +254,20 @@ describe('constructionRefsByType', () => {
     });
   });
 
-  it('layer-qualifies a stage in a loaded named family and prefers the default palette', () => {
+  it('layer-qualifies a stage in a loaded named family and draws the skin of its slot', () => {
     const rows = [
       row({ bmd: 'data/x/ls_houses_viking4.bmd', bobId: 34 }),
-      row({ paletteName: 'house02', bobId: 999 }), // the other skin - ignored while house01 rows exist
+      row({ bmd: 'data/x/ls_houses_viking4.bmd', paletteName: 'house02', bobId: 34 }),
     ];
-    expect(constructionRefsByType(rows, scope(1, FAMILIES))).toEqual({
+    const families = [
+      ...FAMILIES,
+      { bmdBasename: 'ls_houses_viking4.bmd', paletteName: 'house02', layer: 'ls_houses_viking4.house02' },
+    ];
+    expect(constructionRefsByType(rows, scope(1, families, 0))).toEqual({
       2: [{ layer: 'ls_houses_viking4.house01', bob: 34, fromPct: 0, toPct: 100 }],
+    });
+    expect(constructionRefsByType(rows, scope(1, families, 1))).toEqual({
+      2: [{ layer: 'ls_houses_viking4.house02', bob: 34, fromPct: 0, toPct: 100 }],
     });
   });
 

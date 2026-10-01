@@ -93,8 +93,8 @@ function ghostKey(ghost: SpriteGhost): string {
   }
 }
 
-/** A minimal DrawItem: position and depth live on the container, and `ref: -1` only feeds
- *  head-variation picks, which no ghost kind has. */
+/** A minimal DrawItem: position and depth live on the container, and `ref: -1` feeds only head-variation
+ *  picks, which no ghost kind has, and the building skin pick, where it draws the first skin. */
 function ghostItem(ghost: SpriteGhost): DrawItem {
   switch (ghost.kind) {
     case 'building':

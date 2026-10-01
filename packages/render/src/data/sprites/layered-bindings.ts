@@ -13,8 +13,8 @@ export interface BuildingDraw {
   readonly layer?: string;
 }
 
-/** The per-type building tables of one tribe skin. */
-export interface BuildingTribeTables {
+/** The per-type building tables of one palette skin. */
+export interface BuildingSkinTables {
   readonly byType: Readonly<Record<number, BuildingBobRef>>;
   /**
    * The `[GfxHouse]` `GfxBobConstructionLayer` from-scratch rows, in the source's stacking (file)
@@ -30,6 +30,15 @@ export interface BuildingTribeTables {
   /** The `[GfxHouse]` type-4 `GfxOverlay` table. The original lists overlays only for the finished body,
    *  so a building under construction draws none. */
   readonly overlayByType?: Readonly<Record<number, BuildingOverlayRef>>;
+}
+
+/**
+ * One tribe's building tables. A `[GfxHouse]` record can list several `GfxPalette` skins; original
+ * behavior: a building draws `skins[id % count]` by its creation-order id. Skin slot 0 is these tables,
+ * slot `k` is `altSkins[k - 1]`, and a building draws slot `ref % (1 + altSkins.length)`.
+ */
+export interface BuildingTribeTables extends BuildingSkinTables {
+  readonly altSkins?: readonly BuildingSkinTables[];
 }
 
 /**

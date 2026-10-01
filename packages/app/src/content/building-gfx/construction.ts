@@ -4,8 +4,8 @@ import {
   type BuildingRefScope,
   CANONICAL_EDIT_NAME,
   familyLayerFor,
-  preferredPalettePool,
   rowsByType,
+  skinPalettePool,
 } from './families.js';
 
 /**
@@ -44,7 +44,7 @@ function stageRefsByType(
   const byType = rowsByType(rows, scope.tribeId, pass);
   const out: Record<number, ConstructionLayerRef[]> = {};
   for (const [typeId, list] of byType) {
-    const pool = preferredPalettePool(list, scope.preferredPalette);
+    const pool = skinPalettePool(list, scope.skinSlot);
     const groups = new Map<string, ConstructionLayerRow[]>();
     for (const r of pool) {
       const key = `${r.editName ?? ''}|${r.level}`;

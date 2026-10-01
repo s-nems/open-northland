@@ -64,6 +64,7 @@ export {
   atlasFromManifest,
   type BuildingBobRef,
   type BuildingOverlayRef,
+  type BuildingSkinTables,
   type BuildingTribeTables,
   type BuildingTypeBinding,
   type BuildTimeSheet,

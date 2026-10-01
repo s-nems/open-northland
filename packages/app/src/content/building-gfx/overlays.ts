@@ -1,7 +1,7 @@
 import type { BuildingOverlayRef } from '@open-northland/render';
 import { diag } from '../../diag/index.js';
 import type { BuildingOverlayRow } from '../ir/rows.js';
-import { type BuildingRefScope, familyLayerFor, preferredPalettePool, rowsByType } from './families.js';
+import { type BuildingRefScope, familyLayerFor, rowsByType, skinPalettePool } from './families.js';
 
 /** The source's overlay-state discriminators (`GfxOverlay <sizeIdx> 4 <state> …`). */
 const OVERLAY_STATE_IDLE = 0;
@@ -26,7 +26,7 @@ export function buildingOverlayRefsByType(
   const byType = rowsByType(rows, scope.tribeId);
   const out: Record<number, BuildingOverlayRef> = {};
   for (const [typeId, list] of byType) {
-    const pool = preferredPalettePool(list, scope.preferredPalette);
+    const pool = skinPalettePool(list, scope.skinSlot);
     const lowestLevel = pool.reduce((lo, r) => Math.min(lo, r.level), Number.POSITIVE_INFINITY);
     const group = pool.filter((r) => r.level === lowestLevel);
     const idleRow = group.find((r) => r.state === OVERLAY_STATE_IDLE);

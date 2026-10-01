@@ -133,6 +133,35 @@ describe('resolveBuildingDraw - the per-tribe skins', () => {
   });
 });
 
+describe('resolveBuildingDraw - the palette skins', () => {
+  const building = (ref: number, typeId: number, tribe?: number): DrawItem =>
+    drawItem('building', tribe === undefined ? { ref, typeId } : { ref, typeId, tribe });
+
+  // A farm listing two `GfxPalette` skins beside a single-skin home; the base tribe skins the farm too.
+  const house02 = { layer: 'house02', bob: 60 };
+  const binding: BuildingTypeBinding = {
+    byType: { 12: 60, 6: 41 },
+    altSkins: [{ byType: { 12: house02, 6: 41 } }],
+    default: 11,
+    byTribe: { 2: { byType: { 6: 7 } } },
+  };
+
+  it('draws skin `id % count` by the building entity id', () => {
+    expect(resolveBuildingDraw(binding, building(4, 12))).toEqual({ bob: 60 });
+    expect(resolveBuildingDraw(binding, building(5, 12))).toEqual(house02);
+    expect(resolveBuildingDraw(binding, building(5, 6))).toEqual({ bob: 41 });
+  });
+
+  it('keeps the slot through the base-tribe fallback, and draws slot 0 for an id-less ghost', () => {
+    expect(resolveBuildingDraw(binding, building(5, 12, 2))).toEqual(house02);
+    expect(resolveBuildingDraw(binding, building(-1, 12))).toEqual({ bob: 60 });
+  });
+
+  it('counts every skin as a finished-building sprite', () => {
+    expect(finishedBuildingBobKeys(binding).has(bobKey(house02))).toBe(true);
+  });
+});
+
 describe('resolveConstructionDraws - construction-stage stack for an under-construction building', () => {
   /** Omitting `builtPct` makes a finished building. */
   function site(typeId: number, builtPct?: number): DrawItem {

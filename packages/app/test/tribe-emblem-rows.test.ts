@@ -31,7 +31,7 @@ const buildings = [
 ];
 
 describe('tribeEmblemRows', () => {
-  it("takes each tribe's headquarters in its preferred skin, whatever the row order", () => {
+  it("takes each tribe's canonical headquarters in its first listed skin", () => {
     const bobs = [
       row(VIKING, HEADQUARTERS, 'house02', VIKING_HQ_BOB, 'viking headquarters'),
       row(VIKING, HEADQUARTERS, 'house01', VIKING_HQ_HOUSE_BOB, 'viking headquarters house'),
@@ -39,9 +39,13 @@ describe('tribeEmblemRows', () => {
       row(FRANK, STORE, 'caves', FRANK_STORE_BOB, 'frank store'),
       row(FRANK, HEADQUARTERS, 'caves', FRANK_HQ_BOB, 'frank headquarters'),
     ];
-    for (const buildingBobs of [bobs, [...bobs].reverse()]) {
+    // Rows keep the `GfxPalette` line's file order, so the first row names the first skin.
+    for (const [buildingBobs, skin] of [
+      [bobs, 'house02'],
+      [[...bobs].reverse(), 'house01'],
+    ] as const) {
       const emblems = tribeEmblemRows({ buildings, buildingBobs }, [VIKING, FRANK, BYZANTINE]);
-      expect(emblems.get(VIKING)).toMatchObject({ paletteName: 'house01', bobId: VIKING_HQ_BOB });
+      expect(emblems.get(VIKING)).toMatchObject({ paletteName: skin, bobId: VIKING_HQ_BOB });
       expect(emblems.get(FRANK)).toMatchObject({ typeId: HEADQUARTERS, bobId: FRANK_HQ_BOB });
       // No headquarters row, no emblem.
       expect(emblems.has(BYZANTINE)).toBe(false);

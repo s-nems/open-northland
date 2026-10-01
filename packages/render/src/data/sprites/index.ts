@@ -30,6 +30,7 @@ export type {
   BuildingBobRef,
   BuildingDraw,
   BuildingOverlayRef,
+  BuildingSkinTables,
   BuildingTribeTables,
   BuildingTypeBinding,
   ConstructionLayerRef,

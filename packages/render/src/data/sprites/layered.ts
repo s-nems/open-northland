@@ -1,6 +1,7 @@
 import type { DrawItem } from '../scene/index.js';
 import type {
   BuildingDraw,
+  BuildingSkinTables,
   BuildingTribeTables,
   BuildingTypeBinding,
   ConstructionLayerRef,
@@ -37,8 +38,10 @@ export function finishedBuildingBobKeys(binding: BuildingTypeBinding): ReadonlyS
   let keys = finishedKeyCache.get(binding);
   if (keys === undefined) {
     const set = new Set<string>();
-    for (const tables of [binding, ...Object.values(binding.byTribe ?? {})]) {
-      for (const ref of Object.values(tables.byType)) set.add(bobKey(unwrapBobRef(ref)));
+    for (const tribe of [binding, ...Object.values(binding.byTribe ?? {})]) {
+      for (const tables of [tribe, ...(tribe.altSkins ?? [])]) {
+        for (const ref of Object.values(tables.byType)) set.add(bobKey(unwrapBobRef(ref)));
+      }
     }
     set.add(bobKey(unwrapBobRef(binding.default)));
     keys = set;
@@ -47,20 +50,29 @@ export function finishedBuildingBobKeys(binding: BuildingTypeBinding): ReadonlyS
   return keys;
 }
 
+/** The palette skin a building draws from its tribe's tables, picked by its entity id. An id-less item
+ *  (a negative placeholder ref) draws slot 0. */
+function skinFor(tribe: BuildingTribeTables, ref: number): BuildingSkinTables {
+  const alts = tribe.altSkins;
+  if (alts === undefined || alts.length === 0) return tribe;
+  const slot = Math.max(0, ref) % (alts.length + 1);
+  return slot === 0 ? tribe : (alts[slot - 1] ?? tribe);
+}
+
 /** The item's tribe skin, or the base tables for an item of no or an unloaded tribe. */
-function tablesFor(binding: BuildingTypeBinding, item: DrawItem): BuildingTribeTables {
-  return (item.tribe !== undefined ? binding.byTribe?.[item.tribe] : undefined) ?? binding;
+function tablesFor(binding: BuildingTypeBinding, item: DrawItem): BuildingSkinTables {
+  return skinFor((item.tribe !== undefined ? binding.byTribe?.[item.tribe] : undefined) ?? binding, item.ref);
 }
 
 /** The per-type table read: the tribe's own row, else the base tribe's, else `undefined`. */
 function byTypeFor<T>(
   binding: BuildingTypeBinding,
   item: DrawItem,
-  table: (tables: BuildingTribeTables) => Readonly<Record<number, T>> | undefined,
+  table: (tables: BuildingSkinTables) => Readonly<Record<number, T>> | undefined,
   typeId: number | undefined = item.typeId,
 ): T | undefined {
   if (typeId === undefined) return undefined;
-  return table(tablesFor(binding, item))?.[typeId] ?? table(binding)?.[typeId];
+  return table(tablesFor(binding, item))?.[typeId] ?? table(skinFor(binding, item.ref))?.[typeId];
 }
 
 /** An unmapped or type-less item falls back to `default`, so a sparse table is always total. */

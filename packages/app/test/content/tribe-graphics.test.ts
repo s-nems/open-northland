@@ -4,9 +4,8 @@ import { describe, expect, it } from 'vitest';
 import {
   buildingBinding,
   candidateFamilies,
-  DEFAULT_BUILDING_FAMILY,
-  preferredPaletteFor,
   referencedFamilyLayers,
+  VIKING_HOUSE01_BOBS,
 } from '../../src/content/building-gfx/index.js';
 import { humanSequences, playableSequences, servedShadowStem } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
@@ -28,6 +27,10 @@ import { contentDir, hasRealIr, rawIrUnderTest } from './helpers.js';
 /** The `TRIBE_TYPE_HUMAN_*` civilizations of `logicdefines.inc`: viking, frank, byzantine, saracen,
  *  egypt. Viking leads, as the base tribe of a world fielding them all. */
 const CIVILIZATIONS: WorldTribes = [1, 2, 3, 4, 7];
+
+/** The viking home and farm `[GfxHouse]` `LogicType`s. */
+const VIKING_HOME = 6;
+const VIKING_FARM = 12;
 
 /** The recolourable atlas variant the human palette LUT is read through - what the game loads. */
 const INDEXED = 'indexed';
@@ -161,22 +164,18 @@ describe.runIf(hasRealIr())('every civilization is drawable', () => {
     for (const layer of layers) expect(atlasExists(layer), `building page ${layer}`).toBe(true);
   });
 
-  it('keeps the base tribe on the skin its transcribed constants were built from', () => {
-    // The viking rows split near-evenly between two skins, so a majority rule there would be one
-    // extraction away from reskinning half the settlement.
+  it('draws a building listing two palettes in either skin, by slot', () => {
+    // The viking farm lists `GfxPalette "house01" "house02"`; the viking home lists only `house01`.
     const ir = rawIrUnderTest() as ContentIr;
-    expect(preferredPaletteFor(ir.buildingBobs ?? [], 1)).toBe(DEFAULT_BUILDING_FAMILY.paletteName);
-    // Every other civilization takes its own most common skin. The palette name repeats across `.bmd`s -
-    // the frank houses are `ls_houses_frank.bmd` recoloured `house01` - so only the pair names a family.
-    const expected: Readonly<Record<number, string>> = {
-      2: 'house01',
-      3: 'house_byzantine01',
-      4: 'house_saracen01',
-      7: 'caves',
-    };
-    for (const [tribe, palette] of Object.entries(expected)) {
-      expect(preferredPaletteFor(ir.buildingBobs ?? [], Number(tribe)), `tribe ${tribe}`).toBe(palette);
-    }
+    const binding = buildingBinding(ir, CIVILIZATIONS, candidateFamilies(ir, CIVILIZATIONS));
+    const viking = binding.byTribe?.[1];
+    expect(viking?.altSkins?.length).toBe(1);
+    expect(viking?.byType[VIKING_FARM]).toBe(VIKING_HOUSE01_BOBS[VIKING_FARM]);
+    expect(viking?.altSkins?.[0]?.byType[VIKING_FARM]).toEqual({
+      layer: 'ls_houses_viking.house02',
+      bob: VIKING_HOUSE01_BOBS[VIKING_FARM],
+    });
+    expect(viking?.altSkins?.[0]?.byType[VIKING_HOME]).toBe(viking?.byType[VIKING_HOME]);
   });
 
   it('binds each civilization its own body for the types it skins', () => {

@@ -11,7 +11,7 @@ export function emblemBuildingType(
   return buildings.find((row) => row.id === EMBLEM_BUILDING)?.typeId;
 }
 
-/** Each tribe's emblem row, the skin its headquarters wears in the world; a tribe with none is absent. */
+/** Each tribe's emblem row, its headquarters in the first listed skin; a tribe with none is absent. */
 export function tribeEmblemRows(
   ir: Pick<ContentIr, 'buildings' | 'buildingBobs'>,
   tribes: readonly number[],
