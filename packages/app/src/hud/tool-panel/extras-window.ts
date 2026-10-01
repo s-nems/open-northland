@@ -34,7 +34,7 @@ import { type ClickModifiers, createWindowShell, type ToolWindow } from './windo
 const GLYPH_INSET = 4;
 /** The recessed value cell's dark backdrop. */
 const VALUE_CELL_FILL = 0x161009;
-/** The decoded `miscwindow` id of the original extras-window title ("Okno Dodatków"). */
+/** The decoded `miscwindow` id of the original extras-window title ("Extras Window"). */
 const EXTRAS_TITLE_STRING_ID = 500;
 /** Ctrl/Cmd-click stepper multiplier. */
 const CTRL_STEP = 10;

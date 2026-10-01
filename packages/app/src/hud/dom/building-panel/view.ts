@@ -25,7 +25,7 @@ export interface BuildingPanel {
   claims(clientX: number, clientY: number): boolean;
   /** Tab and Shift+Tab: show the owner's next or previous building of the type; false when there is none. */
   browse(step: 1 | -1): boolean;
-  /** The upgrade key: press the shown building's Rozbuduj tile; false when none is shown or it refuses. */
+  /** The upgrade key: press the shown building's Upgrade tile; false when none is shown or it refuses. */
   upgrade(): boolean;
   /** The HUD scale changed: the portrait's box is measured again. */
   invalidate(): void;

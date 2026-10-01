@@ -20,7 +20,7 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * A trader between two of the player's own warehouses, no good marked yet: the browser view is the
- * settler panel's Handel section, where the player picks each good's direction and limits. Nothing moves
+ * settler panel's Trade section, where the player picks each good's direction and limits. Nothing moves
  * until a good is marked.
  */
 

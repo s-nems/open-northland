@@ -87,7 +87,7 @@ export function unlockProgressRows(
 /** Past every job id, so a good's tie-break order sorts after a job's. */
 const ORDER_TARGET_SPAN = 1_000_000;
 
-/** Why a settler may not make `goodType` yet under the tribe's `needforgood` table ("8/20 (Kowal)"), or
+/** Why a settler may not make `goodType` yet under the tribe's `needforgood` table ("8/20 (Smith)"), or
  *  null once it has earned it. */
 export function goodExperienceLock(
   ctx: UnitPanelModelContext,

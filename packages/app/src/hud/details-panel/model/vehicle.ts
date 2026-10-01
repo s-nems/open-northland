@@ -79,7 +79,7 @@ export interface VehicleDeckModel {
 }
 
 /**
- * Załoga: the commander on its own row, a ship's ordinary seats as wells, and a ship's deck. The
+ * Crew: the commander on its own row, a ship's ordinary seats as wells, and a ship's deck. The
  * controls are null on another seat's vehicle.
  */
 export interface VehicleCrewModel {
@@ -95,7 +95,7 @@ export interface VehicleCrewModel {
   readonly assign: SeatControl | null;
   /** One rider stepping out. */
   readonly leave: SeatControl | null;
-  /** "Wysadź wszystkich"; null while nobody rides. */
+  /** "Unload everyone"; null while nobody rides. */
   readonly unload: SeatControl | null;
   /** The pick that drives an own land vehicle onto the deck; null without a deck or on a foreign ship. */
   readonly load: SeatControl | null;
@@ -135,7 +135,7 @@ export interface VehicleHoldModel {
   readonly cargoHand: boolean;
 }
 
-/** The Handel section of the trader riding the vehicle; its controls act on that trader. */
+/** The Trade section of the trader riding the vehicle; its controls act on that trader. */
 export interface VehicleTradeModel extends TraderSubject {
   readonly trade: TradePanelModel;
 }
@@ -446,7 +446,7 @@ function holdModel(
 }
 
 /**
- * Original behavior: every vehicle but a ship shows the Handel tab of the first passenger, aboard or
+ * Original behavior: every vehicle but a ship shows the Trade tab of the first passenger, aboard or
  * walking to the door, that holds the trader job, so the route can be edited with only the cart selected.
  * The trader read seam is the job check: it answers for traders alone.
  */

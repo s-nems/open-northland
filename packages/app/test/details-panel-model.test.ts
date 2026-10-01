@@ -685,7 +685,7 @@ describe('selection details panel model', () => {
 
   it('labels a good by its localized content name when one is loaded (Mąka, not "flour")', () => {
     // The browser entries feed sandboxContent a per-locale good-name map (content/good-names.ts); the
-    // model's labels must prefer that `name` over the machine id - the Produkcja row read "flour x1".
+    // model's labels must prefer that `name` over the machine id - the Production row read "flour x1".
     const ctx = sandboxCtx();
     const named = {
       ...ctx,
@@ -723,7 +723,7 @@ describe('selection details panel model', () => {
       'Zbieracz 0/1',
     ]);
 
-    // Selecting that bound settler must name its trade, not fall back to "Cywil": its `jobType` is the
+    // Selecting that bound settler must name its trade, not fall back to "Civilian": its `jobType` is the
     // rebased building-slot id, which the profession catalog doesn't carry - so the title resolves through
     // the content job names, exactly like the worker-slot rows above.
     const settlerModel = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
@@ -743,7 +743,7 @@ describe('selection details panel model', () => {
           Health: { hitpoints: 300, max: 1000 },
         },
       },
-      // The same needs without a Health component - the Zdrowie bar must be omitted, not zeroed.
+      // The same needs without a Health component - the Health bar must be omitted, not zeroed.
       {
         id: 2,
         components: {
@@ -756,7 +756,7 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     // Pinned labels (deliberately diverging from the decoded humanwindow 12–14 stat names), in the
-    // fixed Zdrowie → Sytość → Sen → Towarzystwo → Religia order.
+    // fixed Health → Food → Sleep → Company → Religion order.
     expect(model.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Sytość', 'Sen', 'Towarzystwo', 'Religia']);
     // Health: gauge = hp/max percent, hover = the raw points.
     expect(model.bars[0]).toMatchObject({ pct: 30, hover: '300/1000' });
@@ -1154,13 +1154,13 @@ describe('selection details panel model', () => {
       (e.components.Equipment as { weapon?: unknown } | undefined)?.weapon != null;
     const rowOf = (m: SettlerPanelModel, group: string) => m.equipmentRows.find((r) => r.group === group);
 
-    // The equipped civilian: boots = shoes, no weapon slot → Buty / Narzędzia / Ekwipunek rows only.
+    // The equipped civilian: boots = shoes, no weapon slot → Shoes / Tools / Equipment rows only.
     const civ = snapshot.entities.find((e) => bootsGood(e) === GOOD_SHOES && !hasWeaponSlot(e));
     if (civ === undefined) throw new Error('equipment scene did not place the equipped civilian');
     const civModel = buildUnitPanelModel(snapshot, new Set([civ.id]), ctx);
     if (civModel.kind !== 'settler') throw new Error('expected a settler model');
     // The panel headline personalises the character: a first name + patronymic is set, drawn in place of
-    // the generic "Ogólne" title.
+    // the generic "General" title.
     expect(civModel.name).toContain(' ');
     expect(civModel.name.length).toBeGreaterThan(0);
     expect(civModel.equipmentRows.map((r) => r.group)).toEqual(['boots', 'tool', 'misc']);
@@ -1181,7 +1181,7 @@ describe('selection details panel model', () => {
     expect(misc.filter((sl) => sl.goodId === undefined)).toHaveLength(1);
     expect(misc.filter((sl) => !sl.occupied)).toHaveLength(1);
 
-    // The soldier additionally carries the Broń + Zbroja rows, combat gear first - and no Narzędzia
+    // The soldier additionally carries the Weapon + Armor rows, combat gear first - and no Tools
     // row: a fighter keeps no tool (the sim sheds one on enlisting), so the slot is not offered.
     const soldier = snapshot.entities.find(hasWeaponSlot);
     if (soldier === undefined) throw new Error('equipment scene did not place the equipped soldier');
@@ -1344,7 +1344,7 @@ describe('selection details panel model', () => {
     if (bare === undefined) throw new Error('equipment scene did not place an unequipped settler');
     const model = buildUnitPanelModel(snapshot, new Set([bare.id]), ctx);
     if (model.kind !== 'settler') throw new Error('expected a settler model');
-    // The base rows still show (Buty, Narzędzia, Ekwipunek), all empty; no weapon/armour row.
+    // The base rows still show (Shoes, Tools, Equipment), all empty; no weapon/armour row.
     expect(model.equipmentRows.map((r) => r.group)).toEqual(['boots', 'tool', 'misc']);
     expect(
       model.equipmentRows
@@ -1404,7 +1404,7 @@ describe('selection details panel model', () => {
     expect(model.experience[0]?.label).toBe('Zbieracz Drewna'); // hand-translated trackLabels entry
     expect(model.experience[1]?.label).not.toMatch(/Specjalizacja/); // general track labels by its job
     expect(model.experience[2]?.label).toBe('Walka - Miecz'); // the sword fight bucket's weapon label
-    // Both own rows show before the fold; the sword row waits behind "1 więcej".
+    // Both own rows show before the fold; the sword row waits behind "1 more".
     expect(experienceShown(model.experience)).toBe(2);
   });
 

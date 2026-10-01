@@ -322,7 +322,7 @@ describe('building panel orders and alerts', () => {
       [GOOD_WHEAT, false],
       [GOOD_FLOUR, true],
     ]);
-    // No batch in flight: a folded Produkcja shows none of the mill's lines.
+    // No batch in flight: a folded Production shows none of the mill's lines.
     const rows = mill.production?.kind === 'recipe' ? mill.production.rows : [];
     expect(rows.length > 0 && rows.every((row) => !row.running)).toBe(true);
   });

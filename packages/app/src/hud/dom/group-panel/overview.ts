@@ -87,7 +87,7 @@ function createGearLine(deps: GroupPanelDeps): { element: HTMLElement; update(ro
   };
 }
 
-/** Przegląd, at the panel's foot: what the scope wears and carries, one compact line per slot. Folded
+/** Overview, at the panel's foot: what the scope wears and carries, one compact line per slot. Folded
  *  under its title on a new map; the player's open or fold press holds for every group until the next. */
 export interface OverviewSection {
   readonly element: HTMLElement;

@@ -25,7 +25,7 @@ import type { SceneDefinition } from './types.js';
  * The land trader and a map's trade agreement: a neutral tribe's warehouse offers iron for coins, the
  * player's trader takes command of a handcart and plies it between the home warehouse and that house,
  * and the goods it brings back count toward the script's `NumberOfGoodsTraded` goal, which turns the
- * neighbour friendly. The browser view pairs this with the Handel section of the selected trader, which
+ * neighbour friendly. The browser view pairs this with the Trade section of the selected trader, which
  * names the cart and its load.
  */
 

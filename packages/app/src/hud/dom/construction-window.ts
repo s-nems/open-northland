@@ -214,7 +214,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     showPage(state.page === 'papers' ? 'catalog' : 'papers');
   });
 
-  // The nation switch, beside Papiery since it turns both pages: one emblem per nation the seat may
+  // The nation switch, beside Papers since it turns both pages: one emblem per nation the seat may
   // build houses of, shown only when there is more than one.
   const nations = document.createElement('fieldset');
   nations.className = 'on-view on-nations';

@@ -5,7 +5,7 @@ import type { TradePeers } from '../settler-panel/peers.js';
 
 /**
  * The building's head: the browse over the owner's buildings of its type (only when there is another),
- * the type's name as the title, and under it the tier ("Poziom 2") with the owner line or the
+ * the type's name as the title, and under it the tier ("Level 2") with the owner line or the
  * civilization.
  * A building has no action ring, so the orders medallion stays blank and its orders sit beside the
  * portrait.

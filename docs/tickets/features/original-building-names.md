@@ -2,8 +2,8 @@
 
 **Area:** pipeline, app · **Priority:** P2
 
-The details panel already shows Polish building names, but from a **hand-authored stopgap** table
-(`packages/app/src/catalog/building-i18n.ts` `localizedBuildingName`, e.g. barracks → "Koszary";
+The details panel already shows localized building names, but from a **hand-authored stopgap** table
+(`packages/app/src/catalog/building-i18n.ts` `localizedBuildingName`, e.g. barracks → "Koszary" in Polish;
 consumed by `hud/details-panel/model/context.ts`), not from the original extracted strings. Long
 source labels can also overflow the fixed name column.
 

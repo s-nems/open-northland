@@ -38,8 +38,8 @@ function flagButton(flag: number | null): RoundButtonModel | null {
     : { face: { glyph: GLYPH.center }, label: copy.centreFlag, tooltip: copy.centreFlagHint };
 }
 
-/** The value of a Miejsce pracy or Dom row: the building as a link, plain for another seat's person,
- *  or "brak" in amber when the player can fill it. */
+/** The value of a Workplace or Home row: the building as a link, plain for another seat's person,
+ *  or "none" in amber when the player can fill it. */
 export function seatValue(row: SettlerSeatRow, linkTooltip: string, foreign: boolean): LedgerSegment[] {
   const copy = messages().hud.settlerPanel;
   if (row.target === null) {
@@ -49,7 +49,7 @@ export function seatValue(row: SettlerSeatRow, linkTooltip: string, foreign: boo
   return [{ text: row.target.label, link, ...(link && linkTooltip !== '' ? { tooltip: linkTooltip } : {}) }];
 }
 
-/** The Pojazd value: the vehicle as a link with its hold in the tooltip, or "Przydziel pojazd" in amber,
+/** The Vehicle value: the vehicle as a link with its hold in the tooltip, or "Assign a vehicle" in amber,
  *  a link that arms the pick while the player may assign one. */
 export function vehicleValue(row: SettlerVehicleRow): LedgerSegment[] {
   const copy = messages().hud.settlerPanel;
@@ -61,14 +61,14 @@ export function vehicleValue(row: SettlerVehicleRow): LedgerSegment[] {
   ];
 }
 
-/** The Rodzina row's button: the rings that send the person to find a partner, faded while a wedding
+/** The Family row's button: the rings that send the person to find a partner, faded while a wedding
  *  is under way. */
 export function familyButton(family: SettlerFamilyModel): RoundButtonModel | null {
   const find = messages().hud.settlerPanel.noPartnerTooltip;
   return seatButton(family.marry, GLYPH.rings, find, find);
 }
 
-/** The Rodzina value: the spouse and the child as links, or "bez pary", a link while the person may go
+/** The Family value: the spouse and the child as links, or "single", a link while the person may go
  *  and find a partner; after them what holds the couple's child order, while something does. */
 export function familyValue(family: SettlerFamilyModel): LedgerSegment[] {
   const copy = messages().hud.settlerPanel;
@@ -87,8 +87,8 @@ export function familyValue(family: SettlerFamilyModel): LedgerSegment[] {
   return people;
 }
 
-/** Praca i rodzina: the workplace, work area, home and vehicle rows with their assign and remove buttons, and the
- *  family. */
+/** Work and family: the workplace, work area, home and vehicle rows with their assign and remove buttons,
+ *  and the family. */
 export interface WorkSection {
   readonly element: HTMLElement;
   update(model: SettlerPanelModel): void;

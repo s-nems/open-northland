@@ -505,7 +505,7 @@ describe('assistant auto-equip - dispatch and reservation', () => {
     setSettlerJob(sim.world, fighter, FIGHTER_JOB);
     const scout = ownedSettler(sim, 2, 3);
     setSettlerJob(sim.world, scout, SCOUT_JOB);
-    const civilist = ownedSettler(sim, 2, 4); // the "Cywil" row's trade-less settler
+    const civilist = ownedSettler(sim, 2, 4); // the "Civilian" row's trade-less settler
     setSettlerJob(sim.world, civilist, CIVILIST_JOB);
     const woodcutter = ownedSettler(sim, 2, 5);
     pileAt(sim, 12, 2, TOOL_IRON, 5); // more than enough: only the woodcutter may take one

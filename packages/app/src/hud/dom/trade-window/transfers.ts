@@ -18,7 +18,7 @@ export interface TransfersDeps {
   readonly icons: GoodIconPainter;
   /** Turn the good to `flow`; none removes the transfer. */
   readonly setFlow: (goodType: number, flow: TradeFlow) => void;
-  /** The counters' values: "do" as shown (∞ above the top), "zostaw" in units. */
+  /** The counters' values: "up to" as shown (∞ above the top), "keep" in units. */
   readonly setLimits: (goodType: number, upTo: number, keep: number) => void;
 }
 
@@ -34,9 +34,9 @@ interface LineView {
 }
 
 /**
- * Przewozy: one line per transfer, the good, a three-way direction strip ("A → B", "⇄", "B → A"; the
+ * Transfers: one line per transfer, the good, a three-way direction strip ("A → B", "⇄", "B → A"; the
  * lit option stays, ✕ removes), and for a one-way transfer the destination's "do N" ceiling and the
- * source's "zostaw N" reserve, which keep their place, hidden, on a balanced line so the columns
+ * source's "keep N" reserve, which keep their place, hidden, on a balanced line so the columns
  * line up. Lines are rebuilt only when the set of goods changes; a tick rewrites their words.
  */
 export interface TransfersList {

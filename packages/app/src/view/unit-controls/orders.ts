@@ -446,7 +446,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   };
 
   /** A house click for the selected settlers off the map and the riders of a selected cart. A ship's
-   *  passengers are left out: the ship takes the click itself, as its window has no Handel tab. */
+   *  passengers are left out: the ship takes the click itself, as its window has no Trade tab. */
   const issueRiderTradeHouse = (
     event: MouseEvent,
     onBuilding: number | null | undefined,

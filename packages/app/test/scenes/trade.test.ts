@@ -38,7 +38,7 @@ function ironAtHome(sim: ReturnType<typeof createSceneSim>): number {
   return 0;
 }
 
-/** The Handel section's agreement rows end to end: dropping the choice stops the exchange. */
+/** The Trade section's agreement rows end to end: dropping the choice stops the exchange. */
 it('a trader with no agreement chosen carts nothing across', () => {
   const sim = createSceneSim(tradeScene);
   sim.run(1);

@@ -72,7 +72,7 @@ describe('group panel model', () => {
     expect(gear.armor?.items.map((i) => [i.goodId, i.count])).toEqual([['armor_leather', 12]]);
     expect(gear.armor?.bare).toBe(0);
     const bag = gear.misc?.items.map((i) => [i.goodId, i.count, i.sips]);
-    // Equal counts sort by name: "Duża mikstura leczenia" before "Mała mikstura pożywienia".
+    // Equal counts sort by name: the large healing potion before the small food potion.
     expect(bag).toEqual([
       ['potion_heal_big', 6, 30],
       ['potion_food_small', 6, 12],

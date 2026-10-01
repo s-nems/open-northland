@@ -24,7 +24,7 @@ export interface VehiclePanelActions {
   readonly clearWanted: (vehicle: number) => void;
 }
 
-/** What the panel reads besides its model: the settler panel's parts (its Handel section acts on the
+/** What the panel reads besides its model: the settler panel's parts (its Trade section acts on the
  *  trader through them) and the vehicle's own. */
 export interface VehiclePanelDeps extends SettlerPanelDeps {
   readonly vehicle: VehiclePanelActions;

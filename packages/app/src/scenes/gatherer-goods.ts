@@ -55,7 +55,7 @@ function remainingAt(sim: Simulation, cell: { readonly x: number; readonly y: nu
 /**
  * A novice collector on a work flag with trees, a stone deposit and an iron deposit in reach, stone and
  * clay stopped by their counters. Real content's `needforgood` gate locks iron and gold for him, so the
- * settler panel's Produkcja shows a gathered, a stopped and a locked good side by side; the fallback
+ * settler panel's Production shows a gathered, a stopped and a locked good side by side; the fallback
  * catalog has no such gate, so the checks leave iron alone.
  */
 export const gathererGoodsScene: SceneDefinition = {

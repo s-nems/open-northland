@@ -115,7 +115,7 @@ describe('productionSystem - parallel operators (the twin mill)', () => {
     expect(sim.world.get(mill, Production).cycles).toHaveLength(2);
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(0); // both inputs reserved
     // Both batches advance every tick (two operators) and complete together - two planks in ONE
-    // cycle length, the "dwóch młynarzy = dwie mąki naraz" model.
+    // cycle length, the "two millers make two flours at once" model.
     for (let t = 0; t < CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(2);
   });

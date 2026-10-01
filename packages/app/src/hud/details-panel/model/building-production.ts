@@ -20,7 +20,7 @@ import {
 } from './context.js';
 import { goodEffectText } from './good-effect.js';
 
-/** One product row of a workshop's Produkcja section. */
+/** One product row of a workshop's Production section. */
 export interface ProductionRow {
   readonly goodType: number;
   /** The product's string id - the row's icon key. */
@@ -47,7 +47,7 @@ export interface RecipeInputModel {
 }
 
 /**
- * The Produkcja section's content: `recipe` for a workshop's per-product rows, `fields` for a workplace
+ * The Production section's content: `recipe` for a workshop's per-product rows, `fields` for a workplace
  * producing a field-farmed good (`farming` on the good, no recipe), whose production is the fields its
  * farmers work around the building rather than a recipe.
  */
@@ -158,7 +158,7 @@ export function productionModel(
   // A vehicle good is built on a hidden yard beside the workshop, never as a cycle, so its bar would
   // never move; the worker picks it in the settler window's craft choices instead.
   const outputs = recipeOutputs(ctx, def).filter((o) => goodDef(ctx, o.goodType)?.vehicleHouse === undefined);
-  if (outputs.length === 0) return null; // not a producer - no Produkcja window
+  if (outputs.length === 0) return null; // not a producer - no Production window
   const held = liveAmounts(ent.components.Stockpile);
   const inputsByProduct = new Map<number, RecipeInputModel[]>();
   for (const recipe of def?.recipes ?? []) {
@@ -196,7 +196,7 @@ function cycleFrontRunners(ent: SnapshotEntity): Map<number, number> {
 }
 
 /**
- * A livestock workplace's Produkcja: one row per species it breeds, named after the species and carrying
+ * A livestock workplace's Production: one row per species it breeds, named after the species and carrying
  * the herd its farm holds against the row's cap, barred by the breeding cycle in flight. Empty at any
  * other workplace, which falls through to the per-good rows.
  */

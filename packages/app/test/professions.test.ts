@@ -40,7 +40,7 @@ describe('profession catalog + i18n', () => {
     expect(professionLabel('smith')).toBe('Kowal');
     expect(professionLabel('collector')).toBe('Zbieracz');
     // Idle is not a ROSTER profession (professionDefForJob returns undefined so the panel labels it
-    // itself); the picker still leads with it as the hand-added Cywil row.
+    // itself); the picker still leads with it as the hand-added Civilian row.
     expect(professionDefForJob(JOB_IDLE)).toBeUndefined();
     expect(professionLabel('idle')).toBe('Cywil');
   });
@@ -61,7 +61,7 @@ describe('profession catalog + i18n', () => {
     expect(entries[0]).toEqual({ kind: 'profession', jobType: JOB_CIVILIST, label: 'Cywil' });
     expect(entries[1]?.kind).toBe('header');
     const rows = entries.filter((e) => e.kind === 'profession');
-    expect(rows).toHaveLength(PROFESSIONS.length + 1); // the roster + the leading Cywil row
+    expect(rows).toHaveLength(PROFESSIONS.length + 1); // the roster + the leading Civilian row
     // The first row after the first header is the first roster profession.
     const firstRosterRow = entries
       .slice(2)

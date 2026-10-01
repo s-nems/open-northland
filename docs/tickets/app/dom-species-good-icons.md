@@ -4,7 +4,7 @@
 
 The DOM good-icon painter (`hud/dom/good-art.ts`) resolves a good through the presentation pack or the
 `ls_goods` manifest, which has no sheep or cattle: the original draws no pile for them. A breeding farm's
-Produkcja lines in the building panel and a breeder's production rows in the settler panel therefore show
+Production lines in the building panel and a breeder's production rows in the settler panel therefore show
 empty wells. The legacy Pixi panel drew the animal itself, one standing frame cut from the body atlas the
 sheet holds for the map; that path went with the Pixi building panel.
 

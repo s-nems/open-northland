@@ -21,7 +21,7 @@ export function bodyOf(trade: TradePanelModel): TradeBody {
 }
 
 /**
- * Handel: the route's two slot rows, joined at the right by the configure button while both stops are
+ * Trade: the route's two slot rows, joined at the right by the configure button while both stops are
  * own houses, then the transfers as read-only lines, or the agreement. Open for every person; when
  * the panel would run past the plane with the other foldable sections folded, it lists only the
  * transfer lines that fit, the last one kept linking to the trade window for the rest. With no room

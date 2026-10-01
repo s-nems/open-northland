@@ -22,7 +22,7 @@ export function stanceSegment(mode: number | null): Stance | null {
   return STANCES.find((stance) => STANCE_MODE[stance] === mode) ?? null;
 }
 
-/** Wojsko: Postawa as a three-way choice and Jedzenie i sen as allowed or forbidden. */
+/** Military: Stance as a three-way choice and Food and sleep as allowed or forbidden. */
 export interface MilitarySection {
   readonly element: HTMLElement;
   update(model: SettlerPanelModel): void;

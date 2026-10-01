@@ -72,7 +72,7 @@ export interface HomeQualityRow {
   readonly holyFireActive?: boolean;
 }
 
-/** Wyposażenie: the household wares a finished home keeps, and the owner's policy over every home. */
+/** Household: the household wares a finished home keeps, and the owner's policy over every home. */
 export interface HomeQualityModel {
   readonly rows: readonly HomeQualityRow[];
   /** The seat whose policy the toggles set. */
@@ -83,19 +83,19 @@ export interface HomeQualityModel {
 
 /** The orders beside the portrait. A null order is not offered for this house. */
 export interface BuildingOrdersModel {
-  /** Rozbuduj: true or the refusal (an unfinished site, a technology), with the next tier's bill; null
+  /** Upgrade: true or the refusal (an unfinished site, a technology), with the next tier's bill; null
    *  for a type with no higher tier. */
   readonly upgrade: { readonly control: SeatControl; readonly cost: readonly UpgradeCostRow[] } | null;
-  /** Anuluj rozbudowę, while a tier is being raised; it stands in Rozbuduj's place. */
+  /** Cancel upgrade, while a tier is being raised; it stands in Upgrade's place. */
   readonly cancelUpgrade: boolean;
   /** The alarm toggle of a house that shelters civilians, and whether it is up. */
   readonly alarm: { readonly on: boolean } | null;
-  /** Pracownicy: the trade the residents window lists candidates for; null for a house employing
+  /** Workers: the trade the residents window lists candidates for; null for a house employing
    *  nobody. */
   readonly hire: { readonly jobType: number; readonly label: string } | null;
 }
 
-/** How Magazyn lists the shelves: a store and the barracks' armory under category tabs, a workshop
+/** How Storage lists the shelves: a store and the barracks' armory under category tabs, a workshop
  *  its inputs over its products, anything else one list. */
 export type StockLayout = 'tabs' | 'split' | 'list';
 
@@ -243,7 +243,7 @@ function homeQuality(
   };
 }
 
-/** The trade Pracownicy looks for: a site's builders, a store's traders, else the house's own craft,
+/** The trade Workers looks for: a site's builders, a store's traders, else the house's own craft,
  *  one with a free seat first. The carriers and gatherers (collectors) a workshop keeps are never it. */
 function hireJob(
   def: BuildingDef | undefined,
@@ -286,7 +286,7 @@ function ordersModel(
   };
 }
 
-/** The shelves marked for Magazyn: the inputs its posted workers wait for, its products' full shelves,
+/** The shelves marked for Storage: the inputs its posted workers wait for, its products' full shelves,
  *  and the products themselves, listed after the inputs. */
 function markedStock(
   ctx: UnitPanelModelContext,

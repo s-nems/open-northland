@@ -15,9 +15,9 @@ import { GATHERER_WORK_RADIUS } from '../src/game/sandbox/place/index.js';
  * The REAL-map gathering cycle end-to-end over the ACTUAL map content (`sandboxContent` - the exact
  * ContentSet `?map=` runs, with footprinted trees), in real-map density: a command-spawned wood
  * gatherer (flag auto-planted at its feet) inside a DENSE tree cluster must complete the full
- * fell → pick up the trunk → bank at the flag loop. Regression net for the reported "zbieracz ściął
- * drzewo, kłoda leży, a on stoi i nic nie robi" - a cycle stall shows up here as wood never reaching
- * the flag heaps (the trunk left lying).
+ * fell → pick up the trunk → bank at the flag loop. Regression net for the reported bug where a gatherer
+ * felled a tree, the log lay there and he stood doing nothing - a cycle stall shows up here as wood never
+ * reaching the flag heaps (the trunk left lying).
  *
  * The second test runs the SAME cycle over a collision grid built by the REAL map join
  * (`buildScriptLandscapeTerrain`) with tree placements - guarding the double-blocking that stalled the
@@ -145,6 +145,6 @@ describe('map-style gathering cycle (sandbox content, footprinted trees, dense f
     for (let t = 0; t < 3000; t++) sim.step();
 
     expect(bankedWood(sim)).toBeGreaterThan(0); // the full fell → pick up → bank loop completed
-    expect(looseWood(sim)).toBeLessThanOrEqual(WOOD_YIELD_PER_NODE); // no abandoned kłoda
+    expect(looseWood(sim)).toBeLessThanOrEqual(WOOD_YIELD_PER_NODE); // no abandoned log
   });
 });

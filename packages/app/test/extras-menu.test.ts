@@ -122,7 +122,7 @@ describe('extras menu layout', () => {
       'moveFlags',
     ]);
 
-    // The grant block starts a visible gap below the last counter row (the requested "lekki odstęp").
+    // The grant block starts a visible gap below the last counter row (the requested slight gap).
     const lastCounterY = layout.counters[5]?.rect.y ?? 0;
     const firstGrantY = layout.grants[0]?.rect.y ?? 0;
     const counterRowH = (layout.counters[1]?.rect.y ?? 0) - (layout.counters[0]?.rect.y ?? 0);

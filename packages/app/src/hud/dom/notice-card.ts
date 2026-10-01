@@ -41,7 +41,7 @@ export interface NoticeStackView {
   /** The lead's card; `fresh` when the stack's newest member is. */
   readonly lead: NoticeCardView;
   readonly count: number;
-  /** What a stack holds ("1 umiera · 3 głoduje"), empty for a lone note. */
+  /** What a stack holds ("1 dying · 3 starving"), empty for a lone note. */
   readonly breakdown: string;
   /** Every member in lead order for the open stack; null for every other card. */
   readonly members: readonly NoticeMemberView[] | null;

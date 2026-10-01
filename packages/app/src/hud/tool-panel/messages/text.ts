@@ -150,7 +150,7 @@ function fightValues(fight: NonNullable<MessageTextParts['fight']>, copy: Notice
   return { hits, enemy };
 }
 
-/** A fight note's row in its stack: who struck and what they hit ("Wikingowie · 2 budynki"). */
+/** A fight note's row in its stack: who struck and what they hit ("Vikings · 2 buildings"). */
 export function fightSummary(
   fight: NonNullable<MessageTextParts['fight']>,
   copy: NoticeCopy,

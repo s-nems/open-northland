@@ -3,7 +3,7 @@ import { messages } from '../../../i18n/index.js';
 import type { Chrome } from '../chrome.js';
 import type { ButtonAction, SignpostLayout } from '../layout/index.js';
 
-// Decoded `miscwindow` string ids: 270 "Drogowskaz", 273 "Wyburz ten drogowskaz".
+// Decoded `miscwindow` string ids: 270 "Signpost", 273 "Tear down this signpost".
 const MISCWINDOW = { signpost: 270, tearDown: 273 } as const;
 
 export function drawSignpost(

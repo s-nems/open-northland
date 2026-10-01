@@ -1,4 +1,4 @@
-# Decide what the Religia row shows for a trade that never prays
+# Decide what the Religion row shows for a trade that never prays
 
 **Area:** app · **Priority:** P3
 **Needs user:** check the original's human window for a carpenter or a sewer that has been forging.

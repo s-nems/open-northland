@@ -28,7 +28,7 @@ import {
 export const UP_TO_UNLIMITED = TRADE_LIMIT_MAX + 1;
 /** "do N": 1 up to the top, then ∞; a ceiling of 0 would stop the good, which ✕ does. */
 export const UP_TO_RANGE: CounterRange = { min: 1, max: TRADE_LIMIT_MAX, unlimited: UP_TO_UNLIMITED };
-/** "zostaw N": a plain 0..top reserve, 0 keeping nothing back. */
+/** "keep N": a plain 0..top reserve, 0 keeping nothing back. */
 export const KEEP_RANGE: CounterRange = { max: TRADE_LIMIT_MAX };
 
 /** The direction strip's options left to right: from A on the left to B on the right, balanced, back. */
@@ -127,7 +127,7 @@ function directionLabel(direction: TradeDirection): string {
   return stops === null ? '⇄' : `${stopBadge(stops.from)} → ${stopBadge(stops.into)}`;
 }
 
-/** One line of Przewozy: the three directions (the lit one is the transfer's, one into a house that
+/** One line of Transfers: the three directions (the lit one is the transfer's, one into a house that
  *  does not store the good refused with the reason) and a one-way transfer's limits. */
 export function transferLine(trade: TradePanelModel, transfer: TradeTransferModel): TransferLine {
   const copy = messages().hud.tradeWindow;

@@ -133,7 +133,7 @@ describe('setJob work-flag lifecycle', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 2, 1);
     // A carpenter never harvests, so it carries no flag - the switch below is a real change INTO the
-    // gatherer trade (the user's "zmiana zawodu na zbieracza → pojawia się flaga").
+    // gatherer trade (the reported expectation that a change to the gatherer trade makes a flag appear).
     s.enqueueSetup({ kind: 'setJob', entity: e, jobType: CARPENTER });
     s.step();
     expect(s.world.has(e, WorkFlag)).toBe(false);

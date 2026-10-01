@@ -16,7 +16,7 @@ export const ROW_H = 20;
 export const TAB_CONTENT_GAP = 3;
 export const CLOSE_BOX = 13;
 /** The width seed, not a laid-out size: the column the widest tab label must clear, measured as 55 px
- *  for "Wszystko" in the original's font10 face, plus padding. Actual tabs are `contentWidth /
+ *  for "All" in the original's font10 face, plus padding. Actual tabs are `contentWidth /
  *  tabColumns` wide. */
 const TAB_COLUMN_W = 62;
 /** How many seed columns the window holds - the build menu's five categories, its widest tab grid. */

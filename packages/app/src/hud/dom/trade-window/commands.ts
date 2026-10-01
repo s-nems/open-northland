@@ -24,7 +24,7 @@ export interface TradeCommands {
   arrow(slot: number, goodType: number, ctrl: boolean): void;
   /** A direction option, or ✕ with `none`. */
   setFlow(goodType: number, flow: TradeFlow): void;
-  /** A one-way transfer's counters: "do" as the counter shows it (∞ above the top), "zostaw" in units. */
+  /** A one-way transfer's counters: "up to" as the counter shows it (∞ above the top), "keep" in units. */
   setLimits(goodType: number, upTo: number, keep: number): void;
 }
 

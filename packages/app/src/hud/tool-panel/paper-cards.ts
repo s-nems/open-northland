@@ -41,7 +41,7 @@ export function paperCardsKey(cards: readonly PaperCard[]): string {
   return cards.map((card) => `${card.paper.kind}:${card.paper.param}×${card.count}`).join(',');
 }
 
-/** How many plans a pick could spend: the Papiery button's count. */
+/** How many plans a pick could spend: the Papers button's count. */
 export function plansCount(cards: readonly PaperCard[]): number {
   return cards.reduce((sum, card) => sum + card.count, 0);
 }

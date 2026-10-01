@@ -51,7 +51,7 @@ import { type SettlerProductionModel, type SettlerWorkModel, settlerWork } from 
 import { type TradePanelModel, tradePanelModel } from './trade.js';
 import { workStatusDetail } from './work-status.js';
 
-/** The good a settler carries, for the status line's "niesie" well. */
+/** The good a settler carries, for the status line's "carrying" well. */
 export interface CarriedGoodModel {
   readonly goodId?: string;
   readonly label: string;
@@ -102,7 +102,7 @@ export interface SettlerPanelModel {
   /** The owner line: another seat's owner and stance, or a child's age; null when it says nothing. */
   readonly meta: string | null;
   readonly status: SettlerStatusModel;
-  /** Zdrowie, then the need bars the person carries. */
+  /** Health, then the need bars the person carries. */
   readonly bars: readonly PanelBar[];
   readonly workplace: SettlerWorkplaceRow | null;
   readonly workArea: SettlerWorkAreaRow | null;

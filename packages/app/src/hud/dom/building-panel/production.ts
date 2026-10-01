@@ -7,12 +7,12 @@ import { createSection } from '../parts/section.js';
 import type { BuildingPanelDeps } from './actions.js';
 import { createGoodLine, type GoodLine, syncLines, withEffect } from './good-line.js';
 
-/** A list of this many products or more folds to the batches in flight behind "rozwiń". */
+/** A list of this many products or more folds to the batches in flight behind "show". */
 export const PRODUCTION_FOLD_FROM = 4;
 
-/** Produkcja: one line per product (or bred species) with its ingredients as "have/need" beside the
+/** Production: one line per product (or bred species) with its ingredients as "have/need" beside the
  *  name and the running cycle's progress on its rule, or a farm's one line of fields with the ripe share
- *  on the rule. A long list shows only the batches in flight until unfolded, so Magazyn stays in view;
+ *  on the rule. A long list shows only the batches in flight until unfolded, so Storage stays in view;
  *  the choice holds for the next house. What each worker makes is set in the worker's own panel. */
 export interface ProductionSection {
   readonly element: HTMLElement;

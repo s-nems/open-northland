@@ -6,7 +6,7 @@ import { createSection } from '../parts/section.js';
 import { createSegmented } from '../parts/segmented.js';
 import type { VehiclePanelDeps } from './actions.js';
 
-/** Wojsko: a siege engine's stance, the soldier's Postawa strip with the vehicle's three stances. */
+/** Military: a siege engine's stance, the soldier's Stance strip with the vehicle's three stances. */
 export interface MilitarySection {
   readonly element: HTMLElement;
   update(model: VehiclePanelModel): void;

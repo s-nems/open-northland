@@ -45,7 +45,7 @@ import {
 } from '../src/view/unit-controls/vehicle-panel.js';
 import { ctxOf } from './support/sandbox.js';
 
-/** The panel context with the sim's trader seam, which the Handel section reads. */
+/** The panel context with the sim's trader seam, which the Trade section reads. */
 const tradeCtxOf = (sim: Simulation): UnitPanelModelContext => ({
   ...ctxOf(sim),
   traderView: (entity) => sim.traderView(entity as Entity),

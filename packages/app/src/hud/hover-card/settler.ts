@@ -43,7 +43,7 @@ export function settlerHoverModel(
   };
 }
 
-/** The Produkcja rows the worker is set to make; every open one running reads as one word unless it is
+/** The Production rows the worker is set to make; every open one running reads as one word unless it is
  *  the only one. Null for a worker without products to set or with every one stopped. */
 function selectedProducts(
   ctx: SettlerHoverContext,

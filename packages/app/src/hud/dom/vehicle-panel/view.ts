@@ -47,7 +47,7 @@ export interface VehiclePortraitSubject {
   readonly rect: ClientRect;
 }
 
-/** A vehicle no trader rides: its Handel section hides. */
+/** A vehicle no trader rides: its Trade section hides. */
 const NO_TRADER: TraderSubject = { entityId: -1, name: '', trade: null };
 
 export function createVehiclePanel(deps: VehiclePanelDeps): VehiclePanel {

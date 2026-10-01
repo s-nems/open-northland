@@ -84,7 +84,7 @@ export interface TradeOfferModel {
   readonly progress: { readonly given: number; readonly received: number } | null;
 }
 
-/** The trader a Handel section and the trade window act for: the selected person, or the one riding
+/** The trader a Trade section and the trade window act for: the selected person, or the one riding
  *  the selected cart. */
 export interface TraderSubject {
   readonly entityId: number;
@@ -93,7 +93,7 @@ export interface TraderSubject {
 }
 
 /**
- * The Handel model of a trader, for the settler panel's summary, the trade window and the vehicle
+ * The Trade model of a trader, for the settler panel's summary, the trade window and the vehicle
  * window: the route's stops by slot, what two own stops store and move, or the agreements a foreign
  * stop offers.
  */
@@ -212,7 +212,7 @@ function freeSlot(stops: readonly TradeStopView[]): number | null {
   return null;
 }
 
-/** The Handel model of one settler, or null for anything that is no trader. */
+/** The Trade model of one settler, or null for anything that is no trader. */
 export function tradePanelModel(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,

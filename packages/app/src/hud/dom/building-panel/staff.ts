@@ -41,7 +41,7 @@ const LOOK_CLASS: Readonly<Record<PersonLook, string>> = {
   child: 'on-seat-well--child',
 };
 
-/** Pracownicy, Mieszkańcy or Budowniczowie: a line per group (a trade's seats, the sheltering crowd, a
+/** Workers, Residents or Builders: a line per group (a trade's seats, the sheltering crowd, a
  *  family) with a well per person showing it live, and the filled and declared seats on the rule. A
  *  press on a person selects it; a press on a trade's free seat lists who could take it. */
 export interface StaffSection {

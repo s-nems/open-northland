@@ -44,7 +44,7 @@ function unlockRow(row: UnlockProgressRowModel): LedgerModel {
 export const UNLOCKS_FOLDED_MAX = 2;
 
 /**
- * Doświadczenie: the current trade's tracks one to a line, then the upcoming unlocks with a thin meter
+ * Experience: the current trade's tracks one to a line, then the upcoming unlocks with a thin meter
  * each. Every row shows until the panel would run past the plane: then the section folds to the
  * trade's first tracks and unlocks behind one "jeszcze N" in the title, which the player opens and
  * closes; a person whose rows fit sees no toggle, and a new person starts open again.

@@ -131,8 +131,8 @@ describe('producer self-service - fetching a missing recipe input', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     // The ONLY wood nearby sits on a construction site as delivered build material. A producer short
     // of wood must leave it alone - pulling it would drop the site's built fraction and force the
-    // builders to re-deliver (the observed "surowce znikają z placu budowy" bug). The site is a
-    // delivery sink, never a source, the same guard `nearestStoreHolding` applies to a builder's fetch.
+    // builders to re-deliver (the observed bug where materials vanished from the building site). The site
+    // is a delivery sink, never a source, the same guard `nearestStoreHolding` applies to a builder's fetch.
     const mill = buildingAt(sim, SAWMILL, 0, 0); // needs wood for its recipe
     siteAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 2]]); // a half-built store holding delivered wood
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
@@ -400,8 +400,8 @@ describe('producer work seats - one stay-inside seat per batch', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     // One batch grinding, no wood left for a second - the twin mill offers ONE work seat. The first
     // operator (planner settler order) keeps the batch running; the second is surplus: instead of
-    // idling inside until its colleague finishes, it walks out for the next wood (the "drugi młynarz
-    // czeka w środku aż pierwszy skończy" bug).
+    // idling inside until its colleague finishes, it walks out for the next wood (the reported bug where a
+    // second miller waited inside until the first finished).
     const mill = buildingAt(sim, TWIN_MILL, 0, 0);
     sim.world.add(mill, Production, { cycles: [{ goodType: PLANK, elapsed: 2, duration: 20 }] });
     buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);

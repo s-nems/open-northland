@@ -23,7 +23,7 @@ export function needTooltip(bar: PanelBar): string {
   });
 }
 
-/** Samopoczucie: one meter line per stat, a need line the order for that need. The hovered line's
+/** Wellbeing: one meter line per stat, a need line the order for that need. The hovered line's
  *  numbers show in the panel's chip, refreshed as they tick. */
 export interface NeedsSection {
   readonly element: HTMLElement;

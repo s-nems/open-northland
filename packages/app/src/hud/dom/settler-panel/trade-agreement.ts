@@ -43,7 +43,7 @@ interface OfferView {
   readonly received: HTMLElement;
 }
 
-/** Umowa: the foreign stop's agreements as single-choice chips "2 [wood] → 1 [leather]"; under the
+/** Agreement: the foreign stop's agreements as single-choice chips "2 [wood] → 1 [leather]"; under the
  *  chosen one a thin meter of the running exchange, the half given and the half received. */
 export interface TradeAgreement {
   readonly element: HTMLElement;

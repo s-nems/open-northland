@@ -186,7 +186,7 @@ export async function createUnitChrome(
     contract,
     equipPicker,
   );
-  // One trade window for both panels: a trader's own and a trader's cart's Handel open it.
+  // One trade window for both panels: a trader's own and a trader's cart's Trade open it.
   const tradeWindow = createTradeWindow({
     plane: opts.domHud.plane,
     icons,

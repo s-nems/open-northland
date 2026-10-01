@@ -25,7 +25,7 @@ interface WareView {
   readonly toggle: RoundButton;
 }
 
-/** Wyposażenie: a finished home's household wares, each with its pool on the rule and what it buys,
+/** Household: a finished home's household wares, each with its pool on the rule and what it buys,
  *  and the owner's toggle that allows or forbids the ware in every home. */
 export interface HomeSection {
   readonly element: HTMLElement;

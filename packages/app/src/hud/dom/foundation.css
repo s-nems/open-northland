@@ -1953,7 +1953,7 @@ body.on-drag-scroll * {
   top: -12px;
   height: 12px;
 }
-/* Two columns of the content's real names ("Mała Mikstura Wytrzymałości") without a wrapped row. */
+/* Two columns of the content's real names ("Small Stamina Potion") without a wrapped row. */
 .on-hud .on-tip--wide {
   width: 480px;
 }
@@ -3488,7 +3488,7 @@ body.on-drag-scroll * {
   color: var(--danger);
   opacity: 0.85;
 }
-/* Handel: one row per route slot, the A/B badge, the house as a link, the heading arrow and the
+/* Trade: one row per route slot, the A/B badge, the house as a link, the heading arrow and the
    detach; a free slot's badge is dashed. */
 .on-hud .on-stops {
   margin: 0;
@@ -3643,7 +3643,7 @@ body.on-drag-scroll * {
   font-size: 12px;
   color: var(--muted);
 }
-/* Umowa: the agreements as single-choice chips, the chosen one with its exchange meter under it. */
+/* Agreement: the agreements as single-choice chips, the chosen one with its exchange meter under it. */
 .on-hud .on-offers {
   display: inline-flex;
   flex-wrap: wrap;
@@ -3693,7 +3693,7 @@ body.on-drag-scroll * {
 .on-hud .on-offer-slot--stalled .on-offer__meter {
   opacity: 0.4;
 }
-/* Doświadczenie: one track to a line (a track's name can run long), the rows past the fold hidden
+/* Experience: one track to a line (a track's name can run long), the rows past the fold hidden
    until the "jeszcze N" toggle in the title opens them. */
 .on-hud .on-experience .on-ledger--more {
   display: none;
@@ -4613,7 +4613,7 @@ body.on-drag-scroll * {
   width: 13px;
   height: 13px;
 }
-/* Przewozy: five 32 px lines shown and more scrolling inside the list; the height holds with none,
+/* Transfers: five 32 px lines shown and more scrolling inside the list; the height holds with none,
    so the window keeps one size whatever the route moves. */
 .on-hud .on-trade-transfers {
   display: flex;

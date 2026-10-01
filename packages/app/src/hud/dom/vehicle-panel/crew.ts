@@ -102,8 +102,8 @@ export function commanderCaption(model: Pick<VehiclePanelModel, 'vehicleClass' |
   return { role, detail: messages().hud.settlerPanel.missing, missing: false };
 }
 
-/** Załoga: the commander's well, marked out from the rest, with a ship's seats as wells beside it or a
- *  land vehicle's role line; a ship's deck; the count and "Wysadź wszystkich" at the rule's right end.
+/** Crew: the commander's well, marked out from the rest, with a ship's seats as wells beside it or a
+ *  land vehicle's role line; a ship's deck; the count and "Unload everyone" at the rule's right end.
  *  A click on a rider selects it, a Ctrl click steps it out. */
 export interface CrewSection {
   readonly element: HTMLElement;

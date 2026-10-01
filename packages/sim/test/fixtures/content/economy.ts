@@ -140,7 +140,7 @@ export const economyContent = {
     { typeId: 1, id: 'woodcutter', allowedAtomics: [24] },
     { typeId: 2, id: 'carpenter' },
     // The civilist (the original's job 6 - the no-trade adult): assignable via setJob, employed by no
-    // workplace, so a settler ordered into it stays jobless (the "Cywil" picker row).
+    // workplace, so a settler ordered into it stays jobless (the "Civilian" picker row).
     { typeId: 6, id: 'civilist' },
     // The smith (job 13) is the fixture's `needsReligionFlag` trade - the only kind of settler
     // that leaves its work to pray.

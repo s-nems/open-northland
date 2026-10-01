@@ -21,7 +21,7 @@ const REGENERATION_ORDER: Readonly<Record<Regeneration, ActionOrderId>> = {
   forbidden: 'prohibitRegeneration',
 };
 
-/** "Atak 20 · Obrona 12": how many hold each value, the ones nobody holds left out. */
+/** "Attack 20 · Defend 12": how many hold each value, the ones nobody holds left out. */
 export function holdCounts<K extends string>(
   counts: Readonly<Record<K, number>>,
   labels: Readonly<Record<K, string>>,
@@ -32,7 +32,7 @@ export function holdCounts<K extends string>(
     .join(' · ');
 }
 
-/** Wojsko for a group: the fighters' stance and Jedzenie i sen, and the catapults' stance. A strip lights
+/** Military for a group: the fighters' stance and Food and sleep, and the catapults' stance. A strip lights
  *  the value every member holds and none while they differ; each option says how many it reaches. A row
  *  the group has stays in every tab, faded where the tab holds nobody it orders. */
 export interface GroupMilitarySection {

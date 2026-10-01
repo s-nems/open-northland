@@ -184,7 +184,7 @@ export function pickWalkRow(rows: readonly BobSeqRow[]): BobSeqRow | undefined {
   return longestEightDir ?? rows[0];
 }
 
-/** The montage caption for a head look stem, e.g. `cr_hum_head_08` → `Głowa 08`. */
+/** The montage caption for a head look stem, e.g. `cr_hum_head_08` → `Head 08`. */
 export function headLabel(headBmd: string): string {
   const m = /cr_hum_head_(\d+)/i.exec(headBmd);
   return m ? formatMessage(messages().animation.head, { number: m[1] ?? '' }) : headBmd;

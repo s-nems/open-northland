@@ -18,5 +18,5 @@ all three links silently do nothing in the desktop build. The browser build is u
 ## Verify
 
 - Unit-test the URL decision if it is extracted as a pure helper.
-- Platform check: run the packaged shell, open Twórcy, confirm all three links open in the system
+- Platform check: run the packaged shell, open Credits, confirm all three links open in the system
   browser and no Electron window appears.

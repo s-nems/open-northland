@@ -63,8 +63,8 @@ interface LineView {
 }
 
 /**
- * Ładownia: the load gauge (aboard, on the way, the target), one manifest line per good with what is
- * aboard, what is on its way and the target's counter, and "Dodaj towar" for the rest of what the hold
+ * Hold: the load gauge (aboard, on the way, the target), one manifest line per good with what is
+ * aboard, what is on its way and the target's counter, and "Add a good" for the rest of what the hold
  * may carry. A trader's cart shows the lines read-only: its route writes the targets.
  */
 export interface HoldSection {

@@ -137,7 +137,7 @@ describe('admin spawn command mapping', () => {
       hitpoints: 250,
       weaponTypeId: WEAPON_SWORD,
       armorClass: 2,
-      // The weapon good in the equipment slot drives the drawn look + the panel's Broń row.
+      // The weapon good in the equipment slot drives the drawn look + the panel's Weapon row.
       equipment: { weapon: { goodType: GOOD_SWORD_SHORT } },
     });
   });
@@ -286,7 +286,7 @@ describe('weaponEquipmentFor - the one job→equipment-weapon map every spawn pa
 
   it('resolves the good against the running content - real goodtypes.ini ids, not the sandbox +100', () => {
     // On a decoded map the sim plays on the merged real content whose weapon goods keep the
-    // goodtypes.ini ids (37–42); the slug join must land there, or the panel's Broń row shows an
+    // goodtypes.ini ids (37–42); the slug join must land there, or the panel's Weapon row shows an
     // unknown good (the empty-socket bug this pins).
     const realGoods = [
       { typeId: 38, id: 'bow_long' },

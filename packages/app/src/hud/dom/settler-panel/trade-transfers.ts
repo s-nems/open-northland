@@ -10,7 +10,7 @@ import { button, element, setHidden, setTip, write } from '../parts/dom.js';
 import { oneWayStops, stopBadge, TRANSFER_ICON_PX } from '../trade-window/route.js';
 import type { SettlerPanelDeps } from './actions.js';
 
-/** "A → B · do 10 · zostaw 2", or "A ⇄ B" for a balanced good. */
+/** "A → B · up to 10 · keep 2", or "A ⇄ B" for a balanced good. */
 export function transferSummary(transfer: TradeTransferModel): string {
   const copy = messages().hud.settlerPanel;
   const stops = oneWayStops(transfer.direction);

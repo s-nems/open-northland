@@ -847,7 +847,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     // A building's card reads content alone: names, store slots and construction bills. No species
     // filter, so a farm's herd is one of its store lines, as the original's card lists it; the details
-    // panel filters it out only because its own Produkcja window already counts the herd.
+    // panel filters it out only because its own Production window already counts the herd.
     const hoverOwners: HoverOwnerContext = {
       viewer,
       seatNameOf: deps.seatNameOf,

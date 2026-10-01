@@ -38,9 +38,10 @@ const STAGE_BY_TYPE: ReadonlyMap<UserMessageType, number> = new Map(
   ),
 );
 
-/** The types whose card line differs between notes only by the subject's sex ("Zgubił się", "Zgubiła
- *  się"): such a line carries no detail, so the type stacks as one. Grown men and grown women stack
- *  apart, since each asks the player for something else (a trade, a home): owner ruling. */
+/** The types whose card line differs between notes only by the subject's sex (Polish words "Lost"
+ *  differently for a man and a woman): such a line carries no detail, so the type stacks as one. Grown
+ *  men and grown women stack apart, since each asks the player for something else (a trade, a home):
+ *  owner ruling. */
 export const SEX_ONLY_LINE_TYPES: ReadonlySet<UserMessageType> = new Set([
   USER_MESSAGE_TYPE.lostWithoutSignposts,
 ]);
@@ -112,7 +113,7 @@ export function groupNotes(notes: readonly UserMessage[]): NoticeGroup[] {
 }
 
 /** What a stack holds, for its hover line and its spoken label: a family's members counted per type
- *  ("1 umiera · 3 głodują · 9 chce jeść"), any other stack's count of notes. */
+ *  ("1 dying · 3 starving · 9 hungry"), any other stack's count of notes. */
 export function groupBreakdown(group: NoticeGroup, copy: NoticesCopy, localeTag: string): string {
   const count = group.members.length;
   const [lead] = group.members;

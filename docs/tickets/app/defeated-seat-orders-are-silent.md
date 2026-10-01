@@ -3,7 +3,7 @@
 **Area:** app · **Focus:** `packages/app/src/hud/tool-panel`, `packages/app/src/view/runtime` · **Priority:** P2
 
 `seatMayIssue` (`packages/sim/src/systems/command/authority.ts`) refuses every command from a seat the
-match marked dead. The HUD does not know: after the verdict panel is dismissed with "Obserwuj dalej",
+match marked dead. The HUD does not know: after the verdict panel is dismissed with "Keep watching",
 the strip still opens the build menu, `seatPlacementProbe` still paints the ghost green
 (`packages/app/src/view/runtime/placement-gates.ts` has no death check), unit selection still works, and
 the click enqueues a command the sim drops without a word. Defeat leaves women and children alive, so

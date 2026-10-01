@@ -14,7 +14,7 @@ import {
  * whose building worker slots carry the raw `jobtypes.ini` job ids - NOT the sandbox-rebased ids the
  * headless twin uses. This is the path that regressed once interactive views started running on real
  * content: a warehouse's raw hunter(15)/fisher(22) slots were misclassified as craftsmen and offered
- * ahead of the carrier, so a right-click made a settler a hunter instead of a Tragarz.
+ * ahead of the carrier, so a right-click made a settler a hunter instead of a carrier.
  */
 
 // Raw jobtypes.ini ids as they appear in the extracted `ir.json` building worker slots (real content).

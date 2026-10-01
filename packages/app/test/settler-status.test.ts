@@ -7,7 +7,7 @@ import { building, type Ent, settler, snapshotOf } from './support/snapshot.js';
  * The status line's live state. It is a ladder over the settler's live components, and its two non-obvious
  * rungs are the wait and the alert: a settler posted to a building that is still going up stands at the
  * site on purpose, and a soldier holding its ground while a battle is on nearby takes no work and no rest
- * on purpose. Neither must read as the "bezczynny" of a settler nobody gave work to.
+ * on purpose. Neither must read as the "idle" of a settler nobody gave work to.
  */
 
 const BAKER = 5;

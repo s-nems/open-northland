@@ -455,16 +455,16 @@ signpost. A marquee takes every own vehicle whose drawn bounds it touches along 
 (an addition); the panel opens for one vehicle alone, and a group, or vehicles boxed with settlers,
 shows only the selection count. The world tooltip reads "type · player · task". The selection panel
 (`packages/app/src/hud/dom/vehicle-panel/`) shows the class and type, the live portrait with its
-wear bar, the order buttons over the state line, a siege engine's stance, Załoga (the commander's
+wear bar, the order buttons over the state line, a siege engine's stance, Crew (the commander's
 well, a ship's seats and deck: a click selects a rider, a Ctrl click detaches it, an empty well arms
 the pick of an own settler to seat, the deck row arms the pick of an own cart to drive aboard), a
-trader's Handel, and Ładownia (one line per good aboard, asked for or booked, a counter on its
+trader's Trade, and Hold (one line per good aboard, asked for or booked, a counter on its
 wanted amount, a picker adding a good at zero; a hold a trader's route drives is read-only). Labels
 come from the app catalog. Approximations: the panel's layout is authored, not the original's
 window; the order set per type (every vehicle drives and stops; a ship moors; a land vehicle boards
 or leaves a ship; a siege engine takes the attack orders and the three stances) and the stances'
 "hold" name come from the command semantics, not a button-by-button reading; the clear order is
-"Rozładuj wszystko"; the wanted counter steps by 1, by 10 with Ctrl and to 0 or as much as fits with
+"Unload all"; the wanted counter steps by 1, by 10 with Ctrl and to 0 or as much as fits with
 Shift (owner's choice; the original steps 10 with Shift), and echoes a step until the snapshot
 carries it; the right-click defaults follow the original's order (enemy human, own moored ship for a
 land vehicle, enemy vehicle or house, else go to) but the attack defaults apply to an armed vehicle

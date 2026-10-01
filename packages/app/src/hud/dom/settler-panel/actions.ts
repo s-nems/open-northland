@@ -38,7 +38,7 @@ export interface SettlerPanelActions {
   readonly orderNeed: (id: number, need: NeedKind) => void;
   readonly assignWorkplace: (id: number) => void;
   readonly unassignWorkplace: (id: number) => void;
-  /** Arm the pick of a carrier's pickup flag, as the ring's "Przydziel obszar pracy" does. */
+  /** Arm the pick of a carrier's pickup flag, as the ring's "Assign Work Area" does. */
   readonly assignWorkArea: (id: number) => void;
   readonly clearWorkArea: (id: number) => void;
   /** End a builder's road or wall run. */
@@ -47,7 +47,7 @@ export interface SettlerPanelActions {
   readonly unassignHome: (id: number) => void;
   /** Send the person to find the nearest partner and wed. */
   readonly marry: (id: number) => void;
-  /** Arm the pick of the vehicle to ride, as the ring's "Przydziel wehikuł" does. */
+  /** Arm the pick of the vehicle to ride, as the ring's "Assign Vehicle" does. */
   readonly assignVehicle: (id: number) => void;
   readonly leaveVehicle: (id: number) => void;
   readonly equip: (id: number, ref: EquipSlotRef) => void;
@@ -93,6 +93,6 @@ export interface SettlerPanelDeps {
   readonly now: () => number;
   /** The GUI click a press that only opens a surface makes. */
   readonly cue: (cue: UiCue) => void;
-  /** The trade window the Handel section's configure button opens; one for every panel. */
+  /** The trade window the Trade section's configure button opens; one for every panel. */
   readonly tradeWindow: TradeWindow;
 }

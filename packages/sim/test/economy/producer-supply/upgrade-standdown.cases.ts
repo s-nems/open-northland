@@ -30,8 +30,8 @@ import {
 } from './support.js';
 
 /**
- * Workers of an UPGRADING building stop working it (user rule: "pracownik budynku który jest ulepszany
- * powinien przestać pracować"). Source basis: readable original - `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`
+ * Workers of an UPGRADING building stop working it (user rule: a worker of a building being upgraded
+ * should stop working). Source basis: readable original - `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`
  * is 1 for the craft trades, so a trade needs its finished workhouse; applied here as a blanket, since the
  * flag is not extracted (see docs/tickets/pipeline/jobtypes-per-job-flags-unextracted.md). The upgrade turns the
  * building back into a construction site whose emptied stockpile is the construction hold, so an

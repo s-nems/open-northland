@@ -14,7 +14,7 @@ The **split** is not evenly evidenced:
   same display name ("Ciastko"/"Ciastka"), and the eat slots are named for the same pair
   (`..._eat_slot_food` = atomic 10, `..._eat_slot_candy` = atomic 11).
 - `fruit`, `bread`, `meat`, `fish`, `sausage` → `food_simple` is **by elimination**: good 16 carries the
-  generic name ("Żywność") and nothing contradicts it. No readable rule file states the split.
+  generic name ("Food") and nothing contradicts it. No readable rule file states the split.
 
 The risk is concentrated in the processed dishes. `sausage` is made from `meat` and `candy` from
 flour + honey; if the original treats the upgraded dish as the luxury food, `sausage` (and possibly

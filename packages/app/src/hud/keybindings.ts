@@ -96,7 +96,7 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   // digit groups. Ours: Esc's game menu (the original's options sit on F2), F1 the mission (the
   // original's help), F2 the subjects (the original's F7), F7 the knowledge (the original's technology
   // tree on F8), F8 the HUD, Q for the original's A (Assign Work Place), so A stays attack-move, R the
-  // shown building's Rozbuduj.
+  // shown building's Upgrade.
   pauseToggle: 'KeyP',
   speedCycle: 'KeyL',
   gameMenu: 'Escape',

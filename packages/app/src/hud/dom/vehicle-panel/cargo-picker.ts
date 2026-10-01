@@ -18,7 +18,7 @@ export function firstCarriedTab(goods: readonly VehicleCargoGood[], tabs: number
 }
 
 /**
- * "Dodaj towar": the stock categories over the goods of the open one that the hold may carry, a listed
+ * "Add a good": the stock categories over the goods of the open one that the hold may carry, a listed
  * good ticked. A press adds the good to the manifest (a press on one the player added and left at zero
  * takes it off again), and the picker stays open for the next.
  */

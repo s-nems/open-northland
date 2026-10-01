@@ -74,7 +74,7 @@ export function categoryOfKind(kind: string): BuildingCategory {
 export type CatalogueView = 'grid' | 'list';
 
 /** The window's two pages: the catalogue, or the papers (the plans a pick spends), which the quick
- *  row's Papiery button toggles and a back tab leaves. */
+ *  row's Papers button toggles and a back tab leaves. */
 export type ConstructionPage = 'catalog' | 'papers';
 
 /** Window state across a HUD-scale remount. Fresh openings show the catalogue, while placement

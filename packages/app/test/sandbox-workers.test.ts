@@ -101,13 +101,13 @@ describe('sandbox building worker slots', () => {
     expect(firstCraftName(31)).toBe('Kowal'); // smithy → smith (original job 13)
     expect(firstCraftName(35)).toBe('Druid'); // druid hut → druid (original job 30)
     // Drift guard: the slot label must be the SAME word the profession picker shows (they were once
-    // transcribed twice and diverged - a joiner read "Cieśla" as a slot but "Stolarz" in the picker).
+    // transcribed twice and diverged - a joiner had one name in the slot and another in the picker).
     expect(firstCraftName(31)).toBe(professionLabel('smith'));
     expect(firstCraftName(24)).toBe(professionLabel('joiner')); // work_joinery_01 → joiner (original job 9)
   });
 
   it('offers the Druid first on a right-click of the druid hut, and never the collector-gatherer', () => {
-    // The reported bug: right-clicking the druid hut made a Zbieracz (collector) first. The collector is a
+    // The reported bug: right-clicking the druid hut made a collector first. The collector is a
     // gatherer role, so it must be excluded from the priority, and the Druid craft leads it.
     const priority = assignmentPriority(byType.get(35)?.workers);
     expect(priority.every((jobType) => workerRoleOf(jobType) !== 'gatherer')).toBe(true);

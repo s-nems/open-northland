@@ -40,9 +40,9 @@ export function settlerRole(ctx: Pick<UnitPanelModelContext, 'jobs'>, ent: Snaps
  *  the faded button carries in its tooltip. */
 export type SeatControl = true | string;
 
-/** A Miejsce pracy or Dom row: what it names and the two round buttons after it. */
+/** A Workplace or Home row: what it names and the two round buttons after it. */
 export interface SettlerSeatRow {
-  /** Null reads "brak". */
+  /** Null reads "none". */
   readonly target: SettlerPlace | null;
   /** The assign button; null makes the row read-only. */
   readonly assign: SeatControl | null;
@@ -50,7 +50,7 @@ export interface SettlerSeatRow {
   readonly remove: SeatControl | null;
 }
 
-/** The Miejsce pracy row: for a trade that works from a flag (a gatherer, a fisher) the assign pick
+/** The Workplace row: for a trade that works from a flag (a gatherer, a fisher) the assign pick
  *  also plants the flag on the ground, so the row always offers it. */
 export interface SettlerWorkplaceRow extends SettlerSeatRow {
   readonly flag: boolean;
@@ -58,7 +58,7 @@ export interface SettlerWorkplaceRow extends SettlerSeatRow {
   readonly centreFlag: number | null;
 }
 
-/** The Obszar row of a carrier whose post takes a pickup flag: whether a flag stands, the button
+/** The Area row of a carrier whose post takes a pickup flag: whether a flag stands, the button
  *  that plants or moves it, and the one that takes it away. */
 export interface SettlerWorkAreaRow {
   /** The flag the centre button brings into view; null while the carrier holds none. */
@@ -72,7 +72,7 @@ export interface SettlerPersonLink {
   readonly label: string;
 }
 
-/** The Rodzina row: the spouse and the growing child as links, or "bez pary". */
+/** The Family row: the spouse and the growing child as links, or "single". */
 export interface SettlerFamilyModel {
   readonly partner: SettlerPersonLink | null;
   readonly child: SettlerPersonLink | null;
@@ -84,7 +84,7 @@ export interface SettlerFamilyModel {
 }
 
 /**
- * The Miejsce pracy row of a worker, or null when there is none to show: a trade no workplace employs
+ * The Workplace row of a worker, or null when there is none to show: a trade no workplace employs
  * (the scout) has no row while it holds no post. Remove releases a building post only; a pinned site
  * and a lesson are left to the action ring.
  */
@@ -105,12 +105,12 @@ export function workplaceRow(
     assign: employed || flag ? control : null,
     remove: workplaceOf(ent) === undefined ? null : control,
     flag,
-    // A carrier's flag belongs to its Obszar row.
+    // A carrier's flag belongs to its Area row.
     centreFlag: ent.components.HaulFlag === undefined ? (workFlagOf(ent) ?? null) : null,
   };
 }
 
-/** The Obszar row, or null for a settler whose post takes no pickup flag. */
+/** The Area row, or null for a settler whose post takes no pickup flag. */
 export function workAreaRow(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -122,7 +122,7 @@ export function workAreaRow(
   return { flag, assign: control, remove: flag === null ? null : control };
 }
 
-/** The Dom row: a grown person's own, a child's read-only (it lives where its parents do). */
+/** The Home row: a grown person's own, a child's read-only (it lives where its parents do). */
 export function homeRow(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -143,7 +143,7 @@ export function homeRow(
   return { target, assign: control, remove: target === null ? null : control };
 }
 
-/** The Rodzina row, or null for a hero and a child, who have none. */
+/** The Family row, or null for a hero and a child, who have none. */
 export function familyModel(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,

@@ -10,11 +10,11 @@ import { readStockLines, vehicleTitle } from './vehicle.js';
 export interface SettlerVehicleLink {
   readonly id: number;
   readonly label: string;
-  /** The hold for the link's tooltip: "Wóz ręczny: 3 drewno, 2 żelazo", or the name alone without one. */
+  /** The hold for the link's tooltip: "Handcart: 3 wood, 2 iron", or the name alone without one. */
   readonly load: string;
 }
 
-/** The Pojazd row: the vehicle as a link, or the pick that assigns one. */
+/** The Vehicle row: the vehicle as a link, or the pick that assigns one. */
 export interface SettlerVehicleRow {
   /** Null offers the pick. */
   readonly target: SettlerVehicleLink | null;
@@ -56,7 +56,7 @@ function holdLine(
   });
 }
 
-/** The Pojazd row of an own grown person of a vehicle trade, else null. `Rider` names the vehicle from
+/** The Vehicle row of an own grown person of a vehicle trade, else null. `Rider` names the vehicle from
  *  the attach on, while the person still walks to its door. */
 export function vehicleRow(
   ctx: UnitPanelModelContext,

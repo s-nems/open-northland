@@ -6,7 +6,7 @@ const WHOLE_PCT = 100;
 /** Content goods are stable for a session, so a line is built once per good and locale. */
 const shown = new WeakMap<EquipClass, { readonly locale: Locale; readonly text: string }>();
 
-/** What a carried draught or amulet does, in one short line ("Leczy 40% zdrowia · Łyków: 2"); empty
+/** What a carried draught or amulet does, in one short line ("Heals 40% health · 2 sips"); empty
  *  for any other good. The full numbers belong to a knowledge page, not a tooltip. */
 export function goodEffectText(equip: EquipClass | undefined): string {
   if (equip?.category !== 'misc') return '';

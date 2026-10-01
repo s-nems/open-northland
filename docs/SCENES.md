@@ -113,7 +113,7 @@ the grove to the east, between the grove and the headquarters, and he goes on fe
 `?scene=porter-flag` puts a stone miner at a quarry far east of the headquarters. The headquarters
 porter holds a pickup flag beside the miner's yard: he carries the quarry stone home, leaves the heap
 beside the headquarters alone and waits at the flag when nothing lies there. Select him to plant, move
-or take away the flag from the settler panel's Obszar row or the action ring; without it he fetches the
+or take away the flag from the settler panel's Area row or the action ring; without it he fetches the
 heap too.
 
 `?scene=idle-work` places three bakeries and a collector on empty grass. Ingrid's bakery lacks water

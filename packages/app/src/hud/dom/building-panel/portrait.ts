@@ -28,10 +28,10 @@ export interface BuildingOrderView {
 }
 
 /**
- * The order tiles in their fixed places, so a hand learns them: Pracownicy, Wiedza, Zburz, then Rozbuduj
- * (Anuluj while a tier is being raised), last so a top tier without it leaves no gap between the others.
+ * The order tiles in their fixed places, so a hand learns them: Workers, Knowledge, Demolish, then Upgrade
+ * (Cancel while a tier is being raised), last so a top tier without it leaves no gap between the others.
  * A refused order stays in its place, faded, its tooltip the reason. Another seat's building offers
- * Wiedza alone.
+ * Knowledge alone.
  */
 export function orderViews(model: Pick<BuildingPanelModel, 'orders' | 'name'>): BuildingOrderView[] {
   const copy = messages().hud.buildingPanel;
@@ -69,7 +69,7 @@ export function orderViews(model: Pick<BuildingPanelModel, 'orders' | 'name'>): 
   ];
 }
 
-/** Anuluj while a tier is being raised, else Rozbuduj with its bill or refusal; null on a top tier. */
+/** Cancel while a tier is being raised, else Upgrade with its bill or refusal; null on a top tier. */
 function tierView(orders: BuildingOrdersModel): BuildingOrderView | null {
   const copy = messages().hud.buildingPanel;
   if (orders.cancelUpgrade)

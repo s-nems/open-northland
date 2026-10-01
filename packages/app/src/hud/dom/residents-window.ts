@@ -105,7 +105,7 @@ interface RowView {
 const gestureOf = (event: MouseEvent): PickGesture =>
   pickGestureOf({ range: event.shiftKey, toggle: event.ctrlKey || event.metaKey });
 
-/** A chip caption: every word opens with a capital, as the panel's "Miejsce Pracy" labels do. */
+/** A chip caption: every word opens with a capital, as the panel's "Workplace" labels do. */
 function capitalized(text: string, locale: string): string {
   return text
     .split(' ')

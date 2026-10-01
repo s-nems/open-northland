@@ -124,14 +124,14 @@ export function toggleGrant(state: AssistantState, id: AssistantGrantId): Assist
 const TAB_W = 80;
 /** Wood gap between the counter block and the grant block. */
 const BLOCK_GAP = 8;
-/** Fits the longest grant label ("Przyznaj wszystkim drewniane narzędzia") at the HUD text size. */
+/** Fits the longest grant label ("Give everyone wooden tools") at the HUD text size. */
 const MENU_WIDTH = 260;
 /** Side of the −/+ stepper plates, and the height of the value cell between them. */
 const STEPPER = 14;
 /** Sized for the cap's three digits ("100") at the row text size; an overrun drifts toward the plus plate. */
 const VALUE_W = 28;
 const CONTROL_GAP = 3;
-/** The Wł./Wył. switch plate. */
+/** The ON/OFF switch plate. */
 const SWITCH_W = 36;
 const SWITCH_H = 14;
 /** Right-hand inset of a row's control column inside its card. */

@@ -38,7 +38,7 @@ export interface ResidentRow {
   readonly female: boolean;
   /** The job the settler holds; null for one without any. */
   readonly jobType: number | null;
-  /** The profession as shown, which is also the Zawód filter's key: every soldier class reads as one. */
+  /** The profession as shown, which is also the Profession filter's key: every soldier class reads as one. */
   readonly profession: string;
   /** A growing child's whole years; null for an adult. */
   readonly ageYears: number | null;
@@ -161,7 +161,7 @@ export interface ResidentListing {
   /** What each chip would list under the other filters: a group chip swaps the group, a lack chip
    *  adds its lack to the picked ones. */
   readonly counts: ResidentCounts;
-  /** The professions among the rows the other filters keep, in label order: the Zawód options. */
+  /** The professions among the rows the other filters keep, in label order: the Profession options. */
   readonly professions: readonly { readonly profession: string; readonly count: number }[];
 }
 

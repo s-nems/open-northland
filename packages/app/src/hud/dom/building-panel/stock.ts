@@ -16,10 +16,10 @@ import { createGoodLine, type GoodLine, syncLines, withEffect } from './good-lin
 const STOCK_LINE_PX = 25;
 const STOCK_LINES_LEAST = 3;
 
-/** Magazyn: every good the house stores, what it holds against its shelf with the shelf's fill on the
+/** Storage: every good the house stores, what it holds against its shelf with the shelf's fill on the
  *  rule, empty shelves faded, an input the workers wait for in amber and a product's full shelf in red.
  *  A store opens on its largest stocks and lists the rest by category under icon tabs; a workshop's
- *  inputs stand under "Zużywa" and its products under "Wytwarza". Past eight lines the list scrolls in place. */
+ *  inputs stand under "Uses" and its products under "Makes". Past eight lines the list scrolls in place. */
 export interface StockSection {
   readonly element: HTMLElement;
   /** `fresh` is another house: the tab opens anew. */

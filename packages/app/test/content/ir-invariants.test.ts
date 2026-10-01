@@ -58,7 +58,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
   it('every weapon-good slug the spawn/render tables key on exists in the real goods', async () => {
     // `weaponEquipmentFor` makes an unresolvable slug a silent unarmed spawn and the render's
     // equipped-weapon body join skips unknown slugs, so a pipeline slug rename (say, fixing the
-    // `sword_shord` typo) would quietly bring back the empty-Broń-socket bug - this fails it loudly.
+    // `sword_shord` typo) would quietly bring back the empty-Weapon-socket bug - this fails it loudly.
     const { real } = await loadContentUnderTest();
     const ids = new Set(real.goods.map((g) => g.id));
     const slugs = new Set([
@@ -70,7 +70,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
 
   it('every good the summary bar lists, hides or shows as an icon exists in the real goods', async () => {
     // A misspelled id would sit on the bar as a permanent muted zero while the real good drifts into
-    // Inne through the unlisted rule, with every synthetic test still green.
+    // Other through the unlisted rule, with every synthetic test still green.
     const { real } = await loadContentUnderTest();
     const ids = new Set(real.goods.map((g) => g.id));
     const listed = new Set([

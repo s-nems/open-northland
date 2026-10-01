@@ -137,7 +137,7 @@ describe('employed gatherer - the workplace store filter', () => {
 
   // The gate reads the building TYPE's slots, not a live store's capacity: employment has no built gate,
   // so a collector can report in while its warehouse is still a foundation. Judged on capacity, the order
-  // would measure the construction bill and silently drop a pick the Praca menu still offers.
+  // would measure the construction bill and silently drop a pick the Work menu still offers.
   it('accepts a pick at a workplace that is still a construction site', () => {
     const sim = sceneSim();
     const site = placeBuilding(sim, WAREHOUSE, 1, 1);

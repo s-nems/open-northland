@@ -107,7 +107,7 @@ function bonusTenths(productionBonus: unknown): Map<number, number> {
 }
 
 /**
- * The Magazyn rows: every good the building can store (its `def.stock` slots) with its current amount, 0
+ * The Storage rows: every good the building can store (its `def.stock` slots) with its current amount, 0
  * when empty, matching the original window, which lists a store's accepted goods rather than whatever it
  * happens to hold. Rows keep the declared slot order so a store's rows never swap places mid-work.
  */
@@ -119,7 +119,7 @@ export function stockRows(
 ): StockRow[] {
   const live = liveAmounts(stockpile);
   const tenths = bonusTenths(productionBonus);
-  // A species slot counts the herd grazing outside, so it belongs to Produkcja, not Magazyn; a vehicle
+  // A species slot counts the herd grazing outside, so it belongs to Production, not Storage; a vehicle
   // good's slot never holds anything, since the vehicle is built on a yard and never shelved.
   const slots = (def?.stock ?? []).filter(
     (slot) =>

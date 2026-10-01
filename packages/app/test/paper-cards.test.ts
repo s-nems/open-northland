@@ -27,7 +27,7 @@ describe('paper cards', () => {
       ['placeHouse', 2, WELL],
       ['placeStockedHouse', 1, STORE],
     ]);
-    expect(plansCount(cards)).toBe(6); // the Papiery button counts every plan, not every card
+    expect(plansCount(cards)).toBe(6); // the Papers button counts every plan, not every card
     expect(paperCards([{ kind: 'indulgence', param: 0 }])).toEqual([]);
   });
 

@@ -32,7 +32,7 @@ export interface SettlerProductionRow {
   readonly count: number;
 }
 
-/** The Produkcja section: a craft operator's products in recipe order, or a gatherer's goods in catalog
+/** The Production section: a craft operator's products in recipe order, or a gatherer's goods in catalog
  *  order, each with its counter. */
 export interface SettlerProductionModel {
   readonly kind: 'craft' | 'gather';

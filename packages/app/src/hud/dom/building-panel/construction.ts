@@ -6,7 +6,7 @@ import { createSection } from '../parts/section.js';
 import type { BuildingPanelDeps } from './actions.js';
 import { createGoodLine, type GoodLine, syncLines } from './good-line.js';
 
-/** Budowa or Rozbudowa: how far the site has come on the rule, then one line per material of its bill,
+/** Build or Upgrade: how far the site has come on the rule, then one line per material of its bill,
  *  delivered against needed with what is on its way, in amber when the owner holds none of the rest. */
 export interface ConstructionSection {
   readonly element: HTMLElement;

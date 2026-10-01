@@ -8,7 +8,7 @@ import { messages } from '../i18n/index.js';
  * stable string id, so the sandbox and the real ir.json good sets resolve identically.
  */
 
-/** The misc/"Inne" tab a good with no explicit category falls into. */
+/** The misc/"Other" tab a good with no explicit category falls into. */
 const DEFAULT_TAB = 7;
 
 /** The eight category tabs' display names, indexed by tab. */
@@ -18,7 +18,7 @@ export function stockTabLabels(): readonly string[] {
 
 /** Good string id → tab index (0–7). */
 const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
-  // 0 - Żywność (food)
+  // 0 - Food
   food_simple: 0,
   food_extra: 0,
   bread: 0,
@@ -28,11 +28,11 @@ const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   wheat: 0,
   honey: 0,
   flour: 0,
-  // 1 - Napoje (drink / consumable liquids)
+  // 1 - Drinks (drink / consumable liquids)
   water: 1,
   mead: 1,
   holy_oil: 1,
-  // 2 - Surowce (raw materials)
+  // 2 - Resources (raw materials)
   wood: 2,
   stone: 2,
   mud: 2,
@@ -41,20 +41,20 @@ const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   wool: 2,
   leather: 2,
   herb: 2,
-  // 3 - Budulec (building materials)
+  // 3 - Building materials
   plank: 3,
   brick: 3,
   tile: 3,
   pillar: 3,
   ornament: 3,
-  // 4 - Narzędzia (tools)
+  // 4 - Tools
   tool_wooden: 4,
   tool_iron: 4,
-  // 5 - Wyroby (crafted household goods)
+  // 5 - Crafted goods (crafted household goods)
   crockery: 5,
   furniture: 5,
   shoes: 5,
-  // 6 - Wojsko (weapons + armor)
+  // 6 - Military (weapons + armor)
   bow_short: 6,
   bow_long: 6,
   spear_wooden: 6,
@@ -65,10 +65,10 @@ const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   armor_leather: 6,
   armor_chain: 6,
   armor_plate: 6,
-  // 7 - Inne (currency, potions, amulets, animals, vehicles, special) falls through DEFAULT_TAB
+  // 7 - Other (currency, potions, amulets, animals, vehicles, special) falls through DEFAULT_TAB
 };
 
-/** The stock tab a good belongs to, by its string id (misc/"Inne" tab when unknown). */
+/** The stock tab a good belongs to, by its string id (misc/"Other" tab when unknown). */
 export function goodCategoryTab(goodId: string | undefined): number {
   if (goodId === undefined) return DEFAULT_TAB;
   return CATEGORY_BY_GOOD[goodId] ?? DEFAULT_TAB;

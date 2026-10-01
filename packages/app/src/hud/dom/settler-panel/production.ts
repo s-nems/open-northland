@@ -42,11 +42,11 @@ interface RowView {
   readonly lockedNote: HTMLElement;
 }
 
-/** The rows a folded Produkcja keeps; the fold is the last resort when the panel would run past the
+/** The rows a folded Production keeps; the fold is the last resort when the panel would run past the
  *  plane with the experience section already folded. */
 export const PRODUCTION_FOLDED_MAX = 3;
 
-/** Produkcja: one row per product the trade makes or gathers here, the good's button, its name, and
+/** Production: one row per product the trade makes or gathers here, the good's button, its name, and
  *  its counter, or for a locked product a lock seal on the good and a note in the counter's place. Open
  *  in full for every person; folds behind "jeszcze N" only on the owner's word, and opens again for
  *  another person. */

@@ -29,11 +29,11 @@ function needBar(label: string, need: NeedKind, deficit: number | undefined): Pa
 }
 
 /**
- * The Ogólne stat bars. The sim stores needs as rising deficits (`hunger`↑ = hungrier) while the
+ * The General stat bars. The sim stores needs as rising deficits (`hunger`↑ = hungrier) while the
  * original's window shows the satisfaction level, so each need bar is `100 - need`; an overfilled bar
  * reads full rather than over. The labels
  * deliberately diverge from the decoded `humanwindow` 11-15 strings: each bar is named after the need it
- * shows (Głód←hunger, Sen←fatigue, Towarzystwo←enjoyment), which the original's stat names do not map
+ * shows (Hungry←hunger, Sleep←fatigue, Company←enjoyment), which the original's stat names do not map
  * onto 1:1.
  */
 export function satisfactionBars(
@@ -58,7 +58,7 @@ export function satisfactionBars(
   return bars;
 }
 
-/** One Doświadczenie row: a specialization's label, its completed-work repeats ("Drewno 5" means five
+/** One Experience row: a specialization's label, its completed-work repeats ("Wood 5" means five
  *  units gathered), its bonus percent (null when that experience buys no bonus), and whether it trains
  *  the settler's current trade. */
 export interface ExperienceRowModel {
@@ -118,7 +118,7 @@ function experienceBonusPct(
 }
 
 /**
- * The Doświadczenie rows: the current trade's tracks first, each group most-trained first, off the
+ * The Experience rows: the current trade's tracks first, each group most-trained first, off the
  * settler's `SettlerProgress.experience` map (`humanjobexperiencetypes` id → raw points). Raw points are
  * shown as completed-work repeats, dividing the track's accrual rate back out; a track-less bucket
  * (fight, scout) shows raw points and belongs to the fighter or scout trades.
@@ -153,7 +153,7 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
 
 export const EXPERIENCE_FOLDED_MAX = 3;
 
-/** The rows a folded Doświadczenie section keeps: the current trade's, at most
+/** The rows a folded Experience section keeps: the current trade's, at most
  *  {@link EXPERIENCE_FOLDED_MAX}, or the single best-trained one for a person without a trained trade. */
 export function experienceShown(rows: readonly ExperienceRowModel[]): number {
   const own = rows.filter((row) => row.own).length;
