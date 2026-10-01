@@ -117,7 +117,18 @@ export async function createWindowPixiApp(
     autoDensity: true, // CSS-size the canvas to the logical size, so client px stay 1:1 with screen px
   });
   watchBackingResolution(app, resolutionScale);
+  leaveCursorToCss(app.renderer.events);
   return app;
+}
+
+/**
+ * Stop Pixi writing the canvas's inline `cursor`. Its default style is `inherit`, and an inline style
+ * outranks the stylesheet rules that pick the world cursor (hover, armed order, placement), so they
+ * never showed. Nothing in the scene sets a Pixi cursor of its own. An own key with an empty style
+ * makes Pixi's `setCursor` write nothing.
+ */
+export function leaveCursorToCss(events: { cursorStyles: Record<string, unknown> }): void {
+  for (const mode of Object.keys(events.cursorStyles)) events.cursorStyles[mode] = '';
 }
 
 /**

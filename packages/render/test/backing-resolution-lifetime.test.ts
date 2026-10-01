@@ -7,6 +7,7 @@ vi.mock('pixi.js', () => ({
       resolution: 1,
       resize: mocks.resize,
       runners: { destroy: { add: (hook: { destroy(): void }) => mocks.destroys.push(hook) } },
+      events: { cursorStyles: { default: 'inherit' } },
     };
     async init() {}
   },
