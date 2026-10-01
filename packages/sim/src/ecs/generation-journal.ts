@@ -5,35 +5,40 @@ import type { Component, Entity } from './component.js';
 export const GENERATION_JOURNAL_LIMIT = 1024;
 
 /** One store's retained ops: entry `i` is the entity whose op bumped that store's journaled generation
- *  to `base + i + 1`. */
+ *  to `base + i + 1`. The buffer is allocated once at the limit, so recording never grows it. */
 interface GenerationJournal {
   base: number;
-  entities: Entity[];
+  readonly entities: Int32Array;
+  count: number;
 }
 
 /**
  * The per-component op journals an incremental index replays instead of rebuilding on every bump of one
- * generation counter (membership or value writes). Only components passed to {@link start} are
- * journaled; the rest pay nothing.
+ * generation counter (membership or value writes), indexed by {@link Component.id}. Only components
+ * passed to {@link start} are journaled; the rest pay one array read.
  */
 export class GenerationJournals {
-  private readonly byComponent = new Map<Component<unknown>, GenerationJournal>();
+  private readonly byComponent: Array<GenerationJournal | undefined> = [];
 
   /** Idempotent; a new journal starts at `generation`, so nothing before it is replayable. */
   start(component: Component<unknown>, generation: number): void {
-    if (!this.byComponent.has(component)) {
-      this.byComponent.set(component, { base: generation, entities: [] });
+    if (this.byComponent[component.id] === undefined) {
+      this.byComponent[component.id] = {
+        base: generation,
+        entities: new Int32Array(GENERATION_JOURNAL_LIMIT),
+        count: 0,
+      };
     }
   }
 
   record(component: Component<unknown>, entity: Entity): void {
-    const journal = this.byComponent.get(component);
+    const journal = this.byComponent[component.id];
     if (journal === undefined) return;
-    if (journal.entities.length >= GENERATION_JOURNAL_LIMIT) {
-      journal.base += journal.entities.length;
-      journal.entities.length = 0;
+    if (journal.count >= GENERATION_JOURNAL_LIMIT) {
+      journal.base += journal.count;
+      journal.count = 0;
     }
-    journal.entities.push(entity);
+    journal.entities[journal.count++] = entity;
   }
 
   /**
@@ -43,10 +48,12 @@ export class GenerationJournals {
    * per entry.
    */
   deltasSince(component: Component<unknown>, since: number): readonly Entity[] | null {
-    const journal = this.byComponent.get(component);
-    if (journal === undefined || since < journal.base || since > journal.base + journal.entities.length) {
+    const journal = this.byComponent[component.id];
+    if (journal === undefined || since < journal.base || since > journal.base + journal.count) {
       return null;
     }
-    return journal.entities.slice(since - journal.base);
+    const out: Entity[] = [];
+    for (let i = since - journal.base; i < journal.count; i++) out.push(journal.entities[i] as Entity);
+    return out;
   }
 }

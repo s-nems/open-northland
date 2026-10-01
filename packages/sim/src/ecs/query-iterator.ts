@@ -7,45 +7,39 @@ import type { Component, Entity } from './component.js';
  */
 export class QueryIterator implements IterableIterator<Entity> {
   private readonly result: IteratorResult<Entity> = { done: false, value: 0 as Entity };
-  private readonly stores: Array<Map<Entity, unknown>> = [];
-  private readonly smallest: Map<Entity, unknown> | null;
-  private keys: Iterator<Entity> | null;
+  /** The required stores other than {@link smallest}, probed per candidate. */
+  private readonly others: Array<Map<Entity, unknown>> = [];
+  private keys: Iterator<Entity> | null = null;
 
   constructor(
-    all: ReadonlyMap<Component<unknown>, Map<Entity, unknown>>,
+    storesById: ReadonlyArray<Map<Entity, unknown> | undefined>,
     required: ReadonlyArray<Component<unknown>>,
   ) {
     let smallest: Map<Entity, unknown> | undefined;
-    let resolvable = required.length > 0;
     for (const c of required) {
-      const s = all.get(c);
-      if (s === undefined) {
-        resolvable = false;
-        break;
-      }
-      this.stores.push(s);
+      const s = storesById[c.id];
+      if (s === undefined) return;
       if (smallest === undefined || s.size < smallest.size) smallest = s;
     }
-    if (!resolvable || smallest === undefined) {
-      this.smallest = null;
-      this.keys = null;
-    } else {
-      this.smallest = smallest;
-      this.keys = smallest.keys();
+    if (smallest === undefined) return;
+    for (const c of required) {
+      const s = storesById[c.id];
+      if (s !== undefined && s !== smallest) this.others.push(s);
     }
+    this.keys = smallest.keys();
   }
 
   next(): IteratorResult<Entity> {
     const keys = this.keys;
     if (keys === null) return this.finish();
-    const smallest = this.smallest;
+    const others = this.others;
     for (;;) {
       const step = keys.next();
       if (step.done === true) return this.finish();
       const id = step.value;
       let match = true;
-      for (const s of this.stores) {
-        if (s !== smallest && !s.has(id)) {
+      for (let i = 0; i < others.length; i++) {
+        if (others[i]?.has(id) !== true) {
           match = false;
           break;
         }

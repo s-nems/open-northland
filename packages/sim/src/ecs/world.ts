@@ -42,14 +42,14 @@ export class World {
   private readonly storesById: Array<Map<Entity, unknown> | undefined> = [];
   /** Components in first-registration order: stable, used for canonical hashing/snapshots. */
   private readonly registered: Array<Component<unknown>> = [];
-  /** Each component's index into {@link registered}, assigned on first {@link add}. */
-  private readonly registrationIndex = new Map<Component<unknown>, number>();
+  /** Each component's index into {@link registered} by {@link Component.id}, assigned on first {@link add}. */
+  private readonly registrationIndex: Array<number | undefined> = [];
   /** Per-entity carried components as ascending registration indices, so a component walk visits the
    *  entity's own components in registration order instead of probing every registered store. */
   private readonly memberships = new Map<Entity, number[]>();
-  /** Per-component membership (add/remove/destroy) generation, used by derived caches that depend on a
-   *  component store. */
-  private readonly componentGenerations = new Map<Component<unknown>, number>();
+  /** Per-component membership (add/remove/destroy) generation by {@link Component.id}, used by derived
+   *  caches that depend on a component store. */
+  private readonly componentGenerations: Array<number | undefined> = [];
   /** Per-component in-place value-write generation (see {@link mut}), separate from the membership
    *  generations above so spatial indexes keyed on add/remove stay unaffected. */
   private readonly componentValueGenerations: Array<number | undefined> = [];
@@ -81,7 +81,7 @@ export class World {
     if (carried !== undefined) {
       for (const index of carried) {
         const c = this.registered[index];
-        if (c !== undefined && this.stores.get(c)?.delete(entity) === true) {
+        if (c !== undefined && this.storeOf(c)?.delete(entity) === true) {
           this.componentRevisions.remove(c, entity);
           this.canonicalQueries.left(c, entity);
           this.bumpComponentGeneration(c, entity);
@@ -126,7 +126,7 @@ export class World {
   }
 
   private insertMembership(entity: Entity, component: Component<unknown>): void {
-    const index = this.registrationIndex.get(component);
+    const index = this.registrationIndex[component.id];
     if (index === undefined) return; // unreachable: storeOrCreate registered the component
     let list = this.memberships.get(entity);
     if (list === undefined) {
@@ -134,22 +134,30 @@ export class World {
       this.memberships.set(entity, list);
     }
     // Ascending insert keeps the walk in registration order; components register early, so the tail
-    // scan is short.
+    // scan is short. Shifted in place, since a splice allocates its removed-items array.
     let at = list.length;
+    list.push(index);
     while (at > 0) {
       const before = list[at - 1];
       if (before === undefined || before < index) break;
+      list[at] = before;
       at--;
     }
-    list.splice(at, 0, index);
+    list[at] = index;
   }
 
   private removeMembership(entity: Entity, component: Component<unknown>): void {
-    const index = this.registrationIndex.get(component);
+    const index = this.registrationIndex[component.id];
     const list = index === undefined ? undefined : this.memberships.get(entity);
     if (index === undefined || list === undefined) return;
     const at = list.indexOf(index);
-    if (at >= 0) list.splice(at, 1);
+    if (at >= 0) {
+      for (let i = at + 1; i < list.length; i++) {
+        const next = list[i];
+        if (next !== undefined) list[i - 1] = next;
+      }
+      list.pop();
+    }
     if (list.length === 0) this.memberships.delete(entity);
   }
 
@@ -163,7 +171,7 @@ export class World {
       store = new Map<Entity, T>();
       this.stores.set(component as Component<unknown>, store as Map<Entity, unknown>);
       this.storesById[component.id] = store as Map<Entity, unknown>;
-      this.registrationIndex.set(component as Component<unknown>, this.registered.length);
+      this.registrationIndex[component.id] = this.registered.length;
       this.registered.push(component as Component<unknown>);
       this.componentRevisions.register(component as Component<unknown>);
     }
@@ -266,13 +274,13 @@ export class World {
   /** Iterate entities that have all of the given components, in the insertion order of the smallest store.
    *  O(min store size), no sorting in the hot path. For a canonical order use {@link canonicalEntities}. */
   query(...required: Array<Component<unknown>>): IterableIterator<Entity> {
-    return new QueryIterator(this.stores, required);
+    return new QueryIterator(this.storesById, required);
   }
 
   /** The lowest-id entity carrying `component`, or null; a missing or empty store answers without
    *  allocating an iterator. */
   lowestEntityWith(component: Component<unknown>): Entity | null {
-    const store = this.stores.get(component);
+    const store = this.storeOf(component);
     if (store === undefined || store.size === 0) return null;
     let best: Entity | null = null;
     for (const e of store.keys()) {
@@ -302,7 +310,7 @@ export class World {
 
   /** The membership generation for one component store. A cache can memoize against this value. */
   componentGeneration(component: Component<unknown>): number {
-    return this.componentGenerations.get(component) ?? 0;
+    return this.componentGenerations[component.id] ?? 0;
   }
 
   registerCacheVerifier(name: string, verifier: CacheVerifier): void {
@@ -365,7 +373,7 @@ export class World {
     }
     // One bump for the whole fill: a cache built against generation 0 must not read as current over
     // a store this call populated.
-    this.componentGenerations.set(component, (this.componentGenerations.get(component) ?? 0) + 1);
+    this.componentGenerations[component.id] = this.componentGeneration(component) + 1;
     this.changeFeeds.storeReplaced(component);
   }
 
@@ -377,7 +385,7 @@ export class World {
     for (const index of carried) {
       const c = this.registered[index];
       if (c === undefined) continue;
-      const v = this.stores.get(c)?.get(entity);
+      const v = this.storeOf(c)?.get(entity);
       const revision = this.componentRevisions.revisionOf(c, entity);
       if (v === undefined) continue;
       // Every stored value is revision-stamped by add before this read can observe it.
@@ -388,7 +396,7 @@ export class World {
 
   /** Stable first-registration order for canonical component output. */
   componentOrder(component: Component<unknown>): number {
-    const index = this.registrationIndex.get(component);
+    const index = this.registrationIndex[component.id];
     if (index === undefined) throw new Error(`component '${component.name}' is not registered in this world`);
     return index;
   }
@@ -405,7 +413,7 @@ export class World {
   }
 
   private bumpComponentGeneration(component: Component<unknown>, entity: Entity): void {
-    this.componentGenerations.set(component, (this.componentGenerations.get(component) ?? 0) + 1);
+    this.componentGenerations[component.id] = this.componentGeneration(component) + 1;
     this.membershipJournals.record(component, entity);
     this.changeFeeds.membershipChanged(component, entity);
   }

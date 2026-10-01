@@ -62,4 +62,20 @@ describe('touched log component collection', () => {
       }),
     ).toBe(false);
   });
+
+  it('logs an id past the dense stamp range like any other', () => {
+    const log = new TouchedLog();
+    log.trackComponents();
+    const far = 0x7ffffffe as Entity;
+    log.record(1 as Entity, Position);
+    log.record(far, Resource, true);
+    expect(log.pending(far)).toBe(true);
+    const seen: Array<[number, boolean]> = [];
+    expect(log.drain((entity, _written, membership) => seen.push([entity, membership]))).toBe(false);
+    expect(seen).toEqual([
+      [1, false],
+      [far, true],
+    ]);
+    expect(log.pending(far)).toBe(false);
+  });
 });
