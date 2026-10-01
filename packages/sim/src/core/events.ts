@@ -57,8 +57,8 @@ export type SimEvent =
   | {
       /**
        * A vehicle's owner ordered it somewhere it cannot go: `noAnimal` for a cart still waiting on its
-       * draught animal, `noCommander` while nobody commands it, `noPath` for a target off its continent,
-       * out of its walk range, or unreachable, and for a dock point whose ring holds no node the ship
+       * draught animal, `noCommander` while nobody commands it, `noPath` for a target off its continent
+       * or unreachable, and for a dock point whose ring holds no node the ship
        * may lie at. The player's `vehicleNoAnimal` / `vehicleNoCommander` / `vehicleNoPath` notes.
        */
       readonly kind: 'vehicleMoveRefused';

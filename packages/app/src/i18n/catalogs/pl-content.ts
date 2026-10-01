@@ -292,6 +292,11 @@ export const plContent = {
       summary:
         'Dwa obsadzone statki na otwartym morzu: mały płynie prosto na północ, duży prosto na południe, potem oba zawracają i płyną z powrotem. Każdy trzyma swoją kolumnę i pokazuje kadłub dziobem w górę lub w dół ze śladem piany za rufą, zamiast kluczyć między przekątnymi.',
     },
+    'vehicle-ship-voyage': {
+      title: 'Daleki rejs statku',
+      summary:
+        'Obsadzony statek na północnym krańcu długiego kanału dostaje rozkaz przybicia do brzegu na jego południowym końcu, dwa razy dalej niż dawny zasięg pojazdów. Opływa wyspę, która zagradza prostą drogę, przepływa cały kanał i cumuje przy wskazanym brzegu.',
+    },
     'ship-wakes': {
       title: 'Piana wokół statków',
       summary:

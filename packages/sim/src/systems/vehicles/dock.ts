@@ -3,20 +3,15 @@ import { Vehicle, VehicleDrive, vehicleCommander } from '../../components/index.
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { BlockOverlay } from '../../nav/block-overlay.js';
-import { type HalfCellNode, hexagonRing, hexDistance, hexDistanceBetween } from '../../nav/halfcell.js';
-import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
+import { MAX_CLEARANCE_CLASS } from '../../nav/clearance.js';
+import { type HalfCellNode, hexagonRing } from '../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../context.js';
-import { placementBlockerVersion, vehicleAnchor } from '../footprint/index.js';
+import { vehicleAnchor } from '../footprint/index.js';
+import { vehicleClearance } from '../footprint/vehicle-clearance.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
-import {
-  crewInside,
-  moorVehicle,
-  refuseMove,
-  startVehicleDrive,
-  VEHICLE_WALK_RANGE_NODES,
-  vehicleWalkBlocks,
-} from './movement.js';
+import { crewInside, moorVehicle, refuseMove, startVehicleDrive, vehicleWalkBlocks } from './movement.js';
+import { type SeaRegions, seaRegions } from './sea-regions.js';
 
 // The dock order of docs/formats/VEHICLES.md "Ships and docking": a commanded ship boards its crew,
 // scans the hexagon ring of its door distance around the clicked shore point for a node of its own
@@ -25,9 +20,10 @@ import {
 
 /**
  * The nodes a ship may dock at for `point`, in the original's ring order: the map points at exactly
- * the door distance from the point that lie on the ship's own continent, within its walk range, and
- * are open under its walk-block, which is the free-size class test plus the other vehicles' cells.
- * The ship's own node qualifies as an in-place mooring.
+ * the door distance from the point that lie in a part of the sea the ship can sail into, however far
+ * (deviation: the original holds the dock to the goto's walk range), and are open under its walk-block,
+ * which is the free-size class test plus the other vehicles' cells. The ship's own node qualifies as an
+ * in-place mooring.
  */
 function dockCandidates(
   world: World,
@@ -40,15 +36,14 @@ function dockCandidates(
 ): NodeId[] {
   const vector = type.passengerVector;
   if (vector === undefined) return [];
-  const continent = terrain.componentOf(terrain.nodeAt(anchor.hx, anchor.hy));
-  if (continent < 0) return [];
+  const regions = seaRegions(world, ctx, terrain, type.logicSize);
+  const reach = regions.regionsFrom(terrain.nodeAt(anchor.hx, anchor.hy));
   const blocked = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
   const out: NodeId[] = [];
   for (const { point: ring } of hexagonRing(point, vector.distance)) {
     if (!terrain.inBounds(ring.hx, ring.hy)) continue;
-    if (hexDistance(anchor, ring) > VEHICLE_WALK_RANGE_NODES) continue;
     const node = terrain.nodeAt(ring.hx, ring.hy);
-    if (terrain.componentOf(node) === continent && !blocked.has(node)) out.push(node);
+    if (reach.includes(regions.regionOf(node)) && !blocked.has(node)) out.push(node);
   }
   return out;
 }
@@ -150,11 +145,12 @@ const mooringMemo = new WeakMap<World, MooringMemo>();
 
 /**
  * The {@link MooringProbe} of `vehicle`, or null for a vehicle that takes no dock order: not a ship, or
- * riding a carrier. The reachable water is flooded once per (blocker version, ship position) over the
- * ship's walk-block and the walk range, and every land node at the door distance from it is a mooring
- * spot, so a probe costs the walk-range disc, not the coastline per node. Approximation: the original's
- * dock command takes any point, so a click at sea also moors when a ring node takes it; the probe
- * accepts walkable land only, the shore the crew can step onto.
+ * riding a carrier. Every land node at the door distance from the parts of the sea the ship can sail
+ * into is a mooring spot, gathered once per sea labelling ({@link seaRegions}), so a ship under way
+ * or another vehicle moving keeps the answer. Approximations: the original's dock command takes any
+ * point, so a click at sea also moors when a ring node takes it; the probe accepts walkable land only,
+ * the shore the crew can step onto; and other vehicles do not dim a shore, whether one lies on its
+ * ring or across the only way there, where the order then finds no route.
  */
 export function mooringProbe(
   world: World,
@@ -188,11 +184,12 @@ function mooringMemoOf(
   const vector = type?.passengerVector;
   if (type === undefined || vector === undefined || !isShipVehicle(type)) return null;
   if (!terrain.inBounds(anchor.hx, anchor.hy)) return null;
-  const key = `${placementBlockerVersion(world)}:${vehicle}:${anchor.hx},${anchor.hy}`;
+  const regions = seaRegions(world, ctx, terrain, type.logicSize);
+  const reach = regions.regionsFrom(terrain.nodeAt(anchor.hx, anchor.hy));
+  const key = `${regions.key}:${reach.join(',')}:${vector.distance}`;
   const cached = mooringMemo.get(world);
   if (cached !== undefined && cached.key === key && cached.terrain === terrain) return cached;
-  const blocked = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
-  const spots = mooringSpots(terrain, blocked, anchor, vector.distance);
+  const spots = mooringSpots(world, ctx, terrain, regions, reach, vector.distance);
   const probe: MooringProbe = {
     key,
     canMoor: (x, y) => terrain.inBounds(x, y) && spots.has(terrain.nodeAt(x, y)),
@@ -202,18 +199,25 @@ function mooringMemoOf(
   return memo;
 }
 
-/** The land nodes at exactly `doorDistance` from any water node the ship can reach from `anchor`. A
- *  ship whose own node closed under it (a blocker grew beside it) sails on but cannot moor in place, the
- *  way {@link dockCandidates} drops a blocked ring node, so its own ring stays dark. */
+/**
+ * The walkable land nodes at exactly `doorDistance` from a node of the `reach` regions. A node whose
+ * free-size class is at least the door distance has no other continent within it (the class is the
+ * radius of its own open component around it), so only the coastal band is scanned.
+ */
 function mooringSpots(
+  world: World,
+  ctx: ContentContext,
   terrain: TerrainGraph,
-  blocked: BlockOverlay,
-  anchor: HalfCellNode,
+  regions: SeaRegions,
+  reach: readonly number[],
   doorDistance: number,
 ): ReadonlySet<NodeId> {
+  const clearance = vehicleClearance(world, ctx, terrain);
+  const inland = doorDistance <= MAX_CLEARANCE_CLASS ? doorDistance : Number.POSITIVE_INFINITY;
   const spots = new Set<NodeId>();
-  for (const node of reachableWater(terrain, blocked, anchor)) {
-    if (blocked.has(node)) continue; // only the start can be, as the pathfinder's blocked-start exemption
+  for (let n = 0; n < terrain.nodeCount; n++) {
+    const node = n as NodeId;
+    if (!reach.includes(regions.regionOf(node)) || clearance.classOf(node) >= inland) continue;
     const { x, y } = terrain.coordsOf(node);
     for (const { point } of hexagonRing({ hx: x, hy: y }, doorDistance)) {
       if (!terrain.inBounds(point.hx, point.hy)) continue;
@@ -222,29 +226,4 @@ function mooringSpots(
     }
   }
   return spots;
-}
-
-/**
- * The water nodes a ship standing on `anchor` can sail to under `blocked`, bounded to the walk-range disc
- * (approximation: a route that leaves the disc and returns is not found, where the pathfinder would
- * find it). The anchor itself counts: a ring node under the ship is an in-place mooring.
- */
-function reachableWater(terrain: TerrainGraph, blocked: BlockOverlay, anchor: HalfCellNode): NodeId[] {
-  const start = terrain.nodeAt(anchor.hx, anchor.hy);
-  const seen = new Set<NodeId>([start]);
-  const queue: NodeId[] = [start];
-  const edges = new StepBuffer();
-  // The array iterator re-reads `length` each step, so `queue` is a live BFS queue.
-  for (const cur of queue) {
-    terrain.stepsInto(cur, blocked, edges, 'water');
-    for (let i = 0; i < edges.length; i++) {
-      const { node } = edges.at(i);
-      if (seen.has(node)) continue;
-      const { x, y } = terrain.coordsOf(node);
-      if (hexDistanceBetween(anchor.hx, anchor.hy, x, y) > VEHICLE_WALK_RANGE_NODES) continue;
-      seen.add(node);
-      queue.push(node);
-    }
-  }
-  return queue;
 }

@@ -167,7 +167,7 @@ export function catapultOrders(
 }
 
 /** An attack-move to `place` unless the catapult fights, or stands or drives within `slack` (hex) of it; a
- *  place past the goto's walk range is reached in hops. The stance goes to attack first. */
+ *  place past its reach is reached in hops. The stance goes to attack first. */
 export function driveCatapult(
   world: World,
   vehicle: Entity,

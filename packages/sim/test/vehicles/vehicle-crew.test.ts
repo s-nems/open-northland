@@ -27,11 +27,7 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
-import {
-  createVehicle,
-  stockVehicleGoods,
-  VEHICLE_WALK_RANGE_NODES,
-} from '../../src/systems/vehicles/index.js';
+import { createVehicle, stockVehicleGoods } from '../../src/systems/vehicles/index.js';
 import { type VehicleWorkFilter, vehiclesAtWork } from '../../src/systems/vehicles/registry.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -532,14 +528,13 @@ describe('leaving', () => {
   });
 
   it("keeps the commander seated when its vehicle refuses the walk order's point", () => {
-    // A point past the goto walk range: the vehicle refuses with noPath and nobody walks off on foot.
-    const wide = 2 * VEHICLE_WALK_RANGE_NODES;
-    const s = sim(halfCellMapFromCells({ width: wide, height: 4, typeIds: new Array(wide * 4).fill(GRASS) }));
+    // A point on the far landmass: the vehicle refuses with noPath and nobody walks off on foot.
+    const s = sim(splitMap());
     const cart = spawn(s, HANDCART, 2, 2);
     const scout = spawnSettler(s, 2, 2);
     attach(s, scout, cart);
     s.run(BOARD_TICKS);
-    s.enqueue(playerCommand(P0, { kind: 'moveUnit', entity: scout, x: 2 * wide - 2, y: 2 }));
+    s.enqueue(playerCommand(P0, { kind: 'moveUnit', entity: scout, x: 2 * MAP_CELLS - 4, y: 2 }));
     s.step();
     expect(moveRefusals(s)).toEqual([`${cart}:noPath:${P0}`]);
     expect(s.world.has(scout, Rider)).toBe(true);

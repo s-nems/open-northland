@@ -13,7 +13,7 @@ import { manhattanOf, nodeOf } from './geometry.js';
 
 // The route a wave marches, cut into legs. Every distance is an approximation.
 
-/** How far one leg reaches along the route. Well inside a catapult goto's walk range. */
+/** How far one leg reaches along the route. Well inside one catapult hop. */
 export const LEG_NODES = 12;
 
 /** How far short of its objective the route ends: the wave closes up there before the siege. */

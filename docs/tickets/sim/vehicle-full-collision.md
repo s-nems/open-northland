@@ -20,9 +20,12 @@ for vehicles at all (docs/formats/VEHICLES.md "Movement").
 - A vehicle never takes an anchor from which its disc (radius `logicSize`) would share a node with
   another standing or driving vehicle's disc, in route planning and at each step. Its own disc never
   blocks it.
-- A step blocked by another vehicle takes the existing re-route; with no way left the drive ends
-  with `vehicleNoPath` as it does now. Two vehicles meeting in a narrow gap must not stand deadlocked
-  in silence.
+- A step blocked by another vehicle mends its route locally: a capped search round the blocker back
+  onto the route a few nodes ahead, falling back to the existing re-route; with no way left the drive
+  ends with `vehicleNoPath` as it does now. A vehicle goto has no walk range, so the full re-route is a
+  search over the whole continent or sea (tens of milliseconds on a 500x500-node island map), and
+  vehicles that meet on a long way would otherwise pay it on every blocked step. Two vehicles meeting
+  in a narrow gap must not stand deadlocked in silence.
 - The goto snap, dock ring, firing-node search and script teleport already read `vehicleWalkBlocks`
   and follow the same rule.
 - Settlers stay out of scope: they are shoved, not collided.

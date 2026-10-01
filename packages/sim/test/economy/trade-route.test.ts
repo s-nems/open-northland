@@ -37,7 +37,7 @@ import {
   AI_STOCK_REFILL_TURNS,
   TRADE_CART_HOUSE_DISTANCE,
 } from '../../src/systems/trade/index.js';
-import { createVehicle, VEHICLE_WALK_RANGE_NODES } from '../../src/systems/vehicles/index.js';
+import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { tradeVehicleStock } from '../../src/systems/vehicles/stock.js';
 import { economyContent } from '../fixtures/content/economy.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
@@ -76,6 +76,8 @@ const FAR_X = 7;
 const MIDDLE_X = 4;
 const MAP_W = 10;
 const MAP_H = 3;
+/** A map 240 nodes wide, four times the original's 60-node vehicle walk range. */
+const WIDE_MAP_CELLS = 120;
 /** Long enough for several round trips on the fixture's short map. */
 const RUN_TICKS = 900;
 /** Long enough for the trader to take command of its cart. */
@@ -635,12 +637,11 @@ describe('a trader between its own houses', () => {
     expect(sim.world.get(cart, Vehicle).heldGoal).toBeNull();
   });
 
-  it('drives the cart to a stop beyond the goto walk range and works it', () => {
-    const wide = 2 * VEHICLE_WALK_RANGE_NODES;
-    const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(wide, MAP_H) });
+  it('drives the cart to a stop past the original vehicle walk range and works it', () => {
+    const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(WIDE_MAP_CELLS, MAP_H) });
     sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
-    const far = houseAt(sim, wide - 2, HUMAN, [[WOOD, 0]]);
+    const far = houseAt(sim, WIDE_MAP_CELLS - 2, HUMAN, [[WOOD, 0]]);
     const trader = traderAt(sim, NEAR_X);
     woodRoute(sim, trader, near, far);
 

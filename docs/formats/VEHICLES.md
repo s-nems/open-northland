@@ -235,7 +235,10 @@ A goto needs a commander and silently ignores a target whose continent
 id differs from the vehicle's or whose size class is below `logicsize`, which keeps ships on their
 sea and carts on their landmass (continent type 1 is land). The walk searches with a range of 60,
 the vehicle twin of the humans' 50/63 walk range; a failed search raises message 0x32 and re-aims
-the vehicle at its current node. Humans inside the footprint are shoved away on every node reached.
+the vehicle at its current node. Deviation (owner's choice): Open Northland has no vehicle walk
+range. A goto or a dock reaches anywhere on the vehicle's continent or sea, the way the original's
+scout crosses its continent past every signpost network, since nothing extends a vehicle's reach the
+way signposts extend a settler's. Humans inside the footprint are shoved away on every node reached.
 Per node the move period is `max(3, (g*2 + 4) << catapult)` ticks with `g` the 4-bit ground speed
 class stored beside the size class in the node record, which is the map's `lmpr` roughness, re-read at
 every node reached; each tick adds `(period + 9999) / period`
@@ -258,9 +261,9 @@ The tolerance is for transit only: a goto's snapped goal and a firing spot need 
 given up or its goal closed meanwhile, drives on to the nearest node within 3 rings it may stand on,
 since a standing vehicle's disc blocks settlers. A player's stop leaves it where it stops. `g` is the roughness of the node a leg
 leaves (`TerrainGraph.roughnessAt`; a map without the lane reads 2 on land and 1 on water, the corpus's
-common values); the walk range is a hexagon
-distance gate on the goto; an off-continent or out-of-range target raises `vehicleNoPath` instead of
-being ignored; a goto held for a crew still outside is refused at once when no route exists at order
+common values); an off-continent target raises `vehicleNoPath` instead of being ignored, and so does
+a ship's target in a part of its sea past a strait too narrow for the hull, judged from the sea labels
+before any search; a goto held for a crew still outside is refused at once when no route exists at order
 time, where the original's pathfinder runs after the boarding; the anchor and footprint move at the
 start of a leg, not halfway; a lattice edge of two map points takes two periods; the vehicle faces
 its lattice step's screen heading at once, among the eight walk headings, and holds on the node it
@@ -311,8 +314,8 @@ reads as a map-point heading (approximation). Which node the
 original stores as the spawn mooring is *open*. `dockVehicle` (`systems/vehicles/dock.ts`) holds the
 point under the `docks` task while the crew boards, the twin of the goto's `waitsForHuman` hold; a
 ring node is open when the ship's walk-block admits it, which adds other vehicles' cells to the size
-class test, and lies within the ship's walk range; a ship already on a ring node moors in place and
-drops any drive under way (approximation: the original ends the order with nothing set); no ring node raises `vehicleNoPath` whether or not the commander is inside; the
+class test, and lies in a part of the sea the ship can sail into, however far (the deviation of
+"Movement"); a ship already on a ring node moors in place and drops any drive under way (approximation: the original ends the order with nothing set); no ring node raises `vehicleNoPath` whether or not the commander is inside; the
 ship moors on the arrival tick with a `vehicleDocked` event (approximation: the tribe binds atomic 84
 to a 12-tick dock clip, which is not played); a goto clears the pending mooring point and never re-moors on
 arrival (the commander-less re-mooring is not implemented, a goto needs a commander anyway); a dock
@@ -321,12 +324,14 @@ crew aboard is reaped like any death, so the owner's casualty tallies count it. 
 choice): a rider still walking to a ship lost at sea, and a cart still driving to it, stand on land
 and are only detached (`removeVehicle`, `systems/vehicles/remove.ts`); the original frees them with
 the ship. The dock pick shows where the
-order would moor (`mooringProbe`): the water the ship can reach under its walk-block within the walk
-range is flooded once per blocker change and ship position, and every walkable node at exactly the door
-distance from it is a mooring spot, lit on the map; the rest is dimmed, a click there orders nothing, and
-a ship's right-click on a lit spot docks instead of the refused goto. Approximations: the original's
-dock command takes any point, the probe accepts land only (where the crew can step off); the flood is
-bounded to the walk-range disc, so a route that leaves the disc and returns is not found.
+order would moor (`mooringProbe`): every walkable node at exactly the door distance from the parts of
+the sea the ship can sail into is a mooring spot, lit on the map; the rest is dimmed, a click there
+orders nothing, and a ship's right-click on a lit spot docks instead of the refused goto. The parts are
+the water nodes whose size class admits the hull, joined over the pathfinder's edges and labelled once
+per water class change (`systems/vehicles/sea-regions.ts`), so the spots outlive the ship's own drive
+and every other vehicle's. Approximations: the original's dock command takes any point, the probe
+accepts land only (where the crew can step off); other vehicles do not dim a shore, whether one lies
+on its ring or across the only way there, and the order then finds no route.
 
 ## Catapult
 

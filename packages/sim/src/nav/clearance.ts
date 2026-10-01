@@ -40,6 +40,7 @@ export class ClearanceField {
   private readonly classes: Uint8Array;
   private readonly distance: Int16Array;
   private readonly queue: NodeId[] = [];
+  private waterClassEdits = 0;
 
   constructor(
     private readonly graph: TerrainGraph,
@@ -54,6 +55,12 @@ export class ClearanceField {
     const value = this.classes[node];
     if (value === undefined) throw new Error(`node id ${node} out of range (0..${this.graph.nodeCount - 1})`);
     return value;
+  }
+
+  /** Changes whenever a water node's class changes, and never for land, where blockers come and go
+   *  all game: a cache over the sea outlives every edit on shore. */
+  get waterRevision(): number {
+    return this.waterClassEdits;
   }
 
   /**
@@ -103,7 +110,10 @@ export class ClearanceField {
     }
     for (const node of rewrite ?? scanned()) {
       const d = distance[node] ?? UNREACHED;
-      this.classes[node] = !probe(node) ? 0 : d === UNREACHED ? MAX_CLEARANCE_CLASS : d;
+      const value = !probe(node) ? 0 : d === UNREACHED ? MAX_CLEARANCE_CLASS : d;
+      if (this.classes[node] === value) continue;
+      this.classes[node] = value;
+      if (graph.isWater(node)) this.waterClassEdits += 1;
     }
     queue.length = 0;
   }

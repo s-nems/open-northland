@@ -42,7 +42,6 @@ import {
   facingOfStep,
   snapVehicleTarget,
   VEHICLE_TARGET_SNAP_RADIUS,
-  VEHICLE_WALK_RANGE_NODES,
   vehicleLegTicks,
   vehicleMovementSystem,
   vehicleMovePeriod,
@@ -55,7 +54,7 @@ import { grassCellMap, waterColumnMap } from '../fixtures/terrain.js';
 
 /**
  * The land mover of docs/formats/VEHICLES.md "Movement": the goto's refusals (no commander, off the
- * continent, beyond the walk range, no route), the target snap, the per-node move period, the
+ * continent, no route) and its reach past the original walk range, the target snap, the per-node move period, the
  * footprint travelling with the anchor through every placement cache, the shove, and a golden drive.
  */
 
@@ -138,6 +137,11 @@ function refusals(s: Simulation): string[] {
     .current()
     .flatMap((ev) => (ev.kind === 'vehicleMoveRefused' ? [`${ev.entity}:${ev.reason}:${ev.player}`] : []));
 }
+
+/** A map wide enough for a drive past the original's 60-node vehicle walk range, and its drive time. */
+const LONG_MAP_CELLS = 80;
+const OLD_WALK_RANGE_NODES = 60;
+const LONG_DRIVE_TICKS = 2000;
 
 /** Sixteen map points at the catapult's grass period, with room for its turns. */
 const CATAPULT_CROSSING_TICKS = 400;
@@ -349,17 +353,16 @@ describe('moveVehicle', () => {
     expect(refusals(s)).toEqual([`${cart}:noPath:${P0}`]);
   });
 
-  it('refuses a target beyond the walk range from where it stands', () => {
-    const s = sim(grassCellMap(40, 4));
+  it('drives to a target across its continent, past the original walk range', () => {
+    const s = sim(grassCellMap(LONG_MAP_CELLS, 4));
     const cart = commanded(s, HANDCART, 2, 2);
-    const far = { hx: 2 + VEHICLE_WALK_RANGE_NODES + 1, hy: 2 };
+    const far = { hx: 2 * LONG_MAP_CELLS - 4, hy: 2 };
+    expect(far.hx - 2).toBeGreaterThan(OLD_WALK_RANGE_NODES);
     order(s, cart, far.hx, far.hy);
     s.step();
-    expect(refusals(s)).toEqual([`${cart}:noPath:${P0}`]);
-    order(s, cart, far.hx - 1, far.hy);
-    s.step();
     expect(refusals(s)).toEqual([]);
-    expect(s.world.has(cart, VehicleDrive)).toBe(true);
+    driveOut(s, cart, LONG_DRIVE_TICKS);
+    expect(anchorOf(s, cart)).toEqual(far);
   });
 
   it('closes a wall stood up after the clearance field was read, and reopens it once razed', () => {

@@ -47,19 +47,17 @@ import {
   swingHull,
   VEHICLE_TURN_TICKS_PER_DIRECTION,
 } from './helm.js';
+import { seaRegions } from './sea-regions.js';
 
 // The mover of docs/formats/VEHICLES.md "Movement": a goto is refused without a commander or for a
-// target off the vehicle's continent or walk range, the route runs over the shared graph, on land or
-// on water by the vehicle's traversal class, through nodes the vehicle passes (`vehicleWalkBlocks`: a
+// target off the vehicle's continent, reaches as far as the continent or sea does (deviation: the
+// original holds a goto to a walk range), the route runs over the shared graph, on land or on water by
+// the vehicle's traversal class, through nodes the vehicle passes (`vehicleWalkBlocks`: a
 // land vehicle squeezes through narrow gaps) to a goal it may stand on (`vehicleRestBlocks`: the plain
 // free-size class). Each leg takes the ground's move period per map point it crosses plus its turn (a
 // ship turns under way, `helm.ts`), the footprint travels with the anchor and shoves the settlers it
 // lands on. A ship that starts a drive leaves its mooring; one on a dock drive moors again where it
 // arrives (`dock.ts`).
-
-/** The walk range of a vehicle goto in map-point steps from where it stands (original behavior,
- *  the vehicle twin of the humans' 50/63). */
-export const VEHICLE_WALK_RANGE_NODES = 60;
 
 /** How far around a clicked target the goto looks for a node the vehicle may stand on, in hexagon rings. */
 export const VEHICLE_TARGET_SNAP_RADIUS = 9;
@@ -214,7 +212,7 @@ export function refuseMove(
 }
 
 /**
- * Drive `vehicle` to `goal`, an already snapped node within the walk range: the route is found now over
+ * Drive `vehicle` to `goal`, an already snapped node: the route is found now over
  * the vehicle's walk-block and the drive starts its first leg on the next movement pass. False when no
  * route exists. A drive already under way is replaced.
  */
@@ -277,8 +275,25 @@ export function vehicleRouteTo(
     vehiclePasses(world, ctx, terrain, type),
     new Map<NodeId, boolean>(),
   );
-  const path = findPath(terrain, start, goal, blocked, undefined, vehicleTraversal(type));
+  const traversal = vehicleTraversal(type);
+  if (traversal === 'water' && start !== goal && !sailsTo(world, ctx, terrain, type, start, goal))
+    return null;
+  const path = findPath(terrain, start, goal, blocked, undefined, traversal);
   return path === null ? null : path.slice(1).map((node) => nodeOf(terrain, node));
+}
+
+/** Whether `goal` lies in a part of the sea a ship of `type` on `start` can sail into: a lookup that
+ *  refutes a goal past a strait too narrow for the hull before the search floods the whole sea. */
+function sailsTo(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  type: VehicleType,
+  start: NodeId,
+  goal: NodeId,
+): boolean {
+  const regions = seaRegions(world, ctx, terrain, type.logicSize);
+  return regions.regionsFrom(start).includes(regions.regionOf(goal));
 }
 
 export function nodeOf(terrain: TerrainGraph, node: NodeId): HalfCellNode {
@@ -317,13 +332,12 @@ export function abandonDock(world: World, vehicle: Entity): void {
 
 /**
  * The goto order (`e`): refused with `vehicleNoAnimal` for a cart still waiting on its draught animal,
- * with `vehicleNoCommander` while nobody commands the vehicle and with
- * `vehicleNoPath` when the target snaps to nothing on the vehicle's continent, lies beyond the walk
- * range, or has no route. A crew still outside is boarded first: the goal is held under the
- * `waitsForHuman` task and the drive starts once everyone is inside (the original boards its crew
- * ahead of any target). Approximation: the original ignores an off-continent
- * target silently and raises `vehicleNoPath` only from its pathfinder. Returns whether a drive or a
- * held goal now stands.
+ * with `vehicleNoCommander` while nobody commands the vehicle and with `vehicleNoPath` when the target
+ * snaps to nothing on the vehicle's continent or has no route. A crew still outside is boarded first:
+ * the goal is held under the `waitsForHuman` task and the drive starts once everyone is inside (the
+ * original boards its crew ahead of any target). Approximation: the original ignores an off-continent
+ * target silently and raises `vehicleNoPath` only from its pathfinder. Returns whether a drive or a held
+ * goal now stands.
  */
 export function moveVehicle(
   world: World,
@@ -347,7 +361,7 @@ export function moveVehicle(
   }
   dropAttack(world, e);
   const goal = snapVehicleTarget(world, ctx, terrain, e, { hx: command.x, hy: command.y });
-  if (goal === null || hexDistance(anchor, nodeOf(terrain, goal)) > VEHICLE_WALK_RANGE_NODES) {
+  if (goal === null) {
     refuseMove(world, ctx, e, 'noPath');
     return false;
   }
@@ -362,8 +376,7 @@ export function moveVehicle(
  * Drive `vehicle` to `goal`, a snapped node, or hold the goal under `waitsForHuman` while the crew is
  * outside. The route is judged now in either case, so an order nobody could drive is refused with
  * `vehicleNoPath` at once instead of after the boarding (approximation: the original's pathfinder runs
- * after the boarding). The trader's move near a house takes this seam past the goto's walk-range
- * gate. Returns whether a drive or a held goal now stands.
+ * after the boarding). Returns whether a drive or a held goal now stands.
  */
 export function sendVehicleTo(
   world: World,

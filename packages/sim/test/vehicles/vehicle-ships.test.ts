@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   Position,
+  ResourceFootprint,
   Rider,
   Settler,
   Stockpile,
@@ -24,6 +25,7 @@ import {
   nodeSetHas,
   parseSaveGame,
   playerCommand,
+  positionOfNode,
   restoreSimulation,
   Simulation,
   serializeSaveGame,
@@ -34,13 +36,7 @@ import { findPath } from '../../src/nav/pathfinding/index.js';
 import { vehicleDoorNode } from '../../src/systems/footprint/index.js';
 import { vehicleClearance } from '../../src/systems/footprint/vehicle-clearance.js';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
-import {
-  boardRider,
-  createVehicle,
-  mooringProbe,
-  removeVehicle,
-  VEHICLE_WALK_RANGE_NODES,
-} from '../../src/systems/vehicles/index.js';
+import { boardRider, createVehicle, mooringProbe, removeVehicle } from '../../src/systems/vehicles/index.js';
 import { stockVehicleGoods } from '../../src/systems/vehicles/stock.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -83,8 +79,11 @@ const SAIL_TICKS = 400;
  *  clearance shuts a ship out of the far one. */
 const BAR_ROW = 8;
 const GAP_COL = 12;
-/** Tall enough for a shore beyond the ship's walk range. */
+/** Tall enough for a shore past the original's 60-node vehicle walk range. */
 const TALL_MAP_H = 40;
+const OLD_WALK_RANGE_NODES = 60;
+/** Long enough for the tall strait's length. */
+const LONG_SAIL_TICKS = 1600;
 
 /** Two islands with a strait between them, at cell resolution; optionally taller or barred. */
 function islandMap(opts: { readonly height?: number; readonly bar?: boolean } = {}): TerrainMap {
@@ -448,14 +447,17 @@ describe('dockVehicle', () => {
     expect(s.world.get(ship, Vehicle).moored).toBe(true);
   });
 
-  it('refuses a shore beyond the walk range', () => {
+  it('sails to a shore however far down its sea and moors there', () => {
     const s = sim(7, undefined, islandMap({ height: TALL_MAP_H }));
     const { ship } = crewedShip(s, 20, 2);
     const far = { hx: EAST_SHORE_X + 1, hy: 2 * TALL_MAP_H - 2 };
-    expect(distanceTo(anchorOf(s, ship), far)).toBeGreaterThan(VEHICLE_WALK_RANGE_NODES);
+    expect(distanceTo(anchorOf(s, ship), far)).toBeGreaterThan(OLD_WALK_RANGE_NODES);
     dock(s, ship, far.hx, far.hy);
     s.step();
-    expect(refusals(s)).toEqual([`${ship}:noPath`]);
+    expect(refusals(s)).toEqual([]);
+    sailOut(s, ship, LONG_SAIL_TICKS);
+    expect(s.world.get(ship, Vehicle).moored).toBe(true);
+    expect(distanceTo(anchorOf(s, ship), far)).toBe(DOOR_DISTANCE);
   });
 
   it('the mooring probe lights the shores a dock order reaches and nothing else', () => {
@@ -490,13 +492,14 @@ describe('dockVehicle', () => {
         expect(nodeSetHas(answer.spots, hx, hy)).toBe(probe.canMoor(hx, hy));
       }
     }
-    // The same ship answers from the memo until a blocker changes; a land vehicle has no probe.
+    // The same ship answers from the memo while the sea stays as it was, another vehicle coming
+    // included; a land vehicle has no probe.
     expect(s.mooringProbe(ship)).toBe(probe);
     expect(s.mooringProbe(spawn(s, HANDCART, 4, 4))).toBeNull();
-    expect(s.mooringProbe(ship)).not.toBe(probe); // the cart's cells joined the walk-block
+    expect(s.mooringProbe(ship)).toBe(probe);
   });
 
-  it('the mooring probe keeps the basin past a gap the ship cannot pass dark, and a far shore too', () => {
+  it('the mooring probe keeps the basin past a gap the ship cannot pass dark, and lights a far shore', () => {
     const barred = sim(7, undefined, islandMap({ bar: true }));
     const { ship } = crewedShip(barred, WEST_SHORE_X + 3, 6);
     const probe = barred.mooringProbe(ship);
@@ -508,15 +511,55 @@ describe('dockVehicle', () => {
     const farProbe = tall.mooringProbe(far.ship);
     if (farProbe === null) throw new Error('no probe for a ship');
     expect(farProbe.canMoor(EAST_SHORE_X + 1, 2)).toBe(true);
-    expect(farProbe.canMoor(EAST_SHORE_X + 1, 2 * TALL_MAP_H - 2)).toBe(false);
-    // A moved ship rebuilds: the probe is keyed on where the ship stands.
+    expect(farProbe.canMoor(EAST_SHORE_X + 1, 2 * TALL_MAP_H - 2)).toBe(true);
+    // A ship under way keeps the probe: the shores hang on the sea it sails, not the node it lies on.
     dock(tall, far.ship, EAST_SHORE_X + 1, 2);
     sailOut(tall, far.ship);
     const terrain = tall.terrain;
     if (terrain === undefined) throw new Error('map missing');
-    const moved = mooringProbe(tall.world, ctxOf(tall), terrain, far.ship);
-    expect(moved).not.toBe(farProbe);
-    expect(moved?.canMoor(EAST_SHORE_X + 1, 2)).toBe(true);
+    expect(mooringProbe(tall.world, ctxOf(tall), terrain, far.ship)).toBe(farProbe);
+  });
+
+  it('sails off a node that closed under it, out by the side still open', () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const { ship } = crewedShip(s, 20, 4);
+    // A blocker two nodes east: the ship's own node falls below its hull, its west side stays open.
+    const blocker = s.world.create();
+    s.world.add(blocker, Position, positionOfNode(22, 4));
+    s.world.add(blocker, ResourceFootprint, { walk: [{ dx: 0, dy: 0 }], build: [], work: [] });
+    const clearance = vehicleClearance(s.world, ctxOf(s), terrain);
+    expect(clearance.classOf(terrain.nodeAt(20, 4))).toBeLessThan(SHIP_SIZE);
+    s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: ship, x: 24, y: 2 * MAP_H - 6 }));
+    s.step();
+    expect(refusals(s)).toEqual([]);
+    expect(s.world.has(ship, VehicleDrive)).toBe(true);
+  });
+
+  it('darkens the shores past a strait a blocker narrowed below the hull, and refuses the sail there', () => {
+    const s = sim(7, undefined, islandMap({ height: TALL_MAP_H }));
+    const { ship } = crewedShip(s, 20, 2);
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const before = s.mooringProbe(ship);
+    const south = { hx: EAST_SHORE_X + 1, hy: 2 * TALL_MAP_H - 2 };
+    expect(before?.canMoor(south.hx, south.hy)).toBe(true);
+    // A row of blockers across the strait's middle, one node short of either shore: the water stays one
+    // body, but no node of the remaining gap holds a ship's clearance.
+    for (let hx = WEST_SHORE_X + 2; hx <= EAST_SHORE_X - 2; hx++) {
+      const blocker = s.world.create();
+      s.world.add(blocker, Position, positionOfNode(hx, TALL_MAP_H));
+      s.world.add(blocker, ResourceFootprint, { walk: [{ dx: 0, dy: 0 }], build: [], work: [] });
+    }
+    const after = s.mooringProbe(ship);
+    expect(after).not.toBe(before);
+    expect(after?.canMoor(EAST_SHORE_X + 1, 2)).toBe(true);
+    expect(after?.canMoor(south.hx, south.hy)).toBe(false);
+    expect(s.world.verifyCaches()).toEqual([]);
+    s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: ship, x: 24, y: 2 * TALL_MAP_H - 4 }));
+    s.step();
+    expect(refusals(s)).toEqual([`${ship}:noPath`]);
   });
 
   it('forgets the shore when stopped on the way to it', () => {

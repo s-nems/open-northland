@@ -26,7 +26,7 @@ const COLUMN: readonly { readonly catapult: [number, number]; readonly commander
   { catapult: [3, 7], commander: [1, 7] },
   { catapult: [3, 12], commander: [1, 12] },
 ];
-/** Half-cell goals 54 nodes east, inside the walk range and apart so neither takes the other's. */
+/** Half-cell goals 54 nodes east, apart so neither takes the other's. */
 const GOALS: readonly { readonly hx: number; readonly hy: number }[] = [
   { hx: 60, hy: 14 },
   { hx: 60, hy: 24 },

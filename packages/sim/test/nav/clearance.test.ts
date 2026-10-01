@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildTerrainGraph, ClearanceField, MAX_CLEARANCE_CLASS, type NodeId } from '../../src/index.js';
+import {
+  buildTerrainGraph,
+  ClearanceField,
+  halfCellMapFromCells,
+  MAX_CLEARANCE_CLASS,
+  type NodeId,
+} from '../../src/index.js';
 import { hexDisc } from '../../src/systems/footprint/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
@@ -11,6 +17,8 @@ import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
  * fresh build.
  */
 
+const GRASS = 0;
+const WATER = 1;
 const NODE_W = 40;
 const NODE_H = 40;
 
@@ -92,5 +100,27 @@ describe('ClearanceField', () => {
     field.recompute(open, [first]);
     expectMatchesDefinition(graph, field, open);
     expect(field.classOf(first)).toBe(3); // four steps from the remaining post: a disc of radius 3
+  });
+  it('moves its water revision on a water class edit and never on a land one', () => {
+    // 20x20 cells, grass west of cell 6 and open water from there: node 30 lies deep in the sea.
+    const typeIds = Array.from({ length: 20 * 20 }, (_, i) => (i % 20 < 6 ? GRASS : WATER));
+    const graph = buildTerrainGraph(testContent(), halfCellMapFromCells({ width: 20, height: 20, typeIds }));
+    const blocked = new Set<NodeId>();
+    const open = (n: NodeId): boolean => (graph.isWalkable(n) || graph.isWater(n)) && !blocked.has(n);
+    const field = new ClearanceField(graph, open);
+    const built = field.waterRevision;
+
+    const land = graph.nodeAt(8, 20); // a post on the shore, beside the water
+    blocked.add(land);
+    field.recompute(open, [land]);
+    expect(field.classOf(land)).toBe(0);
+    expect(field.waterRevision).toBe(built);
+
+    const water = graph.nodeAt(30, 20);
+    blocked.add(water);
+    field.recompute(open, [water]);
+    expect(field.classOf(water)).toBe(0);
+    expect(field.waterRevision).toBeGreaterThan(built);
+    expectMatchesDefinition(graph, field, open);
   });
 });

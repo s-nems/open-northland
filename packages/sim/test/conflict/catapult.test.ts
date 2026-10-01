@@ -595,7 +595,7 @@ describe('the clip and its target', () => {
 });
 
 describe('the attack-move march', () => {
-  /** The march's goal, 58 map points east: inside the walk range. */
+  /** The march's goal, 58 map points east. */
   const GOAL = { hx: 62, hy: 8 };
   /** Within the scan from the start (34 map points), beyond it from the goal (52): only a march fights it. */
   const ROADSIDE_HOUSE = { hx: 24, hy: 22 };

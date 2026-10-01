@@ -16,11 +16,7 @@ import { vehicleAnchor } from '../../footprint/index.js';
 import { isSiegeVehicle } from '../../readviews/index.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { canAttachToVehicle } from '../../vehicles/crew.js';
-import {
-  VEHICLE_TARGET_SNAP_RADIUS,
-  VEHICLE_WALK_RANGE_NODES,
-  vehicleRestBlocks,
-} from '../../vehicles/movement.js';
+import { VEHICLE_TARGET_SNAP_RADIUS, vehicleRestBlocks } from '../../vehicles/movement.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { seatBarracksOf } from '../base.js';
 import { anchorNodeOf, nearestRingNode, towardNode } from '../node-geometry.js';
@@ -43,9 +39,14 @@ export const PARK_RING_MAX_NODES = 16;
  *  never touch and one enemy volley cannot catch both. */
 export const PARK_SPACING_NODES = 6;
 
-/** The longest drive toward a goal beyond the goto's walk range: short enough that the target snap
- *  cannot carry the goal past that range. */
-export const VEHICLE_HOP_NODES = VEHICLE_WALK_RANGE_NODES - VEHICLE_TARGET_SNAP_RADIUS;
+/** How far around a catapult the AI looks for a parking spot, and how far it sends one per goto: a
+ *  farther goal is reached in hops, each judged again from where the catapult then stands. The
+ *  original's vehicle walk range. */
+export const CATAPULT_REACH_NODES = 60;
+
+/** The longest drive toward a goal beyond {@link CATAPULT_REACH_NODES}: short enough that the target
+ *  snap cannot carry the goal past that reach. */
+export const VEHICLE_HOP_NODES = CATAPULT_REACH_NODES - VEHICLE_TARGET_SNAP_RADIUS;
 
 /** A catapult and the man in its commander seat, aboard or still walking to its door. */
 export interface CrewedCatapult {
@@ -220,9 +221,9 @@ function spacedFrom(node: HalfCellNode, taken: readonly HalfCellNode[]): boolean
 
 /**
  * Send each idle crewed catapult standing beyond its own scan ({@link VEHICLE_SCAN_RADIUS_POINTS}) of the
- * `raider` at him on an attack-move, in hops past the walk range; one within it answers him on its own. The
- * raid is at the settlement's buildings, which bounds the drive, and {@link parkingOrders} brings it home
- * once the raid is over.
+ * `raider` at him on an attack-move, in hops past {@link CATAPULT_REACH_NODES}; one within its scan
+ * answers him on its own. The raid is at the settlement's buildings, which bounds the drive, and
+ * {@link parkingOrders} brings it home once the raid is over.
  */
 function raidOrders(
   world: World,
@@ -254,7 +255,7 @@ function continentOf(terrain: TerrainGraph, at: HalfCellNode): number {
  * tower door ({@link PARK_RING_MIN_NODES}..{@link PARK_RING_MAX_NODES}), {@link PARK_SPACING_NODES} apart.
  * A catapult already driving keeps its goal and one fighting is left to it; one standing in the band clear
  * of the others stays, so a parked catapult is never ordered again. The rest drive to the nearest free
- * spot around the door with the fewest catapults, or a hop toward the nearest door beyond the walk range.
+ * spot around the door with the fewest catapults, or a hop toward the nearest door beyond its reach.
  * Once no raid stands (`raid` false), a catapult still on an attack-move, sent at a raid or come home from
  * a wave, is parked too.
  */
@@ -315,8 +316,8 @@ export function parkingOrders(
 /**
  * Where `vehicle`, standing on `at`, drives to park: the free spot nearest it in the band of the door
  * with the fewest catapults already parked or bound there, the earlier door on a tie; a spot must stand
- * open to the vehicle, on its continent, within its walk range and clear of every `taken` spot. With every
- * door beyond the walk range, a hop toward the nearest one on its continent; null when nothing fits.
+ * open to the vehicle, on its continent, within its reach and clear of every `taken` spot. With every
+ * door beyond that reach, a hop toward the nearest one on its continent; null when nothing fits.
  */
 function parkGoal(
   world: World,
@@ -334,7 +335,7 @@ function parkGoal(
   const onContinent = (door: HalfCellNode): boolean =>
     terrain.inBounds(door.hx, door.hy) && terrain.componentOf(terrain.nodeAt(door.hx, door.hy)) === continent;
   const accept = (x: number, y: number): boolean => {
-    if (!terrain.inBounds(x, y) || hexDistanceBetween(at.hx, at.hy, x, y) > VEHICLE_WALK_RANGE_NODES)
+    if (!terrain.inBounds(x, y) || hexDistanceBetween(at.hx, at.hy, x, y) > CATAPULT_REACH_NODES)
       return false;
     const node = terrain.nodeAt(x, y);
     if (terrain.componentOf(node) !== continent || blocks.has(node)) return false;
@@ -355,6 +356,6 @@ function parkGoal(
   for (const { door } of byLoad) {
     if (nearest === null || manhattanOf(at, door) < manhattanOf(at, nearest)) nearest = door;
   }
-  if (nearest === null || hexDistance(at, nearest) <= VEHICLE_WALK_RANGE_NODES) return null;
+  if (nearest === null || hexDistance(at, nearest) <= CATAPULT_REACH_NODES) return null;
   return towardNode(at, nearest, VEHICLE_HOP_NODES);
 }

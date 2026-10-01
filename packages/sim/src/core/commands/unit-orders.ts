@@ -171,8 +171,8 @@ export type UnitOrderCommand =
   | {
       /**
        * Drive one owned vehicle to (x,y), the original's `e` order: the target snaps to the nearest node
-       * the vehicle may stand on within `VEHICLE_TARGET_SNAP_RADIUS`, on the vehicle's own continent and
-       * within its walk range. Refused with a `vehicleMoveRefused` event while nobody commands it or
+       * the vehicle may stand on within `VEHICLE_TARGET_SNAP_RADIUS`, on the vehicle's own continent, however
+       * far away. Refused with a `vehicleMoveRefused` event while nobody commands it or
        * when nothing leads there. `attackMove` makes a siege vehicle's drive a march: it fights the
        * enemies it meets on the way in the attack stance, then drives on (an addition: the original's
        * goto never scans while it drives).

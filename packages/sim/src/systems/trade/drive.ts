@@ -156,9 +156,7 @@ function cartNearHouse(world: World, ctx: SystemContext, cart: TradeCart, house:
  * through the detach command with its own note; here the trader's idle-without-a-cart state is what the
  * player sees). A node the cart has no route to keeps the trader seated: the door goes into its
  * failed-goal memo and the search waits the memo out (the original re-aims the vehicle behind its
- * `vehicleNoPath` note and the trader keeps trying). The order runs past the goto's walk-range gate
- * (approximation: whether the original's 60-step walk range caps the distance is unconfirmed).
- * True when the order stands.
+ * `vehicleNoPath` note and the trader keeps trying). True when the order stands.
  */
 function driveCartTo(plan: PlannerContext, cart: TradeCart, house: Entity): boolean {
   const { world, ctx, terrain, entity: e } = plan;

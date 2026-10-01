@@ -293,6 +293,11 @@ export const enContent = {
       summary:
         'Two crewed ships on open water: the small one sails straight north, the big one straight south, then both turn about and sail back. Each keeps its column and shows its bow-up or bow-down hull with the wake behind it, instead of zigzagging between the diagonals.',
     },
+    'vehicle-ship-voyage': {
+      title: 'A long voyage',
+      summary:
+        'A crewed ship at the north end of a long channel is ordered to dock at the shore at its south end, twice as far as the old vehicle range. It rounds an island that blocks the straight way, sails the whole channel and moors at the chosen shore.',
+    },
     'ship-wakes': {
       title: 'Ship wakes',
       summary:
