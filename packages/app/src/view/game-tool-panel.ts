@@ -203,7 +203,8 @@ export function menuEntriesFromContent(
     .flatMap((b) => {
       const cost = constructionBillForType(content.buildings, b.typeId);
       if (!CATALOGUE_KINDS.has(b.kind) || cost.length === 0) return [];
-      return [{ typeId: b.typeId, label: buildingLabel(b, lang), kind: b.kind, cost }];
+      const trades = b.workers.map((slot) => slot.jobType);
+      return [{ typeId: b.typeId, label: buildingLabel(b, lang), kind: b.kind, cost, trades }];
     })
     .sort((a, b) => compare(a.label, b.label) || a.typeId - b.typeId);
 }

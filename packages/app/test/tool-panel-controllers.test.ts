@@ -94,8 +94,8 @@ function stubContext(overlayReserve?: () => Rect | null): {
 }
 
 const BUILDINGS: readonly MenuBuildingEntry[] = [
-  { typeId: 7, label: 'Stock', kind: 'storage', cost: [] },
-  { typeId: 23, label: 'Joinery', kind: 'workplace', cost: [] },
+  { typeId: 7, label: 'Stock', kind: 'storage', cost: [], trades: [] },
+  { typeId: 23, label: 'Joinery', kind: 'workplace', cost: [], trades: [] },
 ];
 
 /** The stats window's width, which `stats-window.ts` keeps private (design px). */

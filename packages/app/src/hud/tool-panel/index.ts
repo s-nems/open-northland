@@ -669,6 +669,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
       clientToCanvas(opts.screenScale(canvas), clientX, clientY);
 
+    const tradesByType = new Map(opts.buildings.map((entry) => [entry.typeId, entry.trades]));
     const messageCenter = createMessageCenter({
       ctx,
       plane,
@@ -684,6 +685,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       buildingLabel: (typeId) => labelByType.get(typeId),
       paperLabel: nameOfPaper,
       technologyName: opts.technologyName,
+      buildingTrades: (typeId) => tradesByType.get(typeId),
       vehicleLabel: opts.vehicleLabel,
       playerLabel: (player) =>
         opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,

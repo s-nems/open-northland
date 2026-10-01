@@ -1,6 +1,7 @@
 import { ONE, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { createMessageFeed } from '../src/hud/tool-panel/messages/feed.js';
+import type { BuildingTrades } from '../src/hud/tool-panel/messages/from-events.js';
 import { galleryMessages } from '../src/hud/tool-panel/messages/gallery.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import { composeMessageText } from '../src/hud/tool-panel/messages/text.js';
@@ -49,7 +50,12 @@ const naming: MessageNaming = {
   text: (type, parts) => composeMessageText(type, parts, en.userMessages),
 };
 
+/** The construction menu lists the seat's house, whose worker slots the settlers' trade takes. */
+const MENU: BuildingTrades = (typeId) => (typeId === HOUSE ? [JOB] : undefined);
+
 const ALL_TYPES = Object.values(USER_MESSAGE_TYPE);
+/** Every type once, and the unlock twice: its work note and its buildings note. */
+const GALLERY_TYPES = [...ALL_TYPES, USER_MESSAGE_TYPE.experienceUnlocks].sort((a, b) => a - b);
 const world = snapshot([
   { id: 1, player: LOCAL, kind: 'person' },
   { id: 2, player: LOCAL, kind: 'person' },
@@ -59,10 +65,8 @@ const world = snapshot([
 
 describe('notice gallery', () => {
   it('raises one message of every type with non-empty text, on the seat’s own actors only', () => {
-    const out = galleryMessages(world, LOCAL, naming, [], { goodType: GOOD });
-    expect(out.map((r) => r.pending.type).sort((a, b) => a - b)).toEqual(
-      [...ALL_TYPES].sort((a, b) => a - b),
-    );
+    const out = galleryMessages(world, LOCAL, naming, [], { goodType: GOOD }, MENU);
+    expect(out.map((r) => r.pending.type).sort((a, b) => a - b)).toEqual(GALLERY_TYPES);
     for (const raised of out) {
       const text = raised.compose();
       expect(text.full, `type ${raised.pending.type}`).not.toBe('');
@@ -72,9 +76,14 @@ describe('notice gallery', () => {
   });
 
   it('spreads the settler rows over the seat’s people and names the good, the paper and the seat', () => {
-    const out = galleryMessages(world, LOCAL, naming, [{ player: ENEMY, towardYou: 'friend' }], {
-      goodType: GOOD,
-    });
+    const out = galleryMessages(
+      world,
+      LOCAL,
+      naming,
+      [{ player: ENEMY, towardYou: 'friend' }],
+      { goodType: GOOD },
+      MENU,
+    );
     const byType = new Map(out.map((r) => [r.pending.type, r]));
     const settlers = new Set(
       out
@@ -91,28 +100,39 @@ describe('notice gallery', () => {
       kind: 'building',
       entity: 4,
     });
-    expect(byType.get(USER_MESSAGE_TYPE.experienceUnlocks)?.pending.technologies).toEqual([
-      { kind: 'job', typeId: JOB },
-      { kind: 'good', typeId: GOOD },
-      { kind: 'house', typeId: HOUSE },
+    const unlocks = out.filter((r) => r.pending.type === USER_MESSAGE_TYPE.experienceUnlocks);
+    expect(unlocks.map((r) => [r.pending.technologies, r.pending.building])).toEqual([
+      [
+        [
+          { kind: 'job', typeId: JOB },
+          { kind: 'good', typeId: GOOD },
+        ],
+        undefined,
+      ],
+      [[{ kind: 'house', typeId: HOUSE }], HOUSE],
     ]);
   });
 
   it('raises the same keys on every sweep, so a second pass adds nothing to the feed', () => {
     const feed = createMessageFeed();
     const sweep = (): readonly string[] =>
-      galleryMessages(world, LOCAL, naming, [], { goodType: GOOD }).map((r) =>
+      galleryMessages(world, LOCAL, naming, [], { goodType: GOOD }, MENU).map((r) =>
         feed.add(r.pending, world.tick, r.compose, true),
       );
     expect(new Set(sweep())).toEqual(new Set(['accepted']));
     expect(new Set(sweep())).toEqual(new Set(['duplicate']));
-    expect(feed.live()).toHaveLength(ALL_TYPES.length);
+    expect(feed.live()).toHaveLength(GALLERY_TYPES.length);
   });
 
   it('keeps only the subjectless rows when the seat has no one and nothing', () => {
-    const out = galleryMessages(snapshot([{ id: 3, player: ENEMY, kind: 'person' }]), LOCAL, naming, [], {
-      goodType: null,
-    });
+    const out = galleryMessages(
+      snapshot([{ id: 3, player: ENEMY, kind: 'person' }]),
+      LOCAL,
+      naming,
+      [],
+      { goodType: null },
+      MENU,
+    );
     expect(out.map((r) => r.pending.type).sort((a, b) => a - b)).toEqual([
       USER_MESSAGE_TYPE.playerSighted,
       USER_MESSAGE_TYPE.diplomacyChanged,

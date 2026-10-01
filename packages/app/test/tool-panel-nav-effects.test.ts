@@ -78,7 +78,7 @@ function mountSurfaces() {
       menu = stubConstructionWindow(seam);
       return menu;
     },
-    buildings: [{ typeId: BUILDING_JOINERY, label: 'Joinery', kind: 'workplace', cost: [] }],
+    buildings: [{ typeId: BUILDING_JOINERY, label: 'Joinery', kind: 'workplace', cost: [], trades: [] }],
     grants: {
       read: () => ({
         giveBoots: true,

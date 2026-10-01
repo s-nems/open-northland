@@ -1,6 +1,10 @@
 import { type Entity, ONE, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { messagesFromEvents } from '../src/hud/tool-panel/messages/from-events.js';
+import {
+  type BuildingTrades,
+  messagesFromEvents,
+  pictureOfUnlocks,
+} from '../src/hud/tool-panel/messages/from-events.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
@@ -60,9 +64,12 @@ const naming: MessageNaming = {
     ),
 };
 
+/** A construction menu that lists no building, so no unlock pictures one. */
+const NO_MENU: BuildingTrades = () => undefined;
+
 /** Raised messages flattened for assertions: the identity fields plus the composed text. */
 const run = (events: SimEvent[], snap: WorldSnapshot, departed: WorldSnapshot['entities'] = []) =>
-  messagesFromEvents(events, snap, departed, LOCAL, naming).map((r) => ({
+  messagesFromEvents(events, snap, departed, LOCAL, naming, NO_MENU).map((r) => ({
     ...r.pending,
     text: r.compose().full,
   }));
@@ -167,6 +174,7 @@ describe('user messages from sim events', () => {
       [],
       LOCAL,
       counting,
+      NO_MENU,
     );
     expect(raised).toHaveLength(1);
     expect(composed).toBe(0);
@@ -248,6 +256,64 @@ describe('user messages from sim events', () => {
     ]);
   });
 
+  it('pictures the new trade’s workplace, else the settler’s own, else the first menu building', () => {
+    // Trades and buildings as the content ties them: the potter works the pottery, the fixture settler's
+    // trade (7) the mason's hut; the school employs no one and the cart site is not on the menu.
+    const POTTER = 11;
+    const OWN_TRADE = 7;
+    const CARRIER = 24;
+    const [POTTERY, SCHOOL, MASON_HUT, CART_SITE] = [20, 38, 30, 42];
+    const trades = new Map<number, readonly number[]>([
+      [POTTERY, [POTTER, CARRIER]],
+      [SCHOOL, []],
+      [MASON_HUT, [OWN_TRADE, CARRIER]],
+    ]);
+    const menu: BuildingTrades = (typeId) => trades.get(typeId);
+    const job = (typeId: number) => ({ kind: 'job', typeId }) as const;
+    const house = (typeId: number) => ({ kind: 'house', typeId }) as const;
+    expect(
+      pictureOfUnlocks([job(POTTER), house(SCHOOL), house(MASON_HUT), house(POTTERY)], OWN_TRADE, menu),
+    ).toBe(POTTERY);
+    expect(pictureOfUnlocks([house(SCHOOL), house(MASON_HUT)], OWN_TRADE, menu)).toBe(MASON_HUT);
+    expect(pictureOfUnlocks([house(CART_SITE), house(SCHOOL), house(MASON_HUT)], undefined, menu)).toBe(
+      SCHOOL,
+    );
+    expect(pictureOfUnlocks([job(POTTER), house(CART_SITE)], OWN_TRADE, menu)).toBeUndefined();
+
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'person' },
+      { id: 2, player: LOCAL, kind: 'person' },
+    ]);
+    const discovered = (entity: number, technology: 'job' | 'good' | 'house', typeId: number): SimEvent => ({
+      kind: 'technologyDiscovered',
+      entity: e(entity),
+      player: LOCAL,
+      tribe: 1,
+      technology,
+      typeId,
+    });
+    const out = messagesFromEvents(
+      [
+        discovered(1, 'job', POTTER),
+        discovered(1, 'house', SCHOOL),
+        discovered(1, 'house', POTTERY),
+        discovered(2, 'house', CART_SITE),
+      ],
+      snap,
+      [],
+      LOCAL,
+      naming,
+      menu,
+    );
+    // The pictured building leads the list its card names; a note opening only a cart site keeps its
+    // settler.
+    expect(out.map((r) => [r.pending.subject?.entity, r.pending.technologies, r.pending.building])).toEqual([
+      [1, [job(POTTER)], undefined],
+      [1, [house(POTTERY), house(SCHOOL)], POTTERY],
+      [2, [house(CART_SITE)], undefined],
+    ]);
+  });
+
   it('leaves out what no catalog names, and a note with nothing named left', () => {
     const UNNAMED = 99;
     const snap = snapshot(50, [
@@ -278,6 +344,7 @@ describe('user messages from sim events', () => {
       [],
       LOCAL,
       partial,
+      NO_MENU,
     );
     expect(out.map((r) => [r.pending.type, r.pending.technologies, r.compose().full])).toEqual([
       [
@@ -312,6 +379,7 @@ describe('user messages from sim events', () => {
       [],
       LOCAL,
       trainedNaming,
+      NO_MENU,
     );
     expect(raised.map((r) => ({ ...r.pending, text: r.compose().full }))).toEqual([
       {

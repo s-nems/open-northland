@@ -80,6 +80,8 @@ export interface PendingMessage {
   readonly goodType: number | null;
   /** Newly available capabilities carried together by the original's experience-unlock record. */
   readonly technologies: readonly MessageTechnology[] | null;
+  /** The building type an unlock note pictures in place of its settler; absent when it opens none. */
+  readonly building?: number;
   /** The subject settler's trade when the message was raised, or the trade a course taught; part of the
    *  identity. */
   readonly jobType: number | null;

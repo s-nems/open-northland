@@ -1150,6 +1150,8 @@ export const plGame = {
       nothingToDo: 'Nic do roboty',
       noVehicleForWork: 'Brak wozu',
       experienceUnlocks: 'Nowa wiedza',
+      experienceBuilding: 'Nowy budynek',
+      experienceBuildings: 'Nowe budynki',
       canProduceNewGood: 'Umie: {good}',
       canDoNewJob: 'Fach: {profession}',
       becameSoldier: 'Nowy żołnierz',

@@ -70,7 +70,8 @@ function inflect(line: CopyLine, female: boolean): string {
   return female ? line.she : line.he;
 }
 
-/** The short and full lines a type reads: a nameless death and a barracks course have their own. */
+/** The short and full lines a type reads: a nameless death and a barracks course have their own, and
+ *  an unlock that opens buildings heads itself by them. */
 function linesOf(
   name: TabledTypeName,
   parts: MessageTextParts,
@@ -81,6 +82,10 @@ function linesOf(
   }
   if (name === 'canDoNewJob' && parts.training?.course === 'barracks') {
     return [copy.short.becameSoldier, copy.full.becameSoldier];
+  }
+  const houses = name === 'experienceUnlocks' ? (parts.technologySections?.houses.length ?? 0) : 0;
+  if (houses > 0) {
+    return [houses === 1 ? copy.short.experienceBuilding : copy.short.experienceBuildings, copy.full[name]];
   }
   return [copy.short[name], copy.full[name]];
 }

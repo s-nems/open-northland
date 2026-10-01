@@ -24,6 +24,7 @@ const entry = (
     { goodType: WOOD, amount: 2 },
     { goodType: STONE, amount: 1 },
   ],
+  trades: [],
   ...(availability === undefined ? {} : { availability }),
 });
 

@@ -24,7 +24,7 @@ import { noticeFullText, noticeThumb, orderNotes } from './cards.js';
 import type { MessageFeedState } from './feed.js';
 import { type NoticeFigureSlot, NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
-import { messagesFromEvents } from './from-events.js';
+import { type BuildingTrades, messagesFromEvents } from './from-events.js';
 import { createSnapshotMessageSource, SNAPSHOT_SWEEP_INTERVAL_TICKS } from './from-snapshot.js';
 import { galleryMessages, type NoticeGallery } from './gallery.js';
 import type { MessageNaming } from './raise.js';
@@ -74,6 +74,8 @@ export interface MessageCenterDeps {
   readonly paperLabel: (paper: Paper) => string;
   /** A discoverable's name, or undefined when no catalog names it; such an entry is left out. */
   readonly technologyName: (kind: 'job' | 'good' | 'house', typeId: number) => string | undefined;
+  /** The trades a construction-menu building employs, which pick the building an unlock note pictures. */
+  readonly buildingTrades: BuildingTrades;
   readonly playerLabel: (player: number) => string | null;
   /** The seats this player has met, as the diplomacy roster lists them; a first contact and a seat that
    *  changed its stance toward this one each become a note. Read once per tick. */
@@ -231,7 +233,14 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       // The same snapshot object means no tick ran, so nothing was raised and nothing aged.
       if (snapshot !== previous) {
         if (seat !== null && events.length > 0) {
-          for (const raised of messagesFromEvents(events, snapshot, departed, seat, naming)) {
+          for (const raised of messagesFromEvents(
+            events,
+            snapshot,
+            departed,
+            seat,
+            naming,
+            deps.buildingTrades,
+          )) {
             feeds.current.add(raised.pending, snapshot.tick, raised.compose);
           }
         }
@@ -244,7 +253,14 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
           }
         }
         if (seat !== null && deps.gallery !== undefined && galleryDue(snapshot.tick)) {
-          for (const raised of galleryMessages(snapshot, seat, naming, deps.metSeats(), deps.gallery)) {
+          for (const raised of galleryMessages(
+            snapshot,
+            seat,
+            naming,
+            deps.metSeats(),
+            deps.gallery,
+            deps.buildingTrades,
+          )) {
             feeds.current.add(raised.pending, snapshot.tick, raised.compose, true);
           }
         }

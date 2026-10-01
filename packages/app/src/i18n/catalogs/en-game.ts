@@ -1173,6 +1173,8 @@ export const enGame = {
       nothingToDo: 'Nothing to do',
       noVehicleForWork: 'No cart',
       experienceUnlocks: 'New skills',
+      experienceBuilding: 'New building',
+      experienceBuildings: 'New buildings',
       canProduceNewGood: 'Learned: {good}',
       canDoNewJob: 'Trade: {profession}',
       becameSoldier: 'New soldier',

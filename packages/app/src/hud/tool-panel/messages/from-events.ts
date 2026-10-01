@@ -1,5 +1,11 @@
 import { entityById, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
-import { isBuilding, isVehicle, ownerPlayerOf, type SnapshotEntity } from '../../../game/snapshot.js';
+import {
+  isBuilding,
+  isVehicle,
+  ownerPlayerOf,
+  type SnapshotEntity,
+  settlerJobType,
+} from '../../../game/snapshot.js';
 import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
 import type { NamedSettler } from './text.js';
 import { type MessageTechnology, type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
@@ -26,6 +32,89 @@ const RIDER_REFUSAL_MESSAGE = {
   cannotLeave: USER_MESSAGE_TYPE.cannotLeaveVehicle,
 } as const;
 
+/** The trades a construction-menu building type employs; undefined for a type the menu does not list
+ *  (a vehicle's building site), which no unlock pictures. */
+export type BuildingTrades = (typeId: number) => readonly number[] | undefined;
+
+/** The two notes one settler's discoveries make: the trades and goods it learned, and the buildings
+ *  they open. */
+export type UnlockGroup = 'work' | 'buildings';
+
+/**
+ * Of the construction-menu buildings in `batch`, the one its note pictures: the first a trade discovered
+ * in the same batch works in, else the first `ownJob` works in, else the first. In the content a
+ * collector who discovers the potter opens the school and the pottery, and a potter's tile opens home
+ * tiers beside the second pottery; this pictures the pottery both times.
+ */
+export function pictureOfUnlocks(
+  batch: readonly MessageTechnology[],
+  ownJob: number | undefined,
+  buildingTrades: BuildingTrades,
+): number | undefined {
+  const newJobs = batch.filter((t) => t.kind === 'job').map((t) => t.typeId);
+  const buildings = batch.flatMap((t) => {
+    const trades = t.kind === 'house' ? buildingTrades(t.typeId) : undefined;
+    return trades === undefined ? [] : [{ typeId: t.typeId, trades }];
+  });
+  const worksIn = (jobs: readonly number[]) => buildings.find((b) => b.trades.some((j) => jobs.includes(j)));
+  return (worksIn(newJobs) ?? worksIn(ownJob === undefined ? [] : [ownJob]) ?? buildings[0])?.typeId;
+}
+
+/**
+ * Raise `group`'s note about the discoveries `e` made in one batch, leaving out what no catalog names.
+ * The buildings note pictures the building {@link pictureOfUnlocks} picks and lists it first.
+ */
+export function raiseUnlocks(
+  raiser: MessageRaiser,
+  snapshot: WorldSnapshot,
+  naming: MessageNaming,
+  buildingTrades: BuildingTrades,
+  e: SnapshotEntity,
+  group: UnlockGroup,
+  batch: readonly MessageTechnology[],
+): void {
+  const named = batch.filter(
+    (t) =>
+      (t.kind === 'house') === (group === 'buildings') && naming.technology(t.kind, t.typeId) !== undefined,
+  );
+  if (named.length === 0) return;
+  // The trades the batch discovered pick the picture, though the buildings note does not list them.
+  const pictured = batch.filter((t) => t.kind !== 'house' || named.includes(t));
+  const building =
+    group === 'buildings' ? pictureOfUnlocks(pictured, settlerJobType(e), buildingTrades) : undefined;
+  const technologies =
+    building === undefined
+      ? named
+      : [...named.filter((t) => t.typeId === building), ...named.filter((t) => t.typeId !== building)];
+  const type = USER_MESSAGE_TYPE.experienceUnlocks;
+  raiser.raise(
+    `${type}|settler:${e.id}|${group}`,
+    {
+      type,
+      subject: { kind: 'settler', entity: e.id },
+      at: null,
+      about: null,
+      goodType: null,
+      technologies,
+      jobType: null,
+      ...(building === undefined ? {} : { building }),
+    },
+    () => {
+      const settler = naming.settler(e, snapshot);
+      const labels = (kind: MessageTechnology['kind']): string[] =>
+        technologies.filter((t) => t.kind === kind).flatMap((t) => naming.technology(t.kind, t.typeId) ?? []);
+      return naming.text(type, {
+        subjectName: settler.name,
+        jobLabel: settler.jobLabel,
+        female: settler.female,
+        goodName: null,
+        stanceName: null,
+        technologySections: { jobs: labels('job'), goods: labels('good'), houses: labels('house') },
+      });
+    },
+  );
+}
+
 function isPerson(e: SnapshotEntity): boolean {
   return e.components.Person !== undefined;
 }
@@ -45,6 +134,7 @@ export function messagesFromEvents(
   departed: readonly SnapshotEntity[],
   localPlayer: number,
   naming: MessageNaming,
+  buildingTrades: BuildingTrades,
 ): RaisedMessage[] {
   const raiser = new MessageRaiser(snapshot, naming);
   const discoveries = new Map<number, MessageTechnology[]>();
@@ -161,48 +251,9 @@ export function messagesFromEvents(
         announcedDiscoveries.add(ev.entity);
         const e = ownedPerson(ev.entity);
         if (e === undefined) break;
-        const all = discoveries.get(ev.entity) ?? [];
-        const subject = { kind: 'settler' as const, entity: e.id };
-        const raiseGroup = (key: string, group: readonly MessageTechnology[]): void => {
-          // An entry no catalog names cannot be listed, and a note with nothing to list says nothing.
-          const technologies = group.filter((t) => naming.technology(t.kind, t.typeId) !== undefined);
-          if (technologies.length === 0) return;
-          raiser.raise(
-            `${USER_MESSAGE_TYPE.experienceUnlocks}|settler:${e.id}|${key}`,
-            {
-              type: USER_MESSAGE_TYPE.experienceUnlocks,
-              subject,
-              at: null,
-              about: null,
-              goodType: null,
-              technologies,
-              jobType: null,
-            },
-            () => {
-              const named = naming.settler(e, snapshot);
-              const labels = (kind: MessageTechnology['kind']): string[] =>
-                technologies
-                  .filter((technology) => technology.kind === kind)
-                  .flatMap((technology) => naming.technology(technology.kind, technology.typeId) ?? []);
-              return naming.text(USER_MESSAGE_TYPE.experienceUnlocks, {
-                subjectName: named.name,
-                jobLabel: named.jobLabel,
-                female: named.female,
-                goodName: null,
-                stanceName: null,
-                technologySections: { jobs: labels('job'), goods: labels('good'), houses: labels('house') },
-              });
-            },
-          );
-        };
-        raiseGroup(
-          'work',
-          all.filter((technology) => technology.kind !== 'house'),
-        );
-        raiseGroup(
-          'buildings',
-          all.filter((technology) => technology.kind === 'house'),
-        );
+        const batch = discoveries.get(ev.entity) ?? [];
+        raiseUnlocks(raiser, snapshot, naming, buildingTrades, e, 'work', batch);
+        raiseUnlocks(raiser, snapshot, naming, buildingTrades, e, 'buildings', batch);
         break;
       }
       case 'settlerTrained': {

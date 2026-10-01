@@ -27,6 +27,8 @@ export interface MenuBuildingEntry {
   readonly kind: string;
   /** The from-scratch bill the sim charges, a leveled tier's whole chain summed; empty when unknown. */
   readonly cost: readonly CostLine[];
+  /** The trades its worker slots take, which tie a newly opened building to the trade that opened it. */
+  readonly trades: readonly number[];
   /** The entry as the seat may build it in `tribe`; absent, always open (a scene without progression). */
   readonly availability?: (tribe: number) => BuildingAvailability;
 }

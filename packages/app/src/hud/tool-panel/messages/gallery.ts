@@ -11,6 +11,7 @@ import {
   settlerJobType,
 } from '../../../game/snapshot.js';
 import type { MetSeat } from './from-diplomacy.js';
+import { type BuildingTrades, raiseUnlocks } from './from-events.js';
 import { type MessageNaming, MessageRaiser, nodeOf, type RaisedMessage } from './raise.js';
 import {
   type MessageTechnology,
@@ -56,6 +57,9 @@ const GOOD_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>
 /** The rows a woman raises; a man's name on them reads wrong in a gendered language. */
 const WOMEN_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>(['familyBlocked']);
 
+/** How many of the seat's menu buildings the unlock row opens: a few, as one discovery does. */
+const GALLERY_OPENED_BUILDINGS = 3;
+
 const NO_PARTS = { jobLabel: null, goodName: null, stanceName: null } as const;
 
 function isPerson(e: SnapshotEntity): boolean {
@@ -74,6 +78,7 @@ export function galleryMessages(
   naming: MessageNaming,
   seats: readonly MetSeat[],
   gallery: NoticeGallery,
+  buildingTrades: BuildingTrades,
 ): readonly RaisedMessage[] {
   const raiser = new MessageRaiser(snapshot, naming);
   const owned = actorsOf(snapshot).filter((e) => ownerPlayerOf(e) === localPlayer);
@@ -134,41 +139,24 @@ export function galleryMessages(
       () => naming.text(type, { ...NO_PARTS, subjectName: null, detail: naming.paper(STANDIN_PAPER) }),
     );
   };
-  const raiseUnlocks = (e: SnapshotEntity): void => {
-    const type = USER_MESSAGE_TYPE.experienceUnlocks;
+  // The two notes one settler's discovery batch makes: the trade and good, and the menu buildings they
+  // open, which that card pictures.
+  const raiseUnlockRows = (e: SnapshotEntity): void => {
     const jobType = settlerJobType(e);
-    const houseType = house === undefined ? undefined : buildingTypeOf(house);
-    const candidates: MessageTechnology[] = [];
-    if (jobType !== undefined) candidates.push({ kind: 'job', typeId: jobType });
-    if (gallery.goodType !== null) candidates.push({ kind: 'good', typeId: gallery.goodType });
-    if (houseType !== undefined) candidates.push({ kind: 'house', typeId: houseType });
-    const technologies = candidates.filter((t) => naming.technology(t.kind, t.typeId) !== undefined);
-    raiser.raise(
-      `${type}|settler:${e.id}`,
-      {
-        type,
-        subject: { kind: 'settler', entity: e.id },
-        at: null,
-        about: null,
-        goodType: null,
-        technologies,
-        jobType: null,
-      },
-      () => {
-        const named = naming.settler(e, snapshot);
-        const labels = (kind: MessageTechnology['kind']): string[] =>
-          technologies
-            .filter((t) => t.kind === kind)
-            .flatMap((t) => naming.technology(t.kind, t.typeId) ?? []);
-        return naming.text(type, {
-          ...NO_PARTS,
-          subjectName: named.name,
-          jobLabel: named.jobLabel,
-          female: named.female,
-          technologySections: { jobs: labels('job'), goods: labels('good'), houses: labels('house') },
-        });
-      },
+    const work: MessageTechnology[] = [];
+    if (jobType !== undefined) work.push({ kind: 'job', typeId: jobType });
+    if (gallery.goodType !== null) work.push({ kind: 'good', typeId: gallery.goodType });
+    raiseUnlocks(raiser, snapshot, naming, buildingTrades, e, 'work', work);
+    const listed = new Set(
+      buildings.flatMap((b) => {
+        const typeId = buildingTypeOf(b);
+        return typeId !== undefined && buildingTrades(typeId) !== undefined ? [typeId] : [];
+      }),
     );
+    const opened = [...listed]
+      .slice(0, GALLERY_OPENED_BUILDINGS)
+      .map((typeId): MessageTechnology => ({ kind: 'house', typeId }));
+    raiseUnlocks(raiser, snapshot, naming, buildingTrades, e, 'buildings', opened);
   };
 
   for (const [name, type] of Object.entries(USER_MESSAGE_TYPE) as [UserMessageTypeName, UserMessageType][]) {
@@ -191,7 +179,7 @@ export function galleryMessages(
     else if (name === 'familyBlocked') {
       const spouse = marriageOf(e)?.spouse;
       raiser.family(e, STANDIN_FAMILY_WAIT, spouse === undefined ? undefined : entityById(snapshot, spouse));
-    } else if (name === 'experienceUnlocks') raiseUnlocks(e);
+    } else if (name === 'experienceUnlocks') raiseUnlockRows(e);
     else if (name === 'canDoNewJob') {
       const jobType = settlerJobType(e);
       if (jobType !== undefined && naming.technology('job', jobType) !== undefined) {

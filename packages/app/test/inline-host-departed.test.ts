@@ -55,7 +55,14 @@ describe('inline host departed entities', () => {
     expect(host.departed()).toEqual([settler]);
     expect(host.departed()[0]).toBe(settler);
 
-    const [card] = messagesFromEvents([died(settler.id)], after, host.departed(), LOCAL, naming);
+    const [card] = messagesFromEvents(
+      [died(settler.id)],
+      after,
+      host.departed(),
+      LOCAL,
+      naming,
+      () => undefined,
+    );
     expect(card?.compose().full).toBe(`S${settler.id}:${USER_MESSAGE_TYPE.humanDied}`);
   });
 

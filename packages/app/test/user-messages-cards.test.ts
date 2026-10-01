@@ -101,6 +101,17 @@ describe('notice cards', () => {
     });
   });
 
+  it('pictures the building an unlock opens in place of the settler who earned it', () => {
+    const settler = { kind: 'settler', entity: 7 } as const;
+    const POTTERY = 20;
+    const unlock = { ...raised(USER_MESSAGE_TYPE.experienceUnlocks, settler), building: POTTERY };
+    expect(noticeThumb(unlock, noBuilding, onMap)).toEqual({ kind: 'building', typeId: POTTERY });
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.experienceUnlocks, settler), noBuilding, onMap)).toEqual({
+      kind: 'settler',
+      entity: 7,
+    });
+  });
+
   it('shows a glyph for a subjectless row, dim for a death', () => {
     // A death's `about` is the reaped settler's id, never a seat to paint the skull with.
     expect(noticeThumb(raised(USER_MESSAGE_TYPE.humanDied, null, 41), noBuilding, onMap)).toEqual({

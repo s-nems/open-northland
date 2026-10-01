@@ -146,6 +146,14 @@ describe('notice text', () => {
     );
   });
 
+  it('heads an unlock that opens buildings as such, and lists every one in full', () => {
+    const opening = (houses: string[]) => ({ ...BARE, technologySections: { jobs: [], goods: [], houses } });
+    const two = compose(en.userMessages, 'experienceUnlocks', opening(['Pottery', 'School']));
+    expect(two.short).toBe('New buildings');
+    expect(two.full).toBe('Bjorn has gained experience.\n\nNew buildings:\n- Pottery\n- School');
+    expect(compose(pl.userMessages, 'experienceUnlocks', opening(['Garncarnia'])).short).toBe('Nowy budynek');
+  });
+
   it('names the husband where the reason is his, and reads cleanly when he cannot be named', () => {
     const family = (partner: { name: string; jobLabel: string | null; female: boolean } | null) =>
       compose(pl.userMessages, 'familyBlocked', {
