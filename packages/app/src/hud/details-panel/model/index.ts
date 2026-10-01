@@ -52,6 +52,7 @@ export {
   type ExperienceRowModel,
   experienceShown,
   type SettlerState,
+  settlerStateHold,
 } from './settler.js';
 export {
   type EquipGroup,

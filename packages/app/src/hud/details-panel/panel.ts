@@ -6,7 +6,12 @@ import { clientToCanvas, contains } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { applyPanelClick, type PanelClickActions } from './click-actions.js';
-import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
+import {
+  buildUnitPanelModel,
+  settlerStateHold,
+  type UnitPanelModel,
+  type UnitPanelModelContext,
+} from './model/index.js';
 import { NO_PANEL_HOVER, type PanelHover, panelClickAt, panelHoverAt, sameHover } from './pointer-intent.js';
 import { createPanelRebuildGate } from './rebuild-gate.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
@@ -51,7 +56,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   const assets = await loadDetailsPanelAssets(opts.lang);
   const stage = createPanelStage({ app, assets, scale });
 
-  const ctx: UnitPanelModelContext = opts;
+  const ctx: UnitPanelModelContext = { ...opts, holdSettlerState: settlerStateHold() };
 
   let selectedIds: ReadonlySet<number> = new Set();
   const rebuildGate = createPanelRebuildGate({

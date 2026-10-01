@@ -13,6 +13,7 @@ import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
 import { currentLocale, formatMessage, messages, professionLabel, tribeName } from '../../../i18n/index.js';
+import type { SettlerStateHold } from './settler.js';
 
 export type BuildingDef = ContentSet['buildings'][number];
 export type GoodDef = ContentSet['goods'][number];
@@ -56,6 +57,9 @@ export interface UnitPanelModelContext {
   /** The sim's battle-alert read seam (`SessionHost.standsTo`): whether a unit is holding its ground
    *  because fighting is going on around it. Absent leaves such a unit reading as idle. */
   readonly standsTo?: ((entity: number) => boolean) | undefined;
+  /** The open panel's memory across snapshots that bridges the tick between two atomics; absent reads
+   *  every snapshot alone. */
+  readonly holdSettlerState?: SettlerStateHold | undefined;
   /** The sim's land-trader test (`isTraderJob`); absent reads no trade as the trader. */
   readonly isTraderJob?: ((jobType: number) => boolean) | undefined;
   /** The sim's trader read seam (`SessionHost.traderView`); absent hides the Handel section. */

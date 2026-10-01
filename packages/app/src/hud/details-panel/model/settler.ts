@@ -229,6 +229,16 @@ export function settlerStatus(
   entityId: number,
   components: Comp,
 ): SettlerState {
+  const state = liveSettlerState(ctx, snapshot, entityId, components);
+  return ctx.holdSettlerState?.(entityId, snapshot.tick, state) ?? state;
+}
+
+function liveSettlerState(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  entityId: number,
+  components: Comp,
+): SettlerState {
   // The sim retires PlayerOrder the tick the unit reaches its commanded destination, so a settler
   // carrying it is still walking there.
   if ('PlayerOrder' in components) return 'ordered';
@@ -246,6 +256,36 @@ export function settlerStatus(
   if (ctx.standsTo?.(entityId) === true) return 'standingTo';
   return 'idle';
 }
+
+/**
+ * Keeps one settler's last active state over a single idle read. The sim starts a settler's next atomic on
+ * the tick after the last one ends, so a builder between two strokes stands with nothing running for that
+ * one tick; idleness shows once a later tick still reads it.
+ */
+export function settlerStateHold(): SettlerStateHold {
+  let entity: number | null = null;
+  let active: SettlerState | null = null;
+  let idleTick: number | null = null;
+  return (id, tick, state) => {
+    if (id !== entity) {
+      entity = id;
+      active = null;
+      idleTick = null;
+    }
+    if (state !== 'idle') {
+      active = state;
+      idleTick = null;
+      return state;
+    }
+    if (active === null) return state;
+    idleTick ??= tick;
+    if (tick === idleTick) return active;
+    active = null;
+    return state;
+  };
+}
+
+export type SettlerStateHold = (entity: number, tick: number, state: SettlerState) => SettlerState;
 
 function awaitsItsTrainingHouse(snapshot: WorldSnapshot, components: Comp): boolean {
   const house = num((components.TrainingOrder as { house?: unknown } | undefined)?.house);

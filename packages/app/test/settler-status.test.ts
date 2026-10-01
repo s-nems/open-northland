@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { UnitPanelModelContext } from '../src/hud/details-panel/model/context.js';
-import { settlerStatus } from '../src/hud/details-panel/model/settler.js';
+import { settlerStateHold, settlerStatus } from '../src/hud/details-panel/model/settler.js';
 import { building, type Ent, settler, snapshotOf } from './support/snapshot.js';
 
 /**
@@ -108,5 +108,30 @@ describe('the settler status caption', () => {
         comps(null),
       ),
     ).toBe('idle');
+  });
+
+  it('holds the last active state over the one tick a settler waits between two atomics', () => {
+    const ctx = { holdSettlerState: settlerStateHold() } as UnitPanelModelContext;
+    const world = siteWorld(false);
+    const status = (tick: number, live: Record<string, unknown> = {}): string =>
+      settlerStatus(ctx, snapshotOf(world, tick), SETTLER, comps(WORKPLACE, live));
+    const stroke = { CurrentAtomic: { effect: { kind: 'construct' } } };
+    expect(status(10, stroke)).toBe('building');
+    expect(status(13)).toBe('building'); // the stroke ended this tick, the next one starts on the following
+    expect(status(13)).toBe('building'); // a re-derive of the same snapshot
+    expect(status(14, stroke)).toBe('building');
+    expect(status(17)).toBe('building');
+    expect(status(18)).toBe('idle'); // a later tick still idle: the builder has really stopped
+    expect(status(19)).toBe('idle');
+  });
+
+  it('reads idle at once for a settler first seen idle, and forgets a held state with the selection', () => {
+    const ctx = { holdSettlerState: settlerStateHold() } as UnitPanelModelContext;
+    const world = siteWorld(false);
+    const working = comps(WORKPLACE, { CurrentAtomic: { effect: { kind: 'construct' } } });
+    expect(settlerStatus(ctx, snapshotOf(world, 5), SETTLER, comps(WORKPLACE))).toBe('idle');
+    expect(settlerStatus(ctx, snapshotOf(world, 6), SETTLER, working)).toBe('building');
+    expect(settlerStatus(ctx, snapshotOf(world, 7), SETTLER + 10, comps(null))).toBe('idle');
+    expect(settlerStatus(ctx, snapshotOf(world, 8), SETTLER, comps(WORKPLACE))).toBe('idle');
   });
 });
