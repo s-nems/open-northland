@@ -1,4 +1,4 @@
-import type { JobEnablesKind, Recipe, VehicleType } from '@open-northland/data';
+import type { JobEnablesKind, Recipe, TribeType, VehicleType } from '@open-northland/data';
 import {
   AiPlayer,
   Building,
@@ -201,13 +201,7 @@ function tribeUnlockEnabled(
           requirement.goods.every((id) => goodEnabled(world, ctx, owner, tribe, id)))
       );
     }
-    if (
-      kind === 'job' &&
-      !definition.jobRequirements.some(
-        (r) => r.target === 'job' && r.targetId === targetId && r.requirement === 'need' && r.amount > 0,
-      )
-    )
-      return true;
+    if (kind === 'job' && !needsExperienceForJob(definition, targetId)) return true;
     return kind === 'good' && !definition.jobEnables.some((e) => e.kind === kind && e.targetId === targetId);
   }
   const enablingJobs = contentIndex(ctx.content).enablingJobsByTribe.get(tribe)?.get(kind)?.get(targetId);
@@ -219,6 +213,25 @@ function tribeUnlockEnabled(
     if (trades.has(jobType)) return true;
   }
   return false;
+}
+
+function needsExperienceForJob(definition: TribeType, jobType: number): boolean {
+  return definition.jobRequirements.some(
+    (r) => r.target === 'job' && r.targetId === jobType && r.requirement === 'need' && r.amount > 0,
+  );
+}
+
+/**
+ * Whether the tribe's tech tree keeps a job closed until someone discovers it: under a technology table
+ * a job with a `needforjob` threshold, otherwise one a `jobEnablesJob` edge opens. Every other job, the
+ * life stages and the civilist among them, is open from the start, so discovering it is no news.
+ */
+export function jobAwaitsDiscovery(ctx: ContentContext, tribe: number, jobType: number): boolean {
+  const index = contentIndex(ctx.content);
+  const definition = index.tribes.get(tribe);
+  if (definition === undefined) return false;
+  if (definition.technology !== undefined) return needsExperienceForJob(definition, jobType);
+  return index.enablingJobsByTribe.get(tribe)?.get('job')?.has(jobType) ?? false;
 }
 
 /**

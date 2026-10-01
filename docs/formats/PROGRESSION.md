@@ -21,7 +21,8 @@ profession-general and product-specific experience tracks. `DataCnmd/types/house
 - Existing buildings keep operating without requiring their construction technology again. A new
   profession requires player availability and the individual qualification.
 - At the start a job with no `needforjob` row and a good no job produces count as discovered for the
-  seat's own nations; an AI seat skips every discovery requirement and civilian experience gate
+  seat's own nations. Such a job, the life stages and the civilist among them, is never recorded or
+  announced as a discovery; an AI seat skips every discovery requirement and civilian experience gate
   (authored: the progression toggle is a human-player setting and must not handicap the bots). The
   discovery system records discoveries after each tick's commands and mission results, and again
   after its work.

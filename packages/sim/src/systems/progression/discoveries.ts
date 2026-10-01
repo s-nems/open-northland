@@ -22,7 +22,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
-import { goodEnabled, jobEnabled, settlerMeetsNeed, typeAllowed } from './unlocks.js';
+import { goodEnabled, jobAwaitsDiscovery, jobEnabled, settlerMeetsNeed, typeAllowed } from './unlocks.js';
 
 /** What a settler's last discovery walk saw of it: the walk repeats only when one of these moves.
  *  Experience and the learned lists only grow, so their sums and lengths tell every change. */
@@ -211,6 +211,7 @@ export const technologySystem: System = (world, ctx) => {
     kind: 'job' | 'good' | 'house',
     typeId: number,
   ): boolean => {
+    if (kind === 'job' && !jobAwaitsDiscovery(ctx, tribe, typeId)) return false;
     if (!discoverTechnology(world, owner, tribe, kind, typeId)) return false;
     if (entity !== undefined && owner !== undefined && ctx.tick > SETUP_TICK)
       ctx.events.emit({

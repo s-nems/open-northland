@@ -679,7 +679,7 @@ describe('moveVehicle', () => {
     twin.run(440);
     expect(twin.hashState()).toBe(s.hashState());
     // Includes detached settler needs and tick-derived clocks after the chat approaches finish.
-    expect(s.hashState()).toBe('87b9d156');
+    expect(s.hashState()).toBe('9369e4fa');
   });
 });
 

@@ -104,7 +104,7 @@ describe('scrubWindow', () => {
     expect(trace[2]?.components).toHaveProperty('Settler');
   });
 
-  it('adjacent pairs feed diffSnapshots: the tick-5→6 step adds exactly the carpenter', () => {
+  it('adjacent pairs feed diffSnapshots: the tick-5→6 step adds the carpenter and its first discovery', () => {
     const { run } = sampleRun();
     const window = scrubWindow(run, 5, 6);
     expect(window).toHaveLength(2);
@@ -113,8 +113,11 @@ describe('scrubWindow', () => {
     expect(diff.fromTick).toBe(5);
     expect(diff.toTick).toBe(6);
     expect(diff.removed).toHaveLength(0);
-    expect(diff.added).toHaveLength(1);
-    expect(diff.added[0]?.components).toHaveProperty('Settler');
+    // The carpenter opens the smithy, the player's first discovery, whose carrier arrives with it.
+    expect(diff.added.map((entity) => Object.keys(entity.components).sort())).toEqual([
+      expect.arrayContaining(['Settler']),
+      ['TechnologyDiscoveries'],
+    ]);
   });
 
   it('clamps fromTick to 1 (tick 0 is the un-snapshotted initial state)', () => {

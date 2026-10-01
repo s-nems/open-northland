@@ -72,14 +72,14 @@ describe('localizeDivergence', () => {
     // The diff is over the SAME tick of two runs, so both endpoints are tick 7.
     expect(report.diff.fromTick).toBe(7);
     expect(report.diff.toTick).toBe(7);
-    // The new carpenter also changes the player's persistent discoveries.
+    // The new carpenter opens the smithy, the player's first discovery, so the carrier of the persistent
+    // discoveries arrives with it.
     expect(report.diff.removed).toHaveLength(0);
-    expect(report.diff.changed).toHaveLength(1);
-    expect(report.diff.changed[0]?.changes).toEqual([
-      expect.objectContaining({ name: 'TechnologyDiscoveries' }),
+    expect(report.diff.changed).toHaveLength(0);
+    expect(report.diff.added.map((entity) => Object.keys(entity.components).sort())).toEqual([
+      expect.arrayContaining(['Settler']),
+      ['TechnologyDiscoveries'],
     ]);
-    expect(report.diff.added).toHaveLength(1);
-    expect(report.diff.added[0]?.components).toHaveProperty('Settler');
   });
 
   it('the report diff equals a hand-replayed diffSnapshots at the same tick (the composition is faithful)', () => {

@@ -37,6 +37,8 @@ const SMITHY = 4;
 /** The fixture's wood good, whose extraction feeds the wood track. */
 const WOOD = 1;
 const WOOD_TRACK = 1;
+/** A newborn's life stage, a job row the tribe's tech tree never gates. */
+const BABY_MALE = 90;
 
 function setup(
   houseRequirements: { readonly jobs: readonly number[]; readonly goods: readonly number[] } = {
@@ -47,6 +49,7 @@ function setup(
   const base = testContent();
   const content = parseContentSet({
     ...base,
+    jobs: [...base.jobs, { typeId: BABY_MALE, id: 'baby_male' }],
     tribes: base.tribes.map((t) =>
       t.typeId !== TRIBE
         ? t
@@ -206,6 +209,27 @@ describe('player technology discoveries', () => {
         typeId: SMITHY,
       },
     ]);
+  });
+
+  it('records no job the tech tree leaves open, such as a newborn or a gatherer', () => {
+    const { sim, worker } = setup();
+    const ctx = { ...ctxOf(sim), tick: 2 };
+    technologySystem(sim.world, ctx);
+    const baby = settlerAt(sim, { tribe: TRIBE, jobType: BABY_MALE });
+    sim.world.add(baby, Owner, { player: PLAYER });
+    sim.events.clear();
+
+    technologySystem(sim.world, ctx);
+
+    expect(sim.events.current().filter((event) => event.kind === 'technologyDiscovered')).toEqual([]);
+    expect(technologyDiscovered(sim.world, PLAYER, TRIBE, 'job', BABY_MALE)).toBe(false);
+    expect(technologyDiscovered(sim.world, PLAYER, TRIBE, 'job', WOODCUTTER)).toBe(false);
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, BABY_MALE)).toBe(true);
+
+    // A gated trade still is news: the worker's experience opens the carpenter.
+    grantWorkExperience(sim.world, ctx, worker, WOOD, 3);
+    technologySystem(sim.world, ctx);
+    expect(technologyDiscovered(sim.world, PLAYER, TRIBE, 'job', CARPENTER)).toBe(true);
   });
 
   it('discoveries survive retraining, death and save restoration', () => {
