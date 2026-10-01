@@ -43,7 +43,8 @@ settler in daylight. We read the author's intent instead:
   `packages/app/src/view/runtime/script-tints.ts`) is the scene grade: its palette colour multiplied
   over everything the stage draws below the HUD (`packages/render/src/gpu/lighting/scene-light.ts`).
   Nodes the author's disc missed (the corners of wielka_kolonizacja and krwawa_rzeka) take the grade
-  too, as their paired rain square does.
+  too, as their paired rain square does. An `OnLand` write that reaches the share grades the water
+  with the land: the author dimmed the map, and the original's water simply could not take a tint.
 - Channels above 1 ("sunlight" 123..126, "clearing" 52) cannot multiply a sprite past its colour.
   They draw as one additive quad at `OVERBRIGHT_SHARE` (a quarter) of their excess: a warm lift that
   keeps the shadows. Tuned by eye against the alternatives: the script's literal 1.34 red as a true
@@ -51,6 +52,9 @@ settler in daylight. We read the author's intent instead:
 - Every other index stays on the terrain as its palette colour divided by the scene's multiply, so
   the product on screen is exactly what the script asked for.
 - A step fades exponentially over about 4 game seconds (`LIGHT_FADE_SECONDS`); a load or seek snaps.
+  The terrain's local tints take their new divisor at once, so a glow runs a few seconds ahead of the
+  scene it is divided by. An approximation: fading the ground too would be a per-frame pass over the
+  map's nodes.
 - `?tint=<index>` holds an index as the whole-map tint for review (`docs/DEVELOPMENT.md`).
 
 The tint state crosses the sim worker as one `Uint8Array` over node ids and the renderer rewrites only

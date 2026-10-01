@@ -139,7 +139,6 @@ export function createGeometryToggle(deps: {
   };
 }
 
-/** A checkbox that lets the wheel zoom out past the normal floor, to take in most of a large map. */
 /** The debug tempos beyond the HUD's ×1..×3, for watching a map script's slow chains. */
 export const DEBUG_GAME_SPEEDS: readonly number[] = [5, 10, 15, 20];
 
@@ -169,6 +168,7 @@ export function createSpeedRow(deps: {
   return { row, refresh: paint };
 }
 
+/** A checkbox that lets the wheel zoom out past the normal floor, to take in most of a large map. */
 export function createZoomOutToggle(deps: {
   readonly unlocked: () => boolean;
   readonly setUnlocked: (unlocked: boolean) => void;

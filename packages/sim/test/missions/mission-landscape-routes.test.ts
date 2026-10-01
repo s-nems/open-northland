@@ -240,7 +240,6 @@ describe('script landscape route invalidation', () => {
       opcode,
       point: { hx: -1, hy: POINT.hy },
       range: 1e9,
-      amount: 50,
       flag: true,
       landscape: 1,
       level: 0,

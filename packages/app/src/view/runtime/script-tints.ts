@@ -109,15 +109,17 @@ export async function mountScriptTints(
   // Each answer is the whole tint state, so only the latest asked is applied, and none once disposed.
   let asked = 0;
   let disposed = false;
-  const FIRST_REQUEST = 1;
+  // The first answer applied is the state the world was loaded in, not a step to fade into, even
+  // when a script's first-tick write made an earlier answer stale.
+  let applied = false;
   const sync = (): void => {
     const request = ++asked;
     void host.landscapeEdits().then((edits) => {
       if (request !== asked || disposed) return;
       const split = splitScriptTints(edits.tints, palette, colors, pinnedIndex);
       colors = split.colors;
-      // The first answer is the state the world was loaded in, not a step to fade into.
-      surface.setSceneLight(split.scene, request === FIRST_REQUEST);
+      surface.setSceneLight(split.scene, !applied);
+      applied = true;
       surface.applyTerrainVertexColors(colors);
     });
   };

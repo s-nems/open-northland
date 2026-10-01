@@ -121,6 +121,28 @@ describe('mountScriptTints', () => {
     scriptTints.dispose();
   });
 
+  it('snaps the loaded state even when a first-tick write stales the first answer', async () => {
+    const drawn = surface();
+    const host = tintingHost([edits(new Uint8Array(10)), edits(tints)]);
+    // The first answer is still in flight when the script's first write arrives.
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const answers = host.landscapeEdits;
+    host.landscapeEdits = () => {
+      const answer = answers();
+      return held.then(() => answer);
+    };
+    const scriptTints = await mountScriptTints(host, drawn);
+    scriptTints.onEvents([{ kind: 'missionVertexColor' }]);
+    release();
+    await landed();
+    expect(drawn.snaps).toEqual([true]);
+    expect(drawn.lights).toEqual([[0.5, 0.5, 0.5]]);
+    scriptTints.dispose();
+  });
+
   it('asks nothing of a map whose script never tints', async () => {
     const drawn = surface();
     const landscapeEdits = vi.fn(() => Promise.resolve(edits(tints)));
