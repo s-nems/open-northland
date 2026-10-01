@@ -13,6 +13,7 @@ import { grassScarce } from '../../../src/systems/ai-player/build-order/grass-re
 import {
   buildReach,
   FRONT_EDGE_STEP_NODES,
+  GRASS_BESIDE_NODES,
   HQ_PULL_DIVISOR_NODES,
   spotAcceptor,
 } from '../../../src/systems/ai-player/build-order/placement.js';
@@ -269,8 +270,42 @@ describe('build-order placement - affinity and ground rules', () => {
     ).toBeUndefined();
   });
 
-  it('builds past a barren belt wider than the reach, on its own land only', () => {
-    // Sand out to beyond the reach around the HQ, grass past it: the farm overflows onto the grass.
+  it('stands the farm on grass where it fits, beside free grass where it does not, and never beside taken grass', () => {
+    // A grass patch too small for nothing but a point farm's anchor - the fixture farm has no footprint, so
+    // a single node fits it: a sand map with one grass node first takes the farm on it.
+    const GRASS_AT = { x: 40, y: 16 };
+    const lone = () =>
+      new Simulation({
+        seed: 1,
+        content: aiContent(),
+        map: mapWithSand(64, 32, (x, y) => x !== GRASS_AT.x || y !== GRASS_AT.y),
+      });
+    const farmEntry: BuildOrderEntry[] = [
+      { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable' },
+    ];
+    const onIt = lone();
+    placeHq(onIt);
+    onIt.step();
+    expect(firstCommandOf(onIt, farmEntry)).toMatchObject({ x: GRASS_AT.x, y: GRASS_AT.y });
+
+    // A home on that node: the grass is taken, so no spot beside it serves either.
+    const taken = lone();
+    placeHq(taken);
+    taken.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: GRASS_AT.x,
+      y: GRASS_AT.y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    taken.step();
+    expect(firstCommandOf(taken, farmEntry)).toBeUndefined();
+  });
+
+  it('stands the farm beside grass past the reach when none fits on it, on its own land only', () => {
+    // Sand out to beyond the reach around the HQ, grass past it: the farm stops at the reach's edge,
+    // beside the grass its workers sow.
     const BELT = BUILD_SEARCH_MAX_RADIUS_NODES + 4;
     const WIDE = 2 * (HQ_X + OVERFLOW_BUILD_REACH_NODES);
     const barrenBelt = (x: number, y: number) => Math.abs(x - HQ_X) + Math.abs(y - HQ_Y) <= BELT;
@@ -284,10 +319,10 @@ describe('build-order placement - affinity and ground rules', () => {
     const farm = firstCommandOf(overflow, DEFAULT_BUILD_ORDER);
     if (farm?.kind !== 'placeBuilding') throw new Error('expected the farm placement');
     const distance = Math.abs(farm.x - HQ_X) + Math.abs(farm.y - HQ_Y);
-    expect(distance).toBeGreaterThan(BELT);
-    expect(distance).toBeLessThanOrEqual(OVERFLOW_BUILD_REACH_NODES);
+    expect(distance).toBeGreaterThan(BELT - GRASS_BESIDE_NODES);
+    expect(distance).toBeLessThanOrEqual(BUILD_SEARCH_MAX_RADIUS_NODES);
 
-    // The same grass behind a strait: the farm stalls rather than landing where no builder walks.
+    // The same grass behind a strait: the farm stalls rather than standing where no worker walks.
     const WATER = 1;
     const STRAIT_X = HQ_X + BELT + 1;
     const typeIds = new Array<number>(WIDE * 32);
@@ -330,7 +365,7 @@ describe('build-order placement - affinity and ground rules', () => {
     if (terrain === undefined) throw new Error('expected a mapped sim');
     const groundTests = vi.spyOn(terrain, 'isPlantable');
     const farm = buildOrderModule([
-      { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable' },
+      { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable', essential: true },
     ]);
 
     const searchedAt: number[] = [];

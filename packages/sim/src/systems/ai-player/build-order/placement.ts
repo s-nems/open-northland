@@ -8,6 +8,7 @@ import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../nav/terra
 import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../../footprint/geometry.js';
+import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js';
 import { shipYardProbe } from '../../footprint/placement/vehicle-site.js';
 import { roadSitesByNode } from '../../roads/site-index.js';
 import { interactionCell } from '../../settlers/targets/index.js';
@@ -391,19 +392,26 @@ function reachOver(centres: readonly HalfCellNode[], fallback: HalfCellNode, rad
   };
 }
 
+/** How far from a `plantable` entry's anchor free sowable ground may lie when none fits under its
+ *  footprint, in lattice Manhattan nodes (authored): a few steps, well inside the field radius the
+ *  workers sow within. */
+export const GRASS_BESIDE_NODES = 6;
+
+/** What a spot's ground must be: anything, sowable under the whole footprint, or with free sowable ground
+ *  within {@link GRASS_BESIDE_NODES} on its own land. */
+type GroundRule = 'any' | 'on' | 'beside';
+
 /** Every reserved footprint cell must be sowable ground. Approximation: "the farm stands on grass" is
  *  encoded as the reserved zone on `plantable` terrain (the original's `biocanplanton` class); the
  *  surrounding field ring is not pre-checked, since sowing already skips barren nodes. */
-function groundAccepted(
+function footprintOnGrass(
   ctx: SystemContext,
   terrain: TerrainGraph,
   type: BuildingType,
   tribe: number,
-  entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   x: number,
   y: number,
 ): boolean {
-  if (entry.ground === undefined) return true;
   const footprint = buildingFootprintOf(ctx.content, type.typeId, tribe);
   if (footprint === undefined) return terrain.isPlantable(terrain.nodeAt(x, y));
   for (const c of footprint.reserved) {
@@ -444,6 +452,9 @@ export interface SpotAcceptor {
     fan: number,
     spareGrass?: boolean,
   ): (x: number, y: number) => boolean;
+  /** Whether a sowable node no building stands on or reserves lies within {@link GRASS_BESIDE_NODES} of
+   *  `(x, y)` on its walk component, where the workers can reach it. */
+  grassBeside(x: number, y: number): boolean;
 }
 
 export function spotAcceptor(
@@ -470,7 +481,25 @@ export function spotAcceptor(
   }
   const body = buildingFlagBody(ctx.content, buildingTypeId, tribe);
   const roadSites = roadSitesByNode(world, terrain);
+  let zones: Uint16Array | null = null;
   return {
+    grassBeside(x, y) {
+      if (!terrain.inBounds(x, y)) return false;
+      zones ??= placementBlockerGrid(world, ctx.content, terrain).buildingZone;
+      const land = terrain.componentOf(terrain.nodeAt(x, y));
+      for (let dy = -GRASS_BESIDE_NODES; dy <= GRASS_BESIDE_NODES; dy++) {
+        const span = GRASS_BESIDE_NODES - Math.abs(dy);
+        for (let dx = -span; dx <= span; dx++) {
+          const cx = x + dx;
+          const cy = y + dy;
+          if (!terrain.inBounds(cx, cy)) continue;
+          const node = terrain.nodeAt(cx, cy);
+          if (!terrain.isPlantable(node) || !terrain.isWalkable(node) || occupied.has(node)) continue;
+          if ((zones[cy * terrain.width + cx] ?? 0) === 0 && terrain.componentOf(node) === land) return true;
+        }
+      }
+      return false;
+    },
     around(underFire, centre, fan, spareGrass = false) {
       const fire = underFire.around(centre.hx, centre.hy, fan, span);
       return (x, y) => {
@@ -577,7 +606,15 @@ export function placementSpot(
   );
   if (search === null) return null;
   const { centre, within } = search;
-  const near = (reach: BuildReach, from: HalfCellNode, bound: SpotBound, fan: number, spareGrass = false) =>
+  const ground: GroundRule = entry.ground === 'plantable' ? 'on' : 'any';
+  const near = (
+    reach: BuildReach,
+    from: HalfCellNode,
+    bound: SpotBound,
+    fan: number,
+    rule: GroundRule,
+    spareGrass = false,
+  ) =>
     spotAround(
       ctx,
       terrain,
@@ -589,26 +626,29 @@ export function placementSpot(
       fan,
       type,
       tribe,
-      entry,
+      rule,
       underFire,
       spareGrass,
     );
+  // A `plantable` entry stands on the grass where it fits, else beside it.
+  const onOrBeside = (search: (rule: GroundRule) => HalfCellNode | null) =>
+    search(ground) ?? (ground === 'on' ? search('beside') : null);
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
-  const inReach = (spareGrass: boolean) =>
-    near(settlement, centre, within, fan, spareGrass) ??
+  const inReach = (rule: GroundRule, spareGrass: boolean) =>
+    near(settlement, centre, within, fan, rule, spareGrass) ??
     (centre.hx === anchor.hx && centre.hy === anchor.hy
       ? null
-      : near(settlement, anchor, within, fan, spareGrass));
-  const offGrass = reserveGrass && !grassBound(type, entry) ? inReach(true) : null;
+      : near(settlement, anchor, within, fan, rule, spareGrass));
+  const offGrass = reserveGrass && !grassBound(type, entry) ? inReach(ground, true) : null;
   if (offGrass !== null) return offGrass;
-  const found = inReach(false);
+  const found = onOrBeside((rule) => inReach(rule, false));
   // A bounded entry's disc already lies in the usual reach, so only an unbounded one overflows.
   if (found !== null || within !== null) return found;
   const home = baseComponent(world, ctx, terrain, player);
   if (home === NO_COMPONENT) return null;
   const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;
   const overflow = buildReach(world, owned, anchor, OVERFLOW_BUILD_REACH_NODES);
-  return near(overflow, centre, onHomeLand, 2 * OVERFLOW_BUILD_REACH_NODES);
+  return onOrBeside((rule) => near(overflow, centre, onHomeLand, 2 * OVERFLOW_BUILD_REACH_NODES, rule));
 }
 
 function spotAround(
@@ -622,7 +662,7 @@ function spotAround(
   fan: number,
   type: BuildingType,
   tribe: number,
-  entry: Extract<BuildOrderEntry, { kind: 'place' }>,
+  ground: GroundRule,
   underFire: EnemyFire,
   spareGrass: boolean,
 ): HalfCellNode | null {
@@ -634,9 +674,10 @@ function spotAround(
     // The reach first: an affinity-pulled centre puts much of every ring outside it, and a stalled
     // entry re-walks the whole fan on every retry.
     if (!reach.contains(x, y)) return false;
-    if (!terrain.inBounds(x, y)) return false; // the bound and groundAccepted resolve nodes
+    if (!terrain.inBounds(x, y)) return false; // the bound and the ground test resolve nodes
     if (within !== null && !within(x, y)) return false;
-    if (!groundAccepted(ctx, terrain, type, tribe, entry, x, y)) return false;
-    return accept(x, y);
+    if (ground === 'on' && !footprintOnGrass(ctx, terrain, type, tribe, x, y)) return false;
+    // The beside scan walks a diamond, so it runs last, on spots that are legal otherwise.
+    return accept(x, y) && (ground !== 'beside' || acceptor.grassBeside(x, y));
   });
 }

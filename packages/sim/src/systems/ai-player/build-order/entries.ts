@@ -19,7 +19,8 @@ export type PlacementAffinity =
 
 export type BuildOrderEntry =
   /** Place `count` buildings of the stable content id. `near` pulls the spot toward its anchors,
-   *  `ground: 'plantable'` hard-restricts the footprint to sowable ground. `needsResources`
+   *  `ground: 'plantable'` puts the footprint on sowable ground, or where none fits, beside free sowable
+   *  ground (`placement.ts`). `needsResources`
    *  names the map goods the building exists to work up; an unmet entry is skipped while the map holds
    *  none of any one of them, like a collector entry. `unlessWithin` skips the entry while every one of
    *  the seat's named buildings (at that tier or above) has one of the buildings the entry counts within
