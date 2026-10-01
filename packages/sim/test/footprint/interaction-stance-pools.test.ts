@@ -132,7 +132,7 @@ describe('stance validation work', () => {
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
-  it('retains pools through construction progress and refreshes topology changes', () => {
+  it('retains pools through construction progress and a topology change that leaves them as they were', () => {
     const sim = mappedSim();
     const terrain = terrainOf(sim);
     const target = placeResource(sim, STONE, STONE_ATOMIC, 8, 4);
@@ -151,7 +151,8 @@ describe('stance validation work', () => {
       state.topologyRevision++;
     });
     expect(sim.world.verifyCaches()).toEqual([]);
-    expect(resourceStanceCells(sim.world, ctxOf(sim), terrain, target)).not.toBe(held);
+    // Re-derived under the new topology, and kept since it came out the same.
+    expect(resourceStanceCells(sim.world, ctxOf(sim), terrain, target)).toBe(held);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 

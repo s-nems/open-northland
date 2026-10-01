@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cellAnchorNode, Simulation } from '../../../src/index.js';
+import type { NodeId } from '../../../src/nav/terrain/index.js';
 import { collectTargets } from '../../../src/systems/settlers/targets/index.js';
 import { BLOCKHOUSE, Building, blockhouseAt, ctxOf, FARM, grassMap, wallsContent } from './support.js';
 
@@ -13,7 +14,15 @@ describe('field zones kept across ticks', () => {
     const sim = new Simulation({ seed: 1, content: wallsContent(), map: grassMap(12, 12) });
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('fixture map missing');
-    const zones = () => new Set(collectTargets(sim.world, ctxOf(sim), terrain).fieldZones);
+    const zones = (): Set<NodeId> => {
+      const view = collectTargets(sim.world, ctxOf(sim), terrain).fieldZones;
+      const held = new Set<NodeId>();
+      for (let y = 0; y < terrain.height; y++) {
+        for (let x = 0; x < terrain.width; x++)
+          if (view.has(terrain.nodeAt(x, y))) held.add(terrain.nodeAt(x, y));
+      }
+      return held;
+    };
     const anchor = cellAnchorNode(TILE.x, TILE.y);
     const anchorNode = terrain.nodeAt(anchor.hx, anchor.hy);
     const empty = zones();

@@ -10,7 +10,8 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../../context.js';
-import { interactionNode, positionedInteractionCell, resourceWorkCell } from '../../footprint/index.js';
+import { positionedInteractionCell, resourceWorkCell } from '../../footprint/index.js';
+import { interactionCellOf } from '../../footprint/interaction.js';
 import { workplaceStaffable } from '../../progression/index.js';
 import { buildingWorkerJobs, mergedRecipeOf, refillsOwnStock } from '../../stores/index.js';
 
@@ -57,8 +58,8 @@ export function interactionCell(
   entity: Entity,
   from?: NodeId,
 ): NodeId {
-  const interaction = interactionNode(world, ctx, entity);
-  if (interaction !== null) return terrain.nodeAtClamped(interaction.x, interaction.y);
+  const door = interactionCellOf(world, ctx, terrain, entity);
+  if (door !== null) return door;
   if (world.has(entity, Resource)) return resourceWorkCell(world, ctx, terrain, entity, from);
   return positionedInteractionCell(world, ctx, terrain, entity, from);
 }

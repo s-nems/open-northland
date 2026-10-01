@@ -73,7 +73,10 @@ export function unreachableGoals(
 
 /** Whether `cell` is one of the goals this settler's routes just failed on. */
 export function isUnreachableGoal(memo: readonly UnreachableGoal[] | null, cell: NodeId): boolean {
-  return memo?.some((entry) => entry.cell === cell) === true;
+  if (memo === null) return false;
+  // A plain loop: the stance gates probe this per candidate cell.
+  for (let i = 0; i < memo.length; i++) if (memo[i]?.cell === cell) return true;
+  return false;
 }
 
 /** The memo as the cell veto the index scans take, or undefined when this settler remembers no failures, so

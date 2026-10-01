@@ -101,6 +101,14 @@ function busy(world: World): Entity {
   return e;
 }
 
+/** Every settler a fresh sweep visits, in order. */
+function swept(...args: Parameters<typeof sweepOrder>): Entity[] {
+  const sweep = sweepOrder(...args);
+  const visited: Entity[] = [];
+  for (let e = sweep.next(); e !== undefined; e = sweep.next()) visited.push(e);
+  return visited;
+}
+
 describe('planner sweep order', () => {
   it('skips held and walking settlers unless they carry something to reconcile', () => {
     const world = new World();
@@ -112,11 +120,7 @@ describe('planner sweep order', () => {
     const failedRoute = walking(world);
     world.add(failedRoute, PathRequest, { start: GOAL, goal: GOAL, failed: true });
 
-    expect([...sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER)]).toEqual([
-      standing,
-      idleWalker,
-      failedRoute,
-    ]);
+    expect(swept(world, CONTENT, NO_SHELTERS, EVERY_IDLER)).toEqual([standing, idleWalker, failedRoute]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
@@ -125,7 +129,8 @@ describe('planner sweep order', () => {
     const first = settler(world);
     const walker = walking(world);
     const visited: Entity[] = [];
-    for (const e of sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER)) {
+    const sweep = sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER);
+    for (let e = sweep.next(); e !== undefined; e = sweep.next()) {
       visited.push(e);
       if (e === first) {
         world.remove(walker, MoveGoal);
@@ -139,12 +144,12 @@ describe('planner sweep order', () => {
     const world = new World();
     const [failing, engaged, supplying] = [walking(world), walking(world), walking(world)];
     world.add(failing, PathRequest, { start: GOAL, goal: GOAL, failed: false });
-    expect([...sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER)]).toEqual([]);
+    expect(swept(world, CONTENT, NO_SHELTERS, EVERY_IDLER)).toEqual([]);
 
     world.mut(failing, PathRequest).failed = true;
     world.add(engaged, Engagement, { repathAt: 0 });
     world.add(supplying, SupplyRun, { site: failing, goodType: PLANK, amount: 1, source: null });
-    expect([...sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER)]).toEqual([failing, engaged, supplying]);
+    expect(swept(world, CONTENT, NO_SHELTERS, EVERY_IDLER)).toEqual([failing, engaged, supplying]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
@@ -156,7 +161,7 @@ describe('planner sweep order', () => {
     employ(world, walking(world), SOLDIER, ALARMED);
     employ(world, busy(world), WOODCUTTER, ALARMED);
     const alarm: ShelterSites = new Map([[ALARMED, []]]);
-    expect([...sweepOrder(world, CONTENT, alarm, EVERY_IDLER)]).toEqual([standing, alarmedWalker]);
+    expect(swept(world, CONTENT, alarm, EVERY_IDLER)).toEqual([standing, alarmedWalker]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
@@ -164,9 +169,9 @@ describe('planner sweep order', () => {
     const world = new World();
     const walker = employ(world, walking(world), WOODCUTTER, CALM);
     const alarm: ShelterSites = new Map([[ALARMED, []]]);
-    expect([...sweepOrder(world, CONTENT, alarm, EVERY_IDLER)]).toEqual([]);
+    expect(swept(world, CONTENT, alarm, EVERY_IDLER)).toEqual([]);
     world.add(walker, Owner, { player: ALARMED });
-    expect([...sweepOrder(world, CONTENT, alarm, EVERY_IDLER)]).toEqual([walker]);
+    expect(swept(world, CONTENT, alarm, EVERY_IDLER)).toEqual([walker]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
@@ -179,9 +184,9 @@ describe('planner sweep order', () => {
       throw new Error('too few idlers');
     }
     const beat = idleBeatOf(first);
-    const sweep = (shelters: ShelterSites): Entity[] => [...sweepOrder(world, CONTENT, shelters, beat)];
+    const sweep = (shelters: ShelterSites): Entity[] => swept(world, CONTENT, shelters, beat);
     expect(sweep(NO_SHELTERS)).toEqual([first, last]);
-    expect([...sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER)]).toEqual(idlers);
+    expect(swept(world, CONTENT, NO_SHELTERS, EVERY_IDLER)).toEqual(idlers);
 
     employ(world, second, WOODCUTTER, ALARMED);
     employ(world, third, SOLDIER, ALARMED);
@@ -200,7 +205,7 @@ describe('the beat an idler waits inside a building on', () => {
     const crafter = idler(world);
     world.add(crafter, JobAssignment, { workplace });
     world.add(crafter, Resting, { at: workplace });
-    const onBeat = (e: Entity): Entity[] => [...sweepOrder(world, CONTENT, NO_SHELTERS, idleBeatOf(e))];
+    const onBeat = (e: Entity): Entity[] => swept(world, CONTENT, NO_SHELTERS, idleBeatOf(e));
     expect(onBeat(workplace)).toEqual([crafter]);
     expect(onBeat(crafter)).toEqual([]);
 

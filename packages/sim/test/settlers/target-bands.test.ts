@@ -61,16 +61,15 @@ describe('TargetBands', () => {
     expect(nearestStoreHolding(targets.bands, sim.world, here, WOOD, undefined)).toBe(near);
   });
 
-  it('drops the band on a tracked stock write instead of serving the stale winner', () => {
+  it('re-syncs the band on a tracked stock write instead of serving the stale winner', () => {
     const { sim, targets, here, near, far } = fixture();
-    const before = targets.bands.holding(WOOD);
     expect(nearestStoreHolding(targets.bands, sim.world, here, WOOD, undefined)).toBe(near);
     setStockAmount(sim.world, near, WOOD, 0);
-    expect(targets.bands.holding(WOOD)).not.toBe(before);
     expect(nearestStoreHolding(targets.bands, sim.world, here, WOOD, undefined)).toBe(far);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
-  it('drops the band on a membership change that flips an answer', () => {
+  it('re-syncs the band on a membership change that flips an answer', () => {
     const { sim, targets, here, near, far } = fixture();
     expect(nearestStoreHolding(targets.bands, sim.world, here, WOOD, undefined)).toBe(near);
     // A store that becomes a construction site mid-tick is a sink, never a source to strip.
@@ -143,6 +142,35 @@ describe('TargetBands.holding - the band a producer fetches a missing input from
     const free = pileOnNode(sim, 20, 4);
 
     expect(holdingMatchesYield(sim, [buried, free], [STONE])).toEqual([free]);
+  });
+});
+
+describe('TargetBands kept across passes', () => {
+  it('re-files a member that moved, lost its stock or its building since the last pass', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(16, 4) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('fixture map missing');
+    const [moved, drained, unbuilt] = [hqAt(sim, 2, 1, 5), hqAt(sim, 7, 1, 5), hqAt(sim, 13, 1, 5)];
+    const stores = [moved, drained, unbuilt];
+    const nearestFrom = (x: number, y: number): Entity | null =>
+      nearestStoreHolding(
+        collectTargets(sim.world, ctxOf(sim), terrain).bands,
+        sim.world,
+        terrain.nodeAtClamped(x, y),
+        WOOD,
+        undefined,
+      );
+    expect(holdingMatchesYield(sim, stores, [WOOD])).toEqual(stores);
+
+    sim.world.add(moved, Position, { x: fx.fromInt(10), y: fx.fromInt(2) });
+    expect(nearestFrom(20, 4)).toBe(moved);
+    setStockAmount(sim.world, drained, WOOD, 0);
+    expect(holdingMatchesYield(sim, stores, [WOOD])).toEqual([moved, unbuilt]);
+    setStockAmount(sim.world, drained, WOOD, 5);
+    sim.world.remove(unbuilt, Building); // filed by its door before, by its own node now
+    expect(holdingMatchesYield(sim, stores, [WOOD])).toEqual(stores);
+    expect(nearestFrom(26, 2)).toBe(unbuilt);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 });
 

@@ -249,12 +249,12 @@ const candidates = new WeakMap<World, SweepCandidates>();
  * this order decides who wins. Only settlers positioned when the sweep starts take part; a settler
  * never loses either component while alive, so one created mid-pass is the only newcomer.
  */
-export function* sweepOrder(
+export function sweepOrder(
   world: World,
   content: ContentSet,
   shelters: ShelterSites,
   idleBeat: number | undefined,
-): Generator<Entity> {
+): PlannerSweep {
   let held = candidates.get(world);
   if (held === undefined) {
     const created = new SweepCandidates(world);
@@ -262,12 +262,32 @@ export function* sweepOrder(
     candidates.set(world, created);
     held = created;
   }
-  const createdMidPass = world.nextEntityId;
-  for (
-    let e = held.after(0, content, shelters, idleBeat);
-    e !== undefined && e < createdMidPass;
-    e = held.after(e, content, shelters, idleBeat)
-  ) {
-    yield e;
+  return new PlannerSweep(held, content, shelters, idleBeat, world.nextEntityId);
+}
+
+/** A cursor over {@link sweepOrder}'s settlers: a pass asks for the next one after each visit, so the
+ *  walk allocates nothing per settler. */
+export class PlannerSweep {
+  private cursor = 0;
+  private done = false;
+
+  constructor(
+    private readonly held: SweepCandidates,
+    private readonly content: ContentSet,
+    private readonly shelters: ShelterSites,
+    private readonly idleBeat: number | undefined,
+    private readonly createdMidPass: number,
+  ) {}
+
+  /** The next settler to visit, or undefined once the sweep is over. */
+  next(): Entity | undefined {
+    if (this.done) return undefined;
+    const e = this.held.after(this.cursor, this.content, this.shelters, this.idleBeat);
+    if (e === undefined || e >= this.createdMidPass) {
+      this.done = true;
+      return undefined;
+    }
+    this.cursor = e;
+    return e;
   }
 }

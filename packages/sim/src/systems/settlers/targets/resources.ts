@@ -52,7 +52,6 @@ export function nearestHarvestableFor(
 ): { entity: Entity; cell: NodeId; dist: number } | null {
   const { world, ctx, terrain, here, targets } = plan;
   const settler = plan;
-  const candidates = targets.resources;
   const { area, within, goodFilter, exclude, reserved, admits } = opts;
   const gate = plan.limit ?? undefined; // the settler's signpost confinement
   const allowed = jobAtomics(ctx, settler.jobType);
@@ -71,7 +70,7 @@ export function nearestHarvestableFor(
   // A bounded scan reads only the resources of the job's atomics whose anchor lies in the bound's box,
   // widened by the content's max work-cell offset so every node whose work cell could pass the radius
   // test is included. The same filter/rank loop over an ascending-id superset picks the identical winner.
-  let scanned = candidates;
+  let scanned: readonly Entity[] | undefined;
   if (bound !== undefined) {
     scanned = resourcesNearNode(world, boundX, boundY, anchorReach, allowed);
   } else if (gate !== undefined) {
@@ -89,10 +88,12 @@ export function nearestHarvestableFor(
     }
   }
   if (opts.candidates !== undefined) scanned = opts.candidates;
-  const passes = collectorStanceGates(plan, bound);
+  scanned ??= targets.resources;
+  // Built on the first candidate that reaches the stance check, so a scan nothing qualifies for builds none.
+  let passes: ((cell: NodeId) => boolean) | undefined;
   const subject = needSubjectOf(world, plan.entity);
   // The XP gate depends only on the good, so it is resolved once per good per scan.
-  const meetsNeedByGood = new Map<number, boolean>();
+  let meetsNeedByGood: Map<number, boolean> | undefined;
   // Ranked from `origin`, while the interaction cell still resolves from `here`, the route start.
   const best = nearestByCell(terrain, scanned, origin, (e) => {
     if (exclude?.has(e)) return null; // a colleague already digs this node
@@ -112,6 +113,7 @@ export function nearestHarvestableFor(
     if (reserved?.(e) === true) return null;
     if (admits?.(e) === false) return null;
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
+    meetsNeedByGood ??= new Map();
     let meetsNeed = meetsNeedByGood.get(res.goodType);
     if (meetsNeed === undefined) {
       meetsNeed = settlerMeetsNeed(world, ctx, subject, 'good', res.goodType);
@@ -129,6 +131,7 @@ export function nearestHarvestableFor(
           opts.diagnostic.eligibleInArea = true;
       }
     }
+    passes ??= collectorStanceGates(plan, bound);
     const cell = nearestEligibleStance(plan, stances, passes);
     if (cell === undefined) return null;
     return { cell, payload: null };
@@ -151,17 +154,20 @@ function nearestDropFor(
   within?: { center: NodeId; radius: number },
 ): { pile: Entity; goodType: number; cell: NodeId; dist: number } | null {
   const { world, ctx, terrain, here } = plan;
-  if (lists.every((piles) => piles.length === 0)) return null;
-  const passes = collectorStanceGates(plan, within);
+  let passes: ((cell: NodeId) => boolean) | undefined;
   const resolve = (e: Entity): CellMatch<number> | null => {
     const good = pick(e);
     if (good === null) return null;
+    passes ??= collectorStanceGates(plan, within);
     const cell = nearestEligibleStance(plan, positionedStanceCells(world, ctx, terrain, e), passes);
     if (cell === undefined) return null;
     return { cell, payload: good };
   };
   let best: NearestByCell<number> | null = null;
-  for (const piles of lists) best = nearerOf(best, nearestByCell(terrain, piles, here, resolve));
+  for (let i = 0; i < lists.length; i++) {
+    const piles = lists[i];
+    if (piles !== undefined) best = nearerOf(best, nearestByCell(terrain, piles, here, resolve));
+  }
   return best === null
     ? null
     : { pile: best.entity, goodType: best.payload, cell: best.cell, dist: best.distance };
@@ -185,12 +191,18 @@ export function nearestCollectablePileFor(
   const { goodFilter } = opts;
   const allowed = jobAtomics(ctx, plan.jobType);
   // Only piles of a good this trade harvests (and the caller forages for) are visited at all.
-  const piles: (readonly Entity[])[] = [];
-  for (const [good, harvestAtomic] of targets.harvestAtomicByGood) {
-    if (!allowed.has(harvestAtomic) || (goodFilter !== undefined && !goodFilter.has(good))) continue;
+  let piles: (readonly Entity[])[] | undefined;
+  const { harvestAtomicByGood } = targets;
+  for (const good of harvestAtomicByGood.keys()) {
+    const harvestAtomic = harvestAtomicByGood.get(good);
+    if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) continue;
+    if (goodFilter !== undefined && !goodFilter.has(good)) continue;
     const ofGood = targets.groundDropsByGood.get(good);
-    if (ofGood !== undefined) piles.push(ofGood);
+    if (ofGood === undefined || ofGood.length === 0) continue;
+    piles ??= [];
+    piles.push(ofGood);
   }
+  if (piles === undefined) return null;
   return nearestDropFor(
     plan,
     piles,
@@ -215,7 +227,9 @@ export function nearestOwnDropFor(
   plan: PlannerContext,
 ): { pile: Entity; goodType: number; cell: NodeId; dist: number } | null {
   const { world, entity: gatherer, targets } = plan;
-  return nearestDropFor(plan, [targets.groundDropsByHarvester.get(gatherer) ?? []], (e) => {
+  const own = targets.groundDropsByHarvester.get(gatherer);
+  if (own === undefined) return null;
+  return nearestDropFor(plan, [own], (e) => {
     const mark = world.tryGet(e, HarvestedBy);
     if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop
     const good = lowestStockedGood(world.get(e, Stockpile));

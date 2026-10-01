@@ -37,8 +37,9 @@ export function nearestEligibleStance(
 ): NodeId | undefined {
   let best: NodeId | undefined;
   let distance = Number.POSITIVE_INFINITY;
-  for (const cell of pool) {
-    if (!passes(cell)) continue;
+  for (let i = 0; i < pool.length; i++) {
+    const cell = pool[i];
+    if (cell === undefined || !passes(cell)) continue;
     const d = manhattan(plan.terrain, plan.here, cell);
     if (d < distance || (d === distance && (best === undefined || cell < best))) {
       best = cell;

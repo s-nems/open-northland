@@ -6,7 +6,8 @@ import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { MapContext } from '../../context.js';
-import { interactionNode, routeRegions } from '../../footprint/index.js';
+import { routeRegions } from '../../footprint/index.js';
+import { interactionCellOf } from '../../footprint/interaction.js';
 import { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../spatial/metric.js';
 import { NodeBuckets } from '../../spatial/nodes.js';
 import { interactionCell } from './workplaces.js';
@@ -164,9 +165,8 @@ export class InteractionCellIndex {
   /** Index positioned `e` by its door, or by its own node when its cell depends on the seeker. */
   add(e: Entity): void {
     const { world, terrain } = this;
-    const inode = interactionNode(world, this.ctx, e);
-    if (inode !== null) {
-      const cell = terrain.nodeAtClamped(inode.x, inode.y);
+    const cell = interactionCellOf(world, this.ctx, terrain, e);
+    if (cell !== null) {
       this.doorCell.set(e, cell);
       insertSortedById(this.doorList, e, entityId);
       this.doors.add(e, terrain.xOf(cell), terrain.yOf(cell));
@@ -242,9 +242,8 @@ export class InteractionCellIndex {
     /** Rejects a candidate owned by another player, per entity rather than per cell. */
     onSide?: (e: Entity) => boolean,
   ): NearestByCell<P> | null {
-    const veto = avoid === undefined ? undefined : (cell: NodeId): boolean => cell !== here && avoid(cell);
-    const door = this.doorNearest(here, accept, gate, veto, onSide);
-    return nearerOf(door, this.looseNearest(here, here, accept, gate, veto, onSide, door?.distance));
+    const door = this.doorNearest(here, accept, gate, avoid, onSide);
+    return nearerOf(door, this.looseNearest(here, here, accept, gate, avoid, onSide, door?.distance));
   }
 
   /** The {@link nearest} winner among the door-bucketed candidates, for an `accept` that only a building
@@ -256,8 +255,7 @@ export class InteractionCellIndex {
     avoid?: (cell: NodeId) => boolean,
     onSide?: (e: Entity) => boolean,
   ): NearestByCell<P> | null {
-    const veto = avoid === undefined ? undefined : (cell: NodeId): boolean => cell !== here && avoid(cell);
-    return this.doorNearest(here, accept, gate, veto, onSide);
+    return this.doorNearest(here, accept, gate, avoid, onSide);
   }
 
   /** The {@link nearest} winner among the candidates without a door: the building-less ones. `rank` is
@@ -271,53 +269,53 @@ export class InteractionCellIndex {
     onSide?: (e: Entity) => boolean,
     rank: NodeId = here,
   ): NearestByCell<P> | null {
-    const veto = avoid === undefined ? undefined : (cell: NodeId): boolean => cell !== here && avoid(cell);
-    return this.looseNearest(here, rank, accept, gate, veto, onSide);
+    return this.looseNearest(here, rank, accept, gate, avoid, onSide);
   }
 
   private doorNearest<P>(
     here: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
     gate: SpatialGate | undefined,
-    veto: ((cell: NodeId) => boolean) | undefined,
+    avoid: ((cell: NodeId) => boolean) | undefined,
     onSide: ((e: Entity) => boolean) | undefined,
   ): NearestByCell<P> | null {
     if (this.doors.size <= RING_MIN_BUCKETS) {
-      return this.linearNearest(this.doorList, here, accept, gate, veto, onSide);
+      return this.linearNearest(this.doorList, here, accept, gate, avoid, onSide);
     }
-    // An exhaustive sweep proves a null; otherwise the ring cap stopped short and the full scan decides.
-    const ring = this.ringNearest(here, accept, gate, veto, onSide);
-    if (ring.best !== null || ring.exhaustive) return ring.best;
-    return this.linearNearest(this.doorList, here, accept, gate, veto, onSide);
-  }
-
-  /** The nearest door-bucketed candidate within {@link NEAREST_RING_MAX_RADIUS}, or null. The first
-   *  non-empty ring holds the minimum distance, so its winner is the global door winner. `exhaustive`
-   *  reports whether the sweep covered the whole reach, making a null `best` a proof rather than a cap. */
-  private ringNearest<P>(
-    here: NodeId,
-    accept: (e: Entity) => Qualified<P> | null,
-    gate?: SpatialGate,
-    veto?: (cell: NodeId) => boolean,
-    onSide?: (e: Entity) => boolean,
-  ): { best: NearestByCell<P> | null; exhaustive: boolean } {
     const hx = this.terrain.xOf(here);
     const hy = this.terrain.yOf(here);
     let reach = this.doors.reach(hx, hy);
     if (gate !== undefined) reach = Math.min(reach, boundsReach(gate, hx, hy));
     const maxRadius = Math.min(NEAREST_RING_MAX_RADIUS, reach);
-    const exhaustive = reach <= NEAREST_RING_MAX_RADIUS;
+    const best = this.ringNearest(here, maxRadius, accept, gate, avoid, onSide);
+    // An exhaustive sweep proves a null; otherwise the ring cap stopped short and the full scan decides.
+    if (best !== null || reach <= NEAREST_RING_MAX_RADIUS) return best;
+    return this.linearNearest(this.doorList, here, accept, gate, avoid, onSide);
+  }
+
+  /** The nearest door-bucketed candidate within `maxRadius` rings of `here`, or null. The first non-empty
+   *  ring holds the minimum distance, so its winner is the global door winner within that radius. */
+  private ringNearest<P>(
+    here: NodeId,
+    maxRadius: number,
+    accept: (e: Entity) => Qualified<P> | null,
+    gate: SpatialGate | undefined,
+    avoid: ((cell: NodeId) => boolean) | undefined,
+    onSide: ((e: Entity) => boolean) | undefined,
+  ): NearestByCell<P> | null {
+    const hx = this.terrain.xOf(here);
+    const hy = this.terrain.yOf(here);
     for (let d = 0; d <= maxRadius; d++) {
       let best: NearestByCell<P> | null = null;
       const offsets = ringOffsetCount(d);
       for (let i = 0; i < offsets; i++) {
         const x = hx + ringOffsetDx(d, i);
         const y = hy + ringOffsetDy(d, i);
-        best = this.pickInRing(x, y, d, accept, gate, veto, onSide, best);
+        best = this.pickInRing(x, y, d, here, accept, gate, avoid, onSide, best);
       }
-      if (best !== null) return { best, exhaustive };
+      if (best !== null) return best;
     }
-    return { best: null, exhaustive };
+    return null;
   }
 
   /** Fold node `(x,y)`'s door bucket into the running ring `best`. Distinct nodes carry distinct cell ids,
@@ -327,9 +325,10 @@ export class InteractionCellIndex {
     x: number,
     y: number,
     distance: number,
+    here: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
     gate: SpatialGate | undefined,
-    veto: ((cell: NodeId) => boolean) | undefined,
+    avoid: ((cell: NodeId) => boolean) | undefined,
     onSide: ((e: Entity) => boolean) | undefined,
     best: NearestByCell<P> | null,
   ): NearestByCell<P> | null {
@@ -338,7 +337,7 @@ export class InteractionCellIndex {
     const cell = this.terrain.nodeAt(x, y); // an occupied bucket sits on the map
     if (best !== null && cell >= best.cell) return best; // can't beat a lower cell at the same distance
     if (gate !== undefined && !gate.allowsNode(cell)) return best; // the whole cell is out of bounds
-    if (veto?.(cell) === true) return best; // a goal this seeker cannot reach
+    if (vetoed(avoid, here, cell)) return best; // a goal this seeker cannot reach
     for (let i = 0; i < bucket.length; i++) {
       const e = bucket[i];
       if (e === undefined) continue; // i < length, so only for the type
@@ -359,12 +358,12 @@ export class InteractionCellIndex {
     rank: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
     gate: SpatialGate | undefined,
-    veto: ((cell: NodeId) => boolean) | undefined,
+    avoid: ((cell: NodeId) => boolean) | undefined,
     onSide: ((e: Entity) => boolean) | undefined,
     bound = Number.POSITIVE_INFINITY,
   ): NearestByCell<P> | null {
     if (this.looseList.length <= RING_MIN_BUCKETS) {
-      return this.linearNearest(this.looseList, here, accept, gate, veto, onSide, rank);
+      return this.linearNearest(this.looseList, here, accept, gate, avoid, onSide, rank);
     }
     const { terrain, slack } = this;
     const grid = this.gridOfLoose();
@@ -381,7 +380,7 @@ export class InteractionCellIndex {
         const bucket = grid.at(hx + ringOffsetDx(d, i), hy + ringOffsetDy(d, i));
         for (let j = 0; j < bucket.length; j++) {
           const e = bucket[j];
-          if (e !== undefined) best = this.weighLoose(e, here, rank, accept, gate, veto, onSide, best);
+          if (e !== undefined) best = this.weighLoose(e, here, rank, accept, gate, avoid, onSide, best);
         }
       }
     }
@@ -393,7 +392,7 @@ export class InteractionCellIndex {
       const d = Math.abs(terrain.xOf(node) - hx) + Math.abs(terrain.yOf(node) - hy);
       if (d <= maxRadius) continue; // the rings weighed it already
       if (d - slack > Math.min(bound, best?.distance ?? bound)) continue; // cannot come nearer
-      best = this.weighLoose(e, here, rank, accept, gate, veto, onSide, best);
+      best = this.weighLoose(e, here, rank, accept, gate, avoid, onSide, best);
     }
     return best;
   }
@@ -402,7 +401,12 @@ export class InteractionCellIndex {
     if (this.looseGrid === null) {
       const { terrain } = this;
       const grid = new CellGrid(this.world);
-      for (const [e, node] of this.looseNode) grid.add(e, terrain.xOf(node), terrain.yOf(node));
+      const list = this.looseList;
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        const node = e === undefined ? undefined : this.looseNode.get(e);
+        if (e !== undefined && node !== undefined) grid.add(e, terrain.xOf(node), terrain.yOf(node));
+      }
       this.looseGrid = grid;
     }
     return this.looseGrid;
@@ -415,7 +419,7 @@ export class InteractionCellIndex {
     rank: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
     gate: SpatialGate | undefined,
-    veto: ((cell: NodeId) => boolean) | undefined,
+    avoid: ((cell: NodeId) => boolean) | undefined,
     onSide: ((e: Entity) => boolean) | undefined,
     best: NearestByCell<P> | null,
   ): NearestByCell<P> | null {
@@ -424,7 +428,7 @@ export class InteractionCellIndex {
     if (hit === null) return best;
     const cell = interactionCell(this.world, this.ctx, this.terrain, e, here);
     if (gate !== undefined && !gate.allowsNode(cell)) return best;
-    if (veto?.(cell) === true) return best;
+    if (vetoed(avoid, here, cell)) return best;
     const distance = manhattan(this.terrain, rank, cell);
     if (best !== null && !precedes(distance, cell, e, best)) return best;
     if (this.pileCellSealed(e, here, cell)) return best;
@@ -448,34 +452,52 @@ export class InteractionCellIndex {
   }
 
   /** The exact linear scan the rings accelerate, for a short list or a door ring's out-of-range
-   *  fallback. Shares the standalone {@link nearestByCell} loop, so the tie-break lives in one place. */
+   *  fallback: {@link nearestByCell}'s loop and tie-break, resolving each candidate's cell in place. */
   private linearNearest<P>(
     list: readonly Entity[],
     here: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
-    gate?: SpatialGate,
-    veto?: (cell: NodeId) => boolean,
-    onSide?: (e: Entity) => boolean,
+    gate: SpatialGate | undefined,
+    avoid: ((cell: NodeId) => boolean) | undefined,
+    onSide: ((e: Entity) => boolean) | undefined,
     rank: NodeId = here,
   ): NearestByCell<P> | null {
-    if (list.length === 0) return null;
-    return nearestByCell(
-      this.terrain,
-      list,
-      rank,
-      (e) => {
-        const hit = accept(e);
-        if (hit === null) return null;
-        const door = this.doorCell.get(e);
-        const cell = door ?? interactionCell(this.world, this.ctx, this.terrain, e, here);
-        if (gate !== undefined && !gate.allowsNode(cell)) return null;
-        if (veto?.(cell) === true) return null;
-        if (door === undefined && this.pileCellSealed(e, here, cell)) return null;
-        return { cell, payload: hit.payload };
-      },
-      onSide,
-    );
+    const { world, ctx, terrain } = this;
+    let bestEntity: Entity | undefined;
+    let bestHit: Qualified<P> | null = null;
+    let bestNode: NodeId | undefined;
+    let bestDist = Number.POSITIVE_INFINITY;
+    let bestCell = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (e === undefined) continue;
+      if (onSide !== undefined && !onSide(e)) continue; // another player's candidate
+      const hit = accept(e);
+      if (hit === null) continue;
+      const door = this.doorCell.get(e);
+      const cell = door ?? interactionCell(world, ctx, terrain, e, here);
+      if (gate !== undefined && !gate.allowsNode(cell)) continue;
+      if (vetoed(avoid, here, cell)) continue;
+      if (door === undefined && this.pileCellSealed(e, here, cell)) continue;
+      const distance = manhattan(terrain, rank, cell);
+      if (closer(distance, cell, bestDist, bestCell)) {
+        bestEntity = e;
+        bestHit = hit;
+        bestNode = cell;
+        bestDist = distance;
+        bestCell = cell;
+      }
+    }
+    return bestEntity === undefined || bestHit === null || bestNode === undefined
+      ? null
+      : { entity: bestEntity, cell: bestNode, distance: bestDist, payload: bestHit.payload };
   }
+}
+
+/** Whether `avoid` rejects `cell`, a goal this seeker's routes just failed on; its own cell `here` is
+ *  exempt. */
+function vetoed(avoid: ((cell: NodeId) => boolean) | undefined, here: NodeId, cell: NodeId): boolean {
+  return avoid !== undefined && cell !== here && avoid(cell);
 }
 
 /** The ring radius from `(x,y)` covering every node of `gate.bounds`. */
@@ -499,7 +521,8 @@ export function nearestByCell<P = null>(
    *  (standing resources, ground heaps) omit it. */
   onSide?: (e: Entity) => boolean,
 ): NearestByCell<P> | null {
-  let best: NearestByCell<P> | null = null;
+  let bestEntity: Entity | undefined;
+  let bestMatch: CellMatch<P> | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   for (let i = 0; i < list.length; i++) {
@@ -508,15 +531,18 @@ export function nearestByCell<P = null>(
     if (onSide !== undefined && !onSide(entity)) continue; // another player's candidate
     const match = resolve(entity);
     if (match === null) continue;
-    const { cell, payload } = match;
+    const { cell } = match;
     const distance = manhattan(terrain, rank, cell);
     if (closer(distance, cell, bestDist, bestCell)) {
-      best = { entity, cell, distance, payload };
+      bestEntity = entity;
+      bestMatch = match;
       bestDist = distance;
       bestCell = cell;
     }
   }
-  return best;
+  return bestEntity === undefined || bestMatch === null
+    ? null
+    : { entity: bestEntity, cell: bestMatch.cell, distance: bestDist, payload: bestMatch.payload };
 }
 
 /** Whether `(distance, cell, entity)` precedes `best` in the total order every scan here shares. */

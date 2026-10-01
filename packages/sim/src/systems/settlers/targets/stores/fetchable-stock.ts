@@ -15,8 +15,10 @@ import { accessibleStockAmounts, mergedRecipeOf, recipeConsumes } from '../../..
 /** One store's share of the totals: its owner and the units of each good it lends a fetch. */
 interface Contribution {
   readonly owner: number | undefined;
-  readonly units: ReadonlyMap<number, number>;
-  /** The goods of {@link units} with at least one unit; a stock map may keep a zeroed slot. */
+  /** The goods it lends, in stock order, `units[i]` units of `goods[i]`. */
+  readonly goods: readonly number[];
+  readonly units: readonly number[];
+  /** The goods with at least one unit; a stock map may keep a zeroed slot. */
   readonly held: readonly number[];
 }
 
@@ -129,14 +131,18 @@ function contributionOf(world: World, ctx: ContentContext, e: Entity): Contribut
   const amounts = accessibleStockAmounts(world, e);
   if (amounts === undefined || amounts.size === 0) return null;
   const reserved = mergedRecipeOf(world, ctx, e)?.inputs;
-  const units = new Map<number, number>();
+  const goods: number[] = [];
+  const units: number[] = [];
   const held: number[] = [];
-  for (const [good, amount] of amounts) {
+  // keys() plus get: destructured entries would allocate a pair per slot of every store written.
+  for (const good of amounts.keys()) {
     if (recipeConsumes(reserved, good)) continue;
-    units.set(good, amount);
+    const amount = amounts.get(good) ?? 0;
+    goods.push(good);
+    units.push(amount);
     if (amount > 0) held.push(good);
   }
-  return { owner: ownerOf(world, e), units, held };
+  return { owner: ownerOf(world, e), goods, units, held };
 }
 
 function holdersOf(byGood: Map<number, Set<Entity>>, good: number): Set<Entity> {
@@ -149,7 +155,10 @@ function holdersOf(byGood: Map<number, Set<Entity>>, good: number): Set<Entity> 
 }
 
 function foldInto(totals: Map<number, GoodTotal>, contribution: Contribution, sign: 1 | -1): void {
-  for (const [good, units] of contribution.units) {
+  for (let i = 0; i < contribution.goods.length; i++) {
+    const good = contribution.goods[i];
+    const units = contribution.units[i];
+    if (good === undefined || units === undefined) continue;
     let total = totals.get(good);
     if (total === undefined) {
       total = { unowned: 0, byOwner: new Map() };

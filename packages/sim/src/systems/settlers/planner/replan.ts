@@ -32,7 +32,7 @@ import {
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Component, Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import { isManningPost } from '../../conflict/tower-post.js';
 import { pruneUnreachableTargets } from '../../conflict/unreachable-targets.js';
 import type { SystemContext } from '../../context.js';
@@ -87,8 +87,7 @@ export function combatOwnsFeet(world: World, e: Entity): boolean {
  *  its index, so a walker is on-lattice for the tick that ends any leg. */
 function onNodeCentre(world: World, e: Entity): boolean {
   const p = world.get(e, Position);
-  const n = nodeOfPosition(p.x, p.y);
-  const centre = positionOfNode(n.hx, n.hy);
+  const centre = positionOfNode(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
   return p.x === centre.x && p.y === centre.y;
 }
 

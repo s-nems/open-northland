@@ -10,7 +10,7 @@ import {
 } from '../../../components/index.js';
 import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
-import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { translatedCells } from '../../footprint/geometry.js';
@@ -104,12 +104,11 @@ export class PlannerSpacing {
     const nodes = new Set<NodeId>();
     for (const e of this.world.query(Palisade, UnderConstruction, Position)) {
       const at = this.world.get(e, Position);
-      const anchor = nodeOfPosition(at.x, at.y);
       for (const cell of translatedCells(
         this.terrain,
         this.world.get(e, Palisade).walk,
-        anchor.hx,
-        anchor.hy,
+        nodeHxOfPosition(at.x, at.y),
+        nodeHyOfPosition(at.y),
       )) {
         nodes.add(cell);
       }
@@ -171,6 +170,7 @@ class StationaryOwned {
   readonly buckets: NodeBuckets;
   private readonly nodes = new Map<Entity, NodeXY>();
   private readonly feed: ChangeFeed;
+  private readonly refreshEntity = (e: Entity): void => this.refresh(e);
 
   constructor(private readonly world: World) {
     this.feed = world.watchChanges([Settler, Position, Owner, MoveGoal, PathRequest, PathFollow], [Position]);
@@ -179,20 +179,22 @@ class StationaryOwned {
   }
 
   catchUp(): void {
-    if (this.feed.pending && this.feed.drain((e) => this.refresh(e))) this.rebuild();
+    if (this.feed.pending && this.feed.drain(this.refreshEntity)) this.rebuild();
   }
 
   private refresh(e: Entity): void {
     const held = this.nodes.get(e);
-    const live = stationaryNode(this.world, e);
-    if (held?.x === live?.x && held?.y === live?.y) return;
+    const p = isStationaryOwned(this.world, e) ? this.world.tryGet(e, Position) : undefined;
+    const x = p === undefined ? undefined : nodeHxOfPosition(p.x, p.y);
+    const y = p === undefined ? undefined : nodeHyOfPosition(p.y);
+    if (held?.x === x && held?.y === y) return;
     if (held !== undefined) {
       this.buckets.remove(e, held.x, held.y);
       this.nodes.delete(e);
     }
-    if (live !== undefined) {
-      this.buckets.insert(e, live.x, live.y);
-      this.nodes.set(e, live);
+    if (x !== undefined && y !== undefined) {
+      this.buckets.insert(e, x, y);
+      this.nodes.set(e, { x, y });
     }
   }
 
@@ -232,9 +234,12 @@ function freshStationaryOwned(world: World): Entity[] {
 }
 
 function stationaryNode(world: World, e: Entity): NodeXY | undefined {
-  if (!world.has(e, Settler) || !world.has(e, Owner) || isTravelling(world, e)) return undefined;
-  const p = world.tryGet(e, Position);
+  const p = isStationaryOwned(world, e) ? world.tryGet(e, Position) : undefined;
   return p === undefined ? undefined : { x: nodeHxOfPosition(p.x, p.y), y: nodeHyOfPosition(p.y) };
+}
+
+function isStationaryOwned(world: World, e: Entity): boolean {
+  return world.has(e, Settler) && world.has(e, Owner) && !isTravelling(world, e);
 }
 
 const stationary = new WeakMap<World, StationaryOwned>();

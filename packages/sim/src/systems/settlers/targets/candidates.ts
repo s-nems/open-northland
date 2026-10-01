@@ -20,7 +20,7 @@ import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { canonicalResources } from '../../spatial/resources.js';
 import { TargetBands } from './bands.js';
 import { InteractionCellIndex } from './cell-index.js';
-import { fieldZones } from './field-zones.js';
+import { fieldZones, type NodeMembership } from './field-zones.js';
 import { roadSiteCells as roadSiteCellsOf } from './road-site-cells.js';
 import { stockpileCells } from './stockpile-cells.js';
 import { SinkAvailability } from './stores/sinks.js';
@@ -76,7 +76,7 @@ export interface TargetCandidates {
    *  reads only its own farm's fields instead of the settlement's whole crop list. */
   readonly cropsByFarm: ReadonlyMap<Entity, readonly Entity[]>;
   /** Ground reserved by standing buildings, shared by all farmers choosing a sow node this tick. */
-  readonly fieldZones: ReadonlySet<NodeId>;
+  readonly fieldZones: NodeMembership;
   /** Good type to its content-authored harvesting atomic. */
   readonly harvestAtomicByGood: ReadonlyMap<number, number>;
   /** Position-independent store-capacity probes, memoized by good for this planner tick. */
@@ -109,113 +109,156 @@ function splitVehicleSites(world: World, ctx: SystemContext): SiteSplit {
  *  build matches a tick-start one: the pass sows, harvests and razes nothing, and its only stock writes
  *  are a farm's herd rows and drops onto a yard heap, which is why the yard occupancy is caught up here. */
 export function collectTargets(world: World, ctx: SystemContext, terrain: TerrainGraph): TargetCandidates {
-  const { harvestAtomicByGood } = contentIndex(ctx.content);
+  return new TickTargets(world, ctx, terrain);
+}
 
-  const stockpiles = world.canonicalQuery(Stockpile, Position);
-  const buildings = world.canonicalQuery(Building, Position);
-  let sites: SiteSplit | undefined;
-  const siteSplit = (): SiteSplit => (sites ??= splitVehicleSites(world, ctx));
-  let cropsByFarm: Map<Entity, Entity[]> | undefined;
-  let constructionSiteCells: InteractionCellIndex | undefined;
-  let wallSiteCells: InteractionCellIndex | undefined;
-  let roadSiteCells: InteractionCellIndex | undefined;
-  let repairSiteCells: InteractionCellIndex | undefined;
-  let wallRepairCells: InteractionCellIndex | undefined;
-  let zones: ReadonlySet<NodeId> | undefined;
-  const groundDrops = world.canonicalQuery(GroundDrop, Stockpile, Position);
-  let groundDropsByGood: Map<number, Entity[]> | undefined;
-  let groundDropsByHarvester: Map<Entity, Entity[]> | undefined;
-  return {
-    resources: canonicalResources(world),
-    stockpiles,
-    stockpileCells: stockpileCells(world, ctx.content, terrain),
-    buildings,
-    get constructionSites() {
-      return siteSplit().construction;
-    },
-    get vehicleSites() {
-      return siteSplit().vehicle;
-    },
-    get constructionSiteCells() {
-      constructionSiteCells ??= new InteractionCellIndex(world, ctx, terrain, siteSplit().construction);
-      return constructionSiteCells;
-    },
-    get wallSiteCells() {
-      wallSiteCells ??= new InteractionCellIndex(
-        world,
-        ctx,
-        terrain,
-        world.canonicalQuery(UnderConstruction, Palisade, Position),
-      );
-      return wallSiteCells;
-    },
-    get roadSiteCells() {
-      roadSiteCells ??= roadSiteCellsOf(world, ctx, terrain);
-      return roadSiteCells;
-    },
-    get repairSiteCells() {
-      repairSiteCells ??= new InteractionCellIndex(
-        world,
-        ctx,
-        terrain,
-        world.canonicalQuery(Damaged, Building, Position),
-      );
-      return repairSiteCells;
-    },
-    get wallRepairCells() {
-      wallRepairCells ??= new InteractionCellIndex(
-        world,
-        ctx,
-        terrain,
-        world.canonicalQuery(Damaged, Palisade, Position),
-      );
-      return wallRepairCells;
-    },
-    groundDrops,
-    get groundDropsByGood() {
-      if (groundDropsByGood === undefined) {
-        groundDropsByGood = new Map();
-        for (const pile of groundDrops) {
-          const { amounts } = world.get(pile, Stockpile);
-          // keys() plus get: destructured entries would allocate a pair per line of every drop.
-          for (const good of amounts.keys()) {
-            if ((amounts.get(good) ?? 0) > 0) pushTo(groundDropsByGood, good, pile);
-          }
+/** {@link TargetCandidates} as a class: its lazy views are prototype getters, so a pass allocates one
+ *  object instead of a fresh closure and accessor shape per view. */
+class TickTargets implements TargetCandidates {
+  readonly stockpiles: readonly Entity[];
+  readonly stockpileCells: InteractionCellIndex;
+  readonly buildings: readonly Entity[];
+  readonly groundDrops: readonly Entity[];
+  readonly harvestAtomicByGood: ReadonlyMap<number, number>;
+  readonly sinks: SinkAvailability;
+  readonly bands: TargetBands;
+  readonly yard: YardTargets;
+  private resourcesMemo: readonly Entity[] | undefined;
+  private sites: SiteSplit | undefined;
+  private cropsByFarmMemo: Map<Entity, Entity[]> | undefined;
+  private constructionSiteCellsMemo: InteractionCellIndex | undefined;
+  private wallSiteCellsMemo: InteractionCellIndex | undefined;
+  private roadSiteCellsMemo: InteractionCellIndex | undefined;
+  private repairSiteCellsMemo: InteractionCellIndex | undefined;
+  private wallRepairCellsMemo: InteractionCellIndex | undefined;
+  private zones: NodeMembership | undefined;
+  private groundDropsByGoodMemo: Map<number, Entity[]> | undefined;
+  private groundDropsByHarvesterMemo: Map<Entity, Entity[]> | undefined;
+
+  constructor(
+    private readonly world: World,
+    private readonly ctx: SystemContext,
+    private readonly terrain: TerrainGraph,
+  ) {
+    this.harvestAtomicByGood = contentIndex(ctx.content).harvestAtomicByGood;
+    this.stockpiles = world.canonicalQuery(Stockpile, Position);
+    this.buildings = world.canonicalQuery(Building, Position);
+    this.groundDrops = world.canonicalQuery(GroundDrop, Stockpile, Position);
+    this.stockpileCells = stockpileCells(world, ctx.content, terrain);
+    this.sinks = new SinkAvailability(world, ctx);
+    this.bands = new TargetBands(world, ctx, terrain, this.buildings);
+    this.yard = {
+      blocked: dynamicBlockOverlay(world, ctx, terrain),
+      occupied: yardOccupancy(world, terrain),
+    };
+  }
+
+  /** Read on first ask: the canonical list is copied for its readers whenever a resource comes or goes,
+   *  and most passes run no unbounded harvest scan. The pass fells and plants nothing, so a late read
+   *  sees the tick-start list. */
+  get resources(): readonly Entity[] {
+    this.resourcesMemo ??= canonicalResources(this.world);
+    return this.resourcesMemo;
+  }
+
+  private siteSplit(): SiteSplit {
+    this.sites ??= splitVehicleSites(this.world, this.ctx);
+    return this.sites;
+  }
+
+  get constructionSites(): readonly Entity[] {
+    return this.siteSplit().construction;
+  }
+
+  get vehicleSites(): Entity[] {
+    return this.siteSplit().vehicle;
+  }
+
+  get constructionSiteCells(): InteractionCellIndex {
+    this.constructionSiteCellsMemo ??= this.indexOver(this.siteSplit().construction);
+    return this.constructionSiteCellsMemo;
+  }
+
+  get wallSiteCells(): InteractionCellIndex {
+    this.wallSiteCellsMemo ??= this.indexOver(
+      this.world.canonicalQuery(UnderConstruction, Palisade, Position),
+    );
+    return this.wallSiteCellsMemo;
+  }
+
+  get roadSiteCells(): InteractionCellIndex {
+    this.roadSiteCellsMemo ??= roadSiteCellsOf(this.world, this.ctx, this.terrain);
+    return this.roadSiteCellsMemo;
+  }
+
+  get repairSiteCells(): InteractionCellIndex {
+    this.repairSiteCellsMemo ??= this.indexOver(this.world.canonicalQuery(Damaged, Building, Position));
+    return this.repairSiteCellsMemo;
+  }
+
+  get wallRepairCells(): InteractionCellIndex {
+    this.wallRepairCellsMemo ??= this.indexOver(this.world.canonicalQuery(Damaged, Palisade, Position));
+    return this.wallRepairCellsMemo;
+  }
+
+  get groundDropsByGood(): ReadonlyMap<number, readonly Entity[]> {
+    if (this.groundDropsByGoodMemo === undefined) {
+      const byGood = new Map<number, Entity[]>();
+      const { world, groundDrops } = this;
+      for (let i = 0; i < groundDrops.length; i++) {
+        const pile = groundDrops[i];
+        if (pile === undefined) continue;
+        const { amounts } = world.get(pile, Stockpile);
+        // keys() plus get: destructured entries would allocate a pair per line of every drop.
+        for (const good of amounts.keys()) {
+          if ((amounts.get(good) ?? 0) > 0) pushTo(byGood, good, pile);
         }
       }
-      return groundDropsByGood;
-    },
-    get groundDropsByHarvester() {
-      if (groundDropsByHarvester === undefined) {
-        groundDropsByHarvester = new Map();
-        for (const pile of groundDrops) {
-          const mark = world.tryGet(pile, HarvestedBy);
-          if (mark !== undefined) pushTo(groundDropsByHarvester, mark.by, pile);
-        }
+      this.groundDropsByGoodMemo = byGood;
+    }
+    return this.groundDropsByGoodMemo;
+  }
+
+  get groundDropsByHarvester(): ReadonlyMap<Entity, readonly Entity[]> {
+    if (this.groundDropsByHarvesterMemo === undefined) {
+      const byHarvester = new Map<Entity, Entity[]>();
+      const { world, groundDrops } = this;
+      for (let i = 0; i < groundDrops.length; i++) {
+        const pile = groundDrops[i];
+        if (pile === undefined) continue;
+        const mark = world.tryGet(pile, HarvestedBy);
+        if (mark !== undefined) pushTo(byHarvester, mark.by, pile);
       }
-      return groundDropsByHarvester;
-    },
-    get cropsByFarm() {
-      if (cropsByFarm === undefined) {
-        // Grouped from the canonical list, so each farm's fields stay ascending-id and the farmer's
-        // tie-break picks the same field a whole-world scan would.
-        cropsByFarm = new Map();
-        for (const crop of world.canonicalQuery(Crop, Position)) {
-          const farm = world.get(crop, Crop).farm;
-          if (farm !== null) pushTo(cropsByFarm, farm, crop);
-        }
+      this.groundDropsByHarvesterMemo = byHarvester;
+    }
+    return this.groundDropsByHarvesterMemo;
+  }
+
+  get cropsByFarm(): ReadonlyMap<Entity, readonly Entity[]> {
+    if (this.cropsByFarmMemo === undefined) {
+      // Grouped from the canonical list, so each farm's fields stay ascending-id and the farmer's
+      // tie-break picks the same field a whole-world scan would.
+      const byFarm = new Map<Entity, Entity[]>();
+      const crops = this.world.canonicalQuery(Crop, Position);
+      for (let i = 0; i < crops.length; i++) {
+        const crop = crops[i];
+        if (crop === undefined) continue;
+        const farm = this.world.get(crop, Crop).farm;
+        if (farm !== null) pushTo(byFarm, farm, crop);
       }
-      return cropsByFarm;
-    },
-    get fieldZones() {
-      zones ??= fieldZones(world, ctx.content, terrain);
-      return zones;
-    },
-    harvestAtomicByGood,
-    sinks: new SinkAvailability(world, ctx),
-    bands: new TargetBands(world, ctx, terrain, buildings),
-    yard: { blocked: dynamicBlockOverlay(world, ctx, terrain), occupied: yardOccupancy(world, terrain) },
-  };
+      this.cropsByFarmMemo = byFarm;
+    }
+    return this.cropsByFarmMemo;
+  }
+
+  get fieldZones(): NodeMembership {
+    this.zones ??= fieldZones(this.world, this.ctx.content, this.terrain);
+    return this.zones;
+  }
+
+  private indexOver(candidates: readonly Entity[]): InteractionCellIndex {
+    return new InteractionCellIndex(this.world, this.ctx, this.terrain, candidates);
+  }
 }
 
 function pushTo<K>(lists: Map<K, Entity[]>, key: K, e: Entity): void {

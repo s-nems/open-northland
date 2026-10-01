@@ -43,7 +43,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   dispatchAssistantGrants(pass);
   // Off its beat an idler's visit only runs the standing cut-off check, so that tick visits every idler.
   const idleBeat = cutOffCheckDue(ctx) ? undefined : idleBeatOfTick(ctx.tick);
-  for (const e of sweepOrder(world, ctx.content, pass.shelters, idleBeat)) {
+  const sweep = sweepOrder(world, ctx.content, pass.shelters, idleBeat);
+  for (let e = sweep.next(); e !== undefined; e = sweep.next()) {
     if (standsThroughPass(world, ctx, pass.shelters, e)) continue;
     // Between its beats an idler runs only the shelter rung, and only when an alarm may draw it. One
     // still inside a building runs its whole ladder: an alarm draws it from its wait there, or the wait

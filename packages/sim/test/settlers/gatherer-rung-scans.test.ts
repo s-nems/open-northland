@@ -161,6 +161,8 @@ describe('bounded harvest scan', () => {
     const trees = [resourceAt(sim, 18, 10, WOOD, CHOP), resourceAt(sim, 20, 12, WOOD, CHOP)];
     const carcass = resourceAt(sim, 24, 10, MEAT, CUT_CADAVER);
     const plan = planFor(sim, HUNTER, 16, 10);
+    // Caught up before the watch: the resource index reads every node it files, not the scan.
+    expect(plan.targets.resources).toHaveLength(trees.length + 1);
     const tryGet = vi.spyOn(sim.world, 'tryGet');
 
     const found = nearestHarvestableFor(plan, { within: { center: node(sim, 20, 10), radius: 8 } });
