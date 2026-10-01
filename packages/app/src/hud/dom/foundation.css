@@ -3454,7 +3454,7 @@ body.on-drag-scroll * {
 }
 .on-hud .on-seats {
   display: grid;
-  grid-template-columns: repeat(8, 24px);
+  grid-template-columns: repeat(7, 28px);
   gap: 4px;
 }
 .on-hud .on-seat-well.on-seat-well--helm {
@@ -3462,7 +3462,9 @@ body.on-drag-scroll * {
   width: 40px;
   height: 56px;
   border-radius: 6px;
-  background: radial-gradient(circle at 50% 30%, #3a2a17, #1d160f 70%);
+  background:
+    radial-gradient(ellipse 40% 7% at 50% 90%, #000a, transparent),
+    radial-gradient(circle at 50% 30%, #3a2a17, #1d160f 70%);
   box-shadow:
     inset 0 0 0 1px var(--bronze),
     inset 0 0 0 3px #1d160f,
@@ -3492,6 +3494,7 @@ body.on-drag-scroll * {
 }
 .on-hud .on-seat-well__badge {
   position: absolute;
+  z-index: 1;
   top: -5px;
   right: -5px;
   display: grid;
@@ -3522,16 +3525,34 @@ body.on-drag-scroll * {
 }
 .on-hud .on-seat-well {
   position: relative;
-  width: 24px;
-  height: 26px;
+  width: 28px;
+  height: 36px;
   display: grid;
   place-items: end center;
-  padding: 0 0 1px;
+  padding: 0 0 2px;
   border: 0;
-  border-radius: 4px;
-  background: #1d160f;
+  border-radius: 5px;
+  /* A niche the person stands in: a lit back wall and a soft pool of shade under the feet. */
+  background:
+    radial-gradient(ellipse 42% 9% at 50% 89%, #000a, transparent),
+    radial-gradient(circle at 50% 32%, #3a2a17, #1d160f 72%);
   box-shadow: inset 0 0 0 1px #c9a26233;
   color: var(--parchment);
+}
+/* The live figure over the stand-in glyph, which hides once the figure is painted. */
+.on-hud .on-seat-well__glyph {
+  display: contents;
+}
+.on-hud .on-seat-well__figure {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.on-hud .on-seat-well--live > .on-seat-well__glyph > * {
+  visibility: hidden;
 }
 .on-hud .on-seat-well .on-figure {
   width: 16px;
@@ -5317,7 +5338,7 @@ body.on-drag-scroll * {
   align-items: baseline;
   gap: 6px;
   min-width: 0;
-  padding-top: 5px;
+  padding-top: 11px;
   color: #c7bda3;
   white-space: nowrap;
 }
@@ -5333,7 +5354,7 @@ body.on-drag-scroll * {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 4px;
-  max-width: 164px;
+  max-width: 188px;
 }
 /* A home's families stand side by side, a wider gap between two families than inside one. */
 .on-hud .on-staff--families {

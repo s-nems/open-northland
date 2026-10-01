@@ -17,11 +17,11 @@ import { formatMessage, messages, professionLabel } from '../../../i18n/index.js
 import type { BuildingThumbs } from '../../dom/building-thumb.js';
 import { createNoticeArt, noticeTint } from '../../dom/notice-art.js';
 import { createNoticeColumn, type NoticeCardView } from '../../dom/notice-column.js';
+import type { FigureFrames } from '../../figures/figure-frames.js';
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText, playerLabel } from '../diplomacy/model.js';
 import { noticeFullText, noticeThumb, orderNotes } from './cards.js';
 import type { MessageFeedState } from './feed.js';
-import type { FigureFrames } from './figure-frames.js';
 import { type NoticeFigureSlot, NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
 import { messagesFromEvents } from './from-events.js';

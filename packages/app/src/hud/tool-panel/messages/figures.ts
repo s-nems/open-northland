@@ -1,14 +1,8 @@
-import {
-  buildSpriteScene,
-  createPresentationTrack,
-  type DrawItem,
-  type PresentationTrack,
-  presentItem,
-  type ResolvedLayer,
-  type SpriteSheet,
-} from '@open-northland/render';
+import type { DrawItem, ResolvedLayer, SpriteSheet } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import type { FigureFrames } from './figure-frames.js';
+import { CanvasContexts } from '../../figures/canvas-contexts.js';
+import type { FigureFrames } from '../../figures/figure-frames.js';
+import { FigureScene } from '../../figures/figure-scene.js';
 
 /** The figure's map-px multiplier on its thumbnail, and how far above the thumbnail's bottom edge its
  *  feet stand (design px): the usual place, and the closest a covered card's lowered figure comes. */
@@ -133,21 +127,19 @@ export interface NoticeFigureBox {
  * card and moves with it. Without a sprite sheet the canvases stay clear and the cards still work.
  */
 export class NoticeFigures {
-  private readonly tracks = new Map<number, PresentationTrack>();
+  private readonly scene: FigureScene;
   /** Each shown vehicle's box over every frame it has drawn, so its fit holds still as it animates. */
   private readonly vehicleBounds = new Map<number, FigureBounds>();
-  /** Frame caches for every LUT other than the settler LUT `frames` serves, and for none (a baked look). */
-  private readonly contexts = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>();
-  /** The scene built for the last (snapshot, subjects) pair; frames between ticks reuse it. */
-  private sceneFor: { snapshot: WorldSnapshot; refs: string; items: ReadonlyMap<number, DrawItem> } | null =
-    null;
+  private readonly contexts = new CanvasContexts();
 
   /** `frames` is the sheet's recoloured-frame cache, shared with every other figure painter. */
   constructor(
     private readonly sheet: SpriteSheet | undefined,
     private readonly frames: FigureFrames,
-    private readonly playerColourOf?: (player: number) => number,
-  ) {}
+    playerColourOf?: (player: number) => number,
+  ) {
+    this.scene = new FigureScene(sheet, playerColourOf);
+  }
 
   /** `alpha` is the frame's inter-tick fraction, as the map draws with. `unpictured` takes a slot whose
    *  subject the scene no longer draws (a vehicle driven aboard a ship), so its card can show a glyph
@@ -160,14 +152,17 @@ export class NoticeFigures {
     alpha: number,
     unpictured: (slot: NoticeFigureSlot) => void,
   ): void {
-    const items = this.items(snapshot, slots);
+    const items = this.scene.items(
+      snapshot,
+      slots.map((s) => s.entity),
+    );
     const width = Math.max(1, Math.round(box.width * box.pixelScale));
     const height = Math.max(1, Math.round(box.height * box.pixelScale));
     const { pixelScale } = box;
     const live = new Set<number>();
     for (const slot of slots) {
       live.add(slot.entity);
-      const ctx = this.context(slot.canvas, width, height);
+      const ctx = this.contexts.sized(slot.canvas, width, height);
       if (ctx === null) continue;
       ctx.clearRect(0, 0, width, height);
       if (this.sheet === undefined) continue;
@@ -176,12 +171,7 @@ export class NoticeFigures {
         unpictured(slot);
         continue;
       }
-      let track = this.tracks.get(slot.entity);
-      if (track === undefined) {
-        track = createPresentationTrack(item.kind === 'vehicle' ? 'vehicle' : 'settler');
-        this.tracks.set(slot.entity, track);
-      }
-      const layers = presentItem(track, item, tick, alpha, this.sheet);
+      const layers = this.scene.layers(item, tick, alpha);
       if (layers === null) continue;
       if (item.kind === 'vehicle') {
         this.drawVehicle(ctx, slot, item, layers, width, height, pixelScale);
@@ -192,7 +182,7 @@ export class NoticeFigures {
       const feetY = feetLine(layers, height, slot.visible * pixelScale, zoom, pixelScale);
       this.frames.draw(ctx, layers, item, zoom, feetX, feetY);
     }
-    for (const entity of this.tracks.keys()) if (!live.has(entity)) this.tracks.delete(entity);
+    this.scene.keepOnly(live);
     for (const entity of this.vehicleBounds.keys()) if (!live.has(entity)) this.vehicleBounds.delete(entity);
   }
 
@@ -210,41 +200,5 @@ export class NoticeFigures {
     this.vehicleBounds.set(slot.entity, bounds);
     const fit = vehicleFit(bounds, width, height, slot.visible * pixelScale, pixelScale);
     this.frames.draw(ctx, layers, item, fit.zoom, fit.feetX, fit.feetY);
-  }
-
-  private items(snapshot: WorldSnapshot, slots: readonly NoticeFigureSlot[]): ReadonlyMap<number, DrawItem> {
-    const refs = slots
-      .map((s) => s.entity)
-      .sort((a, b) => a - b)
-      .join(',');
-    if (this.sceneFor !== null && this.sceneFor.snapshot === snapshot && this.sceneFor.refs === refs) {
-      return this.sceneFor.items;
-    }
-    const items = new Map<number, DrawItem>();
-    if (this.sheet !== undefined && slots.length > 0) {
-      const scene = buildSpriteScene(snapshot, {
-        playerColourOf: this.playerColourOf,
-        keepIndoorSettlers: true,
-        onlyRefs: new Set(slots.map((s) => s.entity)),
-      });
-      for (const it of scene) if (it.kind === 'settler' || it.kind === 'vehicle') items.set(it.ref, it);
-    }
-    this.sceneFor = { snapshot, refs, items };
-    return items;
-  }
-
-  private context(canvas: HTMLCanvasElement, width: number, height: number): CanvasRenderingContext2D | null {
-    let ctx = this.contexts.get(canvas);
-    if (ctx === undefined) {
-      const got = canvas.getContext('2d');
-      if (got === null) return null;
-      ctx = got;
-      this.contexts.set(canvas, ctx);
-    }
-    if (canvas.width !== width || canvas.height !== height) {
-      canvas.width = width;
-      canvas.height = height;
-    }
-    return ctx;
   }
 }

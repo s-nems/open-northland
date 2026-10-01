@@ -19,6 +19,7 @@ export { HumanPaletteCache } from './data/palettes/human-palette-cache.js';
 export {
   type CartRecipe,
   type CharacterPalette,
+  createHumanPaletteColours,
   createHumanPaletteIdentity,
   HUMAN_PALETTE_BYTES,
   HumanPaletteBook,
@@ -230,6 +231,7 @@ export type {
   TransitionPattern,
 } from './gpu/terrain-textures.js';
 export { TextureCache } from './gpu/texture-cache.js';
+export { GLOW_PALETTE_INDEX } from './gpu/world-batcher.js';
 export {
   type BuildingHighlightItem,
   SPRITE_CULL_MARGIN,

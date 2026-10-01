@@ -1,8 +1,10 @@
 import {
   type AtlasFrame,
+  createHumanPaletteColours,
   createHumanPaletteIdentity,
   type DrawableResource,
   type DrawItem,
+  GLOW_PALETTE_INDEX,
   HUMAN_PALETTE_BYTES,
   HumanPaletteCache,
   type HumanPaletteColours,
@@ -69,6 +71,31 @@ export class ShelfPacker {
   }
 }
 
+/** A palette whose every index takes `source`'s glow colour ({@link GLOW_PALETTE_INDEX}), so a recolour
+ *  through it keeps only the frame's coverage. */
+export function flatGlowPalette(source: Uint8Array): Uint8Array {
+  const colour = source.subarray(GLOW_PALETTE_INDEX * RGB, (GLOW_PALETTE_INDEX + 1) * RGB);
+  const flat = new Uint8Array(HUMAN_PALETTE_BYTES);
+  for (let at = 0; at < flat.length; at += RGB) flat.set(colour, at);
+  return flat;
+}
+
+/**
+ * The palette `layer` is recoloured through: `glow` for a hero glow copy, else the head or body palette,
+ * or none for a baked look. Null leaves the layer out: a shadow, whose page holds a mask for the map's
+ * shadow pass, and a glow copy of a look without palettes, which the map leaves out too.
+ */
+export function layerColours(
+  layer: ResolvedLayer,
+  palettes: HumanPaletteColours | undefined,
+  glow: Uint8Array | undefined,
+): Uint8Array | undefined | null {
+  if (layer.shadow === true) return null;
+  if (layer.glow !== undefined) return glow ?? null;
+  if (palettes === undefined) return undefined;
+  return layer.head === true ? palettes.head : palettes.body;
+}
+
 /**
  * The palettes a figure's layers are recoloured through: an indexed human's own composed palettes, the
  * ship LUT row of an indexed vehicle, or none for a baked look.
@@ -77,10 +104,36 @@ class FigurePalettes {
   private readonly humans: HumanPaletteCache | undefined;
   private readonly identity = createHumanPaletteIdentity({ body: '', head: '', random: [] });
   private readonly lutRows = new Map<PaletteLut, LutRowColours>();
+  private readonly teamGlows = new Map<number, Uint8Array>();
+  private readonly ownGlows = new WeakMap<Uint8Array, Uint8Array>();
 
   constructor(private readonly sheet: SpriteSheet | undefined) {
     const book = sheet?.palette?.book;
     this.humans = book === undefined ? undefined : new HumanPaletteCache(book);
+  }
+
+  /** A hero glow's flat palette for `item`, whose own palettes are `colours`: a human reads its owner's
+   *  team ramp, which its own rolled palettes may have recoloured, and any other look its own body
+   *  palette, as the map's glow does. */
+  glow(item: DrawItem, colours: HumanPaletteColours): Uint8Array {
+    const book = this.sheet?.palette?.book;
+    if (item.kind !== 'settler' || book === undefined) {
+      let flat = this.ownGlows.get(colours.body);
+      if (flat === undefined) {
+        flat = flatGlowPalette(colours.body);
+        this.ownGlows.set(colours.body, flat);
+      }
+      return flat;
+    }
+    const player = item.player ?? 0;
+    let flat = this.teamGlows.get(player);
+    if (flat === undefined) {
+      const team = createHumanPaletteColours();
+      book.composeTeam(player, team);
+      flat = flatGlowPalette(team.body);
+      this.teamGlows.set(player, flat);
+    }
+    return flat;
   }
 
   of(item: DrawItem): HumanPaletteColours | undefined {
@@ -180,9 +233,8 @@ export class FigureFrames {
     return image;
   }
 
-  /** Draw `item`'s resolved layers with its feet at (`feetX`, `feetY`), `zoom` canvas px per map px. A
-   *  shadow is left out: its page holds a mask for the map's shadow pass, not colours a 2d canvas can
-   *  paint. */
+  /** Draw `item`'s resolved layers with its feet at (`feetX`, `feetY`), `zoom` canvas px per map px, a
+   *  hero glow copy at its own opacity. */
   draw(
     ctx: CanvasRenderingContext2D,
     layers: readonly ResolvedLayer[],
@@ -193,13 +245,15 @@ export class FigureFrames {
   ): void {
     const palettes = this.palettes.of(item);
     for (const layer of layers) {
-      if (layer.shadow === true) continue;
-      const colours =
-        palettes === undefined ? undefined : layer.head === true ? palettes.head : palettes.body;
+      const glow =
+        layer.glow === undefined || palettes === undefined ? undefined : this.palettes.glow(item, palettes);
+      const colours = layerColours(layer, palettes, glow);
+      if (colours === null) continue;
       const image = this.frame(layer, colours);
       if (image === null) continue;
       const s = zoom * layer.scale;
       ctx.imageSmoothingEnabled = layer.source.scaleMode !== 'nearest';
+      ctx.globalAlpha = layer.glow ?? 1;
       ctx.drawImage(
         image.image,
         image.x,
@@ -212,6 +266,7 @@ export class FigureFrames {
         image.height * s,
       );
     }
+    ctx.globalAlpha = 1;
   }
 
   private recolour(

@@ -256,6 +256,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     renderer.setMapViews(toolPanel.controller.mapViews());
     // Unfiltered: the notes are the seat's own affairs, and its own settler in the fog still starves.
     toolPanel.controller.presentMessages(snap, frameEvents, host.departed(), renderAlpha);
+    toolPanel.controller.presentFigures(snap, renderAlpha);
     // Re-placed every frame; the unit dots redraw on a throttled cadence, the fog mask only on a fog
     // generation change.
     mountedMinimap.update(snap, fogView);
@@ -298,6 +299,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // Before `renderer.update`, so the panel a rebuild bakes and the portrait inset painted over it both
     // show this frame's state.
     controls.tick(snap);
+    controls.presentFigures(snap, renderAlpha);
     // World cutouts centred on the selection and on the trade window's houses, rendered into their boxes
     // during `renderer.update`; the list is the same object while the boxes hold still.
     renderer.setPortraitInsets(controls.portraits());

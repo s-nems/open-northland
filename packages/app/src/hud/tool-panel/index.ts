@@ -46,6 +46,8 @@ import type { ClientRect } from '../dom/portrait-hole.js';
 import { createResidentsWindow } from '../dom/residents-window.js';
 import { createHudSystemBar } from '../dom/system-bar.js';
 import type { CentralWindows } from '../dom/trade-window/window.js';
+import { FigureFrames } from '../figures/figure-frames.js';
+import { SettlerFigures } from '../figures/settler-figures.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import { type KeyBindings, keyDisplayLabel } from '../keybindings.js';
 import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
@@ -59,7 +61,6 @@ import { createInfoLinesOverlay } from './info-lines.js';
 import { createToolPanelInput, type HeldMode, type ToolPanelInput } from './input.js';
 import { buildToolPanelLayout } from './layout.js';
 import type { ActiveLine, LineNode, LinePreviewNode, LitNodes } from './line-tool.js';
-import { FigureFrames } from './messages/figure-frames.js';
 import {
   createMessageCenter,
   type MessageFeedState,
@@ -82,7 +83,6 @@ import {
   type RoadPreview,
 } from './placement.js';
 import { canBecomeOptions } from './residents/can-become.js';
-import { ResidentFigures } from './residents/figures.js';
 import { NO_RESIDENT_FILTERS } from './residents/rows.js';
 import type { ResidentsSeam } from './residents/seam.js';
 import { createSpeedControl } from './speed-control.js';
@@ -229,6 +229,8 @@ export interface ToolPanelOptions {
 export interface ToolPanelController {
   /** The decoded UI string lookup the panel resolved for its language, shared with sibling overlays. */
   readonly uiString: UiString;
+  /** The sheet's recoloured-frame cache, shared with the details panels' figure painters. */
+  readonly figureFrames: FigureFrames;
   /** Open the mission book (the map's briefing and goals), as the session start does; on `page` when a
    *  script asked for one, which holds the game while it shows. */
   openMission(page?: number): void;
@@ -279,6 +281,9 @@ export interface ToolPanelController {
     departed: readonly EntitySnapshot[],
     alpha: number,
   ): void;
+  /** Per-frame hook for the residents window's row figures; `alpha` is the frame's inter-tick
+   *  fraction. */
+  presentFigures(snapshot: WorldSnapshot, alpha: number): void;
   state(): ToolPanelState;
   restore(state: ToolPanelState): void;
   /** Show the session's clock as it stands, without pushing to the loop: a change made elsewhere. */
@@ -468,6 +473,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const goodTypeById = new Map(opts.goods.map((g) => [g.id, g.typeId]));
     const thumbs = createBuildingThumbs(opts.sheet, opts.tribe);
     const figureFrames = new FigureFrames(opts.sheet);
+    const residentFigures = new SettlerFigures(opts.sheet, figureFrames, opts.playerColourOf);
     const windows = createToolWindows({
       ctx,
       container: windowContainer,
@@ -506,7 +512,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         return book;
       },
       residentsWindow: () => {
-        const figures = new ResidentFigures(opts.sheet, figureFrames, opts.playerColourOf);
         const window = createResidentsWindow({
           plane,
           rows: opts.residents.rows,
@@ -517,7 +522,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           trades: canBecomeOptions(),
           selection: opts.residents.selection,
           onSelect: opts.residents.onSelect,
-          paintFigures: (slots, box) => figures.paint(opts.residents.snapshot(), slots, box),
           cue: ctx.cue,
         });
         window.onDismiss(() => focusOwner?.('residents'));
@@ -739,6 +743,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
     return {
       uiString: ctx.uiString,
+      figureFrames,
       openMission: (page) => {
         if (page !== undefined) applyNavEntry(surfaces, 'mission', () => windows.mission.showPage(page));
         else if (!windows.mission.isOpen()) applyNavEntry(surfaces, 'mission');
@@ -806,6 +811,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       mapViews: () => bookFrames(windows.mission.views()),
       presentMessages: (snapshot, events, departed, alpha) =>
         messageCenter.present(snapshot, events, departed, alpha),
+      presentFigures: (snapshot, alpha): void => {
+        residentFigures.paint(snapshot, windows.byId.residents.figureSlots(), snapshot.tick, alpha);
+      },
       state: () => ({
         speed: speed.state(),
         windows: windows.state(),

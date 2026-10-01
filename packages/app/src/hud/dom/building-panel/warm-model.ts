@@ -77,6 +77,11 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
       ],
       count: { filled: 2, capacity: 3 },
     },
+    crew: {
+      kind: 'crew',
+      groups: [{ key: 'crew', label: '', people: [person(5, 'man')], capacity: null, jobType: null }],
+      count: null,
+    },
     production: {
       kind: 'recipe',
       // Long enough to fold, one batch in flight.

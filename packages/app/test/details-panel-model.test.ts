@@ -112,6 +112,31 @@ describe('selection details panel model', () => {
     expect(model.staff?.groups[0]?.people.map((person) => person.look)).toEqual(['man', 'woman', 'child']);
   });
 
+  it("keeps a site's posted workers and a home site's residents beside its builders", () => {
+    const site = { built: ONE / 4, components: { UnderConstruction: { labor: ONE / 4 } } };
+    const snapshot = snapshotOf([
+      buildingEntity(1, BUILDING_JOINERY, site),
+      buildingEntity(20, BUILDING_HOME_00, site),
+      {
+        id: 2,
+        components: { Settler: { jobType: JOB_COLLECTOR, tribe: 1 }, JobAssignment: { workplace: 1 } },
+      },
+      { id: 3, components: { Settler: { jobType: JOB_BUILDER, tribe: 1 }, SiteAssignment: { site: 1 } } },
+      { id: 4, components: { Settler: { jobType: JOB_COLLECTOR, tribe: 1 }, Residence: { home: 20 } } },
+    ]);
+    const workshop = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    if (workshop.kind !== 'building') throw new Error('expected a building model');
+    expect(workshop.crew?.groups[0]?.people.map((person) => person.entity)).toEqual([3]);
+    expect(workshop.staff?.kind).toBe('workers');
+    expect(workshop.staff?.groups.flatMap((group) => group.people.map((person) => person.entity))).toEqual([
+      2,
+    ]);
+    const home = buildUnitPanelModel(snapshot, new Set([20]), sandboxCtx());
+    if (home.kind !== 'building') throw new Error('expected a building model');
+    expect(home.staff?.kind).toBe('residents');
+    expect(home.staff?.groups.map((family) => family.people.map((person) => person.entity))).toEqual([[4]]);
+  });
+
   it('shows the generic hero profession for every hero job instead of a body-specific name', () => {
     const base = sandboxCtx();
     const heroes = [
@@ -286,7 +311,7 @@ describe('selection details panel model', () => {
     expect(model.health).toEqual({ hitpoints: 25, max: 100 });
     expect(model.status).toEqual({ label: 'Budowa', detail: '25% · brak budowniczego', tone: 'trouble' });
     // Both builders on a supply run for the site show among its crew.
-    expect(model.staff?.groups[0]?.people.map((person) => person.entity)).toEqual([2, 3]);
+    expect(model.crew?.groups[0]?.people.map((person) => person.entity)).toEqual([2, 3]);
     // One row per construction cost line (the farm's wood+stone parcel): delivered reads off the hold,
     // while inbound is the live SupplyRun reservation and remains separate from delivered stock.
     expect(model.construction?.rows).toEqual([

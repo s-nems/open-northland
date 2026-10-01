@@ -7,6 +7,7 @@ import type {
   DrawItem,
   ElevationField,
   EntityBounds,
+  SpriteSheet,
   WorkAreaRing,
 } from '@open-northland/render';
 import type {
@@ -26,6 +27,7 @@ import type { PortraitBox, UnitPanelModelContext } from '../../hud/details-panel
 import type { DiplomacyStance, SettlerWorkStatus } from '../../hud/details-panel/model/index.js';
 import type { BuildingPanelWindows } from '../../hud/dom/building-panel/actions.js';
 import type { CentralWindows } from '../../hud/dom/trade-window/window.js';
+import type { FigureFrames } from '../../hud/figures/figure-frames.js';
 import type { KeyBindings } from '../../hud/keybindings.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import type { PresentationPack } from '../../presentation/pack.js';
@@ -127,6 +129,9 @@ export interface UnitControlsOptions {
     /** The tool panel's central windows, which the trade window takes turns with and the building
      *  panel opens. */
     readonly centralWindows?: CentralWindows & BuildingPanelWindows;
+    /** The map's sprite sheet and its recoloured-frame cache, which draw the panels' live people;
+     *  absent, the wells keep their glyphs. */
+    readonly figures?: { readonly sheet: SpriteSheet; readonly frames: FigureFrames };
   };
   /** The sim's work-status read seam (`Simulation.workStatus`); absent leaves the status detail out. */
   readonly workStatus?: (entity: number) => SettlerWorkStatus | undefined;
@@ -163,6 +168,9 @@ export interface UnitControls {
   /** The ship whose dock pick is armed, whose mooring spots the frame loop washes onto the map. */
   readonly dockPickVehicle: () => number | null;
   readonly tick: (snapshot: WorldSnapshot) => void;
+  /** Once a frame, after `tick`: the details panel's wells show their people live; `alpha` is the
+   *  frame's inter-tick fraction. */
+  readonly presentFigures: (snapshot: WorldSnapshot, alpha: number) => void;
   /** Refresh hit feedback after the renderer has rebuilt its screen-space targets. */
   readonly refreshCursor: (snapshot: WorldSnapshot) => void;
   readonly claimsPointer: (clientX: number, clientY: number) => boolean;

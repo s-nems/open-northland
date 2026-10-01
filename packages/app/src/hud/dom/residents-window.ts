@@ -1,8 +1,8 @@
 import type { UiCue } from '@open-northland/audio';
 import { pickerEntries } from '../../catalog/professions.js';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
+import { type FigureBox, type FigureSlot, NO_FIGURE_SLOTS } from '../figures/settler-figures.js';
 import type { CanBecomeOption } from '../tool-panel/residents/can-become.js';
-import type { ResidentFigureBox, ResidentFigureSlot } from '../tool-panel/residents/figures.js';
 import {
   filtersActive,
   INITIAL_RESIDENTS_STATE,
@@ -49,6 +49,11 @@ const LACK_GLYPH: Readonly<Record<ResidentLack, string>> = {
 
 const SORT_KEYS: readonly ResidentSortKey[] = ['name', 'profession', 'workplace', 'lacks'];
 
+/** A row figure's map px per design px, and how far above its box's bottom edge the feet stand (design
+ *  px). */
+const ROW_FIGURE_ZOOM = 0.72;
+const ROW_FIGURE_FEET_INSET = 2;
+
 export interface ResidentsWindowDeps {
   readonly plane: HTMLElement;
   /** The seat's people. A new array means a new tick's list; the same one costs nothing. */
@@ -66,8 +71,6 @@ export interface ResidentsWindowDeps {
    *  stays; without it the pick replaces the selection, a single one is shown on the map, and the
    *  window has already closed. */
   readonly onSelect: (ids: readonly number[], show: boolean) => void;
-  /** Paint the standing figures of the rows on screen. */
-  readonly paintFigures: (slots: readonly ResidentFigureSlot[], box: ResidentFigureBox) => void;
   readonly cue: (cue: UiCue) => void;
 }
 
@@ -76,8 +79,10 @@ export interface ResidentsWindowDeps {
  *  with sortable heads. It takes part in the window registry like a legacy pop-up, but the plane
  *  routes its own pointer input, so it claims no canvas point. */
 export interface ResidentsWindow extends ToolWindow {
-  /** Once a frame: re-place an open window, relist on a new tick or selection, paint the figures. */
+  /** Once a frame: re-place an open window, relist on a new tick or selection. */
   refresh(): void;
+  /** The figures of the rows on screen, which the owner paints every frame; none while closed. */
+  figureSlots(): readonly FigureSlot[];
   state(): ResidentsWindowState;
   restore(state: ResidentsWindowState): void;
   /** The close medallion was pressed; the owner returns focus to the beam. */
@@ -539,12 +544,13 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   });
 
   /** The figures of the rows inside the list's visible strip. */
-  const paintVisible = (): void => {
+  let visibleSlots: readonly FigureSlot[] = NO_FIGURE_SLOTS;
+  const measureVisible = (): void => {
     figuresStale = false;
     const top = list.scrollTop;
     const bottom = top + list.clientHeight;
-    const slots: ResidentFigureSlot[] = [];
-    let box: ResidentFigureBox | null = null;
+    const slots: FigureSlot[] = [];
+    let box: FigureBox | null = null;
     for (const id of shownIds) {
       const view = views.get(id);
       if (view === undefined) continue;
@@ -558,9 +564,9 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
         pixelScale:
           (canvas.getBoundingClientRect().width / Math.max(1, canvas.offsetWidth)) * devicePixelRatio,
       };
-      slots.push({ entity: id, canvas });
+      slots.push({ entity: id, canvas, box, zoom: ROW_FIGURE_ZOOM, feetInset: ROW_FIGURE_FEET_INSET });
     }
-    if (box !== null && box.pixelScale > 0) deps.paintFigures(slots, box);
+    visibleSlots = box !== null && box.pixelScale > 0 ? slots : NO_FIGURE_SLOTS;
   };
 
   const placeWindow = centralWindowPlacer(window, deps.plane, RESIDENTS_WINDOW_W);
@@ -598,8 +604,9 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
         showSelection();
         shownSelection = deps.selection.version();
       }
-      if (figuresStale) paintVisible();
+      if (figuresStale) measureVisible();
     },
+    figureSlots: () => (window.isOpen() ? visibleSlots : NO_FIGURE_SLOTS),
     state: () => state,
     restore: (next) => {
       state = next;

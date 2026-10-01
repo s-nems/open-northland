@@ -15,6 +15,7 @@ import type { ClientRect } from '../../hud/dom/portrait-hole.js';
 import { createSettlerPanel } from '../../hud/dom/settler-panel/view.js';
 import { createTradeWindow, type HousePortrait } from '../../hud/dom/trade-window/window.js';
 import { createVehiclePanel } from '../../hud/dom/vehicle-panel/view.js';
+import { SettlerFigures } from '../../hud/figures/settler-figures.js';
 import { clientToCanvas } from '../../hud/geometry.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-card/building.js';
 import type { BuildingHoverModel } from '../../hud/hover-card/model.js';
@@ -36,6 +37,7 @@ import type { UnitControlsOptions } from './types.js';
 import { armedVehiclePick, vehiclePanelActions, vehiclePeersOf } from './vehicle-panel.js';
 
 const NO_SELECTION: ReadonlySet<number> = new Set();
+const NO_FIGURES: ReadonlySet<number> = new Set();
 /** Goods the warm-up paints icons of, enough to fill every icon slot of the warm model. */
 const WARM_GOOD_ICONS = 12;
 /** An unanswered technology read refuses, as every unanswered rule does. */
@@ -89,6 +91,8 @@ export interface UnitChromeHandle {
   /** Once a frame: the trade window follows the plane and yields to a beam window, and the vehicle
    *  panel lights its armed order. */
   refreshWindows(): void;
+  /** Once a frame: the shown building's or vehicle's wells draw their people as the map does. */
+  presentFigures(snapshot: WorldSnapshot, alpha: number): void;
   /** Show the selection on the panel, or nothing while the HUD is hidden. */
   renderPanel(snapshot: WorldSnapshot): void;
   setHudHidden(hidden: boolean): void;
@@ -229,6 +233,9 @@ export async function createUnitChrome(
     },
     buildingPeers: (building) => buildingPeers(opts.snapshot(), building),
   });
+  const figures = opts.domHud.figures;
+  const wellFigures =
+    figures === undefined ? null : new SettlerFigures(figures.sheet, figures.frames, opts.playerColourOf);
   const canvasRect = (client: ClientRect): PortraitBox['rect'] => {
     const scale = screenScale(opts.canvas, opts.app.renderer.resolution);
     const { left, top, width, height } = client;
@@ -430,6 +437,16 @@ export async function createUnitChrome(
       settlerPanel.refresh();
       vehiclePanel.refresh();
       buildingPanel.refresh();
+    },
+    presentFigures: (snapshot, alpha) => {
+      // One details panel shows at a time; the hidden one answers no slots.
+      const building = buildingPanel.figureSlots();
+      const slots = building.length > 0 ? building : vehiclePanel.figureSlots();
+      // Painting no slots drops the tracks, so a panel shown again does not resume an old gait.
+      const drawn =
+        wellFigures === null ? NO_FIGURES : wellFigures.paint(snapshot, slots, snapshot.tick, alpha);
+      buildingPanel.markDrawn(drawn);
+      vehiclePanel.markDrawn(drawn);
     },
     renderPanel: (snapshot) => mounts.current().panel.render(snapshot, panelIds()),
     setHudHidden: (hidden) => {

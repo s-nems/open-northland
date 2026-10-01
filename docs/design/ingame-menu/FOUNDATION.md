@@ -218,8 +218,8 @@ on the beam opens it at once.
   history.
 - The parchment: a summary line naming the active filters with "Wyczyść filtry", sortable column
   heads (Imię, Zawód, Miejsce pracy, Braki; a second press reverses), and 34 px rows: the map's own
-  settler standing still (a list runs to hundreds of rows, so nothing animates and only the rows on
-  screen are painted), the name the details panel shows, the profession (a child's with its age),
+  settler doing what it does on the map, with its gait, work strokes and hero glow (only the rows on
+  screen are painted, every frame), the name the details panel shows, the profession (a child's with its age),
   the workplace, and the lacks as the chip glyphs with tooltips. No live-activity column: the game
   knows only coarse states. The list opens by profession, since a generated name tells the player
   little; heroes lead under every order, as the original keeps them; unposted rows follow the posted
@@ -498,9 +498,10 @@ scrollbar, every control's tooltip is a few words saying what the press does or 
   driver, an anchor for the captain, a crosshair for the crew), no name. Empty, it is the amber seat
   pick that arms the pick of an own settler on the map (the sim seats the commander first, then an
   ordinary seat). A land vehicle has its role line beside the well: Woźnica / Obsługa over the
-  trade, "idzie" or "Przydziel woźnicę" in amber. A ship's ordinary seats sit beside it as 24 px
-  wells, eight to a row: a rider's figure (a woman's warmer, a soldier's steel), a rider still
-  walking to the door dashed and faded, the first free seat the amber seat pick, the rest plain. A
+  trade, "idzie" or "Przydziel woźnicę" in amber. A ship's ordinary seats sit beside it as 28 × 36 px
+  wells, seven to a row. Every rider shows live, as the map draws it, larger in the commander's well
+  (the figure glyph stands in without a sprite sheet or for a rider the map does not draw); a rider
+  still walking to the door dashed and faded, the first free seat the amber seat pick, the rest plain. A
   click on any rider selects it and a Ctrl click steps it out; the tooltip is the role and the name
   for the commander (Kapitan · the name), the name alone for a seat. A ship's deck is a Pojazd row:
   the carried cart as a link with the button that drives it ashore, or "brak" with the button that
@@ -561,15 +562,18 @@ saying what the press does or why it is refused.
   good's well, its name, "delivered / needed" with "+N" on the way, and the delivered share on the
   thin rule under the line; a delivered line reads muted, and a line still short after what is on its
   way reads amber with "brak" when the owner holds none of it anywhere else.
+- Every person well is a 28 × 36 px niche with a shade pool under the feet, the person in it live as
+  the map draws it: walking, working, resting, a hero in its glow.
 - Pracownicy: a line per declared seat trade, its label over a dotted leader and a well per seat, the
-  posted people's figures then the free seats empty, six to a row; the sheltering crowd under an alarm
+  posted people then the free seats empty, six to a row; the sheltering crowd under an alarm
   and the recruits drilling there follow as their own lines (a worker sheltering where it works stays
   on its trade's line). A press on a trade's free seat opens Mieszkańcy filtered to that trade. A line
   holds twelve wells: free seats give way first, and people past that read
   "+N" in the last well. The rule carries
   the posts filled of all. Mieszkańcy for a home: the families side by side (the man, the woman, the
-  child), an empty well per free family place, the families of all on the rule. Budowniczowie for a
-  site: the crew raising it, "nikt" while nobody is. A press on a figure selects the person.
+  child), an empty well per free family place, the families of all on the rule. A site keeps its
+  Pracownicy or Mieszkańcy, posted before it stands, under Budowniczowie: the crew raising it, "nikt"
+  while nobody is. A press on a figure selects the person.
   Workforce is assigned from the person's panel; the building side only shows it.
 - Produkcja: a line per product in recipe order (a breeding farm's per species, its herd against the
   cap in the name), its ingredients beside the name as the good and "have/need" for one cycle (amber

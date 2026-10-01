@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ShelfPacker } from '../src/hud/tool-panel/messages/figure-frames.js';
+import { ShelfPacker } from '../src/hud/figures/figure-frames.js';
 
 const PAGE = 64;
 const GUTTER = 1;

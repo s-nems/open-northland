@@ -18,6 +18,7 @@ import {
   setTip,
   write,
 } from '../parts/dom.js';
+import { createFigureWell, type FigureWell, showInWell, type WellFigureFit } from '../parts/figure-well.js';
 import { createLedger } from '../parts/ledger.js';
 import { createSection } from '../parts/section.js';
 import { seatButton } from '../settler-panel/work.js';
@@ -29,6 +30,10 @@ const ROLE_GLYPH: Readonly<Record<VehicleClass, string>> = {
   ship: GLYPH.anchor,
   siege: GLYPH.crosshair,
 };
+
+/** The commander's well (foundation.css `.on-seat-well--helm`, 40 x 56 design px) shows its rider
+ *  larger than a seat does. */
+const HELM_FIT: WellFigureFit = { zoom: 0.75, feetInset: 6 };
 
 /** A rider's tooltip: the commander's role and the rider's name, or only the name on an ordinary seat.
  *  Another seat's rider shows its trade in place of the name. */
@@ -105,6 +110,8 @@ export interface CrewSection {
   update(model: VehiclePanelModel): void;
   /** Once a frame: the seat pick's wells or the deck pick's button light while their pick waits. */
   refresh(armed: VehiclePick | null): void;
+  /** The commander's well, then a ship's seats, for the panel's figure painter. */
+  wells(): readonly FigureWell[];
 }
 
 export function createCrewSection(
@@ -121,7 +128,8 @@ export function createCrewSection(
   const controls = element('span', 'on-section__group');
   controls.append(count, unload);
   const title = createSection(controls);
-  const helm = button('on-seat-well on-seat-well--helm');
+  const helmWell = createFigureWell('on-seat-well on-seat-well--helm', HELM_FIT);
+  const helm = helmWell.node;
   const caption = element('span', 'on-crew__caption', '<b></b><span></span>');
   const [roleLine, detailLine] = [caption.firstElementChild, caption.lastElementChild];
   if (!(roleLine instanceof HTMLElement) || !(detailLine instanceof HTMLElement))
@@ -146,8 +154,9 @@ export function createCrewSection(
   const root = element('div', '');
   root.append(title.element, row, deck.element);
 
-  let helmWell: SeatWell = { kind: 'free' };
-  let wells: HTMLButtonElement[] = [];
+  let helmSeat: SeatWell = { kind: 'free' };
+  let wells: FigureWell[] = [];
+  let allWells: readonly FigureWell[] = [helmWell];
   let shownWells: SeatWell[] = [];
   const press = (well: SeatWell | undefined, event: MouseEvent): void => {
     const model = current();
@@ -170,23 +179,27 @@ export function createCrewSection(
         break;
     }
   };
-  onPress(helm, (event) => press(helmWell, event));
+  onPress(helm, (event) => press(helmSeat, event));
 
   const paintWell = (
-    node: HTMLButtonElement,
+    well: FigureWell,
     seat: SeatWell,
     model: VehiclePanelModel,
     role: string | null,
   ): void => {
     const copy = messages().hud.vehiclePanel;
+    const { node } = well;
     const rider = seat.kind === 'rider' ? seat.rider : null;
+    showInWell(well, rider?.entity ?? null);
     const figure = rider === null ? '' : rider.look === 'woman' ? FIGURE.woman : FIGURE.man;
     const face = seat.kind === 'add' ? GLYPH.addPerson : figure;
     const badge = role === null ? '' : `<i class="on-seat-well__badge">${ROLE_GLYPH[model.vehicleClass]}</i>`;
     const markup = face + badge;
     if (node.dataset.face !== markup) {
       node.dataset.face = markup;
-      node.innerHTML = markup;
+      well.glyph.innerHTML = face;
+      node.querySelector('.on-seat-well__badge')?.remove();
+      if (badge !== '') node.insertAdjacentHTML('beforeend', badge);
     }
     setClass(node, 'on-seat-well--empty', rider === null);
     setClass(node, 'on-seat-well--add', seat.kind === 'add');
@@ -213,11 +226,12 @@ export function createCrewSection(
     shownWells = seatWells(model.crew);
     if (wells.length !== shownWells.length) {
       wells = shownWells.map((_, index) => {
-        const well = button('on-seat-well');
-        onPress(well, (event) => press(shownWells[index], event));
+        const well = createFigureWell('on-seat-well');
+        onPress(well.node, (event) => press(shownWells[index], event));
         return well;
       });
-      seats.replaceChildren(...wells);
+      seats.replaceChildren(...wells.map((well) => well.node));
+      allWells = [helmWell, ...wells];
     }
     shownWells.forEach((seat, index) => {
       const well = wells[index];
@@ -239,8 +253,8 @@ export function createCrewSection(
       write(unload, copy.unloadAll);
       setDisabled(unload, crew.unload !== true);
       setTip(unload, crew.unload === true ? copy.unloadAllTooltip : (crew.unload ?? ''));
-      helmWell = commanderWell(crew);
-      paintWell(helm, helmWell, model, copy.roles[model.vehicleClass]);
+      helmSeat = commanderWell(crew);
+      paintWell(helmWell, helmSeat, model, copy.roles[model.vehicleClass]);
       setHidden(caption, ship);
       if (!ship) {
         const line = commanderCaption(model);
@@ -250,6 +264,7 @@ export function createCrewSection(
       }
       setHidden(seats, !ship);
       if (ship) paintSeats(model);
+      else for (const well of wells) showInWell(well, null);
       const hold = crew.deck;
       setHidden(deck.element, hold === null);
       if (hold !== null) {
@@ -285,8 +300,9 @@ export function createCrewSection(
     refresh(armed): void {
       const seating = armed === 'seatRider';
       lightSeatPick(helm, seating);
-      for (const well of wells) lightSeatPick(well, seating);
+      for (const well of wells) lightSeatPick(well.node, seating);
       setClass(deck.element, 'on-ledger--armed', armed === 'loadVehicle');
     },
+    wells: () => allWells,
   };
 }

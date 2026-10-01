@@ -482,6 +482,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       // Re-anchors the ring on the selection's on-screen centroid; a no-op while it is closed.
       chrome.actions().update(opts.camera(), snapshot);
     },
+    presentFigures: chrome.presentFigures,
     setHudHidden: chrome.setHudHidden,
     setUiScale: async (scale) => {
       await Promise.all([chrome.setUiScale(scale), orders.setUiScale(scale)]);

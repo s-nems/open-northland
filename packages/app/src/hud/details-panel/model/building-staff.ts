@@ -146,30 +146,36 @@ function workerGroups(
   return groups;
 }
 
+/** The crew raising `site`: its builders, the ones hammering at it and the ones supplying it. */
+export function siteCrew(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  site: number,
+): BuildingStaffModel {
+  return {
+    kind: 'crew',
+    groups: [
+      {
+        key: 'crew',
+        label: '',
+        people: raisingCrew(snapshot, site).map((e) => personOf(ctx, snapshot, e)),
+        capacity: null,
+        jobType: null,
+      },
+    ],
+    count: null,
+  };
+}
+
+/** Who belongs to the house, standing or still a site: a home's families, else its workers with the
+ *  crowd sheltering there and the recruits drilling there. */
 export function buildingStaff(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
   def: BuildingDef | undefined,
   ent: SnapshotEntity,
-  site: boolean,
 ): BuildingStaffModel | null {
   const copy = messages().hud.buildingPanel;
-  if (site) {
-    const crew = raisingCrew(snapshot, ent.id);
-    return {
-      kind: 'crew',
-      groups: [
-        {
-          key: 'crew',
-          label: '',
-          people: crew.map((e) => personOf(ctx, snapshot, e)),
-          capacity: null,
-          jobType: null,
-        },
-      ],
-      count: null,
-    };
-  }
   if (def?.kind === 'home') {
     const families = homeFamiliesOf(snapshot, ent.id) ?? [];
     const groups = families.map((family, index) => {

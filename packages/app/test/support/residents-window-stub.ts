@@ -1,4 +1,5 @@
 import type { ResidentsWindow } from '../../src/hud/dom/residents-window.js';
+import { NO_FIGURE_SLOTS } from '../../src/hud/figures/settler-figures.js';
 import { INITIAL_RESIDENTS_STATE, NO_RESIDENT_FILTERS } from '../../src/hud/tool-panel/residents/rows.js';
 
 /** A residents window without a DOM: the registry only asks it to open, close, refresh and keep its
@@ -18,6 +19,7 @@ export function stubResidentsWindow(): ResidentsWindow {
     claims: () => false,
     handleClick: () => false,
     refresh: () => undefined,
+    figureSlots: () => NO_FIGURE_SLOTS,
     state: () => state,
     restore: (next) => {
       state = next;

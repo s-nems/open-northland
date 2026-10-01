@@ -481,7 +481,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       residents: {
         rows: () => residentsFor(host.snapshot()),
-        snapshot: () => host.snapshot(),
         canBecome: (id, pick) =>
           answers.canChooseJob(id, pick.jobType) &&
           (pick.goodType === null || answers.hasEarnedGood(id, pick.goodType)),
@@ -710,6 +709,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         uiString: toolPanel.controller.uiString,
         residents: () => residentsFor(host.snapshot()),
         centralWindows: toolPanel.controller.centralWindows,
+        ...(deps.sheet !== undefined
+          ? { figures: { sheet: deps.sheet, frames: toolPanel.controller.figureFrames } }
+          : {}),
       },
       workStatus: answers.workStatus,
       diplomacyStance: (owner) => host.diplomacyStance(viewerPlayer(), owner),

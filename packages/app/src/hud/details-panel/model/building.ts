@@ -34,7 +34,7 @@ import {
   upgradeCostRows,
 } from './building-materials.js';
 import { type ProductionModel, productionModel } from './building-production.js';
-import { type BuildingStaffModel, buildingStaff, garrisonPosts } from './building-staff.js';
+import { type BuildingStaffModel, buildingStaff, garrisonPosts, siteCrew } from './building-staff.js';
 import { type BuildingStatusModel, buildingStatus } from './building-status.js';
 import {
   type BuildingDef,
@@ -129,6 +129,8 @@ export interface BuildingPanelModel {
   /** Present while the building is a site, raised from nothing or a tier up. */
   readonly construction: (ConstructionModel & { readonly pct: number; readonly upgrade: boolean }) | null;
   readonly staff: BuildingStaffModel | null;
+  /** A site's builders, beside the staff it already has; null once it stands. */
+  readonly crew: BuildingStaffModel | null;
   readonly production: ProductionModel | null;
   readonly stock: readonly StockRow[];
   readonly stockLayout: StockLayout;
@@ -358,8 +360,9 @@ export function buildingPanelModel(
   const shelterCapacity = def?.shelterCapacity ?? 0;
   const sheltered = shelterClaimCount(snapshot, ent.id);
   const alarm = ent.components.DefenceMode !== undefined ? { sheltered, capacity: shelterCapacity } : null;
-  const staff = foreign ? null : buildingStaff(ctx, snapshot, def, ent, site);
-  const seats = staff?.kind === 'workers' && staff.count !== null ? staff.count.filled : null;
+  const staff = foreign ? null : buildingStaff(ctx, snapshot, def, ent);
+  const crew = foreign || !site ? null : siteCrew(ctx, snapshot, ent.id);
+  const seats = !site && staff?.kind === 'workers' && staff.count !== null ? staff.count.filled : null;
   const work = foreign || site ? undefined : firstWorkerStatus(ctx, snapshot, ent.id);
   const health = healthOf(ent);
   const kind = def?.kind;
@@ -407,6 +410,7 @@ export function buildingPanelModel(
     orders: foreign ? null : ordersModel(ctx, def, ent, finished, hireJob(def, staff, site)),
     construction: construction === null || foreign ? null : { ...construction, pct: builtPct, upgrade },
     staff,
+    crew,
     production: foreign || site ? null : productionModel(ctx, snapshot, def, ent),
     stock,
     stockLayout: stockLayoutOf(def, stock),
