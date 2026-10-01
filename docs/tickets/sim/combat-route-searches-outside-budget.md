@@ -20,18 +20,17 @@ A group of N fighters stopped at a wall or a sealed target pays N sorts and up t
 searches in one tick. Not measured: the 100k `magiczny_las` run had no siege. The pathfinding max of
 231 ms in that run is a lead, not evidence, since routing proper can spike too.
 
-
 The current seed-7 `magiczny_las` replay provides a separate measured vehicle case: at tick 99394,
 two runs spend 45.37/45.56 ms in combat, within 52.99/53.11 ms total. An isolated one-tick CPU
 profile attributes about 50 ms of inclusive samples to `engageVehicle → startVehicleDrive →
 vehicleRouteTo → findPath`. Repeated passability checks dominate that stack; this does not identify
-sealed-target or breach searches as the cause. See [the comparison](../../perf/magiczny-las-delta-hover.md).
+sealed-target or breach searches as the cause.
 
 ## Scope
 
-- The vehicle search already memoizes complete walk-block verdicts within one synchronous call;
-  [its measured result](../../perf/vehicle-route-predicate.md) reduces combat maxima while preserving
-  route answers. Profile the remaining search cost before adding another cache. Keep exported
+- The vehicle search already memoizes complete walk-block verdicts within one synchronous call,
+  which cut that tick's combat maximum from about 45 to 31 ms while preserving route answers.
+  Profile the remaining search cost before adding another cache. Keep exported
   overlay behavior and fresh answers after blocker changes; cross-search reuse needs a proven
   invalidation boundary.
 - Measure the other paths on the `ON_BENCH_FIGHTERS` battle of `npm run bench:sim` with a palisade in the way: the tick share and max of

@@ -13,8 +13,8 @@ new-headless Chromium on ANGLE Metal, 1920x1080, x3), main-thread CPU only: at z
 t101k with 1480 to 2190 sprites drawn, 27 to 31 FPS, against 12.5 to 17 ms at zoom 1 over a dense
 settlement.
 
-Headed Chromium on Apple M2 Pro, 1440×900 at device scale 1, from tick 97200 in the
-[magiczny_las measurement](../../perf/magiczny-las-late-game.md), confirms the scaling at x3:
+Headed Chromium on Apple M2 Pro, 1440×900 at device scale 1, from tick 97200 of the seed-7
+`magiczny_las` reference with six AI seats, confirms the scaling at x3:
 zoom 1/0.7/0.5/0.35 draws 1751/2569/4102/6219 entities, with RAF p95
 17.6/33.4/41.7/50.7 ms. The dense repeat stays at 17.4 ms with identical camera and canvas.
 Separate instrumented GPU queries for the main Pixi stage (world, HUD and weather) average
