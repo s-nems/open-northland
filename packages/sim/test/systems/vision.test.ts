@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AttackOrder,
   addPerson,
+  Building,
   Engagement,
   Fleeing,
   FOG_MODE,
@@ -16,41 +17,62 @@ import {
   Position,
   RoadSite,
   SettlerProgress,
-  Signpost,
   Stance,
+  UnderConstruction,
+  Upgrading,
 } from '../../src/components/index.js';
-import { fx } from '../../src/core/fixed.js';
+import { fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fogViewOfMask, Simulation } from '../../src/index.js';
 import { FLEE_CHECK_STRIDE_TICKS } from '../../src/systems/conflict/flee.js';
 import { SIGHT_RADIUS_NODES } from '../../src/systems/conflict/targeting.js';
 import { SCOUT_EXPERIENCE_TYPE } from '../../src/systems/progression/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
+import { looseProjectile } from '../../src/systems/settlers/atomics/effects/combat/index.js';
+import { createVehicle } from '../../src/systems/vehicles/index.js';
 import {
   BUILDING_VISION_NODES,
+  CART_VISION_NODES,
+  CHILD_VISION_NODES,
   CIVILIAN_VISION_NODES,
+  exploreAround,
   FOG_STATE,
   FogState,
+  HEADQUARTERS_VISION_NODES,
+  HERO_VISION_NODES,
   HUNTER_VISION_NODES,
   SCOUT_VISION_NODES,
+  SHIP_VISION_NODES,
+  SIEGE_VISION_NODES,
   SOLDIER_VISION_NODES,
   stampVision,
   VISION_CADENCE_TICKS,
   visionRadiusForJob,
 } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * The fog layer (systems/vision.ts): per-player masks over the cell grid, the modes' update rules
  * (OFF revealed; the map setting: CLASSIC black start / RECON known terrain; fog of war: sticky sight
- * without it, a downgrade with it), the OFF default + reset, and the combat/flee fog gates. Authored
- * throughout, radii included (no readable fog source), so these tests pin self-consistency, not
- * original fidelity.
+ * without it, a downgrade with it), the OFF default + reset, and the combat/flee fog gates. The radii
+ * are owner-tuned (see `vision/system.ts`), so these tests pin their classification, not their values.
  */
 
 const VIKING = 1;
-const WOODCUTTER = 1; // fixture job 1 - carries test_axe (band [1,2]); a civilian eye
+const WOODCUTTER = 1; // fixture job 1 - carries test_axe (band [1,2]); id 1 is a baby to the age classes
+const CIVILIST = 6; // fixture job 6 `civilist` - a civilian eye
+const CHILD_MALE = 4; // the age-class job a boy holds
+const SOLDIER_JOB = 31; // fixture job 31 `soldier_unarmed`
+const HERO_JOB = 45; // fixture job 45 `hero_saber_hatschi`
+const HUNTER_JOB = 15; // fixture job 15 `hunter`
+const HEADQUARTERS = 1; // fixture building 1 `headquarters`
+const SAWMILL = 2; // fixture building 2 `sawmill`, any other house
+const HANDCART = 1;
+const OXCART = 2;
+const SHIP_SMALL = 3;
+const CATAPULT = 5;
 const SCOUT_JOB = 27; // fixture job 27 `scout` - the widest eye
 const P0 = 0;
 const P1 = 1;
@@ -73,7 +95,7 @@ function unit(
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   addPerson(sim.world, e, {
     tribe: VIKING,
-    jobType: opts.jobType === undefined ? WOODCUTTER : opts.jobType,
+    jobType: opts.jobType === undefined ? CIVILIST : opts.jobType,
     hunger: fx.fromInt(0),
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
@@ -100,18 +122,134 @@ function rawState(sim: Simulation, player: number, x: number, y: number): number
 }
 
 describe('vision radii - the per-job classification', () => {
-  it('orders the eyes: scout > soldier > building > hunter > civilian', () => {
+  it('reads each trade its own radius, a child the shortest', () => {
     const content = testContent();
     expect(visionRadiusForJob(content, SCOUT_JOB)).toBe(SCOUT_VISION_NODES);
-    expect(visionRadiusForJob(content, 31)).toBe(SOLDIER_VISION_NODES); // first soldier
-    expect(visionRadiusForJob(content, 45)).toBe(SOLDIER_VISION_NODES); // a hero
-    expect(visionRadiusForJob(content, 15)).toBe(HUNTER_VISION_NODES); // hunter
-    expect(visionRadiusForJob(content, WOODCUTTER)).toBe(CIVILIAN_VISION_NODES);
-    expect(visionRadiusForJob(content, null)).toBe(CIVILIAN_VISION_NODES); // jobless / child
-    expect(SCOUT_VISION_NODES).toBeGreaterThan(SOLDIER_VISION_NODES);
-    expect(SOLDIER_VISION_NODES).toBeGreaterThan(HUNTER_VISION_NODES);
-    expect(HUNTER_VISION_NODES).toBeGreaterThan(CIVILIAN_VISION_NODES);
-    expect(BUILDING_VISION_NODES).toBeGreaterThan(HUNTER_VISION_NODES);
+    expect(visionRadiusForJob(content, HERO_JOB)).toBe(HERO_VISION_NODES);
+    expect(visionRadiusForJob(content, SOLDIER_JOB)).toBe(SOLDIER_VISION_NODES);
+    expect(visionRadiusForJob(content, HUNTER_JOB)).toBe(HUNTER_VISION_NODES);
+    expect(visionRadiusForJob(content, CIVILIST)).toBe(CIVILIAN_VISION_NODES);
+    expect(visionRadiusForJob(content, null)).toBe(CIVILIAN_VISION_NODES); // jobless adult or beast
+    expect(visionRadiusForJob(content, CHILD_MALE)).toBe(CHILD_VISION_NODES);
+  });
+});
+
+describe('vision radii - buildings and vehicles', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** A standing (or rising) owned building of `buildingType` on cell (x, 2). */
+  function house(sim: Simulation, x: number, buildingType: number): Entity {
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(2) });
+    sim.world.add(e, Owner, { player: P0 });
+    sim.world.add(e, Building, { buildingType, tribe: VIKING, built: ONE, level: 0 });
+    return e;
+  }
+
+  function vehicle(sim: Simulation, x: number, vehicleType: number): Entity {
+    const e = createVehicle(sim.world, ctxOf(sim), { vehicleType, x: 2 * x, y: 4, tribe: VIKING, owner: P0 });
+    if (e === null) throw new Error(`vehicle type ${vehicleType} not in the fixture`);
+    return e;
+  }
+
+  /** Each eye's radius in the first rebuild, keyed by entity; an entity that is no eye is absent. */
+  function radiiOfFirstRebuild(sim: Simulation): Map<Entity, number> {
+    const stamps = vi.spyOn(FogState.prototype, 'stampEye');
+    sim.run(1);
+    return new Map(stamps.mock.calls.map(([eye, , , , radius]) => [eye, radius]));
+  }
+
+  it('a headquarters sees further than any other house, and a rising site sees nothing', () => {
+    const sim = simOn(FOG_MODE.CLASSIC, 48, 8);
+    const hq = house(sim, 4, HEADQUARTERS);
+    const sawmill = house(sim, 14, SAWMILL);
+    const site = house(sim, 24, SAWMILL);
+    sim.world.add(site, UnderConstruction, { labor: fx.fromInt(0) });
+    const upgrade = house(sim, 34, SAWMILL);
+    sim.world.add(upgrade, UnderConstruction, { labor: fx.fromInt(0) });
+    sim.world.add(upgrade, Upgrading, { savedStock: new Map(), seeded: new Map() });
+    const radii = radiiOfFirstRebuild(sim);
+    expect(radii.get(hq)).toBe(HEADQUARTERS_VISION_NODES);
+    expect(radii.get(sawmill)).toBe(BUILDING_VISION_NODES);
+    expect(radii.has(site)).toBe(false);
+    expect(radii.get(upgrade)).toBe(BUILDING_VISION_NODES); // an upgrade keeps the standing house's sight
+  });
+
+  it('a ship sees furthest, a catapult less, a cart least', () => {
+    const sim = simOn(FOG_MODE.CLASSIC, 48, 8);
+    const ship = vehicle(sim, 4, SHIP_SMALL);
+    const catapult = vehicle(sim, 14, CATAPULT);
+    const handcart = vehicle(sim, 24, HANDCART);
+    const oxcart = vehicle(sim, 34, OXCART);
+    const radii = radiiOfFirstRebuild(sim);
+    expect(radii.get(ship)).toBe(SHIP_VISION_NODES);
+    expect(radii.get(catapult)).toBe(SIEGE_VISION_NODES);
+    expect(radii.get(handcart)).toBe(CART_VISION_NODES);
+    expect(radii.get(oxcart)).toBe(CART_VISION_NODES);
+  });
+});
+
+describe('exploreAround - one look at a point, with no eye behind it', () => {
+  const AT = { x: fx.fromInt(12), y: fx.fromInt(4) };
+
+  it('without fog of war the ground stays in sight', () => {
+    const sim = simOn(FOG_MODE.CLASSIC);
+    sim.run(1);
+    exploreAround(sim.fog, P0, AT, 2);
+    expect(rawState(sim, P0, 12, 4)).toBe(FOG_STATE.VISIBLE);
+    expect(rawState(sim, P0, 13, 4)).toBe(FOG_STATE.VISIBLE); // one cell east is 68 px, the rim of 2 nodes
+    expect(rawState(sim, P0, 14, 4)).toBe(FOG_STATE.UNEXPLORED);
+    sim.run(2 * VISION_CADENCE_TICKS);
+    expect(rawState(sim, P0, 12, 4)).toBe(FOG_STATE.VISIBLE);
+  });
+
+  it('under fog of war the ground shows until the next rebuild, then stays explored', () => {
+    const sim = simOn(FOG_MODE.CLASSIC_FOG_OF_WAR);
+    sim.run(1);
+    const before = sim.fog?.generation;
+    exploreAround(sim.fog, P0, AT, 1);
+    expect(sim.fog?.generation).not.toBe(before);
+    expect(rawState(sim, P0, 12, 4)).toBe(FOG_STATE.VISIBLE);
+    sim.run(VISION_CADENCE_TICKS);
+    expect(rawState(sim, P0, 12, 4)).toBe(FOG_STATE.EXPLORED);
+  });
+
+  it("a loosed arrow explores around its aim for the shooter's owner", () => {
+    const sim = simOn(FOG_MODE.CLASSIC, 48, 8);
+    sim.run(1);
+    const archer = unit(sim, 2, 4, P0);
+    const target = unit(sim, 30, 4, P1);
+    looseProjectile(sim.world, ctxOf(sim), {
+      source: archer,
+      target,
+      player: P0,
+      weapon: {
+        munitionType: 1,
+        speed: 8,
+        hitSelf: false,
+        area: false,
+        damage: { '0': 1 },
+        hitSounds: {},
+        missSounds: {},
+      },
+      weaponMainType: null,
+      cover: null,
+      aim: { x: fx.fromInt(30), y: fx.fromInt(4) },
+    });
+    expect(rawState(sim, P0, 30, 4)).toBe(FOG_STATE.VISIBLE); // the aim's own cell, beyond the archer's eye
+    expect(rawState(sim, P0, 29, 4)).toBe(FOG_STATE.UNEXPLORED);
+  });
+
+  it('explores nothing with fog off or for no player', () => {
+    const off = simOn(FOG_MODE.OFF);
+    off.run(1);
+    exploreAround(off.fog, P0, AT, 2);
+    expect(off.fog?.tryMaskFor(P0)).toBeUndefined();
+    const sim = simOn(FOG_MODE.CLASSIC);
+    sim.run(1);
+    exploreAround(sim.fog, null, AT, 2);
+    exploreAround(sim.fog, 99, AT, 2);
+    expect(sim.fog?.groupsWithMasks()).toEqual([]);
   });
 });
 
@@ -152,15 +290,9 @@ describe('stamp memo - an eye whose footprint did not change writes nothing', ()
     return vi.spyOn(FogState.prototype, 'maskFor').mock;
   }
 
-  /** Twelve signposts of one player in a row, one per two cells: eyes that never move by themselves. */
+  /** Twelve idle civilians of one player in a row, one per two cells: eyes that stay put. */
   function crowd(sim: Simulation): Entity[] {
-    return Array.from({ length: 12 }, (_, i) => {
-      const e = sim.world.create();
-      sim.world.add(e, Position, { x: fx.fromInt(2 * i), y: fx.fromInt(2) });
-      sim.world.add(e, Owner, { player: P0 });
-      sim.world.add(e, Signpost, { links: [] });
-      return e;
-    });
+    return Array.from({ length: 12 }, (_, i) => unit(sim, 2 * i, 2, P0));
   }
 
   it('CLASSIC: still eyes stamp once, and a rebuild stamps only the eye that moved', () => {
@@ -593,7 +725,8 @@ describe('first contact - the vision-driven discovery of other players', () => {
 describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', () => {
   // Geometry shared by the gate tests: attacker at cell (2,2) (node (4,4)), enemy 7 cells east at
   // (9,2) (node (18,4)) - Manhattan node distance 14, INSIDE the 16-node combat sight radius but
-  // 476 px east, OUTSIDE the civilian 408 px (12-node) vision ellipse. Without fog the drive fires;
+  // 476 px east, OUTSIDE the attacker's eye: job 1 is an age class to the engine (5 nodes), and even a
+  // civilian's 408 px (12-node) ellipse falls short. Without fog the drive fires;
   // under classic fog the enemy is unseen and it must not.
   const ATTACKER = { x: 2, y: 2 } as const;
   const ENEMY = { x: 9, y: 2 } as const;
@@ -615,7 +748,10 @@ describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', 
       [FOG_MODE.OFF, true],
     ] as const) {
       const sim = simOn(mode);
-      const attacker = unit(sim, ATTACKER.x, ATTACKER.y, P0, { mode: MILITARY_MODE.ATTACK });
+      const attacker = unit(sim, ATTACKER.x, ATTACKER.y, P0, {
+        jobType: WOODCUTTER,
+        mode: MILITARY_MODE.ATTACK,
+      });
       unit(sim, ENEMY.x, ENEMY.y, P1);
       sim.run(1);
       expect(sim.world.has(attacker, Engagement)).toBe(engages);
@@ -624,7 +760,10 @@ describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', 
 
   it('an explicit attack order still chases a fog-hidden target (orders are ungated)', () => {
     const sim = simOn(FOG_MODE.CLASSIC);
-    const attacker = unit(sim, ATTACKER.x, ATTACKER.y, P0, { mode: MILITARY_MODE.ATTACK });
+    const attacker = unit(sim, ATTACKER.x, ATTACKER.y, P0, {
+      jobType: WOODCUTTER,
+      mode: MILITARY_MODE.ATTACK,
+    });
     const enemy = unit(sim, ENEMY.x, ENEMY.y, P1);
     sim.enqueueSetup({ kind: 'attackUnit', entity: attacker, target: enemy });
     sim.run(1);

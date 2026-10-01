@@ -1,7 +1,7 @@
 import { contentFingerprint } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { FOG_MODE, Owner, Position, Signpost } from '../../src/components/index.js';
-import { fx } from '../../src/core/fixed.js';
+import { Building, FOG_MODE, Owner, Position } from '../../src/components/index.js';
+import { fx, ONE } from '../../src/core/fixed.js';
 import { defineComponent } from '../../src/ecs/world.js';
 import {
   adminCommand,
@@ -20,6 +20,8 @@ import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
 const P0 = 0;
+const VIKING = 1;
+const SAWMILL = 2; // fixture building 2, a standing house as the fog eye
 
 function sectionIds(save: SaveGame): string[] {
   return save.sections.map((s) => s.id);
@@ -41,14 +43,14 @@ function sectionOf<Id extends SaveGameSection['id']>(
   return found;
 }
 
-/** A mapped run with fog on, a standing fog eye, and a queued command - every section populated. */
+/** A mapped run with fog on, a standing house as fog eye, and a queued command - every section populated. */
 function populatedSim(): Simulation {
   const sim = new Simulation({ seed: 7, content: testContent(), map: grassCellMap(8, 8) });
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(4), y: fx.fromInt(4) });
   sim.world.add(e, Owner, { player: P0 });
-  sim.world.add(e, Signpost, { links: [] });
+  sim.world.add(e, Building, { buildingType: SAWMILL, tribe: VIKING, built: ONE, level: 0 });
   sim.run(12);
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   return sim;

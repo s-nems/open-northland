@@ -36,7 +36,7 @@ import {
   startVehicleDrive,
   vehicleRestBlocks,
 } from '../vehicles/movement.js';
-import { playerSeesEntity } from '../vision/index.js';
+import { exploreAround, playerSeesEntity, SIEGE_SHOT_SIGHT_NODES } from '../vision/index.js';
 import type { CombatPass } from './pass.js';
 import { mapPointDistance, shotFlightTicks, shotLandDelay } from './shot-aim.js';
 import { combatTargetNode } from './target-node.js';
@@ -406,6 +406,8 @@ function fire(
     landTick: ctx.tick + shotLandDelay(shotFlightTicks(mapPointDistance(from, impact), weapon.speed)),
     impact: { smokeTicks: weapon.impactSmokeTicks ?? null },
   });
+  // Original behavior: the crew sees where its stone comes down.
+  exploreAround(ctx.fog, ownerOf(world, e), impact, SIEGE_SHOT_SIGHT_NODES);
   ctx.events.emit({
     kind: 'projectileLaunched',
     projectile: shot,

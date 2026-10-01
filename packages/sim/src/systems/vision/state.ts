@@ -291,6 +291,13 @@ export class FogState {
    */
   stampEye(eye: Entity, player: number, cx: number, cy: number, radius: number): boolean {
     if (this.memoStamps && this.eyeStampCovered(eye, player, cx, cy, radius)) return false;
+    return this.stampSight(player, cx, cy, radius);
+  }
+
+  /** Stamp `radius` nodes of sight around cell (cx, cy) into `player`'s group mask with no eye behind it,
+   *  merging the touched rect into the may-hold-VISIBLE box. Returns whether it raised any byte. Only
+   *  raises bytes, so every memoized eye footprint stays covered. */
+  stampSight(player: number, cx: number, cy: number, radius: number): boolean {
     const rect = stampVision(
       this.maskFor(player),
       this.cellsWide,

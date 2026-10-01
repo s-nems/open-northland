@@ -31,6 +31,7 @@ import type { SystemContext } from '../../../../../context.js';
 import { weaponClassHits } from '../../../../../progression/index.js';
 import { isHeroJob, WEAPON_MAIN_TYPE } from '../../../../../readviews/index.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
+import { exploreAround, SHOT_SIGHT_NODES } from '../../../../../vision/index.js';
 
 type RangedSwing = NonNullable<Extract<AtomicEffect, { kind: 'attack' }>['projectile']>;
 
@@ -145,6 +146,8 @@ export function looseProjectile(world: World, ctx: SystemContext, shot: LooseSho
     landTick: ctx.tick + shotLandDelay(shotFlightTicks(mapPointDistance(from, shot.aim), shot.weapon.speed)),
     impact: null,
   });
+  // Original behavior: a shooter sees where its shot is aimed.
+  exploreAround(ctx.fog, shot.player, shot.aim, SHOT_SIGHT_NODES);
   ctx.events.emit({
     kind: 'projectileLaunched',
     projectile: p,

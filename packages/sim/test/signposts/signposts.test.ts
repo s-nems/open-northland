@@ -32,7 +32,7 @@ import { stampPost } from './support.js';
  * The scout's signpost (the original's guidepost): erected by the one-shot build-guide hammer swing
  * (jobtypes.ini scout `allowatomic 43`), instant and free; blocks a work flag and a rival's building on its
  * cell but never movement; keeps the original's minimum spacing from same-player posts and links to those the
- * ground joins it to inside the link range; watches an authored fog circle as a standing eye.
+ * ground joins it to inside the link range; sees nothing under fog.
  */
 
 const VIKING = 1;
@@ -305,8 +305,8 @@ describe('signpostNetwork - connected groups', () => {
   });
 });
 
-describe('signpost fog vision - the standing eye', () => {
-  it('a standing signpost keeps its circle VISIBLE under fog of war with no unit nearby', () => {
+describe('signpost fog vision - a post is no eye', () => {
+  it('a standing signpost with no unit nearby leaves its ground unseen under fog of war', () => {
     const sim = freshSim(64, 16);
     sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
     const e = sim.world.create();
@@ -314,8 +314,6 @@ describe('signpost fog vision - the standing eye', () => {
     sim.world.add(e, Owner, { player: P0 });
     sim.world.add(e, Signpost, { links: [] });
     for (let t = 0; t < 12; t++) sim.step(); // past a couple of vision cadences
-    const view = sim.fogView(P0);
-    expect(view?.stateAt(8, 8)).toBe(FOG_STATE.VISIBLE); // the post's own cell
-    expect(view?.stateAt(60, 8)).toBe(FOG_STATE.EXPLORED); // far ground stays known-terrain grey
+    expect(sim.fogView(P0)?.stateAt(8, 8)).toBe(FOG_STATE.EXPLORED); // known-terrain grey, not in sight
   });
 });

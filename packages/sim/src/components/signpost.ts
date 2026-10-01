@@ -61,6 +61,3 @@ export const SIGNPOST_SPACING_NODES = 16;
 /** How far a building placed over its owner's signpost may push the post, in the work-flag search's ring
  *  distance from where it stood. Authored. Past it the post falls rather than jumping to far-off ground. */
 export const SIGNPOST_DISPLACE_RADIUS_NODES = 16;
-
-/** The post's standing fog eye, in nodes on the world metric. Authored, no original counterpart. */
-export const SIGNPOST_VISION_NODES = 24;

@@ -1,5 +1,5 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   addPerson,
   Building,
@@ -7,6 +7,7 @@ import {
   diplomacyStance,
   Engagement,
   Equipment,
+  FOG_MODE,
   Health,
   Owner,
   Palisade,
@@ -52,6 +53,7 @@ import { vehiclesGone } from '../../src/systems/missions/goals/casualties.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../src/systems/progression/index.js';
 import { ARMOR_MATERIAL, MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
+import { FogState, SIEGE_SHOT_SIGHT_NODES } from '../../src/systems/vision/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { routeAhead } from '../fixtures/vehicle-route.js';
@@ -375,6 +377,30 @@ describe('catapult stances and scans', () => {
     // The scan acquires on tick 1 and the clip starts there; its event tick is one later.
     expect(launchTicks[0]).toBe(1 + VEHICLE_ATTACK_EVENT_TICK);
     expect((launchTicks[1] ?? 0) - (launchTicks[0] ?? 0)).toBe(VEHICLE_ATTACK_CLIP_TICKS);
+  });
+});
+
+describe('the stone explores where it comes down', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("explores around the stone's landing for the catapult's owner as it is loosed", () => {
+    const s = sim(grass(40, 10));
+    s.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
+    catapultAt(s, 6, 8, P1);
+    houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    const looks = vi.spyOn(FogState.prototype, 'stampSight');
+    let launched: { hx: number; hy: number } | null = null;
+    for (let i = 0; i < VEHICLE_ATTACK_CLIP_TICKS + 10 && launched === null; i++) {
+      s.step();
+      for (const ev of s.events.current()) {
+        if (ev.kind !== 'projectileLaunched') continue;
+        const at = s.world.get(ev.projectile, Projectile);
+        launched = nodeOfPosition(at.aimX, at.aimY);
+      }
+    }
+    if (launched === null) throw new Error('the catapult never fired');
+    const stones = looks.mock.calls.filter(([, , , radius]) => radius === SIEGE_SHOT_SIGHT_NODES);
+    expect(stones).toEqual([[P1, launched.hx >> 1, launched.hy >> 1, SIEGE_SHOT_SIGHT_NODES]]);
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { FOG_MODE, Owner, Position, Signpost } from '../../src/components/index.js';
-import { fx } from '../../src/core/fixed.js';
+import { Building, FOG_MODE, Owner, Position } from '../../src/components/index.js';
+import { fx, ONE } from '../../src/core/fixed.js';
 import {
   exportSaveGame,
   parseSaveGame,
@@ -12,6 +12,8 @@ import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
 const P0 = 0;
+const VIKING = 1;
+const SAWMILL = 2; // fixture building 2, a standing house as the fog eye
 
 type Doc = { header: Record<string, unknown>; sections: Array<Record<string, unknown>> };
 
@@ -22,7 +24,7 @@ function populatedDoc(): Doc {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(4), y: fx.fromInt(4) });
   sim.world.add(e, Owner, { player: P0 });
-  sim.world.add(e, Signpost, { links: [] });
+  sim.world.add(e, Building, { buildingType: SAWMILL, tribe: VIKING, built: ONE, level: 0 });
   sim.run(6);
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   return JSON.parse(serializeSaveGame(exportSaveGame(sim, { mapId: 'm' }))) as Doc;

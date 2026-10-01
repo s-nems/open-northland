@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   addPerson,
   Building,
@@ -9,6 +9,7 @@ import {
   Equipment,
   type EquipmentSlot,
   FishSwarm,
+  FOG_MODE,
   JobAssignment,
   MISC_EQUIP_SLOTS,
   MoveGoal,
@@ -33,11 +34,13 @@ import {
 import { syncWorkFlagToJob } from '../../src/systems/economy/work-flag.js';
 import { wearStepOf } from '../../src/systems/equipment/index.js';
 import { assignWorker, setProductionCount, unassignWorker } from '../../src/systems/orders/index.js';
+import { CATCH_SIGHT_NODES, FogState } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
 
 const FISHER = 22;
+const OWNER = 0;
 const FISH = 122;
 const FOOD = 3;
 const TOOL_IRON = 12; // the fixture's iron tool: work factor 175
@@ -95,6 +98,8 @@ function fisherAt(sim: Simulation, hx: number, hy: number): Entity {
 }
 
 describe('fishing', () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it('plants a movable catch-delivery flag for a land fisher', () => {
     const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(12, 6) });
     const fisher = fisherAt(sim, 4, 3);
@@ -271,6 +276,26 @@ describe('fishing', () => {
     );
     expect(sim.world.has(fisher, Carrying)).toBe(false);
     expect(banked).toBe(1);
+  });
+
+  it("explores around the swarm a catch came from, for the fisher's owner", () => {
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(12, 6) });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [swarm] = addFishSwarms(sim.world, terrain, [{ hx: 5, hy: 3, count: 1, continent: 7 }]);
+    if (swarm === undefined) throw new Error('fish swarm did not spawn');
+    const shore = sim.world.get(swarm, FishSwarm).shore;
+    if (shore === null) throw new Error('fish swarm has no shore');
+    const c = terrain.coordsOf(shore);
+    const fisher = fisherAt(sim, c.x, c.y);
+    sim.world.add(fisher, Owner, { player: OWNER });
+    syncWorkFlagToJob(sim.world, ctxOf(sim), fisher, FISHER);
+    const looks = vi.spyOn(FogState.prototype, 'stampSight');
+    for (let tick = 0; tick < 60 && !sim.world.has(fisher, Carrying); tick++) sim.step();
+    expect(sim.world.has(fisher, Carrying)).toBe(true);
+    const catches = looks.mock.calls.filter(([, , , radius]) => radius === CATCH_SIGHT_NODES);
+    expect(catches).toEqual([[OWNER, 5 >> 1, 3 >> 1, CATCH_SIGHT_NODES]]);
   });
 
   it('uses fisher experience to reduce failed casts, down to one successful attempt', () => {

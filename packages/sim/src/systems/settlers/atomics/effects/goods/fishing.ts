@@ -3,6 +3,8 @@ import {
   Carrying,
   type CurrentAtomic,
   FishSwarm,
+  ownerOf,
+  Position,
   Settler,
   spendProductionCount,
 } from '../../../../../components/index.js';
@@ -18,6 +20,7 @@ import { wearWornTool } from '../../../../equipment/index.js';
 import { grantWorkExperience } from '../../../../progression/index.js';
 import { atomicDuration } from '../../../../readviews/animations.js';
 import { edibleGoodFormOf } from '../../../../readviews/food.js';
+import { CATCH_SIGHT_NODES, exploreAround } from '../../../../vision/index.js';
 
 type RunningAtomic = NonNullable<(typeof CurrentAtomic)['__value']>;
 type FishingEffect = Extract<RunningAtomic['effect'], { kind: 'fish' }>;
@@ -66,6 +69,9 @@ export function advanceFishingAtomic(
     world.add(fisher, Carrying, { goodType: edibleGoodFormOf(ctx.content, effect.goodType), amount: 1 });
     grantWorkExperience(world, ctx, fisher, effect.goodType, 1);
     spendProductionCount(world, fisher, effect.goodType, 1);
+    // Original behavior: a catch explores around the swarm it came from.
+    const swarmAt = world.tryGet(caughtFrom, Position);
+    if (swarmAt !== undefined) exploreAround(ctx.fog, ownerOf(world, fisher), swarmAt, CATCH_SIGHT_NODES);
   }
   transition(world, ctx, fisher, atomic, caught ? FISH_CAUGHT_ATOMIC : FISH_FAILED_ATOMIC, {
     ...effect,

@@ -33,8 +33,8 @@ Seven records, ids 1..6 (0 is "none"). `logicdefines.inc` names them `CART_HAND 
 
 Hit points (table indexed by type): ship small 5000, ship big 5000, catapult 3000, everything
 else 1000; the pipeline stamps the table onto `VehicleType.hitpoints`. Vision: 15 default, ship
-small 20, ship big 25, catapult 20 (Open Northland still gives every vehicle the
-civilian radius, *open*). Vehicles have no armour.
+small 20, ship big 25, catapult 20 (Open Northland gives both ships 25 by owner ruling).
+Vehicles have no armour.
 
 ## Construction
 
