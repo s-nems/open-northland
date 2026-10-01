@@ -17,10 +17,11 @@ export const SPACING_PROBES: readonly (readonly [number, number])[] = [
 
 /** Whether any node closer than the spacing to `node` (per {@link SPACING_PROBES}) is in `held`. */
 export function nearHeld(terrain: TerrainGraph, node: NodeId, held: ReadonlySet<NodeId>): boolean {
-  const at = terrain.coordsOf(node);
+  const x = terrain.xOf(node);
+  const y = terrain.yOf(node);
   for (const [dx, dy] of SPACING_PROBES) {
-    if (!terrain.inBounds(at.x + dx, at.y + dy)) continue;
-    if (held.has(terrain.nodeAt(at.x + dx, at.y + dy))) return true;
+    if (!terrain.inBounds(x + dx, y + dy)) continue;
+    if (held.has(terrain.nodeAt(x + dx, y + dy))) return true;
   }
   return false;
 }

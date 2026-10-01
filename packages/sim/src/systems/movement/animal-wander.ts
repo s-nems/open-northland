@@ -48,18 +48,47 @@ const UNSTACK_OFFSETS: readonly (readonly [number, number])[] = [
   [0, -2],
 ];
 
+/** Marks a node no keeper holds in {@link Occupancy.keeperByNode}, which stores ids one-based. */
+const NO_KEEPER = 0;
+
 /** This tick's field occupancy: the elected keeper per node, and the sidestep targets already claimed. */
 interface Occupancy {
-  readonly keeperByNode: Map<NodeId, Entity>;
+  /** Per terrain node, its keeper's id plus one. Kept across ticks: a node array costs no allocation,
+   *  where a per-tick map rehashed as it grew. */
+  readonly keeperByNode: Int32Array;
+  /** The nodes the previous tick wrote, up to `keptCount`, cleared before the next election. */
+  readonly kept: NodeId[];
+  keptCount: number;
   readonly taken: Set<NodeId>;
+}
+
+const occupancyByTerrain = new WeakMap<TerrainGraph, Occupancy>();
+
+/** `terrain`'s occupancy with every keeper and claim of the previous tick cleared. */
+function freshOccupancy(terrain: TerrainGraph): Occupancy {
+  let fields = occupancyByTerrain.get(terrain);
+  if (fields === undefined) {
+    fields = { keeperByNode: new Int32Array(terrain.nodeCount), kept: [], keptCount: 0, taken: new Set() };
+    occupancyByTerrain.set(terrain, fields);
+  }
+  for (let i = 0; i < fields.keptCount; i++) fields.keeperByNode[fields.kept[i] ?? 0] = NO_KEEPER;
+  fields.keptCount = 0;
+  fields.taken.clear();
+  return fields;
+}
+
+function keeperAt(fields: Occupancy, node: NodeId): Entity | undefined {
+  const stored = fields.keeperByNode[node] ?? NO_KEEPER;
+  return stored === NO_KEEPER ? undefined : ((stored - 1) as Entity);
 }
 
 /** The keeper holding `node` or any node within the stander spacing of it, or undefined when free. */
 function keeperNear(terrain: TerrainGraph, fields: Occupancy, node: NodeId): Entity | undefined {
-  const at = terrain.coordsOf(node);
+  const x = terrain.xOf(node);
+  const y = terrain.yOf(node);
   for (const [dx, dy] of SPACING_PROBES) {
-    if (!terrain.inBounds(at.x + dx, at.y + dy)) continue;
-    const keeper = fields.keeperByNode.get(terrain.nodeAt(at.x + dx, at.y + dy));
+    if (!terrain.inBounds(x + dx, y + dy)) continue;
+    const keeper = keeperAt(fields, terrain.nodeAt(x + dx, y + dy));
     if (keeper !== undefined) return keeper;
   }
   return undefined;
@@ -104,11 +133,13 @@ export const animalWanderSystem: System = (world, ctx) => {
 
   // The first stander in canonical order to reach a field becomes its keeper. A Resting animal is inside
   // a building, off the field.
-  const fields: Occupancy = { keeperByNode: new Map(), taken: new Set() };
+  const fields = freshOccupancy(terrain);
   for (const e of animals) {
     if (world.has(e, Resting) || isTravelling(world, e)) continue;
     const node = entityNode(world, terrain, e);
-    if (keeperNear(terrain, fields, node) === undefined) fields.keeperByNode.set(node, e);
+    if (keeperNear(terrain, fields, node) !== undefined) continue;
+    fields.keeperByNode[node] = e + 1;
+    fields.kept[fields.keptCount++] = node;
   }
 
   for (const e of animals) {
@@ -125,7 +156,7 @@ export const animalWanderSystem: System = (world, ctx) => {
     // spot with the leash ignored, since getting off a shared field beats staying strictly inside the
     // territory. The sidestep draws no rng; the `continue` drops this animal's cadence roll for the tick.
     const here = entityNode(world, terrain, e);
-    if (fields.keeperByNode.get(here) !== e) {
+    if (keeperAt(fields, here) !== e) {
       blocked ??= dynamicBlockOverlay(world, ctx, terrain);
       const spot = sidestepTarget(terrain, fields, blocked, here);
       if (spot !== null) world.add(e, MoveGoal, { cell: spot });

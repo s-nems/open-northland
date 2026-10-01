@@ -64,7 +64,11 @@ export function worldX(x: Fixed, y: Fixed): Fixed {
  * this is a leg-length metric, not a map-scale distance query.
  */
 export function worldDistance(ax: Fixed, ay: Fixed, bx: Fixed, by: Fixed): Fixed {
-  const dwx = fx.sub(worldX(bx, by), worldX(ax, ay));
-  const dwy = fx.mul(fx.sub(by, ay), ROW_STEP);
+  return worldDistanceOfDelta(fx.sub(worldX(bx, by), worldX(ax, ay)), fx.sub(by, ay));
+}
+
+/** {@link worldDistance} from a world X delta and a grid row delta, for a caller that already holds both. */
+export function worldDistanceOfDelta(dwx: Fixed, dRow: Fixed): Fixed {
+  const dwy = fx.mul(dRow, ROW_STEP);
   return fx.isqrt(fx.add(fx.mul(dwx, dwx), fx.mul(dwy, dwy)));
 }

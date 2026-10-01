@@ -1,5 +1,5 @@
 import { type Fixed, fx, ULP, ZERO } from '../../core/fixed.js';
-import { ROW_STEP, staggerShift, worldDistance, worldX } from '../../nav/world-metric.js';
+import { ROW_STEP, staggerShift, worldDistanceOfDelta, worldX } from '../../nav/world-metric.js';
 
 /**
  * Advance `p` straight toward `target` by at most `speed`, snapping onto `target` and returning `true` once
@@ -15,9 +15,10 @@ export function stepTowardPoint(
   target: { x: Fixed; y: Fixed },
   speed: Fixed,
 ): boolean {
-  const dx = fx.sub(worldX(target.x, target.y), worldX(p.x, p.y));
+  const fromWX = worldX(p.x, p.y);
+  const dx = fx.sub(worldX(target.x, target.y), fromWX);
   const dy = fx.sub(target.y, p.y);
-  const dist = worldDistance(p.x, p.y, target.x, target.y);
+  const dist = worldDistanceOfDelta(dx, dy);
   if (dist <= speed) {
     // Snap exactly onto the waypoint so no drift accumulates across legs.
     p.x = target.x;
@@ -44,7 +45,7 @@ export function stepTowardPoint(
   // Interpolate the straight world-space line, then remove the row stagger at the new y. Grid-space
   // interpolation bends at a row-parity cusp and can visibly speed up or sidestep on diagonal legs.
   const nextY = fx.add(p.y, stepY);
-  p.x = fx.sub(fx.add(worldX(p.x, p.y), stepX), staggerShift(nextY));
+  p.x = fx.sub(fx.add(fromWX, stepX), staggerShift(nextY));
   p.y = nextY;
   return false;
 }
@@ -58,14 +59,15 @@ export function writeLegHeading(
   target: { x: Fixed; y: Fixed },
   out: { hx: Fixed; hy: Fixed },
 ): void {
-  const dist = worldDistance(p.x, p.y, target.x, target.y);
+  const dwx = fx.sub(worldX(target.x, target.y), worldX(p.x, p.y));
+  const dy = fx.sub(target.y, p.y);
+  const dist = worldDistanceOfDelta(dwx, dy);
   if (dist <= ZERO) {
     out.hx = ZERO;
     out.hy = ZERO;
     return;
   }
-  const dwx = fx.sub(worldX(target.x, target.y), worldX(p.x, p.y));
-  const dwy = fx.mul(fx.sub(target.y, p.y), ROW_STEP);
+  const dwy = fx.mul(dy, ROW_STEP);
   out.hx = fx.div(dwx, dist);
   out.hy = fx.div(dwy, dist);
 }
