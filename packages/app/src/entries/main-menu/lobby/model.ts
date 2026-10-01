@@ -9,7 +9,12 @@ import {
 } from '@open-northland/lockstep';
 import { FOG_MODE_BY_NAME, type FogModeName } from '../../../game/fog.js';
 import { onOffParam, weatherModeParam } from '../../../game/session-rules.js';
-import { DEFAULT_SESSION_SPEED, seatMode, sessionSearch } from '../../../game/session-url.js';
+import {
+  DEFAULT_SESSION_SPEED,
+  isMapComputerSeat,
+  seatMode,
+  sessionSearch,
+} from '../../../game/session-url.js';
 import { formatSearch } from '../../../view/params.js';
 import {
   absentSeats,
@@ -90,13 +95,15 @@ export function lobbySlotRows(
       vacantMode: state.vacantModes.get(slot.player) ?? authoredVacantMode(slot),
       tribe: state.tribes.get(slot.player) ?? slot.tribeId,
       offersTribe: offersTribeChoice(slot),
-      difficulty: playsAtDifficulty(slot, state) ? slotDifficulty(state, slot.player) : null,
+      difficulty: playsAtDifficulty(slot, state) ? slotDifficulty(state, slot) : null,
     }));
 }
 
-/** Whether the lobby hands `slot` to the computer at a level. */
+/** Whether the computer plays `slot` at a level: the map's own computer seat always, an offered seat
+ *  once the lobby hands it over. */
 function playsAtDifficulty(slot: MapPlayerSlot, state: RosterState): boolean {
-  return state.seat !== null && offersDifficulty(slot) && aiSeats(state, [slot]).length > 0;
+  if (!offersDifficulty(slot)) return false;
+  return isMapComputerSeat(slot) || (state.seat !== null && aiSeats(state, [slot]).length > 0);
 }
 
 /**
@@ -120,8 +127,7 @@ export function lobbySession(
     const tribe = state.tribes.get(slot.player);
     const retribed = tribe !== undefined && tribe !== slot.tribeId && offersTribeChoice(slot);
     const mode = seatMode(slot, localSeat, lists);
-    const difficulty =
-      lists.ai.has(slot.player) && offersDifficulty(slot) ? slotDifficulty(state, slot.player) : undefined;
+    const difficulty = mode === 'ai' && offersDifficulty(slot) ? slotDifficulty(state, slot) : undefined;
     return {
       player: slot.player,
       mode,

@@ -7,8 +7,8 @@ import { DEFAULT_SESSION_SPEED, drawSessionSeed, seedParam } from '../../game/se
 import { floatParam } from '../../view/params.js';
 import {
   authoredVacantMode,
-  DEFAULT_LOBBY_AI_DIFFICULTY,
   offersDifficulty,
+  startingDifficulty,
   vacantOffers,
 } from '../main-menu/lobby/roster-state.js';
 
@@ -36,7 +36,7 @@ export async function roomCreation(params: URLSearchParams, mapId: string): Prom
       offers: vacantOffers(slot),
       color: slot.colorId,
       authoredTribe: slot.tribeId,
-      ...(offersDifficulty(slot) ? { difficulty: DEFAULT_LOBBY_AI_DIFFICULTY } : {}),
+      ...(offersDifficulty(slot) ? { difficulty: startingDifficulty(slot) } : {}),
     })),
   };
 }

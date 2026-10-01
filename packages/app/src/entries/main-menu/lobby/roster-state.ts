@@ -1,5 +1,6 @@
 import { isCivilizationTribe, type MapsIndexPlayerSlot } from '@open-northland/data';
 import type { AiDifficulty, LocalSeat } from '@open-northland/lockstep';
+import { isMapComputerSeat } from '../../../game/session-url.js';
 
 /**
  * Pure roster state behind the lobby screen: seats, colours, civilizations and vacant modes over the slots
@@ -20,6 +21,15 @@ export const DEFAULT_LOBBY_AI_DIFFICULTY: AiDifficulty = 'medium';
 
 /** How hard a saved world's computer seat plays when the save names no level: `setPlayerAi`'s own. */
 export const SAVED_WORLD_AI_DIFFICULTY: AiDifficulty = 'hard';
+
+/** How hard the map's own computer seat plays until someone picks a level: `setPlayerAi`'s own, which it
+ *  played before the lobby offered one. */
+export const MAP_COMPUTER_AI_DIFFICULTY: AiDifficulty = 'hard';
+
+/** The level `slot` starts at in a fresh lobby or room. */
+export function startingDifficulty(slot: MapPlayerSlot): AiDifficulty {
+  return isMapComputerSeat(slot) ? MAP_COMPUTER_AI_DIFFICULTY : DEFAULT_LOBBY_AI_DIFFICULTY;
+}
 
 /** What the lobby lets a person claim, which is what the session then plays. */
 export type SeatChoice = LocalSeat;
@@ -45,10 +55,12 @@ export function offersTribeChoice(slot: MapPlayerSlot): boolean {
   return isCivilizationTribe(slot.tribeId);
 }
 
-/** A free seat of a civilization, which the computer may play at a level; a monster seat runs no
- *  strategic AI, and the map's own computer seats are its script's camps. */
+/** A free seat of a civilization, or the map's own computer seat of one, which the computer may play at
+ *  a level; a monster seat runs no strategic AI. */
 export function offersDifficulty(slot: MapPlayerSlot): boolean {
-  return slot.claimable && !slot.hidden && slot.aiAllowed && offersTribeChoice(slot);
+  return (
+    (slot.claimable || isMapComputerSeat(slot)) && !slot.hidden && slot.aiAllowed && offersTribeChoice(slot)
+  );
 }
 
 /** False for an all-AI roster, where the menu must not gate Start on a seat that cannot exist. */
@@ -66,7 +78,7 @@ export interface RosterState {
   readonly tribes: ReadonlyMap<number, number>;
   /** Per-slot vacant mode, initialised from the authored type. */
   readonly vacantModes: ReadonlyMap<number, VacantMode>;
-  /** The level picked per slot; an unpicked computer seat plays {@link DEFAULT_LOBBY_AI_DIFFICULTY}. */
+  /** The level picked per slot; an unpicked computer seat plays its {@link startingDifficulty}. */
   readonly difficulties: ReadonlyMap<number, AiDifficulty>;
 }
 
@@ -104,8 +116,8 @@ export function setSlotDifficulty(state: RosterState, slot: number, difficulty: 
 }
 
 /** How hard `slot` plays should the computer take it. */
-export function slotDifficulty(state: RosterState, slot: number): AiDifficulty {
-  return state.difficulties.get(slot) ?? DEFAULT_LOBBY_AI_DIFFICULTY;
+export function slotDifficulty(state: RosterState, slot: MapPlayerSlot): AiDifficulty {
+  return state.difficulties.get(slot.player) ?? startingDifficulty(slot);
 }
 
 /** Real maps author duplicate colours freely, so "worn" is always relative to the asking slot. */

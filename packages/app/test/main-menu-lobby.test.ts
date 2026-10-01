@@ -245,19 +245,24 @@ describe('lobby computer levels', () => {
     slot(3),
   ];
 
-  it('offers a level only on a free seat handed to the computer, medium until picked', () => {
+  it("offers a level on a free seat handed to the computer, medium until picked, and on the map's own computer seat, hard until picked", () => {
     const state = initialLobbyState(players);
-    // Seat 1 plays as computer, seat 2 is a monster tribe and seat 3 is the map's own camp.
-    expect(lobbySlotRows(players, state).map((row) => row.difficulty)).toEqual([null, 'medium', null, null]);
+    // Seat 1 plays as computer, seat 2 is a monster tribe and seat 3 is the map's own computer seat.
+    expect(lobbySlotRows(players, state).map((row) => row.difficulty)).toEqual([
+      null,
+      'medium',
+      null,
+      'hard',
+    ]);
     expect(lobbySlotRows(players, setVacantMode(state, 1, 'idle'))[1]?.difficulty).toBeNull();
   });
 
-  it('carries the picked level from the lobby to the launched session', () => {
-    const state = setSlotDifficulty(initialLobbyState(players), 1, 'easy');
+  it('carries the picked levels from the lobby to the launched session', () => {
+    const state = setSlotDifficulty(setSlotDifficulty(initialLobbyState(players), 1, 'easy'), 3, 'medium');
     const session = lobbySession('zatoka', state, players, OPTIONS, SEED);
-    expect(session.seats.map((seat) => seat.difficulty)).toEqual([undefined, 'easy', undefined, undefined]);
+    expect(session.seats.map((seat) => seat.difficulty)).toEqual([undefined, 'easy', undefined, 'medium']);
     const entry = new URLSearchParams(lobbyStartEntry('zatoka', state, players, OPTIONS, SEED));
-    expect(entry.get('difficulty')).toBe('1:easy');
+    expect(entry.get('difficulty')).toBe('1:easy,3:medium');
     expect(mapSession(entry, players)).toEqual(session);
   });
 });
