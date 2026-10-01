@@ -316,9 +316,10 @@ export class FogState {
    *  longer eyes). */
   endStampPass(): void {
     if (!this.memoStamps) return;
-    for (const [eye, stamp] of this.eyeStamps) {
-      if (stamp.pass !== this.stampPass) this.eyeStamps.delete(eye);
-    }
+    // `forEach`, not `for...of`: an entry iterator allocates a pair per eye.
+    this.eyeStamps.forEach((stamp, eye, stamps) => {
+      if (stamp.pass !== this.stampPass) stamps.delete(eye);
+    });
   }
 
   /**

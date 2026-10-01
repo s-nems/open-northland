@@ -1,6 +1,6 @@
 import { FOG_MODE, type FogMode, fogSettings, hasMetContact, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import { FOG_STATE, type FogState } from './state.js';
 
 /** The cell holding half-cell node (hx, hy): cell (c, r) owns the 2×2 node block (2c..2c+1, 2r..2r+1).
@@ -87,6 +87,5 @@ export function playerSeesEntity(
   if (fog === undefined || fog.activeMode === FOG_MODE.OFF) return true;
   const p = world.tryGet(target, Position);
   if (p === undefined) return true;
-  const n = nodeOfPosition(p.x, p.y);
-  return playerSeesNode(fog, player, n.hx, n.hy);
+  return playerSeesNode(fog, player, nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
 }

@@ -19,7 +19,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { Fixed } from '../../core/fixed.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
 import type { System } from '../context.js';
 import { isNonWorkingAge } from '../lifecycle/ageclass.js';
 import { SCOUT_EXPERIENCE_TYPE, scoutVisionBonusNodes } from '../progression/index.js';
@@ -159,8 +159,7 @@ export const visionSystem: System = (world, ctx) => {
       const radius = visionRadiusOf(world, ctx.content, e);
       if (radius === null) continue;
       const p = world.get(e, Position);
-      const n = nodeOfPosition(p.x, p.y);
-      const { cx, cy } = cellOfNode(n.hx, n.hy);
+      const { cx, cy } = cellOfNode(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
       if (fog.stampEye(e, world.get(e, Owner).player, cx, cy, radius)) changed = true;
     }
   }
@@ -196,8 +195,7 @@ function meetOwnerOf(world: World, fog: FogState, viewerBits: readonly ViewerBit
   const ownerBit = 1 << owner;
   if (viewerBits.every((v) => v.viewer === owner || (v.bits & ownerBit) !== 0)) return;
   const p = world.get(e, Position);
-  const n = nodeOfPosition(p.x, p.y);
-  const { cx, cy } = cellOfNode(n.hx, n.hy);
+  const { cx, cy } = cellOfNode(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
   for (const v of viewerBits) {
     if (v.viewer === owner || (v.bits & ownerBit) !== 0) continue;
     if (fog.stateAt(v.viewer, cx, cy) >= FOG_STATE.EXPLORED) {
