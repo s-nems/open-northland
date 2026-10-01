@@ -147,10 +147,12 @@ describe('buildingBobRefsByType', () => {
   it('sizes the skin slots so every type cycles its own skins exactly', () => {
     const three = ['a', 'b', 'c'].map((paletteName) => bobRow(13, 1, { paletteName }));
     const two = ['house01', 'house02'].map((paletteName) => bobRow(12, 60, { paletteName }));
-    expect(skinSlotCount([bobRow(11, 91)], 1)).toBe(1);
-    expect(skinSlotCount([...two, bobRow(11, 91)], 1)).toBe(2);
-    expect(skinSlotCount([...two, ...three], 1)).toBe(6);
-    expect(skinSlotCount([...two, ...three], 2)).toBe(1);
+    expect(skinSlotCount([[bobRow(11, 91)]], 1)).toBe(1);
+    expect(skinSlotCount([[...two, bobRow(11, 91)]], 1)).toBe(2);
+    expect(skinSlotCount([[...two, ...three]], 1)).toBe(6);
+    expect(skinSlotCount([[...two, ...three]], 2)).toBe(1);
+    // Each lane cycles its own list: two skins on the body and one on an overlay need two slots, not 3.
+    expect(skinSlotCount([two, [bobRow(12, 60, { paletteName: 'c' })]], 1)).toBe(2);
   });
 
   it('picks the highest level then the lowest bobId, insertion-order-independent', () => {

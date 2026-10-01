@@ -113,16 +113,19 @@ function typePalettes(rows: readonly { readonly paletteName: string }[]): string
 }
 
 /**
- * How many skin slots a tribe's tables need so that slot `ref % count` lands every type on
- * `palettes[ref % palettes.length]`: the least common multiple of its types' palette counts. Every
- * record of one type lists the same palettes in CnMod 1.3.2, at most two.
+ * How many skin slots a tribe's tables need so that slot `ref % count` lands every type of every lane
+ * (bodies, construction stages, overlays) on `palettes[ref % palettes.length]`: the least common multiple
+ * of the per-lane palette counts. Every record of one type lists the same palettes in CnMod 1.3.2, at
+ * most two.
  */
 export function skinSlotCount(
-  rows: readonly (FamilyRow & { readonly typeId: number })[],
+  lanes: readonly (readonly (FamilyRow & { readonly typeId: number })[])[],
   tribeId: number,
 ): number {
   let count = 1;
-  for (const list of rowsByType(rows, tribeId).values()) count = lcm(count, typePalettes(list).length);
+  for (const rows of lanes) {
+    for (const list of rowsByType(rows, tribeId).values()) count = lcm(count, typePalettes(list).length);
+  }
   return count;
 }
 

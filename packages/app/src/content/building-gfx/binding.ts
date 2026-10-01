@@ -49,7 +49,7 @@ function tribeTables(
   families: readonly BuildingFamily[],
 ): BuildingTribeTables {
   const slots = skinSlotCount(
-    [...(ir?.buildingBobs ?? []), ...(ir?.constructionLayers ?? []), ...(ir?.buildingOverlays ?? [])],
+    [ir?.buildingBobs ?? [], ir?.constructionLayers ?? [], ir?.buildingOverlays ?? []],
     tribeId,
   );
   const skins = Array.from({ length: slots }, (_, skinSlot) =>
