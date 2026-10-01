@@ -16,6 +16,7 @@ import {
 } from '../../../game/snapshot.js';
 import { type MessageNaming, type MessageRaiser, nodeOf } from './raise.js';
 import { type ProductionStall, USER_MESSAGE_TYPE } from './types.js';
+import type { WorkStatusAsks, WorkStatusRead } from './work-asks.js';
 
 /** Ticks a workshop runs no production cycle before its stall note: long enough for an operator to
  *  fetch inputs or carry products off between two cycles of fifteen seconds. Approximation. */
@@ -25,9 +26,7 @@ export const PRODUCTION_STALL_GRACE_TICKS = 60 * TICKS_PER_SECOND;
 export interface WorkshopSeam {
   /** The building types that craft from recipes. */
   readonly types: readonly number[];
-  /** The sim's diagnosis of a worker (`Simulation.workStatus`) as the host last answered it; undefined
-   *  while unanswered and while nothing stands in the worker's way. */
-  readonly workStatus: (entity: number) => WorkStatus | undefined;
+  readonly workStatus: WorkStatusRead;
 }
 
 /** Whether a workshop's stall stands, and why: undefined while not swept yet, null for none. */
@@ -90,10 +89,9 @@ export function stallOf(status: WorkStatus): ProductionStall | null {
   }
 }
 
-/** One resting workshop's watch: since when it rests, whose diagnosis was asked, and the verdict. */
+/** One resting workshop's watch: since when it rests, and the verdict. */
 interface Watch {
   since: number;
-  asked: number | null;
   verdict: StallVerdict;
 }
 
@@ -118,20 +116,17 @@ export class WorkshopStalls implements StallReader {
 
   constructor(
     private readonly seat: number,
-    private readonly seam: WorkshopSeam,
+    private readonly types: readonly number[],
+    private readonly asks: WorkStatusAsks,
   ) {}
 
   /** Judge the resting workshops and raise a note for each one stalled. */
   sweep(snapshot: WorldSnapshot, raiser: MessageRaiser, naming: MessageNaming): void {
     const resting = indexesOf(snapshot).get(RESTING_BUILDINGS);
     const next = new Map<number, Watch>();
-    for (const type of this.seam.types) {
+    for (const type of this.types) {
       for (const workshop of resting.get(restingKey(this.seat, type)) ?? NO_BUILDINGS) {
-        const watch = this.watched.get(workshop.id) ?? {
-          since: snapshot.tick,
-          asked: null,
-          verdict: undefined,
-        };
+        const watch = this.watched.get(workshop.id) ?? { since: snapshot.tick, verdict: undefined };
         next.set(workshop.id, watch);
         this.judge(snapshot, workshop, watch);
         if (watch.verdict !== null && watch.verdict !== undefined) {
@@ -158,29 +153,22 @@ export class WorkshopStalls implements StallReader {
     const staff = staffOf(snapshot, workshop.id);
     if (staff.some((worker) => worker.components.SiteAssignment !== undefined)) {
       watch.since = snapshot.tick;
-      watch.asked = null;
       watch.verdict = null;
       return;
     }
     const operator = operatorOf(staff);
     if (operator === undefined) {
-      watch.asked = null;
       watch.verdict = null;
       return;
     }
-    const status = this.seam.workStatus(operator.id);
-    // The first read only asks; its answer lands before the next sweep.
-    if (status === undefined && watch.asked !== operator.id) {
-      watch.asked = operator.id;
-      return;
-    }
-    watch.asked = operator.id;
-    watch.verdict = status === undefined ? null : stallOf(status);
+    // No answer yet keeps the verdict; a diagnosis with nothing in the way is no stall.
+    const answer = this.asks.status(operator.id);
+    if (answer !== undefined) watch.verdict = answer.status === undefined ? null : stallOf(answer.status);
   }
 }
 
-/** Raise the note about one stalled workshop, keyed by the building. A new good under the same reason
- *  rewords the standing note rather than raising another. */
+/** Raise the note about one stalled workshop, keyed by the building and the reason: a new reason is a
+ *  new note, while a new good under the same reason rewords the standing one. */
 export function raiseStall(
   raiser: MessageRaiser,
   naming: MessageNaming,

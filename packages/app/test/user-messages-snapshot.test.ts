@@ -6,12 +6,19 @@ import {
   createSnapshotMessageSource,
   IDLE_SWEEPS_BEFORE_MESSAGE,
   NO_FOOD_SWEEPS_BEFORE_MESSAGE,
+  type NoteDismissed,
   SNAPSHOT_SWEEP_INTERVAL_TICKS,
+  type SnapshotMessageSource,
 } from '../src/hud/tool-panel/messages/from-snapshot.js';
 import { idleReasonOf } from '../src/hud/tool-panel/messages/idle-reasons.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
+import {
+  WORK_STATUS_ASKS_PER_SWEEP,
+  WORK_STATUS_REASK_SWEEPS,
+  type WorkAnswer,
+} from '../src/hud/tool-panel/messages/work-asks.js';
 
 const LOCAL = 0;
 const ENEMY = 1;
@@ -393,59 +400,143 @@ describe('user messages read off the snapshot', () => {
 
     it('reads its reason off the diagnosis, and none off one the note cannot word', () => {
       const input = { goodType: WOOD, required: 1, available: 0, missing: 1 };
-      expect(
-        idleReasonOf({ kind: 'waitingInput', goodType: 9, missingInputs: [{ ...input, outOfReach: true }] }),
-      ).toEqual({ kind: 'inputOutOfReach', goodType: WOOD });
       expect(idleReasonOf({ kind: 'noOutputDestination', goodType: WOOD, reason: 'noStorage' })).toEqual({
         kind: 'noStorage',
-        goodType: WOOD,
+        goodTypes: [WOOD],
       });
-      expect(idleReasonOf({ kind: 'resourceRouteBlocked', goodTypes: [WOOD] })).toEqual({
+      expect(idleReasonOf({ kind: 'resourceRouteBlocked', goodTypes: [WOOD, 9] })).toEqual({
         kind: 'resourceRouteBlocked',
-        goodType: WOOD,
+        goodTypes: [WOOD, 9],
       });
-      expect(idleReasonOf({ kind: 'nothingSelected' })).toEqual({ kind: 'nothingSelected', goodType: null });
+      expect(idleReasonOf({ kind: 'nothingSelected' })).toEqual({ kind: 'nothingSelected', goodTypes: [] });
+      // A craft operator's gates are the stall note's, and the note needs a workplace and a trade.
+      expect(
+        idleReasonOf({ kind: 'waitingInput', goodType: 9, missingInputs: [{ ...input, outOfReach: true }] }),
+      ).toBeNull();
+      expect(idleReasonOf({ kind: 'noWorkplace' })).toBeNull();
+      expect(idleReasonOf({ kind: 'noJob' })).toBeNull();
       expect(idleReasonOf({ kind: 'noOutputDestination', goodType: WOOD, reason: 'unknown' })).toBeNull();
       expect(idleReasonOf({ kind: 'unknown', reason: 'gatherSearch' })).toBeNull();
       expect(idleReasonOf(undefined)).toBeNull();
     });
 
-    it('names the reason the sim gives, asked once a sweep from the sweep before the note', () => {
-      const asked: number[] = [];
-      let answer: WorkStatus | undefined = {
-        kind: 'noEligibleResource',
-        goodTypes: [WOOD],
-        scope: 'workArea',
-      };
-      const source = createSnapshotMessageSource(LOCAL, {
-        types: [],
-        workStatus: (entity) => {
-          asked.push(entity);
-          return answer;
-        },
-      });
-      const idleAt = (i: number) =>
+    describe('asking the sim why', () => {
+      const IN_AREA: WorkStatus = { kind: 'noEligibleResource', goodTypes: [WOOD], scope: 'workArea' };
+      /** A seam that records each ask and lands `answer` for it at once, unless `landing` is off. */
+      function askingSeam() {
+        const seam = {
+          asked: [] as number[],
+          answer: IN_AREA as WorkStatus | undefined,
+          landing: true,
+          workshops: {
+            types: [],
+            workStatus: (_entity: number, asked: number): WorkAnswer | undefined => {
+              if (seam.asked.at(-1) !== asked) seam.asked.push(asked);
+              return seam.landing ? { status: seam.answer, asked } : undefined;
+            },
+          },
+        };
+        return seam;
+      }
+      const idleAt = (source: SnapshotMessageSource, i: number, dismissed?: NoteDismissed) =>
         source.sweep(
           snapshot(i * SNAPSHOT_SWEEP_INTERVAL_TICKS, [building, { id: 1, workplace: WORKPLACE }]),
           naming,
+          dismissed,
         );
-      for (let i = 1; i < IDLE_SWEEPS_BEFORE_MESSAGE - 1; i++) idleAt(i);
-      expect(asked).toEqual([]);
-      expect(idleAt(IDLE_SWEEPS_BEFORE_MESSAGE - 1)).toEqual([]);
-      expect(asked).toEqual([1]);
-      const [raised] = idleAt(IDLE_SWEEPS_BEFORE_MESSAGE);
-      expect(asked).toEqual([1, 1]);
-      expect(raised?.pending.idle).toEqual({ kind: 'noResourceInArea', goodType: WOOD });
-      expect(raised?.pending.goodType).toBe(WOOD);
-      expect(raised?.updatesStanding).toBe(true);
-      // An unanswered read keeps the last reason; a diagnosis that names none clears it.
-      answer = undefined;
-      expect(idleAt(IDLE_SWEEPS_BEFORE_MESSAGE + 1)[0]?.pending.idle).toEqual({
-        kind: 'noResourceInArea',
-        goodType: WOOD,
+
+      it('names the reason, first asked the sweep before the note', () => {
+        const seam = askingSeam();
+        const source = createSnapshotMessageSource(LOCAL, seam.workshops);
+        for (let i = 1; i < IDLE_SWEEPS_BEFORE_MESSAGE - 1; i++) idleAt(source, i);
+        expect(seam.asked).toEqual([]);
+        expect(idleAt(source, IDLE_SWEEPS_BEFORE_MESSAGE - 1)).toEqual([]);
+        expect(seam.asked).toHaveLength(1);
+        const [raised] = idleAt(source, IDLE_SWEEPS_BEFORE_MESSAGE);
+        expect(raised?.pending.idle).toEqual({ kind: 'noResourceInArea', goodTypes: [WOOD] });
+        expect(raised?.pending.goodType).toBe(WOOD);
+        expect(raised?.updatesStanding).toBe(true);
       });
-      answer = { kind: 'unknown', reason: 'unsupportedWorkplace' };
-      expect(idleAt(IDLE_SWEEPS_BEFORE_MESSAGE + 2)[0]?.pending.idle).toBeNull();
+
+      it('lists every named good of the reason and leaves a nameless one out', () => {
+        const NAMELESS = 66;
+        const seam = askingSeam();
+        seam.answer = { kind: 'noEligibleResource', goodTypes: [WOOD, NAMELESS, 9], scope: 'map' };
+        const source = createSnapshotMessageSource(LOCAL, seam.workshops);
+        const goodsNaming: MessageNaming = {
+          ...naming,
+          technology: (kind, typeId) => (typeId === NAMELESS ? undefined : `${kind}:${typeId}`),
+          text: (_type, parts) => plain(String(parts.goodName)),
+        };
+        for (let i = 1; i < IDLE_SWEEPS_BEFORE_MESSAGE; i++) idleAt(source, i);
+        const unit = snapshot(IDLE_SWEEPS_BEFORE_MESSAGE * SNAPSHOT_SWEEP_INTERVAL_TICKS, [
+          building,
+          { id: 1, workplace: WORKPLACE },
+        ]);
+        const [raised] = source.sweep(unit, goodsNaming);
+        expect(raised?.compose().full).toBe(`good:${WOOD}, good:9`);
+      });
+
+      it('asks again only every few sweeps, keeps the reason while unanswered, and clears it on none', () => {
+        const seam = askingSeam();
+        const source = createSnapshotMessageSource(LOCAL, seam.workshops);
+        const first = IDLE_SWEEPS_BEFORE_MESSAGE - 1;
+        for (let i = 1; i <= first; i++) idleAt(source, i);
+        for (let i = first + 1; i < first + WORK_STATUS_REASK_SWEEPS; i++) idleAt(source, i);
+        expect(seam.asked).toHaveLength(1);
+        // A re-ask in flight is no new reason.
+        seam.landing = false;
+        const reask = first + WORK_STATUS_REASK_SWEEPS;
+        expect(idleAt(source, reask)[0]?.pending.idle).toEqual({
+          kind: 'noResourceInArea',
+          goodTypes: [WOOD],
+        });
+        expect(seam.asked).toHaveLength(2);
+        // The sim's undefined is nothing in the way: the old reason goes.
+        seam.landing = true;
+        seam.answer = undefined;
+        expect(idleAt(source, reask + 1)[0]?.pending.idle).toBeNull();
+        expect(seam.asked).toHaveLength(2);
+      });
+
+      it('stops asking once the player dismissed the note', () => {
+        const seam = askingSeam();
+        const source = createSnapshotMessageSource(LOCAL, seam.workshops);
+        for (let i = 1; i <= IDLE_SWEEPS_BEFORE_MESSAGE; i++) idleAt(source, i);
+        const asked = seam.asked.length;
+        const dismissed: NoteDismissed = (pending) =>
+          pending.type === USER_MESSAGE_TYPE.nothingToDo && pending.subject?.entity === 1;
+        for (let i = 1; i <= 3 * WORK_STATUS_REASK_SWEEPS; i++) {
+          expect(idleAt(source, IDLE_SWEEPS_BEFORE_MESSAGE + i, dismissed)).toEqual([]);
+        }
+        expect(seam.asked).toHaveLength(asked);
+      });
+
+      it('asks no more than the sweep budget, and reaches every worker over later sweeps', () => {
+        const workers = 3 * WORK_STATUS_ASKS_PER_SWEEP;
+        const asks = new Set<string>();
+        const source = createSnapshotMessageSource(LOCAL, {
+          types: [],
+          workStatus: (entity, asked) => {
+            asks.add(`${entity}@${asked}`);
+            return { status: IN_AREA, asked };
+          },
+        });
+        const crowd: Actor[] = [
+          building,
+          ...Array.from({ length: workers }, (_, i) => ({ id: i + 1, workplace: WORKPLACE })),
+        ];
+        const reasons = new Set<number>();
+        const sweeps = IDLE_SWEEPS_BEFORE_MESSAGE + 3;
+        for (let i = 1; i <= sweeps; i++) {
+          const before = asks.size;
+          for (const r of source.sweep(snapshot(i * SNAPSHOT_SWEEP_INTERVAL_TICKS, crowd), naming)) {
+            if (r.pending.idle != null) reasons.add(r.pending.subject?.entity ?? -1);
+          }
+          expect(asks.size - before).toBeLessThanOrEqual(WORK_STATUS_ASKS_PER_SWEEP);
+        }
+        expect(reasons.size).toBe(workers);
+      });
     });
   });
 

@@ -10,6 +10,12 @@ import type {
 } from '@open-northland/sim';
 import { type BuildingAvailability, OPEN_AVAILABILITY } from '../../hud/tool-panel/building-menu.js';
 import {
+  WORK_STATUS_ASKS_PER_SWEEP,
+  WORK_STATUS_REASK_SWEEPS,
+  type WorkAnswer,
+  type WorkStatusRead,
+} from '../../hud/tool-panel/messages/work-asks.js';
+import {
   type AnswerCacheControl,
   createLastAnswerCache,
   type LastAnswerCache,
@@ -38,6 +44,9 @@ const PER_TICK = true;
 const NO_INPUTS = '';
 /** Trade answers kept at once: the residents window's job filter asks for every grown man of a seat. */
 const ROSTER_CAPACITY = 4096;
+/** Diagnoses the notice sweeps keep: every ask of the last re-ask period, twice over, so an answer is
+ *  never evicted before the sweep after its ask reads it. */
+const NOTICE_STATUS_CAPACITY = 2 * WORK_STATUS_ASKS_PER_SWEEP * (WORK_STATUS_REASK_SWEEPS + 1);
 
 /**
  * The host's request-shaped reads the HUD pulls synchronously, each the last answer the host gave and
@@ -66,6 +75,9 @@ export interface HostAnswers {
   readonly standsTo: (entity: number) => boolean;
   /** Undefined while unanswered, which leaves the status detail out. */
   readonly workStatus: (entity: number) => WorkStatus | undefined;
+  /** The notice sweeps' own diagnoses, asked once per sweep tick rather than per tick, in a cache of
+   *  their own so the panels' reads never push them out. */
+  readonly noticeWorkStatus: WorkStatusRead;
   readonly traderView: (trader: number) => TraderView | undefined;
   readonly tradeOffersAt: (house: number) => readonly TradeOffer[];
   /** The pick highlights' rules, read off one answer per unit rather than one per building. */
@@ -123,6 +135,7 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
   const statuses = cache<UnlockStatus>({ same: samePlainData });
   const stands = cache<boolean>();
   const workStatuses = cache<WorkStatus | undefined>({ same: samePlainData });
+  const noticeStatuses = cache<WorkAnswer>({ capacity: NOTICE_STATUS_CAPACITY, same: samePlainData });
   const jobChoices = cache<boolean>({ capacity: ROSTER_CAPACITY });
   const traders = cache<TraderView | undefined>({ same: samePlainData });
   const tradeHouses = cache<ReadonlySet<number>>({ same: sameIds });
@@ -176,6 +189,12 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
       ),
     standsTo: (entity) => perTick(stands, `${entity}`, () => host.standsTo(entity as Entity)) === true,
     workStatus: (entity) => perTick(workStatuses, `${entity}`, () => host.workStatus(entity as Entity)),
+    noticeWorkStatus: (entity, asked) =>
+      noticeStatuses.read(
+        `${entity}`,
+        () => host.workStatus(entity as Entity).then((status) => ({ status, asked })),
+        `${asked}`,
+      ),
     traderView: (trader) => perTick(traders, `${trader}`, () => host.traderView(trader as Entity)),
     tradeOffersAt: (house) =>
       perTick(offersAt, `${house}`, () => host.tradeOffersAt(house as Entity)) ?? NO_OFFERS,

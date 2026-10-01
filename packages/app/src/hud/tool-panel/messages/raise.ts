@@ -45,6 +45,20 @@ function jobTypeOf(e: SnapshotEntity): number | null {
   return num((e.components.Settler as { jobType?: unknown } | undefined)?.jobType) ?? null;
 }
 
+/** The note about a worker idle at its workplace for `reason`; the reason is not part of its identity. */
+export function idleNotePending(e: SnapshotEntity, reason: IdleReason | null): PendingMessage {
+  return {
+    type: USER_MESSAGE_TYPE.nothingToDo,
+    subject: { kind: 'settler', entity: e.id },
+    at: nodeOf(e),
+    about: null,
+    goodType: reason?.goodTypes[0] ?? null,
+    technologies: null,
+    jobType: jobTypeOf(e),
+    idle: reason,
+  };
+}
+
 /** Collects one pass's messages, one per (type, subject) however often the pass meets the pair. */
 export class MessageRaiser {
   readonly out: RaisedMessage[] = [];
@@ -104,26 +118,18 @@ export class MessageRaiser {
   /** A worker idle at its workplace for `reason`; a repeat with another reason rewords the standing note. */
   idle(e: SnapshotEntity, reason: IdleReason | null): void {
     const type = USER_MESSAGE_TYPE.nothingToDo;
-    const goodType = reason?.goodType ?? null;
     this.raise(
       `${type}|settler:${e.id}`,
-      {
-        type,
-        subject: { kind: 'settler', entity: e.id },
-        at: nodeOf(e),
-        about: null,
-        goodType,
-        technologies: null,
-        jobType: jobTypeOf(e),
-        idle: reason,
-      },
+      idleNotePending(e, reason),
       () => {
         const named = this.naming.settler(e, this.snapshot);
+        // Every good the reason is about, as the settler panel lists them; a nameless one is left out.
+        const goods = (reason?.goodTypes ?? []).flatMap((good) => this.naming.technology('good', good) ?? []);
         return this.naming.text(type, {
           subjectName: named.name,
           jobLabel: named.jobLabel,
           female: named.female,
-          goodName: goodType === null ? null : (this.naming.technology('good', goodType) ?? null),
+          goodName: goods.length === 0 ? null : goods.join(', '),
           stanceName: null,
           idle: reason,
         });

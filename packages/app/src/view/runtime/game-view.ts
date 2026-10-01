@@ -588,7 +588,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         : {}),
       workshops: {
         types: host.content.buildings.filter((b) => b.recipes.length > 0).map((b) => b.typeId),
-        workStatus: answers.workStatus,
+        workStatus: answers.noticeWorkStatus,
       },
       isVehicleSite: (typeId) => vehicleSiteTypes.has(typeId),
       onUiCue: uiCue,

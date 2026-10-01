@@ -1,6 +1,7 @@
 import { ONE, type WorkStatus, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_CARRIER, JOB_POTTER, JOB_SOLDIER } from '../src/catalog/jobs.js';
+import { createMessageFeed, takeRaised } from '../src/hud/tool-panel/messages/feed.js';
 import { FightAreas } from '../src/hud/tool-panel/messages/fight-areas.js';
 import {
   createSnapshotMessageSource,
@@ -12,6 +13,7 @@ import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import { NoteRetirement } from '../src/hud/tool-panel/messages/retire.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE, type UserMessage } from '../src/hud/tool-panel/messages/types.js';
+import { WORK_STATUS_REASK_SWEEPS, type WorkAnswer } from '../src/hud/tool-panel/messages/work-asks.js';
 import {
   PRODUCTION_STALL_GRACE_TICKS,
   stallOf,
@@ -98,8 +100,9 @@ function world(tick: number, w: World = {}): WorldSnapshot {
   };
 }
 
+/** A seam whose every ask lands at once with `answer`'s diagnosis. */
 function seamAnswering(answer: () => WorkStatus | undefined): WorkshopSeam {
-  return { types: [POTTERY], workStatus: answer };
+  return { types: [POTTERY], workStatus: (_entity, asked) => ({ status: answer(), asked }) };
 }
 
 /** Sweep once per interval up to and including sweep `count`; the stall notes each sweep raised. */
@@ -171,18 +174,30 @@ describe('stalled workshops', () => {
     ]);
   });
 
-  it('judges only a landed answer: the first unanswered read asks, the next one rules out a stall', () => {
-    let answer: WorkStatus | undefined;
-    const source = createSnapshotMessageSource(
-      LOCAL,
-      seamAnswering(() => answer),
-    );
-    sweepTo(source, SWEEPS_TO_GRACE);
+  it('judges only a landed answer, and a diagnosis with nothing in the way as no stall', () => {
+    let landed: WorkAnswer | undefined;
+    const asks: number[] = [];
+    const source = createSnapshotMessageSource(LOCAL, {
+      types: [POTTERY],
+      workStatus: (_entity, asked) => {
+        if (!asks.includes(asked)) asks.push(asked);
+        return landed;
+      },
+    });
+    sweepTo(source, SWEEPS_TO_GRACE + 1);
     expect(source.stalls?.verdict(WORKSHOP)).toBeUndefined();
-    sweepTo(source, SWEEPS_TO_GRACE + 1, {}, SWEEPS_TO_GRACE + 1);
+    const [firstAsk] = asks;
+    landed = { status: undefined, asked: firstAsk ?? -1 };
+    sweepTo(source, SWEEPS_TO_GRACE + 2, {}, SWEEPS_TO_GRACE + 2);
     expect(source.stalls?.verdict(WORKSHOP)).toBeNull();
-    answer = SHELVES_FULL;
-    expect(sweepTo(source, SWEEPS_TO_GRACE + 2, {}, SWEEPS_TO_GRACE + 2).flat()).toEqual([
+    // An answer to an earlier ask is not taken for the newest one's.
+    sweepTo(source, SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS, {}, SWEEPS_TO_GRACE + 3);
+    expect(asks).toHaveLength(2);
+    landed = { status: SHELVES_FULL, asked: firstAsk ?? -1 };
+    const next = SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS + 1;
+    expect(sweepTo(source, next, {}, next).flat()).toEqual([]);
+    landed = { status: SHELVES_FULL, asked: asks[1] ?? -1 };
+    expect(sweepTo(source, next + 1, {}, next + 1).flat()).toEqual([
       `Garncarnia:${USER_MESSAGE_TYPE.productionStalled}:outputFull:good:${POT}`,
     ]);
   });
@@ -236,8 +251,9 @@ describe('stalled workshops', () => {
     sweepTo(source, SWEEPS_TO_GRACE, {}, 1);
     expect(retirement.isOver(note, world(tick))).toBe(false);
     expect(retirement.isOver(note, world(tick, { producing: true }))).toBe(true);
+    // A changed diagnosis is read at the next ask.
     answer = SHELVES_FULL;
-    sweepTo(source, SWEEPS_TO_GRACE + 1, {}, SWEEPS_TO_GRACE + 1);
+    sweepTo(source, SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS, {}, SWEEPS_TO_GRACE + 1);
     expect(retirement.isOver(note, world(tick))).toBe(true);
   });
 
@@ -248,8 +264,8 @@ describe('stalled workshops', () => {
       seamAnswering(() => answer),
     );
     const retirement = new NoteRetirement(new FightAreas(), source.stalls);
-    const tick = (SWEEPS_TO_GRACE + 1) * SNAPSHOT_SWEEP_INTERVAL_TICKS;
-    sweepTo(source, SWEEPS_TO_GRACE);
+    const tick = (SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS) * SNAPSHOT_SWEEP_INTERVAL_TICKS;
+    sweepTo(source, SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS - 1);
     answer = {
       kind: 'waitingInput',
       goodType: POT,
@@ -262,6 +278,50 @@ describe('stalled workshops', () => {
       [{ reason: 'missingInput', goodType: OTHER_INPUT }, true],
     ]);
     expect(retirement.isOver(stallNote(CLAY, 'missingInput'), world(tick))).toBe(false);
+  });
+
+  it('raises a dismissed stall anew under a new reason, but keeps it dismissed through a new good', () => {
+    let answer: WorkStatus = WAITING_FOR_CLAY;
+    const source = createSnapshotMessageSource(
+      LOCAL,
+      seamAnswering(() => answer),
+    );
+    const retirement = new NoteRetirement(new FightAreas(), source.stalls);
+    const feed = createMessageFeed();
+    let sweeps = 0;
+    // The message centre's order: the sweep raises, the feed takes, then the stale notes retire.
+    const present = (): void => {
+      const tick = ++sweeps * SNAPSHOT_SWEEP_INTERVAL_TICKS;
+      const snapshot = world(tick);
+      for (const raised of source.sweep(snapshot, naming, (pending) => feed.dismissed(pending))) {
+        takeRaised(feed, raised, tick);
+      }
+      feed.expire(tick, (m) => retirement.isOver(m, snapshot));
+      retirement.endPass();
+    };
+    const presentUntilAsked = (): void => {
+      for (let i = 0; i < WORK_STATUS_REASK_SWEEPS; i++) present();
+    };
+    const stallsShown = () => feed.live().map((m) => m.stall);
+    while (feed.live().length === 0) present();
+    expect(stallsShown()).toEqual([{ reason: 'missingInput', goodType: CLAY }]);
+    feed.remove(feed.live()[0]?.id ?? -1, sweeps * SNAPSHOT_SWEEP_INTERVAL_TICKS);
+
+    answer = {
+      kind: 'waitingInput',
+      goodType: POT,
+      missingInputs: [{ goodType: OTHER_INPUT, required: 1, available: 0, missing: 1, outOfReach: false }],
+    };
+    presentUntilAsked();
+    expect(stallsShown()).toEqual([]);
+    expect(feed.state().history.map((m) => m.stall)).toEqual([
+      { reason: 'missingInput', goodType: OTHER_INPUT },
+    ]);
+
+    answer = SHELVES_FULL;
+    presentUntilAsked();
+    expect(stallsShown()).toEqual([{ reason: 'outputFull', goodType: POT }]);
+    expect(feed.state().history).toEqual([]);
   });
 
   it('judges a crew building a vehicle on the yard as no stall, so the standing note retires', () => {

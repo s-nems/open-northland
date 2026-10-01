@@ -87,28 +87,21 @@ export interface ProductionStall {
   readonly goodType: number | null;
 }
 
-/** Why a worker with a workplace stands idle, as its note names it, read off the sim's diagnosis of the
- *  worker: a craft gate (inputs, shelf, stores, products), a gatherer with nothing in reach or no way
- *  to it, or a worker with no workshop, tool or trade. */
+/** Why a worker idle at a finished workplace stands, as its note names it, read off the sim's diagnosis
+ *  of the worker: a load with no store to take it, every product stopped, or nothing to gather in reach
+ *  or no way to it. A craft operator's gates are the stall note's to name. */
 export type IdleReasonKind =
-  | 'missingInput'
-  | 'inputOutOfReach'
-  | 'outputFull'
   | 'noStorage'
   | 'outputOutOfReach'
   | 'nothingSelected'
-  | 'productsLocked'
   | 'noResourceInArea'
   | 'noResource'
-  | 'resourceRouteBlocked'
-  | 'noWorkplace'
-  | 'noTool'
-  | 'noJob';
+  | 'resourceRouteBlocked';
 
-/** An idle worker's reason and the good it names, if any. */
+/** An idle worker's reason and the goods it names, possibly none. */
 export interface IdleReason {
   readonly kind: IdleReasonKind;
-  readonly goodType: number | null;
+  readonly goodTypes: readonly number[];
 }
 
 /** What one fight area has hit so far: distinct bodies of the seat's per kind, and who struck them. */
@@ -145,8 +138,8 @@ export interface PendingMessage {
   readonly jobType: number | null;
   /** A family note's reason, part of its identity: a new reason retires the old note and raises its own. */
   readonly familyWait?: ChildOrderWait;
-  /** A stall note's reason and good. A new reason retires the note, which comes back with its own text;
-   *  a new good under the same reason rewords the standing note. */
+  /** A stall note's reason and good. The reason is part of the identity, as `familyWait` is: a new one
+   *  raises its own note and retires the old one, dismissed or not; a new good only rewords the note. */
   readonly stall?: ProductionStall;
   /** An idle note's reason, null while the sim names none; not part of the identity, a new one rewords
    *  the standing note. */

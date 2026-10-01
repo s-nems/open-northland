@@ -6,6 +6,7 @@ import {
   messagePassesFilter,
   messagePriority,
 } from './priority.js';
+import type { RaisedMessage } from './raise.js';
 import type { MessageText } from './text.js';
 import type { MessagePriorityLevel, MessageSubject, PendingMessage, UserMessage } from './types.js';
 
@@ -66,6 +67,8 @@ export interface MessageFeed {
   removeMany(ids: ReadonlySet<number>, tick: number): boolean;
   /** Dismiss every note the level shows; the ones hidden under it were never seen, so they stay. */
   removeAll(tick: number): void;
+  /** Whether the player dismissed the standing note `pending` repeats. */
+  dismissed(pending: PendingMessage): boolean;
   /** Hand a standing note, shown or dismissed, the place, fight tally, stall or idle reason and text of
    *  its repeat `pending`; `compose` runs only when a fact the text reads changed. False when no note
    *  matches it. */
@@ -84,6 +87,12 @@ export interface MessageFeed {
   state(): MessageFeedState;
 }
 
+/** Add a raised note; a repeat that carries fresh facts hands them to the note it repeats. */
+export function takeRaised(feed: MessageFeed, raised: RaisedMessage, tick: number): void {
+  const outcome = feed.add(raised.pending, tick, raised.compose);
+  if (outcome === 'duplicate' && raised.updatesStanding === true) feed.revise(raised.pending, raised.compose);
+}
+
 export function defaultMessageFeedState(): MessageFeedState {
   return { level: DEFAULT_MESSAGE_LEVEL, nextId: 1, live: [], history: [] };
 }
@@ -95,11 +104,12 @@ function subjectKey(subject: MessageSubject | null, about: number | null): strin
 /**
  * The original's whole-record comparison, minus the stamp fields the feed assigns and minus the
  * position: a settler that walked between two raises still repeats one message, not two. A state note
- * is one per subject and reason, whatever trade the settler holds meanwhile.
+ * is one per subject and reason, whatever trade the settler holds meanwhile, so a dismissal holds only
+ * while its reason does.
  */
 function identityKey(m: PendingMessage): string {
   if (lifecycleOf(m.type) === 'state') {
-    return `${m.type}|${subjectKey(m.subject, m.about)}|${m.familyWait ?? ''}`;
+    return `${m.type}|${subjectKey(m.subject, m.about)}|${m.familyWait ?? ''}|${m.stall?.reason ?? ''}`;
   }
   const stance = m.stance ?? '';
   const technologies =
@@ -113,7 +123,7 @@ function identityKey(m: PendingMessage): string {
 function wordedFacts(m: PendingMessage): string | null {
   if (m.fight !== undefined) return null;
   const idle =
-    m.idle === undefined ? '' : m.idle === null ? 'none' : `${m.idle.kind}:${m.idle.goodType ?? ''}`;
+    m.idle === undefined ? '' : m.idle === null ? 'none' : `${m.idle.kind}:${m.idle.goodTypes.join(',')}`;
   return `${m.stall?.reason ?? ''}:${m.stall?.goodType ?? ''}|${idle}`;
 }
 
@@ -282,6 +292,7 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
       return 'accepted';
     },
     remove: (id, tick) => dismiss((m) => m.id !== id, tick),
+    dismissed: (pending) => history.matches(pending),
     removeMany: (ids, tick) => dismiss((m) => !ids.has(m.id), tick),
     revise: (pending, compose) => {
       const facts = wordedFacts(pending);
@@ -293,7 +304,7 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
               at: pending.at,
               ...(pending.fight === undefined ? {} : { fight: pending.fight }),
               ...(pending.stall === undefined ? {} : { stall: pending.stall, goodType: pending.goodType }),
-              ...(pending.idle === undefined ? {} : { idle: pending.idle }),
+              ...(pending.idle === undefined ? {} : { idle: pending.idle, goodType: pending.goodType }),
               text: compose(),
             };
       const shown = live.replace(pending, update);

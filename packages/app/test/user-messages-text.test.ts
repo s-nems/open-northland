@@ -208,12 +208,16 @@ describe('notice text', () => {
   it.each(COPIES)('words every idle reason in %s, and a worker the sim gives none', (_lang, copy) => {
     const kinds = Object.keys(copy.idleReason.short) as IdleReasonKind[];
     expect(new Set(kinds)).toEqual(new Set(Object.keys(copy.idleReason.full)));
-    for (const idle of [...kinds.map((kind) => ({ kind, goodType: 4 })), null]) {
+    expect(new Set(kinds)).toEqual(new Set(Object.keys(copy.idleReason.withoutGood)));
+    const cases = [...kinds.map((kind) => ({ kind, goodTypes: [4] })), null].flatMap((idle) =>
+      ['Chleb', null].map((goodName) => ({ idle, goodName })),
+    );
+    for (const { idle, goodName } of cases) {
       for (const female of [false, true]) {
-        const text = compose(copy, 'nothingToDo', { ...BARE, female, goodName: 'Chleb', idle });
+        const text = compose(copy, 'nothingToDo', { ...BARE, female, goodName, idle });
         for (const line of [text.short, text.full]) {
           expect(line, idle?.kind).not.toMatch(PLACEHOLDER);
-          expect(line, idle?.kind).not.toMatch(/[—–]| {2}/);
+          expect(line, idle?.kind).not.toMatch(/[—–]| {2}|: ?[.,]|:$/);
         }
         expect(text.short.replace('Chleb', '').trim().length, text.short).toBeLessThanOrEqual(
           SHORT_LINE_MAX_CHARS,
@@ -226,12 +230,14 @@ describe('notice text', () => {
   it('names why an idle worker stands, with what to do, in place of a pointer to its panel', () => {
     const idle = (parts: Partial<MessageTextParts>) =>
       compose(pl.userMessages, 'nothingToDo', { ...BARE, goodName: 'Drewno', ...parts });
-    expect(idle({ idle: { kind: 'noResourceInArea', goodType: 4 } })).toEqual({
-      short: 'Obszar pusty',
-      full: 'Bjorn nie ma nic do roboty. W obszarze pracy nie ma już czego zbierać: Drewno. Wskaż flagą roboczą miejsce z zasobami.',
+    expect(
+      idle({ goodName: 'Drewno, Kamień', idle: { kind: 'noResourceInArea', goodTypes: [4, 5] } }),
+    ).toEqual({
+      short: 'Brak w obszarze',
+      full: 'Bjorn nie ma nic do roboty. W obszarze pracy nie znaleziono zasobów do zebrania: Drewno, Kamień. Wskaż flagą roboczą miejsce z zasobami albo rozszerz zasięg drogowskazów.',
     });
-    expect(idle({ female: true, goodName: null, idle: { kind: 'noJob', goodType: null } }).full).toBe(
-      'Bjorn nie ma nic do roboty. Nie ma zawodu. Nadaj jej zawód.',
+    expect(idle({ female: true, goodName: null, idle: { kind: 'noResource', goodTypes: [] } }).full).toBe(
+      'Bjorn nie ma nic do roboty. W zasięgu nie ma nic do zebrania. Nadaj jej inny zawód.',
     );
     expect(idle({ idle: null })).toEqual({
       short: 'Nic do roboty',

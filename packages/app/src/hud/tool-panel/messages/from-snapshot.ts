@@ -6,7 +6,6 @@ import {
   ONE,
   systems,
   TICKS_PER_SECOND,
-  type WorkStatus,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { isSoldierJob } from '../../../catalog/professions.js';
@@ -28,8 +27,9 @@ import {
   workplaceOf,
 } from '../../../game/snapshot.js';
 import { idleReasonOf } from './idle-reasons.js';
-import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
-import { type IdleReason, USER_MESSAGE_TYPE } from './types.js';
+import { idleNotePending, type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
+import { type IdleReason, type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
+import { type WorkAnswer, WorkStatusAsks } from './work-asks.js';
 import { type StallReader, type WorkshopSeam, WorkshopStalls } from './workshop-stalls.js';
 
 /** Ticks between two sweeps of the snapshot for the conditions no sim event announces; the feed's
@@ -54,9 +54,12 @@ const EFFECTLESS_ATOMICS: ReadonlySet<AtomicEffect['kind']> = new Set<AtomicEffe
 /** What a settler is doing, as far as the note about having no work is concerned. */
 export type Occupation = 'idle' | 'walking' | 'busy';
 
+/** Whether the player dismissed the standing note `pending` repeats. */
+export type NoteDismissed = (pending: PendingMessage) => boolean;
+
 export interface SnapshotMessageSource {
   /** The messages due at this snapshot; empty between sweeps. */
-  sweep(snapshot: WorldSnapshot, naming: MessageNaming): readonly RaisedMessage[];
+  sweep(snapshot: WorldSnapshot, naming: MessageNaming, dismissed?: NoteDismissed): readonly RaisedMessage[];
   /** The seat's stalled workshops as the sweeps judged them; null without the workshop seam. */
   readonly stalls: StallReader | null;
 }
@@ -131,13 +134,13 @@ class IdleStreaks {
     return count;
   }
 
-  /** The reason this sweep's diagnosis gives for the run `advance` just counted. No answer keeps the
-   *  last one: an ask still in flight, or a host cache that let the answer go, is not a new reason. */
-  reason(entity: number, status: WorkStatus | undefined): IdleReason | null {
+  /** The reason the newest landed diagnosis gives for the run `advance` just counted. No answer keeps
+   *  the last one, since an ask still in flight is not a new reason; an answer with nothing in the way
+   *  clears it. */
+  reason(entity: number, answer: WorkAnswer | undefined): IdleReason | null {
     const streak = this.next.get(entity);
-    if (streak === undefined) return idleReasonOf(status);
-    if (status !== undefined) streak.reason = idleReasonOf(status);
-    return streak.reason;
+    if (answer !== undefined && streak !== undefined) streak.reason = idleReasonOf(answer.status);
+    return streak?.reason ?? null;
   }
 
   /** A worker not advanced this sweep, busy or gone, starts over. */
@@ -288,17 +291,24 @@ export function idleNoteHeldByStall(e: SnapshotEntity, stalls: StallReader | nul
   return workplace !== undefined && stalls?.holdsIdleNote(workplace) === true;
 }
 
+/** What the idle notes read beside the snapshot. */
+interface IdleNoteContext {
+  readonly streaks: IdleStreaks;
+  readonly posts: PostHistory;
+  readonly stalls: StallReader | null;
+  readonly asks: WorkStatusAsks | null;
+  readonly dismissed: NoteDismissed;
+}
+
 /** The note an idle adult earns: with a post to work at it has nothing to do, and names why; having
  *  lost one it has nowhere to go, and a trader without a cart cannot work its route. The diagnosis is
- *  asked once a sweep, from the sweep before the note, so the note's first text already has its answer. */
+ *  first asked the sweep before the note, so the note's first text already has its answer, and never
+ *  while the player has the note dismissed. */
 function raiseIdleNote(
   raiser: MessageRaiser,
   snapshot: WorldSnapshot,
   e: SnapshotEntity,
-  streaks: IdleStreaks,
-  posts: PostHistory,
-  stalls: StallReader | null,
-  workStatus: WorkshopSeam['workStatus'] | undefined,
+  { streaks, posts, stalls, asks, dismissed }: IdleNoteContext,
 ): void {
   const atPost = workplaceOf(e) !== undefined;
   // Tracked ahead of the early-outs, since a settler is at its post precisely while it looks busy.
@@ -310,7 +320,8 @@ function raiseIdleNote(
   const due = count >= IDLE_SWEEPS_BEFORE_MESSAGE;
   if (hasWorkplaceToWorkAt(snapshot, e)) {
     if (count < IDLE_SWEEPS_BEFORE_MESSAGE - 1 || idleNoteHeldByStall(e, stalls)) return;
-    const reason = streaks.reason(e.id, workStatus?.(e.id));
+    if (dismissed(idleNotePending(e, null))) return;
+    const reason = streaks.reason(e.id, asks?.status(e.id));
     if (due) raiser.idle(e, reason);
   } else if (!due) return;
   else if (lostItsWorkplace(e, everEmployed)) raiser.settler(USER_MESSAGE_TYPE.workplaceNotFound, e);
@@ -354,20 +365,25 @@ export function createSnapshotMessageSource(
   const streaks = new IdleStreaks();
   const posts = new PostHistory();
   const foodWaits = new FoodWaits();
-  const stalls = workshops === undefined ? null : new WorkshopStalls(localPlayer, workshops);
+  const asks = workshops === undefined ? null : new WorkStatusAsks(workshops.workStatus);
+  const stalls =
+    workshops === undefined || asks === null ? null : new WorkshopStalls(localPlayer, workshops.types, asks);
+  const notDismissed: NoteDismissed = () => false;
   return {
     stalls,
-    sweep: (snapshot, naming) => {
+    sweep: (snapshot, naming, dismissed = notDismissed) => {
       const since = lastSweepTick === null ? null : snapshot.tick - lastSweepTick;
       // A tick that moved backwards (a reload behind the same source) sweeps rather than waiting forever.
       if (since !== null && since >= 0 && since < SNAPSHOT_SWEEP_INTERVAL_TICKS) return NO_MESSAGES;
       lastSweepTick = snapshot.tick;
       const raiser = new MessageRaiser(snapshot, naming);
       const needsOn = needsRuleEnabled(snapshot);
+      asks?.begin(snapshot.tick);
       // Ahead of the idle notes, which leave a stalled workshop's operators to its note.
       stalls?.sweep(snapshot, raiser, naming);
       streaks.begin();
       foodWaits.begin();
+      const idle: IdleNoteContext = { streaks, posts, stalls, asks, dismissed };
       for (const e of actorsOf(snapshot)) {
         if (!isLocalPerson(e, localPlayer)) continue;
         if (needsOn) raiseNeeds(raiser, e);
@@ -375,8 +391,9 @@ export function createSnapshotMessageSource(
         if (isLost(e)) raiser.settler(USER_MESSAGE_TYPE.lostWithoutSignposts, e);
         raiseFamilyBlock(raiser, snapshot, e, foodWaits);
         // The original gates only this note on age, alongside its player-type and vehicle checks.
-        if (isAdult(e)) raiseIdleNote(raiser, snapshot, e, streaks, posts, stalls, workshops?.workStatus);
+        if (isAdult(e)) raiseIdleNote(raiser, snapshot, e, idle);
       }
+      asks?.end();
       streaks.end();
       foodWaits.end();
       posts.end();

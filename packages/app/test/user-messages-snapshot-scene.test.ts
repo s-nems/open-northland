@@ -130,7 +130,7 @@ describe('user messages read off real scene snapshots', () => {
     sim.run(2);
     const source = createSnapshotMessageSource(HUMAN_PLAYER, {
       types: [],
-      workStatus: (entity) => sim.workStatus(entity as Entity),
+      workStatus: (entity, asked) => ({ status: sim.workStatus(entity as Entity), asked }),
     });
     const reasons = new Set<string>();
     for (let i = 0; i < 2 * IDLE_SWEEPS_BEFORE_MESSAGE; i++) {
@@ -147,7 +147,7 @@ describe('user messages read off real scene snapshots', () => {
     sim.run(2);
     const source = createSnapshotMessageSource(HUMAN_PLAYER, {
       types: sim.content.buildings.filter((b) => b.recipes.length > 0).map((b) => b.typeId),
-      workStatus: (entity) => sim.workStatus(entity as Entity),
+      workStatus: (entity, asked) => ({ status: sim.workStatus(entity as Entity), asked }),
     });
     const reasons = new Map<number, string>();
     const sweeps = PRODUCTION_STALL_GRACE_TICKS / SNAPSHOT_SWEEP_INTERVAL_TICKS + 2;

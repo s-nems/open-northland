@@ -53,8 +53,8 @@ export interface MessageTextParts {
   readonly training?: { readonly course: 'barracks' | 'school'; readonly profession: string };
   /** Why a `productionStalled` note's workshop stands still; `goodName` names the good it is about. */
   readonly stall?: ProductionStallReason;
-  /** Why a `nothingToDo` note's worker stands idle, null while the sim names no reason; `goodName` names
-   *  the good it is about. */
+  /** Why a `nothingToDo` note's worker stands idle, null while the sim names no reason; `goodName` lists
+   *  the named goods it is about, null for none. */
   readonly idle?: IdleReason | null;
   /** What holds a `familyBlocked` note's child order, and the spouse it names. */
   readonly family?: { readonly wait: ChildOrderWait; readonly partner: NamedSettler | null };
@@ -200,7 +200,8 @@ export function composeMessageText(
   }
   if (name === 'nothingToDo') {
     const idle = parts.idle ?? null;
-    const reason = idle === null ? copy.idleReason.unknown : copy.idleReason.full[idle.kind];
+    const reasons = parts.goodName === null ? copy.idleReason.withoutGood : copy.idleReason.full;
+    const reason = idle === null ? copy.idleReason.unknown : reasons[idle.kind];
     const idleShort = idle === null ? copy.short.nothingToDo : copy.idleReason.short[idle.kind];
     return {
       short: formatMessage(idleShort, values),

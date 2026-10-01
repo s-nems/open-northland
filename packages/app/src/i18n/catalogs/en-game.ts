@@ -1338,51 +1338,49 @@ export const enGame = {
       vehicles: { one: '{count} vehicle', few: '{count} vehicles', many: '{count} vehicles' },
       wild: 'wild beasts',
     },
-    /** A couple's wish for a child that waits on the player: the card line, and the whole message about
-     *  the woman. `{partner}` is her husband's name with a leading space, or empty. */
+    /** Why a worker idle at its workplace stands: the card line, and the sentence after the full note
+     *  with what to do. `{good}` lists the goods the reason is about; `withoutGood` serves a reason
+     *  whose goods have no name. */
     idleReason: {
       short: {
-        missingInput: 'Missing: {good}',
-        inputOutOfReach: 'Input far away',
-        outputFull: 'Shelves full',
         noStorage: 'No storage',
         outputOutOfReach: 'Store far away',
         nothingSelected: 'All set to 0',
-        productsLocked: 'Product locked',
-        noResourceInArea: 'Area worked out',
+        noResourceInArea: 'Nothing in area',
         noResource: 'No resources',
         resourceRouteBlocked: 'No way through',
-        noWorkplace: 'No workshop',
-        noTool: 'No tool',
-        noJob: 'No trade',
       },
       full: {
-        missingInput: 'The workshop lacks {good}. Deliver it to a store in reach.',
-        inputOutOfReach:
-          'Missing {good}. Only stores beyond the signposts hold it. Link them with signposts or build a store closer.',
-        outputFull: 'The shelves are full ({good}). Build a store in reach or assign more carriers.',
         noStorage: 'No store takes {good}. Build a store or make room in one.',
         outputOutOfReach:
           'Nowhere to take {good}: the stores that take it lie beyond the signposts. Link them with signposts or build a store closer.',
-        nothingSelected: 'Every product in the workshop is set to 0. Choose in the workshop what to make.',
-        productsLocked:
-          'The chosen product is not available yet: {good}. Choose another product in the workshop.',
+        nothingSelected: 'Every good is set to 0. Choose at the workplace what to gather.',
         noResourceInArea:
-          'Nothing left to gather in the work area: {good}. Mark a spot with resources with a work flag.',
+          'No resources to gather found in the work area: {good}. Mark a spot with resources with a work flag or extend the signposts.',
         noResource: {
           he: 'Nothing to gather in reach: {good}. Give him another trade.',
           she: 'Nothing to gather in reach: {good}. Give her another trade.',
         },
         resourceRouteBlocked: 'No way through to {good}. Clear a path or mark another spot with a work flag.',
-        noWorkplace: {
-          he: 'There is no workshop for his trade. Build one or change his trade.',
-          she: 'There is no workshop for her trade. Build one or change her trade.',
+      },
+      withoutGood: {
+        noStorage: 'No store takes the load. Build a store or make room in one.',
+        outputOutOfReach:
+          'Nowhere to take the load: the stores that take it lie beyond the signposts. Link them with signposts or build a store closer.',
+        nothingSelected: 'Every good is set to 0. Choose at the workplace what to gather.',
+        noResourceInArea:
+          'No resources to gather found in the work area. Mark a spot with resources with a work flag or extend the signposts.',
+        noResource: {
+          he: 'Nothing to gather in reach. Give him another trade.',
+          she: 'Nothing to gather in reach. Give her another trade.',
         },
-        noTool: 'A tool is missing. Make one and deliver it to a store in reach.',
-        noJob: { he: 'Has no trade. Give him one.', she: 'Has no trade. Give her one.' },
+        resourceRouteBlocked:
+          'No way through to the resources. Clear a path or mark another spot with a work flag.',
       },
       unknown: 'The cause is unclear. Check that the workplace has a store and the goods it needs in reach.',
     },
+    /** A couple's wish for a child that waits on the player: the card line, and the whole message about
+     *  the woman. `{partner}` is her husband's name with a leading space, or empty. */
     familyBlocked: {
       short: {
         husbandAway: 'Husband away',

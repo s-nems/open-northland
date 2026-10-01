@@ -302,14 +302,20 @@ describe('message feed', () => {
       const feed = createMessageFeed();
       const idle = (reason: IdleReason | null) =>
         pending(USER_MESSAGE_TYPE.nothingToDo, { kind: 'settler', entity: 7 }, { idle: reason });
-      feed.add(idle({ kind: 'noResource', goodType: 4 }), TICK, TEXT);
+      const idleWithGood = (reason: IdleReason) => ({
+        ...idle(reason),
+        goodType: reason.goodTypes[0] ?? null,
+      });
+      feed.add(idleWithGood({ kind: 'noResource', goodTypes: [4] }), TICK, TEXT);
       let composed = 0;
       const compose = (): MessageText => ({ short: `${++composed}`, full: 'x' });
-      feed.revise(idle({ kind: 'noResource', goodType: 4 }), compose);
-      feed.revise(idle({ kind: 'resourceRouteBlocked', goodType: 4 }), compose);
+      feed.revise(idleWithGood({ kind: 'noResource', goodTypes: [4] }), compose);
+      feed.revise(idleWithGood({ kind: 'resourceRouteBlocked', goodTypes: [5, 4] }), compose);
+      expect(feed.live()[0]?.goodType).toBe(5);
       feed.revise(idle(null), compose);
       expect(composed).toBe(2);
       expect(feed.live()[0]?.idle).toBeNull();
+      expect(feed.live()[0]?.goodType).toBeNull();
     });
   });
 

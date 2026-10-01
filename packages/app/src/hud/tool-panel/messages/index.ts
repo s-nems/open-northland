@@ -26,7 +26,7 @@ import type { FigureFrames } from '../../figures/figure-frames.js';
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText, playerLabel } from '../diplomacy/model.js';
 import { noticeThumb } from './cards.js';
-import type { MessageFeedState } from './feed.js';
+import { type MessageFeedState, takeRaised } from './feed.js';
 import { FightAreas } from './fight-areas.js';
 import { type NoticeFigureSlot, NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
@@ -44,7 +44,7 @@ import type { MessageNaming, RaisedMessage } from './raise.js';
 import { isSubjectGone, NoteRetirement } from './retire.js';
 import { createSeatFeeds } from './seat-feeds.js';
 import { composeMessageText, fightSummary } from './text.js';
-import type { UserMessage } from './types.js';
+import type { PendingMessage, UserMessage } from './types.js';
 import type { WorkshopSeam } from './workshop-stalls.js';
 
 export type { MessageFeedState } from './feed.js';
@@ -336,13 +336,8 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     previous = null;
     renderedVersion = -1;
   };
-  /** Add a raised note; a repeat that carries fresh facts hands them to the note it repeats. */
-  const take = (raised: RaisedMessage, tick: number): void => {
-    const outcome = feeds.current.add(raised.pending, tick, raised.compose);
-    if (outcome === 'duplicate' && raised.updatesStanding === true) {
-      feeds.current.revise(raised.pending, raised.compose);
-    }
-  };
+  const take = (raised: RaisedMessage, tick: number): void => takeRaised(feeds.current, raised, tick);
+  const dismissed = (pending: PendingMessage): boolean => feeds.current.dismissed(pending);
   let lastGalleryTick: number | null = null;
   const galleryDue = (tick: number): boolean => {
     if (lastGalleryTick !== null && tick - lastGalleryTick < SNAPSHOT_SWEEP_INTERVAL_TICKS) return false;
@@ -371,7 +366,9 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
             take(raised, snapshot.tick);
           }
         }
-        for (const raised of snapshotSource?.sweep(snapshot, naming) ?? []) take(raised, snapshot.tick);
+        for (const raised of snapshotSource?.sweep(snapshot, naming, dismissed) ?? []) {
+          take(raised, snapshot.tick);
+        }
         if (seat !== null) {
           for (const raised of diplomacySource.poll(naming)) {
             feeds.current.add(raised.pending, snapshot.tick, raised.compose);
