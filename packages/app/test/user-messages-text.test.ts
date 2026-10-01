@@ -266,6 +266,7 @@ describe('notice text', () => {
     expect(wolves.full).toBe(
       'Your people are under attack outside the settlement. Enemy: wild beasts. Hit: 3 settlers. Send soldiers or lead them to safety.',
     );
+    expect(wolves.short).toBe('Under attack');
   });
 
   it('sums a fight up for its row in a stack: who struck, then what they hit', () => {
