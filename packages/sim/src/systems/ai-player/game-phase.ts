@@ -2,9 +2,14 @@ import { TICKS_PER_SECOND } from '../../core/loop.js';
 
 const SECONDS_PER_MINUTE = 60;
 
+/** Game seconds to sim ticks. */
+export function secondsToTicks(seconds: number): number {
+  return seconds * TICKS_PER_SECOND;
+}
+
 /** Game minutes to sim ticks. */
 export function minutesToTicks(minutes: number): number {
-  return minutes * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+  return secondsToTicks(minutes * SECONDS_PER_MINUTE);
 }
 
 /**

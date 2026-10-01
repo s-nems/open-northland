@@ -3,6 +3,7 @@ import {
   aiPlayerEntity,
   Building,
   BuildOrderFrontier,
+  BuildOrderPause,
   playerPlacementTribes,
   UnderConstruction,
   Upgrading,
@@ -16,7 +17,7 @@ import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { seatBaseOf } from '../base.js';
 import { buildingTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
-import { aiProfileOf, profileBuildOrder } from '../difficulty.js';
+import { type AiProfile, aiProfileOf, profileBuildOrder } from '../difficulty.js';
 import type { AiPlayerModule } from '../index.js';
 import type { EnemyFire } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf } from '../node-geometry.js';
@@ -105,6 +106,12 @@ function runBuildOrder(
   const siteCap = base === null ? BASELESS_CONSTRUCTION_SITES : sitePace(profile, ctx.tick).sites;
   const sites = constructionSites(world, ctx, owned);
   if (sites.length >= siteCap) return [];
+  const carrier = aiPlayerEntity(world, player);
+  if (base !== null && waitsOnFreeSite(world, carrier, profile, ctx.tick)) return [];
+  const started = (command: PlayerCommand): readonly PlayerCommand[] => {
+    if (carrier !== null && world.has(carrier, BuildOrderPause)) world.remove(carrier, BuildOrderPause);
+    return [command];
+  };
 
   const tribe = playerPlacementTribes(world, player)?.[0];
   // Scanned once the list has something to do: an idle decision never walks the map's people.
@@ -167,7 +174,7 @@ function runBuildOrder(
       siegeOf().underFire,
     );
     searches.searched(lane.entryIndex, ctx.tick, placed !== null, false);
-    if (placed !== null) return [placed];
+    if (placed !== null) return started(placed);
   }
   // The list keeps the sites the lanes leave it, at least one, and counts only its own.
   let listSites = sites.length;
@@ -186,7 +193,7 @@ function runBuildOrder(
     if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick)) return [];
     if (listSites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, memo)) return [];
     searches.acting(entryIndex);
-    if (verdict.placement !== null) return [verdict.placement];
+    if (verdict.placement !== null) return started(verdict.placement);
     switch (entry.kind) {
       case 'place': {
         if (tribe === undefined) return [];
@@ -196,7 +203,7 @@ function runBuildOrder(
         if (searches.waits(entryIndex, ctx.tick)) return [];
         const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, tribe, entry, underFire);
         searches.searched(entryIndex, ctx.tick, spot !== null, true);
-        return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
+        return spot === null ? [] : started(siteCommand(type, spot, tribe, player));
       }
       case 'upgrade': {
         const target = buildingTypeByContentId(ctx.content, entry.building);
@@ -208,7 +215,7 @@ function runBuildOrder(
         if (nextTier === undefined || !buildingEnabled(world, ctx, player, building.tribe, nextTier))
           return [];
         if (!upgradeKeepsSupply(world, ctx, player, owned, candidate)) return [];
-        return [{ kind: 'upgradeBuilding', building: candidate }];
+        return started({ kind: 'upgradeBuilding', building: candidate });
       }
       case 'collector':
         return []; // the workforce module hires it
@@ -219,6 +226,17 @@ function runBuildOrder(
   }
   advanceFrontier(world, player, order.length);
   return [];
+}
+
+/** Whether the seat's free site still waits out its profile's {@link AiProfile.freeSitePauseTicks}: the
+ *  first decision that finds a site free starts the wait, and the next site or upgrade the list starts
+ *  ends it, so every construction costs the seat its build time plus the pause. */
+function waitsOnFreeSite(world: World, carrier: Entity | null, profile: AiProfile, tick: number): boolean {
+  if (carrier === null || profile.freeSitePauseTicks === 0) return false;
+  const pause = world.tryGet(carrier, BuildOrderPause);
+  if (pause !== undefined) return tick < pause.untilTick;
+  world.add(carrier, BuildOrderPause, { untilTick: tick + profile.freeSitePauseTicks });
+  return true;
 }
 
 type PlaceCommand = Extract<PlayerCommand, { kind: 'placeBuilding' }>;

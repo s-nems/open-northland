@@ -123,6 +123,12 @@ export interface BuildOrderFrontierState {
 export const BuildOrderFrontier = defineComponent<BuildOrderFrontierState>('BuildOrderFrontier', 'players');
 
 /**
+ * The tick before which the seat's build order starts nothing on a free construction site, held on its
+ * {@link AiPlayer} carrier: a lower difficulty's pause, removed by the next site or upgrade it starts.
+ */
+export const BuildOrderPause = defineComponent<{ untilTick: number }>('BuildOrderPause', 'players');
+
+/**
  * How many re-plant searches in a row found nothing for a collector whose patch is worked out, held on
  * the holder while his flag stands on half-cell node (`hx`, `hy`). A record for another node is stale
  * and counts as none.

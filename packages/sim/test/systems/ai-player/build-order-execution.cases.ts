@@ -404,6 +404,27 @@ describe('build-order module (houseBuild)', () => {
     expect(openAt(LATE_GAME_FROM_TICKS)).toBeUndefined();
   });
 
+  it('leaves a freed site empty for the profile’s pause below the hard difficulty', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.iron]);
+    makeAiSeat(sim, SEAT, { houseBuild: false }, 'easy');
+    sim.step();
+    const pause = AI_PROFILES.easy.freeSitePauseTicks;
+    const at = (tick: number): Command | undefined => [...module.run(sim.world, ctxOf(sim, tick), SEAT)][0];
+
+    // The first decision to find the site free starts the wait, and the list acts once it has run out.
+    expect(at(0)).toBeUndefined();
+    expect(at(pause - 1)).toBeUndefined();
+    const first = at(pause);
+    if (first?.kind !== 'placeBuilding') throw new Error('expected the opening placement');
+    applyAndFinish(sim, first);
+    // The finished site frees the slot again, and the next wait runs from the decision that sees it.
+    expect(at(pause + 1)).toBeUndefined();
+    expect(at(2 * pause)).toBeUndefined();
+    expect(at(2 * pause + 1)?.kind).toBe('placeBuilding');
+  });
+
   it('runs a reached lane beside the list: one site of its own, the rest of the clock to the list', () => {
     const laned = buildOrderModule([
       { kind: 'place', building: 'work_farm_00', count: 1 },

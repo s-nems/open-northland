@@ -1,4 +1,5 @@
 import {
+  Age,
   AssistantChildOrder,
   AssistantRecruit,
   Building,
@@ -88,7 +89,11 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   }
   const profile = aiProfileOf(world, player);
   const held = idleMenHoldBirths(world, ctx, player, profile);
-  const births = birthCounters(profile, familySlotsTotal, familySlotsTotal - femaleStock, held, () =>
+  const family = {
+    wives: women.filter((e) => hasLivingSpouse(world, e)).length,
+    minors: minorsOf(world, settlers),
+  };
+  const births = birthCounters(profile, family, familySlotsTotal - femaleStock, held, () =>
     bookedBirths(world, player),
   );
   const daughters = assistantCounterCommand(world, player, 'extraWomen', births.daughters, false);
@@ -121,23 +126,30 @@ function idleMenHoldBirths(world: World, ctx: SystemContext, player: number, pro
 
 /**
  * The two birth counters: daughters up to the `wantedDaughters` the homes lack, sons unbounded (null)
- * unless `held`. A profile with a {@link AiProfile.birthShare} caps both together at that share of its
- * `familySlots`, at least one, daughters first. The assistant counts each counter's own sex's booked
- * child orders against it (`systems/assistant/`), so each counter leaves room for the other sex's
- * bookings already running.
+ * unless `held`. A profile with a {@link AiProfile.birthShare} caps the seat's minors and its children on
+ * the way together at that share of its `wives`, at least one, daughters first. The assistant counts each
+ * counter's own sex's booked child orders against it (`systems/assistant/`), so each counter leaves room
+ * for the other sex's bookings already running.
  */
 function birthCounters(
   profile: AiProfile,
-  familySlots: number,
+  family: { readonly wives: number; readonly minors: number },
   wantedDaughters: number,
   held: boolean,
   booked: () => { readonly daughters: number; readonly sons: number },
 ): { readonly daughters: number; readonly sons: number | null } {
   if (profile.birthShare === null) return { daughters: wantedDaughters, sons: held ? 0 : null };
-  const limit = Math.max(1, shareOf(familySlots, profile.birthShare));
+  const limit = Math.max(1, shareOf(family.wives, profile.birthShare)) - family.minors;
   const running = booked();
-  const daughters = Math.min(wantedDaughters, limit - running.sons);
+  const daughters = Math.max(0, Math.min(wantedDaughters, limit - running.sons));
   return { daughters, sons: held ? 0 : Math.max(0, limit - Math.max(daughters, running.daughters)) };
+}
+
+/** How many of `settlers` are still growing up. */
+function minorsOf(world: World, settlers: readonly Entity[]): number {
+  let minors = 0;
+  for (const e of settlers) if (world.has(e, Age)) minors++;
+  return minors;
 }
 
 /** The seat's child orders the assistant booked and a mother still carries, by the child's sex. */

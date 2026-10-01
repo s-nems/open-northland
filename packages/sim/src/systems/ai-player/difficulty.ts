@@ -12,6 +12,7 @@ import {
   MID_GAME_FROM_TICKS,
   minutesToTicks,
   SITES_GROW_FROM_TICKS,
+  secondsToTicks,
 } from './game-phase.js';
 import { ARMY_CAP_SOLDIERS } from './military/plan.js';
 import {
@@ -44,11 +45,14 @@ export interface AiProfile {
   readonly difficulty: AiDifficulty;
   /** Open construction sites and build-order lookahead by game clock (`build-order/entries.ts`). */
   readonly sitePace: readonly SitePace[];
+  /** How long a construction site the seat's pace frees stays empty before the build order starts the
+   *  next site or upgrade on it. */
+  readonly freeSitePauseTicks: number;
   /** The builder reserve in the opening, once the seat has grown, and from the late game on
    *  (`workforce/staffing.ts`). */
   readonly builders: { readonly opening: number; readonly grown: number; readonly late: number };
-  /** The share of the seat's family slots that may carry a child at once, at least one; null books every
-   *  housed wife. */
+  /** How many children, growing up or on the way, the seat keeps at once, as a share of its wives, at
+   *  least one; null books every housed wife. */
   readonly birthShare: Share | null;
   /** The most of a building, by stable content id, that a `place` or `upgrade` entry asks for: a higher
    *  count is cut to it, and an entry capped at zero is dropped. */
@@ -88,13 +92,13 @@ export const LATE_GAME_BUILDER_CAP = 16;
 
 const WHOLE: Share = { num: 1, den: 1 };
 const HALF: Share = { num: 1, den: 2 };
-const QUARTER: Share = { num: 1, den: 4 };
-const EIGHTH: Share = { num: 1, den: 8 };
+const THIRD: Share = { num: 1, den: 3 };
 const THREE_QUARTERS: Share = { num: 3, den: 4 };
 
 const HARD: AiProfile = {
   difficulty: 'hard',
   sitePace: SITE_PACE_STEPS,
+  freeSitePauseTicks: 0,
   builders: { opening: BUILDER_CAP, grown: GROWN_SEAT_BUILDER_CAP, late: LATE_GAME_BUILDER_CAP },
   birthShare: null,
   buildingCaps: {},
@@ -112,6 +116,7 @@ const ONE_SITE = 1;
 const MEDIUM_CATAPULT_CAP = 8;
 const MEDIUM_CATAPULT_RESUME = 6;
 const MEDIUM_FIRST_WAVE_FROM_TICKS = minutesToTicks(90);
+const MEDIUM_FREE_SITE_PAUSE_TICKS = secondsToTicks(30);
 
 const MEDIUM: AiProfile = {
   difficulty: 'medium',
@@ -128,8 +133,9 @@ const MEDIUM: AiProfile = {
       lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 2,
     },
   ],
-  builders: { opening: 6, grown: 8, late: 10 },
-  birthShare: QUARTER,
+  freeSitePauseTicks: MEDIUM_FREE_SITE_PAUSE_TICKS,
+  builders: { opening: 9, grown: 11, late: 12 },
+  birthShare: HALF,
   buildingCaps: {
     home_level_04: 8,
     work_smithy_01: 4,
@@ -154,6 +160,7 @@ const MEDIUM: AiProfile = {
 };
 
 const EASY_FIRST_WAVE_FROM_TICKS = minutesToTicks(120);
+const EASY_FREE_SITE_PAUSE_TICKS = secondsToTicks(90);
 
 const EASY: AiProfile = {
   difficulty: 'easy',
@@ -162,8 +169,9 @@ const EASY: AiProfile = {
     { fromTick: SITES_GROW_FROM_TICKS, sites: ONE_SITE, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 1 },
     { fromTick: LATE_GAME_FROM_TICKS, sites: ONE_SITE, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 2 },
   ],
+  freeSitePauseTicks: EASY_FREE_SITE_PAUSE_TICKS,
   builders: { opening: 6, grown: 8, late: 8 },
-  birthShare: EIGHTH,
+  birthShare: THIRD,
   buildingCaps: {
     home_level_04: 5,
     work_smithy_01: 2,

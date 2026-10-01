@@ -34,6 +34,8 @@ import {
 } from './support.js';
 
 const HOLY_OIL = 99;
+/** The baby boy's age-class job in the AI fixture content. */
+const BABY_MALE = 2;
 
 /** `content` plus a holy oil good that serves a home's piety. */
 function withHolyOil(content: ContentSet): ContentSet {
@@ -156,7 +158,7 @@ describe('population module (homeExpansion)', () => {
     ]);
   });
 
-  it('caps the pregnancies at a share of the family slots below the hard difficulty', () => {
+  it('caps the children growing up or on the way at a share of the wives below the hard difficulty', () => {
     const counters = (sim: Simulation): PlayerCommand[] =>
       [...populationModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setAssistantCounter');
     const housedSeat = (difficulty: AiDifficulty): Simulation => {
@@ -188,11 +190,11 @@ describe('population module (homeExpansion)', () => {
       sim.step();
     };
 
-    // Two slots, a quarter of them rounds to none: the easy seat still keeps one child on the way.
+    // Two wives, a third of whom rounds to none: the easy seat still keeps one child.
     const easy = housedSeat('easy');
     expect(easy.assistantCounters(SEAT).extraMen).toEqual({ value: 1, infinite: false });
     // A son the assistant booked on that counter is on the way when two more slots open that both want a
-    // daughter: he still fills the one birth, so the counters stay where they were - no daughter, and the
+    // daughter: he still fills the one child, so the counters stay where they were - no daughter, and the
     // son counter he already fills.
     const mother = womenOf(easy)[0];
     if (mother === undefined) throw new Error('setup: no wife');
@@ -203,12 +205,31 @@ describe('population module (homeExpansion)', () => {
     expect(easy.assistantCounters(SEAT).extraWomen.value).toBe(0);
     expect(easy.assistantCounters(SEAT).extraMen).toEqual({ value: 1, infinite: false });
 
-    // Half of four slots: both missing daughters at once, and no son.
+    // Half of two wives is one child: one of the two missing daughters, and no son. A child still growing
+    // up fills that place as well, so the daughter counter drops back to none.
     const medium = housedSeat('medium');
     secondHome(medium);
+    // Whatever son the assistant booked meanwhile is called off, so the seat starts from no child.
+    for (const wife of womenOf(medium)) {
+      if (medium.world.has(wife, AssistantChildOrder)) medium.world.remove(wife, AssistantChildOrder);
+      if (medium.world.has(wife, ChildOrder)) medium.world.remove(wife, ChildOrder);
+    }
     expect(counters(medium)).toEqual([
-      { kind: 'setAssistantCounter', player: SEAT, counter: 'extraWomen', value: 2, infinite: false },
+      { kind: 'setAssistantCounter', player: SEAT, counter: 'extraWomen', value: 1, infinite: false },
       { kind: 'setAssistantCounter', player: SEAT, counter: 'extraMen', value: 0, infinite: false },
+    ]);
+    for (const c of counters(medium)) medium.enqueueSetup(c);
+    medium.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: BABY_MALE,
+      x: 6,
+      y: 10,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    medium.step();
+    expect(counters(medium)).toEqual([
+      { kind: 'setAssistantCounter', player: SEAT, counter: 'extraWomen', value: 0, infinite: false },
     ]);
   });
 
