@@ -179,6 +179,7 @@ export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView):
     height: nodeH,
     typeIds,
     ...(map.elevation !== undefined ? { elevation: map.elevation } : {}),
+    ...(map.tints !== undefined ? { tints: map.tints } : {}),
     ...(landVertices === undefined ? {} : { landVertices }),
     ...(map.continents !== undefined ? { waterContinents: map.continents } : {}),
     ...(map.roughness !== undefined ? { roughness: map.roughness } : {}),

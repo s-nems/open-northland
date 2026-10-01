@@ -16,7 +16,8 @@ const palette: readonly number[] = Array.from({ length: VERTEX_PALETTE_ENTRIES }
   return 0x808080;
 });
 
-vi.mock('../src/content/vertex-palette.js', () => ({ loadVertexPalette: async () => palette }));
+const loadVertexPalette = vi.fn(async () => palette);
+vi.mock('../src/content/vertex-palette.js', () => ({ loadVertexPalette: () => loadVertexPalette() }));
 
 /** Seven dark nodes (70%, a whole-map tint), one never tinted, two under a torch. */
 const tints = Uint8Array.from([DARK, DARK, DARK, DARK, DARK, DARK, DARK, NEUTRAL, TORCH, TORCH]);
@@ -143,13 +144,26 @@ describe('mountScriptTints', () => {
     scriptTints.dispose();
   });
 
-  it('asks nothing of a map whose script never tints', async () => {
+  it('grades a map its author tinted even when its script never writes a tint', async () => {
     const drawn = surface();
     const landscapeEdits = vi.fn(() => Promise.resolve(edits(tints)));
     const scriptTints = await mountScriptTints({ missions: undefined, landscapeEdits }, drawn);
+    await landed();
+    expect(drawn.lights).toEqual([[0.5, 0.5, 0.5]]);
+    expect(drawn.snaps).toEqual([true]);
+    scriptTints.dispose();
+  });
+
+  it('fetches no palette for a map that neither its author nor its script tints', async () => {
+    loadVertexPalette.mockClear();
+    const drawn = surface();
+    const landscapeEdits = vi.fn(() => Promise.resolve(edits(new Uint8Array(10))));
+    const scriptTints = await mountScriptTints({ missions: undefined, landscapeEdits }, drawn);
+    await landed();
     scriptTints.onEvents([{ kind: 'missionVertexColor' }]);
     await landed();
-    expect(landscapeEdits).not.toHaveBeenCalled();
+    expect(landscapeEdits).toHaveBeenCalledTimes(1);
+    expect(loadVertexPalette).not.toHaveBeenCalled();
     expect(drawn.lights).toEqual([]);
   });
 });

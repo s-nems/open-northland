@@ -253,8 +253,9 @@ function forNodesOfCellDisc(
 /**
  * Original behavior: the point's cell takes the index, and so do `range >> 1` less one rings of cells
  * around it, so a range under 4 paints one cell and 900 the whole map; a point off the map still paints
- * the cells of its disc that lie on it. Approximation: the original keeps one index per cell, while
- * this lattice keeps one per node, so every node a painted cell owns takes the index.
+ * the cells of its disc that lie on it. A write replaces the map author's own tint, which a node reads
+ * until a script writes it. Approximation: the original keeps one index per cell, while this lattice
+ * keeps one per node, so every node a painted cell owns takes the index.
  */
 export function setVertexColors(
   world: World,
@@ -269,7 +270,10 @@ export function setVertexColors(
   const current = landscapeEditState(world);
   const changed: NodeId[] = [];
   forNodesOfCellDisc(terrain, cellOfNode(point.hx, point.hy), Math.max(0, (range >> 1) - 1), (node) => {
-    if ((!onLand || terrain.landVertices?.[node] === true) && current.tints.get(node) !== value)
+    if (
+      (!onLand || terrain.landVertices?.[node] === true) &&
+      (current.tints.get(node) ?? terrain.authoredTintAt(node)) !== value
+    )
       changed.push(node);
   });
   if (changed.length === 0) return true;

@@ -202,6 +202,12 @@ describe('parseTerrainMap cross-lane invariants', () => {
       message: 'terrain map shore length 11 != width*height (12)',
     },
     {
+      name: 'a tints lane one cell short',
+      map: { ...base(), tints: PER_CELL_LANE.slice(0, -1) },
+      path: 'tints',
+      message: 'terrain map tints length 11 != width*height (12)',
+    },
+    {
       name: 'a continent lane one half-cell short',
       map: {
         ...base(),

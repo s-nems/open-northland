@@ -73,6 +73,7 @@ The simulation uses the half-cell lattice directly. Cell `(column, row)` maps to
 | `lmco` | half-cell | original continent id per node; retained for water-edge jobs to match authored fish swarms |
 | `lmpr` | half-cell | walking roughness 0..5 per node: a human's step off a node costs `2·lmpr + 2` ticks shod and `2·lmpr + 4` barefoot (rested; two more once due for sleep, one more hauling), and the same value wears its shoes or, barefoot, its food bar. Every owned map carries it and every `lmro` road node holds 1 |
 | `lafm` | fixed records | authored fish swarms: populated position/count/continent records become persistent sim stocks |
+| `emvc` | cell | the author's `vertexcolors` palette index per cell, 0 neutral; emitted as `tints` only when a cell is tinted |
 
 ### Verified `lafm` fish table
 
@@ -103,6 +104,17 @@ The byte carries no separate palette value. For example, `SPECJALNA- FORTECA` wr
 `lmlp`, while its player-6 roster record selects colour 9. A consumer derives fortification colour
 from the owner slot's roster entry.
 
+### Verified `emvc` vertex colour lane
+
+`emvc` is an optional `X8el` per-cell lane (exactly `width * height` bytes, chunk version 1, the
+same packed header as `embr`) holding the index each cell takes in the `vertexcolors` palette that a
+script's `SetVertexColor` also addresses; 0 is the neutral entry. Verified across the 124 mod maps:
+120 carry the chunk (`SPECJALNA- MOSTY NA RZECE`, `WALKA- NIEKONCZACE`, `tutorial_005` and
+`tutorial_006` lack it), and every carried lane matches its `lsiz` cell count. Most lanes are all
+zero; 39 tint at least one cell, from a 0.5% decor patch (`oasis_o_plenty`) to 98% of
+`Czarnoksieznik_z_Szeolu`. The pipeline emits a nonzero lane as `tints`; the sim starts each node's
+tint from its cell's entry, so a script write replaces the author's colour and a save restores it.
+
 ## Lanes not imported
 
 The remaining chunks are dropped on import. Meanings below follow the CulturesNation documentation,
@@ -123,7 +135,6 @@ Treat these meanings as probe targets, not implementation evidence, until they a
 | `lmao` | derivable | attach-point vector per node, encoded `(-dx - (dy << 8)) & 0xffff` |
 | `lasw` | derivable | pathfinding sector graph: 10x10-cell sectors, land and water planes, 52 bytes each |
 | `emmi` | authored | road-overlay type per half-cell node |
-| `emvc` | authored | vertex colors per cell (optional chunk, like `lmhf`) |
 
 Ground collision currently joins `empa` and `empb` through `gfxPatterns` to
 `trianglePatternTypes`. Imported maps already contain their final ground patterns and transition

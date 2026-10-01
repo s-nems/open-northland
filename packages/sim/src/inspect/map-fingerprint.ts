@@ -8,7 +8,8 @@ export function mapFingerprint(map: TerrainMap): string {
     map.landscapes === undefined &&
     map.landVertices === undefined &&
     map.waterContinents === undefined &&
-    map.fishSwarms === undefined
+    map.fishSwarms === undefined &&
+    map.tints === undefined
   )
     return ground;
   const input = JSON.stringify(
@@ -18,6 +19,7 @@ export function mapFingerprint(map: TerrainMap): string {
       landVertices: map.landVertices,
       waterContinents: map.waterContinents,
       fishSwarms: map.fishSwarms,
+      tints: map.tints,
     },
     (_key, value: unknown) => {
       if (value === null || typeof value !== 'object' || Array.isArray(value)) return value;

@@ -340,12 +340,25 @@ describe('mapDatToTerrain', () => {
     expect(terrain.brightness).toEqual([0, 200]);
   });
 
-  it('omits ground/objects/elevation/brightness when the map lacks the lanes (an lmlt-only save)', () => {
+  it('emits the per-cell vertex colour lane from emvc, and only when the author tinted a cell', () => {
+    // emvc is PER CELL like embr: one vertexcolors palette index per cell, 0 neutral.
+    const chunks = (lane: number[]) => [
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0])) },
+      { tag: 'emvc', version: 1, payload: packMapLayer(Uint8Array.from(lane)) },
+    ];
+    expect(mapDatToTerrain(encodeMapDat(chunks([0, 58]))).tints).toEqual([0, 58]);
+    // Most owned maps carry the chunk with every cell neutral: no lane to ship.
+    expect(mapDatToTerrain(encodeMapDat(chunks([0, 0]))).tints).toBeUndefined();
+  });
+
+  it('omits ground/objects/elevation/brightness/tints when the map lacks the lanes (an lmlt-only save)', () => {
     const terrain = mapDatToTerrain(buildMapDat(1, 1, [2, 2, 2, 2]));
     expect(terrain.ground).toBeUndefined();
     expect(terrain.objects).toBeUndefined();
     expect(terrain.elevation).toBeUndefined();
     expect(terrain.brightness).toBeUndefined();
+    expect(terrain.tints).toBeUndefined();
   });
 
   /**
@@ -358,7 +371,7 @@ describe('mapDatToTerrain', () => {
     readonly lane: string;
     readonly why: string;
     readonly chunks: Parameters<typeof encodeMapDat>[0];
-    readonly layer: 'transitions' | 'elevation' | 'shore' | 'brightness' | 'ground';
+    readonly layer: 'transitions' | 'elevation' | 'shore' | 'brightness' | 'ground' | 'tints';
     readonly warns: RegExp;
   }[] = [
     {
@@ -408,6 +421,17 @@ describe('mapDatToTerrain', () => {
       ],
       layer: 'brightness',
       warns: /brightness lane unreadable.*expected 1/,
+    },
+    {
+      lane: 'emvc',
+      why: 'carries the half-cell count (4) instead of the per-cell count (1)',
+      chunks: [
+        { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+        { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+        { tag: 'emvc', version: 1, payload: packMapLayer(Uint8Array.from([58, 58, 58, 58])) },
+      ],
+      layer: 'tints',
+      warns: /vertex colour lane unreadable.*expected 1/,
     },
     {
       lane: 'empa',

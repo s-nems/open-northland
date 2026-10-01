@@ -3,13 +3,20 @@ import { TypeId } from '../../record.js';
 import { TerrainEntities } from '../entities.js';
 import { TRANSITION_NONE, TRANSITION_PAIRS } from './encoding.js';
 import { MapFishSwarm } from './fish.js';
-import { CellLane, RoughnessLane, TerrainGround, TerrainObjects, TerrainTransitions } from './layers.js';
+import {
+  CellLane,
+  RoughnessLane,
+  TerrainGround,
+  TerrainObjects,
+  TerrainTransitions,
+  TintLane,
+} from './layers.js';
 
 /**
  * A decoded terrain grid file (`content/maps/<id>.json`), the validating loader boundary in front of
  * the sim's structurally typed `TerrainMap`. `typeIds` is the `map.dat` `lmlt` half-cell lane reduced
  * to one 1-based IR landscape typeId per cell, with raw 0 (no object) mapped to `void`. The sim reads
- * the grid, the `continents` lane and the `roughness` lane; the other lanes are render-only.
+ * the grid and the `continents`, `roughness` and `tints` lanes; the other lanes are render-only.
  */
 const TerrainMapFields = z.strictObject({
   /** Map width in cells. */
@@ -43,6 +50,12 @@ const TerrainMapFields = z.strictObject({
    * band 7 sits mostly under land patterns on river maps). Raw probe data with no runtime consumer.
    */
   shore: CellLane.optional(),
+  /**
+   * The map author's vertex colour (`emvc` lane), row-major, one `vertexcolors` palette index per
+   * cell, 0 neutral. The pipeline omits the lane when the map lacks the chunk or tints no cell, so
+   * a present lane always carries at least one authored tint. The sim starts its tint state from it.
+   */
+  tints: TintLane.optional(),
   /** Raw `lmco` continent id at every half-cell node (`2W x 2H`), used by water-edge jobs. */
   continents: CellLane.optional(),
   /**
@@ -103,7 +116,7 @@ interface TerrainMapInvariant {
 }
 
 /** An optional per-cell lane, when present, carries exactly one value per cell. */
-function cellLaneLength(field: 'elevation' | 'brightness' | 'shore'): TerrainMapInvariant {
+function cellLaneLength(field: 'elevation' | 'brightness' | 'shore' | 'tints'): TerrainMapInvariant {
   return {
     ok: (m) => {
       const lane = m[field];
@@ -184,6 +197,7 @@ const INVARIANTS: readonly TerrainMapInvariant[] = [
   cellLaneLength('elevation'),
   cellLaneLength('brightness'),
   cellLaneLength('shore'),
+  cellLaneLength('tints'),
   halfCellLaneLength('continents'),
   halfCellLaneLength('roughness'),
   {

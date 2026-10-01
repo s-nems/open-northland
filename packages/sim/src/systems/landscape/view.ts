@@ -373,7 +373,8 @@ export interface LandscapeEditView {
   /** Authored ids no longer standing, ascending: removed by a script or reaped as a resource. */
   readonly removed: readonly number[];
   readonly added: readonly ScriptLandscapePlacement[];
-  /** The script's vertex colour palette index per node id; a node never tinted holds 0, the neutral entry. */
+  /** The vertex colour palette index per node id: the script's write, else the map author's; a node
+   *  neither tinted holds 0, the neutral entry. */
   readonly tints: Uint8Array;
 }
 
@@ -387,6 +388,7 @@ export function landscapeEdits(world: World, terrain: TerrainGraph | undefined):
     if (!resources.has(placement.id)) removed.add(placement.id);
   }
   const tints = new Uint8Array(terrain.nodeCount);
+  terrain.copyAuthoredTints(tints);
   for (const [node, value] of state.tints) tints[node] = value;
   return {
     revision: landscapeRevision(world),

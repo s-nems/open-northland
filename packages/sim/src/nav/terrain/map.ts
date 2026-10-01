@@ -21,6 +21,9 @@ export interface TerrainMap {
   readonly roughness?: readonly number[];
   /** Original cell-resolution elevation lane (length `(width/2)*(height/2)`). */
   readonly elevation?: readonly number[];
+  /** The author's vertex colour palette index per cell (`emvc`, length `(width/2)*(height/2)`),
+   *  0 neutral: the tint state a script's writes start from. */
+  readonly tints?: readonly number[];
   /** Authored fish-manager rows, already addressed on this half-cell grid. */
   readonly fishSwarms?: readonly FishSwarmInput[] | undefined;
   /** Half-cell grid width, twice the map's cell columns. */
@@ -54,6 +57,7 @@ export interface CellTerrainMap {
   /** Already at half-cell resolution, like `waterContinents`: the lanes are decoded per node. */
   readonly roughness?: readonly number[] | undefined;
   readonly elevation?: readonly number[] | undefined;
+  readonly tints?: readonly number[] | undefined;
 }
 
 /**
@@ -93,6 +97,7 @@ export function halfCellMapFromCells(map: CellTerrainMap): TerrainMap {
     ...(map.waterContinents !== undefined ? { waterContinents: map.waterContinents } : {}),
     ...(map.roughness !== undefined ? { roughness: map.roughness } : {}),
     ...(map.elevation !== undefined ? { elevation: map.elevation } : {}),
+    ...(map.tints !== undefined ? { tints: map.tints } : {}),
     ...(map.fishSwarms !== undefined ? { fishSwarms: map.fishSwarms } : {}),
   };
 }
@@ -122,5 +127,6 @@ export function buildTerrainGraph(content: ContentSet, map: TerrainMap): Terrain
     map.waterContinents,
     map.roughness,
     map.elevation,
+    map.tints,
   );
 }

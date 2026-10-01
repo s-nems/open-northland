@@ -1,7 +1,17 @@
 import { z } from 'zod';
+import { VERTEX_PALETTE_ENTRIES } from '../../landscape/vertex-palette.js';
 
 /** A row-major per-cell lane: one non-negative integer per map cell (length = width*height). */
 export const CellLane = z.array(z.number().int().nonnegative());
+
+/** A row-major per-cell lane of `vertexcolors` palette indices (`emvc`), 0 the neutral entry. */
+export const TintLane = z.array(
+  z
+    .number()
+    .int()
+    .min(0)
+    .max(VERTEX_PALETTE_ENTRIES - 1),
+);
 
 /**
  * The widest walking-roughness value a node can carry: the engine reads the `lmpr` byte back out of a

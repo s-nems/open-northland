@@ -28,3 +28,13 @@ export function elevationFromMapDat(decoded: DecodedMap): number[] | undefined {
 export function brightnessFromMapDat(decoded: DecodedMap): number[] | undefined {
   return perCellLaneFromMapDat(decoded, 'embr', 'brightness');
 }
+
+/**
+ * The authored vertex colour lane (`emvc`, verified in `docs/formats/MAPDAT.md`): one `vertexcolors`
+ * palette index per cell, 0 neutral. Omitted when the map lacks the chunk or tints no cell, so a
+ * present lane always carries an authored tint.
+ */
+export function tintsFromMapDat(decoded: DecodedMap): number[] | undefined {
+  const lane = perCellLaneFromMapDat(decoded, 'emvc', 'vertex colour');
+  return lane?.some((index) => index !== 0) === true ? lane : undefined;
+}

@@ -220,6 +220,49 @@ describe('script landscape state and blockers', () => {
     }
   });
 
+  it("starts every node from the author's cell tint, which a script write replaces and a save keeps", () => {
+    // An 8x8 cell lane under the 16x16 node fixture: the top cell rows dark, the rest neutral.
+    const DARK = 58;
+    const tints = Array.from({ length: 64 }, (_, cell) => (cell < 16 ? DARK : 0));
+    const sim = new Simulation({ seed: 1, content: houseContent(), map: { ...map(), tints } });
+    const terrain = terrainOf(sim);
+    const expected = new Uint8Array(terrain.nodeCount);
+    for (let hy = 0; hy < terrain.height; hy++) {
+      for (let hx = 0; hx < terrain.width; hx++) {
+        const cell = cellOfNode(hx, hy);
+        expected[terrain.nodeAt(hx, hy)] = cell.cy < 2 ? DARK : 0;
+      }
+    }
+    expect(sim.landscapeEdits().tints).toEqual(expected);
+    expect(landscapeEditState(sim.world).tints.size).toBe(0);
+    // Writing the author's own index changes nothing; a reset over it is a real write.
+    const version = sim.world.mutationVersion;
+    setVertexColors(sim.world, terrain, { hx: 2, hy: 2 }, 3, DARK, false);
+    expect(sim.world.mutationVersion).toBe(version);
+    setVertexColors(sim.world, terrain, { hx: 2, hy: 2 }, 3, 0, false);
+    expect(landscapeEditState(sim.world).tints.size).toBe(4);
+    expect(sim.landscapeEdits().tints[terrain.nodeAt(2, 2)]).toBe(0);
+    expect(sim.landscapeEdits().tints[terrain.nodeAt(2, 0)]).toBe(DARK);
+    const saved = parseSaveGame(JSON.parse(JSON.stringify(exportSaveGame(sim))));
+    const restored = restoreSimulation(saved, { content: sim.content, map: { ...map(), tints } });
+    expect(restored.landscapeEdits().tints).toEqual(sim.landscapeEdits().tints);
+    expect(() => restoreSimulation(saved, { content: sim.content, map: map() })).toThrow(/mapFingerprint/);
+  });
+
+  it('gives an edge node whose cell nudge lands off the map the cell on its side', () => {
+    // Column 0 and column 7 of the 8x8 cell lane carry their own indices.
+    const tints = Array.from({ length: 64 }, (_, cell) => (cell % 8 === 0 ? 10 : cell % 8 === 7 ? 20 : 0));
+    const sim = new Simulation({ seed: 1, content: houseContent(), map: { ...map(), tints } });
+    const terrain = terrainOf(sim);
+    const view = sim.landscapeEdits().tints;
+    for (let hy = 0; hy < terrain.height; hy++) {
+      expect(view[terrain.nodeAt(0, hy)]).toBe(10);
+      expect(view[terrain.nodeAt(15, hy)]).toBe(20);
+    }
+    expect(view.filter((value) => value === 10)).toHaveLength(32);
+    expect(view.filter((value) => value === 20)).toHaveLength(32);
+  });
+
   it('applies a scripted tint whose point lies off the map', () => {
     const sim = missionSim(
       [

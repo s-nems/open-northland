@@ -1,4 +1,4 @@
-import { VERTEX_PALETTE_ENTRIES } from '@open-northland/data';
+import { VERTEX_PALETTE_ENTRIES, type VertexPalette } from '@open-northland/data';
 import { type LightGrade, NEUTRAL_GRADE } from '@open-northland/render/data';
 import type { SimEvent } from '@open-northland/sim';
 import { loadVertexPalette } from '../../content/vertex-palette.js';
@@ -84,7 +84,8 @@ interface ScriptTintSurface {
   applyTerrainVertexColors(colors: Float32Array): void;
 }
 
-/** The script's tints kept on the surface: synced on its events, and never after `dispose`. */
+/** The map's tints kept on the surface: the author's and the script's, synced on the script's events,
+ *  and never after `dispose`. */
 export interface ScriptTints {
   readonly onEvents: (events: readonly SimEvent[]) => void;
   readonly dispose: () => void;
@@ -100,22 +101,35 @@ export async function mountScriptTints(
   surface: ScriptTintSurface,
   { pinnedIndex = null }: ScriptTintOptions = {},
 ): Promise<ScriptTints> {
-  const hasColors = host.missions?.missions.some((mission) =>
-    mission.results.some((op) => op.opcode === 'SetVertexColor' || op.opcode === 'SetVertexColorOnLand'),
-  );
-  const palette = hasColors === true || pinnedIndex !== null ? await loadVertexPalette() : null;
-  if (palette === null) return { onEvents: () => undefined, dispose: () => undefined };
+  const scripted =
+    host.missions?.missions.some((mission) =>
+      mission.results.some((op) => op.opcode === 'SetVertexColor' || op.opcode === 'SetVertexColorOnLand'),
+    ) === true;
+  // The palette is fetched once, and only for a map whose author or script tints a node.
+  let paletteLoad: Promise<VertexPalette | null> | null = null;
+  const paletteFor = (tints: Uint8Array): Promise<VertexPalette | null> => {
+    if (paletteLoad === null) {
+      const tinted = scripted || pinnedIndex !== null || tints.some((index) => index !== NEUTRAL_INDEX);
+      paletteLoad = tinted ? loadVertexPalette() : Promise.resolve(null);
+    }
+    return paletteLoad;
+  };
   let colors: Float32Array = new Float32Array(0);
-  // Each answer is the whole tint state, so only the latest asked is applied, and none once disposed.
+  // Each answer is the whole tint state, so only the latest asked is applied, and none once disposed
+  // or once the map proved to have no tint to show.
   let asked = 0;
   let disposed = false;
+  let untinted = false;
   // The first answer applied is the state the world was loaded in, not a step to fade into, even
   // when a script's first-tick write made an earlier answer stale.
   let applied = false;
   const sync = (): void => {
+    if (untinted) return;
     const request = ++asked;
-    void host.landscapeEdits().then((edits) => {
-      if (request !== asked || disposed) return;
+    void host.landscapeEdits().then(async (edits) => {
+      const palette = await paletteFor(edits.tints);
+      untinted = palette === null;
+      if (palette === null || request !== asked || disposed) return;
       const split = splitScriptTints(edits.tints, palette, colors, pinnedIndex);
       colors = split.colors;
       surface.setSceneLight(split.scene, !applied);

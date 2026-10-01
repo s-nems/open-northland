@@ -1,7 +1,8 @@
 # Script vertex tints
 
-How a map script's `SetVertexColor point range index` / `SetVertexColorOnLand` reaches the screen.
-Presentation only; the sim stores one palette index per half-cell node and never reads the look.
+How a map's vertex colours reach the screen: the author's own `emvc` lane and a script's
+`SetVertexColor point range index` / `SetVertexColorOnLand` writes over it. Presentation only; the
+sim stores one palette index per half-cell node and never reads the look.
 
 ## What the op does
 
@@ -30,9 +31,18 @@ was written with point (0,0) and range 0, one cell in a corner, which
 | Local cursed ground, markers (flag points, shrines, teleport pads), water and sand decor | ~20 maps | dark 57/59/140/143, white, blue, green, ochre |
 | Periodic local flash | saracen_4 (sunbeam, 15 s every 20 min) | 120, range 8 |
 
-No whole-map write is shorter than 15 s. Authored vertex colours in `map.dat` (`emvc`) are not
-decoded yet; czarnoksieznik_z_szeolu and mroczny_swiat carry victory resets whose only job is to
-clear them.
+No whole-map write is shorter than 15 s.
+
+## What the map authors painted
+
+The `emvc` lane (`docs/formats/MAPDAT.md`) is the same palette per cell, written in the editor. 38 of
+the shipped maps tint a cell with it (39 `map.dat` files, one a duplicate the pipeline skips): whole
+caves and cursed lands (czarnoksieznik_z_szeolu 98%, straznicypolnocy_sub1 78%, mroczny_swiat 34%),
+local decor on the rest. A node starts from its cell's entry and a script write replaces it, so the
+victory resets of czarnoksieznik_z_szeolu and mroczny_swiat (a whole-map `0`, six discs of `0`) lift
+an authored darkness, which is what the resets read as (observation from the scripts, unconfirmed
+against the running original). A whole-map authored tint is a scene grade like a scripted one;
+czarnoksieznik_z_szeolu's four darks of 12..33% each stay on the ground.
 
 ## What we draw
 
