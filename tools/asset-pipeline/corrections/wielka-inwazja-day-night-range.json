@@ -9,7 +9,11 @@
     { "from": "result \"SetVertexColor\" 0 0 0 126", "to": "result \"SetVertexColor\" 180 260 900 126" },
     { "from": "result \"SetVertexColor\" 0 0 0 64", "to": "result \"SetVertexColor\" 180 260 900 64" },
     { "from": "result \"SetVertexColor\" 0 0 0 79", "to": "result \"SetVertexColor\" 180 260 900 79" },
-    { "from": "result \"SetVertexColor\" 0 0 0 133", "to": "result \"SetVertexColor\" 180 260 900 133", "every": true },
+    {
+      "from": "result \"SetVertexColor\" 0 0 0 133",
+      "to": "result \"SetVertexColor\" 180 260 900 133",
+      "every": true
+    },
     { "from": "result \"SetVertexColor\" 0 0 0 58", "to": "result \"SetVertexColor\" 180 260 900 58" }
   ]
 }

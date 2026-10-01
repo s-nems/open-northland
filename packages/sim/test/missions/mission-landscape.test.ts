@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LandscapeResource, Resource, ResourceFootprint, Stockpile } from '../../src/components/index.js';
 import { landscapeEditState } from '../../src/components/landscape.js';
 import { exportSaveGame, findPath, parseSaveGame, restoreSimulation, Simulation } from '../../src/index.js';
+import { cellOfNode, hexDistanceBetween } from '../../src/nav/halfcell.js';
 import { dynamicBlockOverlay, placementProbe, routeRegions } from '../../src/systems/footprint/index.js';
 import { placementGridRebuilds } from '../../src/systems/footprint/placement/blocker-grid.js';
 import { createResourceNode } from '../../src/systems/footprint/resources.js';
@@ -193,6 +194,30 @@ describe('script landscape state and blockers', () => {
     // A point off the map paints the part of its disc that lies on the map, here all of it.
     setVertexColors(sim.world, terrain, { hx: -40, hy: 8 }, 900, 100, false);
     expect(tinted()).toBe(terrain.nodeCount);
+  });
+
+  it('paints every node of every cell within the radius, at the edges and on odd cell rows alike', () => {
+    for (const [point, range] of [
+      [{ hx: 15, hy: 15 }, 8],
+      [{ hx: 0, hy: 0 }, 6],
+      [{ hx: 5, hy: 6 }, 4],
+      [{ hx: 20, hy: 7 }, 10],
+    ] as const) {
+      const sim = fresh();
+      const terrain = terrainOf(sim);
+      setVertexColors(sim.world, terrain, point, range, 100, false);
+      const centre = cellOfNode(point.hx, point.hy);
+      const radius = (range >> 1) - 1;
+      const expected = new Uint8Array(terrain.nodeCount);
+      for (let hy = 0; hy < terrain.height; hy++) {
+        for (let hx = 0; hx < terrain.width; hx++) {
+          const cell = cellOfNode(hx, hy);
+          if (hexDistanceBetween(cell.cx, cell.cy, centre.cx, centre.cy) <= radius)
+            expected[terrain.nodeAt(hx, hy)] = 100;
+        }
+      }
+      expect(sim.landscapeEdits().tints).toEqual(expected);
+    }
   });
 
   it('applies a scripted tint whose point lies off the map', () => {

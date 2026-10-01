@@ -43,6 +43,15 @@ describe('SceneLight', () => {
     light.destroy();
   });
 
+  it('takes a snapped target at once after a daylight first frame', () => {
+    const light = new SceneLight();
+    light.update(frameAt(0));
+    light.setTarget(NIGHT, true);
+    light.update(frameAt(0.1));
+    expect(light.drawnGrade()).toEqual([...NIGHT]);
+    light.destroy();
+  });
+
   it('adds the channels above daylight as one quad', () => {
     const light = new SceneLight();
     light.setTarget([1.34, 1.15, 0.9]);

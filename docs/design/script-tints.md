@@ -54,4 +54,6 @@ settler in daylight. We read the author's intent instead:
 - `?tint=<index>` holds an index as the whole-map tint for review (`docs/DEVELOPMENT.md`).
 
 The tint state crosses the sim worker as one `Uint8Array` over node ids and the renderer rewrites only
-the nodes that changed (a whole-map step on magiczny_las: 405 ms -> about 30 ms a frame).
+the nodes that changed. Measured on magiczny_las at its first whole-map step (`SetVertexColor 180 260
+900 55`, 182400 nodes) with the browser frame probe (`docs/DEVELOPMENT.md`, `debug=perf`): the step's
+frame fell from 405 ms to 28-35 ms, the worker answer from 4.7 MB of node objects to 182 KB.

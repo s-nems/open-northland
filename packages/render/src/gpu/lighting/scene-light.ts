@@ -45,9 +45,13 @@ export class SceneLight {
     this.container.visible = false;
   }
 
-  /** What the grade fades toward; null is daylight. */
-  setTarget(target: LightGrade | null): void {
+  /** What the grade fades toward; null is daylight. `snap` takes it at once: the state a world was
+   *  loaded in, which arrives after the first frame drew daylight. */
+  setTarget(target: LightGrade | null, snap = false): void {
     this.target = target ?? NEUTRAL_GRADE;
+    if (snap) {
+      [this.grade[0], this.grade[1], this.grade[2]] = this.target;
+    }
   }
 
   /** The grade drawn this frame, after the fade. */

@@ -237,9 +237,10 @@ export class WorldRenderer {
     this.terrain.applyVertexColors(colors);
   }
 
-  /** The script's whole-map tint, faded toward on game time over everything drawn; null is daylight. */
-  setSceneLight(target: LightGrade | null): void {
-    this.sceneLight.setTarget(target);
+  /** The script's whole-map tint, faded toward on game time over everything drawn, or taken at once
+   *  with `snap`; null is daylight. */
+  setSceneLight(target: LightGrade | null, snap = false): void {
+    this.sceneLight.setTarget(target, snap);
   }
 
   brightnessField(): BrightnessField {

@@ -231,8 +231,8 @@ export function setBuildForbidden(
 /**
  * Visit every node of the cells within `radius` cell steps of `centre`. The cell grid is the same
  * odd-rows-right hexagon lattice as the nodes, so {@link hexDistanceBetween} applies to cell coordinates
- * as it does to node coordinates. A cell owns the nodes {@link cellOfNode} maps onto it: its two rows
- * and, after the four-row nudge, two columns, all inside the box walked here.
+ * as it does to node coordinates. A cell owns the nodes {@link cellOfNode} maps onto it: rows `2cy` and
+ * `2cy + 1`, columns `2cx - 1` to `2cx + 2` after the four-row nudge, all inside the box walked here.
  */
 function forNodesOfCellDisc(
   terrain: TerrainGraph,
@@ -241,9 +241,9 @@ function forNodesOfCellDisc(
   apply: (node: NodeId) => void,
 ): void {
   const lastHy = Math.min(terrain.height - 1, 2 * (centre.cy + radius) + 1);
-  const lastHx = Math.min(terrain.width - 1, 2 * (centre.cx + radius + 1) + 1);
+  const lastHx = Math.min(terrain.width - 1, 2 * (centre.cx + radius) + 2);
   for (let hy = Math.max(0, 2 * (centre.cy - radius)); hy <= lastHy; hy++) {
-    for (let hx = Math.max(0, 2 * (centre.cx - radius - 1)); hx <= lastHx; hx++) {
+    for (let hx = Math.max(0, 2 * (centre.cx - radius) - 1); hx <= lastHx; hx++) {
       const cell = cellOfNode(hx, hy);
       if (hexDistanceBetween(cell.cx, cell.cy, centre.cx, centre.cy) <= radius) apply(terrain.nodeAt(hx, hy));
     }

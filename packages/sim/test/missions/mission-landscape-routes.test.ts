@@ -230,8 +230,6 @@ describe('script landscape route invalidation', () => {
     'RemoveLandscape',
     'RemoveLandscapesInArea',
     'SetHouseBuildForbiddenArea',
-    'SetVertexColor',
-    'SetVertexColorOnLand',
     'SetLandscape',
   ] as const)('reports off-map %s without mutating the world', (opcode) => {
     const sim = fresh();

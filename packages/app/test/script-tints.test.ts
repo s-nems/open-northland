@@ -89,9 +89,11 @@ const landed = (): Promise<void> => new Promise((resolve) => setTimeout(resolve,
 function surface() {
   return {
     lights: [] as (LightGrade | null)[],
+    snaps: [] as boolean[],
     colors: [] as Float32Array[],
-    setSceneLight(target: LightGrade | null) {
+    setSceneLight(target: LightGrade | null, snap = false) {
       this.lights.push(target === null ? null : [...target]);
+      this.snaps.push(snap);
     },
     applyTerrainVertexColors(colors: Float32Array) {
       this.colors.push(colors.slice());
@@ -100,7 +102,7 @@ function surface() {
 }
 
 describe('mountScriptTints', () => {
-  it('follows the script: a step is a new scene grade and only the latest answer lands', async () => {
+  it('follows the script: the loaded state snaps, a step fades, and only the latest answer lands', async () => {
     const drawn = surface();
     const scriptTints = await mountScriptTints(
       tintingHost([edits(tints), edits(new Uint8Array(10)), edits(new Uint8Array(10).fill(WARM))]),
@@ -114,6 +116,7 @@ describe('mountScriptTints', () => {
     // One sync per batch of events, and of the two in flight only the later one lands.
     expect(drawn.lights).toHaveLength(2);
     expect(drawn.lights[1]?.[0]).toBeGreaterThan(1);
+    expect(drawn.snaps).toEqual([true, false]);
     expect(drawn.colors).toHaveLength(2);
     scriptTints.dispose();
   });

@@ -1,5 +1,5 @@
 import { VERTEX_PALETTE_ENTRIES } from '@open-northland/data';
-import type { LightGrade } from '@open-northland/render/data';
+import { type LightGrade, NEUTRAL_GRADE } from '@open-northland/render/data';
 import type { SimEvent } from '@open-northland/sim';
 import { loadVertexPalette } from '../../content/vertex-palette.js';
 import type { SessionHost } from '../../session/index.js';
@@ -13,7 +13,6 @@ const NEUTRAL_CHANNEL = 128;
 /** A scene channel this dark or darker divides a local tint as one palette step, not as zero. */
 const MIN_SCENE_CHANNEL = 1 / NEUTRAL_CHANNEL;
 const RGB = 3;
-const NEUTRAL_GRADE: LightGrade = [1, 1, 1];
 
 /** A script's tint state, split into what grades the whole scene and what stays on the ground. */
 export interface ScriptTintSplit {
@@ -80,7 +79,8 @@ export function splitScriptTints(
 }
 
 interface ScriptTintSurface {
-  setSceneLight(target: LightGrade | null): void;
+  /** `snap` takes the grade at once instead of fading: the state the world was loaded in. */
+  setSceneLight(target: LightGrade | null, snap?: boolean): void;
   applyTerrainVertexColors(colors: Float32Array): void;
 }
 
@@ -109,13 +109,15 @@ export async function mountScriptTints(
   // Each answer is the whole tint state, so only the latest asked is applied, and none once disposed.
   let asked = 0;
   let disposed = false;
+  const FIRST_REQUEST = 1;
   const sync = (): void => {
     const request = ++asked;
     void host.landscapeEdits().then((edits) => {
       if (request !== asked || disposed) return;
       const split = splitScriptTints(edits.tints, palette, colors, pinnedIndex);
       colors = split.colors;
-      surface.setSceneLight(split.scene);
+      // The first answer is the state the world was loaded in, not a step to fade into.
+      surface.setSceneLight(split.scene, request === FIRST_REQUEST);
       surface.applyTerrainVertexColors(colors);
     });
   };
