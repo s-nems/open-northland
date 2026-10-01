@@ -7,3 +7,4 @@ export {
   fogGhostTint,
   fogTileVisible,
 } from './mask.js';
+export { type FogWashGeometry, fogWashGeometry, fogWashLiftRows } from './wash-mesh.js';

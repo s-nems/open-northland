@@ -1,22 +1,24 @@
 import { FOG_STATE, type FogView } from '@open-northland/sim';
-import { BufferImageSource, Container, Rectangle, Sprite, Texture, type TextureSource } from 'pixi.js';
-import { FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA } from '../../data/fog/index.js';
+import { BufferImageSource, Container, Mesh, MeshGeometry, Texture, type TextureSource } from 'pixi.js';
+import {
+  FOG_EXPLORED_ALPHA,
+  FOG_UNEXPLORED_ALPHA,
+  fogWashGeometry,
+  fogWashLiftRows,
+} from '../../data/fog/index.js';
 import { TILE_HALF_H, TILE_HALF_W, type Viewport, visibleTileRange } from '../../data/projection/index.js';
+import type { ElevationField } from '../../data/terrain/index.js';
 
 /**
  * The fog-of-war wash over the ground. The sim's VisionSystem decides which cell is unexplored,
  * explored-but-unwatched, or visible and hands the mask over as a {@link FogView}; this layer is a pure
  * projection of it. Only the visible cell band is rasterized, and only when the band moved, the mask
- * rebuilt (`FogView.generation`), the viewer changed seat (`FogView.player`), or the fog mode changed
- * (`FogView.mode` remaps what `stateAt` reports).
+ * rebuilt (`FogView.generation`), the viewer changed seat (`FogView.player`), the fog mode changed
+ * (`FogView.mode` remaps what `stateAt` reports), or the terrain under it changed.
  *
- * One texel per cell, stretched over the band and sampled with linear filtering: the GPU's bilinear
- * interpolation spreads each state transition across a whole cell (~68 px), which is what melts the mask
- * into a soft, grid-free gradient.
- *
- * Named approximations, both invisible under a cell-wide gradient: the rectangular texel lattice ignores
- * the odd-row half-cell stagger (fog is offset ≤ half a cell on odd rows), and the wash does not ride the
- * terrain elevation lift (a lifted hill's fog edge sits up to `maxLift` px low). The alphas are tuned by
+ * One texel per cell, drawn by a vertex grid lifted with the terrain (`fogWashGeometry`) and sampled
+ * with linear filtering: the GPU's bilinear interpolation spreads each state transition across a whole
+ * cell (~68 px), which is what melts the mask into a soft, grid-free gradient. The alphas are tuned by
  * eye.
  */
 
@@ -44,7 +46,7 @@ type MutableFogWashMask = { -readonly [K in keyof FogWashMask]: FogWashMask[K] }
 
 export class FogLayer {
   readonly container = new Container();
-  private readonly sprite = new Sprite();
+  private readonly mesh = new Mesh({ geometry: new MeshGeometry({}) });
   private texture: Texture | null = null;
   private buffer: Uint8Array = new Uint8Array(0);
   /** Allocated texture dims in texels; grow-only. */
@@ -52,6 +54,9 @@ export class FogLayer {
   private texH = 0;
   /** Signature of the frame last rasterized - an unchanged signature skips the rebuild. */
   private key = '';
+  /** The terrain the wash was last lifted over, and a count of the fields seen, for the signature. */
+  private elevation: ElevationField | undefined;
+  private elevationVersion = 0;
   private readonly washMask: MutableFogWashMask = {
     source: null,
     originX: 0,
@@ -63,8 +68,8 @@ export class FogLayer {
   };
 
   constructor() {
-    this.sprite.visible = false;
-    this.container.addChild(this.sprite);
+    this.mesh.visible = false;
+    this.container.addChild(this.mesh);
   }
 
   /** The wash as drawn, rewritten in place on every rebuild. */
@@ -72,18 +77,27 @@ export class FogLayer {
     return this.washMask;
   }
 
-  /** Re-rasterize the visible band of `view`'s mask; `null` clears the wash (fog off). */
-  update(view: FogView | null, vp: Viewport): void {
+  /** Re-rasterize the visible band of `view`'s mask over `elevation`'s terrain; `null` clears the wash
+   *  (fog off). */
+  update(view: FogView | null, vp: Viewport, elevation?: ElevationField): void {
     if (view === null) {
       if (this.key !== '') {
-        this.sprite.visible = false;
+        this.mesh.visible = false;
         this.washMask.source = null;
         this.key = '';
       }
       return;
     }
-    const band = visibleTileRange(vp, view.cellsWide, view.cellsHigh, FOG_BAND_MARGIN);
-    const key = `${band.minCol},${band.maxCol},${band.minRow},${band.maxRow}:${view.player}:${view.generation}:${view.mode}`;
+    if (elevation !== this.elevation) {
+      this.elevation = elevation;
+      this.elevationVersion++;
+    }
+    const screen = visibleTileRange(vp, view.cellsWide, view.cellsHigh, FOG_BAND_MARGIN);
+    const band = {
+      ...screen,
+      maxRow: Math.min(screen.maxRow + fogWashLiftRows(elevation), view.cellsHigh - 1),
+    };
+    const key = `${band.minCol},${band.maxCol},${band.minRow},${band.maxRow}:${view.player}:${view.generation}:${view.mode}:${this.elevationVersion}`;
     if (key === this.key) return;
 
     const bandW = band.maxCol - band.minCol + 1;
@@ -92,8 +106,7 @@ export class FogLayer {
     const texture = this.texture;
     if (texture === null) return; // ensureTexture always sets it
 
-    // The texture may be quantized larger than the band; the sprite below crops to the band via the
-    // texture frame, so slack texels never show.
+    // The texture may be quantized larger than the band; the mesh samples only the band's texels.
     const buf = this.buffer;
     for (let j = 0; j < bandH; j++) {
       const rowBase = j * this.texW;
@@ -108,15 +121,12 @@ export class FogLayer {
       }
     }
     texture.source.update();
-    // Crop the sampled region to the band (the frame), then stretch it over the band's world box: texel
-    // (i, j) centres on cell (minCol+i, minRow+j), whose centre sits at (2c·HALF_W, r·HALF_H), so the box
-    // starts half a texel before the first centre and spans one full cell pitch per texel.
-    // The frame mutation needs `texture.update()`, not a bare `updateUvs()`: only the former notifies
-    // the sprite, which would otherwise draw the previous band's slice once a zoom resizes the band.
-    texture.frame.width = bandW;
-    texture.frame.height = bandH;
-    texture.update();
-    this.sprite.texture = texture;
+    const previous = this.mesh.geometry;
+    this.mesh.geometry = new MeshGeometry(fogWashGeometry(band, this.texW, this.texH, elevation));
+    previous.destroy();
+    this.mesh.texture = texture;
+    // The flat box a sampling shader maps the band to: texel (i, j) centres on cell (minCol+i, minRow+j)
+    // at (2c·HALF_W, r·HALF_H), so the box starts half a texel before the first centre.
     const mask = this.washMask;
     mask.source = texture.source;
     mask.originX = 2 * TILE_HALF_W * band.minCol - TILE_HALF_W;
@@ -125,10 +135,7 @@ export class FogLayer {
     mask.bandH = bandH;
     mask.texW = this.texW;
     mask.texH = this.texH;
-    this.sprite.position.set(mask.originX, mask.originY);
-    this.sprite.width = bandW * 2 * TILE_HALF_W;
-    this.sprite.height = bandH * TILE_HALF_H;
-    this.sprite.visible = true;
+    this.mesh.visible = true;
     // Marked only now: a failed alloc above retries next frame instead of skipping on a stale signature.
     this.key = key;
   }
@@ -142,9 +149,6 @@ export class FogLayer {
     this.texH = Math.max(quantH, this.texH);
     this.texture?.destroy(true);
     this.buffer = new Uint8Array(this.texW * this.texH * 4); // RGB stay 0 (black); alpha is written per band
-    // Both options are load-bearing: an explicit `frame` keeps `noFrame` false, so `texture.update()`
-    // cannot clobber the band crop back to the full source; `dynamic: true` subscribes the Sprite to the
-    // texture's `update` event, the only signal it re-reads UVs on.
     this.texture = new Texture({
       source: new BufferImageSource({
         resource: this.buffer,
@@ -152,8 +156,6 @@ export class FogLayer {
         height: this.texH,
         scaleMode: 'linear',
       }),
-      frame: new Rectangle(0, 0, this.texW, this.texH),
-      dynamic: true,
     });
   }
 

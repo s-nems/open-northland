@@ -62,7 +62,7 @@ export class WorldFog {
   update(snapshot: WorldSnapshot, vp: Viewport, elevation?: ElevationField): FogPoolFrame {
     const view = this.view;
     const staticRefs = this.staticRefs;
-    this.wash.update(view, vp);
+    this.wash.update(view, vp, elevation);
     if (view === null) {
       this.ghosts.clear();
       return staticRefs === undefined ? {} : { staticRefs };
