@@ -161,8 +161,10 @@ verified stamp rule, per placement at half-cell `(x, y)` and per block-area row 
 
 `lmbb` follows the same rule; it replays byte-identically on most maps, with residues consistent with
 stale sections (several maps carry an empty or outdated `lmbb`). The original's runtime stamping is what
-the sim mirrors (`footprintCellDx` in `packages/data`); the conservative full-state collapse
-(`fullStateBlockAreaCells`) remains a named approximation of the valency gate.
+the sim mirrors (`footprintCellDx` and the valency gate `levelBlockAreaCells` in `packages/data`).
+Two named gaps remain: a resource keeps its placed level's cells until it is removed, where the
+original's shrink as the valency is spent, and walls and objects with no map level use the full-grown
+state's cells (`fullStateBlockAreaCells`).
 
 ### Verified `lmtw` derivation: ground walkability is per triangle, and land wins
 

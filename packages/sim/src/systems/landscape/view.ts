@@ -9,6 +9,7 @@ import type {
   TerrainGraph,
 } from '../../nav/terrain/index.js';
 import { countsMatchCells, sameCells } from '../footprint/geometry.js';
+import { placementBlockCells } from './footprint.js';
 
 // The live landscape as a script sees it: the map's authored placements minus the ones a script removed
 // or a resource depleted, plus the script's own additions, every read costing the placements it touches.
@@ -216,9 +217,10 @@ function countPlacement(
   const type = types.get(placement.typeId);
   if (type === undefined) return;
   const terrain = counts.terrain;
+  const blocks = placementBlockCells(type, placement.level);
   for (const [channel, cells, held, members] of [
-    ['walk', type.walk, counts.walk, counts.walkCells],
-    ['build', type.build, counts.build, counts.buildCells],
+    ['walk', blocks.walk, counts.walk, counts.walkCells],
+    ['build', blocks.build, counts.build, counts.buildCells],
   ] as const) {
     for (const cell of cells) {
       const hx = placement.hx + footprintCellDx(placement.hy, cell);
@@ -278,9 +280,10 @@ function deriveBlockCells(world: World, terrain: TerrainGraph): { walk: Set<Node
   for (const p of [...(terrain.landscapes?.placements ?? []), ...state.added]) {
     if (!countsBlocks(p) || removed.has(p.id)) continue;
     const type = types.get(p.typeId);
+    const blocks = type === undefined ? undefined : placementBlockCells(type, p.level);
     for (const [cells, target] of [
-      [type?.walk ?? [], walk],
-      [type?.build ?? [], build],
+      [blocks?.walk ?? [], walk],
+      [blocks?.build ?? [], build],
     ] as const) {
       for (const cell of cells) {
         const hx = p.hx + footprintCellDx(p.hy, cell);

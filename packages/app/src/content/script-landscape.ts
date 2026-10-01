@@ -87,6 +87,10 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
       typeId: g.index,
       walk: fullStateBlockAreaCells(g.walkBlockAreas),
       build: fullStateBlockAreaCells(g.buildBlockAreas),
+      // A wall's level is its hitpoints, not a size, so a wall always blocks whole.
+      ...(wall === undefined
+        ? { blockAreas: { walk: g.walkBlockAreas ?? [], build: g.buildBlockAreas ?? [] } }
+        : {}),
       groups,
       ...(resource === undefined ? {} : { resource }),
       ...(g.logicType === BUSH_WITH_FRUITS_LOGIC_TYPE ? { bushGfxIndex: g.index } : {}),

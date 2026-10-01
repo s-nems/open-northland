@@ -48,3 +48,27 @@ export function fullStateBlockAreaCells(
   }
   return out;
 }
+
+/**
+ * The cells a placement at valency `level` blocks: every row whose state is at most `level`, so a
+ * full-grown object stamps all its rows and a small stone heap only its lowest. Source basis: replaying
+ * the owned maps' `lmwb`/`lmbb` lanes from `emla` + `lmlv` with this gate is byte-identical
+ * (docs/formats/MAPDAT.md). Overlapping cells are emitted once.
+ */
+export function levelBlockAreaCells(
+  areas: readonly Readonly<LandscapeBlockArea>[] | undefined,
+  level: number,
+): FootprintCell[] {
+  const seen = new Set<string>();
+  const out: FootprintCell[] = [];
+  for (const [state, x, y, run] of areas ?? []) {
+    if (state > level) continue;
+    for (let i = 0; i < run; i++) {
+      const key = `${x + i},${y}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ dx: x + i, dy: y });
+    }
+  }
+  return out;
+}

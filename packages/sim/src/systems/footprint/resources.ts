@@ -1,4 +1,9 @@
-import { type ContentSet, fullStateBlockAreaCells, type LandscapeGfx } from '@open-northland/data';
+import {
+  type ContentSet,
+  fullStateBlockAreaCells,
+  type LandscapeGfx,
+  levelBlockAreaCells,
+} from '@open-northland/data';
 import {
   Felling,
   LandscapeResource,
@@ -22,13 +27,20 @@ import {
 
 /**
  * Convert one decoded `[GfxLandscape]` record into the sim's resource-footprint component payload. The
- * source stores repeated rows per valency and growth state, and collision is static until the node is
- * removed, so `fullStateBlockAreaCells` (the fresh, full object's cells) is the conservative consumer.
+ * source stores repeated rows per valency and growth state: a node placed at a known `level` blocks its
+ * rows up to that level, as the original stamps it, and one without the full-grown object's cells.
+ * Approximation: collision stays at the placed size until the node is removed, where the original's
+ * shrinks as the valency is spent.
  */
-export function resourceFootprintFromLandscapeGfx(record: LandscapeGfx): ResourceFootprintData {
+export function resourceFootprintFromLandscapeGfx(
+  record: LandscapeGfx,
+  level?: number,
+): ResourceFootprintData {
+  const blocks = (areas: LandscapeGfx['walkBlockAreas']) =>
+    level === undefined ? fullStateBlockAreaCells(areas) : levelBlockAreaCells(areas, level);
   return {
-    walk: fullStateBlockAreaCells(record.walkBlockAreas),
-    build: fullStateBlockAreaCells(record.buildBlockAreas),
+    walk: blocks(record.walkBlockAreas),
+    build: blocks(record.buildBlockAreas),
     work: fullStateBlockAreaCells(record.workAreas),
     sourceGfxIndex: record.index,
   };
@@ -39,6 +51,7 @@ export function resourceFootprintForGood(
   content: ContentSet,
   goodType: number,
   gfxIndex?: number,
+  level?: number,
 ): ResourceFootprintData | null {
   const pipeline = contentIndex(content).gatheringPipelinesByGood.get(goodType);
   const stage = pipeline?.harvest ?? pipeline?.pickup;
@@ -47,7 +60,7 @@ export function resourceFootprintForGood(
   if (gfxIndex !== undefined) {
     if (!stage.gfxIndices.includes(gfxIndex)) return null;
     const record = byIndex.get(gfxIndex);
-    return record === undefined ? null : resourceFootprintFromLandscapeGfx(record);
+    return record === undefined ? null : resourceFootprintFromLandscapeGfx(record, level);
   }
   for (const index of stage.gfxIndices) {
     const record = byIndex.get(index);
@@ -115,6 +128,8 @@ export function unstampResourceFootprint(world: World, resource: Entity): void {
  *  (like every sim command, mapped to a visual-tile Position), owned by a landscape placement or not. */
 export interface ResourceNodeSpec extends ResourceSpec {
   readonly landscapeId?: number;
+  /** The authored valency (`lmlv`) its record's block rows stamp up to; absent, the full-grown cells. */
+  readonly blockLevel?: number;
   readonly x: number;
   readonly y: number;
 }
@@ -138,7 +153,13 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
     harvestAtomic: spec.harvestAtomic,
     ...(spec.gfxIndex !== undefined ? { gfxIndex: spec.gfxIndex } : {}),
   });
-  stampResourceFootprint(world, content, e, spec.good);
+  // A map placement blocks as its own record at its own level; without one, as the good's first record.
+  const own =
+    spec.gfxIndex === undefined
+      ? null
+      : resourceFootprintForGood(content, spec.good, spec.gfxIndex, spec.blockLevel);
+  if (own === null) stampResourceFootprint(world, content, e, spec.good);
+  else stampResourceFootprintData(world, e, own);
   if (spec.felling === true) world.add(e, Felling, { chops: 0 });
   if (spec.deposit !== undefined) {
     world.add(e, MineDeposit, {

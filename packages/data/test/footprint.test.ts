@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { footprintCellDx, footprintCellMaxAbsDx, fullStateBlockAreaCells } from '../src/index.js';
+import {
+  footprintCellDx,
+  footprintCellMaxAbsDx,
+  fullStateBlockAreaCells,
+  levelBlockAreaCells,
+} from '../src/index.js';
 
 /**
  * Locks the collision-footprint reading of a `[GfxLandscape]` block-area table: only the FULL
@@ -89,5 +94,28 @@ describe('footprintCellMaxAbsDx', () => {
     expect(footprintCellMaxAbsDx({ dx: 2, dy: 1 })).toBe(3); // odd anchor stamps at +3
     expect(footprintCellMaxAbsDx({ dx: -3, dy: 1 })).toBe(3); // shift moves -3 to -2: |dx| still bounds
     expect(footprintCellMaxAbsDx({ dx: 0, dy: -1 })).toBe(1); // anchor-column cell reaches +1
+  });
+});
+
+describe('levelBlockAreaCells', () => {
+  const STONES = [
+    [1, 0, 0, 1],
+    [3, -1, 0, 3],
+    [5, -1, 1, 2],
+  ] as const;
+
+  it('stamps every row up to the placed level, as the original lays its blocking lane', () => {
+    expect(levelBlockAreaCells(STONES, 1)).toEqual([{ dx: 0, dy: 0 }]);
+    expect(levelBlockAreaCells(STONES, 3)).toEqual([
+      { dx: 0, dy: 0 },
+      { dx: -1, dy: 0 },
+      { dx: 1, dy: 0 },
+    ]);
+    expect(levelBlockAreaCells(STONES, 100)).toHaveLength(5);
+  });
+
+  it('blocks nothing below the smallest state or without rows', () => {
+    expect(levelBlockAreaCells(STONES, 0)).toEqual([]);
+    expect(levelBlockAreaCells(undefined, 5)).toEqual([]);
   });
 });

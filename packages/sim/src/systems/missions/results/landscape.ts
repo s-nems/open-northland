@@ -127,7 +127,7 @@ export function layScriptedLandscape(
   level: number,
 ): boolean {
   const freed = freedThisPass(pass);
-  const openBefore = openCellsOf(pass, point, typeId).filter((node) => !freed.has(node));
+  const openBefore = openCellsOf(pass, point, typeId, level).filter((node) => !freed.has(node));
   const revision = landscapeTopologyRevision(pass.world);
   if (!setLandscape(pass.world, pass.ctx, point, typeId, level)) return false;
   announceLandscapeChange(pass, terrain, revision, openBefore);
@@ -169,15 +169,18 @@ function announceLandscapeChange(
   pass.ctx.events.emit({ kind: 'missionLandscapeChanged' });
 }
 
-/** The walk cells a placement of `typeId` at `point` would stamp that nothing blocks yet. */
-function openCellsOf(pass: MissionPass, point: HalfCellNode, typeId: number): NodeId[] {
+/** The walk cells a placement of `typeId` at `level` on `point` would stamp that nothing blocks yet. */
+function openCellsOf(pass: MissionPass, point: HalfCellNode, typeId: number, level: number): NodeId[] {
   const terrain = pass.ctx.terrain;
   const type = terrain === undefined ? undefined : landscapeTypes(terrain).get(typeId);
   if (terrain === undefined || type === undefined) return [];
   const blocked = dynamicBlockOverlay(pass.world, pass.ctx, terrain);
-  return translatedCells(terrain, placementWalkCells(pass.ctx.content, type), point.hx, point.hy).filter(
-    (node) => !blocked.has(node),
-  );
+  return translatedCells(
+    terrain,
+    placementWalkCells(pass.ctx.content, type, level),
+    point.hx,
+    point.hy,
+  ).filter((node) => !blocked.has(node));
 }
 
 /** The hexagon radius a removal clears: `RemoveLandscapesInArea` stops one ring short of its `range`

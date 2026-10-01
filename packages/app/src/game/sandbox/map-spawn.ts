@@ -109,9 +109,11 @@ export function spawnMapResources(
     const { goodId, gfxIndex, hx, hy, placement } = spawn;
     const g = GATHERER_BY_GOOD_ID.get(goodId);
     if (g === undefined) continue;
+    const blockLevel = objects.levels?.[placement];
     const spec = {
       ...withRecordDeposit(resourceSpecFor(g, hx, hy), spawn),
       gfxIndex,
+      ...(blockLevel !== undefined ? { blockLevel } : {}),
       ...(sim.terrain?.landscapes !== undefined ? { landscapeId: placement } : {}),
     };
     const e = systems.createResourceNode(sim.world, sim.content, spec);

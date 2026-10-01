@@ -375,6 +375,38 @@ describe('script landscape state and blockers', () => {
     ]);
   });
 
+  it('blocks an authored object only up to its level, and a scripted one at the level it is laid', () => {
+    const heap = {
+      typeId: 5,
+      walk: [],
+      build: [],
+      groups: [],
+      blockAreas: {
+        walk: [
+          [1, 0, 0, 1],
+          [3, 1, 0, 1],
+        ] as [number, number, number, number][],
+        build: [],
+      },
+    };
+    const sim = new Simulation({
+      seed: 1,
+      content: houseContent(),
+      map: {
+        ...map(),
+        landscapes: { types: [heap], placements: [{ id: 0, typeId: 5, hx: 4, hy: 4, level: 1 }] },
+      },
+    });
+    const terrain = terrainOf(sim);
+    const walk = () => landscapeBlocks(sim.world, terrain).walk;
+    expect(walk().has(terrain.nodeAt(4, 4))).toBe(true);
+    expect(walk().has(terrain.nodeAt(5, 4))).toBe(false);
+    expect(setLandscape(sim.world, ctxOf(sim), { hx: 10, hy: 10 }, 5, 3)).toBe(true);
+    expect(walk().has(terrain.nodeAt(10, 10))).toBe(true);
+    expect(walk().has(terrain.nodeAt(11, 10))).toBe(true);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
   it('spawns mine stock at the requested level and removes linked resources without spill', () => {
     const source = map();
     const mine = {

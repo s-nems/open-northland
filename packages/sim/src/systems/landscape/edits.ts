@@ -28,6 +28,7 @@ import {
   stampResourceFootprintData,
   unstampResourceFootprint,
 } from '../footprint/resources.js';
+import { placementBlockCells } from './footprint.js';
 import { authoredLandscapes, landscapeResources, landscapesWithin, landscapeTypes } from './view.js';
 
 /** Remove every standing placement within `range` of `point`, with their backing resources. Returns
@@ -60,8 +61,9 @@ export function removeLandscapes(
       world.destroy(entity);
       onResourceRemoved?.(entity);
     }
-    if (placement.resourceBacked !== true) {
-      const walk = types.get(placement.typeId)?.walk ?? [];
+    const type = types.get(placement.typeId);
+    if (placement.resourceBacked !== true && type !== undefined) {
+      const { walk } = placementBlockCells(type, placement.level);
       freed.push(...translatedCells(terrain, walk, placement.hx, placement.hy));
     }
   }
@@ -127,9 +129,10 @@ function createPlacementBacking(
       const resource = createResourceNode(world, ctx.content, { ...spec, remaining, ...at });
       if (resource === null) return null;
       const footprint = world.get(resource, ResourceFootprint);
+      const blocks = placementBlockCells(type, level);
       stampResourceFootprintData(world, resource, {
-        walk: type.walk.map((cell) => ({ ...cell })),
-        build: type.build.map((cell) => ({ ...cell })),
+        walk: blocks.walk.map((cell) => ({ ...cell })),
+        build: blocks.build.map((cell) => ({ ...cell })),
         work: footprint.work.map((cell) => ({ ...cell })),
         ...(footprint.sourceGfxIndex !== undefined ? { sourceGfxIndex: footprint.sourceGfxIndex } : {}),
       });
@@ -140,9 +143,13 @@ function createPlacementBacking(
   }
 }
 
-/** The cells a placement of `type` blocks for walking, as its backing or the landscape layer stamps
- *  them: a chest its record's footprint, a goods heap and a bush none, the rest the type's own. */
-export function placementWalkCells(content: ContentSet, type: ScriptLandscapeType): readonly FootprintCell[] {
+/** The cells a placement of `type` at `level` blocks for walking, as its backing or the landscape layer
+ *  stamps them: a chest its record's footprint, a goods heap and a bush none, the rest the type's own. */
+export function placementWalkCells(
+  content: ContentSet,
+  type: ScriptLandscapeType,
+  level: number,
+): readonly FootprintCell[] {
   const backing = placementBackingOf(type);
   switch (backing.kind) {
     case 'chest':
@@ -150,9 +157,9 @@ export function placementWalkCells(content: ContentSet, type: ScriptLandscapeTyp
     case 'good':
       return [];
     case 'resource':
-      return type.walk;
+      return placementBlockCells(type, level).walk;
     case 'none':
-      return type.bushGfxIndex !== undefined ? [] : type.walk;
+      return type.bushGfxIndex !== undefined ? [] : placementBlockCells(type, level).walk;
   }
 }
 

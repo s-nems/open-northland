@@ -1,4 +1,4 @@
-import type { FootprintCell } from '@open-northland/data';
+import type { FootprintCell, LandscapeBlockArea } from '@open-northland/data';
 
 export type LandscapeRemovalGroup = 'blocker' | 'fx1' | 'fx2' | 'smoke' | 'wave';
 
@@ -8,9 +8,9 @@ export interface ResourceSpec {
   readonly good: number;
   readonly remaining: number;
   readonly harvestAtomic: number;
-  /** Opaque render-variant tag: the app's decoded-map species record index, stored verbatim. The sim never
-   *  interprets it - footprint and collision come from the good's own record in the sim's content set,
-   *  whose numbering is unrelated. Omitted for an admin or scene spawn. */
+  /** The decoded-map species record index: the render variant, and the record a placed node takes its
+   *  footprint from when the good's harvest stage in the sim's content lists it. Omitted for an admin or
+   *  scene spawn. */
   readonly gfxIndex?: number;
   /** A felled node such as a tree when true. Mutually exclusive with `deposit`. */
   readonly felling?: boolean;
@@ -24,8 +24,15 @@ export interface ResourceSpec {
 
 export interface ScriptLandscapeType {
   readonly typeId: number;
+  /** The full-grown object's cells: what a placement blocks when the type has no `blockAreas`. */
   readonly walk: readonly FootprintCell[];
   readonly build: readonly FootprintCell[];
+  /** The record's `[state, dx, dy, run]` rows, which a placement stamps up to its level
+   *  (`placementBlockCells`). */
+  readonly blockAreas?: {
+    readonly walk: readonly Readonly<LandscapeBlockArea>[];
+    readonly build: readonly Readonly<LandscapeBlockArea>[];
+  };
   readonly groups: readonly LandscapeRemovalGroup[];
   readonly resource?: ResourceSpec;
   readonly bushGfxIndex?: number;
