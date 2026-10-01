@@ -13,7 +13,7 @@ import {
 type NoticesCopy = Messages['hud']['notices'];
 
 /** Rows an open stack lists before its "more in the group" button extends the list to every member. */
-export const MEMBER_ROWS_SHOWN = 6;
+const MEMBER_ROWS_SHOWN = 6;
 export const MEMBERS_ID = 'on-notice-members';
 
 /** The rows of the open stack, a block of the column's list right under the stack's card. */
@@ -22,15 +22,25 @@ export interface NoticeMembers {
   readonly element: HTMLLIElement;
   /** Show `members` for the stack `key`; a new key starts with the short list again. */
   sync(key: string, members: readonly NoticeMemberView[]): void;
-  /** List every member, past the short list. */
-  extend(): void;
+  /** Forget the shown stack, so its next opening starts with the short list again. */
+  close(): void;
+  /** List every member, past the short list; answers the first row it added. */
+  extend(): HTMLLIElement | undefined;
   rows(): HTMLLIElement[];
+  /** The rows between `top` and `bottom` (the column list's scroll coordinates) with their tops there.
+   *  Rows share one height, so the slice comes from the offsets alone, not a walk over every row. */
+  visibleRows(top: number, bottom: number): readonly VisibleRow[];
   /** The row buttons and the extend button in focus order. */
   focusables(): HTMLElement[];
   memberView(row: HTMLLIElement): NoticeMemberView | undefined;
   /** Paint the building and glyph thumbnails of rows between `top` and `bottom` (the list's scroll
    *  coordinates) that have none yet; the rest wait until they scroll into view. */
   paintVisible(top: number, bottom: number, painters: NoticeThumbPainters): void;
+}
+
+export interface VisibleRow {
+  readonly row: HTMLLIElement;
+  readonly top: number;
 }
 
 function thumbKey(thumb: NoticeThumb): string {
@@ -133,15 +143,41 @@ export function createNoticeMembers(copy: NoticesCopy): NoticeMembers {
     more.textContent = formatMessage(copy.membersMore, { count: hidden });
   };
 
+  const visibleRows = (top: number, bottom: number): VisibleRow[] => {
+    const { children } = list;
+    const first = children[0];
+    if (!(first instanceof HTMLElement)) return [];
+    const base = element.offsetTop + list.offsetTop + first.offsetTop;
+    const second = children[1];
+    const pitch = second instanceof HTMLElement ? second.offsetTop - first.offsetTop : first.offsetHeight;
+    if (pitch <= 0) return [];
+    const from = Math.max(0, Math.floor((top - base) / pitch));
+    const to = Math.min(children.length, Math.ceil((bottom - base) / pitch));
+    const out: VisibleRow[] = [];
+    for (let i = from; i < to; i++) {
+      const row = children[i];
+      if (row instanceof HTMLLIElement) out.push({ row, top: base + i * pitch });
+    }
+    return out;
+  };
+
   return {
     element,
     sync,
-    extend: (): void => {
-      if (extended || shownKey === null) return;
+    close: (): void => {
+      shownKey = null;
+      extended = false;
+    },
+    extend: (): HTMLLIElement | undefined => {
+      if (extended || shownKey === null) return undefined;
+      const before = list.children.length;
       extended = true;
       sync(shownKey, last);
+      const added = list.children[before];
+      return added instanceof HTMLLIElement ? added : undefined;
     },
     rows,
+    visibleRows,
     focusables: (): HTMLElement[] => {
       const out: HTMLElement[] = [];
       for (const row of rows()) {
@@ -153,11 +189,8 @@ export function createNoticeMembers(copy: NoticesCopy): NoticeMembers {
     },
     memberView: (row) => views.get(row),
     paintVisible: (top, bottom, painters): void => {
-      const base = element.offsetTop + list.offsetTop;
-      for (const row of rows()) {
+      for (const { row } of visibleRows(top, bottom)) {
         if (painted.has(row)) continue;
-        const rowTop = base + row.offsetTop;
-        if (rowTop + row.offsetHeight <= top || rowTop >= bottom) continue;
         const view = views.get(row);
         if (view === undefined) continue;
         painted.add(row);

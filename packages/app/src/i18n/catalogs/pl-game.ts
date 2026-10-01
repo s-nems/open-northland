@@ -946,7 +946,7 @@ export const plGame = {
       groupParts: {
         willDie: { one: '{count} umiera', few: '{count} umierają', many: '{count} umiera' },
         starving: { one: '{count} głoduje', few: '{count} głodują', many: '{count} głoduje' },
-        hungry: { one: '{count} głodny', few: '{count} głodnych', many: '{count} głodnych' },
+        hungry: { one: '{count} chce jeść', few: '{count} chcą jeść', many: '{count} chce jeść' },
         workplaceNotFound: { one: '{count} bez pracy', few: '{count} bez pracy', many: '{count} bez pracy' },
         noVehicleForWork: { one: '{count} bez wozu', few: '{count} bez wozu', many: '{count} bez wozu' },
         nothingToDo: { one: '{count} bez zajęcia', few: '{count} bez zajęcia', many: '{count} bez zajęcia' },
@@ -1274,17 +1274,17 @@ export const plGame = {
       houseFinished: 'Budowa ukończona: {building}.',
       houseUpgraded: 'Rozbudowa ukończona: {building}.',
       vehicleNoPath: '{vehicle}: brak drogi do celu. Wskaż inny cel.',
-      vehicleNoCommander: '{vehicle}: nikt nim nie kieruje. Wyślij do niego osadnika.',
+      vehicleNoCommander: '{vehicle}: nikt nie kieruje tym pojazdem. Wyślij do pojazdu osadnika.',
       vehicleNoAnimal:
         '{vehicle}: brak zwierzęcia pociągowego, więc nie ruszy. Pojazd weźmie je z twojego stada, gdy będzie ono większe niż para hodowlana.',
       vehicleNoPassengerRoom:
         '{vehicle}: brak wolnych miejsc na pokładzie. Zwolnij miejsce albo użyj innego pojazdu.',
       cannotAttachVehicle:
-        '{vehicle}: statek go nie zabierze. Ten statek nie przewozi takich pojazdów albo nie ma już wolnego miejsca.',
+        '{vehicle}: statek nie zabierze tego pojazdu. Ten statek nie przewozi takich pojazdów albo nie ma już wolnego miejsca.',
       vehicleCannotNearShip:
         '{vehicle}: nie dojedzie do statku. Przybij statkiem do brzegu, do którego pojazd ma dojazd.',
       vehicleNoCarrier:
-        '{vehicle}: nikt nie załaduje ani nie rozładuje towarów. Przydziel do niego tragarza.',
+        '{vehicle}: nikt nie załaduje ani nie rozładuje towarów. Przydziel do pojazdu tragarza.',
       humanDied: '{name} nie żyje.',
       humanDiedUnknown: 'Jeden z twoich ludzi nie żyje.',
       playerSighted: 'Nowy kontakt: {player}. Nastawienie wobec ciebie: {stance}.',
@@ -1325,7 +1325,7 @@ export const plGame = {
         livesApart:
           '{name} nie może mieć dziecka: jej mąż{partner} mieszka w innym domu. Przenieś ich do jednego domu.',
         noFood:
-          '{name} nie może mieć dziecka: w zasięgu nie ma jedzenia, którym zaopatrzy dom. Dostarcz jedzenie do pobliskiego magazynu.',
+          '{name} nie może mieć dziecka: w zasięgu brakuje jedzenia, by zaopatrzyć dom. Dostarcz jedzenie do pobliskiego magazynu.',
       },
     },
     productionStalled: {

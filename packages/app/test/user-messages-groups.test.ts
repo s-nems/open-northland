@@ -6,9 +6,10 @@ import {
   groupMixesLines,
   groupNotes,
   noticeGroupKey,
+  SEX_ONLY_LINE_TYPES,
 } from '../src/hud/tool-panel/messages/groups.js';
 import { messagePriority } from '../src/hud/tool-panel/messages/priority.js';
-import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
+import { type MessageText, userMessageTypeName } from '../src/hud/tool-panel/messages/text.js';
 import {
   type MessagePriorityLevel,
   type PendingMessage,
@@ -84,6 +85,25 @@ describe('notice groups', () => {
     expect(noticeGroupKey(note(1, lost, TICK, he))).toBe(noticeGroupKey(note(2, lost, TICK, she)));
   });
 
+  it('lists exactly the types whose card line varies only by sex in either catalog', () => {
+    for (const catalog of [pl, en]) {
+      const short: Readonly<Record<string, unknown>> = catalog.userMessages.short;
+      for (const type of Object.values(USER_MESSAGE_TYPE)) {
+        const line = short[userMessageTypeName(type)];
+        if (line === undefined) continue;
+        expect(typeof line !== 'string', userMessageTypeName(type)).toBe(SEX_ONLY_LINE_TYPES.has(type));
+      }
+    }
+  });
+
+  it('reads he and she lines of one type as the same line, so their rows name no detail', () => {
+    const lost = USER_MESSAGE_TYPE.lostWithoutSignposts;
+    const [stack] = groupNotes([note(1, lost, 1, 'Zgubił się'), note(2, lost, 2, 'Zgubiła się')]);
+    if (stack === undefined) throw new Error('no stack');
+    expect(stack.members).toHaveLength(2);
+    expect(groupMixesLines(stack)).toBe(false);
+  });
+
   it('leads with the heaviest, then the longest-standing state note or the newest event note', () => {
     const states = [note(1, hungry, 10), note(2, starving, 30), note(3, starving, 20), note(4, hungry, 5)];
     expect(ids([...states].sort(compareLead))).toEqual([3, 2, 4, 1]);
@@ -134,7 +154,7 @@ describe('notice groups', () => {
       ...[5, 6, 7, 8, 9].map((id) => note(id, hungry, id, 'Głód')),
     ]);
     if (family === undefined) throw new Error('no family');
-    expect(groupBreakdown(family, pl.hud.notices, 'pl')).toBe('1 umiera · 3 głodują · 5 głodnych');
+    expect(groupBreakdown(family, pl.hud.notices, 'pl')).toBe('1 umiera · 3 głodują · 5 chce jeść');
     expect(groupBreakdown(family, en.hud.notices, 'en')).toBe('1 dying · 3 starving · 5 hungry');
     const [tiredStack] = groupNotes([note(1, tired, 1), note(2, tired, 2)]);
     if (tiredStack === undefined) throw new Error('no stack');

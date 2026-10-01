@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   composeMessageText,
+  fightSummary,
   type MessageText,
   type MessageTextParts,
   type NoticeCopy,
@@ -219,6 +220,14 @@ describe('notice text', () => {
     });
     expect(wolves.full).toBe(
       'Your people are under attack outside the settlement. Enemy: wild beasts. Hit: 3 settlers. Send soldiers or lead them to safety.',
+    );
+  });
+
+  it('sums a fight up for its row in a stack: who struck, then what they hit', () => {
+    const fight = { buildings: 2, walls: 0, settlers: 1, vehicles: 0, enemies: ['Gracz 2'], wild: true };
+    expect(fightSummary(fight, pl.userMessages, 'pl')).toBe('Gracz 2, dzikie bestie · 2 budynki, 1 osadnika');
+    expect(fightSummary({ ...fight, buildings: 0, settlers: 0 }, en.userMessages, 'en')).toBe(
+      'Gracz 2, wild beasts',
     );
   });
 

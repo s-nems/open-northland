@@ -1,5 +1,6 @@
 import { formatMessage, type Messages } from '../../i18n/index.js';
 import type { NoticeGlyph, NoticeThumb } from '../tool-panel/messages/cards.js';
+import { MIN_STACK_MEMBERS } from '../tool-panel/messages/groups.js';
 import type { MessagePriorityLevel } from '../tool-panel/messages/types.js';
 import { GLYPH } from './icons.js';
 
@@ -66,10 +67,9 @@ export const SEAL_BY_LEVEL: Readonly<Record<MessagePriorityLevel, string>> = {
 };
 /** Past two digits the count seal sets its number smaller. */
 const WIDE_COUNT = 100;
-/** The edge classes: a pair shows one card behind, three or more show two. */
+/** The edge classes: the smallest stack shows one card behind, a larger one two. */
 export const STACK = 'on-notice--stack';
 const PAIR = 'on-notice--pair';
-const PAIR_COUNT = 2;
 
 /** The line glyphs that stand in for a thumbnail the painters cannot draw. */
 const NOTICE_GLYPH: Readonly<Record<NoticeGlyph, string>> = {
@@ -128,7 +128,7 @@ function sealClass(level: MessagePriorityLevel): string {
 
 /** Whether `stack` shows as a stack rather than a lone card. */
 export function isStack(stack: NoticeStackView): boolean {
-  return stack.count >= PAIR_COUNT;
+  return stack.count >= MIN_STACK_MEMBERS;
 }
 
 /** What needs the card's inside built anew when it changes; the count, the labels and the edges update
@@ -161,7 +161,7 @@ export function fillCard(li: HTMLLIElement, stack: NoticeStackView, open: boolea
   li.classList.toggle('on-notice--warn', seal === 'warn');
   li.classList.toggle('on-notice--danger', seal === 'danger');
   li.classList.toggle(STACK, stacked);
-  li.classList.toggle(PAIR, stack.count === PAIR_COUNT);
+  li.classList.toggle(PAIR, stack.count === MIN_STACK_MEMBERS);
   li.classList.toggle('on-notice--open', open);
   li.dataset.key = stack.key;
   li.dataset.id = String(lead.id);

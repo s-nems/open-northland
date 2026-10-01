@@ -146,6 +146,16 @@ function fightValues(fight: NonNullable<MessageTextParts['fight']>, copy: Notice
   return { hits, enemy };
 }
 
+/** A fight note's row in its stack: who struck and what they hit ("Wikingowie · 2 budynki"). */
+export function fightSummary(
+  fight: NonNullable<MessageTextParts['fight']>,
+  copy: NoticeCopy,
+  localeTag: string = bcp47Tag(),
+): string {
+  const { enemy, hits } = fightValues(fight, copy, localeTag);
+  return [enemy, hits].filter((part) => part !== '').join(' · ');
+}
+
 /** `localeTag` is the language of `copy`, whose plural rules count a fight's hits. */
 export function composeMessageText(
   type: UserMessageType,

@@ -238,15 +238,17 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       else if (drift < 0) list.scrollTop -= drift;
       anchor = null;
     }
+    placeFull();
     updateMore();
   };
 
-  let pinned: HTMLElement | null = null;
-  const bubbleOf = (el: HTMLElement): HTMLElement[] => {
-    if (el.classList.contains('on-member')) {
-      const view = members.memberView(el as HTMLLIElement);
-      return view === undefined ? [] : [bubbleLine('on-notices__full-text', view.full)];
-    }
+  let pinned: HTMLLIElement | null = null;
+  /** The card or row the bubble last showed beside. */
+  let bubbleFor: HTMLLIElement | null = null;
+  /** The bubble beside a card or a row: a row's whole message, a card's with a stack's breakdown. */
+  const bubbleOf = (el: HTMLLIElement): HTMLElement[] => {
+    const member = members.memberView(el);
+    if (member !== undefined) return [bubbleLine('on-notices__full-text', member.full)];
     const stack = viewsByKey.get(keyOf(el));
     if (stack === undefined) return [];
     const text = bubbleLine('on-notices__full-text', stack.lead.full);
@@ -257,15 +259,22 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       bubbleLine('on-notices__full-hint', copy.groupHint),
     ];
   };
-  const showFull = (el: HTMLElement): void => {
+  /** Keep the bubble beside its card or row as the list scrolls or lays out again; one that left goes. */
+  const placeFull = (): void => {
+    if (bubbleFor === null || full.hidden) return;
+    if (bubbleFor.isConnected) full.style.top = `${list.offsetTop + topInList(bubbleFor) - list.scrollTop}px`;
+    else full.hidden = true;
+  };
+  const showFull = (el: HTMLLIElement): void => {
     full.replaceChildren(...bubbleOf(el));
     full.hidden = false;
-    full.style.top = `${list.offsetTop + topInList(el) - list.scrollTop}px`;
+    bubbleFor = el;
+    placeFull();
   };
   const hideFull = (): void => {
     if (pinned === null) full.hidden = true;
   };
-  const pinFull = (el: HTMLElement | null): void => {
+  const pinFull = (el: HTMLLIElement | null): void => {
     pinned = el;
     if (el === null) full.hidden = true;
     else showFull(el);
@@ -276,7 +285,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     }
   };
   /** The card or row whose hover target `target` is; the dismiss buttons are outside both. */
-  const hoverOf = (target: EventTarget | null): HTMLElement | null => {
+  const hoverOf = (target: EventTarget | null): HTMLLIElement | null => {
     if (!(target instanceof Element)) return null;
     if (target.closest('.on-member__go') !== null) return rowOf(target);
     if (target.closest('.on-notice__card, .on-notice__toggle') !== null) return itemOf(target);
@@ -287,10 +296,21 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     const toggle = cardsByKey.get(key)?.querySelector('.on-notice__toggle');
     return toggle instanceof HTMLElement ? toggle : null;
   };
+  /** How far the open stack's rows push `li` down (design px): the rows, and the overlap the card after
+   *  them is spared. They leave when `li` opens, so its anchor discounts them and only the thinner
+   *  fanned edges above it are made up for. */
+  const rowsAbove = (li: HTMLLIElement): number => {
+    const rows = members.element;
+    const card = rows.previousElementSibling;
+    const after = rows.nextElementSibling;
+    if (!rows.isConnected || rows.offsetTop > li.offsetTop) return 0;
+    if (!(card instanceof HTMLElement) || !(after instanceof HTMLElement)) return 0;
+    return after.offsetTop - (card.offsetTop + card.offsetHeight + CARD_GAP - overlap);
+  };
   const open = (li: HTMLLIElement): void => {
     const key = keyOf(li);
     if (key === openKey || !li.classList.contains(STACK)) return;
-    anchor = { key, top: li.offsetTop - list.scrollTop };
+    anchor = { key, top: li.offsetTop - list.scrollTop - rowsAbove(li) };
     openAbove = overlap;
     deps.onOpen(key);
   };
@@ -320,8 +340,11 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       return;
     }
     if (target.closest('.on-members__more') !== null) {
-      members.extend();
+      const added = members.extend();
       layout();
+      // The button hides once every row shows; focus goes on to the first row it brought.
+      const go = added?.querySelector('.on-member__go');
+      if (go instanceof HTMLElement) go.focus();
       return;
     }
     const li = itemOf(target);
@@ -401,7 +424,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   list.addEventListener('focusin', onEnter);
   list.addEventListener('focusout', onLeave);
   list.addEventListener('scroll', () => {
-    if (pinned !== null) showFull(pinned);
+    placeFull();
     updateMore();
   });
   // The fan settles through a margin transition; count the fold again once it has.
@@ -453,8 +476,11 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     render: (stacks, tally, level, nextOpen): void => {
       const focused = document.activeElement;
       const focusInRows = members.element.contains(focused);
-      // A dismissed row hands focus to the row that takes its place, then to its stack's card.
-      const focusedRow = focusInRows ? members.focusables().findIndex((stop) => stop.contains(focused)) : -1;
+      // A dismissed row hands focus to the row that takes its place, then to its stack's card. A row's
+      // stop is its go button, whichever of its buttons held focus.
+      const rowAt = focusInRows ? members.rows().findIndex((row) => row.contains(focused)) : -1;
+      const focusedStop =
+        rowAt >= 0 || !focusInRows ? rowAt : members.focusables().findIndex((stop) => stop.contains(focused));
       const rowsKey = openKey;
       let lostFocus: string | null = null;
       const keep = new Set(stacks.map((stack) => stack.key));
@@ -472,8 +498,10 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       const opened = openMembers === null ? null : nextOpen;
       if (opened !== openKey) {
         cardsByKey.get(openKey ?? '')?.style.removeProperty('--anchor-shift');
+        if (openKey !== null) toggleOf(openKey)?.removeAttribute('aria-controls');
         if (opened === null) anchor = null;
         if (pinned !== null && members.element.contains(pinned)) pinFull(null);
+        members.close();
         openKey = opened;
       }
       let at = 0;
@@ -503,6 +531,8 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
         }
       }
       if (openKey === null) members.element.remove();
+      // A pinned row whose member left takes its bubble with it.
+      if (pinned !== null && !pinned.isConnected) pinFull(null);
       // Moving a card that held focus (a stack lifted by a new member) blurs it; give it back.
       if (focused instanceof HTMLElement && focused.isConnected && list.contains(focused)) {
         if (document.activeElement !== focused) focused.focus({ preventScroll: true });
@@ -511,7 +541,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
         const stops = openKey === null ? [] : members.focusables();
         const card = cardsByKey.get(rowsKey ?? '');
         const back =
-          stops[Math.min(focusedRow, stops.length - 1)] ??
+          stops[Math.min(focusedStop, stops.length - 1)] ??
           (rowsKey === null ? null : toggleOf(rowsKey)) ??
           card?.querySelector('.on-notice__card');
         if (back instanceof HTMLElement) back.focus();
@@ -577,8 +607,8 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       }
       if (openKey !== null) {
         members.paintVisible(top, bottom, deps);
-        for (const row of members.rows()) {
-          if (row.dataset.entity !== undefined) take(row, topInList(row), (canvas) => canvas.clientHeight);
+        for (const { row, top: rowTop } of members.visibleRows(top, bottom)) {
+          if (row.dataset.entity !== undefined) take(row, rowTop, (canvas) => canvas.clientHeight);
         }
       }
       return { slots, box };

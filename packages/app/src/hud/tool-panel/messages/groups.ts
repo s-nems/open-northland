@@ -1,6 +1,5 @@
-import { formatMessage, type Messages, messages, pluralForm } from '../../../i18n/index.js';
+import { formatMessage, type Messages, pluralForm } from '../../../i18n/index.js';
 import { lifecycleOf } from './lifecycle.js';
-import { userMessageTypeName } from './text.js';
 import {
   type MessagePriorityLevel,
   USER_MESSAGE_TYPE,
@@ -15,7 +14,7 @@ type FamilyTypeName = keyof NoticesCopy['groupParts'];
 
 /** The topic families that share one stack across types and weights; every other type stacks with notes
  *  of its own type and card line. */
-export type NoticeFamily = 'hunger' | 'idle';
+type NoticeFamily = 'hunger' | 'idle';
 
 /** Each family's types, heaviest first: the order a stack's breakdown names them in. */
 const NOTICE_FAMILIES: Readonly<Record<NoticeFamily, readonly FamilyTypeName[]>> = {
@@ -39,20 +38,23 @@ const STAGE_BY_TYPE: ReadonlyMap<UserMessageType, number> = new Map(
   ),
 );
 
-/** Whether a type's card line differs between notes only by the subject's sex ("Zgubił się", "Zgubiła
+/** The types whose card line differs between notes only by the subject's sex ("Zgubił się", "Zgubiła
  *  się"): such a line carries no detail, so the type stacks as one. */
-function shortLineIsSexOnly(type: UserMessageType): boolean {
-  const name = userMessageTypeName(type);
-  if (name === 'familyBlocked' || name === 'productionStalled') return false;
-  return typeof messages().userMessages.short[name] !== 'string';
+export const SEX_ONLY_LINE_TYPES: ReadonlySet<UserMessageType> = new Set([
+  USER_MESSAGE_TYPE.lostWithoutSignposts,
+  USER_MESSAGE_TYPE.grewUp,
+]);
+
+/** The card line a note reads, as stacking compares it: its type, with the detail the line names (a
+ *  good, a stance, a family reason) unless only the subject's sex varies it. */
+function lineKey(note: Pick<UserMessage, 'type' | 'text'>): string {
+  return SEX_ONLY_LINE_TYPES.has(note.type) ? `type:${note.type}` : `type:${note.type}|${note.text.short}`;
 }
 
-/** The stack a note joins: its family, else its type with the detail its card line names (a good, a
- *  stance, a family reason). */
+/** The stack a note joins: its family, else its card line. */
 export function noticeGroupKey(note: Pick<UserMessage, 'type' | 'text'>): string {
   const family = FAMILY_BY_TYPE.get(note.type);
-  if (family !== undefined) return `family:${family}`;
-  return shortLineIsSexOnly(note.type) ? `type:${note.type}` : `type:${note.type}|${note.text.short}`;
+  return family === undefined ? lineKey(note) : `family:${family}`;
 }
 
 /** The lead rule: the heaviest first (by weight, then by family stage); among equals a state note
@@ -106,7 +108,7 @@ export function groupNotes(notes: readonly UserMessage[]): NoticeGroup[] {
 }
 
 /** What a stack holds, for its hover line and its spoken label: a family's members counted per type
- *  ("1 umiera · 3 głoduje · 9 głodnych"), any other stack's count of notes. */
+ *  ("1 umiera · 3 głodują · 9 chce jeść"), any other stack's count of notes. */
 export function groupBreakdown(group: NoticeGroup, copy: NoticesCopy, localeTag: string): string {
   const count = group.members.length;
   const [lead] = group.members;
@@ -122,8 +124,11 @@ export function groupBreakdown(group: NoticeGroup, copy: NoticesCopy, localeTag:
   return parts.join(' · ');
 }
 
-/** Whether a stack's members read different card lines, so each row names its own. */
+/** Whether a stack's members read different card lines, so each row names its own; a line that
+ *  differs only by the subject's sex is the same line. */
 export function groupMixesLines(group: NoticeGroup): boolean {
   const [lead] = group.members;
-  return lead !== undefined && group.members.some((m) => m.text.short !== lead.text.short);
+  if (lead === undefined) return false;
+  const line = lineKey(lead);
+  return group.members.some((m) => lineKey(m) !== line);
 }

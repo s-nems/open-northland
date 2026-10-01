@@ -43,7 +43,7 @@ import {
 import type { MessageNaming } from './raise.js';
 import { isSubjectGone, NoteRetirement } from './retire.js';
 import { createSeatFeeds } from './seat-feeds.js';
-import { composeMessageText } from './text.js';
+import { composeMessageText, fightSummary } from './text.js';
 import type { UserMessage } from './types.js';
 import type { WorkshopSeam } from './workshop-stalls.js';
 
@@ -57,8 +57,6 @@ const FRESH_NOTE_TICKS = 2 * TICKS_PER_SECOND;
 /** The building body's canvas box on a note (design px): the thumbnail's content height at rest;
  *  `object-fit: contain` fits it to whatever the padding leaves. */
 const NOTICE_THUMB_BOX_PX = 40;
-/** How often an open stack's rows count their ages again. */
-const AGE_REFRESH_TICKS = 5 * TICKS_PER_SECOND;
 const SECONDS_PER_MINUTE = 60;
 const MINUTES_PER_HOUR = 60;
 const TICKS_PER_MINUTE = SECONDS_PER_MINUTE * TICKS_PER_SECOND;
@@ -187,6 +185,14 @@ function ageLabel(ticks: number): string {
   return formatMessage(copy.ageHours, { count: Math.floor(minutes / MINUTES_PER_HOUR) });
 }
 
+/** The tick a note raised at `raised` changes its age label after `now`: the next minute, past an hour
+ *  the next hour. */
+function nextAgeChange(raised: number, now: number): number {
+  const minutes = Math.floor((now - raised) / TICKS_PER_MINUTE);
+  const step = minutes < MINUTES_PER_HOUR ? 1 : MINUTES_PER_HOUR;
+  return raised + (Math.floor(minutes / step) + 1) * step * TICKS_PER_MINUTE;
+}
+
 function cardOf(m: UserMessage, snapshot: WorldSnapshot): NoticeCardView {
   return {
     id: m.id,
@@ -214,30 +220,42 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   let presentedTick = 0;
   const select = (m: UserMessage): void => deps.onSelect({ entity: m.subject?.entity ?? null, at: m.at });
   // The stack listed in the column, the stacks last shown by key (a card's dismissal takes the members
-  // it showed) and each listed note's row label, named once.
+  // it showed), each listed note's subject name, named once, and the tick a listed row's age next reads
+  // differently.
   let openKey: string | null = null;
   let shownGroups = new Map<string, NoticeGroup>();
-  const rowLabels = new Map<number, string>();
-  let ageBucket = -1;
-  /** Who a row is about: the subject's name while it lives, else the note's whole message. */
+  const subjectNames = new Map<number, string>();
+  let ageChangeTick = Number.POSITIVE_INFINITY;
+  /** Who a row is about: the subject's name, kept once named; a fight's strikers and hits; else the
+   *  note's whole message, which a revised note changes. */
   const rowLabel = (m: UserMessage, snapshot: WorldSnapshot): string => {
-    const known = rowLabels.get(m.id);
+    const known = subjectNames.get(m.id);
     if (known !== undefined) return known;
     const e = m.subject === null ? undefined : entityById(snapshot, m.subject.entity);
-    let label = noticeFullText(m);
     if (e !== undefined && m.subject !== null) {
-      if (m.subject.kind === 'settler') label = naming.settler(e, snapshot).name;
-      else if (m.subject.kind === 'building') label = naming.building(e);
-      else label = naming.vehicle(e);
+      const { kind } = m.subject;
+      const name =
+        kind === 'settler'
+          ? naming.settler(e, snapshot).name
+          : kind === 'building'
+            ? naming.building(e)
+            : naming.vehicle(e);
+      subjectNames.set(m.id, name);
+      return name;
     }
-    rowLabels.set(m.id, label);
-    return label;
+    if (m.fight !== undefined) {
+      const { buildings, walls, settlers, vehicles, seats, wild } = m.fight;
+      const enemies = seats.map((seat) => naming.player(seat));
+      return fightSummary({ buildings, walls, settlers, vehicles, enemies, wild }, messages().userMessages);
+    }
+    return noticeFullText(m);
   };
   const membersOf = (group: NoticeGroup, snapshot: WorldSnapshot): NoticeMemberView[] => {
     const mixed = groupMixesLines(group);
     const listed = new Set(group.members.map((m) => m.id));
-    for (const id of rowLabels.keys()) if (!listed.has(id)) rowLabels.delete(id);
+    for (const id of subjectNames.keys()) if (!listed.has(id)) subjectNames.delete(id);
     return group.members.map((m) => {
+      ageChangeTick = Math.min(ageChangeTick, nextAgeChange(m.tick, snapshot.tick));
       const card = cardOf(m, snapshot);
       return {
         id: m.id,
@@ -380,10 +398,12 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
         } else feeds.current.expire(snapshot.tick, (m) => isSubjectGone(m, snapshot), true);
         previous = snapshot;
       }
-      const bucket = Math.floor(snapshot.tick / AGE_REFRESH_TICKS);
-      if (feeds.current.version() !== renderedVersion || (openKey !== null && bucket !== ageBucket)) {
+      if (
+        feeds.current.version() !== renderedVersion ||
+        (openKey !== null && snapshot.tick >= ageChangeTick)
+      ) {
         renderedVersion = feeds.current.version();
-        ageBucket = bucket;
+        ageChangeTick = Number.POSITIVE_INFINITY;
         const groups = groupNotes(feeds.current.displayed());
         shownGroups = new Map(groups.map((group) => [group.key, group]));
         if ((shownGroups.get(openKey ?? '')?.members.length ?? 0) < MIN_STACK_MEMBERS) openKey = null;

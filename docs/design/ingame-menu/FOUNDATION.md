@@ -848,7 +848,8 @@ lifetime, dedupe and priority table.
   and a "jeszcze N" badge counts the cards past the edge.
 - A fresh card slides in and an urgent fresh seal pulses three times. Figures are painted only on
   cards inside the list's visible area; a paused game holds their frame. Reduced motion drops the
-  slide and the pulse, never the figure's activity, which is game content like the map.
+  slide, the pulse and a stack's count bump, never the figure's activity, which is game content like
+  the map.
 - Similar notes stack under one card. The hunger family (dying, starving, hungry) and the idle family
   (lost workplace, no cart, nothing to do) stack across their types; every other note stacks with
   notes of its type and card line (a good, a stance, a family reason make their own stack; a line
@@ -860,7 +861,7 @@ lifetime, dedupe and priority table.
 - A stack's seal grows from 12 to 18 px and carries the count, as the filter seals carry their tallies;
   the event line moves 6 px right. One slate edge under the card shows a pair, two show three or more,
   thinned from 5 to 3 px each when the column fans. Hover or focus shows the breakdown ("1 umiera ·
-  3 głodują · 9 głodnych") over the face's whole message and a hint line.
+  3 głodują · 9 chce jeść") over the face's whole message and a hint line.
 - The count seal is the stack's disclosure button (a bronze tick under it, `aria-expanded`); → opens
   and ← closes from the card or a row. The members list inside the column as 26 px rows (thumbnail
   cropped to head and shoulders, weight seal, name or the whole message, the member's own card line

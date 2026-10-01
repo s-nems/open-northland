@@ -1375,7 +1375,7 @@ export const enGame = {
         missingInput:
           "{building}: production has stopped for lack of {good}. Bring it to a store within the workshop's reach.",
         inputOutOfReach:
-          '{building}: production has stopped for lack of {good}, which only stores outside signpost reach hold. Link them with signposts or build a store closer.',
+          '{building}: production has stopped for lack of {good}. Only stores outside signpost reach hold it. Link them with signposts or build a store closer.',
         outputFull:
           '{building}: production has stopped, its shelves are full ({good}). Build a store within reach or assign more carriers.',
         outputOutOfReach:
