@@ -1,4 +1,4 @@
-import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
+import { ONE, components as simComponents, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { isNoteOver, LOST_NOTE_HOLD_TICKS } from '../src/hud/tool-panel/messages/retire.js';
 import {
@@ -71,6 +71,11 @@ function idleWorld(
       ...(workplace === undefined ? [] : [{ id: workplace, components: {} }]),
     ],
   };
+}
+
+/** A world holding only the note's subject, with the components the case under test reads. */
+function subjectWorld(components: Record<string, unknown>): WorldSnapshot {
+  return { tick: RELEASED, events: [], entities: [{ id: SETTLER, components }] };
 }
 
 function note(
@@ -166,21 +171,49 @@ describe('note retirement', () => {
     expect(isNoteOver(lost, world(RELEASED, 'found'))).toBe(true);
   });
 
-  it('ends a held child order note once the order runs again or is gone', () => {
-    const order = (childOrder: Record<string, unknown> | null): WorldSnapshot => ({
-      tick: RELEASED,
-      events: [],
-      entities: [
-        {
-          id: SETTLER,
-          components: childOrder === null ? {} : { ChildOrder: { child: 'male', ...childOrder } },
-        },
-      ],
-    });
-    const held = note(USER_MESSAGE_TYPE.familyBlocked);
-    expect(isNoteOver(held, order({ blocked: 'livesApart' }))).toBe(false);
-    expect(isNoteOver(held, order({ foodSearchMissed: true }))).toBe(false);
+  it('ends a held child order note once the order runs again, is gone or waits on another reason', () => {
+    const order = (childOrder: Record<string, unknown> | null): WorldSnapshot =>
+      subjectWorld(childOrder === null ? {} : { ChildOrder: { child: 'male', ...childOrder } });
+    const held: UserMessage = { ...note(USER_MESSAGE_TYPE.familyBlocked), familyWait: 'husbandAway' };
+    expect(isNoteOver(held, order({ blocked: 'husbandAway' }))).toBe(false);
+    expect(isNoteOver(held, order({ blocked: 'livesApart' }))).toBe(true);
+    expect(isNoteOver(held, order({ foodSearchMissed: true }))).toBe(true);
     expect(isNoteOver(held, order({}))).toBe(true);
     expect(isNoteOver(held, order(null))).toBe(true);
+  });
+
+  it('ends a near-death note once the settler heals out of danger', () => {
+    const MAX = 1000;
+    const dying = note(USER_MESSAGE_TYPE.willDie);
+    const health = (hitpoints: number): WorldSnapshot => subjectWorld({ Health: { hitpoints, max: MAX } });
+    expect(isNoteOver(dying, health(1))).toBe(false);
+    expect(isNoteOver(dying, health(MAX))).toBe(true);
+  });
+
+  it('ends a no-one-to-marry note once the settler is married', () => {
+    const single = note(USER_MESSAGE_TYPE.noOneToMarry);
+    expect(isNoteOver(single, subjectWorld({}))).toBe(false);
+    expect(isNoteOver(single, subjectWorld({ Marriage: { spouse: SETTLER + 1, child: null } }))).toBe(true);
+  });
+
+  it('ends the vehicle notes once a commander boards or the animal is harnessed', () => {
+    const vehicle = { kind: 'vehicle', entity: SETTLER } as const;
+    const crewed = (commander: number | null): WorldSnapshot =>
+      subjectWorld({ Vehicle: { passengers: [null, commander === null ? null : { entity: commander }] } });
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.vehicleNoCommander, vehicle), crewed(null))).toBe(false);
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.vehicleNoCommander, vehicle), crewed(SETTLER + 1))).toBe(true);
+    const cart = (harnessed: boolean): WorldSnapshot => subjectWorld({ Vehicle: { harnessed } });
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.vehicleNoAnimal, vehicle), cart(false))).toBe(false);
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.vehicleNoAnimal, vehicle), cart(true))).toBe(true);
+  });
+
+  it('ends a no-cart note once the trader rides or its route falls short', () => {
+    const fullRoute = Array.from({ length: simComponents.TRADE_ROUTE_HOUSES }, (_, i) => ({ house: i + 1 }));
+    const trader = (extra: Record<string, unknown>): WorldSnapshot =>
+      subjectWorld({ TradeRoute: { stops: fullRoute }, ...extra });
+    const noCart = note(USER_MESSAGE_TYPE.noVehicleForWork);
+    expect(isNoteOver(noCart, trader({}))).toBe(false);
+    expect(isNoteOver(noCart, trader({ Rider: { vehicle: SETTLER + 1 } }))).toBe(true);
+    expect(isNoteOver(noCart, subjectWorld({ TradeRoute: { stops: [] } }))).toBe(true);
   });
 });

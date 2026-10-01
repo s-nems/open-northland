@@ -65,6 +65,16 @@ describe('message feed', () => {
     ).toBe('accepted');
   });
 
+  it('tells a family note with a new reason from the dismissed one', () => {
+    const feed = createMessageFeed();
+    const family = (familyWait: 'husbandAway' | 'noFood'): PendingMessage =>
+      pending(USER_MESSAGE_TYPE.familyBlocked, undefined, { familyWait });
+    expect(feed.add(family('husbandAway'), TICK, TEXT)).toBe('accepted');
+    expect(feed.remove(1, true)).toBe(true);
+    expect(feed.add(family('husbandAway'), TICK + 5, TEXT)).toBe('duplicate');
+    expect(feed.add(family('noFood'), TICK + 5, TEXT)).toBe('accepted');
+  });
+
   it('keeps subject-less messages apart by who they are about', () => {
     const feed = createMessageFeed();
     const death = (entity: number): PendingMessage =>

@@ -92,7 +92,7 @@ function identityKey(m: PendingMessage): string {
     m.technologies === null
       ? ''
       : m.technologies.map((technology) => `${technology.kind}:${technology.typeId}`).join(',');
-  return `${m.type}|${subject}|${m.goodType ?? ''}|${m.jobType ?? ''}|${technologies}`;
+  return `${m.type}|${subject}|${m.goodType ?? ''}|${m.jobType ?? ''}|${technologies}|${m.familyWait ?? ''}`;
 }
 
 /** Two "cannot find" complaints about one good from settlers standing close together. */

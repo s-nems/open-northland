@@ -104,6 +104,7 @@ export class MessageRaiser {
         goodType: null,
         technologies: null,
         jobType: jobTypeOf(e),
+        familyWait: wait,
       },
       () => {
         const named = this.naming.settler(e, this.snapshot);

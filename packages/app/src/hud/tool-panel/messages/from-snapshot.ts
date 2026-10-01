@@ -147,7 +147,7 @@ class PostHistory {
 }
 
 /** A living settler whose pool has nearly run out, and that a script has not made unharmable. */
-function isDying(e: SnapshotEntity): boolean {
+export function isDying(e: SnapshotEntity): boolean {
   const health = healthOf(e);
   return health !== undefined && !isInvulnerable(e) && systems.isNearDeath(health.hitpoints, health.max);
 }
@@ -202,7 +202,7 @@ function lostItsWorkplace(e: SnapshotEntity, everEmployed: boolean): boolean {
  * there with the `noVehicleForWork` note; this sim leaves the
  * trader on foot and the sweep reads the state off the route and the missing `Rider` marker.
  */
-function lacksTradeCart(e: SnapshotEntity): boolean {
+export function lacksTradeCart(e: SnapshotEntity): boolean {
   const route = e.components.TradeRoute as { stops?: unknown } | undefined;
   return (
     Array.isArray(route?.stops) &&

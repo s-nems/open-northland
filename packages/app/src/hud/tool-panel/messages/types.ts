@@ -1,4 +1,5 @@
 import type { HalfCellNode } from '@open-northland/sim';
+import type { ChildOrderWait } from '../../../game/snapshot.js';
 import type { MessageText } from './text.js';
 
 /**
@@ -113,6 +114,8 @@ export interface PendingMessage {
   /** The subject settler's trade when the message was raised; the priority rule for a missing good
    *  reads it. */
   readonly jobType: number | null;
+  /** A family note's reason, part of its identity: a new reason retires the old note and raises its own. */
+  readonly familyWait?: ChildOrderWait;
 }
 
 export interface UserMessage extends PendingMessage {
