@@ -51,6 +51,30 @@ describe('moveUnit order', () => {
     expect(s.world.has(e, PlayerOrder)).toBe(false);
   });
 
+  it('a walk re-ordered mid-step finishes that step along its edge before it turns', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 0, 1);
+    orderMove(s, e, 8, 1); // east along row 1
+    s.run(4); // partway through the first half-column step
+    const row = s.world.get(e, Position).y;
+    const startX = s.world.get(e, Position).x;
+    expect(startX).toBeGreaterThan(0);
+    expect(startX).toBeLessThan(fx.fromFloat(0.5));
+
+    orderMove(s, e, 2, 3); // a sharp turn south
+    let lastX = startX;
+    for (let t = 0; t < 16; t++) {
+      s.step();
+      const p = s.world.get(e, Position);
+      if (p.x === fx.fromFloat(0.5) && p.y === row) return; // the step ended on its node
+      // Still on the step's edge, moving on along it: never cutting south from the middle of the edge.
+      expect(p.y).toBe(row);
+      expect(p.x).toBeGreaterThanOrEqual(lastX);
+      lastX = p.x;
+    }
+    throw new Error('the step never reached its node');
+  });
+
   it("releases a construction run's source and destination promises when the player interrupts it", () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);

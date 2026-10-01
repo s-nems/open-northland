@@ -1,4 +1,12 @@
-import { MoveGoal, PathFollow, PathRequest, PathRoute, Position, Stranded } from '../../components/index.js';
+import {
+  MoveGoal,
+  PathFollow,
+  PathRequest,
+  PathRoute,
+  Position,
+  Stranded,
+  type Waypoint,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -51,14 +59,27 @@ export function stopAtNextNode(world: World, terrain: TerrainGraph, e: Entity): 
     dropPath(world, e);
     return false;
   }
-  for (let end = follow.index; end < stops.length; end++) {
+  const end = liveStepEnd(terrain, follow.index, stops);
+  if (end === undefined) {
+    dropPath(world, e);
+    return false;
+  }
+  if (end + 1 < stops.length) world.mut(e, PathRoute).waypoints = stops.slice(0, end + 1);
+  return true;
+}
+
+/** The index of the stop that ends a walker's live lattice step, from the leg toward `index` on: the first
+ *  stop on its node's centre, so a diagonal's midpoint is passed over. Undefined when none is. */
+export function liveStepEnd(
+  terrain: TerrainGraph,
+  index: number,
+  stops: readonly Waypoint[],
+): number | undefined {
+  for (let end = index; end < stops.length; end++) {
     const stop = stops[end];
     if (stop === undefined) continue;
     const at = positionOfNode(terrain.xOf(stop.node), terrain.yOf(stop.node));
-    if (stop.x !== at.x || stop.y !== at.y) continue;
-    if (end + 1 < stops.length) world.mut(e, PathRoute).waypoints = stops.slice(0, end + 1);
-    return true;
+    if (stop.x === at.x && stop.y === at.y) return end;
   }
-  dropPath(world, e);
-  return false;
+  return undefined;
 }

@@ -1,4 +1,6 @@
 import {
+  Engagement,
+  Fleeing,
   MoveGoal,
   Owner,
   PathFollow,
@@ -12,7 +14,7 @@ import {
   type Waypoint,
 } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
-import type { World } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
@@ -29,6 +31,7 @@ import {
   unitWalkBlocks,
 } from './collision/index.js';
 import { GroupRoutes } from './group-routes.js';
+import { liveStepEnd } from './nav-state.js';
 import { beginWalkTurn } from './turning.js';
 
 /**
@@ -96,13 +99,18 @@ export function drainPathRequests(
 
       const collides = hasBodyCollision(world, ctx.content, e);
       const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
+      const stepEnd =
+        req.retainRoute || !finishesStepOnReroute(world, e)
+          ? undefined
+          : freeStepEnd(world, terrain, e, blocked);
+      const start = stepEnd ?? req.start;
       // A goal blocked only by a standing unit is recoverable: re-aim at the nearest free node so a charge
       // fans out around a crowded target. Collider-only, since a ghost's goal must stay exact.
       let goal = req.goal;
       let standIn = false;
       if (
         collides &&
-        goal !== req.start && // a walker already standing there has arrived, however crowded
+        goal !== start && // a walker already standing there has arrived, however crowded
         isValidNodeId(terrain, goal) &&
         blocked.has(goal) &&
         !dynamicOnly().has(goal)
@@ -115,11 +123,11 @@ export function drainPathRequests(
       }
       // Only a player's order moves a group; economy walks keep their own exact routes.
       const group =
-        world.has(e, PlayerOrder) && isValidNodeId(terrain, req.start) && isValidNodeId(terrain, goal);
-      let path = group ? groupRoutes.borrow(blocked, req.start, goal, spent) : null;
+        world.has(e, PlayerOrder) && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
+      let path = group ? groupRoutes.borrow(blocked, start, goal, spent) : null;
       if (path === null) {
         if (overBudget) continue;
-        path = resolvePath(terrain, req.start, goal, blocked, spent);
+        path = resolvePath(terrain, start, goal, blocked, spent);
         if (path !== null && group) groupRoutes.offer(blocked, path);
       }
       if (path !== null && standIn) {
@@ -168,8 +176,12 @@ export function drainPathRequests(
                 )
               : undefined))
           : undefined;
+      // A walker partway through a step finishes it along its edge before the new route, however sharply
+      // that route then turns.
+      const finishesStep = moved && stepEnd !== undefined && waypoints[0]?.node === stepEnd;
       let index =
         waypoints.length < 2 ||
+        finishesStep ||
         (activeCost > 0 &&
           position !== undefined &&
           waypoints[0] !== undefined &&
@@ -208,6 +220,38 @@ export function drainPathRequests(
     // The post counts are a shared scratch.
     units?.release();
   }
+}
+
+/** Whether `e` finishes its live step before taking a new route: a player's walk and a run from danger,
+ *  whose re-aims a click or a threat can repeat every few ticks. A chase, an attack-move's included, keeps
+ *  cutting toward its target, which lets a crowd settle round an enemy without walking each step out first. */
+function finishesStepOnReroute(world: World, e: Entity): boolean {
+  if (world.has(e, Engagement)) return false;
+  return world.has(e, PlayerOrder) || world.has(e, Fleeing);
+}
+
+/**
+ * The node ending the step `e` is partway through, when it is free to route from. Starting there keeps the
+ * walker on the lattice: from the middle of an edge it would otherwise cut toward the new route's second
+ * node, a heading its facing and walk clip cannot show. Undefined for a walker standing on a node.
+ * Approximation of the original, whose walk is an atomic one-step action; whether an order can cut that
+ * step short is unconfirmed.
+ */
+function freeStepEnd(
+  world: World,
+  terrain: TerrainGraph,
+  e: Entity,
+  blocked: BlockOverlay,
+): NodeId | undefined {
+  const follow = world.tryGet(e, PathFollow);
+  const stops = world.tryGet(e, PathRoute)?.waypoints;
+  const p = world.tryGet(e, Position);
+  if (follow === undefined || stops === undefined || p === undefined) return undefined;
+  const from = stops[follow.index - 1];
+  if (from === undefined || (from.x === p.x && from.y === p.y)) return undefined;
+  const end = liveStepEnd(terrain, follow.index, stops);
+  const node = end === undefined ? undefined : stops[end]?.node;
+  return node === undefined || blocked.has(node) ? undefined : node;
 }
 
 function startIsAhead(position: { x: Fixed; y: Fixed }, waypoints: readonly Waypoint[]): boolean {
