@@ -1,4 +1,4 @@
-import type { MapAiSeat } from '@open-northland/data';
+import { type ContentSet, type MapAiSeat, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   AI_GATE_LIST_LIMIT,
@@ -17,6 +17,7 @@ import { AI_HANDLER_ROUND_TICKS } from '../../src/systems/ai-player/cadence.js';
 import { seatRaiders } from '../../src/systems/ai-player/military/defence/threat.js';
 import { GATE_ENEMY_NEAR_POINTS, gateList, gateOrders } from '../../src/systems/ai-program/gates.js';
 import type { SystemContext } from '../../src/systems/index.js';
+import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
@@ -27,7 +28,9 @@ const SEAT = 2;
 const FOE = 3;
 const HQ_TYPE = 1;
 const CIVILIST = 6;
+const FIST = 31;
 const SPEARMAN = 32;
+const CATAPULT = 5;
 const CLOSED = 696;
 const OPEN = 700;
 const WOOD = 1;
@@ -57,6 +60,23 @@ function gateType(typeId: number, open: boolean, counterpart: number): ScriptLan
   };
 }
 
+/** {@link aiContent} with a catapult, the enemy vehicle a gate shuts for. */
+const CONTENT: ContentSet = parseContentSet({
+  ...aiContent(),
+  vehicles: [
+    {
+      typeId: CATAPULT,
+      id: 'catapult',
+      jobId: 54,
+      stockSlots: 0,
+      logicSize: 1,
+      passengerJobs: [FIST, SPEARMAN],
+      commanderJob: FIST,
+      hitpoints: 3000,
+    },
+  ],
+});
+
 function gateSim(): Simulation {
   const row: MapAiSeat = {
     player: SEAT,
@@ -69,7 +89,7 @@ function gateSim(): Simulation {
     ...grassNodeMap(128, 96),
     landscapes: { types: [gateType(CLOSED, false, OPEN), gateType(OPEN, true, CLOSED)], placements: [] },
   };
-  const sim = new Simulation({ seed: 1, content: aiContent(), map, aiScript: [row] });
+  const sim = new Simulation({ seed: 1, content: CONTENT, map, aiScript: [row] });
   const off = Object.fromEntries(AI_MODULE_IDS.map((id) => [id, false]));
   sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true, modules: off });
   sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ_TYPE, ...HQ, tribe: VIKING, owner: SEAT });
@@ -146,6 +166,22 @@ describe('ai program gates', () => {
     expect(isOpen(sim, gate)).toBe(true);
   });
 
+  it('shuts a gate for an enemy vehicle near it', () => {
+    const sim = gateSim();
+    const gate = placeGate(sim, GATE, true);
+    const catapult = createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: CATAPULT,
+      x: GATE.x + 10,
+      y: GATE.y,
+      tribe: VIKING,
+      owner: FOE,
+    });
+    if (catapult === null) throw new Error('setup: the catapult is not in the content');
+    expect(orders(sim, [{ gate, open: true }])).toEqual([
+      { kind: 'setPalisadeGate', palisade: gate, open: false },
+    ]);
+  });
+
   it('leaves a gate alone for an enemy past the radius or a civilian at the door', () => {
     const sim = gateSim();
     const gate = placeGate(sim, GATE, true);
@@ -187,6 +223,13 @@ describe('ai program gates', () => {
     for (let i = 0; i < AI_GATE_LIST_LIMIT; i++)
       placeGate(sim, { x: 8 + 8 * (i % 14), y: 56 + 4 * Math.floor(i / 14) }, true);
     expect(gateList(sim.world, { hx: HQ.x, hy: HQ.y })).toHaveLength(AI_GATE_LIST_LIMIT);
+  });
+
+  it('opens on its first turn in peace a gate it found shut', () => {
+    const sim = gateSim();
+    const gate = placeGate(sim, GATE, false);
+    for (let i = 0; i < AI_HANDLER_ROUND_TICKS; i++) sim.step();
+    expect(isOpen(sim, gate)).toBe(true);
   });
 
   it('shuts its gate on the handler turn after a raider walks up', () => {

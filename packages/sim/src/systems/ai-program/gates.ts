@@ -43,11 +43,13 @@ export function gateList(world: World, centre: { hx: number; hy: number } | null
 
 /**
  * Every handler turn: shut each standing gate of the seat with an enemy fighter or vehicle within
- * {@link GATE_ENEMY_NEAR_POINTS}, open it again once none is. Original behavior: the handler opens
- * only a gate it shut itself, so a gate a script closed in peace stays closed.
+ * {@link GATE_ENEMY_NEAR_POINTS}, open it again once none is. Original behavior: the handler acts only
+ * when its remembered state flips, so it opens any gate it remembers shut, one it found shut on its
+ * first turn included, and a gate shut behind its back stays shut until the next enemy comes and goes.
  *
  * Deviation: the original counts every adult enemy, civilians included; this build counts the
- * fighters the seat's defence watches, so a passing builder does not lock the town. While an enemy
+ * fighters the seat's defence watches, men at a tower post left out, so a passing builder does not
+ * lock the town. While an enemy
  * stays, an open gate is shut again every turn: a shut the gate refused (someone stood in it) is
  * retried, where the original's unconditional swap needs no retry, and a script opening it then loses.
  */
