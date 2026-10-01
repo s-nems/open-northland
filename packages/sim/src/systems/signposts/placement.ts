@@ -21,7 +21,8 @@ import {
 } from '../footprint/index.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
 import { settleSignpostLinks, unlinkSignpost } from './links.js';
-import { type SignpostSite, signpostNetwork } from './network.js';
+import { signpostNetwork } from './network.js';
+import { plannedSignposts, type SignpostSpot } from './planned.js';
 
 /**
  * Whether `player` may erect a signpost at `node`: open walkable ground under the work-flag rule, off any
@@ -44,7 +45,7 @@ export function canPlaceSignpost(
 
 /** Whether `post`'s spacing can cover a node of `area`: the hex distance is at least the row gap and at
  *  least one less than the column gap. */
-function spacingReaches(post: SignpostSite, area: NodeArea): boolean {
+function spacingReaches(post: SignpostSpot, area: NodeArea): boolean {
   const rows = gapOutside(post.hy, area.minHy, area.maxHy);
   const columns = gapOutside(post.hx, area.minHx, area.maxHx);
   return rows < SIGNPOST_SPACING_NODES && columns - 1 < SIGNPOST_SPACING_NODES;
@@ -54,7 +55,7 @@ function gapOutside(value: number, min: number, max: number): number {
   return value < min ? min - value : value > max ? value - max : 0;
 }
 
-function insideSpacing(posts: readonly SignpostSite[], x: number, y: number): boolean {
+function insideSpacing(posts: readonly SignpostSpot[], x: number, y: number): boolean {
   for (const s of posts) {
     if (hexDistanceBetween(s.hx, s.hy, x, y) < SIGNPOST_SPACING_NODES) return true;
   }
@@ -72,7 +73,9 @@ export interface SignpostProbe {
  * Build a {@link SignpostProbe} for `player` over the live blocked set and the current network, so each
  * `canPlace` costs only the player's post count. Both inputs are live views: ask the probe within one
  * decision or frame and build a fresh one after the world changes. A probe asked only `within` a node box
- * keeps just the posts whose spacing can reach into it.
+ * keeps just the posts whose spacing can reach into it. With `planned`, the spots the player's scouts
+ * are on their way to erect at keep their spacing too, as the placement overlay shows it; the erect
+ * command itself judges only standing posts.
  */
 export function signpostProbe(
   world: World,
@@ -80,10 +83,14 @@ export function signpostProbe(
   terrain: TerrainGraph,
   player: number,
   within?: NodeArea,
+  { planned = false }: { readonly planned?: boolean } = {},
 ): SignpostProbe {
   const placeable = workFlagPlacementTest(world, content, terrain);
   const network = signpostNetwork(world).get(player) ?? [];
-  const posts = within === undefined ? network : network.filter((post) => spacingReaches(post, within));
+  const spots: readonly SignpostSpot[] = planned
+    ? [...network, ...plannedSignposts(world, terrain, player)]
+    : network;
+  const posts = within === undefined ? spots : spots.filter((post) => spacingReaches(post, within));
   return {
     canPlace: (x, y) =>
       terrain.inBounds(x, y) && placeable(terrain.nodeAt(x, y)) && !insideSpacing(posts, x, y),

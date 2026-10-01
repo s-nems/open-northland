@@ -8,6 +8,7 @@ import {
   Female,
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
+  OrderQueue,
   Owner,
   Settler,
   SiteAssignment,
@@ -41,12 +42,20 @@ export function mayChangeTrade(world: World, e: Entity): boolean {
 
 /**
  * Drop the earlier orders that would act on `e` later and cancel an order that takes it now: a parked
- * order replays the tick its atomic ends, and a scout's sweep walks its next leg the tick the scout is free.
+ * order replays the tick its atomic ends, a scout's sweep walks its next leg the tick the scout is free,
+ * and the queued orders start once the current one ends.
  */
 export function supersedeStandingOrders(world: World, e: Entity): void {
+  dropOrderQueue(world, e);
   world.remove(e, DeferredOrder);
   world.remove(e, ExploreOrder);
   endBuildMode(world, e);
+}
+
+/** Drop the orders `e` queued behind its current one. Every order that takes the settler without queueing
+ *  drops them: through {@link supersedeStandingOrders}, or directly where a handler keeps the rest. */
+export function dropOrderQueue(world: World, e: Entity): void {
+  world.remove(e, OrderQueue);
 }
 
 /** Call off a builder's road or wall run, letting go of the site it had claimed for it. */

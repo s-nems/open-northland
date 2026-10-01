@@ -36,6 +36,7 @@ import {
   chestOrderSystem,
   deferredOrderSystem,
   exploreOrderSystem,
+  orderQueueSystem,
   playerOrderSystem,
   signpostOrderSystem,
 } from './orders/index.js';
@@ -87,6 +88,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'exploreOrder', system: exploreOrderSystem },
   // Same slot as the erect order: an arrived chest order bends over the lid before the planner re-tasks.
   { name: 'chestOrder', system: chestOrderSystem },
+  // After the order systems above retire an arrival or turn it into its errand, and before the planner
+  // could re-task the freed settler, so a queued order starts the tick the one ahead of it ends.
+  { name: 'orderQueue', system: orderQueueSystem },
   // The assistant dispatches before family and the planner, so a fresh child order is driven and a
   // fresh drill routed the same tick it was booked.
   { name: 'assistant', system: assistantSystem },

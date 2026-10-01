@@ -178,6 +178,16 @@ const SPOT_MODES: ReadonlySet<PickMode['kind']> = new Set<
 
 const isSpotMode = (mode: PickMode): mode is SpotMode => SPOT_MODES.has(mode.kind);
 
+/** The spot orders a Shift press queues behind each settler's current order (the sim's
+ *  `QUEUEABLE_ORDER_KINDS`), keeping the mode armed while Shift is held. */
+type QueueableSpotKind = 'destination' | 'attack-move' | 'signpost';
+
+const QUEUEABLE_MODES: ReadonlySet<PickMode['kind']> = new Set<QueueableSpotKind>([
+  'destination',
+  'attack-move',
+  'signpost',
+]);
+
 export interface PickModeDeps {
   readonly snapshot: () => WorldSnapshot;
   /** Bumped when an attach rule's answer lands anew, which re-lights the picks under one snapshot. */
@@ -248,8 +258,11 @@ export interface PickModeController {
   handleMouseDown(event: MouseEvent): PickPress | null;
   /** A press on the map overview, which names the node `target` and nothing drawn there. A spot-target
    *  mode resolves; one that needs a picked unit or building stays armed, so scrolling the overview to
-   *  find that target does not call it off. Non-null when the armed mode took the press. */
-  handleOverviewPress(button: number, target: Tile): PickPress | null;
+   *  find that target does not call it off. `shift` is a Shift press. Non-null when the armed mode took
+   *  the press. */
+  handleOverviewPress(button: number, target: Tile, shift?: boolean): PickPress | null;
+  /** Shift was let go (or the window lost focus): a mode a Shift press kept armed ends with it. */
+  endShiftChain(): void;
   /** The lit and dimmed pick targets of the armed mode: a building pick's candidate buildings, the
    *  "Assign Vehicle" pick's own vehicles. Null when the armed mode lights nothing. */
   highlight(): readonly BuildingHighlightItem[] | null;
@@ -277,9 +290,12 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   const canTrade: TradeHouseRule = deps.canAttachTradeHouse ?? (() => false);
   let pickMode: PickMode | null = null;
   let pickVersion = 0;
+  /** The armed mode was kept armed by a queued Shift press rather than armed by the player. */
+  let shiftChain = false;
   const setMode = (next: PickMode | null): void => {
     pickMode = next;
     pickVersion++;
+    shiftChain = false;
     deps.setArmedCursor(next);
   };
   const cancel = (): void => setMode(null);
@@ -340,18 +356,20 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     return true;
   };
 
-  const resolveSpot = (mode: SpotMode, named: Tile): boolean => {
+  /** `queued` applies to the {@link QUEUEABLE_MODES}. Vehicles have no queue, so they sit a queued march
+   *  out instead of driving ahead of the settlers to each pressed spot. */
+  const resolveSpot = (mode: SpotMode, named: Tile, queued: boolean): boolean => {
     const { width, height } = nodeBounds(deps.mapSize);
     const target = clampTile(named, width, height);
     switch (mode.kind) {
       case 'destination':
-        return deps.orders().issueMoveTo(target, mode.units);
+        return deps.orders().issueMoveTo(target, mode.units, queued);
       case 'work-area':
         return deps.orders().issueSetWorkFlag(target, mode.units);
       case 'attack-move': {
-        const marched = mode.units.length > 0 && deps.orders().issueAttackMove(target, mode.units);
+        const marched = mode.units.length > 0 && deps.orders().issueAttackMove(target, mode.units, queued);
         const marchedVehicles =
-          mode.vehicles.length > 0 && deps.vehicleOrders().issueAttackMove(mode.vehicles, target);
+          !queued && mode.vehicles.length > 0 && deps.vehicleOrders().issueAttackMove(mode.vehicles, target);
         return marched || marchedVehicles;
       }
       // Named deviation from the observed original, which erects with a right-click on lit ground: this
@@ -362,6 +380,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
           entity: mode.scout as Entity,
           x: target.col,
           y: target.row,
+          ...(queued ? { queued } : {}),
         });
         return true;
       // The explore order centres the scout's sweep on the named spot, as the original does.
@@ -454,21 +473,36 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     cancel();
     if (event.button !== 0) return 'calledOff'; // any other button just calls the mode off
     // The march engages enemies only, never game, so an attack-move pressed on a wild animal strikes it;
-    // the selected vehicles still march to the spot.
+    // the selected vehicles still march to the spot. A queued march only aims at the animal's spot.
     if (
+      !event.shiftKey &&
       mode.kind === 'attack-move' &&
       mode.units.length > 0 &&
       deps.orders().issueAttackAnimal(event, mode.units)
     ) {
       if (mode.vehicles.length > 0)
-        resolveSpot({ ...mode, units: [] }, deps.nodeAt(event.clientX, event.clientY));
+        resolveSpot({ ...mode, units: [] }, deps.nodeAt(event.clientX, event.clientY), false);
       return 'ordered';
     }
-    if (isSpotMode(mode)) return pressOutcome(resolveSpot(mode, deps.nodeAt(event.clientX, event.clientY)));
+    if (isSpotMode(mode))
+      return resolveSpotPress(mode, deps.nodeAt(event.clientX, event.clientY), event.shiftKey);
     return pressOutcome(resolvePicked(mode, event));
   };
 
-  const handleOverviewPress = (button: number, target: Tile): PickPress | null => {
+  /** A Shift press queues a queueable order for the settlers it names and keeps the mode armed while
+   *  Shift is held, so a chain of presses lays a route or a signpost line. */
+  const resolveSpotPress = (mode: SpotMode, target: Tile, shift: boolean): PickPress => {
+    const forSettlers = !('units' in mode) || mode.units.length > 0;
+    const queued = shift && forSettlers && QUEUEABLE_MODES.has(mode.kind);
+    const ordered = resolveSpot(mode, target, queued);
+    if (ordered && queued) {
+      setMode(mode);
+      shiftChain = true;
+    }
+    return pressOutcome(ordered);
+  };
+
+  const handleOverviewPress = (button: number, target: Tile, shift = false): PickPress | null => {
     const mode = pickMode;
     if (mode === null || button === MIDDLE_BUTTON) return null;
     if (button !== 0) {
@@ -477,7 +511,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     }
     if (!isSpotMode(mode)) return null;
     cancel();
-    return pressOutcome(resolveSpot(mode, target));
+    return resolveSpotPress(mode, target, shift);
   };
 
   /** Read every frame, so the O(entities) pass is memoized on everything it reads: the snapshot instance
@@ -508,6 +542,9 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     flagActive: () => pickMode?.kind === 'workplace-or-flag',
     handleMouseDown,
     handleOverviewPress,
+    endShiftChain: () => {
+      if (shiftChain) cancel();
+    },
     highlight: () => highlightFor(deps.snapshot()),
   };
 }

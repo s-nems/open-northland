@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 15` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 17` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.

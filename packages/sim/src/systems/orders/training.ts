@@ -18,7 +18,7 @@ import { BARRACKS_DRILL_TICKS, drillDoorOpen } from '../settlers/drives/training
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { isOrderableSettler, mayChangeTrade, supersedeStandingOrders } from './guards.js';
+import { dropOrderQueue, isOrderableSettler, mayChangeTrade, supersedeStandingOrders } from './guards.js';
 
 /**
  * Send one owned settler to drill at a barracks - see the command doc. Validates and stamps the
@@ -83,6 +83,7 @@ export function cancelTraining(world: World, command: Extract<Command, { kind: '
   if (!isOrderableSettler(world, e)) return;
   if (!world.has(e, TrainingOrder)) return;
   world.remove(e, TrainingOrder);
+  dropOrderQueue(world, e);
   removeCurrentAtomic(world, e); // the exercise clip it may be mid-way through
   clearNavState(world, e);
 }

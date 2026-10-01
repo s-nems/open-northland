@@ -34,6 +34,7 @@ function harness(): {
     flagActive: () => false,
     handleMouseDown: () => null,
     handleOverviewPress: () => null,
+    endShiftChain: () => {},
     highlight: () => null,
   };
   return {

@@ -1,8 +1,10 @@
 import {
   isFunctionKeyCode,
+  KEYBINDING_ACTIONS,
   type KeyBindings,
   type KeybindingAction,
   matchesKeyboardBinding,
+  matchesKeyboardBindingUnderShift,
 } from './keybindings.js';
 
 /**
@@ -23,4 +25,15 @@ export const isFieldKey = (e: KeyboardEvent): boolean =>
 /** True for an exact, non-repeating action chord the focused control does not keep. */
 export function isActionHotkey(e: KeyboardEvent, bindings: KeyBindings, action: KeybindingAction): boolean {
   return !e.repeat && !isFieldKey(e) && matchesKeyboardBinding(e, bindings[action]);
+}
+
+/** {@link isActionHotkey} for an order key, which also answers with Shift held, so arming it does not
+ *  break a chain of Shift-queued orders; a chord another action is bound to exactly stays that action's. */
+export function isOrderHotkey(e: KeyboardEvent, bindings: KeyBindings, action: KeybindingAction): boolean {
+  if (e.repeat || isFieldKey(e)) return false;
+  if (matchesKeyboardBinding(e, bindings[action])) return true;
+  return (
+    !KEYBINDING_ACTIONS.some((other) => matchesKeyboardBinding(e, bindings[other])) &&
+    matchesKeyboardBindingUnderShift(e, bindings[action])
+  );
 }

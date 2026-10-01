@@ -435,6 +435,11 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 }
 
 /** One random command - a pure function of `rng` alone (NEVER world state; see the module doc). */
+/** A Shift-click flag on every other queueable order. */
+function queuedOr(rng: Rng): { queued?: true } {
+  return rng.int(2) === 0 ? { queued: true } : {};
+}
+
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
@@ -592,7 +597,8 @@ function nextCommand(rng: Rng): Command {
     case 5:
       // A move order at a random id: hits owned settlers (obeyed), unowned settlers / buildings /
       // dead ids (skipped). Exercises the moveUnit skip paths + the PlayerOrder timed override.
-      return { kind: 'moveUnit', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+      // Every other one is Shift-queued behind the unit's current order.
+      return { kind: 'moveUnit', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y, ...queuedOr(rng) };
     case 6:
       // An attack order at two random ids: hits owned combatants (obeyed → AttackOrder + chase),
       // non-combatant / unowned / dead issuers (skipped) and live/dead/non-combatant targets. Exercises
@@ -724,7 +730,13 @@ function nextCommand(rng: Rng): Command {
       // conjured mid-stream, feeding the network memo, the placement blockers, and the vision stamp),
       // plus non-scout / unowned / dead issuers and illegal spots (skipped). Exercises the placeSignpost
       // create/skip paths, the spacing gate, and the erect order's abandon paths.
-      return { kind: 'placeSignpost', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+      return {
+        kind: 'placeSignpost',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        x,
+        y,
+        ...queuedOr(rng),
+      };
     case 22:
       // The signpost-navigation toggle: flips the SignpostRules singleton mid-stream, confining/freeing
       // every civilian's target scans + move orders - the rule must hash and replay like any state.
@@ -819,7 +831,13 @@ function nextCommand(rng: Rng): Command {
       // An attack-move at a random id: the moveUnit skip paths again, plus the march itself - a walk that
       // keeps the combat drives live, so a fuzzed stream interleaves it with engagement, chases and deaths
       // (the resume-after-the-fight state must hash and replay identically).
-      return { kind: 'attackMoveUnit', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+      return {
+        kind: 'attackMoveUnit',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        x,
+        y,
+        ...queuedOr(rng),
+      };
     case 43:
       // An alarm flip at a random id: the handler's skip paths (dead/stale/non-building/unowned, a type
       // with no garrison, a site) plus defence mode itself - so the claim/release protocol interleaves

@@ -10,6 +10,7 @@ export * from './movement.js';
 export * from './naming.js';
 export * from './needs.js';
 export * from './pending.js';
+export * from './queue.js';
 export * from './signposts.js';
 export * from './training.js';
 export * from './work/index.js';

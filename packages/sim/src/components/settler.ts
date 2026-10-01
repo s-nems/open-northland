@@ -296,6 +296,21 @@ export interface AttackMoveMarch {
   blockedUntil: number;
 }
 
+/** The order kinds a Shift-click may line up behind a settler's current order; each carries `queued`. */
+export const QUEUEABLE_ORDER_KINDS = ['moveUnit', 'attackMoveUnit', 'placeSignpost'] as const;
+
+export type QueueableOrderCommand = Extract<Command, { kind: (typeof QUEUEABLE_ORDER_KINDS)[number] }>;
+
+/** How many orders may wait behind a settler's current one; a queued order past it is dropped. */
+export const ORDER_QUEUE_LIMIT = 16;
+
+/**
+ * The orders a settler carries out one after another once its current order is done, oldest first;
+ * `orderQueueSystem` starts the next. Any order that takes the settler without queueing drops them
+ * (`dropOrderQueue`). Named addition: the original has no order queue.
+ */
+export const OrderQueue = defineComponent<{ orders: QueueableOrderCommand[] }>('OrderQueue', 'settlers');
+
 /** The order kinds a running non-interruptible atomic parks instead of cancelling. */
 export type DeferrableOrderCommand = Extract<
   Command,

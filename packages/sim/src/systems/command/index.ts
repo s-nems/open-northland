@@ -59,6 +59,7 @@ import {
   unassignWorker,
   unequipGood,
 } from '../orders/index.js';
+import { isQueuedOrder, queueBehindCurrentOrder } from '../orders/queue.js';
 import { convertPalisadeGate, placePalisade, setPalisadeGate } from '../palisades/index.js';
 import { cancelRoadSite, placeRoadSite } from '../roads/sites.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
@@ -116,6 +117,9 @@ function wakeAddressed(world: World, command: Command): void {
 }
 
 function applyCommand(world: World, ctx: SystemContext, command: Command, orders: VehicleOrderRoutes): void {
+  // A Shift-clicked order waits behind the current one; an order that takes the settler at once drops
+  // every order still waiting in its handler.
+  if (isQueuedOrder(command) && queueBehindCurrentOrder(world, command)) return;
   // A vehicle's commander hands a walk order to the vehicle. Any other settler crewing a vehicle is
   // taken off it before an order sends it elsewhere; one that may not leave (aboard a ship at sea)
   // keeps its seat and the order is dropped.

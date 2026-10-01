@@ -270,6 +270,7 @@ export const plSurfaces = {
         controlGroup0Add: 'Dodaj/przenieś zaznaczenie do grupy 0',
         cancel: 'Anuluj / zamknij / odznacz',
         toggleSelection: 'Dodawanie do zaznaczenia i usuwanie z niego',
+        queueOrder: 'Dodanie polecenia do kolejki po bieżącym',
         selectJobMates: 'Zaznacz pobliskich osadników tego samego zawodu',
         coarseStep: 'Zmień licznik szkolenia o 10',
         craftToggle: 'Dodaj/usuń produkt z listy produkcji',
@@ -283,6 +284,7 @@ export const plSurfaces = {
       mouseMiddle: 'środkowy przycisk myszy',
       mouseRight: 'prawy przycisk myszy',
       shiftClick: 'Shift + klik',
+      shiftOrder: 'Shift + polecenie',
       ctrlClick: 'Ctrl/Cmd + klik',
       doubleClick: 'Dwuklik',
       bindingPrompt: 'Naciśnij klawisz…',
@@ -296,7 +298,7 @@ export const plSurfaces = {
       hudToggleTip:
         'Ukrywa interfejs do zrzutów ekranu i nagrań. Okno otwarte, gdy interfejs jest ukryty, nadal się pokazuje.',
       pointerBindingRebindTip:
-        'Kliknij, potem naciśnij Ctrl, Shift, Alt lub Cmd razem z przyciskiem myszy. Shift + lewy klik pozostaje dodawaniem do zaznaczenia i usuwaniem z niego. Esc anuluje.',
+        'Kliknij, potem naciśnij Ctrl, Shift, Alt lub Cmd razem z przyciskiem myszy. Shift + lewy klik pozostaje dodawaniem do zaznaczenia i usuwaniem z niego, a Shift + prawy klik kolejkuje marsz. Esc anuluje.',
       autosaveNote: 'Zmiany zapisują się od razu.',
       restoreDefaults: 'Przywróć domyślne',
       restoreFailed: 'Nie udało się przywrócić ustawień domyślnych. Nic nie zostało zmienione.',

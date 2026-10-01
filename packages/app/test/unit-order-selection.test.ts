@@ -76,7 +76,10 @@ const targets: UnitTargets = {
     }),
 };
 
-function harness(initiallySelected: readonly number[] = []): {
+function harness(
+  initiallySelected: readonly number[] = [],
+  overrides: Partial<UnitTargets> = {},
+): {
   selection: UnitSelection;
   orders: UnitOrderController;
   issued: Command[];
@@ -87,7 +90,7 @@ function harness(initiallySelected: readonly number[] = []): {
   const orders = createUnitOrderController({
     answered: createAnsweredOrders(),
     selected: selection.ids,
-    targets,
+    targets: { ...targets, ...overrides },
     snapshot: () => WORLD,
     content: CONTENT,
     mapSize: MAP_SIZE,
@@ -111,6 +114,30 @@ describe('unit orders against a selection that moves under them', () => {
     selection.apply([GUARD.id], false);
     orders.issueRightClick(clickOn(OPEN_GROUND));
     expect(issued).toEqual([{ kind: 'moveUnit', entity: GUARD.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy }]);
+  });
+
+  it("queues a Shift + right-click walk behind each settler's current order", () => {
+    const { orders, issued } = harness([SCOUT.id]);
+
+    orders.issueRightClick({ ...clickOn(OPEN_GROUND), shiftKey: true } as MouseEvent);
+    expect(issued).toEqual([
+      { kind: 'moveUnit', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy, queued: true },
+    ]);
+  });
+
+  it('queues a walk to the ground under a Shift + right-click on a target that takes no queued order', () => {
+    const ENEMY = 50;
+    const { orders, issued } = harness([SCOUT.id], {
+      enemies: () => {
+        const p = halfCellToScreen(OPEN_GROUND.hx, OPEN_GROUND.hy);
+        return [{ ref: ENEMY, x: p.x, y: p.y, kind: 'settler' }];
+      },
+    });
+
+    orders.issueRightClick({ ...clickOn(OPEN_GROUND), shiftKey: true } as MouseEvent);
+    expect(issued).toEqual([
+      { kind: 'moveUnit', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy, queued: true },
+    ]);
   });
 
   it('drops a right-click once the selection has been cleared', () => {

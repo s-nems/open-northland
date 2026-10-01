@@ -14,7 +14,7 @@ import {
 import { interactionNode } from '../footprint/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { groupPlacementOrder } from './group-placement.js';
-import { isOrderableSettler } from './guards.js';
+import { dropOrderQueue, isOrderableSettler } from './guards.js';
 
 /**
  * Match the issuer with the nearest eligible partner and start their wedding - see the command doc. The
@@ -32,6 +32,7 @@ export function marry(world: World, ctx: SystemContext, command: Extract<Command
     ctx.events.emit({ kind: 'marriageUnmatched', entity: e });
     return;
   }
+  dropOrderQueue(world, e);
   startWedding(world, e, partner);
 }
 

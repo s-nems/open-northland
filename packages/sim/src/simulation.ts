@@ -61,6 +61,7 @@ import {
   placementAnswerFor,
   roadSiteAnswerFor,
   signpostAnswerFor,
+  signpostBlockerVersionOf,
 } from './simulation/probe-answers.js';
 import {
   type FogMaskAnswer,
@@ -84,7 +85,6 @@ import {
   type ConstructionPlot,
   constructionSitePlots,
   placementBlockerVersion,
-  workFlagBlockerVersion,
 } from './systems/footprint/index.js';
 import { type LandscapeEditView, landscapeEdits } from './systems/landscape/view.js';
 import {
@@ -508,10 +508,10 @@ export class Simulation {
 
   /**
    * {@link placementBlockerVersion} plus the work-flag generation, since flags block signpost cells but
-   * not buildings, and the signpost network revision, since the spacing rule reads the player's posts.
+   * not buildings, and the posts and planned posts the spacing rule reads.
    */
   signpostBlockerVersion(): string {
-    return `${workFlagBlockerVersion(this.world)}.${signpostNetworkRevision(this.world)}`;
+    return signpostBlockerVersionOf(this.world);
   }
 
   /** The footprint body cells of every under-construction building; the same array while no site changes. */

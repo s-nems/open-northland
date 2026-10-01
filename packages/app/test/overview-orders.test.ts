@@ -126,6 +126,16 @@ describe('orders named on the map overview', () => {
     expect(issued).toEqual([{ kind: 'moveUnit', entity: SCOUT.id, x: FAR_NODE.hx, y: FAR_NODE.hy }]);
   });
 
+  it('queues the walk behind the current order on a Shift press', () => {
+    const { press, issued } = harness();
+
+    pressOn(press, FAR_NODE, { button: 2, shiftKey: true });
+
+    expect(issued).toEqual([
+      { kind: 'moveUnit', entity: SCOUT.id, x: FAR_NODE.hx, y: FAR_NODE.hy, queued: true },
+    ]);
+  });
+
   it('plants a work flag there on the same modifier the world view uses', () => {
     const { press, issued } = harness();
 
@@ -242,6 +252,61 @@ describe('a world press on an armed pick mode', () => {
     pickMode.arm({ kind: 'attack-move', units: [SCOUT.id], vehicles: [] });
     expect(pickMode.handleMouseDown(click(2))).toBe('calledOff');
     expect(issued).toHaveLength(1);
+  });
+
+  it('queues a Shift press of a walk, attack-move or signpost pick and keeps the mode armed', () => {
+    const { pickMode, issued } = harness();
+    const shiftClick = { ...click(0), shiftKey: true } as MouseEvent;
+    const modes = [
+      { kind: 'destination', units: [SCOUT.id] },
+      { kind: 'attack-move', units: [SCOUT.id], vehicles: [] },
+      { kind: 'signpost', scout: SCOUT.id },
+    ] as const;
+    for (const mode of modes) {
+      pickMode.arm(mode);
+      expect(pickMode.handleMouseDown(shiftClick)).toBe('ordered');
+      expect(pickMode.armed()).toEqual(mode);
+    }
+    expect(issued).toEqual([
+      { kind: 'moveUnit', entity: SCOUT.id, x: 0, y: 0, queued: true },
+      { kind: 'attackMoveUnit', entity: SCOUT.id, x: 0, y: 0, queued: true },
+      { kind: 'placeSignpost', entity: SCOUT.id, x: 0, y: 0, queued: true },
+    ]);
+
+    pickMode.arm({ kind: 'work-area', units: [SCOUT.id] });
+    expect(pickMode.handleMouseDown(shiftClick)).toBe('ordered');
+    expect(pickMode.isArmed()).toBe(false); // a work flag has nothing to queue behind
+  });
+
+  it('ends a Shift chain when Shift is let go, but not a mode the player armed', () => {
+    const { pickMode, issued } = harness();
+    pickMode.arm({ kind: 'destination', units: [SCOUT.id] });
+    pickMode.endShiftChain(); // Shift let go before any queued press
+    expect(pickMode.isArmed()).toBe(true);
+
+    pickMode.handleMouseDown({ ...click(0), shiftKey: true } as MouseEvent);
+    expect(pickMode.isArmed()).toBe(true);
+    pickMode.endShiftChain();
+    expect(pickMode.isArmed()).toBe(false); // a plain press can no longer wipe the queue laid
+    expect(issued).toEqual([{ kind: 'moveUnit', entity: SCOUT.id, x: 0, y: 0, queued: true }]);
+  });
+
+  it('leaves the vehicles out of a queued attack-move, which have no queue', () => {
+    const CATAPULT = 30;
+    const { pickMode, issued } = harness(); // its vehicle controller throws if asked
+    pickMode.arm({ kind: 'attack-move', units: [SCOUT.id], vehicles: [CATAPULT] });
+    expect(pickMode.handleMouseDown({ ...click(0), shiftKey: true } as MouseEvent)).toBe('ordered');
+    expect(issued).toEqual([{ kind: 'attackMoveUnit', entity: SCOUT.id, x: 0, y: 0, queued: true }]);
+  });
+
+  it('marches a Shift-pressed attack-move to the spot of a wild animal instead of striking it', () => {
+    const DEER = 40;
+    const { pickMode, issued } = harness(DEFAULT_KEY_BINDINGS.workFlagOrder, () => [
+      { ref: DEER, x: 10, y: 10, kind: 'settler' },
+    ]);
+    pickMode.arm({ kind: 'attack-move', units: [SCOUT.id], vehicles: [] });
+    pickMode.handleMouseDown({ ...click(0), shiftKey: true } as MouseEvent);
+    expect(issued).toEqual([{ kind: 'attackMoveUnit', entity: SCOUT.id, x: 0, y: 0, queued: true }]);
   });
 
   it('keeps an armed mode through a middle-button drag scroll', () => {

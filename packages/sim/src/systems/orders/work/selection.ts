@@ -22,7 +22,7 @@ import { clearNavState } from '../../movement/nav-state.js';
 import { jobChangesProduction } from '../../readviews/jobs.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { workplaceStocksGood, workplaceStoredGoods } from '../../stores/index.js';
-import { isOrderableSettler } from '../guards.js';
+import { dropOrderQueue, isOrderableSettler } from '../guards.js';
 
 /**
  * How far {@link setWorkFlag} snaps a click that landed on a blocked node, in half-cell nodes. Past this
@@ -67,6 +67,7 @@ export function setWorkFlag(
     withinRadius: WORK_FLAG_SNAP_MAX_RADIUS,
   });
   if (target === null) return; // nothing legal in snapping range - the click was not on workable ground
+  dropOrderQueue(world, e);
   const c = terrain.coordsOf(target);
   const pos = positionOfNode(c.x, c.y);
 
@@ -107,6 +108,7 @@ export function setGatherGood(
     }
   }
   holdToGatherGood(world, ctx, e, jobType, goodType);
+  dropOrderQueue(world, e);
   const atomic = world.tryGet(e, CurrentAtomic);
   if (atomic?.effect.kind === 'harvest' || atomic?.effect.kind === 'harvestFollowThrough') {
     removeCurrentAtomic(world, e);

@@ -2,7 +2,7 @@ import type { UiCue } from '@open-northland/audio';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { settlerJobType } from '../../game/snapshot.js';
 import { pickableSeat } from '../../game/viewer-seat.js';
-import { isActionHotkey, isFieldKey } from '../../hud/hotkeys.js';
+import { isActionHotkey, isFieldKey, isOrderHotkey } from '../../hud/hotkeys.js';
 import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
 import { setCanvasCursor } from '../cursors/element.js';
@@ -309,6 +309,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
    *  the selection first, which leaves no vehicle selected to drive. */
   const rightClickOrders = (e: MouseEvent, onBuilding: number | null, press: RightClickPress): boolean => {
     const settlersTook = orders.issueRightClick(e, onBuilding);
+    // Vehicles have no queue: beside settlers walking a Shift-queued route they would drive ahead to each
+    // pressed spot, so they sit it out; a selection of vehicles alone still drives.
+    if (e.shiftKey && settlersTook) return true;
     // A trader riding its cart takes a house onto its route instead of driving the cart there.
     const vehiclesTook =
       orders.issueRiderTradeHouse(
@@ -425,7 +428,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       if (orderRecipients(opts.content, opts.snapshot(), ids, 'changeProfession').length > 0) {
         chrome.actions().openProfessions(ids);
       }
-    } else if (isActionHotkey(e, opts.bindings, 'attackMove')) {
+    } else if (isOrderHotkey(e, opts.bindings, 'attackMove')) {
       e.preventDefault();
       armAttackMove();
     } else if (e.code === 'Tab' && browsesTrade(e) && chrome.browse(e.shiftKey ? -1 : 1)) {
@@ -442,10 +445,18 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     }
   };
 
+  /** Letting Shift go ends the chain of queued presses it kept a pick armed for. */
+  const endShiftChain = (): void => pickMode.endShiftChain();
+  const onKeyUp = (e: KeyboardEvent): void => {
+    if (e.key === 'Shift') endShiftChain();
+  };
+
   canvas.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
   window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', endShiftChain);
 
   return {
     panelModelContext: chrome.modelContext,
@@ -494,6 +505,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', endShiftChain);
       answered.dispose();
       orders.dispose();
       marquee.dispose();

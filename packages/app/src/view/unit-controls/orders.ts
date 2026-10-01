@@ -77,7 +77,7 @@ export interface UnitOrderDeps {
 export interface UnitOrderController {
   /** `onBuilding` is a building resolved from a marker rather than the world pixel under the cursor
    *  (a garrison flag hangs far above the tower it stands for). True when the press selected a settler
-   *  or gave the selected settlers an order. */
+   *  or gave the selected settlers an order. With Shift, it queues a walk to the ground. */
   issueRightClick(event: MouseEvent, onBuilding?: number | null): boolean;
   /** The trade-route toggle for the selected traders off the map (riding inside a cart, or inside a
    *  house), which the settlers' click skips, and for the crew of a selected cart, whose window shows its
@@ -93,10 +93,11 @@ export interface UnitOrderController {
   issueSetWorkFlagAt(event: MouseEvent): boolean;
   /** The ground orders name a half-cell node rather than a cursor, so the map overview can issue them
    *  for a spot the camera is nowhere near. Off-map nodes clamp into the map here. `units`, when given,
-   *  narrows these orders to the selected settlers an armed order was issued for. */
+   *  narrows these orders to the selected settlers an armed order was issued for. A `queued` walk waits
+   *  behind each settler's current order (shift-click). */
   issueSetWorkFlag(target: Tile, units?: readonly number[]): boolean;
-  issueMoveTo(target: Tile, units?: readonly number[]): boolean;
-  issueAttackMove(target: Tile, units?: readonly number[]): boolean;
+  issueMoveTo(target: Tile, units?: readonly number[], queued?: boolean): boolean;
+  issueAttackMove(target: Tile, units?: readonly number[], queued?: boolean): boolean;
   /** Strike one enemy of an accepted kind under the cursor; a click that hits none orders nothing. */
   issueAttackTarget(
     event: MouseEvent,
@@ -159,14 +160,25 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
 
   // A carrying settler stays in the formation: the sim makes it set its load down before walking, so
   // there is no client-side filtering.
-  const issueWalkOrder = (target: Tile, movers: readonly FormationUnit[], kind: WalkOrderKind): boolean => {
+  const issueWalkOrder = (
+    target: Tile,
+    movers: readonly FormationUnit[],
+    kind: WalkOrderKind,
+    queued = false,
+  ): boolean => {
     if (movers.length === 0) return false;
     const { width, height } = nodeBounds(deps.mapSize);
     const seat = clampTile(target, width, height);
     // Only the movers vacate their nodes; a selected settler the order skips keeps its ground.
     const blocked = occupiedTiles(new Set(movers.map((mover) => mover.ref)));
     for (const order of assignFormation(movers, seat, width, height, blocked)) {
-      deps.enqueue({ kind, entity: order.ref as Entity, x: order.tile.col, y: order.tile.row });
+      deps.enqueue({
+        kind,
+        entity: order.ref as Entity,
+        x: order.tile.col,
+        y: order.tile.row,
+        ...(queued ? { queued } : {}),
+      });
     }
     return true;
   };
@@ -198,6 +210,11 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     // A selected building, flag or signpost takes no orders: nobody to command, nothing to confirm.
     const commanded = deps.targets.ownedSettlersIn(deps.selected());
     if (commanded.length === 0) return false;
+    // Shift queues a walk behind each settler's current order. No order on a target under the cursor is
+    // queueable yet, so the ground under it is walked to instead.
+    if (event.shiftKey) {
+      return issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, 'moveUnit', true);
+    }
     const enemy = pickTopAt(deps.targets.enemies(), world.x, world.y);
     if (enemy !== null) return strike(commanded, enemy);
     // A chest nobody selected may open is walked to like any ground.
@@ -559,11 +576,11 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return prey !== null && strike(commandedAmong(units), prey);
   };
 
-  const issueMoveTo = (target: Tile, units?: readonly number[]): boolean =>
-    issueWalkOrder(target, commandedAmong(units), 'moveUnit');
+  const issueMoveTo = (target: Tile, units?: readonly number[], queued?: boolean): boolean =>
+    issueWalkOrder(target, commandedAmong(units), 'moveUnit', queued);
 
-  const issueAttackMove = (target: Tile, units?: readonly number[]): boolean =>
-    issueWalkOrder(target, commandedAmong(units), 'attackMoveUnit');
+  const issueAttackMove = (target: Tile, units?: readonly number[], queued?: boolean): boolean =>
+    issueWalkOrder(target, commandedAmong(units), 'attackMoveUnit', queued);
 
   const setWorkFlags = (movers: readonly FormationUnit[], target: Tile, goodType?: number): boolean => {
     if (movers.length === 0) return false;

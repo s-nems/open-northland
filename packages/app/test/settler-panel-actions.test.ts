@@ -137,6 +137,7 @@ describe('the Pojazd row', () => {
       flagActive: () => false,
       handleMouseDown: () => null,
       handleOverviewPress: () => null,
+      endShiftChain: () => {},
       highlight: () => null,
     };
     const content = createSceneSim(sandboxScene).content;

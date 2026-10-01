@@ -7,7 +7,8 @@ import { type PickModeController, pickPressCue } from './pick-mode.js';
 /**
  * Orders named on the map overview rather than the world view: it draws the map flat and its dots are
  * coarser than any sprite, so a press there names ground and never the thing standing on it. The right
- * button walks the selection to the spot; an armed spot-target mode resolves at it.
+ * button walks the selection to the spot; an armed spot-target mode resolves at it. Shift queues the
+ * walk as on the world view.
  *
  * Named addition: the original's overview window only scrolls the view.
  */
@@ -31,7 +32,7 @@ export function createOverviewOrders(deps: OverviewOrderDeps): OverviewPress {
   return (worldX, worldY, event) => {
     // The flat inverse: the overview plots the map without the world view's terrain lift.
     const target: Tile = worldToTile(worldX, worldY);
-    const pick = deps.pickMode.handleOverviewPress(event.button, target);
+    const pick = deps.pickMode.handleOverviewPress(event.button, target, event.shiftKey);
     if (pick !== null) {
       const cue = pickPressCue(pick);
       if (cue !== null) deps.cue?.(cue);
@@ -43,7 +44,7 @@ export function createOverviewOrders(deps: OverviewOrderDeps): OverviewPress {
     }
     if (event.button !== 2) return false;
     // The press is the overview's whether or not anyone was free to walk; the click follows the order.
-    confirmIf(deps.orders().issueMoveTo(target));
+    confirmIf(deps.orders().issueMoveTo(target, undefined, event.shiftKey));
     return true;
   };
 }

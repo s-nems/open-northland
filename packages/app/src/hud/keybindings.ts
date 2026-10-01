@@ -174,6 +174,17 @@ export function matchesKeyboardBinding(event: KeyPress, binding: string | null):
   return binding !== null && actual !== null && matchesEventBinding(actual, binding);
 }
 
+/**
+ * {@link matchesKeyboardBinding}, also taking the press with Shift held over a binding without Shift: the
+ * key of an order the player gives while queueing orders with Shift.
+ */
+export function matchesKeyboardBindingUnderShift(event: KeyPress, binding: string | null): boolean {
+  if (matchesKeyboardBinding(event, binding)) return true;
+  if (!event.shiftKey || binding === null || binding.split('+').includes('Shift')) return false;
+  const { code, ctrlKey, altKey, metaKey } = event;
+  return matchesKeyboardBinding({ code, ctrlKey, shiftKey: false, altKey, metaKey }, binding);
+}
+
 export function matchesMouseBinding(event: MouseEvent, binding: string | null): boolean {
   const actual = bindingFromMouseEvent(event);
   return binding !== null && actual !== null && matchesEventBinding(actual, binding);
@@ -191,7 +202,14 @@ export function bindingAllowedFor(action: KeybindingAction, binding: string): bo
   const mouse = code.startsWith('Mouse');
   if (code === 'Escape') return action === ESCAPE_ACTION && parts.length === 1;
   if (action === 'workFlagOrder') {
-    return mouse && code !== 'Mouse1' && parts.length > 1 && binding !== 'Shift+Mouse0';
+    // Shift + left and right click stay the selection toggle and the queued walk.
+    return (
+      mouse &&
+      code !== 'Mouse1' &&
+      parts.length > 1 &&
+      binding !== 'Shift+Mouse0' &&
+      binding !== 'Shift+Mouse2'
+    );
   }
   return !mouse && !parts.includes('Primary');
 }

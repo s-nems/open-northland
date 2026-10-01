@@ -17,3 +17,4 @@ export {
   type SignpostProbe,
   signpostProbe,
 } from './placement.js';
+export { plannedSignposts, plannedSignpostsVersion, type SignpostSpot } from './planned.js';

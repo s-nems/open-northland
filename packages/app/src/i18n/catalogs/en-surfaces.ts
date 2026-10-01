@@ -274,6 +274,7 @@ export const enSurfaces = {
         controlGroup0Add: 'Add/move selection to group 0',
         cancel: 'Cancel / close / deselect',
         toggleSelection: 'Add to or remove from selection',
+        queueOrder: 'Queue an order after the current one',
         selectJobMates: 'Select nearby settlers of the same trade',
         coarseStep: 'Change a training counter by 10',
         craftToggle: 'Add/remove a product from production',
@@ -287,6 +288,7 @@ export const enSurfaces = {
       mouseMiddle: 'middle mouse button',
       mouseRight: 'right mouse button',
       shiftClick: 'Shift + click',
+      shiftOrder: 'Shift + order',
       ctrlClick: 'Ctrl/Cmd + click',
       doubleClick: 'Double-click',
       bindingPrompt: 'Press a key…',
@@ -300,7 +302,7 @@ export const enSurfaces = {
       hudToggleTip:
         'Hides the interface for screenshots and recordings. A window opened while it is hidden still shows.',
       pointerBindingRebindTip:
-        'Click, then press Ctrl, Shift, Alt, or Cmd with a mouse button. Shift + left click remains add to or remove from selection. Esc cancels.',
+        'Click, then press Ctrl, Shift, Alt, or Cmd with a mouse button. Shift + left click remains add to or remove from selection and Shift + right click queues a walk. Esc cancels.',
       autosaveNote: 'Changes are saved immediately.',
       restoreDefaults: 'Restore defaults',
       restoreFailed: 'Restoring defaults failed. Nothing was changed.',

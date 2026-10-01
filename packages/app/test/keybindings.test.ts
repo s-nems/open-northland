@@ -9,6 +9,7 @@ import {
   isBindableBinding,
   isBindableCode,
   keyDisplayLabel,
+  matchesKeyboardBindingUnderShift,
   matchesMouseBinding,
   parseKeyBindings,
 } from '../src/hud/keybindings.js';
@@ -182,6 +183,7 @@ describe('input chords', () => {
     expect(bindingAllowedFor('workFlagOrder', 'Mouse2')).toBe(false);
     expect(bindingAllowedFor('workFlagOrder', 'Shift+Mouse1')).toBe(false);
     expect(bindingAllowedFor('workFlagOrder', 'Shift+Mouse0')).toBe(false);
+    expect(bindingAllowedFor('workFlagOrder', 'Shift+Mouse2')).toBe(false); // the queued walk
   });
 
   it('matches the primary mouse modifier to Ctrl or Cmd', () => {
@@ -218,6 +220,30 @@ describe('input chords', () => {
         metaKey: false,
       } as MouseEvent),
     ).toBe('Ctrl+Mouse2');
+  });
+});
+
+describe('matchesKeyboardBindingUnderShift', () => {
+  const press = (code: string, mods: { shiftKey?: boolean; ctrlKey?: boolean } = {}) => ({
+    code,
+    shiftKey: mods.shiftKey ?? false,
+    ctrlKey: mods.ctrlKey ?? false,
+    altKey: false,
+    metaKey: false,
+  });
+
+  it('takes an order key with Shift held, as a Shift-queue goes on', () => {
+    expect(matchesKeyboardBindingUnderShift(press('KeyA'), 'KeyA')).toBe(true);
+    expect(matchesKeyboardBindingUnderShift(press('KeyA', { shiftKey: true }), 'KeyA')).toBe(true);
+  });
+
+  it('still tells the other modifiers and a Shift binding apart', () => {
+    expect(matchesKeyboardBindingUnderShift(press('KeyA', { shiftKey: true, ctrlKey: true }), 'KeyA')).toBe(
+      false,
+    );
+    expect(matchesKeyboardBindingUnderShift(press('KeyA'), 'Shift+KeyA')).toBe(false);
+    expect(matchesKeyboardBindingUnderShift(press('KeyB', { shiftKey: true }), 'KeyA')).toBe(false);
+    expect(matchesKeyboardBindingUnderShift(press('KeyA', { shiftKey: true }), null)).toBe(false);
   });
 });
 

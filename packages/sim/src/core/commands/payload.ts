@@ -36,6 +36,9 @@ interface FieldSpec {
 /** A half-cell node address, the `(x, y)` pair most placement and order payloads carry. */
 const NODE = { x: 'integer', y: 'integer' } as const satisfies Record<string, FieldCheck>;
 
+/** The Shift-click flag of a queueable order (`QUEUEABLE_ORDER_KINDS`). */
+const QUEUED = { queued: 'boolean' } as const satisfies Record<string, FieldCheck>;
+
 /** One equipment slot in a `spawnSettler` payload; null (or absent) leaves the slot empty. */
 const EQUIP_SLOT: FieldCheck = {
   nullOr: { fields: { required: { goodType: 'integer' }, optional: { degreeOfUsePct: 'integer' } } },
@@ -142,7 +145,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
     },
   },
   attachToVehicle: { required: { entity: 'integer', vehicle: 'integer' } },
-  attackMoveUnit: { required: { entity: 'integer', ...NODE } },
+  attackMoveUnit: { required: { entity: 'integer', ...NODE }, optional: QUEUED },
   boardVehicle: { required: { entity: 'integer' } },
   detachFromVehicle: { required: { entity: 'integer' } },
   attackUnit: { required: { entity: 'integer', target: 'integer' } },
@@ -181,7 +184,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   loadIntoVehicle: { required: { vehicle: 'integer', carrier: 'integer' } },
   makeChild: { required: { entity: 'integer', child: { oneOf: CHILD_SEXES } } },
   marry: { required: { entity: 'integer' } },
-  moveUnit: { required: { entity: 'integer', ...NODE } },
+  moveUnit: { required: { entity: 'integer', ...NODE }, optional: QUEUED },
   moveVehicle: { required: { vehicle: 'integer', ...NODE }, optional: { attackMove: 'boolean' } },
   dockVehicle: { required: { vehicle: 'integer', ...NODE } },
   renameSettler: { required: { entity: 'integer', name: { string: SETTLER_NAME_MAX_CHARS } } },
@@ -222,7 +225,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
       deposit: { fields: { required: { levels: 'integer' } } },
     },
   },
-  placeSignpost: { required: { entity: 'integer', ...NODE } },
+  placeSignpost: { required: { entity: 'integer', ...NODE }, optional: QUEUED },
   setAssistantCounter: {
     required: {
       player: 'integer',

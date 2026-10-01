@@ -25,7 +25,12 @@ import { buildingEnabled } from '../systems/progression/index.js';
 import { roadAreaKey } from '../systems/roads/index.js';
 import { roadSiteAreaKey } from '../systems/roads/site-index.js';
 import { roadSitePlacementProbe } from '../systems/roads/sites.js';
-import { signpostNetwork, signpostNetworkRevision, signpostProbe } from '../systems/signposts/index.js';
+import {
+  plannedSignpostsVersion,
+  signpostNetwork,
+  signpostNetworkRevision,
+  signpostProbe,
+} from '../systems/signposts/index.js';
 import { mooringSpotsOf } from '../systems/vehicles/index.js';
 import type { FogState } from '../systems/vision/index.js';
 
@@ -249,7 +254,13 @@ export function placementAnswerFor(
   return { area, accepted, key: `${version}:${enabled}:${contestedKey}` };
 }
 
-/** The signpost probe's answer over `area`; null for a mapless sim. */
+/** What the signpost overlay's answer reads: the work-flag blockers, the player's posts and the posts its
+ *  scouts plan. */
+export function signpostBlockerVersionOf(world: World): string {
+  return `${workFlagBlockerVersion(world)}.${signpostNetworkRevision(world)}.${plannedSignpostsVersion(world)}`;
+}
+
+/** The signpost probe's answer over `area`, the planned posts' spacing included; null for a mapless sim. */
 export function signpostAnswerFor(
   world: World,
   content: ContentSet,
@@ -258,11 +269,11 @@ export function signpostAnswerFor(
   area: NodeArea,
 ): NodeGridAnswer | null {
   if (terrain === undefined) return null;
-  const probe = signpostProbe(world, content, terrain, player, area);
+  const probe = signpostProbe(world, content, terrain, player, area, { planned: true });
   return {
     area,
     accepted: gridOver(area, (hx, hy) => probe.canPlace(hx, hy)),
-    key: `${workFlagBlockerVersion(world)}.${signpostNetworkRevision(world)}`,
+    key: signpostBlockerVersionOf(world),
   };
 }
 

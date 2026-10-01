@@ -31,6 +31,8 @@ export type UnitOrderCommand =
       readonly entity: Entity;
       readonly x: number;
       readonly y: number;
+      /** Wait behind the settler's current order instead of replacing it (`OrderQueue`). */
+      readonly queued?: boolean;
     }
   | {
       /**
@@ -42,6 +44,8 @@ export type UnitOrderCommand =
       readonly entity: Entity;
       readonly x: number;
       readonly y: number;
+      /** As `moveUnit`'s. */
+      readonly queued?: boolean;
     }
   | {
       /**
@@ -336,6 +340,8 @@ export type UnitOrderCommand =
       readonly entity: Entity;
       readonly x: number;
       readonly y: number;
+      /** As `moveUnit`'s; the spot is judged when the order starts. */
+      readonly queued?: boolean;
     }
   | {
       /**
