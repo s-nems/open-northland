@@ -163,8 +163,9 @@ verified stamp rule, per placement at half-cell `(x, y)` and per block-area row 
 stale sections (several maps carry an empty or outdated `lmbb`). The original's runtime stamping is what
 the sim mirrors (`footprintCellDx` and the valency gate `levelBlockAreaCells` in `packages/data`).
 Two named gaps remain: a resource keeps its placed level's cells until it is removed, where the
-original's shrink as the valency is spent, and walls and objects with no map level use the full-grown
-state's cells (`fullStateBlockAreaCells`).
+original's shrink as the valency is spent, and walls block at their full-grown state's cells
+(`fullStateBlockAreaCells`), since a wall's valency is its hitpoints. A decor placement on a map with no
+`lmlv` lane counts as level 1.
 
 ### Verified `lmtw` derivation: ground walkability is per triangle, and land wins
 
