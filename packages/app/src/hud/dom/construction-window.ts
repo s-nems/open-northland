@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HudModel } from '@open-northland/render';
 import type { Paper } from '@open-northland/sim';
-import { formatMessage, messages } from '../../i18n/index.js';
+import { formatMessage, messages, tribeName } from '../../i18n/index.js';
 import type { PresentationPack } from '../../presentation/pack.js';
 import {
   BUILDING_CATEGORIES,
@@ -13,6 +13,7 @@ import {
   type ConstructionWindowState,
   INITIAL_CONSTRUCTION_STATE,
   type MenuBuildingEntry,
+  nationChoice,
 } from '../tool-panel/building-menu.js';
 import {
   availabilityKey,
@@ -36,6 +37,8 @@ const CONSTRUCTION_WINDOW_W = 640;
 const TITLE_ART_PX = 43;
 const THUMB_BOX_PX = 72;
 const COST_ICON_BOX_PX = 16;
+/** The nation switch's emblem box, inside its 36 px button. */
+const NATION_ART_PX = 28;
 const VIEWS: readonly CatalogueView[] = ['grid', 'list'];
 const VIEW_GLYPH: Readonly<Record<CatalogueView, string>> = { grid: GLYPH.grid, list: GLYPH.list };
 
@@ -53,7 +56,14 @@ export interface ConstructionWindowDeps {
   readonly paperLabel: (paper: Paper) => string;
   /** The house a plan names, for its card's "?" label. */
   readonly buildingLabel: (typeId: number) => string;
-  readonly onPick: (typeId: number) => void;
+  /** The seat's own nation: the default, and the one the quick-row tools lay for. */
+  readonly homeTribe: number;
+  /** The nations the seat may build houses of, its own first; read once a tick. More than one shows
+   *  the nation switch. */
+  readonly buildTribes: () => readonly number[];
+  /** The building whose body stands for a nation on the switch; absent, the nation's initial does. */
+  readonly emblemType?: number;
+  readonly onPick: (typeId: number, tribe: number) => void;
   /** The quick-row tools this game offers; the others show disabled. */
   readonly tools: readonly ConstructionTool[];
   /** A quick-row tool's tooltip, where it has one. */
@@ -62,7 +72,7 @@ export interface ConstructionWindowDeps {
   readonly onPickTool: (tool: ConstructionTool) => void;
   /** A plan card was pressed: the owner starts the placement it pays for (a named house), or holds
    *  it for the catalogue pick (a place-any plan), which the window has already turned to. */
-  readonly onPickPaper: (paper: Paper) => void;
+  readonly onPickPaper: (paper: Paper, tribe: number) => void;
   /** A card's "?": the building's Knowledge page; the pending note until the knowledge ticket. */
   readonly onHelp: (typeId: number) => void;
   readonly cue: (cue: UiCue) => void;
@@ -93,6 +103,7 @@ export interface ConstructionWindow extends ToolWindow {
 
 interface Card {
   readonly row: CatalogueRow;
+  readonly tribe: number;
   readonly element: HTMLElement;
   readonly pick: HTMLButtonElement;
   readonly slots: readonly { readonly element: HTMLElement; readonly goodType: number; shown: string }[];
@@ -204,7 +215,61 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     deps.cue('confirm');
     showPage(state.page === 'papers' ? 'catalog' : 'papers');
   });
-  quick.append(papers);
+
+  // The nation switch, beside Papiery since it turns both pages: one emblem per nation the seat may
+  // build houses of, shown only when there is more than one.
+  const nations = document.createElement('fieldset');
+  nations.className = 'on-view on-nations';
+  nations.innerHTML = `<legend class="on-sr"></legend>`;
+  const nationsLegend = nations.querySelector('legend');
+  if (nationsLegend !== null) nationsLegend.textContent = copy.nationLabel;
+  nations.hidden = true;
+  quick.append(nations, papers);
+  const nationButtons = new Map<number, HTMLButtonElement>();
+  let offered: readonly number[] = [deps.homeTribe];
+  const shown = (): number => nationChoice(state.tribe, offered, deps.homeTribe).shown;
+  const markNation = (): void => {
+    const tribe = shown();
+    for (const [id, control] of nationButtons) control.setAttribute('aria-pressed', String(id === tribe));
+  };
+  const nationButton = (tribe: number): HTMLButtonElement => {
+    const name = tribeName(tribe);
+    const control = button('on-view__button on-nation', '<canvas></canvas>');
+    control.setAttribute('aria-label', name);
+    control.title = formatMessage(copy.nationHint, { tribe: name });
+    const emblem = control.querySelector('canvas');
+    if (
+      emblem !== null &&
+      (deps.emblemType === undefined || !deps.thumbs.paint(emblem, deps.emblemType, NATION_ART_PX, tribe))
+    ) {
+      emblem.outerHTML = `<span class="on-nation__initial" aria-hidden="true"></span>`;
+      const initial = control.querySelector('.on-nation__initial');
+      if (initial !== null) initial.textContent = name.slice(0, 1);
+    }
+    control.addEventListener('click', () => {
+      deps.cue('confirm');
+      showTribe(tribe);
+    });
+    return control;
+  };
+  // The list moves when a settler of another nation joins or the last one leaves, so it is rebuilt then.
+  let offeredKey = '';
+  const layoutNations = (): void => {
+    const next = deps.buildTribes();
+    const key = next.join(',');
+    if (key === offeredKey) return;
+    const before = shown();
+    offeredKey = key;
+    offered = next;
+    const choice = nationChoice(state.tribe, offered, deps.homeTribe);
+    for (const control of nationButtons.values()) control.remove();
+    nationButtons.clear();
+    for (const tribe of choice.nations) nationButtons.set(tribe, nationButton(tribe));
+    nations.append(...nationButtons.values());
+    nations.hidden = !choice.switchable;
+    markNation();
+    if (shown() !== before) relistTribe();
+  };
 
   // The tabs, with the grid or list toggle at their right end; the papers page swaps the category
   // tabs for one back tab and keeps the toggle.
@@ -307,9 +372,12 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     state = { ...state, suspended: false };
   });
 
-  // One card per entry, built once; a tick moves cards between the grids and marks their slots.
-  const cards = new Map<number, Card>();
-  const buildCard = (row: CatalogueRow): Card => {
+  // One card per nation and entry, built once; a tick moves the shown nation's cards between the grids
+  // and marks their slots. Another nation's cards stay built while away, so switching back is cheap.
+  const cards = new Map<string, Card>();
+  const cardKey = (tribe: number, typeId: number): string => `${tribe}:${typeId}`;
+  let listedCards: Card[] = [];
+  const buildCard = (row: CatalogueRow, tribe: number): Card => {
     const { entry } = row;
     const element = document.createElement('article');
     element.className = 'on-bcard';
@@ -326,7 +394,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     if (!(pick instanceof HTMLButtonElement) || thumb === null || !(help instanceof HTMLButtonElement)) {
       throw new Error('construction: card markup');
     }
-    if (!deps.thumbs.paint(thumb, entry.typeId, THUMB_BOX_PX)) thumb.outerHTML = GLYPH.house;
+    if (!deps.thumbs.paint(thumb, entry.typeId, THUMB_BOX_PX, tribe)) thumb.outerHTML = GLYPH.house;
     help.title = copy.helpHint;
     const slots = [...element.querySelectorAll('.on-cost__slot')].flatMap((slot, index) => {
       const line = entry.cost[index];
@@ -344,26 +412,27 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       deps.cue('confirm');
       setPicked(entry.typeId);
       suspend();
-      deps.onPick(entry.typeId);
+      deps.onPick(entry.typeId, tribe);
     });
     help.addEventListener('click', () => {
       deps.cue('confirm');
       deps.onHelp(entry.typeId);
     });
-    return { row, element, pick, slots };
+    return { row, tribe, element, pick, slots };
   };
 
   const setPicked = (typeId: number | null): void => {
     state = { ...state, picked: typeId };
-    for (const [id, card] of cards) {
-      if (!card.pick.disabled) card.pick.setAttribute('aria-pressed', String(id === typeId));
+    for (const card of cards.values()) {
+      if (!card.pick.disabled)
+        card.pick.setAttribute('aria-pressed', String(card.row.entry.typeId === typeId));
     }
   };
 
   // A plan card: a named house's picture with the house's "?", or the house glyph for a plan the
   // catalogue names. A named house goes to placement at once, so the window hides for it; a
   // place-any plan turns the window to the catalogue, where the next pick spends it.
-  const buildPaperCard = (card: PaperCard): HTMLElement => {
+  const buildPaperCard = (card: PaperCard, tribe: number): HTMLElement => {
     const element = document.createElement('article');
     element.className = 'on-bcard on-bcard--paper';
     const title = deps.paperLabel(card.paper);
@@ -378,7 +447,10 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     const pick = element.querySelector('.on-bcard__pick');
     if (!(pick instanceof HTMLButtonElement)) throw new Error('construction: plan card markup');
     const thumb = element.querySelector('canvas');
-    if (thumb !== null && (card.house === null || !deps.thumbs.paint(thumb, card.house, THUMB_BOX_PX))) {
+    if (
+      thumb !== null &&
+      (card.house === null || !deps.thumbs.paint(thumb, card.house, THUMB_BOX_PX, tribe))
+    ) {
       thumb.outerHTML = GLYPH.house;
     }
     if (card.house === null) element.classList.add('on-bcard--any');
@@ -387,7 +459,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       deps.cue('confirm');
       if (house === null) showPage('catalog');
       else suspend();
-      deps.onPickPaper(card.paper);
+      deps.onPickPaper(card.paper, tribe);
     });
     const help = element.querySelector('.on-bcard__help');
     if (help instanceof HTMLButtonElement && house !== null) {
@@ -400,14 +472,16 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     return element;
   };
 
-  // The plans follow the tick: a found or spent plan relists the page and recounts the button.
+  // The plans follow the tick and the nation: a found or spent plan relists the page and recounts the
+  // button, and a nation switch pictures them in the chosen nation's houses.
   let shownPlans: string | null = null;
   const layoutPapers = (): void => {
     const listed = paperCards(deps.papers());
-    const key = paperCardsKey(listed);
+    const tribe = shown();
+    const key = `${tribe}|${paperCardsKey(listed)}`;
     if (key === shownPlans) return;
     shownPlans = key;
-    plansGrid.replaceChildren(...listed.map(buildPaperCard));
+    plansGrid.replaceChildren(...listed.map((card) => buildPaperCard(card, tribe)));
     const count = plansCount(listed);
     plansNote.count.textContent = String(count);
     plansNote.note.hidden = listed.length === 0;
@@ -448,8 +522,8 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     openGrid.hidden = open === 0;
     lockedNote.note.hidden = locked === 0;
     lockedGrid.hidden = locked === 0;
-    empty.hidden = cards.size > 0;
-    emptyTab.hidden = cards.size === 0 || open + locked > 0;
+    empty.hidden = listedCards.length > 0;
+    emptyTab.hidden = listedCards.length === 0 || open + locked > 0;
   };
 
   const showView = (view: CatalogueView): void => {
@@ -460,22 +534,26 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   };
 
   // Availability: cards keep their order inside each grid; a discovery moves a card up into the open
-  // grid, a script's ban drops it, and the tab counts follow.
+  // grid, a script's ban drops it, a nation switch lists that nation's cards, and the tab counts follow.
   let shownAvailability = '';
   const layoutCards = (): boolean => {
-    const partition = partitionCatalogue(deps.entries);
-    const key = availabilityKey(partition);
+    const tribe = shown();
+    const partition = partitionCatalogue(deps.entries, tribe);
+    const key = `${tribe}|${availabilityKey(partition)}`;
     if (key === shownAvailability) return false;
     shownAvailability = key;
-    const listed = new Set<number>();
+    const listed = new Set<string>();
+    listedCards = [];
     const place = (rows: readonly CatalogueRow[], grid: HTMLElement, locked: boolean): void => {
       for (const row of rows) {
-        let card = cards.get(row.entry.typeId);
+        const id = cardKey(tribe, row.entry.typeId);
+        let card = cards.get(id);
         if (card === undefined) {
-          card = buildCard(row);
-          cards.set(row.entry.typeId, card);
+          card = buildCard(row, tribe);
+          cards.set(id, card);
         }
-        listed.add(row.entry.typeId);
+        listed.add(id);
+        listedCards.push(card);
         card.element.classList.toggle('on-bcard--locked', locked);
         card.pick.disabled = locked;
         if (locked) card.pick.removeAttribute('aria-pressed');
@@ -486,10 +564,9 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     place(partition.open, openGrid, false);
     place(partition.locked, lockedGrid, true);
     for (const [id, card] of cards) {
-      if (!listed.has(id)) {
-        card.element.remove();
-        cards.delete(id);
-      }
+      if (listed.has(id)) continue;
+      card.element.remove();
+      if (card.tribe === tribe) cards.delete(id);
     }
     const counts = tabCounts(partition.open);
     for (const [id, tab] of tabButtons) tab.count.textContent = String(counts[id]);
@@ -501,7 +578,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   const markStocks = (model: HudModel): void => {
     const stock = new Map(model.stocks.map((line) => [line.goodType, line.amount]));
     const stockOf = (goodType: number): number => stock.get(goodType) ?? 0;
-    for (const card of cards.values()) {
+    for (const card of listedCards) {
       const slots = costSlots(card.row.entry.cost, stockOf);
       for (const [index, slot] of card.slots.entries()) {
         const line = slots[index];
@@ -525,9 +602,21 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   const relist = (): void => {
     if (layoutCards()) showCategory(state.category);
   };
+  // Both pages follow the nation; the new nation's cards get the stock marks the old ones had.
+  const relistTribe = (): void => {
+    relist();
+    layoutPapers();
+    if (model !== null) markStocks(model);
+  };
+  const showTribe = (tribe: number): void => {
+    state = { ...state, tribe: tribe === deps.homeTribe ? null : tribe };
+    markNation();
+    if (window.isOpen()) relistTribe();
+  };
   const present = (): void => {
     if (model === shownModel) return;
     shownModel = model;
+    layoutNations();
     relist();
     layoutPapers();
     if (model !== null) markStocks(model);
@@ -536,6 +625,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   const placeWindow = centralWindowPlacer(window, deps.plane, CONSTRUCTION_WINDOW_W);
   const open = (resumePlacement = false): void => {
     if (!resumePlacement) showPage('catalog');
+    layoutNations();
     layoutCards();
     showCategory(state.category);
     layoutPapers();
@@ -560,11 +650,15 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     if (!state.suspended) return;
     state = { ...state, suspended: false };
     open(true);
-    const picked = state.page === 'catalog' && state.picked !== null ? cards.get(state.picked) : undefined;
+    const picked =
+      state.page === 'catalog' && state.picked !== null
+        ? cards.get(cardKey(shown(), state.picked))
+        : undefined;
     if (picked !== undefined && !picked.pick.disabled) picked.pick.focus();
   };
   // Build cards and rasterize their thumbnails during HUD boot, before the game loop starts.
   // Opening still checks availability so discoveries and bans made since boot are reflected.
+  layoutNations();
   layoutCards();
   showCategory(state.category);
   showView(state.view);
@@ -588,11 +682,14 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       state = next;
       // The cards were laid out at boot with nothing picked; an unchanged availability lays none out again.
       setPicked(next.picked);
+      markNation();
       showView(next.view);
       showPage(next.page);
       if (window.isOpen()) {
         layoutCards();
         showCategory(next.category);
+        layoutPapers();
+        if (model !== null) markStocks(model);
         parchment.scrollTop = next.scrollTop;
       }
     },

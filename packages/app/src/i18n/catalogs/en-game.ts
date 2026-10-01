@@ -264,6 +264,8 @@ export const enGame = {
       papersEmptyTitle: 'No papers',
       papersEmptyText: 'Papers are found in the chests on the map.',
       viewLabel: 'View',
+      nationLabel: 'Building nation',
+      nationHint: 'Buildings of the nation: {tribe}',
       gridView: 'Tiles',
       listView: 'List',
       availableNow: 'Available now',

@@ -1,9 +1,9 @@
 import type { Recipe } from '@open-northland/data';
-import { Building, MoveGoal, ownerOf, PathRequest, Stockpile } from '../../../components/index.js';
+import { MoveGoal, PathRequest, Stockpile } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode } from '../../footprint/index.js';
-import { recipeOutputsEnabled } from '../../progression/index.js';
+import { operatorRecipeEnabled } from '../../progression/index.js';
 import type { WorkshopWorkforce } from '../../stores/workshop-workforce.js';
 import { outputRoomForCycles } from './cycles.js';
 import { craftablePool, nextCycleFor } from './rotation.js';
@@ -19,16 +19,18 @@ export function incomingRecipeReservations(
   present: readonly Entity[],
 ): ReadonlyMap<number, number> {
   const stock = world.get(building, Stockpile).amounts;
-  const owner = ownerOf(world, building);
-  const tribe = world.get(building, Building).tribe;
   const selected = new Set<number>();
   for (const operator of workforce.operatorsAt(building)) {
-    for (const good of craftablePool(world, ctx, operator, recipes)) selected.add(good);
+    for (const good of craftablePool(world, ctx, operator, recipes)) {
+      const recipe = recipes.get(good);
+      if (recipe !== undefined && operatorRecipeEnabled(world, ctx, building, operator, recipe))
+        selected.add(good);
+    }
   }
   const reserved = new Map<number, number>();
   for (const good of selected) {
     const recipe = recipes.get(good);
-    if (recipe === undefined || !recipeOutputsEnabled(world, ctx, owner, tribe, recipe)) continue;
+    if (recipe === undefined) continue;
     if (outputRoomForCycles(world, ctx, building, recipe) <= 0) continue;
     if (
       !recipe.inputs.some(

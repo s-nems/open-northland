@@ -15,6 +15,7 @@ export type { MissionPresentationView } from './components/mission-presentation.
 /** The four need bars, the vocabulary the `orderNeed` command addresses one by. */
 export type { NeedKind } from './components/needs.js';
 export { PAPER_KINDS, type Paper, type PaperKind, PLACING_PAPER_KINDS } from './components/papers.js';
+export { buildTribes } from './components/player-placement.js';
 export { roadShardKey } from './components/roads.js';
 export {
   type DiplomacyState,

@@ -42,6 +42,8 @@ const HOUSE = 7;
 const LOCAL_PLAYER = 2;
 const SARACEN = 4;
 const TILE = { col: 4, row: 9 };
+/** A Saracen house held by the seat, whose nation the ghost and the probes take. */
+const HELD = { typeId: HOUSE, tribe: SARACEN, paper: null };
 
 /** A frame with nothing held: each case turns on what it is about. The probe counters let a case prove
  *  the frame walked no band and never asked where the cursor is - both are per-frame scans. */
@@ -50,8 +52,7 @@ function frame(over: Partial<PlacementCursorInput> = {}) {
   let signpostProbes = 0;
   let dockProbes = 0;
   const input: PlacementCursorInput = {
-    placementType: null,
-    placementPaper: null,
+    building: null,
     signpostActive: false,
     dockVehicle: null,
     flagActive: false,
@@ -71,7 +72,6 @@ function frame(over: Partial<PlacementCursorInput> = {}) {
     canPlaceAt: () => true,
     canPlaceSignpostAt: () => true,
     localPlayer: LOCAL_PLAYER,
-    placementTribe: SARACEN,
     ...over,
   };
   return {
@@ -91,7 +91,7 @@ describe('placement cursor', () => {
   });
 
   it('washes the ground and floats the held building over a tile that accepts it', () => {
-    const f = frame({ placementType: HOUSE });
+    const f = frame({ building: HELD });
 
     expect(f.cursor()).toEqual({
       overlay: BUILDING_WASH,
@@ -100,35 +100,34 @@ describe('placement cursor', () => {
   });
 
   it('keeps the wash but hides the ghost over rejecting ground', () => {
-    const f = frame({ placementType: HOUSE, canPlaceAt: () => false });
+    const f = frame({ building: HELD, canPlaceAt: () => false });
 
     expect(f.cursor()).toEqual({ overlay: BUILDING_WASH, ghost: null });
   });
 
-  it('passes a held paper to the probe so its technology bypass also governs the ghost', () => {
+  it("passes the held nation and paper to the probes, so the paper's bypass and the nation's footprint govern the ghost", () => {
     const paper: Paper = { kind: 'placeAny', param: 0 };
-    const gatePapers: Array<Paper | undefined> = [];
-    const overlayPapers: Array<Paper | undefined> = [];
+    const gateAsks: Array<readonly [number, Paper | undefined]> = [];
+    const overlayAsks: Array<readonly [number, Paper | null]> = [];
     const f = frame({
-      placementType: HOUSE,
-      placementPaper: paper,
-      buildingOverlay: (_type, activePaper) => {
-        overlayPapers.push(activePaper);
+      building: { ...HELD, paper },
+      buildingOverlay: (held) => {
+        overlayAsks.push([held.tribe, held.paper]);
         return BUILDING_WASH;
       },
-      canPlaceAt: (_type, _col, _row, activePaper) => {
-        gatePapers.push(activePaper);
+      canPlaceAt: (_type, tribe, _col, _row, activePaper) => {
+        gateAsks.push([tribe, activePaper]);
         return activePaper !== undefined;
       },
     });
 
-    expect(f.cursor().ghost?.kind).toBe('building');
-    expect(gatePapers).toEqual([paper]);
-    expect(overlayPapers).toEqual([paper]);
+    expect(f.cursor().ghost).toMatchObject({ kind: 'building', tribe: SARACEN });
+    expect(gateAsks).toEqual([[SARACEN, paper]]);
+    expect(overlayAsks).toEqual([[SARACEN, paper]]);
   });
 
   it('hides the ghost while the pointer is off the canvas', () => {
-    const f = frame({ placementType: HOUSE, tileAt: () => null });
+    const f = frame({ building: HELD, tileAt: () => null });
 
     expect(f.cursor()).toEqual({ overlay: BUILDING_WASH, ghost: null });
   });
@@ -149,7 +148,7 @@ describe('placement cursor', () => {
   });
 
   it('lets a held building win over a pending signpost, without walking the signpost band', () => {
-    const f = frame({ placementType: HOUSE, signpostActive: true });
+    const f = frame({ building: HELD, signpostActive: true });
 
     expect(f.cursor()).toEqual({
       overlay: BUILDING_WASH,
@@ -159,7 +158,7 @@ describe('placement cursor', () => {
   });
 
   it('still floats the held building when its own band probe has no wash to draw', () => {
-    const f = frame({ placementType: HOUSE, buildingOverlay: () => null });
+    const f = frame({ building: HELD, buildingOverlay: () => null });
 
     expect(f.cursor()).toEqual({
       overlay: null,
@@ -230,7 +229,7 @@ describe('placement cursor', () => {
   });
 
   it('lets a held building or a pending signpost win over an armed dock pick', () => {
-    const building = frame({ placementType: HOUSE, dockVehicle: SHIP });
+    const building = frame({ building: HELD, dockVehicle: SHIP });
     expect(building.cursor().overlay).toBe(BUILDING_WASH);
     expect(building.dockProbes()).toBe(0);
     const signpost = frame({ signpostActive: true, dockVehicle: SHIP });

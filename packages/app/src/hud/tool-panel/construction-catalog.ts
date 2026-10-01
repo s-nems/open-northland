@@ -22,13 +22,13 @@ export interface CataloguePartition {
   readonly locked: readonly CatalogueRow[];
 }
 
-/** Open entries first, locked after, both in catalogue order; a forbidden entry is dropped, as the
- *  original's selection window lists only what the map allows. */
-export function partitionCatalogue(entries: readonly MenuBuildingEntry[]): CataloguePartition {
+/** `tribe`'s open entries first, locked after, both in catalogue order; a forbidden entry is dropped,
+ *  as the original's selection window lists only what the map allows. */
+export function partitionCatalogue(entries: readonly MenuBuildingEntry[], tribe: number): CataloguePartition {
   const open: CatalogueRow[] = [];
   const locked: CatalogueRow[] = [];
   for (const entry of entries) {
-    const availability = entry.availability?.() ?? OPEN_AVAILABILITY;
+    const availability = entry.availability?.(tribe) ?? OPEN_AVAILABILITY;
     const row = { entry, category: categoryOfKind(entry.kind), availability };
     if (availability.kind === 'open') open.push(row);
     else if (availability.kind === 'locked') locked.push(row);

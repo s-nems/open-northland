@@ -10,6 +10,7 @@ import {
   assistantMovesFlags,
   assistantPostsGraduatesEntity,
   Building,
+  buildTribes,
   type DiplomacyState,
   defaultAssistantCounters,
   diplomacyLocked,
@@ -369,6 +370,11 @@ export class Simulation {
 
   unlockStatus(kind: UnlockKind, typeId: number, tribe: number, player?: number): UnlockStatus {
     return unlockStatus(this.world, { content: this.content }, player, tribe, kind, typeId);
+  }
+
+  /** The tribes whose houses `player` may place, home tribes first; see `buildTribes`. */
+  buildTribes(player: number): readonly number[] {
+    return buildTribes(this.world, player);
   }
 
   canChooseJob(entity: Entity, jobType: number): boolean {

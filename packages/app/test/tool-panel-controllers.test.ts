@@ -25,7 +25,11 @@ import {
 } from '../src/hud/tool-panel/extras-window.js';
 import { createHeldPaperController } from '../src/hud/tool-panel/held-paper.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
-import { createPlacementController, PALISADE_LINE_MAX_EDGES } from '../src/hud/tool-panel/placement.js';
+import {
+  type BuildingPick,
+  createPlacementController,
+  PALISADE_LINE_MAX_EDGES,
+} from '../src/hud/tool-panel/placement.js';
 import { INITIAL_RESIDENTS_STATE, NO_RESIDENT_FILTERS } from '../src/hud/tool-panel/residents/rows.js';
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
 import { createToolWindows } from '../src/hud/tool-panel/windows.js';
@@ -44,6 +48,15 @@ import { stubResidentsWindow } from './support/residents-window-stub.js';
  */
 
 const SCREEN = { width: 800, height: 600 };
+const VIKING = 1;
+const FRANK = 2;
+const JOINERY = 23;
+/** The joinery held for placement, the seat's own unless another nation is named. */
+const joinery = (paper: Paper | null = null, tribe = VIKING): BuildingPick => ({
+  typeId: JOINERY,
+  tribe,
+  paper,
+});
 
 /** A PanelContext whose text factory records what it was asked to build (no Pixi text, no fonts), and
  *  whose GUI cue records every click it was asked to play. */
@@ -231,7 +244,7 @@ describe('tool windows registry', () => {
 
   function mountWindows(buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
     const { ctx } = stubContext();
-    const picks: [number, Paper | undefined][] = [];
+    const picks: BuildingPick[] = [];
     const container = new Container();
     let menu: ConstructionWindowStub | null = null;
     const heldPaper = createHeldPaperController(ctx, stubPlacementStrip());
@@ -250,7 +263,7 @@ describe('tool windows registry', () => {
       heldPaper,
       diplomacyRows: () => [],
       missionBook: stubMissionBook,
-      onPickBuilding: (typeId, paper) => picks.push([typeId, paper]),
+      onPickBuilding: (pick) => picks.push(pick),
       onPayTribute: () => undefined,
       onDeclareDiplomacy: () => undefined,
     });
@@ -273,33 +286,34 @@ describe('tool windows registry', () => {
     const anyPlan: Paper = { kind: 'placeAny', param: 0 };
     const { windows, picks, heldPaper, menu } = mountWindows(buildings);
 
-    // The house plan: placement at once with the plan riding it; nothing is held.
+    // The house plan: placement at once in the window's nation with the plan riding it; nothing is held.
     menu.toggle();
-    menu.seam.onPickPaper(housePlan);
-    expect(picks).toEqual([[23, housePlan]]);
+    menu.seam.onPickPaper(housePlan, FRANK);
+    expect(picks).toEqual([joinery(housePlan, FRANK)]);
     expect(heldPaper.isActive()).toBe(false);
 
     // The place-any plan: held (the strip up, a held mode) for the window's next pick, which carries
-    // it once. The plan pays for the house and lifts no technology lock: the catalogue reads as it is.
-    menu.seam.onPickPaper(anyPlan);
+    // it once in the nation picked. The plan pays for the house and lifts no technology lock: the
+    // catalogue reads as it is.
+    menu.seam.onPickPaper(anyPlan, VIKING);
     expect(heldPaper.isActive()).toBe(true);
-    expect(menu.seam.entries[0]?.availability?.()).toEqual({ kind: 'locked' });
-    menu.seam.onPick(BUILDINGS[1]?.typeId ?? 0);
-    expect(picks[1]).toEqual([BUILDINGS[1]?.typeId, anyPlan]);
+    expect(menu.seam.entries[0]?.availability?.(VIKING)).toEqual({ kind: 'locked' });
+    menu.seam.onPick(BUILDINGS[1]?.typeId ?? 0, FRANK);
+    expect(picks[1]).toEqual({ typeId: BUILDINGS[1]?.typeId, tribe: FRANK, paper: anyPlan });
     expect(heldPaper.isActive()).toBe(false);
 
     // Closing the window without a pick drops the held plan: the next pick is an ordinary site.
     firstBuildingLocked = false;
-    menu.seam.onPickPaper(anyPlan);
+    menu.seam.onPickPaper(anyPlan, VIKING);
     menu.toggle();
     windows.refresh(() => hud(1, 0));
     expect(heldPaper.isActive()).toBe(false);
     menu.toggle();
-    menu.seam.onPick(BUILDINGS[0]?.typeId ?? 0);
-    expect(picks[2]).toEqual([BUILDINGS[0]?.typeId, undefined]);
+    menu.seam.onPick(BUILDINGS[0]?.typeId ?? 0, VIKING);
+    expect(picks[2]).toEqual({ typeId: BUILDINGS[0]?.typeId, tribe: VIKING, paper: null });
 
     // A cancel (Esc, a right click) or a world click drops it too, and the window stays open.
-    menu.seam.onPickPaper(anyPlan);
+    menu.seam.onPickPaper(anyPlan, VIKING);
     expect(heldPaper.handleClick(0, 0)).toBe(true); // a world press: consumed, the plan dropped
     expect(heldPaper.isActive()).toBe(false);
     expect(menu.isOpen()).toBe(true);
@@ -341,6 +355,7 @@ describe('tool windows registry', () => {
     menu.toggle();
     menu.restore({
       page: 'papers',
+      tribe: FRANK,
       category: 'home',
       view: 'list',
       scrollTop: 40,
@@ -351,6 +366,7 @@ describe('tool windows registry', () => {
     expect(saved.openIds).toEqual(['menu']);
     expect(saved.buildings).toEqual({
       page: 'papers',
+      tribe: FRANK,
       category: 'home',
       view: 'list',
       scrollTop: 40,
@@ -449,7 +465,8 @@ describe('tool windows registry', () => {
 describe('placement controller', () => {
   function mount(
     screenToTile: (x: number, y: number) => { col: number; row: number } | null,
-    canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean = () => true,
+    canPlaceAt: (typeId: number, tribe: number, col: number, row: number, paper?: Paper) => boolean = () =>
+      true,
     canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean = () => true,
     palisadeGateProbe?: Parameters<typeof createPlacementController>[0]['palisadeGateProbe'],
     extra: Partial<Parameters<typeof createPlacementController>[0]> = {},
@@ -467,7 +484,7 @@ describe('placement controller', () => {
       canPlaceAt,
       canPlacePalisadeAt,
       ...(palisadeGateProbe !== undefined ? { palisadeGateProbe } : {}),
-      tribe: 1,
+      tribe: VIKING,
       owner: 0,
       onCancel: (paper) => cancels.push(paper),
       ...extra,
@@ -497,7 +514,7 @@ describe('placement controller', () => {
         },
       },
     );
-    placement.enter(23);
+    placement.enter(joinery());
     expect(placement.handleClick(10, 10)).toBe(true);
     expect(placement.handleClick(10, 10)).toBe(true);
     expect(asked).toEqual([23]);
@@ -516,7 +533,7 @@ describe('placement controller', () => {
         askPalisadeGate: () => Promise.resolve(null),
       },
     });
-    placement.enter(23);
+    placement.enter(joinery());
     placement.handleClick(10, 10);
     placement.dispose();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -525,21 +542,21 @@ describe('placement controller', () => {
 
   it('names the held building on the strip, clears it with the mode, and reports only a cancel, with its unspent plan', () => {
     const { placement, strip, cancels } = mount(() => ({ col: 4, row: 2 }));
-    placement.enter(23);
+    placement.enter(joinery());
     expect(strip.shown).toEqual({ label: 'Joinery', hint: messages().hud.construction.placeHint });
     placement.handleClick(10, 10);
     expect(strip.shown).toBeNull();
     expect(cancels).toEqual([]); // a landing is not a cancel: the window stays away
 
     const plan: Paper = { kind: 'placeHouse', param: 23 };
-    placement.enter(23, plan);
+    placement.enter(joinery(plan));
     expect(strip.shown?.hint).toBe(messages().hud.construction.placePaperHint);
     placement.cancel();
     expect(strip.shown).toBeNull();
     expect(cancels).toEqual([plan]); // the owner takes the plan back: nothing was spent
     placement.cancel(); // nothing held: nothing to report
     expect(cancels).toEqual([plan]);
-    placement.enter(23);
+    placement.enter(joinery());
     placement.cancel();
     expect(cancels).toEqual([plan, null]);
   });
@@ -548,7 +565,7 @@ describe('placement controller', () => {
     const { placement, commands } = mount(() => ({ col: 4, row: 2 }));
     expect(placement.handleClick(10, 10)).toBe(false); // not active yet → not consumed
 
-    placement.enter(23);
+    placement.enter(joinery());
     expect(placement.isActive()).toBe(true);
     expect(placement.handleClick(10, 10)).toBe(true);
     // Player placement is always a construction site (`underConstruction`) - builders raise it globally.
@@ -558,10 +575,57 @@ describe('placement controller', () => {
     expect(placement.isActive()).toBe(false); // landed → build mode over (the original's flow)
   });
 
+  it("places another nation's house as that nation, asking its own rule, while roads stay the seat's", () => {
+    const asked: number[] = [];
+    let tile = { col: 4, row: 2 };
+    const { placement, commands } = mount(
+      () => tile,
+      (_type, tribe) => {
+        asked.push(tribe);
+        return true;
+      },
+      undefined,
+      undefined,
+      { canPlaceRoadAt: () => true },
+    );
+    placement.enter(joinery(null, FRANK));
+    expect(placement.activeBuilding()?.tribe).toBe(FRANK);
+    placement.handleClick(10, 10);
+    expect(asked).toEqual([FRANK]);
+    expect(commands).toEqual([
+      {
+        kind: 'placeBuilding',
+        buildingType: JOINERY,
+        x: 4,
+        y: 2,
+        tribe: FRANK,
+        owner: 0,
+        underConstruction: true,
+      },
+    ]);
+
+    placement.enterRoad();
+    placement.handleClick(10, 10);
+    tile = { col: 5, row: 2 };
+    placement.handleClick(20, 10);
+    expect(commands.slice(1)).toEqual(
+      [4, 5].map((x) => ({ kind: 'placeRoadSite', x, y: 2, tribe: VIKING, owner: 0 })),
+    );
+  });
+
+  it('keeps the held nation through a HUD remount', () => {
+    const before = mount(() => ({ col: 4, row: 2 }));
+    before.placement.enter(joinery(null, FRANK));
+    const after = mount(() => ({ col: 4, row: 2 }));
+    after.placement.restore(before.placement.state());
+    after.placement.handleClick(10, 10);
+    expect(after.commands).toMatchObject([{ kind: 'placeBuilding', tribe: FRANK }]);
+  });
+
   it('a paper held into placement rides the command, and leaves with the mode', () => {
     const { placement, commands } = mount(() => ({ col: 4, row: 2 }));
     const paper = { kind: 'placeHouse', param: 23 } as const;
-    placement.enter(23, paper);
+    placement.enter(joinery(paper));
     expect(placement.handleClick(10, 10)).toBe(true);
     expect(commands).toEqual([
       {
@@ -575,7 +639,7 @@ describe('placement controller', () => {
         paper,
       },
     ]);
-    placement.enter(23);
+    placement.enter(joinery());
     placement.handleClick(10, 10);
     expect(commands[1]).not.toHaveProperty('paper');
   });
@@ -585,13 +649,13 @@ describe('placement controller', () => {
     const seen: Array<typeof paper | undefined> = [];
     const { placement, commands } = mount(
       () => ({ col: 4, row: 2 }),
-      (_type, _col, _row, activePaper) => {
+      (_type, _tribe, _col, _row, activePaper) => {
         seen.push(activePaper as typeof paper | undefined);
         return activePaper !== undefined;
       },
     );
 
-    placement.enter(23, paper);
+    placement.enter(joinery(paper));
     expect(placement.handleClick(10, 10)).toBe(true);
     expect(seen).toEqual([paper]);
     expect(commands).toHaveLength(1);
@@ -602,7 +666,7 @@ describe('placement controller', () => {
       () => ({ col: 4, row: 2 }),
       () => false, // the probe says the anchor doesn't fit here
     );
-    placement.enter(23);
+    placement.enter(joinery());
     expect(placement.handleClick(10, 10)).toBe(true); // claimed - never falls through to picking
     expect(commands).toHaveLength(0); // nothing enqueued: the sim would drop it anyway
     expect(placement.isActive()).toBe(true); // a mis-click on the dim wash doesn't end the mode
@@ -610,7 +674,7 @@ describe('placement controller', () => {
 
   it('consumes an off-map click without enqueuing, and cancel exits the mode', () => {
     const { placement, commands } = mount(() => null);
-    placement.enter(23);
+    placement.enter(joinery());
     expect(placement.handleClick(10, 10)).toBe(true); // claimed, but nothing placed
     expect(commands).toHaveLength(0);
 
@@ -621,10 +685,10 @@ describe('placement controller', () => {
 
   it('clicks confirm when the site lands; the cancel itself is silent (the input layer fails it)', () => {
     const { placement, cues } = mount(() => ({ col: 4, row: 2 }));
-    placement.enter(23);
+    placement.enter(joinery());
     placement.handleClick(10, 10);
     expect(cues).toEqual(['confirm']);
-    placement.enter(23);
+    placement.enter(joinery());
     placement.cancel();
     expect(cues).toEqual(['confirm']);
   });
@@ -634,7 +698,7 @@ describe('placement controller', () => {
       () => ({ col: 4, row: 2 }),
       () => false,
     );
-    placement.enter(23);
+    placement.enter(joinery());
     placement.handleClick(10, 10);
     expect(cues).toEqual([]);
   });

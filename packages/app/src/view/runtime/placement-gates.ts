@@ -24,8 +24,9 @@ import type { FogGates } from '../projections/index.js';
 
 /** The host's placement answers the overlays walk; the gates below read the same ones. */
 export interface PlacementProbeViews {
-  /** The held building's rule for the local seat; a paper waives the seat's technology gate. */
-  readonly building: (typeId: number, paper?: Paper) => NodeGridProbe;
+  /** The held building's rule for the local seat in `tribe`, whose footprint and technology gate it
+   *  takes; a paper waives the gate. */
+  readonly building: (typeId: number, tribe: number, paper?: Paper) => NodeGridProbe;
   readonly signpost: () => NodeGridProbe;
   /** The wall and road line tools' rules, which their lit washes wait on. */
   readonly palisade: (gfxIndex: number) => NodeGridProbe;
@@ -36,7 +37,13 @@ export interface PlacementProbeViews {
 
 /** The placement rules a click decides on: each awaits the host's answer as of now. */
 export interface PlacementClickGates {
-  readonly askPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => Promise<boolean>;
+  readonly askPlaceAt: (
+    typeId: number,
+    tribe: number,
+    col: number,
+    row: number,
+    paper?: Paper,
+  ) => Promise<boolean>;
   /** Brings the wall answers within `reach` nodes of a line's anchor, and `owner`'s built nodes, up to
    *  now, so a line decided right after reads current answers through the synchronous rules. */
   readonly palisadeLineReady: (
@@ -58,7 +65,7 @@ export interface PlacementClickGates {
 
 /** The placement rules the cursor ghosts and overlays read, and the click gates beside them. */
 export interface PlacementGates extends PlacementClickGates {
-  readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
+  readonly canPlaceAt: (typeId: number, tribe: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   /** With `overUpgradeGround`, ground a building keeps for its upgrade takes a wall too. */
   readonly canPlacePalisadeAt: (
@@ -98,7 +105,6 @@ export function createPlacementGates(
   host: SessionHost,
   fogGates: FogGates,
   localPlayer: number,
-  tribe?: number,
 ): PlacementGates {
   const closedGates = host.landscapeTypes
     .filter((type) => type.wall?.gate?.open === false)
@@ -120,10 +126,10 @@ export function createPlacementGates(
     }
     return probe;
   };
-  const building = (typeId: number, paper?: Paper): NodeGridProbe => {
+  const building = (typeId: number, tribe: number, paper?: Paper): NodeGridProbe => {
     // A placing paper authorizes the house past the technology gate; the tribe still picks its footprint.
     const gated = paper === undefined;
-    const family = `b${typeId}:${gated}`;
+    const family = `b${typeId}:${tribe}:${gated}`;
     // Asked every tick besides: a hostile fighter's step and a technology unlock move no blocker version.
     return gridProbe(family, () =>
       nodeGridProbe(
@@ -205,9 +211,9 @@ export function createPlacementGates(
   };
   return {
     // A paper bypasses only technology; fog, footprint and contested-ground rules still apply.
-    canPlaceAt: (typeId, col, row, paper) => {
+    canPlaceAt: (typeId, tribe, col, row, paper) => {
       if (!fogGates.seesNode(col, row)) return false;
-      const verdict = building(typeId, paper).at(col, row);
+      const verdict = building(typeId, tribe, paper).at(col, row);
       return verdict === null || verdict === true;
     },
     canPlaceSignpostAt: (col, row) => fogGates.seesNode(col, row) && signpost().at(col, row) === true,
@@ -230,9 +236,9 @@ export function createPlacementGates(
     canPlaceRoadAt: (col, row, overUpgradeGround) =>
       fogGates.seesNode(col, row) && road().at(col, row, overUpgradeGround) === true,
     roadAnswersKey: () => `${grids.version}:${fogKey()}`,
-    askPlaceAt: (typeId, col, row, paper) =>
+    askPlaceAt: (typeId, tribe, col, row, paper) =>
       fogGates.seesNode(col, row)
-        ? building(typeId, paper)
+        ? building(typeId, tribe, paper)
             .freshAt(col, row)
             .then((verdict) => verdict !== false)
         : Promise.resolve(false),

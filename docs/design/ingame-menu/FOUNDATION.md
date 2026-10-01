@@ -121,7 +121,10 @@ they were.
   two stakes, without highway markings or battlements; disabled with the tooltip "Niedostępne w tej
   wersji gry" until the sim has a road, wall and gate command, and Papiery at the right with a count
   of the plans a pick could spend. Papiery lights like a tab and turns the same window to its papers
-  page; the page's one "‹ Katalog" tab turns it back.
+  page; the page's one "‹ Katalog" tab turns it back. Left of Papiery, a seat with more than one
+  build nation gets a nation switch, one button per nation drawn as its headquarters; it turns both
+  pages to that nation's houses, and a pick places the house in it. Roads, walls and gates stay the
+  seat's own nation.
 - Tabs: the original's five categories (Wszystko, Praca, Magazyn, Dom, Wojsko; tower and training
   fold into Wojsko), each counting the entries buildable now. At the tabs' right end a two-button
   toggle switches the catalogue between tiles and a list; the choice is one for both pages and is

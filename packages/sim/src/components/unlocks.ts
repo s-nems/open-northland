@@ -56,6 +56,15 @@ export function scriptEnables(
   return tribeUnlocks(world, player, tribe)?.enabled[kind].includes(typeId) ?? false;
 }
 
+/** The tribes a script line enabled at least one house of for `player`, ascending. */
+export function scriptEnabledHouseTribes(world: World, player: number): number[] {
+  const tribes: number[] = [];
+  for (const [tribe, unlocks] of scriptUnlocks.read(world).byPlayer.get(player) ?? []) {
+    if (unlocks.enabled.house.length > 0) tribes.push(tribe);
+  }
+  return tribes.sort((a, b) => a - b);
+}
+
 /** Grant one type in one table. A repeat grant writes nothing, so it bumps no store generation; an
  *  invalid slot is the corpus's own bad argument and is skipped. */
 export function grantScriptUnlock(

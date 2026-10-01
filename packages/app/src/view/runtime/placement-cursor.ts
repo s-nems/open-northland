@@ -1,7 +1,7 @@
 import type { PlacementGhost, PlacementOverlayFrame } from '@open-northland/render';
 import type { Paper } from '@open-northland/sim';
 import type { LinePreviewNode } from '../../hud/tool-panel/line-tool.js';
-import type { GatePreview, RoadPreview } from '../../hud/tool-panel/placement.js';
+import type { BuildingPick, GatePreview, RoadPreview } from '../../hud/tool-panel/placement.js';
 
 export interface PlacementCursor {
   readonly overlay: PlacementOverlayFrame | null;
@@ -9,10 +9,9 @@ export interface PlacementCursor {
 }
 
 export interface PlacementCursorInput {
-  /** The building the tool panel holds, or null outside build mode. */
-  readonly placementType: number | null;
-  /** The paper paying for this placement, which bypasses the technology part of the live probe. */
-  readonly placementPaper: Paper | null;
+  /** The building the tool panel holds, or null outside build mode; its nation picks the ghost's body
+   *  and footprint, its paper bypasses the technology part of the live probe. */
+  readonly building: BuildingPick | null;
   readonly palisadeGfxIndex?: number | null;
   /** The road tool is held. */
   readonly roadActive?: boolean;
@@ -24,12 +23,12 @@ export interface PlacementCursorInput {
   readonly flagActive: boolean;
   /** Viewport-memoized band probes; each runs only when its own mode wins, so a frame never walks a
    *  band it would discard. */
-  readonly buildingOverlay: (buildingType: number, paper?: Paper) => PlacementOverlayFrame | null;
+  readonly buildingOverlay: (building: BuildingPick) => PlacementOverlayFrame | null;
   readonly signpostOverlay: () => PlacementOverlayFrame | null;
   readonly dockOverlay: (vehicle: number) => PlacementOverlayFrame | null;
   /** The tile under the cursor, or null off the map or off the canvas. */
   readonly tileAt: () => { readonly col: number; readonly row: number } | null;
-  readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
+  readonly canPlaceAt: (typeId: number, tribe: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly palisadePreview?: (tile: {
     readonly col: number;
@@ -45,8 +44,6 @@ export interface PlacementCursorInput {
   readonly palisadeWash?: () => PlacementOverlayFrame | null;
   /** Owner slot for a signpost ghost - the renderer applies the session colour mapping. */
   readonly localPlayer: number;
-  /** The civilization this seat raises buildings as, the same one `placeBuilding` stamps. */
-  readonly placementTribe: number;
 }
 
 /**
@@ -56,9 +53,8 @@ export interface PlacementCursorInput {
  * has no wash: the sim snaps the flag to the nearest workable node on the click.
  */
 export function placementCursor(input: PlacementCursorInput): PlacementCursor {
-  const { placementType } = input;
+  const { building } = input;
   const palisadeGfxIndex = input.palisadeGfxIndex ?? null;
-  const paper = input.placementPaper === null ? undefined : input.placementPaper;
   if (input.roadActive === true) {
     // The wash stays while the pointer leaves the map; only the plots need a tile.
     const tile = input.tileAt();
@@ -76,15 +72,15 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
             },
     };
   }
-  if (placementType === null && palisadeGfxIndex === null && !input.signpostActive) {
+  if (building === null && palisadeGfxIndex === null && !input.signpostActive) {
     if (input.dockVehicle !== null) return { overlay: input.dockOverlay(input.dockVehicle), ghost: null };
     if (!input.flagActive) return { overlay: null, ghost: null };
     const tile = input.tileAt();
     return { overlay: null, ghost: tile === null ? null : { kind: 'flag', col: tile.col, row: tile.row } };
   }
-  const signpostFrame = placementType === null && palisadeGfxIndex === null ? input.signpostOverlay() : null;
-  const overlay = placementType === null ? signpostFrame : input.buildingOverlay(placementType, paper);
-  if (placementType === null && palisadeGfxIndex === null && signpostFrame === null)
+  const signpostFrame = building === null && palisadeGfxIndex === null ? input.signpostOverlay() : null;
+  const overlay = building === null ? signpostFrame : input.buildingOverlay(building);
+  if (building === null && palisadeGfxIndex === null && signpostFrame === null)
     return { overlay, ghost: null };
 
   const tile = input.tileAt();
@@ -100,18 +96,10 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
     };
   }
   if (tile === null) return { overlay, ghost: null };
-  if (placementType !== null) {
-    return input.canPlaceAt(placementType, tile.col, tile.row, paper)
-      ? {
-          overlay,
-          ghost: {
-            kind: 'building',
-            col: tile.col,
-            row: tile.row,
-            buildingType: placementType,
-            tribe: input.placementTribe,
-          },
-        }
+  if (building !== null) {
+    const { typeId, tribe, paper } = building;
+    return input.canPlaceAt(typeId, tribe, tile.col, tile.row, paper ?? undefined)
+      ? { overlay, ghost: { kind: 'building', col: tile.col, row: tile.row, buildingType: typeId, tribe } }
       : { overlay, ghost: null };
   }
   return input.canPlaceSignpostAt(tile.col, tile.row)

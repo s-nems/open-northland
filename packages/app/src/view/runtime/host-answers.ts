@@ -48,7 +48,10 @@ const ROSTER_CAPACITY = 4096;
 export interface HostAnswers {
   readonly diplomacyView: DiplomacySimView;
   /** Locked while unanswered. */
-  readonly buildAvailability: (player: number, typeId: number) => BuildingAvailability;
+  readonly buildAvailability: (player: number, typeId: number, tribe: number) => BuildingAvailability;
+  /** The tribes `player` may place houses of, its own first; its own alone while unanswered. The same
+   *  array while the sim's list stands. */
+  readonly buildTribes: (player: number) => readonly number[];
   /** Undefined while unanswered, which a reader takes as a refusal. */
   readonly technologyStatus: (
     kind: UnlockKind,
@@ -107,6 +110,16 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
   const offersAt = cache<readonly TradeOffer[]>({ same: samePlainData });
   const tributes = cache<readonly OpenTribute[]>({ same: samePlainData });
   const availabilities = cache<BuildingAvailability>();
+  const tribeLists = cache<readonly number[]>({ same: samePlainData });
+  const ownTribeOnly = new Map<number, readonly number[]>();
+  const ownTribe = (player: number): readonly number[] => {
+    let only = ownTribeOnly.get(player);
+    if (only === undefined) {
+      only = [tribeOf(player)];
+      ownTribeOnly.set(player, only);
+    }
+    return only;
+  };
   const statuses = cache<UnlockStatus>({ same: samePlainData });
   const stands = cache<boolean>();
   const workStatuses = cache<WorkStatus | undefined>({ same: samePlainData });
@@ -137,10 +150,12 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
       openTributes: (payer) => perTick(tributes, `${payer}`, () => host.openTributes(payer)) ?? NO_TRIBUTES,
     },
     // Kept as availability, not as status: the construction window pulls every entry every frame.
-    buildAvailability: (player, typeId) =>
-      perTick(availabilities, `${player}:${typeId}`, () =>
-        host.unlockStatus('house', typeId, tribeOf(player), player).then(technologyAvailability),
+    buildAvailability: (player, typeId, tribe) =>
+      perTick(availabilities, `${player}:${tribe}:${typeId}`, () =>
+        host.unlockStatus('house', typeId, tribe, player).then(technologyAvailability),
       ) ?? LOCKED,
+    buildTribes: (player) =>
+      perTick(tribeLists, `${player}`, () => host.buildTribes(player)) ?? ownTribe(player),
     technologyStatus: (kind, typeId, tribe, player) =>
       perTick(statuses, `${kind}:${typeId}:${tribe}:${player ?? ''}`, () =>
         host.unlockStatus(kind, typeId, tribe, player),

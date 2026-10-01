@@ -2,7 +2,6 @@ import type { Recipe } from '@open-northland/data';
 import {
   Building,
   JobAssignment,
-  ownerOf,
   Person,
   Production,
   ProductionCounters,
@@ -19,7 +18,7 @@ import { canStartCycle, outputRoomForCycles, waitingForRecipeInput } from '../ec
 import { craftablePool } from '../economy/production/rotation.js';
 import { liveHaulFlag } from '../economy/work-flag.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
-import { recipeOutputsEnabled } from '../progression/index.js';
+import { operatorRecipeEnabled } from '../progression/index.js';
 import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
 import { StoreSinks } from '../settlers/targets/stores/sinks.js';
 import { isWorkplaceOperator, recipesByProductOf, stockCapacity } from '../stores/index.js';
@@ -116,6 +115,7 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   const inRotation = rotationOrder(world, entity, pool, recipes);
   let held: PoolEntry | undefined;
   for (const entry of inRotation) {
+    if (!operatorRecipeEnabled(world, ctx, workplace, entity, entry.recipe)) continue;
     if (canStartCycle(world, ctx, workplace, entry.recipe)) return undefined;
     if (waitingForRecipeInput(world, ctx, workplace, entry.recipe)) {
       held = entry;
@@ -124,7 +124,8 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   }
   // The rotation holds its turn on a partly stocked product, so that one is next; otherwise the first
   // product with shelf room is the one waiting for its inputs.
-  const waiting = held ?? inRotation.find((entry) => hasShelfRoom(world, ctx, workplace, entry.recipe));
+  const waiting =
+    held ?? inRotation.find((entry) => hasShelfRoom(world, ctx, workplace, entity, entry.recipe));
   if (waiting !== undefined) {
     const stock = world.get(workplace, Stockpile).amounts;
     const missingInputs = waiting.recipe.inputs.flatMap((input) => {
@@ -150,7 +151,9 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
       ? { kind: 'waitingInput', goodType: waiting.good, missingInputs }
       : { kind: 'unknown', reason: 'productionGate' };
   }
-  const enabled = inRotation.filter((entry) => recipeEnabled(world, ctx, workplace, entry.recipe));
+  const enabled = inRotation.filter((entry) =>
+    operatorRecipeEnabled(world, ctx, workplace, entity, entry.recipe),
+  );
   if (enabled.length === 0) return { kind: 'productsLocked', goodTypes: pool.slice() };
   const stock = world.get(workplace, Stockpile).amounts;
   const outputs = enabled
@@ -195,18 +198,15 @@ function rotationOrder(
   return ordered;
 }
 
-function recipeEnabled(world: World, ctx: SystemContext, workplace: Entity, recipe: Recipe): boolean {
-  return recipeOutputsEnabled(
-    world,
-    ctx,
-    ownerOf(world, workplace),
-    world.get(workplace, Building).tribe,
-    recipe,
-  );
-}
-
-function hasShelfRoom(world: World, ctx: SystemContext, workplace: Entity, recipe: Recipe): boolean {
+function hasShelfRoom(
+  world: World,
+  ctx: SystemContext,
+  workplace: Entity,
+  worker: Entity,
+  recipe: Recipe,
+): boolean {
   return (
-    recipeEnabled(world, ctx, workplace, recipe) && outputRoomForCycles(world, ctx, workplace, recipe) > 0
+    operatorRecipeEnabled(world, ctx, workplace, worker, recipe) &&
+    outputRoomForCycles(world, ctx, workplace, recipe) > 0
   );
 }

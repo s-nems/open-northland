@@ -1,7 +1,7 @@
 import { hasMissionBehaviour, MISSION_BEHAVIOUR } from '../../components/behaviour.js';
 import { isPlayerDead } from '../../components/match.js';
 import { isValidPlayer, ownerOf, ownersCompatible } from '../../components/ownership.js';
-import { playerPlacementTribes } from '../../components/player-placement.js';
+import { buildTribes, playerPlacementTribes } from '../../components/player-placement.js';
 import type {
   Command,
   CommandEnvelope,
@@ -76,7 +76,12 @@ function seatMayIssue(
   if (isPlayerDead(world, seat)) return false;
   if (command.kind === 'placeBuilding' || command.kind === 'placePalisade') {
     if (hasAuthoredOptions(command)) return false;
-    if (!playerPlacementTribes(world, seat)?.includes(command.tribe)) return false;
+  }
+  // Houses may be any nation the seat builds; roads and walls stay its declared nations, since a gate
+  // joins only segments of one tribe.
+  if (command.kind === 'placeBuilding' && !buildTribes(world, seat).includes(command.tribe)) return false;
+  if (command.kind === 'placePalisade' && !playerPlacementTribes(world, seat)?.includes(command.tribe)) {
+    return false;
   }
   if (command.kind === 'placeRoadSite') {
     if (command.force !== undefined) return false;

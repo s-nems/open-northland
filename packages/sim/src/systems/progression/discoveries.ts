@@ -7,14 +7,17 @@ import {
   Owner,
   ownerOf,
   Person,
+  PlayerPlacementRules,
   professionProgressionEnabled,
   ScriptUnlocks,
+  SeatTribeUnlocks,
   Settler,
   SettlerProgress,
   type SettlerProgressView,
   type SettlerView,
   settlerProgressLog,
   technologyDiscovered,
+  tribeUnlockedFor,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
@@ -74,8 +77,22 @@ function sameInput(a: DiscoveryInput | undefined, b: DiscoveryInput): boolean {
   );
 }
 
+/** The stores whose any change re-reads every settler: the gates a discovery reads, and the seats'
+ *  unlocked tribes, since a settler of a tribe its seat has not unlocked is not walked at all. */
+const PERMISSION_INPUTS: readonly Component<unknown>[] = [
+  AiPlayer,
+  ScriptUnlocks,
+  MapPermissions,
+  PlayerPlacementRules,
+  SeatTribeUnlocks,
+];
+
 function permissionKey(world: World): string {
-  return `${world.componentGeneration(AiPlayer)}:${world.componentValueGeneration(AiPlayer)}:${world.componentGeneration(ScriptUnlocks)}:${world.componentValueGeneration(ScriptUnlocks)}:${world.componentGeneration(MapPermissions)}:${world.componentValueGeneration(MapPermissions)}`;
+  let key = '';
+  for (const store of PERMISSION_INPUTS) {
+    key += `${world.componentGeneration(store)}:${world.componentValueGeneration(store)}:`;
+  }
+  return key;
 }
 
 /** One read of a walked settler: its discovery input, its view and its tribe's content row. */
@@ -87,8 +104,8 @@ interface DiscoveryRead {
   readonly tribe: TribeType;
 }
 
-/** Read a settler's discovery input, or null when the sweep does not walk it: not a person, jobless, or
- *  of a tribe whose professions enable nothing. */
+/** Read a settler's discovery input, or null when the sweep does not walk it: not a person, jobless, of
+ *  a tribe whose professions enable nothing, or of one its seat has not unlocked. */
 function readSettler(
   world: World,
   content: ContentSet,
@@ -100,9 +117,11 @@ function readSettler(
   if (settler === undefined || settler.jobType === null) return null;
   const tribe = contentIndex(content).tribes.get(settler.tribe);
   if (tribe === undefined || tribe.jobEnables.length === 0) return null;
+  const owner = ownerOf(world, entity);
+  if (!tribeUnlockedFor(world, owner, settler.tribe)) return null;
   const progress = world.get(entity, SettlerProgress);
   const input: DiscoveryInput = {
-    owner: ownerOf(world, entity),
+    owner,
     tribe: settler.tribe,
     jobType: settler.jobType,
     experience: experienceSum(progress.experience),

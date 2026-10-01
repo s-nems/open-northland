@@ -24,6 +24,7 @@ import {
 } from '@open-northland/sim';
 import { type Application, Container } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
+import { emblemBuildingType } from '../../content/building-gfx/emblems.js';
 import { loadGuiArt } from '../../content/gui-art.js';
 import { hasDebugFlag } from '../../diag/debug-flags.js';
 import {
@@ -360,7 +361,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
     const fogGates = createFogGates();
 
-    const placementGates = createPlacementGates(host, fogGates, localPlayer, seatTribeOf(localPlayer));
+    const placementGates = createPlacementGates(host, fogGates, localPlayer);
     cleanup.push(() => placementGates.dispose());
     const {
       canPlaceAt,
@@ -406,6 +407,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const answers = createHostAnswers(host, seatTribeOf);
     cleanup.push(() => answers.dispose());
     const { diplomacyView, buildAvailability } = answers;
+    const nationEmblemType = emblemBuildingType(host.content.buildings);
     const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
       diplomacyPanelRows(diplomacyView, {
         localPlayer: viewerPlayer(),
@@ -519,7 +521,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
       buildings: menuEntriesFromContent(host.content, lang).map((entry) => ({
         ...entry,
-        availability: () => buildAvailability(viewerPlayer(), entry.typeId),
+        availability: (tribe) => buildAvailability(viewerPlayer(), entry.typeId, tribe),
       })),
       buildingLabels: buildingLabelsFromContent(host.content, lang),
       technologyLabel: (kind, typeId) => technologyLabel(host.content, kind, typeId),
@@ -530,6 +532,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       lang,
       bindings: keyBindings,
       tribe: seatTribeOf(localPlayer),
+      buildTribes: () => answers.buildTribes(viewerPlayer()),
+      ...(nationEmblemType !== undefined ? { nationEmblemType } : {}),
       owner: localPlayer,
       viewer,
       ...(switchableSeat !== null && deps.observerSeats !== undefined
@@ -865,7 +869,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       pointer: pointerAt,
       suppressed: (clientX, clientY) =>
         hudHidden ||
-        toolPanel.controller.placementType() !== null ||
+        toolPanel.controller.placementBuilding() !== null ||
         toolPanel.controller.palisadeGfxIndex() !== null ||
         toolPanel.controller.roadActive() ||
         toolPanel.claimPointer(clientX, clientY) ||
@@ -967,7 +971,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       lifeHeartsFor,
       canPlaceAt,
       canPlaceSignpostAt,
-      placementTribe: seatTribeOf(localPlayer),
       soundDriver,
       presentation,
       perf,

@@ -20,6 +20,7 @@ import { type FrameStats, framePhaseEmitter, recordTickDiagnostics } from '../..
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
+import type { BuildingPick } from '../../hud/tool-panel/placement.js';
 import { setCanvasCursor } from '../cursors/element.js';
 import { placementPointer } from '../cursors/placement.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
@@ -89,9 +90,7 @@ export interface FrameLoopDeps {
   readonly settlerBubblesFor: (snap: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
   /** Memoized by snapshot identity, the screen and the selection version, and fog-filtered. */
   readonly lifeHeartsFor: (snap: WorldSnapshot, viewport?: Viewport) => ReturnType<typeof computeLifeHearts>;
-  readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
-  /** The civilization the local seat builds as; the placement ghost previews its bodies. */
-  readonly placementTribe: number;
+  readonly canPlaceAt: (typeId: number, tribe: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly soundDriver: ReturnType<typeof createSoundDriver> | null;
   /** The map script's display: its camera jitter for the frame, and its overlays after the draw. */
@@ -142,7 +141,6 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     lifeHeartsFor,
     canPlaceAt,
     canPlaceSignpostAt,
-    placementTribe,
     soundDriver,
     presentation,
     perf,
@@ -177,8 +175,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     stance: harshestStance(host, musicRoster),
   });
   // Bound once, so a frame never mints a fresh pair of closures.
-  const buildingOverlay = (buildingType: number, paper?: Paper) =>
-    overlayFrame(buildingType, cameraCtl.camera(), app.screen.width, app.screen.height, paper);
+  const buildingOverlay = ({ typeId, tribe, paper }: BuildingPick) =>
+    overlayFrame(typeId, tribe, cameraCtl.camera(), app.screen.width, app.screen.height, paper ?? undefined);
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   const frameReport = () => frameStats.report();
   const visiblePlots = createVisiblePlots(() => host.constructionPlots(), fogGates.seesNode);
@@ -263,8 +261,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // Decided here from the host's placement probe and handed over as plain data: the renderer stays a
     // pure projection and never calls back into the host.
     const cursor = placementCursor({
-      placementType: toolPanel.controller.placementType(),
-      placementPaper: toolPanel.controller.placementPaper(),
+      building: toolPanel.controller.placementBuilding(),
       palisadeGfxIndex: toolPanel.controller.palisadeGfxIndex(),
       roadActive: toolPanel.controller.roadActive(),
       signpostActive: controls.signpostPlacementActive(),
@@ -282,7 +279,6 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       anchored: toolPanel.controller.activeLine() !== null,
       palisadeWash,
       localPlayer,
-      placementTribe,
     });
     renderer.updatePlacementOverlay(cursor.overlay);
     renderer.updatePlacementGhost(cursor.ghost, snap);
@@ -290,7 +286,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       deps.canvas,
       'placement',
       placementPointer(
-        toolPanel.controller.placementType() !== null ||
+        toolPanel.controller.placementBuilding() !== null ||
           toolPanel.controller.palisadeGfxIndex() !== null ||
           toolPanel.controller.roadActive(),
         cursor.ghost,

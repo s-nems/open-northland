@@ -90,8 +90,9 @@ describe('roster-authorized placement tribes', () => {
   it('preserves trusted mixed-tribe map placements independently of seat permissions', () => {
     const sim = fresh();
     declare(sim, []);
-    sim.enqueueSetup({ ...placement, owner: 0 });
-    sim.enqueue(adminCommand({ ...placement, tribe: 13, owner: 0 }));
+    // A map's authored house is forced past the seat's unlocks, as the map loader places it.
+    sim.enqueueSetup({ ...placement, owner: 0, force: true });
+    sim.enqueue(adminCommand({ ...placement, tribe: 13, owner: 0, force: true }));
     sim.step();
     expect(buildings(sim).map((entity) => sim.world.get(entity, Building).tribe)).toEqual([1, 13]);
   });

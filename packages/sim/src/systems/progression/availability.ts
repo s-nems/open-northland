@@ -1,22 +1,29 @@
 import type { JobEnablesKind, Recipe, VehicleType } from '@open-northland/data';
 import {
   AiPlayer,
+  Building,
   isAiPlayer,
   MapPermissions,
   mapPermission,
+  ownerOf,
+  PlayerPlacementRules,
   ProgressionRules,
   professionProgressionEnabled,
   ScriptUnlocks,
+  SeatTribeUnlocks,
+  Settler,
   scriptAllows,
   scriptEnables,
   TechnologyDiscoveries,
   technologyDiscovered,
+  tribeUnlockedFor,
   type UnlockKind,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import type { Component, World } from '../../ecs/world.js';
+import type { Component, Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
+import { assignedWorkers } from '../stores/assigned-workers.js';
 import { aliveTribeJobs } from './alive-jobs.js';
 
 export function buildingEnabled(
@@ -78,6 +85,52 @@ export function recipeOutputsEnabled(
   return true;
 }
 
+/** Whether the workplace's owner has `recipe`'s products enabled for the operator's own tribe. Original
+ *  behavior (read from the original's logic, unconfirmed against the running game): a product is
+ *  enabled per worker, by `(player, that worker's tribe)`, never by the house's tribe. It is also a yard
+ *  turn's whole start gate, since a vehicle is never a cycle and `canStartCycle` refuses it outright. */
+export function operatorRecipeEnabled(
+  world: World,
+  ctx: ContentContext,
+  building: Entity,
+  operator: Entity,
+  recipe: Recipe,
+): boolean {
+  return recipeOutputsEnabled(
+    world,
+    ctx,
+    ownerOf(world, building),
+    world.get(operator, Settler).tribe,
+    recipe,
+  );
+}
+
+/**
+ * {@link recipeOutputsEnabled} for a gate that reads a whole workplace rather than one worker: enabled
+ * for the tribe of any worker bound to it, or for the building's own tribe while nobody is. A gate
+ * that knows its worker asks {@link operatorRecipeEnabled} instead.
+ */
+export function workplaceRecipeEnabled(
+  world: World,
+  ctx: ContentContext,
+  workplace: Entity,
+  recipe: Recipe,
+): boolean {
+  const owner = ownerOf(world, workplace);
+  const workers = assignedWorkers(world, workplace);
+  if (workers.length === 0) {
+    return recipeOutputsEnabled(world, ctx, owner, world.get(workplace, Building).tribe, recipe);
+  }
+  let refused: number | undefined;
+  for (const worker of workers) {
+    const tribe = world.tryGet(worker, Settler)?.tribe;
+    if (tribe === undefined || tribe === refused) continue;
+    if (recipeOutputsEnabled(world, ctx, owner, tribe, recipe)) return true;
+    refused = tribe;
+  }
+  return false;
+}
+
 /** Every store {@link recipeOutputsEnabled} reads for a tribe with a technology table. */
 const TECHNOLOGY_UNLOCK_STORES: readonly Component<unknown>[] = [
   ScriptUnlocks,
@@ -85,6 +138,8 @@ const TECHNOLOGY_UNLOCK_STORES: readonly Component<unknown>[] = [
   ProgressionRules,
   TechnologyDiscoveries,
   AiPlayer,
+  PlayerPlacementRules,
+  SeatTribeUnlocks,
 ];
 
 /**
@@ -116,11 +171,14 @@ export function jobEnabled(
 }
 
 /**
- * Whether the tribe's tech tree opens the target for the owner. Under a technology table the player's
- * discoveries decide, which the discovery system records at the end of every tick's commands, missions
- * and work: a job with no `needforjob` row, a good no job produces, and everything for an AI seat are
- * open from the start (reading of the original's per-player init). Without the table the trades the
- * tribe holds alive decide.
+ * Whether the tribe's tech tree opens the target for the owner. A tribe the owner has not unlocked
+ * ({@link tribeUnlockedFor}) opens nothing; only a script line enables one of its items. Original
+ * behavior (unconfirmed against the running game): at init a player gets enabled flags for its own
+ * tribe alone. Under a technology table the
+ * player's discoveries decide, which the discovery system records at the end of every tick's commands,
+ * missions and work: a job with no `needforjob` row, a good no job produces, and everything for an AI
+ * seat are open from the start (reading of the original's per-player init). Without the table the
+ * trades the tribe holds alive decide.
  */
 function tribeUnlockEnabled(
   world: World,
@@ -130,6 +188,7 @@ function tribeUnlockEnabled(
   targetId: number,
   owner?: number,
 ): boolean {
+  if (!tribeUnlockedFor(world, owner, tribe)) return false;
   if (kind !== 'vehicle' && technologyDiscovered(world, owner, tribe, kind, targetId)) return true;
   const definition = contentIndex(ctx.content).tribes.get(tribe);
   if (definition?.technology !== undefined && kind !== 'vehicle') {

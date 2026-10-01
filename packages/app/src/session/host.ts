@@ -174,6 +174,8 @@ export interface SessionHost {
   // Request-shaped.
 
   unlockStatus(kind: UnlockKind, typeId: number, tribe: number, player?: number): Promise<UnlockStatus>;
+  /** The tribes `player` may place houses of, its own tribe first. */
+  buildTribes(player: number): Promise<readonly number[]>;
   canChooseJob(entity: Entity, jobType: number): Promise<boolean>;
   hasEarnedGood(entity: Entity, goodType: number): Promise<boolean>;
   equipPickList(entity: Entity, group: EquipCategory): Promise<readonly EquipPickEntry[]>;

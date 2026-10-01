@@ -55,7 +55,7 @@ export interface GameToolPanelDeps {
   /** The admin channel for the debug palette's standing-wall line; absent where world edits are off. */
   readonly enqueueTrusted?: (command: Command) => void;
   /** Gates the placement click; a closure, so it follows a scene restart. */
-  readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
+  readonly canPlaceAt: (typeId: number, tribe: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt: (
     gfxIndex: number,
     col: number,
@@ -89,8 +89,13 @@ export interface GameToolPanelDeps {
   /** The pack the map draws with, or null for the original's art, so the HUD's good icons match it. */
   readonly pack: PresentationPack | null;
   readonly vehicleLabel: (typeId: number) => string | undefined;
-  /** The tribe a placed building is stamped with. */
+  /** The seat's own tribe: the construction window's default nation, and the one roads and walls lay
+   *  for. */
   readonly tribe: number;
+  /** The nations the seat may build houses of, its own first. */
+  readonly buildTribes: () => readonly number[];
+  /** The building whose body stands for a nation on the construction window's switch. */
+  readonly nationEmblemType?: number;
   /** The player a placed building is owned by. */
   readonly owner: number;
   /** Whose notes the column shows. */
@@ -259,6 +264,8 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       lang: deps.lang ?? currentLocale(),
       bindings: deps.bindings,
       tribe: deps.tribe,
+      buildTribes: deps.buildTribes,
+      ...(deps.nationEmblemType !== undefined ? { nationEmblemType: deps.nationEmblemType } : {}),
       owner: deps.owner,
       viewer: deps.viewer,
       ...(deps.observer !== undefined ? { observer: deps.observer } : {}),

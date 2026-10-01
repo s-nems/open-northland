@@ -2,7 +2,6 @@ import type { Recipe } from '@open-northland/data';
 import {
   Building,
   consumeGoods,
-  ownerOf,
   Production,
   type ProductionCycle,
   Stockpile,
@@ -12,7 +11,7 @@ import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { birthHerdAnimal, herdRoom, speciesHerdOf } from '../../livestock/index.js';
-import { recipeOutputsEnabled } from '../../progression/index.js';
+import { workplaceRecipeEnabled } from '../../progression/index.js';
 import { livestockTribeOfGood, vehicleHouseOfGood } from '../../readviews/index.js';
 import { recipesByProductOf, stockCapacity } from '../../stores/index.js';
 
@@ -34,11 +33,7 @@ export function startableCycleCount(
   recipe: Recipe,
 ): number {
   if (isYardBuilt(ctx, recipe)) return 0;
-  if (
-    !recipeOutputsEnabled(world, ctx, ownerOf(world, building), world.get(building, Building).tribe, recipe)
-  ) {
-    return 0;
-  }
+  if (!workplaceRecipeEnabled(world, ctx, building, recipe)) return 0;
   // Both halves are already >= 0, so the combined count needs no further clamp.
   const cycles = Math.min(
     inputStockForCycles(world, building, recipe),
@@ -117,11 +112,10 @@ export function shelfBlockedOutput(world: World, ctx: SystemContext, building: E
   const recipes = recipesByProductOf(world, ctx, building);
   if (recipes === undefined) return null;
   const stock = world.get(building, Stockpile).amounts;
-  const owner = ownerOf(world, building);
   let blocked: number | null = null;
   for (const recipe of recipes.values()) {
     if (isYardBuilt(ctx, recipe)) continue; // built on a yard, never shelved
-    if (!recipeOutputsEnabled(world, ctx, owner, b.tribe, recipe)) continue; // locked: shipping a unit would not help
+    if (!workplaceRecipeEnabled(world, ctx, building, recipe)) continue; // locked: shipping a unit would not help
     if (inputStockForCycles(world, building, recipe) < 1) continue; // starved: the fetch rung owns this one
     if (outputRoomForCycles(world, ctx, building, recipe) > 0) return null;
     blocked ??= stockedOutput(stock, recipe);
@@ -149,10 +143,9 @@ export function waitingForRecipeInput(
   building: Entity,
   recipe: Recipe,
 ): boolean {
-  const b = world.get(building, Building);
   const stock = world.get(building, Stockpile).amounts;
   return (
-    recipeOutputsEnabled(world, ctx, ownerOf(world, building), b.tribe, recipe) &&
+    workplaceRecipeEnabled(world, ctx, building, recipe) &&
     outputRoomForCycles(world, ctx, building, recipe) > 0 &&
     recipe.inputs.some((input) => {
       const have = stock.get(input.goodType) ?? 0;

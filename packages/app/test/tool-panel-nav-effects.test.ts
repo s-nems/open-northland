@@ -22,6 +22,7 @@ import { stubResidentsWindow } from './support/residents-window-stub.js';
 
 const SCREEN = { width: 1280, height: 720 };
 const BUILDING_JOINERY = 23;
+const VIKING = 1;
 
 function stubContext(): PanelContext {
   const layout = buildToolPanelLayout(1);
@@ -62,7 +63,7 @@ function mountSurfaces() {
     enqueue: () => undefined,
     screenToTile: () => ({ col: 1, row: 1 }),
     canPlaceAt: () => true,
-    tribe: 1,
+    tribe: VIKING,
     owner: 0,
     // As the mount wires it: a cancelled placement brings the construction window back.
     onCancel: () => windows?.byId.menu.resume(),
@@ -99,9 +100,9 @@ function mountSurfaces() {
     heldPaper: createHeldPaperController(ctx, strip),
     diplomacyRows: () => [],
     missionBook: stubMissionBook,
-    onPickBuilding: (typeId) => {
+    onPickBuilding: (pick) => {
       windows?.byId.menu.suspend();
-      placement.enter(typeId);
+      placement.enter(pick);
     },
     onPayTribute: () => undefined,
     onDeclareDiplomacy: () => undefined,
@@ -109,7 +110,8 @@ function mountSurfaces() {
   if (menu === null) throw new Error('the registry did not mount the construction window');
   const surfaces = { windows: windows.byId, cancelHeld: () => placement.cancel() };
   const press = (id: NavEntryId): void => applyNavEntry(surfaces, id);
-  return { press, windows, placement, pick: (menu as ConstructionWindowStub).seam.onPick };
+  const { onPick } = (menu as ConstructionWindowStub).seam;
+  return { press, windows, placement, pick: (typeId: number) => onPick(typeId, VIKING) };
 }
 
 describe('navigation entries', () => {
@@ -162,7 +164,7 @@ describe('applying a navigation entry', () => {
   it('keeps a placement running under an informational window but drops it for a pick', () => {
     const { press, placement } = mountSurfaces();
 
-    placement.enter(BUILDING_JOINERY);
+    placement.enter({ typeId: BUILDING_JOINERY, tribe: VIKING, paper: null });
     press('statistics');
     expect(placement.isActive()).toBe(true);
     press('diplomacy');

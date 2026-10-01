@@ -444,6 +444,34 @@ body.on-drag-scroll * {
   color: var(--ink);
   box-shadow: inset 0 1px #fff8;
 }
+/* The nation switch: the view toggle's segments in the quick row, one emblem per nation, beside
+   Papiery since it turns both pages. Hidden while the seat builds one nation's houses. */
+.on-hud .on-nations[hidden] {
+  display: none;
+}
+.on-hud .on-toolrow .on-nations:not([hidden]) ~ .on-button--accent {
+  margin-left: 10px;
+}
+.on-hud .on-nation {
+  width: 36px;
+  height: 36px;
+  background: #0f151266;
+  border-color: var(--wood-lo);
+}
+.on-hud .on-nation canvas {
+  width: 28px;
+  height: 28px;
+}
+.on-hud .on-nation:hover {
+  border-color: var(--bronze-lo);
+}
+.on-hud .on-nation__initial {
+  font: 700 15px var(--font-title);
+  color: #e9dcbd;
+}
+.on-hud .on-nation[aria-pressed="true"] .on-nation__initial {
+  color: var(--ink);
+}
 .on-hud .on-parchment {
   overflow: auto;
   min-height: 0;

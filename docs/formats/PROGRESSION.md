@@ -20,10 +20,23 @@ profession-general and product-specific experience tracks. `DataCnmd/types/house
   its own discoveries and can gain discoveries from the worker it receives.
 - Existing buildings keep operating without requiring their construction technology again. A new
   profession requires player availability and the individual qualification.
-- At the start a job with no `needforjob` row and a good no job produces count as discovered; an AI
-  seat skips every discovery requirement and civilian experience gate (authored: the progression
-  toggle is a human-player setting and must not handicap the bots). The discovery system records
-  discoveries after each tick's commands and mission results, and again after its work.
+- At the start a job with no `needforjob` row and a good no job produces count as discovered for the
+  seat's own nations; an AI seat skips every discovery requirement and civilian experience gate
+  (authored: the progression toggle is a human-player setting and must not handicap the bots). The
+  discovery system records discoveries after each tick's commands and mission results, and again
+  after its work.
+- A seat starts with only its roster nations unlocked. Another nation unlocks for good once the seat
+  owns an ordinary settler of it, and until then it enables nothing and its settlers discover nothing
+  for the seat; a script `Enable*` line still enables the one item it names. Original behavior (read
+  from the original's logic, unconfirmed against the running game): a
+  player's per-tribe enabled flags start set for its own tribe alone and are set later only by a
+  human of that tribe or a script, and never clear. A hero does not unlock his nation (owner ruling,
+  since maps hand players foreign heroes; the original's rule for heroes is unconfirmed). The seat
+  may place the houses of every unlocked nation and any house a script enabled; the AI builds its own
+  nation only. A seat or scene without a roster keeps every nation unlocked.
+- A product is enabled per worker, by the seat and that worker's own tribe, never by the house's
+  tribe (original behavior, same reading). A gate that reads a whole workplace opens when the product is enabled
+  for any worker bound to it, or for the house's tribe while nobody is.
 - Catalogs without the optional technology table persist discoveries from their profession edges. The
   committed fallback catalog is a smaller approximation of the extracted prerequisites.
 - Map Allow grants permission; Enable grants availability and never lifts a ban. Shared gates serve

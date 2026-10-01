@@ -49,6 +49,7 @@ export const HOST_REQUESTS = [
   'ownPalisadeNodes',
   'mooringProbe',
   'unlockStatus',
+  'buildTribes',
   'canChooseJob',
   'hasEarnedGood',
   'equipPickList',

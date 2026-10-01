@@ -1,7 +1,5 @@
 import type { Recipe } from '@open-northland/data';
 import {
-  Building,
-  ownerOf,
   PRODUCTION_UNLIMITED,
   ProductionCounters,
   productionCountOf,
@@ -9,7 +7,7 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { needSubjectOf, recipeOutputsEnabled, settlerMeetsNeed } from '../../progression/index.js';
+import { needSubjectOf, operatorRecipeEnabled, settlerMeetsNeed } from '../../progression/index.js';
 import { beginCycle, canStartCycle, isYardBuilt, waitingForRecipeInput } from './cycles.js';
 
 /**
@@ -68,20 +66,13 @@ export function nextRotationPick(
     const good = pool[index];
     const recipe = good !== undefined ? recipes.get(good) : undefined;
     if (good === undefined || recipe === undefined) continue;
-    if (yardTurnOpen(world, ctx, building, recipe) || canStartCycle(world, ctx, building, recipe)) {
+    if (!operatorRecipeEnabled(world, ctx, building, operator, recipe)) continue;
+    if (isYardBuilt(ctx, recipe) || canStartCycle(world, ctx, building, recipe)) {
       return { good, index, pool };
     }
     if (waitingForRecipeInput(world, ctx, building, recipe)) return null;
   }
   return null;
-}
-
-/** A yard-built product the player's tribe may make: the yard turn's own start gate, since a vehicle is
- *  never a cycle and `canStartCycle` refuses it outright. */
-function yardTurnOpen(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
-  if (!isYardBuilt(ctx, recipe)) return false;
-  const b = world.get(building, Building);
-  return recipeOutputsEnabled(world, ctx, ownerOf(world, building), b.tribe, recipe);
 }
 
 /** Move the rotation past `pick` without a start, so a skipped turn resumes after the product. A

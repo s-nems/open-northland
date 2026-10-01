@@ -39,6 +39,12 @@ export function worldTribes(
   for (const mission of script?.missions ?? []) {
     for (const line of mission.results) {
       const op = decodeMissionResult(line);
+      // A script-enabled house makes its nation a build nation of the seat, so its art must load too.
+      if (op.opcode === 'EnableHouse') {
+        const tribe = op.tribe.ref === 'id' ? op.tribe.id : joins.tribe(op.tribe.name);
+        add(tribe === undefined ? undefined : seatTribes.tribe(op.player, tribe));
+        continue;
+      }
       if (op.opcode !== 'SetHuman' && op.opcode !== 'SetHumanX') continue;
       const tribe = op.tribe.ref === 'id' ? op.tribe.id : joins.tribe(op.tribe.name);
       const job = op.job.ref === 'id' ? op.job.id : joins.job(op.job.name);

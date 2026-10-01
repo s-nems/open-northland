@@ -85,8 +85,17 @@ describe('build-order module (houseBuild)', () => {
       y: HQ_Y,
       tribe: 13,
       owner: SEAT,
+      force: true,
     });
-    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME_TYPE, x: 20, y: 8, tribe: 13, owner: SEAT });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: 20,
+      y: 8,
+      tribe: 13,
+      owner: SEAT,
+      force: true,
+    });
     sim.step();
     expect(nextPlacement(sim)).toMatchObject({ kind: 'placeBuilding', tribe: VIKING });
     sim.enqueueSetup({ kind: 'demolish', building: entityOfBuilding(sim, HQ_TYPE) });

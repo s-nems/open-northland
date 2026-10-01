@@ -9,6 +9,8 @@ import {
 
 const WOOD = 3;
 const STONE = 4;
+const VIKING = 1;
+const FRANK = 2;
 
 const entry = (
   typeId: number,
@@ -34,11 +36,24 @@ describe('construction catalogue', () => {
       entry(2, 'home', () => OPEN_AVAILABILITY),
       entry(40, 'tower', () => ({ kind: 'locked' })),
     ];
-    const partition = partitionCatalogue(entries);
+    const partition = partitionCatalogue(entries, VIKING);
     expect(partition.open.map((row) => row.entry.typeId)).toEqual([12, 2]);
     expect(partition.locked.map((row) => row.entry.typeId)).toEqual([23, 40]);
     expect(partition.open.map((row) => row.category)).toEqual(['work', 'home']);
     expect(partition.locked[0]?.availability).toEqual({ kind: 'locked' });
+  });
+
+  it("asks each entry about the nation it lists, so another nation's locks and bans are its own", () => {
+    const entries = [
+      entry(23, 'workplace', (tribe) => (tribe === FRANK ? OPEN_AVAILABILITY : { kind: 'locked' })),
+      entry(40, 'tower', (tribe) => (tribe === FRANK ? { kind: 'forbidden' } : OPEN_AVAILABILITY)),
+    ];
+    const viking = partitionCatalogue(entries, VIKING);
+    expect(viking.open.map((row) => row.entry.typeId)).toEqual([40]);
+    expect(viking.locked.map((row) => row.entry.typeId)).toEqual([23]);
+    const frank = partitionCatalogue(entries, FRANK);
+    expect(frank.open.map((row) => row.entry.typeId)).toEqual([23]);
+    expect(frank.locked).toEqual([]);
   });
 
   it('keys the partition on membership, so a discovery or a ban re-sorts and a tick does not', () => {
@@ -50,24 +65,27 @@ describe('construction catalogue', () => {
       ),
       entry(12, 'workplace'),
     ];
-    const before = availabilityKey(partitionCatalogue(entries));
-    expect(availabilityKey(partitionCatalogue(entries))).toBe(before);
+    const before = availabilityKey(partitionCatalogue(entries, VIKING));
+    expect(availabilityKey(partitionCatalogue(entries, VIKING))).toBe(before);
     open = true;
-    const discovered = availabilityKey(partitionCatalogue(entries));
+    const discovered = availabilityKey(partitionCatalogue(entries, VIKING));
     expect(discovered).not.toBe(before);
     banned = true;
-    expect(availabilityKey(partitionCatalogue(entries))).not.toBe(discovered);
+    expect(availabilityKey(partitionCatalogue(entries, VIKING))).not.toBe(discovered);
   });
 
   it('counts the buildable entries per tab, every one under all', () => {
-    const { open } = partitionCatalogue([
-      entry(12, 'workplace'),
-      entry(2, 'home'),
-      entry(7, 'storage'),
-      entry(40, 'tower'),
-      entry(39, 'training'),
-      entry(23, 'workplace', () => ({ kind: 'locked' })),
-    ]);
+    const { open } = partitionCatalogue(
+      [
+        entry(12, 'workplace'),
+        entry(2, 'home'),
+        entry(7, 'storage'),
+        entry(40, 'tower'),
+        entry(39, 'training'),
+        entry(23, 'workplace', () => ({ kind: 'locked' })),
+      ],
+      VIKING,
+    );
     expect(tabCounts(open)).toEqual({ all: 5, work: 1, storage: 1, home: 1, military: 2 });
   });
 

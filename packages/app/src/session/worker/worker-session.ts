@@ -495,6 +495,7 @@ class WorkerClient<E> {
       ownPalisadeNodes: (...args) => this.ask('ownPalisadeNodes', args),
       mooringProbe: (...args) => this.ask('mooringProbe', args),
       unlockStatus: (...args) => this.ask('unlockStatus', args),
+      buildTribes: (...args) => this.ask('buildTribes', args),
       canChooseJob: (...args) => this.ask('canChooseJob', args),
       hasEarnedGood: (...args) => this.ask('hasEarnedGood', args),
       equipPickList: (...args) => this.ask('equipPickList', args),

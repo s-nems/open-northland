@@ -27,8 +27,8 @@ export interface MenuBuildingEntry {
   readonly kind: string;
   /** The from-scratch bill the sim charges, a leveled tier's whole chain summed; empty when unknown. */
   readonly cost: readonly CostLine[];
-  /** Absent, the entry is always open (a scene without progression). */
-  readonly availability?: () => BuildingAvailability;
+  /** The entry as the seat may build it in `tribe`; absent, always open (a scene without progression). */
+  readonly availability?: (tribe: number) => BuildingAvailability;
 }
 
 /** The quick row's tools, in the row's order; they lay the half-cell lattice, not a building footprint. */
@@ -76,9 +76,12 @@ export type CatalogueView = 'grid' | 'list';
 export type ConstructionPage = 'catalog' | 'papers';
 
 /** Window state across a HUD-scale remount. Fresh openings show the catalogue, while placement
- *  resumes keep the page. The grid or list view remains a per-game choice, never browser storage. */
+ *  resumes keep the page. The grid or list view and the nation remain a per-game choice, never
+ *  browser storage. */
 export interface ConstructionWindowState {
   readonly page: ConstructionPage;
+  /** The nation both pages list houses of; null for the seat's own. */
+  readonly tribe: number | null;
   readonly category: BuildingCategory;
   readonly view: CatalogueView;
   readonly scrollTop: number;
@@ -88,9 +91,26 @@ export interface ConstructionWindowState {
 
 export const INITIAL_CONSTRUCTION_STATE: ConstructionWindowState = {
   page: 'catalog',
+  tribe: null,
   category: 'all',
   view: 'grid',
   scrollTop: 0,
   picked: null,
   suspended: false,
 };
+
+/** The construction window's nation switch: the nations offered (the seat's own alone while the sim
+ *  names none), the one listed, and whether the switch shows. */
+export interface NationChoice {
+  readonly nations: readonly number[];
+  /** The chosen nation while the seat may still build its houses, else the seat's own. */
+  readonly shown: number;
+  /** More than one nation: the switch shows. */
+  readonly switchable: boolean;
+}
+
+export function nationChoice(chosen: number | null, offered: readonly number[], home: number): NationChoice {
+  const nations = offered.length === 0 ? [home] : offered;
+  const shown = chosen !== null && nations.includes(chosen) ? chosen : (nations[0] ?? home);
+  return { nations, shown, switchable: nations.length > 1 };
+}

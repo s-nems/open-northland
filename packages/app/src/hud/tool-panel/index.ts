@@ -73,6 +73,7 @@ import type { PapersSeam } from './paper-cards.js';
 import { paperLabel } from './paper-label.js';
 import { createPendingWindow } from './pending-window.js';
 import {
+  type BuildingPick,
   createPlacementController,
   type GatePreview,
   type GateSites,
@@ -124,8 +125,13 @@ export interface ToolPanelOptions {
   readonly lang: string;
   /** Resolved player key bindings; the input layer reads the pause key from it. */
   readonly bindings: KeyBindings;
-  /** The tribe a placed building is stamped with. */
+  /** The seat's own tribe: the construction window's default nation, and the one roads and walls lay
+   *  for. */
   readonly tribe: number;
+  /** The nations the seat may build houses of, its own first; the construction window reads it a tick. */
+  readonly buildTribes: () => readonly number[];
+  /** The building whose body stands for a nation on the construction window's switch. */
+  readonly nationEmblemType?: number;
   /** The player slot a placed building is owned by. */
   readonly owner: number;
   /** Whose notes the column shows. */
@@ -160,7 +166,7 @@ export interface ToolPanelOptions {
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`SessionHost.placementProbe`), which gates the placement click. */
-  readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
+  readonly canPlaceAt: (typeId: number, tribe: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt?: (
     gfxIndex: number,
     col: number,
@@ -255,10 +261,8 @@ export interface ToolPanelController {
   /** True when a client point is over an open pop-up window, which owns the wheel; unlike
    *  `claimsPointer` this excludes active placement. */
   claimsWheel(clientX: number, clientY: number): boolean;
-  /** The building typeId currently being placed, or null when not in build mode. */
-  placementType(): number | null;
-  /** The paper paying for the active placement, or null for normal construction. */
-  placementPaper(): Paper | null;
+  /** The building being placed, its nation and paying plan, or null when not in build mode. */
+  placementBuilding(): BuildingPick | null;
   /** The source wall/gate graphics row currently held for placement. */
   palisadeGfxIndex(): number | null;
   palisadeMode(): PalisadePlacementMode | null;
@@ -552,6 +556,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           papers: () => opts.papers.read(),
           paperLabel: nameOfPaper,
           buildingLabel: (typeId) => labelByType.get(typeId) ?? `#${typeId}`,
+          homeTribe: opts.tribe,
+          buildTribes: opts.buildTribes,
+          ...(opts.nationEmblemType !== undefined ? { emblemType: opts.nationEmblemType } : {}),
           onPick: seam.onPick,
           tools: CONSTRUCTION_TOOLS.filter(toolOffered),
           toolHints: {
@@ -580,7 +587,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       diplomacyRows: opts.diplomacyRows,
       onPayTribute: opts.onPayTribute,
       onDeclareDiplomacy: opts.onDeclareDiplomacy,
-      onPickBuilding: (typeId, paper) => placement.enter(typeId, paper),
+      onPickBuilding: (pick) => placement.enter(pick),
     });
     domParts.push(windows);
 
@@ -821,8 +828,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       },
       claimsPointer,
       claimsWheel,
-      placementType: () => placement.activeType(),
-      placementPaper: () => placement.activePaper(),
+      placementBuilding: () => placement.activeBuilding(),
       palisadeGfxIndex: () => placement.activePalisade(),
       palisadeMode: () => placement.activePalisadeMode(),
       roadActive: () => placement.activeRoad(),

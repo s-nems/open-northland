@@ -249,6 +249,8 @@ export const plGame = {
       papersEmptyTitle: 'Brak papierów',
       papersEmptyText: 'Papiery znajdziesz w skrzyniach na mapie.',
       viewLabel: 'Widok',
+      nationLabel: 'Nacja budynków',
+      nationHint: 'Budynki nacji: {tribe}',
       gridView: 'Kafelki',
       listView: 'Lista',
       availableNow: 'Dostępne teraz',

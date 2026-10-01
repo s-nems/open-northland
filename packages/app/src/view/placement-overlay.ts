@@ -35,16 +35,17 @@ export function makeOverlayFrameSource(
   player: number = HUMAN_PLAYER,
 ): (
   buildingType: number,
+  tribe: number,
   camera: Camera,
   screenW: number,
   screenH: number,
   paper?: Paper,
 ) => PlacementOverlayFrame | null {
   const band = makeBandProber(host, mapSize, player);
-  return (buildingType, camera, screenW, screenH, paper) => {
-    const probe = probes.building(buildingType, paper);
+  return (buildingType, tribe, camera, screenW, screenH, paper) => {
+    const probe = probes.building(buildingType, tribe, paper);
     return band(
-      gridBandProbe(probe, `b${buildingType}:${paper === undefined ? 'tech' : 'paper'}`),
+      gridBandProbe(probe, `b${buildingType}:${tribe}:${paper === undefined ? 'tech' : 'paper'}`),
       camera,
       screenW,
       screenH,

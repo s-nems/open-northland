@@ -42,6 +42,7 @@ import {
   signpostOrderSystem,
 } from './orders/index.js';
 import { technologySystem } from './progression/discoveries.js';
+import { tribeUnlockSystem } from './progression/tribe-unlocks.js';
 import { atomicSystem } from './settlers/atomics/system.js';
 import { plannerSystem } from './settlers/planner/system.js';
 import { gossipSystem } from './social/index.js';
@@ -68,6 +69,8 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // Directly after the commands that enable it, and at the head of the tick, so a mission judges the
   // settled world the previous tick's cleanup left behind.
   { name: 'mission', system: missionSystem },
+  // Before each discovery pass, so a settler of a newly fielded tribe discovers for its seat at once.
+  { name: 'tribeUnlockAfterMissions', system: tribeUnlockSystem },
   // After the commands and script results that spawn, retrain, educate or permit, so the gates the
   // rest of the tick reads see those discoveries; again after work for the experience it accrued.
   { name: 'technologyAfterMissions', system: technologySystem },
@@ -144,6 +147,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // After this tick's blows, so an arrow in the temple stops its blessing at once.
   { name: 'templeAura', system: templeAuraSystem },
   { name: 'growth', system: growthSystem },
+  { name: 'tribeUnlockAfterWork', system: tribeUnlockSystem },
   { name: 'technologyAfterWork', system: technologySystem },
   { name: 'ruins', system: ruinSystem },
   { name: 'cleanup', system: cleanupSystem },

@@ -34,14 +34,15 @@ export function thumbFit(frame: { readonly width: number; readonly height: numbe
 }
 
 export interface BuildingThumbs {
-  /** Paint the type's body into `canvas` at `boxPx` design px; false leaves the canvas untouched (no
-   *  sheet, no bound frame, or a GPU-only page) and the card shows its glyph instead. */
-  paint(canvas: HTMLCanvasElement, typeId: number, boxPx: number): boolean;
+  /** Paint the type's body into `canvas` at `boxPx` design px, as `tribe` builds it (the seat's own
+   *  by default); false leaves the canvas untouched (no sheet, no bound frame, or a GPU-only page) and
+   *  the card shows its glyph instead. */
+  paint(canvas: HTMLCanvasElement, typeId: number, boxPx: number, tribe?: number): boolean;
 }
 
-export function createBuildingThumbs(sheet: SpriteSheet | undefined, tribe: number): BuildingThumbs {
+export function createBuildingThumbs(sheet: SpriteSheet | undefined, seatTribe: number): BuildingThumbs {
   return {
-    paint: (canvas, typeId, boxPx) => {
+    paint: (canvas, typeId, boxPx, tribe = seatTribe) => {
       if (sheet === undefined) return false;
       const ref = boundBuildingRef(sheet.bindings.building, typeId, tribe);
       if (ref === undefined) return false;

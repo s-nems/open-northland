@@ -1,10 +1,11 @@
 import type { Recipe } from '@open-northland/data';
-import { Building, Owner, Production, Stockpile } from '../../../components/index.js';
+import { Building, Owner, Production, Settler, Stockpile } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { technologyUnlockGeneration } from '../../progression/index.js';
 import { livestockTribeOfGood } from '../../readviews/index.js';
+import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { anyCycleStartable } from './cycles.js';
 
 /**
@@ -18,6 +19,8 @@ interface GateAnswer {
   readonly building: number | undefined;
   readonly owner: number | undefined;
   readonly unlocks: number;
+  /** The bound workers' tribes in ascending worker id: the recipe gate reads them, not the house's. */
+  readonly crew: readonly (number | undefined)[];
 }
 
 interface GateMemo {
@@ -32,8 +35,8 @@ const NO_BATCHES: readonly number[] = [];
 
 /**
  * {@link anyCycleStartable}, answered from memory while a workshop keeps the stock, batches, building,
- * owner and unlocks its last answer read. A tribe without a technology table and a breeding recipe read
- * state outside those (the alive trades, the herd), so they are always asked.
+ * owner, crew tribes and unlocks its last answer read. A tribe without a technology table and a breeding
+ * recipe read state outside those (the alive trades, the herd), so they are always asked.
  */
 export function cycleStartable(
   world: World,
@@ -54,6 +57,7 @@ export function cycleStartable(
     building: world.revisionOf(building, Building),
     owner: world.revisionOf(building, Owner),
     unlocks,
+    crew: assignedWorkers(world, building).map((worker) => crewTribe(world, worker)),
   });
   return open;
 }
@@ -61,14 +65,33 @@ export function cycleStartable(
 /** Whether each recipe table breeds an animal, which reads the herd; content-keyed like the tables. */
 const breedsByRecipes = new WeakMap<ReadonlyMap<number, Recipe>, boolean>();
 
+/** A bound worker's tribe, or none for a binding that outlived its settler. */
+function crewTribe(world: World, worker: Entity): number | undefined {
+  return world.tryGet(worker, Settler)?.tribe;
+}
+
+/** Whether every tribe the recipe gate may read has a technology table: the crew's, or the house's
+ *  while nobody is bound. */
+function tribesTabled(world: World, ctx: SystemContext, building: Entity): boolean {
+  const tribes = contentIndex(ctx.content).tribes;
+  const workers = assignedWorkers(world, building);
+  if (workers.length === 0) {
+    return tribes.get(world.get(building, Building).tribe)?.technology !== undefined;
+  }
+  for (const worker of workers) {
+    const tribe = crewTribe(world, worker);
+    if (tribe !== undefined && tribes.get(tribe)?.technology === undefined) return false;
+  }
+  return true;
+}
+
 function gateKeyable(
   world: World,
   ctx: SystemContext,
   building: Entity,
   recipes: ReadonlyMap<number, Recipe>,
 ): boolean {
-  const tribe = world.get(building, Building).tribe;
-  if (contentIndex(ctx.content).tribes.get(tribe)?.technology === undefined) return false;
+  if (!tribesTabled(world, ctx, building)) return false;
   let breeds = breedsByRecipes.get(recipes);
   if (breeds === undefined) {
     breeds = [...recipes.values()].some((recipe) => {
@@ -92,6 +115,12 @@ function answerCurrent(world: World, building: Entity, answer: GateAnswer, unloc
   if ((cycles?.length ?? 0) !== answer.batches.length) return false;
   for (let i = 0; i < answer.batches.length; i++) {
     if (cycles?.[i]?.goodType !== answer.batches[i]) return false;
+  }
+  const workers = assignedWorkers(world, building);
+  if (workers.length !== answer.crew.length) return false;
+  for (let i = 0; i < workers.length; i++) {
+    const worker = workers[i];
+    if (worker === undefined || crewTribe(world, worker) !== answer.crew[i]) return false;
   }
   return true;
 }

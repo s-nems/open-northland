@@ -1,6 +1,5 @@
 import type { Recipe } from '@open-northland/data';
 import {
-  Building,
   CARRY_CAPACITY,
   CurrentAtomic,
   inPastimeChat,
@@ -15,7 +14,7 @@ import {
   shelfBlockedOutput,
   skipUnfundedRecipe,
 } from '../../../../economy/production.js';
-import { recipeOutputsEnabled } from '../../../../progression/index.js';
+import { operatorRecipeEnabled } from '../../../../progression/index.js';
 import { planGossipIdle } from '../../../../social/index.js';
 import { assignedWorkers } from '../../../../stores/assigned-workers.js';
 import { isWorkplaceOperator, mergedRecipeOf } from '../../../../stores/index.js';
@@ -161,13 +160,12 @@ export function planProducer(
   // A startable cheap recipe must not consume every incoming unit while another open recipe waits
   // for more of that input. A worker with no batch to advance brings the missing unit first, unless a
   // colleague's errand already brings it.
-  const tribe = world.get(workplace, Building).tribe;
   const crewShortfall: InputShortfall = {
     restockToCapacity: false,
     inbound: (good) => seatClaims.inboundOf(plan, workplace, good),
   };
   for (const candidate of seatClaims.recipesFor(world, ctx, workplace)) {
-    if (!recipeOutputsEnabled(world, ctx, plan.owner, tribe, candidate)) continue;
+    if (!operatorRecipeEnabled(world, ctx, workplace, plan.entity, candidate)) continue;
     if (outputRoomForCycles(world, ctx, workplace, candidate) <= 0) continue;
     const source = nearestMissingInputSource(plan, workplace, candidate, crewShortfall);
     if (source !== null) {

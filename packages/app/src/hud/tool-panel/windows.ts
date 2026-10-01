@@ -10,6 +10,7 @@ import { createDiplomacyWindow, type DiplomacyPanelRow } from './diplomacy/index
 import { createExtrasWindow, type ExtrasCountersSeam, type ExtrasGrantsSeam } from './extras-window.js';
 import type { HeldPaperController } from './held-paper.js';
 import type { PendingWindow } from './pending-window.js';
+import type { BuildingPick } from './placement.js';
 import type { ResidentsWindowState } from './residents/rows.js';
 import { createStatsWindow } from './stats-window.js';
 import type { ClickModifiers, ToolWindow } from './window-shell.js';
@@ -31,8 +32,8 @@ interface ToolWindowEntry {
  *  registry routes. */
 export interface ConstructionWindowSeam {
   readonly entries: readonly MenuBuildingEntry[];
-  readonly onPick: (typeId: number) => void;
-  readonly onPickPaper: (paper: Paper) => void;
+  readonly onPick: (typeId: number, tribe: number) => void;
+  readonly onPickPaper: (paper: Paper, tribe: number) => void;
   readonly onHelp: (typeId: number) => void;
 }
 
@@ -59,8 +60,8 @@ export interface ToolWindowsDeps {
   readonly onDeclareDiplomacy: (player: number, state: DiplomacyState) => void;
   /** The place-any plan the construction window holds for its next catalogue pick. */
   readonly heldPaper: HeldPaperController;
-  /** A building was picked for placement; `paper` is the plan the placement spends, when one is held. */
-  readonly onPickBuilding: (typeId: number, paper?: Paper) => void;
+  /** A building was picked for placement, with the plan the placement spends when one is held. */
+  readonly onPickBuilding: (pick: BuildingPick) => void;
 }
 
 export interface ToolWindows {
@@ -121,18 +122,14 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   };
   const menu = deps.constructionWindow({
     entries: deps.buildings,
-    onPick: (typeId) => {
-      const paper = heldPaper.take();
-      if (paper === null) deps.onPickBuilding(typeId);
-      else deps.onPickBuilding(typeId, paper);
-    },
+    onPick: (typeId, tribe) => deps.onPickBuilding({ typeId, tribe, paper: heldPaper.take() }),
     // A plan naming its house goes straight to placement; a place-any plan is held for the catalogue
     // pick, as the original's papers window does. The plan pays for the house, and nothing more: the
     // catalogue keeps its technology locks (the original's selection window keeps them too).
-    onPickPaper: (paper) => {
+    onPickPaper: (paper, tribe) => {
       heldPaper.cancel(); // a plan already in hand goes back: one plan at a time
       if (paper.kind === 'placeAny') heldPaper.hold(paper);
-      else deps.onPickBuilding(paper.param, paper);
+      else deps.onPickBuilding({ typeId: paper.param, tribe, paper });
     },
     // The building's Knowledge page is the knowledge ticket's; until then the pending note stands in.
     onHelp: () => openOnly(knowledge),

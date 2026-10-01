@@ -48,10 +48,17 @@ export interface GatePreview {
 /** The owner and tribe a wall line lays for. */
 type PalisadeSide = { readonly owner: number; readonly tribe: number };
 
+/** A building held for placement: its type, the nation whose house it is (its look, footprint and
+ *  gate), and the plan paying for it, if any. */
+export interface BuildingPick {
+  readonly typeId: number;
+  readonly tribe: number;
+  readonly paper: Paper | null;
+}
+
 /** A held placement, carried through a HUD remount. */
 export interface PlacementState {
-  readonly type: number | null;
-  readonly paper: Paper | null;
+  readonly building: BuildingPick | null;
   readonly palisade: {
     readonly gfxIndex: number;
     readonly mode: PalisadePlacementMode;
@@ -71,7 +78,13 @@ export interface GateSites extends LitNodes {
 
 /** The placement rules as a click asks them: each awaits the sim's answer as of now. */
 export interface PlacementClickAsks {
-  readonly askPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => Promise<boolean>;
+  readonly askPlaceAt: (
+    typeId: number,
+    tribe: number,
+    col: number,
+    row: number,
+    paper?: Paper,
+  ) => Promise<boolean>;
   /** Resolves once the wall answers within `reach` nodes of `anchor` and `owner`'s built nodes are
    *  current, so the line decided next reads them through the synchronous rules. */
   readonly palisadeLineReady: (
@@ -111,9 +124,9 @@ export interface PlacementDeps {
   readonly enqueue: (command: PlayerCommand) => void;
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
-  /** The sim's live placement rule for the held type at a tile (`SessionHost.placementProbe`); a click on
-   *  a rejecting tile is inert, so build mode only ends on a placement that lands. */
-  readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
+  /** The sim's live placement rule for the held type and nation at a tile (`SessionHost.placementProbe`);
+   *  a click on a rejecting tile is inert, so build mode only ends on a placement that lands. */
+  readonly canPlaceAt: (typeId: number, tribe: number, col: number, row: number, paper?: Paper) => boolean;
   /** Where a wall segment may stand; with `overUpgradeGround`, on ground a building keeps for its
    *  upgrade too. */
   readonly canPlacePalisadeAt?: (
@@ -144,8 +157,9 @@ export interface PlacementDeps {
   /** The rules a click decides on, asked of the sim as it lands; absent, a click decides on the
    *  synchronous rules above. */
   readonly clickAsks?: PlacementClickAsks;
-  /** The tribe + player a placed building belongs to. */
+  /** The seat's own tribe, which roads and walls lay for; a building takes its pick's. */
   readonly tribe: number;
+  /** The player a placed building, road or wall belongs to. */
   readonly owner: number;
   /** A building placement was called off (Esc, the right button, a beam entry) with nothing placed;
    *  `paper` is the unspent plan it was to pay with, for the owner to take back into hand. A wall or
@@ -160,16 +174,14 @@ export interface PlacementDeps {
  *  cuts one gate into a finished run and exits like a building. */
 export interface PlacementController {
   isActive(): boolean;
-  /** The building typeId currently being placed, or null when not in placement. */
-  activeType(): number | null;
-  /** The paper paying for the active placement, or null for an ordinary construction site. */
-  activePaper(): Paper | null;
+  /** The building being placed, or null when not in placement. */
+  activeBuilding(): BuildingPick | null;
   activePalisade(): number | null;
   activePalisadeMode(): PalisadePlacementMode | null;
   /** The road tool is held. */
   activeRoad(): boolean;
-  /** Hold `typeId` for placement; a `paper` rides the placement command and buys a finished building. */
-  enter(typeId: number, paper?: Paper): void;
+  /** Hold a building for placement; its paper rides the placement command and buys it finished. */
+  enter(pick: BuildingPick): void;
   /** Hold a wall or gate row; `owner` and `tribe` override the seat's for an admin standing-wall line. */
   enterPalisade(gfxIndex: number, mode: PalisadePlacementMode, side?: PalisadeSide): void;
   /** Hold the road tool: a line of road sites, one per node, for the seat. */
@@ -212,8 +224,7 @@ export interface PlacementController {
 export function createPlacementController(deps: PlacementDeps): PlacementController {
   const { ctx, strip } = deps;
 
-  let placementType: number | null = null;
-  let placementPaper: Paper | null = null;
+  let building: BuildingPick | null = null;
   let straight = false;
   let erase = false;
   /** A wall or road line may take upgrade ground; dropped with the tool. */
@@ -273,8 +284,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   };
 
   const exitPlacement = (): void => {
-    placementType = null;
-    placementPaper = null;
+    building = null;
     palisade = null;
     road = null;
     overUpgradeGround = false;
@@ -388,16 +398,12 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   let disposed = false;
   const decideLater = <T>(answer: Promise<T>, then: (value: T) => void): void => {
     deciding = true;
-    const armed = { type: placementType, paper: placementPaper, palisade, road };
+    const armed = { building, palisade, road };
     // A host that fails to answer is reported where the answer is cached; the click then places nothing.
     void answer
       .then(
         (value) => {
-          const unchanged =
-            placementType === armed.type &&
-            placementPaper === armed.paper &&
-            palisade === armed.palisade &&
-            road === armed.road;
+          const unchanged = building === armed.building && palisade === armed.palisade && road === armed.road;
           if (!disposed && unchanged) then(value);
         },
         () => undefined,
@@ -407,13 +413,13 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       });
   };
 
-  const placeBuilding = (typeId: number, paper: Paper | null, tile: LineNode): void => {
+  const placeBuilding = ({ typeId, tribe, paper }: BuildingPick, tile: LineNode): void => {
     deps.enqueue({
       kind: 'placeBuilding',
       buildingType: typeId,
       x: tile.col,
       y: tile.row,
-      tribe: deps.tribe,
+      tribe,
       owner: deps.owner,
       // The foundation stands at 0% and builders raise it, unless a paper pays for it finished.
       underConstruction: true,
@@ -434,21 +440,19 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     else spec.showStrip();
   };
 
-  const enter = (typeId: number, paper?: Paper): void => {
-    placementType = typeId;
-    placementPaper = paper ?? null;
+  const enter = (pick: BuildingPick): void => {
+    building = pick;
     palisade = null;
     road = null;
     const copy = messages().hud.construction;
     strip.show({
-      label: deps.labelByType.get(typeId) ?? `#${typeId}`,
-      hint: paper === undefined ? copy.placeHint : copy.placePaperHint,
+      label: deps.labelByType.get(pick.typeId) ?? `#${pick.typeId}`,
+      hint: pick.paper === null ? copy.placeHint : copy.placePaperHint,
     });
   };
 
   const enterPalisade = (gfxIndex: number, mode: PalisadePlacementMode, side?: PalisadeSide): void => {
-    placementType = null;
-    placementPaper = null;
+    building = null;
     const held = side ?? { owner: deps.owner, tribe: deps.tribe };
     road = null;
     overUpgradeGround = false;
@@ -457,8 +461,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   };
 
   const enterRoad = (): void => {
-    placementType = null;
-    placementPaper = null;
+    building = null;
     palisade = null;
     road = roadLine();
     overUpgradeGround = false;
@@ -467,9 +470,8 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   };
 
   return {
-    isActive: () => placementType !== null || palisade !== null || road !== null,
-    activeType: () => placementType,
-    activePaper: () => placementPaper,
+    isActive: () => building !== null || palisade !== null || road !== null,
+    activeBuilding: () => building,
     activePalisade: () => palisade?.gfxIndex ?? null,
     activePalisadeMode: () => palisade?.mode ?? null,
     activeRoad: () => road !== null,
@@ -477,11 +479,10 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     enterPalisade,
     enterRoad,
     cancel: (): void => {
-      if (placementType === null && palisade === null && road === null) return;
-      const building = placementType !== null;
-      const paper = placementPaper;
+      if (building === null && palisade === null && road === null) return;
+      const cancelled = building;
       exitPlacement();
-      if (building) deps.onCancel?.(paper);
+      if (cancelled !== null) deps.onCancel?.(cancelled.paper);
     },
     stepBack: (): boolean => {
       if (road !== null && (roadCancel.stepBack() || road.stepBack())) {
@@ -510,7 +511,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       showRoadStrip();
     },
     handleClick: (clientX, clientY, mods): boolean => {
-      if (placementType === null && palisade === null && road === null) return false;
+      if (building === null && palisade === null && road === null) return false;
       if (deciding) return true;
       const tile = deps.screenToTile(clientX, clientY);
       const asks = deps.clickAsks;
@@ -546,15 +547,14 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
         }
         return true;
       }
-      if (placementType === null || tile === null) return true;
-      const typeId = placementType;
-      const paper = placementPaper;
+      if (building === null || tile === null) return true;
+      const pick = building;
+      const paper = pick.paper ?? undefined;
       if (asks === undefined) {
-        if (deps.canPlaceAt(typeId, tile.col, tile.row, paper ?? undefined))
-          placeBuilding(typeId, paper, tile);
+        if (deps.canPlaceAt(pick.typeId, pick.tribe, tile.col, tile.row, paper)) placeBuilding(pick, tile);
       } else {
-        decideLater(asks.askPlaceAt(typeId, tile.col, tile.row, paper ?? undefined), (ok) => {
-          if (ok) placeBuilding(typeId, paper, tile);
+        decideLater(asks.askPlaceAt(pick.typeId, pick.tribe, tile.col, tile.row, paper), (ok) => {
+          if (ok) placeBuilding(pick, tile);
         });
       }
       return true;
@@ -588,8 +588,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     },
     gateSites: () => (palisade?.mode === 'gate' ? (deps.palisadeGateSites?.() ?? null) : null),
     state: () => ({
-      type: placementType,
-      paper: placementPaper,
+      building,
       palisade:
         palisade === null ? null : { gfxIndex: palisade.gfxIndex, mode: palisade.mode, side: palisade.side },
       road: road !== null,
@@ -598,7 +597,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       disposed = true;
     },
     restore: (state): void => {
-      if (state.type !== null) enter(state.type, state.paper ?? undefined);
+      if (state.building !== null) enter(state.building);
       else if (state.palisade !== null)
         enterPalisade(state.palisade.gfxIndex, state.palisade.mode, state.palisade.side);
       else if (state.road) enterRoad();

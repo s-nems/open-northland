@@ -87,6 +87,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
 
     unlockStatus: (kind, typeId, tribe, player) =>
       Promise.resolve(sim.unlockStatus(kind, typeId, tribe, player)),
+    buildTribes: (player) => Promise.resolve(sim.buildTribes(player)),
     canChooseJob: (entity, jobType) => Promise.resolve(sim.canChooseJob(entity, jobType)),
     hasEarnedGood: (entity, goodType) => Promise.resolve(sim.hasEarnedGood(entity, goodType)),
     equipPickList: (entity, group) => Promise.resolve(sim.equipPickList(entity, group)),
