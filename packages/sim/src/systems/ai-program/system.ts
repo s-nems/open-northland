@@ -65,7 +65,9 @@ export const aiProgramSystem: System = (world, ctx) => {
   // The towers' claim on the free archers, judged as the seat's defence will judge it.
   const owned = ownedBuildings(world, seat);
   const ready = takeCensus(world, ctx, seat).ready;
-  const raiders = seatRaiders(world, ctx, terrain, seat);
+  // Looked up only once a tower or a town pass asks: the whole-world scan rarely shares the military's tick.
+  let raiderList: readonly Raider[] | null = null;
+  const raiders = (): readonly Raider[] => (raiderList ??= seatRaiders(world, ctx, terrain, seat));
   const wanted = towerPostOrders(world, ctx, terrain, owned, ready, 'scripted', raiders).claimed;
   updateSoldierList(world, ctx, seat, program.soldiers, wanted);
   clearInvalidTasks(defs, groups, program.soldiers);
@@ -107,18 +109,18 @@ function townOrders(
   seat: number,
   script: MapAiSeat | undefined,
   houses: readonly AiHouseRecord[],
-  raiders: readonly Raider[],
+  raiders: () => readonly Raider[],
   turn: number,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const staff = !aiModuleRuns(world, seat, 'collectResources');
   const house = !aiModuleRuns(world, seat, 'homeExpansion');
   if (turn % REBUILD_EVERY_TURNS === 0 && !aiModuleRuns(world, seat, 'houseBuild')) {
-    commands.push(...rebuildOrders(world, ctx, terrain, seat, houses, raiders));
+    commands.push(...rebuildOrders(world, ctx, terrain, seat, houses, raiders()));
   }
-  if (turn % TOWN_EVERY_TURNS === 0) {
+  if (turn % TOWN_EVERY_TURNS === 0 && (staff || house)) {
     if (staff) holdTownGoods(world, ctx, seat);
-    commands.push(...townStaffingOrders(world, ctx, terrain, seat, raiders, { staff, house }));
+    commands.push(...townStaffingOrders(world, ctx, terrain, seat, raiders(), { staff, house }));
   }
   if (turn % FAMILY_EVERY_TURNS === 0 && house) commands.push(...familyOrders(world, ctx, seat, script));
   return commands;
@@ -180,7 +182,7 @@ function startProgram(
     tasks: [],
     soldiers: [],
     groups: [],
-    houses: rebuildList(world, seat),
+    houses: rebuildList(world, ctx, seat),
   });
   return e;
 }

@@ -607,40 +607,53 @@ program orders them back once they stand idle, so a raider sitting out of reach 
 has a posted man pace between the two until it leaves (approximation: the original runs no raid
 defence beside the program).
 
+Every radius below is a hex distance between map points, the radius itself included.
+
 The scripted AI mans the seat's finished towers with one free soldier of each bow class the tower
-offers a post for, and with every post while the tower is in defence mode, which an attack within 40
-points raises and which drops 360 ticks after the last one; a tower holding more than it keeps sends
-one man of the class out per visit. It visits one tower a turn and takes men within 20 points of it.
-The radii here and below are read as map points, unconfirmed against the running original.
-This build mans every tower each decision, one man per tower a round so a short garrison spreads over
-all of them, takes the nearest free archer it can reach for the peace posts and only one within 20
-points for the extra ones, and reads defence mode as an enemy fighter inside the tower's watch band,
-the extra men leaving once none stands within a further margin
-(`ai-player/military/defence/posts.ts`).
+offers a post for, and with every post while the tower is in defence mode. A blow on the seat puts
+every finished tower within 40 points of it in defence mode and mans it at once; the mode drops on all
+the seat's towers together 360 ticks after the seat's last blow. Each turn it walks the towers in turn
+from the one after the last it manned, sending one man of each class out of a tower holding more than
+it keeps, until one tower gains men, and takes only soldiers within 20 points. This build mans every
+tower each decision, one man per tower a round so a short garrison spreads over all of them, takes the
+nearest free archer it can reach for the peace posts and only one within 20 points for the extra ones,
+and reads defence mode per tower as an enemy fighter inside its watch band, the extra men leaving once
+none stands within a further margin (`ai-player/military/defence/posts.ts`).
 
 The scripted AI also keeps its town (this build: `systems/ai-program/town.ts`, `families.ts` and
-`rebuild.ts`, each pass only while the strategic module owning that concern is off). On its first
-turn it remembers the seat's first 100 houses. Every third turn, while fewer than three of the seat's
-houses are unfinished, it lays a site for each remembered house with none of its type left within 12
-points, on a free spot within 12 points, when no enemy stands within 40 points and one of the seat's
-people does. Every sixth turn it writes 5 over every stock slot of its finished warehouses, a fuller
-shelf cut down too; puts a man on each trade a finished house other than a home or tower employs
-nobody in, the nearest within 80 points, retraining him; turns men within 400 points builders for
-the unfinished and damaged houses, up to each one's builder count; and moves the nearest homeless
-woman within 80 points into each home with a free family slot, skipping a house with an enemy within
-40 points. Every twelfth turn it sends every single woman to marry, and has each married woman at home
-whose larder holds more than 2 `food_simple` bear a child while the seat's civilian men stay under
-`AI_UnitLimit` and its whole people under `AI_MaxUnitLimit`: a girl while the adult women number under
-a third of the civilian men, else a boy. This build matches a standing house to one remembered house
-of its upgrade line, the one on its own anchor first, so a razed house among others of its type is
-raised again; lays the highest tier at or below the remembered one the seat may place, never a type
-without a construction cost; posts the men already in a trade to it before drawing builders, and takes
-a plain man before a builder and a builder before a craftsman of another trade, where the original
-takes the nearest man; houses a woman only in a home of her tribe; on the same sixth turn fills each
-finished workshop's recipe inputs to capacity and cuts its products to half their slot, so a craftsman
-works on whatever the carriers manage to haul, where the original's workshops run on the haul alone;
-skips the gatherers' and fishers'
-posts, whose holders would roam without a flag; and leaves enemy vehicles out of the enemy tests.
+`rebuild.ts`, each pass only while the strategic module owning that concern is off):
+
+- First turn: it remembers the seat's first 100 houses.
+- Every third turn, while fewer than three of the seat's houses are unfinished: a site for each
+  remembered house with no house of its upgrade line within 12 points, on a free spot within 12
+  points, when no enemy stands within 40 points and one of the seat's civilians does. A tier without a
+  construction cost is never raised.
+- Every sixth turn: 5 written over every stock slot of its finished warehouses, a fuller shelf cut down
+  too; one man, the nearest within 80 points and retrained, for the first trade a finished house other
+  than a home or tower employs nobody in; builders turned from men within 400 points, a site's full
+  crew and 2 for a damaged house; the nearest homeless woman within 80 points moved into each home with
+  a free family slot. A house with an enemy within 40 points is skipped.
+- Every twelfth turn: every single woman sent to marry, and each married woman at home whose larder
+  holds more than 2 `food_simple` bears a child while the seat's civilian men stay under
+  `AI_UnitLimit` and its whole people under `AI_MaxUnitLimit`: a girl while the adult women number
+  under a third of the civilian men, else a boy. A girl ends the pass.
+
+This build departs from it here:
+
+- A standing house answers for one remembered house, the one on its own anchor first, so a razed house
+  among others of its line is raised again; a spot inside enemy tower fire is refused; the site is the
+  highest tier at or below the remembered one the seat may place.
+- Every open trade of every house is posted each pass, and every free family slot filled, where the
+  original posts one man per house and houses one woman per home a pass.
+- The men already in a trade are posted to it before builders are drawn, and a plain man goes before a
+  builder and a builder before a craftsman of another trade, where the original takes the nearest man.
+- A woman is housed only in a home of her tribe; marriages go out only as many as there are single men.
+- Each finished workshop's recipe inputs are filled to capacity and its products cut to half their slot,
+  so a craftsman always works; the original's workshops run on what the carriers haul.
+- The gatherers' and fishers' posts stay open, since their holders would roam without a flag.
+- Enemy vehicles are left out of the enemy tests.
+- Not run here: the gates closing while an enemy is within 40 points, the remembered walls raised
+  again, builders for road plans, and the houses a mission result hands the seat joining its list.
 
 ## Tributes
 
@@ -748,9 +761,9 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   visit, where the original's trader is still owed the rest; a chosen agreement that stops holding is kept and waited on, where the original's
   merchant drops its choice; for a seat that runs the strategic economy, the handler's refill
   (`systems/trade/partner-stock.ts`) tops up only the goods an agreement pays out at the house and
-  cuts nothing down, so that economy runs on what it produces; a seat whose map switched it off gets
-  the full refill (see [AI data](#ai-data)). The table holds rows and resolves their houses live, so a row
-  several houses carry costs one entry here and one per house there. The tally is `TradeLedger`,
+  cuts nothing down, so that economy runs on what it produces; a seat whose map switched off both it
+  and the strategic military gets the full refill (see [AI data](#ai-data)). The table holds rows and
+  resolves their houses live, so a row several houses carry costs one entry here and one per house there. The tally is `TradeLedger`,
   saved with the game; the diplomacy window prints it (`miscwindow` 360) at its foot for a player
   both sides hold as `friend`, the one case the original's window draws the line in (byte-level). Above
   that line the window lists what the selected player's houses trade, each agreement once

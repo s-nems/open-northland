@@ -21,7 +21,9 @@ const MEN_PER_WOMAN = 3;
  * The scripted handler's family pass (original behavior): every single woman is sent to marry, and every
  * wife at home with food in the larder has a child while the seat's civilian men stay under the script's
  * unit limit and its whole people under the max unit limit (0 for none). The child is a girl while women
- * number under a third of the civilian men, else a boy.
+ * number under a third of the civilian men, else a boy, and a girl ends the pass, so at most one is
+ * ordered a turn. The marriages here go out before any child and only as many as there are single men;
+ * the original orders both in one walk over its women.
  */
 export function familyOrders(
   world: World,
@@ -63,6 +65,7 @@ export function familyOrders(
     const larder = home === undefined ? undefined : world.tryGet(home, Stockpile)?.amounts.get(food);
     if ((larder ?? 0) <= HOME_FOOD_FOR_CHILD) continue;
     commands.push({ kind: 'makeChild', entity: wife, child });
+    if (child === 'female') break;
   }
   return commands;
 }

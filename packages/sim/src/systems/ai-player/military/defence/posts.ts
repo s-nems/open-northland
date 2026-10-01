@@ -2,12 +2,11 @@ import { Building, Settler } from '../../../../components/index.js';
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { hexDistanceBetween } from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { isFighterJob } from '../../../readviews/index.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
-import { manhattan } from '../../../spatial/metric.js';
+import { hexNodeDistance, manhattan } from '../../../spatial/metric.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { assignedWorkers } from '../../../stores/assigned-workers.js';
 import { isBuilt } from '../../seat-roster.js';
@@ -71,7 +70,7 @@ export function towerPostOrders(
   owned: readonly Entity[],
   ready: readonly Entity[],
   rule: TowerCrewRule,
-  raiders: readonly Raider[],
+  raiders: () => readonly Raider[],
 ): PostOrders {
   const commands: PlayerCommand[] = [];
   const claimed = new Set<Entity>();
@@ -132,7 +131,7 @@ function standingWalls(
   terrain: TerrainGraph,
   owned: readonly Entity[],
   rule: TowerCrewRule,
-  raiders: readonly Raider[],
+  raiders: () => readonly Raider[],
 ): Wall[] {
   const walls: Wall[] = [];
   for (const tower of owned) {
@@ -159,10 +158,11 @@ function standingWalls(
     }
     const at = terrain.coordsOf(door);
     const watch = threatWatchNodes(ctx, tribe) + THREAT_STAND_DOWN_MARGIN_NODES;
-    const threatened = nearestRaiderWithin(raiders, at.x, at.y, watch, null) !== null;
+    const near = raiders();
+    const threatened = nearestRaiderWithin(near, at.x, at.y, watch, null) !== null;
     const calm =
       !threatened &&
-      nearestRaiderWithin(raiders, at.x, at.y, watch + THREAT_STAND_DOWN_MARGIN_NODES, null) === null;
+      nearestRaiderWithin(near, at.x, at.y, watch + THREAT_STAND_DOWN_MARGIN_NODES, null) === null;
     const peace = new Map<number, number>();
     for (const [job, count] of slots) peace.set(job, Math.min(count, SCRIPTED_PEACE_ARCHERS_PER_CLASS));
     walls.push({
@@ -248,7 +248,7 @@ function nearestFreeArcher(
     if (terrain.componentOf(at) !== reachable) continue;
     if (
       held >= (wall.open.get(jobType) ?? 0) &&
-      hexDistance(terrain, at, wall.door) > SCRIPTED_DEFENCE_REACH_POINTS
+      hexNodeDistance(terrain, at, wall.door) > SCRIPTED_DEFENCE_REACH_POINTS
     )
       continue;
     const distance = manhattan(terrain, at, wall.door);
@@ -257,10 +257,4 @@ function nearestFreeArcher(
     bestDistance = distance;
   }
   return best;
-}
-
-function hexDistance(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
-  const from = terrain.coordsOf(a);
-  const to = terrain.coordsOf(b);
-  return hexDistanceBetween(from.x, from.y, to.x, to.y);
 }

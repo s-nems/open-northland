@@ -18,7 +18,7 @@ import type { PlayerCommand } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween } from '../../nav/halfcell.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { nearestRaiderWithin, type Raider } from '../ai-player/military/defence/threat.js';
 import { isBuilt, ownedBuildings, ownedSettlers } from '../ai-player/seat-roster.js';
 import { builderJobOf, classifyWorkforce } from '../ai-player/workforce/pool.js';
@@ -30,6 +30,7 @@ import { isAdultSettler } from '../family/eligibility.js';
 import { familiesOf } from '../family/households.js';
 import { isFighterJob, isFisherJob } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
+import { type NavigationLimit, navigationLimitFor } from '../signposts/index.js';
 import { entityNode } from '../spatial/nodes.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
 import { isCarrierJob } from '../stores/index.js';
@@ -43,13 +44,25 @@ export const TOWN_ENEMY_NEAR_POINTS = 40;
 export const TOWN_HIRE_RADIUS_POINTS = 80;
 /** How far it looks for a man to turn builder. Original behavior. */
 export const TOWN_BUILDER_RADIUS_POINTS = 400;
+/** Builders the handler sends to mend one damaged building a pass, a wall's own crew limit below it.
+ *  Original behavior. */
+export const TOWN_REPAIR_BUILDERS = 2;
+/** The town pass leaves a workshop's product slot filled to its capacity over this, so its carrier still
+ *  has goods to walk to the store. */
+const KEPT_PRODUCT_DIVISOR = 2;
 
-/** A building or person of the seat with the node it is reached at. */
+/** A building of the seat with the node it is reached at. */
 interface Placed {
   readonly entity: Entity;
+  readonly node: NodeId;
   readonly x: number;
   readonly y: number;
   readonly component: number;
+}
+
+/** A person of the seat where it stands, and the signposts' bounds on where it may be sent. */
+interface PlacedPerson extends Placed {
+  readonly limit: NavigationLimit | null;
 }
 
 /**
@@ -73,11 +86,12 @@ export function townStaffingOrders(
   if (staff) {
     // Craftsmen take their own trades before the builders are drawn, so a site never retrains the baker
     // a bakery is waiting for; the other posts take whoever is left after the builders.
+    const skilled = skilledTrades(ctx);
     const men = spareMen(world, ctx, terrain, seat);
     const posts = openPosts(world, ctx, terrain, seat, safe);
-    commands.push(...postOrders(world, ctx, men, posts, true));
-    commands.push(...builderOrders(world, ctx, terrain, seat, men, safe));
-    commands.push(...postOrders(world, ctx, men, posts, false));
+    commands.push(...postOrders(world, ctx, skilled, men, posts, true));
+    commands.push(...builderOrders(world, ctx, terrain, seat, skilled, men, safe));
+    commands.push(...postOrders(world, ctx, skilled, men, posts, false));
   }
   if (house) commands.push(...homeOrders(world, ctx, terrain, seat, safe));
   return commands;
@@ -110,7 +124,7 @@ export function holdTownGoods(world: World, ctx: SystemContext, seat: number): v
       if (recipeConsumes(recipe.inputs, slot.goodType)) {
         setStockAmount(world, e, slot.goodType, slot.capacity);
       } else if (recipe.outputs.some((out) => out.goodType === slot.goodType)) {
-        const kept = Math.trunc(slot.capacity / 2);
+        const kept = Math.trunc(slot.capacity / KEPT_PRODUCT_DIVISOR);
         if ((amounts.get(slot.goodType) ?? 0) > kept) setStockAmount(world, e, slot.goodType, kept);
       }
     }
@@ -118,39 +132,46 @@ export function holdTownGoods(world: World, ctx: SystemContext, seat: number): v
 }
 
 /** The seat's men free to take a post or turn builder, in canonical order. */
-function spareMen(world: World, ctx: SystemContext, terrain: TerrainGraph, seat: number): Placed[] {
-  const men: Placed[] = [];
+function spareMen(world: World, ctx: SystemContext, terrain: TerrainGraph, seat: number): PlacedPerson[] {
+  const men: PlacedPerson[] = [];
   for (const e of classifyWorkforce(world, ctx, seat, []).pool) {
     // A gatherer at his live flag is working already.
     if (world.has(e, SiteAssignment) || world.has(e, Wedding) || liveWorkFlag(world, e) !== undefined)
       continue;
-    men.push(placedPerson(world, terrain, e));
+    men.push(placedPerson(world, ctx, terrain, e));
   }
   return men;
 }
 
 /** Turn the nearest spare men builders until the sites and repairs have their crews; the builders find
- *  their sites themselves. */
+ *  their sites themselves. A workshop's vehicle yard is its own crew's work and wants no builder. */
 function builderOrders(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   seat: number,
-  men: Placed[],
+  skilled: ReadonlySet<number>,
+  men: PlacedPerson[],
   safe: (at: Placed) => boolean,
 ): PlayerCommand[] {
   const builderJob = builderJobOf(ctx);
   if (builderJob === null) return [];
-  const skilled = skilledTrades(ctx);
+  const index = contentIndex(ctx.content);
   const sites: { at: Placed; crew: number }[] = [];
-  const consider = (e: Entity): void => {
-    if (ownerOf(world, e) !== seat) return;
+  const consider = (e: Entity, crew: number): void => {
     const at = placedBuilding(world, ctx, terrain, e);
-    if (safe(at)) sites.push({ at, crew: repairCrewLimit(world, e) });
+    if (safe(at)) sites.push({ at, crew });
   };
-  for (const e of world.query(UnderConstruction)) if (world.has(e, Building)) consider(e);
-  for (const e of world.query(Damaged))
-    if (!world.has(e, UnderConstruction) && needsRepair(world, e)) consider(e);
+  for (const e of ownedBuildings(world, seat)) {
+    const kind = index.buildings.get(world.get(e, Building).buildingType)?.kind;
+    if (world.has(e, UnderConstruction) && kind !== BUILDING_KIND.vehicle)
+      consider(e, repairCrewLimit(world, e));
+  }
+  // Damaged walls carry no Building, so the repairs come from the damage index.
+  for (const e of world.query(Damaged)) {
+    if (ownerOf(world, e) !== seat || world.has(e, UnderConstruction) || !needsRepair(world, e)) continue;
+    consider(e, Math.min(repairCrewLimit(world, e), TOWN_REPAIR_BUILDERS));
+  }
   if (sites.length === 0) return [];
   let idle = 0;
   for (const e of ownedSettlers(world, seat)) {
@@ -183,12 +204,12 @@ function builderOrders(
 function postOrders(
   world: World,
   ctx: SystemContext,
-  men: Placed[],
+  skilled: ReadonlySet<number>,
+  men: PlacedPerson[],
   posts: OpenPost[],
   sameTradeOnly: boolean,
 ): PlayerCommand[] {
   const builderJob = builderJobOf(ctx);
-  const skilled = skilledTrades(ctx);
   const commands: PlayerCommand[] = [];
   for (let i = 0; i < posts.length && men.length > 0; ) {
     const post = posts[i];
@@ -233,7 +254,7 @@ function openPosts(
   for (const building of ownedBuildings(world, seat)) {
     if (!isBuilt(world, building)) continue;
     const type = index.buildings.get(world.get(building, Building).buildingType);
-    if (type === undefined || type.kind === 'home' || type.kind === 'tower') continue;
+    if (type === undefined || type.kind === BUILDING_KIND.home || type.kind === BUILDING_KIND.tower) continue;
     const held = new Set<number | null>();
     for (const e of assignedWorkers(world, building)) held.add(world.tryGet(e, Settler)?.jobType ?? null);
     const trades = type.workers.filter(
@@ -280,7 +301,8 @@ function skilledTrades(ctx: SystemContext): Set<number> {
   return trades;
 }
 
-/** Whether `assignWorker` would give `e` the `jobType` post at `building`. */
+/** Whether `assignWorker` would give `e` the `jobType` post at `building`, past the signpost bound
+ *  {@link takeBest} already applied. */
 function takesPost(world: World, ctx: SystemContext, e: Entity, building: Entity, jobType: number): boolean {
   const settler = world.get(e, Settler);
   const progress = world.get(e, SettlerProgress);
@@ -306,18 +328,18 @@ function homeOrders(
   safe: (at: Placed) => boolean,
 ): PlayerCommand[] {
   const index = contentIndex(ctx.content);
-  const women: Placed[] = [];
+  const women: PlacedPerson[] = [];
   for (const e of ownedSettlers(world, seat)) {
     if (!world.has(e, Female) || !isAdultSettler(world, e) || world.has(e, Residence)) continue;
     if (isFighterJob(ctx.content, world.get(e, Settler).jobType)) continue;
-    women.push(placedPerson(world, terrain, e));
+    women.push(placedPerson(world, ctx, terrain, e));
   }
   const commands: PlayerCommand[] = [];
   for (const house of ownedBuildings(world, seat)) {
     if (women.length === 0) break;
     if (!isBuilt(world, house)) continue;
     const type = index.buildings.get(world.get(house, Building).buildingType);
-    if (type?.kind !== 'home') continue;
+    if (type?.kind !== BUILDING_KIND.home) continue;
     const at = placedBuilding(world, ctx, terrain, house);
     if (!safe(at)) continue;
     for (let free = type.homeSize - familiesOf(world, house).length; free > 0; free--) {
@@ -336,8 +358,9 @@ function homeOrders(
 type Rank = (e: Entity) => number | null;
 
 /** Remove and return the person of `people` on `at`'s ground within `radius` of best rank, the nearest
- *  among those and the first in canonical order on a tie, or null. */
-function takeBest(people: Placed[], at: Placed, radius: number, rank: Rank): Entity | null {
+ *  among those and the first in canonical order on a tie, or null. A person whose signposts keep him
+ *  from `at` never qualifies, since the order would be refused and the same pick repeated every pass. */
+function takeBest(people: PlacedPerson[], at: Placed, radius: number, rank: Rank): Entity | null {
   let best = -1;
   let bestRank = Number.POSITIVE_INFINITY;
   let bestDistance = Number.POSITIVE_INFINITY;
@@ -345,6 +368,7 @@ function takeBest(people: Placed[], at: Placed, radius: number, rank: Rank): Ent
     if (person.component !== at.component) continue;
     const distance = hexDistanceBetween(person.x, person.y, at.x, at.y);
     if (distance > radius) continue;
+    if (person.limit !== null && !person.limit.allowsNode(at.node)) continue;
     const standing = rank(person.entity);
     if (standing === null || standing > bestRank || (standing === bestRank && distance >= bestDistance))
       continue;
@@ -357,12 +381,18 @@ function takeBest(people: Placed[], at: Placed, radius: number, rank: Rank): Ent
   return taken?.entity ?? null;
 }
 
-function placedPerson(world: World, terrain: TerrainGraph, e: Entity): Placed {
+function placedPerson(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): PlacedPerson {
   const node = entityNode(world, terrain, e);
-  return { entity: e, ...terrain.coordsOf(node), component: terrain.componentOf(node) };
+  return {
+    entity: e,
+    node,
+    ...terrain.coordsOf(node),
+    component: terrain.componentOf(node),
+    limit: navigationLimitFor(world, ctx.content, terrain, e),
+  };
 }
 
 function placedBuilding(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): Placed {
   const door = interactionCell(world, ctx, terrain, e);
-  return { entity: e, ...terrain.coordsOf(door), component: terrain.componentOf(door) };
+  return { entity: e, node: door, ...terrain.coordsOf(door), component: terrain.componentOf(door) };
 }

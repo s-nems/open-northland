@@ -114,7 +114,7 @@ function runMilitary(
     owned,
     atHome,
     campaign ? 'strategic' : 'scripted',
-    raiders,
+    () => raiders,
   );
   const free = atHome.filter((e) => !posts.claimed.has(e));
   const raid = raidOnTheSettlement(world, ctx, terrain, owned, raiders);

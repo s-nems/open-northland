@@ -6,11 +6,14 @@ import {
   AiProgram,
   aiProgramEntity,
   Building,
+  Health,
   JobAssignment,
   Marriage,
   Owner,
   Settler,
   Stockpile,
+  setSignpostNavigation,
+  WALK_RANGE_NODES,
 } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
@@ -27,8 +30,19 @@ import {
 } from '../../src/systems/ai-player/index.js';
 import { seatRaiders } from '../../src/systems/ai-player/military/defence/threat.js';
 import { familyOrders } from '../../src/systems/ai-program/families.js';
-import { REBUILD_RADIUS_POINTS, rebuildList, rebuildOrders } from '../../src/systems/ai-program/rebuild.js';
-import { holdTownGoods, townStaffingOrders } from '../../src/systems/ai-program/town.js';
+import {
+  REBUILD_NEAR_POINTS,
+  REBUILD_RADIUS_POINTS,
+  REBUILD_SITE_LIMIT,
+  rebuildList,
+  rebuildOrders,
+} from '../../src/systems/ai-program/rebuild.js';
+import {
+  holdTownGoods,
+  TOWN_REPAIR_BUILDERS,
+  townStaffingOrders,
+} from '../../src/systems/ai-program/town.js';
+import { markShortPool } from '../../src/systems/economy/repair.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { AI_STOCK_REFILL_LEVEL } from '../../src/systems/trade/partner-stock.js';
 import { aiContent } from '../fixtures/ai-content.js';
@@ -340,6 +354,29 @@ describe('ai program town - posts, homes and stores', () => {
     ]);
   });
 
+  it('passes over a man his signposts keep from the post for one they let reach it', () => {
+    const sim = townSim();
+    setSignpostNavigation(sim.world, true);
+    const bakery = place(sim, BAKERY_TYPE, BAKERY);
+    const [civilian] = spawn(sim, 1, { x: BAKERY.x + 4, y: BAKERY.y }, CIVILIST);
+    spawn(sim, 1, { x: BAKERY.x + WALK_RANGE_NODES + 10, y: BAKERY.y }, BAKER);
+    const posts = staffing(sim).flatMap((c) => (c.kind === 'assignWorker' ? [c] : []));
+    expect(posts).toEqual([
+      { kind: 'assignWorker', entity: civilian, building: bakery, jobPriority: [BAKER] },
+    ]);
+  });
+
+  it('sends two builders to mend a damaged house', () => {
+    const sim = townSim();
+    const hq = place(sim, HQ_TYPE, HQ);
+    const health = sim.world.mut(hq, Health);
+    health.hitpoints = Math.trunc(health.max / 2);
+    markShortPool(sim.world, hq);
+    spawn(sim, 4, { x: HQ.x + 6, y: HQ.y + 8 }, CIVILIST);
+    const builders = staffing(sim).filter((c) => c.kind === 'setJob');
+    expect(builders).toHaveLength(TOWN_REPAIR_BUILDERS);
+  });
+
   it('holds every good of a standing store at the set count, down as well as up', () => {
     const sim = townSim();
     const hq = place(sim, HQ_TYPE, HQ);
@@ -362,10 +399,10 @@ describe('ai program town - posts, homes and stores', () => {
 });
 
 describe('ai program town - families', () => {
-  function couple(sim: Simulation): { wife: Entity; home: Entity } {
-    const home = place(sim, HOME_TYPE, HOME);
-    const [wife] = spawn(sim, 1, { x: HOME.x + 6, y: HOME.y }, WOMAN);
-    spawn(sim, 1, { x: HOME.x + 8, y: HOME.y }, CIVILIST);
+  function couple(sim: Simulation, at = HOME): { wife: Entity; home: Entity } {
+    const home = place(sim, HOME_TYPE, at);
+    const [wife] = spawn(sim, 1, { x: at.x + 6, y: at.y }, WOMAN);
+    spawn(sim, 1, { x: at.x + 8, y: at.y }, CIVILIST);
     if (wife === undefined) throw new Error('setup: the spawn was refused');
     apply(sim, familyOrders(sim.world, ctxOf(sim), SEAT, undefined));
     sim.run(600); // the wedding walk
@@ -391,6 +428,18 @@ describe('ai program town - families', () => {
     expect(orders).toContainEqual({ kind: 'makeChild', entity: wife, child: 'female' });
   });
 
+  it('orders one daughter a pass', () => {
+    const sim = townSim();
+    const first = couple(sim);
+    const second = couple(sim, { x: HOME.x + 16, y: HOME.y });
+    spawn(sim, 8, { x: HOME.x, y: HOME.y + 20 }, CIVILIST);
+    for (const { home } of [first, second]) sim.world.mut(home, Stockpile).amounts.set(FOOD_SIMPLE, 3);
+    const children = familyOrders(sim.world, ctxOf(sim), SEAT, undefined).filter(
+      (c) => c.kind === 'makeChild',
+    );
+    expect(children).toEqual([{ kind: 'makeChild', entity: first.wife, child: 'female' }]);
+  });
+
   it('has no child with an empty larder or at the unit limit', () => {
     const sim = townSim();
     const { home } = couple(sim);
@@ -413,7 +462,7 @@ describe('ai program town - rebuilding', () => {
     const sim = townSim();
     const homes = [place(sim, HOME_TYPE, HOME), place(sim, HOME_TOP_TYPE, { x: HOME.x + 8, y: HOME.y })];
     spawn(sim, 1, { x: HOME.x, y: HOME.y + 8 }, CIVILIST);
-    const houses = rebuildList(sim.world, SEAT);
+    const houses = rebuildList(sim.world, ctxOf(sim), SEAT);
     const ctx = ctxOf(sim);
     expect(rebuildOrders(sim.world, ctx, terrainOf(sim), SEAT, houses, [])).toEqual([]);
 
@@ -426,6 +475,51 @@ describe('ai program town - rebuilding', () => {
     expect(Math.abs(site.x - (HOME.x + 8)) + Math.abs(site.y - HOME.y)).toBeLessThanOrEqual(
       REBUILD_RADIUS_POINTS,
     );
+  });
+
+  /** A remembered home razed with the seat's people `crew` beside it, ready for a rebuild order. */
+  function razedHome(sim: Simulation, crewJob = CIVILIST): ReturnType<typeof rebuildList> {
+    const home = place(sim, HOME_TYPE, HOME);
+    spawn(sim, 1, { x: HOME.x, y: HOME.y + 8 }, crewJob);
+    const houses = rebuildList(sim.world, ctxOf(sim), SEAT);
+    sim.world.destroy(home);
+    return houses;
+  }
+
+  function rebuilds(sim: Simulation, houses: ReturnType<typeof rebuildList>): Command[] {
+    const ctx = ctxOf(sim);
+    const raiders = seatRaiders(sim.world, ctx, terrainOf(sim), SEAT);
+    return rebuildOrders(sim.world, ctx, terrainOf(sim), SEAT, houses, raiders);
+  }
+
+  it('raises nothing while the seat has its unfinished sites already', () => {
+    const sim = townSim();
+    const houses = razedHome(sim);
+    for (let i = 0; i < REBUILD_SITE_LIMIT; i++) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x: HOME.x + 40 + 12 * i,
+        y: HOME.y + 30,
+        tribe: VIKING,
+        owner: SEAT,
+        underConstruction: true,
+      });
+    }
+    sim.step();
+    expect(rebuilds(sim, houses)).toEqual([]);
+  });
+
+  it('raises nothing with an enemy fighter near the old spot', () => {
+    const sim = townSim();
+    const houses = razedHome(sim);
+    spawn(sim, 1, { x: HOME.x + REBUILD_NEAR_POINTS / 2, y: HOME.y }, SPEARMAN, FOE);
+    expect(rebuilds(sim, houses)).toEqual([]);
+  });
+
+  it('needs a civilian near the old spot, a soldier there building nothing', () => {
+    const sim = townSim();
+    expect(rebuilds(sim, razedHome(sim, SPEARMAN))).toEqual([]);
   });
 
   it('remembers the seat’s buildings on its first turn and staffs its town on the handler’s round', () => {
