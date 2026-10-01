@@ -3,6 +3,9 @@ import type { ChangeFeed } from '../../ecs/change-feed.js';
 import type { Entity, World } from '../../ecs/world.js';
 
 type SupplyRunView = NonNullable<(typeof SupplyRun)['__value']>;
+/** The fields an errand was counted with, copied so an in-place write to its run cannot change what the
+ *  undo subtracts. */
+type CountedRun = Pick<SupplyRunView, 'site' | 'source' | 'goodType' | 'amount'>;
 type PerGoodTally = Map<Entity, Map<number, number>>;
 
 /** The tally a logged pass delta folded into. */
@@ -28,7 +31,7 @@ export class InboundSupplyTally {
   readonly inbound: PerGoodTally = new Map();
   readonly reservedAtSource: PerGoodTally = new Map();
   /** The run each errand was last counted with, and which of them held a live source reservation. */
-  private readonly counted = new Map<Entity, SupplyRunView>();
+  private readonly counted = new Map<Entity, CountedRun>();
   private readonly countedAtSource = new Set<Entity>();
   /** Stamp and release deltas since the last collect, {@link PASS_DELTA_STRIDE} numbers each, cut by
    *  count so the backing store survives. */
@@ -81,7 +84,8 @@ export class InboundSupplyTally {
     for (const e of this.world.query(SupplyRun)) {
       if (pending.has(e)) continue;
       const run = this.world.get(e, SupplyRun);
-      if (this.counted.get(e) !== run) return [`inbound supply: errand ${e} counted with a stale run`];
+      if (!countedAs(this.counted.get(e), run))
+        return [`inbound supply: errand ${e} counted with a stale run`];
       if (sourceReservationIsLive(this.world, e, run) !== this.countedAtSource.has(e)) {
         return [`inbound supply: errand ${e} counted with a stale source reservation`];
       }
@@ -134,13 +138,28 @@ export class InboundSupplyTally {
   private count(entity: Entity): void {
     const run = this.world.tryGet(entity, SupplyRun);
     if (run === undefined) return;
-    this.counted.set(entity, run);
+    this.counted.set(entity, {
+      site: run.site,
+      source: run.source,
+      goodType: run.goodType,
+      amount: run.amount,
+    });
     addAmount(this.inbound, run.site, run.goodType, run.amount);
     if (sourceReservationIsLive(this.world, entity, run)) {
       this.countedAtSource.add(entity);
       addAmount(this.reservedAtSource, run.source, run.goodType, run.amount);
     }
   }
+}
+
+function countedAs(counted: CountedRun | undefined, run: SupplyRunView): boolean {
+  return (
+    counted !== undefined &&
+    counted.site === run.site &&
+    counted.source === run.source &&
+    counted.goodType === run.goodType &&
+    counted.amount === run.amount
+  );
 }
 
 function sameTally(a: PerGoodTally, b: PerGoodTally): boolean {

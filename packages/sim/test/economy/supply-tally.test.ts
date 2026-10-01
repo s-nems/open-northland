@@ -125,4 +125,30 @@ describe('inbound supply tally', () => {
     expect(tally.reservedAtSource.size).toBe(0);
     expect(world.verifyCaches()).toEqual([]);
   });
+
+  it('undoes an errand rewritten in place by the values it was counted with', () => {
+    const sim = mappedSim();
+    const world = sim.world;
+    const [site, otherSite, source, otherSource, settler] = [
+      world.create(),
+      world.create(),
+      world.create(),
+      world.create(),
+      world.create(),
+    ];
+    const tally = collectInboundSupply(world);
+    stampSupplyRun(world, settler, tally, { site, goodType: 1, amount: 2, source });
+    expectScanned(world, collectInboundSupply(world));
+
+    const run = world.mut(settler, SupplyRun);
+    run.site = otherSite;
+    run.source = otherSource;
+    run.goodType = 2;
+    run.amount = 3;
+
+    expect(world.verifyCaches()).toEqual([]);
+    expectScanned(world, collectInboundSupply(world));
+    expect(rowsOf(tally.inbound)).toEqual([[otherSite, 2, 3]]);
+    expect(world.verifyCaches()).toEqual([]);
+  });
 });
