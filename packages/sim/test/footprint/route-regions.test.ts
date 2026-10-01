@@ -242,6 +242,22 @@ describe('routeRegions', () => {
     expect(regions.unroutable(second, first)).toBe(true);
   });
 
+  it('reports a label that disagrees with a cold flood to the cache verifier', () => {
+    const sim = mappedSim(grassMap(40, 20)); // larger than the flood cap, so the open ground reads open
+    const terrain = terrainOf(sim);
+    wallAt(sim, 10, 2, rectangleWall(3, 7));
+    const regions = routeRegions(sim.world, ctxOf(sim), terrain);
+    const sealed = terrain.nodeAt(11, 4);
+    const outside = terrain.nodeAt(2, 2);
+    expect(regions.unroutable(outside, sealed)).toBe(true);
+    expect(sim.world.verifyCaches()).toEqual([]);
+
+    const cache = (regions as unknown as { cache: PocketIdState }).cache;
+    cache.labels[sealed] = cache.labels[outside] ?? 0;
+
+    expect(sim.world.verifyCaches()).toEqual(['routeRegions: 1 labels disagree with a cold flood']);
+  });
+
   it('reads a pocket larger than the flood cap as open (fail-open to the route + memo path)', () => {
     // 80×40 nodes; the perimeter seals a (38-2)×(20-2) = 648-node interior - beyond the cap.
     const sim = mappedSim(grassMap(40, 20));

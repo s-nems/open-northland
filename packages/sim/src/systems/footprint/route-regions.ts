@@ -287,6 +287,74 @@ export class RouteRegions {
   }
 }
 
+/** Cold-flood marks in {@link verifyLabels}: unvisited, in the current flood, and proved open. Pocket
+ *  regions take ids from 1 up. */
+const COLD_UNVISITED = 0;
+const COLD_PENDING = -2;
+const COLD_OPEN = -1;
+
+/**
+ * Mismatches between the held labels and cold capped floods of the mask they were last re-keyed to,
+ * skipped while the mask holds flips no verdict has taken yet. The floods reach only the regions holding
+ * a valid label, each node once.
+ */
+function verifyLabels(cache: RouteRegionCache): string[] {
+  const blocked = cache.mask.labelBasis();
+  if (blocked === null || cache.epoch === 0) return [];
+  const { terrain, labels, stamps, epoch, retired } = cache;
+  const cold = new Int32Array(terrain.nodeCount);
+  const steps = new StepBuffer();
+  const queue: NodeId[] = [];
+  let regions = 0;
+  const flood = (seed: NodeId): void => {
+    queue.length = 0;
+    queue.push(seed);
+    cold[seed] = COLD_PENDING;
+    let sealed = true;
+    for (let cursor = 0; cursor < queue.length && sealed; cursor++) {
+      const cur = queue[cursor];
+      if (cur === undefined || cursor >= ROUTE_REGION_POCKET_CAP) {
+        sealed = false;
+        break;
+      }
+      terrain.stepsInto(cur, blocked, steps);
+      for (let i = 0; i < steps.length; i++) {
+        const next = steps.at(i).node;
+        if (cold[next] === COLD_UNVISITED) {
+          cold[next] = COLD_PENDING;
+          queue.push(next);
+        } else if (cold[next] !== COLD_PENDING) sealed = false; // joined an open region
+      }
+    }
+    const region = sealed ? ++regions : COLD_OPEN;
+    for (const node of queue) cold[node] = region;
+  };
+  const regionOfPocket = new Map<number, number>();
+  const pocketOfRegion = new Map<number, number>();
+  let wrong = 0;
+  for (let node = 0 as NodeId; node < terrain.nodeCount; node++) {
+    const label = labels[node];
+    if (stamps[node] !== epoch || label === undefined || (label >= 0 && retired[label] === 1)) continue;
+    if (label === PENDING_REGION || !terrain.isWalkable(node) || blocked.has(node)) {
+      wrong += 1;
+      continue;
+    }
+    if (cold[node] === COLD_UNVISITED) flood(node);
+    const region = cold[node] ?? COLD_OPEN;
+    if (label === OPEN_REGION || region === COLD_OPEN) {
+      if (label !== OPEN_REGION || region !== COLD_OPEN) wrong += 1;
+      continue;
+    }
+    // One pocket id per sealed region, both ways, or a verdict between two of its nodes would differ.
+    const heldRegion = regionOfPocket.get(label) ?? region;
+    const heldPocket = pocketOfRegion.get(region) ?? label;
+    if (heldRegion !== region || heldPocket !== label) wrong += 1;
+    regionOfPocket.set(label, region);
+    pocketOfRegion.set(region, label);
+  }
+  return wrong === 0 ? [] : [`routeRegions: ${wrong} labels disagree with a cold flood`];
+}
+
 function dropLabels(cache: RouteRegionCache): void {
   cache.retired.fill(0, 0, cache.nextPocket);
   cache.nextPocket = 0;
@@ -309,7 +377,7 @@ const INITIAL_POCKET_IDS = 256;
 export function routeRegions(world: World, ctx: ContentContext, terrain: TerrainGraph): RouteRegions {
   let cache = cacheByWorld.get(world);
   if (cache === undefined || cache.terrain !== terrain) {
-    cache = {
+    const created: RouteRegionCache = {
       terrain,
       mask: walkBlockMask(world, ctx, terrain),
       labels: new Int32Array(terrain.nodeCount),
@@ -324,7 +392,9 @@ export function routeRegions(world: World, ctx: ContentContext, terrain: Terrain
       exits: new StepBuffer(),
       flips: [],
     };
-    cacheByWorld.set(world, cache);
+    cacheByWorld.set(world, created);
+    world.registerCacheVerifier('routeRegions', () => verifyLabels(created));
+    cache = created;
   }
   return new RouteRegions(cache);
 }

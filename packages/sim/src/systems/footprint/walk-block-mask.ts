@@ -75,6 +75,12 @@ export class WalkBlockMask implements BlockOverlay {
     return kept;
   }
 
+  /** The mask as last levelled, read without levelling, when the label reader has taken every flip
+   *  since: what the route-region labels were last re-keyed to. Null while flips wait for it. */
+  labelBasis(): BlockOverlay | null {
+    return this.flipsLost || this.flips.length > 0 ? null : this.mask;
+  }
+
   /** Level the mask unless no entity was written since it last was. */
   catchUp(): void {
     if (this.world.mutationVersion !== this.checkedVersion) this.level();
