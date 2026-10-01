@@ -852,9 +852,9 @@ lifetime, dedupe and priority table.
   the map.
 - Similar notes stack under one card. The hunger family (dying, starving, hungry) and the idle family
   (lost workplace, no cart, nothing to do) stack across their types; every other note stacks with
-  notes of its type and card line (a good, a stance, a family reason make their own stack; a line
-  that only agrees with the settler's sex does not). A stack needs two notes; a lone note is a plain
-  card. The face is the heaviest member (by weight, then by family stage); among equals the state note
+  notes of its type and card line (a good, a stance, a family reason make their own stack; the lost
+  line, which only agrees with the settler's sex, does not, while grown men and grown women stack
+  apart). Unlock notes never stack. A stack needs two notes; a lone note is a plain card. The face is the heaviest member (by weight, then by family stage); among equals the state note
   standing longest or the newest event. Stacks order by their face's weight, then by their newest
   member, so a new member lifts its stack. The filters count notes and run before the stacking, so
   "only urgent" leaves the hunger family its dying and starving members.

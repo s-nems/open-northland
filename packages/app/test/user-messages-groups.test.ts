@@ -85,15 +85,29 @@ describe('notice groups', () => {
     expect(noticeGroupKey(note(1, lost, TICK, he))).toBe(noticeGroupKey(note(2, lost, TICK, she)));
   });
 
-  it('lists exactly the types whose card line varies only by sex in either catalog', () => {
+  it('lists only types whose card line varies by sex in either catalog', () => {
     for (const catalog of [pl, en]) {
       const short: Readonly<Record<string, unknown>> = catalog.userMessages.short;
-      for (const type of Object.values(USER_MESSAGE_TYPE)) {
-        const line = short[userMessageTypeName(type)];
-        if (line === undefined) continue;
-        expect(typeof line !== 'string', userMessageTypeName(type)).toBe(SEX_ONLY_LINE_TYPES.has(type));
+      for (const type of SEX_ONLY_LINE_TYPES) {
+        expect(typeof short[userMessageTypeName(type)], userMessageTypeName(type)).toBe('object');
       }
     }
+  });
+
+  it('stacks grown men and grown women apart', () => {
+    const grewUp = USER_MESSAGE_TYPE.grewUp;
+    const stacks = groupNotes([
+      note(1, grewUp, 1, 'Dorósł'),
+      note(2, grewUp, 2, 'Dorosła'),
+      note(3, grewUp, 3, 'Dorósł'),
+    ]);
+    expect(stacks.map((s) => ids(s.members))).toEqual([[3, 1], [2]]);
+  });
+
+  it('never stacks unlock notes', () => {
+    const unlocks = USER_MESSAGE_TYPE.experienceUnlocks;
+    const stacks = groupNotes([note(1, unlocks, 1, 'Nowa wiedza'), note(2, unlocks, 2, 'Nowa wiedza')]);
+    expect(stacks.map((s) => ids(s.members))).toEqual([[2], [1]]);
   });
 
   it('reads he and she lines of one type as the same line, so their rows name no detail', () => {

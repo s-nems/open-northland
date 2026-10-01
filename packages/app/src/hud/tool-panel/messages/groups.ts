@@ -39,11 +39,14 @@ const STAGE_BY_TYPE: ReadonlyMap<UserMessageType, number> = new Map(
 );
 
 /** The types whose card line differs between notes only by the subject's sex ("Zgubił się", "Zgubiła
- *  się"): such a line carries no detail, so the type stacks as one. */
+ *  się"): such a line carries no detail, so the type stacks as one. Grown men and grown women stack
+ *  apart, since each asks the player for something else (a trade, a home): owner ruling. */
 export const SEX_ONLY_LINE_TYPES: ReadonlySet<UserMessageType> = new Set([
   USER_MESSAGE_TYPE.lostWithoutSignposts,
-  USER_MESSAGE_TYPE.grewUp,
 ]);
+
+/** The types that never stack: each unlock note names what it opened, which a stack would hide. */
+const UNSTACKED_TYPES: ReadonlySet<UserMessageType> = new Set([USER_MESSAGE_TYPE.experienceUnlocks]);
 
 /** The card line a note reads, as stacking compares it: its type, with the detail the line names (a
  *  good, a stance, a family reason) unless only the subject's sex varies it. */
@@ -51,8 +54,9 @@ function lineKey(note: Pick<UserMessage, 'type' | 'text'>): string {
   return SEX_ONLY_LINE_TYPES.has(note.type) ? `type:${note.type}` : `type:${note.type}|${note.text.short}`;
 }
 
-/** The stack a note joins: its family, else its card line. */
-export function noticeGroupKey(note: Pick<UserMessage, 'type' | 'text'>): string {
+/** The stack a note joins: its family, else its card line; an unstacked type's note stands alone. */
+export function noticeGroupKey(note: Pick<UserMessage, 'id' | 'type' | 'text'>): string {
+  if (UNSTACKED_TYPES.has(note.type)) return `note:${note.id}`;
   const family = FAMILY_BY_TYPE.get(note.type);
   return family === undefined ? lineKey(note) : `family:${family}`;
 }
