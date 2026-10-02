@@ -120,8 +120,8 @@ export class WorldRenderer {
     if (gl !== undefined) opts?.sheet?.palette?.fitTo(gl.getParameter(gl.MAX_TEXTURE_SIZE) as number);
     this.viewSmoothing = opts?.viewSmoothing === true;
     this.playerColourOf = opts?.playerColourOf;
-    // Own Pixi render group: moving sprites re-write zIndex every frame, and a changed painter order
-    // must re-build only this layer's instruction set, not the whole stage's.
+    // Own Pixi render group over its depth bands' groups: a band appearing or retiring rebuilds only
+    // this layer's short instruction list, not the whole stage's.
     this.spriteLayer.isRenderGroup = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.weatherGround = new WeatherGround([this.terrain, this.mapObjects]);
