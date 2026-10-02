@@ -34,6 +34,9 @@ const blockedCode = (node: number): number => -(node + 1);
 /** Int32 stamp ceiling; on the wrap the stamps are cleared so no stale slot matches a reused value. */
 const MAX_GENERATION = 2 ** 31 - 1;
 
+/** The ask log's first allocation; it doubles from there as one search asks more nodes. */
+const ASK_LOG_INITIAL_CAPACITY = 256;
+
 /**
  * An overlay that answers through `inner` once per node and search, logging each node with its answer.
  * The answers are pure within a search (the {@link BlockOverlay} contract), so the repeat reads a search
@@ -76,7 +79,7 @@ class AskLog implements BlockOverlay {
   }
 
   private grow(): void {
-    const codes = new Int32Array(Math.max(256, this.codes.length * 2));
+    const codes = new Int32Array(Math.max(ASK_LOG_INITIAL_CAPACITY, this.codes.length * 2));
     codes.set(this.codes);
     this.codes = codes;
   }
