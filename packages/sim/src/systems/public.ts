@@ -123,7 +123,6 @@ export {
   ATOMIC_EVENT_TYPE_SPLIT_UP,
   ATOMIC_EVENT_TYPE_TRANSFORM,
   atomicClipName,
-  atomicClipNameAtHome,
   atomicDuration,
   atomicDurationForName,
   atomicEventChannelDelta,

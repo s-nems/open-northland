@@ -17,6 +17,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import {
   exportSaveGame,
+  type Fixed,
   fx,
   homeQualityView,
   householdGoodPolicyView,
@@ -55,6 +56,13 @@ const OIL = 4;
 const HOME = 1;
 const JOB = 1;
 const TRIBE = 1;
+const SLEEP_ATOMIC = 8;
+const WORK_ATOMIC = 24;
+/** What the fixture's sleep clip pays and its work clip costs on the rest channel. */
+const NAP = 1000;
+const WORK_DRAIN = 100;
+/** The furniture's `useCost`: what one paid rest event takes off the home's pool. */
+const FURNITURE_USE = 5;
 
 function content() {
   return parseContentSet({
@@ -108,14 +116,21 @@ function content() {
         id: 'viking',
         jobEnables: [{ jobType: JOB, kind: 'job', targetId: JOB }],
         atomicBindings: [
-          { jobType: JOB, atomicId: 8, animation: 'sleep_home' },
-          { jobType: JOB, atomicId: 12, animation: 'pray_home' },
+          { jobType: JOB, atomicId: SLEEP_ATOMIC, animation: 'civilist_sleep' },
+          { jobType: JOB, atomicId: 12, animation: 'civilist_pray' },
+          { jobType: JOB, atomicId: WORK_ATOMIC, animation: 'civilist_work' },
         ],
       },
     ],
     atomicAnimations: [
-      { id: 'sleep_home', name: 'sleep_home', length: 2, events: [{ at: 1, type: 1, value: 1000 }] },
-      { id: 'pray_home', name: 'pray_home', length: 2, events: [{ at: 1, type: 4, value: 1000 }] },
+      { id: 'civilist_sleep', name: 'civilist_sleep', length: 2, events: [{ at: 1, type: 1, value: NAP }] },
+      { id: 'civilist_pray', name: 'civilist_pray', length: 2, events: [{ at: 1, type: 4, value: 1000 }] },
+      {
+        id: 'civilist_work',
+        name: 'civilist_work',
+        length: 2,
+        events: [{ at: 1, type: 1, value: -WORK_DRAIN }],
+      },
     ],
   });
 }
@@ -135,6 +150,22 @@ function addHome(sim: Simulation, player: number, level: number): Entity {
   sim.world.add(home, Stockpile, { amounts: new Map([[FOOD, 0]]) });
   sim.world.add(home, Owner, { player });
   return home;
+}
+
+/** A settler of {@link JOB} living in `home` and indoors there, its fatigue at `fatigue`. */
+function restingResident(sim: Simulation, home: Entity, fatigue: Fixed): Entity {
+  const settler = sim.world.create();
+  addPerson(sim.world, settler, {
+    tribe: TRIBE,
+    jobType: JOB,
+    hunger: fx.fromInt(0),
+    fatigue,
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+  });
+  sim.world.add(settler, Residence, { home });
+  sim.world.add(settler, Resting, { at: home });
+  return settler;
 }
 
 function deliver(sim: Simulation, carrier: Entity, home: Entity, goodType: number): number {
@@ -159,7 +190,7 @@ describe('household quality goods', () => {
     expect(sim.world.get(home, HomeQuality).cooking).toBe(95);
   });
 
-  it('spends furniture durability on a positive rest event and doubles its recovery', () => {
+  it('spends furniture durability on a rest event at home and doubles its recovery', () => {
     const { sim, home, carrier } = setup();
     deliver(sim, carrier, home, FURNITURE);
     const settler = sim.world.create();
@@ -174,10 +205,50 @@ describe('household quality goods', () => {
     sim.world.add(settler, Residence, { home });
     sim.world.add(settler, Resting, { at: home });
 
-    applyAtomicNeedEvents(sim.world, ctxOf(sim), settler, { atomicId: 8, effect: { kind: 'sleep' } }, 1);
+    applyAtomicNeedEvents(
+      sim.world,
+      ctxOf(sim),
+      settler,
+      { atomicId: SLEEP_ATOMIC, effect: { kind: 'sleep' } },
+      1,
+    );
 
-    expect(needsOf(sim, settler).fatigue).toBe(applyNeedUnits(ONE, 2000));
-    expect(sim.world.get(home, HomeQuality).rest).toBe(95);
+    expect(needsOf(sim, settler).fatigue).toBe(applyNeedUnits(ONE, 2 * NAP));
+    expect(sim.world.get(home, HomeQuality).rest).toBe(100 - FURNITURE_USE);
+  });
+
+  it('counts rest once at home when the furniture cannot pay a whole use, and keeps the remainder', () => {
+    const { sim, home } = setup();
+    sim.world.add(home, HomeQuality, { cooking: 0, rest: FURNITURE_USE - 1, piety: 0 });
+    const settler = restingResident(sim, home, ONE);
+
+    applyAtomicNeedEvents(
+      sim.world,
+      ctxOf(sim),
+      settler,
+      { atomicId: SLEEP_ATOMIC, effect: { kind: 'sleep' } },
+      1,
+    );
+
+    expect(needsOf(sim, settler).fatigue).toBe(applyNeedUnits(ONE, NAP));
+    expect(sim.world.get(home, HomeQuality).rest).toBe(FURNITURE_USE - 1);
+  });
+
+  it('spends a furniture use on a rest drain at home too, and doubles the drain', () => {
+    const { sim, home, carrier } = setup();
+    deliver(sim, carrier, home, FURNITURE);
+    const settler = restingResident(sim, home, fx.fromInt(0));
+
+    applyAtomicNeedEvents(
+      sim.world,
+      ctxOf(sim),
+      settler,
+      { atomicId: WORK_ATOMIC, effect: { kind: 'idle' } },
+      1,
+    );
+
+    expect(needsOf(sim, settler).fatigue).toBe(applyNeedUnits(fx.fromInt(0), -2 * WORK_DRAIN));
+    expect(sim.world.get(home, HomeQuality).rest).toBe(100 - FURNITURE_USE);
   });
 
   it('stores oil on a mature home and burns three points each game-second pass', () => {
@@ -307,8 +378,14 @@ describe('household quality goods', () => {
     });
     sim.world.add(sleeper, Residence, { home });
     sim.world.add(sleeper, Resting, { at: home });
-    applyAtomicNeedEvents(sim.world, ctxOf(sim), sleeper, { atomicId: 8, effect: { kind: 'sleep' } }, 1);
-    expect(needsOf(sim, sleeper).fatigue).toBe(applyNeedUnits(ONE, 1000));
+    applyAtomicNeedEvents(
+      sim.world,
+      ctxOf(sim),
+      sleeper,
+      { atomicId: SLEEP_ATOMIC, effect: { kind: 'sleep' } },
+      1,
+    );
+    expect(needsOf(sim, sleeper).fatigue).toBe(applyNeedUnits(ONE, NAP));
     expect(sim.world.get(home, HomeQuality).rest).toBe(100);
 
     const blocked = sim.world.create();

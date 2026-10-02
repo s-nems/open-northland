@@ -31,7 +31,7 @@ describe('atomicSystem - the attacker pays the swing need-drain from its own cli
     expect(needsOf(sim, attacker).hunger).toBe(expected);
   });
 
-  it('a woman swing drains 5× as much (−100 each), wherever she swings it', () => {
+  it('a woman swing drains 5× as much food (−100), and half that rest away from home', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOMAN);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
@@ -43,8 +43,8 @@ describe('atomicSystem - the attacker pays the swing need-drain from its own cli
     const womanRise = fx.div(fx.fromInt(100), fx.fromInt(10_000));
     expect(needsOf(sim, attacker).hunger).toBe(womanRise);
     expect(womanRise).toBe(soldierRise * 5); // a woman's swing costs 5× a soldier's - the data ratio
-    // She has a house to go back to, which halves rest she GAINS in the open, never what a swing spends.
-    expect(needsOf(sim, attacker).fatigue).toBe(womanRise);
+    // She has a house to go back to, so away from it every rest event counts half, a drain included.
+    expect(needsOf(sim, attacker).fatigue).toBe(fx.div(fx.fromInt(50), fx.fromInt(10_000)));
   });
 
   it('charges nothing while the needs rule is off, so a long battle cannot walk a fighter off to eat', () => {

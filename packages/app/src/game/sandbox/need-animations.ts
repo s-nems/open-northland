@@ -21,8 +21,7 @@ const EAT_LENGTH = 50;
 const EAT_FRAMES = [30] as const;
 const EAT_VALUE = 4000;
 
-/** Rest arrives in equal pulses: one for the woman, two for the civilist, four for the soldier, and the
- *  civilist's at-home twin packs its two into a fifth of the time. */
+/** Rest arrives in equal pulses: one for the woman, two for the civilist, four for the soldier. */
 const SLEEP_VALUE = 4000;
 
 export const CIVILIST_EAT_ANIMATION = 'viking_civilist_eat_slot_food';
@@ -38,14 +37,6 @@ export const NEED_CLIPS: readonly NeedClip[] = [
   { name: WOMAN_EAT_ANIMATION, length: EAT_LENGTH, channel: HUNGER, frames: EAT_FRAMES, value: EAT_VALUE },
   { name: SOLDIER_EAT_ANIMATION, length: EAT_LENGTH, channel: HUNGER, frames: EAT_FRAMES, value: EAT_VALUE },
   { name: CIVILIST_SLEEP_ANIMATION, length: 237, channel: REST, frames: [60, 200], value: SLEEP_VALUE },
-  // The at-home twin no `setatomic` binds; the sim resolves it by the `<clip>_home` name.
-  {
-    name: `${CIVILIST_SLEEP_ANIMATION}_home`,
-    length: 50,
-    channel: REST,
-    frames: [40, 45],
-    value: SLEEP_VALUE,
-  },
   { name: WOMAN_SLEEP_ANIMATION, length: 100, channel: REST, frames: [20], value: SLEEP_VALUE },
   {
     name: SOLDIER_SLEEP_ANIMATION,

@@ -240,15 +240,12 @@ export const societyContent = {
     { id: 'viking_reap', name: 'viking_reap', length: 3, events: [{ at: 2, type: 18 }, ...workDrain()] },
     { id: 'viking_sow', name: 'viking_sow', length: 3, events: workDrain() },
     { id: 'viking_water', name: 'viking_water', length: 3, events: workDrain() },
-    // One meal, the original's single `event 30 2 +4000` on the eat clip, and the at-home twin the data
-    // authors beside it, worth half again as much (`viking_civilist_eat_athome`, `event 30 2 +6000`).
+    // One meal, the original's single `event 30 2 +4000` on the eat clip.
     { id: 'viking_eat', name: 'viking_eat', length: 5, events: [{ at: 3, type: 2, value: 4000 }] },
-    { id: 'viking_eat_home', name: 'viking_eat_home', length: 5, events: [{ at: 3, type: 2, value: 6000 }] },
     // Interruptible like the original's outdoor sleep (`interruptable 1`) - a sleeper obeys an order at
     // once, while an unmarked clip (eat, the swings) defaults non-interruptible and parks orders.
     // Carries the outdoor clip's authored sound cue (`event <at> 34 35` - PLAY_SOUND_FX naming the Yawn
-    // Man `logicSoundType`). Its frame sits early enough to fall inside the shorter at-home twin too, as
-    // `viking_civilist_sleep`'s `event 23 34 35` falls inside the 50-tick `_home` clip.
+    // Man `logicSoundType`).
     {
       id: 'viking_sleep',
       name: 'viking_sleep',

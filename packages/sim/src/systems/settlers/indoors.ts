@@ -1,6 +1,9 @@
 import { FamilyDuty, Garrison, Position, Residence, Resting, Sheltering } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
+import type { MapContext } from '../context.js';
+import { atInteractionNode } from '../footprint/index.js';
 import { atOrWalk } from './atomics/start.js';
 
 /**
@@ -38,10 +41,19 @@ export function heldIndoors(world: World, e: Entity): boolean {
   return world.has(e, FamilyDuty) || world.has(e, Garrison) || world.has(e, Sheltering);
 }
 
-/** Whether `e` is indoors in its own house - the state the at-home need rules key on. */
-export function isInsideOwnHome(world: World, e: Entity): boolean {
+/**
+ * Whether `e` is at its own house, the state the at-home need rules key on: indoors there, or standing on
+ * its door node. Original behavior: a settler counts as at home while its map position is its home's door
+ * point, which is where it stands indoors and where it eats a meal taken from the home's own larder.
+ */
+export function isAtOwnHome(world: World, ctx: MapContext, e: Entity): boolean {
   const home = world.tryGet(e, Residence)?.home;
-  return home !== undefined && isInside(world, e, home);
+  if (home === undefined) return false;
+  if (isInside(world, e, home)) return true;
+  const p = world.tryGet(e, Position);
+  return (
+    p !== undefined && atInteractionNode(world, ctx, home, nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y))
+  );
 }
 
 export function stepOut(world: World, e: Entity): void {

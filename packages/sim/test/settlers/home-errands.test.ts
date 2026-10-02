@@ -14,7 +14,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
-import { plannerSystem } from '../../src/systems/index.js';
+import { ATOMIC_EVENT_CHANNEL, plannerSystem } from '../../src/systems/index.js';
 import { isServedAtHome } from '../../src/systems/settlers/drives/home-errands.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
@@ -23,28 +23,24 @@ import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from
 
 /**
  * The SLEEP-AT-HOME rung: a settler with a built house walks to its door, goes inside (hidden by the
- * `Resting` marker), sleeps the short at-home clip, and steps back out rested. The homeless keep the
- * open-ground rule (`rest-spot.ts`).
- *
- * Source basis: each tribe authors ONE at-home clip, the civilist's - `viking_civilist_sleep_home`
- * (`length 50`) against the outdoor `viking_civilist_sleep` (`length 237`), both pulsing the rest
- * channel twice at `+4000`. The fixture mirrors that one pair at fixture scale (6 outdoors, 2 at home);
- * the real-content suite pins the rule against the served IR (`test/content/need-atomic-clips.test.ts`).
+ * `Resting` marker), sleeps the same clip it sleeps outdoors, and steps back out rested. The homeless
+ * keep the open-ground rule (`rest-spot.ts`). What the nap is worth at home is `need-events.test.ts`'s.
  */
 
 const VIKING = 1;
 const HOME_TYPE = 90;
 const FOOD = 3; // the fixture's `food_simple`
 const TRADER = 25; // the fixture's trade marked `ignoresHomeHouse`
-const OUTDOOR_SLEEP_TICKS = 6; // the fixture's "viking_sleep" length
-const HOME_SLEEP_TICKS = 2; // the fixture's "viking_sleep_home" length
+const SLEEP_TICKS = 6; // the fixture's "viking_sleep" length
+/** The `logicSoundType` the fixture's sleep clip sounds (`event <at> 34 35`). */
+const SNORE_SOUND = 35;
 const TIRED: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 /** Half a bar spent: under the drive trigger, over the level a served need sits at, so only the at-home
  *  chain answers it. */
 const HALF_SPENT: Fixed = fx.div(ONE, fx.fromInt(2));
 
-/** The shared fixture plus a `home` building type and the at-home sleep clip the rung resolves by name;
- *  `restfulBed: false` authors that clip without its rest pulses. */
+/** The shared fixture plus a `home` building type; `restfulBed: false` strips the sleep clip's rest
+ *  pulses. */
 function homeContent({ restfulBed = true } = {}): ContentSet {
   const base = testContent();
   return parseContentSet({
@@ -60,17 +56,11 @@ function homeContent({ restfulBed = true } = {}): ContentSet {
         stock: [{ goodType: FOOD, capacity: 5 }],
       },
     ],
-    atomicAnimations: [
-      ...base.atomicAnimations,
-      {
-        id: 'viking_sleep_home',
-        name: 'viking_sleep_home',
-        length: HOME_SLEEP_TICKS,
-        // The same two `event <at> 1 +4000` pulses the outdoor clip carries, packed into the shorter
-        // clock - and indoors none of it is halved, so a bed at home is worth two naps in the open.
-        events: restfulBed ? [1, 2].map((at) => ({ at, type: 1, value: 4000 })) : [],
-      },
-    ],
+    atomicAnimations: base.atomicAnimations.map((clip) =>
+      restfulBed || clip.name !== 'viking_sleep'
+        ? clip
+        : { ...clip, events: clip.events.filter((event) => event.type !== ATOMIC_EVENT_CHANNEL.REST) },
+    ),
   });
 }
 
@@ -106,7 +96,7 @@ function nodeAt(sim: Simulation, cx: number, cy: number): NodeId | undefined {
 }
 
 describe('sleepAtHome - a housed settler goes to bed indoors', () => {
-  it('sleeps inside on the spot, on the short at-home clip, when standing at its own door', () => {
+  it('sleeps inside on the spot, on its usual clip, when standing at its own door', () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 3, 2);
     const home = homeAt(sim, 3, 2); // same cell - the settler is already on the door node
@@ -118,27 +108,20 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     expect(sim.world.get(settler, Resting).at).toBe(home); // went in - the render hides it
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.effect).toEqual({ kind: 'sleep' });
-    // The at-home clip, not the outdoor one - a bed indoors is worth the same rest in less time.
-    expect(atomic.duration).toBe(HOME_SLEEP_TICKS);
+    expect(atomic.duration).toBe(SLEEP_TICKS);
   });
 
-  it("does not sound the outdoor clip's cue over the short at-home one", () => {
-    // The rung starts the `_home` twin under the bound clip's atomic id, so the id alone would resolve the
-    // outdoor clip and drop its snore onto a nap a third of the length. The sleeper is hidden indoors; it
-    // must be silent too, until the at-home clip authors a cue of its own.
+  it("sounds its clip's cue indoors as it does in the open", () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 3, 2);
     sim.world.add(settler, Residence, { home: homeAt(sim, 3, 2) });
     plannerSystem(sim.world, ctxOf(sim));
+    expect(cuesOverNap(sim, SLEEP_TICKS)).toEqual([SNORE_SOUND]);
 
-    const indoors = cuesOverNap(sim, HOME_SLEEP_TICKS);
-    expect(indoors).toEqual([]);
-
-    // The same body sleeping in the open runs its bound clip, and does sound it.
     const outside = simWithHomes();
     tiredAt(outside, 3, 2);
     plannerSystem(outside.world, ctxOf(outside));
-    expect(cuesOverNap(outside, OUTDOOR_SLEEP_TICKS)).toEqual([35]);
+    expect(cuesOverNap(outside, SLEEP_TICKS)).toEqual([SNORE_SOUND]);
   });
 
   it('walks to its own door rather than lying down where it stands', () => {
@@ -164,7 +147,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     expect(sim.world.has(settler, Resting)).toBe(false); // slept outside, never went in
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.effect).toEqual({ kind: 'sleep' });
-    expect(atomic.duration).toBe(OUTDOOR_SLEEP_TICKS);
+    expect(atomic.duration).toBe(SLEEP_TICKS);
   });
 
   it('falls back to open ground when the home is still a building site', () => {
@@ -177,7 +160,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, Resting)).toBe(false);
-    expect(sim.world.get(settler, CurrentAtomic).duration).toBe(OUTDOOR_SLEEP_TICKS);
+    expect(sim.world.get(settler, CurrentAtomic).duration).toBe(SLEEP_TICKS);
   });
 
   it('beds a housed settler down outside when its trade never goes home', () => {
@@ -190,7 +173,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, Resting)).toBe(false);
-    expect(sim.world.get(settler, CurrentAtomic).duration).toBe(OUTDOOR_SLEEP_TICKS);
+    expect(sim.world.get(settler, CurrentAtomic).duration).toBe(SLEEP_TICKS);
   });
 
   it('gives up on a door its routes cannot reach, and beds down outside instead', () => {
@@ -207,7 +190,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, Resting)).toBe(false);
-    expect(sim.world.get(settler, CurrentAtomic).duration).toBe(OUTDOOR_SLEEP_TICKS);
+    expect(sim.world.get(settler, CurrentAtomic).duration).toBe(SLEEP_TICKS);
   });
 
   it('does not treat a homeless settler asleep outdoors as being indoors', () => {
@@ -220,7 +203,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     sim.world.add(settler, Resting, { at: someWorkplace }); // stale - this is not its home
     addCurrentAtomic(sim.world, settler, {
       atomicId: 8,
-      duration: OUTDOOR_SLEEP_TICKS,
+      duration: SLEEP_TICKS,
       effect: { kind: 'sleep' },
       targetEntity: settler,
       targetTile: null,
@@ -246,7 +229,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     // One unbroken stay: false* then true* then false* - never a second entry.
     const entries = inside.filter((v, i) => v && inside[i - 1] !== true).length;
     expect(entries).toBe(1);
-    expect(inside.filter(Boolean).length).toBeGreaterThanOrEqual(HOME_SLEEP_TICKS);
+    expect(inside.filter(Boolean).length).toBeGreaterThanOrEqual(SLEEP_TICKS);
     expect(inside.at(-1)).toBe(false); // stepped back outside
     expect(needsOf(sim, settler).fatigue).toBeLessThan(TIRED); // and slept it off
     expect(sim.checkInvariants()).toEqual([]);

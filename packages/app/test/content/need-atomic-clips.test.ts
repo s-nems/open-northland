@@ -10,8 +10,8 @@ import { hasRealIr, loadContentUnderTest } from './helpers.js';
  *  - the CIVILIST fallback: `setatomic` binds eat only for jobs 3,4,5,6,31,34 and sleep for 1–6,31, so a
  *    builder/collector/farmer/carrier binds neither and must borrow the civilist clip rather than land on
  *    the 4-tick unresolved stub;
- *  - the at-home twins the indoor rules play instead: the sleep clip's `<clip>_home`, and the meal's own
- *    `<body>_eat_athome` beside the eat slot.
+ *  - the data's at-home clips (`<clip>_home`, `<body>_eat_athome`) stay unplayed: no `setatomic` binds
+ *    them, so a settler at home plays its usual clips and only the need rules scale what they pay.
  */
 
 const VIKING = 1;
@@ -23,6 +23,9 @@ const EAT_ATOMIC = 10;
 const SLEEP_ATOMIC = 8;
 const PICKUP_ATOMIC = 22;
 const PILEUP_ATOMIC = 23;
+
+/** The names the data gives its at-home clips. */
+const AT_HOME_CLIP = /(_home|_athome)$/;
 
 /** The unresolved-chain default in `readviews/animations.ts` - no real clip may collapse to it. */
 const DEFAULT_ATOMIC_DURATION = 4;
@@ -53,35 +56,14 @@ describe.runIf(hasRealIr())('need-atomic clips resolve against the served conten
         expect(systems.atomicDuration(content, { tribe: VIKING, jobType }, atomic)).toBe(20); // viking_civilist_pickup/pileup
   });
 
-  it('carries the at-home sleep twin the rung derives by name, and it is the shorter clip', async () => {
+  it('binds none of the at-home clips the data authors', async () => {
     const { merge } = await loadContentUnderTest();
     const content = merge.content;
-    const outdoor = systems.atomicClipName(content, { tribe: VIKING, jobType: CIVILIST }, SLEEP_ATOMIC);
-    expect(outdoor).toBe('viking_civilist_sleep');
-    // The suffix rule the sleep-at-home rung applies. Same rest for a fifth of the time is the mechanic;
-    // if extraction ever drops the twin the rung silently falls back to the 237-tick outdoor clip.
-    const atHome = systems.atomicDurationForName(content, `${outdoor}_home`);
-    expect(atHome).toBe(50);
-    expect(atHome).toBeLessThan(systems.atomicDurationForName(content, outdoor));
-  });
-
-  it('carries the at-home meal the indoor chain plays, worth half again the one eaten in the field', async () => {
-    const { merge } = await loadContentUnderTest();
-    const content = merge.content;
-    const civilist = { tribe: VIKING, jobType: CIVILIST };
-    const field = systems.atomicClipName(content, civilist, EAT_ATOMIC);
-    const atHome = systems.atomicClipNameAtHome(content, civilist, EAT_ATOMIC);
-    expect(field).toBe('viking_civilist_eat_slot_food');
-    // Not a `_home` suffix: the data names the at-home meal on its own, and the chain pays what it says.
-    expect(atHome).toBe('viking_civilist_eat_athome');
-    expect(mealUnits(content, atHome)).toBe(6000);
-    expect(mealUnits(content, field)).toBe(4000);
+    const authored = content.atomicAnimations.filter((clip) => AT_HOME_CLIP.test(clip.name));
+    expect(authored.map((clip) => clip.name)).toContain('viking_civilist_eat_athome');
+    const bound = content.tribes.flatMap((tribe) =>
+      tribe.atomicBindings.filter((binding) => AT_HOME_CLIP.test(binding.animation)),
+    );
+    expect(bound).toEqual([]);
   });
 });
-
-/** What a named meal clip pays out on the hunger channel. */
-function mealUnits(content: Parameters<typeof systems.atomicEventChannelDelta>[0], clip?: string): number {
-  return clip === undefined
-    ? 0
-    : systems.atomicEventChannelDelta(content, clip, systems.ATOMIC_EVENT_CHANNEL.HUNGER);
-}

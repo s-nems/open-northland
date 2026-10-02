@@ -12,23 +12,18 @@ import type { SystemContext } from '../../context.js';
 import { homeQualityActive } from '../../family/home-quality.js';
 import { homeUsedBy } from '../../family/households.js';
 import { carriesNeeds, mutNeeds, NEED_SATED_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
-import { atomicClipNameAtHome, atomicEventChannelDelta } from '../../readviews/animations.js';
+import { atomicClipName, atomicDuration, atomicEventChannelDelta } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, jobNeedsReligion } from '../../readviews/index.js';
-import {
-  atHomeDuration,
-  EAT_ATOMIC_ID,
-  PRAY_ATOMIC_ID,
-  SLEEP_ATOMIC_ID,
-  startAtomic,
-} from '../atomics/start.js';
+import { EAT_ATOMIC_ID, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
 import { heldIndoors, isInside } from '../indoors.js';
 import { storedFoodGood } from '../targets/index.js';
 
 const { REST, HUNGER, PIETY } = ATOMIC_EVENT_CHANNEL;
 
 // The at-home top-up: a settler that came home for one need serves the rest before going back out, so it
-// leaves rested and fed rather than making a second trip for each bar. Approximation: the data authors the
-// at-home clips but not when a settler chains them, so the chain and its NEED_SATED target are authored.
+// leaves rested and fed rather than making a second trip for each bar. Approximation: the chain and its
+// NEED_SATED target are authored. It plays the same clips as anywhere else; being at home only scales what
+// they pay (`applyAtomicNeedEvents`).
 
 /** One round of the at-home chain: the atomic to run, what it does, and what it faces. */
 interface HomeRound {
@@ -76,14 +71,14 @@ function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound |
   return null;
 }
 
-/** Whether the clip this settler would play indoors pays anything into `channel`. */
+/** Whether the clip this settler plays for `atomicId` pays anything into `channel`. */
 export function homeClipServes(
   ctx: SystemContext,
   settler: SettlerIdentity,
   atomicId: number,
   channel: number,
 ): boolean {
-  const clip = atomicClipNameAtHome(ctx.content, settler, atomicId);
+  const clip = atomicClipName(ctx.content, settler, atomicId);
   return clip !== undefined && atomicEventChannelDelta(ctx.content, clip, channel) > 0;
 }
 
@@ -113,7 +108,7 @@ export function planHomeTopUp(
     e,
     round.atomicId,
     round.effect,
-    atHomeDuration(ctx, settler, round.atomicId),
+    atomicDuration(ctx.content, settler, round.atomicId),
     round.target,
   );
   return true;

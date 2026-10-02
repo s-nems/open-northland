@@ -56,15 +56,6 @@ function scenario(tribe = 1, unchangedDoor = false) {
         },
       },
     ],
-    atomicAnimations: [
-      ...base.atomicAnimations,
-      {
-        id: 'viking_pray_home',
-        name: 'viking_pray_home',
-        length: 5,
-        events: [{ at: 1, type: 4, value: 800 }],
-      },
-    ],
     jobs: base.jobs.map((job) => (job.typeId === 7 ? { ...job, id: 'builder', allowedAtomics: [39] } : job)),
     tribes: [...base.tribes, { ...base.tribes[0], typeId: 7, id: 'egypt' }],
     buildings: [

@@ -4,9 +4,10 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { homeQualityActive } from '../../family/home-quality.js';
 import { builtHomeType, homeUsedBy } from '../../family/households.js';
+import { atomicDuration } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
-import { atHomeDuration, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
 import { enterBuilding, isInside } from '../indoors.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
@@ -15,15 +16,11 @@ import { homeClipServes } from './at-home.js';
 // Sleeping at home: a settler with a house walks to its door, goes inside, and comes back out rested; the
 // homeless keep the open-ground rule.
 //
-// Source basis: each tribe authors one at-home sleep clip, the civilist's - `viking_civilist_sleep_home`
-// (length 50) against the outdoor `viking_civilist_sleep` (length 237). Both pulse the rest channel twice
-// at `+4000` (`event <at> 1 +4000`), so for that body a bed indoors buys the same rest in a fifth of the
-// time, and outdoors only half of it counts; the other six outdoor clips have no twin and sleep indoors at
-// their outdoor pace. The approximation is the trigger, not the clip: this rung fires whenever the settler
-// is housed, with no distance or time-of-day gate.
-//
-// The render knows only SLEEP_ATOMIC and would play the outdoor list against this 50-tick atomic; that is
-// invisible only because `Resting` hides the sleeper.
+// Original behavior: a settler sleeps at home on the same clip as outdoors. Away from home only half the
+// rest counts, at home all of it, and twice that on a bed the home's furniture pays for
+// (`applyAtomicNeedEvents`). The data's `<clip>_home` and `<body>_eat_athome` clips are never played: no
+// `setatomic` binds them. The approximation is the trigger: this rung fires whenever the settler is housed,
+// with no distance or time-of-day gate.
 //
 // Praying at home: original behavior, a settler whose house keeps its holy fire burning prays there before
 // it looks for a temple.
@@ -51,7 +48,7 @@ export function sleepAtHome(
       e,
       SLEEP_ATOMIC_ID,
       { kind: 'sleep' },
-      atHomeDuration(ctx, settler, SLEEP_ATOMIC_ID),
+      atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
       e,
     ),
   );
@@ -59,7 +56,7 @@ export function sleepAtHome(
 
 /**
  * Send `e` home to pray at its holy fire. Returns `false` when it uses no home, the fire is out or
- * forbidden, the settler's indoor clip pays no religion, or the door is out of reach - the caller then
+ * forbidden, the settler's pray clip pays no religion, or the door is out of reach - the caller then
  * looks for a temple.
  */
 export function prayAtHome(
@@ -80,7 +77,7 @@ export function prayAtHome(
       e,
       PRAY_ATOMIC_ID,
       { kind: 'pray' },
-      atHomeDuration(ctx, settler, PRAY_ATOMIC_ID),
+      atomicDuration(ctx.content, settler, PRAY_ATOMIC_ID),
       home,
     ),
   );
