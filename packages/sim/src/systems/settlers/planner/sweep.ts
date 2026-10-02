@@ -15,6 +15,7 @@ import {
   RELEASE_IDLE_MEMBERSHIP,
   RELEASE_IDLE_VALUES,
   releaseStaleIntent,
+  shelterHasRoom,
   takesCoverFrom,
 } from './replan.js';
 
@@ -58,8 +59,8 @@ class SweepCandidates {
    * The first settler above `cursor` to visit, caught up first, so one another's plan woke earlier in
    * this pass is still reached in id order. An idler counts on `beat`, or on every beat when that is
    * undefined. With `shelters` on alarm a quiet walker or an idler of an alarmed owner counts too when
-   * {@link takesCoverFrom} holds and it has no shelter yet; each is looked at about once per pass, since
-   * a scan stops at the next settler already chosen.
+   * {@link takesCoverFrom} holds and it has no shelter yet, a walker only while its owner has a place
+   * left; each is looked at about once per pass, since a scan stops at the next settler already chosen.
    */
   after(
     cursor: number,
@@ -72,7 +73,10 @@ class SweepCandidates {
     let next = earlier(this.acting[this.actingAbove(cursor)], idlers[indexAboveId(idlers, cursor, byId)]);
     if (shelters.size === 0) return next;
     for (const owner of shelters.keys()) {
-      next = this.firstTakingCover(this.travellingByOwner.get(owner), cursor, next, content, shelters);
+      // A walker's visit only claims a place, so it waits while its owner has none left.
+      if (shelterHasRoom(shelters, owner)) {
+        next = this.firstTakingCover(this.travellingByOwner.get(owner), cursor, next, content, shelters);
+      }
       if (beat !== undefined) {
         next = this.firstTakingCover(this.idleByOwner.get(owner), cursor, next, content, shelters);
       }

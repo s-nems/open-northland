@@ -106,7 +106,7 @@ function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed
 
 /**
  * Whether travelling or fleeing `e` of a trade that takes cover claims a door of its owner's buildings on
- * alarm, which only a player order or an existing shelter keeps it from.
+ * alarm, which only a player order, an existing shelter or buildings with no place left keep it from.
  */
 function seeksShelterEnRoute(world: World, ctx: SystemContext, e: Entity, shelters: ShelterSites): boolean {
   const settler = world.tryGet(e, Settler);
@@ -116,7 +116,8 @@ function seeksShelterEnRoute(world: World, ctx: SystemContext, e: Entity, shelte
     ctx.terrain === undefined ||
     world.has(e, Sheltering) ||
     world.has(e, PlayerOrder) ||
-    !(isTravelling(world, e) || world.has(e, Fleeing))
+    !(isTravelling(world, e) || world.has(e, Fleeing)) ||
+    !shelterHasRoom(shelters, ownerOf(world, e))
   ) {
     return false;
   }
@@ -241,6 +242,15 @@ export function standsThroughPass(
 ): boolean {
   if (!waitsIdle(world, ctx.tick, e) || !waitsInside(world, e)) return false;
   return shelters.size === 0 || world.has(e, Sheltering) || !takesCoverFrom(world, ctx.content, e, shelters);
+}
+
+/** Whether one of `owner`'s buildings on alarm has a place left this pass. A pass only hands places out,
+ *  so once this fails it fails for the rest of the pass. */
+export function shelterHasRoom(shelters: ShelterSites, owner: number | undefined): boolean {
+  const sites = owner === undefined ? undefined : shelters.get(owner);
+  if (sites === undefined) return false;
+  for (const site of sites) if (site.free > 0) return true;
+  return false;
 }
 
 /** Whether one of `e`'s owner's buildings on alarm may draw it off its route or its idle wait: the owner

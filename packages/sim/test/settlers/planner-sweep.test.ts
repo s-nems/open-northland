@@ -62,6 +62,11 @@ const WOODCUTTER = 1;
 const SOLDIER = 31; // `soldier_unarmed`: a fighter trade, which never takes cover
 const CONTENT = testContent();
 const PLANK = 2;
+/** An alarm whose one shelter of `ALARMED` has `free` places left. */
+function alarmWithRoom(free: number): ShelterSites {
+  return new Map([[ALARMED, [{ entity: 0 as Entity, hx: 0, hy: 0, free }]]]);
+}
+
 /** The sweep's idle beat that lets every idler through. */
 const EVERY_IDLER = undefined;
 
@@ -174,22 +179,23 @@ describe('planner sweep order', () => {
     expect(world.verifyCaches()).toEqual([]);
   });
 
-  it('adds the quiet civilian walkers of an owner with a shelter on alarm, which cover may divert', () => {
+  it('adds the quiet civilian walkers of an owner with a shelter place left on alarm, which cover may divert', () => {
     const world = new World();
     const standing = settler(world);
     const alarmedWalker = employ(world, walking(world), WOODCUTTER, ALARMED);
     employ(world, walking(world), WOODCUTTER, CALM);
     employ(world, walking(world), SOLDIER, ALARMED);
     employ(world, busy(world), WOODCUTTER, ALARMED);
-    const alarm: ShelterSites = new Map([[ALARMED, []]]);
-    expect(swept(world, CONTENT, alarm, EVERY_IDLER)).toEqual([standing, alarmedWalker]);
+    expect(swept(world, CONTENT, alarmWithRoom(1), EVERY_IDLER)).toEqual([standing, alarmedWalker]);
+    // With no place left, a walker's visit could only fail to claim one.
+    expect(swept(world, CONTENT, alarmWithRoom(0), EVERY_IDLER)).toEqual([standing]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
   it('files a re-owned walker under its new owner', () => {
     const world = new World();
     const walker = employ(world, walking(world), WOODCUTTER, CALM);
-    const alarm: ShelterSites = new Map([[ALARMED, []]]);
+    const alarm = alarmWithRoom(1);
     expect(swept(world, CONTENT, alarm, EVERY_IDLER)).toEqual([]);
     world.add(walker, Owner, { player: ALARMED });
     expect(swept(world, CONTENT, alarm, EVERY_IDLER)).toEqual([walker]);
