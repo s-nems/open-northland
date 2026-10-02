@@ -1,8 +1,8 @@
 import {
+  collectPositioned,
   type EntitySnapshot,
   entityById,
   isPositioned,
-  positionedWithin,
   type TileBox,
   type WorldSnapshot,
 } from '@open-northland/sim';
@@ -21,30 +21,33 @@ export type EntitySource = Pick<
  */
 const DRAWN_ANCHOR_SLACK_TILES = 4;
 
-/** Reused query output, emptied around each build so it holds no entity past it. */
+/** Reused query output, written over from the start by each build so it keeps its capacity; the slots
+ *  past a build's count hold entities an earlier build read. */
 const candidates: EntitySnapshot[] = [];
 
 /** The returned view reads `collected` live, so refs the caller adds afterwards count too. The viewport
  *  mode answers without having walked the map, and adds the positioned entities, minus the static
- *  ones, to that view. */
+ *  ones, to that view: `emit` hears `indexed` for an entity the view answers for that way, which the
+ *  emitter need not collect. */
 export function emitEntities(
   snapshot: WorldSnapshot,
   source: EntitySource,
   collected: Set<number>,
-  emit: (entity: EntitySnapshot) => void,
+  emit: (entity: EntitySnapshot, indexed: boolean) => void,
 ): LiveRefs {
   const { viewport, onlyRefs, staticRefs, portraitRef, portraitHouse, insetRefs } = source;
   if (viewport !== undefined && onlyRefs === undefined) {
     // Each candidate still runs the emitter's per-item cull, so the emitted set matches the full walk's.
-    candidates.length = 0;
-    positionedWithin(snapshot, anchorTileBox(viewport), candidates);
-    for (const entity of candidates) emit(entity);
-    candidates.length = 0;
+    const count = collectPositioned(snapshot, anchorTileBox(viewport), candidates);
+    for (let i = 0; i < count; i++) {
+      const entity = candidates[i];
+      if (entity !== undefined) emit(entity, true);
+    }
     // The portrait subjects may sit outside the queried box.
     const force = (ref: number | undefined): void => {
       if (ref === undefined || collected.has(ref)) return;
       const subject = entityById(snapshot, ref);
-      if (subject !== undefined) emit(subject);
+      if (subject !== undefined) emit(subject, false);
     };
     force(portraitRef);
     force(portraitHouse);
@@ -60,11 +63,11 @@ export function emitEntities(
     // Binary search per ref, instead of walking a decoded map's tens of thousands of entities.
     for (const ref of onlyRefs) {
       const entity = entityById(snapshot, ref);
-      if (entity !== undefined) emit(entity);
+      if (entity !== undefined) emit(entity, false);
     }
     return collected;
   }
-  for (const entity of snapshot.entities) emit(entity);
+  for (const entity of snapshot.entities) emit(entity, false);
   return collected;
 }
 

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { collectSpriteScene, type SpriteScene } from '../../src/data/scene/index.js';
+import { SpriteDepthOrder } from '../../src/data/scene/depth-order.js';
+import { collectSpriteScene, SceneItemMemo, type SpriteScene } from '../../src/data/scene/index.js';
 import { buildSpriteScene, ONE, tileToScreen } from '../../src/index.js';
-import { entity, snapshotOf } from '../support/fixtures.js';
+import { entity, ghostSourceOf, snapshotOf } from '../support/fixtures.js';
 
 /** `liveRefs` is a membership view, so exact-set assertions probe it over the fixture's id universe. */
 const liveOf = (scene: SpriteScene, ids: readonly number[]): number[] =>
@@ -234,6 +235,18 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
     expect(far?.frozen).toBeUndefined(); // outdoors, so it still animates in the cutout
   });
 
+  it('draws an on-screen portrait subject once, and answers every positioned entity live', () => {
+    const near = tileToScreen(1, 1);
+    const viewport = { minX: near.x - 10, maxX: near.x + 10, minY: near.y - 10, maxY: near.y + 10 };
+    const snapshot = snapshotOf([
+      entity(1, 1, 1, { Settler: { tribe: 0 } }),
+      entity(2, 40, 40, { Settler: { tribe: 0 } }),
+    ]);
+    const scene = collectSpriteScene(snapshot, { viewport, portraitRef: 1, insetRefs: [1] });
+    expect(scene.items.map((d) => d.ref)).toEqual([1]);
+    expect(liveOf(scene, [1, 2, 3])).toEqual([1, 2]);
+  });
+
   it('portraitRef keeps its indoor subject, tagged portraitOnly + frozen (a still standing pose)', () => {
     const snapshot = snapshotOf([
       entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
@@ -262,5 +275,34 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
     expect(framed.items.map((d) => d.ref)).toEqual([10]);
     expect(framed.items[0]?.portraitOnly).toBe(true);
     expect(framed.liveRefs.has(1)).toBe(true); // still live and pooled, only undrawn
+  });
+
+  it('sorts a retained build like the comparator, items read back from the memo included', () => {
+    const order = new SpriteDepthOrder();
+    const memo = new SceneItemMemo();
+    const ghosts = ghostSourceOf([{ ref: 90, kind: 'building', tileX: 5, tileY: 4, typeId: 7 }]);
+    const build = (tick: number) =>
+      collectSpriteScene(
+        snapshotOf(
+          [
+            entity(1, 1, 1, { Settler: { tribe: 0 } }),
+            entity(2, 2, 1, { Resource: { goodType: 1 } }),
+            entity(3, 1, 1, { DeliveryFlag: {} }),
+            entity(4, 3, 2, { RoadSite: {} }),
+            entity(5, 3, 3, { RoadSite: { reservation: 1 } }),
+          ],
+          tick,
+        ),
+        { ghosts },
+        order,
+        memo,
+      ).items;
+    const first = build(1);
+    // The second build reads the resource and the flag back from the memo.
+    const second = build(2);
+    expect(second).toEqual(first);
+    expect(second.map((d) => d.ref)).toEqual(
+      [...second].sort((a, b) => a.depth - b.depth || a.ref - b.ref).map((d) => d.ref),
+    );
   });
 });

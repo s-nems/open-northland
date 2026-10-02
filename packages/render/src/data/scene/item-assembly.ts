@@ -10,6 +10,7 @@ import {
 } from './collect-fields.js';
 import { spriteDepth } from './depth.js';
 import type { EntityKind, MutableSpriteDrawItem } from './draw-item.js';
+import type { DrawList } from './draw-list.js';
 import { assignPalisadeFields, type PalisadeLayout } from './palisade-connections.js';
 import type { SettlerPose } from './settler-pose.js';
 import {
@@ -21,7 +22,7 @@ import {
 
 export interface SceneBuild {
   readonly snapshot: WorldSnapshot;
-  readonly items: MutableSpriteDrawItem[];
+  readonly list: DrawList;
   readonly collected: Set<number>;
   readonly posByRef: ReadonlyMap<number, { x: number; y: number }>;
   readonly elevation: ElevationField | undefined;
@@ -84,7 +85,7 @@ export function assembleItem(
       break;
     case 'signpost':
       pushSignpostItems(
-        build.items,
+        build.list,
         build.collected,
         build.snapshot,
         item,

@@ -6,6 +6,7 @@ import type { ElevationField } from '../terrain/index.js';
 import { pushEffectItems, pushGhostItems } from './collect-fields.js';
 import type { SpriteDepthOrder } from './depth-order.js';
 import type { MutableSpriteDrawItem, SpriteDrawItem } from './draw-item.js';
+import { DrawList } from './draw-list.js';
 import { emitEntities } from './entity-source.js';
 import { type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
 import type { InHousePose, InHouseProgramLookup } from './in-house.js';
@@ -135,7 +136,8 @@ function collectScene(
     inHousePrograms,
     holyFire,
   } = opts;
-  const items: MutableSpriteDrawItem[] = [];
+  const list = order?.list ?? new DrawList();
+  list.begin();
   const collected = new Set<number>();
   const posByRef = targetPositionsOf(snapshot);
   // Vehicles are the one ghost kind that moves: one driven out of its fogged memory into sight draws live
@@ -143,7 +145,7 @@ function collectScene(
   let liveVehicles: Set<number> | undefined;
   const build: SceneBuild = {
     snapshot,
-    items,
+    list,
     collected,
     posByRef,
     elevation,
@@ -152,16 +154,19 @@ function collectScene(
   };
 
   memo?.begin(elevation, playerColourOf);
-  const emit = (entity: EntitySnapshot): void => {
+  const emit = (entity: EntitySnapshot, indexed: boolean): void => {
     // Drawn by the retained static layer instead, or not yet - skip before paying for a classify.
     if (staticRefs?.has(entity.id) || withheldRefs?.has(entity.id)) return;
     const isPortrait =
       (portraitRef !== undefined && entity.id === portraitRef) ||
       (portraitHouse !== undefined && entity.id === portraitHouse) ||
       (insetRefs?.includes(entity.id) ?? false);
+    // The liveness view already answers for an indexed entity; a portrait subject is collected all the
+    // same, which tells the forced emission it was drawn.
+    const collects = !indexed || isPortrait;
     const known = isPortrait ? undefined : memo?.get(entity);
     if (known !== undefined) {
-      collected.add(entity.id);
+      if (collects) collected.add(entity.id);
       if (viewport !== undefined && !isVisible(viewport, known.screen.x, known.screen.y)) return;
       if (fogVisible !== undefined && !fogVisible(known.tileX, known.tileY)) return;
       known.item ??= assembleItem(
@@ -173,7 +178,7 @@ function collectScene(
         known.screen,
         STANDING_POSE,
       );
-      items.push(known.item);
+      list.push(known.item);
       return;
     }
     const components = entity.components;
@@ -183,7 +188,7 @@ function collectScene(
       kind === 'settler' && keepAboardRiders === true ? aboardVehicleOf(snapshot, components) : null;
     const pos = readPosition(components) ?? (aboard === null ? null : readPosition(aboard.components));
     if (pos === null) return;
-    collected.add(entity.id);
+    if (collects) collected.add(entity.id);
     // An indoor settler stays live and pooled but draws nothing, unless kept or forced here - or unless
     // it is performing a craft the content choreographs, which the house then shows it doing. The portrait
     // subject resolves its craft too, or selecting a craftsman would empty his workshop. Only the anchor is
@@ -229,25 +234,26 @@ function collectScene(
     const stagesEffects = item.portraitOnly !== true;
     if (inHouse !== undefined) {
       applyInHousePose(item, inHouse.inHouse);
-      if (stagesEffects) pushEffectItems(items, collected, item, inHouse.overlays, screen, tileX, tileY);
+      if (stagesEffects) pushEffectItems(list, collected, item, inHouse.overlays, screen, tileX, tileY);
     }
     // Only a kept or forced settler gets this far indoors without a craft to show.
     else if (indoorSettler) item.frozen = true;
     if (kind === 'building' && stagesEffects) {
       const fire = holyFireOverlays(snapshot, entity.id, components, holyFire);
-      pushEffectItems(items, collected, item, fire, screen, tileX, tileY);
+      pushEffectItems(list, collected, item, fire, screen, tileX, tileY);
     }
     if (kind === 'vehicle' && item.portraitOnly !== true) {
       liveVehicles ??= new Set();
       liveVehicles.add(entity.id);
     }
-    items.push(item);
+    list.push(item);
   };
 
   const emitted = emitEntities(snapshot, opts, collected, emit);
-  if (ghosts !== undefined) pushGhostItems(items, ghosts, viewport, elevation, liveVehicles, playerColourOf);
+  if (ghosts !== undefined) pushGhostItems(list, ghosts, viewport, elevation, liveVehicles, playerColourOf);
   const liveRefs: LiveRefs =
     ghosts === undefined ? emitted : { has: (ref) => emitted.has(ref) || ghosts.has(ref) };
+  const items = list.finish();
   // `depth` carries the feet anchor plus the per-kind paint bias; id breaks a remaining exact tie.
   if (order !== undefined) order.sort(items);
   else items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);

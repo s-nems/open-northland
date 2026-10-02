@@ -1,4 +1,5 @@
 import type { SpriteDrawItem } from './draw-item.js';
+import { DrawList } from './draw-list.js';
 
 /** Fresh members past which a membership change sorts them by merge rather than by insertion. */
 const FRESH_INSERTION_LIMIT = 32;
@@ -9,6 +10,8 @@ const FRESH_INSERTION_LIMIT = 32;
  * a few entities entering or leaving the view cost little. A camera jump falls back to merge work.
  */
 export class SpriteDepthOrder {
+  /** The list each build sorted here collects into, so its size carries across builds. */
+  readonly list = new DrawList();
   /** The last order's rank of each member, exactly its members. */
   private readonly ranks = new Map<number, number>();
   /** The last order's refs by rank, to drop a departed member's rank. */

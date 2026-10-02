@@ -4,6 +4,7 @@ import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import { spriteDepth } from './depth.js';
 import type { MutableDrawItem, MutableSpriteDrawItem } from './draw-item.js';
+import type { DrawList } from './draw-list.js';
 import { anchorTileBox } from './entity-source.js';
 import type { InHouseOverlay } from './in-house.js';
 import { COVER_LAUNCH_HEIGHT_PX, projectileArc } from './projectile-arc.js';
@@ -125,7 +126,7 @@ export function extraItemRef(owner: number, slot: number): number {
  * Boards bypass the caller's shared push site, so their owner colour is mapped here.
  */
 export function pushSignpostItems(
-  items: MutableSpriteDrawItem[],
+  list: DrawList,
   liveRefs: Set<number>,
   snapshot: WorldSnapshot,
   item: MutableSpriteDrawItem,
@@ -153,7 +154,7 @@ export function pushSignpostItems(
       board.player = playerColourOf === undefined ? postPlayer : playerColourOf(postPlayer);
     }
     if (lift !== 0) board.lift = lift;
-    items.push(board);
+    list.push(board);
   }
 }
 
@@ -164,7 +165,7 @@ export function pushSignpostItems(
  * beyond the ref stride's slots stages only the first ones, and the extracted programs stage at most two.
  */
 export function pushEffectItems(
-  items: MutableSpriteDrawItem[],
+  list: DrawList,
   liveRefs: Set<number>,
   owner: MutableSpriteDrawItem,
   overlays: readonly InHouseOverlay[],
@@ -187,7 +188,7 @@ export function pushEffectItems(
       fxName: overlay.name,
     };
     if (owner.lift !== undefined) fx.lift = owner.lift;
-    items.push(fx);
+    list.push(fx);
   }
 }
 
@@ -228,7 +229,7 @@ const ghostCandidates: FogGhost[] = [];
  * screen in sight.
  */
 export function pushGhostItems(
-  items: MutableSpriteDrawItem[],
+  list: DrawList,
   ghosts: GhostSource,
   viewport: Viewport | undefined,
   elevation: ElevationField | undefined,
@@ -254,7 +255,7 @@ export function pushGhostItems(
     copyStaticFields(item, g);
     if (playerColourOf !== undefined && item.player !== undefined) item.player = playerColourOf(item.player);
     if (lift !== 0) item.lift = lift;
-    items.push(item);
+    list.push(item);
   }
   ghostCandidates.length = 0;
 }
