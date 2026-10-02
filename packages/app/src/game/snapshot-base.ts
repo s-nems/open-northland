@@ -7,7 +7,6 @@ import {
   type Fixed,
   groupedBy,
   indexesOf,
-  listedWhere,
   type NeedDrain,
   type NeedLevels,
   ONE,
@@ -15,6 +14,7 @@ import {
   systems,
   type WorldSnapshot,
 } from '@open-northland/sim';
+import { entitiesOfIds, entitiesUnder, idsGroupedBy, idsWhere } from './snapshot-id-index.js';
 
 // Typed read helpers over the frozen WorldSnapshot, never over live component stores. Every read returns
 // `undefined` for a missing component or field, because a snapshot entity carries only the components it
@@ -187,16 +187,20 @@ export function isActor(e: SnapshotEntity): boolean {
 /** The components {@link isActor} tests the presence of. */
 export const ACTOR_PRESENCE = ['Settler', 'Building'] as const;
 
-const ACTORS = listedWhere(isActor, 'actors', { presence: ACTOR_PRESENCE });
+const ACTORS = idsWhere(isActor, 'actors', { presence: ACTOR_PRESENCE });
+
+/** The ids of {@link actorsOf}, ascending, maintained per change on a mirror. */
+export function actorIdsOf(snapshot: WorldSnapshot): readonly number[] {
+  return indexesOf(snapshot).get(ACTORS);
+}
 
 /**
- * Every settler and building of a snapshot, as an ascending-id subsequence of its `entities`, maintained
- * per change on a mirror. Read it within the frame: a delta that rebuilds the mirror leaves a held list
- * frozen. Iterate it; it is not a snapshot's own entity lane, so never hand it to `entityById`, whose
- * binary search would miss everything this filtered out.
+ * Every settler and building of a snapshot, as an ascending-id subsequence of its `entities`. Iterate it;
+ * it is not a snapshot's own entity lane, so never hand it to `entityById`, whose binary search would miss
+ * everything this filtered out.
  */
 export function actorsOf(snapshot: WorldSnapshot): readonly SnapshotEntity[] {
-  return indexesOf(snapshot).get(ACTORS);
+  return entitiesOfIds(snapshot.entities, actorIdsOf(snapshot));
 }
 
 const TRAINING_OCCUPANCY = countedBy(trainingHouseOf, 'training occupancy', { values: ['TrainingOrder'] });
@@ -208,6 +212,8 @@ export function trainingOccupancyOf(snapshot: WorldSnapshot, house: number): num
 
 const NO_ENTITIES: readonly SnapshotEntity[] = [];
 
+/** Held as entity objects, unlike the id groupings: the door badges read the staff of every building on
+ *  screen each tick, which costs more resolved than kept current. */
 const STAFF = groupedBy((e) => (isSettler(e) ? workplaceOf(e) : undefined), 'staff', {
   values: ['JobAssignment'],
   presence: ['Settler'],
@@ -218,15 +224,15 @@ export function staffOf(snapshot: WorldSnapshot, building: number): readonly Sna
   return indexesOf(snapshot).get(STAFF).get(building) ?? NO_ENTITIES;
 }
 
-const SITE_CREWS = groupedBy(buildSiteOf, 'site crews', { values: ['SiteAssignment'] });
+const SITE_CREWS = idsGroupedBy(buildSiteOf, 'site crews', { values: ['SiteAssignment'] });
 
 /** The entities assigned to build or repair `site` (`SiteAssignment.site`), pinned or not, ascending by
  *  id. */
 export function siteCrewOf(snapshot: WorldSnapshot, site: number): readonly SnapshotEntity[] {
-  return indexesOf(snapshot).get(SITE_CREWS).get(site) ?? NO_ENTITIES;
+  return entitiesUnder(snapshot, SITE_CREWS, site);
 }
 
-const SUPPLY_RUNS = groupedBy(
+const SUPPLY_RUNS = idsGroupedBy(
   (e) => (isSettler(e) ? num((e.components.SupplyRun as { site?: unknown } | undefined)?.site) : undefined),
   'supply runs',
   { values: ['SupplyRun'], presence: ['Settler'] },
@@ -235,10 +241,10 @@ const SUPPLY_RUNS = groupedBy(
 /** The settlers whose `SupplyRun` names `site`, ascending by id, whether or not the errand is still
  *  under way. */
 export function supplyRunsTo(snapshot: WorldSnapshot, site: number): readonly SnapshotEntity[] {
-  return indexesOf(snapshot).get(SUPPLY_RUNS).get(site) ?? NO_ENTITIES;
+  return entitiesUnder(snapshot, SUPPLY_RUNS, site);
 }
 
-const SETTLERS_BY_OWNER = groupedBy(
+const SETTLERS_BY_OWNER = idsGroupedBy(
   (e) => (isSettler(e) ? ownerPlayerOf(e) : undefined),
   'settlers by owner',
   {
@@ -249,17 +255,17 @@ const SETTLERS_BY_OWNER = groupedBy(
 
 /** The settlers `player` owns, people and livestock alike, ascending by id. */
 export function settlersOwnedBy(snapshot: WorldSnapshot, player: number): readonly SnapshotEntity[] {
-  return indexesOf(snapshot).get(SETTLERS_BY_OWNER).get(player) ?? NO_ENTITIES;
+  return entitiesUnder(snapshot, SETTLERS_BY_OWNER, player);
 }
 
-const SHELTERERS = groupedBy((e) => (isSettler(e) ? shelterOf(e) : undefined), 'shelterers', {
+const SHELTERERS = idsGroupedBy((e) => (isSettler(e) ? shelterOf(e) : undefined), 'shelterers', {
   values: ['Sheltering'],
   presence: ['Settler'],
 });
 
 /** The settlers that claimed `building` as their shelter, en route or inside, ascending by id. */
 export function shelterersOf(snapshot: WorldSnapshot, building: number): readonly SnapshotEntity[] {
-  return indexesOf(snapshot).get(SHELTERERS).get(building) ?? NO_ENTITIES;
+  return entitiesUnder(snapshot, SHELTERERS, building);
 }
 
 export function buildingTypeOf(e: SnapshotEntity): number | undefined {
@@ -331,7 +337,7 @@ export function pinnedSiteOf(e: SnapshotEntity): number | undefined {
 
 /** Builders assigned to `siteId`, pinned or not. */
 export function builderCrewSize(snapshot: WorldSnapshot, siteId: number): number {
-  return siteCrewOf(snapshot, siteId).length;
+  return indexesOf(snapshot).get(SITE_CREWS).get(siteId)?.length ?? 0;
 }
 
 /** Whether the sim takes a builder order on `building` from `builder`: a foundation or upgrade site always,
@@ -490,7 +496,7 @@ export function shelterOf(e: SnapshotEntity): number | undefined {
  *  already inside, matching the sim's own capacity ledger, so the HUD cannot advertise room a runner
  *  already holds. */
 export function shelterClaimCount(snapshot: WorldSnapshot, building: number): number {
-  return shelterersOf(snapshot, building).length;
+  return indexesOf(snapshot).get(SHELTERERS).get(building)?.length ?? 0;
 }
 
 export function settlerLearnedOf(

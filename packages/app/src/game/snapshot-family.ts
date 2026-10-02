@@ -3,11 +3,11 @@ import {
   type components,
   entityById,
   firstDifference,
-  groupedBy,
   indexesOf,
   type SnapshotIndexSpec,
   systems,
   type WorldSnapshot,
+  withComponent,
 } from '@open-northland/sim';
 import {
   ACTOR_PRESENCE,
@@ -19,6 +19,7 @@ import {
   settlerJobType,
   settlerTribeOf,
 } from './snapshot-base.js';
+import { entitiesOfIds, idsGroupedBy } from './snapshot-id-index.js';
 
 // Snapshot reads for the marriage, residence and child-order feature.
 
@@ -170,8 +171,9 @@ function marriageChildOf(e: SnapshotEntity): number | undefined {
   return num(m?.spouse) !== undefined ? num(m?.child) : undefined;
 }
 
-/** The actors naming each growing child in their `Marriage`, ascending by id. */
-const PARENTS = groupedBy((e) => (isActor(e) ? marriageChildOf(e) : undefined), 'parents', {
+/** The actors naming each child in their `Marriage`, ascending by id. A marriage keeps naming its child
+ *  after it grows up, so the groups gather every parent a settlement ever had. */
+const PARENTS = idsGroupedBy((e) => (isActor(e) ? marriageChildOf(e) : undefined), 'parents', {
   values: ['Marriage'],
   presence: ACTOR_PRESENCE,
 });
@@ -179,7 +181,8 @@ const PARENTS = groupedBy((e) => (isActor(e) ? marriageChildOf(e) : undefined), 
 /** A growing child's father, named by its lowest-id parent: a list naming a whole settlement asks once
  *  per child, so the parents come from a maintained index rather than a walk per question. */
 function fatherOfChild(snapshot: WorldSnapshot, child: number): number | undefined {
-  const parent = indexesOf(snapshot).get(PARENTS).get(child)?.[0];
+  const parentId = indexesOf(snapshot).get(PARENTS).get(child)?.[0];
+  const parent = parentId === undefined ? undefined : entityById(snapshot, parentId);
   if (parent === undefined) return undefined;
   const marriage = marriageOf(parent);
   if (marriage === undefined) return undefined;
@@ -197,7 +200,7 @@ export interface HomeFamily {
 const residentHomeOf = (e: SnapshotEntity): number | undefined =>
   isSettler(e) ? residenceHomeOf(e) : undefined;
 
-const RESIDENTS = groupedBy(residentHomeOf, 'residents', { values: ['Residence'], presence: ['Settler'] });
+const RESIDENTS = idsGroupedBy(residentHomeOf, 'residents', { values: ['Residence'], presence: ['Settler'] });
 
 /** Whether two objects of one entity group identically: a family reads only the home, adulthood and the
  *  marriage's spouse and child. */
@@ -233,10 +236,15 @@ const FAMILIES: SnapshotIndexSpec<Map<number, readonly HomeFamily[]>> = {
   },
   // A fresh walk groups nothing, so each grouping still held is checked against its home's residents.
   differs: (families, _fresh, current) => {
+    const settlers = current.get(withComponent('Settler'));
     for (const [home, grouped] of families) {
       const residents = current.get(RESIDENTS).get(home);
       if (residents === undefined) return `home ${home}, which nobody lives in`;
-      const where = firstDifference(grouped, groupFamilies(residents), `home ${home}`);
+      const where = firstDifference(
+        grouped,
+        groupFamilies(entitiesOfIds(settlers, residents)),
+        `home ${home}`,
+      );
       if (where !== null) return where;
     }
     return null;
@@ -259,7 +267,7 @@ export function homeFamiliesOf(snapshot: WorldSnapshot, home: number): readonly 
   const families = indexesOf(snapshot).get(FAMILIES);
   let grouped = families.get(home);
   if (grouped === undefined) {
-    grouped = groupFamilies(residents);
+    grouped = groupFamilies(entitiesOfIds(snapshot.entities, residents));
     families.set(home, grouped);
   }
   return grouped;

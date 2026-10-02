@@ -15,7 +15,7 @@ import {
 } from '../src/hud/minimap/filters.js';
 import { MINIMAP_PLAYER_COLOURS, STANCE_COLOURS, STANCE_SELF_COLOUR } from '../src/hud/minimap/palette.js';
 import type { MinimapMark } from '../src/hud/minimap/stamps.js';
-import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
+import { type Ent, idLookupVisits, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
 
 /** Every layer on, so a plot test sees each kind; the shipped default hides the clutter layers. */
 const ALL_LAYERS = withAllMinimapLayers(DEFAULT_MINIMAP_FILTERS, true);
@@ -307,23 +307,25 @@ describe('forEachMinimapDot', () => {
     ]);
   });
 
-  it('walks only its layer indexes on a replot, never the entity lane again', () => {
+  it('looks up its layer ids on a replot, never walking the entity lane again', () => {
     const scenery: Ent[] = Array.from({ length: 500 }, (_, i) => ({
       id: 100 + i,
       components: { Tree: {}, ...at(1, 1) },
     }));
-    const counted = countingSnapshot(snapshotOf([...scenery, person(1, 0, 2, 2), building(2, 0, 3, 3)]));
+    const { snapshot, visits } = visitCountingSnapshot(
+      snapshotOf([...scenery, person(1, 0, 2, 2), building(2, 0, 3, 3)]),
+    );
     const plot = (): number => {
       let dots = 0;
-      forEachMinimapDot(counted.snapshot, contextWith({}), (_bx, _by, _mark, _colour, part) => {
+      forEachMinimapDot(snapshot, contextWith({}), (_bx, _by, _mark, _colour, part) => {
         if (part === 'fills') dots++;
       });
       return dots;
     };
     expect(plot()).toBe(2);
-    const scansAfterFirst = counted.scans();
+    const visitsAfterFirst = visits();
     expect(plot()).toBe(2);
-    expect(counted.scans()).toBe(scansAfterFirst);
+    expect(visits() - visitsAfterFirst).toBeLessThanOrEqual(idLookupVisits(2, scenery.length + 2));
   });
 
   it('emits nothing for an empty world', () => {

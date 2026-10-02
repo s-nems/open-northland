@@ -7,7 +7,14 @@ import { fixedViewerSeat, switchableViewerSeat } from '../src/game/viewer-seat.j
 import { forEachMinimapDot } from '../src/hud/minimap/dots.js';
 import { DEFAULT_MINIMAP_FILTERS } from '../src/hud/minimap/filters.js';
 import { createFogGates, createSnapshotProjections } from '../src/view/projections/index.js';
-import { building, type Ent, settler, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
+import {
+  building,
+  type Ent,
+  idLookupVisits,
+  settler,
+  snapshotOf,
+  visitCountingSnapshot,
+} from './support/snapshot.js';
 
 /**
  * The identity memo behind the frame loop's per-tick projections: an O(entities) read must run once per
@@ -203,7 +210,8 @@ describe('per-tick projections - one walk of the map between them', () => {
     project(); // builds each index once; a mirror then maintains them per change
     const built = visits();
     project(); // fresh projection memos over the standing indexes
-    expect(visits()).toBe(built);
+    // The minimap looks up its building and settler by id.
+    expect(visits() - built).toBeLessThanOrEqual(idLookupVisits(2, entities.length));
   });
 
   it("builds render's scene index once for a heart-wearer mid store-exchange, however many ask", () => {

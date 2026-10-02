@@ -1,13 +1,6 @@
 import type { BuildingType } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
-import {
-  entitiesWith,
-  entityById,
-  groupedBy,
-  indexesOf,
-  systems,
-  type WorldSnapshot,
-} from '@open-northland/sim';
+import { entitiesWith, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
   builderCrewHasRoom,
   buildingTypeOf,
@@ -21,6 +14,7 @@ import {
   settlersIn,
   trainingHouseOf,
 } from '../../../game/snapshot.js';
+import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot-id-index.js';
 
 /** The slice of a building type these picks read. */
 type BuildingInfo = Pick<BuildingType, 'kind' | 'workers'>;
@@ -97,7 +91,7 @@ function isBuilderSite(site: SnapshotEntity): boolean {
 
 /** Each owner's foundations, damaged buildings, wall sites and road sites, kept per change: a settled
  *  map's standing walls never enter it. */
-const BUILDER_SITES_BY_OWNER = groupedBy(
+const BUILDER_SITES_BY_OWNER = idsGroupedBy(
   (e) => (isBuilderSite(e) ? ownerPlayerOf(e) : undefined),
   'builder sites by owner',
   { values: ['Owner'], presence: ['Building', 'Palisade', 'RoadSite', 'UnderConstruction', 'Damaged'] },
@@ -105,7 +99,7 @@ const BUILDER_SITES_BY_OWNER = groupedBy(
 
 /** `owner`'s sites a builder may be pinned to. */
 export function builderSitesOf(snapshot: WorldSnapshot, owner: number): readonly SnapshotEntity[] {
-  return indexesOf(snapshot).get(BUILDER_SITES_BY_OWNER).get(owner) ?? [];
+  return entitiesUnder(snapshot, BUILDER_SITES_BY_OWNER, owner);
 }
 
 /** The foundations, damaged buildings, wall sites and road sites a builder may be pinned to; a full

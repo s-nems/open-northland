@@ -32,7 +32,7 @@ import { STAFF_WELLS_MAX, staffWells } from '../src/hud/dom/building-panel/staff
 import { formatMessage, messages } from '../src/i18n/index.js';
 import { buildingPanelActions, buildingPeers } from '../src/view/unit-controls/building-panel.js';
 import { buildingEntity, snapshotOf as panelSnapshotOf, sandboxCtx } from './support/sandbox.js';
-import { type Ent, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
+import { type Ent, idLookupVisits, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
 
 const BUILDING = 100;
 const OTHER = 200;
@@ -87,7 +87,7 @@ describe('building staff readers', () => {
     expect(raisingCrew(snapshot, OTHER)).toEqual([]); // builds the indexes a mirror maintains
     const built = visits();
     expect(raisingCrew(snapshot, BUILDING).map((e) => e.id)).toEqual([1]);
-    expect(visits()).toBe(built);
+    expect(visits() - built).toBeLessThanOrEqual(idLookupVisits(1, SCENERY + 1));
   });
 
   it("groups a tower's garrison under its slot and the sheltering crowd apart", () => {

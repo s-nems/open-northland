@@ -1,6 +1,7 @@
 import { fogTileVisible, ONE, tileToScreenX, tileToScreenY, type WorldBounds } from '@open-northland/render';
 import {
   type DiplomacyState,
+  type EntitySnapshot,
   entitiesWith,
   entityById,
   type FogView,
@@ -14,6 +15,7 @@ import {
   settlerJobType,
   workFlagOf,
 } from '../../game/snapshot.js';
+import { entitiesOfIds, entityIdsWith } from '../../game/snapshot-id-index.js';
 import type { MinimapFilters, MinimapScope } from './filters.js';
 import { MINIMAP_PLAYER_COLOURS, STANCE_COLOURS, STANCE_SELF_COLOUR } from './palette.js';
 import type { MinimapMark, MinimapStampPart } from './stamps.js';
@@ -108,10 +110,17 @@ export function scopeAdmits(
   return stanceToward(owner) === (scope === 'friendly' ? 'friend' : 'enemy');
 }
 
+/** The components whose carriers the plot reads. Held as ids: the plot runs a few times a second, so it
+ *  resolves its entities then rather than keeping their objects current every delta. */
+const PLOTTED = ['Building', 'Settler', 'Signpost', 'WorkFlag', 'RoadSite'] as const;
+
 /** The component indexes the plot reads, for the frame's index registry. */
 export function readMinimapIndexes(snapshot: WorldSnapshot): void {
-  for (const name of ['Building', 'Settler', 'Signpost', 'WorkFlag', 'RoadSite'])
-    entitiesWith(snapshot, name);
+  for (const name of PLOTTED) entityIdsWith(snapshot, name);
+}
+
+function carriersOf(snapshot: WorldSnapshot, name: (typeof PLOTTED)[number]): EntitySnapshot[] {
+  return entitiesOfIds(snapshot.entities, entityIdsWith(snapshot, name));
 }
 
 /**
@@ -178,7 +187,7 @@ export function forEachMinimapDot(
   if (layers.roads) {
     // Few and transient, and like any owned marker they follow the scope and the visible ground, which
     // moves with every sighting; the static laid roads are baked apart.
-    for (const site of entitiesWith(snapshot, 'RoadSite')) {
+    for (const site of carriersOf(snapshot, 'RoadSite')) {
       const owner = ownerPlayerOf(site);
       if (owner === undefined) plot(site, 'roadSite', ROAD_SITE_DOT_COLOUR);
       else if (admits(owner)) owned(site, owner, 'roadSite', ROAD_SITE_DOT_COLOUR);
@@ -187,12 +196,12 @@ export function forEachMinimapDot(
   }
 
   if (layers.signposts) {
-    for (const post of entitiesWith(snapshot, 'Signpost')) {
+    for (const post of carriersOf(snapshot, 'Signpost')) {
       const owner = ownerPlayerOf(post);
       if (owner !== undefined && admits(owner)) owned(post, owner, 'signpost', colourOf(owner));
     }
     // A delivery flag carries no owner; its gatherer's is the flag's, one gatherer per flag.
-    for (const gatherer of entitiesWith(snapshot, 'WorkFlag')) {
+    for (const gatherer of carriersOf(snapshot, 'WorkFlag')) {
       const owner = ownerPlayerOf(gatherer);
       const flagId = workFlagOf(gatherer);
       if (owner === undefined || flagId === undefined || !admits(owner)) continue;
@@ -203,7 +212,7 @@ export function forEachMinimapDot(
   }
 
   if (layers.buildings) {
-    for (const building of entitiesWith(snapshot, 'Building')) {
+    for (const building of carriersOf(snapshot, 'Building')) {
       const owner = ownerPlayerOf(building);
       if (owner !== undefined && admits(owner)) owned(building, owner, 'building', colourOf(owner));
     }
@@ -211,7 +220,7 @@ export function forEachMinimapDot(
   }
 
   if (layers.civilians || layers.soldiers || layers.animals) {
-    for (const settler of entitiesWith(snapshot, 'Settler')) {
+    for (const settler of carriersOf(snapshot, 'Settler')) {
       const owner = ownerPlayerOf(settler);
       if (isWildlife(settler)) {
         // Wildlife has no owner and ignores the scope; claimed livestock follows its owner's.

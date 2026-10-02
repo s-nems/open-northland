@@ -1,5 +1,7 @@
 import {
+  indexesOf,
   MirrorTruth,
+  nodeOfPosition,
   type Simulation,
   SnapshotMirror,
   systems,
@@ -10,12 +12,17 @@ import { workerRoleOf } from '../src/game/sandbox/worker-roles.js';
 import {
   actorsOf,
   builderCrewSize,
+  buildingTypeOf,
   homeFamiliesOf,
+  isBuilding,
   isSettler,
   needsRuleEnabled,
   ownedByComputerSeat,
+  ownerPlayerOf,
+  positionOf,
   progressionGatesSettler,
   type SnapshotEntity,
+  settlersOwnedBy,
   shelterClaimCount,
   shelterersOf,
   siteCrewOf,
@@ -24,12 +31,19 @@ import {
   surnameSourceOf,
   trainingOccupancyOf,
 } from '../src/game/snapshot.js';
+import { entitiesUnder, idsGroupedBy, idsWhere } from '../src/game/snapshot-id-index.js';
+import { buildingPeersOf, ownedBuildingsOfType } from '../src/hud/details-panel/model/building.js';
 import { raisingCrew, shelteringIn } from '../src/hud/details-panel/model/building-staff.js';
+import { forEachMinimapDot, type MinimapDotContext } from '../src/hud/minimap/dots.js';
+import { DEFAULT_MINIMAP_FILTERS, withAllMinimapLayers } from '../src/hud/minimap/filters.js';
+import { restingBuildingsOf } from '../src/hud/tool-panel/messages/workshop-stalls.js';
 import { createSceneSim, getScene } from '../src/scenes/index.js';
 import { computeConstructionSigns } from '../src/view/projections/construction-signs.js';
 import { computeDoorBadges } from '../src/view/projections/door-badges.js';
 import { computeLifeHearts, type LifeHeartInputs } from '../src/view/projections/life-hearts.js';
 import { computeSettlerBubbles } from '../src/view/projections/settler-bubbles.js';
+import { ownRoadSiteAt } from '../src/view/runtime/own-road-sites.js';
+import { builderSitesOf } from '../src/view/unit-controls/highlights/own-building-picks.js';
 
 /**
  * The snapshot readers answer from indexes a mirror maintains per delta. After every delta each one must
@@ -53,8 +67,12 @@ function checkedMirror(sim: Simulation): { readonly mirror: SnapshotMirror; adva
   };
 }
 
-/** Scenes whose runs exercise the grouped bonds: families, building sites, shelters and drills. */
-const SCENES = ['family', 'construction', 'ai-defence', 'school', 'household-goods'] as const;
+/** Scenes whose runs exercise the grouped bonds: families, building sites, shelters, drills and roads. */
+const SCENES = ['family', 'construction', 'ai-defence', 'school', 'household-goods', 'roads'] as const;
+/** The seats whose per-owner readers each check compares. */
+const SEATS = [0, 1, 2, 3] as const;
+/** A key no entity sits under: an unowned or untyped building reads the empty group. */
+const NO_KEY = -1;
 const RUN_TICKS = 240;
 
 /** The same entity objects under a new snapshot object, so its indexes are built by one walk. */
@@ -69,6 +87,29 @@ function expectReadersMatchWalk(live: WorldSnapshot): void {
   expect(ids(actorsOf(live))).toEqual(ids(actorsOf(walked)));
   expect(actorsOf(live).every((e, i) => e === actorsOf(walked)[i])).toBe(true);
   expect(needsRuleEnabled(live)).toBe(needsRuleEnabled(walked));
+  for (const seat of SEATS) {
+    expect(ids(settlersOwnedBy(live, seat))).toEqual(ids(settlersOwnedBy(walked, seat)));
+    expect(ids(builderSitesOf(live, seat))).toEqual(ids(builderSitesOf(walked, seat)));
+  }
+  for (const e of walked.entities) {
+    if (isBuilding(e)) {
+      const owner = ownerPlayerOf(e) ?? NO_KEY;
+      const type = buildingTypeOf(e) ?? NO_KEY;
+      expect(buildingPeersOf(live, e)).toEqual(buildingPeersOf(walked, e));
+      expect(ids(ownedBuildingsOfType(live, owner, type))).toEqual(
+        ids(ownedBuildingsOfType(walked, owner, type)),
+      );
+      expect(ids(restingBuildingsOf(live, owner, type))).toEqual(
+        ids(restingBuildingsOf(walked, owner, type)),
+      );
+    }
+    const at = e.components.RoadSite === undefined ? undefined : positionOf(e);
+    if (at !== undefined) {
+      const { hx, hy } = nodeOfPosition(at.x, at.y);
+      for (const seat of SEATS)
+        expect(ownRoadSiteAt(live, seat, hx, hy)).toBe(ownRoadSiteAt(walked, seat, hx, hy));
+    }
+  }
   for (const e of walked.entities) {
     expect(trainingOccupancyOf(live, e.id)).toBe(trainingOccupancyOf(walked, e.id));
     expect(builderCrewSize(live, e.id)).toBe(builderCrewSize(walked, e.id));
@@ -116,8 +157,28 @@ function everyFewSettlers(snapshot: WorldSnapshot): ReadonlySet<number> {
   return new Set(picked.reverse());
 }
 
+/** Every layer for seat 0, with odd seats hostile, so each marker group stamps. */
+const MINIMAP_CONTEXT: MinimapDotContext = {
+  fog: null,
+  bounds: { minX: 0, minY: 0, width: 1, height: 1 },
+  scale: 1,
+  filters: withAllMinimapLayers(DEFAULT_MINIMAP_FILTERS, true),
+  isFighterJob: () => false,
+  viewer: 0,
+  stanceToward: (owner) => (owner % 2 === 1 ? 'enemy' : 'friend'),
+};
+
+function minimapMarks(snapshot: WorldSnapshot): unknown[] {
+  const marks: unknown[] = [];
+  forEachMinimapDot(snapshot, MINIMAP_CONTEXT, (x, y, mark, colour, part) =>
+    marks.push([x, y, mark, colour, part]),
+  );
+  return marks;
+}
+
 function expectProjectionsMatchWalk(live: WorldSnapshot, hearts: LifeHeartInputs): void {
   const walked = walkedCopy(live);
+  expect(minimapMarks(live)).toEqual(minimapMarks(walked));
   expect(computeSettlerBubbles(live)).toEqual(computeSettlerBubbles(walked));
   expect(computeLifeHearts(live, hearts)).toEqual(computeLifeHearts(walked, hearts));
   expect(computeConstructionSigns(live, noDoorInfo)).toEqual(computeConstructionSigns(walked, noDoorInfo));
@@ -140,5 +201,53 @@ describe('per-tick projections over a mirror', () => {
       expectProjectionsMatchWalk(live, { isLivestockTribe, selected: everyFewSettlers(live) });
       expect(mirror.verifyIndexes()).toEqual([]);
     }
+  });
+});
+
+describe('id indexes', () => {
+  const OWNED = idsGroupedBy(ownerPlayerOf, 'test settlers by owner', { values: ['Owner'] });
+  const SETTLERS = idsWhere(isSettler, 'test settlers', { presence: ['Settler'] });
+
+  it('answer the current entity objects after their members move', () => {
+    const scene = getScene('family');
+    if (scene === undefined) throw new Error('scene family missing');
+    const sim = createSceneSim(scene);
+    const { mirror, advance } = checkedMirror(sim);
+    advance();
+    const settler = mirror.snapshot().entities.find(isSettler);
+    if (settler === undefined) throw new Error('the family scene fields no settler');
+    const owner = ownerPlayerOf(settler) ?? NO_KEY;
+    entitiesUnder(mirror.snapshot(), OWNED, owner);
+    for (let tick = 0; tick < RUN_TICKS; tick++) {
+      sim.step();
+      advance();
+    }
+    const live = mirror.snapshot();
+    const current = live.entities.filter((e) => ownerPlayerOf(e) === owner);
+    expect(entitiesUnder(live, OWNED, owner)).toEqual(current);
+    expect(entitiesUnder(live, OWNED, owner).every((e, i) => e === current[i])).toBe(true);
+    expect(mirror.verifyIndexes()).toEqual([]);
+  });
+
+  it('report a corrupted grouping or list against a fresh walk', () => {
+    const scene = getScene('family');
+    if (scene === undefined) throw new Error('scene family missing');
+    const sim = createSceneSim(scene);
+    const { mirror, advance } = checkedMirror(sim);
+    advance();
+    const indexes = indexesOf(mirror.snapshot());
+    const groups = indexes.get(OWNED);
+    const settlers = indexes.get(SETTLERS);
+    sim.step();
+    advance();
+    expect(mirror.verifyIndexes()).toEqual([]);
+    const member = [...groups.values()][0]?.[0];
+    if (member === undefined) throw new Error('the family scene owns nothing');
+    groups.keyOfId.delete(member);
+    settlers.pop();
+    expect(mirror.verifyIndexes()).toEqual([
+      expect.stringContaining('test settlers by owner'),
+      expect.stringContaining('test settlers index'),
+    ]);
   });
 });

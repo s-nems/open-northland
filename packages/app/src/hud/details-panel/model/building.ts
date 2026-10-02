@@ -1,6 +1,5 @@
 import {
   countedBy,
-  groupedBy,
   homeQualityView,
   householdGoodPolicyView,
   indexesOf,
@@ -21,6 +20,7 @@ import {
   shelterClaimCount,
   staffOf,
 } from '../../../game/snapshot.js';
+import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot-id-index.js';
 import { pickableSeat } from '../../../game/viewer-seat.js';
 import { messages, tribeName } from '../../../i18n/index.js';
 import { pct } from './bars.js';
@@ -149,7 +149,7 @@ function ownerKey(owner: number | undefined, id: number): number {
 /** What the two building indexes place a building by. */
 const BUILDING_OWNER_READS = { values: ['Building', 'Owner'] };
 
-const BUILDINGS_BY_OWNER_TYPE = groupedBy(
+const BUILDINGS_BY_OWNER_TYPE = idsGroupedBy(
   (e) => {
     if (!isBuilding(e)) return undefined;
     const type = buildingTypeOf(e);
@@ -173,10 +173,11 @@ const BUILDINGS_BY_OWNER_TRIBE = countedBy(
 export function buildingPeersOf(snapshot: WorldSnapshot, ent: SnapshotEntity): readonly number[] {
   const type = buildingTypeOf(ent);
   if (type === undefined) return [];
-  const peers = indexesOf(snapshot)
-    .get(BUILDINGS_BY_OWNER_TYPE)
-    .get(ownerKey(ownerPlayerOf(ent), type));
-  return peers?.map((e) => e.id) ?? [];
+  return (
+    indexesOf(snapshot)
+      .get(BUILDINGS_BY_OWNER_TYPE)
+      .get(ownerKey(ownerPlayerOf(ent), type)) ?? []
+  );
 }
 
 /** `owner`'s buildings of type `type`, ascending by id. An index read. */
@@ -185,7 +186,7 @@ export function ownedBuildingsOfType(
   owner: number,
   type: number,
 ): readonly SnapshotEntity[] {
-  return indexesOf(snapshot).get(BUILDINGS_BY_OWNER_TYPE).get(ownerKey(owner, type)) ?? [];
+  return entitiesUnder(snapshot, BUILDINGS_BY_OWNER_TYPE, ownerKey(owner, type));
 }
 
 /** Whether `owner` keeps buildings of more than one civilization, so each house names its own. */

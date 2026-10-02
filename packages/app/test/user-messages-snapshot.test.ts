@@ -557,7 +557,8 @@ describe('user messages read off the snapshot', () => {
         });
         const crowd: Actor[] = [
           building,
-          ...Array.from({ length: workers }, (_, i) => ({ id: i + 1, workplace: WORKPLACE })),
+          // Past the named ids, so no worker shares the workplace's.
+          ...Array.from({ length: workers }, (_, i) => ({ id: FLAG + 1 + i, workplace: WORKPLACE })),
         ];
         const reasons = new Set<number>();
         const sweeps = IDLE_SWEEPS_BEFORE_MESSAGE + 3;

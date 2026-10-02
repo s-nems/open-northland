@@ -1,6 +1,4 @@
 import {
-  groupedBy,
-  indexesOf,
   nodeOfPosition,
   ONE,
   positionedWithin,
@@ -9,6 +7,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
+import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot-id-index.js';
 import { pctRatio } from './bars.js';
 import { liveAmounts } from './building-materials.js';
 import {
@@ -87,7 +86,7 @@ function isRipe(crop: CropSnapshot): boolean {
   return (num(crop.stage) ?? 0) >= (num(crop.stages) ?? Number.POSITIVE_INFINITY);
 }
 
-const CROPS_BY_FARM = groupedBy(
+const CROPS_BY_FARM = idsGroupedBy(
   (e) => {
     const crop = cropOf(e);
     return crop === undefined ? undefined : num(crop.farm);
@@ -112,7 +111,7 @@ export function productionModel(
   if (fieldGood !== undefined) {
     let growing = 0;
     let ripe = 0;
-    for (const field of indexesOf(snapshot).get(CROPS_BY_FARM).get(ent.id) ?? []) {
+    for (const field of entitiesUnder(snapshot, CROPS_BY_FARM, ent.id)) {
       const crop = cropOf(field);
       if (crop === undefined) continue;
       if (isRipe(crop)) ripe++;

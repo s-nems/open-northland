@@ -105,6 +105,7 @@ export {
   type HomeQualityView,
   homeQualityView,
   indexOfEntity,
+  indexOfEntityFrom,
   takeSnapshot,
   type WorldSnapshot,
 } from './inspect/snapshot.js';

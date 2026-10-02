@@ -1,7 +1,5 @@
 import {
   type GatheringTrade,
-  groupedBy,
-  indexesOf,
   TICKS_PER_SECOND,
   type WorkStatus,
   type WorldSnapshot,
@@ -16,6 +14,7 @@ import {
   staffOf,
   supplyRunsTo,
 } from '../../../game/snapshot.js';
+import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot-id-index.js';
 import { type MessageNaming, type MessageRaiser, nodeOf } from './raise.js';
 import { type ProductionStall, type ProductionStallReason, USER_MESSAGE_TYPE } from './types.js';
 import type { WorkStatusAsks, WorkStatusRead } from './work-asks.js';
@@ -55,7 +54,7 @@ function restingKey(owner: number, type: number): number {
 
 /** Finished buildings running no production cycle, by owner and type. The sim keeps `Production` only
  *  while a cycle runs, so a workshop enters and leaves this index per change, not per sweep. */
-const RESTING_BUILDINGS = groupedBy(
+const RESTING_BUILDINGS = idsGroupedBy(
   (e) => {
     const c = e.components;
     if (!isBuilding(e) || c.Production !== undefined || c.UnderConstruction !== undefined) return undefined;
@@ -67,15 +66,13 @@ const RESTING_BUILDINGS = groupedBy(
   { values: ['Building', 'Owner'], presence: ['Production', 'UnderConstruction'] },
 );
 
-const NO_BUILDINGS: readonly SnapshotEntity[] = [];
-
 /** The `owner`'s finished buildings of `type` running no production cycle. */
 export function restingBuildingsOf(
   snapshot: WorldSnapshot,
   owner: number,
   type: number,
 ): readonly SnapshotEntity[] {
-  return indexesOf(snapshot).get(RESTING_BUILDINGS).get(restingKey(owner, type)) ?? NO_BUILDINGS;
+  return entitiesUnder(snapshot, RESTING_BUILDINGS, restingKey(owner, type));
 }
 
 /** The reason an input only a trade gathers names when nobody gathers it: the trade to assign. */

@@ -89,6 +89,12 @@ export function visitCountingSnapshot(source: WorldSnapshot): {
   return { snapshot: { ...source, entities }, visits: () => visits };
 }
 
+/** The most entities resolving `ids` ascending ids can visit in a lane of `lane` entities: each lookup
+ *  searches its way to the id, at most a gallop and a binary search, and never walks the lane. */
+export function idLookupVisits(ids: number, lane: number): number {
+  return ids * 2 * Math.ceil(Math.log2(lane + 1));
+}
+
 /** The `(typeId, tribe)` lookup the door-badge and construction-sign projections read a building's
  *  anchors through, from a per-type table: a case that does not vary the tribe passes its map here. */
 export function buildingInfoOf(types: ReadonlyMap<number, BuildingDoorInfo>): BuildingDoorInfoOf {

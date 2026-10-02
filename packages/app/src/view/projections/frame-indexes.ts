@@ -5,7 +5,7 @@ import {
 } from '@open-northland/render/data';
 import { entitiesWith, positionedWithin, type TileBox } from '@open-northland/sim';
 import {
-  actorsOf,
+  actorIdsOf,
   fatherOf,
   homeFamiliesOf,
   isAdult,
@@ -38,7 +38,7 @@ const NO_GOODS: ReadonlyMap<number, MinimapFeature> = new Map();
 export const FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   ...RENDER_FRAME_INDEX_READERS,
   { name: 'needs rule', read: (snapshot) => needsRuleEnabled(snapshot) },
-  { name: 'actors', read: (snapshot) => actorsOf(snapshot) },
+  { name: 'actors', read: (snapshot) => actorIdsOf(snapshot) },
   { name: 'minimap layers', read: (snapshot) => readMinimapIndexes(snapshot) },
   { name: 'minimap standing nodes', read: (snapshot) => standingNodesRevision(snapshot, NO_GOODS) },
   { name: 'construction signs', read: (snapshot) => entitiesWith(snapshot, 'UnderConstruction') },

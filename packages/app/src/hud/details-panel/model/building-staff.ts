@@ -1,4 +1,4 @@
-import { entityById, groupedBy, indexesOf, systems, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { workerRoleOf } from '../../../game/sandbox/index.js';
 import {
   homeFamiliesOf,
@@ -14,6 +14,7 @@ import {
   supplyRunsTo,
   trainingHouseOf,
 } from '../../../game/snapshot.js';
+import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot-id-index.js';
 import { messages } from '../../../i18n/index.js';
 import { type BuildingDef, jobDisplayName, type UnitPanelModelContext } from './context.js';
 import { settlerDisplayName } from './settler-name.js';
@@ -51,14 +52,14 @@ export interface BuildingStaffModel {
   readonly count: { readonly filled: number; readonly capacity: number } | null;
 }
 
-const TRAINEES = groupedBy((e) => (isSettler(e) ? trainingHouseOf(e) : undefined), 'trainees', {
+const TRAINEES = idsGroupedBy((e) => (isSettler(e) ? trainingHouseOf(e) : undefined), 'trainees', {
   values: ['TrainingOrder'],
   presence: ['Settler'],
 });
 
 /** Settlers hammering at a site, by the site. Only the `construct` action counts: a blow or a meal
  *  aimed at the same building is no work on it. */
-const HAMMERING = groupedBy(
+const HAMMERING = idsGroupedBy(
   (e) => {
     if (!isSettler(e)) return undefined;
     const effect = (e.components.CurrentAtomic as { effect?: { kind?: unknown; site?: unknown } } | undefined)
@@ -92,7 +93,7 @@ function personOf(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, e: Snapsh
 export function raisingCrew(snapshot: WorldSnapshot, site: number): SnapshotEntity[] {
   const crew = new Map<number, SnapshotEntity>();
   for (const e of siteCrewOf(snapshot, site)) if (isSettler(e)) crew.set(e.id, e);
-  for (const e of indexesOf(snapshot).get(HAMMERING).get(site) ?? []) crew.set(e.id, e);
+  for (const e of entitiesUnder(snapshot, HAMMERING, site)) crew.set(e.id, e);
   for (const e of supplyRunsTo(snapshot, site)) if (isSettler(e)) crew.set(e.id, e);
   return [...crew.values()].sort((a, b) => a.id - b.id);
 }
@@ -209,7 +210,7 @@ export function buildingStaff(
       jobType: null,
     });
   }
-  const drilling = indexesOf(snapshot).get(TRAINEES).get(ent.id) ?? [];
+  const drilling = entitiesUnder(snapshot, TRAINEES, ent.id);
   if (drilling.length > 0) {
     groups.push({
       key: 'trainees',
