@@ -5,6 +5,7 @@ import {
   type BatcherOptions,
   Buffer,
   BufferUsage,
+  Container,
   type DefaultBatchableMeshElement,
   type DefaultBatchableQuadElement,
   ExtensionType,
@@ -14,6 +15,7 @@ import {
   getBatchSamplersUniformGroup,
   type InstructionSet,
   type Renderer,
+  type RenderGroup,
   Shader,
   type Texture,
   type TextureSource,
@@ -477,6 +479,10 @@ ${PIXEL_ART_MAGNIFY_GLSL}
     /** Paletted elements packed by the running {@link break}, before their batch's texture list is final. */
     private readonly unslotted: BatchableElement[] = [];
     private breaking = false;
+    /** Pages elements left since the last build, which their batches may still list. */
+    private readonly leftPages = new Set<TextureSource>();
+    /** The render group whose instructions this batcher builds; Pixi keeps one batcher per group. */
+    private renderGroup: RenderGroup | null = null;
 
     override updateElement(element: BatchableElement): void {
       const buffer = this.geometry.buffers[0];
@@ -505,10 +511,54 @@ ${PIXEL_ART_MAGNIFY_GLSL}
       return palettedFlags(element, lutSlotIn(element._batch, lut) ?? 0);
     }
 
+    /**
+     * An element changing page in place leaves the old page listed in its batch until the next rebuild,
+     * and WebGL binds every listed page on every draw; binding a destroyed page throws. Swaps off a
+     * destroyed page rebuild now, and a left page's later destruction rebuilds the render group.
+     */
+    override checkAndUpdateTexture(element: BatchableElement, texture: Texture): boolean {
+      // A texture destroyed with its source no longer names that source.
+      const left: TextureSource | null = element.texture.source;
+      if (left === texture.source) return super.checkAndUpdateTexture(element, texture);
+      if (left === null || left.destroyed) return false;
+      if (!this.joinBatch(element, texture)) return false;
+      this.watchLeftPage(left, element);
+      return true;
+    }
+
+    override begin(): void {
+      this.forgetLeftPages();
+      super.begin();
+    }
+
+    override destroy(options?: { shader?: boolean }): void {
+      this.forgetLeftPages();
+      super.destroy(options);
+    }
+
+    private watchLeftPage(page: TextureSource, element: BatchableElement): void {
+      const renderable = renderableOf(element);
+      if (renderable instanceof Container) this.renderGroup = renderable.parentRenderGroup;
+      if (this.leftPages.has(page)) return;
+      this.leftPages.add(page);
+      page.once('destroy', this.rebuildWithoutPage, this);
+    }
+
+    private rebuildWithoutPage(page: TextureSource): void {
+      this.leftPages.delete(page);
+      if (this.renderGroup !== null) this.renderGroup.structureDidChange = true;
+    }
+
+    private forgetLeftPages(): void {
+      for (const page of this.leftPages) page.off('destroy', this.rebuildWithoutPage, this);
+      this.leftPages.clear();
+      this.renderGroup = null;
+    }
+
     /** A texture whose page its batch lacks joins that batch while a slot is free, so a walker stepping
      *  onto another atlas page re-packs one element instead of rebuilding its render group's
      *  instructions. WebGL binds a batch's texture list afresh on every draw, as {@link slotLut} relies on. */
-    override checkAndUpdateTexture(element: BatchableElement, texture: Texture): boolean {
+    private joinBatch(element: BatchableElement, texture: Texture): boolean {
       if (super.checkAndUpdateTexture(element, texture)) return true;
       const batch = element._batch;
       const textures = batch.textures;

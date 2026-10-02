@@ -1,5 +1,6 @@
 import {
   type BatchableSprite,
+  Container,
   type DefaultBatchableQuadElement,
   InstructionSet,
   Rectangle,
@@ -227,6 +228,50 @@ describe('world batcher palette LUT', () => {
     expect(batcher.checkAndUpdateTexture(element, third)).toBe(false);
     expect(element.texture).toBe(second);
     batcher.destroy();
+  });
+
+  /** A page left in place stays listed in its batch, which WebGL binds on every draw until a rebuild. */
+  describe('a page an element left in place', () => {
+    const page = () => new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+
+    function leftBake() {
+      const WorldBatcher = installWorldBatcher();
+      const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT + 1 });
+      const band = new Container({ isRenderGroup: true });
+      const sprite = band.addChild(new Sprite());
+      const [bake, next] = [page(), page()];
+      const element = Object.assign(quad(bake), { renderable: sprite });
+      batcher.begin();
+      batcher.add(element);
+      batcher.break(new InstructionSet());
+      band.renderGroup.structureDidChange = false;
+      return { batcher, band, bake, next, element };
+    }
+
+    it('rebuilds its render group when it is destroyed', () => {
+      const { batcher, band, bake, next, element } = leftBake();
+      expect(batcher.checkAndUpdateTexture(element, next)).toBe(true);
+      expect(batcher.batches[0]?.textures.textures[0]).toBe(bake.source);
+      bake.destroy(true);
+      expect(band.renderGroup.structureDidChange).toBe(true);
+      batcher.destroy();
+    });
+
+    it('rebuilds instead of swapping in place once it is already destroyed', () => {
+      const { batcher, bake, next, element } = leftBake();
+      bake.destroy(true);
+      expect(batcher.checkAndUpdateTexture(element, next)).toBe(false);
+      batcher.destroy();
+    });
+
+    it('is forgotten by the next build, which lists only the pages drawn', () => {
+      const { batcher, band, bake, next, element } = leftBake();
+      batcher.checkAndUpdateTexture(element, next);
+      batcher.begin();
+      bake.destroy(true);
+      expect(band.renderGroup.structureDidChange).toBe(false);
+      batcher.destroy();
+    });
   });
 
   it('keeps a paletted texture out of a batch that lacks its LUT', () => {
