@@ -1,4 +1,6 @@
+import { FOG_STATE } from '@open-northland/sim';
 import { Container, Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
+import { aabbIntersects, screenToCell, TILE_HALF_W, type Viewport } from '../../data/projection/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { type DecorCoverBinding, makeShadedDecorShader } from '../shading.js';
 import { SHADOW_BLUR_PADDING } from '../soft-shadow-cache.js';
@@ -163,11 +165,34 @@ export interface AnimatedDecorBatch {
   readonly geometry: MeshGeometry;
   /** The pose each quad last drew, `undefined` for a collapsed one; the build writes the tick-0 pose. */
   readonly written: (AtlasFrame | undefined)[];
+  /** Whether a rewrite since the last upload left the buffers ahead of the GPU copy. */
+  uploadPending: boolean;
+}
+
+/** Animated decor bins partition a chunk into squares of this many tiles a side. */
+const ANIMATED_BIN_TILES = 4;
+const ANIMATED_BIN_PX = ANIMATED_BIN_TILES * TILE_HALF_W * 2;
+
+/** The quads of one animated batch that fall in a bin. */
+interface AnimatedRun {
+  readonly batch: AnimatedDecorBatch;
+  readonly quads: readonly number[];
+}
+
+/**
+ * The animated quads of a chunk whose objects anchor in one square, culled as one box over every frame
+ * they can show, so a frame rewrites the quads in view rather than the whole chunk.
+ */
+interface AnimatedBin extends Bounds {
+  readonly runs: readonly AnimatedRun[];
+  /** The tick the quads were last written for. Per bin, so a bin scrolling into view while the sim is
+   *  paused still catches up to the current tick's frame. */
+  lastWrittenTick: number;
 }
 
 /** Rewrite quad `q` of an animated batch for `tick`; a pose without a frame collapses the quad. False
  *  when the quad already shows that pose, which leaves its buffers untouched. */
-export function writeAnimatedQuad(
+function writeAnimatedQuad(
   batch: AnimatedDecorBatch,
   q: number,
   obj: MapObjectSprite,
@@ -185,7 +210,7 @@ export function writeAnimatedQuad(
 }
 
 /** Upload an animated batch's rewritten quads. */
-export function uploadAnimatedBatch(batch: AnimatedDecorBatch): void {
+function uploadAnimatedBatch(batch: AnimatedDecorBatch): void {
   batch.geometry.getBuffer('aPosition').update();
   batch.geometry.getBuffer('aUV').update();
   if (batch.buffers.frameBounds !== null) batch.geometry.getBuffer('aFrame').update();
@@ -216,7 +241,7 @@ interface DecorObjectQuads {
 /**
  * One decor chunk: flat map objects batched by texture source into meshes, AABB-culled like terrain
  * chunks. Static batches are built once; an animated batch's buffers are rewritten in place when the
- * play-head advances, and only while the chunk is visible.
+ * play-head advances, and only for the bins in view.
  */
 export interface DecorChunk {
   readonly container: Container;
@@ -228,10 +253,9 @@ export interface DecorChunk {
   readonly maxY: number;
   /** Animated batches to rewrite on an anim-tick advance (empty for an all-static chunk). */
   readonly animated: AnimatedDecorBatch[];
+  /** The {@link animated} quads by where they draw. */
+  readonly animatedBins: readonly AnimatedBin[];
   readonly quads: Map<MapObjectSprite, DecorObjectQuads>;
-  /** The tick the animated buffers were last written for. Per chunk, so a chunk scrolling into view
-   *  while the sim is paused still catches up to the current tick's frame. */
-  lastWrittenTick: number;
 }
 
 /** Batch one lane of a block into `container`, a still and an animated mesh per texture source (quads in
@@ -263,7 +287,14 @@ function buildLane(
       let animBatch: AnimatedDecorBatch | null = null;
       if (objects === group.moving) {
         const written = objects.map((obj) => laneFrameAt(obj, lane, 0));
-        animBatch = { lane, objects, buffers: batch.buffers, geometry: batch.geometry, written };
+        animBatch = {
+          lane,
+          objects,
+          buffers: batch.buffers,
+          geometry: batch.geometry,
+          written,
+          uploadPending: false,
+        };
         animated.push(animBatch);
       }
       for (const [q, obj] of objects.entries()) {
@@ -278,30 +309,73 @@ function buildLane(
   }
 }
 
-/** Batch one decor block. The caller owns attaching the returned chunk's containers to its layers. */
-export function buildDecorChunk(block: readonly MapObjectSprite[], style: DecorBatchStyle): DecorChunk {
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  for (const obj of block) {
-    // The AABB covers every frame the object can show (frames differ a little in size/offset), its
-    // silhouettes included.
-    const lanes: readonly [DecorLane, readonly (AtlasFrame | undefined)[]][] = [
-      ['body', obj.frames],
-      ['shadow', obj.shadow?.frames ?? []],
-    ];
-    for (const [lane, frames] of lanes) {
-      const margin = laneMargin(lane);
-      for (const frame of frames) {
-        if (frame === undefined) continue;
-        minX = Math.min(minX, obj.x + (frame.offsetX - margin) * obj.scale);
-        minY = Math.min(minY, obj.y + (frame.offsetY - margin) * obj.scale);
-        maxX = Math.max(maxX, obj.x + (frame.offsetX + frame.width + margin) * obj.scale);
-        maxY = Math.max(maxY, obj.y + (frame.offsetY + frame.height + margin) * obj.scale);
-      }
+interface Bounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+function emptyBounds(): Bounds {
+  return {
+    minX: Number.POSITIVE_INFINITY,
+    minY: Number.POSITIVE_INFINITY,
+    maxX: Number.NEGATIVE_INFINITY,
+    maxY: Number.NEGATIVE_INFINITY,
+  };
+}
+
+/** Grow `bounds` over every frame `obj` can show (frames differ a little in size/offset), its
+ *  silhouettes included. */
+function includeObject(bounds: Bounds, obj: MapObjectSprite): void {
+  const lanes: readonly [DecorLane, readonly (AtlasFrame | undefined)[]][] = [
+    ['body', obj.frames],
+    ['shadow', obj.shadow?.frames ?? []],
+  ];
+  for (const [lane, frames] of lanes) {
+    const margin = laneMargin(lane);
+    for (const frame of frames) {
+      if (frame === undefined) continue;
+      bounds.minX = Math.min(bounds.minX, obj.x + (frame.offsetX - margin) * obj.scale);
+      bounds.minY = Math.min(bounds.minY, obj.y + (frame.offsetY - margin) * obj.scale);
+      bounds.maxX = Math.max(bounds.maxX, obj.x + (frame.offsetX + frame.width + margin) * obj.scale);
+      bounds.maxY = Math.max(bounds.maxY, obj.y + (frame.offsetY + frame.height + margin) * obj.scale);
     }
   }
+}
+
+/** Sort a chunk's animated quads into bins by their object's anchor. */
+function binAnimated(animated: readonly AnimatedDecorBatch[]): AnimatedBin[] {
+  const bins = new Map<string, { bounds: Bounds; runs: Map<AnimatedDecorBatch, number[]> }>();
+  for (const batch of animated) {
+    for (const [q, obj] of batch.objects.entries()) {
+      if (obj === null) continue;
+      const key = `${Math.floor(obj.x / ANIMATED_BIN_PX)},${Math.floor(obj.y / ANIMATED_BIN_PX)}`;
+      let bin = bins.get(key);
+      if (bin === undefined) {
+        bin = { bounds: emptyBounds(), runs: new Map() };
+        bins.set(key, bin);
+      }
+      includeObject(bin.bounds, obj);
+      let quads = bin.runs.get(batch);
+      if (quads === undefined) {
+        quads = [];
+        bin.runs.set(batch, quads);
+      }
+      quads.push(q);
+    }
+  }
+  return [...bins.values()].map(({ bounds, runs }) => ({
+    ...bounds,
+    runs: [...runs].map(([batch, quads]) => ({ batch, quads })),
+    lastWrittenTick: 0,
+  }));
+}
+
+/** Batch one decor block. The caller owns attaching the returned chunk's containers to its layers. */
+export function buildDecorChunk(block: readonly MapObjectSprite[], style: DecorBatchStyle): DecorChunk {
+  const bounds = emptyBounds();
+  for (const obj of block) includeObject(bounds, obj);
   const container = new Container();
   const shadowContainer = new Container();
   const animated: AnimatedDecorBatch[] = [];
@@ -314,5 +388,38 @@ export function buildDecorChunk(block: readonly MapObjectSprite[], style: DecorB
     if (placed !== undefined) placed.shadow = shadow;
   });
   // Animated quads were written for tick 0 at build; the first update rewrites any other tick.
-  return { container, shadowContainer, minX, minY, maxX, maxY, animated, quads, lastWrittenTick: 0 };
+  const animatedBins = binAnimated(animated);
+  return { container, shadowContainer, ...bounds, animated, animatedBins, quads };
+}
+
+/**
+ * Bring a visible chunk's animated quads in `vp` to `tick`, each bin once per tick. A quad on ground the
+ * viewer does not watch shows its fixed-clock frame. Quads outside `vp` keep their pose until a frame
+ * shows them, so the work follows the screen, not the chunk.
+ */
+export function animateDecorChunk(
+  chunk: DecorChunk,
+  vp: Viewport,
+  tick: number,
+  fogStateOfCell: ((cellX: number, cellY: number) => number) | undefined,
+): void {
+  for (const bin of chunk.animatedBins) {
+    if (bin.lastWrittenTick === tick || !aabbIntersects(vp, bin)) continue;
+    bin.lastWrittenTick = tick;
+    for (const { batch, quads } of bin.runs) {
+      for (const q of quads) {
+        const obj = batch.objects[q];
+        if (obj === null || obj === undefined) continue; // removed - its quad stays zeroed
+        const cell = screenToCell(obj.x, obj.y);
+        const watched =
+          fogStateOfCell === undefined || fogStateOfCell(cell.col, cell.row) === FOG_STATE.VISIBLE;
+        if (writeAnimatedQuad(batch, q, obj, watched ? tick : 0)) batch.uploadPending = true;
+      }
+    }
+  }
+  for (const batch of chunk.animated) {
+    if (!batch.uploadPending) continue;
+    uploadAnimatedBatch(batch);
+    batch.uploadPending = false;
+  }
 }

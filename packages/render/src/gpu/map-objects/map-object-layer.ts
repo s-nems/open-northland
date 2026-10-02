@@ -1,6 +1,5 @@
-import { FOG_STATE } from '@open-northland/sim';
 import { type BufferImageSource, Container, Mesh } from 'pixi.js';
-import { aabbIntersects, screenToCell, TILE_HALF_W, type Viewport } from '../../data/projection/index.js';
+import { aabbIntersects, TILE_HALF_W, type Viewport } from '../../data/projection/index.js';
 import type { WindSway } from '../../data/weather/climate.js';
 import { WEATHER_SECTOR_NODES } from '../../data/weather/field.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
@@ -10,12 +9,11 @@ import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { makeDecorCoverUniforms, makeGroundCoverTexture } from '../weather/ground-cover-shading.js';
 import {
+  animateDecorChunk,
   buildDecorChunk,
   type DecorBatchStyle,
   type DecorChunk,
   retireDecorQuad,
-  uploadAnimatedBatch,
-  writeAnimatedQuad,
 } from './decor-batch.js';
 import { makeDecorShadowUniforms, writeDecorShadowStyle } from './decor-shadow-shader.js';
 import { type MapObjectSprite, type OneShotClip, oneShotEndTick } from './map-object-sprite.js';
@@ -279,21 +277,7 @@ export class MapObjectLayer {
       const visible = aabbIntersects(vp, chunk);
       chunk.container.visible = visible;
       chunk.shadowContainer.visible = visible;
-      if (!visible || chunk.animated.length === 0 || chunk.lastWrittenTick === tick) continue;
-      chunk.lastWrittenTick = tick;
-      for (const batch of chunk.animated) {
-        let rewritten = false;
-        for (let q = 0; q < batch.objects.length; q++) {
-          const obj = batch.objects[q];
-          if (obj === null || obj === undefined) continue; // removed - its quad stays zeroed
-          // A frozen quad asks for its fixed-clock frame each tick, which it already shows.
-          const cell = screenToCell(obj.x, obj.y);
-          const watched =
-            fogStateOfCell === undefined || fogStateOfCell(cell.col, cell.row) === FOG_STATE.VISIBLE;
-          if (writeAnimatedQuad(batch, q, obj, watched ? tick : 0)) rewritten = true;
-        }
-        if (rewritten) uploadAnimatedBatch(batch);
-      }
+      if (visible) animateDecorChunk(chunk, vp, tick, fogStateOfCell);
     }
     this.tall.update(vp, tick, fogStateOfCell, motionTime, this.environmentMotion, wind);
   }
