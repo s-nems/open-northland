@@ -23,7 +23,7 @@ const DRUIDS_01 = 2;
 /** One filled input slot per ingredient (`logicstock <good> 10`), so every recipe can start at once. */
 const INGREDIENTS = 10;
 
-/** A batch is one `DEFAULT_RECIPE_TICKS` cycle from the door, so this covers several per hut. */
+/** Covers a few batches per hut even when real content times a potion by its 400-tick produce clip. */
 const RUN_TICKS = 1500;
 /** Not 1, so `cameraFor` frames both huts. */
 const INITIAL_ZOOM = 0.7;

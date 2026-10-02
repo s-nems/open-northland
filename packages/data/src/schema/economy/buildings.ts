@@ -17,8 +17,9 @@ export const WorkerSlot = z.strictObject({
 export type WorkerSlot = z.infer<typeof WorkerSlot>;
 
 /**
- * Game ticks for one production cycle: 15 s at 1× speed, at the sim's 12 ticks/s. A named approximation
- * that replaces the extracted per-animation cycle lengths so every craft paces identically.
+ * Game ticks for a production cycle no produce clip times: 15 s at 1× speed, at the sim's 12 ticks/s.
+ * A staffed cycle lasts its operator's produce clip; this approximation paces an unstaffed-by-design
+ * workplace and a product whose clip does not resolve.
  */
 export const DEFAULT_RECIPE_TICKS = 180;
 
@@ -26,7 +27,7 @@ export const DEFAULT_RECIPE_TICKS = 180;
 export const Recipe = z.strictObject({
   inputs: z.array(GoodQuantity).default([]),
   outputs: z.array(GoodQuantity).default([]),
-  /** Game ticks to complete one production cycle. */
+  /** Game ticks of a cycle the operator's produce clip does not time. */
   ticks: z.number().int().positive().default(DEFAULT_RECIPE_TICKS),
 });
 export type Recipe = z.infer<typeof Recipe>;

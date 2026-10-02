@@ -167,18 +167,24 @@ export function anyCycleStartable(
   return false;
 }
 
-/** Consume `recipe`'s inputs and append the new batch; the caller has verified {@link canStartCycle}.
- *  `duration` is clamped to the `>= 1` {@link ProductionCycle} requires. */
-export function beginCycle(world: World, building: Entity, recipe: Recipe, goodType: number): void {
+/** Consume `recipe`'s inputs and append a batch of `duration` ticks; the caller has verified
+ *  {@link canStartCycle}. `duration` is clamped to the `>= 1` {@link ProductionCycle} requires. */
+export function beginCycle(
+  world: World,
+  building: Entity,
+  recipe: Recipe,
+  goodType: number,
+  duration: number,
+): void {
   consumeGoods(world, building, recipe.inputs);
-  const cycle: ProductionCycle = { elapsed: 0, duration: Math.max(1, recipe.ticks), goodType };
+  const cycle: ProductionCycle = { elapsed: 0, duration: Math.max(1, duration), goodType };
   const prod = world.tryMut(building, Production);
   if (prod === undefined) world.add(building, Production, { cycles: [cycle] });
   else prod.cycles.push(cycle);
 }
 
 /** Start one cycle of the first startable product in content order - the unstaffed-by-design path, with
- *  no operator whose rotation could be consulted. */
+ *  no operator whose rotation could be consulted or whose clip could time the batch. */
 export function startFirstStartable(
   world: World,
   ctx: SystemContext,
@@ -187,7 +193,7 @@ export function startFirstStartable(
 ): void {
   for (const [good, recipe] of recipes) {
     if (!canStartCycle(world, ctx, building, recipe)) continue;
-    beginCycle(world, building, recipe, good);
+    beginCycle(world, building, recipe, good, recipe.ticks);
     return;
   }
 }

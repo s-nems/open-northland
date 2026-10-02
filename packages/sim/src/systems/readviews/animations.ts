@@ -115,6 +115,18 @@ export function atomicDuration(content: ContentSet, settler: SettlerIdentity, at
   return atomicDurationForName(content, atomicClipName(content, settler, atomicId));
 }
 
+/** The `length` of the clip `atomicClipName` resolves for the settler, or undefined when no clip resolves
+ *  or it is zero-length, so the caller picks its own fallback instead of {@link DEFAULT_ATOMIC_DURATION}. */
+export function resolvedAtomicLength(
+  content: ContentSet,
+  settler: SettlerIdentity,
+  atomicId: number,
+): number | undefined {
+  const name = atomicClipName(content, settler, atomicId);
+  const length = name === undefined ? 0 : (atomicAnimationByName(content, name)?.length ?? 0);
+  return length > 0 ? length : undefined;
+}
+
 /**
  * The clip a settler actually plays for `atomicId`: its own trade's `setatomic` binding, falling back to
  * the tribe's civilist body.

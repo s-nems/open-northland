@@ -146,7 +146,7 @@ export const productionSystem: System = (world, ctx) => {
       }
       const choice = winner < 0 ? undefined : choices[winner];
       if (choice === undefined) break;
-      startCycleChoice(world, e, next[winner] as Entity, choice);
+      startCycleChoice(world, ctx, e, next[winner] as Entity, choice);
       next.splice(winner, 1);
     }
     if ((world.tryGet(e, Production)?.cycles.length ?? 0) !== running) wakeCrewInside(world, e);

@@ -130,7 +130,8 @@ describe('sandbox building worker slots', () => {
  * The mill's sandbox shape must stay pinned to the extracted original data: the wheat-in/flour-out
  * two-slot store (`DataCnmd/types/houses.ini` "work mill 00": `logicstock 4 10 1` / `logicstock 11
  * 20 0` - the trailing int is the consumed-here flag, so both slots start EMPTY), `logicproduction
- * 11`, 2 millers + 1 carrier; the grind paces at the uniform DEFAULT_RECIPE_TICKS design pacing.
+ * 11`, 2 millers + 1 carrier; the recipe carries the DEFAULT_RECIPE_TICKS fallback a miller's produce
+ * clip replaces wherever the content binds one.
  */
 describe('sandbox mill content (extracted "work mill 00" pins)', () => {
   const content = sandboxContent();
@@ -143,7 +144,7 @@ describe('sandbox mill content (extracted "work mill 00" pins)', () => {
     ]);
   });
 
-  it('grinds 1 wheat → 1 flour at the uniform design pacing', () => {
+  it('grinds 1 wheat → 1 flour on the fallback recipe time', () => {
     expect(mill?.recipes).toEqual([
       {
         inputs: [{ goodType: GOOD_WHEAT, amount: 1 }],

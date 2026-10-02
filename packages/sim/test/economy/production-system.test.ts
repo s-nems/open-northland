@@ -1,3 +1,4 @@
+import './production-system/craft-clip.cases.js';
 import './production-system/craft-selection.cases.js';
 import './production-system/cycle.cases.js';
 import './production-system/gating.cases.js';

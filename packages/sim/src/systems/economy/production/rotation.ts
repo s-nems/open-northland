@@ -3,11 +3,14 @@ import {
   PRODUCTION_UNLIMITED,
   ProductionCounters,
   productionCountOf,
+  Settler,
   writeProductionCount,
 } from '../../../components/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { needSubjectOf, operatorRecipeEnabled, settlerMeetsNeed } from '../../progression/index.js';
+import { resolvedAtomicLength } from '../../readviews/animations.js';
 import { beginCycle, canStartCycle, isYardBuilt, waitingForRecipeInput } from './cycles.js';
 
 /**
@@ -109,12 +112,32 @@ export function spendRotationPick(world: World, operator: Entity, pick: Rotation
 /** Start the cycle `operator`'s rotation chose and move the rotation past it. */
 export function startCycleChoice(
   world: World,
+  ctx: SystemContext,
   building: Entity,
   operator: Entity,
   choice: CycleChoice,
 ): void {
-  beginCycle(world, building, choice.recipe, choice.good);
+  const duration = craftCycleTicks(world, ctx, operator, choice.good, choice.recipe);
+  beginCycle(world, building, choice.recipe, choice.good, duration);
   spendRotationPick(world, operator, choice);
+}
+
+/**
+ * Ticks of one batch of `good` that `operator` crafts. Original behavior: the batch is one playthrough of
+ * the good's produce clip as the operator's tribe and trade bind it, back to back, never shortened by
+ * skill. `recipe.ticks` stands in when the good has no produce atomic or the clip does not resolve.
+ */
+function craftCycleTicks(
+  world: World,
+  ctx: SystemContext,
+  operator: Entity,
+  good: number,
+  recipe: Recipe,
+): number {
+  const settler = world.tryGet(operator, Settler);
+  const produce = contentIndex(ctx.content).goods.get(good)?.atomics.produce;
+  if (settler === undefined || produce === undefined) return recipe.ticks;
+  return resolvedAtomicLength(ctx.content, settler, produce) ?? recipe.ticks;
 }
 
 /** {@link nextRotationPick} as a cycle to begin, or undefined when the pick is a yard-built vehicle. */

@@ -8,10 +8,9 @@ import type { SystemContext } from '../../../../context.js';
  * reads. Production advances one batch per present operator, oldest first, so that pairing holds and a
  * hand beyond the running batches performs nothing rather than doubling another's motion.
  *
- * Approximation: the batch is the clip's clock. In the source the clip is the cycle, authoring its own
- * deposit frame, and the viking craft clips run 50 to 400 ticks against the flat `DEFAULT_RECIPE_TICKS`,
- * itself a named approximation, so a clip is stretched or compressed onto the batch instead of setting
- * the pace.
+ * The batch is the clip's clock. A staffed batch lasts the clip its starting operator resolves
+ * (`production/rotation.ts`), so the clip plays at its own length; only a recipe-timed fallback batch
+ * stretches or compresses it.
  */
 export function startCraftAtomic(
   world: World,
