@@ -67,6 +67,15 @@ function sameKeys(a: NetworkKeys, b: NetworkKeys): boolean {
   return a.membership === b.membership && a.values === b.values && a.owners === b.owners;
 }
 
+/** Whether `keys` still name `world`'s signpost and owner stores, read without building a key object. */
+function keysCurrent(world: World, keys: NetworkKeys): boolean {
+  return (
+    keys.membership === world.componentGeneration(Signpost) &&
+    keys.values === world.componentValueGeneration(Signpost) &&
+    keys.owners === world.componentGeneration(Owner)
+  );
+}
+
 function buildNetwork(world: World): ReadonlyMap<number, readonly SignpostSite[]> {
   // Collect per player in canonical (ascending entity id) order - group labels derive from ids, so the
   // result is independent of store insertion history.
@@ -129,9 +138,9 @@ function ownersUnchanged(world: World, byPlayer: ReadonlyMap<number, readonly Si
 }
 
 function refreshedMemo(world: World): NetworkMemo {
-  const keys = networkKeys(world);
   const cached = networkMemo.get(world);
-  if (cached !== undefined && sameKeys(cached.keys, keys)) return cached;
+  if (cached !== undefined && keysCurrent(world, cached.keys)) return cached;
+  const keys = networkKeys(world);
   if (
     cached !== undefined &&
     cached.keys.membership === keys.membership &&
@@ -435,6 +444,29 @@ export function networkLimitAt(
 ): NavigationLimit | null {
   if (!signpostNavigationEnabled(world)) return null;
   const network = refreshedMemo(world);
+  const spots = spotLimitsOf(world, terrain, network.revision);
+  const key = spotKey(player, range, hx, hy);
+  if (key !== null) {
+    const held = spots.limits.get(key);
+    if (held !== undefined) return held;
+  }
+  const limit = deriveNetworkLimit(terrain, world, network, player, hx, hy, range);
+  if (key !== null) {
+    if (spots.limits.size >= SPOT_LIMIT_MEMO_CAP) spots.limits.clear();
+    spots.limits.set(key, limit);
+  }
+  return limit;
+}
+
+function deriveNetworkLimit(
+  terrain: TerrainGraph,
+  world: World,
+  network: NetworkMemo,
+  player: number,
+  hx: number,
+  hy: number,
+  range: number,
+): SignpostConfinement {
   const posts = network.byPlayer.get(player) ?? [];
   // A post is caught when it stands inside the range and on ground the spot connects to; a caught post
   // opens its whole group.
@@ -450,4 +482,36 @@ export function networkLimitAt(
   const caught =
     groups.length === 0 ? null : sharedCaughtPosts(world, network.revision, player, range, posts, groups);
   return new SignpostConfinement(terrain, hx, hy, range, caught);
+}
+
+/** One network revision's spot limits, shared by every settler that plans from the same spot: a limit
+ *  is a pure function of the spot, the player, the range and the network. */
+interface SpotLimits {
+  readonly terrain: TerrainGraph;
+  readonly revision: number;
+  readonly limits: Map<number, SignpostConfinement>;
+}
+
+/** Spots held per revision before the memo starts over, bounding it on a long-lived network. */
+const SPOT_LIMIT_MEMO_CAP = 8192;
+/** Exclusive bounds of the fields {@link spotKey} packs. */
+const SPOT_COORD_SPAN = 1 << 14;
+const SPOT_RANGE_SPAN = 1 << 8;
+
+const spotLimitMemos = new WeakMap<World, SpotLimits>();
+
+function spotLimitsOf(world: World, terrain: TerrainGraph, revision: number): SpotLimits {
+  let memo = spotLimitMemos.get(world);
+  if (memo === undefined || memo.revision !== revision || memo.terrain !== terrain) {
+    memo = { terrain, revision, limits: new Map() };
+    spotLimitMemos.set(world, memo);
+  }
+  return memo;
+}
+
+/** The spot's memo key, or null for one outside the packable span, which is derived afresh. */
+function spotKey(player: number, range: number, hx: number, hy: number): number | null {
+  if (player < 0 || range < 0 || range >= SPOT_RANGE_SPAN) return null;
+  if (hx < 0 || hy < 0 || hx >= SPOT_COORD_SPAN || hy >= SPOT_COORD_SPAN) return null;
+  return ((player * SPOT_RANGE_SPAN + range) * SPOT_COORD_SPAN + hx) * SPOT_COORD_SPAN + hy;
 }

@@ -17,7 +17,7 @@ import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
  * so a false here means every per-settler scan would return null. It is deliberately weaker (no "a store
  * can take it" check), so a true still runs the real scan and only a provably empty scan is elided.
  */
-export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: readonly Entity[]): boolean {
+export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: Iterable<Entity>): boolean {
   for (const e of stockpiles) {
     const stock = accessibleStockAmounts(world, e);
     if (stock === undefined) continue;

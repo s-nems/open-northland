@@ -1,6 +1,6 @@
 import { MoveGoal, ownerOf, Position, type SettlerIdentity, Sheltering } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { type HalfCellNode, positionOfNode } from '../../../nav/halfcell.js';
+import { positionOfNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { releaseShelter, type ShelterSite, type ShelterSites } from '../../defence/index.js';
@@ -20,7 +20,7 @@ import { answerNeedInPlace } from './needs.js';
  * on arrival. A settler that already holds a claim keeps it; the DefenceSystem is what breaks it.
  *
  * Source basis: the defence mode is extracted; that civilians shelter in it, who counts as a civilian, and
- * how many fit are approximations.
+ * how many fit are approximations. `(fromHx, fromHy)` is the settler's half-cell node, unclamped.
  */
 export function planShelter(
   world: World,
@@ -29,7 +29,8 @@ export function planShelter(
   e: Entity,
   settler: SettlerIdentity,
   here: NodeId,
-  from: HalfCellNode,
+  fromHx: number,
+  fromHy: number,
   limit: NavigationLimit | null,
   shelters: ShelterSites,
 ): boolean {
@@ -38,7 +39,18 @@ export function planShelter(
   if (shelters.size === 0 || !sheltersOnAlarm(ctx.content, settler.jobType)) return false;
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;
-  const shelter = nearestShelterWithRoom(world, ctx, terrain, e, owner, here, from, limit, shelters);
+  const shelter = nearestShelterWithRoom(
+    world,
+    ctx,
+    terrain,
+    e,
+    owner,
+    here,
+    fromHx,
+    fromHy,
+    limit,
+    shelters,
+  );
   if (shelter === null) return false;
   shelter.free--;
   world.add(e, Sheltering, { shelter: shelter.entity });
@@ -56,7 +68,8 @@ function nearestShelterWithRoom(
   e: Entity,
   player: number,
   here: NodeId,
-  from: HalfCellNode,
+  fromHx: number,
+  fromHy: number,
   limit: NavigationLimit | null,
   shelters: ShelterSites,
 ): ShelterSite | null {
@@ -67,7 +80,7 @@ function nearestShelterWithRoom(
     if (site.free <= 0) continue;
     // Rank on straight-line distance and resolve a door only for a candidate that beats the running best:
     // the door resolve walks the footprint's approach cells, too much to pay for every site on the list.
-    const distance = Math.abs(site.hx - from.hx) + Math.abs(site.hy - from.hy);
+    const distance = Math.abs(site.hx - fromHx) + Math.abs(site.hy - fromHy);
     if (best !== null && distance >= bestDistance) continue;
     if (!doorIsWalkable(interactionCell(world, ctx, terrain, site.entity, here), limit, failed)) continue;
     best = site;

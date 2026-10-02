@@ -37,11 +37,9 @@ export interface YardTargets {
 export interface TargetCandidates {
   /** Harvest targets: entities with {@link Resource} + {@link Position}. */
   readonly resources: readonly Entity[];
-  /** Stores / food stores / workplace outputs: entities with {@link Stockpile} + {@link Position}. */
-  readonly stockpiles: readonly Entity[];
-  /** {@link stockpiles} as a ring index keyed by interaction cell, for the nearest-store picks. Kept
-   *  across ticks and caught up here, so like the list it holds the stockpiles standing at the pass's
-   *  start. */
+  /** Stores / food stores / workplace outputs, the entities with {@link Stockpile} + {@link Position}, as a
+   *  ring index keyed by interaction cell for the nearest-store picks. Kept across ticks and caught up
+   *  here, so it holds the stockpiles standing at the pass's start. */
   readonly stockpileCells: InteractionCellIndex;
   /** Building-keyed targets (prayer sites): entities with {@link Building} + {@link Position}. */
   readonly buildings: readonly Entity[];
@@ -115,7 +113,6 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
 /** {@link TargetCandidates} as a class: its lazy views are prototype getters, so a pass allocates one
  *  object instead of a fresh closure and accessor shape per view. */
 class TickTargets implements TargetCandidates {
-  readonly stockpiles: readonly Entity[];
   readonly stockpileCells: InteractionCellIndex;
   readonly buildings: readonly Entity[];
   readonly groundDrops: readonly Entity[];
@@ -141,7 +138,6 @@ class TickTargets implements TargetCandidates {
     private readonly terrain: TerrainGraph,
   ) {
     this.harvestAtomicByGood = contentIndex(ctx.content).harvestAtomicByGood;
-    this.stockpiles = world.canonicalQuery(Stockpile, Position);
     this.buildings = world.canonicalQuery(Building, Position);
     this.groundDrops = world.canonicalQuery(GroundDrop, Stockpile, Position);
     this.stockpileCells = stockpileCells(world, ctx.content, terrain);

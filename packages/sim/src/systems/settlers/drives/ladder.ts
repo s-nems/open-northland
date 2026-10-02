@@ -16,7 +16,7 @@ import {
   Stance,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import { holdsGround } from '../../conflict/battle-alert.js';
 import { standsAtPost } from '../../conflict/tower-post.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
@@ -82,23 +82,25 @@ export function planShelterRung(pass: PlannerPass, e: Entity, settler: SettlerVi
   if (pass.shelters.size === 0) return false;
   const { world, ctx, terrain } = pass;
   const p = world.get(e, Position);
-  const hereNode = nodeOfPosition(p.x, p.y);
-  const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
+  const hx = nodeHxOfPosition(p.x, p.y);
+  const hy = nodeHyOfPosition(p.y);
+  const here = terrain.nodeAtClamped(hx, hy);
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
-  return planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters);
+  return planShelter(world, ctx, terrain, e, settler, here, hx, hy, limit, pass.shelters);
 }
 
 /** Plan one idle adult. `jobType` is the caller's non-null narrowing of `settler.jobType`. */
 export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jobType: number): void {
   const { world, ctx, terrain } = pass;
   const p = world.get(e, Position);
-  const hereNode = nodeOfPosition(p.x, p.y);
-  const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
+  const hx = nodeHxOfPosition(p.x, p.y);
+  const hy = nodeHyOfPosition(p.y);
+  const here = terrain.nodeAtClamped(hx, hy);
   const load = world.tryGet(e, Carrying);
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
 
   // The alarm outranks every other drive: hunger, the ownership gate, and a live equip errand alike.
-  if (planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters)) {
+  if (planShelter(world, ctx, terrain, e, settler, here, hx, hy, limit, pass.shelters)) {
     standIfInside(pass, e, world.get(e, Sheltering).shelter);
     return;
   }
@@ -126,7 +128,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // original answers all four needs through one task.
   if (
     orderedNeed(world, e) === 'enjoyment' &&
-    planGossipSeek(world, ctx, e, settler, hereNode.hx, hereNode.hy, pass.gossipCandidates, true)
+    planGossipSeek(world, ctx, e, settler, hx, hy, pass.gossipCandidates, true)
   ) {
     return;
   }
@@ -229,7 +231,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // is left alone - the alert governs rest and company, not a settler's trade.
   if (
     !staysPut(world, e) &&
-    planGossipSeek(world, ctx, e, settler, hereNode.hx, hereNode.hy, pass.gossipCandidates, false, alert)
+    planGossipSeek(world, ctx, e, settler, hx, hy, pass.gossipCandidates, false, alert)
   ) {
     return;
   }
@@ -241,7 +243,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   )
     return;
 
-  planEconomy(plan, pass, settler, load, hereNode.hx, hereNode.hy, alert);
+  planEconomy(plan, pass, settler, load, hx, hy, alert);
 }
 
 /**

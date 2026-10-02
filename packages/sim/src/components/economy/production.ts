@@ -71,8 +71,13 @@ export function productionCountOf(
   goodType: number,
 ): ProductionCount {
   if (selection === undefined) return PRODUCTION_UNLIMITED;
-  // The read-only view widens each pair to an array, so the count reads as possibly absent.
-  for (const [good, count] of selection.counters) if (good === goodType) return count ?? PRODUCTION_UNLIMITED;
+  // Indexed, not destructured, which runs the iterator protocol per pair. The read-only view widens each
+  // pair to an array, so the count reads as possibly absent.
+  const { counters } = selection;
+  for (let i = 0; i < counters.length; i++) {
+    const pair = counters[i];
+    if (pair !== undefined && pair[0] === goodType) return pair[1] ?? PRODUCTION_UNLIMITED;
+  }
   return PRODUCTION_UNLIMITED;
 }
 

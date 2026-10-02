@@ -32,7 +32,7 @@ import {
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Component, Entity, World } from '../../../ecs/world.js';
-import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import { isManningPost } from '../../conflict/tower-post.js';
 import { pruneUnreachableTargets } from '../../conflict/unreachable-targets.js';
 import type { SystemContext } from '../../context.js';
@@ -121,16 +121,17 @@ function seeksShelterEnRoute(world: World, ctx: SystemContext, e: Entity, shelte
     return false;
   }
   const p = world.get(e, Position);
-  const from = nodeOfPosition(p.x, p.y);
-  const here = ctx.terrain.nodeAtClamped(from.hx, from.hy);
+  const hx = nodeHxOfPosition(p.x, p.y);
+  const hy = nodeHyOfPosition(p.y);
   return planShelter(
     world,
     ctx,
     ctx.terrain,
     e,
     settler,
-    here,
-    from,
+    ctx.terrain.nodeAtClamped(hx, hy),
+    hx,
+    hy,
     navigationLimitFor(world, ctx.content, ctx.terrain, e),
     shelters,
   );
