@@ -181,7 +181,7 @@ describe('needsSystem - a settler still growing carries no needs', () => {
       const sim = new Simulation({ seed: 1, content: testContent() });
       const young = settlerWithHunger(sim, fx.fromInt(0));
       setSettlerJob(sim.world, young, jobType);
-      sim.world.add(young, components.Age, { ticks: ageTicks });
+      sim.world.add(young, components.Age, { ticks: ageTicks, asOf: null });
 
       for (let i = 0; i < 100; i++) needsSystem(sim.world, nextTickCtxOf(sim));
       const settler = needsOf(sim, young);

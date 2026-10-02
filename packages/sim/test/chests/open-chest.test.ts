@@ -392,7 +392,7 @@ describe('the openChest order', () => {
     });
     const woodcutter = spawn(sim, WOODCUTTER, 6, 6);
     const child = spawn(sim, WOODCUTTER, 6, 12);
-    sim.world.add(child, Age, { ticks: 0 });
+    sim.world.add(child, Age, { ticks: 0, asOf: null });
     sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: woodcutter, chest: magical }));
     sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: child, chest: wooden }));
     sim.step();

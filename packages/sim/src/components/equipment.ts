@@ -1,7 +1,8 @@
 import type { EquipCategory } from '@open-northland/data';
 import type { Fixed } from '../core/fixed.js';
-import { defineComponent } from '../ecs/world.js';
+import { defineComponent, type Entity, type World } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
+import { PathFollow } from './movement.js';
 
 /**
  * How many "misc" consumable slots (mead / potions / amulets) a character carries. Approximation: the
@@ -38,24 +39,56 @@ export interface EquipmentData {
 
 export const Equipment = defineComponent<EquipmentData>('Equipment', 'settlers');
 
-/** The good worn in one addressed equipment slot, or null when the slot is empty / out of range. */
+/** The good stored in one addressed equipment slot, or null when the slot is empty / out of range. Boots
+ *  read here miss the wear of a walk under way; use {@link wornSlot} for a slot's condition. */
 export function equipSlotValue(eq: EquipmentData, group: EquipCategory, slot: number): EquipmentSlot | null {
   if (group === 'misc') return eq.misc[slot] ?? null;
   return eq[group];
 }
 
-/** Write one addressed equipment slot (the misc array is replaced, never mutated in place). */
+/** The degree of use of the boots `e` wears now, or null when it wears none. */
+export function bootsDegreeOfUse(world: World, e: Entity): Fixed | null {
+  const boots = world.tryGet(e, Equipment)?.boots ?? null;
+  if (boots === null) return null;
+  return world.tryGet(e, PathFollow)?.bootsDegree ?? boots.degreeOfUse;
+}
+
+/** The good worn in one addressed slot of `e` with its current degree of use, or null when empty. */
+export function wornSlot(world: World, e: Entity, group: EquipCategory, slot: number): EquipmentSlot | null {
+  const eq = world.tryGet(e, Equipment);
+  const held = eq === undefined ? null : equipSlotValue(eq, group, slot);
+  const walked = group === 'boots' ? world.tryGet(e, PathFollow)?.bootsDegree : undefined;
+  if (held === null || walked === undefined) return held;
+  return { goodType: held.goodType, degreeOfUse: walked };
+}
+
+/** Write one addressed slot of `e`'s equipment (the misc array is replaced, never mutated in place).
+ *  Writing the boots slot replaces the wear a walk under way carried for the old pair. */
 export function writeEquipSlot(
-  eq: EquipmentData,
+  world: World,
+  e: Entity,
   group: EquipCategory,
   slot: number,
   value: EquipmentSlot | null,
 ): void {
+  const eq = world.mut(e, Equipment);
   if (group === 'misc') {
     eq.misc = eq.misc.map((held, i) => (i === slot ? value : held));
     return;
   }
   eq[group] = value;
+  if (group === 'boots' && world.tryGet(e, PathFollow)?.bootsDegree !== undefined) {
+    world.mut(e, PathFollow).bootsDegree = undefined;
+  }
+}
+
+/** Store the boots wear `e`'s walk carried in its {@link PathFollow} into `Equipment.boots`, as the walk's
+ *  path is dropped. */
+export function settleWalkWear(world: World, e: Entity): void {
+  const walked = world.tryGet(e, PathFollow)?.bootsDegree;
+  const boots = world.tryGet(e, Equipment)?.boots ?? null;
+  if (walked === undefined || boots === null) return;
+  world.mut(e, Equipment).boots = { goodType: boots.goodType, degreeOfUse: walked };
 }
 
 export interface EquipOrderIntent {

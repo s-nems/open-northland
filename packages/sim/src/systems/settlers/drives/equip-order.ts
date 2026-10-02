@@ -1,12 +1,11 @@
 import {
   AssistantRecruit,
   Carrying,
-  Equipment,
   EquipOrder,
-  equipSlotValue,
   MoveGoal,
   ownerOf,
   type SettlerIdentity,
+  wornSlot,
 } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -123,8 +122,7 @@ function playerIntentAllowed(
  */
 function planTakeOff(errand: EquipErrand): boolean {
   const { world, ctx, entity, order } = errand;
-  const worn = world.tryGet(entity, Equipment);
-  const takenOff = worn === undefined ? null : equipSlotValue(worn, order.group, order.slot);
+  const takenOff = wornSlot(world, entity, order.group, order.slot);
   if (takenOff === null) return endErrand(errand); // the slot emptied since the order - a swap raced it
   if (world.has(entity, Carrying)) {
     startDrop(world, ctx, entity); // free the hands first - the taken-off good may need the back
@@ -145,8 +143,7 @@ function planTakeOff(errand: EquipErrand): boolean {
  */
 function planFetch(errand: EquipErrand, goodType: number): boolean {
   const { world, ctx, entity, settler, order, here, owner, gate, avoid, targets } = errand;
-  const worn = world.tryGet(entity, Equipment);
-  const held = worn === undefined ? null : equipSlotValue(worn, order.group, order.slot);
+  const held = wornSlot(world, entity, order.group, order.slot);
   // A part-used unit is still replaced: refetching a worn pair is the swap the menu offers.
   if (held !== null && held.goodType === goodType && !isUsed(held)) return endErrand(errand);
   if (world.has(entity, Carrying)) {

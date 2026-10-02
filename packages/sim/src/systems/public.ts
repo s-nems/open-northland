@@ -60,7 +60,13 @@ export {
   resourceFootprintForGood,
   stampResourceFootprintOrFallback,
 } from './footprint/resources.js';
-export { ADULT_AGE_TICKS, CHILD_AGE_TICKS, isChild, TICKS_PER_AGE_YEAR } from './lifecycle/ageclass.js';
+export {
+  ADULT_AGE_TICKS,
+  ageTicksAt,
+  CHILD_AGE_TICKS,
+  isChild,
+  TICKS_PER_AGE_YEAR,
+} from './lifecycle/ageclass.js';
 // The need levels the HUD marks its bars and bubbles against, so presentation cannot drift from the
 // level the drives fire at, the near-death line its warning reads, and the derivation of a stored bar.
 export {

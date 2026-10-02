@@ -1,9 +1,11 @@
 import type { EquipCategory } from '@open-northland/data';
 import {
+  bootsDegreeOfUse,
   Equipment,
-  equipSlotValue,
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
+  PathFollow,
+  wornSlot,
   writeEquipSlot,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -47,17 +49,28 @@ export function applyEquipWear(
   step: Fixed,
 ): void {
   if (step <= ZERO) return;
-  const eq = world.tryGet(entity, Equipment);
-  if (eq === undefined) return;
-  const worn = equipSlotValue(eq, group, slot);
+  const worn = wornSlot(world, entity, group, slot);
   if (worn === null || worn.degreeOfUse >= ONE) return;
-  const used = fx.add(worn.degreeOfUse, step);
-  writeEquipSlot(
-    world.mut(entity, Equipment),
-    group,
-    slot,
-    used >= ONE ? null : { goodType: worn.goodType, degreeOfUse: used },
-  );
+  wearSlotTo(world, entity, group, slot, worn.goodType, fx.add(worn.degreeOfUse, step));
+}
+
+/** Store a worn slot's new degree of use, breaking the item at ONE. A walking pair keeps its step wear
+ *  in the walk's {@link PathFollow}, so a step leaves the equipment record unwritten. */
+function wearSlotTo(
+  world: World,
+  e: Entity,
+  group: EquipCategory,
+  slot: number,
+  goodType: number,
+  used: Fixed,
+): void {
+  if (used >= ONE) {
+    writeEquipSlot(world, e, group, slot, null);
+    return;
+  }
+  const walk = group === 'boots' ? world.tryMut(e, PathFollow) : undefined;
+  if (walk !== undefined) walk.bootsDegree = used;
+  else writeEquipSlot(world, e, group, slot, { goodType, degreeOfUse: used });
 }
 
 /**
@@ -76,7 +89,8 @@ export function wearWornBoots(
 ): void {
   if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.SHOES_DO_NOT_WEAR)) return;
   const boots = world.tryGet(e, Equipment)?.boots;
-  if (boots == null || boots.degreeOfUse >= ONE) return;
+  const degreeOfUse = bootsDegreeOfUse(world, e);
+  if (boots == null || degreeOfUse === null || degreeOfUse >= ONE) return;
   const equip = contentIndex(ctx.content).goods.get(boots.goodType)?.equip;
   if (equip === undefined || !equip.wears || equip.uses === undefined) return;
   const wear = carrying ? roughness * CARRYING_WEAR_FACTOR : roughness;
@@ -87,12 +101,14 @@ export function wearWornBoots(
     applyEquipWear(world, e, 'boots', 0, fx.divCeil(fx.fromInt(wear), fx.fromInt(equip.uses)));
     return;
   }
-  const spent = degreeToUses(boots.degreeOfUse, equip.uses) + wear;
-  writeEquipSlot(
-    world.mut(e, Equipment),
+  const spent = degreeToUses(degreeOfUse, equip.uses) + wear;
+  wearSlotTo(
+    world,
+    e,
     'boots',
     0,
-    spent >= equip.uses ? null : { goodType: boots.goodType, degreeOfUse: usesToDegree(spent, equip.uses) },
+    boots.goodType,
+    spent >= equip.uses ? ONE : usesToDegree(spent, equip.uses),
   );
 }
 

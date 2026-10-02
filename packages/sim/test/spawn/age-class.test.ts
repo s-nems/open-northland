@@ -53,11 +53,11 @@ describe('createSettler stamps Age on the baby/child job slugs', () => {
     const baby = createSettler(world, content, new Rng(1), spec(2)); // baby_male
     const child = createSettler(world, content, new Rng(1), spec(3)); // child_female
     if (baby === null || child === null) throw new Error('spawn failed');
-    expect(world.get(baby, Age)).toEqual({ ticks: 0 });
+    expect(world.get(baby, Age)).toEqual({ ticks: 0, asOf: null });
     expect(world.has(baby, Female)).toBe(false);
     // A child starts at the baby→child boundary, so growth neither demotes it to a baby nor
     // stretches its remaining childhood.
-    expect(world.get(child, Age)).toEqual({ ticks: CHILD_AGE_TICKS });
+    expect(world.get(child, Age)).toEqual({ ticks: CHILD_AGE_TICKS, asOf: null });
     expect(world.has(child, Female)).toBe(true);
   });
 

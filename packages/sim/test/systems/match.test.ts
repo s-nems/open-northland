@@ -50,7 +50,7 @@ function personOf(sim: Simulation, owner: number, spec: PersonSpec = {}): Entity
   sim.world.add(e, Owner, { player: owner });
   sim.world.add(e, Health, { hitpoints: HITPOINTS, max: HITPOINTS });
   if (spec.female === true) sim.world.add(e, Female, { female: true });
-  if (spec.child === true) sim.world.add(e, Age, { ticks: 0 });
+  if (spec.child === true) sim.world.add(e, Age, { ticks: 0, asOf: null });
   return e;
 }
 

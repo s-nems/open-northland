@@ -4,6 +4,7 @@ import { JOB_CIVILIST, JOB_IDLE } from '../../../catalog/jobs.js';
 import {
   actorsOf,
   buildingTypeOf,
+  childAgeYearsOf,
   isAdult,
   isBoundByMarriage,
   isFemale,
@@ -155,7 +156,7 @@ export function residentRows(snapshot: WorldSnapshot, ctx: ResidentsProjectionCo
     const kind = residentKindOf(ctx.content, ent, jobType);
     const workplace = workplaceOf(ent);
     const workplaceEnt = workplace === undefined ? undefined : entityById(snapshot, workplace);
-    const ageTicks = num((ent.components.Age as { ticks?: unknown } | undefined)?.ticks);
+    const ageYears = childAgeYearsOf(ent, snapshot.tick);
     rows.push({
       id: ent.id,
       name: settlerDisplayName(nameCtx, snapshot, ent),
@@ -163,7 +164,7 @@ export function residentRows(snapshot: WorldSnapshot, ctx: ResidentsProjectionCo
       female: isFemale(ent),
       jobType,
       profession: jobDisplayName(nameCtx, jobType ?? undefined),
-      ageYears: ageTicks === undefined ? null : Math.floor(ageTicks / systems.TICKS_PER_AGE_YEAR),
+      ageYears: ageYears ?? null,
       workplace: workplaceEnt === undefined ? '' : buildingTitle(ctx.content, buildingTypeOf(workplaceEnt)),
       lacks: lacksOf(ctx, snapshot, ent, kind, jobType, postedTrades),
     });

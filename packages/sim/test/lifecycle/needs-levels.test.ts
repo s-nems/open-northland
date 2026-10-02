@@ -49,6 +49,8 @@ const SEED = 20_251_001;
 const VERIFY_EVERY = 500;
 /** A stretch of passes far short of any band threshold. */
 const DRAINED_TICKS = 50;
+/** A 60000-tick differential against the per-tick drain: slow by design, and slower on a loaded machine. */
+const DIFFERENTIAL_TIMEOUT_MS = 60_000;
 
 const DRAINING = ['hunger', 'fatigue', 'enjoyment'] as const;
 const THRESHOLDS: readonly Fixed[] = NEED_BAND_THRESHOLDS;
@@ -91,7 +93,7 @@ function stepReferenceHealth(ref: Reference): void {
 
 function setGate(sim: Simulation, e: Entity, gate: Gate): void {
   setSettlerJob(sim.world, e, gate === 'fighter' ? SOLDIER : WOODCUTTER);
-  if (gate === 'growing') sim.world.add(e, Age, { ticks: 0 });
+  if (gate === 'growing') sim.world.add(e, Age, { ticks: 0, asOf: null });
   else if (sim.world.has(e, Age)) sim.world.remove(e, Age);
 }
 
@@ -121,7 +123,9 @@ function crossings(log: string[], tick: number, need: string, before: Fixed, aft
 }
 
 describe('needs stored as level-at-tick', () => {
-  it('derives every bar, threshold crossing and starvation bite the per-tick drain produced', () => {
+  it('derives every bar, threshold crossing and starvation bite the per-tick drain produced', {
+    timeout: DIFFERENTIAL_TIMEOUT_MS,
+  }, () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const rng = new Rng(SEED);
     const settlers: Entity[] = [];

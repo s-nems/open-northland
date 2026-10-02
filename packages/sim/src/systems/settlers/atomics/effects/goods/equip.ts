@@ -3,8 +3,8 @@ import {
   Equipment,
   type EquipmentSlot,
   EquipOrder,
-  equipSlotValue,
   MISC_EQUIP_SLOTS,
+  wornSlot,
   writeEquipSlot,
 } from '../../../../../components/index.js';
 import { fx } from '../../../../../core/fixed.js';
@@ -21,10 +21,9 @@ import { isUsed } from './wear.js';
 // Source basis, the game manual p. 27: "Partly used items (potions, shoes, ...) you drop are lost. Unused
 // items such as weapons, armour and amulets can be used again."
 
-/** The settler's Equipment component, created empty on first wear; a bare settler carries none. */
-function ensureEquipment(world: World, settler: Entity) {
-  const held = world.tryGet(settler, Equipment);
-  if (held !== undefined) return held;
+/** Give the settler an empty Equipment component on first wear; a bare settler carries none. */
+function ensureEquipment(world: World, settler: Entity): void {
+  if (world.has(settler, Equipment)) return;
   world.add(settler, Equipment, {
     boots: null,
     tool: null,
@@ -32,7 +31,6 @@ function ensureEquipment(world: World, settler: Entity) {
     armor: null,
     misc: new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null),
   });
-  return world.get(settler, Equipment);
 }
 
 /** Advance the settler's live equip errand to `stage` (a raced/cancelled order is simply absent). */
@@ -63,8 +61,9 @@ export function equipFromStore(
   if (have <= 0) return;
   setAccessibleStockAmount(world, from, goodType, have - 1);
   reapEmptyLoosePile(world, from);
-  const previous = equipSlotValue(ensureEquipment(world, settler), group, slot);
-  writeEquipSlot(world.mut(settler, Equipment), group, slot, { goodType, degreeOfUse: fx.fromInt(0) });
+  ensureEquipment(world, settler);
+  const previous = wornSlot(world, settler, group, slot);
+  writeEquipSlot(world, settler, group, slot, { goodType, degreeOfUse: fx.fromInt(0) });
   if (group === 'weapon') takeUpWeaponGood(world, ctx, settler, goodType);
   const stows = previous !== null && !isUsed(previous);
   if (stows) addCarry(world, settler, previous.goodType, 1);
@@ -84,10 +83,9 @@ export function unequipWornGood(
   slot: number,
   sink: Entity | null,
 ): void {
-  const eq = world.tryGet(settler, Equipment);
-  const previous = eq === undefined ? null : equipSlotValue(eq, group, slot);
-  if (eq === undefined || previous === null) return;
-  writeEquipSlot(world.mut(settler, Equipment), group, slot, null);
+  const previous = wornSlot(world, settler, group, slot);
+  if (previous === null) return;
+  writeEquipSlot(world, settler, group, slot, null);
   if (group === 'weapon') layDownWeaponGood(world, ctx, settler); // an armed class never stays weaponless
   if (isUsed(previous)) {
     advanceOrder(world, settler, 'return');

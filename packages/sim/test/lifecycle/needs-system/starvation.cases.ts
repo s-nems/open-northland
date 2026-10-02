@@ -104,7 +104,7 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
       // Age matters - an adult fixture whose synthetic job id collides with an age class must still starve.
       const e = settlerWithPool(sim, ONE, OTHER_POOL, ORIGINAL_POOL);
       setSettlerJob(sim.world, e, jobType);
-      sim.world.add(e, components.Age, { ticks: ageTicks });
+      sim.world.add(e, components.Age, { ticks: ageTicks, asOf: null });
       for (let i = 0; i < SEVERAL_STEPS; i++) sim.step();
       expect(pool(sim, e)).toBe(OTHER_POOL + SEVERAL_STEPS * REGENERATION_HITPOINTS_PER_TICK);
     });

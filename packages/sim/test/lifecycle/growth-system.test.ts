@@ -18,7 +18,7 @@ import {
   WOMAN_JOB,
 } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { nextTickCtxOf } from '../fixtures/context.js';
 
 /**
  * GrowthSystem - a settler born young ({@link Age}-bearing) matures baby → child → adult over
@@ -59,13 +59,13 @@ function bornSettler(sim: Simulation, jobType: number, ticks: number): Entity {
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
   });
-  sim.world.add(e, Age, { ticks });
+  sim.world.add(e, Age, { ticks, asOf: null });
   sim.world.add(e, Health, { hitpoints: HUMAN_HITPOINTS, max: HUMAN_HITPOINTS });
   return e;
 }
 
 function run(sim: Simulation, n: number): void {
-  for (let i = 0; i < n; i++) growthSystem(sim.world, ctxOf(sim));
+  for (let i = 0; i < n; i++) growthSystem(sim.world, nextTickCtxOf(sim));
 }
 
 /** Drop a settler to `hitpoints` - what a sword blow or a starvation bite leaves behind. */

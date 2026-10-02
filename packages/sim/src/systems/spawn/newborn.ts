@@ -40,7 +40,7 @@ export function spawnNewborn(
     enjoyment: fx.fromInt(0),
   });
   if (sex === 'female') world.add(baby, Female, { female: true });
-  world.add(baby, Age, { ticks: 0 });
+  world.add(baby, Age, { ticks: 0, asOf: null });
   world.add(baby, Health, { hitpoints: HUMAN_HITPOINTS, max: HUMAN_HITPOINTS });
   const owner = world.tryGet(mother, Owner)?.player;
   if (owner !== undefined) {

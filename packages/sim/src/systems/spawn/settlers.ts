@@ -101,7 +101,7 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   // `Female` above.
   const ageTicks = spawnAgeTicks(jobId);
   if (ageTicks !== null) {
-    world.add(e, Age, { ticks: ageTicks });
+    world.add(e, Age, { ticks: ageTicks, asOf: null });
   }
   // An explicit positive `hitpoints` wins over the person's pool.
   const hitpoints = spec.hitpoints !== undefined && spec.hitpoints > 0 ? spec.hitpoints : HUMAN_HITPOINTS;

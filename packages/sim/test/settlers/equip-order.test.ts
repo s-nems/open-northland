@@ -693,7 +693,7 @@ describe('order validation (recoverable no-ops)', () => {
     expect(sim.world.has(settler, EquipOrder)).toBe(false);
 
     const child = ownedSettler(sim, 3, 2);
-    sim.world.add(child, Age, { ticks: 0 });
+    sim.world.add(child, Age, { ticks: 0, asOf: null });
     equipGood(sim.world, ctx, { kind: 'equipGood', entity: child, group: 'boots', slot: 0, goodType: SHOES });
     expect(sim.world.has(child, EquipOrder)).toBe(false);
   });

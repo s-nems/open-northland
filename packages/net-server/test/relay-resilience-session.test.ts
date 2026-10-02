@@ -59,7 +59,7 @@ async function buildWorld(session: GameSession): Promise<Simulation> {
   return new Simulation({ seed: session.seed, content: testContent() });
 }
 
-/** The fixture world with one newborn, whose `Age` the sim writes every tick. */
+/** The fixture world with one newborn, whose `Age` the sim writes every tick while `ageAt` runs. */
 async function buildWorldWithNewborn(session: GameSession): Promise<Simulation> {
   const sim = await buildWorld(session);
   const newborn = sim.world.create();
@@ -71,7 +71,7 @@ async function buildWorldWithNewborn(session: GameSession): Promise<Simulation> 
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
   });
-  sim.world.add(newborn, components.Age, { ticks: 0 });
+  sim.world.add(newborn, components.Age, { ticks: 0, asOf: null });
   return sim;
 }
 
@@ -118,15 +118,17 @@ function divergeAt(target: HeadlessClient, atTick: number) {
   };
 }
 
-/** Push one client's newborn a tick older on `atTick`; the sim's next write to its `Age` shows it. */
+/** Push one client's newborn a tick older on `atTick`; the sim's next write to its `Age` shows it. Every
+ *  client leaves the age uncounted after each tick, so each growth pass writes it. */
 function ageAt(target: HeadlessClient, atTick: number) {
   return (client: HeadlessClient, tick: number): void => {
     orderAt(client, tick);
     const world = client.sim?.world;
     const [newborn] = world?.query(components.Age) ?? [];
-    if (client === target && tick === atTick && world !== undefined && newborn !== undefined) {
-      world.mut(newborn, components.Age).ticks += 1;
-    }
+    if (world === undefined || newborn === undefined) return;
+    const age = world.mut(newborn, components.Age);
+    age.asOf = null;
+    if (client === target && tick === atTick) age.ticks += 1;
   };
 }
 

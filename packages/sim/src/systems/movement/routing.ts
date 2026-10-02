@@ -219,6 +219,7 @@ export function drainPathRequests(
       legCost: activeCost,
       legPace: oldPace,
       departureCharged: previous?.departureCharged,
+      bootsDegree: previous?.bootsDegree,
     });
     const firstTarget = waypoints[index];
     if (position !== undefined && firstTarget !== undefined && world.has(e, WalkFacing)) {

@@ -279,11 +279,12 @@ export const SupplyRun = defineComponent<{
 export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment', 'settlers');
 
 /**
- * A settler's age in whole ticks while it is still a non-working life stage. The GrowthSystem promotes the
- * age-class `jobType` at each stage boundary and removes the component at adult-eligibility, so an adult
- * carries none.
+ * A settler's age in whole ticks while it is still a non-working life stage: `ticks` as of the growth pass
+ * of tick `asOf`, null until a growth pass first counts it. Every later pass adds one without a write, so
+ * read the age through `ageTicksAt`. The GrowthSystem promotes the age-class `jobType` at each stage
+ * boundary and removes the component at adult-eligibility, so an adult carries none.
  */
-export const Age = defineComponent<{ ticks: number }>('Age', 'settlers');
+export const Age = defineComponent<{ ticks: number; asOf: number | null }>('Age', 'settlers');
 
 /**
  * A player move order in flight on a settler: the planner's economy branch and the combat auto-drives leave

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addPerson,
+  bootsDegreeOfUse,
   Carrying,
   Equipment,
   type EquipmentSlot,
@@ -58,7 +59,7 @@ const WALK_STEPS = WALK.length - 1;
 
 /** The slot's spent condition points, the integer the fraction stands for. */
 const spentPoints = (sim: Simulation, e: Entity): number =>
-  Math.round((fx.toFloat(sim.world.get(e, Equipment).boots?.degreeOfUse ?? ONE) * SHOE_POINTS) / 1);
+  Math.round((fx.toFloat(bootsDegreeOfUse(sim.world, e) ?? ONE) * SHOE_POINTS) / 1);
 
 describe('movementSystem - worn boots', () => {
   it('keeps an ahead node and charges its terrain once after repeated redirects', () => {

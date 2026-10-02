@@ -248,7 +248,7 @@ describe('gossip candidate index', () => {
 
     sim.world.mut(mover, Position).y = fx.fromInt(2);
     setSettlerJob(sim.world, recruit, SOLDIER_JOB);
-    sim.world.add(child, Age, { ticks: 0 });
+    sim.world.add(child, Age, { ticks: 0, asOf: null });
     sim.world.destroy(doomed);
     const newcomer = gossiper(sim, 1, 0, MILD);
 

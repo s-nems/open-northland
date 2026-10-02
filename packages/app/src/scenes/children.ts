@@ -30,7 +30,7 @@ function spawnYoung(
   hunger: Fixed,
 ): Entity {
   const e = spawnSettlerDirect(sim, jobType, x, y);
-  sim.world.add(e, Age, { ticks: ageTicks });
+  sim.world.add(e, Age, { ticks: ageTicks, asOf: null });
   systems.mutNeeds(sim.world, e, sim.tick).hunger = hunger;
   return e;
 }

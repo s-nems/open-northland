@@ -1,6 +1,7 @@
 import { indoorHouseOf } from '@open-northland/render';
-import { systems, type WorldSnapshot } from '@open-northland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 import {
+  childAgeYearsOf,
   childOrderWaitOf,
   isPlayerControllable,
   needsRuleEnabled,
@@ -124,6 +125,7 @@ export interface SettlerPanelModel {
 function metaLine(
   ctx: UnitPanelModelContext,
   ent: SnapshotEntity,
+  tick: number,
   foreign: boolean,
   role: SettlerRole,
 ): string | null {
@@ -134,10 +136,8 @@ function metaLine(
   }
   if (role !== 'child') return null;
   // `Age` is the sim's marker for a settler still growing up, dropped at adulthood.
-  const ageTicks = num((ent.components.Age as { ticks?: unknown } | undefined)?.ticks);
-  return ageTicks === undefined
-    ? null
-    : formatMessage(copy.age, { years: Math.floor(ageTicks / systems.TICKS_PER_AGE_YEAR) });
+  const years = childAgeYearsOf(ent, tick);
+  return years === undefined ? null : formatMessage(copy.age, { years });
 }
 
 function carriedGood(ctx: UnitPanelModelContext, comps: Comp): CarriedGoodModel | null {
@@ -218,7 +218,7 @@ export function settlerPanelModel(
     foreign,
     inside: indoorHouseOf(snapshot, comps),
     aboard: num((comps.Rider as { vehicle?: unknown } | undefined)?.vehicle) ?? null,
-    meta: metaLine(ctx, ent, foreign, role),
+    meta: metaLine(ctx, ent, snapshot.tick, foreign, role),
     status,
     bars,
   };

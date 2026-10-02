@@ -615,12 +615,12 @@ describe('defence mode', () => {
     const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const child = settlerAt(sim, 4, 1, P1, CHILD);
-    sim.world.add(child, Age, { ticks: 0 }); // the born-young marker every growing settler carries
+    sim.world.add(child, Age, { ticks: 0, asOf: null }); // the born-young marker every growing settler carries
 
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, child) === tower);
     const enemyChild = settlerAt(sim, 6, 1, P2, CHILD);
-    sim.world.add(enemyChild, Age, { ticks: 0 });
+    sim.world.add(enemyChild, Age, { ticks: 0, asOf: null });
     const raider = settlerAt(sim, 8, 1, P2, SOLDIER);
 
     const shots = collectShots(sim, 2 * SHELTER_SHOT_PERIOD_TICKS);

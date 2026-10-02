@@ -54,6 +54,13 @@ interface RawEquipment {
   readonly misc?: unknown;
 }
 
+/** The boots slot with the wear of the walk under way, which the sim keeps in `PathFollow` until it ends. */
+function wornBoots(eq: RawEquipment | undefined, comps: Comp): RawEquipSlot {
+  const walked = (comps.PathFollow as { bootsDegree?: unknown } | undefined)?.bootsDegree;
+  const boots = eq?.boots;
+  return boots == null || walked === undefined ? boots : { goodType: boots.goodType, degreeOfUse: walked };
+}
+
 /** One equipment slot → its panel model; only a good with `equip.wears` carries a condition percent. */
 function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotModel {
   if (slot == null) return { occupied: false, conditionPct: null };
@@ -105,7 +112,7 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
   rows.push({
     slotLabel: slots.boots,
     group: 'boots',
-    slots: [slotModel(ctx, eq?.boots)],
+    slots: [slotModel(ctx, wornBoots(eq, comps))],
     wearable: !wearsNothing,
   });
   if (!fighter || eq?.tool != null) {

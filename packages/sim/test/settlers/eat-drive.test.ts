@@ -445,7 +445,7 @@ describe('eat drive - age classes (a growing settler is cared for, never self-fe
       needs,
       position: { x: fx.fromInt(x), y: fx.fromInt(y) },
     });
-    sim.world.add(e, Age, { ticks: ageTicks });
+    sim.world.add(e, Age, { ticks: ageTicks, asOf: null });
     return e;
   }
 

@@ -30,7 +30,7 @@ function settlerAt(sim: Simulation, jobType: number | null, child = false): Enti
     enjoyment: ONE,
   });
   sim.world.add(e, Owner, { player: HUMAN_PLAYER });
-  if (child) sim.world.add(e, Age, { ticks: 0 });
+  if (child) sim.world.add(e, Age, { ticks: 0, asOf: null });
   return e;
 }
 

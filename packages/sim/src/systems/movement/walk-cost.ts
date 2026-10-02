@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import {
   Armor,
+  bootsDegreeOfUse,
   Carrying,
   Equipment,
   MISSION_BEHAVIOUR,
@@ -111,8 +112,8 @@ export const UNMODIFIED_STEP: WalkStepModifiers = {
 /** Whether `e` wears a live pair of boots: a boots slot holding a good not yet worn to ONE. The original
  *  checks the same two facts, a shoe type set and a condition above zero. */
 export function hasLiveBoots(world: World, e: Entity): boolean {
-  const boots = world.tryGet(e, Equipment)?.boots ?? null;
-  return boots !== null && boots.degreeOfUse < ONE;
+  const degreeOfUse = bootsDegreeOfUse(world, e);
+  return degreeOfUse !== null && degreeOfUse < ONE;
 }
 
 /** Whether `e` hauls a good: in the original, a carried good type is set. */

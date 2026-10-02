@@ -58,6 +58,8 @@ export interface Waypoint {
  * a {@link MoveSpeed} follower leaves them at 0 and walks its constant distance per tick. `legPace`
  * captures the full-step pace when a route starts between nodes. `departureCharged` follows an active
  * human step across route changes so equipment and food are charged once per node departure.
+ * `bootsDegree` is the worn boots' degree of use as this walk's steps wore them, ahead of
+ * `Equipment.boots` until the walk ends, so a step leaves the equipment record unwritten.
  */
 export const PathFollow = defineComponent<{
   index: number;
@@ -66,6 +68,7 @@ export const PathFollow = defineComponent<{
   legCost: number;
   legPace?: Fixed | undefined;
   departureCharged?: true | undefined;
+  bootsDegree?: Fixed | undefined;
 }>('PathFollow', 'movement');
 
 /** Executed movement ticks, excluding any pending or held turn ticks. */

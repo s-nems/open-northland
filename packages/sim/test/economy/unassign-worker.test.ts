@@ -123,7 +123,7 @@ describe('unassignWorker - take an owned settler off its workplace', () => {
     const neutral = settlerAt(sim, 1, CARPENTER, null);
     const child = settlerAt(sim, 2, CARPENTER);
     const woman = settlerAt(sim, 3, CARPENTER);
-    sim.world.add(child, Age, { ticks: 0 });
+    sim.world.add(child, Age, { ticks: 0, asOf: null });
     sim.world.add(woman, Female, { female: true });
     // The three gated settlers are stamped past the order, so only the gate can explain a surviving bind.
     for (const e of [neutral, child, woman]) sim.world.add(e, JobAssignment, { workplace: mill });

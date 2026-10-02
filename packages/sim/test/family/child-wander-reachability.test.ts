@@ -11,7 +11,7 @@ import {
 } from '../../src/index.js';
 import { planChildWander } from '../../src/systems/family/wander.js';
 import { routeRegions, stampResourceFootprintData } from '../../src/systems/footprint/index.js';
-import { ADULT_AGE_TICKS, CHILD_AGE_TICKS } from '../../src/systems/lifecycle/ageclass.js';
+import { ADULT_AGE_TICKS, ageTicksAt, CHILD_AGE_TICKS } from '../../src/systems/lifecycle/ageclass.js';
 import { PlannerSpacing } from '../../src/systems/settlers/planner/spacing.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -44,7 +44,7 @@ function setup(blocked = true, map: TerrainMap = grassNodeMap(24, 24)) {
   });
   w.add(child, c.Owner, { player: 0 });
   w.add(child, c.Health, { hitpoints: 5000, max: 5000 });
-  w.add(child, c.Age, { ticks: CHILD_AGE_TICKS });
+  w.add(child, c.Age, { ticks: CHILD_AGE_TICKS, asOf: null });
   w.add(child, c.Residence, { home });
   const wall = w.create();
   w.add(wall, c.Position, positionOfNode(0, 0));
@@ -79,7 +79,7 @@ describe('child stroll reachability', () => {
       expect(sim.events.current().some((e) => e.kind === 'settlerLost' && e.entity === child)).toBe(false);
     }
     expect(moved).toBe(true);
-    expect(sim.world.get(child, c.Age).ticks).toBeLessThan(ADULT_AGE_TICKS);
+    expect(ageTicksAt(sim.world.get(child, c.Age), sim.tick)).toBeLessThan(ADULT_AGE_TICKS);
     expect(sim.checkInvariants()).toEqual([]);
     expect(sim.world.verifyCaches()).toEqual([]);
   });

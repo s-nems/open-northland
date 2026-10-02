@@ -451,6 +451,15 @@ export function storedNeedsOf(e: SnapshotEntity): SettlerNeedsView | undefined {
   };
 }
 
+/** A growing settler's age in whole years at `tick`, the snapshot's own; undefined for a grown one. */
+export function childAgeYearsOf(e: SnapshotEntity, tick: number): number | undefined {
+  const age = e.components.Age as { ticks?: unknown; asOf?: unknown } | undefined;
+  const ticks = num(age?.ticks);
+  if (ticks === undefined) return undefined;
+  const asOf = num(age?.asOf) ?? null;
+  return Math.floor(systems.ageTicksAt({ ticks, asOf }, tick) / systems.TICKS_PER_AGE_YEAR);
+}
+
 /** The need the player ordered the settler to answer, standing until the atomic that answers it lands. */
 export function orderedNeedOf(e: SnapshotEntity): unknown {
   return (e.components.NeedOrder as { need?: unknown } | undefined)?.need;

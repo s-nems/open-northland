@@ -82,7 +82,7 @@ describe('atomic need events - a work swing costs what its clip says', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const child = needsSettlerAt(sim, 0, 0, {});
     setSettlerJob(sim.world, child, CHILD_MALE);
-    sim.world.add(child, Age, { ticks: 0 });
+    sim.world.add(child, Age, { ticks: 0, asOf: null });
 
     playClip(sim, child, CHOP_ATOMIC, CHOP_CLIP_TICKS);
 

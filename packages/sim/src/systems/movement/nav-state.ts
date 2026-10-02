@@ -5,6 +5,7 @@ import {
   PathRoute,
   Position,
   Stranded,
+  settleWalkWear,
   type Waypoint,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -24,8 +25,10 @@ export function clearNavState(world: World, e: Entity): void {
   world.remove(e, Stranded);
 }
 
-/** Drop the path `e` walks, its {@link PathFollow} progress and {@link PathRoute} stops together. */
+/** Drop the path `e` walks, its {@link PathFollow} progress and {@link PathRoute} stops together, the
+ *  boots wear the walk carried landing in the equipment. */
 export function dropPath(world: World, e: Entity): void {
+  settleWalkWear(world, e);
   world.remove(e, PathFollow);
   world.remove(e, PathRoute);
 }

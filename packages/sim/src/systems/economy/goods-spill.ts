@@ -5,6 +5,7 @@ import {
   Stockpile,
   stockpileEntries,
   Upgrading,
+  wornSlot,
 } from '../../components/index.js';
 import type { Fixed } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -76,7 +77,8 @@ export function droppedEquipmentOf(world: World, character: Entity): SpilledStoc
   const equipment = world.tryGet(character, Equipment);
   if (pos === undefined || equipment === undefined) return null;
   const held = new Map<number, number>();
-  const slots = [equipment.weapon, equipment.armor, equipment.boots, equipment.tool, ...equipment.misc];
+  const boots = wornSlot(world, character, 'boots', 0);
+  const slots = [equipment.weapon, equipment.armor, boots, equipment.tool, ...equipment.misc];
   for (const slot of slots) {
     if (slot === null || isUsed(slot)) continue;
     held.set(slot.goodType, (held.get(slot.goodType) ?? 0) + 1);

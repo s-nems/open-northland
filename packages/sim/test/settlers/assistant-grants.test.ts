@@ -529,7 +529,7 @@ describe('assistant auto-equip - dispatch and reservation', () => {
     sim.world.add(woman, Female, { female: true });
     const child = ownedSettler(sim, 2, 3);
     setSettlerJob(sim.world, child, CHILD_MALE);
-    sim.world.add(child, Age, { ticks: 0 });
+    sim.world.add(child, Age, { ticks: 0, asOf: null });
     const hero = ownedSettler(sim, 2, 4);
     setSettlerJob(sim.world, hero, HERO_JOB);
     const man = ownedSettler(sim, 2, 5);

@@ -8,7 +8,7 @@
 
 import { Age, Health, Person, Residence, Settler, setSettlerJob } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
-import type { Entity } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { releaseWidowedParentsOf } from '../family/widowhood.js';
 
@@ -96,6 +96,26 @@ function isMaleStage(jobType: number | null): boolean {
   return jobType === BABY_MALE || jobType === CHILD_MALE;
 }
 
+/** The age in ticks `age` stands at once the growth pass of `tick` has run, the reading for a snapshot of
+ *  `tick`. An age no pass has counted yet still reads as stored. */
+export function ageTicksAt(
+  age: { readonly ticks: number; readonly asOf: number | null },
+  tick: number,
+): number {
+  return age.asOf === null ? age.ticks : age.ticks + (tick - age.asOf);
+}
+
+/** Count the growth pass of `tick` into `e`'s age and return it. Only the first pass after the age was set
+ *  writes the component; every later one is derived from that anchor. */
+function countGrowthPass(world: World, e: Entity, tick: number): number {
+  const age = world.get(e, Age);
+  if (age.asOf !== null) return ageTicksAt(age, tick);
+  const counted = world.mut(e, Age);
+  counted.ticks += 1;
+  counted.asOf = tick;
+  return counted.ticks;
+}
+
 /**
  * Age each {@link Age}-bearing settler one tick and promote it through the non-working life stages. Only a
  * settler born young carries an `Age`, and reaching adulthood removes it, so this is a no-op for every
@@ -104,15 +124,14 @@ function isMaleStage(jobType: number | null): boolean {
 export const growthSystem: System = (world, ctx) => {
   const graduated: Entity[] = [];
   for (const e of world.query(Age, Person)) {
-    const age = world.mut(e, Age);
+    const ticks = countGrowthPass(world, e, ctx.tick);
     const settler = world.get(e, Settler);
-    age.ticks += 1;
-    if (age.ticks >= ADULT_AGE_TICKS) {
+    if (ticks >= ADULT_AGE_TICKS) {
       setSettlerJob(world, e, isMaleStage(settler.jobType) ? CIVILIST_JOB : WOMAN_JOB);
       graduated.push(e);
       continue;
     }
-    const target = ageClassAt(age.ticks, isMaleStage(settler.jobType));
+    const target = ageClassAt(ticks, isMaleStage(settler.jobType));
     if (target !== settler.jobType) setSettlerJob(world, e, target);
   }
   for (const e of graduated) {

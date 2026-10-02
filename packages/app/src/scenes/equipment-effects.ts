@@ -39,7 +39,7 @@ const DRINKER = { x: 3, y: 2 } as const;
 const RUN_TICKS = 7500;
 const INITIAL_ZOOM = 0.8;
 
-const { Equipment, Settler, Stockpile } = components;
+const { bootsDegreeOfUse, Equipment, Settler, Stockpile } = components;
 
 function build(sim: Simulation): void {
   const wood = GATHERERS.find((g) => g.id === 'wood');
@@ -100,7 +100,9 @@ export const equipmentEffectsScene: SceneDefinition = {
     {
       label: 'the booted racer wore its boots on the road (per-waypoint wear accrued)',
       predicate: (sim) =>
-        equipments(sim).some((eq) => eq.boots !== null && eq.boots.degreeOfUse > fx.fromInt(0)),
+        [...sim.world.query(Equipment)].some(
+          (e) => (bootsDegreeOfUse(sim.world, e) ?? fx.fromInt(0)) > fx.fromInt(0),
+        ),
     },
     {
       label: 'the iron tool banked its whole bonus flour above the 5-wheat base',

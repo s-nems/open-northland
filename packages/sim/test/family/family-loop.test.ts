@@ -29,6 +29,7 @@ import { nodeOfPosition, nodesAdjacent, positionOfNode } from '../../src/nav/hal
 import { FOOD_SEARCH_RETRY_TICKS } from '../../src/systems/family/children/order.js';
 import {
   ADULT_AGE_TICKS,
+  ageTicksAt,
   BABY_FEMALE,
   familiesOf,
   familyOf,
@@ -240,7 +241,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(sim.world.get(man(), Marriage).child).toBe(baby);
     expect(sim.world.get(baby, Settler).jobType).toBe(BABY_FEMALE); // the ordered sex
     expect(sim.world.has(baby, Female)).toBe(true);
-    expect(sim.world.get(baby, Age).ticks).toBe(1); // stamped 0 at birth, aged one tick since
+    expect(ageTicksAt(sim.world.get(baby, Age), sim.tick)).toBe(1); // stamped 0 at birth, aged one tick since
     expect(sim.world.get(baby, Residence).home).toBe(home()); // part of the household
     // The order completed and cleaned up: no standing order, no hearts, no reserve, the fund consumed.
     expect(sim.world.has(woman(), ChildOrder)).toBe(false);
@@ -531,7 +532,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(sim.world.get(man(), Residence).home).toBe(home()); // the carve-out holds while raising
 
     // Age the child to the eve of adulthood; the next step runs the real graduation path.
-    sim.world.mut(child, Age).ticks = ADULT_AGE_TICKS - 1;
+    sim.world.add(child, Age, { ticks: ADULT_AGE_TICKS - 1, asOf: null });
     sim.step();
     expect(sim.world.has(child, Age)).toBe(false); // grown - the carve-out expired
     // The widowed father is released: the stale union dissolves, he vacates, and the slot is free.
@@ -573,7 +574,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueueSetup({ kind: 'debugKill', target: man() });
     runUntil(sim, () => !sim.world.isAlive(man()), 5, 'death');
 
-    sim.world.mut(child, Age).ticks = ADULT_AGE_TICKS - 1;
+    sim.world.add(child, Age, { ticks: ADULT_AGE_TICKS - 1, asOf: null });
     sim.step();
     // Same expiry, opposite sex: the stale union dissolves (she may remarry) but homes anchor on
     // women, so the widow keeps her slot and refills it by remarrying.
@@ -813,7 +814,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     const minor = [...sim.world.query(Settler)]
       .sort((a, b) => a - b)
       .find((e) => e !== woman() && e !== man()) as Entity;
-    sim.world.add(minor, Age, { ticks: 0 }); // still growing up
+    sim.world.add(minor, Age, { ticks: 0, asOf: null }); // still growing up
     sim.world.add(minor, Residence, { home: home() });
     sim.enqueueSetup({ kind: 'unassignHouse', entity: minor });
     sim.step();
