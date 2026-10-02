@@ -394,6 +394,32 @@ export const plSurfaces = {
     minimap: 'Rysowanie minimapy…',
     hud: 'Przygotowywanie interfejsu…',
   },
+  // One tip shows on each loading screen. `{key}` and `{shift}` render as keycaps of the player's bindings.
+  loadingTips: {
+    heading: 'Wskazówka',
+    tips: {
+      queueOrders:
+        '{shift} + klik dodaje do kolejki polecenia ruchu, ataku w ruchu i stawiania drogowskazów.',
+      attackMove: '{key} to atak w ruchu: jednostki idą do celu i atakują wszystko po drodze.',
+      postGraduates:
+        'W oknie asystenta ({key}) opcja „{graduatesOption}” sama wysyła świeżo wyszkolonych osadników ze szkół do warsztatów.',
+      moveFlags:
+        'W oknie asystenta ({key}) opcja „{flagsOption}” sama przesuwa flagi zbieraczy bliżej surowców, kiedy te się kończą.',
+      lobbyNation: 'W lobby kliknij ikonę kwatery głównej przy graczu, żeby zmienić jego nację.',
+      roads:
+        '{key} to narzędzie dróg. Po drodze osadnicy chodzą mniej więcej dwa razy szybciej niż po trawie.',
+      upgrade: '{key} rozbudowuje zaznaczony budynek.',
+      buildRun:
+        'Budowniczy przypisany ręcznie do drogi albo palisady stawia kolejne jej odcinki przed pracą przy budynkach.',
+      nextCivilian: '{key} zaznacza następnego wolnego cywila i ustawia na nim widok.',
+      nextSingleWoman: '{key} zaznacza następną niezamężną kobietę bez domu.',
+      signposts:
+        'Budynki można stawiać na własnych drogowskazach. Drogowskazy przesuną się na bok, a ich połączenia zostaną.',
+      porterFlag:
+        'Tragarze magazynu i warsztatu mogą dostać flagę odbioru, spod której zbierają towary. Ustawisz ją w wierszu „{area}” panelu osadnika.',
+      nationSwitch: 'Mając osadników innej nacji, w oknie budowy ({key}) przełączysz się na jej budynki.',
+    },
+  },
   common: {
     backToMenu: 'Wróć do menu',
     missingContentTitle: 'Zdekodowana zawartość jest niedostępna',

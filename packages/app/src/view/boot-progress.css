@@ -110,12 +110,98 @@
   text-shadow: 0 2px #160b05;
 }
 
+/* The loading tip (view/loading-tips.ts): a carved plaque low on the screen, so the bar keeps the centre
+   and the tip reads as something to look at while waiting rather than part of the progress. */
+.boot-tip {
+  position: absolute;
+  bottom: clamp(28px, 9vh, 96px);
+  left: 50%;
+  box-sizing: border-box;
+  width: min(620px, calc(100vw - 32px));
+  padding: 14px 26px 16px;
+  border: 1px solid rgba(177, 122, 57, 0.75);
+  border-radius: 4px;
+  background: linear-gradient(rgba(36, 22, 11, 0.9), rgba(20, 12, 6, 0.92));
+  box-shadow:
+    inset 0 0 0 1px rgba(10, 6, 3, 0.9),
+    inset 0 1px rgba(255, 233, 180, 0.12),
+    0 10px 28px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  transform: translateX(-50%);
+  animation: boot-tip-in 600ms ease-out 200ms both;
+}
+
+/* The heading sits between two gold rules ending in a small lozenge. */
+.boot-tip__heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: #e8c978;
+  font-size: 13px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  text-shadow: 0 1px #160b05;
+}
+
+.boot-tip__heading::before,
+.boot-tip__heading::after {
+  flex: 1;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(232, 201, 120, 0.7));
+}
+
+.boot-tip__heading::after {
+  background: linear-gradient(90deg, rgba(232, 201, 120, 0.7), transparent);
+}
+
+.boot-tip__text {
+  margin: 0;
+  color: var(--boot-cream);
+  font-size: clamp(15px, 1.9vh, 18px);
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+/* A keycap: dark wood face, gold rim and a deeper lower edge so it reads as a key to press. */
+.boot-tip__key {
+  display: inline-block;
+  min-width: 1.4em;
+  margin: 0 0.15em;
+  padding: 0 0.45em;
+  border: 1px solid #b17a39;
+  border-bottom-width: 3px;
+  border-radius: 4px;
+  background: linear-gradient(#4a2e17, #2a1a0c);
+  color: #f3dc9c;
+  font-family: inherit;
+  font-size: 0.9em;
+  font-weight: bold;
+  line-height: 1.45;
+  text-align: center;
+  vertical-align: 0.05em;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.55);
+}
+
+@keyframes boot-tip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .boot-card__bar {
     transition: none;
   }
 
-  .boot-card__track::after {
+  .boot-card__track::after,
+  .boot-tip {
     animation: none;
   }
 }

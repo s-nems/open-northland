@@ -398,6 +398,31 @@ export const enSurfaces = {
     minimap: 'Drawing the minimap…',
     hud: 'Preparing the interface…',
   },
+  // One tip shows on each loading screen. `{key}` and `{shift}` render as keycaps of the player's bindings.
+  loadingTips: {
+    heading: 'Tip',
+    tips: {
+      queueOrders: '{shift} + click queues walk, attack-move and signpost orders.',
+      attackMove: '{key} is attack-move: units walk to the target and attack everything on the way.',
+      postGraduates:
+        'In the assistant window ({key}), "{graduatesOption}" sends freshly trained settlers from the schools to the workshops.',
+      moveFlags:
+        'In the assistant window ({key}), "{flagsOption}" moves gatherers\' flags closer to resources as they run out.',
+      lobbyNation:
+        "In the lobby, click the headquarters icon beside a player to change that player's nation.",
+      roads: '{key} is the road tool. Settlers walk about twice as fast on a road as on grass.',
+      upgrade: '{key} upgrades the selected building.',
+      buildRun:
+        'A builder you assign by hand to a road or palisade builds its next sections before working on buildings.',
+      nextCivilian: '{key} selects the next free civilian and centres the view on them.',
+      nextSingleWoman: '{key} selects the next unmarried woman without a home.',
+      signposts: 'You can build over your own signposts. They move aside and keep their links.',
+      porterFlag:
+        'Warehouse and workshop porters can get a pickup flag and gather goods around it. Set it in the "{area}" row of the settler panel.',
+      nationSwitch:
+        "With settlers of another nation, the build window ({key}) can switch to that nation's buildings.",
+    },
+  },
   common: {
     backToMenu: 'Back to menu',
     missingContentTitle: 'Decoded content is unavailable',

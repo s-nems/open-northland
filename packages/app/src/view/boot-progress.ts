@@ -2,6 +2,8 @@ import { diag } from '../diag/log.js';
 import { messages } from '../i18n/index.js';
 import { BACKDROP_STILLS, lastShownStill, randomStill, rememberStill } from './backdrop-stills.js';
 import { BRAND_BACKDROP } from './brand-art.js';
+import { loadingTipPanel } from './loading-tips.js';
+import { readStoredSettings } from './settings-store.js';
 
 /**
  * The boot progress card a playable entry shows while it assembles a world. Plain DOM, so it draws
@@ -96,6 +98,8 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
   root.style.setProperty('--boot-still', bootStillImage(pickBootStill()));
   root.setAttribute('role', 'status');
   label.setAttribute('aria-live', 'polite');
+  const tip = loadingTipPanel(readStoredSettings().keyBindings);
+  if (tip !== null) root.append(tip);
   document.body.append(root);
   overlay = root;
   return {
