@@ -16,30 +16,36 @@ export interface WalkDistances {
   costFloor(node: NodeId): Fixed | undefined;
 }
 
-/** A binary min-heap of (cost, node), ties by node id, so the settle order is byte-identical. */
-class WalkFrontier<N extends number = NodeId> {
-  private readonly costs: Fixed[] = [];
-  private readonly nodes: N[] = [];
+/** The entries a fresh {@link WalkFrontier} holds room for before it first grows. */
+const FRONTIER_INITIAL_CAPACITY = 256;
 
-  get size(): number {
-    return this.nodes.length;
-  }
+/** A binary min-heap of (cost, node), ties by node id, so the settle order is byte-identical. Held in
+ *  typed slots that double when full, so a push or pop allocates nothing. */
+class WalkFrontier<N extends number = NodeId> {
+  private costs = new Float64Array(FRONTIER_INITIAL_CAPACITY);
+  private nodes = new Int32Array(FRONTIER_INITIAL_CAPACITY);
+  size = 0;
 
   /** The least entry's cost, which no later pop undercuts; undefined while empty. */
   peekCost(): Fixed | undefined {
-    return this.costs[0];
+    return this.size === 0 ? undefined : (this.costs[0] as Fixed | undefined);
   }
 
   push(cost: Fixed, node: N): void {
-    this.costs.push(cost);
-    this.nodes.push(node);
-    let i = this.nodes.length - 1;
+    if (this.size === this.nodes.length) this.grow();
+    const { costs, nodes } = this;
+    let i = this.size++;
     while (i > 0) {
       const parent = (i - 1) >> 1;
-      if (!this.before(i, parent)) break;
-      this.swap(i, parent);
+      const parentCost = costs[parent] ?? 0;
+      const parentNode = nodes[parent] ?? 0;
+      if (parentCost < cost || (parentCost === cost && parentNode <= node)) break;
+      costs[i] = parentCost;
+      nodes[i] = parentNode;
       i = parent;
     }
+    costs[i] = cost;
+    nodes[i] = node;
   }
 
   /** The cost of the entry the last {@link pop} returned. */
@@ -47,56 +53,59 @@ class WalkFrontier<N extends number = NodeId> {
 
   /** The least entry's node; its cost lands in {@link poppedCost}, so a settle allocates nothing. */
   pop(): N {
-    const cost = this.costs[0];
-    const node = this.nodes[0];
-    if (cost === undefined || node === undefined) throw new Error('pop on an empty frontier');
-    const lastCost = this.costs.pop();
-    const lastNode = this.nodes.pop();
-    if (this.nodes.length > 0 && lastCost !== undefined && lastNode !== undefined) {
-      this.costs[0] = lastCost;
-      this.nodes[0] = lastNode;
+    if (this.size === 0) throw new Error('pop on an empty frontier');
+    const { costs, nodes } = this;
+    const top = (nodes[0] ?? 0) as N;
+    this.poppedCost = (costs[0] ?? 0) as Fixed;
+    const size = --this.size;
+    if (size > 0) {
+      const cost = costs[size] ?? 0;
+      const node = nodes[size] ?? 0;
       let i = 0;
       for (;;) {
         const left = 2 * i + 1;
+        if (left >= size) break;
         const right = left + 1;
-        let least = i;
-        if (left < this.nodes.length && this.before(left, least)) least = left;
-        if (right < this.nodes.length && this.before(right, least)) least = right;
-        if (least === i) break;
-        this.swap(i, least);
+        let least = left;
+        let leastCost = costs[left] ?? 0;
+        let leastNode = nodes[left] ?? 0;
+        if (right < size) {
+          const rightCost = costs[right] ?? 0;
+          const rightNode = nodes[right] ?? 0;
+          if (rightCost < leastCost || (rightCost === leastCost && rightNode < leastNode)) {
+            least = right;
+            leastCost = rightCost;
+            leastNode = rightNode;
+          }
+        }
+        if (cost < leastCost || (cost === leastCost && node <= leastNode)) break;
+        costs[i] = leastCost;
+        nodes[i] = leastNode;
         i = least;
       }
+      costs[i] = cost;
+      nodes[i] = node;
     }
-    this.poppedCost = cost;
-    return node;
+    return top;
   }
 
-  private before(a: number, b: number): boolean {
-    const ca = this.costs[a] ?? 0;
-    const cb = this.costs[b] ?? 0;
-    if (ca !== cb) return ca < cb;
-    return (this.nodes[a] ?? 0) < (this.nodes[b] ?? 0);
-  }
-
-  private swap(a: number, b: number): void {
-    const cost = this.costs[a];
-    const node = this.nodes[a];
-    const otherCost = this.costs[b];
-    const otherNode = this.nodes[b];
-    if (cost === undefined || node === undefined || otherCost === undefined || otherNode === undefined)
-      return;
-    this.costs[a] = otherCost;
-    this.nodes[a] = otherNode;
-    this.costs[b] = cost;
-    this.nodes[b] = node;
+  private grow(): void {
+    const costs = new Float64Array(this.costs.length * 2);
+    const nodes = new Int32Array(this.nodes.length * 2);
+    costs.set(this.costs);
+    nodes.set(this.nodes);
+    this.costs = costs;
+    this.nodes = nodes;
   }
 }
 
 const COST_PAGE_SHIFT = 7;
 export const COST_PAGE_SIZE = 1 << COST_PAGE_SHIFT;
 const COST_PAGE_MASK = COST_PAGE_SIZE - 1;
+/** A page slot no walk has reached yet: past every cost, so no relaxation ever keeps it. */
+const UNREACHED_COST = Number.POSITIVE_INFINITY;
 interface CostPage {
-  readonly costs: Array<Fixed | undefined>;
+  readonly costs: Float64Array;
   readonly settled: Uint8Array;
 }
 
@@ -110,7 +119,10 @@ class WalkCosts {
     const index = node >> COST_PAGE_SHIFT;
     let page = this.pages[index];
     if (page === undefined) {
-      page = { costs: new Array<Fixed | undefined>(COST_PAGE_SIZE), settled: new Uint8Array(COST_PAGE_SIZE) };
+      page = {
+        costs: new Float64Array(COST_PAGE_SIZE).fill(UNREACHED_COST),
+        settled: new Uint8Array(COST_PAGE_SIZE),
+      };
       this.pages[index] = page;
     }
     return page;
@@ -119,7 +131,7 @@ class WalkCosts {
   settledCost(node: NodeId): Fixed | undefined {
     const page = this.pages[node >> COST_PAGE_SHIFT];
     const at = node & COST_PAGE_MASK;
-    return page?.settled[at] === 1 ? page.costs[at] : undefined;
+    return page?.settled[at] === 1 ? (page.costs[at] as Fixed | undefined) : undefined;
   }
 }
 
@@ -166,15 +178,14 @@ export class WalkFlood implements WalkDistances {
       costs.settledCount++;
       this.terrain.stepsInto(next, this.blocked, steps);
       for (let i = 0; i < steps.length; i++) {
-        const step = steps.at(i);
-        const candidate = costs.page(step.node);
-        const offset = step.node & COST_PAGE_MASK;
+        const stepNode = steps.nodeAt(i);
+        const candidate = costs.page(stepNode);
+        const offset = stepNode & COST_PAGE_MASK;
         if (candidate.settled[offset] === 1) continue;
-        const stepCost = fx.add(cost, step.cost);
-        const best = candidate.costs[offset];
-        if (best !== undefined && best <= stepCost) continue;
+        const stepCost = fx.add(cost, steps.costAt(i));
+        if ((candidate.costs[offset] ?? UNREACHED_COST) <= stepCost) continue;
         candidate.costs[offset] = stepCost;
-        frontier.push(stepCost, step.node);
+        frontier.push(stepCost, stepNode);
       }
       if (next === node) return cost;
     }
@@ -265,7 +276,7 @@ export function budgetCertainBelow(budget: number): Fixed {
  */
 export class SeedWalks {
   private flood: WalkFlood | null = null;
-  private readonly aimed = new Map<string, DirectedWalk>();
+  private readonly aimed = new Map<string, WalkDistances>();
   readonly component: number;
   /** Costs proved inside the budget up to this one, inclusive, and the least the count could not prove. */
   private certainUpTo: Fixed;
@@ -282,16 +293,29 @@ export class SeedWalks {
   }
 
   /** The walk that answers for nodes within `reach` Manhattan nodes of `toward`: the flood itself once it
-   *  runs, since it then already holds the walks a later search asks. */
+   *  runs, since it then already holds the walks a later search asks, and the flood's answers alone when
+   *  no cost there could be proved inside the budget, so no aimed search runs only to hand over to it. */
   toward(toward: HalfCellNode, reach: number): WalkDistances {
     if (this.flood !== null) return this.flood;
     const key = `${toward.hx},${toward.hy}:${reach}`;
     let walk = this.aimed.get(key);
     if (walk === undefined) {
-      walk = new DirectedWalk(this, toward, reach);
+      const { terrain, seed } = this;
+      const least = fx.sub(
+        walkLowerBound(toward.hx - terrain.xOf(seed), toward.hy - terrain.yOf(seed)),
+        reachSlack(reach),
+      );
+      walk = this.ranksWithin(least > ZERO ? least : ZERO)
+        ? new DirectedWalk(this, toward, reach)
+        : new FloodAnswers(this);
       this.aimed.set(key, walk);
     }
     return walk;
+  }
+
+  /** {@link WalkFlood.costFloor} of the flood, or no floor above zero before it runs. */
+  floodCostFloor(node: NodeId): Fixed | undefined {
+    return this.flood === null ? ZERO : this.flood.costFloor(node);
   }
 
   /** The flood's own answer for `node`, flooding as far as it takes. */
@@ -343,6 +367,32 @@ export class SeedWalks {
   }
 }
 
+/** The most {@link walkLowerBound} spans between `toward` and any node within `reach` Manhattan nodes of
+ *  it, the bound being the larger of two seminorms, each largest at a corner of that diamond. A walk to
+ *  any of those nodes costs at least the bound to `toward` less this. */
+function reachSlack(reach: number): Fixed {
+  const across = walkLowerBound(reach, 0);
+  const along = walkLowerBound(0, reach);
+  return across > along ? across : along;
+}
+
+/** A {@link SeedWalks} seed's walks toward nodes whose every cost lies past what its budget proves:
+ *  the flood answers each, and a node off the seed's static component is never reached. */
+class FloodAnswers implements WalkDistances {
+  constructor(private readonly walks: SeedWalks) {}
+
+  costFloor(node: NodeId): Fixed | undefined {
+    return this.walks.floodCostFloor(node);
+  }
+
+  costTo(node: NodeId): Fixed | undefined {
+    const { walks } = this;
+    if (walks.component !== NO_COMPONENT && walks.terrain.componentOf(node) !== walks.component)
+      return undefined;
+    return walks.floodCostTo(node);
+  }
+}
+
 /**
  * A walk out of a {@link SeedWalks} seed searched toward the nodes within `reach` Manhattan nodes of
  * `toward` (A* over {@link walkLowerBound}), so a target across open ground costs a corridor instead of
@@ -365,9 +415,7 @@ class DirectedWalk implements WalkDistances {
     private readonly toward: HalfCellNode,
     reach: number,
   ) {
-    const across = walkLowerBound(reach, 0);
-    const along = walkLowerBound(0, reach);
-    this.slack = across > along ? across : along;
+    this.slack = reachSlack(reach);
     const { seed } = walks;
     this.costs.page(seed).costs[seed & COST_PAGE_MASK] = ZERO;
     this.frontier.push(this.aim(seed), seed);
@@ -407,21 +455,20 @@ class DirectedWalk implements WalkDistances {
       const next = frontier.pop();
       const page = costs.page(next);
       const at = next & COST_PAGE_MASK;
-      const cost = page.costs[at];
-      if (page.settled[at] === 1 || cost === undefined) continue;
+      const cost = (page.costs[at] ?? UNREACHED_COST) as Fixed;
+      if (page.settled[at] === 1 || cost === UNREACHED_COST) continue;
       page.settled[at] = 1;
       costs.settledCount++;
       terrain.stepsInto(next, blocked, steps);
       for (let i = 0; i < steps.length; i++) {
-        const step = steps.at(i);
-        const candidate = costs.page(step.node);
-        const offset = step.node & COST_PAGE_MASK;
+        const stepNode = steps.nodeAt(i);
+        const candidate = costs.page(stepNode);
+        const offset = stepNode & COST_PAGE_MASK;
         if (candidate.settled[offset] === 1) continue;
-        const stepCost = fx.add(cost, step.cost);
-        const best = candidate.costs[offset];
-        if (best !== undefined && best <= stepCost) continue;
+        const stepCost = fx.add(cost, steps.costAt(i));
+        if ((candidate.costs[offset] ?? UNREACHED_COST) <= stepCost) continue;
         candidate.costs[offset] = stepCost;
-        frontier.push(fx.add(stepCost, this.aim(step.node)), step.node);
+        frontier.push(fx.add(stepCost, this.aim(stepNode)), stepNode);
       }
       if (next === node) return cost;
     }
