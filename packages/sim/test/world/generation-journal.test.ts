@@ -5,9 +5,9 @@ import { defineComponent, World } from '../../src/ecs/world.js';
 /**
  * The World generation journals (`journalMembership`/`membershipDeltasSince` and
  * `journalValueWrites`/`valueWritesSince`) - the replay feeds incremental caches catch up from instead
- * of rebuilding on every generation bump. Pinned: entry `i` maps to generation `base + i + 1`, a span
- * the journal cannot cover answers `null` (the rebuild fallback), and the cap drops the oldest span
- * instead of growing forever.
+ * of rebuilding on every generation bump. Pinned: a span the journal cannot cover answers `null` (the
+ * rebuild fallback), and the journal keeps the last `GENERATION_JOURNAL_LIMIT` ops instead of growing
+ * forever, so a consumer is never further than that from a replay.
  */
 
 interface Tag {
@@ -44,19 +44,24 @@ describe('World generation journals', () => {
     expect(w.membershipDeltasSince(C, mid)).toEqual([a]);
   });
 
-  it('drops the oldest span at the cap - a consumer left behind gets null and must rebuild', () => {
+  it('drops the oldest op past the cap - a consumer left behind gets null and must rebuild', () => {
     const w = new World();
     const C = defineComponent<Tag>('JournalCap', 'economy');
     w.journalMembership(C);
     const before = w.componentGeneration(C);
     const e = w.create();
-    // Push past the retained window: the journal resets its base instead of growing forever.
+    const others = [w.create(), w.create()];
+    // Push past the retained window: the journal overwrites its oldest ops instead of growing forever.
     for (let i = 0; i < GENERATION_JOURNAL_LIMIT + 100; i++) w.add(e, C, { n: i });
     expect(w.membershipDeltasSince(C, before)).toBeNull();
-    // A consumer inside the retained window still replays.
+    // A consumer exactly one window behind still replays, across the ring's wrap.
+    const windowStart = w.componentGeneration(C) - GENERATION_JOURNAL_LIMIT;
+    expect(w.membershipDeltasSince(C, windowStart)?.length).toBe(GENERATION_JOURNAL_LIMIT);
+    expect(w.membershipDeltasSince(C, windowStart - 1)).toBeNull();
     const recent = w.componentGeneration(C);
+    for (const other of others) w.add(other, C, { n: -1 });
     w.add(e, C, { n: -1 });
-    expect(w.membershipDeltasSince(C, recent)).toEqual([e]);
+    expect(w.membershipDeltasSince(C, recent)).toEqual([...others, e]);
   });
 
   it('journals value writes on their own generation, apart from membership', () => {

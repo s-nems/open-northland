@@ -1,15 +1,16 @@
 import type { Component, Entity } from './component.js';
 
-/** Retained span length past which the oldest span is dropped (`base` advances) instead of growing
- *  forever; a consumer further behind rebuilds from scratch. */
+/** Ops retained per journal: a consumer more than this many generations behind rebuilds from scratch. */
 export const GENERATION_JOURNAL_LIMIT = 1024;
 
-/** One store's retained ops: entry `i` is the entity whose op bumped that store's journaled generation
- *  to `base + i + 1`. The buffer is allocated once at the limit, so recording never grows it. */
+/** One store's retained ops, a ring over the last {@link GENERATION_JOURNAL_LIMIT}: the op that bumped the
+ *  journaled generation to `g` sits at slot `(g - 1) % LIMIT`. Allocated once, so recording never grows it. */
 interface GenerationJournal {
-  base: number;
+  /** The generation journaling started at; nothing before it is replayable. */
+  readonly start: number;
+  /** The generation the last recorded op bumped the store to. */
+  head: number;
   readonly entities: Int32Array;
-  count: number;
 }
 
 /**
@@ -24,9 +25,9 @@ export class GenerationJournals {
   start(component: Component<unknown>, generation: number): void {
     if (this.byComponent[component.id] === undefined) {
       this.byComponent[component.id] = {
-        base: generation,
+        start: generation,
+        head: generation,
         entities: new Int32Array(GENERATION_JOURNAL_LIMIT),
-        count: 0,
       };
     }
   }
@@ -34,11 +35,8 @@ export class GenerationJournals {
   record(component: Component<unknown>, entity: Entity): void {
     const journal = this.byComponent[component.id];
     if (journal === undefined) return;
-    if (journal.count >= GENERATION_JOURNAL_LIMIT) {
-      journal.base += journal.count;
-      journal.count = 0;
-    }
-    journal.entities[journal.count++] = entity;
+    journal.entities[journal.head % GENERATION_JOURNAL_LIMIT] = entity;
+    journal.head++;
   }
 
   /**
@@ -49,11 +47,17 @@ export class GenerationJournals {
    */
   deltasSince(component: Component<unknown>, since: number): readonly Entity[] | null {
     const journal = this.byComponent[component.id];
-    if (journal === undefined || since < journal.base || since > journal.base + journal.count) {
+    if (
+      journal === undefined ||
+      since < journal.start ||
+      since < journal.head - GENERATION_JOURNAL_LIMIT ||
+      since > journal.head
+    ) {
       return null;
     }
     const out: Entity[] = [];
-    for (let i = since - journal.base; i < journal.count; i++) out.push(journal.entities[i] as Entity);
+    for (let g = since; g < journal.head; g++)
+      out.push(journal.entities[g % GENERATION_JOURNAL_LIMIT] as Entity);
     return out;
   }
 }

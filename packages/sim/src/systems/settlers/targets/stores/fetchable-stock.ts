@@ -14,14 +14,18 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { ContentContext } from '../../../context.js';
 import { accessibleStockAmounts, mergedRecipeOf, recipeConsumes } from '../../../stores/index.js';
 
-/** One store's share of the totals: its owner and the units of each good it lends a fetch. */
+/** One store's share of the totals: its owner and the units of each good it lends a fetch. Refilled in
+ *  place when the store is recaptured, so the arrays only grow and entries past the counts are stale. */
 interface Contribution {
-  readonly owner: number | undefined;
-  /** The goods it lends, in stock order, `units[i]` units of `goods[i]`. */
-  readonly goods: readonly number[];
-  readonly units: readonly number[];
-  /** The goods with at least one unit; a stock map may keep a zeroed slot. */
-  readonly held: readonly number[];
+  owner: number | undefined;
+  /** How many goods it lends: `units[i]` units of `goods[i]` for `i < lent`, in stock order. */
+  lent: number;
+  readonly goods: number[];
+  readonly units: number[];
+  /** How many of the lent goods hold at least one unit, the first `heldCount` of `held`; a stock map may
+   *  keep a zeroed slot. */
+  heldCount: number;
+  readonly held: number[];
 }
 
 /** One good's units across the stores: those on unowned piles count for every player. */
@@ -61,17 +65,19 @@ export class FetchableStock {
       },
       () => world.canonicalQuery(Stockpile, Position),
       {
-        capture: (e) => contributionOf(world, content, e),
+        capture: (e, spent) => contributionOf(world, content, e, spent),
         apply: (e, c) => {
           foldInto(this.totals, c, 1);
-          for (const good of c.held) {
+          for (let i = 0; i < c.heldCount; i++) {
+            const good = c.held[i] as number;
             holdersOf(this.holdersByGood, good).add(e);
             this.holderFeeds.get(good)?.record(e);
           }
         },
         withdraw: (e, c) => {
           foldInto(this.totals, c, -1);
-          for (const good of c.held) {
+          for (let i = 0; i < c.heldCount; i++) {
+            const good = c.held[i] as number;
             this.holdersByGood.get(good)?.delete(e);
             this.holderFeeds.get(good)?.record(e);
           }
@@ -125,10 +131,10 @@ export class FetchableStock {
     const fresh = new Map<number, GoodTotal>();
     const freshHolders = new Map<number, Set<Entity>>();
     for (const e of this.world.canonicalQuery(Stockpile, Position)) {
-      const c = contributionOf(this.world, this.content, e);
+      const c = contributionOf(this.world, this.content, e, undefined);
       if (c === null) continue;
       foldInto(fresh, c, 1);
-      for (const good of c.held) holdersOf(freshHolders, good).add(e);
+      for (let i = 0; i < c.heldCount; i++) holdersOf(freshHolders, c.held[i] as number).add(e);
     }
     const goods = new Set([...fresh.keys(), ...this.totals.keys()]);
     const heldGoodTypes = new Set([...freshHolders.keys(), ...this.holdersByGood.keys()]);
@@ -145,23 +151,30 @@ export class FetchableStock {
 
 const ledgers = new WeakMap<World, FetchableStock>();
 
-function contributionOf(world: World, ctx: ContentContext, e: Entity): Contribution | null {
+/** `e`'s contribution, refilling `spent` when given. */
+function contributionOf(
+  world: World,
+  ctx: ContentContext,
+  e: Entity,
+  spent: Contribution | undefined,
+): Contribution | null {
   if (!world.has(e, Stockpile) || !world.has(e, Position)) return null;
   const amounts = accessibleStockAmounts(world, e);
   if (amounts === undefined || amounts.size === 0) return null;
   const reserved = mergedRecipeOf(world, ctx, e)?.inputs;
-  const goods: number[] = [];
-  const units: number[] = [];
-  const held: number[] = [];
+  const c = spent ?? { owner: undefined, lent: 0, goods: [], units: [], heldCount: 0, held: [] };
+  c.owner = ownerOf(world, e);
+  c.lent = 0;
+  c.heldCount = 0;
   // keys() plus get: destructured entries would allocate a pair per slot of every store written.
   for (const good of amounts.keys()) {
     if (recipeConsumes(reserved, good)) continue;
     const amount = amounts.get(good) ?? 0;
-    goods.push(good);
-    units.push(amount);
-    if (amount > 0) held.push(good);
+    c.goods[c.lent] = good;
+    c.units[c.lent++] = amount;
+    if (amount > 0) c.held[c.heldCount++] = good;
   }
-  return { owner: ownerOf(world, e), goods, units, held };
+  return c;
 }
 
 function holdersOf(byGood: Map<number, Set<Entity>>, good: number): Set<Entity> {
@@ -174,10 +187,9 @@ function holdersOf(byGood: Map<number, Set<Entity>>, good: number): Set<Entity> 
 }
 
 function foldInto(totals: Map<number, GoodTotal>, contribution: Contribution, sign: 1 | -1): void {
-  for (let i = 0; i < contribution.goods.length; i++) {
-    const good = contribution.goods[i];
-    const units = contribution.units[i];
-    if (good === undefined || units === undefined) continue;
+  for (let i = 0; i < contribution.lent; i++) {
+    const good = contribution.goods[i] as number;
+    const units = contribution.units[i] as number;
     let total = totals.get(good);
     if (total === undefined) {
       total = { unowned: 0, byOwner: new Map() };

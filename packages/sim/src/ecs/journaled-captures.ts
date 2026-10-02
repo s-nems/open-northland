@@ -4,8 +4,9 @@ import type { World } from './world.js';
 /** What a derived view does with one entity's capture. */
 export interface CaptureOps<C> {
   /** `e`'s live capture, or null when it contributes nothing. The only op that reads the world, since a
-   *  withdrawal may replay after `e` was destroyed. */
-  capture(e: Entity): C | null;
+   *  withdrawal may replay after `e` was destroyed. `spent` is `e`'s capture just withdrawn, free to be
+   *  refilled and returned instead of allocating a new one. */
+  capture(e: Entity, spent: C | undefined): C | null;
   apply(e: Entity, captured: C): void;
   withdraw(e: Entity, captured: C): void;
   /** Forget everything applied, ahead of a full re-capture. */
@@ -28,6 +29,8 @@ export class JournaledCaptures<C> {
   private readonly held = new Map<Entity, C>();
   private readonly membershipGens = new Map<Component<unknown>, number>();
   private readonly valueGens = new Map<Component<unknown>, number>();
+  /** The entities one catch-up replays, reused across catch-ups. */
+  private readonly touched = new Set<Entity>();
 
   constructor(
     private readonly world: World,
@@ -42,24 +45,39 @@ export class JournaledCaptures<C> {
   }
 
   catchUp(): void {
-    const touched = new Set<Entity>();
-    const { world } = this;
-    const complete =
-      this.inputs.membership.every((c) =>
-        collect(touched, this.membershipGens, c, world.componentGeneration(c), (since) =>
-          world.membershipDeltasSince(c, since),
-        ),
-      ) &&
-      this.inputs.values.every((c) =>
-        collect(touched, this.valueGens, c, world.componentValueGeneration(c), (since) =>
-          world.valueWritesSince(c, since),
-        ),
-      );
-    if (!complete) {
-      this.rebuild();
-      return;
+    const { world, inputs, touched } = this;
+    touched.clear();
+    for (const c of inputs.membership) {
+      const held = this.membershipGens.get(c) ?? 0;
+      const now = world.componentGeneration(c);
+      if (now !== held && !this.collect(this.membershipGens, c, now, world.membershipDeltasSince(c, held))) {
+        this.rebuild();
+        return;
+      }
+    }
+    for (const c of inputs.values) {
+      const held = this.valueGens.get(c) ?? 0;
+      const now = world.componentValueGeneration(c);
+      if (now !== held && !this.collect(this.valueGens, c, now, world.valueWritesSince(c, held))) {
+        this.rebuild();
+        return;
+      }
     }
     for (const e of touched) this.refresh(e);
+    touched.clear();
+  }
+
+  /** Add the entities a journal names since the held generation; false on a journal gap. */
+  private collect(
+    gens: Map<Component<unknown>, number>,
+    c: Component<unknown>,
+    now: number,
+    deltas: readonly Entity[] | null,
+  ): boolean {
+    if (deltas === null) return false;
+    for (const e of deltas) this.touched.add(e);
+    gens.set(c, now);
+    return true;
   }
 
   private rebuild(): void {
@@ -74,30 +92,13 @@ export class JournaledCaptures<C> {
    *  harmless. */
   private refresh(e: Entity): void {
     const held = this.held.get(e);
-    if (held !== undefined) {
-      this.ops.withdraw(e, held);
-      this.held.delete(e);
+    if (held !== undefined) this.ops.withdraw(e, held);
+    const live = this.ops.capture(e, held);
+    if (live === null) {
+      if (held !== undefined) this.held.delete(e);
+      return;
     }
-    const live = this.ops.capture(e);
-    if (live === null) return;
     this.held.set(e, live);
     this.ops.apply(e, live);
   }
-}
-
-/** Add the entities `c`'s journal names since the held generation; false on a journal gap. */
-function collect(
-  touched: Set<Entity>,
-  gens: Map<Component<unknown>, number>,
-  c: Component<unknown>,
-  now: number,
-  deltasSince: (since: number) => readonly Entity[] | null,
-): boolean {
-  const held = gens.get(c) ?? 0;
-  if (now === held) return true;
-  const deltas = deltasSince(held);
-  if (deltas === null) return false;
-  for (const e of deltas) touched.add(e);
-  gens.set(c, now);
-  return true;
 }

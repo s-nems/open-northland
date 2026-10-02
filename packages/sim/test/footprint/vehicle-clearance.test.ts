@@ -167,7 +167,7 @@ function expectFreshClearance(sim: Simulation): void {
 }
 
 describe('vehicle resource changes', () => {
-  it('keeps a small unread span local across a membership journal rollover', () => {
+  it('keeps a small unread span local across the membership journal ring wrap', () => {
     const sim = siteSim();
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('map missing');
@@ -182,7 +182,12 @@ describe('vehicle resource changes', () => {
     }
     const generation = sim.world.componentGeneration(ResourceFootprint);
     for (let i = 0; i < 4; i++) sim.world.add(resource, ResourceFootprint, resourceFootprint(i % 2));
-    expect(sim.world.membershipDeltasSince(ResourceFootprint, generation)).toBeNull();
+    expect(sim.world.membershipDeltasSince(ResourceFootprint, generation)).toEqual([
+      resource,
+      resource,
+      resource,
+      resource,
+    ]);
     expect(vehicleClearance(sim.world, ctxOf(sim), terrain)).toBe(field);
     expectFreshClearance(sim);
   });
