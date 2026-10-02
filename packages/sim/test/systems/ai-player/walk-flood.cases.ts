@@ -169,51 +169,94 @@ describe('ai-player walk flood', () => {
   });
 
   it('answers every query exactly as the lazy flood of its budget, round walls and past the budget', () => {
-    const MAP_NODES = 64;
-    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(MAP_NODES, MAP_NODES) });
-    const terrain = sim.terrain;
-    if (terrain === undefined) throw new Error('mapped sim expected');
-    // Broken walls of blocked nodes: every fifth column below a gap, every seventh row beside one.
-    const walls = new Set<NodeId>();
-    for (let hy = 0; hy < MAP_NODES; hy++) {
-      for (let hx = 0; hx < MAP_NODES; hx++) {
-        if (!terrain.inBounds(hx, hy)) continue;
-        const column = hx % 5 === 0 && hy % 13 > 3;
-        const row = hy % 7 === 0 && hx % 11 > 2;
-        if (column || row) walls.add(terrain.nodeAt(hx, hy));
-      }
-    }
-    const blocked: BlockOverlay = { has: (node) => walls.has(node), size: walls.size };
-    const seed = terrain.nodeAt(32, 32);
-    if (walls.has(seed)) throw new Error('setup: the seed stands clear');
-    const targets = [
-      { hx: 12, hy: 10 },
-      { hx: 60, hy: 50 },
-      { hx: 33, hy: 34 },
-      { hx: 2, hy: 62 },
-    ];
-    const BUDGETS = [SMALL_BUDGET, 400, WHOLE_BANK];
-    const REACH = 6;
-    for (const budget of BUDGETS) {
-      for (const toward of targets) {
+    const { terrain, blocked, seed } = walledMap();
+    for (const budget of WALLED_BUDGETS) {
+      for (const toward of WALLED_TARGETS) {
         const reference = new WalkFlood(terrain, blocked, [seed], budget);
-        const walk = new SeedWalks(terrain, blocked, seed, budget).toward(toward, REACH);
-        for (let r = 0; r <= REACH + 2; r++) {
-          for (let dx = -r; dx <= r; dx++) {
-            for (const dy of [r - Math.abs(dx), Math.abs(dx) - r]) {
-              const x = toward.hx + dx;
-              const y = toward.hy + dy;
-              if (!terrain.inBounds(x, y)) continue;
-              const node = terrain.nodeAt(x, y);
-              const floor = walk.costFloor(node);
-              const cost = walk.costTo(node);
-              expect(cost).toBe(reference.costTo(node));
-              if (floor !== undefined && cost !== undefined) expect(floor).toBeLessThanOrEqual(cost);
-              if (floor === undefined) expect(cost).toBeUndefined();
-            }
-          }
-        }
+        const walk = new SeedWalks(terrain, blocked, seed, budget, 'flood').toward(toward, WALLED_REACH);
+        forEachNear(terrain, toward, (node) => {
+          const floor = walk.costFloor(node);
+          const cost = walk.costTo(node);
+          expect(cost).toBe(reference.costTo(node));
+          if (floor !== undefined && cost !== undefined) expect(floor).toBeLessThanOrEqual(cost);
+          if (floor === undefined) expect(cost).toBeUndefined();
+        });
       }
     }
   });
+
+  it('answers aimed walks with their true cost, a node past the settle cap unreached', () => {
+    const { terrain, blocked, seed } = walledMap();
+    const whole = new WalkFlood(terrain, blocked, [seed], WHOLE_BANK);
+    let pastFloodBudget = 0;
+    for (const budget of WALLED_BUDGETS) {
+      for (const toward of WALLED_TARGETS) {
+        const flood = new WalkFlood(terrain, blocked, [seed], budget);
+        const walk = new SeedWalks(terrain, blocked, seed, budget, 'aimed').toward(toward, WALLED_REACH);
+        forEachNear(terrain, toward, (node) => {
+          const floor = walk.costFloor(node);
+          const cost = walk.costTo(node);
+          if (cost !== undefined) expect(cost).toBe(whole.costTo(node));
+          if (budget === WHOLE_BANK) expect(cost).toBe(whole.costTo(node));
+          if (cost !== undefined && flood.costTo(node) === undefined) pastFloodBudget++;
+          if (floor !== undefined && cost !== undefined) expect(floor).toBeLessThanOrEqual(cost);
+          if (floor === undefined) expect(cost).toBeUndefined();
+        });
+      }
+    }
+    // The aimed corridor reaches nodes the flood of the same budget never settles.
+    expect(pastFloodBudget).toBeGreaterThan(0);
+  });
 });
+
+const WALLED_MAP_NODES = 64;
+const WALLED_TARGETS = [
+  { hx: 12, hy: 10 },
+  { hx: 60, hy: 50 },
+  { hx: 33, hy: 34 },
+  { hx: 2, hy: 62 },
+];
+const WALLED_BUDGETS = [SMALL_BUDGET, 400, WHOLE_BANK];
+const WALLED_REACH = 6;
+
+/** Open ground broken by walls of blocked nodes: every fifth column below a gap, every seventh row beside
+ *  one, and a seed clear in the middle. */
+function walledMap(): { terrain: TerrainGraph; blocked: BlockOverlay; seed: NodeId } {
+  const sim = new Simulation({
+    seed: 1,
+    content: aiContent(),
+    map: grassNodeMap(WALLED_MAP_NODES, WALLED_MAP_NODES),
+  });
+  const terrain = sim.terrain;
+  if (terrain === undefined) throw new Error('mapped sim expected');
+  const walls = new Set<NodeId>();
+  for (let hy = 0; hy < WALLED_MAP_NODES; hy++) {
+    for (let hx = 0; hx < WALLED_MAP_NODES; hx++) {
+      if (!terrain.inBounds(hx, hy)) continue;
+      const column = hx % 5 === 0 && hy % 13 > 3;
+      const row = hy % 7 === 0 && hx % 11 > 2;
+      if (column || row) walls.add(terrain.nodeAt(hx, hy));
+    }
+  }
+  const blocked: BlockOverlay = { has: (node) => walls.has(node), size: walls.size };
+  const seed = terrain.nodeAt(WALLED_MAP_NODES / 2, WALLED_MAP_NODES / 2);
+  if (walls.has(seed)) throw new Error('setup: the seed stands clear');
+  return { terrain, blocked, seed };
+}
+
+/** Each in-bounds node within two rings past {@link WALLED_REACH} of `toward`, innermost ring first. */
+function forEachNear(
+  terrain: TerrainGraph,
+  toward: { hx: number; hy: number },
+  visit: (node: NodeId) => void,
+) {
+  for (let r = 0; r <= WALLED_REACH + 2; r++) {
+    for (let dx = -r; dx <= r; dx++) {
+      for (const dy of [r - Math.abs(dx), Math.abs(dx) - r]) {
+        const x = toward.hx + dx;
+        const y = toward.hy + dy;
+        if (terrain.inBounds(x, y)) visit(terrain.nodeAt(x, y));
+      }
+    }
+  }
+}

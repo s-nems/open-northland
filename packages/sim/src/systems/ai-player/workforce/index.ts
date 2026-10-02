@@ -220,6 +220,7 @@ function collectorGround(
     ctx,
     terrain,
     networkLimitAt(world, terrain, player, baseNode.hx, baseNode.hy),
+    'aimed',
   );
   const reachable = reachableResourceTest(
     world,

@@ -267,12 +267,17 @@ export function budgetCertainBelow(budget: number): Fixed {
   return certain;
 }
 
+/** What a {@link SeedWalks} answers. `flood`: exactly what one lazy {@link WalkFlood} of the budget from
+ *  the seed would. `aimed`: each aimed walk's own true cost, a node it has not settled once it has
+ *  settled the budget counting as unreached. */
+export type SeedWalkAnswers = 'flood' | 'aimed';
+
 /**
- * Every walk out of one seed under one overlay state, answering exactly as one lazy {@link WalkFlood} of
- * `budget` from it would: walks aimed at a target ({@link DirectedWalk}) settle a corridor, and the flood
- * runs only for an answer they cannot prove. A node settled at its true cost is one the flood reaches
- * when no more than `budget` nodes can settle first: its cost is under {@link budgetCertainBelow}, or the
- * open nodes within the lower bound's reach of that cost number no more.
+ * Every walk out of one seed under one overlay state. Walks aimed at a target ({@link DirectedWalk})
+ * settle a corridor. Answering as the `flood`, the flood runs only for an answer they cannot prove: a
+ * node settled at its true cost is one the flood reaches when no more than `budget` nodes can settle
+ * first, its cost under {@link budgetCertainBelow} or the open nodes within the lower bound's reach of
+ * that cost no more.
  */
 export class SeedWalks {
   private flood: WalkFlood | null = null;
@@ -287,6 +292,7 @@ export class SeedWalks {
     readonly blocked: BlockOverlay,
     readonly seed: NodeId,
     readonly budget: number,
+    private readonly answers: SeedWalkAnswers,
   ) {
     this.component = terrain.componentOf(seed);
     this.certainUpTo = fx.sub(budgetCertainBelow(budget), ULP);
@@ -300,22 +306,38 @@ export class SeedWalks {
     const key = `${toward.hx},${toward.hy}:${reach}`;
     let walk = this.aimed.get(key);
     if (walk === undefined) {
-      const { terrain, seed } = this;
-      const least = fx.sub(
-        walkLowerBound(toward.hx - terrain.xOf(seed), toward.hy - terrain.yOf(seed)),
-        reachSlack(reach),
-      );
-      walk = this.ranksWithin(least > ZERO ? least : ZERO)
-        ? new DirectedWalk(this, toward, reach)
-        : new FloodAnswers(this);
+      walk =
+        this.answers === 'aimed' || this.mayProveNear(toward, reach)
+          ? new DirectedWalk(this, toward, reach)
+          : new FloodAnswers(this);
       this.aimed.set(key, walk);
     }
     return walk;
   }
 
+  /** Whether some node within `reach` of `toward` could cost little enough to prove inside the budget. */
+  private mayProveNear(toward: HalfCellNode, reach: number): boolean {
+    const { terrain, seed } = this;
+    const least = fx.sub(
+      walkLowerBound(toward.hx - terrain.xOf(seed), toward.hy - terrain.yOf(seed)),
+      reachSlack(reach),
+    );
+    return this.ranksWithin(least > ZERO ? least : ZERO);
+  }
+
   /** {@link WalkFlood.costFloor} of the flood, or no floor above zero before it runs. */
   floodCostFloor(node: NodeId): Fixed | undefined {
     return this.flood === null ? ZERO : this.flood.costFloor(node);
+  }
+
+  /** The answer for `node`, which an aimed walk settled at `cost`. */
+  settledAnswer(node: NodeId, cost: Fixed): Fixed | undefined {
+    return this.answers === 'aimed' || this.ranksWithin(cost) ? cost : this.floodCostTo(node);
+  }
+
+  /** The answer for `node` once an aimed walk has settled the budget without reaching it. */
+  cappedAnswer(node: NodeId): Fixed | undefined {
+    return this.answers === 'aimed' ? undefined : this.floodCostTo(node);
   }
 
   /** The flood's own answer for `node`, flooding as far as it takes. */
@@ -396,9 +418,9 @@ class FloodAnswers implements WalkDistances {
 /**
  * A walk out of a {@link SeedWalks} seed searched toward the nodes within `reach` Manhattan nodes of
  * `toward` (A* over {@link walkLowerBound}), so a target across open ground costs a corridor instead of
- * the whole disc out to it. A* settles every node at its true cost, which stands when the seed's walks
- * prove it inside the flood's budget; a node off the seed's static component is never reached; any other
- * answer, or a search grown to the budget, is the flood's own.
+ * the whole disc out to it. A* settles every node at its true cost, which the seed's walks answer as
+ * {@link SeedWalks.settledAnswer}; a node off the seed's static component is never reached; a search grown
+ * to the budget answers {@link SeedWalks.cappedAnswer}.
  */
 class DirectedWalk implements WalkDistances {
   private readonly costs = new WalkCosts();
@@ -435,14 +457,14 @@ class DirectedWalk implements WalkDistances {
   costTo(node: NodeId): Fixed | undefined {
     const { walks } = this;
     const known = this.costs.settledCost(node);
-    if (known !== undefined) return walks.ranksWithin(known) ? known : walks.floodCostTo(node);
+    if (known !== undefined) return walks.settledAnswer(node, known);
     if (this.exhausted) return undefined;
     if (walks.component !== NO_COMPONENT && walks.terrain.componentOf(node) !== walks.component)
       return undefined;
     const cost = this.settleTo(node);
-    if (cost === null) return walks.floodCostTo(node);
+    if (cost === null) return walks.cappedAnswer(node);
     if (cost === undefined) return undefined;
-    return walks.ranksWithin(cost) ? cost : walks.floodCostTo(node);
+    return walks.settledAnswer(node, cost);
   }
 
   /** Search on until `node` settles: its cost, undefined once nothing more can settle, or null once the

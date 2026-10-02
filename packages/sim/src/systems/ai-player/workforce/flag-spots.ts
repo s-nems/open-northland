@@ -13,7 +13,13 @@ import {
 import type { NavigationLimit } from '../../signposts/index.js';
 import { type GathererReach, nearestLiveResource, type WorkableTest } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
-import { SeedWalks, type WalkDistances, WalkFlood, walkSeedNear } from '../walk-distance.js';
+import {
+  type SeedWalkAnswers,
+  SeedWalks,
+  type WalkDistances,
+  WalkFlood,
+  walkSeedNear,
+} from '../walk-distance.js';
 
 /** A collector's flag stands 2-3 tiles from its resource (authored) - 4..6 half-cell nodes. */
 export const FLAG_MIN_DISTANCE_NODES = 4;
@@ -37,9 +43,9 @@ export const COLLECTOR_FLAG_BAND: FlagBand = {
  *  from which the holder could not work it gives way to the next nearest. */
 const REPLANT_ATTEMPTS = 3;
 
-/** The nodes a flood from the gatherer's origin settles before it gives up (authored): about the disc a
+/** The nodes a walk from the gatherer's origin settles before it gives up (authored): about the disc a
  *  deposit ninety nodes out lies in, so a trip that long is still measured on foot. */
-const ORIGIN_FLOOD_BUDGET_NODES = 16384;
+const ORIGIN_WALK_BUDGET_NODES = 16384;
 /** The nodes the flood from a resource's work cells settles (authored): a disc some thirty nodes wide,
  *  enough to walk round a ridge or a grove to the band on its far side. */
 const RESOURCE_FLOOD_BUDGET_NODES = 2048;
@@ -85,7 +91,7 @@ export interface FlagGround {
   readonly limit: NavigationLimit | null;
   readonly placeable: (node: NodeId) => boolean;
   /** The carriers' walk out from `origin`, searched toward the nodes within `reach` of `toward`: one
-   *  {@link SeedWalks} per origin for the whole decision. */
+   *  {@link SeedWalks} per origin for the whole decision, answering as {@link flagGround} was asked. */
   readonly walkFrom: (origin: HalfCellNode, toward: HalfCellNode, reach: number) => WalkDistances;
   /** The gatherer's walk out from `resource`'s work cells, one lazy flood per resource for the decision. */
   readonly walkOut: (resource: Entity) => WalkDistances;
@@ -93,11 +99,14 @@ export interface FlagGround {
   readonly sealedFrom: (origin: HalfCellNode, node: NodeId) => boolean;
 }
 
+/** `carrierWalks` is how the carriers' walks answer: the assistant's flag follow ranks by the budgeted
+ *  flood, the AI seats' own posts by each aimed walk's true cost. */
 export function flagGround(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   limit: NavigationLimit | null,
+  carrierWalks: SeedWalkAnswers = 'flood',
 ): FlagGround {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const regions = routeRegions(world, ctx, terrain);
@@ -127,12 +136,12 @@ export function flagGround(
     walkFrom: (origin, toward, reach) => {
       const seed = seedOf(origin).node;
       if (seed === null) {
-        unseeded ??= new WalkFlood(terrain, blocked, [], ORIGIN_FLOOD_BUDGET_NODES);
+        unseeded ??= new WalkFlood(terrain, blocked, [], ORIGIN_WALK_BUDGET_NODES);
         return unseeded;
       }
       let walks = fromOrigin.get(seed);
       if (walks === undefined) {
-        walks = new SeedWalks(terrain, blocked, seed, ORIGIN_FLOOD_BUDGET_NODES);
+        walks = new SeedWalks(terrain, blocked, seed, ORIGIN_WALK_BUDGET_NODES, carrierWalks);
         fromOrigin.set(seed, walks);
       }
       return walks.toward(toward, reach);
@@ -166,9 +175,9 @@ export function legalFlagNodeTest(
 /**
  * The legal work-flag node in `band` around `resource` the shortest walk away: the gatherer's
  * leg from the spot to the resource's work cells, weighed {@link GATHERER_LEG_WEIGHT}, plus the carriers'
- * leg from `origin`, the base or workshop they walk out from, both floods over the live walk-block
+ * leg from `origin`, the base or workshop they walk out from, both walks over the live walk-block
  * overlay, so a spot behind a ridge or on the far side of the deposit loses to one the men reach straight.
- * A candidate a flood never reached ranks after every reached one by straight-line distance, and one
+ * A candidate a walk never reached ranks after every reached one by straight-line distance, and one
  * sealed in a pocket the carriers' walk cannot enter is never chosen. Ties go to the innermost ring, then
  * the walk order. Any nearby legal node when the band is fully blocked; null when none.
  */
