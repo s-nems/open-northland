@@ -41,7 +41,7 @@ import { clearNavState, isTravelling } from '../../movement/nav-state.js';
 import { sheltersOnAlarm } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
-import { anotherSystemOwns } from '../action-owner.js';
+import { ACTION_OWNER_MARKERS, anotherSystemOwns } from '../action-owner.js';
 import { atomicHoldsSettler } from '../atomics/busy.js';
 import { topsUpAtHome } from '../drives/at-home.js';
 import { reconcileYardRoute } from '../drives/economy/index.js';
@@ -145,34 +145,35 @@ export const RELEASE_IDLE_MEMBERSHIP: readonly Component<unknown>[] = [
   Garrison,
   IdleStand,
   CurrentAtomic,
-  Wedding,
   Chat,
   MoveGoal,
   PathRequest,
   PathFollow,
   SupplyRun,
-  Engagement,
   FarmTask,
   Resting,
-  FamilyDuty,
   JobAssignment,
   Sheltering,
+  // Engagement, Wedding and FamilyDuty among them.
+  ...ACTION_OWNER_MARKERS,
 ];
-export const RELEASE_IDLE_VALUES: readonly Component<unknown>[] = [CurrentAtomic, Chat, PathRequest];
+export const RELEASE_IDLE_VALUES: readonly Component<unknown>[] = [CurrentAtomic, Chat, PathRequest, Settler];
 
 /**
  * Why the sweep's visit of a settler changes nothing: an atomic holds it or it walks a quiet route, so
- * {@link releaseStaleIntent} passes it by, or it stands idle off its re-plan beat, where the idle gate
- * skips a release that sheds nothing or the whole visit of a wait inside a building.
+ * {@link releaseStaleIntent} passes it by; it has no trade and nothing that call sheds, so no ladder
+ * runs after it; or it stands idle off its re-plan beat, where the idle gate skips a release that sheds
+ * nothing or the whole visit of a wait inside a building.
  */
-export type IdleRelease = 'held' | 'travelling' | 'idle';
+export type IdleRelease = 'held' | 'travelling' | 'jobless' | 'idle';
 
 /**
  * How the sweep's visit of `e` changes nothing, or null when it may: an atomic holds it, or it walks
  * a live route that only a shelter of its owner on alarm diverts ({@link takesCoverFrom}), and it
- * carries nothing {@link releaseStaleIntent} reconciles on the way or the busy branch wakes; or it
- * stands idle carrying nothing that call sheds, or waits inside a building ({@link waitsInside}).
- * Keep in step with that call's early-outs.
+ * carries nothing {@link releaseStaleIntent} reconciles on the way or the busy branch wakes, a supply
+ * errand mattering only once another system owns the walker; or it has no trade and nothing to shed,
+ * which an alarm never draws; or it stands idle carrying nothing that call sheds, or waits inside a
+ * building ({@link waitsInside}). Keep in step with that call's early-outs.
  */
 export function idleRelease(world: World, e: Entity): IdleRelease | null {
   if (world.has(e, YardDeliveryRoute) || world.has(e, UnreachableGoals) || world.has(e, UnreachableTargets)) {
@@ -181,9 +182,10 @@ export function idleRelease(world: World, e: Entity): IdleRelease | null {
   if (world.has(e, IdleStand)) return shedsNothing(world, e) || waitsInside(world, e) ? 'idle' : null;
   if (world.has(e, Garrison)) return null;
   if (atomicHoldsSettler(world, e)) return 'held';
+  if (world.get(e, Settler).jobType === null && shedsNothing(world, e)) return 'jobless';
   const quiet =
     isTravelling(world, e) &&
-    !world.has(e, SupplyRun) &&
+    !(world.has(e, SupplyRun) && anotherSystemOwns(world, e)) &&
     !world.has(e, Engagement) &&
     world.tryGet(e, PathRequest)?.failed !== true;
   return quiet ? 'travelling' : null;

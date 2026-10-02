@@ -18,6 +18,7 @@ import {
   Settler,
   Stranded,
   SupplyRun,
+  setSettlerJob,
   TALK_ATOMIC_ID,
   UnreachableGoals,
   UnreachableTargets,
@@ -68,10 +69,18 @@ function atomic(effect: CurrentAtomicState['effect'], atomicId: number): Current
   return { atomicId, duration: ATOMIC_TICKS, effect, targetEntity: null, targetTile: null };
 }
 
-function settler(world: World): Entity {
+/** A positioned creature with no trade. */
+function jobless(world: World): Entity {
   const e = world.create();
   addWildlife(world, e, BEAR);
   world.add(e, Position, { x: ZERO, y: ZERO });
+  return e;
+}
+
+/** A positioned settler with a trade, so its visit may run the ladder. */
+function settler(world: World): Entity {
+  const e = jobless(world);
+  setSettlerJob(world, e, WOODCUTTER);
   return e;
 }
 
@@ -140,16 +149,28 @@ describe('planner sweep order', () => {
     expect(visited).toEqual([first, walker]);
   });
 
-  it('visits a quiet walker once its route fails in place, or combat or a supply errand takes it on', () => {
+  it('visits a quiet walker once its route fails in place, combat takes it on, or another system takes its supply errand', () => {
     const world = new World();
     const [failing, engaged, supplying] = [walking(world), walking(world), walking(world)];
     world.add(failing, PathRequest, { start: GOAL, goal: GOAL, failed: false });
+    world.add(supplying, SupplyRun, { site: failing, goodType: PLANK, amount: 1, source: null });
     expect(swept(world, CONTENT, NO_SHELTERS, EVERY_IDLER)).toEqual([]);
 
     world.mut(failing, PathRequest).failed = true;
     world.add(engaged, Engagement, { repathAt: 0 });
-    world.add(supplying, SupplyRun, { site: failing, goodType: PLANK, amount: 1, source: null });
+    world.add(supplying, Fleeing, { repathAt: 0, calmUntil: null });
     expect(swept(world, CONTENT, NO_SHELTERS, EVERY_IDLER)).toEqual([failing, engaged, supplying]);
+    expect(world.verifyCaches()).toEqual([]);
+  });
+
+  it('passes by a jobless settler with nothing to shed until it takes a trade or holds something', () => {
+    const world = new World();
+    const [hired, inside, standing] = [jobless(world), jobless(world), jobless(world)];
+    expect(swept(world, CONTENT, NO_SHELTERS, EVERY_IDLER)).toEqual([]);
+
+    setSettlerJob(world, hired, WOODCUTTER);
+    world.add(inside, Resting, { at: standing });
+    expect(swept(world, CONTENT, NO_SHELTERS, EVERY_IDLER)).toEqual([hired, inside]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
@@ -239,6 +260,10 @@ const MARKERS: Record<string, (world: World, e: Entity) => void> = {
   garrison: (world, e) => world.add(e, Garrison, { post: e, returnTo: { x: ZERO, y: ZERO } }),
   idleStand: (world, e) => world.add(e, IdleStand, { standing: true }),
   supplyRun: (world, e) => world.add(e, SupplyRun, { site: e, goodType: PLANK, amount: 1, source: null }),
+  fleeingSupplyRun: (world, e) => {
+    world.add(e, SupplyRun, { site: e, goodType: PLANK, amount: 1, source: null });
+    world.add(e, Fleeing, { repathAt: 0, calmUntil: null });
+  },
   engagement: (world, e) => world.add(e, Engagement, { repathAt: 0 }),
   pastimeChat: (world, e) =>
     world.add(e, Chat, { partner: e, seeker: true, talking: false, speaks: true, kind: 'pastime' }),
@@ -250,7 +275,7 @@ const MARKERS: Record<string, (world: World, e: Entity) => void> = {
   resting: (world, e) => world.add(e, Resting, { at: e }),
 };
 describe('idle release contract', () => {
-  it('passes by only settlers whose release and wake change nothing', () => {
+  it('passes by only settlers whose release and wake change nothing, or whose trade runs no ladder', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(16, 8) });
     const { world } = sim;
     const ctx = ctxOf(sim);
@@ -258,8 +283,10 @@ describe('idle release contract', () => {
     for (const shelters of [NO_SHELTERS, new Map([[ALARMED, []]]) as ShelterSites]) {
       for (const [state, enter] of Object.entries(STATES)) {
         for (const [marker, mark] of Object.entries(MARKERS)) {
-          for (const idle of [false, true]) {
-            const e = settlerAt(sim, { jobType: WOODCUTTER, position: positionOfNode(4, 4) });
+          for (const [idle, jobType] of [false, true].flatMap((i) =>
+            [WOODCUTTER, null].map((j) => [i, j] as const),
+          )) {
+            const e = settlerAt(sim, { jobType, position: positionOfNode(4, 4) });
             world.add(e, Owner, { player: CALM });
             enter(world, e);
             mark(world, e);
@@ -277,17 +304,25 @@ describe('idle release contract', () => {
               shelters,
             );
             if (!planned) wakeIdle(world, e);
-            expect({ state, marker, idle, planned, wrote: world.mutationVersion !== before }).toEqual({
+            expect({
               state,
               marker,
               idle,
-              planned: release === 'idle',
+              jobType,
+              planned,
+              wrote: world.mutationVersion !== before,
+            }).toEqual({
+              state,
+              marker,
+              idle,
+              jobType,
+              planned: release === 'idle' || release === 'jobless',
               wrote: false,
             });
           }
         }
       }
     }
-    expect(kinds).toEqual(new Set([null, 'held', 'travelling', 'idle']));
+    expect(kinds).toEqual(new Set([null, 'held', 'travelling', 'jobless', 'idle']));
   });
 });
