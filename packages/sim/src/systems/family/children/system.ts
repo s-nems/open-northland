@@ -1,7 +1,6 @@
 import {
   ChildOrder,
   FamilyDuty,
-  FoodReserve,
   MakingLove,
   Marriage,
   Position,
@@ -18,15 +17,14 @@ import { type ChildOrderPass, driveOrder } from './order.js';
 
 /**
  * The child-making half of the FamilySystem: drive every married woman's standing {@link ChildOrder} one
- * tick through its stages, then strip whatever this tick's orders did not re-claim. Authored: the food
- * threshold, the ordered sex, and the one-child limit; the original gates conception engine-internally.
+ * tick through its stages, then strip whatever this tick's orders did not re-claim. Authored: the ordered
+ * sex and the one-child limit.
  */
 export function driveChildOrders(world: World, ctx: SystemContext, terrain: TerrainGraph | undefined): void {
   cancelAbandonedSessions(world);
   const dutyBefore = world.canonicalQuery(FamilyDuty);
   const pass: ChildOrderPass = {
     dutyClaimed: new Set<Entity>(),
-    reservesReclaimed: new Set<Entity>(),
     externalFood: new ExternalFoodIndex(world, ctx, terrain),
   };
   for (const e of world.canonicalQuery(ChildOrder, Settler, Position)) {
@@ -34,9 +32,6 @@ export function driveChildOrders(world: World, ctx: SystemContext, terrain: Terr
     // until the alarm drops.
     if (world.has(e, Sheltering)) continue;
     driveOrder(world, ctx, terrain, e, pass);
-  }
-  for (const home of world.canonicalQuery(FoodReserve)) {
-    if (!pass.reservesReclaimed.has(home)) world.remove(home, FoodReserve);
   }
   for (const e of dutyBefore) {
     if (!pass.dutyClaimed.has(e)) world.remove(e, FamilyDuty);

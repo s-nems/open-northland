@@ -31,7 +31,7 @@ import { unreachableGoalVeto } from '../../settlers/unreachable-goals.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { deliverHome, fetchFrom } from '../food-haul.js';
 import type { ExternalFoodIndex } from '../food-search.js';
-import { builtHomeType, consumeFoodUnits, isMinor, setFoodReserve, storedFoodUnits } from '../households.js';
+import { builtHomeType, consumeFoodUnits, isMinor, storedFoodUnits } from '../households.js';
 import { birth, makeLoveDuration } from './make-love.js';
 
 /**
@@ -42,15 +42,13 @@ import { birth, makeLoveDuration } from './make-love.js';
 export const FOOD_SEARCH_RETRY_TICKS = TICKS_PER_SECOND;
 
 /**
- * The state one child-order pass shares across its orders. Both sets are claims re-made every tick:
- * whatever a tick does not re-claim, the pass strips at its end.
+ * The state one child-order pass shares across its orders. `dutyClaimed` is re-made every tick: whatever
+ * a tick does not re-claim, the pass strips at its end.
  */
 export type ChildOrderPass = {
   /** Settlers this tick is driving; their {@link FamilyDuty} fences them off the planner's economy
    *  drives, while needs still fire. */
   readonly dutyClaimed: Set<Entity>;
-  /** Homes whose {@link FoodReserve} this tick re-claimed, holding the child fund back from eaters. */
-  readonly reservesReclaimed: Set<Entity>;
   readonly externalFood: ExternalFoodIndex;
 };
 
@@ -95,14 +93,13 @@ export function driveOrder(
     return;
   }
 
-  const food = storedFoodUnits(world, ctx, home);
-  setFoodReserve(world, home, Math.min(CHILD_FOOD_UNITS, food));
-  pass.reservesReclaimed.add(home);
-  if (food < CHILD_FOOD_UNITS) {
+  // Nothing is held back: residents eat the larder freely, so the cost is re-checked every tick and only
+  // taken at the session start below.
+  if (storedFoodUnits(world, ctx, home) < CHILD_FOOD_UNITS) {
     haulFood(world, ctx, terrain, woman, home, pass);
     return;
   }
-  // The fund is stocked, whoever filled it, so a search that once found nothing is no longer news.
+  // The larder holds the cost, whoever filled it, so a search that once found nothing is no longer news.
   if (world.get(woman, ChildOrder).foodSearchMissed === true)
     world.mut(woman, ChildOrder).foodSearchMissed = undefined;
 
@@ -110,12 +107,10 @@ export function driveOrder(
   if (!ensureInside(world, ctx, terrain, woman, home)) return;
   claimDuty(world, husband, pass);
   if (!ensureInside(world, ctx, terrain, husband, home)) return;
-  // Another couple's session holds the home: wait for our turn with the fund still reserved.
+  // Another couple's session holds the home: wait for our turn.
   if (love !== undefined) return;
-  // The fund is spent and the hearts phase begins; the reserve is recomputed over what remains, so
-  // another resident couple's fund in progress stays protected.
+  // Original behavior: the cost is taken once both spouses are home, as the hearts phase begins.
   consumeFoodUnits(world, ctx, home, CHILD_FOOD_UNITS);
-  setFoodReserve(world, home, Math.min(CHILD_FOOD_UNITS, storedFoodUnits(world, ctx, home)));
   world.add(home, MakingLove, {
     wife: woman,
     elapsed: 0,
@@ -149,14 +144,15 @@ function dropOrder(world: World, woman: Entity): void {
 }
 
 /** A precondition failed: the order persists but nobody is driven. Only the couple's own session is
- *  touched, never another resident couple's or the home's centrally re-derived reserve. */
+ *  touched, never another resident couple's. */
 function standDown(world: World, woman: Entity, husband: Entity, home: Entity): void {
   if (isInside(world, woman, home)) stepOut(world, woman);
   if (isInside(world, husband, home)) stepOut(world, husband);
   if (world.tryGet(home, MakingLove)?.wife === woman) world.remove(home, MakingLove);
 }
 
-/** Larder short: the woman hauls food home; the husband keeps working until she waits inside. */
+/** Larder short of the child cost: the woman hauls food home; the husband keeps working until she waits
+ *  inside. */
 function haulFood(
   world: World,
   ctx: SystemContext,
@@ -221,8 +217,8 @@ function isDrivable(world: World, e: Entity): boolean {
 
 /**
  * Bring `e` to rest inside `home`, true only once it is inside with no need pulling it away. A pressing
- * need goes first: the needs drive runs after this system and outranks the {@link FamilyDuty} fence, and
- * the couple's own reserved child fund is inedible to them, so a re-driven spouse would starve mid-loop.
+ * need goes first: the needs drive runs after this system and outranks the {@link FamilyDuty} fence, so
+ * a spouse re-driven home every tick would never reach what it needs.
  */
 function ensureInside(
   world: World,

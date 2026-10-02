@@ -10,7 +10,7 @@ import { ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { homeQualityActive } from '../../family/home-quality.js';
-import { homeUsedBy, reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
+import { homeUsedBy } from '../../family/households.js';
 import { carriesNeeds, mutNeeds, NEED_SATED_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
 import { atomicClipNameAtHome, atomicEventChannelDelta } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, jobNeedsReligion } from '../../readviews/index.js';
@@ -29,12 +29,6 @@ const { REST, HUNGER, PIETY } = ATOMIC_EVENT_CHANNEL;
 // The at-home top-up: a settler that came home for one need serves the rest before going back out, so it
 // leaves rested and fed rather than making a second trip for each bar. Approximation: the data authors the
 // at-home clips but not when a settler chains them, so the chain and its NEED_SATED target are authored.
-
-/** The home larder good its residents may eat indoors: the family's own spare food, never the child fund. */
-function larderGood(world: World, ctx: SystemContext, home: Entity): number | null {
-  if (storedFoodUnits(world, ctx, home) <= reservedFoodUnits(world, home)) return null;
-  return storedFoodGood(world, ctx, home);
-}
 
 /** One round of the at-home chain: the atomic to run, what it does, and what it faces. */
 interface HomeRound {
@@ -67,7 +61,7 @@ function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound |
     needLevel(needs, 'hunger', ctx.tick) > NEED_SATED_THRESHOLD &&
     homeClipServes(ctx, settler, EAT_ATOMIC_ID, HUNGER)
   ) {
-    const goodType = larderGood(world, ctx, home);
+    const goodType = storedFoodGood(world, ctx, home);
     if (goodType !== null)
       return { atomicId: EAT_ATOMIC_ID, effect: { kind: 'eat', goodType, from: home }, target: home };
   }

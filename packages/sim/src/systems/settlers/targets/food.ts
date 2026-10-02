@@ -13,7 +13,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { lowestStockedFood } from '../../family/food-sources.js';
-import { homeUsedBy, reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
+import { homeUsedBy } from '../../family/households.js';
 import { routeRegions } from '../../footprint/index.js';
 import { bushesNearNode } from '../../spatial/bushes.js';
 import { closer, manhattan } from '../../spatial/metric.js';
@@ -58,8 +58,7 @@ function nearestFoodStore(
 
 /**
  * The food good `eater` may eat from `store`, or null. Beyond {@link storedFoodGood}'s "holds an
- * edible", a home larder feeds only the residents that use it ({@link homeUsedBy}), and the resident
- * share stops at the home's {@link reservedFoodUnits}, the child fund nobody eats.
+ * edible", a home larder feeds only the residents that use it ({@link homeUsedBy}).
  */
 function edibleFoodGoodFor(
   world: World,
@@ -73,7 +72,6 @@ function edibleFoodGoodFor(
     contentIndex(ctx.content).buildings.get(building.buildingType)?.kind === 'home'
   ) {
     if (store !== eaterHome) return null; // another family's larder
-    if (storedFoodUnits(world, ctx, store) <= reservedFoodUnits(world, store)) return null; // all reserved
   }
   return storedFoodGood(world, ctx, store);
 }

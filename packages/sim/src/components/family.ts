@@ -58,13 +58,6 @@ export const ChildOrder = defineComponent<{
 export const FamilyDuty = defineComponent<{ readonly duty: true }>('FamilyDuty', 'settlers');
 
 /**
- * Food units in a home's stockpile held back for the resident couple's child-making: the eat drive treats
- * the home's edible stock minus this as available. The FamilySystem holds it at `min(CHILD_FOOD_UNITS,
- * stocked food)` while a resident woman's {@link ChildOrder} is active.
- */
-export const FoodReserve = defineComponent<{ amount: number }>('FoodReserve', 'settlers');
-
-/**
  * Durable household supplies held by a home. Values use the original house-quality scale rather than
  * ware units: one delivered item can add many points, while an individual use spends only a few.
  */
@@ -103,7 +96,7 @@ export const MakingLove = defineComponent<{ wife: Entity; elapsed: number; durat
   'settlers',
 );
 
-/** How much food a home must stock, and the couple consumes, to conceive a child. Authored: the original
- *  gates conception on home food engine-internally; homes are the food-stocking residences (`houses.ini`
- *  `logicstock 16/17`) and the exact threshold is not readable. */
-export const CHILD_FOOD_UNITS = 3;
+/** How much food a home must stock, and the couple consumes, to conceive a child. Original behavior: the
+ *  child task starts only while the home holds at least 2 food units and takes them as the make-love
+ *  begins; nothing is held back before that, so residents may eat the larder empty meanwhile. */
+export const CHILD_FOOD_UNITS = 2;

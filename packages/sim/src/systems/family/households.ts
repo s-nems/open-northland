@@ -1,13 +1,5 @@
 import type { BuildingType } from '@open-northland/data';
-import {
-  Age,
-  Building,
-  FoodReserve,
-  Marriage,
-  Residence,
-  Settler,
-  stockpileEntries,
-} from '../../components/index.js';
+import { Age, Building, Marriage, Residence, Settler, stockpileEntries } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -150,22 +142,6 @@ export function storedFoodUnits(world: World, ctx: SystemContext, house: Entity)
     if (amount > 0 && isFood(ctx, goodType)) total += amount;
   }
   return total;
-}
-
-/** The food units of `house`'s stock held back for child-making. */
-export function reservedFoodUnits(world: World, house: Entity): number {
-  return world.tryGet(house, FoodReserve)?.amount ?? 0;
-}
-
-/** Set (or clear, at 0) `house`'s {@link FoodReserve} to `amount`. */
-export function setFoodReserve(world: World, house: Entity, amount: number): void {
-  if (amount <= 0) {
-    world.remove(house, FoodReserve);
-    return;
-  }
-  const existing = world.tryMut(house, FoodReserve);
-  if (existing === undefined) world.add(house, FoodReserve, { amount });
-  else existing.amount = amount;
 }
 
 /**

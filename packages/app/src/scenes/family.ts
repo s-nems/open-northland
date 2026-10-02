@@ -20,25 +20,14 @@ const HUSBAND = { x: 15, y: 7 } as const;
 /** Far enough apart that the walk-together reads on screen. */
 const BRIDE = { x: 3, y: 3 } as const;
 const GROOM = { x: 9, y: 3 } as const;
-/** Exactly the sim's 3-unit child fund. */
-const FOOD_PILE = { x: 11, y: 8, amount: 3 } as const;
+/** Exactly the sim's 2-unit child cost. */
+const FOOD_PILE = { x: 11, y: 8, amount: 2 } as const;
 
-/** Walks + 3 food round-trips + the 200-tick hearts phase all finish well inside this. */
+/** Walks + 2 food round-trips + the 200-tick hearts phase all finish well inside this. */
 const RUN_TICKS = 2500;
 const INITIAL_ZOOM = 1.1;
 
-const {
-  Age,
-  Building,
-  ChildOrder,
-  Female,
-  FoodReserve,
-  MakingLove,
-  Marriage,
-  Residence,
-  Settler,
-  Stockpile,
-} = components;
+const { Age, Building, ChildOrder, Female, MakingLove, Marriage, Residence, Settler, Stockpile } = components;
 
 /** Resolved by slug: real content and the sandbox catalog give `food_simple` different typeIds (16 and
  *  116), so a hardcoded id would silently no-op one of the two. */
@@ -113,7 +102,7 @@ export const familyScene: SceneDefinition = {
       label: 'a daughter was born and grew to a child by the end of the run, living in the home',
       predicate: (sim) => {
         for (const e of sim.world.query(Age, Settler)) {
-          // She is born around tick 1205, so by tick 2500 she is deterministically past
+          // She is born around tick 875, so by tick 2500 she is deterministically past
           // CHILD_AGE_TICKS (960) and short of ADULT_AGE_TICKS (2880).
           if (!systems.isChild(sim.world.get(e, Settler).jobType)) return false;
           if (!sim.world.has(e, Female)) return false;
@@ -123,10 +112,10 @@ export const familyScene: SceneDefinition = {
       },
     },
     {
-      label: 'the child fund was consumed and the order completed (no reserve, hearts, or order left)',
+      label: 'the child cost was consumed and the order completed (no hearts or order left)',
       predicate: (sim) => {
         if (homeFoodUnits(sim) !== 0) return false;
-        if (sim.world.has(HOME_ENTITY, FoodReserve) || sim.world.has(HOME_ENTITY, MakingLove)) return false;
+        if (sim.world.has(HOME_ENTITY, MakingLove)) return false;
         for (const _e of sim.world.query(ChildOrder)) return false;
         return true;
       },
