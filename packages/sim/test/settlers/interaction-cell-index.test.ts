@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Building, Owner, Position, sameSideAs } from '../../src/components/index.js';
+import { contentIndex } from '../../src/core/content-index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, positionOfNode, type Simulation } from '../../src/index.js';
 import type { SpatialGate } from '../../src/nav/node-circle.js';
@@ -181,4 +182,47 @@ describe('InteractionCellIndex', () => {
       checkQueries(sim, live, kept, roll);
     },
   );
+
+  it('rejects a loose pile its gate rules out near its node without resolving its cell', () => {
+    const { sim, terrain, ctx, candidates, roll } = world(6);
+    const loose = candidates.filter((e) => !sim.world.has(e, Building));
+    const index = new InteractionCellIndex(sim.world, ctx, terrain, loose);
+    const slack = contentIndex(ctx.content).maxResourceWorkOffset;
+    const area = { minX: 10, maxX: 30, minY: 10, maxY: 24 };
+    const near = (x: number, y: number, radius: number): boolean =>
+      x >= area.minX - radius &&
+      x <= area.maxX + radius &&
+      y >= area.minY - radius &&
+      y <= area.maxY + radius;
+    const inArea = boxGate(
+      area.minX,
+      area.maxX,
+      area.minY,
+      area.maxY,
+      (n) => terrain.xOf(n),
+      (n) => terrain.yOf(n),
+    );
+    const resolved: NodeId[] = [];
+    const gate: SpatialGate = {
+      bounds: { minX: 0, maxX: NODES_W, minY: 0, maxY: NODES_H }, // loose, so the search falls to its tail
+      allowsNode: (n) => {
+        resolved.push(n);
+        return inArea.allowsNode(n);
+      },
+      mayAllowNear: near,
+    };
+    const accept = (e: Entity): Qualified<number> => ({ payload: e });
+    for (let q = 0; q < QUERIES; q++) {
+      const here = terrain.nodeAt(
+        area.minX + roll(area.maxX - area.minX),
+        area.minY + roll(area.maxY - area.minY),
+      );
+      resolved.length = 0;
+      expect(index.nearestLoose(here, accept, gate), `query ${q}`).toEqual(
+        linearWinner(sim, loose, here, accept, inArea, undefined, undefined),
+      );
+      // Only piles whose own node lies near the area reach the per-seeker resolution.
+      expect(resolved.every((n) => near(terrain.xOf(n), terrain.yOf(n), 2 * slack))).toBe(true);
+    }
+  });
 });

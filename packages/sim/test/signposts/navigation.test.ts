@@ -670,6 +670,66 @@ describe('networkLimitAt, the shared post coverage', () => {
   });
 });
 
+describe('networkLimitAt, the near-node pre-test', () => {
+  it('never rules out a node within Manhattan radius of an allowed one, and rules out the far field', () => {
+    const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(96, 40) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    let seed = 7;
+    const roll = (n: number): number => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed % n;
+    };
+    const POSTS = 6;
+    for (let i = 0; i < POSTS; i++) {
+      createSignpost(sim.world, terrain, terrain.nodeAt(roll(terrain.width), roll(terrain.height)), P0);
+    }
+    const SPOTS = 6;
+    for (let i = 0; i < SPOTS; i++) {
+      const limit = networkLimitAt(sim.world, terrain, P0, roll(terrain.width), roll(terrain.height));
+      if (limit?.mayAllowNear === undefined) throw new Error('a signpost confinement answers the pre-test');
+      for (const radius of [0, 1, 3, 5]) {
+        let within = new Uint8Array(terrain.width * terrain.height);
+        for (let y = 0; y < terrain.height; y++) {
+          for (let x = 0; x < terrain.width; x++) {
+            if (limit.allowsNode(terrain.nodeAt(x, y))) within[y * terrain.width + x] = 1;
+          }
+        }
+        // Grow the allowed set one 4-neighbour step per unit of Manhattan radius.
+        for (let step = 0; step < radius; step++) {
+          const grown = within.slice();
+          for (let y = 0; y < terrain.height; y++) {
+            for (let x = 0; x < terrain.width; x++) {
+              const i = y * terrain.width + x;
+              if (within[i] !== 1) continue;
+              if (x > 0) grown[i - 1] = 1;
+              if (x + 1 < terrain.width) grown[i + 1] = 1;
+              if (y > 0) grown[i - terrain.width] = 1;
+              if (y + 1 < terrain.height) grown[i + terrain.width] = 1;
+            }
+          }
+          within = grown;
+        }
+        let ruledOut = 0;
+        for (let y = 0; y < terrain.height; y++) {
+          for (let x = 0; x < terrain.width; x++) {
+            const may = limit.mayAllowNear(x, y, radius);
+            if (within[y * terrain.width + x] === 1 && !may) {
+              throw new Error(
+                `radius ${radius}: node (${x}, ${y}) lies near an allowed node but was ruled out`,
+              );
+            }
+            if (!may) ruledOut++;
+          }
+        }
+        expect(ruledOut).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
 describe('confinement gates the gatherer scan', () => {
   it('a woodcutter ignores a tree beyond its area and harvests it once a signpost links it', () => {
     const sim = confinedSim(192);

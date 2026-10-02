@@ -329,48 +329,79 @@ function componentAt(terrain: TerrainGraph, x: number, y: number): number | null
 }
 
 /** The posts of the signpost groups one catch opens, shared by every settler of the player whose catch
- *  opens the same groups under the same range, and answering "strictly inside a post's range" from a
- *  bitmap over {@link bounds} painted on first use. */
+ *  opens the same groups under the same range, answering "strictly inside a post's range" from a bitmap
+ *  painted on first use. */
 class CaughtPosts {
   readonly bounds: NodeBox;
-  private readonly width: number;
-  private coverage: Uint8Array | undefined;
+  private coverage: PostCoverage | undefined;
+  /** The coverage widened by the last radius {@link coversNear} was asked about. */
+  private near: { readonly radius: number; readonly coverage: PostCoverage } | undefined;
 
   constructor(
     private readonly posts: readonly SignpostSite[],
     private readonly range: number,
   ) {
     this.bounds = unionNodeBoxes(posts.map((s) => hexNodeBox(s.hx, s.hy, range)));
-    this.width = this.bounds.maxX - this.bounds.minX + 1;
   }
 
   covers(x: number, y: number): boolean {
-    const { minX, maxX, minY, maxY } = this.bounds;
-    if (x < minX || x > maxX || y < minY || y > maxY) return false;
-    const coverage = this.coverage ?? this.paint();
-    return coverage[(y - minY) * this.width + (x - minX)] === 1;
+    this.coverage ??= new PostCoverage(this.posts, this.range);
+    return this.coverage.has(x, y);
   }
 
-  /** Marks every node with `hexDistanceBetween(post, node) < range`, row by row: on a row `rows` off the
-   *  post that holds for `|dx| < lim`, `lim = range - rows + floor(rows / 2)`, and an odd `rows` reaches
-   *  one node further east on an even node row and one further west on an odd one. */
-  private paint(): Uint8Array {
-    const { minX, maxY, minY } = this.bounds;
-    const coverage = new Uint8Array(this.width * (maxY - minY + 1));
-    for (const s of this.posts) {
-      for (let y = s.hy - this.range + 1; y < s.hy + this.range; y++) {
-        const rows = Math.abs(y - s.hy);
-        const lim = this.range - rows + Math.floor(rows / 2);
-        const oddRows = rows % 2 !== 0;
-        const west = oddRows && y % 2 !== 0 ? lim : lim - 1;
-        const east = oddRows && y % 2 === 0 ? lim : lim - 1;
-        const rowStart = (y - minY) * this.width - minX;
-        coverage.fill(1, rowStart + s.hx - west, rowStart + s.hx + east + 1);
-      }
+  /** False only when no node within Manhattan `radius` of `(x, y)` is covered. Hex distance obeys the
+   *  triangle inequality and never exceeds Manhattan distance, so such a node's post lies strictly inside
+   *  `range + radius` of `(x, y)`. */
+  coversNear(x: number, y: number, radius: number): boolean {
+    if (this.near?.radius !== radius) {
+      this.near = { radius, coverage: new PostCoverage(this.posts, this.range + radius) };
     }
-    this.coverage = coverage;
-    return coverage;
+    return this.near.coverage.has(x, y);
   }
+}
+
+/** Every node strictly inside hex `range` of one of `posts`, as a bitmap over their bounding box. */
+class PostCoverage {
+  private readonly bounds: NodeBox;
+  private readonly width: number;
+  private readonly cells: Uint8Array;
+
+  constructor(posts: readonly SignpostSite[], range: number) {
+    this.bounds = unionNodeBoxes(posts.map((s) => hexNodeBox(s.hx, s.hy, range)));
+    this.width = this.bounds.maxX - this.bounds.minX + 1;
+    this.cells = paintCoverage(posts, range, this.bounds, this.width);
+  }
+
+  has(x: number, y: number): boolean {
+    const { minX, maxX, minY, maxY } = this.bounds;
+    if (x < minX || x > maxX || y < minY || y > maxY) return false;
+    return this.cells[(y - minY) * this.width + (x - minX)] === 1;
+  }
+}
+
+/** Marks every node with `hexDistanceBetween(post, node) < range`, row by row: on a row `rows` off the
+ *  post that holds for `|dx| < lim`, `lim = range - rows + floor(rows / 2)`, and an odd `rows` reaches
+ *  one node further east on an even node row and one further west on an odd one. */
+function paintCoverage(
+  posts: readonly SignpostSite[],
+  range: number,
+  bounds: NodeBox,
+  width: number,
+): Uint8Array {
+  const { minX, maxY, minY } = bounds;
+  const cells = new Uint8Array(width * (maxY - minY + 1));
+  for (const s of posts) {
+    for (let y = s.hy - range + 1; y < s.hy + range; y++) {
+      const rows = Math.abs(y - s.hy);
+      const lim = range - rows + Math.floor(rows / 2);
+      const oddRows = rows % 2 !== 0;
+      const west = oddRows && y % 2 !== 0 ? lim : lim - 1;
+      const east = oddRows && y % 2 === 0 ? lim : lim - 1;
+      const rowStart = (y - minY) * width - minX;
+      cells.fill(1, rowStart + s.hx - west, rowStart + s.hx + east + 1);
+    }
+  }
+  return cells;
 }
 
 /** The shared {@link CaughtPosts} of one network revision, keyed by player, range and the ascending
@@ -428,6 +459,12 @@ class SignpostConfinement implements NavigationLimit {
     const y = this.terrain.yOf(node);
     if (hexDistanceBetween(this.hx, this.hy, x, y) <= this.range) return true;
     return this.caught?.covers(x, y) === true;
+  }
+
+  /** The own range widened by `radius` on the same grounds as {@link CaughtPosts.coversNear}. */
+  mayAllowNear(x: number, y: number, radius: number): boolean {
+    if (hexDistanceBetween(this.hx, this.hy, x, y) <= this.range + radius) return true;
+    return this.caught?.coversNear(x, y, radius) === true;
   }
 }
 

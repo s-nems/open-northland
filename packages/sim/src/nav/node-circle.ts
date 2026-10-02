@@ -30,6 +30,9 @@ export interface SpatialGate {
   allowsNode(node: NodeId): boolean;
   /** A box provably containing every allowed node - a scan bound, never a membership test. */
   readonly bounds: NodeBox;
+  /** False only when no node within Manhattan `radius` of `(x, y)` is allowed, so a search can drop a
+   *  candidate before resolving the exact cell it would be reached at. A gate without it is asked per node. */
+  mayAllowNear?(x: number, y: number, radius: number): boolean;
 }
 
 /**

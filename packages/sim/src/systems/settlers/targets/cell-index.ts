@@ -426,6 +426,7 @@ export class InteractionCellIndex {
     if (onSide !== undefined && !onSide(e)) return best; // another player's candidate
     const hit = accept(e);
     if (hit === null) return best;
+    if (this.gatedOutLoose(gate, e)) return best;
     const cell = interactionCell(this.world, this.ctx, this.terrain, e, here);
     if (gate !== undefined && !gate.allowsNode(cell)) return best;
     if (vetoed(avoid, here, cell)) return best;
@@ -433,6 +434,15 @@ export class InteractionCellIndex {
     if (best !== null && !precedes(distance, cell, e, best)) return best;
     if (this.pileCellSealed(e, here, cell)) return best;
     return { entity: e, cell, distance, payload: hit.payload };
+  }
+
+  /** Whether `gate` rules loose candidate `e` out from its own node alone, sparing the per-seeker cell
+   *  resolution: the cell lies within {@link slack} of that node. */
+  private gatedOutLoose(gate: SpatialGate | undefined, e: Entity): boolean {
+    if (gate?.mayAllowNear === undefined) return false;
+    const node = this.looseNode.get(e);
+    if (node === undefined) return false;
+    return !gate.mayAllowNear(this.terrain.xOf(node), this.terrain.yOf(node), this.slack);
   }
 
   /**
@@ -475,6 +485,7 @@ export class InteractionCellIndex {
       const hit = accept(e);
       if (hit === null) continue;
       const door = this.doorCell.get(e);
+      if (door === undefined && this.gatedOutLoose(gate, e)) continue;
       const cell = door ?? interactionCell(world, ctx, terrain, e, here);
       if (gate !== undefined && !gate.allowsNode(cell)) continue;
       if (vetoed(avoid, here, cell)) continue;
