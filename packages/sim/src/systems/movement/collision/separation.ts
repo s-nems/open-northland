@@ -1,10 +1,10 @@
 import { Position } from '../../../components/index.js';
-import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
+import { type Fixed, fx, ONE, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { positionXOfWorld } from '../../../nav/halfcell.js';
 import { ROW_STEP, worldDistance, worldX } from '../../../nav/world-metric.js';
 import type { System } from '../../context.js';
-import { REFERENCE_PACE_PER_TICK } from '../system.js';
+import { REFERENCE_PACE_PER_TICK, walkPacePerTick } from '../system.js';
 import { collectColliders, moverHeading } from './separation/colliders.js';
 import { SeparationGates } from './separation/gates.js';
 import { gridYOf, worldYOf } from './separation/geometry.js';
@@ -36,12 +36,18 @@ const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(50));
 
 /**
  * The per-tick cap on the soft mover-vs-mover push, below the reference walker's per-tick advance so a
- * walker brushed by passing traffic still makes net progress every tick; the slowest legs (snow, laden,
- * script-slowed) can lose ground for a tick. Either way soft separation only delays an arrival: a leg
- * pushed behind schedule keeps closing at up to `MAX_STEP_PER_TICK` until it lands. Approximation: two
- * fifths of the reference pace.
+ * walker brushed by passing traffic still makes net progress every tick; {@link SOFT_PUSH_PACE_SHARE}
+ * lowers it further for slower legs (snow, laden, script-slowed). Approximation: two fifths of the
+ * reference pace.
  */
 const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(REFERENCE_PACE_PER_TICK, fx.fromInt(2)), fx.fromInt(5));
+
+/**
+ * The share of a mover's own pace its soft push may reach. Below one, so a slow leg pushed straight back
+ * by head-on or converging traffic still gains ground each tick instead of settling where push and step
+ * cancel, which held such walkers in place until they starved.
+ */
+const SOFT_PUSH_PACE_SHARE: Fixed = fx.div(ONE, fx.fromInt(2));
 
 /**
  * Minimum unit-heading dot product for two overlapping movers to count as a convoy rather than crossing
@@ -100,6 +106,7 @@ export const separationSystem: System = (world, ctx) => {
     const ghost = isFirm && gates.isGhost(e);
 
     resolveMoverPush(scratch, slot, moverCount, push);
+    if (push.x !== ZERO || push.y !== ZERO) capToOwnPace(push, walkPacePerTick(world, ctx, e));
 
     const p = world.get(e, Position);
     candidate.x = p.x;
@@ -223,6 +230,16 @@ function resolveMoverPush(
   }
   push.x = pushX;
   push.y = pushY;
+}
+
+/** Scale `push` down to {@link SOFT_PUSH_PACE_SHARE} of the mover's `pace`; a mover with no pace keeps it. */
+function capToOwnPace(push: ScratchPoint, pace: Fixed | null): void {
+  if (pace === null) return;
+  const cap = fx.mul(pace, SOFT_PUSH_PACE_SHARE);
+  const mag = fx.isqrt(fx.add(fx.mul(push.x, push.x), fx.mul(push.y, push.y)));
+  if (mag <= cap) return;
+  push.x = fx.mulDiv(push.x, cap, mag);
+  push.y = fx.mulDiv(push.y, cap, mag);
 }
 
 /**

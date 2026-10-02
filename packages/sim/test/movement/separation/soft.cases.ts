@@ -11,7 +11,7 @@ import {
 } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import { positionOfNode } from '../../../src/index.js';
-import { worldX } from '../../../src/nav/world-metric.js';
+import { HALF_ROW, worldDistance, worldX } from '../../../src/nav/world-metric.js';
 import { separationSystem } from '../../../src/systems/movement/collision/separation.js';
 import { ctxOf } from '../../fixtures/context.js';
 import {
@@ -228,5 +228,39 @@ describe('unit body collision - soft and civilian traffic', () => {
       expect({ x: pa.x, y: pa.y }).toEqual({ x: pb.x, y: pb.y }); // byte-identical twin walks
     }
     expect(nodeOf(s, a)).toEqual({ x: 16, y: 6 });
+  });
+
+  it('a slow head-on walker is pushed back by less than its own pace, so it never stalls in place', () => {
+    // A route spliced mid-leg walks a fixed pace; on a slow N/S leg it fell below the soft push cap,
+    // and a head-on pair settled where push and step cancelled until both starved.
+    const slowLegTicks = 12;
+    const slowSplicedPace = fx.div(HALF_ROW, fx.fromInt(slowLegTicks));
+    const s = sim();
+    const a = settlerAt(s, 6, 4, WOODCUTTER, P0);
+    const b = settlerAt(s, 6, 4, WOODCUTTER, P0);
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('the test map has terrain');
+    // Facing each other on one column, a southbound over a northbound walker.
+    const starts = [
+      { entity: a, position: { x: fx.fromInt(3), y: fx.fromFloat(2.875) }, target: { hx: 6, hy: 8 } },
+      { entity: b, position: { x: fx.fromInt(3), y: fx.fromFloat(3.125) }, target: { hx: 6, hy: 4 } },
+    ];
+    for (const { entity, position, target } of starts) {
+      const node = terrain.nodeAt(target.hx, target.hy);
+      s.world.add(entity, Position, { ...position });
+      s.world.add(entity, PathRoute, { waypoints: [{ ...positionOfNode(target.hx, target.hy), node }] });
+      s.world.add(entity, PathFollow, {
+        index: 0,
+        legElapsed: 0,
+        legCost: slowLegTicks,
+        legPace: slowSplicedPace,
+      });
+    }
+    separationSystem(s.world, ctxOf(s));
+    for (const { entity, position } of starts) {
+      const now = s.world.get(entity, Position);
+      expect(now).not.toEqual(position);
+      expect(worldDistance(position.x, position.y, now.x, now.y)).toBeLessThan(slowSplicedPace);
+    }
   });
 });
