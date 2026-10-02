@@ -77,10 +77,18 @@ export class TileBuckets<T> {
   /** Every item whose position may fall inside `box`: a superset by up to one bucket on each side, so
    *  the caller still tests each item. Appends to `out` and returns it. */
   within(box: TileBox, out: T[] = []): T[] {
+    this.collect(box, out, out.length);
+    return out;
+  }
+
+  /** {@link within} written over `out` from `start` instead of appended, returning the end: `out` keeps
+   *  its capacity from call to call, and its slots past the end hold whatever an earlier call left. */
+  collect(box: TileBox, out: T[], start = 0): number {
     const bx0 = Math.floor(box.minX / TILE_BUCKET_SIZE);
     const bx1 = Math.floor(box.maxX / TILE_BUCKET_SIZE);
     const by0 = Math.floor(box.minY / TILE_BUCKET_SIZE);
     const by1 = Math.floor(box.maxY / TILE_BUCKET_SIZE);
+    let end = start;
     // Cost is min(box, population): a see-everything box must not scan its own empty area, so past the
     // populated-bucket count the walk flips to the buckets.
     if ((bx1 - bx0 + 1) * (by1 - by0 + 1) > this.buckets.size) {
@@ -88,18 +96,18 @@ export class TileBuckets<T> {
         const bx = Math.round(key / KEY_STRIDE); // exact: |by| < KEY_STRIDE / 2
         const by = key - bx * KEY_STRIDE;
         if (bx < bx0 || bx > bx1 || by < by0 || by > by1) continue;
-        for (const record of bucket) out.push(record.item);
+        for (const record of bucket) out[end++] = record.item;
       }
-      return out;
+      return end;
     }
     for (let bx = bx0; bx <= bx1; bx++) {
       for (let by = by0; by <= by1; by++) {
         const bucket = this.buckets.get(bx * KEY_STRIDE + by);
         if (bucket === undefined) continue;
-        for (const record of bucket) out.push(record.item);
+        for (const record of bucket) out[end++] = record.item;
       }
     }
-    return out;
+    return end;
   }
 
   /** Where these buckets place an item otherwise than `other` does, or null: the same items under the

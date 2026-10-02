@@ -128,6 +128,7 @@ export {
   type SnapshotDiff,
 } from './inspect/snapshot-diff.js';
 export {
+  collectPositioned,
   countedBy,
   EntityGroups,
   entitiesWith,

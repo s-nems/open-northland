@@ -479,6 +479,12 @@ export function positionedWithin(
   return indexesOf(snapshot).get(BY_POSITION).within(box, out);
 }
 
+/** {@link positionedWithin} written over `out` from index 0, returning the count: a caller that queries
+ *  per frame keeps one `out` and its capacity, and reads only the slots below the count. */
+export function collectPositioned(snapshot: WorldSnapshot, box: TileBox, out: EntitySnapshot[]): number {
+  return indexesOf(snapshot).get(BY_POSITION).collect(box, out);
+}
+
 /** Whether the snapshot holds entity `id` with a `Position`. */
 export function isPositioned(snapshot: WorldSnapshot, id: number): boolean {
   return indexesOf(snapshot).get(BY_POSITION).has(id);

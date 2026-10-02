@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type Command,
+  collectPositioned,
   countedBy,
   type EntityDelta,
   type EntitySnapshot,
@@ -126,7 +127,16 @@ function expectIndexesMatchWalk(snapshot: WorldSnapshot): void {
   });
   const queried = new Set(positionedWithin(snapshot, LEFT_HALF));
   for (const entity of inLeftHalf) expect(queried.has(entity)).toBe(true);
+  // The written-over form answers the same over a buffer that outlived the previous query.
+  const count = collectPositioned(snapshot, WHOLE_MAP, kept);
+  expectSameObjects(
+    kept.slice(0, count).sort((a, b) => a.id - b.id),
+    positioned,
+  );
 }
+
+/** One buffer across every check, as a per-frame caller keeps it. */
+const kept: EntitySnapshot[] = [];
 
 function settlementSim(): Simulation {
   return new Simulation({ seed: 7, content: testContent(), map: grassNodeMap(MAP_WIDTH, MAP_HEIGHT) });
@@ -349,5 +359,22 @@ describe('tile buckets', () => {
     expect(buckets.size).toBe(1);
     // A box far wider than the populated area walks the buckets instead of its own empty cells.
     expect(buckets.within({ minX: -1e6, minY: -1e6, maxX: 1e6, maxY: 1e6 })).toEqual(['moved']);
+  });
+
+  it('write a query over a kept buffer from a start, leaving the slots past its end', () => {
+    const buckets = new TileBuckets<string>();
+    buckets.set(1, 'a', 1, 1);
+    buckets.set(2, 'b', 2, 2);
+    const box = { minX: 0, minY: 0, maxX: 4, maxY: 4 };
+    const out = ['x', 'y', 'z', 'w'];
+    const end = buckets.collect(box, out, 1);
+    expect(end).toBe(3);
+    expect(out[0]).toBe('x');
+    expect(out.slice(1, end).sort()).toEqual(['a', 'b']);
+    expect(out[3]).toBe('w');
+    buckets.delete(1);
+    expect(buckets.collect(box, out)).toBe(1);
+    expect(out.slice(0, 1)).toEqual(['b']);
+    expect(out.length).toBe(4);
   });
 });

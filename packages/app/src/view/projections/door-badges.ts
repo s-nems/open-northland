@@ -6,11 +6,11 @@ import {
 } from '@open-northland/render';
 import { ONE, tileToScreen } from '@open-northland/render/data';
 import {
+  collectPositioned,
   entitiesWith,
   entityById,
   type Fixed,
   nodeOfPosition,
-  positionedWithin,
   positionOfNode,
   type TileBox,
   type WorldSnapshot,
@@ -57,6 +57,9 @@ export type BuildingDoorInfoOf = (
   tribe: number | undefined,
 ) => BuildingDoorInfo | undefined;
 
+/** Reused output of the box query; the slots past a query's count hold earlier frames' bodies. */
+const boxed: SnapshotEntity[] = [];
+
 /** The badges of the buildings standing in `box`, ascending by building id; no box reads the whole map. */
 export function computeDoorBadges(
   snapshot: WorldSnapshot,
@@ -65,12 +68,7 @@ export function computeDoorBadges(
   box?: TileBox,
 ): DoorBadge[] {
   const out: DoorBadge[] = [];
-  const buildings =
-    box === undefined
-      ? entitiesWith(snapshot, 'Building')
-      : positionedWithin(snapshot, box, [])
-          .filter((e) => 'Building' in e.components)
-          .sort((a, b) => a.id - b.id);
+  const buildings = box === undefined ? entitiesWith(snapshot, 'Building') : buildingsIn(snapshot, box);
   for (const e of buildings) {
     const counts = staffTallyOf(staffOf(snapshot, e.id), roleOf);
     // One banner row per resident family.
@@ -106,6 +104,17 @@ export function computeDoorBadges(
     });
   }
   return out;
+}
+
+/** The positioned buildings the box query returns, ascending by id. */
+function buildingsIn(snapshot: WorldSnapshot, box: TileBox): SnapshotEntity[] {
+  const count = collectPositioned(snapshot, box, boxed);
+  const buildings: SnapshotEntity[] = [];
+  for (let i = 0; i < count; i++) {
+    const e = boxed[i] as SnapshotEntity;
+    if (e.components.Building !== undefined) buildings.push(e);
+  }
+  return buildings.sort((a, b) => a.id - b.id);
 }
 
 interface StaffTally {

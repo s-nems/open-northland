@@ -1,7 +1,7 @@
 import type { LifeHeart } from '@open-northland/render';
 // The Pixi-free entry: the root barrel would drag Pixi into headless callers.
 import { isIndoorSettler } from '@open-northland/render/data';
-import { positionedWithin, type TileBox, type WorldSnapshot } from '@open-northland/sim';
+import { collectPositioned, type TileBox, type WorldSnapshot } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import {
   healthOf,
@@ -19,6 +19,9 @@ const UNKNOWN_PLAYER_HEART_COLOUR = 0xffffff;
  * damage-tell threshold is not established. The mark is permanent, since no system heals a person.
  */
 export const WOUNDED_LIFE_FRACTION = 0.99;
+
+/** Reused output of the box query; the slots past a query's count hold earlier frames' bodies. */
+const boxed: SnapshotEntity[] = [];
 
 /** What the projection resolves outside the snapshot. */
 export interface LifeHeartInputs {
@@ -39,8 +42,10 @@ export function computeLifeHearts(
   box?: TileBox,
 ): LifeHeart[] {
   const out: LifeHeart[] = [];
-  const candidates = box === undefined ? snapshot.entities : positionedWithin(snapshot, box, []);
-  for (const e of candidates) {
+  const candidates = box === undefined ? snapshot.entities : boxed;
+  const count = box === undefined ? candidates.length : collectPositioned(snapshot, box, boxed);
+  for (let i = 0; i < count; i++) {
+    const e = candidates[i] as SnapshotEntity;
     if (!isSettler(e)) continue;
     const player = ownerPlayerOf(e);
     if (player === undefined) continue; // wild - no faction, no heart
