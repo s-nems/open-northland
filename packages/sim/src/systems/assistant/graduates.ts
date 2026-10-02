@@ -1,10 +1,4 @@
-import {
-  assistantPostsGraduatesEntity,
-  ownerOf,
-  Settler,
-  SettlerProgress,
-  UnderConstruction,
-} from '../../components/index.js';
+import { assistantPostsGraduatesEntity, ownerOf, Settler, SettlerProgress } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { ownedBuildings } from '../ai-player/seat-roster.js';
@@ -21,9 +15,9 @@ import { hexNodeDistance } from '../spatial/metric.js';
 /**
  * The assistant's graduate posting, checked once as a settler leaves school in `jobType`: with its owner's
  * switch on, bind it to the nearest of the owner's workplaces with a free slot in that trade it can walk to,
- * ties by entity id. Returns whether it was posted; with no such slot nothing happens. A flag gatherer (collector,
- * fisher) is never posted, since its work runs from a flag rather than a building. Source basis: authored,
- * the switch is this project's addition.
+ * ties by entity id. A foundation counts, since a site takes its staff from placement. Returns whether it was
+ * posted; with no such slot nothing happens. A flag gatherer (collector, fisher) is never posted, since its
+ * work runs from a flag rather than a building. Source basis: authored, the switch is this project's addition.
  */
 export function postGraduate(
   world: World,
@@ -54,7 +48,6 @@ export function postGraduate(
   let bestDistance = Number.POSITIVE_INFINITY;
   // Ascending ids, so the first of equally near workplaces wins.
   for (const b of ownedBuildings(world, owner)) {
-    if (world.has(b, UnderConstruction)) continue;
     if (openWorkerJobFromList(query, b, [jobType]) === null) continue;
     const door = interactionCell(world, ctx, terrain, b, here);
     if (limit !== null && !limit.allowsNode(door)) continue; // posted there, he would stand lost

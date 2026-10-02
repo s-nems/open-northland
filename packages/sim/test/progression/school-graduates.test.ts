@@ -10,8 +10,10 @@ import {
   Settler,
   setNeedsEnabled,
   TrainingOrder,
+  UnderConstruction,
 } from '../../src/components/index.js';
 import { playerCommand } from '../../src/core/commands/index.js';
+import { ZERO } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation, type TerrainMap } from '../../src/index.js';
 import { nodeOfPosition } from '../../src/nav/halfcell.js';
@@ -175,6 +177,16 @@ describe('school graduates', () => {
     expect(sim.world.get(pupil, JobAssignment).workplace).toBe(near);
     expect(sim.world.has(pupil, GraduateWait)).toBe(false);
     expect(sim.world.has(far, JobAssignment)).toBe(false);
+  });
+
+  it('posts a graduate to a workplace still under construction', () => {
+    const { sim, pupil, house } = school(COLLECTOR, CARPENTER);
+    postGraduates(sim, true);
+    const site = building(sim, SAWMILL, { x: 8, y: 12 });
+    sim.world.add(site, UnderConstruction, { labor: ZERO });
+    graduate(sim, pupil, house, CARPENTER);
+    expect(sim.world.get(pupil, JobAssignment).workplace).toBe(site);
+    expect(sim.world.has(pupil, GraduateWait)).toBe(false);
   });
 
   it('skips a nearer workplace it cannot walk to', () => {
