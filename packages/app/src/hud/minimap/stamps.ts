@@ -45,6 +45,18 @@ const DIAMOND_RIM_REACH = Math.SQRT2;
  *  sets it apart from a settler of the same colour. */
 const VEHICLE_RIM_COLOUR = 0xf4ead0;
 
+/** A mark stamped as a square in a rim: authored half extent in minimap screen px, and rim colour. */
+interface RimmedSquare {
+  readonly half: number;
+  readonly rimColour: number;
+}
+const RIMMED_SQUARES: Readonly<Record<'civilian' | 'building' | 'vehicle' | 'roadSite', RimmedSquare>> = {
+  civilian: { half: CIVILIAN_HALF, rimColour: MARKER_RIM_COLOUR },
+  building: { half: BUILDING_HALF, rimColour: MARKER_RIM_COLOUR },
+  vehicle: { half: VEHICLE_HALF, rimColour: VEHICLE_RIM_COLOUR },
+  roadSite: { half: ROAD_HALF, rimColour: MARKER_RIM_COLOUR },
+};
+
 /** No stamp shrinks below one raster px across, or a zoomed-in marker would vanish between pixels. */
 const MIN_HALF_PX = 0.6;
 /** A diamond whose radius reaches the nearest pixel centre from any point: half a px on each axis. */
@@ -76,61 +88,15 @@ export function stampMark(
   const rim = Math.max(MIN_RIM_PX, RIM * pxPerMinimapPx);
   switch (mark) {
     case 'civilian':
-      stampRimmedSquare(
-        raster,
-        cx,
-        cy,
-        CIVILIAN_HALF,
-        MARKER_RIM_COLOUR,
-        colour,
-        pxPerMinimapPx,
-        markerScale,
-        rim,
-        part,
-      );
-      return;
     case 'building':
-      stampRimmedSquare(
-        raster,
-        cx,
-        cy,
-        BUILDING_HALF,
-        MARKER_RIM_COLOUR,
-        colour,
-        pxPerMinimapPx,
-        markerScale,
-        rim,
-        part,
-      );
-      return;
     case 'vehicle':
-      stampRimmedSquare(
-        raster,
-        cx,
-        cy,
-        VEHICLE_HALF,
-        VEHICLE_RIM_COLOUR,
-        colour,
-        pxPerMinimapPx,
-        markerScale,
-        rim,
-        part,
-      );
+    case 'roadSite': {
+      const square = RIMMED_SQUARES[mark];
+      const half = sizePx(square.half, markerScale, pxPerMinimapPx);
+      if (rims) stampSquare(raster, cx, cy, half + rim, square.rimColour);
+      if (fills) stampSquare(raster, cx, cy, half, colour);
       return;
-    case 'roadSite':
-      stampRimmedSquare(
-        raster,
-        cx,
-        cy,
-        ROAD_HALF,
-        MARKER_RIM_COLOUR,
-        colour,
-        pxPerMinimapPx,
-        markerScale,
-        rim,
-        part,
-      );
-      return;
+    }
     case 'animal':
       if (fills) stampSquare(raster, cx, cy, sizePx(ANIMAL_HALF, markerScale, pxPerMinimapPx), colour);
       return;
@@ -161,24 +127,6 @@ function sizePx(minimapPx: number, markerScale: number, pxPerMinimapPx: number):
 
 function stampSquare(raster: DotRaster, cx: number, cy: number, half: number, colour: number): void {
   stampDot(raster.rgba, raster.width, raster.height, cx, cy, half, colour);
-}
-
-/** A square of authored half extent `minimapHalf` in a `rim` of `rimColour`, as much of it as `part` asks. */
-function stampRimmedSquare(
-  raster: DotRaster,
-  cx: number,
-  cy: number,
-  minimapHalf: number,
-  rimColour: number,
-  colour: number,
-  pxPerMinimapPx: number,
-  markerScale: number,
-  rim: number,
-  part: MinimapStampPart,
-): void {
-  const half = sizePx(minimapHalf, markerScale, pxPerMinimapPx);
-  if (part !== 'fills') stampSquare(raster, cx, cy, half + rim, rimColour);
-  if (part !== 'rims') stampSquare(raster, cx, cy, half, colour);
 }
 
 function writePixel(raster: DotRaster, x: number, y: number, colour: number): void {
