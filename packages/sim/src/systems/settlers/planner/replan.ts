@@ -319,8 +319,9 @@ export function releaseStaleIntent(
   // These holds keep their Resting through a re-plan because other systems own those exits: shedding a
   // sheltering settler's marker would pop it out of cover and back in every tick the alarm stands. A
   // settler mid-way through its at-home top-up keeps it too, so the chain runs its rounds indoors, and a
-  // garrison still on its tower keeps it because anything else already gave the post up above.
-  if (!heldIndoors(world, e) && !topsUpAtHome(world, ctx, e)) stepOut(world, e);
+  // garrison still on its tower keeps it because anything else already gave the post up above. One
+  // outdoors has nothing to step out of, and a garrison counts as held.
+  if (world.has(e, Resting) && !heldIndoors(world, e) && !topsUpAtHome(world, ctx, e)) stepOut(world, e);
   // The guard above returned for anything the atomic holds, so what is left is safe to shed: the producer
   // drive below re-derives a craft clip from its workplace's own batch clock in this same pass, and a
   // pastime chat's clip is shed with the chat once a drive takes the settler.
