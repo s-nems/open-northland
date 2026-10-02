@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   CurrentAtomic,
   DraughtAnimal,
@@ -64,16 +65,21 @@ export const LIVESTOCK_GRAZE_LEASH_NODES = 3;
 /** An owned animal's effective leash: 15 nodes around its farm's door, else its species territory capped
  *  at the base-yard leash. The march-home sweep and the grazing drive must agree on it, or an animal
  *  would be marched back every period. */
-export function livestockLeashOf(world: World, ctx: SystemContext, e: Entity): number {
+export function livestockLeashOf(world: World, content: ContentSet, e: Entity): number {
   if (world.has(e, FarmAnimal)) return FARM_HERD_LEASH_NODES;
-  return Math.min(stayPointRangeOf(ctx.content, world.get(e, Settler).tribe), LIVESTOCK_GRAZE_LEASH_NODES);
+  return Math.min(stayPointRangeOf(content, world.get(e, Settler).tribe), LIVESTOCK_GRAZE_LEASH_NODES);
 }
 
 /** How far an animal keeps from its {@link StayPoint}: a claimed animal's {@link livestockLeashOf}, else its
  *  species' wild territory. 0 is no territory. Grazing and flight both keep to it. */
+export function territoryRangeIn(world: World, content: ContentSet, e: Entity): number {
+  if (world.has(e, Livestock) && world.has(e, Owner)) return livestockLeashOf(world, content, e);
+  return stayPointRangeOf(content, world.get(e, Settler).tribe);
+}
+
+/** {@link territoryRangeIn} under the system's content. */
 export function territoryRangeOf(world: World, ctx: SystemContext, e: Entity): number {
-  if (world.has(e, Livestock) && world.has(e, Owner)) return livestockLeashOf(world, ctx, e);
-  return stayPointRangeOf(ctx.content, world.get(e, Settler).tribe);
+  return territoryRangeIn(world, ctx.content, e);
 }
 
 /**
@@ -124,7 +130,9 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
       else if (stay.cell !== anchor) world.mut(e, StayPoint).cell = anchor;
       // Re-issued each period until it arrives, and never on top of a running atomic or in-flight walk.
       if (world.has(e, CurrentAtomic) || isTravelling(world, e)) return;
-      if (manhattan(terrain, entityNode(world, terrain, e), anchor) <= livestockLeashOf(world, ctx, e)) {
+      if (
+        manhattan(terrain, entityNode(world, terrain, e), anchor) <= livestockLeashOf(world, ctx.content, e)
+      ) {
         return;
       }
       world.add(e, MoveGoal, { cell: farmBound ? grazeAnchor(terrain, blocked, door, i) : anchor });

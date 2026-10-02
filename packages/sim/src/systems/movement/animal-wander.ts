@@ -1,30 +1,12 @@
-import {
-  Anger,
-  AttackOrder,
-  CurrentAtomic,
-  DraughtAnimal,
-  Engagement,
-  FarmAnimal,
-  Frightened,
-  Livestock,
-  MoveGoal,
-  Owner,
-  Position,
-  Resting,
-  Settler,
-  StayPoint,
-} from '../../components/index.js';
+import { FarmAnimal, MoveGoal, StayPoint } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
-import type { Entity } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
-import { territoryRangeOf } from '../livestock/assignment.js';
 import { manhattan } from '../spatial/metric.js';
-import { entityNode } from '../spatial/nodes.js';
-import { isTravelling } from './nav-state.js';
-import { nearHeld, SPACING_PROBES } from './spacing.js';
+import { type GrazingFields, grazingFields } from './grazing-fields.js';
+import { nearHeld } from './spacing.js';
 
 /** Mean ticks between grazing steps: each idle tick rolls 1-in-N. Approximated (the original's roam
  *  cadence is not readable), paced to read as grazing rather than a patrol. */
@@ -48,55 +30,14 @@ const UNSTACK_OFFSETS: readonly (readonly [number, number])[] = [
   [0, -2],
 ];
 
-/** Marks a node no keeper holds in {@link Occupancy.keeperByNode}, which stores ids one-based. */
-const NO_KEEPER = 0;
-
-/** This tick's field occupancy: the elected keeper per node, and the sidestep targets already claimed. */
-interface Occupancy {
-  /** Per terrain node, its keeper's id plus one. Kept across ticks: a node array costs no allocation,
-   *  where a per-tick map rehashed as it grew. */
-  readonly keeperByNode: Int32Array;
-  /** The nodes the previous tick wrote, up to `keptCount`, cleared before the next election. */
-  readonly kept: NodeId[];
-  keptCount: number;
-  readonly taken: Set<NodeId>;
-}
-
-const occupancyByTerrain = new WeakMap<TerrainGraph, Occupancy>();
-
-/** `terrain`'s occupancy with every keeper and claim of the previous tick cleared. */
-function freshOccupancy(terrain: TerrainGraph): Occupancy {
-  let fields = occupancyByTerrain.get(terrain);
-  if (fields === undefined) {
-    fields = { keeperByNode: new Int32Array(terrain.nodeCount), kept: [], keptCount: 0, taken: new Set() };
-    occupancyByTerrain.set(terrain, fields);
-  }
-  for (let i = 0; i < fields.keptCount; i++) fields.keeperByNode[fields.kept[i] ?? 0] = NO_KEEPER;
-  fields.keptCount = 0;
-  fields.taken.clear();
-  return fields;
-}
-
-function keeperAt(fields: Occupancy, node: NodeId): Entity | undefined {
-  const stored = fields.keeperByNode[node] ?? NO_KEEPER;
-  return stored === NO_KEEPER ? undefined : ((stored - 1) as Entity);
-}
-
-/** The keeper holding `node` or any node within the stander spacing of it, or undefined when free. */
-function keeperNear(terrain: TerrainGraph, fields: Occupancy, node: NodeId): Entity | undefined {
-  const x = terrain.xOf(node);
-  const y = terrain.yOf(node);
-  for (const [dx, dy] of SPACING_PROBES) {
-    if (!terrain.inBounds(x + dx, y + dy)) continue;
-    const keeper = keeperAt(fields, terrain.nodeAt(x + dx, y + dy));
-    if (keeper !== undefined) return keeper;
-  }
-  return undefined;
-}
-
-/** Whether `node` sits within the stander spacing of a kept field or of a sidestep claimed this tick. */
-function fieldContested(terrain: TerrainGraph, fields: Occupancy, node: NodeId): boolean {
-  return keeperNear(terrain, fields, node) !== undefined || nearHeld(terrain, node, fields.taken);
+/** Whether `node` sits within the stander spacing of a kept field or of a sidestep claimed this pass. */
+function fieldContested(
+  terrain: TerrainGraph,
+  fields: GrazingFields,
+  taken: ReadonlySet<NodeId> | undefined,
+  node: NodeId,
+): boolean {
+  return fields.keeperNear(node) !== undefined || (taken !== undefined && nearHeld(terrain, node, taken));
 }
 
 /** How far one grazing step may aim from where the creature stands (node Manhattan), clamped down to the
@@ -125,50 +66,32 @@ export const animalWanderSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   // Composed lazily: a map of standing wildlife never needs the overlay.
   let blocked: BlockOverlay | undefined;
+  // This pass's sidestep claims, made only when standers stack.
+  let taken: Set<NodeId> | undefined;
 
-  // One canonical list shared by the occupancy pre-pass and the drive loop; only MoveGoal writes happen
-  // here, so membership cannot change between them.
-  const animals = world.canonicalQuery(StayPoint, Settler, Position);
-  if (animals.length === 0) return; // no wildlife on this map
-
-  // The first stander in canonical order to reach a field becomes its keeper. A Resting animal is inside
-  // a building, off the field.
-  const fields = freshOccupancy(terrain);
-  for (const e of animals) {
-    if (world.has(e, Resting) || isTravelling(world, e)) continue;
-    const node = entityNode(world, terrain, e);
-    if (keeperNear(terrain, fields, node) !== undefined) continue;
-    fields.keeperByNode[node] = e + 1;
-    fields.kept[fields.keptCount++] = node;
-  }
-
-  for (const e of animals) {
-    if (world.has(e, CurrentAtomic)) continue;
-    // A summoned animal is walking itself to the farm door, and a cart's recruit to its cart: no graze
-    // leg competing with either walk.
-    if (world.has(e, Resting) || world.tryGet(e, FarmAnimal)?.summoner != null || world.has(e, DraughtAnimal))
-      continue;
-    if (isTravelling(world, e)) continue;
-    if (world.has(e, Engagement) || world.has(e, Anger) || world.has(e, AttackOrder)) continue;
-    if (world.has(e, Frightened)) continue; // a scattering animal is the fright drive's, not grazing
-
+  // The grazers are standing animals no other drive holds: not resting in a building, travelling,
+  // mid-atomic, fighting, provoked, ordered, frightened, summoned to a farm door or recruited to a cart.
+  // Only MoveGoal writes happen here, and the index replays them at the next pass.
+  const fields = grazingFields(world, ctx.content, terrain);
+  for (const e of fields.grazers) {
     // Un-stack before any graze roll: an animal inside another keeper's field steps to the nearest free
     // spot with the leash ignored, since getting off a shared field beats staying strictly inside the
     // territory. The sidestep draws no rng; the `continue` drops this animal's cadence roll for the tick.
-    const here = entityNode(world, terrain, e);
-    if (keeperAt(fields, here) !== e) {
+    const here = fields.nodeOf(e);
+    if (fields.keeperAt(here) !== e) {
       blocked ??= dynamicBlockOverlay(world, ctx, terrain);
-      const spot = sidestepTarget(terrain, fields, blocked, here);
+      taken ??= new Set();
+      const spot = sidestepTarget(terrain, fields, taken, blocked, here);
       if (spot !== null) world.add(e, MoveGoal, { cell: spot });
       continue;
     }
 
     // Claimed livestock grazes at a calm pace on its farm's or its base yard's leash; a wild creature
     // keeps its species' territory radius and the wild cadence.
-    const claimed = world.has(e, Livestock) && world.has(e, Owner);
-    const range = territoryRangeOf(world, ctx, e);
+    const range = fields.rangeOf(e);
     if (range <= 0) continue; // no territory to range over: this creature holds its spot
-    if (ctx.rng.int(claimed ? LIVESTOCK_WANDER_PERIOD_TICKS : ANIMAL_WANDER_PERIOD_TICKS) !== 0) continue;
+    const period = fields.claimed(e) ? LIVESTOCK_WANDER_PERIOD_TICKS : ANIMAL_WANDER_PERIOD_TICKS;
+    if (ctx.rng.int(period) !== 0) continue;
 
     const at = terrain.coordsOf(here);
     // A Manhattan diamond around the creature: `dx` first, then `dy` over what the step budget leaves.
@@ -194,7 +117,7 @@ export const animalWanderSystem: System = (world, ctx) => {
     if (terrain.componentOf(target) !== terrain.componentOf(here)) continue;
     // Never graze into a stack. The creature's own field rejects too, so a distance-1 pick is refused as
     // a half-cell shuffle rather than a graze step.
-    if (fieldContested(terrain, fields, target)) continue;
+    if (fieldContested(terrain, fields, taken, target)) continue;
     blocked ??= dynamicBlockOverlay(world, ctx, terrain);
     if (blocked.has(target)) continue;
 
@@ -206,7 +129,8 @@ export const animalWanderSystem: System = (world, ctx) => {
  *  in and retries next tick. */
 function sidestepTarget(
   terrain: TerrainGraph,
-  fields: Occupancy,
+  fields: GrazingFields,
+  taken: Set<NodeId>,
   blocked: BlockOverlay,
   from: NodeId,
 ): NodeId | null {
@@ -216,9 +140,9 @@ function sidestepTarget(
     const node = terrain.nodeAt(at.x + dx, at.y + dy);
     if (!terrain.isWalkable(node)) continue;
     if (terrain.componentOf(node) !== terrain.componentOf(from)) continue;
-    if (fieldContested(terrain, fields, node)) continue;
+    if (fieldContested(terrain, fields, taken, node)) continue;
     if (blocked.has(node)) continue;
-    fields.taken.add(node);
+    taken.add(node);
     return node;
   }
   return null;
