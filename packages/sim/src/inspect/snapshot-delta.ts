@@ -1,6 +1,7 @@
 import type { SimEvent } from '../core/events.js';
-import { PROTO_KEY } from '../core/plain-value.js';
+import { isPlainRecord, PROTO_KEY } from '../core/plain-value.js';
 import type { DeltaDigest } from './entity-digest.js';
+import { clonePlain } from './plain-clone.js';
 
 /**
  * The changes of one stretch of ticks, in the shape a mirror rebuilds the snapshot from and a worker
@@ -118,28 +119,44 @@ export class DeltaColumns {
   private numbers = new Float64Array(INITIAL_NUMBERS);
   private numberCount = 0;
   private readonly values: unknown[] = [];
-  /** The open entity's change so far, and its names, which a change met for the first time keeps. */
+  /** The open entity's change so far, and its names, which a change met for the first time keeps.
+   *  Counted rather than truncated, so the name lists keep their storage from entity to entity. */
   private step = this.firstStep;
   private readonly written: string[] = [];
+  private writtenCount = 0;
   private readonly dropped: string[] = [];
+  private droppedCount = 0;
 
   begin(id: number): void {
     this.touched.push(id);
     this.step = this.firstStep;
-    this.written.length = 0;
-    this.dropped.length = 0;
+    this.writtenCount = 0;
+    this.droppedCount = 0;
   }
 
-  write(name: string, value: unknown): void {
-    this.written.push(name);
+  /** Write a value read off the live world: a plain record whose fields are all numbers, a cleared
+   *  `undefined` one aside, goes straight into the numbers column, any other value as its
+   *  {@link clonePlain}. Either way the columns end as {@link write} of the clone leaves them. */
+  writeLive(name: string, value: unknown): void {
+    this.written[this.writtenCount++] = name;
     this.step = stepAfter(this.step.written, name);
-    const kind = this.numericRecordKind(this.step, value);
+    const kind = isPlainRecord(value) ? this.numericRecordKind(this.step, value, true) : WHOLE_VALUE;
+    this.valueKinds.push(kind);
+    // A field that fails the numeric test fails it in the clone too, so the clone needs no second look.
+    if (kind === WHOLE_VALUE) this.values.push(clonePlain(value));
+  }
+
+  /** Write a detached value, kept as the delta's own unless its fields are all numbers. */
+  write(name: string, value: unknown): void {
+    this.written[this.writtenCount++] = name;
+    this.step = stepAfter(this.step.written, name);
+    const kind = this.numericRecordKind(this.step, value, false);
     this.valueKinds.push(kind);
     if (kind === WHOLE_VALUE) this.values.push(value);
   }
 
   drop(name: string): void {
-    this.dropped.push(name);
+    this.dropped[this.droppedCount++] = name;
     this.step = stepAfter(this.step.dropped, name);
   }
 
@@ -148,8 +165,8 @@ export class DeltaColumns {
     if (step.change === NO_CHANGE) {
       step.change = this.changes.length;
       this.changes.push({
-        written: [...this.written],
-        removed: this.dropped.length === 0 ? NO_NAMES : [...this.dropped],
+        written: this.written.slice(0, this.writtenCount),
+        removed: this.droppedCount === 0 ? NO_NAMES : this.dropped.slice(0, this.droppedCount),
       });
     }
     this.changeOf.push(step.change);
@@ -170,8 +187,9 @@ export class DeltaColumns {
 
   /** Push the fields of a record whose fields are all numbers and answer its key list's entry, or answer
    *  {@link WHOLE_VALUE} for any other value and push nothing. A record is any non-array object: a
-   *  structured clone keeps no prototype either. */
-  private numericRecordKind(step: ChangeStep, value: unknown): number {
+   *  structured clone keeps no prototype either. `skipUndefined` leaves out a field holding `undefined`,
+   *  as the clone of a live value does. */
+  private numericRecordKind(step: ChangeStep, value: unknown, skipUndefined: boolean): number {
     if (typeof value !== 'object' || value === null || Array.isArray(value)) return WHOLE_VALUE;
     const record = value as Record<string, unknown>;
     const start = this.numberCount;
@@ -179,8 +197,13 @@ export class DeltaColumns {
     const lastKeys = this.recordKeys[last];
     let matchesLast = lastKeys !== undefined;
     let count = 0;
+    let skipped = false;
     for (const key in record) {
       const field = record[key];
+      if (field === undefined && skipUndefined) {
+        skipped = true;
+        continue;
+      }
       if (typeof field !== 'number' || key === PROTO_KEY) {
         this.numberCount = start;
         return WHOLE_VALUE;
@@ -190,7 +213,9 @@ export class DeltaColumns {
       count++;
     }
     if (matchesLast && lastKeys?.length === count) return last;
-    const keys = Object.keys(record);
+    const keys = skipped
+      ? Object.keys(record).filter((key) => record[key] !== undefined)
+      : Object.keys(record);
     const joined = keys.join(',');
     let at = this.recordKeysAt.get(joined);
     if (at === undefined) {

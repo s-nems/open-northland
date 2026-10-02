@@ -14,7 +14,7 @@ describe('touched log component collection', () => {
     expect(
       log.drain((entity, written, membership) => {
         changed.push(entity);
-        expect(written.size).toBe(0);
+        expect(written).toHaveLength(0);
         expect(membership).toBe(false);
       }),
     ).toBe(false);
@@ -23,25 +23,39 @@ describe('touched log component collection', () => {
     expect(log.mutationCount).toBe(2);
   });
 
-  it('reuses borrowed sets after draining without leaking component or membership names', () => {
+  it('reuses borrowed lists after draining without leaking component or membership names', () => {
     const log = new TouchedLog();
     log.trackComponents();
     const id = 1 as Entity;
     log.record(id, Position, true);
     log.record(id, Position);
-    let borrowed: ReadonlySet<Component<unknown>> | undefined;
+    let borrowed: readonly Component<unknown>[] | undefined;
     log.drain((_entity, written, membership) => {
       borrowed = written;
-      expect([...written]).toEqual([Position]);
+      expect(written).toEqual([Position]);
       expect(membership).toBe(true);
     });
     log.record(2 as Entity, Resource);
     log.drain((entity, written, membership) => {
       expect(entity).toBe(2);
       expect(written).toBe(borrowed);
-      expect([...written]).toEqual([Resource]);
+      expect(written).toEqual([Resource]);
       expect(membership).toBe(false);
     });
+  });
+
+  it('collects components for an entity logged before tracking began', () => {
+    const log = new TouchedLog();
+    log.record(1 as Entity, Position);
+    log.trackComponents();
+    log.record(2 as Entity, Position);
+    log.record(1 as Entity, Resource);
+    const seen: Array<[number, Component<unknown>[]]> = [];
+    log.drain((entity, written) => seen.push([entity, [...written]]));
+    expect(seen).toEqual([
+      [1, [Resource]],
+      [2, [Position]],
+    ]);
   });
 
   it('discards overflowed details and resumes collection after the rebuilding drain', () => {
@@ -52,13 +66,13 @@ describe('touched log component collection', () => {
     expect(log.pending(1 as Entity)).toBe(true);
     expect(
       log.drain((_entity, written) => {
-        expect([...written]).toEqual([Resource]);
+        expect(written).toEqual([Resource]);
       }),
     ).toBe(true);
     log.record(1 as Entity, Position);
     expect(
       log.drain((_entity, written) => {
-        expect([...written]).toEqual([Position]);
+        expect(written).toEqual([Position]);
       }),
     ).toBe(false);
   });

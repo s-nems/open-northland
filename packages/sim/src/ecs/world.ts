@@ -241,9 +241,9 @@ export class World {
     this.touched.trackComponents();
   }
 
-  /** Component sets are borrowed only for the duration of `consume`. */
+  /** Component lists are borrowed only for the duration of `consume`. */
   drainTouched(
-    consume: (entity: Entity, components: ReadonlySet<Component<unknown>>, membership: boolean) => void,
+    consume: (entity: Entity, components: readonly Component<unknown>[], membership: boolean) => void,
   ): boolean {
     return this.touched.drain(consume);
   }

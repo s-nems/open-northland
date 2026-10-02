@@ -20,7 +20,7 @@ interface CachedEntity {
 /** What one open stream has accumulated since its last delta. */
 interface PendingDelta {
   readonly removed: Set<Entity>;
-  /** The components each alive entity wrote since the base, in write order. */
+  /** The components each alive entity wrote since the base, in first-write order. */
   readonly written: Map<Entity, Component<unknown>[]>;
   rebuild: boolean;
 }
@@ -33,7 +33,7 @@ interface PendingDelta {
  */
 class SnapshotClones {
   private readonly entries = new Map<Entity, CachedEntity>();
-  private readonly streams = new Set<PendingDelta>();
+  private readonly streams: PendingDelta[] = [];
 
   constructor(private readonly world: World) {
     world.trackTouchedComponents();
@@ -57,13 +57,13 @@ class SnapshotClones {
       for (const stream of this.streams) {
         if (stream.rebuild) continue; // the next delta carries every alive entity anyway
         if (alive) {
-          let writtenComponents = stream.written.get(e);
-          if (writtenComponents === undefined) {
-            writtenComponents = [];
-            stream.written.set(e, writtenComponents);
-          }
-          for (const component of written) {
-            if (!writtenComponents.includes(component)) writtenComponents.push(component);
+          const writtenComponents = stream.written.get(e);
+          // A copy: the log reuses the list it lends.
+          if (writtenComponents === undefined) stream.written.set(e, written.slice());
+          else {
+            for (const component of written) {
+              if (!writtenComponents.includes(component)) writtenComponents.push(component);
+            }
           }
         } else {
           stream.written.delete(e);
@@ -80,11 +80,6 @@ class SnapshotClones {
         stream.rebuild = true;
       }
     }
-  }
-
-  /** The current clones of an alive entity's components, brought up to its drained writes. */
-  componentsOf(id: Entity): Readonly<Record<string, unknown>> {
-    return this.entryOf(id).components;
   }
 
   /** The detached snapshot of an alive entity: the same object until the entity is written again. */
@@ -126,12 +121,13 @@ class SnapshotClones {
       written: new Map(),
       rebuild: true,
     };
-    this.streams.add(pending);
+    this.streams.push(pending);
     return pending;
   }
 
   close(pending: PendingDelta): void {
-    this.streams.delete(pending);
+    const at = this.streams.indexOf(pending);
+    if (at >= 0) this.streams.splice(at, 1);
   }
 
   private verify(): string[] {
@@ -200,6 +196,8 @@ export interface SnapshotDeltaStreamOptions {
  * The per-tick change feed one mirror rebuilds the snapshot from. Each stream accumulates on its own,
  * so two streams over one world each see every change; a stream nobody takes from is bounded by the
  * touched log's overflow limit, past which its next delta rebuilds. Close a stream its mirror outlives.
+ * A delta reads the written values off the live world, not the clone cache, which only `takeSnapshot`
+ * and the digest fill.
  */
 export class SnapshotDeltaStream {
   private readonly clones: SnapshotClones;
@@ -246,7 +244,7 @@ export class SnapshotDeltaStream {
         this.sent.delete(id);
         this.digest?.drop(id);
       }
-      for (const id of ascending(pending.written.keys())) this.changesOf(columns, id);
+      for (const id of ascendingIds(pending.written.keys())) this.changesOf(columns, id as Entity);
     }
     const delta: SnapshotDelta = {
       tick,
@@ -274,11 +272,10 @@ export class SnapshotDeltaStream {
 
   /** The entity with all of its components, as a rebuild and a creation carry it. */
   private whole(columns: DeltaColumns, id: Entity): void {
-    const components = this.clones.componentsOf(id);
     this.sent.add(id);
     this.digest?.fold(this.clones.snapOf(id));
     columns.begin(id);
-    for (const name in components) columns.write(name, components[name]);
+    this.source.world.forEachComponent(id, (name, value) => columns.writeLive(name, value));
     columns.end();
   }
 
@@ -288,17 +285,16 @@ export class SnapshotDeltaStream {
       this.whole(columns, id);
       return;
     }
-    const components = this.clones.componentsOf(id);
+    const world = this.source.world;
     this.digest?.fold(this.clones.snapOf(id));
     // Preserve the component registration order carried by complete snapshots.
     const written = this.pending.written.get(id) ?? [];
-    if (written.length > 1)
-      written.sort((a, b) => this.source.world.componentOrder(a) - this.source.world.componentOrder(b));
+    if (written.length > 1) written.sort((a, b) => world.componentOrder(a) - world.componentOrder(b));
     columns.begin(id);
     for (const component of written) {
-      const name = component.name;
-      if (Object.hasOwn(components, name)) columns.write(name, components[name]);
-      else columns.drop(name);
+      const value = world.tryGet(id, component);
+      if (value === undefined) columns.drop(component.name);
+      else columns.writeLive(component.name, value);
     }
     columns.end();
   }
@@ -306,4 +302,11 @@ export class SnapshotDeltaStream {
 
 function ascending(ids: Iterable<Entity>): Entity[] {
   return [...ids].sort((a, b) => a - b);
+}
+
+/** Ids ascending. An Int32Array sorts without a comparator call per pair, and its elements read back as
+ *  small integers, so the delta's `touched` column stays an integer array (a structured clone writes a
+ *  double one at 8 bytes an id). Entity ids stay within int32: the save caps them there. */
+function ascendingIds(ids: Iterable<Entity>): Int32Array {
+  return Int32Array.from(ids).sort();
 }

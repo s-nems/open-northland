@@ -1,3 +1,4 @@
+import { serialize } from 'node:v8';
 import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import { TOUCHED_LOG_OVERFLOW_LIMIT } from '../../src/ecs/touched-log.js';
@@ -230,6 +231,17 @@ describe('snapshot delta stream', () => {
       { id: node, components: { Resource: { goodType: 1, remaining: 4, harvestAtomic: 24 } }, removed: [] },
     ]);
     expect(delta.removed).toEqual([other]);
+  });
+
+  it('lists touched ids as integers, which a structured clone writes compactly', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const nodes = [bareResource(sim, 5), bareResource(sim, 3), bareResource(sim, 2)];
+    const deltas = sim.snapshotDeltas();
+    deltas.next();
+    for (const node of nodes.reverse()) sim.world.mut(node, Resource).remaining = 1;
+    const { touched } = nonNull(deltas.next());
+    expect(touched).toEqual([...nodes].reverse());
+    expect(serialize(touched)).toEqual(serialize(touched.map((id) => id | 0)));
   });
 
   it('numbers two deltas of one tick apart, so a mirror given only the second refuses it', () => {
