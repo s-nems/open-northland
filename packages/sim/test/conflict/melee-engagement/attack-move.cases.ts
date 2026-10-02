@@ -73,6 +73,22 @@ describe('attackMoveUnit - a march that fights everything on the way', () => {
     expect(sim.world.get(a, MoveGoal).cell).toBe(goal); // and aims at the spot it was sent to again
   });
 
+  it('marks the march to resume once, not on every engaged tick', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
+    const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
+    fighterAt(sim, 3, 0, VIKING, WOODCUTTER, { owner: P1 });
+
+    orderAttackMove(sim, a, 11, 0);
+    sim.run(2);
+    expect(sim.world.has(a, Engagement)).toBe(true);
+    expect(sim.world.get(a, PlayerOrder).attackMove?.resume).toBe(true);
+    const revision = sim.world.revisionOf(a, PlayerOrder);
+
+    playerOrderSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.revisionOf(a, PlayerOrder)).toBe(revision);
+  });
+
   it('overrides a passive stance for the march - an IGNORE unit fights while it lasts, not after', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
     const scout = fighterAt(sim, 1, 0, VIKING, WOODCUTTER, { owner: P0 });

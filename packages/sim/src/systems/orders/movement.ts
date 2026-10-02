@@ -210,9 +210,12 @@ export const playerOrderSystem: System = (world, ctx) => {
       continue;
     }
     if (march !== undefined && world.has(e, Engagement)) {
-      // The fight has the unit; the march waits it out and resumes below when combat lets go.
-      const o = world.mut(e, PlayerOrder);
-      if (o.attackMove !== undefined) o.attackMove.resume = true;
+      // The fight has the unit; the march waits it out and resumes below when combat lets go. Marked once,
+      // so a long fight does not rewrite the order every tick.
+      if (!march.resume) {
+        const o = world.mut(e, PlayerOrder);
+        if (o.attackMove !== undefined) o.attackMove.resume = true;
+      }
       continue;
     }
     const request = world.tryGet(e, PathRequest);
