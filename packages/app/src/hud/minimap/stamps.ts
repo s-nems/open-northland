@@ -73,33 +73,69 @@ export function stampMark(
 ): void {
   const rims = part !== 'fills';
   const fills = part !== 'rims';
-  const size = (minimapPx: number): number => Math.max(MIN_HALF_PX, minimapPx * markerScale * pxPerMinimapPx);
   const rim = Math.max(MIN_RIM_PX, RIM * pxPerMinimapPx);
-  const square = (half: number, fill: number): void =>
-    stampDot(raster.rgba, raster.width, raster.height, cx, cy, half, fill);
-  const rimmedSquare = (minimapHalf: number, rimColour: number): void => {
-    const half = size(minimapHalf);
-    if (rims) square(half + rim, rimColour);
-    if (fills) square(half, colour);
-  };
   switch (mark) {
     case 'civilian':
-      rimmedSquare(CIVILIAN_HALF, MARKER_RIM_COLOUR);
+      stampRimmedSquare(
+        raster,
+        cx,
+        cy,
+        CIVILIAN_HALF,
+        MARKER_RIM_COLOUR,
+        colour,
+        pxPerMinimapPx,
+        markerScale,
+        rim,
+        part,
+      );
       return;
     case 'building':
-      rimmedSquare(BUILDING_HALF, MARKER_RIM_COLOUR);
+      stampRimmedSquare(
+        raster,
+        cx,
+        cy,
+        BUILDING_HALF,
+        MARKER_RIM_COLOUR,
+        colour,
+        pxPerMinimapPx,
+        markerScale,
+        rim,
+        part,
+      );
       return;
     case 'vehicle':
-      rimmedSquare(VEHICLE_HALF, VEHICLE_RIM_COLOUR);
+      stampRimmedSquare(
+        raster,
+        cx,
+        cy,
+        VEHICLE_HALF,
+        VEHICLE_RIM_COLOUR,
+        colour,
+        pxPerMinimapPx,
+        markerScale,
+        rim,
+        part,
+      );
       return;
     case 'roadSite':
-      rimmedSquare(ROAD_HALF, MARKER_RIM_COLOUR);
+      stampRimmedSquare(
+        raster,
+        cx,
+        cy,
+        ROAD_HALF,
+        MARKER_RIM_COLOUR,
+        colour,
+        pxPerMinimapPx,
+        markerScale,
+        rim,
+        part,
+      );
       return;
     case 'animal':
-      if (fills) square(size(ANIMAL_HALF), colour);
+      if (fills) stampSquare(raster, cx, cy, sizePx(ANIMAL_HALF, markerScale, pxPerMinimapPx), colour);
       return;
     case 'road':
-      if (fills) square(size(ROAD_HALF), colour);
+      if (fills) stampSquare(raster, cx, cy, sizePx(ROAD_HALF, markerScale, pxPerMinimapPx), colour);
       return;
     case 'soldier': {
       const radius = Math.max(MIN_DIAMOND_RADIUS_PX, SOLDIER_RADIUS * markerScale * pxPerMinimapPx);
@@ -108,13 +144,41 @@ export function stampMark(
       return;
     }
     case 'signpost': {
-      const halfW = size(SIGNPOST_HALF_W);
-      const halfH = size(SIGNPOST_HALF_H);
+      const halfW = sizePx(SIGNPOST_HALF_W, markerScale, pxPerMinimapPx);
+      const halfH = sizePx(SIGNPOST_HALF_H, markerScale, pxPerMinimapPx);
       if (rims) stampRect(raster, cx, cy, halfW + rim, halfH + rim, MARKER_RIM_COLOUR);
       if (fills) stampRect(raster, cx, cy, halfW, halfH, colour);
       return;
     }
   }
+}
+
+/** An authored minimap extent in raster px. Plain functions rather than closures over the call, since a
+ *  replot stamps every marker. */
+function sizePx(minimapPx: number, markerScale: number, pxPerMinimapPx: number): number {
+  return Math.max(MIN_HALF_PX, minimapPx * markerScale * pxPerMinimapPx);
+}
+
+function stampSquare(raster: DotRaster, cx: number, cy: number, half: number, colour: number): void {
+  stampDot(raster.rgba, raster.width, raster.height, cx, cy, half, colour);
+}
+
+/** A square of authored half extent `minimapHalf` in a `rim` of `rimColour`, as much of it as `part` asks. */
+function stampRimmedSquare(
+  raster: DotRaster,
+  cx: number,
+  cy: number,
+  minimapHalf: number,
+  rimColour: number,
+  colour: number,
+  pxPerMinimapPx: number,
+  markerScale: number,
+  rim: number,
+  part: MinimapStampPart,
+): void {
+  const half = sizePx(minimapHalf, markerScale, pxPerMinimapPx);
+  if (part !== 'fills') stampSquare(raster, cx, cy, half + rim, rimColour);
+  if (part !== 'rims') stampSquare(raster, cx, cy, half, colour);
 }
 
 function writePixel(raster: DotRaster, x: number, y: number, colour: number): void {
