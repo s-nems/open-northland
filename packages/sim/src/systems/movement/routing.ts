@@ -2,6 +2,7 @@ import {
   Engagement,
   Fleeing,
   MoveGoal,
+  Obstructed,
   Owner,
   PathFollow,
   PathRequest,
@@ -31,8 +32,9 @@ import {
   unitWalkBlocks,
 } from './collision/index.js';
 import { GroupRoutes } from './group-routes.js';
-import { liveStepEnd } from './nav-state.js';
+import { dropPath, liveStepEnd, restartLeg } from './nav-state.js';
 import { type RouteMemo, routeMemoOf } from './route-memo.js';
+import { routeStartCell } from './route-start.js';
 import { beginWalkTurn } from './turning.js';
 
 /**
@@ -79,8 +81,8 @@ export function drainPathRequests(
   // different free nodes instead of both claiming the same one.
   const claimedStandIns = new Set<NodeId>();
   const groupRoutes = new GroupRoutes(terrain);
-  // Colliders only: a firm body that stalls in a crowd drops its route and asks for the same one again,
-  // while a ghost's repeats are too rare to pay for logging its searches.
+  // Colliders only: a firm body that stalls in a crowd asks for the route it walks again, while a ghost's
+  // repeats are too rare to pay for logging its searches.
   const memo = routeMemoOf(world, terrain);
   const dynamicOnly = (): BlockOverlay => {
     if (dynamic === undefined) {
@@ -105,12 +107,18 @@ export function drainPathRequests(
     if (overBudget && !world.has(e, PlayerOrder)) continue;
     const req = world.get(e, PathRequest);
     if (req.failed) continue;
+    if (req.grind && movedSinceGrindAsk(world, terrain, e, req.start)) {
+      // The walker moved on while the ask waited: it made progress, so it keeps its route.
+      world.remove(e, PathRequest);
+      continue;
+    }
     mask?.catchUp();
 
     const collides = hasBodyCollision(world, ctx.content, e);
     const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
+    // A grind reroute plans as if its live route were already dropped, which it is unless the answer matches.
     const stepEnd =
-      req.retainRoute || !finishesStepOnReroute(world, e)
+      req.retainRoute || req.grind || !finishesStepOnReroute(world, e)
         ? undefined
         : freeStepEnd(world, terrain, e, blocked);
     const start = stepEnd ?? req.start;
@@ -148,14 +156,22 @@ export function drainPathRequests(
       const goalIntent = world.tryMut(e, MoveGoal);
       if (goalIntent !== undefined) goalIntent.cell = goal;
     }
+    let waypoints = path === null ? [] : pathToWaypoints(terrain, path);
+    // A grind reroute that found the route already walked keeps it; any other answer replaces it.
+    if (req.grind) {
+      if (path !== null && walksRoute(world, e, waypoints)) {
+        holdGrindRoute(world, e);
+        continue;
+      }
+      dropPath(world, e);
+    }
     if (path === null) {
       world.mut(e, PathRequest).failed = true;
-      // A failed mid-walk reroute keeps the live path, so the walker plays its old route out and parks on
-      // a cell centre rather than freezing mid-leg.
+      // A failed mid-walk reroute keeps the live path, so the walker plays its old route out and parks on a
+      // cell centre rather than freezing mid-leg. A failed grind ask has already dropped it.
       continue;
     }
 
-    let waypoints = pathToWaypoints(terrain, path);
     // Keep a route's start when it is still ahead of an active step: skipping it would also skip its
     // terrain and node charge. A start behind the new heading is bypassed rather than backing up;
     // a blocked start only permits escape, never a return to its centre.
@@ -165,6 +181,7 @@ export function drainPathRequests(
     // before the detour, including any diagonal midpoint on the way back from a closed edge.
     if (req.retainRoute && previous !== undefined && previousStops?.at(-1)?.node === req.start) {
       world.mut(e, PathRoute).waypoints = [...previousStops, ...waypoints.slice(1)];
+      endGrindHold(world, e);
       world.remove(e, PathRequest);
       world.remove(e, Stranded);
       continue;
@@ -213,6 +230,7 @@ export function drainPathRequests(
       index = history.length;
     }
     world.add(e, PathRoute, { waypoints });
+    endGrindHold(world, e);
     world.add(e, PathFollow, {
       index,
       legElapsed: activeCost > 0 && previous !== undefined ? pathLegTicks(previous, ctx.tick - 1) : 0,
@@ -229,6 +247,45 @@ export function drainPathRequests(
     world.remove(e, Stranded);
   }
   memo.expire(ctx.tick);
+}
+
+/** Whether `e` still walks a route but no longer stands nearest `start`, the node its grind ask is from. */
+function movedSinceGrindAsk(world: World, terrain: TerrainGraph, e: Entity, start: NodeId): boolean {
+  const p = world.tryGet(e, Position);
+  if (p === undefined || !world.has(e, PathFollow)) return false;
+  return routeStartCell(terrain, p.x, p.y) !== start;
+}
+
+/** A hold covers only the route a grind ask kept: any route routing installs asks at its next stall. */
+function endGrindHold(world: World, e: Entity): void {
+  if ((world.tryGet(e, Obstructed)?.hold ?? 0) > 0) world.mut(e, Obstructed).hold = 0;
+}
+
+/** Whether `waypoints` is the tail of the route `e` walks from its live leg's start, so taking it would aim
+ *  the walker at the target it already walks toward. */
+function walksRoute(world: World, e: Entity, waypoints: readonly Waypoint[]): boolean {
+  const follow = world.tryGet(e, PathFollow);
+  const stops = world.tryGet(e, PathRoute)?.waypoints;
+  if (follow === undefined || stops === undefined || waypoints.length < 2) return false;
+  const offset = follow.index - 1;
+  if (offset < 0 || stops.length - offset !== waypoints.length) return false;
+  for (let i = 0; i < waypoints.length; i++) {
+    const held = stops[offset + i];
+    const found = waypoints[i];
+    if (held === undefined || found === undefined) return false;
+    if (held.node !== found.node || held.x !== found.x || held.y !== found.y) return false;
+  }
+  return true;
+}
+
+/** Keep the route a grind reroute found unchanged, restarting its leg as a fresh install would; the walker
+ *  then waits out as many windows as it has ground through before asking again. */
+function holdGrindRoute(world: World, e: Entity): void {
+  restartLeg(world, e);
+  world.remove(e, PathRequest);
+  world.remove(e, Stranded);
+  const obstruction = world.tryMut(e, Obstructed);
+  if (obstruction !== undefined) obstruction.hold = obstruction.reroutes;
 }
 
 /** Whether `e` finishes its live step before taking a new route: a player's walk and a run from danger,

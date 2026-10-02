@@ -6,11 +6,13 @@ import {
   Position,
   Stranded,
   settleWalkWear,
+  WalkFacing,
   type Waypoint,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { beginWalkTurn } from './turning.js';
 
 /** Whether `e` has a navigation goal, a pending path request, or a path it is walking. */
 export function isTravelling(world: World, e: Entity): boolean {
@@ -31,6 +33,22 @@ export function dropPath(world: World, e: Entity): void {
   settleWalkWear(world, e);
   world.remove(e, PathFollow);
   world.remove(e, PathRoute);
+}
+
+/** Restart the leg `e` walks from where it stands, as installing the same route afresh would: the step is
+ *  re-timed and charged again, and the walker turns toward the stop it walks to. */
+export function restartLeg(world: World, e: Entity): void {
+  const index = world.tryGet(e, PathFollow)?.index;
+  const target = index === undefined ? undefined : world.tryGet(e, PathRoute)?.waypoints[index];
+  const position = world.tryGet(e, Position);
+  if (target === undefined || position === undefined) return;
+  const follow = world.mut(e, PathFollow);
+  follow.legElapsed = 0;
+  follow.legStartedAt = undefined;
+  follow.legCost = 0;
+  follow.legPace = undefined;
+  follow.departureCharged = undefined;
+  if (world.has(e, WalkFacing)) beginWalkTurn(world, e, position, target);
 }
 
 /** Re-aim `e`'s live route at `dest`. PathFollow survives so the routing splice carries the gait through

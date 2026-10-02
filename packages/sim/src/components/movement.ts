@@ -98,8 +98,9 @@ export const MoveGoal = defineComponent<{ cell: NodeId }>('MoveGoal', 'movement'
 
 /**
  * A pending navigation request, drained under a per-tick budget: it either replaces the entity's
- * {@link PathFollow} and is removed, or sets `failed` so the planner reacts instead of retrying the same
- * dead query every tick. `start`/`goal` are branded row-major node ids (`y*width + x`); the brand is
+ * {@link PathFollow} and is removed, is removed with the live route kept when it is a `grind` ask that
+ * found that route or whose walker moved on, or sets `failed` so the planner reacts instead of retrying
+ * the same dead query every tick. `start`/`goal` are branded row-major node ids (`y*width + x`); the brand is
  * compile-time only, so the component stays plain-number serializable.
  */
 export const PathRequest = defineComponent<{
@@ -108,6 +109,8 @@ export const PathRequest = defineComponent<{
   failed: boolean;
   /** Finish the retained safe prefix before the detour from `start` after topology changes. */
   retainRoute?: true | undefined;
+  /** A grind reroute asked beside the live route, which stands when the new route matches it. */
+  grind?: true | undefined;
 }>('PathRequest', 'movement');
 
 /**
@@ -145,11 +148,16 @@ export const UnreachableGoals = defineComponent<{ entries: readonly UnreachableG
 /**
  * A walker's grind-window among unit bodies: blockage is judged by progress, not push direction. `x`/`y`
  * anchor the window where the walker stood when it began and `ticks` counts its length; movement past a
- * progress floor restarts it. A window reaching the re-route threshold drops just the path so the planner
- * flanks the blockers, and `reroutes` tallies that; after `OBSTRUCTED_MAX_REROUTES` the walk stands down
- * entirely, leaving whoever owns the goal to re-decide.
+ * progress floor restarts it. A window reaching the re-route threshold asks for a route that flanks the
+ * blockers, and `reroutes` tallies the windows; after `OBSTRUCTED_MAX_REROUTES` the walk stands down
+ * entirely, leaving whoever owns the goal to re-decide. `hold` is the windows still waited out on the kept
+ * route before asking again: a reroute that found the route already walked sets it to the tally so far,
+ * so the asks of a body wedged in a crowd thin out at a doubling interval.
  */
-export const Obstructed = defineComponent<{ ticks: number; reroutes: number; x: Fixed; y: Fixed }>(
-  'Obstructed',
-  'movement',
-);
+export const Obstructed = defineComponent<{
+  ticks: number;
+  reroutes: number;
+  hold: number;
+  x: Fixed;
+  y: Fixed;
+}>('Obstructed', 'movement');
