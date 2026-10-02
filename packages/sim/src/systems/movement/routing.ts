@@ -32,6 +32,7 @@ import {
 } from './collision/index.js';
 import { GroupRoutes } from './group-routes.js';
 import { liveStepEnd } from './nav-state.js';
+import { type RouteMemo, routeMemoOf } from './route-memo.js';
 import { beginWalkTurn } from './turning.js';
 
 /**
@@ -78,6 +79,9 @@ export function drainPathRequests(
   // different free nodes instead of both claiming the same one.
   const claimedStandIns = new Set<NodeId>();
   const groupRoutes = new GroupRoutes(terrain);
+  // Colliders only: a firm body that stalls in a crowd drops its route and asks for the same one again,
+  // while a ghost's repeats are too rare to pay for logging its searches.
+  const memo = routeMemoOf(world, terrain);
   const dynamicOnly = (): BlockOverlay => {
     if (dynamic === undefined) {
       mask = walkBlockMask(world, ctx, terrain);
@@ -132,7 +136,9 @@ export function drainPathRequests(
     let path = group ? groupRoutes.borrow(blocked, start, goal, spent) : null;
     if (path === null) {
       if (overBudget) continue;
-      path = resolvePath(terrain, start, goal, blocked, spent);
+      path = collides
+        ? memoPath(memo, e, ctx.tick, start, goal, world.tryGet(e, Owner)?.player ?? -1, blocked, spent)
+        : resolvePath(terrain, start, goal, blocked, spent);
       if (path !== null && group) groupRoutes.offer(blocked, path);
     }
     if (path !== null && standIn) {
@@ -221,6 +227,7 @@ export function drainPathRequests(
     world.remove(e, PathRequest);
     world.remove(e, Stranded);
   }
+  memo.expire(ctx.tick);
 }
 
 /** Whether `e` finishes its live step before taking a new route: a player's walk and a run from danger,
@@ -302,6 +309,21 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Wa
     prevY = y;
   }
   return waypoints;
+}
+
+/** {@link resolvePath} through the route memo, for a collider seen as `player`. */
+function memoPath(
+  memo: RouteMemo,
+  e: Entity,
+  tick: number,
+  start: number,
+  goal: number,
+  player: number,
+  blocked: BlockOverlay,
+  stats: SearchStats,
+): NodeId[] | null {
+  if (!isValidNodeId(memo.terrain, start) || !isValidNodeId(memo.terrain, goal)) return null;
+  return memo.route(e, tick, start, goal, player, blocked, stats);
 }
 
 /** Run A* for a request; an off-grid `start` or `goal` reads as no route. */

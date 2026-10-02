@@ -11,7 +11,7 @@
  * Working storage is reused per graph, so a query allocates only the path it returns.
  */
 
-import { type Fixed, fx } from '../../core/fixed.js';
+import { type Fixed, fx, ZERO } from '../../core/fixed.js';
 import type { BlockOverlay } from '../block-overlay.js';
 import {
   DEFAULT_NODE_ROUGHNESS,
@@ -191,6 +191,9 @@ const LAND_HEURISTIC_WEIGHT = fx.fromInt(DEFAULT_NODE_ROUGHNESS);
  */
 const ROAD_HEURISTIC_INFLATION = fx.div(fx.fromInt(3), fx.fromInt(2));
 
+/** Below every road network label, so a search's first gap read always computes. */
+const NO_GAP_READ = -2;
+
 function pathOf(verdict: NodeId[] | 'unreachable' | 'aborted'): NodeId[] | null {
   return typeof verdict === 'string' ? null : verdict;
 }
@@ -212,6 +215,10 @@ class ResumableSearch {
   private readonly startY: number;
   private readonly goalX: number;
   private readonly goalY: number;
+  // The last road network's gap to the goal: fixed for the whole search, and consecutive discoveries
+  // mostly share their nearest network.
+  private gapNetwork = NO_GAP_READ;
+  private gap: Fixed = ZERO;
 
   constructor(
     private readonly scratch: SearchScratch,
@@ -317,9 +324,13 @@ class ResumableSearch {
     const toRoad = this.graph.roadDistanceAt(node);
     if (toRoad >= toGoal) return overGrass;
     const network = this.graph.roadNetworkNear(node);
+    if (network !== this.gapNetwork) {
+      this.gapNetwork = network;
+      this.gap = this.graph.roadNetworkGap(network, this.goalX, this.goalY);
+    }
     const nearRoad = fx.add(toGoal, toRoad);
     const inflated = fx.mul(nearRoad, ROAD_HEURISTIC_INFLATION);
-    const bounded = fx.add(nearRoad, this.graph.roadNetworkGap(network, this.goalX, this.goalY));
+    const bounded = fx.add(nearRoad, this.gap);
     const viaRoad = inflated > bounded ? inflated : bounded;
     return viaRoad < overGrass ? viaRoad : overGrass;
   }
