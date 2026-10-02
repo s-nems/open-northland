@@ -161,6 +161,8 @@ export class SpritePool {
   private readonly depthOrder = new SpriteDepthOrder();
   private readonly itemMemo = new SceneItemMemo();
   private lastItems: readonly SpriteDrawItem[] = [];
+  /** The pooled entity of each of {@link lastItems}, by index: a repeated scene build skips the lookups. */
+  private readonly lastPooled: PooledEntity[] = [];
   private readonly damaged: DamagedBuilding[] = [];
   private readonly ships: ShipAfloat[] = [];
   /** Scratch {@link keelOf} answers in, valid until the next call. */
@@ -200,26 +202,14 @@ export class SpritePool {
     this.epoch.advance(frame, this.textures.textureRevision);
     this.snapResolution = frame.snapResolution;
     this.portrait.release();
-    this.damaged.length = 0;
-    this.ships.length = 0;
-    const vehicles = this.sheet?.bindings.vehicle;
+    // The cached build of an unchanged scene: last frame's entities, damage and ships all still hold.
+    const repeated = scene.items === this.lastItems;
+    if (!repeated) this.collectOverlays(scene.items);
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
-      if (item.kind === 'building' && item.hpFrac !== undefined && item.ghost !== true) {
-        this.damaged.push({ ref: item.ref, hpFrac: item.hpFrac });
-      }
-      // A portrait-only ship is hidden on the map, so it pushes no water there.
-      const onMap = item.ghost !== true && item.portraitOnly !== true;
-      if (item.kind === 'vehicle' && onMap && vehicles !== undefined) {
-        // A moored ship still sits in the water: it keeps its lapping foam and lets a wake settle.
-        const look = vehicleLookFor(vehicles, item);
-        if (look?.afloat === true) {
-          const sailing = vehicleAfloat(look, item) === 'sailing';
-          this.ships.push({ ref: item.ref, facing: item.facing ?? DEFAULT_FACING, sailing });
-        }
-      }
-      const pe = this.pooledFor(item);
+      const pe = (repeated ? this.lastPooled[i] : undefined) ?? this.pooledFor(item);
+      this.lastPooled[i] = pe;
       // An entity absent from last frame's draw list holds the motion track from whenever it was last
       // drawn: resuming from it would glide an arrow in from that stale anchor, and would run a walker's
       // gait and stall clocks over the whole gap. Reset to first-sighting and let trackMotion snap.
@@ -236,6 +226,7 @@ export class SpritePool {
       if (item.portraitOnly === true) this.portrait.capture(item.ref, pe, item.frozen === true);
     }
     this.lastItems = scene.items;
+    this.lastPooled.length = scene.items.length;
 
     // Iterating `attached` instead of the whole pool keeps the detach scan bounded by the screen.
     // Deleting the current entry mid-iteration is well-defined for a Set.
@@ -248,6 +239,28 @@ export class SpritePool {
 
     this.reap(scene.liveRefs);
     this.sheet?.palette?.flush();
+  }
+
+  /** Collect the drawn damaged buildings and ships off a new draw list. */
+  private collectOverlays(items: readonly SpriteDrawItem[]): void {
+    this.damaged.length = 0;
+    this.ships.length = 0;
+    const vehicles = this.sheet?.bindings.vehicle;
+    for (const item of items) {
+      if (item.kind === 'building' && item.hpFrac !== undefined && item.ghost !== true) {
+        this.damaged.push({ ref: item.ref, hpFrac: item.hpFrac });
+      }
+      // A portrait-only ship is hidden on the map, so it pushes no water there.
+      const onMap = item.ghost !== true && item.portraitOnly !== true;
+      if (item.kind === 'vehicle' && onMap && vehicles !== undefined) {
+        // A moored ship still sits in the water: it keeps its lapping foam and lets a wake settle.
+        const look = vehicleLookFor(vehicles, item);
+        if (look?.afloat === true) {
+          const sailing = vehicleAfloat(look, item) === 'sailing';
+          this.ships.push({ ref: item.ref, facing: item.facing ?? DEFAULT_FACING, sailing });
+        }
+      }
+    }
   }
 
   /**
@@ -552,6 +565,8 @@ export class SpritePool {
     for (const pe of this.pool.values()) pe.container.destroy({ children: true });
     this.pool.clear();
     this.attached.clear();
+    this.lastItems = [];
+    this.lastPooled.length = 0;
     this.reapCursor = undefined;
     this.sceneCache.clear();
   }

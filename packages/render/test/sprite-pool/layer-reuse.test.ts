@@ -79,6 +79,24 @@ describe('layer reuse across frames', () => {
     for (const [i, layer] of firstLayers.entries()) expect(second?.[i]).toBe(layer);
   });
 
+  it('reads the anchor of an item presented again only once', () => {
+    const track = createPresentationTrack('settler');
+    const read = new Set<string>();
+    const recorded = new Proxy(settler, {
+      get(target, key, receiver) {
+        if (typeof key === 'string') read.add(key);
+        return Reflect.get(target, key, receiver);
+      },
+    });
+    presentItem(track, recorded, 10, 0.25, sheet);
+    expect(read).toContain('x');
+    read.clear();
+    presentItem(track, recorded, 11, 0.75, sheet);
+    expect([...read].filter((key) => key === 'x' || key === 'y' || key === 'lift')).toEqual([]);
+    presentItem(track, { ...settler, x: 5 }, 12, 1, sheet);
+    expect(track.motion.x).toBe(5);
+  });
+
   it('trims the tail a shorter resolve leaves and keeps working after an empty one', () => {
     const buffer = new LayerBuffer();
     const unshadowed: SpriteSheet = {

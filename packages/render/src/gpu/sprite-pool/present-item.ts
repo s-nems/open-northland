@@ -39,6 +39,16 @@ export interface PresentationTrack {
   readonly layers: LayerBuffer;
   readonly clocks: { animation: number; gait: number };
   readonly interpolation: InterpolationTrack;
+  /** The anchor of the item last presented, read once per item: loading a numeric field off the many
+   *  draw item shapes boxes it, on every frame the same item presents again. */
+  readonly anchor: PresentedAnchor;
+}
+
+interface PresentedAnchor {
+  item: DrawItem | undefined;
+  x: number;
+  y: number;
+  lift: number;
 }
 
 export function createPresentationTrack(kind: SpriteKind): PresentationTrack {
@@ -48,6 +58,7 @@ export function createPresentationTrack(kind: SpriteKind): PresentationTrack {
     layers: new LayerBuffer(),
     clocks: { animation: 0, gait: 0 },
     interpolation: { source: undefined, pose: undefined },
+    anchor: { item: undefined, x: 0, y: 0, lift: 0 },
     atomicPose: { tick: -1, item: undefined },
     idleActive: false,
     idleStartTick: 0,
@@ -103,15 +114,22 @@ export function presentItem(
   const pose = smooth ? interpolateAtomicPose(atomic, alpha, track.interpolation) : atomic;
   // A remembered/portrait pose must not finish a pending movement or resume it when watched again.
   if (held) track.motion.tick = -1;
+  const anchor = track.anchor;
+  if (anchor.item !== item) {
+    anchor.item = item;
+    anchor.x = item.x;
+    anchor.y = item.y;
+    anchor.lift = item.lift ?? 0;
+  }
   trackMotion(
     track.motion,
     tick,
-    item.x,
-    item.y - (item.lift ?? 0),
+    anchor.x,
+    anchor.y - anchor.lift,
     alpha,
     characterGaitRate(sheet, item, track.lastFacing),
     track.kind === 'projectile' ? (item.rotation ?? 0) : undefined,
-    item.lift ?? 0,
+    anchor.lift,
   );
   if (item.facing !== undefined) track.lastFacing = item.facing;
   // `upgradePct` and `builtPct` are mutually exclusive by construction, so an upgrade site rides the

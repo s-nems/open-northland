@@ -238,7 +238,7 @@ describe('BindStamp.bindHolds', () => {
   const KEYED_BY_POOL = 'ref';
 
   /** `item` reporting each field a reader looks up into `keys`. */
-  function recording(item: DrawItem, keys: Set<string>): DrawItem {
+  function recording<T extends DrawItem>(item: T, keys: Set<string>): T {
     return new Proxy(item, {
       get(target, key, receiver) {
         if (typeof key === 'string') keys.add(key);
@@ -281,6 +281,17 @@ describe('BindStamp.bindHolds', () => {
       expect(stamp.bindHolds(recording(item, compared), epoch.bind, undefined)).toBe(true);
     }
     expect([...bound].filter((key) => !compared.has(key))).toEqual([]);
+  });
+
+  it('reads no field of the item it last bound', () => {
+    const read = new Set<string>();
+    const item = recording(spriteItem('settler', { lift: 1 }), read);
+    const { epoch, stamp } = stampOf(item);
+    read.clear();
+    expect(stamp.bindHolds(item, epoch.bind, undefined)).toBe(true);
+    expect(stamp.bindHolds(item, epoch.bind, true)).toBe(false);
+    expect(stamp.bindHolds(item, epoch.bind + 1, undefined)).toBe(false);
+    expect([...read]).toEqual([]);
   });
 
   it.each([

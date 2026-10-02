@@ -110,9 +110,11 @@ export class BindStamp {
   /** Whether a bind of `item` under these bind inputs reads what the last one did, apart from the layers
    *  and the drawn anchor {@link presents} compares. */
   bindHolds(item: DrawItem, bindEpoch: number, highlight: boolean | undefined): boolean {
+    if (this.bindEpoch !== bindEpoch || this.highlight !== highlight) return false;
+    // Draw items are immutable, so the item last bound or carried still holds its fields. Reading them
+    // off the many item shapes would box every numeric one on each frame of a still scene.
+    if (this.item === item) return true;
     return (
-      this.bindEpoch === bindEpoch &&
-      this.highlight === highlight &&
       this.kind === item.kind &&
       this.ghost === (item.ghost === true) &&
       this.isFlag === (item.isFlag === true) &&

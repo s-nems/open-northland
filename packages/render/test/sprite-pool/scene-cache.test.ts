@@ -1,8 +1,9 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { Container } from 'pixi.js';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Camera, Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
+import { LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
@@ -50,6 +51,19 @@ describe('SpritePool - scene build reuse across identical frames', () => {
 
     pool.reconcile(frameFor(WORLD, { viewport: { ...BOX, maxX: 500 } }));
     expect(pool.drawnItems()).not.toBe(afterSnapshot);
+  });
+
+  it('looks up no pooled entity while the build is reused', () => {
+    const pool = new SpritePool(new Container(), new TextureCache(), undefined);
+    const lookups = vi.spyOn(LayerBinder.prototype, 'suits');
+    pool.reconcile(frameFor(WORLD));
+    lookups.mockClear();
+    pool.reconcile(frameFor(WORLD, { alpha: 0.5 }));
+    expect(lookups).not.toHaveBeenCalled();
+    expect(pool.boundsOf(2)).toBeDefined();
+    pool.reconcile(frameFor(snapshotOf([entity(2, 3, 0, { Settler: { tribe: 0 } })])));
+    expect(lookups).toHaveBeenCalledTimes(1);
+    lookups.mockRestore();
   });
 
   it('keys the fog cull on the epoch, and never caches a fog cull that carries no epoch', () => {
