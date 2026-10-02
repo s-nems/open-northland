@@ -1,36 +1,24 @@
-# Keep AI collector flags off resources sealed in a pocket
+# Keep flag-follow re-plants off resources sealed in a pocket
 
-**Area:** sim · **Focus:** ai-player/workforce/collectors · **Priority:** P2
+**Area:** sim · **Focus:** assistant/flag-follow · **Priority:** P3
 
-The AI's collector searches pick the nearest resource through `CollectorGround.workable`
-(`ai-player/workforce/index.ts`): same walkable component as the base (`reachableResourceTest`), stance
-cells not blocked (`workableResourceTest`) and inside the signpost limit. None of them reads
-`RouteRegions` (`footprint/route-regions.ts`), so a resource whose work cell is sealed inside a pocket of
-buildings, resources or landscape still passes. `flagSpotNear` then finds a legal flag spot beside it,
-and `GathererReach.canWork` (`ai-player/live-resources.ts`) rejects it because `regions.unroutable`
-holds between the flag centre and the work cell.
+The AI's own collector searches drop a resource whose every stance cell lies sealed in a pocket the
+base's walk cannot enter (`unsealedResourceTest`, `ai-player/workforce/flag-spots.ts`). The assistant's
+flag follow (`assistant/flag-follow.ts`) does not: its nearest-resource test is `reachableResourceTest`
+alone, so a re-plant still spends one of its `REPLANT_ATTEMPTS` spot searches on a sealed deposit that
+`GathererReach.canWork` then rejects.
 
-On `krwawa_rzeka`, 12 AI seats, 600 ticks from the reference's t80k checkpoint
-(`docs/perf/heavy-load-krwawa-rzeka-12ai.md`): 441 of 441 of seat 5's failed re-plant attempts are iron,
-two deposits, each rejected only on `unroutable=true` (same component, need met, atomic allowed, in
-radius, not blocked). The seat's iron posts never produce. The re-plant now runs in the assistant's flag
-follow (`assistant/flag-follow.ts`), whose nearest-resource test has the same gap; its misses retire each
-such holder, and the next decision hires a spare man at the same deposit through `collectorSpot`,
-which checks no `canWork` at all, so the post cycles between builder and iron collector (11 hires in 83
-decisions of seat 5).
+On `magiczny_las`, 6 AI seats, 3000 ticks from the save-78 t80000 checkpoint, 13 re-plant misses still
+land on sealed deposits (seat 5 good 3: 10, seat 4 good 6: 3), all from the flag follow.
 
 ## Scope
 
-- The nearest-resource tests used by the collector hire (from the base) and the flag follow's re-plant
-  (from the flag) drop a resource whose work cell is provably unroutable from there
-  (`RouteRegions.unroutable`, fail-open as it already is), so the search moves on to a deposit the seat
-  can reach, or reports the good dry.
-- Behaviour change: AI collectors aim at other deposits; goldens over AI seats move, named in the commit.
+- The flag follow's nearest-resource test drops a resource sealed from the re-plant's origin, as the AI
+  collectors' does, fail-open on a pocketed origin.
+- Player-visible: the assistant switch serves human players too, so a moved flag can land on another
+  deposit. Confirm with the owner before changing it.
 
 ## Verify
 
-- A unit case: a deposit walled into a pocket is skipped for the next one, and a seat with only pocketed
-  deposits of a good hires nobody for it.
-- The per-seat count probe from the t80k checkpoint: seat 5 hires no iron collector it then retires, and
-  its re-plant misses fall to the other seats' level.
-- `npm test`, `npm run check`.
+- A unit case: a worked-out gatherer whose nearest deposit is sealed re-plants at the next one.
+- The same t80000 run counts no sealed re-plant miss; `npm test`, `npm run check`.

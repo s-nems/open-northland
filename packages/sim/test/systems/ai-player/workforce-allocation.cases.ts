@@ -50,7 +50,11 @@ import {
   supplyLines,
   workforceModule,
 } from '../../../src/systems/ai-player/index.js';
-import { gathererReach, workableResourceTest } from '../../../src/systems/ai-player/live-resources.js';
+import {
+  gathererReach,
+  nearestLiveResource,
+  workableResourceTest,
+} from '../../../src/systems/ai-player/live-resources.js';
 import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import { collectorAnchors } from '../../../src/systems/ai-player/workforce/collectors/anchor.js';
@@ -72,9 +76,11 @@ import {
   wantedCollectorGoods,
 } from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import {
+  collectorSpot,
   flagGround,
   flagSpotNear,
   replantSpot,
+  unsealedResourceTest,
 } from '../../../src/systems/ai-player/workforce/flag-spots.js';
 import { SpareForce } from '../../../src/systems/ai-player/workforce/pool.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
@@ -2197,5 +2203,79 @@ describe('flagSpotNear', () => {
     expect(
       canPlaceWorkFlag(stoned.world, ctxOf(stoned), stoned.terrain, stoned.terrain.nodeAt(spot.hx, spot.hy)),
     ).toBe(true);
+  });
+});
+
+describe('unsealedResourceTest', () => {
+  const MAP_NODES = 48;
+  const SEALED = { hx: 16, hy: 24 };
+  const OPEN = { hx: 36, hy: 24 };
+  /** Nearer the sealed deposit than the open one, and clear of the wall. */
+  const ORIGIN = { hx: 24, hy: 4 };
+  /** The wall round the sealed deposit, as Manhattan rings: thicker than the longest step, so no walk
+   *  slips through, and clear of the deposit's own stance cells. */
+  const WALL_INNER = 3;
+  const WALL_OUTER = 5;
+
+  const walledSim = (deposits: readonly { hx: number; hy: number }[]): Simulation => {
+    const wall: { hx: number; hy: number }[] = [];
+    for (let hy = 0; hy < MAP_NODES; hy++) {
+      for (let hx = 0; hx < MAP_NODES; hx++) {
+        const reach = Math.abs(hx - SEALED.hx) + Math.abs(hy - SEALED.hy);
+        if (reach >= WALL_INNER && reach <= WALL_OUTER) wall.push({ hx, hy });
+      }
+    }
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: {
+        ...grassNodeMap(MAP_NODES, MAP_NODES),
+        landscapes: {
+          types: [{ typeId: 1, walk: [{ dx: 0, dy: 0 }], build: [], groups: ['blocker'] }],
+          placements: wall.map((at, id) => ({ id, typeId: 1, ...at, level: 0 })),
+        },
+      },
+    });
+    for (const at of deposits) {
+      sim.enqueueSetup({
+        kind: 'placeResource',
+        good: MUD,
+        x: at.hx,
+        y: at.hy,
+        remaining: 5,
+        harvestAtomic: RESOURCE_SPOTS.mud.harvest,
+      });
+    }
+    sim.step();
+    return sim;
+  };
+  const groundOf = (sim: Simulation) => {
+    if (sim.terrain === undefined) throw new Error('mapped sim');
+    return flagGround(sim.world, ctxOf(sim), sim.terrain, null);
+  };
+  const depositAt = (sim: Simulation, at: { hx: number; hy: number }): Entity => {
+    const found = [...sim.world.query(Resource)].find((e) => {
+      const node = anchorNodeOf(sim.world, e);
+      return node !== null && node.hx === at.hx && node.hy === at.hy;
+    });
+    if (found === undefined) throw new Error('setup: a deposit');
+    return found;
+  };
+
+  it('skips a deposit walled into a pocket for the next nearest', () => {
+    const sim = walledSim([SEALED, OPEN]);
+    const unsealed = unsealedResourceTest(sim.world, ctxOf(sim), groundOf(sim), ORIGIN);
+
+    expect(nearestLiveResource(sim.world, MUD, ORIGIN)).toBe(depositAt(sim, SEALED));
+    expect(nearestLiveResource(sim.world, MUD, ORIGIN, unsealed)).toBe(depositAt(sim, OPEN));
+  });
+
+  it('finds no flag spot for a good whose only deposit is sealed', () => {
+    const sim = walledSim([SEALED]);
+    const ground = groundOf(sim);
+    const unsealed = unsealedResourceTest(sim.world, ctxOf(sim), ground, ORIGIN);
+
+    expect(collectorSpot(sim.world, ground, ORIGIN, MUD, new Set(), () => true)).not.toBeNull();
+    expect(collectorSpot(sim.world, ground, ORIGIN, MUD, new Set(), unsealed)).toBeNull();
   });
 });

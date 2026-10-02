@@ -249,6 +249,21 @@ function cheapestRingNode(
   return bestCost === null ? null : { hx: bestX, hy: bestY };
 }
 
+/** The {@link WorkableTest} that drops a resource whose every stance cell lies sealed in a pocket the
+ *  carriers' walk out of `origin` cannot enter: no gatherer from there reaches it, so no flag search aims
+ *  at it. A resource with no stance cell passes. */
+export function unsealedResourceTest(
+  world: World,
+  ctx: SystemContext,
+  ground: FlagGround,
+  origin: HalfCellNode,
+): WorkableTest {
+  return (e) => {
+    const cells = resourceStanceCells(world, ctx, ground.terrain, e);
+    return cells.length === 0 || cells.some((cell) => !ground.sealedFrom(origin, cell));
+  };
+}
+
 /** The flag spot beside the good's workable live resource nearest `anchor`, or null when the map holds
  *  none (or no legal flag node stands near it). */
 export function collectorSpot(

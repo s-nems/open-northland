@@ -36,7 +36,7 @@ import {
 } from './collectors/index.js';
 import { tuneCraftCounters } from './craft.js';
 import { allocateFishers, fishingPlan } from './fisher.js';
-import { flagGround, type TakenFlagNodes } from './flag-spots.js';
+import { flagGround, type TakenFlagNodes, unsealedResourceTest } from './flag-spots.js';
 import { claimArmyFloor, garrisonArms, trainGarrison } from './garrison.js';
 import { allocateOpeningHunter } from './hunter.js';
 import { builderJobOf, civilianCount, classifyWorkforce, isAllocatableMan, SpareForce } from './pool.js';
@@ -203,8 +203,9 @@ function flagFollowSwitch(world: World, player: number): PlayerCommand[] {
 }
 
 /** The decision's {@link CollectorGround}, or null on a mapless sim or a base with no node. A resource
- *  counts as workable only on the base's own walkable component, where the seat's men stand, and with its
- *  work cell inside the seat's signpost reach, where its gatherer may walk. */
+ *  counts as workable only on the base's own walkable component, where the seat's men stand, with its
+ *  work cell inside the seat's signpost reach, where its gatherer may walk, and not sealed in a pocket
+ *  of buildings, resources or landscape that walk never enters. */
 function collectorGround(
   world: World,
   ctx: SystemContext,
@@ -227,14 +228,15 @@ function collectorGround(
     baseNode,
     workableResourceTest(world, ctx, terrain),
   );
+  const unsealed = unsealedResourceTest(world, ctx, flags, baseNode);
   const { limit } = flags;
   const workable =
     limit === null
-      ? reachable
+      ? (e: Entity): boolean => reachable(e) && unsealed(e)
       : (e: Entity): boolean => {
           if (!reachable(e)) return false;
           const origin = terrain.nodeAtClamped(baseNode.hx, baseNode.hy);
-          return limit.allowsNode(interactionCell(world, ctx, terrain, e, origin));
+          return limit.allowsNode(interactionCell(world, ctx, terrain, e, origin)) && unsealed(e);
         };
   return { anchors: collectorAnchors(world, ctx, owned, baseNode), baseNode, flags, workable };
 }
