@@ -94,21 +94,17 @@ export function nearestHarvestableFor(
   const subject = needSubjectOf(world, plan.entity);
   // The XP gate depends only on the good, so it is resolved once per good per scan.
   let meetsNeedByGood: Map<number, boolean> | undefined;
+  /** Whether an anchor at `(hx, hy)` may have a work cell inside the radius; one that cannot is never
+   *  resolved. */
+  const anchorInBound = (hx: number, hy: number): boolean =>
+    bound === undefined || Math.abs(hx - boundX) + Math.abs(hy - boundY) <= anchorReach;
   // Ranked from `origin`, while the interaction cell still resolves from `here`, the route start.
-  const best = nearestByCell(terrain, scanned, origin, (e) => {
+  const resolve = (e: Entity): CellMatch<null> | null => {
     if (exclude?.has(e)) return null; // a colleague already digs this node
     const res = world.tryGet(e, Resource);
     if (res === undefined || res.remaining <= 0) return null;
     if (goodFilter !== undefined && !goodFilter.has(res.goodType)) return null; // not a good the caller forages for
-    const p = world.tryGet(e, Position);
-    if (p === undefined) return null;
     if (!allowed.has(res.harvestAtomic)) return null; // data-driven gate: job must permit this atomic
-    if (
-      bound !== undefined &&
-      Math.abs(nodeHxOfPosition(p.x, p.y) - boundX) + Math.abs(nodeHyOfPosition(p.y) - boundY) > anchorReach
-    ) {
-      return null; // its work cell cannot reach into the radius, so skip resolving it
-    }
     // Probed behind the atomic gate, so the rule only ever costs a lookup on the trade's own nodes.
     if (reserved?.(e) === true) return null;
     if (admits?.(e) === false) return null;
@@ -135,7 +131,17 @@ export function nearestHarvestableFor(
     const cell = nearestEligibleStance(plan, stances, passes);
     if (cell === undefined) return null;
     return { cell, payload: null };
-  });
+  };
+  // A diagnostic reports on every candidate, so it walks the whole list; a pick resolves nearest-first.
+  const best =
+    opts.diagnostic !== undefined
+      ? nearestByCell(terrain, scanned, origin, (e) => {
+          const p = world.tryGet(e, Position);
+          if (p === undefined || !anchorInBound(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y)))
+            return null;
+          return resolve(e);
+        })
+      : nearestFromAnchors(plan, scanned, origin, maxWorkOffset, anchorInBound, resolve);
   // No same-side gate: a standing Resource is never Owner-stamped, so the test would always pass.
   return best === null ? null : { entity: best.entity, cell: best.cell, dist: best.distance };
 }
@@ -236,4 +242,56 @@ export function nearestOwnDropFor(
     if (good === null) return null; // emptied, about to be reaped
     return good;
   });
+}
+
+/** Candidate sort keys: an anchor's lower-bound distance in the high part, the entity id in the low. */
+let anchorKeys = new Float64Array(0);
+const ENTITY_KEY_SPAN = 2 ** 31;
+
+/**
+ * {@link nearestByCell}'s winner over the positioned candidates of ascending-id `list` whose anchor
+ * `anchorAdmits`, resolving them nearest anchor first and stopping once no unresolved anchor can come
+ * nearer. A work cell lies at most `maxWorkOffset` Manhattan nodes from its anchor, so the anchor
+ * distance less that offset bounds the candidate's distance from below. Ties keep the scan's
+ * `(distance, cell, entity)` order.
+ */
+function nearestFromAnchors(
+  plan: Pick<PlannerContext, 'world' | 'terrain'>,
+  list: readonly Entity[],
+  rank: NodeId,
+  maxWorkOffset: number,
+  anchorAdmits: (hx: number, hy: number) => boolean,
+  resolve: (e: Entity) => CellMatch<null> | null,
+): NearestByCell<null> | null {
+  const { world, terrain } = plan;
+  const ox = terrain.xOf(rank);
+  const oy = terrain.yOf(rank);
+  if (anchorKeys.length < list.length) anchorKeys = new Float64Array(list.length);
+  let count = 0;
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    const p = e === undefined ? undefined : world.tryGet(e, Position);
+    if (e === undefined || p === undefined) continue;
+    const hx = nodeHxOfPosition(p.x, p.y);
+    const hy = nodeHyOfPosition(p.y);
+    if (!anchorAdmits(hx, hy)) continue;
+    anchorKeys[count++] =
+      Math.max(0, Math.abs(hx - ox) + Math.abs(hy - oy) - maxWorkOffset) * ENTITY_KEY_SPAN + e;
+  }
+  const keys = anchorKeys.subarray(0, count).sort();
+  let best: NearestByCell<null> | null = null;
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i] ?? 0;
+    const e = (key % ENTITY_KEY_SPAN) as Entity;
+    if (best !== null && (key - e) / ENTITY_KEY_SPAN > best.distance) break;
+    const match = resolve(e);
+    if (match === null) continue;
+    best = nearerOf(best, {
+      entity: e,
+      cell: match.cell,
+      distance: manhattan(terrain, rank, match.cell),
+      payload: null,
+    });
+  }
+  return best;
 }

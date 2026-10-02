@@ -193,6 +193,34 @@ describe('bounded harvest scan', () => {
   });
 });
 
+describe('nearest-anchor-first harvest scan', () => {
+  it('resolves the nearest anchors first, stops once none can come nearer, and keeps the full scan pick', () => {
+    const sim = newSim();
+    const offset = contentIndex(sim.content).maxResourceWorkOffset;
+    const [cx, cy] = [20, 16];
+    const farReach = 2 * offset + 2;
+    // Lowest ids first, so an ascending-id scan would meet them before the winner.
+    const far = [
+      resourceAt(sim, cx + farReach + 1, cy, WOOD, CHOP),
+      resourceAt(sim, cx, cy + farReach + 1, WOOD, CHOP),
+    ];
+    const near = resourceAt(sim, cx - 3, cy, WOOD, CHOP);
+    // Its anchor lies beyond `near`, but its work cell reaches back to two nodes out.
+    const reaching = resourceAt(sim, cx + offset + 2, cy, WOOD, CHOP, [{ dx: -offset, dy: 0 }]);
+    const plan = planFor(sim, WOODCUTTER, cx, cy);
+    const area = { center: node(sim, cx, cy), radius: farReach + offset };
+    const resolve = vi.spyOn(footprint, 'resourceStanceCells');
+
+    const found = nearestHarvestableFor(plan, { area });
+    expect(found).toEqual({ entity: reaching, cell: node(sim, cx + 2, cy), dist: 2 });
+    const resolved = new Set(resolve.mock.calls.map((args) => args[3]));
+    for (const e of far) expect(resolved.has(e)).toBe(false);
+    expect(resolved.has(near)).toBe(true);
+    // A diagnostic walks every candidate the old way and lands on the same node.
+    expect(nearestHarvestableFor(plan, { area, diagnostic: { eligibleInArea: false } })).toEqual(found);
+  });
+});
+
 describe('collector signpost stance boundary', () => {
   it('uses an alternate allowed stance without drawing from the random stream', () => {
     const sim = newSim();
