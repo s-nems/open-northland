@@ -1,3 +1,4 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import {
   BerryBush,
   Building,
@@ -13,7 +14,6 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { lowestStockedFood } from '../../family/food-sources.js';
-import { homeUsedBy } from '../../family/households.js';
 import { routeRegions } from '../../footprint/index.js';
 import { bushesNearNode } from '../../spatial/bushes.js';
 import { closer, manhattan } from '../../spatial/metric.js';
@@ -25,7 +25,8 @@ import { interactionCell } from './workplaces.js';
 /**
  * The nearest store holding an edible good, by Manhattan distance from `here` with an ascending-cell-id
  * tie-break, with the specific good to eat, or null when no reachable store holds food. A producing
- * workplace counts too, so a settler may eat the food it makes.
+ * workplace counts too, so a settler may eat the food it makes. Original behavior: the search skips every
+ * home, the eater's own included; the needs drive tries that larder first (`eatAtHome`).
  *
  * A store in another static component or on the eater's failed-goal `memo` is skipped, so a hungry
  * settler walks to the second, reachable larder instead of looping beside the first.
@@ -40,13 +41,12 @@ function nearestFoodStore(
   memo: readonly UnreachableGoal[] | null,
   gate?: SpatialGate,
 ): { store: Entity; goodType: number; dist: number; cell: NodeId } | null {
-  const home = homeUsedBy(world, ctx, eater) ?? null;
   const component = terrain.componentOf(here);
   const avoid = (cell: NodeId): boolean =>
     terrain.componentOf(cell) !== component || isUnreachableGoal(memo, cell);
   const winner = index.nearest(
     here,
-    (e) => qualifiedGood(edibleFoodGoodFor(world, ctx, e, home)),
+    (e) => qualifiedGood(edibleFoodGoodFor(world, ctx, e)),
     gate,
     avoid,
     sameSideAs(world, ownerOf(world, eater)), // a settler eats from its own player's larder
@@ -56,22 +56,15 @@ function nearestFoodStore(
     : { store: winner.entity, goodType: winner.payload, dist: winner.distance, cell: winner.cell };
 }
 
-/**
- * The food good `eater` may eat from `store`, or null. Beyond {@link storedFoodGood}'s "holds an
- * edible", a home larder feeds only the residents that use it ({@link homeUsedBy}).
- */
-function edibleFoodGoodFor(
-  world: World,
-  ctx: SystemContext,
-  store: Entity,
-  eaterHome: Entity | null,
-): number | null {
+/** The food good a hungry settler may eat from `store` on its search, or null: {@link storedFoodGood}
+ *  of any store but a home. */
+function edibleFoodGoodFor(world: World, ctx: SystemContext, store: Entity): number | null {
   const building = world.tryGet(store, Building);
   if (
     building !== undefined &&
-    contentIndex(ctx.content).buildings.get(building.buildingType)?.kind === 'home'
+    contentIndex(ctx.content).buildings.get(building.buildingType)?.kind === BUILDING_KIND.home
   ) {
-    if (store !== eaterHome) return null; // another family's larder
+    return null;
   }
   return storedFoodGood(world, ctx, store);
 }

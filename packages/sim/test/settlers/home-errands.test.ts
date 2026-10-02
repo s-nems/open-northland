@@ -14,7 +14,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
-import { ATOMIC_EVENT_CHANNEL, plannerSystem } from '../../src/systems/index.js';
+import { ATOMIC_EVENT_CHANNEL, needBar, plannerSystem } from '../../src/systems/index.js';
 import { isServedAtHome } from '../../src/systems/settlers/drives/home-errands.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
@@ -31,10 +31,17 @@ const VIKING = 1;
 const HOME_TYPE = 90;
 const FOOD = 3; // the fixture's `food_simple`
 const TRADER = 25; // the fixture's trade marked `ignoresHomeHouse`
+const HEADQUARTERS = 1; // the fixture's store with a food slot
 const SLEEP_TICKS = 6; // the fixture's "viking_sleep" length
 /** The `logicSoundType` the fixture's sleep clip sounds (`event <at> 34 35`). */
 const SNORE_SOUND = 35;
 const TIRED: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
+const HUNGRY: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
+/** The fixture eat clip's length and its one meal (`viking_eat`, `event 3 2 +4000`). */
+const EAT_TICKS = 5;
+const MEAL_UNITS = 4000;
+/** A meal at home counts double (`need-events.test.ts`). */
+const HOME_MEAL_UNITS = 2 * MEAL_UNITS;
 /** Half a bar spent: under the drive trigger, over the level a served need sits at, so only the at-home
  *  chain answers it. */
 const HALF_SPENT: Fixed = fx.div(ONE, fx.fromInt(2));
@@ -74,6 +81,20 @@ function homeAt(sim: Simulation, x: number, y: number, tribe = VIKING): Entity {
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Building, { buildingType: HOME_TYPE, tribe, built: ONE, level: 0 });
   return e;
+}
+
+/** A headquarters store on cell (x, y) holding `food` units. */
+function storeAt(sim: Simulation, x: number, y: number, food: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
+  sim.world.add(e, Stockpile, { amounts: new Map([[FOOD, food]]) });
+  return e;
+}
+
+/** Fill `home`'s larder with `food` units. */
+function stock(sim: Simulation, home: Entity, food: number): void {
+  sim.world.add(home, Stockpile, { amounts: new Map([[FOOD, food]]) });
 }
 
 function tiredAt(sim: Simulation, x: number, y: number): Entity {
@@ -313,5 +334,66 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
 
     expect(needsOf(sim, settler).hunger).toBeGreaterThanOrEqual(HALF_SPENT); // nothing to eat
     expect(sim.world.has(settler, Resting)).toBe(false); // and it did not wait indoors for food
+  });
+});
+
+describe('eatAtHome - a hungry settler eats off its own larder first', () => {
+  it('walks home to eat even with a store nearer', () => {
+    const sim = simWithHomes();
+    const settler = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
+    const home = homeAt(sim, 6, 2);
+    sim.world.add(settler, Residence, { home });
+    stock(sim, home, 2);
+    storeAt(sim, 2, 2, 2);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(nodeAt(sim, 6, 2));
+  });
+
+  it('eats indoors at its door, and the meal counts double', () => {
+    const sim = simWithHomes();
+    const settler = needsSettlerAt(sim, 3, 2, { hunger: HUNGRY });
+    const home = homeAt(sim, 3, 2);
+    sim.world.add(settler, Residence, { home });
+    stock(sim, home, 2);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, Resting).at).toBe(home);
+    expect(sim.world.get(settler, CurrentAtomic).effect).toEqual({ kind: 'eat', goodType: FOOD, from: home });
+    for (let i = 0; i < EAT_TICKS; i++) sim.step();
+
+    expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(1);
+    // Drain over the clip is a handful of units, far below the second meal's worth.
+    expect(needsOf(sim, settler).hunger).toBeLessThan(
+      fx.sub(HUNGRY, needBar(HOME_MEAL_UNITS - MEAL_UNITS / 2)),
+    );
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('takes the nearest store when its trade never goes home', () => {
+    const sim = simWithHomes();
+    const settler = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY }, TRADER);
+    const home = homeAt(sim, 2, 2);
+    sim.world.add(settler, Residence, { home });
+    stock(sim, home, 2);
+    storeAt(sim, 6, 2, 2);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(nodeAt(sim, 6, 2));
+  });
+
+  it("takes the nearest store past an empty larder, and never another family's", () => {
+    const sim = simWithHomes();
+    const settler = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
+    sim.world.add(settler, Residence, { home: homeAt(sim, 2, 2) });
+    stock(sim, homeAt(sim, 4, 2), 2); // the neighbours' larder
+    storeAt(sim, 6, 2, 2);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(nodeAt(sim, 6, 2));
   });
 });

@@ -14,7 +14,7 @@ import { homeUsedBy } from '../../family/households.js';
 import { carriesNeeds, mutNeeds, NEED_SATED_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
 import { atomicClipName, atomicDuration, atomicEventChannelDelta } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, jobNeedsReligion } from '../../readviews/index.js';
-import { EAT_ATOMIC_ID, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { mealAtomicId, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
 import { heldIndoors, isInside } from '../indoors.js';
 import { storedFoodGood } from '../targets/index.js';
 
@@ -52,13 +52,13 @@ function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound |
   ) {
     return { atomicId: SLEEP_ATOMIC_ID, effect: { kind: 'sleep' }, target: e };
   }
-  if (
-    needLevel(needs, 'hunger', ctx.tick) > NEED_SATED_THRESHOLD &&
-    homeClipServes(ctx, settler, EAT_ATOMIC_ID, HUNGER)
-  ) {
+  if (needLevel(needs, 'hunger', ctx.tick) > NEED_SATED_THRESHOLD) {
     const goodType = storedFoodGood(world, ctx, home);
-    if (goodType !== null)
-      return { atomicId: EAT_ATOMIC_ID, effect: { kind: 'eat', goodType, from: home }, target: home };
+    if (goodType !== null) {
+      const atomicId = mealAtomicId(ctx.content, settler, goodType);
+      if (homeClipServes(ctx, settler, atomicId, HUNGER))
+        return { atomicId, effect: { kind: 'eat', goodType, from: home }, target: home };
+    }
   }
   if (
     needs.piety > NEED_SATED_THRESHOLD &&

@@ -10,12 +10,13 @@ import {
   type SettlerIdentity,
 } from '../../../components/index.js';
 import type { AtomicEffect } from '../../../core/atomic-effect.js';
-import { contentIndex } from '../../../core/content-index.js';
+import { contentIndex, jobAllowsAtomic } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../../context.js';
 import { clearNavState } from '../../movement/nav-state.js';
-import { atomicDuration } from '../../readviews/animations.js';
+import { atomicClipName, atomicDuration } from '../../readviews/animations.js';
+import { isCandyMeal } from '../../readviews/food.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell } from '../targets/index.js';
 import { atomicHoldsSettler } from './busy.js';
@@ -28,13 +29,40 @@ import { atomicHoldsSettler } from './busy.js';
  */
 export const EAT_ATOMIC_ID = 10;
 
+/** The candy eat slot, `setatomic <job> 11 "..._eat_slot_candy"`: its clip pays more food than the plain
+ *  slot's and some company on top (`atomicanimations.ini`). */
+export const EAT_CANDY_ATOMIC_ID = 11;
+
 /**
- * Duration in ticks of one eat or forage atomic, from the settler's own eat clip
- * (`viking_civilist_eat_slot_food` = 50 ticks). The `[gfxanimatomic]` action-10 frame list raises, chews
- * and lowers, so the clip is a whole meal. Most working trades bind no eat clip and play the civilist's.
+ * The eat slot a meal of `goodType` plays. Original behavior: food_extra and candy play the candy slot
+ * when the eater's job allows it (`jobtypes.ini` `allowatomic 11`; every soldier forbids it), every other
+ * food the plain slot. The candy slot also needs a clip this settler resolves, or the meal would pay
+ * nothing.
  */
-export function eatDuration(ctx: SystemContext, settler: SettlerIdentity): number {
-  return atomicDuration(ctx.content, settler, EAT_ATOMIC_ID);
+export function mealAtomicId(content: ContentSet, settler: SettlerIdentity, goodType: number): number {
+  const candy =
+    isCandyMeal(content, goodType) &&
+    jobAllowsAtomic(content, settler.jobType, EAT_CANDY_ATOMIC_ID) &&
+    atomicClipName(content, settler, EAT_CANDY_ATOMIC_ID) !== undefined;
+  return candy ? EAT_CANDY_ATOMIC_ID : EAT_ATOMIC_ID;
+}
+
+/**
+ * Start a meal: the eat slot {@link mealAtomicId} picks for the good, or the plain slot for a forage,
+ * which eats the bush's fruit. The clip is the whole meal (raise, chew, lower), so its length is the
+ * atomic's; most working trades bind no eat clip and play the civilist's.
+ */
+export function startMeal(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  settler: SettlerIdentity,
+  effect: Extract<AtomicEffect, { kind: 'eat' | 'forage' }>,
+  target: Entity | null,
+): void {
+  const atomicId =
+    effect.kind === 'eat' ? mealAtomicId(ctx.content, settler, effect.goodType) : EAT_ATOMIC_ID;
+  startAtomic(world, e, atomicId, effect, atomicDuration(ctx.content, settler, atomicId), target);
 }
 
 /**

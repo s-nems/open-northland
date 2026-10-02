@@ -25,18 +25,11 @@ import {
 import { atomicDuration } from '../../readviews/animations.js';
 import { isFood, jobNeedsReligion } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
-import {
-  atOrWalk,
-  EAT_ATOMIC_ID,
-  eatDuration,
-  PRAY_ATOMIC_ID,
-  SLEEP_ATOMIC_ID,
-  startAtomic,
-} from '../atomics/start.js';
+import { atOrWalk, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic, startMeal } from '../atomics/start.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell, nearestFood, nearestPrayerSite, type TargetCandidates } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
-import { prayAtHome, sleepAtHome } from './home-errands.js';
+import { eatAtHome, prayAtHome, sleepAtHome } from './home-errands.js';
 import { restingCell } from './rest-spot.js';
 import { eatAtPost, sleepAtPost } from './tower-post.js';
 
@@ -133,14 +126,7 @@ function eatCarried(
   load: { goodType: number; amount: number } | undefined,
 ): boolean {
   if (load === undefined || load.amount <= 0 || !isFood(ctx, load.goodType)) return false;
-  startAtomic(
-    world,
-    e,
-    EAT_ATOMIC_ID,
-    { kind: 'eat', goodType: load.goodType, from: null },
-    eatDuration(ctx, settler),
-    e,
-  );
+  startMeal(world, ctx, e, settler, { kind: 'eat', goodType: load.goodType, from: null }, e);
   return true;
 }
 
@@ -183,9 +169,10 @@ export function planNeeds(
     const seek = maySeek(world, e, ordered, 'hunger');
     if (seek && eatCarried(world, ctx, e, settler, load)) return true;
     if (seek && eatAtPost(world, ctx, e, settler)) return true;
-    // A larder and a wild berry bush share the eat animation; only the completion effect differs, so the
-    // walk-or-act tail below is identical for both.
+    // Original behavior: the family larder comes first, then the nearest food elsewhere. A store and a
+    // wild berry bush share the walk-or-act tail; only the meal's effect differs.
     const walks = seek && (bars.hunger >= NEED_CRITICAL_THRESHOLD || !onAlert());
+    if (walks && eatAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
     const food = walks ? nearestFood(targets, world, ctx, terrain, here, e, gate) : null;
     if (food !== null) {
       const target = food.kind === 'store' ? food.store : food.bush;
@@ -194,7 +181,7 @@ export function planNeeds(
           ? ({ kind: 'eat', goodType: food.goodType, from: food.store } as const)
           : ({ kind: 'forage', bush: food.bush } as const);
       atOrWalk(world, e, here, interactionCell(world, ctx, terrain, target, here), () =>
-        startAtomic(world, e, EAT_ATOMIC_ID, effect, eatDuration(ctx, settler), target),
+        startMeal(world, ctx, e, settler, effect, target),
       );
       return true;
     }

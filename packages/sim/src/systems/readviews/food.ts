@@ -25,6 +25,16 @@ export function isFoodIn(content: ContentSet, goodType: number): boolean {
   return good.id.startsWith(FOOD_GOOD_ID_PREFIX);
 }
 
+/** The goods eaten on the candy eat slot. Original behavior: the eat task plays it for food_extra and
+ *  candy alone, whatever edible form the other dishes take. */
+const CANDY_MEAL_GOOD_IDS: ReadonlySet<string> = new Set(['food_extra', 'candy']);
+
+/** Whether a meal of `goodType` is eaten on the candy eat slot. */
+export function isCandyMeal(content: ContentSet, goodType: number): boolean {
+  const id = contentIndex(content).goods.get(goodType)?.id;
+  return id !== undefined && CANDY_MEAL_GOOD_IDS.has(id);
+}
+
 /** Whether `good` is food in a home, which is never taken back out of it: original behavior of the
  *  trader, and the rule a vehicle's hold keeps too (owner's choice). */
 export function isFoodKeptAtHome(world: World, ctx: SystemContext, house: Entity, good: number): boolean {

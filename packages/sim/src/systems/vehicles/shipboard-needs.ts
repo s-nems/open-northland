@@ -21,7 +21,7 @@ import {
 import { atomicClipName, atomicDuration, atomicEventChannelDelta } from '../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, isFood, jobIgnoresHomeHouse } from '../readviews/index.js';
 import { isAboardShip } from '../readviews/vehicles.js';
-import { EAT_ATOMIC_ID, SLEEP_ATOMIC_ID } from '../settlers/atomics/start.js';
+import { EAT_ATOMIC_ID, mealAtomicId, SLEEP_ATOMIC_ID } from '../settlers/atomics/start.js';
 import { canonicalById } from '../spatial/nodes.js';
 import { consumeVehicleGood } from './stock.js';
 
@@ -73,7 +73,7 @@ function eatAboard(world: World, ctx: SystemContext, e: Entity, vehicle: Entity)
     ([good, line]) => line.current > 0 && isFood(ctx, good),
   );
   if (food === undefined) return false;
-  const worth = clipWorth(ctx, world, e, EAT_ATOMIC_ID, HUNGER);
+  const worth = clipWorth(ctx, world, e, mealAtomicId(ctx.content, settler, food[0]), HUNGER);
   if (worth <= 0 || !consumeVehicleGood(world, vehicle, ctx.content, food[0])) return false;
   const s = mutNeeds(world, e, ctx.tick);
   s.hunger = applyNeedUnits(s.hunger, worth);

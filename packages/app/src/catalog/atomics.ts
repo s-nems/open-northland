@@ -68,6 +68,9 @@ export const SLEEP_ATOMIC = 8;
 export const EAT_ATOMIC = 10;
 export const PRAY_ATOMIC = 12;
 
+/** The candy meal (`logicdefines.inc` EAT_SLOT_CANDY 11), bound `setatomic <job> 11 "..._eat_slot_candy"`. */
+export const EAT_CANDY_ATOMIC = 11;
+
 /**
  * The wedding pair (`logicdefines.inc` KISS 20 / KISSED 21). Each body authors one kiss clip, so both
  * roles bind the same sequence.

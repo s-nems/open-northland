@@ -4,6 +4,8 @@ import {
   ATTACK_ATOMIC,
   BUILD_HOUSE_ATOMIC,
   BUILD_WALL_ATOMIC,
+  EAT_ATOMIC,
+  EAT_CANDY_ATOMIC,
   HERB_HARVEST_ATOMIC,
   OPEN_CHEST_ATOMIC,
   STORE_PICKUP_ATOMIC,
@@ -228,9 +230,21 @@ describe('characterBinding', () => {
       waitSeq: 'wait',
       atomics: { 10: { seq: 'eat' } },
     } as const;
-    expect(characterBinding(spec, seqs, [])?.byAtomic).toEqual({
-      10: { start: 1530, dirs: 1, stride: 17 },
+    expect(characterBinding(spec, seqs, [])?.byAtomic?.[EAT_ATOMIC]).toEqual({
+      start: 1530,
+      dirs: 1,
+      stride: 17,
     });
+  });
+
+  it('plays the candy meal on the plain meal clip, which no gfxAtomics record splits from it', () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 1931, length: 57 }],
+      ['eat', { name: 'eat', start: 1530, length: 17 }],
+    ]);
+    const spec = { gfxJobs: [6], waitSeq: 'wait', atomics: { [EAT_ATOMIC]: { seq: 'eat' } } } as const;
+    const byAtomic = characterBinding(spec, seqs, [])?.byAtomic;
+    expect(byAtomic?.[EAT_CANDY_ATOMIC]).toEqual({ start: 1530, dirs: 1, stride: 17 });
   });
 
   it('resolves the spec atomics into byAtomic (the setatomic join) with the phase override', () => {
@@ -363,6 +377,7 @@ describe('characterBinding', () => {
     // still apply, while an ordinary mode-0 record remains one-shot.
     expect(characterBinding(spec, seqs, [], { programsByAction })?.byAtomic).toEqual({
       10: { start: 1530, frameLists: [[0, 1, 1, 2]], loop: true },
+      [EAT_CANDY_ATOMIC]: { start: 1530, frameLists: [[0, 1, 1, 2]], loop: true },
       12: { start: 1647, frameLists: [[3, 4, 4, 5]], ticksPerFrame: 2 },
       22: { start: 1530, frameLists: [[0, 1, 1, 2]], loop: true },
     });
@@ -445,6 +460,7 @@ describe('characterBinding', () => {
     expect(characterBinding(spec, seqs, [], { programsByAction, tribeSeqs })?.byAtomic).toEqual({
       // The transcribed strip stays ahead of a tribe clip this body does not draw.
       10: { start: 400, dirs: 1, stride: 9 },
+      [EAT_CANDY_ATOMIC]: { start: 400, dirs: 1, stride: 9 },
       // A program-backed tribe record beats a transcribed strip the source authors no frame list for, and
       // plays its own frame lists, not the tribe-wide table's.
       22: { start: 300, frameLists: [[0, 1, 2]] },

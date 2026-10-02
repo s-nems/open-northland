@@ -10,7 +10,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { standsAtPost, towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { EAT_ATOMIC_ID, eatDuration, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { SLEEP_ATOMIC_ID, startAtomic, startMeal } from '../atomics/start.js';
 import { enterBuilding, stepOut, takePost } from '../indoors.js';
 import { interactionCell, storedFoodGood } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
@@ -68,14 +68,7 @@ export function eatAtPost(world: World, ctx: SystemContext, e: Entity, settler: 
   if (post === null) return false;
   const goodType = storedFoodGood(world, ctx, post);
   if (goodType === null) return false;
-  startAtomic(
-    world,
-    e,
-    EAT_ATOMIC_ID,
-    { kind: 'eat', goodType, from: post },
-    eatDuration(ctx, settler),
-    post,
-  );
+  startMeal(world, ctx, e, settler, { kind: 'eat', goodType, from: post }, post);
   return true;
 }
 

@@ -8,7 +8,7 @@ import {
   type SpriteFrameRef,
   subClipKey,
 } from '@open-northland/render/data';
-import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
+import { ATTACK_ATOMIC, EAT_ATOMIC, EAT_CANDY_ATOMIC } from '../../catalog/atomics.js';
 import { GFX_ANIM_MODE_LOOP, type GfxAtomicProgram, type TribeClip, type TribeJobSeqs } from '../ir/joins.js';
 import type { BobSeqRow, GfxAnimAtomicRow } from '../ir/rows.js';
 import type { CharacterSpec } from './character-specs.js';
@@ -225,6 +225,10 @@ export function characterBinding(
       ...(action?.loop === true ? { loop: true } : {}),
     };
   }
+
+  // Approximation: no `[gfxanimatomic]` record names the candy meal's action, so it plays the plain meal's.
+  const meal = byAtomic[EAT_ATOMIC];
+  if (meal !== undefined && byAtomic[EAT_CANDY_ATOMIC] === undefined) byAtomic[EAT_CANDY_ATOMIC] = meal;
 
   // The attack swing binds only when both the `[bobseq]` row and the action-81 frame lists resolve, so a
   // body or IR missing either has no attack animation rather than a bogus uniform slice.

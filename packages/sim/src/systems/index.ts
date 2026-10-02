@@ -36,8 +36,6 @@ export * from './orders/index.js';
 export * from './palisades/index.js';
 export * from './progression/index.js';
 export * from './readviews/index.js';
-// The meal length, exposed so tests can assert it without pulling in the action vocabulary wholesale.
-export { eatDuration } from './settlers/atomics/start.js';
 export * from './settlers/atomics/system.js';
 export * from './settlers/planner/system.js';
 export * from './signposts/index.js';
