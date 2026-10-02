@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { fx } from '../../../src/core/fixed.js';
 import { Simulation } from '../../../src/index.js';
+import type { BlockOverlay } from '../../../src/nav/block-overlay.js';
 import { CountedBlocks } from '../../../src/nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
-import { COST_PAGE_SIZE, WalkFlood } from '../../../src/systems/ai-player/walk-distance.js';
+import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../../../src/nav/world-metric.js';
+import {
+  budgetCertainBelow,
+  COST_PAGE_SIZE,
+  SeedWalks,
+  WalkFlood,
+  walkLowerBound,
+} from '../../../src/systems/ai-player/walk-distance.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
 
@@ -124,5 +132,88 @@ describe('ai-player walk flood', () => {
     expect(
       near === undefined || near === flood(terrain, SEED).costTo(terrain.nodeAt(WEST_NEAR.hx, WEST_NEAR.hy)),
     ).toBe(true);
+  });
+
+  it('bounds no step above its cost', () => {
+    const steps: [number, number, number][] = [
+      [1, 0, HALF_COLUMN],
+      [0, 1, HALF_ROW],
+      [1, 2, DIAGONAL_STEP],
+    ];
+    for (const [dx, dy, cost] of steps) {
+      for (const [sx, sy] of [
+        [1, 1],
+        [-1, 1],
+        [1, -1],
+        [-1, -1],
+      ] as const) {
+        expect(walkLowerBound(sx * dx, sy * dy)).toBeLessThanOrEqual(cost);
+      }
+    }
+  });
+
+  it('certifies only costs a flood of that budget settles on open ground', () => {
+    const terrain = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(80, 80) }).terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const seed = terrain.nodeAt(40, 40);
+    const certain = budgetCertainBelow(SMALL_BUDGET);
+    const walk = new WalkFlood(terrain, NO_BLOCKS, [seed], SMALL_BUDGET);
+    const whole = new WalkFlood(terrain, NO_BLOCKS, [seed], WHOLE_BANK);
+    for (let hy = 30; hy <= 50; hy++) {
+      for (let hx = 34; hx <= 46; hx++) {
+        const node = terrain.nodeAt(hx, hy);
+        const cost = whole.costTo(node);
+        if (cost !== undefined && cost < certain) expect(walk.costTo(node)).toBe(cost);
+      }
+    }
+  });
+
+  it('answers every query exactly as the lazy flood of its budget, round walls and past the budget', () => {
+    const MAP_NODES = 64;
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(MAP_NODES, MAP_NODES) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    // Broken walls of blocked nodes: every fifth column below a gap, every seventh row beside one.
+    const walls = new Set<NodeId>();
+    for (let hy = 0; hy < MAP_NODES; hy++) {
+      for (let hx = 0; hx < MAP_NODES; hx++) {
+        if (!terrain.inBounds(hx, hy)) continue;
+        const column = hx % 5 === 0 && hy % 13 > 3;
+        const row = hy % 7 === 0 && hx % 11 > 2;
+        if (column || row) walls.add(terrain.nodeAt(hx, hy));
+      }
+    }
+    const blocked: BlockOverlay = { has: (node) => walls.has(node), size: walls.size };
+    const seed = terrain.nodeAt(32, 32);
+    if (walls.has(seed)) throw new Error('setup: the seed stands clear');
+    const targets = [
+      { hx: 12, hy: 10 },
+      { hx: 60, hy: 50 },
+      { hx: 33, hy: 34 },
+      { hx: 2, hy: 62 },
+    ];
+    const BUDGETS = [SMALL_BUDGET, 400, WHOLE_BANK];
+    const REACH = 6;
+    for (const budget of BUDGETS) {
+      for (const toward of targets) {
+        const reference = new WalkFlood(terrain, blocked, [seed], budget);
+        const walk = new SeedWalks(terrain, blocked, seed, budget).toward(toward, REACH);
+        for (let r = 0; r <= REACH + 2; r++) {
+          for (let dx = -r; dx <= r; dx++) {
+            for (const dy of [r - Math.abs(dx), Math.abs(dx) - r]) {
+              const x = toward.hx + dx;
+              const y = toward.hy + dy;
+              if (!terrain.inBounds(x, y)) continue;
+              const node = terrain.nodeAt(x, y);
+              const floor = walk.costFloor(node);
+              const cost = walk.costTo(node);
+              expect(cost).toBe(reference.costTo(node));
+              if (floor !== undefined && cost !== undefined) expect(floor).toBeLessThanOrEqual(cost);
+              if (floor === undefined) expect(cost).toBeUndefined();
+            }
+          }
+        }
+      }
+    }
   });
 });

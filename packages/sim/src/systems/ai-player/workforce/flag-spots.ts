@@ -13,7 +13,7 @@ import {
 import type { NavigationLimit } from '../../signposts/index.js';
 import { type GathererReach, nearestLiveResource, type WorkableTest } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
-import { type WalkDistances, WalkFlood, walkSeedNear } from '../walk-distance.js';
+import { SeedWalks, type WalkDistances, WalkFlood, walkSeedNear } from '../walk-distance.js';
 
 /** A collector's flag stands 2-3 tiles from its resource (authored) - 4..6 half-cell nodes. */
 export const FLAG_MIN_DISTANCE_NODES = 4;
@@ -84,9 +84,9 @@ export interface FlagGround {
   readonly terrain: TerrainGraph;
   readonly limit: NavigationLimit | null;
   readonly placeable: (node: NodeId) => boolean;
-  /** The carriers' walk out from `origin`, one lazy flood per origin for the whole decision: every spot
-   *  search from the base or a workshop shares it instead of flooding anew. */
-  readonly walkFrom: (origin: HalfCellNode) => WalkDistances;
+  /** The carriers' walk out from `origin`, searched toward the nodes within `reach` of `toward`: one
+   *  {@link SeedWalks} per origin for the whole decision. */
+  readonly walkFrom: (origin: HalfCellNode, toward: HalfCellNode, reach: number) => WalkDistances;
   /** The gatherer's walk out from `resource`'s work cells, one lazy flood per resource for the decision. */
   readonly walkOut: (resource: Entity) => WalkDistances;
   /** Whether `node` provably lies across a sealed pocket wall from the carriers' walk out of `origin`. */
@@ -112,7 +112,8 @@ export function flagGround(
     }
     return seed;
   };
-  const fromOrigin = new Map<NodeId | null, WalkDistances>();
+  const fromOrigin = new Map<NodeId, SeedWalks>();
+  let unseeded: WalkDistances | null = null;
   const fromResource = new Map<Entity, WalkDistances>();
   return {
     terrain,
@@ -123,14 +124,18 @@ export function flagGround(
       const seed = seedOf(origin);
       return seed.node !== null && !seed.pocketed && regions.unroutable(seed.node, node);
     },
-    walkFrom: (origin) => {
+    walkFrom: (origin, toward, reach) => {
       const seed = seedOf(origin).node;
-      let flood = fromOrigin.get(seed);
-      if (flood === undefined) {
-        flood = new WalkFlood(terrain, blocked, seed === null ? [] : [seed], ORIGIN_FLOOD_BUDGET_NODES);
-        fromOrigin.set(seed, flood);
+      if (seed === null) {
+        unseeded ??= new WalkFlood(terrain, blocked, [], ORIGIN_FLOOD_BUDGET_NODES);
+        return unseeded;
       }
-      return flood;
+      let walks = fromOrigin.get(seed);
+      if (walks === undefined) {
+        walks = new SeedWalks(terrain, blocked, seed, ORIGIN_FLOOD_BUDGET_NODES);
+        fromOrigin.set(seed, walks);
+      }
+      return walks.toward(toward, reach);
     },
     walkOut: (resource) => {
       let flood = fromResource.get(resource);
@@ -182,10 +187,14 @@ export function flagSpotNear(
   // Last, since it may flood: a spot sealed off from the carriers is one the gatherer never walks to.
   const legal = (x: number, y: number): boolean =>
     legalNode(x, y) && !ground.sealedFrom(origin, terrain.nodeAt(x, y));
-  const fromOrigin = ground.walkFrom(origin);
   const fromResource = ground.walkOut(resource);
   const unreached = fx.fromInt(UNREACHED_WALK_PENALTY_TILES);
-  const cost = (x: number, y: number, beat: Fixed | null): Fixed | null => {
+  // The carriers' walk aims at the rings searched, so the band's search skips the fallback's slack.
+  const costOver = (rings: number) => {
+    const fromOrigin = ground.walkFrom(origin, centre, rings);
+    return (x: number, y: number, beat: Fixed | null): Fixed | null => costAt(fromOrigin, x, y, beat);
+  };
+  const costAt = (fromOrigin: WalkDistances, x: number, y: number, beat: Fixed | null): Fixed | null => {
     const node = terrain.nodeAt(x, y);
     // A straight-line leg is measured in half columns, the lattice's own E/W step.
     const resourceLeg =
@@ -204,8 +213,8 @@ export function flagSpotNear(
     return fx.add(weightedResourceLeg, originLeg);
   };
   return (
-    cheapestRingNode(centre, band.min, band.max, legal, cost) ??
-    cheapestRingNode(centre, 0, band.fallbackMax, legal, cost)
+    cheapestRingNode(centre, band.min, band.max, legal, costOver(band.max)) ??
+    cheapestRingNode(centre, 0, band.fallbackMax, legal, costOver(band.fallbackMax))
   );
 }
 
