@@ -2,7 +2,7 @@ import type { BuildingFootprint, ContentSet } from '@open-northland/data';
 import { Building, Palisade, PalisadeBlocking, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CountedCells } from '../../nav/block-overlay.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
 import { buildingFootprintOf, countsMatchCells, doorNodeOf, sameCells, translatedCells } from './geometry.js';
@@ -12,10 +12,8 @@ import { standingWallCells, wallJointSeals } from './wall-joints.js';
 // the building twin of ./resource-blocked-cache.ts.
 
 interface BuildingBlockedCache extends CountedCells {
-  /** Building MEMBERSHIP generation (add/remove/destroy) the cells were derived at. */
-  readonly membershipGeneration: number;
-  /** Building VALUE generation the cells were last confirmed at (see {@link heldBuildingTypesStand}). */
-  valueGeneration: number;
+  /** The {@link BuildingCellsIndex} revision the cells were derived at. */
+  readonly buildingRevision: number;
   /** Palisade and PalisadeBlocking membership generations: a wall or a shut gate blocks its walk cells.
    *  Its cells and gate state change only by a re-add; the in-place writes are a claim and build progress. */
   readonly palisadeMembershipGeneration: number;
@@ -25,8 +23,6 @@ interface BuildingBlockedCache extends CountedCells {
   readonly cells: Set<NodeId>;
   /** 1 on {@link cells}, else 0. One array per world and terrain, restamped by each rebuild. */
   readonly counts: Uint16Array;
-  /** The `buildingType` each derived building's cells came from. */
-  readonly types: ReadonlyMap<Entity, number>;
 }
 
 const buildingBlockedCache = new WeakMap<World, BuildingBlockedCache>();
@@ -143,29 +139,28 @@ export function walkBodyOf(
 
 interface BuildingCells {
   /** The building bodies, doors and their passages carved out. */
-  readonly blocked: Set<NodeId>;
+  readonly blocked: ReadonlySet<NodeId>;
   /** Each door node and the passage cleared from it to exterior ground. */
-  readonly openings: Set<NodeId>;
+  readonly openings: ReadonlySet<NodeId>;
 }
 
-function deriveBuildingCells(
-  world: World,
-  content: ContentSet,
-  terrain: TerrainGraph,
-  types?: Map<Entity, number>,
-): BuildingCells {
+/** Every building carved afresh: the verifiers' reference for {@link BuildingCellsIndex}. */
+function deriveBuildingCells(world: World, content: ContentSet, terrain: TerrainGraph): BuildingCells {
   const blocked = new Set<NodeId>();
   const openings = new Set<NodeId>();
   // The exact door point stays open even if another building's reserved margin overlaps it.
   const doors = new Set<NodeId>();
   for (const e of world.query(Building, Position)) {
     const b = world.get(e, Building);
-    types?.set(e, b.buildingType);
     const footprint = buildingFootprintOf(content, b.buildingType, b.tribe);
     if (footprint === undefined || footprint.blocked.length === 0) continue;
     const p = world.get(e, Position);
-    const { hx, hy } = nodeOfPosition(p.x, p.y);
-    const { body, door, passage } = walkBodyOf(terrain, footprint, hx, hy);
+    const { body, door, passage } = walkBodyOf(
+      terrain,
+      footprint,
+      nodeHxOfPosition(p.x, p.y),
+      nodeHyOfPosition(p.y),
+    );
     if (door !== null) doors.add(door);
     for (const cell of passage) openings.add(cell);
     for (const cell of body) blocked.add(cell);
@@ -174,20 +169,13 @@ function deriveBuildingCells(
   return { blocked, openings };
 }
 
-/** One full derivation - the rebuild and the verifier's reference run through this single path. Records
- *  each building's type into `types` when given. */
-function deriveBuildingBlockedCells(
-  world: World,
-  content: ContentSet,
-  terrain: TerrainGraph,
-  types?: Map<Entity, number>,
-): Set<NodeId> {
-  const { blocked, openings } = deriveBuildingCells(world, content, terrain, types);
-  // Walls go in after the door subtraction, so an authored overlap cannot punch a door-shaped hole
-  // through a palisade.
+/** Walls go in after the door subtraction, so an authored overlap cannot punch a door-shaped hole through
+ *  a palisade. */
+function withWalls(world: World, terrain: TerrainGraph, buildings: BuildingCells): Set<NodeId> {
+  const blocked = new Set(buildings.blocked);
   const walls = standingWallCells(world, terrain);
   for (const cell of walls.walls) blocked.add(cell);
-  for (const cell of wallJointSeals(terrain, walls, walls.walls, openings)) blocked.add(cell);
+  for (const cell of wallJointSeals(terrain, walls, walls.walls, buildings.openings)) blocked.add(cell);
   return blocked;
 }
 
@@ -212,42 +200,180 @@ export function heldBuildingTypesStand(
   return true;
 }
 
-interface OpeningsMemo {
-  readonly content: ContentSet;
-  readonly terrain: TerrainGraph;
-  readonly membershipGeneration: number;
-  valueGeneration: number;
-  readonly types: ReadonlyMap<Entity, number>;
-  readonly openings: ReadonlySet<NodeId>;
+/** A building as {@link BuildingCellsIndex} stamped it: its type, and the footprint and anchor its walk
+ *  body was carved at, of which the body is a pure function together with the terrain. A footprint that
+ *  blocks nothing carves no body. */
+interface PlacedBody {
+  readonly type: number;
+  readonly footprint: BuildingFootprint | undefined;
+  readonly hx: number;
+  readonly hy: number;
+  readonly walk: WalkBody | null;
 }
 
-const openingsMemo = new WeakMap<World, OpeningsMemo>();
+/**
+ * The buildings' cells without walls, kept across ticks: per node, how many walk bodies cover it, how many
+ * doors sit on it and how many passages cross it, so a building placed, razed or retyped re-stamps only its
+ * own body. Building membership and value journals name the changed buildings; positions are immutable once
+ * placed. A journal gap re-stamps every building. Construction progress and wall changes keep it.
+ */
+class BuildingCellsIndex implements BuildingCells {
+  /** Nodes some body covers and no door sits on. */
+  readonly blocked = new Set<NodeId>();
+  /** Nodes some door passage crosses. */
+  readonly openings = new Set<NodeId>();
+  /** Moves whenever {@link blocked} or {@link openings} changes, and on every full re-stamp. */
+  revision = 0;
+  private membershipGeneration = 0;
+  private valueGeneration = 0;
+  private readonly bodyCounts: Uint16Array;
+  private readonly doorCounts: Uint16Array;
+  private readonly passageCounts: Uint16Array;
+  private readonly placed = new Map<Entity, PlacedBody>();
+
+  constructor(
+    readonly content: ContentSet,
+    readonly terrain: TerrainGraph,
+  ) {
+    this.bodyCounts = new Uint16Array(terrain.nodeCount);
+    this.doorCounts = new Uint16Array(terrain.nodeCount);
+    this.passageCounts = new Uint16Array(terrain.nodeCount);
+  }
+
+  /** Whether the stamps still describe the world: no building joined or left, and no value write since the
+   *  held generation moved a held building's type. Pure, so the verifier asks it too. */
+  current(world: World): boolean {
+    if (this.membershipGeneration !== world.componentGeneration(Building)) return false;
+    if (this.valueGeneration === world.componentValueGeneration(Building)) return true;
+    const written = world.valueWritesSince(Building, this.valueGeneration);
+    if (written === null) return false;
+    for (const e of written) {
+      const held = this.placed.get(e);
+      if (held !== undefined && world.tryGet(e, Building)?.buildingType !== held.type) return false;
+    }
+    return true;
+  }
+
+  catchUp(world: World): void {
+    const membership = world.componentGeneration(Building);
+    const values = world.componentValueGeneration(Building);
+    if (membership === this.membershipGeneration && values === this.valueGeneration) return;
+    const joined =
+      membership === this.membershipGeneration
+        ? NO_ENTITIES
+        : world.membershipDeltasSince(Building, this.membershipGeneration);
+    const written =
+      values === this.valueGeneration ? NO_ENTITIES : world.valueWritesSince(Building, this.valueGeneration);
+    if (joined === null || written === null) {
+      this.rebuild(world);
+      return;
+    }
+    for (const e of joined) this.restamp(world, e);
+    for (const e of written) if (this.placed.has(e)) this.restamp(world, e);
+    this.membershipGeneration = membership;
+    this.valueGeneration = values;
+  }
+
+  rebuild(world: World): void {
+    world.journalMembership(Building);
+    world.journalValueWrites(Building);
+    for (const held of this.placed.values()) if (held.walk !== null) this.stamp(held.walk, -1);
+    this.placed.clear();
+    for (const e of world.query(Building, Position)) this.restamp(world, e);
+    this.membershipGeneration = world.componentGeneration(Building);
+    this.valueGeneration = world.componentValueGeneration(Building);
+    this.revision++;
+  }
+
+  /** Move `e`'s stamp to the body its live building carves, keeping a body whose footprint and anchor
+   *  stand. */
+  private restamp(world: World, e: Entity): void {
+    const held = this.placed.get(e);
+    const b = world.tryGet(e, Building);
+    const p = b === undefined ? undefined : world.tryGet(e, Position);
+    if (b === undefined || p === undefined) {
+      if (held !== undefined && held.walk !== null) this.stamp(held.walk, -1);
+      this.placed.delete(e);
+      return;
+    }
+    const footprint = buildingFootprintOf(this.content, b.buildingType, b.tribe);
+    const hx = nodeHxOfPosition(p.x, p.y);
+    const hy = nodeHyOfPosition(p.y);
+    if (held !== undefined && held.footprint === footprint && held.hx === hx && held.hy === hy) {
+      if (held.type !== b.buildingType) this.placed.set(e, { ...held, type: b.buildingType });
+      return;
+    }
+    if (held !== undefined && held.walk !== null) this.stamp(held.walk, -1);
+    const carves = footprint !== undefined && footprint.blocked.length > 0;
+    const walk = carves ? walkBodyOf(this.terrain, footprint, hx, hy) : null;
+    if (walk !== null) this.stamp(walk, 1);
+    this.placed.set(e, { type: b.buildingType, footprint, hx, hy, walk });
+  }
+
+  private stamp(walk: WalkBody, delta: 1 | -1): void {
+    for (const cell of walk.body) {
+      this.bodyCounts[cell] = (this.bodyCounts[cell] ?? 0) + delta;
+      this.settleBlocked(cell);
+    }
+    if (walk.door !== null) {
+      this.doorCounts[walk.door] = (this.doorCounts[walk.door] ?? 0) + delta;
+      this.settleBlocked(walk.door);
+    }
+    for (const cell of walk.passage) {
+      const count = (this.passageCounts[cell] ?? 0) + delta;
+      this.passageCounts[cell] = count;
+      if (count > 0 === this.openings.has(cell)) continue;
+      if (count > 0) this.openings.add(cell);
+      else this.openings.delete(cell);
+      this.revision++;
+    }
+  }
+
+  private settleBlocked(cell: NodeId): void {
+    const blocked = (this.bodyCounts[cell] ?? 0) > 0 && (this.doorCounts[cell] ?? 0) === 0;
+    if (blocked === this.blocked.has(cell)) return;
+    if (blocked) this.blocked.add(cell);
+    else this.blocked.delete(cell);
+    this.revision++;
+  }
+}
+
+const NO_ENTITIES: readonly Entity[] = [];
+
+const buildingCellsIndexes = new WeakMap<World, BuildingCellsIndex>();
+
+/** `world`'s building cells index, caught up. */
+function buildingCells(world: World, content: ContentSet, terrain: TerrainGraph): BuildingCellsIndex {
+  let index = buildingCellsIndexes.get(world);
+  if (index === undefined || index.content !== content || index.terrain !== terrain) {
+    index = new BuildingCellsIndex(content, terrain);
+    index.rebuild(world);
+    buildingCellsIndexes.set(world, index);
+    world.registerCacheVerifier('buildingCells', () => verifyBuildingCells(world));
+    return index;
+  }
+  index.catchUp(world);
+  return index;
+}
+
+/** The index against a fresh carve of every building, while it reads as current. */
+function verifyBuildingCells(world: World): string[] {
+  const index = buildingCellsIndexes.get(world);
+  if (index === undefined || !index.current(world)) return [];
+  const fresh = deriveBuildingCells(world, index.content, index.terrain);
+  if (sameCells(index.blocked, fresh.blocked) && sameCells(index.openings, fresh.openings)) return [];
+  return ['buildingCells diverge from a fresh carve - a building change went unseen'];
+}
 
 /** Every building's door node and the passage cleared from it to exterior ground, which a wall joint
- *  seal leaves open. Memoized on Building membership and the buildings' types, so construction progress
- *  and a wall change keep it. Derived state, never hashed. */
+ *  seal leaves open. The live index's set: read it, never keep it past a building change. Derived state,
+ *  never hashed. */
 export function buildingOpenings(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
 ): ReadonlySet<NodeId> {
-  const membershipGeneration = world.componentGeneration(Building);
-  const valueGeneration = world.componentValueGeneration(Building);
-  const held = openingsMemo.get(world);
-  if (
-    held?.content === content &&
-    held.terrain === terrain &&
-    held.membershipGeneration === membershipGeneration &&
-    heldBuildingTypesStand(world, held.types, held.valueGeneration)
-  ) {
-    held.valueGeneration = valueGeneration;
-    return held.openings;
-  }
-  world.journalValueWrites(Building);
-  const types = new Map<Entity, number>();
-  const { openings } = deriveBuildingCells(world, content, terrain, types);
-  openingsMemo.set(world, { content, terrain, membershipGeneration, valueGeneration, types, openings });
-  return openings;
+  return buildingCells(world, content, terrain).openings;
 }
 
 function palisadesUnchanged(world: World, cached: BuildingBlockedCache): boolean {
@@ -261,14 +387,16 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
   const cached = buildingBlockedCache.get(world);
   if (cached === undefined) return [];
   if (cached.terrain !== terrain || cached.content !== content) return [];
+  const index = buildingCellsIndexes.get(world);
   if (
-    cached.membershipGeneration !== world.componentGeneration(Building) ||
-    !palisadesUnchanged(world, cached) ||
-    !heldBuildingTypesStand(world, cached.types, cached.valueGeneration)
+    index === undefined ||
+    !index.current(world) ||
+    cached.buildingRevision !== index.revision ||
+    !palisadesUnchanged(world, cached)
   ) {
     return []; // stale key - the next read rebuilds, nothing can consume the old cells
   }
-  const fresh = deriveBuildingBlockedCells(world, content, terrain);
+  const fresh = withWalls(world, terrain, deriveBuildingCells(world, content, terrain));
   if (!sameCells(cached.cells, fresh)) {
     return [
       `buildingBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} - a Building changed in place outside World.mut`,
@@ -306,24 +434,19 @@ export function buildingBlockedCells(
 
 /** {@link buildingBlockedCells} with its per-node counts, for the dynamic overlay. */
 export function buildingBlockedLayer(world: World, ctx: ContentContext, terrain: TerrainGraph): CountedCells {
-  const membershipGeneration = world.componentGeneration(Building);
-  const valueGeneration = world.componentValueGeneration(Building);
+  const buildings = buildingCells(world, ctx.content, terrain);
   const cached = buildingBlockedCache.get(world);
   if (
     cached !== undefined &&
     cached.terrain === terrain &&
     cached.content === ctx.content &&
-    cached.membershipGeneration === membershipGeneration &&
-    palisadesUnchanged(world, cached) &&
-    heldBuildingTypesStand(world, cached.types, cached.valueGeneration)
+    cached.buildingRevision === buildings.revision &&
+    palisadesUnchanged(world, cached)
   ) {
-    cached.valueGeneration = valueGeneration;
     return cached;
   }
 
-  world.journalValueWrites(Building);
-  const types = new Map<Entity, number>();
-  const cells = deriveBuildingBlockedCells(world, ctx.content, terrain, types);
+  const cells = withWalls(world, terrain, buildings);
   let counts: Uint16Array;
   if (cached?.terrain === terrain) {
     counts = cached.counts;
@@ -333,15 +456,13 @@ export function buildingBlockedLayer(world: World, ctx: ContentContext, terrain:
   }
   for (const cell of cells) counts[cell] = 1;
   const cache: BuildingBlockedCache = {
-    membershipGeneration,
-    valueGeneration,
+    buildingRevision: buildings.revision,
     palisadeMembershipGeneration: world.componentGeneration(Palisade),
     palisadeBlockingGeneration: world.componentGeneration(PalisadeBlocking),
     content: ctx.content,
     terrain,
     cells,
     counts,
-    types,
   };
   buildingBlockedCache.set(world, cache);
   world.registerCacheVerifier('buildingBlockedCells', () =>

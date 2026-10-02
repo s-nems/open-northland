@@ -2,7 +2,7 @@ import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, Position, Stockpile, UnderConstruction, Upgrading } from '../../src/components/index.js';
 import { GENERATION_JOURNAL_LIMIT } from '../../src/ecs/generation-journal.js';
-import { fx, ONE, positionOfNode, Simulation } from '../../src/index.js';
+import { type Fixed, fx, ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { buildingOpenings } from '../../src/systems/footprint/building-blocked-cache.js';
 import { buildingBlockedCells, constructionSystem } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -101,6 +101,32 @@ describe('buildingBlockedCells memo', () => {
     sim.world.mut(home, Building).buildingType = HOME_L;
     buildingBlockedCells(sim.world, ctxOf(sim), terrainOf(sim));
     expect(sim.world.verifyCaches()).toEqual([]);
+  });
+});
+
+describe('building cells index', () => {
+  it('re-stamps only the changed building and matches a fresh carve', () => {
+    const { sim, home } = twoTierHome();
+    const terrain = terrainOf(sim);
+    const other = sim.world.create();
+    sim.world.add(other, Position, positionOfNode(10, 10));
+    sim.world.add(other, Building, { buildingType: HOME_S, tribe: VIKING, built: ONE, level: 0 });
+    const openings = buildingOpenings(sim.world, sim.content, terrain);
+    expect(buildingBlockedCells(sim.world, ctxOf(sim), terrain).has(terrain.nodeAt(10, 10))).toBe(true);
+    sim.world.destroy(other);
+    expect(buildingBlockedCells(sim.world, ctxOf(sim), terrain).has(terrain.nodeAt(10, 10))).toBe(false);
+    sim.world.mut(home, Building).buildingType = HOME_L;
+    expect(buildingOpenings(sim.world, sim.content, terrain)).toBe(openings); // one live set, kept in place
+    buildingBlockedCells(sim.world, ctxOf(sim), terrain);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('the verifier flags a building moved outside the tracked seams', () => {
+    const { sim, home } = twoTierHome();
+    buildingOpenings(sim.world, sim.content, terrainOf(sim));
+    // Positions are immutable once placed; defeating that is the bug the verifier exists to catch.
+    (sim.world.get(home, Position) as { x: Fixed }).x = positionOfNode(12, 12).x;
+    expect(sim.world.verifyCaches().join('\n')).toContain('buildingCells');
   });
 });
 
