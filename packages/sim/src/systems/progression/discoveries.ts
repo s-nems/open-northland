@@ -21,7 +21,7 @@ import {
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
-import type { System } from '../context.js';
+import type { ContentContext, System } from '../context.js';
 import { goodEnabled, jobAwaitsDiscovery, jobEnabled, settlerMeetsNeed, typeAllowed } from './unlocks.js';
 
 /** What a settler's last discovery walk saw of it: the walk repeats only when one of these moves.
@@ -184,6 +184,28 @@ function verifyDiscoveryMemo(world: World, content: ContentSet, memo: DiscoveryM
   return violations;
 }
 
+function allJobsEnabled(
+  world: World,
+  ctx: ContentContext,
+  owner: number | undefined,
+  tribe: number,
+  jobs: readonly number[],
+): boolean {
+  for (const id of jobs) if (!jobEnabled(world, ctx, owner, tribe, id)) return false;
+  return true;
+}
+
+function allGoodsEnabled(
+  world: World,
+  ctx: ContentContext,
+  owner: number | undefined,
+  tribe: number,
+  goods: readonly number[],
+): boolean {
+  for (const id of goods) if (!goodEnabled(world, ctx, owner, tribe, id)) return false;
+  return true;
+}
+
 /** Discoveries belong to the player and survive losing or retraining the worker who earned them. */
 export const technologySystem: System = (world, ctx) => {
   if (!professionProgressionEnabled(world)) return;
@@ -204,6 +226,10 @@ export const technologySystem: System = (world, ctx) => {
     memo.generations.set(component, world.componentGeneration(component));
   }
   memo.permissions = permissions;
+  // The owners and tribes whose last house walk discovered nothing: until the next discovery anywhere, a
+  // re-walk reads the same gates and discovers nothing again.
+  const settledHouses = new Map<number | undefined, Set<number>>();
+  let discoveries = 0;
   const discover = (
     entity: Entity | undefined,
     owner: number | undefined,
@@ -213,6 +239,8 @@ export const technologySystem: System = (world, ctx) => {
   ): boolean => {
     if (kind === 'job' && !jobAwaitsDiscovery(ctx, tribe, typeId)) return false;
     if (!discoverTechnology(world, owner, tribe, kind, typeId)) return false;
+    discoveries++;
+    settledHouses.clear();
     if (entity !== undefined && owner !== undefined && ctx.tick > SETUP_TICK)
       ctx.events.emit({
         kind: 'technologyDiscovered',
@@ -227,6 +255,8 @@ export const technologySystem: System = (world, ctx) => {
   const advanceHouses = (entity: Entity, owner: number | undefined, tribeId: number): void => {
     const tribe = contentIndex(ctx.content).tribes.get(tribeId);
     if (tribe?.technology === undefined) return;
+    if (settledHouses.get(owner)?.has(tribeId) === true) return;
+    const before = discoveries;
     let advanced: boolean;
     do {
       advanced = false;
@@ -235,8 +265,8 @@ export const technologySystem: System = (world, ctx) => {
         if (!typeAllowed(world, ctx, owner, tribeId, 'house', row.house)) continue;
         if (
           !(owner !== undefined && isAiPlayer(world, owner)) &&
-          (!row.jobs.every((id) => jobEnabled(world, ctx, owner, tribeId, id)) ||
-            !row.goods.every((id) => goodEnabled(world, ctx, owner, tribeId, id)))
+          (!allJobsEnabled(world, ctx, owner, tribeId, row.jobs) ||
+            !allGoodsEnabled(world, ctx, owner, tribeId, row.goods))
         )
           continue;
         advanced = discover(entity, owner, tribeId, 'house', row.house) || advanced;
@@ -244,6 +274,13 @@ export const technologySystem: System = (world, ctx) => {
           discover(entity, owner, tribeId, 'good', good);
       }
     } while (advanced);
+    if (discoveries !== before) return;
+    let settled = settledHouses.get(owner);
+    if (settled === undefined) {
+      settled = new Set();
+      settledHouses.set(owner, settled);
+    }
+    settled.add(tribeId);
   };
   for (const entity of candidates) {
     const read = readSettler(world, ctx.content, entity, permissions);
