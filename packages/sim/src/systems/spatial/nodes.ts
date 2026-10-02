@@ -14,6 +14,8 @@ export function canonicalById(entities: Iterable<Entity>): Entity[] {
   return [...entities].sort((a, b) => a - b);
 }
 
+const entityId = (e: Entity): number => e;
+
 /** Shared and frozen so an unoccupied-node lookup allocates nothing. */
 const NO_ENTITIES: readonly Entity[] = [];
 
@@ -29,11 +31,12 @@ function packedNodeKey(x: number, y: number): number {
 const STALE_BUCKET_RATIO = 4;
 
 interface NodeBucket {
-  readonly x: number;
-  readonly y: number;
+  x: number;
+  y: number;
   /** The fill that last wrote the bucket; any other fill's bucket is empty, its array spare capacity. */
   fill: number;
-  /** Entities written by the current fill; `entities` is trimmed to it once the fill ends. */
+  /** Entities written by the current fill; `entities` is trimmed to it once the fill ends. An emptied
+   *  bucket keeps one stale entry at 0, so its array's backing store outlives the empty spell. */
   count: number;
   readonly entities: Entity[];
 }
@@ -52,6 +55,8 @@ export class NodeBuckets {
   /** The buckets the current fill wrote; only the first `liveCount` are current. */
   private readonly live: NodeBucket[] = [];
   private liveCount = 0;
+  /** Buckets {@link remove} emptied, re-keyed by the next node {@link insert} opens. */
+  private readonly spare: NodeBucket[] = [];
 
   constructor(world: World, entities: readonly Entity[]) {
     this.refill(world, entities);
@@ -106,7 +111,15 @@ export class NodeBuckets {
     const key = packedNodeKey(x, y);
     let bucket = this.byNode.get(key);
     if (bucket === undefined) {
-      bucket = { x, y, fill: -1, count: 0, entities: [] };
+      bucket = this.spare.pop();
+      if (bucket === undefined) {
+        bucket = { x, y, fill: -1, count: 0, entities: [] };
+      } else {
+        bucket.x = x;
+        bucket.y = y;
+        bucket.fill = -1;
+        bucket.count = 0;
+      }
       this.byNode.set(key, bucket);
     }
     return bucket;
@@ -120,7 +133,8 @@ export class NodeBuckets {
 
   /** The entities on node (x,y), in ascending-id order. */
   at(x: number, y: number): readonly Entity[] {
-    return this.current(x, y)?.entities ?? NO_ENTITIES;
+    const bucket = this.current(x, y);
+    return bucket === undefined || bucket.count === 0 ? NO_ENTITIES : bucket.entities;
   }
 
   /** Insert `e` into node (x,y)'s bucket, keeping it ascending-id. */
@@ -128,18 +142,36 @@ export class NodeBuckets {
     const bucket = this.bucketFor(x, y);
     if (bucket.fill !== this.fill) {
       bucket.fill = this.fill;
-      bucket.entities.length = 0;
+      bucket.count = 0;
     }
-    insertSortedById(bucket.entities, e, (id) => id);
-    bucket.count = bucket.entities.length;
+    const { entities } = bucket;
+    if (bucket.count === 0) {
+      // Overwrite the stale slot rather than empty the array, which would free its backing store.
+      if (entities.length === 0) entities.push(e);
+      else {
+        entities.length = 1;
+        entities[0] = e;
+      }
+      bucket.count = 1;
+      return;
+    }
+    insertSortedById(entities, e, entityId);
+    bucket.count = entities.length;
   }
 
   /** Remove `e` from node (x,y)'s bucket, dropping an emptied bucket. A no-op when `e` is not there. */
   remove(e: Entity, x: number, y: number): void {
     const bucket = this.current(x, y);
-    if (bucket === undefined || !removeSortedById(bucket.entities, e, (id) => id)) return;
+    if (bucket === undefined || bucket.count === 0) return;
+    if (bucket.count === 1) {
+      if (bucket.entities[0] !== e) return;
+      bucket.count = 0;
+      this.byNode.delete(packedNodeKey(x, y));
+      this.spare.push(bucket);
+      return;
+    }
+    if (!removeSortedById(bucket.entities, e, entityId)) return;
     bucket.count = bucket.entities.length;
-    if (bucket.count === 0) this.byNode.delete(packedNodeKey(x, y));
   }
 
   /** Every non-empty bucket with its node. */

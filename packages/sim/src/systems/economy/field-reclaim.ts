@@ -3,7 +3,6 @@ import type { Fixed } from '../../core/fixed.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
-import { siftDown, siftUp } from '../../nav/pathfinding/heap.js';
 import { latticeDistanceTo, type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, System } from '../context.js';
 import {
@@ -39,16 +38,98 @@ export const STRANDED_FIELD_PROBE_MAX_VISITED = 2048;
 
 type ProbeResult = 'reached' | 'exhausted' | 'giveup';
 
-/** A discovered node waiting in the probe's open heap, keyed by its lattice distance to the door. */
-interface ProbeEntry {
-  readonly node: NodeId;
-  readonly toDoor: Fixed;
-  heapIdx: number;
+/**
+ * One terrain's probe buffers, reused by every probe since each runs to completion before the next: the
+ * discovered marks and the open heap of discovered nodes keyed by lattice distance to the door.
+ */
+class ProbeScratch {
+  readonly steps = new StepBuffer();
+  /** {@link epoch} on each node the running probe has discovered. */
+  private readonly seen: Uint32Array;
+  private epoch = 0;
+  private readonly heapNodes: NodeId[] = [];
+  private readonly heapKeys: Fixed[] = [];
+  size = 0;
+
+  constructor(nodeCount: number) {
+    this.seen = new Uint32Array(nodeCount);
+  }
+
+  begin(): void {
+    if (this.epoch === MAX_EPOCH) {
+      this.seen.fill(0);
+      this.epoch = 0;
+    }
+    this.epoch++;
+    this.size = 0;
+  }
+
+  /** Mark `node` discovered; false when it already was. */
+  discover(node: NodeId): boolean {
+    if (this.seen[node] === this.epoch) return false;
+    this.seen[node] = this.epoch;
+    return true;
+  }
+
+  push(node: NodeId, toDoor: Fixed): void {
+    const { heapNodes, heapKeys } = this;
+    let at = this.size++;
+    while (at > 0) {
+      const parent = (at - 1) >> 1;
+      const parentNode = heapNodes[parent] as NodeId;
+      const parentKey = heapKeys[parent] as Fixed;
+      if (!nearerDoor(toDoor, node, parentKey, parentNode)) break;
+      heapNodes[at] = parentNode;
+      heapKeys[at] = parentKey;
+      at = parent;
+    }
+    heapNodes[at] = node;
+    heapKeys[at] = toDoor;
+  }
+
+  /** Remove and return the open node nearest the door. Call only while {@link size} is positive. */
+  pop(): NodeId {
+    const { heapNodes, heapKeys } = this;
+    const top = heapNodes[0] as NodeId;
+    const size = --this.size;
+    if (size === 0) return top;
+    const node = heapNodes[size] as NodeId;
+    const key = heapKeys[size] as Fixed;
+    let at = 0;
+    for (;;) {
+      let child = 2 * at + 1;
+      if (child >= size) break;
+      if (
+        child + 1 < size &&
+        nearerDoor(
+          heapKeys[child + 1] as Fixed,
+          heapNodes[child + 1] as NodeId,
+          heapKeys[child] as Fixed,
+          heapNodes[child] as NodeId,
+        )
+      ) {
+        child++;
+      }
+      if (!nearerDoor(heapKeys[child] as Fixed, heapNodes[child] as NodeId, key, node)) break;
+      heapNodes[at] = heapNodes[child] as NodeId;
+      heapKeys[at] = heapKeys[child] as Fixed;
+      at = child;
+    }
+    heapNodes[at] = node;
+    heapKeys[at] = key;
+    return top;
+  }
 }
 
-/** The probe's expansion order: nearest the door first, ties by node id. */
-function nearerDoor(a: ProbeEntry, b: ProbeEntry): boolean {
-  return a.toDoor !== b.toDoor ? a.toDoor < b.toDoor : a.node < b.node;
+/** The last epoch before the discovered marks are cleared and counting restarts. */
+const MAX_EPOCH = 0xffffffff;
+
+const probeScratch = new WeakMap<TerrainGraph, ProbeScratch>();
+
+/** The probe's expansion order: nearest the door first, ties by node id. A strict total order over
+ *  distinct nodes, so the pop sequence does not depend on the heap's layout. */
+function nearerDoor(aToDoor: Fixed, a: NodeId, bToDoor: Fixed, b: NodeId): boolean {
+  return aToDoor !== bToDoor ? aToDoor < bToDoor : a < b;
 }
 
 /**
@@ -70,35 +151,28 @@ function probeRoute(
   if (from === to) return 'reached';
   const doorX = terrain.xOf(to);
   const doorY = terrain.yOf(to);
-  const steps = new StepBuffer();
-  const seen = new Set<NodeId>([from]);
-  const open: ProbeEntry[] = [
-    { node: from, toDoor: latticeDistanceTo(terrain, doorX, doorY, from), heapIdx: 0 },
-  ];
-  for (;;) {
-    const cur = open[0];
-    if (cur === undefined) return 'exhausted';
-    const last = open.pop();
-    if (last !== undefined && open.length > 0) {
-      open[0] = last;
-      siftDown(open, 0, nearerDoor);
-    }
-    terrain.stepsInto(cur.node, overlay, steps);
+  let scratch = probeScratch.get(terrain);
+  if (scratch === undefined) {
+    scratch = new ProbeScratch(terrain.nodeCount);
+    probeScratch.set(terrain, scratch);
+  }
+  const { steps } = scratch;
+  scratch.begin();
+  scratch.discover(from);
+  let discovered = 1;
+  scratch.push(from, latticeDistanceTo(terrain, doorX, doorY, from));
+  while (scratch.size > 0) {
+    terrain.stepsInto(scratch.pop(), overlay, steps);
     for (let s = 0; s < steps.length; s++) {
-      const next = steps.at(s).node;
+      const next = steps.nodeAt(s);
       if (next === to) return 'reached';
-      if (seen.has(next)) continue;
-      if (seen.size >= maxVisited) return 'giveup';
-      seen.add(next);
-      const entry: ProbeEntry = {
-        node: next,
-        toDoor: latticeDistanceTo(terrain, doorX, doorY, next),
-        heapIdx: open.length,
-      };
-      open.push(entry);
-      siftUp(open, entry.heapIdx, nearerDoor);
+      if (!scratch.discover(next)) continue;
+      if (discovered >= maxVisited) return 'giveup';
+      discovered++;
+      scratch.push(next, latticeDistanceTo(terrain, doorX, doorY, next));
     }
   }
+  return 'exhausted';
 }
 
 /** Whether some stance of the field is open ground a route from the farm's door reaches. The overlay

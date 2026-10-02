@@ -43,10 +43,15 @@ const SCAN_DISC_NODES = 1 + 3 * SCAN_RADIUS * (SCAN_RADIUS + 1);
 export class ClearanceField {
   private readonly classes: Uint8Array;
   private readonly distance: Int16Array;
+  /** The breadth-first queue, its first {@link queued} slots live. Never emptied by length, which would
+   *  free its backing store for the next recompute to grow again. */
   private readonly queue: NodeId[] = [];
-  /** The last local recompute's scan disc: its nodes, each stamped with the generation and its map-point
-   *  depth from the nearest change, so membership and the rewrite cut are array reads. */
+  private queued = 0;
+  /** The last local recompute's scan disc, its first {@link discSize} slots: its nodes, each stamped with
+   *  the generation and its map-point depth from the nearest change, so membership and the rewrite cut
+   *  are array reads. */
   private readonly disc: NodeId[] = [];
+  private discSize = 0;
   private readonly discStamps: Int32Array;
   private readonly discDepths: Uint8Array;
   private discGeneration = 0;
@@ -84,25 +89,26 @@ export class ClearanceField {
    * rewritten class is inside it; the breadth-first walk stays inside the scan region, which is
    * exact because a shortest walk of length at most the cap from a rewritten node never leaves it.
    */
-  recompute(probe: ClearanceProbe, changed: Iterable<NodeId> | null): void {
+  recompute(probe: ClearanceProbe, changed: ReadonlySet<NodeId> | null): void {
     const { graph } = this;
     const distance = this.distance;
     const queue = this.queue;
     // Past the point where the changes' scan discs outnumber the map, one full pass is the cheaper scan.
-    const centres = changed === null ? null : [...changed];
-    const local = centres !== null && centres.length * SCAN_DISC_NODES < graph.nodeCount;
-    if (local) this.markDisc(centres);
+    const local = changed !== null && changed.size * SCAN_DISC_NODES < graph.nodeCount;
+    if (local) this.markDisc(changed);
     const { disc, discStamps, discDepths } = this;
+    const discSize = this.discSize;
     const scanned = this.discGeneration;
 
-    queue.length = 0;
+    this.queued = 0;
     if (local) {
-      for (const node of disc) this.seed(node, probe);
+      for (let i = 0; i < discSize; i++) this.seed(disc[i] as NodeId, probe);
     } else {
       for (let node = 0 as NodeId; node < graph.nodeCount; node++) this.seed(node, probe);
     }
-    // The array iterator re-reads `length`, so `queue` is a live breadth-first queue.
-    for (const current of queue) {
+    // Seeds and discoveries append behind the cursor, so the walk is breadth-first.
+    for (let at = 0; at < this.queued; at++) {
+      const current = queue[at] as NodeId;
       const next = (distance[current] ?? 0) + 1;
       if (next > MAX_CLEARANCE_CLASS) continue;
       const x = graph.xOf(current);
@@ -116,23 +122,24 @@ export class ClearanceField {
         if ((local && discStamps[neighbour] !== scanned) || distance[neighbour] !== UNREACHED) continue;
         if (!probe(neighbour) || graph.componentOf(neighbour) !== component) continue;
         distance[neighbour] = next;
-        queue.push(neighbour);
+        queue[this.queued++] = neighbour;
       }
     }
     if (local) {
-      for (const node of disc)
+      for (let i = 0; i < discSize; i++) {
+        const node = disc[i] as NodeId;
         if ((discDepths[node] ?? SCAN_RADIUS) <= REWRITE_RADIUS) this.write(node, probe);
+      }
     } else {
       for (let node = 0 as NodeId; node < graph.nodeCount; node++) this.write(node, probe);
     }
-    queue.length = 0;
   }
 
   /** Start `node`'s breadth-first distance: 0 and queued for an open node a hemming point touches. */
   private seed(node: NodeId, probe: ClearanceProbe): void {
     const hemmed = probe(node) && this.hemmed(node, probe);
     this.distance[node] = hemmed ? 0 : UNREACHED;
-    if (hemmed) this.queue.push(node);
+    if (hemmed) this.queue[this.queued++] = node;
   }
 
   /** Store `node`'s settled class, counting the water class crossings it makes. */
@@ -171,7 +178,7 @@ export class ClearanceField {
    * node's least distance to a centre, so the nodes within any radius are the union of the per-centre
    * discs of that radius.
    */
-  private markDisc(centres: readonly NodeId[]): void {
+  private markDisc(centres: Iterable<NodeId>): void {
     const { graph, disc, discStamps, discDepths } = this;
     if (this.discGeneration >= MAX_DISC_GENERATION) {
       discStamps.fill(0);
@@ -179,15 +186,16 @@ export class ClearanceField {
     }
     this.discGeneration += 1;
     const generation = this.discGeneration;
-    disc.length = 0;
+    let size = 0;
     for (const centre of centres) {
       if (discStamps[centre] === generation) continue;
       discStamps[centre] = generation;
       discDepths[centre] = 0;
-      disc.push(centre);
+      disc[size++] = centre;
     }
-    // The array iterator re-reads `length`, so `disc` is its own breadth-first queue.
-    for (const current of disc) {
+    // Discoveries append behind the cursor, so `disc` is its own breadth-first queue.
+    for (let at = 0; at < size; at++) {
+      const current = disc[at] as NodeId;
       const d = discDepths[current] ?? SCAN_RADIUS;
       if (d >= SCAN_RADIUS) continue;
       const x = graph.xOf(current);
@@ -200,8 +208,9 @@ export class ClearanceField {
         if (discStamps[neighbour] === generation) continue;
         discStamps[neighbour] = generation;
         discDepths[neighbour] = d + 1;
-        disc.push(neighbour);
+        disc[size++] = neighbour;
       }
     }
+    this.discSize = size;
   }
 }

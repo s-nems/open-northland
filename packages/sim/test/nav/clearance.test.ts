@@ -84,7 +84,7 @@ describe('ClearanceField', () => {
       probes++;
       return open(n);
     };
-    field.recompute(counted, [first]);
+    field.recompute(counted, new Set([first]));
     expectMatchesDefinition(graph, field, open);
     // Local: the scan reaches 2 * (cap + 1) rings around the change, a few hundred nodes of a 1600-node
     // map, and each is probed a bounded number of times.
@@ -94,10 +94,10 @@ describe('ClearanceField', () => {
     expect(scanNodes).toBeLessThan(graph.nodeCount);
 
     wall.add(second);
-    field.recompute(open, [second]);
+    field.recompute(open, new Set([second]));
     expectMatchesDefinition(graph, field, open);
     wall.delete(first);
-    field.recompute(open, [first]);
+    field.recompute(open, new Set([first]));
     expectMatchesDefinition(graph, field, open);
     expect(field.classOf(first)).toBe(3); // four steps from the remaining post: a disc of radius 3
   });
@@ -109,12 +109,12 @@ describe('ClearanceField', () => {
     const field = new ClearanceField(graph, open);
     const posts = [graph.nodeAt(1, 2), graph.nodeAt(40, 40), graph.nodeAt(44, 41), graph.nodeAt(50, 37)];
     for (const post of posts) wall.add(post);
-    field.recompute(open, posts);
+    field.recompute(open, new Set(posts));
     expectMatchesDefinition(graph, field, open);
     const [, middle] = posts;
     if (middle === undefined) throw new Error('fixture lost its posts');
     wall.delete(middle);
-    field.recompute(open, [middle, graph.nodeAt(1, 2)]);
+    field.recompute(open, new Set([middle, graph.nodeAt(1, 2)]));
     expectMatchesDefinition(graph, field, open);
   });
 
@@ -131,13 +131,13 @@ describe('ClearanceField', () => {
 
     const land = graph.nodeAt(8, 20); // a post on the shore, beside the water
     blocked.add(land);
-    field.recompute(open, [land]);
+    field.recompute(open, new Set([land]));
     expect(field.classOf(land)).toBe(0);
     expect(revisions()).toEqual(built);
 
     const water = graph.nodeAt(30, 20);
     blocked.add(water);
-    field.recompute(open, [water]);
+    field.recompute(open, new Set([water]));
     expect(field.classOf(water)).toBe(0);
     // Open sea all round: the blocked node and its rings fall through every class.
     const after = revisions();
