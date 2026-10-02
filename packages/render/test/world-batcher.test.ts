@@ -199,6 +199,42 @@ describe('world batcher palette LUT', () => {
     expect(flagsOf(1)).toBe(body);
     batcher.destroy();
   });
+
+  it('lets a texture from a new page join its batch while a page slot is free', () => {
+    const WorldBatcher = installWorldBatcher();
+    // Two page slots plus the LUT's.
+    const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT + 1 });
+    const page = () => new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    const [first, second, third] = [page(), page(), page()];
+    const element = quad(first);
+    batcher.begin();
+    batcher.add(element);
+    batcher.break(new InstructionSet());
+    const textures = batcher.batches[0]?.textures;
+
+    expect(batcher.checkAndUpdateTexture(element, second)).toBe(true);
+    expect([textures?.count, element._textureId, textures?.textures[1]]).toEqual([2, 1, second.source]);
+    // Both page slots are taken: a third page needs the rebuild.
+    expect(batcher.checkAndUpdateTexture(element, third)).toBe(false);
+    expect(element.texture).toBe(second);
+    batcher.destroy();
+  });
+
+  it('keeps a paletted texture out of a batch that lacks its LUT', () => {
+    const WorldBatcher = installWorldBatcher();
+    const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT + 1 });
+    const plain = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    const walker = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    markPalettedTexture(walker, new TextureSource({ width: 256, height: 4 }));
+    const element = quad(plain);
+    batcher.begin();
+    batcher.add(element);
+    batcher.break(new InstructionSet());
+
+    expect(batcher.checkAndUpdateTexture(element, walker)).toBe(false);
+    expect(batcher.batches[0]?.textures.count).toBe(1);
+    batcher.destroy();
+  });
 });
 
 describe('world batcher shader selection', () => {

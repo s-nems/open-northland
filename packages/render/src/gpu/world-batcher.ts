@@ -508,6 +508,25 @@ ${PIXEL_ART_MAGNIFY_GLSL}
       return palettedFlags(element, lutSlotIn(element._batch, lut) ?? 0);
     }
 
+    /** A texture whose page its batch lacks joins that batch while a slot is free, so a walker stepping
+     *  onto another atlas page re-packs one element instead of rebuilding its render group's
+     *  instructions. WebGL binds a batch's texture list afresh on every draw, as {@link slotLut} relies on. */
+    override checkAndUpdateTexture(element: BatchableElement, texture: Texture): boolean {
+      if (super.checkAndUpdateTexture(element, texture)) return true;
+      const batch = element._batch;
+      const textures = batch.textures;
+      // Below the page budget, the reserved LUT slot stays free whether or not the batch holds a LUT.
+      if (textures.count >= this.maxTextures) return false;
+      const lut = palettedLutOf(texture);
+      if (lut !== undefined && lutSlotIn(batch, lut) === null) return false;
+      const slot = textures.count++;
+      textures.ids[texture.source.uid] = slot;
+      textures.textures[slot] = texture.source;
+      element._textureId = slot;
+      element.texture = texture;
+      return true;
+    }
+
     override break(instructionSet: InstructionSet): void {
       this.breaking = true;
       try {
