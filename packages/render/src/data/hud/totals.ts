@@ -283,10 +283,13 @@ function countReach(state: HudReach, entity: EntitySnapshot, sign: Sign): void {
   else removeHeap(state, entity.id);
 }
 
-/** Every player's anchors and the ground heaps their reach covers. */
+/** Every player's anchors and the ground heaps their reach covers. Neither moves while it holds the role,
+ *  so a `Position` write is read only as one gained or lost: a building and a stockpile never move (a moved
+ *  pile is a new entity), and a relocated signpost re-adds its `Signpost`, whose write places it again.
+ *  A walker's step costs the index nothing. */
 const HUD_REACH: SnapshotIndexSpec<HudReach> = {
   name: 'HUD reach',
-  reads: { values: ['Owner', 'Position', 'Stockpile'], presence: ['Signpost', 'Building'] },
+  reads: { values: ['Owner', 'Stockpile', 'Signpost'], presence: ['Building', 'Position'] },
   empty: () => ({ players: new Map(), heaps: new Map() }),
   add: (state, entity) => countReach(state, entity, ADD),
   remove: (state, entity) => countReach(state, entity, SUBTRACT),

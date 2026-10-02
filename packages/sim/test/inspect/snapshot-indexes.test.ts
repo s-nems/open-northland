@@ -226,6 +226,7 @@ describe('snapshot indexes over a mirror', () => {
       expectIndexesMatchWalk(snapshot);
       expectGroupsMatchWalk(indexesOf(snapshot).get(byMark), snapshot, markOf);
       expectGroupsMatchWalk(indexesOf(snapshot).get(byMarkRead), snapshot, markOf);
+      expect(mirror.verifyIndexes()).toEqual([]);
     };
 
     mirror.apply(
@@ -252,6 +253,9 @@ describe('snapshot indexes over a mirror', () => {
         entry(5, { Mark: { kind: MARK_B } }),
       ]),
     );
+    check();
+    // A move inside its bucket, and a held entity gaining a position.
+    mirror.apply(next([entry(4, { Position: at(3, 1) }), entry(5, { Position: at(6, 0) })]));
     check();
     // A write that leaves the position object alone swaps the bucketed entity in place.
     mirror.apply(next([entry(1, { Mark: { kind: MARK_B } }), entry(5, {}, ['Mark'])]));

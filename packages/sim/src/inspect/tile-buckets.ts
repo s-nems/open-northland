@@ -53,17 +53,14 @@ export class TileBuckets<T> {
       this.insert(record, key);
       return;
     }
-    held.item = item;
-    if (held.key !== key) {
-      this.removeFromBucket(held);
-      this.insert(held, key);
-    }
+    this.rekey(held, item, key);
   }
 
-  /** Swap the item held under `id` in place, keeping its bucket; a no-op for an id not held. */
-  replace(id: number, item: T): void {
+  /** {@link set} for an id already held, a no-op for any other: a caller walking every touched item
+   *  needs no membership test first. */
+  move(id: number, item: T, tileX: number, tileY: number): void {
     const held = this.records.get(id);
-    if (held !== undefined) held.item = item;
+    if (held !== undefined) this.rekey(held, item, bucketKey(tileX, tileY));
   }
 
   delete(id: number): boolean {
@@ -126,6 +123,14 @@ export class TileBuckets<T> {
       }
     }
     return null;
+  }
+
+  private rekey(held: BucketRecord<T>, item: T, key: number): void {
+    held.item = item;
+    if (held.key !== key) {
+      this.removeFromBucket(held);
+      this.insert(held, key);
+    }
   }
 
   private insert(record: BucketRecord<T>, key: number): void {

@@ -234,7 +234,10 @@ describe('TileBuckets.differenceFrom', () => {
     expect(held.differenceFrom(fresh)).toBeNull();
     held.set(2, B, 40, 40);
     expect(held.differenceFrom(fresh)).toBe("id 2's bucket");
-    held.replace(1, B);
+    held.move(1, B, 0, 0);
     expect(held.differenceFrom(fresh)).toBe('id 1');
+    // A move never places an id the buckets do not hold.
+    held.move(3, A, 0, 0);
+    expect(held.has(3)).toBe(false);
   });
 });

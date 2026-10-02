@@ -443,10 +443,12 @@ function positionOf(entity: EntitySnapshot): { readonly x: number; readonly y: n
   return pos as { readonly x: number; readonly y: number };
 }
 
-/** Every positioned entity bucketed by its `Position`, in fractional tile units. */
+/** Every positioned entity bucketed by its `Position`, in fractional tile units. Only gaining or losing
+ *  the component replaces an entry: a step lands in `swapAll`, which meets every touched entity and
+ *  re-buckets a held one with its new object, so a move costs one lookup instead of a replace and a swap. */
 const BY_POSITION: SnapshotIndexSpec<TileBuckets<EntitySnapshot>> = {
   name: 'position buckets',
-  reads: { values: ['Position'] },
+  reads: { presence: ['Position'] },
   empty: () => new TileBuckets(),
   differs: (held, fresh) => held.differenceFrom(fresh),
   add: (buckets, entity) => {
@@ -462,7 +464,10 @@ const BY_POSITION: SnapshotIndexSpec<TileBuckets<EntitySnapshot>> = {
     else buckets.set(next.id, next, pos.x / ONE, pos.y / ONE);
   },
   swapAll: (buckets, nexts) => {
-    for (const next of nexts) buckets.replace(next.id, next);
+    for (const next of nexts) {
+      const pos = positionOf(next);
+      if (pos !== null) buckets.move(next.id, next, pos.x / ONE, pos.y / ONE);
+    }
   },
 };
 

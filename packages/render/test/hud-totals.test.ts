@@ -118,6 +118,8 @@ const NEAR_HEAP_ID = 4;
 const FAR_HEAP_ID = 5;
 const RIVAL_SETTLER_ID = 6;
 const LATE_BUILDING_ID = 7;
+const MOVED_HEAP_ID = 9;
+const RETURNED_HEAP_ID = 10;
 
 /** Inside the fifty-node walk range of the signpost at (10, 10); the far spot is beyond it. */
 const NEAR = { x: 12, y: 11 } as const;
@@ -175,9 +177,21 @@ const STEPS: readonly { readonly touched?: readonly EntityDelta[]; readonly remo
   [
     // A component the HUD never reads: every part short-circuits on identity.
     { touched: [touch(SETTLER_ID, { Health: { hp: 1 } })] },
-    // The near heap walks out of reach, then back in.
-    { touched: [touch(NEAR_HEAP_ID, { Position: at(FAR.x + 1, FAR.y) })] },
-    { touched: [touch(NEAR_HEAP_ID, { Position: at(NEAR.x, NEAR.y) })] },
+    // A settler's step, which the reach never reads.
+    { touched: [touch(SETTLER_ID, { Position: at(NEAR.x, NEAR.y) })] },
+    // A pile never moves: the near heap is re-created out of reach, then back in, as new entities.
+    {
+      touched: [
+        touch(MOVED_HEAP_ID, { Stockpile: { amounts: [[WOOD, 4]] }, Position: at(FAR.x + 1, FAR.y) }),
+      ],
+      removed: [NEAR_HEAP_ID],
+    },
+    {
+      touched: [
+        touch(RETURNED_HEAP_ID, { Stockpile: { amounts: [[WOOD, 4]] }, Position: at(NEAR.x, NEAR.y) }),
+      ],
+      removed: [MOVED_HEAP_ID],
+    },
     // A building placed later opens the far heap.
     {
       touched: [
@@ -230,12 +244,12 @@ const STEPS: readonly { readonly touched?: readonly EntityDelta[]; readonly remo
     },
     { touched: [touch(STORE_ID, { Stockpile: { amounts: [[WOOD, 12]] } }, ['Upgrading'])] },
     // A seat claims a heap, and the store changes hands.
-    { touched: [touch(NEAR_HEAP_ID, { Owner: { player: PLAYER } })] },
+    { touched: [touch(RETURNED_HEAP_ID, { Owner: { player: PLAYER } })] },
     { touched: [touch(STORE_ID, { Owner: { player: RIVAL } })] },
     // The late building is torn down and the settler dies: the far heaps drop out of reach again.
     { removed: [SETTLER_ID, LATE_BUILDING_ID] },
-    // The signpost moves, then goes.
-    { touched: [touch(SIGNPOST_ID, { Position: at(FAR.x, FAR.y + 2) })] },
+    // The signpost is relocated, which re-adds its component, then goes.
+    { touched: [touch(SIGNPOST_ID, { Position: at(FAR.x, FAR.y + 2), Signpost: { links: [] } })] },
     { removed: [SIGNPOST_ID] },
   ];
 
@@ -275,6 +289,7 @@ describe('buildHud over a mirror', () => {
     /** The opening store's upgrade stash. */
     const STASHED_STONE = 3;
     const NEW_HEAP_ID = LATE_BUILDING_ID + 2;
+    const MOVED_FAR_HEAP_ID = LATE_BUILDING_ID + 3;
     const mirror = new SnapshotMirror();
     const opening = OPENING.map((entity) => touch(entity.id, entity.components));
     mirror.apply(
@@ -301,9 +316,18 @@ describe('buildHud over a mirror', () => {
       },
       { touched: [touch(FAR_HEAP_ID, { Stockpile: { amounts: [[STONE, FAR_STONE]] } })] },
       { removed: [NEAR_HEAP_ID] },
-      // A second anchor while still stale, then a heap walks and a new one's amounts change.
+      // A second anchor while still stale, then the far heap is re-created beside it and a new one's
+      // amounts change.
       { touched: [touch(SECOND_BUILDING_ID, building(SECOND_SITE))] },
-      { touched: [touch(FAR_HEAP_ID, { Position: at(SECOND_SITE.x, SECOND_SITE.y + 1) })] },
+      {
+        touched: [
+          touch(MOVED_FAR_HEAP_ID, {
+            Stockpile: { amounts: [[STONE, FAR_STONE]] },
+            Position: at(SECOND_SITE.x, SECOND_SITE.y + 1),
+          }),
+        ],
+        removed: [FAR_HEAP_ID],
+      },
       { touched: [touch(NEW_HEAP_ID, { Stockpile: { amounts: [[WOOD, 7]] } })] },
     ];
     for (const [i, step] of steps.entries()) {
