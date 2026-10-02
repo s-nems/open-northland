@@ -13,7 +13,7 @@ import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { type NodeMoveFeed, watchNodeMoves } from '../../spatial/node-moves.js';
-import { calmZonesByPlayer, isStanding } from './bodies.js';
+import { type CalmZones, calmZonesByPlayer, isStanding } from './bodies.js';
 import { hasBodyCollision, ownedFighters } from './owned-fighters.js';
 
 /**
@@ -64,8 +64,10 @@ interface PostIndex extends UnitWalkBlocks, StandingPostGrid {
   readonly terrain: TerrainGraph;
   readonly feed: ChangeFeed;
   readonly moves: NodeMoveFeed;
-  /** The calm zones the town tally follows, refreshed by walk-block reads only. */
-  zones: ReadonlyMap<number, ReadonlySet<NodeId>>;
+  /** The calm zones the town tally follows, recounted by walk-block reads only. */
+  zones: CalmZones;
+  /** The {@link zones} revision the tally was last recounted at. */
+  zonesRevision: number;
   readonly byEntity: Map<Entity, Post>;
   /** 1 at each id in {@link byEntity}: the per-entry test for the far more common node changes. */
   standingIds: Uint8Array;
@@ -84,7 +86,7 @@ const indexes = new WeakMap<World, PostIndex>();
 const postId = (post: Post): number => post.entity;
 
 /** The zones a fresh index sorts by until a walk-block read hands it the real ones. */
-const NO_ZONES: ReadonlyMap<number, ReadonlySet<NodeId>> = new Map();
+const NO_ZONES: CalmZones = { revision: -1, has: () => false };
 
 /** The node, player and post count of every standing collider, brought up to date. */
 function postIndex(world: World, content: ContentSet, terrain: TerrainGraph): PostIndex {
@@ -127,6 +129,7 @@ function rebuild(world: World, content: ContentSet, terrain: TerrainGraph): Post
     feed,
     moves,
     zones: held?.zones ?? NO_ZONES,
+    zonesRevision: held?.zonesRevision ?? NO_ZONES.revision,
     posts,
     postTotal: 0,
     byEntity: new Map(),
@@ -200,7 +203,7 @@ function link(index: PostIndex, post: Post): void {
     at.next = post;
   }
   settleNodePlayer(index, node);
-  post.inTown = index.zones.get(post.player)?.has(node) ?? false;
+  post.inTown = index.zones.has(post.player, node);
   if (post.inTown) addTown(index, post.player, node, 1);
 }
 
@@ -273,12 +276,13 @@ function addTown(index: PostIndex, player: number, node: NodeId, delta: number):
 }
 
 /** Re-sort every post into field or town under new calm zones. */
-function recountTown(index: PostIndex, zones: ReadonlyMap<number, ReadonlySet<NodeId>>): void {
+function recountTown(index: PostIndex, zones: CalmZones): void {
   index.zones = zones;
+  index.zonesRevision = zones.revision;
   index.townByPlayer.clear();
   index.townTotalByPlayer.clear();
   for (const post of index.byEntity.values()) {
-    post.inTown = post.node !== undefined && (zones.get(post.player)?.has(post.node) ?? false);
+    post.inTown = post.node !== undefined && zones.has(post.player, post.node);
     if (post.inTown && post.node !== undefined) addTown(index, post.player, post.node, 1);
   }
 }
@@ -305,17 +309,12 @@ export function standingPostGrid(world: World, content: ContentSet, terrain: Ter
 export function unitWalkBlocks(world: World, content: ContentSet, terrain: TerrainGraph): UnitWalkBlocks {
   const index = postIndex(world, content, terrain);
   const zones = calmZonesByPlayer(world, terrain);
-  if (zones !== index.zones) recountTown(index, zones);
+  if (zones !== index.zones || zones.revision !== index.zonesRevision) recountTown(index, zones);
   return index;
 }
 
 /** A fresh scan of every standing collider in ascending id, the index's verifier's reference. */
-function derivePosts(
-  world: World,
-  content: ContentSet,
-  terrain: TerrainGraph,
-  zones: ReadonlyMap<number, ReadonlySet<NodeId>>,
-): FreshPosts {
+function derivePosts(world: World, content: ContentSet, terrain: TerrainGraph, zones: CalmZones): FreshPosts {
   const counts = new Map<NodeId, number>();
   const playerAt = new Map<NodeId, number>();
   const town = new Map<number, Map<NodeId, number>>();
@@ -334,7 +333,7 @@ function derivePosts(
     const player = world.get(e, Owner).player;
     counts.set(node, (counts.get(node) ?? 0) + 1);
     playerAt.set(node, player);
-    if (!zones.get(player)?.has(node)) continue;
+    if (!zones.has(player, node)) continue;
     let own = town.get(player);
     if (own === undefined) {
       own = new Map();
@@ -380,6 +379,8 @@ function verifyIndex(world: World): string[] {
   const held = indexes.get(world);
   if (held === undefined) return [];
   const index = postIndex(world, held.content, held.terrain);
+  // Zones caught up since the last walk-block read: that read would recount before using the tally.
+  if (index.zones.revision !== index.zonesRevision) recountTown(index, index.zones);
   const fresh = derivePosts(world, index.content, index.terrain, index.zones);
   const problems: string[] = [];
   let freshTotal = 0;

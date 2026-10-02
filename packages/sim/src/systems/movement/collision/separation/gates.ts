@@ -3,16 +3,16 @@ import type { Fixed } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { BlockOverlay } from '../../../../nav/block-overlay.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { dynamicBlockOverlay } from '../../../footprint/index.js';
-import { calmZonesByPlayer } from '../bodies.js';
+import { type CalmZones, calmZonesByPlayer } from '../bodies.js';
 
 /** The tick's two terrain-derived gates, built on first ask so a tick where no pair interacts builds
  *  neither. Construct one per tick: both caches are snapshots, so a pooled instance would keep approving
  *  displacements onto ground blocked since, and keep answering the old calm zones. */
 export class SeparationGates {
-  private zones: Map<number, Set<NodeId>> | undefined;
+  private zones: CalmZones | undefined;
   private blocked: BlockOverlay | undefined;
 
   constructor(
@@ -29,7 +29,7 @@ export class SeparationGates {
     const hy = nodeHyOfPosition(p.y);
     return (
       this.terrain.inBounds(hx, hy) &&
-      (this.zones.get(this.world.get(e, Owner).player)?.has(this.terrain.nodeAt(hx, hy)) ?? false)
+      this.zones.has(this.world.get(e, Owner).player, this.terrain.nodeAt(hx, hy))
     );
   }
 
