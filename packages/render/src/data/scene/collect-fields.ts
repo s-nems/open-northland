@@ -3,7 +3,7 @@ import type { FogGhost, GhostSource } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import { spriteDepth } from './depth.js';
-import type { MutableDrawItem, MutableSpriteDrawItem } from './draw-item.js';
+import { type MutableDrawItem, type MutableSpriteDrawItem, newDrawItem } from './draw-item.js';
 import type { DrawList } from './draw-list.js';
 import { anchorTileBox } from './entity-source.js';
 import type { InHouseOverlay } from './in-house.js';
@@ -141,15 +141,15 @@ export function pushSignpostItems(
   for (const bucket of signpostBoards(snapshot, components)) {
     const boardRef = extraItemRef(item.ref, bucket);
     liveRefs.add(boardRef);
-    const board: MutableSpriteDrawItem = {
-      kind: 'signpost',
-      ref: boardRef,
-      x: item.x,
-      y: item.y,
-      depth: spriteDepth(tileX, tileY, 'signpost', true),
-      state: 'idle',
-      boardIndex: bucket,
-    };
+    const board = newDrawItem(
+      'signpost',
+      boardRef,
+      item.x,
+      item.y,
+      spriteDepth(tileX, tileY, 'signpost', true),
+      'idle',
+    );
+    board.boardIndex = bucket;
     if (postPlayer !== undefined) {
       board.player = playerColourOf === undefined ? postPlayer : playerColourOf(postPlayer);
     }
@@ -178,15 +178,15 @@ export function pushEffectItems(
     if (overlay === undefined) continue;
     const ref = extraItemRef(owner.ref, slot);
     liveRefs.add(ref);
-    const fx: MutableSpriteDrawItem = {
-      kind: 'craftfx',
+    const fx = newDrawItem(
+      'craftfx',
       ref,
-      x: anchor.x + overlay.dx,
-      y: anchor.y + overlay.dy,
-      depth: spriteDepth(tileX, tileY, 'craftfx'),
-      state: 'idle',
-      fxName: overlay.name,
-    };
+      anchor.x + overlay.dx,
+      anchor.y + overlay.dy,
+      spriteDepth(tileX, tileY, 'craftfx'),
+      'idle',
+    );
+    fx.fxName = overlay.name;
     if (owner.lift !== undefined) fx.lift = owner.lift;
     list.push(fx);
   }
@@ -243,15 +243,9 @@ export function pushGhostItems(
     const screen = tileToScreen(g.tileX, g.tileY);
     if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
     const lift = terrainLiftAt(elevation, g.tileX, g.tileY);
-    const item: MutableSpriteDrawItem = {
-      kind: g.kind,
-      ref: g.ref,
-      x: screen.x + (g.shiftX ?? 0),
-      y: screen.y,
-      depth: spriteDepth(g.tileX, g.tileY, g.kind),
-      state: 'idle',
-      ghost: true,
-    };
+    const depth = spriteDepth(g.tileX, g.tileY, g.kind);
+    const item = newDrawItem(g.kind, g.ref, screen.x + (g.shiftX ?? 0), screen.y, depth, 'idle');
+    item.ghost = true;
     copyStaticFields(item, g);
     if (playerColourOf !== undefined && item.player !== undefined) item.player = playerColourOf(item.player);
     if (lift !== 0) item.lift = lift;

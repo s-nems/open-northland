@@ -5,7 +5,7 @@ import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index
 import type { ElevationField } from '../terrain/index.js';
 import { pushEffectItems, pushGhostItems } from './collect-fields.js';
 import type { SpriteDepthOrder } from './depth-order.js';
-import type { MutableSpriteDrawItem, SpriteDrawItem } from './draw-item.js';
+import { type MutableSpriteDrawItem, type SpriteDrawItem, unsetDrawField } from './draw-item.js';
 import { DrawList } from './draw-list.js';
 import { emitEntities } from './entity-source.js';
 import { type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
@@ -268,7 +268,7 @@ function applyInHousePose(item: MutableSpriteDrawItem, pose: InHousePose): void 
   item.y += pose.dy;
   item.carrying = pose.goodType !== UNLOADED_GOOD_TYPE;
   if (pose.goodType !== UNLOADED_GOOD_TYPE) item.carryGood = pose.goodType;
-  else delete item.carryGood;
+  else unsetDrawField(item, 'carryGood');
   if (pose.clip !== undefined) item.craftClip = pose.clip;
 }
 

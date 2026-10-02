@@ -237,3 +237,81 @@ export interface SpriteDrawItem extends DrawItem {
 }
 
 export type MutableSpriteDrawItem = { -readonly [K in keyof SpriteDrawItem]: SpriteDrawItem[K] };
+
+/** Every {@link SpriteDrawItem} field, each one present. */
+type DrawItemLayout = { -readonly [K in keyof SpriteDrawItem]-?: SpriteDrawItem[K] | undefined };
+
+/**
+ * A fresh item with every draw item field present in one fixed order, the unset ones `undefined`. Every
+ * scene item then shares one hidden class, so the per-frame readers load its fields monomorphically
+ * rather than through megamorphic loads, which box each numeric field read.
+ */
+export function newDrawItem(
+  kind: SpriteKind,
+  ref: number,
+  x: number,
+  y: number,
+  depth: number,
+  state: SpriteState | undefined,
+): MutableSpriteDrawItem {
+  const item: DrawItemLayout = {
+    kind,
+    ref,
+    x,
+    y,
+    depth,
+    state,
+    lift: undefined,
+    typeId: undefined,
+    builtPct: undefined,
+    goodType: undefined,
+    fill: undefined,
+    level: undefined,
+    levels: undefined,
+    gfxIndex: undefined,
+    tribe: undefined,
+    palisadePosts: undefined,
+    palisadeSite: undefined,
+    roadSite: undefined,
+    facing: undefined,
+    player: undefined,
+    swarmCount: undefined,
+    isFlag: undefined,
+    boardIndex: undefined,
+    atomicId: undefined,
+    elapsed: undefined,
+    atomicDuration: undefined,
+    carrying: undefined,
+    carryGood: undefined,
+    driver: undefined,
+    task: undefined,
+    moored: undefined,
+    attackClipStart: undefined,
+    engaged: undefined,
+    running: undefined,
+    jobType: undefined,
+    weaponGood: undefined,
+    armorGood: undefined,
+    young: undefined,
+    glow: undefined,
+    female: undefined,
+    upgradePct: undefined,
+    working: undefined,
+    hpFrac: undefined,
+    rotation: undefined,
+    munition: undefined,
+    siege: undefined,
+    ghost: undefined,
+    portraitOnly: undefined,
+    frozen: undefined,
+    inHouse: undefined,
+    craftClip: undefined,
+    fxName: undefined,
+  };
+  return item as MutableSpriteDrawItem;
+}
+
+/** Unset `key` on a {@link newDrawItem} item; deleting it would give the item a hidden class of its own. */
+export function unsetDrawField(item: MutableSpriteDrawItem, key: keyof SpriteDrawItem): void {
+  (item as DrawItemLayout)[key] = undefined;
+}

@@ -9,7 +9,7 @@ import {
   pushSignpostItems,
 } from './collect-fields.js';
 import { spriteDepth } from './depth.js';
-import type { EntityKind, MutableSpriteDrawItem } from './draw-item.js';
+import { type EntityKind, type MutableSpriteDrawItem, newDrawItem } from './draw-item.js';
 import type { DrawList } from './draw-list.js';
 import { assignPalisadeFields, type PalisadeLayout } from './palisade-connections.js';
 import type { SettlerPose } from './settler-pose.js';
@@ -46,14 +46,8 @@ export function assembleItem(
   // A projectile's ballistic height rides the same lift channel as terrain lift: a draw offset the
   // depth key never sees, so neither can reshuffle occlusion.
   let arcLift = 0;
-  const item: MutableSpriteDrawItem = {
-    kind,
-    ref: entity.id,
-    x: screen.x,
-    y: screen.y,
-    depth: spriteDepth(tileX, tileY, kind, isFlag),
-    state: pose.state,
-  };
+  const depth = spriteDepth(tileX, tileY, kind, isFlag);
+  const item = newDrawItem(kind, entity.id, screen.x, screen.y, depth, pose.state);
   switch (kind) {
     case 'settler':
       assignSettlerFields(item, components, pose.actingAtomic, pose.targetFacing, build.snapshot.tick);

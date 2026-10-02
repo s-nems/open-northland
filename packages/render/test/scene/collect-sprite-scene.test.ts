@@ -305,4 +305,20 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
       [...second].sort((a, b) => a.depth - b.depth || a.ref - b.ref).map((d) => d.ref),
     );
   });
+
+  it('builds every kind of item with one field layout', () => {
+    const scene = collectSpriteScene(
+      snapshotOf([
+        entity(1, 1, 1, { Settler: { tribe: 0 }, Carrying: { goodType: 2 } }),
+        entity(2, 2, 1, { Resource: { goodType: 1 } }),
+        entity(3, 1, 1, { DeliveryFlag: {} }),
+        entity(4, 3, 2, { RoadSite: {} }),
+        entity(5, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
+        entity(6, 4, 4, { Stockpile: { amounts: [[1, 2]] } }),
+      ]),
+      { ghosts: ghostSourceOf([{ ref: 90, kind: 'building', tileX: 5, tileY: 4, typeId: 7 }]) },
+    );
+    expect(scene.items).toHaveLength(7);
+    expect(new Set(scene.items.map((item) => Object.keys(item).join())).size).toBe(1);
+  });
 });
