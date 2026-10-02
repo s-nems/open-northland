@@ -13,6 +13,7 @@ import {
   GlProgram,
   getBatchSamplersUniformGroup,
   type InstructionSet,
+  type Renderer,
   Shader,
   type Texture,
   type TextureSource,
@@ -32,37 +33,33 @@ import { WorldAttributeBuffer } from './world-attribute-buffer.js';
 /** Pixi hard-codes its default batcher per instruction set; a world sprite opts into this one by name. */
 const WORLD_BATCHER = 'world';
 
-/** Renames each batchable record Pixi stores on a world sprite; shared by every wrapped sprite. */
-const renameBatcher: ProxyHandler<object> = {
-  set(target, key, value: unknown) {
-    if (typeof value === 'object' && value !== null && 'batcherName' in value) {
-      (value as { batcherName: string }).batcherName = WORLD_BATCHER;
-    }
-    return Reflect.set(target, key, value);
-  },
-};
+/** Sprites drawn through the world batcher. */
+const worldSprites = new WeakSet<object>();
+const routedPipes = new WeakSet<object>();
 
-function renamed<D extends object>(data: D): D {
-  return new Proxy(data, renameBatcher as ProxyHandler<D>);
+/** Route a sprite's batches through the world batcher, on every renderer {@link routeWorldBatches} set up. */
+export function worldBatched<T extends ViewContainer>(sprite: T): T {
+  worldSprites.add(sprite);
+  return sprite;
 }
 
 /**
- * Route a sprite's batches through the world batcher. Pixi mints the sprite's batchable record lazily
- * per renderer into `_gpuData`, always named `default`; the proxy renames each record as it lands
- * and is reinstalled when Pixi replaces the whole map on `unload()`.
+ * Pixi mints each sprite's batchable record lazily per renderer, always named `default`, and replaces it
+ * on `unload()`; the renderer's batch pipe renames a world sprite's record when it next batches. Only a
+ * record still named `default` pays the membership lookup. Idempotent per renderer.
  */
-export function worldBatched<T extends ViewContainer>(sprite: T): T {
-  let data = renamed(sprite._gpuData);
-  Object.defineProperty(sprite, '_gpuData', {
-    configurable: true,
-    enumerable: true,
-    get: () => data,
-    set: (next: T['_gpuData'] | null) => {
-      // Pixi only ever assigns a fresh map; a null would be a teardown, left as a no-op.
-      if (next !== null) data = renamed(next);
-    },
-  });
-  return sprite;
+export function routeWorldBatches(renderer: Renderer): void {
+  const pipe = renderer.renderPipes.batch;
+  if (routedPipes.has(pipe)) return;
+  routedPipes.add(pipe);
+  const addToBatch = pipe.addToBatch.bind(pipe);
+  pipe.addToBatch = (element, instructionSet) => {
+    if (element.batcherName !== WORLD_BATCHER) {
+      const renderable = renderableOf(element);
+      if (renderable !== null && worldSprites.has(renderable)) element.batcherName = WORLD_BATCHER;
+    }
+    addToBatch(element, instructionSet);
+  };
 }
 
 /** Vertex layout: Pixi's six (x, y, u, v, colour, textureIdAndRound) + element flags + frame UV box. */

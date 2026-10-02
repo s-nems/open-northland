@@ -36,7 +36,7 @@ function stubApp(): Application {
   return {
     stage: new Container(),
     screen: { width: 800, height: 600 },
-    renderer: { resolution: 1 },
+    renderer: { resolution: 1, renderPipes: { batch: { addToBatch: () => undefined } } },
     render: () => undefined,
   } as unknown as Application;
 }

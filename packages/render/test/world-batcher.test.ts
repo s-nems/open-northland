@@ -3,6 +3,7 @@ import {
   type DefaultBatchableQuadElement,
   InstructionSet,
   Rectangle,
+  type Renderer,
   Sprite,
   Texture,
   TextureSource,
@@ -17,6 +18,7 @@ import {
 import { DEFAULT_SHADOW_STYLE } from '../src/gpu/shadow-style.js';
 import {
   installWorldBatcher,
+  routeWorldBatches,
   WORLD_ATTRIBUTE_OFFSETS,
   WORLD_FLAG_GLOW,
   WORLD_FLAG_PALETTED,
@@ -32,21 +34,28 @@ import { useHeadlessShaderContext } from './support/shader-context.js';
 const PAGES_AND_LUT = 2;
 
 describe('worldBatched', () => {
-  it('renames every batchable record Pixi stores on the sprite, also after the map is replaced', () => {
-    const sprite = worldBatched(new Sprite());
-    const record = { batcherName: 'default', destroy() {} } as unknown as BatchableSprite;
-    sprite._gpuData[1] = record;
-    expect(record.batcherName).toBe('world');
-    // Pixi's unload() swaps in a fresh map; records landing there must still be renamed.
-    sprite._gpuData = Object.create(null);
-    const later = { batcherName: 'default', destroy() {} } as unknown as BatchableSprite;
-    sprite._gpuData[2] = later;
-    expect(later.batcherName).toBe('world');
-    expect(sprite._gpuData[1]).toBeUndefined();
-    // Pixi's GC hash clears a slot with null; the rename must not touch it.
-    sprite._gpuData[2] = null as unknown as BatchableSprite;
-    expect(sprite._gpuData[2]).toBeNull();
-    sprite.destroy();
+  it('renames a world sprite’s batchable record as it batches, every time Pixi mints a fresh one', () => {
+    const batched: string[] = [];
+    const pipe = {
+      addToBatch(element: BatchableSprite, _instructions: InstructionSet): void {
+        batched.push(element.batcherName);
+      },
+    };
+    const renderer = { renderPipes: { batch: pipe } } as unknown as Renderer;
+    routeWorldBatches(renderer);
+    routeWorldBatches(renderer);
+    const world = worldBatched(new Sprite());
+    const hud = new Sprite();
+    const record = (renderable: Sprite): BatchableSprite =>
+      ({ batcherName: 'default', renderable }) as unknown as BatchableSprite;
+    const instructions = new InstructionSet();
+    pipe.addToBatch(record(world), instructions);
+    pipe.addToBatch(record(hud), instructions);
+    // Pixi's unload() mints a fresh record, named `default` again.
+    pipe.addToBatch(record(world), instructions);
+    expect(batched).toEqual(['world', 'default', 'world']);
+    world.destroy();
+    hud.destroy();
   });
 });
 

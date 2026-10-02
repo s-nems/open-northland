@@ -47,7 +47,7 @@ import type { TerrainTextureSet } from '../terrain-textures.js';
 import { TextureCache } from '../texture-cache.js';
 import { WeatherGround } from '../weather/ground-weather.js';
 import { WeatherSky } from '../weather/weather-sky.js';
-import { installWorldBatcher } from '../world-batcher.js';
+import { installWorldBatcher, routeWorldBatches } from '../world-batcher.js';
 import {
   BASELINE_ENHANCEMENTS,
   type BuildingHighlightItem,
@@ -115,6 +115,7 @@ export class WorldRenderer {
 
   constructor(app: Application, opts?: WorldRendererOptions) {
     installWorldBatcher(); // before the sprite layer's render group builds its first batch
+    routeWorldBatches(app.renderer);
     this.app = app;
     const gl = 'gl' in app.renderer ? app.renderer.gl : undefined;
     if (gl !== undefined) opts?.sheet?.palette?.fitTo(gl.getParameter(gl.MAX_TEXTURE_SIZE) as number);
