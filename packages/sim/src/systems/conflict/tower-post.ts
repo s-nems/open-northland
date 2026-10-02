@@ -1,4 +1,3 @@
-import type { WeaponType } from '@open-northland/data';
 import {
   Building,
   Garrison,
@@ -11,6 +10,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isFighterJob, isRangedWeapon } from '../readviews/index.js';
 import { buildingWorkerJobs } from '../stores/index.js';
+import type { WeaponReach } from './weapons.js';
 
 // The tower post: which one a fighter is entitled to man, whether it is manning one right now, and what
 // manning does to its reach.
@@ -72,9 +72,16 @@ export function isManningPost(world: World, ctx: SystemContext, e: Entity): bool
 
 /** A garrison's reach band: a bow's far reach plus {@link TOWER_RANGE_BONUS_NODES}, and no near dead zone
  *  (original behavior - the post shoots at whatever stands under its wall). */
-export function garrisonReach<T extends { minRange: number; maxRange: number; weapon: WeaponType }>(
-  held: T,
-): T {
-  if (!isRangedWeapon(held.weapon)) return { ...held, minRange: 0 };
-  return { ...held, minRange: 0, maxRange: held.maxRange + TOWER_RANGE_BONUS_NODES };
+export function garrisonReach(held: WeaponReach): WeaponReach {
+  let reach = garrisonReaches.get(held);
+  if (reach === undefined) {
+    reach = isRangedWeapon(held.weapon)
+      ? { ...held, minRange: 0, maxRange: held.maxRange + TOWER_RANGE_BONUS_NODES }
+      : { ...held, minRange: 0 };
+    garrisonReaches.set(held, reach);
+  }
+  return reach;
 }
+
+/** Each held reach's garrison band, so a posted fighter's pass allocates none. */
+const garrisonReaches = new WeakMap<WeaponReach, WeaponReach>();

@@ -53,6 +53,7 @@ export const combatSystem: System = (world, ctx) => {
     index: new CombatIndex(world, ctx, terrain),
     slots: new MeleeSlots(world, ctx, terrain),
     front: new BattleFront(world, ctx),
+    stance: { owned: false, ordered: false, mode: null, post: null },
   };
   holdPassIndex(world, pass.index);
   answerQueuedAlarms(world, ctx, terrain, pass.index);

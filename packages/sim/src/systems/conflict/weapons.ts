@@ -39,7 +39,11 @@ import {
 // swing itself.
 
 /** A weapon with its clamped reach band, shared by every attacker holding it. */
-type WeaponReach = { readonly minRange: number; readonly maxRange: number; readonly weapon: WeaponType };
+export type WeaponReach = {
+  readonly minRange: number;
+  readonly maxRange: number;
+  readonly weapon: WeaponType;
+};
 
 /** Content-keyed: each {@link withReach} answer, so the per-attacker lookup allocates nothing. */
 const reaches = new WeakMap<WeaponType, WeaponReach>();

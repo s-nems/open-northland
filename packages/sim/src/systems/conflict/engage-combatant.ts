@@ -112,7 +112,11 @@ export function engageCombatant(
   const owned = world.has(e, Owner);
   const mode = owned ? actingMode(world, ctx, e, attacker.jobType, marching) : null;
   const ordered = liveAttackOrder(world, ctx, e, attacker, mode);
-  const stance: CombatantStance = { owned, ordered, mode, post: manning ? posted : null };
+  const stance = pass.stance;
+  stance.owned = owned;
+  stance.ordered = ordered;
+  stance.mode = mode;
+  stance.post = manning ? posted : null;
   // Only a unit that would pick the fight gets up for it - by its stance, or because the player's attack
   // order names the target. A passive or fleeing sleeper sleeps on until a blow lands, which ends any
   // sleep (`atomics/effects/combat/hit/reaction.ts`). A sleep the player ordered is protected further

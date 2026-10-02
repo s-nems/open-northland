@@ -83,15 +83,41 @@ function readyUnitsOf(world: World, content: ContentSet): ReadyUnits {
  * answered, since an alarm hands its answerers ladder state.
  */
 export function engageCandidates(world: World, ctx: SystemContext, index: CombatIndex): readonly Entity[] {
-  const candidates: Entity[] = [];
-  index.unitsNearStrangers(presenceBound(ctx.content), candidates);
-  for (const e of readyUnitsOf(world, ctx.content).sync(world)) candidates.push(e);
+  const scratch = candidateScratchOf(world);
+  const { candidates } = scratch;
+  let count = index.unitsNearStrangers(presenceBound(ctx.content), candidates, 0);
+  for (const e of readyUnitsOf(world, ctx.content).sync(world)) candidates[count++] = e;
   // A typed array sorts numerically without a comparator call per compare.
-  const sorted = Uint32Array.from(candidates).sort();
+  if (scratch.sorted.length < count)
+    scratch.sorted = new Uint32Array(Math.max(count, 2 * scratch.sorted.length));
+  const sorted = scratch.sorted.subarray(0, count);
+  for (let i = 0; i < count; i++) sorted[i] = candidates[i] as Entity;
+  sorted.sort();
   let kept = 0;
   for (const id of sorted) {
     if (kept === 0 || candidates[kept - 1] !== id) candidates[kept++] = id as Entity;
   }
   candidates.length = kept;
   return candidates;
+}
+
+/** The buffers one pass's candidate list is gathered and sorted in, reused across passes: the returned
+ *  list lives until the next pass asks. */
+interface CandidateScratch {
+  readonly candidates: Entity[];
+  sorted: Uint32Array;
+}
+
+/** Ids the sort buffer holds before its first growth. */
+const INITIAL_SORT_CAPACITY = 256;
+
+const candidateScratches = new WeakMap<World, CandidateScratch>();
+
+function candidateScratchOf(world: World): CandidateScratch {
+  let scratch = candidateScratches.get(world);
+  if (scratch === undefined) {
+    scratch = { candidates: [], sorted: new Uint32Array(INITIAL_SORT_CAPACITY) };
+    candidateScratches.set(world, scratch);
+  }
+  return scratch;
 }

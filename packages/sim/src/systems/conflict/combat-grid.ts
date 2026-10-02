@@ -142,6 +142,10 @@ export interface BandScan {
   seeker: number | null;
   count: number;
   keys: Float64Array;
+  /** {@link metEpoch} on each member the running query over this scan has met, indexed by entity id and
+   *  grown on demand, so a member recurring at a further node is skipped without a per-query set. */
+  met: Uint32Array;
+  metEpoch: number;
 }
 
 /** A building as the layer admitted it, for the staleness checks and the verifier. */
@@ -183,6 +187,7 @@ export function combatGridOf(world: World, ctx: SystemContext, terrain: TerrainG
   );
   grids.set(world, grid);
   for (const store of LAYER_STORES) world.journalMembership(store);
+  world.journalValueWrites(Building);
   world.registerCacheVerifier('combatBuildingLayer', () => grids.get(world)?.verify(world) ?? []);
   world.registerCacheVerifier('combatUnitLayer', () => grids.get(world)?.verifyUnits(world) ?? []);
   return grid;
@@ -324,6 +329,8 @@ export class CombatGrid {
         seeker: null,
         count: 0,
         keys: new Float64Array(BAND_SCAN_INITIAL_KEYS),
+        met: new Uint32Array(0),
+        metEpoch: 0,
       };
       this.bandScans[depth] = scan;
     }
@@ -334,9 +341,19 @@ export class CombatGrid {
    *  touched no building so the next check replays only newer ones. */
   private buildingsCurrent(world: World): boolean {
     if (this.buildingsChanged(world)) return false;
-    this.generations = LAYER_STORES.map((store) => world.componentGeneration(store));
+    this.stampGenerations(world);
     this.buildingValueGeneration = world.componentValueGeneration(Building);
     return true;
+  }
+
+  /** Record the {@link LAYER_STORES} membership generations the layer is now current at. */
+  private stampGenerations(world: World): void {
+    if (this.generations === null) this.generations = [];
+    const generations = this.generations;
+    for (let i = 0; i < LAYER_STORES.length; i++) {
+      const store = LAYER_STORES[i];
+      if (store !== undefined) generations[i] = world.componentGeneration(store);
+    }
   }
 
   /** Whether a building joined, left, changed type or owner, or gained or lost a layer store since the last
@@ -357,8 +374,10 @@ export class CombatGrid {
     if (world.componentValueGeneration(Owner) !== this.ownerValueGeneration) return true;
     // A Building value write is mostly construction progress; only a type swap moves a body.
     if (world.componentValueGeneration(Building) !== this.buildingValueGeneration) {
-      for (const [e, held] of this.buildings) {
-        if (world.tryGet(e, Building)?.buildingType !== held.type) return true;
+      const written = world.valueWritesSince(Building, this.buildingValueGeneration);
+      for (const e of written ?? this.buildings.keys()) {
+        const held = this.buildings.get(e);
+        if (held !== undefined && world.tryGet(e, Building)?.buildingType !== held.type) return true;
       }
     }
     return false;
@@ -405,7 +424,7 @@ export class CombatGrid {
       cell.countedLast = null;
       this.refresh(cell);
     }
-    this.generations = LAYER_STORES.map((store) => world.componentGeneration(store));
+    this.stampGenerations(world);
     this.buildingValueGeneration = world.componentValueGeneration(Building);
     this.ownerValueGeneration = world.componentValueGeneration(Owner);
   }

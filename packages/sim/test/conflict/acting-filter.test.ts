@@ -66,6 +66,7 @@ function skippedLeaveNoTrace(sim: Simulation): number {
     index: new CombatIndex(sim.world, ctx, terrain),
     slots: new MeleeSlots(sim.world, ctx, terrain),
     front: new BattleFront(sim.world, ctx),
+    stance: { owned: false, ordered: false, mode: null, post: null },
   };
   const skipped: Entity[] = combatants.filter((e) => !mayEngage(sim.world, ctx, terrain, pass.index, e));
   const before = sim.hashState();

@@ -136,18 +136,18 @@ export class CombatIndex {
     seeker: number | null,
     metric: SearchMetric = 'manhattan',
   ): { entity: Entity; distance: number } | null {
-    const { keys, count } = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
+    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
+    const { keys, count } = scan;
     // A member admitted at several nodes recurs at a larger distance; a rejection holds for all of them.
-    const rejected = new Set<Entity>();
+    beginMeetings(scan);
     this.depth++;
     try {
       for (let i = 0; i < count; i++) {
         const key = keys[i] ?? 0;
         const distance = Math.floor(key / CANDIDATE_ID_SPAN);
         const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
-        if (rejected.has(entity)) continue;
+        if (!firstMeeting(scan, entity)) continue;
         if (accept(entity)) return { entity, distance };
-        rejected.add(entity);
       }
       return null;
     } finally {
@@ -174,10 +174,11 @@ export class CombatIndex {
     tailRings: number,
     metric: SearchMetric = 'manhattan',
   ): readonly { entity: Entity; distance: number }[] {
-    const { keys, count } = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
+    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
+    const { keys, count } = scan;
     const found: { entity: Entity; distance: number }[] = [];
-    const seen = new Set<Entity>();
     let lastRing = maxDist;
+    beginMeetings(scan);
     this.depth++;
     try {
       for (let i = 0; i < count && found.length < limit; i++) {
@@ -185,8 +186,7 @@ export class CombatIndex {
         const distance = Math.floor(key / CANDIDATE_ID_SPAN);
         if (distance > lastRing) break;
         const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
-        if (seen.has(entity)) continue;
-        seen.add(entity);
+        if (!firstMeeting(scan, entity)) continue;
         if (!accept(entity)) continue;
         found.push({ entity, distance });
         lastRing = Math.min(lastRing, distance + tailRings);
@@ -278,20 +278,23 @@ export class CombatIndex {
   }
 
   /**
-   * Push to `out` every owned unit in a slot whose {@link othersWithin} could be true at up to `radius` map
-   * points from its node: one in a cell whose neighbourhood of that reach holds an undiscounted member or a
-   * player at war with it either way. Every other owned unit proves that test false. Unordered.
+   * Write to `out` from index `at` every owned unit in a slot whose {@link othersWithin} could be true at up
+   * to `radius` map points from its node: one in a cell whose neighbourhood of that reach holds an
+   * undiscounted member or a player at war with it either way. Every other owned unit proves that test
+   * false. Unordered; returns the new count.
    */
-  unitsNearStrangers(radius: number, out: Entity[]): void {
+  unitsNearStrangers(radius: number, out: Entity[], at: number): number {
+    let count = at;
     for (const cell of this.grid.strangerCellsWithin(radius)) {
       const { units, nearMask, nearUndiscounted } = cell;
       for (let i = 0; i < units.count; i++) {
         const unit = units.members[i];
         const bit = units.bit[i] ?? 0;
         if (unit === undefined || bit === 0) continue;
-        if (nearUndiscounted || (nearMask & this.hostileMaskOf(playerOfBit(bit))) !== 0) out.push(unit);
+        if (nearUndiscounted || (nearMask & this.hostileMaskOf(playerOfBit(bit))) !== 0) out[count++] = unit;
       }
     }
+    return count;
   }
 
   /** Every (member, admitted node) pair within the band as sorted candidate keys, in this depth's scan. A
@@ -444,4 +447,28 @@ function boxCellRange(
     cy0: coarseOf(hy - radius),
     cy1: coarseOf(hy + radius),
   };
+}
+
+/** The last epoch before a scan's member marks are cleared and counting restarts. */
+const MAX_MET_EPOCH = 0xffffffff;
+
+/** Start a query's member marks on `scan`. */
+function beginMeetings(scan: BandScan): void {
+  if (scan.metEpoch === MAX_MET_EPOCH) {
+    scan.met.fill(0);
+    scan.metEpoch = 0;
+  }
+  scan.metEpoch++;
+}
+
+/** Whether the running query over `scan` meets `e` for the first time, marking it met. */
+function firstMeeting(scan: BandScan, e: Entity): boolean {
+  if (e >= scan.met.length) {
+    const grown = new Uint32Array(Math.max(e + 1, 2 * scan.met.length));
+    grown.set(scan.met);
+    scan.met = grown;
+  }
+  if (scan.met[e] === scan.metEpoch) return false;
+  scan.met[e] = scan.metEpoch;
+  return true;
 }
