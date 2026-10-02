@@ -24,6 +24,7 @@ import { isTravelling } from '../../movement/nav-state.js';
 import { isFood, jobIgnoresHomeHouse } from '../../readviews/index.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { startDrop } from '../../settlers/atomics/start.js';
+import { isServedAtHome } from '../../settlers/drives/home-errands.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
 import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors.js';
 import { interactionCell } from '../../settlers/targets/index.js';
@@ -140,14 +141,14 @@ export function childOrderBlocker(
 /** Drop an order that can never complete, and let its holder out of the house. */
 function dropOrder(world: World, woman: Entity): void {
   world.remove(woman, ChildOrder);
-  stepOut(world, woman);
+  if (!isServedAtHome(world, woman)) stepOut(world, woman);
 }
 
 /** A precondition failed: the order persists but nobody is driven. Only the couple's own session is
  *  touched, never another resident couple's. */
 function standDown(world: World, woman: Entity, husband: Entity, home: Entity): void {
-  if (isInside(world, woman, home)) stepOut(world, woman);
-  if (isInside(world, husband, home)) stepOut(world, husband);
+  leaveHome(world, woman, home);
+  leaveHome(world, husband, home);
   if (world.tryGet(home, MakingLove)?.wife === woman) world.remove(home, MakingLove);
 }
 
@@ -162,7 +163,7 @@ function haulFood(
   pass: ChildOrderPass,
 ): void {
   claimDuty(world, woman, pass);
-  if (isInside(world, woman, home)) stepOut(world, woman);
+  leaveHome(world, woman, home);
   if (!isDrivable(world, woman)) return;
   const load = world.tryGet(woman, Carrying);
   const womanView = world.get(woman, Settler);
@@ -194,6 +195,12 @@ function haulFood(
   }
   if (missed) world.mut(woman, ChildOrder).foodSearchMissed = undefined;
   fetchFrom(world, ctx, terrain, woman, womanView, source, hereNode);
+}
+
+/** Release `e` from waiting inside `home`, but never mid-sleep, mid-prayer or mid-meal there: this system
+ *  runs before the planner, so popping it out each tick would leave it finishing the errand at the door. */
+function leaveHome(world: World, e: Entity, home: Entity): void {
+  if (isInside(world, e, home) && !isServedAtHome(world, e)) stepOut(world, e);
 }
 
 /** Claim `e` for family duty this tick (idempotent). */

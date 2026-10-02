@@ -6,6 +6,7 @@ import {
   CurrentAtomic,
   MISSION_BEHAVIOUR,
   MoveGoal,
+  Owner,
   Position,
   Residence,
   Resting,
@@ -42,6 +43,11 @@ const EAT_TICKS = 5;
 const MEAL_UNITS = 4000;
 /** A meal at home counts double (`need-events.test.ts`). */
 const HOME_MEAL_UNITS = 2 * MEAL_UNITS;
+/** A strip wide enough for a door past the signpost walk range: 50 hex nodes, 25 tiles east of the
+ *  settler with no signpost to extend it. */
+const CONFINED_MAP_WIDTH = 64;
+const OUT_OF_AREA = 40;
+const PLAYER = 0;
 /** Half a bar spent: under the drive trigger, over the level a served need sits at, so only the at-home
  *  chain answers it. */
 const HALF_SPENT: Fixed = fx.div(ONE, fx.fromInt(2));
@@ -383,6 +389,38 @@ describe('eatAtHome - a hungry settler eats off its own larder first', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(settler, MoveGoal).cell).toBe(nodeAt(sim, 6, 2));
+  });
+
+  it('takes the nearest store when its door lies outside its signpost area', () => {
+    const sim = new Simulation({ seed: 1, content: homeContent(), map: grassMap(CONFINED_MAP_WIDTH, 6) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    const settler = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
+    sim.world.add(settler, Owner, { player: PLAYER });
+    const home = homeAt(sim, OUT_OF_AREA, 2);
+    sim.world.add(settler, Residence, { home });
+    stock(sim, home, 2);
+    storeAt(sim, 6, 2, 2);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(nodeAt(sim, 6, 2));
+  });
+
+  it('takes the nearest store when its routes cannot reach its door', () => {
+    const sim = simWithHomes();
+    const settler = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
+    const home = homeAt(sim, 6, 2);
+    sim.world.add(settler, Residence, { home });
+    stock(sim, home, 2);
+    storeAt(sim, 3, 4, 2);
+    const door = nodeAt(sim, 6, 2);
+    if (door === undefined) throw new Error('setup: the home has no door node');
+    noteUnreachableGoal(sim.world, ctxOf(sim), settler, door);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(nodeAt(sim, 3, 4));
   });
 
   it("takes the nearest store past an empty larder, and never another family's", () => {

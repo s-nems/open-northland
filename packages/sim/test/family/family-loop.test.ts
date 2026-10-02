@@ -160,6 +160,39 @@ function homeOf(sim: Simulation): Entity {
   throw new Error('setup: home missing');
 }
 
+/** Marry and house the pair, issue a child order, leave one food unit short of its cost in the larder
+ *  and none outside, and make the wife hungry. */
+function hungryWifeWithOrder(sim: Simulation, woman: Entity, man: Entity, home: Entity): void {
+  for (const e of sim.world.query(Stockpile)) {
+    if (e !== home) sim.world.mut(e, Stockpile).amounts.clear();
+  }
+  sim.world.add(woman, Marriage, { spouse: man, child: null });
+  sim.world.add(man, Marriage, { spouse: woman, child: null });
+  sim.enqueueSetup({ kind: 'assignHouse', entity: woman, house: home });
+  sim.enqueueSetup({ kind: 'makeChild', entity: woman, child: 'female' });
+  sim.step();
+  sim.world.mut(home, Stockpile).amounts.set(FOOD, CHILD_FOOD_UNITS - 1);
+  sim.enqueueSetup({ kind: 'debugSetNeeds', target: woman, hunger: 100 });
+}
+
+/** Run to the wife's home meal and check every tick of it is spent indoors. The family pass runs before
+ *  the planner, so a pop-out shows on the meal's second tick. */
+function expectHomeMealIndoors(sim: Simulation, woman: Entity, home: Entity): void {
+  const homeMeal = (): boolean => {
+    const atomic = sim.world.tryGet(woman, CurrentAtomic);
+    return atomic?.effect.kind === 'eat' && atomic.effect.from === home;
+  };
+  runUntil(sim, homeMeal, 600, 'wife sits down to a home meal');
+  let mealTicks = 0;
+  while (homeMeal()) {
+    expect(sim.world.tryGet(woman, Resting)?.at).toBe(home);
+    sim.step();
+    mealTicks += 1;
+  }
+  expect(mealTicks).toBeGreaterThan(1);
+  expect(needsOf(sim, woman).hunger).toBeLessThan(ONE);
+}
+
 /** Step until `done()` or `max` ticks, collecting events; throws past `max` (a hung stage fails loudly). */
 function runUntil(sim: Simulation, done: () => boolean, max: number, label: string): SimEvent[] {
   const events: SimEvent[] = [];
@@ -322,6 +355,21 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     );
     expect(foodBeforeSession).toBe(CHILD_FOOD_UNITS);
     expect(larder()).toBe(0);
+  });
+
+  it('a hungry wife short of the child cost eats her home meal indoors, not popped out to haul', () => {
+    const { sim, woman, man, home } = familySim(3);
+    hungryWifeWithOrder(sim, woman(), man(), home());
+    expectHomeMealIndoors(sim, woman(), home());
+  });
+
+  it('a hungry wife whose order is blocked eats her home meal indoors, not popped out', () => {
+    const { sim, woman, man, home } = familySim(3);
+    hungryWifeWithOrder(sim, woman(), man(), home());
+    setSettlerJob(sim.world, man(), SOLDIER);
+    sim.step();
+    expect(sim.world.get(woman(), ChildOrder).blocked).toBe('husbandAway');
+    expectHomeMealIndoors(sim, woman(), home());
   });
 
   it('holds the order while the husband serves a trade that never comes home, and resumes after', () => {
