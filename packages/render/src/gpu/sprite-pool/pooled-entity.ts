@@ -4,6 +4,7 @@ import type { SpriteKind } from '../../data/sprites/index.js';
 import type { PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
 import type { PaletteLut } from '../sprite-sheet.js';
 import { BindStamp } from './bind-stamp.js';
+import { HumanPaletteRow } from './human-palette-row.js';
 import { createPresentationTrack, type PresentationTrack } from './present-item.js';
 
 /** The world-space (pre-camera) axis-aligned box of an entity's drawn sprite this frame. */
@@ -61,6 +62,8 @@ export interface PalettedPooledEntity extends PooledEntityBase {
   readonly palette: PaletteLut;
   /** The body row the last bind read. */
   lutRow: number;
+  /** This entity's row in the human LUT, while it draws through it. */
+  readonly humanRow: HumanPaletteRow;
 }
 
 /** Every other entity: its atlas layers are plain cached-sub-texture {@link Sprite}s. */
@@ -91,5 +94,13 @@ export function createPooled(kind: SpriteKind, palette: PaletteLut | undefined):
   };
   return palette === undefined
     ? { ...base, paletted: false, sprites: [], pickExempt: [] }
-    : { ...base, paletted: true, sprites: [], shadows: [], palette, lutRow: 0 };
+    : {
+        ...base,
+        paletted: true,
+        sprites: [],
+        shadows: [],
+        palette,
+        lutRow: 0,
+        humanRow: new HumanPaletteRow(),
+      };
 }

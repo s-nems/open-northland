@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createHumanPaletteIdentity } from '../../src/data/palettes/human-palettes.js';
 import type { DrawItem } from '../../src/data/scene/index.js';
 import {
+  HumanPaletteRow,
   humanLayerRow,
-  humanLutRow,
   humanPaletteIdentity,
 } from '../../src/gpu/sprite-pool/human-palette-row.js';
 import type { SettlerCharacterSet, SpriteSheet } from '../../src/gpu/sprite-sheet.js';
@@ -135,7 +135,7 @@ describe('a driven cart palette identity', () => {
     const lut = sheet.palette;
     if (lut === undefined) throw new Error('the sheet carries a LUT');
     lut.beginFrame();
-    const row = humanLutRow(sheet, cart);
+    const row = new HumanPaletteRow().row(sheet, cart);
     const out = createHumanPaletteIdentity(look);
     humanPaletteIdentity(sheet, cart, out);
     expect(lut.rowFor(CART, out)).toBe(row);

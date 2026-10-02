@@ -7,7 +7,7 @@ import { PalettedQuad } from '../../src/gpu/paletted-sprite/index.js';
 import { palettedLutOf } from '../../src/gpu/pixel-art-registry.js';
 import { DEFAULT_SHADOW_STYLE, type ShadowStyle } from '../../src/gpu/shadow-style.js';
 import { type BindFrame, LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
-import { humanLutRow } from '../../src/gpu/sprite-pool/human-palette-row.js';
+import { HumanPaletteRow } from '../../src/gpu/sprite-pool/human-palette-row.js';
 import { type PoolFrame, SpritePool, settlerPalette } from '../../src/gpu/sprite-pool/index.js';
 import { createPooled } from '../../src/gpu/sprite-pool/pooled-entity.js';
 import type { ResolvedLayer } from '../../src/gpu/sprite-pool/resolved-layer.js';
@@ -287,7 +287,7 @@ describe('LayerBinder - a paletted character body draws as a batched quad throug
     const [bodyQuad, headQuad] = [quadAt(pe, 0), quadAt(pe, 1)];
     expect(palettedLutOf(bodyQuad.texture)).toBe(lut.source);
     expect(bodyQuad.texture.frame.width).toBe(16);
-    expect(bodyQuad.lutRow).toBe(humanLutRow(palettedSheet, item));
+    expect(bodyQuad.lutRow).toBe(new HumanPaletteRow().row(palettedSheet, item));
     expect(headQuad.lutRow).toBe(bodyQuad.lutRow + HUMAN_HEAD_ROW_OFFSET);
     expect(pe.container.children).toEqual([bodyQuad, headQuad]);
   });

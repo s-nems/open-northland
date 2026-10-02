@@ -16,9 +16,6 @@ const BASE_ONLY: CharacterPalette = { body: '', head: '', random: [] };
 /** `human_armor_000`'s tier, which a soldier wearing no armor applies. */
 const UNARMORED_TIER = 0;
 
-/** Scratch {@link humanLutRow} resolves into, so the per-frame path allocates nothing. */
-const scratch = createHumanPaletteIdentity(BASE_ONLY);
-
 /**
  * Write the palette identity `item` draws with into `out`: an indexed settler's own, or a driven cart's
  * driver with the cart's recipe. False for anything drawn without the human LUT.
@@ -77,11 +74,28 @@ export function humanPaletteIdentity(
   return true;
 }
 
-/** The human LUT body row `item` reads this frame, 0 when it draws without the human LUT. */
-export function humanLutRow(sheet: SpriteSheet | undefined, item: DrawItem): number {
-  const lut = sheet?.palette;
-  if (lut === undefined || !humanPaletteIdentity(sheet, item, scratch)) return 0;
-  return lut.rowFor(item.ref, scratch);
+/**
+ * One drawn human's LUT row, its palette identity resolved once per draw item: items are immutable, so
+ * the identity changes only with the item. The row is still asked for on every frame, which keeps it from
+ * eviction.
+ */
+export class HumanPaletteRow {
+  private readonly identity = createHumanPaletteIdentity(BASE_ONLY);
+  private item: DrawItem | undefined;
+  private sheet: SpriteSheet | undefined;
+  private indexed = false;
+
+  /** The human LUT body row `item` reads this frame, 0 when it draws without the human LUT. */
+  row(sheet: SpriteSheet | undefined, item: DrawItem): number {
+    const lut = sheet?.palette;
+    if (lut === undefined) return 0;
+    if (item !== this.item || sheet !== this.sheet) {
+      this.item = item;
+      this.sheet = sheet;
+      this.indexed = humanPaletteIdentity(sheet, item, this.identity);
+    }
+    return this.indexed ? lut.rowFor(item.ref, this.identity) : 0;
+  }
 }
 
 /** The row one resolved layer reads: its human's head row for a head overlay, else `bodyRow`. */

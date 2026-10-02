@@ -14,7 +14,7 @@ import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
 import { worldBatched } from '../world-batcher.js';
 import { settlerPalette } from './character-layers.js';
-import { humanLayerRow, humanLutRow } from './human-palette-row.js';
+import { humanLayerRow } from './human-palette-row.js';
 import { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
 import { drawPlaceholder, placeholderBounds } from './placeholder.js';
 import {
@@ -102,7 +102,7 @@ export class LayerBinder {
    */
   paletteHolds(pe: PooledEntity, item: DrawItem): boolean {
     if (!pe.paletted || pe.palette !== this.sheet?.palette) return true;
-    return humanLutRow(this.sheet, item) === pe.lutRow;
+    return pe.humanRow.row(this.sheet, item) === pe.lutRow;
   }
 
   private paletteFor(kind: SpriteKind, item: DrawItem): PaletteLut | undefined {
@@ -147,8 +147,8 @@ export class LayerBinder {
     const bodyRow = !pe.paletted
       ? 0
       : pe.kind === 'vehicle'
-        ? vehicleBodyRow(this.sheet, item, pe.palette)
-        : humanLutRow(this.sheet, item);
+        ? vehicleBodyRow(this.sheet, item, pe.palette, pe.humanRow)
+        : pe.humanRow.row(this.sheet, item);
     const human = pe.paletted && pe.palette === this.sheet?.palette;
     if (pe.paletted) pe.lutRow = bodyRow;
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight); // constant per entity
