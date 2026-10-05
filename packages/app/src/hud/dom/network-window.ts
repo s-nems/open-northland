@@ -37,6 +37,18 @@ const FULL_TICK_COST_PCT = 100;
 /** Design px between the cursor and the tip, and the tip's least gap to the screen edges. */
 const TIP_CURSOR_GAP = 14;
 const TIP_EDGE_GAP = 4;
+/** Chat log lines the window reserves when the screen holds them, and the fewest a short screen keeps. */
+const CHAT_LINES_FULL = 8;
+const CHAT_LINES_MIN = 3;
+/** Design px of one chat line: `.on-net-chat__line`'s 18 px line box and its 1 px padding each side. */
+const CHAT_LINE_H = 20;
+/** Design px of the sparkline's plot, and the least a short screen keeps: below it the figures beside
+ *  the chart set the clock's height, so a shorter plot saves nothing. */
+const PLOT_H_FULL = 64;
+const PLOT_H_MIN = 48;
+/** Design px above a section's caption: `.on-section`'s own, and the least a short screen keeps. */
+const SECTION_GAP_FULL = 14;
+const SECTION_GAP_MIN = 6;
 
 const STATUS_TONE: Readonly<Record<NetPlayerStatus, 'ok' | 'warn' | 'danger'>> = {
   ok: 'ok',
@@ -237,8 +249,9 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   sayInput.placeholder = copy.chatPlaceholder;
   sayInput.setAttribute('aria-label', copy.chatPlaceholder);
 
-  window.body.append(
-    notice,
+  // What a screen too short for the window scrolls; the notice and the whole chat stay in view.
+  const scroll = element('div', 'on-net-scroll');
+  scroll.append(
     playersSection.element,
     sheet,
     clockSection.element,
@@ -246,10 +259,8 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     linkSection.element,
     link,
     disconnected,
-    chatSection.element,
-    chatSheet,
-    say,
   );
+  window.body.append(notice, scroll, chatSection.element, chatSheet, say);
 
   // The shell leaves a text field its keys: Enter sends, Escape clears a typed line or closes.
   sayInput.addEventListener('keydown', (event) => {
@@ -488,6 +499,33 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     if (stickToBottom) chatList.scrollTop = chatList.scrollHeight;
   };
 
+  const sectionCount = [playersSection, clockSection, linkSection, chatSection].length;
+  const chatRange = CHAT_LINES_FULL - CHAT_LINES_MIN;
+  const plotRange = PLOT_H_FULL - PLOT_H_MIN;
+  const gapRange = SECTION_GAP_FULL - SECTION_GAP_MIN;
+  /** Design px the reserved heights can give up in all. */
+  const shrinkable = chatRange * CHAT_LINE_H + plotRange + sectionCount * gapRange;
+  /** Every reserved height gives up `share` (0..1) of its range, rounded to give up at least that much. */
+  const reserve = (share: number): void => {
+    const style = window.element.style;
+    style.setProperty('--net-chat-lines', String(CHAT_LINES_FULL - Math.ceil(share * chatRange)));
+    style.setProperty('--net-plot-h', `${PLOT_H_FULL - Math.ceil(share * plotRange)}px`);
+    style.setProperty('--net-section-gap', `${SECTION_GAP_FULL - Math.ceil(share * gapRange)}px`);
+  };
+  // The reserved heights follow the room the window has, never its text: once per region height and
+  // player count, measured with every reservation full, they give up the same share of their range
+  // to whatever overflows. What still overflows scrolls.
+  let fitted = '';
+  const fit = (): void => {
+    const key = `${window.element.style.maxHeight}|${rows.childElementCount}`;
+    if (key === fitted) return;
+    fitted = key;
+    reserve(0);
+    const overflow = scroll.scrollHeight - scroll.clientHeight;
+    if (overflow > 0) reserve(Math.min(1, overflow / shrinkable));
+    if (stickToBottom) chatList.scrollTop = chatList.scrollHeight;
+  };
+
   let shown: NetPanelModel | null = null;
   const draw = (): void => {
     const model = deps.source.model();
@@ -511,6 +549,7 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     window.open();
     place();
     draw();
+    fit();
     stickToBottom = true;
     chatList.scrollTop = chatList.scrollHeight;
   };
@@ -525,6 +564,7 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
       if (!window.isOpen()) return;
       place();
       draw();
+      fit();
       tips.refresh();
     },
     onDismiss: window.onDismiss,

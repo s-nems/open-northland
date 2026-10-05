@@ -6734,9 +6734,21 @@ body.on-drag-scroll * {
   flex-direction: column;
   min-height: 0;
   padding: 2px 14px 14px;
+  overflow: hidden;
+}
+/* Takes what the notice and the chat leave and scrolls only on a screen too short for the rest. */
+.on-hud .on-net-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-color: var(--bronze-lo) transparent;
+  scrollbar-width: thin;
 }
 .on-hud .on-window--network .on-section {
   flex-shrink: 0;
+  margin-top: var(--net-section-gap);
 }
 .on-hud .on-net-sheet {
   flex-shrink: 0;
@@ -6878,8 +6890,7 @@ body.on-drag-scroll * {
 }
 .on-hud .on-net-figures {
   display: grid;
-  align-content: start;
-  gap: 4px;
+  align-content: space-between;
   min-width: 0;
 }
 .on-hud .on-net-figure {
@@ -6887,7 +6898,7 @@ body.on-drag-scroll * {
   justify-content: space-between;
   gap: 10px;
   margin: 0;
-  padding: 3px 0;
+  padding: 2px 0;
   border-bottom: 1px solid #c9a2621f;
   color: var(--muted);
   font-size: 13px;
@@ -6948,7 +6959,7 @@ body.on-drag-scroll * {
 }
 .on-hud .on-net-chart__plot {
   width: 100%;
-  height: 64px;
+  height: var(--net-plot-h);
   border: 1px solid var(--wood-lo);
   background: linear-gradient(#1b2823, #22322c);
   box-shadow: inset 0 2px 4px #0008;
@@ -7026,14 +7037,12 @@ body.on-drag-scroll * {
   color: var(--text-hi);
   font-variant-numeric: tabular-nums;
 }
-/* A fixed height whatever the history holds; it gives way first on a short screen, so the input under
-   it stays in view. */
+/* A whole number of 20 px lines whatever the history holds; the window sets the count from the screen. */
 .on-hud .on-net-chat {
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto;
-  height: 162px;
-  min-height: 66px;
+  flex-shrink: 0;
+  height: calc(var(--net-chat-lines) * 20px + 12px);
   margin: 0;
   padding: 6px 8px;
 }
@@ -7045,7 +7054,7 @@ body.on-drag-scroll * {
   padding: 0;
   list-style: none;
   font-size: 13px;
-  line-height: 1.35;
+  line-height: 18px;
 }
 .on-hud .on-net-chat__line {
   overflow-wrap: anywhere;
