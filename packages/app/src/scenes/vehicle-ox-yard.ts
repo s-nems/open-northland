@@ -1,10 +1,11 @@
 import { cellAnchorNode, components, type Simulation, systems } from '@open-northland/sim';
 import { ANIMAL_TRIBE_CATTLE } from '../catalog/animal-tribes.js';
 import { grassTerrain } from '../catalog/buildings.js';
-import { HUMAN_PLAYER } from '../game/rules.js';
+import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import {
   BUILDING_ANIMAL_FARM,
   BUILDING_JOINERY_02,
+  BUILDING_WAREHOUSE_00,
   placeBuiltSandboxBuilding,
   spawnWorkersAtDoor,
   VEHICLE_CART_NO_OX,
@@ -18,12 +19,22 @@ const { Building, FarmAnimal, JobAssignment, Livestock, Stockpile } = components
 function build(sim: Simulation): void {
   const joinery = placeBuiltSandboxBuilding(sim, BUILDING_JOINERY_02, 9, 12);
   sim.world.mut(joinery, Stockpile).amounts.set(goodBySlug(sim, 'wood'), 10);
+  const depot = cellAnchorNode(4, 20);
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: BUILDING_WAREHOUSE_00,
+    x: depot.hx,
+    y: depot.hy,
+    tribe: PRIMARY_TRIBE,
+    owner: HUMAN_PLAYER,
+    force: true,
+    initialGoods: [{ good: goodBySlug(sim, 'wood'), amount: 60 }],
+  });
   spawnWorkersAtDoor(sim, joinery, 1);
   for (const worker of sim.world.query(JobAssignment)) {
     if (sim.world.get(worker, JobAssignment).workplace !== joinery) continue;
     const good = goodBySlug(sim, 'oxcart');
     sim.enqueueSetup({ kind: 'setProductionGoods', entity: worker, goods: [good] });
-    sim.enqueueSetup({ kind: 'setProductionCount', entity: worker, goodType: good, count: 2 });
   }
   // Only the first farm has a spare adult. Both must retain two cows after the first cart harnesses.
   for (const [x, y, count] of [
@@ -58,17 +69,17 @@ export const vehicleOxYardScene: SceneDefinition = {
   build,
   progression: false,
   initialZoom: 0.7,
-  runTicks: 5000,
+  runTicks: 10000,
   checks: [
     {
-      label: 'the joiner built two carts but only one received an ox',
+      label: 'the joiner keeps building while earlier carts wait for oxen',
       predicate: (sim) => {
         const carts = sim.vehiclesOf(HUMAN_PLAYER);
         return (
-          carts.length === 2 &&
+          carts.length >= 3 &&
           carts.filter((v) => v.vehicleType === VEHICLE_OXCART && v.harnessed).length === 1 &&
           carts.filter((v) => v.vehicleType === VEHICLE_CART_NO_OX && v.task === 'waitsForAnimal').length ===
-            1
+            carts.length - 1
         );
       },
     },

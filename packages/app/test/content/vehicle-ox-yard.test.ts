@@ -6,6 +6,19 @@ import { vehicleOxYardScene } from '../../src/scenes/vehicle-ox-yard.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 describe.runIf(hasRealIr())('ox cart construction on real content', () => {
+  it('continues building when no cow is available', { timeout: 60_000 }, async () => {
+    const { merge } = await loadContentUnderTest();
+    const sim = createSceneSim(vehicleOxYardScene, { content: merge.content });
+    for (const animal of [...sim.world.query(components.Livestock)]) sim.world.destroy(animal);
+    sim.run(vehicleOxYardScene.runTicks);
+    const carts = sim.vehiclesOf(0);
+    expect(carts.length).toBeGreaterThanOrEqual(3);
+    expect(carts.every((v) => v.vehicleType === VEHICLE_CART_NO_OX && v.task === 'waitsForAnimal')).toBe(
+      true,
+    );
+    expect(carts.every((v) => !v.harnessed)).toBe(true);
+  });
+
   it('builds bare carts and takes one existing farm cow after its walk', { timeout: 60_000 }, async () => {
     const { merge } = await loadContentUnderTest();
     const sim = createSceneSim(vehicleOxYardScene, { content: merge.content });
@@ -27,7 +40,8 @@ describe.runIf(hasRealIr())('ox cart construction on real content', () => {
         expect(sim.vehiclesOf(0).some((v) => v.vehicleType === VEHICLE_OXCART)).toBe(false);
       }
     }
-    expect(launches).toEqual([VEHICLE_CART_NO_OX, VEHICLE_CART_NO_OX]);
+    expect(launches.length).toBeGreaterThanOrEqual(3);
+    expect(launches.every((type) => type === VEHICLE_CART_NO_OX)).toBe(true);
     expect(walkingTicks).toBeGreaterThan(1);
     expect([...sim.world.query(Livestock)]).toHaveLength(4);
     for (const check of vehicleOxYardScene.checks) expect(check.predicate(sim), check.label).toBe(true);

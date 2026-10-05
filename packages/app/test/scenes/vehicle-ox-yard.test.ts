@@ -35,3 +35,13 @@ it('launches bare carts and transforms one only after its farm animal walks to i
   expect(launches.length).toBeGreaterThan(0);
   expect(launches.every((type) => type === VEHICLE_CART_NO_OX)).toBe(true);
 });
+
+it('continues building new carts when no cows exist', () => {
+  const sim = createSceneSim(vehicleOxYardScene);
+  for (const animal of [...sim.world.query(components.Livestock)]) sim.world.destroy(animal);
+  sim.run(vehicleOxYardScene.runTicks);
+  const carts = sim.vehiclesOf(0);
+  expect(carts.length).toBeGreaterThanOrEqual(3);
+  expect(carts.every((v) => v.vehicleType === VEHICLE_CART_NO_OX && v.task === 'waitsForAnimal')).toBe(true);
+  expect(carts.every((v) => !v.harnessed)).toBe(true);
+});

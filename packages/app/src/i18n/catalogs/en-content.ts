@@ -321,7 +321,7 @@ export const enContent = {
     'vehicle-ox-yard': {
       title: 'Building an ox cart',
       summary:
-        'A joiner builds two bare carts. One cow walks over from a farm with three adults and harnesses the first cart. Each farm keeps two cows, so the second cart waits for another animal.',
+        'A joiner keeps building bare carts with wood from the warehouse. One cow walks over from a farm and harnesses the first cart. Each farm keeps two cows, so further carts wait for animals while the joiner continues working.',
     },
     'vehicle-ox': {
       title: 'Ox cart without ox',

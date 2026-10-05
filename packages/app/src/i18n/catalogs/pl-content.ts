@@ -320,7 +320,7 @@ export const plContent = {
     'vehicle-ox-yard': {
       title: 'Budowa wozu wołowego',
       summary:
-        'Cieśla buduje dwa puste wozy. Krowa podchodzi z hodowli mającej trzy dorosłe sztuki i wchodzi do pierwszego wozu. W każdej hodowli zostają dwie krowy, więc drugi wóz czeka na zwierzę.',
+        'Cieśla stale buduje kolejne puste wozy, korzystając z drewna w magazynie. Krowa podchodzi z hodowli i wchodzi do pierwszego wozu. W każdej hodowli zostają dwie krowy, więc następne wozy czekają na zwierzęta, a cieśla pracuje dalej.',
     },
     'vehicle-ox': {
       title: 'Wóz bez wołu',
