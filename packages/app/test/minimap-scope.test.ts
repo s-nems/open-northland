@@ -88,14 +88,14 @@ describe('the owner scope on the plot', () => {
   it('keeps wild animals under every scope and filters owned markers, road sites included', () => {
     expect(marksUnder('everyone')).toEqual([
       'roadSite',
-      'building',
       'civilian',
       'animal',
       'animal',
       'vehicle',
+      'building',
     ]);
     expect(marksUnder('mine')).toEqual(['civilian', 'animal']);
     expect(marksUnder('friendly')).toEqual(['animal', 'vehicle']);
-    expect(marksUnder('hostile')).toEqual(['roadSite', 'building', 'animal', 'animal']);
+    expect(marksUnder('hostile')).toEqual(['roadSite', 'animal', 'animal', 'building']);
   });
 });

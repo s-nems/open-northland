@@ -68,6 +68,12 @@ class HeldMarks {
     }
   }
 
+  /** Append every held marker to `target` in order, then clear. */
+  moveTo(target: HeldMarks): void {
+    this.emit((bx, by, mark, colour) => target.hold(bx, by, mark, colour), 'both');
+    this.clear();
+  }
+
   clear(): void {
     this.xs.length = 0;
     this.ys.length = 0;
@@ -76,15 +82,23 @@ class HeldMarks {
   }
 }
 
-/** The four stamping groups of a layer, kept across walks so a replot grows no arrays once a game has
- *  shown its largest layer; a walk clears them first and after each layer. One walk runs at a time. */
+/** The four stamping groups of a layer and the hostile markers of every layer, kept across walks so a
+ *  replot grows no arrays once a game has shown its largest picture; a walk clears them first. One walk
+ *  runs at a time. */
 const HELD = {
   plain: new HeldMarks(),
   soldiers: new HeldMarks(),
   hostiles: new HeldMarks(),
   hostileSoldiers: new HeldMarks(),
+  allHostiles: new HeldMarks(),
 } as const;
-const HELD_GROUPS: readonly HeldMarks[] = [HELD.plain, HELD.soldiers, HELD.hostiles, HELD.hostileSoldiers];
+const HELD_GROUPS: readonly HeldMarks[] = [
+  HELD.plain,
+  HELD.soldiers,
+  HELD.hostiles,
+  HELD.hostileSoldiers,
+  HELD.allHostiles,
+];
 
 /** A plotted marker part: raster-px centre `(bx, by)`, its shape, packed `0xRRGGBB` colour and which
  *  part to paint; each layer sends every rim, then every fill. Loose primitives keep the sink itself
@@ -127,9 +141,10 @@ function carriersOf(snapshot: WorldSnapshot, name: (typeof PLOTTED)[number]): En
  * Plot the enabled layers of `snapshot` in the ground raster's px, bottom to top: road sites, signposts
  * and flags, buildings, animals and people, vehicles. Each layer walks only its own component index, so
  * a replot costs the plotted entities, never the whole entity list. Laid roads are the road layer's.
- * Within a layer, hostile owners' markers stamp last and soldiers after civilians, so an enemy army is
- * never buried under the viewer's own crowd; the layer's rims all go under its fills, so a crowd reads
- * as one rimmed blob, while a later layer's rims still part it from the one below.
+ * Within a layer soldiers stamp after civilians, and a layer's rims all go under its fills, so a crowd
+ * reads as one rimmed blob while a later layer's rims still part it from the one below. Hostile owners'
+ * markers leave the layers and stamp after all of them, rims then fills, so an intruder keeps its own rim
+ * on top of the viewer's crowd, buildings and vehicles instead of melting into them.
  */
 export function forEachMinimapDot(
   snapshot: WorldSnapshot,
@@ -150,7 +165,7 @@ export function forEachMinimapDot(
       UNKNOWN_PLAYER_DOT_COLOUR
     );
   };
-  const { plain, soldiers, hostiles, hostileSoldiers } = HELD;
+  const { plain, soldiers, hostiles, hostileSoldiers, allHostiles } = HELD;
   for (const group of HELD_GROUPS) group.clear();
   // Only currently-visible ground plots an entity; the viewer's own forces always see their own cell.
   const place = (e: SnapshotEntity, mark: MinimapMark, colour: number, group: HeldMarks): void => {
@@ -177,20 +192,23 @@ export function forEachMinimapDot(
     );
   };
   const endLayer = (): void => {
-    for (const group of HELD_GROUPS) group.emit(sink, 'rims');
-    for (const group of HELD_GROUPS) {
-      group.emit(sink, 'fills');
-      group.clear();
-    }
+    plain.emit(sink, 'rims');
+    soldiers.emit(sink, 'rims');
+    plain.emit(sink, 'fills');
+    soldiers.emit(sink, 'fills');
+    plain.clear();
+    soldiers.clear();
+    hostiles.moveTo(allHostiles);
+    hostileSoldiers.moveTo(allHostiles);
   };
 
   if (layers.roads) {
     // Few and transient, and like any owned marker they follow the scope and the visible ground, which
-    // moves with every sighting; the static laid roads are baked apart.
+    // moves with every sighting; the static laid roads are baked apart. They wear no owner colour, so a
+    // hostile one would only clutter the hostile pass.
     for (const site of carriersOf(snapshot, 'RoadSite')) {
       const owner = ownerPlayerOf(site);
-      if (owner === undefined) plot(site, 'roadSite', ROAD_SITE_DOT_COLOUR);
-      else if (admits(owner)) owned(site, owner, 'roadSite', ROAD_SITE_DOT_COLOUR);
+      if (owner === undefined || admits(owner)) plot(site, 'roadSite', ROAD_SITE_DOT_COLOUR);
     }
     endLayer();
   }
@@ -247,4 +265,8 @@ export function forEachMinimapDot(
     }
     endLayer();
   }
+
+  allHostiles.emit(sink, 'rims');
+  allHostiles.emit(sink, 'fills');
+  allHostiles.clear();
 }

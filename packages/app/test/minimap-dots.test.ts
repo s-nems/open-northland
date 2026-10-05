@@ -272,7 +272,7 @@ describe('forEachMinimapDot', () => {
     );
   });
 
-  it('stamps hostile owners last in each layer, their soldiers on top of all', () => {
+  it('stamps hostile owners after every layer of the viewer, soldiers after civilians', () => {
     const world = [
       building(1, FOE, 1, 1),
       building(2, VIEWER, 2, 2),
@@ -286,12 +286,12 @@ describe('forEachMinimapDot', () => {
     const owners = dotsOf(world).map((dot) => `${dot.mark}:${dot.colour === colour(FOE) ? 'foe' : 'own'}`);
     expect(owners).toEqual([
       'building:own',
-      'building:foe',
       'civilian:own',
       'soldier:own',
+      'vehicle:own',
+      'building:foe',
       'civilian:foe',
       'soldier:foe',
-      'vehicle:own',
       'vehicle:foe',
     ]);
     // A whole-map view has no hostile side: only soldiers move above the civilians.
@@ -304,6 +304,25 @@ describe('forEachMinimapDot', () => {
       'soldier',
       'vehicle',
       'vehicle',
+    ]);
+  });
+
+  it("rims a hostile marker over the viewer's fills, so an intruder in the crowd keeps its outline", () => {
+    const parts = partsOf([person(1, VIEWER, 1, 1), person(2, FOE, 1, 1), person(3, VIEWER, 2, 2)]);
+    expect(parts).toEqual([
+      'civilian:rims',
+      'civilian:rims',
+      'civilian:fills',
+      'civilian:fills',
+      'civilian:rims',
+      'civilian:fills',
+    ]);
+    // A friend or neutral owner stays in its layer.
+    expect(partsOf([person(1, VIEWER, 1, 1), person(2, FRIEND, 1, 1)])).toEqual([
+      'civilian:rims',
+      'civilian:rims',
+      'civilian:fills',
+      'civilian:fills',
     ]);
   });
 
