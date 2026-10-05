@@ -1,5 +1,4 @@
 import {
-  Chat,
   Engagement,
   Fleeing,
   MoveGoal,
@@ -26,7 +25,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { ROW_STEP, worldDistance, worldX } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
 import { type WalkBlockMask, walkBlockMask } from '../footprint/walk-block-mask.js';
-import { liftLostWalk } from '../settlers/lost-way.js';
+import { routeFound } from '../settlers/lost-way.js';
 import { isValidNodeId } from '../spatial/nodes.js';
 import {
   ColliderWalkBlocks,
@@ -190,7 +189,7 @@ export function drainPathRequests(
     if (req.retainRoute && previous !== undefined && previousStops?.at(-1)?.node === req.start) {
       world.mut(e, PathRoute).waypoints = [...previousStops, ...waypoints.slice(1)];
       endGrindHold(world, e);
-      settleRoute(world, e);
+      settleRoute(world, e, req.goal);
       continue;
     }
     const oldTarget = previous && previousStops?.[previous.index];
@@ -250,17 +249,17 @@ export function drainPathRequests(
     if (position !== undefined && firstTarget !== undefined && world.has(e, WalkFacing)) {
       beginWalkTurn(world, e, position, firstTarget);
     }
-    settleRoute(world, e);
+    settleRoute(world, e, req.goal);
   }
   memo.expire(ctx.tick);
 }
 
-/** A route installed answers its request and ends any stranded park. It is a way found, so a settler
- *  lost over its own walk is lost no more, unless the walk only takes it to a chat partner. */
-function settleRoute(world: World, e: Entity): void {
+/** A route installed answers its request and ends any stranded park; one to the work a lost settler
+ *  waited on is its way found. */
+function settleRoute(world: World, e: Entity, goal: NodeId): void {
   world.remove(e, PathRequest);
   world.remove(e, Stranded);
-  if (!world.has(e, Chat)) liftLostWalk(world, e);
+  routeFound(world, e, goal);
 }
 
 /** Whether `e` still walks a route but no longer stands nearest `start`, the node its grind ask is from. */

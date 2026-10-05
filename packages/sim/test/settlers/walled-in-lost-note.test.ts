@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, LostWay, MoveGoal, Palisade, Position } from '../../src/components/index.js';
+import {
+  Building,
+  CurrentAtomic,
+  LostWay,
+  MoveGoal,
+  Palisade,
+  Position,
+  SettlerNeeds,
+  Stockpile,
+} from '../../src/components/index.js';
+import { ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../src/index.js';
 import { placePalisade } from '../../src/systems/palisades/index.js';
@@ -8,6 +18,7 @@ import { ownedWoodcutter, woodAt } from '../conflict/orders/support.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
+import { justAbove, NEED_DRIVE_THRESHOLD } from '../settlers/needs/support.js';
 
 /**
  * A woodcutter walled in by a closed gate with every tree outside: each tree's route fails in turn. The
@@ -27,8 +38,13 @@ const TREE_ROW = 56;
 /** The test content's wood good, the wall's construction material. */
 const WOOD = 5;
 const WALL_HITPOINTS = 100;
+/** The test content's passive store and its food good. */
+const HEADQUARTERS = 1;
+const FOOD = 3;
+const STORE_X = 20;
+const STORE_ROW = 8;
 
-function walledIn(): { sim: Simulation; woodcutter: Entity; gate: Entity } {
+function walledIn(needs = false): { sim: Simulation; woodcutter: Entity; gate: Entity } {
   const span = [-2, -1, 0, 1, 2].map((dx) => ({ dx, dy: 0 }));
   const wall = {
     maxHitpoints: WALL_HITPOINTS,
@@ -65,7 +81,7 @@ function walledIn(): { sim: Simulation; woodcutter: Entity; gate: Entity } {
       },
     },
   });
-  sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+  sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: needs });
   const ctx = ctxOf(sim);
   for (let x = 0; x < SIZE; x++) {
     if (Math.abs(x - GATE_X) <= GATE_HALF_SPAN) continue;
@@ -130,5 +146,36 @@ describe('a settler walled in from its work', () => {
     for (let t = 0; t < 3 * UNREACHABLE_GOAL_MEMO_TICKS && !felling(); t++) sim.step();
     expect(felling()).toBe(true);
     expect(sim.world.has(woodcutter, LostWay)).toBe(false);
+  });
+});
+
+describe('a settler walled in from its work, with food inside the walls', () => {
+  it('eats when hungry and is still told only once', () => {
+    const { sim, woodcutter } = walledIn(true);
+    const store = sim.world.create();
+    sim.world.add(store, Position, positionOfNode(STORE_X, STORE_ROW));
+    sim.world.add(store, Building, { buildingType: HEADQUARTERS, tribe: 1, built: ONE, level: 0 });
+    sim.world.add(store, Stockpile, { amounts: new Map([[FOOD, 5]]) });
+    let notes = 0;
+    const lostNotes = (): void => {
+      for (const ev of sim.events.current())
+        if (ev.kind === 'settlerLost' && ev.entity === woodcutter) notes++;
+    };
+    for (let t = 0; t < UNREACHABLE_GOAL_MEMO_TICKS && !sim.world.has(woodcutter, LostWay); t++) {
+      sim.step();
+      lostNotes();
+    }
+    expect(notes).toBe(1);
+    // Hunger strikes the lost woodcutter: the meal is in reach, and is not the way to its trees.
+    sim.world.mut(woodcutter, SettlerNeeds).hunger = justAbove(NEED_DRIVE_THRESHOLD);
+    let ate = false;
+    for (let t = 0; t < 3 * UNREACHABLE_GOAL_MEMO_TICKS; t++) {
+      sim.step();
+      lostNotes();
+      ate ||= sim.world.tryGet(woodcutter, CurrentAtomic)?.effect.kind === 'eat';
+    }
+    expect(ate).toBe(true);
+    expect(notes).toBe(1);
+    expect(sim.world.has(woodcutter, LostWay)).toBe(true);
   });
 });

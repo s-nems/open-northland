@@ -36,7 +36,7 @@ import { abandonCargoRun } from '../../vehicles/cargo.js';
 import { heldOffEconomy } from '../action-owner.js';
 import { jobCanBuild } from '../atomics/start.js';
 import { isInside, stepOut } from '../indoors.js';
-import { clearLostWay } from '../lost-way.js';
+import { forgetWorkTried, noteWorkTaken } from '../lost-way.js';
 import type { PlannerContext } from '../planner/context.js';
 import { IDLE_REPLAN_PERIOD_TICKS } from '../planner/idle-replan.js';
 import type { PlannerPass } from '../planner/pass.js';
@@ -116,6 +116,8 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   const here = terrain.nodeAtClamped(hx, hy);
   const load = world.tryGet(e, Carrying);
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
+  // A fresh plan: the work walk the mark waited on, if any, is over, found or failed.
+  forgetWorkTried(world, e);
 
   // The alarm outranks every other drive: hunger, the ownership gate, and a live equip errand alike.
   if (planShelter(world, ctx, terrain, e, settler, here, hx, hy, limit, pass.shelters)) {
@@ -322,6 +324,7 @@ function planEconomy(
   // Deliver a carried load first: a settler must free its hands before any empty-handed work.
   if (load !== undefined && load.amount > 0) {
     planDelivery(plan, pass.spacing, load);
+    noteWorkTaken(world, e);
     return;
   }
 
@@ -334,9 +337,7 @@ function planEconomy(
   }
 
   if (planTrade(plan, pass, hx, hy)) {
-    // Work taken is the way back for a mark the cut-off check raised. One a walk earned waits for its
-    // route: the work may be another walk that fails like the last.
-    if (world.tryGet(e, LostWay)?.cutOff === true) clearLostWay(world, e);
+    noteWorkTaken(world, e);
     return;
   }
   standIdle(plan, pass, settler, hx, hy, alert);

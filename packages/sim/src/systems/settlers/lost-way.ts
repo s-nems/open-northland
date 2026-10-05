@@ -1,4 +1,4 @@
-import { LostWay, Person } from '../../components/index.js';
+import { LostWay, MoveGoal, Person } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -12,7 +12,7 @@ function stamp(world: World, ctx: SystemContext, e: Entity, cutOff: boolean, goa
   if (!world.has(e, Person)) return;
   const lost = world.tryGet(e, LostWay);
   if (lost === undefined) {
-    world.add(e, LostWay, { cutOff, since: ctx.tick, goal });
+    world.add(e, LostWay, { cutOff, since: ctx.tick, goal, tried: null });
     announceLostWay(world, ctx, e);
     return;
   }
@@ -35,8 +35,32 @@ export function clearLostWay(world: World, e: Entity): void {
   world.remove(e, LostWay);
 }
 
-/** Lift a mark `e`'s own walk earned, now that a way is found. A cut-off mark stands: a meal or an
- *  errand in reach does not reach the seat or the work, so only its own check, or work taken, lifts it. */
+/** Lift a mark `e`'s own walk earned, now that an obeyed order is its way. A cut-off mark stands: the
+ *  order does not reach the seat or the work, so only its own check, or work taken, lifts it. */
 export function liftLostWalk(world: World, e: Entity): void {
   if (world.tryGet(e, LostWay)?.cutOff === false) world.remove(e, LostWay);
+}
+
+/** A trade rung took `e`: in place, that is the way found; on a walk, the way is found once the route to
+ *  `goal` is, so the mark notes the goal and waits for the pathfinding pass. A cut-off mark lifts either
+ *  way, the work being what it was cut off from. */
+export function noteWorkTaken(world: World, e: Entity): void {
+  const lost = world.tryGet(e, LostWay);
+  if (lost === undefined) return;
+  const goal = world.tryGet(e, MoveGoal)?.cell;
+  if (goal === undefined || lost.cutOff) world.remove(e, LostWay);
+  else if (lost.tried !== goal) world.mut(e, LostWay).tried = goal;
+}
+
+/** The pathfinding pass found `e` a route to `goal`: the way, when it is the work walk the mark waits on. */
+export function routeFound(world: World, e: Entity, goal: NodeId): void {
+  const lost = world.tryGet(e, LostWay);
+  if (lost !== undefined && !lost.cutOff && lost.tried === goal) world.remove(e, LostWay);
+}
+
+/** Forget the work walk a mark waited on: `e` plans afresh, and a later walk to the same cell for another
+ *  reason must not pass for it. */
+export function forgetWorkTried(world: World, e: Entity): void {
+  const lost = world.tryGet(e, LostWay);
+  if (lost !== undefined && lost.tried !== null) world.mut(e, LostWay).tried = null;
 }

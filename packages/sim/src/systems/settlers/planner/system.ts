@@ -18,7 +18,6 @@ import { navigationLimitFor } from '../../signposts/index.js';
 import { endChat } from '../../social/index.js';
 import { cutOffCheckDue } from '../drives/cut-off.js';
 import { checkCutOff, planAdult, planChild, plannerContextOf, planShelterRung } from '../drives/ladder.js';
-import { liftLostWalk } from '../lost-way.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
 import { idleBeatOfTick, waitsIdle, wakeIdle } from './idle-replan.js';
 import { navigationPlanner } from './navigation.js';
@@ -80,19 +79,6 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       if (!offBeat) planAdult(pass, e, settler, settler.jobType);
       pass.idle.settle(world, e);
       if (inPastimeChat(world, e) && tookAction(world, e)) endChat(world, ctx.tick, e); // frees the partner too
-    }
-    // A ladder that set the settler to work where it stands found its way. A walk keeps the mark until the
-    // pathfinding pass finds its route, since it may fail like the last one did; a stand, at a site or
-    // inside a workplace, and a chat of either kind are still standing about to the player. A cut-off mark
-    // waits for its own check: a meal in place does not reach the seat. A jobless adult never gets here, so
-    // only an obeyed order lifts its mark.
-    if (
-      world.has(e, CurrentAtomic) &&
-      !pass.idle.reachedTail(e) &&
-      !world.has(e, Chat) &&
-      !world.has(e, MoveGoal)
-    ) {
-      liftLostWalk(world, e);
     }
   }
 }

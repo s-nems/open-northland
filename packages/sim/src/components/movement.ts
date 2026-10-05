@@ -130,16 +130,19 @@ export const Stranded = defineComponent<{ retryAt: number }>('Stranded', 'moveme
 
 /**
  * A settler standing lost: an ordered walk, a chase or its work found no way within its signpost reach.
- * A mark its own walk earned lifts once a route is found for it, a chat partner's aside, or a drive sets
- * it to work in place. `cutOff` says the idle tail found its own workplace, every door of its seat or its
- * only work out of reach; that mark lifts when the tail finds the way back in reach or a trade rung takes
- * the settler, never over a meal or an errand. `since` is the tick the episode began; `goal` is the
- * node the latest refused way led to, shown to the player, or null when no single node was out of reach.
+ * A mark its own walk earned lifts once a route to work is found, an obeyed order's, or a trade sets it
+ * to work in place; a meal, an errand or a chat on the way is not the way. `cutOff` says the idle tail
+ * found its own workplace, every door of its seat or its only work out of reach; that mark lifts when the
+ * tail finds the way back in reach or a trade rung takes the settler. `since` is the tick the episode
+ * began; `goal` is the node the latest refused way led to, shown to the player, or null when no single
+ * node was out of reach; `tried` is the work walk's goal whose route, once found, lifts the mark.
  */
-export const LostWay = defineComponent<{ cutOff: boolean; since: number; goal: NodeId | null }>(
-  'LostWay',
-  'movement',
-);
+export const LostWay = defineComponent<{
+  cutOff: boolean;
+  since: number;
+  goal: NodeId | null;
+  tried: NodeId | null;
+}>('LostWay', 'movement');
 
 /** One remembered route failure: the goal node, and the tick it stops being excluded. */
 export interface UnreachableGoal {
