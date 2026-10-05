@@ -163,25 +163,68 @@ describe('unit selection presentation', () => {
 
 it('switches selected buildings between coloured rings and sprite effects without stale rings', () => {
   const layer = new SelectionLayer();
-  const snapshot = snapshotOf([entity(2, 1, 8, { Building: {} })]);
+  const snapshot = snapshotOf([entity(2, 1, 8, { Building: {}, Owner: { player: 3 } })]);
   const selected = new Set([2]);
-  layer.draw({ snapshot, selectionStyle: 'ring-green' }, selected);
+  layer.draw(
+    {
+      snapshot,
+      selectionStyle: 'ring-player',
+      selectionColourOf: (player) => (player === 3 ? 0x35c4d0 : 0xd0342c),
+    },
+    selected,
+  );
   const ring = layer.container.children[0];
   if (!(ring instanceof Graphics)) throw new Error('Missing selection ring');
   const colours = () =>
     ring.context.instructions
       .filter((entry) => entry.action === 'stroke')
       .map((entry) => entry.data.style.color);
-  expect(colours()).toContain(0x66ff66);
+  expect(colours()).toContain(0x35c4d0);
   layer.draw({ snapshot, selectionStyle: 'ring-white' }, selected);
   expect(layer.container.children[0]).toBe(ring);
   expect(colours()).toContain(0xf2e8c9);
-  expect(colours()).not.toContain(0x66ff66);
+  expect(colours()).not.toContain(0x35c4d0);
   for (const selectionStyle of ['outline', 'pulse'] as const) {
     layer.draw({ snapshot, selectionStyle }, selected);
     expect(layer.container.children).toHaveLength(0);
   }
-  layer.draw({ snapshot, selectionStyle: 'ring-green' }, selected);
+  layer.draw(
+    {
+      snapshot,
+      selectionStyle: 'ring-player',
+      selectionColourOf: (player) => (player === 3 ? 0x35c4d0 : 0xd0342c),
+    },
+    selected,
+  );
   expect(layer.container.children).toHaveLength(1);
+  layer.destroy();
+});
+
+it('colours each ring by its owner and refreshes retained rings when the roster colour changes', () => {
+  const layer = new SelectionLayer();
+  const snapshot = snapshotOf([
+    entity(1, 1, 1, { Settler: {}, Owner: { player: 0 } }),
+    entity(2, 2, 1, { Vehicle: {}, Owner: { player: 1 } }),
+    entity(3, 3, 1, { Building: {} }),
+  ]);
+  const palette = [0x2f62d8, 0xd0342c];
+  const frame = { snapshot, selectionColourOf: (player: number) => palette[player] ?? 0xffffff };
+  const selected = new Set([1, 2, 3]);
+  layer.draw(frame, selected);
+  const [blue, red, neutral] = layer.container.children;
+  const coloursOf = (g: unknown) => {
+    if (!(g instanceof Graphics)) throw new Error('Missing ring');
+    return g.context.instructions
+      .filter((entry) => entry.action === 'stroke')
+      .map((entry) => entry.data.style.color);
+  };
+  expect(coloursOf(blue)).toContain(0x2f62d8);
+  expect(coloursOf(red)).toContain(0xd0342c);
+  expect(coloursOf(neutral)).toContain(0xf2e8c9);
+  palette[0] = 0xe6d33e;
+  layer.draw(frame, selected);
+  expect(layer.container.children[0]).toBe(blue);
+  expect(coloursOf(blue)).toContain(0xe6d33e);
+  expect(coloursOf(blue)).not.toContain(0x2f62d8);
   layer.destroy();
 });

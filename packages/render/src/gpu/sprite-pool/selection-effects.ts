@@ -18,6 +18,13 @@ const OFFSETS = [
   [-DIAGONAL, -DIAGONAL],
 ] as const;
 
+// Artistic choice: a narrow ivory core and a dark outer keyline for changing terrain contrast.
+// Draw each pass over the whole body before the next; individual layers must not border one another.
+const OUTLINE_PASSES = [
+  { radius: 2, colour: 0x14211b },
+  { radius: 1.25, colour: 0xf2e8c9 },
+] as const;
+
 /** Silhouette stamps sit behind the complete body, so overlapping layers leave no internal outlines.
  * They use the world batch and the existing atlas alpha, without filters or per-entity render targets. */
 export class SelectionEffects {
@@ -45,65 +52,67 @@ export class SelectionEffects {
       pe.container.addChildAt(outline, 0);
     }
     let count = 0;
-    for (let i = 0; i < pe.sprites.length; i++) {
-      const body = pe.sprites[i];
-      if (body === undefined || !body.visible || (!pe.paletted && pe.pickExempt[i])) continue;
-      if ('glow' in body && body.glow === true) continue;
-      for (const [dx, dy] of OFFSETS) {
-        let stamp = outline.children[count++];
-        if (!(stamp instanceof SelectionSprite)) {
-          stamp?.destroy();
-          stamp = worldBatched(new SelectionSprite());
-          stamp.tint = 0xf2e8c9;
-          stamp.selectionEffect = -1;
-          outline.addChildAt(stamp, count - 1);
-        }
-        if (body instanceof PalettedSprite) {
-          const frame = body.frame;
-          const source = body.frameSource;
-          if (frame === undefined || source === undefined) {
-            stamp.visible = false;
-            continue;
+    for (const { radius, colour } of OUTLINE_PASSES) {
+      for (let i = 0; i < pe.sprites.length; i++) {
+        const body = pe.sprites[i];
+        if (body === undefined || !body.visible || (!pe.paletted && pe.pickExempt[i])) continue;
+        if ('glow' in body && body.glow === true) continue;
+        for (const [dx, dy] of OFFSETS) {
+          let stamp = outline.children[count++];
+          if (!(stamp instanceof SelectionSprite)) {
+            stamp?.destroy();
+            stamp = worldBatched(new SelectionSprite());
+            stamp.selectionEffect = -1;
+            outline.addChildAt(stamp, count - 1);
           }
-          stamp.texture = this.textures.castSilhouette(source, frame);
-          stamp.scale.set(body.artScale);
-          // Match the mesh's x += shear * y transform, including the frame's authored origin.
-          stamp.setFromMatrix(
-            this.transform.set(
-              body.artScale,
-              0,
-              body.shear * body.artScale,
-              body.artScale,
-              body.artDx + (frame.offsetX + body.shear * frame.offsetY) * body.artScale,
-              body.artDy + frame.offsetY * body.artScale,
-            ),
-          );
-        } else {
-          stamp.texture = body.texture;
-          body.updateLocalTransform();
-          stamp.setFromMatrix(body.localTransform);
-          stamp.anchor.copyFrom(body.anchor);
+          if (stamp.tint !== colour) stamp.tint = colour;
+          if (body instanceof PalettedSprite) {
+            const frame = body.frame;
+            const source = body.frameSource;
+            if (frame === undefined || source === undefined) {
+              stamp.visible = false;
+              continue;
+            }
+            stamp.texture = this.textures.castSilhouette(source, frame);
+            stamp.scale.set(body.artScale);
+            // Match the mesh's x += shear * y transform, including the frame's authored origin.
+            stamp.setFromMatrix(
+              this.transform.set(
+                body.artScale,
+                0,
+                body.shear * body.artScale,
+                body.artScale,
+                body.artDx + (frame.offsetX + body.shear * frame.offsetY) * body.artScale,
+                body.artDy + frame.offsetY * body.artScale,
+              ),
+            );
+          } else {
+            stamp.texture = body.texture;
+            body.updateLocalTransform();
+            stamp.setFromMatrix(body.localTransform);
+            stamp.anchor.copyFrom(body.anchor);
+          }
+          stamp.position.x += (dx * radius) / zoom;
+          stamp.position.y += (dy * radius) / zoom;
+          stamp.visible = true;
         }
-        stamp.position.x += (dx * 1.5) / zoom;
-        stamp.position.y += (dy * 1.5) / zoom;
-        stamp.visible = true;
       }
-    }
-    if (pe.placeholder?.visible === true) {
-      for (const [dx, dy] of OFFSETS) {
-        let stamp = outline.children[count++];
-        if (!(stamp instanceof SelectionGraphics)) {
-          stamp?.destroy();
-          stamp = worldBatched(new SelectionGraphics({ context: pe.placeholder.context }));
-          stamp.tint = 0xf2e8c9;
-          stamp.selectionEffect = -1;
-          outline.addChildAt(stamp, count - 1);
+      if (pe.placeholder?.visible === true) {
+        for (const [dx, dy] of OFFSETS) {
+          let stamp = outline.children[count++];
+          if (!(stamp instanceof SelectionGraphics)) {
+            stamp?.destroy();
+            stamp = worldBatched(new SelectionGraphics({ context: pe.placeholder.context }));
+            stamp.selectionEffect = -1;
+            outline.addChildAt(stamp, count - 1);
+          }
+          if (stamp.tint !== colour) stamp.tint = colour;
+          pe.placeholder.updateLocalTransform();
+          stamp.setFromMatrix(pe.placeholder.localTransform);
+          stamp.position.x += (dx * radius) / zoom;
+          stamp.position.y += (dy * radius) / zoom;
+          stamp.visible = true;
         }
-        pe.placeholder.updateLocalTransform();
-        stamp.setFromMatrix(pe.placeholder.localTransform);
-        stamp.position.x += (dx * 1.5) / zoom;
-        stamp.position.y += (dy * 1.5) / zoom;
-        stamp.visible = true;
       }
     }
     for (let i = count; i < outline.children.length; i++) {

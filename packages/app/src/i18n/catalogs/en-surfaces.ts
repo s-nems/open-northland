@@ -184,7 +184,7 @@ export const enSurfaces = {
         outline: 'Outline',
         pulse: 'Pulsing highlight',
         'ring-white': 'White ring',
-        'ring-green': 'Green ring',
+        'ring-player': 'Player-coloured ring',
       },
       minimapFrameTip: 'The look of the frame around the minimap. Changes in game immediately.',
       minimapFrames: {

@@ -1,7 +1,7 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
-import { classify, readPosition } from '../../data/scene/snapshot-readers/index.js';
+import { classify, readOwnerPlayer, readPosition } from '../../data/scene/snapshot-readers/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import { DEFAULT_SELECTION_STYLE, type SelectionStyle } from '../selection-style.js';
 import type { DrawnGeometry, EntityBounds } from '../sprite-pool/index.js';
@@ -28,8 +28,8 @@ const MIN_BUILDING_RX = 28;
 /** Ground-ellipse squash: a ground circle spans a cell width (2·halfW) E–W but only a row step
  *  (halfH) N–S under the staggered raster, so a flat footprint ellipse squashes by their ratio. */
 const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
-/** The default green ring option, shared by every selectable object. */
-const RING_COLOR = 0x66ff66;
+/** Neutral selection colour for unowned objects and the white-ring option. */
+const RING_COLOR = 0xf2e8c9;
 const RING_WIDTH = 2;
 /** Amber work-flag highlight, heavy enough to read under the flag sprite. */
 const FLAG_RING_COLOR = 0xffc020;
@@ -64,6 +64,8 @@ export interface SelectionFrame {
   /** Logical screen pixels per world pixel; absent means the unscaled test/shot view. */
   readonly zoom?: number;
   readonly selectionStyle?: SelectionStyle | undefined;
+  /** Owner slot to a readable RGB colour, including the map roster’s colour assignment. */
+  readonly selectionColourOf?: ((player: number) => number) | undefined;
   /** Authored ground markers and drawn bounds, anchored with the displayed sprites. */
   readonly drawn?: DrawnGeometry;
   /** The terrain height field - lifts a ring onto sloped ground. Absent → no lift (flat). */
@@ -99,7 +101,7 @@ export class SelectionLayer {
     focused: ReadonlySet<number> = NO_IDS,
   ): void {
     const style = frame.selectionStyle ?? DEFAULT_SELECTION_STYLE;
-    const ringColor = style === 'ring-green' ? RING_COLOR : 0xf2e8c9;
+    const ringColor = RING_COLOR;
     const ringIds = style === 'outline' || style === 'pulse' ? NO_IDS : selected;
     this.reconcile(this.rings, this.seen, ringIds, ringColor, RING_WIDTH, frame, 'selection');
     this.reconcile(this.flagRings, this.seenFlags, flagged, FLAG_RING_COLOR, FLAG_RING_WIDTH, frame);
@@ -153,6 +155,11 @@ export class SelectionLayer {
       const s = feetAnchor(frame.drawn, id, pos, frame.elevation);
       const kind = classify(ent.components);
       const styled = unitStyle !== undefined;
+      const owner = readOwnerPlayer(ent.components);
+      const ringColor =
+        styled && (frame.selectionStyle ?? DEFAULT_SELECTION_STYLE) === 'ring-player' && owner !== undefined
+          ? (frame.selectionColourOf?.(owner) ?? color)
+          : color;
       const mobile = styled && kind === 'settler';
       const zoom = styled ? (frame.zoom ?? 1) : 1;
       // A building's and a vehicle's ring fits the drawn sprite; a settler's is the fixed feet ellipse.
@@ -175,18 +182,18 @@ export class SelectionLayer {
         previous.ry !== spec.ry ||
         previous.zoom !== zoom ||
         previous.styled !== styled ||
-        previous.color !== color
+        previous.color !== ringColor
       ) {
         ring.clear();
         if (styled) {
-          drawUnitSelectionRing(ring, spec, zoom, unitStyle === 'focus', color);
+          drawUnitSelectionRing(ring, spec, zoom, unitStyle === 'focus', ringColor);
         } else {
           ring
             .ellipse(spec.cx, spec.cy, spec.rx, spec.ry)
             .fill({ color, alpha: 0.12 })
             .stroke({ width, color, alpha: 0.9 });
         }
-        this.specs.set(ring, { ...spec, zoom, styled, color });
+        this.specs.set(ring, { ...spec, zoom, styled, color: ringColor });
       }
       ring.position.set(s.x, s.y);
       seen.add(id);
