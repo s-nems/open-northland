@@ -437,11 +437,14 @@ spawns under `waitsForAnimal` and refuses a goto with `vehicleNoAnimal` ahead of
 as the original tests the missing animal first. The recruit scan runs every `DRAUGHT_RECRUIT_CADENCE_TICKS` (20) for
 such carts only and walks the livestock store: the owner's animals of the tribe with a position, not
 inside a farm, led away by no breeder nor booked by another cart, not scattering, on the door's continent, in
-ascending entity id; the first two are passed over and the nearest of the rest by hexagon distance
-wins, ties to the lower id. The recruit carries `DraughtAnimal` (which the herd, graze, herd-home and
+ascending entity id. Only living adults are eligible. Each farm retains its first two eligible adults;
+unassigned livestock retains a separate pair. Among the remaining adults the nearest by hexagon distance
+wins, ties to the lower id. Preserving a pair per farm follows owner observation of the original;
+the id order is an approximation. The recruit carries `DraughtAnimal` (which the herd, graze, herd-home and
 breeder's slaughter pick respect like a breeder's summon, and which a scout's capture drops with the walk) and is aimed at the cart's boarding node, the riders' door beside the cart,
-re-aimed whenever it stops short; on arrival `harnessVehicle` removes it without a death and the cart
-takes `transformVehicleType` in place, with that type's seat counts and hit-point pool (current points
+re-aimed whenever it stops short; only after the walk ends at the exact boarding point does
+`harnessVehicle` remove it without a death, and the cart takes `transformVehicleType` in place,
+with that type's seat counts and hit-point pool (current points
 kept, clamped), so the renderer's per-type binding swaps the sprite. A recruit whose cart is gone walks
 back to its stay point. Approximations: the scan cadence, the id order the pair is skipped in, the
 livestock-store scan (a draught tribe that is not catchable is never owned and never found), the

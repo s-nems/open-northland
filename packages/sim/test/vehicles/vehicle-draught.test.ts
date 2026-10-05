@@ -6,10 +6,12 @@ import {
   Livestock,
   MoveGoal,
   Owner,
+  PathFollow,
   Position,
   Settler,
   StayPoint,
   Vehicle,
+  YoungAnimal,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
@@ -23,6 +25,7 @@ import {
 } from '../../src/index.js';
 import type { HalfCellNode } from '../../src/nav/halfcell.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
+import { boardingNode } from '../../src/systems/vehicles/crew.js';
 import {
   createVehicle,
   DRAUGHT_BREEDING_PAIR,
@@ -173,6 +176,40 @@ describe('the recruit pick', () => {
     expect(pick(s, c)).toBe(eligible);
   });
 
+  it('keeps a separate breeding pair in each farm and among unassigned animals', () => {
+    const s = sim();
+    const c = cart(s);
+    const farms = [s.world.create(), s.world.create()];
+    cow(s, CART.hx + 8, CART.hy);
+    cow(s, CART.hx + 9, CART.hy);
+    for (const farm of farms) {
+      for (let i = 1; i <= 2; i++) {
+        const animal = cow(s, CART.hx + i, CART.hy);
+        s.world.add(animal, FarmAnimal, { farm, summoner: null });
+      }
+    }
+    expect(pick(s, c)).toBeNull();
+    const farm = farms[1];
+    if (farm === undefined) throw new Error('missing farm');
+    const spare = cow(s, CART.hx + 6, CART.hy);
+    s.world.add(spare, FarmAnimal, { farm, summoner: null });
+    expect(pick(s, c)).toBe(spare);
+  });
+
+  it('neither recruits calves nor counts them or dying animals as a breeding adult', () => {
+    const s = sim();
+    const c = cart(s);
+    const calf = cow(s, CART.hx + 1, CART.hy);
+    s.world.add(calf, YoungAnimal, { adultAt: 1000 });
+    const dying = cow(s, CART.hx + 2, CART.hy);
+    s.world.mut(dying, Health).hitpoints = 0;
+    cow(s, CART.hx + 3, CART.hy);
+    cow(s, CART.hx + 4, CART.hy);
+    expect(pick(s, c)).toBeNull();
+    const spare = cow(s, CART.hx + 8, CART.hy);
+    expect(pick(s, c)).toBe(spare);
+  });
+
   it('gives an unowned cart nothing', () => {
     const s = sim();
     const c = cart(s);
@@ -233,6 +270,37 @@ describe('the draught animal system', () => {
     expect(refusals(s)).toEqual([`${c}:noCommander`]);
   });
 
+  it('finishes the last step into the door before consuming the cow', () => {
+    const s = sim();
+    const c = cart(s);
+    cow(s, 14, 9);
+    cow(s, 15, 9);
+    const ox = cow(s, 16, 9);
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapless');
+    const door = boardingNode(s.world, ctxOf(s), terrain, c);
+    if (door === null) throw new Error('no boarding node');
+    const coords = terrain.coordsOf(door);
+    const target = positionOfNode(coords.x, coords.y);
+    let sawLastStep = false;
+    for (let tick = 0; tick < WALK_LIMIT && s.world.isAlive(ox); tick++) {
+      const before = s.world.get(ox, Position);
+      const walking = s.world.has(ox, PathFollow);
+      const at = nodeOfPosition(before.x, before.y);
+      const insideDoorNode = terrain.nodeAtClamped(at.hx, at.hy) === door;
+      if (walking && insideDoorNode && (before.x !== target.x || before.y !== target.y)) sawLastStep = true;
+      s.step();
+      if (!s.world.isAlive(ox)) {
+        // Draught runs before movement: the preceding snapshot must already show the full arrival.
+        expect(before).toEqual(target);
+        expect(walking).toBe(false);
+      }
+    }
+    expect(sawLastStep).toBe(true);
+    expect(s.world.isAlive(ox)).toBe(false);
+    expect(s.world.get(c, Vehicle).harnessed).toBe(true);
+  });
+
   it('scans only on the cadence tick and never books a second recruit for one cart', () => {
     const s = sim();
     const c = cart(s);
@@ -271,6 +339,26 @@ describe('the draught animal system', () => {
     s.run(DRAUGHT_RECRUIT_CADENCE_TICKS);
     expect(s.world.get(a, DraughtAnimal).vehicle).toBe(first);
     expect(s.world.get(b, DraughtAnimal).vehicle).toBe(second);
+  });
+
+  it('leaves the second cart waiting when one farm has only one spare adult', () => {
+    const s = sim();
+    const first = cart(s);
+    const second = cart(s, P0, { hx: CART.hx, hy: CART.hy + 4 });
+    const farm = s.world.create();
+    for (let i = 1; i <= 3; i++) {
+      const animal = cow(s, CART.hx + 8 + i, CART.hy);
+      s.world.add(animal, FarmAnimal, { farm, summoner: null });
+    }
+    draughtAnimalSystem(s.world, { ...ctxOf(s), tick: DRAUGHT_RECRUIT_CADENCE_TICKS });
+    const recruits = [...s.world.query(DraughtAnimal)];
+    expect(recruits).toHaveLength(1);
+    expect(recruits.map((e) => s.world.get(e, DraughtAnimal).vehicle)).toEqual([first]);
+    expect(s.world.get(second, Vehicle)).toMatchObject({
+      vehicleType: CART_NO_OX,
+      task: 'waitsForAnimal',
+      harnessed: false,
+    });
   });
 
   it('never recruits the same-tribe animals of an ordinary settler tribe', () => {

@@ -317,6 +317,11 @@ export const plContent = {
       summary:
         'Stolarnia czwartego poziomu na brzegu, której stolarze mają robić na zmianę mały statek i katapultę: plac statku otwiera się na wodzie obok warsztatu, a szkutnik pracuje na brzegu; plac katapulty na lądzie. Zwodowany statek stoi zacumowany przy brzegu ze zwiniętymi żaglami.',
     },
+    'vehicle-ox-yard': {
+      title: 'Budowa wozu wołowego',
+      summary:
+        'Cieśla buduje dwa puste wozy. Krowa podchodzi z hodowli mającej trzy dorosłe sztuki i wchodzi do pierwszego wozu. W każdej hodowli zostają dwie krowy, więc drugi wóz czeka na zwierzę.',
+    },
     'vehicle-ox': {
       title: 'Wóz bez wołu',
       summary:

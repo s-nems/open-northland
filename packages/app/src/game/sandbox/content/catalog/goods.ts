@@ -18,6 +18,7 @@ import { EQUIP_CLASS_BY_TYPE } from '../../combat.js';
 import {
   BUILDING_CATAPULT_YARD,
   BUILDING_HANDCART_YARD,
+  BUILDING_OXCART_YARD,
   BUILDING_SHIP_SMALL_YARD,
   GOOD_CATAPULT,
   GOOD_COIN,
@@ -27,6 +28,7 @@ import {
   GOOD_MUD,
   GOOD_MUSHROOM,
   GOOD_NONE,
+  GOOD_OXCART,
   GOOD_PLANK,
   GOOD_SHIP_SMALL,
   GOOD_STONE,
@@ -36,9 +38,10 @@ import {
 import type { SandboxContentExtras } from '../types.js';
 
 /** The vehicle good to yard pairing of `logicdefines.inc` (`GOOD_TYPE_VEHICLE_*` / `HOUSE_TYPE_VEHICLE_*`),
- *  for the one vehicle the sandbox builds. */
+ *  for the vehicles the sandbox builds. */
 const VEHICLE_HOUSE_BY_GOOD: ReadonlyMap<number, number> = new Map([
   [GOOD_HANDCART, BUILDING_HANDCART_YARD],
+  [GOOD_OXCART, BUILDING_OXCART_YARD],
   [GOOD_SHIP_SMALL, BUILDING_SHIP_SMALL_YARD],
   [GOOD_CATAPULT, BUILDING_CATAPULT_YARD],
 ]);

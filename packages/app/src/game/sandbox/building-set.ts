@@ -21,6 +21,7 @@ import {
   BUILDING_JOINERY_02,
   BUILDING_JOINERY_03,
   BUILDING_MILL,
+  BUILDING_OXCART_YARD,
   BUILDING_POTTERY,
   BUILDING_POTTERY_01,
   BUILDING_SHIP_SMALL_YARD,
@@ -49,6 +50,7 @@ import {
   GOOD_MEAT,
   GOOD_MUD,
   GOOD_MUSHROOM,
+  GOOD_OXCART,
   GOOD_PLANK,
   GOOD_POTION_FOOD_BIG,
   GOOD_POTION_FOOD_SMALL,
@@ -66,6 +68,7 @@ import {
   GOOD_WHEAT,
   GOOD_WOOD,
   GOOD_WOOL,
+  VEHICLE_CART_NO_OX,
   VEHICLE_CATAPULT,
   VEHICLE_HANDCART,
   VEHICLE_SHIP_SMALL,
@@ -98,9 +101,10 @@ const CRAFT_INPUT_CAPACITY = 10;
 // Extracted `logicstock` on "work joinery 02": the cart slot is declared and never filled, since a
 // vehicle good is built on a yard, not shelved.
 const JOINERY_CART_CAPACITY = 20;
-// Extracted bills of the vehicle yards (houses 42/44/46): the handcart's 2 wood, the small ship's
+// Extracted bills of the vehicle yards (houses 42/43/44/46): the carts' 2/5 wood, the small ship's
 // 5 leather and 10 wood, the catapult's 9 wood and 1 iron; the footprints are the real ones.
 const HANDCART_YARD_WOOD = 2;
+const OXCART_YARD_WOOD = 5;
 const SHIP_YARD_LEATHER = 5;
 const SHIP_YARD_WOOD = 10;
 const CATAPULT_YARD_WOOD = 9;
@@ -453,15 +457,18 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   // Extracted `work joinery 01..03` household-good lane: two wood become one furniture. The same rows
   // also retain the joinery's wooden- and iron-tool recipes.
   [BUILDING_JOINERY_01]: joineryUpgrade(20, CRAFT_INPUT_CAPACITY),
-  // The level-3 joinery ("work joinery 02") also lists the handcart among its products
-  // (`logicproduction 59`): its joiner's turn for a cart is a yard site beside the shop, not a cycle, so
+  // The level-3 joinery ("work joinery 02") also lists both carts among its products
+  // (`logicproduction 59 60`): its joiner's turn for a cart is a yard site beside the shop, not a cycle, so
   // the cart recipe carries no inputs; the yard's bill is what the cart costs.
-  [BUILDING_JOINERY_02]: withVehicleTurns(joineryUpgrade(25, CRAFT_INPUT_CAPACITY), [GOOD_HANDCART]),
+  [BUILDING_JOINERY_02]: withVehicleTurns(joineryUpgrade(25, CRAFT_INPUT_CAPACITY), [
+    GOOD_HANDCART,
+    GOOD_OXCART,
+  ]),
   // The level-4 joinery ("work joinery 03") adds the small ship and the catapult to its products
   // (`logicproduction 61 63`, the big ship left out of the sandbox); leather and iron feed their yards.
   [BUILDING_JOINERY_03]: withVehicleTurns(
     joineryUpgrade(25, JOINERY_03_INPUT_CAPACITY),
-    [GOOD_HANDCART, GOOD_SHIP_SMALL, GOOD_CATAPULT],
+    [GOOD_HANDCART, GOOD_OXCART, GOOD_SHIP_SMALL, GOOD_CATAPULT],
     [{ goodType: GOOD_LEATHER, capacity: JOINERY_03_LEATHER_CAPACITY, initial: 0 }],
   ),
   // Extracted `work pottery 00/01`: the upgrade keeps bricks, adds tiles, and unlocks crockery.
@@ -517,6 +524,12 @@ const HANDCART_BODY = cells([
   [1, 0],
   [0, 1],
 ]);
+const OXCART_BODY = cells([
+  [-1, -1],
+  [0, -1],
+  [0, 0],
+  [-1, 1],
+]);
 const SHIP_SMALL_BODY = cells([
   [-1, -2],
   [0, -2],
@@ -548,7 +561,7 @@ const CATAPULT_BODY = cells([
   [0, 1],
 ]);
 
-/** The three yards the sandbox joineries raise, the real footprints of houses 42, 44 and 46. */
+/** The yards the sandbox joineries raise, the real footprints of houses 42, 43, 44 and 46. */
 const VEHICLE_YARDS: readonly VehicleYard[] = [
   {
     typeId: BUILDING_HANDCART_YARD,
@@ -575,6 +588,35 @@ const VEHICLE_YARDS: readonly VehicleYard[] = [
         [1, 2],
       ]),
       door: { dx: -1, dy: 1 },
+    },
+  },
+  {
+    typeId: BUILDING_OXCART_YARD,
+    id: 'oxcart',
+    vehicleType: VEHICLE_CART_NO_OX,
+    construction: [{ goodType: GOOD_WOOD, amount: OXCART_YARD_WOOD }],
+    footprint: {
+      blocked: OXCART_BODY,
+      familyBody: OXCART_BODY,
+      reserved: cells([
+        [-1, -2],
+        [0, -2],
+        [1, -2],
+        [-2, -1],
+        [-1, -1],
+        [0, -1],
+        [1, -1],
+        [-1, 0],
+        [0, 0],
+        [1, 0],
+        [5, 0],
+        [-2, 1],
+        [-1, 1],
+        [0, 1],
+        [-1, 2],
+        [0, 2],
+      ]),
+      door: { dx: 0, dy: 1 },
     },
   },
   {

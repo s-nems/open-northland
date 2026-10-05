@@ -318,6 +318,11 @@ export const enContent = {
       summary:
         'A level-4 joinery on a shore whose joiners are set to the small ship and the catapult in turn: the ship yard opens on the water beside the shop with the shipwright working from the shore, the catapult yard on the land. The launched ship lies moored at the shore with its sails furled.',
     },
+    'vehicle-ox-yard': {
+      title: 'Building an ox cart',
+      summary:
+        'A joiner builds two bare carts. One cow walks over from a farm with three adults and harnesses the first cart. Each farm keeps two cows, so the second cart waits for another animal.',
+    },
     'vehicle-ox': {
       title: 'Ox cart without ox',
       summary:

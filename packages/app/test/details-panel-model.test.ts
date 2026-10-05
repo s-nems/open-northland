@@ -39,6 +39,7 @@ import {
   GOOD_IRON,
   GOOD_MUD,
   GOOD_MUSHROOM,
+  GOOD_OXCART,
   GOOD_PLANK,
   GOOD_SHEEP,
   GOOD_SHOES,
@@ -1658,7 +1659,7 @@ describe('the animal farm panel - the species rows are its herd', () => {
 });
 
 describe('the joinery and its vehicle yard', () => {
-  /** The level-3 joinery's ordinary wares, in its recipe order, beside the handcart it raises on a yard. */
+  /** The level-3 joinery's ordinary wares, in its recipe order, beside the carts it raises on yards. */
   const JOINERY_02_WARES = [GOOD_TOOL_WOODEN, GOOD_TOOL_IRON, GOOD_FURNITURE];
 
   it('lists no production row for a vehicle good, whose yard never runs a cycle', () => {
@@ -1670,7 +1671,7 @@ describe('the joinery and its vehicle yard', () => {
     expect(model.production.rows.map((r) => r.goodType)).toEqual(JOINERY_02_WARES);
   });
 
-  it("keeps the vehicle among the joiner's craft choices, where the player orders it", () => {
+  it("keeps both carts among the joiner's craft choices, where the player orders them", () => {
     const sim = createSceneSim(sandboxScene);
     const slot = sim.content.buildings.find((b) => b.typeId === BUILDING_JOINERY_02)?.workers[0];
     if (slot === undefined) throw new Error('joinery has no worker slots');
@@ -1681,8 +1682,12 @@ describe('the joinery and its vehicle yard', () => {
     const model = buildUnitPanelModel(snapshot, new Set([2]), ctxOf(sim));
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     if (model.production?.kind !== 'craft') throw new Error('expected craft production');
-    expect(model.production.rows.map((r) => r.goodType)).toEqual([...JOINERY_02_WARES, GOOD_HANDCART]);
-    expect(model.production.rows.at(-1)?.goodId).toBe('handcart');
+    expect(model.production.rows.map((r) => r.goodType)).toEqual([
+      ...JOINERY_02_WARES,
+      GOOD_HANDCART,
+      GOOD_OXCART,
+    ]);
+    expect(model.production.rows.slice(-2).map((r) => r.goodId)).toEqual(['handcart', 'oxcart']);
   });
 
   it('titles the yard site by the vehicle it becomes, through the locale table', () => {
