@@ -58,7 +58,6 @@ import { type SettlerHoverContext, settlerHoverModel } from '../../hud/hover-car
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { minimapFeatureOfGoodTypes } from '../../hud/minimap/live-objects.js';
 import type { NetPanelSource } from '../../hud/network/model.js';
-import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { type MetSeat, NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
 import { MEAD_GOOD_ID, residentRows } from '../../hud/tool-panel/residents/projection.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
