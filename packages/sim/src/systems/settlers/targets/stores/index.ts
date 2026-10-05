@@ -5,6 +5,7 @@ export {
   nearestFreeYardNode,
   nearestStoreFor,
   nearestStoreHolding,
+  nearestStoreHoldingAnywhere,
   storeYieldsGood,
   strandedPile,
   unclaimedGoodsAt,

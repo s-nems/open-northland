@@ -19,6 +19,7 @@ export {
   nearestPrayerSite,
   nearestStoreFor,
   nearestStoreHolding,
+  nearestStoreHoldingAnywhere,
   nearestWorkplaceOutput,
   storeYieldsGood,
   strandedPile,

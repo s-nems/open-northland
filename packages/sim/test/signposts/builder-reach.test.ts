@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { Carrying, LostWay, Owner, Position, Stockpile, SupplyRun } from '../../src/components/index.js';
+import {
+  Carrying,
+  LostWay,
+  Owner,
+  PickupClaim,
+  Position,
+  Stockpile,
+  SupplyRun,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { CUT_OFF_CHECK_TICKS } from '../../src/systems/settlers/drives/cut-off.js';
@@ -18,19 +26,23 @@ import { grassCellMap } from '../fixtures/terrain.js';
 import { stampPost } from './support.js';
 
 /**
- * A builder and the signpost network between its site and the material for it. The walk range is 25 tiles
- * E/W and posts link under 20, so a post 18 tiles from the next joins its group and one 36 tiles away does
- * not. Tile coords, all on one row.
+ * A builder, the stores of its material and the signpost network between them and its site. Goods are
+ * found by a terrain search of 20 tiles from where the builder stands, or under the posts of a group that
+ * search catches; its walks reach 25 tiles, or a caught group's cover; posts link under 20 tiles, so a post
+ * 18 tiles from the next joins its group and one 36 tiles away does not. Tile coords, all on one row.
  */
 
 const P0 = 0;
 const ROW = 2;
-const STORE_X = 2;
-const BUILDER_X = 24;
-/** A post the builder catches whose range covers the island site, out of the store's reach. */
+const STORE_X = 12;
+/** Sees the store, and catches the island post with its walks but not with its goods search. */
+const BUILDER_X = 26;
+/** Sees the store and the island post both, so the island store is found through the post. */
+const BETWEEN_X = 30;
+/** A post the builder catches whose cover holds the island site, out of the store's reach. */
 const ISLAND_POST_X = 46;
 const ISLAND_SITE_X = 50;
-/** A store inside the island post's range, farther from the builder than the first store. */
+/** A store under the island post, farther from the builder than the first store. */
 const ISLAND_STORE_X = 54;
 /** Past the walk range of the store and of every post. */
 const FAR_SITE_X = 60;
@@ -130,7 +142,8 @@ describe('a builder whose site the signpost network keeps from its material', ()
 
 describe('a builder whose nearest store cannot serve its site', () => {
   it("fetches from a farther store that can, inside the site's signpost group", () => {
-    const { sim, builder, site } = world(ISLAND_SITE_X);
+    const { sim, builder } = scene(BETWEEN_X);
+    const site = placeSite(sim, ISLAND_SITE_X);
     stampPost(sim, ISLAND_POST_X, ROW);
     const island = builtBuildingAt(sim, HEADQUARTERS, ISLAND_STORE_X, ROW, [
       [STONE, 10],
@@ -140,7 +153,7 @@ describe('a builder whose nearest store cannot serve its site', () => {
     let source: Entity | null | undefined;
     for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS && source === undefined; t++) {
       sim.step();
-      source = sim.world.tryGet(builder, SupplyRun)?.source;
+      source = sim.world.tryGet(builder, PickupClaim)?.source;
     }
     expect(source).toBe(island);
     const delivered = (): boolean => (sim.world.tryGet(site, Stockpile)?.amounts.size ?? 0) > 0;

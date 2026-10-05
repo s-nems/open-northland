@@ -245,12 +245,39 @@ export function nearestStoreHolding(
       .holding(goodType)
       .nearest(
         here,
-        (e) => (unclaimedStockOf(world, supply, e, goodType) > 0 ? QUALIFIES : null),
+        holdsUnclaimed(world, supply, goodType),
         bands.goodsGate(here, owner, gate),
         avoid,
         sameSideAs(world, owner),
       )?.entity ?? null
   );
+}
+
+/** {@link nearestStoreHolding} with no signpost or goods-search gate: the store a fetcher would reach if
+ *  nothing guided it, asked only to tell work beyond the signposts from no work at all. */
+export function nearestStoreHoldingAnywhere(
+  bands: TargetBands,
+  world: World,
+  here: NodeId,
+  goodType: number,
+  owner: number | undefined,
+  supply: SupplyTally,
+  avoid?: (cell: NodeId) => boolean,
+): Entity | null {
+  return (
+    bands
+      .holding(goodType)
+      .nearest(here, holdsUnclaimed(world, supply, goodType), undefined, avoid, sameSideAs(world, owner))
+      ?.entity ?? null
+  );
+}
+
+function holdsUnclaimed(
+  world: World,
+  supply: SupplyTally,
+  goodType: number,
+): (store: Entity) => typeof QUALIFIES | null {
+  return (store) => (unclaimedStockOf(world, supply, store, goodType) > 0 ? QUALIFIES : null);
 }
 
 /**

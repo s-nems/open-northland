@@ -299,8 +299,9 @@ export function planBuilder(
  * get to. Null when no such site waits, or when some site in reach has a task, whoever holds it.
  * Original behavior, unconfirmed against the running original: the builder plans that walk
  * anyway and stands lost once its guided pathfinder has failed. Approximation: this planner never plans
- * past the confinement, so the cut-off check asks the unconfined pick instead, on its cadence, once per
- * builder and pass. A source on another landmass is no source: no signpost reaches across water.
+ * past the confinement, so the cut-off check asks a pick past the signpost and goods-search gates
+ * instead, on its cadence, once per builder and pass. A source on another landmass is no source: no
+ * signpost reaches across water.
  */
 export function builderWorkBeyondReach(
   plan: PlannerContext,
@@ -336,6 +337,7 @@ function findWorkBeyondReach(
   const free: PlannerContext = { ...plan, limit: null };
   const landmass = terrain.componentOf(here);
   const ashore = constructionMaterialResolver(free, spacing, {
+    anywhere: true,
     rejectSource: (cell) => terrain.componentOf(cell) !== landmass,
   });
   const site = anyTaskSite(free, spacing, claims, ashore, avoidSite);

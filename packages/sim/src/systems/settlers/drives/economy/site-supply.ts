@@ -7,7 +7,12 @@ import { accessibleStockAmounts, neededConstructionGoods } from '../../../stores
 import { atOrWalk, startPickup } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
-import { interactionCell, nearestStoreHolding, type TargetCandidates } from '../../targets/index.js';
+import {
+  interactionCell,
+  nearestStoreHolding,
+  nearestStoreHoldingAnywhere,
+  type TargetCandidates,
+} from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 
 /**
@@ -41,6 +46,9 @@ export function constructionMaterialResolver(
     confined?: SiteSupplyReach | undefined;
     /** Sources no load may be lifted from, by their interaction cell. */
     rejectSource?: ((cell: NodeId) => boolean) | undefined;
+    /** Search every store of the owner's side, past the signpost and goods-search gates: the probe for
+     *  work the signposts alone keep from the builder, never a fetch. */
+    anywhere?: true | undefined;
   } = {},
 ): {
   has(site: Entity): boolean;
@@ -56,13 +64,13 @@ export function constructionMaterialResolver(
     ReadonlyArray<{ readonly goodType: number; readonly amount: number }>
   >();
   const sourceByGood = new Map<number, MaterialSource | null>();
-  const { ownShelf, confined, rejectSource } = options;
+  const { ownShelf, confined, rejectSource, anywhere } = options;
   const sourceFor = (goodType: number): MaterialSource | null => {
     const cached = sourceByGood.get(goodType);
     if (cached !== undefined || sourceByGood.has(goodType)) return cached ?? null;
     const source =
       (ownShelf === undefined ? null : shelfSource(plan, ownShelf, goodType)) ??
-      materialSource(plan, goodType, rejectSource);
+      materialSource(plan, goodType, rejectSource, anywhere);
     sourceByGood.set(goodType, source);
     return source;
   };
@@ -252,12 +260,13 @@ export class SiteSupplyReach {
   }
 }
 
-/** The nearest store holding `goodType` within the fetcher's reach, passing over the cells `rejects`
- *  names. */
+/** The nearest store holding `goodType` within the fetcher's reach, or `anywhere` on its side, passing
+ *  over the cells `rejects` names. */
 function materialSource(
   plan: PlannerContext,
   goodType: number,
   rejects?: (cell: NodeId) => boolean,
+  anywhere?: true,
 ): MaterialSource | null {
   const { world, ctx, entity: e, here, targets } = plan;
   const band = targets.bands.holding(goodType);
@@ -267,16 +276,18 @@ function materialSource(
     rejects === undefined || failed === undefined
       ? (rejects ?? failed)
       : (cell: NodeId) => failed(cell) || rejects(cell);
-  const source = nearestStoreHolding(
-    targets.bands,
-    world,
-    here,
-    goodType,
-    plan.owner,
-    plan.supply,
-    plan.limit ?? undefined,
-    avoid,
-  );
+  const source = anywhere
+    ? nearestStoreHoldingAnywhere(targets.bands, world, here, goodType, plan.owner, plan.supply, avoid)
+    : nearestStoreHolding(
+        targets.bands,
+        world,
+        here,
+        goodType,
+        plan.owner,
+        plan.supply,
+        plan.limit ?? undefined,
+        avoid,
+      );
   if (source === null) return null;
   const stock = accessibleStockAmounts(world, source)?.get(goodType) ?? 0;
   const available = stock - plan.supply.reservedAt(source, goodType);
