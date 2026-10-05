@@ -127,10 +127,12 @@ reason. An idle notification selects its worker and opens the current diagnosis.
 production to see the reason change to missing ingredients.
 
 `?scene=far-post` posts Olaf to a bakery 52 tiles from the camp, with no signposts between. He keeps
-the post but stands lost, and his status names the workplace beyond signpost reach. Right-click the
-other settlers onto the bakery or the far home to get the same lost note; the headquarters beside the
-camp is in reach and raises none. Once the
-scout's signposts reach the bakery, Olaf walks to work on his own.
+the post but stands lost by the camp: his status reads "Zgubił się" in amber, with the workplace beyond
+signpost reach as the detail. The strip's jump button centres the view on the bakery door. While he is
+selected, the door carries a pale blue ring with darts and the minimap a diamond of the same colour.
+Clicking the lost note selects him. Right-click the other settlers onto the far home, or walk them past
+the signposts, for the same note; the headquarters beside the camp raises none. Once the scout's
+signposts reach the bakery, Olaf walks to work and the mark lifts.
 
 `?scene=store-reach` places two bakeries and a headquarters 60 tiles east, with no signposts between
 them. Freya's full bakery names the bread no store in reach takes; Ingrid's empty bakery names the

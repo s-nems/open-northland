@@ -560,7 +560,7 @@ export const enGame = {
       centreFlagHint: 'Centre the view on the flag',
       lostDetail: 'Knows no way beyond the signposts',
       lostGoal: 'Show the goal',
-      lostGoalHint: 'Centre the view on the place it cannot find the way to',
+      lostGoalHint: 'Centre the view on the place this settler cannot find the way to',
       buildRun: 'Task',
       buildRuns: { roads: 'Paving roads', walls: 'Building palisades' },
       endBuildRun: 'End the task',

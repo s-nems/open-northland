@@ -398,13 +398,17 @@ describe('the settler panel model', () => {
 
   it('reads a lost settler as lost, in amber, with the jump to its refused goal', () => {
     const copy = messages().hud;
-    const lost = (goal: number | null, live: Record<string, unknown> = {}, player = HUMAN_PLAYER) =>
+    const lost = (
+      goal: number | null,
+      live: Record<string, unknown> = {},
+      owner: Record<string, unknown> = { Owner: { player: HUMAN_PLAYER } },
+    ) =>
       settlerModel(
         [
           {
             id: SETTLER,
             components: {
-              Owner: { player },
+              ...owner,
               Settler: { tribe: 1, jobType: JOB_COLLECTOR },
               LostWay: { cutOff: true, since: 0, goal },
               ...live,
@@ -422,7 +426,44 @@ describe('the settler panel model', () => {
     });
     expect(lost(LOST_GOAL, { Female: {} }).label).toBe(copy.statuses.lost.she);
     expect(lost(null).lostGoal).toBeNull(); // no single node was out of reach: nothing to jump to
-    expect(lost(LOST_GOAL, {}, OTHER_SEAT).lostGoal).toBeNull(); // another seat's goal stays its own
+    expect(lost(LOST_GOAL, {}, { Owner: { player: OTHER_SEAT } }).lostGoal).toBeNull(); // another seat's
+    expect(lost(LOST_GOAL, {}, {}).lostGoal).toBe(LOST_GOAL); // an ownerless stray is nobody else's
+  });
+
+  it('keeps the signpost reason for a post beyond reach, which says how to mend it', () => {
+    const copy = messages().hud.settlerPanel;
+    const status = (kind: 'workplaceOutOfReach' | 'noWorkplace') =>
+      settlerModel(
+        [
+          {
+            id: SETTLER,
+            components: owned({
+              Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+              LostWay: { cutOff: true, since: 0, goal: LOST_GOAL },
+            }),
+          },
+        ],
+        { ...sandboxCtx(), workStatus: () => ({ kind }) },
+      ).status;
+    expect(status('workplaceOutOfReach')).toMatchObject({
+      state: 'lost',
+      detail: copy.idleReasons.workplaceOutOfReach,
+    });
+    expect(status('noWorkplace').detail).toBe(copy.lostDetail);
+  });
+
+  it('offers the jump while a cut-off settler is out on a meal or an errand, as the map marks it', () => {
+    const errand = settlerModel([
+      {
+        id: SETTLER,
+        components: owned({
+          Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+          LostWay: { cutOff: true, since: 0, goal: LOST_GOAL },
+          MoveGoal: { cell: 5 },
+        }),
+      },
+    ]).status;
+    expect(errand).toMatchObject({ state: 'walking', lostGoal: LOST_GOAL });
   });
 
   it('shows another seat’s person read-only: health, workplace, owner line, no controls', () => {

@@ -2,6 +2,7 @@ import { TILE_HALF_H, TILE_HALF_W, type WorldBounds } from '@open-northland/rend
 import { roadRevisionOf, roadShardOf } from '@open-northland/render/data';
 import { entitiesWith, FOG_STATE, type FogMode, type FogView, type WorldSnapshot } from '@open-northland/sim';
 import { BufferImageSource, type Container, Sprite, Texture } from 'pixi.js';
+import { nodeOfId } from '../../game/node-id.js';
 import type { Rect } from '../geometry.js';
 import { type DotRaster, stampMark } from './stamps.js';
 
@@ -75,8 +76,7 @@ export function createRoadRaster(
       if (nodes === undefined) continue;
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i] ?? 0;
-        const hx = node % nodeWidth;
-        const hy = (node - hx) / nodeWidth;
+        const { hx, hy } = nodeOfId(node, nodeWidth);
         pxX[count] = (hx * TILE_HALF_W - bounds.minX) * scale;
         pxY[count] = ((hy * TILE_HALF_H) / 2 - bounds.minY) * scale;
         cellX[count] = fogCellXOfNode(hx, hy);

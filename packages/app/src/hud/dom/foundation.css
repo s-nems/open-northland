@@ -5997,20 +5997,23 @@ body.on-drag-scroll * {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* A glyph button at the status strip's end: a building's alarm bell, dim while the alarm is down and gold
-   while it is up, or the jump to a lost settler's refused goal. */
+/* A glyph button in the status strip: a building's alarm bell, dim while the alarm is down and gold while
+   it is up, or the jump to a lost settler's refused goal before the carried good. */
 .on-hud .on-status-strip__button {
   flex-shrink: 0;
   display: grid;
   place-items: center;
   width: 20px;
   height: 20px;
-  margin-right: -4px;
   padding: 0;
   border: 0;
   border-radius: 3px;
   background: none;
   color: var(--muted);
+}
+/* At the strip's end, pulled into the padding so the glyph rather than its hit box keeps the edge. */
+.on-hud .on-status-strip__button:last-child {
+  margin-right: -4px;
 }
 .on-hud .on-status-strip__button .on-glyph {
   width: 14px;

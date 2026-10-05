@@ -1,6 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { projectNode } from '@open-northland/render';
 import { type Entity, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
+import { nodeOfId } from '../../game/node-id.js';
 import { holdsHaulFlagPost } from '../../game/snapshot.js';
 import { technologyReason } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
@@ -28,7 +29,7 @@ import { keyDisplayLabel } from '../../hud/keybindings.js';
 import { createReplaceableMount } from '../../hud/replaceable-mount.js';
 import { messages } from '../../i18n/index.js';
 import { screenScale } from '../camera/index.js';
-import { nodeBounds, nodeOfId } from '../picking.js';
+import { nodeBounds } from '../picking.js';
 import { entityAnchor, memoBySnapshot } from '../projections/index.js';
 import { createTooltip } from '../tooltip.js';
 import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';

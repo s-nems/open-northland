@@ -25,6 +25,12 @@ export function pickableSeat(viewer: ViewerSeat): number | null {
   return viewer.wholeMap() ? null : viewer.seat();
 }
 
+/** Whether an entity of `owner` is another seat's to the viewer limited to `seat`: an ownerless one (a
+ *  scene's stray) is nobody else's, and the whole map (null) is the viewer's own. */
+export function ownedByAnotherSeat(owner: number | undefined, seat: number | null): boolean {
+  return seat !== null && owner !== undefined && owner !== seat;
+}
+
 /** A played session's own seat: its fog, its entities, its figures. */
 export function fixedViewerSeat(seat: number): ViewerSeat {
   return { seat: () => seat, wholeMap: () => false, version: () => 0 };

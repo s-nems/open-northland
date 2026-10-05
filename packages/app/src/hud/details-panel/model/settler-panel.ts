@@ -16,7 +16,7 @@ import {
   settlerJobType,
   stanceModeOf,
 } from '../../../game/snapshot.js';
-import { pickableSeat } from '../../../game/viewer-seat.js';
+import { ownedByAnotherSeat, pickableSeat } from '../../../game/viewer-seat.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { PanelBar } from './bars.js';
 import {
@@ -68,7 +68,8 @@ export interface SettlerStatusModel {
   readonly detail: string | null;
   /** A tradesman standing idle or waiting for its workshop, or anyone lost: the line reads amber. */
   readonly trouble: boolean;
-  /** The node a lost settler's refused way led to, which the strip's jump centres on; null offers none. */
+  /** The node a cut-off settler's refused way led to, which the strip's jump centres on, also through its
+   *  meals and errands; another seat's goal stays its own. Null offers no jump. */
   readonly lostGoal: number | null;
   readonly carrying: CarriedGoodModel | null;
 }
@@ -165,8 +166,8 @@ function statusLabel(state: SettlerState, female: boolean): string {
 
 /**
  * The detail after the state's dot: a lesson's progress, a trader's destination, the product being
- * made, or the reason a tradesman stands idle, or a wife her held child order. The product and the
- * idle reason are the sim's `workStatus` reading for the settler's workplace.
+ * made, the reason a tradesman stands idle or a settler stands lost, or a wife her held child order.
+ * The product and the idle reason are the sim's `workStatus` reading for the settler's workplace.
  */
 function statusDetail(
   ctx: UnitPanelModelContext,
@@ -177,7 +178,11 @@ function statusDetail(
   trade: TradePanelModel | null,
 ): string | null {
   const copy = messages().hud.settlerPanel;
-  if (state === 'lost') return copy.lostDetail;
+  if (state === 'lost') {
+    // A post beyond the signposts keeps its reason, which says how to mend it.
+    const reach = ctx.workStatus?.(ent.id)?.kind === 'workplaceOutOfReach';
+    return reach ? copy.idleReasons.workplaceOutOfReach : copy.lostDetail;
+  }
   if (work.lesson !== null) return work.lesson;
   const heading = trade?.stops.find((stop) => stop.heading);
   if (heading !== undefined && state === 'walking') {
@@ -202,8 +207,7 @@ export function settlerPanelModel(
   const role = settlerRole(ctx, ent);
   const seat = ctx.viewer === undefined ? null : pickableSeat(ctx.viewer);
   const owner = ownerPlayerOf(ent);
-  // Another seat's person; an ownerless one (a scene's stray) is nobody else's.
-  const foreign = seat !== null && owner !== undefined && owner !== seat;
+  const foreign = ownedByAnotherSeat(owner, seat);
   const controllable = !foreign && isPlayerControllable(ent);
   const control: SeatControl = controllable ? true : messages().hud.settlerPanel.scripted;
   const progressionGated = progressionGatesSettler(snapshot, ent);
@@ -217,8 +221,8 @@ export function settlerPanelModel(
     trouble:
       state === 'lost' ||
       ((state === 'idle' || state === 'awaitingWorkplace') && (role === 'worker' || role === 'civilian')),
-    // Another seat's refused goal stays its own, as the map marks only the viewer's lost settlers.
-    lostGoal: state === 'lost' && !foreign ? (lostGoalOf(ent) ?? null) : null,
+    // Off `LostWay`, not the state, so the jump agrees with the goal the map marks.
+    lostGoal: foreign ? null : (lostGoalOf(ent) ?? null),
     carrying: carriedGood(ctx, comps),
   };
   const hero = role === 'hero';

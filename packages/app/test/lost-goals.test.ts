@@ -1,6 +1,7 @@
 import { TILE_HALF_H, TILE_HALF_W, terrainWorldBounds } from '@open-northland/render';
-import { describe, expect, it } from 'vitest';
-import { goalMarkPoints } from '../src/hud/minimap/goal-marks.js';
+import { Graphics } from 'pixi.js';
+import { describe, expect, it, vi } from 'vitest';
+import { createGoalMarks, goalMarkPoints } from '../src/hud/minimap/goal-marks.js';
 import {
   minimapLayout,
   visibleMinimapRect,
@@ -17,6 +18,11 @@ const OTHER_SEAT = 1;
 const node = (hx: number, hy: number): number => hy * NODE_WIDTH + hx;
 const TREE = node(5, 7);
 const STORE = node(20, 3);
+const SCREEN_W = 1600;
+const SCREEN_H = 900;
+const UI_SCALE = 1;
+/** A minimap zoom far enough in that a corner focus leaves the far corner out of the shown part. */
+const ZOOM = 4;
 
 const lostSettler = (id: number, goal: number | null, owner = OWN_SEAT): Ent => ({
   id,
@@ -61,6 +67,15 @@ describe('createLostGoals - the refused goals of the selected lost settlers', ()
     expect(goals(world, new Set([6]), null)).toEqual([{ node: STORE, hx: 20, hy: 3 }]);
   });
 
+  it("marks an ownerless stray's goal as the viewer's, as its panel offers the jump", () => {
+    const stray: Ent = {
+      id: 7,
+      components: { Settler: { jobType: 1 }, LostWay: { cutOff: false, since: 0, goal: TREE } },
+    };
+    const goals = createLostGoals(NODE_WIDTH);
+    expect(goals(snapshotOf([stray]), new Set([7]), OWN_SEAT)).toEqual([{ node: TREE, hx: 5, hy: 7 }]);
+  });
+
   it('hands back the same list while the goals hold, a new one once the settler finds its way', () => {
     const goals = createLostGoals(NODE_WIDTH);
     const selection = new Set([1]);
@@ -80,9 +95,6 @@ describe('lostGoalPulse', () => {
 
 describe('goalMarkPoints - a refused goal on the minimap', () => {
   const bounds = terrainWorldBounds(MAP_CELLS, MAP_CELLS);
-  const SCREEN_W = 1600;
-  const SCREEN_H = 900;
-  const UI_SCALE = 1;
   const layout = minimapLayout(bounds, SCREEN_H, UI_SCALE, 'm', SCREEN_W);
 
   it('stands on the projected node, by the formula the roads and the camera box use', () => {
@@ -94,7 +106,6 @@ describe('goalMarkPoints - a refused goal on the minimap', () => {
 
   it('leaves out a goal outside the shown part of a zoomed map', () => {
     const corner = { x: bounds.minX + bounds.width / 8, y: bounds.minY + bounds.height / 8 };
-    const ZOOM = 4;
     const zoomed = zoomMinimapLayout(layout, bounds, ZOOM, corner);
     const shown = visibleMinimapRect(zoomed);
     const points = goalMarkPoints(zoomed, bounds, [
@@ -105,5 +116,47 @@ describe('goalMarkPoints - a refused goal on the minimap', () => {
     const [near] = points;
     expect(near?.x).toBeGreaterThanOrEqual(shown.x);
     expect(near?.y).toBeGreaterThanOrEqual(shown.y);
+  });
+});
+
+describe('createGoalMarks - the minimap diamonds', () => {
+  const bounds = terrainWorldBounds(MAP_CELLS, MAP_CELLS);
+  const layout = minimapLayout(bounds, SCREEN_H, UI_SCALE, 'm', SCREEN_W);
+  const fills = (g: Graphics): number => g.context.instructions.filter((i) => i.action === 'fill').length;
+  const marks = () => {
+    const graphics = new Graphics();
+    const clear = vi.spyOn(graphics, 'clear');
+    return { graphics, clear, goals: createGoalMarks(graphics) };
+  };
+
+  it('draws a new goal list once and leaves the same list, layout and scale alone', () => {
+    const { graphics, clear, goals } = marks();
+    const nodes = [{ hx: 5, hy: 7 }];
+    goals.draw(layout, bounds, nodes, UI_SCALE);
+    goals.draw(layout, bounds, nodes, UI_SCALE);
+    expect(fills(graphics)).toBe(1);
+    expect(clear).not.toHaveBeenCalled();
+    goals.draw(layout, bounds, [...nodes], UI_SCALE);
+    expect(clear).toHaveBeenCalledTimes(1);
+    expect(fills(graphics)).toBe(1);
+  });
+
+  it('clears once when the goals go, and once when they leave the shown part of a zoomed map', () => {
+    const { graphics, clear, goals } = marks();
+    const NONE: readonly { hx: number; hy: number }[] = [];
+    goals.draw(layout, bounds, [{ hx: 5, hy: 7 }], UI_SCALE);
+    goals.draw(layout, bounds, NONE, UI_SCALE);
+    goals.draw(layout, bounds, [], UI_SCALE);
+    expect(clear).toHaveBeenCalledTimes(1);
+    expect(fills(graphics)).toBe(0);
+
+    const far = [{ hx: NODE_WIDTH - 2, hy: NODE_WIDTH - 2 }];
+    goals.draw(layout, bounds, far, UI_SCALE);
+    const corner = { x: bounds.minX + bounds.width / 8, y: bounds.minY + bounds.height / 8 };
+    const zoomed = zoomMinimapLayout(layout, bounds, ZOOM, corner);
+    goals.draw(zoomed, bounds, far, UI_SCALE);
+    goals.draw(zoomMinimapLayout(layout, bounds, ZOOM, corner), bounds, far, UI_SCALE);
+    expect(clear).toHaveBeenCalledTimes(2);
+    expect(fills(graphics)).toBe(0);
   });
 });

@@ -14,7 +14,7 @@ import {
   vehicleSeatsOf,
 } from '../../../game/snapshot.js';
 import { vehicleLabel } from '../../../game/technology.js';
-import { pickableSeat } from '../../../game/viewer-seat.js';
+import { ownedByAnotherSeat, pickableSeat } from '../../../game/viewer-seat.js';
 import { messages } from '../../../i18n/index.js';
 import { goodCategoryTab } from '../../good-categories.js';
 import {
@@ -478,7 +478,7 @@ export function vehiclePanelModel(
   const vehicleClass = vehicleClassOf(type);
   const seat = ctx.viewer === undefined ? null : pickableSeat(ctx.viewer);
   const owner = ownerPlayerOf(ent);
-  const foreign = seat !== null && owner !== undefined && owner !== seat;
+  const foreign = ownedByAnotherSeat(owner, seat);
   const passengers = vehicleSeatsOf(v.passengers);
   const commanderId = vehicleCommanderOf(ent);
   const commanded = commanderId !== undefined;

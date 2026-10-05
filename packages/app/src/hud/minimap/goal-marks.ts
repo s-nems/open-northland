@@ -37,29 +37,32 @@ export function goalMarkPoints(
 
 /**
  * The selected lost settlers' refused goals as vector diamonds over the minimap, in screen space beside
- * the camera rectangle: the dot raster restamps only a few times a second. Redraws only when a mark
- * moves, the layout changes or the HUD rescales.
+ * the camera rectangle: the dot raster restamps only a few times a second. Redraws only when the goal
+ * list, the layout or the HUD scale is a new one: the goal list keeps its identity while unchanged, and
+ * the layout is replaced on every minimap zoom, pan or resize. `bounds` are the map's, fixed per mount.
  */
 export function createGoalMarks(graphics: Graphics): {
   draw(layout: MinimapLayout, bounds: WorldBounds, nodes: readonly GoalNode[], uiScale: number): void;
   clear(): void;
 } {
-  let lastKey = '';
-  const clear = (): void => {
-    lastKey = '';
+  let lastNodes: readonly GoalNode[] | null = null;
+  let lastLayout: MinimapLayout | null = null;
+  let lastScale = 0;
+  let drawn = false;
+  const wipe = (): void => {
+    if (!drawn) return;
+    drawn = false;
     graphics.clear();
   };
   return {
     draw: (layout, bounds, nodes, uiScale) => {
-      if (nodes.length === 0) {
-        if (lastKey !== '') clear();
-        return;
-      }
-      const points = goalMarkPoints(layout, bounds, nodes);
-      const key = points.length === 0 ? '' : `${uiScale}:${points.map((p) => `${p.x},${p.y}`).join(';')}`;
-      if (key === lastKey) return;
-      lastKey = key;
-      graphics.clear();
+      if (nodes === lastNodes && layout === lastLayout && uiScale === lastScale) return;
+      lastNodes = nodes;
+      lastLayout = layout;
+      lastScale = uiScale;
+      const points = nodes.length === 0 ? [] : goalMarkPoints(layout, bounds, nodes);
+      wipe();
+      if (points.length === 0) return;
       const r = MARK_HALF_DIAGONAL * uiScale;
       for (const { x, y } of points) {
         graphics
@@ -67,7 +70,12 @@ export function createGoalMarks(graphics: Graphics): {
           .fill({ color: LOST_GOAL_COLOUR })
           .stroke({ width: MARK_OUTLINE_WIDTH * uiScale, color: LOST_GOAL_OUTLINE });
       }
+      drawn = true;
     },
-    clear,
+    clear: () => {
+      lastNodes = null;
+      lastLayout = null;
+      wipe();
+    },
   };
 }

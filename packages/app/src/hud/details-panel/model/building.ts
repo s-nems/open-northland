@@ -21,7 +21,7 @@ import {
   staffOf,
 } from '../../../game/snapshot.js';
 import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot-id-index.js';
-import { pickableSeat } from '../../../game/viewer-seat.js';
+import { ownedByAnotherSeat, pickableSeat } from '../../../game/viewer-seat.js';
 import { messages, tribeName } from '../../../i18n/index.js';
 import { pct } from './bars.js';
 import {
@@ -358,7 +358,7 @@ export function buildingPanelModel(
   const tribeId = buildingTribeOf(ent);
   const owner = ownerPlayerOf(ent);
   const seat = ctx.viewer === undefined ? null : pickableSeat(ctx.viewer);
-  const foreign = seat !== null && owner !== undefined && owner !== seat;
+  const foreign = ownedByAnotherSeat(owner, seat);
   const builtPct = pct(num(b.built));
   const site = ent.components.UnderConstruction !== undefined;
   const finished = !site && builtPct >= 100;
