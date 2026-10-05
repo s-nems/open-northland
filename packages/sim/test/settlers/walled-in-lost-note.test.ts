@@ -24,10 +24,17 @@ const CLOSED_GATE = 696;
 const OPEN_GATE = 700;
 const TREE_XS = [20, 32, 44];
 const TREE_ROW = 56;
+/** The test content's wood good, the wall's construction material. */
+const WOOD = 5;
+const WALL_HITPOINTS = 100;
 
 function walledIn(): { sim: Simulation; woodcutter: Entity; gate: Entity } {
   const span = [-2, -1, 0, 1, 2].map((dx) => ({ dx, dy: 0 }));
-  const wall = { maxHitpoints: 100, repairPerStrike: 1, construction: [{ goodType: 5, amount: 1 }] };
+  const wall = {
+    maxHitpoints: WALL_HITPOINTS,
+    repairPerStrike: 1,
+    construction: [{ goodType: WOOD, amount: 1 }],
+  };
   const sim = new Simulation({
     seed: 1,
     content: testContent(),

@@ -2,7 +2,7 @@ import { CARRY_CAPACITY, sameSideAs } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { spotsReaching } from '../../../signposts/index.js';
+import { type NavigationLimit, spotsReaching } from '../../../signposts/index.js';
 import { accessibleStockAmounts, neededConstructionGoods } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
@@ -39,6 +39,8 @@ export function constructionMaterialResolver(
      *  confinement. A site it holds by order or binding takes its load past the confinement, as the
      *  delivery's bound sink does. */
     confined?: SiteSupplyReach | undefined;
+    /** Cells no source may be lifted at, by its filed cell. */
+    rejectSource?: ((cell: NodeId) => boolean) | undefined;
   } = {},
 ): {
   has(site: Entity): boolean;
@@ -52,13 +54,13 @@ export function constructionMaterialResolver(
     ReadonlyArray<{ readonly goodType: number; readonly amount: number }>
   >();
   const sourceByGood = new Map<number, MaterialSource | null>();
-  const { ownShelf, confined } = options;
+  const { ownShelf, confined, rejectSource } = options;
   const sourceFor = (goodType: number): MaterialSource | null => {
     const cached = sourceByGood.get(goodType);
     if (cached !== undefined || sourceByGood.has(goodType)) return cached ?? null;
     const source =
       (ownShelf === undefined ? null : shelfSource(plan, ownShelf, goodType)) ??
-      materialSource(plan, goodType);
+      materialSource(plan, goodType, rejectSource);
     sourceByGood.set(goodType, source);
     return source;
   };
@@ -78,8 +80,10 @@ export function constructionMaterialResolver(
       liftCellByGood.set(goodType, lift);
     }
     if (delivers(terrain.xOf(lift), terrain.yOf(lift))) return nearest;
-    if (!confined.anySource(owner, plan.jobType, site, goodType)) return null;
-    return materialSource(plan, goodType, (cell) => !delivers(terrain.xOf(cell), terrain.yOf(cell)));
+    if (!confined.anySource(owner, plan.jobType, site, goodType, plan.limit)) return null;
+    const rejects = (cell: NodeId): boolean =>
+      !delivers(terrain.xOf(cell), terrain.yOf(cell)) || rejectSource?.(cell) === true;
+    return materialSource(plan, goodType, rejects);
   };
   const resolve = (site: Entity): FetchableMaterial | null => {
     const cached = bySite.get(site);
@@ -183,18 +187,35 @@ export class SiteSupplyReach {
     return this.lift(owner, jobType, site).spots;
   }
 
-  /** Whether some store of `owner`'s side holding `goodType` may stand at such a spot: false proves that
-   *  no source serves the site, so the caller skips a ring sweep of the builder's whole reach. */
-  anySource(owner: number, jobType: number, site: Entity, goodType: number): boolean {
+  /** Whether some store of `owner`'s side holding `goodType` may stand at such a spot, and within the
+   *  asking builder's own `reach` when given: false proves that no source serves the site, so the caller
+   *  skips a ring sweep of the builder's whole reach. The site's answer is shared; the builder's own is
+   *  one pass over the filed stores, cheaper than the sweep it spares. */
+  anySource(
+    owner: number,
+    jobType: number,
+    site: Entity,
+    goodType: number,
+    reach: NavigationLimit | null = null,
+  ): boolean {
     const lift = this.lift(owner, jobType, site);
+    const band = this.targets.bands.holding(goodType);
+    const near = (): SpotTest | null => this.spotsReaching(owner, jobType, site, band.filedSlack);
+    const ownSide = sameSideAs(this.world, owner);
     let any = lift.anyByGood.get(goodType);
     if (any === undefined) {
-      const band = this.targets.bands.holding(goodType);
-      const near = this.spotsReaching(owner, jobType, site, band.filedSlack);
-      any = near === null || band.anyFiledIn(near, sameSideAs(this.world, owner));
+      const spots = near();
+      any = spots === null || band.anyFiledIn(spots, ownSide);
       lift.anyByGood.set(goodType, any);
     }
-    return any;
+    if (!any || reach === null) return any;
+    const spots = near();
+    if (spots === null) return true;
+    const { terrain } = this;
+    return band.anyFiledIn(
+      (hx, hy) => spots(hx, hy) && terrain.inBounds(hx, hy) && reach.allowsNode(terrain.nodeAt(hx, hy)),
+      ownSide,
+    );
   }
 
   private lift(owner: number, jobType: number, site: Entity): SiteLift {

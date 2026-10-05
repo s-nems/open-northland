@@ -130,9 +130,9 @@ export const Stranded = defineComponent<{ retryAt: number }>('Stranded', 'moveme
 
 /**
  * A settler standing lost: an ordered walk, a chase or its work found no way within its signpost reach.
- * Lifted once a route is found for it, a chat partner's aside, or a drive keeps it busy in place. `cutOff`
- * says the idle tail found its own workplace, every door of its seat or its only work out of reach; that
- * tail lifts the marker once the way is back in reach. `since` is the tick the episode began; `goal` is the
+ * Lifted once a route is found for it, a chat partner's aside, or, for a way its own walk failed, once a
+ * drive sets it to work in place. `cutOff` says the idle tail found its own workplace, every door of its
+ * seat or its only work out of reach; that tail lifts the marker once the way is back in reach. `since` is the tick the episode began; `goal` is the
  * node the latest refused way led to, shown to the player, or null when no single node was out of reach.
  */
 export const LostWay = defineComponent<{ cutOff: boolean; since: number; goal: NodeId | null }>(

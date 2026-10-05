@@ -3,6 +3,7 @@ import { Carrying, LostWay, Owner, Position, Stockpile, SupplyRun } from '../../
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { CUT_OFF_CHECK_TICKS } from '../../src/systems/settlers/drives/cut-off.js';
+import { idleReplanDue } from '../../src/systems/settlers/planner/idle-replan.js';
 import {
   builderAt,
   builtBuildingAt,
@@ -39,6 +40,11 @@ const WALK_THERE_TICKS = 600;
 const CHAIN = [10, 28, ISLAND_POST_X];
 
 function world(siteX: number): { sim: Simulation; builder: Entity; site: Entity } {
+  const { sim, builder } = scene(siteX === FAR_SITE_X ? STORE_X + 2 : BUILDER_X);
+  return { sim, builder, site: placeSite(sim, siteX) };
+}
+
+function scene(builderX: number): { sim: Simulation; builder: Entity } {
   const sim = new Simulation({ seed: 3, content: constructionContent(), map: grassCellMap(128, 8) });
   sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
@@ -48,11 +54,24 @@ function world(siteX: number): { sim: Simulation; builder: Entity; site: Entity 
     [WOOD, 10],
   ]);
   sim.world.add(store, Owner, { player: P0 });
-  const site = siteAt(sim, HOUSE, siteX, ROW);
-  sim.world.add(site, Owner, { player: P0 });
-  const builder = builderAt(sim, siteX === FAR_SITE_X ? STORE_X + 2 : BUILDER_X, ROW);
+  const builder = builderAt(sim, builderX, ROW);
   sim.world.add(builder, Owner, { player: P0 });
-  return { sim, builder, site };
+  return { sim, builder };
+}
+
+function placeSite(sim: Simulation, x: number): Entity {
+  const site = siteAt(sim, HOUSE, x, ROW);
+  sim.world.add(site, Owner, { player: P0 });
+  return site;
+}
+
+function lostNotesOver(sim: Simulation, builder: Entity, ticks: number): number {
+  let notes = 0;
+  for (let t = 0; t < ticks; t++) {
+    sim.step();
+    for (const ev of sim.events.current()) if (ev.kind === 'settlerLost' && ev.entity === builder) notes++;
+  }
+  return notes;
 }
 
 function fetching(sim: Simulation, builder: Entity): boolean {
@@ -108,7 +127,7 @@ describe('a builder whose nearest store cannot serve its site', () => {
       [WOOD, 10],
     ]);
     sim.world.add(island, Owner, { player: P0 });
-    let source: Entity | undefined;
+    let source: Entity | null | undefined;
     for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS && source === undefined; t++) {
       sim.step();
       source = sim.world.tryGet(builder, SupplyRun)?.source;
@@ -137,6 +156,30 @@ describe('a builder whose only site lies beyond every signpost', () => {
       sim.step();
       fetched ||= fetching(sim, builder);
     }
+    expect(fetched).toBe(true);
+    expect(sim.world.has(builder, LostWay)).toBe(false);
+  });
+});
+
+describe('a builder whose signposts reach its work', () => {
+  it('is never told it is lost over a site placed while it idles, whichever tick checks it', () => {
+    const { sim, builder } = scene(BUILDER_X);
+    for (const x of CHAIN) stampPost(sim, x, ROW);
+    // Nothing to build: it idles on its tail through two checks.
+    expect(lostNotesOver(sim, builder, 2 * CUT_OFF_CHECK_TICKS)).toBe(0);
+    // A site placed just before a check that falls between its idle beats is in reach, so that check,
+    // which runs with no site pick of its own, must not read it as beyond.
+    const checkOffBeat = (tick: number): boolean =>
+      tick % CUT_OFF_CHECK_TICKS === 0 && !idleReplanDue(tick, builder);
+    while (!checkOffBeat(sim.tick + 1)) sim.step();
+    placeSite(sim, ISLAND_SITE_X);
+    let notes = lostNotesOver(sim, builder, 1);
+    let fetched = false;
+    for (let t = 0; t < 3 * CUT_OFF_CHECK_TICKS; t++) {
+      notes += lostNotesOver(sim, builder, 1);
+      fetched ||= fetching(sim, builder);
+    }
+    expect(notes).toBe(0);
     expect(fetched).toBe(true);
     expect(sim.world.has(builder, LostWay)).toBe(false);
   });

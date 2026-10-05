@@ -408,7 +408,7 @@ export function checkCutOff(pass: PlannerPass, plan: PlannerContext): boolean {
     pass.seatDoors,
     () =>
       jobCanBuild(ctx.content, plan.jobType)
-        ? builderWorkBeyondReach(plan, pass.spacing, pass.constructionClaims)
+        ? builderWorkBeyondReach(plan, pass.spacing, pass.constructionClaims, pass.siteSupply)
         : null,
   );
   return guideLostSettler(pass, e, plan.limit);

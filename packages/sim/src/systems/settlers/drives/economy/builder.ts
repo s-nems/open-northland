@@ -54,8 +54,9 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
  * fetching more and keep a useful automatic crew assignment stable, otherwise move the builder to the
  * nearest reachable site with material it can carry there or delivered labor to install, and with no task
  * anywhere wait beside a site, unless only its signposts keep it from one. A road or wall run the player
- * started ({@link BuildMode}) goes before all of that. Walls wait while a building site holds a task the builder can do, a damaged wall goes before a new
- * segment, and road sites wait while a building or a wall site holds one. Player pins and unfinished
+ * started ({@link BuildMode}) goes before all of that. Walls wait while a building site holds a task the
+ * builder can do, a damaged wall goes before a new segment, and road sites wait while a building or a wall
+ * site holds one. Player pins and unfinished
  * workplace bindings are strict: their builders stay with that site even while another has work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
@@ -264,9 +265,9 @@ export function planBuilder(
   // already walking in, else the current crew site, else the nearest. A builder has no other trade to
   // fall back to, and one that drifts off with the idle crowd pays the walk back for every delivery.
   // Only a road site with stone on the way is waited at: waiting claims the site, and a claimed site is
-  // one a neighbour's finishing stone cannot pave and a supplied builder must pass over. One that only its
-  // signposts keep from work stands lost on the idle tail instead, whose cut-off check tells the player and
-  // lifts the mark once the network reaches the work.
+  // one a neighbour's finishing stone cannot pave and a supplied builder must pass over. One cut off by its
+  // signposts, from its work or its seat, stands lost on the idle tail instead, whose cut-off check tells
+  // the player and lifts the mark once the network reaches them.
   if (world.tryGet(e, LostWay)?.cutOff !== true) {
     const staging =
       nearestInTurn(
@@ -277,7 +278,10 @@ export function planBuilder(
       (crewSite !== null && !world.has(crewSite, RoadSite) && canStandAt(crewSite) && inTurn(crewSite)
         ? crewSite
         : nearestInTurn(canStandAt, everyWall, () => null));
-    if (staging !== null && !(cutOffCheckDue(ctx) && builderWorkBeyondReach(plan, spacing, claims))) {
+    if (
+      staging !== null &&
+      !(cutOffCheckDue(ctx) && builderWorkBeyondReach(plan, spacing, claims, supply) !== null)
+    ) {
       stampAssignment(plan, claims, staging, false);
       if (!holdSegment(plan, claims, staging)) return false;
       waitAtSite(plan, spacing, staging);
@@ -289,29 +293,59 @@ export function planBuilder(
 }
 
 /**
- * The stand at the nearest site only its signposts keep a builder that found no task from: a site that
- * would give it a task if no confinement held it, whether the site itself or every source of its material
- * lies out of reach. Null when no such site waits. Original behavior: the builder plans that walk anyway
- * and stands lost once its guided pathfinder has failed. Approximation: this planner never plans past the
- * confinement, so the cut-off check asks the unconfined pick instead, on its cadence.
+ * The stand at the nearest site only its signposts keep a builder from: no site within its confinement
+ * gives it a task, but one would if no confinement held it, whether the site itself or every source of its
+ * material lies out of reach. Null when no such site waits, or when some site in reach has a task, whoever
+ * holds it. Original behavior: the builder plans that walk anyway and stands lost once its guided
+ * pathfinder has failed. Approximation: this planner never plans past the confinement, so the cut-off
+ * check asks the unconfined pick instead, on its cadence. A source on another landmass is no source: no
+ * signpost reaches across water.
  */
 export function builderWorkBeyondReach(
   plan: PlannerContext,
   spacing: PlannerSpacing,
   claims: ConstructionTaskClaims,
+  supply: SiteSupplyReach,
 ): NodeId | null {
   if (plan.limit === null) return null;
+  const { world, ctx, terrain, entity: e, here, targets } = plan;
+  const avoidSite = unreachableSiteStand(
+    world,
+    ctx,
+    terrain,
+    targets.yard.blocked,
+    here,
+    unreachableGoalVeto(world, ctx, e),
+  );
+  const confined = constructionMaterialResolver(plan, spacing, { confined: supply });
+  if (anyTaskSite(plan, spacing, claims, confined, avoidSite) !== null) return null;
   const free: PlannerContext = { ...plan, limit: null };
-  const { world, ctx, terrain, here, targets, owner } = free;
-  const materials = constructionMaterialResolver(free, spacing);
-  const hasTask = siteHasTask(claims, materials, standableSite(free, spacing, null));
+  const landmass = terrain.componentOf(here);
+  const ashore = constructionMaterialResolver(free, spacing, {
+    rejectSource: (cell) => terrain.componentOf(cell) !== landmass,
+  });
+  const site = anyTaskSite(free, spacing, claims, ashore, avoidSite);
+  return site === null ? null : interactionCell(world, ctx, terrain, site, here);
+}
+
+/** The nearest site within `plan.limit` that gives this builder a task from `materials`, in the order the
+ *  ladder takes them: buildings, then walls, then roads. */
+function anyTaskSite(
+  plan: PlannerContext,
+  spacing: PlannerSpacing,
+  claims: ConstructionTaskClaims,
+  materials: MaterialResolver,
+  avoidSite: ((site: Entity) => boolean) | undefined,
+): Entity | null {
+  const { world, here, targets, owner, limit } = plan;
+  const hasTask = siteHasTask(claims, materials, standableSite(plan, spacing, limit));
   const found = (sites: InteractionCellIndex): Entity | null =>
-    nearestBuilderSite(sites, world, here, owner, undefined, undefined, hasTask);
-  const site =
+    nearestBuilderSite(sites, world, here, owner, limit ?? undefined, avoidSite, hasTask);
+  return (
     found(targets.constructionSiteCells) ??
     (claims.wallMayHaveTask(materials.canSource) ? found(targets.wallSiteCells) : null) ??
-    (claims.roadMayHaveTask(materials.canSource, owner) ? found(targets.roadSiteCells) : null);
-  return site === null ? null : interactionCell(world, ctx, terrain, site, here);
+    (claims.roadMayHaveTask(materials.canSource, owner) ? found(targets.roadSiteCells) : null)
+  );
 }
 
 /** An unfinished site this builder may stand at within `limit`. A damaged upgrade site is mended before its

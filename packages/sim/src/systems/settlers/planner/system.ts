@@ -5,6 +5,7 @@ import {
   chatAtomicRunning,
   IdleStand,
   inPastimeChat,
+  LostWay,
   MoveGoal,
   Position,
   Resting,
@@ -81,11 +82,20 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       pass.idle.settle(world, e);
       if (inPastimeChat(world, e) && tookAction(world, e)) endChat(world, ctx.tick, e); // frees the partner too
     }
-    // A ladder that left the settler busy where it stands, at work or waiting at its post, found its way.
-    // A walk keeps the mark until the pathfinding pass finds its route, since it may fail like the last one
-    // did; the idle tail and a chat of either kind are still standing about to the player. A jobless adult
-    // never gets here, so only an obeyed order lifts its mark.
-    if (!pass.idle.reachedTail(e) && !world.has(e, Chat) && !world.has(e, MoveGoal)) clearLostWay(world, e);
+    // A ladder that set the settler to work where it stands found its way. A walk keeps the mark until the
+    // pathfinding pass finds its route, since it may fail like the last one did; a stand, at a site or
+    // inside a workplace, and a chat of either kind are still standing about to the player. A cut-off mark
+    // waits for its own check: a meal in place does not reach the seat. A jobless adult never gets here, so
+    // only an obeyed order lifts its mark.
+    if (
+      world.tryGet(e, LostWay)?.cutOff === false &&
+      world.has(e, CurrentAtomic) &&
+      !pass.idle.reachedTail(e) &&
+      !world.has(e, Chat) &&
+      !world.has(e, MoveGoal)
+    ) {
+      clearLostWay(world, e);
+    }
   }
 }
 
