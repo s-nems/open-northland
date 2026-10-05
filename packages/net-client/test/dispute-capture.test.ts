@@ -16,6 +16,7 @@ function inputsAt(tick: number, words = 1): SyncDigestInputs {
   return {
     tick,
     rng: tick,
+    names: 2166136261,
     nextEntityId: 1,
     entityCount: 1,
     allocations: new Uint32Array(0),
