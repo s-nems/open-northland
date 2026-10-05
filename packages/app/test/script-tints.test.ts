@@ -1,7 +1,8 @@
 import { VERTEX_PALETTE_ENTRIES } from '@open-northland/data';
 import type { LightGrade } from '@open-northland/render/data';
 import type { LandscapeEditView } from '@open-northland/sim';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as vertexPalette from '../src/content/vertex-palette.js';
 import type { SessionHost } from '../src/session/index.js';
 import { mountScriptTints, splitScriptTints } from '../src/view/runtime/script-tints.js';
 
@@ -16,8 +17,11 @@ const palette: readonly number[] = Array.from({ length: VERTEX_PALETTE_ENTRIES }
   return 0x808080;
 });
 
-const loadVertexPalette = vi.fn(async () => palette);
-vi.mock('../src/content/vertex-palette.js', () => ({ loadVertexPalette: () => loadVertexPalette() }));
+const loadVertexPalette = vi.fn(async () => [...palette]);
+beforeEach(() => {
+  vi.spyOn(vertexPalette, 'loadVertexPalette').mockImplementation(loadVertexPalette);
+});
+afterEach(() => vi.restoreAllMocks());
 
 /** Seven dark nodes (70%, a whole-map tint), one never tinted, two under a torch. */
 const tints = Uint8Array.from([DARK, DARK, DARK, DARK, DARK, DARK, DARK, NEUTRAL, TORCH, TORCH]);
