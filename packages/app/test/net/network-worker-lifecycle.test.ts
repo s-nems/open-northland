@@ -21,7 +21,19 @@ const LOBBY: RoomView = {
     speed: 1,
   },
   seats: [{ player: 0, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 0, nick: NICK, ready: true }],
-  members: [{ nick: NICK, seat: 0, connected: true, compatibility: null, load: null, loading: null }],
+  members: [
+    {
+      nick: NICK,
+      seat: 0,
+      connected: true,
+      compatibility: null,
+      load: null,
+      loading: null,
+      roundTripMs: null,
+      delayTicks: null,
+      behindTicks: 0,
+    },
+  ],
 };
 
 /** One end of a port: what was posted to the other end, and a way to hand this end a message. */

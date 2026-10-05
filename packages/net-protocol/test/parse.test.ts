@@ -5,6 +5,7 @@ import {
   clientMessageKind,
   closingCode,
   MAX_BLOB_BYTES,
+  MAX_CHAT_HISTORY_LINES,
   MAX_LOADING_PROGRESS,
   MAX_NICK_LENGTH,
   MAX_REPORTED_BUFFERED,
@@ -386,8 +387,21 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
           compatibility: COMPATIBILITY,
           load: { tickMs: 4.5, buffered: 1 },
           loading: 30,
+          roundTripMs: 42.5,
+          delayTicks: 3,
+          behindTicks: 7,
         },
-        { nick: 'Bartek', seat: null, connected: false, compatibility: null, load: null, loading: null },
+        {
+          nick: 'Bartek',
+          seat: null,
+          connected: false,
+          compatibility: null,
+          load: null,
+          loading: null,
+          roundTripMs: null,
+          delayTicks: null,
+          behindTicks: 0,
+        },
       ],
     },
   },
@@ -395,7 +409,22 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
   { kind: 'start', session, snapshotTick: null },
   { kind: 'start', session, snapshotTick: 300 },
   { kind: 'clock', tick: 40, speed: 2, paused: false, by: 'Ania', governed: null },
-  { kind: 'clock', tick: 1, speed: 1, paused: false, by: null, governed: { nick: 'Bartek', speed: 0.5 } },
+  {
+    kind: 'clock',
+    tick: 1,
+    speed: 1,
+    paused: false,
+    by: null,
+    governed: { nick: 'Bartek', speed: 0.5, cause: 'load' },
+  },
+  {
+    kind: 'clock',
+    tick: 2,
+    speed: 3,
+    paused: false,
+    by: null,
+    governed: { nick: 'Bartek', speed: 2.4, cause: 'lag' },
+  },
   {
     kind: 'frame',
     tick: 41,
@@ -409,7 +438,7 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
     kind: 'waiting',
     for: [
       { nick: 'Ania', reason: 'gone', voteAfterMs: 60000 },
-      { nick: 'Cezary', reason: 'slow', voteAfterMs: 0 },
+      { nick: 'Cezary', reason: 'resync', voteAfterMs: 0 },
     ],
   },
   { kind: 'waiting', for: [] },
@@ -429,7 +458,16 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
       },
     ],
   },
-  { kind: 'chat', from: 'Ania', text: 'gotowi?' },
+  { kind: 'chat', from: 'Ania', text: 'gotowi?', tick: null },
+  { kind: 'chat', from: 'Ania', text: 'atak!', tick: 1200 },
+  {
+    kind: 'chatHistory',
+    lines: [
+      { from: 'Ania', text: 'gotowi?', tick: null },
+      { from: 'Bartek', text: 'tak', tick: 40 },
+    ],
+  },
+  { kind: 'chatHistory', lines: [] },
   { kind: 'ping', t: 99, roundTripMs: 42.5 },
   { kind: 'rejected', of: 'command', reason: { code: 'seatRequired' } },
   { kind: 'rejected', of: 'claimSeat', reason: { code: 'seatTaken', player: 2, nick: 'Bartek' } },
@@ -503,12 +541,10 @@ describe('server messages', () => {
   });
 
   it('refuses a wait reason and a desync domain it does not know', () => {
-    expect(() =>
-      parseServerMessage(
-        { kind: 'waiting', for: [{ nick: 'A', reason: 'bored', voteAfterMs: 0 }] },
-        parseSession,
-      ),
-    ).toThrow(/reason/);
+    for (const reason of ['bored', 'slow'])
+      expect(() =>
+        parseServerMessage({ kind: 'waiting', for: [{ nick: 'A', reason, voteAfterMs: 0 }] }, parseSession),
+      ).toThrow(/reason/);
     expect(() =>
       parseServerMessage({ kind: 'desync', tick: 1, domains: ['weather'], reference: 'A' }, parseSession),
     ).toThrow(/domains\[0\]/);
@@ -559,9 +595,52 @@ describe('server messages', () => {
     expect(() => parseServerMessage({ ...clock(null), governed: undefined }, parseSession)).toThrow(
       /clock\.governed/,
     );
-    expect(() => parseServerMessage(clock({ nick: ' ', speed: 1 }), parseSession)).toThrow(/governed\.nick/);
+    expect(() => parseServerMessage(clock({ nick: ' ', speed: 1, cause: 'load' }), parseSession)).toThrow(
+      /governed\.nick/,
+    );
     for (const speed of [0, -1, Number.POSITIVE_INFINITY, '1'])
-      expect(() => parseServerMessage(clock({ nick: 'A', speed }), parseSession)).toThrow(/governed\.speed/);
+      expect(() => parseServerMessage(clock({ nick: 'A', speed, cause: 'load' }), parseSession)).toThrow(
+        /governed\.speed/,
+      );
+    for (const cause of [undefined, 'machine'])
+      expect(() => parseServerMessage(clock({ nick: 'A', speed: 1, cause }), parseSession)).toThrow(
+        /governed\.cause/,
+      );
+  });
+
+  it('refuses a chat line without a tick or with a negative one, and a history past its cap', () => {
+    const line = { from: 'Ania', text: 'hej', tick: 1 };
+    expect(() => parseServerMessage({ kind: 'chat', from: 'Ania', text: 'hej' }, parseSession)).toThrow(
+      /chat\.tick/,
+    );
+    expect(() => parseServerMessage({ kind: 'chat', ...line, tick: -1 }, parseSession)).toThrow(/chat\.tick/);
+    expect(() =>
+      parseServerMessage({ kind: 'chatHistory', lines: [{ ...line, text: ' ' }] }, parseSession),
+    ).toThrow(/chatHistory\.lines\[0\]\.text/);
+    const full = Array.from({ length: MAX_CHAT_HISTORY_LINES }, () => line);
+    expect(parseServerMessage({ kind: 'chatHistory', lines: full }, parseSession)).toMatchObject({
+      lines: { length: MAX_CHAT_HISTORY_LINES },
+    });
+    expect(() => parseServerMessage({ kind: 'chatHistory', lines: [...full, line] }, parseSession)).toThrow(
+      /more than/,
+    );
+  });
+
+  it('refuses a room member whose link or lag figures are missing or out of range', () => {
+    const room = SERVER_MESSAGES.find((message) => message.kind === 'room');
+    if (room?.kind !== 'room') throw new Error('no room fixture');
+    const withFigures = (figures: object) => ({
+      ...room,
+      room: { ...room.room, members: room.room.members.map((member) => ({ ...member, ...figures })) },
+    });
+    for (const [figures, at] of [
+      [{ roundTripMs: -1 }, /members\[0\]\.roundTripMs/],
+      [{ roundTripMs: undefined }, /members\[0\]\.roundTripMs/],
+      [{ delayTicks: 1.5 }, /members\[0\]\.delayTicks/],
+      [{ behindTicks: null }, /members\[0\]\.behindTicks/],
+      [{ behindTicks: -1 }, /members\[0\]\.behindTicks/],
+    ] as const)
+      expect(() => parseServerMessage(wire(withFigures(figures)), parseSession)).toThrow(at);
   });
 
   it('refuses a room member whose load is missing', () => {

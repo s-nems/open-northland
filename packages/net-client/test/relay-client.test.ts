@@ -377,7 +377,7 @@ describe('RelayClient under a governed clock', () => {
     const { client } = harness({ open: async () => fixtureWorld() });
     start(client, null);
     await client.settled();
-    const governed = { nick: 'Ola', speed: GOVERNED_SPEED };
+    const governed = { nick: 'Ola', speed: GOVERNED_SPEED, cause: 'load' };
     client.receive({ kind: 'clock', tick: 1, speed: REQUESTED_SPEED, paused: false, by: null, governed });
     // A buffer one frame past the jitter buffer runs at the clock's own pace.
     for (let tick = 1; tick <= JITTER_BUFFER_TICKS + 1; tick++) {

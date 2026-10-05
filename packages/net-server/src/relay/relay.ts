@@ -235,7 +235,7 @@ export class Relay {
         const room = new Room(this.newRoomId(), member, message.settings, message.seats, this.hooks);
         this.rooms.set(room.id, room);
         this.enter(client, room, member);
-        client.connection.send({ kind: 'room', room: room.view() });
+        room.welcome(member);
         this.log('room created', { room: room.id, by: client.nick });
         return null;
       }
@@ -251,7 +251,7 @@ export class Relay {
           client.nick = member.nick;
           client.connection.send({ kind: 'welcome', protocol: PROTOCOL_VERSION, nick: member.nick });
         }
-        room.broadcastView();
+        room.welcome(member);
         return null;
       }
       case 'leaveRoom': {
@@ -265,10 +265,9 @@ export class Relay {
       case 'pong': {
         const now = this.now();
         const changed = client.probe.pong(message.t, now);
-        if (client.member !== null) {
+        if (client.room !== null && client.member !== null) {
           client.member.lastHeardAt = now;
-          client.member.delayTicks = client.probe.delay.ticks;
-          client.member.roundTripMs = client.probe.delay.roundTripMs;
+          client.room.linkMeasured(client.member, client.probe.delay.ticks, client.probe.delay.roundTripMs);
         }
         if (changed) client.connection.send({ kind: 'delay', ticks: client.probe.delay.ticks });
         return null;

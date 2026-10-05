@@ -1,6 +1,13 @@
 import type { GameSession } from '@open-northland/lockstep';
-import { MAX_CHAT_LENGTH, MAX_SPEED } from '../limits.js';
-import type { GovernedClock, ServerMessage, WaitedMember, WaitReason } from '../messages.js';
+import { MAX_CHAT_HISTORY_LINES, MAX_CHAT_LENGTH, MAX_SPEED } from '../limits.js';
+import type {
+  ChatLine,
+  GovernedClock,
+  GovernorCause,
+  ServerMessage,
+  WaitedMember,
+  WaitReason,
+} from '../messages.js';
 import {
   asArray,
   asBoolean,
@@ -44,6 +51,7 @@ const SERVER_KINDS = keysOf<ServerMessage['kind']>({
   mapRequest: true,
   blob: true,
   chat: true,
+  chatHistory: true,
   ping: true,
   rejected: true,
   error: true,
@@ -53,9 +61,10 @@ const WAIT_REASONS = keysOf<WaitReason>({
   gone: true,
   silent: true,
   loading: true,
-  slow: true,
   resync: true,
 });
+
+const GOVERNOR_CAUSES = keysOf<GovernorCause>({ load: true, lag: true });
 
 /**
  * The client side of the wire. The session descriptor belongs to the lockstep package, so its parser
@@ -164,11 +173,19 @@ export function parseServerMessage(
         bytes: parseBlobBytes(raw.bytes, 'blob.bytes'),
       };
     case 'chat':
+      return { kind, ...parseChatLine(raw, 'chat') };
+    case 'chatHistory': {
+      const lines = asArray(raw.lines, 'chatHistory.lines');
+      if (lines.length > MAX_CHAT_HISTORY_LINES)
+        throw new Error(`chatHistory.lines: more than ${MAX_CHAT_HISTORY_LINES} lines`);
       return {
         kind,
-        from: parseNick(raw.from, 'chat.from'),
-        text: parseLine(raw.text, 'chat.text', MAX_CHAT_LENGTH),
+        lines: lines.map((line, i) => {
+          const at = `chatHistory.lines[${i}]`;
+          return parseChatLine(asRecord(line, at), at);
+        }),
       };
+    }
     case 'ping':
       return {
         kind,
@@ -194,6 +211,15 @@ function parseGovernedClock(value: unknown, at: string): GovernedClock {
   return {
     nick: parseNick(raw.nick, `${at}.nick`),
     speed: asPositiveNumber(raw.speed, `${at}.speed`, MAX_SPEED),
+    cause: asOneOf(raw.cause, GOVERNOR_CAUSES, `${at}.cause`),
+  };
+}
+
+function parseChatLine(raw: Record<string, unknown>, at: string): ChatLine {
+  return {
+    from: parseNick(raw.from, `${at}.from`),
+    text: parseLine(raw.text, `${at}.text`, MAX_CHAT_LENGTH),
+    tick: raw.tick === null ? null : asCount(raw.tick, `${at}.tick`),
   };
 }
 

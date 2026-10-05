@@ -72,7 +72,7 @@ describe('room clock', () => {
   it('runs at the governed speed while one is set, reporting the requested speed throughout', () => {
     const clock = startedAt(0);
     clock.setSpeed(2);
-    clock.govern({ nick: 'Bartek', speed: 0.5 });
+    clock.govern({ nick: 'Bartek', speed: 0.5, cause: 'load' });
     expect(clock.advance(TICK_MS * 4).map((frame) => frame.tick)).toEqual([1, 2]);
     expect(clock.speed).toBe(2);
     clock.govern(null);

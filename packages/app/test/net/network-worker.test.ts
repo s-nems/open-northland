@@ -8,7 +8,7 @@ import {
   PROTOCOL_VERSION,
   TICK_MS,
 } from '@open-northland/net-protocol';
-import { GOVERN_BEHIND_MS } from '@open-northland/net-server';
+import { LAG_BEHIND_MS, SLOW_GRACE_MS } from '@open-northland/net-server';
 import { afterEach, expect, it } from 'vitest';
 import type { MapWorkerBoot, MapWorldPlacements } from '../../src/entries/map/world-inputs.js';
 import { type HostedRelayedWorld, NetworkConnection } from '../../src/net/connection.js';
@@ -160,5 +160,5 @@ it('walks the lobby, hosts the started world and runs the relay frames through t
 });
 
 it('keeps disputed inputs for longer than the relay lets a member trail at the top speed', () => {
-  expect(DISPUTE_WINDOW_TICKS).toBeGreaterThan((GOVERN_BEHIND_MS / TICK_MS) * MAX_SPEED);
+  expect(DISPUTE_WINDOW_TICKS).toBeGreaterThan(((LAG_BEHIND_MS + SLOW_GRACE_MS) / TICK_MS) * MAX_SPEED);
 });

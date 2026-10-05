@@ -77,6 +77,13 @@ export interface RoomMemberView {
   /** The boot progress in whole percent the member last reported while building its world; null once
    *  that world has loaded, and before its first report. */
   readonly loading: number | null;
+  /** The relay's smoothed round trip to the member in milliseconds; null while it is disconnected. */
+  readonly roundTripMs: number | null;
+  /** The member's assigned input delay in ticks; null while it is disconnected. */
+  readonly delayTicks: number | null;
+  /** Ticks the member's acknowledgements trail the clock; 0 before the clock runs and while the relay
+   *  does not follow its world (loading, gone, out of sync). */
+  readonly behindTicks: number;
 }
 
 export interface RoomView {
@@ -136,13 +143,27 @@ export interface ClientLoad {
   readonly buffered: number;
 }
 
-export type WaitReason = 'gone' | 'silent' | 'loading' | 'slow' | 'resync';
+/** Why the clock holds for a member; a member that is merely slow paces the clock instead. */
+export type WaitReason = 'gone' | 'silent' | 'loading' | 'resync';
 
-/** The speed the relay runs the clock at below the requested one, and the member it paces the room
- *  for. */
+/** What bounds a governed speed: `load` when the member's reported tick cost does, `lag` when the
+ *  catch-up share of the requested speed does (a member that reports it could keep up, yet trails). */
+export type GovernorCause = 'load' | 'lag';
+
+/** The speed the relay runs the clock at for a slow member, never above the requested one, and the
+ *  member it paces the room for. */
 export interface GovernedClock {
   readonly nick: string;
   readonly speed: number;
+  readonly cause: GovernorCause;
+}
+
+/** One line of a room's chat as the relay logged it: `tick` is the clock's next tick when the relay
+ *  received it, null before the clock started. */
+export interface ChatLine {
+  readonly from: string;
+  readonly text: string;
+  readonly tick: number | null;
 }
 
 export interface WaitedMember {
@@ -283,7 +304,10 @@ export type ServerMessage =
       readonly tick: number | null;
       readonly bytes: string;
     }
-  | { readonly kind: 'chat'; readonly from: string; readonly text: string }
+  | ({ readonly kind: 'chat' } & ChatLine)
+  /** The room's chat so far, oldest first, sent to a member each time it enters or returns to the
+   *  room, right after the room view. */
+  | { readonly kind: 'chatHistory'; readonly lines: readonly ChatLine[] }
   /** `roundTripMs` is the smoothed round trip the relay measured for this client, for its own readout. */
   | { readonly kind: 'ping'; readonly t: number; readonly roundTripMs: number }
   | {

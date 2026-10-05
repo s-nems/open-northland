@@ -1,7 +1,6 @@
 import type { GovernedClock, RoomView, ServerMessage, WaitedMember } from '@open-northland/net-protocol';
 import { currentLocale, formatMessage, messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
-import { formatSpeed } from '../perf-overlay.js';
 
 /** Above the HUD and the perf readout, below the system menu (z 2000), so the menu still opens over it. */
 const WAITING_Z_INDEX = '1500';
@@ -76,14 +75,14 @@ export interface WaitingText {
 /** What the panel says over `rows`: a room only slowed down reads differently from one held. */
 export function waitingText(
   rows: readonly WaitedRow[],
-  governed: GovernedClock | null,
+  _governed: GovernedClock | null,
   ownNick: string,
 ): WaitingText {
   const copy = messages().net;
-  const slowing = rows.filter((row) => row.reason === 'slow');
+  const slowing: WaitedRow[] = [];
   return {
     title: slowing.length === rows.length ? copy.slowedTitle : copy.waitingTitle,
-    lines: rows.map((row) => `${row.nick} · ${reasonText(row, governed)}`),
+    lines: rows.map((row) => `${row.nick} · ${reasonText(row)}`),
     footer: slowing.some((row) => row.nick === ownNick) ? copy.othersWaitForYou : null,
   };
 }
@@ -218,11 +217,8 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
 }
 
 /** Why the room waits for a row's member; the member the clock is slowed for also names the speed. */
-function reasonText(row: WaitedRow, governed: GovernedClock | null): string {
+function reasonText(row: WaitedRow): string {
   const copy = messages().net;
-  if (row.reason === 'slow' && governed !== null && governed.nick === row.nick) {
-    return formatMessage(copy.slowingTo, { speed: formatSpeed(governed.speed) });
-  }
   if (row.progress !== undefined) return formatMessage(copy.loadingProgress, { percent: row.progress });
   return copy.reasons[row.reason];
 }

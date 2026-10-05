@@ -6,9 +6,10 @@ import {
   type SyncDomain,
 } from '@open-northland/sim';
 
-/** How far behind the relay lets a member fall before it paces the room: the relay's
- *  `GOVERN_BEHIND_MS`, which this package cannot import; a test holds the window above it. */
-const RELAY_SLOW_BEHIND_MS = 2000;
+/** How far behind the relay lets a member fall before it paces the room, at worst: the relay's
+ *  `LAG_BEHIND_MS` plus its `SLOW_GRACE_MS`, which this package cannot import; a test holds the window
+ *  above it. */
+const RELAY_SLOW_BEHIND_MS = 5000;
 /** Room over the slow threshold for the round trip and the governed catch-up. */
 const WINDOW_MARGIN = 2;
 

@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 20` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 21` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -77,13 +77,18 @@ duplicate nick within a room gets a numeric suffix (`Ania`, `Ania2`). At most `M
 people share a room.
 
 Every change to a room is broadcast to its members as `room { room }`, the whole view:
-`{ id, state, creator, settings, seats: [{ player, mode, offers, color, team?, authoredTribe?, tribe?, difficulty?, nick, ready }], members: [{ nick, seat, connected, compatibility, load, loading }] }`,
+`{ id, state, creator, settings, seats: [{ player, mode, offers, color, team?, authoredTribe?, tribe?, difficulty?, nick, ready }], members: [{ nick, seat, connected, compatibility, load, loading, roundTripMs, delayTicks, behindTicks }] }`,
 where a seat carries `authoredTribe` and its current `tribe` together or neither.
 A member's `load` is the one its last acknowledgement reported (below), null before its first. Its
 `loading` is the boot progress in whole percent it last reported before its world loaded (below),
-null once that world has loaded and before its first report. A moved load or progress alone sends a
-view at most once per `LOAD_VIEW_INTERVAL_MS` (1 s) per room; any other change carries the current
-figures with it.
+null once that world has loaded and before its first report. `roundTripMs` is the relay's smoothed
+round trip to the member in milliseconds (0 until its first pong) and `delayTicks` its assigned input
+delay (see [Input delay](#input-delay)), both null while it is disconnected. `behindTicks` is how many
+ticks its acknowledgements trail the clock: 0 before the clock runs, after the match ended, and while
+the relay does not follow its world (disconnected, loading, or out of sync). Once the room has
+started, a moved load, progress, round trip, delay or `behindTicks` alone sends a view at most once
+per `LOAD_VIEW_INTERVAL_MS` (1 s) per room; in the lobby only progress does. Any other change carries
+the current figures with it.
 
 - `claimSeat { player }` sits down in a seat nobody holds, which makes it `human` whatever it was;
   `claimSeat { player: null }` stands up and returns it to its lobby setting.
@@ -163,10 +168,12 @@ holds from; a speed request carries `governed` recomputed for the new requested 
 unlimited.
 
 `speed` is always the requested speed. The running speed is `governed.speed` while `governed` is
-`{ nick, speed }`, and `speed` when it is null: the relay governs the clock for a `slow` member (see
-[Waiting](#waiting)) and runs it at that member's pace. Clients run their driver at
-`governed?.speed ?? speed`. The relay broadcasts `clock` with `by: null` whenever the governing member
-or its speed changes.
+`{ nick, speed, cause }`, and `speed` when it is null: the relay governs the clock while any member is
+slow (see [Pacing](#pacing)) and runs it at the slowest one's pace. `cause` is `load` when that
+member's reported tick cost bounds the speed, and `lag` when the catch-up share does: the member says
+it could keep up, yet trails, as over a poor link. Clients run their driver at
+`governed?.speed ?? speed`. The relay broadcasts `clock` with `by: null` whenever the governing member,
+its speed or its cause changes.
 
 ## Commands
 
@@ -235,46 +242,58 @@ disconnected client's reports do not count; it says where it stands again on its
 
 ## Waiting
 
-The clock waits, emitting no frames, while any member is:
+The clock holds, emitting no frames, while any member is:
 
 - `gone`: its connection dropped;
 - `silent`: it has answered no ping for `SILENT_AFTER_MS` (4 s), whatever its socket says;
 - `loading`: it has not said where its world stands, before the start or after a return;
 - `resync`: it is out of sync and its snapshot has not arrived.
 
-A member is `slow` while its acknowledged tick trails the clock by more than `GOVERN_BEHIND_MS` (2 s)
-of frames at the requested speed, 24 ticks at speed 1 and 24 times the speed otherwise. It stays
-`slow` until it trails by no more than `GOVERN_RELEASE_MS` (0.5 s) of frames. A `slow` member does
-not hold the clock; the relay governs it instead, at the member's sustainable speed with headroom:
-`TICK_MS / load.tickMs * GOVERNOR_HEADROOM` (0.8), rounded to `GOVERNED_SPEED_STEP` (0.05), never
-above the requested speed and never below `MIN_GOVERNED_SPEED` (0.25). The governed speed drops at
-once but rises only by `GOVERNED_RISE_STEPS` (2) steps or more at a time, so a load report jittering
-across one rounding boundary does not become a `clock` broadcast per advance. Before its first load report
-a member gets `GOVERNOR_HEADROOM` times the requested speed. A `slow` member whose share reaches the
-requested speed governs nothing: it is behind for another reason and its own pacer catches up. With
-several `slow` members the lowest governed speed wins, and a tie goes to the member furthest behind.
-Once nobody is `slow` the clock runs at the requested speed again.
+A held clock runs for nobody: a `clock { paused: false }` changes the pause flag and nothing else, and
+the frames resume once nobody is waited for. A member that is merely behind is never waited for; see
+[Pacing](#pacing).
 
-Every change to the waited set, `slow` members included, is broadcast as
-`waiting { for: [{ nick, reason, voteAfterMs }] }`; an empty `for` ends the wait. Each member's
-`voteAfterMs` counts down from `KICK_COUNTDOWN_MS` (60 s) from the moment that member began to be
-waited for, and restarts only once it has stopped being waited for. A wait is over as soon as nobody
-is waited for: the dropped token returned, the silent one answered, the slow one caught up, or the
-diverged one rebuilt. A client that never loads or never acknowledges is waited for and can be voted
-out, before the start as after it; a member kicked before the start is not waited for to start the
-clock. Before the clock runs, a member that has not loaded and whose boot has not moved for
-`LOADING_STALL_MS` (2 min, counted from the start, its last `loading`, its `loaded`, or its drop or
-return) ends the room: every connected member gets `error { loadingTimedOut, nick }` and `left`, and
-the players host again. The app shows no countdown for it and offers no vote on its loading screen.
-A seated member that leaves the room before the clock runs ends it at once, with
+Every change to the waited set is broadcast as `waiting { for: [{ nick, reason, voteAfterMs }] }`; an
+empty `for` ends the wait. Each member's `voteAfterMs` counts down from `KICK_COUNTDOWN_MS` (60 s)
+from the moment that member began to be waited for, and restarts only once it has stopped being waited
+for. A wait is over as soon as nobody is waited for: the dropped token returned, the silent one
+answered, or the diverged one rebuilt. A client that never loads or stops answering pings is waited
+for and can be voted out, before the start as after it; a member kicked before the start is not waited
+for to start the clock. Before the clock runs, a member that has not loaded and whose boot has not
+moved for `LOADING_STALL_MS` (2 min, counted from the start, its last `loading`, its `loaded`, or its
+drop or return) ends the room: every connected member gets `error { loadingTimedOut, nick }` and
+`left`, and the players host again. The app shows no countdown for it and offers no vote on its
+loading screen. A seated member that leaves the room before the clock runs ends it at once, with
 `error { leftBeforeStart, nick }` and `left` to the others.
+
+## Pacing
+
+A member the relay follows (connected, heard, loaded and in sync) is lagging while its acknowledged
+tick trails the clock by more than `LAG_BEHIND_MS` (1 s) of frames at the requested speed, 12 ticks
+at speed 1 and 12 times the speed otherwise. A lagging member catches up alone and the room notices
+nothing. Once it has lagged for `SLOW_GRACE_MS` (4 s) of wall time in a row it is slow, and stays slow
+until it trails by no more than `GOVERN_RELEASE_MS` (0.5 s) of frames. A member the clock holds for
+is neither.
+
+A slow member is never waited for, gets no countdown and cannot be voted out. While any member is
+slow the relay governs the clock, whatever the requested speed. Each slow member's bound is the lower
+of its sustainable speed with headroom, `TICK_MS / load.tickMs * GOVERNOR_HEADROOM` (0.8), or
+`GOVERNOR_HEADROOM` times the requested speed before its first load report, and the catch-up share
+of the requested speed, `CATCH_UP_SHARE` (0.8) times it. `cause` names the lower one, `lag` on a tie.
+The bound is rounded to `GOVERNED_SPEED_STEP` (0.05), never above the requested speed and never below
+`MIN_GOVERNED_SPEED` (0.25) unless the requested speed is; a member slower than that falls further
+behind at it. The lowest bound wins, and a tie goes to the member furthest behind. The governed
+speed drops at once but rises only by `GOVERNED_RISE_STEPS` (2) steps or more at a time, so a load
+report jittering across one rounding boundary does not become a `clock` broadcast per advance. Once
+nobody is slow the clock runs at the requested speed again.
 
 ## Kick votes
 
 Once a member's countdown has passed, any other member sends `kick { player }` for its seat; a
 repeat from the same member counts once. Every yes is broadcast as
 `kickVote { player, nick, yes: [nicks], needed }`, where `needed` is half of the connected members
-other than the target, rounded up. A vote lives only while its target is waited for.
+other than the target, rounded up. A vote lives only while its target is waited for; a member that is
+only slow is refused with `notWaitedFor`.
 
 When the yeses reach `needed` the relay broadcasts `kicked { player, nick, mode, cause, tick }`, removes
 the member (its token is a stranger from then on), and returns the seat to `settings.kickedSeatMode`
@@ -395,13 +414,13 @@ including disconnected ones, lose their room association, and the snapshot and h
 Their connections remain usable and other rooms continue. The relay never silently discards a frame
 needed to replay from its advertised snapshot.
 
-A client told `desync` drops its world and waits. The relay asks the best-connected client in sync
-for a fresh snapshot and, when it arrives, sends the diverged client `blob { type: "snapshot" }`
-followed by every frame after the snapshot's tick. The client restores, replays those frames, and
-acknowledges from the snapshot's tick on; the clock is governed for it while it is still `slow`. A diverged
-client that drops leaves the queue: on its return it asks with `loaded { tick: null }` and takes the
-cache, or the next snapshot when none is cached yet or the cache is held back. Nothing is sent to it
-before it asks.
+A client told `desync` drops its world and waits. The relay asks the best-connected client in sync for
+a fresh snapshot and, when it arrives, sends the diverged client `blob { type: "snapshot" }` followed
+by every frame after the snapshot's tick. The client restores, replays those frames, and acknowledges
+from the snapshot's tick on, catching up as any lagging member does (see [Pacing](#pacing)). A
+diverged client that drops leaves the queue: on its return it asks with `loaded { tick: null }` and
+takes the cache, or the next snapshot when none is cached yet or the cache is held back. Nothing is
+sent to it before it asks.
 
 A returning token gets `room`, its pending `desync` notice if it has one, `start { session,
 snapshotTick }`, `clock` while the game runs, and `ended` once it has ended. `snapshotTick`
@@ -421,9 +440,15 @@ replaces the client's world, and the frames that follow are applied through the 
 
 ## Chat
 
-`chat { text }` is broadcast to the room as `chat { from, text }`. One printable line, at most
-`MAX_CHAT_LENGTH` (500) characters, like every other string that reaches another person. Unicode line
-and paragraph separators are refused along with control characters.
+`chat { text }` is broadcast to the room as `chat { from, text, tick }`, where `tick` is the clock's
+next tick when the relay received the line, null before the clock has started. One printable line, at
+most `MAX_CHAT_LENGTH` (500) characters, like every other string that reaches another person. Unicode
+line and paragraph separators are refused along with control characters.
+
+The relay keeps each room's lines, the lobby's included, up to the newest `MAX_CHAT_HISTORY_LINES`
+(500); the log ends with the room. A member gets `chatHistory { lines: [{ from, text, tick }] }`, oldest
+first, right after the room view each time it enters the room: on creating it, on joining it, and on
+every return of its token, before `start` and `clock`.
 
 ## Limits
 
@@ -440,8 +465,9 @@ and paragraph separators are refused along with control characters.
 | started room kept with nobody connected | 10 minutes |
 | `MAX_COMMANDS_PER_TICK` per member | 20 |
 | `MAX_SPEED` | 8 |
-| `GOVERN_BEHIND_MS` / `GOVERN_RELEASE_MS` | 2 s / 0.5 s of frames |
-| `GOVERNOR_HEADROOM` / `MIN_GOVERNED_SPEED` | 0.8 / 0.25 |
+| `LAG_BEHIND_MS` / `GOVERN_RELEASE_MS` | 1 s / 0.5 s of frames |
+| `SLOW_GRACE_MS` | 4 s |
+| `GOVERNOR_HEADROOM` / `CATCH_UP_SHARE` / `MIN_GOVERNED_SPEED` | 0.8 / 0.8 / 0.25 |
 | `GOVERNED_SPEED_STEP` / `GOVERNED_RISE_STEPS` | 0.05 / 2 steps |
 | `MAX_REPORTED_TICK_MS` / `MAX_REPORTED_BUFFERED` in `load` | 60 s / an hour of ticks at `MAX_SPEED` |
 | `SILENT_AFTER_MS` | 4 s |
@@ -449,6 +475,7 @@ and paragraph separators are refused along with control characters.
 | `LOADING_STALL_MS` | 2 min |
 | `SNAPSHOT_REFRESH_MS` / `SNAPSHOT_RETRY_MS` | 5 min / 10 s |
 | nick / room name / chat line | 24 / 48 / 500 characters |
+| `MAX_CHAT_HISTORY_LINES` per room | 500 |
 | room id / world id / command kind / `malformed` detail | 32 / 128 / 64 / 200 characters |
 | `MAX_SEED` | 2^32 - 1 |
 | token | 16 to 128 URL-safe characters |
@@ -504,9 +531,10 @@ and Start cannot restart the ended session; another match needs a new room.
 
 ## Background windows
 
-Window focus and tab visibility do not change room membership: a client that stops ticking is waited
-for and can be voted out under the rules above, never removed on its own, and drains its buffered
-frames when it resumes. The desktop window disables Electron's background throttling so a minimized
+Window focus and tab visibility do not change room membership: a client that stops ticking but
+answers pings is paced for, and one that stops answering is waited for and can be voted out, under
+the rules above. Neither is removed on its own, and both drain their buffered frames when they
+resume. The desktop window disables Electron's background throttling so a minimized
 client keeps ticking.
 
 In a browser the network worker steps and acknowledges on its own `setTimeout` chain, so a hidden tab
@@ -521,11 +549,10 @@ and a 20 ms interval, on a tab hidden behind another tab of the same window for 
 
 The lockstep driver owes `elapsed * speed` ticks per firing and steps at most five of them, so a
 clamped 100 ms firing still delivers up to 50 ticks a second: derived from the driver, not measured in
-the worker, a hidden Chrome tab keeps pace up to about speed 4 and trails beyond it. It is then `slow`
-for the room and can be voted out, and on return it drains its buffered frames at up to five ticks per
-firing. A Safari tab suspended this way acknowledges nothing and is `silent` after
-`SILENT_AFTER_MS`; nothing distinguishes it from a crashed client. Neither case is
-designed around: the desktop build is the primary target.
+the worker, a hidden Chrome tab keeps pace up to about speed 4 and trails beyond it. The room is then
+paced for it, and on return it drains its buffered frames at up to five ticks per firing. A Safari tab
+suspended this way acknowledges nothing and is `silent` after `SILENT_AFTER_MS`; nothing distinguishes
+it from a crashed client. Neither case is designed around: the desktop build is the primary target.
 
 ## Public relay security boundary
 

@@ -47,7 +47,17 @@ const ROOM: RoomView = {
     },
   ],
   members: [
-    { nick: 'Ania', seat: 0, connected: true, compatibility: COMPATIBILITY, load: null, loading: null },
+    {
+      nick: 'Ania',
+      seat: 0,
+      connected: true,
+      compatibility: COMPATIBILITY,
+      load: null,
+      loading: null,
+      roundTripMs: null,
+      delayTicks: null,
+      behindTicks: 0,
+    },
   ],
 };
 

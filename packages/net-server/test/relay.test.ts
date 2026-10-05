@@ -1,5 +1,6 @@
 import { parseGameSession } from '@open-northland/lockstep';
 import {
+  MAX_CHAT_HISTORY_LINES,
   MAX_COMMANDS_PER_TICK,
   MAX_ENVELOPE_BYTES,
   MAX_NICK_LENGTH,
@@ -10,6 +11,7 @@ import {
 import { HELLO_TIMEOUT_MS, KICK_COUNTDOWN_MS, Relay } from '@open-northland/net-server';
 import { describe, expect, it } from 'vitest';
 import {
+  type Peer,
   SEATS,
   SETTINGS,
   seatCommand,
@@ -504,9 +506,61 @@ describe('relay clock', () => {
     expect(a.last('delay')?.ticks).toBe(5);
   });
 
-  it('relays chat to the room with the sender’s nick', () => {
+  it('relays chat to the room with the sender’s nick and the clock’s next tick', () => {
     const s = startedRoom();
+    s.advance(TICK_MS * 3);
     s.a.send({ kind: 'chat', text: 'gotowi?' });
-    expect(s.b.last('chat')).toEqual({ kind: 'chat', from: 'Ania', text: 'gotowi?' });
+    const next = (s.a.last('frame')?.tick ?? 0) + 1;
+    expect(s.b.last('chat')).toEqual({ kind: 'chat', from: 'Ania', text: 'gotowi?', tick: next });
+  });
+});
+
+describe('chat history', () => {
+  /** The kinds a peer received from `index` on, in order. */
+  const kindsFrom = (peer: Peer, index: number) => peer.sent.slice(index).map((message) => message.kind);
+
+  it('replays the room’s chat, lobby lines first, right after the room view on join and on return', () => {
+    const s = stage();
+    const a = s.introduce(TOKEN_A, 'Ania');
+    a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    expect(a.last('chatHistory')).toEqual({ kind: 'chatHistory', lines: [] });
+    a.send({ kind: 'chat', text: 'kto gra?' });
+    const lobbyLine = { from: 'Ania', text: 'kto gra?', tick: null };
+
+    const b = s.introduce(TOKEN_B, 'Bartek');
+    const joinedAt = b.sent.length;
+    b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id ?? '' });
+    // The stage's own compatibility report follows with another view.
+    expect(kindsFrom(b, joinedAt).slice(0, 2)).toEqual(['room', 'chatHistory']);
+    expect(b.last('chatHistory')?.lines).toEqual([lobbyLine]);
+
+    a.send({ kind: 'claimSeat', player: 0 });
+    b.send({ kind: 'claimSeat', player: 1 });
+    a.send({ kind: 'setReady', ready: true });
+    b.send({ kind: 'setReady', ready: true });
+    a.send({ kind: 'start' });
+    a.send({ kind: 'loaded', tick: 0, world: 0 });
+    b.send({ kind: 'loaded', tick: 0, world: 0 });
+    s.advance(TICK_MS * 2);
+    b.send({ kind: 'chat', text: 'atak' });
+    const gameLine = { from: 'Bartek', text: 'atak', tick: (a.last('frame')?.tick ?? 0) + 1 };
+
+    s.relay.disconnect(b.handle);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    expect(kindsFrom(back, 0)).toEqual(['welcome', 'room', 'chatHistory', 'start', 'clock']);
+    expect(back.last('chatHistory')?.lines).toEqual([lobbyLine, gameLine]);
+  });
+
+  it('keeps the newest lines up to its cap', () => {
+    const s = stage();
+    const a = s.introduce(TOKEN_A, 'Ania');
+    a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    for (let line = 0; line <= MAX_CHAT_HISTORY_LINES; line++) a.send({ kind: 'chat', text: String(line) });
+    const b = s.introduce(TOKEN_B, 'Bartek');
+    b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id ?? '' });
+    const lines = b.last('chatHistory')?.lines ?? [];
+    expect(lines).toHaveLength(MAX_CHAT_HISTORY_LINES);
+    expect(lines[0]?.text).toBe('1');
+    expect(lines.at(-1)?.text).toBe(String(MAX_CHAT_HISTORY_LINES));
   });
 });

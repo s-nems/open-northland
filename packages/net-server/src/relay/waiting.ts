@@ -10,9 +10,8 @@ export interface Waited {
 }
 
 /**
- * Who the room waits for, holding its clock or pacing it for a slow member, one countdown per waited
- * member, and the kick votes allowed once a member's countdown is over. A vote lives only while its
- * target is waited for.
+ * Who the room holds its clock for, one countdown per waited member, and the kick votes allowed once a
+ * member's countdown is over. A vote lives only while its target is waited for.
  */
 export class Waiting {
   /** The waited set as the clients were last told it. */

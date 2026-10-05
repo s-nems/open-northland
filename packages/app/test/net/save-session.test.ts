@@ -44,7 +44,19 @@ it('captures the current public roster and does not upload an old world after re
       },
       { player: 1, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 4, nick: null, ready: false },
     ],
-    members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null, load: null, loading: null }],
+    members: [
+      {
+        nick: 'Ania',
+        seat: 0,
+        connected: true,
+        compatibility: null,
+        load: null,
+        loading: null,
+        roundTripMs: null,
+        delayTicks: null,
+        behindTicks: 0,
+      },
+    ],
   };
   client.receive({ kind: 'room', room });
   const worldId = client.worldId;

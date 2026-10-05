@@ -50,6 +50,8 @@ export const MAX_TOKEN_LENGTH = 128;
 export const MAX_NICK_LENGTH = 24;
 export const MAX_ROOM_NAME_LENGTH = 48;
 export const MAX_CHAT_LENGTH = 500;
+/** Chat lines a room keeps for members who join or return; the oldest go first. */
+export const MAX_CHAT_HISTORY_LINES = 500;
 export const MAX_ROOM_ID_LENGTH = 32;
 export const MAX_WORLD_ID_LENGTH = 128;
 export const MAX_COMMAND_KIND_LENGTH = 64;

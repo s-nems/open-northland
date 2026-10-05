@@ -1,9 +1,11 @@
 import type { GameSession } from '@open-northland/lockstep';
 import {
+  type ChatLine,
   type ClientMessage,
   type DepartureCause,
   type LobbyCompatibility,
   type LobbySettings,
+  MAX_CHAT_HISTORY_LINES,
   MAX_MEMBERS,
   MAX_NICK_LENGTH,
   type PlayerWireEnvelope,
@@ -22,9 +24,9 @@ import { broadcast, type Deliver, type Member, type Refusal } from './member.js'
 import { roomView, sessionForMember } from './room-view.js';
 import { type SeatChange, SeatTable } from './seats.js';
 
-/** Least wall time between two room views sent only because a member's load or boot progress moved. A
- *  load changes with nearly every acknowledgement; a view per ack would be a room broadcast per member
- *  per tick. */
+/** Least wall time between two room views sent only because a member's load, boot progress, link
+ *  measurement or lag moved. A load changes with nearly every acknowledgement; a view per ack would be
+ *  a room broadcast per member per tick. */
 export const LOAD_VIEW_INTERVAL_MS = 1000;
 /** How long one step of a member's boot may take, or the member stay away, before the start gives up
  *  and ends the room. Generous for a slow machine, and never shown to the players as a countdown. */
@@ -55,9 +57,13 @@ export class Room {
   private startedSeats: GameSession['seats'] | null = null;
   /** The member that left before the clock ran: a game never starts without one of its players. */
   private leftBeforeStart: string | null = null;
-  /** A member's load or boot progress moved since the last room view went out. */
-  private loadMoved = false;
+  /** A member's load, boot progress or link measurement moved since the last room view went out. */
+  private figuresMoved = false;
   private nextLoadViewAt = 0;
+  /** Each member's `behindTicks` as the last room view carried it. */
+  private readonly announcedBehind = new Map<string, number>();
+  /** The room's chat, oldest first, at most `MAX_CHAT_HISTORY_LINES`; it ends with the room. */
+  private readonly chatLog: ChatLine[] = [];
 
   constructor(
     id: string,
@@ -123,6 +129,12 @@ export class Room {
     }
   }
 
+  /** Show a member that just entered the room the room and its chat so far. */
+  welcome(member: Member): void {
+    this.broadcastView();
+    this.deliver(member, { kind: 'chatHistory', lines: [...this.chatLog] });
+  }
+
   join(member: Member): Refusal {
     if (this.game !== null) return { code: 'gameStarted' };
     if (this.members.size >= MAX_MEMBERS) return { code: 'roomFull', members: MAX_MEMBERS };
@@ -142,7 +154,7 @@ export class Room {
       member.progressAt = now;
       this.game.dropWorld(member, now);
     }
-    this.broadcastView();
+    this.welcome(member);
     if (this.game !== null) {
       if (member.outOfSync !== null) this.deliver(member, member.outOfSync);
       this.deliver(member, {
@@ -258,7 +270,7 @@ export class Room {
     member.progressAt = now;
     if (member.loading !== null) {
       member.loading = null;
-      this.loadMoved = true;
+      this.figuresMoved = true;
     }
     return null;
   }
@@ -269,7 +281,7 @@ export class Room {
     if (member.loaded || member.loading === progress) return null;
     member.loading = progress;
     member.progressAt = now;
-    this.loadMoved = true;
+    this.figuresMoved = true;
     return null;
   }
 
@@ -280,7 +292,7 @@ export class Room {
     const { load } = ack;
     if (member.load?.tickMs !== load.tickMs || member.load.buffered !== load.buffered) {
       member.load = load;
-      this.loadMoved = true;
+      this.figuresMoved = true;
     }
     return null;
   }
@@ -320,8 +332,19 @@ export class Room {
     return this.transfers.requestMap(member, now);
   }
 
+  /** A fresh measurement of the member's link. Only a started room shows it before its next view. */
+  linkMeasured(member: Member, delayTicks: number, roundTripMs: number): void {
+    if (member.delayTicks === delayTicks && member.roundTripMs === roundTripMs) return;
+    member.delayTicks = delayTicks;
+    member.roundTripMs = roundTripMs;
+    if (this.game !== null) this.figuresMoved = true;
+  }
+
   chat(member: Member, text: string): void {
-    this.broadcast({ kind: 'chat', from: member.nick, text });
+    const line: ChatLine = { from: member.nick, text, tick: this.game?.chatTick ?? null };
+    this.chatLog.push(line);
+    if (this.chatLog.length > MAX_CHAT_HISTORY_LINES) this.chatLog.shift();
+    this.broadcast({ kind: 'chat', ...line });
   }
 
   advance(elapsedMs: number, now: number): Refusal {
@@ -331,7 +354,7 @@ export class Room {
       if (stalled !== null) return stalled;
     }
     const refusal = this.game?.advance(elapsedMs, now) ?? null;
-    if (refusal === null && this.loadMoved && now >= this.nextLoadViewAt) {
+    if (refusal === null && now >= this.nextLoadViewAt && (this.figuresMoved || this.behindMoved())) {
       this.nextLoadViewAt = now + LOAD_VIEW_INTERVAL_MS;
       this.broadcastView();
     }
@@ -339,7 +362,15 @@ export class Room {
   }
 
   view(): RoomView {
-    return roomView(this.id, this.state, this.creatorToken, this.lobby.settings, this.seats, this.members);
+    return roomView(
+      this.id,
+      this.state,
+      this.creatorToken,
+      this.lobby.settings,
+      this.seats,
+      this.members,
+      (member) => this.behindTicks(member),
+    );
   }
 
   summary(): RoomSummary {
@@ -395,6 +426,17 @@ export class Room {
     if (this.members.size > 0) this.broadcastView();
   }
 
+  private behindTicks(member: Member): number {
+    return this.game?.behindTicks(member) ?? 0;
+  }
+
+  private behindMoved(): boolean {
+    for (const member of this.members.values()) {
+      if (this.behindTicks(member) !== (this.announcedBehind.get(member.token) ?? 0)) return true;
+    }
+    return false;
+  }
+
   private sessionFor(member: Member): GameSession {
     return sessionForMember(member, this.lobby.settings, this.startedSeats);
   }
@@ -404,7 +446,10 @@ export class Room {
   }
 
   broadcastView(): void {
-    this.loadMoved = false;
+    this.figuresMoved = false;
+    this.announcedBehind.clear();
+    for (const member of this.members.values())
+      this.announcedBehind.set(member.token, this.behindTicks(member));
     this.broadcast({ kind: 'room', room: this.view() });
   }
 

@@ -8,12 +8,14 @@ export {
 } from './host/ws-host.js';
 export { SILENT_AFTER_MS } from './relay/game.js';
 export {
-  GOVERN_BEHIND_MS,
+  CATCH_UP_SHARE,
   GOVERN_RELEASE_MS,
   GOVERNED_RISE_STEPS,
   GOVERNED_SPEED_STEP,
   GOVERNOR_HEADROOM,
+  LAG_BEHIND_MS,
   MIN_GOVERNED_SPEED,
+  SLOW_GRACE_MS,
 } from './relay/governor.js';
 export { INITIAL_INPUT_DELAY_TICKS, InputDelayEstimator } from './relay/input-delay.js';
 export {

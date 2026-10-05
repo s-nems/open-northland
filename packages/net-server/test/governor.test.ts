@@ -1,6 +1,7 @@
 import { type ClientLoad, TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import {
+  CATCH_UP_SHARE,
   GOVERNED_RISE_STEPS,
   GOVERNED_SPEED_STEP,
   GOVERNOR_HEADROOM,
@@ -11,6 +12,9 @@ import { createMember, type Member } from '../src/relay/member.js';
 
 const CLOCK_TICK = 100;
 const LINK = { delayTicks: 2, roundTripMs: 40 };
+const FAST_SPEED = 3;
+/** `FAST_SPEED` times `CATCH_UP_SHARE`, a whole step. */
+const FAST_CATCH_UP_SPEED = 2.4;
 
 /** A member whose sim thread costs `tickCostTicks` ticks of wall time per tick it runs. */
 function slowMember(nick: string, tickCostTicks: number | null, ackedTick = 0): Member {
@@ -32,40 +36,58 @@ describe('governed speed', () => {
     expect(governedSpeed([], CLOCK_TICK, 1)).toBeNull();
   });
 
-  it('takes the headroom share of the requested speed before a member reports its load', () => {
+  it('takes the catch-up share of the requested speed before a member reports its load, for its lag', () => {
     expect(governedSpeed([slowMember('Bartek', null)], CLOCK_TICK, 1)).toEqual({
       nick: 'Bartek',
-      speed: GOVERNOR_HEADROOM,
+      speed: CATCH_UP_SHARE,
+      cause: 'lag',
     });
   });
 
-  it('runs at the headroom share of the speed that saturates the slow member', () => {
-    expect(governedSpeed([slowMember('Bartek', 2)], CLOCK_TICK, 1)).toEqual({ nick: 'Bartek', speed: 0.4 });
+  it('runs at the headroom share of the speed that saturates the slow member, for its load', () => {
+    expect(governedSpeed([slowMember('Bartek', 2)], CLOCK_TICK, 1)).toEqual({
+      nick: 'Bartek',
+      speed: 0.4,
+      cause: 'load',
+    });
+  });
+
+  it('governs a member whose load says it keeps up at the catch-up share, for its lag', () => {
+    expect(governedSpeed([slowMember('Bartek', 0.1)], CLOCK_TICK, FAST_SPEED)).toEqual({
+      nick: 'Bartek',
+      speed: FAST_CATCH_UP_SPEED,
+      cause: 'lag',
+    });
   });
 
   it('paces for the slowest of several, and for the one furthest behind on a tie', () => {
     const slowest = [slowMember('Bartek', 1.6), slowMember('Cezary', 2)];
-    expect(governedSpeed(slowest, CLOCK_TICK, 1)).toEqual({ nick: 'Cezary', speed: 0.4 });
+    expect(governedSpeed(slowest, CLOCK_TICK, 1)).toEqual({ nick: 'Cezary', speed: 0.4, cause: 'load' });
     const tied = [slowMember('Bartek', 2, 60), slowMember('Cezary', 2, 40)];
     expect(governedSpeed(tied, CLOCK_TICK, 1)?.nick).toBe('Cezary');
   });
 
-  it('governs nothing for a member that could keep the requested speed, and never runs below the floor', () => {
-    expect(governedSpeed([slowMember('Bartek', 0.1)], CLOCK_TICK, 1)).toBeNull();
+  it('never runs below the floor, nor above a requested speed under it', () => {
     expect(governedSpeed([slowMember('Bartek', 100)], CLOCK_TICK, 1)).toEqual({
       nick: 'Bartek',
       speed: MIN_GOVERNED_SPEED,
+      cause: 'load',
+    });
+    const underFloor = MIN_GOVERNED_SPEED / 2;
+    expect(governedSpeed([slowMember('Bartek', 100)], CLOCK_TICK, underFloor)?.speed).toBe(underFloor);
+  });
+
+  it('keeps governing a member whose share reaches the requested speed', () => {
+    const current = { nick: 'Bartek', speed: 1 - GOVERNED_SPEED_STEP, cause: 'load' } as const;
+    expect(governedSpeed([sharing(2)], CLOCK_TICK, 1, current)).toEqual({
+      nick: 'Bartek',
+      speed: CATCH_UP_SHARE,
+      cause: 'lag',
     });
   });
 
-  it('releases a member whose share reaches the requested speed even from one step below it', () => {
-    const current = { nick: 'Bartek', speed: 1 - GOVERNED_SPEED_STEP };
-    expect(governedSpeed([sharing(1)], CLOCK_TICK, 1, current)).toBeNull();
-    expect(governedSpeed([sharing(2)], CLOCK_TICK, 1, current)).toBeNull();
-  });
-
   it('slows at once but speeds up only by whole rise steps, so a jittering report changes nothing', () => {
-    const current = { nick: 'Bartek', speed: 0.4 };
+    const current = { nick: 'Bartek', speed: 0.4, cause: 'load' } as const;
     const oneStepUp = current.speed + GOVERNED_SPEED_STEP;
     const riseStepsUp = current.speed + GOVERNED_RISE_STEPS * GOVERNED_SPEED_STEP;
     const oneStepDown = current.speed - GOVERNED_SPEED_STEP;
@@ -84,8 +106,10 @@ describe('governed speed', () => {
     }
   });
 
-  it('releases a governed clock the requested speed falls to', () => {
-    const current = { nick: 'Bartek', speed: 0.4 };
-    expect(governedSpeed([sharing(current.speed)], CLOCK_TICK, current.speed, current)).toBeNull();
+  it('follows a requested speed lowered to the governed one down by its catch-up share', () => {
+    const current = { nick: 'Bartek', speed: 0.4, cause: 'load' } as const;
+    const lowered = governedSpeed([sharing(current.speed)], CLOCK_TICK, current.speed, current);
+    expect(lowered).toMatchObject({ nick: 'Bartek', cause: 'lag' });
+    expect(lowered?.speed).toBeCloseTo(0.3);
   });
 });

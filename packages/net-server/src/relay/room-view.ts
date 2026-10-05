@@ -11,6 +11,7 @@ export function roomView(
   settings: RoomSettings,
   seats: SeatTable,
   members: ReadonlyMap<string, Member>,
+  behindTicks: (member: Member) => number,
 ): RoomView {
   const creator = members.get(creatorToken);
   if (creator === undefined) throw new Error(`room ${id} has members but no creator`);
@@ -20,13 +21,16 @@ export function roomView(
     creator: creator.nick,
     settings,
     seats: seats.views(),
-    members: [...members.values()].map(({ nick, seat, connected, compatibility, load, loaded, loading }) => ({
-      nick,
-      seat,
-      connected,
-      compatibility,
-      load,
-      loading: loaded ? null : loading,
+    members: [...members.values()].map((member) => ({
+      nick: member.nick,
+      seat: member.seat,
+      connected: member.connected,
+      compatibility: member.compatibility,
+      load: member.load,
+      loading: member.loaded ? null : member.loading,
+      roundTripMs: member.connected ? member.roundTripMs : null,
+      delayTicks: member.connected ? member.delayTicks : null,
+      behindTicks: behindTicks(member),
     })),
   };
 }

@@ -61,7 +61,17 @@ describe('lobby settings replacement queue', () => {
       {
         ...view(),
         members: [
-          { nick: 'guest', seat: null, connected: true, compatibility: null, load: null, loading: null },
+          {
+            nick: 'guest',
+            seat: null,
+            connected: true,
+            compatibility: null,
+            load: null,
+            loading: null,
+            roundTripMs: null,
+            delayTicks: null,
+            behindTicks: 0,
+          },
         ],
       },
       true,

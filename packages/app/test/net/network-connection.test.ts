@@ -20,7 +20,19 @@ const ROOM: RoomView = {
   seats: [
     { player: 0, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 0, nick: 'Ania', ready: true },
   ],
-  members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null, load: null, loading: null }],
+  members: [
+    {
+      nick: 'Ania',
+      seat: 0,
+      connected: true,
+      compatibility: null,
+      load: null,
+      loading: null,
+      roundTripMs: null,
+      delayTicks: null,
+      behindTicks: 0,
+    },
+  ],
 };
 const SESSION: GameSession = {
   world: { kind: 'map', mapId: 'forest' },

@@ -13,10 +13,11 @@ import type { SyncDomain } from '@open-northland/sim';
 import { type BlobUpload, relayBlob } from './blob-relay.js';
 import type { CachedSnapshot } from './catch-up.js';
 import { Departures } from './departures.js';
-import { framesIn, GOVERN_BEHIND_MS, GOVERN_RELEASE_MS, governedSpeed } from './governor.js';
+import { governedSpeed } from './governor.js';
 import { castKickVote, type KickOutcome } from './kick-vote.js';
 import { MatchEnd } from './match-end.js';
 import { broadcast, type Deliver, isSynced, type Member, type Refusal } from './member.js';
+import { Pacing } from './pacing.js';
 import { Resync } from './resync.js';
 import { RoomClock } from './room-clock.js';
 import { SaveOrders } from './save-orders.js';
@@ -38,8 +39,7 @@ export class Game {
   private readonly end: MatchEnd;
   private readonly ledger = new SyncLedger();
   private readonly waiting = new Waiting();
-  /** Members the clock is paced for; they are released at the lower `GOVERN_RELEASE_MS` threshold. */
-  private readonly slowTokens = new Set<string>();
+  private readonly pacing = new Pacing();
   private readonly resync: Resync;
   private readonly orders: SaveOrders;
   /** The tick the first built world reported; every other world of the room must stand there too. */
@@ -89,6 +89,18 @@ export class Game {
 
   get running(): boolean {
     return this.clock.running;
+  }
+
+  /** The tick a chat line received now is stamped with: the clock's next one, null before it runs. */
+  get chatTick(): number | null {
+    return this.clock.running ? this.clock.nextTick : null;
+  }
+
+  /** Ticks the member's acknowledgements trail the clock; 0 while the relay does not follow its world,
+   *  before the clock runs and after the match ended. */
+  behindTicks(member: Member): number {
+    if (!this.clock.running || this.endedTick !== null || !isSynced(member)) return 0;
+    return Math.max(0, this.clock.tick - member.ackedTick);
   }
 
   get cachedTick(): number | null {
@@ -181,7 +193,7 @@ export class Game {
     this.ledger.forget(member.token);
     this.resync.forget(member);
     this.waiting.forget(member.token);
-    this.slowTokens.delete(member.token);
+    this.pacing.forget(member.token);
   }
 
   /** The kicked member is out of the room: the rest may be complete now. */
@@ -289,18 +301,18 @@ export class Game {
   /** Every member the room cannot run without holds the clock; a slow one paces it instead. */
   private updateWaiting(now: number): void {
     const waited: Waited[] = [];
-    const slow: Member[] = [];
     for (const member of this.members.values()) {
       const reason = this.waitReason(member, now);
-      if (reason === null) continue;
+      if (reason === null) {
+        this.pacing.observe(member.token, this.clock.tick - member.ackedTick, this.clock.speed, now);
+        continue;
+      }
       waited.push({ token: member.token, nick: member.nick, reason });
-      if (reason === 'slow') slow.push(member);
+      this.pacing.forget(member.token);
     }
-    this.slowTokens.clear();
-    for (const member of slow) this.slowTokens.add(member.token);
     if (this.waiting.update(waited, now)) this.broadcast(this.waiting.message(now));
-    this.clock.hold(waited.some((entry) => entry.reason !== 'slow'));
-    if (this.governFor(slow) && this.clock.running) this.broadcast(this.clockMessage(null));
+    this.clock.hold(waited.length > 0);
+    if (this.governFor(this.slowMembers()) && this.clock.running) this.broadcast(this.clockMessage(null));
   }
 
   /** Pace the clock for `slow` at the requested speed; true when the governed clock changed. */
@@ -312,16 +324,14 @@ export class Game {
   }
 
   private slowMembers(): Member[] {
-    return [...this.members.values()].filter((member) => this.slowTokens.has(member.token));
+    return [...this.members.values()].filter((member) => this.pacing.isSlow(member.token));
   }
 
   private waitReason(member: Member, now: number): WaitReason | null {
     if (!member.connected) return 'gone';
     if (member.outOfSync !== null) return 'resync';
     if (!member.loaded) return 'loading';
-    if (now - member.lastHeardAt > SILENT_AFTER_MS) return 'silent';
-    const allowedMs = this.slowTokens.has(member.token) ? GOVERN_RELEASE_MS : GOVERN_BEHIND_MS;
-    return this.clock.tick - member.ackedTick > framesIn(allowedMs, this.clock.speed) ? 'slow' : null;
+    return now - member.lastHeardAt > SILENT_AFTER_MS ? 'silent' : null;
   }
 
   /** The clock starts once every member has loaded, a dropped one included: a game never starts
@@ -391,5 +401,7 @@ export class Game {
 }
 
 function sameGoverned(a: GovernedClock | null, b: GovernedClock | null): boolean {
-  return a === b || (a !== null && b !== null && a.nick === b.nick && a.speed === b.speed);
+  return (
+    a === b || (a !== null && b !== null && a.nick === b.nick && a.speed === b.speed && a.cause === b.cause)
+  );
 }

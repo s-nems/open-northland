@@ -216,6 +216,9 @@ function parseRoomMemberView(value: unknown, at: string): RoomMemberView {
     compatibility: parseCompatibility(raw.compatibility, `${at}.compatibility`),
     load: raw.load === null ? null : parseClientLoad(raw.load, `${at}.load`),
     loading: raw.loading === null ? null : parseLoadingProgress(raw.loading, `${at}.loading`),
+    roundTripMs: raw.roundTripMs === null ? null : asNonNegativeNumber(raw.roundTripMs, `${at}.roundTripMs`),
+    delayTicks: raw.delayTicks === null ? null : asCount(raw.delayTicks, `${at}.delayTicks`),
+    behindTicks: asCount(raw.behindTicks, `${at}.behindTicks`),
   };
 }
 

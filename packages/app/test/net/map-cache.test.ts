@@ -93,6 +93,9 @@ it('running reload requires the current room fingerprint and refuses a local pro
         compatibility: { map: map.fingerprint, content: 'c', client: 'b', protocol: 3 },
         load: null,
         loading: null,
+        roundTripMs: null,
+        delayTicks: null,
+        behindTicks: 0,
       },
     ],
   };

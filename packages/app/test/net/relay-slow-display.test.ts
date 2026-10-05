@@ -148,7 +148,7 @@ it('governs the room to the rate a slow display draws, and releases it once the 
     expect(peer.governed?.nick).toBe(HOSTED_NICK);
     expect(peer.governed?.speed).toBeLessThan(SESSION_SPEED);
     expect(peer.governed?.speed).toBeGreaterThan(MIN_GOVERNED_SPEED);
-    expect(peer.waits.at(-1)?.for).toEqual([expect.objectContaining({ nick: HOSTED_NICK, reason: 'slow' })]);
+    expect(peer.waits.at(-1)?.for).toEqual([]);
 
     hosted.frameMs = null;
     await paced.until(

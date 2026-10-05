@@ -39,8 +39,28 @@ function room(): RoomView {
       { player: 2, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 2, nick: null, ready: false },
     ],
     members: [
-      { nick: 'Ania', seat: 0, connected: true, compatibility: report, load: null, loading: null },
-      { nick: 'Bartek', seat: 1, connected: true, compatibility: report, load: null, loading: null },
+      {
+        nick: 'Ania',
+        seat: 0,
+        connected: true,
+        compatibility: report,
+        load: null,
+        loading: null,
+        roundTripMs: null,
+        delayTicks: null,
+        behindTicks: 0,
+      },
+      {
+        nick: 'Bartek',
+        seat: 1,
+        connected: true,
+        compatibility: report,
+        load: null,
+        loading: null,
+        roundTripMs: null,
+        delayTicks: null,
+        behindTicks: 0,
+      },
     ],
   };
 }
@@ -199,6 +219,9 @@ describe('member load in the room', () => {
       compatibility: report,
       load: { tickMs: 12.345, buffered: 3 },
       loading: null,
+      roundTripMs: null,
+      delayTicks: null,
+      behindTicks: 0,
     };
     expect(memberLoadText(member)).toMatch(/^12\.3 ms\/.* 3\b/);
   });

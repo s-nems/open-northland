@@ -18,7 +18,19 @@ const ROOM: RoomView = {
   creator: 'Ania',
   settings: { name: 'Game', world: SESSION.world, seed: 3, speed: 1, rules: SESSION.rules },
   seats: [{ player: 0, mode: 'human', offers: ['idle'], color: 0, nick: 'Ania', ready: true }],
-  members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null, load: null, loading: null }],
+  members: [
+    {
+      nick: 'Ania',
+      seat: 0,
+      connected: true,
+      compatibility: null,
+      load: null,
+      loading: null,
+      roundTripMs: null,
+      delayTicks: null,
+      behindTicks: 0,
+    },
+  ],
 };
 
 function stateOf(view: RelayClient | RelayState) {
@@ -52,7 +64,7 @@ it('brings a mirror fed the client’s messages to the client’s lobby and sess
     { kind: 'start', session: SESSION, snapshotTick: null },
     { kind: 'clock', tick: 1, speed: 2, paused: true, by: 'Ania', governed: null },
     { kind: 'delay', ticks: 3 },
-    { kind: 'waiting', for: [{ nick: 'Bartek', reason: 'slow', voteAfterMs: 500 }] },
+    { kind: 'waiting', for: [{ nick: 'Bartek', reason: 'silent', voteAfterMs: 500 }] },
     { kind: 'ping', t: 7, roundTripMs: 42 },
     { kind: 'desync', tick: 5, domains: ['rng'], reference: 'Bartek' },
     { kind: 'ended', tick: 9, hash: '0000abcd' },

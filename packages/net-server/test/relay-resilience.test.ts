@@ -7,7 +7,14 @@ import {
   SNAPSHOT_REFRESH_MS,
   SNAPSHOT_RETRY_MS,
 } from '../src/index.js';
-import { framesIn, GOVERN_BEHIND_MS, GOVERN_RELEASE_MS, GOVERNOR_HEADROOM } from '../src/relay/governor.js';
+import {
+  CATCH_UP_SHARE,
+  framesIn,
+  GOVERN_RELEASE_MS,
+  LAG_BEHIND_MS,
+  MIN_GOVERNED_SPEED,
+  SLOW_GRACE_MS,
+} from '../src/relay/governor.js';
 import {
   ackThrough,
   digest,
@@ -31,7 +38,15 @@ import {
  */
 
 const BLOB = Buffer.from('bytes the relay never reads').toString('base64');
-const BEHIND_TICKS = framesIn(GOVERN_BEHIND_MS, SETTINGS.speed);
+const LAG_TICKS = framesIn(LAG_BEHIND_MS, SETTINGS.speed);
+/** Wall time a member trailing from the first frame takes to pass the lag threshold. */
+const LAG_ONSET_MS = (LAG_TICKS + 1) * TICK_MS;
+/** Long enough, by a margin of a few ticks, for a member trailing from the first frame to be slow. */
+const SLOW_AFTER_MS = LAG_ONSET_MS + SLOW_GRACE_MS + TICK_MS * 4;
+/** A member this far behind is lagging, under twice the threshold. */
+const LAGGING_MS = 1500;
+/** Lagging this long is still within the grace. */
+const SHORT_OF_GRACE_MS = 3000;
 const RELEASE_TICKS = framesIn(GOVERN_RELEASE_MS, SETTINGS.speed);
 /** A client whose sim tick costs two ticks of wall time: it sustains half the speed. */
 const SLOW_LOAD: ClientLoad = { tickMs: TICK_MS * 2, buffered: 0 };
@@ -259,78 +274,130 @@ describe('waiting for a member', () => {
 });
 
 describe('pacing the clock for a slow member', () => {
-  it('neither waits for nor paces for a member at the threshold', () => {
+  it('neither waits for nor paces for a member at the lag threshold', () => {
     const s = startedRoom();
-    trail(s, s.a, s.b, BEHIND_TICKS, GOVERN_BEHIND_MS * 2, SLOW_LOAD);
+    trail(s, s.a, s.b, LAG_TICKS, SLOW_GRACE_MS * 2, SLOW_LOAD);
     expect(s.a.last('waiting')?.for).toEqual([]);
     expect(s.a.last('clock')?.governed).toBeNull();
   });
 
+  it('lets a lagging member catch up alone through the grace, then paces the clock for it unwaited', () => {
+    const s = startedRoom();
+    const behind = framesIn(LAGGING_MS, SETTINGS.speed);
+    trail(s, s.a, s.b, behind, LAG_ONSET_MS, SLOW_LOAD);
+    trail(s, s.a, s.b, behind, SHORT_OF_GRACE_MS, SLOW_LOAD);
+    expect(s.a.last('waiting')?.for).toEqual([]);
+    expect(s.a.last('clock')?.governed).toBeNull();
+    trail(s, s.a, s.b, behind, SLOW_GRACE_MS - SHORT_OF_GRACE_MS + TICK_MS * 2, SLOW_LOAD);
+    expect(s.a.last('clock')?.governed).toEqual({
+      nick: 'Bartek',
+      speed: SLOW_GOVERNED_SPEED,
+      cause: 'load',
+    });
+    expect(s.a.last('waiting')?.for).toEqual([]);
+  });
+
   it('paces the clock at a slow member’s sustainable speed without holding it, and releases it lower', () => {
     const s = startedRoom();
-    trail(s, s.a, s.b, BEHIND_TICKS + 1, GOVERN_BEHIND_MS * 2, SLOW_LOAD);
-    expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'slow' }]);
-    const governed = { nick: 'Bartek', speed: SLOW_GOVERNED_SPEED };
+    trail(s, s.a, s.b, LAG_TICKS + 1, SLOW_AFTER_MS, SLOW_LOAD);
+    expect(s.a.last('waiting')?.for).toEqual([]);
+    const governed = { nick: 'Bartek', speed: SLOW_GOVERNED_SPEED, cause: 'load' };
     expect(s.b.last('clock')).toMatchObject({ speed: SETTINGS.speed, paused: false, by: null, governed });
     const governedFrames = framesIn(RATE_WINDOW_MS, SLOW_GOVERNED_SPEED);
-    expect(framesOver(s, s.a, s.b, BEHIND_TICKS + 1, RATE_WINDOW_MS)).toBeGreaterThanOrEqual(
-      governedFrames - 1,
-    );
-    expect(framesOver(s, s.a, s.b, BEHIND_TICKS + 1, RATE_WINDOW_MS)).toBeLessThanOrEqual(governedFrames);
+    expect(framesOver(s, s.a, s.b, LAG_TICKS + 1, RATE_WINDOW_MS)).toBeGreaterThanOrEqual(governedFrames - 1);
+    expect(framesOver(s, s.a, s.b, LAG_TICKS + 1, RATE_WINDOW_MS)).toBeLessThanOrEqual(governedFrames);
 
     // Between the two thresholds it stays slow; at the lower one it is released.
     trail(s, s.a, s.b, RELEASE_TICKS + 1, TICK_MS * 2, SLOW_LOAD);
     expect(s.a.last('clock')?.governed).toEqual(governed);
     trail(s, s.a, s.b, RELEASE_TICKS, TICK_MS * 2, SLOW_LOAD);
-    expect(s.a.last('waiting')?.for).toEqual([]);
     expect(s.a.last('clock')).toMatchObject({ speed: SETTINGS.speed, governed: null });
     const fullFrames = framesIn(RATE_WINDOW_MS, SETTINGS.speed);
     expect(framesOver(s, s.a, s.b, RELEASE_TICKS, RATE_WINDOW_MS)).toBeGreaterThanOrEqual(fullFrames - 1);
   });
 
-  it('announces a requested speed with the governed speed recomputed for it', () => {
+  it('paces a slow member whose load says it keeps up at the catch-up share, for its lag', () => {
     const s = startedRoom();
-    trail(s, s.a, s.b, BEHIND_TICKS + 1, GOVERN_BEHIND_MS * 2, SLOW_LOAD);
-    const governed = { nick: 'Bartek', speed: SLOW_GOVERNED_SPEED };
+    trail(s, s.a, s.b, LAG_TICKS + 1, SLOW_AFTER_MS, LOAD);
+    expect(s.a.last('clock')?.governed).toEqual({
+      nick: 'Bartek',
+      speed: SETTINGS.speed * CATCH_UP_SHARE,
+      cause: 'lag',
+    });
+    expect(s.a.last('waiting')?.for).toEqual([]);
+  });
+
+  it('announces a requested speed with the governed speed recomputed for it, never lifting it', () => {
+    const s = startedRoom();
+    trail(s, s.a, s.b, LAG_TICKS + 1, SLOW_AFTER_MS, SLOW_LOAD);
+    const governed = { nick: 'Bartek', speed: SLOW_GOVERNED_SPEED, cause: 'load' };
     expect(s.b.last('clock')?.governed).toEqual(governed);
     const aboveGoverned = SLOW_GOVERNED_SPEED * 2;
     s.a.send({ kind: 'clock', speed: aboveGoverned });
     expect(s.b.last('clock')).toMatchObject({ speed: aboveGoverned, by: 'Ania', governed });
-    const belowGoverned = SLOW_GOVERNED_SPEED / 2;
-    s.a.send({ kind: 'clock', speed: belowGoverned });
-    expect(s.b.last('clock')).toMatchObject({ speed: belowGoverned, by: 'Ania', governed: null });
+    const belowFloor = MIN_GOVERNED_SPEED / 2;
+    s.a.send({ kind: 'clock', speed: belowFloor });
+    expect(s.b.last('clock')).toMatchObject({
+      speed: belowFloor,
+      by: 'Ania',
+      governed: { nick: 'Bartek', speed: belowFloor, cause: 'lag' },
+    });
   });
 
-  it('keeps the clock running for a slow member that never reports, and counts down its kick vote', () => {
+  it('keeps the clock running for a slow member that never acknowledges, with no wait and no vote', () => {
     const s = startedRoom();
-    play(s, [s.a], GOVERN_BEHIND_MS + TICK_MS * 2, [s.a, s.b]);
-    expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'slow' }]);
+    play(s, [s.a], SLOW_AFTER_MS + TICK_MS * 2, [s.a, s.b]);
+    expect(s.a.last('waiting')?.for).toEqual([]);
     expect(s.a.last('clock')?.governed).toEqual({
       nick: 'Bartek',
-      speed: SETTINGS.speed * GOVERNOR_HEADROOM,
+      speed: SETTINGS.speed * CATCH_UP_SHARE,
+      cause: 'lag',
     });
-    s.a.send({ kind: 'kick', player: 1 });
-    expect(s.a.last('rejected')?.reason).toMatchObject({ code: 'voteNotOpen' });
     const before = lastTick(s.a);
     play(s, [s.a], KICK_COUNTDOWN_MS, [s.a, s.b]);
     expect(lastTick(s.a)).toBeGreaterThan(before);
-    expect(s.a.last('waiting')?.for).toEqual([{ nick: 'Bartek', reason: 'slow', voteAfterMs: 0 }]);
+    expect(s.a.last('waiting')?.for).toEqual([]);
     s.a.send({ kind: 'kick', player: 1 });
-    expect(s.a.last('kicked')).toMatchObject({ player: 1, nick: 'Bartek' });
+    expect(s.a.last('rejected')?.reason).toEqual({ code: 'notWaitedFor', nick: 'Bartek' });
   });
 
   it('holds the clock for a dropped member even while another is paced for', () => {
     const s = roomOfThree();
-    trail(s, s.a, s.b, BEHIND_TICKS + 1, GOVERN_BEHIND_MS * 2, SLOW_LOAD);
+    trail(s, s.a, s.b, LAG_TICKS + 1, SLOW_AFTER_MS, SLOW_LOAD);
     s.relay.disconnect(s.c.handle);
-    trail(s, s.a, s.b, BEHIND_TICKS + 1, TICK_MS, SLOW_LOAD);
-    expect(s.a.last('waiting')?.for).toMatchObject([
-      { nick: 'Bartek', reason: 'slow' },
-      { nick: 'Cezary', reason: 'gone' },
-    ]);
+    trail(s, s.a, s.b, LAG_TICKS + 1, TICK_MS, SLOW_LOAD);
+    expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Cezary', reason: 'gone' }]);
+    expect(s.a.last('clock')?.governed).toMatchObject({ nick: 'Bartek' });
     const held = lastTick(s.a);
-    trail(s, s.a, s.b, BEHIND_TICKS + 1, RATE_WINDOW_MS, SLOW_LOAD);
+    trail(s, s.a, s.b, LAG_TICKS + 1, RATE_WINDOW_MS, SLOW_LOAD);
     expect(lastTick(s.a)).toBe(held);
+  });
+
+  it('holds a dropped member for everyone, unpaused or not, until the vote at its countdown’s end passes', () => {
+    const s = roomOfThree();
+    tick(s, [s.a, s.b, s.c], TICK_MS * 4);
+    s.a.send({ kind: 'clock', paused: true });
+    s.relay.disconnect(s.c.handle);
+    const held = lastTick(s.a);
+    tick(s, [s.a, s.b], TICK_MS);
+    expect(s.a.last('waiting')?.for).toEqual([
+      { nick: 'Cezary', reason: 'gone', voteAfterMs: KICK_COUNTDOWN_MS },
+    ]);
+
+    s.b.send({ kind: 'clock', paused: false });
+    expect(s.a.last('clock')).toMatchObject({ paused: false, by: 'Bartek' });
+    tick(s, [s.a, s.b], TICK_MS);
+    expect(lastTick(s.a)).toBe(held);
+    tick(s, [s.a, s.b], KICK_COUNTDOWN_MS);
+    expect(lastTick(s.a)).toBe(held);
+    expect(s.a.last('waiting')?.for).toEqual([{ nick: 'Cezary', reason: 'gone', voteAfterMs: 0 }]);
+
+    s.a.send({ kind: 'kick', player: 2 });
+    expect(s.b.last('kickVote')).toMatchObject({ nick: 'Cezary', yes: ['Ania'], needed: 1 });
+    expect(s.b.last('kicked')).toMatchObject({ nick: 'Cezary', tick: held + 1 });
+    tick(s, [s.a, s.b], TICK_MS);
+    expect(lastTick(s.a)).toBeGreaterThan(held);
+    expect(s.a.last('waiting')?.for).toEqual([]);
   });
 });
 

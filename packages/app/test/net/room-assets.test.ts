@@ -35,7 +35,19 @@ function room(id = 'room'): RoomView {
     seats: [
       { player: 0, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 0, nick: 'Ania', ready: false },
     ],
-    members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null, load: null, loading: null }],
+    members: [
+      {
+        nick: 'Ania',
+        seat: 0,
+        connected: true,
+        compatibility: null,
+        load: null,
+        loading: null,
+        roundTripMs: null,
+        delayTicks: null,
+        behindTicks: 0,
+      },
+    ],
   };
 }
 function deferredSave() {
@@ -106,7 +118,19 @@ describe('room assets coordinator', () => {
     const joined = {
       ...room(),
       creator: 'Bartek',
-      members: [{ nick: 'Bartek', seat: 0, connected: true, compatibility: null, load: null, loading: null }],
+      members: [
+        {
+          nick: 'Bartek',
+          seat: 0,
+          connected: true,
+          compatibility: null,
+          load: null,
+          loading: null,
+          roundTripMs: null,
+          delayTicks: null,
+          behindTicks: 0,
+        },
+      ],
     };
     h.assets.observe(joined);
     expect(requests()).toHaveLength(1);

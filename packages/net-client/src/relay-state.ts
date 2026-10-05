@@ -73,6 +73,7 @@ export class RelayState {
       case 'kickVote':
       case 'kicked':
       case 'chat':
+      case 'chatHistory':
       case 'error':
       case 'snapshotRequest':
       case 'disputed':

@@ -30,6 +30,9 @@ function room(): RoomView {
         compatibility: { content: 'content', map: handle.fingerprint, client: 'build', protocol: 2 },
         load: null,
         loading: null,
+        roundTripMs: null,
+        delayTicks: null,
+        behindTicks: 0,
       },
       {
         nick: 'Guest',
@@ -38,6 +41,9 @@ function room(): RoomView {
         compatibility: { content: 'content', map: null, client: 'build', protocol: 2 },
         load: null,
         loading: null,
+        roundTripMs: null,
+        delayTicks: null,
+        behindTicks: 0,
       },
     ],
   };
