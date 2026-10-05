@@ -8,6 +8,7 @@ import {
   FamilyDuty,
   Fleeing,
   inPastimeChat,
+  LostWay,
   ownerOf,
   PlayerOrder,
   Position,
@@ -214,6 +215,8 @@ export function planGossipIdle(
     startChat(world, e, beside.entity, 'pastime');
     return true;
   }
+  // A lost settler keeps its stand, where its note sends the player, so it walks to no partner.
+  if (world.has(e, LostWay)) return false;
   if (ctx.rng.int(Math.max(1, Math.floor(CHAT_IDLE_WALK_MEAN_WAIT_TICKS / callPeriodTicks))) !== 0) {
     return false;
   }

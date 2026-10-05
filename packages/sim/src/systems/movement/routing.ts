@@ -1,6 +1,8 @@
 import {
+  Chat,
   Engagement,
   Fleeing,
+  LostWay,
   MoveGoal,
   Obstructed,
   Owner,
@@ -188,8 +190,7 @@ export function drainPathRequests(
     if (req.retainRoute && previous !== undefined && previousStops?.at(-1)?.node === req.start) {
       world.mut(e, PathRoute).waypoints = [...previousStops, ...waypoints.slice(1)];
       endGrindHold(world, e);
-      world.remove(e, PathRequest);
-      world.remove(e, Stranded);
+      settleRoute(world, e);
       continue;
     }
     const oldTarget = previous && previousStops?.[previous.index];
@@ -249,10 +250,17 @@ export function drainPathRequests(
     if (position !== undefined && firstTarget !== undefined && world.has(e, WalkFacing)) {
       beginWalkTurn(world, e, position, firstTarget);
     }
-    world.remove(e, PathRequest);
-    world.remove(e, Stranded);
+    settleRoute(world, e);
   }
   memo.expire(ctx.tick);
+}
+
+/** A route installed answers its request and ends any stranded park. It is a way found, so a lost settler
+ *  walking it is lost no more, unless the walk only takes it to a chat partner. */
+function settleRoute(world: World, e: Entity): void {
+  world.remove(e, PathRequest);
+  world.remove(e, Stranded);
+  if (!world.has(e, Chat)) world.remove(e, LostWay);
 }
 
 /** Whether `e` still walks a route but no longer stands nearest `start`, the node its grind ask is from. */

@@ -121,7 +121,7 @@ function startPlayerWalk(
       // A walk to a chat partner is not business.
       const busy = (isTravelling(world, e) && !world.has(e, Chat)) || atomicHoldsSettler(world, e);
       if (busy) announceLostWay(world, ctx, e);
-      else markLostWay(world, ctx, e);
+      else markLostWay(world, ctx, e, goal);
       return false;
     }
   }
@@ -240,7 +240,7 @@ export const playerOrderSystem: System = (world, ctx) => {
       // A failed request is never retried, so the order must be dropped or the unit freezes on it forever.
       // A signpost errand is the original's build-guide task, whose failure is a plain task failure,
       // never a lost note.
-      if (!world.has(e, ErectSignpostOrder)) markLostWay(world, ctx, e);
+      if (!world.has(e, ErectSignpostOrder)) markLostWay(world, ctx, e, request.goal);
       world.remove(e, PlayerOrder);
       stopAtNextNode(world, ctx.terrain, e);
       continue;

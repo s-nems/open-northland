@@ -6,6 +6,7 @@ import {
   Female,
   HuntFocus,
   hasMissionBehaviour,
+  LostWay,
   MealBreak,
   MISSION_BEHAVIOUR,
   ownerOf,
@@ -384,9 +385,11 @@ function standIdle(
   pass.idle.stand(e, true);
   if (cutOffCheckDue(ctx) && checkCutOff(pass, plan)) return;
   if (world.has(e, Chat) || staysPut(world, e)) return;
-  if (planGraduateWait(world, ctx, terrain, e, plan.here, pass.spacing, plan.limit)) return;
-  if (stepOffHomeDoor(world, ctx, terrain, e, plan.here, pass.spacing)) return;
-  if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
+  // A lost settler stands where its note sends the player, so it is found there; it only chats in place.
+  const lost = world.has(e, LostWay);
+  if (!lost && planGraduateWait(world, ctx, terrain, e, plan.here, pass.spacing, plan.limit)) return;
+  if (!lost && stepOffHomeDoor(world, ctx, terrain, e, plan.here, pass.spacing)) return;
+  if (lost || !deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
     planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates, IDLE_REPLAN_PERIOD_TICKS, alert);
   }
 }
@@ -404,8 +407,9 @@ export function checkCutOff(pass: PlannerPass, plan: PlannerContext): boolean {
     plan.limit,
     pass.seatDoors,
     () =>
-      jobCanBuild(ctx.content, plan.jobType) &&
-      builderWorkBeyondReach(plan, pass.spacing, pass.constructionClaims),
+      jobCanBuild(ctx.content, plan.jobType)
+        ? builderWorkBeyondReach(plan, pass.spacing, pass.constructionClaims)
+        : null,
   );
   return guideLostSettler(pass, e, plan.limit);
 }

@@ -176,7 +176,7 @@ export function chase(
         if (order.attackMove !== undefined) order.attackMove.blockedUntil = ctx.tick + REPATH_CADENCE;
       } else {
         // Only the dropped attack order is worth a note; the march above keeps walking.
-        markLostWay(world, ctx, e);
+        markLostWay(world, ctx, e, request.goal);
       }
       return true;
     }
@@ -198,7 +198,7 @@ export function chase(
         return true;
       }
       noteUnreachableTarget(world, ctx, e, target.entity);
-      markLostWay(world, ctx, e);
+      markLostWay(world, ctx, e, request.goal);
       breakOff(world, ctx, e, here, defend);
       return true;
     }

@@ -159,10 +159,11 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     expect(sim.events.current()).toContainEqual({ kind: 'settlerLost', entity: g });
     for (let t = 0; t < 30 && !sim.world.has(g, MoveGoal); t++) sim.step();
     expect(sim.world.has(g, MoveGoal)).toBe(true); // off to the tree
-    expect(sim.world.has(g, LostWay)).toBe(true); // a walk may fail like the refused one
-    for (let t = 0; t < 300 && sim.world.has(g, LostWay); t++) sim.step();
+    expect(sim.world.has(g, LostWay)).toBe(false); // the route found this tick is the way
+    const felling = (): boolean => sim.world.tryGet(g, CurrentAtomic)?.effect.kind === 'harvest';
+    for (let t = 0; t < 300 && !felling(); t++) sim.step();
+    expect(felling()).toBe(true);
     expect(sim.world.has(g, LostWay)).toBe(false);
-    expect(sim.world.tryGet(g, CurrentAtomic)?.effect.kind).toBe('harvest'); // felling the tree
   });
 
   it('ON: a refused order on a settler already on its way is reported but leaves no mark', () => {

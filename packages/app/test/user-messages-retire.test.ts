@@ -32,7 +32,7 @@ function isNoteOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
 
 function world(tick: number, settler: 'lost' | 'found' | 'gone'): WorldSnapshot {
   if (settler === 'gone') return { tick, events: [], entities: [] };
-  const components = settler === 'lost' ? { LostWay: { cutOff: false, since: 0 } } : {};
+  const components = settler === 'lost' ? { LostWay: { cutOff: false, since: 0, goal: null } } : {};
   return { tick, events: [], entities: [{ id: SETTLER, components }] };
 }
 

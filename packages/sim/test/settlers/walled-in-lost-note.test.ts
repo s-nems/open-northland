@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, LostWay, Palisade, Position } from '../../src/components/index.js';
+import { CurrentAtomic, LostWay, MoveGoal, Palisade, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../src/index.js';
 import { placePalisade } from '../../src/systems/palisades/index.js';
@@ -103,6 +103,8 @@ describe('a settler walled in from its work', () => {
     expect(notes).toBe(1);
     expect(sim.world.has(woodcutter, LostWay)).toBe(true);
     expect(sim.world.get(woodcutter, Position)).toEqual(start);
+    // The note points at the tree the way was wanted to.
+    expect(sim.world.get(woodcutter, LostWay).goal).not.toBeNull();
   });
 
   it('goes back to work once the gate opens, and the mark lifts', () => {
@@ -111,6 +113,11 @@ describe('a settler walled in from its work', () => {
     expect(sim.world.has(woodcutter, LostWay)).toBe(true);
 
     sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: true });
+    // The mark lifts with the first route found, while the walk through the gate is still ahead.
+    for (let t = 0; t < 3 * UNREACHABLE_GOAL_MEMO_TICKS && sim.world.has(woodcutter, LostWay); t++) sim.step();
+    expect(sim.world.has(woodcutter, LostWay)).toBe(false);
+    expect(sim.world.has(woodcutter, MoveGoal)).toBe(true);
+    expect(sim.world.get(woodcutter, Position).y).toBeLessThan(positionOfNode(GATE_X, WALL_ROW).y);
     const felling = (): boolean => sim.world.tryGet(woodcutter, CurrentAtomic)?.effect.kind === 'harvest';
     for (let t = 0; t < 3 * UNREACHABLE_GOAL_MEMO_TICKS && !felling(); t++) sim.step();
     expect(felling()).toBe(true);

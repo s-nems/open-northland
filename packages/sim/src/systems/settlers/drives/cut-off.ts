@@ -93,12 +93,10 @@ export function markIfPostedOutOfReach(world: World, ctx: SystemContext, e: Enti
   if (terrain === undefined) return;
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
   const home = homeUsedBy(world, ctx, e);
-  if (
-    strandedWorkplaceDoor(world, ctx, terrain, e, limit) !== null ||
-    (home !== undefined && doorOutOfReach(world, ctx, terrain, home, limit) !== null)
-  ) {
-    markCutOff(world, ctx, e);
-  }
+  const door =
+    strandedWorkplaceDoor(world, ctx, terrain, e, limit) ??
+    (home === undefined ? null : doorOutOfReach(world, ctx, terrain, home, limit));
+  if (door !== null) markCutOff(world, ctx, e, door);
 }
 
 /**
@@ -117,15 +115,21 @@ export function reconcileCutOff(
   jobType: number,
   limit: NavigationLimit | null,
   doors: SeatDoors,
-  workBeyondReach?: () => boolean,
+  /** The cell of the work only the confinement keeps `e` from, or null when none waits. */
+  workBeyondReach?: () => NodeId | null,
 ): void {
   const owner = ownerOf(world, e);
   if (owner === undefined || !world.has(e, Person)) return;
   const marked = world.tryGet(e, LostWay)?.cutOff === true;
-  const works = hasWorkToReach(ctx, jobType);
-  const stranded =
-    strandedWorkplaceDoor(world, ctx, terrain, e, limit) !== null ||
-    (works && limit !== null && (noDoorInReach(doors.of(owner), limit) || workBeyondReach?.() === true));
-  if (stranded) markCutOff(world, ctx, e);
+  let goal = strandedWorkplaceDoor(world, ctx, terrain, e, limit);
+  let stranded = goal !== null;
+  if (!stranded && hasWorkToReach(ctx, jobType) && limit !== null) {
+    if (noDoorInReach(doors.of(owner), limit)) stranded = true;
+    else {
+      goal = workBeyondReach?.() ?? null;
+      stranded = goal !== null;
+    }
+  }
+  if (stranded) markCutOff(world, ctx, e, goal);
   else if (marked) clearLostWay(world, e);
 }

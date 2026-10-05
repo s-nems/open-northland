@@ -318,7 +318,7 @@ export function releaseStaleIntent(
     // nearest-first pick, so without the memo it re-chooses this very goal and loops forever.
     // Wildlife rides this same recovery, and a retry of a goal already given up is not news, so only
     // the first refusal of a goal marks the settler lost.
-    if (noteUnreachableGoal(world, ctx, e, request.goal)) markLostWay(world, ctx, e);
+    if (noteUnreachableGoal(world, ctx, e, request.goal)) markLostWay(world, ctx, e, request.goal);
     clearNavState(world, e); // sheds Stranded with the route - fall through and re-plan this tick
   } else if (isTravelling(world, e) && !seekShelter) {
     feedOnTheMarch(world, ctx, e, request?.failed === true);

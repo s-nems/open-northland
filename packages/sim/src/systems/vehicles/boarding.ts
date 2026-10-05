@@ -181,7 +181,7 @@ export const riderSystem: System = (world, ctx) => {
     const request = world.tryGet(e, PathRequest);
     if (request?.failed !== true || !world.has(e, Position) || terrain === undefined) continue;
     if (request.goal !== boardingNode(world, ctx, terrain, rider.vehicle)) continue;
-    markLostWay(world, ctx, e);
+    markLostWay(world, ctx, e, request.goal);
     clearNavState(world, e);
     releaseRider(world, e, rider.vehicle);
   }

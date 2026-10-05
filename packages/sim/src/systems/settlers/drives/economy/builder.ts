@@ -33,7 +33,12 @@ import {
 } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
-import { InteractionCellIndex, nearestBuilderSite, unreachableSiteStand } from '../../targets/index.js';
+import {
+  InteractionCellIndex,
+  interactionCell,
+  nearestBuilderSite,
+  unreachableSiteStand,
+} from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { cutOffCheckDue } from '../cut-off.js';
 import { claimWorkCell } from '../spacing.js';
@@ -284,29 +289,29 @@ export function planBuilder(
 }
 
 /**
- * Whether only its signposts keep a builder that found no task from one: some site would give it a task if
- * no confinement held it, whether the site itself or every source of its material lies out of reach.
- * Original behavior: the builder plans that walk anyway and stands lost once its guided pathfinder has
- * failed. Approximation: this planner never plans past the confinement, so the cut-off check asks the
- * unconfined pick instead, on its cadence.
+ * The stand at the nearest site only its signposts keep a builder that found no task from: a site that
+ * would give it a task if no confinement held it, whether the site itself or every source of its material
+ * lies out of reach. Null when no such site waits. Original behavior: the builder plans that walk anyway
+ * and stands lost once its guided pathfinder has failed. Approximation: this planner never plans past the
+ * confinement, so the cut-off check asks the unconfined pick instead, on its cadence.
  */
 export function builderWorkBeyondReach(
   plan: PlannerContext,
   spacing: PlannerSpacing,
   claims: ConstructionTaskClaims,
-): boolean {
-  if (plan.limit === null) return false;
+): NodeId | null {
+  if (plan.limit === null) return null;
   const free: PlannerContext = { ...plan, limit: null };
-  const { world, here, targets, owner } = free;
+  const { world, ctx, terrain, here, targets, owner } = free;
   const materials = constructionMaterialResolver(free, spacing);
   const hasTask = siteHasTask(claims, materials, standableSite(free, spacing, null));
-  const found = (sites: InteractionCellIndex): boolean =>
-    nearestBuilderSite(sites, world, here, owner, undefined, undefined, hasTask) !== null;
-  return (
-    found(targets.constructionSiteCells) ||
-    (claims.wallMayHaveTask(materials.canSource) && found(targets.wallSiteCells)) ||
-    (claims.roadMayHaveTask(materials.canSource, owner) && found(targets.roadSiteCells))
-  );
+  const found = (sites: InteractionCellIndex): Entity | null =>
+    nearestBuilderSite(sites, world, here, owner, undefined, undefined, hasTask);
+  const site =
+    found(targets.constructionSiteCells) ??
+    (claims.wallMayHaveTask(materials.canSource) ? found(targets.wallSiteCells) : null) ??
+    (claims.roadMayHaveTask(materials.canSource, owner) ? found(targets.roadSiteCells) : null);
+  return site === null ? null : interactionCell(world, ctx, terrain, site, here);
 }
 
 /** An unfinished site this builder may stand at within `limit`. A damaged upgrade site is mended before its

@@ -240,11 +240,11 @@ describe('a workplace beyond signpost reach', () => {
     for (const x of [2, (2 + OUT_OF_AREA) / 2, OUT_OF_AREA - 2]) stampPost(sim, x, 2);
     for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS && !sim.world.has(u, MoveGoal); t++) sim.step();
     expect(sim.world.has(u, MoveGoal)).toBe(true); // sets off for its workplace on its own
-    expect(sim.world.has(u, LostWay)).toBe(true); // a walk may fail like the last one
+    expect(sim.world.has(u, LostWay)).toBe(false); // its route found the same tick, its way with it
     for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS; t++) sim.step();
     expect(sim.world.get(u, Position).x).toBeGreaterThan(start + ONE); // eastwards, to the mill
-    for (let t = 0; t < 10 * CUT_OFF_CHECK_TICKS && sim.world.has(u, LostWay); t++) sim.step();
-    expect(sim.world.has(u, LostWay)).toBe(false); // at its post, its way found
+    for (let t = 0; t < 10 * CUT_OFF_CHECK_TICKS && sim.world.has(u, MoveGoal); t++) sim.step();
+    expect(sim.world.has(u, LostWay)).toBe(false);
     expect(sim.world.get(u, Position).x).toBeGreaterThan(fx.fromInt(OUT_OF_AREA - 4));
   });
 });

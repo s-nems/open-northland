@@ -82,9 +82,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       if (inPastimeChat(world, e) && tookAction(world, e)) endChat(world, ctx.tick, e); // frees the partner too
     }
     // A ladder that left the settler busy where it stands, at work or waiting at its post, found its way.
-    // A walk keeps the mark, since it may fail like the last one did; the idle tail and a chat of either
-    // kind are still standing about to the player. A jobless adult never gets here, so only an obeyed order
-    // lifts its mark.
+    // A walk keeps the mark until the pathfinding pass finds its route, since it may fail like the last one
+    // did; the idle tail and a chat of either kind are still standing about to the player. A jobless adult
+    // never gets here, so only an obeyed order lifts its mark.
     if (!pass.idle.reachedTail(e) && !world.has(e, Chat) && !world.has(e, MoveGoal)) clearLostWay(world, e);
   }
 }
