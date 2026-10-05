@@ -390,7 +390,7 @@ export const enContent = {
     'far-post': {
       title: 'Post beyond signpost reach',
       summary:
-        'A bakery and a home stand 52 tiles from the camp, with no signposts between. Olaf is posted to the bakery and walks there past his signposts, the post being the player\'s choice. Sven was ordered to walk to the home: the order is refused, he stands lost, and his card and panel show the goal he cannot find the way to. Right-click other settlers to walk to the home for the same note.',
+        'A bakery and a home stand 52 tiles from the camp, with no signposts between. Olaf is posted to the bakery and walks there past his signposts, since the player chose the post. Sven was ordered to walk to the home: the order is refused, he stands lost, and his card and panel show the goal he cannot find the way to. Right-click other settlers to walk to the home for the same note.',
     },
     'store-reach': {
       title: 'Store beyond signpost reach',
