@@ -58,7 +58,6 @@ export type RelayReason =
   | { readonly code: 'matchEnded' }
   | { readonly code: 'commandBudget' }
   | { readonly code: 'envelopeTooLarge' }
-  | { readonly code: 'noPausesLeft'; readonly budget: number }
   | { readonly code: 'seatEmpty'; readonly player: number }
   | { readonly code: 'voteSelf' }
   | { readonly code: 'notWaitedFor'; readonly nick: string }

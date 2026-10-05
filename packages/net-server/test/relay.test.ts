@@ -3,7 +3,6 @@ import {
   MAX_COMMANDS_PER_TICK,
   MAX_ENVELOPE_BYTES,
   MAX_NICK_LENGTH,
-  PAUSE_BUDGET,
   PROTOCOL_VERSION,
   parseServerMessage,
   TICK_MS,
@@ -453,7 +452,7 @@ describe('relay clock', () => {
     expect(s.b.of('frame').flatMap((frame) => frame.commands)).toHaveLength(MAX_COMMANDS_PER_TICK);
   });
 
-  it('lets any member drive the clock, names who did, and refuses a pause past the budget', () => {
+  it('lets any member drive the clock as often as they like and names who did', () => {
     const s = startedRoom();
     s.b.send({ kind: 'clock', speed: 2 });
     expect(s.a.last('clock')).toEqual({
@@ -467,12 +466,12 @@ describe('relay clock', () => {
     expect(s.b.last('clock')).toEqual(s.a.last('clock'));
     s.advance(TICK_MS);
     expect(s.a.of('frame').map((frame) => frame.tick)).toEqual([1, 2]);
-    for (let n = 0; n < PAUSE_BUDGET; n++) {
+    const pauseCycles = 10;
+    for (let n = 0; n < pauseCycles; n++) {
       s.a.send({ kind: 'clock', paused: true });
       s.a.send({ kind: 'clock', paused: false });
     }
-    s.a.send({ kind: 'clock', paused: true });
-    expect(s.a.last('rejected')?.reason).toEqual({ code: 'noPausesLeft', budget: PAUSE_BUDGET });
+    expect(s.a.of('rejected')).toEqual([]);
     s.b.send({ kind: 'clock', paused: true });
     expect(s.a.last('clock')).toEqual({
       kind: 'clock',

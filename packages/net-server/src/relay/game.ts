@@ -2,7 +2,6 @@ import {
   type ClientMessage,
   type DepartedSeatMode,
   type GovernedClock,
-  PAUSE_BUDGET,
   type PlayerWireEnvelope,
   type ServerMessage,
   SYNC_DOMAINS,
@@ -155,10 +154,6 @@ export class Game {
 
   setClock(member: Member, speed: number | undefined, paused: boolean | undefined): Refusal {
     if (this.endedTick !== null) return { code: 'matchEnded' };
-    if (paused === true && !this.clock.paused) {
-      if (member.pausesUsed >= PAUSE_BUDGET) return { code: 'noPausesLeft', budget: PAUSE_BUDGET };
-      member.pausesUsed++;
-    }
     if (speed !== undefined) this.clock.setSpeed(speed);
     if (paused !== undefined) this.clock.setPaused(paused);
     this.governFor(this.slowMembers());

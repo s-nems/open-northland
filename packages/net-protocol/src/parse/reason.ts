@@ -80,7 +80,6 @@ const REASON_PARAMS: { readonly [C in RelayReasonCode]: ParamsOf<Extract<RelayRe
   matchEnded: {},
   commandBudget: {},
   envelopeTooLarge: {},
-  noPausesLeft: { budget: 'count' },
   seatEmpty: { player: 'seat' },
   voteSelf: {},
   notWaitedFor: { nick: 'nick' },

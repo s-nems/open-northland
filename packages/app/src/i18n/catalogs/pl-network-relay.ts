@@ -61,7 +61,6 @@ export const plNetworkRelay = {
     matchEnded: 'rozgrywka się zakończyła',
     commandBudget: 'zbyt wiele rozkazów naraz',
     envelopeTooLarge: 'rozkaz jest za duży',
-    noPausesLeft: 'wykorzystano już wszystkie pauzy ({budget})',
     seatEmpty: 'nikt nie zajmuje miejsca {seat}',
     voteSelf: 'nie możesz głosować za wyrzuceniem samego siebie',
     notWaitedFor: 'gra nie czeka na gracza {nick}',

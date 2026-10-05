@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 17` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 18` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -152,8 +152,8 @@ tick's own untargeted commands, through `Simulation.enqueueAt`.
 
 Any member may change the clock with `clock { speed?, paused? }`. The relay applies it and broadcasts
 `clock { tick, speed, paused, by, governed }` with the sender's nick and the first tick the setting
-holds from; a speed request carries `governed` recomputed for the new requested speed. Each member may
-start at most `PAUSE_BUDGET` (3) pauses per game; a resume costs nothing.
+holds from; a speed request carries `governed` recomputed for the new requested speed. Pauses are
+unlimited.
 
 `speed` is always the requested speed. The running speed is `governed.speed` while `governed` is
 `{ nick, speed }`, and `speed` when it is null: the relay governs the clock for a `slow` member (see
@@ -424,7 +424,6 @@ and paragraph separators are refused along with control characters.
 | `SILENT_SOCKET_MS` | 30 s |
 | started room kept with nobody connected | 10 minutes |
 | `MAX_COMMANDS_PER_TICK` per member | 20 |
-| `PAUSE_BUDGET` per member per game | 3 |
 | `MAX_SPEED` | 8 |
 | `GOVERN_BEHIND_MS` / `GOVERN_RELEASE_MS` | 2 s / 0.5 s of frames |
 | `GOVERNOR_HEADROOM` / `MIN_GOVERNED_SPEED` | 0.8 / 0.25 |

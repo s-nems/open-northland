@@ -14,8 +14,6 @@ export const ENVELOPE_VERSION = 1;
 export const MAX_COMMANDS_PER_TICK = 20;
 /** Bytes of one envelope as JSON; the largest declared payload is well under it. */
 export const MAX_ENVELOPE_BYTES = 1024;
-/** Pauses one member may start in one game. */
-export const PAUSE_BUDGET = 3;
 export const MAX_SPEED = 8;
 /** A reported smoothed tick cost; a client whose tick takes a minute has long been voted out. */
 export const MAX_REPORTED_TICK_MS = 60 * 1000;

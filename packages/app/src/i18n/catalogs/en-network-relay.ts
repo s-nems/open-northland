@@ -61,7 +61,6 @@ export const enNetworkRelay = {
     matchEnded: 'the match has ended',
     commandBudget: 'too many orders at once',
     envelopeTooLarge: 'the order is too large',
-    noPausesLeft: 'you have used all {budget} pauses',
     seatEmpty: 'nobody sits in seat {seat}',
     voteSelf: 'you cannot vote to kick yourself',
     notWaitedFor: 'the game is not waiting for {nick}',

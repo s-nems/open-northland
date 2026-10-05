@@ -31,7 +31,6 @@ export interface Member {
   world: number;
   /** The notice that put the client out of sync, until a snapshot brings it back. */
   outOfSync: DesyncNotice | null;
-  pausesUsed: number;
 }
 
 export type DesyncNotice = Extract<ServerMessage, { kind: 'desync' }>;
@@ -59,7 +58,6 @@ export function createMember(token: string, nick: string, now: number, link: Mea
     ackedTick: 0,
     world: DESCRIPTOR_WORLD,
     outOfSync: null,
-    pausesUsed: 0,
   };
 }
 

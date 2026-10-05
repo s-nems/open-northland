@@ -57,7 +57,6 @@ const SAMPLES: { readonly [C in RelayReasonCode]: Extract<RelayReason, { code: C
   matchEnded: { code: 'matchEnded' },
   commandBudget: { code: 'commandBudget' },
   envelopeTooLarge: { code: 'envelopeTooLarge' },
-  noPausesLeft: { code: 'noPausesLeft', budget: 3 },
   seatEmpty: { code: 'seatEmpty', player: 5 },
   voteSelf: { code: 'voteSelf' },
   notWaitedFor: { code: 'notWaitedFor', nick: 'Cezary' },
