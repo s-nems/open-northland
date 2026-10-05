@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { relayPlan, searchWithRoom } from '../../src/entries/relay/plan.js';
+import { joinSearch, nextPlayerNick, relayPlan, searchWithRoom } from '../../src/entries/relay/plan.js';
 
 describe('relayPlan', () => {
   it('joins a room by id over a ws or wss url', () => {
@@ -40,5 +40,20 @@ describe('relayPlan', () => {
     expect(searchWithRoom(params, 'c0ffee')).toBe(
       '?relay=ws%3A%2F%2Flocalhost%3A8765&room=c0ffee&map=las&players=2&lang=pol',
     );
+  });
+});
+
+describe('inviting the next player', () => {
+  it('joins the room as the given nick, without the creator-only map and player count', () => {
+    const params = new URLSearchParams('relay=ws://localhost:8765&room=new&map=las&players=3&nick=Ania');
+    expect(joinSearch(params, 'ab12', 'Gracz 2')).toBe(
+      '?relay=ws%3A%2F%2Flocalhost%3A8765&room=ab12&nick=Gracz+2',
+    );
+  });
+
+  it('numbers the nick past the ones the room already holds', () => {
+    const nickOf = (number: number) => `Gracz ${number}`;
+    expect(nextPlayerNick(['Ania'], nickOf)).toBe('Gracz 2');
+    expect(nextPlayerNick(['Ania', 'Gracz 2', 'Gracz 3'], nickOf)).toBe('Gracz 4');
   });
 });

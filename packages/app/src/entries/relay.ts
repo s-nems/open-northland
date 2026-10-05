@@ -13,9 +13,9 @@ import { menuSearch } from '../view/params.js';
 import { lobbyCompatibilityReporter } from './relay/compatibility.js';
 import { roomCreation } from './relay/creation.js';
 import { devLobbyAction } from './relay/dev-lobby.js';
-import { relayIdentity } from './relay/identity.js';
+import { devRelayIdentity } from './relay/identity.js';
 import { mountLobbyCard } from './relay/lobby-card.js';
-import { NEW_ROOM, relayPlan, searchWithRoom } from './relay/plan.js';
+import { joinSearch, NEW_ROOM, nextPlayerNick, relayPlan, searchWithRoom } from './relay/plan.js';
 import { roomExitObserver } from './relay/room-exit.js';
 
 /**
@@ -50,7 +50,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
   }
   const copy = messages().net;
   const relayCopy = messages().networkRelay;
-  const identity = relayIdentity(plan.url, params.get('nick'));
+  const identity = devRelayIdentity(plan.url, params.get('nick'));
   const card = mountLobbyCard();
   card.connecting(plan.url);
   const roomPlan = plan.room;
@@ -139,7 +139,19 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
           window.history.replaceState(null, '', searchWithRoom(params, message.room.id));
           urlPinned = true;
         }
-        card.room(message.room, players);
+        const { room } = message;
+        const invite =
+          players !== null && room.state === 'lobby' && room.members.length < players
+            ? joinSearch(
+                params,
+                room.id,
+                nextPlayerNick(
+                  room.members.map((member) => member.nick),
+                  (number) => formatMessage(copy.invitedNick, { number }),
+                ),
+              )
+            : null;
+        card.room(room, players, invite);
         card.note(null);
         const action = devLobbyAction(message.room, client.nick, {
           players: players ?? Number.POSITIVE_INFINITY,

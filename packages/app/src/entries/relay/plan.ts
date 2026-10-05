@@ -6,6 +6,8 @@ import { intParam } from '../../view/params.js';
 export const NEW_ROOM = 'new';
 /** People the creator waits for when `?players=` names none. */
 const DEFAULT_PLAYERS = 2;
+/** The creator is the first player; an invited tab is numbered from the next. */
+const FIRST_INVITED_PLAYER = 2;
 
 export type RelayRoomPlan =
   | { readonly kind: 'join'; readonly id: string }
@@ -25,6 +27,23 @@ export function relayPlan(params: URLSearchParams): RelayPlan | null {
   const mapId = params.get('map');
   if (mapId === null || mapId.length === 0) return null;
   return { url, room: { kind: 'create', mapId, players: intParam(params, 'players', DEFAULT_PLAYERS, 1) } };
+}
+
+/** The search a further player opens in a tab of its own to join `roomId` as `nick`. */
+export function joinSearch(params: URLSearchParams, roomId: string, nick: string): string {
+  const next = new URLSearchParams(params);
+  next.set('room', roomId);
+  next.set('nick', nick);
+  next.delete('map');
+  next.delete('players');
+  return `?${next.toString()}`;
+}
+
+/** The first numbered nick nobody in the room holds. */
+export function nextPlayerNick(taken: readonly string[], nickOf: (number: number) => string): string {
+  let number = FIRST_INVITED_PLAYER;
+  while (taken.includes(nickOf(number))) number++;
+  return nickOf(number);
 }
 
 /** The same search with the created room's id in place of `new`, so a reload rejoins it. */

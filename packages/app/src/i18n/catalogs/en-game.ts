@@ -1488,6 +1488,8 @@ export const enGame = {
     roomWaiting: '{count} of {players} players',
     roomMembers: '{count} in the room',
     bootFailed: 'The world could not be opened: {reason}',
+    openNextPlayer: 'Open the next player in a new tab',
+    invitedNick: 'Player {number}',
     roomJoinHint: 'Others join with room={id}',
     roomNoSeats: 'This map has no seats to claim',
     waitingTitle: 'Waiting for players',

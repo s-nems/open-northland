@@ -500,9 +500,10 @@ join with:
 ```
 
 Each window sits in the first open seat and reports ready on its own; the creator starts once
-everyone is. The reconnect token is stored separately for each relay origin and path; the nickname is
-shared in stored settings. A reload rejoins the same seat; two windows of one browser profile share
-the identity for that relay, so give the second a private window or another profile. Enter opens the
+everyone is. The creator's lobby card links the next player in a new tab, its room and a free nick
+filled in. A `nick=` in the URL gets its own reconnect token for that relay, so tabs of one browser
+play as different people and a reload rejoins the same seat; without one, the tab uses the menu's
+identity. Enter opens the
 chat line. The perf overlay's third line and `perf().net` carry the round trip, the assigned input
 delay, the click-to-apply time and the jitter buffer's depth. The runtime has no write access to the
 world, so a forced divergence for a resync check runs in the headless multi-client harness under

@@ -1454,6 +1454,8 @@ export const plGame = {
     roomWaiting: '{count} z {players} graczy',
     roomMembers: '{count} w pokoju',
     bootFailed: 'Nie udało się otworzyć świata: {reason}',
+    openNextPlayer: 'Otwórz kolejnego gracza w nowej karcie',
+    invitedNick: 'Gracz {number}',
     roomJoinHint: 'Pozostali dołączają przez room={id}',
     roomNoSeats: 'Ta mapa nie ma miejsc do zajęcia',
     waitingTitle: 'Czekamy na graczy',

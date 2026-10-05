@@ -4,8 +4,9 @@ import { el, PANEL_STYLE } from '../../view/overlay.js';
 
 export interface LobbyCard {
   connecting(url: string): void;
-  /** `players` is the creator's target; a joiner shows the room without one. */
-  room(view: RoomView, players: number | null): void;
+  /** `players` is the creator's target; a joiner shows the room without one. `invite` is the search
+   *  that opens the next player in a new tab, null once nobody more is awaited. */
+  room(view: RoomView, players: number | null, invite: string | null): void;
   /** A line under the room, such as a refusal the lobby walk retries past. */
   note(text: string | null): void;
   dismiss(): void;
@@ -18,16 +19,20 @@ export function mountLobbyCard(): LobbyCard {
   const title = el('div', 'font-weight:700;font-size:14px;margin-bottom:6px');
   const detail = el('div', 'opacity:0.85;white-space:pre-line');
   const noteLine = el('div', 'margin-top:6px;color:#f0c070');
-  panel.append(title, detail, noteLine);
+  const inviteLink = el('a', 'display:none;margin-top:8px;color:#f0c070', messages().net.openNextPlayer);
+  inviteLink.target = '_blank';
+  panel.append(title, detail, inviteLink, noteLine);
   document.body.append(panel);
   return {
     connecting(url): void {
       title.textContent = formatMessage(messages().net.connecting, { url });
       detail.textContent = '';
     },
-    room(view, players): void {
+    room(view, players, invite): void {
       const copy = messages().net;
       title.textContent = formatMessage(copy.roomTitle, { id: view.id });
+      inviteLink.style.display = invite === null ? 'none' : 'block';
+      if (invite !== null) inviteLink.href = invite;
       if (view.state !== 'lobby') {
         detail.textContent =
           view.state === 'ended' ? messages().hud.matchFinishedTitle : messages().network.starting;
