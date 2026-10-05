@@ -121,7 +121,8 @@ describe('a settler walled in from its work', () => {
 
     sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: true });
     // The mark lifts with the first route found, while the walk through the gate is still ahead.
-    for (let t = 0; t < 3 * UNREACHABLE_GOAL_MEMO_TICKS && sim.world.has(woodcutter, LostWay); t++) sim.step();
+    for (let t = 0; t < 3 * UNREACHABLE_GOAL_MEMO_TICKS && sim.world.has(woodcutter, LostWay); t++)
+      sim.step();
     expect(sim.world.has(woodcutter, LostWay)).toBe(false);
     expect(sim.world.has(woodcutter, MoveGoal)).toBe(true);
     expect(sim.world.get(woodcutter, Position).y).toBeLessThan(positionOfNode(GATE_X, WALL_ROW).y);

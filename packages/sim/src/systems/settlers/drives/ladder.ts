@@ -398,18 +398,10 @@ function standIdle(
  *  computer settler back. Returns whether it set that walk. */
 export function checkCutOff(pass: PlannerPass, plan: PlannerContext): boolean {
   const { world, ctx, terrain, entity: e } = plan;
-  reconcileCutOff(
-    world,
-    ctx,
-    terrain,
-    e,
-    plan.jobType,
-    plan.limit,
-    pass.seatDoors,
-    () =>
-      jobCanBuild(ctx.content, plan.jobType)
-        ? builderWorkBeyondReach(plan, pass.spacing, pass.constructionClaims, pass.siteSupply)
-        : null,
+  reconcileCutOff(world, ctx, terrain, e, plan.jobType, plan.limit, pass.seatDoors, () =>
+    jobCanBuild(ctx.content, plan.jobType)
+      ? builderWorkBeyondReach(plan, pass.spacing, pass.constructionClaims, pass.siteSupply)
+      : null,
   );
   return guideLostSettler(pass, e, plan.limit);
 }
