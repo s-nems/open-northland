@@ -476,10 +476,11 @@ accepted `loaded` is answered with `ended` once the match has ended, else with `
 current waited set followed by one `kickVote` per open vote (see [Kick votes](#kick-votes)).
 
 A token the room removed meanwhile, voted out while its link was down, gets `welcome` alone, since the
-relay sends `kicked` and `left` to connected members only. The game client therefore answers every
+relay sends `kicked` and `left` to connected members only. The client therefore answers every
 `welcome` while it holds a started room with `joinRoom` for that room and reads the refusal: a member
 put back is refused `alreadyInRoom` and stays; `gameStarted` means the room goes on without it, and
-`noRoom` that the room ended; both end the game with a notice.
+`noRoom` that the room ended; on either the client ends its game with a notice and leaves the room
+as the relay's `left` would have.
 
 ## Chat
 

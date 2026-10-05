@@ -2,18 +2,17 @@ import type { ServerMessage } from '@open-northland/net-protocol';
 import { loadRoomMapDocuments } from '../content/transfer/index.js';
 import { errorText } from '../diag/error-text.js';
 import { formatMessage, messages } from '../i18n/index.js';
-import { swapToEntry } from '../launch.js';
-import { type FailureSource, NetworkConnection } from '../net/connection.js';
+import { NetworkConnection } from '../net/connection.js';
 import { takeNetworkHandover } from '../net/handover.js';
 import { relayCloseText, relayFailureText, relayReasonText, worldFailureTitle } from '../net/relay-reason.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
-import { BUTTON_STYLE, el, mountMessage } from '../view/overlay.js';
-import { menuSearch } from '../view/params.js';
+import { mountMessage } from '../view/overlay.js';
 import { lobbyCompatibilityReporter } from './relay/compatibility.js';
 import { roomCreation } from './relay/creation.js';
 import { devLobbyAction } from './relay/dev-lobby.js';
 import { devRelayIdentity } from './relay/identity.js';
 import { mountLobbyCard } from './relay/lobby-card.js';
+import { mountReturnToMenuNotice } from './relay/menu-notice.js';
 import { joinSearch, NEW_ROOM, nextPlayerNick, relayPlan, searchWithRoom } from './relay/plan.js';
 import { roomExitObserver } from './relay/room-exit.js';
 
@@ -75,23 +74,16 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
     halt(reason === null ? copy.roomEnded : `${copy.roomEnded}: ${relayReasonText(reason)}`, ''),
   );
   const unsubscribe = connection.subscribe((event) => {
-    if (event.kind === 'failure')
-      halt(
-        failureTitle(event.what, event.error),
-        worldFailureTitle(event.what, event.error) === null ? '' : relayFailureText(event.error),
-      );
-    else if (event.kind === 'message') {
+    if (event.kind === 'failure') {
+      const title = worldFailureTitle(event.what, event.error);
+      const reason = relayFailureText(event.error);
+      halt(title ?? formatMessage(copy.bootFailed, { reason }), title === null ? '' : reason);
+    } else if (event.kind === 'message') {
       if (stage === 'walking') observe(event.message);
     } else if (event.state === 'closed') halt(relayCloseText(event.reason), '');
     // The developer walk asks for its room once; a dropped lobby link ends it instead of stalling.
     else if (event.state === 'reconnecting' && stage === 'walking') halt(copy.reconnecting, '');
   });
-
-  function failureTitle(what: FailureSource, error: unknown): string {
-    return (
-      worldFailureTitle(what, error) ?? formatMessage(copy.bootFailed, { reason: relayFailureText(error) })
-    );
-  }
 
   /** The lobby walk is over: the game is about to take the connection, or the entry gives up. */
   function stopWalking(): boolean {
@@ -109,12 +101,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
     stage = 'ended';
     unsubscribe();
     connection.dispose();
-    const back = el('button', BUTTON_STYLE, messages().hud.returnToMenu);
-    back.type = 'button';
-    const remove = mountMessage(title, detail, [back]);
-    back.addEventListener('click', () => {
-      void swapToEntry(menuSearch(), remove);
-    });
+    mountReturnToMenuNotice(title, detail);
   }
 
   function observe(message: ServerMessage): void {

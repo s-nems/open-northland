@@ -1,6 +1,6 @@
 import type { GameSession } from '@open-northland/lockstep';
 import type { DisputeRecord, TickDigest } from '@open-northland/net-client';
-import type { ClosingCode, ServerMessage } from '@open-northland/net-protocol';
+import type { ClosingCode, RelayReason, ServerMessage } from '@open-northland/net-protocol';
 import { errorText } from '../diag/error-text.js';
 import { diag } from '../diag/index.js';
 import { workerStallReports } from '../entries/map/stall-reports.js';
@@ -20,6 +20,8 @@ import { type WorkerSessionOptions, wireError } from '../session/worker/protocol
 import type { WorkerSession } from '../session/worker/worker-session.js';
 import { holdRelayPlace, requestUpdateCheck } from '../update/watcher.js';
 import { RelayClientMirror } from './net-worker-client.js';
+import { type RejoinOutcome, rejoinProbe } from './rejoin.js';
+import { rejoinRefusalText } from './relay-reason.js';
 import { RelayedWorlds, WorldNotAdoptedError } from './relayed-worlds.js';
 
 const SERVER_RESTART: ClosingCode = 'serverRestart';
@@ -28,8 +30,9 @@ const SERVER_RESTART: ClosingCode = 'serverRestart';
  *  link's notice to carry. */
 const GAME_FAILURES = ['open', 'restore', 'result', 'message'] as const;
 
-/** What ended the game: one of the worker client's steps, or the worker itself. */
-export type FailureSource = (typeof GAME_FAILURES)[number] | 'worker';
+/** What ended the game: one of the worker client's steps, the worker itself, or the room refusing the
+ *  client its seat back after a drop. */
+export type FailureSource = (typeof GAME_FAILURES)[number] | 'worker' | 'room';
 
 export type ConnectionEvent =
   | { readonly kind: 'message'; readonly message: ServerMessage }
@@ -81,6 +84,7 @@ export class NetworkConnection {
   private readonly port: SessionPort;
   private readonly listeners = new Set<(event: ConnectionEvent) => void>();
   private readonly worlds: RelayedWorlds<MapWorldPlacements>;
+  private readonly rejoin: (message: ServerMessage) => RejoinOutcome;
   /** The requests the worker has not answered yet; they reject once it never will. */
   private readonly answers = new Map<
     number,
@@ -111,6 +115,7 @@ export class NetworkConnection {
       (message) => this.post(message),
       (request) => this.request(request),
     );
+    this.rejoin = rejoinProbe(this.client);
     this.port.listen((data, receiveMs) => this.receive(data as FromNetWorker<MapWorldPlacements>, receiveMs));
     this.port.listenFailure((error) => {
       this.worlds.fail(error);
@@ -192,10 +197,15 @@ export class NetworkConnection {
     }
     if (this.disposed) return;
     switch (message.kind) {
-      case 'message':
-        this.client.apply(message.message);
-        this.emit({ kind: 'message', message: message.message });
+      case 'message': {
+        const relayed = message.message;
+        this.client.apply(relayed);
+        const outcome = this.rejoin(relayed);
+        if (outcome === 'consumed') return;
+        if (outcome !== 'passed') this.roomLost(outcome.refused);
+        else this.emit({ kind: 'message', message: relayed });
         return;
+      }
       case 'facts':
         this.client.follow(message.facts);
         return;
@@ -242,6 +252,14 @@ export class NetworkConnection {
       default:
         this.worlds.route(message, receiveMs);
     }
+  }
+
+  /** The room went on, or ended, without this client while its link was down: the game ends on the
+   *  refusal, and the room is left as the relay's own `left` would have left it. */
+  private roomLost(reason: RelayReason): void {
+    this.emit({ kind: 'failure', what: 'room', error: new Error(rejoinRefusalText(reason)) });
+    this.client.apply({ kind: 'left' });
+    this.emit({ kind: 'message', message: { kind: 'left' } });
   }
 
   private async answerWorld(request: WorldRequest): Promise<void> {

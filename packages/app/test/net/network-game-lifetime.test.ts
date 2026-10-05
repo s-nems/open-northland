@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import type { GameSession } from '@open-northland/lockstep';
+import { RelayRefusal } from '@open-northland/net-client';
 import type { ServerMessage } from '@open-northland/net-protocol';
 import { describe, expect, it, vi } from 'vitest';
 import { messages } from '../../src/i18n/index.js';
-import type { HostedRelayedWorld, NetWorldPort } from '../../src/net/connection.js';
+import type { FailureSource, HostedRelayedWorld, NetWorldPort } from '../../src/net/connection.js';
 import type { NetworkHandover } from '../../src/net/handover.js';
 
 const mocks = vi.hoisted(() => ({
@@ -121,18 +122,16 @@ const WORLD_ID = 1;
 function presentedGame() {
   const client: {
     nick: string;
-    room: { id: string } | null;
+    room: null;
     session: GameSession;
     clockState: unknown;
     waitingFor: readonly unknown[];
-    joinRoom: ReturnType<typeof vi.fn>;
   } = {
     nick: 'Ania',
     room: null,
     session,
     clockState: null,
     waitingFor: [],
-    joinRoom: vi.fn(),
   };
   let listener: ((event: unknown) => void) | undefined;
   let port: NetWorldPort | undefined;
@@ -174,6 +173,7 @@ function presentedGame() {
   /** A relay message the worker forwarded; a bare kind stands for one whose fields the game never reads. */
   const relay = (message: ServerMessage | { readonly kind: ServerMessage['kind'] }) =>
     listener?.({ kind: 'message', message });
+  const fail = (what: FailureSource, error: unknown) => listener?.({ kind: 'failure', what, error });
   const show = async () => {
     await port?.open(session, null, vi.fn());
     onWorld?.({ worldId: WORLD_ID, session: worker } as unknown as HostedRelayedWorld);
@@ -186,7 +186,7 @@ function presentedGame() {
     relay({ kind: 'clock' });
     await vi.waitFor(() => expect(progress.started).toBe(true));
   };
-  return { client, relay, show, start, progress, open: () => port?.open(session, null, vi.fn()) };
+  return { client, relay, fail, show, start, progress, open: () => port?.open(session, null, vi.fn()) };
 }
 
 describe('the start wait under the loading card', () => {
@@ -238,14 +238,23 @@ describe('a halt after the start', () => {
     expect(document.body.childElementCount).toBe(before);
   });
 
-  it('asks the room for its seat again when the link comes back, and ends a game it was voted out of meanwhile', async () => {
+  it('ends a game whose room went on without it under the ended-game title', async () => {
     const game = presentedGame();
-    game.client.room = { id: 'room1' };
     await game.start();
-    game.relay({ kind: 'welcome', protocol: 1, nick: 'Ania' });
-    expect(game.client.joinRoom).toHaveBeenCalledWith('room1');
-    game.relay({ kind: 'rejected', of: 'joinRoom', reason: { code: 'gameStarted' } });
+    game.fail('room', new Error(messages().net.removedWhileAway));
+    expect(panel()?.textContent).toContain(messages().net.gameEndedTitle);
     expect(panel()?.textContent).toContain(messages().net.removedWhileAway);
     backButton().click();
+  });
+
+  it('keeps the title a refused world names even while the loading card is still up', async () => {
+    const game = presentedGame();
+    await game.show();
+    game.fail('open', new RelayRefusal({ code: 'worldTickMismatch', tick: 3 }));
+    const notice = document.body.querySelector('.boot-notice');
+    expect(notice?.textContent).toContain(messages().networkRelay.worldRefused);
+    expect(notice?.textContent).not.toContain(messages().net.startFailedTitle);
+    notice?.querySelector('button')?.click();
+    expect(document.body.querySelector('.boot-notice')).toBeNull();
   });
 });

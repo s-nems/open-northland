@@ -64,6 +64,14 @@ export function relayFailureText(error: unknown, copy: Messages = messages()): s
   return error instanceof RelayRefusal ? relayReasonText(error.reason, copy) : errorText(error);
 }
 
+/** A started room's refusal of this client's seat back, worded for the player left out: the game
+ *  goes on without it, or the room is gone. */
+export function rejoinRefusalText(reason: RelayReason, copy: Messages = messages()): string {
+  if (reason.code === 'gameStarted') return copy.net.removedWhileAway;
+  if (reason.code === 'noRoom') return copy.net.roomGoneWhileAway;
+  return relayReasonText(reason, copy);
+}
+
 /** The title for a world the worker's client could not open or restore; null for any other failure,
  *  which the screen titles by where it stands. */
 export function worldFailureTitle(

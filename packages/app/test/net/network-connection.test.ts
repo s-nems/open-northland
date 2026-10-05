@@ -2,6 +2,7 @@ import type { GameSession } from '@open-northland/lockstep';
 import { RelayRefusal } from '@open-northland/net-client';
 import { PROTOCOL_VERSION, type RoomView } from '@open-northland/net-protocol';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { messages } from '../../src/i18n/index.js';
 import { type NetWorldPort, NetworkConnection } from '../../src/net/connection.js';
 import type { FromNetWorker, RelayFacts, ToNetWorker } from '../../src/session/worker/net-protocol.js';
 import type { SessionPort } from '../../src/session/worker/port.js';
@@ -168,6 +169,45 @@ describe('network connection mirror', () => {
     expect(connection.client.welcomed).toBe(false);
     expect(connection.client.room?.id).toBe('r');
     expect(seen).toEqual(['welcome', 'room']);
+  });
+
+  it('asks a started room for its seat back on the welcome after a drop, and takes being in it quietly', () => {
+    const { connection, worker } = connect();
+    const seen: string[] = [];
+    connection.subscribe((event) => seen.push(event.kind === 'message' ? event.message.kind : event.kind));
+    worker.send({ kind: 'message', message: { kind: 'room', room: { ...ROOM, state: 'running' } } });
+    worker.send({ kind: 'link', state: 'reconnecting' });
+    worker.send({ kind: 'message', message: { kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania' } });
+    expect(worker.posted.at(-1)).toEqual({ kind: 'lobby', name: 'joinRoom', args: ['r'] });
+    worker.send({
+      kind: 'message',
+      message: { kind: 'rejected', of: 'joinRoom', reason: { code: 'alreadyInRoom' } },
+    });
+    expect(seen).toEqual(['room', 'link', 'welcome']);
+    expect(connection.client.room?.id).toBe('r');
+  });
+
+  it('ends the game and leaves the room when the room refuses the seat back after a drop', () => {
+    const { connection, worker } = connect();
+    const events: string[] = [];
+    connection.subscribe((event) => {
+      if (event.kind === 'failure') events.push(`${event.what}: ${String(event.error)}`);
+      else if (event.kind === 'message') events.push(event.message.kind);
+    });
+    worker.send({ kind: 'message', message: { kind: 'room', room: { ...ROOM, state: 'running' } } });
+    worker.send({ kind: 'link', state: 'reconnecting' });
+    worker.send({ kind: 'message', message: { kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania' } });
+    worker.send({
+      kind: 'message',
+      message: { kind: 'rejected', of: 'joinRoom', reason: { code: 'gameStarted' } },
+    });
+    expect(events).toEqual(['room', 'welcome', `room: Error: ${messages().net.removedWhileAway}`, 'left']);
+    expect(connection.client.room).toBeNull();
+    // A lobby room is left on the drop itself; nothing is asked for it.
+    worker.send({ kind: 'message', message: { kind: 'room', room: ROOM } });
+    worker.send({ kind: 'link', state: 'reconnecting' });
+    worker.send({ kind: 'message', message: { kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania' } });
+    expect(worker.posted.filter((message) => message.kind === 'lobby')).toHaveLength(1);
   });
 
   it('leaves on disposal unless told to keep the seat, and ends the worker once it closed', () => {

@@ -2,14 +2,12 @@ import { compatibilityIssues } from '@open-northland/net-protocol';
 import { loadLobbyCompatibility } from '../../content/lobby-identity.js';
 import { loadRoomMapDocuments } from '../../content/transfer/index.js';
 import { messages } from '../../i18n/index.js';
-import { swapToEntry } from '../../launch.js';
 import { NetworkConnection } from '../../net/connection.js';
 import { relayCloseText, relayFailureText, relayReasonText } from '../../net/relay-reason.js';
-import { BUTTON_STYLE, el, mountMessage } from '../../view/overlay.js';
-import { menuSearch } from '../../view/params.js';
 import { relayIdentity } from './identity.js';
+import { mountReturnToMenuNotice } from './menu-notice.js';
 import { renderNetworkGame } from './network-game.js';
-import { ignoreReconnectRejection, wrongReconnectRoom } from './reload-message.js';
+import { wrongReconnectRoom } from './reload-message.js';
 
 /** A document reload recreates the connection while the runtime still restores the relay snapshot. */
 export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearchParams): void {
@@ -29,12 +27,7 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
   const fail = (error: unknown, leave = true) => {
     if (closed) return;
     dispose(leave);
-    const back = el('button', BUTTON_STYLE, messages().hud.returnToMenu);
-    back.type = 'button';
-    const remove = mountMessage(messages().networkRelay.openFailed, relayFailureText(error), [back]);
-    back.addEventListener('click', () => {
-      void swapToEntry(menuSearch(), remove);
-    });
+    mountReturnToMenuNotice(messages().networkRelay.openFailed, relayFailureText(error));
   };
   const unsubscribe = connection.subscribe((event) => {
     if (event.kind === 'link' && event.state === 'closed') {
@@ -51,7 +44,6 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
       fail(messages().networkRelay.reconnectOtherRoom, false);
       return;
     }
-    if (ignoreReconnectRejection(message, roomId, connection.client.room?.id ?? null)) return;
     if (message.kind === 'welcome') connection.client.joinRoom(roomId);
     if (message.kind === 'left' || message.kind === 'error' || message.kind === 'rejected') {
       fail(message.kind === 'left' ? messages().net.roomEnded : relayReasonText(message.reason));
