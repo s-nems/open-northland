@@ -30,8 +30,6 @@ export interface DiplomacyRosterOptions {
   readonly tribeOf?: (player: number) => number;
   /** Owner slot to team-colour slot; identity when the roster authored no colours. */
   readonly playerColourOf?: (player: number) => number;
-  /** The map's own string for a tribute's description; absent leaves the numbered fallback. */
-  readonly tributeText?: (stringId: number) => string | undefined;
   /** A good's display label; absent leaves the type id. */
   readonly goodLabelOf?: (goodType: number) => string | undefined;
   readonly goodIdOf?: (goodType: number) => string | undefined;
@@ -164,10 +162,8 @@ function tradeOfferRow(offer: TradeOffer, opts: DiplomacyRosterOptions): Diploma
 }
 
 function tributeRow(tribute: OpenTribute, opts: DiplomacyRosterOptions): TributePanelRow {
-  const text = opts.tributeText?.(tribute.stringId);
   return {
     slot: tribute.slot,
-    ...(text !== undefined ? { text } : {}),
     demands: tribute.demands.map((d) => ({
       ...goodRow(d.good, d.amount, opts),
       onHand: d.onHand,

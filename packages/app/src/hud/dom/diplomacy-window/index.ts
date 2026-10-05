@@ -4,6 +4,7 @@ import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import type { ToolWindow } from '../../tool-panel/window-shell.js';
 import type { GoodIconPainter } from '../good-art.js';
 import { GLYPH } from '../icons.js';
+import { createNoticeArt } from '../notice-art.js';
 import { button, element, setAttribute, setClass, setHidden, setStyleVar, write } from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
 import { attachTipLayer, type TipChip } from '../parts/tip-layer.js';
@@ -15,7 +16,11 @@ import { DiplomacyOrders } from './orders.js';
 
 const WIDTH = 820;
 const STANCES: readonly DiplomacyState[] = ['friend', 'neutral', 'enemy'];
-const STANCE_GLYPH = { friend: GLYPH.shield, neutral: GLYPH.banner, enemy: GLYPH.swords };
+const STANCE_ART = {
+  friend: { glyph: 'shield', tint: 0xa9bd8b },
+  neutral: { glyph: 'banner', tint: 0xc9a262 },
+  enemy: { glyph: 'swords', tint: 0xce765d },
+} as const;
 
 export interface DiplomacyWindowDeps {
   readonly plane: HTMLElement;
@@ -113,9 +118,21 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     orders.pay(row, slot);
   });
   const offers = createOffers(deps.paintGood);
+  const stanceArt = createNoticeArt();
   const stanceButtons = new Map(
     STANCES.map((state) => {
-      const control = button('on-dip-stance', STANCE_GLYPH[state]);
+      const control = button('on-dip-stance');
+      const art = element('span', 'on-dip-stance__art', GLYPH[STANCE_ART[state].glyph]);
+      const canvas = element('canvas', '');
+      canvas.setAttribute('aria-hidden', 'true');
+      const fallback = art.firstChild;
+      if (
+        stanceArt?.paint(canvas, STANCE_ART[state].glyph, STANCE_ART[state].tint, () => {
+          if (fallback !== null) art.replaceChildren(fallback);
+        })
+      )
+        art.replaceChildren(canvas);
+      control.append(art);
       const label = element('span', '');
       write(label, copy.stances[state]);
       control.append(label);
@@ -178,7 +195,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
 
   function refresh(): void {
     if (!window.isOpen()) return;
-    place();
+    if (place()) window.element.style.height = window.element.style.maxHeight;
     tips.refresh();
     if (viewer !== deps.source.viewer()) {
       viewer = deps.source.viewer();
@@ -203,7 +220,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
       const view = nations.get(nation.player);
       if (view === undefined) continue;
       write(view.name, nation.name ?? `${messages().hud.player} ${nation.player}`);
-      write(view.stance, formatMessage(copy.towardYou, { stance: copy.stances[nation.towardYou] }));
+      write(view.stance, copy.stances[nation.towardYou]);
       setAttribute(view.stance, 'data-stance', nation.towardYou);
       write(view.tribute, nation.tributes.length > 0 ? `${copy.tributes}: ${nation.tributes.length}` : '');
       setHidden(view.tribute, nation.tributes.length === 0);

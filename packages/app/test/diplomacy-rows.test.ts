@@ -140,7 +140,7 @@ describe('diplomacyPanelRows', () => {
     expect(spectator.map((r) => r.canDeclare)).toEqual([false]);
   });
 
-  it('hands each row the tributes owed to its player, worded from the map strings and good labels', () => {
+  it('hands each row the tributes owed to its player with the demanded good labels', () => {
     const owed: OpenTribute[] = [
       { slot: 3, receiver: 2, stringId: 930, demands: [{ good: 5, amount: 6, onHand: 8 }], payable: true },
       { slot: 1, receiver: 1, stringId: 931, demands: [{ good: 8, amount: 20, onHand: 5 }], payable: false },
@@ -157,7 +157,6 @@ describe('diplomacyPanelRows', () => {
       localPlayer: 0,
       rosterPlayers: [0, 1, 2],
       observer: false,
-      tributeText: (id) => (id === 930 ? 'Drewno dla sąsiada' : undefined),
       goodLabelOf: (good) => (good === 5 ? 'Drewno' : undefined),
     });
     expect(rows.map((r) => r.tributes)).toEqual([
@@ -165,7 +164,6 @@ describe('diplomacyPanelRows', () => {
       [
         {
           slot: 3,
-          text: 'Drewno dla sąsiada',
           demands: [{ goodType: 5, label: 'Drewno', amount: 6, onHand: 8 }],
           payable: true,
         },

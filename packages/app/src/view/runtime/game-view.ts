@@ -435,7 +435,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         ...(deps.relationFlags !== undefined ? { relationFlags: deps.relationFlags } : {}),
         ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
         ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
-        ...(deps.mapText !== undefined ? { tributeText: deps.mapText } : {}),
       });
     const metSeats = (): readonly MetSeat[] =>
       diplomacyMetSeats(diplomacyView, {

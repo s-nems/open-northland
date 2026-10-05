@@ -1,7 +1,7 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
-import { button, element, setClass, setHidden, setTip, write } from '../parts/dom.js';
+import { button, element, setAttribute, setClass, setHidden, setTip, write } from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
 import type { DiplomacyGood, DiplomacyOffer, TributePanelRow } from './model.js';
 
@@ -10,7 +10,7 @@ function goodCell(good: DiplomacyGood, paint: GoodIconPainter): HTMLElement {
   const well = element('span', 'on-good-well', goodIconMarkup());
   const frame = well.querySelector('.on-good__frame');
   if (good.goodId !== undefined && frame instanceof HTMLElement) paint(frame, good.goodId, 25);
-  const label = element('span', '');
+  const label = element('span', 'on-dip-good__label');
   write(label, good.label);
   root.append(well, label);
   return root;
@@ -69,109 +69,136 @@ interface DemandView {
   readonly shortage: HTMLElement;
 }
 
-interface TributeView {
-  readonly element: HTMLElement;
-  readonly title: HTMLElement;
-  readonly demands: readonly DemandView[];
-  readonly pay: HTMLButtonElement;
-  readonly reason: HTMLElement;
-}
-
 export function createTributes(paint: GoodIconPainter, onPay: (slot: number) => void) {
   const copy = messages().hud.diplomacyWindow;
   const root = element('section', 'on-dip-tributes');
+  root.tabIndex = -1;
   const heading = createSection();
-  const list = element('div', '');
+  const list = element('div', 'on-dip-tribute-list');
+  setAttribute(list, 'role', 'group');
+  setAttribute(list, 'aria-label', copy.tributes);
   const empty = element('p', 'on-dip-note');
   write(empty, copy.noTributes);
-  root.append(heading.element, list, empty);
+  const sheet = element('div', 'on-parchment');
+  const table = element('table', 'on-dip-costs');
+  const head = element('thead', '');
+  const labels = element('tr', '');
+  for (const label of [copy.good, copy.cost, copy.available, copy.missing]) {
+    const cell = element('th', '');
+    cell.scope = 'col';
+    write(cell, label);
+    if (label === copy.available) setTip(cell, copy.stockScope);
+    labels.append(cell);
+  }
+  head.append(labels);
+  const body = element('tbody', '');
+  table.append(head, body);
+  sheet.append(table);
+  const foot = element('div', 'on-dip-tribute__foot');
+  const pay = button('on-button on-button--accent');
+  foot.append(pay);
+  root.append(heading.element, list, empty, sheet, foot);
+  let selected: number | null = null;
   let shown = '';
-  let views = new Map<number, TributeView>();
+  let detailKey = '';
+  let rows: readonly TributePanelRow[] = [];
+  let paying: (slot: number) => boolean = () => false;
+  let readOnly = false;
+  let buttons = new Map<number, HTMLButtonElement>();
+  let cells: readonly DemandView[] = [];
+  const name = (index: number): string => `${messages().hud.tribute} ${index + 1}`;
 
-  const create = (tribute: TributePanelRow): TributeView => {
-    const card = element('article', 'on-dip-tribute');
-    const title = element('h4', 'on-dip-tribute__title');
-    const sheet = element('div', 'on-parchment');
-    const table = element('table', 'on-dip-costs');
-    const head = element('thead', '');
-    const labels = element('tr', '');
-    for (const label of [copy.good, copy.cost, copy.available, copy.missing]) {
-      const cell = element('th', '');
-      cell.scope = 'col';
-      write(cell, label);
-      if (label === copy.available) setTip(cell, copy.stockScope);
-      labels.append(cell);
+  const refresh = (): void => {
+    const tribute = rows.find((t) => t.slot === selected);
+    for (const [slot, control] of buttons) setAttribute(control, 'aria-pressed', String(slot === selected));
+    setHidden(sheet, tribute === undefined);
+    setHidden(foot, tribute === undefined);
+    if (tribute === undefined) return;
+    const key = JSON.stringify([
+      tribute.slot,
+      tribute.demands.map((d) => [d.goodType, d.goodId, d.label, d.amount]),
+    ]);
+    if (detailKey !== key) {
+      detailKey = key;
+      body.replaceChildren();
+      cells = tribute.demands.map((demand): DemandView => {
+        const row = element('tr', '');
+        const good = element('td', '');
+        good.append(goodCell(demand, paint));
+        const cost = element('td', '');
+        write(cost, String(demand.amount));
+        const stock = element('td', '');
+        const shortage = element('td', '');
+        row.append(good, cost, stock, shortage);
+        body.append(row);
+        return { stock, shortage };
+      });
     }
-    head.append(labels);
-    const body = element('tbody', '');
-    const demands = tribute.demands.map((demand): DemandView => {
-      const row = element('tr', '');
-      const good = element('td', '');
-      good.append(goodCell(demand, paint));
-      const cost = element('td', '');
-      write(cost, String(demand.amount));
-      const stock = element('td', '');
-      const shortage = element('td', '');
-      row.append(good, cost, stock, shortage);
-      body.append(row);
-      return { stock, shortage };
-    });
-    table.append(head, body);
-    sheet.append(table);
-    const foot = element('div', 'on-dip-tribute__foot');
-    const reason = element('span', 'on-dip-note');
-    const pay = button('on-button on-button--accent');
-    pay.addEventListener('click', () => {
-      if (!pay.disabled) onPay(tribute.slot);
-    });
-    foot.append(reason, pay);
-    card.append(title, sheet, foot);
-    return { element: card, title, demands, pay, reason };
+    for (const [index, demand] of tribute.demands.entries()) {
+      const cell = cells[index];
+      if (cell === undefined) continue;
+      write(cell.stock, String(demand.onHand));
+      const missing = Math.max(0, demand.amount - demand.onHand);
+      write(cell.shortage, missing > 0 ? String(missing) : '—');
+      setClass(cell.shortage, 'on-dip-costs__short', missing > 0);
+    }
+    const pending = paying(tribute.slot);
+    pay.disabled = readOnly || !tribute.payable || pending;
+    write(pay, pending ? copy.paying : copy.pay);
+    setAttribute(pay, 'aria-label', formatMessage(copy.payLabel, { tribute: name(rows.indexOf(tribute)) }));
   };
+  pay.addEventListener('click', () => {
+    if (!pay.disabled && selected !== null) onPay(selected);
+  });
 
   return {
     element: root,
-    update(tributes: readonly TributePanelRow[], paying: (slot: number) => boolean, readOnly: boolean): void {
+    update(
+      tributes: readonly TributePanelRow[],
+      isPaying: (slot: number) => boolean,
+      observer: boolean,
+    ): void {
+      rows = tributes;
+      paying = isPaying;
+      readOnly = observer;
+      const removed = selected !== null && !rows.some((t) => t.slot === selected);
+      const recoverFocus = removed && root.contains(document.activeElement);
+      if (selected === null || removed) selected = rows[0]?.slot ?? null;
       const key = JSON.stringify(
-        tributes.map((t) => [t.slot, t.demands.map((d) => [d.goodType, d.goodId, d.label, d.amount])]),
+        rows.map((t) => [t.slot, t.demands.map((d) => [d.goodType, d.goodId, d.label, d.amount])]),
       );
       if (shown !== key) {
-        const focused = document.activeElement;
-        const lostFocus = focused !== null && list.contains(focused);
+        const focused = [...buttons.entries()].find(([, control]) => control === document.activeElement)?.[0];
         shown = key;
-        views = new Map(tributes.map((t) => [t.slot, create(t)]));
-        list.replaceChildren(...[...views.values()].map((view) => view.element));
-        if (lostFocus) {
-          root.tabIndex = -1;
-          root.focus({ preventScroll: true });
-        }
+        buttons = new Map(
+          rows.map((tribute, index) => {
+            const control = button('on-dip-tribute-pick');
+            const title = element('strong', '');
+            write(title, name(index));
+            const goods = element('span', 'on-dip-tribute-pick__goods');
+            for (const demand of tribute.demands) {
+              const good = goodCell(demand, paint);
+              const amount = element('b', '');
+              write(amount, String(demand.amount));
+              good.append(amount);
+              goods.append(good);
+            }
+            control.append(title, goods);
+            control.addEventListener('click', () => {
+              selected = tribute.slot;
+              refresh();
+            });
+            return [tribute.slot, control];
+          }),
+        );
+        list.replaceChildren(...buttons.values());
+        if (focused !== undefined)
+          (buttons.get(focused) ?? buttons.get(selected ?? -1) ?? root).focus({ preventScroll: true });
       }
       heading.update(tributes.length > 0 ? `${copy.tributes} · ${tributes.length}` : copy.tributes);
       setHidden(empty, tributes.length > 0);
-      for (const tribute of tributes) {
-        const view = views.get(tribute.slot);
-        if (view === undefined) continue;
-        write(view.title, tribute.text?.trim() || `${messages().hud.tribute} ${tribute.slot}`);
-        for (const [index, demand] of tribute.demands.entries()) {
-          const cells = view.demands[index];
-          if (cells === undefined) continue;
-          write(cells.stock, String(demand.onHand));
-          const missing = Math.max(0, demand.amount - demand.onHand);
-          write(cells.shortage, missing > 0 ? String(missing) : '—');
-          setClass(cells.shortage, 'on-dip-costs__short', missing > 0);
-        }
-        const pending = paying(tribute.slot);
-        view.pay.disabled = readOnly || !tribute.payable || pending;
-        write(view.pay, pending ? copy.paying : copy.pay);
-        view.pay.setAttribute(
-          'aria-label',
-          formatMessage(copy.payLabel, { tribute: view.title.textContent ?? '' }),
-        );
-        write(
-          view.reason,
-          readOnly ? copy.readOnly : pending ? '' : tribute.payable ? '' : copy.insufficient,
-        );
-      }
+      refresh();
+      if (recoverFocus) (buttons.get(selected ?? -1) ?? root).focus({ preventScroll: true });
     },
   };
 }
