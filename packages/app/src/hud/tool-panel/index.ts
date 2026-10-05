@@ -45,6 +45,7 @@ import {
   NO_MISSION,
 } from '../dom/mission-book/index.js';
 import { createHudNav, type HudNavEntry } from '../dom/nav.js';
+import { createNetworkWindow } from '../dom/network-window.js';
 import { createPlacementStrip } from '../dom/placement-strip.js';
 import type { ClientRect } from '../dom/portrait-hole.js';
 import { createResidentsWindow } from '../dom/residents-window.js';
@@ -54,6 +55,7 @@ import { FigureFrames } from '../figures/figure-frames.js';
 import { LiveFigures } from '../figures/live-figures.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import { type KeyBindings, keyDisplayLabel } from '../keybindings.js';
+import type { NetPanelSource } from '../network/model.js';
 import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
 import { CONSTRUCTION_TOOLS, type ConstructionTool, type MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
@@ -241,6 +243,8 @@ export interface ToolPanelOptions {
   readonly isVehicleSite?: (typeId: number) => boolean;
   /** The GUI click feedback: every pressed button confirms, a cancelled hold fails. Absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
+  /** A relayed game's network panel feed; absent, the network window and its hotkey do not exist. */
+  readonly network?: NetPanelSource;
 }
 
 export interface ToolPanelController {
@@ -301,8 +305,14 @@ export interface ToolPanelController {
   presentFigures(snapshot: WorldSnapshot, alpha: number): void;
   state(): ToolPanelState;
   restore(state: ToolPanelState): void;
-  /** Show the session's clock as it stands, without pushing to the loop: a change made elsewhere. */
-  syncSpeed(control: GameSpeedControl): void;
+  /** Show the session's clock as it stands, without pushing to the loop: a change made elsewhere.
+   *  `governed` dims the pressed segment and names why, while a relayed room runs below its request. */
+  syncSpeed(control: GameSpeedControl, governed?: string | null): void;
+  /** Open the network window alone, as the game menu and the net banners do; nothing outside a
+   *  relayed game. */
+  openNetwork(): void;
+  /** True while the network window is open; the chat log and the held banner step aside for it. */
+  networkOpen(): boolean;
   dispose(): void;
 }
 
@@ -377,7 +387,7 @@ function navEntries(): readonly HudNavEntry<NavEntryId>[] {
 /** Mount the tool panel: the legacy pop-ups on the app stage and the shell regions on the DOM plane.
  *  Async because it loads the optional decoded GUI art and font. */
 export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelController> {
-  const { app, canvas, enqueue, plane } = opts;
+  const { app, canvas, enqueue, plane, network } = opts;
   const layout = buildToolPanelLayout(opts.uiscale);
   const scale = layout.scale;
 
@@ -487,7 +497,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     // The slip opens the book the way the beam does; the beam's surfaces exist once the windows do.
     let openGoals: (() => void) | null = null;
     // Closing a window returns keyboard focus to the beam entry that owns it.
-    let focusOwner: ((id: NavEntryId) => void) | null = null;
+    let focusOwner: ((id: NavEntryId | null) => void) | null = null;
     const shellCopy = messages().hud.shell;
     const goodIdByType = new Map(opts.goods.map((g) => [g.typeId, g.id]));
     const goodTypeById = new Map(opts.goods.map((g) => [g.id, g.typeId]));
@@ -548,6 +558,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         window.onDismiss(() => focusOwner?.('residents'));
         return window;
       },
+      ...(network !== undefined
+        ? {
+            networkWindow: () => createNetworkWindow({ plane, source: network, cue: ctx.cue }),
+          }
+        : {}),
       constructionWindow: (seam) => {
         const window = createConstructionWindow({
           plane,
@@ -620,6 +635,13 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     domParts.push(windows);
 
     const surfaces = { windows: windows.byId, cancelHeld };
+    /** Not a beam entry, but one central window at a time all the same: every other one closes.
+     *  `open` true keeps an open window open; false toggles it, as its hotkey does. */
+    const showNetwork = (open: boolean): void => {
+      const target = windows.byId.network;
+      for (const window of Object.values(windows.byId)) if (window !== target) window.close();
+      if (!open || !target.isOpen()) target.toggle();
+    };
     openGoals = () => applyNavEntry(surfaces, 'mission', () => windows.mission.openGoals());
     /** The book's views in canvas px, the same array while neither they nor the canvas moved. */
     let framed: { views: readonly BookView[]; key: string; frames: readonly MapViewFrame[] } | null = null;
@@ -657,7 +679,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       applyNavEntry(surfaces, id);
     });
     domParts.push(nav);
-    focusOwner = (id) => nav.focus(id);
+    focusOwner = (id) => {
+      if (id !== null) nav.focus(id);
+    };
 
     const speed = createSpeedControl({
       onSpeedChange: opts.onSpeedChange,
@@ -738,7 +762,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       const open = windows.openId();
       if (open === null) return false;
       windows.byId[open].close();
-      nav.focus(navEntryForWindow(open));
+      focusOwner?.(navEntryForWindow(open));
       return true;
     };
 
@@ -783,6 +807,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           }
         : {}),
       toggleHud: () => opts.onToggleHud?.(),
+      ...(network !== undefined
+        ? {
+            toggleNetwork: () => {
+              ctx.cue('confirm');
+              showNetwork(false);
+            },
+          }
+        : {}),
       ...(roadOffered
         ? {
             roadTool: () => {
@@ -901,9 +933,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         messages: messageCenter.state(),
         hudHidden,
       }),
-      syncSpeed(control): void {
+      syncSpeed(control, governed = null): void {
         speed.restore(control);
+        systemBar.setGoverned(governed);
       },
+      openNetwork: () => showNetwork(true),
+      networkOpen: () => windows.byId.network.isOpen(),
       restore(state): void {
         speed.restore(state.speed);
         windows.restore(state.windows);

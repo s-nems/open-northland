@@ -58,6 +58,8 @@ export interface ToolPanelInputDeps {
   /** Step the running speed ×1 → ×2 → ×3 → ×1; a pause resumes at ×1. */
   readonly cycleSpeed: () => void;
   readonly toggleHud: () => void;
+  /** Open or close the network window; absent outside a relayed game, which leaves its key alone. */
+  readonly toggleNetwork?: () => void;
   /** Hold the road tool; absent where the game offers none, which leaves its key to the page. */
   readonly roadTool?: () => void;
   /** Hold the palisade wall tool; absent where the game offers none. */
@@ -225,6 +227,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       ['gateTool', deps.gateTool],
       ['loadGame', deps.openLoad],
       ['saveGame', deps.openSave],
+      ['network', deps.toggleNetwork],
     ];
     for (const [action, run] of pressed) {
       if (run === undefined || !isActionHotkey(e, deps.bindings, action)) continue;

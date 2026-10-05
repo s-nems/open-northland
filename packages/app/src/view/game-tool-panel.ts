@@ -18,6 +18,7 @@ import type { AssistantSource } from '../hud/dom/assistant-window/index.js';
 import type { DiplomacySource } from '../hud/dom/diplomacy-window/model.js';
 import type { Rect } from '../hud/geometry.js';
 import type { KeyBindings } from '../hud/keybindings.js';
+import type { NetPanelSource } from '../hud/network/model.js';
 import { createReplaceableMount } from '../hud/replaceable-mount.js';
 import { CATALOGUE_KINDS, type MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
@@ -164,6 +165,8 @@ export interface GameToolPanelDeps {
   readonly isVehicleSite?: (typeId: number) => boolean;
   /** The GUI click feedback for the panel's buttons and held modes; absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
+  /** A relayed game's network panel feed, which mounts the network window and its hotkey. */
+  readonly network?: NetPanelSource;
 }
 
 export interface GameToolPanelHandle {
@@ -331,6 +334,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.workshops !== undefined ? { workshops: deps.workshops } : {}),
       ...(deps.isVehicleSite !== undefined ? { isVehicleSite: deps.isVehicleSite } : {}),
       ...(deps.onUiCue !== undefined ? { onUiCue: deps.onUiCue } : {}),
+      ...(deps.network !== undefined ? { network: deps.network } : {}),
     });
 
   const mounts = createReplaceableMount(

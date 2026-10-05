@@ -36,6 +36,7 @@ body.on-drag-scroll * {
   --wax-warn: #c98a3a;
   --wax-danger: #a8412f;
   --paper-error: #783321;
+  --paper-warn: #7a5414;
   --focus: #f3e3bb;
   /* Delivered chrome art (assets/ui/foundation); the root sets both, `none` is the fallback. */
   --on-surface: none;
@@ -1953,6 +1954,15 @@ body.on-drag-scroll * {
 .on-hud .on-speed button:hover:not([aria-pressed="true"]) {
   background: #c9a26222;
   color: var(--text-hi);
+}
+/* A relayed room running below its request: the pressed segment is the speed it really runs at,
+   dimmed and dashed, so it never reads as the request met. */
+.on-hud .on-speed--governed button[aria-pressed="true"] {
+  background: linear-gradient(#8d7547, #6a5531);
+  color: #f4e4bd;
+  box-shadow:
+    inset 0 1px #fff3,
+    inset 0 -2px 0 var(--warning);
 }
 /* The breakdown hangs under its own counters (2 px into the bar's bottom frame), left-aligned so it
    never overhangs the bar's left edge; the invisible bridge above it keeps the hover alive across the
@@ -6693,4 +6703,384 @@ body.on-drag-scroll * {
   .on-hud .on-dip-exchange-good {
     gap: 4px;
   }
+}
+
+/* ---------- network window, held banner, slowed line (relayed games) ---------- */
+.on-hud .on-window--network .on-window__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 2px 14px 14px;
+}
+.on-hud .on-window--network .on-section {
+  flex-shrink: 0;
+}
+.on-hud .on-net-sheet {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 8px 8px 6px;
+}
+.on-hud .on-net-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.25fr) 50px 46px 64px 64px 104px;
+  align-items: center;
+  column-gap: 8px;
+  min-height: 36px;
+  padding: 2px 4px;
+  border-bottom: 1px solid #8d754944;
+  font-size: 13px;
+}
+.on-hud .on-net-row:last-child {
+  border-bottom: 0;
+}
+.on-hud .on-net-row--head {
+  min-height: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #8d7549aa;
+  font: 700 10.5px var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.on-hud .on-net-row--head > span[title] {
+  cursor: help;
+}
+.on-hud .on-net-row--head > span:nth-child(n + 3) {
+  text-align: right;
+}
+.on-hud .on-net-row--held {
+  background: linear-gradient(90deg, #a8412f22, transparent 70%);
+}
+.on-hud .on-net-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.on-hud .on-net-who__text {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) 1fr;
+  min-width: 0;
+  line-height: 1.15;
+}
+.on-hud .on-net-who__nick {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+.on-hud .on-net-who__tribe {
+  grid-column: 1 / -1;
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+.on-hud .on-net-who__tribe:empty {
+  display: none;
+}
+.on-hud .on-net-you {
+  grid-row: 1;
+  grid-column: 2;
+  margin-left: 5px;
+  font: italic 600 11px var(--font-body);
+  color: var(--bronze-lo);
+}
+.on-hud .on-net-you[hidden] {
+  display: none;
+}
+.on-hud .on-net-chip {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border: 1px solid #2b2317aa;
+  border-radius: 2px;
+  box-shadow: inset 0 1px #fff6;
+}
+.on-hud .on-net-chip--none {
+  border-style: dashed;
+  box-shadow: none;
+}
+.on-hud .on-net-status {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink-muted);
+}
+.on-hud .on-net-status[data-tone="warn"] {
+  color: var(--paper-warn);
+  font-weight: 700;
+}
+.on-hud .on-net-status[data-tone="danger"] {
+  color: var(--paper-error);
+  font-weight: 700;
+}
+.on-hud .on-net-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.on-hud .on-net-num--over {
+  color: var(--paper-error);
+  font-weight: 700;
+}
+.on-hud .on-net-vote {
+  display: flex;
+  justify-content: flex-end;
+  color: var(--ink-muted);
+  font-size: 12px;
+  text-align: right;
+}
+.on-hud .on-net-vote > span[hidden],
+.on-hud .on-net-kick[hidden] {
+  display: none;
+}
+.on-hud .on-net-kick {
+  white-space: nowrap;
+}
+.on-hud .on-net-clock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.on-hud .on-net-figures {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+}
+.on-hud .on-net-figure {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 3px 0;
+  border-bottom: 1px solid #c9a2621f;
+  color: var(--muted);
+  font-size: 13px;
+}
+.on-hud .on-net-figure__value {
+  color: var(--text-hi);
+  font-variant-numeric: tabular-nums;
+}
+.on-hud .on-net-figure__value--governed {
+  color: var(--warning);
+}
+.on-hud .on-net-note {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.on-hud .on-net-note[hidden] {
+  display: none;
+}
+.on-hud .on-net-note--warn,
+.on-hud .on-net-note--self {
+  color: var(--warning);
+}
+.on-hud .on-net-note--self {
+  font-weight: 700;
+}
+.on-hud .on-net-note--danger {
+  color: var(--danger);
+}
+.on-hud .on-net-chart {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+}
+.on-hud .on-net-chart__title {
+  font: 700 10.5px var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.on-hud .on-net-chart__plot {
+  width: 100%;
+  height: 64px;
+  border: 1px solid var(--wood-lo);
+  background: linear-gradient(#1b2823, #22322c);
+  box-shadow: inset 0 2px 4px #0008;
+}
+.on-hud .on-net-chart__plot polyline {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.on-hud .on-net-chart__room {
+  stroke: var(--bronze-hi);
+}
+.on-hud .on-net-chart__own {
+  stroke: var(--ok);
+  stroke-dasharray: 3 2;
+}
+.on-hud .on-net-chart__guide {
+  stroke: #c9a26233;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.on-hud .on-net-chart__empty {
+  margin: -40px 0 22px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+.on-hud .on-net-chart__empty[hidden] {
+  display: none;
+}
+.on-hud .on-net-chart__legend {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.on-hud .on-net-chart__key::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  margin-right: 5px;
+  vertical-align: middle;
+  border-top: 2px solid var(--bronze-hi);
+}
+.on-hud .on-net-chart__key--own::before {
+  border-top: 2px dashed var(--ok);
+}
+.on-hud .on-net-link {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 4px 12px;
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 13px;
+}
+.on-hud .on-net-link dt {
+  color: var(--muted);
+}
+.on-hud .on-net-link dd:last-of-type {
+  grid-column: 2 / -1;
+}
+.on-hud .on-net-link dd {
+  overflow: hidden;
+  margin: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-hi);
+  font-variant-numeric: tabular-nums;
+}
+.on-hud .on-net-chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 84px;
+  margin: 0;
+  padding: 6px 8px;
+}
+/* The chat gives way first on a short screen, so the input under it stays in view. */
+.on-hud .on-net-chat__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 150px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.on-hud .on-net-chat__line {
+  overflow-wrap: anywhere;
+  padding: 1px 0;
+}
+.on-hud .on-net-chat__from {
+  margin-right: 5px;
+}
+.on-hud .on-net-chat__line--system {
+  color: var(--ink-muted);
+  font-style: italic;
+}
+.on-hud .on-net-chat__time {
+  margin-right: 6px;
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.on-hud .on-net-chat__empty {
+  margin: 0;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+.on-hud .on-net-chat__empty[hidden] {
+  display: none;
+}
+.on-hud .on-net-say {
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+/* Below the system bar's row, so a wide banner never runs under the bar on a narrow screen. */
+.on-hud .on-net-held {
+  position: absolute;
+  top: 66px;
+  left: 50%;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 320px;
+  max-width: 560px;
+  padding: 12px 20px 14px;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.on-hud .on-net-held[hidden] {
+  display: none;
+}
+.on-hud .on-net-held__title {
+  margin: 0;
+  font: 700 19px / 1.1 var(--font-title);
+  letter-spacing: 0.03em;
+  color: var(--warning);
+  text-shadow: 0 2px 2px #000;
+}
+.on-hud .on-net-held__notice {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+}
+.on-hud .on-net-held__lines {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-hi);
+  font-size: 14px;
+}
+.on-hud .on-net-held > [hidden] {
+  display: none;
+}
+.on-hud .on-net-held__open {
+  margin-top: 4px;
+}
+/* Just above the chat log, at its left edge; the owner sets --left and --bottom in design px. */
+.on-hud .on-net-slowed {
+  position: absolute;
+  left: var(--left, 0);
+  bottom: var(--bottom, 0);
+  max-width: 420px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--warning) 55%, transparent);
+  border-radius: 3px;
+  background: #182521d9;
+  color: var(--warning);
+  font-size: 13px;
+  text-align: left;
+  pointer-events: auto;
+  box-shadow: 0 2px 6px #0008;
+}
+.on-hud .on-net-slowed:hover {
+  background: #273832;
+  color: var(--text-hi);
+}
+.on-hud .on-net-slowed[hidden] {
+  display: none;
 }

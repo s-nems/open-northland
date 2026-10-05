@@ -57,6 +57,7 @@ import type { HoverOwnerContext } from '../../hud/hover-card/owner.js';
 import { type SettlerHoverContext, settlerHoverModel } from '../../hud/hover-card/settler.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { minimapFeatureOfGoodTypes } from '../../hud/minimap/live-objects.js';
+import type { NetPanelSource } from '../../hud/network/model.js';
 import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { type MetSeat, NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
 import { MEAD_GOOD_ID, residentRows } from '../../hud/tool-panel/residents/projection.js';
@@ -117,6 +118,7 @@ import {
 import { mountGamePresentation } from './game-presentation.js';
 import { createHostAnswers } from './host-answers.js';
 import { createMenuExit } from './menu-exit.js';
+import { mountNetOverlays } from './net-overlays.js';
 import type { NetReadout } from './net-readout.js';
 import { ownRoadSiteAt } from './own-road-sites.js';
 import { createPauseHolds } from './pause-holds.js';
@@ -160,6 +162,10 @@ export interface GameViewDeps {
   readonly onReturnToMenu?: () => void;
   /** A relayed session's connection figures for the overlays; omitted in a local session. */
   readonly netReadout?: () => NetReadout | null;
+  /** A relayed session's network panel feed: mounts the network window, its hotkey and menu button,
+   *  the held and slowed banners and the chat log, and drives the speed segments from the room's
+   *  clock. Omitted in a local session. */
+  readonly netPanel?: NetPanelSource;
   readonly parentSave?: SaveGame;
   readonly prepareSubMission?: PrepareSubMission;
   readonly validateSavedMap?: (save: SaveGame) => Promise<void>;
@@ -220,17 +226,11 @@ export interface GameViewDeps {
 }
 
 export interface GameViewHandle {
-  readonly updateNetStatus: ReturnType<typeof createSystemMenu>['updateNetStatus'];
   /** Stop the frame loop and remove this session's HUD overlays. Idempotent. */
   destroy(): void;
   /** Aborted by {@link destroy}, including the teardown a sub-mission swap runs, so a document-level
    *  binding made for this world can end with it. */
   readonly lifetime: AbortSignal;
-  /** Show a clock change another client made, so the speed button follows the session. */
-  syncSpeed(control: GameSpeedControl): void;
-  /** Left inset in px along the bottom edge that clears the minimap window, for overlays mounted beside
-   *  this view. */
-  readonly hudInsetBottomLeftPx: number;
 }
 
 const PAUSE_HOLDER_MENU = 'menu';
@@ -626,6 +626,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       isVehicleSite: (typeId) => vehicleSiteTypes.has(typeId),
       onUiCue: uiCue,
+      ...(deps.netPanel !== undefined ? { network: deps.netPanel } : {}),
     });
 
     cleanup.push(() => toolPanel.dispose());
@@ -981,7 +982,29 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       settings: liveSettings.settings,
       setCameraSuspended: cameraCtl.setSuspended,
       canLoad: !sharedClock,
+      ...(deps.netPanel !== undefined ? { onNetwork: () => toolPanel.controller.openNetwork() } : {}),
     });
+
+    // Along the bottom edge, clear of the minimap window and the perf readout.
+    const insetBesideMinimap = (): number => {
+      const rect = mountedMinimap.panelRect();
+      return Math.max(
+        perfCornerForUiScale(uiscale).left,
+        rect === null ? 0 : rect.x + rect.w + BESIDE_MINIMAP_GAP_PX,
+      );
+    };
+    const netOverlays =
+      deps.netPanel === undefined
+        ? null
+        : mountNetOverlays({
+            source: deps.netPanel,
+            plane: hudDom.element,
+            scale: hudDom.currentScale,
+            leftPx: insetBesideMinimap,
+            controller: () => toolPanel.controller,
+            cue: uiCue,
+          });
+    if (netOverlays !== null) cleanup.push(() => netOverlays.dispose());
 
     installDebugHandle({
       host,
@@ -997,7 +1020,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     // This mount owns construction; the loop owns the pinned per-frame order.
     loop = startFrameLoop({
-      deps: { ...deps, onEvents },
+      deps: {
+        ...deps,
+        onEvents,
+        onFrame: (snapshot) => {
+          netOverlays?.refresh();
+          deps.onFrame?.(snapshot);
+        },
+      },
       suspended: subMissions.isPending,
       fpsLimit: storedSettings.fpsLimit,
       fogView: fogViewOf,
@@ -1028,7 +1058,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       presentation,
       perf,
       netReadout,
-      updateSpeedStatus: (delivered, requested) => systemMenu?.updateSpeedStatus(delivered, requested),
       pointer: pointerAt,
       syncViewport: liveSettings.syncViewport,
     });
@@ -1043,19 +1072,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // A restored save of a decided match says so at once, since no event will repeat the verdict.
     if (deps.observer !== true) verdict?.announce(host.matchOutcome(localPlayer));
 
-    return {
-      destroy,
-      lifetime: lifetime.signal,
-      updateNetStatus: (rows, readout) => systemMenu?.updateNetStatus(rows, readout),
-      syncSpeed: (control) => toolPanel.controller.syncSpeed(control),
-      get hudInsetBottomLeftPx() {
-        const rect = mountedMinimap.panelRect();
-        return Math.max(
-          perfCornerForUiScale(uiscale).left,
-          rect === null ? 0 : rect.x + rect.w + BESIDE_MINIMAP_GAP_PX,
-        );
-      },
-    };
+    return { destroy, lifetime: lifetime.signal };
   } catch (error) {
     try {
       destroy();

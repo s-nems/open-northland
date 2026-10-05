@@ -40,6 +40,7 @@ import { learningFoundationsScene } from './learning-foundations.js';
 import { livestockScene } from './livestock.js';
 import { meleeFrontScene } from './melee-front.js';
 import { movementContinuityScene } from './movement-continuity.js';
+import { netPanelScene } from './net-panel.js';
 import { palisadeScene } from './palisade.js';
 import { porterFlagScene } from './porter-flag.js';
 import { presentationScene } from './presentation.js';
@@ -141,6 +142,7 @@ export const SCENES: readonly SceneDefinition[] = [
   equipmentEffectsScene,
   groupPanelScene,
   groupPanelArmyScene,
+  netPanelScene,
   amuletsScene,
   barracksScene,
   armorScene,

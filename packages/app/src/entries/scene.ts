@@ -31,6 +31,7 @@ import { inlineSessionHost } from '../session/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
+import { createNetPanelPreview, NET_PREVIEW_STATE_PARAM } from '../view/net/panel-preview.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import { type StagedSession, takeStagedSession } from '../view/runtime/save-load/index.js';
 import { SCENE_TOKEN_PREFIX } from '../view/runtime/save-load/world-names.js';
@@ -221,6 +222,9 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
     worldToken,
     missionBriefSource: sceneBriefSource(scene),
+    ...(scene.netPanelPreview === true
+      ? { netPanel: createNetPanelPreview({ pinned: params.get(NET_PREVIEW_STATE_PARAM) }) }
+      : {}),
   });
   view.lifetime.addEventListener('abort', () => displayScope.abort(), { once: true });
   await boot.finish();

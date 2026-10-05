@@ -1,17 +1,12 @@
 import { downloadDiagnosticsBundle, downloadTraceFile, isTraceRecording } from '../diag/index.js';
 import { messages } from '../i18n/index.js';
 import { confirmDialog } from './confirm-dialog.js';
-import { mountNetStatusPanel, type NetStatusPanel } from './net/net-status.js';
 import type { GameSettingsRuntime } from './runtime/game-settings.js';
 import type { SaveLoadSession } from './runtime/save-load/index.js';
 import { buildLoadPanel, buildSavePanel, type SavePanelView } from './save-panels/index.js';
-import { mountSpeedStatusLine, type SpeedStatusLine } from './speed-status.js';
 import { buildSystemSettingsPanel } from './system-settings-panel.js';
 
 export interface SystemMenu {
-  updateNetStatus: NetStatusPanel['update'];
-  /** Delivered against requested speed while a sustained shortfall holds; null delivered hides it. */
-  updateSpeedStatus: SpeedStatusLine['update'];
   toggle(): void;
   /** Open the menu straight on its save or load page; a refused load page leaves it shut. */
   openPage(page: SystemMenuPage): void;
@@ -31,6 +26,8 @@ export interface SystemMenuDeps {
   readonly setCameraSuspended: (suspended: boolean) => void;
   /** False hides the load button: a relayed session cannot swap its world for a file's. */
   readonly canLoad?: boolean;
+  /** Present in a relayed game: the network button closes the menu and opens the network window. */
+  readonly onNetwork?: () => void;
 }
 
 const MODAL_PANEL_STYLE = [
@@ -80,7 +77,6 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     zIndex: '2000',
   });
 
-  let netStatus: NetStatusPanel | null = null;
   const panel = document.createElement('div');
   panel.style.cssText = MODAL_PANEL_STYLE;
   panel.setAttribute('role', 'dialog');
@@ -155,6 +151,15 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     });
   });
 
+  const onNetwork = deps.onNetwork;
+  const network =
+    onNetwork === undefined
+      ? null
+      : button(copy.network.title, () => {
+          hide();
+          onNetwork();
+        });
+
   // The same report path the crash banner offers, also reachable without a crash.
   const diagnostics = button(copy.downloadDiagnostics, () => void downloadDiagnosticsBundle());
 
@@ -169,6 +174,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     save.textContent = hud.saveGame;
     load.textContent = hud.loadGame;
     settings.textContent = next.mainMenu.items.settings;
+    if (network !== null) network.textContent = hud.network.title;
     quit.textContent = hud.returnToMenu;
     diagnostics.textContent = hud.downloadDiagnostics;
     if (trace !== null) trace.textContent = hud.downloadTrace;
@@ -203,13 +209,12 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     save,
     ...(deps.canLoad === false ? [] : [load]),
     settings,
+    ...(network !== null ? [network] : []),
     quit,
     diagnostics,
     ...(trace !== null ? [trace] : []),
     close,
   );
-  // Mounted before the lazily added net status, so the two status blocks stay in this order.
-  const speedStatus = mountSpeedStatusLine(panel);
   backdrop.append(panel, savePanel.el, loadPanel.el, settingsPanel.el);
   document.body.append(backdrop);
 
@@ -221,11 +226,6 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   };
 
   return {
-    updateNetStatus(rows, readout): void {
-      netStatus ??= mountNetStatusPanel(panel);
-      netStatus.update(rows, readout);
-    },
-    updateSpeedStatus: (delivered, requested) => speedStatus.update(delivered, requested),
     isOpen: () => backdrop.style.display !== 'none',
     toggle(): void {
       if (backdrop.style.display === 'none') {
@@ -247,8 +247,6 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     dispose(): void {
       deps.setCameraSuspended(false);
       scope.abort();
-      netStatus?.dispose();
-      speedStatus.dispose();
       document.removeEventListener('keydown', onKey);
       backdrop.remove();
     },

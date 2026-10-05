@@ -10,6 +10,7 @@ import {
   REPORT_ANSWER_TIMEOUT_MS,
   setDiagGameSession,
 } from '../../diag/index.js';
+import type { NetPanelSource } from '../../hud/network/model.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { swapToEntry } from '../../launch.js';
 import type { NetWorldPort, RelayedWorldHosting } from '../../net/connection.js';
@@ -73,6 +74,13 @@ export function renderNetworkGame(
     bufferedTicks: client.bufferedTicks,
   });
 
+  // The view mounts before the HUD's model exists; until then the panel and its banners stay empty.
+  const netPanel: NetPanelSource = {
+    model: () => hud?.model() ?? null,
+    kick: (seat) => client.kick(seat),
+    say: (text) => client.say(text),
+  };
+
   function clearWorld(): void {
     // Pixi destroys the WebGL context permanently. A later renderer needs a new canvas,
     // including when the previous asynchronous assembly/presentation has not finished yet.
@@ -82,7 +90,6 @@ export function renderNetworkGame(
       activeCanvas = next;
       canvasUsed = false;
     }
-    hud?.dispose();
     hud = null;
     if (view !== null) {
       view.destroy();
@@ -258,6 +265,7 @@ export function renderNetworkGame(
       networkSave: networkSaveSession(client, worldId),
       introAtStart: false,
       netReadout: readout,
+      netPanel,
       untilStart: () => startWait.untilStart(() => !closed && mine === revision),
       onReturnToMenu: returnToMenu,
     })
@@ -268,7 +276,7 @@ export function renderNetworkGame(
           return;
         }
         view = presented;
-        hud = mountNetHud({ client, view, readout });
+        hud = mountNetHud({ client, readout, relayUrl: connection.url });
         // A link event while the world was rebuilt had no HUD to reach.
         const link = connection.linkState;
         if (link === null) hud.link('reconnecting');

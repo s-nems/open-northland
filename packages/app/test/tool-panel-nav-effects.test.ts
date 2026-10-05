@@ -110,6 +110,7 @@ describe('navigation entries', () => {
     const windows = NAV_ENTRY_IDS.map((id) => navEntryEffect(id).window);
     expect(windows).toEqual(['menu', 'residents', 'assistant', 'stats', 'mission', 'diplomacy', 'knowledge']);
     for (const id of NAV_ENTRY_IDS) expect(navEntryForWindow(navEntryEffect(id).window)).toBe(id);
+    expect(navEntryForWindow('network')).toBeNull();
   });
 
   it('drops a held placement only for the entries that start a pick or pause the game', () => {

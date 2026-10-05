@@ -5,6 +5,7 @@ import type { AssistantWindow } from '../dom/assistant-window/index.js';
 import type { ConstructionWindow } from '../dom/construction-window.js';
 import type { DiplomacyWindow } from '../dom/diplomacy-window/index.js';
 import type { MissionBook, MissionWindowState } from '../dom/mission-book/index.js';
+import type { NetworkWindow } from '../dom/network-window.js';
 import type { ResidentsWindow } from '../dom/residents-window.js';
 import type { ConstructionWindowState, MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
@@ -16,12 +17,30 @@ import { createStatsWindow } from './stats-window.js';
 import type { ClickModifiers, ToolWindow } from './window-shell.js';
 
 /** The central windows in mount order, which is the legacy pop-ups' draw order. */
-const MOUNT_ORDER = ['menu', 'assistant', 'stats', 'diplomacy', 'residents', 'knowledge', 'mission'] as const;
+const MOUNT_ORDER = [
+  'menu',
+  'assistant',
+  'stats',
+  'diplomacy',
+  'residents',
+  'knowledge',
+  'mission',
+  'network',
+] as const;
 
 export type ToolWindowId = (typeof MOUNT_ORDER)[number];
 
 /** The central windows whose contents a later ticket owns; the registry shows a pending note for them. */
 export type PendingWindowId = Extract<ToolWindowId, 'knowledge'>;
+
+/** The entry of a window the session does not mount: never open, toggling does nothing. */
+const NO_WINDOW: ToolWindow = {
+  isOpen: () => false,
+  toggle: () => undefined,
+  close: () => undefined,
+  claims: () => false,
+  handleClick: () => false,
+};
 
 interface ToolWindowEntry {
   readonly window: ToolWindow;
@@ -51,6 +70,9 @@ export interface ToolWindowsDeps {
   readonly assistantWindow: () => AssistantWindow;
   /** The mission book with its goal slip, mounted on the DOM plane. */
   readonly missionBook: () => MissionBook;
+  /** The network window, mounted on the DOM plane in a relayed game only; absent, its entry stays
+   *  shut. */
+  readonly networkWindow?: () => NetworkWindow;
   readonly buildings: readonly MenuBuildingEntry[];
   readonly diplomacyWindow: () => DiplomacyWindow;
   /** The place-any plan the construction window holds for its next catalogue pick. */
@@ -103,6 +125,8 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const assistant = deps.assistantWindow();
   const knowledge = deps.pendingWindow('knowledge');
   const mission = deps.missionBook();
+  const network = deps.networkWindow?.() ?? null;
+  const networkEntry: ToolWindow = network ?? NO_WINDOW;
   /** Show `target` alone, as a beam press would. */
   const openOnly = (target: ToolWindow): void => {
     for (const id of MOUNT_ORDER) {
@@ -133,6 +157,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     residents: { window: residents, perFrame: () => residents.refresh() },
     knowledge: { window: knowledge, perFrame: () => knowledge.place() },
     mission: { window: mission, perFrame: () => mission.refresh() },
+    network: { window: networkEntry, perFrame: () => network?.refresh() },
   };
   const mounted = MOUNT_ORDER.map((id) => entries[id]);
   // Reverse mount order is top-drawn first, so overlapping pop-ups route pointer input to the visible one.
@@ -142,7 +167,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     probed.find((e) => e.window.claims(x, y))?.window ?? null;
 
   return {
-    byId: { menu, assistant, stats, diplomacy, residents, knowledge, mission },
+    byId: { menu, assistant, stats, diplomacy, residents, knowledge, mission, network: networkEntry },
     mission,
     openId: () => MOUNT_ORDER.find((id) => entries[id].window.isOpen()) ?? null,
     // A suspended construction window reports closed and keeps its placement's resume.
@@ -194,6 +219,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       diplomacy.dispose();
       knowledge.dispose();
       mission.dispose();
+      network?.dispose();
     },
   };
 }

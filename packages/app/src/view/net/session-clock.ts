@@ -1,17 +1,25 @@
 import type { ClockState } from '@open-northland/net-client';
-import type { GameSpeedControl, RunningGameSpeed } from '../../hud/tool-panel/game-speed.js';
+import type { NetClockModel } from '../../hud/network/model.js';
+import {
+  GAME_SPEED_STATES,
+  type GameSpeedControl,
+  type RunningGameSpeed,
+} from '../../hud/tool-panel/game-speed.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 
-/** The speed button's running states by the multiplier they stand for. */
-const RUNNING_BY_MULTIPLIER: ReadonlyMap<number, RunningGameSpeed> = new Map([
-  [1, 'normal'],
-  [2, 'fast'],
-  [3, 'faster'],
-]);
+/** The running speed segments by the multiplier each stands for, highest first. */
+const PRESETS: readonly { readonly multiplier: number; readonly running: RunningGameSpeed }[] =
+  GAME_SPEED_STATES.flatMap((spec) =>
+    spec.state === 'paused' ? [] : [{ multiplier: spec.tickMultiplier, running: spec.state }],
+  ).sort((a, b) => b.multiplier - a.multiplier);
 
-/** The speed button state for the relay's clock; a multiplier the button cannot show keeps the current one. */
-export function speedControlFor(clock: ClockState, current: GameSpeedControl): GameSpeedControl {
-  return { running: RUNNING_BY_MULTIPLIER.get(clock.speed) ?? current.running, paused: clock.paused };
+const SLOWEST_PRESET: RunningGameSpeed = PRESETS.at(-1)?.running ?? 'normal';
+
+/** The segment the bar presses for the speed the room actually runs at: the highest preset not above
+ *  it, ×1 below that. A room governed to ×2.5 shows ×2, never the ×3 it was asked for. */
+export function speedControlFor(clock: Pick<NetClockModel, 'runningSpeed' | 'paused'>): GameSpeedControl {
+  const preset = PRESETS.find((candidate) => candidate.multiplier <= clock.runningSpeed);
+  return { running: preset?.running ?? SLOWEST_PRESET, paused: clock.paused };
 }
 
 /** The line the chat announces a clock change with, or null when nobody made it or nothing changed. */

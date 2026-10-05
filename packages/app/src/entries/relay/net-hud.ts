@@ -1,65 +1,43 @@
 import type { ClockState, RelayClientView } from '@open-northland/net-client';
 import type { RoomView, ServerMessage } from '@open-northland/net-protocol';
 import { diag } from '../../diag/index.js';
-import { DEFAULT_GAME_SPEED_CONTROL, type GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
+import type { NetPanelModel } from '../../hud/network/model.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { relayCloseText, relayReasonText } from '../../net/relay-reason.js';
 import type { LinkState } from '../../session/worker/net-protocol.js';
-import { type ChatPanel, mountChatPanel } from '../../view/net/chat-panel.js';
-import { memberRows } from '../../view/net/net-status.js';
-import { clockAnnouncement, speedControlFor } from '../../view/net/session-clock.js';
-import { createWaitingOverlay, roomProgress, type WaitingOverlay } from '../../view/net/waiting-overlay.js';
-import type { GameViewHandle } from '../../view/runtime/game-view.js';
+import { clockAnnouncement } from '../../view/net/session-clock.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
+import { createRelayPanelFeed } from './net-panel-feed.js';
 
 export interface NetHudDeps {
   readonly client: RelayClientView;
-  readonly view: GameViewHandle;
   readonly readout: () => NetReadout;
+  /** The relay this client is linked to, which the panel names. */
+  readonly relayUrl: string | null;
 }
 
 export interface NetHud {
+  /** The network panel's model: the window, the banners, the chat log and the speed segments read it.
+   *  The same object while nothing in it changed. */
+  model(): NetPanelModel;
   /** Every relay message after the client acted on it. */
   observe(message: ServerMessage): void;
   link(state: LinkState, reason?: string): void;
-  dispose(): void;
 }
 
-/** The overlays of a relayed game: the wait panel with its kick votes, the chat with the session's
- *  announcements, and the player list with this client's connection figures. */
+/** A relayed game's side of the network panel: the model it reads, the chat with the session's
+ *  announcements, and the notice about this client's own link or world. */
 export function mountNetHud(deps: NetHudDeps): NetHud {
-  const { client, view } = deps;
+  const { client } = deps;
   const copy = messages().net;
-  const seatOf = (nick: string): number | null =>
-    client.room?.members.find((member) => member.nick === nick)?.seat ?? null;
-  const waiting: WaitingOverlay = createWaitingOverlay({
-    seatOf,
-    ownNick: () => client.nick,
-    onKick: (player) => client.kick(player),
-    progressOf: roomProgress(client),
-  });
-  const chat: ChatPanel = mountChatPanel({
-    leftPx: () => view.hudInsetBottomLeftPx,
-    onSend: (text) => client.say(text),
-  });
-  let waited: ServerMessage & { kind: 'waiting' } = { kind: 'waiting', for: client.waitingFor };
-  let previousRoom: RoomView | null = null;
+  const feed = createRelayPanelFeed({ client, readout: deps.readout, relayUrl: deps.relayUrl });
+  let previousRoom: RoomView | null = client.room;
   let previousClock: ClockState | null = client.clockState;
-  let speedControl: GameSpeedControl = DEFAULT_GAME_SPEED_CONTROL;
   let linkNotice: string | null = null;
   let worldNotice: string | null = null;
 
-  const announce = (text: string): void => chat.append({ from: null, text });
-  const refreshStatus = (): void => {
-    chat.updateLayout();
-    view.updateNetStatus(memberRows(client.room, waited.for, client.nick), deps.readout());
-  };
-  const refreshNotice = (): void => waiting.notice(linkNotice ?? worldNotice);
-  const syncClock = (clock: ClockState): void => {
-    speedControl = speedControlFor(clock, speedControl);
-    view.syncSpeed(speedControl);
-    waiting.governed(clock.governed);
-  };
+  const announce = (text: string): void => feed.append({ from: null, text });
+  const refreshNotice = (): void => feed.notice(linkNotice ?? worldNotice);
   const announceRoom = (room: RoomView): void => {
     const before = new Map(previousRoom?.members.map((member) => [member.nick, member.connected]) ?? []);
     for (const member of room.members) {
@@ -75,26 +53,13 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
     previousRoom = room;
   };
 
-  if (client.room !== null) previousRoom = client.room;
-  if (previousClock !== null) syncClock(previousClock);
-  // The wait the room was already in when this client finished booting.
-  waiting.waiting(client.waitingFor);
-  refreshStatus();
-
   return {
+    model: feed.model,
     observe(message): void {
+      feed.observe(message);
       switch (message.kind) {
         case 'room':
           announceRoom(message.room);
-          refreshStatus();
-          return;
-        case 'waiting':
-          waited = message;
-          waiting.waiting(message.for);
-          refreshStatus();
-          return;
-        case 'kickVote':
-          waiting.tally(message);
           return;
         case 'kicked':
           announce(formatMessage(copy.departed[message.cause][message.mode], { nick: message.nick }));
@@ -103,16 +68,13 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
           const line = clockAnnouncement(previousClock, message);
           if (line !== null) announce(line);
           previousClock = message;
-          syncClock(message);
           return;
         }
         case 'chat':
-          chat.append({ from: message.from, text: message.text });
+          feed.append({ from: message.from, text: message.text });
           return;
         case 'rejected':
           announce(formatMessage(copy.refused, { reason: relayReasonText(message.reason) }));
-          // The speed button moved on the click; the relay did not, so the button follows it back.
-          if (message.of === 'clock' && previousClock !== null) syncClock(previousClock);
           return;
         case 'error':
           announce(
@@ -128,10 +90,6 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
           });
           refreshNotice();
           return;
-        case 'ping':
-        case 'delay':
-          refreshStatus();
-          return;
         default:
           return;
       }
@@ -140,11 +98,6 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
       linkNotice =
         state === 'ok' ? null : state === 'reconnecting' ? copy.reconnecting : relayCloseText(reason);
       refreshNotice();
-      refreshStatus();
-    },
-    dispose(): void {
-      waiting.dispose();
-      chat.dispose();
     },
   };
 }

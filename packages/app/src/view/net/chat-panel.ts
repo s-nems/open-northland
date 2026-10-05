@@ -1,10 +1,13 @@
 import { MAX_CHAT_LENGTH } from '@open-northland/net-protocol';
 import { quietTextField } from '../../hud/dom/parts/text-field.js';
+import type { ChatLine } from '../../hud/network/model.js';
 import { messages } from '../../i18n/index.js';
 import { el } from '../overlay.js';
 
 /** Lines kept on screen; older ones scroll off. */
 const MAX_LINES = 8;
+/** Px kept clear between the log and the window's right edge. */
+const RIGHT_CLEARANCE_PX = 12;
 /** Over the canvas and the perf readout; the system menu and every dialog sit above. */
 const CHAT_Z_INDEX = '60';
 const LOG_STYLE = [
@@ -33,15 +36,15 @@ const INPUT_STYLE = [
   'pointer-events:auto',
 ].join(';');
 
-export interface ChatLine {
-  /** The sender's nick, or null for a line about the session itself. */
-  readonly from: string | null;
-  readonly text: string;
-}
-
 export interface ChatPanel {
-  append(line: ChatLine): void;
+  /** Show the newest of the room's lines; the same `version` twice costs nothing. */
+  show(chat: readonly ChatLine[], version: number): void;
+  /** Follow the left inset, which moves with the minimap. */
   updateLayout(): void;
+  /** Hide the log while the network window shows the whole chat over it. */
+  setHidden(hidden: boolean): void;
+  /** The log's left and top edge in client px; the top rises as lines arrive. */
+  anchor(): { readonly left: number; readonly top: number };
   dispose(): void;
 }
 
@@ -61,10 +64,13 @@ function fromThePage(event: KeyboardEvent): boolean {
 export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
   const copy = messages().net;
   const log = el('div', LOG_STYLE);
+  let left = Number.NaN;
   const position = (): void => {
-    const left = typeof deps.leftPx === 'number' ? deps.leftPx : deps.leftPx();
+    const next = typeof deps.leftPx === 'number' ? deps.leftPx : deps.leftPx();
+    if (next === left) return;
+    left = next;
     log.style.left = `${left}px`;
-    log.style.maxWidth = `max(0px, calc(100vw - ${left + 12}px))`;
+    log.style.maxWidth = `max(0px, calc(100vw - ${left + RIGHT_CLEARANCE_PX}px))`;
   };
   position();
   window.addEventListener('resize', position);
@@ -107,17 +113,20 @@ export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
   });
   document.addEventListener('keydown', onPageKey);
 
+  let shownVersion = -1;
   return {
     updateLayout: position,
-    append(line): void {
-      const row = el(
-        'div',
-        `overflow-wrap:anywhere;${line.from === null ? 'opacity:0.75;font-style:italic' : ''}`,
-      );
-      if (line.from !== null) row.append(el('span', 'font-weight:700', `${line.from}: `));
-      row.append(document.createTextNode(line.text));
-      lines.append(row);
-      while (lines.childElementCount > MAX_LINES) lines.firstElementChild?.remove();
+    show(chat, version): void {
+      if (version === shownVersion) return;
+      shownVersion = version;
+      lines.replaceChildren(...chat.slice(-MAX_LINES).map(lineRow));
+    },
+    setHidden(hidden): void {
+      const display = hidden ? 'none' : 'flex';
+      if (log.style.display !== display) log.style.display = display;
+    },
+    anchor(): { left: number; top: number } {
+      return { left, top: log.getBoundingClientRect().top };
     },
     dispose(): void {
       window.removeEventListener('resize', position);
@@ -125,4 +134,14 @@ export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
       log.remove();
     },
   };
+}
+
+function lineRow(line: ChatLine): HTMLDivElement {
+  const row = el(
+    'div',
+    `overflow-wrap:anywhere;${line.from === null ? 'opacity:0.75;font-style:italic' : ''}`,
+  );
+  if (line.from !== null) row.append(el('span', 'font-weight:700', `${line.from}: `));
+  row.append(document.createTextNode(line.text));
+  return row;
 }

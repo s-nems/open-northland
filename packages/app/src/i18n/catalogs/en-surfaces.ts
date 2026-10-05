@@ -240,6 +240,7 @@ export const enSurfaces = {
         mission: 'Mission window',
         diplomacy: 'Diplomacy window',
         knowledge: 'Knowledge window',
+        network: 'Network window (multiplayer)',
         actionRing: 'Unit action ring',
         professionPicker: 'Settler profession list',
         attackMove: 'Attack-move',

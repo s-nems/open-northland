@@ -48,6 +48,8 @@ export interface MapRuntime {
   readonly introAtStart: boolean;
   /** Present for a relayed session: the connection readouts the overlays show. */
   readonly netReadout?: () => NetReadout | null;
+  /** Present for a relayed session: the network panel's feed. */
+  readonly netPanel?: GameViewDeps['netPanel'];
   /** Present for a relayed session: the card covers the drawn world until this settles, once the room
    *  starts its shared clock or the wait no longer matters. */
   readonly untilStart?: () => Promise<void>;
@@ -172,6 +174,7 @@ export async function presentMapWorld(
     ...(runtime.sharedClock !== undefined ? { sharedClock: runtime.sharedClock } : {}),
     ...(runtime.onReturnToMenu !== undefined ? { onReturnToMenu: runtime.onReturnToMenu } : {}),
     ...(runtime.netReadout !== undefined ? { netReadout: runtime.netReadout } : {}),
+    ...(runtime.netPanel !== undefined ? { netPanel: runtime.netPanel } : {}),
     cameraCtl,
     terrainGrid,
     localPlayer,

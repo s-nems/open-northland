@@ -33,11 +33,10 @@ const EFFECTS: Readonly<Record<NavEntryId, NavEntryEffect>> = {
 
 export const navEntryEffect = (id: NavEntryId): NavEntryEffect => EFFECTS[id];
 
-/** The beam entry that owns a central window. */
-export function navEntryForWindow(window: ToolWindowId): NavEntryId {
-  const entry = NAV_ENTRY_IDS.find((id) => EFFECTS[id].window === window);
-  if (entry === undefined) throw new Error(`nav-effects: no beam entry owns window "${window}"`);
-  return entry;
+/** The beam entry that owns a central window; null for one the beam does not open (the network
+ *  window, which its hotkey and the game menu open). */
+export function navEntryForWindow(window: ToolWindowId): NavEntryId | null {
+  return NAV_ENTRY_IDS.find((id) => EFFECTS[id].window === window) ?? null;
 }
 
 export interface NavSurfaces {

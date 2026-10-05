@@ -236,6 +236,7 @@ export const plSurfaces = {
         mission: 'Okno misji',
         diplomacy: 'Okno dyplomacji',
         knowledge: 'Okno wiedzy',
+        network: 'Okno sieci (gra sieciowa)',
         actionRing: 'Pierścień akcji jednostki',
         professionPicker: 'Lista zawodów osadnika',
         attackMove: 'Atak w marszu',

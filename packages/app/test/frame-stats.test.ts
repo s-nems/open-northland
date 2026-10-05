@@ -125,7 +125,6 @@ describe('FrameStats', () => {
       run(stats, 1_600, { speed: 5, delivered: 3 });
       expect(stats.report().recent.droppedTicks).toBe(0);
       expect(shortfall(stats)).toBe(true);
-      expect(stats.sustainedShortfallSpeed()).toBeCloseTo(3, 0);
       expect(stats.report().recent.deliveredSpeed).toBeCloseTo(3, 0);
     });
 
@@ -134,7 +133,6 @@ describe('FrameStats', () => {
         const stats = fresh();
         run(stats, 5_000, { speed });
         expect(shortfall(stats)).toBe(false);
-        expect(stats.sustainedShortfallSpeed()).toBeNull();
       }
     });
 
@@ -182,10 +180,6 @@ describe('FrameStats', () => {
       expect(shortfall(stats)).toBe(true);
       for (let i = 0; i < 180; i++) stats.record(sample({ paused: true, steps: 0, speed: 5 }));
       expect(shortfall(stats)).toBe(true);
-      expect(stats.sustainedShortfallSpeed()).toBeCloseTo(3, 1);
-      // The player lowers the request to what was delivered while still paused: nothing to report.
-      stats.record(sample({ paused: true, steps: 0, speed: 3 }));
-      expect(stats.sustainedShortfallSpeed()).toBeNull();
     });
 
     it('clears once the loop keeps up again', () => {
@@ -194,7 +188,6 @@ describe('FrameStats', () => {
       expect(shortfall(stats)).toBe(true);
       run(stats, 1_500, { speed: 5 });
       expect(shortfall(stats)).toBe(false);
-      expect(stats.sustainedShortfallSpeed()).toBeNull();
     });
   });
 

@@ -45,6 +45,7 @@ export const KEYBINDING_ACTIONS = [
   'statistics',
   'diplomacy',
   'knowledge',
+  'network',
   'hudToggle',
   'jumpToStore',
   'actionRing',
@@ -95,8 +96,8 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   // statistics, B, E, S, D, Shift+D, V, Shift+V, P, L, H, the selection keys . , / M F X Y, C, W and the
   // digit groups. Ours: Esc's game menu (the original's options sit on F2), F1 the mission (the
   // original's help), F2 the subjects (the original's F7), F7 the knowledge (the original's technology
-  // tree on F8), F8 the HUD, Q for the original's A (Assign Work Place), so A stays attack-move, R the
-  // shown building's Upgrade.
+  // tree on F8), F8 the HUD, F9 the network panel of a relayed game, Q for the original's A (Assign
+  // Work Place), so A stays attack-move, R the shown building's Upgrade.
   pauseToggle: 'KeyP',
   speedCycle: 'KeyL',
   gameMenu: 'Escape',
@@ -109,6 +110,7 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   statistics: 'F6',
   diplomacy: 'F5',
   knowledge: 'F7',
+  network: 'F9',
   hudToggle: 'F8',
   jumpToStore: 'KeyH',
   actionRing: 'Space',

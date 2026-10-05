@@ -4,6 +4,7 @@ import { formatSimClock } from '../summary/model.js';
 import { GAME_SPEED_STATES, type GameSpeedControl, type RunningGameSpeed } from '../tool-panel/game-speed.js';
 import { menuArt } from './icons.js';
 import { createObserverPicker, type ObserverPickerDeps } from './observer-picker.js';
+import { setClass, setTitle } from './parts/dom.js';
 import { createHudSummary, type HudSummaryDeps } from './summary.js';
 
 const MENU_MEDALLION_PX = 34;
@@ -23,6 +24,9 @@ export interface HudSystemBarDeps {
 export interface HudSystemBar {
   /** Show the control as it stands; never pushes to the loop. */
   setSpeed(control: GameSpeedControl): void;
+  /** Dim the pressed segment while a relayed room runs below its requested speed; the text names the
+   *  exact speed and the member it is paced for. Null restores the plain look. */
+  setGoverned(text: string | null): void;
   /** Show the tick's figures and clock; the same model twice costs nothing. */
   update(model: HudModel): void;
   dispose(): void;
@@ -90,6 +94,10 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
       for (const [state, button] of running) {
         button.setAttribute('aria-pressed', String(!control.paused && control.running === state));
       }
+    },
+    setGoverned: (text) => {
+      setClass(speed, 'on-speed--governed', text !== null);
+      setTitle(speed, text ?? '');
     },
     update: (model) => {
       picker?.refresh();

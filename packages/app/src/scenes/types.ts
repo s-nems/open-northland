@@ -44,4 +44,7 @@ export interface SceneDefinition extends SceneWorld {
   /** Starting camera zoom for the browser view; 1 when omitted. */
   readonly initialZoom?: number;
   readonly checks: readonly SceneCheck[];
+  /** The browser view mounts the network panel over a scripted feed that cycles through its states:
+   *  the panel's design preview. The world itself stays a local one. */
+  readonly netPanelPreview?: boolean;
 }

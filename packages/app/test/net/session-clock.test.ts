@@ -1,24 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_GAME_SPEED_CONTROL } from '../../src/hud/tool-panel/game-speed.js';
 import { clockAnnouncement, speedControlFor } from '../../src/view/net/session-clock.js';
 
+/** Any tick: the announcements read the speed and the pause alone. */
+const CLOCK_TICK = 10;
 const clock = (speed: number, paused: boolean, by: string | null) =>
-  ({ kind: 'clock', tick: 10, speed, paused, by, governed: null }) as const;
+  ({ kind: 'clock', tick: CLOCK_TICK, speed, paused, by, governed: null }) as const;
 
 describe('speedControlFor', () => {
-  it('maps the button multipliers and keeps the running state for any other', () => {
-    expect(speedControlFor(clock(2, false, null), DEFAULT_GAME_SPEED_CONTROL)).toEqual({
-      running: 'fast',
-      paused: false,
-    });
-    expect(speedControlFor(clock(3, true, null), DEFAULT_GAME_SPEED_CONTROL)).toEqual({
-      running: 'faster',
-      paused: true,
-    });
-    expect(speedControlFor(clock(0.5, false, null), { running: 'fast', paused: true })).toEqual({
-      running: 'fast',
-      paused: false,
-    });
+  const at = (runningSpeed: number, paused = false) => speedControlFor({ runningSpeed, paused });
+
+  it('presses the highest segment not above the speed the room runs at', () => {
+    expect(at(1)).toEqual({ running: 'normal', paused: false });
+    expect(at(2)).toEqual({ running: 'fast', paused: false });
+    expect(at(3, true)).toEqual({ running: 'faster', paused: true });
+    // A room governed below its ×3 request never shows ×3.
+    expect(at(2.5)).toEqual({ running: 'fast', paused: false });
+    expect(at(2.99)).toEqual({ running: 'fast', paused: false });
+    expect(at(1.2)).toEqual({ running: 'normal', paused: false });
+  });
+
+  it('presses ×1 below it, and the top segment above the top preset', () => {
+    expect(at(0.25)).toEqual({ running: 'normal', paused: false });
+    expect(at(5)).toEqual({ running: 'faster', paused: false });
   });
 });
 
