@@ -1,24 +1,10 @@
-import type { ParticleGfx } from '@open-northland/data';
 import type { MunitionBinding, ParticleRef } from '@open-northland/render';
-import { servedAtlasStem } from './ir/joins.js';
 import type { ContentIr } from './ir/rows.js';
+import { particleRef } from './particle-gfx.js';
 
 /** The particle the engine raises where a `createsmoke` weapon's shot lands: it names this record
  *  itself rather than through any table (original behavior). */
 export const IMPACT_SMOKE_PARTICLE = 'Smoke.org';
-
-function particleRef(record: ParticleGfx): ParticleRef | undefined {
-  const layer = servedAtlasStem(record);
-  if (layer === undefined || record.frames.length === 0) return undefined;
-  const valencies: number[][] = [];
-  for (const { valency, bobIds } of record.frames) valencies[valency] = bobIds;
-  return {
-    layer,
-    valencies: Array.from(valencies, (frames) => frames ?? []),
-    loop: record.loop,
-    directional: record.valencyIsDirection,
-  };
-}
 
 /** The shot sprite of every munition, the puff it leaves behind (its `spawnParticle`, when that is not
  *  the shot itself), and the landing smoke, before the atlas load decides which ones bind. */

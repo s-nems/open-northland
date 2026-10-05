@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { hasFieldFarmAtomics } from '@open-northland/data';
+import { atlasFromManifest } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { PLACED_GARRISON_MASTS } from '../../src/catalog/building-tweaks.js';
 import { NAV_LANDSCAPE_TYPES } from '../../src/catalog/terrain.js';
@@ -10,6 +11,7 @@ import {
   VIKING_TRIBE,
 } from '../../src/content/building-gfx/index.js';
 import { resolveBuildingSignRefs } from '../../src/content/building-signs.js';
+import { resolveFamilyEffects } from '../../src/content/family-gfx.js';
 import { playsOnceThenRests } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG } from '../../src/content/settler-gfx/index.js';
@@ -49,6 +51,22 @@ const KNOWN_UNCALIBRATED_GOOD_IDS: readonly string[] = ['mushroom'];
 const MINED_GOOD_IDS: ReadonlySet<string> = new Set(['stone', 'mud', 'iron', 'gold']);
 
 describe.runIf(hasRealIr())('real IR invariants', () => {
+  it('binds both family effects to complete decoded sequences and their own palettes', () => {
+    const refs = resolveFamilyEffects(rawIrUnderTest() as ContentIr);
+    expect(refs.hearts?.loop).toBe(true);
+    expect(refs.stork?.loop).toBe(false);
+    for (const ref of [refs.hearts, refs.stork]) {
+      expect(ref).toBeDefined();
+      if (ref === undefined) continue;
+      const atlas = atlasFromManifest(
+        JSON.parse(readFileSync(resolve(contentDir(), 'bobs', `${ref.layer}.atlas.json`), 'utf8')),
+      );
+      const frames = ref.valencies[0] ?? [];
+      expect(frames.length).toBeGreaterThan(1);
+      for (const bob of frames) expect(atlas.frames.has(bob), `${ref.layer}:${bob}`).toBe(true);
+    }
+  });
+
   it('carries the core goods by stable string id', async () => {
     const { real } = await loadContentUnderTest();
     const ids = new Set(real.goods.map((g) => g.id));

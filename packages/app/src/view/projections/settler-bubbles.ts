@@ -1,4 +1,5 @@
 import type { SettlerBubble, SettlerBubbleKind } from '@open-northland/render';
+import { isIndoorSettler } from '@open-northland/render/data';
 import { indexesOf, listedWhere, type NeedLevels, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
   childOrderOf,
@@ -20,6 +21,7 @@ import {
 export function computeSettlerBubbles(snapshot: WorldSnapshot): SettlerBubble[] {
   const out: SettlerBubble[] = [];
   for (const e of indexesOf(snapshot).get(BUBBLE_CARRIERS)) {
+    if (isIndoorSettler(snapshot, e.components)) continue;
     const kind =
       familyBubbleOf(e) ??
       (ownedByComputerSeat(snapshot, e) ? undefined : needBubbleOf(settlerNeedsOf(e, snapshot.tick)));

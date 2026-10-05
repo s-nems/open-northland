@@ -8,7 +8,6 @@ import {
   SIGN_BAND_BOTTOM,
   SIGN_BASE_BELOW,
   SIGN_HALF_WIDTH,
-  SIGN_HEIGHT,
   SIGN_STEP,
   signKindOf,
 } from './sign-gfx.js';
@@ -39,19 +38,10 @@ const HOUSEHOLD_COLOR: Readonly<Record<HouseholdKind, number>> = {
   couple: 0xff7a9c, // pink
   family: 0xffd24d, // gold
 };
-/** The make-love hearts floating above a stack. */
-const HEART_COLOR = 0xff4d78;
-const HEART_RADIUS = 3.5;
-const HEART_GAP = 12;
-const HEART_LIFT = 26; // px above the stack's top
-const HEART_DRIFT = 4; // px of horizontal drift per heart, so the column reads as rising
-const HEART_COUNT = 3;
-
 /** A door badge stack from the decoded sign art: one player-coloured sign sprite per row, chained
- *  upward from the anchor, with the make-love hearts floating above. */
+ *  upward from the anchor. */
 export function makeSignStack(
   rows: readonly DoorBadgeRow[],
-  hearts: boolean,
   textures: TextureCache,
   sheet: BuildingSignSheet,
 ): Container {
@@ -65,12 +55,6 @@ export function makeSignStack(
     s.position.set(frame.offsetX, -(drawn * SIGN_STEP) + frame.offsetY);
     c.addChild(s);
     drawn++;
-  }
-  if (hearts) {
-    const top = -((drawn - 1) * SIGN_STEP) - SIGN_HEIGHT - HEART_LIFT;
-    for (let i = 0; i < HEART_COUNT; i++) {
-      c.addChild(makeHeart((i - 1) * HEART_DRIFT, top - i * HEART_GAP));
-    }
   }
   return c;
 }
@@ -90,7 +74,7 @@ function drawPost(g: Graphics): void {
 
 /** The placeholder stack when no art is decoded: the same rows as the sign chain, a coloured bar per
  *  worker and a rounded one per resident family, so the two read apart. */
-export function makePlaceholderStack(rows: readonly DoorBadgeRow[], hearts: boolean): Container {
+export function makePlaceholderStack(rows: readonly DoorBadgeRow[]): Container {
   const c = new Container();
   let drawn = 0;
   for (const row of rows) {
@@ -109,21 +93,5 @@ export function makePlaceholderStack(rows: readonly DoorBadgeRow[], hearts: bool
     c.addChild(g);
     drawn++;
   }
-  if (hearts) {
-    const top = markTop(drawn - 1) - HEART_LIFT;
-    for (let i = 0; i < HEART_COUNT; i++) {
-      c.addChild(makeHeart((i - 1) * HEART_DRIFT, top - i * HEART_GAP));
-    }
-  }
   return c;
-}
-
-function makeHeart(x: number, y: number): Graphics {
-  const g = new Graphics();
-  const r = HEART_RADIUS;
-  g.circle(x - r * 0.6, y - r * 0.4, r * 0.7)
-    .circle(x + r * 0.6, y - r * 0.4, r * 0.7)
-    .poly([x - r * 1.25, y - r * 0.1, x + r * 1.25, y - r * 0.1, x, y + r * 1.4])
-    .fill({ color: HEART_COLOR });
-  return g;
 }

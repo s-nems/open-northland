@@ -7,7 +7,7 @@ import type {
   SignpostBinding,
   StockpileBinding,
 } from './layered-bindings.js';
-import type { MunitionBinding } from './munition.js';
+import type { FamilyEffectsBinding, MunitionBinding } from './munition.js';
 import type { SettlerStateBinding } from './settler-bindings.js';
 import type { VehicleBinding } from './vehicle-bindings.js';
 
@@ -48,6 +48,7 @@ export type SpriteBindings = Readonly<{
   vehicle?: VehicleBinding;
   /** The shots in flight, their trails and the smoke a landing raises. */
   munition?: MunitionBinding;
+  familyEffects?: FamilyEffectsBinding;
 }>;
 
 /** The decor kinds with no shared kind layer, each bound under its own key. A ground drop's kind and

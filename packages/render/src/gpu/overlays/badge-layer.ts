@@ -29,7 +29,6 @@ interface BadgeStack {
   readonly advanceFlag?: ((clock: number) => void) | undefined;
   /** The drawn rows joined into a change-detection key ('' = none). */
   readonly rows: string;
-  readonly hearts: boolean;
   /** Stars flown this build (0 = no garrison) - part of the key, so a man joining or leaving the post
    *  swaps the flag. */
   readonly stars: number;
@@ -50,7 +49,7 @@ function rowsKey(badge: DoorBadge): string {
 }
 
 export class BadgeLayer {
-  /** One persistent badge-stack per building id; rebuilt when its rows, hearts, stars or colour change,
+  /** One persistent badge-stack per building id; rebuilt when its rows, stars or colour change,
    *  else repositioned. */
   private readonly stacks = new Map<number, BadgeStack>();
   /** Reused scratch of ids drawn this frame, to avoid a per-frame allocation. */
@@ -86,7 +85,7 @@ export class BadgeLayer {
   draw(badges: readonly DoorBadge[], elevation?: ElevationField, viewport?: Viewport, clock = 0): void {
     this.drawn.clear();
     for (const badge of badges) {
-      if (badge.rows.length === 0 && badge.hearts !== true && badge.garrison === undefined) continue;
+      if (badge.rows.length === 0 && badge.garrison === undefined) continue;
       const anchor = badgeAnchor(badge, elevation);
 
       let stack = this.stacks.get(badge.id);
@@ -112,7 +111,6 @@ export class BadgeLayer {
       if (
         stack === undefined ||
         stack.rows !== rows ||
-        stack.hearts !== (badge.hearts === true) ||
         stack.stars !== stars ||
         stack.behindFrom !== behindFrom ||
         stack.player !== player
@@ -158,12 +156,11 @@ export class BadgeLayer {
     behindFrom: number | undefined,
   ): BadgeStack {
     const gfx = this.gfx;
-    const hearts = badge.hearts === true;
     const node =
       gfx !== undefined && sheet !== undefined
-        ? makeSignStack(badge.rows, hearts, gfx.textures, sheet)
-        : makePlaceholderStack(badge.rows, hearts);
-    const base = { node, rows, hearts, stars, behindFrom, player };
+        ? makeSignStack(badge.rows, gfx.textures, sheet)
+        : makePlaceholderStack(badge.rows);
+    const base = { node, rows, stars, behindFrom, player };
     // Gated on the capped `stars`, not on `garrison` being present: `stars` is the whole garrison term
     // in the rebuild key, and a zero-star garrison keys the same as none, so such a flag never retires.
     if (badge.garrison === undefined || stars < 1) return base;

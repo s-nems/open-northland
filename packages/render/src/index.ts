@@ -77,6 +77,7 @@ export {
   type CraftFxLoopRef,
   DEFAULT_FACING,
   type DirectionalAnim,
+  type FamilyEffectsBinding,
   type FishBinding,
   FLAG_WAVE_TICKS_PER_FRAME,
   type FrameListAnim,

@@ -13,6 +13,7 @@ import {
   TREE_ATLAS,
   VIKING_TRIBE,
 } from '../building-gfx/index.js';
+import { loadedFamilyEffects, resolveFamilyEffects } from '../family-gfx.js';
 import { loadGoodsIconManifest } from '../goods-gfx.js';
 import {
   HOLY_FIRE_EFFECT_NAME,
@@ -152,6 +153,7 @@ export async function loadHumanSpriteSheet(
   const craftFxRefs = resolveCraftFxRefs(ir, [HOLY_FIRE_EFFECT_NAME]);
   // The shots in flight, their trails and landing smoke (`ls_smoke`, `test_arrow` under their palettes).
   const munitionRefs = resolveMunitionRefs(ir);
+  const familyEffects = resolveFamilyEffects(ir);
   const palisadeRefs = resolvePalisadeGfxRefs(ir);
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
@@ -160,6 +162,9 @@ export async function loadHumanSpriteSheet(
   for (const s of craftFxAtlasStems(craftFxRefs)) stems.add(s);
   for (const s of munitionAtlasStems(munitionRefs)) stems.add(s);
   for (const s of palisadeAtlasStems(palisadeRefs)) stems.add(s);
+  for (const ref of Object.values(familyEffects)) {
+    if (ref !== undefined) stems.add(ref.layer);
+  }
   stems.add(FISH_ATLAS);
   // The signpost families ride the same contract: every per-player bake plus the single-colour fallback.
   stems.add(GUIDEPOST_ATLAS_BAKED);
@@ -230,6 +235,7 @@ export async function loadHumanSpriteSheet(
           : {}),
       }),
       ...signpostBinding,
+      familyEffects: loadedFamilyEffects(familyEffects, gatheringLoaded),
       ...(craftFxBinding !== undefined ? { craftfx: craftFxBinding } : {}),
       ...(palisadeBinding !== undefined ? { palisade: palisadeBinding } : {}),
       ...(vehicles.binding !== undefined ? { vehicle: vehicles.binding } : {}),

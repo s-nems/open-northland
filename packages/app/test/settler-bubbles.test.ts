@@ -6,8 +6,8 @@ import { type Ent, snapshotOf } from './support/snapshot.js';
 /**
  * computeSettlerBubbles - the pure snapshot→bubble projection the render layer floats over a settler's
  * head. It reads the standing family state the sim drives (a woman's `ChildOrder` shows the `child`
- * bubble until the birth; a `Wedding` in progress shows the `partner` bubble on both partners until they
- * marry) and the pressing needs (hunger/fatigue at the sim's satisfy thresholds show the `hungry`/`sleepy`
+ * bubble while outdoors until the birth; a `Wedding` in progress shows the `partner` bubble until
+ * they marry) and the pressing needs (hunger/fatigue at the sim's satisfy thresholds show the `hungry`/`sleepy`
  * bubble). The bubble anchors on the settler's own `Position`.
  */
 
@@ -29,6 +29,14 @@ describe('computeSettlerBubbles', () => {
     expect(computeSettlerBubbles(snap)).toEqual([
       { id: 1, x: fx.fromInt(4), y: fx.fromInt(7), kind: 'child' },
     ]);
+  });
+
+  it('hides the child-order bubble inside the home and restores it if she leaves before birth', () => {
+    const outside = settlerAt(1, WOMAN, 4, 7, { ChildOrder: { child: 'male' } });
+    const inside = { ...outside, components: { ...outside.components, Resting: { at: 9 } } };
+    expect(computeSettlerBubbles(snapshotOf([outside]))).toHaveLength(1);
+    expect(computeSettlerBubbles(snapshotOf([inside]))).toEqual([]);
+    expect(computeSettlerBubbles(snapshotOf([outside]))).toHaveLength(1);
   });
 
   it('floats a partner bubble over both settlers walking through a wedding', () => {

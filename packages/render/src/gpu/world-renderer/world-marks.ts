@@ -3,6 +3,7 @@ import type { Container } from 'pixi.js';
 import type { Viewport } from '../../data/projection/index.js';
 import type { ElevationField, WaterField } from '../../data/terrain/index.js';
 import type { WindSway } from '../../data/weather/climate.js';
+import { FamilyEffectsLayer } from '../overlays/family-effects-layer.js';
 import {
   BadgeLayer,
   type BuildingSignGfx,
@@ -92,6 +93,7 @@ export class WorldMarks {
   /** Sign chains and garrison flags. Also inside the depth-sorted sprite layer, so a settler walking in
    *  front of a chain occludes it. */
   private readonly badges: BadgeLayer;
+  private readonly familyEffects: FamilyEffectsLayer;
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
   private readonly hearts = new LifeHeartLayer();
@@ -106,6 +108,7 @@ export class WorldMarks {
   ) {
     this.collapses = new CollapseLayer(spriteLayer, textures, sheet);
     this.shots = new ShotLayer(spriteLayer, textures, sheet);
+    this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);
     this.badges = new BadgeLayer(spriteLayer, playerColourOf);
     this.constructionSigns = new ConstructionSignLayer(playerColourOf);
     this.slots = {
@@ -128,6 +131,7 @@ export class WorldMarks {
     this.effects.ingest(events, tick);
     this.collapses.ingest(events, tick);
     this.shots.ingest(events, tick);
+    this.familyEffects.ingest(events, tick);
   }
 
   setBonesGfx(gfx: CombatBonesGfx | null): void {
@@ -175,6 +179,7 @@ export class WorldMarks {
     this.shots.draw({ snapshot: frame.snapshot, drawn, elevation, viewport, renderTime });
     this.damageSmoke.draw(frame.damaged, drawn, renderTime, frame.wind);
     this.badges.draw(frame.doorBadges, elevation, viewport, renderTime);
+    this.familyEffects.draw(frame);
     this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
     this.bubbles.draw({ bubbles: frame.settlerBubbles, drawn, elevation }, viewport);
     this.hearts.draw({ hearts: frame.lifeHearts, drawn, elevation }, viewport);
@@ -189,6 +194,7 @@ export class WorldMarks {
     this.shots.destroy();
     this.damageSmoke.destroy();
     this.badges.destroy();
+    this.familyEffects.destroy();
     this.constructionSigns.destroy();
     this.bubbles.destroy();
     this.hearts.destroy();

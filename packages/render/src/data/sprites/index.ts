@@ -42,7 +42,13 @@ export type {
   SignpostBinding,
   StockpileBinding,
 } from './layered-bindings.js';
-export { headingValency, type MunitionBinding, type ParticleRef, particleFrame } from './munition.js';
+export {
+  type FamilyEffectsBinding,
+  headingValency,
+  type MunitionBinding,
+  type ParticleRef,
+  particleFrame,
+} from './munition.js';
 export { resolveSpriteBobId } from './resolve.js';
 export {
   DEFAULT_FACING,

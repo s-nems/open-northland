@@ -8,6 +8,12 @@ export interface ParticleRef {
   readonly directional: boolean;
 }
 
+/** Household particles, independent of the building's sign and its owner colour. */
+export interface FamilyEffectsBinding {
+  readonly hearts?: ParticleRef | undefined;
+  readonly stork?: ParticleRef | undefined;
+}
+
 /** The sprites a shot draws: itself in flight per `munitionType`, what it leaves behind every flight tick,
  *  and the smoke a landing raises. */
 export interface MunitionBinding {
