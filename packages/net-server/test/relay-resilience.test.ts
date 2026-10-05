@@ -422,6 +422,24 @@ describe('pacing the clock for a slow member', () => {
     expect(s.a.last('clock')?.governed).toEqual(governed);
   });
 
+  it('keeps a slow member slow when its return asks for a snapshot the relay refuses', () => {
+    const s = startedRoom();
+    const behind = framesIn(LAGGING_MS, SETTINGS.speed);
+    trail(s, s.a, s.b, behind, SLOW_AFTER_MS, SLOW_LOAD);
+    const governed = { nick: 'Bartek', speed: SLOW_GOVERNED_SPEED, cause: 'load' };
+    expect(s.a.last('clock')?.governed).toEqual(governed);
+
+    s.relay.disconnect(s.b.handle);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    expect(back.last('start')?.snapshotTick).toBeNull();
+    back.send({ kind: 'loaded', tick: null });
+    expect(back.last('rejected')?.reason).toEqual({ code: 'noSnapshot' });
+    back.send({ kind: 'loaded', tick: ackedTick.get(s.b) ?? 0, world: 0 });
+    ackedTick.set(back, ackedTick.get(s.b) ?? 0);
+    trail(s, s.a, back, behind, TICK_MS * 2, SLOW_LOAD);
+    expect(s.a.last('clock')?.governed).toEqual(governed);
+  });
+
   it('pauses a lagging member’s grace while the clock holds for it', () => {
     const s = startedRoom();
     const behind = framesIn(RETURN_BEHIND_MS, SETTINGS.speed);

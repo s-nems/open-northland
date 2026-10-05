@@ -4,6 +4,8 @@ import { createMember, type Member } from '../src/relay/member.js';
 import { KICK_COUNTDOWN_MS, Waiting } from '../src/relay/waiting.js';
 
 const TARGET_SEAT = 0;
+const STILL_WAITED = () => true;
+const ANSWERED = () => false;
 
 /** `count` seated members, seat i for the i-th, with the first waited for and its vote open. */
 function room(count: number) {
@@ -19,9 +21,9 @@ function room(count: number) {
   waiting.update([{ token: target.token, nick: target.nick, reason: 'gone' }], 0);
   target.connected = false;
   const votes = new KickVotes();
-  const cast = (voter: Member | undefined, yes = true) => {
+  const cast = (voter: Member | undefined, yes = true, waitedNow = STILL_WAITED) => {
     if (voter === undefined) throw new Error('no voter');
-    return votes.cast(members, waiting, voter, TARGET_SEAT, yes, KICK_COUNTDOWN_MS);
+    return votes.cast(members, waiting, voter, TARGET_SEAT, yes, KICK_COUNTDOWN_MS, waitedNow);
   };
   return { peers, members, waiting, votes, cast, target };
 }
@@ -76,23 +78,46 @@ describe('kick recount', () => {
     if (a === undefined || b === undefined || c === undefined || d === undefined) throw new Error('peers');
     cast(a);
     cast(b);
-    expect(votes.recount(members)).toEqual({ moved: [], passed: null });
+    expect(votes.recount(members, STILL_WAITED)).toEqual({ moved: [], passed: null });
 
     a.connected = false;
-    expect(votes.recount(members)).toEqual({
+    expect(votes.recount(members, STILL_WAITED)).toEqual({
       moved: [{ kind: 'kickVote', player: TARGET_SEAT, nick: target.nick, yes: [b.nick], needed: 2 }],
       passed: null,
     });
     a.connected = true;
-    expect(votes.recount(members).moved).toEqual([
+    expect(votes.recount(members, STILL_WAITED).moved).toEqual([
       { kind: 'kickVote', player: TARGET_SEAT, nick: target.nick, yes: [a.nick, b.nick], needed: 3 },
     ]);
 
     // A non-voter dropping leaves three connected others: two yeses are a majority now.
     d.connected = false;
-    expect(votes.recount(members)).toMatchObject({
+    expect(votes.recount(members, STILL_WAITED)).toMatchObject({
       moved: [{ yes: [a.nick, b.nick], needed: 2 }],
       passed: { target, player: TARGET_SEAT },
+    });
+  });
+
+  it('passes no vote against a target that answered since the waited set was refreshed', () => {
+    const { peers, cast, target } = room(3);
+    const [, a, b] = peers;
+    cast(a);
+    expect(cast(b, true, ANSWERED)).toEqual({ refused: { code: 'notWaitedFor', nick: target.nick } });
+    expect(cast(b)).toMatchObject({ kicked: target });
+
+    const again = room(5);
+    const [, c, d, e] = again.peers;
+    again.cast(c);
+    again.cast(d);
+    if (e === undefined) throw new Error('peers');
+    e.connected = false;
+    expect(again.votes.recount(again.members, ANSWERED)).toMatchObject({
+      moved: [{ needed: 2 }],
+      passed: null,
+    });
+    expect(again.votes.recount(again.members, STILL_WAITED).passed).toEqual({
+      target: again.target,
+      player: TARGET_SEAT,
     });
   });
 
@@ -100,6 +125,6 @@ describe('kick recount', () => {
     const { members, peers, votes, cast } = room(3);
     cast(peers[1]);
     votes.retain(() => false);
-    expect(votes.recount(members)).toEqual({ moved: [], passed: null });
+    expect(votes.recount(members, STILL_WAITED)).toEqual({ moved: [], passed: null });
   });
 });

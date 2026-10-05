@@ -1,8 +1,8 @@
 import { TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
-import { KICK_COUNTDOWN_MS } from '../src/index.js';
+import { KICK_COUNTDOWN_MS, SILENT_AFTER_MS } from '../src/index.js';
 import { MAX_HISTORY_AGE_MS } from '../src/relay/catch-up.js';
-import { type MessageStage, type Peer, SETTINGS, stage } from './support/message-stage.js';
+import { ackThrough, type MessageStage, type Peer, SETTINGS, stage } from './support/message-stage.js';
 
 /** Kick votes in a running room of four or five, driven message by message. */
 
@@ -203,5 +203,119 @@ describe('kick votes counted by connected voters', () => {
     s.kick(b, 3);
     s.kick(c, 3);
     expect(a.last('kicked')).toMatchObject({ player: 3, nick: 'Dorota' });
+  });
+});
+
+describe('kick votes as members come and go', () => {
+  it('passes when a member who did not vote leaves the room and the majority shrinks', () => {
+    const s = roomOf(5);
+    const [a, b, c, d, e] = [s.member(0), s.member(1), s.member(2), s.member(3), s.member(4)];
+    s.relay.disconnect(e.handle);
+    tick(s, [a, b, c, d], KICK_COUNTDOWN_MS + TICK_MS);
+    s.kick(a, 4);
+    s.kick(b, 4);
+    expect(c.last('kickVote')).toMatchObject({ yes: ['Ania', 'Bartek'], needed: 3 });
+    d.send({ kind: 'leaveRoom' });
+    expect(c.of('kicked')).toMatchObject([
+      { player: 3, nick: 'Dorota', cause: 'left' },
+      { player: 4, nick: 'Edek', cause: 'vote' },
+    ]);
+  });
+
+  it('drops the yes of a voter that leaves and announces the tally with the smaller majority', () => {
+    const s = roomOf(5);
+    const [a, b, c, d, e] = [s.member(0), s.member(1), s.member(2), s.member(3), s.member(4)];
+    s.relay.disconnect(e.handle);
+    tick(s, [a, b, c, d], KICK_COUNTDOWN_MS + TICK_MS);
+    s.kick(a, 4);
+    expect(b.last('kickVote')).toMatchObject({ yes: ['Ania'], needed: 3 });
+    a.send({ kind: 'leaveRoom' });
+    expect(b.last('kickVote')).toEqual({ kind: 'kickVote', player: 4, nick: 'Edek', yes: [], needed: 2 });
+    s.kick(b, 4);
+    expect(c.of('kicked')).toEqual([expect.objectContaining({ nick: 'Ania', cause: 'left' })]);
+    s.kick(c, 4);
+    expect(d.last('kicked')).toMatchObject({ player: 4, nick: 'Edek', cause: 'vote' });
+  });
+
+  it('keeps the countdown and the yeses against a target that returns and drops again before loading', () => {
+    const s = roomOf(4);
+    const [a, b, c, d] = [s.member(0), s.member(1), s.member(2), s.member(3)];
+    s.relay.disconnect(d.handle);
+    tick(s, [a, b, c], KICK_COUNTDOWN_MS + TICK_MS);
+    s.kick(a, 3);
+    const back = s.introduce(tokenOf(3), 'Dorota');
+    tick(s, [a, b, c], TICK_MS);
+    expect(a.last('waiting')?.for).toEqual([{ nick: 'Dorota', reason: 'loading', voteAfterMs: 0 }]);
+    s.relay.disconnect(back.handle);
+    tick(s, [a, b, c], TICK_MS);
+    expect(a.last('waiting')?.for).toEqual([{ nick: 'Dorota', reason: 'gone', voteAfterMs: 0 }]);
+    s.kick(b, 3);
+    expect(c.last('kicked')).toMatchObject({ player: 3, nick: 'Dorota', cause: 'vote' });
+  });
+
+  it('kicks no silent target that answered within the poll, on a yes or on a recount', () => {
+    const s = roomOf(5);
+    const [a, b, c, d, e] = [s.member(0), s.member(1), s.member(2), s.member(3), s.member(4)];
+    tick(s, [a, b, d, e], SILENT_AFTER_MS + KICK_COUNTDOWN_MS + TICK_MS * 2);
+    expect(a.last('waiting')?.for).toEqual([{ nick: 'Cezary', reason: 'silent', voteAfterMs: 0 }]);
+    s.kick(a, 2);
+    s.kick(b, 2);
+    const ping = c.last('ping');
+    if (ping === undefined) throw new Error('no ping');
+    c.send({ kind: 'pong', t: ping.t });
+    s.kick(d, 2);
+    expect(d.last('rejected')?.reason).toEqual({ code: 'notWaitedFor', nick: 'Cezary' });
+    s.relay.disconnect(e.handle);
+    expect(a.last('kickVote')).toMatchObject({ nick: 'Cezary', yes: ['Ania', 'Bartek'], needed: 2 });
+    expect(a.of('kicked')).toEqual([]);
+    tick(s, [a, b, c, d], TICK_MS);
+    expect(waitedNicks(a)).toEqual(['Edek']);
+  });
+
+  it('shows a member whose world loads again every open vote, after its waiting', () => {
+    const s = roomOf(4);
+    const [a, b, c, d] = [s.member(0), s.member(1), s.member(2), s.member(3)];
+    s.relay.disconnect(d.handle);
+    tick(s, [a, b, c], KICK_COUNTDOWN_MS + TICK_MS);
+    s.kick(a, 3);
+    const stood = lastTick(c);
+    s.relay.disconnect(c.handle);
+    const back = s.introduce(tokenOf(2), 'Cezary');
+    expect(back.of('kickVote')).toEqual([]);
+    back.send({ kind: 'loaded', tick: stood, world: 0 });
+    const kinds = back.sent.map((message) => message.kind);
+    expect(kinds.slice(kinds.lastIndexOf('waiting'))).toEqual(['waiting', 'kickVote']);
+    expect(back.last('kickVote')).toEqual({
+      kind: 'kickVote',
+      player: 3,
+      nick: 'Dorota',
+      yes: ['Ania'],
+      needed: 2,
+    });
+    s.kick(back, 3);
+    expect(a.last('kicked')).toMatchObject({ player: 3, nick: 'Dorota', cause: 'vote' });
+  });
+
+  it('neither recounts nor takes a vote once the match has ended', () => {
+    const s = roomOf(5);
+    const [a, b, c, d, e] = [s.member(0), s.member(1), s.member(2), s.member(3), s.member(4)];
+    s.relay.disconnect(e.handle);
+    tick(s, [a, b, c, d], KICK_COUNTDOWN_MS + TICK_MS);
+    s.kick(a, 4);
+    s.kick(b, 4);
+    const last = lastTick(a);
+    for (const peer of [a, b, c, d]) {
+      ackThrough(peer, 1, last);
+      peer.send({ kind: 'finish', tick: last, world: 0, hash: '12345678' });
+    }
+    expect(a.last('ended')).toMatchObject({ tick: last });
+    s.relay.disconnect(d.handle);
+    s.kick(c, 4);
+    expect(c.last('rejected')?.reason).toEqual({ code: 'matchEnded' });
+    expect(a.of('kicked')).toEqual([]);
+    const back = s.introduce(tokenOf(3), 'Dorota');
+    back.send({ kind: 'loaded', tick: last, world: 0 });
+    expect(back.last('ended')).toMatchObject({ tick: last });
+    expect(back.of('kickVote')).toEqual([]);
   });
 });

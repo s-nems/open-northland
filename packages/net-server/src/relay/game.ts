@@ -132,7 +132,14 @@ export class Game {
     this.startClockWhenLoaded(now);
     this.settle(now);
     if (this.endedTick === null && this.clock.running) this.updateWaiting(now);
-    this.deliver(member, this.end.message ?? this.waiting.message(now));
+    const ended = this.end.message;
+    if (ended !== null) {
+      this.deliver(member, ended);
+      return null;
+    }
+    this.deliver(member, this.waiting.message(now));
+    // A returning or reloaded client rebuilt its view with no tallies, and tallies are sent as they move.
+    for (const tally of this.kickVotes.openTallies()) this.deliver(member, tally);
     return null;
   }
 
@@ -177,16 +184,18 @@ export class Game {
 
   kick(voter: Member, player: number, yes: boolean, now: number): KickOutcome {
     if (this.endedTick !== null) return { refused: { code: 'matchEnded' } };
-    const outcome = this.kickVotes.cast(this.members, this.waiting, voter, player, yes, now);
+    const outcome = this.kickVotes.cast(this.members, this.waiting, voter, player, yes, now, (target) =>
+      this.waitedNow(target, now),
+    );
     if ('tally' in outcome) this.broadcast(outcome.tally);
     return outcome;
   }
 
   /** Count the kick votes again after a member dropped, returned or left: broadcast each tally that
    *  moved, and return a vote that now passes for the room to carry out. */
-  recountKickVotes(): PassedKick | null {
+  recountKickVotes(now: number): PassedKick | null {
     if (this.endedTick !== null) return null;
-    const { moved, passed } = this.kickVotes.recount(this.members);
+    const { moved, passed } = this.kickVotes.recount(this.members, (target) => this.waitedNow(target, now));
     for (const tally of moved) this.broadcast(tally);
     return passed;
   }
@@ -259,15 +268,14 @@ export class Game {
     return null;
   }
 
-  /** A world rebuilt from a snapshot starts with no lag on record. */
+  /** A world rebuilt from a snapshot starts with no lag on record; a refused request keeps it. */
   private serveSnapshot(member: Member, now: number): Refusal {
     const snapshot = this.resync.snapshot;
+    if (snapshot === null && member.outOfSync === null) return { code: 'noSnapshot' };
     this.pacing.forget(member.token);
     if (snapshot !== null) {
       this.ledger.forget(member.token);
       this.resync.serve(member, snapshot, now);
-    } else if (member.outOfSync === null) {
-      return { code: 'noSnapshot' };
     } else {
       this.resync.queue(member, now);
     }
@@ -339,6 +347,10 @@ export class Game {
 
   private slowMembers(): Member[] {
     return [...this.members.values()].filter((member) => this.pacing.isSlow(member.token));
+  }
+
+  private waitedNow(member: Member, now: number): boolean {
+    return this.waitReason(member, now) !== null;
   }
 
   private waitReason(member: Member, now: number): WaitReason | null {

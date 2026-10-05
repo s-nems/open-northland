@@ -1,11 +1,9 @@
 import type { GameSession } from '@open-northland/lockstep';
 import {
-  type ChatLine,
   type ClientMessage,
   type DepartureCause,
   type LobbyCompatibility,
   type LobbySettings,
-  MAX_CHAT_HISTORY_LINES,
   MAX_MEMBERS,
   MAX_NICK_LENGTH,
   type PlayerWireEnvelope,
@@ -17,6 +15,7 @@ import {
   type ServerMessage,
 } from '@open-northland/net-protocol';
 import type { BlobUpload } from './blob-relay.js';
+import { ChatLog } from './chat-log.js';
 import { Game } from './game.js';
 import { Lobby } from './lobby.js';
 import { LobbyTransfers } from './lobby-transfers.js';
@@ -62,8 +61,7 @@ export class Room {
   private nextLoadViewAt = 0;
   /** Each member's `behindTicks` as the last room view carried it. */
   private readonly announcedBehind = new Map<string, number>();
-  /** The room's chat, oldest first, at most `MAX_CHAT_HISTORY_LINES`; it ends with the room. */
-  private readonly chatLog: ChatLine[] = [];
+  private readonly chatLog = new ChatLog();
 
   constructor(
     id: string,
@@ -132,7 +130,7 @@ export class Room {
   /** Show a member that just entered the room the room and its chat so far. */
   welcome(member: Member): void {
     this.broadcastView();
-    this.deliver(member, { kind: 'chatHistory', lines: [...this.chatLog] });
+    this.deliver(member, this.chatLog.history());
   }
 
   join(member: Member): Refusal {
@@ -348,10 +346,7 @@ export class Room {
   }
 
   chat(member: Member, text: string): void {
-    const line: ChatLine = { from: member.nick, text, tick: this.game?.chatTick ?? null };
-    this.chatLog.push(line);
-    if (this.chatLog.length > MAX_CHAT_HISTORY_LINES) this.chatLog.shift();
-    this.broadcast({ kind: 'chat', ...line });
+    this.broadcast(this.chatLog.add({ from: member.nick, text, tick: this.game?.chatTick ?? null }));
   }
 
   advance(elapsedMs: number, now: number): Refusal {
@@ -416,9 +411,9 @@ export class Room {
   /** Kick every member whose vote a change of the connected members made pass; each kick shrinks
    *  the connected set again. */
   private carryOutKickVotes(now: number): void {
-    for (let passed = this.game?.recountKickVotes() ?? null; passed !== null; ) {
+    for (let passed = this.game?.recountKickVotes(now) ?? null; passed !== null; ) {
       this.kickOut(passed.target, passed.player, now, 'vote');
-      passed = this.game?.recountKickVotes() ?? null;
+      passed = this.game?.recountKickVotes(now) ?? null;
     }
   }
 

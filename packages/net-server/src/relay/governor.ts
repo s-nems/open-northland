@@ -36,7 +36,8 @@ export function framesIn(ms: number, speed: number): number {
  * headroom share of the requested speed before its first report), and the catch-up share of the
  * requested speed. `cause` names the binding one, `lag` on a tie. The speed is rounded to whole steps
  * and kept within `MIN_GOVERNED_SPEED` and the requested speed. The lowest speed wins; a tie goes to
- * the member furthest behind. A rise from `current` under `GOVERNED_RISE_STEPS` steps is ignored.
+ * the member furthest behind. A rise from `current` under `GOVERNED_RISE_STEPS` steps is ignored, and
+ * the same member at the same speed keeps `current`'s cause.
  */
 export function governedSpeed(
   slow: Iterable<Member>,
@@ -52,8 +53,13 @@ export function governedSpeed(
       limiter = { nick: member.nick, speed, cause, lag };
   }
   if (limiter === null) return null;
-  const speed = current === null ? limiter.speed : withoutSmallRise(limiter.speed, current.speed);
-  return { nick: limiter.nick, speed: Math.min(speed, requestedSpeed), cause: limiter.cause };
+  const speed = Math.min(
+    current === null ? limiter.speed : withoutSmallRise(limiter.speed, current.speed),
+    requestedSpeed,
+  );
+  // Both bounds can round to one speed: a load report jittering around their crossover flips no cause.
+  const cause = current?.nick === limiter.nick && current.speed === speed ? current.cause : limiter.cause;
+  return { nick: limiter.nick, speed, cause };
 }
 
 function memberBound(

@@ -89,7 +89,7 @@ ticks its acknowledgements trail the clock: 0 before the clock runs, after the m
 the relay does not follow its world (disconnected, loading, or out of sync). Once the room has
 started, loading included, a moved load, progress, round trip, delay or `behindTicks` alone sends a
 view at most once per `LOAD_VIEW_INTERVAL_MS` (1 s) per room. Before `start` no figure alone sends a
-view: a link measurement (`linkMeasured`) is stored and shown with the next view, and progress is
+view: a link measurement is stored and shown with the next view, and progress is
 refused with `gameNotStarted`. Any other change carries the current figures with it.
 
 - `claimSeat { player }` sits down in a seat nobody holds, which makes it `human` whatever it was;
@@ -238,9 +238,12 @@ domains that differ and the reference's nick, and is out of sync from then on: i
 are ignored and its snapshots refused until it has rebuilt from a snapshot, and the notice is sent
 again if it reconnects meanwhile. The reference, if connected, gets one `disputed { tick, domains,
 diverged }` naming the nicks newly out of sync at that tick and the union of their differing domains,
-so both sides can keep that tick's digest inputs for a diagnostics bundle. A client acknowledging a tick the room has already settled is
-judged against that tick's reference, so a returning client is checked from its first tick back. A
-disconnected client's reports do not count; it says where it stands again on its return.
+so both sides can keep that tick's digest inputs for a diagnostics bundle. A client keeps the inputs
+of its last `DISPUTE_WINDOW_TICKS` (960) acknowledged ticks, and at most `DISPUTE_RING_BYTES` (24 MiB)
+of them, dropping the oldest ticks first; a verdict for a tick it no longer holds records no inputs.
+A client acknowledging a tick the room has already settled is judged against that tick's reference,
+so a returning client is checked from its first tick back. A disconnected client's reports do not
+count; it says where it stands again on its return.
 
 ## Waiting
 
@@ -278,9 +281,11 @@ until it trails by no more than `GOVERN_RELEASE_MS` (0.5 s) of frames. A member 
 `SLOW_AT_ONCE_MS` (`LAG_BEHIND_MS + SLOW_GRACE_MS`, 5 s) of frames is slow at once, without the grace.
 A member the clock holds for is not judged while held, since the held clock adds no lag. It keeps its
 verdict through the hold, and its grace pauses: wall time under a hold for it does not count toward
-`SLOW_GRACE_MS`. A slow member that goes silent is slow again on its return; one that had lagged 1 s
-has 3 s of grace left on its return, however long it was away. Only leaving the room, or a world
-rebuilt from a snapshot after a resync or a return without one, clears the verdict and the lag.
+`SLOW_GRACE_MS`. The pause is per member: a hold for another member stops the clock, so a lagging
+member closes its gap, but its own grace keeps running. A slow member that goes silent is slow again
+on its return; one that had lagged 1 s has 3 s of grace left on its return, however long it was away.
+Only leaving the room, or a world rebuilt from a snapshot after a resync or a return without one,
+clears the verdict and the lag.
 
 A slow member is never waited for, gets no countdown and cannot be voted out. While any member is
 slow the relay governs the clock, whatever the requested speed. Each slow member's bound is the lower
@@ -290,8 +295,10 @@ of the requested speed, `CATCH_UP_SHARE` (0.8) times it. `cause` names the lower
 The bound is rounded to `GOVERNED_SPEED_STEP` (0.05), never above the requested speed and never below
 `MIN_GOVERNED_SPEED` (0.25) unless the requested speed is; a member slower than that falls further
 behind at it. The lowest bound wins, and a tie goes to the member furthest behind. The governed
-speed drops at once but rises only by `GOVERNED_RISE_STEPS` (2) steps or more at a time, so a load
-report jittering across one rounding boundary does not become a `clock` broadcast per advance. Once
+speed drops at once but rises only by `GOVERNED_RISE_STEPS` (2) steps or more at a time, and while
+the same member stays governed at the same speed its `cause` stays as announced, even when its other
+bound becomes the lower one. A load report jittering across one rounding boundary, or across the
+point where the two bounds cross, therefore does not become a `clock` broadcast per advance. Once
 nobody is slow the clock runs at the requested speed again.
 
 ## Kick votes
@@ -307,7 +314,12 @@ it, `floor(others / 2) + 1` (`kickVotesNeeded`): both of two, 2 of 3, 3 of 4. A 
 its voter is connected. It stops counting when the voter drops and counts again if the voter returns
 while the vote is open; a member that leaves the room loses its votes. Each drop, return or departure
 recounts every open vote and broadcasts each tally that moved, so a vote can pass on a vote, on a
-voter's return, or on another member dropping or leaving.
+voter's return, or on another member dropping or leaving. A vote passes only while the relay would
+still wait for its target at that moment: a yes against a target that answered or loaded since the
+last poll is refused with `notWaitedFor`, a recount passes no vote against it, and its vote closes on
+the next poll.
+A member whose `loaded` is accepted, on its return or after a reload, gets one `kickVote` per open
+vote with its current tally right after its `waiting`, since it missed the broadcasts that built it.
 
 Several members may be waited for at once. Each has its own countdown and its own vote, and the
 electorate for each excludes every dropped member: with four players and two dropped, each vote needs
@@ -459,7 +471,9 @@ first. The client answers `loaded`:
   `snapshotTick` was null.
 
 A client whose world is out of sync must ask with `null`. Whatever the path, a snapshot blob always
-replaces the client's world, and the frames that follow are applied through the same transport.
+replaces the client's world, and the frames that follow are applied through the same transport. An
+accepted `loaded` is answered with `ended` once the match has ended, else with `waiting` for the
+current waited set followed by one `kickVote` per open vote (see [Kick votes](#kick-votes)).
 
 ## Chat
 
@@ -516,8 +530,9 @@ it on every entry and return, each `chat` appends to it, up to `MAX_CHAT_HISTORY
 and browser app plays through the `?relay=` entry, whose client, link and world run in a network
 worker, the headless test client through an in-memory network. The app's client holds `loaded` until
 the display draws its first frame of the world, and keeps the loading screen up until the room's
-clock runs and nobody is still loading. A stalled display thread does not delay the app's acknowledgements: the worker keeps stepping and
-acknowledging, and drops the transient events of ticks the display has not taken.
+clock runs and nobody is still loading. A stalled display thread does not delay the app's
+acknowledgements: the worker keeps stepping and acknowledging, and drops the transient events of ticks
+the display has not taken.
 
 ## Operations
 

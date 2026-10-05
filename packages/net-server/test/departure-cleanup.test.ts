@@ -3,6 +3,8 @@ import { KickVotes } from '../src/relay/kick-vote.js';
 import { createMember } from '../src/relay/member.js';
 import { KICK_COUNTDOWN_MS, Waiting } from '../src/relay/waiting.js';
 
+const STILL_WAITED = () => true;
+
 describe('departed identity cleanup', () => {
   it('removes its target countdown and its votes for other targets', () => {
     const [a, b, c] = ['a', 'b', 'c'].map((token, seat) => {
@@ -21,13 +23,14 @@ describe('departed identity cleanup', () => {
       0,
     );
     const votes = new KickVotes();
-    votes.cast(members, waiting, b, 0, true, KICK_COUNTDOWN_MS);
-    votes.cast(members, waiting, a, 1, true, KICK_COUNTDOWN_MS);
+    votes.cast(members, waiting, b, 0, true, KICK_COUNTDOWN_MS, STILL_WAITED);
+    votes.cast(members, waiting, a, 1, true, KICK_COUNTDOWN_MS, STILL_WAITED);
     waiting.forget('a');
     votes.forget('a');
-    members.delete('a');
+    // `a` stays a connected member: a tally counts only members, so only a dropped ballot keeps it out.
+    a.connected = true;
     expect(waiting.isWaitedFor('a')).toBe(false);
-    expect(votes.cast(members, waiting, c, 1, true, KICK_COUNTDOWN_MS)).toMatchObject({
+    expect(votes.cast(members, waiting, c, 1, true, KICK_COUNTDOWN_MS, STILL_WAITED)).toMatchObject({
       tally: { yes: ['C'] },
     });
     waiting.update([{ token: 'b', nick: 'B', reason: 'gone' }], KICK_COUNTDOWN_MS);

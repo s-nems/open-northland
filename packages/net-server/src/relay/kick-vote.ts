@@ -16,10 +16,15 @@ export interface PassedKick {
   readonly player: number;
 }
 
+/** Whether the room would wait for the member now. The waited set is refreshed once per relay poll,
+ *  so a target that answered since then is still in it. */
+export type WaitedNow = (member: Member) => boolean;
+
 /**
  * Who said yes to kicking each waited member. A yes counts only while its voter is connected, and the
  * vote passes once the counted yeses reach a strict majority of the connected members other than the
- * target. A vote lives while its target is waited for; a departed token loses its votes.
+ * target, while the room would still wait for the target now. A vote lives while its target is waited
+ * for; a departed token loses its votes.
  */
 export class KickVotes {
   /** Voter tokens by target token. */
@@ -36,11 +41,13 @@ export class KickVotes {
     player: number,
     yes: boolean,
     now: number,
+    waitedNow: WaitedNow,
   ): KickOutcome {
     const target = [...members.values()].find((member) => member.seat === player);
     if (target === undefined) return { refused: { code: 'seatEmpty', player } };
     if (target === voter) return { refused: { code: 'voteSelf' } };
-    if (!waiting.isWaitedFor(target.token)) return { refused: { code: 'notWaitedFor', nick: target.nick } };
+    if (!waiting.isWaitedFor(target.token) || !waitedNow(target))
+      return { refused: { code: 'notWaitedFor', nick: target.nick } };
     if (!waiting.voteOpen(target.token, now)) {
       return {
         refused: {
@@ -60,7 +67,10 @@ export class KickVotes {
 
   /** Count every vote again after the connected members changed. Returns the tallies that moved
    *  since they were last broadcast, and the first vote that now passes. */
-  recount(members: ReadonlyMap<string, Member>): {
+  recount(
+    members: ReadonlyMap<string, Member>,
+    waitedNow: WaitedNow,
+  ): {
     readonly moved: readonly KickTally[];
     readonly passed: PassedKick | null;
   } {
@@ -74,9 +84,14 @@ export class KickVotes {
         this.announced.set(token, tally);
         moved.push(tally);
       }
-      if (passed === null && passes(tally)) passed = { target, player: target.seat };
+      if (passed === null && passes(tally) && waitedNow(target)) passed = { target, player: target.seat };
     }
     return { moved, passed };
+  }
+
+  /** Every open vote as it was last broadcast, for a member that missed the broadcasts. */
+  openTallies(): readonly KickTally[] {
+    return [...this.announced.values()];
   }
 
   /** Close the votes against every member the room no longer waits for. */

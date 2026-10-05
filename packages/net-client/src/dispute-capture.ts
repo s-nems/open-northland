@@ -28,14 +28,38 @@ export interface DisputeRecord {
   readonly domains: readonly SyncDomain[];
   /** The other side: the reference's nick for a diverged member, the diverged nicks for the reference. */
   readonly counterparts: readonly string[];
-  /** Null when the tick had already left the window when the verdict arrived. */
+  /** Null when the tick had already left the window, or the byte cap, when the verdict arrived. */
   readonly inputs: SyncDigestInputsJson | null;
 }
 
-/** The digest inputs of the last acknowledged ticks, kept until a verdict names one of them. A ring
- *  indexed by tick, since one entry lands every tick. */
+/** The most a client keeps for dispute capture, in bytes as {@link retainedBytes} counts them. Measured
+ *  heap of a full window on the six-AI `magiczny_las` run: 20 MB at tick 40k, 25 MB at 60k, 23 to 49 MB
+ *  at 80k to 100k as the population grows; past the cap the oldest ticks go first. */
+export const DISPUTE_RING_BYTES = 24 * 2 ** 20;
+/** Heap one fold-input record costs beyond its words: the record and its two typed arrays with their
+ *  buffers. The same run measured about 500 bytes per record at four of five sampled ticks (heap
+ *  growth of a held window, less its words), with outliers of 210 and 990. */
+const RECORD_OVERHEAD_BYTES = 512;
+
+/** What holding `inputs` costs the heap, by the measured overhead per record. */
+export function retainedBytes(inputs: SyncDigestInputs): number {
+  let bytes = inputs.allocations.byteLength + inputs.fog.byteLength + RECORD_OVERHEAD_BYTES;
+  for (const component of inputs.components)
+    bytes += component.entities.byteLength + component.words.byteLength + RECORD_OVERHEAD_BYTES;
+  return bytes;
+}
+
+interface Held {
+  readonly inputs: SyncDigestInputs;
+  readonly bytes: number;
+}
+
+/** The digest inputs of the last acknowledged ticks, kept until a verdict names one of them: at most
+ *  `DISPUTE_WINDOW_TICKS` ticks and `DISPUTE_RING_BYTES`, oldest dropped first, the newest always kept. */
 export class DisputeCapture {
-  private readonly ring: (SyncDigestInputs | undefined)[] = new Array(DISPUTE_WINDOW_TICKS);
+  /** By tick, oldest first: one entry lands every tick. */
+  private readonly held = new Map<number, Held>();
+  private heldBytes = 0;
   private latest: DisputeRecord | null = null;
 
   get record(): DisputeRecord | null {
@@ -43,28 +67,44 @@ export class DisputeCapture {
   }
 
   retain(inputs: SyncDigestInputs): void {
-    this.ring[inputs.tick % DISPUTE_WINDOW_TICKS] = inputs;
+    this.drop(inputs.tick);
+    const bytes = retainedBytes(inputs);
+    this.held.set(inputs.tick, { inputs, bytes });
+    this.heldBytes += bytes;
+    for (const tick of this.held.keys()) {
+      if (tick === inputs.tick) break;
+      if (tick > inputs.tick - DISPUTE_WINDOW_TICKS && this.heldBytes <= DISPUTE_RING_BYTES) break;
+      this.drop(tick);
+    }
   }
 
-  /** Keep the verdict for `tick` as the latest record, with that tick's inputs while the ring holds them. */
+  /** Keep the verdict for `tick` as the latest record, with that tick's inputs while they are held. */
   freeze(
     role: DisputeRecord['role'],
     tick: number,
     domains: readonly SyncDomain[],
     counterparts: readonly string[],
   ): void {
-    const inputs = this.ring[tick % DISPUTE_WINDOW_TICKS];
+    const inputs = this.held.get(tick)?.inputs;
     this.latest = {
       role,
       tick,
       domains,
       counterparts,
-      inputs: inputs?.tick === tick ? digestInputsToJson(inputs) : null,
+      inputs: inputs === undefined ? null : digestInputsToJson(inputs),
     };
   }
 
   /** Drop the dropped world's inputs; the record stays, since a report needs it after the world. */
   forgetWorld(): void {
-    this.ring.fill(undefined);
+    this.held.clear();
+    this.heldBytes = 0;
+  }
+
+  private drop(tick: number): void {
+    const held = this.held.get(tick);
+    if (held === undefined) return;
+    this.held.delete(tick);
+    this.heldBytes -= held.bytes;
   }
 }

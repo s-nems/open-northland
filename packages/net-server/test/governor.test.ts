@@ -106,6 +106,21 @@ describe('governed speed', () => {
     }
   });
 
+  it('keeps the announced cause while a report jittering around the crossover rounds to one speed', () => {
+    const jitter = 0.02;
+    const overSaturated = slowMember('Bartek', 1 + jitter);
+    const underSaturated = slowMember('Bartek', 1 - jitter);
+    let governed = governedSpeed([overSaturated], CLOCK_TICK, 1);
+    expect(governed).toEqual({ nick: 'Bartek', speed: CATCH_UP_SHARE, cause: 'load' });
+    expect(governedSpeed([underSaturated], CLOCK_TICK, 1)?.cause).toBe('lag');
+    for (let report = 0; report < 10; report++) {
+      const member = report % 2 === 0 ? underSaturated : overSaturated;
+      governed = governedSpeed([member], CLOCK_TICK, 1, governed);
+      expect(governed).toEqual({ nick: 'Bartek', speed: CATCH_UP_SHARE, cause: 'load' });
+    }
+    expect(governedSpeed([slowMember('Cezary', 1 - jitter)], CLOCK_TICK, 1, governed)?.cause).toBe('lag');
+  });
+
   it('follows a requested speed lowered to the governed one down by its catch-up share', () => {
     const current = { nick: 'Bartek', speed: 0.4, cause: 'load' } as const;
     const lowered = governedSpeed([sharing(current.speed)], CLOCK_TICK, current.speed, current);
