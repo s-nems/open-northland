@@ -5,10 +5,11 @@ import {
   FOG_STATE,
   type FogView,
   positionOfNode,
+  type SignpostReachView,
   SnapshotMirror,
 } from '@open-northland/sim';
-import { Container } from 'pixi.js';
-import { describe, expect, it } from 'vitest';
+import { Container, Graphics } from 'pixi.js';
+import { describe, expect, it, vi } from 'vitest';
 import { createSceneSim, getScene } from '../src/scenes/index.js';
 import {
   createSignpostMapOverlay,
@@ -26,6 +27,54 @@ function post(id: number, hx: number, hy: number, links: number[] = [], player =
 const VIEW = { minX: 0, minY: 0, maxX: 10, maxY: 20 };
 
 describe('signpost map overlay', () => {
+  it('pans retained geometry and never outlines the viewport cut through a covered area', () => {
+    const parent = new Container();
+    const reach: SignpostReachView = {
+      key: 'fixed',
+      player: 0,
+      doors: new Map(),
+      settlements: [],
+      posts: [
+        {
+          id: 1,
+          group: 1,
+          area: {
+            minX: 0,
+            minY: 0,
+            maxX: 199,
+            maxY: 199,
+            cells: new Uint8Array(200 * 200).fill(1),
+          },
+        },
+      ],
+    };
+    const overlay = createSignpostMapOverlay(
+      parent,
+      { active: 'signposts' },
+      { width: 100, height: 100 },
+      undefined,
+      () => reach,
+    );
+    const layer = parent.children[0];
+    const field = layer?.children[0];
+    if (!(field instanceof Graphics)) throw new Error('missing field');
+    const clear = vi.spyOn(field, 'clear');
+    const border = vi.spyOn(field, 'moveTo');
+    const snapshot = snapshotOf([post(1, 60, 60)]);
+    const screen = { width: 340, height: 190 };
+    overlay.update(snapshot, { offsetX: -1700, offsetY: -1000, scale: 1 }, screen, 0, null);
+    expect(clear).toHaveBeenCalledTimes(1);
+    expect(border).not.toHaveBeenCalled();
+    overlay.update(snapshot, { offsetX: -1710, offsetY: -1010, scale: 1 }, screen, 0, null);
+    expect(clear).toHaveBeenCalledTimes(1);
+    expect(layer?.position.x).toBe(-1710);
+    expect(layer?.position.y).toBe(-1010);
+    overlay.update(snapshot, { offsetX: -2300, offsetY: -1010, scale: 1 }, screen, 0, null);
+    expect(clear).toHaveBeenCalledTimes(2);
+    expect(border).not.toHaveBeenCalled();
+    overlay.dispose();
+    parent.destroy();
+  });
   it('includes coverage from off-screen posts, excludes other owners and distant posts, and uses stored links', () => {
     const index = signpostOverlayIndex(
       snapshotOf([

@@ -168,28 +168,36 @@ export function createSignpostMapOverlay(
         .map((id) => reachPosts.get(id)?.group)
         .find((group) => group !== undefined);
       const zoom = camera.scale ?? 1;
-      const key = `${selected.join(',')}:${index.revision}:${player}:${fog?.player}:${fog?.generation}:${camera.offsetX}:${camera.offsetY}:${zoom}:${screen.width}:${screen.height}`;
+      root.position.set(camera.offsetX, camera.offsetY);
+      root.scale.set(zoom);
+      const vp = cameraViewport(camera, screen.width, screen.height, (elevation?.maxLift ?? 0) + 40);
+      // Retain a padded, world-aligned drawing through small camera moves.
+      const block = 16;
+      const bounds = {
+        minX: Math.max(0, (Math.floor(vp.minX / TILE_HALF_W / block) - 1) * block),
+        maxX: Math.min(mapSize.width * 2 - 1, (Math.ceil(vp.maxX / TILE_HALF_W / block) + 1) * block),
+        minY: Math.max(0, (Math.floor(vp.minY / (TILE_HALF_H / 2) / block) - 1) * block),
+        maxY: Math.min(mapSize.height * 2 - 1, (Math.ceil(vp.maxY / (TILE_HALF_H / 2) / block) + 1) * block),
+      };
+      const key = `${selected.join(',')}:${index.revision}:${player}:${fog?.player}:${fog?.generation}:${bounds.minX}:${bounds.maxX}:${bounds.minY}:${bounds.maxY}:${zoom}`;
       if (lastIndex === index && lastKey === key && lastReach === reach) return;
       lastReach = reach;
       lastIndex = index;
       lastKey = key;
-      root.position.set(camera.offsetX, camera.offsetY);
-      root.scale.set(zoom);
       field.clear();
       linkHalo.clear();
       links.clear();
       markers.clear();
-      const vp = cameraViewport(camera, screen.width, screen.height, (elevation?.maxLift ?? 0) + 40);
-      const bounds = {
-        minX: Math.max(0, Math.floor(vp.minX / TILE_HALF_W)),
-        maxX: Math.min(mapSize.width * 2 - 1, Math.ceil(vp.maxX / TILE_HALF_W)),
-        minY: Math.max(0, Math.floor(vp.minY / (TILE_HALF_H / 2))),
-        maxY: Math.min(mapSize.height * 2 - 1, Math.ceil(vp.maxY / (TILE_HALF_H / 2))),
-      };
-      const posts = overlayPostsWithin(index, player, bounds);
       // At distant zooms each sample remains at least eight screen px high. Sampling is visual only;
       // the range predicate and links remain those of the sim. Native zoom samples every half-cell.
       const step = Math.max(1, Math.ceil(8 / ((TILE_HALF_H / 2) * zoom)));
+      // Border neighbours may lie beyond the retained drawing. Include their contributing posts too.
+      const posts = overlayPostsWithin(index, player, {
+        minX: bounds.minX - 2 * step,
+        maxX: bounds.maxX + 2 * step,
+        minY: bounds.minY - 2 * step,
+        maxY: bounds.maxY + 2 * step,
+      });
       const groups = new Map<number, NonNullable<typeof reach>['posts'][number][]>();
       for (const visible of posts) {
         const post = reachPosts.get(visible.id);
@@ -205,21 +213,27 @@ export function createSignpostMapOverlay(
         const covered = (hx: number, hy: number): boolean =>
           exploredOverlayNode(fog, hx, hy) && members.some((p) => reachContains(p.area, hx, hy));
         const patches: { hx: number; hy: number; points: number[] }[] = [];
-        const painted = new Set<number>();
+        const patchCoverage = new Map<number, boolean>();
+        const hasPatch = (hx: number, hy: number): boolean => {
+          if (hx < 0 || hy < 0 || hx >= mapSize.width * 2 || hy >= mapSize.height * 2) return false;
+          const key = hy * mapSize.width * 2 + hx;
+          const held = patchCoverage.get(key);
+          if (held !== undefined) return held;
+          let complete = covered(hx, hy) && exploredOverlayPatch(fog, hx, hy, step);
+          for (let y = Math.ceil(hy - step / 2); y <= Math.floor(hy + step / 2) && complete; y++)
+            for (let x = Math.ceil(hx - step / 2); x <= Math.floor(hx + step / 2); x++)
+              if (!covered(x, y)) {
+                complete = false;
+                break;
+              }
+          patchCoverage.set(key, complete);
+          return complete;
+        };
         for (let hy = Math.floor(bounds.minY / step) * step; hy <= bounds.maxY; hy += step) {
           for (let hx = Math.floor(bounds.minX / step) * step; hx <= bounds.maxX; hx += step) {
-            if (!covered(hx, hy) || !exploredOverlayPatch(fog, hx, hy, step)) continue;
-            let complete = true;
-            for (let y = Math.ceil(hy - step / 2); y <= Math.floor(hy + step / 2) && complete; y++)
-              for (let x = Math.ceil(hx - step / 2); x <= Math.floor(hx + step / 2); x++)
-                if (!covered(x, y)) {
-                  complete = false;
-                  break;
-                }
-            if (!complete) continue;
+            if (!hasPatch(hx, hy)) continue;
             const points = overlayPatchPoints(hx, hy, step, mapSize, point);
             patches.push({ hx, hy, points });
-            painted.add(hy * mapSize.width * 2 + hx);
             field.poly(points);
           }
         }
@@ -232,9 +246,7 @@ export function createSignpostMapOverlay(
             [-step, 0],
           ];
           neighbours.forEach(([dx = 0, dy = 0], edge) => {
-            const x = hx + dx;
-            const y = hy + dy;
-            if (x >= 0 && x < mapSize.width * 2 && painted.has(y * mapSize.width * 2 + x)) return;
+            if (hasPatch(hx + dx, hy + dy)) return;
             const next = (edge + 1) % 4;
             field
               .moveTo(points[edge * 2] ?? 0, points[edge * 2 + 1] ?? 0)
