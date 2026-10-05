@@ -1,4 +1,6 @@
 .on-hud .on-minimap-chrome {
+  /* Midpoint between the frame’s outer edge (-6px) and the map hole (20px). */
+  --minimap-rail-center: 7px;
   position: absolute;
   pointer-events: none;
   isolation: isolate;
@@ -86,11 +88,11 @@
 .on-hud .on-minimap-chrome__controls {
   position: absolute;
   top: 50%;
-  right: 1px;
+  right: var(--minimap-rail-center);
   display: flex;
   flex-direction: column;
   gap: 2px;
-  transform: translateY(-50%);
+  transform: translate(50%, -50%);
   pointer-events: none;
 }
 .on-hud .on-minimap-chrome__button {
@@ -388,10 +390,10 @@
 .on-hud .on-map-overlays {
   position: absolute;
   z-index: 1;
-  top: 1px;
+  top: var(--minimap-rail-center);
   left: 50%;
   display: flex;
   gap: 2px;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
