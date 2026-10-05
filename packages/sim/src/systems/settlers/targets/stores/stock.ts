@@ -18,13 +18,12 @@ import {
   accessibleStockAmounts,
   bankedSlot,
   buildingProduces,
-  type InboundSupplyTally,
   isYardHeap,
   MAX_GROUND_STACK,
   mayFetchGoodFrom,
   mergedRecipeOf,
   refillsOwnStock,
-  reservedSourceSupplyOf,
+  type SupplyTally,
 } from '../../../stores/index.js';
 import type { TargetBands } from '../bands.js';
 import type { YardTargets } from '../candidates.js';
@@ -202,12 +201,19 @@ export function strandedPlainPile(
   return walls.has(anchor) || anchoredStanceCells(world, ctx, terrain, anchor).length === 0;
 }
 
+/** Units of `goodType` at `store` not yet promised to a settler walking to it. */
+export function unclaimedStockOf(world: World, supply: SupplyTally, store: Entity, goodType: number): number {
+  return (accessibleStockAmounts(world, store)?.get(goodType) ?? 0) - supply.reservedAt(store, goodType);
+}
+
 /**
  * The nearest store that holds at least one unit of `goodType` and may be stripped of it, by Manhattan
  * distance from `here` with an ascending-cell-id tie-break, or null. The counter to
  * {@link nearestStoreFor}, which finds a store that can take a good. A from-scratch construction site,
  * a pile buried under a building's walls, and a workshop's own input reserve are excluded. An upgrade
  * site keeps its ordinary inventory available while its separate construction hold stays protected.
+ * A store whose units of the good are all claimed by settlers walking to it is skipped: a claim steers
+ * the choice, never the pickup.
  */
 export function nearestStoreHolding(
   bands: TargetBands,
@@ -216,25 +222,23 @@ export function nearestStoreHolding(
   goodType: number,
   /** The fetcher's owning player. It never fetches from another player's store. */
   owner: number | undefined,
+  /** Live pickup claims: a store whose whole stock of the good is promised to walkers is passed over. */
+  supply: SupplyTally,
   /** The fetcher's signpost confinement: an out-of-area store is not a source it knows the way to. */
   gate?: SpatialGate,
   /** The fetcher's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
-  /** Construction pickups already promised from candidate stores during this planner pass. */
-  inbound?: InboundSupplyTally,
 ): Entity | null {
   return (
-    bands.holding(goodType).nearest(
-      here,
-      (e) => {
-        if (inbound === undefined) return QUALIFIES;
-        const held = accessibleStockAmounts(world, e)?.get(goodType) ?? 0;
-        return held > reservedSourceSupplyOf(inbound, e, goodType) ? QUALIFIES : null;
-      },
-      gate,
-      avoid,
-      sameSideAs(world, owner),
-    )?.entity ?? null
+    bands
+      .holding(goodType)
+      .nearest(
+        here,
+        (e) => (unclaimedStockOf(world, supply, e, goodType) > 0 ? QUALIFIES : null),
+        gate,
+        avoid,
+        sameSideAs(world, owner),
+      )?.entity ?? null
   );
 }
 

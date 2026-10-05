@@ -1,4 +1,4 @@
-import { BerryBush, Carrying, Position } from '../../../../../components/index.js';
+import { BerryBush, Carrying, PickupClaim, Position } from '../../../../../components/index.js';
 import { eventAt } from '../../../../../core/events.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
@@ -10,10 +10,11 @@ import { reapEmptyLoosePile } from './piles.js';
 /**
  * Consume one unit of `goodType` for an `eat` atomic: from the store `from` when given, else from the
  * settler's own carried load. A source that emptied since the planner chose it takes nothing rather than
- * going negative, and the atomic still credits the meal.
+ * going negative, and the atomic still credits the meal. The settler's pickup claim on the store ends here.
  */
 export function consumeFood(world: World, settler: Entity, from: Entity | null, goodType: number): void {
   if (from !== null) {
+    world.remove(settler, PickupClaim);
     const stock = accessibleStockAmounts(world, from);
     if (stock === undefined) return;
     const have = stock.get(goodType) ?? 0;

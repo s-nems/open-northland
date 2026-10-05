@@ -10,7 +10,7 @@ import {
 import type { PlannerContext } from '../../src/systems/settlers/planner/context.js';
 import { collectTargets } from '../../src/systems/settlers/targets/index.js';
 import { GossipCandidates } from '../../src/systems/social/index.js';
-import { collectInboundSupply } from '../../src/systems/stores/index.js';
+import { collectSupplyTally } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import {
   BAKEHOUSE,
@@ -80,7 +80,7 @@ function bakehouseScene(
     owner: undefined,
     limit: null,
     targets: collectTargets(sim.world, ctx, sim.terrain),
-    inbound: collectInboundSupply(sim.world),
+    supply: collectSupplyTally(sim.world),
     gossipCandidates: new GossipCandidates(sim.world, sim.content),
   };
   return { plan, workplace: bakehouse, warehouse };

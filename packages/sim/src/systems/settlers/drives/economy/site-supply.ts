@@ -1,11 +1,6 @@
 import { CARRY_CAPACITY } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
-import {
-  accessibleStockAmounts,
-  neededConstructionGoods,
-  reservedSourceSupplyOf,
-  stampSupplyRun,
-} from '../../../stores/index.js';
+import { accessibleStockAmounts, neededConstructionGoods } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
@@ -62,7 +57,7 @@ export function constructionMaterialResolver(
     if (cached !== undefined || bySite.has(site)) return cached ?? null;
     let needs = needsBySite.get(site);
     if (needs === undefined) {
-      needs = neededConstructionGoods(plan.world, plan.ctx, site, plan.inbound);
+      needs = neededConstructionGoods(plan.world, plan.ctx, site, plan.supply);
       needsBySite.set(site, needs);
     }
     const fetch = fetchableMaterial(spacing, site, needs, sourceFor);
@@ -84,12 +79,8 @@ export function constructionMaterialResolver(
 function startMaterialFetch(plan: PlannerContext, site: Entity, fetch: FetchableMaterial): void {
   const { world, ctx, terrain, entity: e, here } = plan;
   const settler = plan;
-  stampSupplyRun(world, e, plan.inbound, {
-    site,
-    goodType: fetch.goodType,
-    amount: fetch.amount,
-    source: fetch.source,
-  });
+  plan.supply.stampSupplyRun(e, { site, goodType: fetch.goodType, amount: fetch.amount });
+  plan.supply.stampPickupClaim(e, { source: fetch.source, goodType: fetch.goodType, amount: fetch.amount });
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, fetch.source, here), () =>
     startPickup(world, ctx, e, settler, fetch.source, fetch.goodType, fetch.amount),
   );
@@ -129,7 +120,7 @@ function fetchableMaterial(
 
 function shelfSource(plan: PlannerContext, shelf: Entity, goodType: number): MaterialSource | null {
   const stock = accessibleStockAmounts(plan.world, shelf)?.get(goodType) ?? 0;
-  const available = stock - reservedSourceSupplyOf(plan.inbound, shelf, goodType);
+  const available = stock - plan.supply.reservedAt(shelf, goodType);
   return available > 0 ? { source: shelf, available } : null;
 }
 
@@ -143,12 +134,12 @@ function materialSource(plan: PlannerContext, goodType: number): MaterialSource 
     here,
     goodType,
     plan.owner,
+    plan.supply,
     plan.limit ?? undefined,
     unreachableGoalVeto(world, ctx, e),
-    plan.inbound,
   );
   if (source === null) return null;
   const stock = accessibleStockAmounts(world, source)?.get(goodType) ?? 0;
-  const available = stock - reservedSourceSupplyOf(plan.inbound, source, goodType);
+  const available = stock - plan.supply.reservedAt(source, goodType);
   return available > 0 ? { source, available } : null;
 }

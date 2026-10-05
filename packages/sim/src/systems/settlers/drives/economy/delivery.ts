@@ -15,7 +15,6 @@ import { farmWorkGood } from '../../../economy/fields.js';
 import { clearNavState } from '../../../movement/nav-state.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { nearestCell } from '../../../spatial/metric.js';
-import { stampSupplyRun } from '../../../stores/index.js';
 import { dropCarryAtOwnTile } from '../../atomics/effects/goods/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
@@ -60,7 +59,7 @@ export function planDelivery(
   spacing: PlannerSpacing,
   load: { goodType: number; amount: number },
 ): void {
-  const { world, ctx, terrain, entity, here, targets, inbound } = plan;
+  const { world, ctx, terrain, entity, here, targets, supply } = plan;
   const worker = plan;
   const store = deliveryTargetFor(plan, load.goodType);
 
@@ -126,12 +125,7 @@ export function planDelivery(
   if (cell === null) return;
   // A supply errand remains committed on its delivery leg, with no source stock held anymore.
   if (world.has(store, UnderConstruction) || world.tryGet(entity, JobAssignment)?.workplace === store) {
-    stampSupplyRun(world, entity, inbound, {
-      site: store,
-      goodType: load.goodType,
-      amount: load.amount,
-      source: null,
-    });
+    supply.stampSupplyRun(entity, { site: store, goodType: load.goodType, amount: load.amount });
   }
   if (toFlag) {
     world.add(entity, YardDeliveryRoute, { flag: store, goodType: load.goodType, goal: cell, failed: false });

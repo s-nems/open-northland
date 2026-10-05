@@ -7,7 +7,7 @@ import { collectShelters, type ShelterSites } from '../../defence/index.js';
 import { ExternalFoodIndex } from '../../family/food-search.js';
 import { ExternalQualityIndex } from '../../family/quality-search.js';
 import { GossipCandidates } from '../../social/index.js';
-import { collectInboundSupply, type InboundSupplyTally } from '../../stores/index.js';
+import { collectSupplyTally, type SupplyTally } from '../../stores/index.js';
 import { SeatDoors } from '../drives/cut-off.js';
 import { collectHarvestClaims, type HarvestClaims } from '../drives/economy/harvest-claims.js';
 import { ConstructionTaskClaims, RepairCrews, WorkSeatClaims } from '../drives/economy/index.js';
@@ -36,7 +36,7 @@ export interface PlannerPass {
   readonly spacing: PlannerSpacing;
   readonly farmClaims: FarmClaims;
   readonly seatClaims: WorkSeatClaims;
-  readonly inbound: InboundSupplyTally;
+  readonly supply: SupplyTally;
   readonly harvestClaims: HarvestClaims;
   readonly gossipCandidates: GossipCandidates;
   readonly front: BattleFront;
@@ -69,7 +69,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     spacing: PlannerSpacing.forTick(world, ctx, terrain),
     farmClaims: collectFarmClaims(world),
     seatClaims: new WorkSeatClaims((e) => standsThroughPass(world, ctx, shelters, e)),
-    inbound: collectInboundSupply(world),
+    supply: collectSupplyTally(world),
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),
     front,

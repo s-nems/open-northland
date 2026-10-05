@@ -11,6 +11,7 @@ import {
   PathFollow,
   PathRequest,
   PathRoute,
+  PickupClaim,
   PlayerOrder,
   Position,
   pathLegTicks,
@@ -20,11 +21,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE } from '../../../src/index.js';
 import { worldDistance } from '../../../src/nav/world-metric.js';
 import { MAX_STEP_PER_TICK } from '../../../src/systems/index.js';
-import {
-  collectInboundSupply,
-  inboundSupplyOf,
-  reservedSourceSupplyOf,
-} from '../../../src/systems/stores/index.js';
+import { collectSupplyTally } from '../../../src/systems/stores/index.js';
 import {
   HEADQUARTERS,
   HUMAN_PLAYER,
@@ -80,18 +77,20 @@ describe('moveUnit order', () => {
     const e = ownedWoodcutter(s, 0, 0);
     const source = s.world.create();
     const site = s.world.create();
-    s.world.add(e, SupplyRun, { source, site, goodType: WOOD, amount: 2 });
-    const before = collectInboundSupply(s.world);
-    expect(reservedSourceSupplyOf(before, source, WOOD)).toBe(2);
-    expect(inboundSupplyOf(before, site, WOOD)).toBe(2);
+    s.world.add(e, SupplyRun, { site, goodType: WOOD, amount: 2 });
+    s.world.add(e, PickupClaim, { source, goodType: WOOD, amount: 2 });
+    const before = collectSupplyTally(s.world);
+    expect(before.reservedAt(source, WOOD)).toBe(2);
+    expect(before.inboundOf(site, WOOD)).toBe(2);
 
     orderMove(s, e, 5, 0);
     s.step();
 
     expect(s.world.has(e, SupplyRun)).toBe(false);
-    const after = collectInboundSupply(s.world);
-    expect(reservedSourceSupplyOf(after, source, WOOD)).toBe(0);
-    expect(inboundSupplyOf(after, site, WOOD)).toBe(0);
+    expect(s.world.has(e, PickupClaim)).toBe(false);
+    const after = collectSupplyTally(s.world);
+    expect(after.reservedAt(source, WOOD)).toBe(0);
+    expect(after.inboundOf(site, WOOD)).toBe(0);
   });
 
   it('keeps advancing when re-ordered MID-STEP - no snap back to the tile centre', () => {

@@ -6,6 +6,7 @@ import {
   JobAssignment,
   ownerOf,
   Palisade,
+  PickupClaim,
   PlayerOrder,
   ProductionCounters,
   RoadSite,
@@ -231,7 +232,8 @@ function cancelActionAndRoute(world: World, e: Entity): void {
   // setJob vets interruptibility before reaching here; the employment orders still cancel unconditionally,
   // a remaining member of the uninterruptible-atomic class.
   removeCurrentAtomic(world, e);
-  world.remove(e, SupplyRun); // releasing an interrupted construction pickup frees its source immediately
+  world.remove(e, SupplyRun); // an interrupted errand stops counting as inbound
+  world.remove(e, PickupClaim); // and frees its source immediately
   supersedeStandingOrders(world, e);
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
   clearNavState(world, e);

@@ -13,7 +13,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext, SystemContext } from '../context.js';
-import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
+import type { SupplyTally } from './supply-tally.js';
 
 /**
  * The next level in `type`'s upgrade chain, or undefined for a top-level or unchained type. Source basis:
@@ -96,7 +96,7 @@ export function constructionMaterialsPresent(world: World, ctx: SystemContext, s
 }
 
 /**
- * Every `construction` material a site still lacks, each line's shortfall net of the {@link inboundSupplyOf}
+ * Every `construction` material a site still lacks, each line's shortfall net of the inbound tally
  * tally. Ordered least-covered first so a crew spreads over different materials instead of queueing on one,
  * ties broken by ascending goodType so the order never depends on map insertion order.
  */
@@ -104,13 +104,13 @@ export function neededConstructionGoods(
   world: World,
   ctx: SystemContext,
   site: Entity,
-  inbound: InboundSupplyTally,
+  inbound: SupplyTally,
 ): ReadonlyArray<{ goodType: number; amount: number }> {
   const stock = world.tryGet(site, Stockpile)?.amounts;
   const shortfalls: Array<{ goodType: number; amount: number; covered: number; need: number }> = [];
   for (const line of constructionBillOf(world, ctx, site)) {
     const held = Math.max(stock?.get(line.goodType) ?? 0, 0);
-    const covered = Math.min(held + inboundSupplyOf(inbound, site, line.goodType), line.amount);
+    const covered = Math.min(held + inbound.inboundOf(site, line.goodType), line.amount);
     if (covered >= line.amount) continue;
     shortfalls.push({ goodType: line.goodType, amount: line.amount - covered, covered, need: line.amount });
   }

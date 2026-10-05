@@ -466,7 +466,7 @@ describe('idle builders beside waiting walls', () => {
     wallSite(sim, 16);
     const awaited = wallSite(sim, 36);
     const errand = sim.world.create();
-    sim.world.add(errand, SupplyRun, { site: awaited, goodType: WOOD, amount: 1, source: null });
+    sim.world.add(errand, SupplyRun, { site: awaited, goodType: WOOD, amount: 1 });
     const builder = builderAt(sim, 8);
     sim.run(5);
     expect(sim.world.tryGet(builder, SiteAssignment)?.site).toBe(awaited);

@@ -30,6 +30,7 @@ import {
 } from '../../readviews/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { entityNode } from '../../spatial/nodes.js';
+import type { SupplyTally } from '../../stores/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
 import { INTENT_WEAPON_CLASS } from '../atomics/effects/goods/weapon-class.js';
 import {
@@ -182,6 +183,7 @@ function dispatchWeaponFetch(
       route.here,
       goodType,
       owner,
+      pass.supply,
       route.limit ?? undefined,
       route.veto,
     );
@@ -208,7 +210,16 @@ function dispatchWeaponFetch(
 function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolean {
   const { world, ctx, targets } = pass;
   const route = fetchRouteFor(pass, e, owner);
-  const pick = pickReachableArmor(world, ctx, targets, route.here, owner, route.limit, route.veto);
+  const pick = pickReachableArmor(
+    world,
+    ctx,
+    targets,
+    pass.supply,
+    route.here,
+    owner,
+    route.limit,
+    route.veto,
+  );
   if (pick === null) return false;
   world.add(e, EquipOrder, {
     group: 'armor',
@@ -234,6 +245,7 @@ export function chainRecruitArmor(
   ctx: SystemContext,
   terrain: TerrainGraph,
   targets: TargetCandidates,
+  supply: SupplyTally,
   e: Entity,
   here: NodeId,
   veto: ((cell: NodeId) => boolean) | undefined,
@@ -247,7 +259,7 @@ export function chainRecruitArmor(
     return null;
   }
   const limit = networkLimitAt(world, terrain, owner, terrain.xOf(here), terrain.yOf(here));
-  const pick = pickReachableArmor(world, ctx, targets, here, owner, limit, veto);
+  const pick = pickReachableArmor(world, ctx, targets, supply, here, owner, limit, veto);
   if (pick === null) {
     world.remove(e, AssistantRecruit); // no tier reachable: released unarmored
     return null;
@@ -261,6 +273,7 @@ function pickReachableArmor(
   world: World,
   ctx: SystemContext,
   targets: TargetCandidates,
+  supply: SupplyTally,
   here: NodeId,
   owner: number,
   limit: NavigationLimit | null,
@@ -277,6 +290,7 @@ function pickReachableArmor(
         here,
         armor.goodType,
         owner,
+        supply,
         limit ?? undefined,
         veto,
       );

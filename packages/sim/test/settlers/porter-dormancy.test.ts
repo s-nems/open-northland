@@ -24,7 +24,7 @@ import {
   UNREACHABLE_GOAL_MEMO_TICKS,
 } from '../../src/systems/settlers/unreachable-goals.js';
 import { GossipCandidates } from '../../src/systems/social/index.js';
-import { collectInboundSupply } from '../../src/systems/stores/index.js';
+import { collectSupplyTally } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { idleReplanTick } from '../fixtures/idle-replan.js';
@@ -123,7 +123,7 @@ describe('porter dormancy', () => {
       owner: undefined,
       limit: null,
       targets: collectTargets(sim.world, ctx, sim.terrain),
-      inbound: collectInboundSupply(sim.world),
+      supply: collectSupplyTally(sim.world),
       gossipCandidates: new GossipCandidates(sim.world, sim.content),
     };
     markPorterDormant(plan);
@@ -151,7 +151,7 @@ describe('porter dormancy', () => {
       owner: undefined,
       limit: null,
       targets: collectTargets(sim.world, ctx, sim.terrain),
-      inbound: collectInboundSupply(sim.world),
+      supply: collectSupplyTally(sim.world),
       gossipCandidates: new GossipCandidates(sim.world, sim.content),
     };
     markPorterDormant(plan);

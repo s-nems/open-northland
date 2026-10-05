@@ -10,6 +10,7 @@ import {
   OpenChestOrder,
   Owner,
   Palisade,
+  PickupClaim,
   PlayerOrder,
   Position,
   removeCurrentAtomic,
@@ -102,7 +103,8 @@ export function attackUnit(
   // Unlike moveUnit and setJob this still cancels a non-interruptible atomic, a remaining member of that
   // class.
   removeCurrentAtomic(world, e);
-  world.remove(e, SupplyRun); // cancel both the construction source promise and its inbound site claim
+  world.remove(e, SupplyRun); // cancel the inbound site claim
+  world.remove(e, PickupClaim); // and the source promise of its pickup leg
   supersedeStandingOrders(world, e);
   clearNavState(world, e);
   world.remove(e, PlayerOrder);

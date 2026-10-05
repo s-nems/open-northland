@@ -261,16 +261,28 @@ export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>
 export const BuildMode = defineComponent<{ kind: 'roads' | 'walls' }>('BuildMode', 'settlers');
 
 /**
- * A settler's live construction or workshop supply errand, cleared and re-stamped at the top of its own next planning
- * pass. Settlers planned later subtract these from a site's outstanding need and, while the pickup leg is
- * live, from the chosen source's available stock. `source` is null after pickup, on the delivery leg.
+ * A settler's live construction or workshop supply errand, cleared and re-stamped at the top of its own
+ * next planning pass. Settlers planned later subtract these from a site's outstanding need. The pickup
+ * leg carries a {@link PickupClaim} beside it; the delivery leg carries this alone.
  */
 export const SupplyRun = defineComponent<{
   site: Entity;
   goodType: number;
   amount: number;
-  source: Entity | null;
 }>('SupplyRun', 'settlers');
+
+/**
+ * A settler's walk to take `amount` of `goodType` out of `source`, a store or a loose pile. Settlers
+ * choosing a source later subtract live claims from each candidate's stock, so a unit one settler is
+ * already walking to is not offered to the next; the pickup itself is never refused on a claim. The
+ * claim ends with the pickup effect, with the settler's next planning pass, or with any order that
+ * diverts it, so a settler that gives the walk up frees the unit at once.
+ */
+export const PickupClaim = defineComponent<{
+  source: Entity;
+  goodType: number;
+  amount: number;
+}>('PickupClaim', 'settlers');
 
 /**
  * The specific `Building` a settler is employed at, so two same-type workplaces staff independently.

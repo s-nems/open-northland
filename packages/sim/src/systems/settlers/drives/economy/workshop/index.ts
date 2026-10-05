@@ -18,7 +18,6 @@ import { operatorRecipeEnabled } from '../../../../progression/index.js';
 import { planGossipIdle } from '../../../../social/index.js';
 import { assignedWorkers } from '../../../../stores/assigned-workers.js';
 import { isWorkplaceOperator, mergedRecipeOf } from '../../../../stores/index.js';
-import { stampSupplyRun } from '../../../../stores/supply-tally.js';
 import { type WorkshopWorkforce, workshopWorkforce } from '../../../../stores/workshop-workforce.js';
 import { atOrWalk, startPickup } from '../../../atomics/start.js';
 import { enterBuilding } from '../../../indoors.js';
@@ -276,11 +275,11 @@ function routeToInputSource(
 ): void {
   const { world, ctx, terrain, entity, here } = plan;
   const worker = plan;
-  stampSupplyRun(world, entity, plan.inbound, {
-    site: workplace,
+  plan.supply.stampSupplyRun(entity, { site: workplace, goodType: source.goodType, amount: CARRY_CAPACITY });
+  plan.supply.stampPickupClaim(entity, {
+    source: source.store,
     goodType: source.goodType,
     amount: CARRY_CAPACITY,
-    source: source.store,
   });
   seatClaims.noteErrand(entity, { workplace, goodType: source.goodType, amount: CARRY_CAPACITY });
   atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>

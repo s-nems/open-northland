@@ -8,6 +8,7 @@ import {
   Owner,
   PathFollow,
   PathRequest,
+  PickupClaim,
   Position,
   SupplyRun,
 } from '../../../src/components/index.js';
@@ -16,11 +17,7 @@ import { fx, Simulation } from '../../../src/index.js';
 import type { TerrainMap } from '../../../src/nav/terrain/index.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../../src/systems/index.js';
 import { attackUnit } from '../../../src/systems/orders/index.js';
-import {
-  collectInboundSupply,
-  inboundSupplyOf,
-  reservedSourceSupplyOf,
-} from '../../../src/systems/stores/index.js';
+import { collectSupplyTally } from '../../../src/systems/stores/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
 
@@ -48,17 +45,19 @@ describe('attackUnit - the explicit attack order', () => {
     const enemy = fighterAt(sim, 4, 0, VIKING, WOODCUTTER, { owner: P1 });
     const source = sim.world.create();
     const site = sim.world.create();
-    sim.world.add(a, SupplyRun, { source, site, goodType: 1, amount: 2 });
-    const before = collectInboundSupply(sim.world);
-    expect(reservedSourceSupplyOf(before, source, 1)).toBe(2);
-    expect(inboundSupplyOf(before, site, 1)).toBe(2);
+    sim.world.add(a, SupplyRun, { site, goodType: 1, amount: 2 });
+    sim.world.add(a, PickupClaim, { source, goodType: 1, amount: 2 });
+    const before = collectSupplyTally(sim.world);
+    expect(before.reservedAt(source, 1)).toBe(2);
+    expect(before.inboundOf(site, 1)).toBe(2);
 
     attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: a, target: enemy });
 
     expect(sim.world.has(a, SupplyRun)).toBe(false);
-    const after = collectInboundSupply(sim.world);
-    expect(reservedSourceSupplyOf(after, source, 1)).toBe(0);
-    expect(inboundSupplyOf(after, site, 1)).toBe(0);
+    expect(sim.world.has(a, PickupClaim)).toBe(false);
+    const after = collectSupplyTally(sim.world);
+    expect(after.reservedAt(source, 1)).toBe(0);
+    expect(after.inboundOf(site, 1)).toBe(0);
   });
 
   it('drops the order and disengages once the target dies', () => {

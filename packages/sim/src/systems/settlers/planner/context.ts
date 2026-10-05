@@ -3,7 +3,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import type { NavigationLimit } from '../../signposts/index.js';
 import type { GossipCandidates } from '../../social/index.js';
-import type { InboundSupplyTally } from '../../stores/index.js';
+import type { SupplyTally } from '../../stores/index.js';
 import type { TargetCandidates } from '../targets/index.js';
 
 /** The non-null worker state shared by every economy rung for one idle settler. */
@@ -28,7 +28,7 @@ export interface PlannerContext extends PlannerWorker {
   readonly here: NodeId;
   readonly targets: TargetCandidates;
   /** Tick-shared tally of units committed to each destination by live supply errands. */
-  readonly inbound: InboundSupplyTally;
+  readonly supply: SupplyTally;
   /** This settler's signpost-navigation confinement, or null when unlimited. Every drive gates its
    *  searched targets' interaction cells on it; only a settler's bound targets, its own workplace, flag
    *  or storage binding, stay ungated. */

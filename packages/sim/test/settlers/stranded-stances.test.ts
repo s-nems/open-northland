@@ -18,6 +18,7 @@ import {
 } from '../../src/systems/footprint/index.js';
 import { harvestFromNode } from '../../src/systems/settlers/atomics/effects/goods/harvest.js';
 import { collectTargets, nearestStoreHolding } from '../../src/systems/settlers/targets/index.js';
+import { collectSupplyTally } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap } from '../fixtures/terrain.js';
@@ -122,7 +123,9 @@ describe('stances no walk can enter', () => {
     const here = terrain.nodeAt(2, ANCHOR.y);
 
     const targets = collectTargets(sim.world, ctx, terrain);
-    expect(nearestStoreHolding(targets.bands, sim.world, here, STONE, undefined)).toBeNull();
+    expect(
+      nearestStoreHolding(targets.bands, sim.world, here, STONE, undefined, collectSupplyTally(sim.world)),
+    ).toBeNull();
   });
 
   it('never sends a fetcher to a pile whose only stance is sealed in a pocket', () => {
@@ -133,7 +136,9 @@ describe('stances no walk can enter', () => {
     const here = terrain.nodeAt(2, ANCHOR.y);
 
     const targets = collectTargets(sim.world, ctx, terrain);
-    expect(nearestStoreHolding(targets.bands, sim.world, here, STONE, undefined)).toBeNull();
+    expect(
+      nearestStoreHolding(targets.bands, sim.world, here, STONE, undefined, collectSupplyTally(sim.world)),
+    ).toBeNull();
   });
 
   it.each([

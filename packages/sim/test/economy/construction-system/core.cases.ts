@@ -3,7 +3,7 @@ import { Building, Health, Stockpile, SupplyRun, UnderConstruction } from '../..
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { advanceConstructionLabor } from '../../../src/systems/economy/construction.js';
 import {
-  collectInboundSupply,
+  collectSupplyTally,
   constructionSystem,
   neededConstructionGoods,
 } from '../../../src/systems/index.js';
@@ -157,24 +157,24 @@ describe('constructionSystem', () => {
     // Empty ledger: stone (2 needed) and wood (1) are both at 0 coverage - the tie keeps the
     // ascending-goodType pick (stone). The tally, reseeded from the live SupplyRun store before each
     // read, must reproduce exactly what a full-store scan would return.
-    expect(neededConstructionGoods(sim.world, ctx, e, collectInboundSupply(sim.world))[0]).toEqual({
+    expect(neededConstructionGoods(sim.world, ctx, e, collectSupplyTally(sim.world))[0]).toEqual({
       goodType: STONE,
       amount: 2,
     });
     // Another settler is already fetching one stone → stone is half covered, wood untouched - the
     // next fetch takes the LEAST-covered line (wood), not a second stone.
     const runner = sim.world.create();
-    sim.world.add(runner, SupplyRun, { site: e, goodType: STONE, amount: 1, source: null });
-    expect(neededConstructionGoods(sim.world, ctx, e, collectInboundSupply(sim.world))[0]).toEqual({
+    sim.world.add(runner, SupplyRun, { site: e, goodType: STONE, amount: 1 });
+    expect(neededConstructionGoods(sim.world, ctx, e, collectSupplyTally(sim.world))[0]).toEqual({
       goodType: WOOD,
       amount: 1,
     });
     // Every line held or inbound → nothing left to fetch.
     const second = sim.world.create();
-    sim.world.add(second, SupplyRun, { site: e, goodType: STONE, amount: 1, source: null });
+    sim.world.add(second, SupplyRun, { site: e, goodType: STONE, amount: 1 });
     const third = sim.world.create();
-    sim.world.add(third, SupplyRun, { site: e, goodType: WOOD, amount: 1, source: null });
-    expect(neededConstructionGoods(sim.world, ctx, e, collectInboundSupply(sim.world))).toEqual([]);
+    sim.world.add(third, SupplyRun, { site: e, goodType: WOOD, amount: 1 });
+    expect(neededConstructionGoods(sim.world, ctx, e, collectSupplyTally(sim.world))).toEqual([]);
   });
 
   it('finishes a free (empty-cost) building immediately - no labor needed', () => {

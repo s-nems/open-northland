@@ -22,7 +22,6 @@ import {
 import { atomicDuration } from '../../../readviews/animations.js';
 import { pickRoadSite } from '../../../roads/site-pick.js';
 import type { NavigationLimit } from '../../../signposts/index.js';
-import { hasInboundSupply } from '../../../stores/index.js';
 import {
   atOrWalk,
   BUILD_HOUSE_ATOMIC_ID,
@@ -269,7 +268,7 @@ export function planBuilder(
   // one a neighbour's finishing stone cannot pave and a supplied builder must pass over.
   const staging =
     nearestInTurn(
-      (candidate) => hasInboundSupply(plan.inbound, candidate) && canStandAt(candidate),
+      (candidate) => plan.supply.hasInbound(candidate) && canStandAt(candidate),
       () => soloSitesAwaitingSupply(plan, 'wall'),
       () => soloSitesAwaitingSupply(plan, 'road'),
     ) ??
@@ -332,7 +331,7 @@ function soloSitesAwaitingSupply(plan: PlannerContext, kind: 'wall' | 'road'): I
   const { world, ctx, terrain } = plan;
   const component = kind === 'wall' ? Palisade : RoadSite;
   const sites: Entity[] = [];
-  for (const site of plan.inbound.inbound.keys()) {
+  for (const site of plan.supply.inbound.keys()) {
     if (world.has(site, component) && world.has(site, UnderConstruction) && world.has(site, Position)) {
       sites.push(site);
     }

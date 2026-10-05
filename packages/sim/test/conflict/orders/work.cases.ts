@@ -85,7 +85,7 @@ describe('setJob order', () => {
     s.world.add(e, MoveGoal, { cell: 3 });
     s.world.add(e, PathRequest, { start: 0 as NodeId, goal: 3 as NodeId, failed: true });
     s.world.add(e, Stranded, { retryAt: 9999 });
-    s.world.add(e, SupplyRun, { site: 999 as Entity, goodType: WOOD, amount: 1, source: null });
+    s.world.add(e, SupplyRun, { site: 999 as Entity, goodType: WOOD, amount: 1 });
 
     setJob(s.world, ctxOf(s), { kind: 'setJob', entity: e, jobType: CARPENTER });
 

@@ -1,6 +1,7 @@
 import {
   CurrentAtomic,
   MoveGoal,
+  PickupClaim,
   removeCurrentAtomic,
   SiteAssignment,
   SupplyRun,
@@ -38,16 +39,19 @@ export function retireCompletedSiteErrands(world: World, ctx: SystemContext, sit
   const perimeter =
     terrain === undefined ? null : new Set(constructionWorkCells(world, ctx, terrain, site, new Set()));
   for (const e of workers) {
-    const supply = world.tryGet(e, SupplyRun);
-    const supplying = supply?.site === site;
-    if (supplying) world.remove(e, SupplyRun);
+    const supplying = world.tryGet(e, SupplyRun)?.site === site;
+    const pickupSource = supplying ? world.tryGet(e, PickupClaim)?.source : undefined;
+    if (supplying) {
+      world.remove(e, SupplyRun);
+      world.remove(e, PickupClaim);
+    }
     if (world.tryGet(e, SiteAssignment)?.site === site) world.remove(e, SiteAssignment);
     // Crew membership survives detours, meals and orders; only its own work may stop their feet.
     if (anotherSystemOwns(world, e)) continue;
     const atomic = world.tryGet(e, CurrentAtomic);
     const ownAtomic =
       (atomic?.effect.kind === 'construct' && atomic.effect.site === site) ||
-      (supplying && atomic?.effect.kind === 'pickup' && atomic.effect.from === supply?.source) ||
+      (supplying && atomic?.effect.kind === 'pickup' && atomic.effect.from === pickupSource) ||
       (supplying && atomic?.effect.kind === 'pileup' && atomic.effect.store === site);
     if (atomic !== undefined && !ownAtomic) continue;
     if (ownAtomic) removeCurrentAtomic(world, e);

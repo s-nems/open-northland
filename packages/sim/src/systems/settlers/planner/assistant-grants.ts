@@ -107,6 +107,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
         here,
         spec.goodType,
         owner,
+        pass.supply,
         limit ?? undefined,
         unreachableGoalVeto(world, ctx, e),
       );

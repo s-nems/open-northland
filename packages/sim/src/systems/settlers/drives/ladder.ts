@@ -186,7 +186,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     owner: ownerOf(world, e),
     here,
     targets: pass.targets,
-    inbound: pass.inbound,
+    supply: pass.supply,
     limit,
     gossipCandidates: pass.gossipCandidates,
   };
@@ -209,7 +209,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // but under the needs drives and the ownership gate. A DEFEND guard walks the errand and re-holds its
   // unchanged anchor afterwards, since the combat walk-back pass defers to a live errand. A garrison steps
   // down from his tower first: a route cannot start inside the building's walk-blocked body.
-  if (planEquipOrder(world, ctx, terrain, e, settler, here, limit, pass.targets)) {
+  if (planEquipOrder(world, ctx, terrain, e, settler, here, limit, pass.targets, pass.supply)) {
     stepOut(world, e);
     return;
   }

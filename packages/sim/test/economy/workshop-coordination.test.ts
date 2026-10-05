@@ -6,6 +6,7 @@ import {
   MoveGoal,
   Owner,
   PathRequest,
+  PickupClaim,
   PlayerOrder,
   Production,
   ProductionCounters,
@@ -70,7 +71,8 @@ it.each(['this pass', 'an earlier tick'])(
     sim.world.mut(joiner, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
     pinProducts(sim, joiner, [PLANK]);
     if (planned === 'an earlier tick') {
-      sim.world.add(baker, SupplyRun, { site: shop, goodType: WHEAT, amount: 1, source: store });
+      sim.world.add(baker, SupplyRun, { site: shop, goodType: WHEAT, amount: 1 });
+      sim.world.add(baker, PickupClaim, { source: store, goodType: WHEAT, amount: 1 });
       sim.world.add(baker, MoveGoal, { cell: cell(sim, 4, 0) });
     }
     plannerSystem(sim.world, ctxOf(sim));
@@ -112,7 +114,8 @@ it('a colleague walking to an emptied store does not hold back a startable recip
   settlerAt(sim, 7, 0, WOODCUTTER);
   const fetcher = settlerAt(sim, 2, 0, CARPENTER, shop);
   pinProducts(sim, fetcher, [FOOD_SIMPLE]);
-  sim.world.add(fetcher, SupplyRun, { site: shop, goodType: WOOD, amount: 1, source: emptied });
+  sim.world.add(fetcher, SupplyRun, { site: shop, goodType: WOOD, amount: 1 });
+  sim.world.add(fetcher, PickupClaim, { source: emptied, goodType: WOOD, amount: 1 });
   sim.world.add(fetcher, MoveGoal, { cell: cell(sim, 4, 0) });
   const waiting = settlerAt(sim, 0, 0, CARPENTER, shop);
   sim.world.mut(waiting, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
@@ -348,7 +351,8 @@ it('keeps the reservation on the tick the fetcher reaches the well, before its p
   // Arrived: movement has retired the walk, and the planner starts the pickup only next tick.
   const fetcher = settlerAt(sim, 10, 0, CARPENTER, shop);
   pinProducts(sim, fetcher, [FOOD_SIMPLE]);
-  sim.world.add(fetcher, SupplyRun, { site: shop, goodType: WATER, amount: 1, source: well });
+  sim.world.add(fetcher, SupplyRun, { site: shop, goodType: WATER, amount: 1 });
+  sim.world.add(fetcher, PickupClaim, { source: well, goodType: WATER, amount: 1 });
   productionSystem(sim.world, ctxOf(sim));
   expect(sim.world.has(shop, Production)).toBe(false);
 });

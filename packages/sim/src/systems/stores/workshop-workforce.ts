@@ -4,6 +4,7 @@ import {
   Chat,
   JobAssignment,
   PathRequest,
+  PickupClaim,
   Position,
   Settler,
   Stockpile,
@@ -80,8 +81,9 @@ const SETTLER_MEMBERSHIP: readonly Component<unknown>[] = [
   PathRequest,
   Carrying,
   SupplyRun,
+  PickupClaim,
 ];
-const SETTLER_VALUES: readonly Component<unknown>[] = [Chat, PathRequest, Carrying, SupplyRun];
+const SETTLER_VALUES: readonly Component<unknown>[] = [Chat, PathRequest, Carrying, SupplyRun, PickupClaim];
 const WORKPLACE_MEMBERSHIP: readonly Component<unknown>[] = [Building, UnderConstruction, Position];
 const WORKPLACE_VALUES: readonly Component<unknown>[] = [Building];
 const MEMBERSHIP_JOURNALS = [...SETTLER_MEMBERSHIP, ...WORKPLACE_MEMBERSHIP];
@@ -201,10 +203,11 @@ function deriveBinding(world: World, ctx: SystemContext, e: Entity): Binding | n
   const operator = isWorkplaceOperator(world, ctx, workplace, settler.jobType);
   const carried = world.tryGet(e, Carrying);
   const run = world.tryGet(e, SupplyRun);
+  const claim = world.tryGet(e, PickupClaim);
   let load: BoundLoad | null = null;
   if (carried !== undefined) load = { goodType: carried.goodType, amount: carried.amount, source: null };
-  else if (run !== undefined && run.site === workplace && run.source !== null) {
-    load = { goodType: run.goodType, amount: run.amount, source: run.source };
+  else if (run !== undefined && run.site === workplace && claim !== undefined) {
+    load = { goodType: run.goodType, amount: run.amount, source: claim.source };
   }
   if (load !== null && !recipeConsumes(mergedRecipeOf(world, ctx, workplace)?.inputs, load.goodType)) {
     load = null;

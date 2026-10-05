@@ -6,6 +6,7 @@ import {
   JobAssignment,
   Owner,
   ownerOf,
+  PickupClaim,
   Position,
   Settler,
   SettlerProgress,
@@ -28,7 +29,7 @@ import { liveHaulFlag } from '../../../economy/work-flag.js';
 import { navigationLimitFor } from '../../../signposts/index.js';
 import { GossipCandidates } from '../../../social/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
-import { collectInboundSupply } from '../../../stores/index.js';
+import { collectSupplyTally } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { collectTargets } from '../../targets/index.js';
 import { unreachableGoals } from '../../unreachable-goals.js';
@@ -90,6 +91,7 @@ function porterScanVersion(world: World): number {
     world.componentGeneration(JobAssignment) +
     world.componentGeneration(SiteAssignment) +
     world.componentGeneration(SupplyRun) +
+    world.componentGeneration(PickupClaim) +
     world.componentGeneration(Signpost) +
     world.componentGeneration(Owner) +
     landscapeTopologyRevision(world)
@@ -160,7 +162,7 @@ function verifyDormancy(world: World): string[] {
   if (record === undefined) return [];
   const { ctx, terrain } = record;
   const errors: string[] = [];
-  let shared: { targets: PlannerContext['targets']; inbound: PlannerContext['inbound'] } | null = null;
+  let shared: { targets: PlannerContext['targets']; supply: PlannerContext['supply'] } | null = null;
   for (const [entity, entry] of record.entries) {
     const settler = world.tryGet(entity, Settler);
     const p = world.tryGet(entity, Position);
@@ -176,7 +178,7 @@ function verifyDormancy(world: World): string[] {
     if (world.has(entity, UnreachableGoals)) continue;
     const hereNode = nodeOfPosition(p.x, p.y);
     if (shared === null) {
-      shared = { targets: collectTargets(world, ctx, terrain), inbound: collectInboundSupply(world) };
+      shared = { targets: collectTargets(world, ctx, terrain), supply: collectSupplyTally(world) };
     }
     const plan: PlannerContext = {
       world,
@@ -189,7 +191,7 @@ function verifyDormancy(world: World): string[] {
       owner: ownerOf(world, entity),
       here: terrain.nodeAtClamped(hereNode.hx, hereNode.hy),
       targets: shared.targets,
-      inbound: shared.inbound,
+      supply: shared.supply,
       limit: navigationLimitFor(world, ctx.content, terrain, entity),
       gossipCandidates: new GossipCandidates(world, ctx.content),
     };

@@ -52,7 +52,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     const offBeat = waitsIdle(world, ctx.tick, e) && !world.has(e, Resting);
     // A busy settler plays its intent out, and is no longer idle; the rest shed what the previous plan
     // left before re-planning.
-    if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.inbound, pass.shelters)) {
+    if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.supply, pass.shelters)) {
       wakeIdle(world, e);
       continue;
     }

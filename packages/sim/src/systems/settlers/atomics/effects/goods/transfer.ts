@@ -1,6 +1,7 @@
 import {
   Carrying,
   DeliveryFlag,
+  PickupClaim,
   Stockpile,
   setStockAmount,
   Upgrading,
@@ -21,6 +22,7 @@ import { reapEmptyLoosePile } from './piles.js';
  * onto the settler's back, capped by what is left there. The amount is conserved but the identity is not:
  * a dish lands on the back as the edible it becomes in this settler's hands ({@link carriedGoodForm}), so
  * the bakery loses one bread and the carrier holds one `food_simple`. A null `from` is a sourceless pickup.
+ * The settler's pickup claim ends here, whatever was left to take.
  */
 export function pickupFromStore(
   world: World,
@@ -30,6 +32,7 @@ export function pickupFromStore(
   goodType: number,
   amount: number,
 ): void {
+  world.remove(settler, PickupClaim);
   const carried = carriedGoodForm(world, ctx, settler, goodType);
   if (from === null) {
     addCarry(world, settler, carried, amount);

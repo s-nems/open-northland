@@ -19,6 +19,7 @@ import {
   noteSettlerProgress,
   OpenChestOrder,
   Owner,
+  PickupClaim,
   Position,
   ProductionCounters,
   Settler,
@@ -67,6 +68,7 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   // The site must stop counting the abandoned fetch as inbound; the planner's tally re-seeds from live
   // components each tick.
   world.remove(e, SupplyRun);
+  world.remove(e, PickupClaim); // and its source stops holding a unit for the abandoned pickup
   world.remove(e, Engagement); // drop any auto-combat state; the new trade re-decides its stance
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing);

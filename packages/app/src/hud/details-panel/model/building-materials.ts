@@ -231,12 +231,7 @@ function constructionActivity(
   const hasBuilder = siteCrewOf(snapshot, siteId).some(isSettler);
   for (const actor of supplyRunsTo(snapshot, siteId)) {
     const run = actor.components.SupplyRun as
-      | {
-          readonly site?: unknown;
-          readonly goodType?: unknown;
-          readonly amount?: unknown;
-          readonly source?: unknown;
-        }
+      | { readonly site?: unknown; readonly goodType?: unknown; readonly amount?: unknown }
       | undefined;
     if (run === undefined) continue;
     const goodType = num(run?.goodType);
@@ -253,7 +248,7 @@ function constructionActivity(
  * shown as a delivery. Route accessibility is deliberately not inferred here. */
 function supplyRunIsLive(
   actor: SnapshotEntity,
-  run: { readonly site?: unknown; readonly goodType?: unknown; readonly source?: unknown },
+  run: { readonly site?: unknown; readonly goodType?: unknown },
   goodType: number,
 ): boolean {
   const carrying = actor.components.Carrying as
@@ -279,9 +274,7 @@ function supplyRunIsLive(
     | undefined;
   const effect = atomic?.effect;
   return (
-    (effect?.kind === 'pickup' &&
-      num(effect.from) === num(run.source) &&
-      num(effect.goodType) === goodType) ||
+    (effect?.kind === 'pickup' && num(effect.goodType) === goodType) ||
     (effect?.kind === 'pileup' && num(effect.store) === num(run.site))
   );
 }

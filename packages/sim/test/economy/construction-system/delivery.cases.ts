@@ -8,6 +8,7 @@ import {
   JobAssignment,
   MoveGoal,
   Owner,
+  PickupClaim,
   Position,
   Settler,
   SiteAssignment,
@@ -24,12 +25,7 @@ import { remainingConstructionSteps } from '../../../src/systems/economy/constru
 import { plannerSystem } from '../../../src/systems/index.js';
 import { pickupFromStore } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
 import { PlannerSpacing } from '../../../src/systems/settlers/planner/spacing.js';
-import {
-  collectInboundSupply,
-  deliveredConstructionFraction,
-  inboundSupplyOf,
-  reservedSourceSupplyOf,
-} from '../../../src/systems/stores/index.js';
+import { collectSupplyTally, deliveredConstructionFraction } from '../../../src/systems/stores/index.js';
 
 import {
   BUILD_HOUSE_ATOMIC,
@@ -225,10 +221,11 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(runners).toHaveLength(1);
     const runner = runners[0];
     if (runner === undefined) throw new Error('expected one reserved construction pickup');
-    expect(sim.world.get(runner, SupplyRun)).toMatchObject({ source: warehouse, goodType: STONE });
+    expect(sim.world.get(runner, PickupClaim)).toMatchObject({ source: warehouse, goodType: STONE });
 
-    // No other trade reads the reservation, so a refusal would leave that settler retrying this store
-    // until the builder arrived. It takes the unit, and the builder finds the store empty and stands down.
+    // A claim steers the choice, never the pickup: a refusal would leave a settler at the counter retrying
+    // this store until the builder arrived. It takes the unit, and the builder finds the store empty and
+    // stands down.
     const unrelated = sim.world.create();
     pickupFromStore(sim.world, ctxOf(sim), unrelated, warehouse, STONE, 1);
     expect(sim.world.get(unrelated, Carrying)).toMatchObject({ goodType: STONE, amount: 1 });
@@ -245,7 +242,8 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     const fetcher = builderAt(sim, 28, 3);
     sim.world.add(fetcher, SiteAssignment, { site, pinned: true });
     plannerSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(fetcher, SupplyRun)).toMatchObject({ site, goodType: WOOD, source: warehouse });
+    expect(sim.world.get(fetcher, SupplyRun)).toMatchObject({ site, goodType: WOOD });
+    expect(sim.world.get(fetcher, PickupClaim)).toMatchObject({ source: warehouse, goodType: WOOD });
 
     // The site is the nearest stockpile with room for wood, but its one wood unit is already on its way.
     // Taking this load too would cover the line from farther off and stand the fetcher down at the door.
@@ -253,7 +251,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(passing, SupplyRun)).toBe(false);
-    expect(inboundSupplyOf(collectInboundSupply(sim.world), site, WOOD)).toBe(1);
+    expect(collectSupplyTally(sim.world).inboundOf(site, WOOD)).toBe(1);
   });
 
   it('releases a drained source and retargets the construction run instead of covering the bill forever', () => {
@@ -265,20 +263,20 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     sim.world.add(builder, SiteAssignment, { site, pinned: true });
 
     plannerSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(builder, SupplyRun).source).toBe(drained);
+    expect(sim.world.get(builder, PickupClaim).source).toBe(drained);
     sim.world.mut(drained, Stockpile).amounts.set(STONE, 0);
 
     let retargeted = false;
     for (let tick = 0; tick < 600 && !retargeted; tick++) {
       sim.step();
-      retargeted = sim.world.tryGet(builder, SupplyRun)?.source === replacement;
+      retargeted = sim.world.tryGet(builder, PickupClaim)?.source === replacement;
     }
 
     expect(retargeted).toBe(true);
-    const tally = collectInboundSupply(sim.world);
-    expect(reservedSourceSupplyOf(tally, drained, STONE)).toBe(0);
-    expect(reservedSourceSupplyOf(tally, replacement, STONE)).toBe(1);
-    expect(inboundSupplyOf(tally, site, STONE)).toBe(1);
+    const tally = collectSupplyTally(sim.world);
+    expect(tally.reservedAt(drained, STONE)).toBe(0);
+    expect(tally.reservedAt(replacement, STONE)).toBe(1);
+    expect(tally.inboundOf(site, STONE)).toBe(1);
   });
 
   it('releases source and destination promises when flight diverts a travelling construction runner', () => {
@@ -286,16 +284,18 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     const site = siteAt(sim, HOUSE, 6, 0);
     const source = builtBuildingAt(sim, HEADQUARTERS, 4, 0, [[STONE, 1]]);
     const builder = builderAt(sim, 0, 0);
-    sim.world.add(builder, SupplyRun, { site, source, goodType: STONE, amount: 1 });
+    sim.world.add(builder, SupplyRun, { site, goodType: STONE, amount: 1 });
+    sim.world.add(builder, PickupClaim, { source, goodType: STONE, amount: 1 });
     sim.world.add(builder, Fleeing, { repathAt: 0, calmUntil: null });
     sim.world.add(builder, MoveGoal, { cell: 1 });
 
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(builder, SupplyRun)).toBe(false);
-    const tally = collectInboundSupply(sim.world);
-    expect(reservedSourceSupplyOf(tally, source, STONE)).toBe(0);
-    expect(inboundSupplyOf(tally, site, STONE)).toBe(0);
+    expect(sim.world.has(builder, PickupClaim)).toBe(false);
+    const tally = collectSupplyTally(sim.world);
+    expect(tally.reservedAt(source, STONE)).toBe(0);
+    expect(tally.inboundOf(site, STONE)).toBe(0);
   });
 
   it('drops once and does not re-fetch when a pinned site has no legal delivery perimeter', () => {

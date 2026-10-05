@@ -30,15 +30,7 @@ export {
 } from './operators.js';
 export { heapReach, type SeatStock } from './seat-stock.js';
 export { catchUpSeatStock, seatStockOf } from './seat-stock-ledger.js';
-export {
-  collectInboundSupply,
-  hasInboundSupply,
-  type InboundSupplyTally,
-  inboundSupplyOf,
-  releaseSupplyRun,
-  reservedSourceSupplyOf,
-  stampSupplyRun,
-} from './supply-tally.js';
+export { collectSupplyTally, type SupplyTally } from './supply-tally.js';
 export {
   buildingProduces,
   buildingWorkerJobs,

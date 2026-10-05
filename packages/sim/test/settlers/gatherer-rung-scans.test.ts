@@ -15,7 +15,7 @@ import {
   nearestOwnDropFor,
 } from '../../src/systems/settlers/targets/index.js';
 import { GossipCandidates } from '../../src/systems/social/index.js';
-import { collectInboundSupply } from '../../src/systems/stores/index.js';
+import { collectSupplyTally } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
@@ -68,7 +68,7 @@ function planFor(sim: Simulation, jobType: number, hx: number, hy: number): Plan
     owner: undefined,
     limit: null,
     targets: collectTargets(sim.world, ctx, terrain),
-    inbound: collectInboundSupply(sim.world),
+    supply: collectSupplyTally(sim.world),
     gossipCandidates: new GossipCandidates(sim.world, sim.content),
   };
 }

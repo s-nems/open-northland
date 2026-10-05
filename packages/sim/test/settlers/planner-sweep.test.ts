@@ -38,7 +38,7 @@ import {
 } from '../../src/systems/settlers/planner/idle-replan.js';
 import { idleRelease, releaseStaleIntent } from '../../src/systems/settlers/planner/replan.js';
 import { sweepOrder } from '../../src/systems/settlers/planner/sweep.js';
-import { collectInboundSupply } from '../../src/systems/stores/index.js';
+import { collectSupplyTally } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
@@ -158,7 +158,7 @@ describe('planner sweep order', () => {
     const world = new World();
     const [failing, engaged, supplying] = [walking(world), walking(world), walking(world)];
     world.add(failing, PathRequest, { start: GOAL, goal: GOAL, failed: false });
-    world.add(supplying, SupplyRun, { site: failing, goodType: PLANK, amount: 1, source: null });
+    world.add(supplying, SupplyRun, { site: failing, goodType: PLANK, amount: 1 });
     expect(swept(world, CONTENT, NO_SHELTERS, EVERY_IDLER)).toEqual([]);
 
     world.mut(failing, PathRequest).failed = true;
@@ -265,9 +265,9 @@ const MARKERS: Record<string, (world: World, e: Entity) => void> = {
   unreachableTargets: (world, e) => world.add(e, UnreachableTargets, { entries: [] }),
   garrison: (world, e) => world.add(e, Garrison, { post: e, returnTo: { x: ZERO, y: ZERO } }),
   idleStand: (world, e) => world.add(e, IdleStand, { standing: true }),
-  supplyRun: (world, e) => world.add(e, SupplyRun, { site: e, goodType: PLANK, amount: 1, source: null }),
+  supplyRun: (world, e) => world.add(e, SupplyRun, { site: e, goodType: PLANK, amount: 1 }),
   fleeingSupplyRun: (world, e) => {
-    world.add(e, SupplyRun, { site: e, goodType: PLANK, amount: 1, source: null });
+    world.add(e, SupplyRun, { site: e, goodType: PLANK, amount: 1 });
     world.add(e, Fleeing, { repathAt: 0, calmUntil: null });
   },
   engagement: (world, e) => world.add(e, Engagement, { repathAt: 0 }),
@@ -306,7 +306,7 @@ describe('idle release contract', () => {
               ctx,
               e,
               collectFarmClaims(world),
-              collectInboundSupply(world),
+              collectSupplyTally(world),
               shelters,
             );
             if (!planned) wakeIdle(world, e);

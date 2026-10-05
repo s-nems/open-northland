@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { Carrying, SupplyRun } from '../../src/components/index.js';
+import { PickupClaim, SupplyRun } from '../../src/components/index.js';
 import type { Entity, World } from '../../src/ecs/world.js';
-import {
-  collectInboundSupply,
-  type InboundSupplyTally,
-  releaseSupplyRun,
-  stampSupplyRun,
-} from '../../src/systems/stores/supply-tally.js';
+import { collectSupplyTally, type SupplyTally } from '../../src/systems/stores/supply-tally.js';
 import { mappedSim } from '../footprint/resource-footprint/support.js';
 
 const ROUNDS = 60;
@@ -46,18 +41,21 @@ function scanned(world: World): { inbound: Rows; atSource: Rows } {
   for (const e of world.query(SupplyRun)) {
     const run = world.get(e, SupplyRun);
     add(inbound, run.site, run.goodType, run.amount);
-    if (run.source !== null && !world.has(e, Carrying)) add(atSource, run.source, run.goodType, run.amount);
+  }
+  for (const e of world.query(PickupClaim)) {
+    const claim = world.get(e, PickupClaim);
+    add(atSource, claim.source, claim.goodType, claim.amount);
   }
   return { inbound: rowsOf(inbound), atSource: rowsOf(atSource) };
 }
 
-function expectScanned(world: World, tally: InboundSupplyTally): void {
+function expectScanned(world: World, tally: SupplyTally): void {
   expect({ inbound: rowsOf(tally.inbound), atSource: rowsOf(tally.reservedAtSource) }).toEqual(
     scanned(world),
   );
 }
 
-describe('inbound supply tally', () => {
+describe('supply tally', () => {
   it('matches a full scan at every collect across stamps, releases and outside changes', () => {
     const sim = mappedSim();
     const world = sim.world;
@@ -65,19 +63,33 @@ describe('inbound supply tally', () => {
     const places = Array.from({ length: PLACES }, () => world.create());
     let settlers = Array.from({ length: SETTLERS }, () => world.create());
     const pick = <T>(list: readonly T[]): T => list[next() % list.length] as T;
-    const runOf = () => ({
-      site: pick(places),
+    const runOf = () => ({ site: pick(places), goodType: next() % GOODS, amount: 1 + (next() % MAX_AMOUNT) });
+    const claimOf = () => ({
+      source: pick(places),
       goodType: next() % GOODS,
       amount: 1 + (next() % MAX_AMOUNT),
-      source: next() % 3 === 0 ? null : pick(places),
     });
-    let tally = collectInboundSupply(world);
+    let tally = collectSupplyTally(world);
     for (let round = 0; round < ROUNDS; round++) {
       // The planner's own folds, which the tally sees as they happen.
       for (let i = 0; i < OPERATIONS_PER_ROUND; i++) {
         const settler = pick(settlers);
-        if (next() % 3 === 0) releaseSupplyRun(world, settler, tally);
-        else stampSupplyRun(world, settler, tally, runOf());
+        switch (next() % 5) {
+          case 0:
+            tally.releaseSupplyRun(settler);
+            break;
+          case 1:
+            tally.releasePickupClaim(settler);
+            break;
+          case 2:
+            tally.releaseErrands(settler);
+            break;
+          case 3:
+            tally.stampSupplyRun(settler, runOf());
+            break;
+          default:
+            tally.stampPickupClaim(settler, claimOf());
+        }
       }
       expect(world.verifyCaches()).toEqual([]);
       // Changes outside the pass, which only the next collect counts.
@@ -85,16 +97,16 @@ describe('inbound supply tally', () => {
         const settler = pick(settlers);
         switch (next() % 5) {
           case 0:
-            world.add(settler, Carrying, { goodType: 0, amount: 1 });
-            break;
-          case 1:
-            world.remove(settler, Carrying);
-            break;
-          case 2:
             world.remove(settler, SupplyRun);
             break;
-          case 3:
+          case 1:
             world.add(settler, SupplyRun, runOf());
+            break;
+          case 2:
+            world.remove(settler, PickupClaim);
+            break;
+          case 3:
+            world.add(settler, PickupClaim, claimOf());
             break;
           default:
             world.destroy(settler);
@@ -102,7 +114,7 @@ describe('inbound supply tally', () => {
         }
       }
       expect(world.verifyCaches()).toEqual([]);
-      const collected = collectInboundSupply(world);
+      const collected = collectSupplyTally(world);
       expect(collected).toBe(tally);
       tally = collected;
       expectScanned(world, tally);
@@ -114,15 +126,20 @@ describe('inbound supply tally', () => {
     const sim = mappedSim();
     const world = sim.world;
     const [site, source, settler] = [world.create(), world.create(), world.create()];
-    const tally = collectInboundSupply(world);
-    stampSupplyRun(world, settler, tally, { site, goodType: 1, amount: 2, source });
+    const tally = collectSupplyTally(world);
+    tally.stampSupplyRun(settler, { site, goodType: 1, amount: 2 });
+    tally.stampPickupClaim(settler, { source, goodType: 1, amount: 2 });
+    expect(tally.inboundOf(site, 1)).toBe(2);
+    expect(tally.reservedAt(source, 1)).toBe(2);
     expectScanned(world, tally);
-    world.add(settler, Carrying, { goodType: 1, amount: 1 });
-    expect(rowsOf(tally.reservedAtSource)).toEqual([[source, 1, 2]]);
-    expectScanned(world, collectInboundSupply(world));
-    releaseSupplyRun(world, settler, tally);
+    // The pickup effect ends the claim outside the pass; the run stays until the next re-plan.
+    world.remove(settler, PickupClaim);
+    expect(tally.reservedAt(source, 1)).toBe(2);
+    expect(collectSupplyTally(world).reservedAt(source, 1)).toBe(0);
+    expect(tally.inboundOf(site, 1)).toBe(2);
+    tally.releaseErrands(settler);
     expect(tally.inbound.size).toBe(0);
-    expect(tally.reservedAtSource.size).toBe(0);
+    expect(tally.reservedAt(source, 1)).toBe(0);
     expect(world.verifyCaches()).toEqual([]);
   });
 
@@ -136,19 +153,25 @@ describe('inbound supply tally', () => {
       world.create(),
       world.create(),
     ];
-    const tally = collectInboundSupply(world);
-    stampSupplyRun(world, settler, tally, { site, goodType: 1, amount: 2, source });
-    expectScanned(world, collectInboundSupply(world));
+    const tally = collectSupplyTally(world);
+    tally.stampSupplyRun(settler, { site, goodType: 1, amount: 2 });
+    tally.stampPickupClaim(settler, { source, goodType: 1, amount: 2 });
+    expectScanned(world, collectSupplyTally(world));
 
     const run = world.mut(settler, SupplyRun);
     run.site = otherSite;
-    run.source = otherSource;
     run.goodType = 2;
     run.amount = 3;
+    const claim = world.mut(settler, PickupClaim);
+    claim.source = otherSource;
+    claim.goodType = 2;
+    claim.amount = 3;
 
     expect(world.verifyCaches()).toEqual([]);
-    expectScanned(world, collectInboundSupply(world));
+    expectScanned(world, collectSupplyTally(world));
     expect(rowsOf(tally.inbound)).toEqual([[otherSite, 2, 3]]);
+    expect(tally.reservedAt(source, 1)).toBe(0);
+    expect(tally.reservedAt(otherSource, 2)).toBe(3);
     expect(world.verifyCaches()).toEqual([]);
   });
 });

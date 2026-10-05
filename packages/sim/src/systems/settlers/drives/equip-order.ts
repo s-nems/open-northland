@@ -15,6 +15,7 @@ import { atomicDuration } from '../../readviews/animations.js';
 import { canEquipCategory } from '../../readviews/equip-pick.js';
 import { isHeroJob } from '../../readviews/jobs.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
+import type { SupplyTally } from '../../stores/index.js';
 import { isUsed } from '../atomics/effects/goods/index.js';
 import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../atomics/start.js';
 import { chainRecruitArmor } from '../planner/recruit-arming.js';
@@ -39,6 +40,7 @@ interface EquipErrand {
   /** The settler's owning player - the errand fetches and stows only through same-side stores. */
   readonly owner: number | undefined;
   readonly targets: TargetCandidates;
+  readonly supply: SupplyTally;
 }
 
 const EXCLUDE_PRODUCERS = false;
@@ -74,6 +76,7 @@ export function planEquipOrder(
   here: NodeId,
   limit: NavigationLimit | null,
   targets: TargetCandidates,
+  supply: SupplyTally,
 ): boolean {
   const order = world.tryMut(e, EquipOrder);
   if (order === undefined) return false;
@@ -89,6 +92,7 @@ export function planEquipOrder(
     avoid: unreachableGoalVeto(world, ctx, e),
     owner: ownerOf(world, e),
     targets,
+    supply,
   };
   if (order.issuer === 'player' && !playerIntentAllowed(ctx, settler, order)) return finishEquipOrder(errand);
   switch (order.stage) {
@@ -142,7 +146,7 @@ function planTakeOff(errand: EquipErrand): boolean {
  * Nothing reachable to fetch ends the errand rather than parking the settler.
  */
 function planFetch(errand: EquipErrand, goodType: number): boolean {
-  const { world, ctx, entity, settler, order, here, owner, gate, avoid, targets } = errand;
+  const { world, ctx, entity, settler, order, here, owner, gate, avoid, targets, supply } = errand;
   const held = wornSlot(world, entity, order.group, order.slot);
   // A part-used unit is still replaced: refetching a worn pair is the swap the menu offers.
   if (held !== null && held.goodType === goodType && !isUsed(held)) return endErrand(errand);
@@ -153,7 +157,7 @@ function planFetch(errand: EquipErrand, goodType: number): boolean {
     startDrop(world, ctx, entity);
     return true;
   }
-  const src = nearestStoreHolding(targets.bands, world, here, goodType, owner, gate, avoid);
+  const src = nearestStoreHolding(targets.bands, world, here, goodType, owner, supply, gate, avoid);
   if (src === null) return endErrand(errand);
   const { group, slot } = order;
   atOrWalkTo(errand, src, () =>
@@ -196,14 +200,14 @@ function planStow(errand: EquipErrand): boolean {
 /** The `return` stage: walk back to the issue node, if the order keeps one. Arriving, or finding it
  *  unreachable, ends the errand and returns false so the economy re-tasks the settler the same tick. */
 function planReturn(errand: EquipErrand): boolean {
-  const { world, ctx, terrain, entity, order, here, avoid, targets } = errand;
+  const { world, ctx, terrain, entity, order, here, avoid, targets, supply } = errand;
   // A queued player intent continues from the current stock/stow point. Only the final intent walks
   // back to the shared issue position, avoiding a potentially huge round trip between equipment types.
   if (order.issuer === 'player' && promoteQueuedEquipOrder(errand)) return true;
   // A recruit weapon errand chains its armor want from the store it stands at rather than walking
   // in between, so one outing dresses the recruit and finishes at the final stock source.
   if (order.issuer === 'assistant-recruit' && order.group === 'weapon') {
-    const chained = chainRecruitArmor(world, ctx, terrain, targets, entity, here, avoid);
+    const chained = chainRecruitArmor(world, ctx, terrain, targets, supply, entity, here, avoid);
     if (chained !== null) {
       order.group = 'armor';
       order.goodType = chained;

@@ -4,6 +4,7 @@ import {
   type EquipmentSlot,
   EquipOrder,
   MISC_EQUIP_SLOTS,
+  PickupClaim,
   wornSlot,
   writeEquipSlot,
 } from '../../../../../components/index.js';
@@ -44,7 +45,7 @@ function advanceOrder(world: World, settler: Entity, stage: 'stow' | 'return'): 
  * into the settler's equipment slot. A still-fresh swapped-out good lands on the back for the errand's stow
  * step, a part-used one is destroyed by the take-off rule. A source gone or emptied since the planner chose
  * it wears nothing and the errand re-searches. The settler reached here empty-handed, so {@link addCarry}
- * cannot throw on a foreign load.
+ * cannot throw on a foreign load. Its pickup claim on the store ends here either way.
  */
 export function equipFromStore(
   world: World,
@@ -55,6 +56,7 @@ export function equipFromStore(
   group: EquipCategory,
   slot: number,
 ): void {
+  world.remove(settler, PickupClaim);
   const stock = accessibleStockAmounts(world, from);
   if (stock === undefined) return;
   const have = stock.get(goodType) ?? 0;

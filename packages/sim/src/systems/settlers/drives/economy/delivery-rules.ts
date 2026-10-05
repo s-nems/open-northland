@@ -22,10 +22,9 @@ import { constructionWorkCell } from '../../../footprint/index.js';
 import {
   bankedSlot,
   buildingProduces,
-  type InboundSupplyTally,
-  inboundSupplyOf,
   mergedRecipeOf,
   refillsOwnStock,
+  type SupplyTally,
   stockCapacity,
 } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
@@ -90,14 +89,14 @@ export function deliverySearchArea(plan: PlannerContext): DeliverySearchArea {
  *  that site. Above the consuming-workplace rule because the bill shares the workshop's inputs: the wood a
  *  joiner fetched for a cart must not land on the joinery's plank shelf. */
 function toOwnVehicleSite(plan: PlannerContext, goodType: number): DeliveryVerdict {
-  const { world, ctx, entity, owner, inbound } = plan;
+  const { world, ctx, entity, owner, supply } = plan;
   const assigned = world.tryGet(entity, SiteAssignment);
   if (assigned === undefined || assigned.pinned || !world.has(assigned.site, UnderConstruction)) return null;
   const type = world.tryGet(assigned.site, Building)?.buildingType;
   if (type === undefined || contentIndex(ctx.content).buildings.get(type)?.kind !== BUILDING_KIND.vehicle) {
     return null;
   }
-  return constructionSiteNeeds(world, ctx, assigned.site, owner, goodType, inbound, entity)
+  return constructionSiteNeeds(world, ctx, assigned.site, owner, goodType, supply, entity)
     ? assigned.site
     : null;
 }
@@ -165,10 +164,10 @@ function toBoundStorage(plan: PlannerContext, goodType: number): DeliveryVerdict
  *  so it stays unconfined: the player's pin may point beyond the signpost area and a confined delivery
  *  would shuttle the material back to its source forever. */
 function toOwnCrewSite(plan: PlannerContext, goodType: number): DeliveryVerdict {
-  const { world, ctx, entity, owner, inbound } = plan;
+  const { world, ctx, entity, owner, supply } = plan;
   const crew = world.tryGet(entity, SiteAssignment)?.site ?? boundWorkplace(plan);
   if (crew === undefined) return null;
-  if (!constructionSiteNeeds(world, ctx, crew, owner, goodType, inbound, entity)) return null;
+  if (!constructionSiteNeeds(world, ctx, crew, owner, goodType, supply, entity)) return null;
   return constructionSiteCanReceive(plan, crew) ? crew : 'no-sink';
 }
 
@@ -180,12 +179,12 @@ function toNeedingConstructionSite(
   goodType: number,
   area: DeliverySearchArea,
 ): DeliveryVerdict {
-  const { world, ctx, entity, here, owner, inbound, targets } = plan;
+  const { world, ctx, entity, here, owner, supply, targets } = plan;
   return (
     targets.constructionSiteCells.nearest(
       here,
       (e) =>
-        constructionSiteNeeds(world, ctx, e, owner, goodType, inbound, entity) &&
+        constructionSiteNeeds(world, ctx, e, owner, goodType, supply, entity) &&
         constructionSiteCanReceive(plan, e) &&
         area.avoidSite?.(e) !== true
           ? QUALIFIES
@@ -255,12 +254,12 @@ function constructionSiteNeeds(
   e: Entity,
   owner: number | undefined,
   goodType: number,
-  inbound: InboundSupplyTally,
+  supply: SupplyTally,
   supplier: Entity,
 ): boolean {
   if (!world.has(e, UnderConstruction)) return false;
   if (isSoloSite(world, e) && !holdsSiteClaim(world, e, supplier)) return false;
   if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site
-  const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
+  const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + supply.inboundOf(e, goodType);
   return have < stockCapacity(world, ctx, e, goodType);
 }

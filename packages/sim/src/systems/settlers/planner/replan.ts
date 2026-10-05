@@ -17,6 +17,7 @@ import {
   ownerOf,
   PathFollow,
   PathRequest,
+  PickupClaim,
   PlayerOrder,
   Position,
   Resting,
@@ -40,7 +41,7 @@ import type { ShelterSites } from '../../defence/index.js';
 import { clearNavState, isTravelling } from '../../movement/nav-state.js';
 import { sheltersOnAlarm } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
-import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
+import type { SupplyTally } from '../../stores/index.js';
 import { ACTION_OWNER_MARKERS, anotherSystemOwns } from '../action-owner.js';
 import { atomicHoldsSettler } from '../atomics/busy.js';
 import { topsUpAtHome } from '../drives/at-home.js';
@@ -151,6 +152,7 @@ export const RELEASE_IDLE_MEMBERSHIP: readonly Component<unknown>[] = [
   PathRequest,
   PathFollow,
   SupplyRun,
+  PickupClaim,
   FarmTask,
   Resting,
   JobAssignment,
@@ -186,10 +188,15 @@ export function idleRelease(world: World, e: Entity): IdleRelease | null {
   if (world.get(e, Settler).jobType === null && shedsNothing(world, e)) return 'jobless';
   const quiet =
     isTravelling(world, e) &&
-    !(world.has(e, SupplyRun) && anotherSystemOwns(world, e)) &&
+    !(hasErrand(world, e) && anotherSystemOwns(world, e)) &&
     !world.has(e, Engagement) &&
     world.tryGet(e, PathRequest)?.failed !== true;
   return quiet ? 'travelling' : null;
+}
+
+/** Whether the settler holds a supply run or a pickup claim, the errands a re-plan releases. */
+function hasErrand(world: World, e: Entity): boolean {
+  return world.has(e, SupplyRun) || world.has(e, PickupClaim);
 }
 
 /** Whether {@link releaseStaleIntent} returns true for `e` without a write: nothing holds or walks it,
@@ -200,7 +207,7 @@ function shedsNothing(world: World, e: Entity): boolean {
   return (
     !world.has(e, Garrison) &&
     !isTravelling(world, e) &&
-    !world.has(e, SupplyRun) &&
+    !hasErrand(world, e) &&
     !world.has(e, FarmTask) &&
     !world.has(e, Resting) &&
     (!world.has(e, CurrentAtomic) || (inPastimeChat(world, e) && chatAtomicRunning(world, e)))
@@ -220,7 +227,7 @@ function waitsInside(world: World, e: Entity): boolean {
     at === undefined ||
     at !== holder ||
     isTravelling(world, e) ||
-    world.has(e, SupplyRun) ||
+    hasErrand(world, e) ||
     world.has(e, FarmTask) ||
     world.has(e, Engagement) ||
     world.has(e, Chat) ||
@@ -283,7 +290,7 @@ export function releaseStaleIntent(
   ctx: SystemContext,
   e: Entity,
   farmClaims: FarmClaims,
-  inbound: InboundSupplyTally,
+  supply: SupplyTally,
   shelters: ShelterSites,
 ): boolean {
   reconcileYardRoute(world, e);
@@ -303,9 +310,9 @@ export function releaseStaleIntent(
     world.remove(e, PathRequest);
     if (world.tryGet(e, Resting)?.at === world.get(e, Sheltering).shelter) clearNavState(world, e);
   }
-  // A non-atomic owner has diverted this settler from its construction errand. Release both promises
-  // before a combat, flight, family or player-order route hits the travel early-out below.
-  if (world.has(e, SupplyRun) && anotherSystemOwns(world, e)) releaseSupplyRun(world, e, inbound);
+  // A non-atomic owner has diverted this settler from its errand. Release its promises before a combat,
+  // flight, family or player-order route hits the travel early-out below.
+  if (anotherSystemOwns(world, e)) supply.releaseErrands(e);
   // Fresh read - reconcileYardRoute may have cleared the request.
   const request = world.tryGet(e, PathRequest);
   if (request?.failed === true && !ownsFailedRoute(world, e)) {
@@ -336,7 +343,7 @@ export function releaseStaleIntent(
   // drive below re-derives a craft clip from its workplace's own batch clock in this same pass, and a
   // pastime chat's clip is shed with the chat once a drive takes the settler.
   if (!inPastimeChat(world, e)) removeCurrentAtomic(world, e);
-  // Releasing through the tally keeps the inbound count in lockstep with the store.
-  releaseSupplyRun(world, e, inbound);
+  // Releasing through the tally keeps its counts in lockstep with the store.
+  supply.releaseErrands(e);
   return true;
 }

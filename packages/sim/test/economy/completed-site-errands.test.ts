@@ -11,6 +11,7 @@ import {
   PathFollow,
   PathRequest,
   PathRoute,
+  PickupClaim,
   PlayerOrder,
   Position,
   ResourceFootprint,
@@ -32,7 +33,7 @@ import {
   dynamicBlockOverlay,
   walkBlockedBodyOf,
 } from '../../src/systems/index.js';
-import { collectInboundSupply } from '../../src/systems/stores/supply-tally.js';
+import { collectSupplyTally } from '../../src/systems/stores/supply-tally.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
@@ -168,7 +169,7 @@ describe('completed construction errands', () => {
   it('releases an outstanding delivery promise without losing the carried unit or workplace binding', () => {
     const { sim, site, builder, goal } = scenario();
     sim.world.add(builder, Carrying, { goodType: 1, amount: 1 });
-    sim.world.add(builder, SupplyRun, { site, goodType: 1, amount: 1, source: null });
+    sim.world.add(builder, SupplyRun, { site, goodType: 1, amount: 1 });
     sim.world.add(builder, JobAssignment, { workplace: site });
     sim.world.add(builder, SiteAssignment, { site, pinned: true });
     forceFinishConstruction(sim.world, ctxOf(sim), site);
@@ -177,7 +178,7 @@ describe('completed construction errands', () => {
     expect(sim.world.get(builder, JobAssignment).workplace).toBe(site);
     expect(sim.world.get(builder, Carrying)).toEqual({ goodType: 1, amount: 1 });
     expect(sim.world.get(site, Stockpile).amounts.get(1)).toBe(1);
-    expect(collectInboundSupply(sim.world).inbound.size).toBe(0);
+    expect(collectSupplyTally(sim.world).inbound.size).toBe(0);
     observe(sim, builder, goal, 30);
   });
 
@@ -186,20 +187,22 @@ describe('completed construction errands', () => {
     const source = sim.world.create();
     sim.world.add(source, Position, positionOfNode(20, 20));
     sim.world.add(source, Stockpile, { amounts: new Map([[1, 1]]) });
-    sim.world.add(builder, SupplyRun, { site, goodType: 1, amount: 1, source });
+    sim.world.add(builder, SupplyRun, { site, goodType: 1, amount: 1 });
+    sim.world.add(builder, PickupClaim, { source, goodType: 1, amount: 1 });
     sim.world.add(builder, MoveGoal, { cell: terrain.nodeAt(20, 20) });
     forceFinishConstruction(sim.world, ctxOf(sim), site);
     expect(sim.world.has(builder, MoveGoal)).toBe(false);
     expect(sim.world.has(builder, SupplyRun)).toBe(false);
     expect(sim.world.get(source, Stockpile).amounts.get(1)).toBe(1);
-    expect(collectInboundSupply(sim.world).reservedAtSource.size).toBe(0);
+    expect(collectSupplyTally(sim.world).reservedAtSource.size).toBe(0);
   });
 
   it('ends a redundant pickup atomic without taking its promised source goods', () => {
     const { sim, site, builder } = scenario();
     const source = sim.world.create();
     sim.world.add(source, Stockpile, { amounts: new Map([[1, 1]]) });
-    sim.world.add(builder, SupplyRun, { site, goodType: 1, amount: 1, source });
+    sim.world.add(builder, SupplyRun, { site, goodType: 1, amount: 1 });
+    sim.world.add(builder, PickupClaim, { source, goodType: 1, amount: 1 });
     addCurrentAtomic(sim.world, builder, {
       atomicId: 22,
       duration: 5,
