@@ -1,3 +1,4 @@
+import type { SessionDriver } from '@open-northland/lockstep';
 import { TICKS_PER_SECOND } from '@open-northland/sim';
 import { VIKING } from '../../catalog/buildings.js';
 import { playerSwatchHex } from '../../catalog/roster.js';
@@ -125,6 +126,35 @@ export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanel
       chat = [...chat, { from: SELF, text, tick: null }];
       chatVersion += 1;
     },
+  };
+}
+
+/** The scene's driver, standing still while the preview's room is held or paused, as a relayed world
+ *  does while the relay sends no frames: no tick runs, so the world and the bar's clock stop. */
+export function stillWhileHeld(driver: SessionDriver, preview: NetPanelSource): SessionDriver {
+  const stopped = (): boolean => {
+    const clock = preview.model()?.clock;
+    return clock !== undefined && (clock.held || clock.paused);
+  };
+  return {
+    get paused() {
+      return driver.paused;
+    },
+    get speed() {
+      return driver.speed;
+    },
+    get droppedTicks() {
+      return driver.droppedTicks;
+    },
+    get maxStepsPerFrame() {
+      return driver.maxStepsPerFrame;
+    },
+    setPaused: (paused) => driver.setPaused(paused),
+    setSpeed: (speed) => driver.setSpeed(speed),
+    submit: (envelope) => driver.submit(envelope),
+    captureSave: (options) => driver.captureSave(options),
+    // No elapsed time while stopped: the driver keeps its interpolation alpha and runs nothing.
+    advance: (elapsedMs, onTick) => driver.advance(stopped() ? 0 : elapsedMs, onTick),
   };
 }
 

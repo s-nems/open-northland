@@ -22,9 +22,10 @@ import {
 } from '../network/text.js';
 import { formatSimClock } from '../summary/model.js';
 import type { ToolWindow } from '../tool-panel/window-shell.js';
-import { button, element, setClass, setHidden, setTitle, write } from './parts/dom.js';
+import { button, element, setClass, setHidden, setTip, write } from './parts/dom.js';
 import { createSection } from './parts/section.js';
 import { quietTextField } from './parts/text-field.js';
+import { attachTipLayer, type TipChip } from './parts/tip-layer.js';
 import { centralWindowPlacer, createHudWindow } from './window.js';
 
 /** Design px: the central window width the residents window uses. */
@@ -33,6 +34,9 @@ const NETWORK_WINDOW_W = 640;
 const CHAT_STICK_SLACK = 8;
 /** The tick cost a machine can afford at the running speed, in percent. */
 const FULL_TICK_COST_PCT = 100;
+/** Design px between the cursor and the tip, and the tip's least gap to the screen edges. */
+const TIP_CURSOR_GAP = 14;
+const TIP_EDGE_GAP = 4;
 
 const STATUS_TONE: Readonly<Record<NetPlayerStatus, 'ok' | 'warn' | 'danger'>> = {
   ok: 'ok',
@@ -78,8 +82,42 @@ interface PlayerView {
 
 const cell = (className: string): HTMLElement => element('span', className);
 
+/** A reserved line: hidden keeps its box (foundation.css), so a line coming or going moves nothing. */
+const showLine = (node: HTMLElement, text: string | null): void => {
+  write(node, text ?? '');
+  setHidden(node, text === null);
+};
+
+/** The window's tip chip, in the plane's design px: it sits on the plane, not in the window, so the
+ *  window's edge never clips it. */
+function planeTipChip(plane: HTMLElement): TipChip & { readonly element: HTMLElement } {
+  const chip = element('p', 'on-net-tip');
+  chip.setAttribute('role', 'tooltip');
+  chip.hidden = true;
+  plane.append(chip);
+  return {
+    element: chip,
+    show: (clientX, clientY, text) => {
+      write(chip, text);
+      setHidden(chip, false);
+      const bounds = plane.getBoundingClientRect();
+      // Client px per design px: the plane is scaled as a whole.
+      const scale = plane.clientWidth > 0 ? bounds.width / plane.clientWidth : 1;
+      const x = (clientX - bounds.left) / scale;
+      const y = (clientY - bounds.top) / scale;
+      const right = plane.clientWidth - chip.offsetWidth - TIP_EDGE_GAP;
+      const below = y + TIP_CURSOR_GAP;
+      const fitsBelow = below + chip.offsetHeight + TIP_EDGE_GAP <= plane.clientHeight;
+      chip.style.left = `${Math.max(TIP_EDGE_GAP, Math.min(x + TIP_CURSOR_GAP, right))}px`;
+      chip.style.top = `${Math.max(TIP_EDGE_GAP, fitsBelow ? below : y - TIP_CURSOR_GAP - chip.offsetHeight)}px`;
+    },
+    hide: () => setHidden(chip, true),
+  };
+}
+
 export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   const copy = messages().hud.network;
+  const tipsCopy = copy.tips;
   const window = createHudWindow(deps.plane, {
     title: copy.title,
     closeLabel: messages().hud.shell.close,
@@ -88,8 +126,12 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   });
   window.element.classList.add('on-window--network');
   window.body.classList.add('on-net-body');
+  const chip = planeTipChip(deps.plane);
+  const tips = attachTipLayer(window.element, chip);
+  window.onDismiss(() => tips.hide());
 
-  // The world's notice, which the held banner shows while the window is closed.
+  // The world's notice, which the held banner shows while the window is closed. Every line about the
+  // room keeps its height while empty, so the window's size follows only the number of players.
   const notice = element('p', 'on-net-note on-net-note--warn on-net-notice');
   notice.setAttribute('role', 'status');
   notice.hidden = true;
@@ -100,12 +142,11 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   const sheet = element('div', 'on-parchment on-net-sheet');
   const head = element('div', 'on-net-row on-net-row--head');
   const columns = copy.columns;
-  const tips: Partial<Record<keyof typeof columns, string>> = copy.columnTips;
+  const columnTips: Partial<Record<keyof typeof columns, string>> = tipsCopy;
   for (const key of ['player', 'status', 'ping', 'delay', 'cost', 'behind', 'vote'] as const) {
     const label = cell('');
     label.textContent = columns[key];
-    const tip = tips[key];
-    if (tip !== undefined) label.title = tip;
+    setTip(label, columnTips[key] ?? '');
     head.append(label);
   }
   const rows = element('div', 'on-net-rows');
@@ -116,18 +157,25 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   clockSection.update(copy.clock);
   const clock = element('div', 'on-net-clock');
   const figures = element('div', 'on-net-figures');
-  const figure = (caption: string): HTMLElement => {
-    const line = element('p', 'on-net-figure', '<span></span><b class="on-net-figure__value"></b>');
+  const figure = (caption: string, tip: string): HTMLElement => {
+    const line = element(
+      'p',
+      'on-net-figure',
+      '<span class="on-net-figure__label"></span><b class="on-net-figure__value"></b>',
+    );
     const [label, value] = line.children;
     if (label === undefined || !(value instanceof HTMLElement)) throw new Error('network: figure');
     label.textContent = caption;
+    setTip(line, tip);
     figures.append(line);
     return value;
   };
-  const requested = figure(copy.requested);
-  const running = figure(copy.running);
+  const requested = figure(copy.requested, tipsCopy.requested);
+  const running = figure(copy.running, tipsCopy.running);
   const governor = element('p', 'on-net-note on-net-note--warn');
+  governor.hidden = true;
   const ownState = element('p', 'on-net-note on-net-note--self');
+  ownState.hidden = true;
   figures.append(governor, ownState);
   const chart = element('figure', 'on-net-chart');
   const chartTitle = element('figcaption', 'on-net-chart__title');
@@ -148,21 +196,24 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   chartTitle.textContent = copy.history;
   chartEmpty.textContent = copy.historyEmpty;
   chart.append(chartTitle, svg, chartEmpty, legend);
+  setTip(chart, tipsCopy.history);
   clock.append(figures, chart);
 
   // Link: this client's own connection figures.
   const linkSection = createSection();
   linkSection.update(copy.link);
   const link = element('dl', 'on-net-link');
-  const linkValue = (caption: string): HTMLElement => {
+  const linkValue = (caption: string, tip = ''): HTMLElement => {
     const term = element('dt', '');
     term.textContent = caption;
     const value = element('dd', '');
+    setTip(term, tip);
+    setTip(value, tip);
     link.append(term, value);
     return value;
   };
-  const roundTrip = linkValue(copy.roundTrip);
-  const inputDelay = linkValue(copy.inputDelay);
+  const roundTrip = linkValue(copy.roundTrip, tipsCopy.ping);
+  const inputDelay = linkValue(copy.inputDelay, tipsCopy.delay);
   const clickToApply = linkValue(copy.clickToApply);
   const buffered = linkValue(copy.buffered);
   const relay = linkValue(copy.relay);
@@ -243,9 +294,13 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     you.textContent = copy.you;
     const status = cell('on-net-status');
     const ping = cell('on-net-num');
+    setTip(ping, tipsCopy.ping);
     const delay = cell('on-net-num');
+    setTip(delay, tipsCopy.delay);
     const cost = cell('on-net-num');
+    setTip(cost, tipsCopy.cost);
     const behind = cell('on-net-num');
+    setTip(behind, tipsCopy.behind);
     const vote = cell('on-net-vote');
     const kick = button('on-res-clear on-net-kick');
     const view: PlayerView = {
@@ -268,7 +323,9 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
       deps.cue('confirm');
       deps.source.kick(view.seat);
     });
-    vote.append(kick, element('span', ''));
+    const voteNote = element('span', 'on-net-vote__note');
+    setTip(voteNote, tipsCopy.vote);
+    vote.append(kick, voteNote);
     row.append(who, status, ping, delay, cost, behind, vote);
     return view;
   };
@@ -306,7 +363,7 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     }
     if (canKick) {
       write(view.kick, formatMessage(copy.kick, { yes: vote.yes, needed: vote.needed }));
-      setTitle(view.kick, formatMessage(copy.kickTitle, { nick: player.nick }));
+      setTip(view.kick, formatMessage(copy.kickTitle, { nick: player.nick }));
     }
   };
 
@@ -345,9 +402,7 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     ];
     write(running, words.join(' · '));
     setClass(running, 'on-net-figure__value--governed', state.governor !== null || state.held);
-    const governed = governorText(state);
-    write(governor, governed ?? '');
-    setHidden(governor, governed === null);
+    showLine(governor, governorText(state));
     const geometry = sparklineGeometry(state.history, state.requestedSpeed);
     const empty = state.history.length === 0;
     setHidden(chartEmpty, !empty);
@@ -367,9 +422,7 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   const showOwnState = (players: readonly NetPlayerRow[]): void => {
     if (players === shownOwnPlayers) return;
     shownOwnPlayers = players;
-    const text = ownStateText(players);
-    write(ownState, text ?? '');
-    setHidden(ownState, text === null);
+    showLine(ownState, ownStateText(players));
   };
 
   let shownLink: NetLinkModel | null = null;
@@ -395,8 +448,8 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
         ...(state.relayBuild === null ? [] : [formatMessage(copy.relayBuild, { build: state.relayBuild })]),
       ].join(' · '),
     );
-    write(disconnected, state.notice ?? '');
-    setHidden(disconnected, state.notice === null);
+    showLine(disconnected, state.notice);
+    setTip(disconnected, state.notice ?? '');
   };
 
   const chatItem = (line: ChatLine): HTMLLIElement => {
@@ -440,8 +493,8 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     const model = deps.source.model();
     if (model === shown || model === null) return;
     shown = model;
-    write(notice, model.notice ?? '');
-    setHidden(notice, model.notice === null);
+    showLine(notice, model.notice);
+    setTip(notice, model.notice ?? '');
     showPlayers(model.players);
     showOwnState(model.players);
     showClock(model);
@@ -450,6 +503,10 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   };
 
   const place = centralWindowPlacer(window, deps.plane, NETWORK_WINDOW_W);
+  const close = (): void => {
+    tips.hide();
+    window.close();
+  };
   const open = (): void => {
     window.open();
     place();
@@ -460,16 +517,21 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
 
   return {
     isOpen: window.isOpen,
-    toggle: () => (window.isOpen() ? window.close() : open()),
-    close: window.close,
+    toggle: () => (window.isOpen() ? close() : open()),
+    close,
     claims: () => false,
     handleClick: () => false,
     refresh: () => {
       if (!window.isOpen()) return;
       place();
       draw();
+      tips.refresh();
     },
     onDismiss: window.onDismiss,
-    dispose: window.dispose,
+    dispose: () => {
+      tips.dispose();
+      chip.element.remove();
+      window.dispose();
+    },
   };
 }

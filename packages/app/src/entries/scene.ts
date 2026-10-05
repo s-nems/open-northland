@@ -31,7 +31,7 @@ import { inlineSessionHost } from '../session/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
-import { createNetPanelPreview, NET_PREVIEW_STATE_PARAM } from '../view/net/panel-preview.js';
+import { createNetPanelPreview, NET_PREVIEW_STATE_PARAM, stillWhileHeld } from '../view/net/panel-preview.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import { type StagedSession, takeStagedSession } from '../view/runtime/save-load/index.js';
 import { SCENE_TOKEN_PREFIX } from '../view/runtime/save-load/world-names.js';
@@ -180,6 +180,11 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     enableSceneScript(sim, scene);
   }
   const snapshot = sim.snapshot();
+  // The network panel's design preview: its held room stops this world as a relay's would.
+  const netPanel =
+    scene.netPanelPreview === true
+      ? createNetPanelPreview({ pinned: params.get(NET_PREVIEW_STATE_PARAM) })
+      : null;
   const initialViewport = { width: app.screen.width, height: app.screen.height };
   const cameraSettings = readStoredSettings();
   const cameraCtl = createCameraController(
@@ -213,7 +218,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     ...(pack === null && ir !== null ? { fellingClips: await loadFellingClips(ir, sim.content.goods) } : {}),
     ...(scene.graphicTribes !== undefined ? { tribes: scene.graphicTribes } : {}),
     host,
-    driver,
+    driver: netPanel === null ? driver : stillWhileHeld(driver, netPanel),
     cameraCtl,
     terrainGrid,
     rosterPlayers,
@@ -222,9 +227,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
     worldToken,
     missionBriefSource: sceneBriefSource(scene),
-    ...(scene.netPanelPreview === true
-      ? { netPanel: createNetPanelPreview({ pinned: params.get(NET_PREVIEW_STATE_PARAM) }) }
-      : {}),
+    ...(netPanel === null ? {} : { netPanel }),
   });
   view.lifetime.addEventListener('abort', () => displayScope.abort(), { once: true });
   await boot.finish();

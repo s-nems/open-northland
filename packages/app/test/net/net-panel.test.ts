@@ -1,3 +1,4 @@
+import type { SessionDriver } from '@open-northland/lockstep';
 import { TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import type { NetClockModel, NetPlayerRow } from '../../src/hud/network/model.js';
@@ -15,6 +16,7 @@ import {
   createNetPanelPreview,
   NET_PREVIEW_STATE_MS,
   NET_PREVIEW_STATES,
+  stillWhileHeld,
 } from '../../src/view/net/panel-preview.js';
 
 const REQUESTED_SPEED = 3;
@@ -177,5 +179,29 @@ describe('network panel preview', () => {
     if (target?.seat == null) return;
     preview.kick(target.seat);
     expect(preview.model()?.players.find((row) => row.nick === target.nick)?.vote?.yes).toBe(2);
+  });
+
+  it('stops the scene world while its room is held, so the clock does not run under the banner', () => {
+    const fed: number[] = [];
+    const driver: SessionDriver = {
+      paused: false,
+      speed: 1,
+      droppedTicks: 0,
+      maxStepsPerFrame: 1,
+      setPaused: () => undefined,
+      setSpeed: () => undefined,
+      submit: () => undefined,
+      captureSave: () => {
+        throw new Error('not saved');
+      },
+      advance: (elapsedMs) => {
+        fed.push(elapsedMs);
+        return 1;
+      },
+    };
+    const frameMs = 16;
+    stillWhileHeld(driver, createNetPanelPreview({ pinned: 'held', now: () => 0 })).advance(frameMs);
+    stillWhileHeld(driver, createNetPanelPreview({ pinned: 'ok', now: () => 0 })).advance(frameMs);
+    expect(fed).toEqual([0, frameMs]);
   });
 });
