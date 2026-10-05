@@ -12,39 +12,33 @@ export interface RejoinProbe {
   observe(message: ServerMessage): RejoinOutcome;
 }
 
-/**
- * Whether the room still has this client after the link came back. The relay welcomes a returning
- * token and, when the token still belongs to a running room, puts it back in on its own; a token the
- * room removed meanwhile, voted out while its connection was down, is welcomed without a room and
- * nothing more, so its world would wait for frames for good. The probe asks to join the room again:
- * a member put back is refused as already in it, and the refusal of anyone else says why the room is
- * no longer theirs.
- */
+/** Whether the room still has this client after the link came back: ask for the held room on each
+ *  welcome, and read the refusal. `alreadyInRoom` is the relay's own answer for a member it put back;
+ *  the protocol reference says why a token the room removed meanwhile hears nothing else. */
 export function rejoinProbe(client: {
   readonly room: { readonly id: string } | null;
   joinRoom(roomId: string): void;
 }): RejoinProbe {
-  let probing: string | null = null;
+  let probing = false;
   return {
     observe(message) {
       if (message.kind === 'welcome') {
         const room = client.room;
         if (room === null) return 'passed';
-        probing = room.id;
+        probing = true;
         client.joinRoom(room.id);
         return 'passed';
       }
-      if (message.kind !== 'rejected' || message.of !== 'joinRoom' || probing === null) return 'passed';
-      probing = null;
+      if (message.kind !== 'rejected' || message.of !== 'joinRoom' || !probing) return 'passed';
+      probing = false;
       if (message.reason.code === 'alreadyInRoom') return 'consumed';
       return { kind: 'refused', text: rejoinRefusalText(message.reason) };
     },
   };
 }
 
-/** The room's refusal of a returning token's join, worded for the player left out: a running game
- *  it is no longer in, or a room that is gone. */
-export function rejoinRefusalText(reason: RelayReason): string {
+/** The refusal worded for the player left out: a game going on without it, or a room that is gone. */
+function rejoinRefusalText(reason: RelayReason): string {
   const copy = messages().net;
   if (reason.code === 'gameStarted') return copy.removedWhileAway;
   if (reason.code === 'noRoom') return copy.roomGoneWhileAway;

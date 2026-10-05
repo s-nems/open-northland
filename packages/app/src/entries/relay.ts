@@ -78,9 +78,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
     if (event.kind === 'failure')
       halt(
         failureTitle(event.what, event.error),
-        event.what === 'open' || event.what === 'restore'
-          ? formatMessage(copy.bootFailed, { reason: relayFailureText(event.error) })
-          : '',
+        worldFailureTitle(event.what, event.error) === null ? '' : relayFailureText(event.error),
       );
     else if (event.kind === 'message') {
       if (stage === 'walking') observe(event.message);
@@ -197,7 +195,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       stage = 'ended';
       unsubscribe();
     } catch (error) {
-      halt(relayCopy.openFailed, formatMessage(copy.bootFailed, { reason: errorText(error) }));
+      halt(relayCopy.openFailed, errorText(error));
     }
   }
 }

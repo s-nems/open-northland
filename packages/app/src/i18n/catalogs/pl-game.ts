@@ -1705,7 +1705,7 @@ export const plGame = {
     gameEndedTitle: 'Gra sieciowa się zakończyła',
     removedWhileAway:
       'Głosowanie wyrzuciło cię z gry, gdy nie było połączenia. Gra toczy się dalej bez ciebie.',
-    roomGoneWhileAway: 'Pokój się zakończył, gdy nie było połączenia.',
+    roomGoneWhileAway: 'Pokój został zamknięty, gdy nie było połączenia.',
     paused: '{nick} wstrzymuje grę',
     resumed: '{nick} wznawia grę',
     speed: '{nick} ustawia tempo x{speed}',

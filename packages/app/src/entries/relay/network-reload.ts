@@ -9,7 +9,6 @@ import { BUTTON_STYLE, el, mountMessage } from '../../view/overlay.js';
 import { menuSearch } from '../../view/params.js';
 import { relayIdentity } from './identity.js';
 import { renderNetworkGame } from './network-game.js';
-import { rejoinRefusalText } from './rejoin.js';
 import { ignoreReconnectRejection, wrongReconnectRoom } from './reload-message.js';
 
 /** A document reload recreates the connection while the runtime still restores the relay snapshot. */
@@ -55,13 +54,7 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
     if (ignoreReconnectRejection(message, roomId, connection.client.room?.id ?? null)) return;
     if (message.kind === 'welcome') connection.client.joinRoom(roomId);
     if (message.kind === 'left' || message.kind === 'error' || message.kind === 'rejected') {
-      fail(
-        message.kind === 'left'
-          ? messages().net.roomEnded
-          : message.kind === 'rejected' && message.of === 'joinRoom'
-            ? rejoinRefusalText(message.reason)
-            : relayReasonText(message.reason),
-      );
+      fail(message.kind === 'left' ? messages().net.roomEnded : relayReasonText(message.reason));
       return;
     }
     if (message.kind !== 'start' || opening) return;
