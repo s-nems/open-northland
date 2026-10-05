@@ -46,8 +46,8 @@ export function tipSegments(
 ): TipSegment[] {
   const text = messages(locale);
   const template = formatMessage(text.loadingTips.tips[id], {
-    graduatesOption: text.hud.extras.postGraduates,
-    flagsOption: text.hud.extras.moveFlags,
+    graduatesOption: text.hud.assistant.switches.postGraduates.label,
+    flagsOption: text.hud.assistant.switches.moveFlags.label,
     area: text.hud.settlerPanel.workArea,
   });
   const action = LOADING_TIPS.find((tip) => tip.id === id)?.key;

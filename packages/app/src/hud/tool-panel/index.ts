@@ -30,9 +30,11 @@ import { canonicalJobType } from '../../game/sandbox/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { messages, professionLabel } from '../../i18n/index.js';
 import type { PresentationPack } from '../../presentation/pack.js';
+import { type AssistantSource, createAssistantWindow } from '../dom/assistant-window/index.js';
 import type { BuildingPanelWindows } from '../dom/building-panel/actions.js';
 import { createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
+import { createGoodIconPainter } from '../dom/good-art.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
 import { minimapReserve } from '../dom/minimap-reserve.js';
 import {
@@ -55,7 +57,6 @@ import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
 import { CONSTRUCTION_TOOLS, type ConstructionTool, type MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
 import type { DiplomacyPanelRow } from './diplomacy/index.js';
-import type { ExtrasCountersSeam, ExtrasGrantsSeam } from './extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedControl, GameSpeedStateSpec } from './game-speed.js';
 import { createHeldPaperController } from './held-paper.js';
 import { createInfoLinesOverlay } from './info-lines.js';
@@ -147,10 +148,10 @@ export interface ToolPanelOptions {
   readonly enqueue: (command: PlayerCommand) => void;
   /** The admin channel, for the debug palette's standing-wall line; absent where world edits are off. */
   readonly enqueueTrusted?: (command: Command) => void;
-  /** The chest window's grant-switch seam (reads the sim's assistant grants, toggles one). */
-  readonly grants: ExtrasGrantsSeam;
-  /** The chest window's counter seam (reads the sim's assistant queues, sets one). */
-  readonly counters: ExtrasCountersSeam;
+  /** The assistant window's live state, commands and tooltip chip. */
+  readonly assistant: AssistantSource;
+  /** The barracks type the assistant window's missing-barracks note opens the catalogue on; null without. */
+  readonly assistantBarracksType: number | null;
   /** The construction window's papers seam (reads the sim's papers list, named for display). */
   readonly papers: PapersSeam;
   /** The residents window's seam: the seat's people, the sim's trade rule and the selection. */
@@ -589,8 +590,27 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         return window;
       },
       buildings: opts.buildings,
-      grants: opts.grants,
-      counters: opts.counters,
+      assistantWindow: (buildBarracks) => {
+        const window = createAssistantWindow({
+          ...opts.assistant,
+          plane,
+          art: paintedIcon('assistant', TITLE_ART_PX),
+          goodTypeOf: (goodId) => goodTypeById.get(goodId),
+          paintGood: createGoodIconPainter(opts.pack, null),
+          // As the beam's build entry: a placement or plan in hand is dropped first.
+          onBuildBarracks:
+            buildBarracks === null
+              ? null
+              : () => {
+                  cancelHeld();
+                  buildBarracks();
+                },
+          cue: ctx.cue,
+        });
+        window.onDismiss(() => focusOwner?.('assistant'));
+        return window;
+      },
+      barracksType: opts.assistantBarracksType,
       heldPaper,
       diplomacyRows: opts.diplomacyRows,
       onPayTribute: opts.onPayTribute,

@@ -22,7 +22,7 @@ export const INFINITE_COUNTER_KINDS: ReadonlySet<AssistantCounterKind> = new Set
   'trainBow',
 ]);
 
-/** The inclusive counter range the assistant commands clamp to, shared with the chest window's steppers.
+/** The inclusive counter range the assistant commands clamp to, shared with the assistant window's steppers.
  *  The cap is authored. */
 export const ASSISTANT_COUNTER_MIN = 0;
 export const ASSISTANT_COUNTER_MAX = 100;

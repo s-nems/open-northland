@@ -1,10 +1,10 @@
 /**
- * The seat whose perspective the view shows: the summary figures, the notes, the papers, the chest,
+ * The seat whose perspective the view shows: the summary figures, the notes, the papers, the assistant,
  * and, unless the view spans the whole map, the fog and what a click may select. A played session's
  * is its own seat for good; a spectator's is the seat it chose to watch, or none for the whole map.
  */
 export interface ViewerSeat {
-  /** The seat whose figures, notes, papers and chest the HUD shows; null shows nobody's. */
+  /** The seat whose figures, notes, papers and assistant the HUD shows; null shows nobody's. */
   seat(): number | null;
   /** Whether the view spans the whole map: no fog, every entity pickable. */
   wholeMap(): boolean;
@@ -30,7 +30,7 @@ export function fixedViewerSeat(seat: number): ViewerSeat {
   return { seat: () => seat, wholeMap: () => false, version: () => 0 };
 }
 
-/** The overseer's view: the whole map to see and pick, with `seat`'s figures, chest and papers, since
+/** The overseer's view: the whole map to see and pick, with `seat`'s figures, assistant and papers, since
  *  its orders and paper plans go out as that seat's. */
 export function overseerViewerSeat(seat: number): ViewerSeat {
   return { seat: () => seat, wholeMap: () => true, version: () => 0 };

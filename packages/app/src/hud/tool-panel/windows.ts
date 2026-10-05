@@ -1,13 +1,13 @@
 import type { HudLayout, HudModel } from '@open-northland/render';
 import type { DiplomacyState, Paper } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
+import type { AssistantWindow } from '../dom/assistant-window/index.js';
 import type { ConstructionWindow } from '../dom/construction-window.js';
 import type { MissionBook, MissionWindowState } from '../dom/mission-book/index.js';
 import type { ResidentsWindow } from '../dom/residents-window.js';
 import type { ConstructionWindowState, MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
 import { createDiplomacyWindow, type DiplomacyPanelRow } from './diplomacy/index.js';
-import { createExtrasWindow, type ExtrasCountersSeam, type ExtrasGrantsSeam } from './extras-window.js';
 import type { HeldPaperController } from './held-paper.js';
 import type { PendingWindow } from './pending-window.js';
 import type { BuildingPick } from './placement.js';
@@ -16,7 +16,7 @@ import { createStatsWindow } from './stats-window.js';
 import type { ClickModifiers, ToolWindow } from './window-shell.js';
 
 /** The central windows in mount order, which is the legacy pop-ups' draw order. */
-const MOUNT_ORDER = ['menu', 'extras', 'stats', 'diplomacy', 'residents', 'knowledge', 'mission'] as const;
+const MOUNT_ORDER = ['menu', 'assistant', 'stats', 'diplomacy', 'residents', 'knowledge', 'mission'] as const;
 
 export type ToolWindowId = (typeof MOUNT_ORDER)[number];
 
@@ -47,11 +47,14 @@ export interface ToolWindowsDeps {
   readonly constructionWindow: (seam: ConstructionWindowSeam) => ConstructionWindow;
   /** The residents window, mounted on the DOM plane. */
   readonly residentsWindow: () => ResidentsWindow;
+  /** The assistant window, mounted on the DOM plane; its missing-barracks note offers `buildBarracks`
+   *  when there is one to build. */
+  readonly assistantWindow: (buildBarracks: (() => void) | null) => AssistantWindow;
+  /** The barracks type the assistant window's note opens the catalogue on; null without. */
+  readonly barracksType: number | null;
   /** The mission book with its goal slip, mounted on the DOM plane. */
   readonly missionBook: () => MissionBook;
   readonly buildings: readonly MenuBuildingEntry[];
-  readonly grants: ExtrasGrantsSeam;
-  readonly counters: ExtrasCountersSeam;
   /** The diplomacy window's roster: one row per discovered player, pulled only while it is open. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** A live pay button in the diplomacy window was pressed for the tribute slot. */
@@ -69,6 +72,7 @@ export interface ToolWindows {
   readonly byId: Readonly<Record<ToolWindowId, ToolWindow>> & {
     readonly menu: ConstructionWindow;
     readonly residents: ResidentsWindow;
+    readonly assistant: AssistantWindow;
   };
   /** The mission book itself, for the page a script opens it on. */
   readonly mission: MissionBook;
@@ -82,7 +86,7 @@ export interface ToolWindows {
    *  to scroll. */
   handleWheel(x: number, y: number, deltaY: number): boolean;
   refresh(hudFor: () => HudLayout): void;
-  /** The tick's stock figures, for the construction window's cost marks. */
+  /** The tick's stock figures, for the construction window's cost marks and the assistant's stock. */
   presentStocks(model: HudModel): void;
   state(): ToolWindowsState;
   restore(state: ToolWindowsState): void;
@@ -101,7 +105,6 @@ export interface ToolWindowsState {
 
 export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const { ctx, container, heldPaper } = deps;
-  const extras = createExtrasWindow({ ctx, container, grants: deps.grants, counters: deps.counters });
   const stats = createStatsWindow({ ctx, container });
   const diplomacy = createDiplomacyWindow({
     ctx,
@@ -111,6 +114,22 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     onDeclareDiplomacy: deps.onDeclareDiplomacy,
   });
   const residents = deps.residentsWindow();
+  const { barracksType } = deps;
+  const assistant = deps.assistantWindow(
+    barracksType === null
+      ? null
+      : () => {
+          openOnly(menu);
+          menu.restore({
+            ...menu.state(),
+            page: 'catalog',
+            tribe: null,
+            category: 'military',
+            picked: barracksType,
+            scrollTop: 0,
+          });
+        },
+  );
   const knowledge = deps.pendingWindow('knowledge');
   const mission = deps.missionBook();
   /** Show `target` alone, as a beam press would. */
@@ -137,7 +156,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
 
   const entries: Readonly<Record<ToolWindowId, ToolWindowEntry>> = {
     menu: { window: menu, perFrame: () => menu.place() },
-    extras: { window: extras, perFrame: () => extras.refresh() },
+    assistant: { window: assistant, perFrame: () => assistant.refresh() },
     stats: { window: stats, perFrame: (hudFor) => stats.refresh(hudFor) },
     diplomacy: { window: diplomacy, perFrame: () => diplomacy.refresh() },
     residents: { window: residents, perFrame: () => residents.refresh() },
@@ -152,7 +171,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     probed.find((e) => e.window.claims(x, y))?.window ?? null;
 
   return {
-    byId: { menu, extras, stats, diplomacy, residents, knowledge, mission },
+    byId: { menu, assistant, stats, diplomacy, residents, knowledge, mission },
     mission,
     openId: () => MOUNT_ORDER.find((id) => entries[id].window.isOpen()) ?? null,
     // A suspended construction window reports closed and keeps its placement's resume.
@@ -171,7 +190,10 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       if (heldPaper.held() !== null && !menu.isOpen()) heldPaper.cancel();
       for (const e of mounted) e.perFrame(hudFor);
     },
-    presentStocks: (model) => menu.update(model),
+    presentStocks: (model) => {
+      menu.update(model);
+      assistant.update(model);
+    },
     state: () => ({
       openIds: MOUNT_ORDER.filter((id) => entries[id].window.isOpen()),
       buildings: menu.state(),
@@ -198,6 +220,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     dispose: (): void => {
       menu.dispose();
       residents.dispose();
+      assistant.dispose();
       knowledge.dispose();
       mission.dispose();
     },

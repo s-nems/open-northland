@@ -26,8 +26,8 @@ const TAB_FILL = 0x2c2114;
 const TAB_SELECTED_FILL = 0x4a3720;
 const SCROLL_TRACK = 0x161009;
 const SCROLL_THUMB = 0x6b5836;
-/** The pale control-glyph stroke: the close-box X and the extras window's −/+ steppers. */
-export const CLOSE_X_COLOR = 0xd8ccb0;
+/** The pale control-glyph stroke of the close-box X. */
+const CLOSE_X_COLOR = 0xd8ccb0;
 const CLOSE_BOX_ALPHA = 0.3;
 
 /** Hover highlight tint + strength over a flat button, row, or tab. */

@@ -46,7 +46,7 @@ function subjectOf(paper: Paper, naming: PaperNaming): string | null {
 /** A paper's display name, as the papers list and the found-paper note show it. */
 export function paperLabel(paper: Paper, naming: PaperNaming): string {
   const name = subjectOf(paper, naming) ?? '';
-  const fallback = formatMessage(messages().hud.extras.papers[paper.kind], { name });
+  const fallback = formatMessage(messages().hud.papers[paper.kind], { name });
   return naming
     .uiString(PAPER_STRINGS_TABLE, PAPER_STRING_ID[paper.kind], fallback)
     .replace(SUBJECT_PLACEHOLDER, name);

@@ -15,12 +15,12 @@ import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import type { MissionReader } from '../game/mission-brief.js';
 import type { ViewerSeat } from '../game/viewer-seat.js';
+import type { AssistantSource } from '../hud/dom/assistant-window/index.js';
 import type { Rect } from '../hud/geometry.js';
 import type { KeyBindings } from '../hud/keybindings.js';
 import { createReplaceableMount } from '../hud/replaceable-mount.js';
 import { CATALOGUE_KINDS, type MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { DiplomacyPanelRow } from '../hud/tool-panel/diplomacy/index.js';
-import type { ExtrasCountersSeam, ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import {
   mountToolPanel,
@@ -108,8 +108,8 @@ export interface GameToolPanelDeps {
   readonly viewer: ViewerSeat;
   /** A spectator's seat picker on the system bar; absent, the bar has none. */
   readonly observer?: ToolPanelOptions['observer'];
-  readonly grants: ExtrasGrantsSeam;
-  readonly counters: ExtrasCountersSeam;
+  readonly assistant: AssistantSource;
+  readonly assistantBarracksType: number | null;
   readonly papers: PapersSeam;
   readonly residents: ResidentsSeam;
   /** The diplomacy window's roster: one row per discovered player. */
@@ -284,8 +284,8 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.observer !== undefined ? { observer: deps.observer } : {}),
       enqueue: deps.enqueue,
       ...(deps.enqueueTrusted !== undefined ? { enqueueTrusted: deps.enqueueTrusted } : {}),
-      grants: deps.grants,
-      counters: deps.counters,
+      assistant: deps.assistant,
+      assistantBarracksType: deps.assistantBarracksType,
       papers: deps.papers,
       residents: deps.residents,
       diplomacyRows: deps.diplomacyRows,

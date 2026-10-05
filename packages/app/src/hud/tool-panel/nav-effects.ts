@@ -24,7 +24,7 @@ export interface NavEntryEffect {
 const EFFECTS: Readonly<Record<NavEntryId, NavEntryEffect>> = {
   build: { window: 'menu', cancelsHeld: true },
   residents: { window: 'residents', cancelsHeld: false },
-  assistant: { window: 'extras', cancelsHeld: true },
+  assistant: { window: 'assistant', cancelsHeld: false },
   statistics: { window: 'stats', cancelsHeld: false },
   mission: { window: 'mission', cancelsHeld: true },
   diplomacy: { window: 'diplomacy', cancelsHeld: false },

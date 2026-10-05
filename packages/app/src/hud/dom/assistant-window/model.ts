@@ -1,0 +1,192 @@
+import { components, TICKS_PER_SECOND } from '@open-northland/sim';
+import type { CounterRange } from '../parts/counter.js';
+
+type CounterKind = components.AssistantCounterKind;
+type CounterState = components.AssistantCounterState;
+type RecruitIntent = components.AssistantRecruitIntent;
+
+/** The stepper's one-number face of a counter: the finite value, or this sentinel above the sim's cap
+ *  while the queue never drains. */
+export const UNLIMITED_FACE = components.ASSISTANT_COUNTER_MAX + 1;
+
+/** The sim's own `setAssistantCounter` clamp, so the steppers stop where the command would; only the
+ *  kinds the sim lets run forever get the ∞ step. Approximation: the original's counters appear to stop
+ *  at 20 with no ∞ (unconfirmed against the running original); this range and ∞ are the sim's own. */
+export function counterRange(kind: CounterKind): CounterRange {
+  const finite = { min: components.ASSISTANT_COUNTER_MIN, max: components.ASSISTANT_COUNTER_MAX };
+  return components.INFINITE_COUNTER_KINDS.has(kind) ? { ...finite, unlimited: UNLIMITED_FACE } : finite;
+}
+
+export const counterFace = (state: CounterState): number => (state.infinite ? UNLIMITED_FACE : state.value);
+
+/** The counter state a stepper face asks for. ∞ keeps the finite value the sim retains under it. */
+export function counterFromFace(current: CounterState, face: number): CounterState {
+  return face >= UNLIMITED_FACE ? { value: current.value, infinite: true } : { value: face, infinite: false };
+}
+
+export const sameCounter = (a: CounterState, b: CounterState): boolean =>
+  a.value === b.value && a.infinite === b.infinite;
+
+/** The seat's assistant orders in flight, read off the bookings the sim keeps on the people it sent. */
+export interface AssistantBookings {
+  /** Wives with a standing child order the counters booked, by the child's sex. */
+  readonly daughters: number;
+  readonly sons: number;
+  /** Recruits still drilling in a barracks, by the counter that sent them. */
+  readonly drilling: Readonly<Record<RecruitIntent, number>>;
+  /** Drilled class recruits that have not taken up their weapon yet. */
+  readonly arming: Readonly<Record<RecruitIntent, number>>;
+}
+
+const perIntent = (): Record<RecruitIntent, number> => ({
+  trainSoldiers: 0,
+  trainSword: 0,
+  trainSpear: 0,
+  trainBow: 0,
+});
+
+export function emptyBookings(): {
+  daughters: number;
+  sons: number;
+  drilling: Record<RecruitIntent, number>;
+  arming: Record<RecruitIntent, number>;
+} {
+  return { daughters: 0, sons: 0, drilling: perIntent(), arming: perIntent() };
+}
+
+export const NO_BOOKINGS: AssistantBookings = emptyBookings();
+
+/** What the window states beside the counters: the orders in flight and whether a barracks stands to
+ *  drill in. */
+export interface AssistantSituation {
+  readonly bookings: AssistantBookings;
+  readonly hasBarracks: boolean;
+}
+
+export const NO_SITUATION: AssistantSituation = { bookings: NO_BOOKINGS, hasBarracks: false };
+
+/** One fact a row's status line states; `count` null where the queue never ends. */
+export type StatusNoteKey =
+  | 'expected'
+  | 'needsCouple'
+  | 'drilling'
+  | 'fetchingWeapon'
+  | 'needsWeapon'
+  | 'needsMen'
+  | 'needsBarracks'
+  | 'outOfStock';
+
+export interface StatusNote {
+  readonly key: StatusNoteKey;
+  readonly count: number | null;
+}
+
+export type StatusTone = 'busy' | 'warn' | 'idle';
+
+/** Green while the assistant works, amber where only the player can unblock it, plain while it waits
+ *  for the settlement to offer someone. */
+export const NOTE_TONE: Readonly<Record<StatusNoteKey, StatusTone>> = {
+  expected: 'busy',
+  needsCouple: 'idle',
+  drilling: 'busy',
+  fetchingWeapon: 'busy',
+  needsWeapon: 'warn',
+  needsMen: 'idle',
+  needsBarracks: 'warn',
+  outOfStock: 'warn',
+};
+
+/** What is left to book: the counter less its orders in flight, null while it never drains. */
+function unbooked(counter: CounterState, booked: number): number | null {
+  return counter.infinite ? null : counter.value - booked;
+}
+
+/**
+ * A birth counter's line: the children booked, then what still waits for a free couple. A counter run
+ * to zero with a child still booked keeps telling it, since that child is born all the same.
+ */
+export function birthNotes(counter: CounterState, booked: number): readonly StatusNote[] {
+  const notes: StatusNote[] = [];
+  if (booked > 0) notes.push({ key: 'expected', count: booked });
+  const left = unbooked(counter, booked);
+  // An endless queue only says it waits while nothing at all is booked.
+  if (left === null ? booked === 0 : left > 0) notes.push({ key: 'needsCouple', count: left });
+  return notes;
+}
+
+export interface TrainingFacts {
+  readonly drilling: number;
+  readonly arming: number;
+  readonly hasBarracks: boolean;
+  /** Whether a weapon this class may take lies in the seat's stock; null for the class with none. */
+  readonly weaponStocked: boolean | null;
+}
+
+/**
+ * A training counter's line: recruits in the barracks, recruits on their way to a weapon (or stuck for
+ * one), then what still waits for a free man or for a barracks. The dispatcher counts every unarmed
+ * booking against its counter, so those are what is left to book.
+ */
+export function trainingNotes(counter: CounterState, facts: TrainingFacts): readonly StatusNote[] {
+  const notes: StatusNote[] = [];
+  if (facts.drilling > 0) notes.push({ key: 'drilling', count: facts.drilling });
+  if (facts.arming > 0) {
+    notes.push({
+      key: facts.weaponStocked === false ? 'needsWeapon' : 'fetchingWeapon',
+      count: facts.arming,
+    });
+  }
+  const booked = facts.drilling + facts.arming;
+  const left = unbooked(counter, booked);
+  if (left === null ? booked === 0 : left > 0) {
+    notes.push({ key: facts.hasBarracks ? 'needsMen' : 'needsBarracks', count: left });
+  }
+  return notes;
+}
+
+/**
+ * Whether a recruit of a class can still find a weapon: its own in stock, or the weaker one while its
+ * switch allows it. Approximation: the seat's stock counts goods carried and heaps in reach, where the
+ * arming pass needs a store it can reach, so a weapon cut off on another island still reads as stocked.
+ */
+export function weaponStocked(weapon: number, weaker: number, weakerAllowed: boolean): boolean {
+  return weapon > 0 || (weakerAllowed && weaker > 0);
+}
+
+/** A standing equipment order's line: only an empty stock is worth saying. */
+export function gearNotes(on: boolean, stock: number): readonly StatusNote[] {
+  return on && stock === 0 ? [{ key: 'outOfStock', count: null }] : [];
+}
+
+/** How long a pressed value stands over the live one while its command travels: past a multiplayer
+ *  round trip, so a second quick press steps on from the first instead of from the stale value. */
+export const PRESS_HOLD_TICKS = 3 * TICKS_PER_SECOND;
+
+/** The values the player pressed that the sim has not shown yet, each shown in place of the live one
+ *  until the live one has moved off what it was at the press and then matches it, or the hold runs out
+ *  (a counter that drained meanwhile never matches). A live value still equal to a press made away and
+ *  back before either command landed is not taken for the answer. */
+export class PressHold<K, T> {
+  private readonly held = new Map<
+    K,
+    { readonly value: T; readonly base: T; readonly tick: number; moved: boolean }
+  >();
+
+  constructor(private readonly same: (a: T, b: T) => boolean) {}
+
+  /** `live` is what the sim showed when the press was made. */
+  hold(key: K, value: T, live: T, tick: number): void {
+    this.held.set(key, { value, base: live, tick, moved: false });
+  }
+
+  shown(key: K, live: T, tick: number): T {
+    const held = this.held.get(key);
+    if (held === undefined) return live;
+    if (!this.same(held.base, live)) held.moved = true;
+    if ((held.moved && this.same(held.value, live)) || tick - held.tick > PRESS_HOLD_TICKS) {
+      this.held.delete(key);
+      return live;
+    }
+    return held.value;
+  }
+}

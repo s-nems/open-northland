@@ -15,9 +15,11 @@ import {
   staffOf,
   supplyRunsTo,
 } from '../../game/snapshot.js';
+import { ownedBuildingsOfType } from '../../hud/details-panel/model/building.js';
 import { readMinimapIndexes } from '../../hud/minimap/dots.js';
 import { standingNodesRevision } from '../../hud/minimap/live-objects.js';
 import { restingBuildingsOf } from '../../hud/tool-panel/messages/workshop-stalls.js';
+import { assistantBookingsOf } from '../assistant-situation.js';
 import { ownRoadSiteAt } from '../runtime/own-road-sites.js';
 import { builderSitesOf } from '../unit-controls/highlights/own-building-picks.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
@@ -52,6 +54,12 @@ export const FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   { name: 'road sites by node', read: (snapshot) => ownRoadSiteAt(snapshot, NO_ENTITY, 0, 0) },
   // The builder site pick's highlight reads it per frame while the pick is armed.
   { name: 'builder sites by owner', read: (snapshot) => builderSitesOf(snapshot, NO_ENTITY) },
+  // The assistant window reads both per frame while it is open.
+  { name: 'assistant bookings', read: (snapshot) => assistantBookingsOf(snapshot, NO_SEAT) },
+  {
+    name: 'buildings by owner and type',
+    read: (snapshot) => ownedBuildingsOfType(snapshot, NO_SEAT, NO_TYPE),
+  },
   {
     name: 'families',
     // The grouping registers on the first home anybody lives in, as a door badge's read does; a one-off

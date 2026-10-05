@@ -69,6 +69,7 @@ import { setUpdateContinuation } from '../../update/watcher.js';
 import type { AmbientWeather } from '../ambient-weather.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
+import { assistantSituationOf } from '../assistant-situation.js';
 import type { CameraController } from '../camera/index.js';
 import {
   cameraCenteredOnTile,
@@ -100,6 +101,7 @@ import { createScriptEffects } from '../script-effects.js';
 import { createScriptMarkers } from '../script-markers.js';
 import { patchStoredSettings, readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
+import { createTooltip } from '../tooltip.js';
 import { createUnitControls, type UnitControls } from '../unit-controls/index.js';
 import { createWeatherFeed } from '../weather-feed.js';
 import { chestTooltipLines, createWorldHover } from '../world-hover.js';
@@ -467,6 +469,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       () => viewer.version(),
     );
+    const barracksTypes = host.content.buildings
+      .filter((b) => systems.isBarracksType(b))
+      .map((b) => b.typeId);
+    const assistantSituationFor = memoBySnapshot(
+      (snapshot: WorldSnapshot) => assistantSituationOf(snapshot, viewer.seat(), barracksTypes),
+      () => viewer.version(),
+    );
+    const assistantTip = createTooltip();
+    cleanup.push(() => assistantTip.destroy());
     let escapeClaimed: (() => boolean) | null = null;
     let overviewPress: UnitControls['overviewPress'] | null = null;
     // Assigned once every HUD part it hides has mounted.
@@ -486,8 +497,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       camera: () => cameraCtl.camera(),
       enqueue: issueCommand,
       ...(sharedClock ? {} : { enqueueTrusted: issueTrusted }),
-      grants: assistantGrantsSeam(host, host.content, viewer.seat, issueCommand, !readOnly),
-      counters: assistantCountersSeam(host, viewer.seat, issueCommand, !readOnly),
+      assistant: {
+        counters: assistantCountersSeam(host, viewer.seat, issueCommand, !readOnly),
+        switches: assistantGrantsSeam(host, host.content, viewer.seat, issueCommand, !readOnly),
+        situation: () => assistantSituationFor(host.snapshot()),
+        access: () => (viewer.seat() === null ? 'noSeat' : readOnly ? 'watching' : 'control'),
+        tooltip: assistantTip,
+      },
+      assistantBarracksType: barracksTypes[0] ?? null,
       papers: {
         read: () => {
           const seat = viewer.seat();

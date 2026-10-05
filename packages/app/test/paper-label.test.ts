@@ -17,7 +17,7 @@ describe('paperLabel', () => {
   });
 
   it('falls back to the catalog row, naming an unknown subject by id', () => {
-    const rows = messages().hud.extras.papers;
+    const rows = messages().hud.papers;
     expect(paperLabel({ kind: 'placeAny', param: 0 }, naming)).toBe(rows.placeAny);
     expect(paperLabel({ kind: 'learnPermit', param: 13 }, naming)).toBe(
       rows.learnPermit.replace('{name}', 'Kowal'),

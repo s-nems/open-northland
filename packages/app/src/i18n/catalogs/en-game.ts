@@ -1000,37 +1000,155 @@ export const enGame = {
       ageMinutes: '{count} min',
       ageHours: '{count} h',
     },
-    extras: {
-      title: 'Extras window',
-      assistantTab: 'Assistant',
-      extraWomen: 'Extra women',
-      extraMen: 'Extra men',
-      trainSoldiers: 'Train Soldiers',
-      trainSwordsmen: 'Train Swordsmen',
-      trainSpearmen: 'Train Spearmen',
-      trainArchers: 'Train Archers',
-      giveBoots: 'Give everyone boots',
-      giveWoodenTools: 'Give everyone wooden tools',
-      giveIronTools: 'Give everyone iron tools',
-      giveMead: 'Give everyone mead',
-      allowShortSwords: 'Allow short swords',
-      allowWoodenSpears: 'Allow wooden spears',
-      allowShortBows: 'Allow short bows',
-      postGraduates: 'Send graduates to work',
-      moveFlags: 'Gatherers move flags to resources',
-      on: 'ON',
-      off: 'OFF',
-      /** Stand-ins for the decoded `misclogic` rows 180-186 naming each paper kind; `{name}` takes
-       *  the named house, trade or good. */
-      papers: {
-        indulgence: 'Letter of indulgence',
-        placeAny: 'Place a building of your choice',
-        placeHouse: "Place a '{name}'",
-        placeStockedHouse: "Place a '{name}' and fill its store",
-        buildPermit: "Permit for building a '{name}'",
-        learnPermit: "Permission to learn '{name}'",
-        producePermit: "Permission to produce '{name}'",
+    assistant: {
+      title: 'Assistant',
+      kicker: 'Settlement',
+      orders: 'Orders',
+      ordersTip:
+        'A counter goes down when a child is born and when a recruit finishes training, or for an armed class once he takes up his weapon. An order given to one person always comes before the assistant.',
+      standing: 'Standing orders',
+      standingTip:
+        'They apply while switched on. The assistant never takes anyone who already has a task, and your order to one person comes first.',
+      births: 'Births',
+      birthsTip: 'Daughters first, then sons. A married woman with a home gives birth.',
+      military: 'Military',
+      militaryTip:
+        'Only men without a trade go to the barracks, unmarried ones first. Nobody is taken from work.',
+      noBarracks: 'No barracks. Training will wait.',
+      buildBarracks: 'Build barracks',
+      equipment: 'Equipment',
+      equipmentTip: 'Adult men receive it, soldiers too. Tools only go to those working in a trade.',
+      work: 'Work',
+      workTip: 'Help with sharing out the work.',
+      counters: {
+        extraWomen: {
+          label: 'Daughters',
+          tip: 'How many more daughters your couples should have. Daughters come before sons.',
+        },
+        extraMen: { label: 'Sons', tip: 'How many more sons your couples should have. ∞: without end.' },
+        trainSoldiers: {
+          label: 'Soldiers without weapons',
+          tip: 'Barracks training without handing out a weapon. You arm them yourself.',
+        },
+        trainSword: { label: 'Swordsmen', tip: 'Training, then the best sword and armour in stock.' },
+        trainSpear: { label: 'Spearmen', tip: 'Training, then the best spear and armour in stock.' },
+        trainBow: { label: 'Archers', tip: 'Training, then the best bow and armour in stock.' },
       },
+      switches: {
+        giveBoots: { label: 'Boots', tip: 'Every adult man without boots fetches a pair from the store.' },
+        giveIronTools: {
+          label: 'Iron tools',
+          tip: 'Anyone working in a trade gets iron tools. They come before wooden ones.',
+        },
+        giveWoodenTools: { label: 'Wooden tools', tip: 'Anyone working in a trade gets wooden tools.' },
+        giveMead: { label: 'Mead', tip: 'Every adult man without mead fetches some from the store.' },
+        allowShortSwords: {
+          label: 'Short swords too',
+          tip: 'On: a recruit takes a short sword when no long sword is in stock. Off: he waits for a long one.',
+        },
+        allowWoodenSpears: {
+          label: 'Wooden spears too',
+          tip: 'On: a recruit takes a wooden spear when no iron spear is in stock. Off: he waits for an iron one.',
+        },
+        allowShortBows: {
+          label: 'Short bows too',
+          tip: 'On: a recruit takes a short bow when no long bow is in stock. Off: he waits for a long one.',
+        },
+        postGraduates: {
+          label: 'Graduates straight to work',
+          tip: 'A school graduate goes straight to the nearest free workplace in his trade.',
+        },
+        moveFlags: {
+          label: 'Gatherers move their flag',
+          tip: 'When the resource by a flag runs out, the flag follows it, 3-5 tiles away.',
+        },
+      },
+      notes: {
+        expected: {
+          counted: { one: '{count} on the way', few: '{count} on the way', many: '{count} on the way' },
+          endless: 'on the way',
+          tip: 'This many couples are already expecting. The counter goes down at the birth.',
+        },
+        needsCouple: {
+          counted: {
+            one: '{count} waits for a couple',
+            few: '{count} wait for a couple',
+            many: '{count} wait for a couple',
+          },
+          endless: 'waits for a couple',
+          tip: 'A married woman with a home who is not expecting gives birth. The order waits until such a couple turns up.',
+        },
+        drilling: {
+          counted: {
+            one: '{count} in the barracks',
+            few: '{count} in the barracks',
+            many: '{count} in the barracks',
+          },
+          endless: 'in the barracks',
+          tip: 'Recruits sent to the barracks: on their way or already training.',
+        },
+        fetchingWeapon: {
+          counted: {
+            one: '{count} fetching a weapon',
+            few: '{count} fetching weapons',
+            many: '{count} fetching weapons',
+          },
+          endless: 'fetching weapons',
+          tip: 'Trained recruits on their way to the store for a weapon and armour.',
+        },
+        needsWeapon: {
+          counted: {
+            one: '{count} waits for a weapon',
+            few: '{count} wait for weapons',
+            many: '{count} wait for weapons',
+          },
+          endless: 'waits for weapons',
+          tip: 'No weapon this class may take is in stock. The recruits wait for a delivery.',
+        },
+        needsMen: {
+          counted: {
+            one: '{count} waits for a free man',
+            few: '{count} wait for free men',
+            many: '{count} wait for free men',
+          },
+          endless: 'waits for free men',
+          tip: 'An adult man with no trade and no errand goes to the barracks. Nobody is taken from work.',
+        },
+        needsBarracks: {
+          counted: {
+            one: '{count} waits for barracks',
+            few: '{count} wait for barracks',
+            many: '{count} wait for barracks',
+          },
+          endless: 'waits for barracks',
+          tip: 'Training starts once your barracks stand.',
+        },
+        outOfStock: {
+          counted: { one: 'none in stock', few: 'none in stock', many: 'none in stock' },
+          endless: 'none in stock',
+          tip: 'Nobody gets what the store lacks. The order works again once the goods arrive.',
+        },
+      },
+      inStock: 'In stock: {count}',
+      less: 'Less',
+      more: 'More',
+      lessTip: 'Less. Shift: to zero. Ctrl: by {step}.',
+      lessEndlessTip: 'Less. Shift: to zero. Ctrl: by {step}. Below zero: without end.',
+      moreTip: 'More. Shift: to {max}. Ctrl: by {step}.',
+      moreEndlessTip: 'More. Shift: without end. Ctrl: by {step}.',
+      watching: "The watched player's assistant. Read only.",
+      noSeat: 'Pick a player to see their assistant.',
+    },
+    /** Stand-ins for the decoded `misclogic` rows 180-186 naming each paper kind; `{name}` takes
+     *  the named house, trade or good. */
+    papers: {
+      indulgence: 'Letter of indulgence',
+      placeAny: 'Place a building of your choice',
+      placeHouse: "Place a '{name}'",
+      placeStockedHouse: "Place a '{name}' and fill its store",
+      buildPermit: "Permit for building a '{name}'",
+      learnPermit: "Permission to learn '{name}'",
+      producePermit: "Permission to produce '{name}'",
     },
     observer: {
       label: 'Watched player',

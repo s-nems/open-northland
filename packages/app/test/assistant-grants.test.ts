@@ -2,7 +2,7 @@ import type { Command } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { assistantGrantsSeam, grantAssistantDefaults } from '../src/view/assistant-grants.js';
 
-/** The seam translating the chest-window switches to `setAssistantGrant` and `setAssistantWeaponVeto`
+/** The seam translating the assistant window switches to `setAssistantGrant` and `setAssistantWeaponVeto`
  *  commands and back - good ids resolved from the live content by slug, so the fixture uses arbitrary ids. */
 
 const CONTENT = {

@@ -1,9 +1,8 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HudLayout } from '@open-northland/render';
 import type { Command, Entity, Paper } from '@open-northland/sim';
-import { Container, Texture } from 'pixi.js';
+import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import type { AssistantGrantId } from '../src/game/assistant-grant-ids.js';
 import type { Rect } from '../src/hud/geometry.js';
 import type { TextRun } from '../src/hud/text-run.js';
 import {
@@ -12,17 +11,6 @@ import {
   OPEN_AVAILABILITY,
 } from '../src/hud/tool-panel/building-menu.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
-import {
-  type AssistantCounterFace,
-  type AssistantCounterId,
-  defaultAssistantState,
-  layoutExtrasMenu,
-} from '../src/hud/tool-panel/extras-menu.js';
-import {
-  createExtrasWindow,
-  type ExtrasCountersSeam,
-  type ExtrasGrantsSeam,
-} from '../src/hud/tool-panel/extras-window.js';
 import { createHeldPaperController } from '../src/hud/tool-panel/held-paper.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
 import {
@@ -34,6 +22,7 @@ import { INITIAL_RESIDENTS_STATE, NO_RESIDENT_FILTERS } from '../src/hud/tool-pa
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
 import { createToolWindows } from '../src/hud/tool-panel/windows.js';
 import { formatMessage, messages } from '../src/i18n/index.js';
+import { stubAssistantWindow } from './support/assistant-window-stub.js';
 import { type ConstructionWindowStub, stubConstructionWindow } from './support/construction-window-stub.js';
 import { stubMissionBook } from './support/mission-book-stub.js';
 import { stubPendingWindow } from './support/pending-window-stub.js';
@@ -41,7 +30,7 @@ import { stubPlacementStrip } from './support/placement-strip-stub.js';
 import { stubResidentsWindow } from './support/residents-window-stub.js';
 
 /**
- * Headless tests for the tool-panel WINDOW CONTROLLERS (registry / stats / placement / chest) over a
+ * Headless tests for the tool-panel WINDOW CONTROLLERS (registry / stats / placement) over a
  * stubbed {@link PanelContext} and a DOM-less construction window. These pin the input-routing
  * contracts the mount relies on (claim regions, close-on-inside, the paper flow) and the stats
  * change-key guard (a tick-only change remakes only the tick run - the per-frame perf contract).
@@ -111,19 +100,6 @@ function windowOrigin(ctx: PanelContext, width: number): { x: number; y: number 
 const statsOrigin = (ctx: PanelContext): { x: number; y: number } =>
   windowOrigin(ctx, STATS_WIDTH * ctx.scale);
 
-/** The extras window's origin and scale, as its controller derives them: measured, then centred. */
-function extrasGeometry(ctx: PanelContext) {
-  const state = defaultAssistantState();
-  const measured = layoutExtrasMenu({ originX: 0, originY: 0, scale: ctx.scale, state });
-  const origin = windowOrigin(ctx, measured.window.w);
-  return { originX: origin.x, originY: origin.y, scale: ctx.scale, state };
-}
-
-/** The centre of a rect (for synthetic clicks). */
-function centreOf(r: { x: number; y: number; w: number; h: number }): { x: number; y: number } {
-  return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
-}
-
 /** A HUD read-view: the volatile `tick` row the stats window excludes from its change key, then a tally. */
 const hud = (tick: number, wood: number): HudLayout => ({
   width: 100,
@@ -134,7 +110,7 @@ const hud = (tick: number, wood: number): HudLayout => ({
   ],
 });
 
-/** A read-view with enough tallies that the content-sized stats window reaches down into the chest
+/** A read-view with enough tallies that the content-sized stats window reaches down into the diplomacy
  *  window (both centre in the region, so they overlap). */
 const TALL_HUD: HudLayout = {
   width: 100,
@@ -205,43 +181,7 @@ describe('stats window controller', () => {
   });
 });
 
-/** A stateful stand-in for the sim counter seam: `read()` serves what `set()` stored (as if the
- *  command already applied), and `writes` records every absolute face the window pushed through. */
-function stubCountersSeam(): {
-  seam: ExtrasCountersSeam;
-  writes: [AssistantCounterId, number, boolean][];
-} {
-  const faces: Record<AssistantCounterId, AssistantCounterFace> = { ...defaultAssistantState().counters };
-  const writes: [AssistantCounterId, number, boolean][] = [];
-  return {
-    seam: {
-      read: () => ({ ...faces }),
-      set: (id, value, infinite) => {
-        writes.push([id, value, infinite]);
-        faces[id] = { value, infinite };
-        return true;
-      },
-    },
-    writes,
-  };
-}
-
 describe('tool windows registry', () => {
-  const GRANTS: ExtrasGrantsSeam = {
-    read: () => ({
-      giveBoots: true,
-      giveWoodenTools: true,
-      giveIronTools: true,
-      giveMead: true,
-      allowShortSwords: true,
-      allowWoodenSpears: true,
-      allowShortBows: true,
-      postGraduates: false,
-      moveFlags: false,
-    }),
-    set: () => true,
-  };
-
   function mountWindows(buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
     const { ctx } = stubContext();
     const picks: BuildingPick[] = [];
@@ -258,8 +198,8 @@ describe('tool windows registry', () => {
         menu = stubConstructionWindow(seam);
         return menu;
       },
-      grants: GRANTS,
-      counters: stubCountersSeam().seam,
+      assistantWindow: stubAssistantWindow,
+      barracksType: null,
       heldPaper,
       diplomacyRows: () => [],
       missionBook: stubMissionBook,
@@ -414,19 +354,18 @@ describe('tool windows registry', () => {
 
   it('probes the pop-ups in draw order, so an overlap goes to the top-drawn window', () => {
     const { ctx, windows } = mountWindows();
-    windows.byId.extras.toggle();
     windows.byId.stats.toggle();
+    windows.byId.diplomacy.toggle();
     windows.refresh(() => TALL_HUD); // the stats window draws (and gains its rect) on its first refresh
 
-    // Statistics draws after (over) the chest window and both centre in the same region: a point
-    // inside the statistics panel is inside the chest window too.
+    // Diplomacy draws after (over) statistics and both centre in the same region: a point inside the
+    // statistics panel is inside the diplomacy window too.
     const shared = { x: statsOrigin(ctx).x + 1, y: statsOrigin(ctx).y + 1 };
-    expect(windows.byId.extras.claims(shared.x, shared.y)).toBe(true);
+    expect(windows.byId.diplomacy.claims(shared.x, shared.y)).toBe(true);
     expect(windows.byId.stats.claims(shared.x, shared.y)).toBe(true);
 
     expect(windows.handleClick(shared.x, shared.y)).toBe(true);
-    expect(windows.byId.stats.isOpen()).toBe(false); // statistics took the press and closed on inside
-    expect(windows.byId.extras.isOpen()).toBe(true); // the covered chest window saw nothing
+    expect(windows.byId.stats.isOpen()).toBe(true); // the covered statistics window saw nothing
     // Nothing open under the point: the press falls through to placement / world picking.
     expect(windows.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
   });
@@ -1209,318 +1148,5 @@ describe('placement controller', () => {
     placement.handleClick(0, 0);
     expect(probed).toEqual([{ col: 6, row: 6 }]);
     expect(commands).toEqual([{ kind: 'convertPalisadeGate', palisade: center, gfxIndex: 698 }]);
-  });
-});
-
-describe('extras window controller', () => {
-  /** A stateful stand-in for the sim grant seam: `read()` serves what `set()` stored (as if the
-   *  command already applied), and `writes` records every toggle the window pushed through. */
-  function stubGrantsSeam(initial?: Partial<Record<AssistantGrantId, boolean>>): {
-    seam: ExtrasGrantsSeam;
-    writes: [AssistantGrantId, boolean][];
-  } {
-    const state: Record<AssistantGrantId, boolean> = {
-      giveBoots: true,
-      giveWoodenTools: true,
-      giveIronTools: true,
-      giveMead: true,
-      allowShortSwords: true,
-      allowWoodenSpears: true,
-      allowShortBows: true,
-      postGraduates: false,
-      moveFlags: false,
-      ...initial,
-    };
-    const writes: [AssistantGrantId, boolean][] = [];
-    return {
-      seam: {
-        read: () => ({ ...state }),
-        set: (id, enabled) => {
-          writes.push([id, enabled]);
-          state[id] = enabled;
-          return true;
-        },
-      },
-      writes,
-    };
-  }
-
-  /** The same layout the controller builds internally (same origin formula + default state). */
-  function expectedLayout(ctx: PanelContext) {
-    return layoutExtrasMenu(extrasGeometry(ctx));
-  }
-
-  it('opens on toggle, claims the window rect, and closes on the close box', () => {
-    const { ctx } = stubContext();
-    const extras = createExtrasWindow({
-      ctx,
-      container: new Container(),
-      grants: stubGrantsSeam().seam,
-      counters: stubCountersSeam().seam,
-    });
-    const geo = expectedLayout(ctx);
-
-    expect(extras.isOpen()).toBe(false);
-    expect(extras.claims(geo.window.x + 1, geo.window.y + 1)).toBe(false); // closed → no claim
-
-    extras.toggle();
-    expect(extras.isOpen()).toBe(true);
-    expect(extras.claims(geo.window.x + 1, geo.window.y + 1)).toBe(true);
-    expect(extras.claims(geo.window.x - 1, geo.window.y - 1)).toBe(false); // outside the window
-
-    const close = centreOf(geo.closeRect);
-    expect(extras.handleClick(close.x, close.y)).toBe(true);
-    expect(extras.isOpen()).toBe(false);
-  });
-
-  it('steppers and switches write their seams; both faces read back on reopen', () => {
-    const { ctx, made } = stubContext();
-    const { seam, writes } = stubGrantsSeam();
-    const counters = stubCountersSeam();
-    const extras = createExtrasWindow({
-      ctx,
-      container: new Container(),
-      grants: seam,
-      counters: counters.seam,
-    });
-    const geo = expectedLayout(ctx);
-    extras.toggle();
-
-    // + on the first counter: the rebuilt window draws "1" and one absolute face went to the sim.
-    const plus = centreOf(geo.counters[0]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });
-    made.length = 0;
-    expect(extras.handleClick(plus.x, plus.y)).toBe(true);
-    expect(made).toContain('1');
-    expect(counters.writes).toEqual([['extraWomen', 1, false]]);
-
-    // The mead switch flips its face to OFF and writes the toggle through the seam.
-    const sw = centreOf(geo.grants[3]?.switchRect ?? { x: 0, y: 0, w: 0, h: 0 });
-    made.length = 0;
-    expect(extras.handleClick(sw.x, sw.y)).toBe(true);
-    expect(made).toContain(messages().hud.extras.off);
-    expect(writes).toEqual([['giveMead', false]]);
-
-    // Close and reopen: both blocks read back from their seams.
-    extras.toggle();
-    made.length = 0;
-    extras.toggle();
-    expect(made).toContain('1');
-    expect(made).toContain(messages().hud.extras.off);
-  });
-
-  it('Ctrl-click steps by ten and the infinity toggle writes the flag', () => {
-    const { ctx, made } = stubContext();
-    const counters = stubCountersSeam();
-    const extras = createExtrasWindow({
-      ctx,
-      container: new Container(),
-      grants: stubGrantsSeam().seam,
-      counters: counters.seam,
-    });
-    const geo = expectedLayout(ctx);
-    extras.toggle();
-
-    const plus = centreOf(geo.counters[1]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });
-    made.length = 0;
-    expect(extras.handleClick(plus.x, plus.y, { bigStep: true })).toBe(true);
-    expect(made).toContain('10');
-    expect(counters.writes).toEqual([['extraMen', 10, false]]);
-
-    // The infinity toggle keeps the stored value and flips the flag; the first step off it only
-    // surfaces that hidden value (the lemniscate covers the number), the next one moves it.
-    const infinity = centreOf(geo.counters[1]?.infinityRect ?? { x: 0, y: 0, w: 0, h: 0 });
-    expect(extras.handleClick(infinity.x, infinity.y)).toBe(true);
-    expect(counters.writes.at(-1)).toEqual(['extraMen', 10, true]);
-    expect(extras.handleClick(plus.x, plus.y)).toBe(true);
-    expect(counters.writes.at(-1)).toEqual(['extraMen', 10, false]);
-    expect(extras.handleClick(plus.x, plus.y)).toBe(true);
-    expect(counters.writes.at(-1)).toEqual(['extraMen', 11, false]);
-  });
-
-  it('a rejected write (a read-only session) leaves the switch face untouched', () => {
-    const { ctx, made } = stubContext();
-    const rejecting: ExtrasGrantsSeam = { read: stubGrantsSeam().seam.read, set: () => false };
-    const extras = createExtrasWindow({
-      ctx,
-      container: new Container(),
-      grants: rejecting,
-      counters: stubCountersSeam().seam,
-    });
-    const geo = expectedLayout(ctx);
-    extras.toggle();
-
-    const sw = centreOf(geo.grants[3]?.switchRect ?? { x: 0, y: 0, w: 0, h: 0 });
-    made.length = 0;
-    expect(extras.handleClick(sw.x, sw.y)).toBe(true); // still consumed by the window
-    expect(made).toEqual([]); // no rebuild: the face never flipped, so it cannot lie
-  });
-
-  it('reads the switch faces from the sim seam on every open', () => {
-    const { ctx, made } = stubContext();
-    const { seam } = stubGrantsSeam({ giveIronTools: false, postGraduates: true, moveFlags: true });
-    const extras = createExtrasWindow({
-      ctx,
-      container: new Container(),
-      grants: seam,
-      counters: stubCountersSeam().seam,
-    });
-
-    extras.toggle();
-    expect(made).toContain(messages().hud.extras.off); // the iron-tools switch mirrors the sim
-
-    extras.toggle(); // close
-    seam.set('giveIronTools', true); // the sim state moved while the window was closed
-    made.length = 0;
-    extras.toggle();
-    expect(made).not.toContain(messages().hud.extras.off); // every switch reads back ON
-  });
-
-  it('holds a flipped switch until the sim applies it, and follows a grant that moved under the open window', () => {
-    const { ctx, made } = stubContext();
-    const live: Record<AssistantGrantId, boolean> = {
-      giveBoots: true,
-      giveWoodenTools: true,
-      giveIronTools: true,
-      giveMead: true,
-      allowShortSwords: true,
-      allowWoodenSpears: true,
-      allowShortBows: true,
-      postGraduates: true,
-      moveFlags: true,
-    };
-    // The command applies on a later tick, as a queued `setAssistantGrant` does.
-    const lagging: ExtrasGrantsSeam = { read: () => ({ ...live }), set: () => true };
-    const extras = createExtrasWindow({
-      ctx,
-      container: new Container(),
-      grants: lagging,
-      counters: stubCountersSeam().seam,
-    });
-    const geo = expectedLayout(ctx);
-    extras.toggle();
-    const mead = geo.grants.find((g) => g.id === 'giveMead')?.switchRect;
-    expect(mead).toBeDefined();
-    if (mead === undefined) return;
-
-    made.length = 0;
-    extras.handleClick(centreOf(mead).x, centreOf(mead).y);
-    expect(made).toContain(messages().hud.extras.off); // the echo
-    made.length = 0;
-    extras.refresh();
-    expect(made).toEqual([]); // the sim still reads pre-write: the echo holds
-
-    live.giveMead = false; // applied
-    extras.refresh();
-    live.giveBoots = false; // a write an earlier mount of the window echoed, applied only now
-    made.length = 0;
-    extras.refresh();
-    expect(made.filter((text) => text === messages().hud.extras.off)).toHaveLength(2);
-  });
-
-  it('does not consume clicks outside the open window', () => {
-    const { ctx } = stubContext();
-    const extras = createExtrasWindow({
-      ctx,
-      container: new Container(),
-      grants: stubGrantsSeam().seam,
-      counters: stubCountersSeam().seam,
-    });
-    extras.toggle();
-    expect(extras.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
-    expect(extras.isOpen()).toBe(true);
-  });
-
-  /** A counter seam whose reads lag its writes, like the sim block that only moves on a later tick. */
-  function laggingCountersSeam(): {
-    seam: ExtrasCountersSeam;
-    live: Record<AssistantCounterId, AssistantCounterFace>;
-  } {
-    const live: Record<AssistantCounterId, AssistantCounterFace> = { ...defaultAssistantState().counters };
-    return { seam: { read: () => ({ ...live }), set: () => true }, live };
-  }
-
-  it('holds the clicked face per frame until the sim block moves, then follows it', () => {
-    const { ctx, made } = stubContext();
-    const { seam, live } = laggingCountersSeam();
-    const extras = createExtrasWindow({
-      ctx,
-      container: new Container(),
-      grants: stubGrantsSeam().seam,
-      counters: seam,
-    });
-    const geo = expectedLayout(ctx);
-    extras.toggle();
-
-    const plus = centreOf(geo.counters[0]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });
-    made.length = 0;
-    extras.handleClick(plus.x, plus.y);
-    expect(made).toContain('1'); // the echo, drawn before the command reaches the block
-
-    made.length = 0;
-    extras.refresh();
-    expect(made).toEqual([]); // the block still reads pre-write: hold the echo, rebuild nothing
-
-    live.extraWomen = { value: 4, infinite: false }; // the queue moved under the open window
-    extras.refresh();
-    expect(made).toContain('4');
-
-    made.length = 0;
-    extras.refresh();
-    expect(made).toEqual([]); // nothing moved since: no per-frame glyph rebuild
-  });
-
-  /** How many tiled fills the open window laid down: `back`, the first child of its own container. */
-  function tiledFills(ctx: PanelContext): number {
-    const container = new Container();
-    const extras = createExtrasWindow({
-      ctx,
-      container,
-      grants: stubGrantsSeam().seam,
-      counters: stubCountersSeam().seam,
-    });
-    extras.toggle();
-    const shell = container.children[0];
-    if (!(shell instanceof Container)) throw new Error('the extras window mounts no container');
-    const back = shell.children[0];
-    if (!(back instanceof Container)) throw new Error('the extras window owns no fill layer');
-    return back.children.length;
-  }
-
-  it('tiles its plates from the decoded art, and lays none down without it', () => {
-    const bare = stubContext().ctx;
-    const decoded: PanelContext = {
-      ...bare,
-      bitmaps: {
-        bg: Texture.EMPTY,
-        button: Texture.EMPTY,
-        buttonHilite: Texture.EMPTY,
-        headline: Texture.EMPTY,
-      },
-    };
-
-    expect(tiledFills(bare)).toBe(0); // flat Graphics fallback only
-    expect(tiledFills(decoded)).toBeGreaterThan(0);
-  });
-
-  it('reads nothing per frame while closed', () => {
-    const { ctx, made } = stubContext();
-    let reads = 0;
-    const counting: ExtrasCountersSeam = {
-      read: () => {
-        reads++;
-        return defaultAssistantState().counters;
-      },
-      set: () => true,
-    };
-    const extras = createExtrasWindow({
-      ctx,
-      container: new Container(),
-      grants: stubGrantsSeam().seam,
-      counters: counting,
-    });
-
-    extras.refresh();
-    expect(reads).toBe(0);
-    expect(made).toEqual([]);
   });
 });

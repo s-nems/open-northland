@@ -23,3 +23,20 @@ export const GRANT_IDS: readonly AssistantGrantId[] = [
   'postGraduates',
   'moveFlags',
 ];
+
+export type GiveSwitchId = Extract<AssistantGrantId, `give${string}`>;
+export type WeaponSwitchId = Extract<AssistantGrantId, `allow${string}`>;
+
+/** The good each switch flips, by catalog slug, because the sandbox catalog and real content number the
+ *  same goods differently. A give switch grants its good, a weapon switch lifts its recruit-arming veto. */
+export const GIVE_SWITCH_GOOD: Readonly<Record<GiveSwitchId, string>> = {
+  giveBoots: 'shoes',
+  giveWoodenTools: 'tool_wooden',
+  giveIronTools: 'tool_iron',
+  giveMead: 'mead',
+};
+export const WEAPON_SWITCH_GOOD: Readonly<Record<WeaponSwitchId, string>> = {
+  allowShortSwords: 'sword_shord',
+  allowWoodenSpears: 'spear_wooden',
+  allowShortBows: 'bow_short',
+};

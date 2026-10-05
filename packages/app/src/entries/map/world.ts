@@ -79,7 +79,7 @@ export interface MapWorldOptions extends SimSessionRules {
   readonly playerRoster?: MapScript['players'];
   /** The tribes a changed seat's authored placements take; the map's own when omitted. */
   readonly seatTribes?: SeatTribeRemap;
-  /** Seats whose chest-window assistant grants start on, less the AI seats running no strategic module. */
+  /** Seats whose assistant grants start on, less the AI seats running no strategic module. */
   readonly assistantSeats: readonly number[];
   /** Override the authored participant roster; an empty list runs no match. */
   readonly matchParticipants?: readonly number[];

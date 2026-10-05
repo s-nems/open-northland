@@ -1,51 +1,30 @@
-import type { PlayerCommand } from '@open-northland/sim';
-import type { AssistantCounterId } from '../hud/tool-panel/extras-menu.js';
-import { type AssistantCounterFace, SIM_KIND_BY_COUNTER_ID } from '../hud/tool-panel/extras-menu.js';
-import type { ExtrasCountersSeam } from '../hud/tool-panel/extras-window.js';
+import { components, type PlayerCommand } from '@open-northland/sim';
+import type { AssistantCountersSeam } from '../hud/dom/assistant-window/index.js';
 import type { SessionHost } from '../session/index.js';
 
-const COUNTER_OFF: AssistantCounterFace = { value: 0, infinite: false };
+const NO_COUNTERS = components.defaultAssistantCounters();
 
 /**
- * Live chest-window counter seam for the seat `player` names, read on every call so a spectator's
- * window follows its watched seat; no seat (null, the whole map) reads every counter as zero. A
- * read-only spectator session (`writable: false`) rejects every write, so the window never echoes a
- * command the sim would drop.
+ * Live assistant counter seam for the seat `player` names, read on every call so a spectator's window
+ * follows its watched seat; no seat (null, the whole map) reads every counter as zero. A read-only
+ * spectator session (`writable: false`) rejects every write, so the window never echoes a command the
+ * sim would drop.
  */
 export function assistantCountersSeam(
   host: Pick<SessionHost, 'assistantCounters'>,
   player: () => number | null,
   enqueue: (command: PlayerCommand) => void,
   writable = true,
-): ExtrasCountersSeam {
+): AssistantCountersSeam {
   return {
     read: () => {
       const seat = player();
-      const live = seat === null ? null : host.assistantCounters(seat);
-      const face = (id: AssistantCounterId): AssistantCounterFace => {
-        if (live === null) return COUNTER_OFF;
-        const kind = live[SIM_KIND_BY_COUNTER_ID[id]];
-        return { value: kind.value, infinite: kind.infinite };
-      };
-      return {
-        extraWomen: face('extraWomen'),
-        extraMen: face('extraMen'),
-        trainSoldiers: face('trainSoldiers'),
-        trainSwordsmen: face('trainSwordsmen'),
-        trainSpearmen: face('trainSpearmen'),
-        trainArchers: face('trainArchers'),
-      };
+      return seat === null ? NO_COUNTERS : host.assistantCounters(seat);
     },
-    set: (id, value, infinite) => {
+    set: (counter, state) => {
       const seat = player();
       if (!writable || seat === null) return false;
-      enqueue({
-        kind: 'setAssistantCounter',
-        player: seat,
-        counter: SIM_KIND_BY_COUNTER_ID[id],
-        value,
-        infinite,
-      });
+      enqueue({ kind: 'setAssistantCounter', player: seat, counter, ...state });
       return true;
     },
   };

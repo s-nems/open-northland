@@ -33,7 +33,7 @@ import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { BARRACKS_DRILL_TICKS } from '../settlers/drives/training.js';
 
 /**
- * The assistant's production dispatcher: turns the chest window's `AssistantCounters` into standing child
+ * The assistant's production dispatcher: turns the assistant window's `AssistantCounters` into standing child
  * orders and barracks drills. Each dispatch books itself with a marker, and a counter pays only when the
  * product exists, so a recruit lost mid-pipeline re-dispatches instead of silently draining the queue. Runs
  * before the FamilySystem and the planner, so a fresh child order and a fresh drill both start moving the

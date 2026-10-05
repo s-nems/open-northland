@@ -6074,3 +6074,211 @@ body.on-drag-scroll * {
   margin: 4px 0;
   font-size: 12px;
 }
+
+/* ---------- switch: an on/off pill whose knob slides, lit bronze like a chosen segment when on ---------- */
+.on-hud .on-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--wood-lo);
+  border-radius: 10px;
+  background: #12171399;
+  box-shadow: inset 0 1px 2px #000a;
+  transition: background 0.12s;
+}
+.on-hud .on-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #8d7a5c, #4a3c2a 80%);
+  box-shadow: 0 1px 2px #000a;
+  transition: left 0.12s;
+}
+.on-hud .on-switch[aria-checked="true"] {
+  border-color: var(--bronze-lo);
+  background: linear-gradient(#c99f55, #8a6a32);
+}
+.on-hud .on-switch[aria-checked="true"]::after {
+  left: 18px;
+  background: radial-gradient(circle at 40% 35%, #fff4d6, #e3c27c 80%);
+}
+.on-hud .on-switch:focus-visible {
+  outline: 1px solid var(--bronze-hi);
+  outline-offset: 2px;
+}
+.on-hud .on-switch[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: var(--cursor-not-allowed, not-allowed);
+}
+/* A switch that depends on the row above it. */
+.on-hud .on-switch--small {
+  width: 30px;
+  height: 17px;
+}
+.on-hud .on-switch--small::after {
+  width: 11px;
+  height: 11px;
+}
+.on-hud .on-switch--small[aria-checked="true"]::after {
+  left: 15px;
+}
+
+/* ---------- assistant window: drain-down orders beside standing orders, a status line per row ---------- */
+.on-hud .on-window--assistant .on-window__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.on-hud .on-asst__access {
+  padding: 5px 10px;
+  border: 1px solid var(--wax-warn);
+  border-radius: 3px;
+  background: #3a2a1288;
+  color: var(--warning);
+  font-size: 12.5px;
+}
+.on-hud .on-asst__cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 22px;
+}
+.on-hud .on-asst__col {
+  min-width: 0;
+}
+.on-hud .on-asst__kind {
+  margin: 0 0 2px;
+  font: 600 15px var(--font-title);
+  color: var(--text-hi);
+}
+.on-hud .on-asst__col .on-section {
+  margin: 8px 0 2px;
+}
+.on-hud .on-asst-row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 1px 8px;
+  padding: 3px 4px 3px 2px;
+  border-radius: 3px;
+}
+.on-hud .on-asst-row:hover {
+  background: #ffffff08;
+}
+.on-hud .on-asst-row__label {
+  font-size: 13.5px;
+  line-height: 1.2;
+  color: var(--text);
+}
+.on-hud .on-asst-row--off .on-asst-row__label {
+  color: var(--muted);
+}
+/* A row's art: a figure, a glyph, or a good with the seat's stock of it on a tag at its corner. */
+.on-hud .on-asst-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--parchment);
+}
+.on-hud .on-asst-art .on-figure,
+.on-hud .on-asst-art .on-glyph {
+  width: 20px;
+  height: 20px;
+}
+.on-hud .on-asst-art__count {
+  position: absolute;
+  right: -5px;
+  bottom: -3px;
+  min-width: 14px;
+  padding: 0 3px;
+  border: 1px solid #c9a26255;
+  border-radius: 7px;
+  background: #1d160f;
+  color: var(--text-hi);
+  font: 700 10px / 13px var(--font-body);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.on-hud .on-asst-row--off > .on-asst-art {
+  opacity: 0.55;
+  filter: saturate(0.4);
+}
+.on-hud .on-asst-art__count.is-short {
+  border-color: var(--wax-warn);
+  color: var(--warning);
+}
+.on-hud .on-asst-row__status {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+.on-hud .on-asst-row__status[hidden] {
+  display: none;
+}
+.on-hud .on-asst-row__status > span + span::before {
+  content: "·";
+  margin-right: 6px;
+  color: #c1baa866;
+}
+.on-hud .on-asst-row__status .is-busy {
+  color: var(--ok);
+}
+.on-hud .on-asst-row__status .is-warn {
+  color: var(--warning);
+}
+.on-hud .on-asst-row__status .is-idle {
+  color: #c1baa8aa;
+}
+/* The weaker-weapon switch under a class row: indented to the label, smaller. */
+.on-hud .on-asst-sub {
+  grid-column: 2 / -1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.on-hud .on-asst-sub .on-asst-art {
+  width: 20px;
+  height: 20px;
+}
+.on-hud .on-asst-sub__text {
+  flex: 1;
+}
+.on-hud .on-asst-alert {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  margin: 0 2px 4px;
+  font-size: 11.5px;
+  color: var(--warning);
+}
+.on-hud .on-asst-alert[hidden] {
+  display: none;
+}
+.on-hud .on-asst-alert__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bronze-hi);
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.on-hud .on-asst-alert__link[hidden] {
+  display: none;
+}

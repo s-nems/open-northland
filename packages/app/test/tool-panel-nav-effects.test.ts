@@ -2,7 +2,6 @@ import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { TextRun } from '../src/hud/text-run.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
-import { defaultAssistantState } from '../src/hud/tool-panel/extras-menu.js';
 import { createHeldPaperController } from '../src/hud/tool-panel/held-paper.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
 import {
@@ -14,6 +13,7 @@ import {
 } from '../src/hud/tool-panel/nav-effects.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
 import { createToolWindows, type ToolWindowId, type ToolWindows } from '../src/hud/tool-panel/windows.js';
+import { stubAssistantWindow } from './support/assistant-window-stub.js';
 import { type ConstructionWindowStub, stubConstructionWindow } from './support/construction-window-stub.js';
 import { stubMissionBook } from './support/mission-book-stub.js';
 import { stubPendingWindow } from './support/pending-window-stub.js';
@@ -79,24 +79,8 @@ function mountSurfaces() {
       return menu;
     },
     buildings: [{ typeId: BUILDING_JOINERY, label: 'Joinery', kind: 'workplace', cost: [], trades: [] }],
-    grants: {
-      read: () => ({
-        giveBoots: true,
-        giveWoodenTools: true,
-        giveIronTools: true,
-        giveMead: true,
-        allowShortSwords: true,
-        allowWoodenSpears: true,
-        allowShortBows: true,
-        postGraduates: false,
-        moveFlags: false,
-      }),
-      set: () => true,
-    },
-    counters: {
-      read: () => defaultAssistantState().counters,
-      set: () => true,
-    },
+    assistantWindow: stubAssistantWindow,
+    barracksType: null,
     heldPaper: createHeldPaperController(ctx, strip),
     diplomacyRows: () => [],
     missionBook: stubMissionBook,
@@ -126,17 +110,17 @@ describe('navigation entries', () => {
       'knowledge',
     ]);
     const windows = NAV_ENTRY_IDS.map((id) => navEntryEffect(id).window);
-    expect(windows).toEqual(['menu', 'residents', 'extras', 'stats', 'mission', 'diplomacy', 'knowledge']);
+    expect(windows).toEqual(['menu', 'residents', 'assistant', 'stats', 'mission', 'diplomacy', 'knowledge']);
     for (const id of NAV_ENTRY_IDS) expect(navEntryForWindow(navEntryEffect(id).window)).toBe(id);
   });
 
   it('drops a held placement only for the entries that start a pick or pause the game', () => {
     expect(navEntryEffect('build').cancelsHeld).toBe(true);
-    expect(navEntryEffect('assistant').cancelsHeld).toBe(true);
     expect(navEntryEffect('mission').cancelsHeld).toBe(true);
     expect(navEntryEffect('statistics').cancelsHeld).toBe(false);
     expect(navEntryEffect('diplomacy').cancelsHeld).toBe(false);
     expect(navEntryEffect('residents').cancelsHeld).toBe(false);
+    expect(navEntryEffect('assistant').cancelsHeld).toBe(false);
     expect(navEntryEffect('knowledge').cancelsHeld).toBe(false);
   });
 });
@@ -204,9 +188,9 @@ describe('applying a navigation entry', () => {
 
     press('build');
     pick(BUILDING_JOINERY);
-    press('assistant');
+    press('mission');
     expect(placement.isActive()).toBe(false);
-    expect(windows.openId()).toBe('extras');
+    expect(windows.openId()).toBe('mission');
   });
 
   it('opens the mission window on a caller-supplied page and still closes the others', () => {
