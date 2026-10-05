@@ -151,7 +151,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
 
   // Already home for one need: top the others up before stepping back out, rather than walking the whole
   // errand again for each bar.
-  if (planHomeTopUp(world, ctx, e, settler)) return;
+  if (planHomeTopUp(world, ctx, e, settler, pass.supply)) return;
 
   // The battle alert: a rear rank neither lies down nor wanders off while the front rank fights. Asked at
   // most once per settler per tick, and only by a rung whose answer it changes, which each rung does after

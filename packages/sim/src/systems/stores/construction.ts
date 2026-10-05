@@ -96,21 +96,21 @@ export function constructionMaterialsPresent(world: World, ctx: SystemContext, s
 }
 
 /**
- * Every `construction` material a site still lacks, each line's shortfall net of the inbound tally
- * tally. Ordered least-covered first so a crew spreads over different materials instead of queueing on one,
+ * Every `construction` material a site still lacks, each line's shortfall net of the units inbound to
+ * it. Ordered least-covered first so a crew spreads over different materials instead of queueing on one,
  * ties broken by ascending goodType so the order never depends on map insertion order.
  */
 export function neededConstructionGoods(
   world: World,
   ctx: SystemContext,
   site: Entity,
-  inbound: SupplyTally,
+  supply: SupplyTally,
 ): ReadonlyArray<{ goodType: number; amount: number }> {
   const stock = world.tryGet(site, Stockpile)?.amounts;
   const shortfalls: Array<{ goodType: number; amount: number; covered: number; need: number }> = [];
   for (const line of constructionBillOf(world, ctx, site)) {
     const held = Math.max(stock?.get(line.goodType) ?? 0, 0);
-    const covered = Math.min(held + inbound.inboundOf(site, line.goodType), line.amount);
+    const covered = Math.min(held + supply.inboundOf(site, line.goodType), line.amount);
     if (covered >= line.amount) continue;
     shortfalls.push({ goodType: line.goodType, amount: line.amount - covered, covered, need: line.amount });
   }

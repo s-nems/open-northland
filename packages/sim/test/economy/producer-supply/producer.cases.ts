@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   Building,
   Carrying,
   Chat,
@@ -352,7 +353,8 @@ describe('producer self-service - hauling the finished output', () => {
     // whoever gets there first, so it heads for the HQ (fetch), never a pickup of its own plank.
     const mill = buildingAt(sim, TWIN_MILL, 0, 0, [[PLANK, 1]]);
     buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
-    settlerAt(sim, 5, 0, CARRIER, mill); // the bound carrier (elsewhere, mid-errand)
+    const carrier = settlerAt(sim, 5, 0, CARRIER, mill); // the bound carrier, elsewhere and mid-errand
+    sim.world.add(carrier, Carrying, { goodType: WOOD, amount: 1 });
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -369,7 +371,15 @@ describe('producer self-service - hauling the finished output', () => {
     // of ticks (the reported flour-starved bakery). With its own work exhausted, it makes the run.
     const mill = buildingAt(sim, TWIN_MILL, 0, 0, [[PLANK, 1]]);
     buildingAt(sim, HEADQUARTERS, 3, 0);
-    settlerAt(sim, 5, 0, CARRIER, mill); // the bound carrier (elsewhere, mid-errand)
+    // The bound carrier is elsewhere, held by its own errand, so no one is coming for the plank.
+    const carrier = settlerAt(sim, 5, 0, CARRIER, mill);
+    addCurrentAtomic(sim.world, carrier, {
+      atomicId: PICKUP_ATOMIC,
+      duration: 50,
+      effect: { kind: 'idle' },
+      targetEntity: null,
+      targetTile: null,
+    });
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
     plannerSystem(sim.world, ctxOf(sim));

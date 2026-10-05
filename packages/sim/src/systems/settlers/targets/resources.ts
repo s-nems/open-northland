@@ -12,7 +12,7 @@ import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner/context.js';
 import { type CellMatch, type NearestByCell, nearerOf, nearestByCell } from './cell-index.js';
 import { collectorStanceGates, nearestEligibleStance } from './resource-stances.js';
-import { unclaimedStockOf } from './stores/stock.js';
+import { unclaimedGoodsAt } from './stores/stock.js';
 import { jobAtomics } from './workplaces.js';
 
 export type HarvestSearchContext = Pick<
@@ -215,12 +215,12 @@ export function nearestCollectablePileFor(
     plan,
     piles,
     (e) => {
-      const good = lowestStockedGood(world.get(e, Stockpile));
-      if (good === null) return null; // an emptied drop, about to be reaped
+      const good = lowestStockedGood(world.get(e, Stockpile), unclaimedGoodsAt(world, plan.supply, e));
+      if (good === null) return null; // an emptied drop, about to be reaped, or one walkers claimed whole
       if (goodFilter !== undefined && !goodFilter.has(good)) return null; // not a good the caller forages for
       const harvestAtomic = targets.harvestAtomicByGood.get(good);
       if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
-      return unclaimedStockOf(world, plan.supply, e, good) > 0 ? good : null;
+      return good;
     },
     opts.within,
   );
@@ -240,9 +240,8 @@ export function nearestOwnDropFor(
   return nearestDropFor(plan, [own], (e) => {
     const mark = world.tryGet(e, HarvestedBy);
     if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop
-    const good = lowestStockedGood(world.get(e, Stockpile));
-    if (good === null) return null; // emptied, about to be reaped
-    return unclaimedStockOf(world, plan.supply, e, good) > 0 ? good : null;
+    const good = lowestStockedGood(world.get(e, Stockpile), unclaimedGoodsAt(world, plan.supply, e));
+    return good; // null when emptied, about to be reaped, or claimed whole by a porter
   });
 }
 

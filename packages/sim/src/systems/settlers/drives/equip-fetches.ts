@@ -1,8 +1,6 @@
 import { EquipOrder, ownerOf, Settler } from '../../../components/index.js';
 import type { World } from '../../../ecs/world.js';
-
-/** An equip errand lifts one unit into one slot. */
-export const EQUIP_FETCH_UNITS = 1;
+import { EQUIP_FETCH_UNITS } from '../atomics/effects/goods/index.js';
 
 /**
  * The units of each good, per owning player, held by equip errands underway: an errand in its `acquire`

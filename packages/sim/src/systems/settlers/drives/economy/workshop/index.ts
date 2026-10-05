@@ -19,7 +19,7 @@ import { planGossipIdle } from '../../../../social/index.js';
 import { assignedWorkers } from '../../../../stores/assigned-workers.js';
 import { isWorkplaceOperator, mergedRecipeOf } from '../../../../stores/index.js';
 import { type WorkshopWorkforce, workshopWorkforce } from '../../../../stores/workshop-workforce.js';
-import { atOrWalk, startPickup } from '../../../atomics/start.js';
+import { atOrWalk, startPickup, walkPickupBatch } from '../../../atomics/start.js';
 import { enterBuilding } from '../../../indoors.js';
 import type { PlannerContext } from '../../../planner/context.js';
 import type { IdleStands } from '../../../planner/idle-replan.js';
@@ -205,7 +205,7 @@ export function planProducer(
   // A full output slot still outranks topping up inputs for products that cannot currently be shelved.
   const blocked = shelfBlockedOutput(world, ctx, workplace);
   if (blocked !== null && deliverableGoodProbe(plan)(blocked)) {
-    startOutputHaul(plan, workplace, blocked);
+    walkPickupBatch(plan, workplace, blocked);
     return;
   }
 
@@ -339,18 +339,16 @@ function loiterByDoor(
   });
 }
 
-/** Lift one carry-load of `output` out of the workplace; the delivery rung routes it to a store. */
-function startOutputHaul(plan: PlannerContext, workplace: Entity, output: number): void {
-  const { world, ctx, terrain, entity, here } = plan;
-  const worker = plan;
-  atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, workplace, here), () =>
-    startPickup(world, ctx, entity, worker, workplace, output, CARRY_CAPACITY),
-  );
-}
-
+/** Lift one carry-load of an output out of the workplace, claimed; the delivery rung routes it to a store. */
 function haulWorkplaceOutput(plan: PlannerContext, workplace: Entity): boolean {
-  const output = workplaceOutputToHaul(deliverableGoodProbe(plan), plan.world, plan.ctx, workplace);
+  const output = workplaceOutputToHaul(
+    deliverableGoodProbe(plan),
+    plan.world,
+    plan.ctx,
+    plan.supply,
+    workplace,
+  );
   if (output === null) return false;
-  startOutputHaul(plan, workplace, output);
+  walkPickupBatch(plan, workplace, output);
   return true;
 }

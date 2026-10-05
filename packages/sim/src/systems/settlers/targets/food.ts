@@ -21,11 +21,8 @@ import type { SupplyTally } from '../../stores/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { TargetCandidates } from './candidates.js';
 import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';
-import { unclaimedStockOf } from './stores/stock.js';
+import { unclaimedGoodsAt } from './stores/stock.js';
 import { interactionCell } from './workplaces.js';
-
-/** The units one meal takes off a shelf, the amount an eater walking to a store claims there. */
-export const MEAL_UNITS = 1;
 
 /**
  * The nearest store holding an edible good, by Manhattan distance from `here` with an ascending-cell-id
@@ -98,10 +95,7 @@ export function storedFoodGood(
   entity: Entity,
   claims?: SupplyTally,
 ): number | null {
-  const unclaimed =
-    claims === undefined || !claims.reservedAtSource.has(entity)
-      ? undefined
-      : (goodType: number): boolean => unclaimedStockOf(world, claims, entity, goodType) > 0;
+  const unclaimed = claims === undefined ? undefined : unclaimedGoodsAt(world, claims, entity);
   return lowestStockedFood(world, ctx.content, entity, unclaimed);
 }
 

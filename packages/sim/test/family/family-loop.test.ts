@@ -1089,6 +1089,22 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(sim.world.get(near, Stockpile).amounts.get(FOOD)).toBe(3);
   });
 
+  it('a wife stocking the larder from two single-unit piles lifts both instead of hiding each from herself', () => {
+    // The family pass runs before the planner releases her last trip's claim; her own claim must never
+    // steer her away from the unit she walked to.
+    const { sim, woman, man, home } = familySim(31);
+    for (const e of sim.world.query(Stockpile)) sim.world.mut(e, Stockpile).amounts.clear();
+    sim.enqueueSetup({ kind: 'dropGood', good: FOOD, x: 4, y: 2, amount: 1 });
+    sim.enqueueSetup({ kind: 'dropGood', good: FOOD, x: 20, y: 2, amount: 1 });
+    sim.world.add(woman(), Marriage, { spouse: man(), child: null });
+    sim.world.add(man(), Marriage, { spouse: woman(), child: null });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman(), child: 'female' });
+    sim.step();
+    sim.world.mut(home(), Stockpile).amounts.set(FOOD, CHILD_FOOD_UNITS - 2);
+    runUntil(sim, () => sim.world.has(home(), MakingLove), 3000, 'larder stocked from both piles');
+  });
+
   it('is deterministic - two same-seed full-loop runs reach the same final state hash', () => {
     const run = (): string => {
       const { sim, woman, home } = familySim(9);

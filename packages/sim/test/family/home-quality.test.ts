@@ -319,7 +319,15 @@ describe('household quality goods', () => {
     sim.world.add(settler, Residence, { home });
     sim.world.add(settler, Resting, { at: home });
 
-    expect(planHomeTopUp(sim.world, ctxOf(sim), settler, sim.world.get(settler, Settler))).toBe(true);
+    expect(
+      planHomeTopUp(
+        sim.world,
+        ctxOf(sim),
+        settler,
+        sim.world.get(settler, Settler),
+        collectSupplyTally(sim.world),
+      ),
+    ).toBe(true);
     expect(sim.world.get(settler, CurrentAtomic).effect.kind).toBe('pray');
   });
 
@@ -339,7 +347,15 @@ describe('household quality goods', () => {
     sim.world.add(settler, Residence, { home });
     sim.world.add(settler, Resting, { at: home });
 
-    expect(planHomeTopUp(sim.world, ctxOf(sim), settler, sim.world.get(settler, Settler))).toBe(false);
+    expect(
+      planHomeTopUp(
+        sim.world,
+        ctxOf(sim),
+        settler,
+        sim.world.get(settler, Settler),
+        collectSupplyTally(sim.world),
+      ),
+    ).toBe(false);
     drainHolyOil(sim.world, ctxOf(sim));
     expect(sim.world.get(home, HomeQuality).piety).toBe(1000);
   });

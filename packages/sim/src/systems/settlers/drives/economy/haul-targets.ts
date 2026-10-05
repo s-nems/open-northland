@@ -2,9 +2,15 @@ import { Building, JobAssignment, Position, Stockpile, sameSideAs } from '../../
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
-import { buildingProduces, isLoosePile, type SupplyTally } from '../../../stores/index.js';
+import { buildingProduces, isLoosePile, lowestStockedGood, type SupplyTally } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
-import { haulableOutputGood, type Qualified, qualifiedGood, strandedPile } from '../../targets/index.js';
+import {
+  haulableOutputGood,
+  type Qualified,
+  qualifiedGood,
+  strandedPile,
+  unclaimedGoodsAt,
+} from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { deliverableGoodProbe } from './delivery-targets.js';
 import { haulFlagArea } from './haul-flag-area.js';
@@ -32,7 +38,7 @@ function nearestLoosePickup(
   const walls = buildingBlockedCells(world, ctx, terrain);
   const groundPileGood = (e: Entity): Qualified<number> | null => {
     if (!isLoosePile(world, e)) return null;
-    const good = lowestUnclaimedGood(supply, e, world.get(e, Stockpile).amounts);
+    const good = lowestStockedGood(world.get(e, Stockpile), unclaimedGoodsAt(world, supply, e));
     if (good === null || !deliverable(good)) return null;
     return strandedPile(world, ctx, terrain, walls, e) ? null : { payload: good };
   };
@@ -54,19 +60,6 @@ function nearestLoosePickup(
           area.center,
         );
   return best === null ? null : { from: best.entity, goodType: best.payload };
-}
-
-function lowestUnclaimedGood(
-  supply: SupplyTally,
-  pile: Entity,
-  amounts: ReadonlyMap<number, number>,
-): number | null {
-  let lowest: number | null = null;
-  for (const [goodType, amount] of amounts) {
-    if ((lowest === null || goodType < lowest) && amount > supply.reservedAt(pile, goodType))
-      lowest = goodType;
-  }
-  return lowest;
 }
 
 /**

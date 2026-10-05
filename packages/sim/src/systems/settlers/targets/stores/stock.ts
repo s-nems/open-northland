@@ -206,6 +206,17 @@ export function unclaimedStockOf(world: World, supply: SupplyTally, store: Entit
   return (accessibleStockAmounts(world, store)?.get(goodType) ?? 0) - supply.reservedAt(store, goodType);
 }
 
+/** A good filter admitting the goods `store` holds beyond what walkers claimed there, or undefined when
+ *  nothing is claimed, so a scan over an unclaimed store builds no closure. */
+export function unclaimedGoodsAt(
+  world: World,
+  supply: SupplyTally,
+  store: Entity,
+): ((goodType: number) => boolean) | undefined {
+  if (!supply.hasClaims(store)) return undefined;
+  return (goodType) => unclaimedStockOf(world, supply, store, goodType) > 0;
+}
+
 /**
  * The nearest store that holds at least one unit of `goodType` and may be stripped of it, by Manhattan
  * distance from `here` with an ascending-cell-id tie-break, or null. The counter to

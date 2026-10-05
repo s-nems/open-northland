@@ -9,6 +9,7 @@ import {
   isWorkplaceOutput,
   mergedRecipeOf,
   recipesByProductOf,
+  type SupplyTally,
   stockCapacity,
 } from '../../../../stores/index.js';
 import type { PlannerContext } from '../../../planner/context.js';
@@ -185,20 +186,22 @@ function ranksBefore(
 
 /**
  * The finished output a producer should haul out of its own workplace to clear room for the next cycle, or
- * null when it holds none another store can accept. Walked in the type's `produces` order, so the pick
+ * null when it holds none another store can accept beyond what settlers already walking to it claimed. Walked in the type's `produces` order, so the pick
  * never depends on store insertion history.
  */
 export function workplaceOutputToHaul(
   deliverable: (goodType: number) => boolean,
   world: World,
   ctx: SystemContext,
+  supply: SupplyTally,
   workplace: Entity,
 ): number | null {
   const stock = world.get(workplace, Stockpile).amounts;
   const produces = buildingProduces(world, ctx, workplace);
   const made = mergedRecipeOf(world, ctx, workplace)?.outputs.map((o) => o.goodType) ?? [];
   for (const good of produces.length > 0 ? produces : made) {
-    if ((stock.get(good) ?? 0) <= 0 || !isWorkplaceOutput(world, ctx, workplace, good)) continue;
+    if ((stock.get(good) ?? 0) <= supply.reservedAt(workplace, good)) continue; // none a walker has not claimed
+    if (!isWorkplaceOutput(world, ctx, workplace, good)) continue;
     // The routing itself excludes this producer as a sink.
     if (deliverable(good)) return good;
   }

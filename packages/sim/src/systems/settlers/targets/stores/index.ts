@@ -7,5 +7,6 @@ export {
   nearestStoreHolding,
   storeYieldsGood,
   strandedPile,
+  unclaimedGoodsAt,
   unclaimedStockOf,
 } from './stock.js';

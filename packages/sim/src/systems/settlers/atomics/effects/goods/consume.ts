@@ -7,6 +7,9 @@ import { accessibleStockAmounts, setAccessibleStockAmount } from '../../../../st
 import { shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
 
+/** The units one meal takes off a shelf, the amount an eater walking to a store claims there. */
+export const MEAL_UNITS = 1;
+
 /**
  * Consume one unit of `goodType` for an `eat` atomic: from the store `from` when given, else from the
  * settler's own carried load. A source that emptied since the planner chose it takes nothing rather than
@@ -19,13 +22,13 @@ export function consumeFood(world: World, settler: Entity, from: Entity | null, 
     if (stock === undefined) return;
     const have = stock.get(goodType) ?? 0;
     if (have <= 0) return;
-    setAccessibleStockAmount(world, from, goodType, have - 1);
+    setAccessibleStockAmount(world, from, goodType, have - MEAL_UNITS);
     reapEmptyLoosePile(world, from);
     return;
   }
   const load = world.tryGet(settler, Carrying);
   if (load === undefined || load.goodType !== goodType || load.amount <= 0) return;
-  shrinkCarry(world, settler, load, 1);
+  shrinkCarry(world, settler, load, MEAL_UNITS);
 }
 
 /**

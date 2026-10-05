@@ -5,7 +5,7 @@ import type { SpatialGate } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { hasRoom } from '../settlers/drives/economy/store-policy.js';
-import { interactionCell, unclaimedStockOf } from '../settlers/targets/index.js';
+import { interactionCell, unclaimedGoodsAt } from '../settlers/targets/index.js';
 import type { SupplyTally } from '../stores/index.js';
 import { type FoodSources, foodSourcesOf, lowestStockedFood } from './food-sources.js';
 
@@ -77,10 +77,11 @@ export class ExternalFoodIndex {
   /** The lowest food `store` holds that `fitsHome` and that no walker has claimed every unit of. */
   private liftableFood(store: Entity, fitsHome: (goodType: number) => boolean): number | null {
     const { world, supply } = this;
-    const accepts = supply.reservedAtSource.has(store)
-      ? (goodType: number): boolean =>
-          fitsHome(goodType) && unclaimedStockOf(world, supply, store, goodType) > 0
-      : fitsHome;
+    const unclaimed = unclaimedGoodsAt(world, supply, store);
+    const accepts =
+      unclaimed === undefined
+        ? fitsHome
+        : (goodType: number): boolean => fitsHome(goodType) && unclaimed(goodType);
     return lowestStockedFood(world, this.ctx.content, store, accepts);
   }
 

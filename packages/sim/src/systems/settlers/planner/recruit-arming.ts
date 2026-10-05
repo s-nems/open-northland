@@ -9,6 +9,7 @@ import {
   EquipOrder,
   ownerOf,
   ownersCompatible,
+  PickupClaim,
   Position,
   playerGoodList,
   Settler,
@@ -22,6 +23,7 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingBlockedCells } from '../../footprint/index.js';
+import { isTravelling } from '../../movement/nav-state.js';
 import {
   ARMOR_MAIN_TYPE,
   armorByClass,
@@ -32,8 +34,8 @@ import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { entityNode } from '../../spatial/nodes.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
+import { EQUIP_FETCH_UNITS } from '../atomics/effects/goods/index.js';
 import { INTENT_WEAPON_CLASS } from '../atomics/effects/goods/weapon-class.js';
-import { EQUIP_FETCH_UNITS } from '../drives/equip-fetches.js';
 import {
   interactionCell,
   nearestStoreHolding,
@@ -65,7 +67,15 @@ export function dispatchRecruitArming(pass: PlannerPass): void {
     const settler = world.get(e, Settler);
     if (!isSoldierJob(ctx.content, settler.jobType)) continue; // fell out - the assistant sweep drops it
     if (world.has(e, EquipOrder) || world.has(e, Age) || anotherSystemOwns(world, e)) continue;
-    if (world.has(e, Carrying) || world.has(e, SupplyRun)) continue;
+    // A recruit with its hands or its walk spoken for is left to finish: a dispatch now would restamp the
+    // claim it holds onto the weapon while it keeps walking elsewhere.
+    if (
+      world.has(e, Carrying) ||
+      world.has(e, SupplyRun) ||
+      world.has(e, PickupClaim) ||
+      isTravelling(world, e)
+    )
+      continue;
     const owner = ownerOf(world, e);
     if (owner === undefined) continue;
 

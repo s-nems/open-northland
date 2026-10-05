@@ -273,8 +273,11 @@ function supplyRunIsLive(
       }
     | undefined;
   const effect = atomic?.effect;
+  const claim = actor.components.PickupClaim as { readonly source?: unknown } | undefined;
   return (
-    (effect?.kind === 'pickup' && num(effect.goodType) === goodType) ||
+    (effect?.kind === 'pickup' &&
+      num(effect.from) === num(claim?.source) &&
+      num(effect.goodType) === goodType) ||
     (effect?.kind === 'pileup' && num(effect.store) === num(run.site))
   );
 }

@@ -139,6 +139,11 @@ export class SupplyTally {
     return this.sourceSide.totals;
   }
 
+  /** Whether any live pickup claim names `source`. */
+  hasClaims(source: Entity): boolean {
+    return this.sourceSide.totals.has(source);
+  }
+
   /** Units of `goodType` already promised out of `source` to settlers walking to it. */
   reservedAt(source: Entity, goodType: number): number {
     return this.sourceSide.totals.get(source)?.get(goodType) ?? 0;

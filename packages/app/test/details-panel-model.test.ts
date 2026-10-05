@@ -289,7 +289,8 @@ describe('selection details panel model', () => {
           id: 2,
           components: {
             Settler: { tribe: 1, jobType: JOB_BUILDER },
-            SupplyRun: { site: 1, goodType: GOOD_STONE, amount: 1, source: 9 },
+            SupplyRun: { site: 1, goodType: GOOD_STONE, amount: 1 },
+            PickupClaim: { source: 9, goodType: GOOD_STONE, amount: 1 },
             MoveGoal: { cell: 3 },
           },
         },
@@ -298,7 +299,7 @@ describe('selection details panel model', () => {
           components: {
             Settler: { tribe: 1, jobType: JOB_BUILDER },
             // No route, load, or atomic: the sim's inbound tally treats this as awaiting cleanup.
-            SupplyRun: { site: 1, goodType: GOOD_STONE, amount: 1, source: 9 },
+            SupplyRun: { site: 1, goodType: GOOD_STONE, amount: 1 },
           },
         },
       ],
@@ -351,7 +352,8 @@ describe('selection details panel model', () => {
           id: 2,
           components: {
             Settler: { tribe: 1, jobType: JOB_BUILDER },
-            SupplyRun: { site: 1, goodType: GOOD_WOOD, amount: 1, source: 9 },
+            SupplyRun: { site: 1, goodType: GOOD_WOOD, amount: 1 },
+            PickupClaim: { source: 9, goodType: GOOD_WOOD, amount: 1 },
             MoveGoal: { cell: 3 },
           },
         },

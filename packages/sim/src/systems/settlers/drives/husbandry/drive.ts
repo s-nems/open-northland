@@ -41,11 +41,11 @@ import {
 } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { buildingWorkerJobs, recipesByProductOf, stockCapacity } from '../../../stores/index.js';
-import { atOrWalk, startAtomic, startPickup } from '../../atomics/start.js';
+import { atOrWalk, startAtomic, startPickup, walkPickupBatch } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
-import { interactionCell, jobAtomics } from '../../targets/index.js';
+import { interactionCell, jobAtomics, unclaimedStockOf } from '../../targets/index.js';
 import { deliverableGoodProbe } from '../economy/delivery-targets.js';
 import { planProducer, type WorkSeatClaims } from '../economy/index.js';
 import { livestockApproach } from './approach.js';
@@ -234,15 +234,13 @@ function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): bo
  * breeder (departure: the original flushes and ends the cycle either way).
  */
 function flushFullWare(plan: PlannerContext, farm: Entity, good: number): boolean {
-  const { world, ctx, terrain, entity: e, here } = plan;
-  const stock = world.get(farm, Stockpile).amounts;
+  const { world, ctx, entity: e } = plan;
   const deliverable = deliverableGoodProbe(plan);
   for (const ware of slayDepositGoods(ctx, world.get(e, Settler), good)) {
-    if ((stock.get(ware) ?? 0) < stockCapacity(world, ctx, farm, ware)) continue;
+    // A ware a carrier already walks to lift is not full for the breeder.
+    if (unclaimedStockOf(world, plan.supply, farm, ware) < stockCapacity(world, ctx, farm, ware)) continue;
     if (!deliverable(ware)) continue;
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, farm, here), () =>
-      startPickup(world, ctx, e, plan, farm, ware, CARRY_CAPACITY),
-    );
+    walkPickupBatch(plan, farm, ware);
     return true;
   }
   return false;

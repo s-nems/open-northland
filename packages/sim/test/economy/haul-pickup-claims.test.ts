@@ -9,6 +9,7 @@ import { testContent } from '../fixtures/content.js';
 import { idleReplanTick } from '../fixtures/idle-replan.js';
 import {
   buildingAt,
+  CARPENTER,
   CARRIER,
   ctxOf,
   grassMap,
@@ -98,6 +99,35 @@ describe('store carriers claiming workshop output', () => {
     expect(claimOf(sim, first)).toBe(mill);
     expect(sim.world.has(first, MoveGoal)).toBe(true);
     expect(claimOf(sim, second)).toBeUndefined();
+    expect(collectSupplyTally(sim.world).reservedAt(mill, PLANK)).toBe(1);
+  });
+
+  it("the mill's own worker and a store carrier never both walk for its last plank", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
+    const hq = buildingAt(sim, HEADQUARTERS, 9, 0);
+    const mill = buildingAt(sim, SAWMILL, 4, 0, [[PLANK, 1]]);
+    const carrier = settlerAt(sim, 0, 0, CARRIER, hq);
+    const worker = settlerAt(sim, 1, 0, CARPENTER, mill);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    // The carrier plans first and claims the plank; the worker, planned after it, leaves the haul to it.
+    expect(claimOf(sim, carrier)).toBe(mill);
+    expect(claimOf(sim, worker)).toBeUndefined();
+    expect(collectSupplyTally(sim.world).reservedAt(mill, PLANK)).toBe(1);
+  });
+
+  it("the mill's own worker claims the plank it hauls out, so a carrier planned after it stays", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
+    const hq = buildingAt(sim, HEADQUARTERS, 9, 0);
+    const mill = buildingAt(sim, SAWMILL, 4, 0, [[PLANK, 1]]);
+    const worker = settlerAt(sim, 1, 0, CARPENTER, mill);
+    const carrier = settlerAt(sim, 0, 0, CARRIER, hq);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(claimOf(sim, worker)).toBe(mill);
+    expect(claimOf(sim, carrier)).toBeUndefined();
     expect(collectSupplyTally(sim.world).reservedAt(mill, PLANK)).toBe(1);
   });
 });

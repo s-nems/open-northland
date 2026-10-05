@@ -16,13 +16,12 @@ import { canEquipCategory } from '../../readviews/equip-pick.js';
 import { isHeroJob } from '../../readviews/jobs.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import type { SupplyTally } from '../../stores/index.js';
-import { isUsed } from '../atomics/effects/goods/index.js';
+import { EQUIP_FETCH_UNITS, isUsed } from '../atomics/effects/goods/index.js';
 import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../atomics/start.js';
 import { chainRecruitArmor } from '../planner/recruit-arming.js';
 import type { TargetCandidates } from '../targets/index.js';
 import { interactionCell, nearestStoreFor, nearestStoreHolding } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
-import { EQUIP_FETCH_UNITS } from './equip-fetches.js';
 
 type EquipOrderState = NonNullable<(typeof EquipOrder)['__value']>;
 

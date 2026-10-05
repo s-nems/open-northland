@@ -11,6 +11,10 @@ import {
 import { fx } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
+
+/** An equip errand lifts one unit into one slot, the amount its fetch claims at the source. */
+export const EQUIP_FETCH_UNITS = 1;
+
 import { accessibleStockAmounts, setAccessibleStockAmount } from '../../../../stores/index.js';
 import { addCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
@@ -61,7 +65,7 @@ export function equipFromStore(
   if (stock === undefined) return;
   const have = stock.get(goodType) ?? 0;
   if (have <= 0) return;
-  setAccessibleStockAmount(world, from, goodType, have - 1);
+  setAccessibleStockAmount(world, from, goodType, have - EQUIP_FETCH_UNITS);
   reapEmptyLoosePile(world, from);
   ensureEquipment(world, settler);
   const previous = wornSlot(world, settler, group, slot);

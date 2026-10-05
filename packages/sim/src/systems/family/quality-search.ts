@@ -16,7 +16,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { interactionCell, unclaimedStockOf } from '../settlers/targets/index.js';
+import { interactionCell, unclaimedGoodsAt } from '../settlers/targets/index.js';
 import { NodeBuckets } from '../spatial/nodes.js';
 import { accessibleStockAmounts, type SupplyTally } from '../stores/index.js';
 
@@ -88,10 +88,13 @@ export class ExternalQualityIndex {
   /** The lowest demanded good `store` holds a unit of that no walker has claimed. */
   private lowestDemanded(store: Entity, demanded: ReadonlySet<number>): number | null {
     const { world, supply } = this;
-    const unclaimed = supply.reservedAtSource.has(store)
-      ? (goodType: number): boolean => unclaimedStockOf(world, supply, store, goodType) > 0
-      : undefined;
-    return lowestQualityGood(world, this.ctx.content, store, demanded, unclaimed);
+    return lowestQualityGood(
+      world,
+      this.ctx.content,
+      store,
+      demanded,
+      unclaimedGoodsAt(world, supply, store),
+    );
   }
 }
 

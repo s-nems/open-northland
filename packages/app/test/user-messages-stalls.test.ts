@@ -133,7 +133,8 @@ function world(tick: number, w: World = {}): WorldSnapshot {
                 ...(w.carrying === true ? { Carrying: { goodType: POT, amount: 1 } } : {}),
                 ...(w.fetching === true
                   ? {
-                      SupplyRun: { site: WORKSHOP, goodType: CLAY, amount: 1, source: 98 },
+                      SupplyRun: { site: WORKSHOP, goodType: CLAY, amount: 1 },
+                      PickupClaim: { source: 98, goodType: CLAY, amount: 1 },
                       MoveGoal: { cell: 5 },
                     }
                   : {}),

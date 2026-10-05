@@ -14,6 +14,8 @@ import { homeUsedBy } from '../../family/households.js';
 import { carriesNeeds, mutNeeds, NEED_SATED_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
 import { atomicClipName, atomicDuration, atomicEventChannelDelta } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, jobNeedsReligion } from '../../readviews/index.js';
+import type { SupplyTally } from '../../stores/index.js';
+import { MEAL_UNITS } from '../atomics/effects/goods/index.js';
 import { mealAtomicId, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
 import { heldIndoors, isInside } from '../indoors.js';
 import { storedFoodGood } from '../targets/index.js';
@@ -38,7 +40,7 @@ interface HomeRound {
  * can still top up. A round whose clip moves no bar is skipped, or the chain would hold the settler in its
  * house for good.
  */
-function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound | null {
+function nextHomeRound(world: World, ctx: SystemContext, supply: SupplyTally, e: Entity): HomeRound | null {
   if (!needsEnabled(world) || !carriesNeeds(world, ctx.content, e)) return null;
   if (heldIndoors(world, e)) return null;
   const settler = world.tryGet(e, Settler);
@@ -53,7 +55,7 @@ function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound |
     return { atomicId: SLEEP_ATOMIC_ID, effect: { kind: 'sleep' }, target: e };
   }
   if (needLevel(needs, 'hunger', ctx.tick) > NEED_SATED_THRESHOLD) {
-    const goodType = storedFoodGood(world, ctx, home);
+    const goodType = storedFoodGood(world, ctx, home, supply);
     if (goodType !== null) {
       const atomicId = mealAtomicId(ctx.content, settler, goodType);
       if (homeClipServes(ctx, settler, atomicId, HUNGER))
@@ -84,8 +86,8 @@ export function homeClipServes(
 
 /** Whether `e` has an at-home round left to serve. The planner keeps such a settler inside instead of
  *  stepping it back out between rounds. */
-export function topsUpAtHome(world: World, ctx: SystemContext, e: Entity): boolean {
-  return nextHomeRound(world, ctx, e) !== null;
+export function topsUpAtHome(world: World, ctx: SystemContext, supply: SupplyTally, e: Entity): boolean {
+  return nextHomeRound(world, ctx, supply, e) !== null;
 }
 
 /**
@@ -98,9 +100,18 @@ export function planHomeTopUp(
   ctx: SystemContext,
   e: Entity,
   settler: SettlerIdentity,
+  supply: SupplyTally,
 ): boolean {
-  const round = nextHomeRound(world, ctx, e);
+  const round = nextHomeRound(world, ctx, supply, e);
   if (round === null) return false;
+  // The meal starts at once, but a housemate walking home for the same last unit must see it taken.
+  if (round.effect.kind === 'eat' && round.effect.from !== null) {
+    supply.stampPickupClaim(e, {
+      source: round.effect.from,
+      goodType: round.effect.goodType,
+      amount: MEAL_UNITS,
+    });
+  }
   if (world.has(e, Marriage) && needLevel(world.get(e, SettlerNeeds), 'enjoyment', ctx.tick) !== ZERO)
     mutNeeds(world, e, ctx.tick).enjoyment = ZERO;
   startAtomic(

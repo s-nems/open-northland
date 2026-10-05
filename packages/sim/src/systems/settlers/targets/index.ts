@@ -22,6 +22,7 @@ export {
   nearestWorkplaceOutput,
   storeYieldsGood,
   strandedPile,
+  unclaimedGoodsAt,
   unclaimedStockOf,
 } from './stores/index.js';
 export { boundWorkplaceTarget, interactionCell, jobAtomics } from './workplaces.js';

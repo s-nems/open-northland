@@ -181,6 +181,8 @@ function haulFood(
   }
   const missed = world.get(woman, ChildOrder).foodSearchMissed === true;
   if (missed && (ctx.tick + woman) % FOOD_SEARCH_RETRY_TICKS !== 0) return;
+  // This pass runs before the planner releases her last trip's claim, which must not hide its unit from her.
+  pass.supply.releasePickupClaim(woman);
   // Null when navigation is unlimited; otherwise she sees only sources inside her allowed area.
   const limit = terrain !== undefined ? navigationLimitFor(world, ctx.content, terrain, woman) : null;
   const source = pass.externalFood.nearest(
@@ -211,7 +213,8 @@ function leaveHome(world: World, e: Entity, home: Entity): void {
 }
 
 /** Claim `e` for family duty this tick (idempotent). Taking a settler ends the economy errand it carried;
- *  the planner leaves a duty-bound settler's errands alone, since this order stamps its own. */
+ *  the planner no longer releases a duty-bound settler's errands on the owner's account, only at its own
+ *  re-plan, so the fetch this order stamps survives her walk. */
 function claimDuty(world: World, e: Entity, pass: ChildOrderPass): void {
   if (!world.has(e, FamilyDuty)) {
     world.add(e, FamilyDuty, { duty: true });

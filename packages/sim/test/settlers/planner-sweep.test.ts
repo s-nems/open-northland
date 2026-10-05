@@ -5,6 +5,7 @@ import {
   Chat,
   type CurrentAtomicState,
   Engagement,
+  FamilyDuty,
   FarmTask,
   Fleeing,
   Garrison,
@@ -13,8 +14,10 @@ import {
   MoveGoal,
   Owner,
   PathRequest,
+  PickupClaim,
   Position,
   Resting,
+  Rider,
   Settler,
   Stranded,
   SupplyRun,
@@ -269,6 +272,19 @@ const MARKERS: Record<string, (world: World, e: Entity) => void> = {
   fleeingSupplyRun: (world, e) => {
     world.add(e, SupplyRun, { site: e, goodType: PLANK, amount: 1 });
     world.add(e, Fleeing, { repathAt: 0, calmUntil: null });
+  },
+  pickupClaim: (world, e) => world.add(e, PickupClaim, { source: e, goodType: PLANK, amount: 1 }),
+  fleeingPickupClaim: (world, e) => {
+    world.add(e, PickupClaim, { source: e, goodType: PLANK, amount: 1 });
+    world.add(e, Fleeing, { repathAt: 0, calmUntil: null });
+  },
+  riderSupplyRun: (world, e) => {
+    world.add(e, SupplyRun, { site: e, goodType: PLANK, amount: 1 });
+    world.add(e, Rider, { vehicle: e, boarding: false });
+  },
+  familyDutyPickupClaim: (world, e) => {
+    world.add(e, PickupClaim, { source: e, goodType: PLANK, amount: 1 });
+    world.add(e, FamilyDuty, { duty: true });
   },
   engagement: (world, e) => world.add(e, Engagement, { repathAt: 0 }),
   pastimeChat: (world, e) =>

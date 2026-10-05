@@ -7,10 +7,10 @@ import {
   EquipOrder,
   equipSlotValue,
   ownerOf,
+  PickupClaim,
   Position,
   Settler,
   Stance,
-  SupplyRun,
 } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
@@ -72,10 +72,10 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     if (!mayChangeEquipment(world, ctx.content, e)) continue; // a woman, a child and a hero take no gear
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null) continue; // the ladder never plans a jobless settler
-    // A hauler on the way to a pickup keeps his promise to the site. A loaded one is dispatched: the
-    // equip rung yields to his delivery and sends him for the gear once his hands are free, which is the
-    // only moment a busy porter is ever idle.
-    if (world.has(e, SupplyRun) && !world.has(e, Carrying)) continue;
+    // A settler on the way to a pickup keeps the unit it claimed. A loaded one is dispatched: the equip
+    // rung yields to its delivery and sends it for the gear once its hands are free, which is the only
+    // moment a busy porter is ever idle.
+    if (world.has(e, PickupClaim)) continue;
     // A DEFEND guard stays on its anchor: the player may send one for gear, but this pass does not walk
     // one off unasked.
     if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) continue;

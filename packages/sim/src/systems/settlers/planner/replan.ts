@@ -173,8 +173,8 @@ export type IdleRelease = 'held' | 'travelling' | 'jobless' | 'idle';
 /**
  * How the sweep's visit of `e` changes nothing, or null when it may: an atomic holds it, or it walks
  * a live route that only a shelter of its owner on alarm diverts ({@link takesCoverFrom}), and it
- * carries nothing {@link releaseStaleIntent} reconciles on the way or the busy branch wakes, a supply
- * errand mattering only once another system owns the walker; or it has no trade and nothing to shed,
+ * carries nothing {@link releaseStaleIntent} reconciles on the way or the busy branch wakes, an errand
+ * mattering only under an owner that walks it elsewhere ({@link divertsErrand}); or it has no trade and nothing to shed,
  * which an alarm never draws; or it stands idle carrying nothing that call sheds, or waits inside a
  * building ({@link waitsInside}). Keep in step with that call's early-outs.
  */
@@ -312,7 +312,7 @@ export function releaseStaleIntent(
   }
   // A non-atomic owner has diverted this settler from its errand. Release its promises before a combat,
   // flight or player-order route hits the travel early-out below.
-  if (divertsErrand(world, e)) supply.releaseErrands(e);
+  if (hasErrand(world, e) && divertsErrand(world, e)) supply.releaseErrands(e);
   // Fresh read - reconcileYardRoute may have cleared the request.
   const request = world.tryGet(e, PathRequest);
   if (request?.failed === true && !ownsFailedRoute(world, e)) {
@@ -338,7 +338,7 @@ export function releaseStaleIntent(
   // settler mid-way through its at-home top-up keeps it too, so the chain runs its rounds indoors, and a
   // garrison still on its tower keeps it because anything else already gave the post up above. One
   // outdoors has nothing to step out of, and a garrison counts as held.
-  if (world.has(e, Resting) && !heldIndoors(world, e) && !topsUpAtHome(world, ctx, e)) stepOut(world, e);
+  if (world.has(e, Resting) && !heldIndoors(world, e) && !topsUpAtHome(world, ctx, supply, e)) stepOut(world, e);
   // The guard above returned for anything the atomic holds, so what is left is safe to shed: the producer
   // drive below re-derives a craft clip from its workplace's own batch clock in this same pass, and a
   // pastime chat's clip is shed with the chat once a drive takes the settler.
