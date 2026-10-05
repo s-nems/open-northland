@@ -7,6 +7,9 @@ import {
   JobAssignment,
   Owner,
   Position,
+  PRODUCTION_UNLIMITED,
+  ProductionCounters,
+  productionCountOf,
   Settler,
   setNeedsEnabled,
   TrainingOrder,
@@ -34,8 +37,11 @@ const TRIBE = 1;
 const SCHOOL = 91;
 const SAWMILL = 2; // the fixture workshop with one carpenter slot
 const HEADQUARTERS = 1; // the fixture store with three collector slots
+const FORGE = 9; // the fixture workshop whose carpenter crafts planks or the second product
 const COLLECTOR = 1;
 const CARPENTER = 2;
+const PLANK = 2; // the forge's first product, and the sawmill's only one
+const FORGED = 3; // the forge's second product, taught at the school as a method
 const SCHOOL_AT = { x: 10, y: 10 };
 const MAP_CELLS = 24;
 /** The school yard's reach in half-cell steps, matching the planner's loiter yard. */
@@ -45,11 +51,17 @@ const WALK_BACK_TICKS = 600;
 /** A river column east of the school, cutting off the far bank. */
 const RIVER_COLUMN = 13;
 
-/** A world with a built school teaching `course`, discovered for the seat, and the seat's pupil of `jobType`. */
+type Target = 'job' | 'good';
+
+/**
+ * A world with a built school teaching `course`, discovered for the seat, and the seat's pupil of `jobType`.
+ * A `good` course is a carpenter's method.
+ */
 function school(
   jobType: number,
   course: number,
   map: TerrainMap = grassCellMap(MAP_CELLS, MAP_CELLS),
+  target: Target = 'job',
 ): { sim: Simulation; pupil: Entity; house: Entity } {
   const base = testContent();
   const content = parseContentSet({
@@ -57,9 +69,13 @@ function school(
     buildings: [...base.buildings, { typeId: SCHOOL, id: 'school', kind: 'training', schoolSize: 1 }],
     tribes: base.tribes.map((tribe) => ({
       ...tribe,
+      jobEnables:
+        target === 'good'
+          ? [...tribe.jobEnables, { jobType: CARPENTER, kind: 'good', targetId: course }]
+          : tribe.jobEnables,
       jobRequirements: [
         {
-          target: 'job',
+          target,
           targetId: course,
           requirement: 'train',
           amount: 1,
@@ -77,7 +93,8 @@ function school(
   });
   sim.world.add(pupil, Owner, { player: SEAT });
   const house = building(sim, SCHOOL, SCHOOL_AT);
-  discoverTechnology(sim.world, SEAT, TRIBE, 'job', course);
+  discoverTechnology(sim.world, SEAT, TRIBE, target, course);
+  if (target === 'good') discoverTechnology(sim.world, SEAT, TRIBE, 'job', CARPENTER);
   return { sim, pupil, house };
 }
 
@@ -90,8 +107,14 @@ function building(sim: Simulation, buildingType: number, at: { x: number; y: num
 }
 
 /** Serve the whole course and let the pupil's drill rung settle it, as it would leaving the school. */
-function graduate(sim: Simulation, pupil: Entity, house: Entity, course: number): void {
-  learn(sim.world, ctxOf(sim), { kind: 'learn', entity: pupil, house, target: 'job', typeId: course });
+function graduate(
+  sim: Simulation,
+  pupil: Entity,
+  house: Entity,
+  course: number,
+  target: Target = 'job',
+): void {
+  learn(sim.world, ctxOf(sim), { kind: 'learn', entity: pupil, house, target, typeId: course });
   expect(sim.world.has(pupil, TrainingOrder)).toBe(true);
   sim.world.mut(pupil, TrainingOrder).drillTicksLeft = 0;
   const terrain = sim.terrain;
@@ -221,6 +244,26 @@ describe('school graduates', () => {
     graduate(sim, pupil, house, CARPENTER);
     expect(sim.world.has(pupil, JobAssignment)).toBe(false);
     expect(sim.world.get(pupil, GraduateWait).school).toBe(house);
+  });
+
+  it('starts a graduate on the method it learned rather than the first product', () => {
+    const { sim, pupil, house } = school(COLLECTOR, FORGED, undefined, 'good');
+    postGraduates(sim, true);
+    const forge = building(sim, FORGE, { x: 8, y: 12 });
+    graduate(sim, pupil, house, FORGED, 'good');
+    expect(sim.world.get(pupil, JobAssignment).workplace).toBe(forge);
+    const counters = sim.world.get(pupil, ProductionCounters);
+    expect(productionCountOf(counters, FORGED)).toBe(PRODUCTION_UNLIMITED);
+    expect(productionCountOf(counters, PLANK)).toBe(0);
+  });
+
+  it('posts a graduate past a nearer workplace that lacks its learned method', () => {
+    const { sim, pupil, house } = school(COLLECTOR, FORGED, undefined, 'good');
+    postGraduates(sim, true);
+    building(sim, SAWMILL, { x: 8, y: 12 });
+    const forge = building(sim, FORGE, { x: 20, y: 20 });
+    graduate(sim, pupil, house, FORGED, 'good');
+    expect(sim.world.get(pupil, JobAssignment).workplace).toBe(forge);
   });
 
   it('never posts a collector', () => {
