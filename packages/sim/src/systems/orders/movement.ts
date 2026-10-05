@@ -11,7 +11,6 @@ import {
   Fleeing,
   GraduateWait,
   HuntFocus,
-  MealBreak,
   MoveGoal,
   NeedOrder,
   OpenChestOrder,
@@ -40,10 +39,11 @@ import { MILITARY_MODE } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { startDrop } from '../settlers/atomics/start.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
+import { heldIndoors, stepOut } from '../settlers/indoors.js';
 import { announceLostWay, clearLostWay, markLostWay } from '../settlers/lost-way.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { deferOrderDuringAtomic, supersedeStandingOrders } from './guards.js';
-import { breaksForMeal, overrideMealBreak, suspendWalkForMeal } from './meal-break.js';
+import { breaksForMeal, suspendWalkForMeal } from './meal-break.js';
 
 /**
  * Direct player control over owned units. Faithful to *Cultures*, a move order never seizes a unit
@@ -145,11 +145,12 @@ function startPlayerWalk(
   }
   // Gated after the refusals above, so a refused click neither parks an order nor displaces a parked one.
   if (deferOrderDuringAtomic(world, ctx, e, command)) return true;
-  if (world.has(e, MealBreak)) overrideMealBreak(world, ctx, e);
   supersedeStandingOrders(world, e);
   // A live PathFollow is deliberately kept: the planner re-routes the same tick, and the routing splice
   // carries the walker's momentum through the turn.
   removeCurrentAtomic(world, e);
+  // Out of whatever it waited in, unless another system holds it there.
+  if (!heldIndoors(world, e)) stepOut(world, e);
   world.remove(e, SupplyRun); // cancel the inbound site claim
   world.remove(e, PickupClaim); // and the source promise of its pickup leg
   world.remove(e, MoveGoal);
@@ -179,18 +180,20 @@ function startPlayerWalk(
 
   // An attack-move walk carries its destination on the order itself: a fight overwrites the MoveGoal with
   // chase destinations, so the march would otherwise have nothing left to resume toward.
-  const march: { attackMove?: AttackMoveMarch } =
-    command.kind === 'attackMoveUnit' ? { attackMove: { goal, resume: false, blockedUntil: 0 } } : {};
+  const order: { attackMove?: AttackMoveMarch; scripted?: true } = {
+    ...(command.kind === 'attackMoveUnit' ? { attackMove: { goal, resume: false, blockedUntil: 0 } } : {}),
+    ...(confined ? {} : { scripted: true }),
+  };
 
   // Hands full: set the load down first and park the destination. CurrentAtomic was cleared above, so
   // startDrop always takes.
   if (world.has(e, Carrying)) {
     startDrop(world, ctx, e);
-    world.add(e, PlayerOrder, { ...march, pendingGoal: goal });
+    world.add(e, PlayerOrder, { ...order, pendingGoal: goal });
     return true;
   }
   world.add(e, MoveGoal, { cell: goal });
-  world.add(e, PlayerOrder, march);
+  world.add(e, PlayerOrder, order);
   return true;
 }
 
@@ -211,7 +214,10 @@ export const playerOrderSystem: System = (world, ctx) => {
       if (world.has(e, CurrentAtomic)) continue; // still setting the load down - the walk waits
       world.add(e, MoveGoal, { cell: order.pendingGoal });
       // Clear pendingGoal so this becomes an ordinary en-route order, keeping any march.
-      world.add(e, PlayerOrder, march === undefined ? {} : { attackMove: march });
+      world.add(e, PlayerOrder, {
+        ...(march === undefined ? {} : { attackMove: march }),
+        ...(order.scripted === true ? { scripted: true } : {}),
+      });
       continue;
     }
     if (march !== undefined && world.has(e, Engagement)) {
@@ -242,8 +248,10 @@ export const playerOrderSystem: System = (world, ctx) => {
       continue;
     }
     if (isTravelling(world, e)) {
-      // Still walking the order out, unless hunger takes it off the walk at the next node it reaches.
-      if (onNodeCentre(world, e) && breaksForMeal(world, ctx, e)) suspendWalkForMeal(world, ctx.terrain, e);
+      // Still walking the order out, unless hunger takes it off a player's walk at a node it reaches.
+      if (order.scripted !== true && breaksForMeal(world, ctx, e) && onNodeCentre(world, e)) {
+        suspendWalkForMeal(world, ctx.terrain, e);
+      }
       continue;
     }
     if (march?.resume === true) {

@@ -61,7 +61,8 @@ import {
   unassignWorker,
   unequipGood,
 } from '../orders/index.js';
-import { isQueuedOrder, queueBehindCurrentOrder } from '../orders/queue.js';
+import { obeyDespiteHunger } from '../orders/meal-break.js';
+import { isQueueableOrder, isQueuedOrder, queueBehindCurrentOrder } from '../orders/queue.js';
 import { convertPalisadeGate, placePalisade, setPalisadeGate } from '../palisades/index.js';
 import { cancelRoadSite, placeRoadSite } from '../roads/sites.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
@@ -122,6 +123,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
   // A Shift-clicked order waits behind the current one; an order that takes the settler at once drops
   // every order still waiting in its handler.
   if (isQueuedOrder(command) && queueBehindCurrentOrder(world, command)) return;
+  // An order applied at once is obeyed even by a settler hunger would otherwise take off it.
+  if (isQueueableOrder(command) || command.kind === 'exploreArea')
+    obeyDespiteHunger(world, ctx, command.entity);
   // A vehicle's commander hands a walk order to the vehicle. Any other settler crewing a vehicle is
   // taken off it before an order sends it elsewhere; one that may not leave (aboard a ship at sea)
   // keeps its seat and the order is dropped.

@@ -30,7 +30,7 @@ import { placeSignpost } from './signposts.js';
 
 const QUEUEABLE_KINDS: ReadonlySet<Command['kind']> = new Set(QUEUEABLE_ORDER_KINDS);
 
-function isQueueableOrder(command: Command): command is QueueableOrderCommand {
+export function isQueueableOrder(command: Command): command is QueueableOrderCommand {
   return QUEUEABLE_KINDS.has(command.kind);
 }
 

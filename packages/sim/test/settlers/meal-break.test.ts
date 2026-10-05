@@ -10,6 +10,7 @@ import {
   Owner,
   PlayerOrder,
   Position,
+  Resting,
   SettlerNeeds,
   SIGNPOST_SPACING_NODES,
   Signpost,
@@ -25,8 +26,10 @@ import {
   needBar,
   needLevel,
 } from '../../src/systems/index.js';
+import { sendUnit } from '../../src/systems/orders/index.js';
 import { MEAL_BREAK_RETRY_TICKS } from '../../src/systems/orders/meal-break.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -185,5 +188,59 @@ describe('meal break', () => {
     expect(sim.world.has(e, OrderQueue)).toBe(false);
     expect(sim.world.has(e, CurrentAtomic)).toBe(false);
     expect(sim.world.has(e, PlayerOrder)).toBe(true);
+  });
+  it('obeys a walk the player orders a starving settler, and breaks for food once the grace runs out', () => {
+    const sim = freshSim();
+    larderAt(sim, 20, 6);
+    const e = ownedSettler(sim, 2, 2, WOODCUTTER, { hunger: NEED_CRITICAL_THRESHOLD });
+    sim.enqueueSetup(walk(e, 80, 2));
+    const graceEnd = sim.tick + 1 + MEAL_BREAK_RETRY_TICKS;
+    const brokeEarly = stepUntil(sim, e, () => sim.tick >= graceEnd - 1);
+    expect(brokeEarly).toBe(false);
+    expect(sim.world.has(e, PlayerOrder)).toBe(true);
+    expect(stepUntil(sim, e, () => sim.world.has(e, MealBreak))).toBe(true);
+  });
+
+  it("never breaks a map script's walk", () => {
+    const sim = freshSim();
+    const larder = larderAt(sim, 20, 6);
+    const e = ownedSettler(sim, 2, 2, WOODCUTTER, { hunger: NEARLY_CRITICAL });
+    const n = cellAnchorNode(60, 2);
+    sendUnit(sim.world, ctxOf(sim), e, n.hx, n.hy);
+    const broke = stepUntil(sim, e, () => standsAt(sim, e, 60, 2));
+    expect(broke).toBe(false);
+    expect(standsAt(sim, e, 60, 2)).toBe(true);
+    expect(sim.world.get(larder, Stockpile).amounts.get(FOOD)).toBe(LARDER);
+  });
+
+  it('an attack-move it broke off marches on to its own goal after the meal', () => {
+    const sim = freshSim();
+    larderAt(sim, 20, 6);
+    const e = ownedSettler(sim, 2, 2, SOLDIER, { hunger: NEARLY_CRITICAL });
+    const n = cellAnchorNode(60, 2);
+    sim.enqueueSetup({ kind: 'attackMoveUnit', entity: e, x: n.hx, y: n.hy });
+    let resumedMarch = false;
+    const broke = stepUntil(sim, e, () => {
+      if (sim.world.has(e, MealBreak)) return false;
+      resumedMarch ||=
+        sim.world.has(e, MealBreakRetry) === false &&
+        hunger(sim, e) < NEED_DRIVE_THRESHOLD &&
+        sim.world.tryGet(e, PlayerOrder)?.attackMove !== undefined;
+      return standsAt(sim, e, 60, 2);
+    });
+    expect(broke).toBe(true);
+    expect(resumedMarch).toBe(true);
+    expect(standsAt(sim, e, 60, 2)).toBe(true);
+  });
+
+  it('a walk order steps a settler out of the building it waited in', () => {
+    const sim = freshSim();
+    const larder = larderAt(sim, 4, 2);
+    const e = ownedSettler(sim, 4, 2, WOODCUTTER);
+    sim.world.add(e, Resting, { at: larder });
+    sim.enqueueSetup(walk(e, 30, 2));
+    sim.step();
+    expect(sim.world.has(e, PlayerOrder)).toBe(true);
+    expect(sim.world.has(e, Resting)).toBe(false);
   });
 });

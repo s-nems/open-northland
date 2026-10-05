@@ -32,7 +32,7 @@ const MARCH_X = 60;
 const UNITS_TO_CRITICAL = 48;
 const NEED_RESERVE_UNITS = 10_000;
 const RUN_TICKS = 2400;
-const INITIAL_ZOOM = 0.8;
+const INITIAL_ZOOM = 0.5;
 
 const { Position, SettlerNeeds, Signpost, Stockpile } = components;
 

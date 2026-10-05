@@ -306,6 +306,8 @@ export const Age = defineComponent<{ ticks: number; asOf: number | null }>('Age'
 export const PlayerOrder = defineComponent<{
   pendingGoal?: NodeId;
   attackMove?: AttackMoveMarch;
+  /** A map script's walk, which hunger never breaks: the script may be waiting for the arrival. */
+  scripted?: true | undefined;
 }>('PlayerOrder', 'settlers');
 
 /**
