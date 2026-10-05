@@ -500,6 +500,11 @@ export const enContent = {
       title: 'Children feed themselves',
       summary: 'Hungry children walk to wild bushes and eat; the cared-for baby never self-feeds.',
     },
+    'grown-up-training': {
+      title: 'Grown-up sent to train',
+      summary:
+        'A boy grows up beside a school and a barracks; sending him to either clears his grown-up note.',
+    },
     gossip: {
       title: 'Gossip and need bubbles',
       summary:

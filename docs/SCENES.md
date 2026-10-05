@@ -100,6 +100,9 @@ unsupported and refused results remain in the diagnostic log.
 `?scene=school` shows a collector walking to school and acquiring an individual carpentry qualification.
 Another collector is available for choosing a course through the school dialog.
 
+`?scene=grown-up-training` grows a boy into a civilian a few seconds in, between a school and a
+barracks. Sending him to either clears his grown-up note as he sets off.
+
 `?scene=school-graduates` sends two collectors to learn carpentry with the assistant's "send graduates
 to work" switch on. The first graduate takes the joinery's only joiner slot. The second finds no free
 slot and stays in the school yard, and walks back there whenever it has nothing to do.

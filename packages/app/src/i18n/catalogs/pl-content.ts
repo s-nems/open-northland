@@ -498,6 +498,11 @@ export const plContent = {
       title: 'Dzieci jedzą same',
       summary: 'Głodne dzieci podchodzą do dzikich krzaków i jedzą; niemowlę pod opieką samo się nie karmi.',
     },
+    'grown-up-training': {
+      title: 'Dorosły wysłany na naukę',
+      summary:
+        'Chłopiec dorasta obok szkoły i koszar; wysłanie go do którejkolwiek zdejmuje powiadomienie, że dorósł.',
+    },
     gossip: {
       title: 'Plotki i dymki potrzeb',
       summary:

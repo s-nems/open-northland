@@ -22,6 +22,7 @@ const HELD = RAISED + LOST_NOTE_HOLD_TICKS - 1;
 const RELEASED = RAISED + LOST_NOTE_HOLD_TICKS;
 const SETTLER = 7;
 const HOME = 30;
+const TRAINING_HOUSE = 31;
 const PER_MILLE = 1000;
 
 /** One fresh retirement per question: every rule but the no-path watch reads the snapshot alone. */
@@ -136,12 +137,14 @@ describe('note retirement', () => {
     expect(isNoteOver(note(USER_MESSAGE_TYPE.canDoNewJob), world(RELEASED, 'lost'))).toBe(false);
   });
 
-  it('ends a grown-up note once a grown man takes up a trade or a grown woman has a home', () => {
+  it('ends a grown-up note once a grown man takes up or is sent to learn a trade, or a grown woman has a home', () => {
     const grown = (jobType: number, extra: Record<string, unknown> = {}) =>
       subjectWorld({ Settler: { tribe: 1, jobType }, ...extra });
     const female = { Female: {} };
     expect(isNoteOver(note(USER_MESSAGE_TYPE.grewUp), grown(JOB_CIVILIST))).toBe(false);
     expect(isNoteOver(note(USER_MESSAGE_TYPE.grewUp), grown(JOB_CARRIER))).toBe(true);
+    const sentToTrain = { TrainingOrder: { house: TRAINING_HOUSE, drillTicksLeft: 0 } };
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.grewUp), grown(JOB_CIVILIST, sentToTrain))).toBe(true);
     expect(isNoteOver(note(USER_MESSAGE_TYPE.grewUp), grown(JOB_WOMAN, female))).toBe(false);
     expect(
       isNoteOver(note(USER_MESSAGE_TYPE.grewUp), grown(JOB_WOMAN, { ...female, Residence: { home: HOME } })),

@@ -9,6 +9,7 @@ import {
   type SnapshotEntity,
   settlerJobType,
   settlerNeedsOf,
+  trainingHouseOf,
   vehicleCommanderOf,
   vehicleSeatsOf,
   workFlagOf,
@@ -101,10 +102,11 @@ function isStallOver(m: UserMessage, workshop: SnapshotEntity, stalls: StallRead
   return verdict === null || verdict.reason !== m.stall?.reason;
 }
 
-/** A grown-up note has done its job once the player acted on it: a grown man took up a trade, a grown
- *  woman has a home. */
+/** A grown-up note has done its job once the player acted on it: a grown man took up a trade or is on
+ *  his way to a school or barracks to learn one, a grown woman has a home. */
 function isGrownUpSettled(e: SnapshotEntity): boolean {
-  return isFemale(e) ? residenceHomeOf(e) !== undefined : settlerJobType(e) !== JOB_CIVILIST;
+  if (isFemale(e)) return residenceHomeOf(e) !== undefined;
+  return settlerJobType(e) !== JOB_CIVILIST || trainingHouseOf(e) !== undefined;
 }
 
 function isDriving(vehicle: SnapshotEntity): boolean {

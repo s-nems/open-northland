@@ -31,6 +31,7 @@ import { gathererGoodsScene } from './gatherer-goods.js';
 import { goodsCatalogScene } from './goods-catalog.js';
 import { gossipScene } from './gossip.js';
 import { groupPanelArmyScene, groupPanelScene } from './group-panel.js';
+import { grownUpTrainingScene } from './grown-up-training.js';
 import { hitAlarmScene } from './hit-alarm.js';
 import { householdGoodsScene } from './household-goods.js';
 import { huntingScene } from './hunting.js';
@@ -119,6 +120,7 @@ export const SCENES: readonly SceneDefinition[] = [
   familyScene,
   familyAwayScene,
   childrenScene,
+  grownUpTrainingScene,
   gossipScene,
   wildlifeScene,
   wolfPackScene,
