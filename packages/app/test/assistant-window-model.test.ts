@@ -10,7 +10,7 @@ import {
   UNLIMITED_FACE,
   weaponStocked,
 } from '../src/hud/dom/assistant-window/model.js';
-import { assistantBookingsOf } from '../src/view/assistant-situation.js';
+import { assistantBookingsOf } from '../src/view/assistant-bookings.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
 const finite = (value: number) => ({ value, infinite: false });
@@ -103,6 +103,8 @@ describe('assistant bookings off the snapshot', () => {
       recruit(7, SEAT, 'trainSword', true, false), // armed: only the armor leg is left
       recruit(8, SEAT, 'trainSoldiers', false, true),
       recruit(9, OTHER, 'trainBow', false, true),
+      recruit(10, SEAT, 'trainSoldiers', false, false), // drilled: the counter was paid at enlistment
+      recruit(11, SEAT, 'mystery', false, true),
     ]);
     const bookings = assistantBookingsOf(snapshot, SEAT);
     expect(bookings.daughters).toBe(2);

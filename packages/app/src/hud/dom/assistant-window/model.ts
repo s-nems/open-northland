@@ -38,32 +38,22 @@ export interface AssistantBookings {
   readonly arming: Readonly<Record<RecruitIntent, number>>;
 }
 
-const perIntent = (): Record<RecruitIntent, number> => ({
+/** A zero count per recruit intent, to tally bookings into. */
+export const perIntent = (): Record<RecruitIntent, number> => ({
   trainSoldiers: 0,
   trainSword: 0,
   trainSpear: 0,
   trainBow: 0,
 });
 
-export function emptyBookings(): {
-  daughters: number;
-  sons: number;
-  drilling: Record<RecruitIntent, number>;
-  arming: Record<RecruitIntent, number>;
-} {
-  return { daughters: 0, sons: 0, drilling: perIntent(), arming: perIntent() };
-}
+export const NO_BOOKINGS: AssistantBookings = {
+  daughters: 0,
+  sons: 0,
+  drilling: perIntent(),
+  arming: perIntent(),
+};
 
-export const NO_BOOKINGS: AssistantBookings = emptyBookings();
-
-/** What the window states beside the counters: the orders in flight. */
-export interface AssistantSituation {
-  readonly bookings: AssistantBookings;
-}
-
-export const NO_SITUATION: AssistantSituation = { bookings: NO_BOOKINGS };
-
-/** One fact a row's status marks state; `count` null where the queue never ends. */
+/** One fact a row's status marks state. */
 export type StatusNoteKey =
   | 'expected'
   | 'needsCouple'
@@ -71,11 +61,12 @@ export type StatusNoteKey =
   | 'fetchingWeapon'
   | 'needsWeapon'
   | 'needsMen';
+/** The facts about what still waits to be booked, the only ones an endless counter leaves uncounted. */
+export type WaitingNoteKey = Extract<StatusNoteKey, 'needsCouple' | 'needsMen'>;
 
-export interface StatusNote {
-  readonly key: StatusNoteKey;
-  readonly count: number | null;
-}
+export type StatusNote =
+  | { readonly key: StatusNoteKey; readonly count: number }
+  | { readonly key: WaitingNoteKey; readonly count: null };
 
 export type StatusTone = 'busy' | 'warn' | 'idle';
 
@@ -95,6 +86,9 @@ function unbooked(counter: CounterState, booked: number): number | null {
   return counter.infinite ? null : counter.value - booked;
 }
 
+const waiting = (key: WaitingNoteKey, left: number | null): StatusNote =>
+  left === null ? { key, count: null } : { key, count: left };
+
 /**
  * A birth counter's line: the children booked, then what still waits for a free couple. A counter run
  * to zero with a child still booked keeps telling it, since that child is born all the same.
@@ -104,7 +98,7 @@ export function birthNotes(counter: CounterState, booked: number): readonly Stat
   if (booked > 0) notes.push({ key: 'expected', count: booked });
   const left = unbooked(counter, booked);
   // An endless queue only says it waits while nothing at all is booked.
-  if (left === null ? booked === 0 : left > 0) notes.push({ key: 'needsCouple', count: left });
+  if (left === null ? booked === 0 : left > 0) notes.push(waiting('needsCouple', left));
   return notes;
 }
 
@@ -131,9 +125,7 @@ export function trainingNotes(counter: CounterState, facts: TrainingFacts): read
   }
   const booked = facts.drilling + facts.arming;
   const left = unbooked(counter, booked);
-  if (left === null ? booked === 0 : left > 0) {
-    notes.push({ key: 'needsMen', count: left });
-  }
+  if (left === null ? booked === 0 : left > 0) notes.push(waiting('needsMen', left));
   return notes;
 }
 

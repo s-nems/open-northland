@@ -67,9 +67,9 @@ import { presentationPack } from '../../presentation/pack.js';
 import type { OffThreadTickCost, SessionHost } from '../../session/index.js';
 import { setUpdateContinuation } from '../../update/watcher.js';
 import type { AmbientWeather } from '../ambient-weather.js';
+import { seatBookingsOf } from '../assistant-bookings.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
-import { assistantSituationOf } from '../assistant-situation.js';
 import type { CameraController } from '../camera/index.js';
 import {
   cameraCenteredOnTile,
@@ -469,11 +469,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       () => viewer.version(),
     );
-    const assistantSituationFor = memoBySnapshot(
-      (snapshot: WorldSnapshot) => assistantSituationOf(snapshot, viewer.seat()),
+    const assistantBookingsFor = memoBySnapshot(
+      (snapshot: WorldSnapshot) => seatBookingsOf(snapshot, viewer.seat()),
       () => viewer.version(),
     );
     const assistantTip = createTooltip();
+    const goodIcons = createGoodIconPainter(pack, host.content);
     cleanup.push(() => assistantTip.destroy());
     let escapeClaimed: (() => boolean) | null = null;
     let overviewPress: UnitControls['overviewPress'] | null = null;
@@ -497,9 +498,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       assistant: {
         counters: assistantCountersSeam(host, viewer.seat, issueCommand, !readOnly),
         switches: assistantGrantsSeam(host, host.content, viewer.seat, issueCommand, !readOnly),
-        situation: () => assistantSituationFor(host.snapshot()),
+        bookings: () => assistantBookingsFor(host.snapshot()),
         access: () => (viewer.seat() === null ? 'noSeat' : readOnly ? 'watching' : 'control'),
         tooltip: assistantTip,
+        paintGood: goodIcons,
       },
       papers: {
         read: () => {
@@ -885,7 +887,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const hoverCard = createHoverCard({
       plane: hudDom.element,
       scale: hudDom.currentScale,
-      icons: createGoodIconPainter(pack, host.content),
+      icons: goodIcons,
       uiString: toolPanel.controller.uiString,
     });
     cleanup.push(() => hoverCard.dispose());

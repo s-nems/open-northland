@@ -31,16 +31,14 @@ interface GrantContent {
 }
 
 /** A slug the content lacks resolves to nothing, so that switch reads OFF and writes nothing. */
-function resolveGrantGoods(content: GrantContent): Record<GoodSwitchId, readonly number[]> {
+function resolveGrantGoods(content: GrantContent): ReadonlyMap<GoodSwitchId, number> {
   const byId = new Map(content.goods.map((g) => [g.id, g.typeId]));
-  const resolve = (id: GoodSwitchId): readonly number[] => {
+  const goods = new Map<GoodSwitchId, number>();
+  for (const id of GOOD_SWITCH_IDS) {
     const typeId = byId.get(SWITCH_GOOD[id]);
-    return typeId === undefined ? [] : [typeId];
-  };
-  return Object.fromEntries(GOOD_SWITCH_IDS.map((id) => [id, resolve(id)])) as Record<
-    GoodSwitchId,
-    readonly number[]
-  >;
+    if (typeId !== undefined) goods.set(id, typeId);
+  }
+  return goods;
 }
 
 /** Live assistant switch seam for the seat `player` names, read on every call so a spectator's
@@ -67,9 +65,9 @@ export function assistantGrantsSeam(
         if (seat === null) return false;
         if (id === 'postGraduates') return host.assistantPostsGraduates(seat);
         if (id === 'moveFlags') return host.assistantMovesFlags(seat);
-        const goods = grantGoods[id];
-        if (goods.length === 0) return false;
-        return isWeaponSwitch(id) ? goods.every((g) => !vetoed.has(g)) : goods.every((g) => granted.has(g));
+        const goodType = grantGoods.get(id);
+        if (goodType === undefined) return false;
+        return isWeaponSwitch(id) ? !vetoed.has(goodType) : granted.has(goodType);
       };
       return Object.fromEntries(GRANT_IDS.map((id) => [id, on(id)])) as Record<AssistantGrantId, boolean>;
     },
@@ -80,15 +78,13 @@ export function assistantGrantsSeam(
         enqueue({ kind: SIM_SWITCH_COMMANDS[id], player: seat, enabled });
         return true;
       }
-      const goods = grantGoods[id];
-      if (goods.length === 0) return false;
-      for (const goodType of goods) {
-        enqueue(
-          isWeaponSwitch(id)
-            ? { kind: 'setAssistantWeaponVeto', player: seat, goodType, vetoed: !enabled }
-            : { kind: 'setAssistantGrant', player: seat, goodType, enabled },
-        );
-      }
+      const goodType = grantGoods.get(id);
+      if (goodType === undefined) return false;
+      enqueue(
+        isWeaponSwitch(id)
+          ? { kind: 'setAssistantWeaponVeto', player: seat, goodType, vetoed: !enabled }
+          : { kind: 'setAssistantGrant', player: seat, goodType, enabled },
+      );
       return true;
     },
   };
@@ -102,11 +98,9 @@ export function grantAssistantDefaults(
 ): void {
   const grantGoods = resolveGrantGoods(content);
   for (const player of new Set(players)) {
-    for (const id of GOOD_SWITCH_IDS) {
+    for (const [id, goodType] of grantGoods) {
       if (isWeaponSwitch(id)) continue; // every weapon starts allowed: the sim default, no veto
-      for (const goodType of grantGoods[id]) {
-        sim.enqueueSetup({ kind: 'setAssistantGrant', player, goodType, enabled: true });
-      }
+      sim.enqueueSetup({ kind: 'setAssistantGrant', player, goodType, enabled: true });
     }
   }
 }

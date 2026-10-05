@@ -1064,8 +1064,7 @@ export const enGame = {
       notes: {
         expected: {
           counted: { one: '{count} on the way', few: '{count} on the way', many: '{count} on the way' },
-          endless: 'on the way',
-          tip: 'This many couples are already expecting. The counter goes down at the birth.',
+          tip: 'This many couples have been given the order. The counter goes down at the birth.',
         },
         needsCouple: {
           counted: {
@@ -1082,7 +1081,6 @@ export const enGame = {
             few: '{count} in the barracks',
             many: '{count} in the barracks',
           },
-          endless: 'in the barracks',
           tip: 'Recruits sent to the barracks: on their way or already training.',
         },
         fetchingWeapon: {
@@ -1091,7 +1089,6 @@ export const enGame = {
             few: '{count} fetching weapons',
             many: '{count} fetching weapons',
           },
-          endless: 'fetching weapons',
           tip: 'Trained recruits on their way to the store for a weapon and armour.',
         },
         needsWeapon: {
@@ -1100,7 +1097,6 @@ export const enGame = {
             few: '{count} wait for weapons',
             many: '{count} wait for weapons',
           },
-          endless: 'waits for weapons',
           tip: 'No weapon this class may take is in stock. The recruits wait for a delivery.',
         },
         needsMen: {
@@ -1118,9 +1114,9 @@ export const enGame = {
       less: 'Less',
       more: 'More',
       lessTip: 'Less. Shift: to zero. Ctrl: by {step}.',
-      lessEndlessTip: 'Less. Shift: to zero. Ctrl: by {step}. Below zero: without end.',
+      lessEndlessTip: 'Less. Shift: to zero. Ctrl: by {step}. Below zero: without end, from ∞ to {max}.',
       moreTip: 'More. Shift: to {max}. Ctrl: by {step}.',
-      moreEndlessTip: 'More. Shift: without end. Ctrl: by {step}.',
+      moreEndlessTip: 'More. Shift: without end. Ctrl: by {step}. From ∞ back to zero.',
       watching: "The watched player's assistant. Read only.",
       noSeat: 'Pick a player to see their assistant.',
     },

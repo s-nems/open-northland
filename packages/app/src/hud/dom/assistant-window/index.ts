@@ -19,11 +19,12 @@ import { createSwitch } from '../parts/switch.js';
 import { attachTipLayer, type TipChip } from '../parts/tip-layer.js';
 import { centralWindowPlacer, createHudWindow } from '../window.js';
 import {
-  type AssistantSituation,
+  type AssistantBookings,
   birthNotes,
   counterFace,
   counterFromFace,
   counterRange,
+  NO_BOOKINGS,
   NOTE_TONE,
   PressHold,
   type StatusNote,
@@ -63,9 +64,11 @@ export type AssistantAccess = 'control' | 'watching' | 'noSeat';
 export interface AssistantSource {
   readonly counters: AssistantCountersSeam;
   readonly switches: AssistantSwitchesSeam;
-  readonly situation: () => AssistantSituation;
+  readonly bookings: () => AssistantBookings;
   readonly access: () => AssistantAccess;
   readonly tooltip: TipChip;
+  /** The game's one good-icon painter. */
+  readonly paintGood: GoodIconPainter;
 }
 
 export interface AssistantWindowDeps extends AssistantSource {
@@ -73,7 +76,6 @@ export interface AssistantWindowDeps extends AssistantSource {
   /** The title art, the beam entry's painted icon. */
   readonly art: string;
   readonly goodTypeOf: (goodId: string) => number | undefined;
-  readonly paintGood: GoodIconPainter;
   readonly cue: (cue: UiCue) => void;
 }
 
@@ -89,7 +91,9 @@ export interface AssistantWindow extends ToolWindow {
   dispose(): void;
 }
 
-/** One weapon class: the weapon it is drawn with, and the switch that lets it settle for a weaker one. */
+/** One weapon class: the weapon it is drawn with, and the switch that lets it settle for a weaker one.
+ *  Approximation: the sim arms a class from any weapon of its main type, and these pairs are the two
+ *  each class has in the current content; a third weapon would not show in the stock tag. */
 interface ClassSpec {
   readonly kind: ClassIntent;
   readonly weapon: string;
@@ -167,8 +171,6 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     show();
   };
 
-  // ---------- parts ----------
-
   const goodArt = (goodId: string, box: number): { art: HTMLElement; count: HTMLElement } => {
     const art = element('span', 'on-asst-art', `${goodIconMarkup(box)}<b class="on-asst-art__count"></b>`);
     const frame = art.querySelector<HTMLElement>('.on-good__frame');
@@ -189,10 +191,8 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
   const glyphArt = (markup: string): HTMLElement => element('span', 'on-asst-art', markup);
 
   const noteText = (note: StatusNote): string => {
-    const forms = copy.notes[note.key];
-    return note.count === null
-      ? forms.endless
-      : formatMessage(pluralForm(note.count, forms.counted, locale), { count: note.count });
+    if (note.count === null) return copy.notes[note.key].endless;
+    return formatMessage(pluralForm(note.count, copy.notes[note.key].counted, locale), { count: note.count });
   };
   /** A row's status as small marks on its label line, a glyph and a count each, so the row keeps its
    *  height whatever the assistant is doing; the sentence is the mark's tip. */
@@ -247,7 +247,7 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     art: HTMLElement,
     notes: () => readonly StatusNote[],
   ): HTMLElement => {
-    const row = element('div', 'on-asst-row');
+    const row = element('div', 'on-asst-row on-asst-row--counter');
     const range = counterRange(kind);
     const counter = createCounter(range, (face) => pressCounter(kind, face));
     const status = statusMarks();
@@ -304,8 +304,6 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     return { element: sub, allowed: () => switchNow(id) };
   };
 
-  // ---------- layout ----------
-
   const access = element('div', 'on-asst__access');
   const columns = element('div', 'on-asst__cols');
   const orders = element('div', 'on-asst__col');
@@ -313,23 +311,22 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
   columns.append(orders, standing);
   window.body.append(access, columns);
 
-  let situation = deps.situation();
+  // The first show() reads them; until then nothing is booked.
+  let bookings = NO_BOOKINGS;
 
   orders.append(columnHead(copy.orders, copy.ordersTip), section(copy.births, copy.birthsTip));
   orders.append(
     counterRow('extraWomen', glyphArt(FIGURE.woman), () =>
-      birthNotes(counterNow('extraWomen'), situation.bookings.daughters),
+      birthNotes(counterNow('extraWomen'), bookings.daughters),
     ),
-    counterRow('extraMen', glyphArt(FIGURE.man), () =>
-      birthNotes(counterNow('extraMen'), situation.bookings.sons),
-    ),
+    counterRow('extraMen', glyphArt(FIGURE.man), () => birthNotes(counterNow('extraMen'), bookings.sons)),
   );
 
   orders.append(section(copy.military, copy.militaryTip));
   orders.append(
     counterRow('trainSoldiers', glyphArt(GLYPH.banner), () =>
       trainingNotes(counterNow('trainSoldiers'), {
-        drilling: situation.bookings.drilling.trainSoldiers,
+        drilling: bookings.drilling.trainSoldiers,
         arming: 0,
         weaponStocked: null,
       }),
@@ -342,8 +339,8 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
       weaponStocked(stockOf(spec.weapon), stockOf(WEAPON_SWITCH_GOOD[spec.weaker]), weaker.allowed());
     const row = counterRow(spec.kind, art, () =>
       trainingNotes(counterNow(spec.kind), {
-        drilling: situation.bookings.drilling[spec.kind],
-        arming: situation.bookings.arming[spec.kind],
+        drilling: bookings.drilling[spec.kind],
+        arming: bookings.arming[spec.kind],
         weaponStocked: stocked(),
       }),
     );
@@ -376,7 +373,7 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     setHidden(access, now === 'control');
     liveCounters = deps.counters.read();
     liveSwitches = deps.switches.read();
-    situation = deps.situation();
+    bookings = deps.bookings();
     for (const update of updates) update();
   };
 

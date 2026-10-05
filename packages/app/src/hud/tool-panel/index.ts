@@ -34,7 +34,6 @@ import { type AssistantSource, createAssistantWindow } from '../dom/assistant-wi
 import type { BuildingPanelWindows } from '../dom/building-panel/actions.js';
 import { createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
-import { createGoodIconPainter } from '../dom/good-art.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
 import { minimapReserve } from '../dom/minimap-reserve.js';
 import {
@@ -594,7 +593,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           plane,
           art: paintedIcon('assistant', TITLE_ART_PX),
           goodTypeOf: (goodId) => goodTypeById.get(goodId),
-          paintGood: createGoodIconPainter(opts.pack, null),
           cue: ctx.cue,
         });
         window.onDismiss(() => focusOwner?.('assistant'));

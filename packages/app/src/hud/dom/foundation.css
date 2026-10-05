@@ -6183,6 +6183,14 @@ body.on-drag-scroll * {
   line-height: 1.2;
   color: var(--text);
 }
+/* A counter row keeps one line whatever its marks say, so the window keeps its height; a label the
+   marks crowd out ends in an ellipsis. */
+.on-hud .on-asst-row--counter .on-asst-row__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .on-hud .on-asst-row--off .on-asst-row__label {
   color: var(--muted);
 }

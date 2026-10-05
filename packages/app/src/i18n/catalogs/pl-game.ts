@@ -1045,8 +1045,7 @@ export const plGame = {
       notes: {
         expected: {
           counted: { one: '{count} w drodze', few: '{count} w drodze', many: '{count} w drodze' },
-          endless: 'w drodze',
-          tip: 'Tyle par już czeka na to dziecko. Licznik zmaleje przy narodzinach.',
+          tip: 'Tyle par dostało już to zamówienie. Licznik zmaleje przy narodzinach.',
         },
         needsCouple: {
           counted: {
@@ -1059,7 +1058,6 @@ export const plGame = {
         },
         drilling: {
           counted: { one: '{count} w koszarach', few: '{count} w koszarach', many: '{count} w koszarach' },
-          endless: 'w koszarach',
           tip: 'Rekruci wysłani do koszar: w drodze albo już na szkoleniu.',
         },
         fetchingWeapon: {
@@ -1068,7 +1066,6 @@ export const plGame = {
             few: '{count} idą po broń',
             many: '{count} idzie po broń',
           },
-          endless: 'idzie po broń',
           tip: 'Wyszkoleni rekruci w drodze do magazynu po broń i zbroję.',
         },
         needsWeapon: {
@@ -1077,7 +1074,6 @@ export const plGame = {
             few: '{count} czekają na broń',
             many: '{count} czeka na broń',
           },
-          endless: 'czeka na broń',
           tip: 'W magazynie nie ma broni, którą ten oddział może wziąć. Rekruci poczekają na dostawę.',
         },
         needsMen: {
@@ -1095,9 +1091,9 @@ export const plGame = {
       less: 'Mniej',
       more: 'Więcej',
       lessTip: 'Mniej. Shift: do zera. Ctrl: o {step}.',
-      lessEndlessTip: 'Mniej. Shift: do zera. Ctrl: o {step}. Poniżej zera: bez końca.',
+      lessEndlessTip: 'Mniej. Shift: do zera. Ctrl: o {step}. Poniżej zera: bez końca, z ∞ na {max}.',
       moreTip: 'Więcej. Shift: do {max}. Ctrl: o {step}.',
-      moreEndlessTip: 'Więcej. Shift: bez końca. Ctrl: o {step}.',
+      moreEndlessTip: 'Więcej. Shift: bez końca. Ctrl: o {step}. Z ∞ na zero.',
       watching: 'Podgląd asystenta obserwowanego gracza. Tylko do odczytu.',
       noSeat: 'Wybierz gracza, by zobaczyć jego asystenta.',
     },
