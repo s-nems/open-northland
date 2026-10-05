@@ -575,6 +575,67 @@ describe('placement controller', () => {
     expect(placement.isActive()).toBe(false); // landed → build mode over (the original's flow)
   });
 
+  it('keeps the building held for each Shift click, and letting Shift go brings the window back', () => {
+    let tile = { col: 4, row: 2 };
+    const { placement, commands, cancels } = mount(() => tile);
+    placement.enter(joinery());
+    placement.setShift(true);
+    placement.handleClick(10, 10);
+    tile = { col: 8, row: 2 };
+    placement.handleClick(20, 10);
+    expect(commands.map((c) => (c.kind === 'placeBuilding' ? c.x : null))).toEqual([4, 8]);
+    expect(placement.activeBuilding()?.typeId).toBe(JOINERY);
+    placement.setShift(false);
+    expect(placement.isActive()).toBe(false);
+    expect(cancels).toEqual([null]); // the construction window comes back for the next pick
+
+    // Shift held without a placement ends nothing; a plan pays for one house, Shift or not.
+    placement.enter(joinery());
+    placement.setShift(true);
+    placement.setShift(false);
+    expect(placement.isActive()).toBe(true);
+    placement.cancel();
+    placement.enter(joinery({ kind: 'placeHouse', param: JOINERY }));
+    placement.setShift(true);
+    placement.handleClick(10, 10);
+    expect(placement.isActive()).toBe(false);
+    expect(cancels).toEqual([null, null]);
+  });
+
+  it('a Shift click still waiting on the sim places before letting Shift go ends the run', async () => {
+    let answer: (ok: boolean) => void = () => undefined;
+    const { placement, commands, cancels } = mount(
+      () => ({ col: 4, row: 2 }),
+      undefined,
+      undefined,
+      undefined,
+      {
+        clickAsks: {
+          askPlaceAt: () =>
+            new Promise((resolve) => {
+              answer = resolve;
+            }),
+          palisadeLineReady: () => Promise.resolve(),
+          roadLineReady: () => Promise.resolve(),
+          askPalisadeGate: () => Promise.resolve(null),
+        },
+      },
+    );
+    placement.enter(joinery());
+    placement.setShift(true);
+    placement.handleClick(10, 10);
+    answer(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    placement.handleClick(10, 10);
+    placement.setShift(false);
+    expect(placement.isActive()).toBe(true);
+    answer(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(commands.map((c) => c.kind)).toEqual(['placeBuilding', 'placeBuilding']);
+    expect(placement.isActive()).toBe(false);
+    expect(cancels).toEqual([null]);
+  });
+
   it("places another nation's house as that nation, asking its own rule, while roads stay the seat's", () => {
     const asked: number[] = [];
     let tile = { col: 4, row: 2 };

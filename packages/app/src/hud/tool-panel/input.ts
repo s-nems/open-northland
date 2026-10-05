@@ -16,8 +16,8 @@ export interface HeldMode {
   /** Undo the mode's last step without leaving it, as a line tool drops its started line; false when
    *  there is no step to undo and the press should cancel the mode. */
   stepBack?(): boolean;
-  /** Shift is held: a line tool keeps its line straight. */
-  setStraight?(on: boolean): void;
+  /** Shift is held: a line tool keeps its line straight, and a building placed under it stays held. */
+  setShift?(on: boolean): void;
   /** Alt is held: the road tool's line cancels road sites instead of ordering them. */
   setErase?(on: boolean): void;
   /** The upgrade-ground key: a wall or road line takes or skirts that ground; false when no line is held. */
@@ -94,22 +94,22 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
 
   // Every pointer event reports Shift and Alt too, so one pressed while another window had focus still
   // counts.
-  const syncStraight = (on: boolean): void => {
-    for (const mode of held) mode.setStraight?.(on);
+  const syncShift = (on: boolean): void => {
+    for (const mode of held) mode.setShift?.(on);
   };
   const syncErase = (on: boolean): void => {
     for (const mode of held) mode.setErase?.(on);
   };
   const syncModifiers = (e: MouseEvent): void => {
-    syncStraight(e.shiftKey);
+    syncShift(e.shiftKey);
     syncErase(e.altKey);
   };
   const onModifierKey = (e: KeyboardEvent): void => {
-    if (e.key === 'Shift') syncStraight(e.type === 'keydown');
+    if (e.key === 'Shift') syncShift(e.type === 'keydown');
     if (e.key === 'Alt') syncErase(e.type === 'keydown');
   };
   const onBlur = (): void => {
-    syncStraight(false);
+    syncShift(false);
     syncErase(false);
   };
 

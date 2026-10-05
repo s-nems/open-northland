@@ -327,7 +327,7 @@ export const enGame = {
       helpHint: 'Description in Knowledge',
       costLine: '{name} ×{amount}',
       costShort: '{name}: you have {have} of {amount}',
-      placeHint: 'point at a place on the map',
+      placeHint: 'point at a place on the map, hold Shift to place several',
       placeWallHint: 'click where the wall starts',
       placeWallLineHint:
         'left click lays the wall, with Ctrl/Cmd it draws on, Shift keeps it straight, right click drops the line',

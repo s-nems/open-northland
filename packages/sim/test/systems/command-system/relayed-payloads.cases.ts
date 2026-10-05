@@ -201,7 +201,10 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     moveVehicle: [{ vehicle: t.cart, ...node }],
     dockVehicle: [{ vehicle: t.ship, ...node }],
     renameSettler: [{ entity: t.worker, name: 'Ragna' }],
-    openChest: [{ entity: t.worker, chest: t.hq }],
+    openChest: [
+      { entity: t.worker, chest: t.hq },
+      { entity: t.worker, chest: t.hq, queued: true },
+    ],
     placeBuilding: [
       { buildingType: SAWMILL, ...node, tribe: VIKING },
       { buildingType: SAWMILL, ...node, tribe: VIKING, paper: { kind: 'placeAny', param: 0 } },

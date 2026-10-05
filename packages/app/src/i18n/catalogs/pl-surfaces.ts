@@ -399,7 +399,8 @@ export const plSurfaces = {
     heading: 'Wskazówka',
     tips: {
       queueOrders:
-        '{shift} + klik dodaje do kolejki polecenia ruchu, ataku w ruchu i stawiania drogowskazów.',
+        '{shift} + klik dodaje do kolejki polecenia ruchu, ataku w ruchu, stawiania drogowskazów i otwierania skrzyń.',
+      buildMany: 'Przytrzymaj {shift} przy stawianiu budynku, a postawisz kilka takich, po jednym na klik.',
       attackMove: '{key} to atak w ruchu: jednostki idą do celu i atakują wszystko po drodze.',
       postGraduates:
         'W oknie asystenta ({key}) opcja „{graduatesOption}” sama wysyła świeżo wyszkolonych osadników ze szkół do warsztatów.',

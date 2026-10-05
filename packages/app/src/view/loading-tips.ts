@@ -18,6 +18,7 @@ const LOADING_TIPS: readonly LoadingTip[] = [
   { id: 'roads', key: 'roadTool' },
   { id: 'upgrade', key: 'upgradeBuilding' },
   { id: 'buildRun' },
+  { id: 'buildMany' },
   { id: 'nextCivilian', key: 'nextCivilian' },
   { id: 'nextSingleWoman', key: 'nextSingleWoman' },
   { id: 'signposts' },

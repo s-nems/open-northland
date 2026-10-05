@@ -10,6 +10,7 @@ import {
   Equipment,
   OpenChestOrder,
   OpenedChest,
+  OrderQueue,
   Owner,
   Person,
   Position,
@@ -459,6 +460,37 @@ describe('the openChest order', () => {
     expect(sim.world.has(far, OpenChestOrder)).toBe(false);
     expect([...sim.world.query(Chest)]).toEqual([]);
     expect(looseGoods(sim, SHOES)).toBe(6); // opened once
+  });
+
+  it('a Shift-queued chest is opened once the one ahead is open, and a gone one is skipped', () => {
+    const sim = fresh();
+    const first = createChest(sim.world, sim.content, { kind: 'wooden', contents: FOOD_CHEST, x: 10, y: 10 });
+    const taken = createChest(sim.world, sim.content, { kind: 'wooden', contents: SHOES_CHEST, x: 6, y: 20 });
+    const second = createChest(sim.world, sim.content, {
+      kind: 'wooden',
+      contents: SHOES_CHEST,
+      x: 20,
+      y: 20,
+    });
+    const opener = spawn(sim, WOODCUTTER, 6, 8);
+    const other = spawn(sim, WOODCUTTER, 6, 22);
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: opener, chest: first }));
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: opener, chest: taken, queued: true }));
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: opener, chest: second, queued: true }));
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: other, chest: taken }));
+    sim.step();
+    expect(sim.world.get(opener, OpenChestOrder).chest).toBe(first);
+    expect(sim.world.get(opener, OrderQueue).orders.map((o) => o.kind)).toEqual(['openChest', 'openChest']);
+
+    stepUntilOpened(sim, first);
+    expect(sim.world.has(taken, Chest)).toBe(false); // the other settler beat the opener to it
+    expect(sim.world.has(second, Chest)).toBe(true);
+    stepUntilOpened(sim, second);
+    expect([...sim.world.query(Chest)]).toEqual([]);
+    expect(looseGoods(sim, SIMPLE_FOOD)).toBe(30);
+    expect(looseGoods(sim, SHOES)).toBe(12); // the taken chest's and the second's
+    expect(sim.world.has(opener, OrderQueue)).toBe(false);
+    expect(sim.checkInvariants()).toEqual([]);
   });
 
   it('parks behind a meal and re-dispatches the tick the meal ends; a fresh walk order supersedes it', () => {

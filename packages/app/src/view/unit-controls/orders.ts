@@ -213,15 +213,16 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     // A selected building, flag or signpost takes no orders: nobody to command, nothing to confirm.
     const commanded = deps.targets.ownedSettlersIn(deps.selected());
     if (commanded.length === 0) return false;
-    // Shift queues a walk behind each settler's current order. No order on a target under the cursor is
-    // queueable yet, so the ground under it is walked to instead.
+    const chest = pickTopAt(deps.targets.chests(), world.x, world.y);
+    // Shift queues a chest to open or a walk behind each settler's current order; no order on another
+    // target is queueable, so the ground under it is walked to instead.
     if (event.shiftKey) {
+      if (chest !== null && openChest(commanded, chest, true)) return true;
       return issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, 'moveUnit', true);
     }
     const enemy = pickTopAt(deps.targets.enemies(), world.x, world.y);
     if (enemy !== null) return strike(commanded, enemy);
     // A chest nobody selected may open is walked to like any ground.
-    const chest = pickTopAt(deps.targets.chests(), world.x, world.y);
     if (chest !== null && openChest(commanded, chest)) return true;
     const goods = deps.targets.goods();
     const pile = pickTopAt(goods, world.x, world.y);
@@ -478,8 +479,8 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   /** Send every commanded settler that may open the chest; true when anyone was sent. Filtered here as
    *  the original's default click offers it only to a settler that may open it, and so a settler the
    *  sim would refuse never lands in the replay log; the sim re-checks each on arrival, so two senders
-   *  race and the loser walks back into autonomy. */
-  const openChest = (commanded: readonly FormationUnit[], chest: number): boolean => {
+   *  race and the loser walks back into autonomy. A `queued` chest waits behind each one's current order. */
+  const openChest = (commanded: readonly FormationUnit[], chest: number, queued = false): boolean => {
     const snapshot = deps.snapshot();
     const target = entityById(snapshot, chest);
     const kind = target === undefined ? undefined : chestKindOf(target);
@@ -488,7 +489,12 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     for (const unit of commanded) {
       const self = entityById(snapshot, unit.ref);
       if (self === undefined || !canOpenChest(self, kind, deps.content)) continue;
-      deps.enqueue({ kind: 'openChest', entity: unit.ref as Entity, chest: chest as Entity });
+      deps.enqueue({
+        kind: 'openChest',
+        entity: unit.ref as Entity,
+        chest: chest as Entity,
+        ...(queued ? { queued } : {}),
+      });
       sent = true;
     }
     return sent;

@@ -57,6 +57,8 @@ export type UnitOrderCommand =
       readonly kind: 'openChest';
       readonly entity: Entity;
       readonly chest: Entity;
+      /** As `moveUnit`'s; the chest is judged when the order starts. */
+      readonly queued?: boolean;
     }
   | {
       /**

@@ -188,7 +188,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   moveVehicle: { required: { vehicle: 'integer', ...NODE }, optional: { attackMove: 'boolean' } },
   dockVehicle: { required: { vehicle: 'integer', ...NODE } },
   renameSettler: { required: { entity: 'integer', name: { string: SETTLER_NAME_MAX_CHARS } } },
-  openChest: { required: { entity: 'integer', chest: 'integer' } },
+  openChest: { required: { entity: 'integer', chest: 'integer' }, optional: QUEUED },
   placeBuilding: {
     required: { buildingType: 'integer', ...NODE, tribe: 'integer' },
     optional: {

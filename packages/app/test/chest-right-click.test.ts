@@ -34,7 +34,12 @@ function settlerAt(sim: Simulation, jobType: number | null, child = false): Enti
   return e;
 }
 
-function rightClick(sim: Simulation, settlers: readonly Entity[], chest: Entity): Command[] {
+function rightClick(
+  sim: Simulation,
+  settlers: readonly Entity[],
+  chest: Entity,
+  shiftKey = false,
+): Command[] {
   const issued: Command[] = [];
   const snapshot = sim.snapshot();
   const pickable: Pickable = { ref: chest, x: 0, y: 0, kind: 'chest' };
@@ -61,7 +66,7 @@ function rightClick(sim: Simulation, settlers: readonly Entity[], chest: Entity)
     enqueue: (command) => issued.push(command),
     selectOwnSettler: () => {},
     openActions: () => {},
-  }).issueRightClick({ clientX: 0, clientY: 0 } as MouseEvent);
+  }).issueRightClick({ clientX: 0, clientY: 0, shiftKey } as MouseEvent);
   return issued;
 }
 
@@ -91,6 +96,29 @@ describe('right-clicking a chest', () => {
       'moveUnit',
       'moveUnit',
       'moveUnit',
+    ]);
+  });
+
+  it("with Shift queues the chest behind each opener's current order, or a walk when nobody may open it", () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const wooden = systems.createChest(sim.world, sim.content, {
+      kind: 'wooden',
+      contents: 20,
+      x: 10,
+      y: 10,
+    });
+    const magical = systems.createChest(sim.world, sim.content, {
+      kind: 'magical',
+      contents: 20,
+      x: 12,
+      y: 10,
+    });
+    const cutter = settlerAt(sim, WOODCUTTER);
+    expect(rightClick(sim, [cutter], wooden, true)).toEqual([
+      { kind: 'openChest', entity: cutter, chest: wooden, queued: true },
+    ]);
+    expect(rightClick(sim, [cutter], magical, true)).toEqual([
+      expect.objectContaining({ kind: 'moveUnit', entity: cutter, queued: true }),
     ]);
   });
 });

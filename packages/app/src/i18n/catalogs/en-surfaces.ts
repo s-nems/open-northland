@@ -402,7 +402,8 @@ export const enSurfaces = {
   loadingTips: {
     heading: 'Tip',
     tips: {
-      queueOrders: '{shift} + click queues walk, attack-move and signpost orders.',
+      queueOrders: '{shift} + click queues walk, attack-move, signpost and open-chest orders.',
+      buildMany: 'Hold {shift} while placing a building to place several of it, one per click.',
       attackMove: '{key} is attack-move: units walk to the target and attack everything on the way.',
       postGraduates:
         'In the assistant window ({key}), "{graduatesOption}" sends freshly trained settlers from the schools to the workshops.',

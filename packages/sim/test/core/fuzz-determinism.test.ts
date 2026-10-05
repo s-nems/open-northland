@@ -865,11 +865,12 @@ function nextCommand(rng: Rng): Command {
     case 46:
       // An open-chest order from the nucleus band at a preamble chest or a wild id: the walk + clip +
       // hand-out once per wooden chest, then the gone-chest, magical-lock, child, unowned and dead skips,
-      // all under the stream's superseding walks and need drives.
+      // all under the stream's superseding walks and need drives; every other one is Shift-queued.
       return {
         kind: 'openChest',
         entity: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity,
         chest: rng.int(4) === 0 ? ((rng.int(TARGET_ID_RANGE) + 1) as Entity) : pick(rng, CHEST_IDS),
+        ...queuedOr(rng),
       };
     case 47:
       // A paper grant: valid + out-of-range players, mostly the papers the placement rolls spend, sometimes

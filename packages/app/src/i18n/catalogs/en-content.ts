@@ -435,6 +435,11 @@ export const enContent = {
       summary:
         'Three wooden chests are opened for food, three civilists and a well paper, a magical one refuses a plain trade, and a held paper stands a well up finished.',
     },
+    'chest-queue': {
+      title: 'Chests one after another',
+      summary:
+        'A collector opens a chest and then the one queued behind it. Select it and Shift + right click the last two chests to queue them too.',
+    },
     chain: {
       title: 'Production chain',
       summary: 'Farm, mill, bakery and well in one loop: wheat → flour → bread, fed by water.',

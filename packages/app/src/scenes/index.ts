@@ -11,6 +11,7 @@ import { battleWearyScene } from './battle-weary.js';
 import { berriesScene } from './berries.js';
 import { bowFlightScene } from './bow-flight.js';
 import { chainScene } from './chain.js';
+import { chestQueueScene } from './chest-queue.js';
 import { chestsScene } from './chests.js';
 import { childrenScene } from './children.js';
 import { collisionScene } from './collision.js';
@@ -105,6 +106,7 @@ export const SCENES: readonly SceneDefinition[] = [
   goodsCatalogScene,
   berriesScene,
   chestsScene,
+  chestQueueScene,
   chainScene,
   alchemyScene,
   warehouseScene,

@@ -320,7 +320,7 @@ export interface AttackMoveMarch {
 }
 
 /** The order kinds a Shift-click may line up behind a settler's current order; each carries `queued`. */
-export const QUEUEABLE_ORDER_KINDS = ['moveUnit', 'attackMoveUnit', 'placeSignpost'] as const;
+export const QUEUEABLE_ORDER_KINDS = ['moveUnit', 'attackMoveUnit', 'placeSignpost', 'openChest'] as const;
 
 export type QueueableOrderCommand = Extract<Command, { kind: (typeof QUEUEABLE_ORDER_KINDS)[number] }>;
 

@@ -161,14 +161,16 @@ export interface PlacementDeps {
   readonly tribe: number;
   /** The player a placed building, road or wall belongs to. */
   readonly owner: number;
-  /** A building placement was called off (Esc, the right button, a beam entry) with nothing placed;
-   *  `paper` is the unspent plan it was to pay with, for the owner to take back into hand. A wall or
-   *  gate tool is called off without it: the player leaves that tool to get back to the map. */
+  /** A building placement was called off (Esc, the right button, a beam entry) with nothing placed, or
+   *  ended by letting Shift go after a run of placed ones; `paper` is the unspent plan it was to pay
+   *  with, for the owner to take back into hand. A wall or gate tool is called off without it: the
+   *  player leaves that tool to get back to the map. */
   readonly onCancel?: (paper: Paper | null) => void;
 }
 
 /** Placement mode: pick a building in the window, then one left-click on buildable ground places and
- *  exits the mode, as in the original. Esc or right-click abandons. The landing click confirms through
+ *  exits the mode, as in the original; with Shift held the building stays held for the next click until
+ *  Shift is let go (a named addition). Esc or right-click abandons. The landing click confirms through
  *  the GUI cue; the world itself makes no sound for a new site. The wall tool lays lines (see
  *  {@link LineTool}) and exits after one, or stays armed for the next while Ctrl is held; the gate tool
  *  cuts one gate into a finished run and exits like a building. */
@@ -189,8 +191,9 @@ export interface PlacementController {
   cancel(): void;
   /** Drop a started wall line and keep the tool; false when no line was started. */
   stepBack(): boolean;
-  /** Shift held: a wall line keeps to the nearest straight run. */
-  setStraight(on: boolean): void;
+  /** Shift held: a wall line keeps to the nearest straight run, and a building placed under it stays
+   *  held for the next one until Shift is let go. */
+  setShift(on: boolean): void;
   /** Alt held: the road tool draws a line that cancels the seat's road sites under it. */
   setErase(on: boolean): void;
   /** Let a held wall or road line run over the ground buildings keep for their upgrades, or skirt it
@@ -225,7 +228,11 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   const { ctx, strip } = deps;
 
   let building: BuildingPick | null = null;
-  let straight = false;
+  let shiftHeld = false;
+  /** A building was placed under Shift, so the placement stays held until Shift is let go. */
+  let chained = false;
+  /** Shift was let go while a click waited on the sim; the run ends once that click is decided. */
+  let endChainOnAnswer = false;
   let erase = false;
   /** A wall or road line may take upgrade ground; dropped with the tool. */
   let overUpgradeGround = false;
@@ -285,6 +292,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
 
   const exitPlacement = (): void => {
     building = null;
+    chained = false;
     palisade = null;
     road = null;
     overUpgradeGround = false;
@@ -354,7 +362,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       return;
     }
     const from = roadCancel.anchor() ?? line.anchor();
-    if (!roadCancel.click(from, tile, straight)) ctx.cue('fail');
+    if (!roadCancel.click(from, tile, shiftHeld)) ctx.cue('fail');
     if (from !== null) line.stepBack();
     showRoadStrip();
   };
@@ -410,10 +418,15 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       )
       .finally(() => {
         deciding = false;
+        if (endChainOnAnswer) {
+          endChainOnAnswer = false;
+          endChain();
+        }
       });
   };
 
-  const placeBuilding = ({ typeId, tribe, paper }: BuildingPick, tile: LineNode): void => {
+  /** `repeat` keeps the building held for the next placement. */
+  const placeBuilding = ({ typeId, tribe, paper }: BuildingPick, tile: LineNode, repeat: boolean): void => {
     deps.enqueue({
       kind: 'placeBuilding',
       buildingType: typeId,
@@ -426,7 +439,20 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       ...(paper !== null ? { paper } : {}),
     });
     ctx.cue('confirm');
+    if (repeat) chained = true;
+    else exitPlacement();
+  };
+
+  /** Letting Shift go after a run of placed buildings ends the placement as a cancel would, so the
+   *  construction window comes back for the next pick. */
+  const endChain = (): void => {
+    if (!chained) return;
+    if (deciding) {
+      endChainOnAnswer = true;
+      return;
+    }
     exitPlacement();
+    deps.onCancel?.(null);
   };
 
   /** A laid wall line ends the tool like a placed building, unless Ctrl draws on from where it ends; the
@@ -434,7 +460,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
    *  nothing fails. */
   const clickLine = (line: LineTool, tile: LineNode | null, spec: LineClickSpec): void => {
     const starting = line.anchor() === null;
-    const laid = line.click(tile, { straight, chain: spec.keep });
+    const laid = line.click(tile, { straight: shiftHeld, chain: spec.keep });
     if (!laid && (!starting || line.anchor() === null)) ctx.cue('fail');
     if (laid && !spec.keep && !spec.holds) exitPlacement();
     else spec.showStrip();
@@ -493,8 +519,9 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       showPalisadeStrip();
       return true;
     },
-    setStraight: (on): void => {
-      straight = on;
+    setShift: (on): void => {
+      shiftHeld = on;
+      if (!on) endChain();
     },
     toggleUpgradeGround: (): boolean => {
       if (road === null && (palisade === null || palisade.mode === 'gate')) return false;
@@ -550,26 +577,29 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       if (building === null || tile === null) return true;
       const pick = building;
       const paper = pick.paper ?? undefined;
+      // A plan pays for one house, so its placement ends with it.
+      const repeat = shiftHeld && pick.paper === null;
       if (asks === undefined) {
-        if (deps.canPlaceAt(pick.typeId, pick.tribe, tile.col, tile.row, paper)) placeBuilding(pick, tile);
+        if (deps.canPlaceAt(pick.typeId, pick.tribe, tile.col, tile.row, paper))
+          placeBuilding(pick, tile, repeat);
       } else {
         decideLater(asks.askPlaceAt(pick.typeId, pick.tribe, tile.col, tile.row, paper), (ok) => {
-          if (ok) placeBuilding(pick, tile);
+          if (ok) placeBuilding(pick, tile, repeat);
         });
       }
       return true;
     },
     palisadePreview: (tile): readonly LinePreviewNode[] | null => {
       if (tile === null || palisade === null) return null;
-      return palisade.mode === 'gate' ? gateSpan(tile) : palisade.line.preview(tile, straight);
+      return palisade.mode === 'gate' ? gateSpan(tile) : palisade.line.preview(tile, shiftHeld);
     },
     roadPreview: (tile): RoadPreview | null => {
       if (tile === null || road === null) return null;
       if (!erase)
-        return { nodes: road.preview(tile, straight), cancel: false, anchored: road.anchor() !== null };
+        return { nodes: road.preview(tile, shiftHeld), cancel: false, anchored: road.anchor() !== null };
       const from = roadCancel.anchor() ?? road.anchor();
       return {
-        nodes: roadCancel.preview(from ?? tile, tile, straight),
+        nodes: roadCancel.preview(from ?? tile, tile, shiftHeld),
         cancel: true,
         anchored: from !== null,
       };

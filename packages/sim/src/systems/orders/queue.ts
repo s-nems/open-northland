@@ -21,6 +21,7 @@ import { assertNever } from '../../core/brand.js';
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { orderOpenChest } from './chests.js';
 import { isOrderableSettler } from './guards.js';
 import { attackMoveUnit, moveUnit } from './movement.js';
 import { placeSignpost } from './signposts.js';
@@ -125,6 +126,9 @@ function startQueuedOrder(world: World, ctx: SystemContext, command: QueueableOr
       return;
     case 'placeSignpost':
       placeSignpost(world, ctx, command);
+      return;
+    case 'openChest':
+      orderOpenChest(world, ctx, command);
       return;
     default:
       assertNever(command);

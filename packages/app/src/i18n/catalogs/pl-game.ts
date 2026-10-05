@@ -312,7 +312,7 @@ export const plGame = {
       helpHint: 'Opis w Wiedzy',
       costLine: '{name} ×{amount}',
       costShort: '{name}: masz {have} z {amount}',
-      placeHint: 'wskaż miejsce na mapie',
+      placeHint: 'wskaż miejsce na mapie, z Shift postawisz kilka',
       placeWallHint: 'kliknij, gdzie ma się zacząć palisada',
       placeWallLineHint:
         'lewy przycisk stawia palisadę, z Ctrl/Cmd ciągnie dalej, Shift trzyma prostą, prawy anuluje linię',

@@ -433,6 +433,11 @@ export const plContent = {
       summary:
         'Trzy drewniane skrzynie oddają żywność, trzech cywilów i papier na studnię, magiczna odmawia zwykłemu rzemieślnikowi, a trzymany papier stawia gotową studnię.',
     },
+    'chest-queue': {
+      title: 'Skrzynie po kolei',
+      summary:
+        'Zbieracz otwiera skrzynię, a potem tę dodaną za nią do kolejki. Zaznacz go i kliknij Shift + prawym ostatnie dwie skrzynie, żeby też je dodać.',
+    },
     chain: {
       title: 'Łańcuch produkcji',
       summary: 'Farma, młyn, piekarnia i studnia w jednej pętli: pszenica → mąka → chleb, zasilane wodą.',
