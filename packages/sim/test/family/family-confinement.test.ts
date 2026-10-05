@@ -164,20 +164,18 @@ describe('confinement gates the marry partner pick', () => {
 });
 
 describe('a home beyond signpost reach', () => {
-  it('binds the family, but the settler stands lost; an in-area home clears the mark', () => {
+  it('binds the family and tells the player once, without marking a settler that works meanwhile', () => {
     const sim = confinedSim();
     const settler = adultAt(sim, 2, 2, CIVILIST, false);
     const farHome = homeAt(sim, OUT_OF_AREA, 2);
     sim.enqueueSetup({ kind: 'assignHouse', entity: settler, house: farHome });
     sim.step();
     expect(sim.world.tryGet(settler, Residence)?.home).toBe(farHome);
-    expect(sim.world.get(settler, LostWay).cutOff).toBe(true);
-
-    const nearHome = homeAt(sim, IN_AREA, 2);
-    sim.enqueueSetup({ kind: 'assignHouse', entity: settler, house: nearHome });
-    sim.step();
-    expect(sim.world.tryGet(settler, Residence)?.home).toBe(nearHome);
-    for (let t = 0; t < CUT_OFF_CHECK_TICKS && sim.world.has(settler, LostWay); t++) sim.step();
+    expect(sim.events.current()).toContainEqual({ kind: 'settlerLost', entity: settler });
     expect(sim.world.has(settler, LostWay)).toBe(false);
+    for (let t = 0; t < CUT_OFF_CHECK_TICKS; t++) {
+      sim.step();
+      expect(sim.events.current()).not.toContainEqual({ kind: 'settlerLost', entity: settler });
+    }
   });
 });

@@ -9,6 +9,7 @@ import {
   LostWay,
   MealBreak,
   MISSION_BEHAVIOUR,
+  MoveGoal,
   ownerOf,
   Position,
   Rider,
@@ -321,16 +322,18 @@ function planEconomy(
 ): void {
   const { world, ctx, terrain, entity: e } = plan;
 
-  // Deliver a carried load first: a settler must free its hands before any empty-handed work.
+  // Deliver a carried load first: a settler must free its hands before any empty-handed work. A load with
+  // no sink in reach leaves it standing, which is no work taken.
   if (load !== undefined && load.amount > 0) {
     planDelivery(plan, pass.spacing, load);
-    noteWorkTaken(world, e);
+    if (world.has(e, MoveGoal) || world.has(e, CurrentAtomic)) noteWorkTaken(world, e);
     return;
   }
 
   // A worker posted or flagged beyond its signpost reach takes up no work until the network reaches the
-  // post: nothing but a scout or a fighter walks past its signposts. A load still goes to its bound sink
-  // above, so it is never stranded in hand.
+  // post. Owner ruling: no confined trade (`confinedJob` in the signpost network names the free ones)
+  // walks past its signposts for a player; a computer seat's is led back by `guideLostSettler`. A load
+  // still goes to its bound sink above, so it is never stranded in hand.
   if (strandedPost(world, ctx, terrain, e, plan.limit) !== null) {
     standIdle(plan, pass, settler, hx, hy, alert);
     return;

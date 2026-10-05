@@ -83,8 +83,8 @@ export function claimFlagNode(taken: TakenFlagNodes, spot: HalfCellNode): void {
 /**
  * One search's ground for gatherer flags: the terrain, the walks over the live walk-block overlay, the
  * placement test, and the signpost confinement every flag must lie inside, since the engine snaps a
- * `setWorkFlag` only within that reach and drops one aimed past it (`orders/work/selection.ts`). Null
- * while navigation is unconfined.
+ * computer seat's `setWorkFlag` only within that reach and drops one aimed past it
+ * (`orders/work/selection.ts`). Null while navigation is unconfined.
  */
 export interface FlagGround {
   readonly terrain: TerrainGraph;

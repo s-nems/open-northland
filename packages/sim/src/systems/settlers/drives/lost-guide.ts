@@ -37,18 +37,7 @@ export function guideLostSettler(pass: PlannerPass, e: Entity, limit: Navigation
   const target =
     strandedWorkplaceDoor(world, ctx, terrain, e, limit) ??
     homewardTarget(pass, owner, component, hx, hy, limit);
-  return target !== null && walkPastConfinement(pass, e, here, target);
-}
-
-/**
- * Send `e` walking to a stand beside `target` whatever its signposts say, as a player's order would: a
- * worker posted beyond its reach walks to its post, since the player chose it. Refused, and `e` left
- * standing, when the stand is one its routes already failed on or lies in another route region, so a
- * walk that can only fail is not tried again. Returns whether it set the walk.
- */
-export function walkPastConfinement(pass: PlannerPass, e: Entity, here: NodeId, target: NodeId): boolean {
-  const { world, ctx, terrain } = pass;
-  const stand = nearestFreeCell(terrain, target, pass.spacing);
+  const stand = target === null ? null : nearestFreeCell(terrain, target, pass.spacing);
   if (stand === null || isUnreachableGoal(unreachableGoals(world, ctx, e), stand)) return false;
   if (routeRegions(world, ctx, terrain).unroutable(here, stand)) return false;
   pass.spacing.claim(stand);

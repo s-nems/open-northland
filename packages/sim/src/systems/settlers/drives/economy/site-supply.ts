@@ -39,7 +39,7 @@ export function constructionMaterialResolver(
      *  confinement. A site it holds by order or binding takes its load past the confinement, as the
      *  delivery's bound sink does. */
     confined?: SiteSupplyReach | undefined;
-    /** Cells no source may be lifted at, by its filed cell. */
+    /** Sources no load may be lifted from, by their interaction cell. */
     rejectSource?: ((cell: NodeId) => boolean) | undefined;
   } = {},
 ): {
@@ -162,6 +162,8 @@ type SpotTest = (hx: number, hy: number) => boolean;
 interface SiteLift {
   readonly spots: SpotTest | null;
   readonly anyByGood: Map<number, boolean>;
+  /** The spots widened by a band's filing slack, one per slack asked. */
+  readonly nearBySlack: Map<number, SpotTest | null>;
 }
 
 /**
@@ -173,6 +175,8 @@ interface SiteLift {
  */
 export class SiteSupplyReach {
   private readonly bySeat = new Map<number, Map<number, Map<Entity, SiteLift>>>();
+  /** Each builder's answer to `builderWorkBeyondReach` this pass: its staging and its idle tail both ask. */
+  readonly beyondReachByBuilder = new Map<Entity, NodeId | null>();
 
   constructor(
     private readonly world: World,
@@ -188,32 +192,30 @@ export class SiteSupplyReach {
   }
 
   /** Whether some store of `owner`'s side holding `goodType` may stand at such a spot, and within the
-   *  asking builder's own `reach` when given: false proves that no source serves the site, so the caller
-   *  skips a ring sweep of the builder's whole reach. The site's answer is shared; the builder's own is
-   *  one pass over the filed stores, cheaper than the sweep it spares. */
-  anySource(
-    owner: number,
-    jobType: number,
-    site: Entity,
-    goodType: number,
-    reach: NavigationLimit | null = null,
-  ): boolean {
+   *  asking builder's own `reach`: false proves that no source serves the site, so the caller skips a ring
+   *  sweep of the builder's whole reach. The site's answer is shared; the builder's own is one pass over
+   *  the stores filed under the good, where the sweep visits every cell of the reach. Both tests widen by
+   *  the band's filing slack, since a loose pile is filed up to that far from the cell it is lifted at. */
+  anySource(owner: number, jobType: number, site: Entity, goodType: number, reach: NavigationLimit): boolean {
     const lift = this.lift(owner, jobType, site);
     const band = this.targets.bands.holding(goodType);
-    const near = (): SpotTest | null => this.spotsReaching(owner, jobType, site, band.filedSlack);
+    const slack = band.filedSlack;
+    let near = lift.nearBySlack.get(slack);
+    if (near === undefined) {
+      near = this.spotsReaching(owner, jobType, site, slack);
+      lift.nearBySlack.set(slack, near);
+    }
+    if (near === null) return true;
+    const spots = near;
     const ownSide = sameSideAs(this.world, owner);
     let any = lift.anyByGood.get(goodType);
     if (any === undefined) {
-      const spots = near();
-      any = spots === null || band.anyFiledIn(spots, ownSide);
+      any = band.anyFiledIn(spots, ownSide);
       lift.anyByGood.set(goodType, any);
     }
-    if (!any || reach === null) return any;
-    const spots = near();
-    if (spots === null) return true;
-    const { terrain } = this;
+    if (!any) return false;
     return band.anyFiledIn(
-      (hx, hy) => spots(hx, hy) && terrain.inBounds(hx, hy) && reach.allowsNode(terrain.nodeAt(hx, hy)),
+      (hx, hy) => spots(hx, hy) && (reach.mayAllowNear?.(hx, hy, slack) ?? true),
       ownSide,
     );
   }
@@ -231,7 +233,11 @@ export class SiteSupplyReach {
     }
     let lift = bySite.get(site);
     if (lift === undefined) {
-      lift = { spots: this.spotsReaching(owner, jobType, site, 0), anyByGood: new Map() };
+      lift = {
+        spots: this.spotsReaching(owner, jobType, site, 0),
+        anyByGood: new Map(),
+        nearBySlack: new Map(),
+      };
       bySite.set(site, lift);
     }
     return lift;

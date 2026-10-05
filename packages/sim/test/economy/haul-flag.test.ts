@@ -6,6 +6,7 @@ import {
   DeliveryFlag,
   HaulFlag,
   JobAssignment,
+  LostWay,
   MoveGoal,
   Owner,
   Position,
@@ -14,6 +15,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, ONE, Simulation } from '../../src/index.js';
 import { workStatus } from '../../src/systems/readviews/work-status.js';
+import { CUT_OFF_CHECK_TICKS } from '../../src/systems/settlers/drives/cut-off.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap } from '../fixtures/terrain.js';
@@ -233,5 +235,29 @@ describe('carrier pickup flag', () => {
     const carrier = carrierAt(s, 5, mill);
     plantFlag(s, carrier, 24);
     expect(headingColumn(s, carrier)).toBeGreaterThanOrEqual(20);
+  });
+});
+
+describe('a haul flag beyond signpost reach', () => {
+  /** Past the carrier's walk range on a strip with no post. */
+  const FAR = 38;
+  const IN_REACH = 6;
+
+  it('is planted, the carrier stands lost at once, and a flag back in reach lifts the mark', () => {
+    const s = world();
+    s.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    s.step();
+    const hq = buildingAt(s, HEADQUARTERS, 2, [[PLANK, 4]]);
+    const carrier = carrierAt(s, 3, hq);
+    plantFlag(s, carrier, FAR);
+    expect(s.world.has(carrier, HaulFlag)).toBe(true);
+    expect(s.world.get(carrier, LostWay)).toMatchObject({ cutOff: true });
+    expect(s.events.current()).toContainEqual({ kind: 'settlerLost', entity: carrier });
+    expect(headingColumn(s, carrier)).toBeNull(); // it stands: nothing walks past its signposts
+    expect(s.world.has(carrier, LostWay)).toBe(true);
+
+    plantFlag(s, carrier, IN_REACH);
+    for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS && s.world.has(carrier, LostWay); t++) s.step();
+    expect(s.world.has(carrier, LostWay)).toBe(false);
   });
 });

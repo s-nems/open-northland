@@ -2,7 +2,9 @@ import {
   Building,
   CurrentAtomic,
   HarvestFocus,
+  isAiPlayer,
   JobAssignment,
+  ownerOf,
   PRODUCTION_UNLIMITED,
   ProductionCounters,
   removeCurrentAtomic,
@@ -30,6 +32,7 @@ import { nearestWorkFlagPlacement } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { jobChangesProduction } from '../../readviews/jobs.js';
 import { markIfPostedOutOfReach } from '../../settlers/drives/cut-off.js';
+import { navigationLimitFor } from '../../signposts/index.js';
 import { workplaceStocksGood, workplaceStoredGoods } from '../../stores/index.js';
 import { dropOrderQueue, isOrderableSettler } from '../guards.js';
 
@@ -49,9 +52,11 @@ const WORK_FLAG_SNAP_MAX_RADIUS = 6;
  * its work anchor and sink.
  *
  * The clicked node snaps to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}, so "work this
- * iron mine" lands on the ore itself. The snap ignores the settler's signpost confinement: the flag may
- * land beyond it, and its settler then stands lost, told at once, until the network reaches the flag
- * (owner ruling). The order on any other trade is a no-op rather than a stray flag.
+ * iron mine" lands on the ore itself. A player's flag may land beyond the settler's signpost confinement:
+ * the settler then stands lost, told at once, until the network reaches the flag (owner ruling). A
+ * computer seat's flag still snaps inside that confinement, since its workforce picks spots from the
+ * base's reach and has no player to lead a stranded gatherer back. The order on any other trade is a
+ * no-op rather than a stray flag.
  */
 export function setWorkFlag(
   world: World,
@@ -70,9 +75,15 @@ export function setWorkFlag(
   }
 
   const live = hauls ? liveHaulFlag(world, e) : liveWorkFlag(world, e);
+  const owner = ownerOf(world, e);
+  const limit =
+    owner !== undefined && isAiPlayer(world, owner)
+      ? navigationLimitFor(world, ctx.content, terrain, e)
+      : null;
   // The clicked node is the search's own first candidate, so an unblocked click resolves to itself.
   const target = nearestWorkFlagPlacement(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y), {
     ignoreFlag: live?.flag,
+    ...(limit !== null ? { accept: (node) => limit.allowsNode(node) } : {}),
     withinRadius: WORK_FLAG_SNAP_MAX_RADIUS,
   });
   if (target === null) return; // nothing legal in snapping range - the click was not on workable ground

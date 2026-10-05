@@ -9,6 +9,7 @@ import {
   MoveGoal,
   Owner,
   Position,
+  SettlerNeeds,
   Stockpile,
   WorkFlag,
 } from '../../src/components/index.js';
@@ -48,8 +49,6 @@ const PLANK = 2;
 const FOOD = 3;
 const IN_AREA = 6;
 const OUT_OF_AREA = 40;
-/** Nodes per lattice row of the 192-tile strip. */
-const OUT_OF_AREA_ROW_NODES = 192;
 // Just over the shared the drive threshold needs threshold - enough to trigger the eat/pray drive on the next tick.
 const URGENT: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 
@@ -264,7 +263,7 @@ describe('a work flag beyond signpost reach', () => {
     expect(sim.world.has(u, WorkFlag)).toBe(true);
     expect(sim.world.get(u, LostWay)).toMatchObject({
       cutOff: true,
-      goal: 4 * 2 * OUT_OF_AREA_ROW_NODES + 2 * OUT_OF_AREA,
+      goal: sim.terrain?.nodeAt(2 * OUT_OF_AREA, 4),
     });
     expect(sim.events.current()).toContainEqual({ kind: 'settlerLost', entity: u });
     const start = sim.world.get(u, Position).x;
@@ -277,5 +276,29 @@ describe('a work flag beyond signpost reach', () => {
     for (let t = 0; t < 12 * CUT_OFF_CHECK_TICKS && !felling(); t++) sim.step();
     expect(felling()).toBe(true);
     expect(sim.world.has(u, LostWay)).toBe(false);
+  });
+});
+
+describe('a settler cut off from its work, with food in reach', () => {
+  it('eats when hungry, keeps its mark and is told only once', () => {
+    const sim = confinedSim();
+    const u = ownedSettler(sim, 2, 2, WOODCUTTER);
+    storeAt(sim, IN_AREA, 2, [[FOOD, 5]]);
+    const far = sawmillAt(sim, OUT_OF_AREA, 2);
+    sim.enqueueSetup({ kind: 'assignWorker', entity: u, building: far, jobPriority: [CARPENTER] });
+    sim.step();
+    expect(sim.events.current()).toContainEqual({ kind: 'settlerLost', entity: u });
+    expect(sim.world.get(u, LostWay).cutOff).toBe(true);
+    sim.world.mut(u, SettlerNeeds).hunger = URGENT;
+    let notes = 0;
+    let ate = false;
+    for (let t = 0; t < 4 * CUT_OFF_CHECK_TICKS; t++) {
+      sim.step();
+      ate ||= sim.world.tryGet(u, CurrentAtomic)?.effect.kind === 'eat';
+      for (const ev of sim.events.current()) if (ev.kind === 'settlerLost' && ev.entity === u) notes++;
+    }
+    expect(ate).toBe(true);
+    expect(notes).toBe(0);
+    expect(sim.world.get(u, LostWay).cutOff).toBe(true);
   });
 });

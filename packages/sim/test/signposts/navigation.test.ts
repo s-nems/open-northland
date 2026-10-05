@@ -324,6 +324,19 @@ describe('the cut-off mark', () => {
     expect(sim.world.has(near, LostWay)).toBe(false);
   });
 
+  it('obeys a walk order within reach and keeps the mark, told nothing new', () => {
+    const sim = confinedSim();
+    building(sim, 2, 2);
+    const stranded = ownedUnit(sim, 60, 4, WOODCUTTER);
+    expect(cutOffWithinOneCadence(sim)).toEqual([stranded]);
+    sim.enqueueSetup({ kind: 'moveUnit', entity: stranded, x: 60 + WALK_RANGE_NODES / 2, y: 4 });
+    sim.step();
+    expect(sim.world.has(stranded, MoveGoal)).toBe(true); // obeyed: the goal is in reach
+    expect(cutOff(sim, stranded)).toBe(true); // the seat is no nearer for it
+    expect(cutOffWithinOneCadence(sim)).toEqual([]);
+    expect(cutOff(sim, stranded)).toBe(true);
+  });
+
   it('a door back in reach lifts the mark at the next check, though the worker still stands', () => {
     const sim = confinedSim();
     building(sim, 2, 2);

@@ -1,4 +1,4 @@
-import { LostWay, MoveGoal, Person } from '../../components/index.js';
+import { CurrentAtomic, LostWay, MoveGoal, Person } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -8,7 +8,7 @@ export function announceLostWay(world: World, ctx: SystemContext, e: Entity): vo
   if (world.has(e, Person)) ctx.events.emit({ kind: 'settlerLost', entity: e });
 }
 
-function stamp(world: World, ctx: SystemContext, e: Entity, cutOff: boolean, goal: NodeId | null): void {
+function stamp(world: World, ctx: SystemContext, e: Entity, cutOff: boolean, goal: NodeId): void {
   if (!world.has(e, Person)) return;
   const lost = world.tryGet(e, LostWay);
   if (lost === undefined) {
@@ -17,17 +17,17 @@ function stamp(world: World, ctx: SystemContext, e: Entity, cutOff: boolean, goa
     return;
   }
   if (cutOff && !lost.cutOff) world.mut(e, LostWay).cutOff = true;
-  if (goal !== null && goal !== lost.goal) world.mut(e, LostWay).goal = goal;
+  if (goal !== lost.goal) world.mut(e, LostWay).goal = goal;
 }
 
 /** Stamp `e` lost over the way to `goal` it found none of, and tell the player once per episode. */
-export function markLostWay(world: World, ctx: SystemContext, e: Entity, goal: NodeId | null): void {
+export function markLostWay(world: World, ctx: SystemContext, e: Entity, goal: NodeId): void {
   stamp(world, ctx, e, false, goal);
 }
 
-/** Stamp `e` lost over a post or seat out of reach, `goal` the door or site when one names it; an already
- *  lost settler only gains this kind and the newer goal. */
-export function markCutOff(world: World, ctx: SystemContext, e: Entity, goal: NodeId | null): void {
+/** Stamp `e` lost over a post or seat out of reach, `goal` the door, flag or site; an already lost settler
+ *  only gains this kind and the newer goal. */
+export function markCutOff(world: World, ctx: SystemContext, e: Entity, goal: NodeId): void {
   stamp(world, ctx, e, true, goal);
 }
 
@@ -41,15 +41,16 @@ export function liftLostWalk(world: World, e: Entity): void {
   if (world.tryGet(e, LostWay)?.cutOff === false) world.remove(e, LostWay);
 }
 
-/** A trade rung took `e`: in place, that is the way found; on a walk, the way is found once the route to
- *  `goal` is, so the mark notes the goal and waits for the pathfinding pass. A cut-off mark lifts either
- *  way, the work being what it was cut off from. */
+/** A trade rung took `e`: a clip in place is the way found; on a walk, the way is found once the route to
+ *  `goal` is, so the mark notes the goal and waits for the pathfinding pass; a stand in place, at a site
+ *  short of material, is neither. A cut-off mark lifts on any of them, the work being what it was cut off
+ *  from. */
 export function noteWorkTaken(world: World, e: Entity): void {
   const lost = world.tryGet(e, LostWay);
   if (lost === undefined) return;
   const goal = world.tryGet(e, MoveGoal)?.cell;
-  if (goal === undefined || lost.cutOff) world.remove(e, LostWay);
-  else if (lost.tried !== goal) world.mut(e, LostWay).tried = goal;
+  if (lost.cutOff || (goal === undefined && world.has(e, CurrentAtomic))) world.remove(e, LostWay);
+  else if (goal !== undefined && lost.tried !== goal) world.mut(e, LostWay).tried = goal;
 }
 
 /** The pathfinding pass found `e` a route to `goal`: the way, when it is the work walk the mark waits on. */

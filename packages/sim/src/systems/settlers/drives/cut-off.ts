@@ -18,7 +18,7 @@ import { interactionNodeId } from '../../footprint/interaction.js';
 import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { jobCanBuild } from '../atomics/start.js';
-import { clearLostWay, markCutOff } from '../lost-way.js';
+import { announceLostWay, clearLostWay, markCutOff } from '../lost-way.js';
 
 /** Cadence of the seat-reach check for an idle worker. Approximation: the original raises the lost note
  *  after every five failed walks to work, about this long apart. */
@@ -108,19 +108,24 @@ export function strandedPost(
   return strandedWorkplaceDoor(world, ctx, terrain, e, limit) ?? strandedFlagCell(world, terrain, e, limit);
 }
 
-/** Raise the lost note as soon as a player order posts, flags or houses `e` beyond its reach. Original
- *  behavior: the post binds, the walk there fails and the settler stands lost. The idle tail keeps the
- *  mark for a far workplace or flag until the network reaches it; a far home is only reported, since a
- *  settler visits it between other work. */
+/** Tell the player as soon as an order posts, flags or houses `e` beyond its reach. A far workplace or
+ *  flag marks it cut off, and the idle tail keeps that mark until the network reaches the post; a far home
+ *  is only reported, since a settler visits it between other work. Owner ruling on the timing, before any
+ *  walk is tried; the original is held to bind the post and let the walk fail, unconfirmed against the
+ *  running original. */
 export function markIfPostedOutOfReach(world: World, ctx: SystemContext, e: Entity): void {
   const terrain = ctx.terrain;
   if (terrain === undefined) return;
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
+  const post = strandedPost(world, ctx, terrain, e, limit);
+  if (post !== null) {
+    markCutOff(world, ctx, e, post);
+    return;
+  }
   const home = homeUsedBy(world, ctx, e);
-  const goal =
-    strandedPost(world, ctx, terrain, e, limit) ??
-    (home === undefined ? null : doorOutOfReach(world, ctx, terrain, home, limit));
-  if (goal !== null) markCutOff(world, ctx, e, goal);
+  if (home !== undefined && doorOutOfReach(world, ctx, terrain, home, limit) !== null) {
+    announceLostWay(world, ctx, e);
+  }
 }
 
 function doorOutOfReach(

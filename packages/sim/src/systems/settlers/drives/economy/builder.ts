@@ -56,8 +56,8 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
  * anywhere wait beside a site, unless only its signposts keep it from one. A road or wall run the player
  * started ({@link BuildMode}) goes before all of that. Walls wait while a building site holds a task the
  * builder can do, a damaged wall goes before a new segment, and road sites wait while a building or a wall
- * site holds one. Player pins and unfinished
- * workplace bindings are strict: their builders stay with that site even while another has work.
+ * site holds one. Player pins and unfinished workplace bindings are strict: their builders stay with that
+ * site even while another has work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
  * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the
@@ -296,10 +296,10 @@ export function planBuilder(
  * The stand at the nearest site only its signposts keep a builder from: no site within its confinement
  * gives it a task, but one would if no confinement held it, whether the site itself or every source of its
  * material lies out of reach. Null when no such site waits, or when some site in reach has a task, whoever
- * holds it. Original behavior: the builder plans that walk anyway and stands lost once its guided
- * pathfinder has failed. Approximation: this planner never plans past the confinement, so the cut-off
- * check asks the unconfined pick instead, on its cadence. A source on another landmass is no source: no
- * signpost reaches across water.
+ * holds it. Original behavior, unconfirmed against the running original: the builder plans that walk
+ * anyway and stands lost once its guided pathfinder has failed. Approximation: this planner never plans
+ * past the confinement, so the cut-off check asks the unconfined pick instead, on its cadence, once per
+ * builder and pass. A source on another landmass is no source: no signpost reaches across water.
  */
 export function builderWorkBeyondReach(
   plan: PlannerContext,
@@ -308,6 +308,19 @@ export function builderWorkBeyondReach(
   supply: SiteSupplyReach,
 ): NodeId | null {
   if (plan.limit === null) return null;
+  const memo = supply.beyondReachByBuilder.get(plan.entity);
+  if (memo !== undefined) return memo;
+  const beyond = findWorkBeyondReach(plan, spacing, claims, supply);
+  supply.beyondReachByBuilder.set(plan.entity, beyond);
+  return beyond;
+}
+
+function findWorkBeyondReach(
+  plan: PlannerContext,
+  spacing: PlannerSpacing,
+  claims: ConstructionTaskClaims,
+  supply: SiteSupplyReach,
+): NodeId | null {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const avoidSite = unreachableSiteStand(
     world,

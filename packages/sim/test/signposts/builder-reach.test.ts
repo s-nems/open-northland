@@ -171,7 +171,8 @@ describe('a builder whose signposts reach its work', () => {
     // which runs with no site pick of its own, must not read it as beyond.
     const checkOffBeat = (tick: number): boolean =>
       tick % CUT_OFF_CHECK_TICKS === 0 && !idleReplanDue(tick, builder);
-    while (!checkOffBeat(sim.tick + 1)) sim.step();
+    for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS && !checkOffBeat(sim.tick + 1); t++) sim.step();
+    expect(checkOffBeat(sim.tick + 1)).toBe(true);
     placeSite(sim, ISLAND_SITE_X);
     let notes = lostNotesOver(sim, builder, 1);
     let fetched = false;

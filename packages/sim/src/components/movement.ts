@@ -134,13 +134,13 @@ export const Stranded = defineComponent<{ retryAt: number }>('Stranded', 'moveme
  * to work in place; a meal, an errand or a chat on the way is not the way. `cutOff` says the idle tail
  * found its own workplace, every door of its seat or its only work out of reach; that mark lifts when the
  * tail finds the way back in reach or a trade rung takes the settler. `since` is the tick the episode
- * began; `goal` is the node the latest refused way led to, shown to the player, or null when no single
- * node was out of reach; `tried` is the work walk's goal whose route, once found, lifts the mark.
+ * began; `goal` is the node the latest refused way led to, shown to the player; `tried` is the work
+ * walk's goal whose route, once found, lifts the mark.
  */
 export const LostWay = defineComponent<{
   cutOff: boolean;
   since: number;
-  goal: NodeId | null;
+  goal: NodeId;
   tried: NodeId | null;
 }>('LostWay', 'movement');
 
