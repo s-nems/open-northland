@@ -256,20 +256,3 @@ game has no released saves to carry forward, so a layout change replaces the lay
 the committed fixture (`packages/sim/test/fixtures/save.golden`), which freezes the exact bytes of a
 small populated world as the layout's tripwire; the regeneration workflow lives in
 [`TESTING.md`](TESTING.md).
-## Personal names
-
-The project-owned `personalNames` IR lane supplies complete given names, bound to a tribe and sex
-(or `neutral` for creatures). It is shared by the pipeline and sandbox and participates in the content
-fingerprint. Historical civilizations use selected established names in conventional spellings;
-the pools are thematic, not a reconstruction of one period or spelling system. Creature names are
-fictional. The catalogs contain no surname or family-name rules.
-
-At spawn or birth, `Simulation.names` deals an immutable `NameIdentity` from a seed-shuffled deck.
-All owners share each tribe/sex deck. Names repeat after that deck is exhausted; death does not
-return a name. The deck uses an independent RNG and never advances gameplay randomness. Saved
-cursors and the world seed reproduce the next allocation; the multiplayer settlers digest includes
-the allocator. Changes to catalog contents change the content fingerprint and invalidate old saves.
-
-Presentation resolves map text, a player-given name, a conventional hero name, then `NameIdentity`.
-Proper names have the same spelling across locales. Unknown people get a localized numbered label;
-wildlife retains its existing species presentation. Family relationships do not affect names.
