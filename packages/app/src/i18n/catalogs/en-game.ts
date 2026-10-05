@@ -312,6 +312,7 @@ export const enGame = {
       slowedBy: 'Game slowed to {speed} · {nick} ({cause})',
       slowedBySelf: 'You are slowing the game to {speed}',
       barGoverned: 'Running at {speed} of {requested}, paced for {nick}',
+      barGovernedSelf: 'You slow the game to {speed} (of {requested})',
       barHeld: 'Game held, waiting for: {nicks}',
     },
     dismiss: 'Dismiss',

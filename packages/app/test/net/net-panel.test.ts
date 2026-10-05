@@ -102,6 +102,16 @@ describe('network panel wording', () => {
       title: formatMessage(copy.barGoverned, { speed: '×2,4', requested: '×3', nick: 'Celina' }),
       pressed: null,
     });
+    expect(
+      speedBarLook(
+        clockModel({ runningSpeed: GOVERNED_SPEED, governor: { nick: 'Ania', cause: 'load' } }),
+        players,
+      ),
+    ).toEqual({
+      kind: 'slowed',
+      title: formatMessage(copy.barGovernedSelf, { speed: '×2,4', requested: '×3' }),
+      pressed: null,
+    });
     expect(speedBarLook(clockModel({ held: true }), players)).toEqual({
       kind: 'held',
       title: formatMessage(copy.barHeld, { nicks: 'Bartek' }),

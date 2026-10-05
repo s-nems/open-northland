@@ -308,6 +308,7 @@ export const plGame = {
       slowedBy: 'Gra zwolniła do {speed} · {nick} ({cause})',
       slowedBySelf: 'Spowalniasz grę do {speed}',
       barGoverned: 'Gra działa w tempie {speed} z {requested}, tempo dla: {nick}',
+      barGovernedSelf: 'Spowalniasz grę do {speed} (z {requested})',
       barHeld: 'Gra zatrzymana, czekamy na: {nicks}',
     },
     dismiss: 'Zamknij',

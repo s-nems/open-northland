@@ -13,6 +13,7 @@ import {
   GOVERN_RELEASE_MS,
   LAG_BEHIND_MS,
   MIN_GOVERNED_SPEED,
+  SLOW_AT_ONCE_MS,
   SLOW_GRACE_MS,
 } from '../src/relay/governor.js';
 import {
@@ -51,6 +52,14 @@ const RELEASE_TICKS = framesIn(GOVERN_RELEASE_MS, SETTINGS.speed);
 /** A client whose sim tick costs two ticks of wall time: it sustains half the speed. */
 const SLOW_LOAD: ClientLoad = { tickMs: TICK_MS * 2, buffered: 0 };
 const SLOW_GOVERNED_SPEED = 0.4;
+/** Wall time a silent member stays unheard: past `SILENT_AFTER_MS`, so the clock holds for it. */
+const SILENT_SPELL_MS = 5000;
+/** A requested speed above 1, so frames of lag differ from wall time. */
+const FAST_SPEED = 3;
+/** Wall time both members keep up at `FAST_SPEED` before one falls away. */
+const KEPT_UP_MS = 8000;
+/** A lag past `SLOW_AT_ONCE_MS`, in wall time of frames. */
+const FAR_BEHIND_MS = 6000;
 /** Wall time over which the frame rate is counted. */
 const RATE_WINDOW_MS = 3000;
 const answeredPing = new WeakMap<Peer, number>();
@@ -359,6 +368,41 @@ describe('pacing the clock for a slow member', () => {
     expect(s.a.last('waiting')?.for).toEqual([]);
     s.a.send({ kind: 'kick', player: 1 });
     expect(s.a.last('rejected')?.reason).toEqual({ code: 'notWaitedFor', nick: 'Bartek' });
+  });
+
+  it('keeps a slow member slow through a hold for its silence, with no fresh grace on its answer', () => {
+    const s = startedRoom();
+    trail(s, s.a, s.b, framesIn(LAGGING_MS, SETTINGS.speed), SLOW_AFTER_MS, SLOW_LOAD);
+    const governed = { nick: 'Bartek', speed: SLOW_GOVERNED_SPEED, cause: 'load' };
+    expect(s.a.last('clock')?.governed).toEqual(governed);
+
+    play(s, [s.a], SILENT_SPELL_MS, [s.a]);
+    expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'silent' }]);
+    const held = lastTick(s.a);
+    play(s, [s.a], TICK_MS * 2, [s.a]);
+    expect(lastTick(s.a)).toBe(held);
+    // Still under `SLOW_AT_ONCE_MS` behind, so only the kept verdict can govern it on its answer.
+    expect(held - (ackedTick.get(s.b) ?? 0)).toBeLessThanOrEqual(framesIn(SLOW_AT_ONCE_MS, SETTINGS.speed));
+
+    // Its pong lands after one advance; the next one hears it and lets the clock go on.
+    tick(s, [s.a, s.b], TICK_MS * 2);
+    expect(s.a.last('waiting')?.for).toEqual([]);
+    expect(s.a.last('clock')?.governed).toEqual(governed);
+    tick(s, [s.a, s.b], RATE_WINDOW_MS);
+    expect(lastTick(s.a)).toBeGreaterThan(held);
+    expect(s.a.last('clock')?.governed).toEqual(governed);
+  });
+
+  it('paces at once for a member trailing past the at-once lag, without the grace', () => {
+    const s = startedRoom();
+    s.a.send({ kind: 'clock', speed: FAST_SPEED });
+    play(s, [s.a, s.b], KEPT_UP_MS);
+    s.relay.disconnect(s.b.handle);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    back.send({ kind: 'loaded', tick: lastTick(s.a) - framesIn(FAR_BEHIND_MS, FAST_SPEED), world: 0 });
+    tick(s, [s.a, back], TICK_MS);
+    expect(s.a.last('waiting')?.for).toEqual([]);
+    expect(s.a.last('clock')?.governed).toMatchObject({ nick: 'Bartek', cause: 'lag' });
   });
 
   it('holds the clock for a dropped member even while another is paced for', () => {

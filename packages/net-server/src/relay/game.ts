@@ -248,8 +248,10 @@ export class Game {
     return null;
   }
 
+  /** A world rebuilt from a snapshot starts with no lag on record. */
   private serveSnapshot(member: Member, now: number): Refusal {
     const snapshot = this.resync.snapshot;
+    this.pacing.forget(member.token);
     if (snapshot !== null) {
       this.ledger.forget(member.token);
       this.resync.serve(member, snapshot, now);
@@ -303,12 +305,9 @@ export class Game {
     const waited: Waited[] = [];
     for (const member of this.members.values()) {
       const reason = this.waitReason(member, now);
-      if (reason === null) {
+      if (reason === null)
         this.pacing.observe(member.token, this.clock.tick - member.ackedTick, this.clock.speed, now);
-        continue;
-      }
-      waited.push({ token: member.token, nick: member.nick, reason });
-      this.pacing.forget(member.token);
+      else waited.push({ token: member.token, nick: member.nick, reason });
     }
     if (this.waiting.update(waited, now)) this.broadcast(this.waiting.message(now));
     this.clock.hold(waited.length > 0);
@@ -380,6 +379,7 @@ export class Game {
       member.outOfSync = notice;
       this.end.forget(token);
       this.ledger.forget(token);
+      this.pacing.forget(token);
       this.deliver(member, notice);
       this.resync.queue(member, now);
       diverged.push(member.nick);

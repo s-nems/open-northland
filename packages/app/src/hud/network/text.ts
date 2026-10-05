@@ -81,7 +81,8 @@ export function ownStateText(players: readonly NetPlayerRow[]): string | null {
 }
 
 /** How the speed segments read for a relayed room: held while it waits for a member, naming who;
- *  slowed while it is paced for one, naming the exact speed and the member; else plain. */
+ *  slowed while it is paced for one, naming the exact speed and the member, or addressing this client
+ *  when it is that member; else plain. */
 export function speedBarLook(clock: NetClockModel, players: readonly NetPlayerRow[]): SpeedBarLook | null {
   const copy = messages().hud.network;
   if (clock.held) {
@@ -93,13 +94,11 @@ export function speedBarLook(clock: NetClockModel, players: readonly NetPlayerRo
   }
   const governor = clock.governor;
   if (governor === null) return null;
-  return {
-    kind: 'slowed',
-    title: formatMessage(copy.barGoverned, {
-      speed: formatRoomSpeed(clock.runningSpeed),
-      requested: formatRoomSpeed(clock.requestedSpeed),
-      nick: governor.nick,
-    }),
-    pressed: null,
-  };
+  const speed = formatRoomSpeed(clock.runningSpeed);
+  const requested = formatRoomSpeed(clock.requestedSpeed);
+  const title =
+    governor.nick === selfNick(players)
+      ? formatMessage(copy.barGovernedSelf, { speed, requested })
+      : formatMessage(copy.barGoverned, { speed, requested, nick: governor.nick });
+  return { kind: 'slowed', title, pressed: null };
 }

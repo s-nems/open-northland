@@ -6,6 +6,9 @@ import type { Member } from './member.js';
 export const LAG_BEHIND_MS = 1000;
 /** Wall time a client stays lagging, continuously, before it is slow and the clock is paced for it. */
 export const SLOW_GRACE_MS = 4000;
+/** A client trailing by more than this many milliseconds of frames is slow without the grace: a lag a
+ *  grace's worth past the threshold is no blip. */
+export const SLOW_AT_ONCE_MS = LAG_BEHIND_MS + SLOW_GRACE_MS;
 /** A slow client is released once it trails by no more than this; lower than `LAG_BEHIND_MS` so a
  *  client near the threshold does not flip every advance. */
 export const GOVERN_RELEASE_MS = 500;

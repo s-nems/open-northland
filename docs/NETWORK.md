@@ -273,8 +273,12 @@ A member the relay follows (connected, heard, loaded and in sync) is lagging whi
 tick trails the clock by more than `LAG_BEHIND_MS` (1 s) of frames at the requested speed, 12 ticks
 at speed 1 and 12 times the speed otherwise. A lagging member catches up alone and the room notices
 nothing. Once it has lagged for `SLOW_GRACE_MS` (4 s) of wall time in a row it is slow, and stays slow
-until it trails by no more than `GOVERN_RELEASE_MS` (0.5 s) of frames. A member the clock holds for
-is neither.
+until it trails by no more than `GOVERN_RELEASE_MS` (0.5 s) of frames. A member trailing by more than
+`SLOW_AT_ONCE_MS` (`LAG_BEHIND_MS + SLOW_GRACE_MS`, 5 s) of frames is slow at once, without the grace.
+A member the clock holds for is not judged while held, since the held clock adds no lag, and keeps
+its verdict and lag onset through the hold: a slow member that goes silent is slow again on its
+return. Only leaving the room, or a world rebuilt from a snapshot after a resync or a return without
+one, clears them.
 
 A slow member is never waited for, gets no countdown and cannot be voted out. While any member is
 slow the relay governs the clock, whatever the requested speed. Each slow member's bound is the lower
@@ -467,7 +471,7 @@ every return of its token, before `start` and `clock`.
 | `MAX_COMMANDS_PER_TICK` per member | 20 |
 | `MAX_SPEED` | 8 |
 | `LAG_BEHIND_MS` / `GOVERN_RELEASE_MS` | 1 s / 0.5 s of frames |
-| `SLOW_GRACE_MS` | 4 s |
+| `SLOW_GRACE_MS` / `SLOW_AT_ONCE_MS` | 4 s / 5 s of frames |
 | `GOVERNOR_HEADROOM` / `CATCH_UP_SHARE` / `MIN_GOVERNED_SPEED` | 0.8 / 0.8 / 0.25 |
 | `GOVERNED_SPEED_STEP` / `GOVERNED_RISE_STEPS` | 0.05 / 2 steps |
 | `MAX_REPORTED_TICK_MS` / `MAX_REPORTED_BUFFERED` in `load` | 60 s / an hour of ticks at `MAX_SPEED` |
