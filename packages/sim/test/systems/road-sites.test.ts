@@ -27,7 +27,6 @@ import {
   playerCommand,
   positionOfNode,
   restoreSimulation,
-  type ScriptLandscapeType,
   type Simulation,
 } from '../../src/index.js';
 import { createBerryBush } from '../../src/systems/economy/berries.js';
