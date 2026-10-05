@@ -6,7 +6,7 @@ import type { MinimapHandle } from '../../hud/minimap/index.js';
 import { minimapPanelWidth } from '../../hud/minimap/model.js';
 import { NAV_BEAM_H } from '../../hud/nav-beam.js';
 import { GOAL_SLIP, TOP_BAR_HEIGHT } from '../../hud/regions.js';
-import { uiScaleFor } from '../../hud/ui-scale.js';
+import { displayViewOf, uiScaleFor } from '../../hud/ui-scale.js';
 import { defaultLocale, localeParam } from '../../i18n/index.js';
 import type { AdminPalettePosition } from '../admin-debug/chrome.js';
 import type { CameraController } from '../camera/index.js';
@@ -72,7 +72,11 @@ export interface LiveGameSettings {
 /** Connect persisted live settings to the mounted HUD, audio driver, and Pixi viewport. */
 export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSettings {
   const initialUiScale =
-    deps.pinnedUiScale ?? uiScaleFor(deps.initialViewport.height, deps.stored.uiScaleFactor);
+    deps.pinnedUiScale ??
+    uiScaleFor(
+      displayViewOf(deps.initialViewport.width, deps.initialViewport.height),
+      deps.stored.uiScaleFactor,
+    );
   const hudScale = createGameHudScaleCoordinator({
     initialScale: initialUiScale,
     targets: [deps.toolPanel, deps.minimap, deps.controls, deps.hudDom],
@@ -86,6 +90,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
   const viewport = createGameViewportCoordinator({
     initialWidth: deps.initialViewport.width,
     initialHeight: deps.initialViewport.height,
+    initialDisplayHeight: window.screen.height,
     initialUiScaleFactor: deps.stored.uiScaleFactor,
     pinnedUiScale: deps.pinnedUiScale,
     camera: deps.camera.camera,
@@ -108,7 +113,8 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
       language: localeParam(deps.params),
     },
     pinnedUiScale: deps.pinnedUiScale,
-    effectiveUiScaleFor: (factor) => deps.pinnedUiScale ?? uiScaleFor(deps.screen.height, factor),
+    effectiveUiScaleFor: (factor) =>
+      deps.pinnedUiScale ?? uiScaleFor(displayViewOf(deps.screen.width, deps.screen.height), factor),
     persist: (patch) => {
       patchStoredSettings(patch);
     },
@@ -132,7 +138,8 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
 
   return {
     settings,
-    syncViewport: (nowMs) => viewport.sync(deps.screen.width, deps.screen.height, nowMs),
+    syncViewport: (nowMs) =>
+      viewport.sync(deps.screen.width, deps.screen.height, window.screen.height, nowMs),
     dispose: hudScale.dispose,
   };
 }

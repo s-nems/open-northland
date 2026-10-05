@@ -171,8 +171,9 @@ the language follows the browser, and English stands in for a
 browser language with no shipped catalog. The graphics settings (render scale, frame-rate limit,
 post-processing) live in the stored settings and never enter the URL; `postfx=<on|off>` overrides
 the stored post-fx choice for that entry, so captures stay reproducible whatever the machine's
-settings. The HUD scales from the canvas height sampled at game start (capped at 1.25x) times the
-stored interface-scale setting; `uiscale=<n>` pins an absolute scale for reproducible diagnostics and is
+settings. The HUD scales with the display's height (1.25x on a 1080-line display, never under 1x on a
+smaller one, lowered to fit a small window) times the stored interface-scale setting, and a map opens at the matching world zoom unless
+`zoom=<n>` pins it; `uiscale=<n>` pins an absolute scale for reproducible diagnostics and is
 not carried across menu/game switches. The menu's settings screen covers the player-facing options,
 so direct query parameters are mainly for reproducible diagnostics.
 

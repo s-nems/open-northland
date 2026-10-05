@@ -266,7 +266,7 @@ describe('createGameSettingsRuntime', () => {
   });
 
   it('rolls a failed settings-to-viewport-to-HUD update back at every layer', async () => {
-    const initialScale = uiScaleFor(600);
+    const initialScale = uiScaleFor({ displayHeight: 600, viewportWidth: 800, viewportHeight: 600 });
     const target = {
       setUiScale: vi.fn(async (scale: number) => {
         if (scale !== initialScale) throw new Error('mount failed');
@@ -282,6 +282,7 @@ describe('createGameSettingsRuntime', () => {
     const viewport = createGameViewportCoordinator({
       initialWidth: 800,
       initialHeight: 600,
+      initialDisplayHeight: 600,
       initialUiScaleFactor: 1,
       pinnedUiScale: null,
       camera: () => ({ offsetX: 0, offsetY: 0 }),

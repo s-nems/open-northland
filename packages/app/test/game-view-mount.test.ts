@@ -20,7 +20,7 @@ afterEach(() => {
 it.each([false, true])(
   'releases a failed mount before another attempt (cleanup throws: %s)',
   async (cleanupThrows) => {
-    vi.stubGlobal('window', { location: { search: '' } });
+    vi.stubGlobal('window', { location: { search: '' }, screen: { height: 1080 } });
     const live = new Set<string>();
     const acquire = (name: string) => {
       expect(live.has(name)).toBe(false);

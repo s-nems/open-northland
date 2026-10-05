@@ -3,7 +3,8 @@ import { uiScaleFor } from '../../hud/ui-scale.js';
 import { cameraForViewportResize } from '../camera/index.js';
 
 export interface GameViewportCoordinator {
-  sync(width: number, height: number, nowMs: number): void;
+  /** `displayHeight` is the CSS px height of the monitor the page is on. */
+  sync(width: number, height: number, displayHeight: number, nowMs: number): void;
   setUiScaleFactor(factor: number): Promise<boolean>;
   uiScaleFactor(): number;
   effectiveUiScale(): number;
@@ -15,8 +16,9 @@ const MAX_AUTOMATIC_SCALE_RETRIES = 3;
 export interface GameViewportCoordinatorOptions {
   readonly initialWidth: number;
   readonly initialHeight: number;
+  readonly initialDisplayHeight: number;
   readonly initialUiScaleFactor: number;
-  /** A positive diagnostic override is absolute; `null` keeps viewport-responsive scaling. */
+  /** A positive diagnostic override is absolute; `null` keeps the scale following display and viewport. */
   readonly pinnedUiScale: number | null;
   readonly camera: () => Camera;
   readonly setCamera: (camera: Camera) => void;
@@ -29,6 +31,7 @@ export function createGameViewportCoordinator(
 ): GameViewportCoordinator {
   let width = options.initialWidth;
   let height = options.initialHeight;
+  let displayHeight = options.initialDisplayHeight;
   let factor = options.initialUiScaleFactor;
   const pinnedUiScale = options.pinnedUiScale;
   const responsive = pinnedUiScale === null;
@@ -39,7 +42,10 @@ export function createGameViewportCoordinator(
   let automaticRetryCount = 0;
   let lastNowMs = 0;
 
-  const effectiveUiScale = (): number => (responsive ? uiScaleFor(height, factor) : pinnedUiScale);
+  const effectiveUiScale = (): number =>
+    responsive
+      ? uiScaleFor({ displayHeight, viewportWidth: width, viewportHeight: height }, factor)
+      : pinnedUiScale;
   const requestUiScale = async (scale: number): Promise<boolean> => {
     activeScaleRequests++;
     try {
@@ -56,14 +62,18 @@ export function createGameViewportCoordinator(
   };
 
   return {
-    sync: (nextWidth, nextHeight, nowMs) => {
+    sync: (nextWidth, nextHeight, nextDisplayHeight, nowMs) => {
       lastNowMs = nowMs;
-      if (nextWidth !== width || nextHeight !== height) {
+      const resized = nextWidth !== width || nextHeight !== height;
+      if (resized || nextDisplayHeight !== displayHeight) {
         automaticRequestEpoch++;
         automaticRetryCount = 0;
-        options.setCamera(cameraForViewportResize(options.camera(), width, height, nextWidth, nextHeight));
+        if (resized) {
+          options.setCamera(cameraForViewportResize(options.camera(), width, height, nextWidth, nextHeight));
+        }
         width = nextWidth;
         height = nextHeight;
+        displayHeight = nextDisplayHeight;
         if (responsive) {
           pendingScale = effectiveUiScale();
           resizeSettlesAtMs = nowMs + HUD_RESIZE_SETTLE_MS;

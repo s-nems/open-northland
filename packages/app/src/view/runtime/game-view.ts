@@ -61,7 +61,7 @@ import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { type MetSeat, NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
 import { MEAD_GOOD_ID, residentRows } from '../../hud/tool-panel/residents/projection.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
-import { uiScaleFor } from '../../hud/ui-scale.js';
+import { displayViewOf, uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
 import { presentationPack } from '../../presentation/pack.js';
 import type { OffThreadTickCost, SessionHost } from '../../session/index.js';
@@ -339,7 +339,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; only a positive value pins.
     const uiScaleParam = floatParam(params, 'uiscale', 0);
     const pinnedUiScale = uiScaleParam > 0 ? uiScaleParam : null;
-    const uiscale = pinnedUiScale ?? uiScaleFor(deps.initialViewport.height, storedSettings.uiScaleFactor);
+    const uiscale =
+      pinnedUiScale ??
+      uiScaleFor(
+        displayViewOf(deps.initialViewport.width, deps.initialViewport.height),
+        storedSettings.uiScaleFactor,
+      );
 
     const lang = currentLocale();
     const pack = presentationPack(params);

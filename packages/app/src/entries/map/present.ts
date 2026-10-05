@@ -20,6 +20,7 @@ import { briefingMatchObjectives, briefingPage, mapBriefFallback } from '../../g
 import { observerSeats } from '../../game/observer-seats.js';
 import { harvestablePlacementOrdinals } from '../../game/sandbox/index.js';
 import { sessionSearch } from '../../game/session-url.js';
+import { displayViewOf, startWorldZoomFor } from '../../hud/ui-scale.js';
 import { currentLocale, messages } from '../../i18n/index.js';
 import { ambientWeatherFor } from '../../view/ambient-weather.js';
 import { cameraCenteredOnTile, createCameraController } from '../../view/camera/index.js';
@@ -130,7 +131,10 @@ export async function presentMapWorld(
   const related = { ir, content: { content: host.content }, params };
   const focus = mapStartFocus(host.snapshot(), terrainGrid.width, terrainGrid.height, localPlayer);
   const initialViewport = { width: app.screen.width, height: app.screen.height };
-  const zoom = mapZoomParam(params);
+  const zoom = mapZoomParam(
+    params,
+    startWorldZoomFor(displayViewOf(initialViewport.width, initialViewport.height)),
+  );
   const initialCamera =
     centerTile(params.get('center'), initialViewport.width, initialViewport.height, zoom) ??
     cameraCenteredOnTile(focus.x, focus.y, zoom, initialViewport.width, initialViewport.height);

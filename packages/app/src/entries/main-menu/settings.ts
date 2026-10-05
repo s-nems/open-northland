@@ -1,4 +1,4 @@
-import { uiScaleFor } from '../../hud/ui-scale.js';
+import { displayViewOf, uiScaleFor } from '../../hud/ui-scale.js';
 import { messages } from '../../i18n/index.js';
 import { createSettingsPage, type SettingsMemory, type SettingsPageStore } from '../../view/settings-page.js';
 import type { MenuScreen, MountedScreen } from './model.js';
@@ -22,7 +22,7 @@ export function settingsScreen(
       return true;
     },
     pinnedUiScale: null,
-    effectiveUiScaleFor: (factor) => uiScaleFor(window.innerHeight, factor),
+    effectiveUiScaleFor: (factor) => uiScaleFor(displayViewOf(window.innerWidth, window.innerHeight), factor),
   };
   const head = screenHead('settings', open);
   const relabel = (): void => {
