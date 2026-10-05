@@ -50,6 +50,9 @@ export interface ResolvedLayer {
    * head overlay, where it drops the rows that project onto ground the body's own cast already covers.
    */
   readonly castRows?: number;
+  /** A character's authored `_s` foot blob, drawn only while the shadow enhancement is off: with it on,
+   *  the {@link cast} is that character's shadow. */
+  readonly castReplaced?: true;
   /** The layer's part in setting its body frame's foot into the ground. A shade is also a {@link shadow};
    *  a shade and a cover are also {@link boundsExempt}. Each draws as the original where the ground is
    *  unknown or the art stands on no ground line. */

@@ -108,17 +108,19 @@ describe('SpritePool - a plain character shadow draws under the body without mov
     expect(bounds.maxY - bounds.minY).toBe(32);
   });
 
-  it('adds the projected cast under both, out of the pixel picker and off the box', () => {
+  it('swaps the blob for the projected cast, out of the pixel picker and off the box', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), shadowed);
 
     pool.reconcile(poolFrame(snapshotOf([entity(1, 0, 0, { Settler: { tribe: 0 } })]), DEFAULT_SHADOW_STYLE));
 
     const container = layer.children[0] as Container;
-    expect(container.children.filter((c) => c.visible).length).toBe(3);
+    const visible = container.children.filter((c) => c.visible);
+    expect(visible.length).toBe(2); // the cast and the body: one shadow per character
+    expect(visible.some((c) => c instanceof Sprite && c.texture.frame.width === SHADOW_WIDTH)).toBe(false);
     const bounds = pool.boundsOf(1);
     if (bounds === undefined) throw new Error('a drawn settler must stamp bounds');
-    expect(bounds.maxX - bounds.minX).toBe(16); // still the body rect: both silhouettes are exempt
+    expect(bounds.maxX - bounds.minX).toBe(16); // still the body rect: the cast is exempt
     expect(bounds.maxY - bounds.minY).toBe(32);
   });
 });
@@ -132,6 +134,7 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
     scale: 1,
     boundsExempt: true,
     shadow: true,
+    castReplaced: true,
   };
   const bodySource = new TextureSource({ width: 64, height: 64 });
   /** The projected twin of the drawn body frame, which the character resolver puts under the blob. */
@@ -191,7 +194,7 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
     expect(pe.placeholder?.visible).toBe(true);
   });
 
-  it('draws the cast under the blob, both ahead of the body quads, only with a style to project by', () => {
+  it('draws the blob without a style and the cast in its place with one, ahead of the body quads', () => {
     const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
     const pe = paletted();
     const layers = [castLayer, shadowLayer];
@@ -201,8 +204,8 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
     expect(pe.shadows[0]?.texture.source).toBe(shadowSource);
 
     binder.bind(pe, item, layers, { ...bindFrame, shadowStyle: DEFAULT_SHADOW_STYLE }, 2);
-    expect(pe.shadows.map((s) => s.texture.source)).toEqual([bodySource, shadowSource]);
-    expect(pe.container.children.slice(0, 2)).toEqual([pe.shadows[0], pe.shadows[1]]);
+    expect(pe.shadows.filter((s) => s.visible).map((s) => s.texture.source)).toEqual([bodySource]);
+    expect(pe.container.children[0]).toBe(pe.shadows[0]);
   });
 
   /** The head overlay's cast, cropped to the rows above `castLayer`'s own top row, as the character

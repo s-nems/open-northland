@@ -12,6 +12,7 @@ import type { LayerBuffer, ResolvedLayer } from './resolved-layer.js';
 const castRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 const headCastRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 const headRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
+const blobRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 const glowRecords = new WeakMap<ResolvedLayer, readonly ResolvedLayer[]>();
 
 /**
@@ -74,6 +75,15 @@ function castLayerFor(of: ResolvedLayer, rows?: number): ResolvedLayer {
   return record;
 }
 
+function blobLayerFor(of: ResolvedLayer): ResolvedLayer {
+  let record = blobRecords.get(of);
+  if (record === undefined) {
+    record = { ...of, castReplaced: true };
+    blobRecords.set(of, record);
+  }
+  return record;
+}
+
 function headLayerFor(of: ResolvedLayer): ResolvedLayer {
   let record = headRecords.get(of);
   if (record === undefined) {
@@ -131,7 +141,7 @@ export function pushCharacterLayers(
 }
 
 /**
- * Append `char`'s cast silhouettes, authored shadow, glow, body and head for `binding`'s frame at
+ * Append `char`'s cast silhouettes, authored foot blob (one or the other draws), glow, body and head for `binding`'s frame at
  * `item`'s state and facing; the head reads `headBinding` when the head moves apart from the body,
  * else the body's bob. False appends nothing and means the placeholder.
  */
@@ -161,7 +171,7 @@ export function pushComposedCharacterLayers(
       if (rows > 0) out.push(castLayerFor(head, rows));
     }
     const shadow = shadowLayerFor(char.body, bob, scale);
-    if (shadow !== null) out.push(shadow);
+    if (shadow !== null) out.push(blobLayerFor(shadow));
   }
   if (char.glow === 'always' || (item.glow === true && char.glow !== 'never')) {
     if (body !== null) pushGlow(out, body);

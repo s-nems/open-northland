@@ -175,6 +175,7 @@ export class LayerBinder {
       if (layer === undefined) continue;
       // A cast layer holds unprojected body art, so it draws only with a style to project it by.
       if (layer.cast === true && shadowStyle === undefined) continue;
+      if (layer.castReplaced === true && shadowStyle !== undefined) continue;
       // A glow reads its colour from a player LUT row, which only a paletted look has.
       if (layer.glow !== undefined && !pe.paletted) continue;
       // Per-pixel reveal: a pixel appears once the eased progress, mapped into the stage's own

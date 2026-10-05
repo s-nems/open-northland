@@ -316,6 +316,11 @@ describe('resolveLayers - a human character casts its body twin silhouette', () 
     ]);
   });
 
+  it('marks the silhouette as the one the cast replaces', () => {
+    const layers = resolveLayers(sheetAt(WALK_BOB), settler, 0) ?? [];
+    expect(layers.map((l) => l.castReplaced ?? false)).toEqual([false, true, false]);
+  });
+
   it('shadows a cart-pulling gait from the same twin (the vehicle bobs of the body set)', () => {
     expect(readLayers(CART_BOB)).toEqual([
       [CART_BOB, false, true, true, true],
