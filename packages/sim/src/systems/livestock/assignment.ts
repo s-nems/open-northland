@@ -13,7 +13,6 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { seatBaseOf } from '../ai-player/base.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { interactionNodeId } from '../footprint/interaction.js';
@@ -22,6 +21,7 @@ import { stayPointRangeOf } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { farmStands } from './herd.js';
+import { nearestYardDoor, type StrayYard, strayYardOf } from './stray-yard.js';
 
 /** Re-anchoring cadence (ticks): a slow sweep, so claims, adoptions, new farms, and demolitions converge
  *  within a period. Approximated; the original's herding cadence is not readable. */
@@ -58,7 +58,7 @@ export const LIVESTOCK_GRAZE_RANGE_NODES = 7;
  *  in the original, read here on the node lattice like every other animal radius. */
 export const FARM_HERD_LEASH_NODES = 15;
 
-/** How far a claimed animal no farm holds may drift from its spot by the headquarters. Overrides the
+/** How far a claimed animal no farm holds may drift from its spot by a settlement building. Overrides the
  *  species' wider wild-territory radius, which reads as straying next to the base. */
 export const LIVESTOCK_GRAZE_LEASH_NODES = 3;
 
@@ -89,7 +89,8 @@ export function territoryRangeOf(world: World, ctx: SystemContext, e: Entity): n
  * to a spot beside that door; inside the leash the grazing drive takes over.
  *
  * Source basis: a house-attached animal keeps to its work house's door in the original; the
- * headquarters fallback and the ring of home spots are observed original behaviour. Determinism:
+ * headquarters fallback and the ring of home spots are observed original behaviour. Without headquarters,
+ * choosing the nearest owned storage, then any finished owned building, is an authored fallback. Determinism:
  * canonical member order, with disjoint per-door groups. No-ops in a mapless sim.
  */
 export const livestockAssignmentSystem: System = (world, ctx) => {
@@ -113,8 +114,15 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
     }
     strays.push(e);
   }
+  const yards = new Map<number, StrayYard | null>();
   for (const e of strays) {
-    const door = baseDoorOf(world, ctx, terrain, world.get(e, Owner).player);
+    const player = world.get(e, Owner).player;
+    let yard = yards.get(player);
+    if (yard === undefined) {
+      yard = strayYardOf(world, ctx, terrain, player);
+      yards.set(player, yard);
+    }
+    const door = yard === null ? null : nearestYardDoor(world, terrain, yard, e);
     if (door !== null) push(byDoor, door, e);
   }
   if (byDoor.size === 0) return;
@@ -162,10 +170,4 @@ function grazeAnchor(terrain: TerrainGraph, blocked: BlockOverlay, door: NodeId,
     return node;
   }
   return door;
-}
-
-/** The door of `player`'s base, the yard a claimed animal no farm holds keeps to. */
-function baseDoorOf(world: World, ctx: SystemContext, terrain: TerrainGraph, player: number): NodeId | null {
-  const base = seatBaseOf(world, ctx, player);
-  return base === null ? null : interactionNodeId(world, ctx, terrain, base);
 }

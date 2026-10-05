@@ -543,6 +543,11 @@ export const plContent = {
       summary:
         'Myśliwy przypisany do chorągiewki poluje na zające w jej pobliżu - strzały potrafią chybić, trafienie płoszy stado w obrębie jego terenu, a każde truchło obiera i znosi do obozu w całości zanim ruszy po następne; po owcach, trzymanych do hodowli, sięga tylko w ostateczności.',
     },
+    'livestock-yard': {
+      title: 'Stado bez siedziby',
+      summary:
+        'Owce i woły na północy idą do bliższego magazynu. Południowe stado nie ma magazynu i zbiera się przy bliższym domu.',
+    },
     livestock: {
       title: 'Hodowla zwierząt',
       summary:

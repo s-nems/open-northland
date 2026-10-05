@@ -545,6 +545,11 @@ export const enContent = {
       summary:
         'A flag-bound hunter stalks the hares near its flag - shots can miss, every hit scatters the herd within its range, each kill is picked clean and carried home before the next, and sheep kept for husbandry fall only as a last resort.',
     },
+    'livestock-yard': {
+      title: 'Livestock without headquarters',
+      summary:
+        'Sheep and cattle gather at the nearer warehouse in the north. The southern herd has no storage and gathers beside the nearer home.',
+    },
     livestock: {
       title: 'Animal husbandry',
       summary:

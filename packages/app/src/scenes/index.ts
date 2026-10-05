@@ -38,6 +38,7 @@ import { huntingScene } from './hunting.js';
 import { idleWorkScene } from './idle-work.js';
 import { learningFoundationsScene } from './learning-foundations.js';
 import { livestockScene } from './livestock.js';
+import { livestockYardScene } from './livestock-yard.js';
 import { meleeFrontScene } from './melee-front.js';
 import { movementContinuityScene } from './movement-continuity.js';
 import { netPanelScene } from './net-panel.js';
@@ -135,6 +136,7 @@ export const SCENES: readonly SceneDefinition[] = [
   storeReachScene,
   farPostScene,
   livestockScene,
+  livestockYardScene,
   palisadeScene,
   roadsScene,
   roadUpgradeScene,
