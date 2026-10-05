@@ -593,6 +593,31 @@ describe('the training queue', () => {
     );
   });
 
+  it('arms a recruit sent to the pile another recruit already stands on', () => {
+    // Fighters cannot share a node outside a town, so routing stands the second recruit in beside the pile
+    // the armed first one keeps standing on; it must still lift its blade from there.
+    const sim = trainSim();
+    const first = settlerAt(sim, SOLDIER, 3, 3);
+    for (let i = 1; i < ASSISTANT_SCAN_PERIOD_TICKS; i++) sim.world.create();
+    const second = settlerAt(sim, SOLDIER, 3, 4);
+    for (const e of [first, second])
+      sim.world.add(e, AssistantRecruit, { intent: 'trainSword', armed: false });
+    pileAt(
+      sim,
+      9,
+      3,
+      new Map([
+        [SWORD_LONG_GOOD, 1],
+        [SWORD_SHORT_GOOD, 1],
+      ]),
+    );
+
+    runUntil(sim, () => sim.world.get(first, Settler).jobType === SWORDSMAN_LONG, 1500, 'first armed');
+    runUntil(sim, () => sim.world.get(second, Settler).jobType === SWORDSMAN_SHORT, 1500, 'second armed');
+    runUntil(sim, () => !sim.world.has(second, EquipOrder), 200, 'second errand ended');
+    expect(sim.world.has(second, PickupClaim)).toBe(false);
+  });
+
   it('trains without arming ("naked") on the plain soldier counter even with weapons in store', () => {
     const sim = trainSim();
     barracksAt(sim, 6, 3);

@@ -114,6 +114,14 @@ export const PathRequest = defineComponent<{
 }>('PathRequest', 'movement');
 
 /**
+ * Routing stood a collider in at `at` beside its `goal`, a node a standing unit it cannot share occupies.
+ * A drive whose stance cell is that goal acts from `at` instead of re-aiming at the occupied node every
+ * tick. Set with the stand-in route, cleared by the drive that acts on it, by a route delivered without
+ * a stand-in, and with the rest of the nav state.
+ */
+export const StandIn = defineComponent<{ goal: NodeId; at: NodeId }>('StandIn', 'movement');
+
+/**
  * A stranded walker's retry pacing: its route failed and no drive with its own failure protocol owns it, so
  * the planner parks the dead nav state until tick `retryAt`, then sheds it and re-plans. Cleared with the
  * rest of the nav state, so an authoritative cancel restarts the walk at once.

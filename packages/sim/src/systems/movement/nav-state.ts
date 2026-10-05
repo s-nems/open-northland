@@ -4,6 +4,7 @@ import {
   PathRequest,
   PathRoute,
   Position,
+  StandIn,
   Stranded,
   settleWalkWear,
   WalkFacing,
@@ -25,6 +26,7 @@ export function clearNavState(world: World, e: Entity): void {
   world.remove(e, PathRequest);
   dropPath(world, e);
   world.remove(e, Stranded);
+  world.remove(e, StandIn);
 }
 
 /** Drop the path `e` walks, its {@link PathFollow} progress and {@link PathRoute} stops together, the

@@ -8,6 +8,7 @@ import {
   MoveGoal,
   Settler,
   type SettlerIdentity,
+  StandIn,
 } from '../../../components/index.js';
 import type { AtomicEffect } from '../../../core/atomic-effect.js';
 import { contentIndex, jobAllowsAtomic } from '../../../core/content-index.js';
@@ -151,9 +152,16 @@ export function startAtomic(
   });
 }
 
+/** Run `start` on `cell`, or walk there. A walker routing stood in beside an occupied `cell` acts from where
+ *  it stands, since the node will not free up for it. */
 export function atOrWalk(world: World, e: Entity, here: NodeId, cell: NodeId, start: () => void): void {
-  if (cell === here) start();
-  else world.add(e, MoveGoal, { cell });
+  const stood = world.tryGet(e, StandIn);
+  if (cell === here || (stood !== undefined && stood.goal === cell && stood.at === here)) {
+    world.remove(e, StandIn);
+    start();
+  } else {
+    world.add(e, MoveGoal, { cell });
+  }
 }
 
 /** The action lifting goods off `store`'s shelf: the house's own `collectAtomic` (the well pump, the hive

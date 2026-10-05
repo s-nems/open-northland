@@ -10,6 +10,7 @@ import {
   PlayerOrder,
   Position,
   pathLegTicks,
+  StandIn,
   Stranded,
   WalkFacing,
   type Waypoint,
@@ -149,12 +150,17 @@ export function drainPathRequests(
         : resolvePath(terrain, start, goal, blocked, spent);
       if (path !== null && group) groupRoutes.offer(blocked, path);
     }
-    if (path !== null && standIn) {
-      claimedStandIns.add(goal);
-      // Keep the intent in step with the delivered route, or the planner would re-route back at the
-      // occupied original every tick.
-      const goalIntent = world.tryMut(e, MoveGoal);
-      if (goalIntent !== undefined) goalIntent.cell = goal;
+    if (path !== null) {
+      if (standIn) {
+        claimedStandIns.add(goal);
+        // Keep the intent in step with the delivered route, or the planner would re-route back at the
+        // occupied original every tick; the drive learns where it was stood in from the marker.
+        const goalIntent = world.tryMut(e, MoveGoal);
+        if (goalIntent !== undefined) goalIntent.cell = goal;
+        world.add(e, StandIn, { goal: req.goal, at: goal });
+      } else {
+        world.remove(e, StandIn);
+      }
     }
     let waypoints = path === null ? [] : pathToWaypoints(terrain, path);
     // A grind reroute that found the route already walked keeps it; any other answer replaces it.
