@@ -109,6 +109,17 @@ describe('details panel rebuild gate', () => {
     expect(g.derives()).toBe(after);
   });
 
+  it('derives nothing for an answer landing on a later snapshot inside the window', () => {
+    const g = gateOver(group(2));
+    g.frame(snapshotOf([]), true);
+    g.land(group(3));
+    for (let frame = 0; frame < 10; frame++) g.frame();
+    expect(g.derives()).toBe(1);
+
+    g.advance(VALUE_GAP_MS);
+    expect(g.frame()).toEqual({ model: group(3), structural: false });
+  });
+
   it('rebuilds a changed selection immediately, values only at the throttle', () => {
     const g = gateOver(group(2));
     g.frame();

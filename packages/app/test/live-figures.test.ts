@@ -23,26 +23,39 @@ function slotFor(entity: number) {
 /** A painter over a stub scene, every entity a settler with one layer, and stub frames whose recolours
  *  `refuse` turns away as a passed deadline would. */
 function painter() {
+  const gone = new Set<number>();
   vi.spyOn(FigureScene.prototype, 'items').mockImplementation(
-    (_snap, subjects) => new Map(subjects.map((ref) => [ref, { kind: 'settler', ref } as DrawItem])),
+    (_snap, subjects) =>
+      new Map(
+        subjects.filter((ref) => !gone.has(ref)).map((ref) => [ref, { kind: 'settler', ref } as DrawItem]),
+      ),
   );
   vi.spyOn(FigureScene.prototype, 'layers').mockImplementation((item) => [
     { scale: 1, frame: { ref: item.ref } } as unknown as ResolvedLayer,
   ]);
   const refuse = new Set<number>();
   const resolved: number[] = [];
+  const deadlines: number[] = [];
   const frames = {
-    resolve: vi.fn((_layers: readonly ResolvedLayer[], item: DrawItem, out: (FigureFrameImage | null)[]) => {
-      resolved.push(item.ref);
-      if (refuse.has(item.ref)) return false;
-      out.length = 0;
-      out.push(pictures.get(item.ref) ?? null);
-      return true;
-    }),
+    resolve: vi.fn(
+      (
+        _layers: readonly ResolvedLayer[],
+        item: DrawItem,
+        out: (FigureFrameImage | null)[],
+        deadline: number,
+      ) => {
+        resolved.push(item.ref);
+        deadlines.push(deadline);
+        if (refuse.has(item.ref)) return false;
+        out.length = 0;
+        out.push(pictures.get(item.ref) ?? null);
+        return true;
+      },
+    ),
     paint: vi.fn(),
   };
   const figures = new LiveFigures(undefined, frames as unknown as FigureFrames);
-  return { figures, frames, refuse, resolved };
+  return { figures, frames, refuse, resolved, gone, deadlines };
 }
 
 afterEach(() => {
@@ -111,5 +124,31 @@ describe('live figures', () => {
     resolved.length = 0;
     figures.paint(snapshot, slots, 0, 0);
     expect(resolved).toEqual([2, 3, 1]);
+  });
+
+  it('clears a canvas whose unit the scene stopped drawing, and draws it again on return', () => {
+    const { figures, frames, gone } = painter();
+    const { slot, ctx } = slotFor(1);
+    pictures.set(1, image());
+    figures.paint(snapshot, [slot], 0, 0);
+
+    gone.add(1);
+    ctx.clearRect.mockClear();
+    expect([...figures.paint(snapshot, [slot], 0, 0)]).toEqual([]);
+    expect(ctx.clearRect).toHaveBeenCalled();
+
+    gone.clear();
+    expect([...figures.paint(snapshot, [slot], 0, 0)]).toEqual([1]);
+    expect(frames.paint).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives a first picture a longer recolour allowance than a redraw', () => {
+    const { figures, deadlines } = painter();
+    const { slot } = slotFor(1);
+    pictures.set(1, image());
+    figures.paint(snapshot, [slot], 0, 0);
+    figures.paint(snapshot, [slot], 0, 0);
+    const [first = 0, redraw = 0] = deadlines;
+    expect(first).toBeGreaterThan(redraw);
   });
 });

@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { indexedPixels, recolourPixels, ShelfPacker } from '../src/hud/figures/figure-frames.js';
+import type { DrawItem, ResolvedLayer } from '@open-northland/render';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  type FigureFrameImage,
+  FigureFrames,
+  indexedPixels,
+  recolourPixels,
+  ShelfPacker,
+} from '../src/hud/figures/figure-frames.js';
 
 const PAGE = 64;
 const GUTTER = 1;
@@ -46,5 +53,86 @@ describe('figure frame recolour', () => {
     const out = new Uint8ClampedArray(8);
     recolourPixels(new Uint8Array([RED_INDEX, COVERED, RED_INDEX, 0]), colours, out);
     expect([...out]).toEqual([10, 20, 30, COVERED, 0, 0, 0, 0]);
+  });
+});
+
+describe('figure frame images', () => {
+  /** A 2d context that records where the page was written and answers covered pixels on read. */
+  class StubContext {
+    readonly canvas: StubCanvas;
+    constructor(canvas: StubCanvas) {
+      this.canvas = canvas;
+    }
+    drawImage(): void {}
+    clearRect(): void {}
+    putImageData(): void {}
+    getImageData(_x: number, _y: number, width: number, height: number) {
+      return { data: new Uint8ClampedArray(width * height * 4).fill(COVERED_PIXEL) };
+    }
+  }
+  class StubCanvas {
+    width = 0;
+    height = 0;
+    getContext() {
+      return new StubContext(this);
+    }
+  }
+  class StubImageData {
+    readonly data: Uint8ClampedArray;
+    constructor(width: number, height: number) {
+      this.data = new Uint8ClampedArray(width * height * 4);
+    }
+  }
+  const COVERED_PIXEL = 255;
+  /** Wider than half the 1024 px page, so one fills its first shelf. */
+  const WIDE = 1000;
+
+  const source = () =>
+    new (globalThis as unknown as { OffscreenCanvas: typeof StubCanvas }).OffscreenCanvas();
+  const layerOf = (resource: unknown, width: number, height: number) =>
+    ({
+      source: { resource },
+      frame: { x: 0, y: 0, width, height, offsetX: 0, offsetY: 0 },
+      scale: 1,
+    }) as unknown as ResolvedLayer;
+
+  function framesWithPalette(): FigureFrames {
+    vi.stubGlobal('OffscreenCanvas', StubCanvas);
+    vi.stubGlobal('ImageData', StubImageData);
+    vi.stubGlobal('document', { createElement: () => new StubCanvas() });
+    const frames = new FigureFrames(undefined);
+    const colours = new Uint8Array(PALETTE_BYTES);
+    // Every layer recolours through one palette, as an indexed settler's do.
+    (frames as unknown as { palettes: { of: () => object } }).palettes = {
+      of: () => ({ body: colours, head: colours }),
+    };
+    return frames;
+  }
+  const PALETTE_BYTES = 256 * 3;
+  const item = { kind: 'settler', ref: 1 } as DrawItem;
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('resolves a figure again when its last layer emptied the page under the first', () => {
+    const frames = framesWithPalette();
+    const atlas = source();
+    const out: (FigureFrameImage | null)[] = [];
+    expect(frames.resolve([layerOf(atlas, WIDE, 600)], item, out)).toBe(true);
+
+    // The body fits under the first shelf, the head does not: the page empties and both land on the new one.
+    expect(frames.resolve([layerOf(atlas, 300, 300), layerOf(atlas, 300, 500)], item, out)).toBe(true);
+    expect(out.map((image) => image?.y)).toEqual([0, 0]);
+  });
+
+  it('stops at a recolour due after the deadline, and still answers a cached one', () => {
+    const frames = framesWithPalette();
+    const layer = layerOf(source(), 4, 4);
+    const out: (FigureFrameImage | null)[] = [];
+    const past = performance.now() - 1;
+    expect(frames.resolve([layer], item, out, past)).toBe(false);
+    expect(frames.resolve([layer], item, out)).toBe(true);
+    expect(frames.resolve([layer], item, out, past)).toBe(true);
   });
 });

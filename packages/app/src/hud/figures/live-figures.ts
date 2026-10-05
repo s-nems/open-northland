@@ -27,6 +27,9 @@ export interface FigureSlot {
  *  animation step of each figure is a recolour (0.02 ms, 0.1 ms with its atlas read; a 95-soldier roster
  *  probe), so a large roster animates its figures at a lower rate instead of costing the frame more. */
 const RECOLOUR_MS_PER_PAINT = 0.3;
+/** Ms one paint may spend on figures shown for the first time, so a panel opening on a few people fills
+ *  at once and a big selection fills over a few frames. */
+const FIRST_PICTURE_MS_PER_PAINT = 4;
 
 /** A drawn picture's placement, then per layer its image, scale, offset and opacity. */
 type DrawKey = (FigureFrameImage | number | null)[];
@@ -44,9 +47,9 @@ function sameKey(a: DrawKey, b: DrawKey): boolean {
 export const NO_FIGURE_SLOTS: readonly FigureSlot[] = [];
 
 /**
- * Settlers and vehicles drawn into small canvases every frame with the map's own presentation, so a list
- * row or a panel well shows what the unit is doing right now. The caller hands in only the slots on
- * screen. Without a sprite sheet the canvases stay clear.
+ * Settlers and vehicles drawn into small canvases with the map's own presentation, so a list row or a
+ * panel well shows what the unit is doing right now; a canvas is redrawn when its picture changes. The
+ * caller hands in only the slots on screen. Without a sprite sheet the canvases stay clear.
  */
 export class LiveFigures {
   private readonly scene: FigureScene;
@@ -59,8 +62,9 @@ export class LiveFigures {
   private subjects: readonly number[] = [];
   /** What each canvas shows, so a frame that would draw the same picture leaves it alone. */
   private readonly shown = new WeakMap<HTMLCanvasElement, ShownFigure>();
-  /** When this paint stops recolouring. */
-  private deadline = 0;
+  /** When this paint stops recolouring for a well that shows a picture already, and for one that does not. */
+  private redrawDeadline = 0;
+  private firstDeadline = 0;
   /** The slot the last paint's deadline cut, where the next paint starts. */
   private resumeAt = 0;
   private readonly images: (FigureFrameImage | null)[] = [];
@@ -94,7 +98,9 @@ export class LiveFigures {
     }
     const items = this.scene.items(snapshot, this.subjects);
     this.drawn.clear();
-    this.deadline = performance.now() + RECOLOUR_MS_PER_PAINT;
+    const start = performance.now();
+    this.redrawDeadline = start + RECOLOUR_MS_PER_PAINT;
+    this.firstDeadline = start + FIRST_PICTURE_MS_PER_PAINT;
     let resume: number | null = null;
     // Round the list from where the deadline last cut it, so a long roster's tail is not starved.
     for (let n = 0; n < slots.length; n++) {
@@ -140,7 +146,8 @@ export class LiveFigures {
       this.shown.delete(canvas);
       return 'clear';
     }
-    if (!this.frames.resolve(layers, item, this.images, this.deadline)) {
+    const deadline = shown === undefined ? this.firstDeadline : this.redrawDeadline;
+    if (!this.frames.resolve(layers, item, this.images, deadline)) {
       return shown === undefined ? 'waiting' : 'deferred';
     }
     const key = this.key;

@@ -2,7 +2,7 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import type { UnitPanelModel } from './model/index.js';
 
 /** Minimum wall-clock gap in ms between rebuilds a new snapshot calls for; a selection change (a forced pass)
- *  and a landed answer rebuild immediately. */
+ *  rebuilds immediately, and so do answers landing under the snapshot that selection was baked from. */
 const VALUE_REBUILD_MIN_MS = 250;
 
 export interface PanelRebuild {
@@ -83,9 +83,11 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
     decide(snapshot, screen, force): PanelRebuild | null {
       const now = deps.now();
       const throttled = now - lastRebuildAt < VALUE_REBUILD_MIN_MS;
-      // Within the window nothing is derived; a member that died leaves the panel when the window ends.
+      // Within the window nothing is derived but a new selection's landing answers; a resize or an
+      // unforced change of kind waits for the window's end. A member leaving the world is a forced pass.
       const checked = now - Math.max(lastRebuildAt, lastUnchangedAt) < VALUE_REBUILD_MIN_MS;
-      if (!force && checked && (deps.answersVersion?.() ?? 0) === rebuiltAnswers) return null;
+      const mayLand = snapshot === structuralSnapshot && (deps.answersVersion?.() ?? 0) !== rebuiltAnswers;
+      if (!force && checked && !mayLand) return null;
       const { model, json, answers } = modelFor(snapshot, force);
       // The screen size joins the value key so a resize re-anchors the panel.
       const key = `${json}|${screen.width}x${screen.height}`;
