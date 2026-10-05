@@ -6383,6 +6383,7 @@ body.on-drag-scroll * {
 /* ---------- diplomacy: nation roster, directed attitudes and exchange ledger ---------- */
 .on-hud .on-window--diplomacy {
   max-width: calc(100% - 24px);
+  height: 720px;
 }
 .on-hud .on-window--diplomacy [hidden] {
   display: none;

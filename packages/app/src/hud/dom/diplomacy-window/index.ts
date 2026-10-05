@@ -195,7 +195,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
 
   function refresh(): void {
     if (!window.isOpen()) return;
-    if (place()) window.element.style.height = window.element.style.maxHeight;
+    place();
     tips.refresh();
     if (viewer !== deps.source.viewer()) {
       viewer = deps.source.viewer();
