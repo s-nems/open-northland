@@ -9,7 +9,7 @@ import { retireUndrawn } from './retained-pool.js';
  * and hands each marker's progress in.
  */
 
-/** A walk is green like the selection ring; an attack-move is red. */
+/** A walk is green; an attack-move is red. */
 export type OrderMarkerKind = 'move' | 'attack';
 
 export interface OrderMarker {

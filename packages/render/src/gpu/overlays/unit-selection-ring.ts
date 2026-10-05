@@ -1,7 +1,7 @@
 import type { Graphics } from 'pixi.js';
 import type { SelectionEllipse } from '../../data/sprites/atlas.js';
 
-// Artistic choice: an unfilled ivory ellipse, with a stronger front and a dark contrasting edge.
+// Artistic choice: an unfilled ellipse, with a stronger front and a dark contrasting edge.
 const IVORY = 0xf2e8c9;
 const EDGE = 0x14211b;
 
@@ -12,6 +12,7 @@ export function drawUnitSelectionRing(
   zoom: number,
   focus: boolean,
   ringColor = IVORY,
+  weight = 1,
 ): void {
   const { cx, cy, rx, ry } = ellipse;
   if (focus) {
@@ -38,6 +39,6 @@ export function drawUnitSelectionRing(
   ] as const) {
     g.moveTo(cx + side * rx, cy)
       .arcToSvg(rx, ry, 0, 0, 1, cx - side * rx, cy)
-      .stroke({ width: width / zoom, color, alpha, cap: 'butt' });
+      .stroke({ width: (width * weight) / zoom, color, alpha, cap: 'butt' });
   }
 }

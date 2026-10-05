@@ -134,6 +134,7 @@ export function graphicsSettingsRows(
     },
   );
   markSegment(selectionStyle.root, 'selection-style');
+  selectionStyle.root.classList.add('main-menu__selection-styles');
   const minimapFrame = dropdownControl<MinimapFrame>({
     label: text.minimapFrame,
     className: 'main-menu__dropdown',

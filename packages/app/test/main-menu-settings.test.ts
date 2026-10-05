@@ -286,8 +286,8 @@ describe('carriedSettingParams', () => {
 });
 
 it('defaults selection to green and validates the four stored styles', () => {
-  expect(parseStoredSettings(null).selectionStyle).toBe('ring-player');
-  expect(parseStoredSettings('{"selectionStyle":"unknown"}').selectionStyle).toBe('ring-player');
+  expect(parseStoredSettings(null).selectionStyle).toBe('outline');
+  expect(parseStoredSettings('{"selectionStyle":"unknown"}').selectionStyle).toBe('outline');
   for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-player']) {
     expect(parseStoredSettings(JSON.stringify({ selectionStyle })).selectionStyle).toBe(selectionStyle);
   }

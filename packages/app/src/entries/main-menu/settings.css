@@ -312,3 +312,21 @@ button.main-menu__settings-key:focus-visible {
     sans-serif;
   color: rgba(180, 205, 200, 0.6);
 }
+
+/* Equal cells and wrapped, centred labels keep long selection names inside their button. */
+.main-menu__seg.main-menu__selection-styles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: calc(var(--u) * 760);
+  max-width: 100%;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.main-menu__selection-styles .main-menu__seg-btn {
+  min-width: 0;
+  padding: calc(var(--u) * 12);
+  text-align: center;
+  white-space: normal;
+  line-height: 1.2;
+}

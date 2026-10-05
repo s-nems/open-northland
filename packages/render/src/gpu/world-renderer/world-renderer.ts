@@ -403,6 +403,7 @@ export class WorldRenderer {
     this.pool.reconcile({
       snapshot,
       selection,
+      flagged,
       selectionStyle: this.selectionStyle,
       selectionTime,
       viewport: vp,

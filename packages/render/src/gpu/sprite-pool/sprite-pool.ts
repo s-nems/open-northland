@@ -54,6 +54,8 @@ const POOL_REAP_BUDGET = 32;
 
 export interface PoolFrame {
   readonly selection?: ReadonlySet<number>;
+  /** Work flags belonging to selected gatherers always receive an amber outline. */
+  readonly flagged?: ReadonlySet<number>;
   readonly selectionStyle?: SelectionStyle;
   readonly selectionTime?: number;
   readonly enhancedSampling?: boolean;
@@ -224,13 +226,19 @@ export class SpritePool {
       const continuous = pe.lastSeen === this.frameId - 1;
       if (!continuous) pe.motion.tick = -1;
       this.presentPooled(pe, item, frame, continuous);
+      const flagged = frame.flagged?.has(item.ref) === true;
       this.selectionEffects.update(
         pe,
-        item.ghost !== true && item.portraitOnly !== true && frame.selection?.has(item.ref)
-          ? frame.selectionStyle
-          : undefined,
+        item.ghost === true || item.portraitOnly === true
+          ? undefined
+          : flagged
+            ? 'outline'
+            : frame.selection?.has(item.ref)
+              ? frame.selectionStyle
+              : undefined,
         frame.camera.scale ?? 1,
         frame.selectionTime ?? 0,
+        flagged ? 0xffc020 : undefined,
       );
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);

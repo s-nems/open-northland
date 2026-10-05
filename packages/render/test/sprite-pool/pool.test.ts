@@ -5,6 +5,7 @@ import { type Camera, ONE, tileToScreen, type Viewport } from '../../src/data/pr
 import type { ElevationField } from '../../src/data/terrain/index.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { SNAP_DISTANCE } from '../../src/gpu/sprite-pool/motion.js';
+import { SelectionGraphics } from '../../src/gpu/sprite-selection-effect.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
@@ -504,4 +505,27 @@ describe('SpritePool - briefing map view pass', () => {
     ).toThrow('render died');
     expect(layer.children).toHaveLength(1);
   });
+});
+
+it('keeps work flags outlined in amber for every style and clears them when their gatherer is deselected', () => {
+  const layer = new Container();
+  const textures = new TextureCache();
+  const pool = new SpritePool(layer, textures, undefined);
+  const snapshot = snapshotOf([entity(2, 0, 0, { DeliveryFlag: {} })]);
+  const frame = { ...poolFrame(snapshot, FRAMES_EVERYTHING), flagged: new Set([2]) };
+  for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-player'] as const) {
+    pool.reconcile({ ...frame, selectionStyle });
+    const outline = layer.children[0]?.children[0];
+    expect(outline?.children).toHaveLength(16);
+    const edge = outline?.children[8];
+    if (!(edge instanceof SelectionGraphics)) throw new Error('Missing flag outline');
+    expect(edge.tint).toBe(0xffc020);
+  }
+  const flag = layer.children[0];
+  const outline = flag?.children[0];
+  pool.reconcile({ ...frame, selectionStyle: 'outline', flagged: new Set() });
+  expect(outline?.destroyed).toBe(true);
+  expect(flag?.children).toHaveLength(1);
+  pool.destroy();
+  textures.clear();
 });

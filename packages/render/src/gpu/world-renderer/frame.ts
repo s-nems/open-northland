@@ -107,7 +107,7 @@ export interface WorldFrame {
   readonly constructionSigns?: readonly ConstructionSign[] | undefined;
   readonly settlerBubbles?: readonly SettlerBubble[] | undefined;
   readonly lifeHearts?: readonly LifeHeart[] | undefined;
-  /** Ids of gatherers carrying a work flag; their feet rings draw the flagged variant (default none). */
+  /** Work flag entity ids belonging to selected gatherers; highlighted with an amber outline. */
   readonly flagged?: ReadonlySet<number> | undefined;
   /** Ids the HUD points at among the selection (a hovered group well); lateral marks indicate them (default none). */
   readonly focused?: ReadonlySet<number> | undefined;

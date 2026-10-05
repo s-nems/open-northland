@@ -1,6 +1,6 @@
 export const SELECTION_STYLES = ['outline', 'pulse', 'ring-white', 'ring-player'] as const;
 export type SelectionStyle = (typeof SELECTION_STYLES)[number];
-export const DEFAULT_SELECTION_STYLE: SelectionStyle = 'ring-player';
+export const DEFAULT_SELECTION_STYLE: SelectionStyle = 'outline';
 
 export function parseSelectionStyle(value: unknown): SelectionStyle {
   return SELECTION_STYLES.find((style) => style === value) ?? DEFAULT_SELECTION_STYLE;

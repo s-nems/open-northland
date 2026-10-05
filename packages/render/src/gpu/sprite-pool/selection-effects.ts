@@ -22,7 +22,7 @@ const OFFSETS = [
 // Draw each pass over the whole body before the next; individual layers must not border one another.
 const OUTLINE_PASSES = [
   { radius: 2, colour: 0x14211b },
-  { radius: 1.25, colour: 0xf2e8c9 },
+  { radius: 1.25, colour: undefined },
 ] as const;
 
 /** Silhouette stamps sit behind the complete body, so overlapping layers leave no internal outlines.
@@ -34,7 +34,13 @@ export class SelectionEffects {
 
   constructor(private readonly textures: TextureCache) {}
 
-  update(pe: PooledEntity, style: SelectionStyle | undefined, zoom: number, seconds: number): void {
+  update(
+    pe: PooledEntity,
+    style: SelectionStyle | undefined,
+    zoom: number,
+    seconds: number,
+    outlineColour = 0xf2e8c9,
+  ): void {
     if (style === 'pulse' || this.lit.has(pe)) {
       const light = style === 'pulse' ? selectionLight(seconds) : 0;
       this.light(pe, light);
@@ -52,7 +58,9 @@ export class SelectionEffects {
       pe.container.addChildAt(outline, 0);
     }
     let count = 0;
-    for (const { radius, colour } of OUTLINE_PASSES) {
+    for (const pass of OUTLINE_PASSES) {
+      const { radius } = pass;
+      const colour = pass.colour ?? outlineColour;
       for (let i = 0; i < pe.sprites.length; i++) {
         const body = pe.sprites[i];
         if (body === undefined || !body.visible || (!pe.paletted && pe.pickExempt[i])) continue;

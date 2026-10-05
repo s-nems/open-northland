@@ -30,13 +30,8 @@ const MIN_BUILDING_RX = 28;
 const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
 /** Neutral selection colour for unowned objects and the white-ring option. */
 const RING_COLOR = 0xf2e8c9;
-const RING_WIDTH = 2;
-/** Amber work-flag highlight, heavy enough to read under the flag sprite. */
 const FLAG_RING_COLOR = 0xffc020;
-const FLAG_RING_WIDTH = 3;
-const FOCUS_RING_WIDTH = 4;
-/** The work-area circle: the flag's amber, thinner and barely filled, since it spans a whole harvest
- *  radius rather than one sprite. */
+/** A work radius remains amber and barely filled, distinct from the selected flag itself. */
 const AREA_RING_WIDTH = 2;
 const AREA_RING_FILL_ALPHA = 0.05;
 /** World px one half-cell node spans east-west, the unit a work radius is carried in. */
@@ -76,8 +71,6 @@ export class SelectionLayer {
   readonly container = new Container();
   /** One persistent ring per selected entity id. */
   private readonly rings = new Map<number, Graphics>();
-  /** One persistent ring per selected gatherer's flag entity id (amber). */
-  private readonly flagRings = new Map<number, Graphics>();
   private readonly focusRings = new Map<number, Graphics>();
   private readonly seenFocus = new Set<number>();
   /** One persistent work-area circle per shown flag entity id, keyed with the radius it was authored at
@@ -86,10 +79,9 @@ export class SelectionLayer {
   private readonly seenAreas = new Set<number>();
   /** Reused per-frame scratch of ids drawn this frame (one per pool; avoids a per-frame allocation). */
   private readonly seen = new Set<number>();
-  private readonly seenFlags = new Set<number>();
   private readonly specs = new WeakMap<
     Graphics,
-    RingSpec & { zoom: number; styled: boolean; color: number }
+    RingSpec & { zoom: number; weight: number; color: number }
   >();
 
   /** Reconcile selected entities, work flags, work areas and the member indicated by the group HUD. */
@@ -101,12 +93,10 @@ export class SelectionLayer {
     focused: ReadonlySet<number> = NO_IDS,
   ): void {
     const style = frame.selectionStyle ?? DEFAULT_SELECTION_STYLE;
-    const ringColor = RING_COLOR;
-    const ringIds = style === 'outline' || style === 'pulse' ? NO_IDS : selected;
-    this.reconcile(this.rings, this.seen, ringIds, ringColor, RING_WIDTH, frame, 'selection');
-    this.reconcile(this.flagRings, this.seenFlags, flagged, FLAG_RING_COLOR, FLAG_RING_WIDTH, frame);
+    const spriteEffect = style === 'outline' || style === 'pulse';
+    this.reconcile(this.rings, this.seen, spriteEffect ? NO_IDS : selected, frame, 'selection', flagged);
     this.reconcileAreas(workAreas, frame);
-    this.reconcile(this.focusRings, this.seenFocus, focused, ringColor, FOCUS_RING_WIDTH, frame, 'focus');
+    this.reconcile(this.focusRings, this.seenFocus, focused, frame, 'focus');
   }
 
   /** Reconcile the work-area circles: one flat ground ellipse per shown area, retiring the rest. */
@@ -136,32 +126,31 @@ export class SelectionLayer {
     retireUndrawn(this.areaRings, this.seenAreas, (held) => held.g.destroy());
   }
 
-  /** Reconcile one ring pool to `ids` in `color`: place/move a ring under each present entity, retire the rest. */
+  /** Reconcile one ring pool to `ids`: place/move a ring under each present entity, retire the rest. */
   private reconcile(
     pool: Map<number, Graphics>,
     seen: Set<number>,
     ids: ReadonlySet<number>,
-    color: number,
-    width: number,
     frame: SelectionFrame,
-    unitStyle?: 'selection' | 'focus',
+    unitStyle: 'selection' | 'focus',
+    excluded: ReadonlySet<number> = NO_IDS,
   ): void {
     seen.clear();
     for (const id of ids) {
+      if (excluded.has(id)) continue;
       const ent = entityById(frame.snapshot, id);
       if (ent === undefined) continue;
       const pos = readPosition(ent.components);
       if (pos === null) continue;
       const s = feetAnchor(frame.drawn, id, pos, frame.elevation);
       const kind = classify(ent.components);
-      const styled = unitStyle !== undefined;
+      const coloured = (frame.selectionStyle ?? DEFAULT_SELECTION_STYLE) === 'ring-player';
+      const weight = coloured ? 1.3 : 1;
       const owner = readOwnerPlayer(ent.components);
       const ringColor =
-        styled && (frame.selectionStyle ?? DEFAULT_SELECTION_STYLE) === 'ring-player' && owner !== undefined
-          ? (frame.selectionColourOf?.(owner) ?? color)
-          : color;
-      const mobile = styled && kind === 'settler';
-      const zoom = styled ? (frame.zoom ?? 1) : 1;
+        coloured && owner !== undefined ? (frame.selectionColourOf?.(owner) ?? RING_COLOR) : RING_COLOR;
+      const mobile = kind === 'settler';
+      const zoom = frame.zoom ?? 1;
       // A building's and a vehicle's ring fits the drawn sprite; a settler's is the fixed feet ellipse.
       const fitsSprite = kind === 'building' || kind === 'vehicle';
       const spec =
@@ -181,19 +170,12 @@ export class SelectionLayer {
         previous.rx !== spec.rx ||
         previous.ry !== spec.ry ||
         previous.zoom !== zoom ||
-        previous.styled !== styled ||
+        previous.weight !== weight ||
         previous.color !== ringColor
       ) {
         ring.clear();
-        if (styled) {
-          drawUnitSelectionRing(ring, spec, zoom, unitStyle === 'focus', ringColor);
-        } else {
-          ring
-            .ellipse(spec.cx, spec.cy, spec.rx, spec.ry)
-            .fill({ color, alpha: 0.12 })
-            .stroke({ width, color, alpha: 0.9 });
-        }
-        this.specs.set(ring, { ...spec, zoom, styled, color: ringColor });
+        drawUnitSelectionRing(ring, spec, zoom, unitStyle === 'focus', ringColor, weight);
+        this.specs.set(ring, { ...spec, zoom, weight, color: ringColor });
       }
       ring.position.set(s.x, s.y);
       seen.add(id);
@@ -205,7 +187,6 @@ export class SelectionLayer {
   destroy(): void {
     this.container.destroy({ children: true });
     this.rings.clear();
-    this.flagRings.clear();
     this.focusRings.clear();
     this.areaRings.clear();
   }

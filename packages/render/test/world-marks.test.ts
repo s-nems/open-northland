@@ -42,6 +42,7 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     damaged: [],
     ships: [],
     water: NO_WATER,
+    selectionStyle: 'ring-white',
     selection: new Set(),
     flagged: new Set(),
     focused: new Set(),
