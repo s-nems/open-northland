@@ -347,9 +347,22 @@ body.on-drag-scroll * {
 }
 .on-hud .on-toolrow {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  align-items: center;
   flex-shrink: 0;
   padding: 9px 12px 6px;
+}
+.on-hud .on-toolrow .on-button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 5px 4px;
+  gap: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.on-hud .on-toolrow .on-button .on-glyph {
+  width: 18px;
+  height: 18px;
 }
 .on-hud .on-toolrow .on-button:disabled {
   cursor: var(--cursor-not-allowed, not-allowed);
@@ -414,6 +427,24 @@ body.on-drag-scroll * {
 .on-hud .on-tab[aria-selected="true"] .on-tab__count {
   opacity: 0.85;
 }
+.on-hud .on-window--construction .on-construction-search {
+  flex: 1 1 150px;
+  min-width: 80px;
+  max-width: 180px;
+  min-height: 32px;
+  padding: 0 6px;
+  gap: 4px;
+}
+.on-hud .on-window--construction .on-construction-search:has(:focus-visible) {
+  outline: 1px solid var(--focus);
+  outline-offset: 1px;
+}
+.on-hud .on-construction-search input {
+  width: 100%;
+}
+.on-hud .on-construction-search[hidden] {
+  display: none;
+}
 /* Grid or list: the choice sits at the tabs' right end and survives closing the window. */
 .on-hud .on-view {
   display: flex;
@@ -446,21 +477,25 @@ body.on-drag-scroll * {
 }
 /* The nation switch: the view toggle's segments in the quick row, one emblem per nation, beside
    Papiery since it turns both pages. Hidden while the seat builds one nation's houses. */
+.on-hud .on-nations {
+  flex-shrink: 0;
+  margin-left: auto;
+}
 .on-hud .on-nations[hidden] {
   display: none;
 }
 .on-hud .on-toolrow .on-nations:not([hidden]) ~ .on-button--accent {
-  margin-left: 10px;
+  margin-left: 0;
 }
 .on-hud .on-nation {
-  width: 36px;
-  height: 36px;
+  width: 24px;
+  height: 32px;
   background: #0f151266;
   border-color: var(--wood-lo);
 }
 .on-hud .on-nation canvas {
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
 }
 .on-hud .on-nation:hover {
   border-color: var(--bronze-lo);
@@ -6279,12 +6314,4 @@ body.on-drag-scroll * {
 }
 .on-hud .on-asst-sub__text {
   flex: 1;
-}
-
-.on-hud .on-construction-search {
-  flex-shrink: 0;
-  margin: 4px 12px 8px;
-}
-.on-hud .on-construction-search[hidden] {
-  display: none;
 }

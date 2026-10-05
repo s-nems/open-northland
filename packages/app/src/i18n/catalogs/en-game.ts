@@ -296,6 +296,7 @@ export const enGame = {
     },
     construction: {
       search: 'Search buildings…',
+      searchPlaceholder: 'Search…',
       noMatches: 'No matching buildings',
       title: 'Construction',
       road: 'Road',

@@ -38,7 +38,7 @@ const CONSTRUCTION_WINDOW_W = 640;
 const TITLE_ART_PX = 43;
 const THUMB_BOX_PX = 72;
 const COST_ICON_BOX_PX = 16;
-/** The nation switch's emblem box, inside its 36 px button. */
+/** Raster size of the nation switch's emblem. */
 const NATION_ART_PX = 28;
 const VIEWS: readonly CatalogueView[] = ['grid', 'list'];
 const VIEW_GLYPH: Readonly<Record<CatalogueView, string>> = { grid: GLYPH.grid, list: GLYPH.list };
@@ -180,7 +180,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   let disposed = false;
   let state: ConstructionWindowState = INITIAL_CONSTRUCTION_STATE;
 
-  // The quick row: the line and gate tools, the ones the game offers enabled, and the papers.
+  // The quick row: search, the available line and gate tools, nations and papers.
   const quick = document.createElement('div');
   quick.className = 'on-toolrow';
   for (const tool of CONSTRUCTION_TOOLS) {
@@ -277,7 +277,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   const input = searchField.querySelector('input');
   if (input === null) throw new Error('construction: search field');
   const search = quietTextField(input);
-  search.placeholder = copy.search;
+  search.placeholder = copy.searchPlaceholder;
   search.setAttribute('aria-label', copy.search);
   search.addEventListener('input', () => {
     state = { ...state, query: search.value, scrollTop: 0 };
@@ -297,6 +297,8 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     event.stopPropagation();
     listedCards.find((card) => !card.element.hidden && !card.pick.disabled)?.pick.click();
   });
+
+  quick.prepend(searchField);
 
   // The tabs, with the grid or list toggle at their right end; the papers page swaps the category
   // tabs for one back tab and keeps the toggle.
@@ -394,7 +396,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   if (plansEmptyTitle !== undefined) plansEmptyTitle.textContent = copy.papersEmptyTitle;
   if (plansEmptyText !== undefined) plansEmptyText.textContent = copy.papersEmptyText;
   plans.append(plansNote.note, plansGrid, plansEmpty);
-  window.body.append(quick, searchField, tabs, parchment, plans);
+  window.body.append(quick, tabs, parchment, plans);
   window.onDismiss(() => {
     state = { ...state, suspended: false };
   });

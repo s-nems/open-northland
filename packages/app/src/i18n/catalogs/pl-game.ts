@@ -282,6 +282,7 @@ export const plGame = {
     },
     construction: {
       search: 'Szukaj budynku…',
+      searchPlaceholder: 'Szukaj…',
       noMatches: 'Brak pasujących budynków',
       title: 'Budowanie',
       road: 'Droga',
