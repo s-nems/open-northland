@@ -1,6 +1,6 @@
 import { type Entity, ONE, type PlayerCommand, type WorkStatus } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_ARCHER, JOB_BUILDER, JOB_CARRIER, JOB_COLLECTOR, JOB_TRADER } from '../src/catalog/jobs.js';
+import { JOB_ARCHER, JOB_CARRIER, JOB_COLLECTOR, JOB_TRADER } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import {
   BUILDING_BARRACKS,
@@ -308,7 +308,7 @@ describe('building panel orders and alerts', () => {
       [buildingEntity(1, BUILDING_MILL, { built: 0, components: { UnderConstruction: { labor: 0 } } })],
       1,
     );
-    expect(site.orders?.hire?.jobType).toBe(JOB_BUILDER);
+    expect(site.orders?.hire?.jobType).toBe(craft.jobType);
     expect(site.orders?.upgrade?.control).not.toBe(true);
     expect(buildingModel([buildingEntity(1, BUILDING_HOME_00)], 1).orders?.hire).toBeNull();
   });

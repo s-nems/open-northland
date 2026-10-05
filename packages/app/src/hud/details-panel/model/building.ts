@@ -5,7 +5,7 @@ import {
   indexesOf,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { JOB_BUILDER, JOB_TRADER } from '../../../catalog/jobs.js';
+import { JOB_TRADER } from '../../../catalog/jobs.js';
 import { workerRoleOf } from '../../../game/sandbox/index.js';
 import {
   buildingTribeOf,
@@ -244,14 +244,9 @@ function homeQuality(
   };
 }
 
-/** The trade Workers looks for: a site's builders, a store's traders, else the house's own craft,
+/** The trade Workers looks for: a store's traders, else the house's own craft,
  *  one with a free seat first. The carriers and gatherers (collectors) a workshop keeps are never it. */
-function hireJob(
-  def: BuildingDef | undefined,
-  staff: BuildingStaffModel | null,
-  site: boolean,
-): number | null {
-  if (site) return JOB_BUILDER;
+function hireJob(def: BuildingDef | undefined, staff: BuildingStaffModel | null): number | null {
   if (def?.kind === 'storage') return JOB_TRADER;
   if (staff?.kind !== 'workers') return null;
   const helper = (jobType: number): boolean => ['carrier', 'gatherer'].includes(workerRoleOf(jobType));
@@ -419,7 +414,7 @@ export function buildingPanelModel(
     meta,
     health: health === undefined || health.max <= 0 ? null : health,
     status,
-    orders: foreign ? null : ordersModel(ctx, def, ent, finished, hireJob(def, staff, site)),
+    orders: foreign ? null : ordersModel(ctx, def, ent, finished, hireJob(def, staff)),
     construction: construction === null || foreign ? null : { ...construction, pct: builtPct, upgrade },
     staff,
     crew,
