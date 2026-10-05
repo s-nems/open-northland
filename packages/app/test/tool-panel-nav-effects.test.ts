@@ -15,6 +15,7 @@ import { createPlacementController } from '../src/hud/tool-panel/placement.js';
 import { createToolWindows, type ToolWindowId, type ToolWindows } from '../src/hud/tool-panel/windows.js';
 import { stubAssistantWindow } from './support/assistant-window-stub.js';
 import { type ConstructionWindowStub, stubConstructionWindow } from './support/construction-window-stub.js';
+import { stubDiplomacyWindow } from './support/diplomacy-window-stub.js';
 import { stubMissionBook } from './support/mission-book-stub.js';
 import { stubPendingWindow } from './support/pending-window-stub.js';
 import { stubPlacementStrip } from './support/placement-strip-stub.js';
@@ -81,14 +82,12 @@ function mountSurfaces() {
     buildings: [{ typeId: BUILDING_JOINERY, label: 'Joinery', kind: 'workplace', cost: [], trades: [] }],
     assistantWindow: stubAssistantWindow,
     heldPaper: createHeldPaperController(ctx, strip),
-    diplomacyRows: () => [],
+    diplomacyWindow: stubDiplomacyWindow,
     missionBook: stubMissionBook,
     onPickBuilding: (pick) => {
       windows?.byId.menu.suspend();
       placement.enter(pick);
     },
-    onPayTribute: () => undefined,
-    onDeclareDiplomacy: () => undefined,
   });
   if (menu === null) throw new Error('the registry did not mount the construction window');
   const surfaces = { windows: windows.byId, cancelHeld: () => placement.cancel() };

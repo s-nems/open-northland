@@ -104,7 +104,13 @@ describe('diplomacyPanelRows', () => {
       observer: false,
       goodLabelOf: (good) => (good === FURNITURE ? 'Meble' : undefined),
     });
-    expect(rows[0]?.tradeOffers).toEqual([`Oddajesz 1 Meble, dostajesz 2 ${COIN}`]);
+    expect(rows[0]?.tradeOffers).toEqual([
+      {
+        index: 0,
+        give: { goodType: FURNITURE, amount: 1, label: 'Meble' },
+        take: { goodType: COIN, amount: 2, label: String(COIN) },
+      },
+    ]);
   });
 
   it('drops a pair the map hides and takes the stance buttons off a locked pair or a page it closes', () => {
@@ -155,12 +161,12 @@ describe('diplomacyPanelRows', () => {
       goodLabelOf: (good) => (good === 5 ? 'Drewno' : undefined),
     });
     expect(rows.map((r) => r.tributes)).toEqual([
-      [{ slot: 1, demands: [{ label: '8', amount: 20, onHand: 5 }], payable: false }],
+      [{ slot: 1, demands: [{ goodType: 8, label: '8', amount: 20, onHand: 5 }], payable: false }],
       [
         {
           slot: 3,
           text: 'Drewno dla sąsiada',
-          demands: [{ label: 'Drewno', amount: 6, onHand: 8 }],
+          demands: [{ goodType: 5, label: 'Drewno', amount: 6, onHand: 8 }],
           payable: true,
         },
       ],

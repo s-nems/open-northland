@@ -1,13 +1,13 @@
 import type { HudLayout, HudModel } from '@open-northland/render';
-import type { DiplomacyState, Paper } from '@open-northland/sim';
+import type { Paper } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { AssistantWindow } from '../dom/assistant-window/index.js';
 import type { ConstructionWindow } from '../dom/construction-window.js';
+import type { DiplomacyWindow } from '../dom/diplomacy-window/index.js';
 import type { MissionBook, MissionWindowState } from '../dom/mission-book/index.js';
 import type { ResidentsWindow } from '../dom/residents-window.js';
 import type { ConstructionWindowState, MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
-import { createDiplomacyWindow, type DiplomacyPanelRow } from './diplomacy/index.js';
 import type { HeldPaperController } from './held-paper.js';
 import type { PendingWindow } from './pending-window.js';
 import type { BuildingPick } from './placement.js';
@@ -52,12 +52,7 @@ export interface ToolWindowsDeps {
   /** The mission book with its goal slip, mounted on the DOM plane. */
   readonly missionBook: () => MissionBook;
   readonly buildings: readonly MenuBuildingEntry[];
-  /** The diplomacy window's roster: one row per discovered player, pulled only while it is open. */
-  readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
-  /** A live pay button in the diplomacy window was pressed for the tribute slot. */
-  readonly onPayTribute: (slot: number) => void;
-  /** A stance button in the diplomacy window was pressed: the seat's new stance toward the player. */
-  readonly onDeclareDiplomacy: (player: number, state: DiplomacyState) => void;
+  readonly diplomacyWindow: () => DiplomacyWindow;
   /** The place-any plan the construction window holds for its next catalogue pick. */
   readonly heldPaper: HeldPaperController;
   /** A building was picked for placement, with the plan the placement spends when one is held. */
@@ -103,13 +98,7 @@ export interface ToolWindowsState {
 export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const { ctx, container, heldPaper } = deps;
   const stats = createStatsWindow({ ctx, container });
-  const diplomacy = createDiplomacyWindow({
-    ctx,
-    container,
-    rows: deps.diplomacyRows,
-    onPayTribute: deps.onPayTribute,
-    onDeclareDiplomacy: deps.onDeclareDiplomacy,
-  });
+  const diplomacy = deps.diplomacyWindow();
   const residents = deps.residentsWindow();
   const assistant = deps.assistantWindow();
   const knowledge = deps.pendingWindow('knowledge');
@@ -162,10 +151,9 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     },
     claims: (x, y) => topAt(x, y) !== null,
     handleClick: (x, y, mods): boolean => topAt(x, y)?.handleClick(x, y, mods) ?? false,
-    handleWheel: (x, y, deltaY): boolean => {
+    handleWheel: (x, y, _deltaY): boolean => {
       const top = topAt(x, y);
       if (top === null) return false;
-      if (top === diplomacy) return diplomacy.handleWheel(x, y, deltaY);
       return true;
     },
     refresh: (hudFor): void => {
@@ -203,6 +191,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       menu.dispose();
       residents.dispose();
       assistant.dispose();
+      diplomacy.dispose();
       knowledge.dispose();
       mission.dispose();
     },

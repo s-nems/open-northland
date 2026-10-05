@@ -7,7 +7,7 @@ import type {
   HoverCardRow,
   HoverOwner,
 } from '../hover-card/model.js';
-import { diplomacyStanceText, playerLabel } from '../tool-panel/diplomacy/model.js';
+import { diplomacyStanceText, playerLabel } from './diplomacy-window/model.js';
 import { type GoodIconPainter, goodIconMarkup } from './good-art.js';
 import { stockAmount } from './parts/amount.js';
 import { setClass, setHidden, setStyleVar, write } from './parts/dom.js';

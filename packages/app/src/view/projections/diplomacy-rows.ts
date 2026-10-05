@@ -1,15 +1,20 @@
 import type { MapRelationFlag } from '@open-northland/data';
 import type { DiplomacyState, OpenTribute, TradeOffer } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
-import type { DiplomacyPanelRow, TributePanelRow } from '../../hud/tool-panel/diplomacy/index.js';
+import type {
+  DeclarationBlock,
+  DiplomacyGood,
+  DiplomacyOffer,
+  DiplomacyPanelRow,
+  TributePanelRow,
+} from '../../hud/dom/diplomacy-window/model.js';
 import type { MetSeat } from '../../hud/tool-panel/messages/index.js';
-import { formatMessage, messages } from '../../i18n/index.js';
 import type { SessionHost } from '../../session/index.js';
 
 /** The world reads the roster projection needs, answered synchronously: the stances and the met
  *  flags are per-frame host reads, the rest the last answers a `LastAnswerCache` holds. */
 export interface DiplomacySimView extends Pick<SessionHost, 'hasMetPlayer' | 'diplomacyStance'> {
-  diplomacyLocked(a: number, b: number): boolean;
+  diplomacyLocked(a: number, b: number): boolean | undefined;
   goodsTradedWith(player: number, partner: number): number;
   openTributes(payer: number): readonly OpenTribute[];
   tradeOffersOf(partner: number): readonly TradeOffer[];
@@ -22,12 +27,14 @@ export interface DiplomacyRosterOptions {
   /** A spectator sees the whole map, so the discovery gate is skipped. */
   readonly observer: boolean;
   readonly seatNameOf?: (player: number) => string | undefined;
+  readonly tribeOf?: (player: number) => number;
   /** Owner slot to team-colour slot; identity when the roster authored no colours. */
   readonly playerColourOf?: (player: number) => number;
   /** The map's own string for a tribute's description; absent leaves the numbered fallback. */
   readonly tributeText?: (stringId: number) => string | undefined;
   /** A good's display label; absent leaves the type id. */
   readonly goodLabelOf?: (goodType: number) => string | undefined;
+  readonly goodIdOf?: (goodType: number) => string | undefined;
   /** Whether the viewer's seat may issue a payment at all; a read-only spectator's buttons stay dead. */
   readonly canPay?: boolean;
   /** Whether the viewer's seat may declare a stance at all, as `canPay` for payments. */
@@ -61,7 +68,7 @@ export function harshestStance(
   return met > 0 && friendly === met ? 'friend' : 'neutral';
 }
 
-function flagged(
+export function relationFlagged(
   flags: readonly MapRelationFlag[],
   kind: MapRelationFlag['kind'],
   a: number,
@@ -80,7 +87,7 @@ function listedPlayers(
   return opts.rosterPlayers.filter(
     (other) =>
       other !== local &&
-      !flagged(flags, 'hide', local, other) &&
+      !relationFlagged(flags, 'hide', local, other) &&
       (opts.observer || sim.hasMetPlayer(local, other)),
   );
 }
@@ -109,32 +116,51 @@ export function diplomacyPanelRows(sim: DiplomacySimView, opts: DiplomacyRosterO
     const towardYou = sim.diplomacyStance(other, local);
     const yourStance = sim.diplomacyStance(local, other);
     const friends = towardYou === 'friend' && yourStance === 'friend';
+    const tribe = opts.tribeOf?.(other);
+    const lock = sim.diplomacyLocked(local, other);
+    const blocked: DeclarationBlock | undefined =
+      opts.canDeclare === false
+        ? 'observer'
+        : relationFlagged(flags, 'hideDetails', local, other)
+          ? 'details'
+          : lock === undefined
+            ? 'loading'
+            : lock
+              ? 'script'
+              : undefined;
     rows.push({
       player: other,
       ...(name !== undefined ? { name } : {}),
+      ...(tribe !== undefined ? { tribe } : {}),
       colour: PLAYER_SWATCH_COLORS[colourOf(other)] ?? 0,
       towardYou,
       yourStance,
       ...(friends ? { goodsTraded: sim.goodsTradedWith(local, other) } : {}),
-      canDeclare:
-        opts.canDeclare !== false &&
-        !sim.diplomacyLocked(local, other) &&
-        !flagged(flags, 'hideDetails', local, other),
+      canDeclare: blocked === undefined,
+      ...(blocked !== undefined ? { blocked } : {}),
       tributes: owed.filter((t) => t.receiver === other).map((t) => tributeRow(t, opts)),
-      tradeOffers: sim.tradeOffersOf(other).map((offer) => tradeOfferLine(offer, opts)),
+      tradeOffers: sim.tradeOffersOf(other).map((offer) => tradeOfferRow(offer, opts)),
     });
   }
   return rows;
 }
 
-/** "give N X for M Y", the wording the trader's own window lists an agreement in. */
-function tradeOfferLine(offer: TradeOffer, opts: DiplomacyRosterOptions): string {
-  return formatMessage(messages().hud.tradeOffer, {
-    giveAmount: offer.giveAmount,
-    give: opts.goodLabelOf?.(offer.giveGood) ?? String(offer.giveGood),
-    takeAmount: offer.takeAmount,
-    take: opts.goodLabelOf?.(offer.takeGood) ?? String(offer.takeGood),
-  });
+function goodRow(goodType: number, amount: number, opts: DiplomacyRosterOptions): DiplomacyGood {
+  const goodId = opts.goodIdOf?.(goodType);
+  return {
+    goodType,
+    amount,
+    label: opts.goodLabelOf?.(goodType) ?? String(goodType),
+    ...(goodId !== undefined ? { goodId } : {}),
+  };
+}
+
+function tradeOfferRow(offer: TradeOffer, opts: DiplomacyRosterOptions): DiplomacyOffer {
+  return {
+    index: offer.index,
+    give: goodRow(offer.giveGood, offer.giveAmount, opts),
+    take: goodRow(offer.takeGood, offer.takeAmount, opts),
+  };
 }
 
 function tributeRow(tribute: OpenTribute, opts: DiplomacyRosterOptions): TributePanelRow {
@@ -143,8 +169,7 @@ function tributeRow(tribute: OpenTribute, opts: DiplomacyRosterOptions): Tribute
     slot: tribute.slot,
     ...(text !== undefined ? { text } : {}),
     demands: tribute.demands.map((d) => ({
-      label: opts.goodLabelOf?.(d.good) ?? String(d.good),
-      amount: d.amount,
+      ...goodRow(d.good, d.amount, opts),
       onHand: d.onHand,
     })),
     payable: tribute.payable && opts.canPay !== false,

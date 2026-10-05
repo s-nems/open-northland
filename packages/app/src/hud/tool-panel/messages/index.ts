@@ -15,6 +15,7 @@ import { isFemale, num, type SnapshotEntity, surnameSourceOf } from '../../../ga
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
 import { bcp47Tag, formatMessage, messages, professionLabel } from '../../../i18n/index.js';
 import type { BuildingThumbs } from '../../dom/building-thumb.js';
+import { diplomacyStanceText, playerLabel } from '../../dom/diplomacy-window/model.js';
 import { createNoticeArt, noticeTint } from '../../dom/notice-art.js';
 import {
   createNoticeColumn,
@@ -24,7 +25,6 @@ import {
 } from '../../dom/notice-column.js';
 import type { FigureFrames } from '../../figures/figure-frames.js';
 import type { PanelContext } from '../context.js';
-import { diplomacyStanceText, playerLabel } from '../diplomacy/model.js';
 import { noticeThumb } from './cards.js';
 import { type MessageFeedState, takeRaised } from './feed.js';
 import { FightAreas, shownFightAt } from './fight-areas.js';

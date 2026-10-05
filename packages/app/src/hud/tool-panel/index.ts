@@ -3,7 +3,6 @@ import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout, HudModel, MapViewFrame, MapViewTarget, SpriteSheet } from '@open-northland/render';
 import type {
   Command,
-  DiplomacyState,
   EntitySnapshot,
   HalfCellNode,
   Paper,
@@ -34,6 +33,9 @@ import { type AssistantSource, createAssistantWindow } from '../dom/assistant-wi
 import type { BuildingPanelWindows } from '../dom/building-panel/actions.js';
 import { createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
+import { createNationEmblems } from '../dom/diplomacy-window/emblems.js';
+import { createDiplomacyWindow } from '../dom/diplomacy-window/index.js';
+import type { DiplomacySource } from '../dom/diplomacy-window/model.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
 import { minimapReserve } from '../dom/minimap-reserve.js';
 import {
@@ -55,7 +57,6 @@ import { type KeyBindings, keyDisplayLabel } from '../keybindings.js';
 import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
 import { CONSTRUCTION_TOOLS, type ConstructionTool, type MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
-import type { DiplomacyPanelRow } from './diplomacy/index.js';
 import type { GameSpeedChangeCause, GameSpeedControl, GameSpeedStateSpec } from './game-speed.js';
 import { createHeldPaperController } from './held-paper.js';
 import { createInfoLinesOverlay } from './info-lines.js';
@@ -154,15 +155,11 @@ export interface ToolPanelOptions {
   /** The residents window's seam: the seat's people, the sim's trade rule and the selection. */
   readonly residents: ResidentsSeam;
   /** The roster of discovered players, one row each, which the diplomacy window reads while it is open. */
-  readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
+  readonly diplomacy: DiplomacySource;
   /** The discovered players and their stance toward the viewer, which the message centre reads a tick. */
   readonly metSeats: () => readonly MetSeat[];
   /** A seat's roster name, which the diplomacy rows withhold for the viewer's own and unmet seats. */
   readonly seatNameOf?: (player: number) => string | undefined;
-  /** The diplomacy window's pay button: the seat pays the tribute slot. */
-  readonly onPayTribute: (slot: number) => void;
-  /** The diplomacy window's stance buttons: the seat declares its stance toward the player. */
-  readonly onDeclareDiplomacy: (player: number, state: DiplomacyState) => void;
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`SessionHost.placementProbe`), which gates the placement click. */
@@ -599,9 +596,25 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         return window;
       },
       heldPaper,
-      diplomacyRows: opts.diplomacyRows,
-      onPayTribute: opts.onPayTribute,
-      onDeclareDiplomacy: opts.onDeclareDiplomacy,
+      diplomacyWindow: () => {
+        const window = createDiplomacyWindow({
+          plane,
+          source: opts.diplomacy,
+          art: paintedIcon('diplomacy', TITLE_ART_PX),
+          paintGood: opts.assistant.paintGood,
+          tooltip: opts.assistant.tooltip,
+          cue: ctx.cue,
+          paintEmblem: createNationEmblems(
+            opts.sheet,
+            thumbs,
+            figureFrames,
+            opts.nationEmblemType,
+            opts.playerColourOf,
+          ),
+        });
+        window.onDismiss(() => focusOwner?.('diplomacy'));
+        return window;
+      },
       onPickBuilding: (pick) => placement.enter(pick),
     });
     domParts.push(windows);
@@ -703,7 +716,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       buildingTrades: (typeId) => tradesByType.get(typeId),
       vehicleLabel: opts.vehicleLabel,
       playerLabel: (player) =>
-        opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
+        opts.seatNameOf?.(player) ?? opts.diplomacy.rows().find((r) => r.player === player)?.name ?? null,
       metSeats: opts.metSeats,
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
       onAttackShown: opts.onAttackShown,

@@ -24,6 +24,7 @@ import { createToolWindows } from '../src/hud/tool-panel/windows.js';
 import { formatMessage, messages } from '../src/i18n/index.js';
 import { stubAssistantWindow } from './support/assistant-window-stub.js';
 import { type ConstructionWindowStub, stubConstructionWindow } from './support/construction-window-stub.js';
+import { stubDiplomacyWindow } from './support/diplomacy-window-stub.js';
 import { stubMissionBook } from './support/mission-book-stub.js';
 import { stubPendingWindow } from './support/pending-window-stub.js';
 import { stubPlacementStrip } from './support/placement-strip-stub.js';
@@ -110,18 +111,6 @@ const hud = (tick: number, wood: number): HudLayout => ({
   ],
 });
 
-/** A read-view with enough tallies that the content-sized stats window reaches down into the diplomacy
- *  window (both centre in the region, so they overlap). */
-const TALL_HUD: HudLayout = {
-  width: 100,
-  height: 80,
-  rows: ['Tribe 1 · tick 1', 'wood: 5', 'stone: 2', 'grain: 9'].map((text, i) => ({
-    x: 0,
-    y: i * 12,
-    text,
-  })),
-};
-
 describe('stats window controller', () => {
   it('rebuilds only when a tally row changes, and remakes the tick run alone on a tick', () => {
     const { ctx, made } = stubContext();
@@ -200,11 +189,9 @@ describe('tool windows registry', () => {
       },
       assistantWindow: stubAssistantWindow,
       heldPaper,
-      diplomacyRows: () => [],
+      diplomacyWindow: stubDiplomacyWindow,
       missionBook: stubMissionBook,
       onPickBuilding: (pick) => picks.push(pick),
-      onPayTribute: () => undefined,
-      onDeclareDiplomacy: () => undefined,
     });
     if (menu === null) throw new Error('the registry did not mount the construction window');
     return { ctx, windows, picks, container, heldPaper, menu: menu as ConstructionWindowStub };
@@ -351,24 +338,6 @@ describe('tool windows registry', () => {
     // The construction window lives on the DOM plane, which routes its own presses.
     windows.byId.menu.toggle();
     expect(windows.claims(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
-  });
-
-  it('probes the pop-ups in draw order, so an overlap goes to the top-drawn window', () => {
-    const { ctx, windows } = mountWindows();
-    windows.byId.stats.toggle();
-    windows.byId.diplomacy.toggle();
-    windows.refresh(() => TALL_HUD); // the stats window draws (and gains its rect) on its first refresh
-
-    // Diplomacy draws after (over) statistics and both centre in the same region: a point inside the
-    // statistics panel is inside the diplomacy window too.
-    const shared = { x: statsOrigin(ctx).x + 1, y: statsOrigin(ctx).y + 1 };
-    expect(windows.byId.diplomacy.claims(shared.x, shared.y)).toBe(true);
-    expect(windows.byId.stats.claims(shared.x, shared.y)).toBe(true);
-
-    expect(windows.handleClick(shared.x, shared.y)).toBe(true);
-    expect(windows.byId.stats.isOpen()).toBe(true); // the covered statistics window saw nothing
-    // Nothing open under the point: the press falls through to placement / world picking.
-    expect(windows.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
   });
 
   it('consumes the wheel over any open pop-up, list or not', () => {

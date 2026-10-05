@@ -5,7 +5,6 @@ import type { Camera, ElevationField, MapViewTarget, SpriteSheet } from '@open-n
 import {
   type Command,
   constructionBillForType,
-  type DiplomacyState,
   type HalfCellNode,
   type Paper,
   type PlayerCommand,
@@ -16,11 +15,11 @@ import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import type { MissionReader } from '../game/mission-brief.js';
 import type { ViewerSeat } from '../game/viewer-seat.js';
 import type { AssistantSource } from '../hud/dom/assistant-window/index.js';
+import type { DiplomacySource } from '../hud/dom/diplomacy-window/model.js';
 import type { Rect } from '../hud/geometry.js';
 import type { KeyBindings } from '../hud/keybindings.js';
 import { createReplaceableMount } from '../hud/replaceable-mount.js';
 import { CATALOGUE_KINDS, type MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
-import type { DiplomacyPanelRow } from '../hud/tool-panel/diplomacy/index.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import {
   mountToolPanel,
@@ -112,15 +111,11 @@ export interface GameToolPanelDeps {
   readonly papers: PapersSeam;
   readonly residents: ResidentsSeam;
   /** The diplomacy window's roster: one row per discovered player. */
-  readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
+  readonly diplomacy: DiplomacySource;
   /** The discovered players and their stance toward the viewer, the message centre's per-tick read. */
   readonly metSeats: () => readonly MetSeat[];
   /** A seat's roster name, for the note about an eliminated player. */
   readonly seatNameOf?: (player: number) => string | undefined;
-  /** The diplomacy window's pay button; a closure, so it follows a scene restart. */
-  readonly onPayTribute: (slot: number) => void;
-  /** The diplomacy window's stance buttons; a closure, as the pay button. */
-  readonly onDeclareDiplomacy: (player: number, state: DiplomacyState) => void;
   /** UI string language (`pol`/`eng`); defaults to the active locale. */
   readonly lang?: string;
   readonly bindings: KeyBindings;
@@ -286,11 +281,9 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       assistant: deps.assistant,
       papers: deps.papers,
       residents: deps.residents,
-      diplomacyRows: deps.diplomacyRows,
+      diplomacy: deps.diplomacy,
       metSeats: deps.metSeats,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
-      onPayTribute: deps.onPayTribute,
-      onDeclareDiplomacy: deps.onDeclareDiplomacy,
       screenToTile: clientToTile,
       canPlaceAt: deps.canPlaceAt,
       canPlacePalisadeAt: deps.canPlacePalisadeAt,

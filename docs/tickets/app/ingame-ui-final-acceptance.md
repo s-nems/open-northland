@@ -3,7 +3,7 @@
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
 **Blocked by:** [group-details](ingame-ui-group-details.md),
-[statistics-window](ingame-ui-statistics-window.md), [diplomacy](ingame-ui-diplomacy.md),
+[statistics-window](ingame-ui-statistics-window.md),
 [knowledge-dependencies](ingame-ui-knowledge-dependencies.md), [system-menu](ingame-ui-system-menu.md),
 [map-overview](ingame-ui-map-overview.md)
 

@@ -48,6 +48,7 @@ import {
   type ViewerSeat,
 } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
+import type { DiplomacyPanelRow } from '../../hud/dom/diplomacy-window/model.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
 import { mountHudDomRoot } from '../../hud/dom/root.js';
@@ -56,7 +57,6 @@ import type { HoverOwnerContext } from '../../hud/hover-card/owner.js';
 import { type SettlerHoverContext, settlerHoverModel } from '../../hud/hover-card/settler.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { minimapFeatureOfGoodTypes } from '../../hud/minimap/live-objects.js';
-import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { type MetSeat, NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
 import { MEAD_GOOD_ID, residentRows } from '../../hud/tool-panel/residents/projection.js';
@@ -77,6 +77,7 @@ import {
   clientToScreen as clientToScreenPx,
 } from '../camera/index.js';
 import { clearCanvasCursors } from '../cursors/element.js';
+import { createDiplomacyActions } from '../diplomacy-actions.js';
 import {
   applyGameSpeed,
   buildingLabelsFromContent,
@@ -420,12 +421,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     cleanup.push(() => answers.dispose());
     const { diplomacyView, buildAvailability } = answers;
     const nationEmblemType = emblemBuildingType(host.content.buildings);
+    const goodIdByType = new Map(host.content.goods.map((good) => [good.typeId, good.id]));
     const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
       diplomacyPanelRows(diplomacyView, {
         localPlayer: viewerPlayer(),
         rosterPlayers: deps.rosterPlayers ?? [],
         observer: viewer.wholeMap(),
         goodLabelOf: (goodType) => goodLabelByType.get(goodType),
+        goodIdOf: (goodType) => goodIdByType.get(goodType),
+        tribeOf: seatTribeOf,
         canPay: !readOnly,
         canDeclare: !readOnly,
         ...(deps.relationFlags !== undefined ? { relationFlags: deps.relationFlags } : {}),
@@ -528,11 +532,21 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           if (at !== null) jumpToWorld(at.x, at.y);
         },
       },
-      diplomacyRows,
+      diplomacy: {
+        rows: diplomacyRows,
+        tick: () => host.tick,
+        viewer: viewer.seat,
+        ...createDiplomacyActions({
+          host,
+          viewer: viewer.seat,
+          canCommand: () => !readOnly && !lifetime.signal.aborted,
+          wholeMap: viewer.wholeMap,
+          roster: deps.rosterPlayers ?? [],
+          flags: deps.relationFlags ?? [],
+          submit: issueCommand,
+        }),
+      },
       metSeats,
-      onPayTribute: (slot) => issueCommand({ kind: 'payTribute', player: localPlayer, slot }),
-      onDeclareDiplomacy: (other, state) =>
-        issueCommand({ kind: 'declareDiplomacy', player: localPlayer, other, state }),
       canPlaceAt,
       canPlacePalisadeAt,
       palisadeBuiltAt,

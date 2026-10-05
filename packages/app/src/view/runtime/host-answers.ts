@@ -155,7 +155,7 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
     diplomacyView: {
       hasMetPlayer: (viewer, other) => host.hasMetPlayer(viewer, other),
       diplomacyStance: (from, to) => host.diplomacyStance(from, to),
-      diplomacyLocked: (a, b) => perTick(locks, `${a}:${b}`, () => host.diplomacyLocked(a, b)) === true,
+      diplomacyLocked: (a, b) => perTick(locks, `${a}:${b}`, () => host.diplomacyLocked(a, b)),
       goodsTradedWith: (player, partner) =>
         perTick(counts, `${player}:${partner}`, () => host.goodsTradedWith(player, partner)) ?? 0,
       tradeOffersOf: (partner) =>
