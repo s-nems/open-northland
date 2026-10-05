@@ -223,6 +223,7 @@ export const plGame = {
     tradeExchange: 'Oddano {given}/{giveAmount}, odebrano {received}/{takeAmount}',
     tradeOffers: 'Umowy handlowe',
     systemMenuDetails: {
+      leaveGame: 'Opuść grę',
       resume: 'Powrót do gry',
       paused: 'Gra wstrzymana',
       multiplayer: 'Rozgrywka sieciowa trwa dalej',
@@ -245,8 +246,8 @@ export const plGame = {
     matchContinue: 'Graj dalej',
     matchWatch: 'Obserwuj dalej',
     returnToMenu: 'Wróć do menu',
-    quitConfirm: 'Wrócić do menu? Postęp od ostatniego zapisu przepadnie.',
-    quitConfirmYes: 'Wróć do menu',
+    quitConfirm: 'Opuścić grę i wrócić do menu głównego? Niezapisany postęp przepadnie.',
+    quitConfirmYes: 'Opuść grę',
     quitConfirmNo: 'Graj dalej',
     closeMenu: 'Zamknij',
     saveGame: 'Zapisz grę',

@@ -72,11 +72,6 @@ body.on-drag-scroll * {
   color: inherit;
   cursor: var(--cursor-pointer, pointer);
 }
-.on-hud button:focus-visible,
-.on-hud [tabindex]:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 3px;
-}
 .on-hud .on-icon {
   display: inline-block;
   flex-shrink: 0;
@@ -437,10 +432,6 @@ body.on-drag-scroll * {
   min-height: 32px;
   padding: 0 6px;
   gap: 4px;
-}
-.on-hud .on-window--construction .on-construction-search:has(:focus-visible) {
-  outline: 1px solid var(--focus);
-  outline-offset: 1px;
 }
 .on-hud .on-construction-search input {
   width: 100%;
@@ -2250,11 +2241,6 @@ body.on-drag-scroll * {
   opacity: 0.38;
   cursor: var(--cursor-not-allowed, not-allowed);
 }
-/* A beam action shows no focus ring: its pressed art and its label are the cues. The beam carries no
-   key badge, since the digits belong to the control groups. */
-.on-hud .on-action:focus-visible {
-  outline: none;
-}
 .on-hud .on-action::before {
   content: "";
   position: absolute;
@@ -2477,11 +2463,6 @@ body.on-drag-scroll * {
   position: absolute;
   left: 10px;
 }
-/* Keyboard focus only: a mouse-opened list holds focus inside the field and draws no ring. */
-.on-hud .on-res-field:has(:focus-visible) {
-  outline: 2px solid var(--focus);
-  outline-offset: 3px;
-}
 /* Both chip rows share one grid, so the cells line up and fill the window edge to edge. */
 .on-hud .on-res-chips {
   flex-shrink: 0;
@@ -2577,10 +2558,6 @@ body.on-drag-scroll * {
 .on-hud .on-window--residents .on-window__head > .on-res-clear {
   margin-left: auto;
   margin-right: 12px;
-}
-.on-hud .on-res-clear:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
 }
 .on-hud .on-res-clear[hidden] {
   display: none;
@@ -2791,10 +2768,6 @@ body.on-drag-scroll * {
   transform: translate(-50%, -50%);
   max-width: calc(100% - 32px);
   max-height: calc(100% - 56px);
-}
-/* Holds focus only while no row matches, so typed text keeps filtering. */
-.on-hud .on-window--choices:focus {
-  outline: none;
 }
 .on-hud .on-window--choices .on-window__head {
   padding: 6px 10px;
@@ -6209,10 +6182,6 @@ body.on-drag-scroll * {
   left: 18px;
   background: radial-gradient(circle at 40% 35%, #fff4d6, #e3c27c 80%);
 }
-.on-hud .on-switch:focus-visible {
-  outline: 1px solid var(--bronze-hi);
-  outline-offset: 2px;
-}
 .on-hud .on-switch[aria-disabled="true"] {
   opacity: 0.4;
   cursor: var(--cursor-not-allowed, not-allowed);
@@ -7335,14 +7304,17 @@ body.on-drag-scroll * {
 }
 .on-hud .on-system-menu__quit {
   margin-top: 8px;
-  background: #0002;
-  border-color: #c9a26244;
-  color: var(--muted);
-  box-shadow: none;
+  background: linear-gradient(#743f30, #45251e);
+  border-color: #a2694e;
+  color: #f5d8c5;
+}
+.on-hud .on-system-menu__quit .on-glyph {
+  color: inherit;
 }
 .on-hud .on-system-menu__quit:hover {
-  color: var(--danger);
-  border-color: var(--danger);
+  background: linear-gradient(#95533b, #653428);
+  color: #fff0dc;
+  border-color: #d79973;
 }
 .on-hud .on-system-menu__support {
   margin-top: 6px;
@@ -7377,7 +7349,8 @@ body.on-drag-scroll * {
   gap: 10px;
 }
 .on-hud .on-system-settings {
-  height: 500px;
+  width: min(82%, 1080px);
+  height: 84%;
 }
 .on-hud .on-system-settings > .on-window__body {
   display: flex;

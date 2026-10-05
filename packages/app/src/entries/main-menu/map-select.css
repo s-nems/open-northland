@@ -31,7 +31,6 @@
 }
 
 .main-menu__map-search:focus-visible {
-  outline: none;
   border-color: rgb(var(--accent-rgb) / 0.6);
 }
 
@@ -215,11 +214,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.main-menu__map-row:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: -2px;
 }
 
 .main-menu__map-count {

@@ -22,6 +22,7 @@ export function createSystemSettings(opts: {
     compact: true,
   });
   frame.element.classList.add('on-system-dialog', 'on-system-settings');
+  frame.element.style.removeProperty('width');
   frame.element.setAttribute('role', 'dialog');
   frame.element.setAttribute('aria-modal', 'true');
   frame.onDismiss(opts.onClose);

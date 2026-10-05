@@ -40,11 +40,6 @@
   border-color: var(--accent);
 }
 
-.main-menu__fullscreen:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: -4px;
-}
-
 /* Arrows into the four corners: the same idea as the browser's own fullscreen control. */
 .main-menu__fullscreen-icon {
   flex: none;

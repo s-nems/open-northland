@@ -2,6 +2,7 @@ import { iconCellStyle, uiFoundationArt } from '../../content/ui-foundation.js';
 
 /** Line glyphs the DOM HUD draws inline, as `.on-glyph` SVG markup. */
 export const GLYPH = {
+  exit: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M13 8V4H4v16h9v-4M9 12h12M17 8l4 4-4 4"/></svg>',
   close: '<svg aria-hidden="true" class="on-glyph"><use href="#on-close"/></svg>',
   bin: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13M10 11v6M14 11v6"/></svg>',
   menu: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>',

@@ -148,14 +148,14 @@ describe('system menu navigation', () => {
     expect(document.activeElement?.tagName).toBe('SUMMARY');
     key('Tab');
     expect(document.activeElement).toBe(close);
-    button(messages().hud.returnToMenu).click();
+    button(messages().hud.systemMenuDetails.leaveGame).click();
     expect(document.querySelector('[role="alertdialog"]')).not.toBeNull();
     key('Escape');
     await Promise.resolve();
     expect(onQuit).not.toHaveBeenCalled();
     expect(menu.isOpen()).toBe(true);
     expect(document.querySelector('[role="alertdialog"]')).toBeNull();
-    button(messages().hud.returnToMenu).click();
+    button(messages().hud.systemMenuDetails.leaveGame).click();
     const question = document.querySelector('[role="alertdialog"]');
     if (question === null) throw new Error('Missing confirmation');
     button(messages().hud.quitConfirmYes, question).click();

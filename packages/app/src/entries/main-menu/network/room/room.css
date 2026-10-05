@@ -155,10 +155,6 @@
   opacity: 0.5;
   cursor: var(--cursor-default, default);
 }
-.network-room :focus-visible {
-  outline: 2px solid #aad6a9;
-  outline-offset: 3px;
-}
 .network-room__muted {
   font-size: 0.9em;
   opacity: 0.75;

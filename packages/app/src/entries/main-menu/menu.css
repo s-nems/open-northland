@@ -480,11 +480,6 @@
   color: var(--accent-bright);
 }
 
-.main-menu__seg-btn:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: -2px;
-}
-
 .main-menu__seg-btn.is-active {
   background: var(--accent);
   color: var(--bg-base);
@@ -550,12 +545,6 @@
 .main-menu__dropdown-btn[aria-expanded="true"] {
   border-color: var(--accent);
   color: var(--accent-bright);
-}
-
-.main-menu__dropdown-btn:focus-visible,
-.main-menu__dropdown-option:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: -2px;
 }
 
 .main-menu__dropdown-btn-label {
@@ -708,11 +697,6 @@
 
 .main-menu__toggle.is-on::after {
   left: calc(var(--u) * 36);
-}
-
-.main-menu__toggle:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 2px;
 }
 
 .main-menu__toggle:disabled {

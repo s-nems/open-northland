@@ -140,10 +140,10 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     activePanel = settingsPanel.el;
     settingsPanel.open();
   });
-  const quit = button(copy.returnToMenu, GLYPH.arrowLeft, () => {
+  const quit = button(text.leaveGame, GLYPH.exit, () => {
     void confirm
       .open({
-        title: copy.returnToMenu,
+        title: text.leaveGame,
         message: copy.quitConfirm,
         cancel: text.cancel,
         confirm: copy.quitConfirmYes,

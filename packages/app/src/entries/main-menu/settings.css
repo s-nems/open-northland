@@ -194,11 +194,6 @@ button.main-menu__settings-key:focus-visible {
   color: var(--accent-bright);
 }
 
-.main-menu__settings-key:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 4px;
-}
-
 .main-menu__settings-key.is-capturing {
   border-color: var(--accent-bright);
   color: var(--accent-bright);
@@ -262,11 +257,6 @@ button.main-menu__settings-key:focus-visible {
 
 .main-menu__settings-range:disabled::-moz-range-thumb {
   cursor: var(--cursor-default, default);
-}
-
-.main-menu__settings-range:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 4px;
 }
 
 @media (forced-colors: active) {

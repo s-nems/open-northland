@@ -124,11 +124,6 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
-.main-menu__lobby-chip:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 2px;
-}
-
 .main-menu__lobby-chip:disabled {
   cursor: var(--cursor-default, default);
 }
@@ -200,12 +195,6 @@
 .lobby-tribe__button[aria-expanded="true"] {
   border-color: rgb(var(--accent-rgb) / 0.75);
   background: rgba(20, 38, 54, 0.85);
-}
-
-.lobby-tribe__button:focus-visible,
-.lobby-tribe__option:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 2px;
 }
 
 .lobby-tribe__button:disabled {
@@ -423,11 +412,6 @@
     rgba(232, 240, 238, 0.9) 56%,
     transparent 56%
   );
-}
-
-.main-menu__lobby-swatch:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 2px;
 }
 
 .main-menu__lobby-footnote {

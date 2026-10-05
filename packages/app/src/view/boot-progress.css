@@ -334,7 +334,6 @@
 .boot-notice__button:focus-visible {
   background: linear-gradient(#5c3a1d, #342010);
   color: #fff3c7;
-  outline: none;
   box-shadow:
     0 0 0 1px #e8c978,
     0 2px 8px rgba(0, 0, 0, 0.6);

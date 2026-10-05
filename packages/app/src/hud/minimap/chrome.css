@@ -147,10 +147,6 @@
     inset 0 2px 4px #21150e,
     0 0 0 1px #d3b079;
 }
-.on-hud .on-minimap-chrome__button:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
 /* A short panel (size S on a wide map) keeps the six buttons clear of the frame's corner ornaments. */
 @container minimap (max-height: 180px) {
   .on-hud .on-minimap-chrome__controls {
@@ -224,11 +220,6 @@
 .on-hud .on-minimap-chrome__all:hover {
   background: #80603a99;
   color: #fff7db;
-}
-.on-hud .on-minimap-chrome__all:focus-visible,
-.on-hud .on-minimap-chrome__choice:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 1px;
 }
 .on-hud .on-minimap-chrome__filter {
   display: flex;
@@ -361,10 +352,6 @@
   border: solid #fff1c9;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
-}
-.on-hud .on-minimap-chrome__filter input:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 3px;
 }
 .on-hud .on-minimap-tip {
   position: absolute;

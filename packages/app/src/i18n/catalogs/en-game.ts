@@ -227,6 +227,7 @@ export const enGame = {
     tradeExchange: 'Given {given}/{giveAmount}, received {received}/{takeAmount}',
     tradeOffers: 'Trade agreements',
     systemMenuDetails: {
+      leaveGame: 'Leave game',
       resume: 'Return to game',
       paused: 'Game paused',
       multiplayer: 'Multiplayer game continues',
@@ -248,8 +249,8 @@ export const enGame = {
     matchContinue: 'Keep playing',
     matchWatch: 'Keep watching',
     returnToMenu: 'Return to menu',
-    quitConfirm: 'Return to the menu? Progress since the last save is lost.',
-    quitConfirmYes: 'Return to menu',
+    quitConfirm: 'Leave the game and return to the main menu? Unsaved progress will be lost.',
+    quitConfirmYes: 'Leave game',
     quitConfirmNo: 'Keep playing',
     closeMenu: 'Close',
     saveGame: 'Save game',
