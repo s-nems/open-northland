@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SettlerNeeds } from '../../../src/components/index.js';
+import { PersonalNames } from '../../../src/core/personal-names.js';
 import { Rng } from '../../../src/core/rng.js';
 import { World } from '../../../src/ecs/world.js';
 import { fx, ONE } from '../../../src/index.js';
@@ -43,7 +44,7 @@ describe('createSettler - every settler spawns with seeded random needs', () => 
 
   it('seeds all four needs within [0, half a bar]', () => {
     const world = new World();
-    const e = createSettler(world, testContent(), new Rng(3), spec);
+    const e = createSettler(world, testContent(), new Rng(3), spec, new PersonalNames(1, []));
     if (e === null) throw new Error('spawn failed');
     const s = world.get(e, SettlerNeeds);
     for (const need of [s.hunger, s.fatigue, s.piety, s.enjoyment]) {
@@ -55,8 +56,8 @@ describe('createSettler - every settler spawns with seeded random needs', () => 
   it('is reproducible: same seed → identical needs on two independent worlds', () => {
     const wa = new World();
     const wb = new World();
-    const ea = createSettler(wa, testContent(), new Rng(42), spec);
-    const eb = createSettler(wb, testContent(), new Rng(42), spec);
+    const ea = createSettler(wa, testContent(), new Rng(42), spec, new PersonalNames(1, []));
+    const eb = createSettler(wb, testContent(), new Rng(42), spec, new PersonalNames(1, []));
     if (ea === null || eb === null) throw new Error('spawn failed');
     const a = wa.get(ea, SettlerNeeds);
     const b = wb.get(eb, SettlerNeeds);

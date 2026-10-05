@@ -12,6 +12,7 @@ export function ctxOf(sim: Simulation): SystemContext {
   return {
     content: sim.content,
     rng: sim.rng,
+    names: sim.names,
     tick: fixtureTick(sim),
     events: sim.events,
     commands: sim.commands,

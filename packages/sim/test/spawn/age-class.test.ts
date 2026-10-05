@@ -1,6 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Age, Female, Settler } from '../../src/components/index.js';
+import { PersonalNames } from '../../src/core/personal-names.js';
 import { Rng } from '../../src/core/rng.js';
 import { World } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
@@ -50,8 +51,8 @@ describe('createSettler stamps Age on the baby/child job slugs', () => {
   it('a baby spawns at the start of its stage (ticks 0), a child at the start of its stage', () => {
     const world = new World();
     const content = ageClassContent();
-    const baby = createSettler(world, content, new Rng(1), spec(2)); // baby_male
-    const child = createSettler(world, content, new Rng(1), spec(3)); // child_female
+    const baby = createSettler(world, content, new Rng(1), spec(2), new PersonalNames(1, [])); // baby_male
+    const child = createSettler(world, content, new Rng(1), spec(3), new PersonalNames(1, [])); // child_female
     if (baby === null || child === null) throw new Error('spawn failed');
     expect(world.get(baby, Age)).toEqual({ ticks: 0, asOf: null });
     expect(world.has(baby, Female)).toBe(false);
@@ -63,14 +64,14 @@ describe('createSettler stamps Age on the baby/child job slugs', () => {
 
   it('matches by slug, not numeric id - a fixture adult trade on id 1 spawns Age-less', () => {
     const world = new World();
-    const adult = createSettler(world, collidingContent(), new Rng(1), spec(1)); // woodcutter
+    const adult = createSettler(world, collidingContent(), new Rng(1), spec(1), new PersonalNames(1, [])); // woodcutter
     if (adult === null) throw new Error('spawn failed');
     expect(world.has(adult, Age)).toBe(false);
   });
 
   it('stamps the female marker on the heroine so her voice and hit reactions use the female pools', () => {
     const world = new World();
-    const heroine = createSettler(world, ageClassContent(), new Rng(1), spec(47));
+    const heroine = createSettler(world, ageClassContent(), new Rng(1), spec(47), new PersonalNames(1, []));
     if (heroine === null) throw new Error('spawn failed');
     expect(world.has(heroine, Female)).toBe(true);
     expect(world.has(heroine, Age)).toBe(false);
@@ -78,7 +79,7 @@ describe('createSettler stamps Age on the baby/child job slugs', () => {
 
   it('a map-spawned girl grows into the adult woman role after her remaining childhood', () => {
     const sim = new Simulation({ seed: 1, content: ageClassContent() });
-    const girl = createSettler(sim.world, ageClassContent(), new Rng(1), spec(3)); // child_female
+    const girl = createSettler(sim.world, ageClassContent(), new Rng(1), spec(3), new PersonalNames(1, [])); // child_female
     if (girl === null) throw new Error('spawn failed');
     expect(sim.world.get(girl, Settler).jobType).toBe(CHILD_FEMALE);
 

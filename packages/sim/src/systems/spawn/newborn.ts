@@ -10,6 +10,7 @@ import {
   Settler,
 } from '../../components/index.js';
 import { fx } from '../../core/fixed.js';
+import type { PersonalNames } from '../../core/personal-names.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { BABY_FEMALE, BABY_MALE } from '../lifecycle/ageclass.js';
 import { stampDefaultStance } from '../orders/index.js';
@@ -27,6 +28,7 @@ export function spawnNewborn(
   mother: Entity,
   home: Entity,
   sex: 'female' | 'male',
+  names: PersonalNames,
 ): Entity {
   const p = world.get(mother, Position); // she stands at the door she entered by, so the baby appears there
   const baby = world.create();
@@ -40,6 +42,7 @@ export function spawnNewborn(
     enjoyment: fx.fromInt(0),
   });
   if (sex === 'female') world.add(baby, Female, { female: true });
+  names.assign(world, baby, world.get(mother, Settler).tribe, sex);
   world.add(baby, Age, { ticks: 0, asOf: null });
   world.add(baby, Health, { hitpoints: HUMAN_HITPOINTS, max: HUMAN_HITPOINTS });
   const owner = world.tryGet(mother, Owner)?.player;

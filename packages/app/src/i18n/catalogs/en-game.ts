@@ -1561,6 +1561,7 @@ export const enGame = {
     },
     /** Stand-ins for a building or vehicle whose type the catalog does not name. */
     unnamed: {
+      person: 'Person',
       building: 'Building',
       vehicle: 'Vehicle',
     },

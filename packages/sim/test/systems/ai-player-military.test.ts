@@ -17,6 +17,7 @@ import {
 } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
+import { PersonalNames } from '../../src/core/personal-names.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   EventBuffer,
@@ -108,6 +109,7 @@ function ctxOf(sim: Simulation, seed = EAGER_SEED, tick = 0): SystemContext {
   return {
     content: aiContent(),
     rng: new Rng(seed),
+    names: new PersonalNames(1, []),
     tick,
     events: new EventBuffer(),
     commands: new CommandQueue(),

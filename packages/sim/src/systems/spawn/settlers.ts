@@ -21,6 +21,7 @@ import {
 import type { Command, SettlerEquipment, SettlerEquipmentSlot } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { fx, ONE } from '../../core/fixed.js';
+import type { PersonalNames } from '../../core/personal-names.js';
 import type { Rng } from '../../core/rng.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
@@ -65,7 +66,13 @@ const IDLE_JOB_TYPE = 0;
  * ({@link rollInitialNeed}) in the order hunger, fatigue, piety, enjoyment, which is part of the
  * deterministic RNG stream.
  */
-export function createSettler(world: World, content: ContentSet, rng: Rng, spec: SettlerSpec): Entity | null {
+export function createSettler(
+  world: World,
+  content: ContentSet,
+  rng: Rng,
+  spec: SettlerSpec,
+  names: PersonalNames,
+): Entity | null {
   if (spec.jobType !== IDLE_JOB_TYPE && !contentIndex(content).commandJobs.has(spec.jobType)) return null;
   // This path mints a person, so an animal tribe is bad input: creatures come from `spawnAnimalHerd`,
   // and a `Person` on one is the exact state the personhood invariant rejects.
@@ -96,6 +103,7 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   if (isFemaleJobId(jobId)) {
     world.add(e, Female, { female: true });
   }
+  names.assign(world, e, spec.tribe, world.has(e, Female) ? 'female' : 'male');
   // A settler spawned directly into a baby/child job (an authored map's `sethuman` children) starts at its
   // stage's tick like a born baby; `Age` is what makes the GrowthSystem mature it. Slug-matched, like
   // `Female` above.
@@ -158,7 +166,7 @@ export function spawnSettler(
   ctx: SystemContext,
   command: Extract<Command, { kind: 'spawnSettler' }>,
 ): Entity | null {
-  const e = createSettler(world, ctx.content, ctx.rng, command);
+  const e = createSettler(world, ctx.content, ctx.rng, command, ctx.names);
   if (e === null) return null;
   // A commanded spawn takes its (x,y) on trust and authored maps routinely name a cell inside a house body,
   // so the eviction must run before anything reads the position, including the work flag planted below.

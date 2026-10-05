@@ -11,6 +11,7 @@ function spawnContext(sim: Simulation): VehicleSpawnContext {
   return {
     content: sim.content,
     rng: sim.rng,
+    names: sim.names,
     tick: sim.tick,
     events: sim.events,
     commands: sim.commands,

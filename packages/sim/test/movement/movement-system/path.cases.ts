@@ -192,6 +192,7 @@ describe('movementSystem - invoked directly (unit, no sim)', () => {
     movementSystem(sim.world, {
       content: testContent(),
       rng: sim.rng,
+      names: sim.names,
       tick: 0,
       events: sim.events,
       commands: sim.commands,

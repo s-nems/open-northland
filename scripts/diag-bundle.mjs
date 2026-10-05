@@ -76,6 +76,8 @@ function disputeOf(path, digestInputsFromJson) {
 function describe(difference) {
   if (difference === null) return 'no difference in the retained inputs';
   switch (difference.kind) {
+    case 'names':
+      return 'personal-name allocation differs';
     case 'rng':
       return 'rng state differs';
     case 'entities':

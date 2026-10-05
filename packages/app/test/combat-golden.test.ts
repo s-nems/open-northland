@@ -275,7 +275,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
   it('matches the golden final state hash', () => {
     // Moves on any intentional combat change, including a new shape of the stored swing that leaves the
     // hit trace alone; name the change in the commit that moves it.
-    expect(runCombat(TICKS).hash).toBe('4bc42fb2');
+    expect(runCombat(TICKS).hash).toBe('1c15f180');
   });
 
   it('matches the golden hit trace', () => {

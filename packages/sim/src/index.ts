@@ -63,6 +63,7 @@ export {
 export { EventBuffer, eventNode, type SimEvent, type SimEventKind } from './core/events.js';
 export { type Fixed, fx, ONE } from './core/fixed.js';
 export { FixedTimestep, MS_PER_TICK, TICKS_PER_SECOND } from './core/loop.js';
+export { PersonalNames } from './core/personal-names.js';
 export { Rng } from './core/rng.js';
 export type { Component, Entity, MutationSink, SyncDomain } from './ecs/world.js';
 export { SYNC_DOMAINS, World } from './ecs/world.js';

@@ -38,6 +38,7 @@ import type { UnlockKind } from './components/unlocks.js';
 import { CommandQueue } from './core/command-queue.js';
 import { type Command, type CommandEnvelope, setupCommand } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
+import { PersonalNames } from './core/personal-names.js';
 import { Rng } from './core/rng.js';
 import { type Entity, World } from './ecs/world.js';
 import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
@@ -163,7 +164,8 @@ export type SystemInstrument = (name: string, run: () => void) => void;
 export class Simulation {
   readonly world = new World();
   readonly rng: Rng;
-  /** The RNG construction seed, kept as save-file provenance; the live stream position is `rng.getState()`. */
+  readonly names: PersonalNames;
+  /** World seed, also used to reconstruct personal-name decks after restoring a save. */
   readonly seed: number;
   readonly content: ContentSet;
   /**
@@ -204,6 +206,7 @@ export class Simulation {
 
   constructor(opts: SimOptions) {
     this.rng = new Rng(opts.seed);
+    this.names = new PersonalNames(opts.seed, opts.content.personalNames);
     this.seed = opts.seed;
     this.content = opts.content;
     if (opts.missions !== undefined) this.missions = opts.missions;
@@ -291,6 +294,7 @@ export class Simulation {
     return {
       content: this.content,
       rng: this.rng,
+      names: this.names,
       tick: this.currentTick,
       events: this.events,
       commands: this.commands,
@@ -336,7 +340,13 @@ export class Simulation {
       }
     }
     if (this.digest !== null) {
-      const sealed = this.digest.seal(this.world, this.currentTick, this.rng.getState(), this.fog);
+      const sealed = this.digest.seal(
+        this.world,
+        this.currentTick,
+        this.rng.getState(),
+        this.fog,
+        this.names.digest(),
+      );
       this.lastDigest = sealed.digest;
       this.lastDigestInputs = sealed.inputs;
     }
@@ -772,7 +782,7 @@ export class Simulation {
 
   /** A canonical hash of all simulation state, for determinism golden tests. */
   hashState(): string {
-    return hashSimState(this.world, this.currentTick, this.rng.getState(), this.fog);
+    return hashSimState(this.world, this.currentTick, this.rng.getState(), this.fog, this.names.digest());
   }
 
   /**

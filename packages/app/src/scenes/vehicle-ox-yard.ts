@@ -48,6 +48,7 @@ function build(sim: Simulation): void {
       {
         content: sim.content,
         rng: sim.rng,
+        names: sim.names,
         tick: sim.tick,
         events: sim.events,
         commands: sim.commands,

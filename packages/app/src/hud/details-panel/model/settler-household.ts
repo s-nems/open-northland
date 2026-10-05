@@ -1,5 +1,6 @@
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { JOB_CIVILIST, JOB_IDLE, JOB_SCOUT } from '../../../catalog/jobs.js';
+import { settlerName } from '../../../game/character-names/index.js';
 import {
   buildingTypeOf,
   childOrderWaitOf,
@@ -18,7 +19,6 @@ import {
 } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { buildingTitle, type UnitPanelModelContext } from './context.js';
-import { settlerDisplayName, settlerGivenName } from './settler-name.js';
 import type { SettlerPlace } from './settler-work.js';
 
 /** What the panel shows a person as: the rows and sections follow it. The residents list's kinds, read the
@@ -155,8 +155,7 @@ export function familyModel(
   const marriage = marriageOf(ent);
   const spouse = marriage === undefined ? undefined : entityById(snapshot, marriage.spouse);
   const child = marriage?.child == null ? undefined : entityById(snapshot, marriage.child);
-  const partner =
-    spouse === undefined ? null : { id: spouse.id, label: settlerDisplayName(ctx, snapshot, spouse) };
+  const partner = spouse === undefined ? null : { id: spouse.id, label: settlerName(ctx, spouse) };
   // The sim's `mayMarry`: grown, not married, not in a drill, not a fighter or the scout; a wedding
   // under way fades the button instead of dropping it.
   const eligible =
@@ -168,17 +167,15 @@ export function familyModel(
     settlerJobType(ent) !== JOB_SCOUT;
   return {
     partner,
-    child:
-      child === undefined || isAdult(child) ? null : { id: child.id, label: settlerGivenName(ctx, child) },
+    child: child === undefined || isAdult(child) ? null : { id: child.id, label: settlerName(ctx, child) },
     marry: !eligible ? null : isMarrying(ent) ? messages().hud.settlerPanel.weddingUnderWay : true,
-    childOnHold: childOnHold(ctx, snapshot, ent, spouse),
+    childOnHold: childOnHold(ctx, ent, spouse),
   };
 }
 
 /** The wife carries the order, so both spouses read it off her. */
 function childOnHold(
   ctx: UnitPanelModelContext,
-  snapshot: WorldSnapshot,
   ent: SnapshotEntity,
   spouse: SnapshotEntity | undefined,
 ): SettlerFamilyModel['childOnHold'] {
@@ -187,9 +184,9 @@ function childOnHold(
   const wait = wife === undefined ? undefined : childOrderWaitOf(wife);
   if (wife === undefined || wait === undefined) return null;
   const copy = messages().userMessages.familyBlocked;
-  const partner = husband === undefined ? '' : ` ${settlerDisplayName(ctx, snapshot, husband)}`;
+  const partner = husband === undefined ? '' : ` ${settlerName(ctx, husband)}`;
   return {
     label: copy.short[wait],
-    tooltip: formatMessage(copy.full[wait], { name: settlerDisplayName(ctx, snapshot, wife), partner }),
+    tooltip: formatMessage(copy.full[wait], { name: settlerName(ctx, wife), partner }),
   };
 }

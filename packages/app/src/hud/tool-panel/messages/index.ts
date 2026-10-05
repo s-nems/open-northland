@@ -9,9 +9,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { professionDefForJob } from '../../../catalog/professions.js';
-import { characterName } from '../../../game/character-names/index.js';
-import { PRIMARY_TRIBE } from '../../../game/rules.js';
-import { isFemale, num, type SnapshotEntity, surnameSourceOf } from '../../../game/snapshot.js';
+import { isFemale, num, type SnapshotEntity } from '../../../game/snapshot.js';
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
 import { bcp47Tag, formatMessage, messages, professionLabel } from '../../../i18n/index.js';
 import type { BuildingThumbs } from '../../dom/building-thumb.js';
@@ -69,6 +67,7 @@ export interface MessageTarget {
 
 export interface MessageCenterDeps {
   readonly ctx: PanelContext;
+  readonly settlerName: (entity: SnapshotEntity) => string;
   /** The DOM plane the column mounts on. */
   readonly plane: HTMLElement;
   /** Design px the column keeps clear above the plane's bottom edge, for the minimap. */
@@ -129,19 +128,12 @@ export interface MessageCenter {
 
 function makeNaming(deps: MessageCenterDeps): MessageNaming {
   return {
-    settler: (e: SnapshotEntity, snapshot) => {
+    settler: (e: SnapshotEntity) => {
       const s = e.components.Settler as { tribe?: unknown; jobType?: unknown } | undefined;
       const jobType = num(s?.jobType);
       const young = e.components.Age !== undefined;
       const female = isFemale(e);
-      const name = characterName(
-        num(s?.tribe) ?? PRIMARY_TRIBE,
-        jobType,
-        young,
-        e.id,
-        surnameSourceOf(snapshot, e),
-        female,
-      );
+      const name = deps.settlerName(e);
       // The original appends the trade for a grown man with one; women and children go by name alone.
       const def = young || female ? undefined : professionDefForJob(jobType);
       return { name, jobLabel: def === undefined ? null : professionLabel(def.key), female };

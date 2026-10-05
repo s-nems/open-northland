@@ -35,6 +35,7 @@ const CHECKS: readonly CrossReferenceCheck[] = [
   checkJobExperience,
   checkVehicles,
   checkHumanPalettes,
+  checkPersonalNames,
 ];
 
 /** The id-sets every `check*` resolves references against, built once from the set. */
@@ -354,6 +355,24 @@ function checkVehicles(set: ContentSet, { jobIds, vehicleIds }: IdSets): string[
       errors.push(`vehicle "${v.id}" names unknown commander jobType ${v.commanderJob}`);
     if (v.transformVehicleType !== undefined && !vehicleIds.has(v.transformVehicleType))
       errors.push(`vehicle "${v.id}" transforms into unknown vehicleType ${v.transformVehicleType}`);
+  }
+  return errors;
+}
+
+function checkPersonalNames(set: ContentSet, { tribeIds }: IdSets): string[] {
+  const errors: string[] = [];
+  const ids = new Set<string>();
+  const bindings = new Set<string>();
+  for (const pool of set.personalNames) {
+    const binding = `${pool.tribe}:${pool.sex}`;
+    if (ids.has(pool.id)) errors.push(`duplicate personal name pool ${pool.id}`);
+    if (bindings.has(binding)) errors.push(`duplicate personal name binding ${binding}`);
+    if (!tribeIds.has(pool.tribe))
+      errors.push(`personal name pool ${pool.id} references unknown tribe ${pool.tribe}`);
+    if (set.animals.some((animal) => animal.tribeType === pool.tribe))
+      errors.push(`personal name pool ${pool.id} references wildlife`);
+    ids.add(pool.id);
+    bindings.add(binding);
   }
   return errors;
 }

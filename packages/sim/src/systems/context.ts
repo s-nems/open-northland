@@ -2,6 +2,7 @@ import type { ContentSet } from '@open-northland/data';
 import type { AiProgramScript } from '../components/ai-program.js';
 import type { CommandQueue } from '../core/command-queue.js';
 import type { EventBuffer } from '../core/events.js';
+import type { PersonalNames } from '../core/personal-names.js';
 import type { Rng } from '../core/rng.js';
 import type { World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain/index.js';
@@ -11,6 +12,7 @@ import type { FogState } from './vision/index.js';
 export interface SystemContext {
   readonly content: ContentSet;
   readonly rng: Rng;
+  readonly names: PersonalNames;
   /** Monotonic tick counter. */
   readonly tick: number;
   /** Emit one-shot events for render/audio (never read back in sim logic). */

@@ -4,6 +4,7 @@ import { digestInputsFromJson, digestInputsToJson, type SyncDigestInputsJson } f
 function inputs(): SyncDigestInputsJson {
   return {
     tick: 7,
+    names: 2166136261,
     rng: -123,
     nextEntityId: 3,
     entityCount: 1,

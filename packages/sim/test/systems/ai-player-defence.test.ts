@@ -14,6 +14,7 @@ import {
 } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
+import { PersonalNames } from '../../src/core/personal-names.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { EventBuffer, positionOfNode, Rng, Simulation, type TerrainMap } from '../../src/index.js';
 import type { TerrainGraph } from '../../src/nav/terrain/index.js';
@@ -81,6 +82,7 @@ function ctxOf(sim: Simulation, seed = EAGER_SEED): SystemContext {
   return {
     content: aiContent(),
     rng: new Rng(seed),
+    names: new PersonalNames(1, []),
     tick: 0,
     events: new EventBuffer(),
     commands: new CommandQueue(),

@@ -75,7 +75,7 @@ export function createChrome(
     }
     // Dark edging under the strip separates it from the wood body (the original's outlined title bar).
     g.rect(strip.x, strip.y, strip.w, strip.h).stroke({ color: INNER_BOX_DARK, width: inset });
-    // Fit to the strip so a long personalized name (first + patronymic) shrinks rather than overflowing.
+    // Fit to the strip so a long personalized name shrinks rather than overflowing.
     textCentered(title, strip, 'white', 'title', strip.w - 2 * inset);
   };
 

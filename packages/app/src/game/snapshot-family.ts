@@ -149,18 +149,7 @@ export function isMakingLove(e: SnapshotEntity): boolean {
   return e.components.MakingLove !== undefined;
 }
 
-/**
- * Whose given name this settler's displayed surname derives from: a married woman takes her husband's,
- * a growing child its father's, everyone else their own. Ids are stable, so a dead father still anchors
- * the family name.
- */
-export function surnameSourceOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {
-  const marriage = marriageOf(e);
-  if (marriage !== undefined && isFemale(e)) return marriage.spouse;
-  return fatherOf(snapshot, e);
-}
-
-/** A growing child's father, which its home and surname follow; undefined for an adult. */
+/** A growing child's father, which its home follows; undefined for an adult. */
 export function fatherOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {
   return isAdult(e) ? undefined : fatherOfChild(snapshot, e.id);
 }

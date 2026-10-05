@@ -1,4 +1,4 @@
-import { GivenName, Person, SETTLER_NAME_MAX_CHARS, Settler } from '../../components/index.js';
+import { GivenName, Person, ScriptedName, SETTLER_NAME_MAX_CHARS, Settler } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { codePointLength, hasControlCharacter } from '../../core/untrusted.js';
 import type { World } from '../../ecs/world.js';
@@ -15,6 +15,7 @@ export function renameSettler(
 ): void {
   const e = command.entity;
   if (!isOrderableSettler(world, e) || !world.has(e, Person)) return;
+  if (world.has(e, ScriptedName)) return;
   if (isHeroJob(ctx.content, world.get(e, Settler).jobType)) return;
   const name = command.name.trim();
   if (name.length === 0) {

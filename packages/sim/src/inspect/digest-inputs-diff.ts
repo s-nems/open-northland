@@ -4,7 +4,7 @@ import type { DigestComponentInputs, SyncDigestInputs } from '../simulation/sync
 /** The first place two clients' {@link SyncDigestInputs} for one tick part. An `order` detail means both
  *  sides touched the same set in a different first-touch order, which the digest folds as a difference. */
 export type DigestInputDifference =
-  | { readonly kind: 'rng'; readonly a: number; readonly b: number }
+  | { readonly kind: 'rng' | 'names'; readonly a: number; readonly b: number }
   | { readonly kind: 'entities'; readonly detail: 'nextEntityId' | 'entityCount' | 'allocations' }
   | { readonly kind: 'fog'; readonly index: number }
   | {
@@ -32,6 +32,7 @@ export type DigestInputDifference =
 export function diffDigestInputs(a: SyncDigestInputs, b: SyncDigestInputs): DigestInputDifference | null {
   if (a.tick !== b.tick) throw new Error(`diffDigestInputs compares one tick, got ${a.tick} and ${b.tick}`);
   if (a.rng !== b.rng) return { kind: 'rng', a: a.rng, b: b.rng };
+  if (a.names !== b.names) return { kind: 'names', a: a.names, b: b.names };
   if (a.nextEntityId !== b.nextEntityId) return { kind: 'entities', detail: 'nextEntityId' };
   if (a.entityCount !== b.entityCount) return { kind: 'entities', detail: 'entityCount' };
   if (firstDifferingIndex(a.allocations, b.allocations) !== null)

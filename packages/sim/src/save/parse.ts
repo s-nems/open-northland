@@ -7,6 +7,7 @@ import {
   type ComponentSection,
   type EntitiesSection,
   type FogSection,
+  type NamesSection,
   type RngSection,
   SAVE_FORMAT_VERSION,
   SAVE_KIND,
@@ -66,7 +67,7 @@ function parsedHeader(value: unknown): SaveGameHeader {
   };
 }
 
-/** Sections must appear in the one canonical order - `entities`, the component stores, `rng`, `fog`
+/** Sections must appear in the one canonical order - `entities`, the component stores, `rng`, `names`, `fog`
  *  (exactly when the header names a map), `commands` - which also rejects every duplicated or
  *  unknown section. */
 function parsedSections(value: unknown, header: SaveGameHeader): readonly SaveGameSection[] {
@@ -93,6 +94,8 @@ function parsedSections(value: unknown, header: SaveGameHeader): readonly SaveGa
     sections.push(parsedComponent(take(i, 'component'), `save.sections[${i}]`, alive, componentNames));
   }
   sections.push(parsedRng(take(i, 'rng'), `save.sections[${i}]`));
+  i++;
+  sections.push(parsedNames(take(i, 'names')));
   i++;
   if (header.mapFingerprint !== null) {
     sections.push(parsedFog(take(i, 'fog'), `save.sections[${i}]`));
@@ -258,4 +261,19 @@ function parsedCommands(raw: Record<string, unknown>, at: string, tick: number):
 function asNullableString(value: unknown, at: string): string | null {
   if (value === null || typeof value === 'string') return value;
   throw new Error(`${at}: expected a string or null, got ${typeName(value)}`);
+}
+
+function parsedNames(raw: Record<string, unknown>): NamesSection {
+  if (!Array.isArray(raw.cursors)) throw new Error('save.names.cursors: expected an array');
+  let previous = '';
+  const cursors = raw.cursors.map((value: unknown) => {
+    const cursor = asRecord(value, 'save.names.cursor');
+    if (typeof cursor.pool !== 'string' || cursor.pool <= previous)
+      throw new Error('save.names: pools must ascend');
+    const next = asCount(cursor.next, 'save.names.next');
+    if (!Number.isSafeInteger(next)) throw new Error('save.names.next: expected a safe integer');
+    previous = cursor.pool;
+    return { pool: cursor.pool, next };
+  });
+  return { id: 'names', cursors };
 }

@@ -46,7 +46,7 @@ export interface BuildingHoverModel {
 export interface SettlerHoverModel {
   readonly kind: 'settler';
   readonly entityId: number;
-  /** The given name alone; the surname is the details panel's, which has the room for it. */
+  /** The same personal name as the details panel. */
   readonly title: string;
   /** The trade it works, beside its name on the card's one line. */
   readonly profession: string;

@@ -1,6 +1,7 @@
 import type { FogMode } from '../components/rules.js';
 import type { CommandEnvelope } from '../core/commands/index.js';
 import type { SavedCommand } from '../core/continuation.js';
+import type { NameCursor } from '../core/personal-names.js';
 
 export type { SavedCommand } from '../core/continuation.js';
 
@@ -9,7 +10,7 @@ export const SAVE_KIND = 'open-northland-save';
 
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. A reader accepts
  *  exactly this version and rejects any other, never migrating. */
-export const SAVE_FORMAT_VERSION = 85;
+export const SAVE_FORMAT_VERSION = 86;
 
 /** The single key wrapping a serialized `Map`'s entry pairs; reserved, so a plain record carrying it
  *  is rejected at export. */
@@ -33,7 +34,7 @@ export interface SaveGameHeader {
   readonly entry: string | null;
   /** Caller-owned session metadata, validated by its owner; null when the caller records no session. */
   readonly session: unknown;
-  /** The RNG construction seed, provenance only; the live stream position is in the rng section. */
+  /** World seed: reconstructs the personal-name decks. The gameplay stream position is in `rng`. */
   readonly seed: number;
   readonly tick: number;
 }
@@ -53,6 +54,11 @@ export interface ComponentSection {
   readonly id: 'component';
   readonly name: string;
   readonly entries: ReadonlyArray<readonly [number, unknown]>;
+}
+
+export interface NamesSection {
+  readonly id: 'names';
+  readonly cursors: readonly NameCursor[];
 }
 
 export interface RngSection {
@@ -87,7 +93,13 @@ export interface CommandsSection {
 }
 
 /** A reader treats an unknown section id as fatal. */
-export type SaveGameSection = EntitiesSection | ComponentSection | RngSection | FogSection | CommandsSection;
+export type SaveGameSection =
+  | EntitiesSection
+  | ComponentSection
+  | NamesSection
+  | RngSection
+  | FogSection
+  | CommandsSection;
 
 /** A complete run state at one tick boundary, as canonical plain data (see `exportSaveGame`). */
 export interface SaveGame {

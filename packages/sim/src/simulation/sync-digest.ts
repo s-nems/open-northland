@@ -8,7 +8,7 @@ import type { FogState } from '../systems/vision/index.js';
  * one deterministic session compare, where a full `hashState()` would cost hundreds of times a tick.
  *
  * The component domains cover only the stores the tick wrote, so a divergence shows up on the tick it
- * happens rather than for ever after; `rng`, `entities` and `fog` carry their whole state every tick.
+ * happens rather than for ever after; `rng`, `entities`, `fog` and the personal-name allocator carry their whole state every tick.
  * The full hash stays the rare cross-check for a state that already drifted.
  */
 export interface SyncDigest {
@@ -35,6 +35,7 @@ export interface DigestComponentInputs {
 export interface SyncDigestInputs {
   readonly tick: number;
   readonly rng: number;
+  readonly names: number;
   readonly nextEntityId: number;
   readonly entityCount: number;
   readonly allocations: Uint32Array;
@@ -117,7 +118,13 @@ export class SyncDigestRecorder implements MutationSink {
   }
 
   /** Fold the tick into a digest. Reads live values, so it belongs at a tick boundary. */
-  seal(world: World, tick: number, rngState: number, fog: FogState | undefined): SealedSyncDigest {
+  seal(
+    world: World,
+    tick: number,
+    rngState: number,
+    fog: FogState | undefined,
+    names = FNV_OFFSET_BASIS,
+  ): SealedSyncDigest {
     const domains: Record<SyncDomain, number> = {
       rng: FNV_OFFSET_BASIS,
       entities: FNV_OFFSET_BASIS,
@@ -129,6 +136,7 @@ export class SyncDigestRecorder implements MutationSink {
       fog: FNV_OFFSET_BASIS,
     };
     const capture = this.captureInputs;
+    domains.settlers = fnvMixWord(domains.settlers, names);
 
     this.word = FNV_OFFSET_BASIS;
     this.mix(rngState);
@@ -162,6 +170,7 @@ export class SyncDigestRecorder implements MutationSink {
     const inputs: SyncDigestInputs = {
       tick,
       rng: rngState,
+      names,
       nextEntityId: world.nextEntityId,
       entityCount: world.entityCount,
       allocations: Uint32Array.from(this.allocations),

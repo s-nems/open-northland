@@ -2,6 +2,7 @@ import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Armor, Equipment } from '../../src/components/index.js';
 import type { SettlerEquipment } from '../../src/core/commands/index.js';
+import { PersonalNames } from '../../src/core/personal-names.js';
 import { Rng } from '../../src/core/rng.js';
 import { World } from '../../src/ecs/world.js';
 import { CHILD_FEMALE, CIVILIST_JOB, WOMAN_JOB } from '../../src/systems/lifecycle/ageclass.js';
@@ -53,15 +54,21 @@ describe('createSettler hero equipment', () => {
         },
       ],
     };
-    const hero = createSettler(world, content, new Rng(1), {
-      x: 0,
-      y: 0,
-      tribe: VIKING,
-      jobType: HERO_SABER,
-      // A caller cannot replace the class-authored weapon or armor through a raw spawn payload.
-      armorClass: 1,
-      equipment: { weapon: { goodType: 9 }, armor: { goodType: 1 } },
-    });
+    const hero = createSettler(
+      world,
+      content,
+      new Rng(1),
+      {
+        x: 0,
+        y: 0,
+        tribe: VIKING,
+        jobType: HERO_SABER,
+        // A caller cannot replace the class-authored weapon or armor through a raw spawn payload.
+        armorClass: 1,
+        equipment: { weapon: { goodType: 9 }, armor: { goodType: 1 } },
+      },
+      new PersonalNames(1, []),
+    );
     if (hero === null) throw new Error('hero spawn failed');
 
     expect(world.get(hero, Equipment)).toMatchObject({
@@ -98,13 +105,19 @@ describe('createSettler soldier class weapon', () => {
   });
   const spawn = (jobType: number, equipment?: SettlerEquipment) => {
     const world = new World();
-    const e = createSettler(world, content, new Rng(1), {
-      x: 0,
-      y: 0,
-      tribe: VIKING,
-      jobType,
-      ...(equipment !== undefined ? { equipment } : {}),
-    });
+    const e = createSettler(
+      world,
+      content,
+      new Rng(1),
+      {
+        x: 0,
+        y: 0,
+        tribe: VIKING,
+        jobType,
+        ...(equipment !== undefined ? { equipment } : {}),
+      },
+      new PersonalNames(1, []),
+    );
     if (e === null) throw new Error('soldier spawn failed');
     return world.tryGet(e, Equipment);
   };
@@ -137,13 +150,19 @@ describe('createSettler equipment of a woman and a child', () => {
       ],
     };
     const spawn = (jobType: number) =>
-      createSettler(world, content, new Rng(1), {
-        x: 0,
-        y: 0,
-        tribe: VIKING,
-        jobType,
-        equipment: { boots: { goodType: SHOES_GOOD } },
-      });
+      createSettler(
+        world,
+        content,
+        new Rng(1),
+        {
+          x: 0,
+          y: 0,
+          tribe: VIKING,
+          jobType,
+          equipment: { boots: { goodType: SHOES_GOOD } },
+        },
+        new PersonalNames(1, []),
+      );
     const woman = spawn(WOMAN_JOB);
     const girl = spawn(CHILD_FEMALE);
     const man = spawn(CIVILIST_JOB);

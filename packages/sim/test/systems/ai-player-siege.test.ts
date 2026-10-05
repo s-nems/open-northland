@@ -11,6 +11,7 @@ import {
 } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command, PlayerCommand } from '../../src/core/commands/index.js';
+import { PersonalNames } from '../../src/core/personal-names.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { EventBuffer, playerCommand, Rng, Simulation } from '../../src/index.js';
 import { hexDistance } from '../../src/nav/halfcell.js';
@@ -93,6 +94,7 @@ function ctxOf(sim: Simulation, tick = 0): SystemContext {
   return {
     content: CONTENT,
     rng: new Rng(EAGER_SEED),
+    names: new PersonalNames(1, []),
     tick,
     events: new EventBuffer(),
     commands: new CommandQueue(),

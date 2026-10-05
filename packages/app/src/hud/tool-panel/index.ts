@@ -26,6 +26,7 @@ import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import type { MissionReader } from '../../game/mission-brief.js';
 import type { ObserverSeatEntry } from '../../game/observer-seats.js';
 import { canonicalJobType } from '../../game/sandbox/index.js';
+import type { SnapshotEntity } from '../../game/snapshot.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { messages, professionLabel } from '../../i18n/index.js';
 import type { PresentationPack } from '../../presentation/pack.js';
@@ -106,6 +107,7 @@ export interface PalisadeTools {
 }
 
 export interface ToolPanelOptions {
+  readonly settlerName: (entity: SnapshotEntity) => string;
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   /** The DOM plane the beam, the system bar, the notification column and the pending windows mount on. */
@@ -730,6 +732,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
     const tradesByType = new Map(opts.buildings.map((entry) => [entry.typeId, entry.trades]));
     const messageCenter = createMessageCenter({
+      settlerName: opts.settlerName,
       ctx,
       plane,
       bottomInset: () => {

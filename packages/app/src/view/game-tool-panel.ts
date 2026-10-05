@@ -13,6 +13,7 @@ import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import type { MissionReader } from '../game/mission-brief.js';
+import type { SnapshotEntity } from '../game/snapshot.js';
 import type { ViewerSeat } from '../game/viewer-seat.js';
 import type { AssistantSource } from '../hud/dom/assistant-window/index.js';
 import type { DiplomacySource } from '../hud/dom/diplomacy-window/model.js';
@@ -49,6 +50,7 @@ import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
  */
 
 export interface GameToolPanelDeps {
+  readonly settlerName: (entity: SnapshotEntity) => string;
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   /** The DOM HUD plane the shell regions mount on. */
@@ -260,6 +262,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
 
   const mountController = (uiscale: number) =>
     mountToolPanel({
+      settlerName: deps.settlerName,
       app: deps.app,
       canvas: deps.canvas,
       plane: deps.plane,

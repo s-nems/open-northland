@@ -49,6 +49,7 @@ export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): S
     sections.push({ id: 'component', name, entries: saved });
   });
   sections.push({ id: 'rng', state: sim.rng.getState() });
+  sections.push({ id: 'names', cursors: sim.names.snapshot() });
   const fog = sim.fog;
   if (fog !== undefined) {
     // tryMaskFor, never maskFor: the allocating accessor would grow hashed fog state from an export.

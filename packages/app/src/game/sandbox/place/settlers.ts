@@ -60,13 +60,19 @@ export function spawnSettlerAtNode(
   node: HalfCellNode,
   owner: number = HUMAN_PLAYER,
 ): Entity {
-  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
-    jobType,
-    x: node.hx,
-    y: node.hy,
-    tribe: PRIMARY_TRIBE,
-    owner,
-  });
+  const e = systems.createSettler(
+    sim.world,
+    sim.content,
+    sim.rng,
+    {
+      jobType,
+      x: node.hx,
+      y: node.hy,
+      tribe: PRIMARY_TRIBE,
+      owner,
+    },
+    sim.names,
+  );
   if (e === null) throw new Error(`spawnSettlerAtNode: unknown settler job ${jobType}`);
   return e;
 }

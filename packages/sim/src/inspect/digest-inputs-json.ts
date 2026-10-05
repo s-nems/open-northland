@@ -13,6 +13,7 @@ export interface DigestComponentInputsJson {
 export interface SyncDigestInputsJson {
   readonly tick: number;
   readonly rng: number;
+  readonly names: number;
   readonly nextEntityId: number;
   readonly entityCount: number;
   readonly allocations: readonly number[];
@@ -24,6 +25,7 @@ export function digestInputsToJson(inputs: SyncDigestInputs): SyncDigestInputsJs
   return {
     tick: inputs.tick,
     rng: inputs.rng,
+    names: inputs.names,
     nextEntityId: inputs.nextEntityId,
     entityCount: inputs.entityCount,
     allocations: Array.from(inputs.allocations),
@@ -46,6 +48,8 @@ export function digestInputsFromJson(value: unknown): SyncDigestInputs {
   if (rng < -(2 ** 31) || rng >= 2 ** 32) {
     throw new Error(`${at}.rng: ${rng} is outside the 32-bit stream domain`);
   }
+  const nameWord = safeCount(raw.names, `${at}.names`);
+  if (nameWord > 0xffffffff) throw new Error(`${at}.names: outside the unsigned 32-bit word domain`);
   const names = new Set<string>();
   const components = asArray(raw.components, `${at}.components`).map((component, i) =>
     parsedComponent(component, `${at}.components[${i}]`, names),
@@ -53,6 +57,7 @@ export function digestInputsFromJson(value: unknown): SyncDigestInputs {
   return {
     tick: safeCount(raw.tick, `${at}.tick`),
     rng,
+    names: nameWord,
     nextEntityId: safeCount(raw.nextEntityId, `${at}.nextEntityId`),
     entityCount: safeCount(raw.entityCount, `${at}.entityCount`),
     allocations: wordsFromJson(raw.allocations, `${at}.allocations`),

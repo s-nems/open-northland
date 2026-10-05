@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { AnimalType } from '../actors/animals.js';
 import { ArmorType, WeaponType } from '../actors/equipment.js';
 import { HuntPrey } from '../actors/hunting.js';
+import { PersonalNamePool } from '../actors/personal-names.js';
 import { AtomicAnimation, TribeType } from '../actors/tribes.js';
 import { VehicleType } from '../actors/vehicles.js';
 import { emptySoundBank, SoundBank } from '../audio/sound.js';
@@ -96,6 +97,7 @@ export const ContentSet = z.strictObject({
   /** `[GfxHouse]` `GfxHolyFirePoint` anchors, including repeated flames on one building tier. */
   buildingHolyFirePoints: z.array(BuildingHolyFirePoint).default([]),
   tribes: z.array(TribeType).default([]),
+  personalNames: z.array(PersonalNamePool).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),
   /** Decoded sound bank and creature voice tables; the pure sim ignores them. */

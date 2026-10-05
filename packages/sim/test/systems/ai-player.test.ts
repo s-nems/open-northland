@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AiPlayer, aiPlayerEntity, isAiPlayer } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
+import { PersonalNames } from '../../src/core/personal-names.js';
 import { type Entity, World } from '../../src/ecs/world.js';
 import { EventBuffer, Rng, replay, Simulation, stepReplaying } from '../../src/index.js';
 import {
@@ -190,7 +191,14 @@ function worldWithSeats(...players: readonly number[]): World {
 }
 
 function ctxAt(tick: number, commands: CommandQueue): SystemContext {
-  return { content: testContent(), rng: new Rng(1), tick, events: new EventBuffer(), commands };
+  return {
+    content: testContent(),
+    rng: new Rng(1),
+    names: new PersonalNames(1, []),
+    tick,
+    events: new EventBuffer(),
+    commands,
+  };
 }
 
 describe('AiPlayerSystem - cadence, stagger, and module gates', () => {

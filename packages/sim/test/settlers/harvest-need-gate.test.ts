@@ -83,6 +83,7 @@ describe('PlannerSystem harvest planner - needforgood XP-threshold gate', () => 
     plannerSystem(sim.world, {
       content: sim.content,
       rng: sim.rng,
+      names: sim.names,
       tick: sim.tick,
       events: sim.events,
       commands: sim.commands,
@@ -102,6 +103,7 @@ describe('PlannerSystem harvest planner - needforgood XP-threshold gate', () => 
     plannerSystem(sim.world, {
       content: sim.content,
       rng: sim.rng,
+      names: sim.names,
       tick: sim.tick,
       events: sim.events,
       commands: sim.commands,
@@ -121,6 +123,7 @@ describe('PlannerSystem harvest planner - needforgood XP-threshold gate', () => 
     plannerSystem(sim.world, {
       content: sim.content,
       rng: sim.rng,
+      names: sim.names,
       tick: sim.tick,
       events: sim.events,
       commands: sim.commands,

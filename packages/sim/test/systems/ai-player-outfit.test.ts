@@ -4,6 +4,7 @@ import { Building, Equipment, Settler } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
 import { ZERO } from '../../src/core/fixed.js';
+import { PersonalNames } from '../../src/core/personal-names.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { EventBuffer, Rng, Simulation } from '../../src/index.js';
 import { militaryModule, RALLY_HOLD_RADIUS_NODES } from '../../src/systems/ai-player/index.js';
@@ -152,6 +153,7 @@ function ctxOf(sim: Simulation, seed = WAITING_SEED): SystemContext {
   return {
     content: outfitContent(),
     rng: new Rng(seed),
+    names: new PersonalNames(1, []),
     tick: 0,
     events: new EventBuffer(),
     commands: new CommandQueue(),

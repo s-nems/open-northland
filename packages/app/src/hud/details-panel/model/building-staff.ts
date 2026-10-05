@@ -1,4 +1,5 @@
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { settlerName } from '../../../game/character-names/index.js';
 import { workerRoleOf } from '../../../game/sandbox/index.js';
 import {
   homeFamiliesOf,
@@ -17,7 +18,6 @@ import {
 import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot-id-index.js';
 import { messages } from '../../../i18n/index.js';
 import { type BuildingDef, jobDisplayName, type UnitPanelModelContext } from './context.js';
-import { settlerDisplayName } from './settler-name.js';
 
 /** The figure a person's well shows: a soldier in steel, a woman, a man, or a smaller child. */
 export type PersonLook = 'man' | 'woman' | 'soldier' | 'child';
@@ -70,7 +70,7 @@ const HAMMERING = idsGroupedBy(
   { values: ['CurrentAtomic'], presence: ['Settler'] },
 );
 
-function personOf(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, e: SnapshotEntity): StaffPerson {
+function personOf(ctx: UnitPanelModelContext, e: SnapshotEntity): StaffPerson {
   const jobType = settlerJobType(e);
   const job = ctx.jobs.find((row) => row.typeId === jobType);
   const look: PersonLook = !isAdult(e)
@@ -82,7 +82,7 @@ function personOf(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, e: Snapsh
         : 'man';
   return {
     entity: e.id,
-    name: settlerDisplayName(ctx, snapshot, e),
+    name: settlerName(ctx, e),
     job: jobDisplayName(ctx, jobType),
     look,
   };
@@ -129,7 +129,7 @@ function workerGroups(
   const groups: StaffGroup[] = (def?.workers ?? []).map((slot) => ({
     key: `job:${slot.jobType}`,
     label: jobDisplayName(ctx, slot.jobType),
-    people: (byJob.get(slot.jobType) ?? []).map((e) => personOf(ctx, snapshot, e)),
+    people: (byJob.get(slot.jobType) ?? []).map((e) => personOf(ctx, e)),
     capacity: slot.count,
     jobType: slot.jobType,
   }));
@@ -139,7 +139,7 @@ function workerGroups(
     groups.push({
       key: `job:${jobType}`,
       label: jobDisplayName(ctx, jobType),
-      people: people.map((e) => personOf(ctx, snapshot, e)),
+      people: people.map((e) => personOf(ctx, e)),
       capacity: null,
       jobType,
     });
@@ -159,7 +159,7 @@ export function siteCrew(
       {
         key: 'crew',
         label: '',
-        people: raisingCrew(snapshot, site).map((e) => personOf(ctx, snapshot, e)),
+        people: raisingCrew(snapshot, site).map((e) => personOf(ctx, e)),
         capacity: null,
         jobType: null,
       },
@@ -190,7 +190,7 @@ export function buildingStaff(
       return {
         key: `family:${family.members[0] ?? index}`,
         label: '',
-        people: [...adults, ...minors].map((e) => personOf(ctx, snapshot, e)),
+        people: [...adults, ...minors].map((e) => personOf(ctx, e)),
         capacity: null,
         jobType: null,
       };
@@ -205,7 +205,7 @@ export function buildingStaff(
     groups.push({
       key: 'sheltered',
       label: copy.sheltered,
-      people: sheltering.map((e) => personOf(ctx, snapshot, e)),
+      people: sheltering.map((e) => personOf(ctx, e)),
       capacity: def?.shelterCapacity ?? null,
       jobType: null,
     });
@@ -215,7 +215,7 @@ export function buildingStaff(
     groups.push({
       key: 'trainees',
       label: copy.trainees,
-      people: drilling.map((e) => personOf(ctx, snapshot, e)),
+      people: drilling.map((e) => personOf(ctx, e)),
       capacity: null,
       jobType: null,
     });

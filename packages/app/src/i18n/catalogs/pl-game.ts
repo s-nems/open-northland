@@ -1535,6 +1535,7 @@ export const plGame = {
       vehicles: 'Nowe pojazdy',
     },
     unnamed: {
+      person: 'Postać',
       building: 'Budynek',
       vehicle: 'Pojazd',
     },

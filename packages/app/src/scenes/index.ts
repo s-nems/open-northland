@@ -44,6 +44,7 @@ import { meleeFrontScene } from './melee-front.js';
 import { movementContinuityScene } from './movement-continuity.js';
 import { netPanelScene } from './net-panel.js';
 import { palisadeScene } from './palisade.js';
+import { personalNamesScene } from './personal-names.js';
 import { porterFlagScene } from './porter-flag.js';
 import { presentationScene } from './presentation.js';
 import { repairScene } from './repair.js';
@@ -99,6 +100,7 @@ export const SCENES: readonly SceneDefinition[] = [
   bowFlightScene,
   weaponFacingsScene,
   armedIdleScene,
+  personalNamesScene,
   battleWearyScene,
   siegeScene,
   repairScene,

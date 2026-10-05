@@ -192,6 +192,10 @@ export const plContent = {
       title: 'Lot strzały',
       summary: 'Czterech łuczników pokazuje strzały w naturalnej skali w poziomie, pionie i po przekątnej.',
     },
+    'personal-names': {
+      title: 'Imiona mieszkańców',
+      summary: 'Imiona pięciu nacji oraz wężoludzi i wilkołaków.',
+    },
     'armed-idle': {
       title: 'Uzbrojeni w bezczynności',
       summary:

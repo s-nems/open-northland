@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { JOB_CIVILIST, JOB_IDLE } from '../../../catalog/jobs.js';
+import { settlerName } from '../../../game/character-names/index.js';
 import {
   actorsOf,
   buildingTypeOf,
@@ -21,7 +22,6 @@ import {
   workplaceOf,
 } from '../../../game/snapshot.js';
 import { buildingTitle, jobDisplayName } from '../../details-panel/model/context.js';
-import { settlerDisplayName } from '../../details-panel/model/settler-name.js';
 import type { ProductSelection } from '../../details-panel/model/settler-work.js';
 import type { ResidentKind, ResidentLack, ResidentRow } from './rows.js';
 
@@ -162,7 +162,7 @@ export function residentRows(snapshot: WorldSnapshot, ctx: ResidentsProjectionCo
     const ageYears = childAgeYearsOf(ent, snapshot.tick);
     rows.push({
       id: ent.id,
-      name: settlerDisplayName(nameCtx, snapshot, ent),
+      name: settlerName(nameCtx, ent),
       kind,
       female: isFemale(ent),
       jobType,

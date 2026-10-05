@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GivenName, Settler } from '../../src/components/index.js';
+import { GivenName, ScriptedName, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { playerCommand, SETTLER_NAME_MAX_CHARS, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -42,6 +42,13 @@ describe('renameSettler - the player names a settler', () => {
     expect(sim.world.get(settler, GivenName).name).toBe('Ragnar');
     rename(sim, OWNER, settler, 'ż'.repeat(SETTLER_NAME_MAX_CHARS));
     expect(sim.world.get(settler, GivenName).name).toBe('ż'.repeat(SETTLER_NAME_MAX_CHARS));
+  });
+
+  it('refuses a scripted name even without the map text being loaded', () => {
+    const { sim, settler } = settlerOf(CARPENTER);
+    sim.world.add(settler, ScriptedName, { stringId: 7 });
+    rename(sim, OWNER, settler, 'Ada');
+    expect(sim.world.has(settler, GivenName)).toBe(false);
   });
 
   it('refuses a hero and a settler of another seat', () => {

@@ -104,7 +104,7 @@ describe('parseSaveGame section-order rejection', () => {
     const doc2 = populatedDoc();
     const rngAt = doc2.sections.findIndex((s) => s.id === 'rng');
     doc2.sections.splice(rngAt, 0, { ...sectionOf(doc2, 'rng') });
-    expect(() => parseSaveGame(doc2)).toThrow(/expected the 'fog' section|expected the 'commands' section/);
+    expect(() => parseSaveGame(doc2)).toThrow(/expected the 'names' section/);
   });
 
   it('rejects an unknown section identifier', () => {

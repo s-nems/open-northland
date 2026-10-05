@@ -1,14 +1,14 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { settlerName } from '../../game/character-names/index.js';
 import { isSettler, isWildlife, type SnapshotEntity, settlerJobType } from '../../game/snapshot.js';
 import { jobDisplayName, type UnitPanelModelContext } from '../details-panel/model/context.js';
-import { settlerGivenName } from '../details-panel/model/settler-name.js';
 import { productSelectionLabel, settlerProductSelection } from '../details-panel/model/settler-work.js';
 import type { SettlerHoverModel } from './model.js';
 import { foreignOwner, type HoverOwnerContext } from './owner.js';
 
 /**
  * What the cursor card over a settler says: who it is and what it does, on one line. Short on purpose -
- * the details panel owns the rest, including the surname, and the card has to stay readable over a
+ * the details panel owns the rest, and the card has to stay readable over a
  * crowded settlement. Owner rules: another seat's person adds a line naming its owner; the viewer's own
  * worker names the goods it is set to make after its trade, or "everything" while every open one runs.
  */
@@ -29,7 +29,7 @@ export function settlerHoverModel(
   return {
     kind: 'settler',
     entityId,
-    title: settlerGivenName(ctx, ent),
+    title: settlerName(ctx, ent),
     profession: jobDisplayName(ctx, settlerJobType(ent)),
     products: owner === null ? selectedProducts(ctx, snapshot, ent) : null,
     owner,

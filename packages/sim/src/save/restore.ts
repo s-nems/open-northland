@@ -67,6 +67,9 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Simulat
       case 'rng':
         sim.rng.setState(section.state);
         break;
+      case 'names':
+        sim.names.restore(section.cursors);
+        break;
       case 'fog':
         restoreFog(sim, section);
         break;
@@ -77,6 +80,7 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Simulat
         assertNever(section);
     }
   }
+  sim.names.validate(sim.world);
   sim.restoreTick(header.tick);
   if (sim.terrain !== undefined) syncRoadLane(sim.world, sim.terrain);
   assertMissionScriptMatches(sim, opts.missions);

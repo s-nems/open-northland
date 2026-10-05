@@ -202,6 +202,7 @@ function settlerEntity(id: number, jobType: number, components: Record<string, u
     components: {
       Settler: { jobType, tribe: PRIMARY_TRIBE },
       Person: { person: true },
+      NameIdentity: { pool: 'viking-male', name: 'Erik' },
       Owner: { player: HUMAN_PLAYER },
       ...components,
     },
@@ -215,7 +216,7 @@ describe('settler hover card model', () => {
 
     const model = settlerHoverModel(snapshot, 1, ctx);
 
-    expect(model?.title).toMatch(/^\S+$/); // the given name alone, no surname
+    expect(model?.title).toBe('Erik');
     expect(model?.profession).toBe('Cieśla');
     expect(model?.owner).toBeNull();
   });

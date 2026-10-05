@@ -1,5 +1,11 @@
 import { basename } from 'node:path';
-import { type ContentSet, emptySoundBank, IR_VERSION, parseContentSet } from '@open-northland/data';
+import {
+  type ContentSet,
+  emptySoundBank,
+  IR_VERSION,
+  PERSONAL_NAMES,
+  parseContentSet,
+} from '@open-northland/data';
 import {
   extractAnimalCalls,
   extractHumanVoices,
@@ -142,6 +148,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     buildingSoldierFlagPoints,
     buildingHolyFirePoints,
     tribes,
+    personalNames: PERSONAL_NAMES.filter((pool) => tribes.some((tribe) => tribe.typeId === pool.tribe)),
     atomicAnimations,
     maps,
     sounds,

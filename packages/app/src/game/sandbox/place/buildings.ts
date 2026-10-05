@@ -190,15 +190,21 @@ function bindCrewAtDoor(
   const anchor = nodeOfPosition(pos.x, pos.y);
   const node = doorNodeFrom(sim, sim.world.get(building, Building).buildingType, anchor);
   for (let i = 0; i < count; i++) {
-    const e = systems.createSettler(sim.world, sim.content, sim.rng, {
-      jobType,
-      x: node.hx,
-      y: node.hy,
-      tribe: PRIMARY_TRIBE,
-      owner,
-      ...(spec.experience !== undefined ? { experience: spec.experience } : {}),
-      ...(spec.equipment !== undefined ? { equipment: spec.equipment } : {}),
-    });
+    const e = systems.createSettler(
+      sim.world,
+      sim.content,
+      sim.rng,
+      {
+        jobType,
+        x: node.hx,
+        y: node.hy,
+        tribe: PRIMARY_TRIBE,
+        owner,
+        ...(spec.experience !== undefined ? { experience: spec.experience } : {}),
+        ...(spec.equipment !== undefined ? { equipment: spec.equipment } : {}),
+      },
+      sim.names,
+    );
     if (e === null) throw new Error(`bindCrewAtDoor: unknown job ${jobType}`);
     sim.world.add(e, JobAssignment, { workplace: building });
   }

@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, IR_VERSION, PERSONAL_NAMES, parseContentSet } from '@open-northland/data';
 import { WHEAT_WORK_REPEATS } from '../../../catalog/farming.js';
 import { EXTENDED_GOODS } from '../../../catalog/goods.js';
 import { HUNTER_GENERAL_XP_TRACK, huntPreyRows } from '../../../catalog/hunting.js';
@@ -72,6 +72,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     weapons: sandboxWeapons(),
     armor: sandboxArmor(),
     tribes: [...tribes.values()],
+    personalNames: PERSONAL_NAMES.filter((pool) => tribes.has(pool.tribe)),
     animals: buildSandboxAnimals(),
     huntPrey: huntPreyRows(EXTENDED_GOODS, SANDBOX_ANIMAL_TRIBES),
     jobExperience: [COLLECTOR_GENERAL_XP_TRACK, HUNTER_GENERAL_XP_TRACK, FARMER_WHEAT_XP_TRACK],

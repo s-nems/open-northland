@@ -22,6 +22,8 @@ describe.runIf(hasRealIr())('loadRealContent over the real IR', () => {
     expect(set?.buildings).toHaveLength(55);
     expect(set?.jobs).toHaveLength(55);
     expect(set?.tribes).toHaveLength(41);
+    expect(set?.personalNames).toHaveLength(12);
+    expect(set?.personalNames.every((pool) => pool.names.length >= 100)).toBe(true);
   });
 
   // The no-arg (global-fetch) path is the one the app uses; the injected-fetch tests bypass its

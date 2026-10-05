@@ -311,8 +311,6 @@ export function messagesFromEvents(
       },
       () => {
         let named: NamedSettler | null = null;
-        // Approximation: the surname source is read off the snapshot after the death, so a growing
-        // child of a widowed parent, whose carve-out settles in the same tick, is named by its own id.
         const before = departed.find((e) => e.id === entity);
         if (before !== undefined && isPerson(before)) named = naming.settler(before, snapshot);
         return naming.text(USER_MESSAGE_TYPE.humanDied, {

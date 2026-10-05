@@ -96,9 +96,9 @@ describe('exportSaveGame header', () => {
 });
 
 describe('exportSaveGame sections', () => {
-  it('an empty mapless world exports allocation, rng, and commands only', () => {
+  it('an empty mapless world exports allocation, rng, names, and commands', () => {
     const save = exportSaveGame(new Simulation({ seed: 1, content: testContent() }));
-    expect(sectionIds(save)).toEqual(['entities', 'rng', 'commands']);
+    expect(sectionIds(save)).toEqual(['entities', 'rng', 'names', 'commands']);
     expect(sectionOf(save, 'entities')).toEqual({ id: 'entities', nextId: 1, alive: [] });
     expect(sectionOf(save, 'commands')).toEqual({
       id: 'commands',

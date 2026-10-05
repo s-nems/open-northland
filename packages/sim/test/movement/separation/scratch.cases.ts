@@ -51,6 +51,7 @@ describe('unit body collision - scratch lifetime', () => {
     const ctx: SystemContext = {
       content: s.content,
       rng: s.rng,
+      names: s.names,
       tick: 0,
       events: s.events,
       commands: s.commands,

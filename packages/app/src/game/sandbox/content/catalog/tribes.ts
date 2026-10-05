@@ -227,7 +227,13 @@ export function buildSandboxTribes(
       ),
     });
   }
-  for (const tribe of extras.tribes ?? []) {
+  for (const tribe of [
+    { typeId: 2, id: 'frank' },
+    { typeId: 3, id: 'byzantine' },
+    { typeId: 4, id: 'saracen' },
+    { typeId: 7, id: 'egypt' },
+    ...(extras.tribes ?? []),
+  ]) {
     if (!tribes.has(tribe.typeId)) {
       // No tech graph: an empty edge list gates nothing, so an extra tribe's buildings stay enabled
       // without an enabler settler.

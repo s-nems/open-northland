@@ -12,6 +12,7 @@ import {
   UnderConstruction,
 } from '../../../src/components/index.js';
 import { CommandQueue } from '../../../src/core/command-queue.js';
+import { PersonalNames } from '../../../src/core/personal-names.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
   EventBuffer,
@@ -136,6 +137,7 @@ export function ctxOf(sim: Simulation, tick = 0): SystemContext {
   return {
     content: aiContent(),
     rng: new Rng(1),
+    names: new PersonalNames(1, []),
     tick,
     events: new EventBuffer(),
     commands: new CommandQueue(),

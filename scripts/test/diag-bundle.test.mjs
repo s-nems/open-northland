@@ -29,6 +29,7 @@ function bundle(tick = 7) {
           inputs: {
             tick,
             rng: -123,
+            names: 2166136261,
             nextEntityId: 3,
             entityCount: 1,
             allocations: [1, 2, 1],
@@ -74,6 +75,17 @@ test('returns agreement and names component differences with distinct exit codes
   result = f.run();
   assert.equal(result.status, 1, result.stderr);
   assert.match(result.stdout, /tick 7: movement Position entity 2 \(word\)/);
+});
+
+test('reports a difference in future personal-name allocation', async (t) => {
+  const f = await fixture(t);
+  await f.write('a.json', bundle());
+  const changed = bundle();
+  changed.game.net.dispute.inputs.names++;
+  await f.write('b.json', changed);
+  const result = f.run();
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stdout, /personal-name allocation differs/);
 });
 
 test('rejects unavailable files, malformed JSON and absent or expired verdicts', async (t) => {

@@ -1,5 +1,6 @@
 import type { VehicleType } from '@open-northland/data';
 import { components, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { settlerName } from '../../../game/character-names/index.js';
 import {
   healthOf,
   isFemale,
@@ -26,7 +27,6 @@ import {
   type UnitPanelModelContext,
 } from './context.js';
 import type { SeatControl } from './settler-household.js';
-import { settlerDisplayName } from './settler-name.js';
 import { type TradePanelModel, type TraderSubject, tradePanelModel } from './trade.js';
 
 /** What the kicker names a vehicle by, and the peers its browse steps through. */
@@ -325,7 +325,7 @@ function riderModel(
     job !== undefined && systems.isFighterJobRow(job) ? 'soldier' : isFemale(e) ? 'woman' : 'man';
   return {
     entity: seat.entity,
-    name: settlerDisplayName(ctx, snapshot, e),
+    name: settlerName(ctx, e),
     job: jobDisplayName(ctx, jobType),
     inside: seat.inside,
     look,
@@ -461,7 +461,7 @@ function vehicleTrade(
     const trade = tradePanelModel(ctx, snapshot, seat.entity);
     const trader = entityById(snapshot, seat.entity);
     if (trade !== null && trader !== undefined) {
-      return { entityId: seat.entity, name: settlerDisplayName(ctx, snapshot, trader), trade };
+      return { entityId: seat.entity, name: settlerName(ctx, trader), trade };
     }
   }
   return null;

@@ -36,6 +36,7 @@ import {
   logGpuContextLoss,
   setDiagGameSession,
 } from '../../diag/index.js';
+import { settlerName } from '../../game/character-names/index.js';
 import { mapStartFocus } from '../../game/map-start.js';
 import { type MissionBriefSource, missionReader } from '../../game/mission-brief.js';
 import type { ObserverSeatEntry } from '../../game/observer-seats.js';
@@ -507,6 +508,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       host.content.buildings.filter((b) => b.kind === BUILDING_KIND.vehicle).map((b) => b.typeId),
     );
     const toolPanel = await mountGameToolPanel({
+      settlerName: (entity) => settlerName({ jobs: host.content.jobs, mapText }, entity),
       app,
       canvas,
       plane: hudDom.element,

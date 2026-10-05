@@ -1,6 +1,7 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Health } from '../../src/components/index.js';
+import { PersonalNames } from '../../src/core/personal-names.js';
 import { Rng } from '../../src/core/rng.js';
 import { World } from '../../src/ecs/world.js';
 import { CHILD_FEMALE } from '../../src/systems/index.js';
@@ -29,7 +30,7 @@ function contentWithChildStage() {
 describe('createSettler - spawn hitpoints', () => {
   it('gives an adult the 5000-point pool', () => {
     const world = new World();
-    const e = createSettler(world, testContent(), new Rng(1), spec(VIKING));
+    const e = createSettler(world, testContent(), new Rng(1), spec(VIKING), new PersonalNames(1, []));
     if (e === null) throw new Error('spawn failed');
     expect(HUMAN_HITPOINTS).toBe(5000);
     expect(world.get(e, Health)).toEqual({ hitpoints: HUMAN_HITPOINTS, max: HUMAN_HITPOINTS });
@@ -37,17 +38,29 @@ describe('createSettler - spawn hitpoints', () => {
 
   it('gives a child the same pool', () => {
     const world = new World();
-    const e = createSettler(world, contentWithChildStage(), new Rng(1), {
-      ...spec(VIKING),
-      jobType: CHILD_FEMALE,
-    });
+    const e = createSettler(
+      world,
+      contentWithChildStage(),
+      new Rng(1),
+      {
+        ...spec(VIKING),
+        jobType: CHILD_FEMALE,
+      },
+      new PersonalNames(1, []),
+    );
     if (e === null) throw new Error('spawn failed');
     expect(world.get(e, Health)).toEqual({ hitpoints: HUMAN_HITPOINTS, max: HUMAN_HITPOINTS });
   });
 
   it('an explicit positive command pool wins', () => {
     const world = new World();
-    const e = createSettler(world, testContent(), new Rng(1), spec(VIKING, ORDERED_POOL));
+    const e = createSettler(
+      world,
+      testContent(),
+      new Rng(1),
+      spec(VIKING, ORDERED_POOL),
+      new PersonalNames(1, []),
+    );
     if (e === null) throw new Error('spawn failed');
     expect(world.get(e, Health)).toEqual({ hitpoints: ORDERED_POOL, max: ORDERED_POOL });
   });

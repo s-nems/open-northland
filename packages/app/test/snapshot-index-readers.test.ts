@@ -28,7 +28,6 @@ import {
   siteCrewOf,
   staffOf,
   supplyRunsTo,
-  surnameSourceOf,
   trainingOccupancyOf,
 } from '../src/game/snapshot.js';
 import { entitiesUnder, idsGroupedBy, idsWhere } from '../src/game/snapshot-id-index.js';
@@ -122,7 +121,6 @@ function expectReadersMatchWalk(live: WorldSnapshot): void {
     expect(ids(raisingCrew(live, e.id))).toEqual(ids(raisingCrew(walked, e.id)));
     expect(ids(shelteringIn(live, e.id))).toEqual(ids(shelteringIn(walked, e.id)));
     if (!isSettler(e)) continue;
-    expect(surnameSourceOf(live, e)).toBe(surnameSourceOf(walked, e));
     expect(progressionGatesSettler(live, e)).toBe(progressionGatesSettler(walked, e));
     expect(ownedByComputerSeat(live, e)).toBe(ownedByComputerSeat(walked, e));
   }

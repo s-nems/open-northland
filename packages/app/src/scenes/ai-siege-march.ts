@@ -178,16 +178,22 @@ function sendBand(sim: Simulation, band: NonNullable<SiegeSetup['band']>): void 
 function bandSwordsman(sim: Simulation, x: number, y: number, hitpoints: number): Entity {
   const node = cellAnchorNode(x, y);
   const equipment = weaponEquipmentFor(JOB_SOLDIER_SWORD, sim.content.goods);
-  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
-    jobType: JOB_SOLDIER_SWORD,
-    x: node.hx,
-    y: node.hy,
-    tribe: PRIMARY_TRIBE,
-    owner: HUMAN_PLAYER,
-    weaponTypeId: WEAPON_SWORD,
-    hitpoints,
-    ...(equipment === undefined ? {} : { equipment }),
-  });
+  const e = systems.createSettler(
+    sim.world,
+    sim.content,
+    sim.rng,
+    {
+      jobType: JOB_SOLDIER_SWORD,
+      x: node.hx,
+      y: node.hy,
+      tribe: PRIMARY_TRIBE,
+      owner: HUMAN_PLAYER,
+      weaponTypeId: WEAPON_SWORD,
+      hitpoints,
+      ...(equipment === undefined ? {} : { equipment }),
+    },
+    sim.names,
+  );
   if (e === null) throw new Error('ai-siege-charge: no swordsman job');
   return e;
 }

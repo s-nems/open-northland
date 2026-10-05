@@ -17,6 +17,7 @@ import {
 } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
+import { PersonalNames } from '../../src/core/personal-names.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { EventBuffer, Rng, Simulation } from '../../src/index.js';
 import type { TerrainGraph } from '../../src/nav/terrain/index.js';
@@ -131,6 +132,7 @@ function ctxOf(sim: Simulation): SystemContext {
   return {
     content: sim.content,
     rng: new Rng(1),
+    names: new PersonalNames(1, []),
     tick: sim.tick,
     events: new EventBuffer(),
     commands: new CommandQueue(),

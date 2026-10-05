@@ -14,6 +14,7 @@ import {
   JOB_SOLDIER_UNARMED,
 } from '../../../catalog/jobs.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
+import { settlerName } from '../../../game/character-names/index.js';
 import {
   healthOf,
   isPlayerControllable,
@@ -34,7 +35,6 @@ import { pctRatio, remainingPct } from './bars.js';
 import { type Comp, goodDef, goodLabel, jobDisplayName, type UnitPanelModelContext } from './context.js';
 import { satisfactionBars } from './settler.js';
 import { type SettlerRole, settlerRole } from './settler-household.js';
-import { settlerDisplayName } from './settler-name.js';
 import { vehicleClassOf, vehicleTitle } from './vehicle.js';
 
 type GroupCopy = ReturnType<typeof messages>['hud']['groupPanel'];
@@ -295,7 +295,7 @@ function settlerFacts(
       id: ent.id,
       look: 'settler',
       kind,
-      name: settlerDisplayName(ctx, snapshot, ent),
+      name: settlerName(ctx, ent),
       kindLabel: singular,
       healthPct: healthPctOf(ent),
       hungerPct: hunger?.pct ?? null,

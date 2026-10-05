@@ -224,6 +224,7 @@ describe('pathfindingSystem - per-tick search budget', () => {
     const ctx: SystemContext = {
       content: testContent(),
       rng: sim.rng,
+      names: sim.names,
       tick: 1,
       events: sim.events,
       commands: sim.commands,
@@ -304,6 +305,7 @@ describe('pathfindingSystem - a group move shares one route', () => {
     const ctx: SystemContext = {
       content: testContent(),
       rng: sim.rng,
+      names: sim.names,
       tick: 1,
       events: sim.events,
       commands: sim.commands,
@@ -530,6 +532,7 @@ describe('pathfindingSystem - mapless no-op', () => {
     const ctx: SystemContext = {
       content: testContent(),
       rng: sim.rng,
+      names: sim.names,
       tick: 0,
       events: sim.events,
       commands: sim.commands,

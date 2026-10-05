@@ -142,16 +142,22 @@ export function spawnBoundGatherer(
 ): Entity {
   const node = cellAnchorNode(x, y);
   const mastery = opts.fresh === true ? [] : gatherMasteryExperience(sim);
-  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
-    jobType,
-    x: node.hx,
-    y: node.hy,
-    tribe: PRIMARY_TRIBE,
-    owner: opts.owner ?? HUMAN_PLAYER,
-    // A camp gatherer spawns a veteran: a fresh collector pinned to iron or gold would fail real
-    // content's `needforgood` gate forever and stand beside its deposit.
-    ...(mastery.length > 0 ? { experience: mastery } : {}),
-  });
+  const e = systems.createSettler(
+    sim.world,
+    sim.content,
+    sim.rng,
+    {
+      jobType,
+      x: node.hx,
+      y: node.hy,
+      tribe: PRIMARY_TRIBE,
+      owner: opts.owner ?? HUMAN_PLAYER,
+      // A camp gatherer spawns a veteran: a fresh collector pinned to iron or gold would fail real
+      // content's `needforgood` gate forever and stand beside its deposit.
+      ...(mastery.length > 0 ? { experience: mastery } : {}),
+    },
+    sim.names,
+  );
   if (e === null) throw new Error(`spawnBoundGatherer: unknown job ${jobType}`);
   sim.world.add(e, WorkFlag, {
     flag,

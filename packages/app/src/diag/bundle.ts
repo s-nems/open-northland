@@ -10,7 +10,7 @@ import { currentDiagGameSession, type DiagGameSession, type DiagNetReport } from
 import { recordedTraceEvents, type TraceEvent } from './trace.js';
 
 export const DIAGNOSTICS_BUNDLE_KIND = 'opennorthland-diagnostics';
-export const DIAGNOSTICS_BUNDLE_VERSION = 2;
+export const DIAGNOSTICS_BUNDLE_VERSION = 3;
 
 /** The running game's repro payload, absent when no game session is registered. */
 export interface DiagnosticsGameReport {

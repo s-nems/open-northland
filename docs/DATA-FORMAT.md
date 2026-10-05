@@ -210,7 +210,7 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
 - `sections` is an array of string-identified sections in a fixed order: `entities` (the
   allocation counter plus the alive list), one `component` section per store in first-registration
   order with entries in per-store insertion order (both orders are behavior contracts), `rng` (the
-  whole mulberry32 state), `fog` (present exactly when the header names a map fingerprint: the
+  whole mulberry32 state), `names` (the seeded personal-name deck cursors, ordered by pool id), `fog` (present exactly when the header names a map fingerprint: the
   shared-vision groups, the masks ascending by vision group with one mask digit per cell, plus
   the rebuild-cadence fields), and `commands` (pending envelopes, the next sequence number, and `continuation`: the
   accepted input still ahead of the saved tick, as `{applyTick, envelope}` pairs with ticks past the
@@ -256,3 +256,20 @@ game has no released saves to carry forward, so a layout change replaces the lay
 the committed fixture (`packages/sim/test/fixtures/save.golden`), which freezes the exact bytes of a
 small populated world as the layout's tripwire; the regeneration workflow lives in
 [`TESTING.md`](TESTING.md).
+## Personal names
+
+The project-owned `personalNames` IR lane supplies complete given names, bound to a tribe and sex
+(or `neutral` for creatures). It is shared by the pipeline and sandbox and participates in the content
+fingerprint. Historical civilizations use selected established names in conventional spellings;
+the pools are thematic, not a reconstruction of one period or spelling system. Creature names are
+fictional. The catalogs contain no surname or family-name rules.
+
+At spawn or birth, `Simulation.names` deals an immutable `NameIdentity` from a seed-shuffled deck.
+All owners share each tribe/sex deck. Names repeat after that deck is exhausted; death does not
+return a name. The deck uses an independent RNG and never advances gameplay randomness. Saved
+cursors and the world seed reproduce the next allocation; the multiplayer settlers digest includes
+the allocator. Changes to catalog contents change the content fingerprint and invalidate old saves.
+
+Presentation resolves map text, a player-given name, a conventional hero name, then `NameIdentity`.
+Proper names have the same spelling across locales. Unknown people get a localized numbered label;
+wildlife retains its existing species presentation. Family relationships do not affect names.

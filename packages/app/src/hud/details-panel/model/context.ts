@@ -199,20 +199,6 @@ export function jobDisplayName(
   return role ?? hero ?? job?.name ?? jobLabel(jobType);
 }
 
-/**
- * A hero's conventional name when no map-authored name exists. This is only a fallback: mission maps
- * reuse the same visual/job role for Ykol, Loke and Hatchie, and their `ScriptedName` must win.
- */
-export function heroFallbackName(
-  ctx: Pick<UnitPanelModelContext, 'jobs'>,
-  jobType: number | undefined,
-): string | undefined {
-  const job = ctx.jobs.find((j) => j.typeId === jobType);
-  if (job === undefined || !systems.isHeroJobRow(job)) return undefined;
-  const heroes: Readonly<Record<string, string | undefined>> = messages().heroNames;
-  return heroes[job.id];
-}
-
 /** Whether a job slot is the transport trade, decided by the sim's own carrier rule over the panel's
  *  content slice so the HUD cannot classify it differently. */
 export function isCarrierJob(ctx: UnitPanelModelContext, jobType: number): boolean {

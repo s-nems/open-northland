@@ -1,5 +1,6 @@
 import { indoorHouseOf } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
+import { settlerName } from '../../../game/character-names/index.js';
 import {
   childAgeYearsOf,
   childOrderWaitOf,
@@ -45,7 +46,6 @@ import {
   workAreaRow,
   workplaceRow,
 } from './settler-household.js';
-import { settlerDisplayName } from './settler-name.js';
 import { type UnlockProgressRowModel, unlockProgressRows } from './settler-unlocks.js';
 import { type SettlerVehicleRow, vehicleRow } from './settler-vehicle.js';
 import { type SettlerProductionModel, type SettlerWorkModel, settlerWork } from './settler-work.js';
@@ -211,7 +211,7 @@ export function settlerPanelModel(
   const base = {
     kind: 'settler' as const,
     entityId: ent.id,
-    name: settlerDisplayName(ctx, snapshot, ent),
+    name: settlerName(ctx, ent),
     profession: jobDisplayName(ctx, jobType),
     jobType: jobType ?? null,
     role,
@@ -247,7 +247,7 @@ export function settlerPanelModel(
   const trains = role !== 'woman' && role !== 'child';
   return {
     ...base,
-    renamable: !hero,
+    renamable: !hero && comps.ScriptedName === undefined,
     workplace: role === 'worker' ? workplaceRow(ctx, ent, work.place, control) : null,
     workArea: role === 'worker' ? workAreaRow(ctx, snapshot, ent, control) : null,
     buildRun: buildRunOf(comps),

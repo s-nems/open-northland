@@ -195,6 +195,10 @@ export const enContent = {
       summary:
         'Four archers keep natural-scale arrows visible along horizontal, vertical and diagonal lanes.',
     },
+    'personal-names': {
+      title: 'Personal names',
+      summary: 'Given names for five civilizations and two creature tribes.',
+    },
     'armed-idle': {
       title: 'Armed idle',
       summary: "Every civilization's armed soldiers stand idle; each fidget keeps the weapon in hand.",

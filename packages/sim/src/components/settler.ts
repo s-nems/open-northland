@@ -75,6 +75,12 @@ export type SettlerProgressView = DeepReadonly<SettlerProgressState>;
 /** The longest name, in code points, the player may give a settler. */
 export const SETTLER_NAME_MAX_CHARS = 24;
 
+/** The immutable identity dealt at birth or spawn, independent of family and occupation. */
+export const NameIdentity = defineComponent<{ readonly pool: string; readonly name: string }>(
+  'NameIdentity',
+  'settlers',
+);
+
 /**
  * The name the player gave a settler with the `renameSettler` command: trimmed, 1..
  * {@link SETTLER_NAME_MAX_CHARS} code points, no control characters. It wins over the generated name and

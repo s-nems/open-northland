@@ -62,6 +62,7 @@ function settlerAtNode(sim: Simulation, job: number, x: number, y: number, playe
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
   });
+  sim.names.assign(sim.world, e, PRIMARY_TRIBE, 'male');
   sim.world.add(e, Owner, { player });
   return e;
 }
