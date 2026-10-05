@@ -7,19 +7,15 @@ const clock = (speed: number, paused: boolean, by: string | null) =>
   ({ kind: 'clock', tick: CLOCK_TICK, speed, paused, by, governed: null }) as const;
 
 describe('speedControlFor', () => {
-  const at = (runningSpeed: number, paused = false) => speedControlFor({ runningSpeed, paused });
+  const at = (requestedSpeed: number, paused = false) => speedControlFor({ requestedSpeed, paused });
 
-  it('presses the highest segment not above the speed the room runs at', () => {
+  it('stands at the requested preset, whatever speed a governed room runs at', () => {
     expect(at(1)).toEqual({ running: 'normal', paused: false });
     expect(at(2)).toEqual({ running: 'fast', paused: false });
     expect(at(3, true)).toEqual({ running: 'faster', paused: true });
-    // A room governed below its ×3 request never shows ×3.
-    expect(at(2.5)).toEqual({ running: 'fast', paused: false });
-    expect(at(2.99)).toEqual({ running: 'fast', paused: false });
-    expect(at(1.2)).toEqual({ running: 'normal', paused: false });
   });
 
-  it('presses ×1 below it, and the top segment above the top preset', () => {
+  it('stands at ×1 below it, and at the top segment above the top preset', () => {
     expect(at(0.25)).toEqual({ running: 'normal', paused: false });
     expect(at(5)).toEqual({ running: 'faster', paused: false });
   });

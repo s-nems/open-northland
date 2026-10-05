@@ -270,6 +270,7 @@ export const plGame = {
         ok: 'ok',
         catchingUp: 'nadrabia',
         slowing: 'spowalnia grę',
+        offline: 'rozłączony',
         loading: 'wczytuje',
         resync: 'synchronizuje',
         silent: 'nie odpowiada',

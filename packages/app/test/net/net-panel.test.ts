@@ -86,7 +86,12 @@ describe('network panel wording', () => {
   });
 
   it('dims the speed bar at the speed a paced room runs at, and stops it while the room is held', () => {
-    const players = [panelRow('Ania', { self: true }), panelRow('Bartek', { status: 'gone' })];
+    // Celina dropped without the relay waiting for her, so the held bar names Bartek alone.
+    const players = [
+      panelRow('Ania', { self: true }),
+      panelRow('Bartek', { status: 'gone' }),
+      panelRow('Celina', { status: 'offline' }),
+    ];
     expect(speedBarLook(clockModel(), players)).toBeNull();
     expect(
       speedBarLook(
@@ -96,7 +101,7 @@ describe('network panel wording', () => {
     ).toEqual({
       kind: 'slowed',
       title: formatMessage(copy.barGoverned, { speed: '×2,4', requested: '×3', nick: 'Celina' }),
-      pressed: null,
+      pressed: 'fast',
     });
     expect(
       speedBarLook(
@@ -106,7 +111,7 @@ describe('network panel wording', () => {
     ).toEqual({
       kind: 'slowed',
       title: formatMessage(copy.barGovernedSelf, { speed: '×2,4', requested: '×3' }),
-      pressed: null,
+      pressed: 'fast',
     });
     expect(speedBarLook(clockModel({ held: true }), players)).toEqual({
       kind: 'held',
@@ -158,8 +163,7 @@ describe('network panel preview', () => {
     const preview = createNetPanelPreview({ pinned: 'held', now: () => 0 });
     expect(preview.model()?.clock.held).toBe(true);
     const target = preview.model()?.players.find((row) => row.vote?.ballot === 'open');
-    expect(target?.seat).not.toBeNull();
-    if (target?.seat == null) return;
+    if (target?.seat == null) throw new Error('the held preview offers no open vote on a seated row');
     const voteOf = () => preview.model()?.players.find((row) => row.nick === target.nick)?.vote;
     preview.kick(target.seat, true);
     expect(voteOf()).toMatchObject({ yes: 2, ballot: 'cast' });
@@ -167,7 +171,7 @@ describe('network panel preview', () => {
     expect(voteOf()).toMatchObject({ yes: 1, ballot: 'open' });
   });
 
-  it('stops the scene world while its room is held, so the clock does not run under the banner', () => {
+  it('stops the scene world while its room is held, so its clock stands while the window says it is held', () => {
     const fed: number[] = [];
     const driver: SessionDriver = {
       paused: false,

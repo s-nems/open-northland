@@ -74,7 +74,7 @@ export function renderNetworkGame(
     bufferedTicks: client.bufferedTicks,
   });
 
-  // The view mounts before the HUD's model exists; until then the panel and its banners stay empty.
+  // The view mounts before the HUD's model exists; until then the panel and its status line stay empty.
   const netPanel: NetPanelSource = {
     model: () => hud?.model() ?? null,
     kick: (seat, yes) => client.kick(seat, yes),

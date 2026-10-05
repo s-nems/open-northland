@@ -9,6 +9,7 @@ import {
 } from '@open-northland/net-protocol';
 import { LAG_BEHIND_MS } from '@open-northland/net-server';
 import { describe, expect, it } from 'vitest';
+import { mountNetHud } from '../../src/entries/relay/net-hud.js';
 import {
   CATCHING_UP_BEHIND_MS,
   createRelayPanelFeed,
@@ -22,6 +23,8 @@ const REQUESTED_SPEED = 3;
 const GOVERNED_SPEED = 2;
 const VOTE_AFTER_MS = 5000;
 const SECOND_MS = 1000;
+/** Any tick: the verdict's tick plays no part in the hold. */
+const ENDED_TICK = 200;
 const BUDGET_MS = TICK_MS / GOVERNED_SPEED;
 
 const member = (nick: string, seat: number | null, extra: Partial<RoomMemberView> = {}): RoomMemberView => ({
@@ -141,7 +144,7 @@ describe('the relayed network panel feed', () => {
       ['Celina', 'catchingUp'],
       ['Dorota', 'ok'],
       ['Edek', 'slowing'],
-      ['Franek', 'gone'],
+      ['Franek', 'offline'],
     ]);
     expect(rows.map((row) => [row.pingMs, row.delayTicks])).toEqual([
       [40, 3],
@@ -173,6 +176,35 @@ describe('the relayed network panel feed', () => {
     send({ kind: 'waiting', for: [{ nick: 'Ania', reason: 'loading', voteAfterMs: 0 }] });
     expect(rowOf(feed, 'Ania')?.vote?.ballot).toBeNull();
     send({ kind: 'waiting', for: [] });
+    expect(feed.model().clock.held).toBe(false);
+  });
+
+  it('reads a member who drops after the verdict as offline, which holds nothing', () => {
+    // After a match ends the relay stops waiting for members but still sends their room views.
+    const { feed, send } = setup();
+    const dropped = ROOM.members.map((row) => (row.nick === 'Bartek' ? { ...row, connected: false } : row));
+    send({ kind: 'room', room: { ...ROOM, members: dropped } });
+    expect(rowOf(feed, 'Bartek')?.status).toBe('offline');
+    expect(feed.model().clock.held).toBe(false);
+  });
+
+  it('shows the open tallies the relay replayed before this HUD mounted, and drops them with the wait', () => {
+    const { feed, send, time } = setup([
+      { kind: 'waiting', for: [{ nick: 'Bartek', reason: 'gone', voteAfterMs: 0 }] },
+      { kind: 'kickVote', player: 2, nick: 'Bartek', yes: ['Celina', 'Dorota'], needed: 3 },
+    ]);
+    time.ms = SECOND_MS;
+    expect(rowOf(feed, 'Bartek')?.vote).toMatchObject({ yes: 2, needed: 3, ballot: 'open' });
+    send({ kind: 'waiting', for: [] });
+    send({ kind: 'waiting', for: [{ nick: 'Bartek', reason: 'silent', voteAfterMs: 0 }] });
+    expect(rowOf(feed, 'Bartek')?.vote).toMatchObject({ yes: 0 });
+  });
+
+  it('ends the hold at the match’s verdict, though no new wait list came', () => {
+    const { feed, send } = setup();
+    send({ kind: 'waiting', for: [{ nick: 'Bartek', reason: 'gone', voteAfterMs: VOTE_AFTER_MS }] });
+    expect(feed.model().clock.held).toBe(true);
+    send({ kind: 'ended', tick: ENDED_TICK, hash: 'verdict' });
     expect(feed.model().clock.held).toBe(false);
   });
 
@@ -232,5 +264,31 @@ describe('unseen history', () => {
     expect(unseenHistory([{ from: null, text: 'x', tick: null }], [line('a')])).toEqual([line('a')]);
     expect(unseenHistory([line('gone')], [line('a'), line('b')])).toEqual([line('a'), line('b')]);
     expect(unseenHistory([line('a'), line('b')], [line('a'), line('b')])).toEqual([]);
+  });
+});
+
+describe('the relayed HUD model', () => {
+  it('builds once per task, so a frame’s readers share one build', async () => {
+    const client = new RelayClientMirror(
+      'Ania',
+      () => undefined,
+      async () => null,
+    );
+    for (const message of [{ kind: 'room', room: ROOM }, clock(null)] as const) client.apply(message);
+    let reads = 0;
+    const hud = mountNetHud({
+      client,
+      readout: () => {
+        reads += 1;
+        return { ...READOUT, bufferedTicks: reads };
+      },
+      relayUrl: null,
+    });
+    const first = hud.model();
+    expect(hud.model()).toBe(first);
+    expect(reads).toBe(1);
+    await Promise.resolve();
+    expect(hud.model()).not.toBe(first);
+    expect(reads).toBe(2);
   });
 });

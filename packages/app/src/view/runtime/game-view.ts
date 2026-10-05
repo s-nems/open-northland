@@ -164,8 +164,8 @@ export interface GameViewDeps {
   /** A relayed session's connection figures for the overlays; omitted in a local session. */
   readonly netReadout?: () => NetReadout | null;
   /** A relayed session's network panel feed: mounts the network window, its hotkey and menu button,
-   *  the held and slowed banners and the chat log, and drives the speed segments from the room's
-   *  clock. Omitted in a local session. */
+   *  the status line and the chat log, and drives the speed segments from the room's clock. Omitted
+   *  in a local session. */
   readonly netPanel?: NetPanelSource;
   readonly parentSave?: SaveGame;
   readonly prepareSubMission?: PrepareSubMission;

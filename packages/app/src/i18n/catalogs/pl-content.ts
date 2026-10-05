@@ -566,7 +566,7 @@ export const plContent = {
     'net-panel': {
       title: 'Panel sieci',
       summary:
-        'Podgląd projektu panelu sieci gry wieloosobowej nad małym obozem: okno (N albo menu gry), baner zatrzymanej gry, linia o spowolnieniu i przyciski tempa. Skrypt co sześć sekund przechodzi przez spokojny pokój, gracza nadrabiającego zaległości, gracza spowalniającego grę, zatrzymaną grę z głosowaniem za wyrzuceniem oraz własne nadrabianie i spowalnianie. ?netstate=held (albo ok, catchingUp, slowing, selfCatchingUp, selfSlowing) zatrzymuje jeden stan.',
+        'Podgląd projektu panelu sieci gry wieloosobowej nad małym obozem: okno (N albo menu gry), które otwiera się samo, gdy gra stoi, linia stanu i przyciski tempa. Skrypt co sześć sekund przechodzi przez spokojny pokój, gracza nadrabiającego zaległości, gracza spowalniającego grę, zatrzymaną grę z głosowaniem za wyrzuceniem oraz własne nadrabianie i spowalnianie. ?netstate=held (albo ok, catchingUp, slowing, selfCatchingUp, selfSlowing) zatrzymuje jeden stan.',
     },
     'equipment-effects': {
       title: 'Efekty ekwipunku',

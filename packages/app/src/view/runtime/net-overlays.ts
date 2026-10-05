@@ -1,23 +1,23 @@
 import type { UiCue } from '@open-northland/audio';
 import { createNetStatusLine } from '../../hud/dom/network-status-line.js';
 import { navBeamRect } from '../../hud/nav-beam.js';
-import {
-  isHeldStatus,
-  type NetClockModel,
-  type NetPanelModel,
-  type NetPanelSource,
-  type NetPlayerRow,
-} from '../../hud/network/model.js';
+import type { NetClockModel, NetPanelSource, NetPlayerRow } from '../../hud/network/model.js';
 import { speedBarLook } from '../../hud/network/text.js';
 import type { ToolPanelController } from '../../hud/tool-panel/index.js';
 import { mountChatPanel } from '../net/chat-panel.js';
 import { speedControlFor } from '../net/session-clock.js';
 
+/** The tool panel's speed bar and network window, as the overlays drive them. */
+export type NetOverlaysController = Pick<
+  ToolPanelController,
+  'syncSpeed' | 'setSpeedLook' | 'openNetwork' | 'closeNetwork' | 'networkOpen' | 'hangBesideBar'
+>;
+
 export interface NetOverlaysDeps {
   readonly source: NetPanelSource;
   readonly scale: () => number;
   /** The current tool panel controller; a HUD rescale replaces it. */
-  readonly controller: () => ToolPanelController;
+  readonly controller: () => NetOverlaysController;
   readonly cue: (cue: UiCue) => void;
   /** Wall ms, for how long a chat line lingers. */
   readonly now?: () => number;
@@ -32,14 +32,11 @@ export interface NetOverlays {
   dispose(): void;
 }
 
-/** True while the relay holds the clock for a member: gone, silent, loading or resyncing. */
-const waitsForSomeone = (model: NetPanelModel): boolean =>
-  model.players.some((row) => isHeldStatus(row.status));
-
 /** What a relayed game shows beside the network window, all read off the one panel model: the chat
  *  log above the navigation beam, the status line beside the top-right bar, and the speed segments at
- *  the room's running speed. A hold opens the window by itself and its end closes it again, unless the
- *  player took the window over meanwhile. */
+ *  the room's running speed. A hold (the relay's wait list, `clock.held`) opens the window by itself
+ *  and its end closes it again, unless the player took the window over meanwhile. A hold that starts
+ *  while the player types a chat line opens the window once the line is sent or dropped. */
 export function mountNetOverlays(deps: NetOverlaysDeps): NetOverlays {
   const { source } = deps;
   const chat = mountChatPanel({
@@ -67,13 +64,14 @@ export function mountNetOverlays(deps: NetOverlaysDeps): NetOverlays {
   let waiting = false;
   let syncedClock: NetClockModel | null = null;
   let syncedPlayers: readonly NetPlayerRow[] | null = null;
-  let syncedController: ToolPanelController | null = null;
+  let syncedController: NetOverlaysController | null = null;
 
-  const followHold = (controller: ToolPanelController, model: NetPanelModel): void => {
+  const followHold = (controller: NetOverlaysController, held: boolean): void => {
     if (!controller.networkOpen()) autoOpened = false;
-    const nowWaiting = waitsForSomeone(model);
-    if (nowWaiting === waiting) return;
-    waiting = nowWaiting;
+    if (held === waiting) return;
+    // Opening now would close the line under the player's keys and send the rest of the word to the game.
+    if (held && !controller.networkOpen() && chat.typing()) return;
+    waiting = held;
     if (waiting && !controller.networkOpen()) {
       controller.openNetwork();
       autoOpened = true;
@@ -88,7 +86,7 @@ export function mountNetOverlays(deps: NetOverlaysDeps): NetOverlays {
       const controller = deps.controller();
       const model = source.model();
       if (model !== null) {
-        followHold(controller, model);
+        followHold(controller, model.clock.held);
         // A rescaled HUD's new bar starts plain and bare, so it takes the clock and the line again.
         const rescaled = controller !== syncedController;
         if (rescaled) controller.hangBesideBar(statusLine.element);

@@ -1,4 +1,4 @@
-import type { ClockState, RelayClientView } from '@open-northland/net-client';
+import type { ClockState } from '@open-northland/net-client';
 import type { RoomView, ServerMessage } from '@open-northland/net-protocol';
 import { diag } from '../../diag/index.js';
 import type { NetPanelModel } from '../../hud/network/model.js';
@@ -8,18 +8,19 @@ import { relayCloseText, relayReasonText } from '../../net/relay-reason.js';
 import type { LinkState } from '../../session/worker/net-protocol.js';
 import { clockAnnouncement } from '../../view/net/session-clock.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
-import { createRelayPanelFeed } from './net-panel-feed.js';
+import { createRelayPanelFeed, type RelayPanelFeedDeps } from './net-panel-feed.js';
 
 export interface NetHudDeps {
-  readonly client: RelayClientView;
+  readonly client: RelayPanelFeedDeps['client'];
   readonly readout: () => NetReadout;
   /** The relay this client is linked to, which the panel names. */
   readonly relayUrl: string | null;
 }
 
 export interface NetHud {
-  /** The network panel's model: the window, the banners, the chat log and the speed segments read it.
-   *  The same object while nothing in it changed. */
+  /** The network panel's model: the window, the status line, the chat log and the speed segments read
+   *  it. Built at most once per task, so a frame's readers share one build; the same object while
+   *  nothing in it changed. */
   model(): NetPanelModel;
   /** Every relay message after the client acted on it. */
   observe(message: ServerMessage): void;
@@ -34,6 +35,11 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   const feed = createRelayPanelFeed({ client, readout: deps.readout, relayUrl: deps.relayUrl });
   let previousRoom: RoomView | null = client.room;
   let previousClock: ClockState | null = client.clockState;
+  // A frame's readers all run in one animation-frame callback; its microtasks run after them.
+  let built: NetPanelModel | null = null;
+  const forget = (): void => {
+    built = null;
+  };
 
   const announce = (text: string): void => feed.announce(text);
   const announceRoom = (room: RoomView): void => {
@@ -52,7 +58,13 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   };
 
   return {
-    model: feed.model,
+    model(): NetPanelModel {
+      if (built === null) {
+        built = feed.model();
+        queueMicrotask(forget);
+      }
+      return built;
+    },
     observe(message): void {
       feed.observe(message);
       switch (message.kind) {

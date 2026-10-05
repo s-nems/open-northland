@@ -28,7 +28,7 @@ describe('parseKeyBindings', () => {
     expect(parsed.panLeft).toBe('ArrowLeft');
     expect(parsed.actionRing).toBe('Space');
     expect(parsed.professionPicker).toBe('KeyC');
-    // A table stored before the network window had its letter takes the current default.
+    // Settings store only the changed bindings, so an action left out reads its default.
     expect(parsed.network).toBe('KeyN');
   });
 

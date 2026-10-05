@@ -3,20 +3,21 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createNetStatusLine } from '../../src/hud/dom/network-status-line.js';
 import { createNetworkWindow } from '../../src/hud/dom/network-window.js';
 import { TIP_ATTRIBUTE as TIP } from '../../src/hud/dom/parts/dom.js';
-import { createHudSystemBar } from '../../src/hud/dom/system-bar.js';
+import { createHudSystemBar, type HudSystemBar } from '../../src/hud/dom/system-bar.js';
 import type {
-  ChatLine,
   NetBallot,
+  NetChatLine,
   NetClockModel,
   NetLinkModel,
   NetPanelModel,
   NetPanelSource,
   NetPlayerRow,
 } from '../../src/hud/network/model.js';
-import type { ToolPanelController } from '../../src/hud/tool-panel/index.js';
+import type { GameSpeedState } from '../../src/hud/tool-panel/game-speed.js';
+import { createSpeedControl } from '../../src/hud/tool-panel/speed-control.js';
 import { formatMessage, messages } from '../../src/i18n/index.js';
 import { CHAT_LINGER_MS, mountChatPanel } from '../../src/view/net/chat-panel.js';
-import { mountNetOverlays } from '../../src/view/runtime/net-overlays.js';
+import { mountNetOverlays, type NetOverlaysController } from '../../src/view/runtime/net-overlays.js';
 
 /** The network window, its status line, the chat above the beam and the speed bar over jsdom. */
 
@@ -34,6 +35,8 @@ function mountPlane(): HTMLElement {
 
 const REQUESTED_SPEED = 3;
 const GOVERNED_SPEED = 2;
+/** A governed speed between presets: the bar presses ×2 for it. */
+const PACED_SPEED = 2.4;
 const DESYNC = {
   text: 'Out of sync since tick 4080',
   tip: 'From tick 4080 this world no longer matches the room',
@@ -85,7 +88,7 @@ function source(first: NetPanelModel = panelModel()): NetPanelSource & { current
   };
 }
 
-const said = (index: number): ChatLine => ({ from: 'Ania', text: `line ${index}`, tick: null });
+const said = (index: number): NetChatLine => ({ from: 'Ania', text: `line ${index}`, tick: null });
 
 const textOf = (root: HTMLElement, selector: string): string | null => {
   const node = root.querySelector<HTMLElement>(selector);
@@ -177,6 +180,35 @@ describe('the net status line', () => {
     line.refresh();
     expect(textOf(plane, '.on-net-slowed')).toBeNull();
   });
+
+  it('writes only when what it says moved, not on every new model', () => {
+    const plane = mountPlane();
+    const players: readonly NetPlayerRow[] = [];
+    const feed = source(panelModel({ players, clock: GOVERNED }));
+    const line = createNetStatusLine({
+      source: feed,
+      panelOpen: () => false,
+      onOpenPanel: () => undefined,
+      cue: () => undefined,
+    });
+    plane.append(line.element);
+    line.refresh();
+    // A marker the line would overwrite on a redraw.
+    line.element.textContent = 'kept';
+    feed.current = panelModel({
+      players,
+      clock: GOVERNED,
+      link: { ...LINK, bufferedTicks: 3, clickToApplyMs: 80 },
+    });
+    line.refresh();
+    feed.current = panelModel({ players, clock: { ...GOVERNED, history: [{ roomSpeed: 2, ownSpeed: 2 }] } });
+    line.refresh();
+    expect(line.element.textContent).toBe('kept');
+
+    feed.current = panelModel({ players, clock: { ...GOVERNED, runningSpeed: PACED_SPEED } });
+    line.refresh();
+    expect(line.element.textContent).toContain('Celina');
+  });
 });
 
 const row = (nick: string, status: NetPlayerRow['status']): NetPlayerRow => ({
@@ -199,7 +231,7 @@ const RUNNING = panelModel({ players: [row('Bartek', 'ok')] });
 /** A tool panel controller with a network window the test can see and press. */
 function fakeController() {
   const state = { open: false, opens: 0, closes: 0, hung: null as HTMLElement | null, synced: 0 };
-  const controller = {
+  const controller: NetOverlaysController = {
     syncSpeed: () => {
       state.synced += 1;
     },
@@ -213,10 +245,10 @@ function fakeController() {
       state.open = false;
     },
     networkOpen: () => state.open,
-    hangBesideBar: (node: HTMLElement | null) => {
+    hangBesideBar: (node) => {
       state.hung = node;
     },
-  } as unknown as ToolPanelController;
+  };
   return { state, controller };
 }
 
@@ -273,6 +305,37 @@ describe('the network window over a hold', () => {
     feed.current = RUNNING;
     overlays.refresh();
     expect([state.open, state.closes]).toEqual([true, 0]);
+    overlays.dispose();
+  });
+
+  it('opens on the relay’s wait list alone, never for a dropped member it does not wait for', () => {
+    const feed = source(panelModel({ players: [row('Bartek', 'offline')] }));
+    const { state, overlays } = mountOverlays(feed);
+    overlays.refresh();
+    expect(state.opens).toBe(0);
+
+    // A wait for a member the rows do not list yet still holds the clock.
+    feed.current = panelModel({ clock: { ...CLOCK, held: true } });
+    overlays.refresh();
+    expect(state.opens).toBe(1);
+    overlays.dispose();
+  });
+
+  it('opens over a chat line being typed only once the line is sent or dropped', () => {
+    const feed = source(RUNNING);
+    const { state, overlays } = mountOverlays(feed);
+    overlays.refresh();
+    document.dispatchEvent(enter());
+    const input = document.body.querySelector('input');
+    if (input === null) throw new Error('chat input');
+    input.value = 'half a';
+    feed.current = HOLDING;
+    overlays.refresh();
+    expect([state.open, input.value, document.activeElement === input]).toEqual([false, 'half a', true]);
+
+    input.dispatchEvent(escapeKey());
+    overlays.refresh();
+    expect(state.open).toBe(true);
     overlays.dispose();
   });
 
@@ -356,7 +419,7 @@ describe('the chat above the beam', () => {
     chat.dispose();
   });
 
-  it('closes a typed line when a hold opens the window over it', () => {
+  it('closes a typed line when the window opens over it', () => {
     const { chat, input } = mountChat();
     document.dispatchEvent(enter());
     input.value = 'half a';
@@ -407,6 +470,54 @@ describe('the speed bar', () => {
     expect(plane.querySelector('.on-bar__aside')?.firstElementChild).toBe(note);
     bar.setAside(null);
     expect(plane.querySelector('.on-bar__aside')?.childElementCount).toBe(0);
+    bar.dispose();
+  });
+
+  it('keeps the requested speed in the control while it presses the governed one', () => {
+    const plane = mountPlane();
+    const sent: GameSpeedState[] = [];
+    const bars: HudSystemBar[] = [];
+    const speed = createSpeedControl({
+      onSpeedChange: (spec) => sent.push(spec.state),
+      onShow: (control) => bars[0]?.setSpeed(control),
+    });
+    const bar = createHudSystemBar(plane, {
+      summary: { pack: null, goodIdOf: () => undefined, goodLabel: (id) => id },
+      onPauseToggle: () => speed.togglePause(),
+      onSpeed: (running) => speed.setRunning(running),
+      onMenu: () => undefined,
+    });
+    bars.push(bar);
+    const controller: NetOverlaysController = {
+      syncSpeed: (control) => speed.restore(control),
+      setSpeedLook: (look) => bar.setLook(look),
+      openNetwork: () => undefined,
+      closeNetwork: () => undefined,
+      networkOpen: () => false,
+      hangBesideBar: (node) => bar.setAside(node),
+    };
+    const paced: NetClockModel = { ...GOVERNED, runningSpeed: PACED_SPEED };
+    const overlays = mountNetOverlays({
+      source: source(panelModel({ clock: paced })),
+      scale: () => 1,
+      controller: () => controller,
+      cue: () => undefined,
+    });
+    overlays.refresh();
+    const segment = (label: string): HTMLButtonElement | undefined =>
+      [...plane.querySelectorAll<HTMLButtonElement>('.on-speed > button')].find(
+        (button) => button.textContent === label,
+      );
+    expect(speed.state().running).toBe('faster');
+    expect(segment('×2')?.getAttribute('aria-pressed')).toBe('true');
+    expect(segment('×3')?.getAttribute('aria-pressed')).toBe('false');
+
+    // The speed key steps from the ×3 request, not from the ×2 the bar presses.
+    speed.cycleRunning();
+    expect(sent).toEqual(['normal']);
+    segment('×2')?.click();
+    expect(sent).toEqual(['normal', 'fast']);
+    overlays.dispose();
     bar.dispose();
   });
 

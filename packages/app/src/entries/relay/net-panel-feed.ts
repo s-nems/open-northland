@@ -9,7 +9,7 @@ import {
 } from '@open-northland/net-protocol';
 import { playerSwatchHex } from '../../catalog/roster.js';
 import type {
-  ChatLine,
+  NetChatLine,
   NetClockModel,
   NetLinkModel,
   NetNotice,
@@ -19,6 +19,7 @@ import type {
   SpeedSample,
 } from '../../hud/network/model.js';
 import { tribeName } from '../../i18n/index.js';
+import type { KickTally, RelayClientMirror } from '../../net/net-worker-client.js';
 import { createSpeedHistory } from '../../view/net/speed-history.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
 
@@ -30,15 +31,13 @@ const DEFAULT_SPEED = 1;
  *  `LAG_BEHIND_MS`, which a test pins, counted in frames at the requested speed as the relay counts it. */
 export const CATCHING_UP_BEHIND_MS = 1000;
 
-export type KickVote = Extract<ServerMessage, { kind: 'kickVote' }>;
-
 /** What the relay has told this client about its room, as the panel's rows read it. */
-export interface RelayRoomFacts {
+interface RelayRoomFacts {
   readonly room: RoomView | null;
   readonly waiting: readonly WaitedMember[];
   /** Milliseconds since the wait list arrived, which its countdowns run from. */
   readonly waitingAgeMs: number;
-  readonly tallies: ReadonlyMap<number, KickVote>;
+  readonly tallies: ReadonlyMap<number, KickTally>;
   readonly clock: ClockState | null;
   readonly selfNick: string;
 }
@@ -51,9 +50,9 @@ const voteInSeconds = (wait: WaitedMember, ageMs: number): number =>
   Math.ceil(Math.max(0, wait.voteAfterMs - ageMs) / MS_PER_SECOND);
 
 /** One row per room member, in the room's order. A waited member reads as why it is waited for, the
- *  governor as slowing the room, a member trailing by more than {@link CATCHING_UP_BEHIND_MS} of
- *  frames as catching up. */
-export function relayPlayerRows(facts: RelayRoomFacts): readonly NetPlayerRow[] {
+ *  governor as slowing the room, a disconnected member the relay does not wait for as offline, a
+ *  member trailing by more than {@link CATCHING_UP_BEHIND_MS} of frames as catching up. */
+function relayPlayerRows(facts: RelayRoomFacts): readonly NetPlayerRow[] {
   const { room, clock } = facts;
   if (room === null) return [];
   const waited = new Map(facts.waiting.map((member) => [member.nick, member]));
@@ -71,7 +70,7 @@ export function relayPlayerRows(facts: RelayRoomFacts): readonly NetPlayerRow[] 
         : member.nick === governor
           ? 'slowing'
           : !member.connected
-            ? 'gone'
+            ? 'offline'
             : member.behindTicks > lagTicks
               ? 'catchingUp'
               : 'ok';
@@ -111,11 +110,7 @@ export function relayPlayerRows(facts: RelayRoomFacts): readonly NetPlayerRow[] 
 
 /** The clock as the panel shows it; `held` is whether the relay waits for anyone, which stops its
  *  frames whatever the pause says. */
-export function relayClock(
-  clock: ClockState | null,
-  held: boolean,
-  history: readonly SpeedSample[],
-): NetClockModel {
+function relayClock(clock: ClockState | null, held: boolean, history: readonly SpeedSample[]): NetClockModel {
   return {
     requestedSpeed: clock?.speed ?? DEFAULT_SPEED,
     runningSpeed: runningSpeedOf(clock),
@@ -126,12 +121,15 @@ export function relayClock(
   };
 }
 
-const sameLine = (a: ChatLine, b: ChatLine): boolean =>
+const sameLine = (a: NetChatLine, b: NetChatLine): boolean =>
   a.from === b.from && a.text === b.text && a.tick === b.tick;
 
 /** The lines of a replayed history this client has not shown: those after the last member line it
  *  holds, or all of them when that line is not among them (the room said more than its log keeps). */
-export function unseenHistory(shown: readonly ChatLine[], history: readonly ChatLine[]): readonly ChatLine[] {
+export function unseenHistory(
+  shown: readonly NetChatLine[],
+  history: readonly NetChatLine[],
+): readonly NetChatLine[] {
   const lastSaid = [...shown].reverse().find((line) => line.from !== null);
   if (lastSaid === undefined) return history;
   const fromEnd = [...history].reverse().findIndex((line) => sameLine(line, lastSaid));
@@ -139,7 +137,7 @@ export function unseenHistory(shown: readonly ChatLine[], history: readonly Chat
 }
 
 export interface RelayPanelFeedDeps {
-  readonly client: RelayClientView;
+  readonly client: RelayClientView & Pick<RelayClientMirror, 'kickTallies'>;
   readonly readout: () => NetReadout;
   readonly relayUrl: string | null;
   /** Wall milliseconds, monotonic; default `performance.now`. */
@@ -165,11 +163,12 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
   const { client } = deps;
   const now = deps.now ?? ((): number => performance.now());
   const speeds = createSpeedHistory();
+  // The client's wait list, which an `ended` clears as well as a `waiting`; its countdowns run from when
+  // this feed saw it change.
   let waiting: readonly WaitedMember[] = client.waitingFor;
   let waitingAt = now();
-  const tallies = new Map<number, KickVote>();
   // The room's lines said before this HUD mounted, the lobby's included; the announcements join them.
-  let chat: readonly ChatLine[] = client.chat;
+  let chat: readonly NetChatLine[] = client.chat;
   let chatVersion = 0;
   let worldNotice: NetNotice | null = null;
   let linkNoticeText: string | null = null;
@@ -183,7 +182,7 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
   let roomDirty = true;
   let shown: NetPanelModel | null = null;
 
-  const append = (lines: readonly ChatLine[]): void => {
+  const append = (lines: readonly NetChatLine[]): void => {
     if (lines.length === 0) return;
     chat = [...chat, ...lines].slice(-MAX_CHAT_HISTORY_LINES);
     chatVersion += lines.length;
@@ -192,6 +191,11 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
   return {
     model(): NetPanelModel {
       const nowMs = now();
+      if (client.waitingFor !== waiting) {
+        waiting = client.waitingFor;
+        waitingAt = nowMs;
+        roomDirty = true;
+      }
       const waitingAgeMs = nowMs - waitingAt;
       const held = waiting.length > 0;
       const clockState = client.clockState;
@@ -209,7 +213,7 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
           room: client.room,
           waiting,
           waitingAgeMs,
-          tallies,
+          tallies: client.kickTallies,
           clock: clockState,
           selfNick: client.nick,
         });
@@ -251,20 +255,13 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
     },
     observe(message): void {
       switch (message.kind) {
-        case 'waiting': {
+        case 'waiting':
+          // Stamped on arrival rather than at the next frame's read.
           waiting = message.for;
           waitingAt = now();
-          const seats = new Set(
-            message.for.flatMap(
-              (member) => client.room?.members.find((row) => row.nick === member.nick)?.seat ?? [],
-            ),
-          );
-          for (const seat of tallies.keys()) if (!seats.has(seat)) tallies.delete(seat);
           roomDirty = true;
           return;
-        }
         case 'kickVote':
-          tallies.set(message.player, message);
           roomDirty = true;
           return;
         case 'rejected':

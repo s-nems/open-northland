@@ -1,10 +1,10 @@
 import type { SessionDriver } from '@open-northland/lockstep';
-import { TICKS_PER_SECOND } from '@open-northland/sim';
+import { TICKS_PER_SECOND } from '@open-northland/net-protocol';
 import { VIKING } from '../../catalog/buildings.js';
 import { playerSwatchHex } from '../../catalog/roster.js';
 import {
-  type ChatLine,
   isHeldStatus,
+  type NetChatLine,
   type NetClockModel,
   type NetLinkModel,
   type NetPanelModel,
@@ -82,7 +82,7 @@ export interface NetPanelPreviewOptions {
   readonly now?: () => number;
 }
 
-/** A scripted network panel feed that cycles through every state the window, the banners and the
+/** A scripted network panel feed that cycles through every state the window, the status line and the
  *  speed segments show, for the owner's design preview (`?scene=net-panel`). Nothing in it is
  *  measured. */
 export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanelSource {
@@ -91,7 +91,7 @@ export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanel
   const pinned = NET_PREVIEW_STATES.find((state) => state === options.pinned) ?? null;
   /** The seats this preview's player voted to kick. */
   const cast = new Set<number>();
-  let chat: readonly ChatLine[] = OPENING_CHAT;
+  let chat: readonly NetChatLine[] = OPENING_CHAT;
   let chatVersion = OPENING_CHAT.length;
   let shownKey = '';
   let shown: NetPanelModel | null = null;
@@ -176,7 +176,7 @@ const PREVIEW_LINK: NetLinkModel = {
 const tick = (minutes: number, seconds: number): number =>
   (minutes * SECONDS_PER_MINUTE + seconds) * TICKS_PER_SECOND;
 
-const OPENING_CHAT: readonly ChatLine[] = [
+const OPENING_CHAT: readonly NetChatLine[] = [
   { from: PEER, text: 'gotowi?', tick: null },
   { from: SLOW_PEER, text: 'chwila, wczytuję mapę', tick: null },
   { from: null, text: 'Celina dołącza', tick: tick(0, 0) },

@@ -274,6 +274,7 @@ export const enGame = {
         ok: 'ok',
         catchingUp: 'catching up',
         slowing: 'slowing the room',
+        offline: 'disconnected',
         loading: 'loading',
         resync: 'resyncing',
         silent: 'not responding',

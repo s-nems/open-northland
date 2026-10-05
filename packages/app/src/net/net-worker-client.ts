@@ -18,6 +18,9 @@ import { TICK_MS } from '@open-northland/net-protocol';
 import type { CommandEnvelope, SaveGame } from '@open-northland/sim';
 import type { RelayFacts, RelayRequest, ToNetWorker } from '../session/worker/net-protocol.js';
 
+/** The relay's last tally of the vote to kick a seat. */
+export type KickTally = Extract<ServerMessage, { kind: 'kickVote' }>;
+
 const NO_FACTS: RelayFacts = {
   tick: null,
   paused: false,
@@ -39,6 +42,10 @@ const NO_FACTS: RelayFacts = {
 export class RelayClientMirror implements RelayClientView {
   private readonly state: RelayState;
   private facts: RelayFacts = NO_FACTS;
+  /** By seat, while its member is waited for. Kept here rather than in a HUD, which a world rebuild
+   *  replaces: the relay replays the open tallies once to a member whose world loaded, maybe before the
+   *  new HUD mounts, and otherwise sends a tally only when it moves. */
+  private readonly tallies = new Map<number, KickTally>();
 
   constructor(
     nick: string,
@@ -51,6 +58,14 @@ export class RelayClientMirror implements RelayClientView {
   /** A relay message the worker's client acted on. */
   apply(message: ServerMessage): void {
     this.state.apply(message);
+    if (message.kind === 'kickVote') this.tallies.set(message.player, message);
+    else if (message.kind === 'waiting' || message.kind === 'ended' || message.kind === 'left') {
+      const waited = new Set(this.state.waitingFor.map((member) => member.nick));
+      const seats = new Set(
+        this.state.room?.members.flatMap((member) => (waited.has(member.nick) ? (member.seat ?? []) : [])),
+      );
+      for (const seat of this.tallies.keys()) if (!seats.has(seat)) this.tallies.delete(seat);
+    }
   }
 
   follow(facts: RelayFacts): void {
@@ -89,6 +104,10 @@ export class RelayClientMirror implements RelayClientView {
   }
   get waitingFor(): readonly WaitedMember[] {
     return this.state.waitingFor;
+  }
+  /** The open votes to kick a waited member, by seat. */
+  get kickTallies(): ReadonlyMap<number, KickTally> {
+    return this.tallies;
   }
   get delayTicks(): number | null {
     return this.state.delayTicks;

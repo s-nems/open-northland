@@ -1,6 +1,7 @@
-import { TICKS_PER_SECOND } from '@open-northland/sim';
+import { TICKS_PER_SECOND } from '@open-northland/net-protocol';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
 import type { SpeedBarLook } from '../dom/system-bar.js';
+import { presetAtOrBelow } from '../tool-panel/game-speed.js';
 import {
   isHeldStatus,
   type NetClockModel,
@@ -87,9 +88,9 @@ export function ownStateText(players: readonly NetPlayerRow[]): string | null {
   return null;
 }
 
-/** How the speed segments read for a relayed room: held while it waits for a member, naming who;
- *  slowed while it is paced for one, naming the exact speed and the member, or addressing this client
- *  when it is that member; else plain. */
+/** How the speed segments read for a relayed room: held while it waits for a member, naming the
+ *  waited rows; slowed while it is paced for one, pressing the preset it reaches and naming the exact
+ *  speed and the member, or addressing this client when it is that member; else plain. */
 export function speedBarLook(clock: NetClockModel, players: readonly NetPlayerRow[]): SpeedBarLook | null {
   const copy = messages().hud.network;
   if (clock.held) {
@@ -107,5 +108,5 @@ export function speedBarLook(clock: NetClockModel, players: readonly NetPlayerRo
     governor.nick === selfNick(players)
       ? formatMessage(copy.barGovernedSelf, { speed, requested })
       : formatMessage(copy.barGoverned, { speed, requested, nick: governor.nick });
-  return { kind: 'slowed', title, pressed: null };
+  return { kind: 'slowed', title, pressed: presetAtOrBelow(clock.runningSpeed) };
 }

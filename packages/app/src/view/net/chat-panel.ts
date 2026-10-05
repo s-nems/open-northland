@@ -1,7 +1,7 @@
 import { MAX_CHAT_LENGTH } from '@open-northland/net-protocol';
 import { quietTextField } from '../../hud/dom/parts/text-field.js';
 import type { Rect } from '../../hud/geometry.js';
-import type { ChatLine } from '../../hud/network/model.js';
+import type { NetChatLine } from '../../hud/network/model.js';
 import { messages } from '../../i18n/index.js';
 import { el } from '../overlay.js';
 
@@ -53,10 +53,12 @@ const INPUT_STYLE = [
 export interface ChatPanel {
   /** Once a frame: take the room's newest lines (the same `version` twice costs nothing), show the log
    *  while a line is fresh or the line is open, and follow the beam. */
-  refresh(chat: readonly ChatLine[], version: number): void;
+  refresh(chat: readonly NetChatLine[], version: number): void;
   /** Hide the log while the network window shows the whole chat over it; hiding closes the line,
    *  since the window's own field is the chat while it is open. */
   setHidden(hidden: boolean): void;
+  /** True while the line is open under the player's keys. */
+  typing(): boolean;
   dispose(): void;
 }
 
@@ -187,6 +189,7 @@ export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
       if (hidden && lineOpen) setLineOpen(false);
       log.style.display = hidden ? 'none' : 'flex';
     },
+    typing: () => lineOpen,
     dispose(): void {
       document.removeEventListener('keydown', onPageKey);
       log.remove();
@@ -194,7 +197,7 @@ export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
   };
 }
 
-function lineRow(line: ChatLine): HTMLDivElement {
+function lineRow(line: NetChatLine): HTMLDivElement {
   const row = el(
     'div',
     `overflow-wrap:anywhere;${line.from === null ? 'opacity:0.75;font-style:italic' : ''}`,

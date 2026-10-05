@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sameSpeedBarLook } from '../src/hud/dom/system-bar.js';
-import { formatMessage, messages } from '../src/i18n/index.js';
+import { currentLocale, formatMessage, messages, setActiveLocale } from '../src/i18n/index.js';
 import { createShortfallLook, shortfallLook } from '../src/view/speed-shortfall.js';
 
 describe('local speed shortfall on the speed bar', () => {
@@ -20,6 +20,18 @@ describe('local speed shortfall on the speed bar', () => {
     expect(look(1.44, 3)).toBe(first);
     expect(look(1.46, 3)).not.toBe(first);
     expect(look(null, 3)).toBeNull();
+  });
+
+  it('words the look again in a language picked meanwhile', () => {
+    const look = createShortfallLook();
+    const locale = currentLocale();
+    const first = look(1.4, 3);
+    try {
+      setActiveLocale(locale === 'pol' ? 'eng' : 'pol');
+      expect(look(1.4, 3)?.title).not.toBe(first?.title);
+    } finally {
+      setActiveLocale(locale);
+    }
   });
 
   it('tells looks apart by what the bar shows', () => {

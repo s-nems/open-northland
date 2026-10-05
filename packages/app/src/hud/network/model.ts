@@ -1,9 +1,21 @@
-/** A player's standing in a relayed room as the network panel shows it. `catchingUp` trails the clock
- *  without slowing anyone; `slowing` is the member the room is paced for; the last four hold the clock. */
-export type NetPlayerStatus = 'ok' | 'catchingUp' | 'slowing' | 'loading' | 'resync' | 'silent' | 'gone';
+import type { GovernorCause } from '@open-northland/net-protocol';
 
-/** The statuses the relay holds the clock for: it emits no frames while any member has one. */
-export const HELD_STATUSES: readonly NetPlayerStatus[] = ['loading', 'resync', 'silent', 'gone'];
+/** A player's standing in a relayed room as the network panel shows it. `catchingUp` trails the clock
+ *  without slowing anyone; `slowing` is the member the room is paced for; `offline` is disconnected
+ *  while the relay does not wait for it (a spectator, or after the verdict); the last four are the
+ *  relay's wait reasons, which hold the clock. */
+export type NetPlayerStatus =
+  | 'ok'
+  | 'catchingUp'
+  | 'slowing'
+  | 'offline'
+  | 'loading'
+  | 'resync'
+  | 'silent'
+  | 'gone';
+
+/** The statuses a waited member reads as: the relay emits no frames while any member has one. */
+const HELD_STATUSES: readonly NetPlayerStatus[] = ['loading', 'resync', 'silent', 'gone'];
 
 export function isHeldStatus(status: NetPlayerStatus): boolean {
   return HELD_STATUSES.includes(status);
@@ -50,17 +62,15 @@ export interface SpeedSample {
   readonly ownSpeed: number;
 }
 
-export type NetGovernorCause = 'load' | 'lag';
-
 export interface NetClockModel {
   readonly requestedSpeed: number;
   /** The governed speed while the room is paced for a member, else the requested one. */
   readonly runningSpeed: number;
   readonly paused: boolean;
-  /** The relay emits no frames: some member is gone, silent, loading or resyncing. */
+  /** The relay's wait list is not empty: it emits no frames while it waits for a member. */
   readonly held: boolean;
   /** The member the room is paced for and what bounds it: its machine (`load`) or its link (`lag`). */
-  readonly governor: { readonly nick: string; readonly cause: NetGovernorCause } | null;
+  readonly governor: { readonly nick: string; readonly cause: GovernorCause } | null;
   /** Up to {@link SPEED_HISTORY_SECONDS} samples. */
   readonly history: readonly SpeedSample[];
 }
@@ -84,7 +94,7 @@ export interface NetLinkModel {
 }
 
 /** A chat line; `from` null is a line about the session itself, `tick` the game clock it was said at. */
-export interface ChatLine {
+export interface NetChatLine {
   readonly from: string | null;
   readonly text: string;
   readonly tick: number | null;
@@ -94,7 +104,7 @@ export interface NetPanelModel {
   readonly players: readonly NetPlayerRow[];
   readonly clock: NetClockModel;
   readonly link: NetLinkModel;
-  readonly chat: readonly ChatLine[];
+  readonly chat: readonly NetChatLine[];
   /** Bumps once per appended chat line, so a reader can tell new lines without comparing arrays. */
   readonly chatVersion: number;
   /** A line about this client's own world (out of sync with the room); null when there is none. */
@@ -113,7 +123,7 @@ export interface NetPanelActions {
   say(text: string): void;
 }
 
-/** What the network panel, its banners and the chat log read. The model is the same object while
+/** What the network panel, its status line and the chat log read. The model is the same object while
  *  nothing in it changed, so a reader compares identities; null until the relay's HUD is up. */
 export interface NetPanelSource extends NetPanelActions {
   model(): NetPanelModel | null;

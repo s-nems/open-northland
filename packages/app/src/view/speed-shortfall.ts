@@ -1,7 +1,7 @@
 import type { SpeedBarLook } from '../hud/dom/system-bar.js';
 import { formatRoomSpeed } from '../hud/network/text.js';
 import { presetAtOrBelow } from '../hud/tool-panel/game-speed.js';
-import { formatMessage, messages } from '../i18n/index.js';
+import { formatMessage, type Messages, messages } from '../i18n/index.js';
 
 /** The delivered speed averages a second or less, good to about a tenth; more digits would overstate it. */
 const TENTHS = 10;
@@ -21,16 +21,19 @@ export function shortfallLook(delivered: number | null, requested: number): Spee
 }
 
 /** {@link shortfallLook} for a caller that asks every frame: the same look until its figure to the
- *  tenth or the request moved. */
+ *  tenth, the request or the language moved. */
 export function createShortfallLook(): (delivered: number | null, requested: number) => SpeedBarLook | null {
   let shownTenths: number | null | undefined;
   let shownRequested = 0;
+  let shownCopy: Messages | null = null;
   let look: SpeedBarLook | null = null;
   return (delivered, requested) => {
     const tenths = delivered === null ? null : Math.round(delivered * TENTHS);
-    if (tenths !== shownTenths || requested !== shownRequested) {
+    const copy = messages();
+    if (tenths !== shownTenths || requested !== shownRequested || copy !== shownCopy) {
       shownTenths = tenths;
       shownRequested = requested;
+      shownCopy = copy;
       look = shortfallLook(delivered, requested);
     }
     return look;

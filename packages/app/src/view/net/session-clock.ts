@@ -3,10 +3,11 @@ import type { NetClockModel } from '../../hud/network/model.js';
 import { type GameSpeedControl, presetAtOrBelow } from '../../hud/tool-panel/game-speed.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 
-/** The segment the bar presses for the speed the room actually runs at: a room governed to ×2.5
- *  shows ×2, never the ×3 it was asked for. A held room shows its pause through the bar's look. */
-export function speedControlFor(clock: Pick<NetClockModel, 'runningSpeed' | 'paused'>): GameSpeedControl {
-  return { running: presetAtOrBelow(clock.runningSpeed), paused: clock.paused };
+/** The control at the room's requested speed, so the speed key and the segments step from the request
+ *  and never re-send it. A governed room's running speed shows through the bar's look instead
+ *  (`speedBarLook`), as a held room's pause does. */
+export function speedControlFor(clock: Pick<NetClockModel, 'requestedSpeed' | 'paused'>): GameSpeedControl {
+  return { running: presetAtOrBelow(clock.requestedSpeed), paused: clock.paused };
 }
 
 /** The line the chat announces a clock change with, or null when nobody made it or nothing changed. */

@@ -2,9 +2,9 @@ import type { UiCue } from '@open-northland/audio';
 import { MAX_CHAT_LENGTH } from '@open-northland/net-protocol';
 import { formatMessage, messages } from '../../i18n/index.js';
 import {
-  type ChatLine,
   isHeldStatus,
   type NetBallot,
+  type NetChatLine,
   type NetClockModel,
   type NetLinkModel,
   type NetPanelModel,
@@ -55,6 +55,7 @@ const STATUS_TONE: Readonly<Record<NetPlayerStatus, 'ok' | 'warn' | 'danger'>> =
   ok: 'ok',
   catchingUp: 'warn',
   slowing: 'warn',
+  offline: 'warn',
   loading: 'warn',
   resync: 'warn',
   silent: 'danger',
@@ -68,8 +69,8 @@ export interface NetworkWindowDeps {
 }
 
 /** The network window: the line about this client's world, the room's players with their link and
- *  pace, the clock and its last two minutes, this client's own link and the room's whole chat. The plane routes its own pointer input,
- *  so it claims no canvas point. */
+ *  pace, the clock and its last two minutes, this client's own link and the room's whole chat. The
+ *  plane routes its own pointer input, so it claims no canvas point. */
 export interface NetworkWindow extends ToolWindow {
   /** Once a frame while open: re-place the window and redraw what changed in the model. */
   refresh(): void;
@@ -145,7 +146,7 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   const tips = attachTipLayer(window.element, chip);
   window.onDismiss(() => tips.hide());
 
-  // The world's notice, which the held banner shows while the window is closed. Every line about the
+  // The world's notice, which the status line shows while the window is closed. Every line about the
   // room keeps its height while empty, so the window's size follows only the number of players.
   const notice = element('p', 'on-net-note on-net-note--warn on-net-notice');
   notice.setAttribute('role', 'status');
@@ -472,7 +473,7 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     setTip(disconnected, state.notice ?? '');
   };
 
-  const chatItem = (line: ChatLine): HTMLLIElement => {
+  const chatItem = (line: NetChatLine): HTMLLIElement => {
     const item = element(
       'li',
       line.from === null ? 'on-net-chat__line on-net-chat__line--system' : 'on-net-chat__line',

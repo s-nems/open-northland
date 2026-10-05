@@ -6728,7 +6728,7 @@ body.on-drag-scroll * {
   }
 }
 
-/* ---------- network window, held banner, slowed line (relayed games) ---------- */
+/* ---------- network window, status line (relayed games) ---------- */
 .on-hud .on-window--network .on-window__body {
   display: flex;
   flex-direction: column;
