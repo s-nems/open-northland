@@ -405,11 +405,13 @@ export function createMinimapChrome(
       colours.choose(state.filters.colours);
       setDisabled(colours.group, !state.hasSeat);
       colourMode = state.filters.colours;
-      setAttribute(colourToggle, 'aria-pressed', String(colourMode === 'stance'));
+      // A whole-map view paints team colours whatever is stored, so the button names what shows.
+      const shownMode: MinimapColourMode = state.hasSeat ? colourMode : 'players';
+      setAttribute(colourToggle, 'aria-pressed', String(shownMode === 'stance'));
       setAttribute(
         colourToggle,
         'aria-label',
-        formatMessage(copy.colourToggleState, { mode: copy.colourModes[colourMode] }),
+        formatMessage(copy.colourToggleState, { mode: copy.colourModes[shownMode] }),
       );
       setDisabled(colourToggle, !state.hasSeat);
       if (setHidden(noSeatNote, state.hasSeat)) placeFilters();

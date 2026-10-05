@@ -2,6 +2,7 @@
   position: absolute;
   pointer-events: none;
   isolation: isolate;
+  container: minimap / size;
 }
 .on-hud .on-minimap-chrome[hidden],
 .on-hud[data-chrome="hidden"] .on-minimap-chrome {
@@ -147,6 +148,16 @@
 .on-hud .on-minimap-chrome__button:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+/* A short panel (size S on a wide map) keeps the six buttons clear of the frame's corner ornaments. */
+@container minimap (max-height: 180px) {
+  .on-hud .on-minimap-chrome__controls {
+    gap: 1px;
+  }
+  .on-hud .on-minimap-chrome__button {
+    width: 20px;
+    height: 20px;
+  }
 }
 .on-hud .on-minimap-chrome__filters {
   position: absolute;

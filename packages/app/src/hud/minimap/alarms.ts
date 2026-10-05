@@ -44,6 +44,21 @@ interface Alarm {
   readonly start: number;
 }
 
+/** Where a ring at half-cell node `at` centres, in the dot raster's px: the projection the dots use. */
+export function alarmPoint(
+  at: HalfCellNode,
+  bounds: WorldBounds,
+  rasterScale: number,
+): { readonly x: number; readonly y: number } {
+  const position = positionOfNode(at.hx, at.hy);
+  const col = position.x / ONE;
+  const row = position.y / ONE;
+  return {
+    x: (tileToScreenX(col, row) - bounds.minX) * rasterScale,
+    y: (tileToScreenY(row) - bounds.minY) * rasterScale,
+  };
+}
+
 /**
  * The attack alarms over the minimap's markers, in the dot raster's px. Parented on creation, so the
  * caller creates it above the dots in draw order.
@@ -55,14 +70,7 @@ export function createAlarmLayer(container: Container, bounds: WorldBounds, rast
   let drawn = false;
   return {
     add: (at, now) => {
-      const position = positionOfNode(at.hx, at.hy);
-      const col = position.x / ONE;
-      const row = position.y / ONE;
-      alarms.push({
-        x: (tileToScreenX(col, row) - bounds.minX) * rasterScale,
-        y: (tileToScreenY(row) - bounds.minY) * rasterScale,
-        start: now,
-      });
+      alarms.push({ ...alarmPoint(at, bounds, rasterScale), start: now });
     },
     draw: (now, pxPerMinimapPx) => {
       if (alarms.length === 0 && !drawn) return;
