@@ -16,11 +16,12 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { hexDistanceBetween } from '../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph, Traversal } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { needLevel } from '../lifecycle/needs/levels.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
+import { settlerMovementNode, settlerTraversal } from '../movement/traversal.js';
 import { isFighterJob, isHunterJob, type MilitaryMode, stanceFights } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { startDrop } from '../settlers/atomics/start.js';
@@ -111,7 +112,7 @@ export function fleeDrive(
     return;
   }
 
-  const here = entityNode(world, terrain, e);
+  const here = settlerMovementNode(world, terrain, e);
   const { x, y } = terrain.coordsOf(here);
   // Fog gate: a fleer reacts only to threats its player currently sees. Any of the player's eyes counts, so
   // a watchtower spotting the raider warns a civilian whose own sight does not reach it.
@@ -242,8 +243,16 @@ export function startBlowRun(world: World, ctx: SystemContext, terrain: TerrainG
     return true;
   }
   world.mut(e, Fleeing).blow = undefined;
-  const here = entityNode(world, terrain, e);
-  const dest = fleeDestination(terrain, dynamicBlockOverlay(world, ctx, terrain), here, [from]);
+  const here = settlerMovementNode(world, terrain, e);
+  const dest = fleeDestination(
+    terrain,
+    dynamicBlockOverlay(world, ctx, terrain),
+    here,
+    [from],
+    undefined,
+    undefined,
+    settlerTraversal(world, e),
+  );
   if (dest === here) {
     clearNavState(world, e);
     return false;
@@ -267,6 +276,7 @@ export function fleeDestination(
   threatCells: readonly NodeId[],
   step: number = FLEE_STEP_NODES,
   admits: (cell: NodeId) => boolean = () => true,
+  traversal: Traversal = 'land',
 ): NodeId {
   const h = terrain.coordsOf(here);
   const threats = threatCells.map((t) => terrain.coordsOf(t));
@@ -283,7 +293,7 @@ export function fleeDestination(
     const x = h.x + dx * reach;
     const y = h.y + dy * reach;
     const cell = terrain.nodeAt(x, y);
-    if (!terrain.isWalkable(cell) || blocked.has(cell)) continue;
+    if (!terrain.traversable(cell, traversal) || blocked.has(cell)) continue;
     if (bank >= 0 && terrain.componentOf(cell) !== bank) continue;
     const clearance = nearestThreat(threats, x, y);
     const total = allThreats(threats, x, y);

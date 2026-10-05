@@ -4,6 +4,7 @@ import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
 import { positionOfNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { routeStartCell } from '../../movement/route-start.js';
+import { settlerTraversal } from '../../movement/traversal.js';
 import { isValidNodeId } from '../../spatial/nodes.js';
 
 const byId = (e: Entity): number => e;
@@ -106,6 +107,10 @@ export function navigationPlanner(world: World, terrain: TerrainGraph): void {
 
     // Routing from the nearest walkable bracket cell rather than the truncated one keeps a spliced
     // first leg short and forward, since truncation binds a walker to the centre behind it.
-    world.add(e, PathRequest, { start: routeStartCell(terrain, p.x, p.y), goal: goalNode, failed: false });
+    world.add(e, PathRequest, {
+      start: routeStartCell(terrain, p.x, p.y, settlerTraversal(world, e)),
+      goal: goalNode,
+      failed: false,
+    });
   }
 }

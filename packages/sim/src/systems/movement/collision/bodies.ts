@@ -2,6 +2,7 @@ import { Building, Owner, PathFollow, PathRequest, Position, Settler } from '../
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { settlerTraversal } from '../traversal.js';
 
 /**
  * Unit body collision is an authored deviation: the original is observed letting walkers pass through each
@@ -22,7 +23,7 @@ const CALM_ZONE_RADIUS_NODES = 8;
  * gate keeps unowned fixtures and goldens byte-identical.
  */
 export function hasSoftCollision(world: World, e: Entity): boolean {
-  return world.has(e, Owner) && world.has(e, Settler);
+  return world.has(e, Owner) && world.has(e, Settler) && settlerTraversal(world, e) === 'land';
 }
 
 /** Whether `e` is standing for collision purposes: not walking and not waiting on a live route, since a

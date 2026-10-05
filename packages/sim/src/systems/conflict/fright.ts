@@ -15,6 +15,7 @@ import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { territoryRangeOf } from '../livestock/index.js';
 import { clearNavState, redirectRoute } from '../movement/nav-state.js';
+import { settlerMovementNode, settlerTraversal } from '../movement/traversal.js';
 import { isAggressiveAnimal } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
@@ -92,7 +93,7 @@ export const animalFrightSystem: System = (world, ctx) => {
     if (world.tryGet(e, PathRequest)?.failed) clearNavState(world, e); // the last away-route was unreachable
     // Run the live route, or stand out a refused or boxed-in one, until the throttle re-aims.
     if (ctx.tick < f.repathAt) continue;
-    const here = entityNode(world, terrain, e);
+    const here = settlerMovementNode(world, terrain, e);
     blocked ??= dynamicBlockOverlay(world, ctx, terrain);
     const dest = fleeDestination(
       terrain,
@@ -101,6 +102,7 @@ export const animalFrightSystem: System = (world, ctx) => {
       [f.from],
       FRIGHT_STEP_NODES,
       withinTerritory(world, ctx, terrain, e, here),
+      settlerTraversal(world, e),
     );
     if (dest === here) {
       clearNavState(world, e); // boxed in (no walkable away-cell) - stand until the scare lapses

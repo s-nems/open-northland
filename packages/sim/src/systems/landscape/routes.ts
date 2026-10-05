@@ -14,6 +14,7 @@ import { positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { dropPath } from '../movement/nav-state.js';
 import { routeStartCell } from '../movement/route-start.js';
+import { settlerTraversal } from '../movement/traversal.js';
 
 /** A script closes topology immediately; keep the same safe stopping path as a wall closure. */
 export function invalidateLandscapeRoutes(
@@ -210,7 +211,7 @@ function requestFromHere(world: World, terrain: TerrainGraph, e: Entity, retainS
   const safeEnd =
     retainSafePrefix && world.has(e, PathFollow) ? world.get(e, PathRoute).waypoints.at(-1)?.node : undefined;
   world.add(e, PathRequest, {
-    start: safeEnd ?? routeStartCell(terrain, p.x, p.y),
+    start: safeEnd ?? routeStartCell(terrain, p.x, p.y, settlerTraversal(world, e)),
     goal,
     failed: false,
     retainRoute: safeEnd === undefined ? undefined : true,

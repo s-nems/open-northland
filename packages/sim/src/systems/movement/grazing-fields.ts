@@ -22,9 +22,9 @@ import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { territoryRangeIn } from '../livestock/assignment.js';
 import { type NodeMoveFeed, watchNodeMoves } from '../spatial/node-moves.js';
-import { entityNode } from '../spatial/nodes.js';
 import { isTravelling } from './nav-state.js';
 import { SPACING_PROBES } from './spacing.js';
+import { settlerMovementNode } from './traversal.js';
 
 /** An entity's role for the grazing drive: not an animal at all. */
 const NOT_ANIMAL = 0;
@@ -202,7 +202,7 @@ export class GrazingFields {
       if (world.has(e, Resting) || isTravelling(world, e)) {
         role = OFF_FIELD;
       } else {
-        node = entityNode(world, this.terrain, e);
+        node = settlerMovementNode(world, this.terrain, e);
         role = driveHolds(world, e) ? HELD : GRAZING;
       }
       this.ranges[e] = territoryRangeIn(world, this.content, e);
@@ -328,7 +328,7 @@ export class GrazingFields {
         if (this.nodeOf(e) !== NO_NODE) wrong++;
         continue;
       }
-      const node = entityNode(world, this.terrain, e);
+      const node = settlerMovementNode(world, this.terrain, e);
       if (this.nodeOf(e) !== node) wrong++;
       if (!driveHolds(world, e)) grazers.push(e);
       if (this.keeperNearIn(fresh, node)) continue;

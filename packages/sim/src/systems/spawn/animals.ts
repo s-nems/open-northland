@@ -1,3 +1,4 @@
+import { ANIMAL_WATER_TRIBES } from '@open-northland/data';
 import {
   addWildlife,
   Health,
@@ -14,9 +15,11 @@ import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { dynamicBlockOverlay } from '../footprint/index.js';
 import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
 import { animalHitpoints, herdParams, isCatchableAnimal, locomotionOf } from '../readviews/index.js';
 import { COMPASS_DIRECTIONS, entityNode } from '../spatial/nodes.js';
+import { waterAnimalSpawnNode } from './water-animals.js';
 
 /** Upper bound on one spawn command's herd size - the real `maximumgroupsize` values are 2..6, so any
  *  count near this cap is corrupted input, not content. */
@@ -59,10 +62,24 @@ export function spawnAnimalHerd(
   // One claim set across the herd: each member records its final node, so neither a push nor a
   // radius-clamped scatter ends two members on one cell - animals have no de-stacking drive.
   const claimed = new Set<NodeId>();
+  const water = ANIMAL_WATER_TRIBES.has(command.tribe);
+  const terrain = ctx.terrain;
+  if (water && terrain === undefined) return;
+  const waterBlocks = water && terrain !== undefined ? dynamicBlockOverlay(world, ctx, terrain) : undefined;
+  let waterComponent: number | undefined;
   for (let i = 0; i < count; i++) {
     const off = herdMemberOffset(i, range);
+    let x = command.x + off.dx;
+    let y = command.y + off.dy;
+    if (waterBlocks !== undefined && terrain !== undefined) {
+      const node = waterAnimalSpawnNode(terrain, x, y, waterBlocks, claimed, waterComponent);
+      if (node === null) continue;
+      waterComponent ??= terrain.componentOf(node);
+      x = terrain.xOf(node);
+      y = terrain.yOf(node);
+    }
     const e = world.create();
-    world.add(e, Position, positionOfNode(command.x + off.dx, command.y + off.dy));
+    world.add(e, Position, positionOfNode(x, y));
     stampAnimalBody(world, ctx, e, command.tribe, hitpoints);
     // Every member of an authored herd answers to the same id: an id names a group, not one creature.
     stampMissionId(world, e, command.missionId);

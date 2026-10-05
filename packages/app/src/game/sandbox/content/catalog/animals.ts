@@ -6,6 +6,7 @@
 import {
   ANIMAL_TRIBE_BEARS,
   ANIMAL_TRIBE_CATTLE,
+  ANIMAL_TRIBE_DUCKS,
   ANIMAL_TRIBE_HARES,
   ANIMAL_TRIBE_LIONESSES,
   ANIMAL_TRIBE_LIONS,
@@ -19,6 +20,7 @@ import {
 export {
   ANIMAL_TRIBE_BEARS,
   ANIMAL_TRIBE_CATTLE,
+  ANIMAL_TRIBE_DUCKS,
   ANIMAL_TRIBE_HARES,
   ANIMAL_TRIBE_LIONESSES,
   ANIMAL_TRIBE_LIONS,
@@ -35,6 +37,7 @@ export const SANDBOX_ANIMAL_TRIBES: readonly { typeId: number; id: string }[] = 
   { typeId: ANIMAL_TRIBE_POLAR_BEARS, id: 'evil_hares' },
   { typeId: ANIMAL_TRIBE_CATTLE, id: 'cattle' },
   { typeId: ANIMAL_TRIBE_STAGS, id: 'stags' },
+  { typeId: ANIMAL_TRIBE_DUCKS, id: 'ducks' },
   { typeId: ANIMAL_TRIBE_HARES, id: 'hares' },
   { typeId: ANIMAL_TRIBE_SHEEP, id: 'sheep' },
   { typeId: ANIMAL_TRIBE_WOLVES, id: 'wolves' },
@@ -65,6 +68,19 @@ export interface SandboxAnimal {
 
 export function buildSandboxAnimals(): readonly SandboxAnimal[] {
   return [
+    {
+      id: 'duck',
+      tribeType: ANIMAL_TRIBE_DUCKS,
+      hitpointsAdult: 100,
+      hitpointsBaby: 30,
+      maximumGroupSize: 6,
+      maximumCadaverSize: 4,
+      maximumLeaderDistance: 20,
+      searchForLeader: true,
+      maximumDistanceToStayPoint: 20,
+      maximumDistanceToBirthPoint: 40,
+      warrantable: true,
+    },
     {
       id: 'bear',
       tribeType: ANIMAL_TRIBE_BEARS,

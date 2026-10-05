@@ -108,7 +108,29 @@ function idleChoiceFrame(
     if (clip !== undefined) duration += Math.max(1, clipLength(clip, facing));
   }
   const stagger = idleElapsed === undefined ? ref * IDLE_PHASE_STAGGER_TICKS : 0;
-  let time = wrap(Math.floor(idleElapsed ?? tick) + stagger, duration);
+  const clock = Math.floor(idleElapsed ?? tick) + stagger;
+  let time = wrap(clock, duration);
+  const fidgets = binding.idleFidgets;
+  if (fidgets !== undefined && fidgets.length > 0) {
+    // Add gestures only between complete wait schedules. Restart the waits afterwards, so a
+    // hidden clock cannot resume in the middle of a lie-down or head-lowering program.
+    const gap = Math.ceil(IDLE_FIDGET_GAP_TICKS / duration) * duration;
+    let period = gap * fidgets.length;
+    for (const clip of fidgets) period += clipLength(clip, facing);
+    let remaining = wrap(clock, period);
+    for (let i = 0; i < fidgets.length; i++) {
+      const clip = fidgets[(wrap(ref, fidgets.length) + i) % fidgets.length];
+      if (clip === undefined) continue;
+      if (remaining < gap) {
+        time = remaining % duration;
+        break;
+      }
+      remaining -= gap;
+      const length = clipLength(clip, facing);
+      if (remaining < length) return frameOf(clip, facing, remaining);
+      remaining -= length;
+    }
+  }
   const first = wrap(ref, choices.length);
   for (let i = 0; i < choices.length; i++) {
     const clip = choices[(first + i) % choices.length];

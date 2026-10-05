@@ -61,7 +61,7 @@ export interface SettlerStateBinding {
   /** Wait clips played back to back, each through before the next: an animal's wait actions 2..7, or
    *  the gestures of a look whose base wait is one held frame. */
   readonly idleChoices?: readonly FrameListAnim[];
-  /** Authored one-shot idle gestures, each played to its end between spells of the base wait. */
+  /** One-shot idle gestures, played between base waits or complete idle-choice schedules. */
   readonly idleFidgets?: readonly FrameListAnim[];
   readonly moving?: SpriteFrameRef;
   /** The animal's faster unloaded gait, selected while its movement uses run speed. */

@@ -11,15 +11,15 @@ import {
 } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph, Traversal } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { herdParams } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
-import { entityNode } from '../spatial/nodes.js';
 import { leadsHerd, promoteHerdSuccessor } from './herd-leader.js';
 import { isTravelling } from './nav-state.js';
 import { ANIMAL_SPACING_NODES, nearHeld } from './spacing.js';
+import { settlerMovementNode, settlerTraversal } from './traversal.js';
 
 /**
  * The follow-the-leader drive: an idle {@link HerdMember} that has strayed farther than its cohesion radius
@@ -59,15 +59,24 @@ export const herdingSystem: System = (world, ctx) => {
     if (world.has(e, Resting) || world.has(e, DraughtAnimal)) continue;
 
     const range = herdParams(ctx.content, world.get(e, Settler).tribe)?.leaderDistance ?? 0;
-    const here = entityNode(world, terrain, e);
-    const leaderCell = entityNode(world, terrain, leader);
+    const here = settlerMovementNode(world, terrain, e);
+    const leaderCell = settlerMovementNode(world, terrain, leader);
     if (manhattan(terrain, here, leaderCell) <= range) continue; // close enough - stay put
 
     standing ??= standingAnimalNodes(world, terrain);
     taken ??= new Set<NodeId>();
     blocked ??= dynamicBlockOverlay(world, ctx, terrain);
     world.add(e, MoveGoal, {
-      cell: recallSpot(terrain, standing, taken, blocked, here, leaderCell, range),
+      cell: recallSpot(
+        terrain,
+        standing,
+        taken,
+        blocked,
+        here,
+        leaderCell,
+        range,
+        settlerTraversal(world, e),
+      ),
     });
   }
 };
@@ -109,6 +118,7 @@ function recallSpot(
   from: NodeId,
   leaderCell: NodeId,
   range: number,
+  traversal: Traversal,
 ): NodeId {
   if (range < ANIMAL_SPACING_NODES) return leaderCell; // too tight a radius to hold the spacing
   const at = terrain.coordsOf(leaderCell);
@@ -116,7 +126,7 @@ function recallSpot(
     if (Math.abs(dx) + Math.abs(dy) > range) continue;
     if (!terrain.inBounds(at.x + dx, at.y + dy)) continue;
     const node = terrain.nodeAt(at.x + dx, at.y + dy);
-    if (!terrain.isWalkable(node)) continue;
+    if (!terrain.traversable(node, traversal)) continue;
     if (terrain.componentOf(node) !== terrain.componentOf(from)) continue;
     if (blocked.has(node)) continue;
     if (nearHeld(terrain, node, standing) || nearHeld(terrain, node, taken)) continue;
@@ -132,7 +142,7 @@ function standingAnimalNodes(world: World, terrain: TerrainGraph): Set<NodeId> {
   const nodes = new Set<NodeId>();
   for (const e of world.query(StayPoint, Settler, Position)) {
     if (world.has(e, Resting) || isTravelling(world, e)) continue;
-    nodes.add(entityNode(world, terrain, e));
+    nodes.add(settlerMovementNode(world, terrain, e));
   }
   return nodes;
 }

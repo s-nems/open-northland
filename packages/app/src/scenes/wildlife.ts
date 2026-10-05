@@ -7,9 +7,12 @@ import {
   type Simulation,
   systems,
 } from '@open-northland/sim';
-import { grassTerrain } from '../catalog/buildings.js';
+import { TERRAIN_IMPASSABLE, TERRAIN_OPEN } from '../catalog/terrain.js';
 import {
   ANIMAL_TRIBE_BEARS,
+  ANIMAL_TRIBE_DUCKS,
+  ANIMAL_TRIBE_LIONS,
+  ANIMAL_TRIBE_SHEEP,
   ANIMAL_TRIBE_STAGS,
   ANIMAL_TRIBE_WOLVES,
   buildSandboxAnimals,
@@ -24,6 +27,9 @@ const HERDS: readonly { tribe: number; x: number; y: number }[] = [
   { tribe: ANIMAL_TRIBE_BEARS, x: 6, y: 5 },
   { tribe: ANIMAL_TRIBE_STAGS, x: 18, y: 7 },
   { tribe: ANIMAL_TRIBE_WOLVES, x: 11, y: 14 },
+  { tribe: ANIMAL_TRIBE_SHEEP, x: 5, y: 13 },
+  { tribe: ANIMAL_TRIBE_LIONS, x: 21, y: 15 },
+  { tribe: ANIMAL_TRIBE_DUCKS, x: 22, y: 3 },
 ];
 
 /** Read off the catalog records, which carry more species than this scene places, so the check cannot
@@ -71,13 +77,36 @@ function countOffBirthNode(sim: Simulation, animals: readonly Entity[]): number 
 export const wildlifeScene: SceneDefinition = {
   id: 'wildlife',
   seed: 31,
-  terrain: grassTerrain(MAP_W, MAP_H),
+  terrain: {
+    width: MAP_W,
+    height: MAP_H,
+    typeIds: Array.from({ length: MAP_W * MAP_H }, (_, i) =>
+      i % MAP_W >= 18 && i % MAP_W < 25 && Math.floor(i / MAP_W) >= 1 && Math.floor(i / MAP_W) < 6
+        ? TERRAIN_IMPASSABLE
+        : TERRAIN_OPEN,
+    ),
+  },
   build,
   // Needs ON against the scene default: with the rule disabled, no bar could rise whatever needsSystem did.
   needs: true,
   runTicks: 300,
   initialZoom: 0.8,
   checks: [
+    {
+      label: 'ducks swim off their spawn points and remain in the pond',
+      predicate: (sim) => {
+        const ducks = membersOf(sim, ANIMAL_TRIBE_DUCKS);
+        return (
+          ducks.length > 0 &&
+          countOffBirthNode(sim, ducks) > 0 &&
+          ducks.every((e) => {
+            const p = sim.world.get(e, Position);
+            const n = nodeOfPosition(p.x, p.y);
+            return sim.terrain?.isWater(sim.terrain.nodeAtClamped(n.hx, n.hy)) === true;
+          })
+        );
+      },
+    },
     {
       label: 'every herd spawned at full group size',
       predicate: (sim) => EXPECTED_COUNTS.every(({ tribe, count }) => membersOf(sim, tribe).length >= count),

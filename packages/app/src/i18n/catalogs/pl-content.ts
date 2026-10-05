@@ -525,7 +525,7 @@ export const plContent = {
     wildlife: {
       title: 'Dzikie stada',
       summary:
-        'Niedźwiedzie, jelenie i wilki pojawiają się stadami na trawie, rysowane ciałami swoich gatunków wraz z cieniami.',
+        'Jelenie, owce i wilki odpoczywają z dodatkowymi gestami, lwy pokazują dwa warianty chodu, a kaczki samodzielnie pływają po stawie obok niedźwiedzi.',
     },
     'wolf-pack': {
       title: 'Wataha wilków',

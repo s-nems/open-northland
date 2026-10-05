@@ -527,7 +527,7 @@ export const enContent = {
     wildlife: {
       title: 'Wildlife herds',
       summary:
-        'Bears, stags and wolves spawn as herds on open grass, drawn with their species bodies and shadows.',
+        'Stags, sheep and wolves show extra idle gestures, lions use two walking variants, and ducks roam the pond beside the bears.',
     },
     'wolf-pack': {
       title: 'Wolf pack',

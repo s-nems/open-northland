@@ -4,10 +4,13 @@ import type {
   SettlerStateBinding,
   SpriteFrameRef,
 } from '@open-northland/render';
+import { ANIMAL_EXTRA_ANIMATIONS } from '../../catalog/animal-animation-extras.js';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import { GFX_ANIM_MODE_LOOP, gfxWalkFrameLists } from '../ir/joins.js';
 import type { BobSeqRow, ContentIr, GfxAnimAtomicRow } from '../ir/rows.js';
 import { eightDirAnim, frameListsByFacing, IDLE_ACTIONS } from '../settler-gfx/index.js';
+
+import { animalExtraIdle } from './extras.js';
 
 // The pure animal-look binding: one tribe's `[gfxwalkatomic]` / `[gfxanimatomic]` rows at the animal jobs
 // become a SettlerStateBinding over the shared `cr_ani` body sequences.
@@ -45,6 +48,8 @@ export function animalWalkSeqName(
   tribe: number,
   seqByName: ReadonlyMap<string, BobSeqRow>,
 ): string | undefined {
+  const swimming = ANIMAL_EXTRA_ANIMATIONS.get(tribe)?.swimming;
+  if (eightDirAnim(seqByName, swimming) !== undefined) return swimming;
   for (const job of ANIMAL_JOBS) {
     for (const row of ir?.gfxWalkAtomics ?? []) {
       if (row.tribe !== tribe || row.job !== job || row.goodType !== ANIMAL_WALK_GOOD_TYPE) continue;
@@ -131,6 +136,10 @@ export function animalBinding(
   tribe: number,
   seqByName: ReadonlyMap<string, BobSeqRow>,
 ): SettlerStateBinding | null {
+  // The mod assigns ducks bull programs with out-of-range indices. Their only own gait is the
+  // unbound swim strip; water-only locomotion uses it with a held floating pose at rest.
+  const swim = eightDirAnim(seqByName, ANIMAL_EXTRA_ANIMATIONS.get(tribe)?.swimming);
+  if (swim !== undefined) return { idle: { ...swim, frames: 1 }, moving: swim };
   const walkLists = gfxWalkFrameLists(ir, tribe);
   const walkName = animalWalkSeqName(ir, tribe, seqByName);
   const walk = animalWalkAnim(seqByName, walkName, walkLists);
@@ -178,8 +187,10 @@ export function animalBinding(
     }
   }
 
+  const extraIdle = animalExtraIdle(tribe, seqByName);
   return {
     idle,
+    ...(extraIdle !== undefined ? { idleFidgets: [extraIdle] } : {}),
     ...(idleChoices.length > 0 ? { idleChoices } : {}),
     ...(walk !== undefined ? { moving: walk } : {}),
     ...(run !== undefined ? { running: run } : {}),

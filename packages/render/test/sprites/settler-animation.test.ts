@@ -89,6 +89,19 @@ describe('animal run gait', () => {
 });
 
 describe('idle gestures', () => {
+  it('inserts a fidget after a complete wait schedule, then restarts the first wait', () => {
+    const binding: SettlerStateBinding = {
+      idle: 10,
+      idleChoices: [{ start: 100, frameLists: [Array.from({ length: 47 }, (_, i) => i)] }],
+      idleFidgets: [{ start: 300, frameLists: [[0, 1, 2]] }],
+    };
+    const item = { ...settlerItem('idle', { facing: 0 }), ref: 0 };
+    const at = (elapsed: number) => resolveSettlerBobId(binding, item, elapsed, elapsed, elapsed);
+    expect([179, 180, 187, 188, 189, 190, 191, 192].map(at)).toEqual([
+      138, 139, 146, 300, 301, 302, 100, 101,
+    ]);
+  });
+
   it('plays each authored fidget once between base waits with a stable entity offset', () => {
     const binding: SettlerStateBinding = {
       idle: 10,

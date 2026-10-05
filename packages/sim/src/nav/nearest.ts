@@ -1,6 +1,6 @@
 import type { BlockOverlay } from './block-overlay.js';
 import { ringSearch } from './ring-search.js';
-import type { NodeId, TerrainGraph } from './terrain/index.js';
+import type { NodeId, TerrainGraph, Traversal } from './terrain/index.js';
 
 /**
  * How many nodes {@link nearestUnblockedNode} visits around a blocked anchor before giving up.
@@ -25,6 +25,7 @@ export function nearestUnblockedNode(
   blocked: BlockOverlay,
   claimed: ReadonlySet<NodeId> = NO_CLAIMS,
   cap: number = NEAREST_NODE_SEARCH_CAP,
+  traversal: Traversal = 'land',
 ): NodeId | null {
-  return ringSearch(terrain, from, cap, { accept: (n) => !blocked.has(n) && !claimed.has(n) });
+  return ringSearch(terrain, from, cap, { accept: (n) => !blocked.has(n) && !claimed.has(n) }, traversal);
 }

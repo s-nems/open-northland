@@ -10,6 +10,7 @@ import { sequencesFor } from '../ir/joins.js';
 import { loadLayer, MissingAtlasError } from '../ir/load.js';
 import type { ContentIr } from '../ir/rows.js';
 import { animalBinding } from './bindings.js';
+import { animalWalkVariants } from './extras.js';
 
 /**
  * Load the wildlife species looks: every IR animal-record tribe whose roster recolour atlas and sequences
@@ -57,7 +58,14 @@ export async function loadAnimalCharacters(
       if (palette !== undefined) unbound.push(tribe);
       continue;
     }
-    byTribe[tribe] = { body, binding };
+    const variants = animalWalkVariants(tribe, binding, seqByName);
+    byTribe[tribe] = {
+      body,
+      binding,
+      ...(variants !== undefined
+        ? { variants: variants.map((variant) => ({ body, binding: variant })) }
+        : {}),
+    };
   }
   if (unbound.length > 0) {
     const slugById = new Map((ir?.tribes ?? []).map((t) => [t.typeId, t.id]));

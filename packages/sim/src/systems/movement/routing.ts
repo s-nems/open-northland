@@ -21,7 +21,7 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import { findPath, type SearchStats } from '../../nav/pathfinding/index.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph, Traversal } from '../../nav/terrain/index.js';
 import { ROW_STEP, worldDistance, worldX } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
 import { type WalkBlockMask, walkBlockMask } from '../footprint/walk-block-mask.js';
@@ -37,6 +37,7 @@ import { GroupRoutes } from './group-routes.js';
 import { dropPath, liveStepEnd, restartLeg } from './nav-state.js';
 import { type RouteMemo, routeMemoOf } from './route-memo.js';
 import { routeStartCell } from './route-start.js';
+import { settlerTraversal } from './traversal.js';
 import { beginWalkTurn } from './turning.js';
 
 /**
@@ -116,7 +117,8 @@ export function drainPathRequests(
     }
     mask?.catchUp();
 
-    const collides = hasBodyCollision(world, ctx.content, e);
+    const traversal = settlerTraversal(world, e);
+    const collides = traversal === 'land' && hasBodyCollision(world, ctx.content, e);
     const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
     // A grind reroute plans as if its live route were already dropped, which it is unless the answer matches.
     const stepEnd =
@@ -142,13 +144,17 @@ export function drainPathRequests(
       }
     }
     // Only a player's order moves a group; economy walks keep their own exact routes.
-    const group = world.has(e, PlayerOrder) && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
+    const group =
+      traversal === 'land' &&
+      world.has(e, PlayerOrder) &&
+      isValidNodeId(terrain, start) &&
+      isValidNodeId(terrain, goal);
     let path = group ? groupRoutes.borrow(blocked, start, goal, spent) : null;
     if (path === null) {
       if (overBudget) continue;
       path = collides
         ? memoPath(memo, e, ctx.tick, start, goal, world.tryGet(e, Owner)?.player ?? -1, blocked, spent)
-        : resolvePath(terrain, start, goal, blocked, spent);
+        : resolvePath(terrain, start, goal, blocked, spent, traversal);
       if (path !== null && group) groupRoutes.offer(blocked, path);
     }
     if (path !== null) {
@@ -266,7 +272,7 @@ function settleRoute(world: World, e: Entity, goal: NodeId): void {
 function movedSinceGrindAsk(world: World, terrain: TerrainGraph, e: Entity, start: NodeId): boolean {
   const p = world.tryGet(e, Position);
   if (p === undefined || !world.has(e, PathFollow)) return false;
-  return routeStartCell(terrain, p.x, p.y) !== start;
+  return routeStartCell(terrain, p.x, p.y, settlerTraversal(world, e)) !== start;
 }
 
 /** A hold covers only the route a grind ask kept: any route routing installs asks at its next stall. */
@@ -404,7 +410,8 @@ function resolvePath(
   goal: number,
   blocked: BlockOverlay,
   stats: SearchStats,
+  traversal: Traversal,
 ): NodeId[] | null {
   if (!isValidNodeId(terrain, start) || !isValidNodeId(terrain, goal)) return null;
-  return findPath(terrain, start, goal, blocked, stats);
+  return findPath(terrain, start, goal, blocked, stats, traversal);
 }

@@ -4,7 +4,7 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph, Traversal } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingDoorNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
 import { anyRouteFollowed, invalidateRoutesThrough } from '../landscape/routes.js';
@@ -14,6 +14,7 @@ import { settlersByNode } from './settler-nodes.js';
 export { settlersByNode } from './settler-nodes.js';
 
 import { dropPath, isTravelling } from './nav-state.js';
+import { settlerTraversal } from './traversal.js';
 
 /**
  * Move every settler standing inside `building`'s walk-blocked footprint, and every one the stamp just
@@ -69,7 +70,9 @@ export function evictSettlersFromCells(
   for (const e of nookCandidates) {
     const at = settlerNode(world, terrain, e);
     if (blocked.has(at) || doors.has(at)) continue;
-    if (terrain.walkableNeighbours(at).every((n) => blocked.has(n))) evicteesUnsorted.push(e);
+    const traversal = settlerTraversal(world, e);
+    if (terrain.neighbours(at).every((n) => !terrain.traversable(n, traversal) || blocked.has(n)))
+      evicteesUnsorted.push(e);
   }
   if (evicteesUnsorted.length === 0) return;
   // Canonical order fixes the Position-write and claim order.
@@ -87,6 +90,7 @@ export function evictSettlersFromCells(
       doors,
       occupancy,
       claimed,
+      settlerTraversal(world, e),
     );
     if (free === null) continue; // boxed in - nowhere free to stand; the unit stays
     claimed.add(free);
@@ -125,11 +129,18 @@ export function evictSettlerFromBlockedSpawn(
   const from = terrain.nodeAt(n.hx, n.hy);
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const taken = claimed?.has(from) ?? false;
-  if (terrain.isWalkable(from) && !blocked.has(from) && !taken) {
+  if (terrain.traversable(from, settlerTraversal(world, settler)) && !blocked.has(from) && !taken) {
     claimed?.add(from); // no push, but a later unit in the batch must still avoid this node
     return;
   }
-  const free = nearestUnblockedNode(terrain, from, blocked, claimed);
+  const free = nearestUnblockedNode(
+    terrain,
+    from,
+    blocked,
+    claimed,
+    undefined,
+    settlerTraversal(world, settler),
+  );
   if (free === null) return; // boxed in - nowhere free to stand; the settler stays put
   claimed?.add(free);
   const c = terrain.coordsOf(free);
@@ -158,14 +169,22 @@ function nearestFreeCellOutside(
   doors: ReadonlySet<NodeId>,
   occupancy: NodeBuckets,
   claimed: ReadonlySet<NodeId>,
+  traversal: Traversal,
 ): NodeId | null {
-  return ringSearch(terrain, from, STAND_SEARCH_CAP, {
-    traverse: (n) => !blocked.has(n) || body.has(n),
-    accept: (n) => {
-      if (blocked.has(n) || doors.has(n)) return false;
-      if (!terrain.walkableNeighbours(n).some((m) => !blocked.has(m))) return false;
-      const { x, y } = terrain.coordsOf(n);
-      return !claimed.has(n) && occupancy.at(x, y).length === 0;
+  return ringSearch(
+    terrain,
+    from,
+    STAND_SEARCH_CAP,
+    {
+      traverse: (n) => !blocked.has(n) || body.has(n),
+      accept: (n) => {
+        if (blocked.has(n) || doors.has(n)) return false;
+        if (!terrain.neighbours(n).some((m) => terrain.traversable(m, traversal) && !blocked.has(m)))
+          return false;
+        const { x, y } = terrain.coordsOf(n);
+        return !claimed.has(n) && occupancy.at(x, y).length === 0;
+      },
     },
-  });
+    traversal,
+  );
 }

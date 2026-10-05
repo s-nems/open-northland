@@ -1,12 +1,13 @@
 import { FarmAnimal, MoveGoal, StayPoint } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph, Traversal } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { manhattan } from '../spatial/metric.js';
 import { type GrazingFields, grazingFields } from './grazing-fields.js';
 import { nearHeld } from './spacing.js';
+import { settlerTraversal } from './traversal.js';
 
 /** Mean ticks between grazing steps: each idle tick rolls 1-in-N. Approximated (the original's roam
  *  cadence is not readable), paced to read as grazing rather than a patrol. */
@@ -78,10 +79,11 @@ export const animalWanderSystem: System = (world, ctx) => {
     // spot with the leash ignored, since getting off a shared field beats staying strictly inside the
     // territory. The sidestep draws no rng; the `continue` drops this animal's cadence roll for the tick.
     const here = fields.nodeOf(e);
+    const traversal = settlerTraversal(world, e);
     if (fields.keeperAt(here) !== e) {
       blocked ??= dynamicBlockOverlay(world, ctx, terrain);
       taken ??= new Set();
-      const spot = sidestepTarget(terrain, fields, taken, blocked, here);
+      const spot = sidestepTarget(terrain, fields, taken, blocked, here, traversal);
       if (spot !== null) world.add(e, MoveGoal, { cell: spot });
       continue;
     }
@@ -111,7 +113,7 @@ export const animalWanderSystem: System = (world, ctx) => {
     const reach = manhattan(terrain, target, anchor);
     if (reach > range && reach >= manhattan(terrain, here, anchor)) continue;
 
-    if (!terrain.isWalkable(target)) continue;
+    if (!terrain.traversable(target, traversal)) continue;
     // Across water: findPath would reject the goal outright and strand the creature for the planner's
     // retry window.
     if (terrain.componentOf(target) !== terrain.componentOf(here)) continue;
@@ -133,12 +135,13 @@ function sidestepTarget(
   taken: Set<NodeId>,
   blocked: BlockOverlay,
   from: NodeId,
+  traversal: Traversal,
 ): NodeId | null {
   const at = terrain.coordsOf(from);
   for (const [dx, dy] of UNSTACK_OFFSETS) {
     if (!terrain.inBounds(at.x + dx, at.y + dy)) continue;
     const node = terrain.nodeAt(at.x + dx, at.y + dy);
-    if (!terrain.isWalkable(node)) continue;
+    if (!terrain.traversable(node, traversal)) continue;
     if (terrain.componentOf(node) !== terrain.componentOf(from)) continue;
     if (fieldContested(terrain, fields, taken, node)) continue;
     if (blocked.has(node)) continue;
