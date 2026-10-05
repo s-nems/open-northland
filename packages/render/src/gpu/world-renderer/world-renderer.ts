@@ -411,6 +411,7 @@ export class WorldRenderer {
     });
     this.marks.draw({
       snapshot,
+      zoom: camera.scale ?? 1,
       drawn: this.pool,
       elevation: this.elevation,
       viewport: vp,

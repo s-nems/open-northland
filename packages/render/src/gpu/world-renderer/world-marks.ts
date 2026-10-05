@@ -52,6 +52,7 @@ export type MarkSlots = Pick<
 /** One frame's inputs for the marks. Every list is required: an empty one retires that mark's nodes. */
 export interface WorldMarksFrame {
   readonly snapshot: WorldSnapshot;
+  readonly zoom: number;
   readonly drawn: DrawnGeometry;
   readonly elevation: ElevationField;
   /** The sprite cull box the screen-bounded marks cull against; damage smoke inherits the pool's cull
@@ -167,7 +168,7 @@ export class WorldMarks {
     const { drawn, elevation, viewport, renderTime } = frame;
     this.wakes.draw(frame.ships, drawn, frame.water, renderTime);
     this.selection.draw(
-      { snapshot: frame.snapshot, drawn, elevation },
+      { snapshot: frame.snapshot, drawn, elevation, zoom: frame.zoom },
       frame.selection,
       frame.flagged,
       frame.workAreas,

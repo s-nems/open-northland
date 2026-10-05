@@ -1,3 +1,4 @@
+import { Graphics } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { SelectionLayer } from '../src/gpu/overlays/selection-layer.js';
 import { makeElevationField, tileToScreen } from '../src/index.js';
@@ -103,6 +104,55 @@ describe('authored building ground marker', () => {
     expect(layer.container.children[0]).toBe(ring);
     expect(ring?.getLocalBounds().width).toBeCloseTo(222);
     expect(ring?.getLocalBounds().minY).toBeCloseTo(-25 - 33);
+    layer.destroy();
+  });
+});
+
+describe('unit selection presentation', () => {
+  it('keeps line weight in screen pixels while retaining the marker across zoom changes', () => {
+    const layer = new SelectionLayer();
+    const snapshot = snapshotOf([settler(1, 1, 1)]);
+    const selected = new Set([1]);
+    const drawn = {
+      anchorOf: () => ({ x: 100, y: 200 }),
+      boundsOf: () => undefined,
+    };
+    layer.draw({ snapshot, drawn, zoom: 1 }, selected);
+    const ring = layer.container.children[0];
+    expect(ring).toBeInstanceOf(Graphics);
+    if (!(ring instanceof Graphics)) throw new Error('Missing selection graphic');
+    const strokeWidth = ring.getLocalBounds().width - 32;
+    expect(strokeWidth).toBeGreaterThan(0);
+    expect(ring.context.instructions.every((instruction) => instruction.action === 'stroke')).toBe(true);
+    for (const zoom of [0.75, 2]) {
+      layer.draw({ snapshot, drawn, zoom }, selected);
+      expect(layer.container.children[0]).toBe(ring);
+      expect((ring.getLocalBounds().width - 32) * zoom).toBeCloseTo(strokeWidth);
+      expect(ring.position.x).toBe(100);
+      expect(ring.position.y).toBe(200);
+    }
+    layer.destroy();
+  });
+
+  it('fits the vehicle ground ellipse and retires focus marks without removing the selection', () => {
+    const layer = new SelectionLayer();
+    const snapshot = snapshotOf([entity(3, 1, 1, { Vehicle: {} })]);
+    const drawn = {
+      anchorOf: () => ({ x: 100, y: 200 }),
+      boundsOf: () => ({ minX: -500, minY: -900, maxX: 900, maxY: 400 }),
+      selectionOf: () => ({ cx: 12, cy: -4, rx: 35, ry: 10 }),
+    };
+    const selected = new Set([3]);
+    layer.draw({ snapshot, drawn }, selected, undefined, undefined, selected);
+    expect(layer.container.children).toHaveLength(2);
+    const ring = layer.container.children[0];
+    const bounds = ring?.getLocalBounds();
+    expect(bounds).toBeDefined();
+    expect(((bounds?.minX ?? 0) + (bounds?.maxX ?? 0)) / 2).toBeCloseTo(12);
+    expect(bounds?.width).toBeGreaterThan(70);
+    expect(bounds?.width).toBeLessThan(75);
+    layer.draw({ snapshot, drawn }, selected);
+    expect(layer.container.children).toEqual([ring]);
     layer.destroy();
   });
 });

@@ -6,6 +6,7 @@ import type { ElevationField } from '../../data/terrain/index.js';
 import type { DrawnGeometry, EntityBounds } from '../sprite-pool/index.js';
 import { feetAnchor } from './entity-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
+import { drawUnitSelectionRing } from './unit-selection-ring.js';
 
 /**
  * The selection layer - a feet-anchored ring under each selected entity, drawn in world space below the
@@ -17,6 +18,8 @@ import { retireUndrawn } from './retained-pool.js';
 /** Settler feet ring half-extents (px) - fitted to the ~40 px body, not the 68×76 cell diamond, which
  *  would swallow the sprite. */
 const SETTLER_RING = { rx: 20, ry: 11 };
+/** Artistic choice: a tighter, unfilled marker for mobile units. */
+const UNIT_RING = { rx: 16, ry: 7 };
 /** Fallback building ring when the sprite's real bounds aren't known yet (no sheet / just appeared). */
 const BUILDING_RING = { rx: 54, ry: 30 };
 /** Floor on a building ring's half-width, so even a small building reads as a building-sized marker. */
@@ -24,15 +27,13 @@ const MIN_BUILDING_RX = 28;
 /** Ground-ellipse squash: a ground circle spans a cell width (2·halfW) E–W but only a row step
  *  (halfH) N–S under the staggered raster, so a flat footprint ellipse squashes by their ratio. */
 const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
-/** The selection ring: bright green, plus its line weight. */
+/** Selection style for buildings and other stationary objects. */
 const RING_COLOR = 0x66ff66;
 const RING_WIDTH = 2;
-/** The work-flag highlight: amber, distinct from the green selection ring, drawn heavier so it reads
- *  under the flag's own sprite. */
+/** Amber work-flag highlight, heavy enough to read under the flag sprite. */
 const FLAG_RING_COLOR = 0xffc020;
 const FLAG_RING_WIDTH = 3;
-/** The ring of the unit the HUD points at (a hovered group well): pale gold and heavy, so one member
- *  stands out of a green crowd. */
+/** Focus fallback for stationary objects; units use lateral marks beside their selection ellipse. */
 const FOCUS_RING_COLOR = 0xfff0b0;
 const FOCUS_RING_WIDTH = 4;
 /** The work-area circle: the flag's amber, thinner and barely filled, since it spans a whole harvest
@@ -61,6 +62,8 @@ interface RingSpec {
 
 export interface SelectionFrame {
   readonly snapshot: WorldSnapshot;
+  /** Logical screen pixels per world pixel; absent means the unscaled test/shot view. */
+  readonly zoom?: number;
   /** Authored ground markers and drawn bounds, anchored with the displayed sprites. */
   readonly drawn?: DrawnGeometry;
   /** The terrain height field - lifts a ring onto sloped ground. Absent → no lift (flat). */
@@ -69,7 +72,7 @@ export interface SelectionFrame {
 
 export class SelectionLayer {
   readonly container = new Container();
-  /** One persistent ring per selected entity id (green). */
+  /** One persistent ring per selected entity id. */
   private readonly rings = new Map<number, Graphics>();
   /** One persistent ring per selected gatherer's flag entity id (amber). */
   private readonly flagRings = new Map<number, Graphics>();
@@ -82,11 +85,9 @@ export class SelectionLayer {
   /** Reused per-frame scratch of ids drawn this frame (one per pool; avoids a per-frame allocation). */
   private readonly seen = new Set<number>();
   private readonly seenFlags = new Set<number>();
-  private readonly specs = new WeakMap<Graphics, RingSpec>();
+  private readonly specs = new WeakMap<Graphics, RingSpec & { zoom: number; mobile: boolean }>();
 
-  /** Reconcile the four pools: a green ring under every `selected` entity, an amber one under every
-   *  `flagged` id (the work flags of the selected gatherers), a work-area circle per `workAreas` entry,
-   *  and a focus ring over the green one of every `focused` id. */
+  /** Reconcile selected entities, work flags, work areas and the member indicated by the group HUD. */
   draw(
     frame: SelectionFrame,
     selected: ReadonlySet<number>,
@@ -94,10 +95,18 @@ export class SelectionLayer {
     workAreas: readonly WorkAreaRing[] = NO_AREAS,
     focused: ReadonlySet<number> = NO_IDS,
   ): void {
-    this.reconcile(this.rings, this.seen, selected, RING_COLOR, RING_WIDTH, frame);
+    this.reconcile(this.rings, this.seen, selected, RING_COLOR, RING_WIDTH, frame, 'selection');
     this.reconcile(this.flagRings, this.seenFlags, flagged, FLAG_RING_COLOR, FLAG_RING_WIDTH, frame);
     this.reconcileAreas(workAreas, frame);
-    this.reconcile(this.focusRings, this.seenFocus, focused, FOCUS_RING_COLOR, FOCUS_RING_WIDTH, frame);
+    this.reconcile(
+      this.focusRings,
+      this.seenFocus,
+      focused,
+      FOCUS_RING_COLOR,
+      FOCUS_RING_WIDTH,
+      frame,
+      'focus',
+    );
   }
 
   /** Reconcile the work-area circles: one flat ground ellipse per shown area, retiring the rest. */
@@ -135,6 +144,7 @@ export class SelectionLayer {
     color: number,
     width: number,
     frame: SelectionFrame,
+    unitStyle?: 'selection' | 'focus',
   ): void {
     seen.clear();
     for (const id of ids) {
@@ -144,11 +154,13 @@ export class SelectionLayer {
       if (pos === null) continue;
       const s = feetAnchor(frame.drawn, id, pos, frame.elevation);
       const kind = classify(ent.components);
+      const mobile = unitStyle !== undefined && (kind === 'settler' || kind === 'vehicle');
+      const zoom = mobile ? (frame.zoom ?? 1) : 1;
       // A building's and a vehicle's ring fits the drawn sprite; a settler's is the fixed feet ellipse.
       const fitsSprite = kind === 'building' || kind === 'vehicle';
       const spec =
         (fitsSprite ? frame.drawn?.selectionOf?.(id) : undefined) ??
-        ringSpec(fitsSprite, fitsSprite ? frame.drawn?.boundsOf(id) : undefined, s.x);
+        ringSpec(fitsSprite, fitsSprite ? frame.drawn?.boundsOf(id) : undefined, s.x, mobile);
       let ring = pool.get(id);
       if (ring === undefined) {
         ring = new Graphics();
@@ -161,14 +173,20 @@ export class SelectionLayer {
         previous.cx !== spec.cx ||
         previous.cy !== spec.cy ||
         previous.rx !== spec.rx ||
-        previous.ry !== spec.ry
+        previous.ry !== spec.ry ||
+        previous.zoom !== zoom ||
+        previous.mobile !== mobile
       ) {
-        ring
-          .clear()
-          .ellipse(spec.cx, spec.cy, spec.rx, spec.ry)
-          .fill({ color, alpha: 0.12 })
-          .stroke({ width, color, alpha: 0.9 });
-        this.specs.set(ring, { ...spec });
+        ring.clear();
+        if (mobile) {
+          drawUnitSelectionRing(ring, spec, zoom, unitStyle === 'focus');
+        } else {
+          ring
+            .ellipse(spec.cx, spec.cy, spec.rx, spec.ry)
+            .fill({ color, alpha: 0.12 })
+            .stroke({ width, color, alpha: 0.9 });
+        }
+        this.specs.set(ring, { ...spec, zoom, mobile });
       }
       ring.position.set(s.x, s.y);
       seen.add(id);
@@ -188,8 +206,13 @@ export class SelectionLayer {
 
 /** The ring geometry for a target: a settler's fixed feet ellipse, or a building's or vehicle's ellipse
  *  fitted to its sprite footprint and offset when the sprite isn't centred on the feet. */
-function ringSpec(fitsSprite: boolean, bounds: EntityBounds | undefined, feetX: number): RingSpec {
-  if (!fitsSprite) return { rx: SETTLER_RING.rx, ry: SETTLER_RING.ry, cx: 0, cy: 0 };
+function ringSpec(
+  fitsSprite: boolean,
+  bounds: EntityBounds | undefined,
+  feetX: number,
+  mobile: boolean,
+): RingSpec {
+  if (!fitsSprite) return { ...(mobile ? UNIT_RING : SETTLER_RING), cx: 0, cy: 0 };
   if (bounds !== undefined) {
     const rx = Math.max(MIN_BUILDING_RX, (bounds.maxX - bounds.minX) / 2);
     return { rx, ry: rx * ISO_RATIO, cx: (bounds.minX + bounds.maxX) / 2 - feetX, cy: 0 };

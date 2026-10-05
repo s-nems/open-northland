@@ -34,6 +34,7 @@ const hit: SimEvent = {
 function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
   return {
     snapshot: snapshotOf([entity(SETTLER, 3, 4, { Settler: {} })]),
+    zoom: 1,
     drawn: { boundsOf: () => undefined, anchorOf: () => undefined },
     elevation: FLAT,
     viewport: VIEWPORT,
