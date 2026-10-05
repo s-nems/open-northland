@@ -10,7 +10,6 @@ export const plGame = {
     mapOverlays: {
       label: 'Nakładki mapy głównej',
       signposts: 'Drogowskazy',
-      legend: 'Pole: zasięg · — Łącze · ○ Samotny',
       tip: 'Pokaż sieć własnych drogowskazów na mapie głównej. Pole: zasięg osadników; linie: rzeczywiste połączenia; bursztynowe koła: samotne słupy. Nakładające się zasięgi nie łączą sieci. Teren nadal może blokować drogę. Tragarze sięgają dalej; zwiadowcy i wojownicy nie mają tego ograniczenia.',
       noSeat: 'Wybierz gracza, aby zobaczyć jego sieć drogowskazów.',
     },

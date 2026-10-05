@@ -20,6 +20,7 @@ import {
   exploredOverlayNode,
   exploredOverlayPatch,
   overlayPatchPoints,
+  signpostLinkSegments,
 } from '../src/view/map-overlays/signposts.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
@@ -120,6 +121,32 @@ describe('signpost map overlay', () => {
     expect(exploredOverlayPatch(fog, 20, 20, 1)).toBe(true);
     expect(exploredOverlayPatch(fog, 20, 20, 5)).toBe(false);
     expect(exploredOverlayPatch(null, 20, 20, 5)).toBe(true);
+  });
+
+  it('draws one straight connection over hills and keeps fog gaps on that same line', () => {
+    const index = signpostOverlayIndex(snapshotOf([post(1, 0, 0, [2]), post(2, 10, 0, [1])]));
+    const from = index.posts.get(1);
+    const to = index.posts.get(2);
+    if (from === undefined || to === undefined) throw new Error('missing fixture posts');
+    const sampled: number[] = [];
+    const project = (hx: number, hy: number) => {
+      sampled.push(hx);
+      return { x: hx * 34, y: hy * 19 - (hx === 5 ? 100 : hx * 2) };
+    };
+    expect(signpostLinkSegments(from, to, project, null)).toEqual([[0, 0, 340, -20]]);
+    expect(sampled).toEqual([0, 10]);
+    const fog: FogView = {
+      player: 0,
+      mode: FOG_MODE.CLASSIC_FOG_OF_WAR,
+      generation: 1,
+      cellsWide: 20,
+      cellsHigh: 20,
+      stateAt: (cx) => (cx === 2 ? FOG_STATE.UNEXPLORED : FOG_STATE.EXPLORED),
+    };
+    expect(signpostLinkSegments(from, to, project, fog)).toEqual([
+      [0, 0, 102, -6],
+      [204, -12, 340, -20],
+    ]);
   });
 
   it('toggles the retained drawing, follows seat changes, and removes its graphics on disposal', () => {

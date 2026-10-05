@@ -9,7 +9,13 @@ import {
 import { cellOfNode, FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import type { MapOverlayControls } from '../../hud/map-overlays.js';
-import { linkedPosts, overlayPostsWithin, postCovers, signpostOverlayIndex } from './signpost-model.js';
+import {
+  linkedPosts,
+  type OverlayPost,
+  overlayPostsWithin,
+  postCovers,
+  signpostOverlayIndex,
+} from './signpost-model.js';
 
 const NETWORK = 0x77e5cf;
 const ISOLATED = 0xffc56b;
@@ -54,6 +60,45 @@ export function overlayPatchPoints(
   const c = point(x1, y1);
   const d = point(x0, y1);
   return [a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y];
+}
+
+/** Connections are schematic straight lines between lifted endpoints; only fog splits a line. */
+export function signpostLinkSegments(
+  from: OverlayPost,
+  to: OverlayPost,
+  project: (hx: number, hy: number) => { x: number; y: number },
+  fog: FogView | null,
+): readonly (readonly [number, number, number, number])[] {
+  const start = project(from.hx, from.hy);
+  const end = project(to.hx, to.hy);
+  const count = Math.max(1, Math.abs(to.hx - from.hx), Math.abs(to.hy - from.hy));
+  const segments: [number, number, number, number][] = [];
+  let first: number | null = null;
+  for (let i = 0; i <= count + 1; i++) {
+    const t = i / count;
+    const visible =
+      i <= count &&
+      exploredOverlayNode(
+        fog,
+        Math.round(from.hx + (to.hx - from.hx) * t),
+        Math.round(from.hy + (to.hy - from.hy) * t),
+      );
+    if (visible && first === null) first = i;
+    if (!visible && first !== null) {
+      if (i - 1 > first) {
+        const a = first / count;
+        const b = (i - 1) / count;
+        segments.push([
+          start.x + (end.x - start.x) * a,
+          start.y + (end.y - start.y) * a,
+          start.x + (end.x - start.x) * b,
+          start.y + (end.y - start.y) * b,
+        ]);
+      }
+      first = null;
+    }
+  }
+  return segments;
 }
 
 export interface SignpostMapOverlay {
@@ -137,23 +182,8 @@ export function createSignpostMapOverlay(
         const start = point(post.hx, post.hy);
         for (const other of neighbours) {
           if (post.id >= other.id) continue;
-          const count = Math.max(Math.abs(other.hx - post.hx), Math.abs(other.hy - post.hy));
-          let penDown = false;
-          // Fog and elevation are sampled along each connection, not just at its endpoints.
-          for (let i = 0; i <= count; i++) {
-            const t = count === 0 ? 0 : i / count;
-            const hx = post.hx + (other.hx - post.hx) * t;
-            const hy = post.hy + (other.hy - post.hy) * t;
-            if (!exploredOverlayNode(fog, Math.round(hx), Math.round(hy))) {
-              penDown = false;
-              continue;
-            }
-            const p = point(hx, hy);
-            for (const line of connectionPaths) {
-              if (penDown) line.lineTo(p.x, p.y);
-              else line.moveTo(p.x, p.y);
-            }
-            penDown = true;
+          for (const [x0, y0, x1, y1] of signpostLinkSegments(post, other, point, fog)) {
+            for (const line of connectionPaths) line.moveTo(x0, y0).lineTo(x1, y1);
           }
         }
         if (!exploredOverlayNode(fog, post.hx, post.hy)) continue;
