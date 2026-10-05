@@ -80,12 +80,13 @@ export function deferOrderDuringAtomic(
   ctx: SystemContext,
   e: Entity,
   command: DeferrableOrderCommand,
+  { scripted = false }: { readonly scripted?: boolean } = {},
 ): boolean {
   if (!atomicHoldsSettler(world, e)) return false;
   const clip = atomicClipName(ctx.content, world.get(e, Settler), world.get(e, CurrentAtomic).atomicId);
   if (clip !== undefined && isInterruptibleAtomic(ctx.content, clip)) return false;
   // Copied, not aliased: the caller's command object also sits in the replay log, and a shared reference
   // would let a post-enqueue mutation silently rewrite hashed component state.
-  world.add(e, DeferredOrder, { command: { ...command } });
+  world.add(e, DeferredOrder, { command: { ...command }, ...(scripted ? { scripted: true } : {}) });
   return true;
 }

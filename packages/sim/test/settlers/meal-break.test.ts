@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   Building,
   CurrentAtomic,
+  DeferredOrder,
   MealBreak,
   MealBreakRetry,
+  MISSION_BEHAVIOUR,
   MoveGoal,
   NoRegeneration,
   OrderQueue,
@@ -15,6 +18,7 @@ import {
   SIGNPOST_SPACING_NODES,
   Signpost,
   Stockpile,
+  setMissionBehaviour,
 } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands/index.js';
 import { type Fixed, fx } from '../../src/core/fixed.js';
@@ -44,6 +48,8 @@ const HEADQUARTERS = 1;
 const FOOD = 3;
 const LARDER = 5;
 const WALK_BUDGET = 1200;
+const EAT_ATOMIC = 10;
+const EAT_TICKS = 5; // fixture `viking_eat` length
 /** Ticks of drain before a walker given this much hunger reaches the critical level: well into its walk. */
 const TICKS_TO_CRITICAL = 40;
 const NEARLY_CRITICAL: Fixed = fx.sub(NEED_CRITICAL_THRESHOLD, needBar(TICKS_TO_CRITICAL));
@@ -242,5 +248,46 @@ describe('meal break', () => {
     sim.step();
     expect(sim.world.has(e, PlayerOrder)).toBe(true);
     expect(sim.world.has(e, Resting)).toBe(false);
+  });
+  it('a refused order leaves the meal break as it was', () => {
+    const sim = freshSim();
+    const larder = larderAt(sim, 30, 6);
+    const e = ownedSettler(sim, 2, 2, WOODCUTTER, { hunger: NEED_CRITICAL_THRESHOLD });
+    sim.world.add(e, OrderQueue, { orders: [walk(e, 40, 2) as Extract<Command, { kind: 'moveUnit' }>] });
+    sim.step();
+    expect(sim.world.has(e, MealBreak)).toBe(true);
+    sim.enqueueSetup({ kind: 'openChest', entity: e, chest: larder }); // not a chest
+    sim.step();
+    expect(sim.world.has(e, MealBreak)).toBe(true);
+    expect(sim.world.has(e, MealBreakRetry)).toBe(false);
+    expect(sim.world.has(e, PlayerOrder)).toBe(false);
+  });
+
+  it("a script's walk parked behind a clip stays the script's", () => {
+    const sim = freshSim();
+    const e = ownedSettler(sim, 2, 2, WOODCUTTER);
+    addCurrentAtomic(sim.world, e, {
+      atomicId: EAT_ATOMIC,
+      duration: EAT_TICKS,
+      effect: { kind: 'idle' },
+      targetEntity: null,
+      targetTile: null,
+    });
+    const n = cellAnchorNode(30, 2);
+    sendUnit(sim.world, ctxOf(sim), e, n.hx, n.hy);
+    expect(sim.world.get(e, DeferredOrder).scripted).toBe(true);
+    for (let t = 0; t <= EAT_TICKS && !sim.world.has(e, PlayerOrder); t++) sim.step();
+    expect(sim.world.get(e, PlayerOrder).scripted).toBe(true);
+  });
+
+  it('a unit a script controls keeps to its walk', () => {
+    const sim = freshSim();
+    larderAt(sim, 20, 6);
+    const e = ownedSettler(sim, 2, 2, WOODCUTTER, { hunger: NEARLY_CRITICAL });
+    sim.enqueueSetup(walk(e, 60, 2));
+    sim.step();
+    setMissionBehaviour(sim.world, e, MISSION_BEHAVIOUR.NOT_CONTROLLABLE, true);
+    expect(stepUntil(sim, e, () => standsAt(sim, e, 60, 2))).toBe(false);
+    expect(standsAt(sim, e, 60, 2)).toBe(true);
   });
 });

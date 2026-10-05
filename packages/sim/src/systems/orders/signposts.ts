@@ -28,28 +28,29 @@ export const BUILD_GUIDE_ATOMIC_ID = 43;
 /**
  * Order one owned scout to erect a signpost at (x,y) - see the command doc. Runs as a normal
  * {@link moveUnit} walk carrying an {@link ErectSignpostOrder}, which {@link signpostOrderSystem} turns
- * into the hammer swing on arrival.
+ * into the hammer swing on arrival. Returns whether the order was taken.
  */
 export function placeSignpost(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'placeSignpost' }>,
-): void {
+): boolean {
   const terrain = ctx.terrain;
-  if (terrain === undefined) return; // mapless sim: no cells to erect on
+  if (terrain === undefined) return false; // mapless sim: no cells to erect on
   const e = command.entity;
-  if (!isOrderableSettler(world, e)) return;
-  if (!isScoutJob(ctx.content, world.get(e, Settler).jobType)) return; // only scouts erect signposts
+  if (!isOrderableSettler(world, e)) return false;
+  if (!isScoutJob(ctx.content, world.get(e, Settler).jobType)) return false; // only scouts erect signposts
   const goal = terrain.nodeAtClamped(command.x, command.y);
   const player = world.get(e, Owner).player;
-  if (!canPlaceSignpost(world, ctx, terrain, goal, player)) return;
+  if (!canPlaceSignpost(world, ctx, terrain, goal, player)) return false;
   // A non-interruptible atomic parks the whole command: deferring only the inner moveUnit would strand an
   // ErectSignpostOrder that the parked move erases on apply. The replay re-validates the spot.
-  if (deferOrderDuringAtomic(world, ctx, e, command)) return;
+  if (deferOrderDuringAtomic(world, ctx, e, command)) return true;
   const c = terrain.coordsOf(goal);
   // canPlaceSignpost already proved the goal standable, so the move's goal snap leaves it in place.
-  moveUnit(world, ctx, { kind: 'moveUnit', entity: e, x: c.x, y: c.y });
+  const walks = moveUnit(world, ctx, { kind: 'moveUnit', entity: e, x: c.x, y: c.y });
   world.add(e, ErectSignpostOrder, { goal });
+  return walks;
 }
 
 /**

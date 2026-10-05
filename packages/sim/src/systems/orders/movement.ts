@@ -92,8 +92,8 @@ export function attackMoveUnit(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'attackMoveUnit' }>,
-): void {
-  startPlayerWalk(world, ctx, command);
+): boolean {
+  return startPlayerWalk(world, ctx, command);
 }
 
 /** Issue either flavour of the player's walk order; the command's `kind` decides which. */
@@ -141,10 +141,12 @@ function startPlayerWalk(
     !world.has(e, Fleeing)
   ) {
     supersedeStandingOrders(world, e); // the same walk, but now the player's own, not a sweep's leg
+    const scripted = confined ? undefined : true;
+    if (existingOrder.scripted !== scripted) world.mut(e, PlayerOrder).scripted = scripted;
     return true;
   }
   // Gated after the refusals above, so a refused click neither parks an order nor displaces a parked one.
-  if (deferOrderDuringAtomic(world, ctx, e, command)) return true;
+  if (deferOrderDuringAtomic(world, ctx, e, command, { scripted: !confined })) return true;
   supersedeStandingOrders(world, e);
   // A live PathFollow is deliberately kept: the planner re-routes the same tick, and the routing splice
   // carries the walker's momentum through the turn.

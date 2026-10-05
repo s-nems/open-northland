@@ -369,7 +369,8 @@ export type DeferrableOrderCommand = Extract<
  * re-dispatches it once the atomic completes. One slot per settler, latest-order-wins - an approximation,
  * since the original's queueing depth under back-to-back orders is unobserved.
  */
-export const DeferredOrder = defineComponent<{ command: DeferrableOrderCommand }>(
-  'DeferredOrder',
-  'settlers',
-);
+export const DeferredOrder = defineComponent<{
+  command: DeferrableOrderCommand;
+  /** A map script's walk, replayed unconfined and as the script's own (`PlayerOrder.scripted`). */
+  scripted?: true | undefined;
+}>('DeferredOrder', 'settlers');

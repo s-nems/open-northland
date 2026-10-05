@@ -23,24 +23,25 @@ import { moveUnit } from './movement.js';
 
 /**
  * Send one owned scout to explore around (x,y) - see the command doc. The stamp is all the order does;
- * {@link exploreOrderSystem} walks the sweep out one leg at a time.
+ * {@link exploreOrderSystem} walks the sweep out one leg at a time. Returns whether the order was taken.
  */
 export function exploreArea(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'exploreArea' }>,
-): void {
+): boolean {
   const terrain = ctx.terrain;
-  if (terrain === undefined) return; // mapless sim: nothing to reveal
+  if (terrain === undefined) return false; // mapless sim: nothing to reveal
   const e = command.entity;
-  if (!isOrderableSettler(world, e)) return;
-  if (!isScoutJob(ctx.content, world.get(e, Settler).jobType)) return; // only scouts explore
+  if (!isOrderableSettler(world, e)) return false;
+  if (!isScoutJob(ctx.content, world.get(e, Settler).jobType)) return false; // only scouts explore
   // The walk it was on is superseded, so the first leg goes out this tick; a clip in flight plays to its
   // end, since the sweep below waits for the scout to be free anyway.
   world.remove(e, PlayerOrder);
   supersedeStandingOrders(world, e);
   clearNavState(world, e);
   world.add(e, ExploreOrder, { centre: terrain.nodeAtClamped(command.x, command.y), leg: null });
+  return true;
 }
 
 /**

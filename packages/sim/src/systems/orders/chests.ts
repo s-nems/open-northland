@@ -32,29 +32,30 @@ function canOpenChest(world: World, ctx: SystemContext, settler: Entity, chest: 
 /**
  * Order one owned settler to open `chest` - see the command doc. Runs as a normal {@link moveUnit} walk to
  * the chest's nearest work cell carrying an {@link OpenChestOrder}, which {@link chestOrderSystem} turns
- * into the open-chest clip on arrival.
+ * into the open-chest clip on arrival. Returns whether the order was taken.
  */
 export function orderOpenChest(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'openChest' }>,
-): void {
+): boolean {
   const terrain = ctx.terrain;
-  if (terrain === undefined) return; // mapless sim: no cells to walk
+  if (terrain === undefined) return false; // mapless sim: no cells to walk
   const e = command.entity;
-  if (!isOrderableSettler(world, e) || !world.has(e, Position)) return;
-  if (!canOpenChest(world, ctx, e, command.chest)) return;
+  if (!isOrderableSettler(world, e) || !world.has(e, Position)) return false;
+  if (!canOpenChest(world, ctx, e, command.chest)) return false;
   const stance = resourceWorkCell(world, ctx, terrain, command.chest, entityNode(world, terrain, e));
   // Refused ahead of the park, like the walk's own confinement check, so a refused order neither parks
   // nor displaces an earlier parked one.
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
-  if (limit !== null && !limit.allowsNode(stance)) return;
+  if (limit !== null && !limit.allowsNode(stance)) return false;
   // A non-interruptible atomic parks the whole command, as an inner moveUnit alone would strand the marker.
-  if (deferOrderDuringAtomic(world, ctx, e, command)) return;
+  if (deferOrderDuringAtomic(world, ctx, e, command)) return true;
   const c = terrain.coordsOf(stance);
   // A refused walk leaves no marker behind.
-  if (!moveUnit(world, ctx, { kind: 'moveUnit', entity: e, x: c.x, y: c.y })) return;
+  if (!moveUnit(world, ctx, { kind: 'moveUnit', entity: e, x: c.x, y: c.y })) return false;
   world.add(e, OpenChestOrder, { chest: command.chest });
+  return true;
 }
 
 /**

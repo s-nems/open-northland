@@ -62,7 +62,7 @@ import {
   unequipGood,
 } from '../orders/index.js';
 import { obeyDespiteHunger } from '../orders/meal-break.js';
-import { isQueueableOrder, isQueuedOrder, queueBehindCurrentOrder } from '../orders/queue.js';
+import { isQueuedOrder, queueBehindCurrentOrder } from '../orders/queue.js';
 import { convertPalisadeGate, placePalisade, setPalisadeGate } from '../palisades/index.js';
 import { cancelRoadSite, placeRoadSite } from '../roads/sites.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
@@ -123,9 +123,6 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
   // A Shift-clicked order waits behind the current one; an order that takes the settler at once drops
   // every order still waiting in its handler.
   if (isQueuedOrder(command) && queueBehindCurrentOrder(world, command)) return;
-  // An order applied at once is obeyed even by a settler hunger would otherwise take off it.
-  if (isQueueableOrder(command) || command.kind === 'exploreArea')
-    obeyDespiteHunger(world, ctx, command.entity);
   // A vehicle's commander hands a walk order to the vehicle. Any other settler crewing a vehicle is
   // taken off it before an order sends it elsewhere; one that may not leave (aboard a ship at sea)
   // keeps its seat and the order is dropped.
@@ -181,7 +178,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       demolishSignpost(world, command);
       return;
     case 'moveUnit':
-      moveUnit(world, ctx, command);
+      obeyDespiteHunger(world, ctx, command.entity, () => moveUnit(world, ctx, command));
       return;
     case 'moveVehicle':
       moveVehicle(world, ctx, command, orders);
@@ -217,7 +214,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       leaveCarrier(world, ctx, command);
       return;
     case 'attackMoveUnit':
-      attackMoveUnit(world, ctx, command);
+      obeyDespiteHunger(world, ctx, command.entity, () => attackMoveUnit(world, ctx, command));
       return;
     case 'setJob':
       setJob(world, ctx, command);
@@ -265,7 +262,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       setRegeneration(world, ctx, command);
       return;
     case 'exploreArea':
-      exploreArea(world, ctx, command);
+      obeyDespiteHunger(world, ctx, command.entity, () => exploreArea(world, ctx, command));
       return;
     case 'setWorkFlag':
       setWorkFlag(world, ctx, command);
@@ -280,10 +277,10 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       setHouseholdGoodUse(world, ctx, command);
       return;
     case 'placeSignpost':
-      placeSignpost(world, ctx, command);
+      obeyDespiteHunger(world, ctx, command.entity, () => placeSignpost(world, ctx, command));
       return;
     case 'openChest':
-      orderOpenChest(world, ctx, command);
+      obeyDespiteHunger(world, ctx, command.entity, () => orderOpenChest(world, ctx, command));
       return;
     case 'grantPaper':
       addPaper(world, command.player, command.paper);

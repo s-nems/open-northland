@@ -65,16 +65,18 @@ export function breaksForMeal(world: World, ctx: SystemContext, e: Entity): bool
 }
 
 /**
- * The player gave `e` an order of its own (not one lined up behind another): on a meal break, or with
- * hunger already at the critical level, it obeys, and hunger leaves its orders alone for
- * {@link MEAL_BREAK_RETRY_TICKS}, since the player may be pulling it out of danger. Read in the command
+ * Apply an order the player gives `e` at once (not one lined up behind another), `apply` answering
+ * whether it was taken. One taken on a meal break, or with hunger already at the critical level, is
+ * obeyed: hunger leaves the settler's orders alone for {@link MEAL_BREAK_RETRY_TICKS}, since the player
+ * may be pulling it out of danger. A refused order leaves the break as it was. Run in the command
  * system, before this tick's drain.
  */
-export function obeyDespiteHunger(world: World, ctx: SystemContext, e: Entity): void {
+export function obeyDespiteHunger(world: World, ctx: SystemContext, e: Entity, apply: () => boolean): void {
   const needs = world.tryGet(e, SettlerNeeds);
-  if (needs === undefined) return;
-  const onBreak = world.has(e, MealBreak);
-  if (!onBreak && needLevel(needs, 'hunger', ctx.tick - 1) < NEED_CRITICAL_THRESHOLD) return;
+  const hungry =
+    needs !== undefined &&
+    (world.has(e, MealBreak) || needLevel(needs, 'hunger', ctx.tick - 1) >= NEED_CRITICAL_THRESHOLD);
+  if (!apply() || !hungry) return;
   world.remove(e, MealBreak);
   world.add(e, MealBreakRetry, { retryAt: ctx.tick + MEAL_BREAK_RETRY_TICKS });
 }
