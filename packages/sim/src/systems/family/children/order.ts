@@ -13,6 +13,7 @@ import {
   Position,
   Residence,
   Settler,
+  Upgrading,
   Wedding,
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
@@ -134,7 +135,10 @@ export function childOrderBlocker(
 ): ChildOrderBlocker | undefined {
   const home = world.tryGet(woman, Residence)?.home;
   if (home === undefined) return 'noHome';
-  if (builtHomeType(world, ctx, home) === undefined) return 'homeUnbuilt';
+  // An upgrade must not interrupt the couple's already-paid hearts phase (owner ruling).
+  const continuingDuringUpgrade =
+    world.has(home, Upgrading) && world.tryGet(home, MakingLove)?.wife === woman;
+  if (builtHomeType(world, ctx, home) === undefined && !continuingDuringUpgrade) return 'homeUnbuilt';
   if (jobIgnoresHomeHouse(ctx.content, world.get(husband, Settler).jobType)) return 'husbandAway';
   if (world.tryGet(husband, Residence)?.home !== home) return 'livesApart';
   return undefined;

@@ -2,6 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Age,
+  AssistantChildOrder,
   Building,
   Carrying,
   CHILD_FOOD_UNITS,
@@ -21,6 +22,7 @@ import {
   setSettlerJob,
   TrainingOrder,
   UnderConstruction,
+  Upgrading,
   Wedding,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -132,13 +134,16 @@ function familyContent(): ContentSet {
 }
 
 /** Build the world: a woman and a man near a built home, with loose food piles to stock it from. */
-function familySim(seed: number): {
+function familySim(
+  seed: number,
+  content = familyContent(),
+): {
   sim: Simulation;
   woman: () => Entity;
   man: () => Entity;
   home: () => Entity;
 } {
-  const sim = new Simulation({ seed, content: familyContent(), map: grassMap(28, 4) });
+  const sim = new Simulation({ seed, content, map: grassMap(28, 4) });
   sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 2, y: 0, tribe: VIKING, owner: PLAYER });
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 16, y: 0, tribe: VIKING, owner: PLAYER });
@@ -303,6 +308,79 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     }
     expect(sim.world.has(woman(), ChildOrder)).toBe(true); // resumes once the family is housed again
     expect(sim.world.get(woman(), ChildOrder).blocked).toBe('noHome'); // and says why it waits
+  });
+
+  it.each([
+    ['player', 'ongoing'],
+    ['player', 'completed'],
+    ['player', 'cancelled'],
+    ['assistant', 'ongoing'],
+    ['assistant', 'completed'],
+    ['assistant', 'cancelled'],
+  ] as const)('finishes an in-flight %s birth while the home upgrade is %s', (source, outcome) => {
+    const base = familyContent();
+    const content = parseContentSet({
+      ...base,
+      buildings: [
+        ...base.buildings.map((b) => (b.typeId === HOME ? { ...b, upgradeTarget: 98 } : b)),
+        {
+          typeId: 98,
+          id: 'home_level_01',
+          kind: 'home',
+          homeSize: 4,
+          construction: [{ goodType: FOOD_EXTRA, amount: 1 }],
+        },
+      ],
+    });
+    const { sim, woman, man, home } = familySim(3, content);
+    sim.world.add(woman(), Marriage, { spouse: man(), child: null });
+    sim.world.add(man(), Marriage, { spouse: woman(), child: null });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    if (source === 'assistant') {
+      sim.enqueueSetup({
+        kind: 'setAssistantCounter',
+        player: PLAYER,
+        counter: 'extraWomen',
+        value: 1,
+        infinite: false,
+      });
+    } else {
+      sim.enqueueSetup({ kind: 'makeChild', entity: woman(), child: 'female' });
+    }
+    runUntil(sim, () => sim.world.has(home(), MakingLove), 4000, 'hearts');
+    sim.run(30);
+    const { elapsed, duration } = sim.world.get(home(), MakingLove);
+    // Leave no food to restart the session: the original cost has already been paid.
+    for (const e of sim.world.query(Stockpile)) sim.world.mut(e, Stockpile).amounts.clear();
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: home() });
+    sim.step();
+    expect(sim.world.has(home(), Upgrading)).toBe(true);
+    expect(sim.world.get(home(), MakingLove).elapsed).toBe(elapsed + 1);
+    expect(sim.world.get(woman(), ChildOrder).blocked).toBeUndefined();
+    for (const e of [woman(), man()]) expect(sim.world.get(e, Resting).at).toBe(home());
+    if (source === 'assistant') expect(sim.world.has(woman(), AssistantChildOrder)).toBe(true);
+    if (outcome === 'completed') sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: home() });
+    if (outcome === 'cancelled') sim.enqueueSetup({ kind: 'cancelUpgrade', building: home() });
+    sim.run(duration - elapsed - 2);
+    expect(sim.world.get(woman(), Marriage).child).toBeNull();
+    sim.step();
+    const child = sim.world.get(woman(), Marriage).child;
+    expect(child).not.toBeNull();
+    if (child === null) throw new Error('missing newborn');
+    expect(sim.world.get(man(), Marriage).child).toBe(child);
+    expect(sim.world.get(child, Residence).home).toBe(home());
+    expect(sim.world.has(child, Female)).toBe(true);
+    expect(sim.events.current().filter((e) => e.kind === 'settlerBorn')).toEqual([
+      { kind: 'settlerBorn', entity: child },
+    ]);
+    expect(sim.world.has(home(), MakingLove)).toBe(false);
+    expect(sim.world.has(woman(), ChildOrder)).toBe(false);
+    expect(sim.world.has(home(), Upgrading)).toBe(outcome === 'ongoing');
+    if (source === 'assistant') {
+      expect(sim.assistantCounters(PLAYER).extraWomen.value).toBe(0);
+      expect(sim.world.has(woman(), AssistantChildOrder)).toBe(false);
+    }
   });
 
   it('forgets a missed food search once the larder holds the child cost, whoever stocked it', () => {
