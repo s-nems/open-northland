@@ -25,6 +25,7 @@ import { setCanvasCursor } from '../cursors/element.js';
 import { placementPointer } from '../cursors/placement.js';
 import { createFellingPresenter } from '../felling-presenter.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
+import type { SignpostMapOverlay } from '../map-overlays/signposts.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type {
   LitAnswers,
@@ -70,6 +71,7 @@ export interface FrameLoopDeps {
   readonly fogGates: FogGates;
   readonly toolPanel: GameToolPanelHandle;
   readonly minimap: MinimapHandle;
+  readonly mapOverlay?: SignpostMapOverlay;
   readonly controls: UnitControls;
   readonly worldHover: WorldHover;
   readonly geometryDebug: GeometryDebugOverlay;
@@ -348,6 +350,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       workAreas: controls.workAreaRings(),
       orderMarkers: controls.orderMarkers(),
     });
+    loop.mapOverlay?.update(snap, drawnCamera, app.screen, loop.viewer.seat(), fogView);
     controls.refreshCursor(snap);
     worldHover.update(snap, nowMs); // after controls, so the pointer-claim state is current
     presentation?.frame(snap, drawnCamera, nowMs);

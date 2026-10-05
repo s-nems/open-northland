@@ -12,6 +12,7 @@ import {
 } from '../dom/parts/dom.js';
 import { attachTipLayer } from '../dom/parts/tip-layer.js';
 import type { Rect } from '../geometry.js';
+import { createMapOverlayToolbar, type MapOverlayControls } from '../map-overlays.js';
 import { createMinimapBacking } from './backing.js';
 import {
   allMinimapLayersShown,
@@ -147,6 +148,7 @@ export function createMinimapChrome(
   plane: HTMLElement,
   callbacks: MinimapChromeCallbacks,
   initialFrame: MinimapFrame,
+  overlays?: MapOverlayControls,
 ): MinimapChrome {
   const copy = messages().hud.minimap;
   const root = element('section', 'on-minimap-chrome');
@@ -154,6 +156,7 @@ export function createMinimapChrome(
   root.setAttribute('aria-description', copy.interaction);
   root.dataset.frame = initialFrame;
   const backing = createMinimapBacking(root);
+  const overlayToolbar = overlays === undefined ? null : createMapOverlayToolbar(root, overlays);
   let uiScale = 1;
   const tooltip = element('div', 'on-minimap-tip');
   tooltip.setAttribute('role', 'tooltip');
@@ -372,6 +375,7 @@ export function createMinimapChrome(
       placeFilters();
     },
     setState: (state) => {
+      overlayToolbar?.update(state.hasSeat);
       const zoomLabel = formatMessage(copy.zoom, { zoom: Math.round(state.zoom * 10) / 10 });
       for (const [node, label] of [
         [less, copy.zoomOut],

@@ -9,6 +9,7 @@ import type { DiplomacyState, FogView, HalfCellNode, WorldSnapshot } from '@open
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { setMinimapReserve } from '../dom/minimap-reserve.js';
 import type { Rect } from '../geometry.js';
+import type { MapOverlayControls } from '../map-overlays.js';
 import { createAlarmLayer } from './alarms.js';
 import { createWorkerMinimapBaker } from './bake.js';
 import { createMinimapChrome } from './chrome.js';
@@ -39,6 +40,7 @@ import { createMinimapSurface } from './surface.js';
 const BACKDROP_COLOUR = 0x2a2018;
 
 export interface MinimapOptions {
+  readonly overlays?: MapOverlayControls;
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   readonly plane: HTMLElement;
@@ -186,6 +188,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       onColours: (colours) => setFilters({ ...filters, colours }),
     },
     opts.frame,
+    opts.overlays,
   );
   function setFilters(next: MinimapFilters): void {
     filters = next;

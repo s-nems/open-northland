@@ -55,6 +55,7 @@ import { mountHudDomRoot } from '../../hud/dom/root.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-card/building.js';
 import type { HoverOwnerContext } from '../../hud/hover-card/owner.js';
 import { type SettlerHoverContext, settlerHoverModel } from '../../hud/hover-card/settler.js';
+import type { MapOverlayControls } from '../../hud/map-overlays.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { minimapFeatureOfGoodTypes } from '../../hud/minimap/live-objects.js';
 import type { NetPanelSource } from '../../hud/network/model.js';
@@ -86,6 +87,7 @@ import {
   mountGameToolPanel,
   palisadeToolsOf,
 } from '../game-tool-panel.js';
+import { createSignpostMapOverlay } from '../map-overlays/signposts.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
 import { floatParam, introParam, tintParam, weatherParam } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
@@ -679,7 +681,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     };
     // Mounted after the tool panel (draw order) and before the unit controls, so that a minimap click
     // never falls through to unit selection or a world order.
+    const mapOverlayState: MapOverlayControls = { active: null };
+    const mapOverlay = createSignpostMapOverlay(app.stage, mapOverlayState, deps.mapSize, deps.elevation);
+    cleanup.push(() => mapOverlay.dispose());
     minimap = await mountMinimap({
+      overlays: mapOverlayState,
       plane: hudDom.element,
       app,
       canvas,
@@ -1028,6 +1034,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       fogGates,
       toolPanel,
       minimap: mountedMinimap,
+      mapOverlay,
       controls,
       worldHover,
       geometryDebug: debugMounts.geometryDebug,

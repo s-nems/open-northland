@@ -7,6 +7,13 @@ export const enGame = {
     retry: 'Try again',
   },
   hud: {
+    mapOverlays: {
+      label: 'Main map overlays',
+      signposts: 'Signposts',
+      legend: 'Shading: range · — Link · ○ Isolated',
+      tip: 'Show your signpost network on the main map. Shading: civilian range; lines: actual connections; amber rings: isolated posts. Overlapping ranges do not connect networks. Terrain can still block travel. Carriers reach farther; scouts and fighters are unrestricted.',
+      noSeat: 'Choose a player to see their signpost network.',
+    },
     minimap: {
       label: 'Minimap',
       interaction:

@@ -19,6 +19,7 @@ import { readMinimapIndexes } from '../../hud/minimap/dots.js';
 import { standingNodesRevision } from '../../hud/minimap/live-objects.js';
 import { restingBuildingsOf } from '../../hud/tool-panel/messages/workshop-stalls.js';
 import { assistantBookingsOf } from '../assistant-bookings.js';
+import { signpostOverlayIndex } from '../map-overlays/signpost-model.js';
 import { ownRoadSiteAt } from '../runtime/own-road-sites.js';
 import { builderSitesOf } from '../unit-controls/highlights/own-building-picks.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
@@ -38,6 +39,7 @@ const NO_GOODS: ReadonlyMap<number, MinimapFeature> = new Map();
  *  runtime's per-delta upkeep; a reader added to the frame belongs here too. */
 export const FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   ...RENDER_FRAME_INDEX_READERS,
+  { name: 'map overlay signposts', read: signpostOverlayIndex },
   { name: 'needs rule', read: (snapshot) => needsRuleEnabled(snapshot) },
   { name: 'actors', read: (snapshot) => actorIdsOf(snapshot) },
   { name: 'minimap layers', read: (snapshot) => readMinimapIndexes(snapshot) },
