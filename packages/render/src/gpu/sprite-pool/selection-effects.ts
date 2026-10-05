@@ -63,7 +63,8 @@ export class SelectionEffects {
       const colour = pass.colour ?? outlineColour;
       for (let i = 0; i < pe.sprites.length; i++) {
         const body = pe.sprites[i];
-        if (body === undefined || !body.visible || (!pe.paletted && pe.pickExempt[i])) continue;
+        if (body === undefined || !body.visible || body.alpha === 0 || (!pe.paletted && pe.pickExempt[i]))
+          continue;
         if ('glow' in body && body.glow === true) continue;
         for (const [dx, dy] of OFFSETS) {
           let stamp = outline.children[count++];
@@ -74,6 +75,7 @@ export class SelectionEffects {
             outline.addChildAt(stamp, count - 1);
           }
           if (stamp.tint !== colour) stamp.tint = colour;
+          stamp.alpha = body.alpha;
           if (body instanceof PalettedSprite) {
             const frame = body.frame;
             const source = body.frameSource;
@@ -105,7 +107,7 @@ export class SelectionEffects {
           stamp.visible = true;
         }
       }
-      if (pe.placeholder?.visible === true) {
+      if (pe.placeholder?.visible === true && pe.placeholder.alpha > 0) {
         for (const [dx, dy] of OFFSETS) {
           let stamp = outline.children[count++];
           if (!(stamp instanceof SelectionGraphics)) {
@@ -115,6 +117,7 @@ export class SelectionEffects {
             outline.addChildAt(stamp, count - 1);
           }
           if (stamp.tint !== colour) stamp.tint = colour;
+          stamp.alpha = pe.placeholder.alpha;
           pe.placeholder.updateLocalTransform();
           stamp.setFromMatrix(pe.placeholder.localTransform);
           stamp.position.x += (dx * radius) / zoom;

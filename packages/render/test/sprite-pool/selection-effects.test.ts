@@ -60,6 +60,32 @@ it('outlines the visible body, excludes shadows, and releases stamps when the st
 
 useHeadlessShaderContext();
 
+it('fades the old building tier outline with its body and resets opacity when stamps are reused', () => {
+  const textures = new TextureCache();
+  const effects = new SelectionEffects(textures);
+  const pe = createPooled('building', undefined);
+  if (pe.paletted) throw new Error('Expected a plain building');
+  const body = new SelectionSprite(Texture.WHITE);
+  pe.sprites.push(body);
+  pe.pickExempt.push(false);
+  pe.container.addChild(body);
+  effects.update(pe, 'outline', 1, 0);
+  const outline = pe.container.children[0];
+  if (outline === undefined) throw new Error('Missing outline');
+  expect(outline.children).toHaveLength(16);
+  for (const alpha of [0.5, 0.1, 0, 1]) {
+    body.alpha = alpha;
+    effects.update(pe, 'outline', 1, 0);
+    expect(pe.container.children[0]).toBe(outline);
+    const visible = outline.children.filter((stamp) => stamp.visible);
+    expect(visible).toHaveLength(alpha === 0 ? 0 : 16);
+    for (const stamp of visible) expect(stamp.alpha).toBe(alpha);
+  }
+  effects.clear(pe);
+  pe.container.destroy({ children: true });
+  textures.clear();
+});
+
 it('keeps vehicle outlines out of linear atlas sampling and follows mesh origin and shear', () => {
   const textures = new TextureCache();
   const effects = new SelectionEffects(textures);
