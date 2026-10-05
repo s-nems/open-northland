@@ -47,6 +47,8 @@ export function constructionMaterialResolver(
   fetch(site: Entity): boolean;
   /** Whether a source holds `goodType` for this fetcher, the precondition of every `has` a need of it passes. */
   canSource(goodType: number): boolean;
+  /** The source `fetch(site)` would lift from, or null when `has(site)` is false. */
+  sourceOf(site: Entity): Entity | null;
 } {
   const bySite = new Map<Entity, FetchableMaterial | null>();
   const needsBySite = new Map<
@@ -106,6 +108,7 @@ export function constructionMaterialResolver(
       return true;
     },
     canSource: (goodType) => sourceFor(goodType) !== null,
+    sourceOf: (site) => resolve(site)?.source ?? null,
   };
 }
 

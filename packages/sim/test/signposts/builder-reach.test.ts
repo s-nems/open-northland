@@ -82,6 +82,14 @@ function cutOff(sim: Simulation, builder: Entity): boolean {
   return sim.world.tryGet(builder, LostWay)?.cutOff === true;
 }
 
+/** Whether the builder's lost mark stands nearer the first store than the island site, in tiles. */
+function nearerToStore(sim: Simulation, builder: Entity): boolean {
+  const terrain = sim.terrain;
+  if (terrain === undefined) throw new Error('expected a mapped sim');
+  const x = terrain.xOf(sim.world.get(builder, LostWay).goal) / 2;
+  return Math.abs(x - STORE_X) < Math.abs(x - ISLAND_SITE_X);
+}
+
 describe('a builder whose site the signpost network keeps from its material', () => {
   it('fetches nothing it could not carry to the site and stands lost, told once', () => {
     const { sim, builder } = world(ISLAND_SITE_X);
@@ -98,6 +106,8 @@ describe('a builder whose site the signpost network keeps from its material', ()
     expect(fetched).toBe(false);
     expect(cutOff(sim, builder)).toBe(true);
     expect(lostNotes).toBe(1);
+    // The site is in reach and the store is not: the mark points at the store.
+    expect(nearerToStore(sim, builder)).toBe(true);
     // It stands: no walk back towards the store and out again.
     const x = sim.world.get(builder, Position).x;
     for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS; t++) sim.step();
@@ -146,6 +156,8 @@ describe('a builder whose only site lies beyond every signpost', () => {
     for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS; t++) sim.step();
     expect(fetching(sim, builder)).toBe(false);
     expect(cutOff(sim, builder)).toBe(true);
+    // The store is in reach and the site is not: the mark points at the site.
+    expect(nearerToStore(sim, builder)).toBe(false);
   });
 
   it('is not marked, and fetches, once a post chain reaches the site', () => {

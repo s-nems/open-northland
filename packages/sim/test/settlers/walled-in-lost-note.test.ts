@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  Chat,
   CurrentAtomic,
   LostWay,
   MoveGoal,
+  Owner,
   Palisade,
   Position,
   SettlerNeeds,
@@ -18,7 +20,7 @@ import { ownedWoodcutter, woodAt } from '../conflict/orders/support.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
-import { justAbove, NEED_DRIVE_THRESHOLD } from '../settlers/needs/support.js';
+import { justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from '../settlers/needs/support.js';
 
 /**
  * A woodcutter walled in by a closed gate with every tree outside: each tree's route fails in turn. The
@@ -43,6 +45,11 @@ const HEADQUARTERS = 1;
 const FOOD = 3;
 const STORE_X = 20;
 const STORE_ROW = 8;
+/** The test content's sawmill trade: with no mill on this map, a carpenter stands idle as a chat partner. */
+const CARPENTER = 2;
+/** Node rows of a chat partner inside and outside the wall, both within the company search radius. */
+const PARTNER_INSIDE_ROW = 12;
+const PARTNER_OUTSIDE_ROW = 36;
 
 function walledIn(needs = false): { sim: Simulation; woodcutter: Entity; gate: Entity } {
   const span = [-2, -1, 0, 1, 2].map((dx) => ({ dx, dy: 0 }));
@@ -177,5 +184,39 @@ describe('a settler walled in from its work, with food inside the walls', () => 
     expect(ate).toBe(true);
     expect(notes).toBe(1);
     expect(sim.world.has(woodcutter, LostWay)).toBe(true);
+  });
+});
+
+describe('a settler walled in from its work, lonely', () => {
+  function lonelyWalledIn(partnerRow: number): { sim: Simulation; woodcutter: Entity; partner: Entity } {
+    const { sim, woodcutter } = walledIn(true);
+    const partner = needsSettlerAt(sim, 0, 0, {}, CARPENTER);
+    sim.world.add(partner, Position, positionOfNode(GATE_X, partnerRow));
+    sim.world.add(partner, Owner, { player: 0 });
+    for (let t = 0; t < UNREACHABLE_GOAL_MEMO_TICKS && !sim.world.has(woodcutter, LostWay); t++) sim.step();
+    expect(sim.world.has(woodcutter, LostWay)).toBe(true);
+    sim.world.mut(woodcutter, SettlerNeeds).enjoyment = justAbove(NEED_DRIVE_THRESHOLD);
+    return { sim, woodcutter, partner };
+  }
+
+  it('keeps its stand when the only company is outside the wall', () => {
+    const { sim, woodcutter } = lonelyWalledIn(PARTNER_OUTSIDE_ROW);
+    const start = sim.world.get(woodcutter, Position);
+    let notes = 0;
+    for (let t = 0; t < 2 * UNREACHABLE_GOAL_MEMO_TICKS; t++) {
+      sim.step();
+      for (const ev of sim.events.current())
+        if (ev.kind === 'settlerLost' && ev.entity === woodcutter) notes++;
+    }
+    expect(sim.world.get(woodcutter, Position)).toEqual(start);
+    expect(notes).toBe(0);
+    expect(sim.world.has(woodcutter, LostWay)).toBe(true);
+  });
+
+  it('walks to company inside the wall and chats', () => {
+    const { sim, woodcutter, partner } = lonelyWalledIn(PARTNER_INSIDE_ROW);
+    const talking = (): boolean => sim.world.tryGet(woodcutter, Chat)?.talking === true;
+    for (let t = 0; t < 2 * UNREACHABLE_GOAL_MEMO_TICKS && !talking(); t++) sim.step();
+    expect(sim.world.get(woodcutter, Chat)).toMatchObject({ partner, seeker: true, talking: true });
   });
 });

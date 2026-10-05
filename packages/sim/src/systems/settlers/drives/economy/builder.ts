@@ -293,10 +293,11 @@ export function planBuilder(
 }
 
 /**
- * The stand at the nearest site only its signposts keep a builder from: no site within its confinement
- * gives it a task, but one would if no confinement held it, whether the site itself or every source of its
- * material lies out of reach. Null when no such site waits, or when some site in reach has a task, whoever
- * holds it. Original behavior, unconfirmed against the running original: the builder plans that walk
+ * The stand the signposts keep a builder from: no site within its confinement gives it a task, but one
+ * would if no confinement held it. The stand is at that site, or at the source of its material when the
+ * site itself is in reach and only the material lies beyond, so the mark points where the builder cannot
+ * get to. Null when no such site waits, or when some site in reach has a task, whoever holds it.
+ * Original behavior, unconfirmed against the running original: the builder plans that walk
  * anyway and stands lost once its guided pathfinder has failed. Approximation: this planner never plans
  * past the confinement, so the cut-off check asks the unconfined pick instead, on its cadence, once per
  * builder and pass. A source on another landmass is no source: no signpost reaches across water.
@@ -338,7 +339,10 @@ function findWorkBeyondReach(
     rejectSource: (cell) => terrain.componentOf(cell) !== landmass,
   });
   const site = anyTaskSite(free, spacing, claims, ashore, avoidSite);
-  return site === null ? null : interactionCell(world, ctx, terrain, site, here);
+  if (site === null) return null;
+  // A site in reach with no confined task is one whose material alone lies beyond the signposts.
+  const source = builderCanReach(plan, spacing, site) ? ashore.sourceOf(site) : null;
+  return interactionCell(world, ctx, terrain, source ?? site, here);
 }
 
 /** The nearest site within `plan.limit` that gives this builder a task from `materials`, in the order the
