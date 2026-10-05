@@ -682,7 +682,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Mounted after the tool panel (draw order) and before the unit controls, so that a minimap click
     // never falls through to unit selection or a world order.
     const mapOverlayState: MapOverlayControls = { active: null };
-    const mapOverlay = createSignpostMapOverlay(app.stage, mapOverlayState, deps.mapSize, deps.elevation);
+    const mapOverlay = createSignpostMapOverlay(
+      app.stage,
+      mapOverlayState,
+      deps.mapSize,
+      deps.elevation,
+      answers.signpostReach,
+      () => [...(unitSelection?.selectedIds() ?? [])],
+    );
     cleanup.push(() => mapOverlay.dispose());
     minimap = await mountMinimap({
       overlays: mapOverlayState,
@@ -755,6 +762,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       requestEquipPicks: (entity, group) => host.equipPickList(entity as Entity, group),
       standsTo: answers.standsTo,
       traderView: answers.traderView,
+      signpostReach: answers.signpostReach,
       tradeOffersAt: answers.tradeOffersAt,
       canAttachTradeHouse: answers.canAttachTradeHouse,
       askAttachTradeHouse: answers.askAttachTradeHouse,
@@ -802,6 +810,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       settlerBubblesFor,
       lifeHeartsFor,
     } = await createViewReadModels({
+      signpostReach: answers.signpostReach,
+      inventoryVersion: answers.versions.unitPanel,
       probes: placementGates.probes,
       host,
       mapSize: deps.mapSize,

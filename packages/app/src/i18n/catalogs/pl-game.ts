@@ -10,7 +10,7 @@ export const plGame = {
     mapOverlays: {
       label: 'Nakładki mapy głównej',
       signposts: 'Drogowskazy',
-      tip: 'Zasięg i połączenia drogowskazów',
+      tip: 'Sieci drogowskazów',
       noSeat: 'Wybierz gracza, aby zobaczyć jego sieć drogowskazów.',
     },
     minimap: {

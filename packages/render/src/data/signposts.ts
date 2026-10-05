@@ -1,14 +1,13 @@
 import {
+  components,
   type EntitySnapshot,
   type Fixed,
   firstDifference,
-  hexDistanceBetween,
   indexesOf,
   nodeOfPosition,
   type SnapshotIndexSpec,
   type TileBox,
   TileBuckets,
-  WALK_RANGE_NODES,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { readNumField, readPosition } from './snapshot/index.js';
@@ -75,10 +74,10 @@ export function signpostOverlayIndex(snapshot: WorldSnapshot): PostIndex {
   return indexesOf(snapshot).get(POSTS);
 }
 
-/** Expand the view by the civilian range: a post off screen can still cover visible ground or link
+/** Expand the view by the goods search range: a post off screen can still cover visible ground or link
  *  across it. Buckets use half-node coordinates divided by two, with no visual-row stagger. */
 export function overlayPostsWithin(index: PostIndex, player: number, nodes: TileBox): OverlayPost[] {
-  const range = WALK_RANGE_NODES;
+  const range = components.GOODS_SEARCH_RANGE_NODES;
   return index.buckets
     .within({
       minX: (nodes.minX - range) / 2,
@@ -87,12 +86,6 @@ export function overlayPostsWithin(index: PostIndex, player: number, nodes: Tile
       maxY: (nodes.maxY + range) / 2,
     })
     .filter((post) => post.player === player);
-}
-
-/** The sim's civilian guide coverage, with its strict outer boundary. This is a navigation range,
- *  not a walkability test; carriers have a longer range and some professions are unrestricted. */
-export function postCovers(post: OverlayPost, hx: number, hy: number): boolean {
-  return hexDistanceBetween(post.hx, post.hy, hx, hy) < WALK_RANGE_NODES;
 }
 
 export function linkedPosts(index: PostIndex, post: OverlayPost): OverlayPost[] {

@@ -19,6 +19,7 @@ export function readWorldFacts(sim: Simulation): WorldFacts {
   return {
     constructionPlots: sim.constructionPlots(),
     placementBlockerVersion: sim.placementBlockerVersion(),
+    signpostReachVersion: sim.signpostReachVersion(),
     signpostBlockerVersion: sim.signpostBlockerVersion(),
     palisadeLayoutVersion: sim.palisadeLayoutVersion(),
     roadSitePlacementVersion: sim.roadSitePlacementVersion(),
@@ -47,6 +48,8 @@ export function changedFacts(last: WorldFacts, next: WorldFacts): Partial<WorldF
   if (next.constructionPlots !== last.constructionPlots) changed.constructionPlots = next.constructionPlots;
   if (next.placementBlockerVersion !== last.placementBlockerVersion)
     changed.placementBlockerVersion = next.placementBlockerVersion;
+  if (next.signpostReachVersion !== last.signpostReachVersion)
+    changed.signpostReachVersion = next.signpostReachVersion;
   if (next.signpostBlockerVersion !== last.signpostBlockerVersion)
     changed.signpostBlockerVersion = next.signpostBlockerVersion;
   if (next.palisadeLayoutVersion !== last.palisadeLayoutVersion)

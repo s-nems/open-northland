@@ -28,7 +28,7 @@ export function signpostPanelModel(
 ): SignpostPanelModel | { readonly kind: 'empty' } {
   const seat = ctx.viewer === undefined ? null : pickableSeat(ctx.viewer);
   if (seat !== null && ownerPlayerOf(entity) !== seat) return { kind: 'empty' };
-  const network = networkInventoryOf(snapshot, entity.id);
+  const network = networkInventoryOf(snapshot, entity.id, ctx.signpostReach?.(ownerPlayerOf(entity) ?? 0));
   const stock = stockCounts(network?.stock ?? new Map()).map(({ goodType, amount }) => {
     const goodId = goodDef(ctx, goodType)?.id;
     return {

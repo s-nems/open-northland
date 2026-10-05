@@ -25,6 +25,7 @@ import type {
   Paper,
   SaveGame,
   ScriptLandscapeType,
+  SignpostReachView,
   SimEvent,
   TradeOffer,
   TraderView,
@@ -108,6 +109,8 @@ export interface SessionHost {
   placementBlockerVersion(): string;
   /** Changes when a signpost answer may. */
   signpostBlockerVersion(): string;
+  signpostReachVersion(): string;
+  signpostReach(player: number): Promise<SignpostReachView | null>;
   /** Changes when a gate answer may, movers aside. */
   palisadeLayoutVersion(): string;
   /** Changes when a road site answer may. */

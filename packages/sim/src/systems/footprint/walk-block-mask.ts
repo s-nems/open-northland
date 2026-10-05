@@ -25,6 +25,12 @@ const FLIP_LOG_CAP = 8192;
  * layers, so a holder sees current blocks, and a membership test is otherwise one array read.
  */
 export class WalkBlockMask implements BlockOverlay {
+  private revision = 0;
+
+  get version(): number {
+    this.catchUp();
+    return this.revision;
+  }
   /** `World.mutationVersion` the mask was last levelled at: with no entity write since, no layer moved. */
   private checkedVersion = -1;
   private layers: WalkBlockLayers | null = null;
@@ -132,6 +138,7 @@ export class WalkBlockMask implements BlockOverlay {
   }
 
   private reread(layers: WalkBlockLayers): void {
+    this.revision++;
     const overlay = layersOverlay(layers);
     for (let node = 0 as NodeId; node < this.terrain.nodeCount; node++)
       this.mask.set(node, overlay.has(node));
@@ -140,6 +147,7 @@ export class WalkBlockMask implements BlockOverlay {
   }
 
   private logFlip(node: NodeId): void {
+    this.revision++;
     if (this.flips.length >= FLIP_LOG_CAP) {
       this.flips.length = 0;
       this.flipsLost = true;

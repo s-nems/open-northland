@@ -1,4 +1,5 @@
 import { buildingFootprintFor, lastByTypeId } from '@open-northland/data';
+import type { SignpostReachView } from '@open-northland/sim';
 import { systems } from '@open-northland/sim';
 import { buildingSignAnchorsFor } from '../../content/building-gfx/index.js';
 import { loadIr } from '../../content/ir/load.js';
@@ -25,6 +26,8 @@ import {
 import type { PlacementProbeViews } from './placement-gates.js';
 
 export interface ViewReadModelDeps {
+  readonly signpostReach?: (player: number) => SignpostReachView | null;
+  readonly inventoryVersion?: () => number;
   /** The placement answers the overlays walk, shared with the click gates. */
   readonly probes: PlacementProbeViews;
   readonly host: SessionHost;
@@ -117,6 +120,8 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
         selection: deps.selection,
       },
       deps.seatNameOf,
+      deps.signpostReach,
+      deps.inventoryVersion,
     ),
   };
 }

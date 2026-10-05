@@ -110,19 +110,25 @@ export function erectSignpost(
   player: number,
 ): Entity | null {
   if (!canPlaceSignpost(world, ctx, terrain, node, player)) return null;
-  return createSignpost(world, terrain, node, player);
+  return createSignpost(world, terrain, node, player, ctx.content);
 }
 
 /** Stand `player`'s signpost on `node` with no legality check and link it into the network: the erect's
  *  second half, and how pre-tick assembly, a scene or a fixture stands a post directly. */
-export function createSignpost(world: World, terrain: TerrainGraph, node: NodeId, player: number): Entity {
+export function createSignpost(
+  world: World,
+  terrain: TerrainGraph,
+  node: NodeId,
+  player: number,
+  content?: ContentSet,
+): Entity {
   const c = terrain.coordsOf(node);
   const pos = positionOfNode(c.x, c.y);
   const e = world.create();
   world.add(e, Position, { x: pos.x, y: pos.y });
   world.add(e, Owner, { player });
   world.add(e, Signpost, { links: [] });
-  settleSignpostLinks(world, terrain, e);
+  settleSignpostLinks(world, terrain, e, content);
   return e;
 }
 
@@ -182,14 +188,20 @@ export function displaceSignpostsFromFootprint(world: World, ctx: SystemContext,
       search((n) => standable(n) && inFront(n)) ??
       search(standable);
     if (to === null) razeSignpost(world, post);
-    else relocateSignpost(world, terrain, post, to);
+    else relocateSignpost(world, terrain, post, to, ctx.content);
   }
 }
 
 /** Stand `post` on `node` and re-link it there. The component is re-added rather than the Position written
  *  in place: the placement blocker caches replay Signpost membership and hold a post's cell fixed while it
  *  keeps the component. */
-function relocateSignpost(world: World, terrain: TerrainGraph, post: Entity, node: NodeId): void {
+function relocateSignpost(
+  world: World,
+  terrain: TerrainGraph,
+  post: Entity,
+  node: NodeId,
+  content: ContentSet,
+): void {
   unlinkSignpost(world, post);
   world.remove(post, Signpost);
   const c = terrain.coordsOf(node);
@@ -198,5 +210,5 @@ function relocateSignpost(world: World, terrain: TerrainGraph, post: Entity, nod
   pos.x = centre.x;
   pos.y = centre.y;
   world.add(post, Signpost, { links: [] });
-  settleSignpostLinks(world, terrain, post);
+  settleSignpostLinks(world, terrain, post, content);
 }

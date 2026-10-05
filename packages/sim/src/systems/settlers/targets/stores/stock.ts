@@ -246,7 +246,7 @@ export function nearestStoreHolding(
       .nearest(
         here,
         (e) => (unclaimedStockOf(world, supply, e, goodType) > 0 ? QUALIFIES : null),
-        gate,
+        bands.goodsGate(here, owner, gate),
         avoid,
         sameSideAs(world, owner),
       )?.entity ?? null

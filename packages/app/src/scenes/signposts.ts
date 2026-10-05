@@ -1,7 +1,8 @@
 import type { Entity, Simulation } from '@open-northland/sim';
-import { cellAnchorNode, components, fx, systems } from '@open-northland/sim';
+import { cellAnchorNode, components, fx, reachContains, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_COLLECTOR, JOB_SCOUT } from '../catalog/jobs.js';
+import { TERRAIN_IMPASSABLE } from '../catalog/terrain.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import { GATHERERS, placeResourceNode, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
@@ -29,6 +30,11 @@ const FAR_TREE = { x: 110, y: 2 } as const;
 const RUN_TICKS = 4000;
 /** Frames the collector's whole trip: the chain, the near tree and the lone post in one screen. */
 const INITIAL_ZOOM = 0.55;
+
+const ground = grassTerrain(MAP_W, MAP_H);
+const terrain = { ...ground, typeIds: [...ground.typeIds] };
+for (let y = 11; y < MAP_H; y++)
+  for (let x = 22; x <= 26; x++) terrain.typeIds[y * MAP_W + x] = TERRAIN_IMPASSABLE;
 
 const { Owner, Position, Resource, Settler, Signpost, signpostNavigationEnabled } = components;
 
@@ -67,11 +73,24 @@ function build(sim: Simulation): void {
 export const signpostsScene: SceneDefinition = {
   id: 'signposts',
   seed: 11,
-  terrain: grassTerrain(MAP_W, MAP_H),
+  terrain,
   build,
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
   checks: [
+    {
+      label: 'network goods coverage excludes the water beside the connected posts',
+      predicate: (sim) => {
+        const water = cellAnchorNode(24, 12);
+        const shore = cellAnchorNode(21, 12);
+        const reach = sim.signpostReach(HUMAN_PLAYER);
+        if (reach === null) return false;
+        return (
+          reach.posts.some((p) => reachContains(p.area, shore.hx, shore.hy)) &&
+          reach.posts.every((p) => !reachContains(p.area, water.hx, water.hy))
+        );
+      },
+    },
     {
       label: 'signpost navigation confinement is ON (the scene opted in)',
       predicate: (sim) => signpostNavigationEnabled(sim.world),

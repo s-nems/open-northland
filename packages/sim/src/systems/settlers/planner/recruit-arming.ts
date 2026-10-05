@@ -30,7 +30,8 @@ import {
   isSoldierJob,
   weaponDamageVsMaterial,
 } from '../../readviews/index.js';
-import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
+import type { NavigationLimit } from '../../signposts/index.js';
+import { goodsSearchLimitAt } from '../../signposts/reach.js';
 import { entityNode } from '../../spatial/nodes.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
@@ -272,7 +273,7 @@ export function chainRecruitArmor(
     world.remove(e, AssistantRecruit); // already dressed - the booking is complete
     return null;
   }
-  const limit = networkLimitAt(world, terrain, owner, terrain.xOf(here), terrain.yOf(here));
+  const limit = goodsSearchLimitAt(world, ctx.content, terrain, owner, terrain.xOf(here), terrain.yOf(here));
   const pick = pickReachableArmor(world, ctx, targets, supply, here, owner, limit, veto);
   if (pick === null) {
     world.remove(e, AssistantRecruit); // no tier reachable: released unarmored
@@ -341,7 +342,7 @@ function fetchRouteFor(pass: PlannerPass, e: Entity, owner: number): FetchRoute 
   const n = nodeOfPosition(p.x, p.y);
   return {
     here: terrain.nodeAtClamped(n.hx, n.hy),
-    limit: networkLimitAt(world, terrain, owner, n.hx, n.hy),
+    limit: goodsSearchLimitAt(world, ctx.content, terrain, owner, n.hx, n.hy),
     veto: unreachableGoalVeto(world, ctx, e),
   };
 }

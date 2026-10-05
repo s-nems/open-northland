@@ -42,6 +42,7 @@ export interface WorkerSessionOptions {
 export const HOST_REQUESTS = [
   'placementProbe',
   'signpostProbe',
+  'signpostReach',
   'palisadeProbe',
   'roadSiteProbe',
   'palisadeGateProbe',
@@ -132,6 +133,7 @@ export interface WorldFacts {
   readonly constructionPlots: readonly ConstructionPlot[];
   readonly placementBlockerVersion: string;
   readonly signpostBlockerVersion: string;
+  readonly signpostReachVersion: string;
   readonly palisadeLayoutVersion: string;
   readonly roadSitePlacementVersion: string;
   /** `MAX_PLAYERS` rows of `MAX_PLAYERS` directed stances, row `from`. */

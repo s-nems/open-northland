@@ -456,6 +456,8 @@ class WorkerClient<E> {
       },
       constructionPlots: () => facts().constructionPlots,
       placementBlockerVersion: () => facts().placementBlockerVersion,
+      signpostReachVersion: () => facts().signpostReachVersion,
+      signpostReach: (...args) => this.ask('signpostReach', args),
       signpostBlockerVersion: () => facts().signpostBlockerVersion,
       palisadeLayoutVersion: () => facts().palisadeLayoutVersion,
       roadSitePlacementVersion: () => facts().roadSitePlacementVersion,

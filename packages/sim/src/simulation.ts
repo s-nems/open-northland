@@ -120,6 +120,7 @@ import { syncRoadLane } from './systems/roads/index.js';
 import { roadSitePlacementVersion } from './systems/roads/sites.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import { type SignpostProbe, signpostNetworkRevision } from './systems/signposts/index.js';
+import { type SignpostReachView, signpostReachKey, signpostReachView } from './systems/signposts/reach.js';
 import {
   canAttachTradeHouse,
   type TradeOffer,
@@ -511,6 +512,16 @@ export class Simulation {
   /** {@link signpostProbe}'s verdict over every node of `area`, as plain data. */
   signpostAnswer(player: number, area: NodeArea): NodeGridAnswer | null {
     return signpostAnswerFor(this.world, this.content, this.terrain, player, area);
+  }
+
+  signpostReachVersion(): string {
+    return this.terrain === undefined ? '' : signpostReachKey(this.world, this.content, this.terrain);
+  }
+
+  signpostReach(player: number): SignpostReachView | null {
+    return this.terrain === undefined
+      ? null
+      : signpostReachView(this.world, this.content, this.terrain, player);
   }
 
   /**

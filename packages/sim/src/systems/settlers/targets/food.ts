@@ -10,11 +10,13 @@ import {
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SpatialGate } from '../../../nav/node-circle.js';
+import { intersectReach } from '../../../nav/range-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { lowestStockedFood } from '../../family/food-sources.js';
 import { routeRegions } from '../../footprint/index.js';
+import { goodsSearchLimitAt } from '../../signposts/reach.js';
 import { bushesNearNode } from '../../spatial/bushes.js';
 import { closer, manhattan } from '../../spatial/metric.js';
 import type { SupplyTally } from '../../stores/index.js';
@@ -51,7 +53,17 @@ function nearestFoodStore(
   const winner = index.nearest(
     here,
     (e) => qualifiedGood(edibleFoodGoodFor(world, ctx, supply, e)),
-    gate,
+    intersectReach(
+      gate,
+      goodsSearchLimitAt(
+        world,
+        ctx.content,
+        terrain,
+        ownerOf(world, eater),
+        terrain.xOf(here),
+        terrain.yOf(here),
+      ),
+    ),
     avoid,
     sameSideAs(world, ownerOf(world, eater)), // a settler eats from its own player's larder
   );

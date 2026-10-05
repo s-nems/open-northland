@@ -201,7 +201,7 @@ export function constructionModel(
   if (ent.components.UnderConstruction === undefined) return null;
   const activity = constructionActivity(snapshot, ent.id);
   const owner = ownerPlayerOf(ent);
-  const held = owner === undefined ? null : seatStockOf(snapshot, owner);
+  const held = owner === undefined ? null : seatStockOf(ctx, snapshot, owner);
   const onSite = liveAmounts(ent.components.Stockpile);
   const rows = constructionBillRows(ctx, def, ent).map((row) => {
     const carried = activity.inbound.get(row.goodType) ?? 0;
@@ -218,8 +218,17 @@ export function constructionModel(
 }
 
 /** What `player` holds by good, by the summary bar's rule. */
-function seatStockOf(snapshot: WorldSnapshot, player: number): Map<number, number> {
-  return new Map(buildHud(snapshot, player).stocks.map((stock) => [stock.goodType, stock.amount]));
+function seatStockOf(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  player: number,
+): Map<number, number> {
+  return new Map(
+    buildHud(snapshot, player, ctx.signpostReach?.(player)).stocks.map((stock) => [
+      stock.goodType,
+      stock.amount,
+    ]),
+  );
 }
 
 /** The two live facts the selected site's construction status needs, off its crew and supply runs. */

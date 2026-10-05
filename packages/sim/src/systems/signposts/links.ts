@@ -1,84 +1,96 @@
+import type { ContentSet } from '@open-northland/data';
 import { Owner, Position, SIGNPOST_LINK_RANGE_NODES, Signpost } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { hexDistanceBetween, nodeOfPosition } from '../../nav/halfcell.js';
-import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
+import { TileBuckets } from '../../inspect/tile-buckets.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
+import { reachContains, searchReach } from '../../nav/range-search.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { System } from '../context.js';
+import { walkBlockMask } from '../footprint/walk-block-mask.js';
+import { signpostNetworkRevision } from './network.js';
+import { signpostTerrainKey } from './reach.js';
 
-/**
- * Link a post that just rose to every same-player post inside {@link SIGNPOST_LINK_RANGE_NODES} that
- * walkable ground joins it to, on both sides. Source basis: the original floods the ground around a new
- * guide and connects every own guide the flood reaches inside the range. Approximations: the flood
- * crosses static terrain only, where the original's also stops at standing buildings and is re-run on map
- * edits; a post keeps every link, where the original holds at most eight.
- */
-export function settleSignpostLinks(world: World, terrain: TerrainGraph, post: Entity): void {
-  if (world.get(post, Signpost).links.length !== 0) throw new Error(`signpost ${post} is already linked`);
+interface Sites {
+  readonly generation: number;
+  readonly buckets: TileBuckets<{ id: Entity; hx: number; hy: number }>;
+}
+const sites = new WeakMap<World, Sites>();
+function candidates(world: World, post: Entity): { id: Entity; hx: number; hy: number }[] {
+  const generation = world.componentGeneration(Signpost);
+  let held = sites.get(world);
+  if (held === undefined || held.generation !== generation) {
+    const buckets = new TileBuckets<{ id: Entity; hx: number; hy: number }>();
+    for (const id of world.query(Signpost, Position)) {
+      const p = world.get(id, Position);
+      const n = nodeOfPosition(p.x, p.y);
+      buckets.set(id, { id, ...n }, n.hx / 2, n.hy / 2);
+    }
+    held = { generation, buckets };
+    sites.set(world, held);
+  }
+  const p = world.get(post, Position);
+  const n = nodeOfPosition(p.x, p.y);
+  const r = SIGNPOST_LINK_RANGE_NODES;
+  const owner = world.get(post, Owner).player;
+  return held.buckets
+    .within({ minX: (n.hx - r) / 2, maxX: (n.hx + r) / 2, minY: (n.hy - r) / 2, maxY: (n.hy + r) / 2 })
+    .filter((p) => p.id !== post && world.tryGet(p.id, Owner)?.player === owner);
+}
+
+function reachableLinks(world: World, terrain: TerrainGraph, post: Entity, content?: ContentSet): Entity[] {
+  const nearby = candidates(world, post);
+  if (nearby.length === 0) return [];
   const p = world.get(post, Position);
   const origin = nodeOfPosition(p.x, p.y);
-  if (!terrain.inBounds(origin.hx, origin.hy)) return;
-  const start = terrain.nodeAt(origin.hx, origin.hy);
-  const player = world.get(post, Owner).player;
-  // Same player, inside the range, on the same static ground: what the flood can still rule out is a
-  // detour longer than the range.
-  const candidates = new Map<Entity, NodeId>();
-  for (const other of world.query(Signpost, Position, Owner)) {
-    if (other === post || world.get(other, Owner).player !== player) continue;
-    const op = world.get(other, Position);
-    const n = nodeOfPosition(op.x, op.y);
-    if (hexDistanceBetween(origin.hx, origin.hy, n.hx, n.hy) >= SIGNPOST_LINK_RANGE_NODES) continue;
-    if (!terrain.inBounds(n.hx, n.hy)) continue;
-    const node = terrain.nodeAt(n.hx, n.hy);
-    if (terrain.componentOf(node) === terrain.componentOf(start)) candidates.set(other, node);
-  }
-  if (candidates.size === 0) return;
-  const linked = floodToCandidates(terrain, start, origin, candidates);
-  if (linked.length === 0) return;
-  linked.sort((a, b) => a - b);
+  const blocked =
+    content === undefined
+      ? { size: 0, has: () => false }
+      : walkBlockMask(world, { content }, terrain).levelled();
+  const area = searchReach(terrain, blocked, origin.hx, origin.hy, SIGNPOST_LINK_RANGE_NODES);
+  return nearby
+    .filter((p) => reachContains(area, p.hx, p.hy))
+    .map((p) => p.id)
+    .sort((a, b) => a - b);
+}
+
+/** Original guide links use the goods search's terrain budget and strict 40-node boundary.
+ *  Link count remains uncapped; the original retains at most eight neighbours. */
+export function settleSignpostLinks(
+  world: World,
+  terrain: TerrainGraph,
+  post: Entity,
+  content?: ContentSet,
+): void {
+  const linked = reachableLinks(world, terrain, post, content);
   world.mut(post, Signpost).links = linked;
   for (const other of linked) {
-    const links = world.mut(other, Signpost);
-    links.links = [...links.links, post].sort((a, b) => a - b);
+    const links = world.get(other, Signpost).links;
+    if (!links.includes(post)) world.mut(other, Signpost).links = [...links, post].sort((a, b) => a - b);
   }
 }
 
-/** Breadth-first over the pathfinder's own edges, never past the link range; stops once every
- *  candidate is reached. */
-function floodToCandidates(
-  terrain: TerrainGraph,
-  start: NodeId,
-  origin: { readonly hx: number; readonly hy: number },
-  candidates: ReadonlyMap<Entity, NodeId>,
-): Entity[] {
-  const waiting = new Map<NodeId, Entity[]>();
-  for (const [post, node] of candidates) {
-    const at = waiting.get(node);
-    if (at === undefined) waiting.set(node, [post]);
-    else at.push(post);
-  }
-  const reached: Entity[] = [];
-  const seen = new Set<NodeId>([start]);
-  const queue: NodeId[] = [start];
-  const edges = new StepBuffer();
-  for (const cur of queue) {
-    terrain.stepsInto(cur, undefined, edges);
-    for (let i = 0; i < edges.length; i++) {
-      const { node } = edges.at(i);
-      if (seen.has(node)) continue;
-      if (
-        hexDistanceBetween(origin.hx, origin.hy, terrain.xOf(node), terrain.yOf(node)) >=
-        SIGNPOST_LINK_RANGE_NODES
-      )
-        continue;
-      seen.add(node);
-      queue.push(node);
-      const hit = waiting.get(node);
-      if (hit !== undefined) {
-        reached.push(...hit);
-        if (reached.length === candidates.size) return reached;
-      }
+const layouts = new WeakMap<World, string>();
+/** A changed road, building or landscape can connect or cut an existing network. */
+export const signpostLinksSystem: System = (world, ctx) => {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return;
+  const key = `${signpostTerrainKey(world, ctx.content, terrain)}:${signpostNetworkRevision(world)}`;
+  if (layouts.get(world) === key) return;
+  const posts = world.canonicalQuery(Signpost, Position, Owner);
+  const next = new Map(posts.map((p) => [p, new Set<Entity>()]));
+  for (const post of posts)
+    for (const other of reachableLinks(world, terrain, post, ctx.content)) {
+      next.get(post)?.add(other);
+      next.get(other)?.add(post);
     }
+  for (const [post, ids] of next) {
+    const links = [...ids].sort((a, b) => a - b);
+    const old = world.get(post, Signpost).links;
+    if (old.length !== links.length || old.some((id, i) => id !== links[i]))
+      world.mut(post, Signpost).links = links;
   }
-  return reached;
-}
+  layouts.set(world, `${signpostTerrainKey(world, ctx.content, terrain)}:${signpostNetworkRevision(world)}`);
+};
 
 /** Drop a falling post from its neighbours' link lists, before it is destroyed. */
 export function unlinkSignpost(world: World, post: Entity): void {
@@ -90,8 +102,13 @@ export function unlinkSignpost(world: World, post: Entity): void {
 
 /** Re-settle the links of a post that changed hands: it leaves its old owner's posts and joins the new
  *  owner's in range. Source basis: the original's guide rescan links same-player guides only. */
-export function relinkSignpost(world: World, terrain: TerrainGraph, post: Entity): void {
+export function relinkSignpost(
+  world: World,
+  terrain: TerrainGraph,
+  post: Entity,
+  content?: ContentSet,
+): void {
   unlinkSignpost(world, post);
   world.mut(post, Signpost).links = [];
-  settleSignpostLinks(world, terrain, post);
+  settleSignpostLinks(world, terrain, post, content);
 }

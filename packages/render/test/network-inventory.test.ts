@@ -3,11 +3,12 @@ import {
   type EntitySnapshot,
   fx,
   packSnapshotDelta,
+  type SignpostReachView,
   SnapshotMirror,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { networkInventoryOf } from '../src/data/hud/inventory.js';
+import { empireInventoryOf, networkInventoryOf } from '../src/data/hud/inventory.js';
 import { buildHud } from '../src/data/hud/model.js';
 
 const at = (x: number) => ({ x: fx.fromInt(x), y: fx.fromInt(8) });
@@ -75,8 +76,8 @@ describe('network and empire inventory', () => {
   it('keeps empire totals available without signposts and excludes the strict range boundary', () => {
     const s = snapshot([
       post(1, 10),
-      source(2, 35, { Stockpile: { amounts: [[1, 2]] } }),
-      source(3, 34, { Stockpile: { amounts: [[1, 3]] } }),
+      source(2, 30, { Stockpile: { amounts: [[1, 2]] } }),
+      source(3, 29, { Stockpile: { amounts: [[1, 3]] } }),
     ]);
     expect(stock(s)).toEqual([[1, 3]]);
     const noPosts = snapshot([
@@ -147,7 +148,7 @@ describe('network and empire inventory', () => {
     const opening = [
       post(1, 10, [2]),
       post(2, 28, [1]),
-      source(3, 48, { Stockpile: { amounts: [[1, 7]] } }),
+      source(3, 47, { Stockpile: { amounts: [[1, 7]] } }),
       source(4, 20, { Stockpile: { amounts: [[1, 3]] } }),
     ];
     let sequence = 0;
@@ -219,5 +220,39 @@ describe('network and empire inventory', () => {
     expect(stock(mirror.snapshot())).toEqual([]);
     expect(buildHud(mirror.snapshot(), 1).stocks).toEqual([{ goodType: 1, amount: 5 }]);
     expect(mirror.verifyIndexes()).toEqual([]);
+  });
+});
+
+describe('authoritative network coverage', () => {
+  it('shares reachable goods between the network and empire, counts overlaps once, and reads building doors', () => {
+    const s = snapshot([
+      ...opening,
+      source(20, 22, { Owner: owner, Building: {}, Stockpile: { amounts: [[1, 5]] } }),
+    ]);
+    const area = { minX: 40, maxX: 40, minY: 16, maxY: 16, cells: new Uint8Array([1]) };
+    const reach: SignpostReachView = {
+      key: 'open',
+      player: 1,
+      settlements: [],
+      doors: new Map([
+        [10, { hx: 60, hy: 16 }],
+        [20, { hx: 40, hy: 16 }],
+      ]),
+      posts: [
+        { id: 1, group: 1, area },
+        { id: 2, group: 1, area },
+      ],
+    };
+    expect([...(networkInventoryOf(s, 1, reach)?.stock ?? [])]).toEqual([[1, 16]]);
+    expect([...empireInventoryOf(s, reach)]).toEqual([[1, 16]]);
+    expect([...(networkInventoryOf(s, 2, reach)?.stock ?? [])]).toEqual([[1, 16]]);
+    const closed = {
+      ...reach,
+      key: 'closed',
+      posts: reach.posts.map((p) => ({ ...p, area: { ...area, cells: new Uint8Array([0]) } })),
+    };
+    expect([...(networkInventoryOf(s, 1, closed)?.stock ?? [])]).toEqual([]);
+    expect([...empireInventoryOf(s, closed)]).toEqual([]);
+    expect([...empireInventoryOf(s, reach)]).toEqual([[1, 16]]);
   });
 });

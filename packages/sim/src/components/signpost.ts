@@ -49,10 +49,13 @@ export const WALK_RANGE_NODES = 50;
 export const CARRIER_WALK_RANGE_NODES = 63;
 
 /**
- * Two same-player signposts link when their hex distance is under this and walkable ground joins them
- * within it. Original behavior: the guide connection radius.
+ * Two same-player signposts link strictly inside this hex distance when the terrain search reaches
+ * them. Original behavior: the guide connection radius; ground resistance also limits the search.
  */
 export const SIGNPOST_LINK_RANGE_NODES = 40;
+
+/** Original goods search radius, with a walkable, resistance-limited search rather than a disc. */
+export const GOODS_SEARCH_RANGE_NODES = 40;
 
 /** No second same-player signpost may rise inside this hex distance of a standing one (original
  *  placement rule). */

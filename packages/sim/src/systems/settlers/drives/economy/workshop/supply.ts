@@ -141,7 +141,7 @@ export function nearestMissingInputSource(
           ? band.nearest(
               here,
               (e) => (e === workplace ? null : unclaimed(e)),
-              area.gate,
+              targets.bands.goodsGate(here, plan.owner, area.gate),
               avoid,
               sameSideAs(world, plan.owner),
               area.center,
@@ -150,7 +150,7 @@ export function nearestMissingInputSource(
               here,
               // The workplace never supplies itself.
               (e) => (e === workplace ? null : unclaimed(e)),
-              plan.limit ?? undefined,
+              targets.bands.goodsGate(here, plan.owner, plan.limit ?? undefined),
               avoid,
               sameSideAs(world, plan.owner),
             );

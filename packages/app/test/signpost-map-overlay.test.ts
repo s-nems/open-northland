@@ -1,9 +1,4 @@
-import {
-  linkedPosts,
-  overlayPostsWithin,
-  postCovers,
-  signpostOverlayIndex,
-} from '@open-northland/render/data';
+import { linkedPosts, overlayPostsWithin, signpostOverlayIndex } from '@open-northland/render/data';
 import {
   components,
   FOG_MODE,
@@ -48,11 +43,6 @@ describe('signpost map overlay', () => {
     if (first === undefined || isolated === undefined) throw new Error('missing fixture post');
     expect(linkedPosts(index, first).map((p) => p.id)).toEqual([2]);
     expect(linkedPosts(index, isolated)).toEqual([]);
-    expect(postCovers(first, 49, 10)).toBe(true);
-    expect(postCovers(first, 50, 10)).toBe(false);
-    expect(postCovers(isolated, 49, 10)).toBe(true);
-    expect(postCovers(first, 0, 59)).toBe(true);
-    expect(postCovers(first, 0, 60)).toBe(false);
   });
 
   it('keeps its index through ordinary ticks and follows relocation, ownership, links and removal through deltas', () => {

@@ -1,4 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
+import type { SignpostReachView } from '@open-northland/sim';
 import {
   PRODUCTION_COUNT_MAX,
   PRODUCTION_UNLIMITED,
@@ -27,6 +28,7 @@ export type WeaponDef = ContentSet['weapons'][number];
 export type ArmorDef = ContentSet['armor'][number];
 
 export interface UnitPanelModelContext {
+  readonly signpostReach?: ((player: number) => SignpostReachView | null) | undefined;
   /** The seat allowed to issue player-scoped orders from this panel. */
   readonly viewer?: ViewerSeat | undefined;
   readonly goodAllowed?: ((good: number, tribe: number, player?: number) => boolean) | undefined;

@@ -46,6 +46,8 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     fogView: (player) => sim.fogView(player),
     constructionPlots: () => sim.constructionPlots(),
     placementBlockerVersion: () => sim.placementBlockerVersion(),
+    signpostReachVersion: () => sim.signpostReachVersion(),
+    signpostReach: (player) => Promise.resolve(sim.signpostReach(player)),
     signpostBlockerVersion: () => sim.signpostBlockerVersion(),
     palisadeLayoutVersion: () => sim.palisadeLayoutVersion(),
     roadSitePlacementVersion: () => sim.roadSitePlacementVersion(),

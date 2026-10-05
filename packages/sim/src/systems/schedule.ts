@@ -46,6 +46,7 @@ import { technologySystem } from './progression/discoveries.js';
 import { tribeUnlockSystem } from './progression/tribe-unlocks.js';
 import { atomicSystem } from './settlers/atomics/system.js';
 import { plannerSystem } from './settlers/planner/system.js';
+import { signpostLinksSystem } from './signposts/links.js';
 import { gossipSystem } from './social/index.js';
 import { tradePartnerStockSystem, traderDisembarkSystem } from './trade/index.js';
 import {
@@ -98,6 +99,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // After the order systems above retire an arrival or turn it into its errand, and before the planner
   // could re-task the freed settler, so a queued order starts the tick the one ahead of it ends.
   { name: 'orderQueue', system: orderQueueSystem },
+  { name: 'signpostLinks', system: signpostLinksSystem },
   // The assistant dispatches before family and the planner, so a fresh child order is driven and a
   // fresh drill routed the same tick it was booked.
   { name: 'assistant', system: assistantSystem },

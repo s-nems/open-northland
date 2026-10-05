@@ -1,4 +1,6 @@
+import type { SignpostReachView } from '@open-northland/sim';
 import { IDLE_JOB as SIM_IDLE_JOB, type WorldSnapshot } from '@open-northland/sim';
+import { empireInventoryOf } from './inventory.js';
 import { hudTotalsOf } from './totals.js';
 
 /**
@@ -38,9 +40,12 @@ export interface HudModel {
   readonly stocks: readonly StockCount[];
 }
 
-/** Empire stock includes owned inventories everywhere and neutral heaps in reach of its buildings
- *  or signposts. Network panels narrow the same inventory sources to a connected group of posts. */
-export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
+/** Live stock uses the sim's terrain reach. A snapshot-only caller keeps the mapless inventory estimate. */
+export function buildHud(
+  snapshot: WorldSnapshot,
+  player: number,
+  reach?: SignpostReachView | null,
+): HudModel {
   const totals = hudTotalsOf(snapshot, player);
   if (totals === undefined) return { tick: snapshot.tick, player, population: 0, jobs: [], stocks: [] };
 
@@ -51,7 +56,7 @@ export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
   for (const [goodType, amount] of totals.heapStock) {
     stockTotals.set(goodType, (stockTotals.get(goodType) ?? 0) + amount);
   }
-  const stocks = stockCounts(stockTotals);
+  const stocks = stockCounts(reach === undefined ? stockTotals : empireInventoryOf(snapshot, reach));
 
   return { tick: snapshot.tick, player, population: totals.population, jobs, stocks };
 }

@@ -8,6 +8,7 @@ import {
   ONE,
 } from '@open-northland/render';
 import { anchorTileBox, type Viewport } from '@open-northland/render/data';
+import type { SignpostReachView } from '@open-northland/sim';
 import { TILE_BUCKET_SIZE, type TileBox, type WorldSnapshot } from '@open-northland/sim';
 import type { WorkerRole } from '../../game/sandbox/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
@@ -93,6 +94,8 @@ export function createSnapshotProjections(
   fogGates: FogGates,
   hearts: HeartProjectionInputs,
   seatNameOf?: (player: number) => string | undefined,
+  signpostReach?: (player: number) => SignpostReachView | null,
+  inventoryVersion?: () => number,
 ): {
   /** The panel's own aggregates, shared with any consumer needing a figure rather than its layout. */
   readonly hudModelFor: (snapshot: WorldSnapshot) => HudModel;
@@ -111,10 +114,15 @@ export function createSnapshotProjections(
 } {
   // Keyed on the viewer too: a spectator switching seats under a paused sim holds one snapshot, and
   // the fog is the viewer's, so every fog-filtered memo keys on it as well.
-  const viewerVersion = (): number => viewer.version();
+  const viewerVersion = (): number => {
+    const seat = viewer.seat();
+    if (seat !== null) signpostReach?.(seat);
+    return viewer.version() + (inventoryVersion?.() ?? 0);
+  };
   const hudModelFor = memoBySnapshot((snapshot: WorldSnapshot) => {
     const seat = viewer.seat();
-    return seat === null ? emptyHud(snapshot.tick) : buildHud(snapshot, seat);
+    if (seat === null) return emptyHud(snapshot.tick);
+    return buildHud(snapshot, seat, signpostReach?.(seat));
   }, viewerVersion);
   const heartsMemo = (): ((
     snapshot: WorldSnapshot,

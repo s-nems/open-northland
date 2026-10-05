@@ -1,8 +1,10 @@
 import { sameSideAs, stockpileEntries } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
+import { intersectReach } from '../../../../nav/range-search.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
+import { goodsSearchLimitAt } from '../../../signposts/reach.js';
 import {
   accessibleStockAmounts,
   isWorkplaceOutput,
@@ -55,6 +57,12 @@ export function nearestWorkplaceOutput(
   avoid?: (cell: NodeId) => boolean,
 ): { workplace: Entity; goodType: number } | null {
   // The good that qualified the winner is the good it hauls.
+  const terrain = ctx.terrain;
+  if (terrain !== undefined)
+    gate = intersectReach(
+      gate,
+      goodsSearchLimitAt(world, ctx.content, terrain, owner, terrain.xOf(here), terrain.yOf(here)),
+    );
   const winner = index.nearestDoor(
     here,
     (e) => qualifiedGood(haulableOutputGood(world, ctx, supply, deliverable, e)),

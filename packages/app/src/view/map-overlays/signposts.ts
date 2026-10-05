@@ -10,14 +10,20 @@ import {
   linkedPosts,
   type OverlayPost,
   overlayPostsWithin,
-  postCovers,
   signpostOverlayIndex,
 } from '@open-northland/render/data';
-import { cellOfNode, FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
+import {
+  cellOfNode,
+  FOG_STATE,
+  type FogView,
+  reachContains,
+  type SignpostReachView,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import type { MapOverlayControls } from '../../hud/map-overlays.js';
 
-const NETWORK = 0x77e5cf;
+const NETWORK_COLOURS = [0x72c7ec, 0xe9b967, 0xb5a0ed, 0x9dc97a, 0xe898a8, 0x72d7c1];
 const ISOLATED = 0xffc56b;
 
 export function exploredOverlayNode(fog: FogView | null, hx: number, hy: number): boolean {
@@ -112,13 +118,14 @@ export interface SignpostMapOverlay {
   dispose(): void;
 }
 
-/** Authored visualization of the current simulation: union of civilian guide ranges, explicit stored
- *  links, and isolated posts. The shaded range does not promise a walkable route through obstacles. */
+/** Goods-search areas come from the sim; colour and borders distinguish disconnected networks. */
 export function createSignpostMapOverlay(
   parent: Container,
   state: MapOverlayControls,
   mapSize: { width: number; height: number },
   elevation?: ElevationField,
+  reachFor?: (player: number) => SignpostReachView | null,
+  selectedIds: () => readonly number[] = () => [],
 ): SignpostMapOverlay {
   const root = new Container();
   root.zIndex = 890;
@@ -132,6 +139,10 @@ export function createSignpostMapOverlay(
   parent.addChild(root);
   let lastIndex: ReturnType<typeof signpostOverlayIndex> | null = null;
   let lastKey = '';
+  let lastReach: SignpostReachView | null = null;
+  let indexedReach: SignpostReachView | null = null;
+  const reachPosts = new Map<number, NonNullable<SignpostReachView>['posts'][number]>();
+  const colours = new Map<number, number>();
   const point = (hx: number, hy: number) => {
     const p = halfCellToScreen(hx, hy);
     return { x: p.x, y: p.y - (elevation?.liftAtNode(hx, hy) ?? 0) };
@@ -141,9 +152,25 @@ export function createSignpostMapOverlay(
       root.visible = state.active === 'signposts' && player !== null;
       if (!root.visible || player === null) return;
       const index = signpostOverlayIndex(snapshot);
+      const reach = reachFor?.(player) ?? null;
+      if (indexedReach !== reach) {
+        indexedReach = reach;
+        reachPosts.clear();
+        colours.clear();
+        for (const p of reach?.posts ?? []) reachPosts.set(p.id, p);
+        const groups = [...new Set(reach?.posts.map((p) => p.group) ?? [])].sort((a, b) => a - b);
+        groups.forEach((group, i) => {
+          colours.set(group, NETWORK_COLOURS[i % NETWORK_COLOURS.length] ?? ISOLATED);
+        });
+      }
+      const selected = selectedIds();
+      const selectedGroup = selected
+        .map((id) => reachPosts.get(id)?.group)
+        .find((group) => group !== undefined);
       const zoom = camera.scale ?? 1;
-      const key = `${index.revision}:${player}:${fog?.player}:${fog?.generation}:${camera.offsetX}:${camera.offsetY}:${zoom}:${screen.width}:${screen.height}`;
-      if (lastIndex === index && lastKey === key) return;
+      const key = `${selected.join(',')}:${index.revision}:${player}:${fog?.player}:${fog?.generation}:${camera.offsetX}:${camera.offsetY}:${zoom}:${screen.width}:${screen.height}`;
+      if (lastIndex === index && lastKey === key && lastReach === reach) return;
+      lastReach = reach;
       lastIndex = index;
       lastKey = key;
       root.position.set(camera.offsetX, camera.offsetY);
@@ -163,22 +190,64 @@ export function createSignpostMapOverlay(
       // At distant zooms each sample remains at least eight screen px high. Sampling is visual only;
       // the range predicate and links remain those of the sim. Native zoom samples every half-cell.
       const step = Math.max(1, Math.ceil(8 / ((TILE_HALF_H / 2) * zoom)));
-      const covered = (hx: number, hy: number): boolean =>
-        hx >= 0 &&
-        hy >= 0 &&
-        hx < mapSize.width * 2 &&
-        hy < mapSize.height * 2 &&
-        exploredOverlayNode(fog, hx, hy) &&
-        posts.some((post) => postCovers(post, hx, hy));
-      for (let hy = Math.floor(bounds.minY / step) * step; hy <= bounds.maxY; hy += step) {
-        for (let hx = Math.floor(bounds.minX / step) * step; hx <= bounds.maxX; hx += step) {
-          if (!covered(hx, hy) || !exploredOverlayPatch(fog, hx, hy, step)) continue;
-          field.poly(overlayPatchPoints(hx, hy, step, mapSize, point));
-        }
+      const groups = new Map<number, NonNullable<typeof reach>['posts'][number][]>();
+      for (const visible of posts) {
+        const post = reachPosts.get(visible.id);
+        if (post === undefined) continue;
+        const group = groups.get(post.group);
+        if (group === undefined) groups.set(post.group, [post]);
+        else group.push(post);
       }
-      field.fill({ color: NETWORK, alpha: 0.16 });
+      const colorOf = (group: number): number => colours.get(group) ?? ISOLATED;
+      for (const [group, members] of groups) {
+        const color = colorOf(group);
+        const muted = selectedGroup !== undefined && selectedGroup !== group;
+        const covered = (hx: number, hy: number): boolean =>
+          exploredOverlayNode(fog, hx, hy) && members.some((p) => reachContains(p.area, hx, hy));
+        const patches: { hx: number; hy: number; points: number[] }[] = [];
+        const painted = new Set<number>();
+        for (let hy = Math.floor(bounds.minY / step) * step; hy <= bounds.maxY; hy += step) {
+          for (let hx = Math.floor(bounds.minX / step) * step; hx <= bounds.maxX; hx += step) {
+            if (!covered(hx, hy) || !exploredOverlayPatch(fog, hx, hy, step)) continue;
+            let complete = true;
+            for (let y = Math.ceil(hy - step / 2); y <= Math.floor(hy + step / 2) && complete; y++)
+              for (let x = Math.ceil(hx - step / 2); x <= Math.floor(hx + step / 2); x++)
+                if (!covered(x, y)) {
+                  complete = false;
+                  break;
+                }
+            if (!complete) continue;
+            const points = overlayPatchPoints(hx, hy, step, mapSize, point);
+            patches.push({ hx, hy, points });
+            painted.add(hy * mapSize.width * 2 + hx);
+            field.poly(points);
+          }
+        }
+        field.fill({ color, alpha: muted ? 0.035 : 0.13 });
+        for (const { hx, hy, points } of patches) {
+          const neighbours = [
+            [0, -step],
+            [step, 0],
+            [0, step],
+            [-step, 0],
+          ];
+          neighbours.forEach(([dx = 0, dy = 0], edge) => {
+            const x = hx + dx;
+            const y = hy + dy;
+            if (x >= 0 && x < mapSize.width * 2 && painted.has(y * mapSize.width * 2 + x)) return;
+            const next = (edge + 1) % 4;
+            field
+              .moveTo(points[edge * 2] ?? 0, points[edge * 2 + 1] ?? 0)
+              .lineTo(points[next * 2] ?? 0, points[next * 2 + 1] ?? 0);
+          });
+        }
+        field.stroke({ color, alpha: muted ? 0.18 : 0.65, width: 1 / zoom });
+      }
       for (const post of posts) {
         const neighbours = linkedPosts(index, post);
+        const group = reachPosts.get(post.id)?.group ?? post.id;
+        const color = colorOf(group);
+        const muted = selectedGroup !== undefined && selectedGroup !== group;
         const start = point(post.hx, post.hy);
         for (const other of neighbours) {
           if (post.id >= other.id) continue;
@@ -187,16 +256,15 @@ export function createSignpostMapOverlay(
           }
         }
         if (!exploredOverlayNode(fog, post.hx, post.hy)) continue;
-        const color = neighbours.length === 0 ? ISOLATED : NETWORK;
-        const radius = 7 / zoom;
+        linkHalo.stroke({ color: 0x102624, width: 5 / zoom, alpha: muted ? 0.3 : 0.85 });
+        links.stroke({ color, width: 2 / zoom, alpha: muted ? 0.25 : 0.95 });
+        const radius = (selected.includes(post.id) ? 10 : 7) / zoom;
         markers
           .circle(start.x, start.y, radius)
           .fill({ color: 0x102624, alpha: 0.9 })
           .stroke({ color, width: 2 / zoom });
         if (neighbours.length > 0) markers.circle(start.x, start.y, 2.5 / zoom).fill(color);
       }
-      linkHalo.stroke({ color: 0x102624, width: 5 / zoom, alpha: 0.85 });
-      links.stroke({ color: NETWORK, width: 2 / zoom, alpha: 0.95 });
     },
     dispose: () => root.destroy({ children: true }),
   };

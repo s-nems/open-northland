@@ -381,6 +381,7 @@ export async function createUnitChrome(
     edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
     isTraderJob: (jobType) => systems.isTraderJob(opts.content, jobType),
     ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
+    ...(opts.signpostReach !== undefined ? { signpostReach: opts.signpostReach } : {}),
     ...(opts.traderView !== undefined ? { traderView: opts.traderView } : {}),
     ...(opts.tradeOffersAt !== undefined ? { tradeOffersAt: opts.tradeOffersAt } : {}),
     ...(opts.workStatus !== undefined ? { workStatus: opts.workStatus } : {}),

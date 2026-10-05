@@ -10,7 +10,7 @@ export const enGame = {
     mapOverlays: {
       label: 'Main map overlays',
       signposts: 'Signposts',
-      tip: 'Signpost range and connections',
+      tip: 'Signpost networks',
       noSeat: 'Choose a player to see their signpost network.',
     },
     minimap: {

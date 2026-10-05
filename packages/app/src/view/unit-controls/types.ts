@@ -14,6 +14,7 @@ import type {
 import type {
   EquipPickEntry,
   PlayerCommand,
+  SignpostReachView,
   TradeOffer,
   TraderView,
   UnlockKind,
@@ -98,6 +99,7 @@ export interface UnitControlsOptions {
    *  under fire captioned as idle. */
   readonly standsTo?: (entity: number) => boolean;
   /** The sim's trader read seams (`SessionHost.traderView` / `tradeOffersAt`); absent hides trade. */
+  readonly signpostReach?: (player: number) => SignpostReachView | null;
   readonly traderView?: (entity: number) => TraderView | undefined;
   readonly tradeOffersAt?: (house: number) => readonly TradeOffer[];
   /** The sim's trade-stop rule (`SessionHost.tradeHousesAttachableBy`) as its last answer, which lights

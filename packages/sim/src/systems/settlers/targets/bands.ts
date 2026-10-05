@@ -12,9 +12,12 @@ import {
   Vehicle,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import type { SpatialGate } from '../../../nav/node-circle.js';
+import { intersectReach } from '../../../nav/range-search.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isFinishedPrayerSite } from '../../readviews/index.js';
+import { goodsSearchLimitAt } from '../../signposts/reach.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { type HeldBands, heldBands, type SyncedBand } from './held-bands.js';
 
@@ -53,6 +56,20 @@ export class TargetBands {
 
   /** Stores {@link storeYieldsGood} would strip of `goodType`, drawn from the cross-tick holder ledger so
    *  a sync costs the good's holders rather than every stockpile. */
+  goodsGate(here: NodeId, owner: number | undefined, gate?: SpatialGate): SpatialGate | undefined {
+    return intersectReach(
+      gate,
+      goodsSearchLimitAt(
+        this.world,
+        this.ctx.content,
+        this.terrain,
+        owner,
+        this.terrain.xOf(here),
+        this.terrain.yOf(here),
+      ),
+    );
+  }
+
   holding(goodType: number): InteractionCellIndex {
     return this.fresh(this.held.holding(goodType));
   }

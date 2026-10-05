@@ -160,6 +160,7 @@ export {
   positionOfNode,
 } from './nav/halfcell.js';
 export { findPath, type SearchStats } from './nav/pathfinding/index.js';
+export { type ReachArea, reachContains, unionReachAreas } from './nav/range-search.js';
 export {
   buildTerrainGraph,
   type CellTerrainMap,
@@ -256,6 +257,7 @@ export type { HerdWait } from './systems/readviews/herd-hold.js';
 export type { EquipPickEntry, MilitaryMode } from './systems/readviews/index.js';
 export type { WorkStatus } from './systems/readviews/work-status.js';
 export type { SignpostProbe } from './systems/signposts/index.js';
+export type { SignpostReachPost, SignpostReachView } from './systems/signposts/reach.js';
 export { heapReach } from './systems/stores/seat-stock.js';
 export type { TradeOffer, TraderView, TradeStopView } from './systems/trade/index.js';
 export type { MooringProbe, VehicleStockView, VehicleView } from './systems/vehicles/index.js';

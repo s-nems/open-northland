@@ -266,6 +266,7 @@ function nearestCargoSource(
     { origin: here, accept: reachable },
   ];
   for (const phase of phases) {
+    const goodsGate = targets.bands.goodsGate(phase.origin, plan.owner, gate);
     let best: (CargoSource & { readonly distance: number }) | null = null;
     for (const goodType of goods) {
       const accept = (e2: Entity): boolean =>
@@ -274,7 +275,7 @@ function nearestCargoSource(
         unclaimedStockOf(world, plan.supply, e2, goodType) > 0;
       const hit = targets.bands
         .holding(goodType)
-        .nearest(phase.origin, (e2) => (accept(e2) ? QUALIFIES : null), gate, avoid, onSide);
+        .nearest(phase.origin, (e2) => (accept(e2) ? QUALIFIES : null), goodsGate, avoid, onSide);
       if (hit !== null && (best === null || hit.distance < best.distance)) {
         best = { entity: hit.entity, goodType, distance: hit.distance };
       }

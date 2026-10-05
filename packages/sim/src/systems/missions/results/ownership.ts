@@ -64,7 +64,8 @@ export function handAreaToPlayer(
 function relinkHandedSignposts(pass: MissionPass, handed: readonly Entity[]): void {
   const terrain = pass.ctx.terrain;
   if (terrain === undefined) return;
-  for (const e of handed) if (pass.world.has(e, Signpost)) relinkSignpost(pass.world, terrain, e);
+  for (const e of handed)
+    if (pass.world.has(e, Signpost)) relinkSignpost(pass.world, terrain, e, pass.ctx.content);
 }
 
 /**

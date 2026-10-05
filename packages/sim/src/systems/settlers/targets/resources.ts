@@ -6,6 +6,7 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import { positionedStanceCells, resourceStanceCells } from '../../footprint/index.js';
 import { resourceApproachCells } from '../../footprint/interaction.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
+import { goodsSearchLimitAt } from '../../signposts/reach.js';
 import { manhattan } from '../../spatial/metric.js';
 import { anyHarvestAtomicPresent, resourcesNearNode } from '../../spatial/resources.js';
 import { lowestStockedGood } from '../../stores/index.js';
@@ -161,11 +162,22 @@ function nearestDropFor(
   within?: { center: NodeId; radius: number },
 ): { pile: Entity; goodType: number; cell: NodeId; dist: number } | null {
   const { world, ctx, terrain, here } = plan;
+  const goods = goodsSearchLimitAt(
+    world,
+    ctx.content,
+    terrain,
+    plan.owner,
+    terrain.xOf(here),
+    terrain.yOf(here),
+  );
   let passes: ((cell: NodeId) => boolean) | undefined;
   const resolve = (e: Entity): CellMatch<number> | null => {
     const good = pick(e);
     if (good === null) return null;
-    passes ??= collectorStanceGates(plan, within);
+    if (passes === undefined) {
+      const stance = collectorStanceGates(plan, within);
+      passes = (node) => stance(node) && (goods === null || goods.allowsNode(node));
+    }
     const cell = nearestEligibleStance(plan, positionedStanceCells(world, ctx, terrain, e), passes);
     if (cell === undefined) return null;
     return { cell, payload: good };

@@ -19,6 +19,7 @@ import {
 import { hexNodeBox, type NodeBox, type SpatialGate, unionNodeBoxes } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { isCarrierJobRow, isDruidJob, isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
+import { goodsSearchLimitAt } from './reach.js';
 
 /**
  * The per-player signpost network: which signposts stand where and which belong to one connected group,
@@ -263,27 +264,24 @@ export function navigationLimitFor(
   return limit;
 }
 
-/**
- * The area an equipment fetch may shop in: the settler's own confinement, or for a job that walks the
- * map unconfined (a fighter, a scout) the network at its feet. Source basis: the original's
- * equipment search floods 40 nodes around the human, whatever its job, and then asks the
- * guide link systems that flood reached; without a bound a soldier would cross the whole map for a sword
- * lying in a far field. Approximation: the feet network reuses the 50-node walk range as a hex
- * distance, not a 40-node walkable flood. Null only when nothing confines anyone (navigation off, an
- * unowned or mapless target).
- */
+/** Equipment uses the same terrain-limited 40-node goods search, including exempt professions. */
 export function equipFetchLimitFor(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
   e: Entity,
 ): NavigationLimit | null {
-  const own = navigationLimitFor(world, content, terrain, e);
-  if (own !== null) return own;
   const owner = world.tryGet(e, Owner);
   const p = world.tryGet(e, Position);
   if (owner === undefined || p === undefined) return null;
-  return networkLimitAt(world, terrain, owner.player, nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
+  return goodsSearchLimitAt(
+    world,
+    content,
+    terrain,
+    owner.player,
+    nodeHxOfPosition(p.x, p.y),
+    nodeHyOfPosition(p.y),
+  );
 }
 
 function sweepDeadEntries(world: World, memo: LimitMemo): void {

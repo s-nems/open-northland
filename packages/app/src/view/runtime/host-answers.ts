@@ -2,6 +2,7 @@ import type {
   Entity,
   OpenTribute,
   Paper,
+  SignpostReachView,
   TradeOffer,
   TraderView,
   UnlockKind,
@@ -55,6 +56,7 @@ const NOTICE_STATUS_CAPACITY = 2 * WORK_STATUS_ASKS_PER_SWEEP * (WORK_STATUS_REA
  * `ask*` rules are for clicks: they await the host's answer as of now.
  */
 export interface HostAnswers {
+  readonly signpostReach: (player: number) => SignpostReachView | null;
   readonly diplomacyView: DiplomacySimView;
   /** Locked while unanswered. */
   readonly buildAvailability: (player: number, typeId: number, tribe: number) => BuildingAvailability;
@@ -116,6 +118,9 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
     caches.push(created);
     return created;
   };
+  const reach = cache<SignpostReachView | null>({
+    same: (a, b) => a?.key === b?.key && a?.player === b?.player,
+  });
   const locks = cache<boolean>();
   const counts = cache<number>();
   const offersOf = cache<readonly TradeOffer[]>({ same: samePlainData });
@@ -152,6 +157,8 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
     host.vehiclesAttachableBy(settler as Entity).then((ids) => new Set(ids));
 
   return {
+    signpostReach: (player) =>
+      reach.read(`${player}`, () => host.signpostReach(player), host.signpostReachVersion()) ?? null,
     diplomacyView: {
       hasMetPlayer: (viewer, other) => host.hasMetPlayer(viewer, other),
       diplomacyStance: (from, to) => host.diplomacyStance(from, to),
@@ -215,7 +222,12 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
       perTick(missionEntities, `human:${missionId}`, () => host.missionHuman(missionId)) ?? null,
     versions: {
       unitPanel: () =>
-        statuses.version + stands.version + workStatuses.version + traders.version + offersAt.version,
+        statuses.version +
+        stands.version +
+        workStatuses.version +
+        traders.version +
+        offersAt.version +
+        reach.version,
       technology: () => statuses.version,
       attachPicks: () => tradeHouses.version + vehicles.version,
       jobChoices: () => jobChoices.version,

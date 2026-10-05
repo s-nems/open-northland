@@ -18,7 +18,7 @@ import { equipFetchesUnderway } from '../../settlers/drives/equip-fetches.js';
 import { freeSlotFor, type GrantSpec } from '../../settlers/planner/assistant-grants.js';
 import { approachNode, armingGoodPreference } from '../../settlers/planner/recruit-arming.js';
 import { FetchableStock, interactionCell, storeYieldsGood } from '../../settlers/targets/index.js';
-import { networkLimitAt } from '../../signposts/index.js';
+import { goodsSearchLimitAt } from '../../signposts/reach.js';
 import { accessibleStockAmounts } from '../../stores/index.js';
 import { seatBarracksOf } from '../base.js';
 import { goodTypeByContentId } from '../content-lookup.js';
@@ -191,7 +191,7 @@ function spareStock(
   const door: NodeId = interactionCell(world, ctx, terrain, barracks);
   const spare = new Map<number, number>();
   const walls = buildingBlockedCells(world, ctx, terrain);
-  const reach = networkLimitAt(world, terrain, player, terrain.xOf(door), terrain.yOf(door));
+  const reach = goodsSearchLimitAt(world, ctx.content, terrain, player, terrain.xOf(door), terrain.yOf(door));
   // Only the stores the ledger lists as lending a good are read, so the walk is over the holders of the
   // few outfit goods rather than every heap on the map; the totals are sums, so their order is moot.
   const ledger = FetchableStock.of(world, ctx);
