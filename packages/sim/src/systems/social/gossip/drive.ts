@@ -19,13 +19,19 @@ import {
   Wedding,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
+import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { System, SystemContext } from '../../context.js';
 import { carriesNeeds, NEED_DRIVE_THRESHOLD, needLevel } from '../../lifecycle/needs/index.js';
 import { stopAtNextNode } from '../../movement/nav-state.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../../rendezvous.js';
+import {
+  approachPartner,
+  driveMirroredPairs,
+  haltBeside,
+  standsBeside,
+  startPairedAtomics,
+} from '../../rendezvous.js';
 
 /** Ticks after a chat ends before either half chats again, the {@link ChatCooldown} breather that lets the
  *  freed settlers' work rungs reclaim them. Authored value, ~3 s at the 12 Hz tick. */
@@ -140,8 +146,8 @@ function drivePair(
     return;
   }
   if (terrain !== undefined && stopAtNextNode(world, terrain, b)) return;
-  if (nodesAdjacent(na, nb)) {
-    if (terrain !== undefined && stopAtNextNode(world, terrain, a)) return;
+  if (standsBeside(na, nb)) {
+    if (terrain !== undefined && haltBeside(world, terrain, a)) return;
     // Standing together: run one talk/listen round on a shared clock, the longer of the two bound clips.
     const talker = ca.speaks ? a : b;
     const listener = ca.speaks ? b : a;
@@ -156,6 +162,7 @@ function drivePair(
     world.mut(b, Chat).talking = true;
     return;
   }
-  // Apart: the seeker walks, the sought half waits; an unreachable partner ends the chat.
+  // Apart or on one node: the seeker walks beside the sought half, which waits; an unreachable partner
+  // ends the chat.
   approachPartner(world, ctx, a, b, nb, () => endChat(world, ctx.tick, a));
 }

@@ -57,6 +57,22 @@ function gossiperBeside(sim: Simulation, x: number, y: number, enjoyment: Fixed)
   return e;
 }
 
+/** Step until the seeker speaks its first round, then where the pair stands: on neighbouring nodes, and
+ *  whether on one shared node. */
+function talkingNodes(
+  sim: Simulation,
+  seeker: Entity,
+  partner: Entity,
+): { beside: boolean; shared: boolean } {
+  for (let i = 0; i < 300 && sim.world.tryGet(seeker, CurrentAtomic)?.atomicId !== TALK; i++) sim.step();
+  expect(sim.world.get(seeker, CurrentAtomic).atomicId).toBe(TALK);
+  const ps = sim.world.get(seeker, Position);
+  const pp = sim.world.get(partner, Position);
+  const ns = nodeOfPosition(ps.x, ps.y);
+  const np = nodeOfPosition(pp.x, pp.y);
+  return { beside: nodesAdjacent(ns, np), shared: ns.hx === np.hx && ns.hy === np.hy };
+}
+
 describe('gossip initiation (planner rungs)', () => {
   it('a lonely worker leaves its work to chat with a nearby idle settler', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
@@ -388,6 +404,36 @@ describe('gossip chat rounds (GossipSystem)', () => {
     const pp = sim.world.get(partner, Position);
     expect(nodesAdjacent(nodeOfPosition(ps.x, ps.y), nodeOfPosition(pp.x, pp.y))).toBe(true);
     expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  // A steep diagonal route reaches the partner's node through a diagonal midpoint, where the seeker
+  // already stands beside it but its live step still ends on the partner's node.
+  it.each([
+    [3, -6],
+    [-3, 6],
+  ])('a seeker approaching from node offset (%i, %i) talks beside its partner, not on its node', (dx, dy) => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(16, 16) });
+    const seeker = gossiper(sim, 0, 0, LONELY);
+    const partner = gossiper(sim, 0, 0, fx.fromInt(0));
+    const partnerNode = { hx: 16, hy: 15 };
+    Object.assign(sim.world.mut(partner, Position), positionOfNode(partnerNode.hx, partnerNode.hy));
+    Object.assign(sim.world.mut(seeker, Position), positionOfNode(partnerNode.hx + dx, partnerNode.hy + dy));
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(seeker, Chat).partner).toBe(partner);
+
+    expect(talkingNodes(sim, seeker, partner)).toEqual({ beside: true, shared: false });
+  });
+
+  it('a pair standing on one node steps apart before it talks', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 3) });
+    const seeker = gossiper(sim, 1, 1, LONELY);
+    const partner = gossiper(sim, 8, 1, fx.fromInt(0));
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(seeker, Chat).partner).toBe(partner);
+    // As a grabbed partner finishing its step onto the seeker's node leaves them.
+    Object.assign(sim.world.mut(seeker, Position), sim.world.get(partner, Position));
+
+    expect(talkingNodes(sim, seeker, partner)).toEqual({ beside: true, shared: false });
   });
 
   it('a pressing survival need cancels the chat (company never outranks hunger)', () => {

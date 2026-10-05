@@ -11,12 +11,18 @@ import {
 } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition, nodesAdjacent } from '../../nav/halfcell.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { stopAtNextNode } from '../movement/nav-state.js';
 import { atomicDuration } from '../readviews/animations.js';
-import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../rendezvous.js';
+import {
+  approachPartner,
+  driveMirroredPairs,
+  haltBeside,
+  standsBeside,
+  startPairedAtomics,
+} from '../rendezvous.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { stepOut } from '../settlers/indoors.js';
 
@@ -115,8 +121,8 @@ function drivePair(
     return;
   }
   if (terrain !== undefined && stopAtNextNode(world, terrain, b)) return;
-  if (nodesAdjacent(na, nb)) {
-    if (terrain !== undefined && stopAtNextNode(world, terrain, a)) return;
+  if (standsBeside(na, nb)) {
+    if (terrain !== undefined && haltBeside(world, terrain, a)) return;
     // Both play the paired kiss on one clock: the longer of the two bound clips.
     const duration = Math.max(
       atomicDuration(ctx.content, world.get(a, Settler), KISS_ATOMIC_ID),
@@ -127,6 +133,6 @@ function drivePair(
     world.mut(b, Wedding).kissing = true;
     return;
   }
-  // Apart: the lower id walks and the higher waits, whoever issued `marry` (canonical).
+  // Apart or on one node: the lower id walks and the higher waits, whoever issued `marry` (canonical).
   approachPartner(world, ctx, a, b, nb, () => cancelWedding(world, a));
 }
