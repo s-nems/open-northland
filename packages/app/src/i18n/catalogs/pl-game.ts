@@ -222,6 +222,18 @@ export const plGame = {
     tradeNotFriends: 'Handluje tylko z przyjaznym plemieniem',
     tradeExchange: 'Oddano {given}/{giveAmount}, odebrano {received}/{takeAmount}',
     tradeOffers: 'Umowy handlowe',
+    systemMenuDetails: {
+      resume: 'Powrót do gry',
+      paused: 'Gra wstrzymana',
+      multiplayer: 'Rozgrywka sieciowa trwa dalej',
+      support: 'Pomoc techniczna',
+      back: 'Menu gry',
+      settingsHint: 'Dostosuj grę do siebie',
+      restoreTitle: 'Przywrócić ustawienia?',
+      restoreMessage:
+        'Przywróci to domyślne ustawienia wszystkich kategorii, w tym własne skróty klawiszowe.',
+      cancel: 'Anuluj',
+    },
     systemMenu: 'Menu',
     skirmishGoal: 'Pokonaj wszystkich rywali w rozgrywce.',
     matchWonTitle: 'Misja wypełniona!',

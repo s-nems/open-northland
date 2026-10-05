@@ -55,6 +55,7 @@ import type { DiplomacyPanelRow } from '../../hud/dom/diplomacy-window/model.js'
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
 import { mountHudDomRoot } from '../../hud/dom/root.js';
+import { createSystemMenu } from '../../hud/dom/system-menu.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-card/building.js';
 import type { HoverOwnerContext } from '../../hud/hover-card/owner.js';
 import { type SettlerHoverContext, settlerHoverModel } from '../../hud/hover-card/settler.js';
@@ -111,7 +112,6 @@ import { createScriptEffects } from '../script-effects.js';
 import { createScriptMarkers } from '../script-markers.js';
 import { patchStoredSettings, readStoredSettings } from '../settings-store.js';
 import { createShortfallLook } from '../speed-shortfall.js';
-import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
 import { createUnitControls, type UnitControls } from '../unit-controls/index.js';
 import { createWeatherFeed } from '../weather-feed.js';
@@ -1029,8 +1029,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         releaseForcedPause: () => pauseHolds.release(PAUSE_HOLDER_MENU),
       },
       settings: liveSettings.settings,
+      hud: hudDom,
       setCameraSuspended: cameraCtl.setSuspended,
       canLoad: !sharedClock,
+      pauseStopsClock: !sharedClock,
       ...(deps.netPanel !== undefined ? { onNetwork: () => toolPanel.controller.openNetwork() } : {}),
     });
 

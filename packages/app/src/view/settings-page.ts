@@ -30,6 +30,7 @@ export interface SettingsPageStore {
 export interface SettingsPageHandle {
   readonly el: HTMLElement;
   render(): void;
+  suspend(): void;
   dispose(): void;
 }
 
@@ -51,9 +52,12 @@ export function createSettingsPage(opts: {
   readonly onLanguageChange?: () => void;
   /** False while the host keeps the page mounted but hidden; viewport changes then skip re-rendering. */
   readonly visible?: () => boolean;
+  readonly hud?: boolean;
+  readonly confirmRestore?: () => Promise<boolean>;
 }): SettingsPageHandle {
   const root = document.createElement('div');
   root.className = 'main-menu__settings-page';
+  if (opts.hud === true) root.classList.add('on-settings');
   const scope = new AbortController();
   if (opts.signal.aborted) scope.abort();
   else
@@ -100,6 +104,7 @@ export function createSettingsPage(opts: {
 
     const nav = document.createElement('nav');
     nav.className = 'main-menu__settings-nav';
+    nav.setAttribute('aria-label', copy.screenTitles.settings);
     const panel = document.createElement('div');
     panel.className = 'main-menu__settings-panel';
     const status = document.createElement('p');
@@ -298,7 +303,21 @@ export function createSettingsPage(opts: {
     };
     renderPanel = (): void => {
       controls?.disarm();
-      panel.replaceChildren(...rowsFor[opts.memory.tab]());
+      const rows = rowsFor[opts.memory.tab]();
+      if (opts.hud === true) {
+        for (const row of rows) {
+          const tip = row.dataset.tip;
+          const label = row.querySelector('.main-menu__settings-label');
+          if (tip === undefined || label === null) continue;
+          const help = document.createElement('small');
+          help.className = 'on-settings__help';
+          help.textContent = tip;
+          label.append(help);
+          delete row.dataset.tip;
+        }
+      }
+      panel.replaceChildren(...rows);
+      panel.scrollTop = 0;
     };
     paintTabs();
     renderPanel();
@@ -317,7 +336,9 @@ export function createSettingsPage(opts: {
     restore.className = 'main-menu__ghost';
     restore.dataset.settingsFocus = 'restore';
     restore.textContent = text.restoreDefaults;
-    restore.addEventListener('click', () => {
+    restore.addEventListener('click', async () => {
+      if (opts.confirmRestore !== undefined && !(await opts.confirmRestore())) return;
+      if (scope.signal.aborted) return;
       const displayReset = displayMode.reserve(defaultDisplayMode());
       const { displayMode: _displayMode, ...defaults } = defaultSettings();
       void opts.settings.update(defaults).then((applied) => {
@@ -347,5 +368,5 @@ export function createSettingsPage(opts: {
   scope.signal.addEventListener('abort', () => controls?.disarm());
 
   render();
-  return { el: root, render, dispose: () => scope.abort() };
+  return { el: root, render, suspend: () => controls?.disarm(), dispose: () => scope.abort() };
 }

@@ -130,3 +130,31 @@ export function slotList(
   };
   return { box, refresh };
 }
+
+export const SAVE_PANEL_STYLE = [
+  'min-width:220px',
+  'max-width:calc(100vw - 32px)',
+  'max-height:calc(100dvh - 32px)',
+  'box-sizing:border-box',
+  'overflow-y:auto',
+  'display:flex',
+  'flex-direction:column',
+  'gap:10px',
+  'padding:20px',
+  'background:rgba(20,16,12,0.96)',
+  'color:#e8dcc0',
+  'font:15px/1.4 ui-serif,Georgia,serif',
+  'border:1px solid rgba(138,116,74,0.7)',
+  'border-radius:8px',
+  'box-shadow:0 8px 32px rgba(0,0,0,0.5)',
+].join(';');
+
+export const SAVE_BUTTON_STYLE = [
+  'padding:8px 14px',
+  'background:rgba(74,63,40,0.9)',
+  'color:#e8dcc0',
+  'font:inherit',
+  'border:1px solid rgba(138,116,74,0.7)',
+  'border-radius:5px',
+  'cursor:var(--cursor-pointer, pointer)',
+].join(';');
