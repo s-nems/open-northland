@@ -26,10 +26,13 @@ const CIVILIANS = [
 const WOMAN = { x: 11, y: 14 } as const;
 const SCOUT = { x: 14, y: 10 } as const;
 const POSTED_NAME = 'Olaf';
+const ORDERED_NAME = 'Sven';
+/** The walk order's goal, in half-cell nodes: the far home's door side, past the walk range like the bakery. */
+const ORDERED_GOAL = { x: 2 * FAR_HOME.x, y: 2 * FAR_HOME.y } as const;
 const RUN_TICKS = 300;
 const INITIAL_ZOOM = 0.6;
 
-const { GivenName, JobAssignment, LostWay, Position } = components;
+const { GivenName, JobAssignment, LostWay, MoveGoal, PathFollow, Position } = components;
 
 function named(sim: Simulation, name: string): Entity | undefined {
   for (const e of sim.world.query(GivenName)) {
@@ -45,7 +48,9 @@ function build(sim: Simulation): void {
   placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, FAR_HOME.x, FAR_HOME.y);
   const posted = spawnSettlerDirect(sim, JOB_CIVILIST, POSTED.x, POSTED.y);
   sim.world.add(posted, GivenName, { name: POSTED_NAME });
-  for (const at of CIVILIANS) spawnSettlerDirect(sim, JOB_CIVILIST, at.x, at.y);
+  const civilians = CIVILIANS.map((at) => spawnSettlerDirect(sim, JOB_CIVILIST, at.x, at.y));
+  const ordered = civilians[0];
+  if (ordered !== undefined) sim.world.add(ordered, GivenName, { name: ORDERED_NAME });
   spawnSettlerDirect(sim, JOB_WOMAN, WOMAN.x, WOMAN.y);
   spawnSettlerDirect(sim, JOB_SCOUT, SCOUT.x, SCOUT.y);
   // The runtime turns progression off only after the build, too late for this tick-0 order. The job list
@@ -53,6 +58,11 @@ function build(sim: Simulation): void {
   sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: false });
   const jobPriority = assignmentPriority(buildingDef(sim, BUILDING_BAKERY)?.workers);
   sim.enqueueSetup({ kind: 'assignWorker', entity: posted, building: bakery, jobPriority });
+  // A walk order past the signposts is refused and leaves its man standing lost, with the lost note and
+  // its goal to jump to; the posting above is obeyed instead, the post being the player's choice.
+  if (ordered !== undefined) {
+    sim.enqueueSetup({ kind: 'moveUnit', entity: ordered, x: ORDERED_GOAL.x, y: ORDERED_GOAL.y });
+  }
 }
 
 export const farPostScene: SceneDefinition = {
@@ -72,14 +82,25 @@ export const farPostScene: SceneDefinition = {
       },
     },
     {
-      label: 'Olaf stands lost by the camp, his status naming the workplace beyond signpost reach',
+      label: 'Olaf walks to the far bakery past his signposts, not lost',
       predicate: (sim) => {
         const olaf = named(sim, POSTED_NAME);
         return (
           olaf !== undefined &&
-          sim.world.has(olaf, LostWay) &&
-          fx.toInt(sim.world.get(olaf, Position).x) < FAR_BAKERY.x / 2 &&
-          sim.workStatus(olaf)?.kind === 'workplaceOutOfReach'
+          !sim.world.has(olaf, LostWay) &&
+          (sim.world.has(olaf, PathFollow) || sim.world.has(olaf, MoveGoal)) &&
+          fx.toInt(sim.world.get(olaf, Position).x) > POSTED.x
+        );
+      },
+    },
+    {
+      label: 'Sven stands lost by the camp over the walk order past his signposts, its goal marked',
+      predicate: (sim) => {
+        const sven = named(sim, ORDERED_NAME);
+        return (
+          sven !== undefined &&
+          sim.world.tryGet(sven, LostWay)?.goal != null &&
+          fx.toInt(sim.world.get(sven, Position).x) < FAR_HOME.x / 2
         );
       },
     },

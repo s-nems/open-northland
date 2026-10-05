@@ -19,6 +19,7 @@ export interface SettlerPanelHost {
   readonly selectEntity: (id: number) => void;
   readonly selectGroup: (ids: readonly number[]) => void;
   readonly centre: (id: number) => void;
+  readonly centreNode: (node: number) => void;
   readonly openOrders: (press: OrdersPress) => void;
   readonly closeOrders: () => void;
   readonly assignWorkplace: (id: number) => void;
@@ -50,6 +51,7 @@ export function settlerPanelActions(
   const enqueue = opts.enqueue;
   return {
     centre: view(host.centre),
+    centreNode: view(host.centreNode),
     select: view(host.selectEntity),
     show: view((id: number) => {
       host.selectEntity(id);

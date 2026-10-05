@@ -22,6 +22,8 @@ export interface TradeMarkChange {
  */
 export interface SettlerPanelActions {
   readonly centre: (id: number) => void;
+  /** Centre the view on a half-cell node id: a lost settler's refused goal. */
+  readonly centreNode: (node: number) => void;
   /** A link: the workplace, the home, the spouse or the child. */
   readonly select: (id: number) => void;
   /** Select this entity and bring it into view: a browse chevron or Tab, a trade stop's house. */

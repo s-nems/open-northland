@@ -265,6 +265,7 @@ describe('the settler panel’s rows', () => {
       label: 'Bezczynny',
       detail: null,
       trouble: true,
+      lostGoal: null,
       carrying: null,
     } as const;
     expect(statusText(status)).toBe('Bezczynny');
@@ -272,8 +273,9 @@ describe('the settler panel’s rows', () => {
   });
 
   it('colours the status dot amber for trouble, grey for a walk or a wait, green for anything done', () => {
-    const status = { label: '', detail: null, trouble: false, carrying: null } as const;
+    const status = { label: '', detail: null, trouble: false, lostGoal: null, carrying: null } as const;
     expect(statusTone({ ...status, state: 'idle', trouble: true })).toBe('trouble');
+    expect(statusTone({ ...status, state: 'lost', trouble: true })).toBe('trouble');
     expect(statusTone({ ...status, state: 'walking' })).toBe('neutral');
     expect(statusTone({ ...status, state: 'awaitingWorkplace' })).toBe('neutral');
     expect(statusTone({ ...status, state: 'talking' })).toBe('ok');

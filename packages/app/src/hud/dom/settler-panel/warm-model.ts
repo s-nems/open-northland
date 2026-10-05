@@ -2,12 +2,12 @@ import type { SettlerPanelModel } from '../../details-panel/model/index.js';
 
 /**
  * A made-up person that lights every part of the panel at once: sockets worn and empty, a bag, a
- * status with a carried good, bars at every tone, seat rows with a link, a missing seat and a refused
- * button, craft rows with a live, a stopped and a locked product, the military choices, a trade route
- * with transfers and a running agreement, and experience with an unlock. The panel paints it once
- * at map start (`SettlerPanel.warm`), so the browser's first raster of these styles (each a pipeline
- * it compiles on first use) happens behind the loading screen, not on the first click. Only the
- * shapes matter; the words are never read.
+ * status with a carried good and the lost goal's jump, bars at every tone, seat rows with a link, a
+ * missing seat and a refused button, craft rows with a live, a stopped and a locked product, the
+ * military choices, a trade route with transfers and a running agreement, and experience with an
+ * unlock. The panel paints it once at map start (`SettlerPanel.warm`), so the browser's first raster
+ * of these styles (each a pipeline it compiles on first use) happens behind the loading screen, not on
+ * the first click. Only the shapes matter; the words are never read.
  */
 export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
   const good = (index: number): { goodId: string } | Record<string, never> => {
@@ -54,6 +54,7 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
       label: 'Warm',
       detail: 'warm',
       trouble: true,
+      lostGoal: 0,
       carrying: { ...good(0), label: 'Warm', amount: 2 },
     },
     bars: [bar('Warm', 100), bar('Warm', 50, 'hunger'), bar('Warm', 25, 'fatigue'), bar('Warm', 10, 'piety')],

@@ -1,6 +1,7 @@
 import { messages } from '../../../i18n/index.js';
 import type { SettlerPanelModel, SettlerStatusModel } from '../../details-panel/model/index.js';
 import { goodIconMarkup } from '../good-art.js';
+import { GLYPH } from '../icons.js';
 import { button, element, setAttribute, setClass, setHidden, setTip, write } from '../parts/dom.js';
 import { createSocket, type Socket } from '../parts/socket.js';
 import type { SettlerPanelDeps } from './actions.js';
@@ -71,7 +72,12 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
   if (carryWord === undefined || carryGood === null || !(carryFrame instanceof HTMLElement)) {
     throw new Error('portrait: carried good');
   }
-  status.append(carrying);
+  let shownLostGoal: number | null = null;
+  const lostGoal = button('on-status-strip__button', GLYPH.center);
+  lostGoal.addEventListener('click', () => {
+    if (shownLostGoal !== null) actions.centreNode(shownLostGoal);
+  });
+  status.append(lostGoal, carrying);
   beside.append(equipment, status);
   row.append(frame, beside);
 
@@ -127,6 +133,10 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
       const tone = statusTone(model.status);
       setClass(status, 'on-status-strip--trouble', tone === 'trouble');
       setClass(status, 'on-status-strip--neutral', tone === 'neutral');
+      shownLostGoal = model.status.lostGoal;
+      setHidden(lostGoal, shownLostGoal === null);
+      setTip(lostGoal, copy.lostGoalHint);
+      setAttribute(lostGoal, 'aria-label', copy.lostGoal);
       const carried = model.status.carrying;
       setHidden(carrying, carried === null);
       if (carried !== null) {

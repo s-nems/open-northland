@@ -1,6 +1,7 @@
 import type { LostGoalMarker } from '@open-northland/render';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { lostGoalOf, ownerPlayerOf } from '../../game/snapshot.js';
+import { nodeOfId } from '../picking.js';
 
 /** One breath of a refused goal's marker. Wall-clock, so the mark keeps breathing while paused. */
 export const LOST_GOAL_PULSE_MS = 1800;
@@ -36,13 +37,7 @@ export function createLostGoals(nodeWidth: number): LostGoalsOf {
       if (goal !== undefined && !nodes.includes(goal)) nodes.push(goal);
     }
     if (nodes.length === last.length && nodes.every((node, i) => last[i]?.node === node)) return last;
-    last =
-      nodes.length === 0
-        ? NONE
-        : nodes.map((node) => {
-            const hx = node % nodeWidth;
-            return { node, hx, hy: (node - hx) / nodeWidth };
-          });
+    last = nodes.length === 0 ? NONE : nodes.map((node) => ({ node, ...nodeOfId(node, nodeWidth) }));
     return last;
   };
 }

@@ -1,4 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
+import { projectNode } from '@open-northland/render';
 import { type Entity, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
 import { holdsHaulFlagPost } from '../../game/snapshot.js';
 import { technologyReason } from '../../game/technology.js';
@@ -27,6 +28,7 @@ import { keyDisplayLabel } from '../../hud/keybindings.js';
 import { createReplaceableMount } from '../../hud/replaceable-mount.js';
 import { messages } from '../../i18n/index.js';
 import { screenScale } from '../camera/index.js';
+import { nodeBounds, nodeOfId } from '../picking.js';
 import { entityAnchor, memoBySnapshot } from '../projections/index.js';
 import { createTooltip } from '../tooltip.js';
 import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
@@ -129,6 +131,12 @@ export async function createUnitChrome(
     const at = entityAnchor(opts.snapshot(), id, opts.elevation);
     if (at !== null) opts.centerOn(at.x, at.y);
   };
+  const nodeWidth = nodeBounds(opts.mapSize).width;
+  const centreNode = (node: number): void => {
+    const { hx, hy } = nodeOfId(node, nodeWidth);
+    const at = projectNode(opts.elevation, hx, hy);
+    opts.centerOn(at.x, at.y);
+  };
   const keyLabel = (action: 'actionRing'): string => {
     const binding = opts.bindings[action];
     return binding === null ? messages().mainMenu.settings.bindingUnassigned : keyDisplayLabel(binding);
@@ -173,6 +181,7 @@ export async function createUnitChrome(
       selectEntity: callbacks.selectEntity,
       selectGroup: callbacks.selectGroup,
       centre,
+      centreNode,
       openOrders: (press) => {
         const edge = tradeWindow.clientRight();
         mounts

@@ -178,6 +178,7 @@ export type SettlerState =
   | 'awaitingWorkplace'
   | 'awaitingTraining'
   | 'standingTo'
+  | 'lost'
   | 'idle';
 
 /**
@@ -251,6 +252,9 @@ function liveSettlerState(
   // Hunger took it off its orders: the walk to food is not the order's, and the orders wait for it.
   if ('MealBreak' in components) return 'mealBreak';
   if ('PathFollow' in components || 'MoveGoal' in components) return 'walking';
+  // Below the live rungs: a cut-off settler keeps `LostWay` through a meal or an errand in reach, which
+  // reads as what it is; standing, it reads lost.
+  if ('LostWay' in components) return 'lost';
   // Waiting out a workplace still going up is by design; without its own caption it reads as idleness.
   if (awaitsItsWorkplace(snapshot, components)) return 'awaitingWorkplace';
   // Sent ahead to a barracks or school foundation, it waits beside the door until the house stands.

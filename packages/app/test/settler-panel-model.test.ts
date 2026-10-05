@@ -48,6 +48,8 @@ const IRON_ABOARD = 2;
 /** An import mark's fill ceiling and source reserve, in units. */
 const IRON_CEILING = 10;
 const IRON_RESERVE = 2;
+/** A half-cell node a lost settler's refused way led to. */
+const LOST_GOAL = 345;
 
 const owned = (components: Record<string, unknown>): Record<string, unknown> => ({
   Owner: { player: HUMAN_PLAYER },
@@ -392,6 +394,35 @@ describe('the settler panel model', () => {
     const fetching = settlerModel(world({ MoveGoal: { cell: 5 } }), withStatus(waiting));
     expect(fetching.status.state).toBe('walking');
     expect(fetching.status.detail).toBeNull();
+  });
+
+  it('reads a lost settler as lost, in amber, with the jump to its refused goal', () => {
+    const copy = messages().hud;
+    const lost = (goal: number | null, live: Record<string, unknown> = {}, player = HUMAN_PLAYER) =>
+      settlerModel(
+        [
+          {
+            id: SETTLER,
+            components: {
+              Owner: { player },
+              Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+              LostWay: { cutOff: true, since: 0, goal },
+              ...live,
+            },
+          },
+        ],
+        { ...sandboxCtx(), diplomacyStance: () => 'neutral' },
+      ).status;
+    expect(lost(LOST_GOAL)).toMatchObject({
+      state: 'lost',
+      label: copy.statuses.lost.he,
+      detail: copy.settlerPanel.lostDetail,
+      trouble: true,
+      lostGoal: LOST_GOAL,
+    });
+    expect(lost(LOST_GOAL, { Female: {} }).label).toBe(copy.statuses.lost.she);
+    expect(lost(null).lostGoal).toBeNull(); // no single node was out of reach: nothing to jump to
+    expect(lost(LOST_GOAL, {}, OTHER_SEAT).lostGoal).toBeNull(); // another seat's goal stays its own
   });
 
   it('shows another seat’s person read-only: health, workplace, owner line, no controls', () => {

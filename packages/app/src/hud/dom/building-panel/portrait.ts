@@ -131,7 +131,7 @@ export function createPortraitSection(
   const text = status.lastElementChild;
   if (!(text instanceof HTMLElement)) throw new Error('building portrait: status');
   status.tabIndex = 0;
-  const bell = button('on-status-strip__bell', GLYPH.bell);
+  const bell = button('on-status-strip__button', GLYPH.bell);
   bell.addEventListener('click', () => {
     const shown = current();
     const alarm = shown?.orders?.alarm;
@@ -236,7 +236,7 @@ export function createPortraitSection(
           alarm.on ? copy.buildingPanel.orders.alarmOff : copy.buildingPanel.orders.alarmOn,
         );
         setAttribute(bell, 'aria-pressed', String(alarm.on));
-        setClass(bell, 'on-status-strip__bell--on', alarm.on);
+        setClass(bell, 'on-status-strip__button--on', alarm.on);
       }
     },
   };

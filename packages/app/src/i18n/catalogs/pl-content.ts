@@ -389,7 +389,7 @@ export const plContent = {
     'far-post': {
       title: 'Przydział poza zasięgiem drogowskazów',
       summary:
-        'Piekarnia i dom stoją 52 kafle od obozu, bez drogowskazów pomiędzy. Olaf ma przydział do piekarni, ale stoi zgubiony. Przypisz PPM innych osadników do piekarni, domu albo kwatery, a zwiadowcą postaw drogowskazy do piekarni: Olaf sam ruszy do pracy.',
+        'Piekarnia i dom stoją 52 kafle od obozu, bez drogowskazów pomiędzy. Olaf ma przydział do piekarni i idzie tam mimo braku drogowskazów, bo to wybór gracza. Sven dostał rozkaz marszu do domu: rozkaz odrzucony, Sven stoi zgubiony, a jego karta i panel pokazują cel, do którego nie zna drogi. Wydaj PPM innym osadnikom marsz do domu, by zobaczyć to samo.',
     },
     'store-reach': {
       title: 'Magazyn poza zasięgiem drogowskazów',

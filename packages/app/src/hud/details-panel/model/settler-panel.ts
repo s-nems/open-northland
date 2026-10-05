@@ -4,7 +4,9 @@ import { settlerName } from '../../../game/character-names/index.js';
 import {
   childAgeYearsOf,
   childOrderWaitOf,
+  isFemale,
   isPlayerControllable,
+  lostGoalOf,
   needsRuleEnabled,
   num,
   ownerPlayerOf,
@@ -64,8 +66,10 @@ export interface SettlerStatusModel {
   readonly state: SettlerState;
   readonly label: string;
   readonly detail: string | null;
-  /** A tradesman standing idle or waiting for its workshop: the line reads amber. */
+  /** A tradesman standing idle or waiting for its workshop, or anyone lost: the line reads amber. */
   readonly trouble: boolean;
+  /** The node a lost settler's refused way led to, which the strip's jump centres on; null offers none. */
+  readonly lostGoal: number | null;
   readonly carrying: CarriedGoodModel | null;
 }
 
@@ -152,6 +156,13 @@ function carriedGood(ctx: UnitPanelModelContext, comps: Comp): CarriedGoodModel 
   };
 }
 
+/** The state's words, agreeing with the person's sex where the wording does. */
+function statusLabel(state: SettlerState, female: boolean): string {
+  const line = messages().hud.statuses[state];
+  if (typeof line === 'string') return line;
+  return female ? line.she : line.he;
+}
+
 /**
  * The detail after the state's dot: a lesson's progress, a trader's destination, the product being
  * made, or the reason a tradesman stands idle, or a wife her held child order. The product and the
@@ -166,6 +177,7 @@ function statusDetail(
   trade: TradePanelModel | null,
 ): string | null {
   const copy = messages().hud.settlerPanel;
+  if (state === 'lost') return copy.lostDetail;
   if (work.lesson !== null) return work.lesson;
   const heading = trade?.stops.find((stop) => stop.heading);
   if (heading !== undefined && state === 'walking') {
@@ -200,10 +212,13 @@ export function settlerPanelModel(
   const state = settlerStatus(ctx, snapshot, ent.id, comps);
   const status: SettlerStatusModel = {
     state,
-    label: messages().hud.statuses[state],
+    label: statusLabel(state, isFemale(ent)),
     detail: statusDetail(ctx, ent, state, role, work, trade),
     trouble:
-      (state === 'idle' || state === 'awaitingWorkplace') && (role === 'worker' || role === 'civilian'),
+      state === 'lost' ||
+      ((state === 'idle' || state === 'awaitingWorkplace') && (role === 'worker' || role === 'civilian')),
+    // Another seat's refused goal stays its own, as the map marks only the viewer's lost settlers.
+    lostGoal: state === 'lost' && !foreign ? (lostGoalOf(ent) ?? null) : null,
     carrying: carriedGood(ctx, comps),
   };
   const hero = role === 'hero';

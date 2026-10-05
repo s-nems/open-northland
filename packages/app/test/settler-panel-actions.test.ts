@@ -44,6 +44,7 @@ function harness(
       selectEntity: () => undefined,
       selectGroup: () => undefined,
       centre: () => undefined,
+      centreNode: () => undefined,
       openOrders: () => undefined,
       closeOrders: () => undefined,
       assignWorkplace: () => undefined,

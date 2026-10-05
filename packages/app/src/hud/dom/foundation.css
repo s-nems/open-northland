@@ -5997,8 +5997,9 @@ body.on-drag-scroll * {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* The alarm bell at the status strip's end: dim while the alarm is down, gold while it is up. */
-.on-hud .on-status-strip__bell {
+/* A glyph button at the status strip's end: a building's alarm bell, dim while the alarm is down and gold
+   while it is up, or the jump to a lost settler's refused goal. */
+.on-hud .on-status-strip__button {
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -6011,16 +6012,16 @@ body.on-drag-scroll * {
   background: none;
   color: var(--muted);
 }
-.on-hud .on-status-strip__bell .on-glyph {
+.on-hud .on-status-strip__button .on-glyph {
   width: 14px;
   height: 14px;
 }
-.on-hud .on-status-strip__bell:hover,
-.on-hud .on-status-strip__bell:focus-visible {
+.on-hud .on-status-strip__button:hover,
+.on-hud .on-status-strip__button:focus-visible {
   color: #fff6de;
   box-shadow: inset 0 0 0 1px var(--bronze-lo);
 }
-.on-hud .on-status-strip__bell--on {
+.on-hud .on-status-strip__button--on {
   color: var(--active);
   filter: drop-shadow(0 0 3px #e3b86888);
 }

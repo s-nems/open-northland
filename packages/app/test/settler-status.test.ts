@@ -94,6 +94,20 @@ describe('the settler status caption', () => {
     expect(status({ CurrentAtomic: { effect: { kind: 'eat' } } })).toBe('eating');
   });
 
+  it('reads lost for a settler standing lost, cut off or over its own walk, below the live rungs', () => {
+    const snapshot = snapshotOf(siteWorld(false));
+    const alert = ctxOf(() => true);
+    const status = (live: Record<string, unknown>): string =>
+      settlerStatus(alert, snapshot, SETTLER, comps(WORKPLACE, live));
+    const lost = (cutOff: boolean) => ({ LostWay: { cutOff, since: 0, goal: null } });
+    expect(status(lost(true))).toBe('lost');
+    expect(status(lost(false))).toBe('lost'); // above the alert: a lost unit stands for its lack of a way
+    // A cut-off settler keeps its mark through a meal or an errand in reach, which reads as what it is.
+    expect(status({ ...lost(true), CurrentAtomic: { effect: { kind: 'eat' } } })).toBe('eating');
+    expect(status({ ...lost(true), MoveGoal: {} })).toBe('walking');
+    expect(status({ ...lost(false), Chat: { talking: true } })).toBe('talking');
+  });
+
   it('reads "standing to" for the unit the sim says is holding its ground', () => {
     const snapshot = snapshotOf(siteWorld(false));
     const asked: number[] = [];

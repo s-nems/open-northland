@@ -115,6 +115,12 @@ export function nodeBounds(mapSize: { readonly width: number; readonly height: n
   return { width: mapSize.width * 2, height: mapSize.height * 2 };
 }
 
+/** The `(hx, hy)` of a sim node id, which numbers the lattice row by row, `nodeWidth` nodes per row. */
+export function nodeOfId(node: number, nodeWidth: number): { hx: number; hy: number } {
+  const hx = node % nodeWidth;
+  return { hx, hy: (node - hx) / nodeWidth };
+}
+
 /** The node band covering an inclusive cell range; each cell contributes its whole 2x2 node block. */
 export function nodeBandOfCells(cells: {
   readonly minCol: number;
