@@ -29,6 +29,7 @@ import {
 import { nearestWorkFlagPlacement } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { jobChangesProduction } from '../../readviews/jobs.js';
+import { markIfPostedOutOfReach } from '../../settlers/drives/cut-off.js';
 import { workplaceStocksGood, workplaceStoredGoods } from '../../stores/index.js';
 import { dropOrderQueue, isOrderableSettler } from '../guards.js';
 
@@ -48,9 +49,9 @@ const WORK_FLAG_SNAP_MAX_RADIUS = 6;
  * its work anchor and sink.
  *
  * The clicked node snaps to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}, so "work this
- * iron mine" lands on the ore itself. The snap ignores the settler's signpost confinement: the flag is the
- * player's choice, and the settler walks to it past its signposts, working within reach of the flag from
- * there (owner ruling). The order on any other trade is a no-op rather than a stray flag.
+ * iron mine" lands on the ore itself. The snap ignores the settler's signpost confinement: the flag may
+ * land beyond it, and its settler then stands lost, told at once, until the network reaches the flag
+ * (owner ruling). The order on any other trade is a no-op rather than a stray flag.
  */
 export function setWorkFlag(
   world: World,
@@ -80,17 +81,17 @@ export function setWorkFlag(
   const pos = positionOfNode(c.x, c.y);
   if (hauls) {
     bindHaulFlag(world, e, pos);
-    return;
+  } else {
+    // A moved flag restarts the search from it: the node being approached may lie outside the new radius.
+    if (world.has(e, HarvestFocus)) world.remove(e, HarvestFocus);
+    if (live !== undefined) {
+      relocateWorkFlag(world, live.flag, pos, e);
+    } else {
+      bindFreshFlag(world, ctx, e, pos);
+      clearNavState(world, e);
+    }
   }
-
-  // A moved flag restarts the search from it: the node being approached may lie outside the new radius.
-  if (world.has(e, HarvestFocus)) world.remove(e, HarvestFocus);
-  if (live !== undefined) {
-    relocateWorkFlag(world, live.flag, pos, e);
-    return;
-  }
-  bindFreshFlag(world, ctx, e, pos);
-  clearNavState(world, e);
+  markIfPostedOutOfReach(world, ctx, e);
 }
 
 /** Take a posted carrier's pickup flag away - see the command doc. */

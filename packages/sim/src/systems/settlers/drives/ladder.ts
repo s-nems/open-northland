@@ -43,7 +43,7 @@ import type { PlannerPass } from '../planner/pass.js';
 import { combatOwnsFeet } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
 import { planHomeTopUp } from './at-home.js';
-import { cutOffCheckDue, reconcileCutOff, strandedWorkplaceDoor } from './cut-off.js';
+import { cutOffCheckDue, reconcileCutOff, strandedPost } from './cut-off.js';
 import {
   builderWorkBeyondReach,
   planBuilder,
@@ -62,7 +62,7 @@ import { planFarmer } from './farming/index.js';
 import { planGraduateWait } from './graduate-wait.js';
 import { isServedAtHome } from './home-errands.js';
 import { planBreeder } from './husbandry/index.js';
-import { guideLostSettler, walkPastConfinement } from './lost-guide.js';
+import { guideLostSettler } from './lost-guide.js';
 import { answerNeedInPlace, orderedNeed, planMealBreak, planNeeds } from './needs.js';
 import { planShelter } from './shelter.js';
 import { deStackIdle, stepOffHomeDoor } from './spacing.js';
@@ -325,13 +325,11 @@ function planEconomy(
     return;
   }
 
-  // A worker posted beyond its signpost reach walks to its post regardless: the player chose it, and from
-  // there its trade works within reach of the post. One whose walk found no way stands lost until the
-  // network or the ground changes. A load still goes to its bound sink above, so it is never stranded in
-  // hand. Owner ruling; the original lets that walk fail on its guided pathfinder instead.
-  const post = strandedWorkplaceDoor(world, ctx, terrain, e, plan.limit);
-  if (post !== null) {
-    if (!walkPastConfinement(pass, e, plan.here, post)) standIdle(plan, pass, settler, hx, hy, alert);
+  // A worker posted or flagged beyond its signpost reach takes up no work until the network reaches the
+  // post: nothing but a scout or a fighter walks past its signposts. A load still goes to its bound sink
+  // above, so it is never stranded in hand.
+  if (strandedPost(world, ctx, terrain, e, plan.limit) !== null) {
+    standIdle(plan, pass, settler, hx, hy, alert);
     return;
   }
 

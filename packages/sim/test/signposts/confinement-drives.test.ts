@@ -21,6 +21,7 @@ import { testContent } from '../fixtures/content.js';
 import { stepToIdleReplan } from '../fixtures/idle-replan.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 import { justAbove, NEED_DRIVE_THRESHOLD } from '../settlers/needs/support.js';
+import { stampPost } from './support.js';
 
 /**
  * Signpost confinement over the AUTONOMOUS drives: with `setSignpostNavigation` on, every searched
@@ -47,6 +48,8 @@ const PLANK = 2;
 const FOOD = 3;
 const IN_AREA = 6;
 const OUT_OF_AREA = 40;
+/** Nodes per lattice row of the 192-tile strip. */
+const OUT_OF_AREA_ROW_NODES = 192;
 // Just over the shared the drive threshold needs threshold - enough to trigger the eat/pray drive on the next tick.
 const URGENT: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 
@@ -222,28 +225,36 @@ describe('confinement gates the carried-load delivery sink', () => {
 });
 
 describe('a workplace beyond signpost reach', () => {
-  it("binds, and the worker walks to it past its signposts, the post being the player's choice", () => {
+  it('binds, but the worker stands lost until signposts link the workplace and it gets there', () => {
     const sim = confinedSim();
     const u = ownedSettler(sim, 2, 2, WOODCUTTER);
     const far = sawmillAt(sim, OUT_OF_AREA, 2);
     sim.enqueueSetup({ kind: 'assignWorker', entity: u, building: far, jobPriority: [CARPENTER] });
     sim.step();
     expect(sim.world.get(u, JobAssignment).workplace).toBe(far);
-    expect(sim.world.has(u, LostWay)).toBe(false);
-    expect(sim.world.has(u, MoveGoal)).toBe(true); // sets off for its workplace at once
+    expect(sim.world.get(u, LostWay).cutOff).toBe(true);
+    expect(sim.workStatus(u)).toEqual({ kind: 'workplaceOutOfReach' });
+
     const start = sim.world.get(u, Position).x;
     for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS; t++) sim.step();
+    expect(sim.world.get(u, Position).x).toBe(start); // no walk to the far mill
+    expect(sim.world.has(u, LostWay)).toBe(true);
+
+    // A chain of posts under the link range: settler side, midway, mill side.
+    for (const x of [2, (2 + OUT_OF_AREA) / 2, OUT_OF_AREA - 2]) stampPost(sim, x, 2);
+    for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS && !sim.world.has(u, MoveGoal); t++) sim.step();
+    expect(sim.world.has(u, MoveGoal)).toBe(true); // sets off for its workplace on its own
+    expect(sim.world.has(u, LostWay)).toBe(false); // work taken is the way back
+    for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS; t++) sim.step();
     expect(sim.world.get(u, Position).x).toBeGreaterThan(start + ONE); // eastwards, to the mill
-    expect(sim.world.has(u, LostWay)).toBe(false);
     for (let t = 0; t < 10 * CUT_OFF_CHECK_TICKS && sim.world.has(u, MoveGoal); t++) sim.step();
-    expect(sim.world.get(u, Position).x).toBeGreaterThan(fx.fromInt(OUT_OF_AREA - 4));
     expect(sim.world.has(u, LostWay)).toBe(false);
-    expect(sim.workStatus(u)).not.toEqual({ kind: 'workplaceOutOfReach' }); // in reach from its post
+    expect(sim.world.get(u, Position).x).toBeGreaterThan(fx.fromInt(OUT_OF_AREA - 4));
   });
 });
 
 describe('a work flag beyond signpost reach', () => {
-  it('sends the gatherer there past its signposts, and it harvests around the flag', () => {
+  it('is planted, but the gatherer stands lost at once until signposts link the flag', () => {
     const sim = confinedSim();
     const u = ownedSettler(sim, 2, 2, WOODCUTTER);
     for (const dx of [-2, 0, 2]) woodAt(sim, OUT_OF_AREA + dx, 4);
@@ -251,14 +262,20 @@ describe('a work flag beyond signpost reach', () => {
     sim.enqueueSetup({ kind: 'setWorkFlag', entity: u, x: 2 * OUT_OF_AREA, y: 4 });
     sim.step();
     expect(sim.world.has(u, WorkFlag)).toBe(true);
+    expect(sim.world.get(u, LostWay)).toMatchObject({
+      cutOff: true,
+      goal: 4 * 2 * OUT_OF_AREA_ROW_NODES + 2 * OUT_OF_AREA,
+    });
+    expect(sim.events.current()).toContainEqual({ kind: 'settlerLost', entity: u });
+    const start = sim.world.get(u, Position).x;
+    for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS; t++) sim.step();
+    expect(sim.world.get(u, Position).x).toBe(start); // no walk to the flag
+    expect(sim.world.has(u, LostWay)).toBe(true);
+
+    for (const x of [2, (2 + OUT_OF_AREA) / 2, OUT_OF_AREA - 2]) stampPost(sim, x, 2);
     const felling = (): boolean => sim.world.tryGet(u, CurrentAtomic)?.effect.kind === 'harvest';
-    let notes = 0;
-    for (let t = 0; t < 12 * CUT_OFF_CHECK_TICKS && !felling(); t++) {
-      sim.step();
-      for (const ev of sim.events.current()) if (ev.kind === 'settlerLost' && ev.entity === u) notes++;
-    }
+    for (let t = 0; t < 12 * CUT_OFF_CHECK_TICKS && !felling(); t++) sim.step();
     expect(felling()).toBe(true);
-    expect(notes).toBe(0);
-    expect(sim.world.get(u, Position).x).toBeGreaterThan(fx.fromInt(OUT_OF_AREA - 4));
+    expect(sim.world.has(u, LostWay)).toBe(false);
   });
 });

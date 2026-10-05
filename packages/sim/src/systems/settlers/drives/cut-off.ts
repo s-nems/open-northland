@@ -1,12 +1,21 @@
-import { JobAssignment, LostWay, ownerOf, Person, Position } from '../../../components/index.js';
+import {
+  HaulFlag,
+  JobAssignment,
+  LostWay,
+  ownerOf,
+  Person,
+  Position,
+  WorkFlag,
+} from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { hexDistanceBetween, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
+import { homeUsedBy } from '../../family/households.js';
 import { interactionNodeId } from '../../footprint/interaction.js';
-import type { NavigationLimit } from '../../signposts/index.js';
+import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { jobCanBuild } from '../atomics/start.js';
 import { clearLostWay, markCutOff } from '../lost-way.js';
@@ -72,6 +81,48 @@ export function strandedWorkplaceDoor(
   return workplace === undefined ? null : doorOutOfReach(world, ctx, terrain, workplace, limit);
 }
 
+/** The cell of `e`'s own work or haul flag when `limit` does not reach it, else null. */
+export function strandedFlagCell(
+  world: World,
+  terrain: TerrainGraph,
+  e: Entity,
+  limit: NavigationLimit | null,
+): NodeId | null {
+  if (limit === null) return null;
+  const flag = (world.tryGet(e, WorkFlag) ?? world.tryGet(e, HaulFlag))?.flag;
+  const p = flag === undefined ? undefined : world.tryGet(flag, Position);
+  if (p === undefined) return null;
+  const { hx, hy } = nodeOfPosition(p.x, p.y);
+  const cell = terrain.nodeAtClamped(hx, hy);
+  return limit.allowsNode(cell) ? null : cell;
+}
+
+/** The post `e` was given beyond `limit`: its workplace's door, else its flag's cell, else null. */
+export function strandedPost(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  limit: NavigationLimit | null,
+): NodeId | null {
+  return strandedWorkplaceDoor(world, ctx, terrain, e, limit) ?? strandedFlagCell(world, terrain, e, limit);
+}
+
+/** Raise the lost note as soon as a player order posts, flags or houses `e` beyond its reach. Original
+ *  behavior: the post binds, the walk there fails and the settler stands lost. The idle tail keeps the
+ *  mark for a far workplace or flag until the network reaches it; a far home is only reported, since a
+ *  settler visits it between other work. */
+export function markIfPostedOutOfReach(world: World, ctx: SystemContext, e: Entity): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return;
+  const limit = navigationLimitFor(world, ctx.content, terrain, e);
+  const home = homeUsedBy(world, ctx, e);
+  const goal =
+    strandedPost(world, ctx, terrain, e, limit) ??
+    (home === undefined ? null : doorOutOfReach(world, ctx, terrain, home, limit));
+  if (goal !== null) markCutOff(world, ctx, e, goal);
+}
+
 function doorOutOfReach(
   world: World,
   ctx: SystemContext,
@@ -85,9 +136,9 @@ function doorOutOfReach(
 }
 
 /**
- * Mark an idle person lost while its confinement reaches neither its own workplace, which it stands idle
- * from only once its walk there found no way, nor, for a working trade, any door of its seat's buildings,
- * nor the work `workBeyondReach` names, and clear that mark once the way is back in reach. Approximation:
+ * Mark an idle person lost while its confinement reaches neither its own post, workplace or flag, nor,
+ * for a working trade, any door of its seat's buildings, nor the work `workBeyondReach` names, and clear
+ * that mark once the way is back in reach. Approximation:
  * the original plans the walk to work anyway and raises the lost note when its guided pathfinder fails;
  * this planner never plans past the gate, so the stranding is read off the gate instead, and so fires for
  * a trade that has no work waiting as well. A seat with no building has no settlement to be cut off from.
@@ -107,7 +158,7 @@ export function reconcileCutOff(
   const owner = ownerOf(world, e);
   if (owner === undefined || !world.has(e, Person)) return;
   const marked = world.tryGet(e, LostWay)?.cutOff === true;
-  let goal = strandedWorkplaceDoor(world, ctx, terrain, e, limit);
+  let goal = strandedPost(world, ctx, terrain, e, limit);
   if (goal === null && hasWorkToReach(ctx, jobType) && limit !== null) {
     const seatDoors = doors.of(owner);
     if (noDoorInReach(seatDoors, limit)) {
