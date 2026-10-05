@@ -65,10 +65,11 @@ const SOW_CANDIDATES = 5;
  * The node the farm should sow next: the spot this farmer already set out for while it stays sowable, else
  * one of the {@link SOW_CANDIDATES} free nodes nearest the farm's anchor, so fields pack outward from the
  * farm; null when the whole radius is taken. A sowable node is on the map, walkable (the farmer stands on
- * the field to work it), plantable ground (the original demands the `biocanplanton`
- * flag on all six triangles around the point, which `trianglepatterntypes.cif` gives to `land` alone; the
- * cell-resolution class carries it here), outside standing buildings' reserved zones even at passable doorways, clear of
- * the walk-block overlays, unoccupied, and unclaimed by another farmer's in-flight action.
+ * the field to work it), plantable ground (the original demands the `biocanplanton` flag on all six
+ * triangles around the point, which `trianglepatterntypes.cif` gives to `land` alone; the cell-resolution
+ * class carries it here), off any road, outside standing buildings' reserved zones even at passable
+ * doorways, clear of the walk-block overlays, unoccupied (a road site's stockpile counts), and unclaimed
+ * by another farmer's in-flight action.
  */
 export function nextSowNode(
   plan: PlannerContext,
@@ -89,6 +90,7 @@ export function nextSowNode(
     !targets.fieldZones.has(node) &&
     !blocked.has(node) && // water, walls, standing bodies
     terrain.isPlantable(node) &&
+    !terrain.isRoad(node) && // original behavior: no plant grows on a road
     !claims.nodes.has(node) &&
     !sowNodeOccupied(world, hx, hy) &&
     // The sow node is the walk goal, so without this the farmer re-picks the same unreachable spot every

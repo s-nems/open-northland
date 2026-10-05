@@ -20,3 +20,8 @@ const index = createRegionIndex(
 export function bushesNearNode(world: World, hx: number, hy: number, reach: number): Entity[] {
   return index.near(world, hx, hy, reach);
 }
+
+/** Every berry bush anchored exactly on `(hx, hy)`: the index's live bucket. */
+export function bushesAtNode(world: World, hx: number, hy: number): readonly Entity[] {
+  return index.atNode(world, hx, hy);
+}

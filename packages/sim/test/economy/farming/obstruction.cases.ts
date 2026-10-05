@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cellAnchorNode, fx, Simulation } from '../../../src/index.js';
 import { type HalfCellNode, nodeOfPosition } from '../../../src/nav/halfcell.js';
 import { applySow, nodeKey } from '../../../src/systems/index.js';
+import { layRoad } from '../../../src/systems/roads/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {
@@ -171,5 +172,31 @@ describe('sowing around bodies that stand without blocking', () => {
     expect(run.sown.has(nodeKey(heap.hx, heap.hy))).toBe(false);
     expect(run.sown.has(nodeKey(scenery.hx, scenery.hy))).toBe(false);
     expect(run.peak).toBe(FIELD_CAP); // not vacuous: it still filled the plot, just on other ground
+  });
+
+  it('never plants on a road, even one laid after the planner chose the node', () => {
+    const baseline = sowingRun(() => {});
+    const [first, second] = [...baseline.sown.values()];
+    if (first === undefined || second === undefined) throw new Error('the baseline farm sowed too little');
+    const paved = [first, second];
+    const pave = (sim: Simulation): void => {
+      const terrain = sim.terrain;
+      if (terrain === undefined) throw new Error('expected a mapped simulation');
+      layRoad(
+        sim.world,
+        terrain,
+        paved.map((n) => terrain.nodeAt(n.hx, n.hy)),
+      );
+    };
+
+    const run = sowingRun(pave);
+    for (const n of paved) expect(run.sown.has(nodeKey(n.hx, n.hy))).toBe(false);
+    expect(run.peak).toBe(FIELD_CAP);
+
+    const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(14, 14) });
+    const farm = farmAt(sim, 7, 7);
+    pave(sim);
+    applySow(sim.world, ctxOf(sim), { farm, goodType: WHEAT, x: first.hx, y: first.hy });
+    expect([...sim.world.query(Crop)]).toEqual([]);
   });
 });

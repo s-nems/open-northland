@@ -110,6 +110,8 @@ export function applySow(
   // planner already filters, this is the completion-time re-check every goods effect carries.
   if (ctx.terrain !== undefined && !ctx.terrain.isPlantable(ctx.terrain.nodeAtClamped(effect.x, effect.y)))
     return;
+  // A road laid since the planner chose the node: the original refuses a plant on a road point.
+  if (ctx.terrain?.isRoad(ctx.terrain.nodeAtClamped(effect.x, effect.y)) === true) return;
   if (sowNodeOccupied(world, effect.x, effect.y)) return;
   if (insideBuildingFieldZone(world, ctx.content, effect.x, effect.y)) return;
   // Blocked since the planner chose it: a field there would be unreachable from birth. Tests the same

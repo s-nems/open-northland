@@ -357,6 +357,11 @@ export type SimEvent =
       readonly at: HalfCellNode;
     }
   | {
+      /** A road was laid on `nodes` this tick; the static layer clears the map's scenery anchored there. */
+      readonly kind: 'roadLaid';
+      readonly nodes: readonly HalfCellNode[];
+    }
+  | {
       /** A settler opened `chest` this tick and its contents were handed out. The original transitions
        *  its logic to `void` while retaining the paired open-chest graphics record. */
       readonly kind: 'chestOpened';

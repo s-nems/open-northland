@@ -5,9 +5,12 @@ import {
   CurrentAtomic,
   Owner,
   Palisade,
+  Position,
+  Resource,
   RoadSite,
   SiteAssignment,
   Stockpile,
+  Stump,
   SupplyRun,
   setStockAmount,
   stampOwner,
@@ -21,11 +24,15 @@ import {
   nodeGridAccepts,
   ONE,
   playerCommand,
+  positionOfNode,
   restoreSimulation,
+  type ScriptLandscapeType,
   type Simulation,
 } from '../../src/index.js';
+import { createBerryBush } from '../../src/systems/economy/berries.js';
 import { constructionSystem } from '../../src/systems/economy/construction.js';
 import { claimSite, releaseSiteClaim } from '../../src/systems/economy/site-claim.js';
+import { anchorOnlyFootprint, stampResourceFootprintData } from '../../src/systems/footprint/index.js';
 import { palisadePlacementProbe as palisadeProbe } from '../../src/systems/palisades/index.js';
 import { openRoadSites } from '../../src/systems/roads/site-index.js';
 import { pickRoadSite } from '../../src/systems/roads/site-pick.js';
@@ -71,6 +78,9 @@ function finishDirectly(sim: Simulation, site: Entity): Entity {
 }
 
 const CENTRE = { hx: 20, hy: ROW };
+const SAPLING = { hx: 24, hy: ROW };
+const BUSH = { hx: 26, hy: ROW };
+const HEAP = { hx: 28, hy: ROW };
 
 /** Stone lying on the ground, outside every building. */
 function looseStone(sim: Simulation): number {
@@ -168,6 +178,71 @@ describe('road site commands', () => {
     }
     expect(nodeGridAccepts(after, CENTRE.hx, CENTRE.hy)).toBe(false);
     expect(nodeGridAccepts(before, CENTRE.hx, CENTRE.hy)).toBe(true);
+  });
+
+  it('refuse a resource or a bush that blocks no walk, and take a loose heap', () => {
+    const sim = roadSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped simulation');
+    const area: NodeArea = { minHx: 0, minHy: 0, maxHx: MAP_WIDTH - 1, maxHy: MAP_HEIGHT - 1 };
+    const before = sim.roadSiteAnswer(area);
+    if (before === null) throw new Error('expected an answer');
+    // A sapling: a resource whose record stamps no walk block until it is full-grown.
+    const sapling = sim.world.create();
+    sim.world.add(sapling, Position, positionOfNode(SAPLING.hx, SAPLING.hy));
+    sim.world.add(sapling, Resource, { goodType: WOOD, remaining: 1, harvestAtomic: 0 });
+    stampResourceFootprintData(sim.world, sapling, anchorOnlyFootprint());
+    createBerryBush(sim.world, { x: BUSH.hx, y: BUSH.hy });
+    const heap = sim.world.create();
+    sim.world.add(heap, Position, positionOfNode(HEAP.hx, HEAP.hy));
+    sim.world.add(heap, Stockpile, { amounts: new Map([[STONE, 2]]) });
+
+    const probe = roadSitePlacementProbe(sim.world, sim.content, terrain);
+    expect(probe.canPlace(SAPLING.hx, SAPLING.hy), 'sapling').toBe(false);
+    expect(probe.canPlace(BUSH.hx, BUSH.hy), 'bush').toBe(false);
+    expect(probe.canPlace(HEAP.hx, HEAP.hy), 'heap').toBe(true);
+    const after = sim.roadSiteAnswer(area);
+    if (after === null) throw new Error('expected an answer');
+    expect(after.key).not.toBe(before.key);
+    expect(nodeGridAccepts(before, SAPLING.hx, SAPLING.hy)).toBe(true);
+    expect(nodeGridAccepts(after, SAPLING.hx, SAPLING.hy)).toBe(false);
+    expect(nodeGridAccepts(after, BUSH.hx, BUSH.hy)).toBe(false);
+  });
+
+  it("refuse a map object that is not scenery, and take the map's scenery", () => {
+    // A bare bush stays map decor with no sim entity, unlike a fruited one; grass is pure scenery.
+    const bareBush: ScriptLandscapeType = { typeId: 701, walk: [], build: [], groups: [] };
+    const grass: ScriptLandscapeType = { typeId: 702, walk: [], build: [], groups: [], scenery: true };
+    const sim = roadSim(1, MAP_WIDTH, [], {
+      types: [bareBush, grass],
+      placements: [
+        { id: 0, typeId: bareBush.typeId, hx: BUSH.hx, hy: BUSH.hy, level: 1 },
+        { id: 1, typeId: grass.typeId, hx: CENTRE.hx, hy: CENTRE.hy, level: 1 },
+      ],
+    });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped simulation');
+    const probe = roadSitePlacementProbe(sim.world, sim.content, terrain);
+    expect(probe.canPlace(BUSH.hx, BUSH.hy), 'bare bush').toBe(false);
+    expect(probe.canPlace(CENTRE.hx, CENTRE.hy), 'grass').toBe(true);
+  });
+
+  it('clear the stumps on the paved nodes and report them laid', () => {
+    const sim = roadSim();
+    storeAt(sim, STORE_HX);
+    const stump = sim.world.create();
+    sim.world.add(stump, Position, positionOfNode(CENTRE.hx, CENTRE.hy));
+    sim.world.add(stump, Stump, { goodType: WOOD });
+    orderRoads(sim, [CENTRE]);
+    const site = siteAt(sim, CENTRE.hx, CENTRE.hy);
+    if (site === undefined) throw new Error('expected a road site over the stump');
+    finishDirectly(sim, site);
+    expect(roadAt(sim, CENTRE.hx, CENTRE.hy)).toBe(true);
+    expect(sim.world.isAlive(stump)).toBe(false);
+    expect(sim.events.current().filter((ev) => ev.kind === 'roadLaid')).toEqual([
+      { kind: 'roadLaid', nodes: [CENTRE] },
+    ]);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it('refuse a seat the force option and a tribe it may not place', () => {

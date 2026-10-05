@@ -29,6 +29,8 @@ const SPRITES = new Map([
   [1, 'bush'],
 ]);
 const BUSH = 30 as Entity;
+/** The map's width in half-cell nodes. */
+const NODE_WIDTH = 64;
 
 function bind(harvestables: HarvestableSpawn) {
   const removed: string[] = [];
@@ -46,6 +48,7 @@ function bind(harvestables: HarvestableSpawn) {
     harvestables,
     { buildings: TYPES },
     () => snapshotOf([building(1, HOUSE, 4, 4)]),
+    NODE_WIDTH,
   );
   return { removed, ghosts, refs: () => refs, onEvents };
 }

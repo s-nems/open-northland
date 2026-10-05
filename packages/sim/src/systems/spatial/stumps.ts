@@ -19,3 +19,8 @@ const index = createRegionIndex(
 export function stumpsNearNode(world: World, hx: number, hy: number, reach: number): Entity[] {
   return index.near(world, hx, hy, reach);
 }
+
+/** Every stump anchored exactly on `(hx, hy)`: the index's live bucket, so copy it before destroying. */
+export function stumpsAtNode(world: World, hx: number, hy: number): readonly Entity[] {
+  return index.atNode(world, hx, hy);
+}

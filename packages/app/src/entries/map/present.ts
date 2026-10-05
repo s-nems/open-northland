@@ -107,6 +107,7 @@ export async function presentMapWorld(
               },
           host.content,
           () => host.snapshot(),
+          2 * terrainGrid.width,
         )
       : null;
 

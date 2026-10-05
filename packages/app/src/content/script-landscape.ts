@@ -14,6 +14,9 @@ import {
 } from './map-resources.js';
 import { CLOSED_GATE_LOGIC_ID, OPEN_GATE_LOGIC_ID, playerWallRows } from './palisade-rows.js';
 
+/** `landscapetypes.ini` logic type 1, `void`: pure scenery. */
+const SCENERY_LOGIC_TYPE = 1;
+
 // Shipped result reference memberships, with its spacing typos resolved to actual GfxLandscape EditNames.
 const REMOVAL_NAMES: Readonly<Record<LandscapeRemovalGroup, readonly string[]>> = {
   blocker: ['block'],
@@ -92,6 +95,7 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
         ? { blockAreas: { walk: g.walkBlockAreas ?? [], build: g.buildBlockAreas ?? [] } }
         : {}),
       groups,
+      ...(g.logicType === SCENERY_LOGIC_TYPE ? { scenery: true } : {}),
       ...(resource === undefined ? {} : { resource }),
       ...(g.logicType === BUSH_WITH_FRUITS_LOGIC_TYPE ? { bushGfxIndex: g.index } : {}),
       ...(chestKind === undefined ? {} : { chest: { kind: chestKind, gfxIndex: g.index } }),

@@ -36,6 +36,9 @@ const TYPES: readonly FootprintBuildingType[] = [
   },
 ];
 
+/** The map's width in half-cell nodes, the stride of a road node id. */
+const NODE_WIDTH = 64;
+
 /** A type the content does not know. */
 const UNKNOWN_TYPE = 99;
 
@@ -58,6 +61,16 @@ const SPRITES = new Map([
   [5, 'far-mushroom'],
 ]);
 
+/** A road shard carrier holding the given half-cell nodes. */
+function roadShard(id: number, nodes: readonly (readonly [number, number])[]): Ent {
+  return {
+    id,
+    components: {
+      RoadShard: { block: 0, nodes: nodes.map(([hx, hy]) => hy * NODE_WIDTH + hx), revision: 1 },
+    },
+  };
+}
+
 /** A building entity anchored at half-cell node `(hx, hy)`. */
 function buildingAt(id: number, typeId: number, hx: number, hy: number, tribe = VIKING): Ent {
   return { id, components: { Building: { buildingType: typeId, tribe }, Position: positionOfNode(hx, hy) } };
@@ -72,6 +85,7 @@ function bind(entities: readonly Ent[]) {
     SPRITES,
     { buildings: TYPES },
     () => snapshot,
+    NODE_WIDTH,
   );
   return { removed, onEvents, setSnapshot: (next: WorldSnapshot) => (snapshot = next) };
 }
@@ -125,5 +139,29 @@ describe('footprint clearing of static landscape sprites', () => {
     setSnapshot(snapshotOf([buildingAt(1, UNKNOWN_TYPE, 10, 11)]));
     onEvents([placed(1, 10, 11), { kind: 'buildingFinished', entity: 1 as Entity }]);
     expect(removed).toEqual([]);
+  });
+
+  it('clears the scenery on every road node laid when bound, and only on the node itself', () => {
+    const { removed } = bind([
+      roadShard(1, [
+        [10, 11],
+        [20, 20],
+      ]),
+    ]);
+    expect(removed.sort()).toEqual(['anchor-grass', 'far-grass', 'far-mushroom']);
+  });
+
+  it('clears the scenery on the nodes a road is laid over as the event arrives', () => {
+    const { removed, onEvents } = bind([]);
+    onEvents([
+      {
+        kind: 'roadLaid',
+        nodes: [
+          { hx: 11, hy: 12 },
+          { hx: 10, hy: 10 },
+        ],
+      },
+    ]);
+    expect(removed.sort()).toEqual(['front-grass', 'unshifted-fern']);
   });
 });

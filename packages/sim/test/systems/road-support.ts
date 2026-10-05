@@ -18,7 +18,7 @@ import {
   type ScriptLandscapeType,
   Simulation,
 } from '../../src/index.js';
-import type { TerrainMap } from '../../src/nav/terrain/index.js';
+import type { ScriptLandscapePlacement, TerrainMap } from '../../src/nav/terrain/index.js';
 import { roadNodes } from '../../src/systems/roads/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -166,11 +166,15 @@ function roadContent() {
   });
 }
 
-/** A road scene on grass, but for water at the `water` nodes. */
+/** A road scene on grass, but for water at the `water` nodes, with the map objects `objects` places. */
 export function roadSim(
   seed = 1,
   width = MAP_WIDTH,
   water: readonly { hx: number; hy: number }[] = [],
+  objects: {
+    readonly types: readonly ScriptLandscapeType[];
+    readonly placements: readonly ScriptLandscapePlacement[];
+  } = { types: [], placements: [] },
 ): Simulation {
   const grass = grassNodeMap(width, MAP_HEIGHT);
   const typeIds = [...grass.typeIds];
@@ -179,7 +183,7 @@ export function roadSim(
   const sim = new Simulation({
     seed,
     content: roadContent(),
-    map: { ...map, landscapes: { types: [WALL], placements: [] } },
+    map: { ...map, landscapes: { types: [WALL, ...objects.types], placements: [...objects.placements] } },
   });
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: HUMAN, tribes: [VIKING] });
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: RIVAL, tribes: [VIKING] });
