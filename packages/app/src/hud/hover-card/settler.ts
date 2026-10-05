@@ -1,15 +1,8 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
-import {
-  isSettler,
-  isWildlife,
-  progressionGatesSettler,
-  type SnapshotEntity,
-  settlerJobType,
-} from '../../game/snapshot.js';
-import { messages } from '../../i18n/index.js';
+import { isSettler, isWildlife, type SnapshotEntity, settlerJobType } from '../../game/snapshot.js';
 import { jobDisplayName, type UnitPanelModelContext } from '../details-panel/model/context.js';
 import { settlerGivenName } from '../details-panel/model/settler-name.js';
-import { settlerWork } from '../details-panel/model/settler-work.js';
+import { productSelectionLabel, settlerProductSelection } from '../details-panel/model/settler-work.js';
 import type { SettlerHoverModel } from './model.js';
 import { foreignOwner, type HoverOwnerContext } from './owner.js';
 
@@ -43,22 +36,12 @@ export function settlerHoverModel(
   };
 }
 
-/** The Production rows the worker is set to make; every open one running reads as one word unless it is
- *  the only one. Null for a worker without products to set or with every one stopped. */
+/** The products the worker is set to make, named; every open one running reads as one word. */
 function selectedProducts(
   ctx: SettlerHoverContext,
   snapshot: WorldSnapshot,
   ent: SnapshotEntity,
 ): string | null {
-  const production = settlerWork(
-    ctx,
-    snapshot,
-    ent.components,
-    progressionGatesSettler(snapshot, ent),
-  ).production;
-  const open = production?.rows.filter((row) => row.locked === null) ?? [];
-  const running = open.filter((row) => row.count > 0);
-  if (running.length === 0) return null;
-  if (running.length === open.length && open.length > 1) return messages().hud.hoverCard.allProducts;
-  return running.map((row) => row.label).join(', ');
+  const selection = settlerProductSelection(ctx, snapshot, ent);
+  return selection === null ? null : productSelectionLabel(selection);
 }

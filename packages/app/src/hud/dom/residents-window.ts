@@ -1,6 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { pickerEntries } from '../../catalog/professions.js';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
+import { productSelectionLabel } from '../details-panel/model/settler-work.js';
 import { type FigureBox, type FigureSlot, NO_FIGURE_SLOTS } from '../figures/live-figures.js';
 import type { CanBecomeOption } from '../tool-panel/residents/can-become.js';
 import {
@@ -28,6 +29,7 @@ import {
 } from '../tool-panel/residents/rows.js';
 import type { ToolWindow } from '../tool-panel/window-shell.js';
 import type { ChoiceGroup } from './choice-window.js';
+import { type GoodIconPainter, goodIconMarkup } from './good-art.js';
 import { GLYPH, RESIDENTS_TOKEN } from './icons.js';
 import { button, element, setAttribute, setHidden, setValue, write } from './parts/dom.js';
 import { type DropdownEntry, type DropdownHandle, dropdownControl } from './parts/dropdown.js';
@@ -55,6 +57,10 @@ const SORT_KEYS: readonly ResidentSortKey[] = ['name', 'profession', 'workplace'
  *  px). */
 const ROW_FIGURE_ZOOM = 0.72;
 const ROW_FIGURE_FEET_INSET = 2;
+/** Design px of a product's icon after the profession. */
+const PRODUCT_ICON_PX = 20;
+/** Icons the profession column has room for beside a long trade name; the rest read as "+N". */
+const PRODUCT_ICONS_MAX = 4;
 
 export interface ResidentsWindowDeps {
   readonly plane: HTMLElement;
@@ -76,6 +82,8 @@ export interface ResidentsWindowDeps {
    *  window has already closed. */
   readonly onSelect: (ids: readonly number[], show: boolean) => void;
   readonly cue: (cue: UiCue) => void;
+  /** Paints the goods a worker is set to make after its profession; absent shows the profession alone. */
+  readonly icons?: GoodIconPainter;
 }
 
 /** The residents window on the DOM plane: the search and the two profession filters, the group row and the
@@ -99,6 +107,9 @@ interface RowView {
   readonly pick: HTMLButtonElement;
   readonly canvas: HTMLCanvasElement;
   readonly cells: readonly [HTMLElement, HTMLElement, HTMLElement, HTMLElement];
+  /** The profession cell's trade name and the goods after it. */
+  readonly trade: HTMLElement;
+  readonly goods: HTMLElement;
   shown: string;
 }
 
@@ -339,7 +350,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     const item = element('li', '');
     const control = button(
       'on-res-row',
-      `<span class="on-res-row__figure"><canvas aria-hidden="true"></canvas></span><strong></strong><span></span><span></span><span class="on-res-row__lacks"></span>`,
+      `<span class="on-res-row__figure"><canvas aria-hidden="true"></canvas></span><strong></strong><span class="on-res-row__job"><span></span><span class="on-res-row__goods"></span></span><span></span><span class="on-res-row__lacks"></span>`,
     );
     const canvas = control.querySelector('canvas');
     const [name, profession, workplace, lacks] = [...control.children].slice(1);
@@ -352,9 +363,37 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     ) {
       throw new Error('residents: row markup');
     }
+    const [trade, goods] = profession.children;
+    if (!(trade instanceof HTMLElement) || !(goods instanceof HTMLElement))
+      throw new Error('residents: job cell');
     control.addEventListener('click', (event) => pickRow(id, event));
     item.append(control);
-    return { item, pick: control, canvas, cells: [name, profession, workplace, lacks], shown: '' };
+    return {
+      item,
+      pick: control,
+      canvas,
+      cells: [name, profession, workplace, lacks],
+      trade,
+      goods,
+      shown: '',
+    };
+  };
+
+  /** The goods after the profession: their icons, or the one word while every open one runs. */
+  const writeProducts = (goods: HTMLElement, word: string | null, goodIds: readonly string[]): void => {
+    setHidden(goods, word === null && (goodIds.length === 0 || deps.icons === undefined));
+    if (word !== null) {
+      goods.textContent = word;
+      return;
+    }
+    const shown = goodIds.slice(0, PRODUCT_ICONS_MAX);
+    goods.innerHTML = shown.map(() => goodIconMarkup(PRODUCT_ICON_PX)).join('');
+    for (const [index, frame] of goods.querySelectorAll<HTMLElement>('.on-good__frame').entries()) {
+      const goodId = shown[index];
+      if (goodId !== undefined) deps.icons?.(frame, goodId, PRODUCT_ICON_PX);
+    }
+    if (goodIds.length > shown.length)
+      goods.append(element('small', '', `+${goodIds.length - shown.length}`));
   };
 
   const writeRow = (view: RowView, row: ResidentRow): void => {
@@ -362,14 +401,27 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       row.ageYears === null
         ? row.profession
         : formatMessage(copy.childAge, { stage: row.profession, years: row.ageYears });
-    const key = [row.name, profession, row.workplace, row.lacks.join(',')].join('|');
+    const products = row.products;
+    const goodIds =
+      products?.running.flatMap((good) => (good.goodId === undefined ? [] : [good.goodId])) ?? [];
+    const made = products === null ? null : productSelectionLabel(products);
+    const key = [
+      row.name,
+      profession,
+      made ?? '',
+      goodIds.join(','),
+      row.workplace,
+      row.lacks.join(','),
+    ].join('|');
     if (key === view.shown) return;
     view.shown = key;
     const [name, job, workplace, lacks] = view.cells;
     name.textContent = row.name;
     name.title = row.name;
-    job.textContent = profession;
-    job.title = profession;
+    view.trade.textContent = profession;
+    // Worded as the hover card words it: "Zbieracz - Drewno, Grzyb".
+    job.title = made === null ? profession : `${profession} - ${made}`;
+    writeProducts(view.goods, products?.all === true ? made : null, goodIds);
     workplace.textContent = row.workplace === '' ? copy.noWorkplace : row.workplace;
     workplace.title = row.workplace;
     lacks.replaceChildren(

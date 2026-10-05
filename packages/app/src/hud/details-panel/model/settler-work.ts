@@ -1,6 +1,11 @@
 import { resolveJobAtomics } from '@open-northland/data';
 import { entityById, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
-import { num, settlerLearnedOf } from '../../../game/snapshot.js';
+import {
+  num,
+  progressionGatesSettler,
+  type SnapshotEntity,
+  settlerLearnedOf,
+} from '../../../game/snapshot.js';
 import { technologyLabel } from '../../../game/technology.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
@@ -37,6 +42,101 @@ export interface SettlerProductionRow {
 export interface SettlerProductionModel {
   readonly kind: 'craft' | 'gather';
   readonly rows: readonly SettlerProductionRow[];
+}
+
+/** What the worker is set to make: the running products, with `all` when every open one runs and
+ *  there is more than one to choose from. */
+export interface ProductSelection {
+  readonly all: boolean;
+  readonly running: readonly SettlerProductionRow[];
+}
+
+/** The products `ent`'s Production counters leave running; null without products to set or with every
+ *  one stopped. */
+export function settlerProductSelection(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  ent: SnapshotEntity,
+): ProductSelection | null {
+  const { production } = settlerWork(ctx, snapshot, ent.components, progressionGatesSettler(snapshot, ent));
+  const open = production?.rows.filter((row) => row.locked === null) ?? [];
+  const running = open.filter((row) => row.count > 0);
+  if (running.length === 0) return null;
+  return { all: running.length === open.length && open.length > 1, running };
+}
+
+/** The selection in words: the products' names, or one word while every open one runs. */
+export function productSelectionLabel(selection: ProductSelection): string {
+  if (selection.all) return messages().hud.hoverCard.allProducts;
+  return selection.running.map((row) => row.label).join(', ');
+}
+
+/** The settler's components `settlerWork` reads; a change to any other leaves the selection standing. */
+const SELECTION_COMPONENTS = [
+  'Settler',
+  'Owner',
+  'SettlerProgress',
+  'ProductionCounters',
+  'WorkFlag',
+  'JobAssignment',
+  'SiteAssignment',
+  'TrainingOrder',
+] as const;
+
+/** The `Building` components of the places those point at, whose type picks the recipes. */
+function placeBuildings(snapshot: WorldSnapshot, comps: Comp): unknown[] {
+  const ids = [
+    (comps.JobAssignment as { workplace?: unknown } | undefined)?.workplace,
+    (comps.SiteAssignment as { site?: unknown } | undefined)?.site,
+    (comps.TrainingOrder as { house?: unknown } | undefined)?.house,
+  ];
+  return ids.map((id) => entityById(snapshot, num(id) ?? -1)?.components.Building);
+}
+
+function selectionInputs(snapshot: WorldSnapshot, ent: SnapshotEntity): unknown[] {
+  return [
+    ...SELECTION_COMPONENTS.map((name) => ent.components[name]),
+    ...placeBuildings(snapshot, ent.components),
+    progressionGatesSettler(snapshot, ent),
+  ];
+}
+
+interface HeldSelection {
+  readonly inputs: readonly unknown[];
+  readonly version: number;
+  readonly value: ProductSelection | null;
+}
+
+/**
+ * `settlerProductSelection` for a list read every tick: a settler's answer is kept while each input
+ * is the same object as before and `version` (the technology answers it gates on) holds. A walking
+ * worker's entity is new every tick, but the snapshot keeps every component nobody wrote. Settlers
+ * missing from a pass are dropped at the next one.
+ */
+export function createProductSelectionCache(
+  ctx: UnitPanelModelContext,
+  version: () => number,
+): (snapshot: WorldSnapshot, ent: SnapshotEntity) => ProductSelection | null {
+  let pass: WorldSnapshot | null = null;
+  let current = new Map<number, HeldSelection>();
+  let previous = new Map<number, HeldSelection>();
+  return (snapshot, ent) => {
+    if (snapshot !== pass) {
+      pass = snapshot;
+      previous = current;
+      current = new Map();
+    }
+    const inputs = selectionInputs(snapshot, ent);
+    const at = version();
+    const held = current.get(ent.id) ?? previous.get(ent.id);
+    const kept =
+      held !== undefined &&
+      held.version === at &&
+      held.inputs.every((input, index) => input === inputs[index]);
+    const value = kept ? held.value : settlerProductSelection(ctx, snapshot, ent);
+    current.set(ent.id, kept ? held : { inputs, version: at, value });
+    return value;
+  };
 }
 
 export interface SettlerWorkModel {

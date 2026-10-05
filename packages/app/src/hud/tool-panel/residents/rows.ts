@@ -1,5 +1,6 @@
 import { TICKS_PER_SECOND } from '@open-northland/sim';
 import { compareLabels } from '../../../i18n/index.js';
+import type { ProductSelection } from '../../details-panel/model/settler-work.js';
 
 /** Who a resident is, as the original subjects window groups its people: one group each. */
 export type ResidentKind = 'child' | 'woman' | 'worker' | 'civilian' | 'soldier' | 'hero';
@@ -44,6 +45,8 @@ export interface ResidentRow {
   readonly ageYears: number | null;
   /** The workplace's name; empty without a post. */
   readonly workplace: string;
+  /** What a worker is set to make, as the hover card reads it; null for anyone else. */
+  readonly products: ProductSelection | null;
   readonly lacks: readonly ResidentLack[];
 }
 

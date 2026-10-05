@@ -2667,6 +2667,33 @@ body.on-drag-scroll * {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.on-hud .on-res-row > .on-res-row__job {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.on-hud .on-res-row__job > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.on-hud .on-res-row__goods {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  color: var(--ink-muted);
+}
+.on-hud .on-res-row__goods[hidden] {
+  display: none;
+}
+/* The icons overhang the row's line instead of growing it. */
+.on-hud .on-res-row__goods .on-good {
+  margin: -3px 0;
+}
+.on-hud .on-res-row__goods::before {
+  content: "·";
+  margin-right: 3px;
+}
 .on-hud .on-res-row > span:nth-of-type(3) {
   color: var(--ink-muted);
 }

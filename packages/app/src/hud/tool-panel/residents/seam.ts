@@ -1,3 +1,4 @@
+import type { GoodIconPainter } from '../../dom/good-art.js';
 import type { ResidentRow, TradePick } from './rows.js';
 
 /** What the residents window reads from the game and asks of it. */
@@ -16,4 +17,6 @@ export interface ResidentsSeam {
   readonly selection: { readonly ids: () => ReadonlySet<number>; readonly version: () => number };
   /** Replace the selection with `ids`; with `show` the map also centres on a single one. */
   readonly onSelect: (ids: readonly number[], show: boolean) => void;
+  /** Paints the goods a worker is set to make; absent leaves the profession alone. */
+  readonly paintGood?: GoodIconPainter;
 }

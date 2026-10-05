@@ -558,6 +558,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           trades: canBecomeOptions(),
           selection: opts.residents.selection,
           onSelect: opts.residents.onSelect,
+          ...(opts.residents.paintGood !== undefined ? { icons: opts.residents.paintGood } : {}),
           cue: ctx.cue,
         });
         window.onDismiss(() => focusOwner?.('residents'));

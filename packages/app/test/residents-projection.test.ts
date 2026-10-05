@@ -11,12 +11,24 @@ import {
   JOB_WOMAN,
 } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
-import { BUILDING_JOINERY, GOOD_MEAD, GOOD_SHOES, GOOD_TOOL_WOODEN } from '../src/game/sandbox/ids/index.js';
+import {
+  BUILDING_JOINERY,
+  GOOD_GOLD,
+  GOOD_IRON,
+  GOOD_MEAD,
+  GOOD_MUD,
+  GOOD_MUSHROOM,
+  GOOD_SHOES,
+  GOOD_STONE,
+  GOOD_TOOL_WOODEN,
+  GOOD_WOOD,
+} from '../src/game/sandbox/ids/index.js';
+import { createProductSelectionCache } from '../src/hud/details-panel/model/settler-work.js';
 import { type ResidentsProjectionContext, residentRows } from '../src/hud/tool-panel/residents/projection.js';
 import type { ResidentRow } from '../src/hud/tool-panel/residents/rows.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox/index.js';
-import { buildingEntity, snapshotOf } from './support/sandbox.js';
+import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
 const RIVAL_PLAYER = 1;
 const NO_GEAR = { boots: null, tool: null, weapon: null, armor: null, misc: [null, null, null, null] };
@@ -151,5 +163,50 @@ describe('residents projection', () => {
   it('asks nobody for mead in a content without it', () => {
     const rows = residentRows(snapshotOf([person(1, JOB_COLLECTOR)]), { ...context(), meadGood: undefined });
     expect(rows[0]?.lacks).not.toContain('mead');
+  });
+
+  it('carries the goods a worker is set to make, read as the hover card reads them', () => {
+    const flag = { WorkFlag: { flag: 9, radius: 24 } };
+    const stopped = [GOOD_WOOD, GOOD_STONE, GOOD_MUD, GOOD_GOLD, GOOD_MUSHROOM].map((good) => [good, 0]);
+    const snapshot = snapshotOf([
+      person(1, JOB_COLLECTOR, { ...flag, ProductionCounters: { counters: stopped, cursor: 0 } }),
+      person(2, JOB_COLLECTOR, flag),
+      person(3, JOB_CIVILIST),
+    ]);
+    const rows = new Map(
+      residentRows(snapshot, {
+        ...context(),
+        products: createProductSelectionCache(sandboxCtx(), () => 0),
+      }).map((row) => [row.id, row]),
+    );
+
+    expect(rows.get(1)?.products?.all).toBe(false);
+    expect(rows.get(1)?.products?.running.map((good) => good.goodType)).toEqual([GOOD_IRON]);
+    expect(rows.get(2)?.products?.all).toBe(true);
+    expect(rows.get(3)?.products).toBeNull();
+    expect(residentRows(snapshot, context())[0]?.products).toBeNull();
+  });
+
+  it("reads a worker's products again only once an input or the answers changed", () => {
+    // The snapshot keeps every component nobody wrote, so a walk replaces only the position.
+    const kept = person(1, JOB_COLLECTOR, {
+      WorkFlag: { flag: 9, radius: 24 },
+      ProductionCounters: { counters: [[GOOD_WOOD, 0]], cursor: 0 },
+    });
+    const walked = (x: number, components = kept.components): EntitySnapshot => ({
+      id: kept.id,
+      components: { ...components, Position: { x, y: 0 } },
+    });
+    let answers = 0;
+    const read = createProductSelectionCache(sandboxCtx(), () => answers);
+    const tick = (ent: EntitySnapshot) => read(snapshotOf([ent]), ent);
+    const first = tick(walked(0));
+
+    expect(tick(walked(1))).toBe(first);
+    const restarted = { ...kept.components, ProductionCounters: { counters: [[GOOD_WOOD, 3]], cursor: 0 } };
+    const second = tick(walked(2, restarted));
+    expect(second).not.toBe(first);
+    answers += 1;
+    expect(tick(walked(3, restarted))).not.toBe(second);
   });
 });

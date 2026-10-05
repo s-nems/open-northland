@@ -30,6 +30,7 @@ function row(id: number, over: Partial<ResidentRow>): ResidentRow {
     profession: 'Piekarz',
     ageYears: null,
     workplace: '',
+    products: null,
     lacks: [],
     ...over,
   };

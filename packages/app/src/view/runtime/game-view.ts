@@ -48,6 +48,7 @@ import {
   type ViewerSeat,
 } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
+import { createProductSelectionCache } from '../../hud/details-panel/model/settler-work.js';
 import type { DiplomacyPanelRow } from '../../hud/dom/diplomacy-window/model.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
@@ -60,7 +61,11 @@ import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { minimapFeatureOfGoodTypes } from '../../hud/minimap/live-objects.js';
 import type { NetPanelSource } from '../../hud/network/model.js';
 import { type MetSeat, NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
-import { MEAD_GOOD_ID, residentRows } from '../../hud/tool-panel/residents/projection.js';
+import {
+  MEAD_GOOD_ID,
+  type ResidentsProjectionContext,
+  residentRows,
+} from '../../hud/tool-panel/residents/projection.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import { displayViewOf, uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
@@ -463,14 +468,24 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     let unitSelection: Pick<UnitControls, 'select' | 'selectedIds' | 'selectionVersion'> | null = null;
     const NO_SELECTION: ReadonlySet<number> = new Set();
     const meadGood = host.content.goods.find((good) => good.id === MEAD_GOOD_ID)?.typeId;
+    // What each worker is set to make, read through the unit controls' panel context once they mount.
+    let residentsProducts: ResidentsProjectionContext['products'];
     const residentsFor = memoBySnapshot(
       (snapshot: WorldSnapshot) => {
         const seat = viewer.seat();
         return seat === null
           ? NO_RESIDENTS
-          : residentRows(snapshot, { localPlayer: seat, content: host.content, mapText, meadGood });
+          : residentRows(snapshot, {
+              localPlayer: seat,
+              content: host.content,
+              mapText,
+              meadGood,
+              products: residentsProducts,
+            });
       },
-      () => viewer.version(),
+      // A worker's products wait on the technology answers and the controls' mount, which a paused
+      // snapshot would otherwise never relist for.
+      () => viewer.version() + answers.versions.technology() + Number(residentsProducts !== undefined),
     );
     const assistantBookingsFor = memoBySnapshot(
       (snapshot: WorldSnapshot) => seatBookingsOf(snapshot, viewer.seat()),
@@ -519,6 +534,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           answers.canChooseJob(id, pick.jobType) &&
           (pick.goodType === null || answers.hasEarnedGood(id, pick.goodType)),
         answersVersion: answers.versions.jobChoices,
+        paintGood: goodIcons,
         selection: {
           ids: () => unitSelection?.selectedIds() ?? NO_SELECTION,
           version: () => unitSelection?.selectionVersion() ?? 0,
@@ -793,6 +809,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     cleanup.push(() => controls.dispose());
     selectEntity = controls.selectEntity;
     unitSelection = controls;
+    residentsProducts = createProductSelectionCache(controls.panelModelContext, answers.versions.technology);
     escapeClaimed = controls.claimsEscape;
     overviewPress = controls.overviewPress;
 

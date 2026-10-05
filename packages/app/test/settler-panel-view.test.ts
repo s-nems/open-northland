@@ -39,6 +39,7 @@ function resident(id: number, jobType: number | null): ResidentRow {
     profession: '',
     ageYears: null,
     workplace: '',
+    products: null,
     lacks: [],
   };
 }

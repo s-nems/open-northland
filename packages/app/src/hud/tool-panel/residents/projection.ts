@@ -22,6 +22,7 @@ import {
 } from '../../../game/snapshot.js';
 import { buildingTitle, jobDisplayName } from '../../details-panel/model/context.js';
 import { settlerDisplayName } from '../../details-panel/model/settler-name.js';
+import type { ProductSelection } from '../../details-panel/model/settler-work.js';
 import type { ResidentKind, ResidentLack, ResidentRow } from './rows.js';
 
 /** The mead's content id, the same slug the assistant's mead grant resolves. */
@@ -35,6 +36,8 @@ export interface ResidentsProjectionContext {
   readonly mapText?: ((stringId: number) => string | undefined) | undefined;
   /** The mead good's type id; without one in the content nobody lacks mead. */
   readonly meadGood: number | undefined;
+  /** What a worker is set to make (`createProductSelectionCache`); absent lists no products. */
+  readonly products?: ((snapshot: WorldSnapshot, ent: SnapshotEntity) => ProductSelection | null) | undefined;
 }
 
 interface WornSlots {
@@ -166,6 +169,7 @@ export function residentRows(snapshot: WorldSnapshot, ctx: ResidentsProjectionCo
       profession: jobDisplayName(nameCtx, jobType ?? undefined),
       ageYears: ageYears ?? null,
       workplace: workplaceEnt === undefined ? '' : buildingTitle(ctx.content, buildingTypeOf(workplaceEnt)),
+      products: kind === 'worker' ? (ctx.products?.(snapshot, ent) ?? null) : null,
       lacks: lacksOf(ctx, snapshot, ent, kind, jobType, postedTrades),
     });
   }
