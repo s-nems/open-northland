@@ -1,4 +1,3 @@
-import { RelayRefusal } from '@open-northland/net-client';
 import type { ServerMessage } from '@open-northland/net-protocol';
 import { loadRoomMapDocuments } from '../content/transfer/index.js';
 import { errorText } from '../diag/error-text.js';
@@ -6,7 +5,7 @@ import { formatMessage, messages } from '../i18n/index.js';
 import { swapToEntry } from '../launch.js';
 import { type FailureSource, NetworkConnection } from '../net/connection.js';
 import { takeNetworkHandover } from '../net/handover.js';
-import { relayCloseText, relayFailureText, relayReasonText } from '../net/relay-reason.js';
+import { relayCloseText, relayFailureText, relayReasonText, worldFailureTitle } from '../net/relay-reason.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
 import { BUTTON_STYLE, el, mountMessage } from '../view/overlay.js';
 import { menuSearch } from '../view/params.js';
@@ -91,10 +90,9 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
   });
 
   function failureTitle(what: FailureSource, error: unknown): string {
-    // The client reports the relay's refusal of its `loaded` as a failed open, ahead of the message.
-    if (what === 'open') return error instanceof RelayRefusal ? relayCopy.worldRefused : relayCopy.openFailed;
-    if (what === 'restore') return relayCopy.restoreFailed;
-    return formatMessage(copy.bootFailed, { reason: relayFailureText(error) });
+    return (
+      worldFailureTitle(what, error) ?? formatMessage(copy.bootFailed, { reason: relayFailureText(error) })
+    );
   }
 
   /** The lobby walk is over: the game is about to take the connection, or the entry gives up. */
@@ -115,10 +113,10 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
     connection.dispose();
     const back = el('button', BUTTON_STYLE, messages().hud.returnToMenu);
     back.type = 'button';
+    const remove = mountMessage(title, detail, [back]);
     back.addEventListener('click', () => {
-      void swapToEntry(menuSearch(), () => back.parentElement?.remove());
+      void swapToEntry(menuSearch(), remove);
     });
-    mountMessage(title, detail, [back]);
   }
 
   function observe(message: ServerMessage): void {

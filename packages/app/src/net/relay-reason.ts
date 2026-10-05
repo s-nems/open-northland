@@ -2,6 +2,7 @@ import { RelayRefusal } from '@open-northland/net-client';
 import { closingCode, type RelayReason, type RelayReasonCode } from '@open-northland/net-protocol';
 import { errorText } from '../diag/error-text.js';
 import { formatMessage, type Messages, messages } from '../i18n/index.js';
+import type { FailureSource } from './connection.js';
 
 /** A relay reason worded for the player, as a clause for a surrounding template. */
 export function relayReasonText(reason: RelayReason, copy: Messages = messages()): string {
@@ -61,4 +62,17 @@ export function relayCloseText(closeReason: string | undefined, copy: Messages =
  *  its own message. */
 export function relayFailureText(error: unknown, copy: Messages = messages()): string {
   return error instanceof RelayRefusal ? relayReasonText(error.reason, copy) : errorText(error);
+}
+
+/** The title for a world the worker's client could not open or restore; null for any other failure,
+ *  which the screen titles by where it stands. */
+export function worldFailureTitle(
+  what: FailureSource,
+  error: unknown,
+  copy: Messages = messages(),
+): string | null {
+  const relay = copy.networkRelay;
+  if (what === 'open') return error instanceof RelayRefusal ? relay.worldRefused : relay.openFailed;
+  if (what === 'restore') return relay.restoreFailed;
+  return null;
 }

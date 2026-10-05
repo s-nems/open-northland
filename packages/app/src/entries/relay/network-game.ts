@@ -16,7 +16,12 @@ import { swapToEntry } from '../../launch.js';
 import type { NetWorldPort, RelayedWorldHosting } from '../../net/connection.js';
 import type { NetworkHandover } from '../../net/handover.js';
 import { deliveredMatchEnd, inputDelayMs, relayedSessionDriver } from '../../net/net-worker-client.js';
-import { relayCloseText, relayFailureText, relayReasonText } from '../../net/relay-reason.js';
+import {
+  relayCloseText,
+  relayFailureText,
+  relayReasonText,
+  worldFailureTitle,
+} from '../../net/relay-reason.js';
 import { networkSaveSession } from '../../net/save-session.js';
 import { dismissBootProgress, mountBootNotice } from '../../view/boot-progress.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
@@ -26,6 +31,7 @@ import type { GameViewHandle } from '../../view/runtime/game-view.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
 import { type AssembledMapWorld, assembleMapWorld, presentMapWorld, type RestoredSave } from '../map/boot.js';
 import { mountNetHud, type NetHud } from './net-hud.js';
+import { rejoinProbe } from './rejoin.js';
 import {
   hostRelayedWorld,
   type RelayedMapWorld,
@@ -112,7 +118,9 @@ export function renderNetworkGame(
   function returnToMenu(): void {
     void swapToEntry(menuSearch(), dispose).catch((error: unknown) => fail(error));
   }
-  function fail(error: unknown): void {
+  /** End the game on `error`, under `title`: a world that could not open names that, anything else
+   *  ends a game that stood. */
+  function fail(error: unknown, title: string = copy.gameEndedTitle): void {
     if (closed) return;
     diag.warn('net', 'network game halted', { error: errorText(error) });
     const starting = startWait.pending;
@@ -126,17 +134,18 @@ export function renderNetworkGame(
     }
     const back = el('button', BUTTON_STYLE, messages().hud.returnToMenu);
     back.type = 'button';
+    const remove = mountMessage(title, relayFailureText(error), [back]);
     back.addEventListener('click', () => {
-      void swapToEntry(menuSearch(), () => back.parentElement?.remove());
+      void swapToEntry(menuSearch(), remove);
     });
-    mountMessage(formatMessage(copy.bootFailed, { reason: relayFailureText(error) }), '', [back]);
   }
   const startWait = createStartWait(client);
 
   const exit = roomExitObserver((reason) => fail(roomEndText(reason)));
+  const rejoin = rejoinProbe(client);
   const unsubscribe = connection.subscribe((event) => {
     if (event.kind === 'failure') {
-      fail(event.error);
+      fail(event.error, worldFailureTitle(event.what, event.error) ?? undefined);
       return;
     }
     if (event.kind === 'link') {
@@ -144,6 +153,12 @@ export function renderNetworkGame(
       return;
     }
     if (exit(event.message)) return;
+    const rejoined = rejoin.observe(event.message);
+    if (rejoined === 'consumed') return;
+    if (rejoined !== 'passed') {
+      fail(rejoined.text);
+      return;
+    }
     if (event.message.kind === 'desync') lastDesync = event.message;
     if (event.message.kind === 'kicked' && event.message.player === client.session?.localSeat) {
       fail(copy.youWereKicked);

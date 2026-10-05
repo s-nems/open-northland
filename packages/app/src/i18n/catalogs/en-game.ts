@@ -1733,6 +1733,10 @@ export const enGame = {
       away: 'disconnected',
     },
     youWereKicked: 'You were voted out of the game',
+    gameEndedTitle: 'The network game has ended',
+    removedWhileAway:
+      'You were voted out of the game while your connection was down. The game goes on without you.',
+    roomGoneWhileAway: 'The room ended while your connection was down.',
     paused: '{nick} paused the game',
     resumed: '{nick} resumed the game',
     speed: '{nick} set the speed to x{speed}',

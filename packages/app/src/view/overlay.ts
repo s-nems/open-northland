@@ -99,8 +99,9 @@ export function pageSection(title: string, children: readonly HTMLElement[]): HT
   return wrap;
 }
 
-/** Mount a small message panel instead of leaving a blank canvas; `actions` mount under the detail. */
-export function mountMessage(title: string, detail: string, actions?: readonly HTMLElement[]): void {
+/** Mount a small message panel instead of leaving a blank canvas; `actions` mount under the detail.
+ *  Returns the panel's removal: an action that leaves for another entry takes the whole panel with it. */
+export function mountMessage(title: string, detail: string, actions?: readonly HTMLElement[]): () => void {
   const panel = el('div', PANEL_STYLE);
   panel.append(
     el('div', 'font-weight:700;font-size:14px;margin-bottom:6px', title),
@@ -112,4 +113,5 @@ export function mountMessage(title: string, detail: string, actions?: readonly H
     panel.append(row);
   }
   document.body.append(panel);
+  return () => panel.remove();
 }
