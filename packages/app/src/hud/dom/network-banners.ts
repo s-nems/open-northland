@@ -54,10 +54,12 @@ export function createNetBanners(deps: NetBannersDeps): NetBanners {
 
   const showHeld = (model: NetPanelModel): void => {
     const rows = model.clock.held ? heldLines(model.players) : [];
-    setHidden(held, rows.length === 0 && model.notice === null);
+    // A lost link outranks the world's line: nothing about the world moves until it is back.
+    const text = model.link.notice ?? model.notice;
+    setHidden(held, rows.length === 0 && text === null);
     setHidden(title, rows.length === 0);
-    write(notice, model.notice ?? '');
-    setHidden(notice, model.notice === null);
+    write(notice, text ?? '');
+    setHidden(notice, text === null);
     const key = rows.join('\n');
     if (lines.dataset.shown !== key) {
       lines.dataset.shown = key;

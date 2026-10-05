@@ -50,8 +50,8 @@ export interface NetworkWindowDeps {
   readonly cue: (cue: UiCue) => void;
 }
 
-/** The network window: the room's players with their link and pace, the clock and its last two
- *  minutes, this client's own link and the room's whole chat. The plane routes its own pointer input,
+/** The network window: the line about this client's world, the room's players with their link and
+ *  pace, the clock and its last two minutes, this client's own link and the room's whole chat. The plane routes its own pointer input,
  *  so it claims no canvas point. */
 export interface NetworkWindow extends ToolWindow {
   /** Once a frame while open: re-place the window and redraw what changed in the model. */
@@ -88,6 +88,11 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   });
   window.element.classList.add('on-window--network');
   window.body.classList.add('on-net-body');
+
+  // The world's notice, which the held banner shows while the window is closed.
+  const notice = element('p', 'on-net-note on-net-note--warn on-net-notice');
+  notice.setAttribute('role', 'status');
+  notice.hidden = true;
 
   // Players: one parchment table, a row per member.
   const playersSection = createSection();
@@ -162,7 +167,7 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   const buffered = linkValue(copy.buffered);
   const relay = linkValue(copy.relay);
   const disconnected = element('p', 'on-net-note on-net-note--danger');
-  disconnected.textContent = copy.disconnected;
+  disconnected.hidden = true;
 
   // Chat: the whole history the model keeps, and the line to say something.
   const chatSection = createSection();
@@ -182,6 +187,7 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   sayInput.setAttribute('aria-label', copy.chatPlaceholder);
 
   window.body.append(
+    notice,
     playersSection.element,
     sheet,
     clockSection.element,
@@ -389,7 +395,8 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
         ...(state.relayBuild === null ? [] : [formatMessage(copy.relayBuild, { build: state.relayBuild })]),
       ].join(' · '),
     );
-    setHidden(disconnected, state.connected);
+    write(disconnected, state.notice ?? '');
+    setHidden(disconnected, state.notice === null);
   };
 
   const chatItem = (line: ChatLine): HTMLLIElement => {
@@ -433,6 +440,8 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     const model = deps.source.model();
     if (model === shown || model === null) return;
     shown = model;
+    write(notice, model.notice ?? '');
+    setHidden(notice, model.notice === null);
     showPlayers(model.players);
     showOwnState(model.players);
     showClock(model);

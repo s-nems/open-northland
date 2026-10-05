@@ -33,11 +33,8 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   const feed = createRelayPanelFeed({ client, readout: deps.readout, relayUrl: deps.relayUrl });
   let previousRoom: RoomView | null = client.room;
   let previousClock: ClockState | null = client.clockState;
-  let linkNotice: string | null = null;
-  let worldNotice: string | null = null;
 
   const announce = (text: string): void => feed.announce(text);
-  const refreshNotice = (): void => feed.notice(linkNotice ?? worldNotice);
   const announceRoom = (room: RoomView): void => {
     const before = new Map(previousRoom?.members.map((member) => [member.nick, member.connected]) ?? []);
     for (const member of room.members) {
@@ -79,22 +76,21 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
           );
           return;
         case 'desync':
-          worldNotice = formatMessage(copy.desync, { nick: message.reference, tick: message.tick });
+          feed.notice(formatMessage(copy.desync, { nick: message.reference, tick: message.tick }));
           diag.warn('net', 'out of sync with the room', {
             tick: message.tick,
             domains: message.domains,
             reference: message.reference,
           });
-          refreshNotice();
           return;
         default:
           return;
       }
     },
     link(state, reason): void {
-      linkNotice =
-        state === 'ok' ? null : state === 'reconnecting' ? copy.reconnecting : relayCloseText(reason);
-      refreshNotice();
+      feed.linkNotice(
+        state === 'ok' ? null : state === 'reconnecting' ? copy.reconnecting : relayCloseText(reason),
+      );
     },
   };
 }

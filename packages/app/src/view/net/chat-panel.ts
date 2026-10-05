@@ -44,7 +44,8 @@ export interface ChatPanel {
   show(chat: readonly ChatLine[], version: number): void;
   /** Follow the left inset, which moves with the minimap. */
   updateLayout(): void;
-  /** Hide the log while the network window shows the whole chat over it. */
+  /** Hide the log while the network window shows the whole chat over it; hiding closes the line,
+   *  since the window's own field is the chat while it is open. */
   setHidden(hidden: boolean): void;
   /** The log's left and top edge in client px; the top rises as lines arrive. */
   anchor(): { readonly left: number; readonly top: number };
@@ -120,13 +121,14 @@ export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
   log.append(lines, input);
   document.body.append(log);
 
+  let logHidden = false;
   const closeInput = (): void => {
     input.hidden = true;
     input.value = '';
     input.blur();
   };
   const onPageKey = (event: KeyboardEvent): void => {
-    if (event.key !== 'Enter' || !input.hidden || !fromThePage(event)) return;
+    if (logHidden || event.key !== 'Enter' || !input.hidden || !fromThePage(event)) return;
     event.preventDefault();
     input.hidden = false;
     input.focus();
@@ -156,8 +158,10 @@ export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
       lines.replaceChildren(...chat.slice(-MAX_LINES).map(lineRow));
     },
     setHidden(hidden): void {
-      const display = hidden ? 'none' : 'flex';
-      if (log.style.display !== display) log.style.display = display;
+      if (hidden === logHidden) return;
+      logHidden = hidden;
+      if (hidden) closeInput();
+      log.style.display = hidden ? 'none' : 'flex';
     },
     anchor(): { left: number; top: number } {
       return { left, top: log.getBoundingClientRect().top };

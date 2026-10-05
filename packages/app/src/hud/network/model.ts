@@ -77,6 +77,8 @@ export interface NetLinkModel {
   readonly bufferedTicks: number;
   readonly relayUrl: string | null;
   readonly relayBuild: string | null;
+  /** Why the link is down: reconnecting, or closed for good with the relay's reason; null while up. */
+  readonly notice: string | null;
 }
 
 /** A chat line; `from` null is a line about the session itself, `tick` the game clock it was said at. */
@@ -93,8 +95,7 @@ export interface NetPanelModel {
   readonly chat: readonly ChatLine[];
   /** Bumps once per appended chat line, so a reader can tell new lines without comparing arrays. */
   readonly chatVersion: number;
-  /** A line about this client's own link or world (reconnecting, out of sync), shown on the held
-   *  banner; null when there is none. */
+  /** A line about this client's own world (out of sync with the room); null when there is none. */
   readonly notice: string | null;
 }
 

@@ -12,7 +12,7 @@ import {
   SPEED_HISTORY_SECONDS,
   type SpeedSample,
 } from '../../hud/network/model.js';
-import { tribeName } from '../../i18n/index.js';
+import { formatMessage, messages, tribeName } from '../../i18n/index.js';
 
 /** The scripted states of the network panel's design preview, in the order it cycles through them. */
 export const NET_PREVIEW_STATES = [
@@ -46,8 +46,9 @@ const SEATS: Readonly<Record<string, { seat: number; tribe: number }>> = {
 };
 const BASE_PING_MS: Readonly<Record<string, number>> = { [SELF]: 38, [PEER]: 61, [SLOW_PEER]: 112 };
 const DELAY_TICKS = 4;
-/** A member trailing the clock by a second and a half at ×1. */
-const CATCHING_UP_TICKS = 30;
+/** How far a catching-up member trails the clock, in wall seconds at ×1. */
+const CATCHING_UP_SECONDS = 2.5;
+const CATCHING_UP_TICKS = CATCHING_UP_SECONDS * TICKS_PER_SECOND;
 /** The held member's countdown when its wait began, and the other's already-open vote. */
 const VOTE_COUNTDOWN_S = 48;
 const VOTES_NEEDED = 2;
@@ -66,6 +67,9 @@ const CLICK_TO_APPLY_MS = 96;
 const BUFFERED_TICKS = 2;
 const SECONDS_PER_MINUTE = 60;
 const PREVIEW_RELAY_URL = 'ws://127.0.0.1:8787';
+/** Where the held state's world fell out of sync, in game minutes and seconds. */
+const DESYNC_AT_MIN = 5;
+const DESYNC_AT_S = 40;
 
 export interface NetPanelPreviewOptions {
   /** Pin one state instead of cycling; unknown names cycle. */
@@ -106,7 +110,10 @@ export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanel
           link: PREVIEW_LINK,
           chat,
           chatVersion,
-          notice: null,
+          notice:
+            state === 'held'
+              ? formatMessage(messages().net.desync, { nick: PEER, tick: tick(DESYNC_AT_MIN, DESYNC_AT_S) })
+              : null,
         };
       }
       return shown;
@@ -130,6 +137,7 @@ const PREVIEW_LINK: NetLinkModel = {
   bufferedTicks: BUFFERED_TICKS,
   relayUrl: PREVIEW_RELAY_URL,
   relayBuild: 'preview',
+  notice: null,
 };
 
 const tick = (minutes: number, seconds: number): number =>

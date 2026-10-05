@@ -25,7 +25,7 @@ const PERCENT = 100;
 /** The requested speed before the relay's first clock word: a room starts at ×1. */
 const DEFAULT_SPEED = 1;
 /** Wall time a member may trail the clock before its row reads as catching up: the relay's
- *  `LAG_BEHIND_MS`, which a test pins, here counted at the speed the clock runs at. */
+ *  `LAG_BEHIND_MS`, which a test pins, counted in frames at the requested speed as the relay counts it. */
 export const CATCHING_UP_BEHIND_MS = 1000;
 
 export type KickVote = Extract<ServerMessage, { kind: 'kickVote' }>;
@@ -56,9 +56,8 @@ export function relayPlayerRows(facts: RelayRoomFacts): readonly NetPlayerRow[] 
   if (room === null) return [];
   const waited = new Map(facts.waiting.map((member) => [member.nick, member]));
   const governor = clock?.governed?.nick ?? null;
-  const running = runningSpeedOf(clock);
-  const tickBudgetMs = TICK_MS / running;
-  const lagTicks = Math.ceil((CATCHING_UP_BEHIND_MS / TICK_MS) * running);
+  const tickBudgetMs = TICK_MS / runningSpeedOf(clock);
+  const lagTicks = Math.ceil((CATCHING_UP_BEHIND_MS / TICK_MS) * (clock?.speed ?? DEFAULT_SPEED));
   // The relay's electorate before its first tally: every other connected member, half of them rounded up.
   const connected = room.members.filter((member) => member.connected).length;
   return room.members.map((member): NetPlayerRow => {
@@ -153,8 +152,10 @@ export interface RelayPanelFeed {
   observe(message: ServerMessage): void;
   /** Add a line about the session; it takes its place among the members' lines as it arrives. */
   announce(text: string): void;
-  /** The line about this client's own link or world; null clears it. */
+  /** The line about this client's own world; null clears it. */
   notice(text: string | null): void;
+  /** Why this client's link is down; null once it is up. */
+  linkNotice(text: string | null): void;
 }
 
 export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
@@ -168,6 +169,7 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
   let chat: readonly ChatLine[] = client.chat;
   let chatVersion = 0;
   let noticeText: string | null = null;
+  let linkNoticeText: string | null = null;
 
   let playersKey = '';
   let players: readonly NetPlayerRow[] = [];
@@ -226,10 +228,11 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
         readout.clickToApplyMs,
         readout.bufferedTicks,
         client.relayBuild,
+        linkNoticeText,
       ].join('|');
       if (link === null || nextLinkKey !== linkKey) {
         linkKey = nextLinkKey;
-        link = { ...readout, relayUrl: deps.relayUrl, relayBuild: client.relayBuild };
+        link = { ...readout, relayUrl: deps.relayUrl, relayBuild: client.relayBuild, notice: linkNoticeText };
       }
       if (
         shown === null ||
@@ -286,6 +289,9 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
     },
     notice(text): void {
       noticeText = text;
+    },
+    linkNotice(text): void {
+      linkNoticeText = text;
     },
   };
 }

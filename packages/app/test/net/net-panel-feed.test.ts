@@ -37,8 +37,9 @@ const member = (nick: string, seat: number | null, extra: Partial<RoomMemberView
   ...extra,
 });
 
-/** Lag thresholds at the governed speed the room below runs at. */
-const LAG_TICKS = Math.ceil((CATCHING_UP_BEHIND_MS / TICK_MS) * GOVERNED_SPEED);
+/** The lag threshold at the requested speed, as the relay counts it; above the governed speed's, so a
+ *  row counted at the running speed would read Dorota as catching up. */
+const LAG_TICKS = Math.ceil((CATCHING_UP_BEHIND_MS / TICK_MS) * REQUESTED_SPEED);
 
 const ROOM: RoomView = {
   id: 'r1',
@@ -126,7 +127,7 @@ const rowOf = (feed: ReturnType<typeof setup>['feed'], nick: string) =>
   feed.model().players.find((row) => row.nick === nick);
 
 describe('the relayed network panel feed', () => {
-  it('counts catching up from the relay’s own lag threshold', () => {
+  it('counts catching up from the relay’s own lag threshold, at the requested speed', () => {
     expect(CATCHING_UP_BEHIND_MS).toBe(LAG_BEHIND_MS);
   });
 

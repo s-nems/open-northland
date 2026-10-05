@@ -5,7 +5,7 @@ import { isHeldStatus, type NetClockModel, type NetPlayerRow, type NetPlayerVote
 
 /** The governed speed steps by hundredths at most; finer digits would only be noise. */
 const SPEED_FRACTION_DIGITS = 2;
-/** Seconds behind read to a tenth: a tick is a twentieth of a second at ×1. */
+/** Seconds behind read to a tenth, about one tick's length at ×1 (`TICKS_PER_SECOND` ticks a second). */
 const BEHIND_FRACTION_DIGITS = 1;
 
 /** A speed multiplier as the player reads it, in the language's own decimals: ×2,4 in Polish. */

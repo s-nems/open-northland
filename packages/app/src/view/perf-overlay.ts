@@ -35,12 +35,12 @@ const PANEL_STYLE = [
   'pointer-events:none',
 ].join(';');
 
-export function formatSpeed(speed: number): string {
+function formatSpeed(speed: number): string {
   return Number.isInteger(speed) ? `×${speed}` : `×${speed.toFixed(2)}`;
 }
 
 /** Delivered speed averages a second or less, good to about a tenth; more digits would overstate it. */
-export function formatDelivered(speed: number): string {
+function formatDelivered(speed: number): string {
   return `×${speed.toFixed(1)}`;
 }
 

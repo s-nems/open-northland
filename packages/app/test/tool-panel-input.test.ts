@@ -413,6 +413,20 @@ describe('tool panel Escape ladder', () => {
     input.dispose();
   });
 
+  it('leaves the network key alone outside a relayed game', () => {
+    const { input, windowTarget, cues, ran, navToggled } = mount();
+    let reached = 0;
+    windowTarget.addEventListener('keydown', () => {
+      reached++;
+    });
+    const networkKey = DEFAULT_KEY_BINDINGS.network;
+    if (networkKey === null) throw new Error('network key unbound');
+    windowTarget.dispatchEvent(key(networkKey));
+    expect(reached).toBe(1);
+    expect([cues, ran, navToggled]).toEqual([[], [], []]);
+    input.dispose();
+  });
+
   it('blocks a held F-key without toggling again, and matches its chord exactly', () => {
     const { input, windowTarget, navToggled } = mount();
     windowTarget.dispatchEvent(key('F5'));
