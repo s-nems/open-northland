@@ -41,7 +41,7 @@ export interface MenuSettings {
   readonly displayMode: 'fullscreen' | 'window';
   /** Backing-resolution multiplier for the game canvas; 1 keeps the plain device oversample. */
   readonly renderScale: number;
-  /** Relative factor over the display-derived HUD base scale (`displayScaleFor`); the menu's own
+  /** Relative factor over the display-derived HUD base scale (`uiScaleFor`); the menu's own
    *  scale follows the viewport. */
   readonly uiScaleFactor: number;
   /** The world post pass: a warm-graded vignette over the world, under the HUD. */

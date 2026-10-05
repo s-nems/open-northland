@@ -22,15 +22,15 @@ const maximized = (displayHeight: number) => ({
 });
 
 describe('uiScaleFor', () => {
-  it('grows with the display from the 1080-line reference', () => {
+  it('grows with the display above the small-display floor', () => {
     const fullHd = {
       displayHeight: REFERENCE_DISPLAY_HEIGHT,
       viewportWidth: 1920,
       viewportHeight: REFERENCE_DISPLAY_HEIGHT,
     };
-    expect(uiScaleFor(fullHd)).toBe(UI_SCALE_AT_REFERENCE_DISPLAY);
-    expect(uiScaleFor(maximized(QHD_HEIGHT))).toBeCloseTo(1.6667, 4);
-    expect(uiScaleFor(maximized(UHD_HEIGHT))).toBe(2.5);
+    expect(uiScaleFor(fullHd)).toBe(SMALL_DISPLAY_UI_SCALE);
+    expect(uiScaleFor(maximized(QHD_HEIGHT))).toBeCloseTo(1.1667, 4);
+    expect(uiScaleFor(maximized(UHD_HEIGHT))).toBe(1.75);
   });
 
   it('keeps its size when a window on the same display grows', () => {
@@ -50,7 +50,7 @@ describe('uiScaleFor', () => {
   });
 
   it('applies the relative settings factor on the base', () => {
-    expect(uiScaleFor(maximized(UHD_HEIGHT), 1.2)).toBeCloseTo(3);
+    expect(uiScaleFor(maximized(UHD_HEIGHT), 1.2)).toBeCloseTo(2.1);
   });
 
   it('keeps the original chrome size on a small display that holds it', () => {
@@ -74,11 +74,21 @@ describe('uiScaleFor', () => {
 });
 
 describe('startWorldZoomFor', () => {
-  it('magnifies the world as much as the HUD base above the reference display', () => {
+  it('magnifies the world with the display height', () => {
     expect(startWorldZoomFor(maximized(UHD_HEIGHT))).toBe(2);
     expect(startWorldZoomFor(maximized(UHD_HEIGHT)) * UI_SCALE_AT_REFERENCE_DISPLAY).toBe(
       uiScaleFor(maximized(UHD_HEIGHT)),
     );
+  });
+
+  it('opens a reference display at 1:1 although its HUD sits on the small-display floor', () => {
+    expect(
+      startWorldZoomFor({
+        displayHeight: REFERENCE_DISPLAY_HEIGHT,
+        viewportWidth: 1920,
+        viewportHeight: 1000,
+      }),
+    ).toBe(1);
   });
 
   it('never opens below 1:1 on a small display', () => {

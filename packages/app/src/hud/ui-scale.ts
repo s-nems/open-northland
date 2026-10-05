@@ -14,8 +14,11 @@ export const REFERENCE_VIEWPORT_HEIGHT = 768;
  */
 export const REFERENCE_DISPLAY_HEIGHT = 1080;
 
-/** HUD scale on a {@link REFERENCE_DISPLAY_HEIGHT} display. */
-export const UI_SCALE_AT_REFERENCE_DISPLAY = 1.25;
+/**
+ * HUD scale per {@link REFERENCE_DISPLAY_HEIGHT} lines of display: 1.75x on 2160 lines (owner choice).
+ * Below about 1230 lines the {@link SMALL_DISPLAY_UI_SCALE} floor holds instead.
+ */
+export const UI_SCALE_AT_REFERENCE_DISPLAY = 0.875;
 
 /** The HUD base on a small display: the original's chrome at its own design px, as on its 1024×768. */
 export const SMALL_DISPLAY_UI_SCALE = 1;
@@ -43,28 +46,40 @@ export function clampUiScaleFactor(factor: number): number {
   return Math.min(UI_SCALE_FACTOR_MAX, Math.max(UI_SCALE_FACTOR_MIN, factor));
 }
 
-/**
- * The magnification HUD and world share: the display height over {@link REFERENCE_DISPLAY_HEIGHT}, held
- * at {@link SMALL_DISPLAY_UI_SCALE} for the HUD on a small display, and lowered when the viewport is too
- * small to hold the chrome at that size. Growing both together keeps the chrome's share of the view the
- * same on every display.
- */
-export function displayScaleFor(view: DisplayView): number {
-  // A display reported shorter than the window holding it (a headless page) is no evidence of one.
-  const displayHeight = Math.max(view.displayHeight, view.viewportHeight);
-  const fitting =
-    Math.min(view.viewportWidth / REFERENCE_VIEWPORT_WIDTH, view.viewportHeight / REFERENCE_VIEWPORT_HEIGHT) /
-    UI_SCALE_AT_REFERENCE_DISPLAY;
-  const byDisplay = Math.max(
-    displayHeight / REFERENCE_DISPLAY_HEIGHT,
-    SMALL_DISPLAY_UI_SCALE / UI_SCALE_AT_REFERENCE_DISPLAY,
+/** The largest HUD scale the viewport holds without clipping or overlapping the chrome. */
+function viewportFitScale(view: DisplayView): number {
+  return Math.min(
+    view.viewportWidth / REFERENCE_VIEWPORT_WIDTH,
+    view.viewportHeight / REFERENCE_VIEWPORT_HEIGHT,
   );
-  return Math.min(byDisplay, fitting);
 }
 
-/** Effective HUD scale: the display-derived base times the user's relative factor. */
+function displayHeightOf(view: DisplayView): number {
+  // A display reported shorter than the window holding it (a headless page) is no evidence of one.
+  return Math.max(view.displayHeight, view.viewportHeight);
+}
+
+/**
+ * The world's magnification: the display height over {@link REFERENCE_DISPLAY_HEIGHT}, lowered with the
+ * HUD when the viewport is too small to hold the chrome, so the chrome keeps its share of the view.
+ */
+export function displayScaleFor(view: DisplayView): number {
+  return Math.min(
+    displayHeightOf(view) / REFERENCE_DISPLAY_HEIGHT,
+    viewportFitScale(view) / UI_SCALE_AT_REFERENCE_DISPLAY,
+  );
+}
+
+/**
+ * Effective HUD scale: the display-derived base, held at {@link SMALL_DISPLAY_UI_SCALE} on a small
+ * display and lowered to what the viewport holds, times the user's relative factor.
+ */
 export function uiScaleFor(view: DisplayView, factor: number = DEFAULT_UI_SCALE_FACTOR): number {
-  return Math.max(MIN_UI_SCALE, UI_SCALE_AT_REFERENCE_DISPLAY * displayScaleFor(view) * factor);
+  const byDisplay = Math.max(
+    SMALL_DISPLAY_UI_SCALE,
+    (UI_SCALE_AT_REFERENCE_DISPLAY * displayHeightOf(view)) / REFERENCE_DISPLAY_HEIGHT,
+  );
+  return Math.max(MIN_UI_SCALE, Math.min(byDisplay, viewportFitScale(view)) * factor);
 }
 
 /** The camera zoom a game opens at. Never below 1:1: a small display shows less world rather than
