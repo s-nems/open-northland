@@ -10,6 +10,7 @@ import {
   type UnitPanelModelContext,
 } from '../../hud/details-panel/index.js';
 import { createBuildingPanel } from '../../hud/dom/building-panel/view.js';
+import { createGatePanel } from '../../hud/dom/gate-panel.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createGroupPanel } from '../../hud/dom/group-panel/view.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
@@ -257,6 +258,19 @@ export async function createUnitChrome(
     },
     buildingPeers: (building) => buildingPeers(opts.snapshot(), building),
   });
+  const gatePanel = createGatePanel({
+    plane: opts.domHud.plane,
+    tooltip: panelChip,
+    close: () => settlerActions.clearSelection(),
+    mode: (id, mode) => {
+      callbacks.cue('confirm');
+      opts.enqueue({ kind: 'setPalisadeGateMode', palisade: id as Entity, mode });
+    },
+    demolish: (id) => {
+      callbacks.cue('confirm');
+      opts.enqueue({ kind: 'demolishPalisade', palisade: id as Entity });
+    },
+  });
   const figures = opts.domHud.figures;
   const wellFigures =
     figures === undefined ? null : new LiveFigures(figures.sheet, figures.frames, opts.playerColourOf);
@@ -372,14 +386,13 @@ export async function createUnitChrome(
       onUiCue: callbacks.cue,
       onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
       onDemolishPalisade: (id) => opts.enqueue({ kind: 'demolishPalisade', palisade: id as Entity }),
-      onSetPalisadeGate: (id, open) =>
-        opts.enqueue({ kind: 'setPalisadeGate', palisade: id as Entity, open }),
       onCancelRoadSite: (id) => opts.enqueue({ kind: 'cancelRoadSite', roadSite: id as Entity }),
       onModel: (model) => {
         settlerPanel.update(model);
         vehiclePanel.update(model);
         buildingPanel.update(model);
         groupPanel.update(model);
+        gatePanel.update(model);
       },
     });
 
@@ -453,6 +466,7 @@ export async function createUnitChrome(
       vehiclePanel.claims(x, y) ||
       buildingPanel.claims(x, y) ||
       groupPanel.claims(x, y) ||
+      gatePanel.claims(x, y) ||
       tradeWindow.claims(x, y) ||
       mounts.current().panel.claimsPointer(x, y),
     browse: (step) => settlerPanel.browse(step) || vehiclePanel.browse(step) || buildingPanel.browse(step),
@@ -469,6 +483,7 @@ export async function createUnitChrome(
       tradeWindow.refresh();
       settlerPanel.refresh();
       vehiclePanel.refresh();
+      gatePanel.refreshTip();
       buildingPanel.refresh();
       groupPanel.refresh();
     },
@@ -512,6 +527,7 @@ export async function createUnitChrome(
       vehiclePanel.dispose();
       buildingPanel.dispose();
       groupPanel.dispose();
+      gatePanel.dispose();
       hoverCard.dispose();
       panelChip.destroy();
     },

@@ -25,3 +25,9 @@ export const Palisade = defineComponent<{
 /** A completed wall's source-authored walk cells participate in routing. An unfinished marker reserves
  * its plot but remains passable until the single wood-consuming construction strike finishes. */
 export const PalisadeBlocking = defineComponent<Record<string, never>>('PalisadeBlocking', 'movement');
+
+export const GATE_MODES = ['open', 'closed', 'automatic'] as const;
+export type GateMode = (typeof GATE_MODES)[number];
+
+/** Desired policy, independent of the passage state while a mover prevents closing. */
+export const GateControl = defineComponent<{ mode: GateMode }>('GateControl', 'economy');

@@ -86,17 +86,17 @@ describe('details panel layout', () => {
   it('mapLayout transforms EVERY rect in a layout (an unmapped new field fails here)', () => {
     const modelOf = (entity: EntitySnapshot): UnitPanelModel =>
       buildUnitPanelModel(snapshotOf([entity]), new Set([entity.id]), sandboxCtx());
-    const gate: EntitySnapshot = {
+    const wall: EntitySnapshot = {
       id: 1,
       components: {
-        Palisade: { gfxIndex: 696, tribe: 1, built: ONE, gate: { open: false, counterpartGfxIndex: 700 } },
+        Palisade: { gfxIndex: 696, tribe: 1, built: ONE, gate: null },
         Health: { hitpoints: 75, max: 100 },
         UnderConstruction: {},
       },
     };
-    // A gate site (the progress row and both buttons) and a signpost carry every rect a layout can.
+    // A wall site (the progress row and demolition button) and a signpost carry every rect a layout can.
     const layouts: readonly DetailsLayout[] = [
-      viewOfKind(modelOf(gate), 'palisade').layout,
+      viewOfKind(modelOf(wall), 'palisade').layout,
       viewOfKind(modelOf({ id: 2, components: { Signpost: { player: 1 } } }), 'signpost').layout,
     ];
 

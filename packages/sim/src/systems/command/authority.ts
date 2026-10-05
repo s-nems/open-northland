@@ -98,6 +98,7 @@ function seatMayIssue(
   if (
     command.kind === 'demolishPalisade' ||
     command.kind === 'convertPalisadeGate' ||
+    command.kind === 'setPalisadeGateMode' ||
     command.kind === 'setPalisadeGate'
   ) {
     return ownerOf(world, command.palisade) === seat;

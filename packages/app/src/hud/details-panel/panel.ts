@@ -17,8 +17,8 @@ import { createPanelRebuildGate } from './rebuild-gate.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
 import { createPanelStage } from './stage.js';
 
-/** Owns the selection and hover state the model, layout and stage read. The panel draws signposts,
- *  palisades and groups; it derives every selection's model and hands it to the DOM panels. */
+/** Owns the selection and hover state the model, layout and stage read. The panel draws signposts
+ *  and walls; it derives every selection's model and hands it to the DOM panels. */
 
 /** A live cutout's rect, in on-screen px, plus the entity the observation window centres on. */
 export type PortraitBox = PortraitInsetFrame;
@@ -33,8 +33,7 @@ export interface UnitPanelOptions extends UnitPanelModelContext, PanelClickActio
   readonly answersVersion?: () => number;
   /** Client→canvas coordinate mapping, injected so the hud layer stays view-free. */
   readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
-  /** Every model the rebuild gate lets through: the DOM panels show the single settler, vehicle or
-   *  building this panel leaves blank. */
+  /** Every model the rebuild gate lets through: the DOM panels show the selections this panel leaves blank. */
   readonly onModel?: (model: UnitPanelModel) => void;
   /** The GUI click every pressed panel button confirms with; absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;

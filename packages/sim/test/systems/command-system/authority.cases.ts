@@ -384,6 +384,7 @@ describe('CommandSystem - command authority', () => {
           { kind: 'demolishPalisade', palisade: wall },
           { kind: 'convertPalisadeGate', palisade: wall, gfxIndex: GATE_ROW },
           { kind: 'setPalisadeGate', palisade: gate, open: true },
+          { kind: 'setPalisadeGateMode', palisade: gate, mode: 'automatic' },
         ];
         for (const command of refused) {
           expect(authorizedCommand(sim.world, playerCommand(MINE, command)), command.kind).toBeUndefined();

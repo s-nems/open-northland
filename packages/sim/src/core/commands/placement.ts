@@ -1,3 +1,4 @@
+import type { GateMode } from '../../components/palisade.js';
 import type { Paper } from '../../components/papers.js';
 import type { Entity } from '../../ecs/world.js';
 
@@ -15,6 +16,7 @@ export type PlacementCommand =
   | DemolishPalisadeCommand
   | ConvertPalisadeGateCommand
   | SetPalisadeGateCommand
+  | SetPalisadeGateModeCommand
   | PlaceRoadSiteCommand
   | CancelRoadSiteCommand;
 
@@ -30,6 +32,7 @@ export type PlayerPlacementCommand =
   | DemolishPalisadeCommand
   | ConvertPalisadeGateCommand
   | SetPalisadeGateCommand
+  | SetPalisadeGateModeCommand
   | PlaceRoadSiteCommand
   | CancelRoadSiteCommand;
 
@@ -74,6 +77,12 @@ export interface CancelRoadSiteCommand {
 export interface DemolishPalisadeCommand {
   readonly kind: 'demolishPalisade';
   readonly palisade: Entity;
+}
+
+export interface SetPalisadeGateModeCommand {
+  readonly kind: 'setPalisadeGateMode';
+  readonly palisade: Entity;
+  readonly mode: GateMode;
 }
 
 export interface SetPalisadeGateCommand {

@@ -1,13 +1,13 @@
 import { type FootprintCell, footprintCellDx } from '@open-northland/data';
 import {
   Damaged,
+  GateControl,
   Health,
   Owner,
   ownerOf,
   Palisade,
   PalisadeBlocking,
   Position,
-  Settler,
   Stockpile,
   stampOwner,
   UnderConstruction,
@@ -164,6 +164,7 @@ export function setPalisadeGate(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'setPalisadeGate' }>,
+  preserveMode = false,
 ): boolean {
   const terrain = ctx.terrain;
   const current = world.tryGet(command.palisade, Palisade);
@@ -174,11 +175,18 @@ export function setPalisadeGate(
     !palisadeStands(world, command.palisade)
   )
     return false;
-  if (current.gate.open === command.open) return true;
+  const recordMode = (): void => {
+    if (!preserveMode) world.add(command.palisade, GateControl, { mode: command.open ? 'open' : 'closed' });
+  };
+  if (current.gate.open === command.open) {
+    recordMode();
+    return true;
+  }
   const target = palisadeType(terrain, current.gate.counterpartGfxIndex);
   if (target?.wall?.gate === undefined || target.wall.gate.open !== command.open) return false;
   if (!command.open && gateClosingOccupied(world, ctx, terrain, command.palisade, target.walk)) return false;
 
+  recordMode();
   // Remove + add so footprint journals see the source-record swap as a topology change.
   const blocking = world.has(command.palisade, PalisadeBlocking);
   if (blocking) world.remove(command.palisade, PalisadeBlocking);
@@ -278,10 +286,9 @@ export function playerGateAt(
 /** Whether a settler or creature stands on one of `cells`. Only movers count: dropped goods and the wall
  *  posts a gate's body overlaps are not something a door can crush. */
 function moverOnCells(world: World, terrain: TerrainGraph, cells: ReadonlySet<NodeId>): boolean {
-  for (const e of world.query(Settler, Position)) {
-    const p = world.get(e, Position);
-    const here = nodeOfPosition(p.x, p.y);
-    if (cells.has(terrain.nodeAtClamped(here.hx, here.hy))) return true;
+  const byNode = settlersByNode(world);
+  for (const cell of cells) {
+    if (byNode.at(terrain.xOf(cell), terrain.yOf(cell)).length > 0) return true;
   }
   return false;
 }

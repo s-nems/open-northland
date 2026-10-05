@@ -142,6 +142,8 @@ export interface PalisadePanelModel {
   readonly health: ReturnType<typeof healthBar>;
   readonly builtPct: number;
   readonly gateOpen: boolean | null;
+  readonly gateMode: 'open' | 'closed' | 'automatic' | null;
+  readonly foreign: boolean;
   readonly underConstruction: boolean;
   /** A road site shares the wall site's panel: a title, its {@link siteStatus} and the button that
    *  withdraws it. */
@@ -164,7 +166,7 @@ function only(list: readonly SnapshotEntity[]): SnapshotEntity | undefined {
   return list.length === 1 ? list[0] : undefined;
 }
 
-function palisadePanelModel(ent: SnapshotEntity): PalisadePanelModel {
+function palisadePanelModel(ent: SnapshotEntity, ctx: UnitPanelModelContext): PalisadePanelModel {
   const palisade = ent.components.Palisade as { built?: unknown; gate?: unknown } | undefined;
   const gate = palisade?.gate as { open?: unknown } | null | undefined;
   return {
@@ -172,6 +174,10 @@ function palisadePanelModel(ent: SnapshotEntity): PalisadePanelModel {
     entityId: ent.id,
     health: healthBar(ent),
     builtPct: pct(num(palisade?.built)),
+    gateMode:
+      (ent.components.GateControl as { mode: 'open' | 'closed' | 'automatic' } | undefined)?.mode ??
+      (gate == null ? null : gate.open ? 'open' : 'closed'),
+    foreign: (ent.components.Owner as { player: number } | undefined)?.player !== ctx.viewer?.seat(),
     gateOpen: gate === undefined || gate === null ? null : gate.open === true,
     underConstruction: ent.components.UnderConstruction !== undefined,
     roadSite: false,
@@ -214,6 +220,8 @@ function roadSitePanelModel(ctx: UnitPanelModelContext, ent: SnapshotEntity): Pa
     health: null,
     builtPct: 0,
     gateOpen: null,
+    gateMode: null,
+    foreign: false,
     underConstruction: true,
     roadSite: true,
     siteStatus: roadSiteStatus(ctx, ent),
@@ -252,7 +260,8 @@ export function buildUnitPanelModel(
   const vehicle = only(vehicles);
   const noUnitOrHouse = settlers.length === 0 && buildings.length === 0;
 
-  if (noUnitOrHouse && signposts.length === 0 && palisade !== undefined) return palisadePanelModel(palisade);
+  if (noUnitOrHouse && signposts.length === 0 && palisade !== undefined)
+    return palisadePanelModel(palisade, ctx);
   const roadSite = only(roadSites);
   if (noUnitOrHouse && signposts.length === 0 && palisades.length === 0 && roadSite !== undefined) {
     return roadSitePanelModel(ctx, roadSite);

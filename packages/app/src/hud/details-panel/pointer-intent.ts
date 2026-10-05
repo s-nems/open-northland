@@ -6,8 +6,7 @@ import type { PanelView } from './selection-view.js';
 export type PanelClick =
   | { readonly kind: 'demolishSignpost'; readonly entityId: number }
   | { readonly kind: 'demolishPalisade'; readonly entityId: number }
-  | { readonly kind: 'cancelRoadSite'; readonly entityId: number }
-  | { readonly kind: 'setPalisadeGate'; readonly entityId: number; readonly open: boolean };
+  | { readonly kind: 'cancelRoadSite'; readonly entityId: number };
 
 /** The intent of an enabled button, or null for an action this view kind does not wire. */
 const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null => {
@@ -19,13 +18,6 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
         return {
           kind: view.model.roadSite ? 'cancelRoadSite' : 'demolishPalisade',
           entityId: view.model.entityId,
-        };
-      }
-      if (action === 'toggle-gate' && view.model.gateOpen !== null) {
-        return {
-          kind: 'setPalisadeGate',
-          entityId: view.model.entityId,
-          open: !view.model.gateOpen,
         };
       }
       return null;

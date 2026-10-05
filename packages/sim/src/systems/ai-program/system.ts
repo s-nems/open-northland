@@ -22,7 +22,6 @@ import { ownedBuildings, ownedSettlers } from '../ai-player/seat-roster.js';
 import type { System, SystemContext } from '../context.js';
 import { CONDITION_ALWAYS, conditionsBySlot, freshConditionRecord, recheckConditions } from './conditions.js';
 import { familyOrders } from './families.js';
-import { gateList, gateOrders } from './gates.js';
 import { rebuildList, rebuildOrders } from './rebuild.js';
 import { assignSoldiers, clearInvalidTasks, updateSoldierList, workOrders } from './soldiers.js';
 import { activeGroups, freshTaskRecord, recheckTasks } from './tasks.js';
@@ -90,7 +89,6 @@ export const aiProgramSystem: System = (world, ctx) => {
     ),
   );
   commands.push(...townOrders(world, ctx, terrain, seat, script, program.houses, raiders, turn));
-  commands.push(...gateOrders(world, seat, program.gates, raiders));
   for (const command of commands) ctx.commands.enqueue(aiCommand(seat, command));
 };
 
@@ -185,7 +183,6 @@ function startProgram(
     soldiers: [],
     groups: [],
     houses: rebuildList(world, ctx, seat),
-    gates: gateList(world, centre),
   });
   return e;
 }

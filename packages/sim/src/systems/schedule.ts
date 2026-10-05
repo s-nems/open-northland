@@ -41,6 +41,7 @@ import {
   playerOrderSystem,
   signpostOrderSystem,
 } from './orders/index.js';
+import { gateControlSystem } from './palisades/gate-control.js';
 import { technologySystem } from './progression/discoveries.js';
 import { tribeUnlockSystem } from './progression/tribe-unlocks.js';
 import { atomicSystem } from './settlers/atomics/system.js';
@@ -76,6 +77,8 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'technologyAfterMissions', system: technologySystem },
   // After the orders that raise and lower alarms and before the planner, so a shelter that stopped
   // qualifying releases its civilians in time to claim another one on this same pass.
+  // Gate topology settles before this tick's pathfinding and movement.
+  { name: 'gateControl', system: gateControlSystem },
   { name: 'defence', system: defenceSystem },
   { name: 'needs', system: needsSystem },
   { name: 'shipboardNeeds', system: shipboardNeedsSystem },

@@ -139,6 +139,7 @@ export const COMMAND_ISSUER: {
   setRegeneration: 'seat',
   setSharedVision: 'trusted',
   setPalisadeGate: 'seat',
+  setPalisadeGateMode: 'seat',
   setSignpostNavigation: 'trusted',
   setStance: 'seat',
   setVehicleStance: 'seat',

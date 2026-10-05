@@ -63,6 +63,7 @@ import {
 } from '../orders/index.js';
 import { obeyDespiteHunger } from '../orders/meal-break.js';
 import { isQueuedOrder, queueBehindCurrentOrder } from '../orders/queue.js';
+import { setPalisadeGateMode } from '../palisades/gate-control.js';
 import { convertPalisadeGate, placePalisade, setPalisadeGate } from '../palisades/index.js';
 import { cancelRoadSite, placeRoadSite } from '../roads/sites.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
@@ -149,6 +150,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       return;
     case 'convertPalisadeGate':
       convertPalisadeGate(world, ctx, command);
+      return;
+    case 'setPalisadeGateMode':
+      setPalisadeGateMode(world, command);
       return;
     case 'setPalisadeGate':
       setPalisadeGate(world, ctx, command);

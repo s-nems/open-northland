@@ -210,6 +210,45 @@ function barring(sim: Simulation, e: Entity, goal: { hx: number; hy: number }): 
 }
 
 describe('walls that start blocking a route', () => {
+  it.each([1, 4])(
+    'lets %s attack-move attackers breach an automatic gate that closes during their march',
+    (count) => {
+      const sim = new Simulation({
+        seed: 1,
+        content: wallBreakingContent(),
+        map: {
+          ...grassNodeMap(WIDTH, 48),
+          landscapes: { types: [WALL, CLOSED_GATE, OPEN_GATE], placements: [] },
+        },
+      });
+      const gate = wallRow(sim, P1);
+      // Three landed blows per segment keep this route regression short while exercising real damage.
+      for (const wall of sim.world.query(Palisade, Health)) sim.world.mut(wall, Health).hitpoints = 3;
+      const squad = Array.from({ length: count }, (_, i) => fighter(sim, { hx: GATE_X + i * 2, hy: 40 }, P0));
+      sim.enqueueSetup({ kind: 'setPalisadeGateMode', palisade: gate, mode: 'automatic' });
+      for (const entity of squad)
+        sim.enqueueSetup({ kind: 'attackMoveUnit', entity, x: NORTH.hx, y: NORTH.hy });
+      sim.step();
+      expect(sim.world.get(gate, Palisade).gate?.open).toBe(true);
+      expect(squad.every((e) => sim.world.has(e, PathFollow))).toBe(true);
+      for (let tick = 0; tick < 800 && sim.world.get(gate, Palisade).gate?.open; tick++) sim.step();
+      expect(sim.world.get(gate, Palisade).gate?.open).toBe(false);
+      for (
+        let tick = 0;
+        tick < 800 && !squad.every((e) => sim.world.tryGet(e, AttackOrder)?.breach !== undefined);
+        tick++
+      )
+        sim.step();
+      expect(squad.every((e) => sim.world.tryGet(e, AttackOrder)?.breach !== undefined)).toBe(true);
+      const targets = new Set(squad.map((e) => sim.world.get(e, AttackOrder).target));
+      expect([...targets].every((e) => sim.world.has(e, Palisade))).toBe(true);
+      for (let tick = 0; tick < 1600 && !squad.every((e) => nodeRow(sim, e).hy < WALL_ROW); tick++)
+        sim.step();
+      expect([...targets].some((e) => !sim.world.isAlive(e))).toBe(true);
+      expect(squad.every((e) => nodeRow(sim, e).hy < WALL_ROW)).toBe(true);
+    },
+  );
+
   it('stops a walker a gate shuts in front of, instead of letting it through', () => {
     const sim = fresh();
     const gate = wallRow(sim, P0);

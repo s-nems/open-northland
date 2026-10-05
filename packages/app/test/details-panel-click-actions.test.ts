@@ -15,14 +15,12 @@ function recordingActions(calls: Call[]): PanelClickActions {
   return {
     onDemolishSignpost: record('onDemolishSignpost'),
     onDemolishPalisade: record('onDemolishPalisade'),
-    onSetPalisadeGate: record('onSetPalisadeGate'),
   };
 }
 
 const ROUTES: readonly (readonly [PanelClick, Call])[] = [
   [{ kind: 'demolishSignpost', entityId: ENTITY }, ['onDemolishSignpost', ENTITY]],
   [{ kind: 'demolishPalisade', entityId: ENTITY }, ['onDemolishPalisade', ENTITY]],
-  [{ kind: 'setPalisadeGate', entityId: ENTITY, open: true }, ['onSetPalisadeGate', ENTITY, true]],
 ];
 
 describe('applyPanelClick', () => {

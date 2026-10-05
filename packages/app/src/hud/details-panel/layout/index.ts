@@ -4,7 +4,7 @@ import { PANEL_W, panelRect, ROW_H, type SectionRect, sectionAt } from './shared
 
 export { ROW_H, ROW_TEXT_PAD, type SectionRect } from './shared.js';
 
-export type ButtonAction = 'demolish' | 'toggle-gate' | 'demolish-palisade';
+export type ButtonAction = 'demolish' | 'demolish-palisade';
 
 export interface ButtonHit {
   readonly action: ButtonAction;
@@ -95,10 +95,7 @@ export function layoutPalisade(
   const rowH = Math.round(ROW_H * s);
   const pad = Math.round(SIGNPOST_BUTTON_PAD * s);
   const buttonH = Math.round(SIGNPOST_BUTTON_H * s);
-  const actions = [
-    ...(model.gateOpen === null ? [] : (['toggle-gate'] as const)),
-    'demolish-palisade' as const,
-  ];
+  const actions = ['demolish-palisade'] as const;
   // The hitpoints label, its bar, then the build progress of a segment still going up. A road site has
   // no hitpoints, and its progress row says where its paving stands.
   const healthRows = model.roadSite ? 0 : 2;

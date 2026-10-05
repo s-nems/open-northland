@@ -12,10 +12,7 @@ export function drawPalisade(
 ): void {
   const hud = messages().hud;
   chrome.window(layout.section.frame);
-  chrome.headline(
-    layout.section.title,
-    model.roadSite ? hud.roadSite : model.gateOpen === null ? hud.palisade : hud.gate,
-  );
+  chrome.headline(layout.section.title, model.roadSite ? hud.roadSite : hud.palisade);
   if (model.health !== null) {
     chrome.textAt(
       `${model.health.label}: ${model.health.hover}`,
@@ -30,16 +27,7 @@ export function drawPalisade(
     chrome.textAt(progress, layout.progress.x, layout.progress.y + ROW_TEXT_PAD * s, 'dimmed');
   }
   for (const button of layout.buttons) {
-    const label =
-      button.action === 'toggle-gate'
-        ? model.gateOpen === true
-          ? hud.closeGate
-          : hud.openGate
-        : model.roadSite
-          ? hud.cancelRoadSite
-          : model.gateOpen === null
-            ? hud.demolishPalisade
-            : hud.demolishGate;
+    const label = model.roadSite ? hud.cancelRoadSite : hud.demolishPalisade;
     chrome.button(button, label, hover === button.action);
   }
 }

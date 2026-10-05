@@ -1,4 +1,4 @@
-import { PathRequest, Position, Settler } from '../../components/index.js';
+import { PathRequest, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
@@ -8,7 +8,11 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingDoorNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
 import { anyRouteFollowed, invalidateRoutesThrough } from '../landscape/routes.js';
-import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
+import { canonicalById, type NodeBuckets } from '../spatial/nodes.js';
+import { settlersByNode } from './settler-nodes.js';
+
+export { settlersByNode } from './settler-nodes.js';
+
 import { dropPath, isTravelling } from './nav-state.js';
 
 /**
@@ -132,31 +136,6 @@ export function evictSettlerFromBlockedSpawn(
   const centre = positionOfNode(c.x, c.y);
   p.x = centre.x;
   p.y = centre.y;
-}
-
-/** The settlers on each node, shared by every eviction and wall-site check until one moves, joins or
- *  leaves: a map's load settles its walls one after another in one tick with nobody moving in between. */
-const settlerNodeCache = new WeakMap<
-  World,
-  { settlers: number; positions: number; moves: number; buckets: NodeBuckets }
->();
-
-export function settlersByNode(world: World): NodeBuckets {
-  const settlers = world.componentGeneration(Settler);
-  const positions = world.componentGeneration(Position);
-  const moves = world.componentValueGeneration(Position);
-  const cached = settlerNodeCache.get(world);
-  if (
-    cached !== undefined &&
-    cached.settlers === settlers &&
-    cached.positions === positions &&
-    cached.moves === moves
-  ) {
-    return cached.buckets;
-  }
-  const buckets = new NodeBuckets(world, world.canonicalQuery(Settler, Position));
-  settlerNodeCache.set(world, { settlers, positions, moves, buckets });
-  return buckets;
 }
 
 /** The half-cell node a settler stands on, clamped into bounds. */

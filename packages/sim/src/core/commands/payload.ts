@@ -2,6 +2,7 @@ import { EQUIP_CATEGORIES, HomeQualityEffect } from '@open-northland/data';
 import { AI_DIFFICULTIES, AI_MODULE_IDS } from '../../components/ai-player.js';
 import { ASSISTANT_COUNTER_KINDS } from '../../components/assistant.js';
 import type { NeedKind } from '../../components/needs.js';
+import { GATE_MODES } from '../../components/palisade.js';
 import { PAPER_KINDS } from '../../components/papers.js';
 import { DIPLOMACY_STATES } from '../../components/rules.js';
 import { SETTLER_NAME_MAX_CHARS } from '../../components/settler.js';
@@ -257,6 +258,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
     optional: { victory: { oneOf: ['script', 'elimination'] } },
   },
   setNeedsEnabled: { required: { enabled: 'boolean' } },
+  setPalisadeGateMode: { required: { palisade: 'integer', mode: { oneOf: GATE_MODES } } },
   setPalisadeGate: { required: { palisade: 'integer', open: 'boolean' } },
   setPlayerPlacementTribes: { required: { player: 'integer', tribes: { arrayOf: 'integer' } } },
   setPlayerAi: {
