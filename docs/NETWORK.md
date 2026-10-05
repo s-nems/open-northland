@@ -459,6 +459,11 @@ sent to it before it asks.
 
 A returning token gets `room`, `chatHistory`, its pending `desync` notice if it has one,
 `start { session, snapshotTick }`, `clock` while the game runs, and `ended` once it has ended.
+A token the room removed meanwhile, voted out while its link was down, gets `welcome` alone, since the
+relay sends `kicked` and `left` to connected members only. The game client therefore answers every
+`welcome` while it holds a running room with `joinRoom` for that room and reads the refusal: a member
+put back is refused `alreadyInRoom` and stays; `gameStarted` means the room goes on without it, and
+`noRoom` that the room ended; both end the game with a notice.
 `snapshotTick` is the cached snapshot's tick, or null when the relay still holds every frame from the
 first. The client answers `loaded`:
 
