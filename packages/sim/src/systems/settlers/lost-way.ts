@@ -34,3 +34,9 @@ export function markCutOff(world: World, ctx: SystemContext, e: Entity, goal: No
 export function clearLostWay(world: World, e: Entity): void {
   world.remove(e, LostWay);
 }
+
+/** Lift a mark `e`'s own walk earned, now that a way is found. A cut-off mark stands: a meal or an
+ *  errand in reach does not reach the seat or the work, so only its own check, or work taken, lifts it. */
+export function liftLostWalk(world: World, e: Entity): void {
+  if (world.tryGet(e, LostWay)?.cutOff === false) world.remove(e, LostWay);
+}

@@ -33,7 +33,6 @@ import { releaseSiteClaim } from '../../economy/site-claim.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { canChooseJob, needSubjectOf } from '../../progression/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
-import { markIfPostedOutOfReach } from '../../settlers/drives/cut-off.js';
 import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
 import { groupPlacementOrder } from '../group-placement.js';
 import {
@@ -121,7 +120,6 @@ export function assignWorker(
   world.remove(e, JobAssignment); // drop any prior binding before re-binding to the chosen building
   reidleAsJob(world, ctx, e, jobType);
   bindEmployment(world, ctx, e, b);
-  markIfPostedOutOfReach(world, ctx, e);
 }
 
 /** Employ the group at one building - see the command doc and {@link groupPlacementOrder}. */

@@ -11,7 +11,6 @@ import {
   moveFamilyInto,
   startWedding,
 } from '../family/index.js';
-import { markIfPostedOutOfReach } from '../settlers/drives/cut-off.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { groupPlacementOrder } from './group-placement.js';
 import { dropOrderQueue, isOrderableSettler } from './guards.js';
@@ -49,7 +48,6 @@ export function assignHouse(
   if (!isOrderableSettler(world, e) || !isAdultSettler(world, e)) return;
   const house = command.house;
   moveFamilyInto(world, ctx, e, house);
-  if (world.tryGet(e, Residence)?.home === house) markIfPostedOutOfReach(world, ctx, e);
 }
 
 /** House the group's families in one home - see the command doc and {@link groupPlacementOrder}. */

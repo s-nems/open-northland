@@ -36,6 +36,7 @@ import { abandonCargoRun } from '../../vehicles/cargo.js';
 import { heldOffEconomy } from '../action-owner.js';
 import { jobCanBuild } from '../atomics/start.js';
 import { isInside, stepOut } from '../indoors.js';
+import { clearLostWay } from '../lost-way.js';
 import type { PlannerContext } from '../planner/context.js';
 import { IDLE_REPLAN_PERIOD_TICKS } from '../planner/idle-replan.js';
 import type { PlannerPass } from '../planner/pass.js';
@@ -61,7 +62,7 @@ import { planFarmer } from './farming/index.js';
 import { planGraduateWait } from './graduate-wait.js';
 import { isServedAtHome } from './home-errands.js';
 import { planBreeder } from './husbandry/index.js';
-import { guideLostSettler } from './lost-guide.js';
+import { guideLostSettler, walkPastConfinement } from './lost-guide.js';
 import { answerNeedInPlace, orderedNeed, planMealBreak, planNeeds } from './needs.js';
 import { planShelter } from './shelter.js';
 import { deStackIdle, stepOffHomeDoor } from './spacing.js';
@@ -324,21 +325,37 @@ function planEconomy(
     return;
   }
 
-  // A worker posted beyond its signpost reach takes up no work until the network reaches the post. A load
-  // still goes to its bound sink above, so it is never stranded in hand.
-  if (strandedWorkplaceDoor(world, ctx, terrain, e, plan.limit) !== null) {
-    standIdle(plan, pass, settler, hx, hy, alert);
+  // A worker posted beyond its signpost reach walks to its post regardless: the player chose it, and from
+  // there its trade works within reach of the post. One whose walk found no way stands lost until the
+  // network or the ground changes. A load still goes to its bound sink above, so it is never stranded in
+  // hand. Owner ruling; the original lets that walk fail on its guided pathfinder instead.
+  const post = strandedWorkplaceDoor(world, ctx, terrain, e, plan.limit);
+  if (post !== null) {
+    if (!walkPastConfinement(pass, e, plan.here, post)) standIdle(plan, pass, settler, hx, hy, alert);
     return;
   }
+
+  if (planTrade(plan, pass, hx, hy)) {
+    // Work taken is the way back for a mark the cut-off check raised. One a walk earned waits for its
+    // route: the work may be another walk that fails like the last.
+    if (world.tryGet(e, LostWay)?.cutOff === true) clearLostWay(world, e);
+    return;
+  }
+  standIdle(plan, pass, settler, hx, hy, alert);
+}
+
+/** The trade rungs proper, most-specific-first; true when one took the settler. */
+function planTrade(plan: PlannerContext, pass: PlannerPass, hx: number, hy: number): boolean {
+  const { world, ctx, entity: e } = plan;
 
   // The field loop sits above the producer rung so a farm that also carries an abstract recipe (real
   // extracted content synthesizes one from `logicproduction`) farms its fields instead of standing
   // at the station minting the good.
-  if (planFarmer(plan, pass.farmClaims)) return;
+  if (planFarmer(plan, pass.farmClaims)) return true;
 
   // The breeder's own cycle, above the producer rung: breeding is one branch of it, and the herd work
   // around it is nothing a recipe workshop's loop would do.
-  if (planBreeder(plan, pass.seatClaims, pass.spacing)) return;
+  if (planBreeder(plan, pass.seatClaims, pass.spacing)) return true;
 
   // A worker bound to a recipe workshop: a carrier ferries, a craftsman produces. A gatherer bound there
   // is not its operator - it runs the gather rung below and banks its harvest into the building, so it
@@ -353,22 +370,22 @@ function planEconomy(
     } else {
       planProducer(plan, workplace, pass.seatClaims, pass.spacing, pass.idle);
     }
-    return;
+    return true;
   }
 
-  if (planBuilder(plan, pass.spacing, pass.constructionClaims, pass.repairCrews, pass.siteSupply)) return;
+  if (planBuilder(plan, pass.spacing, pass.constructionClaims, pass.repairCrews, pass.siteSupply))
+    return true;
 
-  if (planSiteStaff(plan, pass.spacing, hx, hy)) return;
+  if (planSiteStaff(plan, pass.spacing, hx, hy)) return true;
 
-  if (planFisher(plan)) return;
-  if (planGatherer(plan, pass.harvestClaims, pass.idle)) return;
-  if (planPorter(plan, pass.idle)) return;
+  if (planFisher(plan)) return true;
+  if (planGatherer(plan, pass.harvestClaims, pass.idle)) return true;
+  if (planPorter(plan, pass.idle)) return true;
 
   // A settler the haul rung also refuses is genuinely idle. One already chatting keeps its chat, and one
   // a script pinned stays where it is; a graduate heads back to its school's yard, and the rest step off a
   // shared tile first so an idle crowd spreads out, then chat with a nearby idle neighbour.
-  if (planCarrierHaul(plan, pass.anyHaulable)) return;
-  standIdle(plan, pass, settler, hx, hy, alert);
+  return planCarrierHaul(plan, pass.anyHaulable);
 }
 
 /** The ladder's idle tail: the settler stands, its lost mark is reconciled on the cut-off cadence, and it

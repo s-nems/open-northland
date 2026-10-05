@@ -40,7 +40,7 @@ import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { startDrop } from '../settlers/atomics/start.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { heldIndoors, stepOut } from '../settlers/indoors.js';
-import { announceLostWay, clearLostWay, markLostWay } from '../settlers/lost-way.js';
+import { announceLostWay, liftLostWalk, markLostWay } from '../settlers/lost-way.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { deferOrderDuringAtomic, supersedeStandingOrders } from './guards.js';
 import { breaksForMeal, suspendWalkForMeal } from './meal-break.js';
@@ -172,7 +172,7 @@ function startPlayerWalk(
   world.remove(e, TrainingOrder); // likewise the player's only way to call a barracks drill off
   world.remove(e, GraduateWait); // a graduate the player moved stays where it was sent
   world.remove(e, NeedOrder); // and an ordered meal, nap, chat or prayer the walk supersedes
-  clearLostWay(world, e); // an obeyed order is the way found
+  liftLostWalk(world, e); // an obeyed order is the way found; a cut-off mark waits for its own check
   // Likewise a tower posting; no other kind of worker is unemployed by a walk order.
   releaseTowerPost(world, ctx, e);
   // A move order relocates a DEFEND or IGNORE unit's anchor, or the arrived-hold combat pass would march it

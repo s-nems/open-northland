@@ -5,7 +5,6 @@ import {
   chatAtomicRunning,
   IdleStand,
   inPastimeChat,
-  LostWay,
   MoveGoal,
   Position,
   Resting,
@@ -19,7 +18,7 @@ import { navigationLimitFor } from '../../signposts/index.js';
 import { endChat } from '../../social/index.js';
 import { cutOffCheckDue } from '../drives/cut-off.js';
 import { checkCutOff, planAdult, planChild, plannerContextOf, planShelterRung } from '../drives/ladder.js';
-import { clearLostWay } from '../lost-way.js';
+import { liftLostWalk } from '../lost-way.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
 import { idleBeatOfTick, waitsIdle, wakeIdle } from './idle-replan.js';
 import { navigationPlanner } from './navigation.js';
@@ -88,13 +87,12 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // waits for its own check: a meal in place does not reach the seat. A jobless adult never gets here, so
     // only an obeyed order lifts its mark.
     if (
-      world.tryGet(e, LostWay)?.cutOff === false &&
       world.has(e, CurrentAtomic) &&
       !pass.idle.reachedTail(e) &&
       !world.has(e, Chat) &&
       !world.has(e, MoveGoal)
     ) {
-      clearLostWay(world, e);
+      liftLostWalk(world, e);
     }
   }
 }

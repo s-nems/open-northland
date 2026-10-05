@@ -29,7 +29,6 @@ import {
 import { nearestWorkFlagPlacement } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { jobChangesProduction } from '../../readviews/jobs.js';
-import { navigationLimitFor } from '../../signposts/index.js';
 import { workplaceStocksGood, workplaceStoredGoods } from '../../stores/index.js';
 import { dropOrderQueue, isOrderableSettler } from '../guards.js';
 
@@ -49,9 +48,9 @@ const WORK_FLAG_SNAP_MAX_RADIUS = 6;
  * its work anchor and sink.
  *
  * The clicked node snaps to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}, so "work this
- * iron mine" lands on the ore itself. The snap carries the settler's signpost confinement, so the flag can
- * only land on ground that settler may work. The order on any other trade is a no-op rather than a stray
- * flag.
+ * iron mine" lands on the ore itself. The snap ignores the settler's signpost confinement: the flag is the
+ * player's choice, and the settler walks to it past its signposts, working within reach of the flag from
+ * there (owner ruling). The order on any other trade is a no-op rather than a stray flag.
  */
 export function setWorkFlag(
   world: World,
@@ -70,13 +69,9 @@ export function setWorkFlag(
   }
 
   const live = hauls ? liveHaulFlag(world, e) : liveWorkFlag(world, e);
-  // Confinement folds into the snap rather than filtering its winner, so a click near the band edge snaps
-  // inward to allowed ground instead of being pushed out and then rejected.
-  const limit = navigationLimitFor(world, ctx.content, terrain, e);
   // The clicked node is the search's own first candidate, so an unblocked click resolves to itself.
   const target = nearestWorkFlagPlacement(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y), {
     ignoreFlag: live?.flag,
-    ...(limit !== null ? { accept: (node) => limit.allowsNode(node) } : {}),
     withinRadius: WORK_FLAG_SNAP_MAX_RADIUS,
   });
   if (target === null) return; // nothing legal in snapping range - the click was not on workable ground

@@ -2,7 +2,6 @@ import {
   Chat,
   Engagement,
   Fleeing,
-  LostWay,
   MoveGoal,
   Obstructed,
   Owner,
@@ -27,6 +26,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { ROW_STEP, worldDistance, worldX } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
 import { type WalkBlockMask, walkBlockMask } from '../footprint/walk-block-mask.js';
+import { liftLostWalk } from '../settlers/lost-way.js';
 import { isValidNodeId } from '../spatial/nodes.js';
 import {
   ColliderWalkBlocks,
@@ -255,12 +255,12 @@ export function drainPathRequests(
   memo.expire(ctx.tick);
 }
 
-/** A route installed answers its request and ends any stranded park. It is a way found, so a lost settler
- *  walking it is lost no more, unless the walk only takes it to a chat partner. */
+/** A route installed answers its request and ends any stranded park. It is a way found, so a settler
+ *  lost over its own walk is lost no more, unless the walk only takes it to a chat partner. */
 function settleRoute(world: World, e: Entity): void {
   world.remove(e, PathRequest);
   world.remove(e, Stranded);
-  if (!world.has(e, Chat)) world.remove(e, LostWay);
+  if (!world.has(e, Chat)) liftLostWalk(world, e);
 }
 
 /** Whether `e` still walks a route but no longer stands nearest `start`, the node its grind ask is from. */
