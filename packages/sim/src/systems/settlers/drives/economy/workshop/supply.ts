@@ -95,7 +95,7 @@ export function nearestMissingInputSource(
   workplace: Entity,
   recipe: Recipe,
   shortfall: InputShortfall,
-  /** Look only at the loose ground piles in a flagged carrier's pickup area, ranked from its flag. */
+  /** Look only at the stores and ground piles in a flagged carrier's pickup area, ranked from its flag. */
   area?: HaulFlagArea,
 ): MissingInputSource | null {
   const { world, ctx, here, targets } = plan;
@@ -133,9 +133,9 @@ export function nearestMissingInputSource(
       band === null
         ? null
         : area !== undefined
-          ? band.nearestLoose(
+          ? band.nearest(
               here,
-              () => QUALIFIES,
+              (e) => (e === workplace ? null : QUALIFIES),
               area.gate,
               avoid,
               sameSideAs(world, plan.owner),

@@ -19,9 +19,9 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
 /**
- * A posted carrier's pickup flag: a warehouse or workshop carrier the player gave a flag lifts loose goods
- * only around it, waits there when none lie there, and a workshop carrier looks there for its missing
- * inputs before the stores. Fixture: HQ (type 1) stocks planks and wood, the twin mill (type 8) seats a
+ * A posted carrier's pickup flag: a warehouse or workshop carrier the player gave a flag lifts ground piles
+ * and workshop output only around it, waits there when none lie there, and a workshop carrier looks there
+ * for its missing inputs before the stores elsewhere. Fixture: HQ (type 1) stocks planks and wood, the twin mill (type 8) seats a
  * carrier and runs wood -> plank, the farm (type 5) is a field producer.
  */
 
@@ -134,6 +134,28 @@ describe('carrier pickup flag', () => {
     expect(headingColumn(s, porter) ?? columnOf(s, porter)).toBeGreaterThanOrEqual(23);
   });
 
+  it("hauls a workshop's output around the flag, whichever pickup lies nearer the flag first", () => {
+    const s = world();
+    const hq = buildingAt(s, HEADQUARTERS, 0);
+    const porter = carrierAt(s, 1, hq);
+    const mill = buildingAt(s, TWIN_MILL, 22, [[PLANK, 1]]);
+    const pile = pileAt(s, 31, PLANK, 1);
+    plantFlag(s, porter, 24);
+    for (let t = 0; t < RUN_TICKS && stockOf(s, hq, PLANK) === 0; t++) s.step();
+    expect(stockOf(s, mill, PLANK)).toBe(0);
+    expect(stockOf(s, pile, PLANK)).toBe(1);
+
+    const s2 = world();
+    const hq2 = buildingAt(s2, HEADQUARTERS, 0);
+    const porter2 = carrierAt(s2, 1, hq2);
+    const mill2 = buildingAt(s2, TWIN_MILL, 32, [[PLANK, 1]]);
+    const pile2 = pileAt(s2, 25, PLANK, 1);
+    plantFlag(s2, porter2, 24);
+    for (let t = 0; t < RUN_TICKS && stockOf(s2, hq2, PLANK) === 0; t++) s2.step();
+    expect(s2.world.isAlive(pile2) && stockOf(s2, pile2, PLANK) > 0).toBe(false);
+    expect(stockOf(s2, mill2, PLANK)).toBe(1);
+  });
+
   it('wakes a porter idling at its flag when the flag moves over a pile', () => {
     const s = world();
     const hq = buildingAt(s, HEADQUARTERS, 0);
@@ -201,5 +223,15 @@ describe('carrier pickup flag', () => {
     const carrier2 = carrierAt(s2, 5, mill2);
     plantFlag(s2, carrier2, 24);
     expect(headingColumn(s2, carrier2)).toBeLessThan(4);
+  });
+
+  it("takes a workshop's missing input from a store by the flag before a nearer one", () => {
+    const s = world();
+    buildingAt(s, HEADQUARTERS, 0, [[WOOD, 5]]);
+    buildingAt(s, HEADQUARTERS, 26, [[WOOD, 5]]);
+    const mill = buildingAt(s, TWIN_MILL, 4);
+    const carrier = carrierAt(s, 5, mill);
+    plantFlag(s, carrier, 24);
+    expect(headingColumn(s, carrier)).toBeGreaterThanOrEqual(20);
   });
 });

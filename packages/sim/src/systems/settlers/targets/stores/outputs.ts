@@ -62,7 +62,7 @@ export function nearestWorkplaceOutput(
 
 /** The lowest-goodType output a workplace stocks and the carrier could deliver, or null. Canonical
  *  order, and side-effect-free so the ring may re-evaluate it on the fallback scan. */
-function haulableOutputGood(
+export function haulableOutputGood(
   world: World,
   ctx: SystemContext,
   deliverable: (goodType: number) => boolean,

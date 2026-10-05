@@ -231,7 +231,7 @@ export function planProducer(
  * Ferry inputs and outputs for a carrier bound to a recipe workplace, or carry a self-filling house's
  * goods out. Input slots are topped up before output is removed so the operators do not starve; that
  * priority is the existing named approximation. A carrier holding a pickup flag takes a missing input
- * from the ground piles around it before the stores (owner ruling) and waits at the flag when idle.
+ * from the piles and stores around it before those elsewhere (owner ruling) and waits at the flag when idle.
  */
 export function planWorkshopSupplier(
   plan: PlannerContext,

@@ -111,8 +111,9 @@ collector with two trees beside his flag. Once both are felled the flag moves 3-
 the grove to the east, between the grove and the headquarters, and he goes on felling there.
 
 `?scene=porter-flag` puts a stone miner at a quarry far east of the headquarters. The headquarters
-porter holds a pickup flag beside the miner's yard: he carries the quarry stone home, leaves the heap
-beside the headquarters alone and waits at the flag when nothing lies there. Select him to plant, move
+porter holds a pickup flag beside the miner's yard: he carries the quarry stone and the flour of an
+unstaffed mill near the flag home, leaves the heap beside the headquarters alone and waits at the flag
+when nothing lies there. Select him to plant, move
 or take away the flag from the settler panel's Area row or the action ring; without it he fetches the
 heap too.
 

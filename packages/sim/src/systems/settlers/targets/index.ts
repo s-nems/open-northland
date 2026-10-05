@@ -1,12 +1,19 @@
 export { TargetBands } from './bands.js';
 export { collectTargets, type TargetCandidates } from './candidates.js';
-export { InteractionCellIndex, nearestByCell, QUALIFIES } from './cell-index.js';
+export {
+  InteractionCellIndex,
+  nearestByCell,
+  QUALIFIES,
+  type Qualified,
+  qualifiedGood,
+} from './cell-index.js';
 export { nearestFood, storedFoodGood } from './food.js';
 export { unreachableSiteStand, unreachableWorkCell, type WorkCellGates } from './reachability.js';
 export { nearestCollectablePileFor, nearestHarvestableFor, nearestOwnDropFor } from './resources.js';
 export {
   FetchableStock,
   hasHaulableOutput,
+  haulableOutputGood,
   nearestBuilderSite,
   nearestFreeYardNode,
   nearestPrayerSite,

@@ -100,12 +100,13 @@ function linearWinner(
   gate: SpatialGate | undefined,
   avoid: ((cell: NodeId) => boolean) | undefined,
   onSide: ((e: Entity) => boolean) | undefined,
+  rank: NodeId = here,
 ) {
   const terrain = terrainOf(sim);
   return nearestByCell(
     terrain,
     candidates,
-    here,
+    rank,
     (e) => {
       const hit = accept(e);
       if (hit === null) return null;
@@ -119,7 +120,7 @@ function linearWinner(
 }
 
 /** Random queries: sparse acceptance so some searches run past the ring cap into the far fallback, and
- *  an optional box gate, cell veto and owner side. */
+ *  an optional box gate, cell veto and owner side, each also ranked from a random origin. */
 function checkQueries(
   sim: Simulation,
   index: InteractionCellIndex,
@@ -147,6 +148,10 @@ function checkQueries(
 
     const expected = linearWinner(sim, candidates, here, accept, gate, avoid, onSide);
     expect(index.nearest(here, accept, gate, avoid, onSide), `query ${q}`).toEqual(expected);
+    const rank = terrain.nodeAt(roll(NODES_W), roll(NODES_H));
+    expect(index.nearest(here, accept, gate, avoid, onSide, rank), `ranked query ${q}`).toEqual(
+      linearWinner(sim, candidates, here, accept, gate, avoid, onSide, rank),
+    );
     const loose = candidates.filter((e) => !sim.world.has(e, Building));
     expect(index.nearestLoose(here, accept, gate, avoid, onSide), `loose query ${q}`).toEqual(
       linearWinner(sim, loose, here, accept, gate, avoid, onSide),

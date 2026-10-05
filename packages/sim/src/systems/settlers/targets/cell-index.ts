@@ -241,9 +241,12 @@ export class InteractionCellIndex {
     avoid?: (cell: NodeId) => boolean,
     /** Rejects a candidate owned by another player, per entity rather than per cell. */
     onSide?: (e: Entity) => boolean,
+    /** The ranking origin, a flag centre for a carrier working outward from its flag; `here` stays the
+     *  route start the interaction cell, sealing and veto are judged from. */
+    rank: NodeId = here,
   ): NearestByCell<P> | null {
-    const door = this.doorNearest(here, accept, gate, avoid, onSide);
-    return nearerOf(door, this.looseNearest(here, here, accept, gate, avoid, onSide, door?.distance));
+    const door = this.doorNearest(here, rank, accept, gate, avoid, onSide);
+    return nearerOf(door, this.looseNearest(here, rank, accept, gate, avoid, onSide, door?.distance));
   }
 
   /** The {@link nearest} winner among the door-bucketed candidates, for an `accept` that only a building
@@ -255,56 +258,55 @@ export class InteractionCellIndex {
     avoid?: (cell: NodeId) => boolean,
     onSide?: (e: Entity) => boolean,
   ): NearestByCell<P> | null {
-    return this.doorNearest(here, accept, gate, avoid, onSide);
+    return this.doorNearest(here, here, accept, gate, avoid, onSide);
   }
 
-  /** The {@link nearest} winner among the candidates without a door: the building-less ones. `rank` is
-   *  the ranking origin, a flag centre for a carrier working outward from its flag; `here` stays the
-   *  route start the interaction cell, sealing and veto are judged from. */
+  /** The {@link nearest} winner among the candidates without a door: the building-less ones. */
   nearestLoose<P>(
     here: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
     avoid?: (cell: NodeId) => boolean,
     onSide?: (e: Entity) => boolean,
-    rank: NodeId = here,
   ): NearestByCell<P> | null {
-    return this.looseNearest(here, rank, accept, gate, avoid, onSide);
+    return this.looseNearest(here, here, accept, gate, avoid, onSide);
   }
 
   private doorNearest<P>(
     here: NodeId,
+    rank: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
     gate: SpatialGate | undefined,
     avoid: ((cell: NodeId) => boolean) | undefined,
     onSide: ((e: Entity) => boolean) | undefined,
   ): NearestByCell<P> | null {
     if (this.doors.size <= RING_MIN_BUCKETS) {
-      return this.linearNearest(this.doorList, here, accept, gate, avoid, onSide);
+      return this.linearNearest(this.doorList, here, accept, gate, avoid, onSide, rank);
     }
-    const hx = this.terrain.xOf(here);
-    const hy = this.terrain.yOf(here);
+    const hx = this.terrain.xOf(rank);
+    const hy = this.terrain.yOf(rank);
     let reach = this.doors.reach(hx, hy);
     if (gate !== undefined) reach = Math.min(reach, boundsReach(gate, hx, hy));
     const maxRadius = Math.min(NEAREST_RING_MAX_RADIUS, reach);
-    const best = this.ringNearest(here, maxRadius, accept, gate, avoid, onSide);
+    const best = this.ringNearest(here, rank, maxRadius, accept, gate, avoid, onSide);
     // An exhaustive sweep proves a null; otherwise the ring cap stopped short and the full scan decides.
     if (best !== null || reach <= NEAREST_RING_MAX_RADIUS) return best;
-    return this.linearNearest(this.doorList, here, accept, gate, avoid, onSide);
+    return this.linearNearest(this.doorList, here, accept, gate, avoid, onSide, rank);
   }
 
-  /** The nearest door-bucketed candidate within `maxRadius` rings of `here`, or null. The first non-empty
+  /** The nearest door-bucketed candidate within `maxRadius` rings of `rank`, or null. The first non-empty
    *  ring holds the minimum distance, so its winner is the global door winner within that radius. */
   private ringNearest<P>(
     here: NodeId,
+    rank: NodeId,
     maxRadius: number,
     accept: (e: Entity) => Qualified<P> | null,
     gate: SpatialGate | undefined,
     avoid: ((cell: NodeId) => boolean) | undefined,
     onSide: ((e: Entity) => boolean) | undefined,
   ): NearestByCell<P> | null {
-    const hx = this.terrain.xOf(here);
-    const hy = this.terrain.yOf(here);
+    const hx = this.terrain.xOf(rank);
+    const hy = this.terrain.yOf(rank);
     for (let d = 0; d <= maxRadius; d++) {
       let best: NearestByCell<P> | null = null;
       const offsets = ringOffsetCount(d);

@@ -16,6 +16,7 @@ import {
   signpostNavigationEnabled,
   UnderConstruction,
   UnreachableGoals,
+  Upgrading,
   WorkFlag,
 } from '../../../../components/index.js';
 import { landscapeTopologyRevision } from '../../../../components/landscape.js';
@@ -79,6 +80,8 @@ function porterScanVersion(world: World): number {
     world.componentValueGeneration(Building) + // the home upgrade swaps buildingType in place
     world.componentGeneration(Stockpile) +
     world.componentGeneration(Building) +
+    world.componentValueGeneration(Upgrading) + // an upgrading workplace keeps its output in `savedStock`
+    world.componentGeneration(Upgrading) +
     world.componentGeneration(UnderConstruction) +
     world.componentGeneration(GroundDrop) +
     world.componentGeneration(DeliveryFlag) +

@@ -361,7 +361,7 @@ export const enContent = {
     'porter-flag': {
       title: "A porter's flag at the quarry",
       summary:
-        'A miner stacks stone at his yard far east of the headquarters. The headquarters porter holds a flag beside that yard: he carries the quarry stone home, leaves the heap by the headquarters alone and waits at the flag when nothing lies there.',
+        'A miner stacks stone at his yard far east of the headquarters. The headquarters porter holds a flag beside that yard: he carries the quarry stone and the flour of a mill near the flag home, leaves the heap by the headquarters alone and waits at the flag when nothing lies there.',
     },
     'gatherer-flag-follow': {
       title: 'Flags follow the resources',

@@ -10,8 +10,10 @@ import { JOB_CARRIER } from '../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_HEADQUARTERS,
+  BUILDING_MILL,
   dropSandboxGood,
   GATHERERS,
+  GOOD_FLOUR,
   GOOD_STONE,
   placeBuiltSandboxBuilding,
   placeFlag,
@@ -29,6 +31,9 @@ const QUARRY_AT = { x: 32, y: 9 } as const;
 const MINER_FLAG_AT = { x: 30, y: 11 } as const;
 /** Where the player planted the first porter's pickup flag, beside the miner's yard. */
 const PORTER_FLAG_AT = { x: 29, y: 12 } as const;
+/** An unstaffed mill inside the flag area holding finished flour, which the porter carries home too. */
+const MILL_AT = { x: 24, y: 14 } as const;
+const MILL_FLOUR = 3;
 /** A heap beside the headquarters, outside the porter's flag area, which it must leave lying. */
 const NEAR_PILE_AT = { x: 9, y: 13 } as const;
 const NEAR_PILE_STONE = 2;
@@ -46,10 +51,10 @@ function headquarters(sim: Simulation): Entity | undefined {
   return undefined;
 }
 
-function bankedStone(sim: Simulation): number {
+function banked(sim: Simulation, good: number): number {
   const hq = headquarters(sim);
   if (hq === undefined) return 0;
-  return sim.world.tryGet(hq, components.Stockpile)?.amounts.get(GOOD_STONE) ?? 0;
+  return sim.world.tryGet(hq, components.Stockpile)?.amounts.get(good) ?? 0;
 }
 
 /** Loose stone lying within a few nodes of tile `at`. */
@@ -70,8 +75,9 @@ function looseStoneNear(sim: Simulation, at: { x: number; y: number }): number {
 
 /**
  * A stone miner works a quarry far east of the headquarters and stacks his stone at his yard. The
- * headquarters porter holds a pickup flag beside that yard: he carries the quarry's stone home, leaves the
- * heap beside the headquarters alone, and waits at the flag once nothing lies there.
+ * headquarters porter holds a pickup flag beside that yard: he carries the quarry's stone and a nearby
+ * mill's flour home, leaves the heap beside the headquarters alone, and waits at the flag once nothing lies
+ * there.
  */
 export const porterFlagScene: SceneDefinition = {
   id: 'porter-flag',
@@ -86,6 +92,8 @@ export const porterFlagScene: SceneDefinition = {
     });
     const hq = placeBuiltSandboxBuilding(sim, BUILDING_HEADQUARTERS, HQ_AT.x, HQ_AT.y, HUMAN_PLAYER);
     spawnWorkersAtDoor(sim, hq, 1, { jobType: JOB_CARRIER });
+    const mill = placeBuiltSandboxBuilding(sim, BUILDING_MILL, MILL_AT.x, MILL_AT.y, HUMAN_PLAYER);
+    components.setStockAmount(sim.world, mill, GOOD_FLOUR, MILL_FLOUR);
     dropSandboxGood(sim, GOOD_STONE, NEAR_PILE_AT.x, NEAR_PILE_AT.y, NEAR_PILE_STONE);
     const [porter] = sim.world.query(components.JobAssignment);
     if (porter === undefined) throw new Error('porter-flag: no porter');
@@ -104,7 +112,11 @@ export const porterFlagScene: SceneDefinition = {
     },
     {
       label: 'stone from the quarry reaches the headquarters',
-      predicate: (sim) => bankedStone(sim) > 0,
+      predicate: (sim) => banked(sim, GOOD_STONE) > 0,
+    },
+    {
+      label: "the mill's flour by the flag reaches the headquarters",
+      predicate: (sim) => banked(sim, GOOD_FLOUR) > 0,
     },
   ],
 };

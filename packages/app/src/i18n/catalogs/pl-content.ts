@@ -360,7 +360,7 @@ export const plContent = {
     'porter-flag': {
       title: 'Chorągiewka tragarza w kamieniołomie',
       summary:
-        'Górnik układa kamień przy swojej chorągiewce daleko na wschód od kwatery głównej. Tragarz kwatery ma chorągiewkę przy tym składzie: nosi kamień z kamieniołomu, zostawia kupkę leżącą przy kwaterze i czeka przy chorągiewce, gdy nic tam nie leży.',
+        'Górnik układa kamień przy swojej chorągiewce daleko na wschód od kwatery głównej. Tragarz kwatery ma chorągiewkę przy tym składzie: nosi kamień z kamieniołomu i mąkę z pobliskiego młyna, zostawia kupkę leżącą przy kwaterze i czeka przy chorągiewce, gdy nic tam nie leży.',
     },
     'gatherer-flag-follow': {
       title: 'Flagi idą za surowcami',
