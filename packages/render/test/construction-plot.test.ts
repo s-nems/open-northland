@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { plotOutlines } from '../src/gpu/overlays/construction-plot.js';
+import { ConstructionPlotLayer, plotOutlines } from '../src/gpu/overlays/construction-plot.js';
 
 /**
  * Outlines are built in the rotated `(u,v)` frame (`u = col+row`, `v = col−row`), where each cell diamond
@@ -112,5 +112,39 @@ describe('plotOutlines', () => {
     expect(vertexSet(hole)).toEqual(['1,1', '1,3', '3,1', '3,3'].sort()); // the 2×2 centre hole
     // Opposite windings, so a nonzero-winding fill leaves the enclosed hole empty.
     expect(Math.sign(signedArea2(outer))).toBe(-Math.sign(signedArea2(hole)));
+  });
+});
+
+describe('construction plot picking', () => {
+  it('selects the lifted ground outline, never the future roof, and extends the body bounds', () => {
+    const layer = new ConstructionPlotLayer();
+    const elevation = { maxLift: 20, liftAt: () => 20, liftAtNode: () => 20 };
+    layer.set([{ ref: 7, cells: [{ col: 4, row: 4 }] }], elevation);
+    expect(layer.hit(7, 136, 56)).toBe(true);
+    expect(layer.hit(7, 136, -40)).toBe(false);
+    expect(layer.hit(7, 170, 56)).toBe(false); // rounded diamond tip
+    expect(layer.hit(8, 136, 56)).toBe(false);
+    const body = { minX: 130, minY: -90, maxX: 145, maxY: 60 };
+    const bounds = layer.boundsOf(7, body);
+    expect(bounds?.minY).toBe(-90);
+    expect(bounds?.minX).toBeLessThan(body.minX);
+    expect(bounds?.maxY).toBeGreaterThan(body.maxY);
+    expect(layer.boundsOf(7, body)).toBe(bounds);
+    layer.destroy();
+  });
+
+  it('moves click ownership when a site is replaced at the same cells, and drops completed or hidden plots', () => {
+    const layer = new ConstructionPlotLayer();
+    const flat = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
+    const cells = [{ col: 4, row: 4 }];
+    layer.set([{ ref: 7, cells }], flat);
+    expect(layer.hit(7, 136, 76)).toBe(true);
+    layer.set([{ ref: 8, cells }], flat);
+    expect(layer.hit(7, 136, 76)).toBe(false);
+    expect(layer.hit(8, 136, 76)).toBe(true);
+    layer.set([], flat);
+    expect(layer.hit(8, 136, 76)).toBe(false);
+    expect(layer.boundsOf(8, undefined)).toBeUndefined();
+    layer.destroy();
   });
 });

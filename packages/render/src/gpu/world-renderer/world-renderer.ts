@@ -520,11 +520,11 @@ export class WorldRenderer {
   }
 
   entityBounds(ref: number): EntityBounds | undefined {
-    return this.pool.boundsOf(ref);
+    return this.constructionPlots.boundsOf(ref, this.pool.boundsOf(ref));
   }
 
   entityPixelHit(ref: number, wx: number, wy: number): boolean | undefined {
-    return this.pool.pixelHit(ref, wx, wy);
+    return this.constructionPlots.hit(ref, wx, wy) || this.pool.pixelHit(ref, wx, wy);
   }
 
   /** The `?debug=geometry` overlay of every placed building's logic geometry. */

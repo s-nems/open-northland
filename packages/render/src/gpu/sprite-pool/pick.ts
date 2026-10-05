@@ -88,17 +88,11 @@ export function pixelHit(
     // A settler keeps the (deliberately generous) box hit; a ship's sail box is mostly air.
     return pe.kind === 'settler' ? undefined : palettedPixelHit(pe, wx, wy);
   }
-  // An under-construction site keeps the box hit too: its drawn pixels are the partial reveal, and a
-  // player clicks the site (its final-building rect), not whatever scattered pixels exist so far.
-  if (pe.reveal !== undefined) return undefined;
-  let sampledEveryLayer = false;
+  if (pe.placeholder?.visible || pe.siteMarker?.visible || pe.siteClaimMarker?.visible) return undefined;
   for (let i = 0; i < pe.sprites.length; i++) {
     const spr = pe.sprites[i];
-    if (!(spr instanceof Sprite) || !spr.visible) continue;
+    if (!(spr instanceof Sprite) || !spr.visible || spr.alpha <= 0) continue;
     if (pe.pickExempt[i] === true) continue;
-    const mask = alphaMaskOf(spr.texture.source);
-    if (mask === null) return undefined; // pixels unreadable → the box hit stands
-    sampledEveryLayer = true;
     // The binder preserves vertical scale when shearing vegetation around its root.
     const scale = spr.scale.x;
     if (!(scale > 0)) return undefined;
@@ -107,10 +101,12 @@ export function pixelHit(
     const ly = Math.floor(dy / scale);
     const frame = spr.texture.frame;
     if (lx < 0 || ly < 0 || lx >= frame.width || ly >= frame.height) continue;
+    // Sample the bound texture: its crop or baked reveal already excludes unbuilt pixels.
+    const mask = alphaMaskOf(spr.texture.source);
+    if (mask === null) return undefined; // pixels unreadable → the box hit stands
     if (maskSolidAt(mask, frame.x + lx, frame.y + ly)) return true;
   }
-  // No visible atlas layer at all (a placeholder marker) leaves no exact answer, so keep the box.
-  return sampledEveryLayer ? false : undefined;
+  return false;
 }
 
 /** {@link pixelHit} over a vehicle's self-placing meshes, whose frame sits at its draw offset from the feet

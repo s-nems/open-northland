@@ -28,7 +28,7 @@ export function createVisiblePlots(
     }
     // Plot cells are half-cell nodes.
     const visible = source
-      .map((p) => ({ cells: p.cells.filter((c) => seesNode(c.col, c.row)) }))
+      .map((p) => ({ ref: p.ref, cells: p.cells.filter((c) => seesNode(c.col, c.row)) }))
       .filter((p) => p.cells.length > 0);
     seen = { source, fogGeneration: fogView.generation, fogPlayer: fogView.player, visible };
     return visible;

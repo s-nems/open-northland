@@ -132,21 +132,19 @@ describe('SpritePool - a paused site keeps easing', () => {
   });
 });
 
-describe('SpritePool - a rising site is picked over the finished building’s whole box', () => {
+describe('SpritePool - a rising site retains its broad-phase bounds', () => {
   it('stamps the same bounds at 0% as when nearly complete', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), sheet);
 
-    // Nothing revealed yet, so the crop hides the sprite's full height, but the site must still be
-    // clickable over the plot it will occupy.
+    // The bounds stay stable; pixel picking separately rejects unrevealed parts of the frame.
     pool.reconcile(poolFrame(snapshotOf([site(0)])));
     const stamped = pool.boundsOf(1);
     if (stamped === undefined) throw new Error('a drawn site must stamp bounds');
     const atStart = { ...stamped }; // copied: the pool restamps this box in place each frame
     expect(atStart.maxY - atStart.minY).toBeGreaterThan(0);
 
-    // Bounds come from each layer's uncropped frame rect. Stamping the cropped rect instead would collapse
-    // the box at 0% and swell it as the building rose, making a fresh foundation unclickable.
+    // Bounds come from each layer's uncropped frame rect, independent of the reveal.
     for (let f = 0; f < 60; f++) pool.reconcile(poolFrame(snapshotOf([site(90)])));
     expect({ ...pool.boundsOf(1) }).toEqual(atStart);
   });

@@ -1,6 +1,7 @@
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, GraphicsContext } from 'pixi.js';
 import { halfCellToScreen } from '../../data/projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
+import type { EntityBounds } from '../sprite-pool/pooled-entity.js';
 import { hashCells } from './cell-signature.js';
 
 /**
@@ -11,6 +12,7 @@ import { hashCells } from './cell-signature.js';
 
 /** The half-cell `(col,row)` body cells one site occupies. */
 export interface ConstructionPlotFrame {
+  readonly ref: number;
   readonly cells: readonly { readonly col: number; readonly row: number }[];
 }
 
@@ -19,6 +21,12 @@ const PLOT_ALPHA = 0.55;
 /** Corner rounding cap in world px. */
 const MAX_CORNER_RADIUS = 12;
 
+interface PickPlot {
+  readonly plot: ConstructionPlotFrame;
+  shape?: GraphicsContext;
+  readonly bounds: { -readonly [K in keyof EntityBounds]: EntityBounds[K] };
+}
+
 export class ConstructionPlotLayer {
   readonly container = new Container();
   private readonly g = new Graphics();
@@ -26,6 +34,9 @@ export class ConstructionPlotLayer {
   private drawn: readonly ConstructionPlotFrame[] | null = null;
   /** Signature of the plot set last drawn - an unchanged set skips the rebuild. */
   private key = '';
+  private readonly picks = new Map<number, PickPlot>();
+  private readonly point = { x: 0, y: 0 };
+  private elevation: ElevationField | undefined;
 
   constructor() {
     this.container.alpha = PLOT_ALPHA;
@@ -36,23 +47,71 @@ export class ConstructionPlotLayer {
   set(plots: readonly ConstructionPlotFrame[], elevation: ElevationField): void {
     if (plots === this.drawn) return;
     this.drawn = plots;
+    this.elevation = elevation;
+    for (const pick of this.picks.values()) pick.shape?.destroy();
+    this.picks.clear();
+    for (const plot of plots) {
+      this.picks.set(plot.ref, { plot, bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 } });
+    }
     const key = signatureOf(plots);
     if (key === this.key) return;
     this.key = key;
 
     const g = this.g.clear();
     if (plots.length === 0) return;
-    for (const loop of plotOutlines(plots)) {
-      const points = loop.map(({ u, v }) => projectUV(elevation, u, v));
-      g.roundShape(withCornerRadii(points), MAX_CORNER_RADIUS);
-    }
-    g.fill(PLOT_COLOR);
+    fillPlots(g.context, plots, elevation);
   }
 
   destroy(): void {
+    for (const pick of this.picks.values()) pick.shape?.destroy();
+    this.picks.clear();
     this.g.destroy();
     this.container.destroy({ children: true });
   }
+
+  /** The visible ground plot remains selectable before its building has any revealed pixels. */
+  hit(ref: number, x: number, y: number): boolean {
+    const pick = this.pickPlot(ref);
+    this.point.x = x;
+    this.point.y = y;
+    return pick?.shape?.containsPoint(this.point) ?? false;
+  }
+
+  boundsOf(ref: number, body: EntityBounds | undefined): EntityBounds | undefined {
+    const pick = this.pickPlot(ref);
+    const plot = pick?.shape?.bounds;
+    if (pick === undefined || plot === undefined) return body;
+    const bounds = pick.bounds;
+    bounds.minX = Math.min(plot.minX, body?.minX ?? plot.minX);
+    bounds.minY = Math.min(plot.minY, body?.minY ?? plot.minY);
+    bounds.maxX = Math.max(plot.maxX, body?.maxX ?? plot.maxX);
+    bounds.maxY = Math.max(plot.maxY, body?.maxY ?? plot.maxY);
+    return bounds;
+  }
+
+  /** Built only for queried sites; the hit shape uses the same lifted, rounded outline as the decal. */
+  private pickPlot(ref: number): PickPlot | undefined {
+    const pick = this.picks.get(ref);
+    const elevation = this.elevation;
+    if (pick === undefined || elevation === undefined) return undefined;
+    if (pick.shape === undefined) {
+      pick.shape = new GraphicsContext();
+      fillPlots(pick.shape, [pick.plot], elevation);
+    }
+    return pick;
+  }
+}
+
+function fillPlots(
+  context: GraphicsContext,
+  plots: readonly ConstructionPlotFrame[],
+  elevation: ElevationField,
+): void {
+  for (const loop of plotOutlines(plots)) {
+    const points = loop.map(({ u, v }) => projectUV(elevation, u, v));
+    context.roundShape(withCornerRadii(points), MAX_CORNER_RADIUS);
+  }
+  context.fill(PLOT_COLOR);
 }
 
 /**
@@ -63,7 +122,9 @@ export class ConstructionPlotLayer {
  * left turn, so loops never self-cross. Deterministic: squares and edges are visited in sorted-key order,
  * so the outlines do not depend on the caller's cell order.
  */
-export function plotOutlines(plots: readonly ConstructionPlotFrame[]): { u: number; v: number }[][] {
+export function plotOutlines(
+  plots: readonly Pick<ConstructionPlotFrame, 'cells'>[],
+): { u: number; v: number }[][] {
   // 1. The covered unit squares, keyed by their min corner "a,b" - 4 per cell (the 2×2 block).
   const squares = new Set<string>();
   for (const plot of plots) {

@@ -470,8 +470,7 @@ export class LayerBinder {
       return;
     }
     if (revealTexture === null && box.hiddenTop >= layer.frame.height) {
-      // Nothing revealed yet: draw nothing, but bounds still stamp so the flat site stays clickable
-      // over its plot.
+      // Nothing revealed yet; the pixel picker rejects this layer inside the retained bounds.
       spr.visible = false;
       return;
     }

@@ -61,6 +61,7 @@ export const upgradeTribesScene: SceneDefinition = {
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   graphicTribes: [VIKING, FRANK],
+  initialZoom: 0.85,
   runTicks: RUN_TICKS,
   checks: [
     {

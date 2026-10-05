@@ -28,6 +28,7 @@ export function buildingDoorNodes(world: World, ctx: ContentContext, terrain: Te
 /** One under-construction building's ground plot, for the render's construction-site decal. Cells are
  *  `(col, row)` half-cell nodes, the coords `halfCellToScreen` projects. */
 export interface ConstructionPlot {
+  readonly ref: number;
   readonly cells: readonly { readonly col: number; readonly row: number }[];
 }
 
@@ -72,7 +73,7 @@ export function constructionSitePlots(world: World, content: ContentSet): readon
     const p = world.get(e, Position);
     const { hx, hy } = nodeOfPosition(p.x, p.y);
     const body = footprint !== undefined && footprint.blocked.length > 0 ? footprint.blocked : ANCHOR_ONLY;
-    plots.push({ cells: body.map((c) => ({ col: hx + footprintCellDx(hy, c), row: hy + c.dy })) });
+    plots.push({ ref: e, cells: body.map((c) => ({ col: hx + footprintCellDx(hy, c), row: hy + c.dy })) });
   }
   constructionPlotMemo.set(world, {
     content,
