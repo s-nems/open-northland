@@ -1473,8 +1473,28 @@ export const plGame = {
     voteKick: 'Głosuj za wyrzuceniem',
     voteTally: '{yes} z {needed} głosów',
     kickCountdown: 'głosowanie za {seconds} s',
-    kicked: 'Gracz {nick} został wyrzucony, miejsce przejmuje SI',
-    kickedIdle: 'Gracz {nick} został wyrzucony, miejsce zostaje puste',
+    departed: {
+      vote: {
+        ai: 'Gracz {nick} został wyrzucony, miejsce przejmuje SI',
+        idle: 'Gracz {nick} został wyrzucony, miejsce zostaje puste',
+      },
+      left: {
+        ai: 'Gracz {nick} opuścił grę, miejsce przejmuje SI',
+        idle: 'Gracz {nick} opuścił grę, miejsce zostaje puste',
+      },
+      loading: {
+        ai: 'Gracz {nick} nie wczytał gry, miejsce przejmuje SI',
+        idle: 'Gracz {nick} nie wczytał gry, miejsce zostaje puste',
+      },
+    },
+    startRoster: {
+      title: 'Gracze',
+      you: 'ty',
+      ready: 'gotowy',
+      loading: 'wczytuje',
+      away: 'brak połączenia',
+      dropped: 'nie wczytał gry',
+    },
     youWereKicked: 'Głosowanie wyrzuciło cię z gry',
     paused: '{nick} wstrzymuje grę',
     resumed: '{nick} wznawia grę',

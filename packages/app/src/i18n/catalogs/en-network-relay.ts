@@ -58,6 +58,7 @@ export const enNetworkRelay = {
     ackOutOfOrder: 'expected confirmation of tick {expected}',
     tickNotEmitted: 'tick {tick} has not happened yet',
     noWorldYet: 'no world has loaded yet',
+    loadingTimedOut: 'loading stood still for too long; the game started without you',
     matchEnded: 'the match has ended',
     commandBudget: 'too many orders at once',
     envelopeTooLarge: 'the order is too large',

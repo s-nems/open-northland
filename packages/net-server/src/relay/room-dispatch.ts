@@ -28,7 +28,7 @@ export function dispatchRoomMessage(room: Room, member: Member, message: RoomMes
     case 'loaded':
       return room.markLoaded(member, message, now);
     case 'loading':
-      return room.reportLoading(member, message.progress);
+      return room.reportLoading(member, message.progress, now);
     case 'saveOrders':
       return room.saveOrders(member, message);
     case 'finish':

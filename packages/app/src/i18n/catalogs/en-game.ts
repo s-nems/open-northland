@@ -1507,8 +1507,28 @@ export const enGame = {
     voteKick: 'Vote to kick',
     voteTally: '{yes} of {needed} votes',
     kickCountdown: 'vote in {seconds} s',
-    kicked: '{nick} was kicked; the AI takes the seat',
-    kickedIdle: '{nick} was kicked; the seat sits idle',
+    departed: {
+      vote: {
+        ai: '{nick} was kicked; the AI takes the seat',
+        idle: '{nick} was kicked; the seat sits idle',
+      },
+      left: {
+        ai: '{nick} left the game; the AI takes the seat',
+        idle: '{nick} left the game; the seat sits idle',
+      },
+      loading: {
+        ai: '{nick} did not finish loading; the AI takes the seat',
+        idle: '{nick} did not finish loading; the seat sits idle',
+      },
+    },
+    startRoster: {
+      title: 'Players',
+      you: 'you',
+      ready: 'ready',
+      loading: 'loading',
+      away: 'disconnected',
+      dropped: 'did not load',
+    },
     youWereKicked: 'You were voted out of the game',
     paused: '{nick} paused the game',
     resumed: '{nick} resumed the game',

@@ -379,7 +379,14 @@ describe('kick votes', () => {
       yes: ['Ania'],
       needed: 1,
     });
-    expect(s.b.last('kicked')).toEqual({ kind: 'kicked', player: 2, nick: 'Cezary', mode: 'ai', tick: 5 });
+    expect(s.b.last('kicked')).toEqual({
+      kind: 'kicked',
+      player: 2,
+      nick: 'Cezary',
+      mode: 'ai',
+      cause: 'vote',
+      tick: 5,
+    });
     expect(s.b.last('room')?.room.seats[2]).toMatchObject({ mode: 'ai', nick: null });
     expect(s.b.last('room')?.room.members.map((member) => member.nick)).toEqual(['Ania', 'Bartek']);
     tick(s, [s.a, s.b], TICK_MS * 2);

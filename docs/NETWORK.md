@@ -260,7 +260,10 @@ waited for, and restarts only once it has stopped being waited for. A wait is ov
 is waited for: the dropped token returned, the silent one answered, the slow one caught up, or the
 diverged one rebuilt. A client that never loads or never acknowledges is waited for and can be voted
 out, before the start as after it; a member kicked before the start is not waited for to start the
-clock.
+clock. Before the clock runs, a member that has not loaded and whose boot progress has not moved for
+`LOADING_STALL_MS` (2 min, counted from the start, its last `loading`, or its return) is dropped
+without a vote: it gets `error { loadingTimedOut }`, then leaves its seat as a kicked member does,
+with `cause: "loading"`. The app shows no countdown for it.
 
 ## Kick votes
 
@@ -269,13 +272,14 @@ repeat from the same member counts once. Every yes is broadcast as
 `kickVote { player, nick, yes: [nicks], needed }`, where `needed` is half of the connected members
 other than the target, rounded up. A vote lives only while its target is waited for.
 
-When the yeses reach `needed` the relay broadcasts `kicked { player, nick, mode, tick }`, removes
+When the yeses reach `needed` the relay broadcasts `kicked { player, nick, mode, cause, tick }`, removes
 the member (its token is a stranger from then on), and returns the seat to `settings.kickedSeatMode`
 (`ai` or `idle`) when the seat offers it, else to its lobby mode, and to `idle` for an `absent` one,
 whose settlers already stand. The room view reflects this mode. For
 `mode: "ai"` the relay lands its `setPlayerAi` envelope on `tick`, the next unemitted one, outside
 every budget, so the AI takes the seat on the same tick on every client. For `mode: "idle"` the seat
-simply issues nothing more.
+simply issues nothing more. `cause` says why the seat was left: `vote`, `left` for a member that
+left the started game itself, or `loading` for a stalled load (above).
 
 ## Manual save order capture
 
@@ -436,6 +440,7 @@ and paragraph separators are refused along with control characters.
 | `MAX_REPORTED_TICK_MS` / `MAX_REPORTED_BUFFERED` in `load` | 60 s / an hour of ticks at `MAX_SPEED` |
 | `SILENT_AFTER_MS` | 4 s |
 | `KICK_COUNTDOWN_MS` | 60 s |
+| `LOADING_STALL_MS` | 2 min |
 | `SNAPSHOT_REFRESH_MS` / `SNAPSHOT_RETRY_MS` | 5 min / 10 s |
 | nick / room name / chat line | 24 / 48 / 500 characters |
 | room id / world id / command kind / `malformed` detail | 32 / 128 / 64 / 200 characters |

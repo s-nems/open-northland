@@ -10,6 +10,10 @@ vi.mock('../../src/entries/map/boot.js', () => ({
 }));
 vi.mock('../../src/view/fullscreen.js', () => ({ bindDisplayMode: vi.fn() }));
 vi.mock('../../src/entries/relay/net-hud.js', () => ({ mountNetHud: mocks.mountHud }));
+vi.mock('../../src/view/net/start-roster.js', async (original) => ({
+  ...(await original<typeof import('../../src/view/net/start-roster.js')>()),
+  mountStartRoster: () => ({ update: vi.fn(), dispose: vi.fn() }),
+}));
 
 import { renderNetworkGame } from '../../src/entries/relay/network-game.js';
 

@@ -33,6 +33,10 @@ export type VacantSeatMode = Exclude<SeatMode, 'human'>;
  *  cannot turn `absent`. */
 export type DepartedSeatMode = Exclude<VacantSeatMode, 'absent'>;
 
+/** Why a member left a started game's seat: a passed kick vote, its own leave, or a load that stood
+ *  still too long before the start. */
+export type DepartureCause = 'vote' | 'left' | 'loading';
+
 export interface RoomSeatSetup {
   readonly player: number;
   readonly mode: VacantSeatMode;
@@ -255,6 +259,7 @@ export type ServerMessage =
       readonly player: number;
       readonly nick: string;
       readonly mode: DepartedSeatMode;
+      readonly cause: DepartureCause;
       readonly tick: number;
     }
   | {

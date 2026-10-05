@@ -56,6 +56,7 @@ export type RelayReason =
   | { readonly code: 'tickNotEmitted'; readonly tick: number }
   | { readonly code: 'noWorldYet' }
   | { readonly code: 'matchEnded' }
+  | { readonly code: 'loadingTimedOut' }
   | { readonly code: 'commandBudget' }
   | { readonly code: 'envelopeTooLarge' }
   | { readonly code: 'seatEmpty'; readonly player: number }

@@ -97,9 +97,7 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
           waiting.tally(message);
           return;
         case 'kicked':
-          announce(
-            formatMessage(message.mode === 'ai' ? copy.kicked : copy.kickedIdle, { nick: message.nick }),
-          );
+          announce(formatMessage(copy.departed[message.cause][message.mode], { nick: message.nick }));
           return;
         case 'clock': {
           const line = clockAnnouncement(previousClock, message);

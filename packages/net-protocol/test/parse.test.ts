@@ -414,7 +414,7 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
   },
   { kind: 'waiting', for: [] },
   { kind: 'kickVote', player: 0, nick: 'Ania', yes: ['Bartek'], needed: 2 },
-  { kind: 'kicked', player: 0, nick: 'Ania', mode: 'ai', tick: 42 },
+  { kind: 'kicked', player: 0, nick: 'Ania', mode: 'ai', cause: 'vote', tick: 42 },
   { kind: 'desync', tick: 41, domains: ['rng', 'economy'], reference: 'Ania' },
   { kind: 'disputed', tick: 41, domains: ['rng', 'economy'], diverged: ['Bartek', 'Celina'] },
   { kind: 'snapshotRequest' },

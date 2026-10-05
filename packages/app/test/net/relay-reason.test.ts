@@ -55,6 +55,7 @@ const SAMPLES: { readonly [C in RelayReasonCode]: Extract<RelayReason, { code: C
   tickNotEmitted: { code: 'tickNotEmitted', tick: 9 },
   noWorldYet: { code: 'noWorldYet' },
   matchEnded: { code: 'matchEnded' },
+  loadingTimedOut: { code: 'loadingTimedOut' },
   commandBudget: { code: 'commandBudget' },
   envelopeTooLarge: { code: 'envelopeTooLarge' },
   seatEmpty: { code: 'seatEmpty', player: 5 },

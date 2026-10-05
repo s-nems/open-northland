@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LOAD_VIEW_INTERVAL_MS } from '../src/index.js';
-import { SEATS, SETTINGS, stage, startingRoom, TOKEN_A } from './support/message-stage.js';
+import { LOAD_VIEW_INTERVAL_MS, LOADING_STALL_MS } from '../src/index.js';
+import { SEATS, SETTINGS, stage, startingRoom, TOKEN_A, TOKEN_B } from './support/message-stage.js';
 
 /** The boot progress each client reports before its world loads, as the room view shows it. */
 
@@ -47,5 +47,40 @@ describe('member boot progress', () => {
     a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
     a.send({ kind: 'loading', progress: HALFWAY });
     expect(a.last('rejected')?.reason).toEqual({ code: 'gameNotStarted' });
+  });
+
+  it('drops a member whose boot stood still too long, and the others start without it', () => {
+    const s = startingRoom();
+    s.a.send({ kind: 'loaded', tick: 0, world: 0 });
+    s.b.send({ kind: 'loading', progress: HALFWAY });
+    s.advance(LOADING_STALL_MS - 1);
+    expect(s.a.last('clock')).toBeUndefined();
+    s.advance(1);
+    expect(s.b.last('error')?.reason).toEqual({ code: 'loadingTimedOut' });
+    expect(s.a.last('kicked')).toMatchObject({ nick: 'Bartek', cause: 'loading' });
+    expect(s.a.last('room')?.room.members.map((member) => member.nick)).toEqual(['Ania']);
+    expect(s.a.last('clock')?.paused).toBe(false);
+  });
+
+  it('counts the stall from the last progress, not from the start', () => {
+    const s = startingRoom();
+    s.a.send({ kind: 'loaded', tick: 0, world: 0 });
+    s.advance(LOADING_STALL_MS - 1);
+    s.b.send({ kind: 'loading', progress: HALFWAY });
+    s.advance(LOADING_STALL_MS - 1);
+    expect(s.a.of('kicked')).toEqual([]);
+    s.b.send({ kind: 'loaded', tick: 0, world: 0 });
+    s.advance(LOADING_STALL_MS);
+    expect(s.a.of('kicked')).toEqual([]);
+  });
+
+  it('counts the stall afresh from a member returning mid-boot', () => {
+    const s = startingRoom();
+    s.a.send({ kind: 'loaded', tick: 0, world: 0 });
+    s.advance(LOADING_STALL_MS - 1);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    s.advance(LOADING_STALL_MS - 1);
+    expect(s.a.of('kicked')).toEqual([]);
+    expect(back.last('start')).toBeDefined();
   });
 });

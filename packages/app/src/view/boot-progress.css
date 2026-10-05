@@ -132,7 +132,8 @@
 }
 
 /* The heading sits between two gold rules ending in a small lozenge. */
-.boot-tip__heading {
+.boot-tip__heading,
+.boot-roster__heading {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -145,14 +146,17 @@
 }
 
 .boot-tip__heading::before,
-.boot-tip__heading::after {
+.boot-tip__heading::after,
+.boot-roster__heading::before,
+.boot-roster__heading::after {
   flex: 1;
   height: 1px;
   content: "";
   background: linear-gradient(90deg, transparent, rgba(232, 201, 120, 0.7));
 }
 
-.boot-tip__heading::after {
+.boot-tip__heading::after,
+.boot-roster__heading::after {
   background: linear-gradient(90deg, rgba(232, 201, 120, 0.7), transparent);
 }
 
@@ -184,6 +188,112 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.55);
 }
 
+/* The players of a relayed start (view/net/start-roster.ts): the tip's plaque high on the screen, above
+   the card, so the bar keeps the centre with the players over it and the tip under it. */
+.boot-roster {
+  position: fixed;
+  z-index: 1001;
+  top: clamp(24px, 8vh, 88px);
+  left: 50%;
+  box-sizing: border-box;
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(50vh - 80px);
+  overflow-y: auto;
+  padding: 12px 22px 14px;
+  border: 1px solid rgba(177, 122, 57, 0.75);
+  border-radius: 4px;
+  background: linear-gradient(rgba(36, 22, 11, 0.9), rgba(20, 12, 6, 0.92));
+  box-shadow:
+    inset 0 0 0 1px rgba(10, 6, 3, 0.9),
+    inset 0 1px rgba(255, 233, 180, 0.12),
+    0 10px 28px rgba(0, 0, 0, 0.6);
+  color: #ead8aa;
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  transform: translateX(-50%);
+  animation: boot-tip-in 600ms ease-out 200ms both;
+}
+
+.boot-roster__list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.boot-roster__row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) 120px 7.5em;
+  align-items: center;
+  gap: 10px;
+  font-size: clamp(14px, 1.7vh, 16px);
+}
+
+/* A small heraldic chip in the seat's colour, rimmed like the keycaps. */
+.boot-roster__swatch {
+  width: 12px;
+  height: 14px;
+  border: 1px solid #b17a39;
+  border-radius: 2px 2px 6px 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.boot-roster__nick {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boot-roster__you {
+  margin-left: 0.5em;
+  color: rgba(232, 201, 120, 0.75);
+  font-size: 0.85em;
+  font-style: italic;
+}
+
+/* The card's bar in miniature, so each player's load reads in the same gold as the player's own. */
+.boot-roster__track {
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid #160b05;
+  border-radius: 2px;
+  background: linear-gradient(#180e05, #2a1a0c);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+.boot-roster__fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(#f0d88f, #d0a24f 52%, #a8702c);
+  transition: width 240ms ease-out;
+}
+
+.boot-roster__status {
+  color: #e8c978;
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  letter-spacing: 0.04em;
+}
+
+.boot-roster__row[data-state="ready"] .boot-roster__status {
+  color: #b9d48a;
+}
+
+.boot-roster__row[data-state="away"] .boot-roster__status,
+.boot-roster__row[data-state="dropped"] .boot-roster__status {
+  color: #d99a7a;
+}
+
+.boot-roster__row[data-state="away"],
+.boot-roster__row[data-state="dropped"] {
+  opacity: 0.7;
+}
+
+.boot-roster__row[data-state="dropped"] .boot-roster__nick {
+  text-decoration: line-through;
+}
+
 @keyframes boot-tip-in {
   from {
     opacity: 0;
@@ -196,12 +306,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .boot-card__bar {
+  .boot-card__bar,
+  .boot-roster__fill {
     transition: none;
   }
 
   .boot-card__track::after,
-  .boot-tip {
+  .boot-tip,
+  .boot-roster {
     animation: none;
   }
 }

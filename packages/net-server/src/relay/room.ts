@@ -1,6 +1,7 @@
 import type { GameSession } from '@open-northland/lockstep';
 import {
   type ClientMessage,
+  type DepartureCause,
   type LobbyCompatibility,
   type LobbySettings,
   MAX_MEMBERS,
@@ -25,6 +26,9 @@ import { type SeatChange, SeatTable } from './seats.js';
  *  load changes with nearly every acknowledgement; a view per ack would be a room broadcast per member
  *  per tick. */
 export const LOAD_VIEW_INTERVAL_MS = 1000;
+/** How long a member's boot may stand still before the start drops it. A load step takes seconds; this
+ *  leaves a slow machine many times that, and is never shown to the players as a countdown. */
+export const LOADING_STALL_MS = 2 * 60 * 1000;
 
 export interface RoomHooks {
   readonly deliver: Deliver;
@@ -133,6 +137,7 @@ export class Room {
       member.compatibility = null;
       this.lobby.invalidateReady();
     } else {
+      member.progressAt = now;
       this.game.dropWorld(member, now);
     }
     this.broadcastView();
@@ -152,7 +157,7 @@ export class Room {
   /** Explicit departure releases identity; socket loss alone preserves a running seat for reconnect. */
   leave(member: Member, now: number): Refusal {
     if (this.game !== null && this.game.endedTick === null && member.seat !== null) {
-      this.kickOut(member, member.seat, now);
+      this.kickOut(member, member.seat, now, 'left');
       return null;
     }
     this.remove(member);
@@ -213,6 +218,7 @@ export class Room {
     );
     this.transfers.release();
     this.startedSeats = this.seats.sessionSeats();
+    for (const other of this.members.values()) other.progressAt = now;
     this.broadcastView();
     for (const other of this.members.values()) {
       this.deliver(other, {
@@ -246,10 +252,11 @@ export class Room {
   }
 
   /** Progress from a member whose world has loaded is late and changes nothing. */
-  reportLoading(member: Member, progress: number): Refusal {
+  reportLoading(member: Member, progress: number, now: number): Refusal {
     if (this.game === null) return { code: 'gameNotStarted' };
     if (member.loaded || member.loading === progress) return null;
     member.loading = progress;
+    member.progressAt = now;
     this.loadMoved = true;
     return null;
   }
@@ -281,7 +288,7 @@ export class Room {
     if (this.game === null) return { code: 'gameNotStarted' };
     const outcome = this.game.kick(member, player, now);
     if ('refused' in outcome) return outcome.refused;
-    if (outcome.kicked !== null) this.kickOut(outcome.kicked, player, now);
+    if (outcome.kicked !== null) this.kickOut(outcome.kicked, player, now, 'vote');
     return null;
   }
 
@@ -306,6 +313,7 @@ export class Room {
   }
 
   advance(elapsedMs: number, now: number): Refusal {
+    if (this.game !== null && !this.game.running) this.dropStalledLoads(now);
     const refusal = this.game?.advance(elapsedMs, now) ?? null;
     if (refusal === null && this.loadMoved && now >= this.nextLoadViewAt) {
       this.nextLoadViewAt = now + LOAD_VIEW_INTERVAL_MS;
@@ -328,12 +336,23 @@ export class Room {
     };
   }
 
+  /** Before the clock runs, a member whose boot stood still for `LOADING_STALL_MS` leaves its seat, so
+   *  a load that died does not hold everyone else on the loading screen. */
+  private dropStalledLoads(now: number): void {
+    for (const member of [...this.members.values()]) {
+      if (member.loaded || now - member.progressAt < LOADING_STALL_MS) continue;
+      this.deliver(member, { kind: 'error', reason: { code: 'loadingTimedOut' } });
+      if (member.seat === null) this.remove(member);
+      else this.kickOut(member, member.seat, now, 'loading');
+    }
+  }
+
   /** The AI case lands on the clock through the game. */
-  private kickOut(target: Member, player: number, now: number): void {
+  private kickOut(target: Member, player: number, now: number, cause: DepartureCause): void {
     const mode = this.seats.departedModeOf(player, this.lobby.settings.kickedSeatMode);
     if (this.game !== null && mode !== null) {
-      const tick = this.game.kicked(target, player, mode);
-      if (tick !== null) this.broadcast({ kind: 'kicked', player, nick: target.nick, mode, tick });
+      const tick = this.game.kicked(target, player, mode, cause);
+      if (tick !== null) this.broadcast({ kind: 'kicked', player, nick: target.nick, mode, cause, tick });
     }
     this.seats.standUp(target);
     if (mode !== null) this.seats.vacate(player, mode);

@@ -13,7 +13,13 @@ import {
 } from '../untrusted.js';
 import { CLIENT_KINDS } from './client.js';
 import { parseRelayReason } from './reason.js';
-import { DEPARTED_SEAT_MODES, parseRoomSummary, parseRoomView, parseSeatIndex } from './room.js';
+import {
+  DEPARTED_SEAT_MODES,
+  DEPARTURE_CAUSES,
+  parseRoomSummary,
+  parseRoomView,
+  parseSeatIndex,
+} from './room.js';
 import { parseSaveOrders } from './save-orders.js';
 import { assertNever, asTimestamp, parseLine, parseNick } from './text.js';
 import { BLOB_TYPES, parseBlobBytes, parseStateHash, parseWireCommands, SYNC_DOMAINS } from './wire.js';
@@ -124,6 +130,7 @@ export function parseServerMessage(
         player: parseSeatIndex(raw.player, 'kicked.player'),
         nick: parseNick(raw.nick, 'kicked.nick'),
         mode: asOneOf(raw.mode, DEPARTED_SEAT_MODES, 'kicked.mode'),
+        cause: asOneOf(raw.cause, DEPARTURE_CAUSES, 'kicked.cause'),
         tick: asCount(raw.tick, 'kicked.tick'),
       };
     case 'desync':
