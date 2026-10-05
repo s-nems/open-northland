@@ -24,7 +24,7 @@ export function computeConstructionSigns(
     if (!isBuilding(e)) continue;
     const pos = positionOf(e);
     if (pos === undefined) continue;
-    const info = buildingInfoOf(buildingTypeOf(e), buildingTribeOf(e));
+    const info = buildingInfoOf(buildingTypeOf(e), buildingTribeOf(e), e.id);
     const player = ownerPlayerOf(e);
     if (info?.flagPoint !== undefined) {
       out.push({

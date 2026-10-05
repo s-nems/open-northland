@@ -1,6 +1,6 @@
 import { BUILDING_KIND, type MapHumanName, type TerrainMapFile } from '@open-northland/data';
 import { components, type TerrainMap } from '@open-northland/sim';
-import { type AuthoredJoinRows, contentJoins } from './content-joins.js';
+import { type AuthoredBuildingGraphics, type AuthoredJoinRows, contentJoins } from './content-joins.js';
 
 function anchorKey(hx: number, hy: number): string {
   return `${hx},${hy}`;
@@ -18,6 +18,8 @@ export type AuthoredPlacement =
   | { kind: 'signpost'; x: number; y: number; owner: number }
   | {
       kind: 'building';
+      /** Presentation only; enqueuePlacements never forwards graphics to the sim. */
+      graphics?: readonly AuthoredBuildingGraphics[];
       typeId: number;
       tribe: number;
       x: number;
@@ -97,7 +99,7 @@ export type AuthoredPlacement =
 export function resolveAuthoredPlacements(
   entities: AuthoredEntities,
   rows: AuthoredJoinRows,
-  map: TerrainMap,
+  map: Pick<TerrainMap, 'width' | 'height'>,
   humanNames: readonly MapHumanName[] = [],
 ): {
   placements: AuthoredPlacement[];
@@ -141,6 +143,7 @@ export function resolveAuthoredPlacements(
     });
     placements.push({
       kind: 'building',
+      ...(hit.graphics !== undefined ? { graphics: hit.graphics } : {}),
       typeId: hit.typeId,
       tribe: hit.tribeId,
       x: b.hx,

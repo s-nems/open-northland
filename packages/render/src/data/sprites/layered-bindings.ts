@@ -47,6 +47,16 @@ export interface BuildingTribeTables extends BuildingSkinTables {
  * resolves through the base tables, and a type absent everywhere draws `default`.
  */
 export interface BuildingTypeBinding extends BuildingTribeTables {
+  /** Authored body choices bound once at map boot. Type and tribe guards retire a choice on upgrade. */
+  readonly byEntity?: ReadonlyMap<
+    number,
+    {
+      readonly typeId: number;
+      readonly tribe: number;
+      readonly body: BuildingBobRef;
+      readonly flagPoint?: { readonly x: number; readonly y: number };
+    }
+  >;
   readonly default: BuildingBobRef;
   readonly byTribe?: Readonly<Record<number, BuildingTribeTables>>;
   /** Each upgradable type's next tier (`upgradeTarget`), shared by every tribe like the typeId space. */

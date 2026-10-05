@@ -1,4 +1,5 @@
 import { buildingFootprintFor, lastByTypeId } from '@open-northland/data';
+import type { BuildingTypeBinding } from '@open-northland/render';
 import type { SignpostReachView } from '@open-northland/sim';
 import { systems } from '@open-northland/sim';
 import { buildingSignAnchorsFor } from '../../content/building-gfx/index.js';
@@ -26,6 +27,7 @@ import {
 import type { PlacementProbeViews } from './placement-gates.js';
 
 export interface ViewReadModelDeps {
+  readonly authoredBuildings?: BuildingTypeBinding['byEntity'];
   readonly signpostReach?: (player: number) => SignpostReachView | null;
   readonly inventoryVersion?: () => number;
   /** The placement answers the overlays walk, shared with the click gates. */
@@ -52,6 +54,7 @@ export function buildingModels(
   buildings: SessionHost['content']['buildings'],
   ir: ContentIr | null,
   tribes: WorldTribes,
+  authored?: BuildingTypeBinding['byEntity'],
 ): { readonly geometryOf: GeometryBuildingInfoOf; readonly infoOf: BuildingDoorInfoOf } {
   const byType = lastByTypeId(buildings);
   const anchorsOf = buildingSignAnchorsFor(ir, tribes);
@@ -70,7 +73,7 @@ export function buildingModels(
     return geometry;
   };
   const cache = new Map<string, BuildingDoorInfo | undefined>();
-  const infoOf: BuildingDoorInfoOf = (typeId, tribe) => {
+  const canonicalInfoOf: BuildingDoorInfoOf = (typeId, tribe) => {
     if (typeId === undefined) return undefined;
     const key = `${typeId}:${tribe ?? tribes[0]}`;
     const held = cache.get(key);
@@ -79,6 +82,18 @@ export function buildingModels(
     const info = geometry === undefined ? undefined : { ...geometry, ...anchorsOf(typeId, tribe) };
     cache.set(key, info);
     return info;
+  };
+  const authoredInfo = new Map<number, BuildingDoorInfo>();
+  for (const [id, row] of authored ?? []) {
+    const info = canonicalInfoOf(row.typeId, row.tribe);
+    if (info !== undefined) authoredInfo.set(id, { ...info, flagPoint: row.flagPoint });
+  }
+  const infoOf: BuildingDoorInfoOf = (typeId, tribe, entity) => {
+    const row = entity === undefined ? undefined : authored?.get(entity);
+    if (entity !== undefined && row !== undefined && row.typeId === typeId && row.tribe === tribe) {
+      return authoredInfo.get(entity);
+    }
+    return canonicalInfoOf(typeId, tribe);
   };
   return { geometryOf, infoOf };
 }
@@ -100,7 +115,7 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
   const { host, mapSize, localPlayer, fogGates } = deps;
   const goodLabelByType = new Map(host.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
   const ir = await loadIr();
-  const buildings = buildingModels(host.content.buildings, ir, deps.tribes);
+  const buildings = buildingModels(host.content.buildings, ir, deps.tribes, deps.authoredBuildings);
   return {
     goodLabel: (typeId) => goodLabelByType.get(typeId),
     buildingGeometry: buildings.geometryOf,

@@ -50,11 +50,11 @@ export interface BuildingDoorInfo {
   readonly mastPoint?: { readonly x: number; readonly y: number; readonly behindFrom?: number } | undefined;
 }
 
-/** A building's anchors by type and tribe: the anchors are per-skin pixel offsets, so the frank tower's
- *  mast differs from the viking one on the same typeId. */
+/** Body-relative anchors by type and tribe, with the entity's authored variant when present. */
 export type BuildingDoorInfoOf = (
   typeId: number | undefined,
   tribe: number | undefined,
+  entity?: number,
 ) => BuildingDoorInfo | undefined;
 
 /** Reused output of the box query; the slots past a query's count hold earlier frames' bodies. */
@@ -80,7 +80,7 @@ export function computeDoorBadges(
     const garrison = e.components.UnderConstruction === undefined ? (counts?.garrison ?? 0) : 0;
     const pos = positionOf(e);
     if (pos === undefined) continue;
-    const info = buildingInfoOf(buildingTypeOf(e), buildingTribeOf(e));
+    const info = buildingInfoOf(buildingTypeOf(e), buildingTribeOf(e), e.id);
     const player = ownerPlayerOf(e);
 
     // Bottom to top: family banners, then worker discs, then the carrier pennants.

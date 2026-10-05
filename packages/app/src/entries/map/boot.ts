@@ -14,6 +14,7 @@ import type { MatchRulesView, SaveGame, SaveGameHeader } from '@open-northland/s
 import type { Application } from 'pixi.js';
 import { MONSTER_TRIBES } from '../../catalog/creatures.js';
 import { loadAmbientCreatures } from '../../content/animal-gfx/index.js';
+import { authoredBuildingSheet } from '../../content/building-gfx/authored.js';
 import { loadGroundWaves } from '../../content/ground-waves.js';
 import { loadIr } from '../../content/ir/load.js';
 import type { ContentIr } from '../../content/ir/rows.js';
@@ -34,6 +35,7 @@ import { sandboxGoods } from '../../game/sandbox/index.js';
 import { sessionSeating } from '../../game/seat-tribes.js';
 import { onOffParam } from '../../game/session-rules.js';
 import type { SessionRosterSlot } from '../../game/session-url.js';
+import { resolveAuthoredPlacements } from '../../game/world/authored-placements.js';
 import { terrainSceneFor } from '../../game/world/index.js';
 import { type WorldTribes, worldTribes } from '../../game/world-tribes.js';
 import { WorldNotAdoptedError } from '../../net/relayed-worlds.js';
@@ -57,8 +59,8 @@ export const MAP_BOOT_PHASES = [
   'content',
   'sprites',
   'terrain',
-  'objects',
   'world',
+  'objects',
   'minimap',
   'hud',
 ] as const satisfies readonly BootPhase[];
@@ -209,7 +211,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     // The admin panel's monster presets draw only with their looks loaded; those pages are large, so they
     // load when the admin tools were on at game start.
     const adminCharacterTribes = readStoredSettings().debugToolsEnabled ? [...MONSTER_TRIBES] : [];
-    const sheet =
+    let sheet =
       pack !== null
         ? await pack.spriteSheet(ir, goods, params)
         : await resolveSpriteSheet(goods, tribes, adminCharacterTribes);
@@ -221,6 +223,33 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
       if (!(err instanceof MissingTerrainError)) throw err;
       haltOnMissingContent(err);
       return null;
+    }
+    await boot.begin('world');
+    const hosted = await hostMapWorld(plan, {
+      map: loaded,
+      ir,
+      script,
+      goodNames,
+      content: realContent?.content ?? null,
+      session,
+      // `?missions=off` is a local diagnostic; the descriptor carries no such rule, so a relayed
+      // world never reads it.
+      missions: plan.multiplayer ? null : onOffParam(params, 'missions'),
+    });
+    if (hosted === null) return null;
+    const { host } = hosted;
+    if (pack === null && loaded?.entities !== undefined && ir !== null) {
+      const { placements } = resolveAuthoredPlacements(loaded.entities, ir, {
+        width: loaded.width * 2,
+        height: loaded.height * 2,
+      });
+      const authored = authoredBuildingSheet(sheet, placements, host.snapshot(), ir);
+      sheet = authored.sheet;
+      if (authored.skipped > 0) {
+        diag.warn('content', 'authored building bodies unavailable - falling back', {
+          count: authored.skipped,
+        });
+      }
     }
     const renderer = await createWorldRenderer(app, params, sheet, playerColourOf);
     renderer.setTerrain(terrainGrid, terrain);
@@ -261,20 +290,6 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
         diag.warn('content', `shore waves unavailable: ${String(err)}`);
       }
     }
-    await boot.begin('world');
-    const hosted = await hostMapWorld(plan, {
-      map: loaded,
-      ir,
-      script,
-      goodNames,
-      content: realContent?.content ?? null,
-      session,
-      // `?missions=off` is a local diagnostic; the descriptor carries no such rule, so a relayed
-      // world never reads it.
-      missions: plan.multiplayer ? null : onOffParam(params, 'missions'),
-    });
-    if (hosted === null) return null;
-    const { host } = hosted;
     renderer.setWeatherSeed(hosted.seed);
     setDiagGameSession({
       entry: 'map',

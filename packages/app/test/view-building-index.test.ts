@@ -43,6 +43,24 @@ const FRANK = 2;
 const SARACEN = 4;
 
 describe('view building models', () => {
+  it('keeps an authored body’s sign anchor with its entity and retires it on a type or tribe change', () => {
+    const { infoOf } = buildingModels(
+      [building(1, 'base'), building(2, 'upgraded')],
+      ir([{ tribeId: VIKING, typeId: 1, x: 10, y: 11 }]),
+      [VIKING],
+      new Map([
+        [4, { typeId: 1, tribe: VIKING, body: 20, flagPoint: { x: 20, y: 21 } }],
+        [5, { typeId: 1, tribe: VIKING, body: 30 }],
+      ]),
+    );
+    expect(infoOf(1, VIKING, 4)?.flagPoint).toEqual({ x: 20, y: 21 });
+    expect(infoOf(1, VIKING, 5)?.flagPoint).toBeUndefined();
+    expect(infoOf(1, VIKING, 6)?.flagPoint).toEqual({ x: 10, y: 11 });
+    expect(infoOf(1, FRANK, 4)?.flagPoint).toEqual({ x: 10, y: 11 });
+    expect(infoOf(2, VIKING, 4)?.flagPoint).toBeUndefined();
+    expect(infoOf(1, VIKING, 4)).toBe(infoOf(1, VIKING, 4));
+  });
+
   it('carries the extracted sign-post anchor of the drawing tribe', () => {
     const SMITHY = 23;
     const FARM = 31;

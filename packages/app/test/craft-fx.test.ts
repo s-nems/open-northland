@@ -129,6 +129,23 @@ describe('the staged craft effects', () => {
     expect(lookup(VIKING, 3, 1)).toBeUndefined();
   });
 
+  it('keeps flames on the bound authored body and falls back after a tribe or type change', () => {
+    const lookup = holyFireLookup(
+      fixtureIr(),
+      new Map([[9, { tribe: VIKING, typeId: HQ, editName: 'viking headquarters house', level: 0 }]]),
+    );
+    expect(lookup(VIKING, HQ, 0, 9)?.points).toEqual([
+      { x: 19, y: 66 },
+      { x: -63, y: 44 },
+    ]);
+    expect(lookup(VIKING, HQ, 0, 10)?.points).toEqual([
+      { x: 17, y: 38 },
+      { x: -63, y: 16 },
+    ]);
+    expect(lookup(VIKING, TEMPLE, 0, 9)?.points).toEqual([{ x: 5, y: 20 }]);
+    expect(lookup(2, HQ, 0, 9)).toBeUndefined();
+  });
+
   it('keeps the fire of a prayer site burning without oil, and only there', () => {
     const lookup = holyFireLookup(fixtureIr());
     expect(lookup(VIKING, TEMPLE, 0)?.perpetual).toBe(true);

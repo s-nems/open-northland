@@ -43,6 +43,7 @@ export function finishedBuildingBobKeys(binding: BuildingTypeBinding): ReadonlyS
         for (const ref of Object.values(tables.byType)) set.add(bobKey(unwrapBobRef(ref)));
       }
     }
+    for (const { body } of binding.byEntity?.values() ?? []) set.add(bobKey(unwrapBobRef(body)));
     set.add(bobKey(unwrapBobRef(binding.default)));
     keys = set;
     finishedKeyCache.set(binding, keys);
@@ -78,6 +79,10 @@ function byTypeFor<T>(
 /** An unmapped or type-less item falls back to `default`, so a sparse table is always total. */
 export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item: DrawItem): BuildingDraw {
   if (typeof binding === 'number') return { bob: binding };
+  const authored = binding.byEntity?.get(item.ref);
+  if (authored !== undefined && authored.typeId === item.typeId && authored.tribe === item.tribe) {
+    return unwrapBobRef(authored.body);
+  }
   return unwrapBobRef(byTypeFor(binding, item, (t) => t.byType) ?? binding.default);
 }
 

@@ -1,3 +1,19 @@
+/** The decoded body choices of one authored house, in palette order. */
+export interface AuthoredBuildingGraphics {
+  readonly editName: string;
+  readonly level: number;
+  readonly bmd: string;
+  readonly paletteName: string;
+  readonly bobId: number;
+  readonly flagPoint?: { readonly x: number; readonly y: number };
+}
+
+interface AuthoredBuildingMatch {
+  readonly typeId: number;
+  readonly tribeId: number;
+  readonly graphics?: readonly AuthoredBuildingGraphics[];
+}
+
 /**
  * The narrow `ir.json` row views the authored-entity joins read: structural picks over the raw fetched
  * IR, so an entry can join by name without the full zod `parseContentSet` over the multi-MB file.
@@ -8,6 +24,17 @@ export interface AuthoredJoinRows {
     level?: number;
     typeId?: number;
     tribeId?: number;
+    bmd?: string;
+    paletteName?: string;
+    bobId?: number;
+  }[];
+  readonly buildingFlagPoints?: readonly {
+    readonly editName?: string;
+    readonly tribeId: number;
+    readonly typeId: number;
+    readonly level: number;
+    readonly x: number;
+    readonly y: number;
   }[];
   readonly buildings?: readonly { typeId?: number; id?: string; kind?: string }[];
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
@@ -52,7 +79,7 @@ function catalogKey(name: string): string {
  */
 export interface ContentJoins {
   /** A `sethouse` name and level, the only join that is level-specific. */
-  buildingBob(name: string, level: number): { typeId: number; tribeId: number } | undefined;
+  buildingBob(name: string, level: number): AuthoredBuildingMatch | undefined;
   /** A building's `kind`, which routes an `attachtohouse` to a home or a workplace. */
   buildingKind(typeId: number): string | undefined;
   /** A house type named without a level, the way a mission script writes it. */
@@ -71,13 +98,39 @@ export interface ContentJoins {
 }
 
 export function contentJoins(rows: AuthoredJoinRows): ContentJoins {
-  const bobByNameLevel = new Map<string, { typeId: number; tribeId: number }>();
+  const bobByNameLevel = new Map<string, AuthoredBuildingMatch>();
   const buildingByName = new Map<string, number>();
+  const flagPoints = new Map(
+    (rows.buildingFlagPoints ?? []).map((row) => [
+      `${row.editName}\u0000${row.level}\u0000${row.tribeId}`,
+      { x: row.x, y: row.y },
+    ]),
+  );
   for (const b of rows.buildingBobs ?? []) {
     if (b.editName === undefined || b.typeId === undefined) continue;
     // NUL-separated key: a plain space would let `"foo 1" L0` collide with `"foo" L10`.
     const key = `${b.editName}\u0000${b.level ?? 0}`;
-    if (!bobByNameLevel.has(key)) bobByNameLevel.set(key, { typeId: b.typeId, tribeId: b.tribeId ?? 0 });
+    const current = bobByNameLevel.get(key);
+    const tribeId = b.tribeId ?? 0;
+    if (current === undefined || (current.typeId === b.typeId && current.tribeId === tribeId)) {
+      const graphics = [...(current?.graphics ?? [])];
+      if (b.bmd !== undefined && b.paletteName !== undefined && b.bobId !== undefined) {
+        const flagPoint = flagPoints.get(`${key}\u0000${tribeId}`);
+        graphics.push({
+          editName: b.editName,
+          level: b.level ?? 0,
+          bmd: b.bmd,
+          paletteName: b.paletteName,
+          bobId: b.bobId,
+          ...(flagPoint !== undefined ? { flagPoint } : {}),
+        });
+      }
+      bobByNameLevel.set(key, {
+        typeId: b.typeId,
+        tribeId,
+        ...(graphics.length > 0 ? { graphics } : {}),
+      });
+    }
     const slug = normalizeRoleKey(b.editName);
     if (!buildingByName.has(slug)) buildingByName.set(slug, b.typeId);
   }

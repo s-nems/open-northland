@@ -331,7 +331,18 @@ export function inHouseProgramLookup(ir: ContentIr | null, goods: readonly GoodR
  * records own only the repeated anchor points; the effect name is the original's shared one. */
 export const HOLY_FIRE_EFFECT_NAME = 'fx fire incense';
 
-export function holyFireLookup(ir: ContentIr | null): HolyFireLookup {
+/** The authored record of a body that successfully bound to an entity. */
+export interface AuthoredHolyFireVariant {
+  readonly tribe: number;
+  readonly typeId: number;
+  readonly editName: string;
+  readonly level: number;
+}
+
+export function holyFireLookup(
+  ir: ContentIr | null,
+  authored?: ReadonlyMap<number, AuthoredHolyFireVariant>,
+): HolyFireLookup {
   const prayerSites = new Set<number>();
   for (const b of ir?.buildings ?? []) {
     if (b.prayerSite !== undefined && b.typeId !== undefined) prayerSites.add(b.typeId);
@@ -357,7 +368,11 @@ export function holyFireLookup(ir: ContentIr | null): HolyFireLookup {
       });
     }
   }
-  return (tribe, buildingType, level) => {
+  return (tribe, buildingType, level, entity) => {
+    const row = entity === undefined ? undefined : authored?.get(entity);
+    if (row !== undefined && row.tribe === tribe && row.typeId === buildingType) {
+      return byKey.get(`${tribe}/${buildingType}/${row.level}`)?.get(row.editName);
+    }
     const variants = byKey.get(`${tribe}/${buildingType}/${level}`);
     if (variants === undefined) return undefined;
     const canonical = CANONICAL_EDIT_NAME[buildingType];

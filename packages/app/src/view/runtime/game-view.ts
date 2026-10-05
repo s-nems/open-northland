@@ -810,6 +810,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       settlerBubblesFor,
       lifeHeartsFor,
     } = await createViewReadModels({
+      authoredBuildings:
+        typeof deps.sheet?.bindings.building === 'object' ? deps.sheet.bindings.building.byEntity : undefined,
       signpostReach: answers.signpostReach,
       inventoryVersion: answers.versions.unitPanel,
       probes: placementGates.probes,

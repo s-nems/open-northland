@@ -15,6 +15,7 @@ export type HolyFireLookup = (
   tribe: number,
   buildingType: number,
   level: number,
+  entity?: number,
 ) => HolyFireBinding | undefined;
 
 /** The looping flames a visible finished home or prayer site stages this frame. A home's fire needs oil
@@ -41,7 +42,7 @@ export function holyFireOverlays(
   ) {
     return [];
   }
-  const binding = lookup(tribe, buildingType, level);
+  const binding = lookup(tribe, buildingType, level, building);
   if (binding === undefined || binding.points.length === 0) return [];
   if (!binding.perpetual) {
     if ((homeQualityView(snapshot, building)?.piety ?? 0) <= 0) return [];
