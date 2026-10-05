@@ -68,6 +68,8 @@ export const enGame = {
       },
       colours: 'Colours',
       colourModes: { players: 'Players', stance: 'Stance' },
+      colourToggle: 'Switch colours: players or stance',
+      colourToggleState: 'Minimap colours: {mode}. Switch',
       colourTips: {
         players: 'Every tribe in its own colour.',
         stance:

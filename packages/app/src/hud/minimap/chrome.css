@@ -134,7 +134,8 @@
   filter: saturate(0.6) brightness(0.8);
 }
 .on-hud .on-minimap-chrome__button:not([aria-disabled="true"]):hover,
-.on-hud .on-minimap-chrome__button[aria-expanded="true"] {
+.on-hud .on-minimap-chrome__button[aria-expanded="true"],
+.on-hud .on-minimap-chrome__button[aria-pressed="true"] {
   background: radial-gradient(ellipse at 35% 20%, #d6ba80, #80603a 70%);
   color: #fff7db;
 }

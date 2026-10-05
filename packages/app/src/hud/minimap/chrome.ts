@@ -65,6 +65,7 @@ const ICONS = {
   plus: icon('<path d="M5 10h10M10 5v10"/>'),
   reset: icon('<path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/><rect x="7" y="7" width="6" height="6"/>'),
   filters: icon('<path d="M3 5h14M3 10h14M3 15h14"/><path d="M7 3v4M13 8v4M8 13v4"/>'),
+  colours: icon('<circle cx="10" cy="10" r="7"/><path d="M10 3a7 7 0 0 0 0 14z" fill="currentColor"/>'),
 };
 const LAYER_ICONS: Readonly<Record<MinimapLayer, string>> = {
   civilians: icon('<circle cx="10" cy="5" r="2.5"/><path d="M5 17v-4a5 5 0 0 1 10 0v4M8 17v-4m4 4v-4"/>'),
@@ -199,6 +200,10 @@ export function createMinimapChrome(
   const more = control('more', copy.zoomIn, ICONS.plus, () => callbacks.onZoom(1));
   control('reset', copy.reset, ICONS.reset, callbacks.onReset);
   const size = control('size', copy.size, '', callbacks.onSize);
+  let colourMode: MinimapColourMode = 'players';
+  const colourToggle = control('colours', copy.colourToggle, ICONS.colours, () =>
+    callbacks.onColours(colourMode === 'players' ? 'stance' : 'players'),
+  );
   const filterButton = control('filters', copy.filters, ICONS.filters, () =>
     showFilters(!filtersOpen(), true),
   );
@@ -399,6 +404,14 @@ export function createMinimapChrome(
       markers.choose(state.filters.markerSize);
       colours.choose(state.filters.colours);
       setDisabled(colours.group, !state.hasSeat);
+      colourMode = state.filters.colours;
+      setAttribute(colourToggle, 'aria-pressed', String(colourMode === 'stance'));
+      setAttribute(
+        colourToggle,
+        'aria-label',
+        formatMessage(copy.colourToggleState, { mode: copy.colourModes[colourMode] }),
+      );
+      setDisabled(colourToggle, !state.hasSeat);
       if (setHidden(noSeatNote, state.hasSeat)) placeFilters();
       tips.refresh();
     },

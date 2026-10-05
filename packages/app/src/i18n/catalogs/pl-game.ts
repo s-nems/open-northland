@@ -68,6 +68,8 @@ export const plGame = {
       },
       colours: 'Kolory',
       colourModes: { players: 'Graczy', stance: 'Sojuszy' },
+      colourToggle: 'Przełącz kolory: graczy lub sojuszy',
+      colourToggleState: 'Kolory minimapy: {mode}. Przełącz',
       colourTips: {
         players: 'Każde plemię we własnym kolorze.',
         stance:
