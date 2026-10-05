@@ -85,6 +85,15 @@ describe('the settler status caption', () => {
     expect(settlerStatus(ctxOf(), snapshot, SETTLER, comps(null, seeking))).toBe('walking');
   });
 
+  it('reads the meal break on the walk to food and while waiting, the meal itself as eating', () => {
+    const snapshot = snapshotOf(siteWorld(false));
+    const status = (live: Record<string, unknown>): string =>
+      settlerStatus(ctxOf(), snapshot, SETTLER, comps(null, { MealBreak: { hungry: true }, ...live }));
+    expect(status({ MoveGoal: {} })).toBe('mealBreak');
+    expect(status({})).toBe('mealBreak');
+    expect(status({ CurrentAtomic: { effect: { kind: 'eat' } } })).toBe('eating');
+  });
+
   it('reads "standing to" for the unit the sim says is holding its ground', () => {
     const snapshot = snapshotOf(siteWorld(false));
     const asked: number[] = [];

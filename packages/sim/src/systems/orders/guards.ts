@@ -7,6 +7,7 @@ import {
   ExploreOrder,
   Female,
   hasMissionBehaviour,
+  MealBreak,
   MISSION_BEHAVIOUR,
   OrderQueue,
   Owner,
@@ -52,10 +53,12 @@ export function supersedeStandingOrders(world: World, e: Entity): void {
   endBuildMode(world, e);
 }
 
-/** Drop the orders `e` queued behind its current one. Every order that takes the settler without queueing
- *  drops them: through {@link supersedeStandingOrders}, or directly where a handler keeps the rest. */
+/** Drop the orders `e` queued behind its current one, and a meal break holding them. Every order that
+ *  takes the settler without queueing drops them: through {@link supersedeStandingOrders}, or directly
+ *  where a handler keeps the rest. */
 export function dropOrderQueue(world: World, e: Entity): void {
   world.remove(e, OrderQueue);
+  world.remove(e, MealBreak);
 }
 
 /** Call off a builder's road or wall run, letting go of the site it had claimed for it. */

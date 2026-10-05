@@ -170,33 +170,9 @@ export function planNeeds(
   const gate = limit ?? undefined;
   const ordered = orderedNeed(world, e);
   const bars = barsAfterDraughts(world, ctx, e);
-  if (pressing(bars.hunger, ordered, 'hunger')) {
-    const seek = maySeek(world, e, ordered, 'hunger');
-    if (seek && eatCarried(world, ctx, e, settler, load)) return true;
-    if (seek && eatAtPost(world, ctx, e, settler)) return true;
-    // Original behavior: the family larder comes first, then the nearest food elsewhere. A store and a
-    // wild berry bush share the walk-or-act tail; only the meal's effect differs.
-    const walks = seek && (bars.hunger >= NEED_CRITICAL_THRESHOLD || !onAlert());
-    if (walks && eatAtHome(world, ctx, terrain, supply, e, settler, here, limit)) return true;
-    const food = walks ? nearestFood(targets, world, ctx, supply, terrain, here, e, gate) : null;
-    if (food !== null) {
-      const target = food.kind === 'store' ? food.store : food.bush;
-      if (food.kind === 'store') {
-        supply.stampPickupClaim(e, { source: food.store, goodType: food.goodType, amount: MEAL_UNITS });
-      }
-      const effect =
-        food.kind === 'store'
-          ? ({ kind: 'eat', goodType: food.goodType, from: food.store } as const)
-          : ({ kind: 'forage', bush: food.bush } as const);
-      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, target, here), () =>
-        startMeal(world, ctx, e, settler, effect, target),
-      );
-      return true;
-    }
-    // Hungry with no reachable food, or forbidden to look: a human seat's settler falls through to
-    // work while hunger climbs to ONE and the starvation bite drains the pool until food appears. A
-    // settler holding its ground never looked, so nothing failed to settle.
-    if (walks) settleUnservedNeedForAi(world, ctx.tick, e, 'hunger');
+  const meal = { terrain, settler, here, load, targets, supply, limit, onAlert };
+  if (pressing(bars.hunger, ordered, 'hunger') && seekMeal(world, ctx, e, meal, bars.hunger, ordered)) {
+    return true;
   }
 
   if (pressing(bars.fatigue, ordered, 'fatigue')) {
@@ -260,6 +236,74 @@ export function planNeeds(
   }
 
   return false;
+}
+
+/** What the hunger rung reads about the settler and the planner pass. */
+export interface MealSearch {
+  readonly terrain: TerrainGraph;
+  readonly settler: SettlerIdentity;
+  readonly here: NodeId;
+  readonly load: { goodType: number; amount: number } | undefined;
+  readonly targets: TargetCandidates;
+  /** Live pickup claims: food another eater is walking to is left to it, and a walk to a shelf claims
+   *  its meal there. */
+  readonly supply: SupplyTally;
+  /** The settler's signpost confinement; food is only sought inside it. */
+  readonly limit: NavigationLimit | null;
+  /** Memoized by the caller: the answer costs a presence sweep. */
+  readonly onAlert: () => boolean;
+}
+
+/**
+ * The hunger rung for a settler whose `hunger` presses: carried food, its post's larder, then a walk to
+ * food. False when nothing in reach feeds it.
+ */
+function seekMeal(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  { terrain, settler, here, load, targets, supply, limit, onAlert }: MealSearch,
+  hunger: Fixed,
+  ordered: NeedKind | undefined,
+): boolean {
+  const seek = maySeek(world, e, ordered, 'hunger');
+  if (seek && eatCarried(world, ctx, e, settler, load)) return true;
+  if (seek && eatAtPost(world, ctx, e, settler)) return true;
+  // Original behavior: the family larder comes first, then the nearest food elsewhere. A store and a
+  // wild berry bush share the walk-or-act tail; only the meal's effect differs.
+  const walks = seek && (hunger >= NEED_CRITICAL_THRESHOLD || !onAlert());
+  if (walks && eatAtHome(world, ctx, terrain, supply, e, settler, here, limit)) return true;
+  const food = walks ? nearestFood(targets, world, ctx, supply, terrain, here, e, limit ?? undefined) : null;
+  if (food !== null) {
+    const target = food.kind === 'store' ? food.store : food.bush;
+    if (food.kind === 'store') {
+      supply.stampPickupClaim(e, { source: food.store, goodType: food.goodType, amount: MEAL_UNITS });
+    }
+    const effect =
+      food.kind === 'store'
+        ? ({ kind: 'eat', goodType: food.goodType, from: food.store } as const)
+        : ({ kind: 'forage', bush: food.bush } as const);
+    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, target, here), () =>
+      startMeal(world, ctx, e, settler, effect, target),
+    );
+    return true;
+  }
+  // Hungry with no reachable food, or forbidden to look: a human seat's settler falls through to
+  // work while hunger climbs to ONE and the starvation bite drains the pool until food appears. A
+  // settler holding its ground never looked, so nothing failed to settle.
+  if (walks) settleUnservedNeedForAi(world, ctx.tick, e, 'hunger');
+  return false;
+}
+
+/**
+ * The meals a `MealBreak` took the settler off its orders for: the hunger rung alone, so a nap or a
+ * prayer waits for the orders like any other pressing need, run until the bar is sated so one detour
+ * lasts. False once it is, or when nothing in reach feeds the settler.
+ */
+export function planMealBreak(world: World, ctx: SystemContext, e: Entity, meal: MealSearch): boolean {
+  if (!carriesNeeds(world, ctx.content, e)) return false;
+  const { hunger } = barsAfterDraughts(world, ctx, e);
+  return hunger > NEED_SATED_THRESHOLD && seekMeal(world, ctx, e, meal, hunger, orderedNeed(world, e));
 }
 
 /**

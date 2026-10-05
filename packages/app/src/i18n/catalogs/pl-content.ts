@@ -438,6 +438,11 @@ export const plContent = {
       summary:
         'Trzy drewniane skrzynie oddają żywność, trzech cywilów i papier na studnię, magiczna odmawia zwykłemu rzemieślnikowi, a trzymany papier stawia gotową studnię.',
     },
+    'meal-break': {
+      title: 'Przerwa na posiłek',
+      summary:
+        'Głodny zwiadowca z kolejką drogowskazów idzie najpierw do spiżarni, je i stawia resztę. Żołnierz z regeneracją też schodzi coś zjeść, ten bez regeneracji maszeruje dalej głodny.',
+    },
     'chest-queue': {
       title: 'Skrzynie po kolei',
       summary:

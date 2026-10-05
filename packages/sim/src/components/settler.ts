@@ -346,6 +346,16 @@ export const ORDER_QUEUE_LIMIT = 16;
  */
 export const OrderQueue = defineComponent<{ orders: QueueableOrderCommand[] }>('OrderQueue', 'settlers');
 
+/**
+ * Hunger took this settler off its player orders: the needs drive feeds it while its {@link OrderQueue},
+ * headed by the interrupted order, waits. Named addition: the original checks no need while a player's
+ * command runs.
+ */
+export const MealBreak = defineComponent<{ readonly hungry: true }>('MealBreak', 'settlers');
+
+/** A meal break that found nothing to eat: hunger takes the settler off its orders again from `retryAt`. */
+export const MealBreakRetry = defineComponent<{ readonly retryAt: number }>('MealBreakRetry', 'settlers');
+
 /** The order kinds a running non-interruptible atomic parks instead of cancelling. */
 export type DeferrableOrderCommand = Extract<
   Command,

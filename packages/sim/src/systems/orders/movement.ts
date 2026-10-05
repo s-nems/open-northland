@@ -11,6 +11,7 @@ import {
   Fleeing,
   GraduateWait,
   HuntFocus,
+  MealBreak,
   MoveGoal,
   NeedOrder,
   OpenChestOrder,
@@ -33,7 +34,7 @@ import { nearestUnblockedNode } from '../../nav/nearest.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
-import { isTravelling, stopAtNextNode } from '../movement/nav-state.js';
+import { isTravelling, onNodeCentre, stopAtNextNode } from '../movement/nav-state.js';
 import { breakThroughWall } from '../palisades/breach.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
@@ -42,6 +43,7 @@ import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { announceLostWay, clearLostWay, markLostWay } from '../settlers/lost-way.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { deferOrderDuringAtomic, supersedeStandingOrders } from './guards.js';
+import { breaksForMeal, overrideMealBreak, suspendWalkForMeal } from './meal-break.js';
 
 /**
  * Direct player control over owned units. Faithful to *Cultures*, a move order never seizes a unit
@@ -143,6 +145,7 @@ function startPlayerWalk(
   }
   // Gated after the refusals above, so a refused click neither parks an order nor displaces a parked one.
   if (deferOrderDuringAtomic(world, ctx, e, command)) return true;
+  if (world.has(e, MealBreak)) overrideMealBreak(world, ctx, e);
   supersedeStandingOrders(world, e);
   // A live PathFollow is deliberately kept: the planner re-routes the same tick, and the routing splice
   // carries the walker's momentum through the turn.
@@ -197,7 +200,7 @@ function startPlayerWalk(
  *
  * The branches below are a priority ladder: combat is checked above the failed-route and acting rungs
  * because a swing is a {@link CurrentAtomic} and a failed chase route is not the march's. While the order
- * stands, the planner's economy branch skips the unit but its needs drives still run.
+ * stands, the planner's economy branch skips the unit; only hunger takes it off a walk (`meal-break.ts`).
  */
 export const playerOrderSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no orders were issuable
@@ -239,7 +242,9 @@ export const playerOrderSystem: System = (world, ctx) => {
       continue;
     }
     if (isTravelling(world, e)) {
-      continue; // still walking the order out
+      // Still walking the order out, unless hunger takes it off the walk at the next node it reaches.
+      if (onNodeCentre(world, e) && breaksForMeal(world, ctx, e)) suspendWalkForMeal(world, ctx.terrain, e);
+      continue;
     }
     if (march?.resume === true) {
       const o = world.mut(e, PlayerOrder);

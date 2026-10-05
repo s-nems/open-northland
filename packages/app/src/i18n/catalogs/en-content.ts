@@ -440,6 +440,11 @@ export const enContent = {
       summary:
         'Three wooden chests are opened for food, three civilists and a well paper, a magical one refuses a plain trade, and a held paper stands a well up finished.',
     },
+    'meal-break': {
+      title: 'Meal break',
+      summary:
+        'A hungry scout with a queued run of signposts goes to the larder first, eats, then erects the rest. A soldier allowed to regenerate breaks off to eat too; the one without regeneration marches on hungry.',
+    },
     'chest-queue': {
       title: 'Chests one after another',
       summary:

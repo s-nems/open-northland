@@ -6,6 +6,7 @@ import {
   Female,
   HuntFocus,
   hasMissionBehaviour,
+  MealBreak,
   MISSION_BEHAVIOUR,
   ownerOf,
   Position,
@@ -22,6 +23,7 @@ import { standsAtPost } from '../../conflict/tower-post.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
 import { planWomanHoard } from '../../family/hoard.js';
 import { planChildWander } from '../../family/wander.js';
+import { endMealBreak } from '../../orders/meal-break.js';
 import { isFisherJob, MILITARY_MODE } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
@@ -56,7 +58,7 @@ import { planGraduateWait } from './graduate-wait.js';
 import { isServedAtHome } from './home-errands.js';
 import { planBreeder } from './husbandry/index.js';
 import { guideLostSettler } from './lost-guide.js';
-import { answerNeedInPlace, orderedNeed, planNeeds } from './needs.js';
+import { answerNeedInPlace, orderedNeed, planMealBreak, planNeeds } from './needs.js';
 import { planShelter } from './shelter.js';
 import { deStackIdle, stepOffHomeDoor } from './spacing.js';
 import { holdsPostThroughNeed, planTowerPost } from './tower-post.js';
@@ -87,6 +89,17 @@ export function planShelterRung(pass: PlannerPass, e: Entity, settler: SettlerVi
   const here = terrain.nodeAtClamped(hx, hy);
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
   return planShelter(world, ctx, terrain, e, settler, here, hx, hy, limit, pass.shelters);
+}
+
+/** A needs drive pulled `e` away, so it is no longer inside whatever it was waiting in - unless it is the
+ *  home the sleep or pray rung just put it in, or a garrison that served its need on the spot and is
+ *  still holding the tower. A hunter's chase is the only engagement that reaches a needs rung; dropping
+ *  it and the prey hold keeps the CombatSystem off the errand, and the hunter picks its prey afresh once
+ *  the need is met. */
+function leaveForNeed(world: World, e: Entity): void {
+  if (!isServedAtHome(world, e) && !holdsPostThroughNeed(world, e)) stepOut(world, e);
+  world.remove(e, Engagement);
+  world.remove(e, HuntFocus);
 }
 
 /** Plan one idle adult. `jobType` is the caller's non-null narrowing of `settler.jobType`. */
@@ -149,15 +162,34 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     }
   }
 
-  // Already home for one need: top the others up before stepping back out, rather than walking the whole
-  // errand again for each bar.
-  if (planHomeTopUp(world, ctx, e, settler, pass.supply)) return;
-
   // The battle alert: a rear rank neither lies down nor wanders off while the front rank fights. Asked at
   // most once per settler per tick, and only by a rung whose answer it changes, which each rung does after
   // its own cheap refusals - the presence sweep behind it is the pass's one expensive read.
   let alerted: boolean | undefined;
   const alert = (): boolean => (alerted ??= holdsGround(world, ctx, e, pass.front));
+
+  // Hunger took the settler off its orders: it eats and nothing else, and once the hunger rung has
+  // nothing left to do the break ends and the orders resume next tick, the settler standing until then.
+  if (world.has(e, MealBreak)) {
+    const meal = {
+      terrain,
+      settler,
+      here,
+      load,
+      targets: pass.targets,
+      supply: pass.supply,
+      limit,
+      onAlert: alert,
+    };
+    if (planMealBreak(world, ctx, e, meal)) leaveForNeed(world, e);
+    else endMealBreak(world, ctx, e);
+    return;
+  }
+
+  // Already home for one need: top the others up before stepping back out, rather than walking the whole
+  // errand again for each bar.
+  if (planHomeTopUp(world, ctx, e, settler, pass.supply)) return;
+
   if (
     planNeeds(
       world,
@@ -174,14 +206,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
       alert,
     )
   ) {
-    // A needs drive pulled the settler away, so it is no longer inside whatever it was waiting in -
-    // unless it is the home the sleep or pray rung just put it in, or a garrison that served its need on
-    // the spot and is still holding the tower.
-    if (!isServedAtHome(world, e) && !holdsPostThroughNeed(world, e)) stepOut(world, e);
-    // A hunter's chase is the only engagement that reaches here. Dropping it and the prey hold keeps the
-    // CombatSystem off the errand; the hunter picks its prey afresh once the need is met.
-    world.remove(e, Engagement);
-    world.remove(e, HuntFocus);
+    leaveForNeed(world, e);
     return;
   }
 

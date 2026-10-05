@@ -11,13 +11,21 @@ import {
   type Waypoint,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { beginWalkTurn } from './turning.js';
 
 /** Whether `e` has a navigation goal, a pending path request, or a path it is walking. */
 export function isTravelling(world: World, e: Entity): boolean {
   return world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
+}
+
+/** Whether `e` stands on a node's exact centre. A path follower snaps onto each waypoint before advancing
+ *  its index, so a walker is on-lattice for the tick that ends any leg. */
+export function onNodeCentre(world: World, e: Entity): boolean {
+  const p = world.get(e, Position);
+  const centre = positionOfNode(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
+  return p.x === centre.x && p.y === centre.y;
 }
 
 /** Drop `e`'s whole navigation state: goal, pending request, followed path, and stranded-retry pacing. */

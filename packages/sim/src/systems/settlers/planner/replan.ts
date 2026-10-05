@@ -33,12 +33,12 @@ import {
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Component, Entity, World } from '../../../ecs/world.js';
-import { nodeHxOfPosition, nodeHyOfPosition, positionOfNode } from '../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import { isManningPost } from '../../conflict/tower-post.js';
 import { pruneUnreachableTargets } from '../../conflict/unreachable-targets.js';
 import type { SystemContext } from '../../context.js';
 import type { ShelterSites } from '../../defence/index.js';
-import { clearNavState, isTravelling } from '../../movement/nav-state.js';
+import { clearNavState, isTravelling, onNodeCentre } from '../../movement/nav-state.js';
 import { sheltersOnAlarm } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import type { SupplyTally } from '../../stores/index.js';
@@ -82,14 +82,6 @@ function ownsFailedRoute(world: World, e: Entity): boolean {
  */
 export function combatOwnsFeet(world: World, e: Entity): boolean {
   return world.has(e, Engagement) && !world.has(e, HuntFocus);
-}
-
-/** Whether `e` stands on a node's exact centre. A path follower snaps onto each waypoint before advancing
- *  its index, so a walker is on-lattice for the tick that ends any leg. */
-function onNodeCentre(world: World, e: Entity): boolean {
-  const p = world.get(e, Position);
-  const centre = positionOfNode(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
-  return p.x === centre.x && p.y === centre.y;
 }
 
 /**

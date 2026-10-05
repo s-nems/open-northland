@@ -3,6 +3,7 @@ import {
   EXPLORE_RADIUS_NODES,
   ExploreOrder,
   FOG_MODE,
+  MealBreak,
   Owner,
   PlayerOrder,
   Position,
@@ -17,6 +18,7 @@ import { clearNavState } from '../movement/nav-state.js';
 import { isScoutJob } from '../readviews/index.js';
 import { cellOfNode, FOG_STATE, type FogState } from '../vision/index.js';
 import { isOrderableSettler, supersedeStandingOrders } from './guards.js';
+import { breaksForMeal, startMealBreak } from './meal-break.js';
 import { moveUnit } from './movement.js';
 
 /**
@@ -63,6 +65,11 @@ export const exploreOrderSystem: System = (world, ctx) => {
       continue;
     }
     if (world.has(e, PlayerOrder) || world.has(e, CurrentAtomic)) continue; // still walking this leg out
+    if (world.has(e, MealBreak)) continue; // eating first; the sweep goes on from wherever it ate
+    if (breaksForMeal(world, ctx, e)) {
+      startMealBreak(world, e);
+      continue;
+    }
     const { centre, leg } = world.get(e, ExploreOrder);
     const p = world.get(e, Position);
     const hn = nodeOfPosition(p.x, p.y);

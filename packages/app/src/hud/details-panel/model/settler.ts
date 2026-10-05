@@ -170,6 +170,7 @@ export type SettlerState =
   | 'fighting'
   | 'training'
   | 'eating'
+  | 'mealBreak'
   | 'sleeping'
   | 'praying'
   | 'talking'
@@ -247,6 +248,8 @@ function liveSettlerState(
   if ((components.Chat as { talking?: unknown } | undefined)?.talking === true) return 'talking';
   const atomic = atomicState(components);
   if (atomic !== null && atomic !== 'idle') return atomic;
+  // Hunger took it off its orders: the walk to food is not the order's, and the orders wait for it.
+  if ('MealBreak' in components) return 'mealBreak';
   if ('PathFollow' in components || 'MoveGoal' in components) return 'walking';
   // Waiting out a workplace still going up is by design; without its own caption it reads as idleness.
   if (awaitsItsWorkplace(snapshot, components)) return 'awaitingWorkplace';
