@@ -1467,6 +1467,7 @@ export const plGame = {
       slow: 'nie nadąża',
       resync: 'synchronizuje',
     },
+    loadingProgress: 'wczytuje, {percent}%',
     voteKick: 'Głosuj za wyrzuceniem',
     voteTally: '{yes} z {needed} głosów',
     kickCountdown: 'głosowanie za {seconds} s',

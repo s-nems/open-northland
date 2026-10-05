@@ -63,6 +63,12 @@ export const MAP_BOOT_PHASES = [
   'hud',
 ] as const satisfies readonly BootPhase[];
 
+/** A relayed map's card stays up until every member shows its world, so they start together. */
+export const RELAYED_MAP_BOOT_PHASES = [
+  ...MAP_BOOT_PHASES,
+  'players',
+] as const satisfies readonly BootPhase[];
+
 /** The running world as the presentation half reads it, whichever thread its sim runs on. */
 export interface HostedMapWorld {
   readonly host: SessionHost;
@@ -83,6 +89,8 @@ export interface MapBootPlan<H extends HostedMapWorld> {
   /** Stands the world up from the loaded documents; a rejection of a staged save halts the boot. */
   readonly hostWorld: (inputs: MapWorldDocuments) => Promise<H>;
   readonly multiplayer?: boolean;
+  /** Hears the card's progress at each boot step, as the fraction of the bar done. */
+  readonly onBootProgress?: (fraction: number) => void;
   readonly mapId: string | null;
   readonly stagedSave: RestoredSave | null;
   readonly verifiedMap?: VerifiedMapDocuments;
@@ -156,7 +164,10 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     plan.verifiedMap !== undefined && mapId !== null
       ? readVerifiedMapDocuments(plan.verifiedMap, mapId)
       : undefined;
-  const boot = mountBootProgress(MAP_BOOT_PHASES);
+  const boot = mountBootProgress(
+    plan.multiplayer === true ? RELAYED_MAP_BOOT_PHASES : MAP_BOOT_PHASES,
+    plan.onBootProgress,
+  );
   await boot.begin('graphics');
   const app = await createWindowPixiApp(canvas, { resolutionScale: readStoredSettings().renderScale });
   let assembled = false;

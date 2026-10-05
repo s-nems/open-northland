@@ -5,6 +5,7 @@ import { parseCompatibility } from './compatibility.js';
 import {
   AI_DIFFICULTIES,
   parseClientLoad,
+  parseLoadingProgress,
   parseLobbySettings,
   parseRoomSettings,
   parseSeatIndex,
@@ -31,6 +32,7 @@ export const CLIENT_KINDS = keysOf<ClientMessageKind>({
   setCompatibility: true,
   start: true,
   loaded: true,
+  loading: true,
   saveOrders: true,
   ack: true,
   finish: true,
@@ -110,6 +112,8 @@ export function parseClientMessage(value: unknown): ClientMessage {
     case 'loaded':
       if (raw.tick === null) return { kind, tick: null };
       return { kind, tick: asCount(raw.tick, 'loaded.tick'), world: asCount(raw.world, 'loaded.world') };
+    case 'loading':
+      return { kind, progress: parseLoadingProgress(raw.progress, 'loading.progress') };
     case 'finish': {
       const hash = parseStateHash(raw.hash, 'finish.hash');
       return {

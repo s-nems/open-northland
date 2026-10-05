@@ -109,6 +109,11 @@ export class RelayLobby {
     this.send({ kind: 'chat', text });
   }
 
+  /** How far this client's boot is, in whole percent, before its world reports `loaded`. */
+  reportLoading(progress: number): void {
+    this.send({ kind: 'loading', progress });
+  }
+
   kick(player: number): void {
     this.send({ kind: 'kick', player });
   }

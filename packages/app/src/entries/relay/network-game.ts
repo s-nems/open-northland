@@ -1,6 +1,6 @@
 import type { GameSession } from '@open-northland/lockstep';
 import { verifyInitialSave } from '@open-northland/net-client';
-import type { ServerMessage } from '@open-northland/net-protocol';
+import { MAX_LOADING_PROGRESS, type ServerMessage } from '@open-northland/net-protocol';
 import { serializeSaveGame } from '@open-northland/sim';
 import { errorText } from '../../diag/error-text.js';
 import {
@@ -19,6 +19,7 @@ import { relayCloseText, relayFailureText, relayReasonText } from '../../net/rel
 import { networkSaveSession } from '../../net/save-session.js';
 import { dismissBootProgress } from '../../view/boot-progress.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
+import { createWaitingOverlay, roomProgress, type WaitingOverlay } from '../../view/net/waiting-overlay.js';
 import { BUTTON_STYLE, el, mountMessage } from '../../view/overlay.js';
 import { menuSearch } from '../../view/params.js';
 import type { GameViewHandle } from '../../view/runtime/game-view.js';
@@ -95,6 +96,7 @@ export function renderNetworkGame(
     closed = true;
     revision++;
     scope.abort();
+    endStartWait();
     unsubscribe();
     connection.dispose();
     clearWorld();
@@ -114,6 +116,40 @@ export function renderNetworkGame(
     });
     mountMessage(formatMessage(copy.bootFailed, { reason: relayFailureText(error) }), '', [back]);
   }
+  // Until the room starts, the card shows who it still waits for: the others, since the card is this
+  // client's own progress.
+  let startPanel: WaitingOverlay | null = createWaitingOverlay({
+    seatOf: (nick) => client.room?.members.find((member) => member.nick === nick)?.seat ?? null,
+    ownNick: () => client.nick,
+    onKick: (player) => client.kick(player),
+    progressOf: roomProgress(client),
+  });
+  const othersWaited = () => client.waitingFor.filter((member) => member.nick !== client.nick);
+  startPanel.waiting(othersWaited());
+  let startWaits: (() => void)[] = [];
+  /** The room's clock runs and no member is still loading its world. */
+  const roomStarted = (): boolean =>
+    client.clockState !== null && !client.waitingFor.some((member) => member.reason === 'loading');
+  function releaseStartWaits(): void {
+    const waits = startWaits;
+    startWaits = [];
+    for (const wait of waits) wait();
+  }
+  function endStartWait(): void {
+    startPanel?.dispose();
+    startPanel = null;
+    releaseStartWaits();
+  }
+  /** Settles once the room starts, or once this game closes or builds a world after `mine`. */
+  function untilStart(mine: number): Promise<void> {
+    if (mine !== revision) return Promise.resolve();
+    if (closed || roomStarted()) {
+      endStartWait();
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => startWaits.push(resolve));
+  }
+
   const exit = roomExitObserver((reason) =>
     fail(reason === null ? copy.roomEnded : `${copy.roomEnded}: ${relayReasonText(reason)}`),
   );
@@ -132,6 +168,9 @@ export function renderNetworkGame(
       fail(copy.youWereKicked);
       return;
     }
+    if (event.message.kind === 'waiting') startPanel?.waiting(othersWaited());
+    if (event.message.kind === 'kickVote') startPanel?.tally(event.message);
+    if (roomStarted()) endStartWait();
     hud?.observe(event.message);
   });
   // A link that closed between the handover and this subscription would otherwise never be heard of.
@@ -160,6 +199,7 @@ export function renderNetworkGame(
       const world = await assembleMapWorld(activeCanvas, params, {
         hostWorld: (inputs) => hostRelayedWorld(host, inputs, params, start),
         multiplayer: true,
+        onBootProgress: (fraction) => client.reportLoading(Math.round(fraction * MAX_LOADING_PROGRESS)),
         mapId: map.mapId,
         stagedSave: save,
         verifiedMap: map,
@@ -210,6 +250,7 @@ export function renderNetworkGame(
   const port: NetWorldPort = {
     async open(session, snapshotTick, host) {
       const mine = ++revision;
+      releaseStartWaits();
       if (session.initialSave) {
         if (initialSave === null || (snapshotTick !== null && snapshotTick !== session.initialSave.tick)) {
           return;
@@ -223,7 +264,9 @@ export function renderNetworkGame(
       await build(session, null, null, host, mine);
     },
     async restore(session, header, host) {
-      await build(session, { header }, null, host, ++revision);
+      const mine = ++revision;
+      releaseStartWaits();
+      await build(session, { header }, null, host, mine);
     },
   };
   connection.bindWorld(port, ({ worldId, session }) => {
@@ -239,6 +282,7 @@ export function renderNetworkGame(
       networkSave: networkSaveSession(client, worldId),
       introAtStart: false,
       netReadout: readout,
+      untilStart: () => untilStart(mine),
       onReturnToMenu: returnToMenu,
     })
       .then((presented) => {

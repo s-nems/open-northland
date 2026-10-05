@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAP_BOOT_PHASES } from '../src/entries/map.js';
+import { MAP_BOOT_PHASES, RELAYED_MAP_BOOT_PHASES } from '../src/entries/map.js';
 import { SCENE_BOOT_PHASES } from '../src/entries/scene.js';
 import { messages } from '../src/i18n/index.js';
 import { BOOT_PHASES, bootFraction, bootStillImage } from '../src/view/boot-progress.js';
@@ -7,6 +7,7 @@ import { BOOT_PHASES, bootFraction, bootStillImage } from '../src/view/boot-prog
 /** The real step lists the playable entries drive the card with - not a copy that could drift from them. */
 const ENTRY_PHASES = [
   { entry: 'map', phases: MAP_BOOT_PHASES },
+  { entry: 'relayed map', phases: RELAYED_MAP_BOOT_PHASES },
   { entry: 'scene', phases: SCENE_BOOT_PHASES },
 ] as const;
 

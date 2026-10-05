@@ -393,6 +393,7 @@ export const plSurfaces = {
     world: 'Budowanie świata…',
     minimap: 'Rysowanie minimapy…',
     hud: 'Przygotowywanie interfejsu…',
+    players: 'Czekanie na pozostałych graczy…',
   },
   // One tip shows on each loading screen. `{key}` and `{shift}` render as keycaps of the player's bindings.
   loadingTips: {

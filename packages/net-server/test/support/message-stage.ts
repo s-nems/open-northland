@@ -91,8 +91,8 @@ export function stage(autoCompatibility = true): MessageStage {
   return { relay, now: () => time.ms, advance, peer, introduce };
 }
 
-/** Two seated, ready members in a started room whose clock is running. */
-export function startedRoom() {
+/** Two seated, ready members in a room just started, neither world loaded yet. */
+export function startingRoom() {
   const s = stage();
   const a = s.introduce(TOKEN_A, 'Ania');
   const b = s.introduce(TOKEN_B, 'Bartek');
@@ -105,9 +105,15 @@ export function startedRoom() {
   a.send({ kind: 'setReady', ready: true });
   b.send({ kind: 'setReady', ready: true });
   a.send({ kind: 'start' });
-  a.send({ kind: 'loaded', tick: 0, world: 0 });
-  b.send({ kind: 'loaded', tick: 0, world: 0 });
   return { ...s, a, b, roomId };
+}
+
+/** Two seated, ready members in a started room whose clock is running. */
+export function startedRoom() {
+  const s = startingRoom();
+  s.a.send({ kind: 'loaded', tick: 0, world: 0 });
+  s.b.send({ kind: 'loaded', tick: 0, world: 0 });
+  return s;
 }
 
 /** Three seated members in a running room; `c` holds the AI-vacant seat. */

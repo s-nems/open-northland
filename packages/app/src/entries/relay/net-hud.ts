@@ -8,7 +8,7 @@ import type { LinkState } from '../../session/worker/net-protocol.js';
 import { type ChatPanel, mountChatPanel } from '../../view/net/chat-panel.js';
 import { memberRows } from '../../view/net/net-status.js';
 import { clockAnnouncement, speedControlFor } from '../../view/net/session-clock.js';
-import { createWaitingOverlay, type WaitingOverlay } from '../../view/net/waiting-overlay.js';
+import { createWaitingOverlay, roomProgress, type WaitingOverlay } from '../../view/net/waiting-overlay.js';
 import type { GameViewHandle } from '../../view/runtime/game-view.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
 
@@ -36,6 +36,7 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
     seatOf,
     ownNick: () => client.nick,
     onKick: (player) => client.kick(player),
+    progressOf: roomProgress(client),
   });
   const chat: ChatPanel = mountChatPanel({
     leftPx: () => view.hudInsetBottomLeftPx,

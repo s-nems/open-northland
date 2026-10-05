@@ -1,5 +1,5 @@
 import type { GameSession } from '@open-northland/lockstep';
-import { expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { HostedRelayedWorld, NetWorldPort } from '../../src/net/connection.js';
 import type { NetworkHandover } from '../../src/net/handover.js';
 
@@ -22,6 +22,9 @@ const session: GameSession = {
   speed: 1,
 };
 
+/** A client the room has not started for yet, waiting for nobody. */
+const IDLE_CLIENT = { nick: 'Ania', room: null, clockState: null, waitingFor: [] };
+
 it('replaces the canvas before a resync assembles another WebGL renderer', async () => {
   const secondCanvas = {};
   const canvas = { cloneNode: vi.fn(() => secondCanvas), replaceWith: vi.fn() };
@@ -35,7 +38,7 @@ it('replaces the canvas before a resync assembles another WebGL renderer', async
   let port: NetWorldPort | undefined;
   const handover = {
     connection: {
-      client: {},
+      client: IDLE_CLIENT,
       connected: true,
       subscribe: () => () => undefined,
       bindWorld: (next: NetWorldPort) => {
@@ -68,7 +71,7 @@ it('shows the link as it stands on a HUD mounted after the link changed', async 
   let onWorld: ((world: HostedRelayedWorld) => void) | undefined;
   const handover = {
     connection: {
-      client: {},
+      client: IDLE_CLIENT,
       connected: false,
       // Closed while the world was rebuilt, when no HUD stood to hear it.
       linkState: null as { state: string; reason?: string } | null,
@@ -92,4 +95,80 @@ it('shows the link as it stands on a HUD mounted after the link changed', async 
   onWorld?.({ worldId: 1, session: worker } as unknown as HostedRelayedWorld);
   await vi.waitFor(() => expect(link).toHaveBeenCalled());
   expect(link).toHaveBeenCalledWith('closed', CLOSE_REASON);
+});
+
+describe('the start wait under the loading card', () => {
+  const WORLD_ID = 1;
+
+  function presentedGame() {
+    const client: { nick: string; room: null; clockState: unknown; waitingFor: readonly unknown[] } = {
+      nick: 'Ania',
+      room: null,
+      clockState: null,
+      waitingFor: [],
+    };
+    let listener: ((event: unknown) => void) | undefined;
+    let port: NetWorldPort | undefined;
+    let onWorld: ((world: HostedRelayedWorld) => void) | undefined;
+    const progress = { reached: false, started: false };
+    const worker = { dispose: vi.fn(), driver: {}, host: {}, offThreadTickCost: vi.fn() };
+    mocks.assemble.mockResolvedValue({ app: { destroy: vi.fn() }, loaded: {}, hosted: { worker } });
+    mocks.mountHud.mockReturnValue({ link: vi.fn(), observe: vi.fn(), dispose: vi.fn() });
+    mocks.present.mockImplementation(async (_world, runtime: { untilStart: () => Promise<void> }) => {
+      progress.reached = true;
+      await runtime.untilStart();
+      progress.started = true;
+      return { destroy: vi.fn() };
+    });
+    const handover = {
+      connection: {
+        client,
+        connected: true,
+        linkState: { state: 'ok' },
+        subscribe: (next: (event: unknown) => void) => {
+          listener = next;
+          return () => undefined;
+        },
+        bindWorld: (next: NetWorldPort, shown: (world: HostedRelayedWorld) => void) => {
+          port = next;
+          onWorld = shown;
+        },
+      },
+      map: { mapId: 'forest' },
+      initialSave: null,
+    };
+    const canvas = { cloneNode: vi.fn(() => ({})), replaceWith: vi.fn() };
+    renderNetworkGame(
+      canvas as unknown as HTMLCanvasElement,
+      new URLSearchParams(),
+      handover as unknown as NetworkHandover,
+    );
+    const relay = (message: { kind: string }) => listener?.({ kind: 'message', message });
+    const show = async () => {
+      await port?.open(session, null, vi.fn());
+      onWorld?.({ worldId: WORLD_ID, session: worker } as unknown as HostedRelayedWorld);
+      await vi.waitFor(() => expect(progress.reached).toBe(true));
+    };
+    return { client, relay, show, progress, open: () => port?.open(session, null, vi.fn()) };
+  }
+
+  it('holds the world until the clock runs and nobody is still loading', async () => {
+    const game = presentedGame();
+    await game.show();
+    game.client.waitingFor = [{ nick: 'Ania', reason: 'loading', voteAfterMs: 0 }];
+    game.client.clockState = { kind: 'clock', tick: 1, speed: 1, paused: false, by: null, governed: null };
+    game.relay({ kind: 'clock' });
+    await Promise.resolve();
+    expect(game.progress.started).toBe(false);
+    game.client.waitingFor = [];
+    game.relay({ kind: 'waiting' });
+    await vi.waitFor(() => expect(game.progress.started).toBe(true));
+  });
+
+  it('lets a waiting world through once another world replaces it', async () => {
+    const game = presentedGame();
+    await game.show();
+    void game.open();
+    await vi.waitFor(() => expect(game.progress.started).toBe(true));
+  });
 });

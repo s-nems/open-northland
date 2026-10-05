@@ -1,4 +1,4 @@
-import type { GovernedClock, ServerMessage, WaitedMember } from '@open-northland/net-protocol';
+import type { GovernedClock, RoomView, ServerMessage, WaitedMember } from '@open-northland/net-protocol';
 import { currentLocale, formatMessage, messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
 import { formatSpeed } from '../perf-overlay.js';
@@ -35,6 +35,15 @@ export interface WaitedRow {
   readonly reason: WaitedMember['reason'];
   /** Whole seconds until a kick vote may open; 0 once it may. */
   readonly voteInSeconds: number;
+  /** A loading member's boot progress in percent, once it has reported one. */
+  readonly progress?: number;
+}
+
+/** A member's boot progress in percent, as the room view last carried it; null when it has none. */
+export type ProgressOf = (nick: string) => number | null;
+
+export function roomProgress(client: { readonly room: RoomView | null }): ProgressOf {
+  return (nick) => client.room?.members.find((member) => member.nick === nick)?.loading ?? null;
 }
 
 /** The rows a wait list shows at `now`, with each countdown carried on from the moment it arrived. */
@@ -42,13 +51,18 @@ export function waitedRows(
   waited: readonly WaitedMember[],
   receivedAt: number,
   now: number,
+  progressOf: ProgressOf = () => null,
 ): readonly WaitedRow[] {
   const elapsed = Math.max(0, now - receivedAt);
-  return waited.map((member) => ({
-    nick: member.nick,
-    reason: member.reason,
-    voteInSeconds: Math.ceil(Math.max(0, member.voteAfterMs - elapsed) / 1000),
-  }));
+  return waited.map((member) => {
+    const progress = member.reason === 'loading' ? progressOf(member.nick) : null;
+    return {
+      nick: member.nick,
+      reason: member.reason,
+      voteInSeconds: Math.ceil(Math.max(0, member.voteAfterMs - elapsed) / 1000),
+      ...(progress === null ? {} : { progress }),
+    };
+  });
 }
 
 export interface WaitingText {
@@ -80,6 +94,7 @@ export interface WaitingOverlayDeps {
   /** This client's own nick; the relay counts no vote against yourself, so none is offered. */
   readonly ownNick: () => string;
   readonly onKick: (player: number) => void;
+  readonly progressOf?: ProgressOf;
   readonly now?: () => number;
 }
 
@@ -108,7 +123,7 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
 
   const render = (): void => {
     const copy = messages().net;
-    const rows = waitedRows(waited, receivedAt, now());
+    const rows = waitedRows(waited, receivedAt, now(), deps.progressOf);
     if (rows.length === 0 && noticeText === null) {
       panel?.remove();
       panel = null;
@@ -208,5 +223,6 @@ function reasonText(row: WaitedRow, governed: GovernedClock | null): string {
   if (row.reason === 'slow' && governed !== null && governed.nick === row.nick) {
     return formatMessage(copy.slowingTo, { speed: formatSpeed(governed.speed) });
   }
+  if (row.progress !== undefined) return formatMessage(copy.loadingProgress, { percent: row.progress });
   return copy.reasons[row.reason];
 }

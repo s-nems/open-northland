@@ -18,7 +18,7 @@ const ROOM: RoomView = {
   creator: 'Ania',
   settings: { name: 'Game', world: SESSION.world, seed: 3, speed: 1, rules: SESSION.rules },
   seats: [{ player: 0, mode: 'human', offers: ['idle'], color: 0, nick: 'Ania', ready: true }],
-  members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null, load: null }],
+  members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null, load: null, loading: null }],
 };
 
 function stateOf(view: RelayClient | RelayState) {

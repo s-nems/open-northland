@@ -172,6 +172,9 @@ export class RelayClientMirror implements RelayClientView {
   start(): void {
     this.lobby('start', []);
   }
+  reportLoading(...args: Parameters<RelayLobby['reportLoading']>): void {
+    this.lobby('reportLoading', args);
+  }
   say(...args: Parameters<RelayLobby['say']>): void {
     this.lobby('say', args);
   }

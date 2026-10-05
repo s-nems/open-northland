@@ -1501,6 +1501,7 @@ export const enGame = {
       slow: 'running behind',
       resync: 'resyncing',
     },
+    loadingProgress: 'loading, {percent}%',
     voteKick: 'Vote to kick',
     voteTally: '{yes} of {needed} votes',
     kickCountdown: 'vote in {seconds} s',

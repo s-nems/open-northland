@@ -12,7 +12,7 @@ import { assembleMapWorld, type HostedMapWorld, presentMapWorld } from './map/bo
 import { workerStallReports } from './map/stall-reports.js';
 import type { MapWorkerBoot, MapWorldDocuments, MapWorldPlacements } from './map/world-inputs.js';
 
-export { MAP_BOOT_PHASES } from './map/boot.js';
+export { MAP_BOOT_PHASES, RELAYED_MAP_BOOT_PHASES } from './map/boot.js';
 
 /** A world whose sim, driver and clock run in the session worker. */
 interface WorkerMapWorld extends HostedMapWorld {

@@ -18,6 +18,7 @@ const LOBBY_ACTIONS = [
   'setCompatibility',
   'setReady',
   'start',
+  'reportLoading',
   'say',
   'kick',
   'sendBlob',

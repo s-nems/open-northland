@@ -214,6 +214,7 @@ export class Game {
     this.ledger.forget(member.token);
     this.resync.forget(member);
     member.loaded = false;
+    member.loading = null;
     this.startClockWhenLoaded(now);
     this.settle(now);
   }

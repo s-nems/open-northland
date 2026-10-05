@@ -71,6 +71,9 @@ export interface RoomMemberView {
   readonly compatibility: LobbyCompatibility | null;
   /** The load the member's last acknowledgement reported; null before its first. */
   readonly load: ClientLoad | null;
+  /** The boot progress in whole percent the member last reported while building its world; null once
+   *  that world has loaded, and before its first report. */
+  readonly loading: number | null;
 }
 
 export interface RoomView {
@@ -191,6 +194,8 @@ export type ClientMessage =
    *  holding no world that needs the room's snapshot. */
   | { readonly kind: 'loaded'; readonly tick: number; readonly world: number }
   | { readonly kind: 'loaded'; readonly tick: null }
+  /** How far the client's boot is before it reports `loaded`, in whole percent. */
+  | { readonly kind: 'loading'; readonly progress: number }
   | { readonly kind: 'finish'; readonly tick: number; readonly hash: string; readonly world: number }
   | {
       readonly kind: 'ack';

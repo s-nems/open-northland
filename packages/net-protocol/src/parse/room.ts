@@ -7,6 +7,7 @@ import type {
 } from '@open-northland/lockstep';
 import {
   FOG_MODES,
+  MAX_LOADING_PROGRESS,
   MAX_REPORTED_BUFFERED,
   MAX_REPORTED_TICK_MS,
   MAX_ROOM_ID_LENGTH,
@@ -212,7 +213,12 @@ function parseRoomMemberView(value: unknown, at: string): RoomMemberView {
     connected: asBoolean(raw.connected, `${at}.connected`),
     compatibility: parseCompatibility(raw.compatibility, `${at}.compatibility`),
     load: raw.load === null ? null : parseClientLoad(raw.load, `${at}.load`),
+    loading: raw.loading === null ? null : parseLoadingProgress(raw.loading, `${at}.loading`),
   };
+}
+
+export function parseLoadingProgress(value: unknown, at: string): number {
+  return atMost(asCount(value, at), MAX_LOADING_PROGRESS, at);
 }
 
 export function parseClientLoad(value: unknown, at: string): ClientLoad {

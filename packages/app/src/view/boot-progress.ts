@@ -21,6 +21,7 @@ export const BOOT_PHASES = [
   'world',
   'minimap',
   'hud',
+  'players',
 ] as const;
 
 export type BootPhase = (typeof BOOT_PHASES)[number];
@@ -47,6 +48,9 @@ export function bootFraction(phases: readonly BootPhase[], phase: BootPhase): nu
 }
 
 let overlay: HTMLElement | null = null;
+/** The game view may already run under the card; its keys must not act on a world nobody sees. */
+const KEY_EVENTS = ['keydown', 'keyup'] as const;
+const swallowKey = (event: KeyboardEvent): void => event.stopImmediatePropagation();
 
 /** Cap on a paint yield, so a tab hidden after the frame was requested cannot stall the boot. */
 const PAINT_TIMEOUT_MS = 250;
@@ -88,8 +92,11 @@ function node(className: string, ...children: readonly HTMLElement[]): HTMLDivEl
   return div;
 }
 
-/** Mount the card for an entry's own ordered step list. */
-export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
+/** Mount the card for an entry's own ordered step list; `onProgress` hears each step's start fraction. */
+export function mountBootProgress(
+  phases: readonly BootPhase[],
+  onProgress?: (fraction: number) => void,
+): BootProgress {
   dismissBootProgress();
   const bar = node('boot-card__bar');
   const label = node('boot-card__label');
@@ -102,10 +109,13 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
   if (tip !== null) root.append(tip);
   document.body.append(root);
   overlay = root;
+  for (const kind of KEY_EVENTS) window.addEventListener(kind, swallowKey, { capture: true });
   return {
     async begin(phase: BootPhase): Promise<void> {
       label.textContent = messages().loading[phase];
-      bar.style.width = `${bootFraction(phases, phase) * 100}%`;
+      const fraction = bootFraction(phases, phase);
+      bar.style.width = `${fraction * 100}%`;
+      onProgress?.(fraction);
       diag.info('boot', 'phase', { phase });
       await nextPaint();
     },
@@ -118,6 +128,9 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
 
 /** Remove the card if one is up. Idempotent. */
 export function dismissBootProgress(): void {
+  if (overlay !== null) {
+    for (const kind of KEY_EVENTS) window.removeEventListener(kind, swallowKey, { capture: true });
+  }
   overlay?.remove();
   overlay = null;
 }

@@ -20,6 +20,8 @@ export const MAX_REPORTED_TICK_MS = 60 * 1000;
 const SECONDS_PER_HOUR = 60 * 60;
 /** A reported frame backlog: an hour of frames at the top speed, which no playing client holds. */
 export const MAX_REPORTED_BUFFERED = SECONDS_PER_HOUR * TICKS_PER_SECOND * MAX_SPEED;
+/** A boot progress report counts whole percent. */
+export const MAX_LOADING_PROGRESS = 100;
 /** The sim's `FOG_MODE` ids, which a test pins; the descriptor refuses any other. */
 export const FOG_MODES: readonly number[] = [0, 1, 2, 3, 4];
 /** The widest tribe id a seat may carry, a sanity bound: which ids name a civilization is the

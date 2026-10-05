@@ -76,6 +76,9 @@ export interface RelayClientOptions {
   readonly connected?: () => boolean;
   /** Milliseconds for the click-to-apply and tick-cost measurements; default `performance.now`. */
   readonly now?: () => number;
+  /** A world's `loaded` waits for `worldShown`, so the room's clock starts once every host displays
+   *  its world rather than once its sim is built. */
+  readonly awaitsDisplay?: boolean;
 }
 
 /** One client of a relayed session, and the session driver and clock the host runs it through. */
@@ -91,6 +94,10 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   private currentWorldId: number | null = null;
   private readonly loader = new WorldLoader();
   private reportRestoredWorld = false;
+  /** The adopted world the host displays; with `awaitsDisplay`, `loaded` waits for it. */
+  private shownWorldId: number | null = null;
+  /** The adopted world's `loaded` waits for the host to display it. */
+  private loadedHeld = false;
   private alpha = 1;
   private readonly completion = new MatchCompletion();
   private readonly saveOrders = new SaveOrders();
@@ -366,7 +373,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   private startSession(session: GameSession, snapshotTick: number | null): void {
     this.completion.reconnect();
     if (this.sim !== null && !this.state.outOfSync) {
-      this.send({ kind: 'loaded', tick: this.sim.tick, world: this.world });
+      this.reportLoaded();
       return;
     }
     if (this.loader.busy) {
@@ -385,12 +392,10 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
           if (opened !== null) {
             applyInitialSeatControl(opened, session, snapshotTick);
             this.adoptWorld(opened);
+            this.reportLoaded();
+          } else {
+            this.send({ kind: 'loaded', tick: null });
           }
-          this.send(
-            opened === null
-              ? { kind: 'loaded', tick: null }
-              : { kind: 'loaded', tick: opened.sim.tick, world: opened.generation },
-          );
         },
       ),
     );
@@ -411,13 +416,31 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
           if (opened !== null) {
             applyInitialSeatControl(opened, session, tick);
             this.adoptWorld(opened);
-            if (this.reportRestoredWorld) {
-              this.send({ kind: 'loaded', tick: opened.sim.tick, world: opened.generation });
-            }
+            if (this.reportRestoredWorld) this.reportLoaded();
           }
         },
       ),
     );
+  }
+
+  /** The host draws the world numbered `worldId`: a `loaded` held for it goes out. */
+  worldShown(worldId: number): void {
+    if (worldId !== this.currentWorldId) return;
+    this.shownWorldId = worldId;
+    if (!this.loadedHeld) return;
+    this.loadedHeld = false;
+    this.reportLoaded();
+  }
+
+  /** Tell the relay where the adopted world stands, once the host displays it when it must. */
+  private reportLoaded(): void {
+    const sim = this.sim;
+    if (sim === null) return;
+    if (this.options.awaitsDisplay === true && this.shownWorldId !== this.currentWorldId) {
+      this.loadedHeld = true;
+      return;
+    }
+    this.send({ kind: 'loaded', tick: sim.tick, world: this.world });
   }
 
   private adoptWorld(opened: OpenedWorld): void {
@@ -460,6 +483,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     this.loader.invalidate();
     this.verdicts.forgetWorld();
     this.reportRestoredWorld = false;
+    this.loadedHeld = false;
     this.sim = null;
     this.currentWorldId = null;
     this.completion.dropWorld();

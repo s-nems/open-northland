@@ -28,7 +28,9 @@ function room(overrides: Partial<RoomView>): RoomView {
       { player: 1, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 1, nick: null, ready: false },
       { player: 2, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 2, nick: null, ready: false },
     ],
-    members: [{ nick: 'Ania', seat: null, connected: true, compatibility: COMPATIBILITY, load: null }],
+    members: [
+      { nick: 'Ania', seat: null, connected: true, compatibility: COMPATIBILITY, load: null, loading: null },
+    ],
     ...overrides,
   };
 }
@@ -44,7 +46,9 @@ describe('devLobbyAction', () => {
         { player: 0, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 0, nick: null, ready: false },
         { player: 1, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 1, nick: 'Ania', ready: false },
       ],
-      members: [{ nick: 'Ania', seat: 1, connected: true, compatibility: COMPATIBILITY, load: null }],
+      members: [
+        { nick: 'Ania', seat: 1, connected: true, compatibility: COMPATIBILITY, load: null, loading: null },
+      ],
     });
     expect(devLobbyAction(seated, 'Ania', { players: 2 })).toEqual({ kind: 'setReady' });
   });
@@ -54,7 +58,9 @@ describe('devLobbyAction', () => {
       seats: [
         { player: 1, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 1, nick: 'Ania', ready: true },
       ],
-      members: [{ nick: 'Ania', seat: 1, connected: true, compatibility: COMPATIBILITY, load: null }],
+      members: [
+        { nick: 'Ania', seat: 1, connected: true, compatibility: COMPATIBILITY, load: null, loading: null },
+      ],
     });
     expect(devLobbyAction(one, 'Ania', { players: 2 })).toBeNull();
     const two = room({
@@ -70,8 +76,8 @@ describe('devLobbyAction', () => {
         },
       ],
       members: [
-        { nick: 'Ania', seat: 1, connected: true, compatibility: COMPATIBILITY, load: null },
-        { nick: 'Bartek', seat: 2, connected: true, compatibility: COMPATIBILITY, load: null },
+        { nick: 'Ania', seat: 1, connected: true, compatibility: COMPATIBILITY, load: null, loading: null },
+        { nick: 'Bartek', seat: 2, connected: true, compatibility: COMPATIBILITY, load: null, loading: null },
       ],
     });
     expect(devLobbyAction(two, 'Ania', { players: 2 })).toBeNull();
@@ -92,8 +98,15 @@ describe('devLobbyAction', () => {
         { player: 0, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 0, nick: 'Bartek', ready: true },
       ],
       members: [
-        { nick: 'Bartek', seat: 0, connected: true, compatibility: COMPATIBILITY, load: null },
-        { nick: 'Ania', seat: null, connected: true, compatibility: COMPATIBILITY, load: null },
+        { nick: 'Bartek', seat: 0, connected: true, compatibility: COMPATIBILITY, load: null, loading: null },
+        {
+          nick: 'Ania',
+          seat: null,
+          connected: true,
+          compatibility: COMPATIBILITY,
+          load: null,
+          loading: null,
+        },
       ],
     });
     expect(devLobbyAction(full, 'Ania', { players: 2 })).toBeNull();

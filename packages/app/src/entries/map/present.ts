@@ -47,6 +47,9 @@ export interface MapRuntime {
   readonly introAtStart: boolean;
   /** Present for a relayed session: the connection readouts the overlays show. */
   readonly netReadout?: () => NetReadout | null;
+  /** Present for a relayed session: the card covers the drawn world until this settles, once the room
+   *  starts its shared clock or the wait no longer matters. */
+  readonly untilStart?: () => Promise<void>;
 }
 
 /** `?center=x,y` in integer tile coords; `null` when the value is absent or malformed. */
@@ -214,6 +217,10 @@ export async function presentMapWorld(
           : null,
     },
   });
+  if (runtime.untilStart !== undefined) {
+    await boot.begin('players');
+    await runtime.untilStart();
+  }
   await boot.finish();
   // A late edit answer never lands on the renderer of a view that is gone.
   view.lifetime.addEventListener('abort', () => landscapes?.dispose(), { once: true });

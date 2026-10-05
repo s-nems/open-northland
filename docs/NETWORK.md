@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 19` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 20` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -77,11 +77,13 @@ duplicate nick within a room gets a numeric suffix (`Ania`, `Ania2`). At most `M
 people share a room.
 
 Every change to a room is broadcast to its members as `room { room }`, the whole view:
-`{ id, state, creator, settings, seats: [{ player, mode, offers, color, team?, authoredTribe?, tribe?, difficulty?, nick, ready }], members: [{ nick, seat, connected, compatibility, load }] }`,
+`{ id, state, creator, settings, seats: [{ player, mode, offers, color, team?, authoredTribe?, tribe?, difficulty?, nick, ready }], members: [{ nick, seat, connected, compatibility, load, loading }] }`,
 where a seat carries `authoredTribe` and its current `tribe` together or neither.
-A member's `load` is the one its last acknowledgement reported (below), null before its first. A
-moved load alone sends a view at most once per `LOAD_VIEW_INTERVAL_MS` (1 s) per room; any other
-change carries the current loads with it.
+A member's `load` is the one its last acknowledgement reported (below), null before its first. Its
+`loading` is the boot progress in whole percent it last reported before its world loaded (below),
+null once that world has loaded and before its first report. A moved load or progress alone sends a
+view at most once per `LOAD_VIEW_INTERVAL_MS` (1 s) per room; any other change carries the current
+figures with it.
 
 - `claimSeat { player }` sits down in a seat nobody holds, which makes it `human` whatever it was;
   `claimSeat { player: null }` stands up and returns it to its lobby setting.
@@ -135,7 +137,10 @@ setup tick, 1 for a decoded map whose placements drain on one). The first report
 built tick; the relay refuses any other tick from the rest, a second `loaded` on the same connection,
 and a command sent before any world has loaded. The clock starts once every connected member has
 loaded, announced by `clock { tick, speed, paused: false, by: null, governed: null }` naming the first
-tick to run.
+tick to run. The app reports `loaded` only once its display draws the world, so every player's game
+starts together rather than when the slowest one's sim is built. Until then it may send
+`loading { progress }`, its boot progress in whole percent (0-100), which the room view shows; the
+relay ignores progress from a member whose world has loaded.
 After the start there is no host role.
 
 ## The clock and tick frames
@@ -446,7 +451,9 @@ the sim a frame or two behind the relay's clock (`JITTER_BUFFER_TICKS`) by scali
 the driver, never by skipping a tick, so a late frame lands inside the buffer. `RelaySocket` keeps
 the connection and reopens it on the same token after a drop; a connection the relay replaced or
 refused stays closed. The desktop and browser app plays through the `?relay=` entry, whose client,
-link and world run in a network worker, the headless test client through an in-memory network. A
+link and world run in a network worker, the headless test client through an in-memory network. The
+app's client holds `loaded` until the display draws its first frame of the world, and keeps the
+loading screen up until the room's clock runs and nobody is still loading. A
 stalled display thread does not delay the app's acknowledgements: the worker keeps stepping and
 acknowledging, and drops the transient events of ticks the display has not taken.
 

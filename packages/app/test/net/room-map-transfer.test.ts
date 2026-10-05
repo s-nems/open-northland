@@ -29,6 +29,7 @@ function room(): RoomView {
         connected: true,
         compatibility: { content: 'content', map: handle.fingerprint, client: 'build', protocol: 2 },
         load: null,
+        loading: null,
       },
       {
         nick: 'Guest',
@@ -36,6 +37,7 @@ function room(): RoomView {
         connected: true,
         compatibility: { content: 'content', map: null, client: 'build', protocol: 2 },
         load: null,
+        loading: null,
       },
     ],
   };

@@ -21,8 +21,9 @@ import { broadcast, type Deliver, type Member, type Refusal } from './member.js'
 import { roomView, sessionForMember } from './room-view.js';
 import { type SeatChange, SeatTable } from './seats.js';
 
-/** Least wall time between two room views sent only because a member's load moved. A load changes
- *  with nearly every acknowledgement; a view per ack would be a room broadcast per member per tick. */
+/** Least wall time between two room views sent only because a member's load or boot progress moved. A
+ *  load changes with nearly every acknowledgement; a view per ack would be a room broadcast per member
+ *  per tick. */
 export const LOAD_VIEW_INTERVAL_MS = 1000;
 
 export interface RoomHooks {
@@ -48,7 +49,7 @@ export class Room {
   private joined = 0;
   /** The roster as every client built its world; fixed at the start, whatever the seats do after. */
   private startedSeats: GameSession['seats'] | null = null;
-  /** A member's load moved since the last room view went out. */
+  /** A member's load or boot progress moved since the last room view went out. */
   private loadMoved = false;
   private nextLoadViewAt = 0;
 
@@ -236,7 +237,21 @@ export class Room {
 
   markLoaded(member: Member, world: Extract<ClientMessage, { kind: 'loaded' }>, now: number): Refusal {
     if (this.game === null) return { code: 'gameNotStarted' };
-    return this.game.loaded(member, world, now);
+    const refusal = this.game.loaded(member, world, now);
+    if (refusal === null && member.loading !== null) {
+      member.loading = null;
+      this.loadMoved = true;
+    }
+    return refusal;
+  }
+
+  /** Progress from a member whose world has loaded is late and changes nothing. */
+  reportLoading(member: Member, progress: number): Refusal {
+    if (this.game === null) return { code: 'gameNotStarted' };
+    if (member.loaded || member.loading === progress) return null;
+    member.loading = progress;
+    this.loadMoved = true;
+    return null;
   }
 
   ack(member: Member, ack: Extract<ClientMessage, { kind: 'ack' }>, now: number): Refusal {

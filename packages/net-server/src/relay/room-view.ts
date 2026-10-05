@@ -20,12 +20,13 @@ export function roomView(
     creator: creator.nick,
     settings,
     seats: seats.views(),
-    members: [...members.values()].map(({ nick, seat, connected, compatibility, load }) => ({
+    members: [...members.values()].map(({ nick, seat, connected, compatibility, load, loaded, loading }) => ({
       nick,
       seat,
       connected,
       compatibility,
       load,
+      loading: loaded ? null : loading,
     })),
   };
 }

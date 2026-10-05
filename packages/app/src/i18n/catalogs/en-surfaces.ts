@@ -397,6 +397,7 @@ export const enSurfaces = {
     world: 'Building the world…',
     minimap: 'Drawing the minimap…',
     hud: 'Preparing the interface…',
+    players: 'Waiting for the other players…',
   },
   // One tip shows on each loading screen. `{key}` and `{shift}` render as keycaps of the player's bindings.
   loadingTips: {

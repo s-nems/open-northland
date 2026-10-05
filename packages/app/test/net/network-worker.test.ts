@@ -131,10 +131,14 @@ it('walks the lobby, hosts the started world and runs the relay frames through t
   if (world === undefined) throw new Error('no world');
   expect(world.worldId).toBe(1);
   expect(connection.client.worldId).toBe(1);
+  // The room waits for this client until its display draws the world's first frame.
+  expect(link.sent.some((message) => message.kind === 'loaded')).toBe(false);
+  const driver = relayedSessionDriver(world.session.driver, connection.client);
+  driver.advance(0);
+  await until(() => link.sent.some((message) => message.kind === 'loaded'));
   expect(link.sent).toContainEqual({ kind: 'loaded', tick: 0, world: DESCRIPTOR_WORLD });
 
   for (let tick = 1; tick <= FRAMES; tick++) link.deliver({ kind: 'frame', tick, commands: [] });
-  const driver = relayedSessionDriver(world.session.driver, connection.client);
   await until(() => {
     driver.advance(0);
     return world.session.host.tick >= FRAMES;

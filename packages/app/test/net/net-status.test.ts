@@ -18,9 +18,9 @@ const ROOM: RoomView = {
   },
   seats: [],
   members: [
-    { nick: 'Ania', seat: 1, connected: true, compatibility: null, load: null },
-    { nick: 'Bartek', seat: 2, connected: true, compatibility: null, load: null },
-    { nick: 'Celina', seat: 3, connected: false, compatibility: null, load: null },
+    { nick: 'Ania', seat: 1, connected: true, compatibility: null, load: null, loading: null },
+    { nick: 'Bartek', seat: 2, connected: true, compatibility: null, load: null, loading: null },
+    { nick: 'Celina', seat: 3, connected: false, compatibility: null, load: null, loading: null },
   ],
 };
 
@@ -74,6 +74,21 @@ describe('waitedRows', () => {
     expect(waitedRows(waited, 1000, 4600)[0]?.voteInSeconds).toBe(1);
     expect(waitedRows(waited, 1000, 9000)[0]?.voteInSeconds).toBe(0);
   });
+
+  it('carries the boot progress of a loading member only', () => {
+    const HALFWAY = 50;
+    const waited = [
+      { nick: 'Bartek', reason: 'loading', voteAfterMs: 0 },
+      { nick: 'Celina', reason: 'gone', voteAfterMs: 0 },
+      { nick: 'Darek', reason: 'loading', voteAfterMs: 0 },
+    ] as const;
+    const progressOf = (nick: string) => (nick === 'Darek' ? null : HALFWAY);
+    expect(waitedRows(waited, 0, 0, progressOf)).toEqual([
+      { nick: 'Bartek', reason: 'loading', voteInSeconds: 0, progress: HALFWAY },
+      { nick: 'Celina', reason: 'gone', voteInSeconds: 0 },
+      { nick: 'Darek', reason: 'loading', voteInSeconds: 0 },
+    ]);
+  });
 });
 
 describe('waitingText', () => {
@@ -102,6 +117,20 @@ describe('waitingText', () => {
 
   it('tells the member slowing the game that the others wait for it', () => {
     expect(waitingText([slow('Bartek')], governed, 'Bartek').footer).toBe(copy.othersWaitForYou);
+  });
+
+  it('names how far a loading member is, when it said', () => {
+    const PROGRESS = 40;
+    const loading = (progress?: number): WaitedRow => ({
+      nick: 'Bartek',
+      reason: 'loading',
+      voteInSeconds: 0,
+      ...(progress === undefined ? {} : { progress }),
+    });
+    expect(waitingText([loading(PROGRESS)], null, 'Ania').lines[0]).toBe(
+      `Bartek · ${formatMessage(copy.loadingProgress, { percent: PROGRESS })}`,
+    );
+    expect(waitingText([loading()], null, 'Ania').lines[0]).toBe(`Bartek · ${copy.reasons.loading}`);
   });
 
   it('keeps the waiting title while any member holds the clock', () => {

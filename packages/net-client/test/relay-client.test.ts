@@ -34,7 +34,7 @@ const SESSION: GameSession = {
 const RESTORED_TICK = 40;
 const FIRST_WORLD_ID = 1;
 
-function harness(port: Partial<WorldPort>) {
+function harness(port: Partial<WorldPort>, awaitsDisplay = false) {
   const sent: ClientMessage[] = [];
   const worlds: AdoptedWorld[] = [];
   const client = new RelayClient({
@@ -45,6 +45,7 @@ function harness(port: Partial<WorldPort>) {
       restore: port.restore ?? (async () => null),
     },
     onWorld: (world) => worlds.push(world),
+    awaitsDisplay,
   });
   client.attach((message) => sent.push(message));
   return { client, sent, worlds };
@@ -215,6 +216,55 @@ describe('RelayClient and its world port', () => {
     client.receive({ kind: 'ping', t: 77, roundTripMs: 42 });
     expect(sent.at(-1)).toEqual({ kind: 'pong', t: 77 });
     expect(client.roundTripMs).toBe(42);
+  });
+});
+
+describe('RelayClient behind a display', () => {
+  const loadedOf = (sent: readonly ClientMessage[]) => sent.filter((message) => message.kind === 'loaded');
+
+  it('reports its world loaded only once the display shows that world', async () => {
+    const { client, sent } = harness({ open: async () => fixtureWorld() }, true);
+    start(client, null);
+    await client.settled();
+    expect(loadedOf(sent)).toEqual([]);
+    client.worldShown(FIRST_WORLD_ID + 1);
+    expect(loadedOf(sent)).toEqual([]);
+    client.worldShown(FIRST_WORLD_ID);
+    client.worldShown(FIRST_WORLD_ID);
+    expect(loadedOf(sent)).toEqual([{ kind: 'loaded', tick: 0, world: DESCRIPTOR_WORLD }]);
+  });
+
+  it('answers a start repeated before the display with nothing, and after it at once', async () => {
+    const { client, sent } = harness({ open: async () => fixtureWorld() }, true);
+    start(client, null);
+    await client.settled();
+    client.receive({ kind: 'start', session: SESSION, snapshotTick: null });
+    expect(loadedOf(sent)).toEqual([]);
+    client.worldShown(FIRST_WORLD_ID);
+    client.receive({ kind: 'start', session: SESSION, snapshotTick: null });
+    expect(loadedOf(sent)).toHaveLength(2);
+  });
+
+  it('asks for the cached snapshot at once, since it holds no world to show', async () => {
+    const { client, sent } = harness({}, true);
+    start(client, 12);
+    await client.settled();
+    expect(loadedOf(sent)).toEqual([{ kind: 'loaded', tick: null }]);
+  });
+
+  it('forgets a held report when its world is dropped before it is shown', async () => {
+    const { client, sent } = harness({ open: async () => fixtureWorld() }, true);
+    start(client, null);
+    await client.settled();
+    client.receive({ kind: 'desync', tick: 1, domains: ['rng'], reference: 'Bartek' });
+    client.worldShown(FIRST_WORLD_ID);
+    expect(loadedOf(sent)).toEqual([]);
+  });
+
+  it('reports boot progress in whole percent', () => {
+    const { client, sent } = harness({});
+    client.reportLoading(40);
+    expect(sent).toEqual([{ kind: 'loading', progress: 40 }]);
   });
 });
 

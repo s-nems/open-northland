@@ -60,7 +60,9 @@ describe('lobby settings replacement queue', () => {
     queue.update(
       {
         ...view(),
-        members: [{ nick: 'guest', seat: null, connected: true, compatibility: null, load: null }],
+        members: [
+          { nick: 'guest', seat: null, connected: true, compatibility: null, load: null, loading: null },
+        ],
       },
       true,
     );

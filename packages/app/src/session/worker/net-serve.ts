@@ -81,6 +81,7 @@ class RelayConnection<B, E> {
       onDropped: (tick, reason) =>
         post({ kind: 'warning', message: `dropped an envelope for tick ${tick}: ${reason}` }),
       onError: (what, error) => post({ kind: 'failure', what, error: wireFailure(error) }),
+      awaitsDisplay: true,
     });
     this.client = client;
     this.driver = relayedDriver(client, () => this.postFacts());
@@ -151,6 +152,10 @@ class RelayConnection<B, E> {
         }
         return;
       case 'start':
+        // The runtime draws its first frame of the world: only now does the room wait for it no more.
+        this.served?.receive(message);
+        if (this.servedWorldId !== null) client.worldShown(this.servedWorldId);
+        return;
       case 'delivered':
       case 'fogSeat':
       case 'instruments':

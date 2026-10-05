@@ -26,6 +26,8 @@ export interface Member {
   ready: boolean;
   compatibility: LobbyCompatibility | null;
   loaded: boolean;
+  /** The boot progress, in percent, the client last reported before its world loaded. */
+  loading: number | null;
   /** The last tick the client reported applied, and the generation of the world it reports from. */
   ackedTick: number;
   world: number;
@@ -55,6 +57,7 @@ export function createMember(token: string, nick: string, now: number, link: Mea
     ready: false,
     compatibility: null,
     loaded: false,
+    loading: null,
     ackedTick: 0,
     world: DESCRIPTOR_WORLD,
     outOfSync: null,
