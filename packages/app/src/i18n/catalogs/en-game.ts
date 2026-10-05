@@ -265,7 +265,8 @@ export const enGame = {
         behind: 'How many seconds the player trails the room clock',
         vote: 'The vote opens after a minute of a held game; at least half of the other players kick',
         requested: 'The pace the room picked',
-        running: 'The pace the room clock really runs at; below the requested one while someone slows the game',
+        running:
+          'The pace the room clock really runs at; below the requested one while someone slows the game',
         history: "The room clock's pace (solid) and your own world's (dashed) over the last two minutes",
       },
       you: 'you',

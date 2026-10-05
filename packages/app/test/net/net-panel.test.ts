@@ -3,12 +3,7 @@ import { TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import type { NetClockModel, NetPlayerRow } from '../../src/hud/network/model.js';
 import { SPARKLINE_H, SPARKLINE_W, sparklineGeometry } from '../../src/hud/network/sparkline.js';
-import {
-  formatRoomSpeed,
-  ownStateText,
-  slowedText,
-  speedBarLook,
-} from '../../src/hud/network/text.js';
+import { formatRoomSpeed, ownStateText, slowedText, speedBarLook } from '../../src/hud/network/text.js';
 import { formatMessage, messages } from '../../src/i18n/index.js';
 import { inputDelayMs, runningSpeed } from '../../src/net/net-worker-client.js';
 import {
