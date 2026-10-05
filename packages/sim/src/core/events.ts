@@ -357,9 +357,11 @@ export type SimEvent =
       readonly at: HalfCellNode;
     }
   | {
-      /** A road was laid on `nodes` this tick; the static layer clears the map's scenery anchored there. */
-      readonly kind: 'roadLaid';
+      /** A road or wall was ordered over `nodes` this tick, destroying the walk-through `razed` there; the
+       *  static layer drops their sprites and the map's scenery anchored on those nodes. */
+      readonly kind: 'groundCleared';
       readonly nodes: readonly HalfCellNode[];
+      readonly razed: readonly Entity[];
     }
   | {
       /** A settler opened `chest` this tick and its contents were handed out. The original transitions

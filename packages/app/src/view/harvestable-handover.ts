@@ -15,21 +15,23 @@ interface Retirement {
   readonly keepsFogGhost: boolean;
 }
 
-/** What an event retires from the static layer, or null when it leaves the drawn set alone. */
-function retirement(event: SimEvent): Retirement | null {
+/** What an event retires from the static layer; empty when it leaves the drawn set alone. */
+function retirements(event: SimEvent): readonly Retirement[] {
   switch (event.kind) {
     case 'missionLandscapeResourceRemoved':
-      return { entity: event.entity, keepsFogGhost: false };
+      return [{ entity: event.entity, keepsFogGhost: false }];
     case 'resourceFelled':
     case 'resourceMined':
     case 'resourceDepleted':
-      return { entity: event.node, keepsFogGhost: true };
+      return [{ entity: event.node, keepsFogGhost: true }];
     case 'berryForaged':
-      return { entity: event.bush, keepsFogGhost: true };
+      return [{ entity: event.bush, keepsFogGhost: true }];
     case 'berryBushRazed':
-      return { entity: event.bush, keepsFogGhost: false };
+      return [{ entity: event.bush, keepsFogGhost: false }];
+    case 'groundCleared':
+      return event.razed.map((entity) => ({ entity, keepsFogGhost: false }));
     default:
-      return null;
+      return [];
   }
 }
 
@@ -56,14 +58,14 @@ export function bindHarvestableHandover<Sprite>(
 
   return (events) => {
     for (const event of events) {
-      const retires = retirement(event);
-      if (retires === null) continue;
-      const sprite = held.get(retires.entity);
-      if (sprite === undefined) continue; // already handed over, or never static (an admin spawn)
-      held.delete(retires.entity);
-      refs.delete(retires.entity);
-      surface.removeMapObject(sprite);
-      if (retires.keepsFogGhost) surface.adoptFogGhost(retires.entity);
+      for (const retires of retirements(event)) {
+        const sprite = held.get(retires.entity);
+        if (sprite === undefined) continue; // already handed over, or never static (an admin spawn)
+        held.delete(retires.entity);
+        refs.delete(retires.entity);
+        surface.removeMapObject(sprite);
+        if (retires.keepsFogGhost) surface.adoptFogGhost(retires.entity);
+      }
     }
   };
 }

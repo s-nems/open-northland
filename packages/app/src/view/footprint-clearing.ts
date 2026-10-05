@@ -1,6 +1,7 @@
 import {
   type BuildingFootprint,
   buildingFootprintFor,
+  type FootprintCell,
   firstByTypeId,
   footprintCellDx,
 } from '@open-northland/data';
@@ -37,10 +38,10 @@ function nodeKey(hx: number, hy: number): string {
 }
 
 /**
- * A building's walk-block footprint and a road's node are bare ground: the static sprites on them leave
- * the layer when the building is placed or upgraded or the road laid, and at bind for every building and
- * road already there (original behavior: a house's placement removes the landscape objects in its
- * walk-block area, and a finished road the scenery on its node). Approximation: ground cleared under
+ * A building's walk-block footprint and the nodes a road or wall covers are bare ground: the static
+ * sprites on them leave the layer when the building is placed or upgraded or the road or wall ordered,
+ * and at bind for every building, road, road site and wall already there (original behavior: a house's
+ * placement removes the landscape objects in its walk-block area). Approximation: ground cleared under
  * the viewer's fog clears the same tick, where a remembered static would otherwise linger.
  * `nodeWidth` is the map's width in half-cell nodes, the stride of the road network's node ids.
  */
@@ -84,7 +85,10 @@ export function bindFootprintClearing<Sprite>(
   };
 
   const bound = snapshot();
-  for (const entity of bound.entities) if (isBuilding(entity)) clearUnder(entity);
+  for (const entity of bound.entities) {
+    if (isBuilding(entity)) clearUnder(entity);
+    else clearUnderLine(entity, clearAt);
+  }
   for (const carrier of entitiesWith(bound, 'RoadShard')) {
     for (const node of roadShardOf(carrier)?.nodes ?? []) {
       const hx = node % nodeWidth;
@@ -95,7 +99,7 @@ export function bindFootprintClearing<Sprite>(
   return (events) => {
     let snap: WorldSnapshot | undefined;
     for (const event of events) {
-      if (event.kind === 'roadLaid') {
+      if (event.kind === 'groundCleared') {
         for (const { hx, hy } of event.nodes) clearAt(hx, hy);
         continue;
       }
@@ -105,4 +109,22 @@ export function bindFootprintClearing<Sprite>(
       if (building !== undefined) clearUnder(building);
     }
   };
+}
+
+/** The nodes a road site or a wall stands on: a site's own node, a wall's placement body. */
+function clearUnderLine(entity: SnapshotEntity, clearAt: (hx: number, hy: number) => void): void {
+  const pos = positionOf(entity);
+  if (pos === undefined) return;
+  const { hx, hy } = nodeOfPosition(pos.x, pos.y);
+  if (Object.hasOwn(entity.components, 'RoadSite')) {
+    clearAt(hx, hy);
+    return;
+  }
+  const wall = entity.components.Palisade;
+  if (typeof wall !== 'object' || wall === null) return;
+  const { placementWalk } = wall as { readonly placementWalk?: unknown };
+  if (!Array.isArray(placementWalk)) return;
+  for (const cell of placementWalk as readonly FootprintCell[]) {
+    clearAt(hx + footprintCellDx(hy, cell), hy + cell.dy);
+  }
 }

@@ -34,8 +34,6 @@ export interface ScriptLandscapeType {
     readonly build: readonly Readonly<LandscapeBlockArea>[];
   };
   readonly groups: readonly LandscapeRemovalGroup[];
-  /** A pure scenery record (`landscapetypes.ini` logic `void`), which a road may be laid over. */
-  readonly scenery?: boolean;
   readonly resource?: ResourceSpec;
   readonly bushGfxIndex?: number;
   /** A placed record backed by the interactive chest entity rather than the static landscape layer. */

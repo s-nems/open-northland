@@ -77,6 +77,13 @@ const HANDCART_HITPOINTS = 100;
 /** A disc one node out from its anchor, so the cart covers its neighbours too. */
 const HANDCART_LOGIC_SIZE = 1;
 
+/** A tree's landscape record, which blocks walking only full-grown, and a mushroom's, which never does. */
+export const TREE_GFX = 801;
+export const MUSHROOM_GFX = 802;
+const TREE_LOGIC = 4;
+const MUSHROOM_LOGIC = 36;
+const FULL_GROWN = 3;
+
 export const WALL: ScriptLandscapeType = {
   typeId: 691,
   walk: [{ dx: 0, dy: 0 }],
@@ -104,6 +111,17 @@ function roadContent() {
     landscape: [
       { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
       { typeId: WATER, id: 'water', walkable: false, buildable: false },
+      { typeId: TREE_LOGIC, id: 'tree', walkable: true, buildable: true },
+      { typeId: MUSHROOM_LOGIC, id: 'mushroom', walkable: true, buildable: true },
+    ],
+    landscapeGfx: [
+      {
+        index: TREE_GFX,
+        editName: 'pine 01',
+        logicType: TREE_LOGIC,
+        walkBlockAreas: [[FULL_GROWN, 0, 0, 1]],
+      },
+      { index: MUSHROOM_GFX, editName: 'mushroom grey 01', logicType: MUSHROOM_LOGIC },
     ],
     tribes: [
       {

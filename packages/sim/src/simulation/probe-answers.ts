@@ -24,7 +24,7 @@ import { ownPalisadeNodeList, palisadePlacementProbe } from '../systems/palisade
 import { buildingEnabled } from '../systems/progression/index.js';
 import { roadAreaKey } from '../systems/roads/index.js';
 import { roadSiteAreaKey } from '../systems/roads/site-index.js';
-import { roadSceneryVersion, roadSitePlacementProbe } from '../systems/roads/sites.js';
+import { roadGroundVersion, roadSitePlacementProbe } from '../systems/roads/sites.js';
 import {
   plannedSignpostsVersion,
   signpostNetwork,
@@ -298,8 +298,8 @@ export function palisadeAnswerFor(
 }
 
 /** Road site grids by area, each valid while the blockers, the road sites and the roads on its nodes
- *  and the map's resources and bushes hold, so a site ordered across the map leaves them standing. A
- *  read-path cache, never hashed. */
+ *  and the map's resources hold, so a site ordered across the map leaves them standing. A read-path
+ *  cache, never hashed. */
 const roadSiteGrids = new WeakMap<World, Map<string, FootprintGrid>>();
 
 /** The road site probe's answer over `area`, keyed on what its own nodes read; null for a mapless sim. */
@@ -317,7 +317,7 @@ export function roadSiteAnswerFor(
   }
   const blockers = placementBlockerGrid(world, content, terrain);
   // The probe reads each node alone, so no blocker beyond the area reaches it.
-  const key = `${gridChangeKey(blockers, area, 0)}.${roadSiteAreaKey(world, terrain, area)}.${roadAreaKey(world, area)}.${roadSceneryVersion(world)}`;
+  const key = `${gridChangeKey(blockers, area, 0)}.${roadSiteAreaKey(world, terrain, area)}.${roadAreaKey(world, area)}.${roadGroundVersion(world)}`;
   const slot = areaKey(area);
   let held = grids.get(slot);
   if (held === undefined || held.key !== key) {

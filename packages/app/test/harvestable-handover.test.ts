@@ -111,6 +111,16 @@ describe('harvestable static-draw handover', () => {
     expect([...spy.refs()]).toEqual([10]);
   });
 
+  it('drops every node a road or wall cleared, without fog ghosts', () => {
+    const spy = surfaceSpy();
+    const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
+    onEvents?.([{ kind: 'groundCleared', nodes: [AT], razed: [entity(10), entity(11), entity(12)] }]);
+
+    expect(spy.removed.sort()).toEqual(['bush', 'tree']);
+    expect(spy.ghosts).toEqual([]);
+    expect([...spy.refs()]).toEqual([]);
+  });
+
   it('retires a script-removed resource without keeping a fog ghost', () => {
     const spy = surfaceSpy();
     const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);

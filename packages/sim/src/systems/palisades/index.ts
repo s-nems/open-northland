@@ -25,6 +25,7 @@ import { evictWorkFlagsFromCells } from '../economy/work-flag.js';
 import { buildingOpenings } from '../footprint/building-blocked-cache.js';
 import { translatedCells } from '../footprint/geometry.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
+import { clearLineGround, lineGroundOpen } from '../footprint/line-ground.js';
 import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
 import { palisadeBodyCells } from '../footprint/placement/blockers.js';
 import { canPlacePalisadeAnchor, type PlacementProbe } from '../footprint/placement/index.js';
@@ -65,7 +66,8 @@ function placementWalkOf(terrain: TerrainGraph, type: ScriptLandscapeType): read
   return closed?.wall?.gate?.open === false ? closed.walk : type.walk;
 }
 
-/** A reusable placement query shared by the UI ghost and command application. */
+/** A reusable placement query shared by the UI ghost and command application: the blocker grid, then the
+ *  ground rule a road shares on every body cell. */
 export function palisadePlacementProbe(
   world: World,
   content: SystemContext['content'],
@@ -77,7 +79,11 @@ export function palisadePlacementProbe(
   if (type === undefined) return null;
   const body = placementWalkOf(terrain, type);
   const grid = placementBlockerGrid(world, content, terrain);
-  return { canPlace: (x, y) => canPlacePalisadeAnchor(grid, body, x, y, overUpgradeGround) };
+  return {
+    canPlace: (x, y) =>
+      canPlacePalisadeAnchor(grid, body, x, y, overUpgradeGround) &&
+      body.every((c) => lineGroundOpen(world, content, x + footprintCellDx(y, c), y + c.dy)),
+  };
 }
 
 /** Destroy a wall, gate or wall site with whatever it holds, and let the routes and sieges it stopped go on. */
@@ -601,6 +607,9 @@ export function placePalisade(
   });
   if (entity === null) return;
   cancelRoadSitesUnder(world, ctx, entity);
+  const body: HalfCellNode[] = [];
+  palisadeBodyCells(world, entity, (hx, hy) => body.push({ hx, hy }));
+  clearLineGround(world, ctx, body);
   if (world.has(entity, PalisadeBlocking)) {
     settleClosedWall(world, ctx, terrain, entity);
     // An authored wall below its maximum starts on the builders' list with no blow behind it; a new

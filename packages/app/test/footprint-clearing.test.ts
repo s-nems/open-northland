@@ -141,25 +141,28 @@ describe('footprint clearing of static landscape sprites', () => {
     expect(removed).toEqual([]);
   });
 
-  it('clears the scenery on every road node laid when bound, and only on the node itself', () => {
+  it('clears the scenery under every road, road site and wall standing when bound', () => {
     const { removed } = bind([
-      roadShard(1, [
-        [10, 11],
-        [20, 20],
-      ]),
+      roadShard(1, [[10, 11]]),
+      { id: 2, components: { RoadSite: {}, Position: positionOfNode(11, 12) } },
+      {
+        id: 3,
+        components: { Palisade: { placementWalk: [{ dx: 0, dy: 0 }] }, Position: positionOfNode(20, 20) },
+      },
     ]);
-    expect(removed.sort()).toEqual(['anchor-grass', 'far-grass', 'far-mushroom']);
+    expect(removed.sort()).toEqual(['anchor-grass', 'far-grass', 'far-mushroom', 'front-grass']);
   });
 
-  it('clears the scenery on the nodes a road is laid over as the event arrives', () => {
+  it('clears the scenery on the nodes a road or wall clears as the event arrives', () => {
     const { removed, onEvents } = bind([]);
     onEvents([
       {
-        kind: 'roadLaid',
+        kind: 'groundCleared',
         nodes: [
           { hx: 11, hy: 12 },
           { hx: 10, hy: 10 },
         ],
+        razed: [],
       },
     ]);
     expect(removed.sort()).toEqual(['front-grass', 'unshifted-fern']);
