@@ -13,8 +13,15 @@ import {
   positionOf,
   type SnapshotEntity,
 } from '../../../game/snapshot.js';
-import type { MessageFeedState } from './feed.js';
-import { type FightTally, USER_MESSAGE_TYPE, type UserMessage, type UserMessageType } from './types.js';
+import type { MessageAddOutcome, MessageFeed, MessageFeedState } from './feed.js';
+import { messagePassesFilter, messagePriority } from './priority.js';
+import {
+  type FightTally,
+  type PendingMessage,
+  USER_MESSAGE_TYPE,
+  type UserMessage,
+  type UserMessageType,
+} from './types.js';
 
 /** Where a fight is: inside the seat's settlement, or out where its people work and march. */
 export type FightPlace = 'settlement' | 'field';
@@ -49,6 +56,17 @@ export type FightVictimKind = 'building' | 'wall' | 'settler' | 'vehicle';
 
 export function isFightNote(m: Pick<UserMessage, 'type'>): boolean {
   return m.type === FIGHT_TYPE.settlement || m.type === FIGHT_TYPE.field;
+}
+
+/** The hit of a fight note `feed` just took as a new card its level shows, or null: the minimap's
+ *  alarm follows the column, so a repeat, a dismissed fight or a hidden level rings nothing. */
+export function shownFightAt(
+  feed: MessageFeed,
+  pending: PendingMessage,
+  outcome: MessageAddOutcome,
+): HalfCellNode | null {
+  if (outcome !== 'accepted' || !isFightNote(pending) || pending.at === null) return null;
+  return messagePassesFilter(messagePriority(pending.type), feed.level()) ? pending.at : null;
 }
 
 /** One blow on the seat's own body, as {@link FightAreas.record} files it. */

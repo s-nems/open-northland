@@ -27,7 +27,7 @@ import type { PanelContext } from '../context.js';
 import { diplomacyStanceText, playerLabel } from '../diplomacy/model.js';
 import { noticeThumb } from './cards.js';
 import { type MessageFeedState, takeRaised } from './feed.js';
-import { FightAreas } from './fight-areas.js';
+import { FightAreas, shownFightAt } from './fight-areas.js';
 import { type NoticeFigureSlot, NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
 import { type BuildingTrades, messagesFromEvents, type VehicleSiteTest } from './from-events.js';
@@ -103,6 +103,8 @@ export interface MessageCenterDeps {
    *  changed its stance toward this one each become a note. Read once per tick. */
   readonly metSeats: () => readonly MetSeat[];
   readonly onSelect: (target: MessageTarget) => void;
+  /** An attack note just shown as a new card, at its hit: the minimap's alarm follows the column. */
+  readonly onAttackShown?: ((at: HalfCellNode) => void) | undefined;
   readonly initial?: MessageFeedState | undefined;
   /** Set, raises one note of every type on the seat's own actors once a sweep (the `notices` debug flag). */
   readonly gallery?: NoticeGallery | undefined;
@@ -336,7 +338,11 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     previous = null;
     renderedVersion = -1;
   };
-  const take = (raised: RaisedMessage, tick: number): void => takeRaised(feeds.current, raised, tick);
+  const take = (raised: RaisedMessage, tick: number): void => {
+    const feed = feeds.current;
+    const fightAt = shownFightAt(feed, raised.pending, takeRaised(feed, raised, tick));
+    if (fightAt !== null) deps.onAttackShown?.(fightAt);
+  };
   const dismissed = (pending: PendingMessage): boolean => feeds.current.dismissed(pending);
   let lastGalleryTick: number | null = null;
   const galleryDue = (tick: number): boolean => {

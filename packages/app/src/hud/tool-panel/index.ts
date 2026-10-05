@@ -5,6 +5,7 @@ import type {
   Command,
   DiplomacyState,
   EntitySnapshot,
+  HalfCellNode,
   Paper,
   PlayerCommand,
   SimEvent,
@@ -235,6 +236,8 @@ export interface ToolPanelOptions {
   readonly playerColourOf?: (player: number) => number;
   /** A pressed card: centre the view on the target and select it. */
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
+  /** An attack note just shown as a new card, at its hit. */
+  readonly onAttackShown?: (at: HalfCellNode) => void;
   /** Set, the notification column shows one note of every type (`?debug=notices`). */
   readonly noticeGallery?: NoticeGallery;
   /** The seat's workshops and the sim's diagnosis of their workers, for the stalled-workshop notes. */
@@ -696,6 +699,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
       metSeats: opts.metSeats,
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
+      onAttackShown: opts.onAttackShown,
       gallery: opts.noticeGallery,
       workshops: opts.workshops,
       isVehicleSite: opts.isVehicleSite,

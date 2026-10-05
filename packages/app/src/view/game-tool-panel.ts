@@ -6,6 +6,7 @@ import {
   type Command,
   constructionBillForType,
   type DiplomacyState,
+  type HalfCellNode,
   type Paper,
   type PlayerCommand,
 } from '@open-northland/sim';
@@ -159,6 +160,8 @@ export interface GameToolPanelDeps {
   readonly playerColourOf?: (player: number) => number;
   /** A pressed card: centre the view on the target and select it. */
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
+  /** An attack note just shown as a new card, at its hit. */
+  readonly onAttackShown?: (at: HalfCellNode) => void;
   /** Set, the notification column shows one note of every type (`?debug=notices`). */
   readonly noticeGallery?: NoticeGallery;
   /** The seat's workshops and the sim's diagnosis of their workers, for the stalled-workshop notes. */
@@ -332,6 +335,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.onSelectMessageTarget !== undefined
         ? { onSelectMessageTarget: deps.onSelectMessageTarget }
         : {}),
+      ...(deps.onAttackShown !== undefined ? { onAttackShown: deps.onAttackShown } : {}),
       ...(deps.noticeGallery !== undefined ? { noticeGallery: deps.noticeGallery } : {}),
       ...(deps.workshops !== undefined ? { workshops: deps.workshops } : {}),
       ...(deps.isVehicleSite !== undefined ? { isVehicleSite: deps.isVehicleSite } : {}),

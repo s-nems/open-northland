@@ -88,9 +88,10 @@ export interface MessageFeed {
 }
 
 /** Add a raised note; a repeat that carries fresh facts hands them to the note it repeats. */
-export function takeRaised(feed: MessageFeed, raised: RaisedMessage, tick: number): void {
+export function takeRaised(feed: MessageFeed, raised: RaisedMessage, tick: number): MessageAddOutcome {
   const outcome = feed.add(raised.pending, tick, raised.compose);
   if (outcome === 'duplicate' && raised.updatesStanding === true) feed.revise(raised.pending, raised.compose);
+  return outcome;
 }
 
 export function defaultMessageFeedState(): MessageFeedState {

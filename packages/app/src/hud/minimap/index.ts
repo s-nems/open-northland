@@ -5,10 +5,11 @@ import {
   type SceneTerrain,
   terrainWorldBounds,
 } from '@open-northland/render';
-import type { DiplomacyState, FogView, WorldSnapshot } from '@open-northland/sim';
+import type { DiplomacyState, FogView, HalfCellNode, WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { setMinimapReserve } from '../dom/minimap-reserve.js';
 import type { Rect } from '../geometry.js';
+import { createAlarmLayer } from './alarms.js';
 import { createWorkerMinimapBaker } from './bake.js';
 import { createMinimapChrome } from './chrome.js';
 import { forEachMinimapDot, type MinimapDotContext, type MinimapDotSink } from './dots.js';
@@ -68,6 +69,8 @@ export interface MinimapHandle {
   dragging(): boolean;
   panelRect(): Rect | null;
   update(snapshot: WorldSnapshot, fog?: FogView | null): void;
+  /** Ring an attack at half-cell node `at`. */
+  ping(at: HalfCellNode): void;
   setHidden(hidden: boolean): void;
   setUiScale(uiscale: number): Promise<void>;
   setFrame(frame: MinimapFrame): void;
@@ -138,6 +141,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   dots.width = raster.w;
   dots.height = raster.h;
   world.addChild(dots);
+  const alarms = createAlarmLayer(world, bounds, rasterScale);
 
   const zoomAt = (delta: number, anchor?: { x: number; y: number }): void => {
     const next = Math.max(1, Math.min(4, zoom * 2 ** (delta / 2)));
@@ -283,6 +287,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
         texture.source.update();
         dirtyDots = false;
       }
+      alarms.draw(performance.now(), stampScale());
       const rect = viewportRectOnMinimap(
         layout,
         bounds,
@@ -296,6 +301,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
           view.rect(rect.x, rect.y, rect.w, rect.h).stroke({ width: 1.25, color: 0xfff5d6, alpha: 0.95 });
       }
     },
+    ping: (at) => alarms.add(at, performance.now()),
     setHidden: (next) => {
       hidden = next;
       container.visible = !next && layout.scaleX > 0 && layout.scaleY > 0;

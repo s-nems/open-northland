@@ -583,6 +583,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         if (at !== null) jumpToWorld(at.x, at.y);
         if (target.entity !== null) selectEntity?.(target.entity);
       },
+      onAttackShown: (at) => minimap?.ping(at),
       ...(hasDebugFlag(params, NOTICE_GALLERY_DEBUG_FLAG)
         ? { noticeGallery: { goodType: goodLabelByType.keys().next().value ?? null } }
         : {}),

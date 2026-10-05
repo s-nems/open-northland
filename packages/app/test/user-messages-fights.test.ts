@@ -1,6 +1,7 @@
 import {
   type Entity,
   fx,
+  type HalfCellNode,
   hexDistanceBetween,
   nodeOfPosition,
   ONE,
@@ -12,11 +13,13 @@ import {
   createMessageFeed,
   MESSAGE_LIFETIME_TICKS,
   type MessageFeedState,
+  takeRaised,
 } from '../src/hud/tool-panel/messages/feed.js';
 import {
   FIGHT_AREA_RADIUS_NODES,
   FIGHT_QUIET_TICKS,
   FightAreas,
+  shownFightAt,
 } from '../src/hud/tool-panel/messages/fight-areas.js';
 import { messagesFromEvents } from '../src/hud/tool-panel/messages/from-events.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
@@ -108,14 +111,17 @@ const naming: MessageNaming = {
   text: (type, parts) => composeMessageText(type, parts, en.userMessages, 'en'),
 };
 
-/** The message centre's per-frame loop over the feed, without the column. */
+/** The message centre's per-frame loop over the feed, without the column; `alarms` collects the hits
+ *  the minimap rings. */
 function centre(initial?: MessageFeedState) {
   const feed = createMessageFeed(initial);
   const fights = FightAreas.adopt(initial);
   const retirement = new NoteRetirement(fights);
+  const alarms: HalfCellNode[] = [];
   return {
     feed,
     fights,
+    alarms,
     frame(snapshot: WorldSnapshot, events: readonly SimEvent[], departed: WorldSnapshot['entities'] = []) {
       for (const raised of messagesFromEvents(
         events,
@@ -126,12 +132,8 @@ function centre(initial?: MessageFeedState) {
         () => undefined,
         fights,
       )) {
-        if (
-          feed.add(raised.pending, snapshot.tick, raised.compose) === 'duplicate' &&
-          raised.updatesStanding
-        ) {
-          feed.revise(raised.pending, raised.compose);
-        }
+        const at = shownFightAt(feed, raised.pending, takeRaised(feed, raised, snapshot.tick));
+        if (at !== null) alarms.push(at);
       }
       feed.expire(snapshot.tick, (m) => retirement.isOver(m, snapshot));
       retirement.endPass();
@@ -140,6 +142,8 @@ function centre(initial?: MessageFeedState) {
 }
 
 const TICK = 100;
+/** The filter level that shows only the urgent notes: a settlement raid, not an attack in the field. */
+const URGENT_ONLY = 2;
 const summary = (m: UserMessage) => ({ id: m.id, type: m.type, priority: m.priority, fight: m.fight });
 
 describe('fight notices', () => {
@@ -255,6 +259,32 @@ describe('fight notices', () => {
     expect(c.feed.state().history).toEqual([]);
     c.frame(world(later + FIGHT_QUIET_TICKS + 1), [melee(WOLF, WOODCUTTER)]);
     expect(c.feed.live().map((m) => m.id)).toEqual([2]);
+  });
+
+  it('rings the minimap once per new card the level shows, where the card points', () => {
+    const c = centre();
+    c.frame(world(TICK), [shot(ENEMY, HOME), melee(RAIDER, VILLAGER)]);
+    c.frame(world(TICK + 1), [melee(RAIDER, NEIGHBOUR)]);
+    // The card points at its frame's latest hit, and the raid's later hits only revise it.
+    expect(c.alarms).toEqual([nodeOf(VILLAGER)]);
+    c.frame(world(TICK + 2), [melee(WOLF, WOODCUTTER)]);
+    expect(c.alarms).toEqual([nodeOf(VILLAGER), nodeOf(WOODCUTTER)]);
+  });
+
+  it('rings nothing for a dismissed fight that goes on, nor for a card the level hides', () => {
+    const c = centre();
+    c.frame(world(TICK), [melee(WOLF, WOODCUTTER)]);
+    c.feed.remove(1, TICK);
+    c.frame(world(TICK + 1), [melee(WOLF, WOODCUTTER)]);
+    expect(c.alarms).toEqual([nodeOf(WOODCUTTER)]);
+
+    const hidden = centre();
+    hidden.feed.setLevel(URGENT_ONLY);
+    hidden.frame(world(TICK), [melee(WOLF, WOODCUTTER)]);
+    expect(hidden.feed.live()).toHaveLength(1);
+    expect(hidden.alarms).toEqual([]);
+    hidden.frame(world(TICK + 1), [shot(ENEMY, HOME)]);
+    expect(hidden.alarms).toEqual([nodeOf(HOME)]);
   });
 
   it('gives fights farther apart than the area radius a card each', () => {
