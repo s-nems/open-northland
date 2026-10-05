@@ -64,6 +64,7 @@ export type RelayReason =
   | { readonly code: 'voteSelf' }
   | { readonly code: 'notWaitedFor'; readonly nick: string }
   | { readonly code: 'voteNotOpen'; readonly seconds: number }
+  | { readonly code: 'noVoteToWithdraw'; readonly nick: string }
   | { readonly code: 'snapshotUnsynced' }
   | { readonly code: 'noSnapshot' }
   | { readonly code: 'initialSaveGeneration'; readonly generation: number }

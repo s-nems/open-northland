@@ -156,20 +156,22 @@ describe('the relayed network panel feed', () => {
     expect(rows[2]?.behindTicks).toBe(LAG_TICKS + 1);
   });
 
-  it('counts a held member down to its vote, offers it to the others only then, and once per voter', () => {
+  it('counts a held member down to its vote, then offers a yes, then its withdrawal', () => {
     const { feed, send, time } = setup();
     send({ kind: 'waiting', for: [{ nick: 'Bartek', reason: 'gone', voteAfterMs: VOTE_AFTER_MS }] });
     time.ms = SECOND_MS + SECOND_MS / 5;
-    // Four connected others besides Bartek (Franek is away): half of them rounded up.
-    expect(rowOf(feed, 'Bartek')?.vote).toEqual({ voteInSeconds: 4, yes: 0, needed: 2, canVote: false });
+    // Four connected others besides Bartek (Franek is away): a strict majority of them.
+    expect(rowOf(feed, 'Bartek')?.vote).toEqual({ voteInSeconds: 4, yes: 0, needed: 3, ballot: null });
     time.ms = VOTE_AFTER_MS;
-    expect(rowOf(feed, 'Bartek')?.vote).toEqual({ voteInSeconds: 0, yes: 0, needed: 2, canVote: true });
-    send({ kind: 'kickVote', player: 2, nick: 'Bartek', yes: ['Ania'], needed: 2 });
-    expect(rowOf(feed, 'Bartek')?.vote).toEqual({ voteInSeconds: 0, yes: 1, needed: 2, canVote: false });
+    expect(rowOf(feed, 'Bartek')?.vote).toEqual({ voteInSeconds: 0, yes: 0, needed: 3, ballot: 'open' });
+    send({ kind: 'kickVote', player: 2, nick: 'Bartek', yes: ['Ania'], needed: 3 });
+    expect(rowOf(feed, 'Bartek')?.vote).toEqual({ voteInSeconds: 0, yes: 1, needed: 3, ballot: 'cast' });
+    send({ kind: 'kickVote', player: 2, nick: 'Bartek', yes: ['Celina'], needed: 3 });
+    expect(rowOf(feed, 'Bartek')?.vote).toEqual({ voteInSeconds: 0, yes: 1, needed: 3, ballot: 'open' });
     expect(feed.model().clock.held).toBe(true);
 
     send({ kind: 'waiting', for: [{ nick: 'Ania', reason: 'loading', voteAfterMs: 0 }] });
-    expect(rowOf(feed, 'Ania')?.vote?.canVote).toBe(false);
+    expect(rowOf(feed, 'Ania')?.vote?.ballot).toBeNull();
     send({ kind: 'waiting', for: [] });
     expect(feed.model().clock.held).toBe(false);
   });

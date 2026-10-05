@@ -10,15 +10,14 @@ export interface Waited {
 }
 
 /**
- * Who the room holds its clock for, one countdown per waited member, and the kick votes allowed once a
- * member's countdown is over. A vote lives only while its target is waited for.
+ * Who the room holds its clock for, and one countdown per waited member to when a vote to kick it may
+ * open.
  */
 export class Waiting {
   /** The waited set as the clients were last told it. */
   private announced: readonly Waited[] = [];
   private readonly since = new Map<string, number>();
   private readonly voteAnnounced = new Set<string>();
-  private readonly votes = new Map<string, Set<string>>();
 
   message(now: number): Extract<ServerMessage, { kind: 'waiting' }> {
     return {
@@ -55,7 +54,6 @@ export class Waiting {
       if (!waited.some((entry) => entry.token === token)) {
         this.since.delete(token);
         this.voteAnnounced.delete(token);
-        this.votes.delete(token);
       }
     }
     let opened = false;
@@ -69,20 +67,10 @@ export class Waiting {
     return opened || !sameWait(before, waited);
   }
 
-  /** A departed token cannot retain either a target countdown or votes in another countdown. */
+  /** A departed token keeps no countdown. */
   forget(token: string): void {
     this.since.delete(token);
     this.voteAnnounced.delete(token);
-    this.votes.delete(token);
-    for (const voters of this.votes.values()) voters.delete(token);
-  }
-
-  /** Count `voter`'s yes for `target`, once; returns the voters so far. */
-  vote(target: string, voter: string): ReadonlySet<string> {
-    const voters = this.votes.get(target) ?? new Set<string>();
-    voters.add(voter);
-    this.votes.set(target, voters);
-    return voters;
   }
 }
 

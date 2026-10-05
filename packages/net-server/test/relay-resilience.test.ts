@@ -202,7 +202,7 @@ describe('waiting for a member', () => {
     tick(s, [a, b], KICK_COUNTDOWN_MS + TICK_MS);
     expect(a.of('clock')).toEqual([]);
     expect(a.last('waiting')?.for).toEqual([{ nick: 'Bartek', reason: 'loading', voteAfterMs: 0 }]);
-    a.send({ kind: 'kick', player: 2 });
+    a.send({ kind: 'kick', player: 2, yes: true });
     expect(a.last('kicked')).toMatchObject({ nick: 'Bartek', mode: 'ai', tick: 2 });
     expect(a.last('clock')).toMatchObject({ tick: 2 });
     tick(s, [a], TICK_MS * 2);
@@ -272,9 +272,9 @@ describe('waiting for a member', () => {
     const bartek = waited.find((entry) => entry.nick === 'Bartek');
     expect(bartek?.voteAfterMs).toBeGreaterThan(KICK_COUNTDOWN_MS / 3);
     expect(Number.isInteger(bartek?.voteAfterMs)).toBe(true);
-    a.send({ kind: 'kick', player: 1 });
+    a.send({ kind: 'kick', player: 1, yes: true });
     expect(a.last('rejected')?.reason).toMatchObject({ code: 'voteNotOpen' });
-    a.send({ kind: 'kick', player: 2 });
+    a.send({ kind: 'kick', player: 2, yes: true });
     expect(a.last('kicked')?.nick).toBe('Cezary');
     // Bartek loaded but dropped before the start, so the game still waits for him.
     expect(a.of('clock')).toEqual([]);
@@ -377,7 +377,7 @@ describe('pacing the clock for a slow member', () => {
     play(s, [s.a], KICK_COUNTDOWN_MS, [s.a, s.b]);
     expect(lastTick(s.a)).toBeGreaterThan(before);
     expect(s.a.last('waiting')?.for).toEqual([]);
-    s.a.send({ kind: 'kick', player: 1 });
+    s.a.send({ kind: 'kick', player: 1, yes: true });
     expect(s.a.last('rejected')?.reason).toEqual({ code: 'notWaitedFor', nick: 'Bartek' });
   });
 
@@ -539,8 +539,10 @@ describe('pacing the clock for a slow member', () => {
     expect(lastTick(s.a)).toBe(held);
     expect(s.a.last('waiting')?.for).toEqual([{ nick: 'Cezary', reason: 'gone', voteAfterMs: 0 }]);
 
-    s.a.send({ kind: 'kick', player: 2 });
-    expect(s.b.last('kickVote')).toMatchObject({ nick: 'Cezary', yes: ['Ania'], needed: 1 });
+    s.a.send({ kind: 'kick', player: 2, yes: true });
+    expect(s.b.last('kickVote')).toMatchObject({ nick: 'Cezary', yes: ['Ania'], needed: 2 });
+    expect(s.b.of('kicked')).toEqual([]);
+    s.b.send({ kind: 'kick', player: 2, yes: true });
     expect(s.b.last('kicked')).toMatchObject({ nick: 'Cezary', tick: held + 1 });
     tick(s, [s.a, s.b], TICK_MS);
     expect(lastTick(s.a)).toBeGreaterThan(held);
@@ -568,33 +570,36 @@ describe('kick votes', () => {
     s.relay.disconnect(s.c.handle);
     s.advance(TICK_MS);
     tick(s, [s.a, s.b], KICK_COUNTDOWN_MS + TICK_MS);
-    s.a.send({ kind: 'kick', player: 2 });
+    s.a.send({ kind: 'kick', player: 2, yes: true });
+    s.b.send({ kind: 'kick', player: 2, yes: true });
     expect(s.a.last('kicked')).toMatchObject({ player: 2, mode: 'idle' });
     expect(s.a.last('room')?.room.seats[2]).toMatchObject({ mode: 'idle', nick: null });
     tick(s, [s.a, s.b], TICK_MS * 2);
     expect(s.a.of('frame').flatMap((frame) => frame.commands)).toEqual([]);
   });
 
-  it('opens after the countdown, passes at half of everyone else, and hands the seat to the AI', () => {
+  it('opens after the countdown, passes at a majority of everyone else, and hands the seat to the AI', () => {
     const s = roomOfThree();
     s.advance(TICK_MS * 4);
     s.relay.disconnect(s.c.handle);
     s.advance(TICK_MS);
-    s.a.send({ kind: 'kick', player: 2 });
+    s.a.send({ kind: 'kick', player: 2, yes: true });
     expect(s.a.last('rejected')?.reason).toEqual({ code: 'voteNotOpen', seconds: 60 });
     tick(s, [s.a, s.b], KICK_COUNTDOWN_MS + TICK_MS);
     expect(s.a.last('waiting')).toEqual({
       kind: 'waiting',
       for: [{ nick: 'Cezary', reason: 'gone', voteAfterMs: 0 }],
     });
-    s.a.send({ kind: 'kick', player: 2 });
+    s.a.send({ kind: 'kick', player: 2, yes: true });
     expect(s.b.last('kickVote')).toEqual({
       kind: 'kickVote',
       player: 2,
       nick: 'Cezary',
       yes: ['Ania'],
-      needed: 1,
+      needed: 2,
     });
+    expect(s.b.of('kicked')).toEqual([]);
+    s.b.send({ kind: 'kick', player: 2, yes: true });
     expect(s.b.last('kicked')).toEqual({
       kind: 'kicked',
       player: 2,
@@ -645,12 +650,12 @@ describe('kick votes', () => {
     a.send({ kind: 'start' });
     for (const peer of peers) peer.send({ kind: 'loaded', tick: 0, world: 0 });
     s.advance(TICK_MS * 2);
-    b.send({ kind: 'kick', player: 3 });
+    b.send({ kind: 'kick', player: 3, yes: true });
     expect(b.last('rejected')?.reason).toMatchObject({ code: 'notWaitedFor' });
     s.relay.disconnect(d.handle);
     tick(s, [a, b, c], KICK_COUNTDOWN_MS + TICK_MS);
-    a.send({ kind: 'kick', player: 3 });
-    a.send({ kind: 'kick', player: 3 });
+    a.send({ kind: 'kick', player: 3, yes: true });
+    a.send({ kind: 'kick', player: 3, yes: true });
     expect(c.last('kickVote')).toEqual({
       kind: 'kickVote',
       player: 3,
@@ -659,7 +664,7 @@ describe('kick votes', () => {
       needed: 2,
     });
     expect(c.of('kicked')).toEqual([]);
-    b.send({ kind: 'kick', player: 3 });
+    b.send({ kind: 'kick', player: 3, yes: true });
     expect(c.last('kicked')).toMatchObject({ player: 3, nick: 'Dorota', mode: 'idle' });
     tick(s, [a, b, c], TICK_MS * 2);
     expect(a.of('frame').flatMap((frame) => frame.commands)).toEqual([]);

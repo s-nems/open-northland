@@ -4,6 +4,7 @@ import { formatMessage, messages } from '../../i18n/index.js';
 import {
   type ChatLine,
   isHeldStatus,
+  type NetBallot,
   type NetClockModel,
   type NetLinkModel,
   type NetPanelModel,
@@ -90,6 +91,8 @@ interface PlayerView {
   readonly vote: HTMLElement;
   readonly kick: HTMLButtonElement;
   seat: number | null;
+  /** What a click on `kick` sends: a yes while `open`, the withdrawal while `cast`. */
+  ballot: NetBallot | null;
 }
 
 const cell = (className: string): HTMLElement => element('span', className);
@@ -328,11 +331,12 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
       vote,
       kick,
       seat: null,
+      ballot: null,
     };
     kick.addEventListener('click', () => {
-      if (view.seat === null) return;
+      if (view.seat === null || view.ballot === null) return;
       deps.cue('confirm');
-      deps.source.kick(view.seat);
+      deps.source.kick(view.seat, view.ballot === 'open');
     });
     const voteNote = element('span', 'on-net-vote__note');
     setTip(voteNote, tipsCopy.vote);
@@ -365,16 +369,21 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     write(view.behind, player.behindTicks > 0 ? formatBehind(player.behindTicks) : copy.none);
     view.seat = player.seat;
     const vote = player.vote;
-    const canKick = vote?.canVote === true && vote.voteInSeconds === 0 && player.seat !== null;
-    setHidden(view.kick, !canKick);
+    const ballot = player.seat === null ? null : (vote?.ballot ?? null);
+    view.ballot = ballot;
+    setHidden(view.kick, ballot === null);
     const note = view.vote.lastElementChild;
     if (note instanceof HTMLElement) {
-      setHidden(note, vote === null || canKick);
+      setHidden(note, vote === null || ballot !== null);
       write(note, vote === null ? '' : voteText(vote));
     }
-    if (canKick) {
-      write(view.kick, formatMessage(copy.kick, { yes: vote.yes, needed: vote.needed }));
-      setTip(view.kick, formatMessage(copy.kickTitle, { nick: player.nick }));
+    if (vote !== null && ballot !== null) {
+      const tally = { yes: vote.yes, needed: vote.needed };
+      write(view.kick, formatMessage(ballot === 'open' ? copy.kick : copy.withdraw, tally));
+      setTip(
+        view.kick,
+        formatMessage(ballot === 'open' ? copy.kickTitle : copy.withdrawTitle, { nick: player.nick }),
+      );
     }
   };
 

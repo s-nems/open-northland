@@ -15,10 +15,12 @@ export interface NetPlayerVote {
   readonly voteInSeconds: number;
   readonly yes: number;
   readonly needed: number;
-  /** True once the vote is open, for a member with a seat, on another client's row, while this
-   *  client has not voted yet. */
-  readonly canVote: boolean;
+  /** This client's part once the vote is open, on another seated member's row: `open` before it
+   *  voted, `cast` after, when it may withdraw; null while it has none. */
+  readonly ballot: NetBallot | null;
 }
+
+export type NetBallot = 'open' | 'cast';
 
 export interface NetPlayerRow {
   readonly nick: string;
@@ -106,7 +108,8 @@ export interface NetNotice {
 }
 
 export interface NetPanelActions {
-  kick(seat: number): void;
+  /** A yes towards kicking the member in `seat`, or with `yes` false its withdrawal. */
+  kick(seat: number, yes: boolean): void;
   say(text: string): void;
 }
 

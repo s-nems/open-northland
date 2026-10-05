@@ -1,5 +1,6 @@
 import type { ClockState, RelayClientView } from '@open-northland/net-client';
 import {
+  kickVotesNeeded,
   MAX_CHAT_HISTORY_LINES,
   type RoomView,
   type ServerMessage,
@@ -59,7 +60,7 @@ export function relayPlayerRows(facts: RelayRoomFacts): readonly NetPlayerRow[] 
   const governor = clock?.governed?.nick ?? null;
   const tickBudgetMs = TICK_MS / runningSpeedOf(clock);
   const lagTicks = Math.ceil((CATCHING_UP_BEHIND_MS / TICK_MS) * (clock?.speed ?? DEFAULT_SPEED));
-  // The relay's electorate before its first tally: every other connected member, half of them rounded up.
+  // The relay's electorate before its first tally: every other connected member.
   const connected = room.members.filter((member) => member.connected).length;
   return room.members.map((member): NetPlayerRow => {
     const self = member.nick === facts.selfNick;
@@ -96,12 +97,13 @@ export function relayPlayerRows(facts: RelayRoomFacts): readonly NetPlayerRow[] 
           : {
               voteInSeconds: seconds,
               yes: tally?.yes.length ?? 0,
-              needed: tally?.needed ?? Math.ceil(electorate / 2),
-              canVote:
-                !self &&
-                member.seat !== null &&
-                seconds === 0 &&
-                tally?.yes.includes(facts.selfNick) !== true,
+              needed: tally?.needed ?? kickVotesNeeded(electorate),
+              ballot:
+                self || member.seat === null || seconds > 0
+                  ? null
+                  : tally?.yes.includes(facts.selfNick) === true
+                    ? 'cast'
+                    : 'open',
             },
     };
   });

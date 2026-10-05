@@ -130,7 +130,8 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
   },
   { kind: 'clock', speed: 2 },
   { kind: 'clock', paused: true },
-  { kind: 'kick', player: 1 },
+  { kind: 'kick', player: 1, yes: true },
+  { kind: 'kick', player: 1, yes: false },
   { kind: 'blob', type: 'snapshot', world: 0, to: null, tick: 40, bytes: BLOB },
   { kind: 'blob', type: 'save', to: 'Ania', tick: 40, bytes: BLOB },
   { kind: 'blob', type: 'map', to: null, tick: null, bytes: BLOB },
@@ -322,6 +323,7 @@ describe('client messages', () => {
       },
       /ack\.load\.buffered/,
     ],
+    ['a kick without its yes', { kind: 'kick', player: 1 }, /kick\.yes/],
     [
       'a save without a tick',
       { kind: 'blob', type: 'save', to: null, tick: null, bytes: BLOB },

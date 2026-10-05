@@ -67,6 +67,7 @@ export const plNetworkRelay = {
     voteSelf: 'nie możesz głosować za wyrzuceniem samego siebie',
     notWaitedFor: 'gra nie czeka na gracza {nick}',
     voteNotOpen: 'głosowanie otworzy się za {seconds} s',
+    noVoteToWithdraw: 'brak twojego głosu za wyrzuceniem gracza {nick} do cofnięcia',
     snapshotUnsynced: 'migawkę może udostępnić tylko zsynchronizowany świat',
     noSnapshot: 'serwer nie ma jeszcze migawki',
     initialSaveGeneration: 'zapisany świat musi zaczynać się od kroku {generation}',

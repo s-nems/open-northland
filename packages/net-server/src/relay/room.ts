@@ -165,6 +165,7 @@ export class Room {
       if (this.game.running) this.deliver(member, this.game.clockMessage(null));
       const ended = this.game.endedMessage;
       if (ended !== null) this.deliver(member, ended);
+      this.carryOutKickVotes(now);
     }
   }
 
@@ -177,9 +178,10 @@ export class Room {
     }
     if (this.game !== null && this.game.endedTick === null && member.seat !== null) {
       this.kickOut(member, member.seat, now, 'left');
-      return null;
+    } else {
+      this.remove(member);
     }
-    this.remove(member);
+    this.carryOutKickVotes(now);
     return null;
   }
 
@@ -193,6 +195,7 @@ export class Room {
     member.progressAt = now;
     this.broadcastView();
     this.game.dropWorld(member, now);
+    this.carryOutKickVotes(now);
   }
 
   claimSeat(member: Member, player: number | null): Refusal {
@@ -307,12 +310,16 @@ export class Room {
     return this.game.setClock(member, speed, paused);
   }
 
-  /** One yes towards kicking the member in seat `player`; a passing vote empties the seat. */
-  kick(member: Member, player: number, now: number): Refusal {
+  /** One yes towards kicking the member in seat `player`, or its withdrawal; a passing vote empties
+   *  the seat. */
+  kick(member: Member, player: number, yes: boolean, now: number): Refusal {
     if (this.game === null) return { code: 'gameNotStarted' };
-    const outcome = this.game.kick(member, player, now);
+    const outcome = this.game.kick(member, player, yes, now);
     if ('refused' in outcome) return outcome.refused;
-    if (outcome.kicked !== null) this.kickOut(outcome.kicked, player, now, 'vote');
+    if (outcome.kicked !== null) {
+      this.kickOut(outcome.kicked, player, now, 'vote');
+      this.carryOutKickVotes(now);
+    }
     return null;
   }
 
@@ -404,6 +411,15 @@ export class Room {
     if (mode !== null) this.seats.vacate(player, mode);
     this.remove(target);
     this.game?.removed(now);
+  }
+
+  /** Kick every member whose vote a change of the connected members made pass; each kick shrinks
+   *  the connected set again. */
+  private carryOutKickVotes(now: number): void {
+    for (let passed = this.game?.recountKickVotes() ?? null; passed !== null; ) {
+      this.kickOut(passed.target, passed.player, now, 'vote');
+      passed = this.game?.recountKickVotes() ?? null;
+    }
   }
 
   private admit(member: Member): void {

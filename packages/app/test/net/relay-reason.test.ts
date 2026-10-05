@@ -63,6 +63,7 @@ const SAMPLES: { readonly [C in RelayReasonCode]: Extract<RelayReason, { code: C
   voteSelf: { code: 'voteSelf' },
   notWaitedFor: { code: 'notWaitedFor', nick: 'Cezary' },
   voteNotOpen: { code: 'voteNotOpen', seconds: 42 },
+  noVoteToWithdraw: { code: 'noVoteToWithdraw', nick: 'Bartek' },
   snapshotUnsynced: { code: 'snapshotUnsynced' },
   noSnapshot: { code: 'noSnapshot' },
   initialSaveGeneration: { code: 'initialSaveGeneration', generation: 73 },

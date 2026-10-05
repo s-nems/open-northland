@@ -154,16 +154,17 @@ describe('network panel preview', () => {
     expect(seen.size).toBe(NET_PREVIEW_STATES.length);
   });
 
-  it('pins one state, and counts a kick vote', () => {
+  it('pins one state, and counts a kick vote and its withdrawal', () => {
     const preview = createNetPanelPreview({ pinned: 'held', now: () => 0 });
     expect(preview.model()?.clock.held).toBe(true);
-    const target = preview
-      .model()
-      ?.players.find((row) => row.vote?.canVote === true && row.vote.voteInSeconds === 0);
+    const target = preview.model()?.players.find((row) => row.vote?.ballot === 'open');
     expect(target?.seat).not.toBeNull();
     if (target?.seat == null) return;
-    preview.kick(target.seat);
-    expect(preview.model()?.players.find((row) => row.nick === target.nick)?.vote?.yes).toBe(2);
+    const voteOf = () => preview.model()?.players.find((row) => row.nick === target.nick)?.vote;
+    preview.kick(target.seat, true);
+    expect(voteOf()).toMatchObject({ yes: 2, ballot: 'cast' });
+    preview.kick(target.seat, false);
+    expect(voteOf()).toMatchObject({ yes: 1, ballot: 'open' });
   });
 
   it('stops the scene world while its room is held, so the clock does not run under the banner', () => {

@@ -77,7 +77,7 @@ export function renderNetworkGame(
   // The view mounts before the HUD's model exists; until then the panel and its banners stay empty.
   const netPanel: NetPanelSource = {
     model: () => hud?.model() ?? null,
-    kick: (seat) => client.kick(seat),
+    kick: (seat, yes) => client.kick(seat, yes),
     say: (text) => client.say(text),
   };
 

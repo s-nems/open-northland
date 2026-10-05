@@ -230,7 +230,8 @@ export type ClientMessage =
     }
   | { readonly kind: 'command'; readonly envelope: PlayerWireEnvelope; readonly fromTick: number }
   | { readonly kind: 'clock'; readonly speed?: number; readonly paused?: boolean }
-  | { readonly kind: 'kick'; readonly player: number }
+  /** A yes towards kicking the member in seat `player`, or with `yes: false` the withdrawal of one. */
+  | { readonly kind: 'kick'; readonly player: number; readonly yes: boolean }
   /** `to` names one member's nick, or null for everyone else in the room. `tick` is required for a
    *  snapshot or a save, since the relay serves the frames after it. */
   | ({ readonly kind: 'blob' } & BlobUpload)

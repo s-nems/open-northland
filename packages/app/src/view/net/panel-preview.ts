@@ -10,6 +10,7 @@ import {
   type NetPanelModel,
   type NetPanelSource,
   type NetPlayerRow,
+  type NetPlayerVote,
   SPEED_HISTORY_SECONDS,
   type SpeedSample,
 } from '../../hud/network/model.js';
@@ -54,6 +55,8 @@ const CATCHING_UP_TICKS = CATCHING_UP_SECONDS * TICKS_PER_SECOND;
 /** The held member's countdown when its wait began, and the other's already-open vote. */
 const VOTE_COUNTDOWN_S = 48;
 const VOTES_NEEDED = 2;
+/** The yeses from other players each open vote starts with. */
+const OTHERS_YES = 1;
 /** Tick costs in percent of the tick's budget at the running speed. */
 const COST_EASY = 34;
 const COST_BUSY = 72;
@@ -86,7 +89,8 @@ export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanel
   const now = options.now ?? ((): number => performance.now());
   const started = now();
   const pinned = NET_PREVIEW_STATES.find((state) => state === options.pinned) ?? null;
-  const votes = new Map<number, number>();
+  /** The seats this preview's player voted to kick. */
+  const cast = new Set<number>();
   let chat: readonly ChatLine[] = OPENING_CHAT;
   let chatVersion = OPENING_CHAT.length;
   let shownKey = '';
@@ -102,10 +106,10 @@ export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanel
       const elapsed = now() - started;
       const state = stateAt(elapsed);
       const second = Math.floor((elapsed % NET_PREVIEW_STATE_MS) / MS_PER_SECOND);
-      const key = `${state}|${second}|${chatVersion}|${[...votes].join(',')}`;
+      const key = `${state}|${second}|${chatVersion}|${[...cast].join(',')}`;
       if (shown === null || key !== shownKey) {
         shownKey = key;
-        const players = previewPlayers(state, second, votes);
+        const players = previewPlayers(state, second, cast);
         shown = {
           players,
           clock: previewClock(state, players),
@@ -117,8 +121,9 @@ export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanel
       }
       return shown;
     },
-    kick(seat): void {
-      votes.set(seat, Math.min(VOTES_NEEDED, (votes.get(seat) ?? 1) + 1));
+    kick(seat, yes): void {
+      if (yes) cast.add(seat);
+      else cast.delete(seat);
     },
     say(text): void {
       chat = [...chat, { from: SELF, text, tick: null }];
@@ -203,15 +208,16 @@ function row(nick: string, overrides: Partial<NetPlayerRow>): NetPlayerRow {
 function previewPlayers(
   state: NetPreviewState,
   second: number,
-  votes: ReadonlyMap<number, number>,
+  cast: ReadonlySet<number>,
 ): readonly NetPlayerRow[] {
-  const vote = (nick: string, voteInSeconds: number) => {
+  const vote = (nick: string, voteInSeconds: number): NetPlayerVote => {
     const seat = SEATS[nick]?.seat ?? null;
+    const voted = seat !== null && cast.has(seat);
     return {
       voteInSeconds,
-      yes: seat === null ? 0 : (votes.get(seat) ?? 1),
+      yes: seat === null ? 0 : OTHERS_YES + (voted ? 1 : 0),
       needed: VOTES_NEEDED,
-      canVote: nick !== SELF && seat !== null,
+      ballot: nick === SELF || seat === null || voteInSeconds > 0 ? null : voted ? 'cast' : 'open',
     };
   };
   switch (state) {

@@ -43,7 +43,7 @@ export function dispatchRoomMessage(room: Room, member: Member, message: RoomMes
     case 'clock':
       return room.setClock(member, message.speed, message.paused);
     case 'kick':
-      return room.kick(member, message.player, now);
+      return room.kick(member, message.player, message.yes, now);
     case 'blob':
       return room.blob(member, message, now);
     case 'chat':

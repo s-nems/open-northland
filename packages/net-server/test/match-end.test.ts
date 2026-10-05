@@ -92,7 +92,7 @@ describe('terminal room consensus', () => {
       { kind: 'clock', paused: false },
       seatCommand(0),
       { kind: 'start' },
-      { kind: 'kick', player: 1 },
+      { kind: 'kick', player: 1, yes: true },
     ])
       s.a.send(command);
     expect(s.a.of('rejected').slice(-4)).toHaveLength(4);

@@ -6,6 +6,7 @@ import { TIP_ATTRIBUTE as TIP } from '../../src/hud/dom/parts/dom.js';
 import { createHudSystemBar } from '../../src/hud/dom/system-bar.js';
 import type {
   ChatLine,
+  NetBallot,
   NetClockModel,
   NetLinkModel,
   NetPanelModel,
@@ -13,6 +14,7 @@ import type {
   NetPlayerRow,
 } from '../../src/hud/network/model.js';
 import type { ToolPanelController } from '../../src/hud/tool-panel/index.js';
+import { formatMessage, messages } from '../../src/i18n/index.js';
 import { CHAT_LINGER_MS, mountChatPanel } from '../../src/view/net/chat-panel.js';
 import { mountNetOverlays } from '../../src/view/runtime/net-overlays.js';
 
@@ -424,5 +426,41 @@ describe('the speed bar', () => {
     overlays.refresh();
     expect(state.synced).toBe(2);
     overlays.dispose();
+  });
+});
+
+describe('the kick cell', () => {
+  const SEAT = 2;
+  const held = (ballot: NetBallot | null): NetPanelModel =>
+    panelModel({
+      players: [
+        { ...row('Bartek', 'gone'), seat: SEAT, vote: { voteInSeconds: 0, yes: 1, needed: 2, ballot } },
+      ],
+      clock: { ...CLOCK, held: true },
+    });
+
+  it('offers a yes before this player voted and its withdrawal after, both with the tally', () => {
+    const copy = messages().hud.network;
+    const sent: [number, boolean][] = [];
+    const feed = { ...source(held('open')), kick: (seat: number, yes: boolean) => sent.push([seat, yes]) };
+    const { plane, window } = mountWindow(feed);
+    const kick = plane.querySelector<HTMLButtonElement>('.on-net-kick');
+    expect(kick?.hidden).toBe(false);
+    expect(kick?.textContent).toBe(formatMessage(copy.kick, { yes: 1, needed: 2 }));
+    kick?.click();
+
+    feed.current = held('cast');
+    window.refresh();
+    expect(kick?.textContent).toBe(formatMessage(copy.withdraw, { yes: 1, needed: 2 }));
+    kick?.click();
+    expect(sent).toEqual([
+      [SEAT, true],
+      [SEAT, false],
+    ]);
+
+    feed.current = held(null);
+    window.refresh();
+    expect(kick?.hidden).toBe(true);
+    window.dispose();
   });
 });

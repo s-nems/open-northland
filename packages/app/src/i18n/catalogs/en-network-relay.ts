@@ -67,6 +67,7 @@ export const enNetworkRelay = {
     voteSelf: 'you cannot vote to kick yourself',
     notWaitedFor: 'the game is not waiting for {nick}',
     voteNotOpen: 'the vote opens in {seconds} s',
+    noVoteToWithdraw: 'you have no vote to kick {nick} to withdraw',
     snapshotUnsynced: 'only a world in sync can share a snapshot',
     noSnapshot: 'the server holds no snapshot yet',
     initialSaveGeneration: 'the saved world must start at tick {generation}',

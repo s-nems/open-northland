@@ -259,7 +259,7 @@ describe('a relayed session under faults', () => {
     const paced = ania.tick ?? 0;
     await runFor(stage, [ania], SETTLE_MS);
     expect(ania.tick).toBeGreaterThan(paced);
-    ania.kick(1);
+    ania.kick(1, true);
     await runFor(stage, [ania], SETTLE_MS * 2);
     expect(ania.rejections.at(-1)?.reason).toEqual({ code: 'notWaitedFor', nick: 'Bartek' });
     expect(ania.kicks).toEqual([]);
@@ -330,7 +330,7 @@ describe('a relayed session under faults', () => {
     await runUntil(stage, clients, 30, { onTick: orderAt });
     cezaryLink.close();
     await runFor(stage, [ania, bartek], SETTLE_MS);
-    ania.kick(2);
+    ania.kick(2, true);
     await runFor(stage, [ania, bartek], SETTLE_MS);
     expect(ania.rejections.at(-1)?.reason).toMatchObject({ code: 'voteNotOpen' });
     await runFor(stage, [ania, bartek], KICK_COUNTDOWN_MS);
@@ -338,9 +338,12 @@ describe('a relayed session under faults', () => {
       kind: 'waiting',
       for: [{ nick: 'Cezary', reason: 'gone', voteAfterMs: 0 }],
     });
-    ania.kick(2);
+    ania.kick(2, true);
     await runFor(stage, [ania, bartek], SETTLE_MS);
-    expect(bartek.votes.at(-1)).toMatchObject({ player: 2, nick: 'Cezary', yes: ['Ania'], needed: 1 });
+    expect(bartek.votes.at(-1)).toMatchObject({ player: 2, nick: 'Cezary', yes: ['Ania'], needed: 2 });
+    expect(bartek.kicks).toEqual([]);
+    bartek.kick(2, true);
+    await runFor(stage, [ania, bartek], SETTLE_MS);
     const kicked = bartek.kicks[0];
     expect(kicked).toMatchObject({ player: 2, nick: 'Cezary', mode: 'ai' });
     expect(bartek.room?.seats[2]).toMatchObject({ mode: 'ai', nick: null });

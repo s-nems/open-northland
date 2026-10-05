@@ -263,7 +263,7 @@ export const enGame = {
         delay: 'How many ticks later an order runs; it follows the ping and how much it varies',
         cost: "How much of one tick's budget at the current pace this machine uses; over 100% it cannot keep up",
         behind: 'How many seconds the player trails the room clock',
-        vote: 'The vote opens after a minute of a held game; at least half of the other players kick',
+        vote: 'The vote opens after a minute of a held game; more than half of the other connected players kick',
         requested: 'The pace the room picked',
         running:
           'The pace the room clock really runs at; below the requested one while someone slows the game',
@@ -284,6 +284,8 @@ export const enGame = {
       voteTally: 'vote {yes}/{needed}',
       kick: 'Kick {yes}/{needed}',
       kickTitle: 'Vote to kick {nick}',
+      withdraw: 'Withdraw {yes}/{needed}',
+      withdrawTitle: 'Withdraw your vote to kick {nick}',
       clock: 'Clock',
       requested: 'Requested',
       running: 'Running',

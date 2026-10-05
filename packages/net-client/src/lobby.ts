@@ -123,8 +123,9 @@ export class RelayLobby {
     this.send({ kind: 'loading', progress });
   }
 
-  kick(player: number): void {
-    this.send({ kind: 'kick', player });
+  /** A yes towards kicking the member in seat `player`, or with `yes` false the withdrawal of one. */
+  kick(player: number, yes: boolean): void {
+    this.send({ kind: 'kick', player, yes });
   }
 
   sendBlob(upload: BlobUpload): void {

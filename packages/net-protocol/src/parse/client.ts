@@ -148,7 +148,11 @@ export function parseClientMessage(value: unknown): ClientMessage {
       };
     }
     case 'kick':
-      return { kind, player: parseSeatIndex(raw.player, 'kick.player') };
+      return {
+        kind,
+        player: parseSeatIndex(raw.player, 'kick.player'),
+        yes: asBoolean(raw.yes, 'kick.yes'),
+      };
     case 'blob': {
       const type = asOneOf(raw.type, BLOB_TYPES, 'blob.type');
       const tick = raw.tick === null ? null : asCount(raw.tick, 'blob.tick');

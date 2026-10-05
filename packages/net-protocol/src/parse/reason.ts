@@ -86,6 +86,7 @@ const REASON_PARAMS: { readonly [C in RelayReasonCode]: ParamsOf<Extract<RelayRe
   voteSelf: {},
   notWaitedFor: { nick: 'nick' },
   voteNotOpen: { seconds: 'count' },
+  noVoteToWithdraw: { nick: 'nick' },
   snapshotUnsynced: {},
   noSnapshot: {},
   initialSaveGeneration: { generation: 'count' },

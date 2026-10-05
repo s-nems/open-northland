@@ -259,7 +259,7 @@ export const plGame = {
         delay: 'O ile kroków później wykonuje się rozkaz; wynika z pingu i jego wahań',
         cost: 'Ile budżetu jednego kroku przy obecnym tempie zużywa ta maszyna; ponad 100% znaczy, że nie nadąża',
         behind: 'O ile sekund gracz jest za zegarem pokoju',
-        vote: 'Głosowanie otwiera się po minucie wstrzymania gry; co najmniej połowa pozostałych graczy wyrzuca',
+        vote: 'Głosowanie otwiera się po minucie wstrzymania gry; wyrzuca ponad połowa pozostałych połączonych graczy',
         requested: 'Tempo wybrane w pokoju',
         running: 'Tempo, w jakim naprawdę idzie zegar pokoju; niższe od ustawionego, gdy ktoś spowalnia grę',
         history:
@@ -280,6 +280,8 @@ export const plGame = {
       voteTally: 'głosowanie {yes}/{needed}',
       kick: 'Wyrzuć {yes}/{needed}',
       kickTitle: 'Głosuj za wyrzuceniem gracza {nick}',
+      withdraw: 'Cofnij głos {yes}/{needed}',
+      withdrawTitle: 'Cofnij głos za wyrzuceniem gracza {nick}',
       clock: 'Zegar',
       requested: 'Ustawione',
       running: 'Rzeczywiste',

@@ -4,6 +4,7 @@ export {
   type LobbyCompatibility,
   sameCompatibility,
 } from './compatibility.js';
+export { kickVotesNeeded } from './kick-vote.js';
 export * from './limits.js';
 export type {
   BlobType,

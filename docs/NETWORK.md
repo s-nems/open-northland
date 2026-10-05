@@ -296,11 +296,27 @@ nobody is slow the clock runs at the requested speed again.
 
 ## Kick votes
 
-Once a member's countdown has passed, any other member sends `kick { player }` for its seat; a
-repeat from the same member counts once. Every yes is broadcast as
-`kickVote { player, nick, yes: [nicks], needed }`, where `needed` is half of the connected members
-other than the target, rounded up. A vote lives only while its target is waited for; a member that is
-only slow is refused with `notWaitedFor`.
+Once a member's countdown has passed, any other member sends `kick { player, yes: true }` for its
+seat; a repeat from the same member counts once. `kick { player, yes: false }` withdraws that
+member's yes, and is refused with `noVoteToWithdraw` from a member that has none. Each yes and each
+withdrawal is broadcast as `kickVote { player, nick, yes: [nicks], needed }`. A vote lives only while
+its target is waited for; a member that is only slow is refused with `notWaitedFor`.
+
+The electorate is the connected members other than the target, and `needed` is a strict majority of
+it, `floor(others / 2) + 1` (`kickVotesNeeded`): both of two, 2 of 3, 3 of 4. A yes counts only while
+its voter is connected. It stops counting when the voter drops and counts again if the voter returns
+while the vote is open; a member that leaves the room loses its votes. Each drop, return or departure
+recounts every open vote and broadcasts each tally that moved, so a vote can pass on a vote, on a
+voter's return, or on another member dropping or leaving.
+
+Several members may be waited for at once. Each has its own countdown and its own vote, and the
+electorate for each excludes every dropped member: with four players and two dropped, each vote needs
+both of the two still connected, and the last connected member kicks each of the others alone. The
+clock stays held until every waited member is back or kicked. Kicking one leaves the others'
+countdowns and votes as they were; a dropped member that is no longer waited for after its return
+closes only the vote against itself. With every member dropped nobody can vote: the room ends at the
+history age limit (see [Resync and catching up](#resync-and-catching-up)), or after the 10 minutes a
+room with nobody connected is kept when no frame is retained, whichever comes first.
 
 When the yeses reach `needed` the relay broadcasts `kicked { player, nick, mode, cause, tick }`, removes
 the member (its token is a stranger from then on), and returns the seat to `settings.kickedSeatMode`

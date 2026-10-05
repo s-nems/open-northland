@@ -121,7 +121,7 @@ describe('relay rooms', () => {
     // Voted out while nobody has loaded: the seat changes hands only once a world fixes the tick.
     s.advance(TICK_MS);
     s.advance(KICK_COUNTDOWN_MS);
-    a.send({ kind: 'kick', player: 1 });
+    a.send({ kind: 'kick', player: 1, yes: true });
     expect(a.of('rejected')).toEqual([]);
     expect(a.of('kicked')).toEqual([]);
     const ping = a.last('ping');

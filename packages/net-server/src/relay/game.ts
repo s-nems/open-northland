@@ -14,7 +14,7 @@ import { type BlobUpload, relayBlob } from './blob-relay.js';
 import type { CachedSnapshot } from './catch-up.js';
 import { Departures } from './departures.js';
 import { governedSpeed } from './governor.js';
-import { castKickVote, type KickOutcome } from './kick-vote.js';
+import { type KickOutcome, KickVotes, type PassedKick } from './kick-vote.js';
 import { MatchEnd } from './match-end.js';
 import { broadcast, type Deliver, isSynced, type Member, type Refusal } from './member.js';
 import { Pacing } from './pacing.js';
@@ -39,6 +39,7 @@ export class Game {
   private readonly end: MatchEnd;
   private readonly ledger = new SyncLedger();
   private readonly waiting = new Waiting();
+  private readonly kickVotes = new KickVotes();
   private readonly pacing = new Pacing();
   private readonly resync: Resync;
   private readonly orders: SaveOrders;
@@ -174,11 +175,20 @@ export class Game {
     return null;
   }
 
-  kick(voter: Member, player: number, now: number): KickOutcome {
+  kick(voter: Member, player: number, yes: boolean, now: number): KickOutcome {
     if (this.endedTick !== null) return { refused: { code: 'matchEnded' } };
-    const outcome = castKickVote(this.members, this.waiting, voter, player, now);
+    const outcome = this.kickVotes.cast(this.members, this.waiting, voter, player, yes, now);
     if ('tally' in outcome) this.broadcast(outcome.tally);
     return outcome;
+  }
+
+  /** Count the kick votes again after a member dropped, returned or left: broadcast each tally that
+   *  moved, and return a vote that now passes for the room to carry out. */
+  recountKickVotes(): PassedKick | null {
+    if (this.endedTick !== null) return null;
+    const { moved, passed } = this.kickVotes.recount(this.members);
+    for (const tally of moved) this.broadcast(tally);
+    return passed;
   }
 
   /** The seat's fallout on the clock: the AI takes it on the next tick, an idle seat just goes quiet.
@@ -193,6 +203,7 @@ export class Game {
     this.ledger.forget(member.token);
     this.resync.forget(member);
     this.waiting.forget(member.token);
+    this.kickVotes.forget(member.token);
     this.pacing.forget(member.token);
   }
 
@@ -313,6 +324,7 @@ export class Game {
       }
     }
     if (this.waiting.update(waited, now)) this.broadcast(this.waiting.message(now));
+    this.kickVotes.retain((token) => this.waiting.isWaitedFor(token));
     this.clock.hold(waited.length > 0);
     if (this.governFor(this.slowMembers()) && this.clock.running) this.broadcast(this.clockMessage(null));
   }
