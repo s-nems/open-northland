@@ -339,6 +339,24 @@ describe('the network window over a hold', () => {
     overlays.dispose();
   });
 
+  it('forgets a hold that ends while the line is still being typed', () => {
+    const feed = source(RUNNING);
+    const { state, overlays } = mountOverlays(feed);
+    overlays.refresh();
+    document.dispatchEvent(enter());
+    const input = document.body.querySelector('input');
+    if (input === null) throw new Error('chat input');
+    input.value = 'half a';
+    feed.current = HOLDING;
+    overlays.refresh();
+    feed.current = RUNNING;
+    overlays.refresh();
+    input.dispatchEvent(escapeKey());
+    overlays.refresh();
+    expect([state.open, state.opens]).toEqual([false, 0]);
+    overlays.dispose();
+  });
+
   it('reports the hold the world washes for, and its end', () => {
     const feed = source(RUNNING);
     const { overlays } = mountOverlays(feed);
