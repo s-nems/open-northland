@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { choiceMatches } from '../src/hud/dom/choice-window.js';
+import { nameMatches } from '../src/hud/dom/parts/name-search.js';
 import { knowsCourse, type SchoolGroup, schoolChoices } from '../src/view/unit-controls/school-dialog.js';
 
 const smith: SchoolGroup = {
@@ -36,10 +36,10 @@ it('treats the pupil trade and its learned courses as known, not other trades or
   expect(knowsCourse(learner, { target: 'good', typeId: 13, label: 'Kolczuga' })).toBe(false);
 });
 it('searches the start of the label with case and accent folding', () => {
-  expect(choiceMatches('Cieśla', 'c')).toBe(true);
-  expect(choiceMatches('Kupiec', 'c')).toBe(false);
-  expect(choiceMatches('Złoto', 'zlo')).toBe(true);
-  expect(choiceMatches('Żelazo', 'ZE')).toBe(true);
+  expect(nameMatches('Cieśla', 'c')).toBe(true);
+  expect(nameMatches('Kupiec', 'c')).toBe(false);
+  expect(nameMatches('Złoto', 'zlo')).toBe(true);
+  expect(nameMatches('Żelazo', 'ZE')).toBe(true);
 });
 
 it('keeps only visible professions and orders each group by its label', async () => {

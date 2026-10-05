@@ -85,6 +85,7 @@ export interface ConstructionWindowState {
   /** The nation both pages list houses of; null for the seat's own. */
   readonly tribe: number | null;
   readonly category: BuildingCategory;
+  readonly query: string;
   readonly view: CatalogueView;
   readonly scrollTop: number;
   readonly picked: number | null;
@@ -95,6 +96,7 @@ export const INITIAL_CONSTRUCTION_STATE: ConstructionWindowState = {
   page: 'catalog',
   tribe: null,
   category: 'all',
+  query: '',
   view: 'grid',
   scrollTop: 0,
   picked: null,

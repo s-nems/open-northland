@@ -28,6 +28,8 @@ import type { BuildingThumbs } from './building-thumb.js';
 import { goodIconMarkup, goodIconSource, goodIconStyle } from './good-art.js';
 import { GLYPH, paintedIcon } from './icons.js';
 import { escapeHtml } from './parts/dom.js';
+import { nameMatches } from './parts/name-search.js';
+import { quietTextField } from './parts/text-field.js';
 import { centralWindowPlacer, createHudWindow } from './window.js';
 
 /** Design px: the window width, sized so the widest bill in the content (eight goods, the top house) sits in
@@ -269,6 +271,33 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     if (shown() !== before) relistTribe();
   };
 
+  const searchField = document.createElement('label');
+  searchField.className = 'on-res-field on-construction-search';
+  searchField.innerHTML = `${GLYPH.search}<input type="search">`;
+  const input = searchField.querySelector('input');
+  if (input === null) throw new Error('construction: search field');
+  const search = quietTextField(input);
+  search.placeholder = copy.search;
+  search.setAttribute('aria-label', copy.search);
+  search.addEventListener('input', () => {
+    state = { ...state, query: search.value, scrollTop: 0 };
+    showCategory('all');
+    parchment.scrollTop = 0;
+  });
+  search.addEventListener('keydown', (event) => {
+    if (event.isComposing) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      window.dismiss();
+      return;
+    }
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    event.stopPropagation();
+    listedCards.find((card) => !card.element.hidden && !card.pick.disabled)?.pick.click();
+  });
+
   // The tabs, with the grid or list toggle at their right end; the papers page swaps the category
   // tabs for one back tab and keeps the toggle.
   const tabs = document.createElement('div');
@@ -365,7 +394,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   if (plansEmptyTitle !== undefined) plansEmptyTitle.textContent = copy.papersEmptyTitle;
   if (plansEmptyText !== undefined) plansEmptyText.textContent = copy.papersEmptyText;
   plans.append(plansNote.note, plansGrid, plansEmpty);
-  window.body.append(quick, tabs, parchment, plans);
+  window.body.append(quick, searchField, tabs, parchment, plans);
   window.onDismiss(() => {
     state = { ...state, suspended: false };
   });
@@ -493,6 +522,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     state = { ...state, page };
     const onPapers = page === 'papers';
     papers.setAttribute('aria-pressed', String(onPapers));
+    searchField.hidden = onPapers;
     back.hidden = !onPapers;
     for (const tab of tabButtons.values()) tab.button.hidden = onPapers;
     parchment.hidden = onPapers;
@@ -505,17 +535,19 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   const showCategory = (category: BuildingCategory): void => {
     state = { ...state, category };
     for (const [id, tab] of tabButtons) tab.button.setAttribute('aria-selected', String(id === category));
-    const shownIn = (grid: HTMLElement): number => {
-      let shown = 0;
-      for (const card of grid.children) {
-        if (!(card instanceof HTMLElement)) continue;
-        card.hidden = category !== 'all' && card.dataset.category !== category;
-        if (!card.hidden) shown += 1;
-      }
-      return shown;
-    };
-    const open = shownIn(openGrid);
-    const locked = shownIn(lockedGrid);
+    let open = 0;
+    let locked = 0;
+    for (const card of listedCards) {
+      card.element.hidden =
+        (category !== 'all' && card.row.category !== category) ||
+        !nameMatches(card.row.entry.label, state.query);
+      if (card.element.hidden) continue;
+      if (card.pick.disabled) locked += 1;
+      else open += 1;
+    }
+    openNote.count.textContent = String(open);
+    lockedNote.count.textContent = String(locked);
+    emptyTab.textContent = state.query.trim() ? copy.noMatches : copy.emptyCategory;
     openNote.note.hidden = open === 0;
     openGrid.hidden = open === 0;
     lockedNote.note.hidden = locked === 0;
@@ -622,7 +654,11 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
 
   const placeWindow = centralWindowPlacer(window, deps.plane, CONSTRUCTION_WINDOW_W);
   const open = (resumePlacement = false): void => {
-    if (!resumePlacement) showPage('catalog');
+    if (!resumePlacement) {
+      showPage('catalog');
+      search.value = '';
+      state = { ...state, query: '', category: 'all', scrollTop: 0 };
+    }
     layoutNations();
     layoutCards();
     showCategory(state.category);
@@ -632,6 +668,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     window.open();
     placeWindow(); // the catalogue needs its height bound before a kept scroll can land
     parchment.scrollTop = state.scrollTop;
+    if (!resumePlacement) search.focus({ preventScroll: true });
   };
   // A close from any path also forgets a pending resume: another window opened over a placement
   // takes the window's place, and the placement's cancel then leaves it away (one window at a time).
@@ -678,6 +715,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     state: () => state,
     restore: (next) => {
       state = next;
+      search.value = next.query;
       // The cards were laid out at boot with nothing picked; an unchanged availability lays none out again.
       setPicked(next.picked);
       markNation();

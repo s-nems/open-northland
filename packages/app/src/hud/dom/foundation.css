@@ -6280,3 +6280,11 @@ body.on-drag-scroll * {
 .on-hud .on-asst-sub__text {
   flex: 1;
 }
+
+.on-hud .on-construction-search {
+  flex-shrink: 0;
+  margin: 4px 12px 8px;
+}
+.on-hud .on-construction-search[hidden] {
+  display: none;
+}

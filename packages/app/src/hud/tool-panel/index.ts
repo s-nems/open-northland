@@ -744,8 +744,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       },
       toggleNav: (id) => {
         ctx.cue('confirm');
-        applyNavEntry(surfaces, id);
         nav.focus(id);
+        applyNavEntry(surfaces, id);
       },
       togglePause: () => {
         speed.togglePause();

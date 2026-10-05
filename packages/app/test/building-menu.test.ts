@@ -42,6 +42,7 @@ describe('building-menu', () => {
       page: 'catalog',
       tribe: null,
       category: 'all',
+      query: '',
       view: 'grid',
       scrollTop: 0,
       picked: null,

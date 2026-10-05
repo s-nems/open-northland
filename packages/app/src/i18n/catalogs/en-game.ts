@@ -295,6 +295,8 @@ export const enGame = {
       misc: 'Equipment',
     },
     construction: {
+      search: 'Search buildings…',
+      noMatches: 'No matching buildings',
       title: 'Construction',
       road: 'Road',
       palisade: 'Palisade',

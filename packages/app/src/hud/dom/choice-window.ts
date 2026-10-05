@@ -1,6 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
-import { bcp47Tag, messages } from '../../i18n/index.js';
+import { messages } from '../../i18n/index.js';
 import { GLYPH } from './icons.js';
+import { nameMatches } from './parts/name-search.js';
 import { quietTextField } from './parts/text-field.js';
 import { createHudPlane } from './root.js';
 import { createHudWindow } from './window.js';
@@ -14,16 +15,6 @@ export interface ChoiceGroup {
   readonly label: string;
   readonly rows: readonly ChoiceRow[];
 }
-export const choiceMatches = (label: string, query: string): boolean => {
-  const normalize = (text: string): string =>
-    text
-      .trim()
-      .toLocaleLowerCase(bcp47Tag())
-      .normalize('NFD')
-      .replace(/\p{Diacritic}/gu, '')
-      .replaceAll('ł', 'l');
-  return normalize(label).startsWith(normalize(query));
-};
 
 /** Shared modal choice surface for professions and school courses. The native dialog owns focus and
  * keeps pointer and keyboard input away from the world; the contents use the regular HUD plane. */
@@ -113,7 +104,7 @@ export function createChoiceWindow(opts: {
     list.replaceChildren();
     let count = 0;
     for (const group of groups) {
-      const rows = group.rows.filter((row) => choiceMatches(row.label, search.value));
+      const rows = group.rows.filter((row) => nameMatches(row.label, search.value));
       if (rows.length === 0) continue;
       count += rows.length;
       const section = document.createElement('section');

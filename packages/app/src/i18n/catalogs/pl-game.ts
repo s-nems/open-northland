@@ -281,6 +281,8 @@ export const plGame = {
       misc: 'Ekwipunek',
     },
     construction: {
+      search: 'Szukaj budynku…',
+      noMatches: 'Brak pasujących budynków',
       title: 'Budowanie',
       road: 'Droga',
       palisade: 'Palisada',
