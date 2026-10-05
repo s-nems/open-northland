@@ -99,6 +99,9 @@ export interface FrameLoopDeps {
   readonly perf: PerfOverlayHandle;
   /** A relayed session's connection figures for the overlay; null in a local session. */
   readonly netReadout: () => NetReadout | null;
+  /** Called every frame of a local session with the delivered speed while a sustained shortfall
+   *  holds, else null; omitted where the relay runs the clock. */
+  readonly onSpeedShortfall?: (delivered: number | null, requested: number) => void;
   /** Client coords; null when the pointer left the canvas. */
   readonly pointer: () => { clientX: number; clientY: number } | null;
   /** Reconcile Pixi's live screen size before camera and HUD work. */
@@ -397,6 +400,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       ...renderer.stats(),
     });
     perf.update(frameReport, netReadout);
+    loop.onSpeedShortfall?.(frameStats.sustainedShortfallSpeed(), driver.speed);
   }
   return startRafLoop(frame, loop.fpsLimit);
 }

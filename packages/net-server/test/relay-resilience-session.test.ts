@@ -193,6 +193,32 @@ describe('a relayed session under faults', () => {
     expect(bartek.rejections).toEqual([]);
   });
 
+  it('replays the room’s chat to a client that drops and returns, whose world carries on in step', async () => {
+    const { stage, ania, bartek, links } = await twoClients(23);
+    await runUntil(stage, [ania, bartek], 40, { onTick: orderAt });
+    ania.say('gotowi?');
+    bartek.say('tak');
+    await runFor(stage, [ania, bartek], SETTLE_MS);
+    links[1].close();
+    await runFor(stage, [ania, bartek], SETTLE_MS);
+    ania.say('wracaj');
+    await runFor(stage, [ania, bartek], SETTLE_MS);
+    expect(bartek.chat.map((line) => line.text)).toEqual(['gotowi?', 'tak']);
+
+    relink(stage, bartek, LINK);
+    const captures = await runUntil(stage, [ania, bartek], RUN_TICKS, { onTick: orderAt });
+    expectAgreement(captures, [ania, bartek]);
+    expect(bartek.chat).toEqual(ania.chat);
+    expect(bartek.chat.map((line) => [line.from, line.text])).toEqual([
+      ['Ania', 'gotowi?'],
+      ['Bartek', 'tak'],
+      ['Ania', 'wracaj'],
+    ]);
+    // Said after the clock started, each line carries the tick the relay heard it at.
+    for (const line of bartek.chat) expect(line.tick).toBeGreaterThan(0);
+    expect(bartek.restoredFrom).toEqual([]);
+  });
+
   it('lets a client behind a silent socket catch up from the frames alone', async () => {
     const { stage, ania, bartek, links } = await twoClients(2);
     await runUntil(stage, [ania, bartek], 40, { onTick: orderAt });

@@ -1,5 +1,12 @@
 import type { GameSession } from '@open-northland/lockstep';
-import type { RoomSummary, RoomView, ServerMessage, WaitedMember } from '@open-northland/net-protocol';
+import {
+  type ChatLine,
+  MAX_CHAT_HISTORY_LINES,
+  type RoomSummary,
+  type RoomView,
+  type ServerMessage,
+  type WaitedMember,
+} from '@open-northland/net-protocol';
 
 export type ClockState = Extract<ServerMessage, { kind: 'clock' }>;
 
@@ -8,6 +15,8 @@ export type ClockState = Extract<ServerMessage, { kind: 'clock' }>;
 export class RelayState {
   nick: string;
   welcomed = false;
+  /** The relay's build as its last `welcome` named it; null when it named none. */
+  relayBuild: string | null = null;
   rooms: readonly RoomSummary[] = [];
   room: RoomView | null = null;
   session: GameSession | null = null;
@@ -18,6 +27,9 @@ export class RelayState {
   delayTicks: number | null = null;
   /** The relay's smoothed round trip to this client, from its last ping. */
   roundTripMs: number | null = null;
+  /** The room's chat, oldest first: the relay's history on entering, then each line as it is said. A
+   *  new array per change. */
+  chat: readonly ChatLine[] = [];
   /** Set by a desync notice: the next world comes from a snapshot, whatever `start` offers. The client
    *  also clears it when it adopts a world. */
   outOfSync = false;
@@ -31,6 +43,7 @@ export class RelayState {
       case 'welcome':
         this.nick = message.nick;
         this.welcomed = true;
+        this.relayBuild = message.build ?? null;
         break;
       case 'rooms':
         this.rooms = message.rooms;
@@ -47,6 +60,7 @@ export class RelayState {
         this.clockState = null;
         this.waitingFor = [];
         this.delayTicks = null;
+        this.chat = [];
         this.outOfSync = false;
         break;
       case 'start':
@@ -67,13 +81,20 @@ export class RelayState {
       case 'ping':
         this.roundTripMs = message.roundTripMs;
         break;
+      case 'chatHistory':
+        this.chat = message.lines;
+        break;
+      case 'chat': {
+        const line: ChatLine = { from: message.from, text: message.text, tick: message.tick };
+        // The newest lines up to the relay's own cap, this one included.
+        this.chat = [...this.chat.slice(1 - MAX_CHAT_HISTORY_LINES), line];
+        break;
+      }
       case 'saveOrders':
       case 'frame':
       case 'mapRequest':
       case 'kickVote':
       case 'kicked':
-      case 'chat':
-      case 'chatHistory':
       case 'error':
       case 'snapshotRequest':
       case 'disputed':

@@ -1,5 +1,11 @@
 import type { GameSession } from '@open-northland/lockstep';
-import type { GovernedClock, RoomSummary, RoomView, WaitedMember } from '@open-northland/net-protocol';
+import type {
+  ChatLine,
+  GovernedClock,
+  RoomSummary,
+  RoomView,
+  WaitedMember,
+} from '@open-northland/net-protocol';
 import type { CommandEnvelope, SaveGame } from '@open-northland/sim';
 import type { RelayLobby } from './lobby.js';
 import type { ClockState } from './relay-state.js';
@@ -35,8 +41,11 @@ export function isLobbyAction(name: string): name is LobbyAction {
 export interface RelayClientView extends Pick<RelayLobby, LobbyAction> {
   readonly nick: string;
   readonly welcomed: boolean;
+  readonly relayBuild: string | null;
   readonly rooms: readonly RoomSummary[];
   readonly room: RoomView | null;
+  /** The room's chat, oldest first, the relay's history included; a new array per change. */
+  readonly chat: readonly ChatLine[];
   readonly session: GameSession | null;
   readonly clockState: ClockState | null;
   readonly waitingFor: readonly WaitedMember[];

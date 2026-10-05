@@ -1,4 +1,4 @@
-import { MAX_NICK_LENGTH, MAX_TOKEN_LENGTH, MIN_TOKEN_LENGTH } from '../limits.js';
+import { MAX_NICK_LENGTH, MAX_RELAY_BUILD_LENGTH, MAX_TOKEN_LENGTH, MIN_TOKEN_LENGTH } from '../limits.js';
 import { asNonNegativeNumber, asString } from '../untrusted.js';
 
 const TOKEN_SHAPE = /^[A-Za-z0-9_-]+$/;
@@ -15,6 +15,10 @@ export function parseToken(value: unknown, at: string): string {
 
 export function parseNick(value: unknown, at: string): string {
   return parseLine(value, at, MAX_NICK_LENGTH);
+}
+
+export function parseRelayBuild(value: unknown, at: string): string {
+  return parseLine(value, at, MAX_RELAY_BUILD_LENGTH);
 }
 
 /** One printable line, trimmed and non-empty. */

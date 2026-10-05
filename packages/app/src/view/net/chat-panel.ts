@@ -1,19 +1,22 @@
 import { MAX_CHAT_LENGTH } from '@open-northland/net-protocol';
 import { quietTextField } from '../../hud/dom/parts/text-field.js';
+import type { Rect } from '../../hud/geometry.js';
 import type { ChatLine } from '../../hud/network/model.js';
 import { messages } from '../../i18n/index.js';
 import { el } from '../overlay.js';
 
 /** Lines kept on screen; older ones scroll off. */
 const MAX_LINES = 8;
-/** Px kept clear between the log and the window's right edge. */
-const RIGHT_CLEARANCE_PX = 12;
+/** The log's width in client px when nothing crowds it. */
+const LOG_WIDTH_PX = 380;
+/** The narrowest log that still reads beside the navigation beam; a narrower gap lifts it above. */
+const MIN_BESIDE_BEAM_WIDTH_PX = 240;
+/** Px kept clear between the log and the window's right edge or the beam. */
+const CLEARANCE_PX = 12;
 /** Over the canvas and the perf readout; the system menu and every dialog sit above. */
 const CHAT_Z_INDEX = '60';
 const LOG_STYLE = [
   'position:fixed',
-  'bottom:12px',
-  'width:380px',
   'display:flex',
   'flex-direction:column',
   'gap:2px',
@@ -49,9 +52,32 @@ export interface ChatPanel {
 }
 
 export interface ChatPanelDeps {
-  /** Left edge in px, clear of the tool-panel strip. */
-  readonly leftPx: number | (() => number);
+  /** Left edge in client px, clear of the minimap. */
+  readonly leftPx: () => number;
+  /** The navigation beam's box in client px. */
+  readonly beam: () => Rect;
   readonly onSend: (text: string) => void;
+}
+
+/** Where the log stands, in client px from the viewport's left and bottom edges. */
+export interface ChatLogPlacement {
+  readonly left: number;
+  readonly bottom: number;
+  readonly width: number;
+}
+
+/** Beside the beam, narrowed to end before it, while that leaves a readable column; else above the
+ *  beam at full width. Never past the viewport's right edge. */
+export function chatLogPlacement(
+  left: number,
+  viewport: { readonly width: number; readonly height: number },
+  beam: Rect,
+): ChatLogPlacement {
+  const fits = Math.max(0, Math.min(LOG_WIDTH_PX, viewport.width - left - CLEARANCE_PX));
+  if (left + fits + CLEARANCE_PX <= beam.x) return { left, bottom: CLEARANCE_PX, width: fits };
+  const beside = beam.x - left - CLEARANCE_PX;
+  if (beside >= MIN_BESIDE_BEAM_WIDTH_PX) return { left, bottom: CLEARANCE_PX, width: beside };
+  return { left, bottom: viewport.height - beam.y + CLEARANCE_PX, width: fits };
 }
 
 /** True for a keydown the page itself owns: not typed into a field or answered on a button. */
@@ -65,12 +91,20 @@ export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
   const copy = messages().net;
   const log = el('div', LOG_STYLE);
   let left = Number.NaN;
+  let placed = '';
   const position = (): void => {
-    const next = typeof deps.leftPx === 'number' ? deps.leftPx : deps.leftPx();
-    if (next === left) return;
-    left = next;
-    log.style.left = `${left}px`;
-    log.style.maxWidth = `max(0px, calc(100vw - ${left + RIGHT_CLEARANCE_PX}px))`;
+    const next = chatLogPlacement(
+      deps.leftPx(),
+      { width: window.innerWidth, height: window.innerHeight },
+      deps.beam(),
+    );
+    const key = `${next.left},${next.bottom},${next.width}`;
+    if (key === placed) return;
+    placed = key;
+    left = next.left;
+    log.style.left = `${next.left}px`;
+    log.style.bottom = `${next.bottom}px`;
+    log.style.width = `${next.width}px`;
   };
   position();
   window.addEventListener('resize', position);

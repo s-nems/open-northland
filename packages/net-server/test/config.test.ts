@@ -1,3 +1,4 @@
+import { MAX_RELAY_BUILD_LENGTH } from '@open-northland/net-protocol';
 import { DEFAULT_MAX_ROOMS, DEFAULT_PORT, relayConfigFromEnvironment } from '@open-northland/net-server';
 import { describe, expect, it } from 'vitest';
 
@@ -45,5 +46,8 @@ describe('relay configuration from the environment', () => {
       /RELAY_PUBLIC_URL must be a ws:\/\/ or wss:\/\/ URL/,
     );
     expect(() => relayConfigFromEnvironment({ RELAY_PUBLIC_URL: 'not a url' })).toThrow(/RELAY_PUBLIC_URL/);
+    expect(() => relayConfigFromEnvironment({ RELAY_BUILD: 'x'.repeat(MAX_RELAY_BUILD_LENGTH + 1) })).toThrow(
+      /RELAY_BUILD/,
+    );
   });
 });

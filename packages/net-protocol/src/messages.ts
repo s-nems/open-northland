@@ -247,7 +247,8 @@ export type ServerMessage =
       readonly frames: readonly WireFrame[];
     }
   | { readonly kind: 'ended'; readonly tick: number; readonly hash: string }
-  | { readonly kind: 'welcome'; readonly protocol: number; readonly nick: string }
+  /** `build` names the relay's build when its operator gave it one. */
+  | { readonly kind: 'welcome'; readonly protocol: number; readonly nick: string; readonly build?: string }
   | { readonly kind: 'rooms'; readonly rooms: readonly RoomSummary[] }
   | { readonly kind: 'room'; readonly room: RoomView }
   | { readonly kind: 'left' }

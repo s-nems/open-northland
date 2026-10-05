@@ -49,7 +49,7 @@ import { createNetworkWindow } from '../dom/network-window.js';
 import { createPlacementStrip } from '../dom/placement-strip.js';
 import type { ClientRect } from '../dom/portrait-hole.js';
 import { createResidentsWindow } from '../dom/residents-window.js';
-import { createHudSystemBar } from '../dom/system-bar.js';
+import { createHudSystemBar, type SpeedBarLook } from '../dom/system-bar.js';
 import type { CentralWindows } from '../dom/trade-window/window.js';
 import { FigureFrames } from '../figures/figure-frames.js';
 import { LiveFigures } from '../figures/live-figures.js';
@@ -305,9 +305,11 @@ export interface ToolPanelController {
   presentFigures(snapshot: WorldSnapshot, alpha: number): void;
   state(): ToolPanelState;
   restore(state: ToolPanelState): void;
-  /** Show the session's clock as it stands, without pushing to the loop: a change made elsewhere.
-   *  `governed` dims the pressed segment and names why, while a relayed room runs below its request. */
-  syncSpeed(control: GameSpeedControl, governed?: string | null): void;
+  /** Show the session's clock as it stands, without pushing to the loop: a change made elsewhere. */
+  syncSpeed(control: GameSpeedControl): void;
+  /** How the speed segments read beside the control; while `held`, the pause and speed presses are
+   *  refused, from the bar and the keys alike. */
+  setSpeedLook(look: SpeedBarLook | null): void;
   /** Open the network window alone, as the game menu and the net banners do; nothing outside a
    *  relayed game. */
   openNetwork(): void;
@@ -683,10 +685,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       if (id !== null) nav.focus(id);
     };
 
+    let speedHeld = false;
     const speed = createSpeedControl({
       onSpeedChange: opts.onSpeedChange,
       onShow: (control) => systemBar.setSpeed(control),
-      held: () => opts.pauseHeld?.() === true,
+      held: () => speedHeld || opts.pauseHeld?.() === true,
       ...(opts.clockPaused !== undefined ? { clockPaused: opts.clockPaused } : {}),
     });
     const systemBar = createHudSystemBar(plane, {
@@ -933,9 +936,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         messages: messageCenter.state(),
         hudHidden,
       }),
-      syncSpeed(control, governed = null): void {
-        speed.restore(control);
-        systemBar.setGoverned(governed);
+      syncSpeed: (control) => speed.restore(control),
+      setSpeedLook(look): void {
+        speedHeld = look?.kind === 'held';
+        systemBar.setLook(look);
       },
       openNetwork: () => showNetwork(true),
       networkOpen: () => windows.byId.network.isOpen(),

@@ -357,6 +357,7 @@ describe('client messages', () => {
 const SERVER_MESSAGES: readonly ServerMessage[] = [
   { kind: 'ended', tick: 12, hash: '0123abcd' },
   { kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania2' },
+  { kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania', build: 'relay-1' },
   { kind: 'rooms', rooms: [{ id: 'a1b2c3d4', name: settings.name, state: 'lobby', members: 1, seats: 4 }] },
   {
     kind: 'room',

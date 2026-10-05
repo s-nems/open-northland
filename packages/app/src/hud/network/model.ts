@@ -15,7 +15,8 @@ export interface NetPlayerVote {
   readonly voteInSeconds: number;
   readonly yes: number;
   readonly needed: number;
-  /** False for this client's own row and for a member without a seat. */
+  /** True once the vote is open, for a member with a seat, on another client's row, while this
+   *  client has not voted yet. */
   readonly canVote: boolean;
 }
 

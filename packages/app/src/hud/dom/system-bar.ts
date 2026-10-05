@@ -10,6 +10,20 @@ import { createHudSummary, type HudSummaryDeps } from './summary.js';
 const MENU_MEDALLION_PX = 34;
 const MENU_ART_PX = 29;
 
+/** How the speed segments read beside the player's control. `slowed` dims the pressed segment while
+ *  the game runs below its request (a paced room, a local loop falling short), pressing `pressed`
+ *  instead of the control's speed when set. `held` presses the pause and disables the bar while a
+ *  relayed room waits for a member. The title says why. */
+export type SpeedBarLook =
+  | { readonly kind: 'slowed'; readonly title: string; readonly pressed: RunningGameSpeed | null }
+  | { readonly kind: 'held'; readonly title: string };
+
+export function sameSpeedBarLook(a: SpeedBarLook | null, b: SpeedBarLook | null): boolean {
+  if (a === null || b === null) return a === b;
+  if (a.kind !== b.kind || a.title !== b.title) return false;
+  return a.kind === 'held' || (b.kind === 'slowed' && a.pressed === b.pressed);
+}
+
 export interface HudSystemBarDeps {
   /** Set for a spectator: the seat picker leads the bar, before the seat's counters. */
   readonly observer?: ObserverPickerDeps | undefined;
@@ -24,9 +38,8 @@ export interface HudSystemBarDeps {
 export interface HudSystemBar {
   /** Show the control as it stands; never pushes to the loop. */
   setSpeed(control: GameSpeedControl): void;
-  /** Dim the pressed segment while a relayed room runs below its requested speed; the text names the
-   *  exact speed and the member it is paced for. Null restores the plain look. */
-  setGoverned(text: string | null): void;
+  /** Null restores the plain look. While `held`, a click on the bar does nothing. */
+  setLook(look: SpeedBarLook | null): void;
   /** Show the tick's figures and clock; the same model twice costs nothing. */
   update(model: HudModel): void;
   dispose(): void;
@@ -53,12 +66,16 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   speed.className = 'on-speed';
   speed.setAttribute('role', 'toolbar');
   speed.setAttribute('aria-label', copy.speedLabel);
+  let control: GameSpeedControl | null = null;
+  let look: SpeedBarLook | null = null;
   const segment = (label: string, onClick: () => void): HTMLButtonElement => {
     const button = document.createElement('button');
     button.type = 'button';
     button.setAttribute('aria-pressed', 'false');
     button.setAttribute('aria-label', label);
-    button.addEventListener('click', onClick);
+    button.addEventListener('click', () => {
+      if (look?.kind !== 'held') onClick();
+    });
     speed.append(button);
     return button;
   };
@@ -88,16 +105,31 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   if (picker !== null) bar.append(picker.element);
   bar.append(summary.element, clock, speed, menu);
   plane.append(bar);
+  const showSpeed = (): void => {
+    if (control === null) return;
+    const held = look?.kind === 'held';
+    const paused = held || control.paused;
+    const pressed = look?.kind === 'slowed' && look.pressed !== null ? look.pressed : control.running;
+    pause.setAttribute('aria-pressed', String(paused));
+    for (const [state, button] of running) {
+      button.setAttribute('aria-pressed', String(!paused && pressed === state));
+    }
+    setClass(speed, 'on-speed--slowed', look?.kind === 'slowed');
+    setClass(speed, 'on-speed--held', held);
+    if (held) speed.setAttribute('aria-disabled', 'true');
+    else speed.removeAttribute('aria-disabled');
+    setTitle(speed, look?.title ?? '');
+  };
+
   return {
-    setSpeed: (control) => {
-      pause.setAttribute('aria-pressed', String(control.paused));
-      for (const [state, button] of running) {
-        button.setAttribute('aria-pressed', String(!control.paused && control.running === state));
-      }
+    setSpeed: (next) => {
+      control = next;
+      showSpeed();
     },
-    setGoverned: (text) => {
-      setClass(speed, 'on-speed--governed', text !== null);
-      setTitle(speed, text ?? '');
+    setLook: (next) => {
+      if (sameSpeedBarLook(look, next)) return;
+      look = next;
+      showSpeed();
     },
     update: (model) => {
       picker?.refresh();

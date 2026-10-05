@@ -7,6 +7,7 @@ import {
   RelayState,
 } from '@open-northland/net-client';
 import type {
+  ChatLine,
   GovernedClock,
   RoomSummary,
   RoomView,
@@ -73,6 +74,12 @@ export class RelayClientMirror implements RelayClientView {
   }
   get room(): RoomView | null {
     return this.state.room;
+  }
+  get chat(): readonly ChatLine[] {
+    return this.state.chat;
+  }
+  get relayBuild(): string | null {
+    return this.state.relayBuild;
   }
   get session(): GameSession | null {
     return this.state.session;

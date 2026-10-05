@@ -251,6 +251,7 @@ export function networkScreen(
             worldTitle: (world) => worldTitle(world, mapNames),
           });
           roomHost.replaceChildren(room.element);
+          room.showChat(current.client.chat);
           browser.hidden = true;
           status.textContent = '';
         }
@@ -267,8 +268,11 @@ export function networkScreen(
         current.client.listRooms();
         sync();
         break;
+      case 'chatHistory':
+        room?.showChat(current.client.chat);
+        break;
       case 'chat':
-        room?.observeChat(message.from, message.text);
+        room?.observeChat(message);
         // Another player's line rings, as the original lobby does; our own echo stays silent (a choice:
         // the original does not separate the two).
         if (message.from !== current.client.nick) sound.cue('chat');

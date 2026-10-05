@@ -36,7 +36,7 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   let linkNotice: string | null = null;
   let worldNotice: string | null = null;
 
-  const announce = (text: string): void => feed.append({ from: null, text });
+  const announce = (text: string): void => feed.announce(text);
   const refreshNotice = (): void => feed.notice(linkNotice ?? worldNotice);
   const announceRoom = (room: RoomView): void => {
     const before = new Map(previousRoom?.members.map((member) => [member.nick, member.connected]) ?? []);
@@ -70,9 +70,6 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
           previousClock = message;
           return;
         }
-        case 'chat':
-          feed.append({ from: message.from, text: message.text });
-          return;
         case 'rejected':
           announce(formatMessage(copy.refused, { reason: relayReasonText(message.reason) }));
           return;

@@ -31,6 +31,18 @@ export function gameSpeedSpec(state: GameSpeedState): GameSpeedStateSpec {
   return spec;
 }
 
+/** The running presets by the multiplier each stands for, highest first. */
+const PRESETS_FASTEST_FIRST: readonly { readonly multiplier: number; readonly running: RunningGameSpeed }[] =
+  GAME_SPEED_STATES.flatMap((spec) =>
+    spec.state === 'paused' ? [] : [{ multiplier: spec.tickMultiplier, running: spec.state }],
+  ).sort((a, b) => b.multiplier - a.multiplier);
+
+/** The highest running preset not above `speed`, ×1 below that: what a bar presses for a game that
+ *  runs slower than it was asked to. */
+export function presetAtOrBelow(speed: number): RunningGameSpeed {
+  return PRESETS_FASTEST_FIRST.find((preset) => preset.multiplier <= speed)?.running ?? 'normal';
+}
+
 /** The speed control: the running speed persists across a pause, so unpausing restores the same pace. */
 export interface GameSpeedControl {
   readonly running: RunningGameSpeed;

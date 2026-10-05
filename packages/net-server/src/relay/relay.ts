@@ -8,6 +8,7 @@ import {
   MAX_REASON_LENGTH,
   PROTOCOL_VERSION,
   parseClientMessage,
+  parseRelayBuild,
   type RelayReason,
   type ServerMessage,
 } from '@open-northland/net-protocol';
@@ -32,6 +33,8 @@ export interface RelayOptions {
   readonly log?: RelayLog;
   /** Rooms held at once; `createRoom` is refused past it. */
   readonly maxRooms?: number;
+  /** The build `welcome` names, a printable line of at most `MAX_RELAY_BUILD_LENGTH`; null names none. */
+  readonly build?: string | null;
 }
 
 /** A room with nobody connected is kept this long for reconnects, then dropped. */
@@ -71,12 +74,15 @@ export class Relay {
   private readonly now: () => number;
   private readonly log: RelayLog;
   private readonly maxRooms: number;
+  private readonly build: { readonly build?: string };
   private lastAdvanceAt: number;
 
   constructor(options: RelayOptions = {}) {
     this.now = options.now ?? (() => performance.now());
     this.log = options.log ?? (() => undefined);
     this.maxRooms = options.maxRooms ?? DEFAULT_MAX_ROOMS;
+    const build = options.build ?? null;
+    this.build = build === null ? {} : { build: parseRelayBuild(build, 'build') };
     this.lastAdvanceAt = this.now();
   }
 
@@ -208,7 +214,7 @@ export class Relay {
     const room = this.roomOfToken.get(message.token);
     const member = room?.memberOf(message.token) ?? null;
     client.nick = member?.nick ?? message.nick;
-    client.connection.send({ kind: 'welcome', protocol: PROTOCOL_VERSION, nick: client.nick });
+    this.welcome(client);
     if (room !== undefined && member !== null) {
       client.room = room;
       client.member = member;
@@ -216,6 +222,10 @@ export class Relay {
       this.emptySince.delete(room);
     }
     this.log('hello', { nick: message.nick, rejoined: member !== null });
+  }
+
+  private welcome(client: Client): void {
+    client.connection.send({ kind: 'welcome', protocol: PROTOCOL_VERSION, nick: client.nick, ...this.build });
   }
 
   private dispatch(client: Client, message: ClientMessage): Refusal {
@@ -249,7 +259,7 @@ export class Relay {
         this.enter(client, room, member);
         if (client.nick !== member.nick) {
           client.nick = member.nick;
-          client.connection.send({ kind: 'welcome', protocol: PROTOCOL_VERSION, nick: member.nick });
+          this.welcome(client);
         }
         room.welcome(member);
         return null;

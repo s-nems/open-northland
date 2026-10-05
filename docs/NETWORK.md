@@ -38,11 +38,12 @@ names (a seat index, a nick, a count), and each client words it in its player's 
 The first message on a connection is `hello { protocol, token, nick }`. The `token` is a secret the
 client generated and stored (16 to 128 URL-safe characters). Browser clients keep a separate token
 for each normalized relay origin and path so another relay cannot impersonate them. The token is the
-identity and is never shown to other clients. The `nick` is display only. The relay answers `welcome { protocol, nick }`,
-or `error { reason: { code: "protocolUnsupported", client, relay } }` naming both versions when it
-speaks another, and closes. The shapes of `hello`,
-`welcome` and `error` hold across versions, so a mismatch reads the same on any pair. A connection
-that has not said `hello` within `HELLO_TIMEOUT_MS` (10 s) is closed.
+identity and is never shown to other clients. The `nick` is display only. The relay answers
+`welcome { protocol, nick, build? }`, where `build` is its `RELAY_BUILD` when set (a printable line of
+at most 128 characters), or `error { reason: { code: "protocolUnsupported", client, relay } }` naming
+both versions when it speaks another, and closes. The shapes of `hello`, `welcome` and `error` hold
+across versions, so a mismatch reads the same on any pair. A connection that has not said `hello`
+within `HELLO_TIMEOUT_MS` (10 s) is closed.
 
 A `hello` with a token already connected replaces that connection: the older one gets
 `error { reason: { code: "replaced" } }` and is closed, and its room membership carries over. A token
@@ -488,11 +489,12 @@ every tick, answers pings and snapshot requests, and asks a diverged world's hos
 the sim a frame or two behind the relay's clock (`JITTER_BUFFER_TICKS`) by scaling the time it feeds
 the driver, never by skipping a tick, so a late frame lands inside the buffer. `RelaySocket` keeps
 the connection and reopens it on the same token after a drop; a connection the relay replaced or
-refused stays closed. The desktop and browser app plays through the `?relay=` entry, whose client,
-link and world run in a network worker, the headless test client through an in-memory network. The
-app's client holds `loaded` until the display draws its first frame of the world, and keeps the
-loading screen up until the room's clock runs and nobody is still loading. A
-stalled display thread does not delay the app's acknowledgements: the worker keeps stepping and
+refused stays closed. The client keeps the room's chat as the relay logs it: `chatHistory` replaces
+it on every entry and return, each `chat` appends to it, up to `MAX_CHAT_HISTORY_LINES`. The desktop
+and browser app plays through the `?relay=` entry, whose client, link and world run in a network
+worker, the headless test client through an in-memory network. The app's client holds `loaded` until
+the display draws its first frame of the world, and keeps the loading screen up until the room's
+clock runs and nobody is still loading. A stalled display thread does not delay the app's acknowledgements: the worker keeps stepping and
 acknowledging, and drops the transient events of ticks the display has not taken.
 
 ## Operations

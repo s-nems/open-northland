@@ -586,7 +586,7 @@ carries neither the simulation nor a content directory. It starts on environment
 | `RELAY_PUBLIC_URL` | unset | Public `ws://` or `wss://` address reported by `/healthz` |
 | `RELAY_MAX_ROOMS` | `64` | Maximum rooms |
 | `RELAY_MAX_CONNECTIONS` | `256` | Maximum open WebSocket connections |
-| `RELAY_BUILD` | unset | Build identifier reported by `/healthz`; set by the `RELAY_BUILD` build argument |
+| `RELAY_BUILD` | unset | Build identifier reported by `/healthz` and `welcome` (a printable line, at most 128 characters); set by the `RELAY_BUILD` build argument |
 
 Rooms live in memory; restarting the process ends every match. The relay writes one JSON record
 per log line. TLS termination and deployment configuration belong to the operator.

@@ -1,5 +1,6 @@
 import {
   type BlobUpload,
+  type ChatLine,
   type ClientMessage,
   type LobbyCompatibility,
   type LobbySettings,
@@ -43,6 +44,14 @@ export class RelayLobby {
 
   get room(): RoomView | null {
     return this.state.room;
+  }
+
+  get chat(): readonly ChatLine[] {
+    return this.state.chat;
+  }
+
+  get relayBuild(): string | null {
+    return this.state.relayBuild;
   }
 
   attach(send: (message: ClientMessage) => void): void {

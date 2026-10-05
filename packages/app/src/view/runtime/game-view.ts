@@ -102,6 +102,7 @@ import {
 import { createScriptEffects } from '../script-effects.js';
 import { createScriptMarkers } from '../script-markers.js';
 import { patchStoredSettings, readStoredSettings } from '../settings-store.js';
+import { createShortfallLook } from '../speed-shortfall.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
 import { createUnitControls, type UnitControls } from '../unit-controls/index.js';
@@ -1018,6 +1019,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       profile,
     });
 
+    const shortfallLook = createShortfallLook();
     // This mount owns construction; the loop owns the pinned per-frame order.
     loop = startFrameLoop({
       deps: {
@@ -1058,6 +1060,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       presentation,
       perf,
       netReadout,
+      // A relayed room's pace reaches the bar through the network panel's model instead.
+      ...(sharedClock || netOverlays !== null
+        ? {}
+        : {
+            onSpeedShortfall: (delivered: number | null, requested: number) =>
+              toolPanel.controller.setSpeedLook(shortfallLook(delivered, requested)),
+          }),
       pointer: pointerAt,
       syncViewport: liveSettings.syncViewport,
     });

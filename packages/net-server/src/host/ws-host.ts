@@ -92,7 +92,7 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
   const log = options.log ?? (() => undefined);
   const maxRooms = options.maxRooms ?? DEFAULT_MAX_ROOMS;
   const maxConnections = options.maxConnections ?? DEFAULT_MAX_CONNECTIONS;
-  const relay = new Relay({ log, maxRooms });
+  const relay = new Relay({ log, maxRooms, build: options.build ?? null });
   const startedAt = performance.now();
   const health = (): RelayHealth => ({
     ok: true,

@@ -58,3 +58,5 @@ export const MAX_COMMAND_KIND_LENGTH = 64;
 export const MAX_REASON_LENGTH = 200;
 
 export const MAX_CLIENT_VERSION_LENGTH = 128;
+/** The relay's build identifier in `welcome`. */
+export const MAX_RELAY_BUILD_LENGTH = 128;

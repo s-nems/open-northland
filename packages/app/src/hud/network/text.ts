@@ -1,5 +1,6 @@
 import { TICKS_PER_SECOND } from '@open-northland/sim';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
+import type { SpeedBarLook } from '../dom/system-bar.js';
 import { isHeldStatus, type NetClockModel, type NetPlayerRow, type NetPlayerVote } from './model.js';
 
 /** The governed speed steps by hundredths at most; finer digits would only be noise. */
@@ -79,13 +80,26 @@ export function ownStateText(players: readonly NetPlayerRow[]): string | null {
   return null;
 }
 
-/** The speed segments' tooltip while governed: the exact speed and the member it is paced for. */
-export function governedBarTitle(clock: NetClockModel): string | null {
+/** How the speed segments read for a relayed room: held while it waits for a member, naming who;
+ *  slowed while it is paced for one, naming the exact speed and the member; else plain. */
+export function speedBarLook(clock: NetClockModel, players: readonly NetPlayerRow[]): SpeedBarLook | null {
+  const copy = messages().hud.network;
+  if (clock.held) {
+    const nicks = players.filter((row) => isHeldStatus(row.status)).map((row) => row.nick);
+    return {
+      kind: 'held',
+      title: nicks.length === 0 ? copy.heldTitle : formatMessage(copy.barHeld, { nicks: nicks.join(', ') }),
+    };
+  }
   const governor = clock.governor;
   if (governor === null) return null;
-  return formatMessage(messages().hud.network.barGoverned, {
-    speed: formatRoomSpeed(clock.runningSpeed),
-    requested: formatRoomSpeed(clock.requestedSpeed),
-    nick: governor.nick,
-  });
+  return {
+    kind: 'slowed',
+    title: formatMessage(copy.barGoverned, {
+      speed: formatRoomSpeed(clock.runningSpeed),
+      requested: formatRoomSpeed(clock.requestedSpeed),
+      nick: governor.nick,
+    }),
+    pressed: null,
+  };
 }

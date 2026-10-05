@@ -1,3 +1,4 @@
+import { parseRelayBuild } from '@open-northland/net-protocol';
 import { DEFAULT_MAX_ROOMS } from '../relay/relay.js';
 import { DEFAULT_MAX_CONNECTIONS } from './socket-budget.js';
 
@@ -50,6 +51,12 @@ function urlSetting(env: Environment, name: string): string | null {
   return url.toString();
 }
 
+/** The build clients read in `welcome`, so it must pass their parser. */
+function buildSetting(env: Environment, name: string): string | null {
+  const raw = setting(env, name);
+  return raw === null ? null : parseRelayBuild(raw, name);
+}
+
 export function relayConfigFromEnvironment(env: Environment): RelayConfig {
   return {
     port: integerSetting(env, 'PORT', DEFAULT_PORT, 0, MAX_PORT),
@@ -57,6 +64,6 @@ export function relayConfigFromEnvironment(env: Environment): RelayConfig {
     publicUrl: urlSetting(env, 'RELAY_PUBLIC_URL'),
     maxRooms: integerSetting(env, 'RELAY_MAX_ROOMS', DEFAULT_MAX_ROOMS, 1, Number.MAX_SAFE_INTEGER),
     maxConnections: integerSetting(env, 'RELAY_MAX_CONNECTIONS', DEFAULT_MAX_CONNECTIONS, 1, 65535),
-    build: setting(env, 'RELAY_BUILD'),
+    build: buildSetting(env, 'RELAY_BUILD'),
   };
 }

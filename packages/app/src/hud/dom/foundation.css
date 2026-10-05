@@ -1955,14 +1955,25 @@ body.on-drag-scroll * {
   background: #c9a26222;
   color: var(--text-hi);
 }
-/* A relayed room running below its request: the pressed segment is the speed it really runs at,
-   dimmed and dashed, so it never reads as the request met. */
-.on-hud .on-speed--governed button[aria-pressed="true"] {
+/* A game running below its request (a paced room, a local loop falling short): the pressed segment
+   is the speed it really reaches, dimmed and underlined, so it never reads as the request met. */
+.on-hud .on-speed--slowed button[aria-pressed="true"] {
   background: linear-gradient(#8d7547, #6a5531);
   color: #f4e4bd;
   box-shadow:
     inset 0 1px #fff3,
     inset 0 -2px 0 var(--warning);
+}
+/* A relayed room waiting for a member: the pause is pressed and nothing on the bar answers a click. */
+.on-hud .on-speed--held {
+  opacity: 0.55;
+}
+.on-hud .on-speed--held button {
+  cursor: not-allowed;
+}
+.on-hud .on-speed--held button:hover:not([aria-pressed="true"]) {
+  background: transparent;
+  color: #b9b09a;
 }
 /* The breakdown hangs under its own counters (2 px into the bar's bottom frame), left-aligned so it
    never overhangs the bar's left edge; the invisible bridge above it keeps the hover alive across the

@@ -28,7 +28,7 @@ import {
   parseSeatIndex,
 } from './room.js';
 import { parseSaveOrders } from './save-orders.js';
-import { assertNever, asTimestamp, parseLine, parseNick } from './text.js';
+import { assertNever, asTimestamp, parseLine, parseNick, parseRelayBuild } from './text.js';
 import { BLOB_TYPES, parseBlobBytes, parseStateHash, parseWireCommands, SYNC_DOMAINS } from './wire.js';
 
 const SERVER_KINDS = keysOf<ServerMessage['kind']>({
@@ -82,6 +82,7 @@ export function parseServerMessage(
         kind,
         protocol: asCount(raw.protocol, 'welcome.protocol'),
         nick: parseNick(raw.nick, 'welcome.nick'),
+        ...(raw.build === undefined ? {} : { build: parseRelayBuild(raw.build, 'welcome.build') }),
       };
     case 'rooms':
       return {

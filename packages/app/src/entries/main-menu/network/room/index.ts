@@ -1,4 +1,4 @@
-import { MAX_CHAT_LENGTH, type RoomView } from '@open-northland/net-protocol';
+import { type ChatLine, MAX_CHAT_LENGTH, type RoomView } from '@open-northland/net-protocol';
 import { quietTextField } from '../../../../hud/dom/parts/text-field.js';
 import { formatMessage, messages } from '../../../../i18n/index.js';
 import { memberLoadText } from '../../../../view/net/member-load.js';
@@ -137,11 +137,14 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
       hint.textContent = rejoinable ? copy.inProgress : copy.waiting;
       hint.hidden = permissions.canStart;
     },
-    observeChat(from: string, text: string): void {
-      const row = node('p');
-      row.append(node('strong', '', `${from}: `), document.createTextNode(text));
-      log.append(row);
+    observeChat(line: ChatLine): void {
+      log.append(chatRow(line));
       while (log.childElementCount > CHAT_LOG_LINES) log.firstElementChild?.remove();
+      log.scrollTop = log.scrollHeight;
+    },
+    /** The room's whole log as the relay replays it to a member entering or returning. */
+    showChat(lines: readonly ChatLine[]): void {
+      log.replaceChildren(...lines.slice(-CHAT_LOG_LINES).map(chatRow));
       log.scrollTop = log.scrollHeight;
     },
     rejected(of: string): void {
@@ -158,4 +161,10 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
       element.remove();
     },
   };
+}
+
+function chatRow(line: ChatLine): HTMLElement {
+  const row = node('p');
+  row.append(node('strong', '', `${line.from}: `), document.createTextNode(line.text));
+  return row;
 }

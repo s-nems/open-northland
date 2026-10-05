@@ -6,6 +6,7 @@ import {
   MAX_NICK_LENGTH,
   PROTOCOL_VERSION,
   parseServerMessage,
+  type ServerMessage,
   TICK_MS,
 } from '@open-northland/net-protocol';
 import { HELLO_TIMEOUT_MS, KICK_COUNTDOWN_MS, Relay } from '@open-northland/net-server';
@@ -65,6 +66,20 @@ describe('relay identity', () => {
     expect(first.closed()).toBe('replaced');
     expect(second.last('welcome')).toEqual({ kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania' });
     expect(s.relay.clientCount).toBe(1);
+  });
+
+  it('names its build in the welcome when it was given one, and refuses one no client would parse', () => {
+    const sent: ServerMessage[] = [];
+    const relay = new Relay({ build: 'relay-1' });
+    const handle = relay.connect({ send: (message) => sent.push(message), close: () => undefined });
+    relay.receive(handle, { kind: 'hello', protocol: PROTOCOL_VERSION, token: TOKEN_A, nick: 'Ania' });
+    expect(sent).toContainEqual({
+      kind: 'welcome',
+      protocol: PROTOCOL_VERSION,
+      nick: 'Ania',
+      build: 'relay-1',
+    });
+    expect(() => new Relay({ build: 'two\nlines' })).toThrow(/build/);
   });
 
   it('suffixes a duplicate nick within a room', () => {
