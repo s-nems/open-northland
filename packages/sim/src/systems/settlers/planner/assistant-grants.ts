@@ -1,7 +1,6 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
 import {
   AssistantGrants,
-  Carrying,
   Equipment,
   type EquipmentData,
   EquipOrder,

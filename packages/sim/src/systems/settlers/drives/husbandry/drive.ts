@@ -1,6 +1,5 @@
 import {
   Building,
-  CARRY_CAPACITY,
   DraughtAnimal,
   FarmAnimal,
   JobAssignment,
@@ -41,7 +40,7 @@ import {
 } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { buildingWorkerJobs, recipesByProductOf, stockCapacity } from '../../../stores/index.js';
-import { atOrWalk, startAtomic, startPickup, walkPickupBatch } from '../../atomics/start.js';
+import { startAtomic, walkPickupBatch } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
