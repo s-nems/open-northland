@@ -307,13 +307,11 @@ export function createSettingsPage(opts: {
       if (opts.hud === true) {
         for (const row of rows) {
           const tip = row.dataset.tip;
-          const label = row.querySelector('.main-menu__settings-label');
-          if (tip === undefined || label === null) continue;
-          const help = document.createElement('small');
-          help.className = 'on-settings__help';
-          help.textContent = tip;
-          label.append(help);
-          delete row.dataset.tip;
+          if (tip === undefined) continue;
+          row.classList.remove('main-menu__tip-host');
+          for (const control of row.querySelectorAll('button, input')) {
+            control.setAttribute('aria-description', tip);
+          }
         }
       }
       panel.replaceChildren(...rows);

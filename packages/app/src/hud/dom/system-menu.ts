@@ -42,10 +42,10 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   backdrop.append(plane.element);
   const frame = createHudWindow(plane.element, {
     title: copy.systemMenu,
-    kicker: 'OPEN NORTHLAND',
     subtitle: deps.pauseStopsClock === false ? text.multiplayer : text.paused,
     closeLabel: text.resume,
-    width: 380,
+    width: 300,
+    compact: true,
   });
   frame.element.classList.add('on-system-dialog', 'on-system-menu');
   frame.element.setAttribute('role', 'dialog');

@@ -232,7 +232,6 @@ export const enGame = {
       multiplayer: 'Multiplayer game continues',
       support: 'Technical support',
       back: 'Game menu',
-      settingsHint: 'Make yourself at home',
       restoreTitle: 'Restore settings?',
       restoreMessage: 'This resets every category to its defaults, including your custom key bindings.',
       cancel: 'Cancel',

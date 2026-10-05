@@ -228,7 +228,6 @@ export const plGame = {
       multiplayer: 'Rozgrywka sieciowa trwa dalej',
       support: 'Pomoc techniczna',
       back: 'Menu gry',
-      settingsHint: 'Dostosuj grę do siebie',
       restoreTitle: 'Przywrócić ustawienia?',
       restoreMessage:
         'Przywróci to domyślne ustawienia wszystkich kategorii, w tym własne skróty klawiszowe.',

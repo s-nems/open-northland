@@ -34,11 +34,11 @@ export interface Tooltip {
 }
 
 /** The chip is attached to `document.body` and stays hidden until the first `show`. */
-export function createTooltip(): Tooltip {
+export function createTooltip(opts: { readonly zIndex?: number } = {}): Tooltip {
   const el = document.createElement('div');
   el.style.cssText = [
     'position:fixed',
-    'z-index:2000',
+    `z-index:${opts.zIndex ?? 2000}`,
     'pointer-events:none', // never eat a click meant for the canvas / HUD
     'display:none',
     'padding:2px 8px',

@@ -44,6 +44,8 @@ body.on-drag-scroll * {
   --paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35 0 0 0 0 .28 0 0 0 0 .18 0 0 0 .18 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
   --font-body: "Alegreya Sans", system-ui, sans-serif;
   --font-title: Cinzel, serif;
+  --hud-control-height: 32px;
+  --hud-choice-tile-height: 48px;
 
   position: absolute;
   left: 0;
@@ -355,7 +357,7 @@ body.on-drag-scroll * {
 }
 .on-hud .on-toolrow .on-button {
   flex: 0 0 auto;
-  min-height: 32px;
+  min-height: var(--hud-control-height);
   padding: 5px 4px;
   gap: 4px;
   font-size: 12px;
@@ -7273,22 +7275,33 @@ body.on-drag-scroll * {
   max-width: calc(100% - 32px);
   max-height: calc(100% - 32px);
 }
+.on-hud .on-system-dialog .on-button,
+.on-hud
+  .on-settings
+  :is(
+    .main-menu__settings-tab,
+    .main-menu__seg-btn,
+    .main-menu__settings-key,
+    .main-menu__ghost,
+    .main-menu__dropdown-btn
+  ) {
+  box-sizing: border-box;
+  height: var(--hud-control-height);
+  min-height: var(--hud-control-height);
+  padding: 0 10px;
+  font: 500 13px / 1.2 var(--font-body);
+}
 .on-hud .on-system-menu .on-window__body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 20px;
+  gap: 6px;
+  padding: 12px;
 }
 .on-hud .on-system-menu__action {
   justify-content: flex-start;
-  gap: 12px;
-  min-height: 43px;
-  padding: 10px 14px;
-  font-size: 16px;
+  gap: 8px;
 }
 .on-hud .on-system-menu__resume {
-  min-height: 52px;
-  margin-bottom: 6px;
   background: linear-gradient(#ccb079, #a88850);
   color: var(--ink);
   font-weight: 700;
@@ -7297,6 +7310,10 @@ body.on-drag-scroll * {
 .on-hud .on-system-menu__resume:hover {
   background: linear-gradient(var(--bronze-hi), var(--bronze));
   color: var(--ink);
+}
+.on-hud .on-system-menu__action .on-glyph {
+  width: 18px;
+  height: 18px;
 }
 .on-hud .on-system-menu__resume .on-glyph {
   color: inherit;
@@ -7360,7 +7377,7 @@ body.on-drag-scroll * {
   gap: 10px;
 }
 .on-hud .on-system-settings {
-  height: 680px;
+  height: 500px;
 }
 .on-hud .on-system-settings > .on-window__body {
   display: flex;
@@ -7368,7 +7385,7 @@ body.on-drag-scroll * {
   min-height: 0;
   flex: 1;
   overflow: hidden;
-  padding: 16px;
+  padding: 12px;
 }
 .on-hud .on-settings {
   --u: 0.65px;
@@ -7383,16 +7400,14 @@ body.on-drag-scroll * {
 }
 .on-hud .on-settings .main-menu__settings-body {
   overflow: hidden;
-  gap: 20px;
+  gap: 14px;
 }
 .on-hud .on-settings .main-menu__settings-nav {
-  width: 138px;
+  width: 112px;
   gap: 6px;
 }
 .on-hud .on-settings .main-menu__settings-tab {
-  min-height: 42px;
-  padding: 10px 12px;
-  font: 600 16px / 1.2 var(--font-body);
+  font-weight: 600;
   border-left-width: 2px;
 }
 .on-hud .on-settings .main-menu__settings-tab.is-active {
@@ -7408,8 +7423,9 @@ body.on-drag-scroll * {
   scrollbar-color: var(--bronze-lo) var(--deep);
 }
 .on-hud .on-settings .main-menu__settings-heading {
-  padding: 10px 0;
-  margin: 10px 0 0;
+  flex-shrink: 0;
+  padding: 6px 0;
+  margin: 8px 0 0;
   font: 700 12px / 1.3 var(--font-body);
   color: var(--bronze);
 }
@@ -7417,21 +7433,16 @@ body.on-drag-scroll * {
   margin-top: 0;
 }
 .on-hud .on-settings .main-menu__settings-row {
-  gap: 18px;
-  padding: 13px 0;
+  flex-shrink: 0;
+  gap: 12px;
+  min-height: 42px;
+  padding: 5px 0;
   border-bottom: 1px solid #c9a2621f;
 }
 .on-hud .on-settings .main-menu__settings-label {
   display: block;
   min-width: 0;
-  font: 500 16px / 1.25 var(--font-body);
-}
-.on-hud .on-settings__help {
-  display: block;
-  max-width: 44ch;
-  margin-top: 5px;
-  color: var(--muted);
-  font: 400 12px / 1.35 var(--font-body);
+  font: 500 14px / 1.25 var(--font-body);
 }
 .on-hud .on-settings .main-menu__seg {
   flex-shrink: 0;
@@ -7440,8 +7451,6 @@ body.on-drag-scroll * {
   background: #0003;
 }
 .on-hud .on-settings .main-menu__seg-btn {
-  padding: 8px 10px;
-  font-size: 13px;
   color: var(--muted);
 }
 .on-hud .on-settings .main-menu__seg-btn.is-active {
@@ -7455,14 +7464,15 @@ body.on-drag-scroll * {
 .on-hud .on-settings .main-menu__cursor-themes .main-menu__seg-btn {
   border: 1px solid var(--bronze-lo);
   border-radius: 2px;
-  min-height: 62px;
-  padding: 7px 3px;
+  height: var(--hud-choice-tile-height);
+  min-height: var(--hud-choice-tile-height);
+  padding: 3px;
   text-align: center;
   white-space: normal;
 }
 .on-hud .on-settings .main-menu__settings-slider {
   flex-shrink: 0;
-  width: 230px;
+  width: 200px;
   gap: 12px;
 }
 .on-hud .on-settings .main-menu__settings-range {
@@ -7507,8 +7517,6 @@ body.on-drag-scroll * {
   flex-shrink: 0;
   max-width: 52%;
   min-width: 105px;
-  padding: 8px 10px;
-  font: 500 13px / 1.3 var(--font-body);
   border: 1px solid var(--bronze-lo);
   border-radius: 3px;
   background: #0003;
@@ -7538,15 +7546,28 @@ body.on-drag-scroll * {
   font-size: 12px;
 }
 .on-hud .on-settings .main-menu__ghost {
-  padding: 7px 10px;
   border: 1px solid var(--bronze-lo);
   border-radius: 2px;
   color: var(--muted);
-  font: 500 13px var(--font-body);
 }
 .on-hud .on-settings__back {
   align-self: flex-start;
-  margin-top: 12px;
+  margin-top: 8px;
+}
+.on-hud .on-settings .main-menu__seg:not(.main-menu__cursor-themes) {
+  height: var(--hud-control-height);
+}
+.on-hud .on-settings .main-menu__seg:not(.main-menu__cursor-themes) .main-menu__seg-btn {
+  height: calc(var(--hud-control-height) - 2px);
+  min-height: 0;
+}
+.on-hud
+  .on-settings
+  .main-menu__minimap-frames
+  :is(.main-menu__dropdown-btn-image, .main-menu__dropdown-option-image) {
+  width: 36px;
+  height: 24px;
+  background-size: 120px 120px;
 }
 @container (max-width: 680px) {
   .on-hud .on-settings .main-menu__settings-body {
@@ -7562,9 +7583,6 @@ body.on-drag-scroll * {
     flex: 1;
     text-align: center;
     justify-content: center;
-    min-height: 34px;
-    padding: 7px;
-    font-size: 14px;
   }
   .on-hud .on-settings .main-menu__settings-row {
     align-items: stretch;
