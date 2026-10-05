@@ -1,11 +1,6 @@
 import { type EntitySnapshot, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import {
-  NO_PANEL_HOVER,
-  panelClickAt,
-  panelHoverAt,
-  sameHover,
-} from '../src/hud/details-panel/pointer-intent.js';
+import { NO_PANEL_HOVER, panelHoverAt, sameHover } from '../src/hud/details-panel/pointer-intent.js';
 import { center, panelModelOf, viewOfKind } from './support/details-panel.js';
 
 const wall: EntitySnapshot = {
