@@ -77,12 +77,36 @@ describe('details panel rebuild gate', () => {
     expect(g.derives()).toBe(1);
   });
 
-  it('re-derives for a new snapshot object under the same tick', () => {
+  it('re-derives for a new snapshot object under the same tick once the throttle allows', () => {
     const g = gateOver(group(2));
     g.frame(snapshotOf([]));
+    g.advance(VALUE_GAP_MS);
     g.frame(snapshotOf([]));
 
     expect(g.derives()).toBe(2);
+  });
+
+  it('derives nothing between throttled checks, however many snapshots arrive', () => {
+    const g = gateOver(group(2));
+    g.frame();
+    for (let frame = 0; frame < 10; frame++) g.frame();
+    expect(g.derives()).toBe(1);
+
+    // A check that finds the model unchanged opens a window of its own.
+    g.advance(VALUE_GAP_MS);
+    expect(g.frame()).toBeNull();
+    g.frame();
+    expect(g.derives()).toBe(2);
+  });
+
+  it('keeps the throttle after an answer lands that changes nothing', () => {
+    const g = gateOver(group(2));
+    g.frame(snapshotOf([]), true);
+    g.land(group(2));
+    expect(g.frame()).toBeNull();
+    const after = g.derives();
+    for (let frame = 0; frame < 10; frame++) g.frame();
+    expect(g.derives()).toBe(after);
   });
 
   it('rebuilds a changed selection immediately, values only at the throttle', () => {
@@ -96,7 +120,10 @@ describe('details panel rebuild gate', () => {
     expect(g.frame()).toEqual({ model: group(3), structural: false });
 
     g.show({ kind: 'signpost', entityId: 4 });
-    expect(g.frame()).toEqual({ model: { kind: 'signpost', entityId: 4 }, structural: true });
+    expect(g.frame(snapshotOf([]), true)).toEqual({
+      model: { kind: 'signpost', entityId: 4 },
+      structural: true,
+    });
   });
 
   it('treats another member list as a structural change of a group', () => {
@@ -104,6 +131,7 @@ describe('details panel rebuild gate', () => {
     g.frame();
 
     g.show(group(2, [1, 3]));
+    g.advance(VALUE_GAP_MS);
     expect(g.frame()).toEqual({ model: group(2, [1, 3]), structural: true });
   });
 
@@ -112,6 +140,7 @@ describe('details panel rebuild gate', () => {
     g.frame();
 
     g.show({ kind: 'signpost', entityId: 7 });
+    g.advance(VALUE_GAP_MS);
     expect(g.frame()).toEqual({ model: { kind: 'signpost', entityId: 7 }, structural: true });
   });
 

@@ -58,7 +58,15 @@ export function memberPress(
 interface RosterWell {
   readonly well: FigureWell;
   member: GroupMemberModel;
+  /** The member as its bars and tooltip last showed it; a rebuild skips a well whose member held. */
+  shown: GroupMemberModel | null;
 }
+
+const sameShown = (a: GroupMemberModel, b: GroupMemberModel): boolean =>
+  a.healthPct === b.healthPct &&
+  a.hungerPct === b.hungerPct &&
+  a.name === b.name &&
+  a.kindLabel === b.kindLabel;
 
 /** The selected members as live wells, health and hunger lines under each; past the row cap the grid
  *  scrolls in place. Only the wells in view are painted. */
@@ -95,6 +103,7 @@ export function createMemberRoster(
   let hovered: number | null = null;
   let compact = false;
   let groupRows = 0;
+  let shownCopy: ReturnType<typeof messages>['hud'] | null = null;
 
   const settle = (): void => {
     if (pending === null) return;
@@ -133,7 +142,7 @@ export function createMemberRoster(
       element('i', 'on-roster__bar on-roster__bar--health'),
       element('i', 'on-roster__bar on-roster__bar--hunger'),
     );
-    const entry: RosterWell = { well, member };
+    const entry: RosterWell = { well, member, shown: null };
     onPress(well.node, (event) => press(entry, event));
     well.node.addEventListener('mouseenter', () => {
       hovered = entry.member.id;
@@ -189,7 +198,15 @@ export function createMemberRoster(
         stale = true;
       }
       const hud = messages().hud;
-      for (const { well, member } of order) {
+      // Another language words every tooltip anew.
+      if (hud !== shownCopy) {
+        shownCopy = hud;
+        for (const entry of wells.values()) entry.shown = null;
+      }
+      for (const entry of order) {
+        const { well, member } = entry;
+        if (entry.shown !== null && sameShown(entry.shown, member)) continue;
+        entry.shown = member;
         const { healthPct, hungerPct } = member;
         setClass(well.node, 'on-roster__well--no-health', healthPct === null);
         setClass(well.node, 'on-roster__well--no-hunger', hungerPct === null);

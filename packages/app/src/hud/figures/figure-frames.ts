@@ -37,6 +37,36 @@ const PAGE_GUTTER = 1;
 const LUT_WIDTH = 256;
 const CHANNELS = 4;
 const RGB = 3;
+/** Bytes an indexed pixel keeps: its palette index and its coverage. */
+const INDEXED_BYTES = 2;
+/** Indexed frames kept for recolouring, in bytes; past it the store empties and refills. Reading a frame
+ *  back from its atlas costs several times the recolour itself, and a figure's clip comes round again. */
+const INDEXED_STORE_BYTES = 16 * 1024 * 1024;
+
+/** The frame's palette index and coverage per pixel, read from its atlas RGBA: red carries the index. */
+export function indexedPixels(rgba: Uint8ClampedArray): Uint8Array {
+  const out = new Uint8Array((rgba.length / CHANNELS) * INDEXED_BYTES);
+  for (let px = 0, i = 0; i < rgba.length; px += INDEXED_BYTES, i += CHANNELS) {
+    out[px] = rgba[i] ?? 0;
+    out[px + 1] = rgba[i + 3] ?? 0;
+  }
+  return out;
+}
+
+/** Recolour indexed pixels through an RGB palette into `out` (RGBA, zeroed); an uncovered pixel stays clear.
+ *  The atlas read premultiplies, so a partly covered pixel's index is approximate; the shipped atlases
+ *  carry only full or empty coverage. */
+export function recolourPixels(indexed: Uint8Array, colours: Uint8Array, out: Uint8ClampedArray): void {
+  for (let px = 0, i = 0; px < indexed.length; px += INDEXED_BYTES, i += CHANNELS) {
+    const coverage = indexed[px + 1] ?? 0;
+    if (coverage === 0) continue;
+    const at = (indexed[px] ?? 0) * RGB;
+    out[i] = colours[at] ?? 0;
+    out[i + 1] = colours[at + 1] ?? 0;
+    out[i + 2] = colours[at + 2] ?? 0;
+    out[i + 3] = coverage;
+  }
+}
 
 /** Row-by-row placement of rectangles on a fixed page; `null` once the page cannot take one more. */
 export class ShelfPacker {
@@ -194,63 +224,95 @@ class LutRowColours {
 /**
  * Settler or vehicle frames for 2d canvases. A baked look's frame is its atlas image; an indexed look's
  * frame is recoloured on the CPU through its palette, as the paletted shader does on the GPU, and cached
- * per (frame, palette) on one shared page. Nothing here needs the GPU, so a DOM element can draw the
- * figure the map draws.
+ * per (frame, palette) on one shared page. Every settler rolls its own palette, so each animation step of
+ * each figure is a recolour of its own. Nothing here needs the GPU, so a DOM element can draw the figure
+ * the map draws.
  */
 export class FigureFrames {
   private readonly recoloured = new WeakMap<AtlasFrame, Map<Uint8Array, FigureFrameImage | null>>();
   /** Every frame with a cached recolour, so the cache can be emptied wholesale: a WeakMap cannot be
    *  cleared, but dropping the per-frame maps lets the frames be rebuilt. */
   private readonly cachedFrames = new Set<AtlasFrame>();
+  /** A baked look's frame as one stable image, so a painter can tell an unchanged picture by identity. */
+  private readonly baked = new WeakMap<AtlasFrame, FigureFrameImage>();
+  private readonly indexed = new Map<AtlasFrame, Uint8Array | null>();
+  private indexedBytes = 0;
   private readonly packer = new ShelfPacker(PAGE_SIZE, PAGE_SIZE, PAGE_GUTTER);
   private readonly palettes: FigurePalettes;
   private page: CanvasRenderingContext2D | null | undefined;
+  /** Bumped each time the page is emptied, which invalidates every image on it. */
+  private pageGeneration = 0;
+  private readonly drawImages: (FigureFrameImage | null)[] = [];
 
   constructor(sheet: SpriteSheet | undefined) {
     this.palettes = new FigurePalettes(sheet);
   }
 
-  /** `colours` is the RGB palette the layer reads; undefined draws the atlas as it is. Null when the
-   *  source cannot be drawn (a GPU-only resource). */
-  frame(layer: ResolvedLayer, colours: Uint8Array | undefined): FigureFrameImage | null {
-    const { frame } = layer;
-    const resource: unknown = layer.source.resource;
-    if (!isDrawableResource(resource)) return null;
-    if (colours === undefined) {
-      return { image: resource, x: frame.x, y: frame.y, width: frame.width, height: frame.height };
-    }
-    const cached = this.recoloured.get(frame)?.get(colours);
-    if (cached !== undefined) return cached;
-    // Looked up again: a recolour that fills the page empties the cache.
-    const image = this.recolour(resource, frame, colours);
-    let perFrame = this.recoloured.get(frame);
-    if (perFrame === undefined) {
-      perFrame = new Map();
-      this.recoloured.set(frame, perFrame);
-      this.cachedFrames.add(frame);
-    }
-    perFrame.set(colours, image);
-    return image;
-  }
-
-  /** Draw `item`'s resolved layers with its feet at (`feetX`, `feetY`), `zoom` canvas px per map px, a
-   *  hero glow copy at its own opacity. */
-  draw(
-    ctx: CanvasRenderingContext2D,
+  /**
+   * `item`'s images for `layers` into `out`, one per layer, null for a layer drawn without an image (a
+   * shadow, an undrawable source). A recolour due once `performance.now()` has passed `deadline` stops it:
+   * the answer is false and `out` is incomplete. The same frame and palette answer the same image object.
+   */
+  resolve(
     layers: readonly ResolvedLayer[],
     item: DrawItem,
-    zoom: number,
-    feetX: number,
-    feetY: number,
-  ): void {
+    out: (FigureFrameImage | null)[],
+    deadline = Number.POSITIVE_INFINITY,
+  ): boolean {
+    const page = this.pageGeneration;
+    const done = this.resolveOnce(layers, item, out, deadline);
+    // A recolour that emptied the page took the pixels of the layers resolved before it; on the fresh page
+    // the second pass finds room for the whole figure.
+    if (!done || this.pageGeneration === page) return done;
+    return this.resolveOnce(layers, item, out, deadline);
+  }
+
+  private resolveOnce(
+    layers: readonly ResolvedLayer[],
+    item: DrawItem,
+    out: (FigureFrameImage | null)[],
+    deadline: number,
+  ): boolean {
+    out.length = 0;
     const palettes = this.palettes.of(item);
     for (const layer of layers) {
       const glow =
         layer.glow === undefined || palettes === undefined ? undefined : this.palettes.glow(item, palettes);
       const colours = layerColours(layer, palettes, glow);
-      if (colours === null) continue;
-      const image = this.frame(layer, colours);
-      if (image === null) continue;
+      const resource: unknown = layer.source.resource;
+      if (colours === null || !isDrawableResource(resource)) {
+        out.push(null);
+        continue;
+      }
+      if (colours === undefined) {
+        out.push(this.bakedImage(resource, layer.frame));
+        continue;
+      }
+      const cached = this.recoloured.get(layer.frame)?.get(colours);
+      if (cached !== undefined) {
+        out.push(cached);
+        continue;
+      }
+      if (deadline !== Number.POSITIVE_INFINITY && performance.now() > deadline) return false;
+      out.push(this.recolourCached(resource, layer.frame, colours));
+    }
+    return true;
+  }
+
+  /** Draw `images`, resolved for `layers`, with the feet at (`feetX`, `feetY`), `zoom` canvas px per map
+   *  px, a hero glow copy at its own opacity. */
+  paint(
+    ctx: CanvasRenderingContext2D,
+    layers: readonly ResolvedLayer[],
+    images: readonly (FigureFrameImage | null)[],
+    zoom: number,
+    feetX: number,
+    feetY: number,
+  ): void {
+    for (let index = 0; index < layers.length; index++) {
+      const layer = layers[index];
+      const image = images[index];
+      if (layer === undefined || image === null || image === undefined) continue;
       const s = zoom * layer.scale;
       ctx.imageSmoothingEnabled = layer.source.scaleMode !== 'nearest';
       ctx.globalAlpha = layer.glow ?? 1;
@@ -269,6 +331,45 @@ export class FigureFrames {
     ctx.globalAlpha = 1;
   }
 
+  /** {@link resolve} and {@link paint} at once, without a deadline. */
+  draw(
+    ctx: CanvasRenderingContext2D,
+    layers: readonly ResolvedLayer[],
+    item: DrawItem,
+    zoom: number,
+    feetX: number,
+    feetY: number,
+  ): void {
+    this.resolve(layers, item, this.drawImages);
+    this.paint(ctx, layers, this.drawImages, zoom, feetX, feetY);
+  }
+
+  private bakedImage(resource: DrawableResource, frame: AtlasFrame): FigureFrameImage {
+    let image = this.baked.get(frame);
+    if (image === undefined || image.image !== resource) {
+      image = { image: resource, x: frame.x, y: frame.y, width: frame.width, height: frame.height };
+      this.baked.set(frame, image);
+    }
+    return image;
+  }
+
+  private recolourCached(
+    resource: DrawableResource,
+    frame: AtlasFrame,
+    colours: Uint8Array,
+  ): FigureFrameImage | null {
+    // Looked up again after: a recolour that fills the page empties the cache.
+    const image = this.recolour(resource, frame, colours);
+    let perFrame = this.recoloured.get(frame);
+    if (perFrame === undefined) {
+      perFrame = new Map();
+      this.recoloured.set(frame, perFrame);
+      this.cachedFrames.add(frame);
+    }
+    perFrame.set(colours, image);
+    return image;
+  }
+
   private recolour(
     source: DrawableResource,
     frame: AtlasFrame,
@@ -276,23 +377,10 @@ export class FigureFrames {
   ): FigureFrameImage | null {
     const page = this.readPage();
     if (page === null || frame.width === 0 || frame.height === 0) return null;
-    const scratch = readable2dContext(frame.width, frame.height);
-    if (scratch === null) return null;
-    scratch.drawImage(source, frame.x, frame.y, frame.width, frame.height, 0, 0, frame.width, frame.height);
-    const indexed = scratch.getImageData(0, 0, frame.width, frame.height);
+    const indexed = this.indexedOf(source, frame);
+    if (indexed === null) return null;
     const out = new ImageData(frame.width, frame.height);
-    for (let i = 0; i < indexed.data.length; i += CHANNELS) {
-      // Red carries the palette index, alpha the coverage; an unwritten pixel stays clear. The canvas
-      // round trip premultiplies, so a partly covered pixel's index is approximate; the shipped atlases
-      // carry only full or empty coverage.
-      const coverage = indexed.data[i + 3] ?? 0;
-      if (coverage === 0) continue;
-      const at = (indexed.data[i] ?? 0) * RGB;
-      out.data[i] = colours[at] ?? 0;
-      out.data[i + 1] = colours[at + 1] ?? 0;
-      out.data[i + 2] = colours[at + 2] ?? 0;
-      out.data[i + 3] = coverage;
-    }
+    recolourPixels(indexed, colours, out.data);
     let at = this.packer.place(frame.width, frame.height);
     if (at === null) {
       this.emptyPage(page);
@@ -303,10 +391,31 @@ export class FigureFrames {
     return { image: page.canvas, x: at.x, y: at.y, width: frame.width, height: frame.height };
   }
 
+  /** The frame's indexed pixels, read back from its atlas once and kept while the store has room. */
+  private indexedOf(source: DrawableResource, frame: AtlasFrame): Uint8Array | null {
+    const held = this.indexed.get(frame);
+    if (held !== undefined) return held;
+    const scratch = readable2dContext(frame.width, frame.height);
+    let pixels: Uint8Array | null = null;
+    if (scratch !== null) {
+      scratch.drawImage(source, frame.x, frame.y, frame.width, frame.height, 0, 0, frame.width, frame.height);
+      pixels = indexedPixels(scratch.getImageData(0, 0, frame.width, frame.height).data);
+    }
+    const bytes = pixels?.length ?? 0;
+    if (this.indexedBytes + bytes > INDEXED_STORE_BYTES) {
+      this.indexed.clear();
+      this.indexedBytes = 0;
+    }
+    this.indexed.set(frame, pixels);
+    this.indexedBytes += bytes;
+    return pixels;
+  }
+
   /** Drop every cached recolour with the pixels they point at; the frames are rebuilt on demand. */
   private emptyPage(page: CanvasRenderingContext2D): void {
     for (const frame of this.cachedFrames) this.recoloured.delete(frame);
     this.cachedFrames.clear();
+    this.pageGeneration += 1;
     this.packer.reset();
     page.clearRect(0, 0, PAGE_SIZE, PAGE_SIZE);
   }
