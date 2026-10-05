@@ -1,13 +1,25 @@
-import { BrowserWindow } from 'electron';
+import { join } from 'node:path';
+import { BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent, ipcMain, screen } from 'electron';
+import {
+  FULLSCREEN_CHANGED_CHANNEL,
+  IS_FULLSCREEN_CHANNEL,
+  SET_FULLSCREEN_CHANNEL,
+} from './fullscreen-channels.js';
 import { GAME_URL } from './protocol.js';
 import { isAppUrl } from './protocol-routing.js';
+import { isFullscreenChord, isGameSender, maximizedAfter, setFullScreen } from './window-control.js';
+import { placeWindow, readWindowState, WINDOW_STATE_VERSION, writeWindowState } from './window-state.js';
 
-export function createWindow(): BrowserWindow {
+export function createWindow(statePath: string): BrowserWindow {
+  const state = readWindowState(statePath);
+  const workAreas = screen.getAllDisplays().map((display) => display.workArea);
   const win = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    ...placeWindow(state.bounds, workAreas, screen.getPrimaryDisplay().workArea),
+    show: false,
     backgroundColor: '#1d1a15',
     webPreferences: {
+      // scripts/bundle.mjs emits preload.cjs beside main.cjs.
+      preload: join(__dirname, 'preload.cjs'),
       // The session advances on animation frames even while the game is minimized.
       backgroundThrottling: false,
       // Electron 43 defaults, pinned so a future option edit can't silently regress them.
@@ -16,6 +28,55 @@ export function createWindow(): BrowserWindow {
       nodeIntegration: false,
     },
   });
+  let revealed = false;
+  // A page that fails to load never becomes ready to show, and the window must not stay hidden.
+  const reveal = (): void => {
+    if (revealed) return;
+    revealed = true;
+    if (state.maximized) win.maximize();
+    win.show();
+    if (state.fullscreen) win.setFullScreen(true);
+  };
+  win.once('ready-to-show', reveal);
+  win.webContents.once('did-fail-load', reveal);
+  let maximized = state.maximized;
+  win.on('maximize', () => {
+    maximized = maximizedAfter(maximized, 'maximize', win.isFullScreen());
+  });
+  win.on('unmaximize', () => {
+    maximized = maximizedAfter(maximized, 'unmaximize', win.isFullScreen());
+  });
+  win.on('close', () => {
+    try {
+      writeWindowState(statePath, {
+        version: WINDOW_STATE_VERSION,
+        fullscreen: win.isFullScreen(),
+        maximized,
+        bounds: win.getNormalBounds(),
+      });
+    } catch {
+      // Best effort: a missing or damaged file reopens the first-run window.
+    }
+  });
+
+  const fromGame = (event: IpcMainEvent | IpcMainInvokeEvent): boolean =>
+    isGameSender(event.sender === win.webContents, event.senderFrame?.url);
+  ipcMain.on(IS_FULLSCREEN_CHANNEL, (event) => {
+    event.returnValue = fromGame(event) && win.isFullScreen();
+  });
+  ipcMain.handle(SET_FULLSCREEN_CHANNEL, (event, active: unknown) => {
+    if (!fromGame(event) || typeof active !== 'boolean') return undefined;
+    return setFullScreen(win, active);
+  });
+  win.on('enter-full-screen', () => win.webContents.send(FULLSCREEN_CHANGED_CHANNEL, true));
+  win.on('leave-full-screen', () => win.webContents.send(FULLSCREEN_CHANGED_CHANNEL, false));
+  // macOS also keeps its own Ctrl+Cmd+F from the default View menu.
+  win.webContents.on('before-input-event', (event, input) => {
+    if (!isFullscreenChord(input)) return;
+    event.preventDefault();
+    win.setFullScreen(!win.isFullScreen());
+  });
+
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (event, target) => {
     if (!isAppUrl(target)) event.preventDefault();

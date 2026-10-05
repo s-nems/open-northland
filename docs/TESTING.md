@@ -197,11 +197,12 @@ state match the inline client's on `magiczny_las`.
 
 `npm run test:desktop` builds the app and shell, then launches Electron on `app://` with an isolated
 temporary profile. It checks menu map previews, both sprite URL spellings, and save → relaunch → load
-with the same tick and state hash. It needs converted content including `magiczny_las`, opens a real
-window, and runs locally rather than in CI. `ON_CONTENT_DIR` selects the content tree.
+with the same tick and state hash, and that the window opens fullscreen on a fresh profile, follows the
+settings switch and Alt+Enter, ignores Escape, and reopens in the mode it closed in. It needs converted
+content including `magiczny_las`, opens a real fullscreen window, and runs locally rather than in CI. `ON_CONTENT_DIR` selects the content tree.
 
 This exercises the built shell; installer resource inclusion and visual/audio quality still need
-platform and human checks. Run it after desktop boot/protocol changes or changes to save/load wiring.
+platform and human checks. Run it after desktop boot/protocol, window-mode or save/load wiring changes.
 
 ## Acceptance scenes
 

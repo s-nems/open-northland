@@ -5,19 +5,23 @@ converted content over the `app://` protocol. The root [`AGENTS.md`](../../AGENT
 
 ## Boundaries
 
-- The web app stays shell-agnostic and never imports desktop code; the shell exposes no preload
-  script, no IPC, and no renderer bridge. Saves live in the page's IndexedDB like in a browser.
+- The web app stays shell-agnostic and never imports desktop code. The shell owns its window: it
+  opens fullscreen on a profile's first launch and reopens in the mode, bounds and display it closed
+  with (`src/window-state.ts`). Its preload exposes only `window.desktop.fullscreen` (read, set,
+  subscribe), which the app feature-detects; keep that bridge that narrow, validate every IPC
+  argument and sender, and keep sandbox and context isolation on. Saves live in the page's IndexedDB
+  like in a browser.
 - Serve the app and the content through `app://` as static files: the app root first, then the
   content root, both laid out exactly as the app fetches them. Content and app are read-only
-  resources; the shell's own code writes nothing, and the saves are the page's IndexedDB inside
-  Electron's profile.
+  resources. The shell's own code writes only the window state file in Electron's profile, beside
+  the page's IndexedDB that holds the saves.
 - `src/paths.ts` owns where the two trees are: the packaged app's `resources/app` and
   `resources/content` (the `extraResources` of `electron-builder.yml`), else the checkout's
   `packages/app/dist` and `content/` with `ON_CONTENT_DIR` honoured like Vite does. Do not duplicate
   that choice elsewhere.
 - Keep `main.ts` and `window.ts` free of logic worth a unit test; routing, containment and path
-  rules live in `protocol-routing.ts`, `static-files.ts` and `paths.ts`, which import nothing from
-  `electron`.
+  rules live in `protocol-routing.ts`, `static-files.ts`, `paths.ts`, `window-state.ts` and
+  `window-control.ts`, which import nothing from `electron`.
 
 ## Build and verification
 

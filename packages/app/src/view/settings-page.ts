@@ -1,5 +1,11 @@
 import { type Locale, messages } from '../i18n/index.js';
-import { enterFullscreen, isFullscreen, leaveFullscreen } from './fullscreen.js';
+import {
+  defaultDisplayMode,
+  enterFullscreen,
+  isFullscreen,
+  leaveFullscreen,
+  onFullscreenChange,
+} from './fullscreen.js';
 import { segControl, settingRow, sliderControl, togglePill } from './settings-controls.js';
 import { createControlsTab } from './settings-controls-tab.js';
 import { createSettingsDisplayMode, type DisplayMode } from './settings-display-mode.js';
@@ -312,7 +318,7 @@ export function createSettingsPage(opts: {
     restore.dataset.settingsFocus = 'restore';
     restore.textContent = text.restoreDefaults;
     restore.addEventListener('click', () => {
-      const displayReset = displayMode.reserve('window');
+      const displayReset = displayMode.reserve(defaultDisplayMode());
       const { displayMode: _displayMode, ...defaults } = defaultSettings();
       void opts.settings.update(defaults).then((applied) => {
         if (!applied) {
@@ -336,7 +342,7 @@ export function createSettingsPage(opts: {
     if (!root.isConnected || opts.visible?.() === false) return;
     if (opts.memory.tab === 'graphics') render();
   };
-  document.addEventListener('fullscreenchange', onViewportChange, { signal: scope.signal });
+  onFullscreenChange(onViewportChange, scope.signal);
   window.addEventListener('resize', onViewportChange, { signal: scope.signal });
   scope.signal.addEventListener('abort', () => controls?.disarm());
 

@@ -2,11 +2,47 @@ import { servedByBrowser } from './host.js';
 import { type MenuSettings, persistSettings, readStoredSettings } from './settings-store.js';
 
 /**
- * The window mode of a browser document. A browser grants fullscreen only inside a user gesture and a
- * document never inherits one, so the mode a player chose is gone by the time the next document loads.
+ * The page's window mode. A browser grants fullscreen only inside a user gesture and a document never
+ * inherits one, so the mode a player chose is gone by the time the next document loads.
  */
 
 type DisplayMode = MenuSettings['displayMode'];
+
+/**
+ * The desktop shell's window fullscreen, exposed by its preload. The shell owns the mode and keeps it
+ * across documents and launches; a browser document holds only its own.
+ */
+interface DesktopFullscreen {
+  isActive(): boolean;
+  set(active: boolean): Promise<void>;
+  /** Returns the unsubscribe call. */
+  subscribe(listener: () => void): () => void;
+}
+
+declare global {
+  interface Window {
+    readonly desktop?: { readonly fullscreen: DesktopFullscreen };
+  }
+}
+
+function desktopFullscreen(): DesktopFullscreen | null {
+  return window.desktop?.fullscreen ?? null;
+}
+
+/** The mode a fresh profile starts in: the desktop opens fullscreen, a browser can't without a gesture. */
+export function defaultDisplayMode(): DisplayMode {
+  return desktopFullscreen() !== null ? 'fullscreen' : 'window';
+}
+
+export function onFullscreenChange(listener: () => void, signal: AbortSignal): void {
+  const desktop = desktopFullscreen();
+  if (desktop === null) {
+    document.addEventListener('fullscreenchange', listener, { signal });
+    return;
+  }
+  if (signal.aborted) return;
+  signal.addEventListener('abort', desktop.subscribe(listener), { once: true });
+}
 
 interface KeyboardLock {
   lock(keys: string[]): Promise<void>;
@@ -14,6 +50,8 @@ interface KeyboardLock {
 }
 
 function syncFullscreenEscape(): void {
+  // Escape never leaves a desktop window's fullscreen, so there is nothing to lock.
+  if (desktopFullscreen() !== null) return;
   // Brave exposes the Keyboard API as `null` rather than leaving it out.
   const keyboard = (navigator as Navigator & { keyboard?: KeyboardLock | null }).keyboard;
   if (keyboard === undefined || keyboard === null) return;
@@ -25,24 +63,25 @@ function syncFullscreenEscape(): void {
   }
 }
 
-/**
- * A document whose window mode this module manages. The desktop shell is out of scope: it records a
- * change like any other document, but nothing puts its window back.
- */
+/** A browser document whose window mode this module restores and prompts for. */
 export function fullscreenControllable(): boolean {
   return servedByBrowser() && document.fullscreenEnabled;
 }
 
 export function isFullscreen(): boolean {
-  return document.fullscreenElement !== null;
+  return desktopFullscreen()?.isActive() ?? document.fullscreenElement !== null;
 }
 
 /** A rejected request leaves the window mode untouched, and no caller has anything to recover. */
 export function enterFullscreen(): Promise<void> {
-  return document.documentElement.requestFullscreen().catch(() => undefined);
+  const desktop = desktopFullscreen();
+  const request = desktop !== null ? desktop.set(true) : document.documentElement.requestFullscreen();
+  return request.catch(() => undefined);
 }
 
 export function leaveFullscreen(): Promise<void> {
+  const desktop = desktopFullscreen();
+  if (desktop !== null) return desktop.set(false).catch(() => undefined);
   return isFullscreen() ? document.exitFullscreen().catch(() => undefined) : Promise.resolve();
 }
 
@@ -87,7 +126,7 @@ export function bindDisplayMode(
     alreadyFullscreen: isFullscreen(),
     displayMode: readStoredSettings().displayMode,
   });
-  document.addEventListener('fullscreenchange', syncFullscreenEscape, { signal });
+  onFullscreenChange(syncFullscreenEscape, signal);
   syncFullscreenEscape();
   if (plan === 'ignore') return;
   // Fullscreen also drops during the unloading document cleanup steps, and that exit is the browser
@@ -108,13 +147,9 @@ export function bindDisplayMode(
     },
     { signal },
   );
-  document.addEventListener(
-    'fullscreenchange',
-    () => {
-      if (!unloading) persist(isFullscreen() ? 'fullscreen' : 'window');
-    },
-    { signal },
-  );
+  onFullscreenChange(() => {
+    if (!unloading) persist(isFullscreen() ? 'fullscreen' : 'window');
+  }, signal);
   if (plan === 'restore') armFirstGesture(signal);
 }
 

@@ -18,6 +18,8 @@ await build({
   external: ['electron'],
   sourcemap: true,
   logLevel: 'warning',
-  entryPoints: [join(packageRoot, 'src/main.ts')],
-  outfile: join(packageRoot, 'dist/main.cjs'),
+  // The sandboxed preload can require nothing but `electron`, so it is bundled whole as well.
+  entryPoints: [join(packageRoot, 'src/main.ts'), join(packageRoot, 'src/preload.ts')],
+  outdir: join(packageRoot, 'dist'),
+  outExtension: { '.js': '.cjs' },
 });

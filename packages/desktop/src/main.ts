@@ -1,8 +1,9 @@
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { app, type BrowserWindow } from 'electron';
 import { CONTENT_DIR_ENV, resolveShellRoots } from './paths.js';
 import { handleAppProtocol, registerAppScheme } from './protocol.js';
 import { createWindow } from './window.js';
+import { WINDOW_STATE_FILE } from './window-state.js';
 
 // scripts/bundle.mjs emits main.cjs into dist/.
 const packageRoot = resolve(__dirname, '..');
@@ -26,7 +27,7 @@ if (app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     handleAppProtocol(roots);
-    mainWindow = createWindow();
+    mainWindow = createWindow(join(app.getPath('userData'), WINDOW_STATE_FILE));
   });
 } else {
   app.quit();

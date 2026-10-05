@@ -3,7 +3,7 @@ import { access, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { _electron, type ElectronApplication } from 'playwright';
+import { _electron, type ElectronApplication, type Page } from 'playwright';
 import { test } from 'vitest';
 import { resolveShellRoots } from '../src/paths.js';
 
@@ -17,7 +17,7 @@ const roots = resolveShellRoots({
 const MENU = 'app://game/index.html?lang=eng&sound=off&fullscreen=off';
 const SAVE_NAME = 'Desktop relaunch test';
 
-test('boots app://, lists map previews, and restores a save after relaunch', {
+test('boots app://, lists map previews, and restores a save and the window mode after relaunch', {
   timeout: 240_000,
 }, async () => {
   for (const file of ['ir.json', 'maps-index.json', 'maps/magiczny_las.json', 'bobs']) {
@@ -32,8 +32,42 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
   const profile = await mkdtemp(join(tmpdir(), 'northland-desktop-'));
   let desktop: ElectronApplication | undefined;
   const errors: string[] = [];
+  async function windowFullscreen(): Promise<boolean> {
+    const shell = desktop;
+    if (shell === undefined) throw new Error('Desktop is not running');
+    return shell.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isFullScreen() ?? false);
+  }
+  /** The window and the app's mirror of it agree once a transition has landed. */
+  async function waitForFullscreen(page: Page, expected: boolean): Promise<void> {
+    const deadline = Date.now() + 15_000;
+    for (;;) {
+      const shown = await windowFullscreen();
+      const mirrored = await page.evaluate(() => window.desktop?.fullscreen.isActive() ?? null);
+      if (shown === expected && mirrored === expected) return;
+      if (Date.now() > deadline) {
+        throw new Error(`Window fullscreen ${shown}, app reads ${mirrored}; expected ${expected}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+  /** Synthetic page keys skip the shell's input hook; an input event sent to the window takes it. */
+  async function pressAltEnter(): Promise<void> {
+    await desktop?.evaluate(({ BrowserWindow }) => {
+      const contents = BrowserWindow.getAllWindows()[0]?.webContents;
+      contents?.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['alt'] });
+      contents?.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers: ['alt'] });
+    });
+  }
+  async function relaunch() {
+    await desktop?.close();
+    desktop = undefined;
+    return launch();
+  }
   async function launch() {
-    desktop = await _electron.launch({ args: [packageRoot, `--user-data-dir=${profile}`], timeout: 30_000 });
+    desktop = await _electron.launch({
+      args: [packageRoot, `--user-data-dir=${profile}`, '--mute-audio'],
+      timeout: 30_000,
+    });
     const page = await desktop.firstWindow();
     page.setDefaultTimeout(30_000);
     page.on('pageerror', (error) => errors.push(String(error)));
@@ -49,6 +83,8 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
 
   try {
     let page = await launch();
+    // A fresh profile opens fullscreen.
+    await waitForFullscreen(page, true);
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('button', { name: 'Graphics', exact: true }).click();
     await page.emulateMedia({ forcedColors: 'active' });
@@ -103,13 +139,20 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
     await page.emulateMedia({ forcedColors: 'active' });
     assert.equal(await range.evaluate((input) => getComputedStyle(input).borderTopStyle), 'solid');
     await page.emulateMedia({ forcedColors: 'none' });
+    await page.getByRole('button', { name: 'Window', exact: true }).click();
+    await waitForFullscreen(page, false);
     await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
-    await page.waitForFunction(() => document.fullscreenElement !== null);
+    await waitForFullscreen(page, true);
+    // Escape belongs to the game's menus and never leaves the window's fullscreen.
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Save game', exact: true }).waitFor();
-    assert.equal(await page.evaluate(() => document.fullscreenElement !== null), true);
     await page.keyboard.press('Escape');
-    assert.equal(await page.evaluate(() => document.fullscreenElement !== null), true);
+    // Longer than a native leave transition, which would read fullscreen until it lands.
+    const escapeWatchEnds = Date.now() + 2_000;
+    while (Date.now() < escapeWatchEnds) {
+      assert.equal(await windowFullscreen(), true, 'Escape left fullscreen');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('button', { name: 'Save game', exact: true }).click();
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill(SAVE_NAME);
@@ -121,10 +164,12 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
     await page.locator('[data-nav-id="newGame"]').waitFor();
     assert.equal(await page.evaluate(() => window.__opennorthland === undefined), true);
     assert.deepEqual(errors, []);
+    await pressAltEnter();
+    await waitForFullscreen(page, false);
 
-    await desktop?.close();
-    desktop = undefined;
-    page = await launch();
+    page = await relaunch();
+    // The window reopens in the mode it closed in.
+    await waitForFullscreen(page, false);
     await page.locator('[data-nav-id="load"]').click();
     await page.getByRole('button').filter({ hasText: SAVE_NAME }).dblclick();
     await page.waitForFunction(() => window.__opennorthland !== undefined, null, { timeout: 90_000 });
@@ -138,6 +183,12 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
       };
     });
     assert.deepEqual(restored, { ...saved, paused: true, map: 'magiczny_las' });
+    assert.deepEqual(errors, []);
+
+    await pressAltEnter();
+    await waitForFullscreen(page, true);
+    page = await relaunch();
+    await waitForFullscreen(page, true);
     assert.deepEqual(errors, []);
   } finally {
     try {

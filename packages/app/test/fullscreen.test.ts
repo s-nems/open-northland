@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vitest';
-import { type DisplayModeEnv, displayModePlan } from '../src/view/fullscreen.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  type DisplayModeEnv,
+  defaultDisplayMode,
+  displayModePlan,
+  enterFullscreen,
+  isFullscreen,
+  leaveFullscreen,
+  onFullscreenChange,
+} from '../src/view/fullscreen.js';
 
 /** A browser document opened by a player who last played in a window. */
 const WINDOWED: DisplayModeEnv = {
@@ -31,5 +39,59 @@ describe('displayModePlan', () => {
   it('never touches or records a session that opted out', () => {
     expect(displayModePlan({ ...WINDOWED, optedOut: true })).toBe('ignore');
     expect(displayModePlan({ ...WINDOWED, optedOut: true, displayMode: 'fullscreen' })).toBe('ignore');
+  });
+});
+
+describe('the desktop shell window', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** A stand-in for the desktop preload: the window's mode flips when the shell is asked. */
+  function stubDesktop() {
+    let active = false;
+    const listeners = new Set<() => void>();
+    const fullscreen = {
+      isActive: () => active,
+      set: vi.fn(async (next: boolean) => {
+        active = next;
+        for (const listener of listeners) listener();
+      }),
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    vi.stubGlobal('window', { desktop: { fullscreen } });
+    vi.stubGlobal('document', { fullscreenElement: null });
+    return { fullscreen, listeners };
+  }
+
+  it('reads and drives the shell instead of the document', async () => {
+    const { fullscreen } = stubDesktop();
+    await enterFullscreen();
+    expect(fullscreen.set).toHaveBeenLastCalledWith(true);
+    expect(isFullscreen()).toBe(true);
+    await leaveFullscreen();
+    expect(fullscreen.set).toHaveBeenLastCalledWith(false);
+    expect(isFullscreen()).toBe(false);
+  });
+
+  it('hears every shell change until its signal aborts', async () => {
+    const { listeners } = stubDesktop();
+    const scope = new AbortController();
+    const heard = vi.fn();
+    onFullscreenChange(heard, scope.signal);
+    await enterFullscreen();
+    expect(heard).toHaveBeenCalledTimes(1);
+    scope.abort();
+    expect(listeners.size).toBe(0);
+  });
+
+  it('opens a fresh desktop profile fullscreen and a browser one windowed', () => {
+    stubDesktop();
+    expect(defaultDisplayMode()).toBe('fullscreen');
+    vi.stubGlobal('window', {});
+    expect(defaultDisplayMode()).toBe('window');
   });
 });
