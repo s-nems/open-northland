@@ -1,13 +1,13 @@
 import { isAiPlayer, LostWay, MoveGoal, ownerOf, Position } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { hexDistanceBetween, nodeOfPosition } from '../../../nav/halfcell.js';
+import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { routeRegions } from '../../footprint/index.js';
 import { type NavigationLimit, networkLimitAt, signpostNetwork } from '../../signposts/index.js';
 import type { PlannerPass } from '../planner/pass.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
-import { type SeatDoors, strandedWorkplaceDoor } from './cut-off.js';
+import { nearestNodeTo, type SeatDoors, strandedWorkplaceDoor } from './cut-off.js';
 import { nearestFreeCell } from './spacing.js';
 
 /** How long a computer seat's settler stands lost before it is led back. Not the original's: its
@@ -57,7 +57,7 @@ function homewardTarget(
 ): NodeId | null {
   const home = pass.homeward.of(owner, component);
   if (home.doors.length === 0 || home.doors.some((door) => limit.allowsNode(door))) return null;
-  return nearest(pass.terrain, hx, hy, home.posts) ?? nearest(pass.terrain, hx, hy, home.doors);
+  return nearestNodeTo(pass.terrain, hx, hy, home.posts) ?? nearestNodeTo(pass.terrain, hx, hy, home.doors);
 }
 
 /** One seat's landmarks on one static component: its doors there, and its posts there from which the
@@ -102,18 +102,4 @@ export class HomewardPosts {
       });
     return { doors, posts };
   }
-}
-
-/** The node of `nodes` nearest `(hx, hy)` by hex distance, node id breaking ties. */
-function nearest(terrain: TerrainGraph, hx: number, hy: number, nodes: readonly NodeId[]): NodeId | null {
-  let best: NodeId | null = null;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  for (const node of nodes) {
-    const distance = hexDistanceBetween(hx, hy, terrain.xOf(node), terrain.yOf(node));
-    if (distance < bestDistance || (distance === bestDistance && best !== null && node < best)) {
-      best = node;
-      bestDistance = distance;
-    }
-  }
-  return best;
 }

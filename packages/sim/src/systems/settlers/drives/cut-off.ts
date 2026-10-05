@@ -1,6 +1,7 @@
-import { JobAssignment, LostWay, ownerOf, Person } from '../../../components/index.js';
+import { JobAssignment, LostWay, ownerOf, Person, Position } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { hexDistanceBetween, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
@@ -115,21 +116,44 @@ export function reconcileCutOff(
   jobType: number,
   limit: NavigationLimit | null,
   doors: SeatDoors,
-  /** The cell of the work only the confinement keeps `e` from, or null when none waits. */
+  /** The cell of the work only the confinement keeps `e` from, or null when none waits. A stranding
+   *  always names a node: the workplace door, the nearest seat door, or that work. */
   workBeyondReach?: () => NodeId | null,
 ): void {
   const owner = ownerOf(world, e);
   if (owner === undefined || !world.has(e, Person)) return;
   const marked = world.tryGet(e, LostWay)?.cutOff === true;
   let goal = strandedWorkplaceDoor(world, ctx, terrain, e, limit);
-  let stranded = goal !== null;
-  if (!stranded && hasWorkToReach(ctx, jobType) && limit !== null) {
-    if (noDoorInReach(doors.of(owner), limit)) stranded = true;
-    else {
+  if (goal === null && hasWorkToReach(ctx, jobType) && limit !== null) {
+    const seatDoors = doors.of(owner);
+    if (noDoorInReach(seatDoors, limit)) {
+      // Cut off from the whole seat: the nearest of its doors is where the way back should lead.
+      const p = world.get(e, Position);
+      const { hx, hy } = nodeOfPosition(p.x, p.y);
+      goal = nearestNodeTo(terrain, hx, hy, seatDoors);
+    } else {
       goal = workBeyondReach?.() ?? null;
-      stranded = goal !== null;
     }
   }
-  if (stranded) markCutOff(world, ctx, e, goal);
+  if (goal !== null) markCutOff(world, ctx, e, goal);
   else if (marked) clearLostWay(world, e);
+}
+
+/** The node of `nodes` nearest `(hx, hy)` by hex distance, node id breaking ties; null for none. */
+export function nearestNodeTo(
+  terrain: TerrainGraph,
+  hx: number,
+  hy: number,
+  nodes: readonly NodeId[],
+): NodeId | null {
+  let best: NodeId | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const node of nodes) {
+    const distance = hexDistanceBetween(hx, hy, terrain.xOf(node), terrain.yOf(node));
+    if (distance < bestDistance || (distance === bestDistance && best !== null && node < best)) {
+      best = node;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
