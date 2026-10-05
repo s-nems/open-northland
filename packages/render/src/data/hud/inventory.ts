@@ -76,7 +76,18 @@ function sourceOf(c: Components): Source | null {
   if (!('Stockpile' in c || 'Upgrading' in c || 'Carrying' in c || 'VehicleStock' in c || 'Vehicle' in c))
     return null;
   const p = readPosition(c);
-  const node = p === null ? null : nodeOfPosition(p.x as Fixed, p.y as Fixed);
+  let node = p === null ? null : nodeOfPosition(p.x as Fixed, p.y as Fixed);
+  const vehicle = c.Vehicle as
+    | { moored?: unknown; mooring?: { hx?: unknown; hy?: unknown } | null }
+    | undefined;
+  // A docked hold is reached from the shore, including its passengers and nested vehicles.
+  if (
+    node !== null &&
+    vehicle?.moored === true &&
+    typeof vehicle.mooring?.hx === 'number' &&
+    typeof vehicle.mooring.hy === 'number'
+  )
+    node = { hx: vehicle.mooring.hx, hy: vehicle.mooring.hy };
   return {
     owner: readNumField(c, 'Owner', 'player'),
     node,
@@ -278,4 +289,24 @@ export function empireInventoryOf(
     state.region = network;
   }
   return state.empire.stock;
+}
+
+/** Whether an entity's physical inventory is part of the same total shown in the summary bar. */
+export function empireInventoryContains(
+  snapshot: WorldSnapshot,
+  reach: SignpostReachView | null,
+  id: number,
+): boolean {
+  empireInventoryOf(snapshot, reach);
+  const state = indexesOf(snapshot).get(INVENTORY);
+  const source = state.sources.get(id);
+  const region = state.empire;
+  if (
+    source === undefined ||
+    region === null ||
+    (source.owner !== undefined && source.owner !== region.player)
+  )
+    return false;
+  const node = sourceNode(state, id);
+  return node !== null && region.contains(node, id);
 }

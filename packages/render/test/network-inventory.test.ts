@@ -224,6 +224,54 @@ describe('network and empire inventory', () => {
 });
 
 describe('authoritative network coverage', () => {
+  it('counts a docked hold and nested passengers at the shore, then removes them when it sails', () => {
+    const mirror = new SnapshotMirror();
+    const ship = { moored: true, mooring: { hx: 20, hy: 16 }, carrier: null };
+    const entities = [
+      post(1, 10),
+      source(2, 15, {
+        Owner: owner,
+        Vehicle: ship,
+        VehicleStock: { lines: [[1, { current: 4, reserved: 9, wanted: 12 }]] },
+      }),
+      { id: 3, components: { Owner: owner, Vehicle: { carrier: 2 } } },
+      { id: 4, components: { Owner: owner, Rider: { vehicle: 3 }, Carrying: { goodType: 1, amount: 2 } } },
+    ];
+    const reach: SignpostReachView = {
+      key: 'shore',
+      player: 1,
+      settlements: [],
+      doors: new Map(),
+      posts: [
+        { id: 1, group: 1, area: { minX: 20, maxX: 20, minY: 16, maxY: 16, cells: new Uint8Array([1]) } },
+      ],
+    };
+    mirror.apply(
+      packSnapshotDelta({
+        tick: 0,
+        sequence: 0,
+        rebuild: true,
+        touched: entities.map((e) => touch(e.id, e.components)),
+        removed: [],
+        events: [],
+      }),
+    );
+    expect([...empireInventoryOf(mirror.snapshot(), reach)]).toEqual([[1, 6]]);
+    expect([...(networkInventoryOf(mirror.snapshot(), 1, reach)?.stock ?? [])]).toEqual([[1, 6]]);
+    mirror.apply(
+      packSnapshotDelta({
+        tick: 1,
+        sequence: 1,
+        rebuild: false,
+        touched: [touch(2, { Vehicle: { ...ship, moored: false, mooring: null } })],
+        removed: [],
+        events: [],
+      }),
+    );
+    expect([...empireInventoryOf(mirror.snapshot(), reach)]).toEqual([]);
+    expect([...(networkInventoryOf(mirror.snapshot(), 1, reach)?.stock ?? [])]).toEqual([]);
+    expect(mirror.verifyIndexes()).toEqual([]);
+  });
   it('shares reachable goods between the network and empire, counts overlaps once, and reads building doors', () => {
     const s = snapshot([
       ...opening,

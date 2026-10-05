@@ -1,13 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Owner, Position, ResourceFootprint, Signpost, Stockpile } from '../../src/components/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { reachContains, searchReach } from '../../src/nav/range-search.js';
 import { buildTerrainGraph } from '../../src/nav/terrain/map.js';
 import { Simulation } from '../../src/simulation.js';
+import { layRoad, liftRoad } from '../../src/systems/roads/index.js';
 import { collectTargets, nearestStoreHolding } from '../../src/systems/settlers/targets/index.js';
 import { signpostLinksSystem } from '../../src/systems/signposts/links.js';
 import { createSignpost } from '../../src/systems/signposts/placement.js';
-import { goodsSearchLimitAt } from '../../src/systems/signposts/reach.js';
+import { goodsReachAt, goodsSearchLimitAt } from '../../src/systems/signposts/reach.js';
+import { collectSupplyTally } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap, roughNodeMap } from '../fixtures/terrain.js';
@@ -15,6 +17,52 @@ import { grassNodeMap, roughNodeMap } from '../fixtures/terrain.js';
 const empty = { size: 0, has: () => false };
 
 describe('terrain-aware goods reach', () => {
+  it('refreshes local road resistance without discarding searches after distant road edits', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: roughNodeMap(240, 240, () => 5) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('terrain');
+    const read = () => goodsReachAt(sim.world, sim.content, terrain, 50, 50);
+    const before = read();
+    expect(reachContains(before, 89, 50)).toBe(false);
+    layRoad(sim.world, terrain, [terrain.nodeAt(220, 220)]);
+    expect(read()).toBe(before);
+    const road = Array.from({ length: 40 }, (_, i) => terrain.nodeAt(50 + i, 50));
+    layRoad(sim.world, terrain, road);
+    expect(reachContains(read(), 89, 50)).toBe(true);
+    liftRoad(sim.world, terrain, road);
+    expect(reachContains(read(), 89, 50)).toBe(false);
+  });
+  it('keeps distant post searches through remote block changes and refreshes affected masks', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(500, 150) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('terrain');
+    for (let i = 0; i < 20; i++) {
+      const post = sim.world.create();
+      sim.world.add(post, Owner, { player: 0 });
+      sim.world.add(post, Position, positionOfNode(30 + Math.floor(i / 2) * 45 + (i % 2) * 20, 40));
+      sim.world.add(post, Signpost, { links: [] });
+    }
+    signpostLinksSystem(sim.world, ctxOf(sim));
+    const before = sim.signpostReach(0);
+    const reads = vi.spyOn(terrain, 'resistanceAt');
+    const block = (hx: number, hy: number) => {
+      const id = sim.world.create();
+      sim.world.add(id, Position, positionOfNode(hx, hy));
+      sim.world.add(id, ResourceFootprint, { walk: [{ dx: 0, dy: 0 }], build: [], work: [] });
+      signpostLinksSystem(sim.world, ctxOf(sim));
+      return sim.signpostReach(0);
+    };
+    const remote = block(480, 140);
+    expect(reads).not.toHaveBeenCalled();
+    expect(remote?.posts.map((p) => p.area)).toEqual(before?.posts.map((p) => p.area));
+    expect(remote?.posts[0]?.area).toBe(before?.posts[0]?.area);
+    const local = block(36, 40);
+    const area = local?.posts[0]?.area;
+    if (area === undefined) throw new Error('post coverage');
+    expect(reachContains(area, 36, 40)).toBe(false);
+    expect(local?.posts.at(-1)?.area).toBe(remote?.posts.at(-1)?.area);
+    reads.mockRestore();
+  });
   it('uses the strict 40-node boundary on plain land and a smaller reach on resistant ground', () => {
     const grass = buildTerrainGraph(testContent(), grassNodeMap(120, 100));
     const area = searchReach(grass, empty, 50, 50, 40);
@@ -78,7 +126,16 @@ describe('terrain-aware goods reach', () => {
     sim.world.add(goods, Position, positionOfNode(65, 30));
     sim.world.add(goods, Stockpile, { amounts: new Map([[1, 5]]) });
     const targets = collectTargets(sim.world, ctxOf(sim), terrain);
-    expect(nearestStoreHolding(targets.bands, sim.world, terrain.nodeAt(35, 30), 1, 0)).toBeNull();
+    expect(
+      nearestStoreHolding(
+        targets.bands,
+        sim.world,
+        terrain.nodeAt(35, 30),
+        1,
+        0,
+        collectSupplyTally(sim.world),
+      ),
+    ).toBeNull();
     const cut = sim.signpostReach(0);
     expect(cut?.posts.every((p) => !reachContains(p.area, 50, 30))).toBe(true);
     sim.world.destroy(barrier);
@@ -91,6 +148,7 @@ describe('terrain-aware goods reach', () => {
         terrain.nodeAt(35, 30),
         1,
         0,
+        collectSupplyTally(sim.world),
       ),
     ).toBe(goods);
     expect(sim.world.verifyCaches()).toEqual([]);

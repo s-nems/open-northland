@@ -8,7 +8,7 @@
  */
 
 export { type FrameIndexReader, RENDER_FRAME_INDEX_READERS } from './frame-indexes.js';
-export { empireInventoryOf, networkInventoryOf } from './hud/inventory.js';
+export { empireInventoryContains, empireInventoryOf, networkInventoryOf } from './hud/inventory.js';
 export { stockCounts } from './hud/model.js';
 export { type LightGrade, NEUTRAL_GRADE } from './lighting/types.js';
 export {

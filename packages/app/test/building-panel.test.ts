@@ -1,4 +1,11 @@
-import { type Entity, ONE, type PlayerCommand, type WorkStatus } from '@open-northland/sim';
+import {
+  type Entity,
+  ONE,
+  type PlayerCommand,
+  positionOfNode,
+  type SignpostReachView,
+  type WorkStatus,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_ARCHER, JOB_CARRIER, JOB_COLLECTOR, JOB_TRADER } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
@@ -434,6 +441,45 @@ describe('building panel orders and alerts', () => {
       [GOOD_WOOD, false],
       [GOOD_STONE, true],
     ]);
+  });
+
+  it('does not subtract an uncovered site or courier from covered offsite stock', () => {
+    const site = buildingEntity(1, BUILDING_FARM, {
+      built: 0,
+      components: {
+        Position: positionOfNode(51, 20),
+        UnderConstruction: { labor: 0 },
+        Stockpile: { amounts: [[GOOD_WOOD, 1]] },
+      },
+    });
+    const pile = {
+      id: 2,
+      components: { Position: positionOfNode(49, 20), Stockpile: { amounts: [[GOOD_WOOD, 1]] } },
+    };
+    const courier = {
+      id: 3,
+      components: {
+        Owner: { player: HUMAN_PLAYER },
+        Settler: {},
+        Position: positionOfNode(51, 20),
+        SupplyRun: { site: 1, goodType: GOOD_WOOD, amount: 1 },
+        Carrying: { goodType: GOOD_WOOD, amount: 1 },
+      },
+    };
+    const reach: SignpostReachView = {
+      key: 'boundary',
+      player: HUMAN_PLAYER,
+      settlements: [],
+      doors: new Map([[1, { hx: 51, hy: 20 }]]),
+      posts: [
+        { id: 4, group: 4, area: { minX: 49, maxX: 49, minY: 20, maxY: 20, cells: new Uint8Array([1]) } },
+      ],
+    };
+    const ctx = { ...sandboxCtx(), signpostReach: () => reach };
+    const wood = (entities: Parameters<typeof panelSnapshotOf>[0]) =>
+      buildingModel(entities, 1, ctx).construction?.rows.find((row) => row.goodType === GOOD_WOOD);
+    expect(wood([site, pile, courier])).toMatchObject({ delivered: 1, inbound: 1, unsourced: false });
+    expect(wood([site, courier])).toMatchObject({ delivered: 1, inbound: 1, unsourced: true });
   });
 });
 

@@ -1,5 +1,6 @@
 import type { World } from '../../ecs/world.js';
 import { type BlockOverlay, CountedBlocks, type CountedCells, NodeMask } from '../../nav/block-overlay.js';
+import type { NodeArea } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
 import { type LandscapeBlocks, landscapeBlocks } from '../landscape/view.js';
@@ -19,6 +20,7 @@ interface WalkBlockLayers {
 /** Flipped nodes held for the label reader before the log is dropped and marked lost instead, so a world
  *  that routes without ever asking for labels stays bounded. */
 const FLIP_LOG_CAP = 8192;
+const AREA_BLOCK_SIZE = 32;
 
 /**
  * The walk-block union as a live overlay: a read after any entity write first levels the mask with the
@@ -26,6 +28,24 @@ const FLIP_LOG_CAP = 8192;
  */
 export class WalkBlockMask implements BlockOverlay {
   private revision = 0;
+  private readonly areaVersions: Float64Array;
+  private readonly areaColumns: number;
+
+  /** Independent readers can retain local searches without consuming the route label's flip log. */
+  areaVersion(area: NodeArea): number {
+    this.catchUp();
+    let sum = 0;
+    const minX = Math.max(0, Math.floor(area.minHx / AREA_BLOCK_SIZE));
+    const minY = Math.max(0, Math.floor(area.minHy / AREA_BLOCK_SIZE));
+    const maxX = Math.min(this.areaColumns - 1, Math.floor(area.maxHx / AREA_BLOCK_SIZE));
+    const maxY = Math.min(
+      Math.ceil(this.terrain.height / AREA_BLOCK_SIZE) - 1,
+      Math.floor(area.maxHy / AREA_BLOCK_SIZE),
+    );
+    for (let y = minY; y <= maxY; y++)
+      for (let x = minX; x <= maxX; x++) sum += this.areaVersions[y * this.areaColumns + x] ?? 0;
+    return sum;
+  }
 
   get version(): number {
     this.catchUp();
@@ -48,6 +68,8 @@ export class WalkBlockMask implements BlockOverlay {
     readonly terrain: TerrainGraph,
   ) {
     this.mask = new NodeMask(terrain.nodeCount);
+    this.areaColumns = Math.ceil(terrain.width / AREA_BLOCK_SIZE);
+    this.areaVersions = new Float64Array(this.areaColumns * Math.ceil(terrain.height / AREA_BLOCK_SIZE));
   }
 
   has(node: NodeId): boolean {
@@ -141,18 +163,26 @@ export class WalkBlockMask implements BlockOverlay {
     this.revision++;
     const overlay = layersOverlay(layers);
     for (let node = 0 as NodeId; node < this.terrain.nodeCount; node++)
-      this.mask.set(node, overlay.has(node));
+      if (this.mask.set(node, overlay.has(node)) && this.terrain.isWalkable(node)) this.bumpArea(node);
     this.flips.length = 0;
     this.flipsLost = true;
   }
 
   private logFlip(node: NodeId): void {
     this.revision++;
+    this.bumpArea(node);
     if (this.flips.length >= FLIP_LOG_CAP) {
       this.flips.length = 0;
       this.flipsLost = true;
     }
     if (!this.flipsLost) this.flips.push(node);
+  }
+
+  private bumpArea(node: NodeId): void {
+    const block =
+      Math.floor(this.terrain.yOf(node) / AREA_BLOCK_SIZE) * this.areaColumns +
+      Math.floor(this.terrain.xOf(node) / AREA_BLOCK_SIZE);
+    this.areaVersions[block] = (this.areaVersions[block] ?? 0) + 1;
   }
 
   /** While the mask claims the current mutation version, it must match its layers node for node. */

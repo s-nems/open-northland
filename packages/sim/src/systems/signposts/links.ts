@@ -6,9 +6,8 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import { reachContains, searchReach } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
-import { walkBlockMask } from '../footprint/walk-block-mask.js';
 import { signpostNetworkRevision } from './network.js';
-import { signpostTerrainKey } from './reach.js';
+import { signpostTerrainKey, type TerrainReach, terrainReach } from './terrain-reach.js';
 
 interface Sites {
   readonly generation: number;
@@ -37,16 +36,34 @@ function candidates(world: World, post: Entity): { id: Entity; hx: number; hy: n
     .filter((p) => p.id !== post && world.tryGet(p.id, Owner)?.player === owner);
 }
 
+const reaches = new WeakMap<World, Map<Entity, TerrainReach>>();
+
 function reachableLinks(world: World, terrain: TerrainGraph, post: Entity, content?: ContentSet): Entity[] {
   const nearby = candidates(world, post);
   if (nearby.length === 0) return [];
   const p = world.get(post, Position);
   const origin = nodeOfPosition(p.x, p.y);
-  const blocked =
+  let held = reaches.get(world);
+  if (held === undefined) {
+    held = new Map();
+    reaches.set(world, held);
+  }
+  const found =
     content === undefined
-      ? { size: 0, has: () => false }
-      : walkBlockMask(world, { content }, terrain).levelled();
-  const area = searchReach(terrain, blocked, origin.hx, origin.hy, SIGNPOST_LINK_RANGE_NODES);
+      ? undefined
+      : terrainReach(
+          world,
+          content,
+          terrain,
+          origin.hx,
+          origin.hy,
+          SIGNPOST_LINK_RANGE_NODES,
+          held.get(post),
+        );
+  if (found !== undefined) held.set(post, found);
+  const area =
+    found?.area ??
+    searchReach(terrain, { size: 0, has: () => false }, origin.hx, origin.hy, SIGNPOST_LINK_RANGE_NODES);
   return nearby
     .filter((p) => reachContains(area, p.hx, p.hy))
     .map((p) => p.id)
@@ -77,6 +94,8 @@ export const signpostLinksSystem: System = (world, ctx) => {
   const key = `${signpostTerrainKey(world, ctx.content, terrain)}:${signpostNetworkRevision(world)}`;
   if (layouts.get(world) === key) return;
   const posts = world.canonicalQuery(Signpost, Position, Owner);
+  const held = reaches.get(world);
+  for (const id of held?.keys() ?? []) if (!world.has(id, Signpost)) held?.delete(id);
   const next = new Map(posts.map((p) => [p, new Set<Entity>()]));
   for (const post of posts)
     for (const other of reachableLinks(world, terrain, post, ctx.content)) {

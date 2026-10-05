@@ -1,4 +1,5 @@
 import { buildHud } from '@open-northland/render';
+import { empireInventoryContains } from '@open-northland/render/data';
 import { constructionBillForType, type Fixed, fx, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
   isSettler,
@@ -199,15 +200,25 @@ export function constructionModel(
   ent: SnapshotEntity,
 ): ConstructionModel | null {
   if (ent.components.UnderConstruction === undefined) return null;
-  const activity = constructionActivity(snapshot, ent.id);
   const owner = ownerPlayerOf(ent);
-  const held = owner === undefined ? null : seatStockOf(ctx, snapshot, owner);
+  const reach = owner === undefined ? undefined : ctx.signpostReach?.(owner);
+  const counted = (id: number): boolean =>
+    reach === undefined || empireInventoryContains(snapshot, reach, id);
+  const activity = constructionActivity(snapshot, ent.id, counted);
+  const held =
+    owner === undefined
+      ? null
+      : new Map(buildHud(snapshot, owner, reach).stocks.map((stock) => [stock.goodType, stock.amount]));
+  const siteCounted = counted(ent.id);
   const onSite = liveAmounts(ent.components.Stockpile);
   const rows = constructionBillRows(ctx, def, ent).map((row) => {
     const carried = activity.inbound.get(row.goodType) ?? 0;
     const inbound = Math.min(carried, Math.max(0, row.needed - row.delivered));
-    // The seat's figure counts this site's own pile and the loads carried to it.
-    const elsewhere = (held?.get(row.goodType) ?? 0) - (onSite.get(row.goodType) ?? 0) - carried;
+    // Subtract only physical stock included in the empire total; a site or courier can stand outside it.
+    const elsewhere =
+      (held?.get(row.goodType) ?? 0) -
+      (siteCounted ? (onSite.get(row.goodType) ?? 0) : 0) -
+      (activity.countedCargo.get(row.goodType) ?? 0);
     return {
       ...row,
       inbound,
@@ -217,26 +228,18 @@ export function constructionModel(
   return { rows, status: constructionStatus(ent, rows, activity.hasBuilder) };
 }
 
-/** What `player` holds by good, by the summary bar's rule. */
-function seatStockOf(
-  ctx: UnitPanelModelContext,
-  snapshot: WorldSnapshot,
-  player: number,
-): Map<number, number> {
-  return new Map(
-    buildHud(snapshot, player, ctx.signpostReach?.(player)).stocks.map((stock) => [
-      stock.goodType,
-      stock.amount,
-    ]),
-  );
-}
-
-/** The two live facts the selected site's construction status needs, off its crew and supply runs. */
+/** Construction deliveries and the part of their physical cargo already counted in empire stock. */
 function constructionActivity(
   snapshot: WorldSnapshot,
   siteId: number,
-): { readonly inbound: ReadonlyMap<number, number>; readonly hasBuilder: boolean } {
+  counted: (id: number) => boolean,
+): {
+  readonly inbound: ReadonlyMap<number, number>;
+  readonly countedCargo: ReadonlyMap<number, number>;
+  readonly hasBuilder: boolean;
+} {
   const inbound = new Map<number, number>();
+  const countedCargo = new Map<number, number>();
   const hasBuilder = siteCrewOf(snapshot, siteId).some(isSettler);
   for (const actor of supplyRunsTo(snapshot, siteId)) {
     const run = actor.components.SupplyRun as
@@ -248,8 +251,11 @@ function constructionActivity(
     if (goodType === undefined || amount === undefined || amount <= 0) continue;
     if (!supplyRunIsLive(actor, run, goodType)) continue;
     inbound.set(goodType, (inbound.get(goodType) ?? 0) + amount);
+    const cargo = actor.components.Carrying as { goodType?: unknown; amount?: unknown } | undefined;
+    if (num(cargo?.goodType) === goodType && counted(actor.id))
+      countedCargo.set(goodType, (countedCargo.get(goodType) ?? 0) + (num(cargo?.amount) ?? 0));
   }
-  return { inbound, hasBuilder };
+  return { inbound, countedCargo, hasBuilder };
 }
 
 /** Whether the errand is visibly under way: a SupplyRun outlives its errand until the settler's next

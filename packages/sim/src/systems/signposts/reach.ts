@@ -10,29 +10,23 @@ import type { ChangeFeed } from '../../ecs/change-feed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { TileBuckets } from '../../inspect/tile-buckets.js';
 import type { SpatialGate } from '../../nav/node-circle.js';
-import { type ReachArea, reachContains, reachGate, searchReach } from '../../nav/range-search.js';
+import { type ReachArea, reachContains, reachGate } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { interactionNode } from '../footprint/interaction.js';
-import { walkBlockMask } from '../footprint/walk-block-mask.js';
-import { syncRoadLane } from '../roads/index.js';
 import { type SignpostSite, signpostNetwork, signpostNetworkRevision } from './network.js';
+import { signpostTerrainKey, type TerrainReach, terrainReach } from './terrain-reach.js';
 
 interface ReachCache {
   readonly terrain: TerrainGraph;
   readonly key: string;
-  readonly posts: Map<Entity, ReachArea>;
-  readonly spots: Map<string, ReachArea>;
+  readonly posts: Map<Entity, TerrainReach>;
+  readonly spots: Map<string, TerrainReach>;
   readonly sites: TileBuckets<SignpostSite & { player: number }>;
   readonly groups: Map<number, SpatialGate>;
   readonly limits: Map<string, SpatialGate>;
   readonly views: Map<number, SignpostReachView>;
 }
 const caches = new WeakMap<World, ReachCache>();
-
-export function signpostTerrainKey(world: World, content: ContentSet, terrain: TerrainGraph): string {
-  syncRoadLane(world, terrain);
-  return `${walkBlockMask(world, { content }, terrain).version}:${terrain.mirroredRoadRevision}`;
-}
 
 interface Doors {
   readonly feed: ChangeFeed;
@@ -88,8 +82,8 @@ function cacheOf(world: World, content: ContentSet, terrain: TerrainGraph): Reac
     cache = {
       terrain,
       key,
-      posts: new Map(),
-      spots: new Map(),
+      posts: new Map(cache?.terrain === terrain ? [...cache.posts].filter(([id]) => world.isAlive(id)) : []),
+      spots: cache?.terrain === terrain ? cache.spots : new Map(),
       views: new Map(),
       sites,
       groups: new Map(),
@@ -109,19 +103,11 @@ export function goodsReachAt(
 ): ReachArea {
   const cache = cacheOf(world, content, terrain);
   const key = `${hx}:${hy}`;
-  let area = cache.spots.get(key);
-  if (area === undefined) {
-    area = searchReach(
-      terrain,
-      walkBlockMask(world, { content }, terrain).levelled(),
-      hx,
-      hy,
-      GOODS_SEARCH_RANGE_NODES,
-    );
-    if (cache.spots.size >= 256) cache.spots.clear();
-    cache.spots.set(key, area);
-  }
-  return area;
+  const held = cache.spots.get(key);
+  const found = terrainReach(world, content, terrain, hx, hy, GOODS_SEARCH_RANGE_NODES, held);
+  if (cache.spots.size >= 256 && held === undefined) cache.spots.clear();
+  cache.spots.set(key, found);
+  return found.area;
 }
 
 function postReach(
@@ -133,12 +119,9 @@ function postReach(
   hy: number,
 ): ReachArea {
   const cache = cacheOf(world, content, terrain);
-  let area = cache.posts.get(id);
-  if (area === undefined) {
-    area = goodsReachAt(world, content, terrain, hx, hy);
-    cache.posts.set(id, area);
-  }
-  return area;
+  const found = terrainReach(world, content, terrain, hx, hy, GOODS_SEARCH_RANGE_NODES, cache.posts.get(id));
+  cache.posts.set(id, found);
+  return found.area;
 }
 
 /** Goods are discovered locally or through the connected guides reached by the same local search. */

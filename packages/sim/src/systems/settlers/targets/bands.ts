@@ -54,8 +54,6 @@ export class TargetBands {
     this.stamp = this.generationSum();
   }
 
-  /** Stores {@link storeYieldsGood} would strip of `goodType`, drawn from the cross-tick holder ledger so
-   *  a sync costs the good's holders rather than every stockpile. */
   goodsGate(here: NodeId, owner: number | undefined, gate?: SpatialGate): SpatialGate | undefined {
     return intersectReach(
       gate,
@@ -70,6 +68,8 @@ export class TargetBands {
     );
   }
 
+  /** Stores {@link storeYieldsGood} would strip of `goodType`, drawn from the cross-tick holder ledger so
+   *  a sync costs the good's holders rather than every stockpile. */
   holding(goodType: number): InteractionCellIndex {
     return this.fresh(this.held.holding(goodType));
   }
