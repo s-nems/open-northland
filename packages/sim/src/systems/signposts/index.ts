@@ -7,6 +7,7 @@ export {
   type SignpostSite,
   signpostNetwork,
   signpostNetworkRevision,
+  spotsReaching,
 } from './network.js';
 export {
   canPlaceSignpost,

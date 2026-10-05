@@ -103,11 +103,11 @@ export function markIfPostedOutOfReach(world: World, ctx: SystemContext, e: Enti
 
 /**
  * Mark an idle person lost while its confinement reaches neither its own workplace nor, for a working
- * trade, any door of its seat's buildings, and clear that mark once the way is back in reach.
- * Approximation: the original plans the walk to work anyway and raises the lost note when its guided
- * pathfinder fails; this planner never plans past the gate, so the stranding is read off the gate instead,
- * and so fires for a trade that has no work waiting as well. A seat with no building has no settlement to
- * be cut off from.
+ * trade, any door of its seat's buildings, nor the work `workBeyondReach` names, and clear that mark once
+ * the way is back in reach. Approximation: the original plans the walk to work anyway and raises the lost
+ * note when its guided pathfinder fails; this planner never plans past the gate, so the stranding is read
+ * off the gate instead, and so fires for a trade that has no work waiting as well. A seat with no building
+ * has no settlement to be cut off from.
  */
 export function reconcileCutOff(
   world: World,
@@ -117,6 +117,7 @@ export function reconcileCutOff(
   jobType: number,
   limit: NavigationLimit | null,
   doors: SeatDoors,
+  workBeyondReach?: () => boolean,
 ): void {
   const owner = ownerOf(world, e);
   if (owner === undefined || !world.has(e, Person)) return;
@@ -124,7 +125,7 @@ export function reconcileCutOff(
   const works = hasWorkToReach(ctx, jobType);
   const stranded =
     strandedWorkplaceDoor(world, ctx, terrain, e, limit) !== null ||
-    (works && limit !== null && noDoorInReach(doors.of(owner), limit));
+    (works && limit !== null && (noDoorInReach(doors.of(owner), limit) || workBeyondReach?.() === true));
   if (stranded) markCutOff(world, ctx, e);
   else if (marked) clearLostWay(world, e);
 }

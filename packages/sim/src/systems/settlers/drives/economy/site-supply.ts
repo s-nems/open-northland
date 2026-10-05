@@ -1,10 +1,13 @@
-import { CARRY_CAPACITY } from '../../../../components/index.js';
-import type { Entity } from '../../../../ecs/world.js';
+import { CARRY_CAPACITY, sameSideAs } from '../../../../components/index.js';
+import type { Entity, World } from '../../../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import type { SystemContext } from '../../../context.js';
+import { spotsReaching } from '../../../signposts/index.js';
 import { accessibleStockAmounts, neededConstructionGoods } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
-import { interactionCell, nearestStoreHolding } from '../../targets/index.js';
+import { interactionCell, nearestStoreHolding, type TargetCandidates } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 
 /**
@@ -22,7 +25,7 @@ export function fetchNeededMaterial(
    *  recipe inputs included, which no other fetcher may lift. */
   ownShelf?: Entity,
 ): boolean {
-  return constructionMaterialResolver(plan, spacing, ownShelf).fetch(site);
+  return constructionMaterialResolver(plan, spacing, { ownShelf }).fetch(site);
 }
 
 /** A one-builder resolver: site selection shares one source lookup per good, then consumes the chosen
@@ -30,7 +33,13 @@ export function fetchNeededMaterial(
 export function constructionMaterialResolver(
   plan: PlannerContext,
   spacing: PlannerSpacing,
-  ownShelf?: Entity,
+  options: {
+    ownShelf?: Entity | undefined;
+    /** Only fetch from a source the site lies in reach of: for a site the builder picked within its own
+     *  confinement. A site it holds by order or binding takes its load past the confinement, as the
+     *  delivery's bound sink does. */
+    confined?: SiteSupplyReach | undefined;
+  } = {},
 ): {
   has(site: Entity): boolean;
   fetch(site: Entity): boolean;
@@ -43,6 +52,7 @@ export function constructionMaterialResolver(
     ReadonlyArray<{ readonly goodType: number; readonly amount: number }>
   >();
   const sourceByGood = new Map<number, MaterialSource | null>();
+  const { ownShelf, confined } = options;
   const sourceFor = (goodType: number): MaterialSource | null => {
     const cached = sourceByGood.get(goodType);
     if (cached !== undefined || sourceByGood.has(goodType)) return cached ?? null;
@@ -52,6 +62,25 @@ export function constructionMaterialResolver(
     sourceByGood.set(goodType, source);
     return source;
   };
+  // The nearest source serves every site it can deliver to; a site out of its reach searches again among
+  // the sources that can, which only a split signpost network ever asks for.
+  const liftCellByGood = new Map<number, NodeId>();
+  const deliveringSourceFor = (site: Entity, goodType: number): MaterialSource | null => {
+    const nearest = sourceFor(goodType);
+    const { owner, terrain } = plan;
+    if (nearest === null || confined === undefined || plan.limit === null || owner === undefined)
+      return nearest;
+    const delivers = confined.liftSpots(owner, plan.jobType, site);
+    if (delivers === null) return nearest;
+    let lift = liftCellByGood.get(goodType);
+    if (lift === undefined) {
+      lift = interactionCell(plan.world, plan.ctx, terrain, nearest.source, plan.here);
+      liftCellByGood.set(goodType, lift);
+    }
+    if (delivers(terrain.xOf(lift), terrain.yOf(lift))) return nearest;
+    if (!confined.anySource(owner, plan.jobType, site, goodType)) return null;
+    return materialSource(plan, goodType, (cell) => !delivers(terrain.xOf(cell), terrain.yOf(cell)));
+  };
   const resolve = (site: Entity): FetchableMaterial | null => {
     const cached = bySite.get(site);
     if (cached !== undefined || bySite.has(site)) return cached ?? null;
@@ -60,7 +89,7 @@ export function constructionMaterialResolver(
       needs = neededConstructionGoods(plan.world, plan.ctx, site, plan.supply);
       needsBySite.set(site, needs);
     }
-    const fetch = fetchableMaterial(spacing, site, needs, sourceFor);
+    const fetch = fetchableMaterial(spacing, site, needs, (goodType) => deliveringSourceFor(site, goodType));
     bySite.set(site, fetch);
     return fetch;
   };
@@ -124,10 +153,90 @@ function shelfSource(plan: PlannerContext, shelf: Entity, goodType: number): Mat
   return available > 0 ? { source: shelf, available } : null;
 }
 
-function materialSource(plan: PlannerContext, goodType: number): MaterialSource | null {
+type SpotTest = (hx: number, hy: number) => boolean;
+
+interface SiteLift {
+  readonly spots: SpotTest | null;
+  readonly anyByGood: Map<number, boolean>;
+}
+
+/**
+ * Where a confined builder can lift a load for a construction site and still carry it there: where the
+ * confinement it would carry covers one of the site's work cells. Its own confinement only vouches for the
+ * walk to the source, and with two unlinked signpost groups a site may lie in reach of the builder but not
+ * of the source, which would turn it back at every pickup. Shared by every builder of one seat and trade
+ * for one planner pass, since the answers read only the site, the signpost network and the stores.
+ */
+export class SiteSupplyReach {
+  private readonly bySeat = new Map<number, Map<number, Map<Entity, SiteLift>>>();
+
+  constructor(
+    private readonly world: World,
+    private readonly ctx: SystemContext,
+    private readonly terrain: TerrainGraph,
+    private readonly spacing: PlannerSpacing,
+    private readonly targets: TargetCandidates,
+  ) {}
+
+  /** The spots a load for `site` can be lifted at, or null when nothing confines `owner`'s `jobType`. */
+  liftSpots(owner: number, jobType: number, site: Entity): SpotTest | null {
+    return this.lift(owner, jobType, site).spots;
+  }
+
+  /** Whether some store of `owner`'s side holding `goodType` may stand at such a spot: false proves that
+   *  no source serves the site, so the caller skips a ring sweep of the builder's whole reach. */
+  anySource(owner: number, jobType: number, site: Entity, goodType: number): boolean {
+    const lift = this.lift(owner, jobType, site);
+    let any = lift.anyByGood.get(goodType);
+    if (any === undefined) {
+      const band = this.targets.bands.holding(goodType);
+      const near = this.spotsReaching(owner, jobType, site, band.filedSlack);
+      any = near === null || band.anyFiledIn(near, sameSideAs(this.world, owner));
+      lift.anyByGood.set(goodType, any);
+    }
+    return any;
+  }
+
+  private lift(owner: number, jobType: number, site: Entity): SiteLift {
+    let byJob = this.bySeat.get(owner);
+    if (byJob === undefined) {
+      byJob = new Map();
+      this.bySeat.set(owner, byJob);
+    }
+    let bySite = byJob.get(jobType);
+    if (bySite === undefined) {
+      bySite = new Map();
+      byJob.set(jobType, bySite);
+    }
+    let lift = bySite.get(site);
+    if (lift === undefined) {
+      lift = { spots: this.spotsReaching(owner, jobType, site, 0), anyByGood: new Map() };
+      bySite.set(site, lift);
+    }
+    return lift;
+  }
+
+  private spotsReaching(owner: number, jobType: number, site: Entity, slack: number): SpotTest | null {
+    const { world, ctx, terrain } = this;
+    return spotsReaching(world, ctx.content, terrain, jobType, owner, this.spacing.workCells(site), slack);
+  }
+}
+
+/** The nearest store holding `goodType` within the fetcher's reach, passing over the cells `rejects`
+ *  names. */
+function materialSource(
+  plan: PlannerContext,
+  goodType: number,
+  rejects?: (cell: NodeId) => boolean,
+): MaterialSource | null {
   const { world, ctx, entity: e, here, targets } = plan;
   const band = targets.bands.holding(goodType);
   if (!band.hasCandidates()) return null;
+  const failed = unreachableGoalVeto(world, ctx, e);
+  const avoid =
+    rejects === undefined || failed === undefined
+      ? (rejects ?? failed)
+      : (cell: NodeId) => failed(cell) || rejects(cell);
   const source = nearestStoreHolding(
     targets.bands,
     world,
@@ -136,7 +245,7 @@ function materialSource(plan: PlannerContext, goodType: number): MaterialSource 
     plan.owner,
     plan.supply,
     plan.limit ?? undefined,
-    unreachableGoalVeto(world, ctx, e),
+    avoid,
   );
   if (source === null) return null;
   const stock = accessibleStockAmounts(world, source)?.get(goodType) ?? 0;

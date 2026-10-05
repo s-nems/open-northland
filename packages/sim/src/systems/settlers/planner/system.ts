@@ -6,17 +6,18 @@ import {
   IdleStand,
   inPastimeChat,
   MoveGoal,
+  Position,
   Resting,
   Settler,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { System, SystemContext } from '../../context.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { endChat } from '../../social/index.js';
-import { cutOffCheckDue, reconcileCutOff } from '../drives/cut-off.js';
-import { planAdult, planChild, planShelterRung } from '../drives/ladder.js';
-import { guideLostSettler } from '../drives/lost-guide.js';
+import { cutOffCheckDue } from '../drives/cut-off.js';
+import { checkCutOff, planAdult, planChild, plannerContextOf, planShelterRung } from '../drives/ladder.js';
 import { clearLostWay } from '../lost-way.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
 import { idleBeatOfTick, waitsIdle, wakeIdle } from './idle-replan.js';
@@ -69,9 +70,10 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       ) {
         // Still standing, so it keeps any lost-way mark; the idle tail's seat-reach check keeps its cadence.
         if (world.get(e, IdleStand).standing && cutOffCheckDue(ctx)) {
+          const p = world.get(e, Position);
+          const here = terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
           const limit = navigationLimitFor(world, ctx.content, terrain, e);
-          reconcileCutOff(world, ctx, terrain, e, settler.jobType, limit, pass.seatDoors);
-          guideLostSettler(pass, e, limit);
+          checkCutOff(pass, plannerContextOf(pass, e, settler, settler.jobType, here, limit));
         }
         continue;
       }
@@ -79,12 +81,11 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       pass.idle.settle(world, e);
       if (inPastimeChat(world, e) && tookAction(world, e)) endChat(world, ctx.tick, e); // frees the partner too
     }
-    // A ladder that never reached its idle tail found the settler something, or another system holds it:
-    // either way it no longer stands lost. A chat of either kind is still standing about to the player,
-    // and a jobless adult never gets here, so only an obeyed order lifts its mark. Approximation: a bound
-    // worker re-issuing the one walk its memo just refused clears too, since its sink is exempt from
-    // the veto.
-    if (!pass.idle.reachedTail(e) && !world.has(e, Chat)) clearLostWay(world, e);
+    // A ladder that left the settler busy where it stands, at work or waiting at its post, found its way.
+    // A walk keeps the mark, since it may fail like the last one did; the idle tail and a chat of either
+    // kind are still standing about to the player. A jobless adult never gets here, so only an obeyed order
+    // lifts its mark.
+    if (!pass.idle.reachedTail(e) && !world.has(e, Chat) && !world.has(e, MoveGoal)) clearLostWay(world, e);
   }
 }
 

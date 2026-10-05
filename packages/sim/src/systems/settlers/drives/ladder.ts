@@ -18,6 +18,7 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
+import type { NodeId } from '../../../nav/terrain/index.js';
 import { holdsGround } from '../../conflict/battle-alert.js';
 import { standsAtPost } from '../../conflict/tower-post.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
@@ -25,13 +26,14 @@ import { planWomanHoard } from '../../family/hoard.js';
 import { planChildWander } from '../../family/wander.js';
 import { endMealBreak } from '../../orders/meal-break.js';
 import { isFisherJob, MILITARY_MODE } from '../../readviews/index.js';
-import { navigationLimitFor } from '../../signposts/index.js';
+import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { planTrader } from '../../trade/index.js';
 import { planRider } from '../../vehicles/boarding.js';
 import { abandonCargoRun } from '../../vehicles/cargo.js';
 import { heldOffEconomy } from '../action-owner.js';
+import { jobCanBuild } from '../atomics/start.js';
 import { isInside, stepOut } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
 import { IDLE_REPLAN_PERIOD_TICKS } from '../planner/idle-replan.js';
@@ -41,6 +43,7 @@ import { boundWorkplaceTarget } from '../targets/index.js';
 import { planHomeTopUp } from './at-home.js';
 import { cutOffCheckDue, reconcileCutOff, strandedWorkplaceDoor } from './cut-off.js';
 import {
+  builderWorkBeyondReach,
   planBuilder,
   planCarrierHaul,
   planDelivery,
@@ -215,21 +218,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // member that never gets here, having been answered in place above.
   if (heldOffEconomy(world, e)) return;
 
-  const plan: PlannerContext = {
-    world,
-    ctx,
-    terrain,
-    entity: e,
-    tribe: settler.tribe,
-    jobType,
-    experience: world.get(e, SettlerProgress).experience,
-    owner: ownerOf(world, e),
-    here,
-    targets: pass.targets,
-    supply: pass.supply,
-    limit,
-    gossipCandidates: pass.gossipCandidates,
-  };
+  const plan = plannerContextOf(pass, e, settler, jobType, here, limit);
 
   // A vehicle's crew, above every errand and trade: a cargo hand serves its vehicle's hold and places a
   // unit the hold will not take; any rider walks to the door and steps in when asked. A rider of no hold
@@ -286,6 +275,33 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   planEconomy(plan, pass, settler, load, hx, hy, alert);
 }
 
+/** The economy context of adult `e` of `jobType` standing on `here` under `limit`, for this pass. */
+export function plannerContextOf(
+  pass: PlannerPass,
+  e: Entity,
+  settler: SettlerView,
+  jobType: number,
+  here: NodeId,
+  limit: NavigationLimit | null,
+): PlannerContext {
+  const { world, ctx, terrain } = pass;
+  return {
+    world,
+    ctx,
+    terrain,
+    entity: e,
+    tribe: settler.tribe,
+    jobType,
+    experience: world.get(e, SettlerProgress).experience,
+    owner: ownerOf(world, e),
+    here,
+    targets: pass.targets,
+    supply: pass.supply,
+    limit,
+    gossipCandidates: pass.gossipCandidates,
+  };
+}
+
 /**
  * The trade (economy) ladder for an employed adult, most-specific-first; each rung is documented at its
  * drive. `hx`/`hy` are the settler's half-cell node coordinates, for the drives that read them raw.
@@ -339,7 +355,7 @@ function planEconomy(
     return;
   }
 
-  if (planBuilder(plan, pass.spacing, pass.constructionClaims, pass.repairCrews)) return;
+  if (planBuilder(plan, pass.spacing, pass.constructionClaims, pass.repairCrews, pass.siteSupply)) return;
 
   if (planSiteStaff(plan, pass.spacing, hx, hy)) return;
 
@@ -366,16 +382,32 @@ function standIdle(
 ): void {
   const { world, ctx, terrain, entity: e } = plan;
   pass.idle.stand(e, true);
-  if (cutOffCheckDue(ctx)) {
-    reconcileCutOff(world, ctx, terrain, e, plan.jobType, plan.limit, pass.seatDoors);
-    if (guideLostSettler(pass, e, plan.limit)) return;
-  }
+  if (cutOffCheckDue(ctx) && checkCutOff(pass, plan)) return;
   if (world.has(e, Chat) || staysPut(world, e)) return;
   if (planGraduateWait(world, ctx, terrain, e, plan.here, pass.spacing, plan.limit)) return;
   if (stepOffHomeDoor(world, ctx, terrain, e, plan.here, pass.spacing)) return;
   if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
     planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates, IDLE_REPLAN_PERIOD_TICKS, alert);
   }
+}
+
+/** The standing idler's cut-off check: reconcile its lost mark, a builder's sites included, and lead a lost
+ *  computer settler back. Returns whether it set that walk. */
+export function checkCutOff(pass: PlannerPass, plan: PlannerContext): boolean {
+  const { world, ctx, terrain, entity: e } = plan;
+  reconcileCutOff(
+    world,
+    ctx,
+    terrain,
+    e,
+    plan.jobType,
+    plan.limit,
+    pass.seatDoors,
+    () =>
+      jobCanBuild(ctx.content, plan.jobType) &&
+      builderWorkBeyondReach(plan, pass.spacing, pass.constructionClaims),
+  );
+  return guideLostSettler(pass, e, plan.limit);
 }
 
 /** Stand `e` through its idle beats when it waits inside `building` with no clip of its own running. */

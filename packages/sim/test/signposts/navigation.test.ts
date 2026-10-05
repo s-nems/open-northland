@@ -8,6 +8,7 @@ import {
   Building,
   CARRIER_WALK_RANGE_NODES,
   Chat,
+  CurrentAtomic,
   LostWay,
   MoveGoal,
   Owner,
@@ -147,7 +148,7 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     expect(sim.world.has(a, LostWay)).toBe(true);
   });
 
-  it('ON: a refused order on a worker with work in reach is forgotten at its next re-plan', () => {
+  it('ON: a refused order on a worker with work in reach is forgotten once it sets to work', () => {
     const sim = confinedSim(192);
     sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     const g = makeWoodcutter(sim, 2, 2);
@@ -156,9 +157,12 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     sim.enqueueSetup({ kind: 'moveUnit', entity: g, x: 4 + 2 * WALK_RANGE_NODES, y: 4 });
     sim.step();
     expect(sim.events.current()).toContainEqual({ kind: 'settlerLost', entity: g });
-    for (let t = 0; t < 30 && sim.world.has(g, LostWay); t++) sim.step();
-    expect(sim.world.has(g, LostWay)).toBe(false);
+    for (let t = 0; t < 30 && !sim.world.has(g, MoveGoal); t++) sim.step();
     expect(sim.world.has(g, MoveGoal)).toBe(true); // off to the tree
+    expect(sim.world.has(g, LostWay)).toBe(true); // a walk may fail like the refused one
+    for (let t = 0; t < 300 && sim.world.has(g, LostWay); t++) sim.step();
+    expect(sim.world.has(g, LostWay)).toBe(false);
+    expect(sim.world.tryGet(g, CurrentAtomic)?.effect.kind).toBe('harvest'); // felling the tree
   });
 
   it('ON: a refused order on a settler already on its way is reported but leaves no mark', () => {

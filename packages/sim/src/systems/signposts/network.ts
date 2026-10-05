@@ -300,16 +300,56 @@ function computeNavigationLimit(
   hx: number,
   hy: number,
 ): NavigationLimit | null {
-  // The original routes soldiers, heroes, scouts, hunters and druids over its global walk sectors
-  // instead.
-  if (
+  if (!confinedJob(content, jobType)) return null;
+  return networkLimitAt(world, terrain, player, hx, hy, walkRangeOf(content, jobType));
+}
+
+/**
+ * The spots from which a settler of `jobType` and `player` would be allowed one of `goals`: the reverse of
+ * the confinement it carries standing there, within its walk range of a goal or catching a signpost group
+ * whose posts cover one. A search over many candidate spots tests each with a few distance checks instead
+ * of deriving every spot's confinement. A `slack` widens both ranges and drops the catch's ground test,
+ * so the answer also admits every spot within that many Manhattan nodes of one that qualifies, hex
+ * distance never exceeding Manhattan. Null when nothing confines the job.
+ */
+export function spotsReaching(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  jobType: number | null,
+  player: number,
+  goals: readonly NodeId[],
+  slack = 0,
+): ((hx: number, hy: number) => boolean) | null {
+  if (!signpostNavigationEnabled(world) || !confinedJob(content, jobType)) return null;
+  const range = walkRangeOf(content, jobType);
+  const posts = refreshedMemo(world).byPlayer.get(player) ?? [];
+  const covers = (s: SignpostSite): boolean =>
+    goals.some((goal) => hexDistanceBetween(s.hx, s.hy, terrain.xOf(goal), terrain.yOf(goal)) < range);
+  const groups = new Set(posts.filter(covers).map((s) => s.group));
+  const serving = posts.filter((s) => groups.has(s.group));
+  return (hx, hy) => {
+    for (const goal of goals) {
+      if (hexDistanceBetween(hx, hy, terrain.xOf(goal), terrain.yOf(goal)) <= range + slack) return true;
+    }
+    const here = slack === 0 ? componentAt(terrain, hx, hy) : null;
+    return serving.some(
+      (s) =>
+        hexDistanceBetween(hx, hy, s.hx, s.hy) < range + slack &&
+        (here === null || componentAt(terrain, s.hx, s.hy) === here),
+    );
+  };
+}
+
+/** Whether signposts confine `jobType`. The original routes soldiers, heroes, scouts, hunters and druids
+ *  over its global walk sectors instead. */
+function confinedJob(content: ContentSet, jobType: number | null): boolean {
+  return !(
     isScoutJob(content, jobType) ||
     isFighterJob(content, jobType) ||
     isHunterJob(content, jobType) ||
     isDruidJob(content, jobType)
-  )
-    return null;
-  return networkLimitAt(world, terrain, player, hx, hy, walkRangeOf(content, jobType));
+  );
 }
 
 /** A carrier plans longer legs than any other trade, as in the original. */

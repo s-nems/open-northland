@@ -10,7 +10,12 @@ import { GossipCandidates } from '../../social/index.js';
 import { collectSupplyTally, type SupplyTally } from '../../stores/index.js';
 import { SeatDoors } from '../drives/cut-off.js';
 import { collectHarvestClaims, type HarvestClaims } from '../drives/economy/harvest-claims.js';
-import { ConstructionTaskClaims, RepairCrews, WorkSeatClaims } from '../drives/economy/index.js';
+import {
+  ConstructionTaskClaims,
+  RepairCrews,
+  SiteSupplyReach,
+  WorkSeatClaims,
+} from '../drives/economy/index.js';
 import { collectFarmClaims, type FarmClaims } from '../drives/farming/index.js';
 import { HomewardPosts } from '../drives/lost-guide.js';
 import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../targets/index.js';
@@ -41,6 +46,7 @@ export interface PlannerPass {
   readonly gossipCandidates: GossipCandidates;
   readonly front: BattleFront;
   readonly constructionClaims: ConstructionTaskClaims;
+  readonly siteSupply: SiteSupplyReach;
   readonly repairCrews: RepairCrews;
   readonly seatDoors: SeatDoors;
   readonly homeward: HomewardPosts;
@@ -58,6 +64,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
   const shelters = collectShelters(world, ctx);
   const seatDoors = new SeatDoors(world, ctx, terrain, targets.buildings);
   const supply = collectSupplyTally(world);
+  const spacing = PlannerSpacing.forTick(world, ctx, terrain);
   return {
     world,
     ctx,
@@ -67,7 +74,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     anyHaulable: hasHaulableOutput(world, ctx, world.query(Stockpile, Position)),
     externalFood: new ExternalFoodIndex(world, ctx, terrain, supply),
     externalQuality: new ExternalQualityIndex(world, ctx, terrain, supply),
-    spacing: PlannerSpacing.forTick(world, ctx, terrain),
+    spacing,
     farmClaims: collectFarmClaims(world),
     seatClaims: new WorkSeatClaims((e) => standsThroughPass(world, ctx, shelters, e)),
     supply,
@@ -75,6 +82,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     gossipCandidates: new GossipCandidates(world, ctx.content),
     front,
     constructionClaims: new ConstructionTaskClaims(world, ctx),
+    siteSupply: new SiteSupplyReach(world, ctx, terrain, spacing, targets),
     repairCrews: new RepairCrews(world, ctx, front),
     seatDoors,
     homeward: new HomewardPosts(world, terrain, seatDoors),

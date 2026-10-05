@@ -1,6 +1,7 @@
 import {
   BuildMode,
   Damaged,
+  LostWay,
   ownerOf,
   ownersCompatible,
   Palisade,
@@ -34,20 +35,21 @@ import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { InteractionCellIndex, nearestBuilderSite, unreachableSiteStand } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
+import { cutOffCheckDue } from '../cut-off.js';
 import { claimWorkCell } from '../spacing.js';
 import type { ConstructionTaskClaims } from './construction-task-claims.js';
 import { type RepairCrews, startRepair } from './repair.js';
 import { boundConstructionSite } from './site-staff.js';
-import { constructionMaterialResolver } from './site-supply.js';
+import { constructionMaterialResolver, type SiteSupplyReach } from './site-supply.js';
 
 type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
 
 /**
  * BUILD - mend the nearest damaged building that is safe to reach, else hammer delivered material before
  * fetching more and keep a useful automatic crew assignment stable, otherwise move the builder to the
- * nearest reachable site with material to fetch or delivered labor to install, and with no task anywhere
- * wait beside a site. A road or wall run the player started ({@link BuildMode}) goes before all of that.
- * Walls wait while a building site holds a task the builder can do, a damaged wall goes before a new
+ * nearest reachable site with material it can carry there or delivered labor to install, and with no task
+ * anywhere wait beside a site, unless only its signposts keep it from one. A road or wall run the player
+ * started ({@link BuildMode}) goes before all of that. Walls wait while a building site holds a task the builder can do, a damaged wall goes before a new
  * segment, and road sites wait while a building or a wall site holds one. Player pins and unfinished
  * workplace bindings are strict: their builders stay with that site even while another has work.
  *
@@ -62,6 +64,7 @@ export function planBuilder(
   spacing: PlannerSpacing,
   claims: ConstructionTaskClaims,
   repairs: RepairCrews,
+  supply: SiteSupplyReach,
 ): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
@@ -69,7 +72,9 @@ export function planBuilder(
     dropAssignment(plan, claims);
     return false;
   }
-  const materials = constructionMaterialResolver(plan, spacing);
+  const materials = constructionMaterialResolver(plan, spacing, { confined: supply });
+  // A pinned, bound or run site was chosen past the confinement, so its material is too.
+  const orderedMaterials = (): MaterialResolver => constructionMaterialResolver(plan, spacing);
 
   const assigned = world.tryGet(e, SiteAssignment);
   // A road or wall run outranks the pin and the workplace binding: the player ordered it last.
@@ -98,7 +103,7 @@ export function planBuilder(
     if (repairing && (pinned !== null || repairs.isSafe(locked)) && startRepair(plan, spacing, locked)) {
       return true;
     }
-    const worked = !repairing && workAtSite(plan, spacing, claims, materials, locked);
+    const worked = !repairing && workAtSite(plan, spacing, claims, orderedMaterials(), locked);
     if (!worked) waitAtSite(plan, spacing, locked);
     return true;
   }
@@ -112,20 +117,9 @@ export function planBuilder(
     unreachableGoalVeto(world, ctx, e),
   );
 
-  // A damaged upgrade site is mended before its upgrade goes on, and only by a repair crew, so an
-  // automatic builder never hammers the upgrade of a building still under attack.
-  const standableWithin =
-    (limit: NavigationLimit | null) =>
-    (site: Entity): boolean =>
-      world.has(site, UnderConstruction) &&
-      !needsRepair(world, site) &&
-      constructionSiteAvailableTo(world, site, e) &&
-      !segmentAwaitsClearance(plan, site) &&
-      builderCanReach(plan, spacing, site, limit);
+  const standableWithin = (limit: NavigationLimit | null) => standableSite(plan, spacing, limit);
   const canStandAt = standableWithin(plan.limit);
-  // The pass-memoized work checks run before the reach test, the costlier per site.
-  const hasTask = (site: Entity): boolean =>
-    (claims.hasHammerWork(site) || materials.has(site)) && canStandAt(site);
+  const hasTask = siteHasTask(claims, materials, canStandAt);
   const nearestSite = (
     sites: InteractionCellIndex,
     accepts: (site: Entity) => boolean,
@@ -157,7 +151,7 @@ export function planBuilder(
     if (next !== null) {
       stampAssignment(plan, claims, next, true);
       if (!holdSegment(plan, claims, next)) return false;
-      if (!workAtSite(plan, spacing, claims, materials, next)) waitAtSite(plan, spacing, next);
+      if (!workAtSite(plan, spacing, claims, orderedMaterials(), next)) waitAtSite(plan, spacing, next);
       return true;
     }
     // Nothing of the kind is left to claim: the run is over and normal priorities resume.
@@ -265,24 +259,81 @@ export function planBuilder(
   // already walking in, else the current crew site, else the nearest. A builder has no other trade to
   // fall back to, and one that drifts off with the idle crowd pays the walk back for every delivery.
   // Only a road site with stone on the way is waited at: waiting claims the site, and a claimed site is
-  // one a neighbour's finishing stone cannot pave and a supplied builder must pass over.
-  const staging =
-    nearestInTurn(
-      (candidate) => plan.supply.hasInbound(candidate) && canStandAt(candidate),
-      () => soloSitesAwaitingSupply(plan, 'wall'),
-      () => soloSitesAwaitingSupply(plan, 'road'),
-    ) ??
-    (crewSite !== null && !world.has(crewSite, RoadSite) && canStandAt(crewSite) && inTurn(crewSite)
-      ? crewSite
-      : nearestInTurn(canStandAt, everyWall, () => null));
-  if (staging !== null) {
-    stampAssignment(plan, claims, staging, false);
-    if (!holdSegment(plan, claims, staging)) return false;
-    waitAtSite(plan, spacing, staging);
-    return true;
+  // one a neighbour's finishing stone cannot pave and a supplied builder must pass over. One that only its
+  // signposts keep from work stands lost on the idle tail instead, whose cut-off check tells the player and
+  // lifts the mark once the network reaches the work.
+  if (world.tryGet(e, LostWay)?.cutOff !== true) {
+    const staging =
+      nearestInTurn(
+        (candidate) => plan.supply.hasInbound(candidate) && canStandAt(candidate),
+        () => soloSitesAwaitingSupply(plan, 'wall'),
+        () => soloSitesAwaitingSupply(plan, 'road'),
+      ) ??
+      (crewSite !== null && !world.has(crewSite, RoadSite) && canStandAt(crewSite) && inTurn(crewSite)
+        ? crewSite
+        : nearestInTurn(canStandAt, everyWall, () => null));
+    if (staging !== null && !(cutOffCheckDue(ctx) && builderWorkBeyondReach(plan, spacing, claims))) {
+      stampAssignment(plan, claims, staging, false);
+      if (!holdSegment(plan, claims, staging)) return false;
+      waitAtSite(plan, spacing, staging);
+      return true;
+    }
   }
   dropAssignment(plan, claims);
   return false;
+}
+
+/**
+ * Whether only its signposts keep a builder that found no task from one: some site would give it a task if
+ * no confinement held it, whether the site itself or every source of its material lies out of reach.
+ * Original behavior: the builder plans that walk anyway and stands lost once its guided pathfinder has
+ * failed. Approximation: this planner never plans past the confinement, so the cut-off check asks the
+ * unconfined pick instead, on its cadence.
+ */
+export function builderWorkBeyondReach(
+  plan: PlannerContext,
+  spacing: PlannerSpacing,
+  claims: ConstructionTaskClaims,
+): boolean {
+  if (plan.limit === null) return false;
+  const free: PlannerContext = { ...plan, limit: null };
+  const { world, here, targets, owner } = free;
+  const materials = constructionMaterialResolver(free, spacing);
+  const hasTask = siteHasTask(claims, materials, standableSite(free, spacing, null));
+  const found = (sites: InteractionCellIndex): boolean =>
+    nearestBuilderSite(sites, world, here, owner, undefined, undefined, hasTask) !== null;
+  return (
+    found(targets.constructionSiteCells) ||
+    (claims.wallMayHaveTask(materials.canSource) && found(targets.wallSiteCells)) ||
+    (claims.roadMayHaveTask(materials.canSource, owner) && found(targets.roadSiteCells))
+  );
+}
+
+/** An unfinished site this builder may stand at within `limit`. A damaged upgrade site is mended before its
+ *  upgrade goes on, and only by a repair crew, so an automatic builder never hammers the upgrade of a
+ *  building still under attack. */
+function standableSite(
+  plan: PlannerContext,
+  spacing: PlannerSpacing,
+  limit: NavigationLimit | null,
+): (site: Entity) => boolean {
+  const { world, entity: e } = plan;
+  return (site) =>
+    world.has(site, UnderConstruction) &&
+    !needsRepair(world, site) &&
+    constructionSiteAvailableTo(world, site, e) &&
+    !segmentAwaitsClearance(plan, site) &&
+    builderCanReach(plan, spacing, site, limit);
+}
+
+/** A site with hammering or a material fetch for this builder that it can stand at. The pass-memoized
+ *  work checks run before the reach test, the costlier per site. */
+function siteHasTask(
+  claims: ConstructionTaskClaims,
+  materials: MaterialResolver,
+  canStandAt: (site: Entity) => boolean,
+): (site: Entity) => boolean {
+  return (site) => (claims.hasHammerWork(site) || materials.has(site)) && canStandAt(site);
 }
 
 /** Start a repair swing at the builder's own repair crew's site while it still qualifies, else at the

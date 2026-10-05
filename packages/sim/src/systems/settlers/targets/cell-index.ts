@@ -211,6 +211,28 @@ export class InteractionCellIndex {
     return this.doorList.length > 0 || this.looseList.length > 0;
   }
 
+  /** How far, in Manhattan half-cell nodes, a candidate's interaction cell may lie from the node
+   *  {@link anyFiledIn} tests it at. */
+  get filedSlack(): number {
+    return this.slack;
+  }
+
+  /** Whether a candidate filed at a node `area` admits passes `accept`, unranked: for a caller that would
+   *  otherwise sweep every ring to learn there is none. A door candidate is filed at its door, a loose one
+   *  at its own node, up to {@link filedSlack} from its interaction cell. */
+  anyFiledIn(area: (x: number, y: number) => boolean, accept: (e: Entity) => boolean): boolean {
+    const { terrain } = this;
+    for (const e of this.doorList) {
+      const cell = this.doorCell.get(e);
+      if (cell !== undefined && area(terrain.xOf(cell), terrain.yOf(cell)) && accept(e)) return true;
+    }
+    for (const e of this.looseList) {
+      const node = this.looseNode.get(e);
+      if (node !== undefined && area(terrain.xOf(node), terrain.yOf(node)) && accept(e)) return true;
+    }
+    return false;
+  }
+
   /** A mismatch message per candidate `fresh` keys differently, for a cache verifier. */
   divergence(fresh: InteractionCellIndex): string[] {
     const out: string[] = [];
