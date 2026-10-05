@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it } from 'vitest';
 import { createNetStatusLine } from '../../src/hud/dom/network-status-line.js';
 import { createNetworkWindow } from '../../src/hud/dom/network-window.js';
 import { createHudSystemBar } from '../../src/hud/dom/system-bar.js';
@@ -13,11 +14,20 @@ import type {
 import type { ToolPanelController } from '../../src/hud/tool-panel/index.js';
 import { CHAT_LINGER_MS, mountChatPanel } from '../../src/view/net/chat-panel.js';
 import { mountNetOverlays } from '../../src/view/runtime/net-overlays.js';
-import { asHtml, type FakeElement, FakeInput, installFakeDom } from '../support/fake-dom.js';
 
-/** The network window, its status line, the minimap chat and the speed bar over a fake DOM. */
+/** The network window, its status line, the minimap chat and the speed bar over jsdom. */
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  document.body.replaceChildren();
+});
+
+/** A fresh element under the body, as the HUD's DOM plane. */
+function mountPlane(): HTMLElement {
+  const plane = document.createElement('div');
+  document.body.append(plane);
+  return plane;
+}
 
 const REQUESTED_SPEED = 3;
 const GOVERNED_SPEED = 2;
@@ -71,15 +81,14 @@ function source(first: NetPanelModel = panelModel()): NetPanelSource & { current
 
 const said = (index: number): ChatLine => ({ from: 'Ania', text: `line ${index}`, tick: null });
 
-const textOf = (root: FakeElement, selector: string): string | null => {
-  const node = root.querySelector(selector);
+const textOf = (root: HTMLElement, selector: string): string | null => {
+  const node = root.querySelector<HTMLElement>(selector);
   return node === null || node.hidden ? null : node.textContent;
 };
 
 function mountWindow(feed: NetPanelSource) {
-  const dom = installFakeDom();
-  const plane = dom.plane();
-  const window = createNetworkWindow({ plane: asHtml(plane), source: feed, cue: () => undefined });
+  const plane = mountPlane();
+  const window = createNetworkWindow({ plane, source: feed, cue: () => undefined });
   window.toggle();
   return { plane, window };
 }
@@ -97,6 +106,7 @@ describe('the network window', () => {
     window.refresh();
     expect(textOf(plane, '.on-net-notice')).toBeNull();
     expect(textOf(plane, '.on-net-note--danger')).toBe(CLOSED);
+    window.dispose();
   });
 
   it('appends only the new chat lines and drops the oldest past the cap', () => {
@@ -117,11 +127,12 @@ describe('the network window', () => {
     feed.current = panelModel({ chat: capped, chatVersion: grown.length + 2 });
     window.refresh();
     expect(list?.childElementCount).toBe(CHAT_CAP);
-    expect(list?.children.map((item) => item.textContent)).toEqual([
+    expect([...(list?.children ?? [])].map((item) => item.textContent)).toEqual([
       'Ania:line 2',
       'Ania:line 3',
       'Ania:line 4',
     ]);
+    window.dispose();
   });
 });
 
@@ -133,8 +144,7 @@ const GOVERNED: NetClockModel = {
 
 describe('the net status line', () => {
   it('says the slowed room, a notice over it, a lost link over the world, and nothing while the window is open', () => {
-    const dom = installFakeDom();
-    const plane = dom.plane();
+    const plane = mountPlane();
     const feed = source(panelModel({ clock: GOVERNED }));
     let open = false;
     const line = createNetStatusLine({
@@ -143,7 +153,7 @@ describe('the net status line', () => {
       onOpenPanel: () => undefined,
       cue: () => undefined,
     });
-    plane.append(line.element as unknown as FakeElement);
+    plane.append(line.element);
     line.refresh();
     expect(textOf(plane, '.on-net-slowed')).toContain('Celina');
     expect(plane.querySelector('.on-net-slowed--notice')).toBeNull();
@@ -204,7 +214,6 @@ function fakeController() {
 }
 
 function mountOverlays(feed: NetPanelSource, now: () => number = () => 0) {
-  installFakeDom();
   const { state, controller } = fakeController();
   const overlays = mountNetOverlays({
     source: feed,
@@ -270,11 +279,12 @@ describe('the network window over a hold', () => {
   });
 });
 
-const enter = (): Event => Object.assign(new Event('keydown', { cancelable: true }), { key: 'Enter' });
-const escapeKey = (): Event => Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape' });
+const keydown = (key: string): KeyboardEvent =>
+  new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+const enter = (): KeyboardEvent => keydown('Enter');
+const escapeKey = (): KeyboardEvent => keydown('Escape');
 
 function mountChat(now: () => number = () => 0) {
-  const dom = installFakeDom();
   const chat = mountChatPanel({
     scale: () => 1,
     minimap: () => null,
@@ -282,18 +292,18 @@ function mountChat(now: () => number = () => 0) {
     onSend: () => undefined,
     now,
   });
-  const input = dom.document.body.querySelector('input');
-  const lines = input?.parent?.firstElementChild;
-  if (!(input instanceof FakeInput) || lines === undefined || lines === null) throw new Error('chat input');
-  return { dom, chat, input, lines };
+  const input = document.body.querySelector('input');
+  const lines = input?.parentElement?.firstElementChild;
+  if (input === null || !(lines instanceof HTMLElement)) throw new Error('chat input');
+  return { chat, input, lines };
 }
 
-const lineOpen = (input: FakeInput): boolean => input.style.visibility === 'visible';
+const lineOpen = (input: HTMLInputElement): boolean => input.style.visibility === 'visible';
 
 describe('the minimap chat', () => {
   it('shows a new line, fades after it lingers, and comes back while the line is open', () => {
     let clock = 0;
-    const { dom, chat, input, lines } = mountChat(() => clock);
+    const { chat, input, lines } = mountChat(() => clock);
     chat.refresh([], 0);
     expect(lines.style.opacity).toBe('0');
 
@@ -303,7 +313,7 @@ describe('the minimap chat', () => {
     chat.refresh([said(0)], 1);
     expect(lines.style.opacity).toBe('0');
 
-    dom.document.dispatchEvent(enter());
+    document.dispatchEvent(enter());
     expect([lines.style.opacity, lineOpen(input)]).toEqual(['1', true]);
     input.dispatchEvent(escapeKey());
     expect([lines.style.opacity, lineOpen(input)]).toEqual(['0', false]);
@@ -311,26 +321,26 @@ describe('the minimap chat', () => {
   });
 
   it('opens on Enter only while its log shows; the window’s field is the chat otherwise', () => {
-    const { dom, chat, input } = mountChat();
+    const { chat, input } = mountChat();
     chat.setHidden(true);
     const ignored = enter();
-    dom.document.dispatchEvent(ignored);
+    document.dispatchEvent(ignored);
     expect(ignored.defaultPrevented).toBe(false);
     expect(lineOpen(input)).toBe(false);
 
     chat.setHidden(false);
-    dom.document.dispatchEvent(enter());
+    document.dispatchEvent(enter());
     expect(lineOpen(input)).toBe(true);
-    expect(dom.document.activeElement).toBe(input);
+    expect(document.activeElement).toBe(input);
     chat.dispose();
   });
 
   it('closes a typed line when the window opens over it, as F9 from the line does', () => {
-    const { dom, chat, input } = mountChat();
-    dom.document.dispatchEvent(enter());
+    const { chat, input } = mountChat();
+    document.dispatchEvent(enter());
     input.value = 'half a';
     chat.setHidden(true);
-    expect([lineOpen(input), input.value, dom.document.activeElement === input]).toEqual([false, '', false]);
+    expect([lineOpen(input), input.value, document.activeElement === input]).toEqual([false, '', false]);
     chat.setHidden(false);
     expect(lineOpen(input)).toBe(false);
     chat.dispose();
@@ -339,17 +349,17 @@ describe('the minimap chat', () => {
 
 describe('the speed bar', () => {
   it('refuses its segments while the room is held and takes them again after', () => {
-    const dom = installFakeDom();
-    const plane = dom.plane();
+    const plane = mountPlane();
     const pressed: string[] = [];
-    const bar = createHudSystemBar(asHtml(plane), {
+    const bar = createHudSystemBar(plane, {
       summary: { pack: null, goodIdOf: () => undefined, goodLabel: (id) => id },
       onPauseToggle: () => pressed.push('pause'),
       onSpeed: (running) => pressed.push(running),
       onMenu: () => undefined,
     });
     bar.setSpeed({ running: 'normal', paused: false });
-    const segments = plane.querySelector('.on-speed')?.children ?? [];
+    const speed = plane.querySelector('.on-speed');
+    const segments = speed === null ? [] : [...speed.querySelectorAll<HTMLElement>(':scope > *')];
     expect(segments.length).toBeGreaterThan(1);
 
     bar.setLook({ kind: 'held', title: 'held' });
@@ -364,16 +374,15 @@ describe('the speed bar', () => {
   });
 
   it('hangs a note in its aside and takes it down again', () => {
-    const dom = installFakeDom();
-    const plane = dom.plane();
-    const bar = createHudSystemBar(asHtml(plane), {
+    const plane = mountPlane();
+    const bar = createHudSystemBar(plane, {
       summary: { pack: null, goodIdOf: () => undefined, goodLabel: (id) => id },
       onPauseToggle: () => undefined,
       onSpeed: () => undefined,
       onMenu: () => undefined,
     });
-    const note = dom.document.createElement('button');
-    bar.setAside(asHtml(note));
+    const note = document.createElement('button');
+    bar.setAside(note);
     expect(plane.querySelector('.on-bar__aside')?.firstElementChild).toBe(note);
     bar.setAside(null);
     expect(plane.querySelector('.on-bar__aside')?.childElementCount).toBe(0);

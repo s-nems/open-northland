@@ -40,15 +40,6 @@ export function voteText(vote: NetPlayerVote): string {
     : formatMessage(copy.voteTally, { yes: vote.yes, needed: vote.needed });
 }
 
-/** The held banner's line for each member the clock holds for: who, why, and where the vote stands. */
-export function heldLines(players: readonly NetPlayerRow[]): readonly string[] {
-  return players
-    .filter((row) => isHeldStatus(row.status))
-    .map((row) =>
-      [row.nick, statusText(row), ...(row.vote === null ? [] : [voteText(row.vote)])].join(' · '),
-    );
-}
-
 const selfNick = (players: readonly NetPlayerRow[]): string | null =>
   players.find((row) => row.self)?.nick ?? null;
 

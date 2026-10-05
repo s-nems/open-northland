@@ -5,7 +5,6 @@ import type { NetClockModel, NetPlayerRow } from '../../src/hud/network/model.js
 import { SPARKLINE_H, SPARKLINE_W, sparklineGeometry } from '../../src/hud/network/sparkline.js';
 import {
   formatRoomSpeed,
-  heldLines,
   ownStateText,
   slowedText,
   speedBarLook,
@@ -118,15 +117,6 @@ describe('network panel wording', () => {
       kind: 'held',
       title: formatMessage(copy.barHeld, { nicks: 'Bartek' }),
     });
-  });
-
-  it('lists only the held members on the banner, each with where its vote stands', () => {
-    const lines = heldLines([
-      panelRow('Ania', { self: true }),
-      panelRow('Bartek', { status: 'gone', vote: { voteInSeconds: 48, yes: 0, needed: 1, canVote: true } }),
-      panelRow('Celina', { status: 'catchingUp' }),
-    ]);
-    expect(lines).toEqual([`Bartek · ${copy.status.gone} · ${formatMessage(copy.voteIn, { seconds: 48 })}`]);
   });
 
   it('tells this client when it trails or paces the room', () => {
