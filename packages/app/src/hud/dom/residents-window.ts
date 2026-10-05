@@ -30,6 +30,7 @@ import type { ToolWindow } from '../tool-panel/window-shell.js';
 import type { ChoiceGroup } from './choice-window.js';
 import { GLYPH, RESIDENTS_TOKEN } from './icons.js';
 import { button, element, setAttribute, setHidden, setValue, write } from './parts/dom.js';
+import { type DropdownEntry, type DropdownHandle, dropdownControl } from './parts/dropdown.js';
 import { quietTextField } from './parts/text-field.js';
 import { professionChoices } from './profession-choices.js';
 import { centralWindowPlacer, createHudWindow } from './window.js';
@@ -138,34 +139,47 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   query.placeholder = copy.searchPlaceholder;
   query.setAttribute('aria-label', copy.searchLabel);
   quietTextField(query);
-  const selectField = (caption: string): HTMLSelectElement => {
-    const field = element('label', 'on-res-field', `<span></span><select></select>`);
-    const [text, select] = [field.querySelector('span'), field.querySelector('select')];
-    if (text === null || select === null) throw new Error('residents: select field');
+  // The caption sits in the dropdown's own field, so the list opens under both.
+  const selectField = (caption: string, onPick: (key: string) => void): DropdownHandle<string> => {
+    const dropdown = dropdownControl<string>({
+      label: caption,
+      className: 'on-res-select',
+      entries: [],
+      active: '',
+      onPick,
+    });
+    dropdown.root.classList.add('on-res-field');
+    const text = element('span', '');
     text.textContent = caption;
-    find.append(field);
-    return select;
+    dropdown.root.prepend(text);
+    find.append(dropdown.root);
+    return dropdown;
   };
   find.append(search);
-  const professionSelect = selectField(copy.job);
-  const canBecomeSelect = selectField(copy.canBecome);
+  const professionSelect = selectField(copy.job, (key) => {
+    setFilters({ ...state.filters, profession: key });
+  });
+  const canBecomeSelect = selectField(copy.canBecome, (key) => {
+    setFilters({
+      ...state.filters,
+      canBecome: deps.trades.find((trade) => tradePickKey(trade.pick) === key)?.pick ?? null,
+    });
+  });
   const professionGroups = professionChoices(
     pickerEntries(),
     () => true,
     () => true,
   );
-  const optionGroups = (groups: readonly ChoiceGroup[]): HTMLOptGroupElement[] =>
+  const optionGroups = (groups: readonly ChoiceGroup[]): DropdownEntry<string>[] =>
     groups
       .filter((group) => group.rows.length > 0)
-      .map((group) => {
-        const options = document.createElement('optgroup');
-        options.label = group.label;
-        options.append(...group.rows.map((row) => new Option(row.label, row.key)));
-        return options;
-      });
+      .map((group) => ({
+        group: group.label,
+        choices: group.rows.map((row) => ({ id: row.key, label: row.label })),
+      }));
   // Each profession row stands for the picks of its trade, in the category the picker files it under.
-  canBecomeSelect.replaceChildren(
-    new Option(copy.anyone, ''),
+  canBecomeSelect.setEntries([
+    { id: '', label: copy.anyone },
     ...optionGroups(
       professionGroups.map((group) => ({
         ...group,
@@ -176,7 +190,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
         ),
       })),
     ),
-  );
+  ]);
 
   // Both chip rows share one grid, so their cells line up edge to edge.
   const chipRow = (caption: string, label: string): HTMLElement => {
@@ -375,7 +389,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       setAttribute(view.button, 'aria-pressed', String(filters.lacks.includes(id)));
     }
     setValue(query, filters.query);
-    setValue(canBecomeSelect, filters.canBecome === null ? '' : tradePickKey(filters.canBecome));
+    canBecomeSelect.setActive(filters.canBecome === null ? '' : tradePickKey(filters.canBecome));
   };
 
   const showSummary = (all: readonly ResidentRow[], shown: number): void => {
@@ -435,11 +449,11 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       const known = new Set(professionGroups.flatMap((group) => group.rows.map((row) => row.label)));
       const optionLabel = (entry: (typeof entries)[number]): string =>
         formatMessage(copy.jobOption, { name: entry.profession, count: entry.count });
-      professionSelect.replaceChildren(
-        new Option(copy.anyJob, ''),
+      professionSelect.setEntries([
+        { id: '', label: copy.anyJob },
         ...entries
           .filter((entry) => !known.has(entry.profession))
-          .map((entry) => new Option(optionLabel(entry), entry.profession)),
+          .map((entry) => ({ id: entry.profession, label: optionLabel(entry) })),
         ...optionGroups(
           professionGroups.map((group) => ({
             label: group.label,
@@ -449,9 +463,9 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
             }),
           })),
         ),
-      );
+      ]);
     }
-    setValue(professionSelect, held);
+    professionSelect.setActive(held);
   };
 
   const showSelection = (): void => {
@@ -521,16 +535,6 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     relist();
   };
   query.addEventListener('input', () => setFilters({ ...state.filters, query: query.value }));
-  professionSelect.addEventListener('change', () =>
-    setFilters({ ...state.filters, profession: professionSelect.value }),
-  );
-  canBecomeSelect.addEventListener('change', () =>
-    setFilters({
-      ...state.filters,
-      canBecome:
-        deps.trades.find((trade) => tradePickKey(trade.pick) === canBecomeSelect.value)?.pick ?? null,
-    }),
-  );
   // The shell leaves a text field its keys, so the field takes Escape itself, and keeps it from the
   // unit controls' own Escape ladder: the first press clears a typed query, the next closes the window.
   query.addEventListener('keydown', (event) => {

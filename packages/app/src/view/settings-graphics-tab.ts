@@ -1,15 +1,9 @@
 import { PIXEL_ART_SCALERS, type PixelArtScaler } from '@open-northland/render';
+import { dropdownControl } from '../hud/dom/parts/dropdown.js';
 import { MINIMAP_FRAME_IMAGES, MINIMAP_FRAMES, type MinimapFrame } from '../hud/minimap/frames.js';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, UI_SCALE_FACTOR_STEP } from '../hud/ui-scale.js';
 import { messages } from '../i18n/index.js';
-import {
-  dropdownControl,
-  segControl,
-  settingRow,
-  settingsHeading,
-  sliderControl,
-  togglePill,
-} from './settings-controls.js';
+import { segControl, settingRow, settingsHeading, sliderControl, togglePill } from './settings-controls.js';
 import { cursorSettingsRows } from './settings-cursor-rows.js';
 import type { DisplayMode } from './settings-display-mode.js';
 import type { SettingsPageStore } from './settings-page.js';
@@ -126,15 +120,20 @@ export function graphicsSettingsRows(
     },
   );
   markSegment(filter.root, 'pixel-art-filter');
-  const minimapFrame = dropdownControl<MinimapFrame>(
-    text.minimapFrame,
-    MINIMAP_FRAMES.map((id) => ({ id, label: text.minimapFrames[id], image: MINIMAP_FRAME_IMAGES[id] })),
-    settings.minimapFrame,
-    (frame) => {
+  const minimapFrame = dropdownControl<MinimapFrame>({
+    label: text.minimapFrame,
+    className: 'main-menu__dropdown',
+    entries: MINIMAP_FRAMES.map((id) => ({
+      id,
+      label: text.minimapFrames[id],
+      image: MINIMAP_FRAME_IMAGES[id],
+    })),
+    active: settings.minimapFrame,
+    onPick: (frame) => {
       void store.update({ minimapFrame: frame });
       minimapFrame.setActive(frame);
     },
-  );
+  });
   minimapFrame.root.classList.add('main-menu__minimap-frames');
   const enhancementToggles = (
     ['softShadows', 'enhancedWater', 'environmentMotion', 'groundedBuildings', 'weather'] as const

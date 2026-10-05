@@ -16,19 +16,12 @@ export function seatModeControl(options: ModeOptions, presentation: 'select' | '
     if (choice && !choice.disabled && choice.id !== current) options.change(choice.id);
   };
   if (presentation === 'select') {
-    const control = selectControl(
-      options.label,
-      options.choices.map(({ id, label }) => [id, label]),
-      change,
-      options.fieldClassName,
-    );
+    const control = selectControl(options.label, options.choices, change, options.fieldClassName);
     return {
       root: control.root,
       update(value: SeatMode, disabled: boolean): void {
         current = value;
         control.update(value, disabled);
-        for (const option of control.input.options)
-          option.disabled = options.choices.find((choice) => choice.id === option.value)?.disabled === true;
       },
     };
   }

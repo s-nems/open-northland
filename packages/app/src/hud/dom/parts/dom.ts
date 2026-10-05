@@ -101,6 +101,6 @@ export function isDisabled(node: Element): boolean {
   return node.getAttribute('aria-disabled') === 'true';
 }
 
-export function setValue(control: HTMLSelectElement | HTMLInputElement, value: string): void {
+export function setValue(control: HTMLInputElement, value: string): void {
   if (control.value !== value) control.value = value;
 }

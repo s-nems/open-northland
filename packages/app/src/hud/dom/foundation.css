@@ -2307,8 +2307,7 @@ body.on-drag-scroll * {
   flex-shrink: 0;
   color: var(--bronze);
 }
-.on-hud .on-res-field input,
-.on-hud .on-res-field select {
+.on-hud .on-res-field input {
   min-width: 0;
   border: 0;
   background: none;
@@ -2330,15 +2329,86 @@ body.on-drag-scroll * {
   color: var(--bronze);
   white-space: nowrap;
 }
-.on-hud .on-res-field select {
-  max-width: 132px;
-  font-weight: 600;
-}
-.on-hud .on-res-field select option {
-  background: #22322c;
+.on-hud .on-res-select-btn {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 150px;
   color: var(--text-hi);
+  font: 600 13px var(--font-body);
+  cursor: var(--cursor-pointer, pointer);
 }
-.on-hud .on-res-field:focus-within {
+.on-hud .on-res-select-btn::after {
+  content: "";
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  margin: 0 2px 3px;
+  border: solid var(--bronze);
+  border-width: 0 2px 2px 0;
+  rotate: 45deg;
+}
+.on-hud .on-res-select-btn[aria-expanded="true"]::after {
+  margin-block: 3px 0;
+  rotate: 225deg;
+}
+.on-hud .on-res-select-btn-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A popover the dropdown places under its field (parts/dropdown.ts). */
+.on-hud .on-res-select-list {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  max-height: 340px;
+  padding: 4px 0;
+  overflow-y: auto;
+  border: 1px solid var(--wood-hi);
+  background: linear-gradient(#1b2823, #22322c);
+  box-shadow: 0 8px 20px #000a;
+  color: var(--text-hi);
+  font: 600 13px var(--font-body);
+  scrollbar-color: var(--bronze-lo) transparent;
+  scrollbar-width: thin;
+}
+.on-hud .on-res-select-list:popover-open,
+.on-hud .on-res-select-group {
+  display: flex;
+  flex-direction: column;
+}
+.on-hud .on-res-select-group-label {
+  padding: 8px 12px 2px;
+  font: 700 10.5px var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bronze);
+}
+.on-hud .on-res-select-option {
+  all: unset;
+  position: relative;
+  padding: 4px 14px 4px 26px;
+  white-space: nowrap;
+  cursor: var(--cursor-pointer, pointer);
+}
+.on-hud .on-res-select-option:hover,
+.on-hud .on-res-select-option:focus-visible {
+  background: #34493f;
+  color: var(--bronze-hi);
+}
+.on-hud .on-res-select-option[aria-selected="true"] {
+  color: var(--active);
+}
+.on-hud .on-res-select-option[aria-selected="true"]::before {
+  content: "\2713";
+  position: absolute;
+  left: 10px;
+}
+/* Keyboard focus only: a mouse-opened list holds focus inside the field and draws no ring. */
+.on-hud .on-res-field:has(:focus-visible) {
   outline: 2px solid var(--focus);
   outline-offset: 3px;
 }

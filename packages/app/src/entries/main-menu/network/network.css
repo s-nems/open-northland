@@ -24,7 +24,7 @@
   min-width: calc(var(--u) * 160);
 }
 .network-menu input,
-.network-menu select {
+.network-menu .main-menu__dropdown-btn {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
@@ -116,8 +116,23 @@
   opacity: 0.45;
   cursor: var(--cursor-default, default);
 }
+/* The dropdown's arrow takes the right padding; its font is the form's, not the settings page's.
+   An empty list (no saves yet) keeps the field one line tall. */
+.network-menu .main-menu__dropdown-btn {
+  min-height: calc(1.2em + var(--u) * 20 + 2px);
+  padding-right: calc(var(--u) * 36);
+  color: #ede5cf;
+  font: inherit;
+  line-height: 1.2;
+}
+.network-menu .main-menu__dropdown-btn::after {
+  right: calc(var(--u) * 14);
+}
+.network-menu .main-menu__dropdown-option {
+  font: inherit;
+}
 .network-menu input:focus-visible,
-.network-menu select:focus-visible {
+.network-menu .main-menu__dropdown-btn:focus-visible {
   outline: 2px solid #eed395;
   outline-offset: 3px;
 }

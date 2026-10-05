@@ -120,7 +120,7 @@
 .network-room__palette > .main-menu__lobby-picker {
   padding: 0;
 }
-.network-room select,
+.network-room .main-menu__dropdown-btn,
 .network-room input {
   box-sizing: border-box;
   min-width: 0;
@@ -131,6 +131,13 @@
   border: 1px solid #6e8e7d;
   border-radius: calc(var(--u) * 4);
   font: inherit;
+}
+.network-room .main-menu__dropdown-btn {
+  min-height: calc(1.2em + var(--u) * 16 + 2px);
+  padding-right: calc(var(--u) * 28);
+}
+.network-room .main-menu__dropdown-btn::after {
+  right: calc(var(--u) * 10);
 }
 .network-room__button {
   padding: calc(var(--u) * 9) calc(var(--u) * 14);

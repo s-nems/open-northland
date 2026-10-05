@@ -69,7 +69,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     );
     const control = selectControl(
       label,
-      choices.map((choice) => [String(choice.value ?? ''), choice.label] as const),
+      choices.map((choice) => ({ id: String(choice.value ?? ''), label: choice.label })),
       (id) => {
         const choice = choices.find((choice) => String(choice.value ?? '') === id);
         if (choice !== undefined) state.request(choice.value);

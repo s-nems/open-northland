@@ -13,5 +13,10 @@ export function selectControl(
   choices: readonly (readonly [string, string])[],
   change: (value: string) => void,
 ) {
-  return lobbySelect(label, choices, change, 'network-room__field');
+  return lobbySelect(
+    label,
+    choices.map(([id, text]) => ({ id, label: text })),
+    change,
+    'network-room__field',
+  );
 }

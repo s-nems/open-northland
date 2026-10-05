@@ -1,5 +1,6 @@
 import { MAX_ROOM_NAME_LENGTH } from '@open-northland/net-protocol';
 import { errorText } from '../../../diag/error-text.js';
+import { type DropdownChoice, dropdownControl } from '../../../hud/dom/parts/dropdown.js';
 import { quietTextField } from '../../../hud/dom/parts/text-field.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { SaveBytes } from '../../../view/runtime/save-load/codec.js';
@@ -43,15 +44,28 @@ export function createRoomCard(options: CreateCardOptions) {
       mode.setActive(next);
       sync();
       status.textContent =
-        source === 'save' && save.options.length === 0
+        source === 'save' && saves.length === 0
           ? copy.noSaves
           : source === 'map' && mapsEmpty
             ? copy.noMaps
             : '';
     },
   );
-  const save = node('select');
-  const saveField = field(copy.save, save);
+  let saves: readonly DropdownChoice<string>[] = [];
+  let chosenSave = '';
+  const save = dropdownControl({
+    label: copy.save,
+    className: 'main-menu__dropdown',
+    entries: saves,
+    active: chosenSave,
+    onPick: (id) => {
+      chosenSave = id;
+      save.setActive(id);
+    },
+  });
+  // Not a `field()`: a label would hand a press on its caption to the button and reopen the list.
+  const saveField = node('div', 'network-menu__field');
+  saveField.append(node('span', '', copy.save), save.root);
   const mapRow = node('div', 'network-menu__map-pick');
   const thumb = node('div', 'main-menu__map-thumb');
   const mapText = node('div', 'network-menu__map-pick-text');
@@ -75,9 +89,10 @@ export function createRoomCard(options: CreateCardOptions) {
     saveField.hidden = source !== 'save';
     mapField.hidden = source !== 'map';
     file.hidden = source !== 'save';
-    for (const input of [name, save, file, change]) input.disabled = !enabled || busy;
+    for (const input of [name, file, change]) input.disabled = !enabled || busy;
+    save.setDisabled(!enabled || busy);
     for (const segment of mode.root.querySelectorAll('button')) segment.disabled = !enabled || busy;
-    submit.disabled = !enabled || busy || (source === 'map' ? chosen === null : save.options.length === 0);
+    submit.disabled = !enabled || busy || (source === 'map' ? chosen === null : saves.length === 0);
   };
   const run = async (read: () => Promise<CreateChoice | null>): Promise<void> => {
     if (!enabled || busy || disposed || !element.reportValidity()) return;
@@ -108,7 +123,7 @@ export function createRoomCard(options: CreateCardOptions) {
     void run(async () => {
       if (source === 'map')
         return chosen === null ? null : { kind: 'map', mapId: chosen.id, name: name.value.trim() };
-      const bytes = await store.read(save.value);
+      const bytes = await store.read(chosenSave);
       if (bytes === null) throw new Error(copy.saveInvalid);
       return { kind: 'save', bytes, name: name.value.trim() };
     });
@@ -127,11 +142,12 @@ export function createRoomCard(options: CreateCardOptions) {
     .list()
     .then((slots) => {
       if (disposed) return;
-      save.replaceChildren(
-        ...slots
-          .filter((slot) => slot.mapId !== null && !slot.mapId.startsWith(SCENE_TOKEN_PREFIX))
-          .map((slot) => new Option(slot.name, slot.id)),
-      );
+      saves = slots
+        .filter((slot) => slot.mapId !== null && !slot.mapId.startsWith(SCENE_TOKEN_PREFIX))
+        .map((slot) => ({ id: slot.id, label: slot.name }));
+      chosenSave = saves[0]?.id ?? '';
+      save.setEntries(saves);
+      save.setActive(chosenSave);
       sync();
     })
     .catch((error: unknown) => {

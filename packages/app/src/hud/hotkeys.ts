@@ -7,15 +7,19 @@ import {
   matchesKeyboardBindingUnderShift,
 } from './keybindings.js';
 
+/** Marks a control whose focused descendants keep their keys, as a dropdown's open list does. */
+export const FIELD_KEYS_ATTRIBUTE = 'data-field-keys';
+
 /**
  * True when a keydown belongs to the focused control rather than the game: a text field being typed
- * into, or a `<select>`, whose own type-ahead jumps to an option by its letters.
+ * into, or a `<select>` or dropdown list, whose own type-ahead jumps to an option by its letters.
  */
 const isTypingTarget = (target: EventTarget | null): boolean =>
   target instanceof HTMLInputElement ||
   target instanceof HTMLTextAreaElement ||
   target instanceof HTMLSelectElement ||
-  (target instanceof HTMLElement && target.isContentEditable);
+  (target instanceof HTMLElement &&
+    (target.isContentEditable || target.closest(`[${FIELD_KEYS_ATTRIBUTE}]`) !== null));
 
 /** True when the focused control keeps this keydown. No field types an F-key, so an F-row press stays
  *  the game's even from inside one. */
