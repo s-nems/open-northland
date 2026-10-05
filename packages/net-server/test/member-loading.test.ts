@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { LOAD_VIEW_INTERVAL_MS, LOADING_STALL_MS } from '../src/index.js';
-import { SEATS, SETTINGS, stage, startingRoom, TOKEN_A, TOKEN_B } from './support/message-stage.js';
+import {
+  roomOfThreeStarting,
+  SEATS,
+  SETTINGS,
+  stage,
+  startingRoom,
+  TOKEN_A,
+  TOKEN_B,
+} from './support/message-stage.js';
 
 /** The boot progress each client reports before its world loads, as the room view shows it. */
 
@@ -112,5 +120,32 @@ describe('member boot progress', () => {
     expect(s.a.of('left')).toHaveLength(1);
     expect(s.a.of('clock')).toEqual([]);
     expect(s.relay.roomCount).toBe(0);
+  });
+
+  it('starts no clock from a world loaded between a leave and the room ending', () => {
+    const s = roomOfThreeStarting();
+    s.a.send({ kind: 'loaded', tick: 0, world: 0 });
+    s.b.send({ kind: 'leaveRoom' });
+    s.c.send({ kind: 'loaded', tick: 0, world: 0 });
+    expect(s.a.of('clock')).toEqual([]);
+    s.advance(1);
+    expect(s.c.last('error')?.reason).toEqual({ code: 'leftBeforeStart', nick: 'Bartek' });
+    expect(s.a.of('clock')).toEqual([]);
+  });
+
+  it('counts the stall from the start, however long the lobby was open', () => {
+    const s = stage();
+    const a = s.introduce(TOKEN_A, 'Ania');
+    const b = s.introduce(TOKEN_B, 'Bartek');
+    a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
+    a.send({ kind: 'claimSeat', player: 0 });
+    b.send({ kind: 'claimSeat', player: 1 });
+    s.advance(LOADING_STALL_MS * 2);
+    a.send({ kind: 'setReady', ready: true });
+    b.send({ kind: 'setReady', ready: true });
+    a.send({ kind: 'start' });
+    s.advance(1);
+    expect(a.of('left')).toEqual([]);
   });
 });

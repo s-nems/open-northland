@@ -105,12 +105,11 @@ figures with it.
 - `setCompatibility { compatibility }` supplies the sender's report or null to invalidate it.
 - `setReady { ready }` needs a seat; becoming ready also requires all compatibility checks to pass.
 - `leaveRoom` frees the seat and identity; the last member out drops the room, and
-  a creator who leaves passes the role to the next member. During a running game, explicit departure
+  a creator who leaves passes the role to the next member. Once the clock runs, explicit departure
   immediately applies the same deterministic AI/idle seat handover as a passed kick vote, without
-  a countdown or vote. Socket loss alone retains the seat for reconnection. The departing connection
-  can create or join another room as soon as it receives `left`. If no client has reported the
-  initial built tick yet, the handover notice and AI command wait for that baseline and name the
-  actual first resumed tick; the identity and room slot are released immediately.
+  a countdown or vote. A seated member that leaves after the start but before the clock runs ends the
+  room instead (see [Waiting](#waiting)). Socket loss alone retains the seat for reconnection. The
+  departing connection can create or join another room as soon as it receives `left`.
 
 Every effective report, membership, seat, team, color, tribe, level or settings change clears all ready
 flags.
@@ -136,9 +135,12 @@ it and reports `loaded { tick, world: 0 }` with the tick that world stands at (0
 setup tick, 1 for a decoded map whose placements drain on one). The first report fixes the room's
 built tick; the relay refuses any other tick from the rest, a second `loaded` on the same connection,
 and a command sent before any world has loaded. The clock starts once every member has loaded, one
-whose connection dropped included: a game never starts without one of its players, announced by `clock { tick, speed, paused: false, by: null, governed: null }` naming the first
-tick to run. The app reports `loaded` only once its display draws the world, so every player's game
-starts together rather than when the slowest one's sim is built. Until then it may send
+whose connection dropped included, so a game never starts without one of its players. The start is
+announced by `clock { tick, speed, paused: false, by: null, governed: null }` naming the first tick
+to run. The app reports `loaded` only once its display draws the world, so every player's game
+starts together rather than when the slowest one's sim is built. A client holding no world that asks
+with `loaded { tick: null }` instead counts as loaded once the relay serves it the room's snapshot,
+before its display shows the restored world. Until then it may send
 `loading { progress }`, its boot progress in whole percent (0-100), which the room view shows; the
 relay ignores progress from a member whose world has loaded.
 After the start there is no host role.
@@ -280,7 +282,9 @@ the member (its token is a stranger from then on), and returns the seat to `sett
 whose settlers already stand. The room view reflects this mode. For
 `mode: "ai"` the relay lands its `setPlayerAi` envelope on `tick`, the next unemitted one, outside
 every budget, so the AI takes the seat on the same tick on every client. For `mode: "idle"` the seat
-simply issues nothing more. `cause` says why the seat was left: `vote`, or `left` for a member
+simply issues nothing more. A vote passed before any world has loaded holds its handover notice and
+AI command until the first `loaded` fixes the built tick, and then names the first resumed tick.
+`cause` says why the seat was left: `vote`, or `left` for a member
 that left the started game itself.
 
 ## Manual save order capture

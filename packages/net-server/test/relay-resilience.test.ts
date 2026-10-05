@@ -339,7 +339,7 @@ describe('kick votes', () => {
     const s = roomOfThree('ai');
     s.advance(TICK_MS * 4);
     s.b.send({ kind: 'leaveRoom' });
-    expect(s.a.last('kicked')).toMatchObject({ player: 1, mode: 'ai', tick: 5 });
+    expect(s.a.last('kicked')).toMatchObject({ player: 1, mode: 'ai', cause: 'left', tick: 5 });
     expect(s.a.last('room')?.room.seats[1]).toMatchObject({ mode: 'ai', nick: null });
     tick(s, [s.a, s.c], TICK_MS);
     expect(s.a.of('frame').find((frame) => frame.tick === 5)?.commands).toMatchObject([

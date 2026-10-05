@@ -26,9 +26,8 @@ import { type SeatChange, SeatTable } from './seats.js';
  *  load changes with nearly every acknowledgement; a view per ack would be a room broadcast per member
  *  per tick. */
 export const LOAD_VIEW_INTERVAL_MS = 1000;
-/** How long a member's boot may stand still, or the member stay away, before the start gives up and
- *  ends the room. A load step takes seconds; this leaves a slow machine many times that, and is never
- *  shown to the players as a countdown. */
+/** How long one step of a member's boot may take, or the member stay away, before the start gives up
+ *  and ends the room. Generous for a slow machine, and never shown to the players as a countdown. */
 export const LOADING_STALL_MS = 2 * 60 * 1000;
 
 export interface RoomHooks {
@@ -252,6 +251,8 @@ export class Room {
 
   markLoaded(member: Member, world: Extract<ClientMessage, { kind: 'loaded' }>, now: number): Refusal {
     if (this.game === null) return { code: 'gameNotStarted' };
+    // The room ends on its next advance; a world loaded meanwhile must not start the clock.
+    if (this.leftBeforeStart !== null) return null;
     const refusal = this.game.loaded(member, world, now);
     if (refusal !== null) return refusal;
     member.progressAt = now;

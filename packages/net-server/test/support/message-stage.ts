@@ -116,8 +116,9 @@ export function startedRoom() {
   return s;
 }
 
-/** Three seated members in a running room; `c` holds the AI-vacant seat. */
-export function roomOfThree(kickedSeatMode?: 'ai' | 'idle') {
+/** Three seated, ready members in a room just started, no world loaded yet; `c` holds the AI-vacant
+ *  seat. */
+export function roomOfThreeStarting(kickedSeatMode?: 'ai' | 'idle') {
   const s = stage();
   const a = s.introduce(TOKEN_A, 'Ania');
   const b = s.introduce(TOKEN_B, 'Bartek');
@@ -135,8 +136,14 @@ export function roomOfThree(kickedSeatMode?: 'ai' | 'idle') {
   c.send({ kind: 'claimSeat', player: 2 });
   for (const peer of [a, b, c]) peer.send({ kind: 'setReady', ready: true });
   a.send({ kind: 'start' });
-  for (const peer of [a, b, c]) peer.send({ kind: 'loaded', tick: 0, world: 0 });
   return { ...s, a, b, c };
+}
+
+/** Three seated members in a running room; `c` holds the AI-vacant seat. */
+export function roomOfThree(kickedSeatMode?: 'ai' | 'idle') {
+  const s = roomOfThreeStarting(kickedSeatMode);
+  for (const peer of [s.a, s.b, s.c]) peer.send({ kind: 'loaded', tick: 0, world: 0 });
+  return s;
 }
 
 export function seatCommand(player: number, value = 0): unknown {
