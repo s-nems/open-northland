@@ -16,6 +16,7 @@ import { createGroupPanel } from '../../hud/dom/group-panel/view.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
 import type { ClientRect } from '../../hud/dom/portrait-hole.js';
 import { createSettlerPanel } from '../../hud/dom/settler-panel/view.js';
+import { createSignpostPanel } from '../../hud/dom/signpost-panel.js';
 import { createTradeWindow, type HousePortrait } from '../../hud/dom/trade-window/window.js';
 import { createVehiclePanel } from '../../hud/dom/vehicle-panel/view.js';
 import { LiveFigures } from '../../hud/figures/live-figures.js';
@@ -33,6 +34,7 @@ import type { AnsweredOrders } from './answered-orders.js';
 import { buildingPanelActions, buildingPeers } from './building-panel.js';
 import type { EquipPickController } from './equip-picker.js';
 import { groupPanelActions } from './group-panel.js';
+import { ownedOrder } from './owned-order.js';
 import type { PickMode } from './pick-mode.js';
 import { professionGates } from './profession-gates.js';
 import type { UnitSelection } from './selection.js';
@@ -271,6 +273,17 @@ export async function createUnitChrome(
       opts.enqueue({ kind: 'demolishPalisade', palisade: id as Entity });
     },
   });
+  const signpostPanel = createSignpostPanel({
+    plane: opts.domHud.plane,
+    icons,
+    tooltip: panelChip,
+    close: () => callbacks.selectGroup([]),
+    demolish: ownedOrder(
+      opts.snapshot,
+      opts.viewer,
+      callbacks.cue,
+    )((id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity })),
+  });
   const figures = opts.domHud.figures;
   const wellFigures =
     figures === undefined ? null : new LiveFigures(figures.sheet, figures.frames, opts.playerColourOf);
@@ -384,7 +397,6 @@ export async function createUnitChrome(
       backingScale: (canvas) => screenScale(canvas, opts.app.renderer.resolution),
       ...(opts.panelAnswersVersion !== undefined ? { answersVersion: opts.panelAnswersVersion } : {}),
       onUiCue: callbacks.cue,
-      onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
       onDemolishPalisade: (id) => opts.enqueue({ kind: 'demolishPalisade', palisade: id as Entity }),
       onCancelRoadSite: (id) => opts.enqueue({ kind: 'cancelRoadSite', roadSite: id as Entity }),
       onModel: (model) => {
@@ -393,6 +405,7 @@ export async function createUnitChrome(
         buildingPanel.update(model);
         groupPanel.update(model);
         gatePanel.update(model);
+        signpostPanel.update(model);
       },
     });
 
@@ -467,6 +480,7 @@ export async function createUnitChrome(
       buildingPanel.claims(x, y) ||
       groupPanel.claims(x, y) ||
       gatePanel.claims(x, y) ||
+      signpostPanel.claims(x, y) ||
       tradeWindow.claims(x, y) ||
       mounts.current().panel.claimsPointer(x, y),
     browse: (step) => settlerPanel.browse(step) || vehiclePanel.browse(step) || buildingPanel.browse(step),
@@ -486,6 +500,7 @@ export async function createUnitChrome(
       gatePanel.refreshTip();
       buildingPanel.refresh();
       groupPanel.refresh();
+      signpostPanel.refresh();
     },
     presentFigures: (snapshot, alpha) => {
       // One details panel shows at a time; the hidden ones answer no slots.
@@ -517,6 +532,7 @@ export async function createUnitChrome(
       vehiclePanel.invalidate();
       buildingPanel.invalidate();
       groupPanel.invalidate();
+      signpostPanel.invalidate();
       tradeWindow.invalidate();
       return mounts.replace(uiscale);
     },
@@ -528,6 +544,7 @@ export async function createUnitChrome(
       buildingPanel.dispose();
       groupPanel.dispose();
       gatePanel.dispose();
+      signpostPanel.dispose();
       hoverCard.dispose();
       panelChip.destroy();
     },

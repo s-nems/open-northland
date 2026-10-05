@@ -6,16 +6,16 @@ import {
   TILE_HALF_H,
   TILE_HALF_W,
 } from '@open-northland/render';
-import { cellOfNode, FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
-import { Container, Graphics } from 'pixi.js';
-import type { MapOverlayControls } from '../../hud/map-overlays.js';
 import {
   linkedPosts,
   type OverlayPost,
   overlayPostsWithin,
   postCovers,
   signpostOverlayIndex,
-} from './signpost-model.js';
+} from '@open-northland/render/data';
+import { cellOfNode, FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
+import { Container, Graphics } from 'pixi.js';
+import type { MapOverlayControls } from '../../hud/map-overlays.js';
 
 const NETWORK = 0x77e5cf;
 const ISOLATED = 0xffc56b;

@@ -27,8 +27,8 @@ describe('details panel layout', () => {
     );
     expect(panelViewFor(modelOf([1], [settler(1)]), PANEL_SCREEN, 1).kind).toBe('empty');
     expect(
-      viewOfKind(modelOf([1], [{ id: 1, components: { Signpost: { player: 1 } } }]), 'signpost').model.kind,
-    ).toBe('signpost');
+      panelViewFor(modelOf([1], [{ id: 1, components: { Signpost: { player: 1 } } }]), PANEL_SCREEN, 1).kind,
+    ).toBe('empty');
     // A group is the DOM group panel's as well.
     const group = modelOf([1, 2], [settler(1), settler(2)]);
     expect(group.kind).toBe('group');
@@ -94,11 +94,8 @@ describe('details panel layout', () => {
         UnderConstruction: {},
       },
     };
-    // A wall site (the progress row and demolition button) and a signpost carry every rect a layout can.
-    const layouts: readonly DetailsLayout[] = [
-      viewOfKind(modelOf(wall), 'palisade').layout,
-      viewOfKind(modelOf({ id: 2, components: { Signpost: { player: 1 } } }), 'signpost').layout,
-    ];
+    // A wall site carries the progress row and demolition button.
+    const layouts: readonly DetailsLayout[] = [viewOfKind(modelOf(wall), 'palisade').layout];
 
     for (const layout of layouts) {
       const found: Array<{ path: string; rect: Rect }> = [];

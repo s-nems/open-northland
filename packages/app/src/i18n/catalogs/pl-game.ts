@@ -10,7 +10,7 @@ export const plGame = {
     mapOverlays: {
       label: 'Nakładki mapy głównej',
       signposts: 'Drogowskazy',
-      tip: 'Pokaż sieć własnych drogowskazów na mapie głównej. Pole: zasięg osadników; linie: rzeczywiste połączenia; bursztynowe koła: samotne słupy. Nakładające się zasięgi nie łączą sieci. Teren nadal może blokować drogę. Tragarze sięgają dalej; zwiadowcy i wojownicy nie mają tego ograniczenia.',
+      tip: 'Zasięg i połączenia drogowskazów',
       noSeat: 'Wybierz gracza, aby zobaczyć jego sieć drogowskazów.',
     },
     minimap: {
@@ -467,6 +467,12 @@ export const plGame = {
       pending: 'W przygotowaniu',
       knowledgePending:
         'Wiedza (produkcja i rozwój, encyklopedia, jak grać) powstaje. To, na co czeka zablokowany budynek, przeczytasz tutaj.',
+    },
+    signpostPanel: {
+      stock: 'Towary w sieci',
+      empty: 'Brak towarów',
+      count: 'Drogowskazy: {count}',
+      demolish: 'Wyburz',
     },
     settlerPanel: {
       ordersTooltip: 'Rozkazy · {key}',

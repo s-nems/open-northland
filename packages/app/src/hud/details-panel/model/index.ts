@@ -1,3 +1,7 @@
+import { type SignpostPanelModel, signpostPanelModel } from './signpost.js';
+
+export type { SignpostPanelModel } from './signpost.js';
+
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import {
   isBuilding,
@@ -128,12 +132,6 @@ export {
 
 export interface EmptyPanelModel {
   readonly kind: 'empty';
-}
-
-/** A selected signpost: title (miscwindow 270 "Signpost") + the tear-down button (miscwindow 273). */
-export interface SignpostPanelModel {
-  readonly kind: 'signpost';
-  readonly entityId: number;
 }
 
 export interface PalisadePanelModel {
@@ -268,7 +266,7 @@ export function buildUnitPanelModel(
   }
   // A signpost is a direct-click-only selection (never marquee'd), so units/buildings always outrank
   // it. A vehicle's order window opens for it alone; settlers boxed with vehicles are a group.
-  if (noUnitOrHouse && signpost !== undefined) return { kind: 'signpost', entityId: signpost.id };
+  if (noUnitOrHouse && signpost !== undefined) return signpostPanelModel(ctx, snapshot, signpost);
   if (noUnitOrHouse && vehicle !== undefined) return vehiclePanelModel(ctx, snapshot, vehicle);
   if (settlers.length === 0 && building !== undefined) return buildingPanelModel(ctx, snapshot, building);
   if (settlers.length + vehicles.length > 1)

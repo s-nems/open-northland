@@ -1,4 +1,6 @@
 import {
+  type EntitySnapshot,
+  type Fixed,
   firstDifference,
   hexDistanceBetween,
   indexesOf,
@@ -9,7 +11,7 @@ import {
   WALK_RANGE_NODES,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { ownerPlayerOf, positionOf, type SnapshotEntity } from '../../game/snapshot.js';
+import { readNumField, readPosition } from './snapshot/index.js';
 
 export interface OverlayPost {
   readonly id: number;
@@ -25,15 +27,20 @@ interface PostIndex {
   revision: number;
 }
 
-function readPost(entity: SnapshotEntity): OverlayPost | null {
+function readPost(entity: EntitySnapshot): OverlayPost | null {
   const signpost = entity.components.Signpost as { links?: readonly number[] } | undefined;
-  const position = positionOf(entity);
-  const player = ownerPlayerOf(entity);
-  if (signpost === undefined || position === undefined || player === undefined) return null;
-  return { id: entity.id, player, ...nodeOfPosition(position.x, position.y), links: signpost.links ?? [] };
+  const position = readPosition(entity.components);
+  const player = readNumField(entity.components, 'Owner', 'player');
+  if (signpost === undefined || position === null || player === undefined) return null;
+  return {
+    id: entity.id,
+    player,
+    ...nodeOfPosition(position.x as Fixed, position.y as Fixed),
+    links: signpost.links ?? [],
+  };
 }
 
-function add(index: PostIndex, entity: SnapshotEntity): void {
+function add(index: PostIndex, entity: EntitySnapshot): void {
   const post = readPost(entity);
   if (post === null) return;
   index.posts.set(post.id, post);
@@ -41,14 +48,14 @@ function add(index: PostIndex, entity: SnapshotEntity): void {
   index.revision++;
 }
 
-function remove(index: PostIndex, entity: SnapshotEntity): void {
+function remove(index: PostIndex, entity: EntitySnapshot): void {
   if (!index.posts.delete(entity.id)) return;
   index.buckets.delete(entity.id);
   index.revision++;
 }
 
 const POSTS: SnapshotIndexSpec<PostIndex> = {
-  name: 'map overlay signposts',
+  name: 'signpost networks',
   reads: { values: ['Signpost', 'Owner', 'Position'] },
   empty: () => ({ posts: new Map(), buckets: new TileBuckets(), revision: 0 }),
   add,

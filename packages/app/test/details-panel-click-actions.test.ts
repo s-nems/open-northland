@@ -13,13 +13,11 @@ function recordingActions(calls: Call[]): PanelClickActions {
       calls.push([name, ...args]);
     };
   return {
-    onDemolishSignpost: record('onDemolishSignpost'),
     onDemolishPalisade: record('onDemolishPalisade'),
   };
 }
 
 const ROUTES: readonly (readonly [PanelClick, Call])[] = [
-  [{ kind: 'demolishSignpost', entityId: ENTITY }, ['onDemolishSignpost', ENTITY]],
   [{ kind: 'demolishPalisade', entityId: ENTITY }, ['onDemolishPalisade', ENTITY]],
 ];
 

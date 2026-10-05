@@ -10,7 +10,9 @@ import {
   type SnapshotIndexSpec,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { readAmountPairs, readNumField, readPosition, readStockpileAmounts } from '../snapshot/index.js';
+import { readNumField, readPosition } from '../snapshot/index.js';
+
+import { adjustInventory, inventoryAmounts, ownedInventoryOf } from './inventory.js';
 
 type Components = Readonly<Record<string, unknown>>;
 type AmountPairs = readonly (readonly [number, number])[];
@@ -107,16 +109,6 @@ function nodeKey(node: HalfCellNode): string {
   return `${node.hx}:${node.hy}`;
 }
 
-function adjust(totals: Map<number, number>, goodType: number, amount: number): void {
-  const next = (totals.get(goodType) ?? 0) + amount;
-  if (next === 0) totals.delete(goodType);
-  else totals.set(goodType, next);
-}
-
-function adjustPairs(totals: Map<number, number>, pairs: AmountPairs, sign: Sign): void {
-  for (const [goodType, amount] of pairs) adjust(totals, goodType, sign * amount);
-}
-
 /** The `Person` marker is the sim's own population query key, so wildlife and a claimed animal are
  *  left out the same way. */
 function countPerson(people: Map<number, People>, components: Components, sign: Sign): void {
@@ -162,42 +154,6 @@ const HUD_PEOPLE: SnapshotIndexSpec<Map<number, People>> = {
     if (samePerson(previous.components, next.components)) return;
     countPerson(people, previous.components, SUBTRACT);
     countPerson(people, next.components, ADD);
-  },
-};
-
-/** An owned pile is a building's or a boat hull's; the ground never carries an owner. */
-function countOwnedStock(owned: Map<number, Map<number, number>>, components: Components, sign: Sign): void {
-  const player = ownerOf(components);
-  if (player === undefined) return;
-  const piled = readStockpileAmounts(components);
-  const upgrading = components.Upgrading as { savedStock?: unknown } | undefined;
-  const saved = upgrading === undefined ? [] : readAmountPairs(upgrading.savedStock);
-  const carriedGood = readNumField(components, 'Carrying', 'goodType');
-  const carriedAmount = readNumField(components, 'Carrying', 'amount');
-  const carries = carriedGood !== undefined && carriedAmount !== undefined;
-  if (piled.length === 0 && saved.length === 0 && !carries) return;
-  let totals = owned.get(player);
-  if (totals === undefined) {
-    totals = new Map();
-    owned.set(player, totals);
-  }
-  adjustPairs(totals, piled, sign);
-  adjustPairs(totals, saved, sign);
-  if (carries) adjust(totals, carriedGood, sign * carriedAmount);
-  if (totals.size === 0) owned.delete(player);
-}
-
-/** Every player's units by good in its own piles, upgrade stashes and hands; a player holding nothing
- *  is absent. */
-const HUD_OWNED_STOCK: SnapshotIndexSpec<Map<number, Map<number, number>>> = {
-  name: 'HUD owned stock',
-  reads: { values: ['Owner', 'Stockpile', 'Upgrading', 'Carrying'] },
-  empty: () => new Map(),
-  add: (owned, entity) => countOwnedStock(owned, entity.components, ADD),
-  remove: (owned, entity) => countOwnedStock(owned, entity.components, SUBTRACT),
-  replace: (owned, previous, next) => {
-    countOwnedStock(owned, previous.components, SUBTRACT);
-    countOwnedStock(owned, next.components, ADD);
   },
 };
 
@@ -247,13 +203,13 @@ function countAnchor(state: HudReach, anchor: AnchorAt, sign: Sign): void {
 function heapOf(components: Components): GroundHeap | null {
   if (ownerOf(components) !== undefined || !('Stockpile' in components)) return null;
   const node = nodeOf(components);
-  return node === null ? null : { node, amounts: readStockpileAmounts(components) };
+  return node === null ? null : { node, amounts: inventoryAmounts(components) };
 }
 
 function countHeap(state: HudReach, heap: GroundHeap, sign: Sign): void {
   for (const reach of state.players.values()) {
     if (reach.reachStale || reach.inReach === null || !reach.inReach(heap.node)) continue;
-    adjustPairs(reach.heapStock, heap.amounts, sign);
+    adjustInventory(reach.heapStock, heap.amounts, sign);
   }
 }
 
@@ -343,7 +299,7 @@ function settleReach(state: HudReach, reach: Reach): void {
   const inReach = reach.inReach;
   if (inReach === null) return;
   for (const heap of state.heaps.values()) {
-    if (inReach(heap.node)) adjustPairs(reach.heapStock, heap.amounts, ADD);
+    if (inReach(heap.node)) adjustInventory(reach.heapStock, heap.amounts, ADD);
   }
 }
 
@@ -353,7 +309,7 @@ const NO_COUNTS: ReadonlyMap<number, never> = new Map<number, never>();
 export function hudTotalsOf(snapshot: WorldSnapshot, player: number): PlayerHudTotals | undefined {
   const indexes = indexesOf(snapshot);
   const people = indexes.get(HUD_PEOPLE).get(player);
-  const owned = indexes.get(HUD_OWNED_STOCK).get(player);
+  const owned = ownedInventoryOf(snapshot).get(player);
   const state = indexes.get(HUD_REACH);
   const reach = state.players.get(player);
   if (reach?.reachStale) settleReach(state, reach);

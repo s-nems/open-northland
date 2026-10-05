@@ -8,6 +8,8 @@
  */
 
 export { type FrameIndexReader, RENDER_FRAME_INDEX_READERS } from './frame-indexes.js';
+export { networkInventoryOf } from './hud/inventory.js';
+export { stockCounts } from './hud/model.js';
 export { type LightGrade, NEUTRAL_GRADE } from './lighting/types.js';
 export {
   aabbIntersects,
@@ -30,6 +32,13 @@ export {
   roadShardOf,
 } from './scene/snapshot-index.js';
 export { type SceneGround, type SceneTerrain, terrainMapToScene } from './scene/terrain-scene.js';
+export {
+  linkedPosts,
+  type OverlayPost,
+  overlayPostsWithin,
+  postCovers,
+  signpostOverlayIndex,
+} from './signposts.js';
 export type { AtlasFrame, SpriteAtlas } from './sprites/atlas.js';
 export { GFX_DIR_TO_FACING, subClipKey } from './sprites/settler.js';
 export type {

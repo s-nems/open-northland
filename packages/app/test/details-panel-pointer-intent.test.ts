@@ -8,7 +8,6 @@ import {
 } from '../src/hud/details-panel/pointer-intent.js';
 import { center, panelModelOf, viewOfKind } from './support/details-panel.js';
 
-const signpost: EntitySnapshot = { id: 7, components: { Signpost: {} } };
 const wall: EntitySnapshot = {
   id: 8,
   components: {
@@ -23,15 +22,6 @@ const wall: EntitySnapshot = {
 };
 
 describe('details panel click intents', () => {
-  it('resolves the demolish button of a signpost into its order', () => {
-    const sign = viewOfKind(panelModelOf(signpost), 'signpost');
-    const sp = center(sign.layout.button.rect);
-    expect(panelClickAt(sign, sp.x, sp.y)).toEqual({
-      kind: 'demolishSignpost',
-      entityId: 7,
-    });
-  });
-
   it('writes the palisade hitpoints on their own row, clear of the bar, the progress and the buttons', () => {
     const view = viewOfKind(
       panelModelOf({ ...wall, components: { ...wall.components, UnderConstruction: {} } }),

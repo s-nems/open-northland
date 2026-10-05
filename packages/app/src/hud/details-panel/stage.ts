@@ -1,6 +1,5 @@
 import { createReusableBaker, type SupersampledTexture } from '@open-northland/render';
 import { type Application, Container } from 'pixi.js';
-import { uiStringLookup } from '../../content/gui-gfx.js';
 import type { DetailsPanelAssets } from './assets.js';
 import { bakePanel } from './bake.js';
 import type { PanelHover } from './pointer-intent.js';
@@ -36,7 +35,6 @@ export interface PanelStage {
 
 export function createPanelStage(opts: PanelStageOptions): PanelStage {
   const { app, assets, scale } = opts;
-  const ui = uiStringLookup(assets.strings);
   const ss = Number.isInteger(scale) && scale <= PANEL_MAX_SUPERSAMPLE ? scale : PANEL_MAX_SUPERSAMPLE;
   let root = new Container();
   root.zIndex = PANEL_Z;
@@ -60,7 +58,7 @@ export function createPanelStage(opts: PanelStageOptions): PanelStage {
         return;
       }
       root.visible = true;
-      const texture = bakePanel({ assets, baker, view, hover, ui, scale, ss });
+      const texture = bakePanel({ assets, baker, view, hover, scale, ss });
       texture.display.position.set(view.layout.panel.x, view.layout.panel.y);
       texture.textLayer.position.copyFrom(texture.display.position);
       root.addChild(texture.display, texture.textLayer);

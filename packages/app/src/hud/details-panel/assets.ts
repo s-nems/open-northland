@@ -1,13 +1,7 @@
 import type { TextureSource } from '@open-northland/render';
 import { Texture } from 'pixi.js';
 import { type GuiArt, loadGuiArt } from '../../content/gui-art.js';
-import {
-  type GuiBarRamp,
-  type GuiStrings,
-  loadGuiBarRamp,
-  loadGuiBitmap,
-  loadGuiStrings,
-} from '../../content/gui-gfx.js';
+import { type GuiBarRamp, loadGuiBarRamp, loadGuiBitmap } from '../../content/gui-gfx.js';
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 
 /**
@@ -48,32 +42,20 @@ export interface DetailsPanelAssets {
   readonly art: GuiArt | null;
   readonly uiFont: UiFont;
   readonly bitmaps: GuiBitmapSet;
-  readonly strings: GuiStrings | null;
   /** The decoded level-to-colour gauge ramp (`bar_hitpoints`). */
   readonly barRamp: GuiBarRamp | undefined;
 }
 
-const assetsByLanguage = new Map<string, Promise<DetailsPanelAssets>>();
+let assetsOnce: Promise<DetailsPanelAssets> | undefined;
 
-export async function loadDetailsPanelAssets(lang: string): Promise<DetailsPanelAssets> {
-  let assets = assetsByLanguage.get(lang);
-  if (assets === undefined) {
-    assets = Promise.all([
-      loadGuiArt(),
-      loadUiFont(),
-      loadGuiBitmaps(),
-      loadGuiStrings(lang),
-      loadGuiBarRamp(),
-    ]).then(([art, uiFont, bitmaps, strings, barRamp]) => ({
-      art,
-      uiFont,
-      bitmaps,
-      strings,
-      barRamp,
-    }));
-    assetsByLanguage.set(lang, assets);
-    // A rejected load would otherwise pin every later rebuild to the one transient failure.
-    void assets.catch(() => assetsByLanguage.delete(lang));
+export async function loadDetailsPanelAssets(): Promise<DetailsPanelAssets> {
+  if (assetsOnce === undefined) {
+    assetsOnce = Promise.all([loadGuiArt(), loadUiFont(), loadGuiBitmaps(), loadGuiBarRamp()]).then(
+      ([art, uiFont, bitmaps, barRamp]) => ({ art, uiFont, bitmaps, barRamp }),
+    );
+    void assetsOnce.catch(() => {
+      assetsOnce = undefined;
+    });
   }
-  return assets;
+  return assetsOnce;
 }

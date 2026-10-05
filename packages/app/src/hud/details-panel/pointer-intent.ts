@@ -4,15 +4,12 @@ import type { PanelView } from './selection-view.js';
 
 /** One resolved left-click intent: a player order. */
 export type PanelClick =
-  | { readonly kind: 'demolishSignpost'; readonly entityId: number }
   | { readonly kind: 'demolishPalisade'; readonly entityId: number }
   | { readonly kind: 'cancelRoadSite'; readonly entityId: number };
 
 /** The intent of an enabled button, or null for an action this view kind does not wire. */
 const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null => {
   switch (view.kind) {
-    case 'signpost':
-      return action === 'demolish' ? { kind: 'demolishSignpost', entityId: view.model.entityId } : null;
     case 'palisade':
       if (action === 'demolish-palisade') {
         return {

@@ -38,19 +38,8 @@ export interface HudModel {
   readonly stocks: readonly StockCount[];
 }
 
-/**
- * Build one player's {@link HudModel} from a frame {@link WorldSnapshot}, off the figures the snapshot's
- * indexes keep per change (`totals.ts`). Membership is `Owner.player`, not `tribe`: a seat routinely
- * fields several tribes and a tribe is routinely split across seats, so only the owner answers "what do
- * I command". An entity with no `Owner` counts for nobody unless it is a heap on the ground, which the
- * seat's anchors hand to whoever can reach it; a neutral store standing in reach of two seats would
- * therefore count for both. No decoded map authors one.
- *
- * Stock follows the sim's one seat-stock rule (`SeatStock`, `systems/stores/seat-stock.ts`), read off the
- * snapshot here: every owned pile, the inventory a building keeps aside while it upgrades, the unit in a
- * settler's hands, and every heap on the ground in `heapReach` of the seat's signposts and buildings.
- * Output ordering is total (sorted by key), so the same snapshot yields an identical model every call.
- */
+/** Empire stock includes owned inventories everywhere and neutral heaps in reach of its buildings
+ *  or signposts. Network panels narrow the same inventory sources to a connected group of posts. */
 export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
   const totals = hudTotalsOf(snapshot, player);
   if (totals === undefined) return { tick: snapshot.tick, player, population: 0, jobs: [], stocks: [] };
@@ -62,10 +51,7 @@ export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
   for (const [goodType, amount] of totals.heapStock) {
     stockTotals.set(goodType, (stockTotals.get(goodType) ?? 0) + amount);
   }
-  const stocks: StockCount[] = [...stockTotals.entries()]
-    .filter(([, amount]) => amount !== 0)
-    .map(([goodType, amount]) => ({ goodType, amount }))
-    .sort((a, b) => a.goodType - b.goodType);
+  const stocks = stockCounts(stockTotals);
 
   return { tick: snapshot.tick, player, population: totals.population, jobs, stocks };
 }
@@ -73,4 +59,11 @@ export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
 /** Nobody's model at `tick`: every figure zero, so the bar shows a seatless view as empty. */
 export function emptyHud(tick: number): HudModel {
   return { tick, player: null, population: 0, jobs: [], stocks: [] };
+}
+
+export function stockCounts(totals: ReadonlyMap<number, number>): StockCount[] {
+  return [...totals.entries()]
+    .filter(([, amount]) => amount !== 0)
+    .map(([goodType, amount]) => ({ goodType, amount }))
+    .sort((a, b) => a.goodType - b.goodType);
 }

@@ -1,4 +1,10 @@
 import {
+  linkedPosts,
+  overlayPostsWithin,
+  postCovers,
+  signpostOverlayIndex,
+} from '@open-northland/render/data';
+import {
   components,
   FOG_MODE,
   FOG_STATE,
@@ -9,12 +15,6 @@ import {
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { createSceneSim, getScene } from '../src/scenes/index.js';
-import {
-  linkedPosts,
-  overlayPostsWithin,
-  postCovers,
-  signpostOverlayIndex,
-} from '../src/view/map-overlays/signpost-model.js';
 import {
   createSignpostMapOverlay,
   exploredOverlayNode,

@@ -8,8 +8,6 @@ import type { PanelView } from './selection-view.js';
 /** The buttons the current view exposes to pointer routing, in hit-test order. */
 const panelButtons = (view: PanelView): readonly ButtonHit[] => {
   switch (view.kind) {
-    case 'signpost':
-      return [view.layout.button];
     case 'palisade':
       return view.layout.buttons;
     case 'empty':

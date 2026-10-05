@@ -10,7 +10,7 @@ export const enGame = {
     mapOverlays: {
       label: 'Main map overlays',
       signposts: 'Signposts',
-      tip: 'Show your signpost network on the main map. Shading: civilian range; lines: actual connections; amber rings: isolated posts. Overlapping ranges do not connect networks. Terrain can still block travel. Carriers reach farther; scouts and fighters are unrestricted.',
+      tip: 'Signpost range and connections',
       noSeat: 'Choose a player to see their signpost network.',
     },
     minimap: {
@@ -481,6 +481,12 @@ export const enGame = {
       pending: 'In preparation',
       knowledgePending:
         'Knowledge (production and development, encyclopedia, how to play) is being built. What a locked building still waits for will be read here.',
+    },
+    signpostPanel: {
+      stock: 'Network goods',
+      empty: 'No goods',
+      count: 'Signposts: {count}',
+      demolish: 'Demolish',
     },
     settlerPanel: {
       ordersTooltip: 'Orders · {key}',

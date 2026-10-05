@@ -17,8 +17,7 @@ import { createPanelRebuildGate } from './rebuild-gate.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
 import { createPanelStage } from './stage.js';
 
-/** Owns the selection and hover state the model, layout and stage read. The panel draws signposts
- *  and walls; it derives every selection's model and hands it to the DOM panels. */
+/** Owns the selection and hover state the model, layout and stage read. The panel draws palisades; it derives every selection's model and hands it to the DOM panels. */
 
 /** A live cutout's rect, in on-screen px, plus the entity the observation window centres on. */
 export type PortraitBox = PortraitInsetFrame;
@@ -52,7 +51,7 @@ export interface UnitPanel {
 export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
   const { app, canvas } = opts;
   const scale = Math.max(MIN_UI_SCALE, opts.uiscale ?? 1);
-  const assets = await loadDetailsPanelAssets(opts.lang);
+  const assets = await loadDetailsPanelAssets();
   const stage = createPanelStage({ app, assets, scale });
 
   const ctx: UnitPanelModelContext = { ...opts, holdSettlerState: settlerStateHold() };

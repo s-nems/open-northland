@@ -7179,3 +7179,41 @@ body.on-drag-scroll * {
   width: 30px;
   height: 30px;
 }
+.on-hud .on-signpost-stock {
+  padding: 0 12px;
+}
+.on-hud .on-signpost-shelves {
+  height: 205px;
+}
+.on-hud .on-signpost .on-manifest {
+  height: 100%;
+  overflow: auto;
+}
+.on-hud .on-signpost .on-cargo-row::after {
+  display: none;
+}
+.on-hud .on-signpost .on-cargo-row {
+  padding-bottom: 1px;
+}
+.on-hud .on-signpost-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  margin: 0;
+}
+.on-hud .on-signpost-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 12px 12px;
+  border-top: 1px solid #c9a26233;
+  margin-top: 10px;
+}
+.on-hud .on-signpost-actions .on-order {
+  width: auto;
+  padding: 7px 12px;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}

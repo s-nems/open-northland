@@ -4,21 +4,13 @@ import { PANEL_W, panelRect, ROW_H, type SectionRect, sectionAt } from './shared
 
 export { ROW_H, ROW_TEXT_PAD, type SectionRect } from './shared.js';
 
-export type ButtonAction = 'demolish' | 'demolish-palisade';
+export type ButtonAction = 'demolish-palisade';
 
 export interface ButtonHit {
   readonly action: ButtonAction;
   readonly rect: Rect;
   readonly enabled: boolean;
 }
-/** A selected signpost: one section window whose body is the tear-down button. */
-export interface SignpostLayout {
-  readonly kind: 'signpost';
-  readonly panel: Rect;
-  readonly section: SectionRect;
-  readonly button: ButtonHit;
-}
-
 export interface PalisadeLayout {
   readonly kind: 'palisade';
   readonly panel: Rect;
@@ -30,12 +22,12 @@ export interface PalisadeLayout {
   readonly buttons: readonly ButtonHit[];
 }
 
-export type DetailsLayout = SignpostLayout | PalisadeLayout;
+export type DetailsLayout = PalisadeLayout;
 
-/** The signpost tear-down button's height. */
-const SIGNPOST_BUTTON_H = 18;
+/** The palisade action button's height. */
+const PALISADE_BUTTON_H = 18;
 /** Inset between that button and its section body, on both axes. */
-const SIGNPOST_BUTTON_PAD = 2;
+const PALISADE_BUTTON_PAD = 2;
 
 /**
  * Apply `fn` to every rect in a layout, returning a new layout of the same shape. The off-screen
@@ -44,14 +36,6 @@ const SIGNPOST_BUTTON_PAD = 2;
  */
 export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => Rect): T {
   const sec = (s: SectionRect): SectionRect => ({ frame: fn(s.frame), title: fn(s.title), body: fn(s.body) });
-  if (layout.kind === 'signpost') {
-    return {
-      ...layout,
-      panel: fn(layout.panel),
-      section: sec(layout.section),
-      button: { ...layout.button, rect: fn(layout.button.rect) },
-    };
-  }
   return {
     ...layout,
     panel: fn(layout.panel),
@@ -63,29 +47,6 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
   };
 }
 
-export function layoutSignpost(
-  screen: { readonly width: number; readonly height: number },
-  s: number,
-): SignpostLayout {
-  const w = Math.round(PANEL_W * s);
-  const pad = Math.round(SIGNPOST_BUTTON_PAD * s);
-  const bodyH = Math.round(SIGNPOST_BUTTON_H * s) + pad * 2;
-  const probe = sectionAt(0, 0, w, bodyH, s);
-  const panel = panelRect(probe.frame.h, screen, s);
-  const section = sectionAt(panel.x, panel.y, w, bodyH, s);
-  const button: ButtonHit = {
-    action: 'demolish',
-    enabled: true,
-    rect: {
-      x: section.body.x + pad,
-      y: section.body.y + pad,
-      w: section.body.w - pad * 2,
-      h: Math.round(SIGNPOST_BUTTON_H * s),
-    },
-  };
-  return { kind: 'signpost', panel, section, button };
-}
-
 export function layoutPalisade(
   model: PalisadePanelModel,
   screen: { readonly width: number; readonly height: number },
@@ -93,8 +54,8 @@ export function layoutPalisade(
 ): PalisadeLayout {
   const w = Math.round(PANEL_W * s);
   const rowH = Math.round(ROW_H * s);
-  const pad = Math.round(SIGNPOST_BUTTON_PAD * s);
-  const buttonH = Math.round(SIGNPOST_BUTTON_H * s);
+  const pad = Math.round(PALISADE_BUTTON_PAD * s);
+  const buttonH = Math.round(PALISADE_BUTTON_H * s);
   const actions = ['demolish-palisade'] as const;
   // The hitpoints label, its bar, then the build progress of a segment still going up. A road site has
   // no hitpoints, and its progress row says where its paving stands.

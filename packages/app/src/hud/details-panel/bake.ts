@@ -1,12 +1,11 @@
 import type { ReusableBaker, SupersampledTexture } from '@open-northland/render';
 import { Container, Graphics, Text } from 'pixi.js';
-import type { UiString } from '../../content/gui-gfx.js';
 import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
 import { mapLayout } from './layout/index.js';
 import type { PanelHover } from './pointer-intent.js';
-import { drawPalisade, drawSignpost } from './sections/index.js';
+import { drawPalisade } from './sections/index.js';
 import type { PanelView } from './selection-view.js';
 
 export type DrawableView = Exclude<PanelView, { kind: 'empty' }>;
@@ -34,7 +33,6 @@ export interface PanelBakeOptions {
   readonly baker: ReusableBaker;
   readonly view: DrawableView;
   readonly hover: PanelHover;
-  readonly ui: UiString;
   /** Fractional on-screen scale the texture is displayed at; `ss` is the integer oversample it draws at. */
   readonly scale: number;
   readonly ss: number;
@@ -54,23 +52,12 @@ export interface BakedPanel extends SupersampledTexture {
 }
 
 export function bakePanel(opts: PanelBakeOptions): BakedPanel {
-  const { assets, baker, view, hover, ui, scale, ss } = opts;
+  const { assets, baker, view, hover, scale, ss } = opts;
   const { toDraw, texW, texH } = panelDrawGeometry(view.layout.panel, scale, ss);
   const offscreen = new Container();
   const layers = makeLayers(offscreen);
   const chrome = createChrome(assets, ss, layers, { w: texW, h: texH });
-  switch (view.kind) {
-    case 'signpost':
-      drawSignpost(chrome, mapLayout(view.layout, toDraw), ui, hover.action);
-      break;
-    case 'palisade':
-      drawPalisade(chrome, mapLayout(view.layout, toDraw), view.model, hover.action, ss);
-      break;
-    default: {
-      const unreachable: never = view;
-      throw new Error(`unhandled panel view: ${JSON.stringify(unreachable)}`);
-    }
-  }
+  drawPalisade(chrome, mapLayout(view.layout, toDraw), view.model, hover.action, ss);
   // Text rasterizes once at its final screen size, outside the downsampled chrome texture.
   const ratio = scale / ss;
   for (const child of layers.text.children) {
