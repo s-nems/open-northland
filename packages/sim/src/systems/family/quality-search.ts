@@ -16,9 +16,9 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { interactionCell } from '../settlers/targets/index.js';
+import { interactionCell, unclaimedStockOf } from '../settlers/targets/index.js';
 import { NodeBuckets } from '../spatial/nodes.js';
-import { accessibleStockAmounts } from '../stores/index.js';
+import { accessibleStockAmounts, type SupplyTally } from '../stores/index.js';
 
 /**
  * Per-tick searchable view of external stores carrying a configured household-quality good. The
@@ -33,6 +33,7 @@ export class ExternalQualityIndex {
     private readonly world: World,
     private readonly ctx: SystemContext,
     private readonly terrain: TerrainGraph | undefined,
+    private readonly supply: SupplyTally,
   ) {
     this.sources = qualitySources(world, ctx.content);
     this.candidates = this.sources.list();
@@ -84,26 +85,34 @@ export class ExternalQualityIndex {
     return this.sources.bucketsOf(this.candidates);
   }
 
+  /** The lowest demanded good `store` holds a unit of that no walker has claimed. */
   private lowestDemanded(store: Entity, demanded: ReadonlySet<number>): number | null {
-    return lowestQualityGood(this.world, this.ctx.content, store, demanded);
+    const { world, supply } = this;
+    const unclaimed = supply.reservedAtSource.has(store)
+      ? (goodType: number): boolean => unclaimedStockOf(world, supply, store, goodType) > 0
+      : undefined;
+    return lowestQualityGood(world, this.ctx.content, store, demanded, unclaimed);
   }
 }
 
-/** The lowest household-quality good `store` holds a unit of, among `demanded` when given. A min over
- *  `keys()` plus `get`: destructured entries would allocate a pair per stock line of every candidate. */
+/** The lowest household-quality good `store` holds a unit of, among `demanded` when given and passing
+ *  `accepts` when given. A min over `keys()` plus `get`: destructured entries would allocate a pair per
+ *  stock line of every candidate. */
 function lowestQualityGood(
   world: World,
   content: ContentSet,
   store: Entity,
   demanded?: ReadonlySet<number>,
+  accepts?: (goodType: number) => boolean,
 ): number | null {
   const amounts = accessibleStockAmounts(world, store);
   if (amounts === undefined) return null;
   let lowest: number | null = null;
   for (const goodType of amounts.keys()) {
     if ((amounts.get(goodType) ?? 0) <= 0 || (demanded !== undefined && !demanded.has(goodType))) continue;
+    if (lowest !== null && goodType >= lowest) continue;
     if (contentIndex(content).goods.get(goodType)?.homeQuality === undefined) continue;
-    if (lowest === null || goodType < lowest) lowest = goodType;
+    if (accepts === undefined || accepts(goodType)) lowest = goodType;
   }
   return lowest;
 }

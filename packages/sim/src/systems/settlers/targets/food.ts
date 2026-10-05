@@ -17,10 +17,15 @@ import { lowestStockedFood } from '../../family/food-sources.js';
 import { routeRegions } from '../../footprint/index.js';
 import { bushesNearNode } from '../../spatial/bushes.js';
 import { closer, manhattan } from '../../spatial/metric.js';
+import type { SupplyTally } from '../../stores/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { TargetCandidates } from './candidates.js';
 import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';
+import { unclaimedStockOf } from './stores/stock.js';
 import { interactionCell } from './workplaces.js';
+
+/** The units one meal takes off a shelf, the amount an eater walking to a store claims there. */
+export const MEAL_UNITS = 1;
 
 /**
  * The nearest store holding an edible good, by Manhattan distance from `here` with an ascending-cell-id
@@ -29,12 +34,14 @@ import { interactionCell } from './workplaces.js';
  * home, the eater's own included; the needs drive tries that larder first (`eatAtHome`).
  *
  * A store in another static component or on the eater's failed-goal `memo` is skipped, so a hungry
- * settler walks to the second, reachable larder instead of looping beside the first.
+ * settler walks to the second, reachable larder instead of looping beside the first. So is one whose
+ * food is all claimed by settlers already walking to it.
  */
 function nearestFoodStore(
   index: InteractionCellIndex,
   world: World,
   ctx: SystemContext,
+  supply: SupplyTally,
   terrain: TerrainGraph,
   here: NodeId,
   eater: Entity,
@@ -46,7 +53,7 @@ function nearestFoodStore(
     terrain.componentOf(cell) !== component || isUnreachableGoal(memo, cell);
   const winner = index.nearest(
     here,
-    (e) => qualifiedGood(edibleFoodGoodFor(world, ctx, e)),
+    (e) => qualifiedGood(edibleFoodGoodFor(world, ctx, supply, e)),
     gate,
     avoid,
     sameSideAs(world, ownerOf(world, eater)), // a settler eats from its own player's larder
@@ -57,8 +64,13 @@ function nearestFoodStore(
 }
 
 /** The food good a hungry settler may eat from `store` on its search, or null: {@link storedFoodGood}
- *  of any store but a home. */
-function edibleFoodGoodFor(world: World, ctx: SystemContext, store: Entity): number | null {
+ *  of any store but a home, claims subtracted. */
+function edibleFoodGoodFor(
+  world: World,
+  ctx: SystemContext,
+  supply: SupplyTally,
+  store: Entity,
+): number | null {
   const building = world.tryGet(store, Building);
   if (
     building !== undefined &&
@@ -66,7 +78,7 @@ function edibleFoodGoodFor(world: World, ctx: SystemContext, store: Entity): num
   ) {
     return null;
   }
-  return storedFoodGood(world, ctx, store);
+  return storedFoodGood(world, ctx, store, supply);
 }
 
 /**
@@ -77,9 +89,20 @@ function edibleFoodGoodFor(world: World, ctx: SystemContext, store: Entity): num
  * Edibility is judged on the good's edible form, since consuming a stocked dish is itself the
  * conversion. The returned type is the raw one, which is what comes off the shelf. The family's
  * {@link lowestStockedFood} is the same pick; a store with no shelf at all answers null.
+ *
+ * Given `claims`, a good whose every unit here is claimed by a settler walking to take it is passed over.
  */
-export function storedFoodGood(world: World, ctx: SystemContext, entity: Entity): number | null {
-  return lowestStockedFood(world, ctx.content, entity);
+export function storedFoodGood(
+  world: World,
+  ctx: SystemContext,
+  entity: Entity,
+  claims?: SupplyTally,
+): number | null {
+  const unclaimed =
+    claims === undefined || !claims.reservedAtSource.has(entity)
+      ? undefined
+      : (goodType: number): boolean => unclaimedStockOf(world, claims, entity, goodType) > 0;
+  return lowestStockedFood(world, ctx.content, entity, unclaimed);
 }
 
 /**
@@ -140,13 +163,24 @@ export function nearestFood(
   targets: TargetCandidates,
   world: World,
   ctx: SystemContext,
+  supply: SupplyTally,
   terrain: TerrainGraph,
   here: NodeId,
   eater: Entity,
   gate?: SpatialGate,
 ): FoodTarget | null {
   const memo = unreachableGoals(world, ctx, eater); // shared by both halves
-  const store = nearestFoodStore(targets.stockpileCells, world, ctx, terrain, here, eater, memo, gate);
+  const store = nearestFoodStore(
+    targets.stockpileCells,
+    world,
+    ctx,
+    supply,
+    terrain,
+    here,
+    eater,
+    memo,
+    gate,
+  );
   const bush = nearestRipeBush(world, ctx, terrain, here, memo, gate);
   if (bush !== null && (store === null || closer(bush.dist, bush.cell, store.dist, store.cell))) {
     return { kind: 'bush', bush: bush.bush };

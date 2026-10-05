@@ -22,6 +22,7 @@ import { chainRecruitArmor } from '../planner/recruit-arming.js';
 import type { TargetCandidates } from '../targets/index.js';
 import { interactionCell, nearestStoreFor, nearestStoreHolding } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
+import { EQUIP_FETCH_UNITS } from './equip-fetches.js';
 
 type EquipOrderState = NonNullable<(typeof EquipOrder)['__value']>;
 
@@ -64,8 +65,8 @@ function errandGate(
 
 /**
  * Drive a settler's live equip order one stage forward. Approximation: the fetch and deposit gestures
- * reuse the generic goods-handling animations, as no decoded equip clip exists. Nothing reserves the
- * source unit, so two settlers sent for the last one race it and the loser walks home empty-handed.
+ * reuse the generic goods-handling animations, as no decoded equip clip exists. A fetch claims its source
+ * unit, so a settler planned later shops elsewhere; the pickup still takes whatever stands there.
  */
 export function planEquipOrder(
   world: World,
@@ -159,6 +160,7 @@ function planFetch(errand: EquipErrand, goodType: number): boolean {
   }
   const src = nearestStoreHolding(targets.bands, world, here, goodType, owner, supply, gate, avoid);
   if (src === null) return endErrand(errand);
+  supply.stampPickupClaim(entity, { source: src, goodType, amount: EQUIP_FETCH_UNITS });
   const { group, slot } = order;
   atOrWalkTo(errand, src, () =>
     startAtomic(

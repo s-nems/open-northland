@@ -61,6 +61,7 @@ export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boo
         ctx,
         here,
         plan.owner,
+        plan.supply,
         plan.limit ?? undefined,
         unreachableGoalVeto(world, ctx, e),
       )

@@ -12,6 +12,7 @@ import {
   Female,
   MISC_EQUIP_SLOTS,
   Owner,
+  PickupClaim,
   Position,
   Stance,
   Stockpile,
@@ -909,6 +910,49 @@ describe('errand interactions with combat and player orders', () => {
     sim.enqueueSetup({ kind: 'moveUnit', entity: settler, x: 4, y: 8 });
     sim.run(5);
     expect(sim.world.has(settler, EquipOrder)).toBe(false);
+  });
+});
+
+describe('source claims - a fetch holds the unit it walks to', () => {
+  /** Two settlers sent for shoes, one pair at a near pile and one at a far pile, planned in one pass. */
+  function contestedShoes(): { sim: Simulation; first: Entity; second: Entity; near: Entity; far: Entity } {
+    const sim = freshSim();
+    const first = ownedSettler(sim, 2, 2);
+    const second = ownedSettler(sim, 2, 3);
+    const near = pileAt(sim, 6, 2, SHOES, 1);
+    const far = pileAt(sim, 12, 2, SHOES, 1);
+    sim.enqueueSetup(equip(first, SHOES));
+    sim.enqueueSetup(equip(second, SHOES));
+    sim.step();
+    return { sim, first, second, near, far };
+  }
+
+  it('sends a settler planned later past the unit another is already walking to', () => {
+    const { sim, first, second, near, far } = contestedShoes();
+
+    expect(sim.world.get(first, PickupClaim)).toEqual({ source: near, goodType: SHOES, amount: 1 });
+    expect(sim.world.get(second, PickupClaim)).toEqual({ source: far, goodType: SHOES, amount: 1 });
+
+    sim.run(ERRAND_TICKS);
+    expect(sim.world.get(first, Equipment).boots?.goodType).toBe(SHOES);
+    expect(sim.world.get(second, Equipment).boots?.goodType).toBe(SHOES);
+    expect(sim.world.has(first, PickupClaim)).toBe(false); // the pickup ends each claim
+    expect(sim.world.has(second, PickupClaim)).toBe(false);
+  });
+
+  it('frees the unit when the player calls the fetch off, so the next settler planned takes it', () => {
+    const { sim, first, second, near, far } = contestedShoes();
+
+    sim.enqueueSetup({ kind: 'moveUnit', entity: first, x: 4, y: 5 });
+    sim.step();
+    expect(sim.world.has(first, EquipOrder)).toBe(false);
+    expect(sim.world.has(first, PickupClaim)).toBe(false);
+    expect(sim.world.get(second, PickupClaim).source).toBe(far);
+
+    const third = ownedSettler(sim, 2, 4);
+    sim.enqueueSetup(equip(third, SHOES));
+    sim.step();
+    expect(sim.world.get(third, PickupClaim)).toEqual({ source: near, goodType: SHOES, amount: 1 });
   });
 });
 

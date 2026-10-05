@@ -2,7 +2,6 @@ import {
   CurrentAtomic,
   FarmTask,
   MoveGoal,
-  PickupClaim,
   Sheltering,
   SiteAssignment,
   Stranded,
@@ -33,7 +32,6 @@ export function retargetHomeErrands(
       anotherSystemOwns(world, e) ||
       world.has(e, CurrentAtomic) ||
       world.has(e, SupplyRun) ||
-      world.has(e, PickupClaim) ||
       world.tryGet(e, SiteAssignment)?.site === home ||
       world.has(e, FarmTask) ||
       world.has(e, Sheltering)

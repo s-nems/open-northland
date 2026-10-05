@@ -37,7 +37,7 @@ import {
   startPickup,
 } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
-import { interactionCell, QUALIFIES } from '../../targets/index.js';
+import { interactionCell, QUALIFIES, unclaimedStockOf } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 
 /**
@@ -209,8 +209,9 @@ function shortfallGoods(stock: DeepReadonly<{ lines: Map<number, VehicleStockLin
 }
 
 /**
- * Fetch one unit of a good the hold is short of, from the nearest source the search finds. Nothing is
- * booked yet: the booking is made when the unit is on the carrier's back, as the original's carrier does.
+ * Fetch one unit of a good the hold is short of, from the nearest source the search finds, claiming it so
+ * another hand picks a different unit. Nothing is booked in the hold yet: the booking is made when the
+ * unit is on the carrier's back, as the original's carrier does.
  * A commander with no carrier seated beside it lets a request no source can fill lapse to what is
  * booked, so it does not stand by the door for goods nobody has.
  */
@@ -226,6 +227,7 @@ function fetchShortfall(plan: PlannerContext, vehicle: Entity, type: VehicleType
       lapseShortfall(plan, vehicle, goods);
     return false;
   }
+  plan.supply.stampPickupClaim(e, { source: source.entity, goodType: source.goodType, amount: CARGO_UNIT });
   atOrWalk(world, e, here, interactionCell(world, ctx, plan.terrain, source.entity, here), () =>
     startPickup(world, ctx, e, plan, source.entity, source.goodType, CARGO_UNIT),
   );
@@ -240,7 +242,8 @@ interface CargoSource {
 /**
  * The nearest store holding any of `goods`: a loose pile within the search radius of the door, else a
  * house within it, both ranked from the door, else any store within the hand's signpost area ranked
- * from where it stands. Food in a home is never a source. Ties fall to the lower good id.
+ * from where it stands. Food in a home is never a source, nor a unit another settler already walks to
+ * lift. Ties fall to the lower good id.
  */
 function nearestCargoSource(
   plan: PlannerContext,
@@ -265,7 +268,10 @@ function nearestCargoSource(
   for (const phase of phases) {
     let best: (CargoSource & { readonly distance: number }) | null = null;
     for (const goodType of goods) {
-      const accept = (e2: Entity): boolean => phase.accept(e2) && !isFoodKeptAtHome(world, ctx, e2, goodType);
+      const accept = (e2: Entity): boolean =>
+        phase.accept(e2) &&
+        !isFoodKeptAtHome(world, ctx, e2, goodType) &&
+        unclaimedStockOf(world, plan.supply, e2, goodType) > 0;
       const hit = targets.bands
         .holding(goodType)
         .nearest(phase.origin, (e2) => (accept(e2) ? QUALIFIES : null), gate, avoid, onSide);

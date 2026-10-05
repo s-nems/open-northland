@@ -5,6 +5,7 @@ import { ExternalFoodIndex } from '../../src/systems/family/food-search.js';
 import { plannerSystem, stockCapacity } from '../../src/systems/index.js';
 import { exportedGoodForm } from '../../src/systems/readviews/index.js';
 import { carriedGoodForm } from '../../src/systems/settlers/drives/economy/delivery-targets.js';
+import { collectSupplyTally } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import {
   BREAD,
@@ -113,7 +114,7 @@ describe('a dish leaves the kitchen as the edible it becomes', () => {
     // wins whether or not it is the kitchen that cooked the loaf. She asks for the good to LIFT (raw).
     const hq = buildingAt(sim, HEADQUARTERS, 0, 0, [[BREAD, 3]]);
     const larder = buildingAt(sim, HEADQUARTERS, 3, 0); // an empty destination with room for any food
-    const index = new ExternalFoodIndex(sim.world, ctxOf(sim), sim.terrain);
+    const index = new ExternalFoodIndex(sim.world, ctxOf(sim), sim.terrain, collectSupplyTally(sim.world));
 
     expect(index.nearest({ hx: 0, hy: 0 }, undefined, larder, null)).toEqual({ store: hq, goodType: BREAD });
   });

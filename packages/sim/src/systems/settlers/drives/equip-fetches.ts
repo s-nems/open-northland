@@ -1,6 +1,9 @@
 import { EquipOrder, ownerOf, Settler } from '../../../components/index.js';
 import type { World } from '../../../ecs/world.js';
 
+/** An equip errand lifts one unit into one slot. */
+export const EQUIP_FETCH_UNITS = 1;
+
 /**
  * The units of each good, per owning player, held by equip errands underway: an errand in its `acquire`
  * stage holds one unit of its good from dispatch until the pickup. Every automatic dispatcher subtracts
@@ -21,7 +24,7 @@ export function equipFetchesUnderway(world: World): Map<number, Map<number, numb
       held = new Map();
       byOwner.set(owner, held);
     }
-    held.set(order.goodType, (held.get(order.goodType) ?? 0) + 1);
+    held.set(order.goodType, (held.get(order.goodType) ?? 0) + EQUIP_FETCH_UNITS);
   }
   return byOwner;
 }

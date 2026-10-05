@@ -30,7 +30,8 @@ import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors
 import { interactionCell } from '../../settlers/targets/index.js';
 import { unreachableGoalVeto } from '../../settlers/unreachable-goals.js';
 import { navigationLimitFor } from '../../signposts/index.js';
-import { deliverHome, fetchFrom } from '../food-haul.js';
+import type { SupplyTally } from '../../stores/index.js';
+import { deliverHome, fetchFrom, HAUL_LIFT_UNITS } from '../food-haul.js';
 import type { ExternalFoodIndex } from '../food-search.js';
 import { builtHomeType, consumeFoodUnits, isMinor, storedFoodUnits } from '../households.js';
 import { birth, makeLoveDuration } from './make-love.js';
@@ -51,6 +52,7 @@ export type ChildOrderPass = {
    *  drives, while needs still fire. */
   readonly dutyClaimed: Set<Entity>;
   readonly externalFood: ExternalFoodIndex;
+  readonly supply: SupplyTally;
 };
 
 /** Drive one standing {@link ChildOrder} a tick through its stages: stock the larder, wait inside, hearts,
@@ -194,6 +196,11 @@ function haulFood(
     return;
   }
   if (missed) world.mut(woman, ChildOrder).foodSearchMissed = undefined;
+  pass.supply.stampPickupClaim(woman, {
+    source: source.store,
+    goodType: source.goodType,
+    amount: HAUL_LIFT_UNITS,
+  });
   fetchFrom(world, ctx, terrain, woman, womanView, source, hereNode);
 }
 
@@ -203,9 +210,13 @@ function leaveHome(world: World, e: Entity, home: Entity): void {
   if (isInside(world, e, home) && !isServedAtHome(world, e)) stepOut(world, e);
 }
 
-/** Claim `e` for family duty this tick (idempotent). */
+/** Claim `e` for family duty this tick (idempotent). Taking a settler ends the economy errand it carried;
+ *  the planner leaves a duty-bound settler's errands alone, since this order stamps its own. */
 function claimDuty(world: World, e: Entity, pass: ChildOrderPass): void {
-  if (!world.has(e, FamilyDuty)) world.add(e, FamilyDuty, { duty: true });
+  if (!world.has(e, FamilyDuty)) {
+    world.add(e, FamilyDuty, { duty: true });
+    pass.supply.releaseErrands(e);
+  }
   pass.dutyClaimed.add(e);
 }
 

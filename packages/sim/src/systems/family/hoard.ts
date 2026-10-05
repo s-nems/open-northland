@@ -17,7 +17,8 @@ import { startDrop } from '../settlers/atomics/start.js';
 import { hasRoom } from '../settlers/drives/economy/store-policy.js';
 import { unreachableGoalVeto } from '../settlers/unreachable-goals.js';
 import type { NavigationLimit } from '../signposts/index.js';
-import { deliverHome, fetchFrom } from './food-haul.js';
+import type { SupplyTally } from '../stores/index.js';
+import { deliverHome, fetchFrom, HAUL_LIFT_UNITS } from './food-haul.js';
 import type { ExternalFoodIndex } from './food-search.js';
 import {
   demandedHomeQualityGoods,
@@ -45,6 +46,8 @@ export function planWomanHoard(
   e: Entity,
   externalFood: ExternalFoodIndex,
   externalQuality: ExternalQualityIndex,
+  /** Live pickup claims: the trip she sets out on claims the unit she will lift. */
+  supply: SupplyTally,
   limit: NavigationLimit | null,
 ): boolean {
   const home = world.tryGet(e, Residence)?.home;
@@ -92,6 +95,7 @@ export function planWomanHoard(
     demanded.size > 0 ? externalQuality.nearest(hereNode, owner, demanded, limit, avoid) : null;
   const source = nearerSource(world, hereNode, foodSource, qualitySource);
   if (source === null) return false; // nothing to hoard, so fall through to idling
+  supply.stampPickupClaim(e, { source: source.store, goodType: source.goodType, amount: HAUL_LIFT_UNITS });
   fetchFrom(world, ctx, terrain, e, settler, source, hereNode);
   return true;
 }

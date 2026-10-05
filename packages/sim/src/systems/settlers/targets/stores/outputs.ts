@@ -8,14 +8,16 @@ import {
   isWorkplaceOutput,
   mergedRecipeOf,
   refillsOwnStock,
+  type SupplyTally,
 } from '../../../stores/index.js';
 import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
 
 /**
  * Whether any workplace holds a haulable output this tick, the population-level dormancy gate for
  * {@link nearestWorkplaceOutput}. It applies the same "holds an output" test as that scan's inner loop,
- * so a false here means every per-settler scan would return null. It is deliberately weaker (no "a store
- * can take it" check), so a true still runs the real scan and only a provably empty scan is elided.
+ * so a false here means every per-settler scan would return null. It is deliberately weaker (no claim or
+ * "a store can take it" check), so a true still runs the real scan and only a provably empty scan is
+ * elided.
  */
 export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: Iterable<Entity>): boolean {
   for (const e of stockpiles) {
@@ -33,8 +35,9 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
  * The nearest workplace with a finished output good a carrier should haul away, with the good to haul,
  * or null when nothing needs hauling. A candidate is a building whose type carries a recipe or fills
  * itself, so a stocked good is finished output rather than a passive store's reserve. The `deliverable` check keeps
- * the carrier from picking up a good it could never deliver and would shuttle back and forth. Only a
- * building carries a recipe, so the search skips the loose piles.
+ * the carrier from picking up a good it could never deliver and would shuttle back and forth. Units other
+ * settlers already walk to are not offered again. Only a building carries a recipe, so the search skips
+ * the loose piles.
  */
 export function nearestWorkplaceOutput(
   index: InteractionCellIndex,
@@ -44,6 +47,8 @@ export function nearestWorkplaceOutput(
   here: NodeId,
   /** The carrier's owning player. It never hauls another player's workplace output. */
   owner: number | undefined,
+  /** Live pickup claims: an output whose every unit is promised to a walker is passed over. */
+  supply: SupplyTally,
   /** The carrier's signpost confinement: an out-of-area workplace is not one it fetches from. */
   gate?: SpatialGate,
   /** The carrier's failed-goal veto. */
@@ -52,7 +57,7 @@ export function nearestWorkplaceOutput(
   // The good that qualified the winner is the good it hauls.
   const winner = index.nearestDoor(
     here,
-    (e) => qualifiedGood(haulableOutputGood(world, ctx, deliverable, e)),
+    (e) => qualifiedGood(haulableOutputGood(world, ctx, supply, deliverable, e)),
     gate,
     avoid,
     sameSideAs(world, owner),
@@ -60,11 +65,12 @@ export function nearestWorkplaceOutput(
   return winner === null ? null : { workplace: winner.entity, goodType: winner.payload };
 }
 
-/** The lowest-goodType output a workplace stocks and the carrier could deliver, or null. Canonical
- *  order, and side-effect-free so the ring may re-evaluate it on the fallback scan. */
+/** The lowest-goodType output a workplace stocks unclaimed and the carrier could deliver, or null.
+ *  Canonical order, and side-effect-free so the ring may re-evaluate it on the fallback scan. */
 export function haulableOutputGood(
   world: World,
   ctx: SystemContext,
+  supply: SupplyTally,
   deliverable: (goodType: number) => boolean,
   entity: Entity,
 ): number | null {
@@ -74,7 +80,7 @@ export function haulableOutputGood(
   if (stock === undefined) return null;
   if (isPassiveStore(world, ctx, entity)) return null; // passive stores aren't hauled from
   for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
-    if (amount <= 0) continue;
+    if (amount <= supply.reservedAt(entity, goodType)) continue;
     if (!isWorkplaceOutput(world, ctx, entity, goodType)) continue; // only haul outputs
     if (!deliverable(goodType)) continue; // no reachable sink
     return goodType;

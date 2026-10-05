@@ -33,6 +33,7 @@ import { entityNode } from '../../spatial/nodes.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
 import { INTENT_WEAPON_CLASS } from '../atomics/effects/goods/weapon-class.js';
+import { EQUIP_FETCH_UNITS } from '../drives/equip-fetches.js';
 import {
   interactionCell,
   nearestStoreHolding,
@@ -48,7 +49,8 @@ import type { PlannerPass } from './pass.js';
  * The assistant's arming pass: dress each enlisted weapon-class recruit whose drill is served from any
  * reachable store. Authored: one outing, so the weapon is fetched first and the equip drive chains the
  * armor want at the store before the single walk home. Runs on the grants pass's stride beat with the
- * same one-errand rule.
+ * same one-errand rule. A dispatch claims its unit at once, so a recruit on the same beat shops for
+ * another; the recruit's own plan re-claims it.
  */
 export function dispatchRecruitArming(pass: PlannerPass): void {
   const { world, ctx } = pass;
@@ -188,6 +190,7 @@ function dispatchWeaponFetch(
       route.veto,
     );
     if (src === null) continue; // nothing reachable holds this row; a weaker one still may
+    pass.supply.stampPickupClaim(e, { source: src, goodType, amount: EQUIP_FETCH_UNITS });
     world.add(e, EquipOrder, {
       group: 'weapon',
       slot: 0,
@@ -221,10 +224,11 @@ function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolea
     route.veto,
   );
   if (pick === null) return false;
+  pass.supply.stampPickupClaim(e, { ...pick, amount: EQUIP_FETCH_UNITS });
   world.add(e, EquipOrder, {
     group: 'armor',
     slot: 0,
-    goodType: pick,
+    goodType: pick.goodType,
     returnTo: null, // like the weapon fetch, done at the stock source
     stage: 'acquire',
     issuer: 'assistant-recruit',
@@ -264,11 +268,17 @@ export function chainRecruitArmor(
     world.remove(e, AssistantRecruit); // no tier reachable: released unarmored
     return null;
   }
-  return pick;
+  return pick.goodType;
+}
+
+interface ArmorSource {
+  readonly goodType: number;
+  readonly source: Entity;
 }
 
 /** The armor policy: a seeded-random reachable good from the heavy tier, the light tier as the
- *  fallback, null when no tier has a reachable unit, so a recruit may complete unarmored. */
+ *  fallback, with its nearest source; null when no tier has a reachable unit, so a recruit may
+ *  complete unarmored. */
 function pickReachableArmor(
   world: World,
   ctx: SystemContext,
@@ -278,13 +288,13 @@ function pickReachableArmor(
   owner: number,
   limit: NavigationLimit | null,
   veto: ((cell: NodeId) => boolean) | undefined,
-): number | null {
+): ArmorSource | null {
   const byClass = armorByClass(ctx.content);
   for (const tier of [ARMOR_MAIN_TYPE.HEAVY, ARMOR_MAIN_TYPE.LIGHT]) {
-    const sources: number[] = [];
+    const sources: ArmorSource[] = [];
     for (const armor of byClass.get(tier) ?? []) {
       if (armor.goodType === undefined) continue;
-      const src = nearestStoreHolding(
+      const source = nearestStoreHolding(
         targets.bands,
         world,
         here,
@@ -294,7 +304,7 @@ function pickReachableArmor(
         limit ?? undefined,
         veto,
       );
-      if (src !== null) sources.push(armor.goodType);
+      if (source !== null) sources.push({ goodType: armor.goodType, source });
     }
     if (sources.length === 0) continue;
     const pick = sources[ctx.rng.int(sources.length)];

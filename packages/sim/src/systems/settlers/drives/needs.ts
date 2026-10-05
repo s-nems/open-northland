@@ -25,8 +25,10 @@ import {
 import { atomicDuration } from '../../readviews/animations.js';
 import { isFood, jobNeedsReligion } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
+import type { SupplyTally } from '../../stores/index.js';
 import { atOrWalk, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic, startMeal } from '../atomics/start.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
+import { MEAL_UNITS } from '../targets/food.js';
 import { interactionCell, nearestFood, nearestPrayerSite, type TargetCandidates } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 import { eatAtHome, prayAtHome, sleepAtHome } from './home-errands.js';
@@ -150,6 +152,9 @@ export function planNeeds(
   here: NodeId,
   load: { goodType: number; amount: number } | undefined,
   targets: TargetCandidates,
+  /** Live pickup claims: food another eater is walking to is left to it, and a walk to a shelf claims
+   *  its meal there. */
+  supply: SupplyTally,
   /** The settler's signpost confinement; a need is only sought inside it. */
   limit: NavigationLimit | null,
   /** The planner-tick occupancy state the sleep rung picks a resting spot out of. */
@@ -172,10 +177,13 @@ export function planNeeds(
     // Original behavior: the family larder comes first, then the nearest food elsewhere. A store and a
     // wild berry bush share the walk-or-act tail; only the meal's effect differs.
     const walks = seek && (bars.hunger >= NEED_CRITICAL_THRESHOLD || !onAlert());
-    if (walks && eatAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
-    const food = walks ? nearestFood(targets, world, ctx, terrain, here, e, gate) : null;
+    if (walks && eatAtHome(world, ctx, terrain, supply, e, settler, here, limit)) return true;
+    const food = walks ? nearestFood(targets, world, ctx, supply, terrain, here, e, gate) : null;
     if (food !== null) {
       const target = food.kind === 'store' ? food.store : food.bush;
+      if (food.kind === 'store') {
+        supply.stampPickupClaim(e, { source: food.store, goodType: food.goodType, amount: MEAL_UNITS });
+      }
       const effect =
         food.kind === 'store'
           ? ({ kind: 'eat', goodType: food.goodType, from: food.store } as const)

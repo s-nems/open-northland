@@ -16,6 +16,7 @@ import {
   Marriage,
   MoveGoal,
   Owner,
+  PickupClaim,
   Position,
   Residence,
   Settler,
@@ -29,6 +30,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { ASSISTANT_DECISION_PERIOD_TICKS } from '../../src/systems/assistant/index.js';
 import { BARRACKS_DRILL_TICKS } from '../../src/systems/settlers/drives/training.js';
+import { ASSISTANT_SCAN_PERIOD_TICKS } from '../../src/systems/settlers/planner/assistant-grants.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 import { stampPost } from '../signposts/support.js';
@@ -556,6 +558,39 @@ describe('the training queue', () => {
     run(sim, 4000);
     expect(sim.world.get(recruit, Settler).jobType).toBe(SOLDIER);
     expect(sim.world.get(outside, Stockpile).amounts.get(SWORD_LONG_GOOD)).toBe(1);
+  });
+
+  it('arms two recruits on the same beat from different units, never both after the last one', () => {
+    const sim = trainSim();
+    const first = settlerAt(sim, SOLDIER, 3, 3);
+    // Ids one scan period apart share the arming beat.
+    for (let i = 1; i < ASSISTANT_SCAN_PERIOD_TICKS; i++) sim.world.create();
+    const second = settlerAt(sim, SOLDIER, 3, 4);
+    for (const e of [first, second])
+      sim.world.add(e, AssistantRecruit, { intent: 'trainSword', armed: false });
+    const longPile = pileAt(sim, 9, 3, new Map([[SWORD_LONG_GOOD, 1]]));
+    const shortPile = pileAt(sim, 12, 3, new Map([[SWORD_SHORT_GOOD, 1]]));
+
+    runUntil(sim, () => sim.world.has(first, EquipOrder), 2 * ASSISTANT_SCAN_PERIOD_TICKS, 'dispatched');
+    // The first recruit takes the stronger blade; the second, sent on the same beat, the one left.
+    expect(sim.world.get(first, PickupClaim)).toEqual({
+      source: longPile,
+      goodType: SWORD_LONG_GOOD,
+      amount: 1,
+    });
+    expect(sim.world.get(second, PickupClaim)).toEqual({
+      source: shortPile,
+      goodType: SWORD_SHORT_GOOD,
+      amount: 1,
+    });
+    runUntil(
+      sim,
+      () =>
+        sim.world.get(first, Settler).jobType === SWORDSMAN_LONG &&
+        sim.world.get(second, Settler).jobType === SWORDSMAN_SHORT,
+      3000,
+      'both armed',
+    );
   });
 
   it('trains without arming ("naked") on the plain soldier counter even with weapons in store', () => {

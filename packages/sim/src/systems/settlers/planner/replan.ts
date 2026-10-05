@@ -42,7 +42,7 @@ import { clearNavState, isTravelling } from '../../movement/nav-state.js';
 import { sheltersOnAlarm } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import type { SupplyTally } from '../../stores/index.js';
-import { ACTION_OWNER_MARKERS, anotherSystemOwns } from '../action-owner.js';
+import { ACTION_OWNER_MARKERS, anotherSystemOwns, divertsErrand } from '../action-owner.js';
 import { atomicHoldsSettler } from '../atomics/busy.js';
 import { topsUpAtHome } from '../drives/at-home.js';
 import { reconcileYardRoute } from '../drives/economy/index.js';
@@ -188,7 +188,7 @@ export function idleRelease(world: World, e: Entity): IdleRelease | null {
   if (world.get(e, Settler).jobType === null && shedsNothing(world, e)) return 'jobless';
   const quiet =
     isTravelling(world, e) &&
-    !(hasErrand(world, e) && anotherSystemOwns(world, e)) &&
+    !(hasErrand(world, e) && divertsErrand(world, e)) &&
     !world.has(e, Engagement) &&
     world.tryGet(e, PathRequest)?.failed !== true;
   return quiet ? 'travelling' : null;
@@ -311,8 +311,8 @@ export function releaseStaleIntent(
     if (world.tryGet(e, Resting)?.at === world.get(e, Sheltering).shelter) clearNavState(world, e);
   }
   // A non-atomic owner has diverted this settler from its errand. Release its promises before a combat,
-  // flight, family or player-order route hits the travel early-out below.
-  if (anotherSystemOwns(world, e)) supply.releaseErrands(e);
+  // flight or player-order route hits the travel early-out below.
+  if (divertsErrand(world, e)) supply.releaseErrands(e);
   // Fresh read - reconcileYardRoute may have cleared the request.
   const request = world.tryGet(e, PathRequest);
   if (request?.failed === true && !ownsFailedRoute(world, e)) {

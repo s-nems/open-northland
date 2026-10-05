@@ -14,6 +14,7 @@ import type { NodeId } from '../../src/nav/terrain/index.js';
 import { plannerSystem, routeRegions, stampResourceFootprintData } from '../../src/systems/index.js';
 import { collectTargets } from '../../src/systems/settlers/targets/candidates.js';
 import { nearestFood } from '../../src/systems/settlers/targets/food.js';
+import { collectSupplyTally } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -54,6 +55,7 @@ function food(sim: Simulation, eater: Entity, here?: NodeId) {
     collectTargets(sim.world, ctxOf(sim), terrain),
     sim.world,
     ctxOf(sim),
+    collectSupplyTally(sim.world),
     terrain,
     here ?? terrain.nodeAt(2, 6),
     eater,
@@ -98,6 +100,7 @@ describe('forage target reachability', () => {
         collectTargets(sim.world, ctx, terrain),
         sim.world,
         ctx,
+        collectSupplyTally(sim.world),
         terrain,
         terrain.nodeAt(2, 6),
         eater,

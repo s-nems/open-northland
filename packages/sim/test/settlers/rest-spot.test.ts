@@ -8,6 +8,7 @@ import { restingCell } from '../../src/systems/settlers/drives/rest-spot.js';
 import { PlannerSpacing } from '../../src/systems/settlers/planner/spacing.js';
 import { collectTargets } from '../../src/systems/settlers/targets/index.js';
 import { NodeBuckets } from '../../src/systems/spatial/nodes.js';
+import { collectSupplyTally } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
@@ -179,6 +180,7 @@ describe('sleep drive - walking aside before bedding down', () => {
       here,
       undefined,
       targets,
+      collectSupplyTally(sim.world),
       null,
       spacing,
       () => false,

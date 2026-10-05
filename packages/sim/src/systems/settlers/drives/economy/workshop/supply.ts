@@ -12,7 +12,7 @@ import {
   stockCapacity,
 } from '../../../../stores/index.js';
 import type { PlannerContext } from '../../../planner/context.js';
-import { FetchableStock, QUALIFIES } from '../../../targets/index.js';
+import { FetchableStock, QUALIFIES, unclaimedStockOf } from '../../../targets/index.js';
 import { unreachableGoalVeto } from '../../../unreachable-goals.js';
 import type { HaulFlagArea } from '../haul-flag-area.js';
 
@@ -86,7 +86,8 @@ export interface InputShortfall {
  * reachable holds a short one: the nearest store that holds the good, a well's or hive's own shelf
  * included. Short inputs rank by how full they are against their target, emptiest first, ties in recipe
  * order; an input no reachable store holds falls through to the next. The trip brings one unit, so a
- * shortfall of two is two trips. Never from another player's store, nor a cell the worker failed to reach.
+ * shortfall of two is two trips. Never from another player's store, nor a cell the worker failed to reach,
+ * nor a source whose units of the good are all claimed by settlers already walking to it.
  *
  * Approximation: the original's pick order between short inputs is unobserved; emptiest-first is authored.
  */
@@ -128,14 +129,17 @@ export function nearestMissingInputSource(
     }
     const input = inputs[pick];
     if (input === undefined) return null;
-    const band = sideHoldsNone(plan, input.goodType) ? null : targets.bands.holding(input.goodType);
+    const goodType = input.goodType;
+    const band = sideHoldsNone(plan, goodType) ? null : targets.bands.holding(goodType);
+    const unclaimed = (e: Entity) =>
+      unclaimedStockOf(world, plan.supply, e, goodType) > 0 ? QUALIFIES : null;
     const winner =
       band === null
         ? null
         : area !== undefined
           ? band.nearest(
               here,
-              (e) => (e === workplace ? null : QUALIFIES),
+              (e) => (e === workplace ? null : unclaimed(e)),
               area.gate,
               avoid,
               sameSideAs(world, plan.owner),
@@ -144,12 +148,12 @@ export function nearestMissingInputSource(
           : band.nearest(
               here,
               // The workplace never supplies itself.
-              (e) => (e === workplace ? null : QUALIFIES),
+              (e) => (e === workplace ? null : unclaimed(e)),
               plan.limit ?? undefined,
               avoid,
               sameSideAs(world, plan.owner),
             );
-    if (winner !== null) return { store: winner.entity, goodType: input.goodType };
+    if (winner !== null) return { store: winner.entity, goodType };
     lastIndex = pick;
     lastHave = pickHave;
     lastTarget = pickTarget;

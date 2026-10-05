@@ -158,7 +158,22 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // its own cheap refusals - the presence sweep behind it is the pass's one expensive read.
   let alerted: boolean | undefined;
   const alert = (): boolean => (alerted ??= holdsGround(world, ctx, e, pass.front));
-  if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing, alert)) {
+  if (
+    planNeeds(
+      world,
+      ctx,
+      terrain,
+      e,
+      settler,
+      here,
+      load,
+      pass.targets,
+      pass.supply,
+      limit,
+      pass.spacing,
+      alert,
+    )
+  ) {
     // A needs drive pulled the settler away, so it is no longer inside whatever it was waiting in -
     // unless it is the home the sleep or pray rung just put it in, or a garrison that served its need on
     // the spot and is still holding the tower.
@@ -239,7 +254,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // carry-delivery rung so food she lifted for the pantry goes home, not to the nearest store.
   if (
     world.has(e, Female) &&
-    planWomanHoard(world, ctx, terrain, e, pass.externalFood, pass.externalQuality, limit)
+    planWomanHoard(world, ctx, terrain, e, pass.externalFood, pass.externalQuality, pass.supply, limit)
   )
     return;
 

@@ -14,6 +14,7 @@ import { plannerSystem } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { boundProducerOutputToHaul } from '../../../src/systems/settlers/drives/economy/haul-targets.js';
 import { SinkAvailability } from '../../../src/systems/settlers/targets/stores/sinks.js';
+import { collectSupplyTally } from '../../../src/systems/stores/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {
@@ -147,8 +148,9 @@ describe('carrier at a PRODUCING building - hauls the finished output OUT to a w
     const sinks = new SinkAvailability(sim.world, ctx);
     const deliverable = (good: number): boolean => sinks.has(good, /* excludeProducers */ true);
 
-    expect(boundProducerOutputToHaul(deliverable, sim.world, ctx, farmer, FARMER)).toBeNull();
-    expect(boundProducerOutputToHaul(deliverable, sim.world, ctx, carrier, CARRIER)).toMatchObject({
+    const supply = collectSupplyTally(sim.world);
+    expect(boundProducerOutputToHaul(deliverable, sim.world, ctx, farmer, FARMER, supply)).toBeNull();
+    expect(boundProducerOutputToHaul(deliverable, sim.world, ctx, carrier, CARRIER, supply)).toMatchObject({
       home: farm,
       goodType: WHEAT,
     });
@@ -163,7 +165,14 @@ describe('carrier at a PRODUCING building - hauls the finished output OUT to a w
     const ctx = ctxOf(sim);
     const sinks = new SinkAvailability(sim.world, ctx);
 
-    const haul = boundProducerOutputToHaul((good) => sinks.has(good, true), sim.world, ctx, carrier, CARRIER);
+    const haul = boundProducerOutputToHaul(
+      (good) => sinks.has(good, true),
+      sim.world,
+      ctx,
+      carrier,
+      CARRIER,
+      collectSupplyTally(sim.world),
+    );
 
     expect(haul).toMatchObject({ home: farm, goodType: WHEAT });
   });

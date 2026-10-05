@@ -12,6 +12,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isInside } from '../../settlers/indoors.js';
+import { collectSupplyTally } from '../../stores/index.js';
 import { ExternalFoodIndex } from '../food-search.js';
 import { type ChildOrderPass, driveOrder } from './order.js';
 
@@ -23,9 +24,11 @@ import { type ChildOrderPass, driveOrder } from './order.js';
 export function driveChildOrders(world: World, ctx: SystemContext, terrain: TerrainGraph | undefined): void {
   cancelAbandonedSessions(world);
   const dutyBefore = world.canonicalQuery(FamilyDuty);
+  const supply = collectSupplyTally(world);
   const pass: ChildOrderPass = {
     dutyClaimed: new Set<Entity>(),
-    externalFood: new ExternalFoodIndex(world, ctx, terrain),
+    externalFood: new ExternalFoodIndex(world, ctx, terrain, supply),
+    supply,
   };
   for (const e of world.canonicalQuery(ChildOrder, Settler, Position)) {
     // A sheltering mother keeps her standing order but not her errand; nothing walks her out of cover

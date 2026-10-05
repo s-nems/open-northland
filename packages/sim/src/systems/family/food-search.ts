@@ -5,7 +5,8 @@ import type { SpatialGate } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { hasRoom } from '../settlers/drives/economy/store-policy.js';
-import { interactionCell } from '../settlers/targets/index.js';
+import { interactionCell, unclaimedStockOf } from '../settlers/targets/index.js';
+import type { SupplyTally } from '../stores/index.js';
 import { type FoodSources, foodSourcesOf, lowestStockedFood } from './food-sources.js';
 
 /**
@@ -33,17 +34,18 @@ export class ExternalFoodIndex {
     private readonly world: World,
     private readonly ctx: SystemContext,
     private readonly terrain: TerrainGraph | undefined,
+    private readonly supply: SupplyTally,
   ) {
     this.sources = foodSourcesOf(world, ctx.content);
   }
 
   /**
-   * The nearest external food source to `from` holding a food `home`'s larder has room for, or null when
-   * none exists anywhere. A food whose slot is full is skipped, since the delivery would be refused and the
-   * unit carried straight back. `gate` is the seeker's signpost confinement (null when unlimited), `avoid`
-   * her failed-goal veto, probed at the source's interaction cell, the node `fetchFrom` walks to. `owner`
-   * is her player: she hauls only out of her own side's stores. The shared candidate list is owner-blind,
-   * so her side is checked per seeker.
+   * The nearest external food source to `from` holding an unclaimed unit of a food `home`'s larder has
+   * room for, or null when none exists anywhere. A food whose slot is full is skipped, since the delivery
+   * would be refused and the unit carried straight back. `gate` is the seeker's signpost confinement (null
+   * when unlimited), `avoid` her failed-goal veto, probed at the source's interaction cell, the node
+   * `fetchFrom` walks to. `owner` is her player: she hauls only out of her own side's stores. The shared
+   * candidate list is owner-blind, so her side is checked per seeker.
    */
   nearest(
     from: { hx: number; hy: number },
@@ -59,7 +61,7 @@ export class ExternalFoodIndex {
     const accept = (e: Entity): boolean =>
       ownersCompatible(owner, ownerOf(this.world, e)) &&
       this.inArea(e, gate) &&
-      lowestStockedFood(this.world, this.ctx.content, e, fitsHome) !== null &&
+      this.liftableFood(e, fitsHome) !== null &&
       !this.standRetired(e, from, avoid);
     const hit =
       candidates.length <= RING_MIN_CANDIDATES
@@ -67,9 +69,19 @@ export class ExternalFoodIndex {
         : buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept);
     const store = hit?.entity ?? this.linearNearest(candidates, from, accept);
     if (store === null) return null;
-    const goodType = lowestStockedFood(this.world, this.ctx.content, store, fitsHome);
+    const goodType = this.liftableFood(store, fitsHome);
     // A null here would mean a mid-pass mutation drained the winner: fail the query rather than guess.
     return goodType === null ? null : { store, goodType };
+  }
+
+  /** The lowest food `store` holds that `fitsHome` and that no walker has claimed every unit of. */
+  private liftableFood(store: Entity, fitsHome: (goodType: number) => boolean): number | null {
+    const { world, supply } = this;
+    const accepts = supply.reservedAtSource.has(store)
+      ? (goodType: number): boolean =>
+          fitsHome(goodType) && unclaimedStockOf(world, supply, store, goodType) > 0
+      : fitsHome;
+    return lowestStockedFood(world, this.ctx.content, store, accepts);
   }
 
   /** Whether the seeker's `avoid` veto retires this source's interaction cell, her own stand exempt. */

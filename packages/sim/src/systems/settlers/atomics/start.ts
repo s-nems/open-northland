@@ -18,7 +18,7 @@ import { clearNavState } from '../../movement/nav-state.js';
 import { atomicClipName, atomicDuration } from '../../readviews/animations.js';
 import { isCandyMeal } from '../../readviews/food.js';
 import type { PlannerContext } from '../planner/context.js';
-import { interactionCell } from '../targets/index.js';
+import { interactionCell, unclaimedStockOf } from '../targets/index.js';
 import { atomicHoldsSettler } from './busy.js';
 
 // An atomic id is only a content cross-reference and animation join key, pinned to the original's
@@ -188,8 +188,12 @@ export function startPickup(
   );
 }
 
+/** Walk to `from` and lift a carry-load of `goodType`, claiming the units still unclaimed there first so a
+ *  settler planned after this one picks another source while it walks. */
 export function walkPickupBatch(plan: PlannerContext, from: Entity, goodType: number, cell?: NodeId): void {
-  const { world, ctx, terrain, entity: e, here } = plan;
+  const { world, ctx, terrain, entity: e, here, supply } = plan;
+  const claimed = Math.min(CARRY_CAPACITY, unclaimedStockOf(world, supply, from, goodType));
+  if (claimed > 0) supply.stampPickupClaim(e, { source: from, goodType, amount: claimed });
   atOrWalk(world, e, here, cell ?? interactionCell(world, ctx, terrain, from, here), () =>
     startPickup(world, ctx, e, plan, from, goodType, CARRY_CAPACITY),
   );

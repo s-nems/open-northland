@@ -12,6 +12,7 @@ import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner/context.js';
 import { type CellMatch, type NearestByCell, nearerOf, nearestByCell } from './cell-index.js';
 import { collectorStanceGates, nearestEligibleStance } from './resource-stances.js';
+import { unclaimedStockOf } from './stores/stock.js';
 import { jobAtomics } from './workplaces.js';
 
 export type HarvestSearchContext = Pick<
@@ -184,7 +185,8 @@ function nearestDropFor(
  * Scoped to keep it the collector's own-trade loop rather than a general porter drive: `GroundDrop` piles
  * only, never a delivery flag or a boat hull, and only a good the settler's job may harvest. Collecting
  * an already-dropped good applies no `needforgood` XP gate, since carrying a trunk is hauling.
- * `within` bounds which piles count without moving the ranking, which stays on the settler.
+ * `within` bounds which piles count without moving the ranking, which stays on the settler. A drop whose
+ * units are all claimed by settlers walking to it is left to them.
  */
 export function nearestCollectablePileFor(
   plan: PlannerContext,
@@ -218,7 +220,7 @@ export function nearestCollectablePileFor(
       if (goodFilter !== undefined && !goodFilter.has(good)) return null; // not a good the caller forages for
       const harvestAtomic = targets.harvestAtomicByGood.get(good);
       if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
-      return good;
+      return unclaimedStockOf(world, plan.supply, e, good) > 0 ? good : null;
     },
     opts.within,
   );
@@ -227,7 +229,7 @@ export function nearestCollectablePileFor(
 /**
  * The nearest ground drop whose {@link HarvestedBy} mark names this gatherer, with its Manhattan
  * distance, or null. Unlike {@link nearestCollectablePileFor}'s trade-wide scan it ignores every pile
- * the gatherer did not make: it carries only what it dug.
+ * the gatherer did not make: it carries only what it dug, unless a porter already walks to lift it.
  */
 export function nearestOwnDropFor(
   plan: PlannerContext,
@@ -240,7 +242,7 @@ export function nearestOwnDropFor(
     if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) return null; // emptied, about to be reaped
-    return good;
+    return unclaimedStockOf(world, plan.supply, e, good) > 0 ? good : null;
   });
 }
 

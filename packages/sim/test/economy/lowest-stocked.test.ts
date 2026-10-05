@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Simulation } from '../../src/index.js';
 import { ExternalFoodIndex } from '../../src/systems/family/food-search.js';
-import { lowestStockedGood } from '../../src/systems/stores/index.js';
+import { collectSupplyTally, lowestStockedGood } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import {
   BREAD,
@@ -44,7 +44,12 @@ describe('stock min scans pick by good id, not insertion order', () => {
         const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
         const hq = buildingAt(sim, HEADQUARTERS, 0, 0, lines);
         const larder = buildingAt(sim, HEADQUARTERS, 5, 0); // an empty destination with room for any food
-        const index = new ExternalFoodIndex(sim.world, ctxOf(sim), sim.terrain);
+        const index = new ExternalFoodIndex(
+          sim.world,
+          ctxOf(sim),
+          sim.terrain,
+          collectSupplyTally(sim.world),
+        );
         expect(index.nearest({ hx: 0, hy: 0 }, undefined, larder, null)).toEqual({
           store: hq,
           goodType: expected,

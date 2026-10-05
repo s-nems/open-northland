@@ -9,6 +9,9 @@ import { interactionCell } from '../settlers/targets/index.js';
 // The two food-haul steps shared by the child order's larder stage and the standing hoarding drive.
 // Mapless fixtures act in place, having no cells to walk.
 
+/** The units one household haul lifts off a store. */
+export const HAUL_LIFT_UNITS = 1;
+
 /** Carry the held food unit home and pile it into the larder. */
 export function deliverHome(
   world: World,
@@ -37,7 +40,7 @@ export function deliverHome(
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, home, here), pileUp);
 }
 
-/** Walk to the found food store and lift one unit. */
+/** Walk to the found food store and lift {@link HAUL_LIFT_UNITS}. */
 export function fetchFrom(
   world: World,
   ctx: SystemContext,
@@ -47,7 +50,8 @@ export function fetchFrom(
   source: { store: Entity; goodType: number },
   hereNode: { hx: number; hy: number },
 ): void {
-  const lift = (): void => startPickup(world, ctx, e, settler, source.store, source.goodType, 1);
+  const lift = (): void =>
+    startPickup(world, ctx, e, settler, source.store, source.goodType, HAUL_LIFT_UNITS);
   if (terrain === undefined) {
     lift();
     return;

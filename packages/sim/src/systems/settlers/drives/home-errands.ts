@@ -7,8 +7,10 @@ import { builtHomeType, homeUsedBy } from '../../family/households.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
+import type { SupplyTally } from '../../stores/index.js';
 import { PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic, startMeal } from '../atomics/start.js';
 import { enterBuilding, isInside } from '../indoors.js';
+import { MEAL_UNITS } from '../targets/food.js';
 import { interactionCell, storedFoodGood } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import { homeClipServes } from './at-home.js';
@@ -88,13 +90,15 @@ export function prayAtHome(
 }
 
 /**
- * Send `e` home to eat one unit off its family larder. Returns `false` when it uses no built home, the
- * larder holds nothing edible, or the door is out of reach - the caller then looks for the nearest food.
+ * Send `e` home to eat one unit off its family larder, claiming it. Returns `false` when it uses no built
+ * home, the larder holds nothing edible a housemate has not already claimed, or the door is out of reach -
+ * the caller then looks for the nearest food.
  */
 export function eatAtHome(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  supply: SupplyTally,
   e: Entity,
   settler: SettlerIdentity,
   here: NodeId,
@@ -102,11 +106,13 @@ export function eatAtHome(
 ): boolean {
   const home = homeUsedBy(world, ctx, e);
   if (home === undefined || builtHomeType(world, ctx, home) === undefined) return false;
-  const goodType = storedFoodGood(world, ctx, home);
+  const goodType = storedFoodGood(world, ctx, home, supply);
   if (goodType === null) return false;
-  return goHomeFor(world, ctx, terrain, e, home, here, limit, () =>
+  const walks = goHomeFor(world, ctx, terrain, e, home, here, limit, () =>
     startMeal(world, ctx, e, settler, { kind: 'eat', goodType, from: home }, home),
   );
+  if (walks) supply.stampPickupClaim(e, { source: home, goodType, amount: MEAL_UNITS });
+  return walks;
 }
 
 /** Walk `e` to its home's door and run `start` once inside; `false` when the door is barred to it. */

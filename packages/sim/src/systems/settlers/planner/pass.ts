@@ -57,6 +57,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
   const front = new BattleFront(world, ctx);
   const shelters = collectShelters(world, ctx);
   const seatDoors = new SeatDoors(world, ctx, terrain, targets.buildings);
+  const supply = collectSupplyTally(world);
   return {
     world,
     ctx,
@@ -64,12 +65,12 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     targets,
     // Any one store answers, so the stores need no canonical order.
     anyHaulable: hasHaulableOutput(world, ctx, world.query(Stockpile, Position)),
-    externalFood: new ExternalFoodIndex(world, ctx, terrain),
-    externalQuality: new ExternalQualityIndex(world, ctx, terrain),
+    externalFood: new ExternalFoodIndex(world, ctx, terrain, supply),
+    externalQuality: new ExternalQualityIndex(world, ctx, terrain, supply),
     spacing: PlannerSpacing.forTick(world, ctx, terrain),
     farmClaims: collectFarmClaims(world),
     seatClaims: new WorkSeatClaims((e) => standsThroughPass(world, ctx, shelters, e)),
-    supply: collectSupplyTally(world),
+    supply,
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),
     front,

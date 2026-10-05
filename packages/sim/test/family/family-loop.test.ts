@@ -12,6 +12,7 @@ import {
   MakingLove,
   Marriage,
   MoveGoal,
+  PickupClaim,
   Position,
   Residence,
   Resting,
@@ -983,6 +984,38 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     // The ground pile holds 3 food and the larder caps at 5 - she hauls everything reachable home.
     runUntil(sim, () => (sim.world.get(home(), Stockpile).amounts.get(FOOD) ?? 0) >= 3, 2000, 'hoarding');
     expect(sim.world.has(woman(), ChildOrder)).toBe(false); // no order drove this - the hoard rung did
+  });
+
+  it('a second housewife hauls from the farther pile while the first walks to the nearer one', () => {
+    const sim = new Simulation({ seed: 9, content: familyContent(), map: grassMap(28, 4) });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 2, y: 0, tribe: VIKING, owner: PLAYER });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 2, y: 0, tribe: VIKING, owner: PLAYER });
+    sim.step();
+    const [first, second] = [...sim.world.query(Female)].sort((a, b) => a - b);
+    if (first === undefined || second === undefined) throw new Error('setup: women missing');
+    const home = homeOf(sim);
+    const pileAt = (x: number): Entity => {
+      const pile = sim.world.create();
+      sim.world.add(pile, Position, { x: fx.fromInt(x), y: fx.fromInt(2) });
+      sim.world.add(pile, Stockpile, { amounts: new Map([[FOOD, 1]]) });
+      return pile;
+    };
+    const near = pileAt(4);
+    const far = pileAt(17);
+    sim.enqueueSetup({ kind: 'assignHouse', entity: first, house: home });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: second, house: home });
+
+    runUntil(
+      sim,
+      () => sim.world.has(first, PickupClaim) && sim.world.has(second, PickupClaim),
+      IDLE_REPLAN_PERIOD_TICKS * 2,
+      'both hauls claimed',
+    );
+
+    expect(sim.world.get(first, PickupClaim)).toEqual({ source: near, goodType: FOOD, amount: 1 });
+    expect(sim.world.get(second, PickupClaim)).toEqual({ source: far, goodType: FOOD, amount: 1 });
   });
 
   it('a woman carrying food leaves a full larder door instead of retrying its delivery', () => {

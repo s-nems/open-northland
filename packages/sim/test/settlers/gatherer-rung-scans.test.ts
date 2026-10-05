@@ -155,6 +155,24 @@ describe('pile scan', () => {
   });
 });
 
+describe('claimed piles', () => {
+  it('a pile whose unit another settler walks to lift is passed over, an own drop included', () => {
+    const sim = newSim();
+    const near = pileAt(sim, 8, 10, STONE);
+    const far = pileAt(sim, 14, 10, STONE);
+    const plan = planFor(sim, MINER, 4, 10);
+    sim.world.add(near, HarvestedBy, { by: plan.entity });
+    const porter = settlerAt(sim, { jobType: CIVILIST, tribe: VIKING, position: positionOfNode(6, 10) });
+    const fresh = { ...plan, targets: collectTargets(sim.world, plan.ctx, plan.terrain) };
+    expect(nearestOwnDropFor(fresh)?.pile).toBe(near);
+
+    fresh.supply.stampPickupClaim(porter, { source: near, goodType: STONE, amount: 1 });
+
+    expect(nearestCollectablePileFor(fresh)?.pile).toBe(far);
+    expect(nearestOwnDropFor(fresh)).toBeNull();
+  });
+});
+
 describe('bounded harvest scan', () => {
   it("a hunter's ground scan never resolves a tree", () => {
     const sim = newSim();

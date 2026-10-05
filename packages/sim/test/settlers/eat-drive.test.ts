@@ -9,6 +9,7 @@ import {
   NoRegeneration,
   Owner,
   PathRequest,
+  PickupClaim,
   Position,
   Resource,
   Stockpile,
@@ -30,6 +31,7 @@ import {
 } from '../../src/systems/index.js';
 import { dropPath } from '../../src/systems/movement/nav-state.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
+import { collectSupplyTally } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import { nextTickCtxOf } from '../fixtures/context.js';
 import { settlerAt as fixtureSettlerAt, needsOf } from '../fixtures/settler.js';
@@ -426,6 +428,58 @@ describe('eat drive - unreachable larders (the componentOf gate + the failed-goa
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 10, 0));
+  });
+});
+
+describe('eat drive - pickup claims split the eaters over the stores', () => {
+  /** Two hungry settlers on cell 0, a one-meal store near at cell 2 and another far at cell 5. */
+  function twoEatersTwoMeals(): {
+    sim: Simulation;
+    first: Entity;
+    second: Entity;
+    near: Entity;
+    far: Entity;
+  } {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(7, 1) });
+    const first = settlerAt(sim, 0, 0, HUNGRY);
+    const second = settlerAt(sim, 0, 0, HUNGRY);
+    const near = storeAt(sim, 2, 0, 1);
+    const far = storeAt(sim, 5, 0, 1);
+    return { sim, first, second, near, far };
+  }
+
+  it('sends the second eater past the meal the first is walking to', () => {
+    const { sim, first, second, near, far } = twoEatersTwoMeals();
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(first, PickupClaim)).toEqual({ source: near, goodType: FOOD, amount: 1 });
+    expect(sim.world.get(second, PickupClaim)).toEqual({ source: far, goodType: FOOD, amount: 1 });
+    expect(sim.world.get(first, MoveGoal).cell).toBe(cellOf(sim, 2, 0));
+    expect(sim.world.get(second, MoveGoal).cell).toBe(cellOf(sim, 5, 0));
+  });
+
+  it('leaves a later eater without a store when the only meal is claimed', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(7, 1) });
+    const first = settlerAt(sim, 0, 0, HUNGRY);
+    const second = settlerAt(sim, 0, 0, HUNGRY);
+    const store = storeAt(sim, 2, 0, 1);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(first, PickupClaim).source).toBe(store);
+    expect(sim.world.has(second, PickupClaim)).toBe(false);
+    expect(sim.world.tryGet(second, MoveGoal)?.cell).not.toBe(cellOf(sim, 2, 0));
+  });
+
+  it('ends the claim with the meal it was made for', () => {
+    const { sim, first, near } = twoEatersTwoMeals();
+    for (let i = 0; i < 200 && (sim.world.get(near, Stockpile).amounts.get(FOOD) ?? 0) > 0; i++) sim.step();
+
+    expect(sim.world.get(near, Stockpile).amounts.get(FOOD) ?? 0).toBe(0);
+    expect(sim.world.has(first, PickupClaim)).toBe(false);
+    expect(collectSupplyTally(sim.world).reservedAt(near, FOOD)).toBe(0);
+    expect(sim.checkInvariants()).toEqual([]);
   });
 });
 

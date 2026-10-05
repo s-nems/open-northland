@@ -7,6 +7,7 @@ import {
   MISSION_BEHAVIOUR,
   MoveGoal,
   Owner,
+  PickupClaim,
   Position,
   Residence,
   Resting,
@@ -355,6 +356,24 @@ describe('eatAtHome - a hungry settler eats off its own larder first', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(settler, MoveGoal).cell).toBe(nodeAt(sim, 6, 2));
+  });
+
+  it("leaves the larder's last meal to the housemate already walking home for it", () => {
+    const sim = simWithHomes();
+    const first = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
+    const second = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
+    const home = homeAt(sim, 6, 2);
+    sim.world.add(first, Residence, { home });
+    sim.world.add(second, Residence, { home });
+    stock(sim, home, 1);
+    const store = storeAt(sim, 2, 2, 1);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(first, PickupClaim)).toEqual({ source: home, goodType: FOOD, amount: 1 });
+    expect(sim.world.get(first, MoveGoal).cell).toBe(nodeAt(sim, 6, 2));
+    expect(sim.world.get(second, PickupClaim)).toEqual({ source: store, goodType: FOOD, amount: 1 });
+    expect(sim.world.get(second, MoveGoal).cell).toBe(nodeAt(sim, 2, 2));
   });
 
   it('eats indoors at its door, and the meal counts double', () => {

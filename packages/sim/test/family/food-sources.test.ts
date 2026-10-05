@@ -7,7 +7,7 @@ import { fx, Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { ExternalFoodIndex } from '../../src/systems/family/food-search.js';
 import { foodSourcesOf } from '../../src/systems/family/food-sources.js';
-import { setAccessibleStockAmount } from '../../src/systems/stores/index.js';
+import { collectSupplyTally, setAccessibleStockAmount } from '../../src/systems/stores/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
@@ -144,10 +144,10 @@ describe('foodSourcesOf', () => {
     const wood = storeAt(sim, 1, WOOD, 1);
     const home = storeAt(sim, 9, FOOD, 0, HOME);
     const from = { hx: 0, hy: 2 };
-    const pass = new ExternalFoodIndex(sim.world, ctxOf(sim), undefined);
+    const pass = new ExternalFoodIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world));
     sim.world.mut(wood, Stockpile).amounts.set(FOOD, 1); // a drop later in the same pass
     expect(pass.nearest(from, undefined, home, null)).toBeNull();
-    const next = new ExternalFoodIndex(sim.world, ctxOf(sim), undefined);
+    const next = new ExternalFoodIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world));
     expect(next.nearest(from, undefined, home, null)).toEqual({ store: wood, goodType: FOOD });
   });
 
@@ -159,7 +159,12 @@ describe('foodSourcesOf', () => {
     sim.world.mut(far, Stockpile).amounts.set(FOOD_EXTRA, 1);
     const from = { hx: 0, hy: 2 };
     const search = (): ReturnType<ExternalFoodIndex['nearest']> =>
-      new ExternalFoodIndex(sim.world, ctxOf(sim), undefined).nearest(from, undefined, home, null);
+      new ExternalFoodIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world)).nearest(
+        from,
+        undefined,
+        home,
+        null,
+      );
 
     expect(search()).toEqual({ store: far, goodType: FOOD_EXTRA });
     sim.world.mut(home, Stockpile).amounts.set(FOOD_EXTRA, LARDER_SLOT);

@@ -43,6 +43,7 @@ import { pileupIntoStore } from '../../src/systems/settlers/atomics/effects/good
 import { applyAtomicNeedEvents } from '../../src/systems/settlers/atomics/effects/need-events.js';
 import { atomicSystem } from '../../src/systems/settlers/atomics/system.js';
 import { planHomeTopUp } from '../../src/systems/settlers/drives/at-home.js';
+import { collectSupplyTally } from '../../src/systems/stores/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf, nextTickCtxOf } from '../fixtures/context.js';
 import { needsOf } from '../fixtures/settler.js';
@@ -438,8 +439,9 @@ describe('household quality goods', () => {
         ctxOf(sim),
         undefined,
         woman,
-        new ExternalFoodIndex(sim.world, ctxOf(sim), undefined),
-        new ExternalQualityIndex(sim.world, ctxOf(sim), undefined),
+        new ExternalFoodIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world)),
+        new ExternalQualityIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world)),
+        collectSupplyTally(sim.world),
         null,
       ),
     ).toBe(true);
@@ -457,8 +459,9 @@ describe('household quality goods', () => {
         ctxOf(sim),
         undefined,
         woman,
-        new ExternalFoodIndex(sim.world, ctxOf(sim), undefined),
-        new ExternalQualityIndex(sim.world, ctxOf(sim), undefined),
+        new ExternalFoodIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world)),
+        new ExternalQualityIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world)),
+        collectSupplyTally(sim.world),
         null,
       ),
     ).toBe(false);
@@ -473,12 +476,12 @@ describe('household quality goods', () => {
     sim.world.add(pile, Position, { x: fx.fromInt(4), y: fx.fromInt(0) });
     sim.world.add(pile, Stockpile, { amounts: new Map([[FURNITURE, 0]]) });
     const demanded = new Set([FURNITURE]);
-    const before = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined);
+    const before = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world));
 
     setStockAmount(sim.world, pile, FURNITURE, 1);
 
     expect(before.nearest({ hx: 0, hy: 0 }, 0, demanded, null)).toBeNull();
-    const after = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined);
+    const after = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world));
     expect(after.nearest({ hx: 0, hy: 0 }, 0, demanded, null)).toEqual({ store: pile, goodType: FURNITURE });
     expect(sim.world.verifyCaches()).toEqual([]);
   });
@@ -494,7 +497,7 @@ describe('household quality goods', () => {
     }
     const demanded = new Set([FURNITURE]);
     const nearest = () =>
-      new ExternalQualityIndex(sim.world, ctxOf(sim), undefined).nearest(
+      new ExternalQualityIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world)).nearest(
         { hx: 0, hy: 0 },
         undefined,
         demanded,
@@ -523,7 +526,7 @@ describe('household quality goods', () => {
       const store = sim.world.create();
       sim.world.add(store, Position, { x: fx.fromInt(2), y: fx.fromInt(0) });
       sim.world.add(store, Stockpile, { amounts: new Map(lines) });
-      const index = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined);
+      const index = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world));
       const from = { hx: 0, hy: 0 };
       expect(index.nearest(from, undefined, new Set([CROCKERY, FURNITURE]), null)?.goodType).toBe(CROCKERY);
       expect(index.nearest(from, undefined, new Set([FURNITURE, OIL]), null)?.goodType).toBe(FURNITURE);
