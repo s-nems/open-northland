@@ -22,6 +22,7 @@ import {
 } from './filters.js';
 import { createFogMaskLayer } from './fog-mask.js';
 import type { MinimapFrame } from './frames.js';
+import { createGoalMarks, type GoalNode } from './goal-marks.js';
 import { createMinimapInput } from './input.js';
 import {
   type MinimapSize,
@@ -35,6 +36,8 @@ import { createDotReplotGate } from './replot-gate.js';
 import { createRoadLayer } from './road-layer.js';
 import { MARKER_SIZE_SCALES, stampMark } from './stamps.js';
 import { createMinimapSurface } from './surface.js';
+
+const NO_GOALS: readonly GoalNode[] = [];
 
 /** Under the map while the DOM backing loads: the dark wood of the frames' backing. */
 const BACKDROP_COLOUR = 0x2a2018;
@@ -70,7 +73,8 @@ export interface MinimapHandle {
   claimsPointer(clientX: number, clientY: number): boolean;
   dragging(): boolean;
   panelRect(): Rect | null;
-  update(snapshot: WorldSnapshot, fog?: FogView | null): void;
+  /** `lostGoals` are the selected lost settlers' refused goals, marked over the dots. */
+  update(snapshot: WorldSnapshot, fog?: FogView | null, lostGoals?: readonly GoalNode[]): void;
   /** Ring an attack at half-cell node `at`. */
   ping(at: HalfCellNode): void;
   setHidden(hidden: boolean): void;
@@ -101,7 +105,9 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   const world = new Container();
   const clip = new Graphics();
   const view = new Graphics();
-  container.addChild(backdrop, world, clip, view);
+  const goalGraphics = new Graphics();
+  container.addChild(backdrop, world, clip, view, goalGraphics);
+  const goalMarks = createGoalMarks(goalGraphics);
   world.mask = clip;
   app.stage.addChild(container);
   // Fixed raster space avoids terrain uploads during resize, zoom and pan.
@@ -257,12 +263,13 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     dragging: input.dragging,
     panelRect: () =>
       hidden ? null : minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width).panel,
-    update: (snapshot, fog = null) => {
+    update: (snapshot, fog = null, lostGoals = NO_GOALS) => {
       if (hidden) return;
       if (screenKey !== `${app.screen.width},${app.screen.height}`) refreshLayout();
       if (layout.scaleX <= 0 || layout.scaleY <= 0) {
         view.clear();
         lastView = '';
+        goalMarks.clear();
         return;
       }
       surface.sync(snapshot, fog);
@@ -303,6 +310,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
         if (rect !== null)
           view.rect(rect.x, rect.y, rect.w, rect.h).stroke({ width: 1.25, color: 0xfff5d6, alpha: 0.95 });
       }
+      goalMarks.draw(layout, bounds, lostGoals, uiScale);
     },
     ping: (at) => alarms.add(at, performance.now()),
     setHidden: (next) => {

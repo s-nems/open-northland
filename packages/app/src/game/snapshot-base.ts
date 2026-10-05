@@ -389,6 +389,13 @@ export function trainingHouseOf(e: SnapshotEntity): number | undefined {
   return num(order?.house);
 }
 
+/** The half-cell node a lost settler's latest refused way led to; undefined while it is not lost or no
+ *  single node was out of reach. */
+export function lostGoalOf(e: SnapshotEntity): number | undefined {
+  const lost = e.components.LostWay as { goal?: unknown } | undefined;
+  return num(lost?.goal);
+}
+
 /** The flag a gatherer or fisher works from, or a carrier collects around. */
 function flagBindingOf(e: SnapshotEntity): { flag?: unknown; radius?: unknown } | undefined {
   return (e.components.WorkFlag ?? e.components.HaulFlag) as { flag?: unknown; radius?: unknown } | undefined;

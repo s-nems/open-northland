@@ -7,6 +7,7 @@ import type {
   DoorBadge,
   HudFrame,
   LifeHeart,
+  LostGoalMarker,
   OrderMarker,
   SettlerBubble,
   WorkAreaRing,
@@ -88,6 +89,7 @@ export const NO_BUBBLES: readonly SettlerBubble[] = [];
 export const NO_HEARTS: readonly LifeHeart[] = [];
 export const NO_WORK_AREAS: readonly WorkAreaRing[] = [];
 export const NO_ORDER_MARKERS: readonly OrderMarker[] = [];
+export const NO_LOST_GOALS: readonly LostGoalMarker[] = [];
 
 export interface WorldFrame {
   /** UI animation clock in seconds, independent of pause and simulation speed. Omitted in still captures. */
@@ -115,6 +117,10 @@ export interface WorldFrame {
   readonly workAreas?: readonly WorkAreaRing[] | undefined;
   /** The ground acknowledgements of the player's latest walk and march orders (default none). */
   readonly orderMarkers?: readonly OrderMarker[] | undefined;
+  /** The refused goals of the selected lost settlers, held while they stay lost (default none). */
+  readonly lostGoals?: readonly LostGoalMarker[] | undefined;
+  /** The refused goals' shared breathing phase, 0..1 and wrapping, off the app's wall clock (default 0). */
+  readonly lostGoalPulse?: number | undefined;
 }
 
 /**

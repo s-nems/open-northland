@@ -45,6 +45,7 @@ import {
 } from '../projections/index.js';
 import type { FpsLimit } from '../settings-store.js';
 import type { UnitControls } from '../unit-controls/index.js';
+import { lostGoalPulse } from '../unit-controls/lost-goals.js';
 import type { WorldHover } from '../world-hover.js';
 import type { GameViewDeps } from './game-view.js';
 import type { NetReadout } from './net-readout.js';
@@ -267,7 +268,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     toolPanel.controller.presentFigures(snap, renderAlpha);
     // Re-placed every frame; the unit dots redraw on a throttled cadence, the fog mask only on a fog
     // generation change.
-    mountedMinimap.update(snap, fogView);
+    const lostGoals = controls.lostGoals();
+    mountedMinimap.update(snap, fogView, lostGoals);
     // Decided here from the host's placement probe and handed over as plain data: the renderer stays a
     // pure projection and never calls back into the host.
     const cursor = placementCursor({
@@ -350,6 +352,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       focused: controls.focusedIds(),
       workAreas: controls.workAreaRings(),
       orderMarkers: controls.orderMarkers(),
+      lostGoals,
+      lostGoalPulse: lostGoalPulse(nowMs),
     });
     loop.mapOverlay?.update(snap, drawnCamera, app.screen, loop.viewer.seat(), fogView);
     controls.refreshCursor(snap);

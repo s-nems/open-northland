@@ -7,7 +7,7 @@ import { isActionHotkey, isFieldKey, isOrderHotkey } from '../../hud/hotkeys.js'
 import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
 import { setCanvasCursor } from '../cursors/element.js';
-import { pickInRect, screenToWorld, type Tile, worldToTile } from '../picking.js';
+import { nodeBounds, pickInRect, screenToWorld, type Tile, worldToTile } from '../picking.js';
 import { entityAnchor } from '../projections/entity-anchor.js';
 import { orderRecipients } from './action-ring/index.js';
 import { createAnsweredOrders } from './answered-orders.js';
@@ -23,6 +23,7 @@ import {
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { jobMateArea, jobMatesIn } from './job-mates.js';
 import { createKeyboardOrders } from './keyboard-orders.js';
+import { createLostGoals } from './lost-goals.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createOrderMarkers } from './order-markers.js';
 import { createUnitOrderController } from './orders.js';
@@ -85,6 +86,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         });
   const workArea = createWorkAreaOverlay();
   const orderMarkers = createOrderMarkers(() => performance.now());
+  const lostGoals = createLostGoals(nodeBounds(opts.mapSize).width);
   /** A gatherer's or a fisher's workplace pick also plants its flag, so the panel's one button serves
    *  both ways the trade works. */
   const worksFromFlag = (id: number): boolean => {
@@ -519,6 +521,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     focusedIds: () => chrome.focusedIds(),
     workAreaRings: () => workArea.rings(opts.snapshot()),
     orderMarkers: orderMarkers.live,
+    lostGoals: () => lostGoals(opts.snapshot(), selection.ids(), pickableSeat(opts.viewer)),
     assignHighlight: pickMode.highlight,
     signpostPlacementActive: pickMode.signpostActive,
     workFlagPlacementActive: pickMode.flagActive,

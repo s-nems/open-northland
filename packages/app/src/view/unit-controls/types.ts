@@ -7,6 +7,7 @@ import type {
   DrawItem,
   ElevationField,
   EntityBounds,
+  LostGoalMarker,
   OrderMarker,
   SpriteSheet,
   WorkAreaRing,
@@ -164,6 +165,8 @@ export interface UnitControls {
   readonly workAreaRings: () => readonly WorkAreaRing[];
   /** The ground acknowledgements of the latest walk and march orders still playing. */
   readonly orderMarkers: () => readonly OrderMarker[];
+  /** The refused goals of the selected lost settlers; the same list while they stand still. */
+  readonly lostGoals: () => readonly LostGoalMarker[];
   /** The green/red assignment wash for the render building-highlight layer, or null when no assign mode
    *  is armed. */
   readonly assignHighlight: () => readonly BuildingHighlightItem[] | null;

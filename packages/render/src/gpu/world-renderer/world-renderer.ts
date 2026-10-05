@@ -57,6 +57,7 @@ import {
   NO_BADGES,
   NO_BUBBLES,
   NO_HEARTS,
+  NO_LOST_GOALS,
   NO_ORDER_MARKERS,
   NO_REFS,
   NO_SIGNS,
@@ -350,6 +351,8 @@ export class WorldRenderer {
       focused = NO_REFS,
       workAreas = NO_WORK_AREAS,
       orderMarkers = NO_ORDER_MARKERS,
+      lostGoals = NO_LOST_GOALS,
+      lostGoalPulse = 0,
     } = frame;
     // Filtered sprites can move continuously; pixel snapping would reintroduce one-pixel pan/feet
     // jumps. Keep the old alignment only for the baseline nearest-sampled presentation.
@@ -437,6 +440,8 @@ export class WorldRenderer {
       focused,
       workAreas,
       orderMarkers,
+      lostGoals,
+      lostGoalPulse,
       doorBadges,
       constructionSigns: signItems,
       settlerBubbles,

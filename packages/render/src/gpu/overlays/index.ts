@@ -20,6 +20,10 @@ export { type LifeHeart, LifeHeartLayer } from './heart-layer.js';
 export { DEFAULT_HUD_STYLE, type HudFrame, HudLayer, type HudStyle } from './hud-layer.js';
 export { type MapViewFrame, MapViewLayer, type MapViewTarget } from './map-view.js';
 export {
+  LOST_GOAL_COLOUR,
+  LOST_GOAL_OUTLINE,
+  type LostGoalMarker,
+  lostGoalPose,
   type OrderMarker,
   type OrderMarkerKind,
   OrderMarkerLayer,

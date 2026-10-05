@@ -48,6 +48,8 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     focused: new Set(),
     workAreas: [],
     orderMarkers: [],
+    lostGoals: [],
+    lostGoalPulse: 0,
     doorBadges: [],
     constructionSigns: [],
     settlerBubbles: [],

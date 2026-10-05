@@ -17,6 +17,7 @@ import {
   GeometryDebugLayer,
   type LifeHeart,
   LifeHeartLayer,
+  type LostGoalMarker,
   type OrderMarker,
   OrderMarkerLayer,
   SelectionLayer,
@@ -74,6 +75,8 @@ export interface WorldMarksFrame {
   readonly focused: ReadonlySet<number>;
   readonly workAreas: readonly WorkAreaRing[];
   readonly orderMarkers: readonly OrderMarker[];
+  readonly lostGoals: readonly LostGoalMarker[];
+  readonly lostGoalPulse: number;
   readonly doorBadges: readonly DoorBadge[];
   readonly constructionSigns: readonly ConstructionSign[];
   readonly settlerBubbles: readonly SettlerBubble[];
@@ -182,7 +185,7 @@ export class WorldMarks {
       frame.workAreas,
       frame.focused,
     );
-    this.orderMarkers.draw(frame.orderMarkers, elevation, viewport);
+    this.orderMarkers.draw(frame.orderMarkers, frame.lostGoals, frame.lostGoalPulse, elevation, viewport);
     this.effects.draw(elevation, viewport, renderTime);
     this.collapses.draw(elevation, viewport, renderTime);
     this.shots.draw({ snapshot: frame.snapshot, drawn, elevation, viewport, renderTime });

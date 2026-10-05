@@ -5,12 +5,15 @@ import { retireUndrawn } from './retained-pool.js';
 
 /**
  * The order markers - the acknowledgement of a walk or march order: four darts slide into the named spot
- * and a ring lands there. A presentation addition, not taken from the original. The app owns the clock
- * and hands each marker's progress in.
+ * and a ring lands there. A lost settler's refused goal holds the same mark, its darts stopped short of
+ * the ring and breathing in place. A presentation addition, not taken from the original. The app owns
+ * the clock and hands each marker's progress and the shared pulse in.
  */
 
 /** A walk is green; an attack-move is red. */
 export type OrderMarkerKind = 'move' | 'attack';
+/** A refused goal is a cool pale blue, apart from every order, selection and flag colour. */
+type MarkerTint = OrderMarkerKind | 'lost';
 
 export interface OrderMarker {
   /** Stable for the marker's life, the retained-pool key. */
@@ -23,6 +26,14 @@ export interface OrderMarker {
   readonly progress: number;
 }
 
+/** A selected lost settler's refused goal, held for as long as the settler stays lost. */
+export interface LostGoalMarker {
+  /** The goal's half-cell node id, the retained-pool key. */
+  readonly node: number;
+  readonly hx: number;
+  readonly hy: number;
+}
+
 /** One frame of a marker's animation. */
 export interface OrderMarkerPose {
   /** Each dart tip's distance from the spot on the ground plane, in world px; the ellipse squashes its
@@ -33,6 +44,10 @@ export interface OrderMarkerPose {
   readonly ringScale: number;
   readonly ringAlpha: number;
 }
+
+/** The refused-goal fill and outline, shared with the minimap's mark of the same goal. */
+export const LOST_GOAL_COLOUR = 0x9cc8f0;
+export const LOST_GOAL_OUTLINE = 0x10243a;
 
 /** Ground-ellipse squash, the selection ring's: a ground circle spans a cell width east-west but only a
  *  row step north-south. */
@@ -73,9 +88,19 @@ const APPROACHES = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math
   return { x, y, rotation: Math.atan2(y, x) };
 });
 
-const COLOURS: Readonly<Record<OrderMarkerKind, { readonly fill: number; readonly outline: number }>> = {
+/** A refused goal's darts hover between these reaches, outside the ring: they never arrive. */
+const LOST_REACH_NEAR = 20;
+const LOST_REACH_FAR = 27;
+const LOST_DART_SCALE = 0.85;
+/** The pulse breathes between these strengths, strongest as the darts lean in; a held mark reads over
+ *  the door or tree it stands at, where a passing acknowledgement may stay fainter. */
+const LOST_ALPHA_LOW = 0.5;
+const LOST_ALPHA_HIGH = 0.9;
+
+const COLOURS: Readonly<Record<MarkerTint, { readonly fill: number; readonly outline: number }>> = {
   move: { fill: 0xa8e890, outline: 0x1c3a14 },
   attack: { fill: 0xe8604a, outline: 0x3a0e08 },
+  lost: { fill: LOST_GOAL_COLOUR, outline: LOST_GOAL_OUTLINE },
 };
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
@@ -96,6 +121,20 @@ export function orderMarkerPose(progress: number): OrderMarkerPose {
   };
 }
 
+/** A refused goal's pose at `pulse`, the 0..1 phase of its slow breathing; 0 and 1 are the same far,
+ *  faint pose. The ring stays full size. */
+export function lostGoalPose(pulse: number): OrderMarkerPose {
+  const lean = (1 - Math.cos(2 * Math.PI * pulse)) / 2;
+  const alpha = lerp(LOST_ALPHA_LOW, LOST_ALPHA_HIGH, lean);
+  return {
+    reach: lerp(LOST_REACH_FAR, LOST_REACH_NEAR, lean),
+    dartScale: LOST_DART_SCALE,
+    dartAlpha: alpha,
+    ringScale: 1,
+    ringAlpha: alpha,
+  };
+}
+
 interface MarkerNode {
   readonly root: Container;
   readonly darts: readonly Graphics[];
@@ -104,7 +143,7 @@ interface MarkerNode {
 
 const DART = [0, 0, DART_LENGTH, -DART_HALF_SPAN, DART_NOTCH, 0, DART_LENGTH, DART_HALF_SPAN];
 
-function makeDart(kind: OrderMarkerKind, rotation: number): Graphics {
+function makeDart(kind: MarkerTint, rotation: number): Graphics {
   const { fill, outline } = COLOURS[kind];
   // The shadow falls straight down the screen whichever way the dart points.
   const dx = SHADOW_OFFSET * Math.sin(rotation);
@@ -120,7 +159,7 @@ function makeDart(kind: OrderMarkerKind, rotation: number): Graphics {
   return dart;
 }
 
-function makeMarker(kind: OrderMarkerKind): MarkerNode {
+function makeMarker(kind: MarkerTint): MarkerNode {
   const { fill, outline } = COLOURS[kind];
   const root = new Container();
   // The ring lies flat on the ground plane and squashes with it.
@@ -137,33 +176,82 @@ function makeMarker(kind: OrderMarkerKind): MarkerNode {
   return { root, darts, ring };
 }
 
-export class OrderMarkerLayer {
-  readonly container = new Container();
-  private readonly markers = new Map<number, MarkerNode>();
+/** Retained marker nodes under one key space, mounted into a container shared with other pools. */
+class MarkerPool {
+  private readonly nodes = new Map<number, MarkerNode>();
   private readonly seen = new Set<number>();
 
-  draw(markers: readonly OrderMarker[], elevation: ElevationField, viewport: Viewport): void {
+  constructor(private readonly container: Container) {}
+
+  begin(): void {
     this.seen.clear();
-    for (const marker of markers) {
-      const at = projectNode(elevation, marker.hx, marker.hy);
-      if (!isVisible(viewport, at.x, at.y)) continue;
-      let node = this.markers.get(marker.id);
-      // A marker keeps its kind for life: a new order is a new id.
-      if (node === undefined) {
-        node = makeMarker(marker.kind);
-        this.container.addChild(node.root);
-        this.markers.set(marker.id, node);
-      }
-      node.root.position.set(at.x, at.y);
-      pose(node, orderMarkerPose(marker.progress));
-      this.seen.add(marker.id);
+  }
+
+  /** The node standing at `(hx, hy)` this frame, or undefined when the spot is off the screen. A key
+   *  keeps its tint for life: a new order is a new id. */
+  place(
+    key: number,
+    tint: MarkerTint,
+    at: { readonly hx: number; readonly hy: number },
+    elevation: ElevationField,
+    viewport: Viewport,
+  ): MarkerNode | undefined {
+    const spot = projectNode(elevation, at.hx, at.hy);
+    if (!isVisible(viewport, spot.x, spot.y)) return undefined;
+    let node = this.nodes.get(key);
+    if (node === undefined) {
+      node = makeMarker(tint);
+      this.container.addChild(node.root);
+      this.nodes.set(key, node);
     }
-    retireUndrawn(this.markers, this.seen, (node) => node.root.destroy({ children: true }));
+    node.root.position.set(spot.x, spot.y);
+    this.seen.add(key);
+    return node;
+  }
+
+  end(): void {
+    retireUndrawn(this.nodes, this.seen, (node) => node.root.destroy({ children: true }));
+  }
+
+  clear(): void {
+    this.nodes.clear();
+  }
+}
+
+export class OrderMarkerLayer {
+  readonly container = new Container();
+  private readonly orders = new MarkerPool(this.container);
+  private readonly lost = new MarkerPool(this.container);
+
+  /** `lostPulse` is the refused goals' shared breathing phase, see {@link lostGoalPose}. */
+  draw(
+    markers: readonly OrderMarker[],
+    lostGoals: readonly LostGoalMarker[],
+    lostPulse: number,
+    elevation: ElevationField,
+    viewport: Viewport,
+  ): void {
+    this.orders.begin();
+    for (const marker of markers) {
+      const node = this.orders.place(marker.id, marker.kind, marker, elevation, viewport);
+      if (node !== undefined) pose(node, orderMarkerPose(marker.progress));
+    }
+    this.orders.end();
+    this.lost.begin();
+    if (lostGoals.length > 0) {
+      const lostPose = lostGoalPose(lostPulse);
+      for (const goal of lostGoals) {
+        const node = this.lost.place(goal.node, 'lost', goal, elevation, viewport);
+        if (node !== undefined) pose(node, lostPose);
+      }
+    }
+    this.lost.end();
   }
 
   destroy(): void {
     this.container.destroy({ children: true });
-    this.markers.clear();
+    this.orders.clear();
+    this.lost.clear();
   }
 }
 

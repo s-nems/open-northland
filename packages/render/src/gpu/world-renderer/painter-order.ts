@@ -13,7 +13,8 @@ export interface WorldSceneLayers {
   readonly selection: Container;
   readonly bones: Container;
   readonly sprites: Container;
-  /** Over the sprites: an order's acknowledgement must not hide behind the rock or tree it lands by. */
+  /** Over the sprites: an order's acknowledgement or a refused goal must not hide behind the rock or tree
+   *  it marks. */
   readonly orderMarkers: Container;
   readonly blood: Container;
   readonly damageSmoke: Container;
