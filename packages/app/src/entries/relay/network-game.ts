@@ -1,6 +1,6 @@
 import type { GameSession } from '@open-northland/lockstep';
 import { verifyInitialSave } from '@open-northland/net-client';
-import { MAX_LOADING_PROGRESS, type ServerMessage } from '@open-northland/net-protocol';
+import { MAX_LOADING_PROGRESS, type RelayReason, type ServerMessage } from '@open-northland/net-protocol';
 import { serializeSaveGame } from '@open-northland/sim';
 import { errorText } from '../../diag/error-text.js';
 import {
@@ -126,15 +126,7 @@ export function renderNetworkGame(
   }
   const startWait = createStartWait(client);
 
-  const exit = roomExitObserver((reason) =>
-    fail(
-      reason === null
-        ? copy.roomEnded
-        : reason.code === 'loadingTimedOut'
-          ? formatMessage(copy.startTimedOut, { nick: reason.nick })
-          : `${copy.roomEnded}: ${relayReasonText(reason)}`,
-    ),
-  );
+  const exit = roomExitObserver((reason) => fail(roomEndText(reason)));
   const unsubscribe = connection.subscribe((event) => {
     if (event.kind === 'failure') {
       fail(event.error);
@@ -291,4 +283,13 @@ export function renderNetworkGame(
         if (closed || mine !== revision) release(world);
       });
   });
+}
+
+/** Why the room ended, a start that never came worded as such. */
+function roomEndText(reason: RelayReason | null): string {
+  const copy = messages().net;
+  if (reason === null) return copy.roomEnded;
+  if (reason.code === 'loadingTimedOut') return formatMessage(copy.startTimedOut, { nick: reason.nick });
+  if (reason.code === 'leftBeforeStart') return formatMessage(copy.startLeft, { nick: reason.nick });
+  return `${copy.roomEnded}: ${relayReasonText(reason)}`;
 }

@@ -7,7 +7,7 @@ import {
   parseServerMessage,
   TICK_MS,
 } from '@open-northland/net-protocol';
-import { HELLO_TIMEOUT_MS, Relay } from '@open-northland/net-server';
+import { HELLO_TIMEOUT_MS, KICK_COUNTDOWN_MS, Relay } from '@open-northland/net-server';
 import { describe, expect, it } from 'vitest';
 import {
   SEATS,
@@ -100,8 +100,14 @@ describe('relay rooms', () => {
     a.send({ kind: 'setReady', ready: true });
     b.send({ kind: 'setReady', ready: true });
     a.send({ kind: 'start' });
-    b.send({ kind: 'leaveRoom' });
+    // Voted out while nobody has loaded: the seat changes hands only once a world fixes the tick.
+    s.advance(TICK_MS);
+    s.advance(KICK_COUNTDOWN_MS);
+    a.send({ kind: 'kick', player: 1 });
+    expect(a.of('rejected')).toEqual([]);
     expect(a.of('kicked')).toEqual([]);
+    const ping = a.last('ping');
+    if (ping !== undefined) a.send({ kind: 'pong', t: ping.t });
     a.send({ kind: 'loaded', tick: 1, world: 0 });
     expect(a.last('kicked')).toMatchObject({ player: 1, tick: 2, mode: 'ai' });
     s.advance(TICK_MS);

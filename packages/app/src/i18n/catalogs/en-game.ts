@@ -1491,6 +1491,7 @@ export const enGame = {
     openNextPlayer: 'Open the next player in a new tab',
     invitedNick: 'Guest {number}',
     startFailedTitle: 'The game did not start',
+    startLeft: '{nick} left before the game started. Host the room again.',
     startTimedOut: '{nick} did not finish loading in time. Host the room again.',
     roomJoinHint: 'Others join with room={id}',
     roomNoSeats: 'This map has no seats to claim',

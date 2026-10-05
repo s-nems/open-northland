@@ -264,6 +264,8 @@ clock. Before the clock runs, a member that has not loaded and whose boot has no
 `LOADING_STALL_MS` (2 min, counted from the start, its last `loading`, its `loaded`, or its drop or
 return) ends the room: every connected member gets `error { loadingTimedOut, nick }` and `left`, and
 the players host again. The app shows no countdown for it and offers no vote on its loading screen.
+A seated member that leaves the room before the clock runs ends it at once, with
+`error { leftBeforeStart, nick }` and `left` to the others.
 
 ## Kick votes
 

@@ -79,6 +79,7 @@ const REASON_PARAMS: { readonly [C in RelayReasonCode]: ParamsOf<Extract<RelayRe
   noWorldYet: {},
   matchEnded: {},
   loadingTimedOut: { nick: 'nick' },
+  leftBeforeStart: { nick: 'nick' },
   commandBudget: {},
   envelopeTooLarge: {},
   seatEmpty: { player: 'seat' },

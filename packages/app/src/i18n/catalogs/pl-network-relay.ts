@@ -58,6 +58,7 @@ export const plNetworkRelay = {
     ackOutOfOrder: 'oczekiwano potwierdzenia kroku {expected}',
     tickNotEmitted: 'krok {tick} jeszcze nie nastąpił',
     noWorldYet: 'żaden świat nie został jeszcze wczytany',
+    leftBeforeStart: 'gracz {nick} opuścił grę przed startem',
     loadingTimedOut: 'gracz {nick} nie wczytał gry na czas, utwórzcie pokój od nowa',
     matchEnded: 'rozgrywka się zakończyła',
     commandBudget: 'zbyt wiele rozkazów naraz',

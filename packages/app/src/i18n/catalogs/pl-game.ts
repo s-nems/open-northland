@@ -1457,6 +1457,7 @@ export const plGame = {
     openNextPlayer: 'Otwórz kolejnego gracza w nowej karcie',
     invitedNick: 'Gość {number}',
     startFailedTitle: 'Gra nie wystartowała',
+    startLeft: 'Gracz {nick} opuścił grę przed startem. Utwórzcie pokój od nowa.',
     startTimedOut: 'Gracz {nick} nie wczytał gry na czas. Utwórzcie pokój od nowa.',
     roomJoinHint: 'Pozostali dołączają przez room={id}',
     roomNoSeats: 'Ta mapa nie ma miejsc do zajęcia',

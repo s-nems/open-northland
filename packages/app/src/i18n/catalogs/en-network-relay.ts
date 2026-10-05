@@ -58,6 +58,7 @@ export const enNetworkRelay = {
     ackOutOfOrder: 'expected confirmation of tick {expected}',
     tickNotEmitted: 'tick {tick} has not happened yet',
     noWorldYet: 'no world has loaded yet',
+    leftBeforeStart: '{nick} left before the game started',
     loadingTimedOut: '{nick} did not finish loading in time; host the room again',
     matchEnded: 'the match has ended',
     commandBudget: 'too many orders at once',

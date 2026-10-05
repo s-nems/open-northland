@@ -57,6 +57,7 @@ export type RelayReason =
   | { readonly code: 'noWorldYet' }
   | { readonly code: 'matchEnded' }
   | { readonly code: 'loadingTimedOut'; readonly nick: string }
+  | { readonly code: 'leftBeforeStart'; readonly nick: string }
   | { readonly code: 'commandBudget' }
   | { readonly code: 'envelopeTooLarge' }
   | { readonly code: 'seatEmpty'; readonly player: number }

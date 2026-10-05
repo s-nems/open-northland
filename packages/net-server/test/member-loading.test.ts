@@ -102,4 +102,15 @@ describe('member boot progress', () => {
     s.advance(LOADING_STALL_MS - 1);
     expect(s.b.of('left')).toEqual([]);
   });
+
+  it('ends the room at once when a member leaves before the start', () => {
+    const s = startingRoom();
+    s.a.send({ kind: 'loaded', tick: 0, world: 0 });
+    s.b.send({ kind: 'leaveRoom' });
+    s.advance(1);
+    expect(s.a.last('error')?.reason).toEqual({ code: 'leftBeforeStart', nick: 'Bartek' });
+    expect(s.a.of('left')).toHaveLength(1);
+    expect(s.a.of('clock')).toEqual([]);
+    expect(s.relay.roomCount).toBe(0);
+  });
 });

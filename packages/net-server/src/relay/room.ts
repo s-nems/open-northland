@@ -54,6 +54,8 @@ export class Room {
   private joined = 0;
   /** The roster as every client built its world; fixed at the start, whatever the seats do after. */
   private startedSeats: GameSession['seats'] | null = null;
+  /** The member that left before the clock ran: a game never starts without one of its players. */
+  private leftBeforeStart: string | null = null;
   /** A member's load or boot progress moved since the last room view went out. */
   private loadMoved = false;
   private nextLoadViewAt = 0;
@@ -157,6 +159,11 @@ export class Room {
 
   /** Explicit departure releases identity; socket loss alone preserves a running seat for reconnect. */
   leave(member: Member, now: number): Refusal {
+    if (this.game !== null && !this.game.running && member.seat !== null) {
+      this.leftBeforeStart ??= member.nick;
+      this.remove(member);
+      return null;
+    }
     if (this.game !== null && this.game.endedTick === null && member.seat !== null) {
       this.kickOut(member, member.seat, now, 'left');
       return null;
@@ -317,6 +324,7 @@ export class Room {
   }
 
   advance(elapsedMs: number, now: number): Refusal {
+    if (this.leftBeforeStart !== null) return { code: 'leftBeforeStart', nick: this.leftBeforeStart };
     if (this.game !== null && !this.game.running) {
       const stalled = this.stalledLoad(now);
       if (stalled !== null) return stalled;
