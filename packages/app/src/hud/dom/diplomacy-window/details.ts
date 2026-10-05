@@ -79,69 +79,35 @@ export function createTributes(paint: GoodIconPainter, onPay: (slot: number) => 
   setAttribute(list, 'aria-label', copy.tributes);
   const empty = element('p', 'on-dip-note');
   write(empty, copy.noTributes);
-  const sheet = element('div', 'on-parchment');
-  const table = element('table', 'on-dip-costs');
-  const head = element('thead', '');
-  const labels = element('tr', '');
-  for (const label of [copy.good, copy.cost, copy.available, copy.missing]) {
-    const cell = element('th', '');
-    cell.scope = 'col';
-    write(cell, label);
-    if (label === copy.available) setTip(cell, copy.stockScope);
-    labels.append(cell);
-  }
-  head.append(labels);
-  const body = element('tbody', '');
-  table.append(head, body);
-  sheet.append(table);
   const foot = element('div', 'on-dip-tribute__foot');
   const pay = button('on-button on-button--accent');
   foot.append(pay);
-  root.append(heading.element, list, empty, sheet, foot);
+  root.append(heading.element, list, empty, foot);
   let selected: number | null = null;
   let shown = '';
-  let detailKey = '';
   let rows: readonly TributePanelRow[] = [];
   let paying: (slot: number) => boolean = () => false;
   let readOnly = false;
   let buttons = new Map<number, HTMLButtonElement>();
-  let cells: readonly DemandView[] = [];
+  let cells = new Map<number, readonly DemandView[]>();
   const name = (index: number): string => `${messages().hud.tribute} ${index + 1}`;
 
   const refresh = (): void => {
     const tribute = rows.find((t) => t.slot === selected);
     for (const [slot, control] of buttons) setAttribute(control, 'aria-pressed', String(slot === selected));
-    setHidden(sheet, tribute === undefined);
+    for (const row of rows) {
+      const demands = cells.get(row.slot);
+      for (const [index, demand] of row.demands.entries()) {
+        const cell = demands?.[index];
+        if (cell === undefined) continue;
+        write(cell.stock, String(demand.onHand));
+        const missing = Math.max(0, demand.amount - demand.onHand);
+        write(cell.shortage, missing > 0 ? String(missing) : '—');
+        setClass(cell.shortage, 'on-dip-costs__short', missing > 0);
+      }
+    }
     setHidden(foot, tribute === undefined);
     if (tribute === undefined) return;
-    const key = JSON.stringify([
-      tribute.slot,
-      tribute.demands.map((d) => [d.goodType, d.goodId, d.label, d.amount]),
-    ]);
-    if (detailKey !== key) {
-      detailKey = key;
-      body.replaceChildren();
-      cells = tribute.demands.map((demand): DemandView => {
-        const row = element('tr', '');
-        const good = element('td', '');
-        good.append(goodCell(demand, paint));
-        const cost = element('td', '');
-        write(cost, String(demand.amount));
-        const stock = element('td', '');
-        const shortage = element('td', '');
-        row.append(good, cost, stock, shortage);
-        body.append(row);
-        return { stock, shortage };
-      });
-    }
-    for (const [index, demand] of tribute.demands.entries()) {
-      const cell = cells[index];
-      if (cell === undefined) continue;
-      write(cell.stock, String(demand.onHand));
-      const missing = Math.max(0, demand.amount - demand.onHand);
-      write(cell.shortage, missing > 0 ? String(missing) : '—');
-      setClass(cell.shortage, 'on-dip-costs__short', missing > 0);
-    }
     const pending = paying(tribute.slot);
     pay.disabled = readOnly || !tribute.payable || pending;
     write(pay, pending ? copy.paying : copy.pay);
@@ -170,20 +136,33 @@ export function createTributes(paint: GoodIconPainter, onPay: (slot: number) => 
       if (shown !== key) {
         const focused = [...buttons.entries()].find(([, control]) => control === document.activeElement)?.[0];
         shown = key;
+        cells = new Map();
         buttons = new Map(
           rows.map((tribute, index) => {
             const control = button('on-dip-tribute-pick');
             const title = element('strong', '');
             write(title, name(index));
-            const goods = element('span', 'on-dip-tribute-pick__goods');
-            for (const demand of tribute.demands) {
-              const good = goodCell(demand, paint);
-              const amount = element('b', '');
-              write(amount, String(demand.amount));
-              good.append(amount);
-              goods.append(good);
+            const labels = element('span', 'on-dip-cost-row on-dip-cost-row--head');
+            for (const label of [copy.good, copy.cost, copy.available, copy.missing]) {
+              const cell = element('span', '');
+              write(cell, label);
+              if (label === copy.available) setTip(cell, copy.stockScope);
+              labels.append(cell);
             }
-            control.append(title, goods);
+            control.append(title, labels);
+            cells.set(
+              tribute.slot,
+              tribute.demands.map((demand): DemandView => {
+                const row = element('span', 'on-dip-cost-row');
+                const cost = element('span', '');
+                write(cost, String(demand.amount));
+                const stock = element('span', '');
+                const shortage = element('span', '');
+                row.append(goodCell(demand, paint), cost, stock, shortage);
+                control.append(row);
+                return { stock, shortage };
+              }),
+            );
             control.addEventListener('click', () => {
               selected = tribute.slot;
               refresh();
