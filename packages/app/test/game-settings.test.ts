@@ -325,7 +325,7 @@ describe('gameSoundEnabled', () => {
 
 it('persists and applies every selection style immediately', async () => {
   const h = harness();
-  for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-player'] as const) {
+  for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-green'] as const) {
     await h.settings.update({ selectionStyle });
     expect(h.settings.current().selectionStyle).toBe(selectionStyle);
     expect(h.persist).toHaveBeenLastCalledWith({ selectionStyle });

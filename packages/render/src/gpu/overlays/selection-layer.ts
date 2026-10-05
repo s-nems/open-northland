@@ -1,7 +1,7 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
-import { classify, readOwnerPlayer, readPosition } from '../../data/scene/snapshot-readers/index.js';
+import { classify, readPosition } from '../../data/scene/snapshot-readers/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import { DEFAULT_SELECTION_STYLE, type SelectionStyle } from '../selection-style.js';
 import type { DrawnGeometry, EntityBounds } from '../sprite-pool/index.js';
@@ -59,8 +59,6 @@ export interface SelectionFrame {
   /** Logical screen pixels per world pixel; absent means the unscaled test/shot view. */
   readonly zoom?: number;
   readonly selectionStyle?: SelectionStyle | undefined;
-  /** Owner slot to a readable RGB colour, including the map roster’s colour assignment. */
-  readonly selectionColourOf?: ((player: number) => number) | undefined;
   /** Authored ground markers and drawn bounds, anchored with the displayed sprites. */
   readonly drawn?: DrawnGeometry;
   /** The terrain height field - lifts a ring onto sloped ground. Absent → no lift (flat). */
@@ -144,11 +142,9 @@ export class SelectionLayer {
       if (pos === null) continue;
       const s = feetAnchor(frame.drawn, id, pos, frame.elevation);
       const kind = classify(ent.components);
-      const coloured = (frame.selectionStyle ?? DEFAULT_SELECTION_STYLE) === 'ring-player';
-      const weight = coloured ? 1.3 : 1;
-      const owner = readOwnerPlayer(ent.components);
-      const ringColor =
-        coloured && owner !== undefined ? (frame.selectionColourOf?.(owner) ?? RING_COLOR) : RING_COLOR;
+      const green = (frame.selectionStyle ?? DEFAULT_SELECTION_STYLE) === 'ring-green';
+      const weight = green ? 1.3 : 1;
+      const ringColor = green ? 0x66ff66 : RING_COLOR;
       const mobile = kind === 'settler';
       const zoom = frame.zoom ?? 1;
       // A building's and a vehicle's ring fits the drawn sprite; a settler's is the fixed feet ellipse.

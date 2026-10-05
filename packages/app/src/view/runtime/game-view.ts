@@ -59,7 +59,6 @@ import { type SettlerHoverContext, settlerHoverModel } from '../../hud/hover-car
 import type { MapOverlayControls } from '../../hud/map-overlays.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { minimapFeatureOfGoodTypes } from '../../hud/minimap/live-objects.js';
-import { MINIMAP_PLAYER_COLOURS } from '../../hud/minimap/palette.js';
 import type { NetPanelSource } from '../../hud/network/model.js';
 import { type MetSeat, NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
 import {
@@ -346,10 +345,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   try {
     const storedSettings = readStoredSettings();
     renderer.setSelectionStyle(storedSettings.selectionStyle);
-    renderer.setSelectionColourOf((player) => {
-      const slot = deps.playerColourOf?.(player) ?? player;
-      return MINIMAP_PLAYER_COLOURS[slot % MINIMAP_PLAYER_COLOURS.length] ?? 0xf2e8c9;
-    });
     // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; only a positive value pins.
     const uiScaleParam = floatParam(params, 'uiscale', 0);
     const pinnedUiScale = uiScaleParam > 0 ? uiScaleParam : null;

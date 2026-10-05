@@ -113,7 +113,6 @@ export class WorldRenderer {
   private readonly playerColourOf: ((player: number) => number) | undefined;
   private enhancements: WorldEnhancements = BASELINE_ENHANCEMENTS;
   private selectionStyle: SelectionStyle = DEFAULT_SELECTION_STYLE;
-  private selectionColourOf: ((player: number) => number) | undefined;
   private withheldRefs: ReadonlySet<number> | undefined;
 
   constructor(app: Application, opts?: WorldRendererOptions) {
@@ -187,11 +186,6 @@ export class WorldRenderer {
     this.terrain.setEnhancedWater(next.enhancedWater);
     this.mapObjects.setEnvironmentMotion(next.environmentMotion);
     this.textureCache.setGroundColours(next.groundedBuildings ? this.groundTone : null);
-  }
-
-  /** Owner slot to RGB; kept separate from the atlas palette-row mapping. */
-  setSelectionColourOf(colourOf: (player: number) => number): void {
-    this.selectionColourOf = colourOf;
   }
 
   setSelectionStyle(style: SelectionStyle): void {
@@ -429,7 +423,6 @@ export class WorldRenderer {
     this.marks.draw({
       snapshot,
       zoom: camera.scale ?? 1,
-      selectionColourOf: this.selectionColourOf,
       selectionStyle: this.selectionStyle,
       drawn: this.pool,
       elevation: this.elevation,

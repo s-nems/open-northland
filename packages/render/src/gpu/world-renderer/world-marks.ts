@@ -55,7 +55,6 @@ export interface WorldMarksFrame {
   readonly snapshot: WorldSnapshot;
   readonly zoom: number;
   readonly selectionStyle?: SelectionStyle;
-  readonly selectionColourOf?: ((player: number) => number) | undefined;
   readonly drawn: DrawnGeometry;
   readonly elevation: ElevationField;
   /** The sprite cull box the screen-bounded marks cull against; damage smoke inherits the pool's cull
@@ -177,7 +176,6 @@ export class WorldMarks {
         elevation,
         zoom: frame.zoom,
         selectionStyle: frame.selectionStyle,
-        selectionColourOf: frame.selectionColourOf,
       },
       frame.selection,
       frame.flagged,

@@ -513,7 +513,7 @@ it('keeps work flags outlined in amber for every style and clears them when thei
   const pool = new SpritePool(layer, textures, undefined);
   const snapshot = snapshotOf([entity(2, 0, 0, { DeliveryFlag: {} })]);
   const frame = { ...poolFrame(snapshot, FRAMES_EVERYTHING), flagged: new Set([2]) };
-  for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-player'] as const) {
+  for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-green'] as const) {
     pool.reconcile({ ...frame, selectionStyle });
     const outline = layer.children[0]?.children[0];
     expect(outline?.children).toHaveLength(16);

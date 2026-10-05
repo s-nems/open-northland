@@ -159,15 +159,14 @@ describe('unit selection presentation', () => {
   });
 });
 
-it('switches selected buildings between coloured rings and sprite effects without stale rings', () => {
+it('switches selected buildings between green rings and sprite effects without stale rings', () => {
   const layer = new SelectionLayer();
   const snapshot = snapshotOf([entity(2, 1, 8, { Building: {}, Owner: { player: 3 } })]);
   const selected = new Set([2]);
   layer.draw(
     {
       snapshot,
-      selectionStyle: 'ring-player',
-      selectionColourOf: (player) => (player === 3 ? 0x35c4d0 : 0xd0342c),
+      selectionStyle: 'ring-green',
     },
     selected,
   );
@@ -177,11 +176,11 @@ it('switches selected buildings between coloured rings and sprite effects withou
     ring.context.instructions
       .filter((entry) => entry.action === 'stroke')
       .map((entry) => entry.data.style.color);
-  expect(colours()).toContain(0x35c4d0);
+  expect(colours()).toContain(0x66ff66);
   layer.draw({ snapshot, selectionStyle: 'ring-white' }, selected);
   expect(layer.container.children[0]).toBe(ring);
   expect(colours()).toContain(0xf2e8c9);
-  expect(colours()).not.toContain(0x35c4d0);
+  expect(colours()).not.toContain(0x66ff66);
   for (const selectionStyle of ['outline', 'pulse'] as const) {
     layer.draw({ snapshot, selectionStyle }, selected);
     expect(layer.container.children).toHaveLength(0);
@@ -189,8 +188,7 @@ it('switches selected buildings between coloured rings and sprite effects withou
   layer.draw(
     {
       snapshot,
-      selectionStyle: 'ring-player',
-      selectionColourOf: (player) => (player === 3 ? 0x35c4d0 : 0xd0342c),
+      selectionStyle: 'ring-green',
     },
     selected,
   );
@@ -198,36 +196,22 @@ it('switches selected buildings between coloured rings and sprite effects withou
   layer.destroy();
 });
 
-it('colours each ring by its owner and refreshes retained rings when the roster colour changes', () => {
+it('uses the same green for different owners and unowned objects', () => {
   const layer = new SelectionLayer();
   const snapshot = snapshotOf([
     entity(1, 1, 1, { Settler: {}, Owner: { player: 0 } }),
     entity(2, 2, 1, { Vehicle: {}, Owner: { player: 1 } }),
     entity(3, 3, 1, { Building: {} }),
   ]);
-  const palette = [0x2f62d8, 0xd0342c];
-  const frame = {
-    selectionStyle: 'ring-player' as const,
-    snapshot,
-    selectionColourOf: (player: number) => palette[player] ?? 0xffffff,
-  };
-  const selected = new Set([1, 2, 3]);
-  layer.draw(frame, selected);
-  const [blue, red, neutral] = layer.container.children;
-  const coloursOf = (g: unknown) => {
-    if (!(g instanceof Graphics)) throw new Error('Missing ring');
-    return g.context.instructions
+  layer.draw({ snapshot, selectionStyle: 'ring-green' }, new Set([1, 2, 3]));
+  expect(layer.container.children).toHaveLength(3);
+  for (const ring of layer.container.children) {
+    if (!(ring instanceof Graphics)) throw new Error('Missing ring');
+    const colours = ring.context.instructions
       .filter((entry) => entry.action === 'stroke')
       .map((entry) => entry.data.style.color);
-  };
-  expect(coloursOf(blue)).toContain(0x2f62d8);
-  expect(coloursOf(red)).toContain(0xd0342c);
-  expect(coloursOf(neutral)).toContain(0xf2e8c9);
-  palette[0] = 0xe6d33e;
-  layer.draw(frame, selected);
-  expect(layer.container.children[0]).toBe(blue);
-  expect(coloursOf(blue)).toContain(0xe6d33e);
-  expect(coloursOf(blue)).not.toContain(0x2f62d8);
+    expect(colours).toContain(0x66ff66);
+  }
   layer.destroy();
 });
 
@@ -236,7 +220,7 @@ it('leaves work flags to their sprite outline and keeps their work radii in ever
   const snapshot = snapshotOf([entity(2, 3, 1, { DeliveryFlag: {}, Owner: { player: 1 } })]);
   const flags = new Set([2]);
   const areas = [{ entity: 2, radiusNodes: 4 }];
-  for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-player'] as const) {
+  for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-green'] as const) {
     layer.draw({ snapshot, selectionStyle }, flags, flags);
     expect(layer.container.children).toHaveLength(0);
     layer.draw({ snapshot, selectionStyle }, flags, flags, areas);

@@ -1,4 +1,4 @@
-export const SELECTION_STYLES = ['outline', 'pulse', 'ring-white', 'ring-player'] as const;
+export const SELECTION_STYLES = ['outline', 'pulse', 'ring-white', 'ring-green'] as const;
 export type SelectionStyle = (typeof SELECTION_STYLES)[number];
 export const DEFAULT_SELECTION_STYLE: SelectionStyle = 'outline';
 

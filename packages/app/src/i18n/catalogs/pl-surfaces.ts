@@ -181,7 +181,7 @@ export const plSurfaces = {
         outline: 'Obwódka',
         pulse: 'Pulsujące rozjaśnienie',
         'ring-white': 'Biały pierścień',
-        'ring-player': 'Kolorowy pierścień',
+        'ring-green': 'Zielony pierścień',
       },
       minimapFrameTip: 'Wygląd ramki wokół minimapy. Zmienia się w grze od razu.',
       minimapFrames: {
