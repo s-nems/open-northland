@@ -7,11 +7,21 @@ import {
   JobAssignment,
   MoveGoal,
   Position,
+  RoadSite,
   Stockpile,
+  setStockAmount,
+  UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { cellAnchorNode, fx, ONE, Simulation } from '../../src/index.js';
-import { plannerSystem } from '../../src/systems/index.js';
+import {
+  cellAnchorNode,
+  fx,
+  ONE,
+  positionOfNode,
+  type ScriptLandscapeType,
+  Simulation,
+} from '../../src/index.js';
+import { createPalisade, plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -38,6 +48,7 @@ const FARMER = 18; // a non-carrier trade with nothing to do on a bare strip
 const HUNTER = 15; // a gathering trade, posted to the store by hand (the fixture HQ seats no hunter slot)
 const WOOD = 1; // the HQ stocks it, so a loose wood pile is deliverable
 const VIKING = 1;
+const WALL_GFX = 691; // a wall row of the test's own, outside the fixture's landscape catalog
 
 // The WHOLE component namespace, not a hand-picked subset: a missed store leaks across the in-test
 // reruns (the sim AGENTS.md's most-rediscovered trap).
@@ -219,6 +230,41 @@ describe('carrier - choosing what to haul', () => {
     expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
     // The pile really is haulable: the carrier walks to that exact tile.
     const pileNode = cellAnchorNode(4, 0);
+    expect(sim.world.tryGet(carrier, MoveGoal)?.cell).toBe(sim.terrain?.nodeAt(pileNode.hx, pileNode.hy));
+  });
+
+  it('a porter passes wall and road sites holding delivered material for the ground pile beyond', () => {
+    // A builder drops its wood into the site it is raising; that stock is the site's, not a heap to bring
+    // in. The pickup cannot lift it either, so a porter sent there would walk back and forth for nothing.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
+    const hq = hqAt(sim, 9, 0);
+    const carrier = carrierAt(sim, 0, 0, hq);
+    const wallType: ScriptLandscapeType = {
+      typeId: WALL_GFX,
+      walk: [],
+      build: [],
+      groups: [],
+      wall: { maxHitpoints: 100, repairPerStrike: 1, construction: [{ goodType: WOOD, amount: 1 }] },
+    };
+    const wall = createPalisade(sim.world, wallType, { x: 4, y: 0, tribe: VIKING, underConstruction: true });
+    if (wall === null) throw new Error('wall site');
+    setStockAmount(sim.world, wall, WOOD, 1);
+    const road = sim.world.create();
+    sim.world.add(road, Position, positionOfNode(8, 0));
+    sim.world.add(road, RoadSite, {
+      tribe: VIKING,
+      construction: [{ goodType: WOOD, amount: 1 }],
+      reservation: null,
+    });
+    sim.world.add(road, Stockpile, { amounts: new Map([[WOOD, 1]]) });
+    sim.world.add(road, UnderConstruction, { labor: fx.fromInt(0) });
+    const pile = sim.world.create();
+    sim.world.add(pile, Position, { x: fx.fromInt(6), y: fx.fromInt(0) });
+    sim.world.add(pile, Stockpile, { amounts: new Map([[WOOD, 1]]) });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const pileNode = cellAnchorNode(6, 0);
     expect(sim.world.tryGet(carrier, MoveGoal)?.cell).toBe(sim.terrain?.nodeAt(pileNode.hx, pileNode.hy));
   });
 

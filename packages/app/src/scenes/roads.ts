@@ -1,12 +1,13 @@
 import { components, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { JOB_BUILDER } from '../catalog/jobs.js';
+import { JOB_BUILDER, JOB_CARRIER } from '../catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import {
   BUILDING_WAREHOUSE_00,
   GOOD_STONE,
   placeBuiltSandboxBuilding,
   spawnSettlerDirect,
+  spawnWorkersAtDoor,
 } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
@@ -14,7 +15,8 @@ import type { SceneDefinition } from './types.js';
  * Road acceptance field: a store holding stone, two builders beside it, and a laid line of road sites
  * across open grass with a branch off its middle. The builders fetch a stone per claimed site, and each
  * stone paves its own node and the unclaimed neighbours no stone is bound for, so the plots turn into road
- * faster than one per stone. The road tool, a road site's panel and the builder pick all work here too.
+ * faster than one per stone. The store's carrier has nothing to bring in: a site's delivered stone is the
+ * site's, not a ground pile. The road tool, a road site's panel and the builder pick all work here too.
  */
 
 const MAP_W = 30;
@@ -53,6 +55,7 @@ function build(sim: Simulation): void {
   );
   sim.world.mut(store, Stockpile).amounts.set(GOOD_STONE, STORED_STONE);
   for (const cell of BUILDER_CELLS) spawnSettlerDirect(sim, JOB_BUILDER, cell.x, cell.y, HUMAN_PLAYER);
+  spawnWorkersAtDoor(sim, store, 1, { jobType: JOB_CARRIER });
   for (const node of roadSceneNodes()) {
     sim.enqueueSetup({
       kind: 'placeRoadSite',
