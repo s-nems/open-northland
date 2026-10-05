@@ -531,8 +531,8 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     const model = deps.source.model();
     if (model === shown || model === null) return;
     shown = model;
-    showLine(notice, model.notice);
-    setTip(notice, model.notice ?? '');
+    showLine(notice, model.notice?.text ?? null);
+    setTip(notice, model.notice?.tip ?? '');
     showPlayers(model.players);
     showOwnState(model.players);
     showClock(model);

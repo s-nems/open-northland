@@ -990,7 +990,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         : mountNetOverlays({
             source: deps.netPanel,
             scale: hudDom.currentScale,
-            minimap: () => mountedMinimap.panelRect(),
             controller: () => toolPanel.controller,
             cue: uiCue,
           });
@@ -1049,6 +1048,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       presentation,
       perf,
       netReadout,
+      ...(netOverlays === null ? {} : { clockHeld: () => netOverlays.clockHeld() }),
       // A relayed room's pace reaches the bar through the network panel's model instead.
       ...(sharedClock || netOverlays !== null
         ? {}

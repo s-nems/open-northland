@@ -13,7 +13,8 @@ import {
   SPEED_HISTORY_SECONDS,
   type SpeedSample,
 } from '../../hud/network/model.js';
-import { formatMessage, messages, tribeName } from '../../i18n/index.js';
+import { desyncNotice } from '../../hud/network/text.js';
+import { tribeName } from '../../i18n/index.js';
 
 /** The scripted states of the network panel's design preview, in the order it cycles through them. */
 export const NET_PREVIEW_STATES = [
@@ -111,10 +112,7 @@ export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanel
           link: PREVIEW_LINK,
           chat,
           chatVersion,
-          notice:
-            state === 'held'
-              ? formatMessage(messages().net.desync, { nick: PEER, tick: tick(DESYNC_AT_MIN, DESYNC_AT_S) })
-              : null,
+          notice: state === 'held' ? desyncNotice(PEER, tick(DESYNC_AT_MIN, DESYNC_AT_S)) : null,
         };
       }
       return shown;

@@ -2,6 +2,7 @@ import type { ClockState, RelayClientView } from '@open-northland/net-client';
 import type { RoomView, ServerMessage } from '@open-northland/net-protocol';
 import { diag } from '../../diag/index.js';
 import type { NetPanelModel } from '../../hud/network/model.js';
+import { desyncNotice } from '../../hud/network/text.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { relayCloseText, relayReasonText } from '../../net/relay-reason.js';
 import type { LinkState } from '../../session/worker/net-protocol.js';
@@ -76,7 +77,7 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
           );
           return;
         case 'desync':
-          feed.notice(formatMessage(copy.desync, { nick: message.reference, tick: message.tick }));
+          feed.notice(desyncNotice(message.reference, message.tick));
           diag.warn('net', 'out of sync with the room', {
             tick: message.tick,
             domains: message.domains,

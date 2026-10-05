@@ -1,12 +1,28 @@
 import { TICKS_PER_SECOND } from '@open-northland/sim';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
 import type { SpeedBarLook } from '../dom/system-bar.js';
-import { isHeldStatus, type NetClockModel, type NetPlayerRow, type NetPlayerVote } from './model.js';
+import {
+  isHeldStatus,
+  type NetClockModel,
+  type NetNotice,
+  type NetPlayerRow,
+  type NetPlayerVote,
+} from './model.js';
 
 /** The governed speed steps by hundredths at most; finer digits would only be noise. */
 const SPEED_FRACTION_DIGITS = 2;
 /** Seconds behind read to a tenth, about one tick's length at ×1 (`TICKS_PER_SECOND` ticks a second). */
 const BEHIND_FRACTION_DIGITS = 1;
+
+/** This world fell out of sync with the room at `tick`; `reference` names the member whose world it
+ *  rebuilds from. */
+export function desyncNotice(reference: string, tick: number): NetNotice {
+  const copy = messages().net;
+  return {
+    text: formatMessage(copy.desync, { nick: reference, tick }),
+    tip: formatMessage(copy.desyncTip, { nick: reference, tick }),
+  };
+}
 
 /** A speed multiplier as the player reads it, in the language's own decimals: ×2,4 in Polish. */
 export function formatRoomSpeed(speed: number): string {

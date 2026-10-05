@@ -96,7 +96,13 @@ export interface NetPanelModel {
   /** Bumps once per appended chat line, so a reader can tell new lines without comparing arrays. */
   readonly chatVersion: number;
   /** A line about this client's own world (out of sync with the room); null when there is none. */
-  readonly notice: string | null;
+  readonly notice: NetNotice | null;
+}
+
+/** `text` fits the status line; `tip` is the full explanation the window shows on hover. */
+export interface NetNotice {
+  readonly text: string;
+  readonly tip: string;
 }
 
 export interface NetPanelActions {

@@ -1685,8 +1685,9 @@ export const plGame = {
     memberJoined: '{nick} dołącza',
     memberDropped: '{nick} traci połączenie',
     memberReturned: '{nick} wraca',
-    desync:
-      'Rozjazd z {nick} od kroku {tick}: czekamy na migawkę do odbudowy. Gra przeładuje się, gdy dotrze.',
+    desync: 'Rozjazd od kroku {tick}, czekamy na migawkę (wzorzec: {nick})',
+    desyncTip:
+      'Od kroku {tick} ten świat nie zgadza się z resztą pokoju. Czeka na migawkę świata wzorcowego (gracz: {nick}), z której się odbuduje; gra przeładuje się, gdy dotrze.',
     refused: 'Odmowa: {reason}',
     chatPlaceholder: 'Wiadomość; Enter wysyła, Esc anuluje',
   },

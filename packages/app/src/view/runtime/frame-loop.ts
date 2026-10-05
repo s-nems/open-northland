@@ -99,6 +99,9 @@ export interface FrameLoopDeps {
   readonly perf: PerfOverlayHandle;
   /** A relayed session's connection figures for the overlay; null in a local session. */
   readonly netReadout: () => NetReadout | null;
+  /** True while a relay holds the clock for a member, which washes the world as a pause does; omitted
+   *  outside a relayed game. */
+  readonly clockHeld?: () => boolean;
   /** Called every frame of a local session with the delivered speed while a sustained shortfall
    *  holds, else null; omitted where the relay runs the clock. */
   readonly onSpeedShortfall?: (delivered: number | null, requested: number) => void;
@@ -230,9 +233,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const advanceMs = performance.now() - cpu0;
     const offThread = deps.offThreadTickCost?.() ?? null;
     cameraCtl.update(elapsed); // a no-op while the system menu holds the camera suspended
-    // Idempotent: the sepia wash mirrors the pause flag every frame rather than on transitions, so a
-    // pauser never has to know about the renderer.
-    renderer.setPaused(driver.paused);
+    // Idempotent: the sepia wash mirrors the pause flag and the relay's hold every frame rather than
+    // on transitions, so neither a pauser nor the relay feed has to know about the renderer.
+    renderer.setPaused(driver.paused || loop.clockHeld?.() === true);
     // Before anything draws: the map entry's resource handover must release a first-worked node in the
     // same frame the pool starts drawing it.
     if (frameEvents.length > 0) deps.onEvents?.(frameEvents);

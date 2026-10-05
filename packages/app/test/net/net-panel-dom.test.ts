@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createNetStatusLine } from '../../src/hud/dom/network-status-line.js';
 import { createNetworkWindow } from '../../src/hud/dom/network-window.js';
+import { TIP_ATTRIBUTE as TIP } from '../../src/hud/dom/parts/dom.js';
 import { createHudSystemBar } from '../../src/hud/dom/system-bar.js';
 import type {
   ChatLine,
@@ -15,7 +16,7 @@ import type { ToolPanelController } from '../../src/hud/tool-panel/index.js';
 import { CHAT_LINGER_MS, mountChatPanel } from '../../src/view/net/chat-panel.js';
 import { mountNetOverlays } from '../../src/view/runtime/net-overlays.js';
 
-/** The network window, its status line, the minimap chat and the speed bar over jsdom. */
+/** The network window, its status line, the chat above the beam and the speed bar over jsdom. */
 
 afterEach(() => {
   if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
@@ -31,7 +32,10 @@ function mountPlane(): HTMLElement {
 
 const REQUESTED_SPEED = 3;
 const GOVERNED_SPEED = 2;
-const DESYNC = 'Out of sync with Bartek';
+const DESYNC = {
+  text: 'Out of sync since tick 4080',
+  tip: 'From tick 4080 this world no longer matches the room',
+};
 const CLOSED = 'The relay closed the link';
 /** The chat history's cap in the models below, small enough to overrun in a test. */
 const CHAT_CAP = 3;
@@ -99,7 +103,8 @@ describe('the network window', () => {
     const { plane, window } = mountWindow(feed);
     const body = plane.querySelector('.on-window__body');
     expect(body?.firstElementChild?.classList.contains('on-net-notice')).toBe(true);
-    expect(textOf(plane, '.on-net-notice')).toBe(DESYNC);
+    expect(textOf(plane, '.on-net-notice')).toBe(DESYNC.text);
+    expect(plane.querySelector('.on-net-notice')?.getAttribute(TIP)).toBe(DESYNC.tip);
     expect(textOf(plane, '.on-net-note--danger')).toBeNull();
 
     feed.current = panelModel({ link: { ...LINK, connected: false, notice: CLOSED } });
@@ -160,7 +165,7 @@ describe('the net status line', () => {
 
     feed.current = panelModel({ clock: GOVERNED, notice: DESYNC });
     line.refresh();
-    expect(textOf(plane, '.on-net-slowed--notice')).toBe(DESYNC);
+    expect(textOf(plane, '.on-net-slowed--notice')).toBe(DESYNC.text);
 
     feed.current = panelModel({ notice: DESYNC, link: { ...LINK, connected: false, notice: CLOSED } });
     line.refresh();
@@ -218,7 +223,6 @@ function mountOverlays(feed: NetPanelSource, now: () => number = () => 0) {
   const overlays = mountNetOverlays({
     source: feed,
     scale: () => 1,
-    minimap: () => null,
     controller: () => controller,
     cue: () => undefined,
     now,
@@ -270,6 +274,17 @@ describe('the network window over a hold', () => {
     overlays.dispose();
   });
 
+  it('reports the hold the world washes for, and its end', () => {
+    const feed = source(RUNNING);
+    const { overlays } = mountOverlays(feed);
+    expect(overlays.clockHeld()).toBe(false);
+    feed.current = HOLDING;
+    expect(overlays.clockHeld()).toBe(true);
+    feed.current = RUNNING;
+    expect(overlays.clockHeld()).toBe(false);
+    overlays.dispose();
+  });
+
   it('hangs the status line beside the bar and takes it down on dispose', () => {
     const { state, overlays } = mountOverlays(source());
     overlays.refresh();
@@ -287,7 +302,6 @@ const escapeKey = (): KeyboardEvent => keydown('Escape');
 function mountChat(now: () => number = () => 0) {
   const chat = mountChatPanel({
     scale: () => 1,
-    minimap: () => null,
     beam: () => ({ x: 0, y: 0, w: 0, h: 0 }),
     onSend: () => undefined,
     now,
@@ -300,7 +314,7 @@ function mountChat(now: () => number = () => 0) {
 
 const lineOpen = (input: HTMLInputElement): boolean => input.style.visibility === 'visible';
 
-describe('the minimap chat', () => {
+describe('the chat above the beam', () => {
   it('shows a new line, fades after it lingers, and comes back while the line is open', () => {
     let clock = 0;
     const { chat, input, lines } = mountChat(() => clock);
@@ -329,13 +343,18 @@ describe('the minimap chat', () => {
     expect(lineOpen(input)).toBe(false);
 
     chat.setHidden(false);
+    const log = input.parentElement;
+    const spot = (): string => `${log?.style.left},${log?.style.bottom},${log?.style.width}`;
+    const closedSpot = spot();
     document.dispatchEvent(enter());
     expect(lineOpen(input)).toBe(true);
     expect(document.activeElement).toBe(input);
+    chat.refresh([said(0)], 1);
+    expect(spot()).toBe(closedSpot);
     chat.dispose();
   });
 
-  it('closes a typed line when the window opens over it, as F9 from the line does', () => {
+  it('closes a typed line when a hold opens the window over it', () => {
     const { chat, input } = mountChat();
     document.dispatchEvent(enter());
     input.value = 'half a';

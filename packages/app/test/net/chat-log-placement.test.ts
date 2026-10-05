@@ -1,39 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { NOTICE_COLUMN } from '../../src/hud/regions.js';
-import { chatLogArea, chatLogPlacement } from '../../src/view/net/chat-panel.js';
+import { navBeamRect } from '../../src/hud/nav-beam.js';
+import { chatLogPlacement } from '../../src/view/net/chat-panel.js';
 
 const VIEWPORT = { width: 1600, height: 1000 };
-const BEAM = { x: 556, y: 916, w: 488, h: 84 };
-const MINIMAP = { x: 0, y: 700, w: 300, h: 300 };
 const HUD_SCALE = 1.5;
+const BEAM = navBeamRect(VIEWPORT, HUD_SCALE);
+/** The log's column width and the design-px gap above the beam, as the panel names them. */
+const LOG_WIDTH = 380;
+const BEAM_GAP = 8;
 
 describe('chat log placement', () => {
-  it('stands on the minimap, right of the notice column at the HUD scale', () => {
-    const area = chatLogArea(HUD_SCALE, VIEWPORT.height, MINIMAP);
-    expect(area.floor).toBe(MINIMAP.y);
-    expect(area.left).toBeGreaterThan((NOTICE_COLUMN.left + NOTICE_COLUMN.width) * HUD_SCALE);
-    expect(chatLogPlacement(area, VIEWPORT, BEAM)).toEqual({ left: area.left, bottom: 312, width: 380 });
+  it('centres a fixed column on the beam, its foot a scaled gap above the beam top', () => {
+    const placed = chatLogPlacement(VIEWPORT, BEAM, HUD_SCALE);
+    expect(placed.width).toBe(LOG_WIDTH);
+    expect(placed.left + placed.width / 2).toBe(BEAM.x + BEAM.w / 2);
+    expect(VIEWPORT.height - placed.bottom).toBe(BEAM.y - BEAM_GAP * HUD_SCALE);
   });
 
-  it('stands on the bottom edge without a minimap, narrowed to end before the beam', () => {
-    const area = chatLogArea(1, VIEWPORT.height, null);
-    expect(area.floor).toBe(VIEWPORT.height);
-    expect(chatLogPlacement({ left: 250, floor: VIEWPORT.height }, VIEWPORT, BEAM)).toEqual({
-      left: 250,
-      bottom: 12,
-      width: 294,
-    });
-  });
-
-  it('rises above the beam when too little is left beside it, never past the right edge', () => {
-    const floor = VIEWPORT.height;
-    expect(chatLogPlacement({ left: 489, floor }, VIEWPORT, BEAM)).toEqual({
-      left: 489,
-      bottom: 96,
-      width: 380,
-    });
-    expect(chatLogPlacement({ left: 489, floor }, { width: 700, height: 1000 }, BEAM)).toMatchObject({
-      width: 199,
-    });
+  it('narrows and stays inside a viewport narrower than the column', () => {
+    const narrow = { width: 300, height: 600 };
+    const placed = chatLogPlacement(narrow, navBeamRect(narrow, 1), 1);
+    expect(placed.left).toBeGreaterThanOrEqual(0);
+    expect(placed.left + placed.width).toBeLessThanOrEqual(narrow.width);
+    expect(placed.width).toBeLessThan(LOG_WIDTH);
   });
 });

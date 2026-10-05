@@ -25,7 +25,7 @@ export interface NetStatusLine {
 export function statusLineText(
   model: NetPanelModel,
 ): { readonly text: string; readonly notice: boolean } | null {
-  const notice = model.link.notice ?? model.notice;
+  const notice = model.link.notice ?? model.notice?.text ?? null;
   if (notice !== null) return { text: notice, notice: true };
   const slowed = slowedText(model.clock, model.players);
   return slowed === null ? null : { text: slowed, notice: false };

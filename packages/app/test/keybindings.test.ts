@@ -28,6 +28,8 @@ describe('parseKeyBindings', () => {
     expect(parsed.panLeft).toBe('ArrowLeft');
     expect(parsed.actionRing).toBe('Space');
     expect(parsed.professionPicker).toBe('KeyC');
+    // A table stored before the network window had its letter takes the current default.
+    expect(parsed.network).toBe('KeyN');
   });
 
   it('keeps modifier chords distinct from their plain base key', () => {

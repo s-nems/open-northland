@@ -568,7 +568,7 @@ export const enContent = {
     'net-panel': {
       title: 'Network panel',
       summary:
-        'The design preview of the multiplayer network panel over a small local camp: the window (F9 or the game menu), the held banner, the slowed line and the speed segments, fed by a script that cycles every six seconds through a calm room, a player catching up, a player slowing the room, a held game with a kick vote, and this player catching up or slowing the room. ?netstate=held (or ok, catchingUp, slowing, selfCatchingUp, selfSlowing) pins one state.',
+        'The design preview of the multiplayer network panel over a small local camp: the window (N or the game menu), the held banner, the slowed line and the speed segments, fed by a script that cycles every six seconds through a calm room, a player catching up, a player slowing the room, a held game with a kick vote, and this player catching up or slowing the room. ?netstate=held (or ok, catchingUp, slowing, selfCatchingUp, selfSlowing) pins one state.',
     },
     'equipment-effects': {
       title: 'Equipment effects',

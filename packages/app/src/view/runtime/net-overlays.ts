@@ -1,6 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
 import { createNetStatusLine } from '../../hud/dom/network-status-line.js';
-import type { Rect } from '../../hud/geometry.js';
 import { navBeamRect } from '../../hud/nav-beam.js';
 import {
   isHeldStatus,
@@ -17,8 +16,6 @@ import { speedControlFor } from '../net/session-clock.js';
 export interface NetOverlaysDeps {
   readonly source: NetPanelSource;
   readonly scale: () => number;
-  /** The minimap's box in client px, which the chat log stands on; null while it is hidden. */
-  readonly minimap: () => Rect | null;
   /** The current tool panel controller; a HUD rescale replaces it. */
   readonly controller: () => ToolPanelController;
   readonly cue: (cue: UiCue) => void;
@@ -30,6 +27,8 @@ export interface NetOverlays {
   /** Once a frame: the chat's newest lines, the status line, the network window over a hold, and the
    *  speed segments on a new clock. */
   refresh(): void;
+  /** True while the relay holds the clock for a member; the world shows the pause wash meanwhile. */
+  clockHeld(): boolean;
   dispose(): void;
 }
 
@@ -38,14 +37,13 @@ const waitsForSomeone = (model: NetPanelModel): boolean =>
   model.players.some((row) => isHeldStatus(row.status));
 
 /** What a relayed game shows beside the network window, all read off the one panel model: the chat
- *  log over the minimap, the status line beside the top-right bar, and the speed segments at the
- *  room's running speed. A hold opens the window by itself and its end closes it again, unless the
+ *  log above the navigation beam, the status line beside the top-right bar, and the speed segments at
+ *  the room's running speed. A hold opens the window by itself and its end closes it again, unless the
  *  player took the window over meanwhile. */
 export function mountNetOverlays(deps: NetOverlaysDeps): NetOverlays {
   const { source } = deps;
   const chat = mountChatPanel({
     scale: deps.scale,
-    minimap: deps.minimap,
     beam: () => {
       // The HUD plane is the viewport at 1 / scale design px; the beam stands centred on its foot.
       const scale = deps.scale();
@@ -108,6 +106,7 @@ export function mountNetOverlays(deps: NetOverlaysDeps): NetOverlays {
       if (model !== null) chat.refresh(model.chat, model.chatVersion);
       statusLine.refresh();
     },
+    clockHeld: () => source.model()?.clock.held === true,
     dispose: () => {
       deps.controller().hangBesideBar(null);
       chat.dispose();

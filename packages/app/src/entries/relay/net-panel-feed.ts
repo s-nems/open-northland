@@ -11,6 +11,7 @@ import type {
   ChatLine,
   NetClockModel,
   NetLinkModel,
+  NetNotice,
   NetPanelModel,
   NetPlayerRow,
   NetPlayerStatus,
@@ -153,7 +154,7 @@ export interface RelayPanelFeed {
   /** Add a line about the session; it takes its place among the members' lines as it arrives. */
   announce(text: string): void;
   /** The line about this client's own world; null clears it. */
-  notice(text: string | null): void;
+  notice(notice: NetNotice | null): void;
   /** Why this client's link is down; null once it is up. */
   linkNotice(text: string | null): void;
 }
@@ -168,7 +169,7 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
   // The room's lines said before this HUD mounted, the lobby's included; the announcements join them.
   let chat: readonly ChatLine[] = client.chat;
   let chatVersion = 0;
-  let noticeText: string | null = null;
+  let worldNotice: NetNotice | null = null;
   let linkNoticeText: string | null = null;
 
   let playersKey = '';
@@ -240,9 +241,9 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
         shown.clock !== clock ||
         shown.link !== link ||
         shown.chatVersion !== chatVersion ||
-        shown.notice !== noticeText
+        shown.notice !== worldNotice
       ) {
-        shown = { players, clock, link, chat, chatVersion, notice: noticeText };
+        shown = { players, clock, link, chat, chatVersion, notice: worldNotice };
       }
       return shown;
     },
@@ -287,8 +288,8 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
     announce(text): void {
       append([{ from: null, text, tick: client.tick }]);
     },
-    notice(text): void {
-      noticeText = text;
+    notice(notice): void {
+      worldNotice = notice;
     },
     linkNotice(text): void {
       linkNoticeText = text;

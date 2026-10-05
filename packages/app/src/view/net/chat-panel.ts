@@ -2,20 +2,17 @@ import { MAX_CHAT_LENGTH } from '@open-northland/net-protocol';
 import { quietTextField } from '../../hud/dom/parts/text-field.js';
 import type { Rect } from '../../hud/geometry.js';
 import type { ChatLine } from '../../hud/network/model.js';
-import { NOTICE_COLUMN } from '../../hud/regions.js';
 import { messages } from '../../i18n/index.js';
 import { el } from '../overlay.js';
 
 /** Lines kept on screen; older ones scroll off. */
 const MAX_LINES = 8;
-/** The log's width in client px when nothing crowds it. */
+/** The log's column width in client px. */
 const LOG_WIDTH_PX = 380;
-/** The narrowest log that still reads beside the navigation beam; a narrower gap lifts it above. */
-const MIN_BESIDE_BEAM_WIDTH_PX = 240;
-/** Px kept clear between the log and the minimap, the window's right edge or the beam. */
-const CLEARANCE_PX = 12;
-/** Design px between the notice column's right edge and the log, so the log never covers a notice. */
-const NOTICE_COLUMN_GAP = 12;
+/** Client px kept clear between the log and the viewport's side edges. */
+const EDGE_CLEARANCE_PX = 12;
+/** Design px between the navigation beam's top edge and the log's foot. */
+const BEAM_GAP = 8;
 /** Wall ms the log stays up after its newest line before it fades. */
 export const CHAT_LINGER_MS = 8000;
 /** Wall ms the log takes to fade out. */
@@ -55,7 +52,7 @@ const INPUT_STYLE = [
 
 export interface ChatPanel {
   /** Once a frame: take the room's newest lines (the same `version` twice costs nothing), show the log
-   *  while a line is fresh or the line is open, and follow the minimap. */
+   *  while a line is fresh or the line is open, and follow the beam. */
   refresh(chat: readonly ChatLine[], version: number): void;
   /** Hide the log while the network window shows the whole chat over it; hiding closes the line,
    *  since the window's own field is the chat while it is open. */
@@ -66,8 +63,6 @@ export interface ChatPanel {
 export interface ChatPanelDeps {
   /** The HUD's scale: client px per design px. */
   readonly scale: () => number;
-  /** The minimap's box in client px, which the log stands on; null while it is hidden. */
-  readonly minimap: () => Rect | null;
   /** The navigation beam's box in client px. */
   readonly beam: () => Rect;
   readonly onSend: (text: string) => void;
@@ -82,35 +77,17 @@ export interface ChatLogPlacement {
   readonly width: number;
 }
 
-/** The log's left edge and the y its foot stands on, in client px: right of the notice column, on the
- *  minimap's top edge, or on the viewport's foot without a minimap. */
-export function chatLogArea(
-  scale: number,
-  viewportHeight: number,
-  minimap: Rect | null,
-): { readonly left: number; readonly floor: number } {
-  const clearOfNotices = (NOTICE_COLUMN.left + NOTICE_COLUMN.width + NOTICE_COLUMN_GAP) * scale;
-  return {
-    left: Math.max(minimap?.x ?? 0, clearOfNotices),
-    floor: minimap === null ? viewportHeight : minimap.y,
-  };
-}
-
-/** Standing on `floor`; a log that would reach down beside the beam narrows to end before it while
- *  that leaves a readable column, else rises above it. Never past the viewport's right edge. */
+/** A fixed-width column centred on the beam's axis, its foot a gap above the beam's top, narrowed and
+ *  slid only as far as the viewport's side edges demand. */
 export function chatLogPlacement(
-  area: { readonly left: number; readonly floor: number },
   viewport: { readonly width: number; readonly height: number },
   beam: Rect,
+  scale: number,
 ): ChatLogPlacement {
-  const { left } = area;
-  const bottom = viewport.height - area.floor + CLEARANCE_PX;
-  const width = Math.max(0, Math.min(LOG_WIDTH_PX, viewport.width - left - CLEARANCE_PX));
-  const clearOfBeam = viewport.height - bottom <= beam.y || left + width + CLEARANCE_PX <= beam.x;
-  if (clearOfBeam) return { left, bottom, width };
-  const beside = beam.x - left - CLEARANCE_PX;
-  if (beside >= MIN_BESIDE_BEAM_WIDTH_PX) return { left, bottom, width: beside };
-  return { left, bottom: viewport.height - beam.y + CLEARANCE_PX, width };
+  const width = Math.max(0, Math.min(LOG_WIDTH_PX, viewport.width - 2 * EDGE_CLEARANCE_PX));
+  const centred = Math.round(beam.x + beam.w / 2 - width / 2);
+  const left = Math.max(EDGE_CLEARANCE_PX, Math.min(centred, viewport.width - EDGE_CLEARANCE_PX - width));
+  return { left, bottom: Math.round(viewport.height - beam.y + BEAM_GAP * scale), width };
 }
 
 /** True for a keydown the page itself owns: not typed into a field or answered on a button. */
@@ -119,8 +96,8 @@ function fromThePage(event: KeyboardEvent): boolean {
   return !(target instanceof HTMLElement) || target === document.body || target instanceof HTMLCanvasElement;
 }
 
-/** The chat over the minimap: the line Enter opens in a fixed slot on the minimap's top edge, and the
- *  log above it, which shows while a line is fresh or the line is open. */
+/** The chat above the navigation beam: the line Enter opens in a fixed slot at the column's foot, and
+ *  the log stacking upward from it, which shows while a line is fresh or the line is open. */
 export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
   const copy = messages().net;
   const now = deps.now ?? (() => performance.now());
@@ -128,11 +105,7 @@ export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
   let placed = '';
   const position = (): void => {
     const viewport = { width: window.innerWidth, height: window.innerHeight };
-    const next = chatLogPlacement(
-      chatLogArea(deps.scale(), viewport.height, deps.minimap()),
-      viewport,
-      deps.beam(),
-    );
+    const next = chatLogPlacement(viewport, deps.beam(), deps.scale());
     const key = `${next.left},${next.bottom},${next.width}`;
     if (key === placed) return;
     placed = key;
