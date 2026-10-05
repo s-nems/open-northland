@@ -58,6 +58,7 @@ export interface LiveGameSettingsDeps {
   readonly placeDebugPalette: (position: AdminPalettePosition) => void;
   readonly sound: SoundDriver | null;
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
+  readonly setSelectionStyle: (style: MenuSettings['selectionStyle']) => void;
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
   readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
   readonly setWeatherEnabled: (enabled: boolean) => void;
@@ -131,6 +132,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setKeyBindings: deps.setKeyBindings,
     setCameraInputSettings: deps.camera.setInputSettings,
     setDebugToolsEnabled: deps.setDebugToolsEnabled,
+    setSelectionStyle: deps.setSelectionStyle,
     setGraphicsEnhancements: deps.setGraphicsEnhancements,
     setMinimapFrame: deps.minimap.setFrame,
     setWeatherEnabled: deps.setWeatherEnabled,

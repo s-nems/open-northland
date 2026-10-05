@@ -56,6 +56,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setDebugToolsEnabled = vi.fn();
   const setGraphicsEnhancements = vi.fn();
   const setMinimapFrame = vi.fn();
+  const setSelectionStyle = vi.fn();
   const setWeatherEnabled = vi.fn();
   const settings = createGameSettingsRuntime({
     initial: {
@@ -76,6 +77,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setCameraInputSettings,
     setDebugToolsEnabled,
     setGraphicsEnhancements,
+    setSelectionStyle,
     setMinimapFrame,
     setWeatherEnabled,
     ...overrides,
@@ -92,6 +94,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setCameraInputSettings,
     setDebugToolsEnabled,
     setGraphicsEnhancements,
+    setSelectionStyle,
     setMinimapFrame,
     setWeatherEnabled,
   };
@@ -318,4 +321,14 @@ describe('gameSoundEnabled', () => {
     expect(gameSoundEnabled(new URLSearchParams('sound=off'), true)).toBe(false);
     expect(gameSoundEnabled(new URLSearchParams('sound=on'), false)).toBe(true);
   });
+});
+
+it('persists and applies every selection style immediately', async () => {
+  const h = harness();
+  for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-green'] as const) {
+    await h.settings.update({ selectionStyle });
+    expect(h.settings.current().selectionStyle).toBe(selectionStyle);
+    expect(h.persist).toHaveBeenLastCalledWith({ selectionStyle });
+    expect(h.setSelectionStyle).toHaveBeenLastCalledWith(selectionStyle);
+  }
 });

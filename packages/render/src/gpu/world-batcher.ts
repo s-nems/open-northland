@@ -30,6 +30,7 @@ import {
   worldShadowStyle,
 } from './pixel-art-registry.js';
 import { type ShadowStyle, shadowTintChannels } from './shadow-style.js';
+import { spriteSelectionEffect } from './sprite-selection-effect.js';
 import { WorldAttributeBuffer } from './world-attribute-buffer.js';
 
 /** Pixi hard-codes its default batcher per instruction set; a world sprite opts into this one by name. */
@@ -65,7 +66,7 @@ export function routeWorldBatches(renderer: Renderer): void {
 }
 
 /** Vertex layout: Pixi's six (x, y, u, v, colour, textureIdAndRound) + element flags + frame UV box. */
-export const WORLD_VERTEX_SIZE = 11;
+export const WORLD_VERTEX_SIZE = 12;
 const STRIDE = WORLD_VERTEX_SIZE * 4;
 export const WORLD_ATTRIBUTE_OFFSETS = {
   aPosition: 0,
@@ -74,6 +75,7 @@ export const WORLD_ATTRIBUTE_OFFSETS = {
   aTextureIdAndRound: 5 * 4,
   aFlags: 6 * 4,
   aFrame: 7 * 4,
+  aSelection: 11 * 4,
 } as const;
 
 /** `aFlags` bits: what the fragment shader must know about the element's texture. They share one float
@@ -157,6 +159,7 @@ function defineWorldBatcher(): WorldBatcherClass {
           },
           aFlags: { buffer: attributeBuffer, format: 'float32', stride: STRIDE, offset: o.aFlags },
           aFrame: { buffer: attributeBuffer, format: 'float32x4', stride: STRIDE, offset: o.aFrame },
+          aSelection: { buffer: attributeBuffer, format: 'float32', stride: STRIDE, offset: o.aSelection },
         },
         indexBuffer,
       });
@@ -171,11 +174,13 @@ function defineWorldBatcher(): WorldBatcherClass {
   in vec2 aTextureIdAndRound;
   in float aFlags;
   in vec4 aFrame;
+  in float aSelection;
   out vec4 vColor;
   out vec2 vUV;
   out float vTextureId;
   flat out float vFlags;
   flat out vec4 vFrame;
+  flat out float vSelection;
   uniform mat3 uProjectionMatrix;
   uniform mat3 uWorldTransformMatrix;
   uniform vec4 uWorldColorAlpha;
@@ -187,6 +192,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     vTextureId = aTextureIdAndRound.y;
     vFlags = aFlags;
     vFrame = aFrame;
+    vSelection = aSelection;
     gl_Position = vec4((uProjectionMatrix * uWorldTransformMatrix * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
     if (aTextureIdAndRound.x == 1.0) {
       gl_Position.xy = (floor(((gl_Position.xy * 0.5 + 0.5) * uResolution) + 0.5) / uResolution) * 2.0 - 1.0;
@@ -236,6 +242,7 @@ function defineWorldBatcher(): WorldBatcherClass {
   in float vTextureId;
   flat in float vFlags;
   flat in vec4 vFrame;
+  flat in float vSelection;
   out vec4 finalColor;
   uniform sampler2D uTextures[${maxTextures}];
   // 0 off (Pixi's default sampling) / 1 sampler filter + frame-clamped minification / 2 sharp / 3 xbr
@@ -351,7 +358,12 @@ ${PIXEL_ART_MAGNIFY_GLSL}
                        + sampleTexture(clamp(vUV + vec2(-footprint.x, footprint.y), low, high))
                        + sampleTexture(clamp(vUV + footprint, low, high)));
     }
+    if (vSelection < 0.0) {
+      finalColor = vec4(vColor.rgb * outColor.a, vColor.a * outColor.a);
+      return;
+    }
     ${shading.output}
+    finalColor.rgb = mix(finalColor.rgb, vec3(finalColor.a), max(0.0, vSelection));
   }`;
   }
 
@@ -413,7 +425,16 @@ ${PIXEL_ART_MAGNIFY_GLSL}
 
   /** The element being packed: what each of its vertices repeats, including its frame's UV box. Filled
    *  by {@link beginElement} so the packers allocate nothing per element. */
-  const packing = { textureIdAndRound: 0, argb: 0, flags: 0, minU: 0, minV: 0, maxU: 0, maxV: 0 };
+  const packing = {
+    selection: 0,
+    textureIdAndRound: 0,
+    argb: 0,
+    flags: 0,
+    minU: 0,
+    minV: 0,
+    maxU: 0,
+    maxV: 0,
+  };
 
   function beginElement(texture: Texture, textureIdAndRound: number, argb: number, flags: number): void {
     const { x0, y0, x1, y1, x2, y2, x3, y3 } = texture.uvs;
@@ -437,6 +458,7 @@ ${PIXEL_ART_MAGNIFY_GLSL}
     f32[index + 6] = packing.minV;
     f32[index + 7] = packing.maxU;
     f32[index + 8] = packing.maxV;
+    f32[index + 9] = packing.selection;
     return index + WORLD_VERTEX_SIZE - 2;
   }
 
@@ -615,6 +637,7 @@ ${PIXEL_ART_MAGNIFY_GLSL}
       textureId: number,
     ): void {
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
+      packing.selection = spriteSelectionEffect(renderableOf(element));
       beginElement(element.texture, textureIdAndRound, element.color, this.flagsOf(element));
       const { a, b, c, d, tx, ty } = element.transform;
       const { positions, uvs } = element;
@@ -639,6 +662,7 @@ ${PIXEL_ART_MAGNIFY_GLSL}
     ): void {
       const texture = element.texture;
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
+      packing.selection = spriteSelectionEffect(renderableOf(element));
       beginElement(texture, textureIdAndRound, element.color, this.flagsOf(element));
       const { a, b, c, d, tx, ty } = element.transform;
       const { minX, minY, maxX, maxY } = element.bounds;

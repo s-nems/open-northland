@@ -40,6 +40,7 @@ uniform vec2 uColorKey;     // .x > 0.5: key magenta; .y: near-black mode (0 off
 uniform vec4 uFrameUV;      // the current frame's atlas-UV box (min.xy, max.zw) - for the 'round' corner key
 uniform vec4 uSilhouette;   // .rgb: flat override colour, .w > 0.5: silhouette mode on (see the setter)
 uniform vec2 uSampling;     // .x: world magnification mode (0 nearest / 1 bilinear / 2 sharp / 3 xbr)
+uniform vec2 uSelection;   // .x: lift towards white, 0..1
 uniform vec4 uTint;         // .rgb multiplies the LUT colour; white draws it straight
 uniform vec2 uAtlasSize;    // the indexed atlas's size in px
 uniform vec4 uClothRanges;  // two inclusive palette-index ranges (loA, hiA, loB, hiB) that are cloth
@@ -87,7 +88,7 @@ vec4 resolvedTexel(ivec2 pixel) {
   float index = floor(t.r * 255.0 + 0.5);
   float shade = blowCloth(uv, index);
   vec2 lutUV = vec2((index + 0.5) / uLutSize.x, (uPlacement.w + 0.5) / uLutSize.y);
-  return vec4(textureLod(uLut, lutUV, 0.0).rgb * shade * uTint.rgb * t.a, t.a);
+  return vec4(mix(textureLod(uLut, lutUV, 0.0).rgb * shade * uTint.rgb, vec3(1.0), uSelection.x) * t.a, t.a);
 }
 
 #define MAGNIFY_FETCH(px) resolvedTexel(px)
@@ -154,6 +155,7 @@ void main(void) {
   if (uSilhouette.w > 0.5) {
     rgb = uSilhouette.rgb;
   }
+  rgb = mix(rgb, vec3(1.0), uSelection.x);
   // Modulate by the texel's authored coverage (premultiplied - Pixi's normal blend expects it), so the
   // graded indexed bake's feathered edges draw translucent instead of binary.
   finalColor = vec4(rgb, 1.0) * texel.a;
@@ -203,6 +205,7 @@ export interface PalettedUniforms {
     uShear: Float32Array;
     /** [r, g, b, _] - the colour multiply (normalized). */
     uTint: Float32Array;
+    uSelection: Float32Array;
     /** [width, height] of the bound indexed atlas in px. */
     uAtlasSize: Float32Array;
     /** [loA, hiA, loB, hiB] - the inclusive palette-index ranges drawn as cloth. */
@@ -239,6 +242,7 @@ export function createPalettedShader(lut: TextureSource, colours: number): Shade
     uSilhouette: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' as const },
     uSampling: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
     uShear: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
+    uSelection: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
     uTint: { value: new Float32Array([1, 1, 1, 1]), type: 'vec4<f32>' as const },
     uAtlasSize: { value: new Float32Array([1, 1]), type: 'vec2<f32>' as const },
     uClothRanges: {

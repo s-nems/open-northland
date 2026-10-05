@@ -26,6 +26,7 @@ import { PalettedQuad } from '../paletted-sprite/index.js';
 import type { PixelArtScaler } from '../pixel-art-registry.js';
 import { PLOT_BOUNDS, type PlanRoadTextures } from '../plan-road.js';
 import type { PlanStakeTextures } from '../plan-stake.js';
+import type { SelectionStyle } from '../selection-style.js';
 import type { ShadowStyle } from '../shadow-style.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -40,6 +41,7 @@ import { presentEntity } from './present-entity.js';
 import { reconcileSprites } from './reconcile.js';
 import { resolvesWithoutClock } from './resolve-layers.js';
 import { SpriteSceneCache } from './scene-cache.js';
+import { SelectionEffects } from './selection-effects.js';
 
 /** The retained per-entity sprite pool, keyed by the entity's monotonic, never-reused id. */
 
@@ -51,6 +53,9 @@ import { SpriteSceneCache } from './scene-cache.js';
 const POOL_REAP_BUDGET = 32;
 
 export interface PoolFrame {
+  readonly selection?: ReadonlySet<number>;
+  readonly selectionStyle?: SelectionStyle;
+  readonly selectionTime?: number;
   readonly enhancedSampling?: boolean;
   /** How original pixel art magnifies under enhanced sampling; the registry default when absent. */
   readonly pixelArtScaler?: PixelArtScaler;
@@ -169,6 +174,7 @@ export class SpritePool {
   private readonly keelScratch: number[] = [];
   private readonly portrait: PortraitSubject;
   private readonly binder: LayerBinder;
+  private readonly selectionEffects: SelectionEffects;
   private readonly epoch = new FrameEpoch();
   /** Last {@link reconcile}'s device grid, so the portrait pass re-places the meshes the way it drew
    *  them. */
@@ -187,6 +193,7 @@ export class SpritePool {
     stakes?: PlanStakeTextures,
     roads?: PlanRoadTextures,
   ) {
+    this.selectionEffects = new SelectionEffects(textures);
     this.portrait = new PortraitSubject(spriteLayer);
     this.binder = new LayerBinder(textures, sheet, stakes, roads);
   }
@@ -217,6 +224,14 @@ export class SpritePool {
       const continuous = pe.lastSeen === this.frameId - 1;
       if (!continuous) pe.motion.tick = -1;
       this.presentPooled(pe, item, frame, continuous);
+      this.selectionEffects.update(
+        pe,
+        item.ghost !== true && item.portraitOnly !== true && frame.selection?.has(item.ref)
+          ? frame.selectionStyle
+          : undefined,
+        frame.camera.scale ?? 1,
+        frame.selectionTime ?? 0,
+      );
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);
         pe.attached = true;
@@ -232,6 +247,7 @@ export class SpritePool {
     // Deleting the current entry mid-iteration is well-defined for a Set.
     for (const pe of this.attached) {
       if (pe.lastSeen === this.frameId) continue;
+      this.selectionEffects.clear(pe);
       this.spriteLayer.removeChild(pe.container);
       pe.attached = false;
       this.attached.delete(pe);
@@ -339,6 +355,7 @@ export class SpritePool {
         this.spriteLayer.removeChild(pe.container);
         this.attached.delete(pe);
       }
+      this.selectionEffects.clear(pe);
       pe.container.destroy({ children: true });
     }
     this.pool.set(item.ref, fresh);
@@ -393,6 +410,7 @@ export class SpritePool {
     for (const ref of reconcileSprites(liveRefs, swept).toDestroy) {
       const pe = this.pool.get(ref);
       if (pe === undefined) continue;
+      this.selectionEffects.clear(pe);
       pe.container.destroy({ children: true });
       this.pool.delete(ref);
     }
@@ -452,6 +470,7 @@ export class SpritePool {
     main: PortraitView,
     render: (soloKeep: Container | null) => void,
   ): void {
+    this.selectionEffects.setVisible(false);
     this.placePaletted(inset.camera, inset.width, inset.height);
     this.portrait.show(subjects);
     const soloKeep = this.portrait.beginSoloIfIndoor(subjects);
@@ -460,6 +479,7 @@ export class SpritePool {
     } finally {
       this.portrait.endSolo();
       this.portrait.hide(subjects);
+      this.selectionEffects.setVisible(true);
       this.placePaletted(main.camera, main.width, main.height);
     }
   }
@@ -519,6 +539,7 @@ export class SpritePool {
         }
         if (item.ref === view.solo) solo = pe.container;
       }
+      this.selectionEffects.setVisible(false);
       this.placePaletted(view.camera, view.width, view.height);
       this.sheet?.palette?.flush();
       if (solo !== null) stash = stashHidden(this.spriteLayer.children, solo);
@@ -526,6 +547,7 @@ export class SpritePool {
     } finally {
       if (stash !== null) restoreStash(stash);
       for (const pe of borrowed) this.spriteLayer.removeChild(pe.container);
+      this.selectionEffects.setVisible(true);
       this.placePaletted(main.camera, main.width, main.height);
     }
   }
@@ -562,7 +584,10 @@ export class SpritePool {
    * the sprite layer can't reach.
    */
   destroy(): void {
-    for (const pe of this.pool.values()) pe.container.destroy({ children: true });
+    for (const pe of this.pool.values()) {
+      this.selectionEffects.clear(pe);
+      pe.container.destroy({ children: true });
+    }
     this.pool.clear();
     this.attached.clear();
     this.lastItems = [];

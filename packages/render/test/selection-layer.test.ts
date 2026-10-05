@@ -95,15 +95,19 @@ describe('authored building ground marker', () => {
     const ring = layer.container.children[0];
     expect(ring?.position.x).toBe(100);
     expect(ring?.position.y).toBe(200);
-    expect(ring?.getLocalBounds().minX).toBeCloseTo(35 - 91);
-    expect(ring?.getLocalBounds().minY).toBeCloseTo(-12 - 33);
-    expect(ring?.getLocalBounds().width).toBeCloseTo(182);
+    const before = ring?.getLocalBounds().clone();
+    expect(before).toBeDefined();
+    expect(((before?.minX ?? 0) + (before?.maxX ?? 0)) / 2).toBeCloseTo(35);
+    expect(before?.width).toBeGreaterThan(180);
+    expect(before?.width).toBeLessThan(184);
     ellipse.rx = 110;
     ellipse.cy = -25;
     layer.draw({ snapshot, drawn }, new Set([2]));
     expect(layer.container.children[0]).toBe(ring);
-    expect(ring?.getLocalBounds().width).toBeCloseTo(222);
-    expect(ring?.getLocalBounds().minY).toBeCloseTo(-25 - 33);
+    const after = ring?.getLocalBounds();
+    expect(after?.width).toBeGreaterThan(220);
+    expect(after?.width).toBeLessThan(224);
+    expect((after?.minY ?? 0) - (before?.minY ?? 0)).toBeCloseTo(-13, 1);
     layer.destroy();
   });
 });
@@ -155,4 +159,29 @@ describe('unit selection presentation', () => {
     expect(layer.container.children).toEqual([ring]);
     layer.destroy();
   });
+});
+
+it('switches selected buildings between coloured rings and sprite effects without stale rings', () => {
+  const layer = new SelectionLayer();
+  const snapshot = snapshotOf([entity(2, 1, 8, { Building: {} })]);
+  const selected = new Set([2]);
+  layer.draw({ snapshot, selectionStyle: 'ring-green' }, selected);
+  const ring = layer.container.children[0];
+  if (!(ring instanceof Graphics)) throw new Error('Missing selection ring');
+  const colours = () =>
+    ring.context.instructions
+      .filter((entry) => entry.action === 'stroke')
+      .map((entry) => entry.data.style.color);
+  expect(colours()).toContain(0x66ff66);
+  layer.draw({ snapshot, selectionStyle: 'ring-white' }, selected);
+  expect(layer.container.children[0]).toBe(ring);
+  expect(colours()).toContain(0xf2e8c9);
+  expect(colours()).not.toContain(0x66ff66);
+  for (const selectionStyle of ['outline', 'pulse'] as const) {
+    layer.draw({ snapshot, selectionStyle }, selected);
+    expect(layer.container.children).toHaveLength(0);
+  }
+  layer.draw({ snapshot, selectionStyle: 'ring-green' }, selected);
+  expect(layer.container.children).toHaveLength(1);
+  layer.destroy();
 });

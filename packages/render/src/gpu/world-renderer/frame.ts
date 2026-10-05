@@ -90,13 +90,15 @@ export const NO_WORK_AREAS: readonly WorkAreaRing[] = [];
 export const NO_ORDER_MARKERS: readonly OrderMarker[] = [];
 
 export interface WorldFrame {
+  /** UI animation clock in seconds, independent of pause and simulation speed. Omitted in still captures. */
+  readonly selectionTime?: number;
   readonly snapshot: WorldSnapshot;
   readonly camera: Camera;
   /** The snapshot's integer sim tick, used as the animation clock for gaits, rotors and decor (default 0). */
   readonly tick?: number | undefined;
   /** The HUD text frame to repaint; absent leaves the HUD unchanged. */
   readonly hud?: HudFrame | undefined;
-  /** Selected entity ids, drawn as feet rings (default none). Transient view state, never sim state. */
+  /** Selected entity ids, drawn in the chosen selection style (default none). Transient view state, never sim state. */
   readonly selection?: ReadonlySet<number> | undefined;
   /** Fixed-timestep interpolation fraction: each entity draws `alpha` of the way from its previous tick
    *  anchor to its current one (default 1 draws raw tick positions). */
@@ -107,8 +109,7 @@ export interface WorldFrame {
   readonly lifeHearts?: readonly LifeHeart[] | undefined;
   /** Ids of gatherers carrying a work flag; their feet rings draw the flagged variant (default none). */
   readonly flagged?: ReadonlySet<number> | undefined;
-  /** Ids the HUD points at among the selection (a hovered group well); their rings draw the focus
-   *  variant over the green one (default none). */
+  /** Ids the HUD points at among the selection (a hovered group well); lateral marks indicate them (default none). */
   readonly focused?: ReadonlySet<number> | undefined;
   /** Work-area circles the player switched on with the ring's "Show Work Area" order (default none). */
   readonly workAreas?: readonly WorkAreaRing[] | undefined;

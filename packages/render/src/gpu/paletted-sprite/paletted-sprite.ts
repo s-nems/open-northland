@@ -106,6 +106,12 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     this.vars.update();
   }
 
+  set selectionLight(amount: number) {
+    if (this.vars.uniforms.uSelection[0] === amount) return;
+    this.vars.uniforms.uSelection[0] = amount;
+    this.vars.update();
+  }
+
   /** X shift per unit of y about the feet anchor: a ship's roll. `0` draws upright. */
   set shear(shear: number) {
     const u = this.vars.uniforms.uShear;

@@ -43,6 +43,7 @@ describe('parseStoredSettings', () => {
       fpsLimit: 30,
       cursorTheme: 'amber',
       cursorSize: 24,
+      selectionStyle: 'outline',
       minimapFrame: 'urnes',
       minimapFilters: {
         layers: {
@@ -282,4 +283,12 @@ describe('carriedSettingParams', () => {
       { key: 'soundEnabled', param: 'sound', value: 'off' },
     ]);
   });
+});
+
+it('defaults selection to green and validates the four stored styles', () => {
+  expect(parseStoredSettings(null).selectionStyle).toBe('ring-green');
+  expect(parseStoredSettings('{"selectionStyle":"unknown"}').selectionStyle).toBe('ring-green');
+  for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-green']) {
+    expect(parseStoredSettings(JSON.stringify({ selectionStyle })).selectionStyle).toBe(selectionStyle);
+  }
 });

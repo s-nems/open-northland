@@ -3,6 +3,7 @@ import { Container, Graphics } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import { classify, readPosition } from '../../data/scene/snapshot-readers/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
+import { DEFAULT_SELECTION_STYLE, type SelectionStyle } from '../selection-style.js';
 import type { DrawnGeometry, EntityBounds } from '../sprite-pool/index.js';
 import { feetAnchor } from './entity-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
@@ -27,14 +28,12 @@ const MIN_BUILDING_RX = 28;
 /** Ground-ellipse squash: a ground circle spans a cell width (2·halfW) E–W but only a row step
  *  (halfH) N–S under the staggered raster, so a flat footprint ellipse squashes by their ratio. */
 const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
-/** Selection style for buildings and other stationary objects. */
+/** The default green ring option, shared by every selectable object. */
 const RING_COLOR = 0x66ff66;
 const RING_WIDTH = 2;
 /** Amber work-flag highlight, heavy enough to read under the flag sprite. */
 const FLAG_RING_COLOR = 0xffc020;
 const FLAG_RING_WIDTH = 3;
-/** Focus fallback for stationary objects; units use lateral marks beside their selection ellipse. */
-const FOCUS_RING_COLOR = 0xfff0b0;
 const FOCUS_RING_WIDTH = 4;
 /** The work-area circle: the flag's amber, thinner and barely filled, since it spans a whole harvest
  *  radius rather than one sprite. */
@@ -64,6 +63,7 @@ export interface SelectionFrame {
   readonly snapshot: WorldSnapshot;
   /** Logical screen pixels per world pixel; absent means the unscaled test/shot view. */
   readonly zoom?: number;
+  readonly selectionStyle?: SelectionStyle | undefined;
   /** Authored ground markers and drawn bounds, anchored with the displayed sprites. */
   readonly drawn?: DrawnGeometry;
   /** The terrain height field - lifts a ring onto sloped ground. Absent → no lift (flat). */
@@ -85,7 +85,10 @@ export class SelectionLayer {
   /** Reused per-frame scratch of ids drawn this frame (one per pool; avoids a per-frame allocation). */
   private readonly seen = new Set<number>();
   private readonly seenFlags = new Set<number>();
-  private readonly specs = new WeakMap<Graphics, RingSpec & { zoom: number; mobile: boolean }>();
+  private readonly specs = new WeakMap<
+    Graphics,
+    RingSpec & { zoom: number; styled: boolean; color: number }
+  >();
 
   /** Reconcile selected entities, work flags, work areas and the member indicated by the group HUD. */
   draw(
@@ -95,18 +98,13 @@ export class SelectionLayer {
     workAreas: readonly WorkAreaRing[] = NO_AREAS,
     focused: ReadonlySet<number> = NO_IDS,
   ): void {
-    this.reconcile(this.rings, this.seen, selected, RING_COLOR, RING_WIDTH, frame, 'selection');
+    const style = frame.selectionStyle ?? DEFAULT_SELECTION_STYLE;
+    const ringColor = style === 'ring-green' ? RING_COLOR : 0xf2e8c9;
+    const ringIds = style === 'outline' || style === 'pulse' ? NO_IDS : selected;
+    this.reconcile(this.rings, this.seen, ringIds, ringColor, RING_WIDTH, frame, 'selection');
     this.reconcile(this.flagRings, this.seenFlags, flagged, FLAG_RING_COLOR, FLAG_RING_WIDTH, frame);
     this.reconcileAreas(workAreas, frame);
-    this.reconcile(
-      this.focusRings,
-      this.seenFocus,
-      focused,
-      FOCUS_RING_COLOR,
-      FOCUS_RING_WIDTH,
-      frame,
-      'focus',
-    );
+    this.reconcile(this.focusRings, this.seenFocus, focused, ringColor, FOCUS_RING_WIDTH, frame, 'focus');
   }
 
   /** Reconcile the work-area circles: one flat ground ellipse per shown area, retiring the rest. */
@@ -154,8 +152,9 @@ export class SelectionLayer {
       if (pos === null) continue;
       const s = feetAnchor(frame.drawn, id, pos, frame.elevation);
       const kind = classify(ent.components);
-      const mobile = unitStyle !== undefined && (kind === 'settler' || kind === 'vehicle');
-      const zoom = mobile ? (frame.zoom ?? 1) : 1;
+      const styled = unitStyle !== undefined;
+      const mobile = styled && kind === 'settler';
+      const zoom = styled ? (frame.zoom ?? 1) : 1;
       // A building's and a vehicle's ring fits the drawn sprite; a settler's is the fixed feet ellipse.
       const fitsSprite = kind === 'building' || kind === 'vehicle';
       const spec =
@@ -175,18 +174,19 @@ export class SelectionLayer {
         previous.rx !== spec.rx ||
         previous.ry !== spec.ry ||
         previous.zoom !== zoom ||
-        previous.mobile !== mobile
+        previous.styled !== styled ||
+        previous.color !== color
       ) {
         ring.clear();
-        if (mobile) {
-          drawUnitSelectionRing(ring, spec, zoom, unitStyle === 'focus');
+        if (styled) {
+          drawUnitSelectionRing(ring, spec, zoom, unitStyle === 'focus', color);
         } else {
           ring
             .ellipse(spec.cx, spec.cy, spec.rx, spec.ry)
             .fill({ color, alpha: 0.12 })
             .stroke({ width, color, alpha: 0.9 });
         }
-        this.specs.set(ring, { ...spec, zoom, mobile });
+        this.specs.set(ring, { ...spec, zoom, styled, color });
       }
       ring.position.set(s.x, s.y);
       seen.add(id);

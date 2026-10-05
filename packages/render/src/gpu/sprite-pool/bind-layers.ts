@@ -1,4 +1,4 @@
-import { Graphics, Sprite, type Texture } from 'pixi.js';
+import { Sprite, type Texture } from 'pixi.js';
 import { FOG_GHOST_TINT } from '../../data/fog/index.js';
 import { clamp } from '../../data/math.js';
 import { cameraScreenX, cameraScreenY, snapToDevicePixels } from '../../data/projection/index.js';
@@ -9,6 +9,7 @@ import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
 import { mintPlanRoad, PLOT_BOUNDS, type PlanRoadTextures } from '../plan-road.js';
 import { mintPlanStake, type PlanStakeTextures, STAKE_BOUNDS } from '../plan-stake.js';
 import { type ShadowStyle, setCastShadowTransform } from '../shadow-style.js';
+import { SelectionGraphics, SelectionSprite } from '../sprite-selection-effect.js';
 import type { PaletteLut, SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
@@ -304,10 +305,10 @@ export class LayerBinder {
   }
 
   /** A plain layer's pooled sprite, minted on the first frame that reaches this slot. */
-  private plainSlot(pe: PlainPooledEntity, i: number): Sprite {
+  private plainSlot(pe: PlainPooledEntity, i: number): SelectionSprite {
     let spr = pe.sprites[i];
     if (spr === undefined) {
-      spr = worldBatched(new Sprite());
+      spr = worldBatched(new SelectionSprite());
       pe.sprites[i] = spr;
       pe.container.addChild(spr);
     }
@@ -501,7 +502,8 @@ export class LayerBinder {
       for (const s of pe.shadows) s.visible = false;
     }
     if (pe.placeholder === undefined) {
-      pe.placeholder = drawPlaceholder(new Graphics(), pe.kind);
+      pe.placeholder = worldBatched(new SelectionGraphics());
+      drawPlaceholder(pe.placeholder, pe.kind);
       pe.container.addChild(pe.placeholder);
     }
     pe.placeholder.visible = true;

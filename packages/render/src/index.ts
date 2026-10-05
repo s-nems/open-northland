@@ -208,6 +208,12 @@ export {
 export { createPixiApp, createWindowPixiApp, loadAtlasSource, windowResolutionFor } from './gpu/pixi-app.js';
 export type { PlanRoadTextures } from './gpu/plan-road.js';
 export type { PlanStakeTextures } from './gpu/plan-stake.js';
+export {
+  DEFAULT_SELECTION_STYLE,
+  parseSelectionStyle,
+  SELECTION_STYLES,
+  type SelectionStyle,
+} from './gpu/selection-style.js';
 export { humanPaletteIdentity } from './gpu/sprite-pool/human-palette-row.js';
 export {
   createPresentationTrack,

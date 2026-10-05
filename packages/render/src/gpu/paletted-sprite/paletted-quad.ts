@@ -1,10 +1,10 @@
-import { Sprite } from 'pixi.js';
 import {
   type Camera,
   cameraScreenX,
   cameraScreenY,
   snapToDevicePixels,
 } from '../../data/projection/index.js';
+import { SelectionSprite } from '../sprite-selection-effect.js';
 import { type PalettedRow, worldBatched } from '../world-batcher.js';
 
 /**
@@ -12,7 +12,7 @@ import { type PalettedRow, worldBatched } from '../world-batcher.js';
  * draw calls with everything else in the sprite layer. Its texture comes from
  * `TextureCache.palettedFrame`, which names the LUT; {@link lutRow} picks the row.
  */
-export class PalettedQuad extends Sprite implements PalettedRow {
+export class PalettedQuad extends SelectionSprite implements PalettedRow {
   private row = 0;
   private glowing = false;
   /** The layer's offset from the feet anchor in world px, before {@link placeFor} snaps it. */

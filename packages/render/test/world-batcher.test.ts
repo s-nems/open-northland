@@ -70,7 +70,7 @@ describe('world batcher layout', () => {
       expect(attribute?.offset, name).toBe(offset);
       expect(attribute?.stride, name).toBe(stride);
     }
-    expect(WORLD_ATTRIBUTE_OFFSETS.aFrame + 4 * 4).toBe(stride);
+    expect(WORLD_ATTRIBUTE_OFFSETS.aSelection + 4).toBe(stride);
     batcher.destroy();
   });
 });

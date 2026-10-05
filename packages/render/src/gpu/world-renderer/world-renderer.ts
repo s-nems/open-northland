@@ -40,6 +40,7 @@ import {
   type SettlerBubbleGfx,
 } from '../overlays/index.js';
 import { setPixelArtMagnification, setWorldShadowStyle } from '../pixel-art-registry.js';
+import { DEFAULT_SELECTION_STYLE, type SelectionStyle } from '../selection-style.js';
 import { DEFAULT_SHADOW_STYLE } from '../shadow-style.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
 import { TerrainLayer } from '../terrain/index.js';
@@ -111,6 +112,7 @@ export class WorldRenderer {
   private readonly roadShards = new RoadShardTracker();
   private readonly playerColourOf: ((player: number) => number) | undefined;
   private enhancements: WorldEnhancements = BASELINE_ENHANCEMENTS;
+  private selectionStyle: SelectionStyle = DEFAULT_SELECTION_STYLE;
   private withheldRefs: ReadonlySet<number> | undefined;
 
   constructor(app: Application, opts?: WorldRendererOptions) {
@@ -184,6 +186,10 @@ export class WorldRenderer {
     this.terrain.setEnhancedWater(next.enhancedWater);
     this.mapObjects.setEnvironmentMotion(next.environmentMotion);
     this.textureCache.setGroundColours(next.groundedBuildings ? this.groundTone : null);
+  }
+
+  setSelectionStyle(style: SelectionStyle): void {
+    this.selectionStyle = style;
   }
 
   setPaused(paused: boolean): void {
@@ -334,6 +340,7 @@ export class WorldRenderer {
       tick = 0,
       hud,
       selection = NO_REFS,
+      selectionTime = 0,
       alpha = 1,
       doorBadges = NO_BADGES,
       constructionSigns: signItems = NO_SIGNS,
@@ -389,6 +396,9 @@ export class WorldRenderer {
     const portrait = this.portrait.subjects();
     this.pool.reconcile({
       snapshot,
+      selection,
+      selectionStyle: this.selectionStyle,
+      selectionTime,
       viewport: vp,
       tick,
       camera,
@@ -412,6 +422,7 @@ export class WorldRenderer {
     this.marks.draw({
       snapshot,
       zoom: camera.scale ?? 1,
+      selectionStyle: this.selectionStyle,
       drawn: this.pool,
       elevation: this.elevation,
       viewport: vp,

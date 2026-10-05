@@ -1,7 +1,8 @@
-import { Container, type Graphics, type Sprite } from 'pixi.js';
+import { Container, type Sprite } from 'pixi.js';
 import type { SelectionEllipse } from '../../data/sprites/atlas.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
+import type { SelectionGraphics, SelectionSprite } from '../sprite-selection-effect.js';
 import type { PaletteLut } from '../sprite-sheet.js';
 import { BindStamp } from './bind-stamp.js';
 import { HumanPaletteRow } from './human-palette-row.js';
@@ -29,7 +30,7 @@ interface MutableBounds {
  */
 interface PooledEntityBase extends PresentationTrack {
   readonly container: Container;
-  placeholder?: Graphics;
+  placeholder?: SelectionGraphics;
   /** The plan marker on an unfinished wall segment or road site no builder has claimed yet: a stake or a
    *  pegged plot. */
   siteMarker?: Container;
@@ -69,7 +70,7 @@ export interface PalettedPooledEntity extends PooledEntityBase {
 /** Every other entity: its atlas layers are plain cached-sub-texture {@link Sprite}s. */
 export interface PlainPooledEntity extends PooledEntityBase {
   readonly paletted: false;
-  readonly sprites: Sprite[];
+  readonly sprites: SelectionSprite[];
   /** Parallel to {@link PlainPooledEntity.sprites}: whether the pixel picker skips that layer this frame,
    *  as it does a cast shadow and a foot's ground cover. A paletted character keeps its shadow on a sprite
    *  of its own. */

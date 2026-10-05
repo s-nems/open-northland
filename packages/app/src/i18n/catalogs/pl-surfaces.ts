@@ -175,6 +175,14 @@ export const plSurfaces = {
       },
       interfaceHeading: 'Interfejs',
       minimapFrame: 'Ramka minimapy',
+      selectionStyle: 'Styl zaznaczenia',
+      selectionStyleTip: 'Wspólny dla postaci, pojazdów i budynków. Zmienia się w grze od razu.',
+      selectionStyles: {
+        outline: 'Obwódka',
+        pulse: 'Pulsujące rozjaśnienie',
+        'ring-white': 'Biały pierścień',
+        'ring-green': 'Zielony pierścień',
+      },
       minimapFrameTip: 'Wygląd ramki wokół minimapy. Zmienia się w grze od razu.',
       minimapFrames: {
         zelazo: 'Żelazo',

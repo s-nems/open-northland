@@ -27,6 +27,7 @@ import {
   ShotLayer,
   type WorkAreaRing,
 } from '../overlays/index.js';
+import type { SelectionStyle } from '../selection-style.js';
 import type { DamagedBuilding, DrawnGeometry, ShipAfloat } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -53,6 +54,7 @@ export type MarkSlots = Pick<
 export interface WorldMarksFrame {
   readonly snapshot: WorldSnapshot;
   readonly zoom: number;
+  readonly selectionStyle?: SelectionStyle;
   readonly drawn: DrawnGeometry;
   readonly elevation: ElevationField;
   /** The sprite cull box the screen-bounded marks cull against; damage smoke inherits the pool's cull
@@ -168,7 +170,7 @@ export class WorldMarks {
     const { drawn, elevation, viewport, renderTime } = frame;
     this.wakes.draw(frame.ships, drawn, frame.water, renderTime);
     this.selection.draw(
-      { snapshot: frame.snapshot, drawn, elevation, zoom: frame.zoom },
+      { snapshot: frame.snapshot, drawn, elevation, zoom: frame.zoom, selectionStyle: frame.selectionStyle },
       frame.selection,
       frame.flagged,
       frame.workAreas,

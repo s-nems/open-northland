@@ -340,6 +340,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       camera: drawnCamera,
       tick: snap.tick,
       selection: controls.selectedIds(),
+      selectionTime: nowMs / 1000,
       alpha: renderAlpha,
       doorBadges,
       constructionSigns,

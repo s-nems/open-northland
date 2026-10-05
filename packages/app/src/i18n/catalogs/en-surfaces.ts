@@ -178,6 +178,14 @@ export const enSurfaces = {
       },
       interfaceHeading: 'Interface',
       minimapFrame: 'Minimap frame',
+      selectionStyle: 'Selection style',
+      selectionStyleTip: 'Applies to characters, vehicles and buildings. Changes in game immediately.',
+      selectionStyles: {
+        outline: 'Outline',
+        pulse: 'Pulsing highlight',
+        'ring-white': 'White ring',
+        'ring-green': 'Green ring',
+      },
       minimapFrameTip: 'The look of the frame around the minimap. Changes in game immediately.',
       minimapFrames: {
         zelazo: 'Iron',

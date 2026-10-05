@@ -1,5 +1,12 @@
 import { DEFAULT_MUSIC_VOLUME, DEFAULT_SFX_VOLUME } from '@open-northland/audio';
-import { DEFAULT_PIXEL_ART_SCALER, type PixelArtScaler, parsePixelArtScaler } from '@open-northland/render';
+import {
+  DEFAULT_PIXEL_ART_SCALER,
+  DEFAULT_SELECTION_STYLE,
+  type PixelArtScaler,
+  parsePixelArtScaler,
+  parseSelectionStyle,
+  type SelectionStyle,
+} from '@open-northland/render';
 import {
   changedKeyBindings,
   DEFAULT_KEY_BINDINGS,
@@ -58,6 +65,7 @@ export interface MenuSettings {
   readonly fpsLimit: FpsLimit;
   readonly cursorTheme: CursorTheme;
   readonly cursorSize: CursorSize;
+  readonly selectionStyle: SelectionStyle;
   readonly minimapFrame: MinimapFrame;
   /** The minimap's marker layers and owner scope, set from its filters popover. */
   readonly minimapFilters: MinimapFilters;
@@ -99,6 +107,7 @@ export function defaultSettings(): MenuSettings {
     fpsLimit: null,
     cursorTheme: DEFAULT_CURSOR_THEME,
     cursorSize: DEFAULT_CURSOR_SIZE,
+    selectionStyle: DEFAULT_SELECTION_STYLE,
     minimapFrame: DEFAULT_MINIMAP_FRAME,
     minimapFilters: DEFAULT_MINIMAP_FILTERS,
     soundEnabled: true,
@@ -175,6 +184,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     fpsLimit: parseFpsLimit(record.fpsLimit),
     cursorTheme: parseCursorTheme(record.cursorTheme),
     cursorSize: parseCursorSize(record.cursorSize),
+    selectionStyle: parseSelectionStyle(record.selectionStyle),
     minimapFrame: parseMinimapFrame(record.minimapFrame),
     minimapFilters: parseMinimapFilters(record.minimapFilters),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,

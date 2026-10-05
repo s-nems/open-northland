@@ -24,6 +24,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
   readonly setCameraInputSettings: (settings: CameraInputSettings) => void;
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
+  readonly setSelectionStyle: (style: MenuSettings['selectionStyle']) => void;
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
   readonly setMinimapFrame: (frame: MenuSettings['minimapFrame']) => void;
   readonly setWeatherEnabled: (enabled: boolean) => void;
@@ -62,6 +63,7 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     }
     if (patch.debugToolsEnabled !== undefined) deps.setDebugToolsEnabled(patch.debugToolsEnabled);
     if (patch.minimapFrame !== undefined) deps.setMinimapFrame(patch.minimapFrame);
+    if (patch.selectionStyle !== undefined) deps.setSelectionStyle(patch.selectionStyle);
     if (patch.weather !== undefined) deps.setWeatherEnabled(patch.weather);
     if (ENHANCEMENT_KEYS.some((key) => patch[key] !== undefined)) {
       deps.setGraphicsEnhancements(enhancementsOf(current));

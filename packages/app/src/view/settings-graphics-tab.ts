@@ -1,4 +1,9 @@
-import { PIXEL_ART_SCALERS, type PixelArtScaler } from '@open-northland/render';
+import {
+  PIXEL_ART_SCALERS,
+  type PixelArtScaler,
+  SELECTION_STYLES,
+  type SelectionStyle,
+} from '@open-northland/render';
 import { dropdownControl } from '../hud/dom/parts/dropdown.js';
 import { MINIMAP_FRAME_IMAGES, MINIMAP_FRAMES, type MinimapFrame } from '../hud/minimap/frames.js';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, UI_SCALE_FACTOR_STEP } from '../hud/ui-scale.js';
@@ -120,6 +125,15 @@ export function graphicsSettingsRows(
     },
   );
   markSegment(filter.root, 'pixel-art-filter');
+  const selectionStyle = segControl<SelectionStyle>(
+    SELECTION_STYLES.map((id) => ({ id, label: text.selectionStyles[id] })),
+    settings.selectionStyle,
+    (style) => {
+      void store.update({ selectionStyle: style });
+      selectionStyle.setActive(style);
+    },
+  );
+  markSegment(selectionStyle.root, 'selection-style');
   const minimapFrame = dropdownControl<MinimapFrame>({
     label: text.minimapFrame,
     className: 'main-menu__dropdown',
@@ -155,6 +169,7 @@ export function graphicsSettingsRows(
     settingRow(text.fpsLimit, fpsSeg.root, { tip: deferredTip(text.fpsLimitTip) }),
     ...cursorSettingsRows(store, markSegment),
     settingsHeading(text.interfaceHeading),
+    settingRow(text.selectionStyle, selectionStyle.root, { tip: text.selectionStyleTip }),
     settingRow(text.minimapFrame, minimapFrame.root, { tip: text.minimapFrameTip }),
     settingsHeading(text.worldHeading),
     settingRow(text.pixelArtFilter, filter.root, { tip: liveTip(text.pixelArtFilterTip) }),
