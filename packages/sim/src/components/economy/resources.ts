@@ -61,7 +61,8 @@ export interface ResourceFootprintData {
   readonly build: readonly ResourceFootprintCell[];
   readonly work: readonly ResourceFootprintCell[];
   /** Source `[GfxLandscape].index`, absent on a footprint the sim declares itself rather than reading from
-   *  a landscape record. Never read by a decision. */
+   *  a landscape record. The road and wall ground rule reads its full-grown walk block from it, so a
+   *  footprint without one counts as walk-through ground those clear. */
   readonly sourceGfxIndex?: number;
 }
 

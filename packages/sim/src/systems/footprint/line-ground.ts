@@ -10,9 +10,9 @@ import { stumpsAtNode } from '../spatial/stumps.js';
 import { unstampResourceFootprint } from './resources.js';
 
 // The ground rule a road and a wall share, node by node, past the blocker grid both already consult.
-// Project rule: either covers what grows or lies loose there and clears it, as a building clears bushes
-// and fields, while a tree of any age or a stone has to be worked away first. The original refuses every
-// landscape object but scenery under either.
+// Project rule: either clears what grows there, as a building clears bushes and fields, and leaves loose
+// goods and carcasses lying, while a tree of any age or a stone has to be worked away first. The original
+// refuses every landscape object but scenery under either.
 
 /** Whether resource `e` stands solid: its landscape record blocks walking once full-grown, as a tree, a
  *  stone or a mine does, so it refuses a road or wall even while young or part-mined. */

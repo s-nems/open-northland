@@ -89,6 +89,9 @@ interface StampedSlots {
   readonly palisadeBody: readonly number[];
   readonly buildingZone: readonly number[];
   readonly upgradeReserve: readonly number[];
+  /** RESOURCE_ANCHOR slots: counted nowhere, but a change there is tallied, since the road and wall
+   *  ground rule reads the resources anchored on a node. */
+  readonly anchors: readonly number[];
 }
 
 /** The scripted landscape layer the grid currently holds: the blocks view it last applied (a read
@@ -141,15 +144,20 @@ function emptyGrid(terrain: TerrainGraph): PlacementGrid {
  *  Slots are captured in bounds, so the `?? 0` fallbacks that `noUncheckedIndexedAccess` demands are
  *  unreachable. */
 function addCounts(grid: PlacementGrid, counts: Uint16Array, slots: Iterable<number>, delta: number): void {
-  const { changes } = grid;
-  const width = grid.terrain.width;
   for (const slot of slots) {
     counts[slot] = (counts[slot] ?? 0) + delta;
-    const region =
-      Math.floor(Math.floor(slot / width) / CHANGE_REGION_NODES) * changes.regionsWide +
-      Math.floor((slot % width) / CHANGE_REGION_NODES);
-    changes.revisions[region] = (changes.revisions[region] ?? 0) + 1;
+    tallyChange(grid, slot);
   }
+}
+
+/** Tally a change at `slot` in its region, so {@link gridChangeKey} over an area holding it moves. */
+function tallyChange(grid: PlacementGrid, slot: number): void {
+  const { changes } = grid;
+  const width = grid.terrain.width;
+  const region =
+    Math.floor(Math.floor(slot / width) / CHANGE_REGION_NODES) * changes.regionsWide +
+    Math.floor((slot % width) / CHANGE_REGION_NODES);
+  changes.revisions[region] = (changes.revisions[region] ?? 0) + 1;
 }
 
 function applySlots(grid: PlacementGrid, slots: StampedSlots, delta: number): void {
@@ -158,6 +166,7 @@ function applySlots(grid: PlacementGrid, slots: StampedSlots, delta: number): vo
   addCounts(grid, grid.palisadeBody, slots.palisadeBody, delta);
   addCounts(grid, grid.buildingZone, slots.buildingZone, delta);
   addCounts(grid, grid.upgradeReserve, slots.upgradeReserve, delta);
+  for (const slot of slots.anchors) tallyChange(grid, slot);
 }
 
 function applyLandscapeLayer(grid: PlacementGrid, layer: LandscapeLayer, delta: number): void {
@@ -197,7 +206,7 @@ function liveLandscapeLayer(world: World, terrain: TerrainGraph): LandscapeLayer
 
 /** The grid field a channel's counts live in; RESOURCE_ANCHOR and MARKER block no building, so they have
  *  none. The shared channel routing of every capture and full stamp. */
-function channelField(channel: BlockerChannel): keyof StampedSlots | null {
+function channelField(channel: BlockerChannel): Exclude<keyof StampedSlots, 'anchors'> | null {
   switch (channel) {
     case OBSTACLE:
       return 'obstacle';
@@ -225,9 +234,10 @@ function captureSlots(grid: PlacementGrid, run: (visit: BlockerVisit) => void): 
     palisadeBody: [],
     buildingZone: [],
     upgradeReserve: [],
+    anchors: [],
   };
   run((x, y, channel) => {
-    const field = channelField(channel);
+    const field = channel === RESOURCE_ANCHOR ? 'anchors' : channelField(channel);
     if (field === null) return;
     if (x < 0 || y < 0 || x >= w || y >= h) return; // off-map cells are never stamped (see PlacementGrid)
     slots[field].push(y * w + x);

@@ -3,7 +3,6 @@ import {
   ownerOf,
   Palisade,
   Position,
-  Resource,
   RoadSite,
   SiteAssignment,
   Stockpile,
@@ -89,13 +88,7 @@ export function roadSitePlacementProbe(
 
 /** A token that changes whenever {@link roadSitePlacementProbe} may answer differently. */
 export function roadSitePlacementVersion(world: World): string {
-  return `${placementBlockerVersion(world)}.${roadRevision(world)}.${world.componentGeneration(RoadSite)}.${roadGroundVersion(world)}`;
-}
-
-/** A token over the resources {@link lineGroundOpen} reads, which the blocker grid does not count while
- *  they block no walk, such as a young tree: it changes whenever one comes or goes anywhere. */
-export function roadGroundVersion(world: World): number {
-  return world.componentGeneration(Resource);
+  return `${placementBlockerVersion(world)}.${roadRevision(world)}.${world.componentGeneration(RoadSite)}`;
 }
 
 interface VehicleObstacles {

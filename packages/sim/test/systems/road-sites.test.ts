@@ -3,6 +3,7 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  KilledBy,
   Owner,
   Palisade,
   Position,
@@ -197,7 +198,7 @@ describe('road site commands', () => {
     expect(nodeGridAccepts(before, CENTRE.hx, CENTRE.hy)).toBe(true);
   });
 
-  it('refuse a young tree that blocks no walk yet, and clear what grows or lies loose', () => {
+  it('refuse a young tree that blocks no walk yet, and clear what grows there but a carcass', () => {
     const sim = roadSim();
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('expected a mapped simulation');
@@ -210,9 +211,9 @@ describe('road site commands', () => {
     const stump = sim.world.create();
     sim.world.add(stump, Position, positionOfNode(CENTRE.hx, CENTRE.hy));
     sim.world.add(stump, Stump, { goodType: WOOD });
-    const heap = sim.world.create();
-    sim.world.add(heap, Position, positionOfNode(HEAP.hx, HEAP.hy));
-    sim.world.add(heap, Stockpile, { amounts: new Map([[STONE, 2]]) });
+    // A hunted carcass is a walk-through resource that lies loose, like goods.
+    const carcass = resourceAt(sim, HEAP, MUSHROOM_GFX);
+    sim.world.add(carcass, KilledBy, { by: stump });
 
     const probe = roadSitePlacementProbe(sim.world, sim.content, terrain);
     expect(probe.canPlace(SAPLING.hx, SAPLING.hy), 'young tree').toBe(false);
@@ -225,7 +226,7 @@ describe('road site commands', () => {
     orderRoads(sim, [SAPLING, MUSHROOM, BUSH, CENTRE, HEAP]);
     expect(siteAt(sim, SAPLING.hx, SAPLING.hy)).toBeUndefined();
     for (const at of [MUSHROOM, BUSH, CENTRE, HEAP]) expect(siteAt(sim, at.hx, at.hy)).toBeDefined();
-    expect([sapling, mushroom, bush, stump, heap].map((e) => sim.world.isAlive(e))).toEqual([
+    expect([sapling, mushroom, bush, stump, carcass].map((e) => sim.world.isAlive(e))).toEqual([
       true,
       false,
       false,
