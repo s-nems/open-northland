@@ -355,7 +355,7 @@ export const plContent = {
     'school-graduates': {
       title: 'Absolwenci idą do pracy',
       summary:
-        'Dwóch zbieraczy uczy się ciesielstwa, a asystent kieruje absolwentów do pracy. Pierwszy zajmuje jedyne miejsce cieśli w stolarni. Drugi nie znajduje wolnego miejsca, zostaje przy szkole i wraca tam, gdy nie ma nic do roboty.',
+        'Dwóch zbieraczy uczy się ciesielstwa, a asystent kieruje absolwentów do pracy. Pierwszy zajmuje jedyne miejsce cieśli w stolarni. Drugi nie znajduje wolnego miejsca, zostaje przy szkole i wraca tam, gdy nie ma nic do roboty. Kowal uczy się zbroi płytowej, mija bliższą kuźnię, która jej nie robi, i kuje płytówki w rozbudowanej.',
     },
     'porter-flag': {
       title: 'Chorągiewka tragarza w kamieniołomie',

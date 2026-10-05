@@ -356,7 +356,7 @@ export const enContent = {
     'school-graduates': {
       title: 'Graduates go to work',
       summary:
-        "Two collectors learn carpentry with the assistant sending graduates to work. The first takes the joinery's only joiner slot. The second finds no free slot, stays in the school yard and walks back there whenever it has nothing to do.",
+        "Two collectors learn carpentry with the assistant sending graduates to work. The first takes the joinery's only joiner slot. The second finds no free slot, stays in the school yard and walks back there whenever it has nothing to do. A smith learns plate armour, passes the nearer smithy that cannot make it and forges plate at the upgraded one.",
     },
     'porter-flag': {
       title: "A porter's flag at the quarry",
