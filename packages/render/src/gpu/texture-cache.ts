@@ -195,6 +195,13 @@ export class TextureCache {
     return tex;
   }
 
+  /** Serve an app-loaded world texture as a page of its own: it follows the zoom's sampling flip and,
+   *  loaded as pixel art, magnifies like the original's sprites. The caller keeps ownership. */
+  adopt(texture: Texture): void {
+    markMagnifiedTexture(texture);
+    this.pages.add(texture.source);
+  }
+
   /** The distinct atlas pages served so far: world RGB and shadow bob atlases only. Paletted character
    *  frames stay off it, and a reveal bake's own `CanvasSource` is never registered here, so a
    *  sampling toggle cannot reach an indexed sheet, whose palette indices must stay nearest-sampled. */

@@ -9,9 +9,9 @@ import { loadTextureIfPresent } from './net.js';
 /** The road tool's plot art and a claimed road site's bare plot, or undefined when a page fails to load and the renderer's stand-in draws. */
 export async function loadPlanRoadArt(): Promise<PlanRoadTextures | undefined> {
   const [open, blocked, claimed] = await Promise.all([
-    loadTextureIfPresent(openUrl, 'linear'),
-    loadTextureIfPresent(blockedUrl, 'linear'),
-    loadTextureIfPresent(claimedUrl, 'linear'),
+    loadTextureIfPresent(openUrl),
+    loadTextureIfPresent(blockedUrl),
+    loadTextureIfPresent(claimedUrl),
   ]);
   if (open === undefined || blocked === undefined || claimed === undefined) return undefined;
   return {

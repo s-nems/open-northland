@@ -124,6 +124,9 @@ export class WorldRenderer {
     // Own Pixi render group over its depth bands' groups: a band appearing or retiring rebuilds only
     // this layer's short instruction list, not the whole stage's.
     this.spriteLayer.isRenderGroup = true;
+    for (const art of [opts?.planStakes, opts?.planRoads]) {
+      if (art !== undefined) for (const texture of Object.values(art)) this.textureCache.adopt(texture);
+    }
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.weatherGround = new WeatherGround([this.terrain, this.mapObjects]);
     this.groundWaves = new GroundWaveLayer(app.renderer, this.terrain.container);

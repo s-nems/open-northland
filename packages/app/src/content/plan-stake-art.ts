@@ -9,9 +9,9 @@ import { loadTextureIfPresent } from './net.js';
 /** The line tools' stake art and a claimed wall site's ring, or undefined when a page fails to load and the renderer's stand-in draws. */
 export async function loadPlanStakeArt(): Promise<PlanStakeTextures | undefined> {
   const [open, blocked, ring] = await Promise.all([
-    loadTextureIfPresent(openUrl, 'linear'),
-    loadTextureIfPresent(blockedUrl, 'linear'),
-    loadTextureIfPresent(ringUrl, 'linear'),
+    loadTextureIfPresent(openUrl),
+    loadTextureIfPresent(blockedUrl),
+    loadTextureIfPresent(ringUrl),
   ]);
   if (open === undefined || blocked === undefined || ring === undefined) return undefined;
   return {

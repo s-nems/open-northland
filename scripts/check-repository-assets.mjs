@@ -35,14 +35,13 @@ const reviewedBinaryAssets = new Set([
   'packages/app/src/assets/ui/minimap/frames/urnes.webp',
   'packages/app/src/assets/ui/minimap/frames/zelazo.webp',
   'packages/app/src/assets/ui/minimap/wood.webp',
-  // The line tools' plan stake: generated for this project, no original-game input (provenance in the
-  // custom art checkout's ui package); the blocked copy is the same image with its stones recoloured and
-  // the ring copy the same image with its stake pulled.
+  // The line tools' plan stake and the road tool's plot: generated for this project with gpt-image-1.5,
+  // with the original's palisade stakes, stone goods and a game still as style references. Each blocked,
+  // ring and claimed copy is an edit of its open image, registered to the same frame. All are reduced to
+  // the game's own sprite scale and remapped to colours taken from the original's sprites.
   'packages/app/src/assets/markers/plan-stake-blocked.png',
   'packages/app/src/assets/markers/plan-stake-open.png',
   'packages/app/src/assets/markers/plan-stake-ring.png',
-  // The road tool's plot: generated for this project, no original-game input; the blocked and claimed
-  // copies are the same image with its stones recoloured and its pegs pulled.
   'packages/app/src/assets/markers/plan-road-blocked.png',
   'packages/app/src/assets/markers/plan-road-claimed.png',
   'packages/app/src/assets/markers/plan-road-open.png',

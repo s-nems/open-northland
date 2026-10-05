@@ -1,9 +1,10 @@
 import { type Container, Graphics, Sprite, type Texture } from 'pixi.js';
+import { worldBatched } from './world-batcher.js';
 
 /**
  * A stake in a ring of stones: the marker for one planned node of a line (a wall now, a road later), in
  * the placement preview and on a laid site until its piece stands. Its stones say whether the node takes
- * the line: sandstone where it can go, red where it cannot. A claimed site pulls the stake and plants the
+ * the line: grey where it can go, red where it cannot. A claimed site pulls the stake and plants the
  * builder's flag in the ring instead. All three pieces of art share one frame and ground point.
  */
 export interface PlanStakeTextures {
@@ -14,13 +15,16 @@ export interface PlanStakeTextures {
 
 export type PlanStakeLook = keyof PlanStakeTextures;
 
-/** World px across the ring; the art is generated for this project, sized by eye against a settler. */
-const STAKE_WIDTH = 24;
-/** Where the stake meets the ground and where its rope is tied, as fractions of the art. */
-const ART_GROUND = { x: 0.49, y: 0.67 } as const;
-const ART_KNOT_Y = 0.265;
-const ART_ASPECT = 855 / 680;
-const STAKE_HEIGHT = STAKE_WIDTH / ART_ASPECT;
+/** The art's size: pixel art at the game's own scale, one art pixel per world px. */
+const ART_WIDTH_PX = 24;
+const ART_HEIGHT_PX = 23;
+/** World px across the ring and up the stake. */
+const STAKE_WIDTH = ART_WIDTH_PX;
+const STAKE_HEIGHT = ART_HEIGHT_PX;
+/** Where the stake meets the ground and where its rope is tied, as fractions of the art; whole art
+ *  pixels, so the texels land on the world's pixel grid as the game's sprites do. */
+const ART_GROUND = { x: 12 / ART_WIDTH_PX, y: 16 / ART_HEIGHT_PX } as const;
+const ART_KNOT_Y = 7 / ART_HEIGHT_PX;
 
 /** How far up the stake the string ties on, in world px from the ground point. */
 export const STAKE_TIE_HEIGHT = Math.round((ART_GROUND.y - ART_KNOT_Y) * STAKE_HEIGHT);
@@ -46,7 +50,7 @@ const FALLBACK_HALF_W = 2.5;
 /** One marker with its ground point at the display object's origin. */
 export function mintPlanStake(art: PlanStakeTextures | undefined, look: PlanStakeLook): Container {
   if (art !== undefined) {
-    const sprite = new Sprite(art[look]);
+    const sprite = worldBatched(new Sprite(art[look]));
     sprite.anchor.set(ART_GROUND.x, ART_GROUND.y);
     sprite.scale.set(STAKE_HEIGHT / sprite.texture.height);
     return sprite;

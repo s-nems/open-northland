@@ -1,4 +1,4 @@
-import { TextureSource } from 'pixi.js';
+import { Texture, TextureSource } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { AtlasFrame, BuildTimeSheet } from '../src/data/sprites/index.js';
 import * as drawable from '../src/gpu/drawable-resource.js';
@@ -77,6 +77,20 @@ describe('TextureCache.revealed', () => {
   it('returns null when the atlas pixels are not CPU-readable (the caller falls back to the crop)', () => {
     // A bare TextureSource has no drawable resource, so no canvas bake is possible headless.
     expect(new TextureCache().revealed(SOURCE, FRAME, TIMES, 100, 1)).toBeNull();
+  });
+});
+
+describe('TextureCache.adopt', () => {
+  it('serves an app-loaded pixel-art texture as a world page that magnifies like the atlas sprites', () => {
+    const page = new TextureSource({ width: 24, height: 23 });
+    markPixelArtSource(page);
+    const texture = new Texture({ source: page });
+    const cache = new TextureCache();
+    cache.adopt(texture);
+    expect(cache.pageSources().has(page)).toBe(true);
+    expect(isMagnifiedTexture(texture)).toBe(true);
+    cache.clear();
+    expect(texture.destroyed).toBe(false);
   });
 });
 
