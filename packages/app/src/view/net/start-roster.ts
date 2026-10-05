@@ -2,7 +2,7 @@ import { MAX_LOADING_PROGRESS, type RoomView, type WaitedMember } from '@open-no
 import { playerSwatchHex } from '../../catalog/roster.js';
 import { messages } from '../../i18n/index.js';
 
-export type StartRosterState = 'loading' | 'ready' | 'away' | 'dropped';
+export type StartRosterState = 'loading' | 'ready' | 'away';
 
 export interface StartRosterRow {
   readonly nick: string;
@@ -22,11 +22,9 @@ export interface StartRosterInputs {
   readonly ownNick: string;
   /** This client's own boot progress, ahead of what the room view last carried. */
   readonly ownProgress: number | null;
-  /** Players the relay dropped for a load that stood still, with the colour they last showed. */
-  readonly dropped: readonly Pick<StartRosterRow, 'nick' | 'color'>[];
 }
 
-/** One row per seated member in seat order, then the players dropped before the start. */
+/** One row per seated member, in seat order. */
 export function startRosterRows(inputs: StartRosterInputs): readonly StartRosterRow[] {
   const { room } = inputs;
   if (room === null) return [];
@@ -34,7 +32,7 @@ export function startRosterRows(inputs: StartRosterInputs): readonly StartRoster
   const seated = room.members
     .flatMap((member) => (member.seat === null ? [] : [{ member, seat: member.seat }]))
     .sort((a, b) => a.seat - b.seat);
-  const rows = seated.map(({ member, seat }): StartRosterRow => {
+  return seated.map(({ member, seat }): StartRosterRow => {
     const self = member.nick === inputs.ownNick;
     const reason = reasons.get(member.nick);
     const state: StartRosterState =
@@ -53,13 +51,6 @@ export function startRosterRows(inputs: StartRosterInputs): readonly StartRoster
       progress,
     };
   });
-  const present = new Set(rows.map((row) => row.nick));
-  return [
-    ...rows,
-    ...inputs.dropped
-      .filter((row) => !present.has(row.nick))
-      .map((row) => ({ ...row, self: false, state: 'dropped' as const, progress: null })),
-  ];
 }
 
 export interface StartRoster {

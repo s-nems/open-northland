@@ -33,7 +33,6 @@ function rows(over: Partial<StartRosterInputs> = {}) {
     heardWaiting: true,
     ownNick: 'Ania',
     ownProgress: 60,
-    dropped: [],
     ...over,
   });
 }
@@ -54,16 +53,5 @@ describe('start roster', () => {
       'loading',
       'loading',
     ]);
-  });
-
-  it('keeps a player dropped for a stalled load at the end, once gone from the room', () => {
-    const dropped = [{ nick: 'Darek', color: '#123456' }];
-    expect(rows({ dropped }).at(-1)).toEqual({
-      nick: 'Darek',
-      color: '#123456',
-      self: false,
-      state: 'dropped',
-      progress: null,
-    });
   });
 });

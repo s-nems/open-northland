@@ -135,8 +135,8 @@ that member's own `localSeat`, and every claimed seat as `human`. Each member bu
 it and reports `loaded { tick, world: 0 }` with the tick that world stands at (0 for a world with no
 setup tick, 1 for a decoded map whose placements drain on one). The first report fixes the room's
 built tick; the relay refuses any other tick from the rest, a second `loaded` on the same connection,
-and a command sent before any world has loaded. The clock starts once every connected member has
-loaded, announced by `clock { tick, speed, paused: false, by: null, governed: null }` naming the first
+and a command sent before any world has loaded. The clock starts once every member has loaded, one
+whose connection dropped included: a game never starts without one of its players, announced by `clock { tick, speed, paused: false, by: null, governed: null }` naming the first
 tick to run. The app reports `loaded` only once its display draws the world, so every player's game
 starts together rather than when the slowest one's sim is built. Until then it may send
 `loading { progress }`, its boot progress in whole percent (0-100), which the room view shows; the
@@ -260,10 +260,10 @@ waited for, and restarts only once it has stopped being waited for. A wait is ov
 is waited for: the dropped token returned, the silent one answered, the slow one caught up, or the
 diverged one rebuilt. A client that never loads or never acknowledges is waited for and can be voted
 out, before the start as after it; a member kicked before the start is not waited for to start the
-clock. Before the clock runs, a member that has not loaded and whose boot progress has not moved for
-`LOADING_STALL_MS` (2 min, counted from the start, its last `loading`, or its return) is dropped
-without a vote: it gets `error { loadingTimedOut }`, then leaves its seat as a kicked member does,
-with `cause: "loading"`. The app shows no countdown for it.
+clock. Before the clock runs, a member that has not loaded and whose boot has not moved for
+`LOADING_STALL_MS` (2 min, counted from the start, its last `loading`, its `loaded`, or its drop or
+return) ends the room: every connected member gets `error { loadingTimedOut, nick }` and `left`, and
+the players host again. The app shows no countdown for it and offers no vote on its loading screen.
 
 ## Kick votes
 
@@ -278,8 +278,8 @@ the member (its token is a stranger from then on), and returns the seat to `sett
 whose settlers already stand. The room view reflects this mode. For
 `mode: "ai"` the relay lands its `setPlayerAi` envelope on `tick`, the next unemitted one, outside
 every budget, so the AI takes the seat on the same tick on every client. For `mode: "idle"` the seat
-simply issues nothing more. `cause` says why the seat was left: `vote`, `left` for a member that
-left the started game itself, or `loading` for a stalled load (above).
+simply issues nothing more. `cause` says why the seat was left: `vote`, or `left` for a member
+that left the started game itself.
 
 ## Manual save order capture
 

@@ -133,7 +133,8 @@
 
 /* The heading sits between two gold rules ending in a small lozenge. */
 .boot-tip__heading,
-.boot-roster__heading {
+.boot-roster__heading,
+.boot-notice__heading {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -148,7 +149,9 @@
 .boot-tip__heading::before,
 .boot-tip__heading::after,
 .boot-roster__heading::before,
-.boot-roster__heading::after {
+.boot-roster__heading::after,
+.boot-notice__heading::before,
+.boot-notice__heading::after {
   flex: 1;
   height: 1px;
   content: "";
@@ -156,7 +159,8 @@
 }
 
 .boot-tip__heading::after,
-.boot-roster__heading::after {
+.boot-roster__heading::after,
+.boot-notice__heading::after {
   background: linear-gradient(90deg, rgba(232, 201, 120, 0.7), transparent);
 }
 
@@ -280,18 +284,60 @@
   color: #b9d48a;
 }
 
-.boot-roster__row[data-state="away"] .boot-roster__status,
-.boot-roster__row[data-state="dropped"] .boot-roster__status {
+.boot-roster__row[data-state="away"] .boot-roster__status {
   color: #d99a7a;
 }
 
-.boot-roster__row[data-state="away"],
-.boot-roster__row[data-state="dropped"] {
+.boot-roster__row[data-state="away"] {
   opacity: 0.7;
 }
 
-.boot-roster__row[data-state="dropped"] .boot-roster__nick {
-  text-decoration: line-through;
+/* A start that failed (mountBootNotice): the tip's plaque in the centre, where the bar stood. */
+.boot-notice {
+  position: relative;
+  box-sizing: border-box;
+  width: min(520px, calc(100vw - 32px));
+  padding: 16px 28px 20px;
+  border: 1px solid rgba(177, 122, 57, 0.75);
+  border-radius: 4px;
+  background: linear-gradient(rgba(36, 22, 11, 0.94), rgba(20, 12, 6, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(10, 6, 3, 0.9),
+    inset 0 1px rgba(255, 233, 180, 0.12),
+    0 10px 28px rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+
+.boot-notice__text {
+  margin: 0 0 16px;
+  font-size: clamp(15px, 1.9vh, 18px);
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+/* The keycap's wood and gold rim at button size. */
+.boot-notice__button {
+  padding: 7px 22px;
+  border: 1px solid #b17a39;
+  border-bottom-width: 3px;
+  border-radius: 4px;
+  background: linear-gradient(#4a2e17, #2a1a0c);
+  color: #f3dc9c;
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+
+.boot-notice__button:hover,
+.boot-notice__button:focus-visible {
+  background: linear-gradient(#5c3a1d, #342010);
+  color: #fff3c7;
+  outline: none;
+  box-shadow:
+    0 0 0 1px #e8c978,
+    0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
 @keyframes boot-tip-in {

@@ -324,11 +324,12 @@ export class Game {
     return this.clock.tick - member.ackedTick > framesIn(allowedMs, this.clock.speed) ? 'slow' : null;
   }
 
-  /** The clock starts once a world has been admitted and every connected member has loaded. */
+  /** The clock starts once every member has loaded, a dropped one included: a game never starts
+   *  without one of its players. */
   private startClockWhenLoaded(now: number): void {
     if (this.clock.running || this.builtTick === null) return;
     for (const member of this.members.values()) {
-      if (member.connected && !member.loaded) return;
+      if (!member.loaded) return;
     }
     this.clock.start();
     this.resync.restartCadence(now);

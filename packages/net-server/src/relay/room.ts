@@ -26,8 +26,9 @@ import { type SeatChange, SeatTable } from './seats.js';
  *  load changes with nearly every acknowledgement; a view per ack would be a room broadcast per member
  *  per tick. */
 export const LOAD_VIEW_INTERVAL_MS = 1000;
-/** How long a member's boot may stand still before the start drops it. A load step takes seconds; this
- *  leaves a slow machine many times that, and is never shown to the players as a countdown. */
+/** How long a member's boot may stand still, or the member stay away, before the start gives up and
+ *  ends the room. A load step takes seconds; this leaves a slow machine many times that, and is never
+ *  shown to the players as a countdown. */
 export const LOADING_STALL_MS = 2 * 60 * 1000;
 
 export interface RoomHooks {
@@ -171,6 +172,7 @@ export class Room {
       return;
     }
     member.connected = false;
+    member.progressAt = now;
     this.broadcastView();
     this.game.dropWorld(member, now);
   }
@@ -244,11 +246,13 @@ export class Room {
   markLoaded(member: Member, world: Extract<ClientMessage, { kind: 'loaded' }>, now: number): Refusal {
     if (this.game === null) return { code: 'gameNotStarted' };
     const refusal = this.game.loaded(member, world, now);
-    if (refusal === null && member.loading !== null) {
+    if (refusal !== null) return refusal;
+    member.progressAt = now;
+    if (member.loading !== null) {
       member.loading = null;
       this.loadMoved = true;
     }
-    return refusal;
+    return null;
   }
 
   /** Progress from a member whose world has loaded is late and changes nothing. */
@@ -313,7 +317,10 @@ export class Room {
   }
 
   advance(elapsedMs: number, now: number): Refusal {
-    if (this.game !== null && !this.game.running) this.dropStalledLoads(now);
+    if (this.game !== null && !this.game.running) {
+      const stalled = this.stalledLoad(now);
+      if (stalled !== null) return stalled;
+    }
     const refusal = this.game?.advance(elapsedMs, now) ?? null;
     if (refusal === null && this.loadMoved && now >= this.nextLoadViewAt) {
       this.nextLoadViewAt = now + LOAD_VIEW_INTERVAL_MS;
@@ -336,15 +343,14 @@ export class Room {
     };
   }
 
-  /** Before the clock runs, a member whose boot stood still for `LOADING_STALL_MS` leaves its seat, so
-   *  a load that died does not hold everyone else on the loading screen. */
-  private dropStalledLoads(now: number): void {
-    for (const member of [...this.members.values()]) {
-      if (member.loaded || now - member.progressAt < LOADING_STALL_MS) continue;
-      this.deliver(member, { kind: 'error', reason: { code: 'loadingTimedOut' } });
-      if (member.seat === null) this.remove(member);
-      else this.kickOut(member, member.seat, now, 'loading');
+  /** Before the clock runs, a member whose boot stood still for `LOADING_STALL_MS` ends the room: a
+   *  game never starts without one of its players, so the others host again. */
+  private stalledLoad(now: number): Refusal {
+    for (const member of this.members.values()) {
+      if (!member.loaded && now - member.progressAt >= LOADING_STALL_MS)
+        return { code: 'loadingTimedOut', nick: member.nick };
     }
+    return null;
   }
 
   /** The AI case lands on the clock through the game. */

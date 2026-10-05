@@ -52,7 +52,7 @@ const SEAT_MODES = keysOf<SeatMode>({ human: true, ai: true, idle: true, absent:
 const WEATHER_MODES = keysOf<WeatherMode>({ map: true, variable: true, winter: true });
 export const VACANT_SEAT_MODES = keysOf<VacantSeatMode>({ ai: true, idle: true, absent: true });
 export const DEPARTED_SEAT_MODES = keysOf<DepartedSeatMode>({ ai: true, idle: true });
-export const DEPARTURE_CAUSES = keysOf<DepartureCause>({ vote: true, left: true, loading: true });
+export const DEPARTURE_CAUSES = keysOf<DepartureCause>({ vote: true, left: true });
 export const AI_DIFFICULTIES = keysOf<AiDifficulty>({ easy: true, medium: true, hard: true });
 
 export function parseRoomSettings(value: unknown, at: string): RoomSettings {

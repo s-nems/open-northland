@@ -49,16 +49,34 @@ describe('member boot progress', () => {
     expect(a.last('rejected')?.reason).toEqual({ code: 'gameNotStarted' });
   });
 
-  it('drops a member whose boot stood still too long, and the others start without it', () => {
+  it("ends the room for everyone when a member's boot stands still too long", () => {
     const s = startingRoom();
     s.a.send({ kind: 'loaded', tick: 0, world: 0 });
     s.b.send({ kind: 'loading', progress: HALFWAY });
     s.advance(LOADING_STALL_MS - 1);
     expect(s.a.last('clock')).toBeUndefined();
+    expect(s.a.of('left')).toEqual([]);
     s.advance(1);
-    expect(s.b.last('error')?.reason).toEqual({ code: 'loadingTimedOut' });
-    expect(s.a.last('kicked')).toMatchObject({ nick: 'Bartek', cause: 'loading' });
-    expect(s.a.last('room')?.room.members.map((member) => member.nick)).toEqual(['Ania']);
+    for (const peer of [s.a, s.b]) {
+      expect(peer.last('error')?.reason).toEqual({ code: 'loadingTimedOut', nick: 'Bartek' });
+      expect(peer.of('left')).toHaveLength(1);
+    }
+    expect(s.a.last('clock')).toBeUndefined();
+    expect(s.relay.roomCount).toBe(0);
+  });
+
+  it('never starts without a member that dropped while loading, and starts once it returns and loads', () => {
+    const s = startingRoom();
+    s.a.send({ kind: 'loaded', tick: 0, world: 0 });
+    s.relay.disconnect(s.b.handle);
+    s.advance(LOADING_STALL_MS - 1);
+    expect(s.a.last('clock')).toBeUndefined();
+    expect(s.a.last('waiting')?.for.find((entry) => entry.nick === 'Bartek')?.reason).toBe('gone');
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    s.advance(LOADING_STALL_MS - 1);
+    expect(s.a.of('left')).toEqual([]);
+    back.send({ kind: 'loaded', tick: 0, world: 0 });
+    s.advance(1);
     expect(s.a.last('clock')?.paused).toBe(false);
   });
 
@@ -68,19 +86,20 @@ describe('member boot progress', () => {
     s.advance(LOADING_STALL_MS - 1);
     s.b.send({ kind: 'loading', progress: HALFWAY });
     s.advance(LOADING_STALL_MS - 1);
-    expect(s.a.of('kicked')).toEqual([]);
+    expect(s.a.of('left')).toEqual([]);
     s.b.send({ kind: 'loaded', tick: 0, world: 0 });
     s.advance(LOADING_STALL_MS);
-    expect(s.a.of('kicked')).toEqual([]);
+    expect(s.a.of('left')).toEqual([]);
   });
 
-  it('counts the stall afresh from a member returning mid-boot', () => {
+  it('gives a member that loaded and then dropped before the start a fresh wait', () => {
     const s = startingRoom();
     s.a.send({ kind: 'loaded', tick: 0, world: 0 });
+    s.b.send({ kind: 'loading', progress: HALFWAY });
     s.advance(LOADING_STALL_MS - 1);
-    const back = s.introduce(TOKEN_B, 'Bartek');
+    s.b.send({ kind: 'loading', progress: HALFWAY + 1 });
+    s.relay.disconnect(s.a.handle);
     s.advance(LOADING_STALL_MS - 1);
-    expect(s.a.of('kicked')).toEqual([]);
-    expect(back.last('start')).toBeDefined();
+    expect(s.b.of('left')).toEqual([]);
   });
 });

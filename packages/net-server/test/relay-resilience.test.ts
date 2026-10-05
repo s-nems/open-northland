@@ -201,7 +201,7 @@ describe('waiting for a member', () => {
     expect(back.of('rejected')).toHaveLength(1);
   });
 
-  it('starts the clock without a member that dropped before loading, and counts one down per member', () => {
+  it('holds the start for a member that dropped before loading, and counts one down per member', () => {
     // Cezary never loads: its socket drops first.
     const t = stage();
     const a = t.introduce(TOKEN_A, 'Ania');
@@ -220,7 +220,7 @@ describe('waiting for a member', () => {
     b.send({ kind: 'loaded', tick: 0, world: 0 });
     expect(a.of('clock')).toEqual([]);
     t.relay.disconnect(c.handle);
-    expect(a.last('clock')).toMatchObject({ tick: 1 });
+    expect(a.of('clock')).toEqual([]);
     tick(t, [a, b], TICK_MS * 2);
     expect(a.last('waiting')?.for).toMatchObject([
       { nick: 'Cezary', reason: 'gone', voteAfterMs: KICK_COUNTDOWN_MS },
@@ -241,6 +241,8 @@ describe('waiting for a member', () => {
     expect(a.last('rejected')?.reason).toMatchObject({ code: 'voteNotOpen' });
     a.send({ kind: 'kick', player: 2 });
     expect(a.last('kicked')?.nick).toBe('Cezary');
+    // Bartek loaded but dropped before the start, so the game still waits for him.
+    expect(a.of('clock')).toEqual([]);
   });
 
   it('refuses an acknowledgement out of order or ahead of the clock', () => {

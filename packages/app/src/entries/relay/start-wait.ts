@@ -1,15 +1,12 @@
 import type { RelayClientView } from '@open-northland/net-client';
 import type { ServerMessage } from '@open-northland/net-protocol';
-import {
-  mountStartRoster,
-  type StartRoster,
-  type StartRosterRow,
-  startRosterRows,
-} from '../../view/net/start-roster.js';
+import { mountStartRoster, type StartRoster, startRosterRows } from '../../view/net/start-roster.js';
 
 type StartClient = Pick<RelayClientView, 'nick' | 'room' | 'clockState' | 'waitingFor'>;
 
 export interface StartWait {
+  /** True until the room starts or the wait ends. */
+  readonly pending: boolean;
   /** Every relay message, after the client applied it. */
   observe(message: ServerMessage): void;
   /** This client's own boot progress in whole percent. */
@@ -29,22 +26,20 @@ export function createStartWait(client: StartClient): StartWait {
   let waits: (() => void)[] = [];
   let ownProgress: number | null = null;
   let heardWaiting = client.waitingFor.length > 0;
-  const dropped: Pick<StartRosterRow, 'nick' | 'color'>[] = [];
-  let shown: readonly StartRosterRow[] = [];
 
   const started = (): boolean =>
     client.clockState !== null && !client.waitingFor.some((member) => member.reason === 'loading');
   const render = (): void => {
     if (roster === null) return;
-    shown = startRosterRows({
-      room: client.room,
-      waitingFor: client.waitingFor,
-      heardWaiting,
-      ownNick: client.nick,
-      ownProgress,
-      dropped,
-    });
-    roster.update(shown);
+    roster.update(
+      startRosterRows({
+        room: client.room,
+        waitingFor: client.waitingFor,
+        heardWaiting,
+        ownNick: client.nick,
+        ownProgress,
+      }),
+    );
   };
   const release = (): void => {
     const pending = waits;
@@ -59,12 +54,11 @@ export function createStartWait(client: StartClient): StartWait {
   render();
 
   return {
+    get pending() {
+      return roster !== null;
+    },
     observe(message): void {
       if (message.kind === 'waiting') heardWaiting = true;
-      if (message.kind === 'kicked' && message.cause === 'loading') {
-        const color = shown.find((row) => row.nick === message.nick)?.color ?? 'transparent';
-        dropped.push({ nick: message.nick, color });
-      }
       if (started()) end();
       else render();
     },

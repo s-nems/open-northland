@@ -17,7 +17,7 @@ import type { NetworkHandover } from '../../net/handover.js';
 import { deliveredMatchEnd, inputDelayMs, relayedSessionDriver } from '../../net/net-worker-client.js';
 import { relayCloseText, relayFailureText, relayReasonText } from '../../net/relay-reason.js';
 import { networkSaveSession } from '../../net/save-session.js';
-import { dismissBootProgress } from '../../view/boot-progress.js';
+import { dismissBootProgress, mountBootNotice } from '../../view/boot-progress.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
 import { BUTTON_STYLE, el, mountMessage } from '../../view/overlay.js';
 import { menuSearch } from '../../view/params.js';
@@ -108,7 +108,15 @@ export function renderNetworkGame(
   function fail(error: unknown): void {
     if (closed) return;
     diag.warn('net', 'network game halted', { error: errorText(error) });
+    const starting = startWait.pending;
     dispose();
+    if (starting) {
+      const remove = mountBootNotice(copy.startFailedTitle, relayFailureText(error), {
+        label: messages().hud.returnToMenu,
+        onClick: () => void swapToEntry(menuSearch(), remove),
+      });
+      return;
+    }
     const back = el('button', BUTTON_STYLE, messages().hud.returnToMenu);
     back.type = 'button';
     back.addEventListener('click', () => {
@@ -119,7 +127,13 @@ export function renderNetworkGame(
   const startWait = createStartWait(client);
 
   const exit = roomExitObserver((reason) =>
-    fail(reason === null ? copy.roomEnded : `${copy.roomEnded}: ${relayReasonText(reason)}`),
+    fail(
+      reason === null
+        ? copy.roomEnded
+        : reason.code === 'loadingTimedOut'
+          ? formatMessage(copy.startTimedOut, { nick: reason.nick })
+          : `${copy.roomEnded}: ${relayReasonText(reason)}`,
+    ),
   );
   const unsubscribe = connection.subscribe((event) => {
     if (event.kind === 'failure') {
@@ -133,9 +147,7 @@ export function renderNetworkGame(
     if (exit(event.message)) return;
     if (event.message.kind === 'desync') lastDesync = event.message;
     if (event.message.kind === 'kicked' && event.message.player === client.session?.localSeat) {
-      fail(
-        event.message.cause === 'loading' ? relayReasonText({ code: 'loadingTimedOut' }) : copy.youWereKicked,
-      );
+      fail(copy.youWereKicked);
       return;
     }
     startWait.observe(event.message);

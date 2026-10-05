@@ -28,8 +28,8 @@ export interface Member {
   loaded: boolean;
   /** The boot progress, in percent, the client last reported before its world loaded. */
   loading: number | null;
-  /** When the client's boot last moved, or the game started or the client returned; how long a load
-   *  has stood still counts from it. */
+  /** When the client's boot last moved or its world loaded, or the game started or the client dropped
+   *  or returned; how long a load has stood still counts from it. */
   progressAt: number;
   /** The last tick the client reported applied, and the generation of the world it reports from. */
   ackedTick: number;
