@@ -187,8 +187,10 @@ function characterScale(sheet: Pick<SpriteSheet, 'kindScales'>, char: SettlerCha
 }
 
 function characterForItem(characters: SettlerCharacterSet, item: DrawItem): SettlerCharacter | undefined {
-  if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe))
-    return characters.animals.byTribe[item.tribe];
+  if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe)) {
+    const character = characters.animals.byTribe[item.tribe];
+    return character === undefined ? undefined : characterVariant(character, item.ref);
+  }
   return humanCharacter(characters, item.tribe, item.jobType, item.young === true, item.weaponGood, item.ref);
 }
 
@@ -202,7 +204,10 @@ export function humanCharacter(
   ref: number,
 ): SettlerCharacter {
   const table = (tribe !== undefined ? characters.byTribe?.[tribe] : undefined) ?? characters;
-  const character = pickByJob(table, jobType, young, weaponGood);
+  return characterVariant(pickByJob(table, jobType, young, weaponGood), ref);
+}
+
+function characterVariant(character: SettlerCharacter, ref: number): SettlerCharacter {
   const variants = character.variants;
   return variants?.length ? (variants[ref % variants.length] ?? character) : character;
 }

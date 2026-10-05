@@ -442,6 +442,45 @@ describe('resolveLayers - wildlife species resolution', () => {
     expect(resolveLayers(sheet, settler(UNBOUND_TRIBE), 0)).toEqual([]);
   });
 
+  it('selects a stable wildlife walk variant per animal while preserving its idle', () => {
+    const body = {
+      source: animalSource,
+      atlas: { ...animalAtlas, frames: new Map([frame(5), frame(6), frame(7)]) },
+    };
+    const binding = { idle: 5, moving: 6 };
+    const withVariants: SpriteSheet = {
+      ...sheet,
+      characters: {
+        default: { body, binding },
+        byJob: {},
+        animals: {
+          tribes: new Set([BOUND_TRIBE]),
+          byTribe: {
+            [BOUND_TRIBE]: {
+              body,
+              binding,
+              variants: [
+                { body, binding },
+                { body, binding: { ...binding, moving: 7 } },
+              ],
+            },
+          },
+        },
+      },
+    };
+    for (const tick of [0, 13, 100]) {
+      for (const ref of [2, 3, 4, 5]) {
+        const item = { ...settler(BOUND_TRIBE), ref };
+        const bob = (state: 'idle' | 'moving') =>
+          resolveLayers(withVariants, { ...item, state }, tick)
+            ?.filter((layer) => layer.shadow !== true)
+            .map((layer) => layer.frame.x);
+        expect(bob('moving')).toEqual([ref % 2 === 0 ? 6 : 7]);
+        expect(bob('idle')).toEqual([5]);
+      }
+    }
+  });
+
   it('keeps a human tribe on the character path, atlas size riding for the paletted mesh', () => {
     const layers = resolveLayers(sheet, settler(HUMAN_TRIBE), 0) ?? [];
     expect(layers.map((l) => [l.frame.x, l.source === humanSource, l.cast ?? false, l.atlasW])).toEqual([
