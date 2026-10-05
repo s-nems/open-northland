@@ -23,6 +23,7 @@ const MAX_CORNER_RADIUS = 12;
 
 interface PickPlot {
   readonly plot: ConstructionPlotFrame;
+  lastSeen: number;
   shape?: GraphicsContext;
   readonly bounds: { -readonly [K in keyof EntityBounds]: EntityBounds[K] };
 }
@@ -35,6 +36,7 @@ export class ConstructionPlotLayer {
   /** Signature of the plot set last drawn - an unchanged set skips the rebuild. */
   private key = '';
   private readonly picks = new Map<number, PickPlot>();
+  private pickGeneration = 0;
   private readonly point = { x: 0, y: 0 };
   private elevation: ElevationField | undefined;
 
@@ -45,16 +47,32 @@ export class ConstructionPlotLayer {
 
   /** Redraw the plots for the current set of construction sites; an empty list clears them. */
   set(plots: readonly ConstructionPlotFrame[], elevation: ElevationField): void {
-    if (plots === this.drawn) return;
+    const elevationChanged = elevation !== this.elevation;
+    if (plots === this.drawn && !elevationChanged) return;
     this.drawn = plots;
     this.elevation = elevation;
-    for (const pick of this.picks.values()) pick.shape?.destroy();
-    this.picks.clear();
+    const generation = ++this.pickGeneration;
     for (const plot of plots) {
-      this.picks.set(plot.ref, { plot, bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 } });
+      const held = this.picks.get(plot.ref);
+      // Fog refreshes the source list even when this site's visible cells stay unchanged.
+      if (held !== undefined && !elevationChanged && sameCells(held.plot.cells, plot.cells)) {
+        held.lastSeen = generation;
+        continue;
+      }
+      held?.shape?.destroy();
+      this.picks.set(plot.ref, {
+        plot,
+        lastSeen: generation,
+        bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+      });
+    }
+    for (const [ref, pick] of this.picks) {
+      if (pick.lastSeen === generation) continue;
+      pick.shape?.destroy();
+      this.picks.delete(ref);
     }
     const key = signatureOf(plots);
-    if (key === this.key) return;
+    if (key === this.key && !elevationChanged) return;
     this.key = key;
 
     const g = this.g.clear();
@@ -100,6 +118,15 @@ export class ConstructionPlotLayer {
     }
     return pick;
   }
+}
+
+function sameCells(a: ConstructionPlotFrame['cells'], b: ConstructionPlotFrame['cells']): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i]?.col !== b[i]?.col || a[i]?.row !== b[i]?.row) return false;
+  }
+  return true;
 }
 
 function fillPlots(

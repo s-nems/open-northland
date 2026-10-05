@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { GraphicsContext } from 'pixi.js';
+import { describe, expect, it, vi } from 'vitest';
 import { ConstructionPlotLayer, plotOutlines } from '../src/gpu/overlays/construction-plot.js';
 
 /**
@@ -116,6 +117,55 @@ describe('plotOutlines', () => {
 });
 
 describe('construction plot picking', () => {
+  it('retains identical fog-filtered shapes and replaces only the site whose visible cells changed', () => {
+    const layer = new ConstructionPlotLayer();
+    const flat = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
+    const plots = () => [
+      { ref: 7, cells: [{ col: 4, row: 4 }] },
+      { ref: 8, cells: [{ col: 10, row: 4 }] },
+    ];
+    const fill = vi.spyOn(GraphicsContext.prototype, 'fill');
+    try {
+      layer.set(plots(), flat);
+      expect(layer.hit(7, 136, 76)).toBe(true);
+      expect(layer.hit(8, 340, 76)).toBe(true);
+      const fills = fill.mock.calls.length;
+      for (let generation = 0; generation < 5; generation++) {
+        layer.set(plots(), flat);
+        expect(layer.hit(7, 136, 76)).toBe(true);
+        expect(layer.hit(8, 340, 76)).toBe(true);
+      }
+      expect(fill).toHaveBeenCalledTimes(fills);
+
+      layer.set(
+        [
+          { ref: 7, cells: [{ col: 4, row: 4 }] },
+          { ref: 8, cells: [{ col: 12, row: 4 }] },
+        ],
+        flat,
+      );
+      expect(layer.hit(7, 136, 76)).toBe(true);
+      expect(layer.hit(8, 340, 76)).toBe(false);
+      expect(layer.hit(8, 408, 76)).toBe(true);
+      expect(fill).toHaveBeenCalledTimes(fills + 2); // the decal and the changed site's pick shape
+    } finally {
+      fill.mockRestore();
+      layer.destroy();
+    }
+  });
+
+  it('updates the drawn and clickable plot when elevation changes under the same cells', () => {
+    const layer = new ConstructionPlotLayer();
+    const plots = [{ ref: 7, cells: [{ col: 4, row: 4 }] }];
+    layer.set(plots, { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 });
+    expect(layer.hit(7, 136, 76)).toBe(true);
+    layer.set(plots, { maxLift: 50, liftAt: () => 50, liftAtNode: () => 50 });
+    expect(layer.hit(7, 136, 76)).toBe(false);
+    expect(layer.hit(7, 136, 26)).toBe(true);
+    expect(layer.container.getLocalBounds().maxY).toBeLessThan(50);
+    layer.destroy();
+  });
+
   it('selects the lifted ground outline, never the future roof, and extends the body bounds', () => {
     const layer = new ConstructionPlotLayer();
     const elevation = { maxLift: 20, liftAt: () => 20, liftAtNode: () => 20 };
