@@ -47,11 +47,8 @@ export interface ToolWindowsDeps {
   readonly constructionWindow: (seam: ConstructionWindowSeam) => ConstructionWindow;
   /** The residents window, mounted on the DOM plane. */
   readonly residentsWindow: () => ResidentsWindow;
-  /** The assistant window, mounted on the DOM plane; its missing-barracks note offers `buildBarracks`
-   *  when there is one to build. */
-  readonly assistantWindow: (buildBarracks: (() => void) | null) => AssistantWindow;
-  /** The barracks type the assistant window's note opens the catalogue on; null without. */
-  readonly barracksType: number | null;
+  /** The assistant window, mounted on the DOM plane. */
+  readonly assistantWindow: () => AssistantWindow;
   /** The mission book with its goal slip, mounted on the DOM plane. */
   readonly missionBook: () => MissionBook;
   readonly buildings: readonly MenuBuildingEntry[];
@@ -114,22 +111,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     onDeclareDiplomacy: deps.onDeclareDiplomacy,
   });
   const residents = deps.residentsWindow();
-  const { barracksType } = deps;
-  const assistant = deps.assistantWindow(
-    barracksType === null
-      ? null
-      : () => {
-          openOnly(menu);
-          menu.restore({
-            ...menu.state(),
-            page: 'catalog',
-            tribe: null,
-            category: 'military',
-            picked: barracksType,
-            scrollTop: 0,
-          });
-        },
-  );
+  const assistant = deps.assistantWindow();
   const knowledge = deps.pendingWindow('knowledge');
   const mission = deps.missionBook();
   /** Show `target` alone, as a beam press would. */

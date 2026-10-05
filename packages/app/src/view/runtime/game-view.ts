@@ -469,11 +469,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       () => viewer.version(),
     );
-    const barracksTypes = host.content.buildings
-      .filter((b) => systems.isBarracksType(b))
-      .map((b) => b.typeId);
     const assistantSituationFor = memoBySnapshot(
-      (snapshot: WorldSnapshot) => assistantSituationOf(snapshot, viewer.seat(), barracksTypes),
+      (snapshot: WorldSnapshot) => assistantSituationOf(snapshot, viewer.seat()),
       () => viewer.version(),
     );
     const assistantTip = createTooltip();
@@ -504,7 +501,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         access: () => (viewer.seat() === null ? 'noSeat' : readOnly ? 'watching' : 'control'),
         tooltip: assistantTip,
       },
-      assistantBarracksType: barracksTypes[0] ?? null,
       papers: {
         read: () => {
           const seat = viewer.seat();

@@ -1,6 +1,5 @@
 import { components, entitiesWith, type WorldSnapshot } from '@open-northland/sim';
-import { isFinishedBuilding, ownerPlayerOf } from '../game/snapshot.js';
-import { ownedBuildingsOfType } from '../hud/details-panel/model/building.js';
+import { ownerPlayerOf } from '../game/snapshot.js';
 import {
   type AssistantBookings,
   type AssistantSituation,
@@ -36,23 +35,6 @@ export function assistantBookingsOf(snapshot: WorldSnapshot, seat: number): Assi
   return bookings;
 }
 
-/** Whether `seat` owns a finished barracks of any of `barracksTypes`; a site drills nobody yet. */
-export function ownsBarracks(
-  snapshot: WorldSnapshot,
-  seat: number,
-  barracksTypes: readonly number[],
-): boolean {
-  return barracksTypes.some((type) => ownedBuildingsOfType(snapshot, seat, type).some(isFinishedBuilding));
-}
-
-export function assistantSituationOf(
-  snapshot: WorldSnapshot,
-  seat: number | null,
-  barracksTypes: readonly number[],
-): AssistantSituation {
-  if (seat === null) return NO_SITUATION;
-  return {
-    bookings: assistantBookingsOf(snapshot, seat),
-    hasBarracks: ownsBarracks(snapshot, seat, barracksTypes),
-  };
+export function assistantSituationOf(snapshot: WorldSnapshot, seat: number | null): AssistantSituation {
+  return seat === null ? NO_SITUATION : { bookings: assistantBookingsOf(snapshot, seat) };
 }

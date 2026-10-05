@@ -150,8 +150,6 @@ export interface ToolPanelOptions {
   readonly enqueueTrusted?: (command: Command) => void;
   /** The assistant window's live state, commands and tooltip chip. */
   readonly assistant: AssistantSource;
-  /** The barracks type the assistant window's missing-barracks note opens the catalogue on; null without. */
-  readonly assistantBarracksType: number | null;
   /** The construction window's papers seam (reads the sim's papers list, named for display). */
   readonly papers: PapersSeam;
   /** The residents window's seam: the seat's people, the sim's trade rule and the selection. */
@@ -590,27 +588,18 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         return window;
       },
       buildings: opts.buildings,
-      assistantWindow: (buildBarracks) => {
+      assistantWindow: () => {
         const window = createAssistantWindow({
           ...opts.assistant,
           plane,
           art: paintedIcon('assistant', TITLE_ART_PX),
           goodTypeOf: (goodId) => goodTypeById.get(goodId),
           paintGood: createGoodIconPainter(opts.pack, null),
-          // As the beam's build entry: a placement or plan in hand is dropped first.
-          onBuildBarracks:
-            buildBarracks === null
-              ? null
-              : () => {
-                  cancelHeld();
-                  buildBarracks();
-                },
           cue: ctx.cue,
         });
         window.onDismiss(() => focusOwner?.('assistant'));
         return window;
       },
-      barracksType: opts.assistantBarracksType,
       heldPaper,
       diplomacyRows: opts.diplomacyRows,
       onPayTribute: opts.onPayTribute,

@@ -6129,7 +6129,7 @@ body.on-drag-scroll * {
   left: 15px;
 }
 
-/* ---------- assistant window: drain-down orders beside standing orders, a status line per row ---------- */
+/* ---------- assistant window: drain-down orders beside standing orders, status marks per row ---------- */
 .on-hud .on-window--assistant .on-window__body {
   display: flex;
   flex-direction: column;
@@ -6171,7 +6171,14 @@ body.on-drag-scroll * {
 .on-hud .on-asst-row:hover {
   background: #ffffff08;
 }
+.on-hud .on-asst-row__line {
+  display: flex;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
 .on-hud .on-asst-row__label {
+  flex: 0 1 auto;
   font-size: 13.5px;
   line-height: 1.2;
   color: var(--text);
@@ -6215,31 +6222,38 @@ body.on-drag-scroll * {
   border-color: var(--wax-warn);
   color: var(--warning);
 }
-.on-hud .on-asst-row__status {
-  grid-column: 2 / -1;
+/* A row's status: glyph-and-count marks on the label line, right before the control, so a row keeps its
+   height whatever the assistant is doing. */
+.on-hud .on-asst-marks {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0 6px;
-  font-size: 11.5px;
-  line-height: 1.3;
-  color: var(--muted);
+  flex-shrink: 0;
+  gap: 4px;
+  margin-left: auto;
 }
-.on-hud .on-asst-row__status[hidden] {
-  display: none;
+.on-hud .on-asst-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 17px;
+  padding: 0 5px 0 4px;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: 9px;
+  background: #0d100d66;
+  font: 700 11px / 1 var(--font-body);
+  font-variant-numeric: tabular-nums;
 }
-.on-hud .on-asst-row__status > span + span::before {
-  content: "·";
-  margin-right: 6px;
-  color: #c1baa866;
+.on-hud .on-asst-mark .on-glyph {
+  width: 11px;
+  height: 11px;
 }
-.on-hud .on-asst-row__status .is-busy {
+.on-hud .on-asst-mark.is-busy {
   color: var(--ok);
 }
-.on-hud .on-asst-row__status .is-warn {
+.on-hud .on-asst-mark.is-warn {
   color: var(--warning);
 }
-.on-hud .on-asst-row__status .is-idle {
-  color: #c1baa8aa;
+.on-hud .on-asst-mark.is-idle {
+  color: #c1baa8cc;
 }
 /* The weaker-weapon switch under a class row: indented to the label, smaller. */
 .on-hud .on-asst-sub {
@@ -6257,28 +6271,4 @@ body.on-drag-scroll * {
 }
 .on-hud .on-asst-sub__text {
   flex: 1;
-}
-.on-hud .on-asst-alert {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 8px;
-  margin: 0 2px 4px;
-  font-size: 11.5px;
-  color: var(--warning);
-}
-.on-hud .on-asst-alert[hidden] {
-  display: none;
-}
-.on-hud .on-asst-alert__link {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--bronze-hi);
-  font: inherit;
-  text-decoration: underline dotted;
-  text-underline-offset: 2px;
-  cursor: pointer;
-}
-.on-hud .on-asst-alert__link[hidden] {
-  display: none;
 }

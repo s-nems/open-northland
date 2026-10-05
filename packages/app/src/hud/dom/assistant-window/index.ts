@@ -13,7 +13,7 @@ import type { ToolWindow } from '../../tool-panel/window-shell.js';
 import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
 import { FIGURE, GLYPH } from '../icons.js';
 import { COUNTER_TENS_STEP, createCounter } from '../parts/counter.js';
-import { button, element, setHidden, setTip, write } from '../parts/dom.js';
+import { element, setHidden, setTip, write } from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
 import { createSwitch } from '../parts/switch.js';
 import { attachTipLayer, type TipChip } from '../parts/tip-layer.js';
@@ -24,10 +24,10 @@ import {
   counterFace,
   counterFromFace,
   counterRange,
-  gearNotes,
   NOTE_TONE,
   PressHold,
   type StatusNote,
+  type StatusNoteKey,
   sameCounter,
   trainingNotes,
   weaponStocked,
@@ -74,8 +74,6 @@ export interface AssistantWindowDeps extends AssistantSource {
   readonly art: string;
   readonly goodTypeOf: (goodId: string) => number | undefined;
   readonly paintGood: GoodIconPainter;
-  /** Opens the construction window on a barracks; null leaves the missing-barracks note without a link. */
-  readonly onBuildBarracks: (() => void) | null;
   readonly cue: (cue: UiCue) => void;
 }
 
@@ -102,6 +100,15 @@ const CLASS_SPECS: readonly ClassSpec[] = [
   { kind: 'trainSpear', weapon: 'spear_iron', weaker: 'allowWoodenSpears' },
   { kind: 'trainBow', weapon: 'bow_long', weaker: 'allowShortBows' },
 ];
+/** The glyph each status mark carries. */
+const NOTE_GLYPH: Readonly<Record<StatusNoteKey, string>> = {
+  expected: GLYPH.cradle,
+  needsCouple: GLYPH.heart,
+  drilling: GLYPH.house,
+  fetchingWeapon: GLYPH.blade,
+  needsWeapon: GLYPH.blade,
+  needsMen: GLYPH.addPerson,
+};
 /** Iron tools before wooden ones, as the assistant hands them out. */
 const GEAR_ORDER: readonly GiveSwitchId[] = ['giveBoots', 'giveIronTools', 'giveWoodenTools', 'giveMead'];
 
@@ -170,11 +177,14 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     deps.paintGood(frame, goodId, box);
     return { art, count };
   };
+  /** The stock tag turns amber when an order waits on it; its tip then says so. */
   const showStock = (count: HTMLElement, amount: number, wanted: boolean): void => {
     write(count, String(amount));
-    count.classList.toggle('is-short', wanted && amount === 0);
+    const short = wanted && amount === 0;
+    count.classList.toggle('is-short', short);
     const holder = count.parentElement;
-    if (holder !== null) setTip(holder, formatMessage(copy.inStock, { count: amount }));
+    if (holder !== null)
+      setTip(holder, short ? copy.outOfStock : formatMessage(copy.inStock, { count: amount }));
   };
   const glyphArt = (markup: string): HTMLElement => element('span', 'on-asst-art', markup);
 
@@ -184,32 +194,36 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
       ? forms.endless
       : formatMessage(pluralForm(note.count, forms.counted, locale), { count: note.count });
   };
-  const statusLine = (): { line: HTMLElement; show: (notes: readonly StatusNote[]) => void } => {
-    const line = element('div', 'on-asst-row__status');
+  /** A row's status as small marks on its label line, a glyph and a count each, so the row keeps its
+   *  height whatever the assistant is doing; the sentence is the mark's tip. */
+  const statusMarks = (): { marks: HTMLElement; show: (notes: readonly StatusNote[]) => void } => {
+    const marks = element('span', 'on-asst-marks');
     let shown: string | null = null;
     return {
-      line,
+      marks,
       show: (notes) => {
         const key = notes.map((n) => `${n.key}:${n.count}`).join('|');
         if (key === shown) return;
         shown = key;
-        line.replaceChildren(
+        marks.replaceChildren(
           ...notes.map((note) => {
-            const part = element('span', `is-${NOTE_TONE[note.key]}`);
-            part.textContent = noteText(note);
-            setTip(part, copy.notes[note.key].tip);
-            return part;
+            const mark = element('span', `on-asst-mark is-${NOTE_TONE[note.key]}`, NOTE_GLYPH[note.key]);
+            if (note.count !== null) mark.append(String(note.count));
+            setTip(mark, `${noteText(note)}. ${copy.notes[note.key].tip}`);
+            return mark;
           }),
         );
-        setHidden(line, notes.length === 0);
       },
     };
   };
-  const label = (text: string, tip: string): HTMLElement => {
+  /** The label with the row's status marks after it, on one line. */
+  const label = (text: string, tip: string, marks: HTMLElement): HTMLElement => {
+    const line = element('span', 'on-asst-row__line');
     const node = element('span', 'on-asst-row__label');
     node.textContent = text;
     setTip(node, tip);
-    return node;
+    line.append(node, marks);
+    return line;
   };
   const section = (title: string, tip: string): HTMLElement => {
     const s = createSection();
@@ -236,13 +250,13 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     const row = element('div', 'on-asst-row');
     const range = counterRange(kind);
     const counter = createCounter(range, (face) => pressCounter(kind, face));
-    const status = statusLine();
+    const status = statusMarks();
     const text = copy.counters[kind];
     const endless = range.unlimited !== undefined;
     const steps = { max: range.max, step: COUNTER_TENS_STEP };
     const lessTip = formatMessage(endless ? copy.lessEndlessTip : copy.lessTip, steps);
     const moreTip = formatMessage(endless ? copy.moreEndlessTip : copy.moreTip, steps);
-    row.append(art, label(text.label, text.tip), counter.element, status.line);
+    row.append(art, label(text.label, text.tip, status.marks), counter.element);
     updates.push(() => {
       counter.update({
         value: counterFace(counterNow(kind)),
@@ -258,21 +272,15 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     return row;
   };
 
-  const switchRow = (
-    id: AssistantGrantId,
-    art: HTMLElement,
-    notes: (on: boolean) => readonly StatusNote[] = () => [],
-  ): { row: HTMLElement; on: () => boolean } => {
+  const switchRow = (id: AssistantGrantId, art: HTMLElement): { row: HTMLElement; on: () => boolean } => {
     const row = element('div', 'on-asst-row');
     const text = copy.switches[id];
     const control = createSwitch(text.label, text.tip, (next) => pressSwitch(id, next));
-    const status = statusLine();
-    row.append(art, label(text.label, text.tip), control.element, status.line);
+    row.append(art, label(text.label, text.tip, element('span', 'on-asst-marks')), control.element);
     updates.push(() => {
       const on = switchNow(id);
       control.update(on, writable);
       row.classList.toggle('on-asst-row--off', !on);
-      status.show(notes(on));
     });
     return { row, on: () => switchNow(id) };
   };
@@ -318,32 +326,11 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
   );
 
   orders.append(section(copy.military, copy.militaryTip));
-  const noBarracks = element('div', 'on-asst-alert');
-  const noBarracksText = element('span', '');
-  noBarracksText.textContent = copy.noBarracks;
-  noBarracks.append(noBarracksText);
-  const buildLink = deps.onBuildBarracks;
-  const build = buildLink === null ? null : button('on-asst-alert__link');
-  if (build !== null && buildLink !== null) {
-    build.textContent = copy.buildBarracks;
-    build.addEventListener('click', () => {
-      deps.cue('confirm');
-      buildLink();
-    });
-    noBarracks.append(build);
-  }
-  orders.append(noBarracks);
-  updates.push(() => {
-    setHidden(noBarracks, situation.hasBarracks || deps.access() === 'noSeat');
-    if (build !== null) setHidden(build, !writable);
-  });
-
   orders.append(
     counterRow('trainSoldiers', glyphArt(GLYPH.banner), () =>
       trainingNotes(counterNow('trainSoldiers'), {
         drilling: situation.bookings.drilling.trainSoldiers,
         arming: 0,
-        hasBarracks: situation.hasBarracks,
         weaponStocked: null,
       }),
     ),
@@ -357,7 +344,6 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
       trainingNotes(counterNow(spec.kind), {
         drilling: situation.bookings.drilling[spec.kind],
         arming: situation.bookings.arming[spec.kind],
-        hasBarracks: situation.hasBarracks,
         weaponStocked: stocked(),
       }),
     );
@@ -373,7 +359,7 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
   for (const id of GEAR_ORDER) {
     const good = GIVE_SWITCH_GOOD[id];
     const { art, count } = goodArt(good, ROW_ICON_PX);
-    const gear = switchRow(id, art, (on) => gearNotes(on, stockOf(good)));
+    const gear = switchRow(id, art);
     updates.push(() => showStock(count, stockOf(good), gear.on()));
     standing.append(gear.row);
   }

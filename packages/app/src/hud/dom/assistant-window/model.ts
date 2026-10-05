@@ -56,25 +56,21 @@ export function emptyBookings(): {
 
 export const NO_BOOKINGS: AssistantBookings = emptyBookings();
 
-/** What the window states beside the counters: the orders in flight and whether a barracks stands to
- *  drill in. */
+/** What the window states beside the counters: the orders in flight. */
 export interface AssistantSituation {
   readonly bookings: AssistantBookings;
-  readonly hasBarracks: boolean;
 }
 
-export const NO_SITUATION: AssistantSituation = { bookings: NO_BOOKINGS, hasBarracks: false };
+export const NO_SITUATION: AssistantSituation = { bookings: NO_BOOKINGS };
 
-/** One fact a row's status line states; `count` null where the queue never ends. */
+/** One fact a row's status marks state; `count` null where the queue never ends. */
 export type StatusNoteKey =
   | 'expected'
   | 'needsCouple'
   | 'drilling'
   | 'fetchingWeapon'
   | 'needsWeapon'
-  | 'needsMen'
-  | 'needsBarracks'
-  | 'outOfStock';
+  | 'needsMen';
 
 export interface StatusNote {
   readonly key: StatusNoteKey;
@@ -83,8 +79,8 @@ export interface StatusNote {
 
 export type StatusTone = 'busy' | 'warn' | 'idle';
 
-/** Green while the assistant works, amber where only the player can unblock it, plain while it waits
- *  for the settlement to offer someone. */
+/** Green while the assistant works, amber where a weapon the player lacks holds it up, plain while it
+ *  waits for the settlement to offer someone. */
 export const NOTE_TONE: Readonly<Record<StatusNoteKey, StatusTone>> = {
   expected: 'busy',
   needsCouple: 'idle',
@@ -92,8 +88,6 @@ export const NOTE_TONE: Readonly<Record<StatusNoteKey, StatusTone>> = {
   fetchingWeapon: 'busy',
   needsWeapon: 'warn',
   needsMen: 'idle',
-  needsBarracks: 'warn',
-  outOfStock: 'warn',
 };
 
 /** What is left to book: the counter less its orders in flight, null while it never drains. */
@@ -117,14 +111,13 @@ export function birthNotes(counter: CounterState, booked: number): readonly Stat
 export interface TrainingFacts {
   readonly drilling: number;
   readonly arming: number;
-  readonly hasBarracks: boolean;
   /** Whether a weapon this class may take lies in the seat's stock; null for the class with none. */
   readonly weaponStocked: boolean | null;
 }
 
 /**
  * A training counter's line: recruits in the barracks, recruits on their way to a weapon (or stuck for
- * one), then what still waits for a free man or for a barracks. The dispatcher counts every unarmed
+ * one), then what still waits for a free man. The dispatcher counts every unarmed
  * booking against its counter, so those are what is left to book.
  */
 export function trainingNotes(counter: CounterState, facts: TrainingFacts): readonly StatusNote[] {
@@ -139,7 +132,7 @@ export function trainingNotes(counter: CounterState, facts: TrainingFacts): read
   const booked = facts.drilling + facts.arming;
   const left = unbooked(counter, booked);
   if (left === null ? booked === 0 : left > 0) {
-    notes.push({ key: facts.hasBarracks ? 'needsMen' : 'needsBarracks', count: left });
+    notes.push({ key: 'needsMen', count: left });
   }
   return notes;
 }
@@ -151,11 +144,6 @@ export function trainingNotes(counter: CounterState, facts: TrainingFacts): read
  */
 export function weaponStocked(weapon: number, weaker: number, weakerAllowed: boolean): boolean {
   return weapon > 0 || (weakerAllowed && weaker > 0);
-}
-
-/** A standing equipment order's line: only an empty stock is worth saying. */
-export function gearNotes(on: boolean, stock: number): readonly StatusNote[] {
-  return on && stock === 0 ? [{ key: 'outOfStock', count: null }] : [];
 }
 
 /** How long a pressed value stands over the live one while its command travels: past a multiplayer

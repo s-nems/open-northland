@@ -199,7 +199,6 @@ describe('tool windows registry', () => {
         return menu;
       },
       assistantWindow: stubAssistantWindow,
-      barracksType: null,
       heldPaper,
       diplomacyRows: () => [],
       missionBook: stubMissionBook,

@@ -80,7 +80,6 @@ function mountSurfaces() {
     },
     buildings: [{ typeId: BUILDING_JOINERY, label: 'Joinery', kind: 'workplace', cost: [], trades: [] }],
     assistantWindow: stubAssistantWindow,
-    barracksType: null,
     heldPaper: createHeldPaperController(ctx, strip),
     diplomacyRows: () => [],
     missionBook: stubMissionBook,

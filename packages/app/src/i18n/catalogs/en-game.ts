@@ -1014,8 +1014,6 @@ export const enGame = {
       military: 'Military',
       militaryTip:
         'Only men without a trade go to the barracks, unmarried ones first. Nobody is taken from work.',
-      noBarracks: 'No barracks. Training will wait.',
-      buildBarracks: 'Build barracks',
       equipment: 'Equipment',
       equipmentTip: 'Adult men receive it, soldiers too. Tools only go to those working in a trade.',
       work: 'Work',
@@ -1055,11 +1053,11 @@ export const enGame = {
           tip: 'On: a recruit takes a short bow when no long bow is in stock. Off: he waits for a long one.',
         },
         postGraduates: {
-          label: 'Graduates straight to work',
+          label: 'School graduates assigned to workshops automatically',
           tip: 'A school graduate goes straight to the nearest free workplace in his trade.',
         },
         moveFlags: {
-          label: 'Gatherers move their flag',
+          label: 'Gatherers move their flag automatically',
           tip: 'When the resource by a flag runs out, the flag follows it, 3-5 tiles away.',
         },
       },
@@ -1114,21 +1112,8 @@ export const enGame = {
           endless: 'waits for free men',
           tip: 'An adult man with no trade and no errand goes to the barracks. Nobody is taken from work.',
         },
-        needsBarracks: {
-          counted: {
-            one: '{count} waits for barracks',
-            few: '{count} wait for barracks',
-            many: '{count} wait for barracks',
-          },
-          endless: 'waits for barracks',
-          tip: 'Training starts once your barracks stand.',
-        },
-        outOfStock: {
-          counted: { one: 'none in stock', few: 'none in stock', many: 'none in stock' },
-          endless: 'none in stock',
-          tip: 'Nobody gets what the store lacks. The order works again once the goods arrive.',
-        },
       },
+      outOfStock: 'None in stock. The order works again once the goods arrive.',
       inStock: 'In stock: {count}',
       less: 'Less',
       more: 'More',

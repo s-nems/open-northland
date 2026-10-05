@@ -109,7 +109,6 @@ export interface GameToolPanelDeps {
   /** A spectator's seat picker on the system bar; absent, the bar has none. */
   readonly observer?: ToolPanelOptions['observer'];
   readonly assistant: AssistantSource;
-  readonly assistantBarracksType: number | null;
   readonly papers: PapersSeam;
   readonly residents: ResidentsSeam;
   /** The diplomacy window's roster: one row per discovered player. */
@@ -285,7 +284,6 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       enqueue: deps.enqueue,
       ...(deps.enqueueTrusted !== undefined ? { enqueueTrusted: deps.enqueueTrusted } : {}),
       assistant: deps.assistant,
-      assistantBarracksType: deps.assistantBarracksType,
       papers: deps.papers,
       residents: deps.residents,
       diplomacyRows: deps.diplomacyRows,

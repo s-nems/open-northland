@@ -1,18 +1,16 @@
-import { fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   birthNotes,
   counterFace,
   counterFromFace,
   counterRange,
-  gearNotes,
   PRESS_HOLD_TICKS,
   PressHold,
   trainingNotes,
   UNLIMITED_FACE,
   weaponStocked,
 } from '../src/hud/dom/assistant-window/model.js';
-import { assistantBookingsOf, ownsBarracks } from '../src/view/assistant-situation.js';
+import { assistantBookingsOf } from '../src/view/assistant-situation.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
 const finite = (value: number) => ({ value, infinite: false });
@@ -56,7 +54,7 @@ describe('assistant status notes', () => {
   });
 
   it('follows recruits from the barracks to the weapon, then names what blocks the rest', () => {
-    const facts = { drilling: 1, arming: 1, hasBarracks: true, weaponStocked: true };
+    const facts = { drilling: 1, arming: 1, weaponStocked: true };
     expect(trainingNotes(finite(4), facts)).toEqual([
       { key: 'drilling', count: 1 },
       { key: 'fetchingWeapon', count: 1 },
@@ -68,23 +66,17 @@ describe('assistant status notes', () => {
     ]);
   });
 
-  it('blames the missing barracks rather than the men', () => {
-    const facts = { drilling: 0, arming: 0, hasBarracks: false, weaponStocked: null };
-    expect(trainingNotes(finite(3), facts)).toEqual([{ key: 'needsBarracks', count: 3 }]);
-    expect(trainingNotes(endless(), facts)).toEqual([{ key: 'needsBarracks', count: null }]);
-    expect(trainingNotes(finite(0), facts)).toEqual([]);
-  });
-
-  it('flags an equipment order only when it is on and the stock is empty', () => {
-    expect(gearNotes(true, 0)).toEqual([{ key: 'outOfStock', count: null }]);
-    expect(gearNotes(true, 4)).toEqual([]);
-    expect(gearNotes(false, 0)).toEqual([]);
+  it('says an endless training counter waits only while nobody is booked', () => {
+    const idle = { drilling: 0, arming: 0, weaponStocked: null };
+    expect(trainingNotes(finite(3), idle)).toEqual([{ key: 'needsMen', count: 3 }]);
+    expect(trainingNotes(endless(), idle)).toEqual([{ key: 'needsMen', count: null }]);
+    expect(trainingNotes(endless(), { ...idle, drilling: 1 })).toEqual([{ key: 'drilling', count: 1 }]);
+    expect(trainingNotes(finite(0), idle)).toEqual([]);
   });
 });
 
 const SEAT = 1;
 const OTHER = 2;
-const BARRACKS = 30;
 
 const wife = (id: number, player: number, sex: 'female' | 'male'): Ent => ({
   id,
@@ -96,14 +88,6 @@ const recruit = (id: number, player: number, intent: string, armed: boolean, dri
     Owner: { player },
     AssistantRecruit: { intent, armed },
     ...(drilling ? { TrainingOrder: { house: 0 } } : {}),
-  },
-});
-const barracks = (id: number, player: number, built: number, site = false): Ent => ({
-  id,
-  components: {
-    Owner: { player },
-    Building: { buildingType: BARRACKS, built },
-    ...(site ? { UnderConstruction: { labor: 0 } } : {}),
   },
 });
 
@@ -125,13 +109,6 @@ describe('assistant bookings off the snapshot', () => {
     expect(bookings.sons).toBe(1);
     expect(bookings.drilling).toEqual({ trainSoldiers: 1, trainSword: 1, trainSpear: 0, trainBow: 0 });
     expect(bookings.arming).toEqual({ trainSoldiers: 0, trainSword: 1, trainSpear: 0, trainBow: 0 });
-  });
-
-  it("counts a finished barracks of the seat, not a site or another seat's", () => {
-    const done = fx.fromInt(1);
-    expect(ownsBarracks(snapshotOf([barracks(1, OTHER, done)]), SEAT, [BARRACKS])).toBe(false);
-    expect(ownsBarracks(snapshotOf([barracks(1, SEAT, 0, true)]), SEAT, [BARRACKS])).toBe(false);
-    expect(ownsBarracks(snapshotOf([barracks(1, SEAT, done)]), SEAT, [BARRACKS])).toBe(true);
   });
 });
 

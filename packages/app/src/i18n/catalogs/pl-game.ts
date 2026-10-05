@@ -988,8 +988,6 @@ export const plGame = {
       military: 'Wojsko',
       militaryTip:
         'Do koszar idą tylko mężczyźni bez zawodu, najpierw nieżonaci. Nikt nie jest zabierany z pracy.',
-      noBarracks: 'Brak koszar. Szkolenie poczeka.',
-      buildBarracks: 'Zbuduj koszary',
       equipment: 'Wyposażenie',
       equipmentTip:
         'Dostają dorośli mężczyźni, także żołnierze. Narzędzia tylko ci, którzy pracują w zawodzie.',
@@ -1036,11 +1034,11 @@ export const plGame = {
           tip: 'Włączone: rekrut weźmie krótki łuk, gdy w magazynie nie ma długiego. Wyłączone: poczeka na długi.',
         },
         postGraduates: {
-          label: 'Absolwenci od razu do pracy',
+          label: 'Absolwenci szkół automatycznie przydzielani do warsztatów',
           tip: 'Absolwent szkoły idzie od razu do najbliższego wolnego miejsca pracy w swoim zawodzie.',
         },
         moveFlags: {
-          label: 'Zbieracze przenoszą flagę',
+          label: 'Zbieracze automatycznie przenoszą flagę',
           tip: 'Gdy surowiec przy fladze się kończy, flaga przesuwa się za nim, 3-5 pól od niego.',
         },
       },
@@ -1091,21 +1089,8 @@ export const plGame = {
           endless: 'czeka na wolnych mężczyzn',
           tip: 'Do koszar idzie dorosły mężczyzna bez zawodu i bez zajęcia. Nikt nie jest zabierany z pracy.',
         },
-        needsBarracks: {
-          counted: {
-            one: '{count} czeka na koszary',
-            few: '{count} czekają na koszary',
-            many: '{count} czeka na koszary',
-          },
-          endless: 'czeka na koszary',
-          tip: 'Szkolenie zacznie się, gdy staną twoje koszary.',
-        },
-        outOfStock: {
-          counted: { one: 'brak w magazynie', few: 'brak w magazynie', many: 'brak w magazynie' },
-          endless: 'brak w magazynie',
-          tip: 'Nikt nie dostanie tego, czego nie ma w magazynie. Polecenie zadziała, gdy towar się pojawi.',
-        },
       },
+      outOfStock: 'Brak w magazynie. Polecenie zadziała, gdy towar się pojawi.',
       inStock: 'W zapasach: {count}',
       less: 'Mniej',
       more: 'Więcej',
