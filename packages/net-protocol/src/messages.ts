@@ -81,8 +81,8 @@ export interface RoomMemberView {
   readonly roundTripMs: number | null;
   /** The member's assigned input delay in ticks; null while it is disconnected. */
   readonly delayTicks: number | null;
-  /** Ticks the member's acknowledgements trail the clock; 0 before the clock runs and while the relay
-   *  does not follow its world (loading, gone, out of sync). */
+  /** Ticks the member's acknowledgements trail the clock; 0 before the clock runs, after the match
+   *  ended, and while the relay does not follow its world (loading, gone, out of sync). */
   readonly behindTicks: number;
 }
 

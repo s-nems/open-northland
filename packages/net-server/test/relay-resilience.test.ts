@@ -62,6 +62,17 @@ const KEPT_UP_MS = 8000;
 const FAR_BEHIND_MS = 6000;
 /** Wall time over which the frame rate is counted. */
 const RATE_WINDOW_MS = 3000;
+/** Wall time a dropped member stays away, far past the grace. */
+const LONG_ABSENCE_MS = 60_000;
+/** Wall time a member has lagged when it drops, well within the grace. */
+const LAGGED_BEFORE_DROP_MS = 1000;
+/** A lag past `LAG_BEHIND_MS` and short of `SLOW_AT_ONCE_MS`, in wall time of frames. */
+const RETURN_BEHIND_MS = 3000;
+/** Wall time the clock runs at `SLOW_GOVERNED_SPEED` past a snapshot: frames past the release
+ *  threshold and short of the lag one. */
+const PAST_SNAPSHOT_MS = 2000;
+/** Ticks of margin around a grace boundary, for the advance a hold or a return lands on. */
+const BOUNDARY_TICKS = 4;
 const answeredPing = new WeakMap<Peer, number>();
 const ackedTick = new WeakMap<Peer, number>();
 
@@ -391,6 +402,98 @@ describe('pacing the clock for a slow member', () => {
     tick(s, [s.a, s.b], RATE_WINDOW_MS);
     expect(lastTick(s.a)).toBeGreaterThan(held);
     expect(s.a.last('clock')?.governed).toEqual(governed);
+  });
+
+  it('keeps a slow member slow through a hold for its dropped connection', () => {
+    const s = startedRoom();
+    const behind = framesIn(LAGGING_MS, SETTINGS.speed);
+    trail(s, s.a, s.b, behind, SLOW_AFTER_MS, SLOW_LOAD);
+    const governed = { nick: 'Bartek', speed: SLOW_GOVERNED_SPEED, cause: 'load' };
+    expect(s.a.last('clock')?.governed).toEqual(governed);
+
+    s.relay.disconnect(s.b.handle);
+    tick(s, [s.a], LONG_ABSENCE_MS);
+    expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'gone' }]);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    back.send({ kind: 'loaded', tick: ackedTick.get(s.b) ?? 0, world: 0 });
+    ackedTick.set(back, ackedTick.get(s.b) ?? 0);
+    trail(s, s.a, back, behind, TICK_MS * 2, SLOW_LOAD);
+    expect(s.a.last('waiting')?.for).toEqual([]);
+    expect(s.a.last('clock')?.governed).toEqual(governed);
+  });
+
+  it('pauses a lagging member’s grace while the clock holds for it', () => {
+    const s = startedRoom();
+    const behind = framesIn(RETURN_BEHIND_MS, SETTINGS.speed);
+    play(s, [s.a, s.b], KEPT_UP_MS);
+    trail(s, s.a, s.b, behind, LAG_ONSET_MS + LAGGED_BEFORE_DROP_MS, SLOW_LOAD);
+    expect(s.a.last('clock')?.governed).toBeNull();
+
+    s.relay.disconnect(s.b.handle);
+    tick(s, [s.a], LONG_ABSENCE_MS);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    const resumedAt = lastTick(s.a) - behind;
+    back.send({ kind: 'loaded', tick: resumedAt, world: 0 });
+    ackedTick.set(back, resumedAt);
+    const graceLeftMs = SLOW_GRACE_MS - LAGGED_BEFORE_DROP_MS;
+    trail(s, s.a, back, behind, graceLeftMs - TICK_MS * BOUNDARY_TICKS, SLOW_LOAD);
+    expect(s.a.last('waiting')?.for).toEqual([]);
+    expect(s.a.last('clock')?.governed).toBeNull();
+    trail(s, s.a, back, behind, TICK_MS * BOUNDARY_TICKS * 2, SLOW_LOAD);
+    expect(s.a.last('clock')?.governed).toMatchObject({ nick: 'Bartek' });
+  });
+
+  it('paces for nobody while a slow member that diverged rebuilds, nor after, until it lags again', () => {
+    const s = startedRoom();
+    const behind = framesIn(LAGGING_MS, SETTINGS.speed);
+    trail(s, s.a, s.b, behind, SLOW_AFTER_MS, SLOW_LOAD);
+    expect(s.a.last('clock')?.governed).toMatchObject({ nick: 'Bartek' });
+
+    const diverged = (ackedTick.get(s.b) ?? 0) + 1;
+    s.b.send({
+      kind: 'ack',
+      load: SLOW_LOAD,
+      tick: diverged,
+      digest: { ...digest(1), economy: 9 },
+      world: 0,
+    });
+    expect(s.b.last('desync')?.tick).toBe(diverged);
+    tick(s, [s.a, s.b], TICK_MS * 2);
+    expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'resync' }]);
+    expect(s.a.last('clock')?.governed).toBeNull();
+
+    const snapshotTick = lastTick(s.a);
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: snapshotTick, bytes: BLOB });
+    expect(s.b.last('blob')?.tick).toBe(snapshotTick);
+    ackedTick.set(s.b, snapshotTick);
+    trail(s, s.a, s.b, behind, LAG_ONSET_MS + SHORT_OF_GRACE_MS, SLOW_LOAD);
+    expect(s.a.last('waiting')?.for).toEqual([]);
+    expect(s.a.last('clock')?.governed).toBeNull();
+    trail(s, s.a, s.b, behind, SLOW_GRACE_MS - SHORT_OF_GRACE_MS + TICK_MS * BOUNDARY_TICKS, SLOW_LOAD);
+    expect(s.a.last('clock')?.governed).toMatchObject({ nick: 'Bartek' });
+  });
+
+  it('paces for nobody after a slow member’s world is rebuilt from the snapshot, while it trails under the lag', () => {
+    const s = startedRoom();
+    const behind = framesIn(LAGGING_MS, SETTINGS.speed);
+    trail(s, s.a, s.b, behind, SLOW_AFTER_MS, SLOW_LOAD);
+    const snapshotTick = lastTick(s.a);
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, to: null, tick: snapshotTick, bytes: BLOB });
+    trail(s, s.a, s.b, behind, PAST_SNAPSHOT_MS, SLOW_LOAD);
+    expect(s.a.last('clock')?.governed).toMatchObject({ nick: 'Bartek' });
+    // Past the release, so only a forgotten verdict lets it go; short of the lag, so it is not lagging.
+    const rebuiltBehind = lastTick(s.a) - snapshotTick;
+    expect(rebuiltBehind).toBeGreaterThan(RELEASE_TICKS);
+    expect(rebuiltBehind).toBeLessThanOrEqual(LAG_TICKS);
+
+    s.relay.disconnect(s.b.handle);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    back.send({ kind: 'loaded', tick: null });
+    expect(back.last('blob')?.tick).toBe(snapshotTick);
+    ackedTick.set(back, snapshotTick);
+    tick(s, [s.a, back], TICK_MS);
+    expect(s.a.last('waiting')?.for).toEqual([]);
+    expect(s.a.last('clock')?.governed).toBeNull();
   });
 
   it('paces at once for a member trailing past the at-once lag, without the grace', () => {

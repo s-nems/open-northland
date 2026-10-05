@@ -87,9 +87,10 @@ round trip to the member in milliseconds (0 until its first pong) and `delayTick
 delay (see [Input delay](#input-delay)), both null while it is disconnected. `behindTicks` is how many
 ticks its acknowledgements trail the clock: 0 before the clock runs, after the match ended, and while
 the relay does not follow its world (disconnected, loading, or out of sync). Once the room has
-started, a moved load, progress, round trip, delay or `behindTicks` alone sends a view at most once
-per `LOAD_VIEW_INTERVAL_MS` (1 s) per room; in the lobby only progress does. Any other change carries
-the current figures with it.
+started, loading included, a moved load, progress, round trip, delay or `behindTicks` alone sends a
+view at most once per `LOAD_VIEW_INTERVAL_MS` (1 s) per room. Before `start` no figure alone sends a
+view: a link measurement (`linkMeasured`) is stored and shown with the next view, and progress is
+refused with `gameNotStarted`. Any other change carries the current figures with it.
 
 - `claimSeat { player }` sits down in a seat nobody holds, which makes it `human` whatever it was;
   `claimSeat { player: null }` stands up and returns it to its lobby setting.
@@ -272,13 +273,14 @@ loading screen. A seated member that leaves the room before the clock runs ends 
 A member the relay follows (connected, heard, loaded and in sync) is lagging while its acknowledged
 tick trails the clock by more than `LAG_BEHIND_MS` (1 s) of frames at the requested speed, 12 ticks
 at speed 1 and 12 times the speed otherwise. A lagging member catches up alone and the room notices
-nothing. Once it has lagged for `SLOW_GRACE_MS` (4 s) of wall time in a row it is slow, and stays slow
+nothing. Once it has lagged for `SLOW_GRACE_MS` (4 s) of wall time on end it is slow, and stays slow
 until it trails by no more than `GOVERN_RELEASE_MS` (0.5 s) of frames. A member trailing by more than
 `SLOW_AT_ONCE_MS` (`LAG_BEHIND_MS + SLOW_GRACE_MS`, 5 s) of frames is slow at once, without the grace.
-A member the clock holds for is not judged while held, since the held clock adds no lag, and keeps
-its verdict and lag onset through the hold: a slow member that goes silent is slow again on its
-return. Only leaving the room, or a world rebuilt from a snapshot after a resync or a return without
-one, clears them.
+A member the clock holds for is not judged while held, since the held clock adds no lag. It keeps its
+verdict through the hold, and its grace pauses: wall time under a hold for it does not count toward
+`SLOW_GRACE_MS`. A slow member that goes silent is slow again on its return; one that had lagged 1 s
+has 3 s of grace left on its return, however long it was away. Only leaving the room, or a world
+rebuilt from a snapshot after a resync or a return without one, clears the verdict and the lag.
 
 A slow member is never waited for, gets no countdown and cannot be voted out. While any member is
 slow the relay governs the clock, whatever the requested speed. Each slow member's bound is the lower
@@ -427,10 +429,10 @@ diverged client that drops leaves the queue: on its return it asks with `loaded 
 takes the cache, or the next snapshot when none is cached yet or the cache is held back. Nothing is
 sent to it before it asks.
 
-A returning token gets `room`, its pending `desync` notice if it has one, `start { session,
-snapshotTick }`, `clock` while the game runs, and `ended` once it has ended. `snapshotTick`
-is the cached snapshot's tick, or null when the relay still holds every frame from the first. The
-client answers `loaded`:
+A returning token gets `room`, `chatHistory`, its pending `desync` notice if it has one,
+`start { session, snapshotTick }`, `clock` while the game runs, and `ended` once it has ended.
+`snapshotTick` is the cached snapshot's tick, or null when the relay still holds every frame from the
+first. The client answers `loaded`:
 
 - `{ tick, world }` with the tick its world still stands at and that world's generation, and the
   relay sends the frames after it, or the cached snapshot and the frames after that when the frames

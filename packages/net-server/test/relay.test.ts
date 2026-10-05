@@ -20,6 +20,7 @@ import {
   startedRoom,
   TOKEN_A,
   TOKEN_B,
+  TOKEN_C,
 } from './support/message-stage.js';
 
 /**
@@ -564,6 +565,22 @@ describe('chat history', () => {
     const back = s.introduce(TOKEN_B, 'Bartek');
     expect(kindsFrom(back, 0)).toEqual(['welcome', 'room', 'chatHistory', 'start', 'clock']);
     expect(back.last('chatHistory')?.lines).toEqual([lobbyLine, gameLine]);
+  });
+
+  it('keeps each room’s lines to that room', () => {
+    const s = stage();
+    const a = s.introduce(TOKEN_A, 'Ania');
+    a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    const b = s.introduce(TOKEN_B, 'Bartek');
+    b.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    a.send({ kind: 'chat', text: 'tu Ania' });
+    b.send({ kind: 'chat', text: 'tu Bartek' });
+    expect(a.of('chat').map((line) => line.from)).toEqual(['Ania']);
+    expect(b.of('chat').map((line) => line.from)).toEqual(['Bartek']);
+
+    const c = s.introduce(TOKEN_C, 'Cezary');
+    c.send({ kind: 'joinRoom', roomId: b.last('room')?.room.id ?? '' });
+    expect(c.last('chatHistory')?.lines).toEqual([{ from: 'Bartek', text: 'tu Bartek', tick: null }]);
   });
 
   it('keeps the newest lines up to its cap', () => {

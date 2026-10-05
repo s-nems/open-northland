@@ -305,9 +305,12 @@ export class Game {
     const waited: Waited[] = [];
     for (const member of this.members.values()) {
       const reason = this.waitReason(member, now);
-      if (reason === null)
+      if (reason === null) {
         this.pacing.observe(member.token, this.clock.tick - member.ackedTick, this.clock.speed, now);
-      else waited.push({ token: member.token, nick: member.nick, reason });
+      } else {
+        this.pacing.hold(member.token, now);
+        waited.push({ token: member.token, nick: member.nick, reason });
+      }
     }
     if (this.waiting.update(waited, now)) this.broadcast(this.waiting.message(now));
     this.clock.hold(waited.length > 0);
