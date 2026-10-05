@@ -42,6 +42,9 @@ export interface HudSystemBar {
   setLook(look: SpeedBarLook | null): void;
   /** Show the tick's figures and clock; the same model twice costs nothing. */
   update(model: HudModel): void;
+  /** Hang `node` just left of the bar, right-aligned to it on its vertical centre; null takes the hung
+   *  node down. The bar owns the place, the caller the node. */
+  setAside(node: HTMLElement | null): void;
   dispose(): void;
 }
 
@@ -102,8 +105,12 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   menu.innerHTML = menuArt(MENU_ART_PX);
   menu.addEventListener('click', deps.onMenu);
 
+  // Out of the bar's flex row: it stands on the bar's left edge, whatever the counters' width.
+  const aside = document.createElement('div');
+  aside.className = 'on-bar__aside';
+
   if (picker !== null) bar.append(picker.element);
-  bar.append(summary.element, clock, speed, menu);
+  bar.append(summary.element, clock, speed, menu, aside);
   plane.append(bar);
   const showSpeed = (): void => {
     if (control === null) return;
@@ -143,6 +150,10 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
           formatMessage(clockCopy.count, { name: clockCopy.clock, count: text }),
         );
       }
+    },
+    setAside: (node) => {
+      if (node === null) aside.replaceChildren();
+      else if (aside.firstElementChild !== node) aside.replaceChildren(node);
     },
     dispose: () => {
       picker?.dispose();

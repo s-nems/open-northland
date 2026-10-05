@@ -254,11 +254,16 @@ export const plGame = {
         behind: 'Zaległość',
         vote: 'Wyrzucenie',
       },
-      columnTips: {
-        ping: 'Czas odpowiedzi serwera',
-        delay: 'Opóźnienie wejścia w krokach',
-        cost: 'Ile kosztuje krok na tej maszynie wobec czasu, jaki ma przy rzeczywistym tempie; powyżej 100% nie nadąża',
-        behind: 'O ile świat gracza zostaje za zegarem pokoju',
+      tips: {
+        ping: 'Czas obiegu do serwera i z powrotem',
+        delay: 'O ile kroków później wykonuje się rozkaz; wynika z pingu i jego wahań',
+        cost: 'Ile budżetu jednego kroku przy obecnym tempie zużywa ta maszyna; ponad 100% znaczy, że nie nadąża',
+        behind: 'O ile sekund gracz jest za zegarem pokoju',
+        vote: 'Głosowanie otwiera się po minucie wstrzymania gry; co najmniej połowa pozostałych graczy wyrzuca',
+        requested: 'Tempo wybrane w pokoju',
+        running: 'Tempo, w jakim naprawdę idzie zegar pokoju; niższe od ustawionego, gdy ktoś spowalnia grę',
+        history:
+          'Tempo zegara pokoju (linia ciągła) i twojego świata (przerywana) w ostatnich dwóch minutach',
       },
       you: 'ty',
       status: {

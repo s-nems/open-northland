@@ -1,7 +1,14 @@
 import type { UiCue } from '@open-northland/audio';
-import { createNetBanners } from '../../hud/dom/network-banners.js';
+import { createNetStatusLine } from '../../hud/dom/network-status-line.js';
+import type { Rect } from '../../hud/geometry.js';
 import { navBeamRect } from '../../hud/nav-beam.js';
-import type { NetClockModel, NetPanelSource, NetPlayerRow } from '../../hud/network/model.js';
+import {
+  isHeldStatus,
+  type NetClockModel,
+  type NetPanelModel,
+  type NetPanelSource,
+  type NetPlayerRow,
+} from '../../hud/network/model.js';
 import { speedBarLook } from '../../hud/network/text.js';
 import type { ToolPanelController } from '../../hud/tool-panel/index.js';
 import { mountChatPanel } from '../net/chat-panel.js';
@@ -9,28 +16,36 @@ import { speedControlFor } from '../net/session-clock.js';
 
 export interface NetOverlaysDeps {
   readonly source: NetPanelSource;
-  /** The HUD's DOM plane, which the banners mount on. */
-  readonly plane: HTMLElement;
   readonly scale: () => number;
-  /** The chat log's left edge in client px, clear of the minimap. */
-  readonly leftPx: () => number;
+  /** The minimap's box in client px, which the chat log stands on; null while it is hidden. */
+  readonly minimap: () => Rect | null;
   /** The current tool panel controller; a HUD rescale replaces it. */
   readonly controller: () => ToolPanelController;
   readonly cue: (cue: UiCue) => void;
+  /** Wall ms, for how long a chat line lingers. */
+  readonly now?: () => number;
 }
 
 export interface NetOverlays {
-  /** Once a frame: the chat's newest lines, the banners, and the speed segments on a new clock. */
+  /** Once a frame: the chat's newest lines, the status line, the network window over a hold, and the
+   *  speed segments on a new clock. */
   refresh(): void;
   dispose(): void;
 }
 
+/** True while the relay holds the clock for a member: gone, silent, loading or resyncing. */
+const waitsForSomeone = (model: NetPanelModel): boolean =>
+  model.players.some((row) => isHeldStatus(row.status));
+
 /** What a relayed game shows beside the network window, all read off the one panel model: the chat
- *  log, the held banner, the slowed line, and the speed segments at the room's running speed. */
+ *  log over the minimap, the status line beside the top-right bar, and the speed segments at the
+ *  room's running speed. A hold opens the window by itself and its end closes it again, unless the
+ *  player took the window over meanwhile. */
 export function mountNetOverlays(deps: NetOverlaysDeps): NetOverlays {
   const { source } = deps;
   const chat = mountChatPanel({
-    leftPx: deps.leftPx,
+    scale: deps.scale,
+    minimap: deps.minimap,
     beam: () => {
       // The HUD plane is the viewport at 1 / scale design px; the beam stands centred on its foot.
       const scale = deps.scale();
@@ -38,29 +53,47 @@ export function mountNetOverlays(deps: NetOverlaysDeps): NetOverlays {
       return { x: beam.x * scale, y: beam.y * scale, w: beam.w * scale, h: beam.h * scale };
     },
     onSend: (text) => source.say(text),
+    ...(deps.now !== undefined ? { now: deps.now } : {}),
   });
-  const banners = createNetBanners({
-    plane: deps.plane,
+  /** True while the window is open because a hold opened it; any close by the player clears it. */
+  let autoOpened = false;
+  const statusLine = createNetStatusLine({
     source,
-    scale: deps.scale,
-    chatAnchor: () => chat.anchor(),
-    onOpenPanel: () => deps.controller().openNetwork(),
     panelOpen: () => deps.controller().networkOpen(),
+    onOpenPanel: () => {
+      autoOpened = false;
+      deps.controller().openNetwork();
+    },
     cue: deps.cue,
   });
+  let waiting = false;
   let syncedClock: NetClockModel | null = null;
   let syncedPlayers: readonly NetPlayerRow[] | null = null;
   let syncedController: ToolPanelController | null = null;
+
+  const followHold = (controller: ToolPanelController, model: NetPanelModel): void => {
+    if (!controller.networkOpen()) autoOpened = false;
+    const nowWaiting = waitsForSomeone(model);
+    if (nowWaiting === waiting) return;
+    waiting = nowWaiting;
+    if (waiting && !controller.networkOpen()) {
+      controller.openNetwork();
+      autoOpened = true;
+    } else if (!waiting && autoOpened) {
+      controller.closeNetwork();
+      autoOpened = false;
+    }
+  };
+
   return {
     refresh: () => {
-      chat.updateLayout();
-      chat.setHidden(deps.controller().networkOpen());
+      const controller = deps.controller();
       const model = source.model();
       if (model !== null) {
-        chat.show(model.chat, model.chatVersion);
-        // A rescaled HUD's new bar starts plain, so it takes the clock again.
-        const controller = deps.controller();
+        followHold(controller, model);
+        // A rescaled HUD's new bar starts plain and bare, so it takes the clock and the line again.
         const rescaled = controller !== syncedController;
+        if (rescaled) controller.hangBesideBar(statusLine.element);
         if (rescaled || clockMoved(syncedClock, model.clock)) {
           controller.syncSpeed(speedControlFor(model.clock));
         }
@@ -71,10 +104,12 @@ export function mountNetOverlays(deps: NetOverlaysDeps): NetOverlays {
         syncedPlayers = model.players;
         syncedController = controller;
       }
-      banners.refresh();
+      chat.setHidden(controller.networkOpen());
+      if (model !== null) chat.refresh(model.chat, model.chatVersion);
+      statusLine.refresh();
     },
     dispose: () => {
-      banners.dispose();
+      deps.controller().hangBesideBar(null);
       chat.dispose();
     },
   };

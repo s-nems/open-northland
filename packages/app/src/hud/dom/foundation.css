@@ -1775,6 +1775,18 @@ body.on-drag-scroll * {
 .on-hud .on-bar--right {
   border-radius: 0 0 0 5px;
 }
+/* A note hung on the bar's left edge, right-aligned to it on its vertical centre. */
+.on-hud .on-bar__aside {
+  --aside-gap: 8px;
+  position: absolute;
+  top: 50%;
+  right: calc(100% + var(--aside-gap));
+  width: max-content;
+  display: flex;
+  justify-content: flex-end;
+  translate: 0 -50%;
+  pointer-events: none;
+}
 .on-hud .on-summary {
   display: flex;
   align-items: center;
@@ -6731,12 +6743,13 @@ body.on-drag-scroll * {
   margin: 0;
   padding: 8px 8px 6px;
 }
+/* Fixed row height and columns: a status, a vote or a kick button coming or going moves nothing. */
 .on-hud .on-net-row {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.25fr) 50px 46px 64px 64px 104px;
   align-items: center;
   column-gap: 8px;
-  min-height: 36px;
+  height: 36px;
   padding: 2px 4px;
   border-bottom: 1px solid #8d754944;
   font-size: 13px;
@@ -6745,7 +6758,7 @@ body.on-drag-scroll * {
   border-bottom: 0;
 }
 .on-hud .on-net-row--head {
-  min-height: 0;
+  height: auto;
   padding-bottom: 4px;
   border-bottom: 1px solid #8d7549aa;
   font: 700 10.5px var(--font-body);
@@ -6753,8 +6766,9 @@ body.on-drag-scroll * {
   text-transform: uppercase;
   color: var(--ink-muted);
 }
-.on-hud .on-net-row--head > span[title] {
-  cursor: help;
+/* Only what explains itself on hover takes the help cursor; the kick button keeps its pointer. */
+.on-hud .on-window--network [data-tip]:not(button) {
+  cursor: var(--cursor-help, help);
 }
 .on-hud .on-net-row--head > span:nth-child(n + 3) {
   text-align: right;
@@ -6836,16 +6850,25 @@ body.on-drag-scroll * {
 .on-hud .on-net-vote {
   display: flex;
   justify-content: flex-end;
+  min-width: 0;
   color: var(--ink-muted);
   font-size: 12px;
   text-align: right;
 }
-.on-hud .on-net-vote > span[hidden],
+.on-hud .on-net-vote__note {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.on-hud .on-net-vote__note[hidden],
 .on-hud .on-net-kick[hidden] {
   display: none;
 }
 .on-hud .on-net-kick {
+  max-width: 100%;
+  overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .on-hud .on-net-clock {
   display: grid;
@@ -6869,20 +6892,37 @@ body.on-drag-scroll * {
   color: var(--muted);
   font-size: 13px;
 }
+.on-hud .on-net-figure__label {
+  white-space: nowrap;
+}
+/* Fixed width, one line: the running speed's paused or held word fits without moving the label. */
 .on-hud .on-net-figure__value {
+  flex: 0 0 150px;
+  overflow: hidden;
   color: var(--text-hi);
   font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .on-hud .on-net-figure__value--governed {
   color: var(--warning);
 }
+/* A reserved line: one line tall whether it says something or not, a hidden one keeping its box; a
+   longer text ends in an ellipsis (the world's and the link's notices carry the whole in their tip). */
 .on-hud .on-net-note {
+  flex-shrink: 0;
+  height: 17px;
   margin: 2px 0 0;
+  overflow: hidden;
   font-size: 13px;
-  line-height: 1.3;
+  line-height: 17px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .on-hud .on-net-note[hidden] {
-  display: none;
+  display: block;
+  visibility: hidden;
 }
 .on-hud .on-net-note--warn,
 .on-hud .on-net-note--self {
@@ -6895,6 +6935,7 @@ body.on-drag-scroll * {
   color: var(--danger);
 }
 .on-hud .on-net-chart {
+  position: relative;
   display: grid;
   gap: 3px;
   margin: 0;
@@ -6930,8 +6971,14 @@ body.on-drag-scroll * {
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
+/* Laid over the plot, so it takes no room of its own. */
 .on-hud .on-net-chart__empty {
-  margin: -40px 0 22px;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  margin: 0;
+  transform: translateY(-50%);
   color: var(--muted);
   font-size: 12px;
   text-align: center;
@@ -6979,19 +7026,20 @@ body.on-drag-scroll * {
   color: var(--text-hi);
   font-variant-numeric: tabular-nums;
 }
+/* A fixed height whatever the history holds; it gives way first on a short screen, so the input under
+   it stays in view. */
 .on-hud .on-net-chat {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 84px;
+  flex: 0 1 auto;
+  height: 162px;
+  min-height: 66px;
   margin: 0;
   padding: 6px 8px;
 }
-/* The chat gives way first on a short screen, so the input under it stays in view. */
 .on-hud .on-net-chat__list {
   flex: 1 1 auto;
   min-height: 0;
-  max-height: 150px;
   overflow: auto;
   margin: 0;
   padding: 0;
@@ -7024,69 +7072,48 @@ body.on-drag-scroll * {
 .on-hud .on-net-chat__empty[hidden] {
   display: none;
 }
+/* The window's tip chip, on the plane above every window. */
+.on-hud .on-net-tip {
+  position: absolute;
+  z-index: 300;
+  max-width: 280px;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid #a18454;
+  border-radius: 3px;
+  background: linear-gradient(130deg, #2e3a30, #16231d);
+  color: #f1e4c6;
+  box-shadow:
+    0 3px 9px #0008,
+    inset 0 0 0 1px #0c151277;
+  font: 13px / 1.35 var(--font-body);
+  pointer-events: none;
+}
+.on-hud .on-net-tip[hidden] {
+  display: none;
+}
 .on-hud .on-net-say {
   flex-shrink: 0;
   margin-top: 8px;
 }
-/* Below the system bar's row, so a wide banner never runs under the bar on a narrow screen. */
-.on-hud .on-net-held {
-  position: absolute;
-  top: 66px;
-  left: 50%;
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  min-width: 320px;
-  max-width: 560px;
-  padding: 12px 20px 14px;
-  transform: translateX(-50%);
-  text-align: center;
-}
-.on-hud .on-net-held[hidden] {
-  display: none;
-}
-.on-hud .on-net-held__title {
-  margin: 0;
-  font: 700 19px / 1.1 var(--font-title);
-  letter-spacing: 0.03em;
-  color: var(--warning);
-  text-shadow: 0 2px 2px #000;
-}
-.on-hud .on-net-held__notice {
-  margin: 0;
-  color: var(--text);
-  font-size: 13px;
-}
-.on-hud .on-net-held__lines {
-  display: grid;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  color: var(--text-hi);
-  font-size: 14px;
-}
-.on-hud .on-net-held > [hidden] {
-  display: none;
-}
-.on-hud .on-net-held__open {
-  margin-top: 4px;
-}
-/* Just above the chat log, at its left edge; the owner sets --left and --bottom in design px. */
+/* The net status line: hung in the top-right bar's aside, one line wide. */
 .on-hud .on-net-slowed {
-  position: absolute;
-  left: var(--left, 0);
-  bottom: var(--bottom, 0);
   max-width: 420px;
+  overflow: hidden;
   padding: 4px 10px;
   border: 1px solid color-mix(in srgb, var(--warning) 55%, transparent);
   border-radius: 3px;
   background: #182521d9;
   color: var(--warning);
   font-size: 13px;
-  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   pointer-events: auto;
   box-shadow: 0 2px 6px #0008;
+}
+.on-hud .on-net-slowed--notice {
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+  color: var(--danger);
 }
 .on-hud .on-net-slowed:hover {
   background: #273832;

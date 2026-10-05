@@ -310,11 +310,14 @@ export interface ToolPanelController {
   /** How the speed segments read beside the control; while `held`, the pause and speed presses are
    *  refused, from the bar and the keys alike. */
   setSpeedLook(look: SpeedBarLook | null): void;
-  /** Open the network window alone, as the game menu and the net banners do; nothing outside a
+  /** Open the network window alone, as the game menu and the net status line do; nothing outside a
    *  relayed game. */
   openNetwork(): void;
-  /** True while the network window is open; the chat log and the held banner step aside for it. */
+  closeNetwork(): void;
+  /** True while the network window is open; the chat log and the net status line step aside for it. */
   networkOpen(): boolean;
+  /** Hang `node` just left of the top-right bar; null takes it down. */
+  hangBesideBar(node: HTMLElement | null): void;
   dispose(): void;
 }
 
@@ -942,7 +945,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         systemBar.setLook(look);
       },
       openNetwork: () => showNetwork(true),
+      closeNetwork: () => windows.byId.network.close(),
       networkOpen: () => windows.byId.network.isOpen(),
+      hangBesideBar: (node) => systemBar.setAside(node),
       restore(state): void {
         speed.restore(state.speed);
         windows.restore(state.windows);

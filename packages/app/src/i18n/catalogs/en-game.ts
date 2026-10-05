@@ -258,11 +258,15 @@ export const enGame = {
         behind: 'Behind',
         vote: 'Kick vote',
       },
-      columnTips: {
-        ping: 'Round trip to the relay',
-        delay: 'Input delay in ticks',
-        cost: 'What a tick costs the machine, against the time it has at the running speed; over 100% it cannot keep up',
-        behind: 'How far its world trails the room clock',
+      tips: {
+        ping: 'The round trip to the server and back',
+        delay: 'How many ticks later an order runs; it follows the ping and how much it varies',
+        cost: "How much of one tick's budget at the current pace this machine uses; over 100% it cannot keep up",
+        behind: 'How many seconds the player trails the room clock',
+        vote: 'The vote opens after a minute of a held game; at least half of the other players kick',
+        requested: 'The pace the room picked',
+        running: 'The pace the room clock really runs at; below the requested one while someone slows the game',
+        history: "The room clock's pace (solid) and your own world's (dashed) over the last two minutes",
       },
       you: 'you',
       status: {

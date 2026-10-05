@@ -241,8 +241,6 @@ const NO_PAPERS: readonly Paper[] = [];
 const NO_RESIDENTS: readonly ResidentRow[] = [];
 /** Above the world layers, below the HUD plane the tool panel and the minimap share. */
 const SCRIPT_OVERLAY_Z = 900;
-/** Clearance between the minimap window and an overlay mounted beside it. */
-const BESIDE_MINIMAP_GAP_PX = 12;
 
 /** Mount the standard in-game HUD over the assembled world and start the session's frame loop. */
 export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle> {
@@ -986,22 +984,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.netPanel !== undefined ? { onNetwork: () => toolPanel.controller.openNetwork() } : {}),
     });
 
-    // Along the bottom edge, clear of the minimap window and the perf readout.
-    const insetBesideMinimap = (): number => {
-      const rect = mountedMinimap.panelRect();
-      return Math.max(
-        perfCornerForUiScale(uiscale).left,
-        rect === null ? 0 : rect.x + rect.w + BESIDE_MINIMAP_GAP_PX,
-      );
-    };
     const netOverlays =
       deps.netPanel === undefined
         ? null
         : mountNetOverlays({
             source: deps.netPanel,
-            plane: hudDom.element,
             scale: hudDom.currentScale,
-            leftPx: insetBesideMinimap,
+            minimap: () => mountedMinimap.panelRect(),
             controller: () => toolPanel.controller,
             cue: uiCue,
           });

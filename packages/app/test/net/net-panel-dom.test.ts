@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createNetBanners } from '../../src/hud/dom/network-banners.js';
+import { createNetStatusLine } from '../../src/hud/dom/network-status-line.js';
 import { createNetworkWindow } from '../../src/hud/dom/network-window.js';
 import { createHudSystemBar } from '../../src/hud/dom/system-bar.js';
 import type {
@@ -8,17 +8,19 @@ import type {
   NetLinkModel,
   NetPanelModel,
   NetPanelSource,
+  NetPlayerRow,
 } from '../../src/hud/network/model.js';
 import type { ToolPanelController } from '../../src/hud/tool-panel/index.js';
-import { mountChatPanel } from '../../src/view/net/chat-panel.js';
+import { CHAT_LINGER_MS, mountChatPanel } from '../../src/view/net/chat-panel.js';
 import { mountNetOverlays } from '../../src/view/runtime/net-overlays.js';
 import { asHtml, type FakeElement, FakeInput, installFakeDom } from '../support/fake-dom.js';
 
-/** The network window, its banners, the minimap chat line and the speed bar over a fake DOM. */
+/** The network window, its status line, the minimap chat and the speed bar over a fake DOM. */
 
 afterEach(() => vi.unstubAllGlobals());
 
 const REQUESTED_SPEED = 3;
+const GOVERNED_SPEED = 2;
 const DESYNC = 'Out of sync with Bartek';
 const CLOSED = 'The relay closed the link';
 /** The chat history's cap in the models below, small enough to overrun in a test. */
@@ -123,62 +125,202 @@ describe('the network window', () => {
   });
 });
 
-describe('the held banner', () => {
-  it('hands the notice to the window while it is open, and a lost link outranks the world', () => {
+const GOVERNED: NetClockModel = {
+  ...CLOCK,
+  runningSpeed: GOVERNED_SPEED,
+  governor: { nick: 'Celina', cause: 'load' },
+};
+
+describe('the net status line', () => {
+  it('says the slowed room, a notice over it, a lost link over the world, and nothing while the window is open', () => {
     const dom = installFakeDom();
     const plane = dom.plane();
-    const feed = source(panelModel({ notice: DESYNC }));
+    const feed = source(panelModel({ clock: GOVERNED }));
     let open = false;
-    const banners = createNetBanners({
-      plane: asHtml(plane),
+    const line = createNetStatusLine({
       source: feed,
-      scale: () => 1,
-      chatAnchor: () => ({ left: 0, top: 0 }),
-      onOpenPanel: () => undefined,
       panelOpen: () => open,
+      onOpenPanel: () => undefined,
       cue: () => undefined,
     });
-    banners.refresh();
-    expect(textOf(plane, '.on-net-held__notice')).toBe(DESYNC);
+    plane.append(line.element as unknown as FakeElement);
+    line.refresh();
+    expect(textOf(plane, '.on-net-slowed')).toContain('Celina');
+    expect(plane.querySelector('.on-net-slowed--notice')).toBeNull();
+
+    feed.current = panelModel({ clock: GOVERNED, notice: DESYNC });
+    line.refresh();
+    expect(textOf(plane, '.on-net-slowed--notice')).toBe(DESYNC);
+
+    feed.current = panelModel({ notice: DESYNC, link: { ...LINK, connected: false, notice: CLOSED } });
+    line.refresh();
+    expect(textOf(plane, '.on-net-slowed')).toBe(CLOSED);
 
     open = true;
-    banners.refresh();
-    expect(plane.querySelector('.on-net-held')?.hidden).toBe(true);
+    line.refresh();
+    expect(textOf(plane, '.on-net-slowed')).toBeNull();
+  });
+});
 
-    open = false;
-    feed.current = panelModel({ notice: DESYNC, link: { ...LINK, connected: false, notice: CLOSED } });
-    banners.refresh();
-    expect(textOf(plane, '.on-net-held__notice')).toBe(CLOSED);
-    banners.dispose();
+const row = (nick: string, status: NetPlayerRow['status']): NetPlayerRow => ({
+  nick,
+  seat: null,
+  self: false,
+  color: null,
+  tribe: null,
+  status,
+  pingMs: null,
+  delayTicks: null,
+  tickCostPct: null,
+  behindTicks: 0,
+  loadingPercent: null,
+  vote: null,
+});
+const HOLDING = panelModel({ players: [row('Bartek', 'gone')], clock: { ...CLOCK, held: true } });
+const RUNNING = panelModel({ players: [row('Bartek', 'ok')] });
+
+/** A tool panel controller with a network window the test can see and press. */
+function fakeController() {
+  const state = { open: false, opens: 0, closes: 0, hung: null as HTMLElement | null, synced: 0 };
+  const controller = {
+    syncSpeed: () => {
+      state.synced += 1;
+    },
+    setSpeedLook: () => undefined,
+    openNetwork: () => {
+      state.opens += 1;
+      state.open = true;
+    },
+    closeNetwork: () => {
+      state.closes += 1;
+      state.open = false;
+    },
+    networkOpen: () => state.open,
+    hangBesideBar: (node: HTMLElement | null) => {
+      state.hung = node;
+    },
+  } as unknown as ToolPanelController;
+  return { state, controller };
+}
+
+function mountOverlays(feed: NetPanelSource, now: () => number = () => 0) {
+  installFakeDom();
+  const { state, controller } = fakeController();
+  const overlays = mountNetOverlays({
+    source: feed,
+    scale: () => 1,
+    minimap: () => null,
+    controller: () => controller,
+    cue: () => undefined,
+    now,
+  });
+  return { state, overlays };
+}
+
+describe('the network window over a hold', () => {
+  it('opens by itself when the room waits for someone and closes by itself when it stops', () => {
+    const feed = source(RUNNING);
+    const { state, overlays } = mountOverlays(feed);
+    overlays.refresh();
+    expect(state.open).toBe(false);
+
+    feed.current = HOLDING;
+    overlays.refresh();
+    overlays.refresh();
+    expect([state.open, state.opens]).toEqual([true, 1]);
+
+    feed.current = RUNNING;
+    overlays.refresh();
+    expect([state.open, state.closes]).toEqual([false, 1]);
+    overlays.dispose();
+  });
+
+  it('stays open after the hold when the player had it open, or closed and reopened it meanwhile', () => {
+    const feed = source(RUNNING);
+    const { state, overlays } = mountOverlays(feed);
+    state.open = true;
+    overlays.refresh();
+    feed.current = HOLDING;
+    overlays.refresh();
+    expect(state.opens).toBe(0);
+    feed.current = RUNNING;
+    overlays.refresh();
+    expect(state.open).toBe(true);
+
+    state.open = false;
+    overlays.refresh();
+    feed.current = HOLDING;
+    overlays.refresh();
+    expect(state.opens).toBe(1);
+    state.open = false;
+    overlays.refresh();
+    state.open = true;
+    feed.current = RUNNING;
+    overlays.refresh();
+    expect([state.open, state.closes]).toEqual([true, 0]);
+    overlays.dispose();
+  });
+
+  it('hangs the status line beside the bar and takes it down on dispose', () => {
+    const { state, overlays } = mountOverlays(source());
+    overlays.refresh();
+    expect(state.hung?.classList.contains('on-net-slowed')).toBe(true);
+    overlays.dispose();
+    expect(state.hung).toBeNull();
   });
 });
 
 const enter = (): Event => Object.assign(new Event('keydown', { cancelable: true }), { key: 'Enter' });
+const escapeKey = (): Event => Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape' });
 
-function mountChat() {
+function mountChat(now: () => number = () => 0) {
   const dom = installFakeDom();
   const chat = mountChatPanel({
-    leftPx: () => 0,
+    scale: () => 1,
+    minimap: () => null,
     beam: () => ({ x: 0, y: 0, w: 0, h: 0 }),
     onSend: () => undefined,
+    now,
   });
   const input = dom.document.body.querySelector('input');
-  if (!(input instanceof FakeInput)) throw new Error('chat input');
-  return { dom, chat, input };
+  const lines = input?.parent?.firstElementChild;
+  if (!(input instanceof FakeInput) || lines === undefined || lines === null) throw new Error('chat input');
+  return { dom, chat, input, lines };
 }
 
-describe('the minimap chat line', () => {
+const lineOpen = (input: FakeInput): boolean => input.style.visibility === 'visible';
+
+describe('the minimap chat', () => {
+  it('shows a new line, fades after it lingers, and comes back while the line is open', () => {
+    let clock = 0;
+    const { dom, chat, input, lines } = mountChat(() => clock);
+    chat.refresh([], 0);
+    expect(lines.style.opacity).toBe('0');
+
+    chat.refresh([said(0)], 1);
+    expect(lines.style.opacity).toBe('1');
+    clock = CHAT_LINGER_MS;
+    chat.refresh([said(0)], 1);
+    expect(lines.style.opacity).toBe('0');
+
+    dom.document.dispatchEvent(enter());
+    expect([lines.style.opacity, lineOpen(input)]).toEqual(['1', true]);
+    input.dispatchEvent(escapeKey());
+    expect([lines.style.opacity, lineOpen(input)]).toEqual(['0', false]);
+    chat.dispose();
+  });
+
   it('opens on Enter only while its log shows; the window’s field is the chat otherwise', () => {
     const { dom, chat, input } = mountChat();
     chat.setHidden(true);
     const ignored = enter();
     dom.document.dispatchEvent(ignored);
     expect(ignored.defaultPrevented).toBe(false);
-    expect(input.hidden).toBe(true);
+    expect(lineOpen(input)).toBe(false);
 
     chat.setHidden(false);
     dom.document.dispatchEvent(enter());
-    expect(input.hidden).toBe(false);
+    expect(lineOpen(input)).toBe(true);
     expect(dom.document.activeElement).toBe(input);
     chat.dispose();
   });
@@ -188,9 +330,9 @@ describe('the minimap chat line', () => {
     dom.document.dispatchEvent(enter());
     input.value = 'half a';
     chat.setHidden(true);
-    expect([input.hidden, input.value, dom.document.activeElement === input]).toEqual([true, '', false]);
+    expect([lineOpen(input), input.value, dom.document.activeElement === input]).toEqual([false, '', false]);
     chat.setHidden(false);
-    expect(input.hidden).toBe(true);
+    expect(lineOpen(input)).toBe(false);
     chat.dispose();
   });
 });
@@ -221,36 +363,38 @@ describe('the speed bar', () => {
     bar.dispose();
   });
 
-  it('moves back to the clock after a refused request, but not on a new speed sample alone', () => {
+  it('hangs a note in its aside and takes it down again', () => {
     const dom = installFakeDom();
-    const synced: number[] = [];
-    const controller = {
-      syncSpeed: () => synced.push(synced.length),
-      setSpeedLook: () => undefined,
-      openNetwork: () => undefined,
-      networkOpen: () => false,
-    } as unknown as ToolPanelController;
-    const feed = source();
-    const overlays = mountNetOverlays({
-      source: feed,
-      plane: asHtml(dom.plane()),
-      scale: () => 1,
-      leftPx: () => 0,
-      controller: () => controller,
-      cue: () => undefined,
+    const plane = dom.plane();
+    const bar = createHudSystemBar(asHtml(plane), {
+      summary: { pack: null, goodIdOf: () => undefined, goodLabel: (id) => id },
+      onPauseToggle: () => undefined,
+      onSpeed: () => undefined,
+      onMenu: () => undefined,
     });
+    const note = dom.document.createElement('button');
+    bar.setAside(asHtml(note));
+    expect(plane.querySelector('.on-bar__aside')?.firstElementChild).toBe(note);
+    bar.setAside(null);
+    expect(plane.querySelector('.on-bar__aside')?.childElementCount).toBe(0);
+    bar.dispose();
+  });
+
+  it('moves back to the clock after a refused request, but not on a new speed sample alone', () => {
+    const feed = source();
+    const { state, overlays } = mountOverlays(feed);
     overlays.refresh();
-    expect(synced).toHaveLength(1);
+    expect(state.synced).toBe(1);
 
     const sampled = { ...CLOCK, history: [{ roomSpeed: REQUESTED_SPEED, ownSpeed: REQUESTED_SPEED }] };
     feed.current = panelModel({ clock: sampled });
     overlays.refresh();
-    expect(synced).toHaveLength(1);
+    expect(state.synced).toBe(1);
 
     // The feed answers a refused clock request with a new clock object over the same samples.
     feed.current = panelModel({ clock: { ...sampled } });
     overlays.refresh();
-    expect(synced).toHaveLength(2);
+    expect(state.synced).toBe(2);
     overlays.dispose();
   });
 });
