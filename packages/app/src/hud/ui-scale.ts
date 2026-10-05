@@ -7,8 +7,8 @@ export const REFERENCE_VIEWPORT_WIDTH = 1024;
 export const REFERENCE_VIEWPORT_HEIGHT = 768;
 
 /**
- * The display height the world draws 1:1 at. The scale follows the display rather than the window, so
- * resizing or maximizing a window keeps the chrome's size while the window shows more or less of the
+ * The display height the scale is stated against. The scale follows the display rather than the window,
+ * so resizing or maximizing a window keeps the chrome's size while the window shows more or less of the
  * world (approximation: the original was a 1024×768 fullscreen image every display stretched; 1080
  * lines is the common baseline today).
  */
@@ -60,17 +60,6 @@ function displayHeightOf(view: DisplayView): number {
 }
 
 /**
- * The world's magnification: the display height over {@link REFERENCE_DISPLAY_HEIGHT}, lowered with the
- * HUD when the viewport is too small to hold the chrome, so the chrome keeps its share of the view.
- */
-export function displayScaleFor(view: DisplayView): number {
-  return Math.min(
-    displayHeightOf(view) / REFERENCE_DISPLAY_HEIGHT,
-    viewportFitScale(view) / UI_SCALE_AT_REFERENCE_DISPLAY,
-  );
-}
-
-/**
  * Effective HUD scale: the display-derived base, held at {@link SMALL_DISPLAY_UI_SCALE} on a small
  * display and lowered to what the viewport holds, times the user's relative factor.
  */
@@ -82,10 +71,12 @@ export function uiScaleFor(view: DisplayView, factor: number = DEFAULT_UI_SCALE_
   return Math.max(MIN_UI_SCALE, Math.min(byDisplay, viewportFitScale(view)) * factor);
 }
 
-/** The camera zoom a game opens at. Never below 1:1: a small display shows less world rather than
- *  shrinking the art. */
+/**
+ * The camera zoom a game opens at: the HUD's base magnification, so the chrome keeps its share of the
+ * view on every display. Never below 1:1: a small display shows less world rather than shrinking the art.
+ */
 export function startWorldZoomFor(view: DisplayView): number {
-  return Math.max(1, displayScaleFor(view));
+  return Math.max(1, uiScaleFor(view));
 }
 
 /** The display the page is shown on, read live, so a window moved to another monitor follows it. */

@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   clampUiScaleFactor,
-  displayScaleFor,
   MIN_UI_SCALE,
   REFERENCE_DISPLAY_HEIGHT,
   SMALL_DISPLAY_UI_SCALE,
   startWorldZoomFor,
-  UI_SCALE_AT_REFERENCE_DISPLAY,
   UI_SCALE_FACTOR_MAX,
   UI_SCALE_FACTOR_MIN,
   uiScaleFor,
@@ -67,21 +65,19 @@ describe('uiScaleFor', () => {
   });
 
   it('takes a display reported shorter than its window as the window', () => {
-    expect(displayScaleFor({ displayHeight: 600, viewportWidth: 3000, viewportHeight: 1200 })).toBe(
-      displayScaleFor({ displayHeight: 1200, viewportWidth: 3000, viewportHeight: 1200 }),
+    expect(uiScaleFor({ displayHeight: 600, viewportWidth: 4000, viewportHeight: 2000 })).toBe(
+      uiScaleFor({ displayHeight: 2000, viewportWidth: 4000, viewportHeight: 2000 }),
     );
   });
 });
 
 describe('startWorldZoomFor', () => {
-  it('magnifies the world with the display height', () => {
-    expect(startWorldZoomFor(maximized(UHD_HEIGHT))).toBe(2);
-    expect(startWorldZoomFor(maximized(UHD_HEIGHT)) * UI_SCALE_AT_REFERENCE_DISPLAY).toBe(
-      uiScaleFor(maximized(UHD_HEIGHT)),
-    );
+  it('magnifies the world as much as the HUD base', () => {
+    expect(startWorldZoomFor(maximized(UHD_HEIGHT))).toBe(1.75);
+    expect(startWorldZoomFor(maximized(QHD_HEIGHT))).toBe(uiScaleFor(maximized(QHD_HEIGHT)));
   });
 
-  it('opens a reference display at 1:1 although its HUD sits on the small-display floor', () => {
+  it('opens a reference display at 1:1', () => {
     expect(
       startWorldZoomFor({
         displayHeight: REFERENCE_DISPLAY_HEIGHT,
