@@ -15,7 +15,8 @@ import { repoRoot } from './content-dir.mjs';
  * and 2, and writes `<view>.png` plus `report.json` (draws and texture binds per frame). With
  * `ON_BENCH_SHOT_STEPS=n` it steps the paused sim n ticks before each screenshot, a frame after each,
  * so per-tick render paths run while the picture stays reproducible. The pointer rests on the bottom
- * HUD bar, where no world hover card can rise. A compare prints, per view, the differing pixels and
+ * HUD bar, where no world hover card can rise. With `ON_BENCH_BROWSER_SEAT=n` the spectator watches
+ * that seat, so the shots draw through its fog and sight. A compare prints, per view, the differing pixels and
  * the largest channel difference, decoded in the browser so no image dependency is needed.
  */
 
@@ -41,9 +42,12 @@ async function capture(checkpoint, origin, outDir) {
   for (const key of ['progression', 'needs'])
     if (typeof stamp[key] === 'boolean') params.set(key, stamp[key] ? 'on' : 'off');
   const steps = Number(process.env.ON_BENCH_SHOT_STEPS ?? '0');
+  const seat =
+    process.env.ON_BENCH_BROWSER_SEAT === undefined ? null : Number(process.env.ON_BENCH_BROWSER_SEAT);
+  if (seat !== null && !Number.isInteger(seat)) throw new Error('ON_BENCH_BROWSER_SEAT must be a seat');
   await mkdir(outDir, { recursive: true });
   const browser = await chromium.launch({ headless: false, args: ['--mute-audio'] });
-  const report = { checkpoint: resolve(checkpoint), steps, views: {}, errors: [] };
+  const report = { checkpoint: resolve(checkpoint), steps, seat, views: {}, errors: [] };
   try {
     const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
     page.on('pageerror', (error) => report.errors.push(error.message));
@@ -57,6 +61,12 @@ async function capture(checkpoint, origin, outDir) {
       timeout: 180000,
     });
     await page.evaluate(() => window.__opennorthland.setPaused(true));
+    if (seat !== null)
+      await page.evaluate((watched) => {
+        const watch = window.__opennorthland.watchSeat;
+        if (watch === null) throw new Error('The session has no seat picker to watch a seat with');
+        watch(watched);
+      }, seat);
     const dense = await page.evaluate(
       async (modules) => {
         const { ONE } = await import(modules.fixed);
