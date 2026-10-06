@@ -164,11 +164,14 @@ export function unionReachAreas(areas: readonly ReachArea[]): ReachArea {
   };
   const width = bounds.maxX - bounds.minX + 1;
   const union: ReachArea = { ...bounds, cells: new Uint8Array(width * (bounds.maxY - bounds.minY + 1)) };
-  for (const area of areas)
-    for (let y = area.minY; y <= area.maxY; y++)
-      for (let x = area.minX; x <= area.maxX; x++) {
-        if (reachContains(area, x, y)) union.cells[(y - bounds.minY) * width + x - bounds.minX] = 1;
-      }
+  for (const area of areas) {
+    const areaWidth = area.maxX - area.minX + 1;
+    for (let y = area.minY; y <= area.maxY; y++) {
+      const from = (y - area.minY) * areaWidth;
+      const to = (y - bounds.minY) * width + area.minX - bounds.minX;
+      for (let x = 0; x < areaWidth; x++) if (area.cells[from + x] === 1) union.cells[to + x] = 1;
+    }
+  }
   return union;
 }
 

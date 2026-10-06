@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BlockOverlay } from '../../src/nav/block-overlay.js';
 import { hexDistanceBetween, hexNeighboursOf } from '../../src/nav/halfcell.js';
-import { floodReach, searchReach } from '../../src/nav/range-search.js';
+import { floodReach, reachContains, searchReach, unionReachAreas } from '../../src/nav/range-search.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import { buildTerrainGraph } from '../../src/nav/terrain/map.js';
 import { testContent } from '../fixtures/content.js';
@@ -150,5 +150,22 @@ describe('searchReach', () => {
     expect(contains()).toBe(true);
     terrain.syncRoads(2, []);
     expect(contains()).toBe(false);
+  });
+
+  it('unions areas cell for cell', () => {
+    const next = lcg(7);
+    const area = (minX: number, minY: number, width: number, height: number) => ({
+      minX,
+      maxX: minX + width - 1,
+      minY,
+      maxY: minY + height - 1,
+      cells: Uint8Array.from({ length: width * height }, () => (next(3) === 0 ? 1 : 0)),
+    });
+    const areas = [area(3, 5, 10, 7), area(8, 2, 6, 12), area(0, 9, 4, 3)];
+    const union = unionReachAreas(areas);
+    expect([union.minX, union.maxX, union.minY, union.maxY]).toEqual([0, 13, 2, 13]);
+    for (let y = union.minY; y <= union.maxY; y++)
+      for (let x = union.minX; x <= union.maxX; x++)
+        expect(reachContains(union, x, y)).toBe(areas.some((a) => reachContains(a, x, y)));
   });
 });
