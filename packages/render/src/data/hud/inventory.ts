@@ -8,6 +8,7 @@ import {
   indexesOf,
   nodeHxOfPosition,
   nodeHyOfPosition,
+  type ReachArea,
   reachContains,
   type SignpostReachView,
   type SnapshotIndexSpec,
@@ -280,6 +281,59 @@ export interface NetworkInventory {
   readonly stock: ReadonlyMap<number, number>;
 }
 
+/**
+ * Whether two answers of the seat's reach cover the same ground: the sim's reach version also moves for
+ * changes that leave every post's area and every door where they were, and most of its answers late in
+ * a match are such. A scope counted under one then stands for the other without a recount.
+ */
+function sameReach(
+  a: SignpostReachView | null | undefined,
+  b: SignpostReachView | null | undefined,
+): boolean {
+  if (a === b) return true;
+  if (a === null || a === undefined || b === null || b === undefined) return false;
+  if (a.player !== b.player || a.posts.length !== b.posts.length) return false;
+  for (let i = 0; i < a.posts.length; i++) {
+    const was = a.posts[i];
+    const is = b.posts[i];
+    if (was === undefined || is === undefined || was.id !== is.id || !sameArea(was.area, is.area))
+      return false;
+  }
+  if (a.settlements.length !== b.settlements.length) return false;
+  for (let i = 0; i < a.settlements.length; i++) {
+    const was = a.settlements[i];
+    const is = b.settlements[i];
+    if (was === undefined || is === undefined || !sameArea(was, is)) return false;
+  }
+  if (a.doors.size !== b.doors.size) return false;
+  for (const [id, door] of a.doors) {
+    const other = b.doors.get(id);
+    if (other === undefined || other.hx !== door.hx || other.hy !== door.hy) return false;
+  }
+  return true;
+}
+
+/** Four cell bytes compared at once where both arrays allow it. */
+const BYTES_PER_WORD = 4;
+
+function sameArea(a: ReachArea, b: ReachArea): boolean {
+  if (a === b) return true;
+  if (a.minX !== b.minX || a.maxX !== b.maxX || a.minY !== b.minY || a.maxY !== b.maxY) return false;
+  const x = a.cells;
+  const y = b.cells;
+  if (x.length !== y.length) return false;
+  let i = 0;
+  if (x.byteOffset % BYTES_PER_WORD === 0 && y.byteOffset % BYTES_PER_WORD === 0) {
+    const words = Math.floor(x.length / BYTES_PER_WORD);
+    const xw = new Int32Array(x.buffer, x.byteOffset, words);
+    const yw = new Int32Array(y.buffer, y.byteOffset, words);
+    for (let w = 0; w < words; w++) if (xw[w] !== yw[w]) return false;
+    i = words * BYTES_PER_WORD;
+  }
+  for (; i < x.length; i++) if (x[i] !== y[i]) return false;
+  return true;
+}
+
 /** Connected posts define the scope; overlapping ranges include each physical source once. */
 export function networkInventoryOf(
   snapshot: WorldSnapshot,
@@ -291,6 +345,10 @@ export function networkInventoryOf(
   if (selected === undefined) return null;
   const state = indexesOf(snapshot).get(INVENTORY);
   let region = state.region;
+  if (region !== null && region.reach !== reach && sameReach(region.reach, reach)) {
+    region = { ...region, reach };
+    state.region = region;
+  }
   if (
     region === null ||
     region.revision !== index.revision ||
@@ -341,6 +399,10 @@ export function empireInventoryOf(
   reach: SignpostReachView | null,
 ): ReadonlyMap<number, number> {
   const state = indexesOf(snapshot).get(INVENTORY);
+  const held = state.empire;
+  if (held !== null && held.reach !== reach && sameReach(held.reach, reach)) {
+    state.empire = { ...held, reach };
+  }
   if (state.empire === null || state.empire.reach !== reach) {
     const areas =
       reach === null ? [] : reach.posts.length === 0 ? reach.settlements : reach.posts.map((p) => p.area);

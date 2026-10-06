@@ -389,6 +389,37 @@ describe('inventory upkeep per step', () => {
   });
 });
 
+describe('reach answers', () => {
+  it('keeps the counted scopes for a new answer covering the same ground, and recounts a changed one', () => {
+    const s = snapshot([post(1, 10), source(2, 20, { Stockpile: { amounts: [[1, 2]] } })]);
+    const area = { minX: 40, maxX: 40, minY: 16, maxY: 16, cells: new Uint8Array([1]) };
+    const reach: SignpostReachView = {
+      key: 'a',
+      player: 1,
+      settlements: [],
+      doors: new Map([[2, { hx: 40, hy: 16 }]]),
+      posts: [{ id: 1, group: 1, area }],
+    };
+    const counted = empireInventoryOf(s, reach);
+    const network = networkInventoryOf(s, 1, reach)?.stock;
+    expect([...counted]).toEqual([[1, 2]]);
+    // The host answers every reach version with a fresh copy.
+    const again = structuredClone({ ...reach, key: 'b' });
+    expect(empireInventoryOf(s, again)).toBe(counted);
+    expect(networkInventoryOf(s, 1, again)?.stock).toBe(network);
+    const moved = { ...again, key: 'c', doors: new Map([[2, { hx: 41, hy: 16 }]]) };
+    expect(empireInventoryOf(s, moved)).not.toBe(counted);
+    expect([...empireInventoryOf(s, moved)]).toEqual([]);
+    expect([...(networkInventoryOf(s, 1, moved)?.stock ?? [])]).toEqual([]);
+    const shrunk = {
+      ...again,
+      key: 'd',
+      posts: [{ id: 1, group: 1, area: { ...area, cells: new Uint8Array([0]) } }],
+    };
+    expect([...empireInventoryOf(s, shrunk)]).toEqual([]);
+  });
+});
+
 describe('authoritative network coverage', () => {
   it('counts a docked hold and nested passengers at the shore, then removes them when it sails', () => {
     const mirror = new SnapshotMirror();
