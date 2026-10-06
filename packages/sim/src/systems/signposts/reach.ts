@@ -171,13 +171,17 @@ export function goodsSearchLimitAt(
  * A spot's goods search: its own terrain search plus the signpost groups that search reaches. A caught
  * post lies strictly inside the hex range, so a node outside that range and outside every group with a
  * post inside it passes under no search result, and the search floods only when asked about another node.
- * Answers come from the world as it stands when the first such node is asked about.
+ * A limit answers only under the reach key it was built under: asked after that key moved, it throws
+ * rather than mix two worlds, since a client restored from a snapshot would resolve it differently.
  */
 class GoodsSearchLimit implements SpatialGate {
   readonly bounds: NodeBox;
   /** Every group with a post inside the hex range: the ones the search may catch. */
   private readonly nearby: readonly SpatialGate[];
   private resolved: SpatialGate | undefined;
+  /** The reach key the limit was built under, and the world mutation version it was last confirmed at. */
+  private readonly key: string;
+  private confirmedAt: number;
 
   constructor(
     private readonly world: World,
@@ -188,6 +192,8 @@ class GoodsSearchLimit implements SpatialGate {
     private readonly hx: number,
     private readonly hy: number,
   ) {
+    this.key = cache.key;
+    this.confirmedAt = world.mutationVersion;
     const range = GOODS_SEARCH_RANGE_NODES;
     // The local search's own result bounds.
     const own = {
@@ -205,6 +211,7 @@ class GoodsSearchLimit implements SpatialGate {
   }
 
   allowsNode(node: NodeId): boolean {
+    this.confirmKey();
     const x = this.terrain.xOf(node);
     const y = this.terrain.yOf(node);
     if (
@@ -221,11 +228,22 @@ class GoodsSearchLimit implements SpatialGate {
    *  Manhattan `radius` of `(x, y)` lies inside the hex range unless `(x, y)` lies inside the range
    *  widened by `radius`; a group's coverage is ruled out by its bounds widened the same way. */
   mayAllowNear(x: number, y: number, radius: number): boolean {
+    this.confirmKey();
     if (hexDistanceBetween(this.hx, this.hy, x, y) < GOODS_SEARCH_RANGE_NODES + radius) return true;
     return this.nearby.some(
       ({ bounds: b }) =>
         x >= b.minX - radius && x <= b.maxX + radius && y >= b.minY - radius && y <= b.maxY + radius,
     );
+  }
+
+  /** Throws once a world write moved the reach key since the limit was built. */
+  private confirmKey(): void {
+    const version = this.world.mutationVersion;
+    if (version === this.confirmedAt) return;
+    if (signpostReachKey(this.world, this.content, this.terrain) !== this.key) {
+      throw new Error('goods search limit asked after the signpost reach key moved; ask a fresh limit');
+    }
+    this.confirmedAt = version;
   }
 
   private resolve(): SpatialGate {
