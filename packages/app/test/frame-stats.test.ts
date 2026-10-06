@@ -25,6 +25,7 @@ function sample(overrides: Partial<FrameSample> = {}): FrameSample {
     leadTicks: 0,
     snapMs: 1,
     drawMs: 3,
+    worldMs: 2,
     ...overrides,
   };
 }
