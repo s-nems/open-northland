@@ -22,8 +22,14 @@ export interface TouchedIds {
   readonly ids: Set<number>;
 }
 
+/** Markers of the kinds that change most per tick, none of them self-contained: a touched walker is
+ *  rejected before a full classify. */
+const MOVER_MARKERS = ['Settler', 'Projectile', 'Vehicle', 'Building'] as const;
+
 function selfContained(entity: EntitySnapshot): boolean {
-  const kind = classify(entity.components);
+  const components = entity.components;
+  for (const marker of MOVER_MARKERS) if (marker in components) return false;
+  const kind = classify(components);
   return kind !== null && isSelfContainedKind(kind);
 }
 
@@ -67,10 +73,36 @@ function place(buckets: TileBuckets<EntitySnapshot>, entity: EntitySnapshot): vo
   else buckets.delete(entity.id);
 }
 
-/** The positioned entities that are not self-contained kinds, bucketed like the position index: what
- *  an incremental build queries instead of every positioned entity. */
+/**
+ * The positioned entities that are not self-contained kinds, bucketed like the position index: what an
+ * incremental build queries instead of every positioned entity. Only what `classify` reads, or gaining
+ * or losing a `Position`, replaces an entry; a step lands in `swapAll` and re-buckets a held entity
+ * with its new object, as the position index does.
+ */
 const REBUILT_POSITIONS: SnapshotIndexSpec<TileBuckets<EntitySnapshot>> = {
   name: 'scene rebuilt positions',
+  reads: {
+    values: ['FishSwarm'],
+    presence: [
+      'Position',
+      'Projectile',
+      'Vehicle',
+      'Building',
+      'Palisade',
+      'RoadSite',
+      'FishSwarm',
+      'Resource',
+      'BerryBush',
+      'Chest',
+      'OpenedChest',
+      'Stump',
+      'Signpost',
+      'Settler',
+      'DeliveryFlag',
+      'GroundDrop',
+      'Stockpile',
+    ],
+  },
   empty: () => new TileBuckets(),
   differs: (held, fresh) => held.differenceFrom(fresh),
   add: place,
@@ -78,6 +110,12 @@ const REBUILT_POSITIONS: SnapshotIndexSpec<TileBuckets<EntitySnapshot>> = {
     buckets.delete(entity.id);
   },
   replace: (buckets, _previous, next) => place(buckets, next),
+  swapAll: (buckets, nexts) => {
+    for (const next of nexts) {
+      const pos = positionOf(next);
+      if (pos !== null) buckets.move(next.id, next, pos.x / ONE, pos.y / ONE);
+    }
+  },
 };
 
 /** {@link REBUILT_POSITIONS} written over `out` from index 0, returning the count. */
