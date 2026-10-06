@@ -8,6 +8,7 @@ import {
 } from '../../src/index.js';
 import {
   FLOOD_GUARD_MAX_EXPLORED,
+  findPathWithin,
   joinCorridor,
   POCKET_PROBE_MAX_EXPLORED,
   RACE_SLICE_EXPLORED,
@@ -264,6 +265,58 @@ describe('findPath - deterministic tie-breaking', () => {
     const stats = { explored: 0 };
     expect(findPath(g, start, g.nodeAt(40, 40), blocked, stats)).toBeNull();
     expect(stats.explored).toBeLessThanOrEqual(POCKET_PROBE_MAX_EXPLORED);
+  });
+
+  it('refutes a goal whose only way in is a diagonal flanked by the blocked start, at pocket cost', () => {
+    // The goal's one open exit is the SE diagonal, flanked by the walker's own node and a blocked node. The
+    // goal side's re-admitted start opens that flank and reaches the start, yet the forward search may
+    // never use it, so that route proves nothing: the side must restart on the plain overlay rather than
+    // hand over to a forward flood of the whole grid.
+    const g = open(80, 80);
+    const start = g.nodeAt(41, 41);
+    const goal = g.nodeAt(40, 40);
+    const blocked = new Set<NodeId>([start]);
+    for (const [x, y] of [
+      [39, 40],
+      [41, 40],
+      [40, 39],
+      [40, 41],
+      [39, 38],
+      [41, 38],
+      [39, 42],
+    ] as const) {
+      blocked.add(g.nodeAt(x, y));
+    }
+    const stats = { explored: 0 };
+    expect(findPath(g, start, goal, blocked, stats)).toBeNull();
+    expect(stats.explored).toBeLessThanOrEqual(POCKET_PROBE_MAX_EXPLORED);
+    expect(findPathWithin(g, start, goal, blocked, { explored: 0 }, Number.POSITIVE_INFINITY)).toBe(
+      'unreachable',
+    );
+  });
+
+  it('answers as one unguarded forward search under random overlays with a blocked start', () => {
+    const size = 24;
+    const g = open(size, size);
+    let seed = 12345;
+    const next = (bound: number): number => {
+      seed = (seed * 1103515245 + 12345) % 2 ** 31;
+      return seed % bound;
+    };
+    const trials = 400;
+    const blockedPercent = 40;
+    for (let trial = 0; trial < trials; trial++) {
+      const blocked = new Set<NodeId>();
+      for (let node = 0; node < g.nodeCount; node++) {
+        if (next(100) < blockedPercent) blocked.add(node as NodeId);
+      }
+      const start = g.nodeAt(next(size), next(size));
+      const goal = g.nodeAt(next(size), next(size));
+      blocked.add(start);
+      blocked.delete(goal);
+      const forward = findPathWithin(g, start, goal, blocked, { explored: 0 }, Number.POSITIVE_INFINITY);
+      expect(findPath(g, start, goal, blocked)).toEqual(typeof forward === 'string' ? null : forward);
+    }
   });
 
   it('finds a route longer than the probe cap when the overlay does not seal it', () => {

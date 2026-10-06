@@ -17,6 +17,7 @@ import {
   DEFAULT_NODE_ROUGHNESS,
   latticeDistanceTo,
   type NodeId,
+  StepBuffer,
   type TerrainGraph,
   type Traversal,
 } from '../terrain/index.js';
@@ -100,29 +101,14 @@ export function findPath(
   );
   // Without an overlay a shared static component means reachable, so the search can never flood.
   if (blocked === undefined || blocked.size === 0) return pathOf(forward.advance(UNCAPPED));
-  // The reverse probe re-admits a blocked start as its target: forward, the walker may leave that node but
-  // never re-enter it, which in reverse is exactly "enterable as the final step only", so both directions
-  // see the same edge set and the probe's "unreachable" stays exact.
-  const probeBlocked: BlockOverlay = blocked.has(start)
-    ? { has: (n) => n !== start && blocked.has(n), size: blocked.size }
-    : blocked;
-  const reverse = new ResumableSearch(
-    scratchFor(graph, 'reverse'),
-    graph,
-    goal,
-    start,
-    probeBlocked,
-    stats,
-    traversal,
-  );
+  const reverse = new GoalSide(graph, start, goal, blocked, stats, traversal);
   const probe = reverse.advance(POCKET_PROBE_MAX_EXPLORED);
   if (probe === 'unreachable') return null;
-  // Reaching the start only proves reachability: reverse costs are asymmetric, so the forward search still
-  // runs, with nothing left to guard against.
-  if (probe !== 'aborted') return pathOf(forward.advance(UNCAPPED));
+  // Reverse costs are asymmetric, so a proved route still needs the forward search, with nothing left to
+  // guard against.
+  if (probe === 'reachable') return pathOf(forward.advance(UNCAPPED));
   // Pausing never changes a search's settle order, so every forward answer below is byte-identical to one
-  // unguarded search, and a goal side exhausted first refutes the goal by the probe's symmetric-edge
-  // argument.
+  // unguarded search, and a goal side exhausted first refutes the goal.
   const guarded = forward.advance(FLOOD_GUARD_MAX_EXPLORED);
   if (guarded !== 'aborted') return pathOf(guarded);
   for (;;) {
@@ -130,13 +116,103 @@ export function findPath(
       Math.min(reverse.explored + RACE_SLICE_EXPLORED, GOAL_EXHAUST_MAX_EXPLORED),
     );
     if (goalSide === 'unreachable') return null;
-    if (goalSide !== 'aborted' || reverse.explored >= GOAL_EXHAUST_MAX_EXPLORED) {
+    if (goalSide === 'reachable' || reverse.explored >= GOAL_EXHAUST_MAX_EXPLORED) {
       return pathOf(forward.advance(UNCAPPED));
     }
     const ahead = forward.advance(forward.explored + RACE_SLICE_EXPLORED);
     if (ahead !== 'aborted') return pathOf(ahead);
   }
 }
+
+type GoalSideVerdict = 'reachable' | 'unreachable' | 'aborted';
+
+/**
+ * The goal side of {@link findPath}'s race, whose verdicts are exact for the forward search. It searches
+ * back from the goal with a blocked start re-admitted as its target, the mirror of the forward search's
+ * step-off exemption. That view also opens the start as a diagonal's flank, which forward it never is, so
+ * a route found that way proves reachability only when its diagonals hold with the start blocked. On the
+ * first one that does not, the side restarts on the plain overlay, where the edges are symmetric: the
+ * forward search reaches the goal exactly when the goal's region holds a node the start steps off to.
+ */
+class GoalSide {
+  private search: ResumableSearch;
+  /** Settles of the re-admitting search, once discarded. */
+  private discarded = 0;
+  /** The start's exits under the plain overlay once the side has restarted on it. */
+  private exits: StepBuffer | null = null;
+
+  constructor(
+    private readonly graph: TerrainGraph,
+    private readonly start: NodeId,
+    private readonly goal: NodeId,
+    private readonly blocked: BlockOverlay,
+    private readonly stats: SearchStats | undefined,
+    private readonly traversal: Traversal,
+  ) {
+    const readmitted: BlockOverlay = blocked.has(start)
+      ? { has: (n) => n !== start && blocked.has(n), size: blocked.size }
+      : blocked;
+    this.search = this.searchOver(readmitted);
+  }
+
+  /** Settles across both searches, which the race's caps count. */
+  get explored(): number {
+    return this.discarded + this.search.explored;
+  }
+
+  advance(maxExplored: number): GoalSideVerdict {
+    for (;;) {
+      const verdict = this.search.advance(maxExplored - this.discarded);
+      const exits = this.exits;
+      if (exits !== null) {
+        // The plain search never enters the blocked start, so it ends exhausted or capped.
+        for (let i = 0; i < exits.length; i++) {
+          if (this.search.discovered(exits.nodeAt(i))) return 'reachable';
+        }
+        return verdict === 'aborted' ? 'aborted' : 'unreachable';
+      }
+      if (typeof verdict === 'string') return verdict;
+      if (this.holdsForward(verdict)) return 'reachable';
+      this.discarded += this.search.explored;
+      this.exits = new StepBuffer();
+      this.graph.stepsInto(this.start, this.blocked, this.exits, this.traversal);
+      this.search = this.searchOver(this.blocked);
+    }
+  }
+
+  private searchOver(blocked: BlockOverlay): ResumableSearch {
+    const scratch = scratchFor(this.graph, 'reverse');
+    return new ResumableSearch(
+      scratch,
+      this.graph,
+      this.goal,
+      this.start,
+      blocked,
+      this.stats,
+      this.traversal,
+    );
+  }
+
+  /** Whether each diagonal of `path`, goal to start, is a step the forward search may take. */
+  private holdsForward(path: readonly NodeId[]): boolean {
+    const { graph, blocked } = this;
+    const steps = scratchFor(graph, 'reverse').steps;
+    for (let i = path.length - 1; i > 0; i--) {
+      const from = path[i];
+      const to = path[i - 1];
+      if (from === undefined || to === undefined) continue;
+      if (Math.abs(graph.yOf(from) - graph.yOf(to)) !== DIAGONAL_ROWS) continue;
+      graph.stepsInto(from, blocked, steps, this.traversal);
+      let open = false;
+      for (let k = 0; k < steps.length && !open; k++) open = steps.nodeAt(k) === to;
+      if (!open) return false;
+    }
+    return true;
+  }
+}
+
+/** Half-rows a diagonal step spans; only a diagonal has flanks. */
+const DIAGONAL_ROWS = 2;
 
 /**
  * One capped forward A* with no pocket probe: `'unreachable'` is exact, `'aborted'` means the cap ran out
@@ -247,6 +323,11 @@ class ResumableSearch {
     scratch.heapIdx[start] = 0;
     scratch.heap[0] = start;
     scratch.heapSize = 1;
+  }
+
+  /** Whether this search has reached `node`. */
+  discovered(node: NodeId): boolean {
+    return this.scratch.stamps[node] === this.query;
   }
 
   /** Settle until a verdict, or return `'aborted'` once this search has settled `maxExplored` in total. */
