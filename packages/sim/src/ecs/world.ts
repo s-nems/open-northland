@@ -436,6 +436,16 @@ export class World {
     return this.membershipJournals.deltasSince(component, since);
   }
 
+  /** {@link membershipDeltasSince} handed to `visit` without collecting them; false when the caller must
+   *  rebuild instead. */
+  replayMembershipSince(
+    component: Component<unknown>,
+    since: number,
+    visit: (entity: Entity) => void,
+  ): boolean {
+    return this.membershipJournals.replaySince(component, since, visit);
+  }
+
   /** A feed of the entities whose `membership` stores (adds, re-adds, removes, destroys) or `values`
    *  stores (writes acquired through {@link mut}/{@link tryMut}) change from now on: one log for an
    *  incremental view over several stores. It records for the world's lifetime. */
@@ -455,5 +465,15 @@ export class World {
    *  `since`, or `null` when the caller must re-derive instead. */
   valueWritesSince(component: Component<unknown>, since: number): readonly Entity[] | null {
     return this.valueJournals.deltasSince(component, since);
+  }
+
+  /** {@link valueWritesSince} handed to `visit` without collecting them; false when the caller must
+   *  re-derive instead. */
+  replayValueWritesSince(
+    component: Component<unknown>,
+    since: number,
+    visit: (entity: Entity) => void,
+  ): boolean {
+    return this.valueJournals.replaySince(component, since, visit);
   }
 }

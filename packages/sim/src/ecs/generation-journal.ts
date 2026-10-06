@@ -46,6 +46,13 @@ export class GenerationJournals {
    * per entry.
    */
   deltasSince(component: Component<unknown>, since: number): readonly Entity[] | null {
+    const out: Entity[] = [];
+    return this.replaySince(component, since, (e) => out.push(e)) ? out : null;
+  }
+
+  /** {@link deltasSince} handed to `visit` one by one rather than collected: false, visiting nothing,
+   *  when the journal cannot cover the span. */
+  replaySince(component: Component<unknown>, since: number, visit: (entity: Entity) => void): boolean {
     const journal = this.byComponent[component.id];
     if (
       journal === undefined ||
@@ -53,11 +60,10 @@ export class GenerationJournals {
       since < journal.head - GENERATION_JOURNAL_LIMIT ||
       since > journal.head
     ) {
-      return null;
+      return false;
     }
-    const out: Entity[] = [];
     for (let g = since; g < journal.head; g++)
-      out.push(journal.entities[g % GENERATION_JOURNAL_LIMIT] as Entity);
-    return out;
+      visit(journal.entities[g % GENERATION_JOURNAL_LIMIT] as Entity);
+    return true;
   }
 }

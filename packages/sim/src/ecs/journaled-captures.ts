@@ -1,6 +1,10 @@
 import type { Component, Entity } from './component.js';
 import type { World } from './world.js';
 
+/** Entity ids below this are stamped in a dense array, a higher one in a set. */
+const DENSE_STAMP_LIMIT = 1 << 24;
+const INITIAL_STAMPS = 1024;
+
 /** What a derived view does with one entity's capture. */
 export interface CaptureOps<C> {
   /** `e`'s live capture, or null when it contributes nothing. The only op that reads the world, since a
@@ -29,8 +33,28 @@ export class JournaledCaptures<C> {
   private readonly held = new Map<Entity, C>();
   private readonly membershipGens = new Map<Component<unknown>, number>();
   private readonly valueGens = new Map<Component<unknown>, number>();
-  /** The entities one catch-up replays, reused across catch-ups. */
-  private readonly touched = new Set<Entity>();
+  /** The entities one catch-up replays, each once, in the order the journals first name them: the
+   *  list's first `touchedCount` entries, the list keeping its storage across catch-ups. */
+  private readonly touchedOrder: Entity[] = [];
+  private touchedCount = 0;
+  /** Per entity id, the catch-up that last listed it; a clear and a regrown set would allocate per
+   *  catch-up. An id past {@link DENSE_STAMP_LIMIT} (only a crafted save can name one) uses the set. */
+  private stamps = new Int32Array(INITIAL_STAMPS);
+  private readonly sparseTouched = new Set<Entity>();
+  private epoch = 0;
+  private readonly touch = (e: Entity): void => {
+    if (e < DENSE_STAMP_LIMIT) {
+      if (e >= this.stamps.length) this.growStamps(e);
+      if (this.stamps[e] === this.epoch) return;
+      this.stamps[e] = this.epoch;
+    } else {
+      if (this.sparseTouched.has(e)) return;
+      this.sparseTouched.add(e);
+    }
+    if (this.touchedCount < this.touchedOrder.length) this.touchedOrder[this.touchedCount] = e;
+    else this.touchedOrder.push(e);
+    this.touchedCount++;
+  };
 
   constructor(
     private readonly world: World,
@@ -45,39 +69,43 @@ export class JournaledCaptures<C> {
   }
 
   catchUp(): void {
-    const { world, inputs, touched } = this;
-    touched.clear();
-    for (const c of inputs.membership) {
+    const { world, inputs, touchedOrder } = this;
+    this.epoch++;
+    this.touchedCount = 0;
+    this.sparseTouched.clear();
+    // Indexed: a frozen input list would cost a `for...of` an iterator result per component.
+    for (let i = 0; i < inputs.membership.length; i++) {
+      const c = inputs.membership[i] as Component<unknown>;
       const held = this.membershipGens.get(c) ?? 0;
       const now = world.componentGeneration(c);
-      if (now !== held && !this.collect(this.membershipGens, c, now, world.membershipDeltasSince(c, held))) {
+      if (now === held) continue;
+      if (!world.replayMembershipSince(c, held, this.touch)) {
         this.rebuild();
         return;
       }
+      this.membershipGens.set(c, now);
     }
-    for (const c of inputs.values) {
+    for (let i = 0; i < inputs.values.length; i++) {
+      const c = inputs.values[i] as Component<unknown>;
       const held = this.valueGens.get(c) ?? 0;
       const now = world.componentValueGeneration(c);
-      if (now !== held && !this.collect(this.valueGens, c, now, world.valueWritesSince(c, held))) {
+      if (now === held) continue;
+      if (!world.replayValueWritesSince(c, held, this.touch)) {
         this.rebuild();
         return;
       }
+      this.valueGens.set(c, now);
     }
-    for (const e of touched) this.refresh(e);
-    touched.clear();
+    for (let i = 0; i < this.touchedCount; i++) this.refresh(touchedOrder[i] as Entity);
+    this.touchedCount = 0;
   }
 
-  /** Add the entities a journal names since the held generation; false on a journal gap. */
-  private collect(
-    gens: Map<Component<unknown>, number>,
-    c: Component<unknown>,
-    now: number,
-    deltas: readonly Entity[] | null,
-  ): boolean {
-    if (deltas === null) return false;
-    for (const e of deltas) this.touched.add(e);
-    gens.set(c, now);
-    return true;
+  private growStamps(e: Entity): void {
+    let length = this.stamps.length * 2;
+    while (length <= e) length *= 2;
+    const grown = new Int32Array(Math.min(length, DENSE_STAMP_LIMIT));
+    grown.set(this.stamps);
+    this.stamps = grown;
   }
 
   private rebuild(): void {
