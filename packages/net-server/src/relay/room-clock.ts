@@ -12,6 +12,8 @@ import {
 const MAX_FRAMES_PER_ADVANCE = 12;
 /** Slack for elapsed sums that are whole ticks on paper and a rounding error short in floating point. */
 const TIME_EPSILON_MS = 1e-6;
+/** Bounds queued input even while paused, while admitting a large selection's per-unit orders. */
+export const MAX_PENDING_COMMANDS_PER_MEMBER = 128;
 
 export type ScheduleOutcome = { readonly applyTick: number } | { readonly refused: 'budget' };
 
@@ -33,6 +35,7 @@ export class RoomClock {
   /** Per tick, how many commands each member has landed on it. */
   private readonly budgets = new Map<number, Map<string, number>>();
   private readonly lastScheduled = new Map<string, number>();
+  private readonly pendingCounts = new Map<string, number>();
 
   constructor(speed: number) {
     this.speedMultiplier = speed;
@@ -84,6 +87,7 @@ export class RoomClock {
     this.pending.clear();
     this.budgets.clear();
     this.lastScheduled.clear();
+    this.pendingCounts.clear();
   }
 
   start(): void {
@@ -117,15 +121,19 @@ export class RoomClock {
     fromTick: number,
     delayTicks: number,
   ): ScheduleOutcome {
+    const pending = this.pendingCounts.get(member) ?? 0;
+    if (pending >= MAX_PENDING_COMMANDS_PER_MEMBER) return { refused: 'budget' };
     const issued = Math.min(fromTick, this.lastTick);
     // A lower delay or a restored client tick must not let a later order overtake accepted input.
-    const applyTick = Math.max(this.nextTick, issued + delayTicks, this.lastScheduled.get(member) ?? 0);
+    let applyTick = Math.max(this.nextTick, issued + delayTicks, this.lastScheduled.get(member) ?? 0);
+    // Only the last scheduled tick can be full: each new order advances that cursor as needed.
+    if ((this.budgets.get(applyTick)?.get(member) ?? 0) >= MAX_COMMANDS_PER_TICK) applyTick++;
     const budget = this.budgets.get(applyTick) ?? new Map<string, number>();
     const used = budget.get(member) ?? 0;
-    if (used >= MAX_COMMANDS_PER_TICK) return { refused: 'budget' };
     budget.set(member, used + 1);
     this.budgets.set(applyTick, budget);
     this.lastScheduled.set(member, applyTick);
+    this.pendingCounts.set(member, pending + 1);
     this.land(applyTick, envelope);
     return { applyTick };
   }
@@ -158,7 +166,10 @@ export class RoomClock {
     const tick = ++this.lastTick;
     const commands = this.pending.get(tick) ?? [];
     this.pending.delete(tick);
-    for (const member of this.budgets.get(tick)?.keys() ?? []) {
+    for (const [member, used] of this.budgets.get(tick) ?? []) {
+      const remaining = (this.pendingCounts.get(member) ?? 0) - used;
+      if (remaining > 0) this.pendingCounts.set(member, remaining);
+      else this.pendingCounts.delete(member);
       if (this.lastScheduled.get(member) === tick) this.lastScheduled.delete(member);
     }
     this.budgets.delete(tick);

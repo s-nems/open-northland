@@ -149,6 +149,19 @@ describe('websocket host', () => {
               const sim = client.sim;
               if (sim === null) return;
               const seat = client.session?.localSeat;
+              if (typeof seat === 'number' && sim.tick === 8) {
+                for (let order = 0; order < 60; order++) {
+                  client.submit(
+                    playerCommand(seat, {
+                      kind: 'setAssistantCounter',
+                      player: seat,
+                      counter: 'extraMen',
+                      value: 100_000 + order,
+                      infinite: false,
+                    }),
+                  );
+                }
+              }
               if (typeof seat === 'number' && sim.tick % count === seat) {
                 client.submit(
                   playerCommand(seat, {
@@ -176,6 +189,20 @@ describe('websocket host', () => {
           expect(client.errors, client.nick).toEqual([]);
           expect(client.rejections, client.nick).toEqual([]);
           expect(client.desyncs, client.nick).toEqual([]);
+          for (let seat = 0; seat < count; seat++) {
+            expect(
+              captures
+                .get(client)
+                ?.orders.flatMap(([, , command]) =>
+                  command.kind === 'setAssistantCounter' &&
+                  command.player === seat &&
+                  command.value >= 100_000
+                    ? [command.value]
+                    : [],
+                ),
+              `${client.nick}: burst from seat ${seat}`,
+            ).toEqual(Array.from({ length: 60 }, (_, order) => 100_000 + order));
+          }
         }
         const orderedSeats = new Set(
           creator.sim?.commands.log.flatMap(({ command }) =>

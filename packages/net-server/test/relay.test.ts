@@ -11,6 +11,7 @@ import {
 } from '@open-northland/net-protocol';
 import { HELLO_TIMEOUT_MS, KICK_COUNTDOWN_MS, Relay } from '@open-northland/net-server';
 import { describe, expect, it } from 'vitest';
+import { MAX_PENDING_COMMANDS_PER_MEMBER } from '../src/relay/room-clock.js';
 import {
   type Peer,
   SEATS,
@@ -490,14 +491,16 @@ describe('relay clock', () => {
     expect(s.a.of('frame').flatMap((frame) => frame.commands)).toEqual([]);
   });
 
-  it('drops the envelope past a member’s budget for one tick and reports it', () => {
+  it('reports pending-input overflow while preserving per-tick limits for admitted commands', () => {
     const s = startedRoom();
-    for (let i = 0; i <= MAX_COMMANDS_PER_TICK; i++) s.a.send(seatCommand(0, i));
+    for (let i = 0; i <= MAX_PENDING_COMMANDS_PER_MEMBER; i++) s.a.send(seatCommand(0, i));
     expect(s.a.of('rejected')).toEqual([
       { kind: 'rejected', of: 'command', reason: { code: 'commandBudget' } },
     ]);
-    s.advance(TICK_MS * 3);
-    expect(s.b.of('frame').flatMap((frame) => frame.commands)).toHaveLength(MAX_COMMANDS_PER_TICK);
+    s.advance(TICK_MS * 10);
+    expect(s.b.of('frame').flatMap((frame) => frame.commands)).toHaveLength(MAX_PENDING_COMMANDS_PER_MEMBER);
+    for (const frame of s.b.of('frame'))
+      expect(frame.commands.length).toBeLessThanOrEqual(MAX_COMMANDS_PER_TICK);
   });
 
   it('lets any member drive the clock as often as they like and names who did', () => {

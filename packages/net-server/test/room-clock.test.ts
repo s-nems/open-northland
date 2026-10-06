@@ -1,6 +1,6 @@
 import { MAX_COMMANDS_PER_TICK, type PlayerWireEnvelope, TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
-import { RoomClock } from '../src/relay/room-clock.js';
+import { MAX_PENDING_COMMANDS_PER_MEMBER, RoomClock } from '../src/relay/room-clock.js';
 
 /** Frames one advance may carry after a stall. */
 const STALL_BURST_FRAMES = 12;
@@ -74,15 +74,42 @@ describe('room clock', () => {
     expect(clock.schedule('a', envelope('ahead'), 50, 1)).toEqual({ applyTick: 11 });
   });
 
-  it('refuses the command past a member’s budget for one tick, and that member alone', () => {
+  it('spreads a selection over successive ticks without delaying another member or reordering input', () => {
     const clock = startedAt(1);
-    for (let i = 0; i < MAX_COMMANDS_PER_TICK; i++) {
-      expect(clock.schedule('a', envelope(`a${i}`), 1, 1)).toEqual({ applyTick: 2 });
+    for (let i = 0; i < 60; i++) {
+      expect(clock.schedule('a', envelope(`a${i}`), 1, 1)).toEqual({
+        applyTick: 2 + Math.floor(i / MAX_COMMANDS_PER_TICK),
+      });
     }
-    expect(clock.schedule('a', envelope('over'), 1, 1)).toEqual({ refused: 'budget' });
     expect(clock.schedule('b', envelope('b0'), 1, 1)).toEqual({ applyTick: 2 });
-    const [frame] = clock.advance(TICK_MS);
-    expect(frame?.commands).toHaveLength(MAX_COMMANDS_PER_TICK + 1);
+    expect(clock.schedule('a', envelope('later'), 0, 0)).toEqual({ applyTick: 5 });
+    const frames = clock.advance(TICK_MS * 4);
+    expect(frames.map((frame) => frame.commands.length)).toEqual([21, 20, 20, 1]);
+    expect(
+      frames
+        .flatMap((frame) => frame.commands.map(({ envelope }) => envelope.command.kind))
+        .filter((kind) => kind !== 'b0'),
+    ).toEqual([...Array.from({ length: 60 }, (_, i) => `a${i}`), 'later']);
+  });
+
+  it('bounds pending input while paused and releases exactly the capacity it emitted', () => {
+    const clock = startedAt(1);
+    clock.setPaused(true);
+    for (let i = 0; i < MAX_PENDING_COMMANDS_PER_MEMBER; i++) {
+      expect(clock.schedule('a', envelope(`a${i}`), 1, 1)).toHaveProperty('applyTick');
+    }
+    expect(clock.schedule('a', envelope('overflow'), 1, 1)).toEqual({ refused: 'budget' });
+    expect(clock.schedule('b', envelope('independent'), 1, 1)).toEqual({ applyTick: 2 });
+    expect(clock.advance(TICK_MS * 100)).toEqual([]);
+    clock.setPaused(false);
+    expect(clock.advance(TICK_MS)[0]?.commands).toHaveLength(MAX_COMMANDS_PER_TICK + 1);
+    for (let i = 0; i < MAX_COMMANDS_PER_TICK; i++) {
+      expect(clock.schedule('a', envelope(`refill${i}`), 2, 1)).toHaveProperty('applyTick');
+    }
+    expect(clock.schedule('a', envelope('overflow'), 2, 1)).toEqual({ refused: 'budget' });
+    const frames = clock.advance(TICK_MS * 8);
+    expect(frames.flatMap((frame) => frame.commands)).toHaveLength(MAX_PENDING_COMMANDS_PER_MEMBER);
+    expect(clock.schedule('a', envelope('drained'), clock.tick, 1)).toEqual({ applyTick: clock.tick + 1 });
   });
 
   it('runs at the governed speed while one is set, reporting the requested speed throughout', () => {
@@ -93,6 +120,16 @@ describe('room clock', () => {
     expect(clock.speed).toBe(2);
     clock.govern(null);
     expect(clock.advance(TICK_MS).map((frame) => frame.tick)).toEqual([3, 4]);
+  });
+
+  it('discards every pending frame and its capacity accounting at the terminal tick', () => {
+    const clock = startedAt(1);
+    for (let i = 0; i < MAX_PENDING_COMMANDS_PER_MEMBER; i++) clock.schedule('a', envelope('queued'), 1, 1);
+    clock.finishAt(1);
+    expect(clock.pendingFrames()).toEqual([]);
+    expect(clock.advance(TICK_MS * 10)).toEqual([]);
+    // Game guards further submissions; the clock itself no longer retains the retired budget.
+    expect(clock.schedule('a', envelope('fresh'), 1, 1)).toEqual({ applyTick: 2 });
   });
 
   it('caps a stall to one burst and lets the game run late instead', () => {

@@ -10,7 +10,7 @@ export const MAX_MEMBERS = 12;
 /** The envelope version the wire carries; equal to the sim's `COMMAND_ENVELOPE_VERSION`, which a test
  *  pins. */
 export const ENVELOPE_VERSION = 1;
-/** Envelopes one member may land on one tick; the rest are dropped and reported. */
+/** Envelopes one member may land on one tick; larger admitted bursts span successive ticks. */
 export const MAX_COMMANDS_PER_TICK = 20;
 /** Bytes of one envelope as JSON; the largest declared payload is well under it. */
 export const MAX_ENVELOPE_BYTES = 1024;

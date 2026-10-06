@@ -189,8 +189,11 @@ the tick the client's own sim had reached when the person issued it. The relay:
   assigned input delay, so a command applies a fixed number of ticks after it was issued as long as
   the connection stays within its budget; a later command from the same member never lands before
   its last accepted command, even when its delay falls or its world is restored to an earlier tick;
-- accepts at most `MAX_COMMANDS_PER_TICK` (20) envelopes from one member on one tick, each at most
-  `MAX_ENVELOPE_BYTES` (1 KiB) as JSON, and reports the rest as `rejected`.
+- lands at most `MAX_COMMANDS_PER_TICK` (20) envelopes from one member on one tick, each at most
+  `MAX_ENVELOPE_BYTES` (1 KiB) as JSON. Larger bursts keep their order across successive ticks so a
+  selection's per-unit orders are not lost at a tick boundary. Each member may hold at most 128
+  pending envelopes, including while paused; further input is reported as `rejected`. At speed 1,
+  a 60-unit order therefore spans three ticks (167 ms from the first group to the last).
 
 The relay reads nothing else. The command payload reaches every client as sent, and every client
 validates it with `parseCommandEnvelope` before enqueueing; an envelope the sim's parser refuses is
@@ -510,6 +513,7 @@ every return of its token, before `start` and `clock`.
 | `SILENT_SOCKET_MS` | 30 s |
 | started room kept with nobody connected | 10 minutes |
 | `MAX_COMMANDS_PER_TICK` per member | 20 |
+| pending commands per member, including paused rooms | 128 |
 | `MAX_SPEED` | 8 |
 | `LAG_BEHIND_MS` / `GOVERN_RELEASE_MS` | 1 s / 0.5 s of frames |
 | `SLOW_GRACE_MS` / `SLOW_AT_ONCE_MS` | 4 s / 5 s of frames |
