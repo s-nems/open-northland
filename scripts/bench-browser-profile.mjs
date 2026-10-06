@@ -46,6 +46,60 @@ export async function throttleCpu(page, record) {
   await cdp.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: false, flatten: false });
 }
 
+/**
+ * Count the WebGL calls a frame issues (draws, texture binds, program switches, buffer uploads) from
+ * now on; `window.__glCalls.report()` gives them per rendered frame. Driver cost per call is far higher
+ * on integrated GPUs than here, so the counts are a result of their own, not only the milliseconds.
+ */
+export async function countGlCalls(page) {
+  await page.evaluate(() => {
+    const app = window.__opennorthland.renderer.app;
+    const gl = app.renderer.gl;
+    const counts = { frames: 0, draws: 0, textureBinds: 0, programs: 0, uploads: 0, uploadBytes: 0 };
+    if (window.__glCalls === undefined) {
+      const wrap = (name, count) => {
+        const original = gl[name].bind(gl);
+        gl[name] = (...args) => {
+          count(window.__glCalls.counts, args);
+          return original(...args);
+        };
+      };
+      wrap('drawElements', (c) => c.draws++);
+      wrap('drawArrays', (c) => c.draws++);
+      wrap('bindTexture', (c) => c.textureBinds++);
+      wrap('useProgram', (c) => c.programs++);
+      wrap('bufferSubData', (c, a) => {
+        c.uploads++;
+        c.uploadBytes += a[2]?.byteLength ?? 0;
+      });
+      wrap('bufferData', (c, a) => {
+        c.uploads++;
+        c.uploadBytes += a[1]?.byteLength ?? 0;
+      });
+      const render = app.render;
+      app.render = function (...args) {
+        window.__glCalls.counts.frames++;
+        return render.apply(this, args);
+      };
+    }
+    window.__glCalls = {
+      counts,
+      report: () => {
+        const c = window.__glCalls.counts;
+        const per = (n) => (c.frames === 0 ? 0 : n / c.frames);
+        return {
+          frames: c.frames,
+          drawsPerFrame: per(c.draws),
+          textureBindsPerFrame: per(c.textureBinds),
+          programsPerFrame: per(c.programs),
+          uploadsPerFrame: per(c.uploads),
+          uploadKbPerFrame: per(c.uploadBytes) / 1024,
+        };
+      },
+    };
+  });
+}
+
 export async function guardCamera(page, camera) {
   await page.evaluate((expectedCamera) => {
     const d = window.__opennorthland;

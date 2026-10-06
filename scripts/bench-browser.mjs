@@ -6,6 +6,7 @@ import { loadConfigFromFile } from 'vite';
 import { verifyPreview } from '../packages/app/scripts/dev-verify.mjs';
 import {
   busyShare,
+  countGlCalls,
   guardCamera,
   machineLoad,
   profileBrowser,
@@ -251,6 +252,7 @@ try {
     await page.waitForTimeout(5000);
     progress(`measuring ${cameraName} x${speed}${suffix} for ${seconds}s`);
     const loadAtStart = machineLoad();
+    await countGlCalls(page);
     await page.evaluate(() => {
       window.__opennorthland.resetPerf();
       window.__rafProbe = {
@@ -300,6 +302,7 @@ try {
         startTick: window.__rafProbe.startTick,
         endTick: window.__opennorthland.host.tick,
         perf: await window.__opennorthland.perf(),
+        gl: window.__glCalls.report(),
         raf: {
           frames: samples.length,
           p50: at(0.5),
