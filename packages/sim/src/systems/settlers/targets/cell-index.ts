@@ -8,7 +8,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { MapContext } from '../../context.js';
 import { routeRegions } from '../../footprint/index.js';
 import { interactionCellOf } from '../../footprint/interaction.js';
-import { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../spatial/metric.js';
+import { closer, manhattan } from '../../spatial/metric.js';
 import { NodeBuckets } from '../../spatial/nodes.js';
 import { interactionCell } from './workplaces.js';
 
@@ -20,9 +20,8 @@ import { interactionCell } from './workplaces.js';
 const NEAREST_RING_MAX_RADIUS = 48;
 
 /**
- * Bucket count at or below which `nearest` skips the ring sweep for the linear scan: a ring miss costs
- * the whole O(maxRadius²) diamond however few buckets exist, and a confined search misses often.
- * Performance knob with an identical winner. Approximation.
+ * Bucket count at or below which `nearest` skips the ring sweep for the linear scan, which a confined
+ * search that often misses finishes sooner. Performance knob with an identical winner. Approximation.
  */
 const RING_MIN_BUCKETS = 64;
 
@@ -83,12 +82,21 @@ class AxisSpan {
   }
 }
 
-/** Candidates bucketed by node coordinates, with the span of the occupied nodes so a ring search never
- *  expands past the farthest bucket. */
+/** Nodes per side of a {@link CellGrid} tile, a power of two. */
+const TILE_SHIFT = 3;
+const TILE_SIZE = 1 << TILE_SHIFT;
+/** Packs a node or a tile into one key; coordinates stay below it on every map. */
+const GRID_KEY_STRIDE = 1 << 16;
+
+/** Candidates bucketed by node coordinates, with the span of the occupied nodes so a search never
+ *  expands past the farthest bucket, and the occupied nodes of each square tile so a search reads only
+ *  occupied nodes, nearest tiles first. */
 class CellGrid {
   private readonly buckets: NodeBuckets;
   private readonly xs = new AxisSpan();
   private readonly ys = new AxisSpan();
+  /** Each tile's occupied nodes as packed keys, ascending. */
+  private readonly tiles = new Map<number, number[]>();
   /** Occupied nodes. */
   size = 0;
 
@@ -97,7 +105,16 @@ class CellGrid {
   }
 
   add(e: Entity, x: number, y: number): void {
-    if (this.buckets.at(x, y).length === 0) this.size++;
+    if (this.buckets.at(x, y).length === 0) {
+      this.size++;
+      const tile = (x >> TILE_SHIFT) * GRID_KEY_STRIDE + (y >> TILE_SHIFT);
+      let nodes = this.tiles.get(tile);
+      if (nodes === undefined) {
+        nodes = [];
+        this.tiles.set(tile, nodes);
+      }
+      insertSortedById(nodes, x * GRID_KEY_STRIDE + y, nodeKey);
+    }
     this.buckets.insert(e, x, y);
     this.xs.add(x);
     this.ys.add(y);
@@ -106,9 +123,63 @@ class CellGrid {
   /** Drop `e`, which {@link add} placed at `(x,y)`. */
   remove(e: Entity, x: number, y: number): void {
     this.buckets.remove(e, x, y);
-    if (this.buckets.at(x, y).length === 0) this.size--;
+    if (this.buckets.at(x, y).length === 0) {
+      this.size--;
+      const tile = (x >> TILE_SHIFT) * GRID_KEY_STRIDE + (y >> TILE_SHIFT);
+      const nodes = this.tiles.get(tile);
+      if (nodes !== undefined) {
+        removeSortedById(nodes, x * GRID_KEY_STRIDE + y, nodeKey);
+        if (nodes.length === 0) this.tiles.delete(tile);
+      }
+    }
     this.xs.remove(x);
     this.ys.remove(y);
+  }
+
+  /**
+   * Hand `visit` every occupied node within Manhattan `maxRadius` of `(x,y)` with its distance and bucket,
+   * tile by tile in order of each tile's least distance. `visit` returns the distance past which no node
+   * can still win; the search stops once every node left lies more than `slack` past it.
+   */
+  nearestFirst(
+    x: number,
+    y: number,
+    maxRadius: number,
+    slack: number,
+    visit: (nx: number, ny: number, distance: number, bucket: readonly Entity[]) => number,
+  ): void {
+    // Call-local, since a visit may search this grid again.
+    const tileNodes: (readonly number[])[] = [];
+    const tileDistances: number[] = [];
+    const tileOrder: number[] = [];
+    const minTx = Math.max(0, x - maxRadius) >> TILE_SHIFT;
+    const maxTx = (x + maxRadius) >> TILE_SHIFT;
+    const minTy = Math.max(0, y - maxRadius) >> TILE_SHIFT;
+    const maxTy = (y + maxRadius) >> TILE_SHIFT;
+    for (let tx = minTx; tx <= maxTx; tx++) {
+      const dx = Math.max(0, tx * TILE_SIZE - x, x - (tx * TILE_SIZE + TILE_SIZE - 1));
+      for (let ty = minTy; ty <= maxTy; ty++) {
+        const nodes = this.tiles.get(tx * GRID_KEY_STRIDE + ty);
+        if (nodes === undefined) continue;
+        const least = dx + Math.max(0, ty * TILE_SIZE - y, y - (ty * TILE_SIZE + TILE_SIZE - 1));
+        if (least > maxRadius) continue;
+        tileOrder.push(tileNodes.length);
+        tileNodes.push(nodes);
+        tileDistances.push(least);
+      }
+    }
+    tileOrder.sort((a, b) => (tileDistances[a] as number) - (tileDistances[b] as number));
+    let bound = Number.POSITIVE_INFINITY;
+    for (const i of tileOrder) {
+      if ((tileDistances[i] as number) - slack > bound) return;
+      for (const key of tileNodes[i] as readonly number[]) {
+        const nx = Math.floor(key / GRID_KEY_STRIDE);
+        const ny = key - nx * GRID_KEY_STRIDE;
+        const distance = Math.abs(nx - x) + Math.abs(ny - y);
+        if (distance > maxRadius || distance - slack > bound) continue;
+        bound = visit(nx, ny, distance, this.buckets.at(nx, ny));
+      }
+    }
   }
 
   /** Node `(x,y)`'s candidates, ascending-id. */
@@ -125,6 +196,7 @@ class CellGrid {
 }
 
 const entityId = (e: Entity): number => e;
+const nodeKey = (key: number): number => key;
 
 /**
  * A spatial index over an economy candidate list, answering "nearest candidate to `here` passing
@@ -316,8 +388,8 @@ export class InteractionCellIndex {
     return this.linearNearest(this.doorList, here, accept, gate, avoid, onSide, rank);
   }
 
-  /** The nearest door-bucketed candidate within `maxRadius` rings of `rank`, or null. The first non-empty
-   *  ring holds the minimum distance, so its winner is the global door winner within that radius. */
+  /** The nearest door-bucketed candidate within Manhattan `maxRadius` of `rank`, or null, by the
+   *  `(distance, cell-id, entity-id)` order. */
   private ringNearest<P>(
     here: NodeId,
     rank: NodeId,
@@ -327,28 +399,28 @@ export class InteractionCellIndex {
     avoid: ((cell: NodeId) => boolean) | undefined,
     onSide: ((e: Entity) => boolean) | undefined,
   ): NearestByCell<P> | null {
-    const hx = this.terrain.xOf(rank);
-    const hy = this.terrain.yOf(rank);
-    for (let d = 0; d <= maxRadius; d++) {
-      let best: NearestByCell<P> | null = null;
-      const offsets = ringOffsetCount(d);
-      for (let i = 0; i < offsets; i++) {
-        const x = hx + ringOffsetDx(d, i);
-        const y = hy + ringOffsetDy(d, i);
-        best = this.pickInRing(x, y, d, here, accept, gate, avoid, onSide, best);
-      }
-      if (best !== null) return best;
-    }
-    return null;
+    let best: NearestByCell<P> | null = null;
+    this.doors.nearestFirst(
+      this.terrain.xOf(rank),
+      this.terrain.yOf(rank),
+      maxRadius,
+      0,
+      (x, y, d, bucket) => {
+        best = this.pickInRing(x, y, d, bucket, here, accept, gate, avoid, onSide, best);
+        return best?.distance ?? Number.POSITIVE_INFINITY;
+      },
+    );
+    return best;
   }
 
-  /** Fold node `(x,y)`'s door bucket into the running ring `best`. Distinct nodes carry distinct cell ids,
-   *  so a lower cell wins outright and the entity-id tie-break only decides within one ascending-id
-   *  bucket. */
+  /** Fold node `(x,y)`'s door `bucket` at `distance` into the running `best`. Distinct nodes carry distinct
+   *  cell ids, so a nearer or lower cell wins outright and the entity-id tie-break only decides within one
+   *  ascending-id bucket. */
   private pickInRing<P>(
     x: number,
     y: number,
     distance: number,
+    bucket: readonly Entity[],
     here: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
     gate: SpatialGate | undefined,
@@ -356,10 +428,11 @@ export class InteractionCellIndex {
     onSide: ((e: Entity) => boolean) | undefined,
     best: NearestByCell<P> | null,
   ): NearestByCell<P> | null {
-    const bucket = this.doors.at(x, y);
     if (bucket.length === 0) return best;
     const cell = this.terrain.nodeAt(x, y); // an occupied bucket sits on the map
-    if (best !== null && cell >= best.cell) return best; // can't beat a lower cell at the same distance
+    // Can't beat a nearer winner, or a lower cell at the same distance.
+    if (best !== null && (distance > best.distance || (distance === best.distance && cell >= best.cell)))
+      return best;
     if (gate !== undefined && !gate.allowsNode(cell)) return best; // the whole cell is out of bounds
     if (vetoed(avoid, here, cell)) return best; // a goal this seeker cannot reach
     for (let i = 0; i < bucket.length; i++) {
@@ -374,8 +447,8 @@ export class InteractionCellIndex {
 
   /**
    * The nearest loose candidate that could beat `bound`, a distance some other winner already holds, or
-   * null. Ring `d` holds candidates at least `d - slack` from `here`, so the sweep ends once that exceeds
-   * the best exact distance; a cap short of that falls back to the candidates beyond it.
+   * null. A node `d` from `rank` holds candidates at least `d - slack` from it, so the sweep ends once
+   * that exceeds the best exact distance; a cap short of that falls back to the candidates beyond it.
    */
   private looseNearest<P>(
     here: NodeId,
@@ -396,19 +469,20 @@ export class InteractionCellIndex {
     let reach = grid.reach(hx, hy);
     if (gate !== undefined) reach = Math.min(reach, boundsReach(gate, hx, hy) + slack);
     const maxRadius = Math.min(NEAREST_RING_MAX_RADIUS, reach);
-    let best: NearestByCell<P> | null = null;
-    for (let d = 0; d <= maxRadius; d++) {
-      if (d - slack > Math.min(bound, best?.distance ?? bound)) return best; // nothing nearer remains
-      const offsets = ringOffsetCount(d);
-      for (let i = 0; i < offsets; i++) {
-        const bucket = grid.at(hx + ringOffsetDx(d, i), hy + ringOffsetDy(d, i));
-        for (let j = 0; j < bucket.length; j++) {
-          const e = bucket[j];
-          if (e !== undefined) best = this.weighLoose(e, here, rank, accept, gate, avoid, onSide, best);
-        }
+    // Typed by assertion: assigned in the visit, so flow narrowing must not pin it to null.
+    let best = null as NearestByCell<P> | null;
+    // A candidate's cell lies within `slack` of its node, so nothing past the best distance plus that slack
+    // can come nearer.
+    grid.nearestFirst(hx, hy, maxRadius, slack, (_x, _y, _d, bucket) => {
+      for (let j = 0; j < bucket.length; j++) {
+        const e = bucket[j];
+        if (e !== undefined) best = this.weighLoose(e, here, rank, accept, gate, avoid, onSide, best);
       }
-    }
-    if (reach <= NEAREST_RING_MAX_RADIUS) return best;
+      return Math.min(bound, best?.distance ?? bound);
+    });
+    // Past the cap only nodes farther than `maxRadius` remain, and none can beat a bound short of it.
+    if (reach <= NEAREST_RING_MAX_RADIUS || Math.min(bound, best?.distance ?? bound) + slack < maxRadius)
+      return best;
     for (let i = 0; i < this.looseList.length; i++) {
       const e = this.looseList[i];
       const node = e === undefined ? undefined : this.looseNode.get(e);
