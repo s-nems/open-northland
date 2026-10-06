@@ -1,17 +1,20 @@
+import { footprintCellDx } from '@open-northland/data';
 import {
   AssistantMovesFlags,
   assistantMovesFlags,
   CurrentAtomic,
   HarvestFocus,
   ownerOf,
+  Position,
   ReplantMisses,
   Resource,
+  ResourceFootprint,
   Settler,
   WorkFlag,
 } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
+import { type HalfCellNode, nodeHxOfPosition, nodeHyOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import {
   type GathererReach,
@@ -39,7 +42,7 @@ import { isHunterJob } from '../readviews/index.js';
 import { anotherSystemOwns } from '../settlers/action-owner.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { interactionCell } from '../settlers/targets/index.js';
-import { navigationLimitFor } from '../signposts/index.js';
+import { type NavigationLimit, navigationLimitFor } from '../signposts/index.js';
 import { anyResourceNear } from '../spatial/resources.js';
 
 /**
@@ -136,7 +139,10 @@ function followFlag(
   const workable: WorkableTest =
     limit === null
       ? reachable
-      : (r) => reachable(r) && limit.allowsNode(interactionCell(world, ctx, terrain, r, flagCell));
+      : (r) =>
+          mayWorkInside(world, limit, r) &&
+          reachable(r) &&
+          limit.allowsNode(interactionCell(world, ctx, terrain, r, flagCell));
   const witness = reach.patchWitness(e, flagNode, flag.radius, (g) => goods.includes(g));
   const fed = witness !== null;
   if (fed) {
@@ -170,6 +176,28 @@ function followFlag(
   relocateWorkFlag(world, flag.flag, positionOfNode(spot.hx, spot.hy), e);
   wakeIdle(world, e); // a worked-out gatherer idles: he plans from the new flag this tick
 }
+
+/**
+ * Whether `limit` may allow the cell resource `r` is worked from, read before that cell is resolved: the
+ * cell is one of the footprint's work cells, a neighbour of the anchor, or the anchor itself, so a limit
+ * that admits nothing within that reach of the anchor rules the resource out. A search over a confined
+ * holder's whole map of trees then skips the stance picks of every tree outside his network.
+ */
+function mayWorkInside(world: World, limit: NavigationLimit, r: Entity): boolean {
+  const footprint = world.tryGet(r, ResourceFootprint);
+  const p = world.tryGet(r, Position);
+  if (limit.mayAllowNear === undefined || footprint === undefined || p === undefined) return true;
+  const ax = nodeHxOfPosition(p.x, p.y);
+  const ay = nodeHyOfPosition(p.y);
+  let reach = NEIGHBOUR_REACH;
+  for (const cell of footprint.work) {
+    reach = Math.max(reach, Math.abs(footprintCellDx(ay, cell)) + Math.abs(cell.dy));
+  }
+  return limit.mayAllowNear(ax, ay, reach);
+}
+
+/** A work cell's farthest fallback from its anchor: a 4-neighbour. */
+const NEIGHBOUR_REACH = 1;
 
 /** Whether a live resource of `goods` that `workable` accepts stands within the band of `flagNode`: one
  *  bounded box query, so a gatherer whose flag already stands by his work pays no wider search. */
