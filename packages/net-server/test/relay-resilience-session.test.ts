@@ -175,6 +175,84 @@ function expectAgreement(captures: Map<HeadlessClient, Capture>, clients: readon
 }
 
 describe('a relayed session under faults', () => {
+  it('waits for the reconnect handshake before acknowledging a buffered replay', async () => {
+    const { stage, ania, bartek, links } = await twoClients(913);
+    const clients = [ania, bartek];
+    await runUntil(stage, clients, 40, { onTick: orderAt });
+    ania.setSpeed(8);
+    await runFor(stage, clients, 500);
+    await runFor(stage, [ania], 8000);
+    expect(bartek.bufferedTicks).toBeGreaterThan(100);
+    links[1].close();
+    relink(stage, bartek, { latencyMs: 300, jitterMs: 80 });
+    const captures = await runUntil(stage, clients, (ania.tick ?? 0) + 200, { onTick: orderAt });
+    expectAgreement(captures, clients);
+    expect(bartek.rejections).toEqual([]);
+    expect(bartek.restoredFrom).toEqual([]);
+  });
+
+  it.each(['up', 'down'] as const)('recovers after a one-way %s blackhole', async (direction) => {
+    const { stage, ania, bartek, links } = await twoClients(911);
+    const clients = [ania, bartek];
+    await runUntil(stage, clients, 40, { onTick: orderAt });
+    links[1].cut(direction);
+    await runFor(stage, clients, SILENT_AFTER_MS + 1000);
+    expect(ania.waits.at(-1)?.for).toMatchObject([{ nick: 'Bartek', reason: 'silent' }]);
+    const held = ania.tick;
+    await runFor(stage, clients, 3000);
+    expect(ania.tick).toBe(held);
+    // A later TCP close still notifies the relay after a half-open link.
+    links[1].close();
+    relink(stage, bartek, LINK);
+    const captures = await runUntil(stage, clients, RUN_TICKS, { onTick: orderAt });
+    expectAgreement(captures, clients);
+    for (const each of clients) {
+      expect(each.rejections).toEqual([]);
+      expect(each.errors).toEqual([]);
+      expect(each.desyncs).toEqual([]);
+    }
+    expect(ania.waits.at(-1)?.for).toEqual([]);
+  });
+
+  it('resumes after a save blocks application pongs on a bandwidth-limited link', async () => {
+    const stage = stageFor(912);
+    const clients = [client('Ania'), client('Bartek')];
+    const [ania, bartek] = clients;
+    if (ania === undefined || bartek === undefined) throw new Error('missing clients');
+    for (const each of clients)
+      stage.network.link(each, {
+        ...LINK,
+        uploadBytesPerSecond: 16 * 1024,
+        downloadBytesPerSecond: 16 * 1024,
+      });
+    await assembleRoom(stage, clients, {
+      settings: SETTINGS,
+      seats: SEATS,
+      seatOf: (i) => i,
+      settleMs: 1000,
+    });
+    await runUntil(stage, clients, 40, { onTick: orderAt });
+    // Opaque save bytes exercise both upload and download queues without changing either world.
+    const bytes = Buffer.alloc(96 * 1024, 7).toString('base64');
+    bartek.sendBlob({ type: 'save', to: 'Ania', tick: bartek.tick, bytes });
+    await runFor(stage, clients, 25_000);
+    expect(ania.blobs.at(-1)).toMatchObject({ type: 'save', bytes });
+    expect(ania.waits.some((notice) => notice.for.some((member) => member.reason === 'silent'))).toBe(true);
+    const captures = await runUntil(
+      stage,
+      clients,
+      Math.max(...clients.map((each) => each.tick ?? 0)) + 100,
+      { onTick: orderAt },
+    );
+    expectAgreement(captures, clients);
+    expect(ania.waits.at(-1)?.for).toEqual([]);
+    for (const each of clients) {
+      expect(each.errors).toEqual([]);
+      expect(each.rejections).toEqual([]);
+      expect(each.desyncs).toEqual([]);
+    }
+  });
+
   it('holds for a dropped client and resumes on its return without a resync', async () => {
     const { stage, ania, bartek, links } = await twoClients(1);
     await runUntil(stage, [ania, bartek], 40, { onTick: orderAt });
@@ -430,7 +508,12 @@ describe('a relayed session under faults', () => {
     const stage = stageFor(81);
     const clients = Array.from({ length: 8 }, (_, i) => client(`Player${i}`));
     const links = clients.map((each, i) =>
-      stage.network.link(each, { latencyMs: 40 + i * 80, jitterMs: 10 + i * 20 }),
+      stage.network.link(each, {
+        latencyMs: 40 + i * 80,
+        jitterMs: 10 + i * 20,
+        uploadBytesPerSecond: 128 * 1024,
+        downloadBytesPerSecond: 64 * 1024,
+      }),
     );
     await assembleRoom(stage, clients, {
       settings: { ...SETTINGS, speed: 4 },
@@ -470,18 +553,32 @@ describe('a relayed session under faults', () => {
     for (const each of clients) {
       const seat = each.session?.localSeat;
       if (typeof seat !== 'number') throw new Error('missing seat');
-      each.submit(
-        playerCommand(seat, {
-          kind: 'setAssistantCounter',
-          player: seat,
-          counter: 'extraMen',
-          value: 900,
-          infinite: false,
-        }),
-      );
+      for (let order = 0; order < 60; order++) {
+        each.submit(
+          playerCommand(seat, {
+            kind: 'setAssistantCounter',
+            player: seat,
+            counter: 'extraMen',
+            value: 100_000 + order,
+            infinite: false,
+          }),
+        );
+      }
     }
     await runFor(stage, clients, 1400);
     host.setPaused(false);
+    const afterBurst = await runUntil(stage, clients, 750, { onTick });
+    for (const capture of afterBurst.values()) {
+      for (let seat = 0; seat < clients.length; seat++) {
+        expect(
+          capture.log.flatMap(([, , command]) =>
+            command.kind === 'setAssistantCounter' && command.player === seat && command.value >= 100_000
+              ? [command.value]
+              : [],
+          ),
+        ).toEqual(Array.from({ length: 60 }, (_, order) => 100_000 + order));
+      }
+    }
     const captures = await runUntil(stage, clients, 1100, { onTick });
     expectAgreement(captures, clients);
     expect(diverging.desyncs).toHaveLength(2);

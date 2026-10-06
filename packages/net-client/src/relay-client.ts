@@ -103,6 +103,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   private readonly saveOrders = new SaveOrders();
   private readonly tickCost = new TickCost();
   private snapshotInFlight: Promise<void> | null = null;
+  private awaitingResume = false;
 
   get session(): GameSession | null {
     return this.state.session;
@@ -147,6 +148,13 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     this.options = options;
     this.now = options.now ?? (() => performance.now());
     this.latency = new CommandLatency();
+  }
+
+  override hello(): void {
+    // A new socket is writable before its retained world has been admitted again. Buffered frames
+    // must wait for start -> loaded, otherwise their acknowledgements arrive while not loaded.
+    this.awaitingResume = this.session !== null;
+    super.hello();
   }
 
   get tick(): number | null {
@@ -254,6 +262,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
         this.completion.confirm(message.tick, message.hash);
         break;
       case 'left':
+        this.awaitingResume = false;
         this.completion.clear();
         this.dropWorld();
         break;
@@ -306,6 +315,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
    *  A paused session still runs the frames it holds: the relay emitted them before it stopped, so
    *  every client comes to rest on the same tick. */
   advance(elapsedMs: number, onTick?: () => void): number {
+    if (this.awaitingResume) return this.alpha;
     const driver = this.driver;
     const transport = this.transport;
     if (driver === null || transport === null) return this.alpha;
@@ -375,6 +385,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   }
 
   private startSession(session: GameSession, snapshotTick: number | null): void {
+    this.awaitingResume = false;
     this.completion.reconnect();
     if (this.sim !== null && !this.state.outOfSync) {
       this.reportLoaded();
