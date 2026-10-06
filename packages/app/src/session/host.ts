@@ -9,6 +9,8 @@ import type {
   ExportSaveOptions,
   FogMode,
   FogView,
+  FormationSlotGroup,
+  HalfCellNode,
   InfoLineView,
   LandscapeEditView,
   LoggedCommand,
@@ -155,6 +157,12 @@ export interface SessionHost {
     tribe?: number,
     gated?: boolean,
   ): Promise<NodeGridAnswer | null>;
+  /** Fresh formation destinations; each group pairs only members on the same static land component. */
+  formationSlots(
+    target: HalfCellNode,
+    members: readonly Entity[],
+    rowSpacing?: 1 | 2,
+  ): Promise<readonly FormationSlotGroup[] | null>;
   signpostProbe(player: number, area: NodeArea): Promise<NodeGridAnswer | null>;
   palisadeProbe(gfxIndex: number, area: NodeArea): Promise<NodeGridAnswer | null>;
   /** Where a road may be ordered over `area`; null for a mapless world. */

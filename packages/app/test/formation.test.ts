@@ -14,6 +14,13 @@ const NONE = (): boolean => false;
  */
 
 describe('formationTiles', () => {
+  it('spaces military rows at 34×38px while keeping one unit exactly on the click', () => {
+    const tiles = formationTiles({ col: 8, row: 8 }, 9, 30, 30, NONE, 2);
+    expect(tiles[0]).toEqual({ col: 8, row: 8 });
+    expect(new Set(tiles.map((tile) => tile.col))).toEqual(new Set([7, 8, 9]));
+    expect(new Set(tiles.map((tile) => tile.row))).toEqual(new Set([6, 8, 10]));
+  });
+
   it('returns exactly the target tile for a single unit (a lone unit goes precisely where clicked)', () => {
     expect(formationTiles({ col: 5, row: 5 }, 1, 20, 20, NONE)).toEqual([{ col: 5, row: 5 }]);
   });
@@ -48,6 +55,27 @@ describe('formationTiles', () => {
 });
 
 describe('assignFormation', () => {
+  it.each([
+    { col: 220, row: 160 },
+    { col: 50, row: 50 },
+  ])(
+    'translates all 1000 members without folding or shuffling their neighbourhoods towards $col,$row',
+    (target) => {
+      const origin = { col: 100, row: 100 };
+      const slots = formationTiles(origin, 1000, 400, 300, NONE);
+      const units = slots.map((slot, i) => ({ ref: i + 1, ...halfCellToScreen(slot.col, slot.row) }));
+      const expected = slots.map((slot, i) => ({
+        ref: i + 1,
+        tile: {
+          col: slot.col + target.col - origin.col,
+          row: slot.row + target.row - origin.row,
+        },
+      }));
+      expect(assignFormation(units, target, 400, 300, NONE)).toEqual(expected);
+      expect(assignFormation([...units].reverse(), target, 400, 300, NONE).reverse()).toEqual(expected);
+    },
+  );
+
   it('sends one unit exactly to the clicked tile', () => {
     const units: FormationUnit[] = [{ ref: 7, x: 100, y: 100 }];
     expect(assignFormation(units, { col: 3, row: 3 }, 20, 20, NONE)).toEqual([

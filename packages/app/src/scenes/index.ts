@@ -5,6 +5,7 @@ import { amuletsScene } from './amulets.js';
 import { armedIdleScene } from './armed-idle.js';
 import { armorScene } from './armor.js';
 import { armyControlScene } from './army-control.js';
+import { armyPassageScene } from './army-passage.js';
 import { attackMoveScene } from './attack-move.js';
 import { barracksScene } from './barracks.js';
 import { battleScene } from './battle.js';
@@ -154,6 +155,7 @@ export const SCENES: readonly SceneDefinition[] = [
   groupPanelScene,
   groupPanelArmyScene,
   armyControlScene,
+  armyPassageScene,
   netPanelScene,
   amuletsScene,
   barracksScene,

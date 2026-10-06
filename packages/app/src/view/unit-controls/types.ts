@@ -13,7 +13,10 @@ import type {
   WorkAreaRing,
 } from '@open-northland/render';
 import type {
+  Entity,
   EquipPickEntry,
+  FormationSlotGroup,
+  HalfCellNode,
   PlayerCommand,
   SignpostReachView,
   TradeOffer,
@@ -46,6 +49,11 @@ export type TechnologyStatusRead = (
 ) => UnlockStatus | undefined;
 
 export interface UnitControlsOptions {
+  readonly requestFormationSlots?: (
+    target: HalfCellNode,
+    members: readonly Entity[],
+    rowSpacing: 1 | 2,
+  ) => Promise<readonly FormationSlotGroup[] | null>;
   readonly technologyStatus?: TechnologyStatusRead;
   /** Bumped when a `technologyStatus` answer changes, which rebuilds the school dialog under one
    *  snapshot; absent, only a new snapshot does. */

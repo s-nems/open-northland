@@ -752,6 +752,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;
 
     const controls = await createUnitControls({
+      requestFormationSlots: (...args) => host.formationSlots(...args),
       technologyStatus: answers.technologyStatus,
       technologyVersion: answers.versions.technology,
       panelAnswersVersion: answers.versions.unitPanel,

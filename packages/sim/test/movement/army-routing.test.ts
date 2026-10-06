@@ -23,9 +23,9 @@ const HEIGHT = 96;
 const WALL_X = 120;
 const GAP_Y = 76;
 
-function reportRouting(scenario: string, orders: number, expansions: number): void {
+function reportRouting(scenario: string, orders: number, expansions: number, elapsedMs?: number): void {
   if (process.env.ON_ARMY_ROUTING_REPORT === 'on')
-    console.log(JSON.stringify({ scenario, orders, expansions }));
+    console.log(JSON.stringify({ scenario, orders, expansions, elapsedMs }));
 }
 
 function army(wall: boolean, wallHeight = GAP_Y) {
@@ -196,18 +196,34 @@ describe('army player routing', () => {
     },
   );
 
-  it('starts 1000 long attack-move routes around a wall in the application tick', () => {
-    const { sim, members } = army(true);
-    for (const { entity, x, y } of members)
-      sim.enqueue(playerCommand(0, { kind: 'attackMoveUnit', entity, x: x + 240, y }));
-    sim.step();
-    expect(members.filter(({ entity }) => sim.world.has(entity, PathRequest))).toEqual([]);
+  it.each([false, true])('starts 1000 long attack-move routes in the application tick (wall=%s)', (wall) => {
+    const { sim, members } = army(wall);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('army terrain missing');
+    let expansions = 0;
+    const stepsInto = terrain.stepsInto.bind(terrain);
+    terrain.stepsInto = (...args) => {
+      expansions++;
+      return stepsInto(...args);
+    };
+    for (const { entity, x, y } of members)
+      sim.enqueue(playerCommand(0, { kind: 'attackMoveUnit', entity, x: x + 240, y }));
+    const started = performance.now();
+    sim.step();
+    reportRouting(
+      wall ? 'open-wall-gap' : 'open-long',
+      members.length,
+      expansions,
+      performance.now() - started,
+    );
+    expect(members.filter(({ entity }) => sim.world.has(entity, PathRequest))).toEqual([]);
+    // Route checks stay linear in the army's total path length; a wall must not trigger one full-map
+    // search per member. Timing is diagnostic only, never a machine-dependent correctness gate.
+    expect(expansions).toBeLessThan(wall ? 2_000_000 : MEMBERS * 250);
     for (const { entity, x, y } of members) {
       const route = sim.world.get(entity, PathRoute).waypoints;
       expect(route.at(-1)?.node).toBe(terrain.nodeAt(x + 240, y));
-      expect(route.some(({ node }) => terrain.yOf(node) >= GAP_Y)).toBe(true);
+      if (wall) expect(route.some(({ node }) => terrain.yOf(node) >= GAP_Y)).toBe(true);
       // Diagonal interpolation stops also carry a pacing node; only lattice centres are route nodes.
       const centres = route.filter((stop) => {
         const at = positionOfNode(terrain.xOf(stop.node), terrain.yOf(stop.node));

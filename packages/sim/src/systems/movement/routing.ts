@@ -152,6 +152,7 @@ export function drainPathRequests(
       playerOrdered &&
       isValidNodeId(terrain, start) &&
       isValidNodeId(terrain, goal);
+    if (group && mask !== undefined) groupRoutes.refresh(mask.version);
     const unreachable =
       group && mask !== undefined && groupReachability.unreachable(mask, blocked, start, goal);
     let path = group && !unreachable ? groupRoutes.borrow(blocked, start, goal, spent) : null;

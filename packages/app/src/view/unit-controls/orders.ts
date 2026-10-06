@@ -6,8 +6,10 @@ import {
   type Entity,
   type EquipPickEntry,
   entityById,
+  type FormationSlotGroup,
   type GroupMember,
   type GroupWorker,
+  type HalfCellNode,
   MAX_UNIT_ORDER_MEMBERS,
   nodeOfPosition,
   type PlayerCommand,
@@ -38,15 +40,27 @@ import {
 import { clampTile, nodeBounds, pickNearestAt, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import type { AnsweredOrders } from './answered-orders.js';
 import { selectionEquipCommands } from './equip-picker.js';
-import { assignFormation, type FormationUnit } from './formation.js';
+import { assignFormation, type FormationUnit, pairFormation } from './formation.js';
 import { enqueueArmyOrder, enqueueUnitSelection } from './group-orders.js';
 import { tradeHousePick } from './highlights/index.js';
+import { createPendingGroundOrders, type PendingGroundOrders } from './pending-ground-orders.js';
 import { openSchoolDialog, type SchoolDialog } from './school-dialog.js';
 import type { TechnologyStatusRead } from './types.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
 export interface UnitOrderDeps {
   readonly uiscale?: number;
+  /** Fresh legal destinations from the simulation, requested only as a ground click lands. */
+  readonly requestFormationSlots?:
+    | ((
+        target: HalfCellNode,
+        members: readonly Entity[],
+        rowSpacing: 1 | 2,
+      ) => Promise<readonly FormationSlotGroup[] | null>)
+    | undefined;
+  readonly pendingGroundOrders?: PendingGroundOrders | undefined;
+  /** Defer this press's normal acknowledgement until its queried formation is accepted. */
+  readonly deferGroundConfirmation?: (() => () => void) | undefined;
   readonly technologyStatus?: TechnologyStatusRead | undefined;
   /** Bumped when a `technologyStatus` answer changes, which the school dialog rebuilds on. */
   readonly technologyVersion?: (() => number) | undefined;
@@ -146,6 +160,12 @@ function wearsGood(
 }
 
 export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderController {
+  const pending = deps.pendingGroundOrders ?? createPendingGroundOrders();
+  if (deps.pendingGroundOrders === undefined) {
+    const enqueue = deps.enqueue;
+    deps = { ...deps, enqueue: (command) => pending.submit(command, enqueue) };
+  }
+  let disposed = false;
   let school: SchoolDialog | undefined;
   let uiScale = deps.uiscale ?? 1;
   const buildingsByType = lastByTypeId(deps.content.buildings);
@@ -184,24 +204,85 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     }
     const { width, height } = nodeBounds(deps.mapSize);
     const seat = clampTile(target, width, height);
-    // Only the movers vacate their nodes; a selected settler the order skips keeps its ground.
-    const blocked = occupiedTiles(new Set(movers.map((mover) => mover.ref)));
-    const members = assignFormation(movers, seat, width, height, blocked).map((order) => ({
-      entity: order.ref as Entity,
-      x: order.tile.col,
-      y: order.tile.row,
-    }));
-    const accepted = enqueueArmyOrder(
-      {
-        kind: kind === 'moveUnit' ? 'moveUnitGroup' : 'attackMoveUnitGroup',
-        members,
-        ...(queued ? { queued: true } : {}),
-      },
-      deps.enqueue,
-      onOrderLimit,
+    const snapshot = deps.snapshot();
+    const military = movers.some((mover) => {
+      const self = entityById(snapshot, mover.ref);
+      return self !== undefined && systems.isFighterJob(deps.content, settlerJobType(self) ?? null);
+    });
+    const dispatch = (
+      currentMovers: readonly FormationUnit[],
+      groups: readonly FormationSlotGroup[] | null,
+    ): boolean => {
+      const orders =
+        groups === null
+          ? assignFormation(
+              currentMovers,
+              seat,
+              width,
+              height,
+              occupiedTiles(new Set(currentMovers.map((mover) => mover.ref))),
+              military ? 2 : 1,
+            )
+          : groups.flatMap((group) => {
+              const ids = new Set<number>(group.members);
+              return pairFormation(
+                currentMovers.filter((mover) => ids.has(mover.ref)),
+                seat,
+                group.slots.map(({ hx, hy }) => ({ col: hx, row: hy })),
+              );
+            });
+      const members = orders.map((order) => ({
+        entity: order.ref as Entity,
+        x: order.tile.col,
+        y: order.tile.row,
+      }));
+      if (members.length === 0) {
+        deps.cue?.('fail');
+        return false;
+      }
+      const accepted = enqueueArmyOrder(
+        {
+          kind: kind === 'moveUnit' ? 'moveUnitGroup' : 'attackMoveUnitGroup',
+          members,
+          ...(queued ? { queued: true } : {}),
+        },
+        deps.enqueue,
+        onOrderLimit,
+      );
+      if (!accepted) return false;
+      deps.markOrder?.(seat, kind === 'attackMoveUnit' ? 'attack' : 'move');
+      return true;
+    };
+    const request = deps.requestFormationSlots;
+    if (request === undefined) return dispatch(movers, null);
+    const ticket = pending.begin(
+      movers.map(({ ref }) => ref),
+      queued,
     );
-    if (!accepted) return false;
-    deps.markOrder?.(seat, kind === 'attackMoveUnit' ? 'attack' : 'move');
+    const acknowledge = deps.deferGroundConfirmation?.();
+    // The query reads the actual terrain and structure bodies on its simulation thread. A newer
+    // unqueued command cancels only its own actors; Shift waits for its overlapping predecessors.
+    const refused = (): void =>
+      pending.settle(ticket, () => {
+        if (!disposed && movers.some(({ ref }) => pending.current(ticket, ref))) deps.cue?.('fail');
+      });
+    try {
+      void request(
+        { hx: seat.col, hy: seat.row },
+        movers.map(({ ref }) => ref as Entity),
+        military ? 2 : 1,
+      ).then(
+        (groups) =>
+          pending.settle(ticket, () => {
+            if (disposed) return;
+            const currentMovers = movers.filter(({ ref }) => pending.current(ticket, ref));
+            if (currentMovers.length > 0 && dispatch(currentMovers, groups)) acknowledge?.();
+          }),
+        refused,
+      );
+    } catch {
+      refused();
+    }
     return true;
   };
 
@@ -682,7 +763,11 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       uiScale = scale;
       await school?.setUiScale(scale);
     },
-    dispose: () => school?.dispose(),
+    dispose: () => {
+      disposed = true;
+      if (deps.pendingGroundOrders === undefined) pending.dispose();
+      school?.dispose();
+    },
     issueRightClick,
     issueRiderTradeHouse,
     issueSetWorkFlagAt,

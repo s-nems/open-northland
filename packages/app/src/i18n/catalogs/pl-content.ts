@@ -591,6 +591,11 @@ export const plContent = {
       summary:
         'Tysiąc mieczników dostaje wspólny rozkaz ataku w marszu. Zaznacz armię i zmieniaj jej cel ruchem, atakiem w marszu lub atakiem na cel; Shift świadomie kolejkuje punkty trasy.',
     },
+    'army-passage': {
+      title: 'Marsz armii przez przesmyk',
+      summary:
+        'Tysiąc mieczników przechodzi przez wąski przesmyk i rozstawia się po drugiej stronie. Sprawdź zwężanie grupy przy przeszkodzie, rozproszenie za nią i zmianę kierunku podczas marszu.',
+    },
     'net-panel': {
       title: 'Panel sieci',
       summary:

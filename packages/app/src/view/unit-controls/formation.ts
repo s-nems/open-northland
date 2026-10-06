@@ -1,9 +1,10 @@
 import { halfCellToScreen } from '@open-northland/render';
+import { formationNodes } from '@open-northland/sim';
 import type { Tile } from '../picking.js';
 
 /**
  * Pure formation assignment: one group move order becomes per-unit destination nodes on the half-cell
- * lattice, spread into the target's vicinity without the paths crossing.
+ * lattice, preserving nearby neighbours when pairing the army with its destination layout.
  */
 
 export interface FormationOrder {
@@ -22,7 +23,8 @@ export interface FormationUnit {
  * `count` distinct nodes clustered around `target`, spiralling outward by square (Chebyshev) ring and
  * collected nearest-first, skipping nodes outside `[0,width) x [0,height)` or reported `blocked`. On the
  * half-cell lattice a ring-1 slot is 34/19 px away, matching the observed packing density of the
- * original. The ring order is fixed, so the same click always yields the same slots.
+ * original. Military rows use spacing 2, giving 34×38 px instead of 34×19 px between feet anchors.
+ * The ring order is fixed, so the same click always yields the same slots.
  */
 export function formationTiles(
   target: Tile,
@@ -30,24 +32,11 @@ export function formationTiles(
   width: number,
   height: number,
   blocked: (col: number, row: number) => boolean,
+  rowSpacing: 1 | 2 = 1,
 ): Tile[] {
-  const out: Tile[] = [];
-  const inBounds = (c: number, r: number): boolean => c >= 0 && c < width && r >= 0 && r < height;
-  const take = (c: number, r: number): void => {
-    if (out.length < count && inBounds(c, r) && !blocked(c, r)) out.push({ col: c, row: r });
-  };
-  const maxRadius = Math.max(width, height);
-  for (let radius = 0; out.length < count && radius <= maxRadius; radius++) {
-    if (radius === 0) {
-      take(target.col, target.row);
-      continue;
-    }
-    for (let dc = -radius; dc <= radius; dc++) take(target.col + dc, target.row - radius); // top edge
-    for (let dr = -radius + 1; dr <= radius; dr++) take(target.col + radius, target.row + dr); // right edge
-    for (let dc = radius - 1; dc >= -radius; dc--) take(target.col + dc, target.row + radius); // bottom edge
-    for (let dr = radius - 1; dr >= -radius + 1; dr--) take(target.col - radius, target.row + dr); // left edge
-  }
-  return out;
+  return formationNodes({ hx: target.col, hy: target.row }, count, width, height, blocked, rowSpacing).map(
+    ({ hx, hy }) => ({ col: hx, row: hy }),
+  );
 }
 
 /**
@@ -120,15 +109,15 @@ function minTotalCostPairing(cost: ReadonlyArray<ReadonlyArray<number>>): number
 
 /**
  * Above this group size the O(n^3) optimal pairing would visibly stall the click handler: 500 units is
- * about 1.25e8 inner steps, while the cap costs about 2.7e7 matrix reads. Bigger groups fall back to
- * radial rank pairing, which is O(n log n).
+ * about 1.25e8 inner steps, while the cap costs about 2.7e7 matrix reads. Bigger groups use spatial
+ * partition pairing, which preserves neighbourhoods in O(n log² n).
  */
 const OPTIMAL_PAIRING_MAX_UNITS = 300;
 
 /**
- * Assign each unit a slot around `target` by the pairing that minimises the group's total squared
- * travel. Squaring penalises one long march harder than two short ones, so the group translates instead
- * of shuffling and no two assigned paths cross. Returns fewer orders than units only when the ground is
+ * Assign each unit a slot around `target`. Small groups minimise total squared travel; larger groups
+ * pair corresponding spatial partitions so nearby units remain nearby rather than folding into the
+ * centre in distance-to-target order. Returns fewer orders than units only when the ground is
  * too boxed-in to seat everyone, in which case the nearest units march and the surplus stands.
  */
 export function assignFormation(
@@ -137,8 +126,22 @@ export function assignFormation(
   width: number,
   height: number,
   blocked: (col: number, row: number) => boolean,
+  rowSpacing: 1 | 2 = 1,
 ): FormationOrder[] {
-  const slots = formationTiles(target, units.length, width, height, blocked);
+  return pairFormation(
+    units,
+    target,
+    formationTiles(target, units.length, width, height, blocked, rowSpacing),
+  );
+}
+
+/** Pair an already validated destination group, keeping terrain components separate at the caller. */
+export function pairFormation(
+  units: readonly FormationUnit[],
+  target: Tile,
+  availableSlots: readonly Tile[],
+): FormationOrder[] {
+  const slots = availableSlots.slice(0, units.length);
   if (slots.length === 0) return [];
 
   const t = halfCellToScreen(target.col, target.row);
@@ -152,17 +155,7 @@ export function assignFormation(
   }
 
   if (movers.length > OPTIMAL_PAIRING_MAX_UNITS) {
-    // Army-scale fallback: the k-th unit by distance takes the k-th spiral slot, which is
-    // radially order-preserving and avoids the O(n^3) stall.
-    const byDist = [...movers].sort((a, b) => d2(a) - d2(b) || a.ref - b.ref);
-    const orders: FormationOrder[] = [];
-    for (let i = 0; i < byDist.length; i++) {
-      const unit = byDist[i];
-      const slot = slots[i];
-      if (unit === undefined || slot === undefined) break; // equal lengths by construction
-      orders.push({ ref: unit.ref, tile: slot });
-    }
-    return orders;
+    return spatialPairing(movers, slots);
   }
 
   // Built once: the pairing search reads these n^2 cells O(n^3) times.
@@ -177,4 +170,55 @@ export function assignFormation(
     orders.push({ ref: unit.ref, tile: slot });
   }
   return orders;
+}
+
+interface SpatialMember {
+  readonly index: number;
+  readonly key: number;
+  readonly x: number;
+  readonly y: number;
+}
+
+/** Split both layouts on the same world-space axis, then pair the corresponding equal-sized halves.
+ * A translated layout keeps every member's slot; id ties make selection iteration order immaterial. */
+function spatialPairing(units: readonly FormationUnit[], slots: readonly Tile[]): FormationOrder[] {
+  const from = units.map((unit, index) => ({ ...unit, index, key: unit.ref }));
+  const to = slots.map((slot, index) => ({
+    ...halfCellToScreen(slot.col, slot.row),
+    index,
+    key: index,
+  }));
+  const assigned = new Map<number, Tile>();
+  const span = (points: readonly SpatialMember[], axis: 'x' | 'y'): number => {
+    let low = Number.POSITIVE_INFINITY,
+      high = Number.NEGATIVE_INFINITY;
+    for (const point of points) {
+      low = Math.min(low, point[axis]);
+      high = Math.max(high, point[axis]);
+    }
+    return high - low;
+  };
+  const pair = (a: SpatialMember[], b: SpatialMember[]): void => {
+    if (a.length === 1) {
+      const unit = a[0],
+        slot = b[0];
+      const tile = slot === undefined ? undefined : slots[slot.index];
+      if (unit !== undefined && tile !== undefined) assigned.set(unit.key, tile);
+      return;
+    }
+    const axis = span(a, 'x') + span(b, 'x') >= span(a, 'y') + span(b, 'y') ? 'x' : 'y';
+    const other = axis === 'x' ? 'y' : 'x';
+    const compare = (left: SpatialMember, right: SpatialMember): number =>
+      left[axis] - right[axis] || left[other] - right[other] || left.key - right.key;
+    a.sort(compare);
+    b.sort(compare);
+    const middle = Math.floor(a.length / 2);
+    pair(a.slice(0, middle), b.slice(0, middle));
+    pair(a.slice(middle), b.slice(middle));
+  };
+  pair(from, to);
+  return units.flatMap((unit) => {
+    const tile = assigned.get(unit.ref);
+    return tile === undefined ? [] : [{ ref: unit.ref, tile }];
+  });
 }

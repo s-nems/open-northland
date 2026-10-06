@@ -86,6 +86,12 @@ respond together, allowing for their existing turns, collisions and combat. Shif
 queues a waypoint; a normal click replaces it. This local scene checks controls and presentation;
 `army-session.test.ts` verifies the same group payload across two and eight constrained relay links.
 
+`?scene=army-passage` sends the same army through a narrow land passage. Watch the approach, the
+constriction and the spread after crossing; redirect the group before everyone has passed. In both
+army scenes, inspect the whole march and the settled destination, where soldiers should occupy
+distinct spaces rather than form dense clumps. The open clearing should retain a broad marching
+front; the passage should narrow it only where the ground requires.
+
 ## Real map acceptance
 
 `?scene=mission-map` opens the decoded `wielkie_sprzatanie` map through the normal map entry with

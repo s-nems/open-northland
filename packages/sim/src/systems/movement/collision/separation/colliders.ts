@@ -1,4 +1,4 @@
-import { Obstructed, PathFollow, PathRoute, Position } from '../../../../components/index.js';
+import { Engagement, Obstructed, PathFollow, PathRoute, Position } from '../../../../components/index.js';
 import { type Fixed, ZERO } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
@@ -52,10 +52,16 @@ export function collectColliders(
     movers.firm[slot] = firm;
     if (firm) firmCount++;
     // Both present by the movers query above.
-    const target = world.get(e, PathRoute).waypoints[world.get(e, PathFollow).index];
+    const waypoints = world.get(e, PathRoute).waypoints;
+    const target = waypoints[world.get(e, PathFollow).index];
     movers.hasTarget[slot] = target !== undefined;
     movers.targetX[slot] = target?.x ?? ZERO;
     movers.targetY[slot] = target?.y ?? ZERO;
+    const goal = waypoints.at(-1);
+    movers.hasGoal[slot] = goal !== undefined;
+    movers.goalX[slot] = goal?.x ?? ZERO;
+    movers.goalY[slot] = goal?.y ?? ZERO;
+    movers.engaged[slot] = world.has(e, Engagement);
   }
   movers.grid.fill(terrain, moverCount, movers.hx, movers.hy);
 

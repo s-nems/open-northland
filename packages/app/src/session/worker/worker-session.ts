@@ -489,6 +489,7 @@ class WorkerClient<E> {
       hashState: () => this.call({ method: 'hashState' }).then(({ value }) => value as StateHash),
 
       placementProbe: (...args) => this.ask('placementProbe', args),
+      formationSlots: (...args) => this.ask('formationSlots', args),
       signpostProbe: (...args) => this.ask('signpostProbe', args),
       palisadeProbe: (...args) => this.ask('palisadeProbe', args),
       roadSiteProbe: (...args) => this.ask('roadSiteProbe', args),

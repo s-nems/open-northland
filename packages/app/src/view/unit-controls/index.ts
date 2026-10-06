@@ -1,4 +1,3 @@
-import type { UiCue } from '@open-northland/audio';
 import { entityById, MAX_UNIT_ORDER_MEMBERS, systems, type WorldSnapshot } from '@open-northland/sim';
 import { isSettler, isVehicle, settlerJobType } from '../../game/snapshot.js';
 import { pickableSeat } from '../../game/viewer-seat.js';
@@ -25,10 +24,12 @@ import { jobMateArea, jobMatesIn } from './job-mates.js';
 import { createKeyboardOrders } from './keyboard-orders.js';
 import { createLostGoals } from './lost-goals.js';
 import { createSelectionMarquee } from './marquee.js';
+import { createOrderFeedback } from './order-feedback.js';
 import { createOrderLimitNotice } from './order-limit-notice.js';
 import { createOrderMarkers } from './order-markers.js';
 import { createUnitOrderController } from './orders.js';
 import { createOverviewOrders } from './overview-orders.js';
+import { createPendingGroundOrders } from './pending-ground-orders.js';
 import { pickCursor } from './pick-cursor.js';
 import { createPickModeController, pickPressCue } from './pick-mode.js';
 import { issueRingCommand } from './ring-commands.js';
@@ -61,12 +62,15 @@ interface RightClickPress {
  */
 
 export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
+  const pendingGroundOrders = createPendingGroundOrders();
+  const enqueue = opts.enqueue;
+  opts = { ...opts, enqueue: (command) => pendingGroundOrders.submit(command, enqueue) };
   const { canvas } = opts;
   // The GUI click: a press that takes a selection or commands someone confirms, one that calls an armed
   // pick off fails. Original behavior: the confirming right click and a single selecting click play
   // `click_confirm`, a cancel plays `click_fail`, and a drag select or a click on empty ground plays
   // nothing.
-  const cue: (kind: UiCue) => void = opts.onUiCue ?? ((): void => undefined);
+  const { cue, deferGroundConfirmation } = createOrderFeedback(opts.onUiCue);
   const isUnit = (id: number): boolean => {
     const entity = entityById(opts.snapshot(), id);
     return entity !== undefined && (isSettler(entity) || isVehicle(entity));
@@ -274,6 +278,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     technologyStatus: opts.technologyStatus,
     technologyVersion: opts.technologyVersion,
     requestEquipPicks: opts.requestEquipPicks,
+    requestFormationSlots: opts.requestFormationSlots,
+    pendingGroundOrders,
+    deferGroundConfirmation,
     answered,
     selected: orderSelection,
     targets: unitTargets,
@@ -582,6 +589,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', endShiftChain);
       answered.dispose();
+      pendingGroundOrders.dispose();
       orders.dispose();
       marquee.dispose();
       chrome.dispose();

@@ -206,6 +206,11 @@ two actions, preserving their order. Nested actions pass the same ownership chec
 Vehicle movement and attack selections are grouped as well; boarding groups retain both the unit's
 and the vehicle's ownership checks. A mixed army emits a settler group and a vehicle group.
 
+Ground clicks first request current formation slots from the simulation host, excluding blocked
+terrain, structure bodies and occupied destinations. Members stay paired within their land component.
+While that local query is pending, a newer order supersedes only its affected actors; Shift preserves
+the order of overlapping gestures. Only the completed member destinations enter the relay command.
+
 Every admitted member receives the order in the same tick; a larger selection is refused locally as
 one gesture with a visible notice. Ordinary redirects replace the previous standing order when they
 apply, while Shift deliberately retains the sim's waypoint queue. Pending commands, saves and replays

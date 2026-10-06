@@ -41,6 +41,7 @@ export interface WorkerSessionOptions {
  *  sim; `hashState`, `run` and `settled` carry the worker's tick and have their own calls. */
 export const HOST_REQUESTS = [
   'placementProbe',
+  'formationSlots',
   'signpostProbe',
   'signpostReach',
   'palisadeProbe',

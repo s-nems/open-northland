@@ -51,8 +51,9 @@ import {
   type WorldSnapshot,
 } from './inspect/snapshot.js';
 import { SnapshotDeltaStream, type SnapshotDeltaStreamOptions } from './inspect/snapshot-clones.js';
-import type { NodeArea } from './nav/halfcell.js';
+import type { HalfCellNode, NodeArea } from './nav/halfcell.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
+import { type FormationSlotGroup, formationSlotsFor } from './simulation/formation-slots.js';
 import { hashSimState } from './simulation/hash.js';
 import {
   type MooringAnswer,
@@ -424,6 +425,15 @@ export class Simulation {
       tribe,
       gated,
     );
+  }
+
+  /** Fresh legal destinations for one ground gesture, partitioned by the members' land components. */
+  formationSlots(
+    target: HalfCellNode,
+    members: readonly Entity[],
+    rowSpacing: 1 | 2 = 1,
+  ): readonly FormationSlotGroup[] | null {
+    return formationSlotsFor(this.world, this.content, this.terrain, target, members, rowSpacing);
   }
 
   /** {@link placementProbe}'s verdict over every node of `area`, as plain data. */

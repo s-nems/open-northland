@@ -33,6 +33,11 @@ export interface MoverColumns extends ColliderColumns {
   readonly hasTarget: boolean[];
   readonly targetX: Fixed[];
   readonly targetY: Fixed[];
+  /** Final route destination and combat status, captured before any mover's grind bookkeeping. */
+  readonly hasGoal: boolean[];
+  readonly goalX: Fixed[];
+  readonly goalY: Fixed[];
+  readonly engaged: boolean[];
   readonly headingX: Fixed[];
   readonly headingY: Fixed[];
   /** The census whose heading the slot holds; any other value means not derived yet. */
@@ -81,6 +86,10 @@ export function separationScratch(world: World): SeparationScratch {
         hasTarget: [],
         targetX: [],
         targetY: [],
+        hasGoal: [],
+        goalX: [],
+        goalY: [],
+        engaged: [],
         headingX: [],
         headingY: [],
         headingCensus: [],

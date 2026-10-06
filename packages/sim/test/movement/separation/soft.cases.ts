@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  Engagement,
   MoveGoal,
   Obstructed,
   Owner,
@@ -11,6 +12,7 @@ import {
 } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import { positionOfNode } from '../../../src/index.js';
+import { positionXOfWorld } from '../../../src/nav/halfcell.js';
 import { HALF_ROW, worldDistance, worldX } from '../../../src/nav/world-metric.js';
 import { separationSystem } from '../../../src/systems/movement/collision/separation.js';
 import { ctxOf } from '../../fixtures/context.js';
@@ -30,6 +32,67 @@ import {
 } from './support.js';
 
 describe('unit body collision - soft and civilian traffic', () => {
+  it.each(['shared-goal', 'first-engaged', 'second-engaged'] as const)(
+    'aligned neighbours yield along their heading for %s',
+    (situation) => {
+      const s = sim();
+      const a = settlerAt(s, 6, 6, SOLDIER, P0);
+      const b = settlerAt(s, 6, 6, SOLDIER, P0);
+      const rows = [fx.fromFloat(2.875), fx.fromFloat(3.125)];
+      const startWX = fx.fromInt(3);
+      const terrain = s.terrain;
+      if (terrain === undefined) throw new Error('mapped separation fixture');
+      for (const [i, entity] of [a, b].entries()) {
+        const y = rows[i];
+        if (y === undefined) throw new Error('one position per walker');
+        s.world.add(entity, Position, { x: positionXOfWorld(startWX, y), y });
+        const goalY = situation === 'shared-goal' ? fx.fromInt(3) : y;
+        s.world.add(entity, PathRoute, {
+          waypoints: [
+            { x: positionXOfWorld(fx.fromInt(8), y), y, node: terrain.nodeAt(16, 6) },
+            { x: positionXOfWorld(fx.fromInt(10), goalY), y: goalY, node: terrain.nodeAt(20, 6) },
+          ],
+        });
+        s.world.add(entity, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
+      }
+      if (situation !== 'shared-goal')
+        s.world.add(situation === 'first-engaged' ? a : b, Engagement, { repathAt: 0 });
+      separationSystem(s.world, ctxOf(s));
+      // A horizontal brake round-trips world Y through the fixed grid projection (at most two ulps),
+      // without the hundreds of ulps a lateral overlap split would apply here.
+      expect(Math.abs(s.world.get(a, Position).y - (rows[0] ?? 0))).toBeLessThanOrEqual(2);
+      expect(Math.abs(s.world.get(b, Position).y - (rows[1] ?? 0))).toBeLessThanOrEqual(2);
+      expect(worldX(s.world.get(b, Position).x, s.world.get(b, Position).y)).toBeLessThan(startWX);
+    },
+  );
+
+  it.each([WOODCUTTER, SOLDIER])('walkers abreast keep their lateral space, job %i', (job) => {
+    const s = sim();
+    const a = settlerAt(s, 6, 6, job, P0);
+    const b = settlerAt(s, 6, 6, job, P0);
+    const starts = [fx.fromFloat(2.875), fx.fromFloat(3.125)];
+    const startWX = fx.fromInt(3);
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapped separation fixture');
+    for (const [i, entity] of [a, b].entries()) {
+      const y = starts[i];
+      if (y === undefined) throw new Error('one position per walker');
+      s.world.add(entity, Position, { x: positionXOfWorld(startWX, y), y });
+      s.world.add(entity, PathRoute, {
+        waypoints: [{ x: positionXOfWorld(fx.fromInt(8), y), y, node: terrain.nodeAt(16, 6) }],
+      });
+      s.world.add(entity, PathFollow, { index: 0, legElapsed: 0, legCost: 0 });
+    }
+
+    separationSystem(s.world, ctxOf(s));
+
+    const pa = s.world.get(a, Position);
+    const pb = s.world.get(b, Position);
+    expect(pa.y).toBeLessThan(starts[0] ?? 0);
+    expect(pb.y).toBeGreaterThan(starts[1] ?? 0);
+    for (const p of [pa, pb]) expect(Math.abs(worldX(p.x, p.y) - startWX)).toBeLessThanOrEqual(1);
+  });
+
   it.each([
     { row: 2, lowerEndpoint: { x: 195141, y: 119946 }, upperEndpoint: { x: 195143, y: 142195 } },
     { row: 3, lowerEndpoint: { x: 198075, y: 185482 }, upperEndpoint: { x: 198074, y: 207731 } },

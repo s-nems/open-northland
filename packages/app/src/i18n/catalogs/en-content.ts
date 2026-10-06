@@ -593,6 +593,11 @@ export const enContent = {
       summary:
         'A thousand swordsmen receive one attack-move order together. Select the army and redirect it with ordinary movement, attack-move or direct attack; Shift deliberately queues waypoints.',
     },
+    'army-passage': {
+      title: 'Army through a narrow passage',
+      summary:
+        'A thousand swordsmen cross a narrow land passage and spread out on the other side. Check how the group narrows at the obstacle, spreads beyond it, and responds to a new direction while marching.',
+    },
     'net-panel': {
       title: 'Network panel',
       summary:

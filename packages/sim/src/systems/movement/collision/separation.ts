@@ -50,10 +50,10 @@ const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(REFERENCE_PACE_PER_TICK, fx.fro
 const SOFT_PUSH_PACE_SHARE: Fixed = fx.div(ONE, fx.fromInt(2));
 
 /**
- * Minimum unit-heading dot product for two overlapping movers to count as a convoy rather than crossing
- * traffic: a half, so within 60 degrees. A convoy pair resolves by the follower braking in line, with no
- * lateral component, so shared-lane walkers form a column instead of shoving each other sideways, while
- * anything closer to perpendicular keeps the radial sidestep. Approximation with no original counterpart.
+ * Minimum heading alignment for converging or same-lane walkers to brake behind one another. Abreast
+ * walkers with distinct destinations separate sideways; a common heading must not fold a marching
+ * front into a column. Combat and a shared destination retain their orderly approach.
+ * Approximation: headings within 60 degrees, and for distinct goals the neighbour twice as far along as across.
  */
 const CONVOY_ALIGNMENT_MIN: Fixed = fx.div(fx.fromInt(1), fx.fromInt(2));
 
@@ -196,21 +196,32 @@ function resolveMoverPush(
           fx.mul(fx.sub(otherWX, startWX), startHX),
           fx.mul(fx.sub(otherWY, startWY), startHY),
         );
-        // Exactly abreast or stacked: the higher id yields, seeding the fore and aft order the geometric
-        // test then keeps stable. Known gap: a follower on a faster gait out-closes the capped brake and
-        // briefly merges.
-        if (ahead > ZERO || (ahead === ZERO && e > n)) {
+        const across = fx.sub(fx.mul(dwx, startHY), fx.mul(dwy, startHX));
+        const otherAhead = fx.add(
+          fx.mul(fx.sub(startWX, otherWX), otherHX),
+          fx.mul(fx.sub(startWY, otherWY), otherHY),
+        );
+        const otherAcross = fx.sub(fx.mul(dwx, otherHY), fx.mul(dwy, otherHX));
+        const sharedGoal =
+          movers.hasGoal[slot] === true &&
+          movers.hasGoal[other] === true &&
+          movers.goalX[slot] === movers.goalX[other] &&
+          movers.goalY[slot] === movers.goalY[other];
+        const sameLane =
+          sharedGoal ||
+          movers.engaged[slot] === true ||
+          movers.engaged[other] === true ||
+          (Math.abs(ahead) >= 2 * Math.abs(across) && Math.abs(otherAhead) >= 2 * Math.abs(otherAcross));
+        // Exactly stacked on the same lane: the higher id yields, seeding the fore and aft order the
+        // geometric test then keeps stable. A faster follower can still out-close the capped brake.
+        if (sameLane && (ahead > ZERO || (ahead === ZERO && e > n))) {
           pushX = fx.sub(pushX, fx.mul(startHX, half));
           pushY = fx.sub(pushY, fx.mul(startHY, half));
           continue; // braked in line, no radial component
         }
         // The leader skips its counter-shove only when the other side will brake. Both iterations read the
         // same snapshot, so this prediction equals the other side's own decision exactly.
-        const otherAhead = fx.add(
-          fx.mul(fx.sub(startWX, otherWX), otherHX),
-          fx.mul(fx.sub(startWY, otherWY), otherHY),
-        );
-        if (otherAhead > ZERO || (otherAhead === ZERO && n > e)) continue;
+        if (sameLane && (otherAhead > ZERO || (otherAhead === ZERO && n > e))) continue;
       }
     }
     if (dist === ZERO) {

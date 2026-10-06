@@ -156,6 +156,7 @@ export { SnapshotMirror } from './inspect/snapshot-mirror.js';
 export { TILE_BUCKET_SIZE, type TileBox, TileBuckets } from './inspect/tile-buckets.js';
 export type { BlockOverlay } from './nav/block-overlay.js';
 export { ClearanceField, MAX_CLEARANCE_CLASS } from './nav/clearance.js';
+export { formationNodes } from './nav/formation.js';
 export {
   cellAnchorNode,
   cellOfAnchorNode,
@@ -213,6 +214,7 @@ export {
   serializeSaveGame,
   withSaveContinuation,
 } from './save/index.js';
+export type { FormationSlotGroup } from './simulation/formation-slots.js';
 // The idle-adult job key of the HUD population tally: a façade read view, not a system.
 export { IDLE_JOB } from './simulation/hud.js';
 export {
