@@ -1,27 +1,29 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ resize: vi.fn(), destroys: [] as Array<{ destroy(): void }> }));
-vi.mock('pixi.js', () => ({
-  Application: class {
-    renderer = {
-      resolution: 1,
-      resize: mocks.resize,
-      runners: { destroy: { add: (hook: { destroy(): void }) => mocks.destroys.push(hook) } },
-      events: { cursorStyles: { default: 'inherit' } },
-    };
-    async init() {}
-  },
-  Assets: {},
-  // The human palette LUT module rides along with `pixi-app.ts`, which registers its uploader.
-  BufferImageSource: class {},
-  ExtensionType: {},
-  extensions: { add: () => undefined },
+const mocks = { resize: vi.fn(), destroys: [] as Array<{ destroy(): void }> };
+class FakeApplication {
+  renderer = {
+    resolution: 1,
+    resize: mocks.resize,
+    runners: { destroy: { add: (hook: { destroy(): void }) => mocks.destroys.push(hook) } },
+    events: { cursorStyles: { default: 'inherit' } },
+  };
+  async init() {}
+}
+
+// Test files share one module registry, so a module evaluated against a fake `pixi.js` would reach
+// later files. Only `Application` is faked, over the real module, and the registry is cleared on both
+// sides of this file so the subject and the modules it loads see the fake here and nowhere else.
+vi.doMock('pixi.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('pixi.js')>()),
+  Application: FakeApplication,
 }));
-
-// `pixi.js` is a real ESM package, so its exports cannot be spied in place, and test files share
-// one module registry. Clear it, then import the subject, so the subject sees the fake above.
 vi.resetModules();
 const { createWindowPixiApp } = await import('../src/gpu/pixi-app.js');
+afterAll(() => {
+  vi.doUnmock('pixi.js');
+  vi.resetModules();
+});
 
 afterEach(() => vi.unstubAllGlobals());
 it('releases resize and DPR listeners when the renderer is destroyed', async () => {
