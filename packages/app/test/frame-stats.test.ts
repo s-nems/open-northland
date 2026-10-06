@@ -248,4 +248,18 @@ describe('FrameStats', () => {
     expect(report.window.frames).toBe(100_000);
     expect(report.window.frameMs.maxMs).toBe(200);
   });
+
+  it('averages the thread cost exactly over the window and forgets it on a reset', () => {
+    const stats = new FrameStats();
+    stats.record(sample({ cpuMs: 99, drawMs: 99, worldMs: 99 }));
+    stats.reset();
+    stats.record(sample({ cpuMs: 4, drawMs: 3, worldMs: 2, receiveMs: 1 }));
+    stats.record(sample({ cpuMs: 8, drawMs: 5, worldMs: 4, receiveMs: 3 }));
+    const { window } = stats.report();
+    expect(window.cpuMsPerFrame).toBe(6);
+    expect(window.drawMsPerFrame).toBe(4);
+    expect(window.worldMsPerFrame).toBe(3);
+    expect(window.receiveMsPerFrame).toBe(2);
+    expect(window.maxCpuMs).toBe(8);
+  });
 });

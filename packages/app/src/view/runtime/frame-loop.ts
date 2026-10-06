@@ -337,6 +337,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     );
     const doorBadges = doorBadgesFor(snap, markViewport);
     const lifeHearts = lifeHeartsFor(snap, markViewport);
+    const world0 = performance.now();
     renderer.update({
       snapshot: snap,
       camera: drawnCamera,
@@ -355,6 +356,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       lostGoals,
       lostGoalPulse: lostGoalPulse(nowMs),
     });
+    const worldMs = performance.now() - world0;
     loop.mapOverlay?.update(snap, drawnCamera, app.screen, loop.viewer.seat(), fogView);
     controls.refreshCursor(snap);
     worldHover.update(snap, nowMs); // after controls, so the pointer-claim state is current
@@ -408,6 +410,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       leadTicks: offThread?.leadTicks ?? 0,
       snapMs,
       drawMs,
+      worldMs,
       ...renderer.stats(),
     });
     perf.update(frameReport, netReadout);

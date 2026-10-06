@@ -347,8 +347,15 @@ npm run bench:browser -- bench-out/late.t100000.checkpoint http://127.0.0.1:5174
 The arguments are checkpoint, development-server origin, output directory (default
 `bench-out/browser`) and seconds per measurement window (default 15). Start the server separately in
 this checkout. `ON_BENCH_BROWSER_MODE=baseline` runs only the baseline matrix;
-`ON_BENCH_BROWSER_MODE=profile` runs only diagnostics; the default `all` runs both. Diagnostics cover
-the dense and widest views at x3, each with its own CPU, allocation and GPU files. The probe verifies
+`ON_BENCH_BROWSER_MODE=profile` runs only diagnostics; the default `all` runs both. Diagnostics
+cover the dense and widest views at x3, each with its own CPU, allocation and GPU files.
+`ON_BENCH_BROWSER_WINDOWS=dense:3,wide:0` replaces the baseline matrix with those `camera:speed`
+windows (cameras `dense`, `zoom07`, `zoom05`, `wide`, `empty`), and `ON_BENCH_BROWSER_PROFILE_VIEWS`
+names the diagnostic views. `ON_BENCH_BROWSER_CPU_THROTTLE=4` slows the main thread four times
+through DevTools CPU emulation, the weak-CPU proxy for the frame. Chromium refuses the emulation for
+workers, so the sim worker keeps full speed; the report records each thread's answer.
+`ON_BENCH_BROWSER_SEAT=0` has the spectator watch that seat, so the frame draws through its fog and
+fills its HUD figures as a played seat does. The probe verifies
 its checkout, client build and generated content, derives map,
 seed, AI seats and rules from the checkpoint, and checks the restored hash before every condition.
 It opens muted headed Chromium at 1440×900, device scale 1, with fullscreen disabled. Each window
@@ -362,10 +369,13 @@ The baseline matrix covers a dense settlement at pause and x1/x3/x10; zoom 0.35 
 zoom 0.7 and 0.5 at x3; an off-map camera at x3; and a repeated dense x3 window. `report.json` records
 exact RAF interval quantiles, existing `perf()` figures, observed camera and canvas, tick ranges,
 visibility, hardware and errors. The `perf().frame` CPU/draw figures are recent EMAs, while RAF
-quantiles cover the whole window. A window hidden at any point is invalid. Screenshots identify the
+quantiles and the `perf().window` means (`cpuMsPerFrame`, `receiveMsPerFrame`, `drawMsPerFrame` and
+its world-renderer share `worldMsPerFrame`, the rest being HUD, minimap, overlays and audio) cover the
+whole window. A window hidden at any point is invalid. Screenshots identify the
 chosen view. Camera gestures are suspended and input is blocked on the probe's page; every measured
 RAF checks camera scale/offset, canvas dimensions and device scale for drift. Dense placement is
-selected once from the greatest nearby building count.
+selected once from the greatest nearby building count, among the watched seat's own buildings when
+one is watched.
 
 Separate x3 windows write a CPU profile and allocation profile with summary tables and
 elapsed time, ticks and frame counts. CPU sampling runs with a GPU timer query around the main Pixi

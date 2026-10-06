@@ -25,6 +25,7 @@ it('folds the frame stats and reads the connection only while the readout shows'
     leadTicks: 0,
     snapMs: 1,
     drawMs: 2,
+    worldMs: 1,
     drawn: 0,
     pooled: 0,
   });

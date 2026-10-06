@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { loadConfigFromFile } from 'vite';
 import { verifyPreview } from '../packages/app/scripts/dev-verify.mjs';
-import { guardCamera, machineLoad, profileBrowser } from './bench-browser-profile.mjs';
+import { guardCamera, machineLoad, profileBrowser, throttleCpu } from './bench-browser-profile.mjs';
 import { repoRoot } from './content-dir.mjs';
 
 const [checkpoint, origin, output = 'bench-out/browser', secondsText = '15'] = process.argv.slice(2);
@@ -15,6 +15,26 @@ const mode = process.env.ON_BENCH_BROWSER_MODE ?? 'all';
 if (!['all', 'baseline', 'profile'].includes(mode))
   throw new Error('ON_BENCH_BROWSER_MODE must be all, baseline or profile');
 if (!Number.isFinite(seconds) || seconds < 1) throw new Error('window seconds must be positive');
+const throttle = Number(process.env.ON_BENCH_BROWSER_CPU_THROTTLE ?? '1');
+if (!Number.isFinite(throttle) || throttle < 1) throw new Error('ON_BENCH_BROWSER_CPU_THROTTLE must be >= 1');
+const CAMERA_NAMES = ['dense', 'zoom07', 'zoom05', 'wide', 'empty'];
+/** `camera:speed` pairs, e.g. `dense:3,wide:0`; unset runs the full baseline matrix. */
+const windowSpec = process.env.ON_BENCH_BROWSER_WINDOWS?.split(',').map((pair) => {
+  const [cameraName, speedText] = pair.split(':');
+  const speed = Number(speedText);
+  if (!CAMERA_NAMES.includes(cameraName) || !Number.isInteger(speed) || speed < 0)
+    throw new Error(`ON_BENCH_BROWSER_WINDOWS entry ${pair} is not camera:speed (${CAMERA_NAMES})`);
+  return { cameraName, speed };
+});
+/** A seat the spectator watches, which draws through that seat's fog and fills its HUD figures; unset
+ *  watches the whole map. */
+const watchedSeat =
+  process.env.ON_BENCH_BROWSER_SEAT === undefined ? null : Number(process.env.ON_BENCH_BROWSER_SEAT);
+if (watchedSeat !== null && !Number.isInteger(watchedSeat))
+  throw new Error('ON_BENCH_BROWSER_SEAT must be a seat');
+const profileViews = (process.env.ON_BENCH_BROWSER_PROFILE_VIEWS ?? 'dense,wide').split(',');
+if (!profileViews.every((name) => CAMERA_NAMES.includes(name)))
+  throw new Error(`ON_BENCH_BROWSER_PROFILE_VIEWS takes ${CAMERA_NAMES}`);
 const saveText = await readFile(checkpoint, 'utf8');
 const save = JSON.parse(saveText);
 const { header } = save;
@@ -60,6 +80,8 @@ const metadata = {
   viewport: { width: 1440, height: 900 },
   seconds,
   mode,
+  watchedSeat,
+  cpuThrottle: throttle === 1 ? null : { rate: throttle, page: null, workers: {} },
   os: {
     platform: platform(),
     release: release(),
@@ -104,6 +126,7 @@ try {
     if (m.type() === 'error') errors.push(m.text());
   });
   await page.goto(url.origin);
+  if (metadata.cpuThrottle !== null) await throttleCpu(page, metadata.cpuThrottle);
   async function restore() {
     progress(`staging checkpoint at tick ${header.tick}`);
     await page.evaluate(async (text) => {
@@ -123,6 +146,12 @@ try {
     if (restored.tick !== header.tick || restored.hash !== stamp.stateHash)
       throw new Error(`Checkpoint restore mismatch: tick ${restored.tick}, hash ${restored.hash}`);
     progress(`restored tick ${restored.tick}, state hash verified`);
+    if (watchedSeat !== null)
+      await page.evaluate((seat) => {
+        const watch = window.__opennorthland.watchSeat;
+        if (watch === null) throw new Error('The session has no seat picker to watch a seat with');
+        watch(seat);
+      }, watchedSeat);
   }
   await restore();
   metadata.settings = await page.evaluate(async () => {
@@ -146,7 +175,12 @@ try {
       const { tileToScreen } = await import(modules.projection);
       const entities = window.__opennorthland.host.snapshot().entities;
       const points = entities
-        .filter((e) => e.components.Building && e.components.Position)
+        .filter(
+          (e) =>
+            e.components.Building &&
+            e.components.Position &&
+            (modules.seat === null || e.components.Owner?.player === modules.seat),
+        )
         .map((e) => {
           const p = e.components.Position;
           return tileToScreen(p.x / ONE, p.y / ONE);
@@ -173,6 +207,7 @@ try {
     {
       fixed: `/@fs${resolve(repoRoot, 'packages/sim/src/core/fixed.ts')}`,
       projection: `/@fs${resolve(repoRoot, 'packages/render/src/data/projection/iso.ts')}`,
+      seat: watchedSeat,
     },
   );
   const hardware = await page.evaluate(() => {
@@ -290,7 +325,9 @@ try {
     await page.screenshot({ path: resolve(output, `${cameraName}-x${speed}${suffix}.png`) });
     await writeFile(resolve(output, 'report.json'), JSON.stringify(metadata, null, 2));
   }
-  if (mode !== 'profile') {
+  if (mode !== 'profile' && windowSpec !== undefined) {
+    for (const { cameraName, speed } of windowSpec) await windowRun(cameraName, speed);
+  } else if (mode !== 'profile') {
     for (const speed of [0, 1, 3, 10]) await windowRun('dense', speed);
     for (const speed of [0, 3, 10]) await windowRun('wide', speed);
     for (const cameraName of ['zoom07', 'zoom05']) await windowRun(cameraName, 3);
@@ -299,7 +336,7 @@ try {
   }
   if (mode !== 'baseline') {
     metadata.diagnostics = {};
-    for (const cameraName of ['dense', 'wide']) {
+    for (const cameraName of profileViews) {
       progress(`starting separate ${cameraName} CPU/GPU and allocation diagnostics`);
       const diagnostic = {};
       metadata.diagnostics[cameraName] = diagnostic;

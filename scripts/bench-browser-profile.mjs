@@ -9,6 +9,43 @@ export function machineLoad() {
   return { available, cpuCount, loads, loadPerCpu: available ? loads[0] / cpuCount : null };
 }
 
+/**
+ * Slow the page's main thread by `record.rate`, the weak-CPU proxy. The emulation is per thread and
+ * Chromium refuses it for workers, so the sim worker keeps full speed; every worker the page starts is
+ * still asked through auto-attach, and `record.workers` keeps each worker script's answer once.
+ */
+export async function throttleCpu(page, record) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: record.rate });
+  record.page = 'applied';
+  record.workers = {};
+  let nextId = 1;
+  const pending = new Map();
+  cdp.on('Target.receivedMessageFromTarget', ({ message }) => {
+    const reply = JSON.parse(message);
+    const url = pending.get(reply.id);
+    if (url === undefined) return;
+    pending.delete(reply.id);
+    record.workers[url] = reply.error === undefined ? 'applied' : `refused: ${reply.error.message}`;
+  });
+  cdp.on('Target.attachedToTarget', ({ sessionId, targetInfo }) => {
+    if (targetInfo.type !== 'worker') return;
+    // A blob worker's URL is fresh each time; the scheme names the kind.
+    const url = targetInfo.url.startsWith('blob:') ? 'blob:' : targetInfo.url;
+    const id = nextId++;
+    pending.set(id, url);
+    const message = JSON.stringify({
+      id,
+      method: 'Emulation.setCPUThrottlingRate',
+      params: { rate: record.rate },
+    });
+    cdp.send('Target.sendMessageToTarget', { sessionId, message }).catch((error) => {
+      record.workers[url] = `unreachable: ${error.message}`;
+    });
+  });
+  await cdp.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: false, flatten: false });
+}
+
 export async function guardCamera(page, camera) {
   await page.evaluate((expectedCamera) => {
     const d = window.__opennorthland;

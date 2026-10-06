@@ -35,6 +35,9 @@ export interface FrameSample {
   /** Render build and submit plus the rest of the frame's app work. With the sim on this thread
    *  `simMs + snapMs + drawMs = cpuMs`; off it, the frame's mirror apply takes `simMs`'s place. */
   readonly drawMs: number;
+  /** The part of {@link drawMs} the world renderer's update took: scene build, binding and the Pixi
+   *  submit. The rest of `drawMs` is HUD, minimap, overlays and audio. */
+  readonly worldMs: number;
 }
 
 export interface FrameEma {
@@ -92,6 +95,13 @@ export interface FrameStatsReport {
     readonly batchesPerFrame: number;
     /** The window's largest {@link FrameSample.leadTicks}. */
     readonly maxLeadTicks: number;
+    /** Exact means over the window's frames, unlike the moving averages. */
+    readonly cpuMsPerFrame: number;
+    readonly receiveMsPerFrame: number;
+    readonly drawMsPerFrame: number;
+    readonly worldMsPerFrame: number;
+    /** The window's most expensive frame on this thread. */
+    readonly maxCpuMs: number;
     readonly frameMs: FrameDistribution;
   };
 }
@@ -168,6 +178,10 @@ export class FrameStats {
   private windowReceiveMs = 0;
   private windowBatches = 0;
   private windowMaxLeadTicks = 0;
+  private windowCpuMs = 0;
+  private windowDrawMs = 0;
+  private windowWorldMs = 0;
+  private windowMaxCpuMs = 0;
   private windowMaxMs = 0;
   private droppedAtWindowStart = 0;
   private droppedTotal = 0;
@@ -194,6 +208,12 @@ export class FrameStats {
     this.windowReceiveMs += sample.receiveMs;
     this.windowBatches += sample.batches;
     this.windowMaxLeadTicks = Math.max(this.windowMaxLeadTicks, sample.leadTicks);
+    if (sample.elapsedMs > 0) {
+      this.windowCpuMs += sample.cpuMs;
+      this.windowDrawMs += sample.drawMs;
+      this.windowWorldMs += sample.worldMs;
+      this.windowMaxCpuMs = Math.max(this.windowMaxCpuMs, sample.cpuMs);
+    }
     this.recordRecent(sample);
     // Assigned last: a window opening on this frame must start from the previous total, or this
     // frame's drops fall between the two windows.
@@ -273,6 +293,10 @@ export class FrameStats {
     this.windowReceiveMs = 0;
     this.windowBatches = 0;
     this.windowMaxLeadTicks = 0;
+    this.windowCpuMs = 0;
+    this.windowDrawMs = 0;
+    this.windowWorldMs = 0;
+    this.windowMaxCpuMs = 0;
     this.windowMaxMs = 0;
     this.droppedAtWindowStart = this.droppedTotal;
     this.buckets.fill(0);
@@ -288,6 +312,10 @@ export class FrameStats {
       if (seen >= target) return bucketUpperEdgeMs(index);
     }
     return this.windowMaxMs;
+  }
+
+  private perFrame(totalMs: number): number {
+    return this.frames === 0 ? 0 : totalMs / this.frames;
   }
 
   report(): FrameStatsReport {
@@ -319,6 +347,11 @@ export class FrameStats {
         receiveMsPerTick: this.windowSteps === 0 ? 0 : this.windowReceiveMs / this.windowSteps,
         batchesPerFrame: this.frames === 0 ? 0 : this.windowBatches / this.frames,
         maxLeadTicks: this.windowMaxLeadTicks,
+        cpuMsPerFrame: this.perFrame(this.windowCpuMs),
+        receiveMsPerFrame: this.perFrame(this.windowReceiveMs),
+        drawMsPerFrame: this.perFrame(this.windowDrawMs),
+        worldMsPerFrame: this.perFrame(this.windowWorldMs),
+        maxCpuMs: this.windowMaxCpuMs,
         frameMs: {
           p50Ms: this.quantileMs(0.5),
           p95Ms: this.quantileMs(0.95),

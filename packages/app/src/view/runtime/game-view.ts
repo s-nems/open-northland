@@ -1058,6 +1058,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       netReadout,
       frameStats,
       profile,
+      watchSeat: switchableSeat === null ? null : (seat) => switchableSeat.watch(seat),
     });
 
     const shortfallLook = createShortfallLook();

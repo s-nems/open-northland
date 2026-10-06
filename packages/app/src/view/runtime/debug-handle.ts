@@ -75,6 +75,13 @@ export interface PerfReport {
     readonly batchesPerFrame: number;
     /** The most ticks a sim on another thread stepped past the drawn tick; 0 inline. */
     readonly maxLeadTicks: number;
+    /** Exact window means per frame on this thread; `worldMsPerFrame` is the world renderer's share
+     *  of `drawMsPerFrame`, the rest of it HUD, minimap, overlays and audio. */
+    readonly cpuMsPerFrame: number;
+    readonly receiveMsPerFrame: number;
+    readonly drawMsPerFrame: number;
+    readonly worldMsPerFrame: number;
+    readonly maxCpuMs: number;
   };
   /** True when `?debug=profile` is on, which inflates every absolute sim millisecond above. */
   readonly profiling: boolean;
@@ -105,6 +112,9 @@ export interface OpenNorthlandDebug {
   setPaused(paused: boolean): Promise<void>;
   /** The `?debug=trace` ring (a bounded tail), or null when not recording. */
   trace(): readonly TraceEvent[] | null;
+  /** A spectator's seat picker: watch `seat`'s fog and figures, or the whole map for null. Null outside
+   *  a spectated session. */
+  readonly watchSeat: ((seat: number | null) => void) | null;
 }
 
 export interface PerfReportInputs {
@@ -164,6 +174,11 @@ export function buildPerfReport(inputs: PerfReportInputs): PerfReport {
       receiveMsPerTick: frame.window.receiveMsPerTick,
       batchesPerFrame: frame.window.batchesPerFrame,
       maxLeadTicks: frame.window.maxLeadTicks,
+      cpuMsPerFrame: frame.window.cpuMsPerFrame,
+      receiveMsPerFrame: frame.window.receiveMsPerFrame,
+      drawMsPerFrame: frame.window.drawMsPerFrame,
+      worldMsPerFrame: frame.window.worldMsPerFrame,
+      maxCpuMs: frame.window.maxCpuMs,
     },
     profiling: inputs.profiling,
     systems: inputs.systems,
@@ -183,6 +198,7 @@ export interface DebugHandleDeps {
   readonly frameStats: FrameStats;
   /** Null unless `?debug=profile` asked for a running per-system profile. */
   readonly profile: ProfileSource | null;
+  readonly watchSeat: ((seat: number | null) => void) | null;
 }
 
 export function installDebugHandle(deps: DebugHandleDeps): void {
@@ -223,5 +239,6 @@ export function installDebugHandle(deps: DebugHandleDeps): void {
       return deps.host.settled();
     },
     trace: () => recordedTraceEvents(),
+    watchSeat: deps.watchSeat,
   };
 }
