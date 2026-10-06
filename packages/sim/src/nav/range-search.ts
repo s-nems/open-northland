@@ -47,11 +47,45 @@ function growEntries(): void {
   entryNext = next;
 }
 
-/** {@link searchReach}'s answer with the box of every node the flood inspected, the only nodes whose
- *  ground, blockers and roads the answer depends on. */
+/** {@link searchReach}'s answer with what it read: the nodes it entered, one bit each over its cost
+ *  window, and the box of every node it inspected. The answer depends only on the ground, blockers and
+ *  roads of the inspected nodes, the entered ones and their neighbours (see {@link floodInspected}). */
 export interface ReachSearch {
   readonly area: ReachArea;
   readonly searched: NodeArea;
+  readonly entered: FloodTrace;
+}
+
+/** The nodes a flood entered, as a row-major bitset over the square cost window at `(x, y)`. */
+export interface FloodTrace {
+  readonly x: number;
+  readonly y: number;
+  readonly side: number;
+  readonly bits: Uint8Array;
+}
+
+const BITS_PER_BYTE = 8;
+const BIT_INDEX_MASK = BITS_PER_BYTE - 1;
+const BYTE_SHIFT = 3;
+
+function traceHas(trace: FloodTrace, x: number, y: number): boolean {
+  const dx = x - trace.x;
+  const dy = y - trace.y;
+  if (dx < 0 || dy < 0 || dx >= trace.side || dy >= trace.side) return false;
+  const i = dy * trace.side + dx;
+  return (((trace.bits[i >> BYTE_SHIFT] as number) >> (i & BIT_INDEX_MASK)) & 1) === 1;
+}
+
+/** Whether the flood traced by `search` read `(x, y)`: entered it, or inspected it from an entered
+ *  neighbour. The hex neighbour relation is symmetric. */
+export function floodInspected(search: ReachSearch, x: number, y: number): boolean {
+  const trace = search.entered;
+  if (traceHas(trace, x, y)) return true;
+  const dxs = (y & 1) === 0 ? HEX_DX_EVEN : HEX_DX_ODD;
+  for (let k = 0; k < HEX_DY.length; k++) {
+    if (traceHas(trace, x + (dxs[k] as number), y + (HEX_DY[k] as number))) return true;
+  }
+  return false;
 }
 
 /** Original range searches walk six neighbours, spend twice the nominal range in ground resistance,
@@ -84,11 +118,6 @@ export function floodReach(
   const width = Math.max(0, maxX - minX + 1);
   const cells = new Uint8Array(width * Math.max(0, maxY - minY + 1));
   const area = { minX, maxX, minY, maxY, cells };
-  const unmoved = { area, searched: { minHx: hx, maxHx: hx, minHy: hy, maxHy: hy } };
-  if (!terrain.inBounds(hx, hy)) return unmoved;
-  const start = terrain.nodeAt(hx, hy);
-  if (!terrain.isWalkable(start) || blocked.has(start)) return unmoved;
-  cells[(hy - minY) * width + hx - minX] = 1;
   const budget = 2 * range;
   // Every entered node costs at least one, so a node with a cost under the budget lies fewer than
   // `budget` hex steps from the start, each moving at most one node on either axis, and the nodes it
@@ -97,6 +126,16 @@ export function floodReach(
   const side = 2 * reach + 1;
   const windowX = hx - reach;
   const windowY = hy - reach;
+  const bits = new Uint8Array(Math.ceil((side * side) / BITS_PER_BYTE));
+  const entered = { x: windowX, y: windowY, side, bits };
+  // The start is read even when the flood goes no further, so it counts as entered.
+  const startSlot = reach * side + reach;
+  bits[startSlot >> BYTE_SHIFT] = 1 << (startSlot & BIT_INDEX_MASK);
+  const unmoved = { area, searched: { minHx: hx - 1, maxHx: hx + 1, minHy: hy - 1, maxHy: hy + 1 }, entered };
+  if (!terrain.inBounds(hx, hy)) return unmoved;
+  const start = terrain.nodeAt(hx, hy);
+  if (!terrain.isWalkable(start) || blocked.has(start)) return unmoved;
+  cells[(hy - minY) * width + hx - minX] = 1;
   // A slot holds the node's best cost under the budget, or the state of a node not entered yet: never
   // inspected, inspected and found closed, or inspected and open (so its mark is already set).
   const unseen = budget + UNSEEN_OVER_BUDGET;
@@ -127,7 +166,9 @@ export function floodReach(
       const node = entryNodes[entry] as number;
       const x = node % mapWidth;
       const y = (node - x) / mapWidth;
-      if (costs[(y - windowY) * side + x - windowX] !== cost) continue;
+      const at = (y - windowY) * side + x - windowX;
+      if (costs[at] !== cost) continue;
+      bits[at >> BYTE_SHIFT] = (bits[at >> BYTE_SHIFT] as number) | (1 << (at & BIT_INDEX_MASK));
       if (x < poppedMinX) poppedMinX = x;
       if (x > poppedMaxX) poppedMaxX = x;
       if (y < poppedMinY) poppedMinY = y;
@@ -169,7 +210,7 @@ export function floodReach(
     minHy: Math.max(0, poppedMinY - 1),
     maxHy: Math.min(mapHeight - 1, poppedMaxY + 1),
   };
-  return { area, searched };
+  return { area, searched, entered };
 }
 
 export function unionReachAreas(areas: readonly ReachArea[]): ReachArea {

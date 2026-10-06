@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { BlockOverlay } from '../../src/nav/block-overlay.js';
 import { hexDistanceBetween, hexNeighboursOf } from '../../src/nav/halfcell.js';
-import { floodReach, reachContains, searchReach, unionReachAreas } from '../../src/nav/range-search.js';
+import {
+  floodInspected,
+  floodReach,
+  reachContains,
+  searchReach,
+  unionReachAreas,
+} from '../../src/nav/range-search.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import { buildTerrainGraph } from '../../src/nav/terrain/map.js';
 import { testContent } from '../fixtures/content.js';
@@ -96,7 +102,7 @@ describe('searchReach', () => {
     expect(spread).toBeGreaterThan(CASES / 2);
   });
 
-  it('answers the same whatever changes outside the box it reports as searched', () => {
+  it('answers the same whatever changes on nodes it did not read, all inside its searched box', () => {
     for (let c = 0; c < CASES; c++) {
       const next = lcg(c + 100);
       const roughness = Array.from({ length: MAP_WIDTH * MAP_HEIGHT }, () => 1 + next(MAX_ROUGHNESS));
@@ -112,19 +118,23 @@ describe('searchReach', () => {
       const hx = next(MAP_WIDTH);
       const hy = next(MAP_HEIGHT);
       const range = 1 + next(30);
-      const { area, searched } = floodReach(terrain, blocked, hx, hy, range);
-      const outside = (n: NodeId) => {
+      const search = floodReach(terrain, blocked, hx, hy, range);
+      const { searched } = search;
+      const unread: NodeId[] = [];
+      for (let n = 0 as NodeId; n < terrain.nodeCount; n++) {
         const x = terrain.xOf(n);
         const y = terrain.yOf(n);
-        return x < searched.minHx || x > searched.maxHx || y < searched.minHy || y > searched.maxHy;
-      };
-      for (let n = 0 as NodeId; n < terrain.nodeCount; n++) {
-        if (!outside(n)) continue;
+        const inBox =
+          x >= searched.minHx && x <= searched.maxHx && y >= searched.minHy && y <= searched.maxHy;
+        if (floodInspected(search, x, y)) expect(inBox).toBe(true);
+        else unread.push(n);
+      }
+      for (const n of unread) {
         if (blockedIds.has(n)) blockedIds.delete(n);
         else blockedIds.add(n);
       }
-      terrain.syncRoads(1, Array.from({ length: terrain.nodeCount }, (_, n) => n as NodeId).filter(outside));
-      expect(floodReach(terrain, blocked, hx, hy, range).area.cells).toEqual(area.cells);
+      terrain.syncRoads(1, unread);
+      expect(floodReach(terrain, blocked, hx, hy, range).area.cells).toEqual(search.area.cells);
     }
   });
 

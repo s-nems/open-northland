@@ -63,6 +63,9 @@ describe('terrain-aware goods reach', () => {
     expect(reachContains(before, 60, 50)).toBe(true);
     block(100, 50);
     expect(read()).toBe(before);
+    // Inside the flood's box, but a corner its hexagon of entered nodes never reaches.
+    block(66, 34);
+    expect(read()).toBe(before);
     block(59, 50);
     const after = read();
     expect(after).not.toBe(before);

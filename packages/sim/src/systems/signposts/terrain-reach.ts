@@ -1,35 +1,29 @@
 import type { ContentSet } from '@open-northland/data';
 import type { Entity, World } from '../../ecs/world.js';
-import type { NodeArea } from '../../nav/halfcell.js';
-import { floodReach, type ReachArea } from '../../nav/range-search.js';
+import { floodInspected, floodReach, type ReachSearch } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { type WalkBlockMask, walkBlockMask } from '../footprint/walk-block-mask.js';
-import { roadAreaKey, syncRoadLane } from '../roads/index.js';
+import { syncRoadLane } from '../roads/index.js';
 
 export function signpostTerrainKey(world: World, content: ContentSet, terrain: TerrainGraph): string {
   syncRoadLane(world, terrain);
   return `${walkBlockMask(world, { content }, terrain).version}:${terrain.mirroredRoadRevision}`;
 }
 
-export interface TerrainReach {
+export interface TerrainReach extends ReachSearch {
   readonly terrain: TerrainGraph;
   readonly hx: number;
   readonly hy: number;
   readonly range: number;
   version: string;
-  /** The blocks and roads over {@link searched} when the flood ran. */
-  readonly localKey: string;
-  readonly searched: NodeArea;
-  readonly area: ReachArea;
+  /** The walk-block mask the flood read, and its version and the terrain's resistance clock at the
+   *  latest moment the answer was known to hold. */
+  readonly mask: WalkBlockMask;
+  maskVersion: number;
+  resistanceClock: number;
 }
 
-/** A token over the walk blocks and roads on the nodes of `box`: every block and road revision it sums
- *  only grows, so it changes exactly when one of them moves. */
-function localKeyOf(world: World, mask: WalkBlockMask, box: NodeArea): string {
-  return `${mask.areaVersion(box)}:${roadAreaKey(world, box)}`;
-}
-
-/** A held search survives every change outside the nodes its flood inspected. */
+/** A held search survives every change to a node its flood did not read. */
 export function terrainReach(
   world: World,
   content: ContentSet,
@@ -43,12 +37,32 @@ export function terrainReach(
   const sameOrigin = held?.terrain === terrain && held.hx === hx && held.hy === hy && held.range === range;
   if (sameOrigin && held.version === version) return held;
   const mask = walkBlockMask(world, { content }, terrain);
-  if (sameOrigin && held.localKey === localKeyOf(world, mask, held.searched)) {
+  if (sameOrigin && held.mask === mask && !readNodeChanged(held, mask, terrain)) {
     held.version = version;
+    held.maskVersion = mask.version;
+    held.resistanceClock = terrain.resistanceClock;
     return held;
   }
-  const { area, searched } = floodReach(terrain, mask.levelled(), hx, hy, range);
-  return { terrain, hx, hy, range, version, localKey: localKeyOf(world, mask, searched), searched, area };
+  return {
+    ...floodReach(terrain, mask.levelled(), hx, hy, range),
+    terrain,
+    hx,
+    hy,
+    range,
+    version,
+    mask,
+    maskVersion: mask.version,
+    resistanceClock: terrain.resistanceClock,
+  };
+}
+
+/** Whether a node the held flood read changed its blocker or resistance since the answer last held. */
+function readNodeChanged(held: TerrainReach, mask: WalkBlockMask, terrain: TerrainGraph): boolean {
+  const read = (x: number, y: number): boolean => floodInspected(held, x, y);
+  return (
+    mask.flippedSince(held.searched, held.maskVersion, read) ||
+    terrain.resistanceChangedSince(held.searched, held.resistanceClock, read)
+  );
 }
 
 /** Each signpost's reach per range, shared by the link pass and the goods search, which flood from the

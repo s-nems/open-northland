@@ -1,5 +1,6 @@
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
-import { cellOfNode } from '../halfcell.js';
+import { NodeChangeStamps } from '../change-stamps.js';
+import { cellOfNode, type NodeArea } from '../halfcell.js';
 import { TerrainEdges } from './edges.js';
 import type { LandscapeProps } from './landscape-props.js';
 import type { LandscapeMapInput } from './landscapes.js';
@@ -87,6 +88,9 @@ export class TerrainGraph extends TerrainEdges {
   /** Per-node {@link resistanceAt} on walkable ground and 0 where a walker never stands, the one read a
    *  range search makes per inspected node. */
   private readonly entryResistances: Uint8Array;
+  /** Each node's latest {@link walkableResistances} change, stamped with {@link resistanceClock}. */
+  private readonly resistanceStamps: NodeChangeStamps;
+  private resistanceChanges = 0;
 
   constructor(
     width: number,
@@ -113,6 +117,7 @@ export class TerrainGraph extends TerrainEdges {
     this.roads = new Uint8Array(this.nodeCount);
     this.routeWeights = new Array<Fixed>(this.nodeCount);
     this.entryResistances = new Uint8Array(this.nodeCount);
+    this.resistanceStamps = new NodeChangeStamps(width, height);
     for (let i = 0; i < this.nodeCount; i++) {
       const node = i as NodeId;
       this.routeWeights[node] = routeWeightOf(this.roughnessAt(node));
@@ -161,6 +166,17 @@ export class TerrainGraph extends TerrainEdges {
    *  bounds-checked read. Kept current by every road change; callers must not write it. */
   walkableResistances(): Uint8Array {
     return this.entryResistances;
+  }
+
+  /** A count of {@link walkableResistances} changes, for {@link resistanceChangedSince}. */
+  get resistanceClock(): number {
+    return this.resistanceChanges;
+  }
+
+  /** Whether a node of `area` changed its {@link walkableResistances} entry after clock reading `since`
+   *  and passes `test`. */
+  resistanceChangedSince(area: NodeArea, since: number, test: (x: number, y: number) => boolean): boolean {
+    return this.resistanceStamps.anyChangedSince(area, since, test);
   }
 
   /** Whether a road runs over `node`. Throws on an id outside the grid. */
@@ -257,7 +273,12 @@ export class TerrainGraph extends TerrainEdges {
     this.checkedSlot(this.roads, node);
     this.roads[node] = road ? 1 : 0;
     this.routeWeights[node] = routeWeightOf(road ? ROAD_RESISTANCE : this.roughnessAt(node));
-    if (this.isWalkable(node)) this.entryResistances[node] = this.resistanceAt(node);
+    const resistance = this.isWalkable(node) ? this.resistanceAt(node) : 0;
+    if (this.entryResistances[node] !== resistance) {
+      this.entryResistances[node] = resistance;
+      this.resistanceChanges++;
+      this.resistanceStamps.stamp(this.xOf(node), this.yOf(node), this.resistanceChanges);
+    }
   }
 
   /** Source elevation unit under one half-cell node; absent maps are flat. */
