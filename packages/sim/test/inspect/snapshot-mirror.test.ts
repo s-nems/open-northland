@@ -495,7 +495,7 @@ describe('snapshot mirror list edits', () => {
     expect(structuredClone(grown)).toStrictEqual(expected);
   });
 
-  it('answers entityById from its id map through creation, patching, removal and rebuild', () => {
+  it('answers entityById from its id table through creation, patching, removal and rebuild', () => {
     const mirror = seeded([10, 20, 30]);
     mirror.apply(delta({ touched: [entity(20, 1), entity(25)], removed: [10] }));
     const after = mirror.snapshot();

@@ -57,25 +57,26 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
   return { tick, entities, events: cloneEvents(events) };
 }
 
-/** The id maps a `SnapshotMirror` keeps beside the entity list it edits in place, by that list. */
-const ID_MAPS = new WeakMap<readonly EntitySnapshot[], ReadonlyMap<number, EntitySnapshot>>();
+/** The id tables a `SnapshotMirror` keeps beside the entity list it edits in place, by that list. */
+const ID_TABLES = new WeakMap<readonly EntitySnapshot[], readonly (EntitySnapshot | undefined)[]>();
 
-/** Answer {@link entityById} over `entities` from `byId`, which its owner keeps equal to the list. */
-export function attachIdMap(
+/** Answer {@link entityById} over `entities` from `byId`, indexed by entity id, which its owner keeps
+ *  equal to the list. */
+export function attachIdTable(
   entities: readonly EntitySnapshot[],
-  byId: ReadonlyMap<number, EntitySnapshot>,
+  byId: readonly (EntitySnapshot | undefined)[],
 ): void {
-  ID_MAPS.set(entities, byId);
+  ID_TABLES.set(entities, byId);
 }
 
 /**
- * The snapshot entity with `id`, or `undefined` once it has left the snapshot: from a mirror's id map, else
+ * The snapshot entity with `id`, or `undefined` once it has left the snapshot: from a mirror's id table, else
  * by binary search, where a narrowed view that re-orders `entities` breaks the ascending-id precondition
  * and must not be passed here.
  */
 export function entityById(snapshot: WorldSnapshot, id: number): EntitySnapshot | undefined {
-  const byId = ID_MAPS.get(snapshot.entities);
-  if (byId !== undefined) return byId.get(id);
+  const byId = ID_TABLES.get(snapshot.entities);
+  if (byId !== undefined) return byId[id];
   const at = indexOfEntity(snapshot.entities, id);
   return at >= 0 ? snapshot.entities[at] : undefined;
 }
