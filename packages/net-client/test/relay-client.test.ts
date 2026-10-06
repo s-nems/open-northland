@@ -1,10 +1,8 @@
 import type { GameSession } from '@open-northland/lockstep';
 import {
   type AdoptedWorld,
-  base64ToBytes,
   DISPUTE_WINDOW_TICKS,
   decodeSnapshot,
-  encodeSnapshot,
   JITTER_BUFFER_TICKS,
   type OpenedWorld,
   prepareInitialSave,
@@ -18,7 +16,7 @@ import {
   TICK_MS,
   TICKS_PER_SECOND,
 } from '@open-northland/net-protocol';
-import { digestInputsToJson, exportSaveGame, Simulation } from '@open-northland/sim';
+import { digestInputsToJson, exportSaveGame, Simulation, serializeSaveGame } from '@open-northland/sim';
 import { describe, expect, it, vi } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
 import * as snapshotCodec from '../src/snapshot-codec.js';
@@ -84,13 +82,25 @@ describe('RelayClient and its world port', () => {
     start(client, null);
     await client.settled();
     const save = exportSaveGame(sim, { savedAt: 123, session: { example: 'captured' } });
-    const bytes = base64ToBytes(await encodeSnapshot(save));
+    // Gzipped the way a host compresses its slot, not through this package's encoder.
+    const bytes = await gzip(serializeSaveGame(save));
     sim.step();
     await client.shareSave(null, { header: save.header, bytes });
     const upload = sent.find((message) => message.kind === 'blob' && message.type === 'save');
     expect(upload).toMatchObject({ tick: 0 });
     if (upload?.kind !== 'blob') throw new Error('missing uploaded save');
     expect(await decodeSnapshot(upload.bytes)).toEqual(save);
+  });
+
+  it('refuses to share a save that is not a gzip stream', async () => {
+    const sim = new Simulation({ seed: 3, content: testContent() });
+    const { client, sent } = harness({ open: async () => ({ sim, generation: DESCRIPTOR_WORLD }) });
+    start(client, null);
+    await client.settled();
+    const save = exportSaveGame(sim, { savedAt: 123 });
+    const plain = new TextEncoder().encode(serializeSaveGame(save));
+    expect(() => client.shareSave(null, { header: save.header, bytes: plain })).toThrow('gzip');
+    expect(sent.some((message) => message.kind === 'blob' && message.type === 'save')).toBe(false);
   });
 
   it('does not adopt a descriptor world for a saved room or restore corrupt initial bytes', async () => {
@@ -722,3 +732,8 @@ describe('RelayClient desync verdicts', () => {
     expect(client.dispute).toMatchObject({ role: 'reference', tick: DISPUTED_TICK, inputs: null });
   });
 });
+
+async function gzip(text: string): Promise<Uint8Array> {
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}

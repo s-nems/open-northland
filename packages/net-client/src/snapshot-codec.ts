@@ -25,6 +25,18 @@ export interface CompressedSave {
   readonly bytes: Uint8Array;
 }
 
+/** RFC 1952's two identification bytes, which open every gzip member. */
+const GZIP_ID = [0x1f, 0x8b] as const;
+
+/** The wire text of a save its host already compressed; anything but a gzip stream is refused, since
+ *  every member inflates what it is sent. */
+export function encodeCompressedSave(save: CompressedSave): string {
+  const { bytes } = save;
+  if (bytes.length < GZIP_ID.length || bytes[0] !== GZIP_ID[0] || bytes[1] !== GZIP_ID[1])
+    throw new Error('A shared save must be a gzip stream');
+  return bytesToBase64(bytes);
+}
+
 export async function encodeSnapshot(save: SaveGame): Promise<string> {
   // Serialized before the first await, so ticks that run during the compression cannot reach in.
   const text = serializeSaveGame(save);

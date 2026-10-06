@@ -31,7 +31,8 @@ requests. The root [`AGENTS.md`](../../AGENTS.md) applies in full; the wire cont
   messages into the lobby and session state; the client applies each message through it, so a mirror
   elsewhere that applies the same messages in the same order reaches the same state.
 - The snapshot encoding is this package's contract with every other client: gzip of the canonical
-  save JSON, base64 on the wire, the session's map named in the header.
+  save JSON, base64 on the wire, the session's map named in the header. A shared save may arrive
+  already gzipped by its host (`CompressedSave`); `shareSave` refuses bytes that are not a gzip stream.
 
 ## Verification
 

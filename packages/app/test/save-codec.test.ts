@@ -1,6 +1,15 @@
+import { bytesToBase64, decodeSnapshot, encodeSnapshot } from '@open-northland/net-client';
+import { exportSaveGame, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { compressSaveText, decodeSaveText, isGzipSave } from '../src/view/runtime/save-load/codec.js';
+import { testContent } from '../../sim/test/fixtures/content.js';
+import {
+  compressSaveText,
+  decodeSaveText,
+  isGzipSave,
+  saveFileOf,
+} from '../src/view/runtime/save-load/codec.js';
 
+const SHARED_TICKS = 5;
 const SAMPLE = JSON.stringify({ header: { kind: 'save' }, sections: ['zażółć'.repeat(500)] });
 
 describe('save codec', () => {
@@ -25,5 +34,16 @@ describe('save codec', () => {
     const bytes = await compressSaveText(SAMPLE);
     await expect(decodeSaveText(bytes, 64)).rejects.toThrow(/inflates past 64 bytes/);
     await expect(decodeSaveText(new TextEncoder().encode(SAMPLE), 64)).rejects.toThrow(/exceeds 64 bytes/);
+  });
+
+  it('writes the slot gzip a peer decodes as the relay snapshot encoding would', async () => {
+    const sim = new Simulation({ seed: 3, content: testContent() });
+    sim.run(SHARED_TICKS);
+    const save = exportSaveGame(sim, { savedAt: 123, mapId: 'test' });
+    const file = await saveFileOf(save);
+    const shared = await decodeSnapshot(bytesToBase64(file.bytes));
+    expect(shared).toEqual(await decodeSnapshot(await encodeSnapshot(save)));
+    expect(shared).toEqual(save);
+    expect(file.header).toEqual(save.header);
   });
 });
