@@ -45,7 +45,7 @@ const INDEXED_GUI_SUFFIX = 'indexed';
 /** The `/bobs/` stem of the GUI palette LUT PNG. */
 const GUI_PALETTE_LUT_STEM = 'gui-palettes-lut';
 
-/** One language's decoded UI strings: `{ <table>: { <id>: <text> } }` (CP1250-decoded by the pipeline). */
+/** One language's UI strings, decoded by the pipeline: `{ <table>: { <id>: <text> } }`. */
 export type GuiStrings = Record<string, Record<string, string>>;
 
 /** Look up the decoded UI string for `(table, id)`, else the pinned fallback label. */

@@ -326,7 +326,7 @@ export const deContent = {
     'vehicle-ox-yard': {
       title: 'Bau eines Ochsenkarrens',
       summary:
-        'Ein Zimmermann baut fortlaufend Karren ohne Zugtiere aus Holz vom Lagerhaus. Eine Kuh kommt von einem Bauernhof herüber und wird vor den ersten Karren gespannt. Jeder Bauernhof behält zwei Kühe, daher warten weitere Karren auf Tiere, während der Zimmermann weiterarbeitet.',
+        'Ein Zimmermann baut fortlaufend Karren ohne Zugtiere aus Holz vom Lagerhaus. Eine Kuh kommt von einem Viehhof herüber und wird vor den ersten Karren gespannt. Jeder Viehhof behält zwei Kühe, daher warten weitere Karren auf Tiere, während der Zimmermann weiterarbeitet.',
     },
     'vehicle-ox': {
       title: 'Ochsenkarren ohne Ochsen',
@@ -443,7 +443,7 @@ export const deContent = {
     chests: {
       title: 'Truhen und Schriftrollen',
       summary:
-        'Drei Holztruhen liefern beim Öffnen Nahrung, drei Zivilisten und eine Brunnen-Schriftrolle. Eine magische Truhe lässt sich nicht auf einen gewöhnlichen Handel ein, und eine mitgeführte Schriftrolle lässt einen fertigen Brunnen entstehen.',
+        'Drei Holztruhen liefern beim Öffnen Nahrung, drei Zivilisten und eine Brunnen-Schriftrolle. Eine magische Truhe lässt sich von einem gewöhnlichen Siedler nicht öffnen, und eine mitgeführte Schriftrolle lässt einen fertigen Brunnen entstehen.',
     },
     'meal-break': {
       title: 'Essenspause',
