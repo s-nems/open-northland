@@ -554,11 +554,16 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     setHidden(picked, count === 0);
   };
 
+  /** The scroll the list can hold with `count` rows: a narrowed list keeps the deep scroll of the
+   *  wide one until the browser clamps it, which it does a view at a time. */
+  const scrollFor = (count: number): number => Math.min(state.scrollTop, Math.max(0, count * rowPx - viewPx));
+
   /** The rows to attach for the list's scroll: the visible strip and a margin either side. */
   const rangeFor = (count: number): { first: number; last: number } => {
     if (rowPx <= 0) return { first: 0, last: Math.min(count, ROWS_BEFORE_MEASURE) - 1 };
-    const first = Math.max(0, Math.floor(state.scrollTop / rowPx) - ROW_MARGIN);
-    const last = Math.min(count - 1, Math.ceil((state.scrollTop + viewPx) / rowPx) + ROW_MARGIN);
+    const scroll = scrollFor(count);
+    const first = Math.max(0, Math.floor(scroll / rowPx) - ROW_MARGIN);
+    const last = Math.min(count - 1, Math.ceil((scroll + viewPx) / rowPx) + ROW_MARGIN);
     return { first, last };
   };
 
@@ -575,6 +580,8 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       if (view === undefined) {
         view = buildRow(row.id);
         views.set(row.id, view);
+        // A row built by a scroll is not reached by the relist's selection pass.
+        setAttribute(view.pick, 'aria-pressed', String(deps.selection.ids().has(row.id)));
       }
       writeRow(view, row);
       items.push(view.item);
@@ -616,6 +623,8 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     listedRows = listed;
     const ids = listed.map((row) => row.id);
     attach(ids.length !== shownIds.length || ids.some((id, index) => id !== shownIds[index]));
+    // A window opened over no people has no row to measure yet.
+    if (rowPx <= 0 && listed.length > 0) measure();
     shownIds = ids;
     for (const [key, control] of heads) {
       // The lacks key opens with the neediest, which reads as a descending column.
@@ -671,8 +680,9 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       return;
     }
     const slots: FigureSlot[] = [];
-    const first = Math.floor(state.scrollTop / rowPx);
-    const last = Math.min(listedRows.length - 1, Math.ceil((state.scrollTop + viewPx) / rowPx) - 1);
+    const scroll = scrollFor(listedRows.length);
+    const first = Math.floor(scroll / rowPx);
+    const last = Math.min(listedRows.length - 1, Math.ceil((scroll + viewPx) / rowPx) - 1);
     for (let at = first; at <= last; at++) {
       const row = listedRows[at];
       const view = row === undefined ? undefined : views.get(row.id);

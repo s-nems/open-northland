@@ -57,7 +57,10 @@ afterEach(() => {
   setActiveLocale(locale);
 });
 
-function openWindow(rows: () => readonly ResidentRow[]): { list: HTMLElement } {
+function openWindow(
+  rows: () => readonly ResidentRow[],
+  selected: ReadonlySet<number> = new Set(),
+): { list: HTMLElement; query: HTMLInputElement } {
   const plane = document.createElement('div');
   document.body.append(plane);
   window = createResidentsWindow({
@@ -66,29 +69,38 @@ function openWindow(rows: () => readonly ResidentRow[]): { list: HTMLElement } {
     tick: () => 0,
     canBecome: () => false,
     trades: [],
-    selection: { ids: () => new Set(), version: () => 0 },
+    selection: { ids: () => new Set(selected), version: () => 0 },
     onSelect: () => undefined,
     cue: () => undefined,
   });
   window.toggle();
   const list = plane.querySelector<HTMLElement>('.on-res-list');
-  if (list === null) throw new Error('the window shows its list');
-  return { list };
+  const query = plane.querySelector<HTMLInputElement>('.on-res-field--search input');
+  if (list === null || query === null) throw new Error('the window shows its list and search');
+  return { list, query };
 }
 
 const shownNames = (list: HTMLElement): string[] =>
   [...list.querySelectorAll('.on-res-row strong')].map((cell) => cell.textContent ?? '');
 
+function scrollTo(list: HTMLElement, row: number): void {
+  list.scrollTop = row * ROW_PX;
+  list.dispatchEvent(new Event('scroll'));
+}
+
+const padPx = (list: HTMLElement): number =>
+  [...list.querySelectorAll<HTMLElement>('.on-res-pad')].reduce(
+    (sum, pad) => sum + Number.parseFloat(pad.style.height || '0'),
+    0,
+  );
+
 describe('residents list', () => {
   it('attaches only the rows around the visible strip and keeps the whole list scroll height', () => {
     const rows = people(PEOPLE);
     const { list } = openWindow(() => rows);
-    const items = [...list.children] as HTMLElement[];
-    const pads = items.filter((li) => li.classList.contains('on-res-pad'));
-    const attached = items.length - pads.length;
+    const attached = list.querySelectorAll('.on-res-row').length;
     expect(attached).toBeLessThan(PEOPLE / 10);
-    const padPx = pads.reduce((sum, pad) => sum + Number.parseFloat(pad.style.height || '0'), 0);
-    expect(padPx + attached * ROW_PX).toBe(PEOPLE * ROW_PX);
+    expect(padPx(list) + attached * ROW_PX).toBe(PEOPLE * ROW_PX);
     expect(shownNames(list)[0]).toBe('Settler 0001');
   });
 
@@ -96,14 +108,47 @@ describe('residents list', () => {
     const rows = people(PEOPLE);
     const { list } = openWindow(() => rows);
     const middle = 250;
-    list.scrollTop = middle * ROW_PX;
-    list.dispatchEvent(new Event('scroll'));
+    scrollTo(list, middle);
     window?.refresh();
     expect(shownNames(list)).toContain(`Settler ${String(middle + 1).padStart(4, '0')}`);
     expect(shownNames(list)).not.toContain('Settler 0001');
     const figures = window?.figureSlots().map((slot) => slot.entity) ?? [];
     expect(figures[0]).toBe(middle + 1);
     expect(figures).toHaveLength(VIEW_PX / ROW_PX);
+  });
+
+  it('shows a selected person as picked on the row a scroll first builds', () => {
+    const rows = people(PEOPLE);
+    const picked = 300;
+    const { list } = openWindow(() => rows, new Set([picked]));
+    scrollTo(list, picked - 5);
+    const row = [...list.querySelectorAll<HTMLElement>('.on-res-row')].find((item) =>
+      item.textContent?.includes(`Settler ${String(picked).padStart(4, '0')}`),
+    );
+    expect(row?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps a narrowed list in view when the wide one was scrolled deep', () => {
+    const rows = people(PEOPLE);
+    const { list, query } = openWindow(() => rows);
+    scrollTo(list, 400);
+    query.value = 'Settler 000';
+    query.dispatchEvent(new Event('input'));
+    const names = shownNames(list);
+    expect(names).toHaveLength(9);
+    expect(names[0]).toBe('Settler 0001');
+    expect(padPx(list)).toBe(0);
+  });
+
+  it('measures its rows once people arrive in a window opened over none', () => {
+    let rows: ResidentRow[] = [];
+    const { list } = openWindow(() => rows);
+    rows = people(PEOPLE);
+    vi.spyOn(performance, 'now').mockReturnValue(1e9);
+    window?.refresh();
+    const attached = list.querySelectorAll('.on-res-row').length;
+    expect(padPx(list) + attached * ROW_PX).toBe(PEOPLE * ROW_PX);
+    expect(window?.figureSlots()).toHaveLength(VIEW_PX / ROW_PX);
   });
 
   it('rewrites an attached row whose person changed on a later tick', () => {
