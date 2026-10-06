@@ -18,7 +18,7 @@ const STEP_MS = 5;
 const WARMUP_MS = 20_000;
 const MEASURE_MS = 40_000;
 // Experiments affect this harness only. Run with --disableConsoleIntercept to retain the report.
-const VARIANTS = { current: 0, one: 1, none: 2 } as const;
+const VARIANTS = ['auto', 'current', 'one', 'none'] as const;
 
 function percentile(samples: readonly number[], fraction: number): number {
   const sorted = [...samples].sort((a, b) => a - b);
@@ -42,16 +42,14 @@ describe('relay command responsiveness', () => {
         }),
     );
     const originalPace = pacer.paceScale;
-    const variant = process.env.ON_NET_PACING ?? 'current';
-    if (variant !== 'current' && variant !== 'one' && variant !== 'none')
-      throw new Error(`Unknown ON_NET_PACING: ${variant}`);
-    const offset = VARIANTS[variant];
+    const variant = process.env.ON_NET_PACING ?? 'auto';
+    if (!VARIANTS.some((value) => value === variant)) throw new Error(`Unknown ON_NET_PACING: ${variant}`);
     const changed =
-      offset === 0
-        ? null
-        : vi
+      variant === 'none'
+        ? vi
             .spyOn(pacer, 'paceScale')
-            .mockImplementation((buffered, speed) => originalPace(buffered + offset, speed));
+            .mockImplementation((buffered, speed) => originalPace(buffered, speed, 0))
+        : null;
     try {
       for (const client of clients)
         stage.network.link(client, {
@@ -72,6 +70,8 @@ describe('relay command responsiveness', () => {
         seatOf: (seat) => seat,
         settleMs: 1000,
       });
+      if (variant === 'current') clients[0]?.setResponsiveness('balanced');
+      else if (variant === 'one') clients[0]?.setResponsiveness('responsive');
       const start = clock.now();
       const sent = new Map<number, number>();
       const samples: number[] = [];
@@ -133,6 +133,7 @@ describe('relay command responsiveness', () => {
             ...scenario,
             variant,
             samples: samples.length,
+            bufferTicks: clients[0]?.responsiveness.bufferTicks,
             commandMs: {
               p50: percentile(samples, 0.5),
               p95: percentile(samples, 0.95),

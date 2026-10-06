@@ -19,6 +19,10 @@ export class Waiting {
   private readonly since = new Map<string, number>();
   private readonly voteAnnounced = new Set<string>();
 
+  get active(): boolean {
+    return this.since.size > 0;
+  }
+
   message(now: number): Extract<ServerMessage, { kind: 'waiting' }> {
     return {
       kind: 'waiting',

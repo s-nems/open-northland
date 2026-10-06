@@ -191,6 +191,15 @@ export type BlobUpload = {
   | { readonly type: Exclude<BlobType, 'snapshot'> }
 );
 
+export type ResponsivenessMode = 'auto' | 'responsive' | 'balanced' | 'smooth';
+
+export interface ResponsivenessState {
+  readonly mode: ResponsivenessMode;
+  readonly bufferTicks: number;
+  /** The member who last selected the mode; null for a room's default. */
+  readonly by: string | null;
+}
+
 export type ClientMessage =
   | { readonly kind: 'hello'; readonly protocol: number; readonly token: string; readonly nick: string }
   | { readonly kind: 'listRooms' }
@@ -230,6 +239,7 @@ export type ClientMessage =
     }
   | { readonly kind: 'command'; readonly envelope: PlayerWireEnvelope; readonly fromTick: number }
   | { readonly kind: 'clock'; readonly speed?: number; readonly paused?: boolean }
+  | { readonly kind: 'responsiveness'; readonly mode: ResponsivenessMode }
   /** A yes towards kicking the member in seat `player`, or with `yes: false` the withdrawal of one. */
   | { readonly kind: 'kick'; readonly player: number; readonly yes: boolean }
   /** `to` names one member's nick, or null for everyone else in the room. `tick` is required for a
@@ -241,6 +251,7 @@ export type ClientMessage =
 export type ClientMessageKind = ClientMessage['kind'];
 
 export type ServerMessage =
+  | ({ readonly kind: 'responsiveness' } & ResponsivenessState)
   | {
       readonly kind: 'saveOrders';
       readonly id: number;

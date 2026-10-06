@@ -109,20 +109,9 @@ describe('right-clicking a good on the ground', () => {
     });
     expect(await rightClick(sim, [collector, soldier, shod], shoes)).toEqual([
       {
-        kind: 'equipGood',
-        entity: collector,
-        group: 'boots',
-        slot: 0,
-        goodType: GOOD_SHOES,
-        skipReturn: true,
-      },
-      {
-        kind: 'equipGood',
-        entity: soldier,
-        group: 'boots',
-        slot: 0,
-        goodType: GOOD_SHOES,
-        skipReturn: true,
+        kind: 'unitActionGroup',
+        members: [{ entity: collector }, { entity: soldier }],
+        action: { kind: 'equipGood', group: 'boots', slot: 0, goodType: GOOD_SHOES, skipReturn: true },
       },
     ]);
     expect((await rightClick(sim, [shod], shoes)).map((c) => c.kind)).toEqual(['moveUnit']);

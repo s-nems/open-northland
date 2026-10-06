@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import { type Entity, entityById } from '@open-northland/sim';
+import { type Entity, entityById, MAX_UNIT_ORDER_MEMBERS } from '@open-northland/sim';
 import { ownerPlayerOf } from '../../game/snapshot.js';
 import { pickableSeat } from '../../game/viewer-seat.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
@@ -7,16 +7,18 @@ import type { GroupStance } from '../../hud/details-panel/model/index.js';
 import type { GroupPanelActions } from '../../hud/dom/group-panel/actions.js';
 import type { OrdersPress } from '../../hud/dom/selection-panel.js';
 import { orderRecipients } from './action-ring/menu-state.js';
+import { enqueueArmyOrder } from './group-orders.js';
 import type { UnitControlsOptions } from './types.js';
 
 /** What the unit controls do for the group panel beyond submitting a command. */
 export interface GroupPanelHost {
+  readonly onOrderLimit?: (() => void) | undefined;
   readonly selectEntity: (id: number) => void;
   readonly selectGroup: (ids: readonly number[]) => void;
   readonly centre: (id: number) => void;
   readonly openOrders: (press: OrdersPress) => void;
   readonly closeOrders: () => void;
-  readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => void;
+  readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => boolean;
   readonly cue: (cue: UiCue) => void;
 }
 
@@ -51,8 +53,7 @@ export function groupPanelActions(
       host.cue('fail');
       return;
     }
-    host.cue('confirm');
-    host.ringCommand(order, targets);
+    host.cue(host.ringCommand(order, targets) === false ? 'fail' : 'confirm');
   };
   const view =
     <A extends unknown[]>(run: (...args: A) => void) =>
@@ -76,9 +77,20 @@ export function groupPanelActions(
         host.cue('fail');
         return;
       }
-      host.cue('confirm');
-      for (const vehicle of vehicles)
-        opts.enqueue({ kind: 'setVehicleStance', vehicle: vehicle as Entity, stance });
+      if (vehicles.length > MAX_UNIT_ORDER_MEMBERS) {
+        if (host.onOrderLimit !== undefined) host.onOrderLimit();
+        else host.cue('fail');
+        return;
+      }
+      const accepted = enqueueArmyOrder(
+        {
+          kind: 'setVehicleStanceGroup',
+          members: vehicles.map((entity) => ({ entity: entity as Entity })),
+          stance,
+        },
+        opts.enqueue,
+      );
+      host.cue(accepted ? 'confirm' : 'fail');
     },
   };
 }

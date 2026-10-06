@@ -25,7 +25,7 @@ export interface ActionRingInputContext {
   readonly isRingVisible: () => boolean;
   readonly getLayout: () => ActionRingLayout;
   readonly getTargets: () => readonly number[];
-  readonly onCommand: (id: ActionOrderId, targets: readonly number[]) => void;
+  readonly onCommand: (id: ActionOrderId, targets: readonly number[]) => boolean;
   /** The GUI click a pressed button confirms with. */
   readonly cue: (cue: UiCue) => void;
   readonly openJobWindow: () => void;
@@ -58,15 +58,15 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
       // The press is the ring's, never the world's or the panel's under it.
       event.preventDefault();
       event.stopPropagation();
-      ctx.cue('confirm');
       if (command.id === 'changeProfession') {
+        ctx.cue('confirm');
         ctx.openJobWindow();
         return;
       }
       // The targets are read before closing: closing is what ends the session they belong to.
       const targets = ctx.getTargets();
       ctx.closeMenu();
-      ctx.onCommand(command.id, targets);
+      ctx.cue(ctx.onCommand(command.id, targets) === false ? 'fail' : 'confirm');
     },
     hover(command, event): void {
       if (command === null || event === null || ctx.getMode() === 'closed') ctx.hideTip();

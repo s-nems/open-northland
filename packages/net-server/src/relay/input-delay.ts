@@ -20,6 +20,11 @@ export class InputDelayEstimator {
   private jitter = 0;
   private lowerStreak = 0;
   private delay = INITIAL_INPUT_DELAY_TICKS;
+  private sampleCount = 0;
+
+  get samples(): number {
+    return this.sampleCount;
+  }
 
   get ticks(): number {
     return this.delay;
@@ -35,6 +40,7 @@ export class InputDelayEstimator {
 
   /** Feed one measured round trip; true when the assigned delay changed. */
   sample(rttMs: number): boolean {
+    this.sampleCount++;
     if (this.smoothedRtt === null) {
       this.smoothedRtt = rttMs;
     } else {

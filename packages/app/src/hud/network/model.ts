@@ -1,4 +1,4 @@
-import type { GovernorCause } from '@open-northland/net-protocol';
+import type { GovernorCause, ResponsivenessMode, ResponsivenessState } from '@open-northland/net-protocol';
 
 /** A player's standing in a relayed room as the network panel shows it. `catchingUp` trails the clock
  *  without slowing anyone; `slowing` is the member the room is paced for; `offline` is disconnected
@@ -101,6 +101,7 @@ export interface NetChatLine {
 }
 
 export interface NetPanelModel {
+  readonly responsiveness: ResponsivenessState;
   readonly players: readonly NetPlayerRow[];
   readonly clock: NetClockModel;
   readonly link: NetLinkModel;
@@ -118,6 +119,7 @@ export interface NetNotice {
 }
 
 export interface NetPanelActions {
+  setResponsiveness(mode: ResponsivenessMode): void;
   /** A yes towards kicking the member in `seat`, or with `yes` false its withdrawal. */
   kick(seat: number, yes: boolean): void;
   say(text: string): void;

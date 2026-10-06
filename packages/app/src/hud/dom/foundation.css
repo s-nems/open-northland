@@ -6919,6 +6919,15 @@ body.on-drag-scroll * {
 .on-hud .on-net-note--danger {
   color: var(--danger);
 }
+
+.on-hud .on-net-response .on-segmented {
+  width: min(100%, 400px);
+}
+.on-hud .on-net-response-hint {
+  height: auto;
+  min-height: 34px;
+  white-space: normal;
+}
 .on-hud .on-net-chart {
   position: relative;
   display: grid;

@@ -89,13 +89,25 @@ describe('right-clicking a chest', () => {
     const idle = settlerAt(sim, null);
     const child = settlerAt(sim, null, true);
     expect(rightClick(sim, [cutter, idle, child], wooden)).toEqual([
-      { kind: 'openChest', entity: cutter, chest: wooden },
-      { kind: 'openChest', entity: idle, chest: wooden },
+      {
+        kind: 'unitActionGroup',
+        members: [{ entity: cutter }, { entity: idle }],
+        action: { kind: 'openChest', chest: wooden },
+      },
     ]);
-    expect(rightClick(sim, [cutter, idle, child], magical).map((c) => c.kind)).toEqual([
-      'moveUnit',
-      'moveUnit',
-      'moveUnit',
+    expect(rightClick(sim, [cutter, idle, child], magical).map((c) => c.kind)).toEqual(['moveUnitGroup']);
+  });
+
+  it('submits all 1000 eligible chest openers in one Shift-preserving envelope', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const chest = systems.createChest(sim.world, sim.content, { kind: 'wooden', contents: 20, x: 10, y: 10 });
+    const settlers = Array.from({ length: 1000 }, () => settlerAt(sim, WOODCUTTER));
+    expect(rightClick(sim, settlers, chest, true)).toEqual([
+      {
+        kind: 'unitActionGroup',
+        members: settlers.map((entity) => ({ entity })),
+        action: { kind: 'openChest', chest, queued: true },
+      },
     ]);
   });
 

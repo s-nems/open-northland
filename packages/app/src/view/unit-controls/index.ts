@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, MAX_UNIT_ORDER_MEMBERS, systems, type WorldSnapshot } from '@open-northland/sim';
 import { isSettler, isVehicle, settlerJobType } from '../../game/snapshot.js';
 import { pickableSeat } from '../../game/viewer-seat.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
@@ -7,7 +7,7 @@ import { isActionHotkey, isFieldKey, isOrderHotkey } from '../../hud/hotkeys.js'
 import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
 import { setCanvasCursor } from '../cursors/element.js';
-import { nodeBounds, pickInRect, screenToWorld, type Tile, worldToTile } from '../picking.js';
+import { nodeBounds, pickInRect, pickTopAt, screenToWorld, type Tile, worldToTile } from '../picking.js';
 import { entityAnchor } from '../projections/entity-anchor.js';
 import { orderRecipients } from './action-ring/index.js';
 import { createAnsweredOrders } from './answered-orders.js';
@@ -25,6 +25,7 @@ import { jobMateArea, jobMatesIn } from './job-mates.js';
 import { createKeyboardOrders } from './keyboard-orders.js';
 import { createLostGoals } from './lost-goals.js';
 import { createSelectionMarquee } from './marquee.js';
+import { createOrderLimitNotice } from './order-limit-notice.js';
 import { createOrderMarkers } from './order-markers.js';
 import { createUnitOrderController } from './orders.js';
 import { createOverviewOrders } from './overview-orders.js';
@@ -71,6 +72,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return entity !== undefined && (isSettler(entity) || isVehicle(entity));
   };
   const selection = createUnitSelection(isUnit);
+  const orderLimitNotice = createOrderLimitNotice(opts.domHud.plane);
+  const refuseOrderLimit = (): void => {
+    orderLimitNotice.show();
+    cue('fail');
+  };
   const answered = createAnsweredOrders();
   const controlGroups = createControlGroups();
   // Without the sim's pick-list seam the panel's equip and swap buttons stay inert.
@@ -84,6 +90,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
           snapshot: opts.snapshot,
           enqueue: opts.enqueue,
           cue,
+          onOrderLimit: refuseOrderLimit,
         });
   const workArea = createWorkAreaOverlay();
   const orderMarkers = createOrderMarkers(() => performance.now());
@@ -96,9 +103,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return job !== undefined && systems.jobUsesWorkFlag({ content: opts.content }, job);
   };
   // `pickMode` is built below; the arrows defer the reads to click time.
-  const ringCommand = (id: ActionOrderId, targets: readonly number[]): void =>
+  const ringCommand = (id: ActionOrderId, targets: readonly number[]): boolean =>
     issueRingCommand(id, orderRecipients(opts.content, opts.snapshot(), targets, id), {
       enqueue: opts.enqueue,
+      onOrderLimit: orderLimitNotice.show,
       pickMode,
       openEquipment: (settlers) => equipPicker?.openAll(settlers),
       toggleWorkArea: workArea.toggle,
@@ -116,6 +124,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     answered,
     ringCommand,
     cue,
+    onOrderLimit: refuseOrderLimit,
   });
 
   const marquee = createSelectionMarquee();
@@ -171,6 +180,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   });
 
   const pickMode = createPickModeController({
+    onOrderLimit: refuseOrderLimit,
     snapshot: opts.snapshot,
     targets: unitTargets,
     content: opts.content,
@@ -233,8 +243,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       const ids = [...selection.ids()];
       if (orderRecipients(opts.content, opts.snapshot(), ids, id).length === 0) return false;
       chrome.actions().close();
-      ringCommand(id, ids);
-      return true;
+      return ringCommand(id, ids);
     },
     cue,
   });
@@ -260,6 +269,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   const orders = createUnitOrderController({
+    onOrderLimit: orderLimitNotice.show,
     uiscale: opts.uiscale ?? 1,
     technologyStatus: opts.technologyStatus,
     technologyVersion: opts.technologyVersion,
@@ -281,6 +291,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   });
 
   const vehicleOrders = createVehicleOrderController({
+    onOrderLimit: refuseOrderLimit,
     selected: orderSelection,
     targets: unitTargets,
     snapshot: opts.snapshot,
@@ -330,6 +341,14 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         chrome.actions().open({ x: e.clientX, y: e.clientY });
         cue('confirm');
       } else {
+        // Refuse a whole mixed gesture before either its settlers or vehicles submit anything.
+        if (
+          pickTopAt(unitTargets.owned('settler'), w.x, w.y) === null &&
+          [...selection.ids()].filter(isUnit).length > MAX_UNIT_ORDER_MEMBERS
+        ) {
+          refuseOrderLimit();
+          return;
+        }
         // Settlers the vehicle under the cursor refuses take the usual right-click once it answered.
         const onBuilding = marker?.kind === 'building' ? marker.ref : null;
         const press: RightClickPress = {
@@ -554,6 +573,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     },
     dispose: () => {
       selectionCursor.dispose();
+      orderLimitNotice.dispose();
       pickMode.cancel(); // an armed mode owns the canvas cursor, which teardown must not leave set
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);

@@ -191,6 +191,19 @@ function postedWorkers(issued: readonly Command[], building: Entity): readonly G
 }
 
 describe('right-clicking a construction site', () => {
+  it('submits 1000 builders to a foundation in one selection envelope', async () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const site = siteAt(sim, BUILDING_HOME_00);
+    const settlers = Array.from({ length: 1000 }, () => settlerAt(sim, JOB_BUILDER));
+    expect(await rightClick(sim, settlers, site)).toEqual([
+      {
+        kind: 'unitActionGroup',
+        members: settlers.map((entity) => ({ entity })),
+        action: { kind: 'assignBuilder', site },
+      },
+    ]);
+  });
+
   it('puts a builder on the foundation', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const site = siteAt(sim, bakery(sim).typeId);
@@ -487,6 +500,30 @@ describe('right-clicking a standing house with a trader', () => {
 
     expect(await rightClick(sim, [cart], home, sim.content, true, 'riders')).toEqual([
       { kind: 'attachTradeHouse', entity: trader, house: home },
+    ]);
+  });
+
+  it('orders a trader selected together with its cart only once', async () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const trader = settlerAt(sim, JOB_TRADER);
+    const cart = riddenVehicle(sim, VEHICLE_HANDCART, trader);
+    sim.world.remove(trader, Position);
+    expect(await rightClick(sim, [trader, cart], home, sim.content, true, 'riders')).toEqual([
+      { kind: 'attachTradeHouse', entity: trader, house: home },
+    ]);
+  });
+
+  it('groups 1000 fresh host-approved trade-route changes at the answer boundary', async () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const traders = Array.from({ length: 1000 }, () => settlerAt(sim, JOB_TRADER));
+    expect(await rightClick(sim, traders, home)).toEqual([
+      {
+        kind: 'unitActionGroup',
+        members: traders.map((entity) => ({ entity })),
+        action: { kind: 'attachTradeHouse', house: home },
+      },
     ]);
   });
 

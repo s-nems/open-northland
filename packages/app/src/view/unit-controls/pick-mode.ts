@@ -5,13 +5,16 @@ import {
   type Entity,
   entitiesWith,
   entityById,
+  MAX_UNIT_ORDER_MEMBERS,
   type PlayerCommand,
+  type UnitSelectionCommand,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { ownerPlayerOf, workplaceOf } from '../../game/snapshot.js';
+import { ownerPlayerOf } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import type { AnsweredOrders } from './answered-orders.js';
+import { enqueueUnitSelection } from './group-orders.js';
 import {
   computeAssignHighlight,
   computeHouseHighlight,
@@ -104,7 +107,7 @@ interface BuildingPick {
 /**
  * The capacity-bound placements go out as one group order, so the sim seats unplaced members first at
  * the tick it applies them: a quick second click then places the rest, even before the snapshot shows
- * the first click's result. The unbounded ones issue one order per accepted settler.
+ * the first click's result. Other placements share one bounded selection envelope.
  */
 const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
   workplace: {
@@ -189,6 +192,7 @@ const QUEUEABLE_MODES: ReadonlySet<PickMode['kind']> = new Set<QueueableSpotKind
 ]);
 
 export interface PickModeDeps {
+  readonly onOrderLimit?: (() => void) | undefined;
   readonly snapshot: () => WorldSnapshot;
   /** Bumped when an attach rule's answer lands anew, which re-lights the picks under one snapshot. */
   readonly answersVersion?: () => number;
@@ -321,6 +325,10 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     kind: BuildingPickKind,
     settlers: readonly number[],
   ): boolean => {
+    if (settlers.length > MAX_UNIT_ORDER_MEMBERS) {
+      deps.onOrderLimit?.();
+      return false;
+    }
     const snapshot = deps.snapshot();
     if (kind === 'learning-place') {
       const learners = settlers.filter((settler) =>
@@ -331,6 +339,12 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     const pick = BUILDING_PICKS[kind].orders;
     if (pick === null) return attachTradeHouse(settlers, building);
     const orders = pick(snapshot, settlers, building, buildingsByType);
+    const selectedOrders = orders.filter(
+      (order): order is UnitSelectionCommand =>
+        order.kind === 'assignBuilder' || order.kind === 'trainSoldier',
+    );
+    if (selectedOrders.length > 0)
+      return enqueueUnitSelection(selectedOrders, deps.enqueue, deps.onOrderLimit);
     for (const order of orders) deps.enqueue(order);
     return orders.length > 0;
   };
@@ -349,10 +363,12 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     const ask = deps.askAttachTradeHouse;
     if (ask === undefined || traders.length === 0) return false;
     deps.answered.after(Promise.all(traders.map((trader) => ask(trader, house))), (verdicts) => {
-      traders.forEach((trader, index) => {
-        if (verdicts[index] === true)
-          deps.enqueue({ kind: 'attachTradeHouse', entity: trader as Entity, house: house as Entity });
-      });
+      const commands: UnitSelectionCommand[] = traders.flatMap((trader, index) =>
+        verdicts[index] === true
+          ? [{ kind: 'attachTradeHouse', entity: trader as Entity, house: house as Entity }]
+          : [],
+      );
+      enqueueUnitSelection(commands, deps.enqueue, deps.onOrderLimit);
     });
     return true;
   };
@@ -368,6 +384,10 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       case 'work-area':
         return deps.orders().issueSetWorkFlag(target, mode.units);
       case 'attack-move': {
+        if (mode.units.length + (queued ? 0 : mode.vehicles.length) > MAX_UNIT_ORDER_MEMBERS) {
+          deps.onOrderLimit?.();
+          return false;
+        }
         const marched = mode.units.length > 0 && deps.orders().issueAttackMove(target, mode.units, queued);
         const marchedVehicles =
           !queued && mode.vehicles.length > 0 && deps.vehicleOrders().issueAttackMove(mode.vehicles, target);
@@ -408,16 +428,8 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
 
   /** Plant the flag of every unit at `named`; one holding a post leaves it first, so the sim, which
    *  ignores a posted worker's flag order, takes the flag. */
-  const resolveFlag = (units: readonly number[], named: Tile): boolean => {
-    const snapshot = deps.snapshot();
-    for (const unit of units) {
-      const entity = entityById(snapshot, unit);
-      if (entity !== undefined && workplaceOf(entity) !== undefined) {
-        deps.enqueue({ kind: 'unassignWorker', entity: unit as Entity });
-      }
-    }
-    return deps.orders().issueSetWorkFlag(named, units);
-  };
+  const resolveFlag = (units: readonly number[], named: Tile): boolean =>
+    deps.orders().issueSetWorkFlag(named, units, true);
 
   const resolvePicked = (mode: Exclude<PickMode, SpotMode>, event: MouseEvent): boolean => {
     switch (mode.kind) {

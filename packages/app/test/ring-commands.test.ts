@@ -51,12 +51,11 @@ function harness(): {
 }
 
 describe('issueRingCommand', () => {
-  it('fans an immediate order out to every target', () => {
+  it('submits one immediate stance order for the whole selection', () => {
     const h = harness();
     issueRingCommand('defenceMode', [4, 9], h);
     expect(h.issued).toEqual([
-      { kind: 'setStance', entity: 4, mode: systems.MILITARY_MODE.DEFEND },
-      { kind: 'setStance', entity: 9, mode: systems.MILITARY_MODE.DEFEND },
+      { kind: 'setStanceGroup', members: [{ entity: 4 }, { entity: 9 }], mode: systems.MILITARY_MODE.DEFEND },
     ]);
     issueRingCommand('haveGirl', [4], h);
     expect(h.issued.at(-1)).toEqual({ kind: 'makeChild', entity: 4, child: 'female' });
@@ -122,8 +121,7 @@ describe('issueRingCommand', () => {
     issueRingCommand('removeBuildingSite', [4], h);
     issueRingCommand('removeLearningPlace', [4], h);
     expect(h.issued).toEqual([
-      { kind: 'setRegeneration', entity: 4, enabled: false },
-      { kind: 'setRegeneration', entity: 9, enabled: false },
+      { kind: 'setRegenerationGroup', members: [{ entity: 4 }, { entity: 9 }], enabled: false },
       { kind: 'setRegeneration', entity: 4, enabled: true },
       { kind: 'unassignBuilder', entity: 4 },
       { kind: 'cancelTraining', entity: 4 },

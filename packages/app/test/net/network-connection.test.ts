@@ -126,6 +126,23 @@ describe('network connection mirror', () => {
     expect(events).toEqual(['link', 'welcome', 'room']);
   });
 
+  it('requests a shared mode and displays only the relay-confirmed selection', () => {
+    const { connection, worker } = connect();
+    connection.client.setResponsiveness('responsive');
+    expect(worker.posted.at(-1)).toEqual({ kind: 'responsiveness', mode: 'responsive' });
+    expect(connection.client.responsiveness).toEqual({ mode: 'auto', bufferTicks: 2, by: null });
+    const selected = {
+      kind: 'responsiveness' as const,
+      mode: 'responsive' as const,
+      bufferTicks: 1,
+      by: 'Bartek',
+    };
+    worker.send({ kind: 'message', message: selected });
+    expect(connection.client.responsiveness).toEqual(selected);
+    worker.send({ kind: 'message', message: { kind: 'left' } });
+    expect(connection.client.responsiveness).toEqual({ mode: 'auto', bufferTicks: 2, by: null });
+  });
+
   it('posts lobby actions and clock requests by name for the worker client to perform', () => {
     const { connection, worker } = connect();
     connection.client.joinRoom('r');

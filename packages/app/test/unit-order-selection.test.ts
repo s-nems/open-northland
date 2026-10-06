@@ -251,8 +251,11 @@ describe('unit orders against a selection that moves under them', () => {
 
     expect(issued).toEqual([
       { kind: 'setWorkFlag', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },
-      { kind: 'setWorkFlag', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },
-      { kind: 'setWorkFlag', entity: GUARD.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },
+      {
+        kind: 'unitActionGroup',
+        members: [{ entity: SCOUT.id }, { entity: GUARD.id }],
+        action: { kind: 'setWorkFlag', x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },
+      },
     ]);
   });
 
@@ -324,8 +327,18 @@ describe('unit orders against a selection that moves under them', () => {
     orders.issueSetWorkFlagAt(clickOn(OPEN_GROUND));
 
     expect(issued).toEqual([
-      { kind: 'setWorkFlag', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },
-      { kind: 'setGatherGood', entity: SCOUT.id, goodType: 5 },
+      {
+        kind: 'unitOrdersGroup',
+        members: [
+          {
+            entity: SCOUT.id,
+            actions: [
+              { kind: 'setWorkFlag', x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },
+              { kind: 'setGatherGood', goodType: 5 },
+            ],
+          },
+        ],
+      },
     ]);
   });
 });

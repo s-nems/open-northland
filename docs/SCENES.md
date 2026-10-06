@@ -80,6 +80,12 @@ walks on past them.
 chicken, lion, wolf and bear. The lion, wolf and bear forms have soldiers nearby for observing their
 combat motions; the sheep and chicken forms remain clear for inspecting their idle and walk poses.
 
+`?scene=army-control` starts 1000 swordsmen with one attack-move gesture. Box-select the company,
+redirect it across the clearing, and switch between movement and attack-move. All members should
+respond together, allowing for their existing turns, collisions and combat. Shift deliberately
+queues a waypoint; a normal click replaces it. This local scene checks controls and presentation;
+`army-session.test.ts` verifies the same group payload across two and eight constrained relay links.
+
 ## Real map acceptance
 
 `?scene=mission-map` opens the decoded `wielkie_sprzatanie` map through the normal map entry with

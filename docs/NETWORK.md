@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 21` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 22` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -17,11 +17,11 @@ trader route orders and civilian lessons; all peers must understand their payloa
 ## Transport
 
 WebSocket, one JSON text frame per message. A client message is at most `MAX_CLIENT_MESSAGE_BYTES`
-(16 KiB), except a `blob`, which is at most `MAX_BLOB_MESSAGE_BYTES` (a 16 MiB payload in base64
+(513 KiB), except a `blob`, which is at most `MAX_BLOB_MESSAGE_BYTES` (a 16 MiB payload in base64
 plus its fields). A relay message is bounded by what it carries: a full tick frame holds up to
-`MAX_MEMBERS * MAX_COMMANDS_PER_TICK` envelopes of `MAX_ENVELOPE_BYTES` each plus their sequence
-wrappers, a little over 240 KiB, and a blob is as large as the one a client sent. A binary frame or
-unparsable text closes the connection. Every message is an object with a string `kind`. A close
+`MAX_MEMBERS * MAX_COMMANDS_PER_TICK` envelopes, with at most 1 MiB of serialized envelopes per
+member plus sequence wrappers (a little over 12 MiB in all), and a blob is as large as the one a client
+sent. A binary frame or unparsable text closes the connection. Every message is an object with a string `kind`. A close
 with `CLOSE_REPLACED` (4000), `CLOSE_PROTOCOL_ERROR` (1002) or `CLOSE_SERVICE_RESTART` (1012, the
 relay shutting down with its rooms) is final; after any other close a client may reconnect on its
 token.
@@ -193,11 +193,27 @@ the tick the client's own sim had reached when the person issued it. The relay:
   assigned input delay, so a command applies a fixed number of ticks after it was issued as long as
   the connection stays within its budget; a later command from the same member never lands before
   its last accepted command, even when its delay falls or its world is restored to an earlier tick;
-- lands at most `MAX_COMMANDS_PER_TICK` (20) envelopes from one member on one tick, each at most
-  `MAX_ENVELOPE_BYTES` (1 KiB) as JSON. Larger bursts keep their order across successive ticks so a
-  selection's per-unit orders are not lost at a tick boundary. Each member may hold at most 128
-  pending envelopes, including while paused; further input is reported as `rejected`. At speed 1,
-  a 60-unit order therefore spans three ticks (167 ms from the first group to the last).
+- admits at most `MAX_COMMANDS_PER_TICK` (20) complete player gestures from one member on one tick,
+  each at most `MAX_ENVELOPE_BYTES` (512 KiB) as JSON, with at most 1 MiB per member per tick;
+- bounds pending input to 128 gestures and 2 MiB per member, including paused rooms. Excess input is
+  refused as a whole with `commandBudget`, never postponed to make room on a later tick.
+
+An army's movement, attack-move, direct attack, stance or regeneration selection is one opaque
+command, bounded by the sim to 4096 unique members. Formation movement carries each member's target.
+Settler selections also carry needs, equipment, jobs, training, lessons, chests and work assignments
+together. Shared actions use one payload; differing actions use a closed per-member list of at most
+two actions, preserving their order. Nested actions pass the same ownership checks as single orders.
+Vehicle movement and attack selections are grouped as well; boarding groups retain both the unit's
+and the vehicle's ownership checks. A mixed army emits a settler group and a vehicle group.
+
+Every admitted member receives the order in the same tick; a larger selection is refused locally as
+one gesture with a visible notice. Ordinary redirects replace the previous standing order when they
+apply, while Shift deliberately retains the sim's waypoint queue. Pending commands, saves and replays
+retain the complete group. These are authored responsiveness choices; the relay neither splits a
+selection nor interprets unit IDs. Player routes drain in that tick, sharing successful corridors and
+proofs of unreachable regions under the same obstacle view instead of deferring soldiers by count.
+The client checks the serialized envelope's UTF-8 size before sending and reports `envelopeTooLarge`
+locally, so an oversized gesture cannot disconnect its sender or partly enter the command stream.
 
 The relay reads nothing else. The command payload reaches every client as sent, and every client
 validates it with `parseCommandEnvelope` before enqueueing; an envelope the sim's parser refuses is
@@ -215,6 +231,29 @@ the client can show it. The assigned input delay is
 `ceil((rtt + jitter) / tickLength) + 1` ticks, starting at 2 and never below 1, raised on the spot by
 a spike and lowered one tick at a time once the smoothed trip has allowed it for ten quiet samples. A
 change is sent as `delay { ticks }`; every member also gets its current delay at the start.
+
+## Order responsiveness
+
+Any member may select `responsiveness { mode }` for the whole room, including while paused. `mode`
+is `auto` (the default), `responsive`, `balanced` or `smooth`. The relay broadcasts
+`responsiveness { mode, bufferTicks, by }` and sends the current state after `chatHistory` whenever a
+member joins or reconnects. `by` is the last explicit selector's nick, or null before anyone chooses;
+automatic reserve changes retain it. Selecting the current mode changes nothing.
+
+Manual modes target one, two and three received tick frames respectively. The client adjusts its
+playout pace to approach that target; after a decrease it also drains the last extra frame, which the
+ordinary pacing deadband would retain. It never drops frames or changes command application ticks to
+switch modes. This reserve is distinct from the per-member input delay above. The in-game Network
+window shows the selected mode and its reserve in milliseconds at the running speed, announces mode
+changes, and disables changes while disconnected.
+
+Auto starts at two ticks. Its authored policy uses the worst connected, loaded, in-sync seated
+member's `min(25 ms, RTT * 0.1) + 2 * jitter` as a reserve in milliseconds, converts it to ticks at
+the effective governed speed, and clamps the result to 1..6. Stable latency is already covered by the
+input delay; only a capped RTT margin supplements measured variation. An unmeasured active link
+keeps at least two ticks. Spectators do not affect the estimate. A higher target takes effect at
+once; a lower target must persist for ten running seconds before the reserve falls by one tick.
+Pauses and held rooms reset this decrease timer, and reconnects invalidate stale link measurements.
 
 ## Acknowledgements and the sync check
 
@@ -507,9 +546,9 @@ every return of its token, before `start` and `clock`.
 
 | Limit | Value |
 | --- | --- |
-| `MAX_CLIENT_MESSAGE_BYTES` | 16 KiB |
+| `MAX_CLIENT_MESSAGE_BYTES` | 513 KiB |
 | `MAX_BLOB_BYTES` (decoded) | 16 MiB |
-| `MAX_ENVELOPE_BYTES` | 1 KiB |
+| `MAX_ENVELOPE_BYTES` | 512 KiB |
 | `MAX_SEATS` (seat indices) | 16, the sim's `MAX_PLAYERS` |
 | `MAX_MEMBERS` per room | 12 |
 | rooms per relay | `RELAY_MAX_ROOMS`, 64 by default |
@@ -517,7 +556,10 @@ every return of its token, before `start` and `clock`.
 | `SILENT_SOCKET_MS` | 30 s |
 | started room kept with nobody connected | 10 minutes |
 | `MAX_COMMANDS_PER_TICK` per member | 20 |
-| pending commands per member, including paused rooms | 128 |
+| pending gestures per member, including paused rooms | 128 / 2 MiB |
+| envelope bytes per member per tick | 1 MiB |
+| members in one army gesture | 4096 |
+| Auto reserve / manual reserves | 1..6 / 1, 2, 3 ticks |
 | `MAX_SPEED` | 8 |
 | `LAG_BEHIND_MS` / `GOVERN_RELEASE_MS` | 1 s / 0.5 s of frames |
 | `SLOW_GRACE_MS` / `SLOW_AT_ONCE_MS` | 4 s / 5 s of frames |
@@ -539,9 +581,9 @@ every return of its token, before `start` and `clock`.
 `packages/net-client` is the client half every host shares: `RelayClient` walks the lobby, opens the
 world `start` names through a port the host supplies, runs it over `RelayTransport`, acknowledges
 every tick, answers pings and snapshot requests, and asks a diverged world's host to restore. It runs
-the sim a frame or two behind the relay's clock (`JITTER_BUFFER_TICKS`) by scaling the time it feeds
-the driver, never by skipping a tick, so a late frame lands inside the buffer. Catch-up is capped at
-192 ticks/s using the effective governed speed, leaving room for commands and pongs within the
+the sim behind the relay's clock by the room's [response reserve](#order-responsiveness), scaling the
+time it feeds the driver without skipping ticks, so a late frame lands inside the buffer. Catch-up is
+capped at 192 ticks/s using the effective governed speed, leaving room for commands and pongs within the
 host's 256 messages/s budget; every applied tick still sends its digest. `RelaySocket` keeps
 the connection and reopens it on the same token after a drop; a connection the relay replaced or
 refused stays closed. A connection attempt that has not opened within 10 seconds is closed and retried

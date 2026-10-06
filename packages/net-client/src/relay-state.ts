@@ -2,6 +2,7 @@ import type { GameSession } from '@open-northland/lockstep';
 import {
   type ChatLine,
   MAX_CHAT_HISTORY_LINES,
+  type ResponsivenessState,
   type RoomSummary,
   type RoomView,
   type ServerMessage,
@@ -22,6 +23,7 @@ export class RelayState {
   session: GameSession | null = null;
   /** The relay's last word on the clock. */
   clockState: ClockState | null = null;
+  responsiveness: ResponsivenessState = { mode: 'auto', bufferTicks: 2, by: null };
   /** The relay's last word on who the room waits for. */
   waitingFor: readonly WaitedMember[] = [];
   delayTicks: number | null = null;
@@ -58,6 +60,7 @@ export class RelayState {
         this.room = null;
         this.session = null;
         this.clockState = null;
+        this.responsiveness = { mode: 'auto', bufferTicks: 2, by: null };
         this.waitingFor = [];
         this.delayTicks = null;
         this.chat = [];
@@ -65,6 +68,9 @@ export class RelayState {
         break;
       case 'start':
         this.session = message.session;
+        break;
+      case 'responsiveness':
+        this.responsiveness = message;
         break;
       case 'clock':
         this.clockState = message;

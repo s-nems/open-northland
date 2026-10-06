@@ -553,7 +553,7 @@ describe('a relayed session under faults', () => {
     for (const each of clients) {
       const seat = each.session?.localSeat;
       if (typeof seat !== 'number') throw new Error('missing seat');
-      for (let order = 0; order < 60; order++) {
+      for (let order = 0; order < 10; order++) {
         each.submit(
           playerCommand(seat, {
             kind: 'setAssistantCounter',
@@ -576,7 +576,7 @@ describe('a relayed session under faults', () => {
               ? [command.value]
               : [],
           ),
-        ).toEqual(Array.from({ length: 60 }, (_, order) => 100_000 + order));
+        ).toEqual(Array.from({ length: 10 }, (_, order) => 100_000 + order));
       }
     }
     const captures = await runUntil(stage, clients, 1100, { onTick });

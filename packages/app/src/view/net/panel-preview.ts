@@ -1,5 +1,5 @@
 import type { SessionDriver } from '@open-northland/lockstep';
-import { TICKS_PER_SECOND } from '@open-northland/net-protocol';
+import { type ResponsivenessState, TICKS_PER_SECOND } from '@open-northland/net-protocol';
 import { VIKING } from '../../catalog/buildings.js';
 import { playerSwatchHex } from '../../catalog/roster.js';
 import {
@@ -93,6 +93,7 @@ export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanel
   const cast = new Set<number>();
   let chat: readonly NetChatLine[] = OPENING_CHAT;
   let chatVersion = OPENING_CHAT.length;
+  let responsiveness: ResponsivenessState = { mode: 'auto', bufferTicks: 2, by: null };
   let shownKey = '';
   let shown: NetPanelModel | null = null;
 
@@ -106,7 +107,7 @@ export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanel
       const elapsed = now() - started;
       const state = stateAt(elapsed);
       const second = Math.floor((elapsed % NET_PREVIEW_STATE_MS) / MS_PER_SECOND);
-      const key = `${state}|${second}|${chatVersion}|${[...cast].join(',')}`;
+      const key = `${state}|${second}|${chatVersion}|${responsiveness.mode}|${[...cast].join(',')}`;
       if (shown === null || key !== shownKey) {
         shownKey = key;
         const players = previewPlayers(state, second, cast);
@@ -114,12 +115,16 @@ export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanel
           players,
           clock: previewClock(state, players),
           link: PREVIEW_LINK,
+          responsiveness,
           chat,
           chatVersion,
           notice: state === 'held' ? desyncNotice(PEER, tick(DESYNC_AT_MIN, DESYNC_AT_S)) : null,
         };
       }
       return shown;
+    },
+    setResponsiveness(mode): void {
+      responsiveness = { mode, bufferTicks: mode === 'responsive' ? 1 : mode === 'smooth' ? 3 : 2, by: SELF };
     },
     kick(seat, yes): void {
       if (yes) cast.add(seat);

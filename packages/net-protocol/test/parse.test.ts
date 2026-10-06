@@ -129,6 +129,10 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
     fromTick: 12,
   },
   { kind: 'clock', speed: 2 },
+  ...(['auto', 'responsive', 'balanced', 'smooth'] as const).map((mode) => ({
+    kind: 'responsiveness' as const,
+    mode,
+  })),
   { kind: 'clock', paused: true },
   { kind: 'kick', player: 1, yes: true },
   { kind: 'kick', player: 1, yes: false },
@@ -412,6 +416,8 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
   { kind: 'start', session, snapshotTick: null },
   { kind: 'start', session, snapshotTick: 300 },
   { kind: 'clock', tick: 40, speed: 2, paused: false, by: 'Ania', governed: null },
+  { kind: 'responsiveness', mode: 'auto', bufferTicks: 6, by: null },
+  { kind: 'responsiveness', mode: 'responsive', bufferTicks: 1, by: 'Ania' },
   {
     kind: 'clock',
     tick: 1,
@@ -689,5 +695,26 @@ describe('terminal result validation', () => {
   );
   it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1])('rejects invalid terminal tick %s', (tick) => {
     expect(() => parseServerMessage({ kind: 'ended', tick }, () => session)).toThrow();
+  });
+});
+
+describe('responsiveness wire bounds', () => {
+  it('rejects unknown modes in both directions', () => {
+    for (const mode of ['', 'fast', null, 1]) {
+      expect(() => parseClientMessage({ kind: 'responsiveness', mode })).toThrow(/responsiveness.mode/);
+      expect(() =>
+        parseServerMessage({ kind: 'responsiveness', mode, bufferTicks: 2, by: null }, () => session),
+      ).toThrow(/responsiveness.mode/);
+    }
+  });
+  it('rejects missing, fractional and out-of-range buffers and unprintable authors', () => {
+    for (const bufferTicks of [undefined, 0, 7, 1.5, Infinity]) {
+      expect(() =>
+        parseServerMessage({ kind: 'responsiveness', mode: 'auto', bufferTicks, by: null }, () => session),
+      ).toThrow(/responsiveness.bufferTicks/);
+    }
+    expect(() =>
+      parseServerMessage({ kind: 'responsiveness', mode: 'auto', bufferTicks: 2, by: 'a\nb' }, () => session),
+    ).toThrow(/responsiveness.by/);
   });
 });

@@ -33,7 +33,7 @@ export interface SettlerActionsOptions {
    *  snapshot, as a paused game keeps. */
   readonly jobAnswersVersion: () => number;
   /** One ring button was clicked for the selected settlers; the menu has already closed. */
-  readonly onCommand: (id: ActionOrderId, targets: readonly number[]) => void;
+  readonly onCommand: (id: ActionOrderId, targets: readonly number[]) => boolean;
   /** The GUI click every pressed ring button and picked profession confirms with. */
   readonly cue: (cue: UiCue) => void;
 }

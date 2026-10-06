@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import { MAX_CHAT_LENGTH } from '@open-northland/net-protocol';
+import { MAX_CHAT_LENGTH, type ResponsivenessMode, TICK_MS } from '@open-northland/net-protocol';
 import { formatMessage, messages } from '../../i18n/index.js';
 import {
   isHeldStatus,
@@ -25,6 +25,7 @@ import { formatSimClock } from '../summary/model.js';
 import type { ToolWindow } from '../tool-panel/window-shell.js';
 import { button, element, setClass, setHidden, setTip, write } from './parts/dom.js';
 import { createSection } from './parts/section.js';
+import { createSegmented } from './parts/segmented.js';
 import { quietTextField } from './parts/text-field.js';
 import { attachTipLayer, type TipChip } from './parts/tip-layer.js';
 import { centralWindowPlacer, createHudWindow } from './window.js';
@@ -215,6 +216,19 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   setTip(chart, tipsCopy.history);
   clock.append(figures, chart);
 
+  const responseCopy = copy.responsiveness;
+  const responseSection = createSection();
+  responseSection.update(responseCopy.title);
+  const responseModes: readonly ResponsivenessMode[] = ['auto', 'responsive', 'balanced', 'smooth'];
+  const response = createSegmented(responseModes, responseCopy.title, (mode) => {
+    deps.cue('confirm');
+    deps.source.setResponsiveness(mode);
+  });
+  const responseHint = element('p', 'on-net-note on-net-response-hint');
+  const responseReserve = element('p', 'on-net-note on-net-response-reserve');
+  const responseControls = element('div', 'on-net-response');
+  responseControls.append(response.element, responseHint, responseReserve);
+
   // Link: this client's own connection figures.
   const linkSection = createSection();
   linkSection.update(copy.link);
@@ -260,6 +274,8 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     sheet,
     clockSection.element,
     clock,
+    responseSection.element,
+    responseControls,
     linkSection.element,
     link,
     disconnected,
@@ -509,7 +525,7 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     if (stickToBottom) chatList.scrollTop = chatList.scrollHeight;
   };
 
-  const sectionCount = [playersSection, clockSection, linkSection, chatSection].length;
+  const sectionCount = [playersSection, clockSection, responseSection, linkSection, chatSection].length;
   const chatRange = CHAT_LINES_FULL - CHAT_LINES_MIN;
   const plotRange = PLOT_H_FULL - PLOT_H_MIN;
   const gapRange = SECTION_GAP_FULL - SECTION_GAP_MIN;
@@ -547,6 +563,26 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     showOwnState(model.players);
     showClock(model);
     showLink(model.link);
+    const responseOption = (mode: ResponsivenessMode) => ({
+      label: responseCopy.options[mode],
+      enabled: model.link.connected,
+    });
+    response.update(
+      {
+        auto: responseOption('auto'),
+        responsive: responseOption('responsive'),
+        balanced: responseOption('balanced'),
+        smooth: responseOption('smooth'),
+      },
+      model.responsiveness.mode,
+    );
+    write(responseHint, responseCopy.hints[model.responsiveness.mode]);
+    write(
+      responseReserve,
+      formatMessage(responseCopy.reserve, {
+        ms: Math.round((model.responsiveness.bufferTicks * TICK_MS) / model.clock.runningSpeed),
+      }),
+    );
     showChat(model);
   };
 

@@ -7,6 +7,7 @@ export const enGame = {
     retry: 'Try again',
   },
   hud: {
+    armyOrderLimit: 'Select at most {limit} units for one order. No units received this order.',
     mapOverlays: {
       label: 'Main map overlays',
       signposts: 'Signposts',
@@ -310,6 +311,19 @@ export const enGame = {
       withdraw: 'Withdraw {yes}/{needed}',
       withdrawTitle: 'Withdraw your vote to kick {nick}',
       clock: 'Clock',
+      responsiveness: {
+        title: 'Order responsiveness',
+        options: { auto: 'Auto', responsive: 'Fast', balanced: 'Balanced', smooth: 'Smooth' },
+        hints: {
+          auto: 'Room-wide. Adapts the reserve to the players’ connections and the game speed.',
+          responsive: 'Room-wide. Faster response, with more risk of stuttering on unstable connections.',
+          balanced: 'Room-wide. A moderate reserve for variations in the connection.',
+          smooth:
+            'Room-wide. More reserve for variations in the connection, at the cost of a later response.',
+        },
+        reserve: 'Smoothing reserve: about {ms} ms',
+        changed: '{nick} changes order responsiveness: {mode}',
+      },
       requested: 'Requested',
       running: 'Running',
       paused: 'paused',

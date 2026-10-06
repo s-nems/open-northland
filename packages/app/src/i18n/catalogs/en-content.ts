@@ -588,6 +588,11 @@ export const enContent = {
       summary:
         'A hundred and twenty soldiers in three blocks: archers, swordsmen and spearmen, some wounded. Boxed together they show compact thumbnails, since the group passes 99.',
     },
+    'army-control': {
+      title: 'Army control: 1000 soldiers',
+      summary:
+        'A thousand swordsmen receive one attack-move order together. Select the army and redirect it with ordinary movement, attack-move or direct attack; Shift deliberately queues waypoints.',
+    },
     'net-panel': {
       title: 'Network panel',
       summary:

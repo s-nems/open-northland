@@ -43,8 +43,12 @@ export {
   COMMAND_ENVELOPE_VERSION,
   type Command,
   type CommandEnvelope,
+  type GroupActions,
+  type GroupDestination,
   type GroupMember,
   type GroupWorker,
+  MAX_UNIT_MEMBER_ACTIONS,
+  MAX_UNIT_ORDER_MEMBERS,
   orderedSettler,
   ownedEnvelope,
   type PlayerCommand,
@@ -52,6 +56,9 @@ export {
   type SettlerEquipment,
   type SettlerEquipmentSlot,
   setupCommand,
+  type UnitSelectionAction,
+  type UnitSelectionCommand,
+  type UnitSelfAction,
 } from './core/commands/index.js';
 export { parseCommandEnvelope, parseCommandLog } from './core/commands/parse.js';
 export {

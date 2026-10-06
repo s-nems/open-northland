@@ -33,6 +33,7 @@ import {
   type UnitWalkBlocks,
   unitWalkBlocks,
 } from './collision/index.js';
+import { GroupReachability } from './group-reachability.js';
 import { GroupRoutes } from './group-routes.js';
 import { dropPath, liveStepEnd, restartLeg } from './nav-state.js';
 import { type RouteMemo, routeMemoOf } from './route-memo.js';
@@ -42,15 +43,15 @@ import { beginWalkTurn } from './turning.js';
 
 /**
  * The pathfinder's per-tick work budget, in A*-settled nodes: what search time is proportional to.
- * Budgeting the cost rather than a request count lets a formation's cheap local routes land in one tick
- * while a single cross-map route still spreads. Approximation: a tick-time guard, not data-pinned.
+ * Autonomous walks share this budget. Player orders drain in their application tick, borrowing nearby
+ * routes where possible. Approximation: a tick-time guard, not data-pinned.
  */
 const PATHFINDING_NODE_BUDGET_PER_TICK = 16384;
 
 /**
  * Drains pending path requests into followable paths, lowest entity id first until the tick's node budget
- * is spent, past which only group members borrowing a route served this tick still start. A route that
- * cannot be found flags the request for the planner rather than retrying silently.
+ * is spent; player orders still route after it is spent. A route that cannot be found flags the request
+ * for the planner rather than retrying silently.
  */
 export const pathfindingSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
@@ -84,6 +85,7 @@ export function drainPathRequests(
   // different free nodes instead of both claiming the same one.
   const claimedStandIns = new Set<NodeId>();
   const groupRoutes = new GroupRoutes(terrain);
+  const groupReachability = new GroupReachability(terrain);
   // Colliders only: a firm body that stalls in a crowd asks for the route it walks again, while a ghost's
   // repeats are too rare to pay for logging its searches.
   const memo = routeMemoOf(world, terrain);
@@ -104,10 +106,11 @@ export function drainPathRequests(
     return view;
   };
   for (const e of world.canonicalQuery(PathRequest)) {
-    // Past the budget only a group member that borrows a route already served this tick still starts, so
-    // a march whose first route spent the budget sets off together; every full search waits.
+    // A player order must not trickle into motion in entity-id order. Sharing cuts its search cost,
+    // but a member too far from a corridor still receives its own route in this tick.
+    const playerOrdered = world.has(e, PlayerOrder);
     const overBudget = spent.explored >= nodeBudget;
-    if (overBudget && !world.has(e, PlayerOrder)) continue;
+    if (overBudget && !playerOrdered) continue;
     const req = world.get(e, PathRequest);
     if (req.failed) continue;
     if (req.grind && movedSinceGrindAsk(world, terrain, e, req.start)) {
@@ -146,16 +149,19 @@ export function drainPathRequests(
     // Only a player's order moves a group; economy walks keep their own exact routes.
     const group =
       traversal === 'land' &&
-      world.has(e, PlayerOrder) &&
+      playerOrdered &&
       isValidNodeId(terrain, start) &&
       isValidNodeId(terrain, goal);
-    let path = group ? groupRoutes.borrow(blocked, start, goal, spent) : null;
-    if (path === null) {
-      if (overBudget) continue;
+    const unreachable =
+      group && mask !== undefined && groupReachability.unreachable(mask, blocked, start, goal);
+    let path = group && !unreachable ? groupRoutes.borrow(blocked, start, goal, spent) : null;
+    if (path === null && !unreachable) {
       path = collides
         ? memoPath(memo, e, ctx.tick, start, goal, world.tryGet(e, Owner)?.player ?? -1, blocked, spent)
         : resolvePath(terrain, start, goal, blocked, spent, traversal);
       if (path !== null && group) groupRoutes.offer(blocked, path);
+      if (path === null && group && mask !== undefined && !blocked.has(goal))
+        groupReachability.rememberFailure(mask, blocked, start, goal);
     }
     if (path !== null) {
       if (standIn) {

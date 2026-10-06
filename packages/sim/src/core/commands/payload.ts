@@ -10,7 +10,12 @@ import { VEHICLE_STANCES } from '../../components/vehicle.js';
 import { assertNever } from '../brand.js';
 import { asRecord, codePointLength, hasControlCharacter, typeName } from '../untrusted.js';
 import type { Command } from './index.js';
-import { CHILD_SEXES } from './unit-orders.js';
+import {
+  CHILD_SEXES,
+  MAX_UNIT_MEMBER_ACTIONS,
+  MAX_UNIT_ORDER_MEMBERS,
+  type UnitSelectionAction,
+} from './unit-orders.js';
 
 /**
  * What one payload field must hold. Entity references, content ids and half-cell coordinates are all
@@ -24,10 +29,16 @@ type FieldCheck =
   | 'boolean'
   | { readonly string: number }
   | { readonly oneOf: readonly string[] }
-  | { readonly arrayOf: FieldCheck }
+  | {
+      readonly arrayOf: FieldCheck;
+      readonly maxLength?: number;
+      readonly minLength?: number;
+      readonly uniqueBy?: string;
+    }
   | { readonly tupleOf: readonly FieldCheck[] }
   | { readonly nullOr: FieldCheck }
-  | { readonly fields: FieldSpec };
+  | { readonly fields: FieldSpec }
+  | { readonly variants: Readonly<Record<string, FieldSpec>> };
 
 interface FieldSpec {
   readonly required?: Readonly<Record<string, FieldCheck>>;
@@ -39,6 +50,16 @@ const NODE = { x: 'integer', y: 'integer' } as const satisfies Record<string, Fi
 
 /** The Shift-click flag of a queueable order (`QUEUEABLE_ORDER_KINDS`). */
 const QUEUED = { queued: 'boolean' } as const satisfies Record<string, FieldCheck>;
+
+const UNIT_GROUP: FieldCheck = {
+  arrayOf: { fields: { required: { entity: 'integer' } } },
+  maxLength: MAX_UNIT_ORDER_MEMBERS,
+  uniqueBy: 'entity',
+};
+const DESTINATION_GROUP: FieldCheck = {
+  ...UNIT_GROUP,
+  arrayOf: { fields: { required: { entity: 'integer', ...NODE } } },
+};
 
 /** One equipment slot in a `spawnSettler` payload; null (or absent) leaves the slot empty. */
 const EQUIP_SLOT: FieldCheck = {
@@ -85,6 +106,36 @@ type PayloadSpec<C> = {
 } & ([OptionalKey<C>] extends [never]
   ? { readonly optional?: never }
   : { readonly optional: { readonly [P in OptionalKey<C>]: FieldCheck } });
+
+const UNIT_SELECTION_ACTION_PAYLOAD: {
+  readonly [K in UnitSelectionAction['kind']]: PayloadSpec<Extract<UnitSelectionAction, { kind: K }>>;
+} = {
+  orderNeed: {
+    required: { need: { oneOf: ['hunger', 'fatigue', 'piety', 'enjoyment'] satisfies readonly NeedKind[] } },
+  },
+  makeChild: { required: { child: { oneOf: CHILD_SEXES } } },
+  openChest: { required: { chest: 'integer' }, optional: QUEUED },
+  equipGood: {
+    required: { group: { oneOf: EQUIP_CATEGORIES }, slot: 'integer', goodType: 'integer' },
+    optional: { skipReturn: 'boolean' },
+  },
+  unequipGood: { required: { group: { oneOf: EQUIP_CATEGORIES }, slot: 'integer' } },
+  setJob: { required: { jobType: 'integer' } },
+  assignBuilder: { required: { site: 'integer' } },
+  trainSoldier: { required: { house: 'integer' } },
+  learn: { required: { house: 'integer', target: { oneOf: ['job', 'good'] }, typeId: 'integer' } },
+  setWorkFlag: { required: NODE },
+  setGatherGood: { required: { goodType: { nullOr: 'integer' } } },
+  attachTradeHouse: { required: { house: 'integer' } },
+  detachTradeHouse: { required: { house: 'integer' } },
+  attachToVehicle: { required: { vehicle: 'integer' } },
+  cancelTraining: { required: {} },
+  detachFromVehicle: { required: {} },
+  unassignBuilder: { required: {} },
+  unassignWorker: { required: {} },
+  unassignHouse: { required: {} },
+  marry: { required: {} },
+};
 
 /**
  * The field contract of every command kind, keyed like {@link COMMAND_ISSUER} so a new kind cannot be
@@ -147,6 +198,35 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   attachToVehicle: { required: { entity: 'integer', vehicle: 'integer' } },
   attackMoveUnit: { required: { entity: 'integer', ...NODE }, optional: QUEUED },
+  setVehicleStanceGroup: { required: { members: UNIT_GROUP, stance: { oneOf: VEHICLE_STANCES } } },
+  moveVehicleGroup: { required: { members: DESTINATION_GROUP }, optional: { attackMove: 'boolean' } },
+  attackWithVehicleGroup: { required: { members: UNIT_GROUP, target: VEHICLE_ATTACK_TARGET } },
+  moveUnitGroup: { required: { members: DESTINATION_GROUP }, optional: QUEUED },
+  attackMoveUnitGroup: { required: { members: DESTINATION_GROUP }, optional: QUEUED },
+  attackUnitGroup: { required: { members: UNIT_GROUP, target: 'integer' } },
+  setStanceGroup: { required: { members: UNIT_GROUP, mode: 'integer' } },
+  setRegenerationGroup: { required: { members: UNIT_GROUP, enabled: 'boolean' } },
+  unitActionGroup: { required: { members: UNIT_GROUP, action: { variants: UNIT_SELECTION_ACTION_PAYLOAD } } },
+  unitOrdersGroup: {
+    required: {
+      members: {
+        arrayOf: {
+          fields: {
+            required: {
+              entity: 'integer',
+              actions: {
+                arrayOf: { variants: UNIT_SELECTION_ACTION_PAYLOAD },
+                minLength: 1,
+                maxLength: MAX_UNIT_MEMBER_ACTIONS,
+              },
+            },
+          },
+        },
+        maxLength: MAX_UNIT_ORDER_MEMBERS,
+        uniqueBy: 'entity',
+      },
+    },
+  },
   boardVehicle: { required: { entity: 'integer' } },
   detachFromVehicle: { required: { entity: 'integer' } },
   attackUnit: { required: { entity: 'integer', target: 'integer' } },
@@ -389,8 +469,20 @@ function checkField(value: unknown, check: FieldCheck, at: string): void {
   }
   if ('arrayOf' in check) {
     if (!Array.isArray(value)) throw new Error(`${at}: expected an array, got ${described(value)}`);
+    if (check.minLength !== undefined && value.length < check.minLength) {
+      throw new Error(`${at}: expected at least ${check.minLength} entries, got ${value.length}`);
+    }
+    if (check.maxLength !== undefined && value.length > check.maxLength) {
+      throw new Error(`${at}: expected at most ${check.maxLength} entries, got ${value.length}`);
+    }
+    const seen = check.uniqueBy === undefined ? undefined : new Set<unknown>();
     value.forEach((item: unknown, i) => {
       checkField(item, check.arrayOf, `${at}[${i}]`);
+      if (check.uniqueBy !== undefined && seen !== undefined) {
+        const key = asRecord(item, `${at}[${i}]`)[check.uniqueBy];
+        if (seen.has(key)) throw new Error(`${at}[${i}]: duplicate ${check.uniqueBy}`);
+        seen.add(key);
+      }
     });
     return;
   }
@@ -402,6 +494,16 @@ function checkField(value: unknown, check: FieldCheck, at: string): void {
     members.forEach((member, i) => {
       checkField(value[i], member, `${at}[${i}]`);
     });
+    return;
+  }
+  if ('variants' in check) {
+    const record = asRecord(value, at);
+    const kind = record.kind;
+    if (typeof kind !== 'string' || !Object.hasOwn(check.variants, kind)) {
+      throw new Error(`${at}: unknown action kind ${described(kind)}`);
+    }
+    const spec = check.variants[kind];
+    if (spec !== undefined) checkFields(record, spec, at, ['kind']);
     return;
   }
   if ('fields' in check) {

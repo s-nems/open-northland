@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import type { PlayerCommand } from '@open-northland/sim';
+import { MAX_UNIT_ORDER_MEMBERS, type PlayerCommand } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { isSettler, isVehicle } from '../src/game/snapshot.js';
@@ -12,14 +12,24 @@ import { scopePress } from '../src/hud/dom/group-panel/tabs.js';
 import { groupPanelScene } from '../src/scenes/group-panel.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { groupPanelActions } from '../src/view/unit-controls/group-panel.js';
+import { snapshotOf } from './support/snapshot.js';
 
 const ENEMY_SEAT = 2;
 const FIGHTERS = 26;
 const CATAPULTS_AND_CART = 3;
 
-function harness(seat = HUMAN_PLAYER) {
+function harness(seat = HUMAN_PLAYER, accepts = true, vehicleCount?: number) {
   const sim = createSceneSim(groupPanelScene);
-  const snapshot = sim.snapshot();
+  const original = sim.snapshot();
+  const vehicle = original.entities.find(isVehicle);
+  if (vehicle === undefined) throw new Error('missing group panel vehicle fixture');
+  const snapshot =
+    vehicleCount === undefined
+      ? original
+      : snapshotOf(
+          Array.from({ length: vehicleCount }, (_, i) => ({ id: i + 10000, components: vehicle.components })),
+        );
+  const limited: number[] = [];
   const cues: UiCue[] = [];
   const rings: { order: ActionOrderId; targets: readonly number[] }[] = [];
   const sent: PlayerCommand[] = [];
@@ -31,18 +41,25 @@ function harness(seat = HUMAN_PLAYER) {
       content: sim.content,
     },
     {
+      onOrderLimit: () => {
+        limited.push(1);
+        cues.push('fail');
+      },
       selectEntity: () => {},
       selectGroup: () => {},
       centre: () => {},
       openOrders: () => {},
       closeOrders: () => {},
-      ringCommand: (order, targets) => rings.push({ order, targets }),
+      ringCommand: (order, targets) => {
+        rings.push({ order, targets });
+        return accepts;
+      },
       cue: (cue) => cues.push(cue),
     },
   );
   const settlers = snapshot.entities.filter(isSettler).map((e) => e.id);
   const vehicles = snapshot.entities.filter(isVehicle).map((e) => e.id);
-  return { actions, cues, rings, sent, settlers, vehicles };
+  return { actions, cues, rings, sent, settlers, vehicles, limited };
 }
 
 describe('group panel orders', () => {
@@ -57,6 +74,12 @@ describe('group panel orders', () => {
     actions.setStance(settlers, 'defend');
     expect(rings).toEqual([{ order: 'defenceMode', targets: settlers }]);
     expect(cues).toEqual(['confirm']);
+  });
+
+  it('does not confirm a rejected army action', () => {
+    const { actions, settlers, cues } = harness(HUMAN_PLAYER, false);
+    actions.setStance(settlers, 'defend');
+    expect(cues).toEqual(['fail']);
   });
 
   it('refuses an order nobody in scope takes, with the fail click', () => {
@@ -79,9 +102,29 @@ describe('group panel orders', () => {
   it("sets every owned vehicle's stance", () => {
     const { actions, sent, vehicles } = harness();
     actions.setVehicleStance(vehicles, 'attack');
-    expect(sent).toHaveLength(CATAPULTS_AND_CART);
-    expect(sent.every((c) => c.kind === 'setVehicleStance' && c.stance === 'attack')).toBe(true);
+    expect(vehicles).toHaveLength(CATAPULTS_AND_CART);
+    expect(sent).toEqual([
+      { kind: 'setVehicleStanceGroup', members: vehicles.map((entity) => ({ entity })), stance: 'attack' },
+    ]);
   });
+});
+
+it('submits one stance for 25 siege vehicles and refuses a 4097-vehicle selection with one failure notice', () => {
+  const group = harness(HUMAN_PLAYER, true, 25);
+  group.actions.setVehicleStance(group.vehicles, 'defence');
+  expect(group.sent).toEqual([
+    {
+      kind: 'setVehicleStanceGroup',
+      members: group.vehicles.map((entity) => ({ entity })),
+      stance: 'defence',
+    },
+  ]);
+  expect(group.cues).toEqual(['confirm']);
+  const oversized = harness(HUMAN_PLAYER, true, MAX_UNIT_ORDER_MEMBERS + 1);
+  oversized.actions.setVehicleStance(oversized.vehicles, 'defence');
+  expect(oversized.sent).toEqual([]);
+  expect(oversized.cues).toEqual(['fail']);
+  expect(oversized.limited).toEqual([1]);
 });
 
 describe('group panel presses', () => {

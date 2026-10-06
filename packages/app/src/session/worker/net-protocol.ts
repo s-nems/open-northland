@@ -5,7 +5,7 @@ import {
   RelayRefusal,
   type TickDigest,
 } from '@open-northland/net-client';
-import type { RelayReason, ServerMessage } from '@open-northland/net-protocol';
+import type { RelayReason, ResponsivenessMode, ServerMessage } from '@open-northland/net-protocol';
 import type { SaveGame } from '@open-northland/sim';
 import {
   errorFromWire,
@@ -74,6 +74,7 @@ export type ToNetWorker<B> =
   | { readonly kind: 'connect'; readonly url: string; readonly token: string; readonly nick: string }
   | { readonly kind: 'lobby'; readonly name: LobbyAction; readonly args: readonly unknown[] }
   | { readonly kind: 'clock'; readonly paused?: boolean; readonly speed?: number }
+  | { readonly kind: 'responsiveness'; readonly mode: ResponsivenessMode }
   /** End the connection; `leave` gives a seat in a started game up first. */
   | { readonly kind: 'leave'; readonly leave: boolean }
   /** The answer to a world request; null refuses it. */

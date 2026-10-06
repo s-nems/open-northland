@@ -2,6 +2,8 @@ import type { GameSession } from '@open-northland/lockstep';
 import type {
   ChatLine,
   GovernedClock,
+  ResponsivenessMode,
+  ResponsivenessState,
   RoomSummary,
   RoomView,
   WaitedMember,
@@ -48,6 +50,7 @@ export interface RelayClientView extends Pick<RelayLobby, LobbyAction> {
   readonly chat: readonly ChatLine[];
   readonly session: GameSession | null;
   readonly clockState: ClockState | null;
+  readonly responsiveness: ResponsivenessState;
   readonly waitingFor: readonly WaitedMember[];
   readonly delayTicks: number | null;
   readonly roundTripMs: number | null;
@@ -65,6 +68,7 @@ export interface RelayClientView extends Pick<RelayLobby, LobbyAction> {
   readonly worldId: number | null;
   setPaused(paused: boolean): void;
   setSpeed(speed: number): void;
+  setResponsiveness(mode: ResponsivenessMode): void;
   submit(envelope: CommandEnvelope): void;
   shareSave(to: string | null, save: SaveGame): Promise<void>;
 }

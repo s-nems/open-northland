@@ -19,6 +19,8 @@ export interface Member {
   /** The connection's input delay and round trip, as the relay last measured them. */
   delayTicks: number;
   roundTripMs: number;
+  jitterMs: number;
+  linkMeasured: boolean;
   /** The load the client's last acknowledgement reported, kept as sent: the client already smooths
    *  the tick cost. Null before its first. */
   load: ClientLoad | null;
@@ -43,6 +45,8 @@ export type DesyncNotice = Extract<ServerMessage, { kind: 'desync' }>;
 export interface MeasuredLink {
   readonly delayTicks: number;
   readonly roundTripMs: number;
+  readonly jitterMs?: number;
+  readonly measured?: boolean;
 }
 
 export function createMember(token: string, nick: string, now: number, link: MeasuredLink): Member {
@@ -55,6 +59,8 @@ export function createMember(token: string, nick: string, now: number, link: Mea
     lastHeardAt: now,
     delayTicks: link.delayTicks,
     roundTripMs: link.roundTripMs,
+    jitterMs: link.jitterMs ?? 0,
+    linkMeasured: link.measured ?? false,
     load: null,
     seat: null,
     ready: false,
@@ -70,7 +76,7 @@ export function createMember(token: string, nick: string, now: number, link: Mea
 
 /** A member whose world is believed to match the room's: the ones a digest is expected from and a
  *  snapshot may come from. */
-export function isSynced(member: Member): boolean {
+export function isSynced(member: Pick<Member, 'connected' | 'loaded' | 'outOfSync'>): boolean {
   return member.connected && member.loaded && member.outOfSync === null;
 }
 

@@ -20,6 +20,7 @@ import {
 } from '../untrusted.js';
 import { CLIENT_KINDS } from './client.js';
 import { parseRelayReason } from './reason.js';
+import { parseBufferTicks, parseResponsivenessMode } from './responsiveness.js';
 import {
   DEPARTED_SEAT_MODES,
   DEPARTURE_CAUSES,
@@ -40,6 +41,7 @@ const SERVER_KINDS = keysOf<ServerMessage['kind']>({
   ended: true,
   saveOrders: true,
   clock: true,
+  responsiveness: true,
   frame: true,
   delay: true,
   waiting: true,
@@ -104,6 +106,13 @@ export function parseServerMessage(
       return parseSaveOrders(raw);
     case 'ended':
       return { kind, tick: asCount(raw.tick, 'ended.tick'), hash: parseStateHash(raw.hash, 'ended.hash') };
+    case 'responsiveness':
+      return {
+        kind,
+        mode: parseResponsivenessMode(raw.mode),
+        bufferTicks: parseBufferTicks(raw.bufferTicks),
+        by: raw.by === null ? null : parseNick(raw.by, 'responsiveness.by'),
+      };
     case 'clock':
       return {
         kind,

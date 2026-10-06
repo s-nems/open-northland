@@ -10,7 +10,7 @@ import {
   setSignpostNavigation,
 } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
-import type { Command } from '../../core/commands/index.js';
+import { type Command, MAX_UNIT_MEMBER_ACTIONS, MAX_UNIT_ORDER_MEMBERS } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
@@ -130,6 +130,66 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
   if (isCommanderWalkOrder(command) && driveCommandedVehicle(world, ctx, command, orders)) return;
   if (forcesDetach(command) && !detachBeforeOrder(world, ctx, command.entity)) return;
   switch (command.kind) {
+    case 'setVehicleStanceGroup':
+      if (command.members.length > MAX_UNIT_ORDER_MEMBERS) return;
+      for (const { entity: vehicle } of command.members)
+        setVehicleStance(world, { kind: 'setVehicleStance', vehicle, stance: command.stance });
+      return;
+    case 'moveVehicleGroup':
+      if (command.members.length > MAX_UNIT_ORDER_MEMBERS) return;
+      for (const { entity: vehicle, x, y } of command.members) {
+        applyCommand(
+          world,
+          ctx,
+          { kind: 'moveVehicle', vehicle, x, y, ...(command.attackMove ? { attackMove: true } : {}) },
+          orders,
+        );
+      }
+      return;
+    case 'attackWithVehicleGroup':
+      if (command.members.length > MAX_UNIT_ORDER_MEMBERS) return;
+      for (const { entity: vehicle } of command.members)
+        applyCommand(world, ctx, { kind: 'attackWithVehicle', vehicle, target: command.target }, orders);
+      return;
+    case 'unitOrdersGroup':
+      if (
+        command.members.length > MAX_UNIT_ORDER_MEMBERS ||
+        command.members.some((member) => member.actions.length > MAX_UNIT_MEMBER_ACTIONS)
+      )
+        return;
+      for (const { entity, actions } of command.members) {
+        for (const action of actions) applyCommand(world, ctx, { ...action, entity }, orders);
+      }
+      return;
+    case 'unitActionGroup':
+      if (command.members.length > MAX_UNIT_ORDER_MEMBERS) return;
+      for (const { entity } of command.members) {
+        applyCommand(world, ctx, { ...command.action, entity }, orders);
+      }
+      return;
+    case 'moveUnitGroup':
+    case 'attackMoveUnitGroup': {
+      if (command.members.length > MAX_UNIT_ORDER_MEMBERS) return;
+      const kind = command.kind === 'moveUnitGroup' ? 'moveUnit' : 'attackMoveUnit';
+      for (const member of command.members) {
+        applyCommand(world, ctx, { kind, ...member, ...(command.queued ? { queued: true } : {}) }, orders);
+      }
+      return;
+    }
+    case 'attackUnitGroup':
+    case 'setStanceGroup':
+    case 'setRegenerationGroup':
+      if (command.members.length > MAX_UNIT_ORDER_MEMBERS) return;
+      for (const { entity } of command.members) {
+        const single: Command =
+          command.kind === 'attackUnitGroup'
+            ? { kind: 'attackUnit', entity, target: command.target }
+            : command.kind === 'setStanceGroup'
+              ? { kind: 'setStance', entity, mode: command.mode }
+              : { kind: 'setRegeneration', entity, enabled: command.enabled };
+        applyCommand(world, ctx, single, orders);
+      }
+      return;
     case 'placeBuilding':
       placeBuilding(world, ctx, command);
       return;

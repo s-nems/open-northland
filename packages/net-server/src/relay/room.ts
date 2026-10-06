@@ -7,6 +7,7 @@ import {
   MAX_MEMBERS,
   MAX_NICK_LENGTH,
   type PlayerWireEnvelope,
+  type ResponsivenessMode,
   type RoomSeatSetup,
   type RoomSettings,
   type RoomState,
@@ -20,6 +21,7 @@ import { Game } from './game.js';
 import { Lobby } from './lobby.js';
 import { LobbyTransfers } from './lobby-transfers.js';
 import { broadcast, type Deliver, type Member, type Refusal } from './member.js';
+import { Responsiveness } from './responsiveness.js';
 import { roomView, sessionForMember } from './room-view.js';
 import { type SeatChange, SeatTable } from './seats.js';
 
@@ -62,6 +64,7 @@ export class Room {
   /** Each member's `behindTicks` as the last room view carried it. */
   private readonly announcedBehind = new Map<string, number>();
   private readonly chatLog = new ChatLog();
+  private readonly responsiveness = new Responsiveness();
 
   constructor(
     id: string,
@@ -131,6 +134,7 @@ export class Room {
   welcome(member: Member): void {
     this.broadcastView();
     this.deliver(member, this.chatLog.history());
+    this.deliver(member, this.responsiveness.message());
   }
 
   join(member: Member): Refusal {
@@ -304,6 +308,11 @@ export class Room {
     return this.game.submit(member, envelope, fromTick);
   }
 
+  setResponsiveness(member: Member, mode: ResponsivenessMode): Refusal {
+    if (this.responsiveness.select(mode, member.nick)) this.broadcast(this.responsiveness.message());
+    return null;
+  }
+
   setClock(member: Member, speed: number | undefined, paused: boolean | undefined): Refusal {
     if (this.game === null) return { code: 'gameNotStarted' };
     return this.game.setClock(member, speed, paused);
@@ -339,10 +348,13 @@ export class Room {
   }
 
   /** A fresh measurement of the member's link. Only a started room shows it before its next view. */
-  linkMeasured(member: Member, delayTicks: number, roundTripMs: number): void {
-    if (member.delayTicks === delayTicks && member.roundTripMs === roundTripMs) return;
+  linkMeasured(member: Member, delayTicks: number, roundTripMs: number, jitterMs = 0): void {
+    const changed = member.delayTicks !== delayTicks || member.roundTripMs !== roundTripMs;
     member.delayTicks = delayTicks;
     member.roundTripMs = roundTripMs;
+    member.jitterMs = jitterMs;
+    member.linkMeasured = true;
+    if (!changed) return;
     if (this.game !== null) this.figuresMoved = true;
   }
 
@@ -357,6 +369,9 @@ export class Room {
       if (stalled !== null) return stalled;
     }
     const refusal = this.game?.advance(elapsedMs, now) ?? null;
+    if (this.responsiveness.observe(this.members.values(), this.game?.bufferSpeed ?? null, now)) {
+      this.broadcast(this.responsiveness.message());
+    }
     if (refusal === null && now >= this.nextLoadViewAt && (this.figuresMoved || this.behindMoved())) {
       this.nextLoadViewAt = now + LOAD_VIEW_INTERVAL_MS;
       this.broadcastView();

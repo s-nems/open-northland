@@ -1,10 +1,18 @@
 import type { ContentSet } from '@open-northland/data';
-import { type Entity, entityById, type PlayerCommand, type WorldSnapshot } from '@open-northland/sim';
+import {
+  type Entity,
+  entityById,
+  MAX_UNIT_ORDER_MEMBERS,
+  type PlayerCommand,
+  type UnitSelectionCommand,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { num, ownerPlayerOf } from '../../game/snapshot.js';
 import { technologyReason } from '../../game/technology.js';
 import { messages } from '../../i18n/index.js';
 import { orderRecipients, type SettlerActionsOptions } from './action-ring/index.js';
 import type { AnsweredOrders } from './answered-orders.js';
+import { enqueueUnitSelection } from './group-orders.js';
 import type { TechnologyStatusRead } from './types.js';
 
 export interface ProfessionGateDeps {
@@ -17,6 +25,7 @@ export interface ProfessionGateDeps {
   readonly technologyStatus?: TechnologyStatusRead | undefined;
   readonly answered: AnsweredOrders;
   readonly enqueue: (command: PlayerCommand) => void;
+  readonly onOrderLimit?: (() => void) | undefined;
 }
 
 type ProfessionGates = Pick<
@@ -54,10 +63,15 @@ export function professionGates(deps: ProfessionGateDeps): ProfessionGates {
     },
     onSetJob: (ids, jobType) => {
       const asked = targets(ids);
+      if (new Set(asked).size > MAX_UNIT_ORDER_MEMBERS) {
+        deps.onOrderLimit?.();
+        return;
+      }
       deps.answered.after(Promise.all(asked.map((id) => deps.askCanChooseJob(id, jobType))), (verdicts) => {
-        asked.forEach((id, index) => {
-          if (verdicts[index] === true) deps.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
-        });
+        const commands: UnitSelectionCommand[] = asked.flatMap((id, index) =>
+          verdicts[index] === true ? [{ kind: 'setJob', entity: id as Entity, jobType }] : [],
+        );
+        enqueueUnitSelection(commands, deps.enqueue, deps.onOrderLimit);
       });
     },
   };

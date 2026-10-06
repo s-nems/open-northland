@@ -61,14 +61,28 @@ const WORLD = snapshotOf([
 function harness(under: number | null): {
   pick: (units: readonly number[], kind?: 'workplace-or-flag' | 'work-area') => string | null;
   issued: Command[];
-  flags: { col: number; row: number; units: readonly number[] | undefined }[];
+  flags: {
+    col: number;
+    row: number;
+    units: readonly number[] | undefined;
+    unassignFirst?: boolean | undefined;
+  }[];
   flagActive: () => boolean;
 } {
   const issued: Command[] = [];
-  const flags: { col: number; row: number; units: readonly number[] | undefined }[] = [];
+  const flags: {
+    col: number;
+    row: number;
+    units: readonly number[] | undefined;
+    unassignFirst?: boolean | undefined;
+  }[] = [];
   const orders = {
-    issueSetWorkFlag: (target: { col: number; row: number }, units?: readonly number[]) => {
-      flags.push({ ...target, units });
+    issueSetWorkFlag: (
+      target: { col: number; row: number },
+      units?: readonly number[],
+      unassignFirst?: boolean,
+    ) => {
+      flags.push({ ...target, units, ...(unassignFirst ? { unassignFirst } : {}) });
       return true;
     },
   } as Partial<UnitOrderController> as UnitOrderController;
@@ -126,14 +140,14 @@ it('plants the flag where the click names no building', () => {
   const h = harness(null);
   expect(h.pick([GATHERER])).toBe('ordered');
   expect(h.issued).toEqual([]);
-  expect(h.flags).toEqual([{ ...SPOT, units: [GATHERER] }]);
+  expect(h.flags).toEqual([{ ...SPOT, units: [GATHERER], unassignFirst: true }]);
 });
 
 it('takes a posted gatherer off its post before planting its flag', () => {
   const h = harness(null);
   expect(h.pick([POSTED])).toBe('ordered');
-  expect(h.issued).toEqual([{ kind: 'unassignWorker', entity: POSTED }]);
-  expect(h.flags).toEqual([{ ...SPOT, units: [POSTED] }]);
+  expect(h.issued).toEqual([]);
+  expect(h.flags).toEqual([{ ...SPOT, units: [POSTED], unassignFirst: true }]);
 });
 
 it('lights the workplaces that employ the trade while armed', () => {

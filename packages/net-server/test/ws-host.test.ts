@@ -150,7 +150,7 @@ describe('websocket host', () => {
               if (sim === null) return;
               const seat = client.session?.localSeat;
               if (typeof seat === 'number' && sim.tick === 8) {
-                for (let order = 0; order < 60; order++) {
+                for (let order = 0; order < 10; order++) {
                   client.submit(
                     playerCommand(seat, {
                       kind: 'setAssistantCounter',
@@ -201,7 +201,7 @@ describe('websocket host', () => {
                     : [],
                 ),
               `${client.nick}: burst from seat ${seat}`,
-            ).toEqual(Array.from({ length: 60 }, (_, order) => 100_000 + order));
+            ).toEqual(Array.from({ length: 10 }, (_, order) => 100_000 + order));
           }
         }
         const orderedSeats = new Set(

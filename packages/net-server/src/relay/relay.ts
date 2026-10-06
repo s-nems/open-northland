@@ -218,6 +218,8 @@ export class Relay {
     if (room !== undefined && member !== null) {
       client.room = room;
       client.member = member;
+      member.linkMeasured = false;
+      member.jitterMs = 0;
       room.reconnect(member, this.now());
       this.emptySince.delete(room);
     }
@@ -274,10 +276,18 @@ export class Relay {
       }
       case 'pong': {
         const now = this.now();
+        const samples = client.probe.delay.samples;
         const changed = client.probe.pong(message.t, now);
         if (client.room !== null && client.member !== null) {
           client.member.lastHeardAt = now;
-          client.room.linkMeasured(client.member, client.probe.delay.ticks, client.probe.delay.roundTripMs);
+          if (client.probe.delay.samples !== samples) {
+            client.room.linkMeasured(
+              client.member,
+              client.probe.delay.ticks,
+              client.probe.delay.roundTripMs,
+              client.probe.delay.jitterMs,
+            );
+          }
         }
         if (changed) client.connection.send({ kind: 'delay', ticks: client.probe.delay.ticks });
         return null;
@@ -317,8 +327,13 @@ export class Relay {
 
   private newMember(client: Client, nick: string): Member {
     if (client.token === null) throw new Error('a member needs an introduced client');
-    const { ticks: delayTicks, roundTripMs } = client.probe.delay;
-    return createMember(client.token, nick, this.now(), { delayTicks, roundTripMs });
+    const { ticks: delayTicks, roundTripMs, jitterMs, samples } = client.probe.delay;
+    return createMember(client.token, nick, this.now(), {
+      delayTicks,
+      roundTripMs,
+      jitterMs,
+      measured: samples > 0,
+    });
   }
 
   private enter(client: Client, room: Room, member: Member): void {

@@ -20,6 +20,8 @@ export type {
   LobbySettings,
   PlayerWireEnvelope,
   RelayWireEnvelope,
+  ResponsivenessMode,
+  ResponsivenessState,
   RoomMemberView,
   RoomSeatSetup,
   RoomSeatView,

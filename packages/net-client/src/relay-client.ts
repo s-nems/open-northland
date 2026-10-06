@@ -7,8 +7,11 @@ import {
 import {
   DESCRIPTOR_WORLD,
   type GovernedClock,
+  MAX_ENVELOPE_BYTES,
   parseServerMessage,
   RelayTransport,
+  type ResponsivenessMode,
+  type ResponsivenessState,
   type ServerMessage,
   type WaitedMember,
   type WireFrame,
@@ -64,7 +67,7 @@ export interface RelayClientOptions {
   readonly token: string;
   readonly nick: string;
   readonly world: WorldPort;
-  /** Every relay message, after the client has acted on it: how a display follows the session. */
+  /** Relay messages after applying them, plus local command refusals: how a display follows the session. */
   readonly onMessage?: (message: ServerMessage) => void;
   /** A world adopted: built, or restored from a snapshot. */
   readonly onWorld?: (world: AdoptedWorld) => void;
@@ -104,6 +107,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   private readonly tickCost = new TickCost();
   private snapshotInFlight: Promise<void> | null = null;
   private awaitingResume = false;
+  private shrinkingBuffer = false;
 
   get session(): GameSession | null {
     return this.state.session;
@@ -111,6 +115,14 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
 
   get clockState(): ClockState | null {
     return this.state.clockState;
+  }
+
+  get responsiveness(): ResponsivenessState {
+    return this.state.responsiveness;
+  }
+
+  setResponsiveness(mode: ResponsivenessMode): void {
+    this.send({ kind: 'responsiveness', mode });
   }
 
   get waitingFor(): readonly WaitedMember[] {
@@ -233,7 +245,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     );
   }
 
-  /** A command with no world to stamp it or no connection to carry it is dropped and reported. */
+  /** Commands need a connected world and must fit in one atomic wire envelope. */
   submit(envelope: CommandEnvelope): void {
     if (this.resultTick !== null || this.completion.confirmedTick !== null) return;
     if (this.driver === null) {
@@ -244,14 +256,25 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
       this.options.onError?.('command', new Error(`${this.nick} is not connected`));
       return;
     }
+    if (new TextEncoder().encode(JSON.stringify(envelope)).byteLength > MAX_ENVELOPE_BYTES) {
+      // Notify the same nonfatal HUD path as a relay refusal, without consuming an earlier command's
+      // latency stamp: this envelope never entered the transport or the in-flight queue.
+      this.options.onMessage?.({ kind: 'rejected', of: 'command', reason: { code: 'envelopeTooLarge' } });
+      return;
+    }
     this.driver.submit(envelope);
     this.latency.issued(this.now());
   }
 
   receive(raw: unknown): void {
     const message = parseServerMessage(raw, parseGameSession);
+    const previousBufferTarget = this.responsiveness.bufferTicks;
     this.state.apply(message);
     switch (message.kind) {
+      case 'responsiveness':
+        if (message.bufferTicks !== previousBufferTarget)
+          this.shrinkingBuffer = message.bufferTicks < previousBufferTarget;
+        break;
       case 'welcome':
         this.saveOrders.cancel('The relay connection changed while saving');
         break;
@@ -329,16 +352,28 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     // A tick's cost runs from the end of the previous tick's work here to its acknowledgement: the
     // frame's admission, the sim step and the host's `onTick`.
     this.tickCost.begin(this.now());
-    this.alpha = driver.advance(elapsedMs * paceScale(transport.bufferedTicks, driver.speed), () => {
-      if (this.completion.detect(this.sim) || this.tick === this.completion.confirmedTick) {
-        driver.setPaused(true);
-      }
-      onTick?.();
-      this.acknowledge(this.tickCost.end(this.now()));
-      this.reportResult();
-      this.verifyResult();
-      this.tickCost.begin(this.now());
-    });
+    this.alpha = driver.advance(
+      elapsedMs *
+        paceScale(
+          transport.bufferedTicks,
+          driver.speed,
+          this.responsiveness.bufferTicks,
+          this.shrinkingBuffer,
+        ),
+      () => {
+        if (this.completion.detect(this.sim) || this.tick === this.completion.confirmedTick) {
+          driver.setPaused(true);
+        }
+        onTick?.();
+        this.acknowledge(this.tickCost.end(this.now()));
+        this.reportResult();
+        this.verifyResult();
+        this.tickCost.begin(this.now());
+      },
+    );
+    // Finish only after consuming the former reserve. At high speed new frames can arrive before
+    // every display advance, so observing the buffer only before advancing would miss that moment.
+    if (transport.bufferedTicks < this.responsiveness.bufferTicks) this.shrinkingBuffer = false;
     return this.alpha;
   }
 
@@ -494,6 +529,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   }
 
   private dropWorld(): void {
+    this.shrinkingBuffer = false;
     this.snapshotInFlight = null;
     this.saveOrders.cancel('The world changed while saving');
     this.loader.invalidate();

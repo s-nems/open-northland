@@ -12,8 +12,15 @@ import {
 const MAX_FRAMES_PER_ADVANCE = 12;
 /** Slack for elapsed sums that are whole ticks on paper and a rounding error short in floating point. */
 const TIME_EPSILON_MS = 1e-6;
-/** Bounds queued input even while paused, while admitting a large selection's per-unit orders. */
+/** Bounds accepted future gestures even while paused. Unit count never changes their scheduled tick. */
 export const MAX_PENDING_COMMANDS_PER_MEMBER = 128;
+export const MAX_COMMAND_BYTES_PER_TICK = 1024 * 1024;
+export const MAX_PENDING_COMMAND_BYTES = 2 * 1024 * 1024;
+
+interface InputBudget {
+  readonly count: number;
+  readonly bytes: number;
+}
 
 export type ScheduleOutcome = { readonly applyTick: number } | { readonly refused: 'budget' };
 
@@ -32,10 +39,10 @@ export class RoomClock {
   private speedMultiplier: number;
   private governedClock: GovernedClock | null = null;
   private readonly pending = new Map<number, WireCommand[]>();
-  /** Per tick, how many commands each member has landed on it. */
-  private readonly budgets = new Map<number, Map<string, number>>();
+  /** Per tick, the atomic gestures and serialized bytes each member has landed on it. */
+  private readonly budgets = new Map<number, Map<string, InputBudget>>();
   private readonly lastScheduled = new Map<string, number>();
-  private readonly pendingCounts = new Map<string, number>();
+  private readonly pendingCounts = new Map<string, InputBudget>();
 
   constructor(speed: number) {
     this.speedMultiplier = speed;
@@ -121,19 +128,22 @@ export class RoomClock {
     fromTick: number,
     delayTicks: number,
   ): ScheduleOutcome {
-    const pending = this.pendingCounts.get(member) ?? 0;
-    if (pending >= MAX_PENDING_COMMANDS_PER_MEMBER) return { refused: 'budget' };
+    const bytes = Buffer.byteLength(JSON.stringify(envelope));
+    const pending = this.pendingCounts.get(member) ?? { count: 0, bytes: 0 };
+    if (pending.count >= MAX_PENDING_COMMANDS_PER_MEMBER || pending.bytes + bytes > MAX_PENDING_COMMAND_BYTES)
+      return { refused: 'budget' };
     const issued = Math.min(fromTick, this.lastTick);
     // A lower delay or a restored client tick must not let a later order overtake accepted input.
-    let applyTick = Math.max(this.nextTick, issued + delayTicks, this.lastScheduled.get(member) ?? 0);
-    // Only the last scheduled tick can be full: each new order advances that cursor as needed.
-    if ((this.budgets.get(applyTick)?.get(member) ?? 0) >= MAX_COMMANDS_PER_TICK) applyTick++;
-    const budget = this.budgets.get(applyTick) ?? new Map<string, number>();
-    const used = budget.get(member) ?? 0;
-    budget.set(member, used + 1);
+    const applyTick = Math.max(this.nextTick, issued + delayTicks, this.lastScheduled.get(member) ?? 0);
+    const budget = this.budgets.get(applyTick) ?? new Map<string, InputBudget>();
+    const used = budget.get(member) ?? { count: 0, bytes: 0 };
+    // Refuse a whole gesture at the limit. Spilling it would make repeated input feel sticky.
+    if (used.count >= MAX_COMMANDS_PER_TICK || used.bytes + bytes > MAX_COMMAND_BYTES_PER_TICK)
+      return { refused: 'budget' };
+    budget.set(member, { count: used.count + 1, bytes: used.bytes + bytes });
     this.budgets.set(applyTick, budget);
     this.lastScheduled.set(member, applyTick);
-    this.pendingCounts.set(member, pending + 1);
+    this.pendingCounts.set(member, { count: pending.count + 1, bytes: pending.bytes + bytes });
     this.land(applyTick, envelope);
     return { applyTick };
   }
@@ -167,8 +177,12 @@ export class RoomClock {
     const commands = this.pending.get(tick) ?? [];
     this.pending.delete(tick);
     for (const [member, used] of this.budgets.get(tick) ?? []) {
-      const remaining = (this.pendingCounts.get(member) ?? 0) - used;
-      if (remaining > 0) this.pendingCounts.set(member, remaining);
+      const pending = this.pendingCounts.get(member);
+      if (pending !== undefined && pending.count > used.count)
+        this.pendingCounts.set(member, {
+          count: pending.count - used.count,
+          bytes: pending.bytes - used.bytes,
+        });
       else this.pendingCounts.delete(member);
       if (this.lastScheduled.get(member) === tick) this.lastScheduled.delete(member);
     }

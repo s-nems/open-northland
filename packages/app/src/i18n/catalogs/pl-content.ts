@@ -586,6 +586,11 @@ export const plContent = {
       summary:
         'Sto dwudziestu żołnierzy w trzech blokach: łucznicy, miecznicy i włócznicy, część rannych. Zaznaczeni ramką pokazują małe miniatury, bo grupa przekracza 99 osób.',
     },
+    'army-control': {
+      title: 'Sterowanie armią: 1000 żołnierzy',
+      summary:
+        'Tysiąc mieczników dostaje wspólny rozkaz ataku w marszu. Zaznacz armię i zmieniaj jej cel ruchem, atakiem w marszu lub atakiem na cel; Shift świadomie kolejkuje punkty trasy.',
+    },
     'net-panel': {
       title: 'Panel sieci',
       summary:

@@ -22,7 +22,18 @@ export {
 } from './envelope.js';
 export type { PlaceBuildingCommand } from './placement.js';
 export type { CreateVehicleCommand, SettlerEquipment, SettlerEquipmentSlot } from './spawn.js';
-export { type GroupMember, type GroupWorker, orderedSettler } from './unit-orders.js';
+export {
+  type GroupActions,
+  type GroupDestination,
+  type GroupMember,
+  type GroupWorker,
+  MAX_UNIT_MEMBER_ACTIONS,
+  MAX_UNIT_ORDER_MEMBERS,
+  orderedSettler,
+  type UnitSelectionAction,
+  type UnitSelectionCommand,
+  type UnitSelfAction,
+} from './unit-orders.js';
 
 /**
  * The serializable external inputs CommandSystem applies; a caller submits one inside a

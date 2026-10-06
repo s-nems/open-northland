@@ -65,6 +65,7 @@ interface MountedUnitChrome {
 }
 
 export interface UnitChromeCallbacks {
+  readonly onOrderLimit: () => void;
   readonly assignWorkplace: (id: number) => void;
   readonly assignHome: (id: number) => void;
   readonly attachTradeHouse: (id: number) => void;
@@ -74,7 +75,7 @@ export interface UnitChromeCallbacks {
   readonly armedPick: () => PickMode | null;
   /** Replace the selection with these entities; none clears it. */
   readonly selectGroup: (ids: readonly number[]) => void;
-  readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => void;
+  readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => boolean;
   /** The GUI click feedback the ring's and the panel's buttons press with. */
   readonly cue: (cue: UiCue) => void;
   /** Runs a click's order once the host answered it, never after the controls are gone. */
@@ -238,6 +239,7 @@ export async function createUnitChrome(
     armedPick: (vehicle) => armedVehiclePick(callbacks.armedPick(), vehicle),
   });
   const groupActions = groupPanelActions(opts, {
+    onOrderLimit: callbacks.onOrderLimit,
     selectEntity: callbacks.selectEntity,
     selectGroup: callbacks.selectGroup,
     centre,
@@ -440,6 +442,7 @@ export async function createUnitChrome(
         askCanChooseJob: opts.askCanChooseJob,
         technologyStatus: opts.technologyStatus,
         answered: callbacks.answered,
+        onOrderLimit: callbacks.onOrderLimit,
         enqueue: opts.enqueue,
       }),
       jobAnswersVersion: () => opts.jobChoicesVersion() + (opts.technologyVersion?.() ?? 0),

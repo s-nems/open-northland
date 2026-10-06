@@ -3,6 +3,7 @@ import type { ElevationField, OrderMarkerKind } from '@open-northland/render';
 import {
   type Entity,
   entityById,
+  MAX_UNIT_ORDER_MEMBERS,
   type PlayerCommand,
   systems,
   type WorldSnapshot,
@@ -19,6 +20,7 @@ import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import type { AnsweredOrders } from './answered-orders.js';
 import { formationTiles } from './formation.js';
+import { enqueueArmyOrder, enqueueUnitSelection } from './group-orders.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
 /** How far apart a group's goals lie: past a catapult's footprint disc (`logicsize 1`) and a lane
@@ -26,6 +28,7 @@ import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 const VEHICLE_FORMATION_SPACING_NODES = 4;
 
 export interface VehicleOrderDeps {
+  readonly onOrderLimit?: (() => void) | undefined;
   readonly selected: () => ReadonlySet<number>;
   readonly targets: UnitTargets;
   readonly snapshot: () => WorldSnapshot;
@@ -188,26 +191,31 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     });
   };
 
-  const driveInFormation = (vehicles: readonly number[], target: Tile, attackMove: boolean): void => {
-    if (vehicles.length === 0) return;
+  const driveInFormation = (vehicles: readonly number[], target: Tile, attackMove: boolean): boolean => {
+    if (vehicles.length === 0) return false;
+    if (vehicles.length > MAX_UNIT_ORDER_MEMBERS) {
+      deps.onOrderLimit?.();
+      return false;
+    }
     const goals = formationGoals(vehicles.length, target);
-    vehicles.forEach((vehicle, i) => {
-      const node = goals[i] ?? clampNode(target);
-      deps.enqueue({
-        kind: 'moveVehicle',
-        vehicle: vehicle as Entity,
-        x: node.col,
-        y: node.row,
+    const accepted = enqueueArmyOrder(
+      {
+        kind: 'moveVehicleGroup',
+        members: vehicles.map((vehicle, i) => {
+          const node = goals[i] ?? clampNode(target);
+          return { entity: vehicle as Entity, x: node.col, y: node.row };
+        }),
         ...(attackMove ? { attackMove: true } : {}),
-      });
-    });
-    deps.markOrder?.(clampNode(target), attackMove ? 'attack' : 'move');
+      },
+      deps.enqueue,
+      deps.onOrderLimit,
+    );
+    if (accepted) deps.markOrder?.(clampNode(target), attackMove ? 'attack' : 'move');
+    return accepted;
   };
 
-  const issueAttackMove = (vehicles: readonly number[], target: Tile): boolean => {
+  const issueAttackMove = (vehicles: readonly number[], target: Tile): boolean =>
     driveInFormation(vehicles, target, true);
-    return vehicles.length > 0;
-  };
 
   const dock = (vehicle: number, node: Tile): void => {
     deps.enqueue({ kind: 'dockVehicle', vehicle: vehicle as Entity, x: node.col, y: node.row });
@@ -280,32 +288,42 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     const world = deps.toWorld(event.clientX, event.clientY);
     const vehicle = pickTopAt(deps.targets.owned('vehicle'), world.x, world.y);
     if (vehicle === null) return false;
-    attachWhenAdmitted([settler], vehicle, () => undefined);
-    return true;
+    return attachWhenAdmitted([settler], vehicle, () => undefined);
   };
 
   /** Attach each of `settlers` the rule admits, once it answered; `onNone` when it admitted nobody. */
-  const attachWhenAdmitted = (settlers: readonly number[], vehicle: number, onNone: () => void): void => {
-    const attach = (settler: number): void =>
-      deps.enqueue({ kind: 'attachToVehicle', entity: settler as Entity, vehicle: vehicle as Entity });
+  const attachWhenAdmitted = (settlers: readonly number[], vehicle: number, onNone: () => void): boolean => {
+    if (settlers.length > MAX_UNIT_ORDER_MEMBERS) {
+      deps.onOrderLimit?.();
+      return false;
+    }
+    const attach = (recipients: readonly number[]): boolean =>
+      enqueueUnitSelection(
+        recipients.map((entity) => ({
+          kind: 'attachToVehicle',
+          entity: entity as Entity,
+          vehicle: vehicle as Entity,
+        })),
+        deps.enqueue,
+        deps.onOrderLimit,
+      );
     const ask = deps.askAttachToVehicle;
     if (ask === undefined) {
-      for (const settler of settlers) attach(settler);
-      return;
+      return attach(settlers);
     }
     deps.answered.after(Promise.all(settlers.map((settler) => ask(settler, vehicle))), (verdicts) => {
       const admitted = settlers.filter((_settler, index) => verdicts[index] === true);
-      for (const settler of admitted) attach(settler);
+      attach(admitted);
       if (admitted.length === 0) onNone();
     });
+    return true;
   };
 
   const issueSeatRider = (event: MouseEvent, vehicle: number): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const settler = pickTopAt(deps.targets.owned('settler'), world.x, world.y);
     if (settler === null) return false;
-    attachWhenAdmitted([settler], vehicle, () => undefined);
-    return true;
+    return attachWhenAdmitted([settler], vehicle, () => undefined);
   };
 
   const issueDeckLoad = (event: MouseEvent, ship: number): boolean => {
@@ -326,8 +344,7 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     if (pickTopAt(deps.targets.enemies(), world.x, world.y) !== null) return false;
     const settlers = deps.targets.ownedSettlersIn(deps.selected()).map((target) => target.ref);
     if (settlers.length === 0) return false;
-    attachWhenAdmitted(settlers, vehicle, onNoneBoards);
-    return true;
+    return attachWhenAdmitted(settlers, vehicle, onNoneBoards);
   };
 
   /** A group's right-click (see {@link VehicleOrderController.issueRightClick}). An own settler under
@@ -335,11 +352,24 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
   const issueGroupRightClick = (event: MouseEvent): boolean => {
     const group = selectedVehicles();
     if (group.length === 0) return false;
+    if (group.length > MAX_UNIT_ORDER_MEMBERS) {
+      deps.onOrderLimit?.();
+      return false;
+    }
     const world = deps.toWorld(event.clientX, event.clientY);
     if (pickTopAt(deps.targets.owned('settler'), world.x, world.y) !== null) return false;
     const enemy = pickTopAt(deps.targets.enemies(), world.x, world.y);
     const striking = enemy === null ? [] : group.filter(isSiege);
-    if (enemy !== null) for (const e of striking) strike(e.id, enemy);
+    if (enemy !== null && striking.length > 0)
+      enqueueArmyOrder(
+        {
+          kind: 'attackWithVehicleGroup',
+          members: striking.map((e) => ({ entity: e.id as Entity })),
+          target: { kind: 'entity', entity: enemy as Entity },
+        },
+        deps.enqueue,
+        deps.onOrderLimit,
+      );
     const driving = group.filter((e) => !striking.includes(e)).map((e) => e.id);
     driveInFormation(driving, worldToTile(world.x, world.y, deps.elevation), false);
     return true;

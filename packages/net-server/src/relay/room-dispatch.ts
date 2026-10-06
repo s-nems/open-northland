@@ -40,6 +40,8 @@ export function dispatchRoomMessage(room: Room, member: Member, message: RoomMes
       if (bytes > MAX_ENVELOPE_BYTES) return { code: 'envelopeTooLarge' };
       return room.submit(member, message.envelope, message.fromTick);
     }
+    case 'responsiveness':
+      return room.setResponsiveness(member, message.mode);
     case 'clock':
       return room.setClock(member, message.speed, message.paused);
     case 'kick':

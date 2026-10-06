@@ -1,5 +1,5 @@
 import type { OrderMarkerKind } from '@open-northland/render';
-import { type Command, fx, type WorldSnapshot } from '@open-northland/sim';
+import { type Command, fx, MAX_UNIT_ORDER_MEMBERS, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import {
@@ -272,11 +272,11 @@ describe('vehicle right-click defaults', () => {
     const { issued, controller } = harness([CATAPULT, HANDCART, OWN_SETTLER], {});
     expect(controller.issueRightClick(rightClick)).toBe(true);
     const spot = worldToTile(CLICK.x, CLICK.y);
-    expect(issued.map((command) => command.kind)).toEqual(['moveVehicle', 'moveVehicle']);
-    expect(issued[0]).toEqual({ kind: 'moveVehicle', vehicle: CATAPULT, x: spot.col, y: spot.row });
-    const goals = issued.map((command) =>
-      command.kind === 'moveVehicle' ? `${command.x},${command.y}` : '',
-    );
+    expect(issued).toHaveLength(1);
+    const group = issued[0];
+    if (group?.kind !== 'moveVehicleGroup') throw new Error('expected group drive');
+    expect(group.members[0]).toEqual({ entity: CATAPULT, x: spot.col, y: spot.row });
+    const goals = group.members.map((member) => `${member.x},${member.y}`);
     expect(new Set(goals).size).toBe(2);
   });
 
@@ -366,14 +366,50 @@ describe('vehicle picks', () => {
     expect(issued).toEqual([{ kind: 'moveVehicle', vehicle: CATAPULT, x: 3, y: 3, attackMove: true }]);
   });
 
+  it('refuses oversized vehicle formations without any order or marker', () => {
+    const h = harness([], {});
+    expect(
+      h.controller.issueAttackMove(
+        Array.from({ length: MAX_UNIT_ORDER_MEMBERS + 1 }, (_, i) => i + 1),
+        { col: 10, row: 10 },
+      ),
+    ).toBe(false);
+    expect(h.issued).toEqual([]);
+    expect(h.marked).toEqual([]);
+  });
+
+  it('groups 1000 admitted boarding candidates and refuses an oversized candidate gesture', async () => {
+    const settlers = Array.from({ length: 1000 }, (_, i) => i + 100);
+    const h = harness(settlers, {
+      settlers,
+      vehicles: [under(SHIP, 'vehicle')],
+      canAttachToVehicle: () => true,
+    });
+    expect(h.controller.issueAttachSelected(rightClick, () => {})).toBe(true);
+    await landed();
+    expect(h.issued).toEqual([
+      {
+        kind: 'unitActionGroup',
+        members: settlers.map((entity) => ({ entity })),
+        action: { kind: 'attachToVehicle', vehicle: SHIP },
+      },
+    ]);
+    const oversized = Array.from({ length: MAX_UNIT_ORDER_MEMBERS + 1 }, (_, i) => i + 100);
+    const rejected = harness(oversized, { settlers: oversized, vehicles: [under(SHIP, 'vehicle')] });
+    expect(rejected.controller.issueAttachSelected(rightClick, () => {})).toBe(false);
+    expect(rejected.issued).toEqual([]);
+  });
+
   it('spreads a marched group over distinct goals around the spot', () => {
     const { issued, controller, marked } = harness([], {});
     expect(controller.issueAttackMove([CATAPULT, SECOND_CATAPULT], { col: 10, row: 10 })).toBe(true);
     // One red marker on the spot the group was sent to, not one per goal.
     expect(marked).toEqual([[{ col: 10, row: 10 }, 'attack']]);
-    const goals = issued.map((command) =>
-      command.kind === 'moveVehicle' ? `${command.x},${command.y}` : '',
-    );
+    expect(issued).toHaveLength(1);
+    const group = issued[0];
+    if (group?.kind !== 'moveVehicleGroup') throw new Error('expected group march');
+    expect(group.attackMove).toBe(true);
+    const goals = group.members.map((member) => `${member.x},${member.y}`);
     expect(goals[0]).toBe('10,10');
     expect(new Set(goals).size).toBe(2);
   });

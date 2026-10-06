@@ -9,6 +9,8 @@ import {
 import type {
   ChatLine,
   GovernedClock,
+  ResponsivenessMode,
+  ResponsivenessState,
   RoomSummary,
   RoomView,
   ServerMessage,
@@ -102,6 +104,9 @@ export class RelayClientMirror implements RelayClientView {
   get clockState(): ClockState | null {
     return this.state.clockState;
   }
+  get responsiveness(): ResponsivenessState {
+    return this.state.responsiveness;
+  }
   get waitingFor(): readonly WaitedMember[] {
     return this.state.waitingFor;
   }
@@ -154,6 +159,9 @@ export class RelayClientMirror implements RelayClientView {
   }
   setSpeed(speed: number): void {
     this.post({ kind: 'clock', speed });
+  }
+  setResponsiveness(mode: ResponsivenessMode): void {
+    this.post({ kind: 'responsiveness', mode });
   }
   submit(envelope: CommandEnvelope): void {
     this.post({ kind: 'submit', envelope });

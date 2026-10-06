@@ -84,6 +84,7 @@ export function renderNetworkGame(
     model: () => hud?.model() ?? null,
     kick: (seat, yes) => client.kick(seat, yes),
     say: (text) => client.say(text),
+    setResponsiveness: (mode) => client.setResponsiveness(mode),
   };
 
   function clearWorld(): void {

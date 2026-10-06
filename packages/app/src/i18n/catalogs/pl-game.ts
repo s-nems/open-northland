@@ -7,6 +7,8 @@ export const plGame = {
     retry: 'Spróbuj ponownie',
   },
   hud: {
+    armyOrderLimit:
+      'Zaznacz najwyżej {limit} jednostek do jednego rozkazu. Żadna jednostka nie otrzymała tego rozkazu.',
     mapOverlays: {
       label: 'Nakładki mapy głównej',
       signposts: 'Drogowskazy',
@@ -309,6 +311,19 @@ export const plGame = {
       withdraw: 'Cofnij głos {yes}/{needed}',
       withdrawTitle: 'Cofnij głos za wyrzuceniem gracza {nick}',
       clock: 'Zegar',
+      responsiveness: {
+        title: 'Reakcja na rozkazy',
+        options: { auto: 'Auto', responsive: 'Szybka', balanced: 'Standardowa', smooth: 'Płynna' },
+        hints: {
+          auto: 'Dla całego pokoju. Automatycznie dopasowuje rezerwę do połączeń graczy i tempa gry.',
+          responsive:
+            'Dla całego pokoju. Szybsza reakcja, ale większe ryzyko przycięć przy niestabilnym łączu.',
+          balanced: 'Dla całego pokoju. Umiarkowana rezerwa na wahania połączenia.',
+          smooth: 'Dla całego pokoju. Większa rezerwa na wahania połączenia kosztem późniejszej reakcji.',
+        },
+        reserve: 'Rezerwa wygładzania: około {ms} ms',
+        changed: '{nick} zmienia reakcję na rozkazy: {mode}',
+      },
       requested: 'Ustawione',
       running: 'Rzeczywiste',
       paused: 'wstrzymana',

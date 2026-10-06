@@ -246,10 +246,19 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
         shown.players !== players ||
         shown.clock !== clock ||
         shown.link !== link ||
+        shown.responsiveness !== client.responsiveness ||
         shown.chatVersion !== chatVersion ||
         shown.notice !== worldNotice
       ) {
-        shown = { players, clock, link, chat, chatVersion, notice: worldNotice };
+        shown = {
+          players,
+          clock,
+          link,
+          responsiveness: client.responsiveness,
+          chat,
+          chatVersion,
+          notice: worldNotice,
+        };
       }
       return shown;
     },

@@ -1,6 +1,11 @@
 import { MAX_COMMANDS_PER_TICK, type PlayerWireEnvelope, TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
-import { MAX_PENDING_COMMANDS_PER_MEMBER, RoomClock } from '../src/relay/room-clock.js';
+import {
+  MAX_COMMAND_BYTES_PER_TICK,
+  MAX_PENDING_COMMAND_BYTES,
+  MAX_PENDING_COMMANDS_PER_MEMBER,
+  RoomClock,
+} from '../src/relay/room-clock.js';
 
 /** Frames one advance may carry after a stall. */
 const STALL_BURST_FRAMES = 12;
@@ -74,29 +79,66 @@ describe('room clock', () => {
     expect(clock.schedule('a', envelope('ahead'), 50, 1)).toEqual({ applyTick: 11 });
   });
 
-  it('spreads a selection over successive ticks without delaying another member or reordering input', () => {
+  it('lands an army and its redirect together without splitting either gesture', () => {
     const clock = startedAt(1);
-    for (let i = 0; i < 60; i++) {
-      expect(clock.schedule('a', envelope(`a${i}`), 1, 1)).toEqual({
-        applyTick: 2 + Math.floor(i / MAX_COMMANDS_PER_TICK),
+    const members = Array.from({ length: 1000 }, (_, entity) => ({ entity: entity + 1, x: 90, y: 80 }));
+    const first = { ...envelope('moveUnitGroup'), command: { kind: 'moveUnitGroup', members } };
+    const redirect = {
+      ...first,
+      command: { ...first.command, members: members.map((member) => ({ ...member, x: 20 })) },
+    };
+    expect(clock.schedule('a', first, 1, 1)).toEqual({ applyTick: 2 });
+    expect(clock.schedule('a', redirect, 1, 1)).toEqual({ applyTick: 2 });
+    expect(clock.schedule('b', envelope('other'), 1, 1)).toEqual({ applyTick: 2 });
+    const [frame, after] = clock.advance(TICK_MS * 2);
+    expect(frame?.commands.map(({ envelope }) => envelope)).toEqual([first, redirect, envelope('other')]);
+    expect(after?.commands).toEqual([]);
+  });
+
+  it('refuses excess gestures instead of putting them on later ticks', () => {
+    const clock = startedAt(1);
+    for (let i = 0; i < MAX_COMMANDS_PER_TICK; i++)
+      expect(clock.schedule('a', envelope(`a${i}`), 1, 1 + Math.floor(i / MAX_COMMANDS_PER_TICK))).toEqual({
+        applyTick: 2,
       });
+    expect(clock.schedule('a', envelope('overflow'), 1, 1)).toEqual({ refused: 'budget' });
+    expect(clock.schedule('b', envelope('other'), 1, 1)).toEqual({ applyTick: 2 });
+    expect(clock.advance(TICK_MS * 2).map((frame) => frame.commands.length)).toEqual([
+      MAX_COMMANDS_PER_TICK + 1,
+      0,
+    ]);
+  });
+
+  it('bounds serialized input per tick and across pending ticks, releasing bytes after emission', () => {
+    const clock = startedAt(1);
+    const large = {
+      ...envelope('group'),
+      command: { kind: 'group', pad: 'p'.repeat(MAX_COMMAND_BYTES_PER_TICK / 3) },
+    };
+    const bytes = Buffer.byteLength(JSON.stringify(large));
+    const perTick = Math.floor(MAX_COMMAND_BYTES_PER_TICK / bytes);
+    const total = Math.floor(MAX_PENDING_COMMAND_BYTES / bytes);
+    for (let i = 0; i < total; i++) {
+      const delay = 1 + Math.floor(i / perTick);
+      expect(clock.schedule('a', large, 1, delay)).toHaveProperty('applyTick');
+      if ((i + 1) % perTick === 0)
+        expect(clock.schedule('a', large, 1, delay)).toEqual({ refused: 'budget' });
     }
-    expect(clock.schedule('b', envelope('b0'), 1, 1)).toEqual({ applyTick: 2 });
-    expect(clock.schedule('a', envelope('later'), 0, 0)).toEqual({ applyTick: 5 });
-    const frames = clock.advance(TICK_MS * 4);
-    expect(frames.map((frame) => frame.commands.length)).toEqual([21, 20, 20, 1]);
-    expect(
-      frames
-        .flatMap((frame) => frame.commands.map(({ envelope }) => envelope.command.kind))
-        .filter((kind) => kind !== 'b0'),
-    ).toEqual([...Array.from({ length: 60 }, (_, i) => `a${i}`), 'later']);
+    expect(clock.schedule('a', large, 1, 20)).toEqual({ refused: 'budget' });
+    expect(clock.schedule('b', large, 1, 1)).toEqual({ applyTick: 2 });
+    clock.advance(TICK_MS);
+    expect(clock.schedule('a', large, 2, 20)).toHaveProperty('applyTick');
+    clock.finishAt(clock.tick);
+    expect(clock.schedule('a', large, clock.tick, 1)).toHaveProperty('applyTick');
   });
 
   it('bounds pending input while paused and releases exactly the capacity it emitted', () => {
     const clock = startedAt(1);
     clock.setPaused(true);
     for (let i = 0; i < MAX_PENDING_COMMANDS_PER_MEMBER; i++) {
-      expect(clock.schedule('a', envelope(`a${i}`), 1, 1)).toHaveProperty('applyTick');
+      expect(
+        clock.schedule('a', envelope(`a${i}`), 1, 1 + Math.floor(i / MAX_COMMANDS_PER_TICK)),
+      ).toHaveProperty('applyTick');
     }
     expect(clock.schedule('a', envelope('overflow'), 1, 1)).toEqual({ refused: 'budget' });
     expect(clock.schedule('b', envelope('independent'), 1, 1)).toEqual({ applyTick: 2 });
@@ -104,7 +146,7 @@ describe('room clock', () => {
     clock.setPaused(false);
     expect(clock.advance(TICK_MS)[0]?.commands).toHaveLength(MAX_COMMANDS_PER_TICK + 1);
     for (let i = 0; i < MAX_COMMANDS_PER_TICK; i++) {
-      expect(clock.schedule('a', envelope(`refill${i}`), 2, 1)).toHaveProperty('applyTick');
+      expect(clock.schedule('a', envelope(`refill${i}`), 2, 8)).toHaveProperty('applyTick');
     }
     expect(clock.schedule('a', envelope('overflow'), 2, 1)).toEqual({ refused: 'budget' });
     const frames = clock.advance(TICK_MS * 8);
@@ -124,7 +166,8 @@ describe('room clock', () => {
 
   it('discards every pending frame and its capacity accounting at the terminal tick', () => {
     const clock = startedAt(1);
-    for (let i = 0; i < MAX_PENDING_COMMANDS_PER_MEMBER; i++) clock.schedule('a', envelope('queued'), 1, 1);
+    for (let i = 0; i < MAX_PENDING_COMMANDS_PER_MEMBER; i++)
+      clock.schedule('a', envelope('queued'), 1, 1 + Math.floor(i / MAX_COMMANDS_PER_TICK));
     clock.finishAt(1);
     expect(clock.pendingFrames()).toEqual([]);
     expect(clock.advance(TICK_MS * 10)).toEqual([]);

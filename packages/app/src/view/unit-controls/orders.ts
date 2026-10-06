@@ -8,9 +8,11 @@ import {
   entityById,
   type GroupMember,
   type GroupWorker,
+  MAX_UNIT_ORDER_MEMBERS,
   nodeOfPosition,
   type PlayerCommand,
   systems,
+  type UnitSelectionCommand,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import {
@@ -31,11 +33,13 @@ import {
   positionOf,
   settlerJobType,
   vehicleSeatsOf,
+  workplaceOf,
 } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickNearestAt, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import type { AnsweredOrders } from './answered-orders.js';
 import { selectionEquipCommands } from './equip-picker.js';
 import { assignFormation, type FormationUnit } from './formation.js';
+import { enqueueArmyOrder, enqueueUnitSelection } from './group-orders.js';
 import { tradeHousePick } from './highlights/index.js';
 import { openSchoolDialog, type SchoolDialog } from './school-dialog.js';
 import type { TechnologyStatusRead } from './types.js';
@@ -57,6 +61,7 @@ export interface UnitOrderDeps {
   readonly targets: UnitTargets;
   readonly snapshot: () => WorldSnapshot;
   readonly content: ContentSet;
+  readonly onOrderLimit?: (() => void) | undefined;
   readonly mapSize: { readonly width: number; readonly height: number };
   readonly elevation?: ElevationField;
   readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
@@ -97,7 +102,7 @@ export interface UnitOrderController {
    *  for a spot the camera is nowhere near. Off-map nodes clamp into the map here. `units`, when given,
    *  narrows these orders to the selected settlers an armed order was issued for. A `queued` walk waits
    *  behind each settler's current order (shift-click). */
-  issueSetWorkFlag(target: Tile, units?: readonly number[]): boolean;
+  issueSetWorkFlag(target: Tile, units?: readonly number[], unassignFirst?: boolean): boolean;
   issueMoveTo(target: Tile, units?: readonly number[], queued?: boolean): boolean;
   issueAttackMove(target: Tile, units?: readonly number[], queued?: boolean): boolean;
   /** Strike one enemy of an accepted kind under the cursor; a click that hits none orders nothing. */
@@ -146,6 +151,10 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   const buildingsByType = lastByTypeId(deps.content.buildings);
   const goodsByType = lastByTypeId(deps.content.goods);
   const vehiclesByType = lastByTypeId(deps.content.vehicles);
+  const onOrderLimit = (): void => {
+    deps.onOrderLimit?.();
+    deps.cue?.('fail');
+  };
 
   const occupiedTiles = (exclude: ReadonlySet<number>): ((col: number, row: number) => boolean) => {
     const occupied = new Set<string>();
@@ -169,19 +178,29 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     queued = false,
   ): boolean => {
     if (movers.length === 0) return false;
+    if (movers.length > MAX_UNIT_ORDER_MEMBERS) {
+      onOrderLimit();
+      return false;
+    }
     const { width, height } = nodeBounds(deps.mapSize);
     const seat = clampTile(target, width, height);
     // Only the movers vacate their nodes; a selected settler the order skips keeps its ground.
     const blocked = occupiedTiles(new Set(movers.map((mover) => mover.ref)));
-    for (const order of assignFormation(movers, seat, width, height, blocked)) {
-      deps.enqueue({
-        kind,
-        entity: order.ref as Entity,
-        x: order.tile.col,
-        y: order.tile.row,
-        ...(queued ? { queued } : {}),
-      });
-    }
+    const members = assignFormation(movers, seat, width, height, blocked).map((order) => ({
+      entity: order.ref as Entity,
+      x: order.tile.col,
+      y: order.tile.row,
+    }));
+    const accepted = enqueueArmyOrder(
+      {
+        kind: kind === 'moveUnit' ? 'moveUnitGroup' : 'attackMoveUnitGroup',
+        members,
+        ...(queued ? { queued: true } : {}),
+      },
+      deps.enqueue,
+      onOrderLimit,
+    );
+    if (!accepted) return false;
     deps.markOrder?.(seat, kind === 'attackMoveUnit' ? 'attack' : 'move');
     return true;
   };
@@ -197,6 +216,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       status: deps.technologyStatus,
       answersVersion: deps.technologyVersion,
       cue: deps.cue,
+      onOrderLimit,
       scale: uiScale,
     });
     return school !== undefined;
@@ -213,6 +233,10 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     // A selected building, flag or signpost takes no orders: nobody to command, nothing to confirm.
     const commanded = deps.targets.ownedSettlersIn(deps.selected());
     if (commanded.length === 0) return false;
+    if (commanded.length > MAX_UNIT_ORDER_MEMBERS) {
+      onOrderLimit();
+      return false;
+    }
     const chest = pickTopAt(deps.targets.chests(), world.x, world.y);
     // Shift queues a chest to open or a walk behind each settler's current order; no order on another
     // target is queueable, so the ground under it is walked to instead.
@@ -267,10 +291,12 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       );
     };
     const others: FormationUnit[] = [];
+    const commands: UnitSelectionCommand[] = [];
     for (const unit of commanded) {
-      if (gathers(unit)) deps.enqueue({ kind: 'setGatherGood', entity: unit.ref as Entity, goodType });
+      if (gathers(unit)) commands.push({ kind: 'setGatherGood', entity: unit.ref as Entity, goodType });
       else others.push(unit);
     }
+    enqueueUnitSelection(commands, deps.enqueue, onOrderLimit);
     return others;
   };
 
@@ -307,15 +333,17 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   const orderAtSite = (commanded: readonly FormationUnit[], site: number, tile: Tile): boolean => {
     const snapshot = deps.snapshot();
     const walkers: FormationUnit[] = [];
+    const commands: UnitSelectionCommand[] = [];
     for (const unit of commanded) {
       const self = entityById(snapshot, unit.ref);
       const job = self !== undefined ? settlerJobType(self) : undefined;
       if (job !== undefined && systems.jobCanBuild(deps.content, job)) {
-        deps.enqueue({ kind: 'assignBuilder', entity: unit.ref as Entity, site: site as Entity });
+        commands.push({ kind: 'assignBuilder', entity: unit.ref as Entity, site: site as Entity });
       } else {
         walkers.push(unit);
       }
     }
+    enqueueUnitSelection(commands, deps.enqueue, onOrderLimit);
     if (walkers.length > 0) issueWalkOrder(tile, walkers, 'moveUnit');
     return true;
   };
@@ -337,11 +365,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const employsTrade = (jobType: number | undefined): boolean =>
       jobType !== undefined &&
       (slots ?? []).some((slot) => canonicalJobType(slot.jobType) === canonicalJobType(jobType));
-    let ordered = false;
-    const order = (command: PlayerCommand): void => {
-      deps.enqueue(command);
-      ordered = true;
-    };
+    const pending: UnitSelectionCommand[] = [];
     // A foundation or damaged building takes a builder as its crew before anything else, as in the
     // original, while a standing building's repair crew has room. A site's own worker takes a workplace
     // post and carries materials while it is built, then keeps the seat when it stands, so only a builder
@@ -366,11 +390,12 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         if (!member && crewRoom <= 0) continue;
         if (!member) crewRoom--;
         crew.add(target.ref);
-        order({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
+        pending.push({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
       }
     }
     const rest = commanded.filter((target) => !crew.has(target.ref));
     if (def !== undefined && systems.isSchoolType(def)) {
+      const ordered = enqueueUnitSelection(pending, deps.enqueue, onOrderLimit);
       if (rest.length === 0) return ordered;
       const opened = openSchool(
         building,
@@ -394,16 +419,21 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       }
       // A recruit sent to a foundation waits at its door until it stands.
       if (trainsRatherThanEmploys(def, currentJob)) {
-        order({ kind: 'trainSoldier', entity: target.ref as Entity, house: building as Entity });
+        pending.push({ kind: 'trainSoldier', entity: target.ref as Entity, house: building as Entity });
         continue;
       }
       // The sim gates every candidate in the priority list, so an unoffered or full trade falls through.
       const jobPriority = assignmentPriorityFor(currentJob, slots);
       if (jobPriority.length > 0) workers.push({ entity: target.ref as Entity, jobPriority });
     }
-    if (movers.length > 0) order({ kind: 'assignHouseGroup', members: movers, house: building as Entity });
+    let ordered = enqueueUnitSelection(pending, deps.enqueue, onOrderLimit);
+    if (movers.length > 0) {
+      deps.enqueue({ kind: 'assignHouseGroup', members: movers, house: building as Entity });
+      ordered = true;
+    }
     if (workers.length > 0) {
-      order({ kind: 'assignWorkerGroup', building: building as Entity, members: workers });
+      deps.enqueue({ kind: 'assignWorkerGroup', building: building as Entity, members: workers });
+      ordered = true;
     }
     return ordered;
   };
@@ -425,22 +455,26 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     if (house === null) return routed;
     const snapshot = deps.snapshot();
     const asked: U[] = [];
+    const detached: UnitSelectionCommand[] = [];
     for (const unit of commanded) {
       const self = entityById(snapshot, unit.ref);
       if (self === undefined || !systems.isTraderJob(deps.content, settlerJobType(self) ?? null)) continue;
       if (tradeHousePick.onRoute(snapshot, house, unit.ref)) {
-        deps.enqueue({ kind: 'detachTradeHouse', entity: unit.ref as Entity, house: house as Entity });
+        detached.push({ kind: 'detachTradeHouse', entity: unit.ref as Entity, house: house as Entity });
       } else if (ask !== undefined) asked.push(unit);
       else continue;
       routed.add(unit.ref);
     }
+    enqueueUnitSelection(detached, deps.enqueue, onOrderLimit);
     if (ask === undefined || asked.length === 0) return routed;
     deps.answered.after(Promise.all(asked.map((unit) => ask(unit.ref, house))), (verdicts) => {
       const refused = asked.filter((_unit, index) => verdicts[index] !== true);
+      const attached: UnitSelectionCommand[] = [];
       for (const unit of asked) {
         if (refused.includes(unit)) continue;
-        deps.enqueue({ kind: 'attachTradeHouse', entity: unit.ref as Entity, house: house as Entity });
+        attached.push({ kind: 'attachTradeHouse', entity: unit.ref as Entity, house: house as Entity });
       }
+      enqueueUnitSelection(attached, deps.enqueue, onOrderLimit);
       if (refused.length > 0) onRefused(refused);
     });
     return routed;
@@ -467,10 +501,15 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       if (type === undefined || systems.isShipVehicle(type)) continue;
       for (const seat of vehicleSeatsOf(v.passengers)) traders.push({ ref: seat.entity });
     }
-    if (traders.length === 0) return false;
+    const uniqueTraders = [...new Map(traders.map((unit) => [unit.ref, unit])).values()];
+    if (uniqueTraders.length === 0) return false;
+    if (uniqueTraders.length > MAX_UNIT_ORDER_MEMBERS) {
+      onOrderLimit();
+      return false;
+    }
     const world = deps.toWorld(event.clientX, event.clientY);
     const house = onBuilding ?? pickTopAt(deps.targets.buildings(), world.x, world.y);
-    const took = routeTradeHouse(traders, house, (refused) => {
+    const took = routeTradeHouse(uniqueTraders, house, (refused) => {
       if (refused.length === took.size) onNoneTook();
     });
     return took.size > 0;
@@ -485,19 +524,18 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const target = entityById(snapshot, chest);
     const kind = target === undefined ? undefined : chestKindOf(target);
     if (kind === undefined) return false;
-    let sent = false;
+    const commands: UnitSelectionCommand[] = [];
     for (const unit of commanded) {
       const self = entityById(snapshot, unit.ref);
       if (self === undefined || !canOpenChest(self, kind, deps.content)) continue;
-      deps.enqueue({
+      commands.push({
         kind: 'openChest',
         entity: unit.ref as Entity,
         chest: chest as Entity,
         ...(queued ? { queued } : {}),
       });
-      sent = true;
     }
-    return sent;
+    return enqueueUnitSelection(commands, deps.enqueue, onOrderLimit);
   };
 
   /**
@@ -536,7 +574,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         { goodType, group },
         { skipReturn: true },
       );
-      for (const command of commands) deps.enqueue(command);
+      enqueueUnitSelection(commands, deps.enqueue, onOrderLimit);
       if (commands.length === 0) onNoneWears(commanded);
     });
     return true;
@@ -551,10 +589,15 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   };
 
   const strike = (commanded: readonly FormationUnit[], enemy: number): boolean => {
-    for (const unit of commanded) {
-      deps.enqueue({ kind: 'attackUnit', entity: unit.ref as Entity, target: enemy as Entity });
-    }
-    return commanded.length > 0;
+    return enqueueArmyOrder(
+      {
+        kind: 'attackUnitGroup',
+        members: commanded.map((unit) => ({ entity: unit.ref as Entity })),
+        target: enemy as Entity,
+      },
+      deps.enqueue,
+      onOrderLimit,
+    );
   };
 
   const issueAttackTarget = (
@@ -591,12 +634,22 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   const issueAttackMove = (target: Tile, units?: readonly number[], queued?: boolean): boolean =>
     issueWalkOrder(target, commandedAmong(units), 'attackMoveUnit', queued);
 
-  const setWorkFlags = (movers: readonly FormationUnit[], target: Tile, goodType?: number): boolean => {
+  const setWorkFlags = (
+    movers: readonly FormationUnit[],
+    target: Tile,
+    goodType?: number,
+    unassignFirst = false,
+  ): boolean => {
     if (movers.length === 0) return false;
     const { width, height } = nodeBounds(deps.mapSize);
     const flag = clampTile(target, width, height);
+    const commands: UnitSelectionCommand[] = [];
     for (const mover of movers) {
-      deps.enqueue({
+      const entity = entityById(deps.snapshot(), mover.ref);
+      if (unassignFirst && entity !== undefined && workplaceOf(entity) !== undefined) {
+        commands.push({ kind: 'unassignWorker', entity: mover.ref as Entity });
+      }
+      commands.push({
         kind: 'setWorkFlag',
         entity: mover.ref as Entity,
         x: flag.col,
@@ -606,13 +659,13 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       // This is player intent; the sim is the authority on whether each selected settler may gather the
       // clicked good. Keeping the app out of that gate also avoids dropping the filter against a stale
       // render/snapshot pair while still letting setWorkFlag reject non-gatherers normally.
-      deps.enqueue({ kind: 'setGatherGood', entity: mover.ref as Entity, goodType });
+      commands.push({ kind: 'setGatherGood', entity: mover.ref as Entity, goodType });
     }
-    return true;
+    return enqueueUnitSelection(commands, deps.enqueue, onOrderLimit);
   };
 
-  const issueSetWorkFlag = (target: Tile, units?: readonly number[]): boolean =>
-    setWorkFlags(commandedAmong(units), target);
+  const issueSetWorkFlag = (target: Tile, units?: readonly number[], unassignFirst = false): boolean =>
+    setWorkFlags(commandedAmong(units), target, undefined, unassignFirst);
 
   const issueSetWorkFlagAt = (event: MouseEvent): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);

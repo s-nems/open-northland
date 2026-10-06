@@ -164,6 +164,63 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     exploreArea: [{ entity: t.scout, ...node }],
     orderNeed: [{ entity: t.worker, need: 'hunger' }],
     setRegeneration: [{ entity: t.soldier, enabled: false }],
+    moveUnitGroup: [
+      {
+        members: [
+          { entity: t.worker, ...node },
+          { entity: t.soldier, ...node },
+        ],
+      },
+    ],
+    attackMoveUnitGroup: [{ members: [{ entity: t.soldier, ...node }], queued: true }],
+    attackUnitGroup: [{ members: [{ entity: t.soldier }], target: t.rival }],
+    setStanceGroup: [{ members: [{ entity: t.soldier }], mode: MILITARY_MODE.DEFEND }],
+    setRegenerationGroup: [{ members: [{ entity: t.soldier }], enabled: false }],
+    setVehicleStanceGroup: [{ members: [{ entity: t.catapult }], stance: 'attack' }],
+    moveVehicleGroup: [
+      {
+        members: [
+          { entity: t.cart, ...node },
+          { entity: t.catapult, ...node },
+        ],
+        attackMove: true,
+      },
+    ],
+    attackWithVehicleGroup: [
+      { members: [{ entity: t.catapult }], target: { kind: 'entity', entity: t.rival } },
+      { members: [{ entity: t.catapult }], target: { kind: 'ground', hx: 4, hy: 4 } },
+    ],
+    unitOrdersGroup: [
+      {
+        members: [
+          { entity: t.worker, actions: [{ kind: 'unassignWorker' }, { kind: 'setWorkFlag', ...node }] },
+          { entity: t.soldier, actions: [{ kind: 'equipGood', group: 'misc', slot: 1, goodType: MEAD }] },
+        ],
+      },
+    ],
+    unitActionGroup: [
+      { kind: 'orderNeed', need: 'hunger' },
+      { kind: 'makeChild', child: 'male' },
+      { kind: 'cancelTraining' },
+      { kind: 'detachFromVehicle' },
+      { kind: 'unassignBuilder' },
+      { kind: 'unassignWorker' },
+      { kind: 'unassignHouse' },
+      { kind: 'marry' },
+      { kind: 'openChest', chest: t.hq, queued: true },
+      { kind: 'equipGood', group: 'boots', slot: 0, goodType: SHOES, skipReturn: true },
+      { kind: 'unequipGood', group: 'misc', slot: 1 },
+      { kind: 'setJob', jobType: CARPENTER },
+      { kind: 'assignBuilder', site: t.hq },
+      { kind: 'trainSoldier', house: t.hq },
+      { kind: 'learn', house: t.hq, target: 'job', typeId: CARPENTER },
+      { kind: 'setWorkFlag', ...node },
+      { kind: 'setGatherGood', goodType: WOOD },
+      { kind: 'setGatherGood', goodType: null },
+      { kind: 'attachTradeHouse', house: t.hq },
+      { kind: 'attachToVehicle', vehicle: t.cart },
+      { kind: 'detachTradeHouse', house: t.hq },
+    ].map((action) => ({ members: [{ entity: t.worker }, { entity: t.soldier }], action })),
     unassignBuilder: [{ entity: t.worker }],
     assignBuilder: [{ entity: t.worker, site: t.hq }],
     assignHouse: [{ entity: t.worker, house: t.hq }],

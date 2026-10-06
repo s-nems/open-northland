@@ -121,6 +121,9 @@ class RelayConnection<B, E> {
         action.call(client, ...message.args);
         return;
       }
+      case 'responsiveness':
+        client.setResponsiveness(message.mode);
+        return;
       case 'clock':
         if (message.paused !== undefined) client.setPaused(message.paused);
         if (message.speed !== undefined) client.setSpeed(message.speed);

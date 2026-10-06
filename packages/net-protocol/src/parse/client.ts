@@ -2,6 +2,7 @@ import { MAX_CHAT_LENGTH, MAX_ROOM_ID_LENGTH, MAX_SPEED } from '../limits.js';
 import type { ClientMessage, ClientMessageKind } from '../messages.js';
 import { asBoolean, asCount, asOneOf, asPositiveNumber, asRecord, asString, keysOf } from '../untrusted.js';
 import { parseCompatibility } from './compatibility.js';
+import { parseResponsivenessMode } from './responsiveness.js';
 import {
   AI_DIFFICULTIES,
   parseClientLoad,
@@ -38,6 +39,7 @@ export const CLIENT_KINDS = keysOf<ClientMessageKind>({
   finish: true,
   command: true,
   clock: true,
+  responsiveness: true,
   kick: true,
   blob: true,
   chat: true,
@@ -137,6 +139,8 @@ export function parseClientMessage(value: unknown): ClientMessage {
         envelope: parseWireEnvelope(raw.envelope, 'command.envelope'),
         fromTick: asCount(raw.fromTick, 'command.fromTick'),
       };
+    case 'responsiveness':
+      return { kind, mode: parseResponsivenessMode(raw.mode) };
     case 'clock': {
       if (raw.speed === undefined && raw.paused === undefined) {
         throw new Error('clock: names neither a speed nor a pause state');

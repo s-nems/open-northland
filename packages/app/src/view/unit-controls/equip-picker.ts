@@ -4,7 +4,9 @@ import {
   type Entity,
   type EquipPickEntry,
   entityById,
+  MAX_UNIT_ORDER_MEMBERS,
   type PlayerCommand,
+  type UnitSelectionCommand,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import type { UiString } from '../../content/gui-gfx.js';
@@ -12,6 +14,7 @@ import { loadUiFont } from '../../content/ui-font.js';
 import { actionLabel } from '../../hud/action-ring/labels.js';
 import type { EquipSlotRef } from '../../hud/details-panel/index.js';
 import { messages } from '../../i18n/index.js';
+import { enqueueUnitSelection } from './group-orders.js';
 import { createPickerWindow, type PickerWindow } from './picker-window.js';
 
 /** The goods a settler could fetch and wear in one slot group. */
@@ -24,6 +27,7 @@ export interface EquipPickControllerOptions {
   readonly content: ContentSet;
   readonly snapshot: () => WorldSnapshot;
   readonly enqueue: (command: PlayerCommand) => void;
+  readonly onOrderLimit?: (() => void) | undefined;
   /** The GUI click a picked row and the ✕ box confirm with; absent, silent. */
   readonly cue?: (cue: UiCue) => void;
 }
@@ -90,8 +94,8 @@ export function selectionEquipCommands(
   settlerIds: readonly number[],
   pick: Pick<CommonEquipPick, 'goodType' | 'group'>,
   { skipReturn = false }: { readonly skipReturn?: boolean } = {},
-): PlayerCommand[] {
-  const commands: PlayerCommand[] = [];
+): UnitSelectionCommand[] {
+  const commands: UnitSelectionCommand[] = [];
   for (const settlerId of settlerIds) {
     const entity = entityById(snapshot, settlerId);
     if (entity === undefined) continue;
@@ -139,6 +143,10 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
       const snapshot = opts.snapshot();
       const targets = settlerIds.filter((id) => entityById(snapshot, id) !== undefined);
       if (targets.length === 0) return;
+      if (new Set(targets).size > MAX_UNIT_ORDER_MEMBERS) {
+        opts.onOrderLimit?.();
+        return;
+      }
       const request = ++opening;
       const asked = targets.flatMap((entity) =>
         EQUIP_GROUPS.map((group) =>
@@ -190,7 +198,11 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
       const def = goods.find((g) => g.typeId === row.goodType);
       const label = `${def?.name ?? def?.id ?? `#${row.goodType}`} (${row.available})`;
       w.addRow(label, () => {
-        for (const command of selectionEquipCommands(opts.snapshot(), targets, row)) opts.enqueue(command);
+        enqueueUnitSelection(
+          selectionEquipCommands(opts.snapshot(), targets, row),
+          opts.enqueue,
+          opts.onOrderLimit,
+        );
         w.hide();
       });
     }

@@ -36,6 +36,39 @@ export function authorizedCommand(
   if ('vehicle' in command && !commanded(command.vehicle)) return undefined;
   if ('carrier' in command && !commanded(command.carrier)) return undefined;
   if ('entity' in command) return commanded(command.entity) ? command : undefined;
+  if (command.kind === 'unitActionGroup') {
+    return keepMembers(
+      command,
+      (entity) =>
+        authorizedCommand(
+          world,
+          {
+            ...envelope,
+            command: { ...command.action, entity },
+          },
+          terrain,
+        ) !== undefined,
+    );
+  }
+  if (command.kind === 'unitOrdersGroup') {
+    return {
+      ...command,
+      members: command.members.flatMap(({ entity, actions }) => {
+        const admitted = actions.filter(
+          (action) =>
+            authorizedCommand(
+              world,
+              {
+                ...envelope,
+                command: { ...action, entity },
+              },
+              terrain,
+            ) !== undefined,
+        );
+        return admitted.length === 0 ? [] : [{ entity, actions: admitted }];
+      }),
+    };
+  }
   if ('members' in command) return keepMembers(command, commanded);
   return command;
 }

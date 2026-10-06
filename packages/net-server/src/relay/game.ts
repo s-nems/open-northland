@@ -88,6 +88,12 @@ export class Game {
     return this.end.report(member, report);
   }
 
+  get bufferSpeed(): number | null {
+    return this.clock.running && !this.clock.paused && !this.waiting.active && this.endedTick === null
+      ? (this.clock.governed?.speed ?? this.clock.speed)
+      : null;
+  }
+
   get running(): boolean {
     return this.clock.running;
   }

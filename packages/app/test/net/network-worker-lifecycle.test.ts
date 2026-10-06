@@ -196,3 +196,14 @@ describe('pending network worker answers', () => {
     }
   });
 });
+
+it('passes shared responsiveness requests and confirmations through the network worker', () => {
+  const { worker, sent, link, open } = servedRelay();
+  open();
+  worker.send({ kind: 'responsiveness', mode: 'smooth' });
+  expect(sent.at(-1)).toEqual({ kind: 'responsiveness', mode: 'smooth' });
+  const selected = { kind: 'responsiveness' as const, mode: 'smooth' as const, bufferTicks: 3, by: 'Ania' };
+  link().onMessage(selected);
+  expect(worker.posted).toContainEqual({ kind: 'message', message: selected });
+  worker.send({ kind: 'leave', leave: false });
+});

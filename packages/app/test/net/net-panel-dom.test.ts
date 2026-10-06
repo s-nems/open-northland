@@ -68,6 +68,7 @@ const LINK: NetLinkModel = {
 
 const panelModel = (overrides: Partial<NetPanelModel> = {}): NetPanelModel => ({
   players: [],
+  responsiveness: { mode: 'auto', bufferTicks: 2, by: null },
   clock: CLOCK,
   link: LINK,
   chat: [],
@@ -85,8 +86,36 @@ function source(first: NetPanelModel = panelModel()): NetPanelSource & { current
     },
     kick: () => undefined,
     say: () => undefined,
+    setResponsiveness: () => undefined,
   };
 }
+
+it('requests a room-wide response mode and displays only the relay-confirmed choice', () => {
+  const feed = source();
+  const requested: string[] = [];
+  feed.setResponsiveness = (mode) => requested.push(mode);
+  const { plane, window } = mountWindow(feed);
+  const buttons = [...plane.querySelectorAll<HTMLButtonElement>('.on-net-response button')];
+  const fast = buttons[1];
+  if (fast === undefined) throw new Error('missing response control');
+  fast.click();
+  expect(requested).toEqual(['responsive']);
+  expect(fast.getAttribute('aria-pressed')).toBe('false');
+  feed.current = panelModel({ responsiveness: { mode: 'responsive', bufferTicks: 1, by: 'Bartek' } });
+  window.refresh();
+  expect(fast.getAttribute('aria-pressed')).toBe('true');
+  expect(plane.querySelector('.on-net-response-reserve')?.textContent).toContain('28 ms');
+  feed.current = panelModel({
+    responsiveness: { mode: 'auto', bufferTicks: 4, by: null },
+    clock: { ...CLOCK, runningSpeed: 2 },
+    link: { ...LINK, connected: false },
+  });
+  window.refresh();
+  expect(plane.querySelector('.on-net-response-reserve')?.textContent).toContain('167 ms');
+  fast.click();
+  expect(requested).toEqual(['responsive']);
+  window.dispose();
+});
 
 const said = (index: number): NetChatLine => ({ from: 'Ania', text: `line ${index}`, tick: null });
 

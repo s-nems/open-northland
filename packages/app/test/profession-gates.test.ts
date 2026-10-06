@@ -1,4 +1,4 @@
-import { fx, type PlayerCommand } from '@open-northland/sim';
+import { fx, MAX_UNIT_ORDER_MEMBERS, type PlayerCommand } from '@open-northland/sim';
 import { describe, expect, it, vi } from 'vitest';
 import { JOB_COLLECTOR, JOB_HUNTER } from '../src/catalog/jobs.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
@@ -22,6 +22,51 @@ function collector(id: number): Ent {
 const snapshot = snapshotOf([collector(1), collector(2)]);
 
 describe('profession pick', () => {
+  it('submits 1000 freshly eligible settlers as one selection action', async () => {
+    const orders: PlayerCommand[] = [];
+    const settlers = Array.from({ length: 1000 }, (_, i) => collector(i + 1));
+    const gates = professionGates({
+      content,
+      snapshot: () => snapshotOf(settlers),
+      canChooseJob: () => false,
+      askCanChooseJob: () => Promise.resolve(true),
+      answered: createAnsweredOrders(),
+      enqueue: (command) => orders.push(command),
+    });
+    gates.onSetJob(
+      settlers.map(({ id }) => id),
+      JOB_HUNTER,
+    );
+    await vi.waitFor(() => expect(orders).toHaveLength(1));
+    expect(orders[0]).toEqual({
+      kind: 'unitActionGroup',
+      members: settlers.map(({ id: entity }) => ({ entity })),
+      action: { kind: 'setJob', jobType: JOB_HUNTER },
+    });
+  });
+
+  it('rejects an oversized selection before asking or submitting any profession changes', () => {
+    const settlers = Array.from({ length: MAX_UNIT_ORDER_MEMBERS + 1 }, (_, i) => collector(i + 1));
+    const askCanChooseJob = vi.fn(() => Promise.resolve(true)),
+      enqueue = vi.fn(),
+      onOrderLimit = vi.fn();
+    professionGates({
+      content,
+      snapshot: () => snapshotOf(settlers),
+      canChooseJob: () => true,
+      askCanChooseJob,
+      answered: createAnsweredOrders(),
+      enqueue,
+      onOrderLimit,
+    }).onSetJob(
+      settlers.map(({ id }) => id),
+      JOB_HUNTER,
+    );
+    expect(askCanChooseJob).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(onOrderLimit).toHaveBeenCalledOnce();
+  });
+
   it('orders the settlers the host lets take the trade as of the pick, not by the last answer', async () => {
     const orders: PlayerCommand[] = [];
     // The list drew before any answer landed; by the pick, the host lets settler 2 take it.

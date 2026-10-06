@@ -26,3 +26,22 @@ describe('paceScale', () => {
     expect(deeper).toBeGreaterThanOrEqual(5);
   });
 });
+
+it.each([1, 2, 3, 6])(
+  'paces against a selected buffer of %i ticks without changing the catch-up ceiling',
+  (target) => {
+    expect(paceScale(target - 1, 1, target)).toBeLessThan(1);
+    expect(paceScale(target, 1, target)).toBe(1);
+    expect(paceScale(target + 1, 1, target)).toBe(1);
+    expect(paceScale(target + 2, 1, target)).toBeGreaterThan(1);
+    expect(paceScale(1000, 8, target)).toBe(2);
+  },
+);
+
+it('drains the former one-frame deadband gently only while reducing the target', () => {
+  expect(paceScale(2, 1, 1)).toBe(1);
+  expect(paceScale(2, 1, 1, true)).toBe(1.25);
+  expect(paceScale(1, 1, 1, true)).toBe(1);
+  expect(paceScale(0, 1, 1, true)).toBeLessThan(1);
+  expect(paceScale(1000, 8, 1, true)).toBe(2);
+});

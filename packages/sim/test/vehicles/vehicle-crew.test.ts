@@ -364,6 +364,31 @@ describe('boarding', () => {
     expect(s.world.get(cart, Vehicle).task).toBe('none');
   });
 
+  it('detaches a selected group from its vehicles together without taking a rival rider', () => {
+    const s = sim();
+    const carts = [spawn(s, HANDCART, 12, 6), spawn(s, HANDCART, 12, 12)];
+    const riders = carts.map((cart) => {
+      const rider = spawnSettler(s, 2, 6);
+      attach(s, rider, cart);
+      return rider;
+    });
+    const rivalCart = spawn(s, HANDCART, 16, 6, P1);
+    const rival = spawnSettler(s, 2, 12, SCOUT, P1);
+    attach(s, rival, rivalCart, P1);
+    expect(riders.every((rider) => s.world.has(rider, Rider))).toBe(true);
+    s.enqueue(
+      playerCommand(P0, {
+        kind: 'unitActionGroup',
+        members: [...riders, rival].map((entity) => ({ entity })),
+        action: { kind: 'detachFromVehicle' },
+      }),
+    );
+    s.step();
+    for (const rider of riders) expect(s.world.has(rider, Rider)).toBe(false);
+    for (const cart of carts) expect(vehiclePassengers(s.world.get(cart, Vehicle))).toHaveLength(0);
+    expect(s.world.get(rival, Rider).vehicle).toBe(rivalCart);
+  });
+
   it('lets a held goto lapse with noCommander when its only rider detaches before boarding', () => {
     const s = sim();
     const cart = spawn(s, HANDCART, 12, 6);

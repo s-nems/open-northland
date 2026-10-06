@@ -35,6 +35,7 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   const feed = createRelayPanelFeed({ client, readout: deps.readout, relayUrl: deps.relayUrl });
   let previousRoom: RoomView | null = client.room;
   let previousClock: ClockState | null = client.clockState;
+  let previousResponsiveness = client.responsiveness;
   // A frame's readers all run in one animation-frame callback; its microtasks run after them.
   let built: NetPanelModel | null = null;
   const forget = (): void => {
@@ -68,6 +69,18 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
     observe(message): void {
       feed.observe(message);
       switch (message.kind) {
+        case 'responsiveness': {
+          const responseCopy = messages().hud.network.responsiveness;
+          if (message.by !== null && message.mode !== previousResponsiveness.mode)
+            announce(
+              formatMessage(responseCopy.changed, {
+                nick: message.by,
+                mode: responseCopy.options[message.mode],
+              }),
+            );
+          previousResponsiveness = message;
+          return;
+        }
         case 'room':
           announceRoom(message.room);
           return;

@@ -3,8 +3,10 @@ import type { ContentSet } from '@open-northland/data';
 import {
   type Entity,
   entityById,
+  MAX_UNIT_ORDER_MEMBERS,
   type PlayerCommand,
   systems,
+  type UnitSelectionCommand,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { professionDefForJob } from '../../catalog/professions.js';
@@ -22,6 +24,7 @@ import { technologyLabel } from '../../game/technology.js';
 import { createChoiceWindow } from '../../hud/dom/choice-window.js';
 import { compareLabels, formatMessage, messages } from '../../i18n/index.js';
 import { orderRecipients } from './action-ring/menu-state.js';
+import { enqueueUnitSelection } from './group-orders.js';
 import type { TechnologyStatusRead } from './types.js';
 
 export interface SchoolCourse {
@@ -139,6 +142,7 @@ export interface SchoolDialogOptions {
   readonly settlers: readonly number[];
   readonly house: number;
   readonly enqueue: (command: PlayerCommand) => void;
+  readonly onOrderLimit?: (() => void) | undefined;
   readonly status?: TechnologyStatusRead | undefined;
   /** Bumped when a status answer lands, so the dialog rebuilds without a new snapshot. */
   readonly answersVersion?: (() => number) | undefined;
@@ -150,6 +154,10 @@ export interface SchoolDialogOptions {
 export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | undefined {
   const { content, snapshot, house, enqueue, status, cue } = opts;
   const students = schoolStudents(content, snapshot(), opts.settlers);
+  if (new Set(students).size > MAX_UNIT_ORDER_MEMBERS) {
+    opts.onOrderLimit?.();
+    return;
+  }
   const first = students[0];
   const student = first === undefined ? undefined : entityById(snapshot(), first);
   const tribeId = student === undefined ? undefined : settlerTribeOf(student);
@@ -205,10 +213,11 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
   const choose = (course: SchoolCourse): void => {
     if (reasons.get(courseKey(course)) !== undefined) return;
     const state = snapshot();
+    const commands: UnitSelectionCommand[] = [];
     for (const entity of students) {
       const learner = entityById(state, entity);
       if (learner === undefined || knowsCourse(learner, course)) continue;
-      enqueue({
+      commands.push({
         kind: 'learn',
         entity: entity as Entity,
         house: house as Entity,
@@ -216,6 +225,7 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
         typeId: course.typeId,
       });
     }
+    enqueueUnitSelection(commands, enqueue, opts.onOrderLimit);
     dispose();
   };
   const refresh = (force = false): void => {

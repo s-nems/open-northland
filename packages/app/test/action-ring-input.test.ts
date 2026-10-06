@@ -12,7 +12,7 @@ function command(id: ActionCommand['id']): ActionCommand {
 }
 
 /** The ring input over a recording mount: every seam call lands in `calls`, in order. */
-function harness(mode: MenuMode, ringVisible = true) {
+function harness(mode: MenuMode, ringVisible = true, accepts = true) {
   const calls: string[] = [];
   let targets: readonly number[] = TARGETS;
   const input = createActionRingInput({
@@ -24,7 +24,10 @@ function harness(mode: MenuMode, ringVisible = true) {
     isRingVisible: () => ringVisible,
     getLayout: () => ({ buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } }),
     getTargets: () => targets,
-    onCommand: (id, to) => calls.push(`command ${id} ${to.join(',')}`),
+    onCommand: (id, to) => {
+      calls.push(`command ${id} ${to.join(',')}`);
+      return accepts;
+    },
     cue: (cue) => calls.push(`cue ${cue}`),
     openJobWindow: () => calls.push('openJobWindow'),
     closeMenu: () => {
@@ -49,8 +52,14 @@ describe('action ring button presses', () => {
 
     input.press(command('sleep'), event);
 
-    expect(calls).toEqual(['cue confirm', 'closeMenu', `command sleep ${TARGETS.join(',')}`]);
+    expect(calls).toEqual(['closeMenu', `command sleep ${TARGETS.join(',')}`, 'cue confirm']);
     expect(event.stopped).toBe(true);
+  });
+
+  it('gives failure feedback when the whole army order is refused', () => {
+    const { input, calls, event } = harness('menu', true, false);
+    input.press(command('defenceMode'), event);
+    expect(calls).toEqual(['closeMenu', `command defenceMode ${TARGETS.join(',')}`, 'cue fail']);
   });
 
   it('opens the profession list for the trade order, leaving the session open', () => {

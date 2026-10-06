@@ -25,7 +25,7 @@ function client(nick: string) {
   });
 }
 describe('manual save accepted orders end to end', () => {
-  it.each([1, 60])(
+  it.each([1, 10])(
     'resumes %i paused orders per player exactly once at their assigned tick and order',
     async (count) => {
       const clock = new VirtualClock(),

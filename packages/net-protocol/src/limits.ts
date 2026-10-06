@@ -10,10 +10,12 @@ export const MAX_MEMBERS = 12;
 /** The envelope version the wire carries; equal to the sim's `COMMAND_ENVELOPE_VERSION`, which a test
  *  pins. */
 export const ENVELOPE_VERSION = 1;
-/** Envelopes one member may land on one tick; larger admitted bursts span successive ticks. */
+/** Atomic player gestures one member may land on one tick, independent of the number of units. */
 export const MAX_COMMANDS_PER_TICK = 20;
-/** Bytes of one envelope as JSON; the largest declared payload is well under it. */
-export const MAX_ENVELOPE_BYTES = 1024;
+/** Bytes of one envelope as JSON, including a bounded army's individual formation destinations. */
+export const MAX_ENVELOPE_BYTES = 512 * 1024;
+/** Maximum shared playout reserve selected by the room's Auto mode. */
+export const MAX_RESPONSIVENESS_BUFFER_TICKS = 6;
 export const MAX_SPEED = 8;
 /** A reported smoothed tick cost; a client whose tick takes a minute has long been voted out. */
 export const MAX_REPORTED_TICK_MS = 60 * 1000;
@@ -30,9 +32,8 @@ export const MAX_TRIBE_ID = 0xff;
 /** The sim seeds its generator with 32 bits; a wider seed would collapse onto another. */
 export const MAX_SEED = 0xffff_ffff;
 
-/** Bytes of one JSON message from a client other than a blob. A frame from the relay is bounded by the
- *  members' budgets instead: `MAX_MEMBERS * MAX_COMMANDS_PER_TICK` envelopes, each under this cap. */
-export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;
+/** One complete group order plus its message fields; blobs have their own budget. */
+export const MAX_CLIENT_MESSAGE_BYTES = MAX_ENVELOPE_BYTES + 1024;
 /** Bytes of one relayed blob once decoded; a gzip snapshot is about 1.3 MB, a decoded map a few. */
 export const MAX_BLOB_BYTES = 16 * 1024 * 1024;
 /** Upper bound on a serialized manual-save order capture. */

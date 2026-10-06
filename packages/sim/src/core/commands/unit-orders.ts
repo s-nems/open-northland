@@ -8,7 +8,7 @@ import type { Command } from './index.js';
 export const CHILD_SEXES = ['female', 'male'] as const;
 
 /**
- * One settler of a group order. Every group order names its settlers in `members`, which the authority
+ * One unit of a group order. Every group order names its units in `members`, which the authority
  * gate narrows to the ones the issuing seat commands.
  */
 export interface GroupMember {
@@ -20,8 +20,115 @@ export interface GroupWorker extends GroupMember {
   readonly jobPriority: readonly number[];
 }
 
+/** Maximum units in one atomic selection order, independently of transport byte limits. */
+export const MAX_UNIT_ORDER_MEMBERS = 4096;
+
+/** Each formation slot is assigned by the issuing client and replayed unchanged by every peer. */
+export interface GroupDestination extends GroupMember {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** Immediate per-settler actions sharing no target outside the selected group. */
+export type UnitSelfAction =
+  | { readonly kind: 'orderNeed'; readonly need: NeedKind }
+  | { readonly kind: 'cancelTraining' }
+  | { readonly kind: 'detachFromVehicle' }
+  | { readonly kind: 'unassignBuilder' }
+  | { readonly kind: 'unassignWorker' }
+  | { readonly kind: 'unassignHouse' }
+  | { readonly kind: 'marry' }
+  | { readonly kind: 'makeChild'; readonly child: (typeof CHILD_SEXES)[number] };
+
+/** Existing selection actions carried together without changing their individual handlers. */
+export type UnitSelectionAction =
+  | UnitSelfAction
+  | { readonly kind: 'openChest'; readonly chest: Entity; readonly queued?: boolean }
+  | {
+      readonly kind: 'equipGood';
+      readonly group: EquipCategory;
+      readonly slot: number;
+      readonly goodType: number;
+      readonly skipReturn?: boolean;
+    }
+  | { readonly kind: 'unequipGood'; readonly group: EquipCategory; readonly slot: number }
+  | { readonly kind: 'setJob'; readonly jobType: number }
+  | { readonly kind: 'assignBuilder'; readonly site: Entity }
+  | { readonly kind: 'trainSoldier'; readonly house: Entity }
+  | {
+      readonly kind: 'learn';
+      readonly house: Entity;
+      readonly target: 'job' | 'good';
+      readonly typeId: number;
+    }
+  | { readonly kind: 'setWorkFlag'; readonly x: number; readonly y: number }
+  | { readonly kind: 'setGatherGood'; readonly goodType: number | null }
+  | { readonly kind: 'attachTradeHouse'; readonly house: Entity }
+  | { readonly kind: 'detachTradeHouse'; readonly house: Entity }
+  | { readonly kind: 'attachToVehicle'; readonly vehicle: Entity };
+
+export type UnitSelectionCommand = UnitSelectionAction & { readonly entity: Entity };
+
+/** A flag-and-filter or release-and-flag gesture uses two actions in the original order. */
+export const MAX_UNIT_MEMBER_ACTIONS = 2;
+
+export interface GroupActions extends GroupMember {
+  readonly actions: readonly UnitSelectionAction[];
+}
+
 /** Commands that direct existing settlers and their work. Coordinates are half-cell nodes. */
 export type UnitOrderCommand =
+  | {
+      readonly kind: 'setVehicleStanceGroup';
+      readonly members: readonly GroupMember[];
+      readonly stance: VehicleStance;
+    }
+  | {
+      readonly kind: 'moveVehicleGroup';
+      readonly members: readonly GroupDestination[];
+      readonly attackMove?: boolean;
+    }
+  | {
+      readonly kind: 'attackWithVehicleGroup';
+      readonly members: readonly GroupMember[];
+      readonly target: VehicleAttackTarget;
+    }
+  | {
+      readonly kind: 'unitActionGroup';
+      readonly members: readonly GroupMember[];
+      readonly action: UnitSelectionAction;
+    }
+  | {
+      readonly kind: 'unitOrdersGroup';
+      readonly members: readonly GroupActions[];
+    }
+  | {
+      /** One selection click, applied to every authorized member in the same tick. */
+      readonly kind: 'moveUnitGroup';
+      readonly members: readonly GroupDestination[];
+      /** Shift preserves each member's intentional waypoint queue. */
+      readonly queued?: boolean;
+    }
+  | {
+      readonly kind: 'attackMoveUnitGroup';
+      readonly members: readonly GroupDestination[];
+      readonly queued?: boolean;
+    }
+  | {
+      readonly kind: 'attackUnitGroup';
+      readonly members: readonly GroupMember[];
+      readonly target: Entity;
+    }
+  | {
+      readonly kind: 'setStanceGroup';
+      readonly members: readonly GroupMember[];
+      readonly mode: number;
+    }
+  | {
+      readonly kind: 'setRegenerationGroup';
+      readonly members: readonly GroupMember[];
+      readonly enabled: boolean;
+    }
   | {
       /**
        * Walk one owned settler to (x,y). The economy AI reclaims the unit on arrival, and a tower

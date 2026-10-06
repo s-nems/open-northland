@@ -11,7 +11,6 @@ import {
 } from '@open-northland/net-protocol';
 import { HELLO_TIMEOUT_MS, KICK_COUNTDOWN_MS, Relay } from '@open-northland/net-server';
 import { describe, expect, it } from 'vitest';
-import { MAX_PENDING_COMMANDS_PER_MEMBER } from '../src/relay/room-clock.js';
 import {
   type Peer,
   SEATS,
@@ -491,14 +490,14 @@ describe('relay clock', () => {
     expect(s.a.of('frame').flatMap((frame) => frame.commands)).toEqual([]);
   });
 
-  it('reports pending-input overflow while preserving per-tick limits for admitted commands', () => {
+  it('refuses excess gestures without silently deferring them', () => {
     const s = startedRoom();
-    for (let i = 0; i <= MAX_PENDING_COMMANDS_PER_MEMBER; i++) s.a.send(seatCommand(0, i));
+    for (let i = 0; i <= MAX_COMMANDS_PER_TICK; i++) s.a.send(seatCommand(0, i));
     expect(s.a.of('rejected')).toEqual([
       { kind: 'rejected', of: 'command', reason: { code: 'commandBudget' } },
     ]);
     s.advance(TICK_MS * 10);
-    expect(s.b.of('frame').flatMap((frame) => frame.commands)).toHaveLength(MAX_PENDING_COMMANDS_PER_MEMBER);
+    expect(s.b.of('frame').flatMap((frame) => frame.commands)).toHaveLength(MAX_COMMANDS_PER_TICK);
     for (const frame of s.b.of('frame'))
       expect(frame.commands.length).toBeLessThanOrEqual(MAX_COMMANDS_PER_TICK);
   });
@@ -590,7 +589,14 @@ describe('chat history', () => {
 
     s.relay.disconnect(b.handle);
     const back = s.introduce(TOKEN_B, 'Bartek');
-    expect(kindsFrom(back, 0)).toEqual(['welcome', 'room', 'chatHistory', 'start', 'clock']);
+    expect(kindsFrom(back, 0)).toEqual([
+      'welcome',
+      'room',
+      'chatHistory',
+      'responsiveness',
+      'start',
+      'clock',
+    ]);
     expect(back.last('chatHistory')?.lines).toEqual([lobbyLine, gameLine]);
   });
 
