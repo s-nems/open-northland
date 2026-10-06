@@ -197,7 +197,7 @@ describe('decor pages share a mesh', () => {
     const mesh = onlyShadowMesh(layer);
     // SHADOW_PAGE's still quad, its animated quad, then the other page's quad.
     expect(Array.from(mesh.geometry.getBuffer('aPage').data)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1]);
-    expect((mesh.shader?.resources as { uPage1?: unknown }).uPage1).toBe(otherPage);
+    expect((mesh.shader?.resources as { uPage1?: unknown } | undefined)?.uPage1).toBe(otherPage);
     const before = shadowPositions(layer).slice(FLOATS_PER_QUAD, 2 * FLOATS_PER_QUAD);
     layer.update(WIDE, 1); // the animated object's second pose
     const after = shadowPositions(layer);
