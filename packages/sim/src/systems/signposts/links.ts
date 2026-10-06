@@ -2,23 +2,28 @@ import type { ContentSet } from '@open-northland/data';
 import { Owner, Position, SIGNPOST_LINK_RANGE_NODES, Signpost } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { TileBuckets } from '../../inspect/tile-buckets.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
 import { reachContains, searchReach } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { signpostNetworkRevision } from './network.js';
 import { dropFallenPostReaches, postTerrainReach, signpostTerrainKey } from './terrain-reach.js';
 
+interface Site {
+  readonly id: Entity;
+  readonly hx: number;
+  readonly hy: number;
+}
 interface Sites {
   readonly generation: number;
-  readonly buckets: TileBuckets<{ id: Entity; hx: number; hy: number }>;
+  readonly buckets: TileBuckets<Site>;
 }
 const sites = new WeakMap<World, Sites>();
-function candidates(world: World, post: Entity): { id: Entity; hx: number; hy: number }[] {
+function sitesOf(world: World): TileBuckets<Site> {
   const generation = world.componentGeneration(Signpost);
   let held = sites.get(world);
   if (held === undefined || held.generation !== generation) {
-    const buckets = new TileBuckets<{ id: Entity; hx: number; hy: number }>();
+    const buckets = new TileBuckets<Site>();
     for (const id of world.query(Signpost, Position)) {
       const p = world.get(id, Position);
       const n = nodeOfPosition(p.x, p.y);
@@ -27,31 +32,41 @@ function candidates(world: World, post: Entity): { id: Entity; hx: number; hy: n
     held = { generation, buckets };
     sites.set(world, held);
   }
-  const p = world.get(post, Position);
-  const n = nodeOfPosition(p.x, p.y);
-  const r = SIGNPOST_LINK_RANGE_NODES;
-  const owner = world.get(post, Owner).player;
-  return held.buckets
-    .within({ minX: (n.hx - r) / 2, maxX: (n.hx + r) / 2, minY: (n.hy - r) / 2, maxY: (n.hy + r) / 2 })
-    .filter((p) => p.id !== post && world.tryGet(p.id, Owner)?.player === owner);
+  return held.buckets;
 }
 
+/** Scratch for the sites a link search collects, refilled per post: the search calls nothing that
+ *  searches links again. */
+const nearbyScratch: Site[] = [];
+
+/** The same player's posts `post`'s reach takes in, ascending. */
 function reachableLinks(world: World, terrain: TerrainGraph, post: Entity, content?: ContentSet): Entity[] {
-  const nearby = candidates(world, post);
-  if (nearby.length === 0) return [];
   const p = world.get(post, Position);
-  const origin = nodeOfPosition(p.x, p.y);
-  const found =
-    content === undefined
-      ? undefined
-      : postTerrainReach(world, content, terrain, post, origin.hx, origin.hy, SIGNPOST_LINK_RANGE_NODES);
+  const hx = nodeHxOfPosition(p.x, p.y);
+  const hy = nodeHyOfPosition(p.y);
+  const r = SIGNPOST_LINK_RANGE_NODES;
+  const owner = world.get(post, Owner).player;
+  const count = sitesOf(world).collect(
+    { minX: (hx - r) / 2, maxX: (hx + r) / 2, minY: (hy - r) / 2, maxY: (hy + r) / 2 },
+    nearbyScratch,
+  );
+  let candidates = 0;
+  for (let i = 0; i < count; i++) {
+    const site = nearbyScratch[i] as Site;
+    if (site.id !== post && world.tryGet(site.id, Owner)?.player === owner)
+      nearbyScratch[candidates++] = site;
+  }
+  if (candidates === 0) return [];
   const area =
-    found?.area ??
-    searchReach(terrain, { size: 0, has: () => false }, origin.hx, origin.hy, SIGNPOST_LINK_RANGE_NODES);
-  return nearby
-    .filter((p) => reachContains(area, p.hx, p.hy))
-    .map((p) => p.id)
-    .sort((a, b) => a - b);
+    content === undefined
+      ? searchReach(terrain, { size: 0, has: () => false }, hx, hy, r)
+      : postTerrainReach(world, content, terrain, post, hx, hy, r).area;
+  const linked: Entity[] = [];
+  for (let i = 0; i < candidates; i++) {
+    const site = nearbyScratch[i] as Site;
+    if (reachContains(area, site.hx, site.hy)) linked.push(site.id);
+  }
+  return linked.sort((a, b) => a - b);
 }
 
 /** Original guide links use the goods search's terrain budget and strict 40-node boundary.
@@ -79,20 +94,54 @@ export const signpostLinksSystem: System = (world, ctx) => {
   if (layouts.get(world) === key) return;
   const posts = world.canonicalQuery(Signpost, Position, Owner);
   dropFallenPostReaches(world);
-  const next = new Map(posts.map((p) => [p, new Set<Entity>()]));
-  for (const post of posts)
-    for (const other of reachableLinks(world, terrain, post, ctx.content)) {
-      next.get(post)?.add(other);
-      next.get(other)?.add(post);
+  // A link is either post's reach taking the other in: each post's own list, and the posts whose list
+  // names it, gathered in ascending post order.
+  const outgoing: Entity[][] = [];
+  const incoming = new Map<Entity, Entity[]>();
+  for (const post of posts) {
+    const linked = reachableLinks(world, terrain, post, ctx.content);
+    outgoing.push(linked);
+    for (const other of linked) {
+      const into = incoming.get(other);
+      if (into === undefined) incoming.set(other, [post]);
+      else into.push(post);
     }
-  for (const [post, ids] of next) {
-    const links = [...ids].sort((a, b) => a - b);
+  }
+  for (let i = 0; i < posts.length; i++) {
+    const post = posts[i] as Entity;
+    const links = mergeAscending(outgoing[i] as Entity[], incoming.get(post) ?? NO_LINKS);
     const old = world.get(post, Signpost).links;
-    if (old.length !== links.length || old.some((id, i) => id !== links[i]))
+    if (old.length !== links.length || old.some((id, j) => id !== links[j]))
       world.mut(post, Signpost).links = links;
   }
   layouts.set(world, `${signpostTerrainKey(world, ctx.content, terrain)}:${signpostNetworkRevision(world)}`);
 };
+
+const NO_LINKS: readonly Entity[] = [];
+
+/** The union of two ascending id lists, ascending and without repeats. */
+function mergeAscending(a: readonly Entity[], b: readonly Entity[]): Entity[] {
+  if (b.length === 0) return a.slice();
+  const out: Entity[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length || j < b.length) {
+    const x = a[i];
+    const y = b[j];
+    if (y === undefined || (x !== undefined && x < y)) {
+      out.push(x as Entity);
+      i++;
+    } else if (x === undefined || y < x) {
+      out.push(y);
+      j++;
+    } else {
+      out.push(x);
+      i++;
+      j++;
+    }
+  }
+  return out;
+}
 
 /** Drop a falling post from its neighbours' link lists, before it is destroyed. */
 export function unlinkSignpost(world: World, post: Entity): void {
