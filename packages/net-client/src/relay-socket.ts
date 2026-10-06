@@ -9,8 +9,6 @@ import {
 const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 10_000;
 const CONNECT_TIMEOUT_MS = 10_000;
-/** The relay pings once a second; match its tolerance for a silent peer. */
-const SILENT_TIMEOUT_MS = 30_000;
 const FINAL_CLOSE_CODES: readonly number[] = [CLOSE_REPLACED, CLOSE_PROTOCOL_ERROR];
 /** A restarted relay has forgotten every room, so reconnecting to one would only be refused. The
  *  reason tells the relay's own restart from a proxy's, after which the relay may still be there. */
@@ -51,7 +49,6 @@ export class RelaySocket implements RelayLink {
   private attempt = 0;
   private retry: ReturnType<typeof setTimeout> | null = null;
   private deadline: ReturnType<typeof setTimeout> | null = null;
-  private lastReceivedAt = 0;
   private closed = false;
   private readonly options: RelaySocketOptions;
 
@@ -84,11 +81,10 @@ export class RelaySocket implements RelayLink {
   private open(): void {
     const socket = (this.options.createSocket ?? ((url) => new WebSocket(url)))(this.options.url);
     this.socket = socket;
-    this.watch(socket, CONNECT_TIMEOUT_MS);
+    this.watchOpening(socket);
     socket.onopen = () => {
       if (this.closed || this.socket !== socket) return;
-      this.lastReceivedAt = performance.now();
-      this.watch(socket, SILENT_TIMEOUT_MS);
+      this.clearDeadline();
       this.attempt = 0;
       this.options.onOpen();
     };
@@ -101,7 +97,6 @@ export class RelaySocket implements RelayLink {
       } catch {
         return;
       }
-      this.lastReceivedAt = performance.now();
       this.options.onMessage(raw);
     };
     socket.onclose = (event) => {
@@ -125,24 +120,17 @@ export class RelaySocket implements RelayLink {
     this.deadline = null;
   }
 
-  private watch(socket: WebSocket, ms: number): void {
+  private watchOpening(socket: WebSocket): void {
     this.clearDeadline();
     this.deadline = setTimeout(() => {
       this.deadline = null;
       if (this.closed || this.socket !== socket) return;
-      if (socket.readyState === socket.OPEN) {
-        const remaining = SILENT_TIMEOUT_MS - (performance.now() - this.lastReceivedAt);
-        if (remaining > 0) {
-          this.watch(socket, remaining);
-          return;
-        }
-      }
       // A broken link may never finish its close handshake. Detach it before retrying so queued
       // events cannot act on the replacement connection.
       this.socket = null;
       socket.close();
       this.scheduleRetry();
-    }, ms);
+    }, CONNECT_TIMEOUT_MS);
   }
 
   private scheduleRetry(): void {

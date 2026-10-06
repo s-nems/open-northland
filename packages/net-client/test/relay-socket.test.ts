@@ -126,23 +126,16 @@ describe('RelaySocket', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('reconnects a silent open socket even if closing it produces no close event', () => {
+  it('does not time out an open socket while a large message is still arriving', () => {
     const { socket, sockets, events, received } = harness();
     sockets[0]?.open();
-    vi.advanceTimersByTime(29_000);
-    sockets[0]?.deliver('{"kind":"ping","t":29000,"roundTripMs":0}');
-    vi.advanceTimersByTime(29_000);
+    // Browser sockets expose no progress event; only the completed message reaches onmessage.
+    vi.advanceTimersByTime(60_000);
+    sockets[0]?.deliver('{"kind":"blob","bytes":"AAAA"}');
     expect(socket.connected).toBe(true);
-    vi.advanceTimersByTime(1000);
-    expect(socket.connected).toBe(false);
-    expect(sockets[0]?.closedByClient).toBe(true);
-    expect(events.at(-1)).toBe('retry:1:1000');
-    vi.advanceTimersByTime(1000);
-    sockets[1]?.open();
-    sockets[0]?.deliver('{"kind":"left"}');
-    sockets[0]?.drop(CLOSE_PROTOCOL_ERROR);
-    expect(socket.connected).toBe(true);
-    expect(received).toHaveLength(1);
+    expect(sockets[0]?.closedByClient).toBe(false);
+    expect(events).toEqual(['open']);
+    expect(received).toEqual([{ kind: 'blob', bytes: 'AAAA' }]);
     socket.close();
     expect(vi.getTimerCount()).toBe(0);
   });

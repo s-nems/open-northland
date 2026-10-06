@@ -536,8 +536,10 @@ the driver, never by skipping a tick, so a late frame lands inside the buffer. C
 192 ticks/s using the effective governed speed, leaving room for commands and pongs within the
 host's 256 messages/s budget; every applied tick still sends its digest. `RelaySocket` keeps
 the connection and reopens it on the same token after a drop; a connection the relay replaced or
-refused stays closed. A connection attempt that has not opened within 10 seconds, or an open link
-with no JSON message for 30 seconds, is closed and retried even if no socket close event arrives.
+refused stays closed. A connection attempt that has not opened within 10 seconds is closed and retried
+even if no socket close event arrives. An open socket has no client-side receive deadline: browser
+sockets report a large message only when it is complete, so time between messages is not proof that
+the transfer stopped. The host's silence limit still applies to incoming traffic.
 The client keeps the room's chat as the relay logs it: `chatHistory` replaces
 it on every entry and return, each `chat` appends to it, up to `MAX_CHAT_HISTORY_LINES`. The desktop
 and browser app plays through the `?relay=` entry, whose client, link and world run in a network
