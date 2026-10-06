@@ -10,7 +10,6 @@ import {
 import { isSoldierJob } from '../../../catalog/professions.js';
 import { workerRoleOf } from '../../../game/sandbox/index.js';
 import {
-  actorsOf,
   type ChildOrderWait,
   childOrderWaitOf,
   healthOf,
@@ -23,6 +22,7 @@ import {
   type SnapshotEntity,
   settlerJobType,
   settlerNeedsOf,
+  settlersOwnedBy,
   workFlagOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
@@ -382,8 +382,8 @@ function raiseFamilyBlock(
  * The local player's messages read off the snapshot itself: pressing needs, a settler near death, an
  * idle worker, a child order that cannot start and, given `workshops`, a stalled workshop and the reason
  * an idle worker gives. One pass over
- * the world's actors per sweep interval, filtering to the seat inside the loop, so the cost follows the
- * actor count and the cadence rather than the frame rate.
+ * the seat's own settlers per sweep interval, so the cost follows that crowd and the cadence rather than
+ * the world's actors or the frame rate.
  */
 export function createSnapshotMessageSource(
   localPlayer: number,
@@ -412,7 +412,7 @@ export function createSnapshotMessageSource(
       streaks.begin();
       foodWaits.begin();
       const idle: IdleNoteContext = { streaks, posts, stalls, asks, dismissed };
-      for (const e of actorsOf(snapshot)) {
+      for (const e of settlersOwnedBy(snapshot, localPlayer)) {
         if (!isLocalPerson(e, localPlayer)) continue;
         if (needsOn) raiseNeeds(raiser, e, snapshot.tick);
         raiseDying(raiser, e);
