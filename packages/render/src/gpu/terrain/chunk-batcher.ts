@@ -3,6 +3,8 @@ import { scaleColour } from '../../data/terrain/index.js';
 import {
   makeShadedTerrainShader,
   makeTintedTerrainShader,
+  manualSampling,
+  TERRAIN_PAGE_SLOTS,
   type TerrainCoverBinding,
   type WaveUniforms,
 } from '../shading.js';
@@ -134,32 +136,88 @@ export class ChunkBatcher {
     batch.indices.push(base, base + 1, base + 2);
   }
 
-  /** The chunk's display children in paint order: one mesh per accumulated batch, the flat tints
-   *  first, then base pages before the overlay layers. */
+  /**
+   * The chunk's display children in paint order: the flat tints first, one mesh each, then base pages
+   * before the overlay layers. Consecutive shaded batches share one mesh of up to
+   * {@link TERRAIN_PAGE_SLOTS} pages, their triangles kept in batch order, so the paint order a mesh per
+   * batch had is the triangle order within the shared one.
+   */
   children(): TerrainChild[] {
     const out: TerrainChild[] = [];
     const batches = [...this.byLayerPage.values()].sort((a, b) => a.order - b.order);
+    let run: (TerrainBatch & { source: TextureSource })[] = [];
+    let pages: TextureSource[] = [];
+    const flush = (): void => {
+      if (run.length > 0) out.push(this.shadedMesh(run, pages));
+      run = [];
+      pages = [];
+    };
     for (const batch of batches) {
-      const geometry = meshGeometry(batch);
-      const texture = new Texture({ source: batch.source });
-      if (
-        batch.brightnessUVs.length > 0 &&
-        this.brightnessTex !== undefined &&
-        this.wave !== undefined &&
-        this.cover !== undefined
-      ) {
-        const shader = makeShadedTerrainShader(batch.source, this.brightnessTex, this.wave, this.cover);
-        out.push(new Mesh({ geometry, texture, shader }));
-      } else {
+      if (!this.shades(batch)) {
+        flush();
         const mesh = new Mesh({
-          geometry,
-          texture,
+          geometry: meshGeometry(batch),
+          texture: new Texture({ source: batch.source }),
           shader: makeTintedTerrainShader(batch.source, this.wave),
         });
         mesh.tint = batch.tint ?? 0xffffff;
         out.push(mesh);
+        continue;
       }
+      const first = pages[0];
+      const known = pages.includes(batch.source);
+      if (
+        first !== undefined &&
+        (manualSampling(first) !== manualSampling(batch.source) ||
+          (!known && pages.length === TERRAIN_PAGE_SLOTS))
+      )
+        flush();
+      if (!pages.includes(batch.source)) pages.push(batch.source);
+      run.push(batch);
     }
+    flush();
     return out;
+  }
+
+  private shades(batch: TerrainBatch): boolean {
+    return (
+      batch.brightnessUVs.length > 0 &&
+      this.brightnessTex !== undefined &&
+      this.wave !== undefined &&
+      this.cover !== undefined
+    );
+  }
+
+  /** One mesh over `run`'s triangles in order, each naming its batch's page among `pages`. */
+  private shadedMesh(
+    run: readonly (TerrainBatch & { source: TextureSource })[],
+    pages: readonly TextureSource[],
+  ): TerrainChild {
+    const merged = emptyBatch();
+    const pageOf: number[] = [];
+    for (const batch of run) {
+      const base = merged.positions.length / 2;
+      const page = pages.indexOf(batch.source);
+      merged.positions.push(...batch.positions);
+      merged.nodes.push(...batch.nodes);
+      merged.uvs.push(...batch.uvs);
+      merged.brightnessUVs.push(...batch.brightnessUVs);
+      merged.waves.push(...batch.waves);
+      merged.water.push(...batch.water);
+      for (const index of batch.indices) merged.indices.push(base + index);
+      for (let v = 0; v < batch.positions.length / 2; v++) pageOf.push(page);
+    }
+    const geometry = meshGeometry(merged);
+    geometry.addAttribute('aPage', { buffer: new Float32Array(pageOf) });
+    const [first] = pages;
+    if (
+      first === undefined ||
+      this.brightnessTex === undefined ||
+      this.wave === undefined ||
+      this.cover === undefined
+    )
+      throw new Error('a shaded ground mesh needs its pages, lane, wave and cover');
+    const shader = makeShadedTerrainShader(pages, this.brightnessTex, this.wave, this.cover);
+    return new Mesh({ geometry, texture: new Texture({ source: first }), shader });
   }
 }

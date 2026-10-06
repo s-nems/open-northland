@@ -161,10 +161,38 @@ const LUMA_WEIGHTS = [0.299, 0.587, 0.114] as const;
 const glslVec3 = (rgb: readonly [number, number, number]): string =>
   `vec3(${rgb.map((channel) => channel.toFixed(4)).join(', ')})`;
 
+/** Ground pages one shaded mesh samples: its triangles name theirs in `aPage`, so a chunk draws its
+ *  pages in one call rather than one per page. Beside the lane and cover textures this stays under
+ *  WebGL 2's guaranteed sixteen fragment texture units. */
+export const TERRAIN_PAGE_SLOTS = 8;
+
+function pageSamplerDeclarations(): string {
+  return Array.from({ length: TERRAIN_PAGE_SLOTS }, (_, i) => `  uniform sampler2D uPage${i};`).join('\n');
+}
+
+/** `statement` run with the fragment's page sampler in place of `$`, through one if-chain: GLSL ES 3.00
+ *  indexes samplers by constants only. */
+function pageChain(statement: string): string {
+  return Array.from({ length: TERRAIN_PAGE_SLOTS }, (_, i) => {
+    const guard = i < TERRAIN_PAGE_SLOTS - 1 ? `if (vPage < ${i}.5) ` : '';
+    return `    ${i > 0 ? 'else ' : ''}${guard}{ ${statement.replace('$', String(i))} }`;
+  }).join('\n');
+}
+
+/** A GLSL block whose functions read a global `uTexture`, with that sampler taken as each function's
+ *  parameter instead. */
+function withPageParameter(glsl: string): string {
+  return glsl
+    .replace('vec4 sampleTerrain() {', 'vec4 sampleTerrain(sampler2D uTexture) {')
+    .replace('vec3 groundNeighbourhood() {', 'vec3 groundNeighbourhood(sampler2D uTexture) {');
+}
+
 const FIELD_VERTEX = `#version 300 es
   in vec2 aPosition;
   in vec4 aSampleBounds;
   flat out vec4 vSampleBounds;
+  in float aPage;
+  flat out float vPage;
   in vec2 aUV;
   in vec2 aBrightnessUV;
   in vec3 aVertexColor;
@@ -185,6 +213,7 @@ const FIELD_VERTEX = `#version 300 es
   ${matrixBlock}
   void main(void) {
     vSampleBounds = aSampleBounds;
+    vPage = aPage;
     ${COVER_VERTEX_BODY}
     float phase = (aPosition.x + aPosition.y) * ${WAVE_PHASE_PER_PX.toFixed(8)};
     vec2 pos = aPosition;
@@ -213,6 +242,8 @@ const FIELD_VERTEX = `#version 300 es
 // texel.r is the raw lane byte / 255 while the measured curve is byte / BRIGHTNESS_NEUTRAL, hence the
 // constant rescale. uColor is the mesh-pipe group colour (premultiplied tint·alpha).
 const FIELD_FRAGMENT = `#version 300 es
+  // The page this triangle samples, picked once per fragment below: every function reading uTexture
+  // takes it as a parameter of that name.
   precision highp float;
   in vec2 vUV;
   in vec2 vBrightnessUV;
@@ -223,7 +254,8 @@ const FIELD_FRAGMENT = `#version 300 es
   in vec2 vWater;
   in float vGlintPhase;
 
-  uniform sampler2D uTexture;
+${pageSamplerDeclarations()}
+  flat in float vPage;
   uniform sampler2D uBrightnessTex;
   uniform vec4 uColor;
   uniform vec2 uWave;
@@ -231,11 +263,11 @@ const FIELD_FRAGMENT = `#version 300 es
 
   out vec4 finalColor;
 
-  ${TERRAIN_SAMPLE}
-  ${COVER_FRAGMENT_DECLARATIONS}
+  ${withPageParameter(TERRAIN_SAMPLE)}
+  ${withPageParameter(COVER_FRAGMENT_DECLARATIONS)}
 
-  void main(void) {
-    vec4 texel = sampleTerrain();
+  vec4 shadeGround(sampler2D uTexture) {
+    vec4 texel = sampleTerrain(uTexture);
     float lane = texture(uBrightnessTex, vBrightnessUV).r * ${(255 / BRIGHTNESS_NEUTRAL).toFixed(8)};
     // Water shimmer: a second travelling wave glints the shaded water surface (0 on land).
     float shimmer = sin(uWave.x * ${WAVE_SHIMMER_RADIANS_PER_TICK.toFixed(8)}
@@ -273,10 +305,14 @@ const FIELD_FRAGMENT = `#version 300 es
     if (uCover > 0.5) {
       vec4 cover = texture(uCoverTex, vCoverUV);
       cover.rgb *= 1.0 - clamp(vWater.x, 0.0, 1.0);
-      texel.rgb = weatherCover(texel.rgb, texel.a, lane, cover, cover.g > 0.0 ? groundNeighbourhood() : vec3(0.0));
+      texel.rgb = weatherCover(texel.rgb, texel.a, lane, cover, cover.g > 0.0 ? groundNeighbourhood(uTexture) : vec3(0.0));
     }
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
-    finalColor = vec4(texel.rgb * lane * vVertexColor, texel.a) * uColor;
+    return vec4(texel.rgb * lane * vVertexColor, texel.a) * uColor;
+  }
+
+  void main(void) {
+${pageChain('finalColor = shadeGround(uPage$);')}
   }
 `;
 
@@ -346,24 +382,26 @@ export function makeWaveUniforms(): WaveUniforms {
  * zigzag along triangle edges. WebGL-only.
  */
 export function makeShadedTerrainShader(
-  source: TextureSource,
+  pages: readonly TextureSource[],
   brightnessTex: TextureSource,
   wave: WaveUniforms,
   cover: TerrainCoverBinding,
 ): Shader {
+  const [first] = pages;
+  if (first === undefined || pages.length > TERRAIN_PAGE_SLOTS)
+    throw new Error(`a shaded ground mesh samples 1 to ${TERRAIN_PAGE_SLOTS} pages, not ${pages.length}`);
   fieldProgram ??= new GlProgram({ vertex: FIELD_VERTEX, fragment: FIELD_FRAGMENT });
-  return new Shader({
-    glProgram: fieldProgram,
-    resources: {
-      uTexture: source,
-      uSampler: source.style,
-      uBrightnessTex: brightnessTex,
-      waveVars: wave,
-      sampling: terrainSamplingUniforms(source),
-      coverVars: cover.uniforms,
-      uCoverTex: cover.texture,
-    },
-  });
+  const resources: Record<string, unknown> = {
+    uSampler: first.style,
+    uBrightnessTex: brightnessTex,
+    waveVars: wave,
+    sampling: terrainSamplingUniforms(first),
+    coverVars: cover.uniforms,
+    uCoverTex: cover.texture,
+  };
+  // An unused slot binds the first page, so every declared sampler has a texture.
+  for (let i = 0; i < TERRAIN_PAGE_SLOTS; i++) resources[`uPage${i}`] = pages[i] ?? first;
+  return new Shader({ glProgram: fieldProgram, resources });
 }
 
 /** The map's weather-cover texture and switch, shared by every shaded ground mesh. */
@@ -431,11 +469,16 @@ let colorProgram: GlProgram | undefined;
 /** A mipmapped page keeps its hardware filtering, and a single texel (the flat-colour path's white
  *  pixel) has nothing to reconstruct, so neither takes the manual filter. */
 function terrainSamplingUniforms(source: TextureSource): UniformGroup {
-  const manual =
-    source.autoGenerateMipmaps || source.mipLevelCount > 1 || (source.width <= 1 && source.height <= 1)
-      ? 0
-      : 1;
-  return new UniformGroup({ uManualSampling: { value: manual, type: 'f32' } });
+  return new UniformGroup({ uManualSampling: { value: manualSampling(source) ? 1 : 0, type: 'f32' } });
+}
+
+/** Whether `source` takes the manual filter; pages one shaded mesh samples together must agree. */
+export function manualSampling(source: TextureSource): boolean {
+  return !(
+    source.autoGenerateMipmaps ||
+    source.mipLevelCount > 1 ||
+    (source.width <= 1 && source.height <= 1)
+  );
 }
 
 /** `wave` is the terrain layer's shared group. A caller passing `undefined` gets a private one that no

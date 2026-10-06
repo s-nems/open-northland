@@ -138,10 +138,9 @@ describe('terrain footprint sampling', () => {
     };
     const layer = new TerrainLayer();
     layer.set(terrain, textures);
-    const overlay = layer.container.children[0]?.children[1];
-    if (!(overlay instanceof Mesh)) throw new Error('Missing overlay mesh');
-    const water = overlay.geometry.getBuffer('aWater').data;
-    expect(Array.from(water)).toEqual([0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]);
+    // The base and the overlay share one mesh: the overlay's two triangles follow the base's.
+    const water = meshOf(layer).geometry.getBuffer('aWater').data;
+    expect(Array.from(water).slice(-12)).toEqual([0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]);
     layer.destroy();
     source.destroy();
   });
@@ -165,5 +164,34 @@ describe('terrain footprint sampling', () => {
     expect(meshOf(layer).shader?.resources.sampling.uniforms.uManualSampling).toBe(0);
     layer.destroy();
     source.destroy();
+  });
+});
+
+describe('terrain page merging', () => {
+  it('draws the pages of a chunk in one mesh, each triangle naming its page in paint order', () => {
+    const page = (): BufferImageSource =>
+      new BufferImageSource({ resource: new Uint8Array(64 * 64 * 4), width: 64, height: 64 });
+    const sources = [page(), page()];
+    const layer = new TerrainLayer();
+    layer.set(
+      { width: 3, height: 1, typeIds: [1, 0, 1], brightness: [127, 127, 127] },
+      {
+        pages: new Map(sources.map((source, i) => [`ground${i}`, source])),
+        cellFor: (typeId: number) => ({ pageKey: `ground${typeId}`, rect: { x: 0, y: 0, w: 63, h: 63 } }),
+      },
+    );
+    expect(layer.container.children[0]?.children).toHaveLength(1);
+    const mesh = meshOf(layer);
+    // Batches keep first-seen order: page 1's cells (0 and 2), then page 0's, six vertices a cell.
+    expect(Array.from(mesh.geometry.getBuffer('aPage').data)).toEqual([
+      ...Array<number>(12).fill(0),
+      ...Array<number>(6).fill(1),
+    ]);
+    expect(mesh.shader?.resources.uPage0).toBe(sources[1]);
+    expect(mesh.shader?.resources.uPage1).toBe(sources[0]);
+    // An unused slot holds the first page, so every declared sampler is bound.
+    expect(mesh.shader?.resources.uPage2).toBe(sources[1]);
+    layer.destroy();
+    for (const source of sources) source.destroy();
   });
 });
