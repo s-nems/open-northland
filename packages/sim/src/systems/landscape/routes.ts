@@ -13,6 +13,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { dropPath } from '../movement/nav-state.js';
+import { type NodeBounds, nodeBoundsOf, routeBoundsOf } from '../movement/route-bounds.js';
 import { routeStartCell } from '../movement/route-start.js';
 import { settlerTraversal } from '../movement/traversal.js';
 
@@ -67,45 +68,6 @@ export function invalidateRoutesThrough(
     if (stop !== null) crossing.push({ e, stop });
   }
   for (const { e, stop } of crossing) haltBefore(world, terrain, e, stop);
-}
-
-interface NodeBounds {
-  readonly minX: number;
-  readonly maxX: number;
-  readonly minY: number;
-  readonly maxY: number;
-}
-
-/** Each route's node bounds, which also hold its diagonals' midpoint flanks. Keyed on the stop array,
- *  which a delivery or a cut replaces rather than edits. Derived, never hashed. */
-const routeBounds = new WeakMap<readonly Waypoint[], NodeBounds>();
-
-function routeBoundsOf(terrain: TerrainGraph, waypoints: readonly Waypoint[]): NodeBounds {
-  let bounds = routeBounds.get(waypoints);
-  if (bounds === undefined) {
-    bounds = nodeBoundsOf(
-      terrain,
-      waypoints.map((stop) => stop.node),
-    );
-    routeBounds.set(waypoints, bounds);
-  }
-  return bounds;
-}
-
-function nodeBoundsOf(terrain: TerrainGraph, nodes: Iterable<NodeId>): NodeBounds {
-  let minX = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  for (const node of nodes) {
-    const x = terrain.xOf(node);
-    const y = terrain.yOf(node);
-    if (x < minX) minX = x;
-    if (x > maxX) maxX = x;
-    if (y < minY) minY = y;
-    if (y > maxY) maxY = y;
-  }
-  return { minX, maxX, minY, maxY };
 }
 
 function boundsMeet(a: NodeBounds, b: NodeBounds): boolean {

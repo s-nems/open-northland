@@ -36,6 +36,7 @@ import {
 import { GroupReachability } from './group-reachability.js';
 import { GroupRoutes } from './group-routes.js';
 import { dropPath, liveStepEnd, restartLeg } from './nav-state.js';
+import { routeBoundsOf } from './route-bounds.js';
 import { type RouteMemo, routeMemoOf } from './route-memo.js';
 import { routeStartCell } from './route-start.js';
 import { settlerTraversal } from './traversal.js';
@@ -197,7 +198,9 @@ export function drainPathRequests(
     // A topology reroute starts at the end of the retained safe prefix. Finish that prefix
     // before the detour, including any diagonal midpoint on the way back from a closed edge.
     if (req.retainRoute && previous !== undefined && previousStops?.at(-1)?.node === req.start) {
-      world.mut(e, PathRoute).waypoints = [...previousStops, ...waypoints.slice(1)];
+      const spliced = [...previousStops, ...waypoints.slice(1)];
+      world.mut(e, PathRoute).waypoints = spliced;
+      routeBoundsOf(terrain, spliced);
       endGrindHold(world, e);
       settleRoute(world, e, req.goal);
       continue;
@@ -246,6 +249,7 @@ export function drainPathRequests(
       index = history.length;
     }
     world.add(e, PathRoute, { waypoints });
+    routeBoundsOf(terrain, waypoints);
     endGrindHold(world, e);
     world.add(e, PathFollow, {
       index,
