@@ -51,7 +51,17 @@ export class CatchUpStore {
   framesAfter(tick: number): readonly WireFrame[] | null {
     const first = this.frames[0]?.frame.tick ?? (this.cached === null ? 1 : this.cached.tick + 1);
     if (tick + 1 < first) return null;
-    return this.frames.filter(({ frame }) => frame.tick > tick).map(({ frame }) => frame);
+    // Retained ticks are ordered. A recent reconnect or save needs only the tail, not a scan of
+    // every frame since the last snapshot.
+    let low = 0;
+    let high = this.frames.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      const held = this.frames[middle];
+      if (held !== undefined && held.frame.tick <= tick) low = middle + 1;
+      else high = middle;
+    }
+    return this.frames.slice(low).map(({ frame }) => frame);
   }
 
   /** Frames paced ahead of a confirmed result must not outlive the terminal simulation tick. */

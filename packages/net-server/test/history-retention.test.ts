@@ -67,6 +67,22 @@ describe('catch-up retention budgets', () => {
     expect(store.framesAfter(tick - 1)).toEqual([last]);
   });
 
+  it('returns the exact replay tail at snapshot, frame and terminal boundaries', () => {
+    const store = new CatchUpStore();
+    store.cache({ tick: 10, from: 'Ania', bytes: BLOB });
+    const frames = Array.from({ length: 5 }, (_, i) => ({ tick: i + 11, commands: [] }));
+    for (const frame of frames) store.record(frame, 0);
+    expect(store.framesAfter(9)).toBeNull();
+    for (let tick = 10; tick <= 16; tick++)
+      expect(store.framesAfter(tick)).toEqual(frames.filter((frame) => frame.tick > tick));
+    store.cache({ tick: 12, from: 'Ania', bytes: BLOB });
+    expect(store.framesAfter(11)).toBeNull();
+    expect(store.framesAfter(12)).toEqual(frames.slice(2));
+    store.finishAt(14);
+    expect(store.framesAfter(13)).toEqual([{ tick: 14, commands: [] }]);
+    expect(store.framesAfter(14)).toEqual([]);
+  });
+
   it('ends a command-heavy room before exceeding its byte budget and requests snapshots before the limit', () => {
     const s = startedRoom();
     play(s, [s.a, s.b], 1);
