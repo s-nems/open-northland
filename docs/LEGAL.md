@@ -15,6 +15,11 @@ committed. The one exception is a pipeline correction: it quotes the few script 
 replaces in one mod file, so the pipeline can check that they still match, and never carries prose
 such as briefing or dialogue text.
 
+Text imported from game or mod tables is also generated content, including UI labels. Keep table/id
+bindings in code and load the wording through the pipeline. Project-authored UI text, intentional
+label overrides and independently written fallbacks may stay in the repository; a fallback must not
+serve as a committed copy of the imported text table. Ordinary shared vocabulary is not excluded.
+
 Tests use synthetic fixtures created for this project. A test or pull request must not contain an
 original file, decoded asset, extracted text corpus, or other distributable game content.
 

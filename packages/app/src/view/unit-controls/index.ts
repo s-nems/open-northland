@@ -78,6 +78,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     opts.requestEquipPicks === undefined
       ? null
       : await mountEquipPicker({
+          uiString: opts.domHud.uiString,
           pickList: opts.requestEquipPicks,
           content: opts.content,
           snapshot: opts.snapshot,

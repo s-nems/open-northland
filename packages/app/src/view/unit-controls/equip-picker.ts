@@ -7,7 +7,9 @@ import {
   type PlayerCommand,
   type WorldSnapshot,
 } from '@open-northland/sim';
+import type { UiString } from '../../content/gui-gfx.js';
 import { loadUiFont } from '../../content/ui-font.js';
+import { actionLabel } from '../../hud/action-ring/labels.js';
 import type { EquipSlotRef } from '../../hud/details-panel/index.js';
 import { messages } from '../../i18n/index.js';
 import { createPickerWindow, type PickerWindow } from './picker-window.js';
@@ -16,6 +18,7 @@ import { createPickerWindow, type PickerWindow } from './picker-window.js';
 type PickList = (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
 
 export interface EquipPickControllerOptions {
+  readonly uiString: UiString;
   /** The sim's pick-list read (`SessionHost.equipPickList`), asked afresh as a window opens. */
   readonly pickList: (entity: number, group: EquipCategory) => Promise<readonly EquipPickEntry[]>;
   readonly content: ContentSet;
@@ -179,7 +182,7 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
 
   function showCommonPicks(targets: readonly number[], pickList: PickList): void {
     const w = win();
-    w.setTitle(messages().actionRing.changeEquipment);
+    w.setTitle(actionLabel('changeEquipment', opts.uiString));
     w.clearList();
     const rows = commonEquipPicks(opts.content, targets, pickList);
     if (rows.length === 0) w.addNote(messages().hud.equipPickEmpty);

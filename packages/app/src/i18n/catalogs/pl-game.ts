@@ -90,8 +90,8 @@ export const plGame = {
     work: 'Praca',
     experience: 'Doświadczenie',
     hoverCard: {
-      construction: 'Budynek jest budowany',
-      upgrade: 'Budynek jest ulepszany',
+      construction: 'Budowa w toku',
+      upgrade: 'Rozbudowa w toku',
       allProducts: 'wszystko',
     },
     workFlag: 'Flaga robocza',
@@ -1235,13 +1235,13 @@ export const plGame = {
       noSeat: 'Wybierz gracza, by zobaczyć jego asystenta.',
     },
     papers: {
-      indulgence: 'Prolongata',
-      placeAny: 'Umieść wybrany przez ciebie budynek',
-      placeHouse: "Umieść '{name}'",
-      placeStockedHouse: "Umieść '{name}' i zapełnij jego skład",
-      buildPermit: "Zezwolenie na budowę '{name}'",
-      learnPermit: "Zezwolenie na naukę '{name}'",
-      producePermit: "Zezwolenie na produkcję '{name}'",
+      indulgence: 'Dokument specjalny',
+      placeAny: 'Dodanie budynku',
+      placeHouse: 'Dodanie budynku: {name}',
+      placeStockedHouse: 'Dodanie budynku z zapasami: {name}',
+      buildPermit: 'Odblokowanie budowy: {name}',
+      learnPermit: 'Odblokowanie nauki: {name}',
+      producePermit: 'Odblokowanie produkcji: {name}',
     },
     observer: {
       label: 'Obserwowany gracz',
@@ -1259,43 +1259,42 @@ export const plGame = {
       good: 'towar {goodType}',
     },
   },
-  // Ring tooltips: the decoded `misclogic` gui strings, by id, from `content/gui/strings/pol.json`.
+  // Project-authored labels for a checkout without the optional game text tables.
   actionRing: {
-    haveGirl: 'Miej dziewczynkę', // 16
-    haveBoy: 'Miej chłopca', // 15
-    marry: 'Ożeń się', // 14
-    goTo: 'Idź do', // 1
-    changeProfession: 'Zmień zawód', // 19
-    assignWorkArea: 'Przydziel obszar pracy', // 33
-    // Named deviation: the mod's Polish table mistranslates 36 as "Wyburz drogowskaz".
+    haveGirl: 'Postaraj się o córkę',
+    haveBoy: 'Postaraj się o syna',
+    marry: 'Znajdź małżonka',
+    goTo: 'Przejdź we wskazane miejsce',
+    changeProfession: 'Wybierz zawód',
+    assignWorkArea: 'Wybierz obszar pracy',
     erectSignpost: 'Postaw drogowskaz',
-    assignBuildingSite: 'Przydziel miejsce budowy', // 27
-    assignLearningPlace: 'Przydziel miejsce nauki', // 25
-    removeWorkPlace: 'Usuń miejsce pracy', // 24
-    assignWorkPlace: 'Przydziel miejsce pracy', // 23
-    removeHome: 'Usuń dom', // 18
-    assignHome: 'Przydziel dom', // 17
-    attackInhabitants: 'Zaatakuj mieszkańców', // 44
-    attackBuilding: 'Zaatakuj budynek', // 45
-    attackPosition: 'Zaatakuj pozycję', // 48
-    attackMode: 'Tryb ataku żołnierza', // 38
-    defenceMode: 'Tryb obrony żołnierza', // 39, spelled out where the table drops a letter
-    ignorantMode: 'Tryb ignorowania żołnierza', // 40
-    eat: 'Jedz', // 4
-    sleep: 'Śpij', // 6
-    talk: 'Rozmawiaj', // 8
-    pray: 'Módl się', // 10
-    changeEquipment: 'Zmień ekwipunek', // 21
-    showWorkArea: 'Pokaż obszar pracy', // 34
-    explore: 'Badaj', // 37
-    removeBuildingSite: 'Usuń miejsce budowy', // 28
-    removeLearningPlace: 'Usuń miejsce nauki', // 26
-    assignVehicle: 'Przydziel wehikuł', // 31
-    removeVehicle: 'Usuń wehikuł', // 32
-    attackAnimal: 'Zaatakuj zwierzę', // 46
-    attackVehicle: 'Zaatakuj wehikuł', // 47
-    allowRegeneration: 'Zezwól na regenerację', // 42
-    prohibitRegeneration: 'Zabroń regeneracji', // 43
+    assignBuildingSite: 'Podejmij pracę na budowie',
+    assignLearningPlace: 'Wybierz miejsce nauki',
+    removeWorkPlace: 'Odejdź z miejsca pracy',
+    assignWorkPlace: 'Wybierz miejsce pracy',
+    removeHome: 'Wyprowadź się z domu',
+    assignHome: 'Wybierz dom',
+    attackInhabitants: 'Atakuj osadnika',
+    attackBuilding: 'Zaatakuj budowlę',
+    attackPosition: 'Zaatakuj we wskazanym miejscu',
+    attackMode: 'Atakuj pobliskich wrogów',
+    defenceMode: 'Tryb obrony żołnierza',
+    ignorantMode: 'Ignoruj pobliskich wrogów',
+    eat: 'Jedz',
+    sleep: 'Śpij',
+    talk: 'Rozmawiaj',
+    pray: 'Módl się',
+    changeEquipment: 'Wybierz wyposażenie',
+    showWorkArea: 'Pokaż obszar roboczy',
+    explore: 'Zwiad na nieodkrytym terenie',
+    removeBuildingSite: 'Odejdź z budowy',
+    removeLearningPlace: 'Opuść miejsce nauki',
+    assignVehicle: 'Dołącz do załogi',
+    removeVehicle: 'Opuść załogę',
+    attackAnimal: 'Atakuj zwierzę',
+    attackVehicle: 'Atakuj pojazd',
+    allowRegeneration: 'Zezwól na przerwy',
+    prohibitRegeneration: 'Bez przerw na potrzeby',
   },
   // Roles outside the profession picker, keyed by content job slug: the life stages (`jobtypes.ini` 1..6)
   // and the jester (28), which maps can place but no player can train.

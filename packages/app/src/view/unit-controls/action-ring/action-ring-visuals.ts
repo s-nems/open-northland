@@ -1,8 +1,9 @@
 import type { Application } from 'pixi.js';
 import type { GuiArt } from '../../../content/gui-art.js';
+import type { UiString } from '../../../content/gui-gfx.js';
 import type { ActionCommand, ActionRingLayout } from '../../../hud/action-ring/index.js';
+import { actionLabel } from '../../../hud/action-ring/labels.js';
 import { canvasToClient, type ScreenScale } from '../../../hud/geometry.js';
-import { messages } from '../../../i18n/index.js';
 import { bakeIconPage, type IconPage } from './icon-page.js';
 
 /** Button corner radius in ring-scaled px, floored so the hover wash keeps a visible round. */
@@ -21,6 +22,7 @@ interface ButtonVisual {
 }
 
 export interface ActionRingVisualsDeps {
+  readonly uiString: UiString;
   readonly app: Application;
   /** Null selects the flat disc fallback. */
   readonly art: GuiArt | null;
@@ -75,7 +77,7 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
     // Out of the tab order: Space is the ring's own key, and a focused button would take it.
     button.tabIndex = -1;
     button.hidden = true;
-    button.setAttribute('aria-label', messages().actionRing[command.id]);
+    button.setAttribute('aria-label', actionLabel(command.id, deps.uiString));
     const glyph = page?.cells.has(command.icon) === true ? document.createElement('i') : null;
     if (glyph === null) button.classList.add('on-ring__button--disc');
     else {

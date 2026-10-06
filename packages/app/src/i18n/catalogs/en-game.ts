@@ -89,10 +89,10 @@ export const enGame = {
     production: 'Production',
     work: 'Work',
     experience: 'Experience',
-    // Building-card fallbacks for the decoded `misc` state rows, from `content/gui/strings/eng.json`.
+    // Project wording used when the optional building-state text is absent.
     hoverCard: {
-      construction: 'Building under construction',
-      upgrade: 'Building is being upgraded',
+      construction: 'Construction in progress',
+      upgrade: 'Upgrade in progress',
       /** A worker set to make every product open to it. */
       allProducts: 'everything',
     },
@@ -162,9 +162,7 @@ export const enGame = {
     roadSiteSupplied: '{good} delivered, ready to pave',
     demolishGate: 'Demolish gate',
     constructionProgress: 'Construction: {percent}%',
-    // The vehicle's hover line: `vehiclewindow` gui strings where the original has one (ids in the
-    // glosses), the rest authored.
-    vehicle: 'Vehicle', // vehiclewindow 0
+    vehicle: 'Vehicle',
     vehicleTask: 'Task: {task}',
     vehicleTasks: {
       none: 'idle',
@@ -1256,16 +1254,15 @@ export const enGame = {
       watching: "The watched player's assistant. Read only.",
       noSeat: 'Pick a player to see their assistant.',
     },
-    /** Stand-ins for the decoded `misclogic` rows 180-186 naming each paper kind; `{name}` takes
-     *  the named house, trade or good. */
+    /** Project wording for papers when their generated text is absent. */
     papers: {
-      indulgence: 'Letter of indulgence',
-      placeAny: 'Place a building of your choice',
-      placeHouse: "Place a '{name}'",
-      placeStockedHouse: "Place a '{name}' and fill its store",
-      buildPermit: "Permit for building a '{name}'",
-      learnPermit: "Permission to learn '{name}'",
-      producePermit: "Permission to produce '{name}'",
+      indulgence: 'Special document',
+      placeAny: 'Add a building',
+      placeHouse: 'Add building: {name}',
+      placeStockedHouse: 'Add stocked building: {name}',
+      buildPermit: 'Unlock construction: {name}',
+      learnPermit: 'Unlock training: {name}',
+      producePermit: 'Unlock production: {name}',
     },
     observer: {
       label: 'Watched player',
@@ -1283,42 +1280,42 @@ export const enGame = {
       good: 'good {goodType}',
     },
   },
-  // Ring tooltips: the decoded `misclogic` gui strings, by id, from `content/gui/strings/eng.json`.
+  // Project-authored labels for a checkout without the optional game text tables.
   actionRing: {
-    haveGirl: 'Have a Girl', // 16
-    haveBoy: 'Have a Boy', // 15
-    marry: 'Marry', // 14
-    goTo: 'Go To', // 1
-    changeProfession: 'Change Profession', // 19
-    assignWorkArea: 'Assign Work Area', // 33
-    erectSignpost: 'Erect Signpost', // 36
-    assignBuildingSite: 'Assign Building Site', // 27
-    assignLearningPlace: 'Assign Learning Place', // 25
-    removeWorkPlace: 'Remove Work Place', // 24
-    assignWorkPlace: 'Assign Work Place', // 23
-    removeHome: 'Remove Home', // 18
-    assignHome: 'Assign Home', // 17
-    attackInhabitants: 'Attack Inhabitants', // 44
-    attackBuilding: 'Attack Building', // 45
-    attackPosition: 'Attack Position', // 48
-    attackMode: 'Soldier Attack Mode', // 38
-    defenceMode: 'Soldier Defence Mode', // 39
-    ignorantMode: 'Soldier Ignorant Mode', // 40
-    eat: 'Eat', // 4
-    sleep: 'Sleep', // 6
-    talk: 'Talk', // 8
-    pray: 'Pray', // 10
-    changeEquipment: 'Change Equipment', // 21
-    showWorkArea: 'Show Work Area', // 34
-    explore: 'Explore', // 37
-    removeBuildingSite: 'Remove Building Site', // 28
-    removeLearningPlace: 'Remove Learning Place', // 26
-    assignVehicle: 'Assign Vehicle', // 31
-    removeVehicle: 'Remove Vehicle', // 32
-    attackAnimal: 'Attack Animal', // 46
-    attackVehicle: 'Attack Vehicle', // 47
-    allowRegeneration: 'Allow Regeneration', // 42
-    prohibitRegeneration: 'Prohibit Regeneration', // 43
+    haveGirl: 'Try for a daughter',
+    haveBoy: 'Try for a son',
+    marry: 'Marry',
+    goTo: 'Move to a location',
+    changeProfession: 'Choose a profession',
+    assignWorkArea: 'Choose a work area',
+    erectSignpost: 'Build a signpost',
+    assignBuildingSite: 'Work on a construction site',
+    assignLearningPlace: 'Choose a training place',
+    removeWorkPlace: 'Leave the current workplace',
+    assignWorkPlace: 'Choose a workplace',
+    removeHome: 'Leave the current home',
+    assignHome: 'Choose a home',
+    attackInhabitants: 'Attack a settler',
+    attackBuilding: 'Attack a structure',
+    attackPosition: 'Attack at a location',
+    attackMode: 'Fight nearby enemies',
+    defenceMode: 'Defend against attacks',
+    ignorantMode: 'Ignore nearby enemies',
+    eat: 'Eat',
+    sleep: 'Sleep',
+    talk: 'Talk',
+    pray: 'Pray',
+    changeEquipment: 'Choose equipment',
+    showWorkArea: 'Locate the work area',
+    explore: 'Scout unexplored land',
+    removeBuildingSite: 'Leave the construction site',
+    removeLearningPlace: 'Leave the training place',
+    assignVehicle: 'Join a vehicle crew',
+    removeVehicle: 'Leave the vehicle crew',
+    attackAnimal: 'Attack an animal',
+    attackVehicle: 'Attack a vehicle',
+    allowRegeneration: 'Allow breaks',
+    prohibitRegeneration: 'Do not take breaks',
   },
   // Roles outside the profession picker, keyed by content job slug: the life stages (`jobtypes.ini` 1..6)
   // and the jester (28), which maps can place but no player can train.

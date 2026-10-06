@@ -1,5 +1,7 @@
 import type { NeedKind } from '@open-northland/sim';
+import type { UiString } from '../../../content/gui-gfx.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
+import { actionLabel } from '../../action-ring/labels.js';
 import type { PanelBar, SettlerPanelModel } from '../../details-panel/model/index.js';
 import { element } from '../parts/dom.js';
 import { createMeterRow, type MeterRow } from '../parts/meter-row.js';
@@ -15,11 +17,11 @@ export const NEED_ORDER: Readonly<Record<NeedKind, 'eat' | 'sleep' | 'talk' | 'p
 };
 
 /** A bar's tooltip: its value (a stored reserve too), and for a need the order a press gives. */
-export function needTooltip(bar: PanelBar): string {
+export function needTooltip(bar: PanelBar, uiString: UiString): string {
   if (bar.need === undefined) return `${bar.label}: ${bar.hover}`;
   return formatMessage(messages().hud.settlerPanel.orderTooltip, {
     value: bar.hover,
-    order: messages().actionRing[NEED_ORDER[bar.need]],
+    order: actionLabel(NEED_ORDER[bar.need], uiString),
   });
 }
 
@@ -43,7 +45,7 @@ export function createNeedsSection(deps: SettlerPanelDeps, entity: () => number)
   const showChip = (): void => {
     const bar = hovered === null ? undefined : bars[hovered.index];
     if (hovered === null || bar === undefined) deps.tooltip.hide();
-    else deps.tooltip.show(hovered.clientX, hovered.clientY, needTooltip(bar));
+    else deps.tooltip.show(hovered.clientX, hovered.clientY, needTooltip(bar, deps.uiString));
   };
   const hover = (index: number, event: MouseEvent | null): void => {
     hovered = event === null ? null : { index, clientX: event.clientX, clientY: event.clientY };
@@ -72,7 +74,7 @@ export function createNeedsSection(deps: SettlerPanelDeps, entity: () => number)
       }
       bars = model.bars;
       model.bars.forEach((bar, index) => {
-        rows[index]?.update({ label: bar.label, pct: bar.pct, tooltip: needTooltip(bar) });
+        rows[index]?.update({ label: bar.label, pct: bar.pct, tooltip: needTooltip(bar, deps.uiString) });
       });
       if (hovered !== null) showChip();
     },

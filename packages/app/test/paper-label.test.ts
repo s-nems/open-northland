@@ -5,7 +5,7 @@ import { messages } from '../src/i18n/index.js';
 /** A paper's display name: the decoded `misclogic` row with its subject filled in, else the catalog's. */
 
 const naming: PaperNaming = {
-  uiString: (_table, id, fallback) => (id === 182 ? "Umieść '%s'" : fallback),
+  uiString: (_table, id, fallback) => (id === 182 ? 'fixture building [%s]' : fallback),
   buildingLabel: (typeId) => (typeId === 41 ? 'Wieża' : undefined),
   jobLabel: () => 'Kowal',
   goodLabel: () => undefined,
@@ -13,7 +13,7 @@ const naming: PaperNaming = {
 
 describe('paperLabel', () => {
   it('fills the decoded row with the named house', () => {
-    expect(paperLabel({ kind: 'placeHouse', param: 41 }, naming)).toBe("Umieść 'Wieża'");
+    expect(paperLabel({ kind: 'placeHouse', param: 41 }, naming)).toBe('fixture building [Wieża]');
   });
 
   it('falls back to the catalog row, naming an unknown subject by id', () => {

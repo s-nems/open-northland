@@ -1,5 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import type { NeedKind } from '@open-northland/sim';
+import type { UiString } from '../../../content/gui-gfx.js';
 import type { EquipSlotRef } from '../../details-panel/model/index.js';
 import type { BuildingHoverModel } from '../../hover-card/model.js';
 import type { ResidentRow } from '../../tool-panel/residents/rows.js';
@@ -77,6 +78,7 @@ export interface SettlerPanelActions {
 
 /** What the panel reads besides its model. */
 export interface SettlerPanelDeps {
+  readonly uiString: UiString;
   readonly plane: HTMLElement;
   readonly actions: SettlerPanelActions;
   readonly icons: GoodIconPainter;

@@ -161,10 +161,18 @@ describe('the settler panel’s rows', () => {
   });
 
   it('names the ring order a need row gives, and none for health', () => {
-    expect(needTooltip({ label: 'Sen', pct: 40, hover: '40%', need: 'fatigue' })).toContain(
-      messages().actionRing.sleep,
-    );
-    expect(needTooltip({ label: 'Zdrowie', pct: 40, hover: '4/10' })).toBe('Zdrowie: 4/10');
+    expect(
+      needTooltip(
+        { label: 'Sen', pct: 40, hover: '40%', need: 'fatigue' },
+        (_table, _id, fallback) => fallback,
+      ),
+    ).toContain(messages().actionRing.sleep);
+    expect(
+      needTooltip({ label: 'Sen', pct: 40, hover: '40%', need: 'fatigue' }, () => 'fixture rest order'),
+    ).toContain('fixture rest order');
+    expect(
+      needTooltip({ label: 'Zdrowie', pct: 40, hover: '4/10' }, (_table, _id, fallback) => fallback),
+    ).toBe('Zdrowie: 4/10');
   });
 
   it('offers the rings to a person free to marry and fades them while the wedding runs', () => {

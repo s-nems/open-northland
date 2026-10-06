@@ -1,11 +1,12 @@
 import type { UiCue } from '@open-northland/audio';
+import type { UiString } from '../../../content/gui-gfx.js';
 import {
   type ActionCommand,
   type ActionOrderId,
   type ActionRingLayout,
   hitTestActionRing,
 } from '../../../hud/action-ring/index.js';
-import { messages } from '../../../i18n/index.js';
+import { actionLabel } from '../../../hud/action-ring/labels.js';
 import type { MenuMode } from './types.js';
 
 /**
@@ -13,6 +14,7 @@ import type { MenuMode } from './types.js';
  * callbacks are the mount's seams.
  */
 export interface ActionRingInputContext {
+  readonly uiString: UiString;
   /** The button's name beside the cursor, at a client point. */
   readonly showTip: (text: string, clientX: number, clientY: number) => void;
   readonly hideTip: () => void;
@@ -68,7 +70,7 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     },
     hover(command, event): void {
       if (command === null || event === null || ctx.getMode() === 'closed') ctx.hideTip();
-      else ctx.showTip(messages().actionRing[command.id], event.clientX, event.clientY);
+      else ctx.showTip(actionLabel(command.id, ctx.uiString), event.clientX, event.clientY);
     },
   };
 };

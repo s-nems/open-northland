@@ -4,6 +4,7 @@ import type { Camera } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../../../catalog/professions.js';
+import type { UiString } from '../../../content/gui-gfx.js';
 import type { ActionOrderId } from '../../../hud/action-ring/index.js';
 import type { SelectionCentre } from './selection-centre.js';
 
@@ -11,6 +12,7 @@ import type { SelectionCentre } from './selection-centre.js';
 export type MenuMode = 'closed' | 'menu' | 'jobs';
 
 export interface SettlerActionsOptions {
+  readonly uiString: UiString;
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   /** The resolved HUD scale, multiplied into the menu geometry. May be fractional. */

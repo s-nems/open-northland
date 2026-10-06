@@ -77,6 +77,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
     // Every order bakes once; each frame's layout places only the subset the selection allows.
     const visuals = createActionRingVisuals({
+      uiString: opts.uiString,
       app,
       art,
       scale,
@@ -228,6 +229,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
     // Click routing is order-independent: unit-controls asks `claimsPointer` before world picking.
     const input = createActionRingInput({
+      uiString: opts.uiString,
       showTip: (text, clientX, clientY) => {
         tooltip.textContent = text;
         tooltip.style.left = `${clientX + TIP_OFFSET.x}px`;

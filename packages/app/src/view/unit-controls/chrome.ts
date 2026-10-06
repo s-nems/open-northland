@@ -211,6 +211,7 @@ export async function createUnitChrome(
   });
   // Mounted once on the plane, which scales as a whole: a HUD scale change remounts only the Pixi parts.
   const panelDeps = {
+    uiString: opts.domHud.uiString,
     plane: opts.domHud.plane,
     icons,
     residents: opts.domHud.residents,
@@ -422,6 +423,7 @@ export async function createUnitChrome(
 
   const mountActions = (uiscale: number): Promise<SettlerActions> =>
     mountSettlerActions({
+      uiString: opts.domHud.uiString,
       app: opts.app,
       canvas: opts.canvas,
       uiscale,
