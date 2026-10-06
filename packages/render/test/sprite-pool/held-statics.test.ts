@@ -139,6 +139,100 @@ describe('SpritePool - held self-contained entities', () => {
   });
 });
 
+describe('SpritePool - what releases a held tree', () => {
+  const start = () =>
+    mirrorOf([entity(SETTLER, 1, 1, walker), entity(TREE, 4, 1, { Resource: { goodType: 1 } })]);
+  /** A pool two ticks in, the tree held since the second. */
+  const held = (fields: Partial<PoolFrame> = {}) => {
+    const mirror = start();
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheet);
+    pool.reconcile(frameOf(mirror.snapshot(), fields));
+    pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, 2, walker)]), fields));
+    return { mirror, layer, pool };
+  };
+  const nextTick = (mirror: SnapshotMirror) => advance(mirror, [moved(SETTLER, 3, walker)]);
+
+  it.each<[string, Partial<PoolFrame>]>([
+    ['the wind rising', { wind: { strength: 1, direction: 0, gust: 0 } }],
+    ['the motion setting flipping', { environmentMotion: false }],
+    ['an assignment highlight', { highlight: new Map([[TREE, true]]) }],
+    ['another selection style', { selectionStyle: 'pulse' }],
+  ])('presents it again on %s', (_name, change) => {
+    const { mirror, pool } = held({ environmentMotion: true });
+    const refs = presentedRefs();
+    pool.reconcile(frameOf(nextTick(mirror), { environmentMotion: true, ...change }));
+    expect(refs()).toContain(TREE);
+  });
+
+  it('presents it to clear its emphasis once deselected, and holds it again after', () => {
+    const { mirror, pool } = held();
+    const selected = { selection: new Set([TREE]), selectionStyle: 'outline' as const };
+    pool.reconcile(frameOf(nextTick(mirror), selected));
+    const refs = presentedRefs();
+    pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, 4, walker)])));
+    expect(refs()).toContain(TREE);
+    const later = presentedRefs();
+    pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, 5, walker)])));
+    expect(later().filter((ref) => ref === TREE).length).toBe(refs().filter((ref) => ref === TREE).length);
+  });
+
+  it('detaches it once a delta removes it', () => {
+    const { mirror, layer, pool } = held();
+    pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, 3, walker)], [TREE])));
+    expect(pool.drawnItems().map((item) => item.ref)).toEqual([SETTLER]);
+    expect(layer.children.length).toBe(1);
+    expect(pool.boundsOf(TREE)).toBeUndefined();
+  });
+});
+
+describe('SpritePool - a still frame', () => {
+  const start = () =>
+    mirrorOf([
+      entity(SETTLER, 1, 1, walker),
+      entity(TREE, 4, 1, { Resource: { goodType: 1 } }),
+      entity(POST, 5, 1, { Signpost: { owner: 0 } }),
+    ]);
+  /** A pool whose last pass drew a spliced tick, so the next frame of it at another alpha may be still. */
+  const settled = (fields: Partial<PoolFrame> = {}) => {
+    const mirror = start();
+    const pool = new SpritePool(new Container(), new TextureCache(), sheet);
+    pool.reconcile(frameOf(mirror.snapshot(), fields));
+    const snapshot = advance(mirror, [moved(SETTLER, 2, walker)]);
+    pool.reconcile(frameOf(snapshot, fields));
+    return { pool, snapshot };
+  };
+
+  it('presents only the entities that move with the frame clock', () => {
+    const { pool, snapshot } = settled();
+    const refs = presentedRefs();
+    pool.reconcile(frameOf(snapshot, { alpha: 0.5 }));
+    expect(refs()).not.toContain(TREE);
+    expect(refs()).not.toContain(POST);
+  });
+
+  // A still signpost is visited by every full pass and by no still frame.
+  it.each<[string, Partial<PoolFrame>]>([
+    ['a highlight change', { highlight: new Map([[TREE, false]]) }],
+    ['a camera move', { camera: { offsetX: 7, offsetY: 0 } }],
+  ])('runs a full pass on %s', (_name, change) => {
+    const { pool, snapshot } = settled();
+    const refs = presentedRefs();
+    pool.reconcile(frameOf(snapshot, { alpha: 0.5, ...change }));
+    expect(refs()).toContain(POST);
+  });
+
+  it('clears the outline of an entity deselected between two still frames', () => {
+    const selected = { selection: new Set([TREE]), selectionStyle: 'outline' as const };
+    const { pool, snapshot } = settled(selected);
+    const pooled = (pool as unknown as { pool: Map<number, { container: Container }> }).pool.get(TREE);
+    const outlined = () => (pooled?.container.children ?? []).some((c) => c.constructor === Container);
+    expect(outlined()).toBe(true);
+    pool.reconcile(frameOf(snapshot, { alpha: 0.5 }));
+    expect(outlined()).toBe(false);
+  });
+});
+
 describe('SpritePool - a still entity of a kind every build re-emits', () => {
   /** More trees than the death reap sweeps per frame, so only the detach scan can take the post down. */
   const CROWD = 300;
