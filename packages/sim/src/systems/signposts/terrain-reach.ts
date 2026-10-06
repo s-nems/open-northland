@@ -1,5 +1,12 @@
 import type { ContentSet } from '@open-northland/data';
+import {
+  GOODS_SEARCH_RANGE_NODES,
+  Position,
+  SIGNPOST_LINK_RANGE_NODES,
+  Signpost,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import { floodInspected, floodReach, type ReachSearch } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { type WalkBlockMask, walkBlockMask } from '../footprint/walk-block-mask.js';
@@ -111,6 +118,21 @@ export function postTerrainReach(
   const found = terrainReach(world, content, terrain, hx, hy, range, held.get(post));
   held.set(post, found);
   return found;
+}
+
+/**
+ * Flood every standing post's reach before the first tick of a restored world, where a load pause is
+ * expected: a held reach is only returned while it equals a fresh flood, so warming changes no answer,
+ * and the first link pass and goods searches no longer flood every post inside one tick.
+ */
+export function warmPostReaches(world: World, content: ContentSet, terrain: TerrainGraph): void {
+  for (const post of world.query(Signpost, Position)) {
+    const p = world.get(post, Position);
+    const hx = nodeHxOfPosition(p.x, p.y);
+    const hy = nodeHyOfPosition(p.y);
+    postTerrainReach(world, content, terrain, post, hx, hy, SIGNPOST_LINK_RANGE_NODES);
+    postTerrainReach(world, content, terrain, post, hx, hy, GOODS_SEARCH_RANGE_NODES);
+  }
 }
 
 /** Forget the reaches of posts no longer alive. */
