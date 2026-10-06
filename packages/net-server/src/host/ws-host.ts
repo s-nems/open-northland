@@ -15,6 +15,8 @@ import { type Connection, DEFAULT_MAX_ROOMS, Relay, type RelayLog } from '../rel
 import {
   ControlPings,
   DEFAULT_MAX_CONNECTIONS,
+  type EncodedMessage,
+  encodeText,
   RecoveryBudget,
   SocketBudget,
   sendBounded,
@@ -110,13 +112,13 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
     uptimeSeconds: Math.floor((performance.now() - startedAt) / MS_PER_SECOND),
   });
   // A broadcast hands every member the same object; it is serialised once.
-  const encoded = new WeakMap<ServerMessage, string>();
-  const encode = (message: ServerMessage): string => {
+  const encoded = new WeakMap<ServerMessage, EncodedMessage>();
+  const encode = (message: ServerMessage): EncodedMessage => {
     const known = encoded.get(message);
     if (known !== undefined) return known;
-    const text = JSON.stringify(message);
-    encoded.set(message, text);
-    return text;
+    const body = encodeText(JSON.stringify(message));
+    encoded.set(message, body);
+    return body;
   };
   const server = createServer(
     {

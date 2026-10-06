@@ -61,28 +61,38 @@ export class ControlPings {
   }
 }
 
+export interface EncodedMessage {
+  readonly data: string | Buffer;
+  readonly byteLength: number;
+}
+
+/** A broadcast shares its UTF-8 backing buffer across recipients as well as its JSON encoding. */
+export function encodeText(text: string): EncodedMessage {
+  const byteLength = Buffer.byteLength(text);
+  return { data: byteLength <= TEXT_FRAGMENT_BYTES ? text : Buffer.from(text), byteLength };
+}
+
 export function sendBounded(
   socket: Pick<WebSocket, 'readyState' | 'OPEN' | 'bufferedAmount' | 'send' | 'ping' | 'terminate'>,
-  text: string,
+  message: EncodedMessage,
   ping: () => void = () => socket.ping(),
 ): void {
   if (socket.readyState !== socket.OPEN) return;
-  const byteLength = Buffer.byteLength(text);
+  const { data, byteLength } = message;
   const fragments = Math.max(1, Math.ceil(byteLength / TEXT_FRAGMENT_BYTES));
   const overhead = fragments * MAX_FRAME_HEADER_BYTES + (fragments - 1) * MAX_CONTROL_FRAME_BYTES;
   if (socket.bufferedAmount + byteLength + overhead > MAX_BUFFERED_BYTES) {
     socket.terminate();
     return;
   }
-  if (byteLength <= TEXT_FRAGMENT_BYTES) {
-    socket.send(text);
+  if (typeof data === 'string') {
+    socket.send(data);
     return;
   }
-  const bytes = Buffer.from(text);
-  for (let offset = 0; offset < bytes.length; offset += TEXT_FRAGMENT_BYTES) {
-    const end = Math.min(offset + TEXT_FRAGMENT_BYTES, bytes.length);
-    const fin = end === bytes.length;
-    socket.send(bytes.subarray(offset, end), { binary: false, fin });
+  for (let offset = 0; offset < data.length; offset += TEXT_FRAGMENT_BYTES) {
+    const end = Math.min(offset + TEXT_FRAGMENT_BYTES, data.length);
+    const fin = end === data.length;
+    socket.send(data.subarray(offset, end), { binary: false, fin });
     if (!fin) ping();
   }
 }

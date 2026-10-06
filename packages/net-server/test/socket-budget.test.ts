@@ -5,6 +5,7 @@ import {
   BYTE_BURST,
   BYTES_PER_SECOND,
   ControlPings,
+  encodeText,
   MAX_BUFFERED_BYTES,
   MESSAGE_BURST,
   MESSAGES_PER_SECOND,
@@ -103,7 +104,7 @@ describe('socket traffic budgets', () => {
       terminate: vi.fn(),
     };
     const healthy = { ...slow, bufferedAmount: 0, send: vi.fn(), terminate: vi.fn() };
-    for (const socket of [slow, healthy]) sendBounded(socket, 'ą');
+    for (const socket of [slow, healthy]) sendBounded(socket, encodeText('ą'));
     expect(slow.send).not.toHaveBeenCalled();
     expect(slow.terminate).toHaveBeenCalledOnce();
     expect(healthy.send).toHaveBeenCalledWith('ą');
@@ -125,7 +126,7 @@ describe('socket traffic budgets', () => {
         ping: vi.fn(),
         terminate: vi.fn(),
       };
-      sendBounded(socket, text);
+      sendBounded(socket, encodeText(text));
       expect(socket.terminate).toHaveBeenCalledOnce();
       expect(socket.send).not.toHaveBeenCalled();
       expect(socket.ping).not.toHaveBeenCalled();
@@ -152,7 +153,7 @@ describe('socket traffic budgets', () => {
       });
       // A fragment ends inside a four-byte UTF-8 character.
       const text = 'x'.repeat(512 * 1024 - 1) + '🛶ą'.repeat(100_000);
-      sendBounded(socket, text);
+      sendBounded(socket, encodeText(text));
       expect(await received).toEqual({ text, binary: false });
       expect(events[0]).toBe('ping');
       expect(events.at(-1)).toBe('message');
@@ -164,5 +165,43 @@ describe('socket traffic budgets', () => {
         server.close((error) => (error === undefined ? resolve() : reject(error)));
       });
     }
+  });
+
+  it('shares one large UTF-8 buffer among eight recipients while retaining separate framing', () => {
+    const text = '🛶ą'.repeat(100_000);
+    const message = encodeText(text);
+    const backing = new Set<ArrayBufferLike>();
+    for (let recipient = 0; recipient < 8; recipient++) {
+      const fragments: Buffer[] = [];
+      const endings: boolean[] = [];
+      const socket = {
+        OPEN: 1 as const,
+        readyState: 1 as const,
+        bufferedAmount: 0,
+        send: (data: unknown, options?: unknown) => {
+          if (!Buffer.isBuffer(data)) throw new Error('large text must use a shared buffer');
+          if (
+            typeof options !== 'object' ||
+            options === null ||
+            !('binary' in options) ||
+            !('fin' in options)
+          )
+            throw new Error('missing fragment options');
+          fragments.push(data);
+          backing.add(data.buffer);
+          expect(options.binary).toBe(false);
+          endings.push(options.fin === true);
+        },
+        ping: vi.fn(),
+        terminate: vi.fn(),
+      };
+      sendBounded(socket, message);
+      expect(Buffer.concat(fragments).toString()).toBe(text);
+      expect(endings).toEqual([false, false, false, false, true]);
+      expect(socket.ping).toHaveBeenCalledTimes(4);
+      expect(socket.terminate).not.toHaveBeenCalled();
+    }
+    expect(backing.size).toBe(1);
+    expect([...backing].reduce((bytes, buffer) => bytes + buffer.byteLength, 0)).toBe(600_000);
   });
 });
