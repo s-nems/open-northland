@@ -57,6 +57,10 @@ const SORT_KEYS: readonly ResidentSortKey[] = ['name', 'profession', 'workplace'
  *  px). */
 const ROW_FIGURE_ZOOM = 0.72;
 const ROW_FIGURE_FEET_INSET = 2;
+/** Rows attached beyond each edge of the visible strip, so a wheel turn shows written rows at once. */
+const ROW_MARGIN = 8;
+/** Rows attached before a row's height is known: enough to fill the list's first view. */
+const ROWS_BEFORE_MEASURE = 32;
 /** Design px of a product's icon after the profession. */
 const PRODUCT_ICON_PX = 20;
 /** Icons the profession column has room for beside a long trade name; the rest read as "+N". */
@@ -319,9 +323,21 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   foot.append(selectShown);
   window.body.append(find, groupRow, lackRow, sheet, foot);
 
-  // One row per listed person, kept while they live; a tick rewrites only the rows that changed.
+  // One row view per listed person met on screen, kept while they live. Only the rows in and near the
+  // visible strip are in the list, between two spacers that keep the scroll height of the whole: a tick
+  // rewrites only attached rows that changed, and no frame reads layout.
   const views = new Map<number, RowView>();
   let shownIds: readonly number[] = [];
+  let listedRows: readonly ResidentRow[] = [];
+  const padTop = element('li', 'on-res-pad');
+  const padBottom = element('li', 'on-res-pad');
+  /** The attached rows, indices into `listedRows`, both ends inclusive. */
+  let attached = { first: 0, last: -1 };
+  /** A row's height and the list's visible height, layout px; 0 until measured on a shown list. */
+  let rowPx = 0;
+  let viewPx = 0;
+  /** The row figures' box, read with the heights. */
+  let figureBox: FigureBox | null = null;
   let rows: readonly ResidentRow[] | null = null;
   let shownSelection = -1;
   let listedAnswers = -1;
@@ -533,16 +549,23 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     setHidden(picked, count === 0);
   };
 
-  /** Filter, order and write the list from the rows in hand; focus and scroll stay where they were. */
-  const relist = (): void => {
-    const all = rows ?? [];
-    const listing = listResidents(all, state.filters, locale, deps.canBecome);
-    const listed = sortResidents(listing.shown, state.sort, locale);
-    const alive = new Set<number>();
-    for (const row of all) alive.add(row.id);
-    for (const id of views.keys()) if (!alive.has(id)) views.delete(id);
+  /** The rows to attach for the list's scroll: the visible strip and a margin either side. */
+  const rangeFor = (count: number): { first: number; last: number } => {
+    if (rowPx <= 0) return { first: 0, last: Math.min(count, ROWS_BEFORE_MEASURE) - 1 };
+    const first = Math.max(0, Math.floor(state.scrollTop / rowPx) - ROW_MARGIN);
+    const last = Math.min(count - 1, Math.ceil((state.scrollTop + viewPx) / rowPx) + ROW_MARGIN);
+    return { first, last };
+  };
+
+  /** Attach the rows the scroll shows, written from the listed rows; `reordered` forces the list's
+   *  children to be laid again although the range held. */
+  const attach = (reordered: boolean): void => {
+    const range = rangeFor(listedRows.length);
+    const moved = reordered || range.first !== attached.first || range.last !== attached.last;
     const items: HTMLLIElement[] = [];
-    for (const row of listed) {
+    for (let at = range.first; at <= range.last; at++) {
+      const row = listedRows[at];
+      if (row === undefined) continue;
       let view = views.get(row.id);
       if (view === undefined) {
         view = buildRow(row.id);
@@ -551,13 +574,43 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       writeRow(view, row);
       items.push(view.item);
     }
-    const ids = listed.map((row) => row.id);
-    if (ids.length !== shownIds.length || ids.some((id, index) => id !== shownIds[index])) {
+    if (moved) {
       // Re-appending a row drops its focus; hand it back without moving the scroll.
       const focused = document.activeElement;
-      list.replaceChildren(...items);
+      padTop.style.height = `${range.first * rowPx}px`;
+      padBottom.style.height = `${Math.max(0, listedRows.length - range.last - 1) * rowPx}px`;
+      list.replaceChildren(padTop, ...items, padBottom);
       if (focused instanceof HTMLElement && list.contains(focused)) focused.focus({ preventScroll: true });
+      attached = range;
+      figuresStale = true;
     }
+  };
+
+  /** Read a row's height, the list's and the figure box once the list shows rows: on open and when the
+   *  window moved, never per frame. */
+  const measure = (): void => {
+    const first = list.querySelector<HTMLElement>('.on-res-row');
+    const canvas = first?.querySelector('canvas');
+    if (first === null || canvas === null || canvas === undefined) return;
+    rowPx = first.parentElement?.offsetHeight ?? 0;
+    viewPx = list.clientHeight;
+    const pixelScale =
+      (canvas.getBoundingClientRect().width / Math.max(1, canvas.offsetWidth)) * devicePixelRatio;
+    figureBox = { width: canvas.clientWidth, height: canvas.clientHeight, pixelScale };
+    attach(false);
+  };
+
+  /** Filter, order and write the list from the rows in hand; focus and scroll stay where they were. */
+  const relist = (): void => {
+    const all = rows ?? [];
+    const listing = listResidents(all, state.filters, locale, deps.canBecome);
+    const listed = sortResidents(listing.shown, state.sort, locale);
+    const alive = new Set<number>();
+    for (const row of all) alive.add(row.id);
+    for (const id of views.keys()) if (!alive.has(id)) views.delete(id);
+    listedRows = listed;
+    const ids = listed.map((row) => row.id);
+    attach(ids.length !== shownIds.length || ids.some((id, index) => id !== shownIds[index]));
     shownIds = ids;
     for (const [key, control] of heads) {
       // The lacks key opens with the neediest, which reads as a descending column.
@@ -599,39 +652,44 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   // Kept live: a hidden element reads its scroll as 0, so the close cannot read it back.
   list.addEventListener('scroll', () => {
     state = { ...state, scrollTop: list.scrollTop };
+    attach(false);
     figuresStale = true;
   });
 
-  /** The figures of the rows inside the list's visible strip. */
+  /** The figures of the rows inside the list's visible strip, found by arithmetic on the scroll. */
   let visibleSlots: readonly FigureSlot[] = NO_FIGURE_SLOTS;
   const measureVisible = (): void => {
     figuresStale = false;
-    const top = list.scrollTop;
-    const bottom = top + list.clientHeight;
-    const slots: FigureSlot[] = [];
-    let box: FigureBox | null = null;
-    for (const id of shownIds) {
-      const view = views.get(id);
-      if (view === undefined) continue;
-      const { item, canvas } = view;
-      if (item.offsetTop + item.offsetHeight <= top) continue;
-      if (item.offsetTop >= bottom) break;
-      // One rect read serves every row: the plane's scale is theirs.
-      box ??= {
-        width: canvas.clientWidth,
-        height: canvas.clientHeight,
-        pixelScale:
-          (canvas.getBoundingClientRect().width / Math.max(1, canvas.offsetWidth)) * devicePixelRatio,
-      };
-      slots.push({ entity: id, canvas, box, zoom: ROW_FIGURE_ZOOM, feetInset: ROW_FIGURE_FEET_INSET });
+    const box = figureBox;
+    if (box === null || box.pixelScale <= 0 || rowPx <= 0) {
+      visibleSlots = NO_FIGURE_SLOTS;
+      return;
     }
-    visibleSlots = box !== null && box.pixelScale > 0 ? slots : NO_FIGURE_SLOTS;
+    const slots: FigureSlot[] = [];
+    const first = Math.floor(state.scrollTop / rowPx);
+    const last = Math.min(listedRows.length - 1, Math.ceil((state.scrollTop + viewPx) / rowPx) - 1);
+    for (let at = first; at <= last; at++) {
+      const row = listedRows[at];
+      const view = row === undefined ? undefined : views.get(row.id);
+      if (row === undefined || view === undefined) continue;
+      slots.push({
+        entity: row.id,
+        canvas: view.canvas,
+        box,
+        zoom: ROW_FIGURE_ZOOM,
+        feetInset: ROW_FIGURE_FEET_INSET,
+      });
+    }
+    visibleSlots = slots;
   };
 
   const placeWindow = centralWindowPlacer(window, deps.plane, RESIDENTS_WINDOW_W);
   const place = (): void => {
     // A moved plane shows other rows, at another pixel scale.
-    if (placeWindow()) figuresStale = true;
+    if (placeWindow()) {
+      measure();
+      figuresStale = true;
+    }
   };
 
   /** The last tick the window was seen open; a frame's refresh keeps it current, so it reads as the
@@ -648,6 +706,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     window.open();
     place(); // the list needs its height bound before a restored scroll can land
     relist();
+    measure();
     list.scrollTop = state.scrollTop;
   };
 
@@ -680,6 +739,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       if (!window.isOpen()) return;
       relist();
       list.scrollTop = next.scrollTop;
+      attach(false);
     },
     onDismiss: window.onDismiss,
     dispose: window.dispose,
