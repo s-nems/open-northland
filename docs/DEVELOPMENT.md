@@ -431,7 +431,9 @@ defaults to 2k ticks. It prints its per-system report rather than storing it: pr
 inflated by the sampler and must never become a `bench:compare` baseline. `ON_BENCH_PROFILE=alloc`
 samples allocations instead of CPU, garbage included: the same tables in kilobytes, the kilobytes a
 tick allocates, and a `.heapprofile` for DevTools' Memory panel. It answers which function makes the
-garbage the `bench:map` GC columns pay for.
+garbage the `bench:map` GC columns pay for. The profile lists every sample, so a late-game run that
+allocates tens of gigabytes overflows the inspector's reply: widen the sampling with
+`ON_BENCH_ALLOC_INTERVAL` (bytes between samples, default 4096) or profile fewer ticks.
 
 Both real-map benchmarks take a checkpoint so a late-game hotspot hunt does not rebuild the
 settlement every time:

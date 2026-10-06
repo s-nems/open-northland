@@ -16,8 +16,9 @@ import { formatLocation, resolveLocation } from './profile-location.js';
 const SAMPLING_INTERVAL_US = 100;
 const US_PER_MS = 1000;
 /** Bytes between allocation samples, a Poisson mean. V8's 32 KB default leaves a small tick's
- *  allocations unsampled. */
-const ALLOCATION_SAMPLING_INTERVAL_BYTES = 4096;
+ *  allocations unsampled. The profile lists every sample, so a run allocating tens of gigabytes
+ *  needs a wider interval to stay under V8's string limit when the inspector serializes it. */
+export const DEFAULT_ALLOCATION_SAMPLING_INTERVAL_BYTES = 4096;
 const BYTES_PER_KB = 1024;
 const ANONYMOUS = '(anonymous)';
 /** V8's synthetic top frame: its total is the whole profile, so it ranks nothing. */
@@ -91,13 +92,14 @@ interface AllocationSamplingParameters extends HeapProfiler.StartSamplingParamet
 /** Sample every allocation one run makes, collected or not. Process-wide like the CPU sampler. */
 export async function captureAllocationProfile<T>(
   run: () => Promise<T>,
+  samplingIntervalBytes: number,
 ): Promise<{ readonly profile: HeapProfiler.SamplingHeapProfile; readonly result: T }> {
   const session = new Session();
   session.connect();
   try {
     await session.post('HeapProfiler.enable');
     const parameters: AllocationSamplingParameters = {
-      samplingInterval: ALLOCATION_SAMPLING_INTERVAL_BYTES,
+      samplingInterval: samplingIntervalBytes,
       includeObjectsCollectedByMajorGC: true,
       includeObjectsCollectedByMinorGC: true,
     };

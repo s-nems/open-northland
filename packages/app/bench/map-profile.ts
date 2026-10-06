@@ -1,9 +1,10 @@
-import { stringEnv } from './knobs.js';
+import { intEnv, stringEnv } from './knobs.js';
 import { knobRecord, mapBenchKnobs, mapBenchWorld, worldSourceLines } from './map-world.js';
 import { measureWindows } from './measure.js';
 import {
   captureAllocationProfile,
   captureCpuProfile,
+  DEFAULT_ALLOCATION_SAMPLING_INTERVAL_BYTES,
   type ProfileSummary,
   summarizeAllocations,
   summarizeProfile,
@@ -53,7 +54,8 @@ async function profiled<T>(
       return { raw: profile, summary: summarizeProfile(profile), result };
     }
     case 'alloc': {
-      const { profile, result } = await captureAllocationProfile(run);
+      const interval = intEnv('ON_BENCH_ALLOC_INTERVAL', DEFAULT_ALLOCATION_SAMPLING_INTERVAL_BYTES, 1);
+      const { profile, result } = await captureAllocationProfile(run, interval);
       return { raw: profile, summary: summarizeAllocations(profile), result };
     }
   }
