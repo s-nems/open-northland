@@ -243,6 +243,9 @@ export class SpritePool {
     this.frameId++;
     this.portrait.release();
     this.reviseHolds(scene, frame);
+    // A kept bind placed its paletted layers for the camera it was bound under. Re-placed before the
+    // visits, so a selection outline copies where its body draws under this camera.
+    if (this.epoch.viewMoved) this.placePaletted(frame.camera, frame.screenW, frame.screenH);
     // The cached build of an unchanged scene: last frame's entities, damage and ships all still hold.
     const repeated = scene.items === this.lastItems;
     if (!repeated) this.collectOverlays(scene.items);
@@ -287,8 +290,6 @@ export class SpritePool {
       this.attached.delete(pe);
     }
 
-    // A kept bind placed its paletted layers for the camera it was bound under.
-    if (this.epoch.viewMoved) this.placePaletted(frame.camera, frame.screenW, frame.screenH);
     this.reap(scene.liveRefs);
     this.sheet?.palette?.flush();
   }
