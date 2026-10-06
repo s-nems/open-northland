@@ -61,9 +61,19 @@ export const AI_PLAYER_MODULES: readonly AiPlayerModule[] = [
 ];
 
 /**
+ * Ticks between consecutive modules of one seat's decision: module `k` runs `k` phases after the seat's
+ * slot, so a decision tick costs its dearest module rather than all of them, and the six modules of a seat
+ * fit in the seven ticks before the next seat's slot. Each module then reads the world after the commands
+ * of the modules before it have applied (commands apply on the next tick's command pass): the road module,
+ * after the build order, sees the site that decision placed standing. Authored.
+ */
+export const AI_MODULE_PHASE_TICKS = 1;
+
+/**
  * One tick of the strategic AI over `modules`. Seats run in ascending player order (the canonical
- * decision order); a seat is due when the tick lands on its slot ({@link aiDecisionDue}), so the seats
- * spread their decision cost across the interval instead of spiking on one tick or a run of them.
+ * decision order); a seat's module is due when the tick lands on its slot ({@link aiDecisionDue}) plus
+ * the module's phase, so the seats and their modules spread their decision cost across the interval
+ * instead of spiking on one tick or a run of them.
  */
 export function runAiPlayerModules(
   world: World,
@@ -75,10 +85,12 @@ export function runAiPlayerModules(
   for (const e of world.query(AiPlayer)) seats.push(world.get(e, AiPlayer));
   seats.sort((a, b) => a.player - b.player);
   for (const seat of seats) {
-    if (!aiDecisionDue(ctx.tick, seat.player)) continue;
-    // The authority gate would refuse a dead seat's orders anyway; skipping keeps them out of the log.
-    if (isPlayerDead(world, seat.player)) continue;
-    for (const module of modules) {
+    for (let phase = 0; phase < modules.length; phase++) {
+      const module = modules[phase];
+      if (module === undefined || !aiDecisionDue(ctx.tick - phase * AI_MODULE_PHASE_TICKS, seat.player))
+        continue;
+      // The authority gate would refuse a dead seat's orders anyway; skipping keeps them out of the log.
+      if (isPlayerDead(world, seat.player)) continue;
       const decide = seat.modules[module.id] ? module.run : seat.scripted ? module.whileDisabled : undefined;
       if (decide === undefined) continue;
       for (const command of decide(world, ctx, seat.player)) {

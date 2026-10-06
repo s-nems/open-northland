@@ -6,6 +6,8 @@ import { type Entity, World } from '../../src/ecs/world.js';
 import { EventBuffer, Rng, replay, Simulation, stepReplaying } from '../../src/index.js';
 import {
   AI_DECISION_INTERVAL_TICKS,
+  AI_MODULE_PHASE_TICKS,
+  AI_PLAYER_MODULES,
   type AiPlayerModule,
   aiDecisionDue,
   runAiPlayerModules,
@@ -263,11 +265,42 @@ describe('AiPlayerSystem - cadence, stagger, and module gates', () => {
         return [];
       },
     };
-    for (let tick = 1; tick <= AI_DECISION_INTERVAL_TICKS; tick++) {
+    // Past the tick-0 decision's second module, and one phase past the interval, so the tick-48 decision's
+    // second module runs too.
+    for (
+      let tick = 2 * AI_MODULE_PHASE_TICKS;
+      tick <= AI_DECISION_INTERVAL_TICKS + AI_MODULE_PHASE_TICKS;
+      tick++
+    ) {
       runAiPlayerModules(world, ctxAt(tick, commands), [military, house]);
     }
     expect(militaryRuns).toEqual([0]);
     expect(houseRuns).toEqual([OTHER_SEAT, 0]);
+  });
+
+  it('runs each module of a decision on its own tick, no two of seven seats sharing one', () => {
+    const SEATS = 7;
+    const world = worldWithSeats(...Array.from({ length: SEATS }, (_, player) => player));
+    const commands = new CommandQueue();
+    const runs: Array<{ tick: number; player: number; module: number }> = [];
+    const modules = AI_PLAYER_MODULES.map(
+      (_, module): AiPlayerModule => ({
+        id: 'houseBuild',
+        run: (_w, ctx, player) => {
+          runs.push({ tick: ctx.tick, player, module });
+          return [];
+        },
+      }),
+    );
+    for (let tick = AI_DECISION_INTERVAL_TICKS; tick < 2 * AI_DECISION_INTERVAL_TICKS; tick++) {
+      runAiPlayerModules(world, ctxAt(tick, commands), modules);
+    }
+    expect(runs).toHaveLength(SEATS * modules.length);
+    expect(new Set(runs.map((run) => run.tick)).size).toBe(runs.length);
+    for (const run of runs) {
+      const slot = run.tick - run.module * AI_MODULE_PHASE_TICKS;
+      expect(aiDecisionDue(slot, run.player)).toBe(true);
+    }
   });
 
   it('re-aims each collector flag once a round, spreading consecutive holders over its decisions', () => {
