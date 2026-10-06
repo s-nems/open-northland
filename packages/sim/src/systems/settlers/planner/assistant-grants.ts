@@ -130,8 +130,19 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
 /** Each granting player's specs, strongest gear first by content production bonus rather than good id,
  *  with ascending good id as the tie-break (boots carry no rated bonus and sort by id). A granted id
  *  whose content lost its `equip` class is dropped. */
-function collectGrantSpecs(pass: PlannerPass): Map<number, readonly GrantSpec[]> {
+function collectGrantSpecs(pass: PlannerPass): ReadonlyMap<number, readonly GrantSpec[]> {
   const { world, ctx } = pass;
+  const membership = world.componentGeneration(AssistantGrants);
+  const values = world.componentValueGeneration(AssistantGrants);
+  const held = grantSpecMemo.get(world);
+  if (
+    held !== undefined &&
+    held.content === ctx.content &&
+    held.membership === membership &&
+    held.values === values
+  ) {
+    return held.byPlayer;
+  }
   const byPlayer = new Map<number, readonly GrantSpec[]>();
   const goods = contentIndex(ctx.content).goods;
   for (const e of world.canonicalQuery(AssistantGrants)) {
@@ -153,8 +164,20 @@ function collectGrantSpecs(pass: PlannerPass): Map<number, readonly GrantSpec[]>
       specs.map(({ goodType, category }) => ({ goodType, category })),
     );
   }
+  grantSpecMemo.set(world, { content: ctx.content, membership, values, byPlayer });
   return byPlayer;
 }
+
+/** The grant specs of the AssistantGrants generations they were read at, per world. */
+const grantSpecMemo = new WeakMap<
+  World,
+  {
+    readonly content: ContentSet;
+    readonly membership: number;
+    readonly values: number;
+    readonly byPlayer: ReadonlyMap<number, readonly GrantSpec[]>;
+  }
+>();
 
 /**
  * The slot a grant of `spec` would fill, or null when the settler is already covered: a named group
