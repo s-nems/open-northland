@@ -23,9 +23,25 @@ const HEX_DX_ODD = HEX_NEIGHBOUR_OFFSETS.map((c) => footprintCellDx(ODD_ROW, c))
 const HEX_DY = HEX_NEIGHBOUR_OFFSETS.map((c) => c.dy);
 
 /** Per-call scratch shared by every flood and fully reset before use, so it carries no state: the
- *  best cost per node of the flood's window and one bucket of node ids per cost. */
+ *  best cost per node of the flood's window, and the bucket queue as one linked list of entries per
+ *  cost (the first entry per cost, then each entry's node and successor). Typed lists, because an
+ *  array per cost ran up to twice as slow depending on the order the engine warmed the code in. */
 let costScratch = new Uint16Array(0);
-const bucketScratch: number[][] = [];
+let headScratch = new Int32Array(0);
+let entryNodes = new Int32Array(0);
+let entryNext = new Int32Array(0);
+const NO_ENTRY = -1;
+
+/** Doubles the entry lists, keeping the entries written so far. */
+function growEntries(): void {
+  const size = Math.max(1024, 2 * entryNodes.length);
+  const nodes = new Int32Array(size);
+  nodes.set(entryNodes);
+  entryNodes = nodes;
+  const next = new Int32Array(size);
+  next.set(entryNext);
+  entryNext = next;
+}
 
 /** {@link searchReach}'s answer with the box of every node the flood inspected, the only nodes whose
  *  ground, blockers and roads the answer depends on. */
@@ -79,8 +95,10 @@ export function floodReach(
   if (costScratch.length < side * side) costScratch = new Uint16Array(side * side);
   const costs = costScratch;
   costs.fill(budget, 0, side * side);
-  while (bucketScratch.length < budget) bucketScratch.push([]);
-  for (let cost = 0; cost < budget; cost++) (bucketScratch[cost] as number[]).length = 0;
+  if (headScratch.length < budget) headScratch = new Int32Array(budget);
+  const heads = headScratch;
+  heads.fill(NO_ENTRY, 0, budget);
+  let entries = 0;
   const resistances = terrain.walkableResistances();
   const mapWidth = terrain.width;
   const mapHeight = terrain.height;
@@ -89,12 +107,14 @@ export function floodReach(
   let poppedMinY = hy;
   let poppedMaxY = hy;
   costs[reach * side + reach] = 0;
-  (bucketScratch[0] as number[]).push(start);
+  if (entryNodes.length === 0) growEntries();
+  entryNodes[0] = start;
+  entryNext[0] = NO_ENTRY;
+  heads[0] = entries++;
   for (let cost = 0; cost < budget; cost++) {
     // Every push lands in a later bucket, so this one stays fixed while it is walked.
-    const bucket = bucketScratch[cost] as number[];
-    for (let i = 0; i < bucket.length; i++) {
-      const node = bucket[i] as number;
+    for (let entry = heads[cost] as number; entry !== NO_ENTRY; entry = entryNext[entry] as number) {
+      const node = entryNodes[entry] as number;
       const x = node % mapWidth;
       const y = (node - x) / mapWidth;
       if (costs[(y - windowY) * side + x - windowX] !== cost) continue;
@@ -116,7 +136,10 @@ export function floodReach(
         const slot = (ny - windowY) * side + nx - windowX;
         if (nextCost >= (costs[slot] as number)) continue;
         costs[slot] = nextCost;
-        (bucketScratch[nextCost] as number[]).push(id);
+        if (entries === entryNodes.length) growEntries();
+        entryNodes[entries] = id;
+        entryNext[entries] = heads[nextCost] as number;
+        heads[nextCost] = entries++;
       }
     }
   }
