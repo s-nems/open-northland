@@ -140,7 +140,9 @@ function checkQueries(
     if (roll(3) === 0) {
       const x = roll(NODES_W);
       const y = roll(NODES_H);
-      gate = boxGate(x - roll(30), x + roll(30), y - roll(20), y + roll(20), xOf, yOf);
+      // Half the boxes span past the ring cap, so the far fallback runs under a gate too.
+      const [w, h] = roll(2) === 0 ? [30, 20] : [90, 60];
+      gate = boxGate(x - roll(w), x + roll(w), y - roll(h), y + roll(h), xOf, yOf);
     }
     const avoidCell = roll(2) === 0 ? terrain.nodeAt(roll(NODES_W), roll(NODES_H)) : undefined;
     const avoid = avoidCell === undefined ? undefined : (cell: NodeId) => (cell & 3) === (avoidCell & 3);

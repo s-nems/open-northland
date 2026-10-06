@@ -3,7 +3,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import { insertSortedById, removeSortedById } from '../../../core/sorted-id.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
-import type { SpatialGate } from '../../../nav/node-circle.js';
+import type { NodeBox, SpatialGate } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { MapContext } from '../../context.js';
 import { routeRegions } from '../../footprint/index.js';
@@ -413,9 +413,12 @@ export class InteractionCellIndex {
       const e = this.looseList[i];
       const node = e === undefined ? undefined : this.looseNode.get(e);
       if (e === undefined || node === undefined) continue; // every listed candidate has a node
-      const d = Math.abs(terrain.xOf(node) - hx) + Math.abs(terrain.yOf(node) - hy);
+      const x = terrain.xOf(node);
+      const y = terrain.yOf(node);
+      const d = Math.abs(x - hx) + Math.abs(y - hy);
       if (d <= maxRadius) continue; // the rings weighed it already
       if (d - slack > Math.min(bound, best?.distance ?? bound)) continue; // cannot come nearer
+      if (gate !== undefined && !nearBox(gate.bounds, x, y, slack)) continue; // no gate-passing cell in slack
       best = this.weighLoose(e, here, rank, accept, gate, avoid, onSide, best);
     }
     return best;
@@ -533,6 +536,12 @@ export class InteractionCellIndex {
  *  exempt. */
 function vetoed(avoid: ((cell: NodeId) => boolean) | undefined, here: NodeId, cell: NodeId): boolean {
   return avoid !== undefined && cell !== here && avoid(cell);
+}
+
+/** Whether `(x, y)` lies within `slack` of `box` on both axes, as a node within Manhattan `slack` of a
+ *  node of the box does. */
+function nearBox(box: NodeBox, x: number, y: number, slack: number): boolean {
+  return x >= box.minX - slack && x <= box.maxX + slack && y >= box.minY - slack && y <= box.maxY + slack;
 }
 
 /** The ring radius from `(x,y)` covering every node of `gate.bounds`. */
