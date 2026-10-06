@@ -1,56 +1,66 @@
 import type { Container, Graphics } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { type LifeHeart, type LifeHeartFrame, LifeHeartLayer } from '../src/gpu/overlays/heart-layer.js';
+import {
+  heartBelow,
+  type LifeHeart,
+  type LifeHeartFrame,
+  LifeHeartLayer,
+} from '../src/gpu/overlays/heart-layer.js';
 import { ONE, tileToScreen } from '../src/index.js';
 import { drawnGeometry } from './support/fixtures.js';
 
 /**
- * The heart is a life gauge: a rect mask clips the faction-coloured fill to the bottom `life` fraction of
- * the silhouette. Pinned against the full-life mask rather than the shape's constants, so replacing the
- * placeholder art cannot fail these.
+ * The heart is a life gauge: the faction-coloured fill is the silhouette cut at the bottom `life`
+ * fraction of its height. Pinned against the full-life fill rather than the shape's constants, so
+ * replacing the placeholder art cannot fail these.
  */
 
 const heart = (life: number, colour = 0xff0000): LifeHeart => ({ id: 1, x: ONE, y: ONE, colour, life });
 
-/** A heart node's children are drained, fill, mask, rim, in that order. */
-function drawnHeart(layer: LifeHeartLayer, h: LifeHeart): { fill: Graphics; mask: Graphics } {
+/** A heart node's children are drained, fill, rim, in that order. */
+function drawnFill(layer: LifeHeartLayer, h: LifeHeart): Graphics {
   layer.draw({ hearts: [h] });
   const node = layer.container.children[0] as Container;
-  const [, fill, mask] = node.children as [Graphics, Graphics, Graphics, Graphics];
-  return { fill, mask };
+  return node.children[1] as Graphics;
 }
 
-/** The mask's height at full life - the gauge's own 100% reference. */
-function fullHeightOf(layer: LifeHeartLayer): number {
-  const height = drawnHeart(layer, heart(1)).mask.scale.y;
-  expect(height).toBeGreaterThan(0);
-  return height;
+/** The fill's local bounds; the tip sits at y 0 and the heart grows up into negative y. */
+function fillBounds(layer: LifeHeartLayer, h: LifeHeart): { minY: number; maxY: number } {
+  const { minY, maxY } = drawnFill(layer, h).getLocalBounds();
+  return { minY, maxY };
 }
 
 describe('LifeHeartLayer - the fill level is the life fraction', () => {
-  it('clips the fill to the bottom half at half life - it drains from the top, not the tip', () => {
+  it('cuts the fill to the bottom half at half life - it drains from the top, not the tip', () => {
     const layer = new LifeHeartLayer();
-    const fullHeight = fullHeightOf(layer);
-    const { fill, mask } = drawnHeart(layer, heart(0.5));
-    expect(fill.visible).toBe(true);
-    expect(fill.mask).toBe(mask);
-    expect(mask.scale.y).toBeCloseTo(fullHeight / 2);
-    expect(mask.position.y + mask.scale.y).toBeCloseTo(0); // bottom edge stays pinned at the tip
+    const full = fillBounds(layer, heart(1));
+    const half = fillBounds(new LifeHeartLayer(), heart(0.5));
+    expect(full.minY).toBeLessThan(0);
+    expect(half.minY).toBeCloseTo(full.minY / 2);
+    expect(half.maxY).toBeCloseTo(full.maxY); // the bottom stays pinned at the tip
+    expect(drawnFill(layer, heart(0.5)).mask).toBeFalsy();
+  });
+
+  it('keeps the outline below the cut and puts the cut on the level line', () => {
+    const full = heartBelow(-1e9);
+    const cut = heartBelow(-5);
+    for (let i = 1; i < cut.length; i += 2) expect(cut[i]).toBeGreaterThanOrEqual(-5);
+    expect(cut.filter((_, i) => i % 2 === 1 && cut[i] === -5).length).toBeGreaterThanOrEqual(2);
+    expect(full.length).toBeGreaterThan(cut.length);
   });
 
   it('clamps beyond the range and hides the fill at zero', () => {
-    const layer = new LifeHeartLayer();
-    const fullHeight = fullHeightOf(layer);
-    expect(drawnHeart(layer, heart(2)).mask.scale.y).toBeCloseTo(fullHeight);
-    expect(drawnHeart(layer, heart(0)).fill.visible).toBe(false);
+    const full = fillBounds(new LifeHeartLayer(), heart(1));
+    expect(fillBounds(new LifeHeartLayer(), heart(2)).minY).toBeCloseTo(full.minY);
+    expect(drawnFill(new LifeHeartLayer(), heart(0)).visible).toBe(false);
   });
 
   it('the rim is a constant-width border over both fills, not a scaled copy behind them', () => {
     const layer = new LifeHeartLayer();
     layer.draw({ hearts: [heart(0.5)] });
     const node = layer.container.children[0] as Container;
-    expect(node.children).toHaveLength(4);
-    const [drained, fill, , rim] = node.children as [Graphics, Graphics, Graphics, Graphics];
+    expect(node.children).toHaveLength(3);
+    const [drained, fill, rim] = node.children as [Graphics, Graphics, Graphics];
     // Painted last, so the drained top wears the same border as the filled bottom.
     expect(node.children.indexOf(rim)).toBe(node.children.length - 1);
     for (const part of [drained, fill, rim]) {
@@ -71,12 +81,14 @@ describe('LifeHeartLayer - the fill level is the life fraction', () => {
     for (const margin of margins) expect(margin).toBeCloseTo(margins[0] as number);
   });
 
-  it('a life change moves the mask on the retained node; only a colour change rebuilds it', () => {
+  it('a life change recuts the fill on the retained node; only a colour change rebuilds it', () => {
     const layer = new LifeHeartLayer();
     layer.draw({ hearts: [heart(1)] });
     const node = layer.container.children[0];
+    const full = fillBounds(layer, heart(1));
     layer.draw({ hearts: [heart(0.25)] });
     expect(layer.container.children[0]).toBe(node);
+    expect(fillBounds(layer, heart(0.25)).minY).toBeCloseTo(full.minY / 4);
     layer.draw({ hearts: [heart(0.25, 0x00ff00)] });
     expect(layer.container.children[0]).not.toBe(node);
   });

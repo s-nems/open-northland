@@ -1,4 +1,4 @@
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, GraphicsPath } from 'pixi.js';
 import type { Viewport } from '../../data/projection/index.js';
 import { type MarkAnchorFrame, type MarkedEntity, markAnchor } from './entity-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
@@ -38,8 +38,6 @@ const SHOULDER_ANGLE = Math.atan2(SHOULDER_Y + LOBE_RAISE, LOBE_SPREAD - SHOULDE
 const CLEFT_ANGLE = -Math.acos(LOBE_SPREAD);
 /** The shape's full height (world px): tip at 0 up to the lobes' top. */
 const HEART_HEIGHT = LOBE_RADIUS * (LOBE_RAISE + 1);
-/** Half the fill's clip-rect width (world px) - wider than the shape's half-width. */
-const MASK_HALF_WIDTH = LOBE_RADIUS * 2;
 /** A constant-width stroke on the silhouette, over both fills so the outline reads the same at every life
  *  level; a rimless heart blends into the terrain (observation). */
 const RIM_COLOUR = 0x000000;
@@ -53,12 +51,14 @@ interface HeartNode {
   readonly node: Container;
   readonly colour: number;
   readonly fill: Graphics;
-  /** A unit rect `setFillLevel` scales into the fill's clip. */
-  readonly fillMask: Graphics;
+  /** The life fraction {@link fill} was last cut to; NaN before the first. */
+  level: number;
 }
 
 export class LifeHeartLayer {
-  readonly container = new Container();
+  /** Its own render group: a life change redraws a fill, and a redrawn Graphics rebuilds the
+   *  instructions of the group it sits in, which would otherwise be the whole world's. */
+  readonly container = new Container({ isRenderGroup: true });
   /** One heart per on-screen unit id; rebuilt only on a colour change. */
   private readonly hearts = new Map<number, HeartNode>();
   /** Reused scratch of ids drawn this frame, to avoid a per-frame allocation. */
@@ -91,25 +91,30 @@ export class LifeHeartLayer {
   }
 }
 
-/** Clip the coloured fill to the bottom `life` of the heart - a transform update, no geometry rebuild. */
+/**
+ * Cut the coloured fill to the bottom `life` of the heart. The fill is the heart's own outline clipped
+ * at the level line, so a gauge costs no stencil mask and no batch break; only a level change redraws it.
+ */
 function setFillLevel(entry: HeartNode, life: number): void {
   const level = Math.max(0, Math.min(1, life));
   entry.fill.visible = level > 0;
-  entry.fillMask.position.set(-MASK_HALF_WIDTH, -HEART_HEIGHT * level);
-  entry.fillMask.scale.set(MASK_HALF_WIDTH * 2, HEART_HEIGHT * level);
+  if (level === entry.level || level === 0) return;
+  entry.level = level;
+  entry.fill
+    .clear()
+    .poly(heartBelow(-HEART_HEIGHT * level))
+    .fill(entry.colour);
 }
 
 /** One heart node, tip anchored at the container origin. The rim is added last, so it covers the drained
  *  top as much as the filled bottom. */
 function makeHeart(colour: number): HeartNode {
   const node = new Container();
-  const drained = heartPath().fill(drainedShadeOf(colour));
-  const fill = heartPath().fill(colour);
-  const fillMask = new Graphics().rect(0, 0, 1, 1).fill(0xffffff);
-  fill.mask = fillMask;
-  const rim = heartPath().stroke({ color: RIM_COLOUR, width: RIM_WIDTH });
-  node.addChild(drained, fill, fillMask, rim);
-  return { node, colour, fill, fillMask };
+  const drained = new Graphics().path(HEART_PATH).fill(drainedShadeOf(colour));
+  const fill = new Graphics();
+  const rim = new Graphics().path(HEART_PATH).stroke({ color: RIM_COLOUR, width: RIM_WIDTH });
+  node.addChild(drained, fill, rim);
+  return { node, colour, fill, level: Number.NaN };
 }
 
 function drainedShadeOf(colour: number): number {
@@ -122,14 +127,46 @@ function drainedShadeOf(colour: number): number {
 
 /** The placeholder heart as one closed path, tip at (0, 0), rather than a union of two circles and a
  *  triangle, so a stroke traces the silhouette alone and never the seams inside it. */
-function heartPath(): Graphics {
+function heartPath(): GraphicsPath {
   const r = LOBE_RADIUS;
   const lobeY = -LOBE_RAISE * r;
   const turn = Math.PI * 2; // sweep each lobe forward, never the short way back through the shape
-  return new Graphics()
+  return new GraphicsPath()
     .moveTo(0, 0)
     .lineTo(-SHOULDER_X * r, SHOULDER_Y * r)
     .arc(-LOBE_SPREAD * r, lobeY, r, SHOULDER_ANGLE, CLEFT_ANGLE + turn)
     .arc(LOBE_SPREAD * r, lobeY, r, Math.PI - CLEFT_ANGLE, Math.PI - SHOULDER_ANGLE + turn)
     .closePath();
+}
+
+const HEART_PATH = heartPath();
+
+/** The heart's outline as Pixi flattens the path for a fill, `[x, y, ...]`. */
+function heartOutline(): readonly number[] {
+  const [primitive] = HEART_PATH.shapePath.shapePrimitives;
+  const shape = primitive?.shape;
+  if (shape === undefined || !('points' in shape)) throw new Error('the heart path flattened to no outline');
+  return shape.points;
+}
+
+const HEART_OUTLINE = heartOutline();
+
+/** The part of the heart outline at or below `cutY` (y grows down), clipped against that line. */
+export function heartBelow(cutY: number): number[] {
+  const out: number[] = [];
+  const count = HEART_OUTLINE.length / 2;
+  for (let i = 0; i < count; i++) {
+    const ax = HEART_OUTLINE[2 * i] ?? 0;
+    const ay = HEART_OUTLINE[2 * i + 1] ?? 0;
+    const j = (i + 1) % count;
+    const bx = HEART_OUTLINE[2 * j] ?? 0;
+    const by = HEART_OUTLINE[2 * j + 1] ?? 0;
+    const aIn = ay >= cutY;
+    if (aIn) out.push(ax, ay);
+    if (aIn !== by >= cutY) {
+      const t = (cutY - ay) / (by - ay);
+      out.push(ax + t * (bx - ax), cutY);
+    }
+  }
+  return out;
 }
