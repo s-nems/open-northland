@@ -250,18 +250,23 @@ describe('session worker host', () => {
     expect(mostInOneFrame).toBeLessThanOrEqual(leadTickLimit(FAST_SPEED, ASSUMED_FRAME_MS));
   });
 
-  it('posts the seat fog masks as their generation changes, and the next seat on request', async () => {
+  it('posts the seat fog masks as they change, and the next seat on request', async () => {
     const session = await startTestSession(
       bundle.path,
       { kind: 'scene', id: 'team-vision' },
       { speed: FAST_SPEED, paused: false, fogSeat: HUMAN_PLAYER },
     );
     try {
-      const generations = new Set<number>();
+      // A generation reaches the runtime only with cells the previous one it drew did not show.
+      const drawnCells: string[] = [];
+      let drawnGeneration: number | null = null;
       const start = session.host.tick;
       await pumpUntil(session, () => {
         const view = session.host.fogView(HUMAN_PLAYER);
-        if (view !== null) generations.add(view.generation);
+        if (view !== null && view.generation !== drawnGeneration) {
+          drawnGeneration = view.generation;
+          drawnCells.push(JSON.stringify(fogCells(view)));
+        }
         return session.host.tick >= start + LOOP_TICKS;
       });
       session.driver.setPaused(true);
@@ -271,8 +276,12 @@ describe('session worker host', () => {
       const view = session.host.fogView(HUMAN_PLAYER);
       const live = sim.fogView(HUMAN_PLAYER);
       if (view === null || live === null) throw new Error('the scene plays under fog');
-      expect(generations.size).toBeGreaterThan(1);
-      expect([view.player, view.generation]).toEqual([HUMAN_PLAYER, live.generation]);
+      expect(drawnCells.length).toBeGreaterThan(0);
+      for (let i = 1; i < drawnCells.length; i++) expect(drawnCells[i]).not.toBe(drawnCells[i - 1]);
+      // A generation that left this seat's mask as it was is not posted, so the view may stand at an
+      // earlier one with the same cells.
+      expect(view.player).toBe(HUMAN_PLAYER);
+      expect(view.generation).toBeLessThanOrEqual(live.generation);
       expect(fogCells(view)).toEqual(fogCells(live));
 
       // Once the next seat's masks are drawn, the previous seat's never are again.

@@ -13,6 +13,7 @@ import { profiledInstrument, SystemProfile } from '../../diag/system-profile.js'
 import type { SessionHost } from '../host.js';
 import { inlineSessionHost } from '../inline-host.js';
 import { changedFacts, readWorldFacts } from './facts.js';
+import { FogPosts } from './fog-posts.js';
 import type { SessionPort } from './port.js';
 import {
   type FogUpdate,
@@ -176,6 +177,7 @@ export class ServedSession<E> {
   private lastFacts: WorldFacts;
   private fogSeat: number | null;
   private lastFogKey: string;
+  private readonly fogPosts = new FogPosts();
   /** Cancels the pending wakeup; null while none is pending. */
   private cancelWakeup: (() => void) | null = null;
   /** The pending wakeup is a waiting driver's poll, which `wake` cuts short. */
@@ -233,6 +235,7 @@ export class ServedSession<E> {
     if (delta === null) throw new Error('a fresh delta stream opens with a rebuild');
     const fog = this.fogSeat === null ? null : sim.fogMaskAnswer(this.fogSeat);
     this.lastFogKey = this.fogKey();
+    this.fogPosts.changed(fog);
     this.post({
       kind: 'ready',
       ready: {
@@ -480,7 +483,8 @@ export class ServedSession<E> {
     const key = this.fogKey();
     if (key === this.lastFogKey) return null;
     this.lastFogKey = key;
-    return { fog: this.fogSeat === null ? null : this.sim.fogMaskAnswer(this.fogSeat) };
+    const fog = this.fogSeat === null ? null : this.sim.fogMaskAnswer(this.fogSeat);
+    return this.fogPosts.changed(fog) ? { fog } : null;
   }
 
   private postFogChange(): void {

@@ -1,8 +1,9 @@
 import { MessageChannel } from 'node:worker_threads';
-import { MS_PER_TICK } from '@open-northland/sim';
+import { FOG_MODE, type FogMaskAnswer, MS_PER_TICK } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import { changedFacts, readWorldFacts } from '../src/session/worker/facts.js';
+import { FogPosts } from '../src/session/worker/fog-posts.js';
 import type { SessionPort } from '../src/session/worker/port.js';
 import type { FromWorker, ToWorker } from '../src/session/worker/protocol.js';
 import { ArrivalAlpha } from '../src/session/worker/render-alpha.js';
@@ -153,6 +154,36 @@ const REACH_LIMIT_TIMEOUT_MS = 30_000;
 const settle = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 /** A polling interval while the other end of an in-process channel works. */
 const TURN_MS = 10;
+
+describe('fog posts', () => {
+  const VIEWER = 2;
+  const CELLS = 4;
+  function answer(generation: number, bytes: readonly number[], player = VIEWER): FogMaskAnswer {
+    return {
+      player,
+      mode: FOG_MODE.CLASSIC,
+      cellsWide: CELLS / 2,
+      cellsHigh: CELLS / 2,
+      generation,
+      mask: Uint8Array.from(bytes),
+    };
+  }
+
+  it('passes on a mask only when its bytes, the seat or the fog itself changed', () => {
+    const posts = new FogPosts();
+    const first = answer(1, [0, 1, 2, 3]);
+    expect(posts.changed(first)).toBe(true);
+    // A posted mask's buffer is transferred away: the copy held stands in for it.
+    structuredClone(first, { transfer: first.mask === null ? [] : [first.mask.buffer] });
+    expect(posts.changed(answer(2, [0, 1, 2, 3]))).toBe(false);
+    expect(posts.changed(answer(3, [0, 1, 2, 2]))).toBe(true);
+    expect(posts.changed(answer(4, [0, 1, 2, 2], VIEWER + 1))).toBe(true);
+    expect(posts.changed({ ...answer(5, []), mask: null })).toBe(true);
+    expect(posts.changed({ ...answer(6, []), mask: null })).toBe(false);
+    expect(posts.changed(null)).toBe(true);
+    expect(posts.changed(null)).toBe(false);
+  });
+});
 
 describe('lead tick limit', () => {
   it('leaves the batch in flight a tick to step behind it at x1 on fast displays', () => {
