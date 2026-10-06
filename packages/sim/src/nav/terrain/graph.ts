@@ -84,6 +84,9 @@ export class TerrainGraph extends TerrainEdges {
   /** Per-node land route weight: the node's resistance, at least {@link MIN_ROUTE_RESISTANCE}, as a
    *  multiple of ONE. */
   private readonly routeWeights: Fixed[];
+  /** Per-node {@link resistanceAt} on walkable ground and 0 where a walker never stands, the one read a
+   *  range search makes per inspected node. */
+  private readonly entryResistances: Uint8Array;
 
   constructor(
     width: number,
@@ -109,9 +112,11 @@ export class TerrainGraph extends TerrainEdges {
     this.roughness = roughness === undefined ? undefined : Uint8Array.from(roughness);
     this.roads = new Uint8Array(this.nodeCount);
     this.routeWeights = new Array<Fixed>(this.nodeCount);
+    this.entryResistances = new Uint8Array(this.nodeCount);
     for (let i = 0; i < this.nodeCount; i++) {
       const node = i as NodeId;
       this.routeWeights[node] = routeWeightOf(this.roughnessAt(node));
+      this.entryResistances[node] = this.isWalkable(node) ? this.roughnessAt(node) : 0;
     }
     const cellCount = Math.ceil(width / 2) * Math.ceil(height / 2);
     if (elevation !== undefined && elevation.length !== cellCount) {
@@ -150,6 +155,12 @@ export class TerrainGraph extends TerrainEdges {
    *  Throws on an id outside the grid. */
   resistanceAt(node: NodeId): number {
     return this.isRoad(node) ? ROAD_RESISTANCE : this.roughnessAt(node);
+  }
+
+  /** {@link resistanceAt} per row-major node id where {@link isWalkable} holds, 0 elsewhere: a scan's
+   *  bounds-checked read. Kept current by every road change; callers must not write it. */
+  walkableResistances(): Uint8Array {
+    return this.entryResistances;
   }
 
   /** Whether a road runs over `node`. Throws on an id outside the grid. */
@@ -246,6 +257,7 @@ export class TerrainGraph extends TerrainEdges {
     this.checkedSlot(this.roads, node);
     this.roads[node] = road ? 1 : 0;
     this.routeWeights[node] = routeWeightOf(road ? ROAD_RESISTANCE : this.roughnessAt(node));
+    if (this.isWalkable(node)) this.entryResistances[node] = this.resistanceAt(node);
   }
 
   /** Source elevation unit under one half-cell node; absent maps are flat. */

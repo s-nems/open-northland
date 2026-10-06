@@ -44,7 +44,7 @@ describe('terrain-aware goods reach', () => {
     }
     signpostLinksSystem(sim.world, ctxOf(sim));
     const before = sim.signpostReach(0);
-    const reads = vi.spyOn(terrain, 'resistanceAt');
+    const reads = vi.spyOn(terrain, 'walkableResistances');
     const block = (hx: number, hy: number) => {
       const id = sim.world.create();
       sim.world.add(id, Position, positionOfNode(hx, hy));
@@ -57,6 +57,7 @@ describe('terrain-aware goods reach', () => {
     expect(remote?.posts.map((p) => p.area)).toEqual(before?.posts.map((p) => p.area));
     expect(remote?.posts[0]?.area).toBe(before?.posts[0]?.area);
     const local = block(36, 40);
+    expect(reads).toHaveBeenCalled();
     const area = local?.posts[0]?.area;
     if (area === undefined) throw new Error('post coverage');
     expect(reachContains(area, 36, 40)).toBe(false);

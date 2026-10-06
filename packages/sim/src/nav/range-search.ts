@@ -1,5 +1,6 @@
+import { footprintCellDx } from '@open-northland/data';
 import type { BlockOverlay } from './block-overlay.js';
-import { hexDistanceBetween, hexNeighboursOf } from './halfcell.js';
+import { HEX_NEIGHBOUR_OFFSETS, hexDistanceBetween } from './halfcell.js';
 import type { NodeBox, SpatialGate } from './node-circle.js';
 import type { NodeId, TerrainGraph } from './terrain/index.js';
 
@@ -13,9 +14,24 @@ export function reachContains(area: ReachArea, hx: number, hy: number): boolean 
   return area.cells[(hy - area.minY) * (area.maxX - area.minX + 1) + hx - area.minX] === 1;
 }
 
+/** Any even and any odd node row: only the parity matters. */
+const EVEN_ROW = 0;
+const ODD_ROW = 1;
+/** Even- and odd-row x offsets and the y offsets of {@link HEX_NEIGHBOUR_OFFSETS}, in its order. */
+const HEX_DX_EVEN = HEX_NEIGHBOUR_OFFSETS.map((c) => footprintCellDx(EVEN_ROW, c));
+const HEX_DX_ODD = HEX_NEIGHBOUR_OFFSETS.map((c) => footprintCellDx(ODD_ROW, c));
+const HEX_DY = HEX_NEIGHBOUR_OFFSETS.map((c) => c.dy);
+
+/** Per-call scratch shared by every flood and fully reset before use, so it carries no state: the
+ *  best cost per node of the flood's window and one bucket of node ids per cost. */
+let costScratch = new Uint16Array(0);
+const bucketScratch: number[][] = [];
+
 /** Original range searches walk six neighbours, spend twice the nominal range in ground resistance,
  *  and inspect an entered node before charging its resistance. Guide callbacks also require distance
- *  strictly below the nominal range. Byte-verified behavior; the navigation grid and blockers are ours. */
+ *  strictly below the nominal range. Byte-verified behavior; the navigation grid and blockers are ours.
+ *  The marked set is order-independent: a node is marked when it neighbours any node whose cheapest
+ *  cost stays under the budget, so the order a bucket is walked in does not matter. */
 export function searchReach(
   terrain: TerrainGraph,
   blocked: BlockOverlay,
@@ -23,38 +39,57 @@ export function searchReach(
   hy: number,
   range: number,
 ): ReachArea {
-  const area = {
-    minX: Math.max(0, hx - range + 1),
-    maxX: Math.min(terrain.width - 1, hx + range - 1),
-    minY: Math.max(0, hy - range + 1),
-    maxY: Math.min(terrain.height - 1, hy + range - 1),
-  };
-  const width = Math.max(0, area.maxX - area.minX + 1);
-  const cells = new Uint8Array(width * Math.max(0, area.maxY - area.minY + 1));
-  const result = { ...area, cells };
+  const minX = Math.max(0, hx - range + 1);
+  const maxX = Math.min(terrain.width - 1, hx + range - 1);
+  const minY = Math.max(0, hy - range + 1);
+  const maxY = Math.min(terrain.height - 1, hy + range - 1);
+  const width = Math.max(0, maxX - minX + 1);
+  const cells = new Uint8Array(width * Math.max(0, maxY - minY + 1));
+  const result = { minX, maxX, minY, maxY, cells };
   if (!terrain.inBounds(hx, hy)) return result;
-  const budget = 2 * range;
-  const queues: NodeId[][] = Array.from({ length: budget }, () => []);
-  const costs = new Map<NodeId, number>();
   const start = terrain.nodeAt(hx, hy);
   if (!terrain.isWalkable(start) || blocked.has(start)) return result;
-  queues[0]?.push(start);
-  costs.set(start, 0);
-  cells[(hy - area.minY) * width + hx - area.minX] = 1;
+  cells[(hy - minY) * width + hx - minX] = 1;
+  const budget = 2 * range;
+  // Every entered node costs at least one, so a node with a cost under the budget lies fewer than
+  // `budget` hex steps from the start, each moving at most one node on either axis.
+  const reach = budget - 1;
+  const side = 2 * reach + 1;
+  const windowX = hx - reach;
+  const windowY = hy - reach;
+  if (costScratch.length < side * side) costScratch = new Uint16Array(side * side);
+  const costs = costScratch;
+  costs.fill(budget, 0, side * side);
+  while (bucketScratch.length < budget) bucketScratch.push([]);
+  for (let cost = 0; cost < budget; cost++) (bucketScratch[cost] as number[]).length = 0;
+  const resistances = terrain.walkableResistances();
+  const mapWidth = terrain.width;
+  const mapHeight = terrain.height;
+  costs[reach * side + reach] = 0;
+  (bucketScratch[0] as number[]).push(start);
   for (let cost = 0; cost < budget; cost++) {
-    for (const node of queues[cost] ?? []) {
-      if (costs.get(node) !== cost) continue;
-      for (const next of hexNeighboursOf(terrain.xOf(node), terrain.yOf(node))) {
-        if (!terrain.inBounds(next.hx, next.hy)) continue;
-        const id = terrain.nodeAt(next.hx, next.hy);
-        const resistance = terrain.resistanceAt(id);
-        if (!terrain.isWalkable(id) || blocked.has(id) || resistance === 0) continue;
-        if (hexDistanceBetween(hx, hy, next.hx, next.hy) < range)
-          cells[(next.hy - area.minY) * width + next.hx - area.minX] = 1;
+    // Every push lands in a later bucket, so this one stays fixed while it is walked.
+    const bucket = bucketScratch[cost] as number[];
+    for (let i = 0; i < bucket.length; i++) {
+      const node = bucket[i] as number;
+      const x = node % mapWidth;
+      const y = (node - x) / mapWidth;
+      if (costs[(y - windowY) * side + x - windowX] !== cost) continue;
+      const dxs = (y & 1) === 0 ? HEX_DX_EVEN : HEX_DX_ODD;
+      for (let k = 0; k < HEX_DY.length; k++) {
+        const nx = x + (dxs[k] as number);
+        const ny = y + (HEX_DY[k] as number);
+        if (nx < 0 || ny < 0 || nx >= mapWidth || ny >= mapHeight) continue;
+        const id = ny * mapWidth + nx;
+        const resistance = resistances[id] as number;
+        if (resistance === 0 || blocked.has(id as NodeId)) continue;
+        if (hexDistanceBetween(hx, hy, nx, ny) < range) cells[(ny - minY) * width + nx - minX] = 1;
         const nextCost = cost + resistance;
-        if (nextCost >= budget || nextCost >= (costs.get(id) ?? budget)) continue;
-        costs.set(id, nextCost);
-        queues[nextCost]?.push(id);
+        if (nextCost >= budget) continue;
+        const slot = (ny - windowY) * side + nx - windowX;
+        if (nextCost >= (costs[slot] as number)) continue;
+        costs[slot] = nextCost;
+        (bucketScratch[nextCost] as number[]).push(id);
       }
     }
   }
