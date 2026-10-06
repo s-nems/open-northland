@@ -4,7 +4,7 @@ import {
   entityById,
   firstDifference,
   indexesOf,
-  indexOfEntity,
+  indexOfEntityFrom,
   listedWhere,
   type SnapshotIndexSpec,
   type WorldSnapshot,
@@ -181,11 +181,24 @@ const PALISADES: SnapshotIndexSpec<PalisadeList> = {
     PALISADE_ENTRIES.remove(list.held, entity);
     list.copy = null;
   },
-  swap: (list, _previous, next) => {
-    const at = indexOfEntity(list.held, next.id);
-    if (at < 0) return;
-    list.held[at] = next;
-    list.copy = null;
+  // Once per delta over every touched entity, ascending: the few palisades are walked and the touched
+  // run galloped through, where a per-entity swap searched the palisades for each of them.
+  swapAll: (list, nexts) => {
+    const { held } = list;
+    let from = 0;
+    for (let at = 0; at < held.length && from < nexts.length; at++) {
+      const found = indexOfEntityFrom(nexts, (held[at] as EntitySnapshot).id, from);
+      if (found < 0) {
+        from = -found - 1;
+        continue;
+      }
+      const next = nexts[found] as EntitySnapshot;
+      if (held[at] !== next) {
+        held[at] = next;
+        list.copy = null;
+      }
+      from = found + 1;
+    }
   },
   differs: (list, fresh) =>
     firstDifference(list.held, fresh.held, 'held') ??

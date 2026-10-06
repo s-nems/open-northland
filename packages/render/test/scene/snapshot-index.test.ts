@@ -251,6 +251,14 @@ describe('the views over a mirror', () => {
     expect(second).not.toBe(first);
     expect(second.map((e) => e.id)).toEqual([1, 5]);
     expect(first.map((e) => e.id)).toEqual([1]); // a list already handed out never changes
+    // A wall rewritten among walkers hands its new object out in a new list.
+    const damaged = advance(mirror, [
+      { id: 2, components: { Position: { x: 4 * ONE, y: ONE } }, removed: [] },
+      { id: 5, components: { Health: { hitpoints: 1 } }, removed: [] },
+    ]);
+    const third = palisadesOf(damaged);
+    expect(third).not.toBe(second);
+    expect(third[1]).toBe(damaged.entities.find((e) => e.id === 5));
     expect(mirror.verifyIndexes()).toEqual([]);
   });
 });
