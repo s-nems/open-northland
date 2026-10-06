@@ -526,14 +526,16 @@ export class StillSpriteMesh implements StillBandCollector {
       };
       child[MEMBER] = member;
     }
-    const reshaped =
+    // A container change moves every sprite of it, so all its quads repack.
+    const moved =
       member.band === null ||
       member.containerTick !== child._didContainerChangeTick ||
       member.viewTick !== child._didViewChangeTick ||
       member.shading !== this.shading;
-    if (reshaped && !this.reshape(member, layer)) return this.reject(state, member);
+    if ((moved || !this.shapeHolds(member, layer)) && !this.reshape(member, layer))
+      return this.reject(state, member);
     // A member this band drew last rebuild, under the same table, keeps its slots' texture ids.
-    const settled = !reshaped && member.band === state && member.tableEpoch === state.tableEpoch;
+    const settled = !moved && member.band === state && member.tableEpoch === state.tableEpoch;
     for (const quad of member.quads) {
       const sprite = quad.sprite;
       // Pixi clears this as it collects a view, so the sprite's next change notifies the group again.
@@ -552,6 +554,25 @@ export class StillSpriteMesh implements StillBandCollector {
     member.viewTick = child._didViewChangeTick;
     member.shading = this.shading;
     return member;
+  }
+
+  /**
+   * Whether `member`'s quads are still the sprites Pixi would collect of it, in order, and each one that
+   * changed still meshable. A sprite hidden, shown, re-blended or inserted with `addChildAt` moves no tick
+   * of the container.
+   */
+  private shapeHolds(member: Member, layer: RenderLayer): boolean {
+    const quads = member.quads;
+    let next = 0;
+    for (const sprite of member.container.children) {
+      if (!displayed(sprite, layer)) continue;
+      const quad = quads[next++];
+      if (quad === undefined || quad.sprite !== sprite || !quad.live) return false;
+      const changed =
+        quad.containerTick !== sprite._didContainerChangeTick || quad.viewTick !== sprite._didViewChangeTick;
+      if (changed && !meshableSprite(sprite)) return false;
+    }
+    return next === quads.length;
   }
 
   /** Match `member`'s quads to the sprites Pixi would collect of it now; false if one cannot be meshed. */

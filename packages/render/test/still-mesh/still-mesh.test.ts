@@ -70,6 +70,12 @@ function fakeRenderer(): Renderer {
         pushBlendMode: () => {},
         popBlendMode: () => {},
       },
+      // A Graphics records like a sprite: in the run Pixi would draw it in.
+      graphics: {
+        addRenderable: (graphics: Container) => {
+          pending.push(graphics);
+        },
+      },
       colorMask: { buildStart: () => {} },
       renderGroup: {
         addRenderGroup: (group: unknown, instructionSet: InstructionSet) =>
@@ -180,12 +186,12 @@ function entity(layer: DepthSortedLayer, depth: number, page = 0): Container {
   return container;
 }
 
-/** Pixi's painter order over the layer: bands, then their displayed children, then the sprites in them. */
+/** Pixi's painter order over the layer: bands, then their displayed children, then the views in them. */
 function painterOrder(layer: DepthSortedLayer): Container[] {
   const out: Container[] = [];
   const walk = (node: Container): void => {
     if (!node.visible) return;
-    if (node instanceof Sprite) out.push(node);
+    if (node instanceof Sprite || node instanceof Graphics) out.push(node);
     for (const child of node.children) walk(child);
   };
   for (const band of layer.children) walk(band);
@@ -297,6 +303,71 @@ describe('StillSpriteMesh', () => {
     // The worked item stayed meshed: no structure change reached its band... until one does.
     worked.zIndex = 17;
     expect(h.frame()).toEqual(painterOrder(h.layer));
+  });
+
+  it('stops drawing a meshed sprite hidden on its own', () => {
+    const h = harness();
+    const tree = entity(h.layer, 0);
+    entity(h.layer, 5);
+    h.held.add(tree);
+    h.frame();
+    (tree.children[0] as Sprite).visible = false;
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.mesh.quadCount).toBe(1);
+  });
+
+  it('draws a sprite of a meshed child once it is shown again', () => {
+    const h = harness();
+    const tree = entity(h.layer, 0);
+    entity(h.layer, 5);
+    (tree.children[0] as Sprite).visible = false;
+    h.held.add(tree);
+    h.frame();
+    expect(h.mesh.quadCount).toBe(1);
+    (tree.children[0] as Sprite).visible = true;
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.mesh.quadCount).toBe(2);
+  });
+
+  it('hands a meshed child to Pixi when its hidden Graphics layer shows', () => {
+    const h = harness();
+    const marked = entity(h.layer, 0);
+    const mark = worldBatched(new Graphics().rect(0, 0, 4, 4).fill(0xffffff));
+    mark.visible = false;
+    marked.addChild(mark);
+    h.held.add(marked);
+    h.frame();
+    expect(h.mesh.quadCount).toBe(2);
+    mark.visible = true;
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.mesh.quadCount).toBe(0);
+  });
+
+  it('draws a layer inserted into a meshed child', () => {
+    const h = harness();
+    const tree = entity(h.layer, 0);
+    h.held.add(tree);
+    h.frame();
+    // An insertion moves no tick of the container, unlike addChild.
+    tree.addChildAt(worldBatched(new Sprite(textureOn(2))), 0);
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.mesh.quadCount).toBe(3);
+  });
+
+  it('hands a child to Pixi when a sprite takes a page the mesh cannot draw as its band rebuilds', () => {
+    const h = harness();
+    const tree = entity(h.layer, 0);
+    h.held.add(tree);
+    h.frame();
+    const straight = new TextureSource({
+      width: PAGE_SIZE,
+      height: PAGE_SIZE,
+      alphaMode: 'no-premultiply-alpha',
+    });
+    (tree.children[1] as Sprite).texture = new Texture({ source: straight });
+    entity(h.layer, 5);
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.mesh.quadCount).toBe(0);
   });
 
   it('leaves a child with a non-sprite layer to Pixi', () => {
