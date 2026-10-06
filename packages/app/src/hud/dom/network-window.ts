@@ -217,22 +217,22 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
   clock.append(figures, chart);
 
   const responseCopy = copy.responsiveness;
-  const responseSection = createSection();
-  responseSection.update(responseCopy.title);
   const responseModes: readonly ResponsivenessMode[] = ['auto', 'responsive', 'balanced', 'smooth'];
   const response = createSegmented(responseModes, responseCopy.title, (mode) => {
     deps.cue('confirm');
     deps.source.setResponsiveness(mode);
   });
-  const responseHint = element('p', 'on-net-note on-net-response-hint');
-  const responseReserve = element('p', 'on-net-note on-net-response-reserve');
-  const responseControls = element('div', 'on-net-response');
-  responseControls.append(response.element, responseHint, responseReserve);
+  const responseLabel = element('dt', 'on-net-response-label');
+  responseLabel.textContent = responseCopy.title;
+  const responseReserve = element('span', 'on-net-response-reserve');
+  const responseControls = element('dd', 'on-net-response');
+  responseControls.append(response.element, responseReserve);
 
   // Link: this client's own connection figures.
   const linkSection = createSection();
   linkSection.update(copy.link);
   const link = element('dl', 'on-net-link');
+  link.append(responseLabel, responseControls);
   const linkValue = (caption: string, tip = ''): HTMLElement => {
     const term = element('dt', '');
     term.textContent = caption;
@@ -274,8 +274,6 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     sheet,
     clockSection.element,
     clock,
-    responseSection.element,
-    responseControls,
     linkSection.element,
     link,
     disconnected,
@@ -525,7 +523,7 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     if (stickToBottom) chatList.scrollTop = chatList.scrollHeight;
   };
 
-  const sectionCount = [playersSection, clockSection, responseSection, linkSection, chatSection].length;
+  const sectionCount = [playersSection, clockSection, linkSection, chatSection].length;
   const chatRange = CHAT_LINES_FULL - CHAT_LINES_MIN;
   const plotRange = PLOT_H_FULL - PLOT_H_MIN;
   const gapRange = SECTION_GAP_FULL - SECTION_GAP_MIN;
@@ -563,9 +561,14 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     showOwnState(model.players);
     showClock(model);
     showLink(model.link);
+    const bufferMs = Math.round((model.responsiveness.bufferTicks * TICK_MS) / model.clock.runningSpeed);
+    const reserveTip = formatMessage(responseCopy.reserve, { ms: bufferMs });
     const responseOption = (mode: ResponsivenessMode) => ({
       label: responseCopy.options[mode],
       enabled: model.link.connected,
+      tooltip: `${responseCopy.options[mode]}. ${responseCopy.hints[mode]}${
+        mode === model.responsiveness.mode ? ` ${reserveTip}` : ''
+      }`,
     });
     response.update(
       {
@@ -576,13 +579,8 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
       },
       model.responsiveness.mode,
     );
-    write(responseHint, responseCopy.hints[model.responsiveness.mode]);
-    write(
-      responseReserve,
-      formatMessage(responseCopy.reserve, {
-        ms: Math.round((model.responsiveness.bufferTicks * TICK_MS) / model.clock.runningSpeed),
-      }),
-    );
+    write(responseReserve, ms(bufferMs));
+    setTip(responseReserve, reserveTip);
     showChat(model);
   };
 

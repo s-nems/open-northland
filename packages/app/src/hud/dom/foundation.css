@@ -6920,14 +6920,6 @@ body.on-drag-scroll * {
   color: var(--danger);
 }
 
-.on-hud .on-net-response .on-segmented {
-  width: min(100%, 400px);
-}
-.on-hud .on-net-response-hint {
-  height: auto;
-  min-height: 34px;
-  white-space: normal;
-}
 .on-hud .on-net-chart {
   position: relative;
   display: grid;
@@ -7019,6 +7011,25 @@ body.on-drag-scroll * {
   text-overflow: ellipsis;
   color: var(--text-hi);
   font-variant-numeric: tabular-nums;
+}
+.on-hud .on-net-response-label {
+  align-self: center;
+}
+.on-hud .on-net-link .on-net-response {
+  display: flex;
+  grid-column: 2 / -1;
+  align-items: center;
+  gap: 8px;
+}
+.on-hud .on-net-response .on-segmented {
+  flex: 0 1 320px;
+  grid-auto-columns: auto;
+  width: min(100%, 320px);
+}
+.on-hud .on-net-response-reserve {
+  flex: none;
+  color: var(--muted);
+  font-size: 11px;
 }
 /* A whole number of 20 px lines whatever the history holds; the window sets the count from the screen. */
 .on-hud .on-net-chat {

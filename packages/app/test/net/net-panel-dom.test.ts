@@ -91,11 +91,17 @@ function source(first: NetPanelModel = panelModel()): NetPanelSource & { current
 }
 
 it('requests a room-wide response mode and displays only the relay-confirmed choice', () => {
+  const copy = messages().hud.network.responsiveness;
   const feed = source();
   const requested: string[] = [];
   feed.setResponsiveness = (mode) => requested.push(mode);
   const { plane, window } = mountWindow(feed);
-  const buttons = [...plane.querySelectorAll<HTMLButtonElement>('.on-net-response button')];
+  const buttons = [...plane.querySelectorAll<HTMLButtonElement>('.on-net-link > .on-net-response button')];
+  for (const [index, mode] of (['auto', 'responsive', 'balanced', 'smooth'] as const).entries()) {
+    expect(buttons[index]?.getAttribute(TIP)).toContain(copy.hints[mode]);
+    expect(buttons[index]?.getAttribute('aria-label')).toContain(copy.options[mode]);
+    expect(plane.textContent).not.toContain(copy.hints[mode]);
+  }
   const fast = buttons[1];
   if (fast === undefined) throw new Error('missing response control');
   fast.click();
@@ -105,6 +111,7 @@ it('requests a room-wide response mode and displays only the relay-confirmed cho
   window.refresh();
   expect(fast.getAttribute('aria-pressed')).toBe('true');
   expect(plane.querySelector('.on-net-response-reserve')?.textContent).toContain('28 ms');
+  expect(fast.getAttribute(TIP)).toContain(formatMessage(copy.reserve, { ms: 28 }));
   feed.current = panelModel({
     responsiveness: { mode: 'auto', bufferTicks: 4, by: null },
     clock: { ...CLOCK, runningSpeed: 2 },
