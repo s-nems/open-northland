@@ -41,6 +41,28 @@ seat or from an authored settler, and the building loader then takes every famil
 name. Tribe 5's rows are the seven wonders and nothing else, so of the 24 maps fielding it, 20 place no
 tribe-5 building at all and still upload `ls_wonders3` - 151 MB that nothing draws.
 
+## Measured page formats and residency
+
+Every bob page in the generated content is an RGBA8 PNG (PNG colour type 6): 501 full-colour pages,
+3558 MB as RGBA8, and 82 palette-indexed character and vehicle pages, 464 MB. `loadAtlasSource`
+(`packages/render/src/gpu/pixi-app.ts`) loads each through Pixi `Assets` into an RGBA8 `ImageSource`.
+
+- **Indexed pages carry one byte of information.** Red holds the palette index, alpha is binary and
+  green is constant, and the world batch shader already reads them through the palette LUT. Stored as
+  R8 with index 0 transparent they would take a quarter of their memory, as RG8 half. On the
+  six-seat `magiczny_las` world at t120000 the indexed pages on the GPU are 49 MB of 406 MB after the
+  restore and 64 MB of 421 MB after 30 s at x3, so R8 saves about 37-48 MB there. The pixel readbacks
+  that read a page's decoded image (picking alpha masks, cast and soft shadows, grounded feet,
+  building interiors: `source.resource` in `packages/render/src/gpu`) would have to read the R8 buffer
+  instead.
+- **Pages are about a third covered.** Five sampled pages are 33-48% non-transparent, so a repack would
+  save more than a format change on the full-colour pages.
+- **Nothing is released.** The loaders fetch a world's pages at boot and no page is destroyed during a
+  game. The GPU upload happens on first draw, so the GPU figure grows with what has been on screen
+  (406 MB after the restore, 421-444 MB after 30 s). Pixi keeps every page's decoded image beside the
+  GPU copy, and the readbacks above depend on it, so the CPU copy cannot simply be dropped after upload.
+- **No mipmaps.** World pages load without mip levels, so no mip chain inflates the figure.
+
 ## Scope
 
 - Repack `ls_wonders3` in the pipeline so no page exceeds 8192 in either dimension, and add a pipeline
