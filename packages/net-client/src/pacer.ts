@@ -1,3 +1,5 @@
+import { TICKS_PER_SECOND } from '@open-northland/net-protocol';
+
 /** Frames held back before a tick runs: the jitter buffer a late frame lands inside of. */
 export const JITTER_BUFFER_TICKS = 2;
 /** Frames beyond the buffer that are drained faster rather than tolerated as extra latency. */
@@ -23,5 +25,3 @@ export function paceScale(bufferedTicks: number, speed = 1): number {
     DRAIN_SCALE + (bufferedTicks - DRAIN_ABOVE_TICKS - 1) * DRAIN_SCALE_PER_TICK,
   );
 }
-
-import { TICKS_PER_SECOND } from '@open-northland/net-protocol';

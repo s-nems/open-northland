@@ -616,12 +616,17 @@ relay never publishes tokens in room views or logs. Protect tokens in transit wi
 and nicknames are public, and anyone can enter an open lobby. A modified client can lie about its
 simulation or sabotage its own match; digest agreement is not an anti-cheat guarantee.
 
-The host bounds application and WebSocket control traffic together at 256 messages/s with a
+The host bounds application and unsolicited WebSocket control traffic together at 256 messages/s with a
 512-message burst, and 1 MiB/s with a two-blob burst. Recovery requests (`loaded`, `saveOrders`,
 `requestInitialSave`) share a separate four-request burst, refilling one request every two seconds,
 before relay dispatch. Exceeding a traffic budget disconnects the sender. WebSocket compression is
 disabled, payloads are capped, an unacknowledged close is terminated after one second, and a socket
-silent for 30 s is closed.
+with no incoming transport data for 30 s is closed. Incoming bytes keep a progressing upload alive
+before its complete message can be parsed; application traffic is still validated and budgeted.
+Large outgoing text messages use 128 KiB WebSocket fragments with control pings between them, so a
+passive receiver can answer while downloading. Matching requested pongs spend only the byte budget;
+unsolicited or excess pongs still spend both budgets. Outstanding ping credits are capped at 512.
+Fragmentation preserves one application message and does not change the game protocol.
 
 The HTTP host caps all TCP connections at the configured WebSocket limit plus 16, including sockets
 that have not sent upgrade headers. Headers have a five-second deadline, a request ten seconds, an

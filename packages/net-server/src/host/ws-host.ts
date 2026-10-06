@@ -12,7 +12,13 @@ import {
 } from '@open-northland/net-protocol';
 import { type RawData, type WebSocket, WebSocketServer } from 'ws';
 import { type Connection, DEFAULT_MAX_ROOMS, Relay, type RelayLog } from '../relay/relay.js';
-import { DEFAULT_MAX_CONNECTIONS, RecoveryBudget, SocketBudget, sendBounded } from './socket-budget.js';
+import {
+  ControlPings,
+  DEFAULT_MAX_CONNECTIONS,
+  RecoveryBudget,
+  SocketBudget,
+  sendBounded,
+} from './socket-budget.js';
 
 /** How often the relay clock is polled; a small fraction of a frame at the highest speed. */
 const POLL_INTERVAL_MS = 5;
@@ -151,16 +157,26 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
     if (socket instanceof Socket) socket.setKeepAlive(true, TCP_KEEPALIVE_MS);
     sockets.handleUpgrade(request, socket, head, (peer) => sockets.emit('connection', peer, request));
   });
-  sockets.on('connection', (socket) => {
+  sockets.on('connection', (socket, request) => {
     const budget = new SocketBudget(performance.now());
     const recovery = new RecoveryBudget(performance.now());
+    const controlPings = new ControlPings();
+    const ping = (): void => {
+      const challenge = controlPings.request();
+      if (challenge !== null) socket.ping(challenge);
+    };
     lastHeardAt.set(socket, performance.now());
     const heard = (): void => {
       lastHeardAt.set(socket, performance.now());
     };
+    // A browser's upload may take longer than the silence limit before one whole message arrives.
+    const receivedBytes = (data: Buffer): void => {
+      if (data.length > 0 && socket.readyState === socket.OPEN) heard();
+    };
+    request.socket.on('data', receivedBytes);
     const connection: Connection = {
       send: (message) => {
-        sendBounded(socket, encode(message));
+        sendBounded(socket, encode(message), ping);
       },
       close: (reason) => {
         socket.close(reason === 'replaced' ? CLOSE_REPLACED : CLOSE_PROTOCOL_ERROR, reason);
@@ -171,9 +187,9 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
       socket.close(CLOSE_PROTOCOL_ERROR, TRAFFIC_LIMIT);
       relay.disconnect(client);
     };
-    const acceptTraffic = (bytes: number): boolean => {
+    const acceptTraffic = (bytes: number, messageCost: 0 | 1 = 1): boolean => {
       if (socket.readyState !== socket.OPEN) return false;
-      if (budget.take(bytes, performance.now())) return true;
+      if (budget.take(bytes, performance.now(), messageCost)) return true;
       refuseTraffic();
       return false;
     };
@@ -183,7 +199,7 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
     });
     socket.on('pong', (data) => {
       heard();
-      acceptTraffic(data.length);
+      acceptTraffic(data.length, controlPings.answer(data) ? 0 : 1);
     });
     socket.on('message', (data, isBinary) => {
       heard();
@@ -212,6 +228,7 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
     });
     // A fault in departure handling is logged; it never reaches the process.
     socket.on('close', () => {
+      request.socket.off('data', receivedBytes);
       lastHeardAt.delete(socket);
       try {
         relay.disconnect(client);
