@@ -290,6 +290,7 @@ export class Room {
     if (this.game === null) return { code: 'gameNotStarted' };
     const refusal = this.game.ack(member, ack.tick, ack.digest, ack.world, now);
     if (refusal !== null) return refusal;
+    if (ack.world !== member.world || member.outOfSync !== null) return null;
     const { load } = ack;
     if (member.load?.tickMs !== load.tickMs || member.load.buffered !== load.buffered) {
       member.load = load;

@@ -28,6 +28,26 @@ describe('member load', () => {
     ]);
   });
 
+  it('ignores load reports from a discarded world and from the tick that diverged', () => {
+    const s = startedRoom();
+    s.advance(TICK_MS * 2);
+    for (const peer of [s.a, s.b])
+      peer.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0, load: LOAD });
+    s.a.send({ kind: 'ack', tick: 2, digest: digest(1), world: 0, load: LOAD });
+    s.b.send({ kind: 'ack', tick: 2, digest: digest(2), world: 0, load: SLOW });
+    expect(s.b.last('desync')?.tick).toBe(2);
+    expect(s.b.handle.member?.load).toEqual(LOAD);
+    s.a.send({ kind: 'blob', type: 'snapshot', world: 0, tick: 2, to: null, bytes: 'AAAA' });
+    expect(s.b.last('blob')?.tick).toBe(2);
+    s.b.send({ kind: 'ack', tick: 3, digest: digest(2), world: 0, load: SLOW });
+    expect(s.b.handle.member?.load).toEqual(LOAD);
+    s.advance(TICK_MS);
+    s.a.send({ kind: 'ack', tick: 3, digest: digest(1), world: 0, load: LOAD });
+    s.b.send({ kind: 'ack', tick: 3, digest: digest(1), world: 2, load: { tickMs: 2, buffered: 0 } });
+    expect(s.b.handle.member?.load).toEqual({ tickMs: 2, buffered: 0 });
+    expect(s.b.of('rejected')).toEqual([]);
+  });
+
   it('sends a view for moved loads at most once per interval', () => {
     const s = startedRoom();
     const viewsBefore = s.a.of('room').length;
