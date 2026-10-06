@@ -14,12 +14,17 @@ import { type ReachArea, reachContains, reachGate } from '../../nav/range-search
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { interactionNode } from '../footprint/interaction.js';
 import { type SignpostSite, signpostNetwork, signpostNetworkRevision } from './network.js';
-import { signpostTerrainKey, type TerrainReach, terrainReach } from './terrain-reach.js';
+import {
+  dropFallenPostReaches,
+  postTerrainReach,
+  signpostTerrainKey,
+  type TerrainReach,
+  terrainReach,
+} from './terrain-reach.js';
 
 interface ReachCache {
   readonly terrain: TerrainGraph;
   readonly key: string;
-  readonly posts: Map<Entity, TerrainReach>;
   readonly spots: Map<string, TerrainReach>;
   readonly sites: TileBuckets<SignpostSite & { player: number }>;
   readonly groups: Map<number, SpatialGate>;
@@ -82,7 +87,6 @@ function cacheOf(world: World, content: ContentSet, terrain: TerrainGraph): Reac
     cache = {
       terrain,
       key,
-      posts: new Map(cache?.terrain === terrain ? [...cache.posts].filter(([id]) => world.isAlive(id)) : []),
       spots: cache?.terrain === terrain ? cache.spots : new Map(),
       views: new Map(),
       sites,
@@ -90,6 +94,7 @@ function cacheOf(world: World, content: ContentSet, terrain: TerrainGraph): Reac
       limits: new Map(),
     };
     caches.set(world, cache);
+    dropFallenPostReaches(world);
   }
   return cache;
 }
@@ -118,10 +123,7 @@ function postReach(
   hx: number,
   hy: number,
 ): ReachArea {
-  const cache = cacheOf(world, content, terrain);
-  const found = terrainReach(world, content, terrain, hx, hy, GOODS_SEARCH_RANGE_NODES, cache.posts.get(id));
-  cache.posts.set(id, found);
-  return found.area;
+  return postTerrainReach(world, content, terrain, id, hx, hy, GOODS_SEARCH_RANGE_NODES).area;
 }
 
 /** Goods are discovered locally or through the connected guides reached by the same local search. */

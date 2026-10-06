@@ -64,6 +64,22 @@ describe('terrain-aware goods reach', () => {
     expect(local?.posts.at(-1)?.area).toBe(remote?.posts.at(-1)?.area);
     reads.mockRestore();
   });
+  it('floods each post once for both its links and the goods search', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(200, 100) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('terrain');
+    for (const hx of [40, 70]) {
+      const post = sim.world.create();
+      sim.world.add(post, Owner, { player: 0 });
+      sim.world.add(post, Position, positionOfNode(hx, 40));
+      sim.world.add(post, Signpost, { links: [] });
+    }
+    signpostLinksSystem(sim.world, ctxOf(sim));
+    const floods = vi.spyOn(terrain, 'walkableResistances');
+    expect(sim.signpostReach(0)?.posts).toHaveLength(2);
+    expect(floods).not.toHaveBeenCalled();
+    floods.mockRestore();
+  });
   it('uses the strict 40-node boundary on plain land and a smaller reach on resistant ground', () => {
     const grass = buildTerrainGraph(testContent(), grassNodeMap(120, 100));
     const area = searchReach(grass, empty, 50, 50, 40);

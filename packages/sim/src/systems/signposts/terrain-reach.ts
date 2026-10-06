@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import type { World } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import { type ReachArea, searchReach } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { walkBlockMask } from '../footprint/walk-block-mask.js';
@@ -49,4 +49,40 @@ export function terrainReach(
     localKey,
     area: searchReach(terrain, mask.levelled(), hx, hy, range),
   };
+}
+
+/** Each signpost's reach per range, shared by the link pass and the goods search, which flood from the
+ *  same post node at the same range. */
+const postReaches = new WeakMap<World, Map<number, Map<Entity, TerrainReach>>>();
+
+/** {@link terrainReach} from signpost `post` standing on `(hx, hy)`, kept per post until it falls. */
+export function postTerrainReach(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  post: Entity,
+  hx: number,
+  hy: number,
+  range: number,
+): TerrainReach {
+  let byRange = postReaches.get(world);
+  if (byRange === undefined) {
+    byRange = new Map();
+    postReaches.set(world, byRange);
+  }
+  let held = byRange.get(range);
+  if (held === undefined) {
+    held = new Map();
+    byRange.set(range, held);
+  }
+  const found = terrainReach(world, content, terrain, hx, hy, range, held.get(post));
+  held.set(post, found);
+  return found;
+}
+
+/** Forget the reaches of posts no longer alive. */
+export function dropFallenPostReaches(world: World): void {
+  for (const held of postReaches.get(world)?.values() ?? []) {
+    for (const post of held.keys()) if (!world.isAlive(post)) held.delete(post);
+  }
 }
