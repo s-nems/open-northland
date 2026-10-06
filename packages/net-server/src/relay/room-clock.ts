@@ -32,6 +32,7 @@ export class RoomClock {
   private readonly pending = new Map<number, WireCommand[]>();
   /** Per tick, how many commands each member has landed on it. */
   private readonly budgets = new Map<number, Map<string, number>>();
+  private readonly lastScheduled = new Map<string, number>();
 
   constructor(speed: number) {
     this.speedMultiplier = speed;
@@ -82,6 +83,7 @@ export class RoomClock {
     this.accumulatorMs = 0;
     this.pending.clear();
     this.budgets.clear();
+    this.lastScheduled.clear();
   }
 
   start(): void {
@@ -116,12 +118,14 @@ export class RoomClock {
     delayTicks: number,
   ): ScheduleOutcome {
     const issued = Math.min(fromTick, this.lastTick);
-    const applyTick = Math.max(this.nextTick, issued + delayTicks);
+    // A lower delay or a restored client tick must not let a later order overtake accepted input.
+    const applyTick = Math.max(this.nextTick, issued + delayTicks, this.lastScheduled.get(member) ?? 0);
     const budget = this.budgets.get(applyTick) ?? new Map<string, number>();
     const used = budget.get(member) ?? 0;
     if (used >= MAX_COMMANDS_PER_TICK) return { refused: 'budget' };
     budget.set(member, used + 1);
     this.budgets.set(applyTick, budget);
+    this.lastScheduled.set(member, applyTick);
     this.land(applyTick, envelope);
     return { applyTick };
   }
@@ -154,6 +158,9 @@ export class RoomClock {
     const tick = ++this.lastTick;
     const commands = this.pending.get(tick) ?? [];
     this.pending.delete(tick);
+    for (const member of this.budgets.get(tick)?.keys() ?? []) {
+      if (this.lastScheduled.get(member) === tick) this.lastScheduled.delete(member);
+    }
     this.budgets.delete(tick);
     return { tick, commands };
   }

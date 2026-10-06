@@ -52,6 +52,22 @@ describe('room clock', () => {
     ]);
   });
 
+  it('keeps one member’s commands in order when its input delay falls during a pause', () => {
+    const clock = startedAt(10);
+    clock.setPaused(true);
+    expect(clock.schedule('a', envelope('first'), 10, 4)).toEqual({ applyTick: 14 });
+    expect(clock.schedule('a', envelope('second'), 10, 3)).toEqual({ applyTick: 14 });
+    expect(clock.schedule('b', envelope('independent'), 10, 1)).toEqual({ applyTick: 11 });
+    clock.setPaused(false);
+    const frames = clock.advance(TICK_MS * 4);
+    expect(frames.flatMap((frame) => frame.commands.map(({ envelope }) => envelope.command.kind))).toEqual([
+      'independent',
+      'first',
+      'second',
+    ]);
+    expect(clock.schedule('a', envelope('next'), 14, 1)).toEqual({ applyTick: 15 });
+  });
+
   it('never lands a command on an emitted tick, and clamps a client claiming to be ahead', () => {
     const clock = startedAt(10);
     expect(clock.schedule('a', envelope('late'), 2, 3)).toEqual({ applyTick: 11 });

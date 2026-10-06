@@ -187,7 +187,8 @@ the tick the client's own sim had reached when the person issued it. The relay:
 - stamps `player` with the seat the connection holds, whatever the envelope claimed;
 - lands the envelope on tick `max(nextTick, fromTick + delay)`, where `delay` is the member's
   assigned input delay, so a command applies a fixed number of ticks after it was issued as long as
-  the connection stays within its budget;
+  the connection stays within its budget; a later command from the same member never lands before
+  its last accepted command, even when its delay falls or its world is restored to an earlier tick;
 - accepts at most `MAX_COMMANDS_PER_TICK` (20) envelopes from one member on one tick, each at most
   `MAX_ENVELOPE_BYTES` (1 KiB) as JSON, and reports the rest as `rejected`.
 
