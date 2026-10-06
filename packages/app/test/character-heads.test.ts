@@ -174,6 +174,25 @@ describe('borrowedHeadAtlas', () => {
     expect(borrowed.frames.get(STAND.start)).toBe(hat.frames.get(STAND.start));
   });
 
+  it('keeps the druid hat on the neck as the one-facing brewing body moves', () => {
+    const walk = row('human_man_generic_walk', 100, 96);
+    const work = row('human_man_Druid_work', 300, 16);
+    const own = indexAtlasFrames(64, 64, [frame(136, 20, -10, -50)]);
+    const guide = indexAtlasFrames(64, 64, [
+      frame(136, 0, -7, -40),
+      ...Array.from({ length: 16 }, (_, i) => frame(300 + i, 5, -6 + (i % 2), -38 - (i % 3))),
+    ]);
+    const borrowed = borrowedHeadAtlas(own, [guide], [work], walk);
+    for (let i = 0; i < 16; i++) {
+      expect(borrowed.frames.get(300 + i)).toMatchObject({
+        x: 20,
+        offsetX: -9 + (i % 2),
+        offsetY: -48 - (i % 3),
+      });
+    }
+    expect(own.frames.has(300)).toBe(false);
+  });
+
   it('leaves a clip without six facing blocks blank rather than drawing from the donor sheet', () => {
     const swing = row('swing', 60, 7);
     const donorSwing = indexAtlasFrames(64, 64, [

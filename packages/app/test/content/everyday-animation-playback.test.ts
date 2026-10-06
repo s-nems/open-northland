@@ -17,6 +17,18 @@ describe.runIf(hasRealIr())('everyday animation playback', () => {
   const table = characterTablesUnderTest([1])?.get(1);
   if (table === undefined) return;
 
+  it('keeps every druid head and hat visible throughout brewing', () => {
+    const look = table.byJob[JOB_DRUID];
+    expect(look?.heads).toHaveLength(4);
+    for (const head of look?.heads ?? []) {
+      for (let bob = 661; bob < 677; bob++) {
+        const frame = head.atlas.frames.get(bob);
+        expect(frame?.width, `brewing head ${bob}`).toBeGreaterThan(0);
+        expect(frame?.height, `brewing head ${bob}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it('plays each baby pose as an occasional idle gesture and stops it on movement', () => {
     for (const job of [JOB_BABY_FEMALE, JOB_BABY_MALE]) {
       const binding = table.youngByJob?.[job]?.binding;

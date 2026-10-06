@@ -61,8 +61,9 @@ const ARMED_JOBS: readonly number[] = [
  * matches `tribe <id> <look>: <slot>`.
  */
 const SOURCE_HEADLESS: readonly RegExp[] = [
-  // Other trades' indoor clips are unused by the scout/druid; the druid's work strip includes its head.
-  /^tribe 1 job (27|30): sub-clip /,
+  // Other trades' indoor clips are unused by the scout/druid. Brewing must have a complete head.
+  /^tribe 1 job 27: sub-clip /,
+  /^tribe 1 job 30: sub-clip (?!4\/0$)/,
   // One of the two byzantine civilian head looks: the clay dig.
   /^tribe 3 (default|job 25): atomic 26$/,
 ];

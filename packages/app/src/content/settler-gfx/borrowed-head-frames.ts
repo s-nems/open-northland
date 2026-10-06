@@ -1,15 +1,18 @@
 import type { AtlasFrame, SpriteAtlas } from '@open-northland/render/data';
 import type { BobSeqRow } from '../ir/rows.js';
-import { HEX_FACINGS } from './seq-anim.js';
+import { FACING, HEX_FACINGS } from './seq-anim.js';
 
 function drawn(atlas: SpriteAtlas, id: number): AtlasFrame | undefined {
   const frame = atlas.frames.get(id);
   return frame !== undefined && frame.width > 0 && frame.height > 0 ? frame : undefined;
 }
 
-/** The first `walk` frame facing the same way as entry `offset` of `clip`, or undefined when either clip
- *  does not lay out six equal facing blocks. */
+/** The matching walk pose for a six-facing clip, or the druid's fixed cauldron facing. */
 function walkFrameId(clip: BobSeqRow, offset: number, walk: BobSeqRow): number | undefined {
+  // The 16-frame brewing strip faces NE, as does the cauldron's direction-5 work window.
+  // Approximation: keep the druid's own walk head/hat, following the donor head's authored motion.
+  if (clip.name === 'human_man_Druid_work' && clip.length === 16 && walk.length % 8 === 0)
+    return walk.start + FACING.NE * (walk.length / 8);
   const clipBlock = clip.length / HEX_FACINGS;
   const walkBlock = walk.length / HEX_FACINGS;
   if (!Number.isInteger(clipBlock) || !Number.isInteger(walkBlock)) return undefined;
@@ -17,7 +20,7 @@ function walkFrameId(clip: BobSeqRow, offset: number, walk: BobSeqRow): number |
 }
 
 /**
- * `head` with every six-facing body clip it draws no frame of filled from `donors`, the other head sets on
+ * `head` with supported body clips it draws no frame of filled from `donors`, the other head sets on
  * the same body: the head's own first `walk` frame in that facing, placed where the first donor drawing the
  * frame puts its head, less the two heads' anchor difference in that walk frame. Only the head's own frames
  * are used, since each head set is its own sheet. The frankish, saracen and byzantine women's head sets

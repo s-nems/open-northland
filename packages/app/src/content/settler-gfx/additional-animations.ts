@@ -110,11 +110,11 @@ function workAndBabyGestures(
   binding: SettlerStateBinding,
   spec: CharacterSpec,
   sequences: ReadonlyMap<string, BobSeqRow>,
+  gfx: CharacterGfx,
 ): SettlerStateBinding {
-  // These two strips include the head in the body artwork; their separate head frames are blank.
   if (spec.gfxJobs[0] === JOB_DRUID) {
     const work = sequences.get('human_man_Druid_work');
-    if (work?.length === 16) {
+    if (work?.length === 16 && hasOwnHeads(work, gfx)) {
       // The druid's production programs call action 4/subId 0 beside the cauldron. Approximation:
       // play the unbound work strip once over that window instead of the ordinary wait gesture.
       return {
@@ -129,6 +129,7 @@ function workAndBabyGestures(
       };
     }
   }
+  // Babies include their heads in the body artwork; their separate head sheet is blank.
   if (spec.waitSeq === 'human_child_baby_generic_wait') {
     const wait = sequences.get('human_child_baby_generic_wait_1');
     if (wait?.length === 39) {
@@ -158,7 +159,7 @@ export function withAdditionalAnimations(
   sequences: ReadonlyMap<string, BobSeqRow>,
   gfx: CharacterGfx,
 ): SettlerStateBinding {
-  binding = workAndBabyGestures(binding, spec, sequences);
+  binding = workAndBabyGestures(binding, spec, sequences, gfx);
   const choices = attackChoices(spec, sequences, gfx);
   const attacks = choices.length > 1 ? { byAtomicChoices: { [ATTACK_ATOMIC]: choices } } : {};
   const prefix = spec.walkSeq === undefined ? undefined : BOW_PREFIXES[spec.walkSeq];
