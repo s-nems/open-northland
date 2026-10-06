@@ -9,7 +9,7 @@
  *
  * Neighbours are emitted in a fixed canonical order so traversal is byte-identical across runs.
  */
-import type { BlockOverlay } from '../block-overlay.js';
+import { type BlockOverlay, NodeMask } from '../block-overlay.js';
 import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../world-metric.js';
 
 import { TerrainLattice, type Traversal } from './lattice.js';
@@ -88,6 +88,8 @@ export abstract class TerrainEdges extends TerrainLattice {
     out: StepBuffer,
     traversal: Traversal = 'land',
   ): void {
+    // A byte mask is read in place: one array read instead of a call through the overlay interface.
+    const bytes = blocked instanceof NodeMask ? blocked.blocked : undefined;
     const width = this.width;
     const x = this.xOf(node);
     const y = this.yOf(node);
@@ -96,27 +98,27 @@ export abstract class TerrainEdges extends TerrainLattice {
     const west = x > 0;
     const row = width;
     const twoRows = 2 * width;
-    if (east && this.open(node + 1, blocked, traversal)) out.push((node + 1) as NodeId, HALF_COLUMN);
-    if (west && this.open(node - 1, blocked, traversal)) out.push((node - 1) as NodeId, HALF_COLUMN);
-    const north = y > 0 && this.open(node - row, blocked, traversal);
-    const south = y + 1 < this.height && this.open(node + row, blocked, traversal);
+    if (east && this.open(node + 1, blocked, bytes, traversal)) out.push((node + 1) as NodeId, HALF_COLUMN);
+    if (west && this.open(node - 1, blocked, bytes, traversal)) out.push((node - 1) as NodeId, HALF_COLUMN);
+    const north = y > 0 && this.open(node - row, blocked, bytes, traversal);
+    const south = y + 1 < this.height && this.open(node + row, blocked, bytes, traversal);
     const northFar = y >= 2;
     const southFar = y + 2 < this.height;
     // Both midpoint flanks blocked is a wall joint, not a gap to slip through.
-    if (east && northFar && this.open(node + 1 - twoRows, blocked, traversal)) {
-      if (north || this.open(node + 1 - row, blocked, traversal))
+    if (east && northFar && this.open(node + 1 - twoRows, blocked, bytes, traversal)) {
+      if (north || this.open(node + 1 - row, blocked, bytes, traversal))
         out.push((node + 1 - twoRows) as NodeId, DIAGONAL_STEP);
     }
-    if (east && southFar && this.open(node + 1 + twoRows, blocked, traversal)) {
-      if (south || this.open(node + 1 + row, blocked, traversal))
+    if (east && southFar && this.open(node + 1 + twoRows, blocked, bytes, traversal)) {
+      if (south || this.open(node + 1 + row, blocked, bytes, traversal))
         out.push((node + 1 + twoRows) as NodeId, DIAGONAL_STEP);
     }
-    if (west && southFar && this.open(node - 1 + twoRows, blocked, traversal)) {
-      if (south || this.open(node - 1 + row, blocked, traversal))
+    if (west && southFar && this.open(node - 1 + twoRows, blocked, bytes, traversal)) {
+      if (south || this.open(node - 1 + row, blocked, bytes, traversal))
         out.push((node - 1 + twoRows) as NodeId, DIAGONAL_STEP);
     }
-    if (west && northFar && this.open(node - 1 - twoRows, blocked, traversal)) {
-      if (north || this.open(node - 1 - row, blocked, traversal))
+    if (west && northFar && this.open(node - 1 - twoRows, blocked, bytes, traversal)) {
+      if (north || this.open(node - 1 - row, blocked, bytes, traversal))
         out.push((node - 1 - twoRows) as NodeId, DIAGONAL_STEP);
     }
     if (north) out.push((node - row) as NodeId, HALF_ROW);
@@ -125,8 +127,15 @@ export abstract class TerrainEdges extends TerrainLattice {
 
   /** Whether the in-bounds node id `c` is open to `traversal` and not masked by the dynamic `blocked`
    *  overlay. */
-  private open(c: number, blocked: BlockOverlay | undefined, traversal: Traversal): boolean {
+  private open(
+    c: number,
+    blocked: BlockOverlay | undefined,
+    bytes: Uint8Array | undefined,
+    traversal: Traversal,
+  ): boolean {
     const id = c as NodeId;
-    return (traversal === 'land' ? this.walkableAt(id) : this.isWater(id)) && !(blocked?.has(id) ?? false);
+    if (!(traversal === 'land' ? this.walkableAt(id) : this.isWater(id))) return false;
+    if (bytes !== undefined) return bytes[id] !== 1;
+    return !(blocked?.has(id) ?? false);
   }
 }

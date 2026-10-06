@@ -3,6 +3,7 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../../nav/world-metric.js';
+import { WalkBlockMask } from '../footprint/walk-block-mask.js';
 import { firstRingNode } from './node-geometry.js';
 
 /** Walking costs from a seed set over the pathfinder's own edges, in the tile units their lengths carry
@@ -104,35 +105,45 @@ export const COST_PAGE_SIZE = 1 << COST_PAGE_SHIFT;
 const COST_PAGE_MASK = COST_PAGE_SIZE - 1;
 /** A page slot no walk has reached yet: past every cost, so no relaxation ever keeps it. */
 const UNREACHED_COST = Number.POSITIVE_INFINITY;
-interface CostPage {
-  readonly costs: Float64Array;
-  readonly settled: Uint8Array;
+
+/** A settled slot holds `-(cost + 1)`: below zero, where no reached cost lies, so one read tells settled,
+ *  reached and unreached apart. */
+function settledSlot(cost: Fixed): number {
+  return -cost - 1;
+}
+
+function slotCost(slot: number): Fixed {
+  return (-slot - 1) as Fixed;
 }
 
 /** Pages are allocated only where this bounded flood visits. Indexed costs avoid a pair of per-node
  * Maps without allocating full-map buffers for each resource's small flood. */
 class WalkCosts {
-  private readonly pages: Array<CostPage | undefined> = [];
+  private readonly pages: Array<Float64Array | undefined> = [];
   settledCount = 0;
 
-  page(node: NodeId): CostPage {
+  /** The page holding `node`'s slot at `node & COST_PAGE_MASK`: its best cost so far, {@link settledSlot}
+   *  once settled. */
+  page(node: NodeId): Float64Array {
     const index = node >> COST_PAGE_SHIFT;
     let page = this.pages[index];
     if (page === undefined) {
-      page = {
-        costs: new Float64Array(COST_PAGE_SIZE).fill(UNREACHED_COST),
-        settled: new Uint8Array(COST_PAGE_SIZE),
-      };
+      page = new Float64Array(COST_PAGE_SIZE).fill(UNREACHED_COST);
       this.pages[index] = page;
     }
     return page;
   }
 
   settledCost(node: NodeId): Fixed | undefined {
-    const page = this.pages[node >> COST_PAGE_SHIFT];
-    const at = node & COST_PAGE_MASK;
-    return page?.settled[at] === 1 ? (page.costs[at] as Fixed | undefined) : undefined;
+    const slot = this.pages[node >> COST_PAGE_SHIFT]?.[node & COST_PAGE_MASK];
+    return slot !== undefined && slot < 0 ? slotCost(slot) : undefined;
   }
+}
+
+/** `blocked` as one search pass reads it: the walk-block mask levelled once, since nothing writes the
+ *  world while a pass runs, so the pass skips the per-read level check. */
+function passOverlay(blocked: BlockOverlay): BlockOverlay {
+  return blocked instanceof WalkBlockMask ? blocked.levelled() : blocked;
 }
 
 /**
@@ -166,25 +177,26 @@ export class WalkFlood implements WalkDistances {
   costTo(node: NodeId): Fixed | undefined {
     const known = this.costs.settledCost(node);
     if (known !== undefined) return known;
-    const { costs, frontier, steps } = this;
+    const { costs, frontier, steps, terrain } = this;
+    const blocked = passOverlay(this.blocked);
     while (frontier.size > 0 && costs.settledCount < this.budget) {
       const next = frontier.pop();
       const cost = frontier.poppedCost;
       const page = costs.page(next);
       const at = next & COST_PAGE_MASK;
-      if (page.settled[at] === 1) continue;
-      page.settled[at] = 1;
-      page.costs[at] = cost;
+      if ((page[at] ?? UNREACHED_COST) < 0) continue;
+      page[at] = settledSlot(cost);
       costs.settledCount++;
-      this.terrain.stepsInto(next, this.blocked, steps);
+      terrain.stepsInto(next, blocked, steps);
       for (let i = 0; i < steps.length; i++) {
         const stepNode = steps.nodeAt(i);
         const candidate = costs.page(stepNode);
         const offset = stepNode & COST_PAGE_MASK;
-        if (candidate.settled[offset] === 1) continue;
+        const held = candidate[offset] ?? UNREACHED_COST;
+        if (held < 0) continue;
         const stepCost = fx.add(cost, steps.costAt(i));
-        if ((candidate.costs[offset] ?? UNREACHED_COST) <= stepCost) continue;
-        candidate.costs[offset] = stepCost;
+        if (held <= stepCost) continue;
+        candidate[offset] = stepCost;
         frontier.push(stepCost, stepNode);
       }
       if (next === node) return cost;
@@ -439,7 +451,7 @@ class DirectedWalk implements WalkDistances {
   ) {
     this.slack = reachSlack(reach);
     const { seed } = walks;
-    this.costs.page(seed).costs[seed & COST_PAGE_MASK] = ZERO;
+    this.costs.page(seed)[seed & COST_PAGE_MASK] = ZERO;
     this.frontier.push(this.aim(seed), seed);
   }
 
@@ -471,25 +483,28 @@ class DirectedWalk implements WalkDistances {
    *  search has settled the flood's budget. */
   private settleTo(node: NodeId): Fixed | undefined | null {
     const { costs, frontier, steps } = this;
-    const { terrain, blocked, budget } = this.walks;
+    const { terrain, budget } = this.walks;
+    const blocked = passOverlay(this.walks.blocked);
     while (frontier.size > 0) {
       if (costs.settledCount >= budget) return null;
       const next = frontier.pop();
       const page = costs.page(next);
       const at = next & COST_PAGE_MASK;
-      const cost = (page.costs[at] ?? UNREACHED_COST) as Fixed;
-      if (page.settled[at] === 1 || cost === UNREACHED_COST) continue;
-      page.settled[at] = 1;
+      const slot = page[at] ?? UNREACHED_COST;
+      if (slot < 0 || slot === UNREACHED_COST) continue;
+      const cost = slot as Fixed;
+      page[at] = settledSlot(cost);
       costs.settledCount++;
       terrain.stepsInto(next, blocked, steps);
       for (let i = 0; i < steps.length; i++) {
         const stepNode = steps.nodeAt(i);
         const candidate = costs.page(stepNode);
         const offset = stepNode & COST_PAGE_MASK;
-        if (candidate.settled[offset] === 1) continue;
+        const held = candidate[offset] ?? UNREACHED_COST;
+        if (held < 0) continue;
         const stepCost = fx.add(cost, steps.costAt(i));
-        if ((candidate.costs[offset] ?? UNREACHED_COST) <= stepCost) continue;
-        candidate.costs[offset] = stepCost;
+        if (held <= stepCost) continue;
+        candidate[offset] = stepCost;
         frontier.push(fx.add(stepCost, this.aim(stepNode)), stepNode);
       }
       if (next === node) return cost;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fx } from '../../../src/core/fixed.js';
 import { Simulation } from '../../../src/index.js';
 import type { BlockOverlay } from '../../../src/nav/block-overlay.js';
-import { CountedBlocks } from '../../../src/nav/block-overlay.js';
+import { CountedBlocks, NodeMask } from '../../../src/nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
 import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../../../src/nav/world-metric.js';
 import {
@@ -207,6 +207,47 @@ describe('ai-player walk flood', () => {
     // The aimed corridor reaches nodes the flood of the same budget never settles.
     expect(pastFloodBudget).toBeGreaterThan(0);
   });
+
+  it('answers over a byte mask exactly as a reference flood and as the same blocks behind any overlay', () => {
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: grassNodeMap(WALLED_MAP_NODES, WALLED_MAP_NODES),
+    });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    let state = RANDOM_SEED;
+    const draw = (bound: number): number => {
+      state = (state * LCG_MULTIPLIER + LCG_INCREMENT) % LCG_MODULUS;
+      return state % bound;
+    };
+    for (let trial = 0; trial < RANDOM_TRIALS; trial++) {
+      const mask = new NodeMask(terrain.nodeCount);
+      for (let node = 0; node < terrain.nodeCount; node++) {
+        if (draw(PERCENT) < RANDOM_BLOCKED_PERCENT) mask.set(node as NodeId, true);
+      }
+      const seed = terrain.nodeAt(draw(WALLED_MAP_NODES), draw(WALLED_MAP_NODES));
+      mask.set(seed, false);
+      const viaCall: BlockOverlay = { has: (node) => mask.has(node), size: mask.size };
+      const budget = RANDOM_BUDGETS[trial % RANDOM_BUDGETS.length] ?? WHOLE_BANK;
+      const expected = referenceFlood(terrain, viaCall, seed, budget);
+      const flood = new WalkFlood(terrain, mask, [seed], budget);
+      const toward = { hx: draw(WALLED_MAP_NODES), hy: draw(WALLED_MAP_NODES) };
+      const answers = (blocked: BlockOverlay) => {
+        const out: (number | undefined)[] = [];
+        for (const mode of ['flood', 'aimed'] as const) {
+          const walk = new SeedWalks(terrain, blocked, seed, budget, mode).toward(toward, WALLED_REACH);
+          forEachNear(terrain, toward, (node) => out.push(walk.costFloor(node), walk.costTo(node)));
+        }
+        return out;
+      };
+      for (let id = 0; id < terrain.nodeCount; id += RANDOM_PROBE_STRIDE) {
+        const node = id as NodeId;
+        expect(flood.costTo(node)).toBe(expected.get(node));
+      }
+      expect(answers(mask)).toEqual(answers(viaCall));
+    }
+  });
 });
 
 const WALLED_MAP_NODES = 64;
@@ -218,6 +259,47 @@ const WALLED_TARGETS = [
 ];
 const WALLED_BUDGETS = [SMALL_BUDGET, 400, WHOLE_BANK];
 const WALLED_REACH = 6;
+const RANDOM_TRIALS = 24;
+const RANDOM_BLOCKED_PERCENT = 30;
+const PERCENT = 100;
+const RANDOM_BUDGETS = [SMALL_BUDGET, 400, WHOLE_BANK];
+/** Every how many node ids the flood is asked about, so a trial asks across the whole map. */
+const RANDOM_PROBE_STRIDE = 7;
+const RANDOM_SEED = 2024;
+const LCG_MULTIPLIER = 1103515245;
+const LCG_INCREMENT = 12345;
+const LCG_MODULUS = 2 ** 31;
+
+/** The costs a Dijkstra over `blocked` settles from `seed` in ascending (cost, node id) order, the first
+ *  `budget` of them: the walk flood's contract, written as plainly as it reads. */
+function referenceFlood(
+  terrain: TerrainGraph,
+  blocked: BlockOverlay,
+  seed: NodeId,
+  budget: number,
+): Map<NodeId, number> {
+  const settled = new Map<NodeId, number>();
+  const best = new Map<NodeId, number>([[seed, 0]]);
+  while (settled.size < budget) {
+    let next: NodeId | undefined;
+    let nextCost = Number.POSITIVE_INFINITY;
+    for (const [node, cost] of best) {
+      if (cost < nextCost || (cost === nextCost && next !== undefined && node < next)) {
+        next = node;
+        nextCost = cost;
+      }
+    }
+    if (next === undefined) break;
+    best.delete(next);
+    settled.set(next, nextCost);
+    for (const step of terrain.steps(next, blocked)) {
+      if (settled.has(step.node)) continue;
+      const cost = nextCost + step.cost;
+      if (cost < (best.get(step.node) ?? Number.POSITIVE_INFINITY)) best.set(step.node, cost);
+    }
+  }
+  return settled;
+}
 
 /** Open ground broken by walls of blocked nodes: every fifth column below a gap, every seventh row beside
  *  one, and a seed clear in the middle. */

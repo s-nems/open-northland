@@ -51,7 +51,8 @@ export class CountedBlocks implements BlockOverlay {
  * itself, so a membership test is a single array read.
  */
 export class NodeMask implements BlockOverlay {
-  private readonly blocked: Uint8Array;
+  /** One byte per node, 1 where blocked: read directly by the lattice's edge emitter. */
+  readonly blocked: Uint8Array;
   private count = 0;
   constructor(nodeCount: number) {
     this.blocked = new Uint8Array(nodeCount);
