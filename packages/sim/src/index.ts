@@ -165,6 +165,8 @@ export {
   hexDistanceBetween,
   hexNeighboursOf,
   type NodeArea,
+  nodeHxOfPosition,
+  nodeHyOfPosition,
   nodeOfPosition,
   positionOfNode,
 } from './nav/halfcell.js';

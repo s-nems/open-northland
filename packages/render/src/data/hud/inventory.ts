@@ -6,7 +6,8 @@ import {
   type HalfCellNode,
   hexDistanceBetween,
   indexesOf,
-  nodeOfPosition,
+  nodeHxOfPosition,
+  nodeHyOfPosition,
   reachContains,
   type SignpostReachView,
   type SnapshotIndexSpec,
@@ -49,7 +50,8 @@ export function adjustInventory(totals: Map<number, number>, amounts: AmountPair
 
 interface Source {
   readonly owner: number | undefined;
-  readonly node: HalfCellNode | null;
+  /** Rewritten in place when the entity steps onto another node. */
+  node: HalfCellNode | null;
   readonly parent: number | undefined;
   readonly amounts: AmountPairs;
 }
@@ -72,22 +74,39 @@ interface Inventory {
   empire: Region | null;
 }
 
+/** The components besides `Position` a source is read from. */
+const STOCK_READS = [
+  'Owner',
+  'Stockpile',
+  'Upgrading',
+  'Carrying',
+  'VehicleStock',
+  'Rider',
+  'Vehicle',
+] as const;
+
+/** A docked hold is reached from the shore, including its passengers and nested vehicles. */
+function mooringOf(c: Components): HalfCellNode | null {
+  const vehicle = c.Vehicle as
+    | { moored?: unknown; mooring?: { hx?: unknown; hy?: unknown } | null }
+    | undefined;
+  const mooring = vehicle?.moored === true ? vehicle.mooring : undefined;
+  return typeof mooring?.hx === 'number' && typeof mooring.hy === 'number' ? (mooring as HalfCellNode) : null;
+}
+
+function nodeHx(c: Components, position: { readonly x: number; readonly y: number }): number {
+  return mooringOf(c)?.hx ?? nodeHxOfPosition(position.x as Fixed, position.y as Fixed);
+}
+
+function nodeHy(c: Components, position: { readonly y: number }): number {
+  return mooringOf(c)?.hy ?? nodeHyOfPosition(position.y as Fixed);
+}
+
 function sourceOf(c: Components): Source | null {
   if (!('Stockpile' in c || 'Upgrading' in c || 'Carrying' in c || 'VehicleStock' in c || 'Vehicle' in c))
     return null;
   const p = readPosition(c);
-  let node = p === null ? null : nodeOfPosition(p.x as Fixed, p.y as Fixed);
-  const vehicle = c.Vehicle as
-    | { moored?: unknown; mooring?: { hx?: unknown; hy?: unknown } | null }
-    | undefined;
-  // A docked hold is reached from the shore, including its passengers and nested vehicles.
-  if (
-    node !== null &&
-    vehicle?.moored === true &&
-    typeof vehicle.mooring?.hx === 'number' &&
-    typeof vehicle.mooring.hy === 'number'
-  )
-    node = { hx: vehicle.mooring.hx, hy: vehicle.mooring.hy };
+  const node = p === null ? null : { hx: nodeHx(c, p), hy: nodeHy(c, p) };
   return {
     owner: readNumField(c, 'Owner', 'player'),
     node,
@@ -100,6 +119,9 @@ function sourceOf(c: Components): Source | null {
 }
 
 function sourceNode(state: Inventory, id: number): HalfCellNode | null {
+  const own = state.sources.get(id);
+  if (own === undefined) return null;
+  if (own.node !== null) return own.node;
   const seen = new Set<number>();
   let current: number | undefined = id;
   while (current !== undefined && !seen.has(current)) {
@@ -112,13 +134,51 @@ function sourceNode(state: Inventory, id: number): HalfCellNode | null {
   return null;
 }
 
+function counts(region: Region | null, source: Source): region is Region {
+  return region !== null && (source.owner === undefined || source.owner === region.player);
+}
+
 function countRegion(state: Inventory, id: number, source: Source, sign: number): void {
+  if (state.region === null && state.empire === null) return;
   const node = sourceNode(state, id);
   if (node === null) return;
-  for (const region of [state.region, state.empire]) {
-    if (region === null || (source.owner !== undefined && source.owner !== region.player)) continue;
-    if (region.contains(node, id)) adjustInventory(region.stock, source.amounts, sign);
-  }
+  const { region, empire } = state;
+  if (counts(region, source) && region.contains(node, id))
+    adjustInventory(region.stock, source.amounts, sign);
+  if (counts(empire, source) && empire.contains(node, id))
+    adjustInventory(empire.stock, source.amounts, sign);
+}
+
+/** Count the moving source in or out of `region` when the step crossed its edge. */
+function crossRegion(
+  region: Region | null,
+  id: number,
+  source: Source,
+  from: HalfCellNode,
+  to: HalfCellNode,
+): void {
+  if (!counts(region, source)) return;
+  const was = region.contains(from, id);
+  if (was !== region.contains(to, id)) adjustInventory(region.stock, source.amounts, was ? -1 : 1);
+}
+
+/**
+ * A held source that may have stepped: one standing on its own node moves there, recounted only by a
+ * region it entered or left. True when that settles it, false for a source the full replacement must
+ * take (one riding another or carrying others).
+ */
+function stepped(state: Inventory, source: Source, id: number, is: Components): boolean {
+  const from = source.node;
+  const p = readPosition(is);
+  if (from === null || p === null || state.dependents.has(id)) return false;
+  const hx = nodeHx(is, p);
+  const hy = nodeHy(is, p);
+  if (hx === from.hx && hy === from.hy) return true;
+  const to = { hx, hy };
+  crossRegion(state.region, id, source, from, to);
+  crossRegion(state.empire, id, source, from, to);
+  source.node = to;
+  return true;
 }
 
 function countOwned(state: Inventory, source: Source, sign: number): void {
@@ -132,12 +192,18 @@ function countOwned(state: Inventory, source: Source, sign: number): void {
   if (totals.size === 0) state.owned.delete(source.owner);
 }
 
-function countBranch(state: Inventory, id: number, sign: number, seen = new Set<number>()): void {
-  if (seen.has(id)) return;
-  seen.add(id);
+function countBranch(state: Inventory, id: number, sign: number, seen?: Set<number>): void {
+  if (state.region === null && state.empire === null) return;
   const source = state.sources.get(id);
   if (source !== undefined) countRegion(state, id, source, sign);
-  for (const child of state.dependents.get(id) ?? []) countBranch(state, child, sign, seen);
+  const children = state.dependents.get(id);
+  if (children === undefined) return;
+  const visited = seen ?? new Set([id]);
+  for (const child of children) {
+    if (visited.has(child)) continue;
+    visited.add(child);
+    countBranch(state, child, sign, visited);
+  }
 }
 
 function replaceSource(state: Inventory, id: number, next: Source | null): void {
@@ -168,18 +234,27 @@ function replaceSource(state: Inventory, id: number, next: Source | null): void 
   countBranch(state, id, 1);
 }
 
+function replaceIfChanged(state: Inventory, next: EntitySnapshot): void {
+  const source = sourceOf(next.components);
+  if (firstDifference(state.sources.get(next.id) ?? null, source) === null) return;
+  replaceSource(state, next.id, source);
+}
+
 const INVENTORY: SnapshotIndexSpec<Inventory> = {
   name: 'HUD inventory',
-  reads: {
-    values: ['Owner', 'Position', 'Stockpile', 'Upgrading', 'Carrying', 'VehicleStock', 'Rider', 'Vehicle'],
-  },
+  // A step rewrites only `Position`, which the replacements read as present or not: `swapAll` meets every
+  // touched entity and moves the sources among them, so a walker's step costs one lookup.
+  reads: { values: STOCK_READS, presence: ['Position'] },
   empty: () => ({ sources: new Map(), dependents: new Map(), owned: new Map(), region: null, empire: null }),
   add: (state, entity) => replaceSource(state, entity.id, sourceOf(entity.components)),
   remove: (state, entity) => replaceSource(state, entity.id, null),
-  replace: (state, previous, next) => {
-    const source = sourceOf(next.components);
-    if (firstDifference(state.sources.get(previous.id) ?? null, source) === null) return;
-    replaceSource(state, next.id, source);
+  replace: (state, _previous, next) => replaceIfChanged(state, next),
+  swapAll: (state, nexts) => {
+    for (const next of nexts) {
+      const source = state.sources.get(next.id);
+      if (source !== undefined && !stepped(state, source, next.id, next.components))
+        replaceIfChanged(state, next);
+    }
   },
   differs: (held, fresh) => {
     const sourceDifference = firstDifference(held.sources, fresh.sources, 'inventory sources');

@@ -223,6 +223,110 @@ describe('network and empire inventory', () => {
   });
 });
 
+describe('inventory upkeep per step', () => {
+  /** A quarter tile: four steps cross a node, so most steps stay on the node they left. */
+  const QUARTER = 0.25;
+  const along = (x: number) => ({ x: fx.fromFloat(x), y: fx.fromInt(8) });
+  /** The empire's reach: the nodes of tiles 14 to 22 on the carriers' row. */
+  const area = { minX: 28, maxX: 44, minY: 16, maxY: 16, cells: new Uint8Array(17).fill(1) };
+  const reach: SignpostReachView = {
+    key: 'band',
+    player: 1,
+    settlements: [],
+    doors: new Map(),
+    posts: [{ id: 1, group: 1, area }],
+  };
+  const network = (s: WorldSnapshot) =>
+    [...(networkInventoryOf(s, 1)?.stock ?? [])].sort(([a], [b]) => a - b);
+  const empire = (s: WorldSnapshot) => [...empireInventoryOf(s, reach)].sort(([a], [b]) => a - b);
+
+  it('keeps the network, empire and owned totals equal to a fresh walk through every kind of step', () => {
+    const mirror = new SnapshotMirror();
+    let sequence = 0;
+    const apply = (touched: EntityDelta[], removed: number[] = []) =>
+      mirror.apply(
+        packSnapshotDelta({
+          tick: sequence,
+          sequence,
+          rebuild: sequence++ === 0,
+          touched,
+          removed,
+          events: [],
+        }),
+      );
+    apply(
+      [
+        post(1, 10),
+        source(20, 4, { Owner: owner, Carrying: { goodType: 1, amount: 1 } }),
+        source(21, 30, { Owner: owner, Carrying: { goodType: 2, amount: 3 } }),
+        source(22, 4, { Owner: owner }),
+        source(23, 4, {
+          Owner: owner,
+          Vehicle: { carrier: null },
+          VehicleStock: { lines: [[1, { current: 5 }]] },
+        }),
+        {
+          id: 24,
+          components: { Owner: owner, Rider: { vehicle: 23 }, Carrying: { goodType: 2, amount: 1 } },
+        },
+        source(25, 18, {
+          Owner: owner,
+          Vehicle: { moored: true, mooring: { hx: 36, hy: 16 }, carrier: null },
+          VehicleStock: { lines: [[2, { current: 4 }]] },
+        }),
+      ].map((e) => touch(e.id, e.components)),
+    );
+    const expectFresh = () => {
+      const s = mirror.snapshot();
+      const fresh = snapshot([...s.entities]);
+      expect(network(s)).toEqual(network(fresh));
+      expect(empire(s)).toEqual(empire(fresh));
+      expect(buildHud(s, 1)).toEqual({ ...buildHud(fresh, 1), tick: s.tick });
+      expect(mirror.verifyIndexes()).toEqual([]);
+    };
+    expectFresh();
+    // Carrier 20 walks east through the network's range and the empire's band in quarter steps; the
+    // empty-handed walker 22, the vehicle 23 with its rider and the moored hold 25 walk beside it.
+    for (let x = 4; x <= 26; x += QUARTER) {
+      apply([
+        touch(20, { Position: along(x) }),
+        touch(22, { Position: along(x) }),
+        touch(23, { Position: along(x + 1) }),
+        touch(25, { Position: along(18 + (x % 1)) }),
+      ]);
+      expectFresh();
+    }
+    // Carrier 21 walks back west while it changes hands, picks up more and sets down its load.
+    const changes: EntitySnapshot['components'][] = [
+      { Owner: { player: 2 } },
+      { Owner: owner },
+      { Carrying: { goodType: 2, amount: 5 } },
+      { Carrying: { goodType: 1, amount: 2 } },
+      {},
+    ];
+    let step = 0;
+    for (let x = 30; x >= 2; x -= QUARTER) {
+      apply([touch(21, { Position: along(x), ...(changes[step++ % changes.length] ?? {}) })]);
+      expectFresh();
+    }
+    // The carrier steps off the map onto the vehicle, then back down beside it.
+    apply([touch(20, { Rider: { vehicle: 23 } }, ['Position'])]);
+    expectFresh();
+    apply([touch(23, { Position: along(16) })]);
+    expectFresh();
+    apply([touch(20, { Position: along(16) }, ['Rider'])]);
+    expectFresh();
+    // The hold sails: its node follows its position again.
+    apply([touch(25, { Vehicle: { moored: false, mooring: null, carrier: null }, Position: along(30) })]);
+    expectFresh();
+    apply([touch(25, { Position: along(17) })]);
+    expectFresh();
+    // A relocated post re-adds its `Signpost` where it stands now and takes its network's range along.
+    apply([touch(1, { Position: along(4), Signpost: { links: [] } })]);
+    expectFresh();
+  });
+});
+
 describe('authoritative network coverage', () => {
   it('counts a docked hold and nested passengers at the shore, then removes them when it sails', () => {
     const mirror = new SnapshotMirror();
