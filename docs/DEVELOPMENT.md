@@ -339,6 +339,10 @@ the rotation, and keep `scripts/check-repository-assets.mjs` in step.
 Every report judges the machine that produced it. Numbers under an untrustworthy banner are void
 rather than weak: re-run on an idle box instead of reading them.
 
+A render change is checked pixel by pixel with `npm run bench:browser-shots -- capture <checkpoint>
+<origin> <out-dir>` on each side and `npm run bench:browser-shots -- compare <dir-a> <dir-b>`: paused
+world screenshots at zoom 1, 0.5, 0.35 and 2, optionally after `ON_BENCH_SHOT_STEPS` stepped ticks.
+
 The headed browser benchmark consumes a normal `bench:map` checkpoint with its state-hash stamp:
 
 ```bash

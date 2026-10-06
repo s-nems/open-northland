@@ -29,6 +29,7 @@
     "bench:parity": "node scripts/bench-parity.mjs",
     "bench:compare": "node scripts/bench-compare.mjs",
     "bench:browser": "node scripts/bench-browser.mjs",
+    "bench:browser-shots": "node scripts/bench-browser-shots.mjs",
     "test:content": "node scripts/test-content.mjs",
     "test:pipeline": "node scripts/test-pipeline.mjs",
     "test:engines": "node scripts/test-engines.mjs",
