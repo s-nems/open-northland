@@ -97,6 +97,7 @@ export class NetworkConnection {
   private link: LinkState | null = null;
   private lastLink: { readonly state: LinkState; readonly reason?: string } | null = null;
   private disposed = false;
+  private workerError: Error | null = null;
   private readonly releasePlace: () => void;
   private leaveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -116,20 +117,20 @@ export class NetworkConnection {
       (request) => this.request(request),
     );
     this.rejoin = rejoinProbe(this.client);
+    // A room is a relayed game to the update notice even while the menu shows it.
+    this.releasePlace = holdRelayPlace(() => this.client.room !== null);
     this.port.listen((data, receiveMs) => this.receive(data as FromNetWorker<MapWorldPlacements>, receiveMs));
     this.port.listenFailure((error) => {
-      this.worlds.fail(error);
-      this.rejectAnswers(error);
+      if (this.workerError !== null) return;
+      this.stopWorker(error);
       this.emit({ kind: 'failure', what: 'worker', error });
     });
     this.post({ kind: 'connect', url, ...identity });
-    // A room is a relayed game to the update notice even while the menu shows it.
-    this.releasePlace = holdRelayPlace(() => this.client.room !== null);
   }
 
   /** Whether the relay link is up. */
   get connected(): boolean {
-    return this.link === 'ok';
+    return !this.disposed && this.workerError === null && this.link === 'ok';
   }
 
   /** The link's last state and the reason it closed with, for a screen that subscribes after the fact. */
@@ -145,7 +146,7 @@ export class NetworkConnection {
   }
 
   bindWorld(port: NetWorldPort, onWorld: (world: HostedRelayedWorld) => void): void {
-    if (this.disposed) return;
+    if (this.disposed || this.workerError !== null) return;
     this.onWorld = onWorld;
     this.resolveWorldPort(port);
   }
@@ -172,8 +173,9 @@ export class NetworkConnection {
     this.resolveWorldPort(REFUSING_PORT);
     this.worlds.close();
     this.rejectAnswers(new Error(CLOSED_MESSAGE));
+    if (this.workerError !== null) return;
+    this.leaveTimer = setTimeout(() => this.stopWorker(new Error(CLOSED_MESSAGE)), LEAVE_GRACE_MS);
     this.post({ kind: 'leave', leave });
-    this.leaveTimer = setTimeout(() => this.port.close(), LEAVE_GRACE_MS);
   }
 
   /** The link dropped: the relay welcomes this client anew once it is back, and a lobby room is left,
@@ -185,17 +187,15 @@ export class NetworkConnection {
   }
 
   private post(message: ToNetWorker<MapWorkerBoot>): void {
-    this.port.post(message);
+    if (this.workerError === null) this.port.post(message);
   }
 
   private receive(message: FromNetWorker<MapWorldPlacements>, receiveMs: number): void {
     if (message.kind === 'closed') {
-      if (this.leaveTimer !== null) clearTimeout(this.leaveTimer);
-      this.rejectAnswers(new Error(CLOSED_MESSAGE));
-      this.port.close();
+      this.stopWorker(new Error(CLOSED_MESSAGE));
       return;
     }
-    if (this.disposed) return;
+    if (this.disposed || this.workerError !== null) return;
     switch (message.kind) {
       case 'message': {
         const relayed = message.message;
@@ -264,7 +264,7 @@ export class NetworkConnection {
 
   private async answerWorld(request: WorldRequest): Promise<void> {
     const port = await this.worldPort;
-    if (this.disposed) return;
+    if (this.disposed || this.workerError !== null) return;
     const { requestId } = request;
     const hosted: { world: Promise<HostedRelayedWorld> | null } = { world: null };
     const host: RelayedWorldHosting = (boot, options, initialSaveFingerprint) => {
@@ -292,7 +292,7 @@ export class NetworkConnection {
         return;
       }
       const world = await hosted.world;
-      if (!this.disposed) this.onWorld(world);
+      if (!this.disposed && this.workerError === null) this.onWorld(world);
     } catch (error) {
       // Before its inputs cross, the worker's client reports the failure as its own; after, the
       // worker built the world and only this side knows it cannot be shown.
@@ -307,6 +307,7 @@ export class NetworkConnection {
   /** The worker answers each method with its own shape; the wire union is narrowed here, once. */
   private request<R extends RelayRequest>(request: R): Promise<RelayAnswerFor<R>> {
     if (this.disposed) return Promise.reject(new Error(CLOSED_MESSAGE));
+    if (this.workerError !== null) return Promise.reject(this.workerError);
     const id = this.nextRequestId++;
     return new Promise((resolve, reject) => {
       this.answers.set(id, { resolve: (value) => resolve(value as RelayAnswerFor<R>), reject });
@@ -317,6 +318,20 @@ export class NetworkConnection {
   private rejectAnswers(error: Error): void {
     for (const pending of this.answers.values()) pending.reject(error);
     this.answers.clear();
+  }
+
+  private stopWorker(error: Error): void {
+    if (this.workerError !== null) return;
+    this.workerError = error;
+    this.link = 'closed';
+    if (this.lastLink?.state !== 'closed') this.lastLink = { state: 'closed' };
+    if (this.leaveTimer !== null) clearTimeout(this.leaveTimer);
+    this.leaveTimer = null;
+    this.releasePlace();
+    this.resolveWorldPort(REFUSING_PORT);
+    this.worlds.fail(error);
+    this.rejectAnswers(error);
+    this.port.close();
   }
 
   private emit(event: ConnectionEvent): void {

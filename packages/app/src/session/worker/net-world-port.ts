@@ -36,6 +36,7 @@ export class RelayedWorldPort<B, E> implements WorldPort {
   private nextRequestId = 0;
   private readonly pending = new Map<number, PendingRequest>();
   private readonly candidates = new Map<Simulation, CandidateWorld<E>>();
+  private disposed = false;
 
   constructor(
     private readonly post: (message: FromNetWorker<E>) => void,
@@ -47,6 +48,7 @@ export class RelayedWorldPort<B, E> implements WorldPort {
   }
 
   async restore(session: GameSession, bytes: string): Promise<OpenedWorld | null> {
+    if (this.disposed) return null;
     const snapshot = await decodeSnapshot(bytes);
     const { tick, mapId } = snapshot.header;
     return this.request(snapshot, (requestId) => ({
@@ -109,6 +111,7 @@ export class RelayedWorldPort<B, E> implements WorldPort {
 
   /** The connection ended: every open request is refused. */
   dispose(): void {
+    this.disposed = true;
     for (const request of this.pending.values()) request.resolve(null);
     this.pending.clear();
     this.candidates.clear();
@@ -118,6 +121,7 @@ export class RelayedWorldPort<B, E> implements WorldPort {
     snapshot: SaveGame | null,
     message: (requestId: number) => FromNetWorker<E>,
   ): Promise<OpenedWorld | null> {
+    if (this.disposed) return Promise.resolve(null);
     const requestId = this.nextRequestId++;
     return new Promise((resolve, reject) => {
       this.pending.set(requestId, { snapshot, resolve, reject });

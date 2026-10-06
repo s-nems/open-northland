@@ -1,6 +1,6 @@
 import type { RelayLinkEvents } from '@open-northland/net-client';
 import { type ClientMessage, PROTOCOL_VERSION, type RoomView } from '@open-northland/net-protocol';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { NetworkConnection } from '../../src/net/connection.js';
 import { deliveredMatchEnd } from '../../src/net/net-worker-client.js';
 import type { FromNetWorker, ToNetWorker } from '../../src/session/worker/net-protocol.js';
@@ -49,7 +49,7 @@ function fakePort<In, Out>() {
     listenFailure: (listener) => {
       fail = listener;
     },
-    close: () => undefined,
+    close: vi.fn(),
   };
   return { port, posted, send: (message: In) => receive(message, 0), crash: (error: Error) => fail(error) };
 }
@@ -146,15 +146,53 @@ describe('pending network worker answers', () => {
 
   it('reject when the worker fails', async () => {
     const { connection, worker } = connect();
+    worker.send({ kind: 'link', state: 'ok' });
+    const event = vi.fn();
+    connection.subscribe(event);
     const digests = connection.digests();
     worker.crash(new Error('worker crashed'));
     await expect(digests).rejects.toThrow(/worker crashed/);
+    await expect(connection.digests()).rejects.toThrow(/worker crashed/);
+    expect(connection.connected).toBe(false);
+    expect(connection.linkState).toEqual({ state: 'closed' });
+    expect(event).toHaveBeenCalledExactlyOnceWith({
+      kind: 'failure',
+      what: 'worker',
+      error: expect.objectContaining({ message: 'worker crashed' }),
+    });
+    const postedBefore = worker.posted.length;
+    connection.client.listRooms();
+    worker.send({ kind: 'link', state: 'ok' });
+    worker.crash(new Error('duplicate failure'));
+    connection.dispose(false);
+    expect(connection.connected).toBe(false);
+    expect(worker.posted).toHaveLength(postedBefore);
+    expect(worker.port.close).toHaveBeenCalledTimes(1);
   });
 
   it('reject when the worker closes', async () => {
     const { connection, worker } = connect();
     const digests = connection.digests();
+    worker.send({ kind: 'link', state: 'closed', reason: 'serverRestart' });
     worker.send({ kind: 'closed' });
     await expect(digests).rejects.toThrow(/closed/);
+    await expect(connection.digests()).rejects.toThrow(/closed/);
+    expect(connection.linkState).toEqual({ state: 'closed', reason: 'serverRestart' });
+    connection.dispose(false);
+    expect(worker.port.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('terminates an unresponsive worker once even if its goodbye arrives after the grace period', () => {
+    vi.useFakeTimers();
+    try {
+      const { connection, worker } = connect();
+      connection.dispose(false);
+      vi.advanceTimersByTime(2000);
+      worker.send({ kind: 'closed' });
+      expect(worker.port.close).toHaveBeenCalledTimes(1);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
