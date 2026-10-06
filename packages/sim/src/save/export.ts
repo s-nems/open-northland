@@ -34,17 +34,39 @@ export interface ExportSaveOptions {
  * with the live world.
  */
 export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): SaveGame {
+  try {
+    return captureSave(sim, opts, null);
+  } catch (err) {
+    if (err !== UNSAVEABLE) throw err;
+  }
+  // The fast walk names no paths; walk again naming every value, which throws the precise reason.
+  return captureSave(sim, opts, new WeakMap<object, string>());
+}
+
+/** Thrown by the walk without paths at the first unsaveable value, so the export can rerun with them. */
+const UNSAVEABLE = new Error('unsaveable value');
+
+/**
+ * The export walk. With `paths` null it builds no path text and remembers visited objects in a plain set,
+ * since a failure only needs naming once found; with `paths` it records each object's path to name the
+ * value a repeat shares.
+ */
+function captureSave(
+  sim: Simulation,
+  opts: ExportSaveOptions,
+  paths: WeakMap<object, string> | null,
+): SaveGame {
   const savedAt = parseSavedAt(opts.savedAt ?? null);
   // One visit per object across the whole export: a repeat is a cycle or a cross-entity alias,
   // and either would silently restore as disconnected copies.
-  const seen = new WeakMap<object, string>();
+  const walk: Walk = { seen: new Set<object>(), paths };
   const sections: SaveGameSection[] = [
     { id: 'entities', nextId: sim.world.nextEntityId, alive: [...sim.world.canonicalEntities()] },
   ];
   sim.world.forEachStore((name, entries) => {
     const saved: Array<readonly [number, unknown]> = [];
     for (const [entity, value] of entries) {
-      saved.push([entity, savedValue(value, `component:${name}/${entity}`, seen)]);
+      saved.push([entity, savedValue(value, paths === null ? null : `component:${name}/${entity}`, walk)]);
     }
     sections.push({ id: 'component', name, entries: saved });
   });
@@ -73,7 +95,7 @@ export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): S
     pending: sim.commands.pendingSnapshot().map(
       (envelope, i) =>
         // The walk is a shape-preserving deep copy, so the result is still the envelope it copied.
-        savedValue(envelope, `commands.pending[${i}]`, seen) as CommandEnvelope,
+        savedValue(envelope, paths === null ? null : `commands.pending[${i}]`, walk) as CommandEnvelope,
     ),
   });
   return {
@@ -100,26 +122,44 @@ export function serializeSaveGame(save: SaveGame): string {
   return JSON.stringify(save);
 }
 
+interface Walk {
+  /** Every object visited so far in this export. */
+  readonly seen: Set<object>;
+  /** Each visited object's path, kept only by the naming walk. */
+  readonly paths: WeakMap<object, string> | null;
+}
+
+/** Fail the walk at `path`: the naming walk throws the reason, the fast one only stops. */
+function unsaveable(path: string | null, reason: string): never {
+  throw path === null ? UNSAVEABLE : new Error(`${path}: ${reason}`);
+}
+
+/** `path` extended by `suffix`, or null on the walk that names nothing. */
+function childPath(path: string | null, suffix: string | number): string | null {
+  return path === null ? null : typeof suffix === 'number' ? `${path}[${suffix}]` : `${path}${suffix}`;
+}
+
 /**
  * Deep-copy one component or envelope value to JSON-safe plain data: a `Map` becomes a single-key
  * `{'$map': entries}` wrapper, record keys keep insertion order and a record key holding `undefined`
- * is saved as absent (a cleared optional field). A throw names `path` for any shape JSON would
+ * is saved as absent (a cleared optional field). A failure names `path` for any shape JSON would
  * corrupt - an `undefined` value or array element, a non-finite number, a non-plain object, or an
- * object `seen` already holds from anywhere in the same export.
+ * object the walk already saved from anywhere in the same export.
  */
-function savedValue(value: unknown, path: string, seen: WeakMap<object, string>): unknown {
+function savedValue(value: unknown, path: string | null, walk: Walk): unknown {
   if (value === null) return null;
   if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw new Error(`${path}: non-finite number does not survive JSON`);
+    if (!Number.isFinite(value)) unsaveable(path, 'non-finite number does not survive JSON');
     return value;
   }
   if (typeof value === 'string' || typeof value === 'boolean') return value;
   if (typeof value === 'object') {
-    const prior = seen.get(value);
-    if (prior !== undefined) {
-      throw new Error(`${path}: object already saved at ${prior}; shared or cyclic state cannot round-trip`);
+    if (walk.seen.has(value)) {
+      const prior = walk.paths?.get(value);
+      unsaveable(path, `object already saved at ${prior}; shared or cyclic state cannot round-trip`);
     }
-    seen.set(value, path);
+    walk.seen.add(value);
+    if (path !== null) walk.paths?.set(value, path);
   }
   if (value instanceof Map) {
     // Entry order is the Map's live insertion order, not key-sorted: systems iterate component Maps
@@ -127,30 +167,33 @@ function savedValue(value: unknown, path: string, seen: WeakMap<object, string>)
     const entries: unknown[] = [];
     for (const [k, v] of value) {
       const i = entries.length;
-      entries.push([savedValue(k, `${path}[${i}].key`, seen), savedValue(v, `${path}[${i}]`, seen)]);
+      entries.push([
+        savedValue(k, path === null ? null : `${path}[${i}].key`, walk),
+        savedValue(v, childPath(path, i), walk),
+      ]);
     }
     return { [SAVE_MAP_KEY]: entries };
   }
   if (Array.isArray(value)) {
-    // An index loop, not `map`: a sparse hole must hit the undefined throw, never serialize as null.
+    // An index loop, not `map`: a sparse hole must hit the undefined failure, never serialize as null.
     const out = new Array<unknown>(value.length);
-    for (let i = 0; i < value.length; i++) out[i] = savedValue(value[i], `${path}[${i}]`, seen);
+    for (let i = 0; i < value.length; i++) out[i] = savedValue(value[i], childPath(path, i), walk);
     return out;
   }
   if (isPlainRecord(value)) {
     if (Object.hasOwn(value, SAVE_MAP_KEY)) {
-      throw new Error(`${path}: the key '${SAVE_MAP_KEY}' is reserved for the Map encoding`);
+      unsaveable(path, `the key '${SAVE_MAP_KEY}' is reserved for the Map encoding`);
     }
-    if (Object.hasOwn(value, PROTO_KEY)) {
-      throw new Error(`${path}: the key '${PROTO_KEY}' cannot round-trip as plain data`);
-    }
+    if (Object.hasOwn(value, PROTO_KEY))
+      unsaveable(path, `the key '${PROTO_KEY}' cannot round-trip as plain data`);
     const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value)) {
-      if (value[key] !== undefined) out[key] = savedValue(value[key], `${path}.${key}`, seen);
+    for (const key in value) {
+      const field = value[key];
+      if (field !== undefined) out[key] = savedValue(field, path === null ? null : `${path}.${key}`, walk);
     }
     return out;
   }
-  throw new Error(`${path}: unsaveable value shape ${valueShapeName(value)}`);
+  return unsaveable(path, `unsaveable value shape ${valueShapeName(value)}`);
 }
 
 const DIGIT_ZERO = '0'.charCodeAt(0);
