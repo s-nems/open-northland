@@ -57,6 +57,9 @@ const SORT_KEYS: readonly ResidentSortKey[] = ['name', 'profession', 'workplace'
  *  px). */
 const ROW_FIGURE_ZOOM = 0.72;
 const ROW_FIGURE_FEET_INSET = 2;
+/** Wall-clock ms between two reads of a new tick's people while the window stays open: a thousand rows
+ *  filter, sort and rewrite in a few ms, which every tick at x3 would pay for no visible difference. */
+const ROWS_REFRESH_MS = 250;
 /** Rows attached beyond each edge of the visible strip, so a wheel turn shows written rows at once. */
 const ROW_MARGIN = 8;
 /** Rows attached before a row's height is known: enough to fill the list's first view. */
@@ -339,6 +342,8 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   /** The row figures' box, read with the heights. */
   let figureBox: FigureBox | null = null;
   let rows: readonly ResidentRow[] | null = null;
+  /** When the window last asked for the seat's people. */
+  let rowsReadAt = Number.NEGATIVE_INFINITY;
   let shownSelection = -1;
   let listedAnswers = -1;
   let figuresStale = true;
@@ -720,7 +725,12 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       if (!window.isOpen()) return;
       lastOpenTick = deps.tick();
       place();
-      const next = deps.rows();
+      const now = performance.now();
+      let next = rows;
+      if (now - rowsReadAt >= ROWS_REFRESH_MS) {
+        next = deps.rows();
+        rowsReadAt = now;
+      }
       const answers = deps.answersVersion?.() ?? 0;
       if (next !== rows || (state.filters.canBecome !== null && answers !== listedAnswers)) {
         rows = next;

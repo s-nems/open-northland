@@ -114,4 +114,26 @@ describe('residents list', () => {
     const second = list.querySelectorAll('.on-res-row')[1];
     expect(second?.textContent).toContain('Sawmill');
   });
+
+  it("reads a new tick's people at most four times a second while open", () => {
+    let now = 1000;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    let rows = people(PEOPLE);
+    let reads = 0;
+    const { list } = openWindow(() => {
+      reads++;
+      return rows;
+    });
+    window?.refresh();
+    const before = reads;
+    rows = rows.map((row) => (row.id === 1 ? { ...row, workplace: 'Sawmill' } : row));
+    now += 100;
+    window?.refresh();
+    expect(reads).toBe(before);
+    expect(list.querySelector('.on-res-row')?.textContent).not.toContain('Sawmill');
+    now += 200;
+    window?.refresh();
+    expect(reads).toBe(before + 1);
+    expect(list.querySelector('.on-res-row')?.textContent).toContain('Sawmill');
+  });
 });
