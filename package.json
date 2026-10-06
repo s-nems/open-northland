@@ -26,6 +26,7 @@
     "bench:sim": "node scripts/bench-sim.mjs",
     "bench:map": "node scripts/bench-map.mjs",
     "bench:profile": "node scripts/bench-profile.mjs",
+    "bench:parity": "node scripts/bench-parity.mjs",
     "bench:compare": "node scripts/bench-compare.mjs",
     "bench:browser": "node scripts/bench-browser.mjs",
     "test:content": "node scripts/test-content.mjs",

@@ -331,6 +331,7 @@ the rotation, and keep `scripts/check-repository-assets.mjs` in step.
 | which function makes a tick's garbage? | `ON_BENCH_PROFILE=alloc npm run bench:profile` |
 | does one axis (settlers, fighters) drive a system's cost? | `npm run bench:sim` |
 | did my change make it slower? | `npm run bench:compare` |
+| does a world restored with cold caches step as the continuous one does? | `npm run bench:parity` |
 | what does a live session spend a frame on, sim or render? | `?debug=profile` and `window.__opennorthland.perf()` |
 | how does a developed checkpoint render at different speeds and zooms? | `npm run bench:browser` against a running development server |
 | how much JavaScript does a URL mode download and parse before it starts? | the table `npm run build` prints |
@@ -477,6 +478,13 @@ ON_BENCH_TICKS=60000 ON_BENCH_WINDOWS=12 ON_BENCH_CHECKPOINT=bench-out/ml12.chec
   ON_BENCH_CHECKPOINTS=10000,20000,30000,40000,50000,60000 npm run bench:map
 ON_BENCH_CHECKPOINT=bench-out/ml12.t50000.checkpoint npm run bench:profile
 ```
+
+`npm run bench:parity` takes the same session knobs and checkpoint. One world runs `ON_BENCH_TICKS`
+(default 3000) ticks and records its hash every 50; its save at `ON_BENCH_PARITY_POINTS` (default 12)
+evenly spaced ticks, around the first heavy link pass, AI decision and planner tick of the second half,
+and at any absolute ticks `ON_BENCH_PARITY_AT` lists, is restored into a fresh world that must reproduce
+every later hash. A divergence names its tick and fails the run; bisect it with `npm run diag -- diff`.
+`ON_BENCH_PARITY_FRESH=on` instead builds the world twice from tick zero and compares the runs.
 
 Every run keeps its report under `bench-out/` (untracked), so a baseline exists without having been
 planned for. `npm run bench:compare` with no arguments compares the two most recent runs of the same
