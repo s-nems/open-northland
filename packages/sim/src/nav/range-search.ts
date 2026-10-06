@@ -31,6 +31,10 @@ let headScratch = new Int32Array(0);
 let entryNodes = new Int32Array(0);
 let entryNext = new Int32Array(0);
 const NO_ENTRY = -1;
+/** How far above the budget a cost slot's never-inspected and closed states sit; the budget itself
+ *  marks an open node no cost under the budget has reached yet. */
+const UNSEEN_OVER_BUDGET = 1;
+const CLOSED_OVER_BUDGET = 2;
 
 /** Doubles the entry lists, keeping the entries written so far. */
 function growEntries(): void {
@@ -87,14 +91,20 @@ export function floodReach(
   cells[(hy - minY) * width + hx - minX] = 1;
   const budget = 2 * range;
   // Every entered node costs at least one, so a node with a cost under the budget lies fewer than
-  // `budget` hex steps from the start, each moving at most one node on either axis.
-  const reach = budget - 1;
+  // `budget` hex steps from the start, each moving at most one node on either axis, and the nodes it
+  // inspects one step further.
+  const reach = budget;
   const side = 2 * reach + 1;
   const windowX = hx - reach;
   const windowY = hy - reach;
+  // A slot holds the node's best cost under the budget, or the state of a node not entered yet: never
+  // inspected, inspected and found closed, or inspected and open (so its mark is already set).
+  const unseen = budget + UNSEEN_OVER_BUDGET;
+  const closed = budget + CLOSED_OVER_BUDGET;
+  const open = budget;
   if (costScratch.length < side * side) costScratch = new Uint16Array(side * side);
   const costs = costScratch;
-  costs.fill(budget, 0, side * side);
+  costs.fill(unseen, 0, side * side);
   if (headScratch.length < budget) headScratch = new Int32Array(budget);
   const heads = headScratch;
   heads.fill(NO_ENTRY, 0, budget);
@@ -127,14 +137,23 @@ export function floodReach(
         const nx = x + (dxs[k] as number);
         const ny = y + (HEX_DY[k] as number);
         if (nx < 0 || ny < 0 || nx >= mapWidth || ny >= mapHeight) continue;
+        const slot = (ny - windowY) * side + nx - windowX;
+        let known = costs[slot] as number;
+        if (known === closed) continue;
         const id = ny * mapWidth + nx;
         const resistance = resistances[id] as number;
-        if (resistance === 0 || blocked.has(id as NodeId)) continue;
-        if (hexDistanceBetween(hx, hy, nx, ny) < range) cells[(ny - minY) * width + nx - minX] = 1;
+        if (known === unseen) {
+          // The first inspection judges and marks the node; a repeat only relaxes its cost.
+          if (resistance === 0 || blocked.has(id as NodeId)) {
+            costs[slot] = closed;
+            continue;
+          }
+          if (hexDistanceBetween(hx, hy, nx, ny) < range) cells[(ny - minY) * width + nx - minX] = 1;
+          known = open;
+          costs[slot] = open;
+        }
         const nextCost = cost + resistance;
-        if (nextCost >= budget) continue;
-        const slot = (ny - windowY) * side + nx - windowX;
-        if (nextCost >= (costs[slot] as number)) continue;
+        if (nextCost >= known) continue;
         costs[slot] = nextCost;
         if (entries === entryNodes.length) growEntries();
         entryNodes[entries] = id;
