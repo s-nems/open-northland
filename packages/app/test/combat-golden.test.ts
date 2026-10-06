@@ -28,17 +28,12 @@ import type { SceneWorld } from '../src/scenes/types.js';
  * `armortypes.ini` rows, pinning the final state hash and the ordered hit trace. The hash says that combat
  * changed; the trace says which blow changed and when, with the hitpoints it left.
  *
- * Each lane is one blue striker ordered onto one red civilian set to DEFEND, so it stands under the blows
- * instead of running from them, and being unarmed never strikes back or turns; every blow in a lane is
- * then one weapon on one armor column from one side:
- *  - short sword vs wool and vs chain, from the east, the victim's back side (x1.25);
- *  - long sword vs leather from the west, its front, and vs plate from the north-east, behind it (x1.5);
- *  - iron spear vs plate from the east, the column where spear and long sword swap;
- *  - short bow vs leather and long bow vs plate from fresh archers, whose shots scatter.
- * Every melee lane ends in its victim's death, and the rising fight experience lifts later blows. Far off,
- * a swordsman with the strength and critical-hit amulets fights a rival wearing the defence amulet to the
- * death, both striking and turning, and a wounded civilian alone on the field regenerates, as every victim
- * does between blows.
+ * Each lane pairs a blue striker with a red civilian ordered to DEFEND. Civilians hold their ground,
+ * turn and return fist blows. The lanes cover short sword against wool and chain, long sword against
+ * leather and plate, iron spear against plate, and both bows at range. Melee attackers approach from
+ * different sides, so facing, interruptions and rising fight experience affect subsequent blows.
+ * Far off, a swordsman wearing strength and critical-hit amulets fights a rival with the defence amulet,
+ * while a wounded civilian regenerates alone. The trace also includes regeneration between blows.
  */
 
 const BLUE = 0;
@@ -114,9 +109,8 @@ function holdGround(sim: Simulation, e: Entity): void {
   setStance(sim, e, systems.MILITARY_MODE.IGNORE);
 }
 
-/** An unarmed civilian that stands under blows: set to DEFEND by hand, it neither runs from a blow, as any
- *  other non-fighting stance would have it do, nor has anything to hit back with. */
-function standAndTakeIt(sim: Simulation, e: Entity): void {
+/** A civilian ordered to defend his ground fights back with his tribe’s bare hands. */
+function standAndDefend(sim: Simulation, e: Entity): void {
   setStance(sim, e, systems.MILITARY_MODE.DEFEND);
 }
 
@@ -125,7 +119,7 @@ function build(sim: Simulation): void {
     const y = FIRST_LANE_Y + i * LANE_PITCH;
     const victim = spawnSettlerDirect(sim, JOB_CIVILIST, TARGET_X, y, LANE_RED);
     dress(sim, victim, lane.armor, []);
-    standAndTakeIt(sim, victim);
+    standAndDefend(sim, victim);
     const striker = spawnSettlerDirect(sim, lane.job, TARGET_X + lane.from.dx, y + lane.from.dy, BLUE);
     holdGround(sim, striker);
     sim.enqueueSetup({ kind: 'attackUnit', entity: striker, target: victim });
@@ -187,85 +181,104 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
   // on leather, 5/6 short sword on chain, 7/8 long sword on plate, 9/10 iron spear on plate, 11/12 short
   // bow on leather, 13/14 long bow on plate), then 15 the amuleted champion, 16 its rival, 17 the
   // convalescent. Hitpoints are read after the tick, so a victim between blows shows its regeneration.
-  // Reading the first blows: 995 is 800 x1.25 less 5 blocked, 1420 is 950 x1.5 less 5, the champion's
-  // 2400 is a critical double of 1600 x3/2 halved by the defence amulet, and the rival's 1600 is the
-  // plain short-sword blow on bare cloth.
+  // Civilians now return 400-point fist blows, changing facing, hit interruptions and subsequent rolls.
+  // The champion's first 2400 is a critical double of 1600 x3/2 halved by the defence amulet;
+  // the rival's first 1600 is the plain short-sword blow on bare cloth.
   const GOLDEN_TRACE: readonly string[] = [
-    '23:miss:12',
+    '18:hit:1>2:4600',
+    '19:hit:5>6:4600',
+    '19:hit:9>10:4600',
+    '20:miss:12',
+    '23:hit:3>4:4600',
+    '25:hit:7>8:4600',
+    '26:hit:2>1:4205',
+    '26:hit:6>5:4605',
+    '27:hit:4>3:2155',
     '29:hit:15>16:2600',
-    '33:hit:8>7:3580',
-    '34:hit:10>9:2393',
-    '34:hit:2>1:4005',
-    '34:hit:6>5:4505',
+    '31:miss:12',
+    '33:hit:8>7:4055',
+    '34:hit:10>9:2915',
     '34:hit:16>15:3400',
-    '34:shot:12>11:4605',
-    '35:hit:4>3:2155',
-    '38:shot:14>13:4645',
+    '34:hit:1>2:4214',
+    '35:hit:5>6:4214',
+    '35:hit:9>10:4214',
+    '35:miss:14',
+    '38:hit:2>1:3418',
+    '38:hit:6>5:4220',
+    '39:hit:3>4:4214',
+    '40:miss:12',
     '41:hit:15>16:1406',
-    '46:hit:2>1:3017',
-    '46:hit:6>5:4020',
+    '41:hit:7>8:4214',
     '46:hit:16>15:1804',
-    '46:shot:12>11:4222',
-    '53:hit:15>16:gone',
-    '53:died:16',
-    '58:hit:2>1:2024',
-    '58:hit:6>5:3532',
-    '58:shot:12>11:3839',
-    '61:hit:10>9:gone',
-    '61:died:9',
-    '62:hit:8>7:2183',
-    '64:hit:4>3:gone',
-    '64:died:3',
-    '66:shot:14>13:4318',
-    '70:hit:2>1:1026',
-    '70:hit:6>5:3042',
-    '70:miss:12',
-    '82:hit:2>1:23',
-    '82:hit:6>5:2549',
-    '83:miss:12',
-    '91:hit:8>7:779',
-    '94:hit:2>1:gone',
-    '94:hit:6>5:2054',
-    '94:shot:12>11:3480',
-    '94:died:1',
-    '95:miss:14',
-    '106:hit:6>5:1556',
-    '107:miss:12',
-    '118:hit:6>5:1056',
-    '119:miss:12',
-    '120:hit:8>7:gone',
-    '120:died:7',
-    '123:miss:14',
-    '130:hit:6>5:553',
-    '130:shot:12>11:3121',
-    '142:hit:6>5:48',
-    '142:shot:12>11:2738',
-    '150:miss:14',
-    '154:hit:6>5:gone',
-    '154:died:5',
-    '155:miss:12',
-    '166:shot:12>11:2367',
-    '179:miss:14',
-    '180:miss:12',
-    '192:miss:12',
-    '202:shot:12>11:2008',
-    '208:miss:14',
-    '214:shot:12>11:1625',
-    '227:miss:12',
-    '234:miss:14',
-    '239:miss:12',
-    '250:shot:12>11:1266',
-    '262:shot:14>13:4159',
-    '262:shot:12>11:883',
-    '274:shot:12>11:500',
-    '287:miss:12',
-    '291:miss:14',
-    '298:shot:12>11:129',
-    '310:shot:12>11:gone',
-    '310:died:11',
-    '318:miss:14',
-    '346:shot:14>13:3888',
-    '374:shot:14>13:3561',
+    '50:hit:2>1:2627',
+    '50:hit:6>5:3833',
+    '50:hit:1>2:3826',
+    '51:hit:5>6:3826',
+    '51:hit:9>10:3826',
+    '51:shot:12>11:4605',
+    '53:hit:15>16:206',
+    '55:hit:3>4:3826',
+    '56:hit:4>3:gone',
+    '56:died:3',
+    '57:hit:7>8:3826',
+    '58:hit:16>15:200',
+    '60:miss:14',
+    '61:hit:10>9:847',
+    '62:hit:8>7:3135',
+    '62:hit:2>1:1832',
+    '62:hit:6>5:3444',
+    '62:shot:12>11:4221',
+    '65:hit:15>16:gone',
+    '65:died:16',
+    '66:hit:1>2:3436',
+    '67:hit:5>6:3436',
+    '67:hit:9>10:3436',
+    '72:miss:12',
+    '73:hit:7>8:3436',
+    '74:hit:2>1:1033',
+    '74:hit:6>5:3053',
+    '82:hit:1>2:3044',
+    '83:hit:5>6:3044',
+    '83:hit:9>10:3044',
+    '84:shot:14>13:4645',
+    '84:shot:12>11:3848',
+    '86:hit:2>1:230',
+    '86:hit:6>5:2660',
+    '88:hit:10>9:gone',
+    '88:died:9',
+    '89:hit:7>8:3044',
+    '91:hit:8>7:2210',
+    '98:hit:2>1:gone',
+    '98:hit:6>5:2265',
+    '98:hit:1>2:2650',
+    '98:died:1',
+    '99:hit:5>6:2650',
+    '105:hit:7>8:2650',
+    '109:miss:14',
+    '110:hit:6>5:1868',
+    '115:hit:5>6:2254',
+    '120:hit:8>7:1280',
+    '121:hit:7>8:2254',
+    '122:hit:6>5:1469',
+    '129:shot:12>11:3498',
+    '131:hit:5>6:1856',
+    '134:hit:6>5:1068',
+    '137:hit:7>8:1856',
+    '146:hit:6>5:664',
+    '147:hit:5>6:1456',
+    '149:hit:8>7:345',
+    '153:hit:7>8:1456',
+    '158:hit:6>5:258',
+    '163:hit:5>6:1054',
+    '169:hit:7>8:1054',
+    '170:hit:6>5:gone',
+    '170:died:5',
+    '178:hit:8>7:gone',
+    '178:died:7',
+    '241:shot:14>13:4447',
+    '323:miss:12',
+    '344:shot:14>13:4195',
+    '370:shot:12>11:3344',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -275,7 +288,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
   it('matches the golden final state hash', () => {
     // Moves on any intentional combat change, including a new shape of the stored swing that leaves the
     // hit trace alone; name the change in the commit that moves it.
-    expect(runCombat(TICKS).hash).toBe('1c15f180');
+    expect(runCombat(TICKS).hash).toBe('53950497');
   });
 
   it('matches the golden hit trace', () => {

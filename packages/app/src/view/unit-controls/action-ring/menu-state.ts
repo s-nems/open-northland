@@ -188,8 +188,7 @@ function allows(
     case 'assignHome':
       return isAdult(e);
     case 'attackInhabitants':
-      // Observation: the original sends any adult at another settler, armed or not - an unarmed striker
-      // chases and lands nothing, which is what the combat pass does with the order here too.
+      // Any adult can receive this order; civilian trades fight with bare hands.
       return isAdult(e);
     case 'attackBuilding':
     case 'attackAnimal':

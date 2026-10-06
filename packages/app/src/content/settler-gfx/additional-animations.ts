@@ -1,5 +1,11 @@
 import type { FrameListAnim, SettlerStateBinding } from '@open-northland/render/data';
-import { ATTACK_ATOMIC, EAT_ATOMIC, EAT_CANDY_ATOMIC, SLEEP_ATOMIC } from '../../catalog/atomics.js';
+import {
+  ATTACK_ATOMIC,
+  CHEER_ATOMIC,
+  EAT_ATOMIC,
+  EAT_CANDY_ATOMIC,
+  SLEEP_ATOMIC,
+} from '../../catalog/atomics.js';
 import type { BobSeqRow } from '../ir/rows.js';
 import type { CharacterGfx } from './bindings-character.js';
 import type { CharacterSpec } from './character-specs.js';
@@ -107,7 +113,25 @@ export function withAdditionalAnimations(
   const choices = attackChoices(spec, sequences, gfx);
   const attacks = choices.length > 1 ? { byAtomicChoices: { [ATTACK_ATOMIC]: choices } } : {};
   const prefix = spec.walkSeq === undefined ? undefined : BOW_PREFIXES[spec.walkSeq];
-  if (prefix === undefined) return { ...binding, ...attacks };
+  if (prefix === undefined) {
+    const jump = sequences.get('human_man_generic_happy_jump');
+    const cheer =
+      spec.attack === 'human_man_Civilian_Fight_punch' && jump !== undefined && hasOwnHeads(jump, gfx)
+        ? {
+            [CHEER_ATOMIC]: {
+              start: jump.start,
+              // Unbound strip: play the jump once over the civilian celebration's authored duration.
+              frameLists: [Array.from({ length: jump.length }, (_, i) => i)],
+              spansAtomic: true,
+            },
+          }
+        : undefined;
+    return {
+      ...binding,
+      ...attacks,
+      ...(cheer === undefined ? {} : { byAtomic: { ...binding.byAtomic, ...cheer } }),
+    };
+  }
 
   sequences = new Map([...sequences].filter(([, row]) => hasOwnHeads(row, gfx)));
 

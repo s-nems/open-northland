@@ -25,6 +25,7 @@ import {
 } from '../rendezvous.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { stepOut } from '../settlers/indoors.js';
+import { celebrateWedding } from './celebration.js';
 
 /** The paired kiss atomic ids - `logicdefines.inc` `KISS = 20` / `KISSED = 21`, bound per tribe in
  *  `tribetypes.ini` (`setatomic 5 20 "..._woman_kiss"` / `setatomic 6 21 "..._civilist_kissed"`). */
@@ -94,6 +95,7 @@ function drivePair(
     world.add(a, Marriage, { spouse: b, child: null });
     world.add(b, Marriage, { spouse: a, child: null });
     coHouseNewlyweds(world, a, b);
+    celebrateWedding(world, ctx, a, b);
     const p = world.get(a, Position);
     ctx.events.emit({
       kind: 'settlersMarried',

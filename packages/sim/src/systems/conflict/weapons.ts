@@ -88,7 +88,9 @@ export function attackerWeapon(
     return weapon === undefined ? null : withReach(weapon);
   }
   // A settler's weapon binds by (tribe, job), first match in source order.
-  const weapon = index.weaponsByTribeAndJob.get(tribe)?.get(jobType);
+  const weapon =
+    index.weaponsByTribeAndJob.get(tribe)?.get(jobType) ??
+    (index.civilianJobs.has(jobType) ? index.fistsByTribe.get(tribe) : undefined);
   if (weapon === undefined) return null; // unarmed - no resolvable weapon
   return withReach(weapon);
 }

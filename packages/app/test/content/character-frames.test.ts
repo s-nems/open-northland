@@ -5,12 +5,14 @@ import {
   type SpriteAtlas,
   type SpriteFrameRef,
 } from '@open-northland/render';
+import { components } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   ATTACK_ATOMIC,
   BUILD_HOUSE_ATOMIC,
   BUILD_ROAD_ATOMIC,
   BUILD_WALL_ATOMIC,
+  CHEER_ATOMIC,
 } from '../../src/catalog/atomics.js';
 import {
   JOB_ARCHER,
@@ -26,7 +28,9 @@ import { humanSequences } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { FACING } from '../../src/content/settler-gfx/index.js';
 import type { WorldTribes } from '../../src/game/world-tribes.js';
-import { characterTablesUnderTest, hasRealIr, rawIrUnderTest } from './helpers.js';
+import { combatGesturesScene } from '../../src/scenes/combat-gestures.js';
+import { createSceneSim } from '../../src/scenes/runtime.js';
+import { characterTablesUnderTest, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
  * Every frame a civilization's settler looks can play draws a whole figure on the REAL decoded content:
@@ -140,6 +144,27 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
   const tables = characterTablesUnderTest(CIVILIZATIONS);
   if (tables === null) return;
 
+  it('reaches the new actions through normal commands with generated content', async () => {
+    const { merge } = await loadContentUnderTest();
+    const sim = createSceneSim(combatGesturesScene, { content: merge.content });
+    const reached = new Set<string>();
+    let wedding = false;
+    for (let tick = 0; tick < 300; tick++) {
+      sim.step();
+      for (const _e of sim.world.query(components.Marriage)) wedding = true;
+      for (const e of sim.world.query(components.Settler, components.CurrentAtomic)) {
+        const job = sim.world.get(e, components.Settler).jobType;
+        const action = sim.world.get(e, components.CurrentAtomic).atomicId;
+        if (job === JOB_CIVILIST && action === CHEER_ATOMIC) expect(wedding).toBe(true);
+        if (job === JOB_CIVILIST && action === ATTACK_ATOMIC)
+          expect(sim.world.has(e, components.Weapon)).toBe(false);
+        reached.add(`${job}:${action}`);
+      }
+    }
+    for (const action of ['6:81', '31:81', '40:10', '40:8', '6:17'])
+      expect(reached.has(action), action).toBe(true);
+  });
+
   it('makes the additional civilian and unarmed attacks reachable, without changing armed attacks', () => {
     const table = tables.get(VIKING);
     const starts = (job: number) =>
@@ -151,6 +176,14 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
     expect(starts(JOB_SOLDIER_UNARMED)).toEqual([998, 632, 758, 877]);
     expect(starts(JOB_ARCHER)).toBeUndefined();
     expect(starts(JOB_ARCHER_LONG)).toBeUndefined();
+  });
+
+  it('binds the civilian wedding jump to the celebration action', () => {
+    const table = tables.get(VIKING);
+    expect((table?.byJob[JOB_CIVILIST] ?? table?.default)?.binding.byAtomic?.[CHEER_ATOMIC]).toMatchObject({
+      start: 1547,
+      spansAtomic: true,
+    });
   });
 
   it('gives each bow its own wave and combat gait, and retains the short bow during meals and naps', () => {

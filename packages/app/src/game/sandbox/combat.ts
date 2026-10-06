@@ -177,7 +177,7 @@ export function sandboxWeapons() {
   return [
     {
       typeId: WEAPON_FISTS,
-      id: 'viking_fist',
+      id: 'fist',
       tribeType: PRIMARY_TRIBE,
       jobType: JOB_SOLDIER_UNARMED,
       mainType: UNARMED_MAIN_TYPE,

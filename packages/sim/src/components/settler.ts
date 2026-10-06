@@ -36,8 +36,8 @@ export const SettlerNeeds = defineComponent<{
    */
   piety: Fixed;
   /**
-   * 0..ONE as of {@link asOf}; rises over time and is restored only by the talk/monologuize/listen atomics
-   * (14/13/15), never by a building (the original's channel 3, leisure/social).
+   * 0..ONE as of {@link asOf}; rises over time and is restored by social atomics
+   * (talk, monologuize, listen and celebration), never by a building (the original's channel 3, leisure/social).
    */
   enjoyment: Fixed;
   /** The tick whose drain pass the stored hunger, fatigue and enjoyment include. */

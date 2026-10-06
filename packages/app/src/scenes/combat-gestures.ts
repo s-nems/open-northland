@@ -1,13 +1,20 @@
 import { cellAnchorNode, components, type Entity, type Simulation, systems } from '@open-northland/sim';
-import { EAT_ATOMIC, SLEEP_ATOMIC } from '../catalog/atomics.js';
+import { CHEER_ATOMIC } from '../catalog/atomics.js';
 import { grassTerrain } from '../catalog/buildings.js';
-import { JOB_ARCHER, JOB_ARCHER_LONG, JOB_CIVILIST, JOB_SOLDIER_UNARMED } from '../catalog/jobs.js';
+import {
+  JOB_ARCHER,
+  JOB_ARCHER_LONG,
+  JOB_CIVILIST,
+  JOB_SOLDIER_UNARMED,
+  JOB_WOMAN,
+} from '../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import { spawnSettlerAtNode, spawnSettlerDirect } from '../game/sandbox/index.js';
+import { holdsSometimeDuring } from './runtime.js';
 import { goodBySlug } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-const { Health, Owner, Settler, Stance, addCurrentAtomic } = components;
+const { Carrying, CurrentAtomic, Health, Owner, Settler, Stance } = components;
 const HITPOINTS = 1_000_000;
 const DUEL_JOBS = [JOB_CIVILIST, JOB_SOLDIER_UNARMED, JOB_ARCHER, JOB_ARCHER_LONG];
 
@@ -36,14 +43,6 @@ function build(sim: Simulation): void {
       components.setMissionBehaviour(sim.world, target, components.MISSION_BEHAVIOUR.PASSIVE, true);
     }
     const attacker = sturdy(sim, spawnSettlerAtNode(sim, job, from, HUMAN_PLAYER));
-    if (job === JOB_CIVILIST) {
-      // A civilian has no ordinary combat weapon; this demonstration explicitly gives him fists.
-      const fists = sim.content.weapons.find(
-        (weapon) => weapon.tribeType === 1 && weapon.jobType === JOB_SOLDIER_UNARMED,
-      );
-      if (fists === undefined) throw new Error('Missing unarmed soldier weapon');
-      sim.world.add(attacker, components.Weapon, { weaponTypeId: fists.typeId });
-    }
     sim.world.mut(attacker, Stance).mode = systems.MILITARY_MODE.ATTACK;
     sim.enqueueSetup({ kind: 'attackUnit', entity: attacker, target });
   }
@@ -52,30 +51,37 @@ function build(sim: Simulation): void {
     const archer = spawnSettlerDirect(sim, job, 23 + i * 3, 7, HUMAN_PLAYER);
     sim.world.mut(archer, Stance).mode = systems.MILITARY_MODE.IGNORE;
   }
-  for (const [i, atomicId] of [EAT_ATOMIC, SLEEP_ATOMIC].entries()) {
+  for (const [i, need] of (['hunger', 'fatigue'] as const).entries()) {
     const archer = spawnSettlerDirect(sim, JOB_ARCHER, 23 + i * 3, 13, HUMAN_PLAYER);
     sim.world.mut(archer, Stance).mode = systems.MILITARY_MODE.IGNORE;
-    addCurrentAtomic(sim.world, archer, {
-      atomicId,
-      duration: atomicId === EAT_ATOMIC ? 120 : 300,
-      effect:
-        atomicId === EAT_ATOMIC
-          ? { kind: 'eat', goodType: goodBySlug(sim, 'food_simple'), from: null }
-          : { kind: 'sleep' },
-      targetEntity: archer,
-      targetTile: null,
-    });
+    if (need === 'hunger')
+      sim.world.add(archer, Carrying, { goodType: goodBySlug(sim, 'food_simple'), amount: 1 });
+    sim.enqueueSetup({ kind: 'orderNeed', entity: archer, need });
   }
+  const bride = spawnSettlerDirect(sim, JOB_WOMAN, 23, 19, HUMAN_PLAYER);
+  spawnSettlerDirect(sim, JOB_CIVILIST, 24, 19, HUMAN_PLAYER);
+  spawnSettlerDirect(sim, JOB_CIVILIST, 26, 19, HUMAN_PLAYER);
+  sim.enqueueSetup({ kind: 'marry', entity: bride });
 }
 
 export const combatGesturesScene: SceneDefinition = {
   id: 'combat-gestures',
   seed: 71,
+  needs: true,
   terrain: grassTerrain(32, 24),
   build,
   initialZoom: 0.75,
   runTicks: 720,
   checks: [
+    {
+      label: 'a nearby civilian celebrates the completed wedding',
+      predicate: (sim) =>
+        holdsSometimeDuring(combatGesturesScene, sim.tick, (probe) =>
+          [...probe.world.query(CurrentAtomic)].some(
+            (e) => probe.world.get(e, CurrentAtomic).atomicId === CHEER_ATOMIC,
+          ),
+        ),
+    },
     {
       label: 'all four duels land blows while every participant survives',
       predicate: (sim) => {

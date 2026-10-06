@@ -97,3 +97,6 @@ export const EXERCISE_ATOMIC = 89;
 /** The bend over a chest's lid (`logicdefines.inc` OPEN_CHEST 91); the mod's `animations.ini` binds it to
  *  the generic pick-up clip, which the characters reuse here. */
 export const OPEN_CHEST_ATOMIC = 91;
+
+/** The civilian celebration slot (`setatomic 6 17`). */
+export const CHEER_ATOMIC = 17;

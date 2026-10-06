@@ -20,7 +20,7 @@ import {
 import type { GoodsLine } from '../components/economy/infrastructure.js';
 import { atomicAnimationTable, atomicBindingTables, harvestCapableJobs } from './content-index/atomics.js';
 import { byKey, byOptionalKey, byPairKey, lastByPairKey, valueByKey } from './content-index/by-key.js';
-import { militaryGoodTypes } from './content-index/combat.js';
+import { civilianJobTypes, militaryGoodTypes } from './content-index/combat.js';
 import { constructionBills } from './content-index/construction.js';
 import { jobRoleSets } from './content-index/jobs.js';
 import { livestockTables } from './content-index/livestock.js';
@@ -118,9 +118,12 @@ export interface ContentIndex {
   readonly mergedRecipeByBuilding: ReadonlyMap<number, Recipe>;
   /** The worn/stored weapon type key; later rows replace earlier definitions of the same type. */
   readonly weaponsByTribeAndTypeId: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
-  /** How a jobbed combatant binds its class weapon; first-wins per pair in source order. The wall bow is
-   *  left out: its row names the civilian job, but only a defence-mode building fires it, so a civilian in
-   *  the open stays unarmed. */
+  /** Civilian descendants of `civilist`, excluding soldier and hero roles. */
+  readonly civilianJobs: ReadonlySet<number>;
+  /** Tribe-local bare hands for a civilian with no class weapon. */
+  readonly fistsByTribe: ReadonlyMap<number, WeaponType>;
+  /** Class weapons, first-wins per pair in source order. The wall bow is excluded: its row names the
+   * civilian job, but only a defence-mode building fires it. */
   readonly weaponsByTribeAndJob: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
   /** Which weapon a craftable good is (`weapons.ini` `goodtype`); first-wins per pair in source order. */
   readonly weaponByTribeAndGoodType: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
@@ -273,6 +276,11 @@ function buildIndex(content: ContentSet): ContentIndex {
     ),
     hunterJobs: roles.hunter,
     maxResourceWorkOffset: maxWorkCellOffset(content),
+    civilianJobs: civilianJobTypes(jobs),
+    fistsByTribe: byOptionalKey(
+      content.weapons.filter((w) => w.id === 'fist'),
+      (w) => w.tribeType,
+    ),
     weaponsByTribeAndTypeId: lastByPairKey(
       content.weapons,
       (w) => w.tribeType,
