@@ -198,6 +198,16 @@ export const deContent = {
       title: 'Vornamen',
       summary: 'Vornamen für fünf Zivilisationen und zwei Kreaturenstämme.',
     },
+    'everyday-gestures': {
+      title: 'Alltägliche Gesten',
+      summary:
+        'Druiden arbeiten an ihren Kesseln, ein Fischer läuft mit seiner Angel und fängt Fische, und Babys bewegen sich im Leerlauf.',
+    },
+    'combat-gestures': {
+      title: 'Schläge und Gesten',
+      summary:
+        'Zivilisten, unbewaffnete Soldaten und Bogenschützen duellieren sich neben ruhenden, essenden und schlafenden Bogenschützen.',
+    },
     'armed-idle': {
       title: 'Bewaffnete im Leerlauf',
       summary:
