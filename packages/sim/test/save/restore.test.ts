@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FOG_MODE } from '../../src/components/index.js';
+import { FOG_MODE, Owner, Position, Signpost, Stockpile } from '../../src/components/index.js';
 import { defineComponent, type Entity } from '../../src/ecs/world.js';
 import {
   adminCommand,
@@ -13,7 +13,9 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../src/index.js';
+import { positionOfNode } from '../../src/nav/halfcell.js';
 import { NEED_OVERFILL_FLOOR } from '../../src/systems/index.js';
+import { yardOccupancy } from '../../src/systems/settlers/targets/yard-occupancy.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
@@ -30,6 +32,15 @@ const TARGET_ID_RANGE = 20;
  *  VISION_CADENCE_TICKS rebuilds, so the restored cadence fields are load-bearing. */
 const TICKS_BEFORE_SAVE = 80;
 const TICKS_AFTER_SAVE = 23;
+/** Two posts well inside the link range of each other, on a map free of obstacles. */
+const SIGNPOST_NODES = [
+  [4, 4],
+  [14, 4],
+] as const;
+const YARD_HEAP_NODE = { hx: 10, hy: 16 } as const;
+const YARD_HEAP_UNITS = 3;
+/** Ticks for the link pass to join the posts before the save. */
+const SIGNPOST_LINK_TICKS = 48;
 
 function pick<T>(rng: Rng, options: readonly T[]): T {
   const v = options[rng.int(options.length)];
@@ -71,6 +82,18 @@ function scenario(): Simulation {
   sim.enqueueSetup({ kind: 'placeBuilding', buildingType: 1, x: 12, y: 12, tribe: VIKING, owner: P0 });
   sim.enqueueSetup({ kind: 'dropGood', good: WOOD_GOOD, x: 10, y: 10, amount: 5 });
   drive(sim, new Rng(0x5eed), TICKS_BEFORE_SAVE);
+  // Placed after the random kills, so the restore's warm-up builds non-empty post reaches and yard
+  // occupancy: a linked pair of signposts, and a plain stockpile lying in the yard.
+  for (const [hx, hy] of SIGNPOST_NODES) {
+    const post = sim.world.create();
+    sim.world.add(post, Position, positionOfNode(hx, hy));
+    sim.world.add(post, Owner, { player: P0 });
+    sim.world.add(post, Signpost, { links: [] });
+  }
+  const heap = sim.world.create();
+  sim.world.add(heap, Position, positionOfNode(YARD_HEAP_NODE.hx, YARD_HEAP_NODE.hy));
+  sim.world.add(heap, Stockpile, { amounts: new Map([[WOOD_GOOD, YARD_HEAP_UNITS]]) });
+  sim.run(SIGNPOST_LINK_TICKS);
   return sim;
 }
 
@@ -93,7 +116,17 @@ describe('restoreSimulation continuation', () => {
     expect(restored.rng.getState()).toBe(original.rng.getState());
     expect(restored.commands.pendingCount).toBe(1);
     expect(restored.hashState()).toBe(original.hashState());
-    // The indexes the restore built ahead of the first tick agree with a fresh derive.
+    // The indexes the restore built ahead of the first tick agree with a fresh derive, the post reaches
+    // and the yard occupancy among them holding entries.
+    const posts = [...restored.world.query(Signpost)];
+    expect(posts).toHaveLength(SIGNPOST_NODES.length);
+    for (const post of posts) expect(restored.world.get(post, Signpost).links).toHaveLength(1);
+    if (restored.terrain === undefined || original.terrain === undefined)
+      throw new Error('the scenario is mapped');
+    // Yard occupancy has no cache verifier: the warmed copy is held against the continuous run's.
+    const yard = new Map(yardOccupancy(restored.world, restored.terrain));
+    expect(yard.size).toBeGreaterThan(0);
+    expect(yard).toEqual(new Map(yardOccupancy(original.world, original.terrain)));
     expect(restored.world.verifyCaches()).toEqual([]);
 
     const genA = new Rng(0xab);
