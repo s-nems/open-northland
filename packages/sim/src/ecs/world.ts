@@ -241,9 +241,15 @@ export class World {
     this.touched.trackComponents();
   }
 
-  /** Component lists are borrowed only for the duration of `consume`. */
+  /** A component list is lent only for the duration of `consume`, and only its first `count` entries are
+   *  the entity's. */
   drainTouched(
-    consume: (entity: Entity, components: readonly Component<unknown>[], membership: boolean) => void,
+    consume: (
+      entity: Entity,
+      components: readonly Component<unknown>[],
+      count: number,
+      membership: boolean,
+    ) => void,
   ): boolean {
     return this.touched.drain(consume);
   }

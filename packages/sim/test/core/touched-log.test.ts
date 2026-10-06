@@ -12,9 +12,9 @@ describe('touched log component collection', () => {
     expect(log.pending(id)).toBe(true);
     const changed: number[] = [];
     expect(
-      log.drain((entity, written, membership) => {
+      log.drain((entity, _written, count, membership) => {
         changed.push(entity);
-        expect(written).toHaveLength(0);
+        expect(count).toBe(0);
         expect(membership).toBe(false);
       }),
     ).toBe(false);
@@ -23,23 +23,25 @@ describe('touched log component collection', () => {
     expect(log.mutationCount).toBe(2);
   });
 
-  it('reuses borrowed lists after draining without leaking component or membership names', () => {
+  it('reuses lent lists after draining without leaking component or membership names', () => {
     const log = new TouchedLog();
     log.trackComponents();
     const id = 1 as Entity;
     log.record(id, Position, true);
+    log.record(id, Resource);
     log.record(id, Position);
-    let borrowed: readonly Component<unknown>[] | undefined;
-    log.drain((_entity, written, membership) => {
-      borrowed = written;
-      expect(written).toEqual([Position]);
+    let lent: readonly Component<unknown>[] | undefined;
+    log.drain((_entity, written, count, membership) => {
+      lent = written;
+      expect(written.slice(0, count)).toEqual([Position, Resource]);
       expect(membership).toBe(true);
     });
     log.record(2 as Entity, Resource);
-    log.drain((entity, written, membership) => {
+    log.drain((entity, written, count, membership) => {
       expect(entity).toBe(2);
-      expect(written).toBe(borrowed);
-      expect(written).toEqual([Resource]);
+      // The same list, its storage kept: only the first `count` entries are this entity's.
+      expect(written).toBe(lent);
+      expect(written.slice(0, count)).toEqual([Resource]);
       expect(membership).toBe(false);
     });
   });
@@ -51,7 +53,7 @@ describe('touched log component collection', () => {
     log.record(2 as Entity, Position);
     log.record(1 as Entity, Resource);
     const seen: Array<[number, Component<unknown>[]]> = [];
-    log.drain((entity, written) => seen.push([entity, [...written]]));
+    log.drain((entity, written, count) => seen.push([entity, written.slice(0, count)]));
     expect(seen).toEqual([
       [1, [Resource]],
       [2, [Position]],
@@ -65,14 +67,14 @@ describe('touched log component collection', () => {
     log.record((TOUCHED_LOG_OVERFLOW_LIMIT + 1) as Entity, Resource);
     expect(log.pending(1 as Entity)).toBe(true);
     expect(
-      log.drain((_entity, written) => {
-        expect(written).toEqual([Resource]);
+      log.drain((_entity, written, count) => {
+        expect(written.slice(0, count)).toEqual([Resource]);
       }),
     ).toBe(true);
     log.record(1 as Entity, Position);
     expect(
-      log.drain((_entity, written) => {
-        expect(written).toEqual([Position]);
+      log.drain((_entity, written, count) => {
+        expect(written.slice(0, count)).toEqual([Position]);
       }),
     ).toBe(false);
   });
@@ -85,7 +87,7 @@ describe('touched log component collection', () => {
     log.record(far, Resource, true);
     expect(log.pending(far)).toBe(true);
     const seen: Array<[number, boolean]> = [];
-    expect(log.drain((entity, _written, membership) => seen.push([entity, membership]))).toBe(false);
+    expect(log.drain((entity, _written, _count, membership) => seen.push([entity, membership]))).toBe(false);
     expect(seen).toEqual([
       [1, false],
       [far, true],

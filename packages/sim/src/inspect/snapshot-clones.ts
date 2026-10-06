@@ -3,6 +3,7 @@ import { TOUCHED_LOG_OVERFLOW_LIMIT } from '../ecs/touched-log.js';
 import type { Component, Entity, World } from '../ecs/world.js';
 import { EntityDigest } from './entity-digest.js';
 import { addField } from './fast-record.js';
+import { PendingWrites } from './pending-writes.js';
 import { clonePlain } from './plain-clone.js';
 import type { EntitySnapshot } from './snapshot.js';
 import { DeltaColumns, type SnapshotDelta } from './snapshot-delta.js';
@@ -22,7 +23,7 @@ interface CachedEntity {
 interface PendingDelta {
   readonly removed: Set<Entity>;
   /** The components each alive entity wrote since the base, in first-write order. */
-  readonly written: Map<Entity, Component<unknown>[]>;
+  readonly written: PendingWrites;
   rebuild: boolean;
 }
 
@@ -46,27 +47,19 @@ class SnapshotClones {
    *  the same bound (nobody took its deltas) starts over alone. */
   refresh(): void {
     const world = this.world;
-    const overflowed = world.drainTouched((e, written, membership) => {
+    const overflowed = world.drainTouched((e, written, count, membership) => {
       const alive = world.isAlive(e);
       const cached = this.entries.get(e);
       if (cached !== undefined) {
         if (alive) {
-          for (const component of written) cached.written.add(component);
+          for (let i = 0; i < count; i++) cached.written.add(written[i] as Component<unknown>);
           cached.membershipChanged ||= membership;
         } else this.entries.delete(e);
       }
       for (const stream of this.streams) {
         if (stream.rebuild) continue; // the next delta carries every alive entity anyway
-        if (alive) {
-          const writtenComponents = stream.written.get(e);
-          // A copy: the log reuses the list it lends.
-          if (writtenComponents === undefined) stream.written.set(e, written.slice());
-          else {
-            for (const component of written) {
-              if (!writtenComponents.includes(component)) writtenComponents.push(component);
-            }
-          }
-        } else {
+        if (alive) stream.written.add(e, written, count);
+        else {
           stream.written.delete(e);
           stream.removed.add(e);
         }
@@ -119,7 +112,7 @@ class SnapshotClones {
   open(): PendingDelta {
     const pending: PendingDelta = {
       removed: new Set(),
-      written: new Map(),
+      written: new PendingWrites(),
       rebuild: true,
     };
     this.streams.push(pending);
@@ -247,7 +240,8 @@ export class SnapshotDeltaStream {
         this.sent.delete(id);
         this.digest?.drop(id);
       }
-      for (const id of ascendingIds(pending.written.keys())) this.changesOf(columns, id as Entity);
+      const ids = pending.written.ascending();
+      for (let i = 0; i < ids.length; i++) this.changesOf(columns, ids[i] as Entity);
     }
     const delta: SnapshotDelta = {
       tick,
@@ -290,11 +284,22 @@ export class SnapshotDeltaStream {
     }
     const world = this.source.world;
     this.digest?.fold(this.clones.snapOf(id));
-    // Preserve the component registration order carried by complete snapshots.
-    const written = this.pending.written.get(id) ?? [];
-    if (written.length > 1) written.sort((a, b) => world.componentOrder(a) - world.componentOrder(b));
+    // Preserve the component registration order carried by complete snapshots: an insertion sort, since
+    // an entity writes a handful of components and the built-in sort allocates per call.
+    const written = this.pending.written.writtenBy(id);
+    const count = this.pending.written.writtenCount(id);
+    for (let i = 1; i < count; i++) {
+      const component = written[i] as Component<unknown>;
+      const order = world.componentOrder(component);
+      let at = i;
+      for (; at > 0 && world.componentOrder(written[at - 1] as Component<unknown>) > order; at--) {
+        written[at] = written[at - 1] as Component<unknown>;
+      }
+      written[at] = component;
+    }
     columns.begin(id);
-    for (const component of written) {
+    for (let i = 0; i < count; i++) {
+      const component = written[i] as Component<unknown>;
       const value = world.tryGet(id, component);
       if (value === undefined) columns.drop(component.name);
       else columns.writeLive(component.name, value);
@@ -305,10 +310,4 @@ export class SnapshotDeltaStream {
 
 function ascending(ids: Iterable<Entity>): Entity[] {
   return [...ids].sort((a, b) => a - b);
-}
-
-/** Ids ascending. An Int32Array sorts without a comparator call per pair. Entity ids stay within int32:
- *  the save caps them there. */
-function ascendingIds(ids: Iterable<Entity>): Int32Array {
-  return Int32Array.from(ids).sort();
 }

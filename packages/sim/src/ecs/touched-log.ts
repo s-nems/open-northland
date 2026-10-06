@@ -26,9 +26,11 @@ export class TouchedLog {
   private readonly sparseStamps = new Map<Entity, number>();
   private readonly sparseSlots = new Map<Entity, number>();
   private epoch = 1;
-  /** Per slot, the components its entity wrote this epoch, in first-write order. Every list at or past
-   *  `count` is empty, so a newly logged entity reuses its slot's list without clearing it. */
+  /** Per slot, the components its entity wrote this epoch, in first-write order: the first
+   *  `writtenCounts[slot]` entries. A list keeps its storage across epochs, so a newly logged entity
+   *  reuses its slot's list without allocating. */
   private readonly written: Component<unknown>[][] = [];
+  private writtenCounts = new Int32Array(INITIAL_CAPACITY);
   private detailed = false;
   private mutations = 0;
   private overflowed = false;
@@ -57,16 +59,17 @@ export class TouchedLog {
     let slot = this.count;
     if (fresh) {
       this.count++;
-      if (slot === this.order.length) this.order = grown(this.order, slot + 1);
+      if (slot === this.order.length) {
+        this.order = grown(this.order, slot + 1);
+        this.writtenCounts = grown(this.writtenCounts, slot + 1);
+      }
       this.order[slot] = entity;
+      this.writtenCounts[slot] = 0;
       this.stamp(entity, logged, slot);
     }
     if (!this.detailed) return this.mutations;
     if (!fresh) slot = this.slotOf(entity);
-    if (component !== undefined) {
-      const written = this.listAt(slot);
-      if (!written.includes(component)) written.push(component);
-    }
+    if (component !== undefined) this.addWritten(slot, component);
     if (membership) this.stamp(entity, logged | MEMBERSHIP_BIT, slot);
     return this.mutations;
   }
@@ -80,18 +83,25 @@ export class TouchedLog {
   /**
    * Hands every logged entity to `consume` and clears the log. Returns `true` when the log overflowed since
    * the last drain: those individual evictions were lost, so the consumer must discard its entire cache.
-   * Component lists are borrowed for the callback only; the log clears and reuses them afterward.
+   * A component list is lent for the callback only, and only its first `count` entries are the entity's;
+   * the log reuses the list afterward.
    */
   drain(
-    consume: (entity: Entity, components: readonly Component<unknown>[], membership: boolean) => void,
+    consume: (
+      entity: Entity,
+      components: readonly Component<unknown>[],
+      count: number,
+      membership: boolean,
+    ) => void,
   ): boolean {
     const logged = this.epoch << 1;
     const written = this.written;
     for (let slot = 0; slot < this.count; slot++) {
       const e = this.order[slot] as Entity;
       const components = written[slot];
-      consume(e, components ?? NO_COMPONENTS, this.stampOf(e) === (logged | MEMBERSHIP_BIT));
-      if (components !== undefined) components.length = 0;
+      const membership = this.stampOf(e) === (logged | MEMBERSHIP_BIT);
+      if (components === undefined) consume(e, NO_COMPONENTS, 0, membership);
+      else consume(e, components, this.writtenCounts[slot] as number, membership);
     }
     this.count = 0;
     this.forget();
@@ -102,14 +112,21 @@ export class TouchedLog {
 
   /** Empty the log: a new epoch voids every stamp at once. */
   private forget(): void {
-    for (let slot = 0; slot < this.count; slot++) {
-      const components = this.written[slot];
-      if (components !== undefined) components.length = 0;
-    }
     this.count = 0;
     this.epoch++;
     this.sparseStamps.clear();
     this.sparseSlots.clear();
+  }
+
+  /** Add `component` to the slot's list unless it holds it, writing over a previous epoch's entries
+   *  rather than growing the list. */
+  private addWritten(slot: number, component: Component<unknown>): void {
+    const written = this.listAt(slot);
+    const count = this.writtenCounts[slot] as number;
+    for (let i = 0; i < count; i++) if (written[i] === component) return;
+    if (count < written.length) written[count] = component;
+    else written.push(component);
+    this.writtenCounts[slot] = count + 1;
   }
 
   /** The slot's component list; component tracking that began mid-epoch finds none for earlier slots. */
