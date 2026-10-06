@@ -173,6 +173,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
   await boot.begin('graphics');
   const app = await createWindowPixiApp(canvas, { resolutionScale: readStoredSettings().renderScale });
   let assembled = false;
+  let hosting: Promise<H | null> | null = null;
   try {
     await boot.begin('map');
     const loaded = verified?.map ?? (mapId !== null ? await loadTerrainMap(mapId) : null);
@@ -206,6 +207,21 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
       ir ?? {},
       seating.remap,
     );
+    const documents: MapWorldDocuments = {
+      map: loaded,
+      ir,
+      script,
+      goodNames,
+      content: realContent?.content ?? null,
+      session,
+      // `?missions=off` is a local diagnostic; the descriptor carries no such rule, so a relayed
+      // world never reads it.
+      missions: plan.multiplayer ? null : onOffParam(params, 'missions'),
+    };
+    // A local world builds on its worker while this thread loads the art below. A relayed world keeps
+    // its own step: its worker talks to the room while it builds.
+    hosting = plan.multiplayer === true ? null : hostMapWorld(plan, documents);
+    hosting?.catch(() => undefined);
     await boot.begin('sprites');
     const goods = realContent?.content.goods ?? sandboxGoods();
     // The admin panel's monster presets draw only with their looks loaded; those pages are large, so they
@@ -225,17 +241,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
       return null;
     }
     await boot.begin('world');
-    const hosted = await hostMapWorld(plan, {
-      map: loaded,
-      ir,
-      script,
-      goodNames,
-      content: realContent?.content ?? null,
-      session,
-      // `?missions=off` is a local diagnostic; the descriptor carries no such rule, so a relayed
-      // world never reads it.
-      missions: plan.multiplayer ? null : onOffParam(params, 'missions'),
-    });
+    const hosted = await (hosting ?? hostMapWorld(plan, documents));
     if (hosted === null) return null;
     const { host } = hosted;
     if (pack === null && loaded?.entities !== undefined && ir !== null) {
@@ -326,6 +332,10 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
       groundWaves,
     };
   } finally {
-    if (!assembled) app.destroy(false, { children: true });
+    if (!assembled) {
+      app.destroy(false, { children: true });
+      // A boot that stops early still lets its world stand up, so the entry that disposes it sees it.
+      await hosting?.catch(() => undefined);
+    }
   }
 }
