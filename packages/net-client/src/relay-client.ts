@@ -102,6 +102,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   private readonly completion = new MatchCompletion();
   private readonly saveOrders = new SaveOrders();
   private readonly tickCost = new TickCost();
+  private snapshotInFlight: Promise<void> | null = null;
 
   get session(): GameSession | null {
     return this.state.session;
@@ -482,6 +483,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   }
 
   private dropWorld(): void {
+    this.snapshotInFlight = null;
     this.saveOrders.cancel('The world changed while saving');
     this.loader.invalidate();
     this.verdicts.forgetWorld();
@@ -497,16 +499,20 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
 
   private answerSnapshotRequest(): void {
     const sim = this.sim;
-    if (sim === null) return;
+    if (sim === null || this.snapshotInFlight !== null) return;
     const tick = sim.tick;
     const world = this.world;
-    void this.track(
-      'snapshot',
-      encodeSnapshot(exportSaveGame(sim, this.saveHeader())).then((bytes) => {
+    // A relay retry can arrive while compression is still running. One upload answers both requests.
+    const work = encodeSnapshot(exportSaveGame(sim, this.saveHeader()))
+      .then((bytes) => {
         if (this.sim !== sim) return;
         this.sendBlob({ type: 'snapshot', to: null, tick, world, bytes });
-      }),
-    );
+      })
+      .finally(() => {
+        if (this.snapshotInFlight === work) this.snapshotInFlight = null;
+      });
+    this.snapshotInFlight = work;
+    void this.track('snapshot', work);
   }
 
   /** A snapshot names the session's map, so the client restoring it can hold it to its own world. */

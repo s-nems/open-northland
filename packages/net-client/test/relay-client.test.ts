@@ -17,8 +17,9 @@ import {
   TICKS_PER_SECOND,
 } from '@open-northland/net-protocol';
 import { digestInputsToJson, exportSaveGame, Simulation } from '@open-northland/sim';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
+import * as snapshotCodec from '../src/snapshot-codec.js';
 
 const SESSION: GameSession = {
   world: { kind: 'scene', sceneId: 'fixture' },
@@ -477,6 +478,74 @@ function fixtureWorld(tick = 0): OpenedWorld {
 }
 
 describe('RelayClient world operation ownership', () => {
+  it('answers the next snapshot request after compression failed', async () => {
+    const { client, sent } = harness({ open: async () => fixtureWorld(5) });
+    start(client, 5);
+    await client.settled();
+    const encode = vi.spyOn(snapshotCodec, 'encodeSnapshot').mockRejectedValueOnce(new Error('compression'));
+    try {
+      client.receive({ kind: 'snapshotRequest' });
+      await expect(client.settled()).rejects.toThrow('compression');
+      client.receive({ kind: 'snapshotRequest' });
+      await client.settled();
+      const snapshots = sent.filter((message) => message.kind === 'blob');
+      expect(snapshots).toHaveLength(1);
+      expect(await decodeSnapshot(snapshots[0]?.bytes ?? '')).toMatchObject({ header: { tick: 5 } });
+    } finally {
+      encode.mockRestore();
+    }
+  });
+
+  it('keeps a new world capture protected when the discarded world finishes compressing', async () => {
+    const { client, sent, worlds } = harness({ open: async () => fixtureWorld(5) });
+    start(client, 5);
+    await client.settled();
+    const releases: ((bytes: string) => void)[] = [];
+    const encode = vi
+      .spyOn(snapshotCodec, 'encodeSnapshot')
+      .mockImplementation(() => new Promise((resolve) => releases.push(resolve)));
+    try {
+      client.receive({ kind: 'snapshotRequest' });
+      const oldWork = client.settled();
+      client.receive({ kind: 'left' });
+      start(client, 5);
+      await vi.waitFor(() => expect(worlds).toHaveLength(2));
+      client.receive({ kind: 'snapshotRequest' });
+      expect(releases).toHaveLength(2);
+      releases[0]?.('AAAA');
+      await oldWork;
+      client.receive({ kind: 'snapshotRequest' });
+      expect(releases).toHaveLength(2);
+      releases[1]?.('BBBB');
+      await client.settled();
+      expect(sent.filter((message) => message.kind === 'blob')).toEqual([
+        { kind: 'blob', type: 'snapshot', to: null, tick: 5, world: 5, bytes: 'BBBB' },
+      ]);
+    } finally {
+      for (const release of releases) release('AAAA');
+      await client.settled();
+      encode.mockRestore();
+    }
+  });
+
+  it('answers overlapping snapshot requests with one capture, then permits a fresh capture', async () => {
+    const { client, sent } = harness({ open: async () => fixtureWorld(5) });
+    start(client, 5);
+    await client.settled();
+    sent.length = 0;
+    for (let request = 0; request < 3; request++) client.receive({ kind: 'snapshotRequest' });
+    await client.settled();
+    const snapshots = () => sent.filter((message) => message.kind === 'blob');
+    expect(snapshots()).toHaveLength(1);
+    expect(await decodeSnapshot(snapshots()[0]?.bytes ?? '')).toMatchObject({ header: { tick: 5 } });
+    client.receive({ kind: 'frame', tick: 6, commands: [] });
+    client.advance(1000);
+    client.receive({ kind: 'snapshotRequest' });
+    await client.settled();
+    expect(snapshots()).toHaveLength(2);
+    expect(await decodeSnapshot(snapshots()[1]?.bytes ?? '')).toMatchObject({ header: { tick: 6 } });
+  });
+
   it.each([DESCRIPTOR_WORLD, RESTORED_TICK])(
     'uploads the snapshot tick and world generation captured before compression (world %i)',
     async (world) => {
