@@ -157,6 +157,13 @@ export class WalkFlood implements WalkDistances {
   private readonly costs = new WalkCosts();
   private readonly frontier = new WalkFrontier();
   private readonly steps = new StepBuffer();
+  /** The box of the settled nodes, whose steps are the only overlay reads the flood has made. */
+  private settledBox = {
+    minHx: Number.POSITIVE_INFINITY,
+    maxHx: -1,
+    minHy: Number.POSITIVE_INFINITY,
+    maxHy: -1,
+  };
 
   constructor(
     private readonly terrain: TerrainGraph,
@@ -187,6 +194,7 @@ export class WalkFlood implements WalkDistances {
       if ((page[at] ?? UNREACHED_COST) < 0) continue;
       page[at] = settledSlot(cost);
       costs.settledCount++;
+      this.boxSettled(next);
       terrain.stepsInto(next, blocked, steps);
       for (let i = 0; i < steps.length; i++) {
         const stepNode = steps.nodeAt(i);
@@ -203,7 +211,50 @@ export class WalkFlood implements WalkDistances {
     }
     return undefined;
   }
+
+  /**
+   * Whether every overlay answer this flood has read still holds on `mask`, which it last read at version
+   * `since`: no walkable node within a step's reach of a settled node flipped since. Then the flood is the
+   * one a fresh flood would grow into, settle for settle, and may be resumed.
+   */
+  readsHoldOn(mask: WalkBlockMask, since: number): boolean {
+    const box = this.settledBox;
+    if (box.maxHx < 0) return true;
+    const read = {
+      minHx: box.minHx - STEP_REACH_X,
+      maxHx: box.maxHx + STEP_REACH_X,
+      minHy: box.minHy - STEP_REACH_Y,
+      maxHy: box.maxHy + STEP_REACH_Y,
+    };
+    return !mask.flippedSince(read, since, (x, y) => this.settledNear(x, y));
+  }
+
+  /** Whether a settled node lies within a step's reach of `(x, y)`, so the flood read that node. */
+  private settledNear(x: number, y: number): boolean {
+    const terrain = this.terrain;
+    for (let dy = -STEP_REACH_Y; dy <= STEP_REACH_Y; dy++) {
+      for (let dx = -STEP_REACH_X; dx <= STEP_REACH_X; dx++) {
+        if (!terrain.inBounds(x + dx, y + dy)) continue;
+        if (this.costs.settledCost(terrain.nodeAt(x + dx, y + dy)) !== undefined) return true;
+      }
+    }
+    return false;
+  }
+
+  private boxSettled(node: NodeId): void {
+    const x = this.terrain.xOf(node);
+    const y = this.terrain.yOf(node);
+    const box = this.settledBox;
+    if (x < box.minHx) box.minHx = x;
+    if (x > box.maxHx) box.maxHx = x;
+    if (y < box.minHy) box.minHy = y;
+    if (y > box.maxHy) box.maxHy = y;
+  }
 }
+
+/** How far from a node the lattice's steps out of it read the overlay: a diagonal's target and flanks. */
+const STEP_REACH_X = 1;
+const STEP_REACH_Y = 2;
 
 /** Per node of E/W offset and of N/S offset, a lower bound on the walk across mostly E/W ground: half
  *  columns, each pair of rows climbed by a diagonal at its cost over a half column. */
@@ -305,6 +356,9 @@ export class SeedWalks {
     readonly seed: NodeId,
     readonly budget: number,
     private readonly answers: SeedWalkAnswers,
+    /** Where the seed's flood comes from: a fresh one unless a holder resumes one it kept. */
+    private readonly floodOf: (seed: NodeId, budget: number) => WalkFlood = (from, budget) =>
+      new WalkFlood(terrain, blocked, [from], budget),
   ) {
     this.component = terrain.componentOf(seed);
     this.certainUpTo = fx.sub(budgetCertainBelow(budget), ULP);
@@ -354,7 +408,7 @@ export class SeedWalks {
 
   /** The flood's own answer for `node`, flooding as far as it takes. */
   floodCostTo(node: NodeId): Fixed | undefined {
-    this.flood ??= new WalkFlood(this.terrain, this.blocked, [this.seed], this.budget);
+    this.flood ??= this.floodOf(this.seed, this.budget);
     return this.flood.costTo(node);
   }
 

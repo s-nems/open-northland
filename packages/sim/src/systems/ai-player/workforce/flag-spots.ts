@@ -4,13 +4,10 @@ import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { HALF_COLUMN } from '../../../nav/world-metric.js';
 import type { SystemContext } from '../../context.js';
-import {
-  dynamicBlockOverlay,
-  resourceStanceCells,
-  routeRegions,
-  workFlagPlacementTest,
-} from '../../footprint/index.js';
+import { resourceStanceCells, routeRegions, workFlagPlacementTest } from '../../footprint/index.js';
+import { walkBlockMask } from '../../footprint/walk-block-mask.js';
 import type { NavigationLimit } from '../../signposts/index.js';
+import { heldFloodsOf } from '../held-floods.js';
 import { type GathererReach, nearestLiveResource, type WorkableTest } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
 import {
@@ -108,7 +105,8 @@ export function flagGround(
   limit: NavigationLimit | null,
   carrierWalks: SeedWalkAnswers = 'flood',
 ): FlagGround {
-  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const blocked = walkBlockMask(world, ctx, terrain);
+  const held = heldFloodsOf(world, terrain, blocked);
   const regions = routeRegions(world, ctx, terrain);
   const seeds = new Map<string, { node: NodeId | null; pocketed: boolean }>();
   const seedOf = (origin: HalfCellNode): { node: NodeId | null; pocketed: boolean } => {
@@ -141,7 +139,14 @@ export function flagGround(
       }
       let walks = fromOrigin.get(seed);
       if (walks === undefined) {
-        walks = new SeedWalks(terrain, blocked, seed, ORIGIN_WALK_BUDGET_NODES, carrierWalks);
+        walks = new SeedWalks(
+          terrain,
+          blocked,
+          seed,
+          ORIGIN_WALK_BUDGET_NODES,
+          carrierWalks,
+          (from, budget) => held.floodOf(from, budget),
+        );
         fromOrigin.set(seed, walks);
       }
       return walks.toward(toward, reach);
