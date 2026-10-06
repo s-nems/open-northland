@@ -325,6 +325,68 @@ describe('inventory upkeep per step', () => {
     apply([touch(1, { Position: along(4), Signpost: { links: [] } })]);
     expectFresh();
   });
+
+  it('keeps the totals exact through dropped loads, a vehicle chain and riders touched beside their vehicle', () => {
+    const mirror = new SnapshotMirror();
+    let sequence = 0;
+    const apply = (touched: EntityDelta[]) =>
+      mirror.apply(
+        packSnapshotDelta({
+          tick: sequence,
+          sequence,
+          rebuild: sequence++ === 0,
+          touched,
+          removed: [],
+          events: [],
+        }),
+      );
+    const vehicle = (carrier: number | null) => ({ carrier });
+    const hold = (good: number, units: number) => ({ lines: [[good, { current: units }]] });
+    apply(
+      [
+        post(1, 10),
+        // A rider whose id is below its vehicle's, and one whose id is above.
+        { id: 3, components: { Owner: owner, Rider: { vehicle: 40 }, Carrying: { goodType: 1, amount: 1 } } },
+        source(40, 4, { Owner: owner, Vehicle: vehicle(null), VehicleStock: hold(2, 2) }),
+        {
+          id: 41,
+          components: { Owner: owner, Rider: { vehicle: 40 }, Carrying: { goodType: 2, amount: 3 } },
+        },
+        // A chain: a ship carrying a boat carrying a rider, only the ship on the ground.
+        source(50, 4, { Owner: owner, Vehicle: vehicle(null), VehicleStock: hold(1, 4) }),
+        { id: 51, components: { Owner: owner, Vehicle: vehicle(50), VehicleStock: hold(2, 5) } },
+        {
+          id: 52,
+          components: { Owner: owner, Rider: { vehicle: 51 }, Carrying: { goodType: 1, amount: 6 } },
+        },
+        // A carrier that sets its load down on the way.
+        source(60, 4, { Owner: owner, Carrying: { goodType: 1, amount: 7 } }),
+      ].map((e) => touch(e.id, e.components)),
+    );
+    const expectFresh = (where: string) => {
+      const s = mirror.snapshot();
+      const fresh = snapshot([...s.entities]);
+      expect(network(s), where).toEqual(network(fresh));
+      expect(empire(s), where).toEqual(empire(fresh));
+      expect(buildHud(s, 1), where).toEqual({ ...buildHud(fresh, 1), tick: s.tick });
+      expect(mirror.verifyIndexes(), where).toEqual([]);
+    };
+    expectFresh('opening');
+    let amount = 1;
+    for (let x = 4; x <= 26; x += QUARTER) {
+      amount++;
+      apply([
+        touch(3, { Carrying: { goodType: 1, amount } }),
+        touch(40, { Position: along(x) }),
+        touch(41, { Carrying: { goodType: 2, amount } }),
+        touch(50, { Position: along(x + 1) }),
+        touch(51, { VehicleStock: hold(2, amount) }),
+        touch(52, { Carrying: { goodType: 1, amount } }),
+        x === 15 ? touch(60, { Position: along(x) }, ['Carrying']) : touch(60, { Position: along(x) }),
+      ]);
+      expectFresh(`step to ${x}`);
+    }
+  });
 });
 
 describe('authoritative network coverage', () => {
