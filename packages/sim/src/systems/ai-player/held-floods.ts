@@ -39,6 +39,7 @@ export class HeldFloods {
     } else {
       entry = { flood: new WalkFlood(this.terrain, this.mask, [seed], budget), version };
     }
+    entry.flood.holdAt(this.mask, version);
     this.floods.set(key, entry);
     if (this.floods.size > HELD_FLOODS) {
       const oldest = this.floods.keys().next().value;

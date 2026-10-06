@@ -174,7 +174,27 @@ export class WalkFlood implements WalkDistances {
     for (const seed of seeds) this.frontier.push(ZERO, seed);
   }
 
+  /** The mask and version a holder handed this flood out at, or null for a flood nobody holds. */
+  private heldAt: { readonly mask: WalkBlockMask; readonly version: number } | null = null;
+
+  /**
+   * Bind the flood to `mask` at `version` for one pass of asks: a holder resumes it on later passes only
+   * after proving its reads, so every ask of this pass must see the mask unchanged, or a resumed flood
+   * would answer from reads a fresh one would make anew.
+   */
+  holdAt(mask: WalkBlockMask, version: number): void {
+    this.heldAt = { mask, version };
+  }
+
+  private assertHeldCurrent(): void {
+    const held = this.heldAt;
+    if (held !== null && held.mask.version !== held.version) {
+      throw new Error('a held walk flood was asked after the walk-block mask changed within its pass');
+    }
+  }
+
   costFloor(node: NodeId): Fixed | undefined {
+    this.assertHeldCurrent();
     const known = this.costs.settledCost(node);
     if (known !== undefined) return known;
     // Every walk to an unsettled node leaves through the frontier, so it costs at least the frontier's least.
@@ -182,6 +202,7 @@ export class WalkFlood implements WalkDistances {
   }
 
   costTo(node: NodeId): Fixed | undefined {
+    this.assertHeldCurrent();
     const known = this.costs.settledCost(node);
     if (known !== undefined) return known;
     const { costs, frontier, steps, terrain } = this;
