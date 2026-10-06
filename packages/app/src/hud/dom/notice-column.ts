@@ -36,8 +36,16 @@ const OVERFLOWING = 'on-notices--overflowing';
 const FRESH = 'on-notice--fresh';
 /** A stack that took in a fresh member bumps its count seal once. */
 const GREW = 'on-notice--grew';
+/** The twin of {@link GREW} whose bump plays under another animation name, so swapping the two classes
+ *  restarts a bump still playing without reading the style back. */
+const GREW_AGAIN = 'on-notice--grew-again';
 /** The arrival animations whose end retires the fresh state: the seal pulse outlasts the slide. */
-const ARRIVAL_ANIMATION = { card: 'on-notice-in', seal: 'on-seal-pulse', bump: 'on-seal-bump' } as const;
+const ARRIVAL_ANIMATION = {
+  card: 'on-notice-in',
+  seal: 'on-seal-pulse',
+  bump: 'on-seal-bump',
+  bumpAgain: 'on-seal-bump-again',
+} as const;
 
 /** The level whose seal pulses on arrival; the others only slide their card in. */
 const IMPORTANT_LEVEL: MessagePriorityLevel = 2;
@@ -553,12 +561,10 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       const last = stack.lead.level === IMPORTANT_LEVEL ? ARRIVAL_ANIMATION.seal : ARRIVAL_ANIMATION.card;
       li.addEventListener('animationend', (event) => {
         if (event.animationName === last) li.classList.remove(FRESH);
-        if (event.animationName === ARRIVAL_ANIMATION.bump) li.classList.remove(GREW);
+        endBump(li, event.animationName);
       });
     } else {
-      li.addEventListener('animationend', (event) => {
-        if (event.animationName === ARRIVAL_ANIMATION.bump) li.classList.remove(GREW);
-      });
+      li.addEventListener('animationend', (event) => endBump(li, event.animationName));
     }
     return li;
   };
@@ -615,9 +621,10 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
           moved = true;
         }
         if (before !== undefined && stack.count > before.count && stack.lead.fresh) {
-          // A bump still playing restarts in place: re-adding its class in the same frame would not
-          // replay it, and a reflow between the two would lay the whole HUD out.
-          if (li.classList.contains(GREW)) restartBump(li);
+          // A bump still playing restarts under its twin's name: re-adding its own class in the same frame
+          // would not replay it.
+          if (li.classList.contains(GREW)) li.classList.replace(GREW, GREW_AGAIN);
+          else if (li.classList.contains(GREW_AGAIN)) li.classList.replace(GREW_AGAIN, GREW);
           else li.classList.add(GREW);
         }
         viewsByKey.set(stack.key, stack);
@@ -707,10 +714,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   };
 }
 
-function restartBump(li: HTMLElement): void {
-  for (const animation of li.getAnimations({ subtree: true })) {
-    if (animation instanceof CSSAnimation && animation.animationName === ARRIVAL_ANIMATION.bump) {
-      animation.currentTime = 0;
-    }
-  }
+function endBump(li: HTMLElement, animationName: string): void {
+  if (animationName === ARRIVAL_ANIMATION.bump) li.classList.remove(GREW);
+  if (animationName === ARRIVAL_ANIMATION.bumpAgain) li.classList.remove(GREW_AGAIN);
 }

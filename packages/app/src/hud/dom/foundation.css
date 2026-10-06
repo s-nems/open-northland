@@ -1540,11 +1540,20 @@ body.on-drag-scroll * {
     0 0 0 3px var(--bronze-hi),
     inset 0 -2px 3px #0006;
 }
-/* A stack that takes in a fresh member bumps its count once. */
+/* A stack that takes in a fresh member bumps its count once. A bump still playing restarts under the
+   twin name: a changed animation name plays from the start. */
 .on-hud .on-notice--grew .on-notice__toggle .on-seal {
   animation: on-seal-bump 0.45s ease-out;
 }
+.on-hud .on-notice--grew-again .on-notice__toggle .on-seal {
+  animation: on-seal-bump-again 0.45s ease-out;
+}
 @keyframes on-seal-bump {
+  40% {
+    transform: scale(1.22);
+  }
+}
+@keyframes on-seal-bump-again {
   40% {
     transform: scale(1.22);
   }
@@ -2291,7 +2300,8 @@ body.on-drag-scroll * {
   .on-hud .on-seal,
   .on-hud .on-notice--fresh .on-notice__card,
   .on-hud .on-notice--fresh.on-notice--danger .on-seal,
-  .on-hud .on-notice--grew .on-notice__toggle .on-seal {
+  .on-hud .on-notice--grew .on-notice__toggle .on-seal,
+  .on-hud .on-notice--grew-again .on-notice__toggle .on-seal {
     animation: none;
   }
   .on-hud .on-notice__toggle::after {
