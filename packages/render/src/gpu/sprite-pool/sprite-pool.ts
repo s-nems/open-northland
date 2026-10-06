@@ -55,6 +55,11 @@ const POOL_REAP_BUDGET = 32;
 
 const NO_REFS: ReadonlySet<number> = new Set();
 
+/** The hold generation a kept draw item was last presented under; a symbol, so the item's own fields
+ *  and the stamp's field-by-field compare never see it. */
+const HELD: unique symbol = Symbol('held under pool generation');
+type HoldMarked = { [HELD]?: number };
+
 export interface PoolFrame {
   readonly selection?: ReadonlySet<number>;
   /** Work flags belonging to selected gatherers always receive an amber outline. */
@@ -181,8 +186,14 @@ export class SpritePool {
   private passHighlight: PoolFrame['highlight'];
   private passStyle: PoolFrame['selectionStyle'];
   private passHasPortrait = false;
+  /** Bumped whenever a held entity may have to draw otherwise without its draw item changing. */
+  private holdGeneration = 0;
+  private holdBind = -1;
+  private holdMotion = -1;
+  private holdHighlight: PoolFrame['highlight'];
+  private holdStyle: PoolFrame['selectionStyle'];
   /** The pooled entity of each of {@link lastItems}, by index: a repeated scene build skips the lookups. */
-  private readonly lastPooled: PooledEntity[] = [];
+  private readonly lastPooled: (PooledEntity | undefined)[] = [];
   private readonly damaged: DamagedBuilding[] = [];
   private readonly ships: ShipAfloat[] = [];
   /** Scratch {@link keelOf} answers in, valid until the next call. */
@@ -230,37 +241,33 @@ export class SpritePool {
     }
     this.frameId++;
     this.portrait.release();
+    this.reviseHolds(scene, frame);
     // The cached build of an unchanged scene: last frame's entities, damage and ships all still hold.
     const repeated = scene.items === this.lastItems;
     if (!repeated) this.collectOverlays(scene.items);
     this.moving.length = 0;
     this.movingRefs.clear();
     this.passHasPortrait = false;
+    const kept = scene.kept;
+    const generation = this.holdGeneration;
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
+      // A self-contained item kept from the last build, its entity holding still: nothing to present.
+      if (kept !== undefined && kept[i] === 1 && (item as unknown as HoldMarked)[HELD] === generation) {
+        this.lastPooled[i] = undefined;
+        continue;
+      }
       const pe = (repeated ? this.lastPooled[i] : undefined) ?? this.pooledFor(item);
-      this.lastPooled[i] = pe;
-      // An entity absent from last frame's draw list holds the motion track from whenever it was last
-      // drawn: resuming from it would glide an arrow in from that stale anchor, and would run a walker's
-      // gait and stall clocks over the whole gap. Reset to first-sighting and let trackMotion snap.
-      // Reads `lastSeen` before the stamp below overwrites it.
-      const continuous = pe.lastSeen === this.frameId - 1;
-      if (!continuous) pe.motion.tick = -1;
-      const emphasis = this.presentItemAt(pe, item, frame, continuous);
-      if (!pe.attached) {
-        this.spriteLayer.addChild(pe.container);
-        pe.attached = true;
-        this.attached.add(pe);
-      }
-      pe.lastSeen = this.frameId;
-      if (item.portraitOnly === true) {
-        this.portrait.capture(item.ref, pe, item.frozen === true);
-        this.passHasPortrait = true;
-      }
-      if (emphasis || !this.holdsStill(pe, item)) {
-        this.moving.push(i);
-        this.movingRefs.add(item.ref);
+      this.visit(pe, item, i, frame);
+    }
+    // A held entity a selection or flag now names draws its emphasis, which only a visit applies.
+    for (const refs of [frame.selection, frame.flagged]) {
+      for (const ref of refs ?? NO_REFS) {
+        const pe = this.pool.get(ref);
+        const item = pe?.bound.item;
+        if (pe !== undefined && pe.held === generation && pe.lastSeen !== this.frameId && item !== undefined)
+          this.visit(pe, item as SpriteDrawItem, -1, frame);
       }
     }
     this.lastItems = scene.items;
@@ -272,7 +279,7 @@ export class SpritePool {
     // Iterating `attached` instead of the whole pool keeps the detach scan bounded by the screen.
     // Deleting the current entry mid-iteration is well-defined for a Set.
     for (const pe of this.attached) {
-      if (pe.lastSeen === this.frameId) continue;
+      if (pe.lastSeen === this.frameId || pe.held === generation) continue;
       this.selectionEffects.clear(pe);
       this.spriteLayer.removeChild(pe.container);
       pe.attached = false;
@@ -283,6 +290,72 @@ export class SpritePool {
     if (this.epoch.viewMoved) this.placePaletted(frame.camera, frame.screenW, frame.screenH);
     this.reap(scene.liveRefs);
     this.sheet?.palette?.flush();
+  }
+
+  /**
+   * Present `item` (at `index` of the draw list, −1 outside it) on `pe`, attach it, and record whether
+   * it holds still for the passes after this one or moves with the frame clock.
+   */
+  private visit(pe: PooledEntity, item: SpriteDrawItem, index: number, frame: PoolFrame): void {
+    if (index >= 0) this.lastPooled[index] = pe;
+    // An entity absent from last frame's draw list holds the motion track from whenever it was last
+    // drawn: resuming from it would glide an arrow in from that stale anchor, and would run a walker's
+    // gait and stall clocks over the whole gap. Reset to first-sighting and let trackMotion snap. A held
+    // entity was drawn all along. Reads `lastSeen` before the stamp below overwrites it.
+    // A hold of any generation stood attached until this visit, so it counts as drawn all along.
+    const heldAttached = pe.held !== -1 && pe.attached;
+    const continuous = pe.lastSeen === this.frameId - 1 || heldAttached;
+    if (!continuous) pe.motion.tick = -1;
+    if (heldAttached && pe.boundsFrame === pe.lastSeen) pe.boundsFrame = this.frameId - 1;
+    const emphasis = this.presentItemAt(pe, item, frame, continuous);
+    if (!pe.attached) {
+      this.spriteLayer.addChild(pe.container);
+      pe.attached = true;
+      this.attached.add(pe);
+    }
+    pe.lastSeen = this.frameId;
+    if (item.portraitOnly === true) {
+      this.portrait.capture(item.ref, pe, item.frozen === true);
+      this.passHasPortrait = true;
+    }
+    const still = !emphasis && this.holdsStill(pe, item);
+    pe.held = still ? this.holdGeneration : -1;
+    (item as unknown as HoldMarked)[HELD] = pe.held;
+    if (!still && index >= 0) {
+      this.moving.push(index);
+      this.movingRefs.add(item.ref);
+    }
+  }
+
+  /**
+   * Release every hold when something a held entity draws from changed without its draw item changing
+   * (a bind input, the wind or motion setting, the highlight, the selection style, a full scene build),
+   * and each one whose entity a delta touched.
+   */
+  private reviseHolds(scene: SpriteScene, frame: PoolFrame): void {
+    if (
+      scene.kept === undefined ||
+      this.epoch.bind !== this.holdBind ||
+      this.epoch.motion !== this.holdMotion ||
+      frame.highlight !== this.holdHighlight ||
+      frame.selectionStyle !== this.holdStyle
+    ) {
+      this.holdGeneration++;
+      this.holdBind = this.epoch.bind;
+      this.holdMotion = this.epoch.motion;
+      this.holdHighlight = frame.highlight;
+      this.holdStyle = frame.selectionStyle;
+    }
+    for (const ref of scene.touchedStatics ?? NO_REFS) {
+      const pe = this.pool.get(ref);
+      if (pe !== undefined) pe.held = -1;
+    }
+  }
+
+  /** The frame `pe`'s last sighting and bounds must carry to count as current: a held entity's stand
+   *  from the pass that last presented it. */
+  private currentFrameOf(pe: PooledEntity | undefined): number {
+    return pe !== undefined && pe.held === this.holdGeneration ? pe.lastSeen : this.frameId;
   }
 
   /** Present `item` on `pe` and apply its selection emphasis; whether any emphasis applies. */
@@ -525,7 +598,8 @@ export class SpritePool {
 
   /** {@link keelOf} for `ref`, valid until the next call. */
   keelOf(ref: number): readonly number[] | undefined {
-    return keelOf(this.pool.get(ref), this.frameId, this.keelScratch);
+    const pe = this.pool.get(ref);
+    return keelOf(pe, this.currentFrameOf(pe), this.keelScratch);
   }
 
   stats(): { drawn: number; pooled: number } {
@@ -538,20 +612,23 @@ export class SpritePool {
   }
 
   boundsOf(ref: number): EntityBounds | undefined {
-    return boundsOf(this.pool.get(ref), this.frameId);
+    const pe = this.pool.get(ref);
+    return boundsOf(pe, this.currentFrameOf(pe));
   }
 
   selectionOf(ref: number) {
     const pe = this.pool.get(ref);
-    return pe?.boundsFrame === this.frameId ? pe.selectionEllipse : undefined;
+    return pe !== undefined && pe.boundsFrame === this.currentFrameOf(pe) ? pe.selectionEllipse : undefined;
   }
 
   pixelHit(ref: number, wx: number, wy: number): boolean | undefined {
-    return pixelHit(this.pool.get(ref), this.frameId, wx, wy);
+    const pe = this.pool.get(ref);
+    return pixelHit(pe, this.currentFrameOf(pe), wx, wy);
   }
 
   anchorOf(ref: number): { x: number; y: number } | undefined {
-    return anchorOf(this.pool.get(ref), this.frameId);
+    const pe = this.pool.get(ref);
+    return anchorOf(pe, this.currentFrameOf(pe));
   }
 
   /**

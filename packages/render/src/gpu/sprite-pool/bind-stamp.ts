@@ -18,6 +18,9 @@ export class FrameEpoch {
   bind = 0;
   /** Whether the last {@link advance} moved the camera or resized the screen. */
   viewMoved = true;
+  /** Bumps when the wind starts or stops or the motion setting flips: what can set a still entity
+   *  swaying without its draw item changing. */
+  motion = 0;
   private tick = Number.NaN;
   private enhancedSampling: PoolFrame['enhancedSampling'];
   private pixelArtScaler: PoolFrame['pixelArtScaler'];
@@ -64,6 +67,7 @@ export class FrameEpoch {
     }
     this.current++;
     if (!bindHolds) this.bind++;
+    if (windy !== this.windy || frame.environmentMotion !== this.environmentMotion) this.motion++;
     this.tick = frame.tick;
     this.enhancedSampling = frame.enhancedSampling;
     this.pixelArtScaler = frame.pixelArtScaler;

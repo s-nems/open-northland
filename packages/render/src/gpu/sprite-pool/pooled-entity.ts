@@ -45,6 +45,10 @@ interface PooledEntityBase extends PresentationTrack {
   readonly bounds: MutableBounds;
   /** The `frameId` the bounds were last stamped on; `boundsOf` only returns them when it's the current one. */
   boundsFrame: number;
+  /** The pool's hold generation while this entity holds still between visits: a kept scene item drawn by
+   *  a held entity needs no present, and its last sighting and bounds stand for the current frame. −1 =
+   *  not held. */
+  held: number;
   selectionEllipse: { -readonly [K in keyof SelectionEllipse]: SelectionEllipse[K] } | undefined;
   readonly bound: BindStamp;
 }
@@ -90,6 +94,7 @@ export function createPooled(kind: SpriteKind, palette: PaletteLut | undefined):
     viewSeen: -1,
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
     boundsFrame: -1,
+    held: -1,
     selectionEllipse: undefined,
     bound: new BindStamp(),
   };

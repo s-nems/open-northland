@@ -31,6 +31,12 @@ export interface SpriteScene {
    *  the snapshot's position index, which a mirror advances in place, so it answers for the mirror's
    *  newest snapshot. */
   readonly liveRefs: LiveRefs;
+  /** Present on a spliced build: per item of {@link items}, 1 for a self-contained item kept from the
+   *  last build (its entity untouched since), 0 for an item this build emitted. */
+  readonly kept?: Uint8Array;
+  /** Present on a spliced build: the self-contained entities the deltas touched since the last build,
+   *  whose kept items it dropped. */
+  readonly touchedStatics?: ReadonlySet<number>;
 }
 
 /** Every field accepts an explicit `undefined` so callers can pass through their own optionals. */
@@ -175,25 +181,32 @@ function drawOrder(a: SpriteDrawItem, b: SpriteDrawItem): number {
   return a.depth - b.depth || a.ref - b.ref;
 }
 
-/** Two runs sorted by {@link drawOrder} merged into one, as sorting their union would order it. */
-function mergeRuns(left: readonly SpriteDrawItem[], right: readonly SpriteDrawItem[]): SpriteDrawItem[] {
+/** Two runs sorted by {@link drawOrder} merged into one, as sorting their union would order it: the
+ *  left run's items carry `leftKept` flags, the right run's are emitted, and the merged order's flags go
+ *  to `kept`. */
+function mergeFlagged(
+  left: readonly SpriteDrawItem[],
+  leftKept: Uint8Array,
+  right: readonly SpriteDrawItem[],
+  kept: Uint8Array,
+): SpriteDrawItem[] {
   const out = new Array<SpriteDrawItem>(left.length + right.length);
   let i = 0;
   let j = 0;
   let k = 0;
-  while (i < left.length && j < right.length) {
-    const a = left[i] as SpriteDrawItem;
-    const b = right[j] as SpriteDrawItem;
-    if (drawOrder(a, b) <= 0) {
+  while (i < left.length || j < right.length) {
+    const a = left[i];
+    const b = right[j];
+    if (a !== undefined && (b === undefined || drawOrder(a, b) <= 0)) {
+      kept[k] = leftKept[i] ?? 0;
       out[k++] = a;
       i++;
-    } else {
+    } else if (b !== undefined) {
+      kept[k] = 0;
       out[k++] = b;
       j++;
     }
   }
-  while (i < left.length) out[k++] = left[i++] as SpriteDrawItem;
-  while (j < right.length) out[k++] = right[j++] as SpriteDrawItem;
   return out;
 }
 
@@ -378,6 +391,8 @@ function collectScene(
 
   let liveRefs: LiveRefs;
   let items: SpriteDrawItem[];
+  let keptFlags: Uint8Array | undefined;
+  let touchedStatics: ReadonlySet<number> | undefined;
   if (splices && viewport !== undefined && touched !== undefined && incremental !== undefined) {
     // The kinds rebuilt every build, then the self-contained entities the deltas touched since.
     const count = collectRebuiltPositioned(snapshot, anchorTileBox(viewport), rebuiltCandidates);
@@ -399,13 +414,18 @@ function collectScene(
     else others.sort(drawOrder);
     fresh.sort(drawOrder);
     // Most deltas touch no self-contained entity under the view: the run stands as it was.
-    const kept =
+    const keptRun =
       touched.ids.size === 0
         ? incremental.statics
         : incremental.statics.filter((i) => !touched.ids.has(i.ref));
-    const statics = fresh.length === 0 ? kept : mergeRuns(kept, fresh);
+    const staticKept = new Uint8Array(keptRun.length + fresh.length);
+    let statics: readonly SpriteDrawItem[] = keptRun;
+    if (fresh.length === 0) staticKept.fill(1);
+    else statics = mergeFlagged(keptRun, new Uint8Array(keptRun.length).fill(1), fresh, staticKept);
     incremental.statics = statics;
-    items = mergeRuns(statics, others);
+    keptFlags = new Uint8Array(statics.length + others.length);
+    items = mergeFlagged(statics, staticKept, others, keptFlags);
+    touchedStatics = new Set(touched.ids);
     const positioned: LiveRefs = {
       has: (ref) => collected.has(ref) || (isPositioned(snapshot, ref) && staticRefs?.has(ref) !== true),
     };
@@ -429,7 +449,9 @@ function collectScene(
     incremental.touched = touched ?? null;
     touched?.ids.clear();
   }
-  return { items, liveRefs };
+  return keptFlags === undefined || touchedStatics === undefined
+    ? { items, liveRefs }
+    : { items, liveRefs, kept: keptFlags, touchedStatics };
 }
 
 /** Offset a choreographed worker from its house's anchor and give it the pose its program calls for. The
