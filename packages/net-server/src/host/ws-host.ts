@@ -26,6 +26,8 @@ import {
 const POLL_INTERVAL_MS = 5;
 /** RFC 6455 close code for a relay fault, after which a client may reconnect. */
 const CLOSE_INTERNAL_ERROR = 1011;
+/** Buffered valid traffic can exceed a burst budget; reconnecting can resume the same seat. */
+const CLOSE_TRY_AGAIN_LATER = 1013;
 /** Close reasons are relay reason codes, which a client words in its own language. */
 const TRAFFIC_LIMIT: ClosingCode = 'trafficLimit';
 const RELAY_FAULT: RelayReasonCode = 'relayFault';
@@ -186,7 +188,7 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
     };
     const client = relay.connect(connection);
     const refuseTraffic = (): void => {
-      socket.close(CLOSE_PROTOCOL_ERROR, TRAFFIC_LIMIT);
+      socket.close(CLOSE_TRY_AGAIN_LATER, TRAFFIC_LIMIT);
       relay.disconnect(client);
     };
     const acceptTraffic = (bytes: number, messageCost: 0 | 1 = 1): boolean => {

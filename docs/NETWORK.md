@@ -26,6 +26,10 @@ with `CLOSE_REPLACED` (4000), `CLOSE_PROTOCOL_ERROR` (1002) or `CLOSE_SERVICE_RE
 relay shutting down with its rooms) is final; after any other close a client may reconnect on its
 token.
 
+A traffic-budget excess closes with 1013 and `trafficLimit`, allowing the same reconnect path. A
+stalled TCP upload can release a burst of valid catch-up acknowledgements. The connection still loses
+its excess traffic; the returning client reports its current world and tick through `loaded`.
+
 The relay replies to a message it cannot honour with `rejected { of, reason }`, naming the kind it
 refused, and keeps the connection. A violation of the protocol itself gets `error { reason }`
 followed by a close whose reason text is the bare code. A `reason` is never prose: it is
