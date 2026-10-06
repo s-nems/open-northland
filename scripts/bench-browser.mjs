@@ -44,6 +44,7 @@ const params = new URLSearchParams({
   uiscale: '1',
   fullscreen: 'off',
 });
+if (typeof stamp.tribes === 'string' && stamp.tribes !== '') params.set('tribes', stamp.tribes);
 for (const key of ['progression', 'needs'])
   if (typeof stamp[key] === 'boolean') params.set(key, stamp[key] ? 'on' : 'off');
 const url = new URL(origin);

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { type ContentSet, MapScript, mapLobbySlots } from '@open-northland/data';
-import type { SessionRules, SessionSeat } from '@open-northland/lockstep';
+import type { GameSession, SessionRules, SessionSeat } from '@open-northland/lockstep';
 import type { SaveGame, Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld, restoreMapWorld } from '../../src/entries/map/world.js';
@@ -115,28 +115,40 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
 }
 
 /**
- * The world the `?map=` entry boots from `search`: the session parsed from the search against the map's
- * roster, built by the entry's own world builder. Good display names are left out; they sit outside
- * the sim's state hash.
+ * The world the `?map=` entry builds for `session`, or restores from `save`, through the entry's own
+ * world builder. Good display names are left out; they sit outside the sim's state hash.
  */
+export async function realMapWorldOfSession(
+  mapId: string,
+  session: GameSession,
+  options: { readonly missions?: boolean | null; readonly save?: SaveGame | null } = {},
+): Promise<Pick<RealMapWorld, 'sim' | 'mapCells'>> {
+  const { merge } = await loadContentUnderTest();
+  const mapPath = realMapPath(mapId);
+  if (!existsSync(mapPath)) throw new Error(`no decoded map at ${mapPath}`);
+  const map = JSON.parse(readFileSync(mapPath, 'utf8'));
+  const { sim } = buildMapWorldFromInputs({
+    map,
+    ir: rawIrUnderTest() as ContentIr,
+    script: realMapScript(mapId),
+    goodNames: new Map(),
+    content: merge.content,
+    session,
+    missions: options.missions ?? null,
+    save: options.save ?? null,
+  });
+  return { sim, mapCells: { width: map.width, height: map.height } };
+}
+
+/** The world the `?map=` entry boots from `search`: the session parsed from the search against the
+ *  map's roster. */
 export async function realMapSessionWorld(search: string): Promise<Simulation> {
   const params = new URLSearchParams(search);
   const mapId = mapIdParam(params);
   if (mapId === null) throw new Error(`the search names no map: ${search}`);
-  const { merge } = await loadContentUnderTest();
-  const mapPath = realMapPath(mapId);
-  if (!existsSync(mapPath)) throw new Error(`no decoded map at ${mapPath}`);
   const script = realMapScript(mapId);
-  return buildMapWorldFromInputs({
-    map: JSON.parse(readFileSync(mapPath, 'utf8')),
-    ir: rawIrUnderTest() as ContentIr,
-    script,
-    goodNames: new Map(),
-    content: merge.content,
-    session: mapSession(params, script === null ? [] : mapLobbySlots(script)),
-    missions: onOffParam(params, 'missions'),
-    save: null,
-  }).sim;
+  const session = mapSession(params, script === null ? [] : mapLobbySlots(script));
+  return (await realMapWorldOfSession(mapId, session, { missions: onOffParam(params, 'missions') })).sim;
 }
 
 /** Restore a save onto the map it was taken on, through the entry's own restore: what a client does with

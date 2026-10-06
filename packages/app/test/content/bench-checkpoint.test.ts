@@ -26,6 +26,9 @@ const SKIP_TICKS = 12;
 const AFTER_TICKS = 5;
 /** Absolute ticks for the marks, past the boot ticks a fresh world stands at. */
 const MARKS = [10, 16] as const;
+const SEED = 7;
+/** Seat 0 played as another civilization than the map authors for it. */
+const RETRIBED = '0:2';
 const [FIRST_MARK, LAST_MARK] = MARKS;
 
 const dir = mkdtempSync(join(tmpdir(), 'on-bench-checkpoint-'));
@@ -35,6 +38,8 @@ function options(overrides: Partial<MapBenchWorldOptions> = {}): MapBenchWorldOp
   return {
     mapId: MAP_ID,
     seats: [0],
+    tribes: '',
+    seed: SEED,
     progression: null,
     needs: null,
     syncDigest: false,
@@ -70,8 +75,10 @@ describe.runIf(hasRealIr())('benchmark map checkpoint', () => {
     expect(restored.sim.hashState()).toBe(built.sim.hashState());
   });
 
-  it('refuses a checkpoint taken on another map, other seats or other rules', async () => {
+  it('refuses a checkpoint taken on another map, seed, other seats, tribes or rules', async () => {
     await mapBenchWorld(options(), 0);
+    await expect(mapBenchWorld(options({ seed: SEED + 1 }), 0)).rejects.toThrow(/seed 7, not 8/);
+    await expect(mapBenchWorld(options({ tribes: RETRIBED }), 0)).rejects.toThrow(/tribes '', not '0:2'/);
     await expect(mapBenchWorld(options({ seats: [0, 1] }), 0)).rejects.toThrow(/AI seats 0,6, not 0-1,6/);
     await expect(mapBenchWorld(options({ progression: true }), 0)).rejects.toThrow(
       /progression the map default, not on/,

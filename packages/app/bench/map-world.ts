@@ -13,7 +13,7 @@ import {
 import type { FogModeName } from '../src/game/fog.js';
 import { mapSession } from '../src/game/session-url.js';
 import { loadContentUnderTest } from '../test/content/helpers.js';
-import { realMapScript, realMapWorld, restoreRealMapWorld } from '../test/content/real-map-world.js';
+import { realMapScript, realMapWorldOfSession } from '../test/content/real-map-world.js';
 import { boolEnv, intEnv, intListEnv, ruleEnv, stringEnv } from './knobs.js';
 import { formatSeats } from './report/index.js';
 
@@ -25,12 +25,12 @@ import { formatSeats } from './report/index.js';
  * the checkpoint is a normal save, taken and reloaded through the `?map=` entry's own build and
  * restore, and the restore must reproduce the state hash the checkpoint was written with.
  *
- * The session is the one a browser `?map=<id>&player=observer&ai=<seats>&fog=classic` search
- * describes, parsed by the entry's own URL adapter. The observer plays no seat, so the only assistant
- * grants are the AI seats' own: `player=overseer` builds the same world whenever seat 0 is an AI seat,
- * and grants seat 0's assistant as well when it is not. A checkpoint taken under another map, other AI
- * seats, other rules or other content is refused by name rather than measured: the numbers would
- * describe a world nobody asked for.
+ * The session is the one a browser `?map=<id>&player=observer&ai=<seats>&seed=<n>&fog=classic` search
+ * describes, parsed by the entry's own URL adapter and built by the entry's own world builder. The
+ * observer plays no seat, so the only assistant grants are the AI seats' own: `player=overseer` builds
+ * the same world whenever seat 0 is an AI seat, and grants seat 0's assistant as well when it is not.
+ * A checkpoint taken under another map, seed, other AI seats, tribes, rules or content is refused by
+ * name rather than measured: the numbers would describe a world nobody asked for.
  */
 
 /** Fog revealed as the original starts it: black, explored ground stays visible. */
@@ -40,6 +40,8 @@ const DEFAULT_MAP_ID = 'magiczny_las';
 /** `?ai=0,1,2,3,4,5`: every seat the default map offers a person, the session the real-content
  *  scenarios also use. */
 const DEFAULT_AI_SEATS = 6;
+/** Repeatable default: a benchmark compares runs of one world, so it never draws a seed. */
+const DEFAULT_SEED = 7;
 /** The opening ticks are atypical (crews bind, routes are cold) and JIT tiering has not settled - a
  *  restored checkpoint needs them too, since the restored world's code is cold again. */
 const DEFAULT_WARMUP_TICKS = 200;
@@ -54,6 +56,9 @@ export interface MapBenchWorldOptions {
   readonly mapId: string;
   /** The seats `?ai=` names, ascending. The map's own computer seats join them, as in the browser. */
   readonly seats: readonly number[];
+  /** `?tribes=` as the search spells it (`0:4,1:2`); empty keeps every seat's authored tribe. */
+  readonly tribes: string;
+  readonly seed: number;
   /** `?progression=` / `?needs=`; null keeps the map's own rule. */
   readonly progression: boolean | null;
   readonly needs: boolean | null;
@@ -85,6 +90,8 @@ export interface MapBenchWorld {
  *  would otherwise have to re-read the decoded map for, and the state hash a restore must reproduce. */
 interface CheckpointStamp {
   readonly aiSeats: readonly number[];
+  /** The seats played as another civilization, as `?tribes=` spells them; empty when none is. */
+  readonly tribes: string;
   readonly progression: boolean | null;
   readonly needs: boolean | null;
   readonly mapCells: { readonly width: number; readonly height: number };
@@ -92,7 +99,7 @@ interface CheckpointStamp {
 }
 
 /** What a restore must match: the session, as opposed to the map size and state it carries. */
-type SessionKey = Pick<CheckpointStamp, 'aiSeats' | 'progression' | 'needs'>;
+type SessionKey = Pick<CheckpointStamp, 'aiSeats' | 'tribes' | 'progression' | 'needs'>;
 type SessionStamp = Omit<CheckpointStamp, 'stateHash'>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -105,10 +112,11 @@ function isRule(value: unknown): value is boolean | null {
 
 function stampOf(session: unknown, path: string): CheckpointStamp {
   const fields = isRecord(session) ? session : {};
-  const { aiSeats, progression, needs, mapCells, stateHash } = fields;
+  const { aiSeats, tribes, progression, needs, mapCells, stateHash } = fields;
   if (
     !Array.isArray(aiSeats) ||
     !aiSeats.every((seat) => typeof seat === 'number') ||
+    typeof tribes !== 'string' ||
     !isRule(progression) ||
     !isRule(needs) ||
     !isRecord(mapCells) ||
@@ -120,6 +128,7 @@ function stampOf(session: unknown, path: string): CheckpointStamp {
   }
   return {
     aiSeats,
+    tribes,
     progression,
     needs,
     mapCells: { width: mapCells.width, height: mapCells.height },
@@ -143,6 +152,8 @@ function ruleText(value: boolean | null): string {
 export function benchSearch(options: MapBenchWorldOptions): URLSearchParams {
   const params = new URLSearchParams({ map: options.mapId, player: OBSERVER_SEAT });
   if (options.seats.length > 0) params.set('ai', options.seats.join(','));
+  if (options.tribes !== '') params.set('tribes', options.tribes);
+  params.set('seed', `${options.seed}`);
   params.set('fog', BENCH_FOG);
   if (options.progression !== null) params.set('progression', options.progression ? 'on' : 'off');
   if (options.needs !== null) params.set('needs', options.needs ? 'on' : 'off');
@@ -153,6 +164,14 @@ export function benchSearch(options: MapBenchWorldOptions): URLSearchParams {
 export function benchSession(options: MapBenchWorldOptions): GameSession {
   const script = realMapScript(options.mapId);
   return mapSession(benchSearch(options), script === null ? [] : mapLobbySlots(script));
+}
+
+/** The seats the session plays as another civilization than the map authors, as `?tribes=` spells
+ *  them, so two spellings of one choice compare equal. */
+function retribedSeats(session: GameSession): string {
+  return session.seats
+    .flatMap((seat) => (seat.tribe === undefined ? [] : [`${seat.player}:${seat.tribe}`]))
+    .join(',');
 }
 
 function ascending(seats: readonly number[]): readonly number[] {
@@ -173,15 +192,19 @@ async function checkedStamp(
   const mismatch =
     save.header.mapId !== options.mapId
       ? `map '${save.header.mapId}', not '${options.mapId}'`
-      : formatSeats(stamp.aiSeats) !== formatSeats(expected.aiSeats)
-        ? `AI seats ${formatSeats(stamp.aiSeats)}, not ${formatSeats(expected.aiSeats)}`
-        : stamp.progression !== expected.progression
-          ? `progression ${ruleText(stamp.progression)}, not ${ruleText(expected.progression)}`
-          : stamp.needs !== expected.needs
-            ? `needs ${ruleText(stamp.needs)}, not ${ruleText(expected.needs)}`
-            : save.header.irVersion !== irVersion
-              ? `content IR v${save.header.irVersion}, not v${irVersion}`
-              : null;
+      : save.header.seed !== options.seed
+        ? `seed ${save.header.seed}, not ${options.seed}`
+        : formatSeats(stamp.aiSeats) !== formatSeats(expected.aiSeats)
+          ? `AI seats ${formatSeats(stamp.aiSeats)}, not ${formatSeats(expected.aiSeats)}`
+          : stamp.tribes !== expected.tribes
+            ? `tribes '${stamp.tribes}', not '${expected.tribes}'`
+            : stamp.progression !== expected.progression
+              ? `progression ${ruleText(stamp.progression)}, not ${ruleText(expected.progression)}`
+              : stamp.needs !== expected.needs
+                ? `needs ${ruleText(stamp.needs)}, not ${ruleText(expected.needs)}`
+                : save.header.irVersion !== irVersion
+                  ? `content IR v${save.header.irVersion}, not v${irVersion}`
+                  : null;
   if (mismatch !== null) {
     throw new Error(`${path} holds ${mismatch}; delete it or point ON_BENCH_CHECKPOINT elsewhere`);
   }
@@ -246,6 +269,7 @@ export async function mapBenchWorld(
   const sessionAiSeats = aiSeatsOf(session);
   const expected: SessionKey = {
     aiSeats: ascending(sessionAiSeats),
+    tribes: retribedSeats(session),
     progression: session.rules.progression,
     needs: session.rules.needs,
   };
@@ -254,7 +278,7 @@ export async function mapBenchWorld(
   if (path !== null && existsSync(path)) {
     const save = readCheckpoint(path);
     const stamp = await checkedStamp(save, path, options, expected);
-    const sim = await restoreRealMapWorld(options.mapId, save);
+    const { sim } = await realMapWorldOfSession(options.mapId, session, { save });
     const restoredHash = sim.hashState();
     if (restoredHash !== stamp.stateHash) {
       throw new Error(
@@ -275,13 +299,7 @@ export async function mapBenchWorld(
     };
   }
 
-  const { sim, mapCells } = await realMapWorld({
-    mapId: options.mapId,
-    seats: session.seats,
-    aiSeats: sessionAiSeats,
-    rules: session.rules,
-    berryBushes: true,
-  });
+  const { sim, mapCells } = await realMapWorldOfSession(options.mapId, session);
   sim.setSyncDigest(options.syncDigest);
   checkMarksReachable(options, sim.tick, sim.tick + options.skipTicks + followingTicks);
   const sessionStamp: SessionStamp = { ...expected, mapCells };
@@ -318,6 +336,8 @@ export function mapBenchKnobs(defaultMeasuredTicks: number): MapBenchKnobs {
   return {
     mapId: stringEnv('ON_BENCH_MAP', DEFAULT_MAP_ID),
     seats: seatsEnv('ON_BENCH_SEATS'),
+    tribes: stringEnv('ON_BENCH_TRIBES', ''),
+    seed: intEnv('ON_BENCH_SEED', DEFAULT_SEED, 0),
     progression: ruleEnv('ON_BENCH_PROGRESSION'),
     needs: ruleEnv('ON_BENCH_NEEDS'),
     warmupTicks: intEnv('ON_BENCH_WARMUP', DEFAULT_WARMUP_TICKS, 0),
@@ -344,6 +364,8 @@ export function knobRecord(knobs: MapBenchKnobs): Readonly<Record<string, string
   return {
     ON_BENCH_MAP: knobs.mapId,
     ON_BENCH_SEATS: seatsKnob(knobs.seats),
+    ON_BENCH_TRIBES: knobs.tribes,
+    ON_BENCH_SEED: `${knobs.seed}`,
     ON_BENCH_PROGRESSION: ruleKnob(knobs.progression),
     ON_BENCH_NEEDS: ruleKnob(knobs.needs),
     ON_BENCH_TICKS: `${knobs.measuredTicks}`,

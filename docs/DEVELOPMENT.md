@@ -393,14 +393,15 @@ settlements: most hunters on hare herds among dense wood nodes, a quarter on a s
 the last-resort probe, so they chase livestock.
 
 Run the real-map benchmark with `npm run bench:map`. It needs generated content and measures the
-session a `?map=<id>&player=observer&ai=<seats>&fog=classic` search describes, parsed by the map
-entry's own URL adapter, so the map's own computer seats play beside the named ones as they do in the
+session a `?map=<id>&player=observer&ai=<seats>&seed=<n>&fog=classic` search describes, parsed by the map
+entry's own URL adapter and built by its world builder, so the map's own computer seats play beside the named ones as they do in the
 browser. `player=overseer` builds the same world whenever seat 0 is an AI seat. Its controls:
 
 | knob | meaning |
 | --- | --- |
 | `ON_BENCH_MAP` | decoded map id, default `magiczny_las` |
 | `ON_BENCH_SEATS` | `?ai=` seats: a count `n` names `0..n-1` (default 6), a comma list names the seats, `n,` the one seat `n` |
+| `ON_BENCH_TRIBES`, `ON_BENCH_SEED` | `?tribes=` as the search spells it (`0:4,1:2`; unset keeps the authored tribes) and `?seed=` (default 7) |
 | `ON_BENCH_PROGRESSION`, `ON_BENCH_NEEDS` | `on`/`off`, the `?progression=` and `?needs=` overrides; unset keeps the map's rule |
 | `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS` | measured ticks (default 20k), unmeasured warm-up, report segments |
 | `ON_BENCH_SYNC_DIGEST` | fold the per-tick sync digest, what a networked session pays |
@@ -444,7 +445,7 @@ measures; every later run with the same path restores it and measures from there
 applies - restored code is cold again). `ON_BENCH_CHECKPOINTS` lists absolute sim ticks at which a
 `bench:map` run also writes `<stem>.t<tick>.checkpoint`, the stem being `ON_BENCH_CHECKPOINT` without
 its `.checkpoint`. A write happens between two measured ticks, outside their timing, but its garbage
-lands in that window's GC columns. A checkpoint holding another map, other AI seats, other rules or
+lands in that window's GC columns. A checkpoint holding another map, seed, other AI seats, tribes, rules or
 another content IR version is refused by name rather than measured, and a restore that does not
 reproduce the state hash the checkpoint was written with fails.
 
