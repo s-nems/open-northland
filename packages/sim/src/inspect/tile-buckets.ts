@@ -156,6 +156,19 @@ export class TileBuckets<T> {
   }
 }
 
+/** Whether {@link TileBuckets.collect} over `box` reaches an item at this tile position: a reader that
+ *  filters its own short list keeps the same edge as the bucket query. */
+export function bucketsReach(box: TileBox, tileX: number, tileY: number): boolean {
+  const bx = Math.floor(tileX / TILE_BUCKET_SIZE);
+  const by = Math.floor(tileY / TILE_BUCKET_SIZE);
+  return (
+    bx >= Math.floor(box.minX / TILE_BUCKET_SIZE) &&
+    bx <= Math.floor(box.maxX / TILE_BUCKET_SIZE) &&
+    by >= Math.floor(box.minY / TILE_BUCKET_SIZE) &&
+    by <= Math.floor(box.maxY / TILE_BUCKET_SIZE)
+  );
+}
+
 function bucketKey(tileX: number, tileY: number): number {
   return Math.floor(tileX / TILE_BUCKET_SIZE) * KEY_STRIDE + Math.floor(tileY / TILE_BUCKET_SIZE);
 }

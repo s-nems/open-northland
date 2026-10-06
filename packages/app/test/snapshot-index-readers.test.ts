@@ -1,10 +1,13 @@
 import {
+  bucketsReach,
   indexesOf,
   MirrorTruth,
   nodeOfPosition,
+  ONE,
   type Simulation,
   SnapshotMirror,
   systems,
+  type TileBox,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
@@ -38,7 +41,7 @@ import { DEFAULT_MINIMAP_FILTERS, withAllMinimapLayers } from '../src/hud/minima
 import { restingBuildingsOf } from '../src/hud/tool-panel/messages/workshop-stalls.js';
 import { createSceneSim, getScene } from '../src/scenes/index.js';
 import { computeConstructionSigns } from '../src/view/projections/construction-signs.js';
-import { computeDoorBadges } from '../src/view/projections/door-badges.js';
+import { computeDoorBadges, type DoorBadgeCache } from '../src/view/projections/door-badges.js';
 import { computeLifeHearts, type LifeHeartInputs } from '../src/view/projections/life-hearts.js';
 import { computeSettlerBubbles } from '../src/view/projections/settler-bubbles.js';
 import { ownRoadSiteAt } from '../src/view/runtime/own-road-sites.js';
@@ -174,8 +177,43 @@ function minimapMarks(snapshot: WorldSnapshot): unknown[] {
   return marks;
 }
 
-function expectProjectionsMatchWalk(live: WorldSnapshot, hearts: LifeHeartInputs): void {
+/** The western half of the positioned entities' extent, so a box query has units on both sides of it. */
+function westernHalf(snapshot: WorldSnapshot): TileBox {
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  for (const e of snapshot.entities) {
+    const pos = positionOf(e);
+    if (pos === undefined) continue;
+    minX = Math.min(minX, pos.x / ONE);
+    maxX = Math.max(maxX, pos.x / ONE);
+  }
+  return { minX, minY: Number.MIN_SAFE_INTEGER, maxX: (minX + maxX) / 2, maxY: Number.MAX_SAFE_INTEGER };
+}
+
+/** What a box query returns: the units whose position the box's buckets reach. */
+function reachedBy(snapshot: WorldSnapshot, box: TileBox): Set<number> {
+  const ids = new Set<number>();
+  for (const e of snapshot.entities) {
+    const pos = positionOf(e);
+    if (pos !== undefined && bucketsReach(box, pos.x / ONE, pos.y / ONE)) ids.add(e.id);
+  }
+  return ids;
+}
+
+function expectProjectionsMatchWalk(
+  live: WorldSnapshot,
+  hearts: LifeHeartInputs,
+  badges: DoorBadgeCache,
+): void {
   const walked = walkedCopy(live);
+  const box = westernHalf(live);
+  const reached = reachedBy(walked, box);
+  expect(computeLifeHearts(live, hearts, box)).toEqual(
+    computeLifeHearts(walked, hearts).filter((heart) => reached.has(heart.id)),
+  );
+  expect(computeDoorBadges(live, noDoorInfo, workerRoleOf, box, badges)).toEqual(
+    computeDoorBadges(walked, noDoorInfo, workerRoleOf).filter((badge) => reached.has(badge.id)),
+  );
   expect(minimapMarks(live)).toEqual(minimapMarks(walked));
   expect(computeSettlerBubbles(live)).toEqual(computeSettlerBubbles(walked));
   expect(computeLifeHearts(live, hearts)).toEqual(computeLifeHearts(walked, hearts));
@@ -192,11 +230,12 @@ describe('per-tick projections over a mirror', () => {
     const sim = createSceneSim(scene);
     const { mirror, advance } = checkedMirror(sim);
     const isLivestockTribe = (tribe: number): boolean => systems.isCatchableAnimal(sim.content, tribe);
+    const badges: DoorBadgeCache = { held: new Map() };
     for (let tick = 0; tick < RUN_TICKS; tick++) {
       sim.step();
       advance();
       const live = mirror.snapshot();
-      expectProjectionsMatchWalk(live, { isLivestockTribe, selected: everyFewSettlers(live) });
+      expectProjectionsMatchWalk(live, { isLivestockTribe, selected: everyFewSettlers(live) }, badges);
       expect(mirror.verifyIndexes()).toEqual([]);
     }
   });
