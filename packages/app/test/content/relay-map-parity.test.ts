@@ -32,6 +32,7 @@ import { realMapPath, realMapScript, realMapWorld, restoreRealMapWorld } from '.
  */
 
 const MAP_ID = 'magiczny_las';
+const EIGHT_PLAYER_MAP_ID = 'magiczny_las_12_players';
 const DEFAULT_RUN_TICKS = 600;
 const RUN_TICKS = Number.parseInt(process.env.ON_RELAY_TICKS ?? '', 10) || DEFAULT_RUN_TICKS;
 /** Orders per client, staggered by seat so some share a tick with another seat's or the AI's. */
@@ -153,7 +154,11 @@ async function playThrough(
       buildWorld,
       restoreWorld,
     });
-    stage.network.link(client, LINKS[i % LINKS.length]);
+    stage.network.link(client, {
+      ...LINKS[i % LINKS.length],
+      uploadBytesPerSecond: 128 * 1024,
+      downloadBytesPerSecond: 512 * 1024,
+    });
     return client;
   });
   const settings: RoomSettings = {
@@ -212,6 +217,19 @@ async function playThrough(
 const RUN_PARITY = process.env.ON_RELAY_PARITY !== 'off' && hasRealIr() && existsSync(realMapPath(MAP_ID));
 
 describe.runIf(RUN_PARITY)('relayed sessions on a decoded map', () => {
+  it.skipIf(!existsSync(realMapPath(EIGHT_PLAYER_MAP_ID)))(
+    'eight clients recover from a divergence on the twelve-seat map',
+    {
+      timeout: RUN_TIMEOUT_MS,
+    },
+    async () => {
+      const clients = await playThrough(EIGHT_PLAYER_MAP_ID, 8, { diverge: 7 });
+      expect(clients[7]?.desyncs).toHaveLength(1);
+      expect(clients[7]?.restoredFrom).toHaveLength(1);
+      for (const each of clients.slice(0, 7)) expect(each.desyncs).toEqual([]);
+    },
+  );
+
   it('four clients end on one state', { timeout: RUN_TIMEOUT_MS }, async () => {
     await playThrough(MAP_ID, 4);
   });

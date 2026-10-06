@@ -34,18 +34,21 @@ export interface LinkOptions {
   readonly latencyMs?: number;
   /** Peak-to-peak variation of each one-way trip. */
   readonly jitterMs?: number;
+  readonly uploadBytesPerSecond?: number;
+  readonly downloadBytesPerSecond?: number;
 }
 
 /** One client's connection to the relay, and the two ways it can end. */
 export interface Link {
   /** Close the socket: the relay learns at once, as it does from a TCP close. */
   close(): void;
-  /** Cut the wire without a word: nothing crosses either way and the relay is not told. */
-  cut(): void;
+  /** Blackhole one direction, or both by default, without notifying the relay. */
+  cut(direction?: 'up' | 'down'): void;
 }
 
 interface Direction {
   lastAt: number;
+  availableAt: number;
 }
 
 interface Delivery {
@@ -56,7 +59,8 @@ interface Delivery {
 
 /**
  * In-memory links between headless clients and one relay on a virtual clock. Messages cross a link
- * after its latency plus a seeded jitter, in order per direction, as JSON: the shape the wire has.
+ * after serialization, bandwidth delay and seeded jitter, in order per direction. A large message
+ * blocks later messages on that direction, as it does on a TCP connection.
  */
 export class VirtualNetwork {
   private readonly queue: Delivery[] = [];
@@ -72,15 +76,18 @@ export class VirtualNetwork {
   link(client: LinkedClient, options: LinkOptions = {}): Link {
     const latency = options.latencyMs ?? 0;
     const jitter = options.jitterMs ?? 0;
-    const up: Direction = { lastAt: 0 };
-    const down: Direction = { lastAt: 0 };
+    const up: Direction = { lastAt: 0, availableAt: 0 };
+    const down: Direction = { lastAt: 0, availableAt: 0 };
     let alive = true;
+    let upAlive = true;
+    let downAlive = true;
     const oneWay = (): number => Math.max(0, latency / 2 + (this.random() - 0.5) * jitter);
     const connection: Connection = {
       send: (message: ServerMessage) => {
-        if (!alive) return;
-        this.schedule(down, oneWay(), () => {
-          if (alive) client.receive(JSON.parse(JSON.stringify(message)));
+        if (!alive || !downAlive) return;
+        const text = JSON.stringify(message);
+        this.schedule(down, oneWay(), Buffer.byteLength(text), options.downloadBytesPerSecond, () => {
+          if (alive && downAlive) client.receive(JSON.parse(text));
         });
       },
       close: () => {
@@ -89,10 +96,11 @@ export class VirtualNetwork {
     };
     const handle = this.relay.connect(connection);
     client.attach((message: ClientMessage) => {
-      if (!alive) return;
+      if (!alive || !upAlive) return;
       const text = JSON.stringify(message);
-      this.schedule(up, oneWay(), () => {
-        if (alive) this.relay.receive(handle, JSON.parse(text), Buffer.byteLength(text));
+      const bytes = Buffer.byteLength(text);
+      this.schedule(up, oneWay(), bytes, options.uploadBytesPerSecond, () => {
+        if (alive && upAlive) this.relay.receive(handle, JSON.parse(text), bytes);
       });
     });
     return {
@@ -101,8 +109,9 @@ export class VirtualNetwork {
         alive = false;
         this.relay.disconnect(handle);
       },
-      cut: () => {
-        alive = false;
+      cut: (direction) => {
+        if (direction !== 'down') upAlive = false;
+        if (direction !== 'up') downAlive = false;
       },
     };
   }
@@ -118,8 +127,16 @@ export class VirtualNetwork {
     }
   }
 
-  private schedule(direction: Direction, delayMs: number, run: () => void): void {
-    const at = Math.max(this.clock.now() + delayMs, direction.lastAt);
+  private schedule(
+    direction: Direction,
+    delayMs: number,
+    bytes: number,
+    bytesPerSecond: number | undefined,
+    run: () => void,
+  ): void {
+    const duration = bytesPerSecond === undefined ? 0 : (bytes / bytesPerSecond) * 1000;
+    direction.availableAt = Math.max(this.clock.now(), direction.availableAt) + duration;
+    const at = Math.max(direction.availableAt + delayMs, direction.lastAt);
     direction.lastAt = at;
     const delivery = { at, seq: this.seq++, run };
     // Insert behind everything due at or before it: the queue stays ordered by (at, seq).
