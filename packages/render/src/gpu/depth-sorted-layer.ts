@@ -1,4 +1,11 @@
-import { Container, type ContainerChild } from 'pixi.js';
+import {
+  Container,
+  type ContainerChild,
+  type InstructionSet,
+  type Renderer,
+  type RenderLayer,
+} from 'pixi.js';
+import type { StillBandCollector } from './still-mesh/still-mesh.js';
 
 /** Painter-depth span one band holds, in world px of feet row (a row is 38): narrower bands rebuild
  *  fewer entries per change but each adds a render-group pass and a draw call. Chosen by measuring the
@@ -65,6 +72,16 @@ class DepthBand extends Container {
     });
   }
 
+  /** The layer's still mesh, when set, collects this band: its still runs draw from the mesh. */
+  override collectRenderablesSimple(
+    instructionSet: InstructionSet,
+    renderer: Renderer,
+    layer: RenderLayer,
+  ): void {
+    if (this.layer.stills?.collectBand(this, instructionSet, renderer, layer) !== true)
+      super.collectRenderablesSimple(instructionSet, renderer, layer);
+  }
+
   /** Stable merge by depth; invalidates this band's instructions only when its painter order changed. */
   sortByDepth(scratch: SortScratch): void {
     const children = this.children;
@@ -127,11 +144,16 @@ export class DepthSortedLayer extends Container {
   private readonly arrivals = new Map<Container, number>();
   private arrivalCount = 0;
   private readonly scratch = new SortScratch();
+  /** Draws the still entries of each band from a retained mesh; absent, Pixi batches every entry. */
+  stills: StillBandCollector | null = null;
 
   constructor() {
     super();
     // Every render sorts first, so a portrait or map-view pass draws the current painter order too.
-    this.onRender = () => this.sortChildren();
+    this.onRender = () => {
+      this.sortChildren();
+      this.stills?.beforeRender();
+    };
   }
 
   override addChild<U extends ContainerChild[]>(...children: U): U[0] {
@@ -188,6 +210,8 @@ export class DepthSortedLayer extends Container {
   override destroy(options?: Parameters<Container['destroy']>[0]): void {
     for (const band of this.spareBands) band.destroy();
     this.spareBands.length = 0;
+    this.stills?.destroy();
+    this.stills = null;
     super.destroy(options);
   }
 

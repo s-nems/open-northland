@@ -46,6 +46,11 @@ export function worldBatched<T extends ViewContainer>(sprite: T): T {
   return sprite;
 }
 
+/** Whether {@link worldBatched} routed `sprite` through the world batcher. */
+export function isWorldBatched(sprite: object): boolean {
+  return worldSprites.has(sprite);
+}
+
 /**
  * Pixi mints each sprite's batchable record lazily per renderer, always named `default`, and replaces it
  * on `unload()`; the renderer's batch pipe renames a world sprite's record when it next batches. Only a
@@ -130,41 +135,37 @@ function glowOf(element: BatchableElement): boolean {
 type WorldBatcherClass = new (options: BatcherOptions) => Batcher;
 let worldBatcherClass: WorldBatcherClass | undefined;
 
+/** The world vertex layout over `attributeBuffer`, drawn through `indexBuffer`: the geometry a world batch
+ *  or anything else drawing through the world batch program binds. */
+export function worldBatchGeometry(attributeBuffer: Buffer, indexBuffer: Buffer): Geometry {
+  const o = WORLD_ATTRIBUTE_OFFSETS;
+  return new Geometry({
+    attributes: {
+      aPosition: { buffer: attributeBuffer, format: 'float32x2', stride: STRIDE, offset: o.aPosition },
+      aUV: { buffer: attributeBuffer, format: 'float32x2', stride: STRIDE, offset: o.aUV },
+      aColor: { buffer: attributeBuffer, format: 'unorm8x4', stride: STRIDE, offset: o.aColor },
+      aTextureIdAndRound: {
+        buffer: attributeBuffer,
+        format: 'uint16x2',
+        stride: STRIDE,
+        offset: o.aTextureIdAndRound,
+      },
+      aFlags: { buffer: attributeBuffer, format: 'float32', stride: STRIDE, offset: o.aFlags },
+      aFrame: { buffer: attributeBuffer, format: 'float32x4', stride: STRIDE, offset: o.aFrame },
+      aSelection: { buffer: attributeBuffer, format: 'float32', stride: STRIDE, offset: o.aSelection },
+    },
+    indexBuffer,
+  });
+}
+
 function defineWorldBatcher(): WorldBatcherClass {
-  class WorldBatchGeometry extends Geometry {
-    constructor() {
-      const attributeBuffer = new WorldAttributeBuffer({
-        data: new Float32Array(1),
-        label: 'world-batch-attributes',
-        usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
-        shrinkToFit: false,
-      });
-      const indexBuffer = new Buffer({
-        data: new Uint32Array(1),
-        label: 'world-batch-indices',
-        usage: BufferUsage.INDEX | BufferUsage.COPY_DST,
-        shrinkToFit: false,
-      });
-      const o = WORLD_ATTRIBUTE_OFFSETS;
-      super({
-        attributes: {
-          aPosition: { buffer: attributeBuffer, format: 'float32x2', stride: STRIDE, offset: o.aPosition },
-          aUV: { buffer: attributeBuffer, format: 'float32x2', stride: STRIDE, offset: o.aUV },
-          aColor: { buffer: attributeBuffer, format: 'unorm8x4', stride: STRIDE, offset: o.aColor },
-          aTextureIdAndRound: {
-            buffer: attributeBuffer,
-            format: 'uint16x2',
-            stride: STRIDE,
-            offset: o.aTextureIdAndRound,
-          },
-          aFlags: { buffer: attributeBuffer, format: 'float32', stride: STRIDE, offset: o.aFlags },
-          aFrame: { buffer: attributeBuffer, format: 'float32x4', stride: STRIDE, offset: o.aFrame },
-          aSelection: { buffer: attributeBuffer, format: 'float32', stride: STRIDE, offset: o.aSelection },
-        },
-        indexBuffer,
-      });
-    }
-  }
+  const worldBatchIndices = (): Buffer =>
+    new Buffer({
+      data: new Uint32Array(1),
+      label: 'world-batch-indices',
+      usage: BufferUsage.INDEX | BufferUsage.COPY_DST,
+      shrinkToFit: false,
+    });
 
   const VERTEX = /* glsl */ `#version 300 es
   precision highp float;
@@ -493,7 +494,15 @@ ${PIXEL_ART_MAGNIFY_GLSL}
   class WorldBatcher extends Batcher {
     static extension = { type: [ExtensionType.Batcher], name: WORLD_BATCHER } as const;
 
-    override geometry = new WorldBatchGeometry();
+    override geometry = worldBatchGeometry(
+      new WorldAttributeBuffer({
+        data: new Float32Array(1),
+        label: 'world-batch-attributes',
+        usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
+        shrinkToFit: false,
+      }),
+      worldBatchIndices(),
+    );
     override name = WorldBatcher.extension.name;
     override vertexSize = WORLD_VERTEX_SIZE;
     /** Served by the prototype accessor below; `declare` keeps it off the instance. */

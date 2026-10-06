@@ -56,6 +56,11 @@ const POOL_REAP_BUDGET = 32;
 
 const NO_REFS: ReadonlySet<number> = new Set();
 
+/** A pooled entity's container names its entity, so the sprite layer's still mesh asks about a child
+ *  without a map lookup. */
+const POOLED: unique symbol = Symbol('pooled entity');
+type PooledContainer = Container & { [POOLED]?: PooledEntity };
+
 /** The hold generation a kept draw item was last presented under; a symbol, so the item's own fields
  *  and the stamp's field-by-field compare never see it. */
 const HELD: unique symbol = Symbol('held under pool generation');
@@ -384,6 +389,13 @@ export class SpritePool {
     return style !== undefined;
   }
 
+  /** Whether `container` is a pooled entity held still with its sprites as bound: what the sprite layer
+   *  may draw from its still mesh. Paletted layers re-place with the camera, so they never qualify. */
+  isHeld(container: Container): boolean {
+    const pe = (container as PooledContainer)[POOLED];
+    return pe !== undefined && pe.held === this.holdGeneration && pe.attached && !pe.paletted;
+  }
+
   /** Whether `pe` draws the same whatever the frame alpha: what a still frame may leave untouched. */
   private holdsStill(pe: PooledEntity, item: DrawItem): boolean {
     return (
@@ -529,6 +541,7 @@ export class SpritePool {
       pe.container.destroy({ children: true });
     }
     this.pool.set(item.ref, fresh);
+    (fresh.container as PooledContainer)[POOLED] = fresh;
     return fresh;
   }
 

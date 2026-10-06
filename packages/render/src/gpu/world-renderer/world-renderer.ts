@@ -43,6 +43,7 @@ import { setPixelArtMagnification, setWorldShadowStyle } from '../pixel-art-regi
 import { DEFAULT_SELECTION_STYLE, type SelectionStyle } from '../selection-style.js';
 import { DEFAULT_SHADOW_STYLE } from '../shadow-style.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
+import { StillSpriteMesh } from '../still-mesh/still-mesh.js';
 import { TerrainLayer } from '../terrain/index.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { TextureCache } from '../texture-cache.js';
@@ -141,6 +142,8 @@ export class WorldRenderer {
       opts?.planStakes,
       opts?.planRoads,
     );
+    const pool = this.pool;
+    this.spriteLayer.stills = new StillSpriteMesh((child) => pool.isHeld(child));
     this.marks = new WorldMarks(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
     this.mapViews = new MapViewLayer(app, this.worldLayer, this.pool);
