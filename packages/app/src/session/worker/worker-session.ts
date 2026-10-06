@@ -15,6 +15,7 @@ import {
 import { type DiagEntry, diag } from '../../diag/log.js';
 import { diagCadenceAt } from '../../diag/session.js';
 import type { SystemProfileRow } from '../../diag/system-profile.js';
+import type { SaveFile } from '../../view/runtime/save-load/codec.js';
 import type { OffThreadTickCost, SessionHost, StateHash, SystemSpanSink, TickDiagnostics } from '../host.js';
 import { MirrorTruthWatch } from './mirror-truth-watch.js';
 import type { SessionPort } from './port.js';
@@ -50,6 +51,8 @@ export interface WorkerSession<E> {
   readonly boot: WorkerBootCost;
   /** What the ticks the driver's last `advance` delivered cost. */
   offThreadTickCost(): OffThreadTickCost;
+  /** The driver's capture as file bytes, serialized and compressed on the worker. */
+  captureSaveFile(options: ExportSaveOptions): Promise<SaveFile>;
   /** Stop the worker; answers still pending never land. Idempotent. */
   dispose(): void;
 }
@@ -284,6 +287,8 @@ class WorkerClient<E> {
       seed: this.ready.seed,
       boot,
       offThreadTickCost: () => this.lastCost,
+      captureSaveFile: (options) =>
+        this.call({ method: 'captureSaveFile', options }).then(({ value }) => value as SaveFile),
       dispose: () => this.dispose(),
     };
   }

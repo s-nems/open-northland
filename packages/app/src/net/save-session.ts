@@ -22,8 +22,8 @@ export function networkSaveSession(
         room.seats.map(({ player, nick }) => ({ player, nick })),
       );
     },
-    async onSaved(save) {
-      if (client.worldId === worldId) await client.shareSave(null, save);
+    async onSaved(file) {
+      if (client.worldId === worldId) await client.shareSave(null, file);
     },
   };
 }

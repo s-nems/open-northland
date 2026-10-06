@@ -10,6 +10,7 @@ import {
 import { diag } from '../../diag/log.js';
 import { diagCadenceAt } from '../../diag/session.js';
 import { profiledInstrument, SystemProfile } from '../../diag/system-profile.js';
+import { type SaveFile, saveFileOf } from '../../view/runtime/save-load/codec.js';
 import type { SessionHost } from '../host.js';
 import { inlineSessionHost } from '../inline-host.js';
 import { changedFacts, readWorldFacts } from './facts.js';
@@ -514,7 +515,7 @@ export class ServedSession<E> {
     }
     if (!this.answering.delete(id)) return;
     try {
-      this.post({ kind: 'reply', id, tick: this.sim.tick, ok: true, value });
+      this.post({ kind: 'reply', id, tick: this.sim.tick, ok: true, value }, replyTransfer(call, value));
     } catch (err) {
       // An answer the port cannot clone still settles the runtime's ask.
       this.replyFailed(id, err);
@@ -548,6 +549,11 @@ export class ServedSession<E> {
         // A save of the failed tick's writes would carry the fault into every later load.
         if (this.broken) throw new Error(BROKEN_SESSION_MESSAGE);
         return this.driver.captureSave(call.options);
+      case 'captureSaveFile':
+        if (this.broken) throw new Error(BROKEN_SESSION_MESSAGE);
+        // Serialized and compressed here, so the runtime's thread receives a few transferred megabytes
+        // instead of cloning the save's object graph and stringifying it.
+        return saveFileOf(await this.driver.captureSave(call.options));
       case 'profileRows':
         return this.profile?.rows() ?? [];
     }
@@ -591,6 +597,11 @@ export class ServedSession<E> {
     this.outbox.abandon();
     this.post({ kind: 'tickError', tick: this.recordedTick + 1, error: wireError(err) });
   }
+}
+
+/** A save file's bytes move to the runtime rather than being copied; nothing here reads them again. */
+function replyTransfer(call: WorkerCall, value: unknown): readonly ArrayBuffer[] {
+  return call.method === 'captureSaveFile' ? [(value as SaveFile).bytes.buffer] : [];
 }
 
 function fogTransfer(update: FogUpdate | null): readonly ArrayBuffer[] {

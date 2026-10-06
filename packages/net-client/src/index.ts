@@ -21,4 +21,10 @@ export {
   type RelaySocketOptions,
 } from './relay-socket.js';
 export { type ClockState, RelayState } from './relay-state.js';
-export { base64ToBytes, bytesToBase64, decodeSnapshot, encodeSnapshot } from './snapshot-codec.js';
+export {
+  base64ToBytes,
+  bytesToBase64,
+  type CompressedSave,
+  decodeSnapshot,
+  encodeSnapshot,
+} from './snapshot-codec.js';

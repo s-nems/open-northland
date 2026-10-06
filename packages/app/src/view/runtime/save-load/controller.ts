@@ -1,7 +1,7 @@
-import { type ExportSaveOptions, type SaveGame, serializeSaveGame } from '@open-northland/sim';
+import type { ExportSaveOptions, SaveGame } from '@open-northland/sim';
 import { diag } from '../../../diag/index.js';
 import type { SessionHost } from '../../../session/index.js';
-import { compressSaveText, isGzipSave, type SaveBytes } from './codec.js';
+import { isGzipSave, type SaveBytes, type SaveFile, saveFileOf } from './codec.js';
 import { evaluateSaveFile, type SaveRejection } from './evaluate.js';
 import { browserSaveDownload, type PickedSaveFile, pickedSaveOf } from './file-access.js';
 import { displayNameOf } from './list-model.js';
@@ -20,6 +20,8 @@ export interface SaveLoadDeps {
   readonly host: Pick<SessionHost, 'mapFingerprint' | 'content' | 'exportSave'>;
   /** The session's capture, with its accepted future input; absent, the host exports the world alone. */
   readonly captureSave?: (options: ExportSaveOptions) => SaveGame | Promise<SaveGame>;
+  /** The same capture as file bytes, produced where the sim runs; preferred over `captureSave`. */
+  readonly captureSaveFile?: (options: ExportSaveOptions) => Promise<SaveFile>;
   readonly parent?: SaveGame;
   readonly loadRelatedWorld?: (save: SaveGame, bytes: SaveBytes) => Promise<void>;
   /** The entry's world identity, exported as the save header's `mapId` and required to match on load. */
@@ -37,7 +39,7 @@ export interface SaveLoadDeps {
   readonly downloadSave: (fileName: string, bytes: SaveBytes) => void;
   readonly store: SaveStore;
   readonly sessionMetadata?: () => unknown;
-  readonly onSaved?: (save: SaveGame) => Promise<void>;
+  readonly onSaved?: (file: SaveFile) => Promise<void>;
 }
 
 export interface SaveLoadSession {
@@ -78,16 +80,17 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
     forced = null;
   };
 
-  const captureRunning = async (): Promise<{ save: SaveGame; bytes: SaveBytes }> => {
-    const capture = deps.captureSave ?? ((options: ExportSaveOptions) => host.exportSave(options));
-    const save = await capture({
+  const captureRunning = async (): Promise<SaveFile> => {
+    const options: ExportSaveOptions = {
       savedAt: Date.now(),
       ...(deps.sessionMetadata === undefined ? {} : { session: deps.sessionMetadata() }),
       ...(deps.parent !== undefined ? { parent: deps.parent } : {}),
       ...(worldToken !== null ? { mapId: worldToken } : {}),
       ...(deps.entrySearch !== null ? { entry: deps.entrySearch } : {}),
-    });
-    return { save, bytes: await compressSaveText(serializeSaveGame(save)) };
+    };
+    if (deps.captureSaveFile !== undefined) return deps.captureSaveFile(options);
+    const capture = deps.captureSave ?? ((opts: ExportSaveOptions) => host.exportSave(opts));
+    return saveFileOf(await capture(options));
   };
 
   const runLoad = async (pick: () => Promise<PickedSaveFile | null>): Promise<LoadOutcome> => {
@@ -139,16 +142,16 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
 
     async saveGame(name: string): Promise<SaveOutcome> {
       try {
-        const { save, bytes } = await captureRunning();
-        await deps.store.write(name, bytes, {
+        const file = await captureRunning();
+        await deps.store.write(name, file.bytes, {
           mapId: worldToken,
-          tick: save.header.tick,
+          tick: file.header.tick,
           entry: deps.entrySearch,
-          savedAt: save.header.savedAt,
+          savedAt: file.header.savedAt,
         });
         if (deps.onSaved !== undefined) {
           try {
-            await deps.onSaved(save);
+            await deps.onSaved(file);
           } catch (error) {
             diag.warn('net', 'saved locally but relay snapshot upload failed', { error: String(error) });
           }

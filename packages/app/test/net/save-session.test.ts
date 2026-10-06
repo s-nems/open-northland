@@ -105,11 +105,12 @@ it('captures the current public roster and does not upload an old world after re
   ]);
   expect(JSON.stringify(metadata)).not.toContain(client.token);
   const save = exportSaveGame(sim, { mapId: 'test', session: metadata });
+  const file = { header: save.header, bytes: new Uint8Array() };
   const upload = vi.spyOn(client, 'shareSave').mockResolvedValue();
-  await hooks.onSaved?.(save);
-  expect(upload).toHaveBeenCalledWith(null, save);
+  await hooks.onSaved?.(file);
+  expect(upload).toHaveBeenCalledWith(null, file);
   client.receive({ kind: 'left' });
-  await hooks.onSaved?.(save);
+  await hooks.onSaved?.(file);
   expect(upload).toHaveBeenCalledTimes(1);
   expect(() => hooks.sessionMetadata?.()).toThrow(/no longer active/);
 });

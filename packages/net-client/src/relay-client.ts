@@ -35,7 +35,7 @@ import type { RelayClientView } from './relay-client-view.js';
 import { RelayRefusal } from './relay-refusal.js';
 import type { ClockState } from './relay-state.js';
 import { SaveOrders } from './save-orders.js';
-import { encodeSnapshot } from './snapshot-codec.js';
+import { bytesToBase64, type CompressedSave, encodeSnapshot } from './snapshot-codec.js';
 import { TickCost } from './tick-cost.js';
 import { WorldLoader } from './world-loader.js';
 
@@ -228,21 +228,17 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     return this.saveOrders.request(save, this.world, (message) => this.send(message));
   }
 
-  /** Upload the world as a save, the way a player's in-game save reaches the room. */
-  shareSave(to: string | null, save: SaveGame): Promise<void> {
+  /** Upload the world as a save, the way a player's in-game save reaches the room. The save arrives
+   *  compressed as the player's slot stores it, so it is not serialized a second time. */
+  shareSave(to: string | null, save: CompressedSave): Promise<void> {
     const sim = this.sim;
     if (sim === null) throw new Error(`${this.nick} has no world to save`);
     const world = this.session?.world;
     if (save.header.tick > sim.tick || (world?.kind === 'map' && save.header.mapId !== world.mapId))
       throw new Error('The captured save belongs to another world');
-    const tick = save.header.tick;
-    return this.track(
-      'save',
-      encodeSnapshot(save).then((bytes) => {
-        if (this.sim !== sim) return;
-        this.sendBlob({ type: 'save', to, tick, bytes });
-      }),
-    );
+    const blob = { type: 'save', to, tick: save.header.tick, bytes: bytesToBase64(save.bytes) } as const;
+    // Tracked like every upload, so a send that fails is reported as well as rejected.
+    return this.track('save', (async () => this.sendBlob(blob))());
   }
 
   /** Commands need a connected world and must fit in one atomic wire envelope. */

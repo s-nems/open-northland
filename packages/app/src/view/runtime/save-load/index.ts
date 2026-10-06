@@ -11,7 +11,7 @@ export { saveLoadSession } from './controller.js';
 export { evaluateSaveFile, type LiveWorldIdentity, type SaveRejection } from './evaluate.js';
 
 export interface SaveLoadSessionOptions
-  extends Pick<SaveLoadDeps, 'sessionMetadata' | 'onSaved' | 'captureSave'> {
+  extends Pick<SaveLoadDeps, 'sessionMetadata' | 'onSaved' | 'captureSave' | 'captureSaveFile'> {
   readonly host: SaveLoadDeps['host'];
   readonly parent?: SaveGame;
   readonly loadRelatedWorld?: NonNullable<SaveLoadDeps['loadRelatedWorld']>;

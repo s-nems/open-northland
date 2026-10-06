@@ -4,6 +4,8 @@
  * decode seam via the magic-byte sniff.
  */
 
+import { type SaveGame, type SaveGameHeader, serializeSaveGame } from '@open-northland/sim';
+
 const GZIP_MAGIC = [0x1f, 0x8b] as const;
 
 /** Save file bytes are ArrayBuffer-backed, so they can enter a `Blob` and IndexedDB unwrapped. */
@@ -24,6 +26,18 @@ export function isGzipSave(bytes: Uint8Array): boolean {
 export async function compressSaveText(text: string): Promise<SaveBytes> {
   const compressed = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
   return new Uint8Array(await new Response(compressed).arrayBuffer());
+}
+
+/** A captured save as its file bytes, with the header the slot list shows. */
+export interface SaveFile {
+  readonly header: SaveGameHeader;
+  readonly bytes: SaveBytes;
+}
+
+/** Serialize and compress a capture. Serialized before the first await, so later ticks cannot reach in. */
+export function saveFileOf(save: SaveGame): Promise<SaveFile> {
+  const text = serializeSaveGame(save);
+  return compressSaveText(text).then((bytes) => ({ header: save.header, bytes }));
 }
 
 /** The save's JSON text from a picked or staged file, whichever envelope the bytes carry. */

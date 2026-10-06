@@ -40,6 +40,8 @@ export interface MapRuntime {
   readonly driver: SessionDriver;
   /** Present when the sim runs on another thread. */
   readonly offThreadTickCost?: GameViewDeps['offThreadTickCost'];
+  /** Present when the sim runs on another thread. */
+  readonly captureSaveFile?: GameViewDeps['captureSaveFile'];
   /** True for a relayed session, whose clock every client shares. */
   readonly sharedClock?: boolean;
   readonly confirmedMatchEnd?: () => number | null;
@@ -169,6 +171,7 @@ export async function presentMapWorld(
     host,
     driver: runtime.driver,
     ...(runtime.offThreadTickCost !== undefined ? { offThreadTickCost: runtime.offThreadTickCost } : {}),
+    ...(runtime.captureSaveFile !== undefined ? { captureSaveFile: runtime.captureSaveFile } : {}),
     ...(runtime.confirmedMatchEnd === undefined ? {} : { confirmedMatchEnd: runtime.confirmedMatchEnd }),
     ...(runtime.networkSave === undefined ? {} : { networkSave: runtime.networkSave }),
     ...(runtime.sharedClock !== undefined ? { sharedClock: runtime.sharedClock } : {}),

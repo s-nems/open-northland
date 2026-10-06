@@ -1,4 +1,4 @@
-import { parseSaveGame, type SaveGame, serializeSaveGame } from '@open-northland/sim';
+import { parseSaveGame, type SaveGame, type SaveGameHeader, serializeSaveGame } from '@open-northland/sim';
 
 /** Bytes per `btoa` call where the platform has no `toBase64`: a multiple of three, so each chunk
  *  encodes on its own without padding, and well under the argument limit of `String.fromCharCode`. */
@@ -16,6 +16,13 @@ interface NativeBase64 {
 }
 interface NativeFromBase64 {
   fromBase64?: (text: string) => Uint8Array<ArrayBuffer>;
+}
+
+/** A save already serialized and gzipped where it was captured, with the header fields a share checks. */
+export interface CompressedSave {
+  readonly header: Pick<SaveGameHeader, 'tick' | 'mapId'>;
+  /** The gzip of the save's serialized text, the envelope `decodeSnapshot` inflates. */
+  readonly bytes: Uint8Array;
 }
 
 export async function encodeSnapshot(save: SaveGame): Promise<string> {

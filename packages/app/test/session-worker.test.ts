@@ -8,6 +8,7 @@ import {
   parseCommandLog,
   playerCommand,
   type Simulation,
+  serializeSaveGame,
   stepReplaying,
 } from '@open-northland/sim';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -16,6 +17,7 @@ import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { IDLE_WORK_NAMES, idleWorkScene, idleWorkWorker } from '../src/scenes/idle-work.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import type { SessionHost } from '../src/session/host.js';
+import { decodeSaveText, isGzipSave } from '../src/view/runtime/save-load/codec.js';
 import { inlineSessionHost } from '../src/session/inline-host.js';
 import type { FromWorker, ToWorker, WorkerSessionOptions } from '../src/session/worker/protocol.js';
 import { ASSUMED_FRAME_MS, leadTickLimit, REPLACED_SESSION_MESSAGE } from '../src/session/worker/serve.js';
@@ -57,6 +59,7 @@ const RESTORE_AT_TICKS = 40;
 const SUBMISSIONS = 6;
 /** Several of the run's slices, so a command lands while it yields. */
 const RUN_WITH_ORDER_TICKS = 60;
+const SAVED_AT_MS = 1_700_000_000_000;
 const MISSING_WORKER = '/nonexistent/session-worker.mjs';
 /** Long enough at the fast speed for the worker to step well past the batches in flight. */
 const UNDRAWN_MS = 400;
@@ -421,6 +424,20 @@ describe('session worker host', () => {
       const captured = await session.driver.captureSave();
       const commands = captured.sections.find((section) => section.id === 'commands');
       expect(commands?.id === 'commands' ? commands.continuation : null).toEqual([]);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it('captures a save as the gzipped file the worker serialized', async () => {
+    const session = await startTestSession(bundle.path, { kind: 'scene', id: 'sandbox' });
+    try {
+      const options = { savedAt: SAVED_AT_MS, mapId: 'scene:sandbox' };
+      const captured = await session.driver.captureSave(options);
+      const file = await session.captureSaveFile(options);
+      expect(isGzipSave(file.bytes)).toBe(true);
+      expect(file.header).toEqual(captured.header);
+      expect(await decodeSaveText(file.bytes)).toBe(serializeSaveGame(captured));
     } finally {
       session.dispose();
     }

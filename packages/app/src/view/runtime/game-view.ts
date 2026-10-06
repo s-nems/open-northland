@@ -164,6 +164,8 @@ export interface GameViewDeps {
   readonly driver: SessionDriver;
   /** Present when the sim runs on another thread: what the ticks the driver delivered cost. */
   readonly offThreadTickCost?: () => OffThreadTickCost;
+  /** Present when the sim runs on another thread: the driver's save capture as file bytes made there. */
+  readonly captureSaveFile?: SaveLoadSessionOptions['captureSaveFile'];
   /** True when the clock is shared with other clients: the menus and sheets that hold a local game
    *  paused hold nothing, and a file cannot be loaded over the shared world. */
   readonly sharedClock?: boolean;
@@ -294,6 +296,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   const saveLoad = createSaveLoadSession({
     ...deps.networkSave,
     captureSave: (options) => driver.captureSave(options),
+    ...(deps.captureSaveFile !== undefined ? { captureSaveFile: deps.captureSaveFile } : {}),
     host,
     worldToken: deps.worldToken ?? null,
     ...(deps.saveEntrySearch !== undefined ? { entrySearch: deps.saveEntrySearch } : {}),

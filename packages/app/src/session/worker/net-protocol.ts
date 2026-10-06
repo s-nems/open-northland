@@ -1,12 +1,12 @@
 import type { GameSession } from '@open-northland/lockstep';
 import {
+  type CompressedSave,
   type DisputeRecord,
   type LobbyAction,
   RelayRefusal,
   type TickDigest,
 } from '@open-northland/net-client';
 import type { RelayReason, ResponsivenessMode, ServerMessage } from '@open-northland/net-protocol';
-import type { SaveGame } from '@open-northland/sim';
 import {
   errorFromWire,
   type FromWorker,
@@ -64,7 +64,7 @@ export interface RelayedWorldAnswer<B> {
 export type RelayRequest =
   | { readonly method: 'digests' }
   | { readonly method: 'dispute' }
-  | { readonly method: 'shareSave'; readonly to: string | null; readonly save: SaveGame };
+  | { readonly method: 'shareSave'; readonly to: string | null; readonly save: CompressedSave };
 
 /** The session protocol's messages, minus the boot a world request replaces. */
 type SessionMessage = Exclude<ToWorker<never>, { readonly kind: 'boot' }>;

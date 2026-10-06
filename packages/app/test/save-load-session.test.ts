@@ -18,6 +18,7 @@ import {
   decodeSaveText,
   isGzipSave,
   type SaveBytes,
+  type SaveFile,
 } from '../src/view/runtime/save-load/codec.js';
 import type { PickedSaveFile } from '../src/view/runtime/save-load/file-access.js';
 import {
@@ -133,7 +134,7 @@ function harness(
     startPaused?: boolean;
     failWrite?: boolean;
     sessionMetadata?: () => unknown;
-    onSaved?: (save: SaveGame) => Promise<void>;
+    onSaved?: (file: SaveFile) => Promise<void>;
     loadRelatedWorld?: (save: SaveGame, bytes: SaveBytes) => Promise<void>;
   } = {},
 ): Harness {
@@ -214,12 +215,12 @@ describe('saveLoadSession save flow', () => {
   it('shares the exact captured save after storage, even when simulation advances during compression', async () => {
     const sim = demoSim();
     const tick = sim.tick;
-    let shared: SaveGame | null = null;
+    let shared: SaveFile | null = null;
     const h = harness(sim, {
       sessionMetadata: () => ({ roster: ['Ania'] }),
-      onSaved: async (save) => {
+      onSaved: async (file) => {
         expect(h.store.has('Multi')).toBe(true);
-        shared = save;
+        shared = file;
       },
     });
     const pending = h.session.saveGame('Multi');
@@ -227,7 +228,8 @@ describe('saveLoadSession save flow', () => {
     expect(await pending).toEqual({ kind: 'saved' });
     const stored = h.store.get('Multi');
     const document = JSON.parse(await decodeSaveText(stored?.bytes ?? new Uint8Array()));
-    expect(shared).toEqual(document);
+    // The room receives the very bytes the slot stores, not a second serialization.
+    expect(shared).toEqual({ header: document.header, bytes: stored?.bytes });
     expect(document.header).toMatchObject({ tick, session: { roster: ['Ania'] } });
   });
 

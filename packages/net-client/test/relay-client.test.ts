@@ -1,8 +1,10 @@
 import type { GameSession } from '@open-northland/lockstep';
 import {
   type AdoptedWorld,
+  base64ToBytes,
   DISPUTE_WINDOW_TICKS,
   decodeSnapshot,
+  encodeSnapshot,
   JITTER_BUFFER_TICKS,
   type OpenedWorld,
   prepareInitialSave,
@@ -82,8 +84,9 @@ describe('RelayClient and its world port', () => {
     start(client, null);
     await client.settled();
     const save = exportSaveGame(sim, { savedAt: 123, session: { example: 'captured' } });
+    const bytes = base64ToBytes(await encodeSnapshot(save));
     sim.step();
-    await client.shareSave(null, save);
+    await client.shareSave(null, { header: save.header, bytes });
     const upload = sent.find((message) => message.kind === 'blob' && message.type === 'save');
     expect(upload).toMatchObject({ tick: 0 });
     if (upload?.kind !== 'blob') throw new Error('missing uploaded save');

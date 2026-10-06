@@ -88,6 +88,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const view = await presentMapWorld(world, {
     driver: worker.driver,
     offThreadTickCost: worker.offThreadTickCost,
+    captureSaveFile: worker.captureSaveFile,
     introAtStart: stagedSave === null && introParam(params),
   }).catch((err: unknown) => {
     worker.dispose();

@@ -263,6 +263,7 @@ export function renderNetworkGame(
     presentation = presentMapWorld(world, {
       driver: relayedSessionDriver(session.driver, client),
       offThreadTickCost: session.offThreadTickCost,
+      captureSaveFile: session.captureSaveFile,
       sharedClock: true,
       confirmedMatchEnd: () => deliveredMatchEnd(client, session.host),
       networkSave: networkSaveSession(client, worldId),

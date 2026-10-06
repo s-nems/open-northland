@@ -89,6 +89,7 @@ export type WorkerCall =
   | { readonly method: 'run'; readonly ticks: number }
   | { readonly method: 'settle' }
   | { readonly method: 'captureSave'; readonly options: ExportSaveOptions }
+  | { readonly method: 'captureSaveFile'; readonly options: ExportSaveOptions }
   | { readonly method: 'profileRows' };
 
 export type ToWorker<B> =
