@@ -52,6 +52,8 @@ import { SelectionEffects } from './selection-effects.js';
  */
 const POOL_REAP_BUDGET = 32;
 
+const NO_REFS: ReadonlySet<number> = new Set();
+
 export interface PoolFrame {
   readonly selection?: ReadonlySet<number>;
   /** Work flags belonging to selected gatherers always receive an amber outline. */
@@ -168,6 +170,15 @@ export class SpritePool {
   private readonly depthOrder = new SpriteDepthOrder();
   private readonly itemMemo = new SceneItemMemo();
   private lastItems: readonly SpriteDrawItem[] = [];
+  /** Indices into {@link lastItems} of the entities the last full pass found moving with the frame clock
+   *  or emphasised, and their refs: what a still frame presents. */
+  private readonly moving: number[] = [];
+  private readonly movingRefs = new Set<number>();
+  /** What the last full pass drew under, which a still frame must match. */
+  private passEpoch = -1;
+  private passHighlight: PoolFrame['highlight'];
+  private passStyle: PoolFrame['selectionStyle'];
+  private passHasPortrait = false;
   /** The pooled entity of each of {@link lastItems}, by index: a repeated scene build skips the lookups. */
   private readonly lastPooled: PooledEntity[] = [];
   private readonly damaged: DamagedBuilding[] = [];
@@ -206,14 +217,23 @@ export class SpritePool {
    */
   reconcile(frame: PoolFrame): void {
     const scene = this.sceneFor(frame);
-    this.frameId++;
     this.sheet?.palette?.beginFrame();
     this.epoch.advance(frame, this.textures.textureRevision);
     this.snapResolution = frame.snapResolution;
+    if (this.repeatsStill(scene, frame)) {
+      this.presentMoving(frame);
+      this.reap(scene.liveRefs);
+      this.sheet?.palette?.flush();
+      return;
+    }
+    this.frameId++;
     this.portrait.release();
     // The cached build of an unchanged scene: last frame's entities, damage and ships all still hold.
     const repeated = scene.items === this.lastItems;
     if (!repeated) this.collectOverlays(scene.items);
+    this.moving.length = 0;
+    this.movingRefs.clear();
+    this.passHasPortrait = false;
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
@@ -225,31 +245,27 @@ export class SpritePool {
       // Reads `lastSeen` before the stamp below overwrites it.
       const continuous = pe.lastSeen === this.frameId - 1;
       if (!continuous) pe.motion.tick = -1;
-      this.presentPooled(pe, item, frame, continuous);
-      const flagged = frame.flagged?.has(item.ref) === true;
-      this.selectionEffects.update(
-        pe,
-        item.ghost === true || item.portraitOnly === true
-          ? undefined
-          : flagged
-            ? 'outline'
-            : frame.selection?.has(item.ref)
-              ? frame.selectionStyle
-              : undefined,
-        frame.camera.scale ?? 1,
-        frame.selectionTime ?? 0,
-        flagged ? 0xffc020 : undefined,
-      );
+      const emphasis = this.presentItemAt(pe, item, frame, continuous);
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);
         pe.attached = true;
         this.attached.add(pe);
       }
       pe.lastSeen = this.frameId;
-      if (item.portraitOnly === true) this.portrait.capture(item.ref, pe, item.frozen === true);
+      if (item.portraitOnly === true) {
+        this.portrait.capture(item.ref, pe, item.frozen === true);
+        this.passHasPortrait = true;
+      }
+      if (emphasis || !this.holdsStill(pe, item)) {
+        this.moving.push(i);
+        this.movingRefs.add(item.ref);
+      }
     }
     this.lastItems = scene.items;
     this.lastPooled.length = scene.items.length;
+    this.passEpoch = this.epoch.current;
+    this.passHighlight = frame.highlight;
+    this.passStyle = frame.selectionStyle;
 
     // Iterating `attached` instead of the whole pool keeps the detach scan bounded by the screen.
     // Deleting the current entry mid-iteration is well-defined for a Set.
@@ -265,6 +281,62 @@ export class SpritePool {
     if (this.epoch.viewMoved) this.placePaletted(frame.camera, frame.screenW, frame.screenH);
     this.reap(scene.liveRefs);
     this.sheet?.palette?.flush();
+  }
+
+  /** Present `item` on `pe` and apply its selection emphasis; whether any emphasis applies. */
+  private presentItemAt(pe: PooledEntity, item: DrawItem, frame: PoolFrame, continuous: boolean): boolean {
+    this.presentPooled(pe, item, frame, continuous);
+    const flagged = frame.flagged?.has(item.ref) === true;
+    const style =
+      item.ghost === true || item.portraitOnly === true
+        ? undefined
+        : flagged
+          ? 'outline'
+          : frame.selection?.has(item.ref)
+            ? frame.selectionStyle
+            : undefined;
+    this.selectionEffects.update(
+      pe,
+      style,
+      frame.camera.scale ?? 1,
+      frame.selectionTime ?? 0,
+      flagged ? 0xffc020 : undefined,
+    );
+    return style !== undefined;
+  }
+
+  /** Whether `pe` draws the same whatever the frame alpha: what a still frame may leave untouched. */
+  private holdsStill(pe: PooledEntity, item: DrawItem): boolean {
+    return pe.reveal === undefined && resolvesWithoutClock(item) && pe.bound.clockFree && atRest(pe.motion);
+  }
+
+  /**
+   * Whether this frame differs from the last full pass only in the frame alpha: the same draw list, no
+   * tick, setting, camera or highlight change, and every selected or flagged entity already among the
+   * moving ones. Then only {@link moving} needs a present; everything else holds still where it is.
+   */
+  private repeatsStill(scene: SpriteScene, frame: PoolFrame): boolean {
+    if (
+      scene.items !== this.lastItems ||
+      this.epoch.current !== this.passEpoch ||
+      this.epoch.viewMoved ||
+      this.passHasPortrait ||
+      frame.highlight !== this.passHighlight ||
+      frame.selectionStyle !== this.passStyle
+    )
+      return false;
+    for (const ref of frame.selection ?? NO_REFS) if (!this.movingRefs.has(ref)) return false;
+    for (const ref of frame.flagged ?? NO_REFS) if (!this.movingRefs.has(ref)) return false;
+    return true;
+  }
+
+  /** A still frame's pass: present the entities that move with the frame clock, in draw-list order. */
+  private presentMoving(frame: PoolFrame): void {
+    for (const i of this.moving) {
+      const item = this.lastItems[i];
+      const pe = this.lastPooled[i];
+      if (item !== undefined && pe !== undefined) this.presentItemAt(pe, item, frame, true);
+    }
   }
 
   /** Collect the drawn damaged buildings and ships off a new draw list. */
@@ -602,6 +674,9 @@ export class SpritePool {
     this.attached.clear();
     this.lastItems = [];
     this.lastPooled.length = 0;
+    this.moving.length = 0;
+    this.movingRefs.clear();
+    this.passEpoch = -1;
     this.reapCursor = undefined;
     this.sceneCache.clear();
   }
