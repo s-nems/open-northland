@@ -7319,7 +7319,7 @@ body.on-drag-scroll * {
   gap: 10px;
 }
 .on-hud .on-system-settings {
-  width: min(82%, 1080px);
+  width: min(82%, 800px);
   height: 84%;
 }
 .on-hud .on-system-settings > .on-window__body {
