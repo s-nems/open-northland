@@ -55,7 +55,9 @@ function remove(index: PostIndex, entity: EntitySnapshot): void {
 
 const POSTS: SnapshotIndexSpec<PostIndex> = {
   name: 'signpost networks',
-  reads: { values: ['Signpost', 'Owner', 'Position'] },
+  // A post never moves while it holds the role: a relocated one re-adds its `Signpost`, whose write
+  // places it again. `Position` is read only as gained or lost, so a walker's step costs nothing here.
+  reads: { values: ['Signpost', 'Owner'], presence: ['Position'] },
   empty: () => ({ posts: new Map(), buckets: new TileBuckets(), revision: 0 }),
   add,
   remove,
