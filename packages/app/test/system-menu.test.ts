@@ -140,14 +140,14 @@ describe('system menu navigation', () => {
   it('keeps Tab inside the menu and gives Escape to a confirmation before the menu', async () => {
     const { menu, onQuit } = mount();
     menu.toggle();
-    const close = document.querySelector<HTMLButtonElement>('.on-system-menu .on-window__close');
-    close?.focus();
-    close?.dispatchEvent(
+    const resume = document.querySelector<HTMLButtonElement>('.on-system-menu__resume');
+    resume?.focus();
+    resume?.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }),
     );
     expect(document.activeElement?.tagName).toBe('SUMMARY');
     key('Tab');
-    expect(document.activeElement).toBe(close);
+    expect(document.activeElement).toBe(resume);
     button(messages().hud.systemMenuDetails.leaveGame).click();
     expect(document.querySelector('[role="alertdialog"]')).not.toBeNull();
     key('Escape');

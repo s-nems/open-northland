@@ -47,6 +47,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     width: 300,
     compact: true,
   });
+  frame.element.querySelector('.on-window__close')?.remove();
   frame.element.classList.add('on-system-dialog', 'on-system-menu');
   frame.element.setAttribute('role', 'dialog');
   frame.element.setAttribute('aria-modal', 'true');
@@ -77,7 +78,6 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     inert.clear();
     if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
   };
-  frame.onDismiss(hide);
   const panelDeps = {
     saveLoad: deps.saveLoad,
     showMenu,
