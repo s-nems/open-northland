@@ -7,7 +7,9 @@ import { clonePlain } from './plain-clone.js';
  * The changes of one stretch of ticks, in the shape a mirror rebuilds the snapshot from and a worker
  * boundary carries whole: plain data, structured-cloneable like the snapshot itself. Stored by column,
  * so a structured clone copies no object per touched entity, and none for a component whose fields are
- * all numbers, which travels as numbers under a key list sent once (`deltaValues` rebuilds it).
+ * all numbers, which travels as numbers under a key list sent once (`deltaValues` rebuilds it). The
+ * per-entity and per-value columns are typed arrays, which a structured clone copies as bytes where it
+ * writes and reads a plain array element by element.
  */
 export interface SnapshotDelta {
   /** The tick the delta brings a mirror to. */
@@ -18,16 +20,17 @@ export interface SnapshotDelta {
   /** The touched log overflowed or the stream just opened: `touched` names every alive entity, each
    *  writing all of its components, and the mirror replaces its whole list. */
   readonly rebuild: boolean;
-  /** Every entity created or mutated since the base and still alive, ascending. */
-  readonly touched: readonly number[];
+  /** Every entity created or mutated since the base and still alive, ascending. Entity ids stay
+   *  within int32: the save caps them there. */
+  readonly touched: Int32Array;
   /** Per `touched` entity, its entry in `changes`. */
-  readonly changeOf: readonly number[];
+  readonly changeOf: Int32Array;
   /** The distinct changes the touched entities made. An entity the base did not hold writes all of
    *  its components. */
   readonly changes: readonly EntityChange[];
   /** Per written component, per `touched` entity in turn and in its change's `written` order: the
    *  entry of `recordKeys` its value is a record of, or {@link WHOLE_VALUE}. */
-  readonly valueKinds: readonly number[];
+  readonly valueKinds: Int32Array;
   /** The key lists of the records whose fields are all numbers. */
   readonly recordKeys: readonly (readonly string[])[];
   /** Those records' fields, record after record, each in its key list's order. */
@@ -80,8 +83,28 @@ export type EntitySnapshotDelta = Omit<SnapshotDelta, DeltaColumnFields> & {
 
 const NO_NAMES: readonly string[] = [];
 const NO_CHANGE = -1;
-/** Room for the numeric fields of a first delta's worth of records; the buffer doubles past it. */
-const INITIAL_NUMBERS = 1024;
+/** Room for a first delta's worth of entries in each column; a column doubles past it. */
+const INITIAL_COLUMN = 1024;
+
+/** A growable `Int32Array`. */
+class IntColumn {
+  private items = new Int32Array(INITIAL_COLUMN);
+  private count = 0;
+
+  push(item: number): void {
+    if (this.count === this.items.length) {
+      const grown = new Int32Array(this.items.length * 2);
+      grown.set(this.items);
+      this.items = grown;
+    }
+    this.items[this.count++] = item;
+  }
+
+  /** The entries pushed so far, as an array of their own. */
+  taken(): Int32Array {
+    return this.items.slice(0, this.count);
+  }
+}
 
 /** One step of the changes met so far: the names written or dropped after it lead on. */
 interface ChangeStep {
@@ -109,14 +132,14 @@ function stepAfter(steps: Map<string, ChangeStep>, name: string): ChangeStep {
 
 /** Builds a delta's columns one entity at a time; entities go in ascending id order. */
 export class DeltaColumns {
-  private readonly touched: number[] = [];
-  private readonly changeOf: number[] = [];
+  private readonly touched = new IntColumn();
+  private readonly changeOf = new IntColumn();
   private readonly changes: EntityChange[] = [];
   private readonly firstStep = changeStep();
-  private readonly valueKinds: number[] = [];
+  private readonly valueKinds = new IntColumn();
   private readonly recordKeys: (readonly string[])[] = [];
   private readonly recordKeysAt = new Map<string, number>();
-  private numbers = new Float64Array(INITIAL_NUMBERS);
+  private numbers = new Float64Array(INITIAL_COLUMN);
   private numberCount = 0;
   private readonly values: unknown[] = [];
   /** The open entity's change so far, and its names, which a change met for the first time keeps.
@@ -175,10 +198,10 @@ export class DeltaColumns {
   /** The columns as a delta's fields. */
   columns(): Pick<SnapshotDelta, DeltaColumnFields> {
     return {
-      touched: this.touched,
-      changeOf: this.changeOf,
+      touched: this.touched.taken(),
+      changeOf: this.changeOf.taken(),
       changes: this.changes,
-      valueKinds: this.valueKinds,
+      valueKinds: this.valueKinds.taken(),
       recordKeys: this.recordKeys,
       numbers: this.numbers.slice(0, this.numberCount),
       values: this.values,
@@ -272,7 +295,7 @@ export function packSnapshotDelta(delta: EntitySnapshotDelta): SnapshotDelta {
 export function entityDeltas(delta: SnapshotDelta): EntityDelta[] {
   const values = deltaValues(delta);
   let at = 0;
-  return delta.touched.map((id, i) => {
+  return Array.from(delta.touched, (id, i) => {
     const change = changeAt(delta, i);
     const components: Record<string, unknown> = {};
     for (const name of change.written) components[name] = values[at++];

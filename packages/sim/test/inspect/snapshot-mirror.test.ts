@@ -1,4 +1,3 @@
-import { serialize } from 'node:v8';
 import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import { TOUCHED_LOG_OVERFLOW_LIMIT } from '../../src/ecs/touched-log.js';
@@ -209,12 +208,13 @@ describe('snapshot delta stream', () => {
     const deltas = sim.snapshotDeltas();
     const first = nonNull(deltas.next());
     expect(first.rebuild).toBe(true);
-    expect(first.touched).toEqual([1]);
+    expect([...first.touched]).toEqual([1]);
     expect(first.removed).toEqual([]);
     expect(deltas.next()).toBeNull();
     sim.step();
     const stepped = nonNull(deltas.next());
-    expect(stepped).toMatchObject({ tick: 1, sequence: 1, rebuild: false, touched: [], removed: [] });
+    expect(stepped).toMatchObject({ tick: 1, sequence: 1, rebuild: false, removed: [] });
+    expect(stepped.touched).toHaveLength(0);
     expect(deltas.next()).toBeNull();
   });
 
@@ -233,15 +233,17 @@ describe('snapshot delta stream', () => {
     expect(delta.removed).toEqual([other]);
   });
 
-  it('lists touched ids as integers, which a structured clone writes compactly', () => {
+  it('lists touched ids ascending in an Int32Array, which a structured clone copies as bytes', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const nodes = [bareResource(sim, 5), bareResource(sim, 3), bareResource(sim, 2)];
     const deltas = sim.snapshotDeltas();
     deltas.next();
     for (const node of nodes.reverse()) sim.world.mut(node, Resource).remaining = 1;
-    const { touched } = nonNull(deltas.next());
-    expect(touched).toEqual([...nodes].reverse());
-    expect(serialize(touched)).toEqual(serialize(touched.map((id) => id | 0)));
+    const { touched, changeOf, valueKinds } = nonNull(deltas.next());
+    expect(touched).toBeInstanceOf(Int32Array);
+    expect(changeOf).toBeInstanceOf(Int32Array);
+    expect(valueKinds).toBeInstanceOf(Int32Array);
+    expect([...touched]).toEqual([...nodes].reverse());
   });
 
   it('numbers two deltas of one tick apart, so a mirror given only the second refuses it', () => {
@@ -323,7 +325,7 @@ describe('snapshot delta stream', () => {
     const shortLived = bareResource(sim, 1);
     sim.world.destroy(shortLived);
     const delta = nonNull(deltas.next());
-    expect(delta.touched).toEqual([]);
+    expect(delta.touched).toHaveLength(0);
     expect(delta.removed).toEqual([shortLived]);
     mirror.apply(delta);
     expect(ids(mirror.snapshot())).toEqual([1]);

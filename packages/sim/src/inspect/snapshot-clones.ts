@@ -304,9 +304,8 @@ function ascending(ids: Iterable<Entity>): Entity[] {
   return [...ids].sort((a, b) => a - b);
 }
 
-/** Ids ascending. An Int32Array sorts without a comparator call per pair, and its elements read back as
- *  small integers, so the delta's `touched` column stays an integer array (a structured clone writes a
- *  double one at 8 bytes an id). Entity ids stay within int32: the save caps them there. */
+/** Ids ascending. An Int32Array sorts without a comparator call per pair. Entity ids stay within int32:
+ *  the save caps them there. */
 function ascendingIds(ids: Iterable<Entity>): Int32Array {
   return Int32Array.from(ids).sort();
 }
