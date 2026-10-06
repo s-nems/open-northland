@@ -374,7 +374,8 @@ exact RAF interval quantiles, existing `perf()` figures, observed camera and can
 visibility, hardware and errors. The `perf().frame` CPU/draw figures are recent EMAs, while RAF
 quantiles and the `perf().window` means (`cpuMsPerFrame`, `receiveMsPerFrame`, `drawMsPerFrame` and
 its world-renderer share `worldMsPerFrame`, the rest being HUD, minimap, overlays and audio) cover the
-whole window. A window hidden at any point is invalid. Screenshots identify the
+whole window. Each window also counts the WebGL calls per rendered frame (`gl`: draws, texture binds, program
+switches, buffer uploads and their KB), which weigh far more per call on integrated GPUs than here. A window hidden at any point is invalid. Screenshots identify the
 chosen view. Camera gestures are suspended and input is blocked on the probe's page; every measured
 RAF checks camera scale/offset, canvas dimensions and device scale for drift. Dense placement is
 selected once from the greatest nearby building count, among the watched seat's own buildings when
