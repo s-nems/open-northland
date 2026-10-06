@@ -40,5 +40,11 @@ export {
   siegeShotsOf,
 } from './snapshot-index.js';
 export { depositVisualLevel } from './snapshot-readers/index.js';
-export { buildSpriteScene, collectSpriteScene, type LiveRefs, type SpriteScene } from './sprite-scene.js';
+export {
+  buildSpriteScene,
+  collectSpriteScene,
+  IncrementalScene,
+  type LiveRefs,
+  type SpriteScene,
+} from './sprite-scene.js';
 export { buildScene, type SceneGround, type SceneTerrain, terrainMapToScene } from './terrain-scene.js';

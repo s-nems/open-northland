@@ -1,5 +1,5 @@
 import { UNLOADED_GOOD_TYPE } from '@open-northland/data';
-import { type EntitySnapshot, entityById, type WorldSnapshot } from '@open-northland/sim';
+import { type EntitySnapshot, entityById, isPositioned, type WorldSnapshot } from '@open-northland/sim';
 import type { GhostSource } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import type { ElevationField } from '../terrain/index.js';
@@ -7,12 +7,13 @@ import { pushEffectItems, pushGhostItems } from './collect-fields.js';
 import type { SpriteDepthOrder } from './depth-order.js';
 import { type MutableSpriteDrawItem, type SpriteDrawItem, unsetDrawField } from './draw-item.js';
 import { DrawList } from './draw-list.js';
-import { emitEntities } from './entity-source.js';
+import { anchorTileBox, emitEntities } from './entity-source.js';
 import { type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
 import type { InHousePose, InHouseProgramLookup } from './in-house.js';
 import { assembleItem, type SceneBuild } from './item-assembly.js';
-import type { SceneItemMemo } from './item-memo.js';
+import { isSelfContainedKind, type SceneItemMemo } from './item-memo.js';
 import { palisadeLayoutOf } from './palisade-connections.js';
+import { collectRebuiltPositioned, type TouchedIds, touchedIdsOf } from './scene-feeds.js';
 import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose, vehiclePose } from './settler-pose.js';
 import { isIndoorSettler, targetPositionsOf } from './snapshot-index.js';
 import { classify, readPosition, vehicleDrawTile } from './snapshot-readers/index.js';
@@ -49,6 +50,9 @@ export interface SpriteSceneOptions {
    *  viewport-culled one: no draw item, but kept live so its pooled sprite survives until the fog
    *  lifts. */
   readonly fogVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
+  /** Version of {@link fogVisible}'s answers: a build may keep last build's self-contained items only
+   *  under the same one. Absent with a fog cull, every build emits every entity. */
+  readonly fogEpoch?: number | undefined;
   /** The viewer's remembered statics, drawn dimmed on explored ground; every drawable ghost, on screen
    *  or not, answers live in {@link SpriteScene.liveRefs}, so a dead entity keeps its pooled sprite for
    *  as long as the memory draws. A ref never yields two items: the store holds no record on visible
@@ -110,15 +114,103 @@ export function collectSpriteScene(
   opts: SpriteSceneOptions = {},
   order?: SpriteDepthOrder,
   memo?: SceneItemMemo,
+  incremental?: IncrementalScene,
 ): SpriteScene {
-  return collectScene(snapshot, opts, order, memo);
+  return collectScene(snapshot, opts, order, memo, incremental);
 }
+
+/** What the self-contained items of a build depend on besides their own entities. */
+interface StaticInputs {
+  readonly minX: number;
+  readonly minY: number;
+  readonly maxX: number;
+  readonly maxY: number;
+  readonly elevation: ElevationField | undefined;
+  readonly staticRefs: ReadonlySet<number> | undefined;
+  readonly staticCount: number;
+  readonly withheldRefs: ReadonlySet<number> | undefined;
+  readonly fogVisible: SpriteSceneOptions['fogVisible'];
+  readonly fogEpoch: number | undefined;
+  readonly playerColourOf: SpriteSceneOptions['playerColourOf'];
+}
+
+function sameStaticInputs(a: StaticInputs, b: StaticInputs): boolean {
+  return (
+    a.minX === b.minX &&
+    a.minY === b.minY &&
+    a.maxX === b.maxX &&
+    a.maxY === b.maxY &&
+    a.elevation === b.elevation &&
+    a.staticRefs === b.staticRefs &&
+    a.staticCount === b.staticCount &&
+    a.withheldRefs === b.withheldRefs &&
+    a.fogVisible === b.fogVisible &&
+    a.fogEpoch === b.fogEpoch &&
+    a.playerColourOf === b.playerColourOf
+  );
+}
+
+/**
+ * A scene build's self-contained items (`SceneItemMemo`'s kinds), kept across builds of one view as a
+ * run sorted like the draw list: a build re-emits only the entities a delta touched and the kinds that
+ * read more than their own entity, and merges them into the run instead of emitting every entity under
+ * the view again. Held by one build loop; the touch log it drains is shared by the snapshot lineage.
+ */
+export class IncrementalScene {
+  statics: readonly SpriteDrawItem[] = [];
+  inputs: StaticInputs | null = null;
+  touched: TouchedIds | null = null;
+  /** Whether the last build spliced the run rather than rebuilding it. */
+  spliced = false;
+
+  clear(): void {
+    this.statics = [];
+    this.inputs = null;
+    this.touched = null;
+  }
+}
+
+/** Depth, then ref: the order every build sorts its draw list in. */
+function drawOrder(a: SpriteDrawItem, b: SpriteDrawItem): number {
+  return a.depth - b.depth || a.ref - b.ref;
+}
+
+/** Two runs sorted by {@link drawOrder} merged into one, as sorting their union would order it. */
+function mergeRuns(left: readonly SpriteDrawItem[], right: readonly SpriteDrawItem[]): SpriteDrawItem[] {
+  const out = new Array<SpriteDrawItem>(left.length + right.length);
+  let i = 0;
+  let j = 0;
+  let k = 0;
+  while (i < left.length && j < right.length) {
+    const a = left[i] as SpriteDrawItem;
+    const b = right[j] as SpriteDrawItem;
+    if (drawOrder(a, b) <= 0) {
+      out[k++] = a;
+      i++;
+    } else {
+      out[k++] = b;
+      j++;
+    }
+  }
+  while (i < left.length) out[k++] = left[i++] as SpriteDrawItem;
+  while (j < right.length) out[k++] = right[j++] as SpriteDrawItem;
+  return out;
+}
+
+/** Whether a build keeps `item` in its static run. */
+function isStaticItem(item: SpriteDrawItem): boolean {
+  return item.kind !== 'craftfx' && isSelfContainedKind(item.kind) && item.ghost !== true;
+}
+
+/** Reused query output of the incremental build. */
+const rebuiltCandidates: EntitySnapshot[] = [];
 
 function collectScene(
   snapshot: WorldSnapshot,
   opts: DrawListOptions,
   order?: SpriteDepthOrder,
   memo?: SceneItemMemo,
+  incremental?: IncrementalScene,
 ): SpriteScene {
   const {
     viewport,
@@ -249,14 +341,94 @@ function collectScene(
     list.push(item);
   };
 
-  const emitted = emitEntities(snapshot, opts, collected, emit);
-  if (ghosts !== undefined) pushGhostItems(list, ghosts, viewport, elevation, liveVehicles, playerColourOf);
-  const liveRefs: LiveRefs =
-    ghosts === undefined ? emitted : { has: (ref) => emitted.has(ref) || ghosts.has(ref) };
-  const items = list.finish();
-  // `depth` carries the feet anchor plus the per-kind paint bias; id breaks a remaining exact tie.
-  if (order !== undefined) order.sort(items);
-  else items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
+  const touched = incremental === undefined ? undefined : touchedIdsOf(snapshot);
+  // A portrait forces its subjects through the culls, which a kept run cannot answer for.
+  const inputs: StaticInputs | null =
+    incremental === undefined ||
+    viewport === undefined ||
+    opts.onlyRefs !== undefined ||
+    portraitRef !== undefined ||
+    portraitHouse !== undefined ||
+    (insetRefs?.length ?? 0) > 0 ||
+    keepIndoorSettlers === true ||
+    keepAboardRiders === true ||
+    (fogVisible !== undefined && opts.fogEpoch === undefined)
+      ? null
+      : {
+          minX: viewport.minX,
+          minY: viewport.minY,
+          maxX: viewport.maxX,
+          maxY: viewport.maxY,
+          elevation,
+          staticRefs,
+          staticCount: staticRefs?.size ?? 0,
+          withheldRefs,
+          fogVisible,
+          fogEpoch: opts.fogEpoch,
+          playerColourOf,
+        };
+  const splices =
+    incremental !== undefined &&
+    touched !== undefined &&
+    viewport !== undefined &&
+    inputs !== null &&
+    incremental.inputs !== null &&
+    incremental.touched === touched &&
+    sameStaticInputs(incremental.inputs, inputs);
+
+  let liveRefs: LiveRefs;
+  let items: SpriteDrawItem[];
+  if (splices && viewport !== undefined && touched !== undefined && incremental !== undefined) {
+    // The kinds rebuilt every build, then the self-contained entities the deltas touched since.
+    const count = collectRebuiltPositioned(snapshot, anchorTileBox(viewport), rebuiltCandidates);
+    for (let i = 0; i < count; i++) {
+      const entity = rebuiltCandidates[i];
+      if (entity !== undefined) emit(entity, true);
+    }
+    for (const id of touched.ids) {
+      const entity = entityById(snapshot, id);
+      const kind = entity === undefined ? null : classify(entity.components);
+      if (entity !== undefined && kind !== null && isSelfContainedKind(kind)) emit(entity, true);
+    }
+    if (ghosts !== undefined) pushGhostItems(list, ghosts, viewport, elevation, liveVehicles, playerColourOf);
+    const emittedItems = list.finish();
+    const fresh: SpriteDrawItem[] = [];
+    const others: SpriteDrawItem[] = [];
+    for (const item of emittedItems) (isStaticItem(item) ? fresh : others).push(item);
+    if (order !== undefined) order.sort(others);
+    else others.sort(drawOrder);
+    fresh.sort(drawOrder);
+    // Most deltas touch no self-contained entity under the view: the run stands as it was.
+    const kept =
+      touched.ids.size === 0
+        ? incremental.statics
+        : incremental.statics.filter((i) => !touched.ids.has(i.ref));
+    const statics = fresh.length === 0 ? kept : mergeRuns(kept, fresh);
+    incremental.statics = statics;
+    items = mergeRuns(statics, others);
+    const positioned: LiveRefs = {
+      has: (ref) => collected.has(ref) || (isPositioned(snapshot, ref) && staticRefs?.has(ref) !== true),
+    };
+    liveRefs = ghosts === undefined ? positioned : { has: (ref) => positioned.has(ref) || ghosts.has(ref) };
+    incremental.spliced = true;
+  } else {
+    const emitted = emitEntities(snapshot, opts, collected, emit);
+    if (ghosts !== undefined) pushGhostItems(list, ghosts, viewport, elevation, liveVehicles, playerColourOf);
+    liveRefs = ghosts === undefined ? emitted : { has: (ref) => emitted.has(ref) || ghosts.has(ref) };
+    items = list.finish();
+    // `depth` carries the feet anchor plus the per-kind paint bias; id breaks a remaining exact tie.
+    if (order !== undefined) order.sort(items);
+    else items.sort(drawOrder);
+    if (incremental !== undefined) {
+      incremental.statics = inputs === null ? [] : items.filter(isStaticItem);
+      incremental.spliced = false;
+    }
+  }
+  if (incremental !== undefined) {
+    incremental.inputs = inputs;
+    incremental.touched = touched ?? null;
+    touched?.ids.clear();
+  }
   return { items, liveRefs };
 }
 

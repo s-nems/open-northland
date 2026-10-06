@@ -13,6 +13,7 @@ import {
   buildSpriteScene,
   collectSpriteScene,
   type DrawItem,
+  IncrementalScene,
   type LiveRefs,
   SceneItemMemo,
   type SpriteDrawItem,
@@ -169,6 +170,7 @@ export class SpritePool {
   private readonly sceneCache = new SpriteSceneCache();
   private readonly depthOrder = new SpriteDepthOrder();
   private readonly itemMemo = new SceneItemMemo();
+  private readonly incremental = new IncrementalScene();
   private lastItems: readonly SpriteDrawItem[] = [];
   /** Indices into {@link lastItems} of the entities the last full pass found moving with the frame clock
    *  or emphasised, and their refs: what a still frame presents. */
@@ -471,6 +473,7 @@ export class SpritePool {
         staticRefs: frame.staticRefs,
         withheldRefs: frame.withheldRefs,
         fogVisible: frame.fogVisible,
+        fogEpoch: frame.fogEpoch,
         ghosts: frame.ghosts,
         ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
         ...(this.sheet?.holyFire !== undefined ? { holyFire: this.sheet.holyFire } : {}),
@@ -481,6 +484,7 @@ export class SpritePool {
       },
       this.depthOrder,
       this.itemMemo,
+      this.incremental,
     );
     this.sceneCache.store(frame, scene);
     return scene;
@@ -688,5 +692,6 @@ export class SpritePool {
     this.passEpoch = -1;
     this.reapCursor = undefined;
     this.sceneCache.clear();
+    this.incremental.clear();
   }
 }

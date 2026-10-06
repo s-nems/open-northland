@@ -1,5 +1,6 @@
 import { entitiesWith, type WorldSnapshot } from '@open-northland/sim';
 import { hudTotalsOf } from './hud/totals.js';
+import { collectRebuiltPositioned, touchedIdsOf } from './scene/scene-feeds.js';
 import {
   enterableStoresOf,
   palisadesOf,
@@ -32,4 +33,12 @@ export const RENDER_FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   { name: 'fog ghost vehicles', read: (snapshot) => entitiesWith(snapshot, 'Vehicle') },
   { name: 'road network', read: (snapshot) => roadRevisionOf(snapshot) },
   { name: 'road shards', read: (snapshot) => entitiesWith(snapshot, 'RoadShard') },
+  { name: 'scene touched ids', read: (snapshot) => touchedIdsOf(snapshot) },
+  {
+    name: 'scene rebuilt positions',
+    read: (snapshot) => collectRebuiltPositioned(snapshot, EMPTY_BOX, []),
+  },
 ];
+
+/** A box no bucket answers, for a reader that only registers its index. */
+const EMPTY_BOX = { minX: 0, minY: 0, maxX: -1, maxY: -1 };

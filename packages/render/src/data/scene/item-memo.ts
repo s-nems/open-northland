@@ -13,6 +13,10 @@ const SELF_CONTAINED_KINDS: ReadonlySet<EntityKind> = new Set<EntityKind>([
   'fish',
 ]);
 
+export function isSelfContainedKind(kind: EntityKind): boolean {
+  return SELF_CONTAINED_KINDS.has(kind);
+}
+
 /** A self-contained entity's anchor, and its item once a build assembled one. */
 export interface MemoizedEntity {
   readonly kind: EntityKind;
