@@ -9,7 +9,7 @@ import {
   type Simulation,
   serializeSaveGame,
 } from '@open-northland/sim';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { runDemoWorld } from '../src/game/world/index.js';
 import { inlineSessionHost } from '../src/session/index.js';
 import { stagedSaveFrom } from '../src/view/runtime/save-load/boot.js';
@@ -231,6 +231,26 @@ describe('saveLoadSession save flow', () => {
     // The room receives the very bytes the slot stores, not a second serialization.
     expect(shared).toEqual({ header: document.header, bytes: stored?.bytes });
     expect(document.header).toMatchObject({ tick, session: { roster: ['Ania'] } });
+  });
+
+  it('reports a save whose compression fails as failed, keeping the slot it would replace', async () => {
+    const h = harness(demoSim());
+    expect(await h.session.saveGame('kept')).toEqual({ kind: 'saved' });
+    const previous = h.store.get('kept');
+    vi.stubGlobal(
+      'CompressionStream',
+      class {
+        constructor() {
+          throw new Error('gzip unavailable');
+        }
+      },
+    );
+    try {
+      expect(await h.session.saveGame('kept')).toEqual({ kind: 'failed' });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(h.store.get('kept')).toBe(previous);
   });
 
   it('keeps a successful local save when relay upload fails, and never shares a failed local write', async () => {

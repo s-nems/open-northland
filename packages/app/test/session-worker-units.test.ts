@@ -14,7 +14,8 @@ import {
   serveSession,
 } from '../src/session/worker/serve.js';
 import { StallWatch } from '../src/session/worker/stall-watch.js';
-import { startWorkerSession } from '../src/session/worker/worker-session.js';
+import { DISPOSED_SESSION_MESSAGE, startWorkerSession } from '../src/session/worker/worker-session.js';
+import { decodeSaveText, type SaveFile } from '../src/view/runtime/save-load/codec.js';
 import { canonicalEntities } from './support/session-worker/canonical-entities.js';
 import { nodeParentPort } from './support/session-worker/node-ports.js';
 import { DEFAULT_TEST_OPTIONS, SILENT_STALL_REPORTS } from './support/session-worker/start-worker.js';
@@ -339,6 +340,66 @@ describe('failures between the ends', () => {
     expect(await answer(3)).toMatchObject({ ok: true, value: { tick: faultTick } });
     deliver({ kind: 'call', id: 4, call: { method: 'captureSave', options: {} } });
     expect(await answer(4)).toMatchObject({ ok: false, error: { message: BROKEN_SESSION_MESSAGE } });
+    deliver({ kind: 'call', id: 5, call: { method: 'captureSaveFile', options: {} } });
+    expect(await answer(5)).toMatchObject({ ok: false, error: { message: BROKEN_SESSION_MESSAGE } });
+  });
+
+  it('transfers each save file it captures, two captures back to back included', async () => {
+    const replies = new Map<number, FromWorker<null>>();
+    const posted: SaveFile[] = [];
+    let deliver: (message: ToWorker<TestWorldBoot>) => void = () => undefined;
+    const port: SessionPort = {
+      // A clone with the transfer list, as postMessage makes it: a transferred buffer detaches here.
+      post: (message, transfer) => {
+        const reply = message as FromWorker<null>;
+        if (reply.kind !== 'reply') return;
+        if (reply.ok) posted.push(reply.value as SaveFile);
+        replies.set(reply.id, structuredClone(reply, { transfer: [...(transfer ?? [])] }));
+      },
+      listen: (receive) => {
+        deliver = (message) => receive(message, UNMEASURED_MS);
+      },
+      listenFailure: () => undefined,
+      close: () => undefined,
+    };
+    serveSession(port, buildTestWorld);
+    deliver({ kind: 'boot', boot: { kind: 'scene', id: 'sandbox' }, options: DEFAULT_TEST_OPTIONS });
+    deliver({ kind: 'call', id: 1, call: { method: 'captureSaveFile', options: { savedAt: 1 } } });
+    deliver({ kind: 'call', id: 2, call: { method: 'captureSaveFile', options: { savedAt: 1 } } });
+    while (replies.size < 2) await settle(TURN_MS);
+    const texts: string[] = [];
+    for (const id of [1, 2]) {
+      const reply = replies.get(id);
+      if (reply?.kind !== 'reply' || !reply.ok) throw new Error(`capture ${id} failed`);
+      texts.push(await decodeSaveText((reply.value as SaveFile).bytes));
+    }
+    expect(texts[1]).toBe(texts[0]);
+    // The worker's copies were moved, not cloned.
+    expect(posted.map((file) => file.bytes.byteLength)).toEqual([0, 0]);
+  });
+
+  it('fails a save capture still pending when the session is disposed', async () => {
+    const channel = new MessageChannel();
+    serveSession(nodeParentPort(channel.port1), buildTestWorld);
+    const inner = nodeParentPort(channel.port2);
+    const port: SessionPort = {
+      ...inner,
+      listenFailure: () => undefined,
+      close: () => {
+        channel.port1.close();
+        channel.port2.close();
+      },
+    };
+    const session = await startWorkerSession<TestWorldBoot, null>(
+      port,
+      { kind: 'scene', id: 'sandbox' },
+      DEFAULT_TEST_OPTIONS,
+      SILENT_STALL_REPORTS,
+    );
+    const capture = session.captureSaveFile({});
+    session.dispose();
+    await expect(capture).rejects.toThrow(DISPOSED_SESSION_MESSAGE);
+    await expect(session.captureSaveFile({})).rejects.toThrow(DISPOSED_SESSION_MESSAGE);
   });
 
   it('replies with an error when the answer itself cannot be posted', async () => {

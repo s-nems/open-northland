@@ -53,7 +53,7 @@ export interface WorkerSession<E> {
   offThreadTickCost(): OffThreadTickCost;
   /** The driver's capture as file bytes, serialized and compressed on the worker. */
   captureSaveFile(options: ExportSaveOptions): Promise<SaveFile>;
-  /** Stop the worker; answers still pending never land. Idempotent. */
+  /** Stop the worker; answers still pending never land, save captures fail. Idempotent. */
   dispose(): void;
 }
 
@@ -86,7 +86,12 @@ type Queued =
 interface PendingCall {
   resolve(answer: { readonly value: unknown; readonly tick: number }): void;
   reject(error: Error): void;
+  /** Rejected rather than dropped on dispose: a save flow that must end in an outcome. */
+  readonly endsOnDispose: boolean;
 }
+
+/** Why a save capture still pending when the session was disposed failed. */
+export const DISPOSED_SESSION_MESSAGE = 'The session ended before it answered';
 
 interface TickWaiter {
   readonly tick: number;
@@ -288,7 +293,7 @@ class WorkerClient<E> {
       boot,
       offThreadTickCost: () => this.lastCost,
       captureSaveFile: (options) =>
-        this.call({ method: 'captureSaveFile', options }).then(({ value }) => value as SaveFile),
+        this.call({ method: 'captureSaveFile', options }, true).then(({ value }) => value as SaveFile),
       dispose: () => this.dispose(),
     };
   }
@@ -373,11 +378,17 @@ class WorkerClient<E> {
     for (const span of spans) sink(span.system, span.startMs + offset, span.endMs + offset);
   }
 
-  private call(call: WorkerCall): Promise<{ readonly value: unknown; readonly tick: number }> {
+  private call(
+    call: WorkerCall,
+    endsOnDispose = false,
+  ): Promise<{ readonly value: unknown; readonly tick: number }> {
     return new Promise((resolve, reject) => {
-      if (this.disposed) return;
+      if (this.disposed) {
+        if (endsOnDispose) reject(new Error(DISPOSED_SESSION_MESSAGE));
+        return;
+      }
       const id = this.nextCallId++;
-      this.calls.set(id, { resolve, reject });
+      this.calls.set(id, { resolve, reject, endsOnDispose });
       this.post({ kind: 'call', id, call });
     });
   }
@@ -415,7 +426,7 @@ class WorkerClient<E> {
   }
 
   /** A read still pending never lands: its asker belongs to the view being torn down, and a
-   *  rejection there would read as a crash. */
+   *  rejection there would read as a crash. A save capture fails instead, which its flow reports. */
   private dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
@@ -424,13 +435,16 @@ class WorkerClient<E> {
   }
 
   /** Stop the heartbeat and drop the pending asks: with an `error` the calls reject with it and the
-   *  waiters resolve, without one neither settles. */
+   *  waiters resolve, without one only the calls that end on dispose settle. */
   private release(error: Error | null): void {
     clearInterval(this.heartbeat);
     const calls = [...this.calls.values()];
     const waiters = this.waiters.splice(0);
     this.calls.clear();
-    if (error === null) return;
+    if (error === null) {
+      for (const call of calls) if (call.endsOnDispose) call.reject(new Error(DISPOSED_SESSION_MESSAGE));
+      return;
+    }
     for (const call of calls) call.reject(error);
     for (const waiter of waiters) waiter.resolve();
   }
