@@ -93,6 +93,8 @@ describe('restoreSimulation continuation', () => {
     expect(restored.rng.getState()).toBe(original.rng.getState());
     expect(restored.commands.pendingCount).toBe(1);
     expect(restored.hashState()).toBe(original.hashState());
+    // The indexes the restore built ahead of the first tick agree with a fresh derive.
+    expect(restored.world.verifyCaches()).toEqual([]);
 
     const genA = new Rng(0xab);
     const genB = new Rng(0xab);

@@ -209,7 +209,7 @@ class QualitySources {
 const sourcesByWorld = new WeakMap<World, QualitySources>();
 
 /** The world's quality sources, caught up to the live world. */
-function qualitySources(world: World, content: ContentSet): QualitySources {
+export function qualitySources(world: World, content: ContentSet): QualitySources {
   let held = sourcesByWorld.get(world);
   if (held === undefined || held.content !== content) {
     if (held === undefined) {
