@@ -43,6 +43,9 @@ const REPLANT_ATTEMPTS = 3;
 /** The nodes a walk from the gatherer's origin settles before it gives up (authored): about the disc a
  *  deposit ninety nodes out lies in, so a trip that long is still measured on foot. */
 const ORIGIN_WALK_BUDGET_NODES = 16384;
+/** The same for a computer seat's own posts, whose aimed walks search a corridor rather than a disc
+ *  (authored): a target that corridor cannot reach within it ranks by straight distance instead. */
+const AIMED_WALK_BUDGET_NODES = 4096;
 /** The nodes the flood from a resource's work cells settles (authored): a disc some thirty nodes wide,
  *  enough to walk round a ridge or a grove to the band on its far side. */
 const RESOURCE_FLOOD_BUDGET_NODES = 2048;
@@ -143,7 +146,7 @@ export function flagGround(
           terrain,
           blocked,
           seed,
-          ORIGIN_WALK_BUDGET_NODES,
+          carrierWalks === 'aimed' ? AIMED_WALK_BUDGET_NODES : ORIGIN_WALK_BUDGET_NODES,
           carrierWalks,
           (from, budget) => held.floodOf(from, budget),
         );
