@@ -41,8 +41,35 @@ it('captures the current public roster and does not upload an old world after re
         team: 1,
         nick: 'Ania',
         ready: false,
+        difficulty: 'hard',
       },
-      { player: 1, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 4, nick: null, ready: false },
+      {
+        player: 1,
+        mode: 'ai',
+        offers: ['idle', 'ai', 'absent'],
+        color: 4,
+        nick: null,
+        ready: false,
+        difficulty: 'easy',
+      },
+      {
+        player: 2,
+        mode: 'idle',
+        offers: ['idle', 'ai', 'absent'],
+        color: 5,
+        nick: null,
+        ready: false,
+        difficulty: 'medium',
+      },
+      {
+        player: 3,
+        mode: 'absent',
+        offers: ['idle', 'ai', 'absent'],
+        color: 6,
+        nick: null,
+        ready: false,
+        difficulty: 'hard',
+      },
     ],
     members: [
       {
@@ -64,9 +91,17 @@ it('captures the current public roster and does not upload an old world after re
   const hooks = networkSaveSession(client, worldId);
   const metadata = parseSavedSessionMetadata(hooks.sessionMetadata?.());
   expect(metadata?.descriptor.seats[1]?.mode).toBe('ai');
+  expect(metadata?.descriptor.seats.map(({ difficulty }) => difficulty)).toEqual([
+    undefined,
+    'easy',
+    undefined,
+    undefined,
+  ]);
   expect(metadata?.roster).toEqual([
     { player: 0, nick: 'Ania' },
     { player: 1, nick: null },
+    { player: 2, nick: null },
+    { player: 3, nick: null },
   ]);
   expect(JSON.stringify(metadata)).not.toContain(client.token);
   const save = exportSaveGame(sim, { mapId: 'test', session: metadata });

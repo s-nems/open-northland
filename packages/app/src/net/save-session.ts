@@ -12,8 +12,13 @@ export function networkSaveSession(
       const { session, room } = client;
       if (client.worldId !== worldId || session === null || room === null)
         throw new Error('The multiplayer world is no longer active');
+      // Room seats retain their lobby AI preference even while a human occupies the seat.
+      const seats = room.seats.map(({ difficulty, ...seat }) => ({
+        ...seat,
+        ...(seat.mode === 'ai' && difficulty !== undefined ? { difficulty } : {}),
+      }));
       return createSavedSessionMetadata(
-        { ...session, speed: client.speed, seats: room.seats },
+        { ...session, speed: client.speed, seats },
         room.seats.map(({ player, nick }) => ({ player, nick })),
       );
     },
