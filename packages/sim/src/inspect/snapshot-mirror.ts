@@ -148,10 +148,24 @@ export class SnapshotMirror {
   }
 }
 
+/** The most fields a record built by computed-key stores (`record[name] = value`) is sure to keep in
+ *  V8's fast layout: past about twenty such additions it turns into a hash table, which an
+ *  `Object.assign` copy keeps, at about a hundred times the cost of copying a fast record. */
+const KEYED_FIELDS = 16;
+
+/** Add `name` to a record holding `fields` fields and not `name`. Past {@link KEYED_FIELDS} the field is
+ *  defined, which V8 adds as a named store, under a limit of over a hundred fields: slower than a keyed
+ *  store, but the record keeps its fast layout. */
+function addField(components: Record<string, unknown>, fields: number, name: string, value: unknown): void {
+  if (fields < KEYED_FIELDS) components[name] = value;
+  else
+    Object.defineProperty(components, name, { value, writable: true, enumerable: true, configurable: true });
+}
+
 function created(id: number, change: EntityChange, values: readonly unknown[], at: number): EntitySnapshot {
   const components: Record<string, unknown> = {};
   const { written } = change;
-  for (let k = 0; k < written.length; k++) components[written[k] as string] = values[at + k];
+  for (let k = 0; k < written.length; k++) addField(components, k, written[k] as string, values[at + k]);
   return { id, components };
 }
 
@@ -166,14 +180,31 @@ function patched(
 ): EntitySnapshot {
   const { written, removed } = change;
   let components: Record<string, unknown>;
-  // Object.assign onto an empty literal copies the record's shape whole; a spread copies key by key.
-  if (removed.length === 0) components = Object.assign({}, held.components);
-  else {
+  let fields = -1; // counted only once a name is added
+  if (removed.length === 0) {
+    // Object.assign onto an empty literal copies a fast record's shape whole; a spread copies key by key.
+    components = Object.assign({}, held.components);
+  } else {
     components = {};
+    fields = 0;
     for (const name in held.components) {
-      if (!removed.includes(name)) components[name] = held.components[name];
+      if (!removed.includes(name)) addField(components, fields++, name, held.components[name]);
     }
   }
-  for (let k = 0; k < written.length; k++) components[written[k] as string] = values[at + k];
+  for (let k = 0; k < written.length; k++) {
+    const name = written[k] as string;
+    if (name in components) {
+      components[name] = values[at + k];
+      continue;
+    }
+    if (fields < 0) fields = fieldCount(components);
+    addField(components, fields++, name, values[at + k]);
+  }
   return { id: held.id, components };
+}
+
+function fieldCount(components: Readonly<Record<string, unknown>>): number {
+  let fields = 0;
+  for (const _ in components) fields++;
+  return fields;
 }

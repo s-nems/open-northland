@@ -406,6 +406,34 @@ describe('snapshot mirror list edits', () => {
     expect(entityById(mirror.snapshot(), 20)?.components).toEqual({ size: { w: 1 } });
   });
 
+  it('keeps a wide record plain through creation, growth, a write and a removal', () => {
+    // Past sixteen fields the mirror adds a name as a defined property: it must read, enumerate, copy
+    // and serialize like an assigned one, in the same order.
+    const WIDE = 24;
+    const names = Array.from({ length: WIDE }, (_, i) => `c${i}`);
+    const wide = Object.fromEntries(names.map((name, i) => [name, { v: i }]));
+    const mirror = new SnapshotMirror();
+    mirror.apply(
+      delta({ tick: 0, sequence: 0, rebuild: true, touched: [{ id: 7, components: wide, removed: [] }] }),
+    );
+    expect(Object.keys(entityById(mirror.snapshot(), 7)?.components ?? {})).toEqual(names);
+    mirror.apply(
+      delta({ touched: [{ id: 7, components: { c3: { v: -3 }, extra: { v: 99 } }, removed: [] }] }),
+    );
+    mirror.apply(delta({ tick: 2, sequence: 2, touched: [{ id: 7, components: {}, removed: ['c0'] }] }));
+    const grown = nonNull(entityById(mirror.snapshot(), 7) ?? null).components;
+    const expected = Object.fromEntries(
+      Object.entries({ ...wide, c3: { v: -3 }, extra: { v: 99 } }).filter(([name]) => name !== 'c0'),
+    );
+    expect(Object.keys(grown)).toEqual(Object.keys(expected));
+    expect(grown).toStrictEqual(expected);
+    expect(Object.getOwnPropertyDescriptor(grown, 'extra')).toMatchObject({
+      writable: true,
+      enumerable: true,
+    });
+    expect(structuredClone(grown)).toStrictEqual(expected);
+  });
+
   it('drops removed entities from the head, the middle and the tail in one pass, and keeps them as departed', () => {
     const mirror = seeded([10, 20, 30, 40, 50]);
     const before = mirror.snapshot().entities.slice();
