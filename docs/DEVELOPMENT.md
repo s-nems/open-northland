@@ -409,6 +409,7 @@ browser. `player=overseer` builds the same world whenever seat 0 is an AI seat. 
 | `ON_BENCH_MIRROR_BATCH` | ticks per delta under `ON_BENCH_MIRROR` (default 1), the batching a worker does when several ticks reach one frame |
 | `ON_BENCH_MIRROR_SPLIT` | `on` under `ON_BENCH_MIRROR` times each frame index reader (`FRAME_INDEX_READERS`) on a mirror of its own and reports its median upkeep over a bare apply of the same delta |
 | `ON_BENCH_MIRROR_PARITY` | `on` under `ON_BENCH_MIRROR` draws each delta's span from 1 to 7 ticks and checks the indexes against a fresh walk after every delta; a difference fails the run |
+| `ON_BENCH_MIRROR_BREAKDOWN` | `on` under `ON_BENCH_MIRROR` lists per window what the deltas are made of, per component: writes per delta, the share that rewrote an equal value or created the entity, the kilobytes they carry and the record fields that changed most; tallied outside the timings, its garbage lands in the tick GC columns |
 | `ON_BENCH_MIRROR_DIGEST` | `on` under `ON_BENCH_MIRROR` has the deltas carry the `debug=diag` truth digest: take includes the worker's fold, `truth` samples the main thread's check, and a mismatch fails the run |
 | `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP`, `ON_BENCH_CHECKPOINTS` | checkpoints, below |
 | `ON_BENCH_JSON` | where the report is written instead of `bench-out/` |

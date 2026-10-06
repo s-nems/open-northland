@@ -21,8 +21,8 @@ import { publishReport, reportFrom } from './run.js';
  * `ON_BENCH_WINDOWS`, `ON_BENCH_SYNC_DIGEST` (fold the per-tick sync digest, the lockstep session's
  * cost), `ON_BENCH_MIRROR` (sample the snapshot delta path, see `mirror-probe.ts`) with
  * `ON_BENCH_MIRROR_BATCH` (ticks per delta, default 1), `ON_BENCH_MIRROR_DIGEST` (carry the truth digest),
- * `ON_BENCH_MIRROR_SPLIT` (time each frame index reader) and `ON_BENCH_MIRROR_PARITY` (random batches,
- * indexes checked per delta),
+ * `ON_BENCH_MIRROR_SPLIT` (time each frame index reader), `ON_BENCH_MIRROR_PARITY` (random batches,
+ * indexes checked per delta) and `ON_BENCH_MIRROR_BREAKDOWN` (what the deltas are made of),
  * `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP` and `ON_BENCH_CHECKPOINTS` (see `map-world.ts`),
  * `ON_BENCH_JSON=<path>` (write the machine-readable report).
  */
@@ -57,6 +57,7 @@ async function main(): Promise<void> {
         digest: boolEnv('ON_BENCH_MIRROR_DIGEST'),
         split: boolEnv('ON_BENCH_MIRROR_SPLIT'),
         parity: boolEnv('ON_BENCH_MIRROR_PARITY'),
+        breakdown: boolEnv('ON_BENCH_MIRROR_BREAKDOWN'),
       })
     : null;
 

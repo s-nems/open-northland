@@ -8,6 +8,7 @@ import {
   SnapshotMirror,
 } from '@open-northland/sim';
 import { FRAME_INDEX_READERS } from '../src/view/projections/frame-indexes.js';
+import { DeltaBreakdown } from './mirror-breakdown.js';
 import { percentile } from './report/index.js';
 
 const BYTES_PER_KB = 1024;
@@ -28,6 +29,8 @@ export interface MirrorProbeOptions {
   /** Draw each delta's span from 1 to {@link PARITY_MAX_TICKS_PER_DELTA} ticks and check the indexes
    *  against a fresh walk after every delta instead of once per window. */
   readonly parity: boolean;
+  /** Tally what the deltas are made of per component (`mirror-breakdown.ts`), outside the timings. */
+  readonly breakdown: boolean;
 }
 
 /** A mirror that reads `readers` after every delta, as the runtime's frame does, with its apply
@@ -86,6 +89,7 @@ export class MirrorProbe {
   private deserializeUs: number[] = [];
   private truthUs: number[] = [];
   private readonly truth: MirrorTruth | null;
+  private readonly breakdown: DeltaBreakdown | null;
   private touched: number[] = [];
   private components: number[] = [];
   private kilobytes: number[] = [];
@@ -96,6 +100,7 @@ export class MirrorProbe {
   ) {
     this.deltas = sim.snapshotDeltas({ digest: options.digest });
     this.truth = options.digest ? new MirrorTruth() : null;
+    this.breakdown = options.breakdown ? new DeltaBreakdown() : null;
     this.split = options.split
       ? [new TimedMirror('control', []), ...FRAME_INDEX_READERS.map((r) => new TimedMirror(r.name, [r]))]
       : [];
@@ -120,6 +125,9 @@ export class MirrorProbe {
     const t2 = performance.now();
     const received = deserialize(bytes) as SnapshotDelta;
     const t3 = performance.now();
+    if (this.breakdown !== null && this.bare.mirror.tick !== null) {
+      this.breakdown.add(deserialize(bytes) as SnapshotDelta, this.bare.mirror.snapshot());
+    }
     // Each mirror applies a copy of its own, as fresh from the deserializer as the runtime's, in an order
     // that rotates per delta: a mirror applying first runs measurably slower.
     const mirrors = [this.bare, this.indexed, ...this.split];
@@ -190,6 +198,7 @@ export class MirrorProbe {
         `  mirror upkeep per reader, p50 µs over a bare apply of the same delta: ${parts.join(', ')}`,
       );
     }
+    if (this.breakdown !== null) lines.push(...this.breakdown.lines());
     for (const mirror of [this.bare, this.indexed, ...this.split]) mirror.applyUs = [];
     this.takeUs = [];
     this.serializeUs = [];
