@@ -183,6 +183,17 @@ describe('fog posts', () => {
     expect(posts.changed(null)).toBe(true);
     expect(posts.changed(null)).toBe(false);
   });
+
+  it('posts a seat watched again although its mask did not change meanwhile', () => {
+    const posts = new FogPosts();
+    const SEAT_A = VIEWER;
+    const SEAT_B = VIEWER + 1;
+    expect(posts.changed(answer(1, [1, 1, 0, 0], SEAT_A))).toBe(true);
+    expect(posts.changed(answer(1, [0, 0, 1, 1], SEAT_B))).toBe(true);
+    // The runtime holds B's masks now: A's unchanged ones must reach it again.
+    expect(posts.changed(answer(2, [1, 1, 0, 0], SEAT_A))).toBe(true);
+    expect(posts.changed(answer(3, [1, 1, 0, 0], SEAT_A))).toBe(false);
+  });
 });
 
 describe('lead tick limit', () => {

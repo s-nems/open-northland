@@ -3,8 +3,10 @@ import {
   adminCommand,
   type CommandEnvelope,
   components,
+  type Entity,
   exportSaveGame,
   parseCommandLog,
+  playerCommand,
   type Simulation,
   stepReplaying,
 } from '@open-northland/sim';
@@ -42,6 +44,9 @@ const PARITY_TICKS = 120;
 const FAST_SPEED = 8;
 const LOOP_TICKS = 60;
 const TEAMMATE = 1;
+/** Where the human seat's soldier walks in the fog test: east into ground it has not seen. */
+const WALK_EAST_TO = { x: 20, y: 6 } as const;
+const WALK_TICKS = 120;
 /** The injected fault's tick past the scene's first. */
 const FAULT_AFTER_TICKS = 5;
 const HEARTBEAT_MS = 50;
@@ -257,16 +262,21 @@ describe('session worker host', () => {
       { speed: FAST_SPEED, paused: false, fogSeat: HUMAN_PLAYER },
     );
     try {
-      // A generation reaches the runtime only with cells the previous one it drew did not show.
+      // A generation reaches the runtime only with cells the previous one it drew did not show. The world
+      // is posted before its setup gives the seat a mask.
+      expect(session.host.fogView(HUMAN_PLAYER)).toBeNull();
       const drawnCells: string[] = [];
       let drawnGeneration: number | null = null;
-      const start = session.host.tick;
-      await pumpUntil(session, () => {
+      const draw = (): void => {
         const view = session.host.fogView(HUMAN_PLAYER);
         if (view !== null && view.generation !== drawnGeneration) {
           drawnGeneration = view.generation;
           drawnCells.push(JSON.stringify(fogCells(view)));
         }
+      };
+      const start = session.host.tick;
+      await pumpUntil(session, () => {
+        draw();
         return session.host.tick >= start + LOOP_TICKS;
       });
       session.driver.setPaused(true);
@@ -302,6 +312,30 @@ describe('session worker host', () => {
       const received = session.host.fogView(TEAMMATE);
       if (teammate === null || received === null) throw new Error('the scene plays under fog');
       expect(fogCells(received)).toEqual(fogCells(teammate));
+
+      // The human soldier's walk east reveals ground to the shared mask: a changed mask reaches the
+      // runtime after the ones already drawn.
+      const before = JSON.stringify(fogCells(received));
+      const soldier = session.host
+        .snapshot()
+        .entities.find(
+          (e) => (e.components.Owner as { player?: number } | undefined)?.player === HUMAN_PLAYER,
+        );
+      if (soldier === undefined) throw new Error('the scene gives the human seat a soldier');
+      session.driver.setPaused(false);
+      session.driver.submit(
+        playerCommand(HUMAN_PLAYER, { kind: 'moveUnit', entity: soldier.id as Entity, ...WALK_EAST_TO }),
+      );
+      const walkStart = session.host.tick;
+      await pumpUntil(session, () => {
+        const view = session.host.fogView(TEAMMATE);
+        return (
+          (view !== null && JSON.stringify(fogCells(view)) !== before) ||
+          session.host.tick >= walkStart + WALK_TICKS
+        );
+      });
+      const walked = session.host.fogView(TEAMMATE);
+      expect(walked === null ? before : JSON.stringify(fogCells(walked))).not.toBe(before);
     } finally {
       session.dispose();
     }
