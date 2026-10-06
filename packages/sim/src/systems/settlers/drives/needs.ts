@@ -170,8 +170,17 @@ export function planNeeds(
   const gate = limit ?? undefined;
   const ordered = orderedNeed(world, e);
   const bars = barsAfterDraughts(world, ctx, e);
-  const meal = { terrain, settler, here, load, targets, supply, limit, onAlert };
-  if (pressing(bars.hunger, ordered, 'hunger') && seekMeal(world, ctx, e, meal, bars.hunger, ordered)) {
+  if (
+    pressing(bars.hunger, ordered, 'hunger') &&
+    seekMeal(
+      world,
+      ctx,
+      e,
+      { terrain, settler, here, load, targets, supply, limit, onAlert },
+      bars.hunger,
+      ordered,
+    )
+  ) {
     return true;
   }
 
