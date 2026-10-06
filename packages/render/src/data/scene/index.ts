@@ -44,6 +44,7 @@ export {
   buildSpriteScene,
   collectSpriteScene,
   IncrementalScene,
+  isStaticItem,
   type LiveRefs,
   type SpriteScene,
 } from './sprite-scene.js';

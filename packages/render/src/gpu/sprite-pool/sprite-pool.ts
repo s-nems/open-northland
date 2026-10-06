@@ -14,6 +14,7 @@ import {
   collectSpriteScene,
   type DrawItem,
   IncrementalScene,
+  isStaticItem,
   type LiveRefs,
   SceneItemMemo,
   type SpriteDrawItem,
@@ -319,7 +320,9 @@ export class SpritePool {
       this.passHasPortrait = true;
     }
     const still = !emphasis && this.holdsStill(pe, item);
-    pe.held = still ? this.holdGeneration : -1;
+    // Only a static-run item may stand unvisited: the touch log names it when a delta changes or removes
+    // it. Any other kind is rebuilt every build, and only a visit notices it left the draw list.
+    pe.held = still && isStaticItem(item) ? this.holdGeneration : -1;
     (item as unknown as HoldMarked)[HELD] = pe.held;
     if (!still && index >= 0) {
       this.moving.push(index);

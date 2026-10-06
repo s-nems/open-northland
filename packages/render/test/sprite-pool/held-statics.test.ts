@@ -37,6 +37,7 @@ const sheet: SpriteSheet = {
 const SETTLER = 1;
 const TREE = 2;
 const HEAP = 3;
+const POST = 4;
 const walker = { Settler: { tribe: 0 } };
 
 function mirrorOf(entities: readonly EntitySnapshot[]): SnapshotMirror {
@@ -46,7 +47,11 @@ function mirrorOf(entities: readonly EntitySnapshot[]): SnapshotMirror {
   return mirror;
 }
 
-function advance(mirror: SnapshotMirror, touched: readonly EntityDelta[]): WorldSnapshot {
+function advance(
+  mirror: SnapshotMirror,
+  touched: readonly EntityDelta[],
+  removed: readonly number[] = [],
+): WorldSnapshot {
   const lastTick = mirror.tick ?? 0;
   mirror.apply(
     packSnapshotDelta({
@@ -54,7 +59,7 @@ function advance(mirror: SnapshotMirror, touched: readonly EntityDelta[]): World
       sequence: lastTick,
       rebuild: false,
       touched,
-      removed: [],
+      removed,
       events: [],
     }),
   );
@@ -131,5 +136,51 @@ describe('SpritePool - held self-contained entities', () => {
       }),
     );
     expect(refs()).toContain(TREE);
+  });
+});
+
+describe('SpritePool - a still entity of a kind every build re-emits', () => {
+  /** More trees than the death reap sweeps per frame, so only the detach scan can take the post down. */
+  const CROWD = 300;
+  const FIRST_TREE = 100;
+  const start = () =>
+    mirrorOf([
+      entity(SETTLER, 1, 1, walker),
+      entity(POST, 5, 1, { Signpost: { owner: 0 } }),
+      ...Array.from({ length: CROWD }, (_, i) =>
+        entity(FIRST_TREE + i, i % 20, 2 + Math.floor(i / 20), { Resource: { goodType: 1 } }),
+      ),
+    ]);
+  const drawnRefs = (pool: SpritePool): number[] =>
+    pool
+      .drawnItems()
+      .map((item) => item.ref)
+      .filter((ref) => ref < FIRST_TREE);
+
+  it('detaches a still signpost once it leaves the snapshot', () => {
+    const mirror = start();
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheet);
+    pool.reconcile(frameOf(mirror.snapshot()));
+    pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, 2, walker)])));
+    pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, 3, walker)])));
+    pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, 4, walker)], [POST])));
+    expect(drawnRefs(pool)).toEqual([SETTLER]);
+    expect(layer.children.length).toBe(1 + CROWD);
+    expect(pool.boundsOf(POST)).toBeUndefined();
+  });
+
+  it('detaches a still signpost moved out of the cull box', () => {
+    const mirror = start();
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheet);
+    pool.reconcile(frameOf(mirror.snapshot()));
+    pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, 2, walker)])));
+    const far = { id: POST, components: { Position: { x: 400 * ONE, y: ONE } }, removed: [] };
+    pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, 3, walker), far])));
+    pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, 4, walker)])));
+    expect(drawnRefs(pool)).toEqual([SETTLER]);
+    expect(layer.children.length).toBe(1 + CROWD);
+    expect(pool.boundsOf(POST)).toBeUndefined();
   });
 });

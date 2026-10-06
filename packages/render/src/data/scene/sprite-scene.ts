@@ -210,8 +210,9 @@ function mergeFlagged(
   return out;
 }
 
-/** Whether a build keeps `item` in its static run. */
-function isStaticItem(item: SpriteDrawItem): boolean {
+/** Whether a build keeps `item` in its static run: exactly the items the touch log answers for, so only
+ *  these may stand unvisited between builds. */
+export function isStaticItem(item: SpriteDrawItem): boolean {
   return item.kind !== 'craftfx' && isSelfContainedKind(item.kind) && item.ghost !== true;
 }
 
