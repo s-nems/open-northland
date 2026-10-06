@@ -9,7 +9,7 @@ import {
 import type { ChangeFeed } from '../../ecs/change-feed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { TileBuckets } from '../../inspect/tile-buckets.js';
-import type { SpatialGate } from '../../nav/node-circle.js';
+import { type NodeBox, type SpatialGate, unionNodeBoxes } from '../../nav/node-circle.js';
 import { type ReachArea, reachContains, reachGate } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { interactionNode } from '../footprint/interaction.js';
@@ -27,11 +27,19 @@ interface ReachCache {
   readonly key: string;
   readonly spots: Map<string, TerrainReach>;
   readonly sites: TileBuckets<SignpostSite & { player: number }>;
-  readonly groups: Map<number, SpatialGate>;
+  readonly groups: Map<number, GroupGate>;
+  /** The previous key's group gates, taken over unchanged when their posts' searches still hold. */
+  readonly priorGroups: ReadonlyMap<number, GroupGate>;
   readonly limits: Map<string, SpatialGate>;
   readonly views: Map<number, SignpostReachView>;
 }
 const caches = new WeakMap<World, ReachCache>();
+
+/** A signpost group's coverage, the union of its posts' searches. */
+interface GroupGate {
+  readonly areas: readonly ReachArea[];
+  readonly gate: SpatialGate;
+}
 
 /** Local searches held, about (2 * range - 1)^2 bytes each: enough that a settler re-planning from the
  *  spot it stands on finds its search again a scan beat later. */
@@ -95,6 +103,7 @@ function cacheOf(world: World, content: ContentSet, terrain: TerrainGraph): Reac
       views: new Map(),
       sites,
       groups: new Map(),
+      priorGroups: cache?.terrain === terrain ? cache.groups : new Map(),
       limits: new Map(),
     };
     caches.set(world, cache);
@@ -152,34 +161,14 @@ export function goodsSearchLimitAt(
   const held = cache.limits.get(key);
   if (held !== undefined) return held;
   const local = goodsReachAt(world, content, terrain, hx, hy);
-  const nearby = cache.sites.within({
-    minX: local.minX / 2,
-    maxX: local.maxX / 2,
-    minY: local.minY / 2,
-    maxY: local.maxY / 2,
-  });
   const groups = new Set(
-    nearby.filter((p) => p.player === player && reachContains(local, p.hx, p.hy)).map((p) => p.group),
+    postsWithin(cache, local)
+      .filter((p) => p.player === player && reachContains(local, p.hx, p.hy))
+      .map((p) => p.group),
   );
   const gates: SpatialGate[] = [reachGate(terrain, [local])];
-  for (const group of groups) {
-    let gate = cache.groups.get(group);
-    if (gate === undefined) {
-      const posts = (signpostNetwork(world).get(player) ?? []).filter((p) => p.group === group);
-      gate = reachGate(
-        terrain,
-        posts.map((p) => postReach(world, content, terrain, p.entity, p.hx, p.hy)),
-      );
-      cache.groups.set(group, gate);
-    }
-    gates.push(gate);
-  }
-  const bounds = {
-    minX: Math.min(...gates.map((g) => g.bounds.minX)),
-    maxX: Math.max(...gates.map((g) => g.bounds.maxX)),
-    minY: Math.min(...gates.map((g) => g.bounds.minY)),
-    maxY: Math.max(...gates.map((g) => g.bounds.maxY)),
-  };
+  for (const group of groups) gates.push(groupGate(world, content, terrain, cache, player, group));
+  const bounds = unionNodeBoxes(gates.map((g) => g.bounds));
   const limit = {
     bounds,
     allowsNode: (node: Parameters<SpatialGate['allowsNode']>[0]) => gates.some((g) => g.allowsNode(node)),
@@ -187,6 +176,41 @@ export function goodsSearchLimitAt(
   if (cache.limits.size >= 256) cache.limits.clear();
   cache.limits.set(key, limit);
   return limit;
+}
+
+/** The posts filed in the tiles over a node box, a superset of those inside it. */
+function postsWithin(cache: ReachCache, box: NodeBox): (SignpostSite & { player: number })[] {
+  return cache.sites.within({
+    minX: box.minX / 2,
+    maxX: box.maxX / 2,
+    minY: box.minY / 2,
+    maxY: box.maxY / 2,
+  });
+}
+
+/** A group's coverage, reused across reach keys while every post search in it is the one held. */
+function groupGate(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  cache: ReachCache,
+  player: number,
+  group: number,
+): SpatialGate {
+  let held = cache.groups.get(group);
+  if (held === undefined) {
+    const posts = (signpostNetwork(world).get(player) ?? []).filter((p) => p.group === group);
+    const areas = posts.map((p) => postReach(world, content, terrain, p.entity, p.hx, p.hy));
+    const prior = cache.priorGroups.get(group);
+    held =
+      prior !== undefined &&
+      prior.areas.length === areas.length &&
+      prior.areas.every((a, i) => a === areas[i])
+        ? prior
+        : { areas, gate: reachGate(terrain, areas) };
+    cache.groups.set(group, held);
+  }
+  return held.gate;
 }
 
 export interface SignpostReachPost {

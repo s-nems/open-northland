@@ -116,6 +116,30 @@ describe('terrain-aware goods reach', () => {
     expect(floods).not.toHaveBeenCalled();
     floods.mockRestore();
   });
+  it('rebuilds a group coverage when one of its posts searches again', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(200, 100) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('terrain');
+    const a = createSignpost(sim.world, terrain, terrain.nodeAt(35, 30), 0, sim.content);
+    const b = createSignpost(sim.world, terrain, terrain.nodeAt(65, 30), 0, sim.content);
+    signpostLinksSystem(sim.world, ctxOf(sim));
+    const allows = (hx: number) =>
+      goodsSearchLimitAt(sim.world, sim.content, terrain, 0, 20, 30)?.allowsNode(terrain.nodeAt(hx, 30));
+    expect(allows(95)).toBe(true);
+    const wall = sim.world.create();
+    sim.world.add(wall, Position, positionOfNode(80, 0));
+    sim.world.add(wall, ResourceFootprint, {
+      walk: Array.from({ length: 100 }, (_, dy) => ({ dx: 0, dy })),
+      build: [],
+      work: [],
+    });
+    signpostLinksSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(a, Signpost).links).toEqual([b]);
+    expect(allows(95)).toBe(false);
+    expect(allows(75)).toBe(true);
+  });
   it('uses the strict 40-node boundary on plain land and a smaller reach on resistant ground', () => {
     const grass = buildTerrainGraph(testContent(), grassNodeMap(120, 100));
     const area = searchReach(grass, empty, 50, 50, 40);
