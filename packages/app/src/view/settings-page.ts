@@ -1,4 +1,4 @@
-import { type Locale, messages } from '../i18n/index.js';
+import { LOCALE_CODES, type Locale, messages } from '../i18n/index.js';
 import {
   defaultDisplayMode,
   enterFullscreen,
@@ -35,7 +35,7 @@ export interface SettingsPageHandle {
 }
 
 const SETTINGS_TABS: readonly SettingsTab[] = ['graphics', 'audio', 'gameplay', 'controls'];
-const LANGUAGE_CHOICES: readonly Locale[] = ['pol', 'eng'];
+const LANGUAGE_CHOICES: readonly Locale[] = LOCALE_CODES;
 const SCROLL_SPEED_STEP = 0.05;
 const VOLUME_MIN = 0;
 const VOLUME_MAX = 1;

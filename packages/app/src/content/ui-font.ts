@@ -1,8 +1,8 @@
 /**
  * The HUD's vector text face. Approximation: the original draws HUD text with a small (~10 px) bitmap
  * `.fnt` serif, which has no sub-pixel detail to stay crisp at the HUD's fractional UI scale, so the HUD
- * substitutes Tinos, a metric-compatible "Times"-class serif (Apache-2.0, see
- * `public/fonts/LICENSE-Tinos.txt`) rendered as vector text by Pixi and by the DOM pickers.
+ * substitutes Tinos, a metric-compatible "Times"-class serif (see the bundled licenses in
+ * `public/fonts/`) rendered as vector text by Pixi and by the DOM pickers.
  */
 
 /** The text fill colours, shared with the bitmap font's fallback. */
@@ -24,10 +24,14 @@ interface FontSubset {
 }
 
 /**
- * The two Tinos subsets, using the canonical Google-Fonts `latin` / `latin-ext` ranges: `latin` already
- * covers the U+2000-206F punctuation the string tables use, and `latin-ext` carries the Polish letters.
+ * Tinos subsets cover Latin text and punctuation, Polish diacritics and Russian letters.
+ * Each uses its canonical Google Fonts unicode range.
  */
 const SUBSETS: readonly FontSubset[] = [
+  {
+    file: '/fonts/tinos-cyrillic-400.woff2',
+    unicodeRange: 'U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116',
+  },
   {
     file: '/fonts/tinos-latin-400.woff2',
     unicodeRange:

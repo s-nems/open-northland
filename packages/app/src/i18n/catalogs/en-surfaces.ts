@@ -224,7 +224,7 @@ export const enSurfaces = {
       sfxVolume: 'Game sounds volume',
       language: 'Language',
       // Endonyms: each language names itself and is not translated per locale.
-      languageNames: { pol: 'Polski', eng: 'English' },
+      languageNames: { pol: 'Polski', eng: 'English', ger: 'Deutsch', rus: 'Русский' },
       keyboardScrollSpeed: 'Keyboard scroll speed',
       edgeScrollSpeed: 'Edge scroll speed',
       dragScrollSpeed: 'Mouse drag scroll speed',

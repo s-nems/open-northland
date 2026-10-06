@@ -2,7 +2,7 @@ import { JobType } from '@open-northland/data';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { settlerName } from '../src/game/character-names/index.js';
 import type { SnapshotEntity } from '../src/game/snapshot.js';
-import { currentLocale, setActiveLocale } from '../src/i18n/index.js';
+import { currentLocale, LOCALE_CODES, setActiveLocale } from '../src/i18n/index.js';
 
 let previousLocale = currentLocale();
 beforeEach(() => {
@@ -25,7 +25,7 @@ describe('settlerName', () => {
     }
   });
   it('keeps proper names identical across locales', () => {
-    for (const locale of ['pol', 'eng'] as const) {
+    for (const locale of LOCALE_CODES) {
       setActiveLocale(locale);
       expect(settlerName({ jobs: [] }, entity(identity))).toBe('Nakht');
     }

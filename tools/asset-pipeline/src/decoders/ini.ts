@@ -56,9 +56,9 @@ export { extractAnimalCalls, extractHumanVoices, extractSounds } from './ini/sou
 export { extractStaticObjects, type MapStaticObjects } from './ini/static-objects.js';
 export {
   decodeCifStringTable,
+  decodeDisplayText,
   extractStringnById,
   extractStringTable,
-  latin1ToCp1250,
 } from './ini/string-tables.js';
 export { extractPatterns, extractPatternTransitions } from './ini/terrain.js';
 export {

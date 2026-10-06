@@ -2,7 +2,7 @@ import type { BuildingType } from '@open-northland/data';
 import { constructionBillForType } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { CATALOGUE_KINDS } from '../src/hud/tool-panel/building-menu.js';
-import { bcp47Tag, compareLabels } from '../src/i18n/index.js';
+import { bcp47Tag, compareLabels, LOCALE_CODES } from '../src/i18n/index.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox/index.js';
 import { buildingLabelsFromContent, menuEntriesFromContent } from '../src/view/game-tool-panel.js';
@@ -54,7 +54,7 @@ describe('construction catalogue entries from content', () => {
   });
 
   it('lists the entries alphabetically in the language they are named in', () => {
-    for (const lang of ['pol', 'eng'] as const) {
+    for (const lang of LOCALE_CODES) {
       const labels = menuEntriesFromContent(content, lang).map((entry) => entry.label);
       expect(labels, lang).toEqual([...labels].sort(compareLabels(bcp47Tag(lang))));
     }

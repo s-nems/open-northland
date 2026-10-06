@@ -1,17 +1,19 @@
+import { de } from './de.js';
 import { en, type Messages } from './en.js';
 import { pl } from './pl.js';
+import { ru } from './ru.js';
 
-const LOCALE_CODES = ['pol', 'eng'] as const;
+export const LOCALE_CODES = ['pol', 'eng', 'ger', 'rus'] as const;
 
 export type Locale = (typeof LOCALE_CODES)[number];
 
 /** The BCP-47 primary subtag each shipped catalog claims. */
-const LOCALE_TAGS: Readonly<Record<Locale, string>> = { pol: 'pl', eng: 'en' };
+const LOCALE_TAGS: Readonly<Record<Locale, string>> = { pol: 'pl', eng: 'en', ger: 'de', rus: 'ru' };
 
 /** Where a preferred language with no shipped catalog lands. */
 const FALLBACK_LOCALE: Locale = 'eng';
 
-const LOCALES: Readonly<Record<Locale, Messages>> = { pol: pl, eng: en };
+const LOCALES: Readonly<Record<Locale, Messages>> = { pol: pl, eng: en, ger: de, rus: ru };
 let activeLocale: Locale | undefined;
 
 export function isLocale(value: unknown): value is Locale {

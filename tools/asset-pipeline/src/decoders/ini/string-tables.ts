@@ -10,7 +10,7 @@ import { cifBytesToSections, decodeIni, type RuleSection } from './grammar.js';
  * takes and advances it. Shared by the `ingamegui*` UI tables and each map folder's
  * `text/<lang>/strings.ini`/`.cif`, which usually has no `[control]` section. The codepage is the
  * caller's seam: {@link decodeIni} already yields CP1250 for a readable `.ini`, while `.cif` text stays
- * latin1 until {@link latin1ToCp1250}.
+ * latin1 until {@link decodeDisplayText}.
  */
 export function extractStringTable(sections: readonly RuleSection[]): Record<number, string> {
   const control = sections.find((s) => s.name === 'control');
@@ -62,9 +62,9 @@ export function extractStringnById(sections: readonly RuleSection[]): Record<num
   return byId;
 }
 
-/** Re-decodes a byte-preserving latin1 string from the `.cif` seam as CP1250 display text. */
-export function latin1ToCp1250(latin1: string): string {
-  return new TextDecoder('windows-1250').decode(Uint8Array.from(latin1, (c) => c.charCodeAt(0) & 0xff));
+/** Re-decodes a byte-preserving latin1 string from the `.cif` seam in its display code page. */
+export function decodeDisplayText(latin1: string, encoding = 'windows-1250'): string {
+  return new TextDecoder(encoding).decode(Uint8Array.from(latin1, (c) => c.charCodeAt(0) & 0xff));
 }
 
 /**
@@ -74,9 +74,8 @@ export function latin1ToCp1250(latin1: string): string {
 export function decodeCifStringTable(bytes: Uint8Array, encoding = 'windows-1250'): Record<number, string> {
   const raw = extractStringTable(cifBytesToSections(bytes));
   const table: Record<number, string> = {};
-  const decoder = new TextDecoder(encoding);
   for (const [id, display] of Object.entries(raw)) {
-    table[Number(id)] = decoder.decode(Uint8Array.from(display, (c) => c.charCodeAt(0) & 0xff));
+    table[Number(id)] = decodeDisplayText(display, encoding);
   }
   return table;
 }

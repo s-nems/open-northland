@@ -965,6 +965,7 @@ body.on-drag-scroll * {
   color: var(--ink);
   font:
     700 11px Cinzel,
+    Tinos,
     serif;
   box-shadow:
     0 0 0 2px var(--deep),

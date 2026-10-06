@@ -16,6 +16,16 @@ describe('resolveGoodNameMap (locale fallback)', () => {
     en: { wood: 'Wood', fish: 'Fish', gold: 'Gold' },
   };
 
+  it.each([
+    ['ger', 'de'],
+    ['rus', 'ru'],
+  ] as const)('selects %s extracted names before the authored fallback', (locale, code) => {
+    expect(resolveGoodNameMap({ [code]: { wood: 'fixture timber' } }, locale).get('wood')).toBe(
+      'fixture timber',
+    );
+    expect(resolveGoodNameMap({}, locale).get('wood')).not.toBe('Wood');
+  });
+
   it('picks the requested locale, keyed by good STRING id', () => {
     const pl = resolveGoodNameMap(tables, 'pol');
     expect(pl.get('wood')).toBe('Drewno');

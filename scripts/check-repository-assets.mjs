@@ -45,6 +45,12 @@ const reviewedBinaryAssets = new Set([
   'packages/app/src/assets/markers/plan-road-blocked.png',
   'packages/app/src/assets/markers/plan-road-claimed.png',
   'packages/app/src/assets/markers/plan-road-open.png',
+  // Cyrillic subsets use the bundled SIL OFL licenses, including LICENSE-Tinos-Cyrillic.txt.
+  'packages/app/public/fonts/tinos-cyrillic-400.woff2',
+  'packages/app/public/fonts/tinos-cyrillic-700.woff2',
+  'packages/app/public/fonts/alegreyasans-cyrillic-400.woff2',
+  'packages/app/public/fonts/alegreyasans-cyrillic-500.woff2',
+  'packages/app/public/fonts/alegreyasans-cyrillic-700.woff2',
   'packages/app/public/fonts/tinos-latin-400.woff2',
   'packages/app/public/fonts/tinos-latinext-400.woff2',
   // The menu's typefaces: Cinzel and Alegreya Sans, subset from Google Fonts releases; SIL OFL

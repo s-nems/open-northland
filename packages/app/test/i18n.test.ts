@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { localizedBuildingName } from '../src/catalog/building-i18n.js';
 import {
+  bcp47Tag,
   defaultLocale,
+  LOCALE_CODES,
   localeParam,
   type Messages,
   messages,
+  pluralForm,
   professionLabel,
   resolveLocale,
   setActiveLocale,
@@ -37,7 +40,9 @@ describe('locale detection', () => {
     browserLanguages(['zh-CN', 'pl-PL']);
     expect(defaultLocale()).toBe('pol');
     browserLanguages(['de-DE']);
-    expect(defaultLocale()).toBe('eng');
+    expect(defaultLocale()).toBe('ger');
+    browserLanguages(['ru-RU']);
+    expect(defaultLocale()).toBe('rus');
   });
 });
 
@@ -66,8 +71,61 @@ describe('application locale', () => {
   it('has localized menu metadata for every registered scene', () => {
     for (const scene of SCENES) {
       const key = scene.id as keyof Messages['scene'];
-      expect(messages('pol').scene[key]).toBeDefined();
-      expect(messages('eng').scene[key]).toBeDefined();
+      for (const locale of LOCALE_CODES) expect(messages(locale).scene[key]).toBeDefined();
     }
+  });
+});
+
+describe('German and Russian catalogs', () => {
+  it.each([
+    ['ger', 'de', 'de-AT'],
+    ['rus', 'ru', 'ru-RU'],
+  ] as const)('recognizes %s in preferences, URLs and document language', (locale, tag, regional) => {
+    expect(resolveLocale([regional, 'en-US'])).toBe(locale);
+    expect(localeParam(new URLSearchParams({ lang: locale }))).toBe(locale);
+    expect(localeParam(new URLSearchParams({ lang: tag }))).toBe(locale);
+    expect(bcp47Tag(locale)).toBe(tag);
+    setActiveLocale(locale);
+    expect(localizedBuildingName('barracks', 'fallback')).toBe(messages(locale).building.barracks);
+    expect(localizedBuildingName('barracks', 'fallback', tag)).toBe(messages(locale).building.barracks);
+  });
+
+  function leaves(value: unknown, path = ''): Map<string, string> {
+    if (typeof value === 'string') return new Map([[path, value]]);
+    if (value === null || typeof value !== 'object') throw new Error(`Not catalog text: ${path}`);
+    return new Map(Object.entries(value).flatMap(([key, child]) => [...leaves(child, `${path}.${key}`)]));
+  }
+
+  const placeholders = (text: string): string[] =>
+    [...text.matchAll(/\{[A-Za-z][A-Za-z0-9]*\}|%(?:\d+\$)?[sdiuf]/g)].map((m) => m[0]).sort();
+
+  it.each(['ger', 'rus'] as const)(
+    '%s translates every entry and preserves interpolation tokens',
+    (locale) => {
+      const source = leaves(messages('eng'));
+      const translated = leaves(messages(locale));
+      expect([...translated.keys()]).toEqual([...source.keys()]);
+      for (const [key, text] of translated) {
+        expect(text.trim(), key).not.toBe('');
+        expect(text, key).not.toContain('�');
+        expect(placeholders(text), key).toEqual(placeholders(source.get(key) ?? ''));
+      }
+    },
+  );
+
+  it('uses the Russian one/few/many forms at teen and tens boundaries', () => {
+    const forms = messages('rus').network.members;
+    for (const [count, word] of [
+      [1, 'игрок'],
+      [2, 'игрока'],
+      [5, 'игроков'],
+      [11, 'игроков'],
+      [21, 'игрок'],
+      [22, 'игрока'],
+      [25, 'игроков'],
+    ] as const) {
+      expect(pluralForm(count, forms, 'ru')).toBe(`{count} ${word}`);
+    }
+    expect(pluralForm(2, messages('ger').mainMenu.mapSelect.maps, 'de')).toBe('{count} Karten');
   });
 });

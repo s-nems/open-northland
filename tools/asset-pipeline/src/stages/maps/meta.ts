@@ -10,6 +10,7 @@ import {
   parseIniSections,
   type RuleSection,
 } from '../../decoders/ini.js';
+import { textEncoding } from '../../decoders/text-encoding.js';
 import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitive } from '../../roots.js';
 import { STRING_TABLE_DIR } from './info.js';
@@ -107,7 +108,7 @@ export async function loadMapStringTables(mapDir: string, rel: string): Promise<
       try {
         const bytes = await readFile(path);
         // Owned text/rus/strings.ini uses CP1251 (e.g. CD CE C2 C0 DF spells НОВАЯ).
-        const encoding = lang === 'rus' ? 'windows-1251' : 'windows-1250';
+        const encoding = textEncoding(lang);
         table =
           form === 'strings.ini'
             ? extractStringTable(parseIniSections(new TextDecoder(encoding).decode(bytes)))

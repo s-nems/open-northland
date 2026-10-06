@@ -1,4 +1,10 @@
-import type { HypertextBlock, MapBriefing, MapMeta, MapTextLanguage } from '@open-northland/data';
+import {
+  type HypertextBlock,
+  MAP_TEXT_LANGUAGES,
+  type MapBriefing,
+  type MapMeta,
+  type MapTextLanguage,
+} from '@open-northland/data';
 import {
   type MatchOutcome,
   type MissionScript,
@@ -94,7 +100,7 @@ export function mapBriefFallback(
 /** A goal description starting with this is printed without it, in the window's emphasis colour. */
 const GOAL_EMPHASIS_MARK = '@';
 /** The mission window's language order: the app locale, then the mod's authoring language. */
-const BRIEFING_LANG_FALLBACKS = ['pol', 'eng'] as const;
+const BRIEFING_LANG_FALLBACKS = MAP_TEXT_LANGUAGES;
 
 /** The briefing page for `id` in `lang`, falling back through the authoring languages. */
 export function briefingPage(

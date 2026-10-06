@@ -156,7 +156,7 @@ loading a save preserves its stored mission rules.
 | `?sounds` | sound-binding gallery |
 | `?shot` | single-frame screenshot entry used by the harness |
 
-Common modifiers include `lang=<pol|eng>`, `fog=<off|classic|classic-fow|recon|recon-fow>` (the
+Common modifiers include `lang=<pol|eng|ger|rus>`, `fog=<off|classic|classic-fow|recon|recon-fow>` (the
 lobby's map setting, with `-fow` for fog of war; `off` reveals the map), `player=<...>`, `ai=<...>`, `sound=off`,
 `intro=off` (skip all automatic briefing windows, including script chapters), `fullscreen=off`,
 `weather=<rain|snow|sand|clear>[:<percent>]` (whole-map weather in this view only, default 30; the sim's
@@ -168,7 +168,11 @@ seats (authored `ai`, offered to nobody) play without being named. `seed=<n>` pi
 the world seed a `?map=` session runs on, so two clients of one session start from the same world;
 without it the entry draws one and writes it into the address, so a match's link replays it. Without `lang`
 the language follows the browser, and English stands in for a
-browser language with no shipped catalog. The graphics settings (render scale, frame-rate limit,
+browser language with no shipped catalog. The short codes `pl`, `en`, `de` and `ru` also work.
+The GUI strings, goods names, history books and mission briefings are extracted in all four languages
+when the mod supplies them; maps without a requested translation use their available source text.
+Project-authored UI and fallback text live in `packages/app/src/i18n/catalogs/`.
+The graphics settings (render scale, frame-rate limit,
 post-processing) live in the stored settings and never enter the URL; `postfx=<on|off>` overrides
 the stored post-fx choice for that entry, so captures stay reproducible whatever the machine's
 settings. The HUD scales with the display's height (1.75x on a 2160-line display, never under 1x on a

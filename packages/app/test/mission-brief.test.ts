@@ -97,6 +97,19 @@ describe('briefingPage and missionBrief', () => {
     expect(briefingPage(null, 'pol', 500)).toBeNull();
   });
 
+  it('reads German and Russian pages before considering other languages', () => {
+    const translated: MapBriefing = {
+      texts: {
+        ...briefing.texts,
+        ger: { '500': [{ kind: 'text', style: 'body', text: 'Fixture DE' }] },
+        rus: { '500': [{ kind: 'text', style: 'body', text: 'Fixture RU' }] },
+      },
+    };
+    expect(firstText(briefingPage(translated, 'ger', 500))).toBe('Fixture DE');
+    expect(firstText(briefingPage(translated, 'rus', 500))).toBe('Fixture RU');
+    expect(briefingPage({ texts: { rus: translated.texts.rus ?? {} } }, 'eng', 500)?.lang).toBe('rus');
+  });
+
   it('carries the page as authored, else the map name over its menu description', () => {
     expect(missionPage(source(null), 500)).toEqual({
       title: '',

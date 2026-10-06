@@ -1,21 +1,24 @@
 import {
   cifBytesToSections,
+  decodeDisplayText,
   extractStringnById,
   iniBytesToSections,
-  latin1ToCp1250,
 } from '../../decoders/ini.js';
+import { textEncoding } from '../../decoders/text-encoding.js';
 import type { SourceRoots } from '../../roots.js';
 import { readSourceFile } from '../source-files.js';
 import type { GoodLike } from './icons.js';
 
 /**
  * The locales whose good-name table is extracted, most-preferred first, from
- * `text/<dir>/strings/gameobjects/goods.{ini,cif}`. The mod ships Polish as a plaintext `.ini` and English
- * as an encrypted `.cif`.
+ * `text/<dir>/strings/gameobjects/goods.{ini,cif}`. The mod ships Polish as a plaintext `.ini` and the other languages
+ * as encrypted `.cif` files.
  */
 const GOOD_NAME_LOCALES = [
   { code: 'pl', dir: 'pol', encrypted: false },
   { code: 'en', dir: 'eng', encrypted: true },
+  { code: 'de', dir: 'ger', encrypted: true },
+  { code: 'ru', dir: 'rus', encrypted: true },
 ] as const;
 
 function goodNamesPath(dir: string, encrypted: boolean): string {
@@ -59,7 +62,7 @@ export async function loadGoodNames(
     if (encrypted) {
       const raw = extractStringnById(cifBytesToSections(bytes));
       tables[code] = Object.fromEntries(
-        Object.entries(raw).map(([id, text]) => [Number(id), latin1ToCp1250(text)]),
+        Object.entries(raw).map(([id, text]) => [Number(id), decodeDisplayText(text, textEncoding(dir))]),
       );
     } else {
       tables[code] = extractStringnById(iniBytesToSections(bytes));

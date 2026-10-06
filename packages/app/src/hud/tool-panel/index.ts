@@ -128,7 +128,7 @@ export interface ToolPanelOptions {
   readonly pack: PresentationPack | null;
   /** Localized name of a vehicle type, which leads its refused-order notes. */
   readonly vehicleLabel: (typeId: number) => string | undefined;
-  /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
+  /** Language for the decoded UI strings (`pol`/`eng`/`ger`/`rus`); falls back to the authored catalog when absent. */
   readonly lang: string;
   /** Resolved player key bindings; the input layer reads the pause key from it. */
   readonly bindings: KeyBindings;

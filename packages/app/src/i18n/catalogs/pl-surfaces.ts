@@ -220,7 +220,7 @@ export const plSurfaces = {
       musicVolume: 'Głośność muzyki',
       sfxVolume: 'Głośność dźwięków gry',
       language: 'Język',
-      languageNames: { pol: 'Polski', eng: 'English' },
+      languageNames: { pol: 'Polski', eng: 'English', ger: 'Deutsch', rus: 'Русский' },
       keyboardScrollSpeed: 'Prędkość przewijania klawiszami',
       edgeScrollSpeed: 'Prędkość przewijania przy krawędzi',
       dragScrollSpeed: 'Prędkość przewijania przeciąganiem',

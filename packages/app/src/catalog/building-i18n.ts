@@ -1,10 +1,17 @@
-import { currentLocale, type Locale, type Messages, messages } from '../i18n/index.js';
+import {
+  currentLocale,
+  isLocale,
+  type Locale,
+  type Messages,
+  messages,
+  resolveLocale,
+} from '../i18n/index.js';
 import { VIKING_BUILDINGS } from './buildings.js';
 
 export type UiLang = Locale;
 
 function localeFromCode(lang: string): Locale {
-  return lang === 'eng' || lang === 'en' ? 'eng' : 'pol';
+  return isLocale(lang) ? lang : resolveLocale([lang]);
 }
 
 /** Resolve a catalog building id through the active hand-authored locale. */

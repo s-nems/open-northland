@@ -9,7 +9,7 @@ import { loadGoodsManifest } from './goods-gfx.js';
  */
 
 /** The goods tables' code for each app locale (see `GOOD_NAME_LOCALES` in the goods stage). */
-const GOOD_LOCALE: Readonly<Record<Locale, string>> = { pol: 'pl', eng: 'en' };
+const GOOD_LOCALE: Readonly<Record<Locale, string>> = { pol: 'pl', eng: 'en', ger: 'de', rus: 'ru' };
 
 /**
  * The authored good names for a locale. They also cover the goods that exist only in the sandbox (no game

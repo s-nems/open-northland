@@ -1,14 +1,18 @@
 import { readFile } from 'node:fs/promises';
-import type { HypertextBlock, MapBriefing, MapScript } from '@open-northland/data';
+import {
+  type HypertextBlock,
+  MAP_TEXT_LANGUAGES,
+  type MapBriefing,
+  type MapScript,
+} from '@open-northland/data';
 import { type IncludeResolver, parseBriefingBlocks, renderHypertext } from '../../decoders/hypertext.js';
 import { decodeIni } from '../../decoders/ini/grammar.js';
+import { textEncoding } from '../../decoders/text-encoding.js';
 import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitive } from '../../roots.js';
 import { HYPERTEXT_GRAPHICS_DIR, resolvePagePictures } from '../hypertext-pictures.js';
 import { STRING_TABLE_DIR } from './info.js';
 
-/** Both menu languages, since the mission window follows the app's `?lang=`. */
-const BRIEFING_LANGS = ['pol', 'eng'] as const;
 const BRIEFINGS_DIR = 'briefings';
 const BRIEFINGS_FILE = 'briefings.txt';
 /** The window opens cutscene `id` as the page `%4.4d.hlt`,
@@ -43,7 +47,7 @@ export async function resolveMapBriefing(
 ): Promise<MapBriefing | undefined> {
   if (ids.length === 0) return undefined;
   const texts: Record<string, Record<string, HypertextBlock[]>> = {};
-  for (const lang of BRIEFING_LANGS) {
+  for (const lang of MAP_TEXT_LANGUAGES) {
     const pages = await renderLanguage(mapDir, outDir, rel, lang, ids);
     if (pages !== undefined) texts[lang] = pages;
   }
@@ -62,7 +66,7 @@ async function renderLanguage(
   if (blocksPath === undefined) return undefined;
   let blocks: Map<string, string>;
   try {
-    blocks = parseBriefingBlocks(decodeIni(await readFile(blocksPath)));
+    blocks = parseBriefingBlocks(decodeIni(await readFile(blocksPath), textEncoding(lang)));
   } catch (err) {
     console.warn(
       `[pipeline] map ${rel}: text/${lang}/${BRIEFINGS_DIR}/${BRIEFINGS_FILE} unreadable: ${errorMessage(err)}`,
@@ -96,7 +100,7 @@ async function readPage(mapDir: string, rel: string, lang: string, id: number): 
   const path = await findPathCaseInsensitive(mapDir, [STRING_TABLE_DIR, lang, BRIEFINGS_DIR, file]);
   if (path === undefined) return undefined;
   try {
-    return decodeIni(await readFile(path));
+    return decodeIni(await readFile(path), textEncoding(lang));
   } catch (err) {
     console.warn(
       `[pipeline] map ${rel}: text/${lang}/${BRIEFINGS_DIR}/${file} unreadable: ${errorMessage(err)}`,

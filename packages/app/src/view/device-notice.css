@@ -35,6 +35,7 @@
   margin: 0;
   font:
     600 clamp(20px, 6vw, 28px) / 1.2 "Cinzel",
+    Tinos,
     Georgia,
     serif;
   color: #f0dcb8;

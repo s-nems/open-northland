@@ -119,7 +119,7 @@ export interface GameToolPanelDeps {
   readonly metSeats: () => readonly MetSeat[];
   /** A seat's roster name, for the note about an eliminated player. */
   readonly seatNameOf?: (player: number) => string | undefined;
-  /** UI string language (`pol`/`eng`); defaults to the active locale. */
+  /** UI string language (`pol`/`eng`/`ger`/`rus`); defaults to the active locale. */
   readonly lang?: string;
   readonly bindings: KeyBindings;
   readonly onSpeed: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;

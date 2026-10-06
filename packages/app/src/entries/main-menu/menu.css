@@ -99,6 +99,53 @@
     U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* Cyrillic subsets: Alegreya Sans and Tinos (SIL OFL; licenses in public/fonts).
+   Tinos supplies the Cyrillic headings that Cinzel does not cover. */
+@font-face {
+  font-family: "Alegreya Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/alegreyasans-cyrillic-400.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/alegreyasans-cyrillic-500.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/alegreyasans-cyrillic-700.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: "Tinos";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/tinos-cyrillic-400.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: "Tinos";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/tinos-cyrillic-700.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
 .main-menu {
   /* Design tokens; --u converts design px to viewport-scaled px. --u-base never changes;
      sub-screens override --u with a denser scale below. The accent is the logo's sail oxblood,
@@ -407,7 +454,7 @@
 
 .main-menu__screen-title {
   margin: 0;
-  font-family: Cinzel, serif;
+  font-family: Cinzel, Tinos, serif;
   font-weight: 700;
   font-size: calc(var(--u) * 60);
   line-height: 1;

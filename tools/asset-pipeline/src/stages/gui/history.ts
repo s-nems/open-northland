@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { HypertextBlock, HypertextBook } from '@open-northland/data';
 import { type IncludeResolver, parseBriefingBlocks, renderHypertext } from '../../decoders/hypertext.js';
 import { decodeIni } from '../../decoders/ini/grammar.js';
+import { textEncoding } from '../../decoders/text-encoding.js';
 import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
@@ -60,7 +61,7 @@ async function renderBook(dir: string, outDir: string, lang: string): Promise<Hy
   const blocksByFile = new Map<string, Map<string, string>>();
   for (const entry of entries) {
     if (!BLOCKS_EXT.test(entry.name)) continue;
-    const text = decodeIni(await readFile(join(dir, entry.name)));
+    const text = decodeIni(await readFile(join(dir, entry.name)), textEncoding(lang));
     blocksByFile.set(entry.name.toLowerCase(), parseBriefingBlocks(text));
   }
   const include: IncludeResolver = (file, label) => {
@@ -73,7 +74,7 @@ async function renderBook(dir: string, outDir: string, lang: string): Promise<Hy
     .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
     texts.set(
       entry.name.replace(PAGE_EXT, '').toLowerCase(),
-      decodeIni(await readFile(join(dir, entry.name))),
+      decodeIni(await readFile(join(dir, entry.name)), textEncoding(lang)),
     );
   }
   const picture = await resolvePagePictures(

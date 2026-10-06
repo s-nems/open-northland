@@ -19,6 +19,9 @@ beforeEach(() => vi.stubGlobal('navigator', { languages: ['pl-PL'] }));
 afterEach(() => vi.unstubAllGlobals());
 
 describe('parseStoredSettings', () => {
+  it.each(['ger', 'rus'] as const)('retains a stored %s language choice', (language) => {
+    expect(parseStoredSettings(JSON.stringify({ language })).language).toBe(language);
+  });
   it('falls back to defaults for an empty store, garbage, or a non-object', () => {
     expect(parseStoredSettings(null)).toEqual(defaultSettings());
     expect(parseStoredSettings('not json')).toEqual(defaultSettings());

@@ -107,7 +107,7 @@ export class ByteWriter {
 
 /**
  * Decodes bytes as ISO-8859-1: code point = byte value, a true 1:1 map for all 256 values, so display
- * strings survive byte-exact for `latin1ToCp1250` to re-decode to their real codepage.
+ * strings survive byte-exact for `decodeDisplayText` to re-decode to their real codepage.
  *
  * Deliberately not `new TextDecoder('latin1')`: that WHATWG label is an alias for windows-1252, which
  * remaps 0x80-0x9F (byte 0x9C becomes U+0153 'œ' instead of U+009C), silently corrupting the CP1250

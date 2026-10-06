@@ -1,13 +1,13 @@
 import { type CifLine, decodeCifStringArray } from '../cif.js';
 
 /**
- * Decodes `.ini` bytes as CP1250 (Windows-1250), the codepage the rule files were authored in:
+ * Decodes `.ini` bytes in the requested code page, defaulting to the rule files' CP1250:
  * display names carry Polish glyphs in the 0x80..0xFF range, while structural keywords
  * (`[section]`, keys, the `<CULTURES_CIF_BEGIN>` header) are ASCII.
  */
-export function decodeIni(bytes: Uint8Array): string {
-  // Non-fatal decode: an unassigned CP1250 byte becomes U+FFFD rather than aborting an offline batch.
-  return new TextDecoder('windows-1250').decode(bytes);
+export function decodeIni(bytes: Uint8Array, encoding = 'windows-1250'): string {
+  // Unassigned bytes become U+FFFD rather than aborting an offline batch.
+  return new TextDecoder(encoding).decode(bytes);
 }
 
 /** One property line: a key and its whitespace-separated values (quoted runs count as one value). */

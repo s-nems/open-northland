@@ -1,4 +1,5 @@
 import { decodeCifStringTable } from '../../decoders/ini.js';
+import { textEncoding } from '../../decoders/text-encoding.js';
 import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
@@ -46,7 +47,7 @@ export async function convertGuiStrings(
       const rel = `Data/text/${lang}/strings/ingamegui/ingamegui${table}.cif`;
       let byId: Record<number, string>;
       try {
-        byId = decodeCifStringTable(await readSourceFile(roots, rel));
+        byId = decodeCifStringTable(await readSourceFile(roots, rel), textEncoding(lang));
       } catch (err) {
         console.warn(`[pipeline] gui: skipped strings ${lang}/${table}: ${errorMessage(err)}`);
         continue;

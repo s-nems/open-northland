@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_KEY_BINDINGS } from '../src/hud/keybindings.js';
-import { messages } from '../src/i18n/index.js';
+import { LOCALE_CODES, messages } from '../src/i18n/index.js';
 import { availableTips, drawTip, type LoadingTipId, tipSegments } from '../src/view/loading-tips.js';
 
 const ALL = availableTips(DEFAULT_KEY_BINDINGS);
@@ -17,8 +17,8 @@ function seeded(seed: number): () => number {
 }
 
 describe('loading tips', () => {
-  it('words every tip in both locales with no placeholder left unfilled', () => {
-    for (const locale of ['pol', 'eng'] as const) {
+  it('words every tip in every locale with no placeholder left unfilled', () => {
+    for (const locale of LOCALE_CODES) {
       expect(Object.keys(messages(locale).loadingTips.tips).sort()).toEqual([...ALL].sort());
       for (const id of ALL) {
         const text = tipSegments(id, DEFAULT_KEY_BINDINGS, locale)
