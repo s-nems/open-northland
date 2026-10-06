@@ -37,7 +37,7 @@ budget are predicted, not measured; a deterministic mass-battle scenario would m
 - Prototype the chosen approach behind the existing `PathRequest` seam and measure on the 00 battle
   checkpoint at 100, 400 and 1000 fighters: order-tick cost, ticks until the last member moves, and
   pathfinding share under sustained contact.
-- Out of scope: target selection (`combat-target-search-at-army-scale.md`) and the wall searches
+- Out of scope: target selection and the vehicle engagement's search
   (`combat-route-searches-outside-budget.md`), though the field design may retire both.
 
 ## Verify
