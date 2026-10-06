@@ -198,6 +198,33 @@ export class CombatIndex {
   }
 
   /**
+   * Whether {@link nearest} over the same band would find anything: some indexed target `accept` takes. The
+   * members are asked in cell order with no sort and the first yes ends the scan, so `accept` must be pure
+   * and must not query this index.
+   */
+  anyWithin(
+    fromX: number,
+    fromY: number,
+    minDist: number,
+    maxDist: number,
+    accept: (e: Entity) => boolean,
+    seeker: number | null,
+    metric: SearchMetric,
+  ): boolean {
+    const hostile = seeker === null ? EVERY_PLAYER : this.hostileMaskOf(seeker);
+    const { cx0, cx1, cy0, cy1 } = boxCellRange(fromX, fromY, maxDist);
+    for (let cx = cx0; cx <= cx1; cx++) {
+      for (let cy = cy0; cy <= cy1; cy++) {
+        const cell = this.grid.cellAt(cx, cy);
+        if (cell === undefined) continue;
+        if (anyInBand(cell.bodies, fromX, fromY, minDist, maxDist, hostile, metric, accept)) return true;
+        if (anyInBand(cell.units, fromX, fromY, minDist, maxDist, hostile, metric, accept)) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Every unit or building owned by `player` within `maxDist` of node (fromX, fromY) by `metric`, each once at
    * its nearest admitted node, in ascending (distance, id) order. Only the owner's own members are measured,
    * so the cost is the owner's members in the box, however crowded the box is with anyone else.
@@ -411,6 +438,33 @@ function appendBand(
     scan.keys[n++] = distance * CANDIDATE_ID_SPAN + (members[i] ?? 0);
   }
   return n;
+}
+
+/** Whether `accept` takes a member of `list` that {@link appendBand} would key for the same band. */
+function anyInBand(
+  list: MemberList,
+  fromX: number,
+  fromY: number,
+  minDist: number,
+  maxDist: number,
+  hostile: number,
+  metric: SearchMetric,
+  accept: (e: Entity) => boolean,
+): boolean {
+  const { members, x, y, bit } = list;
+  for (let i = 0; i < list.count; i++) {
+    const memberBit = bit[i] ?? 0;
+    if (memberBit !== 0 && (memberBit & hostile) === 0) continue;
+    const mx = x[i] ?? 0;
+    const my = y[i] ?? 0;
+    const distance =
+      metric === 'hex'
+        ? hexDistanceBetween(fromX, fromY, mx, my)
+        : Math.abs(mx - fromX) + Math.abs(my - fromY);
+    const member = members[i];
+    if (member !== undefined && distance >= minDist && distance <= maxDist && accept(member)) return true;
+  }
+  return false;
 }
 
 /** Push to `keys` every member of `list` owned by `bit` within `maxDist` of (fromX, fromY). */

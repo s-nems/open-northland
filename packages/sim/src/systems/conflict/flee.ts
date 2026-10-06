@@ -121,16 +121,20 @@ export function fleeDrive(
     isFleeThreat(world, ctx, e, attacker, t, index.firing) &&
     (viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t));
   const fleeing = world.tryGet(e, Fleeing);
-  // A re-aim steers from the nearest few threats; any other tick only asks whether one is still in sight.
+  // A re-aim steers from the nearest few threats; any other tick only asks whether one is still in sight,
+  // which needs no ranking.
   const reaims = fleeing === undefined || ctx.tick >= fleeing.repathAt;
   // Near bound 0, not the weapon-reach floor of 1: fear has no dead zone, so a fleeing unit reacts to a
   // hostile on its very tile too. The coarse presence early-out (perf-only) spares a calm civilian its
   // full-sight scan; a FLEE-stance hunter is exempt from it, like every hunter spec. The tail reaches the
   // whole sight radius, so only the limit ends the take.
-  const threats =
+  const seeker = viewer?.player ?? null;
+  const cleared =
     viewer !== undefined &&
     !isHunterJob(ctx.content, attacker.jobType) &&
-    !index.threatsWithin(viewer.player, x, y, SIGHT_RADIUS_NODES)
+    !index.threatsWithin(viewer.player, x, y, SIGHT_RADIUS_NODES);
+  const threats =
+    cleared || !reaims
       ? NO_THREATS
       : index.nearestFew(
           x,
@@ -138,13 +142,16 @@ export function fleeDrive(
           0,
           SIGHT_RADIUS_NODES,
           accept,
-          reaims ? FLEE_THREAT_LIMIT : 1,
-          viewer?.player ?? null,
+          FLEE_THREAT_LIMIT,
+          seeker,
           SIGHT_RADIUS_NODES,
           'hex',
         );
+  const threatened = reaims
+    ? threats.length > 0
+    : !cleared && index.anyWithin(x, y, 0, SIGHT_RADIUS_NODES, accept, seeker, 'hex');
 
-  if (threats.length === 0) {
+  if (!threatened) {
     if (fleeing === undefined) return; // never in danger - the economy owns this unit
     let calmUntil = fleeing.calmUntil;
     if (calmUntil === null) {

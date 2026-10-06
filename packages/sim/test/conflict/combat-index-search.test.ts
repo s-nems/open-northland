@@ -237,12 +237,22 @@ function expectRingWalkAgreement(
     expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, seeker, TAIL_RINGS)).toEqual(
       ringNearestFew(reference, x, y, minDist, maxDist, hostile, FEW),
     );
+    // The unranked existence test answers whether the ranked search finds anything, on either metric.
+    expect(index.anyWithin(x, y, minDist, maxDist, accept, null, 'manhattan')).toBe(
+      reference.nearest(x, y, minDist, maxDist, accept) !== null,
+    );
+    expect(index.anyWithin(x, y, minDist, maxDist, accept, seeker, 'manhattan')).toBe(
+      reference.nearest(x, y, minDist, maxDist, hostile) !== null,
+    );
+    expect(index.anyWithin(x, y, minDist, maxDist, accept, seeker, 'hex')).toBe(
+      index.nearest(x, y, minDist, maxDist, accept, seeker, 'hex') !== null,
+    );
   }
 }
 
 describe('CombatIndex nearest search - equivalent to the node ring walk', () => {
   for (const seed of [1, 2, 3]) {
-    it(`agrees with the ring walk on nearest and nearestFew over a random crowd (seed ${seed})`, () => {
+    it(`agrees with the ring walk on nearest, nearestFew and anyWithin over a random crowd (seed ${seed})`, () => {
       const draw = lcg(seed);
       const sim = mappedSim(seed);
       for (const [from, to] of [
