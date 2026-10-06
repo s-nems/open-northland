@@ -1,4 +1,4 @@
-import { Container, Graphics, GraphicsPath } from 'pixi.js';
+import { Container, Graphics, GraphicsPath, Polygon } from 'pixi.js';
 import type { Viewport } from '../../data/projection/index.js';
 import { type MarkAnchorFrame, type MarkedEntity, markAnchor } from './entity-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
@@ -145,7 +145,7 @@ const HEART_PATH = heartPath();
 function heartOutline(): readonly number[] {
   const [primitive] = HEART_PATH.shapePath.shapePrimitives;
   const shape = primitive?.shape;
-  if (shape === undefined || !('points' in shape)) throw new Error('the heart path flattened to no outline');
+  if (!(shape instanceof Polygon)) throw new Error('the heart path flattened to no outline');
   return shape.points;
 }
 
