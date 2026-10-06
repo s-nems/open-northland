@@ -47,10 +47,27 @@ export function vehicleFootprintNodes(
   const type = contentIndex(content).vehicles.get(vehicle.vehicleType);
   if (type === undefined) return [];
   const nodes: NodeId[] = [];
-  for (const { hx, hy } of hexDisc(anchor, type.logicSize)) {
+  for (const offset of discOffsets(type.logicSize, anchor.hy)) {
+    const hx = anchor.hx + offset.hx;
+    const hy = anchor.hy + offset.hy;
     if (terrain.inBounds(hx, hy)) nodes.push(terrain.nodeAt(hx, hy));
   }
   return nodes;
+}
+
+/** {@link hexDisc} as offsets from its centre, per radius and centre-row parity, the only two things its
+ *  shape depends on. A vehicle's footprint is read every combat pass, so the disc is walked once per shape. */
+const discOffsetsByShape = new Map<number, readonly HalfCellNode[]>();
+
+function discOffsets(radius: number, centreRow: number): readonly HalfCellNode[] {
+  const parity = centreRow & 1;
+  const key = radius * 2 + parity;
+  let offsets = discOffsetsByShape.get(key);
+  if (offsets === undefined) {
+    offsets = hexDisc({ hx: 0, hy: parity }, radius).map(({ hx, hy }) => ({ hx, hy: hy - parity }));
+    discOffsetsByShape.set(key, offsets);
+  }
+  return offsets;
 }
 
 /**
