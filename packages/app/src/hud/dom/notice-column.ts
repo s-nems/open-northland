@@ -193,13 +193,48 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   const covered = new Map<HTMLLIElement, number>();
   /** The overlap of the cards that fan as one: every card while no stack is open, else those down to it. */
   let overlap = 0;
+  /** The figure canvases on view and their visible heights, read where the layout is current. */
+  const findFigureSlots = (): void => {
+    figureSlotsStale = false;
+    const top = list.scrollTop;
+    const bottom = top + list.clientHeight;
+    const slots: NoticeFigureSlot[] = [];
+    let box: NoticeFigureBox = { width: 0, height: 0, pixelScale: 0 };
+    const take = (holder: HTMLElement, holderTop: number, visible: (canvas: HTMLCanvasElement) => number) => {
+      if (holderTop + holder.offsetHeight <= top || holderTop >= bottom) return;
+      const canvas = holder.querySelector('.on-notice__preview--figure');
+      if (!(canvas instanceof HTMLCanvasElement)) return;
+      // One rect read serves every card and row: the plane's scale is theirs, and a row's canvas has
+      // a card's size, cropped by its smaller box. The bitmap fills the canvas's content box.
+      if (box.pixelScale === 0) {
+        box = {
+          width: canvas.clientWidth,
+          height: canvas.clientHeight,
+          pixelScale: (canvas.getBoundingClientRect().width / canvas.offsetWidth) * devicePixelRatio,
+        };
+      }
+      slots.push({ entity: Number(holder.dataset.entity), canvas, visible: visible(canvas) });
+    };
+    for (const li of items()) {
+      const face = li.firstElementChild;
+      const height = face instanceof HTMLElement ? face.offsetHeight : li.offsetHeight;
+      take(li, li.offsetTop, () => height - (covered.get(li) ?? 0));
+    }
+    if (openKey !== null) {
+      members.paintVisible(top, bottom, deps);
+      for (const { row, top: rowTop } of members.visibleRows(top, bottom)) {
+        if (row.dataset.entity !== undefined) take(row, rowTop, (canvas) => canvas.clientHeight);
+      }
+    }
+    figureSlots = { slots, box };
+  };
+
   /**
    * Fan the cards so they all fit: one uniform overlap, weightier cards in front. Fanned cards keep one
    * event line, so the heights are measured again once the fan is on. With a stack open, the cards down
    * to it keep the overlap they had, its rows never fan, and the cards below fan in the room left.
    */
   const layout = (): void => {
-    figureSlotsStale = true;
     const shown = items();
     shown.forEach((li, i) => {
       li.style.setProperty('--z', String(shown.length - i));
@@ -248,6 +283,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     }
     placeFull();
     updateMore();
+    findFigureSlots();
   };
 
   let pinned: HTMLLIElement | null = null;
@@ -458,15 +494,22 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   list.addEventListener('mouseout', onLeave);
   list.addEventListener('focusin', onEnter);
   list.addEventListener('focusout', onLeave);
+  // A scroll or a settled transition moves the figure canvases: they are found again once per frame, in
+  // the resize-observer pass after the browser's own layout.
+  const slotFinder = new ResizeObserver(() => findFigureSlots());
+  const findSlotsAfterFrame = (): void => {
+    slotFinder.unobserve(list);
+    slotFinder.observe(list);
+  };
   list.addEventListener('scroll', () => {
     placeFull();
     updateMore();
-    figureSlotsStale = true;
+    findSlotsAfterFrame();
   });
   // The fan settles through a margin transition; count the fold and place the figures again once it has.
   list.addEventListener('transitionend', () => {
     updateMore();
-    figureSlotsStale = true;
+    findSlotsAfterFrame();
   });
   list.addEventListener('mouseleave', updateMore);
   more.addEventListener('click', () => {
@@ -474,6 +517,12 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   });
   const resize = new ResizeObserver(layout);
   resize.observe(column);
+  /** Fan the cards in the next resize-observer pass, which runs after the browser's own layout: a fresh
+   *  observation always reports, and the heights read there cost no layout of the rest of the HUD. */
+  const layoutAfterFrame = (): void => {
+    resize.unobserve(column);
+    resize.observe(column);
+  };
   // A card whose text grew or shrank fans again once the browser has laid it out; a render that only
   // rewrote counts and labels in cards of unchanged size measures nothing.
   const cardSizes = new ResizeObserver(layout);
@@ -629,54 +678,19 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
         const value = button.firstElementChild;
         if (value !== null) value.textContent = String(tally[i] ?? 0);
       });
-      if (moved) layout();
+      if (moved) layoutAfterFrame();
     },
     figures: (): NoticeFigureSlots => {
       const nextInset = bottomInset();
       if (nextInset !== inset) {
         inset = nextInset;
         column.style.bottom = `${inset}px`;
-        layout();
+        layoutAfterFrame();
       }
-      // The cards' places change only with a render, a layout, a scroll or a settled transition: the
-      // figures keep their slots between them, and a frame reads no layout.
-      if (!figureSlotsStale) return figureSlots;
-      figureSlotsStale = false;
-      const top = list.scrollTop;
-      const bottom = top + list.clientHeight;
-      const slots: NoticeFigureSlot[] = [];
-      let box: NoticeFigureBox = { width: 0, height: 0, pixelScale: 0 };
-      const take = (
-        holder: HTMLElement,
-        holderTop: number,
-        visible: (canvas: HTMLCanvasElement) => number,
-      ) => {
-        if (holderTop + holder.offsetHeight <= top || holderTop >= bottom) return;
-        const canvas = holder.querySelector('.on-notice__preview--figure');
-        if (!(canvas instanceof HTMLCanvasElement)) return;
-        // One rect read serves every card and row: the plane's scale is theirs, and a row's canvas has
-        // a card's size, cropped by its smaller box. The bitmap fills the canvas's content box.
-        if (box.pixelScale === 0) {
-          box = {
-            width: canvas.clientWidth,
-            height: canvas.clientHeight,
-            pixelScale: (canvas.getBoundingClientRect().width / canvas.offsetWidth) * devicePixelRatio,
-          };
-        }
-        slots.push({ entity: Number(holder.dataset.entity), canvas, visible: visible(canvas) });
-      };
-      for (const li of items()) {
-        const face = li.firstElementChild;
-        const height = face instanceof HTMLElement ? face.offsetHeight : li.offsetHeight;
-        take(li, li.offsetTop, () => height - (covered.get(li) ?? 0));
-      }
-      if (openKey !== null) {
-        members.paintVisible(top, bottom, deps);
-        for (const { row, top: rowTop } of members.visibleRows(top, bottom)) {
-          if (row.dataset.entity !== undefined) take(row, rowTop, (canvas) => canvas.clientHeight);
-        }
-      }
-      figureSlots = { slots, box };
+      // The cards' places change only with a layout, a scroll or a settled transition, which find the
+      // slots again after the browser's layout; a frame reads layout here only once a card lost its
+      // picture.
+      if (figureSlotsStale) findFigureSlots();
       return figureSlots;
     },
     unpicture: (canvas): void => {
@@ -687,6 +701,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       hover.dispose();
       resize.disconnect();
       cardSizes.disconnect();
+      slotFinder.disconnect();
       column.remove();
     },
   };
