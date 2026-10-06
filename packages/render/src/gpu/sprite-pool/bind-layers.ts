@@ -47,7 +47,12 @@ export type BindFrame = Pick<
  * already pass over a zero-alpha layer. The empty texture's page lives as long as the page, so a hidden
  * layer never holds a bake that may be destroyed.
  */
-function hideLayer(spr: Sprite): void {
+function hideLayer(spr: Sprite | PalettedSprite): void {
+  // A ship's mesh draws outside the batches and reframes itself on its next bind.
+  if (spr instanceof PalettedSprite) {
+    spr.visible = false;
+    return;
+  }
   if (spr.texture !== Texture.EMPTY) spr.texture = Texture.EMPTY;
   spr.alpha = 0;
 }
