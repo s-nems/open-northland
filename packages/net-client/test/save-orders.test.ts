@@ -73,22 +73,11 @@ it('ignores an old response after cancellation and keeps the next save pending',
   expect((await next).sections.find((section) => section.id === 'commands')?.continuation).toHaveLength(1);
 });
 
-it('rejects a wrong tick and invalid simulation payloads without completing the save', async () => {
+it('rejects a reply for another captured tick', async () => {
   const a = capture();
   const wrongTick = expect(a.promise).rejects.toThrow(/another saved tick/);
   a.orders.receive({ kind: 'saveOrders', id: 1, tick: 1, frames: [] });
   await wrongTick;
-  const b = capture();
-  const malformed = expect(b.promise).rejects.toThrow();
-  b.orders.receive({
-    kind: 'saveOrders',
-    id: 1,
-    tick: 0,
-    frames: [
-      { tick: 1, commands: [{ sequence: 0, envelope: { ...order, command: { kind: 'unknownCommand' } } }] },
-    ],
-  });
-  await malformed;
 });
 
 it('does not let a delayed refusal of a timed out save cancel a newer capture', async () => {
@@ -105,4 +94,30 @@ it('does not let a delayed refusal of a timed out save cancel a newer capture', 
   const refused = expect(latest).rejects.toEqual(new RelayRefusal({ code: 'saveUnacknowledged' }));
   orders.refuse(3, { code: 'saveUnacknowledged' });
   await refused;
+});
+
+it('omits invalid payloads just as live frames do, preserving valid orders around them', async () => {
+  const { orders, promise } = capture();
+  const second = { ...order, command: { ...order.command, value: 9 } };
+  orders.receive({
+    kind: 'saveOrders',
+    id: 1,
+    tick: 0,
+    frames: [
+      {
+        tick: 2,
+        commands: [
+          { sequence: 0, envelope: order },
+          { sequence: 1, envelope: { ...order, command: { kind: 'unknownCommand' } } },
+          { sequence: 2, envelope: second },
+        ],
+      },
+    ],
+  });
+  const restored = restoreSimulation(await promise, { content: testContent() });
+  restored.run(2);
+  expect(restored.commands.log.map(({ applyTick, command }) => [applyTick, command])).toEqual([
+    [2, order.command],
+    [2, second.command],
+  ]);
 });

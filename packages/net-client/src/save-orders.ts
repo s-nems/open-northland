@@ -44,10 +44,15 @@ export class SaveOrders {
     }
     try {
       const continuation = message.frames.flatMap((frame) =>
-        frame.commands.map(({ envelope }) => ({
-          applyTick: frame.tick,
-          envelope: parseCommandEnvelope(envelope),
-        })),
+        frame.commands.flatMap(({ envelope }) => {
+          try {
+            return [{ applyTick: frame.tick, envelope: parseCommandEnvelope(envelope) }];
+          } catch {
+            // The live transport drops the same invalid payload on every client. It must not
+            // prevent saving valid orders that share its frame.
+            return [];
+          }
+        }),
       );
       const save = withSaveContinuation(pending.save, continuation);
       this.clear();
