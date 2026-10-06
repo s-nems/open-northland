@@ -198,9 +198,7 @@ export function startAttack(
   blow: Blow,
   weapon: WeaponType,
 ): void {
-  const animation = isAnimalTribe(ctx.content, attacker.tribe)
-    ? boundAnimalAtomicAnimation(ctx.content, attacker, ATTACK_ATOMIC_ID)
-    : boundAtomicAnimation(ctx.content, attacker, ATTACK_ATOMIC_ID);
+  const animation = attackAnimationName(ctx.content, attacker);
   const hitFrames =
     animation === undefined ? [] : atomicEventFrames(ctx.content, animation, ATOMIC_EVENT_TYPE_ATTACK);
   const lunge =
@@ -250,6 +248,23 @@ export function startAttack(
   // sync with the visible strike.
 }
 
+/** Trades using civilian fists inherit the civilian swing's duration and hit events too.
+ * Explicit trade clips win; military jobs keep their own missing-binding behavior. */
+function attackAnimationName(
+  content: SystemContext['content'],
+  attacker: SettlerIdentity,
+): string | undefined {
+  if (isAnimalTribe(content, attacker.tribe))
+    return boundAnimalAtomicAnimation(content, attacker, ATTACK_ATOMIC_ID);
+  const own = boundAtomicAnimation(content, attacker, ATTACK_ATOMIC_ID);
+  const index = contentIndex(content);
+  if (own !== undefined || attacker.jobType === null || !index.civilianJobs.has(attacker.jobType)) return own;
+  const civilian = index.jobTypeBySlug.get('civilist');
+  return civilian === undefined
+    ? undefined
+    : boundAtomicAnimation(content, { tribe: attacker.tribe, jobType: civilian }, ATTACK_ATOMIC_ID);
+}
+
 /** An animal attack clip's forward events and the heading they step along. Original behavior: only an
  *  animal plays them; a person's clip ignores them, even one borrowed from an animal. Approximation: the
  *  heading is the screen octant toward `target` as the swing starts. */
@@ -274,9 +289,7 @@ export function attackClipTiming(
   content: SystemContext['content'],
   attacker: SettlerIdentity,
 ): { readonly length: number; readonly shotAt: number } {
-  const clip = isAnimalTribe(content, attacker.tribe)
-    ? boundAnimalAtomicAnimation(content, attacker, ATTACK_ATOMIC_ID)
-    : boundAtomicAnimation(content, attacker, ATTACK_ATOMIC_ID);
+  const clip = attackAnimationName(content, attacker);
   const length = atomicDurationForName(content, clip);
   const event = clip === undefined ? undefined : atomicEventFrame(content, clip, ATOMIC_EVENT_TYPE_ATTACK);
   return { length, shotAt: Math.min(event ?? length, length) };

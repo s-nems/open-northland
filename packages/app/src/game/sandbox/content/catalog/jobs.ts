@@ -26,6 +26,7 @@ import {
   JOB_CHILD_MALE,
   JOB_CIVILIST,
   JOB_COLLECTOR,
+  JOB_DRUID,
   JOB_FISHER,
   JOB_HUNTER,
   JOB_IDLE,
@@ -43,6 +44,7 @@ import { PROFESSIONS } from '../../../../catalog/professions.js';
 import { ADULT_ANIMAL_JOB } from '../../../../content/animal-gfx/bindings.js';
 import { messages, professionLabel } from '../../../../i18n/index.js';
 import {
+  canonicalJobType,
   EXTRACTED_GATHERER_TRADES,
   GATHERERS,
   JOB_FARMER_SLOT,
@@ -56,6 +58,7 @@ export interface SandboxJob {
   readonly typeId: number;
   readonly id: string;
   readonly name?: string;
+  readonly baseJob?: number;
   readonly allowedAtomics?: number[];
   /** `jobtypes.ini` `needsReligionFlag` / `ignoresHomeHouseFlag`, stamped from the catalog's own sets. */
   readonly needsReligion?: boolean;
@@ -181,6 +184,12 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
   }
   for (const job of extras.jobs ?? []) {
     if (!jobs.has(job.typeId)) jobs.set(job.typeId, job);
+  }
+  // jobtypes.ini trades 7..30 inherit the civilist; slot jobs keep that ancestry after rebasing.
+  // Military, life-stage and vehicle rows do not acquire civilian fists through this catalog rule.
+  for (const [typeId, job] of jobs) {
+    const original = canonicalJobType(typeId);
+    if (original >= JOB_BUILDER && original <= JOB_DRUID) jobs.set(typeId, { ...job, baseJob: JOB_CIVILIST });
   }
   // The two `jobtypes.ini` flags the needs rules read, stamped last so every row above gets them.
   for (const [typeId, job] of jobs) {

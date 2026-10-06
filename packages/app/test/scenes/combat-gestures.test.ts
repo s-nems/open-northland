@@ -15,10 +15,16 @@ it('reaches civilian combat, shortbow meals and sleep, and wedding celebration t
     for (const e of sim.world.query(components.Settler, components.CurrentAtomic)) {
       const job = sim.world.get(e, components.Settler).jobType;
       const action = sim.world.get(e, components.CurrentAtomic).atomicId;
-      if (job === 6 && action === 81) expect(sim.world.has(e, components.Weapon)).toBe(false);
+      if (job === 7 && action === 81) {
+        expect(sim.world.has(e, components.Weapon)).toBe(false);
+        expect(sim.world.get(e, components.CurrentAtomic)).toMatchObject({
+          duration: 16,
+          effect: { kind: 'attack', hitFrames: [6] },
+        });
+      }
       reached.add(`${job}:${action}`);
     }
   }
-  for (const action of ['6:81', '31:81', '40:10', '40:8', '6:17'])
+  for (const action of ['7:81', '31:81', '40:10', '40:8', '6:17'])
     expect(reached.has(action), action).toBe(true);
 });

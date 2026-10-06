@@ -132,6 +132,12 @@ export function engageCombatant(
   // A manned post is itself the order to hold and shoot, so neither passive stance applies under one.
   if (!manning) {
     if (resolveFleeState(world, ctx, terrain, index, e, attacker, stance)) return;
+    // A civilian's fists must not turn the doorway pause into a new fight. Finish the run for
+    // cover after shedding any old flight; an explicit attack order outside still takes precedence.
+    if (world.has(e, Sheltering) && !ordered) {
+      disengage(world, e);
+      return;
+    }
     if (ignoresCombat(ctx, stance, attacker)) {
       disengage(world, e);
       return;

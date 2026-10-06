@@ -4,6 +4,7 @@ import { grassTerrain } from '../catalog/buildings.js';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
+  JOB_BUILDER,
   JOB_CIVILIST,
   JOB_SOLDIER_UNARMED,
   JOB_WOMAN,
@@ -16,7 +17,7 @@ import type { SceneDefinition } from './types.js';
 
 const { Carrying, CurrentAtomic, Health, Owner, Settler, Stance } = components;
 const HITPOINTS = 1_000_000;
-const DUEL_JOBS = [JOB_CIVILIST, JOB_SOLDIER_UNARMED, JOB_ARCHER, JOB_ARCHER_LONG];
+const DUEL_JOBS = [JOB_BUILDER, JOB_SOLDIER_UNARMED, JOB_ARCHER, JOB_ARCHER_LONG];
 
 function sturdy(sim: Simulation, e: Entity): Entity {
   const health = sim.world.mut(e, Health);
@@ -39,7 +40,7 @@ function build(sim: Simulation): void {
     );
     sim.world.mut(target, Stance).mode = systems.MILITARY_MODE.IGNORE;
     // The slower civilian swing needs a passive target; repeated soldier blows otherwise interrupt it.
-    if (job === JOB_CIVILIST) {
+    if (job === JOB_BUILDER) {
       components.setMissionBehaviour(sim.world, target, components.MISSION_BEHAVIOUR.PASSIVE, true);
     }
     const attacker = sturdy(sim, spawnSettlerAtNode(sim, job, from, HUMAN_PLAYER));
