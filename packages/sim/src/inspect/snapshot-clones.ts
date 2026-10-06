@@ -2,6 +2,7 @@ import type { SimEvent } from '../core/events.js';
 import { TOUCHED_LOG_OVERFLOW_LIMIT } from '../ecs/touched-log.js';
 import type { Component, Entity, World } from '../ecs/world.js';
 import { EntityDigest } from './entity-digest.js';
+import { addField } from './fast-record.js';
 import { clonePlain } from './plain-clone.js';
 import type { EntitySnapshot } from './snapshot.js';
 import { DeltaColumns, type SnapshotDelta } from './snapshot-delta.js';
@@ -150,11 +151,13 @@ class SnapshotClones {
 function cloneComponents(world: World, id: Entity, previous?: CachedEntity): Record<string, unknown> {
   const components: Record<string, unknown> = {};
   const writtenNames = new Set([...(previous?.written ?? [])].map((component) => component.name));
+  let fields = 0;
   world.forEachComponent(id, (name, value) => {
-    components[name] =
+    const clone =
       previous !== undefined && !writtenNames.has(name) && Object.hasOwn(previous.components, name)
         ? previous.components[name]
         : clonePlain(value);
+    addField(components, fields++, name, clone);
   });
   return components;
 }

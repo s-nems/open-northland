@@ -1,3 +1,4 @@
+import { addField } from './fast-record.js';
 import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
 import { indexOfEntity, indexOfEntityFrom } from './snapshot.js';
 import { changeAt, deltaValues, type EntityChange, type SnapshotDelta } from './snapshot-delta.js';
@@ -146,20 +147,6 @@ export class SnapshotMirror {
       }
     }
   }
-}
-
-/** The most fields a record built by computed-key stores (`record[name] = value`) is sure to keep in
- *  V8's fast layout: past about twenty such additions it turns into a hash table, which an
- *  `Object.assign` copy keeps, at about a hundred times the cost of copying a fast record. */
-const KEYED_FIELDS = 16;
-
-/** Add `name` to a record holding `fields` fields and not `name`. Past {@link KEYED_FIELDS} the field is
- *  defined, which V8 adds as a named store, under a limit of over a hundred fields: slower than a keyed
- *  store, but the record keeps its fast layout. */
-function addField(components: Record<string, unknown>, fields: number, name: string, value: unknown): void {
-  if (fields < KEYED_FIELDS) components[name] = value;
-  else
-    Object.defineProperty(components, name, { value, writable: true, enumerable: true, configurable: true });
 }
 
 function created(id: number, change: EntityChange, values: readonly unknown[], at: number): EntitySnapshot {
