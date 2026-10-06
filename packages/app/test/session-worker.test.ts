@@ -17,11 +17,11 @@ import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { IDLE_WORK_NAMES, idleWorkScene, idleWorkWorker } from '../src/scenes/idle-work.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import type { SessionHost } from '../src/session/host.js';
-import { decodeSaveText, isGzipSave } from '../src/view/runtime/save-load/codec.js';
 import { inlineSessionHost } from '../src/session/inline-host.js';
 import type { FromWorker, ToWorker, WorkerSessionOptions } from '../src/session/worker/protocol.js';
 import { ASSUMED_FRAME_MS, leadTickLimit, REPLACED_SESSION_MESSAGE } from '../src/session/worker/serve.js';
 import { sessionOverPort, type WorkerSessionOpening } from '../src/session/worker/worker-session.js';
+import { decodeSaveText, isGzipSave } from '../src/view/runtime/save-load/codec.js';
 import { canonicalEntities } from './support/session-worker/canonical-entities.js';
 import {
   bundleTestWorker,
