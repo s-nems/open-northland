@@ -259,6 +259,24 @@ describe('snapshot delta stream', () => {
     expect(held).toStrictEqual(entityById(sim.snapshot(), walker)?.components);
   });
 
+  it('tells apart scalar records whose keys join to the same text', () => {
+    const delta = packSnapshotDelta({
+      tick: 0,
+      sequence: 0,
+      rebuild: true,
+      touched: [
+        { id: 1, components: { Odd: { 'a,b': 1, c: 2 } }, removed: [] },
+        { id: 2, components: { Odd: { a: 3, 'b,c': 4 } }, removed: [] },
+      ],
+      removed: [],
+      events: [],
+    });
+    expect(entityDeltas(delta).map((e) => e.components.Odd)).toStrictEqual([
+      { 'a,b': 1, c: 2 },
+      { a: 3, 'b,c': 4 },
+    ]);
+  });
+
   it('carries a same-tick mutation as a touched entity, and a destroyed one as removed', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const node = bareResource(sim, 5);

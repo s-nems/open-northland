@@ -152,6 +152,8 @@ interface ChangeStep {
 }
 
 const NO_EPOCH = 0;
+/** The change steps a stream keeps before it starts over, far above what a long match meets. */
+const MAX_CHANGE_STEPS = 1 << 16;
 
 function changeStep(): ChangeStep {
   return {
@@ -165,21 +167,35 @@ function changeStep(): ChangeStep {
   };
 }
 
-function stepAfter(steps: Map<string, ChangeStep>, name: string): ChangeStep {
-  let step = steps.get(name);
-  if (step === undefined) {
-    step = changeStep();
-    steps.set(name, step);
-  }
-  return step;
-}
-
 /** The change paths and record layouts one stream met so far, kept from delta to delta so a delta
- *  allocates neither again; each delta numbers its own entries under a new epoch. */
+ *  allocates neither again; each delta numbers its own entries under a new epoch. The layouts are
+ *  bounded by the components' field sets; the paths by the combinations of components entities write
+ *  together, which keep turning up slowly: magiczny_las at t120000 holds 1000 steps after the opening
+ *  rebuild and 2900 after 3000 ticks, with 116 layouts. */
 export class DeltaShapes {
-  readonly firstStep = changeStep();
+  firstStep = changeStep();
   readonly layouts = new Map<string, RecordLayout>();
   epoch = NO_EPOCH;
+  private steps = 0;
+
+  /** The step `name` leads to from `steps`, made on first use. */
+  stepAfter(steps: Map<string, ChangeStep>, name: string): ChangeStep {
+    let step = steps.get(name);
+    if (step === undefined) {
+      step = changeStep();
+      steps.set(name, step);
+      this.steps++;
+    }
+    return step;
+  }
+
+  /** Forget the paths and layouts once they pass {@link MAX_CHANGE_STEPS}; called between deltas. */
+  bound(): void {
+    if (this.steps <= MAX_CHANGE_STEPS) return;
+    this.firstStep = changeStep();
+    this.layouts.clear();
+    this.steps = 0;
+  }
 }
 
 /** Builds a delta's columns one entity at a time; entities go in ascending id order. */
@@ -207,6 +223,7 @@ export class DeltaColumns {
   private readonly recordKindScratch: number[] = [];
 
   constructor(private readonly shapes = new DeltaShapes()) {
+    shapes.bound();
     this.epoch = ++shapes.epoch;
     this.step = shapes.firstStep;
   }
@@ -223,7 +240,7 @@ export class DeltaColumns {
    *  Either way the columns end as {@link write} of the clone leaves them. */
   writeLive(name: string, value: unknown): void {
     this.written[this.writtenCount++] = name;
-    this.step = stepAfter(this.step.written, name);
+    this.step = this.shapes.stepAfter(this.step.written, name);
     const kind = isPlainRecord(value) ? this.scalarRecordKind(this.step, value, true) : WHOLE_VALUE;
     this.valueKinds.push(kind);
     // A field that fails the scalar test fails it in the clone too, so the clone needs no second look.
@@ -233,7 +250,7 @@ export class DeltaColumns {
   /** Write a detached value, kept as the delta's own unless its fields are all scalars. */
   write(name: string, value: unknown): void {
     this.written[this.writtenCount++] = name;
-    this.step = stepAfter(this.step.written, name);
+    this.step = this.shapes.stepAfter(this.step.written, name);
     const kind = this.scalarRecordKind(this.step, value, false);
     this.valueKinds.push(kind);
     if (kind === WHOLE_VALUE) this.values.push(value);
@@ -241,7 +258,7 @@ export class DeltaColumns {
 
   drop(name: string): void {
     this.dropped[this.droppedCount++] = name;
-    this.step = stepAfter(this.step.dropped, name);
+    this.step = this.shapes.stepAfter(this.step.dropped, name);
   }
 
   end(): void {
@@ -363,7 +380,8 @@ export class DeltaColumns {
     const keys = this.recordKeyScratch.slice(0, count);
     const kinds = this.recordKindScratch.slice(0, count);
     const fields = kinds.map((kind) => FIELD_KINDS[kind] as FieldKind).join('');
-    const name = `${fields}:${keys.join(',')}`;
+    // JSON quotes each key, so no two key lists share a name whatever characters the keys hold.
+    const name = JSON.stringify([fields, keys]);
     let layout = this.shapes.layouts.get(name);
     if (layout === undefined) {
       layout = { keys, fields, kinds, at: WHOLE_VALUE, epoch: NO_EPOCH };

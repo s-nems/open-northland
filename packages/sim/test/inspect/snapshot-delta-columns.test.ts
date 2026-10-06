@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { clonePlain } from '../../src/inspect/plain-clone.js';
-import { DeltaColumns, deltaValues, type SnapshotDelta } from '../../src/inspect/snapshot-delta.js';
+import {
+  DeltaColumns,
+  DeltaShapes,
+  deltaValues,
+  type SnapshotDelta,
+} from '../../src/inspect/snapshot-delta.js';
 
 const ENTITY = 1;
 
@@ -64,5 +69,30 @@ describe('delta columns from live values', () => {
       x = 1;
     }
     expect(() => columnsOf((columns) => columns.writeLive('shaped', new Shaped()))).toThrow(/uncloneable/);
+  });
+});
+
+describe('delta shapes', () => {
+  it('starts over past its bound and still writes exact deltas', () => {
+    const shapes = new DeltaShapes();
+    // Each entity writes a component of its own: one new change step apiece.
+    const MANY = (1 << 16) + 2;
+    const filling = new DeltaColumns(shapes);
+    for (let id = 1; id <= MANY; id++) {
+      filling.begin(id);
+      filling.writeLive(`C${id}`, { v: id });
+      filling.end();
+    }
+    const kept = shapes.firstStep;
+    const next = new DeltaColumns(shapes);
+    expect(shapes.firstStep).not.toBe(kept);
+    next.begin(1);
+    next.writeLive('C1', { v: 7, on: true });
+    next.end();
+    const columns = next.columns();
+    expect(
+      deltaValues({ ...columns, tick: 0, sequence: 0, rebuild: false, removed: [], events: [] }),
+    ).toEqual([{ v: 7, on: true }]);
+    expect(columns.changes).toEqual([{ written: ['C1'], removed: [] }]);
   });
 });
