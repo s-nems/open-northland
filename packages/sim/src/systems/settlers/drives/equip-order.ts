@@ -8,7 +8,7 @@ import {
   wornSlot,
 } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
-import type { Entity, World } from '../../../ecs/world.js';
+import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { atomicDuration } from '../../readviews/animations.js';
@@ -32,8 +32,9 @@ interface EquipErrand {
   readonly terrain: TerrainGraph;
   readonly entity: Entity;
   readonly settler: SettlerIdentity;
-  /** The live order component: writing `stage` through it advances the stored order. */
-  readonly order: EquipOrderState;
+  /** The stored order, read-only: a handler that changes it writes through {@link writableOrder}, so a
+   *  plan that only waits on its stage logs no write. */
+  readonly order: DeepReadonly<EquipOrderState>;
   readonly here: NodeId;
   readonly gate: NavigationLimit | undefined;
   readonly avoid: ((cell: NodeId) => boolean) | undefined;
@@ -78,7 +79,7 @@ export function planEquipOrder(
   targets: TargetCandidates,
   supply: SupplyTally,
 ): boolean {
-  const order = world.tryMut(e, EquipOrder);
+  const order = world.tryGet(e, EquipOrder);
   if (order === undefined) return false;
   const errand: EquipErrand = {
     world,
@@ -210,9 +211,10 @@ function planReturn(errand: EquipErrand): boolean {
   if (order.issuer === 'assistant-recruit' && order.group === 'weapon') {
     const chained = chainRecruitArmor(world, ctx, terrain, targets, supply, entity, here, avoid);
     if (chained !== null) {
-      order.group = 'armor';
-      order.goodType = chained;
-      order.stage = 'acquire';
+      const live = writableOrder(errand);
+      live.group = 'armor';
+      live.goodType = chained;
+      live.stage = 'acquire';
       return planFetch(errand, chained);
     }
   }
@@ -225,7 +227,7 @@ function planReturn(errand: EquipErrand): boolean {
 }
 
 function endErrand(errand: EquipErrand): boolean {
-  errand.order.stage = 'return';
+  writableOrder(errand).stage = 'return';
   return planReturn(errand);
 }
 
@@ -238,7 +240,9 @@ function finishEquipOrder(errand: EquipErrand): boolean {
 
 /** Promote the next still-valid player intent without an intermediate return trip. */
 function promoteQueuedEquipOrder(errand: EquipErrand): boolean {
-  const { ctx, settler, order } = errand;
+  const { ctx, settler } = errand;
+  if (errand.order.queued.length === 0) return false;
+  const order = writableOrder(errand);
   for (;;) {
     const next = order.queued?.shift();
     if (next === undefined) return false;
@@ -251,6 +255,10 @@ function promoteQueuedEquipOrder(errand: EquipErrand): boolean {
     order.issuer = 'player';
     return true;
   }
+}
+
+function writableOrder(errand: EquipErrand): EquipOrderState {
+  return errand.world.mut(errand.entity, EquipOrder);
 }
 
 /** The nearest same-side store that can take `goodType`. */
