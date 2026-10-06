@@ -495,6 +495,20 @@ describe('snapshot mirror list edits', () => {
     expect(structuredClone(grown)).toStrictEqual(expected);
   });
 
+  it('answers entityById from its id map through creation, patching, removal and rebuild', () => {
+    const mirror = seeded([10, 20, 30]);
+    mirror.apply(delta({ touched: [entity(20, 1), entity(25)], removed: [10] }));
+    const after = mirror.snapshot();
+    expect(entityById(after, 10)).toBeUndefined();
+    expect(entityById(after, 20)?.components).toEqual({ mark: 1 });
+    expect(entityById(after, 25)).toBe(after.entities[1]);
+    expect(mirror.verifyIndexes()).toEqual([]);
+    mirror.apply(delta({ tick: 2, sequence: 2, rebuild: true, touched: [entity(40)] }));
+    expect(entityById(mirror.snapshot(), 20)).toBeUndefined();
+    expect(entityById(mirror.snapshot(), 40)?.id).toBe(40);
+    expect(mirror.verifyIndexes()).toEqual([]);
+  });
+
   it('drops removed entities from the head, the middle and the tail in one pass, and keeps them as departed', () => {
     const mirror = seeded([10, 20, 30, 40, 50]);
     const before = mirror.snapshot().entities.slice();

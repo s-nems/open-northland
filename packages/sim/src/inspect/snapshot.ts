@@ -57,11 +57,25 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
   return { tick, entities, events: cloneEvents(events) };
 }
 
+/** The id maps a `SnapshotMirror` keeps beside the entity list it edits in place, by that list. */
+const ID_MAPS = new WeakMap<readonly EntitySnapshot[], ReadonlyMap<number, EntitySnapshot>>();
+
+/** Answer {@link entityById} over `entities` from `byId`, which its owner keeps equal to the list. */
+export function attachIdMap(
+  entities: readonly EntitySnapshot[],
+  byId: ReadonlyMap<number, EntitySnapshot>,
+): void {
+  ID_MAPS.set(entities, byId);
+}
+
 /**
- * The snapshot entity with `id`, or `undefined` once it has left the snapshot. Binary search: a narrowed
- * view that re-orders `entities` breaks the ascending-id precondition and must not be passed here.
+ * The snapshot entity with `id`, or `undefined` once it has left the snapshot: from a mirror's id map, else
+ * by binary search, where a narrowed view that re-orders `entities` breaks the ascending-id precondition
+ * and must not be passed here.
  */
 export function entityById(snapshot: WorldSnapshot, id: number): EntitySnapshot | undefined {
+  const byId = ID_MAPS.get(snapshot.entities);
+  if (byId !== undefined) return byId.get(id);
   const at = indexOfEntity(snapshot.entities, id);
   return at >= 0 ? snapshot.entities[at] : undefined;
 }

@@ -1,6 +1,6 @@
 import { addField } from './fast-record.js';
 import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
-import { indexOfEntity, indexOfEntityFrom } from './snapshot.js';
+import { attachIdMap, indexOfEntity, indexOfEntityFrom } from './snapshot.js';
 import { changeAt, deltaValues, type EntityChange, type SnapshotDelta } from './snapshot-delta.js';
 import { attachIndexes, SnapshotIndexes } from './snapshot-indexes.js';
 
@@ -16,6 +16,12 @@ import { attachIndexes, SnapshotIndexes } from './snapshot-indexes.js';
  */
 export class SnapshotMirror {
   private readonly entities: EntitySnapshot[] = [];
+  /** The entities by id, kept with the list, which `entityById` answers from in place of a search. */
+  private readonly byId = new Map<number, EntitySnapshot>();
+
+  constructor() {
+    attachIdMap(this.entities, this.byId);
+  }
   private readonly indexes = new SnapshotIndexes(() => this.entities);
   private current: WorldSnapshot | null = null;
   private lastSequence = 0;
@@ -40,11 +46,14 @@ export class SnapshotMirror {
     this.dropped = [];
     if (delta.rebuild) {
       this.entities.length = 0;
+      this.byId.clear();
       const values = deltaValues(delta);
       let at = 0;
       for (let i = 0; i < delta.touched.length; i++) {
         const change = changeAt(delta, i);
-        this.entities.push(created(delta.touched[i] as number, change, values, at));
+        const entity = created(delta.touched[i] as number, change, values, at);
+        this.entities.push(entity);
+        this.byId.set(entity.id, entity);
         at += change.written.length;
       }
       this.indexes.reset();
@@ -67,7 +76,11 @@ export class SnapshotMirror {
   /** Each maintained index that no longer matches a fresh walk of the entities, described
    *  (`SnapshotIndexes.verify`). */
   verifyIndexes(): string[] {
-    return this.indexes.verify();
+    const out = this.indexes.verify();
+    let mapped = this.byId.size === this.entities.length;
+    for (const entity of this.entities) if (this.byId.get(entity.id) !== entity) mapped = false;
+    if (!mapped) out.push('the id map differs from the entity list');
+    return out;
   }
 
   /** The snapshot the applied deltas add up to. Throws before the first delta: there is no world yet. */
@@ -92,6 +105,7 @@ export class SnapshotMirror {
       while (id !== undefined && id < entity.id) id = removed[++next];
       if (id === entity.id) {
         this.dropped.push(entity);
+        this.byId.delete(entity.id);
         this.indexes.removed(entity);
         next++;
         continue;
@@ -119,11 +133,13 @@ export class SnapshotMirror {
       if (held !== undefined) {
         const next = patched(held, change, values, at);
         list[found] = next;
+        this.byId.set(id, next);
         this.indexes.replaced(held, next, delta.changeOf[i] as number);
         from = found + 1;
       } else {
         const entity = created(id, change, values, at);
         inserts.push(entity);
+        this.byId.set(id, entity);
         this.indexes.added(entity);
         from = -found - 1;
       }
