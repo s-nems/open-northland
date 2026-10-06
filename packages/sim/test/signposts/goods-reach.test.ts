@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Owner, Position, ResourceFootprint, Signpost, Stockpile } from '../../src/components/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
-import { reachContains, searchReach } from '../../src/nav/range-search.js';
+import { intersectReach, reachContains, searchReach } from '../../src/nav/range-search.js';
 import { buildTerrainGraph } from '../../src/nav/terrain/map.js';
 import { Simulation } from '../../src/simulation.js';
 import { layRoad, liftRoad } from '../../src/systems/roads/index.js';
@@ -156,6 +156,34 @@ describe('terrain-aware goods reach', () => {
     expect(limit?.allowsNode(terrain.nodeAt(100, 30))).toBe(true);
     expect(floods).toHaveBeenCalledTimes(1);
     floods.mockRestore();
+  });
+  it('rules out a neighbourhood only when no node in it passes', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(240, 100) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('terrain');
+    createSignpost(sim.world, terrain, terrain.nodeAt(40, 30), 0, sim.content);
+    createSignpost(sim.world, terrain, terrain.nodeAt(70, 30), 0, sim.content);
+    signpostLinksSystem(sim.world, ctxOf(sim));
+    const limit = goodsSearchLimitAt(sim.world, sim.content, terrain, 0, 20, 30);
+    if (limit?.mayAllowNear === undefined) throw new Error('a goods search answers neighbourhoods');
+    const RADIUS = 3;
+    const STEP = 4;
+    let ruledOut = 0;
+    for (let y = 0; y < terrain.height; y += STEP)
+      for (let x = 0; x < terrain.width; x += STEP) {
+        if (limit.mayAllowNear(x, y, RADIUS)) continue;
+        ruledOut++;
+        for (let dy = -RADIUS; dy <= RADIUS; dy++)
+          for (let dx = Math.abs(dy) - RADIUS; dx <= RADIUS - Math.abs(dy); dx++) {
+            if (!terrain.inBounds(x + dx, y + dy)) continue;
+            expect(limit.allowsNode(terrain.nodeAt(x + dx, y + dy))).toBe(false);
+          }
+      }
+    expect(ruledOut).toBeGreaterThan(0);
+    const wide = intersectReach({ bounds: limit.bounds, allowsNode: () => true }, limit);
+    expect(wide?.mayAllowNear?.(200, 30, RADIUS)).toBe(false);
   });
   it('uses the strict 40-node boundary on plain land and a smaller reach on resistant ground', () => {
     const grass = buildTerrainGraph(testContent(), grassNodeMap(120, 100));

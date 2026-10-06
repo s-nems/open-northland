@@ -217,6 +217,17 @@ class GoodsSearchLimit implements SpatialGate {
     return this.resolved.allowsNode(node);
   }
 
+  /** Hex distance obeys the triangle inequality and never exceeds Manhattan distance, so no node within
+   *  Manhattan `radius` of `(x, y)` lies inside the hex range unless `(x, y)` lies inside the range
+   *  widened by `radius`; a group's coverage is ruled out by its bounds widened the same way. */
+  mayAllowNear(x: number, y: number, radius: number): boolean {
+    if (hexDistanceBetween(this.hx, this.hy, x, y) < GOODS_SEARCH_RANGE_NODES + radius) return true;
+    return this.nearby.some(
+      ({ bounds: b }) =>
+        x >= b.minX - radius && x <= b.maxX + radius && y >= b.minY - radius && y <= b.maxY + radius,
+    );
+  }
+
   private resolve(): SpatialGate {
     const { world, content, terrain, player } = this;
     const cache = cacheOf(world, content, terrain);

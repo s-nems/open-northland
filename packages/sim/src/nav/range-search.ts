@@ -201,6 +201,15 @@ export function reachGate(terrain: TerrainGraph, areas: readonly ReachArea[]): S
 
 export function intersectReach(a: SpatialGate | undefined, b: SpatialGate | null): SpatialGate | undefined {
   if (b === null) return a;
-  if (a === undefined) return b;
-  return { bounds: b.bounds, allowsNode: (node) => a.allowsNode(node) && b.allowsNode(node) };
+  if (a === undefined || a === b) return b;
+  const intersection: SpatialGate = {
+    bounds: b.bounds,
+    allowsNode: (node) => a.allowsNode(node) && b.allowsNode(node),
+  };
+  if (a.mayAllowNear === undefined && b.mayAllowNear === undefined) return intersection;
+  return {
+    ...intersection,
+    mayAllowNear: (x, y, radius) =>
+      (a.mayAllowNear?.(x, y, radius) ?? true) && (b.mayAllowNear?.(x, y, radius) ?? true),
+  };
 }
