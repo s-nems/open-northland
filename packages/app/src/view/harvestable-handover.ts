@@ -35,16 +35,23 @@ function retirements(event: SimEvent): readonly Retirement[] {
   }
 }
 
+export interface HarvestableHandover<Sprite> {
+  /** Per-frame hook: hands a worked node over to the live sim pool the first time it is worked. */
+  readonly onEvents: (events: readonly SimEvent[]) => void;
+  /** The static quad still drawing `entity`, or `undefined` once the pool draws it. A click on the node
+   *  hit-tests against this quad, since the pool knows nothing of it. */
+  readonly spriteOf: (entity: number) => Sprite | undefined;
+}
+
 /**
- * Bind spawned harvestables to the static quads already drawing them, and return the per-frame event
- * hook that hands one over to the live sim pool the first time it is worked. Null when no placement
- * resolved to a sprite, leaving every node pool-drawn.
+ * Bind spawned harvestables to the static quads already drawing them. Null when no placement resolved
+ * to a sprite, leaving every node pool-drawn.
  */
 export function bindHarvestableHandover<Sprite>(
   surface: StaticDrawSurface<Sprite>,
   placementByEntity: Iterable<readonly [Entity, number]>,
   spriteByPlacement: ReadonlyMap<number, Sprite>,
-): ((events: readonly SimEvent[]) => void) | null {
+): HarvestableHandover<Sprite> | null {
   const held = new Map<number, Sprite>();
   for (const [entity, placement] of placementByEntity) {
     const sprite = spriteByPlacement.get(placement);
@@ -56,7 +63,7 @@ export function bindHarvestableHandover<Sprite>(
   const refs = new Set(held.keys());
   surface.setStaticallyDrawnRefs(refs);
 
-  return (events) => {
+  const onEvents = (events: readonly SimEvent[]): void => {
     for (const event of events) {
       for (const retires of retirements(event)) {
         const sprite = held.get(retires.entity);
@@ -68,6 +75,7 @@ export function bindHarvestableHandover<Sprite>(
       }
     }
   };
+  return { onEvents, spriteOf: (entity) => held.get(entity) };
 }
 
 /**

@@ -4,11 +4,12 @@ import type { SessionDriver } from '@open-northland/lockstep';
 import type {
   DoorBadge,
   ElevationField,
+  MapObjectSprite,
   SceneTerrain,
   SpriteSheet,
   WorldRenderer,
 } from '@open-northland/render';
-import { fogTileVisible, projectNode } from '@open-northland/render';
+import { fogTileVisible, mapObjectBounds, mapObjectPixelHit, projectNode } from '@open-northland/render';
 import {
   adminCommand,
   type Command,
@@ -189,6 +190,9 @@ export interface GameViewDeps {
   readonly ambientWeather?: AmbientWeather | null;
   /** Terrain-height field, so clicks on lifted hills resolve to the tile drawn there. */
   readonly elevation?: ElevationField;
+  /** The static quad still drawing a harvestable the sprite pool skips, so a click on a virgin tree or
+   *  deposit hit-tests its real sprite. Absent (a scene world), every node is pool-drawn. */
+  readonly staticHarvestableSprite?: (entity: number) => MapObjectSprite | undefined;
   /** The controlled seat (`?player=N`): fog perspective, selection and orders, placement ownership, HUD economy. */
   readonly localPlayer?: number;
   /** Owner slot to its roster tribe, stamping the buildings a seat places and the admin panel's spawns.
@@ -789,8 +793,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       askAttachToVehicle: answers.askAttachToVehicle,
       // The fog gate matches the overlay's, so a dimmed shore in the fog takes no dock click either.
       askMoorAt: placementGates.askMoorAt,
-      boundsOf: (ref) => renderer.entityBounds(ref),
-      pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
+      boundsOf: (ref) => {
+        const sprite = deps.staticHarvestableSprite?.(ref);
+        return sprite === undefined ? renderer.entityBounds(ref) : mapObjectBounds(sprite, host.tick);
+      },
+      pixelHitOf: (ref, wx, wy) => {
+        const sprite = deps.staticHarvestableSprite?.(ref);
+        return sprite === undefined
+          ? renderer.entityPixelHit(ref, wx, wy)
+          : mapObjectPixelHit(sprite, host.tick, wx, wy);
+      },
       claimPointer: (x: number, y: number) =>
         toolPanel.claimPointer(x, y) || mountedMinimap.claimsPointer(x, y),
       onUiCue: uiCue,

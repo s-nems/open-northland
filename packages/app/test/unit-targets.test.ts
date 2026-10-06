@@ -5,7 +5,7 @@ import { ENEMY_PLAYER, HUMAN_PLAYER } from '../src/game/rules.js';
 import { isSettler, ownerPlayerOf } from '../src/game/snapshot.js';
 import { fixedViewerSeat, overseerViewerSeat } from '../src/game/viewer-seat.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
-import { pickInRect, pickTopAt } from '../src/view/picking.js';
+import { pickInRect, pickNearestAt, pickTopAt } from '../src/view/picking.js';
 import { createUnitTargets, type UnitTargetsDeps } from '../src/view/unit-controls/unit-targets.js';
 import { snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
 
@@ -32,6 +32,7 @@ describe('unit-controls targets over the renderer frame', () => {
     hostileToward: (owner: number) => boolean = () => true,
     resourceVisible?: (tileX: number, tileY: number) => boolean,
     boundsOf?: UnitTargetsDeps['boundsOf'],
+    pixelHitOf?: UnitTargetsDeps['pixelHitOf'],
   ): ReturnType<typeof createUnitTargets> =>
     createUnitTargets({
       snapshot: () => snapshot,
@@ -39,7 +40,7 @@ describe('unit-controls targets over the renderer frame', () => {
       hostileToward,
       drawnItems: () => drawn,
       boundsOf,
-      pixelHitOf: undefined,
+      pixelHitOf,
       resourceVisible,
     });
 
@@ -303,6 +304,36 @@ describe('unit-controls targets over the renderer frame', () => {
         () => false,
       ).resources(),
     ).toEqual([]);
+  });
+
+  it('hit-tests a resource on its drawn pixels, so the ground beside a mushroom is not the mushroom', () => {
+    const drawn = { ref: 90_022, kind: 'resource', x: 120, y: 80, depth: 80, goodType: 4 } satisfies DrawItem;
+    const retained = {
+      id: 90_023,
+      components: {
+        Position: { x: 4 * ONE, y: 6 * ONE },
+        LandscapeResource: { id: 10 },
+        Resource: { goodType: 5 },
+      },
+    };
+    snapshot = { ...snapshot, entities: [...snapshot.entities, retained] };
+    const box = { minX: 100, maxX: 140, minY: 40, maxY: 90 };
+    const solid = new Set<string>([`${drawn.ref}:120,70`, `${retained.id}:120,70`]);
+    const targets = targetsOver(
+      [drawn],
+      () => true,
+      undefined,
+      () => box,
+      (ref, wx, wy) => solid.has(`${ref}:${wx},${wy}`),
+    );
+
+    const resources = targets.resources();
+    expect(resources.map((t) => t.box)).toEqual([box, box]);
+    // Inside the box on a solid texel: hit. Inside the box on a transparent one: ground.
+    for (const target of resources) {
+      expect(pickNearestAt([target], 120, 70)).toBe(target.ref);
+      expect(pickNearestAt([target], 125, 70)).toBeNull();
+    }
   });
 
   it('hit-tests a drop-off flag against its drawn bounds, which ride the terrain lift', () => {

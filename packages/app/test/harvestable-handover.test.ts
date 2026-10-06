@@ -87,8 +87,9 @@ describe('harvestable static-draw handover', () => {
     'hands a $kind harvestable to the pool once, keeping its fog ghost',
     ({ event, node, sprite, remaining }) => {
       const spy = surfaceSpy();
-      const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
-      if (onEvents === null) throw new Error('expected a handover for bound sprites');
+      const handover = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
+      if (handover === null) throw new Error('expected a handover for bound sprites');
+      const { onEvents } = handover;
 
       onEvents([event(node)]);
       onEvents([event(node)]);
@@ -101,8 +102,9 @@ describe('harvestable static-draw handover', () => {
 
   it('drops a razed bush without leaving a fog ghost', () => {
     const spy = surfaceSpy();
-    const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
-    if (onEvents === null) throw new Error('expected a handover for bound sprites');
+    const handover = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
+    if (handover === null) throw new Error('expected a handover for bound sprites');
+    const { onEvents } = handover;
 
     onEvents([razed(11)]);
 
@@ -113,8 +115,8 @@ describe('harvestable static-draw handover', () => {
 
   it('drops every node a road or wall cleared, without fog ghosts', () => {
     const spy = surfaceSpy();
-    const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
-    onEvents?.([{ kind: 'groundCleared', nodes: [AT], razed: [entity(10), entity(11), entity(12)] }]);
+    const handover = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
+    handover?.onEvents([{ kind: 'groundCleared', nodes: [AT], razed: [entity(10), entity(11), entity(12)] }]);
 
     expect(spy.removed.sort()).toEqual(['bush', 'tree']);
     expect(spy.ghosts).toEqual([]);
@@ -123,8 +125,8 @@ describe('harvestable static-draw handover', () => {
 
   it('retires a script-removed resource without keeping a fog ghost', () => {
     const spy = surfaceSpy();
-    const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
-    onEvents?.([{ kind: 'missionLandscapeResourceRemoved', entity: entity(10) }]);
+    const handover = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
+    handover?.onEvents([{ kind: 'missionLandscapeResourceRemoved', entity: entity(10) }]);
     expect(spy.removed).toEqual(['tree']);
     expect(spy.ghosts).toEqual([]);
     expect([...spy.refs()]).toEqual([11]);
@@ -132,8 +134,9 @@ describe('harvestable static-draw handover', () => {
 
   it('ignores events for entities it never drew statically', () => {
     const spy = surfaceSpy();
-    const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
-    if (onEvents === null) throw new Error('expected a handover for bound sprites');
+    const handover = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
+    if (handover === null) throw new Error('expected a handover for bound sprites');
+    const { onEvents } = handover;
 
     onEvents([foraged(12), felled(99)]);
 
@@ -143,14 +146,27 @@ describe('harvestable static-draw handover', () => {
 
   it('mutates the set the renderer holds instead of replacing it', () => {
     const spy = surfaceSpy();
-    const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
-    if (onEvents === null) throw new Error('expected a handover for bound sprites');
+    const handover = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
+    if (handover === null) throw new Error('expected a handover for bound sprites');
+    const { onEvents } = handover;
     const held = spy.refs();
 
     onEvents([foraged(11)]);
 
     expect(spy.refs()).toBe(held);
     expect([...held]).toEqual([10]);
+  });
+
+  it('names the quad still drawing a node until that node is handed over', () => {
+    const spy = surfaceSpy();
+    const handover = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
+    if (handover === null) throw new Error('expected a handover for bound sprites');
+
+    expect(handover.spriteOf(10)).toBe('tree');
+    expect(handover.spriteOf(12)).toBeUndefined();
+    handover.onEvents([felled(10)]);
+    expect(handover.spriteOf(10)).toBeUndefined();
+    expect(handover.spriteOf(11)).toBe('bush');
   });
 
   it('reports no handover when nothing resolved to a static sprite', () => {

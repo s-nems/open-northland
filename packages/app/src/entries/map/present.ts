@@ -200,9 +200,10 @@ export async function presentMapWorld(
     ),
     elevation: world.elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
     onEvents: (events) => {
-      staticLayer?.(events);
+      staticLayer?.onEvents(events);
       landscapes?.onEvents(events);
     },
+    ...(staticLayer !== null ? { staticHarvestableSprite: staticLayer.harvestableSpriteOf } : {}),
     mapText: mapStringLookup(world.strings, currentLocale()),
     ...(stagedSave?.parent !== undefined ? { parentSave: stagedSave.parent } : {}),
     ...(runtime.sharedClock

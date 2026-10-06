@@ -36,7 +36,7 @@ function bind(harvestables: HarvestableSpawn) {
   const removed: string[] = [];
   const ghosts: number[] = [];
   let refs: ReadonlySet<number> = new Set();
-  const onEvents = bindStaticLayer(
+  const { onEvents, harvestableSpriteOf } = bindStaticLayer(
     {
       setStaticallyDrawnRefs: (next: ReadonlySet<number>) => {
         refs = next;
@@ -50,23 +50,25 @@ function bind(harvestables: HarvestableSpawn) {
     () => snapshotOf([building(1, HOUSE, 4, 4)]),
     NODE_WIDTH,
   );
-  return { removed, ghosts, refs: () => refs, onEvents };
+  return { removed, ghosts, refs: () => refs, onEvents, harvestableSpriteOf };
 }
 
 const razed: SimEvent = { kind: 'berryBushRazed', bush: BUSH, at: { hx: 9, hy: 8 } };
 
 describe('bindStaticLayer', () => {
   it('clears scenery under a standing building but leaves a bush to its handover', () => {
-    const { removed, refs, onEvents } = bind({
+    const { removed, refs, onEvents, harvestableSpriteOf } = bind({
       kind: 'fresh',
       placementByEntity: [[BUSH, 1]],
       pooledPlacements: [],
     });
     expect(removed).toEqual(['grass']);
     expect([...refs()]).toEqual([BUSH]);
+    expect(harvestableSpriteOf(BUSH)).toBe('bush');
     onEvents([razed]);
     expect(removed).toEqual(['grass', 'bush']);
     expect([...refs()]).toEqual([]);
+    expect(harvestableSpriteOf(BUSH)).toBeUndefined();
   });
 
   it("retires a fresh world's pooled placements up front, so a chest is a sim item from the first frame", () => {

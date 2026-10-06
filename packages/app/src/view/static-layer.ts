@@ -2,6 +2,7 @@ import type { Entity, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { bindFootprintClearing, type FootprintBuildingType } from './footprint-clearing.js';
 import {
   bindHarvestableHandover,
+  type HarvestableHandover,
   retireStaticHarvestables,
   type StaticDrawSurface,
 } from './harvestable-handover.js';
@@ -25,10 +26,17 @@ export type HarvestableSpawn =
     }
   | { readonly kind: 'restored'; readonly placements: readonly number[] };
 
+export interface StaticLayerBinding<Sprite> {
+  /** Per-frame hook: harvestables hand over to the sprite pool as they are worked, and building
+   *  footprints and roads clear the scenery under them. */
+  readonly onEvents: (events: readonly SimEvent[]) => void;
+  /** The static quad still drawing a harvestable entity; see {@link HarvestableHandover.spriteOf}. */
+  readonly harvestableSpriteOf: (entity: number) => Sprite | undefined;
+}
+
 /**
- * Bind the static landscape layer to the sim for the map's lifetime and return the per-frame event
- * hook: harvestables hand over to the sprite pool as they are worked, and building footprints and roads
- * clear the scenery under them. A harvestable's quad stays with its entity, whose razing the handover retires.
+ * Bind the static landscape layer to the sim for the map's lifetime. A harvestable's quad stays with
+ * its entity, whose razing the handover retires.
  */
 export function bindStaticLayer<Sprite>(
   surface: StaticDrawSurface<Sprite>,
@@ -37,8 +45,8 @@ export function bindStaticLayer<Sprite>(
   content: { readonly buildings: readonly FootprintBuildingType[] },
   snapshot: () => WorldSnapshot,
   nodeWidth: number,
-): (events: readonly SimEvent[]) => void {
-  let handover: ((events: readonly SimEvent[]) => void) | null = null;
+): StaticLayerBinding<Sprite> {
+  let handover: HarvestableHandover<Sprite> | null = null;
   const harvestablePlacements = new Set<number>();
   if (harvestables.kind === 'fresh') {
     handover = bindHarvestableHandover(surface, harvestables.placementByEntity, objects.byPlacement);
@@ -54,8 +62,11 @@ export function bindStaticLayer<Sprite>(
     if (!harvestablePlacements.has(placement)) scenery.set(placement, sprite);
   }
   const clearing = bindFootprintClearing(surface, objects.placements, scenery, content, snapshot, nodeWidth);
-  return (events) => {
-    handover?.(events);
-    clearing(events);
+  return {
+    onEvents: (events) => {
+      handover?.onEvents(events);
+      clearing(events);
+    },
+    harvestableSpriteOf: (entity) => handover?.spriteOf(entity),
   };
 }

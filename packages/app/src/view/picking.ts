@@ -41,7 +41,8 @@ export interface Pickable {
   readonly box?: EntityBounds | undefined;
   /**
    * Solid-texel refinement of a box hit; `undefined` means no exact answer, so the box verdict stands.
-   * Wired for buildings, whose box swallows transparent corner; settlers keep the generous box.
+   * Wired for buildings, whose box swallows transparent corners, and for resources, so a click beside
+   * one is ground; settlers keep the generous box.
    */
   readonly pixelHit?: ((wx: number, wy: number) => boolean | undefined) | undefined;
 }

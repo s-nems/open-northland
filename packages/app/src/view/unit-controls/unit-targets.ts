@@ -32,13 +32,15 @@ export interface UnitTargetsDeps {
   readonly hostileToward: (owner: number) => boolean;
   /** The frame the player is clicking on. */
   readonly drawnItems: () => readonly DrawItem[];
-  /** The renderer's exact per-entity sprite bounds (world px), or undefined for the kind box. */
+  /** The exact sprite bounds (world px) of a drawn entity, a statically drawn harvestable included, or
+   *  undefined for the kind box. */
   readonly boundsOf: ((ref: number) => EntityBounds | undefined) | undefined;
   /** Terrain lift used to project retained map resources, which do not enter the entity draw list. */
   readonly elevation?: ElevationField | undefined;
   /** Whether a retained resource is live-visible rather than only remembered through fog. */
   readonly resourceVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
-  /** Pixel-accurate refinement of {@link boundsOf} for building targets, or undefined to keep the box. */
+  /** Pixel-accurate refinement of {@link boundsOf} for building and resource targets, or undefined to
+   *  keep the box. */
   readonly pixelHitOf: ((ref: number, wx: number, wy: number) => boolean | undefined) | undefined;
 }
 
@@ -309,21 +311,29 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets & Selectio
     resources(): Pickable[] {
       const out: Pickable[] = [];
       const emitted = new Set<number>();
+      const pixelHitOf = deps.pixelHitOf;
+      /** A resource is only hit on its drawn pixels: a plain right click beside a mushroom or a stone
+       *  moves the flag without switching the gatherer's good to it. */
+      const resourceTarget = (ref: number, x: number, y: number, goodType: number): Pickable => ({
+        ref,
+        x,
+        y,
+        kind: 'resource',
+        goodType,
+        box: deps.boundsOf?.(ref),
+        ...(pixelHitOf !== undefined
+          ? { pixelHit: (wx: number, wy: number) => pixelHitOf(ref, wx, wy) }
+          : {}),
+      });
       for (const it of deps.drawnItems()) {
         if (it.kind !== 'resource' || !isHitTarget(it)) continue;
         emitted.add(it.ref);
-        out.push({
-          ref: it.ref,
-          x: it.x,
-          y: it.y,
-          kind: it.kind,
-          box: deps.boundsOf?.(it.ref),
-          ...(it.goodType !== undefined ? { goodType: it.goodType } : {}),
-        });
+        if (it.goodType === undefined) continue;
+        out.push(resourceTarget(it.ref, it.x, it.y, it.goodType));
       }
       // Virgin decoded-map resources are retained by the landscape layer and deliberately omitted from
-      // the entity draw list. Project those live snapshot entities here so Ctrl+RMB can still identify
-      // the tree/deposit the player sees; once first worked, the ordinary draw-item path takes over.
+      // the entity draw list. Project those live snapshot entities here so a right click can still
+      // identify the tree/deposit the player sees; once first worked, the ordinary draw-item path takes over.
       for (const entity of entitiesWith(deps.snapshot(), 'LandscapeResource')) {
         if (emitted.has(entity.id)) continue;
         const value = entity.components.Resource as { goodType?: unknown } | undefined;
@@ -333,7 +343,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets & Selectio
         const tileY = position.y / ONE;
         if (deps.resourceVisible?.(tileX, tileY) === false) continue;
         const at = projectTile(deps.elevation, tileX, tileY);
-        out.push({ ref: entity.id, x: at.x, y: at.y, kind: 'resource', goodType: value.goodType });
+        out.push(resourceTarget(entity.id, at.x, at.y, value.goodType));
       }
       return out;
     },
