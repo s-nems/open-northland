@@ -41,6 +41,9 @@ export class SelectionEffects {
     seconds: number,
     outlineColour = 0xf2e8c9,
   ): void {
+    // Nothing selected and nothing left to clear: every drawn entity asks each frame, so skip the
+    // two map lookups below.
+    if (style === undefined && this.lit.size === 0 && this.outlines.size === 0) return;
     if (style === 'pulse' || this.lit.has(pe)) {
       const light = style === 'pulse' ? selectionLight(seconds) : 0;
       this.light(pe, light);
