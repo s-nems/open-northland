@@ -48,6 +48,19 @@ describe('setCastShadowTransform', () => {
     expect(m.d).toBeCloseTo(DEFAULT_SHADOW_STYLE.castFlatten * 2);
     spr.destroy();
   });
+
+  it.each([1, 2])('keeps an elevated floating body attached to its waterline at scale %s', (scale) => {
+    const spr = new Sprite();
+    setCastShadowTransform(spr, scale, DEFAULT_SHADOW_STYLE, -11 * scale, -18 * scale, -8 * scale);
+    spr.updateLocalTransform();
+    const m = spr.localTransform;
+    expect(m.tx).toBeCloseTo(-5.5 * scale);
+    expect(m.ty).toBeCloseTo(-11 * scale);
+    // The bottom-left body pixel remains on the waterline after projection.
+    expect(m.tx + m.c * 10).toBeCloseTo(-11 * scale);
+    expect(m.ty + m.d * 10).toBeCloseTo(-8 * scale);
+    spr.destroy();
+  });
 });
 
 describe('TextureCache.castSilhouette', () => {

@@ -61,7 +61,7 @@ export function shadowTintChannels(tint: number): readonly [number, number, numb
 /**
  * Place `sprite` as the ground projection of its own frame: sheared toward the light and flattened, both
  * about the drawing container's feet origin. `ox`/`oy` are the frame's already-scaled offset from that
- * origin, `scale` its art scale.
+ * origin, `scale` its art scale. `originY` moves the projection's contact line in the same scaled pixels.
  */
 export function setCastShadowTransform(
   sprite: Sprite,
@@ -69,10 +69,11 @@ export function setCastShadowTransform(
   style: ShadowStyle,
   ox: number,
   oy: number,
+  originY = 0,
 ): void {
   const { castShear: shear, castFlatten: flatten } = style;
   // The shear/flatten matrix [[1, -shear], [0, flatten]] expressed in Pixi's skew + scale terms.
   sprite.skew.set(Math.atan2(-shear, flatten), 0);
   sprite.scale.set(scale, scale * Math.sqrt(shear * shear + flatten * flatten));
-  sprite.position.set(ox - shear * oy, flatten * oy);
+  sprite.position.set(ox - shear * (oy - originY), originY + flatten * (oy - originY));
 }

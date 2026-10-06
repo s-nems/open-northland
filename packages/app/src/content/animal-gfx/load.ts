@@ -1,4 +1,5 @@
 import type { SettlerCharacter, SettlerCharacterSet } from '@open-northland/render';
+import { ANIMAL_EXTRA_ANIMATIONS } from '../../catalog/animal-animation-extras.js';
 import {
   ANIMAL_BODY_IMAGELIB,
   ANIMAL_PALETTE_BY_TRIBE,
@@ -59,11 +60,17 @@ export async function loadAnimalCharacters(
       continue;
     }
     const variants = animalWalkVariants(tribe, binding, seqByName);
+    // Swimming bobs sit above the map anchor. Their visible bottom approximates the waterline.
+    const castAnchor =
+      ANIMAL_EXTRA_ANIMATIONS.get(tribe)?.swimming === undefined
+        ? {}
+        : { castAnchor: 'body-bottom' as const };
     byTribe[tribe] = {
       body,
       binding,
+      ...castAnchor,
       ...(variants !== undefined
-        ? { variants: variants.map((variant) => ({ body, binding: variant })) }
+        ? { variants: variants.map((variant) => ({ body, binding: variant, ...castAnchor })) }
         : {}),
     };
   }

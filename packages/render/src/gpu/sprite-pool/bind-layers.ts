@@ -326,7 +326,7 @@ export class LayerBinder {
   ): void {
     if (layer.cast === true && style !== undefined) {
       spr.texture = this.textures.castSilhouette(layer.source, layer.frame, layer.castRows);
-      setCastShadowTransform(spr, layer.scale, style, box.ox, box.drawnOy);
+      setCastShadowTransform(spr, layer.scale, style, box.ox, box.drawnOy, layer.castOriginY);
     } else {
       spr.texture = this.textures.getShadow(layer.source, layer.frame);
       spr.skew.set(0, 0);

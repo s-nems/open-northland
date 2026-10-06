@@ -45,6 +45,8 @@ export interface ResolvedLayer {
    * shadow enhancement is on, so the frame's art never reaches the screen unprojected.
    */
   readonly cast?: true;
+  /** Projection origin above/below the entity anchor, in scaled world pixels. Absent means 0. */
+  readonly castOriginY?: number;
   /**
    * Rows of a {@link cast} layer's frame to keep, counted from its top. Present only on a character's
    * head overlay, where it drops the rows that project onto ground the body's own cast already covers.

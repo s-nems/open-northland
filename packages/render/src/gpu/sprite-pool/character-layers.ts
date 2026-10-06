@@ -7,9 +7,10 @@ import type { LayerBuffer, ResolvedLayer } from './resolved-layer.js';
 
 /**
  * The derived variants of a memoized body or head record (see {@link resolveFromLayer}), keyed by that
- * record: it pins source, frame and scale, so only a head cast's row count can differ.
+ * record: it pins source, frame and scale. A head cast also depends on the body's contact line and crop.
  */
 const castRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
+const anchoredCastRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 const headCastRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 const headRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 const blobRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
@@ -58,10 +59,11 @@ function pushGlow(out: LayerBuffer, of: ResolvedLayer): void {
  * only the coverage reaches a silhouette, so both cast from the frame as it is. `rows` keeps that many
  * of the frame's top rows, which is how the head overlay casts beside the body instead of over it.
  */
-function castLayerFor(of: ResolvedLayer, rows?: number): ResolvedLayer {
-  const records = rows === undefined ? castRecords : headCastRecords;
+function castLayerFor(of: ResolvedLayer, rows?: number, originY?: number): ResolvedLayer {
+  const records =
+    rows !== undefined ? headCastRecords : originY === undefined ? castRecords : anchoredCastRecords;
   const cached = records.get(of);
-  if (cached !== undefined && cached.castRows === rows) return cached;
+  if (cached !== undefined && cached.castRows === rows && cached.castOriginY === originY) return cached;
   const record: ResolvedLayer = {
     source: of.source,
     frame: of.frame,
@@ -69,6 +71,7 @@ function castLayerFor(of: ResolvedLayer, rows?: number): ResolvedLayer {
     boundsExempt: true,
     shadow: true,
     cast: true,
+    ...(originY !== undefined ? { castOriginY: originY } : {}),
     ...(rows !== undefined ? { castRows: rows } : {}),
   };
   records.set(of, record);
@@ -165,10 +168,12 @@ export function pushComposedCharacterLayers(
     headBinding !== undefined ? resolveSettlerBobId(headBinding, item, tick, gaitClock, idleElapsed) : bob;
   const head = headLayer === undefined ? null : resolveFromLayer(headLayer, headBob, scale);
   if (body !== null) {
-    out.push(castLayerFor(body));
+    const originY =
+      char.castAnchor === 'body-bottom' ? (body.frame.offsetY + body.frame.height) * scale : undefined;
+    out.push(castLayerFor(body, undefined, originY));
     if (head !== null) {
       const rows = headCastRows(body.frame, head.frame);
-      if (rows > 0) out.push(castLayerFor(head, rows));
+      if (rows > 0) out.push(castLayerFor(head, rows, originY));
     }
     const shadow = shadowLayerFor(char.body, bob, scale);
     if (shadow !== null) out.push(blobLayerFor(shadow));

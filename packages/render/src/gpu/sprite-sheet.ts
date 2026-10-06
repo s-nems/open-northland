@@ -73,6 +73,8 @@ export interface SettlerCharacter {
   readonly variants?: readonly Omit<SettlerCharacter, 'variants'>[];
   readonly interpolateMotion?: boolean;
   readonly scale?: number;
+  /** Approximation for floating artwork above the entity anchor: project from its visible bottom. */
+  readonly castAnchor?: 'body-bottom';
   /** The head looks that can overlay this body (the `gfxbobmanagerhead` slots). Empty for a body-only
    *  character whose head is baked into the body bob. */
   readonly heads?: readonly SpriteLayer[];

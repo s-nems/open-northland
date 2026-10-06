@@ -442,6 +442,37 @@ describe('resolveLayers - wildlife species resolution', () => {
     expect(resolveLayers(sheet, settler(UNBOUND_TRIBE), 0)).toEqual([]);
   });
 
+  it('anchors floating casts to each body frame without changing a shared land look', () => {
+    const body = {
+      source: animalSource,
+      atlas: { ...animalAtlas, frames: new Map([frame(5), [6, { ...frame(6)[1], offsetY: -18 }]]) },
+    };
+    const land = { body, binding: { idle: 5, moving: 6 }, scale: 2 };
+    const floating: SpriteSheet = {
+      ...sheet,
+      characters: {
+        default: land,
+        byJob: {},
+        animals: {
+          tribes: new Set([BOUND_TRIBE]),
+          byTribe: { [BOUND_TRIBE]: { ...land, castAnchor: 'body-bottom' } },
+        },
+      },
+    };
+    const swimming = { ...settler(BOUND_TRIBE), state: 'moving' as const };
+    const layers = resolveLayers(floating, swimming, 0);
+    expect(layers?.find((layer) => layer.cast)?.castOriginY).toBe(-16);
+    expect(
+      resolveLayers(floating, { ...swimming, tribe: HUMAN_TRIBE }, 0)?.find((layer) => layer.cast)
+        ?.castOriginY,
+    ).toBeUndefined();
+    expect(resolveLayers(floating, swimming, 0)?.[0]).toBe(layers?.[0]);
+    expect(resolveLayers(floating, settler(BOUND_TRIBE), 0)?.find((layer) => layer.cast)?.castOriginY).toBe(
+      20,
+    );
+    expect(layers?.find((layer) => !layer.shadow)?.frame.offsetY).toBe(-18);
+  });
+
   it('selects a stable wildlife walk variant per animal while preserving its idle', () => {
     const body = {
       source: animalSource,
