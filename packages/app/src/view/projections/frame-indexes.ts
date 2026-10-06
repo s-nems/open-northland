@@ -1,11 +1,18 @@
 import {
+  empireInventoryOf,
   type FrameIndexReader,
   type MinimapFeature,
   networkInventoryOf,
   RENDER_FRAME_INDEX_READERS,
   signpostOverlayIndex,
 } from '@open-northland/render/data';
-import { entitiesWith, positionedWithin, type TileBox } from '@open-northland/sim';
+import {
+  entitiesWith,
+  positionedWithin,
+  type SignpostReachView,
+  type TileBox,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import {
   actorIdsOf,
   fatherOf,
@@ -35,11 +42,27 @@ const NO_TYPE = -1;
 /** No good: a read that only registers its index. */
 const NO_GOODS: ReadonlyMap<number, MinimapFeature> = new Map();
 
+/** A frame index read that may need the seat's signpost reach, which the runtime asks the host for. */
+export interface AppFrameIndexReader extends FrameIndexReader {
+  read(
+    snapshot: WorldSnapshot,
+    seat: number | null,
+    signpostReach?: (player: number) => SignpostReachView | null,
+  ): void;
+}
+
 /** Every snapshot index a running game's frame keeps on its mirror over a developed map, one entry per
  *  reader: render's, then the HUD messages' and the projections'. A bench registers them to measure the
  *  runtime's per-delta upkeep; a reader added to the frame belongs here too. */
-export const FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
+export const FRAME_INDEX_READERS: readonly AppFrameIndexReader[] = [
   ...RENDER_FRAME_INDEX_READERS,
+  {
+    // The HUD bar's stock row for a playing seat (`buildHud`).
+    name: 'empire inventory',
+    read: (snapshot, seat, signpostReach) => {
+      if (seat !== null && signpostReach !== undefined) empireInventoryOf(snapshot, signpostReach(seat));
+    },
+  },
   {
     name: 'signpost networks',
     read: (snapshot) => {

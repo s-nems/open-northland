@@ -1,13 +1,13 @@
 import { deserialize, serialize } from 'node:v8';
-import type { FrameIndexReader } from '@open-northland/render/data';
 import {
   diffSnapshots,
   MirrorTruth,
+  type SignpostReachView,
   type Simulation,
   type SnapshotDelta,
   SnapshotMirror,
 } from '@open-northland/sim';
-import { FRAME_INDEX_READERS } from '../src/view/projections/frame-indexes.js';
+import { type AppFrameIndexReader, FRAME_INDEX_READERS } from '../src/view/projections/frame-indexes.js';
 import { DeltaBreakdown } from './mirror-breakdown.js';
 import { percentile } from './report/index.js';
 
@@ -41,7 +41,8 @@ class TimedMirror {
 
   constructor(
     readonly name: string,
-    private readonly readers: readonly FrameIndexReader[],
+    private readonly readers: readonly AppFrameIndexReader[],
+    private readonly signpostReach: (player: number) => SignpostReachView | null,
   ) {}
 
   apply(delta: SnapshotDelta): void {
@@ -51,7 +52,7 @@ class TimedMirror {
     // A rebuild drops every index and the reads after it walk the list again, so it is not sampled.
     if (!delta.rebuild) this.applyUs.push((t1 - t0) * US_PER_MS);
     // A reader settles what its index derives on read, such as the HUD reach or a home's families.
-    for (const reader of this.readers) reader.read(this.mirror.snapshot(), HUD_SEAT);
+    for (const reader of this.readers) reader.read(this.mirror.snapshot(), HUD_SEAT, this.signpostReach);
   }
 
   verify(): void {
@@ -76,8 +77,8 @@ class TimedMirror {
  */
 export class MirrorProbe {
   private readonly deltas;
-  private readonly bare = new TimedMirror('bare', []);
-  private readonly indexed = new TimedMirror('indexed', FRAME_INDEX_READERS);
+  private readonly bare: TimedMirror;
+  private readonly indexed: TimedMirror;
   private readonly split: readonly TimedMirror[];
   private ticksSinceDelta = 0;
   private deltaCount = 0;
@@ -101,8 +102,15 @@ export class MirrorProbe {
     this.deltas = sim.snapshotDeltas({ digest: options.digest });
     this.truth = options.digest ? new MirrorTruth() : null;
     this.breakdown = options.breakdown ? new DeltaBreakdown() : null;
+    // The seat's reach as the host answers it: the same view until the sim's reach changes.
+    const reach = (player: number): SignpostReachView | null => sim.signpostReach(player);
+    this.bare = new TimedMirror('bare', [], reach);
+    this.indexed = new TimedMirror('indexed', FRAME_INDEX_READERS, reach);
     this.split = options.split
-      ? [new TimedMirror('control', []), ...FRAME_INDEX_READERS.map((r) => new TimedMirror(r.name, [r]))]
+      ? [
+          new TimedMirror('control', [], reach),
+          ...FRAME_INDEX_READERS.map((r) => new TimedMirror(r.name, [r], reach)),
+        ]
       : [];
     this.ticksThisDelta = this.nextBatch();
   }
