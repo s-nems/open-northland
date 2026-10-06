@@ -1,3 +1,5 @@
+// First, so the sim it is evaluated before reads the switch.
+import './sim-asserts.js';
 import { intEnv, stringEnv } from './knobs.js';
 import { knobRecord, mapBenchKnobs, mapBenchWorld, worldSourceLines } from './map-world.js';
 import { measureWindows } from './measure.js';

@@ -16,6 +16,7 @@ import { loadContentUnderTest } from '../test/content/helpers.js';
 import { realMapScript, realMapWorldOfSession } from '../test/content/real-map-world.js';
 import { boolEnv, intEnv, intListEnv, ruleEnv, stringEnv } from './knobs.js';
 import { formatSeats } from './report/index.js';
+import { SIM_ASSERTS } from './sim-asserts.js';
 
 /**
  * The real-map world both map benchmarks measure, with the checkpoints that skip the build-out.
@@ -374,6 +375,7 @@ export function knobRecord(knobs: MapBenchKnobs): Readonly<Record<string, string
     ON_BENCH_SKIP: `${knobs.skipTicks}`,
     ON_BENCH_CHECKPOINT: knobs.checkpointPath ?? '',
     ON_BENCH_CHECKPOINTS: knobs.checkpointMarks.join(','),
+    ON_BENCH_ASSERTS: SIM_ASSERTS ? 'on' : 'off',
   };
 }
 

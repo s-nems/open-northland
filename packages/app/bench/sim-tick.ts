@@ -1,7 +1,10 @@
+// First, so the sim it is evaluated before reads the switch.
+import './sim-asserts.js';
 import { intEnv } from './knobs.js';
 import { measureWindows } from './measure.js';
 import type { BenchReport } from './report/index.js';
 import { publishReport, reportFrom } from './run.js';
+import { SIM_ASSERTS } from './sim-asserts.js';
 import { type BenchWorldOptions, benchWorld } from './world.js';
 
 /**
@@ -75,6 +78,7 @@ async function measure(
       ON_BENCH_FIGHTERS: `${options.fightersPerSide}`,
       ON_BENCH_HUNTERS: `${options.hunters}`,
       ON_BENCH_TICKS: `${measuredTicks}`,
+      ON_BENCH_ASSERTS: SIM_ASSERTS ? 'on' : 'off',
       ON_BENCH_WARMUP: `${warmupTicks}`,
       ON_BENCH_WINDOWS: `${windows}`,
     },

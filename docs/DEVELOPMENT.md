@@ -418,6 +418,7 @@ browser. `player=overseer` builds the same world whenever seat 0 is an AI seat. 
 | `ON_BENCH_PROGRESSION`, `ON_BENCH_NEEDS` | `on`/`off`, the `?progression=` and `?needs=` overrides; unset keeps the map's rule |
 | `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS` | measured ticks (default 20k), unmeasured warm-up, report segments |
 | `ON_BENCH_SYNC_DIGEST` | fold the per-tick sync digest, what a networked session pays |
+| `ON_BENCH_ASSERTS` | `on` keeps the sim's fixed-point overflow asserts; unset runs without them, as the production build does, so the numbers describe the shipped game. Tests and the dev server always run them |
 | `ON_BENCH_MIRROR` | `on` measures the snapshot delta path per delta (take, V8 serialize and deserialize as `postMessage` does them, mirror apply bare and with the indexes the runtime's frame reads, serialized size) and checks the mirror against the live snapshot and its indexes against a fresh walk at each window's end; that check and its full-snapshot clone add GC to the next window |
 | `ON_BENCH_MIRROR_BATCH` | ticks per delta under `ON_BENCH_MIRROR` (default 1), the batching a worker does when several ticks reach one frame |
 | `ON_BENCH_MIRROR_SPLIT` | `on` under `ON_BENCH_MIRROR` times each frame index reader (`FRAME_INDEX_READERS`) on a mirror of its own and reports its median upkeep over a bare apply of the same delta |
