@@ -7,6 +7,7 @@ import {
   HUNT_CARCASS_SLACK_NODES,
   huntingGround,
 } from '../../../conflict/hunting/index.js';
+import type { SystemContext } from '../../../context.js';
 import { nodeHoldsOpenGood, openGatherGoods } from '../../../economy/gather-goods.js';
 import { resourceStanceCells } from '../../../footprint/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
@@ -48,14 +49,7 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
   // off: a felled trunk or chipped ore pile holds units its counter already spent.
   const workplace = world.tryGet(e, JobAssignment)?.workplace;
   const rawStored = workplace !== undefined ? workplaceStoredGoods(world, plan.ctx, workplace) : undefined;
-  const goodFilter =
-    rawStored !== undefined
-      ? new Set(
-          plan.ctx.content.goods
-            .map((g) => g.typeId)
-            .filter((g) => workplaceStocksGood(plan.ctx, rawStored, g)),
-        )
-      : undefined;
+  const goodFilter = rawStored !== undefined ? stockedGoodsOf(plan.ctx, rawStored) : undefined;
   const admits = countersAdmit(plan);
 
   const hunter = isHunterJob(ctx.content, plan.jobType);
@@ -99,6 +93,21 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
   }
   if (node !== null) return startHarvestFromNode(plan, node, harvestClaims, huntArea);
   return false;
+}
+
+/** Every content good a workplace's stored-goods set counts as its ware, kept per set: the sets come from
+ *  the content index, one per building type, so each is expanded once. */
+const stockedGoodsBySet = new WeakMap<ReadonlySet<number>, ReadonlySet<number>>();
+
+function stockedGoodsOf(ctx: SystemContext, stored: ReadonlySet<number>): ReadonlySet<number> {
+  let goods = stockedGoodsBySet.get(stored);
+  if (goods === undefined) {
+    goods = new Set(
+      ctx.content.goods.map((g) => g.typeId).filter((g) => workplaceStocksGood(ctx, stored, g)),
+    );
+    stockedGoodsBySet.set(stored, goods);
+  }
+  return goods;
 }
 
 /**
