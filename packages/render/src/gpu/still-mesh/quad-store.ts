@@ -1,7 +1,7 @@
 import { Buffer, BufferUsage } from 'pixi.js';
 import { WORLD_VERTEX_SIZE } from '../world-batcher.js';
 
-const VERTICES_PER_QUAD = 4;
+export const VERTICES_PER_QUAD = 4;
 /** World-vertex floats one quad slot holds. */
 export const QUAD_FLOATS = VERTICES_PER_QUAD * WORLD_VERTEX_SIZE;
 const QUAD_BYTES = QUAD_FLOATS * Float32Array.BYTES_PER_ELEMENT;

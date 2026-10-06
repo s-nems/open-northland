@@ -27,7 +27,7 @@ import {
   WORLD_VERTEX_SIZE,
   worldBatchGeometry,
 } from '../world-batcher.js';
-import { type ByteUploader, QuadStore } from './quad-store.js';
+import { type ByteUploader, QuadStore, VERTICES_PER_QUAD } from './quad-store.js';
 
 /**
  * The still sprites of the depth-sorted layer, drawn from one retained mesh instead of Pixi's batches.
@@ -38,18 +38,20 @@ import { type ByteUploader, QuadStore } from './quad-store.js';
  * placed in the band's instructions where Pixi's own batches of that run would have been. A meshed
  * sprite's batch record names this mesh as its batcher, so Pixi's own update path (a transform, tint or
  * texture change between rebuilds) repacks its slot in place, and a page that does not fit asks Pixi for a
- * rebuild exactly as a full batch does.
+ * rebuild exactly as a full batch does. Packed quads upload once per render, as the first mesh draw binds.
  *
  * Undocumented Pixi behaviour, verified on pixi.js 8.21, re-verify on a bump: a render group root collects
  * through `collectRenderablesSimple`; the sprite pipe's `_getGpuSprite` and `_updateBatchableSprite` mint
  * and refresh a sprite's batch record; updates reach the record's `_batcher.updateElement` and
- * `checkAndUpdateTexture` unless the group is rebuilding that frame; and the `batch` pipe draws any
- * `Batch` from its batcher's geometry and shader with its texture list bound.
+ * `checkAndUpdateTexture` unless the group is rebuilding that frame; the `batch` pipe draws any `Batch`
+ * from its batcher's geometry and shader with its texture list bound, reading that geometry after every
+ * group of the render has updated; and every batch after a `break` has `action === 'startBatch'`, so Pixi
+ * rebinds its own geometry and shader after a mesh draw.
  */
 
 /** `globalDisplayStatus` of a container Pixi collects: visible, renderable and not culled. */
 const DISPLAYED = 0b111;
-const INDICES_PER_QUAD = 6;
+export const INDICES_PER_QUAD = 6;
 const INITIAL_BAND_INDICES = 1024;
 /**
  * Quad packs a run of still children must save per frame, on average, before it draws from the mesh: a
@@ -161,8 +163,9 @@ function plainContainer(child: Container): boolean {
 class BandStills extends Batcher {
   override name = 'stillMesh';
   protected override vertexSize = WORLD_VERTEX_SIZE;
-  override geometry: Geometry;
+  declare geometry: Geometry;
   declare shader: Shader;
+  private readonly ownGeometry: Geometry;
   readonly table = new BatchTextureArray();
   /** The batch record of the band's meshed sprites, sharing {@link table} with its draws. */
   readonly slotBatch = new Batch();
@@ -203,8 +206,16 @@ class BandStills extends Batcher {
       usage: BufferUsage.INDEX | BufferUsage.COPY_DST,
       shrinkToFit: false,
     });
-    this.geometry = worldBatchGeometry(store.buffer, this.bandIndices);
+    const geometry = worldBatchGeometry(store.buffer, this.bandIndices);
+    this.ownGeometry = geometry;
     this.slotBatch.textures = this.table;
+    // The batch pipe reads this as a draw binds it, after the render's updates: packed quads upload then.
+    Object.defineProperty(this, 'geometry', {
+      get: () => {
+        mesh.uploadPacked();
+        return geometry;
+      },
+    });
     Object.defineProperty(this, 'shader', { get: () => packer.shader });
   }
 
@@ -254,7 +265,7 @@ class BandStills extends Batcher {
   }
 
   override updateElement(element: BatchableElement): void {
-    this.mesh.repack(element);
+    this.mesh.repack(this, element);
   }
 
   override packAttributes(): void {
@@ -269,7 +280,7 @@ class BandStills extends Batcher {
    *  teardown has nothing to return. */
   override destroy(): void {
     this.clearTable();
-    this.geometry.destroy(false);
+    this.ownGeometry.destroy(false);
     this.bandIndices.destroy();
     this.attributeBuffer.destroy();
   }
@@ -320,6 +331,8 @@ export class StillSpriteMesh implements StillBandCollector {
 
   beforeRender(): void {
     this.frame++;
+    // A render that drew no mesh left its packs queued; this bounds the queue to one render's.
+    this.uploadPacked();
     const shading = worldShadowStyle() !== null;
     if (shading === this.shading) return;
     this.shading = shading;
@@ -364,7 +377,7 @@ export class StillSpriteMesh implements StillBandCollector {
       const indices = state.indices;
       let at = state.indexCount;
       for (const quad of member.quads) {
-        const first = quad.slot * 4;
+        const first = quad.slot * VERTICES_PER_QUAD;
         indices[at++] = first;
         indices[at++] = first + 1;
         indices[at++] = first + 2;
@@ -380,7 +393,6 @@ export class StillSpriteMesh implements StillBandCollector {
     previous.length = 0;
     state.spareMembers = previous;
     if (state.indexCount > 0) state.bandIndices.setDataWithSize(state.indices, state.indexCount, true);
-    store.flush(this.upload);
     return true;
   }
 
@@ -402,11 +414,19 @@ export class StillSpriteMesh implements StillBandCollector {
     this.renderer = null;
   }
 
-  /** Pixi repacks a meshed sprite between rebuilds: write its slot and upload it. */
-  repack(element: BatchableElement): void {
+  /** Upload every quad packed since the last upload, before a mesh draw binds the shared buffer. */
+  uploadPacked(): void {
+    this.store?.flush(this.upload);
+  }
+
+  /** Pixi repacks a meshed sprite of `state` between rebuilds: write its slot for the next upload. */
+  repack(state: BandStills, element: BatchableElement): void {
     const quad = this.quads.get(element);
     const store = this.store;
     if (quad === undefined || !quad.live || store === null || this.packer === null) return;
+    // A sprite changing under a child no longer held is moving: its band rebuilds and hands it to Pixi.
+    const owner = quad.sprite.parent;
+    if (owner === null || !this.still(owner)) state.band.renderGroup.structureDidChange = true;
     this.packer.packQuadAttributes(
       quad.element,
       store.f32,
@@ -417,7 +437,6 @@ export class StillSpriteMesh implements StillBandCollector {
     quad.containerTick = quad.sprite._didContainerChangeTick;
     quad.viewTick = quad.sprite._didViewChangeTick;
     store.markDirty(quad.slot);
-    store.flush(this.upload);
   }
 
   /** Pixi asks whether a meshed sprite's new texture still draws from its band's mesh. */

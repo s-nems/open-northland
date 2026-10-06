@@ -14,21 +14,23 @@ import {
 } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DepthSortedLayer } from '../../src/gpu/depth-sorted-layer.js';
-import { QuadStore } from '../../src/gpu/still-mesh/quad-store.js';
-import { StillSpriteMesh } from '../../src/gpu/still-mesh/still-mesh.js';
-import { installWorldBatcher, WORLD_VERTEX_SIZE, worldBatched } from '../../src/gpu/world-batcher.js';
+import { QUAD_FLOATS, QuadStore, VERTICES_PER_QUAD } from '../../src/gpu/still-mesh/quad-store.js';
+import { INDICES_PER_QUAD, StillSpriteMesh } from '../../src/gpu/still-mesh/still-mesh.js';
+import { installWorldBatcher, worldBatched } from '../../src/gpu/world-batcher.js';
 
 /**
  * The still mesh draws the still children of the depth-sorted layer in exactly the painter order Pixi's
  * own batches would, each sprite once. The harness runs Pixi's real render-group update (transforms,
  * validation, instruction builds, renderable updates) over a renderer whose GL is replaced by records:
- * a Pixi batch records the sprites it was handed, a mesh draw names its slots.
+ * a Pixi batch records the sprites it was handed, a mesh draw names its slots, a buffer upload counts.
  */
 
 /** The texture slots a world batch binds, the renderer limit a world batcher is built for. */
 const MAX_BATCH_TEXTURES = 16;
 /** Depths this far apart always file into different bands. */
 const FAR = 10_000;
+/** Held children changing every frame in one band. */
+const SWAYING = 50;
 const PAGE_SIZE = 64;
 
 interface Recorded {
@@ -37,7 +39,7 @@ interface Recorded {
 }
 
 /** A Pixi batch as the fake batch pipe records it: the sprites, in packing order. */
-function fakeRenderer(): Renderer {
+function fakeRenderer(uploads: { count: number }): Renderer {
   let pending: Container[] = [];
   const fakeBatcher = { updateElement: () => {}, checkAndUpdateTexture: () => true };
   const flush = (instructionSet: InstructionSet): void => {
@@ -50,7 +52,11 @@ function fakeRenderer(): Renderer {
     type: RendererType.WEBGL,
     _roundPixels: 0,
     limits: { maxBatchableTextures: MAX_BATCH_TEXTURES },
-    buffer: { updateBuffer: () => undefined },
+    buffer: {
+      updateBuffer: () => {
+        uploads.count++;
+      },
+    },
     renderPipes: {
       batch: {
         buildStart: () => {
@@ -96,6 +102,8 @@ interface Harness {
   frame(): Container[];
   /** The mesh draws of the last frame. */
   meshDraws(): number;
+  /** The buffer uploads of the last frame. */
+  uploads(): number;
 }
 
 const harnesses: Harness[] = [];
@@ -110,7 +118,8 @@ interface MeshInternals {
 
 /** A harness meshing every run whatever it saves, or at the given payoff. */
 function harness(runPayoff = 0): Harness {
-  const renderer = fakeRenderer();
+  const uploads = { count: 0 };
+  const renderer = fakeRenderer(uploads);
   const system = new RenderGroupSystem(renderer) as unknown as {
     _updateRenderGroups(group: Container['renderGroup']): void;
   };
@@ -125,7 +134,9 @@ function harness(runPayoff = 0): Harness {
     mesh,
     held,
     meshDraws: () => draws,
+    uploads: () => uploads.count,
     frame() {
+      uploads.count = 0;
       system._updateRenderGroups(layer.renderGroup);
       const bySlot = new Map<number, Sprite>();
       for (const state of (mesh as unknown as MeshInternals).bands.values())
@@ -144,15 +155,17 @@ function harness(runPayoff = 0): Harness {
           const instruction = set.instructions[i] as unknown as Recorded & {
             start?: number;
             size?: number;
-            batcher?: { indices: Uint32Array };
+            batcher?: { indices: Uint32Array; geometry: unknown };
           };
           if (instruction.renderPipeId === 'pixiBatch') drawn.push(...(instruction.sprites ?? []));
           else if (instruction.batcher !== undefined && instruction.start !== undefined) {
             draws++;
+            // The batch pipe reads the geometry as it binds a draw.
+            void instruction.batcher.geometry;
             const indices = instruction.batcher.indices;
             const end = instruction.start + (instruction.size ?? 0);
-            for (let q = instruction.start; q < end; q += 6) {
-              const sprite = bySlot.get((indices[q] ?? 0) / 4);
+            for (let q = instruction.start; q < end; q += INDICES_PER_QUAD) {
+              const sprite = bySlot.get((indices[q] ?? 0) / VERTICES_PER_QUAD);
               if (sprite === undefined) throw new Error('a mesh draw names a slot no live quad holds');
               drawn.push(sprite);
             }
@@ -210,7 +223,7 @@ function packedOf(h: Harness, sprite: Sprite): number[] {
     .find((q) => q.sprite === sprite && q.live);
   if (quad === undefined || internals.store === null) throw new Error('expected a meshed sprite');
   const start = QuadStore.start(quad.slot);
-  return [...internals.store.f32.slice(start, start + 4 * WORLD_VERTEX_SIZE)];
+  return [...internals.store.f32.slice(start, start + QUAD_FLOATS)];
 }
 
 /** The floats a world batch packs for `sprite` now, at the texture slot its record names. */
@@ -218,7 +231,7 @@ function freshPack(h: Harness, sprite: Sprite): number[] {
   const renderer = (h.mesh as unknown as { renderer: Renderer }).renderer;
   const pipe = renderer.renderPipes.sprite as unknown as { _getGpuSprite(s: Sprite): BatchableElement };
   const element = pipe._getGpuSprite(sprite);
-  const out = new Float32Array(4 * WORLD_VERTEX_SIZE);
+  const out = new Float32Array(QUAD_FLOATS);
   packer.packQuadAttributes(element as never, out, new Uint32Array(out.buffer), 0, element._textureId);
   return [...out];
 }
@@ -300,7 +313,7 @@ describe('StillSpriteMesh', () => {
     expect(drawn).toEqual(painterOrder(h.layer));
     expect(new Set(drawn).size).toBe(drawn.length);
     expect(drawn).not.toContain(removed.children[0]);
-    // The worked item stayed meshed: no structure change reached its band... until one does.
+    // The worked item, drawn by Pixi since its band rebuilt, moves between two stills.
     worked.zIndex = 17;
     expect(h.frame()).toEqual(painterOrder(h.layer));
   });
@@ -368,6 +381,45 @@ describe('StillSpriteMesh', () => {
     entity(h.layer, 5);
     expect(h.frame()).toEqual(painterOrder(h.layer));
     expect(h.mesh.quadCount).toBe(0);
+  });
+
+  it('uploads the quads Pixi repacks once per frame, however many changed', () => {
+    const h = harness();
+    const trees = Array.from({ length: SWAYING }, (_, i) => entity(h.layer, i / 2));
+    for (const tree of trees) h.held.add(tree);
+    h.frame();
+    for (let frame = 1; frame <= 3; frame++) {
+      for (const tree of trees) (tree.children[1] as Sprite).skew.x = frame / 100;
+      expect(h.frame()).toEqual(painterOrder(h.layer));
+      expect(h.uploads()).toBe(1);
+    }
+    expect(h.mesh.quadCount).toBe(2 * SWAYING);
+    const body = trees[SWAYING - 1]?.children[1] as Sprite;
+    expect(packedOf(h, body)).toEqual(freshPack(h, body));
+  });
+
+  it('hands a changing child that is no longer held to Pixi', () => {
+    const h = harness();
+    const walked = entity(h.layer, 0);
+    const swayed = entity(h.layer, 2);
+    for (const item of [walked, swayed, entity(h.layer, 5)]) h.held.add(item);
+    h.frame();
+    h.held.delete(walked);
+    // A new frame reaches the mesh after the band chose not to rebuild: it draws current, then leaves.
+    const body = walked.children[1] as Sprite;
+    body.texture = textureOn(1);
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(packedOf(h, body)).toEqual(freshPack(h, body));
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.mesh.quadCount).toBe(4);
+    // A transform reaches it before that choice: the band rebuilds in the same frame.
+    h.held.delete(swayed);
+    (swayed.children[1] as Sprite).skew.x = 0.01;
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.mesh.quadCount).toBe(2);
+    (swayed.children[1] as Sprite).skew.x = 0.02;
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.uploads()).toBe(0);
   });
 
   it('leaves a child with a non-sprite layer to Pixi', () => {
