@@ -6,13 +6,13 @@ import { boolEnv, intEnv, intListEnv } from './knobs.js';
 import { benchSession, mapBenchKnobs, mapBenchWorld, worldSourceLines } from './map-world.js';
 
 /**
- * Restore parity - `npm run bench:parity`. A client joining a session restores a save with every derived
- * cache cold, so a cache whose answer depends on what it saw before the save desyncs it. From the
- * checkpoint the knobs name, one world runs `ON_BENCH_TICKS` ticks, recording its state hash every
- * {@link HASH_STRIDE} ticks; at `ON_BENCH_PARITY_POINTS` ticks along the way (evenly spaced, plus the
- * tick after the first link pass and around the first heavy AI decision and planner tick of the second
- * half, and the absolute ticks `ON_BENCH_PARITY_AT` lists) its save is restored into a fresh world,
- * which runs to the end and must reproduce every hash.
+ * Restore parity - `npm run bench:parity`. A client joining a session restores a save and builds every
+ * derived cache from it, so a cache whose answer depends on what it saw before the save desyncs it.
+ * From the checkpoint the knobs name, one world runs `ON_BENCH_TICKS` ticks, recording its state hash
+ * every {@link HASH_STRIDE} ticks; at `ON_BENCH_PARITY_POINTS` evenly spaced ticks, around the first
+ * heavy link pass, AI decision and planner tick of the second half, and at the absolute ticks
+ * `ON_BENCH_PARITY_AT` lists, its save is restored into a fresh world, which runs to the end and must
+ * reproduce every hash.
  * `ON_BENCH_PARITY_FRESH=on` instead builds the world twice from tick zero and compares the two runs:
  * plain determinism. Exits nonzero on the first divergence, naming its tick.
  */
