@@ -1,6 +1,13 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Position, Stockpile, UnderConstruction, Upgrading } from '../../src/components/index.js';
+import {
+  Building,
+  Owner,
+  Position,
+  Stockpile,
+  UnderConstruction,
+  Upgrading,
+} from '../../src/components/index.js';
 import { GENERATION_JOURNAL_LIMIT } from '../../src/ecs/generation-journal.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
@@ -149,6 +156,42 @@ describe('foodSourcesOf', () => {
     expect(pass.nearest(from, undefined, home, null)).toBeNull();
     const next = new ExternalFoodIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world));
     expect(next.nearest(from, undefined, home, null)).toEqual({ store: wood, goodType: FOOD });
+  });
+
+  it('picks the nearest source a seeker may use, by ring or by scan, as a full scan does', () => {
+    const SEEKER = 0;
+    const RIVAL = 1;
+    const SPREAD_NODES = 300;
+    for (const count of [100, 400]) {
+      const sim = new Simulation({ seed: 1, content: foodContent() });
+      const home = storeAt(sim, 0, FOOD, 0, HOME);
+      let state = count;
+      const next = (bound: number): number => {
+        state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+        return state % bound;
+      };
+      const stores: { e: Entity; hx: number; hy: number; usable: boolean }[] = [];
+      for (let i = 0; i < count; i++) {
+        const hx = next(SPREAD_NODES);
+        const hy = next(SPREAD_NODES);
+        const e = sim.world.create();
+        sim.world.add(e, Position, positionOfNode(hx, hy));
+        sim.world.add(e, Stockpile, { amounts: new Map([[FOOD, 1]]) });
+        const rival = next(2) === 0;
+        if (rival) sim.world.add(e, Owner, { player: RIVAL });
+        stores.push({ e, hx, hy, usable: !rival });
+      }
+      const index = new ExternalFoodIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world));
+      for (let q = 0; q < 40; q++) {
+        const from = { hx: next(SPREAD_NODES), hy: next(SPREAD_NODES) };
+        let best: { e: Entity; d: number } | null = null;
+        for (const { e, hx, hy, usable } of stores) {
+          const d = Math.abs(hx - from.hx) + Math.abs(hy - from.hy);
+          if (usable && (best === null || d < best.d || (d === best.d && e < best.e))) best = { e, d };
+        }
+        expect(index.nearest(from, SEEKER, home, null)?.store).toBe(best?.e);
+      }
+    }
   });
 
   it("offers only a food the seeker's larder has room for", () => {

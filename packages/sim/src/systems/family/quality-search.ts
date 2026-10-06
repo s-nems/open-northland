@@ -63,20 +63,28 @@ export class ExternalQualityIndex {
       this.candidates.length <= RING_MIN_CANDIDATES
         ? null
         : this.bucketed().nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept);
-    const store = hit?.entity ?? this.linearNearest(from, accept);
+    // A ring sweep that missed rejected every candidate inside its radius already.
+    const swept = this.candidates.length <= RING_MIN_CANDIDATES ? -1 : RING_MAX_RADIUS;
+    const store = hit?.entity ?? this.linearNearest(from, accept, swept);
     if (store === null) return null;
     const goodType = this.lowestDemanded(store, demanded);
     return goodType === null ? null : { store, goodType };
   }
 
-  private linearNearest(from: { hx: number; hy: number }, accept: (e: Entity) => boolean): Entity | null {
+  /** The strictly-nearer pick over the ascending-id candidates beyond Manhattan distance `swept`. The
+   *  distance is read first, so a candidate that could not win is never judged. */
+  private linearNearest(
+    from: { hx: number; hy: number },
+    accept: (e: Entity) => boolean,
+    swept: number,
+  ): Entity | null {
     let best: { store: Entity; distance: number } | null = null;
     for (const store of this.candidates) {
-      if (!accept(store)) continue;
       const p = this.world.get(store, Position);
       const node = nodeOfPosition(p.x, p.y);
       const distance = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
-      if (best === null || distance < best.distance) best = { store, distance };
+      if (distance <= swept || (best !== null && distance >= best.distance)) continue;
+      if (accept(store)) best = { store, distance };
     }
     return best?.store ?? null;
   }
@@ -216,4 +224,4 @@ function qualitySources(world: World, content: ContentSet): QualitySources {
 }
 
 const RING_MAX_RADIUS = 48;
-const RING_MIN_CANDIDATES = 64;
+const RING_MIN_CANDIDATES = 256;

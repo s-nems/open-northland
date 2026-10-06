@@ -19,9 +19,10 @@ const RING_MAX_RADIUS = 48;
 /**
  * Candidate count at or below which {@link ExternalFoodIndex.nearest} goes straight to the linear scan.
  * Performance knob with an identical winner: the ring and the linear scan share the
- * (distance, entity-id) order. Approximation.
+ * (distance, entity-id) order. A full sweep reads about 2 * {@link RING_MAX_RADIUS}^2 nodes, more than
+ * a few hundred candidates judged nearest-first.
  */
-const RING_MIN_CANDIDATES = 64;
+const RING_MIN_CANDIDATES = 256;
 
 /**
  * One pass's view of the shared {@link FoodSources}, caught up when the pass makes it: each seeker pays a
@@ -67,7 +68,9 @@ export class ExternalFoodIndex {
       candidates.length <= RING_MIN_CANDIDATES
         ? null
         : buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept);
-    const store = hit?.entity ?? this.linearNearest(candidates, from, accept);
+    // A ring sweep that missed rejected every candidate inside its radius already.
+    const swept = candidates.length <= RING_MIN_CANDIDATES ? -1 : RING_MAX_RADIUS;
+    const store = hit?.entity ?? this.linearNearest(candidates, from, accept, swept);
     if (store === null) return null;
     const goodType = this.liftableFood(store, fitsHome);
     // A null here would mean a mid-pass mutation drained the winner: fail the query rather than guess.
@@ -105,20 +108,21 @@ export class ExternalFoodIndex {
     return gate.allowsNode(this.terrain.nodeAtClamped(node.hx, node.hy));
   }
 
-  /** The strictly-nearer pick over the ascending-id candidates, covering sources beyond
-   *  {@link RING_MAX_RADIUS}. */
+  /** The strictly-nearer pick over the ascending-id candidates beyond Manhattan distance `swept`. The
+   *  distance is read first, so a candidate that could not win is never judged. */
   private linearNearest(
     candidates: readonly Entity[],
     from: { hx: number; hy: number },
     accept: (e: Entity) => boolean,
+    swept: number,
   ): Entity | null {
     let best: { store: Entity; dist: number } | null = null;
     for (const e of candidates) {
-      if (!accept(e)) continue;
       const p = this.world.get(e, Position);
       const node = nodeOfPosition(p.x, p.y);
       const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
-      if (best === null || dist < best.dist) best = { store: e, dist };
+      if (dist <= swept || (best !== null && dist >= best.dist)) continue;
+      if (accept(e)) best = { store: e, dist };
     }
     return best?.store ?? null;
   }
