@@ -17,7 +17,6 @@ export {
   type CombatEffect,
   type CombatEffectKind,
   effectAlpha,
-  effectKey,
   foldCombatEffects,
   MAX_ACTIVE_EFFECTS,
   WRECK_LIFETIME_TICKS,

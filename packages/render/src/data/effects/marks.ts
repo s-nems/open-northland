@@ -71,9 +71,11 @@ export function effectAlpha(effect: CombatEffect, tick: number): number {
   return 1 - (age - hold) / (life - hold);
 }
 
-/** A stable per-mark key for the retained GPU pool - unique per event. */
-export function effectKey(effect: CombatEffect): string {
-  return `${effect.kind}:${effect.spawnTick}:${effect.seed}`;
+/** Whether `ev` adds a mark in {@link foldCombatEffects}. */
+function raisesMark(ev: SimEvent): boolean {
+  if (ev.kind === 'combatHit' || ev.kind === 'projectileHit') return ev.structure !== true;
+  if (ev.kind === 'settlerDied') return ev.at !== undefined && ev.animal !== true;
+  return ev.kind === 'vehicleDestroyed' && ev.ruins.length > 0;
 }
 
 /** Mix a source entity id and the tick into a 32-bit seed, distinct per (source, tick). */
@@ -95,7 +97,10 @@ export function foldCombatEffects(
   active: readonly CombatEffect[],
   events: readonly SimEvent[],
   tick: number,
-): CombatEffect[] {
+): readonly CombatEffect[] {
+  // Called every frame: a frame that raised and expired nothing keeps the list it was handed.
+  const expired = active.some((e) => tick - e.spawnTick >= effectLifetime(e.kind));
+  if (!expired && !events.some(raisesMark)) return active;
   const next = active.filter((e) => tick - e.spawnTick < effectLifetime(e.kind));
   for (const ev of events) {
     if (ev.kind === 'combatHit' || ev.kind === 'projectileHit') {

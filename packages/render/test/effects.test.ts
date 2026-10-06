@@ -7,7 +7,6 @@ import {
   bloodDroplet,
   type CombatEffect,
   effectAlpha,
-  effectKey,
   foldCombatEffects,
   MAX_ACTIVE_EFFECTS,
   WRECK_LIFETIME_TICKS,
@@ -108,11 +107,13 @@ describe('foldCombatEffects', () => {
       [7, 6],
       [6, 7],
     ]);
-    expect(new Set(out.map(effectKey)).size).toBe(3);
+    expect(new Set(out.map((e) => e.seed)).size).toBe(3);
     expect(foldCombatEffects([], [wrecked(9, [])], 3)).toEqual([]);
     // Debris lingers as long as a bone pile.
     expect(foldCombatEffects(out, [], WRECK_LIFETIME_TICKS + 4)).toEqual([]);
     expect(foldCombatEffects(out, [], WRECK_LIFETIME_TICKS + 2)).toHaveLength(3);
+    // A frame that raised and expired nothing hands back the same list, allocating nothing.
+    expect(foldCombatEffects(out, [died(4, true, true)], 4)).toBe(out);
   });
 
   it('expires a mark once past its lifetime, keeping younger ones', () => {
@@ -189,16 +190,6 @@ describe('bloodDroplet - the spray falls from the wound to the feet', () => {
   it('is deterministic and varies per droplet (seeded, no Math.random)', () => {
     expect(bloodDroplet(9, 1, 3)).toEqual(bloodDroplet(9, 1, 3));
     expect(bloodDroplet(9, 1, 3).x).not.toBe(bloodDroplet(9, 2, 3).x); // droplets fan out
-  });
-});
-
-describe('effectKey', () => {
-  it('is stable per mark and distinct across kind / tick / seed', () => {
-    const a: CombatEffect = { kind: 'blood', hx: 0, hy: 0, spawnTick: 3, seed: 7 };
-    expect(effectKey(a)).toBe(effectKey({ ...a }));
-    expect(effectKey(a)).not.toBe(effectKey({ ...a, kind: 'bones' }));
-    expect(effectKey(a)).not.toBe(effectKey({ ...a, spawnTick: 4 }));
-    expect(effectKey(a)).not.toBe(effectKey({ ...a, seed: 8 }));
   });
 });
 

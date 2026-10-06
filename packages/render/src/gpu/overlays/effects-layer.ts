@@ -6,13 +6,12 @@ import {
   type CombatEffect,
   type CombatEffectKind,
   effectAlpha,
-  effectKey,
   foldCombatEffects,
   frac,
 } from '../../data/effects/index.js';
-import { isVisible, type Viewport } from '../../data/projection/index.js';
+import { isVisible, TILE_HALF_H, TILE_HALF_W, type Viewport } from '../../data/projection/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
-import { type ElevationField, projectNode } from '../../data/terrain/index.js';
+import { type ElevationField, terrainLiftAtNode } from '../../data/terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
@@ -32,7 +31,8 @@ interface MarkGfx {
 /**
  * The combat-feedback layer - the transient marks a fight leaves: a blood spurt where a blow lands, a
  * bone pile where a unit falls, debris where a cart or catapult is wrecked. A client-side projection of
- * the sim's one-shot events, never sim state, with one world-space node per mark keyed by `effectKey`.
+ * the sim's one-shot events, never sim state, with one world-space node per mark, keyed by the mark
+ * object, which the fold keeps for the mark's life.
  * Blood is a named procedural approximation; bones and debris draw the decoded sprites when supplied.
  */
 
@@ -67,11 +67,11 @@ export class CombatEffectsLayer {
   /** Added above the sprite layer by the renderer, so the spurt shows on the struck body. */
   readonly overlayContainer = new Container();
   /** The live marks - the fold's output, replaced on each ingest. */
-  private effects: CombatEffect[] = [];
-  /** One retained node per mark key. */
-  private readonly nodes = new Map<string, Container>();
-  /** Reused per-frame scratch of keys drawn this frame (avoids a per-frame allocation). */
-  private readonly seen = new Set<string>();
+  private effects: readonly CombatEffect[] = [];
+  /** One retained node per mark. */
+  private readonly nodes = new Map<CombatEffect, Container>();
+  /** Reused per-frame scratch of the marks drawn this frame (avoids a per-frame allocation). */
+  private readonly seen = new Set<CombatEffect>();
   /** Unset draws the procedural pile. */
   private bones: MarkGfx | undefined;
   /** Unset draws the procedural planks. */
@@ -97,27 +97,27 @@ export class CombatEffectsLayer {
     for (const effect of this.effects) {
       const alpha = effectAlpha(effect, tick);
       if (alpha <= 0) continue; // retired below, since it never enters `seen`
-      const key = effectKey(effect);
-      // The lifted feet point; blood then rides up onto the body.
-      const p = projectNode(elevation, effect.hx, effect.hy);
-      const y = p.y - (effect.kind === 'blood' ? BLOOD_RISE : 0);
+      // The lifted feet point (`projectNode`, unboxed); blood then rides up onto the body.
+      const x = effect.hx * TILE_HALF_W;
+      const feetY = (effect.hy * TILE_HALF_H) / 2 - terrainLiftAtNode(elevation, effect.hx, effect.hy);
+      const y = feetY - (effect.kind === 'blood' ? BLOOD_RISE : 0);
       // Cull by the feet point, so a body-lifted spurt near the top edge still shows.
-      let node = this.nodes.get(key);
-      if (!isVisible(viewport, p.x, p.y)) {
-        retainOffscreen(node, key, this.seen);
+      let node = this.nodes.get(effect);
+      if (!isVisible(viewport, x, feetY)) {
+        retainOffscreen(node, effect, this.seen);
         continue;
       }
       if (node === undefined) {
         node = this.makeMark(effect.kind, effect.seed);
         (effect.kind === 'blood' ? this.overlayContainer : this.groundContainer).addChild(node);
-        this.nodes.set(key, node);
+        this.nodes.set(effect, node);
       }
       node.visible = true;
-      node.position.set(p.x, y);
+      node.position.set(x, y);
       node.alpha = alpha;
       // `tick` is interpolated render time, so the fall stays smooth at any frame rate.
       if (effect.kind === 'blood') animateBlood(node, effect, tick);
-      this.seen.add(key);
+      this.seen.add(effect);
     }
     // Retire nodes whose mark is gone (expired / capped out this frame).
     retireUndrawn(this.nodes, this.seen, (node) => node.destroy());
