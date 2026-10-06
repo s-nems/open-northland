@@ -29,6 +29,7 @@ import type { NodeId } from '../../src/nav/terrain/index.js';
 import { WOMAN_JOB } from '../../src/systems/lifecycle/ageclass.js';
 import { equipGood, unequipGood } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
+import { EQUIP_FETCH_SEARCHES_PER_PASS } from '../../src/systems/settlers/planner/pass.js';
 import { combatant } from '../conflict/stances/support.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -1015,5 +1016,23 @@ describe('equipPickList - the pick-menu read view', () => {
 
     expect(sim.equipPickList(civilian, 'weapon')).toEqual([]);
     expect(sim.equipPickList(civilian, 'armor')).toEqual([]);
+  });
+});
+
+describe('equipGood - a mass order', () => {
+  it('searches for a bounded number of errands per pass and dispatches the rest on the next', () => {
+    const sim = freshSim();
+    const settlers = Array.from({ length: 20 }, (_, i) =>
+      ownedSettler(sim, 1 + (i % 10), 1 + Math.floor(i / 10)),
+    );
+    pileAt(sim, 14, 4, SHOES, settlers.length);
+    for (const e of settlers) sim.enqueueSetup(equip(e, SHOES));
+    const claimed = () => settlers.filter((e) => sim.world.has(e, PickupClaim)).length;
+    sim.step();
+    expect(claimed()).toBe(EQUIP_FETCH_SEARCHES_PER_PASS);
+    sim.step();
+    expect(claimed()).toBe(2 * EQUIP_FETCH_SEARCHES_PER_PASS);
+    sim.step();
+    expect(claimed()).toBe(settlers.length);
   });
 });

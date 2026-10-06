@@ -42,6 +42,7 @@ interface EquipErrand {
   readonly owner: number | undefined;
   readonly targets: TargetCandidates;
   readonly supply: SupplyTally;
+  readonly fetches: { remaining: number };
 }
 
 const EXCLUDE_PRODUCERS = false;
@@ -78,6 +79,8 @@ export function planEquipOrder(
   limit: NavigationLimit | null,
   targets: TargetCandidates,
   supply: SupplyTally,
+  /** The store searches this pass has left; an errand finding none stands until the next pass. */
+  fetches: { remaining: number },
 ): boolean {
   const order = world.tryGet(e, EquipOrder);
   if (order === undefined) return false;
@@ -94,6 +97,7 @@ export function planEquipOrder(
     owner: ownerOf(world, e),
     targets,
     supply,
+    fetches,
   };
   if (order.issuer === 'player' && !playerIntentAllowed(ctx, settler, order)) return finishEquipOrder(errand);
   switch (order.stage) {
@@ -158,6 +162,8 @@ function planFetch(errand: EquipErrand, goodType: number): boolean {
     startDrop(world, ctx, entity);
     return true;
   }
+  if (errand.fetches.remaining <= 0) return true; // stands this pass, searches on the next
+  errand.fetches.remaining--;
   const src = nearestStoreHolding(targets.bands, world, here, goodType, owner, supply, gate, avoid);
   if (src === null) return endErrand(errand);
   supply.stampPickupClaim(entity, { source: src, goodType, amount: EQUIP_FETCH_UNITS });

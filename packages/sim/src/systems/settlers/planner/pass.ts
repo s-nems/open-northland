@@ -55,7 +55,18 @@ export interface PlannerPass {
   readonly shelters: ShelterSites;
   /** The adults whose ladder found them nothing to do this pass, so they stand. */
   readonly idle: IdleStands;
+  /** Equipment errands that may still search for their store this pass; see
+   *  {@link EQUIP_FETCH_SEARCHES_PER_PASS}. */
+  readonly equipFetches: { remaining: number };
 }
+
+/**
+ * Equipment errands whose store search one planner pass runs. An order handed to many settlers at once
+ * (an AI decision outfitting its army, a player's mass equip) would otherwise search from every
+ * settler's node in one tick; the rest stand for a tick and search on the next pass, in id order.
+ * Authored throttle, not the original's.
+ */
+export const EQUIP_FETCH_SEARCHES_PER_PASS = 8;
 
 /** Snapshot the shared pass state at the top of a planner tick. */
 export function beginPlannerPass(world: World, ctx: SystemContext, terrain: TerrainGraph): PlannerPass {
@@ -88,5 +99,6 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     homeward: new HomewardPosts(world, terrain, seatDoors),
     shelters,
     idle: new IdleStands(),
+    equipFetches: { remaining: EQUIP_FETCH_SEARCHES_PER_PASS },
   };
 }
