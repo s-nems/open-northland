@@ -188,6 +188,7 @@ export class WalkFlood implements WalkDistances {
 
   private assertHeldCurrent(): void {
     const held = this.heldAt;
+    // The version counts the mask's levellings, flip or none, so a write that moved no node trips it too.
     if (held !== null && held.mask.version !== held.version) {
       throw new Error('a held walk flood was asked after the walk-block mask changed within its pass');
     }

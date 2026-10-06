@@ -415,7 +415,6 @@ export function resolveTarget(
   const order = world.tryGet(self, AttackOrder);
   if (order !== undefined) {
     const x = terrain.xOf(here);
-
     const y = terrain.yOf(here);
     // An enemy within a breaker's reach is fought first, and the wall taken up again once it is gone.
     const rival =
@@ -437,7 +436,6 @@ export function resolveTarget(
     return heldOrPicked(world, ctx, terrain, pass, self, here, spec, spec.hold, moving);
   }
   const x = terrain.xOf(spec.searchCenter ?? here);
-
   const y = terrain.yOf(spec.searchCenter ?? here);
   const locked = spec.lock?.target ?? null;
   if (locked !== null) {
@@ -533,7 +531,6 @@ function heldOrPicked(
     return lessCrowdedInReach(world, ctx, terrain, pass, spec, asker, heldTarget) ?? held;
   }
   const x = terrain.xOf(here);
-
   const y = terrain.yOf(here);
   if (
     held === null &&
@@ -660,7 +657,6 @@ function lessCrowdedInReach(
   const heldRank = tierRank(world, ctx, index, heldTarget);
   const reach = { minRange: asker.band.minRange, maxRange: asker.band.maxRange + 1 };
   const x = terrain.xOf(asker.here);
-
   const y = terrain.yOf(asker.here);
   const near = index.nearestFew(
     x,
@@ -777,7 +773,6 @@ export function enemyInReachFrom(
   const accept = (t: Entity): boolean => tierRank(world, ctx, index, t) <= heldRank && spec.accept(t);
   return (node) => {
     const x = terrain.xOf(node);
-
     const y = terrain.yOf(node);
     return index.nearest(x, y, band.minRange, band.maxRange, accept, spec.player, SEARCH_METRIC);
   };
