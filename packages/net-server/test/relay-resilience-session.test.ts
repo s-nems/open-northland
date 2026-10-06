@@ -426,6 +426,78 @@ describe('a relayed session under faults', () => {
     ).toEqual([{ kind: 'setPlayerAi', player: 2, enabled: true }]);
   });
 
+  it('keeps eight clients in agreement through repeated resyncs, a silent link and paused orders', async () => {
+    const stage = stageFor(81);
+    const clients = Array.from({ length: 8 }, (_, i) => client(`Player${i}`));
+    const links = clients.map((each, i) =>
+      stage.network.link(each, { latencyMs: 40 + i * 80, jitterMs: 10 + i * 20 }),
+    );
+    await assembleRoom(stage, clients, {
+      settings: { ...SETTINGS, speed: 4 },
+      seats: clients.map((_, player) => ({ player, mode: 'idle', offers: ['idle', 'ai'], color: player })),
+      seatOf: (i) => i,
+      settleMs: 1400,
+    });
+    const host = clients[0];
+    const returning = clients[3];
+    const diverging = clients[7];
+    if (host === undefined || returning === undefined || diverging === undefined)
+      throw new Error('missing clients');
+    const onTick = (each: HeadlessClient, tick: number): void => {
+      const seat = each.session?.localSeat;
+      if (typeof seat === 'number' && tick % 11 === seat)
+        each.submit(
+          playerCommand(seat, {
+            kind: 'setAssistantCounter',
+            player: seat,
+            counter: 'extraMen',
+            value: tick,
+            infinite: false,
+          }),
+        );
+      if (each === diverging && (tick === 100 || tick === 800) && each.sim !== null)
+        each.sim.rng.setState(each.sim.rng.getState() ^ 1);
+    };
+    await runUntil(stage, clients, 250, { onTick });
+    links[3]?.cut();
+    await runFor(stage, clients, SILENT_AFTER_MS + 1400);
+    expect(host.waits.at(-1)?.for).toMatchObject([{ nick: returning.nick, reason: 'silent' }]);
+    relink(stage, returning, { latencyMs: 500, jitterMs: 150 });
+    await runUntil(stage, clients, 650, { onTick });
+    host.setPaused(true);
+    await runFor(stage, clients, 2000);
+    expect(new Set(clients.map((each) => each.tick)).size).toBe(1);
+    for (const each of clients) {
+      const seat = each.session?.localSeat;
+      if (typeof seat !== 'number') throw new Error('missing seat');
+      each.submit(
+        playerCommand(seat, {
+          kind: 'setAssistantCounter',
+          player: seat,
+          counter: 'extraMen',
+          value: 900,
+          infinite: false,
+        }),
+      );
+    }
+    await runFor(stage, clients, 1400);
+    host.setPaused(false);
+    const captures = await runUntil(stage, clients, 1100, { onTick });
+    expectAgreement(captures, clients);
+    expect(diverging.desyncs).toHaveLength(2);
+    expect(diverging.restoredFrom).toHaveLength(2);
+    for (const each of clients) {
+      expect(each.rejections, each.nick).toEqual([]);
+      expect(each.errors, each.nick).toEqual([]);
+      if (each !== diverging) expect(each.desyncs, each.nick).toEqual([]);
+    }
+    const log = captures.get(host)?.log ?? [];
+    const orderedSeats = new Set(
+      log.flatMap(([, , command]) => (command.kind === 'setAssistantCounter' ? [command.player] : [])),
+    );
+    expect(orderedSeats.size).toBe(8);
+  });
+
   it('refuses lobby map replacement after a session starts', async () => {
     const { stage, ania, bartek } = await twoClients(7);
     const bytes = Buffer.from(Array.from({ length: 3000 }, (_, i) => i % 251)).toString('base64');
