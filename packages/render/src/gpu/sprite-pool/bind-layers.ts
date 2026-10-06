@@ -57,6 +57,12 @@ function hideLayer(spr: Sprite | PalettedSprite): void {
   spr.alpha = 0;
 }
 
+/** Hide every layer slot of `pe`, for a frame a marker or the placeholder draws in their place. */
+function hideLayers(pe: PooledEntity): void {
+  for (const s of pe.sprites) hideLayer(s);
+  if (pe.paletted) for (const s of pe.shadows) hideLayer(s);
+}
+
 /** Assign-mode candidate-building tints, pale so they wash over the building art rather than
  *  repaint it. */
 const HIGHLIGHT_OK_TINT = 0x88ff88;
@@ -369,8 +375,7 @@ export class LayerBinder {
 
   /** An unclaimed site is deliberately ground-only: no partially built post or road exists yet. */
   private showSiteMarker(pe: PooledEntity, road: boolean, frameId: number): void {
-    for (const s of pe.sprites) s.visible = false;
-    if (pe.paletted) for (const s of pe.shadows) s.visible = false;
+    hideLayers(pe);
     pe.selectionEllipse = undefined;
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
     if (pe.siteClaimMarker !== undefined) pe.siteClaimMarker.visible = false;
@@ -517,10 +522,7 @@ export class LayerBinder {
   /** Show the placeholder marker - the unbound / no-sheet fallback - and stamp the entity's bounds from
    *  its fixed body box. */
   private showPlaceholder(pe: PooledEntity, item: DrawItem, frame: BindFrame, frameId: number): void {
-    for (const s of pe.sprites) s.visible = false;
-    if (pe.paletted) {
-      for (const s of pe.shadows) s.visible = false;
-    }
+    hideLayers(pe);
     if (pe.placeholder === undefined) {
       pe.placeholder = worldBatched(new SelectionGraphics());
       drawPlaceholder(pe.placeholder, pe.kind);

@@ -326,4 +326,21 @@ describe('grounded bind', () => {
     if (pe.paletted) throw new Error('expected a plain entity');
     expect(pe.pickExempt).toEqual([true, false, true]);
   });
+
+  it('draws the overlays again after a frame the placeholder stood in for', () => {
+    const cache = new TextureCache();
+    const parts = { shade: new Texture(), body: new Texture(), cover: new Texture() } as const;
+    vi.spyOn(cache, 'groundedPart').mockImplementation((part) => parts[part]);
+    const pe = createPooled('building', undefined);
+    const binder = new LayerBinder(cache, undefined);
+    binder.bind(pe, item, layers, frame, 1);
+    binder.bind(pe, item, null, frame, 2);
+    binder.bind(pe, item, layers, frame, 3);
+    const drawn = (s: Sprite): boolean => s.visible && s.alpha > 0;
+    expect((pe.sprites as Sprite[]).map((s) => [drawn(s), s.texture])).toEqual([
+      [true, parts.shade],
+      [true, parts.body],
+      [true, parts.cover],
+    ]);
+  });
 });

@@ -191,7 +191,8 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
 
     binder.bind(pe, item, null, bindFrame, 2);
 
-    expect(pe.shadows[0]?.visible).toBe(false);
+    expect(pe.shadows[0]?.alpha).toBe(0);
+    expect(pe.shadows[0]?.texture).toBe(Texture.EMPTY);
     expect(pe.placeholder?.visible).toBe(true);
   });
 
