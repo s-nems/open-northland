@@ -54,6 +54,9 @@ export class SnapshotMirror {
         const change = changeAt(delta, i);
         const entity = created(delta.touched[i] as number, change, values, at);
         this.entities.push(entity);
+        // Grown slot by slot: a sparse store far past the table's end would drop V8's array into its
+        // dictionary layout, and every store after that into a hashed one.
+        while (this.byId.length < entity.id) this.byId.push(undefined);
         this.byId[entity.id] = entity;
         at += change.written.length;
       }
