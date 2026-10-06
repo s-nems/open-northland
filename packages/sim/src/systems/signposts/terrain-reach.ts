@@ -1,8 +1,9 @@
 import type { ContentSet } from '@open-northland/data';
 import type { Entity, World } from '../../ecs/world.js';
-import { type ReachArea, searchReach } from '../../nav/range-search.js';
+import type { NodeArea } from '../../nav/halfcell.js';
+import { floodReach, type ReachArea } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
-import { walkBlockMask } from '../footprint/walk-block-mask.js';
+import { type WalkBlockMask, walkBlockMask } from '../footprint/walk-block-mask.js';
 import { roadAreaKey, syncRoadLane } from '../roads/index.js';
 
 export function signpostTerrainKey(world: World, content: ContentSet, terrain: TerrainGraph): string {
@@ -16,11 +17,19 @@ export interface TerrainReach {
   readonly hy: number;
   readonly range: number;
   version: string;
+  /** The blocks and roads over {@link searched} when the flood ran. */
   readonly localKey: string;
+  readonly searched: NodeArea;
   readonly area: ReachArea;
 }
 
-/** The flood may detour outside the geometric result: at resistance one it visits up to twice the range. */
+/** A token over the walk blocks and roads on the nodes of `box`: every block and road revision it sums
+ *  only grows, so it changes exactly when one of them moves. */
+function localKeyOf(world: World, mask: WalkBlockMask, box: NodeArea): string {
+  return `${mask.areaVersion(box)}:${roadAreaKey(world, box)}`;
+}
+
+/** A held search survives every change outside the nodes its flood inspected. */
 export function terrainReach(
   world: World,
   content: ContentSet,
@@ -33,22 +42,13 @@ export function terrainReach(
   const version = signpostTerrainKey(world, content, terrain);
   const sameOrigin = held?.terrain === terrain && held.hx === hx && held.hy === hy && held.range === range;
   if (sameOrigin && held.version === version) return held;
-  const area = { minHx: hx - 2 * range, maxHx: hx + 2 * range, minHy: hy - 2 * range, maxHy: hy + 2 * range };
   const mask = walkBlockMask(world, { content }, terrain);
-  const localKey = `${mask.areaVersion(area)}:${roadAreaKey(world, area)}`;
-  if (sameOrigin && held.localKey === localKey) {
+  if (sameOrigin && held.localKey === localKeyOf(world, mask, held.searched)) {
     held.version = version;
     return held;
   }
-  return {
-    terrain,
-    hx,
-    hy,
-    range,
-    version,
-    localKey,
-    area: searchReach(terrain, mask.levelled(), hx, hy, range),
-  };
+  const { area, searched } = floodReach(terrain, mask.levelled(), hx, hy, range);
+  return { terrain, hx, hy, range, version, localKey: localKeyOf(world, mask, searched), searched, area };
 }
 
 /** Each signpost's reach per range, shared by the link pass and the goods search, which flood from the

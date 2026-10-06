@@ -32,6 +32,26 @@ describe('terrain-aware goods reach', () => {
     liftRoad(sim.world, terrain, road);
     expect(reachContains(read(), 89, 50)).toBe(false);
   });
+  it('keeps a search through block changes past the nodes its flood inspected', () => {
+    // Resistance 5 spends the 80-point budget within 16 steps, far inside the 80-node outer bound.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: roughNodeMap(240, 240, () => 5) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('terrain');
+    const read = () => goodsReachAt(sim.world, sim.content, terrain, 50, 50);
+    const block = (hx: number, hy: number) => {
+      const id = sim.world.create();
+      sim.world.add(id, Position, positionOfNode(hx, hy));
+      sim.world.add(id, ResourceFootprint, { walk: [{ dx: 0, dy: 0 }], build: [], work: [] });
+    };
+    const before = read();
+    expect(reachContains(before, 60, 50)).toBe(true);
+    block(100, 50);
+    expect(read()).toBe(before);
+    block(59, 50);
+    const after = read();
+    expect(after).not.toBe(before);
+    expect(reachContains(after, 59, 50)).toBe(false);
+  });
   it('keeps distant post searches through remote block changes and refreshes affected masks', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(500, 150) });
     const terrain = sim.terrain;

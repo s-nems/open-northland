@@ -1,6 +1,6 @@
 import { footprintCellDx } from '@open-northland/data';
 import type { BlockOverlay } from './block-overlay.js';
-import { HEX_NEIGHBOUR_OFFSETS, hexDistanceBetween } from './halfcell.js';
+import { HEX_NEIGHBOUR_OFFSETS, hexDistanceBetween, type NodeArea } from './halfcell.js';
 import type { NodeBox, SpatialGate } from './node-circle.js';
 import type { NodeId, TerrainGraph } from './terrain/index.js';
 
@@ -27,11 +27,16 @@ const HEX_DY = HEX_NEIGHBOUR_OFFSETS.map((c) => c.dy);
 let costScratch = new Uint16Array(0);
 const bucketScratch: number[][] = [];
 
+/** {@link searchReach}'s answer with the box of every node the flood inspected, the only nodes whose
+ *  ground, blockers and roads the answer depends on. */
+export interface ReachSearch {
+  readonly area: ReachArea;
+  readonly searched: NodeArea;
+}
+
 /** Original range searches walk six neighbours, spend twice the nominal range in ground resistance,
  *  and inspect an entered node before charging its resistance. Guide callbacks also require distance
- *  strictly below the nominal range. Byte-verified behavior; the navigation grid and blockers are ours.
- *  The marked set is order-independent: a node is marked when it neighbours any node whose cheapest
- *  cost stays under the budget, so the order a bucket is walked in does not matter. */
+ *  strictly below the nominal range. Byte-verified behavior; the navigation grid and blockers are ours. */
 export function searchReach(
   terrain: TerrainGraph,
   blocked: BlockOverlay,
@@ -39,16 +44,30 @@ export function searchReach(
   hy: number,
   range: number,
 ): ReachArea {
+  return floodReach(terrain, blocked, hx, hy, range).area;
+}
+
+/** {@link searchReach} with its searched box. The marked set is order-independent: a node is marked when
+ *  it neighbours any node whose cheapest cost stays under the budget, so the order a bucket is walked in
+ *  does not matter. */
+export function floodReach(
+  terrain: TerrainGraph,
+  blocked: BlockOverlay,
+  hx: number,
+  hy: number,
+  range: number,
+): ReachSearch {
   const minX = Math.max(0, hx - range + 1);
   const maxX = Math.min(terrain.width - 1, hx + range - 1);
   const minY = Math.max(0, hy - range + 1);
   const maxY = Math.min(terrain.height - 1, hy + range - 1);
   const width = Math.max(0, maxX - minX + 1);
   const cells = new Uint8Array(width * Math.max(0, maxY - minY + 1));
-  const result = { minX, maxX, minY, maxY, cells };
-  if (!terrain.inBounds(hx, hy)) return result;
+  const area = { minX, maxX, minY, maxY, cells };
+  const unmoved = { area, searched: { minHx: hx, maxHx: hx, minHy: hy, maxHy: hy } };
+  if (!terrain.inBounds(hx, hy)) return unmoved;
   const start = terrain.nodeAt(hx, hy);
-  if (!terrain.isWalkable(start) || blocked.has(start)) return result;
+  if (!terrain.isWalkable(start) || blocked.has(start)) return unmoved;
   cells[(hy - minY) * width + hx - minX] = 1;
   const budget = 2 * range;
   // Every entered node costs at least one, so a node with a cost under the budget lies fewer than
@@ -65,6 +84,10 @@ export function searchReach(
   const resistances = terrain.walkableResistances();
   const mapWidth = terrain.width;
   const mapHeight = terrain.height;
+  let poppedMinX = hx;
+  let poppedMaxX = hx;
+  let poppedMinY = hy;
+  let poppedMaxY = hy;
   costs[reach * side + reach] = 0;
   (bucketScratch[0] as number[]).push(start);
   for (let cost = 0; cost < budget; cost++) {
@@ -75,6 +98,10 @@ export function searchReach(
       const x = node % mapWidth;
       const y = (node - x) / mapWidth;
       if (costs[(y - windowY) * side + x - windowX] !== cost) continue;
+      if (x < poppedMinX) poppedMinX = x;
+      if (x > poppedMaxX) poppedMaxX = x;
+      if (y < poppedMinY) poppedMinY = y;
+      if (y > poppedMaxY) poppedMaxY = y;
       const dxs = (y & 1) === 0 ? HEX_DX_EVEN : HEX_DX_ODD;
       for (let k = 0; k < HEX_DY.length; k++) {
         const nx = x + (dxs[k] as number);
@@ -93,7 +120,14 @@ export function searchReach(
       }
     }
   }
-  return result;
+  // A popped node inspects its neighbours, one node out on either axis.
+  const searched = {
+    minHx: Math.max(0, poppedMinX - 1),
+    maxHx: Math.min(mapWidth - 1, poppedMaxX + 1),
+    minHy: Math.max(0, poppedMinY - 1),
+    maxHy: Math.min(mapHeight - 1, poppedMaxY + 1),
+  };
+  return { area, searched };
 }
 
 export function unionReachAreas(areas: readonly ReachArea[]): ReachArea {
