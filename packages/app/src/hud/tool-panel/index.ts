@@ -731,13 +731,21 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       clientToCanvas(opts.screenScale(canvas), clientX, clientY);
 
     const tradesByType = new Map(opts.buildings.map((entry) => [entry.typeId, entry.trades]));
+    // The plane's height, kept by an observer: the notice column asks for its inset every frame, where a
+    // read would lay out whatever the frame's HUD writes changed.
+    let planeHeight = plane.clientHeight;
+    const planeSize = new ResizeObserver(() => {
+      planeHeight = plane.clientHeight;
+    });
+    planeSize.observe(plane);
+    domParts.push({ dispose: () => planeSize.disconnect() });
     const messageCenter = createMessageCenter({
       settlerName: opts.settlerName,
       ctx,
       plane,
       bottomInset: () => {
         const reserve = minimapReserve(plane);
-        return reserve === null ? NOTICE_MINIMAP_GAP : plane.clientHeight - reserve.y + NOTICE_MINIMAP_GAP;
+        return reserve === null ? NOTICE_MINIMAP_GAP : planeHeight - reserve.y + NOTICE_MINIMAP_GAP;
       },
       sheet: opts.sheet,
       figureFrames,

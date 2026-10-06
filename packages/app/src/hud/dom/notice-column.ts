@@ -154,6 +154,9 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   let anchor: { readonly key: string; readonly top: number } | null = null;
   /** The overlap the cards down to the open one keep while it is open. */
   let openAbove = 0;
+  /** The figure canvases on view as last found, and whether the cards have moved since. */
+  let figureSlots: NoticeFigureSlots = { slots: [], box: { width: 0, height: 0, pixelScale: 0 } };
+  let figureSlotsStale = true;
 
   const items = (): HTMLLIElement[] =>
     [...list.children].filter(
@@ -196,6 +199,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
    * to it keep the overlap they had, its rows never fan, and the cards below fan in the room left.
    */
   const layout = (): void => {
+    figureSlotsStale = true;
     const shown = items();
     shown.forEach((li, i) => {
       li.style.setProperty('--z', String(shown.length - i));
@@ -457,9 +461,13 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   list.addEventListener('scroll', () => {
     placeFull();
     updateMore();
+    figureSlotsStale = true;
   });
-  // The fan settles through a margin transition; count the fold again once it has.
-  list.addEventListener('transitionend', updateMore);
+  // The fan settles through a margin transition; count the fold and place the figures again once it has.
+  list.addEventListener('transitionend', () => {
+    updateMore();
+    figureSlotsStale = true;
+  });
   list.addEventListener('mouseleave', updateMore);
   more.addEventListener('click', () => {
     list.scrollBy({ top: list.clientHeight - MORE_SCROLL_KEEP, behavior: 'smooth' });
@@ -544,10 +552,10 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
           cardsByKey.set(stack.key, li);
         } else if (shapes.get(li) !== cardShape(stack)) shapeCard(li, stack);
         if (before !== undefined && stack.count > before.count && stack.lead.fresh) {
-          li.classList.remove(GREW);
-          // Restart the bump: a class re-added in the same frame would not replay it.
-          void li.offsetWidth;
-          li.classList.add(GREW);
+          // A bump still playing restarts in place: re-adding its class in the same frame would not
+          // replay it, and a reflow between the two would lay the whole HUD out.
+          if (li.classList.contains(GREW)) restartBump(li);
+          else li.classList.add(GREW);
         }
         viewsByKey.set(stack.key, stack);
         fillCard(li, stack, stack.key === openKey, copy);
@@ -609,6 +617,10 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
         column.style.bottom = `${inset}px`;
         layout();
       }
+      // The cards' places change only with a render, a layout, a scroll or a settled transition: the
+      // figures keep their slots between them, and a frame reads no layout.
+      if (!figureSlotsStale) return figureSlots;
+      figureSlotsStale = false;
       const top = list.scrollTop;
       const bottom = top + list.clientHeight;
       const slots: NoticeFigureSlot[] = [];
@@ -643,10 +655,12 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
           if (row.dataset.entity !== undefined) take(row, rowTop, (canvas) => canvas.clientHeight);
         }
       }
-      return { slots, box };
+      figureSlots = { slots, box };
+      return figureSlots;
     },
     unpicture: (canvas): void => {
       canvas.outerHTML = glyphMarkup('scroll', false);
+      figureSlotsStale = true;
     },
     dispose: (): void => {
       hover.dispose();
@@ -654,4 +668,12 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       column.remove();
     },
   };
+}
+
+function restartBump(li: HTMLElement): void {
+  for (const animation of li.getAnimations({ subtree: true })) {
+    if (animation instanceof CSSAnimation && animation.animationName === ARRIVAL_ANIMATION.bump) {
+      animation.currentTime = 0;
+    }
+  }
 }
