@@ -196,7 +196,11 @@ the tick the client's own sim had reached when the person issued it. The relay:
 - admits at most `MAX_COMMANDS_PER_TICK` (20) complete player gestures from one member on one tick,
   each at most `MAX_ENVELOPE_BYTES` (512 KiB) as JSON, with at most 1 MiB per member per tick;
 - bounds pending input to 128 gestures and 2 MiB per member, including paused rooms. Excess input is
-  refused as a whole with `commandBudget`, never postponed to make room on a later tick.
+  refused as a whole with `commandBudget`, never postponed to make room on a later tick;
+- reserves recovery space before accepting input: retained frames plus pending gestures, including a
+  conservative frame-overhead charge, may use 12 MiB of the 16 MiB history store. The remaining space
+  keeps empty ticks and seat handovers flowing while a snapshot refresh frees capacity. Excess gestures
+  receive `commandBudget`; already admitted gestures retain their application tick.
 
 An army's movement, attack-move, direct attack, stance or regeneration selection is one opaque
 command, bounded by the sim to 4096 unique members. Formation movement carries each member's target.
@@ -208,8 +212,10 @@ and the vehicle's ownership checks. A mixed army emits a settler group and a veh
 
 Ground clicks first request current formation slots from the simulation host, excluding blocked
 terrain, structure bodies and occupied destinations. Members stay paired within their land component.
+Vehicle commanders retain the clicked target so their vehicle can judge its own surface and clearance.
 While that local query is pending, a newer order supersedes only its affected actors; Shift preserves
-the order of overlapping gestures. Only the completed member destinations enter the relay command.
+the order of overlapping gestures. A commander's pending walk also observes orders to its vehicle.
+Only the completed member destinations enter the relay command.
 
 Every admitted member receives the order in the same tick; a larger selection is refused locally as
 one gesture with a visible notice. Ordinary redirects replace the previous standing order when they
@@ -563,6 +569,7 @@ every return of its token, before `start` and `clock`.
 | `MAX_COMMANDS_PER_TICK` per member | 20 |
 | pending gestures per member, including paused rooms | 128 / 2 MiB |
 | envelope bytes per member per tick | 1 MiB |
+| retained history plus pending input at admission, including overhead | 12 MiB |
 | members in one army gesture | 4096 |
 | Auto reserve / manual reserves | 1..6 / 1, 2, 3 ticks |
 | `MAX_SPEED` | 8 |

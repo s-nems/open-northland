@@ -175,7 +175,13 @@ export class Game {
     if (this.builtTick === null) return { code: 'noWorldYet' };
     if (member.seat === null) return { code: 'seatRequired' };
     const stamped: PlayerWireEnvelope = { ...envelope, player: member.seat };
-    const outcome = this.clock.schedule(member.token, stamped, fromTick, member.delayTicks);
+    const outcome = this.clock.schedule(
+      member.token,
+      stamped,
+      fromTick,
+      member.delayTicks,
+      this.resync.commandHeadroomBytes,
+    );
     return 'refused' in outcome ? { code: 'commandBudget' } : null;
   }
 

@@ -28,6 +28,7 @@ import {
   buildSiteOf,
   canOpenChest,
   chestKindOf,
+  commandedVehicleOf,
   isBuilding,
   isSettler,
   isVehicle,
@@ -255,31 +256,48 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     };
     const request = deps.requestFormationSlots;
     if (request === undefined) return dispatch(movers, null);
-    const ticket = pending.begin(
-      movers.map(({ ref }) => ref),
-      queued,
-    );
+    const vehicles = new Map<number, number[]>();
+    for (const { ref } of movers) {
+      const self = entityById(snapshot, ref);
+      const vehicle = self === undefined ? undefined : commandedVehicleOf(snapshot, self);
+      if (vehicle !== undefined) vehicles.set(ref, [vehicle]);
+    }
+    const ticket = pending.begin([...movers.map(({ ref }) => ref), ...[...vehicles.values()].flat()], queued);
+    const current = ({ ref }: FormationUnit): boolean => {
+      const aliases = vehicles.get(ref);
+      return pending.current(ticket, ref) && (aliases?.every((id) => pending.current(ticket, id)) ?? true);
+    };
     const acknowledge = deps.deferGroundConfirmation?.();
     // The query reads the actual terrain and structure bodies on its simulation thread. A newer
-    // unqueued command cancels only its own actors; Shift waits for its overlapping predecessors.
+    // unqueued command cancels only its own actors; a captain also follows its vehicle's intent.
+    // Shift waits for overlapping predecessors, including those same vehicle aliases.
     const refused = (): void =>
       pending.settle(ticket, () => {
-        if (!disposed && movers.some(({ ref }) => pending.current(ticket, ref))) deps.cue?.('fail');
+        if (!disposed && movers.some(current)) deps.cue?.('fail');
       });
     try {
       void request(
         { hx: seat.col, hy: seat.row },
         movers.map(({ ref }) => ref as Entity),
         military ? 2 : 1,
-      ).then(
-        (groups) =>
-          pending.settle(ticket, () => {
-            if (disposed) return;
-            const currentMovers = movers.filter(({ ref }) => pending.current(ticket, ref));
-            if (currentMovers.length > 0 && dispatch(currentMovers, groups)) acknowledge?.();
-          }),
-        refused,
-      );
+      ).then((groups) => {
+        for (const group of groups ?? []) {
+          if (group.commandedVehicle === undefined) continue;
+          for (const entity of group.members) {
+            if (!pending.current(ticket, entity)) continue;
+            const aliases = vehicles.get(entity) ?? [];
+            if (!aliases.includes(group.commandedVehicle)) aliases.push(group.commandedVehicle);
+            vehicles.set(entity, aliases);
+          }
+        }
+        // Keep earlier aliases too: unloading after the click must not revive it as a foot order.
+        pending.includeActors(ticket, [...vehicles.values()].flat());
+        pending.settle(ticket, () => {
+          if (disposed) return;
+          const currentMovers = movers.filter(current);
+          if (currentMovers.length > 0 && dispatch(currentMovers, groups)) acknowledge?.();
+        });
+      }, refused);
     } catch {
       refused();
     }

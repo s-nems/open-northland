@@ -2,6 +2,8 @@ import type { WireFrame } from '@open-northland/net-protocol';
 
 /** Retention budgets are deployment limits, independent of room speed and client cooperation. */
 export const MAX_HISTORY_BYTES = 16 * 1024 * 1024;
+/** Leave room for empty clock frames and seat handovers while a requested snapshot is in flight. */
+export const MAX_COMMAND_HISTORY_BYTES = 12 * 1024 * 1024;
 export const MAX_HISTORY_AGE_MS = 10 * 60_000;
 export const HISTORY_REFRESH_BYTES = MAX_HISTORY_BYTES / 2;
 export const HISTORY_REFRESH_AGE_MS = MAX_HISTORY_AGE_MS / 2;

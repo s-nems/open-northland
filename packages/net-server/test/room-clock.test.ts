@@ -154,6 +154,25 @@ describe('room clock', () => {
     expect(clock.schedule('a', envelope('drained'), clock.tick, 1)).toEqual({ applyTick: clock.tick + 1 });
   });
 
+  it('reserves recovery space across members and future ticks, including pending seat handovers', () => {
+    const clock = startedAt(1);
+    clock.setPaused(true);
+    const first = envelope('first');
+    const historySpace = 256;
+    expect(clock.schedule('a', first, 1, 1, historySpace)).toEqual({ applyTick: 2 });
+    expect(clock.schedule('b', first, 1, 2, historySpace)).toEqual({ refused: 'budget' });
+    clock.setPaused(false);
+    expect(clock.advance(TICK_MS)[0]?.commands).toEqual([{ envelope: first, sequence: 0 }]);
+    clock.scheduleTrusted({
+      v: 1,
+      origin: 'admin',
+      command: { kind: 'setPlayerAi', player: 1, enabled: true },
+    });
+    expect(clock.schedule('b', first, 2, 2, historySpace)).toEqual({ refused: 'budget' });
+    clock.finishAt(2);
+    expect(clock.schedule('b', first, 2, 2, historySpace)).toEqual({ applyTick: 4 });
+  });
+
   it('runs at the governed speed while one is set, reporting the requested speed throughout', () => {
     const clock = startedAt(0);
     clock.setSpeed(2);

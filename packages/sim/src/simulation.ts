@@ -427,7 +427,7 @@ export class Simulation {
     );
   }
 
-  /** Fresh legal destinations for one ground gesture, partitioned by the members' land components. */
+  /** Fresh formation groups on land, with vehicle commanders retaining the clicked target. */
   formationSlots(
     target: HalfCellNode,
     members: readonly Entity[],

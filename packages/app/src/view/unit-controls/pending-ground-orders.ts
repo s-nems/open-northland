@@ -3,9 +3,12 @@ import type { PlayerCommand } from '@open-northland/sim';
 /** A click captures the current intent of each actor, independently of later selection changes. */
 export interface GroundOrderTicket {
   readonly actors: ReadonlyMap<number, number>;
+  readonly sequence: number;
+  readonly queued: boolean;
 }
 
 interface WaitingOrder extends GroundOrderTicket {
+  readonly actors: Map<number, number>;
   readonly before: readonly WaitingOrder[];
   callback?: (() => void) | undefined;
   done: boolean;
@@ -13,6 +16,8 @@ interface WaitingOrder extends GroundOrderTicket {
 
 export interface PendingGroundOrders {
   begin(ids: readonly number[], queued: boolean): GroundOrderTicket;
+  /** A fresh host answer can discover an actor absent from the mirror at the original click. */
+  includeActors(ticket: GroundOrderTicket, ids: readonly number[]): void;
   current(ticket: GroundOrderTicket, id: number): boolean;
   /** Call also for a failed query, with an empty callback, to release its queued successors. */
   settle(ticket: GroundOrderTicket, callback: () => void): void;
@@ -30,8 +35,13 @@ export function createPendingGroundOrders(): PendingGroundOrders {
   let disposed = false;
   let flushing = false;
   let active: WaitingOrder | undefined;
-  const current = (ticket: GroundOrderTicket, id: number): boolean =>
-    !disposed && ticket.actors.has(id) && ticket.actors.get(id) === (generations.get(id) ?? 0);
+  const current = (ticket: GroundOrderTicket, id: number): boolean => {
+    if (disposed || !ticket.actors.has(id)) return false;
+    const latest = generations.get(id) ?? 0;
+    // Shift follows an older intent even when that intent's vehicle alias arrives after its own
+    // answer. Only a replacing intent issued after the Shift click may cancel it.
+    return ticket.queued ? latest <= ticket.sequence : ticket.actors.get(id) === latest;
+  };
   const overlaps = (a: WaitingOrder, b: WaitingOrder): boolean => {
     for (const id of a.actors.keys()) if (current(a, id) && current(b, id)) return true;
     return false;
@@ -71,14 +81,12 @@ export function createPendingGroundOrders(): PendingGroundOrders {
     }
   };
   const begin = (ids: readonly number[], queued: boolean): WaitingOrder => {
-    if (!queued) {
-      nextGeneration++;
-      for (const id of ids) generations.set(id, nextGeneration);
-    }
+    const sequence = ++nextGeneration;
+    if (!queued) for (const id of ids) generations.set(id, sequence);
     const actors = new Map(ids.map((id) => [id, generations.get(id) ?? 0]));
-    const ticket: WaitingOrder = { actors, before: [], done: disposed };
-    const before = queued ? [...pending].filter((prior) => overlaps(ticket, prior)) : [];
-    const waiting: WaitingOrder = { ...ticket, before };
+    // An answer may reveal a shared vehicle later; test overlap when flushing, not only at click time.
+    const before = queued ? [...pending] : [];
+    const waiting: WaitingOrder = { actors, sequence, queued, before, done: disposed };
     if (!disposed) pending.add(waiting);
     flush();
     return waiting;
@@ -94,6 +102,20 @@ export function createPendingGroundOrders(): PendingGroundOrders {
   };
   return {
     begin,
+    includeActors: (ticket, ids) => {
+      for (const waiting of pending) {
+        if (waiting !== ticket) continue;
+        for (const id of ids) {
+          if (waiting.actors.has(id)) continue;
+          const latest = generations.get(id) ?? 0;
+          const stamp = waiting.queued && latest <= waiting.sequence ? latest : waiting.sequence;
+          waiting.actors.set(id, stamp);
+          if (!waiting.queued && latest <= waiting.sequence) generations.set(id, stamp);
+        }
+        // Do not release callbacks until the caller has finished applying this answer's aliases.
+        break;
+      }
+    },
     current,
     settle,
     submit: (command, enqueue) => {
@@ -180,6 +202,8 @@ function orderActors(command: PlayerCommand): OrderActor[] {
     case 'attackWithVehicle':
     case 'stopVehicle':
     case 'dockVehicle':
+    case 'loadIntoVehicle':
+    case 'unloadPeople':
       return [{ id: command.vehicle, queued: false }];
     default:
       return [];

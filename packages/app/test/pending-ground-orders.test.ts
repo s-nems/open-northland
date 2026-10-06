@@ -58,6 +58,65 @@ describe('pending ground order intent', () => {
     expect(commands).toEqual([move([3, 4], 60, true)]);
   });
 
+  it('a late alias replaces older intent while preserving newer and unrelated actors', () => {
+    const { pending } = fixture();
+    const older = pending.begin([90, 91], false);
+    const captain = pending.begin([1], false);
+    const newer = pending.begin([92], false);
+    pending.includeActors(captain, [90, 92]);
+    expect(pending.current(older, 90)).toBe(false);
+    expect(pending.current(older, 91)).toBe(true);
+    expect(pending.current(captain, 90)).toBe(true);
+    expect(pending.current(captain, 92)).toBe(false);
+    expect(pending.current(newer, 92)).toBe(true);
+    pending.dispose();
+  });
+
+  it('discovers a queued predecessor through an alias absent at click time', () => {
+    const { pending, commands, submit } = fixture();
+    const vehicle = pending.begin([90], false);
+    const captain = pending.begin([1], true);
+    pending.includeActors(captain, [90]);
+    pending.settle(captain, () => submit(move([1], 60, true)));
+    expect(commands).toEqual([]);
+    pending.settle(vehicle, () => submit({ kind: 'moveVehicle', vehicle: entity(90), x: 30, y: 10 }));
+    expect(commands).toEqual([
+      { kind: 'moveVehicle', vehicle: entity(90), x: 30, y: 10 },
+      move([1], 60, true),
+    ]);
+  });
+
+  it('preserves Shift when its older predecessor discovers the same alias afterwards', () => {
+    const { pending, commands, submit } = fixture();
+    const first = pending.begin([1], false);
+    const queued = pending.begin([1], true);
+    pending.includeActors(queued, [90]);
+    pending.settle(queued, () => {
+      if (pending.current(queued, 90)) submit(move([1], 60, true));
+    });
+    expect(commands).toEqual([]);
+    pending.includeActors(first, [90]);
+    pending.settle(first, () => submit(move([1], 30)));
+    expect(commands).toEqual([move([1], 30), move([1], 60, true)]);
+  });
+
+  it.each(['loadIntoVehicle', 'unloadPeople'] as const)(
+    '%s supersedes an unanswered captain intent through its vehicle alias',
+    (kind) => {
+      const { pending, commands, submit } = fixture();
+      const ticket = pending.begin([1, 90], false);
+      const command: PlayerCommand =
+        kind === 'loadIntoVehicle'
+          ? { kind, vehicle: entity(90), carrier: entity(99) }
+          : { kind, vehicle: entity(90) };
+      submit(command);
+      pending.settle(ticket, () => {
+        if (pending.current(ticket, 1) && pending.current(ticket, 90)) submit(move([1], 30));
+      });
+      expect(commands).toEqual([command]);
+    },
+  );
+
   it('immediate target attacks supersede only their actors in a pending formation and its Shift tail', () => {
     const { pending, commands, submit } = fixture();
     const first = pending.begin([1, 2], false);

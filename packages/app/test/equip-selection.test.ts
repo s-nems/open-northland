@@ -1,5 +1,6 @@
 import { MAX_UNIT_ORDER_MEMBERS, type PlayerCommand, type WorldSnapshot } from '@open-northland/sim';
 import { beforeEach, expect, it, vi } from 'vitest';
+import { uiStringLookup } from '../src/content/gui-gfx.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 
 const picker = vi.hoisted(() => ({ rows: [] as Array<() => void> }));
@@ -48,6 +49,7 @@ it('submits one equipment gesture with each of 1000 current misc slots intact', 
   const orders: PlayerCommand[] = [];
   const controller = await mountEquipPicker({
     content,
+    uiString: uiStringLookup(null),
     snapshot: () => snapshot,
     pickList: async (_entity, group) =>
       group === 'misc' ? [{ goodType: good.typeId, available: 2000 }] : [],
@@ -76,6 +78,7 @@ it('refuses oversized equipment selections before querying or submitting', async
     onOrderLimit = vi.fn();
   const controller = await mountEquipPicker({
     content: sandboxContent(),
+    uiString: uiStringLookup(null),
     snapshot: () => snapshot,
     pickList,
     enqueue,

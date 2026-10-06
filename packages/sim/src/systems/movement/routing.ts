@@ -148,10 +148,7 @@ export function drainPathRequests(
     }
     // Only a player's order moves a group; economy walks keep their own exact routes.
     const group =
-      traversal === 'land' &&
-      playerOrdered &&
-      isValidNodeId(terrain, start) &&
-      isValidNodeId(terrain, goal);
+      traversal === 'land' && playerOrdered && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
     if (group && mask !== undefined) groupRoutes.refresh(mask.version);
     const unreachable =
       group && mask !== undefined && groupReachability.unreachable(mask, blocked, start, goal);

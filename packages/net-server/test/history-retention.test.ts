@@ -1,4 +1,5 @@
 import { TICK_MS, type WireFrame } from '@open-northland/net-protocol';
+import { parseCommandEnvelope } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { CatchUpStore, MAX_HISTORY_AGE_MS, MAX_HISTORY_BYTES } from '../src/relay/catch-up.js';
 import { SNAPSHOT_REFRESH_MS, SNAPSHOT_RETRY_MS } from '../src/relay/resync.js';
@@ -8,6 +9,7 @@ import {
   type Peer,
   SEATS,
   SETTINGS,
+  stage,
   startedRoom,
   TOKEN_B,
   TOKEN_C,
@@ -83,45 +85,67 @@ describe('catch-up retention budgets', () => {
     expect(store.framesAfter(14)).toEqual([]);
   });
 
-  it('ends a command-heavy room before exceeding its byte budget and requests snapshots before the limit', () => {
-    const s = startedRoom();
-    play(s, [s.a, s.b], 1);
+  it('preserves admitted army gestures and the room when recovery history fills, then admits after refresh', () => {
+    const s = stage();
+    const peers = Array.from({ length: 12 }, (_, player) =>
+      s.introduce(`history-player-${player}-0123456789`, `Player${player}`),
+    );
+    const host = peers[0];
+    if (host === undefined) throw new Error('missing host');
+    host.send({
+      kind: 'createRoom',
+      settings: SETTINGS,
+      seats: peers.map((_, player) => ({ player, color: player, mode: 'idle', offers: ['idle', 'ai'] })),
+    });
+    const roomId = host.last('room')?.room.id;
+    for (const [player, peer] of peers.entries()) {
+      if (peer !== host) peer.send({ kind: 'joinRoom', roomId });
+      peer.send({ kind: 'claimSeat', player });
+    }
+    for (const peer of peers) peer.send({ kind: 'setReady', ready: true });
+    host.send({ kind: 'start' });
+    for (const peer of peers) peer.send({ kind: 'loaded', tick: 0, world: 0 });
     const envelope = {
       v: 1,
       origin: 'player',
       player: 0,
-      command: { kind: 'opaque', text: 'x'.repeat(800) },
+      command: {
+        kind: 'moveUnitGroup',
+        members: Array.from({ length: 4096 }, (_, index) => ({ entity: index + 1, x: 100, y: 100 })),
+      },
     };
-    for (let step = 0; step < 1000 && s.relay.roomCount > 0; step++) {
-      const currentTick = s.a.last('frame')?.tick ?? 0;
-      for (const peer of [s.a, s.b]) {
-        for (let command = 0; command < 20; command++) {
-          peer.send({ kind: 'command', envelope, fromTick: 0 });
-        }
-      }
-      s.advance(TICK_MS);
-      for (const peer of [s.a, s.b]) {
-        if (peer.of('left').length > 0) continue;
-        const ping = peer.last('ping');
-        if (ping !== undefined) peer.send({ kind: 'pong', t: ping.t });
-        ackThrough(peer, currentTick + 1, currentTick + 1);
-      }
-    }
-    expect(s.a.last('error')?.reason).toEqual({ code: 'historyBytes' });
-    expect(s.relay.roomCount).toBe(0);
-    expect(s.a.of('rejected')).toEqual([]);
-    expect(s.a.of('snapshotRequest').length).toBeGreaterThan(0);
-    expect(s.b.of('snapshotRequest').length).toBeGreaterThan(0);
-    const frames = s.a.of('frame');
-    const bytes = frames.reduce(
-      (total, { tick, commands }) => total + Buffer.byteLength(JSON.stringify({ tick, commands })),
-      0,
+    expect(() => parseCommandEnvelope(envelope)).not.toThrow();
+    for (const peer of peers)
+      for (let command = 0; command < 8; command++) peer.send({ kind: 'command', envelope, fromTick: 0 });
+    expect(peers.flatMap((peer) => peer.of('rejected'))).toEqual([]);
+    s.advance(TICK_MS * 2);
+    const admitted = host.last('frame');
+    expect(admitted?.tick).toBe(2);
+    expect(admitted?.commands).toHaveLength(96);
+    expect(admitted?.commands.map(({ sequence }) => sequence)).toEqual(
+      Array.from({ length: 96 }, (_, index) => index),
     );
-    expect(bytes).toBeLessThanOrEqual(MAX_HISTORY_BYTES);
-    expect(bytes).toBeGreaterThan(MAX_HISTORY_BYTES * 0.99);
-    expect(frames.map(({ tick }) => tick)).toEqual(frames.map((_, i) => i + 1));
-    s.a.send({ kind: 'joinRoom', roomId: s.roomId });
-    expect(s.a.last('rejected')?.reason).toEqual({ code: 'noRoom' });
+    for (const command of admitted?.commands ?? [])
+      expect(command.envelope.command).toEqual(envelope.command);
+    for (const peer of peers) {
+      ackThrough(peer, 1, 2);
+      peer.send({ kind: 'command', envelope, fromTick: 2 });
+      expect(peer.last('rejected')?.reason).toEqual({ code: 'commandBudget' });
+    }
+    s.advance(TICK_MS * 2);
+    expect(host.of('snapshotRequest')).toHaveLength(1);
+    expect(host.last('frame')).toMatchObject({ tick: 4, commands: [] });
+    expect(peers.flatMap((peer) => peer.of('error'))).toEqual([]);
+    expect(s.relay.roomCount).toBe(1);
+    for (const peer of peers) ackThrough(peer, 3, 4);
+    snapshot(host);
+    const refused = host.of('rejected').length;
+    host.send({ kind: 'command', envelope, fromTick: 4 });
+    expect(host.of('rejected')).toHaveLength(refused);
+    s.advance(TICK_MS * 2);
+    expect(host.last('frame')).toMatchObject({ tick: 6, commands: [{ envelope }] });
+    expect(peers.flatMap((peer) => peer.of('error'))).toEqual([]);
+    expect(s.relay.roomCount).toBe(1);
   });
 
   it('ends an unrefreshed room by age, releases memberships and leaves another room running', () => {

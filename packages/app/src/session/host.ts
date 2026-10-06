@@ -157,7 +157,7 @@ export interface SessionHost {
     tribe?: number,
     gated?: boolean,
   ): Promise<NodeGridAnswer | null>;
-  /** Fresh formation destinations; each group pairs only members on the same static land component. */
+  /** Fresh formation groups on land, with vehicle commanders retaining the clicked target. */
   formationSlots(
     target: HalfCellNode,
     members: readonly Entity[],

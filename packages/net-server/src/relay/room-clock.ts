@@ -16,10 +16,18 @@ const TIME_EPSILON_MS = 1e-6;
 export const MAX_PENDING_COMMANDS_PER_MEMBER = 128;
 export const MAX_COMMAND_BYTES_PER_TICK = 1024 * 1024;
 export const MAX_PENDING_COMMAND_BYTES = 2 * 1024 * 1024;
+/** Conservatively charges each gesture for its sequence wrapper and a whole frame header. Empty
+ * frames and trusted seat handovers use the recovery store's separate headroom. */
+const COMMAND_HISTORY_OVERHEAD_BYTES = 128;
 
 interface InputBudget {
   readonly count: number;
   readonly bytes: number;
+}
+
+interface ScheduledFrame {
+  readonly commands: WireCommand[];
+  historyBytes: number;
 }
 
 export type ScheduleOutcome = { readonly applyTick: number } | { readonly refused: 'budget' };
@@ -38,11 +46,12 @@ export class RoomClock {
   private heldFlag = false;
   private speedMultiplier: number;
   private governedClock: GovernedClock | null = null;
-  private readonly pending = new Map<number, WireCommand[]>();
+  private readonly pending = new Map<number, ScheduledFrame>();
   /** Per tick, the atomic gestures and serialized bytes each member has landed on it. */
   private readonly budgets = new Map<number, Map<string, InputBudget>>();
   private readonly lastScheduled = new Map<string, number>();
   private readonly pendingCounts = new Map<string, InputBudget>();
+  private pendingHistoryBytes = 0;
 
   constructor(speed: number) {
     this.speedMultiplier = speed;
@@ -83,7 +92,7 @@ export class RoomClock {
 
   /** Read-only queue view; callers publishing a snapshot must detach its envelopes. */
   pendingFrames(): readonly WireFrame[] {
-    return [...this.pending].sort(([a], [b]) => a - b).map(([tick, commands]) => ({ tick, commands }));
+    return [...this.pending].sort(([a], [b]) => a - b).map(([tick, { commands }]) => ({ tick, commands }));
   }
 
   finishAt(tick: number): void {
@@ -95,6 +104,7 @@ export class RoomClock {
     this.budgets.clear();
     this.lastScheduled.clear();
     this.pendingCounts.clear();
+    this.pendingHistoryBytes = 0;
   }
 
   start(): void {
@@ -127,8 +137,11 @@ export class RoomClock {
     envelope: PlayerWireEnvelope,
     fromTick: number,
     delayTicks: number,
+    historyHeadroomBytes = Number.POSITIVE_INFINITY,
   ): ScheduleOutcome {
     const bytes = Buffer.byteLength(JSON.stringify(envelope));
+    const historyBytes = bytes + COMMAND_HISTORY_OVERHEAD_BYTES;
+    if (this.pendingHistoryBytes + historyBytes > historyHeadroomBytes) return { refused: 'budget' };
     const pending = this.pendingCounts.get(member) ?? { count: 0, bytes: 0 };
     if (pending.count >= MAX_PENDING_COMMANDS_PER_MEMBER || pending.bytes + bytes > MAX_PENDING_COMMAND_BYTES)
       return { refused: 'budget' };
@@ -144,13 +157,17 @@ export class RoomClock {
     this.budgets.set(applyTick, budget);
     this.lastScheduled.set(member, applyTick);
     this.pendingCounts.set(member, { count: pending.count + 1, bytes: pending.bytes + bytes });
-    this.land(applyTick, envelope);
+    this.land(applyTick, envelope, historyBytes);
     return { applyTick };
   }
 
   /** Land the relay's own command on the next tick, outside every budget; returns that tick. */
   scheduleTrusted(envelope: RelayWireEnvelope): number {
-    this.land(this.nextTick, envelope);
+    this.land(
+      this.nextTick,
+      envelope,
+      Buffer.byteLength(JSON.stringify(envelope)) + COMMAND_HISTORY_OVERHEAD_BYTES,
+    );
     return this.nextTick;
   }
 
@@ -166,15 +183,21 @@ export class RoomClock {
     return frames;
   }
 
-  private land(tick: number, envelope: WireCommand['envelope']): void {
-    const commands = this.pending.get(tick);
-    if (commands === undefined) this.pending.set(tick, [{ envelope, sequence: 0 }]);
-    else commands.push({ envelope, sequence: commands.length });
+  private land(tick: number, envelope: WireCommand['envelope'], historyBytes: number): void {
+    const frame = this.pending.get(tick);
+    if (frame === undefined) this.pending.set(tick, { commands: [{ envelope, sequence: 0 }], historyBytes });
+    else {
+      frame.commands.push({ envelope, sequence: frame.commands.length });
+      frame.historyBytes += historyBytes;
+    }
+    this.pendingHistoryBytes += historyBytes;
   }
 
   private emit(): WireFrame {
     const tick = ++this.lastTick;
-    const commands = this.pending.get(tick) ?? [];
+    const frame = this.pending.get(tick);
+    const commands = frame?.commands ?? [];
+    this.pendingHistoryBytes -= frame?.historyBytes ?? 0;
     this.pending.delete(tick);
     for (const [member, used] of this.budgets.get(tick) ?? []) {
       const pending = this.pendingCounts.get(member);

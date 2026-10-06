@@ -7,11 +7,14 @@ import { type HalfCellNode, nodeOfPosition } from '../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
 import { walkBlockMask } from '../systems/footprint/walk-block-mask.js';
 import { routeStartCell } from '../systems/movement/route-start.js';
+import { commandedVehicleOf } from '../systems/vehicles/commander.js';
 
-/** Members and destinations on the same static land component; pairing must stay inside each group. */
+/** Foot members share a land component; each vehicle commander keeps the click in its own group. */
 export interface FormationSlotGroup {
   readonly members: readonly Entity[];
   readonly slots: readonly HalfCellNode[];
+  /** The vehicle this singleton commander directs, even if the presentation mirror is behind. */
+  readonly commandedVehicle?: Entity;
 }
 
 export function formationSlotsFor(
@@ -30,10 +33,22 @@ export function formationSlotsFor(
   )
     throw new RangeError('invalid formation query');
   if (terrain === undefined) return null;
+  const seat = {
+    hx: Math.max(0, Math.min(terrain.width - 1, target.hx)),
+    hy: Math.max(0, Math.min(terrain.height - 1, target.hy)),
+  };
+  const result: FormationSlotGroup[] = [];
   const groups = new Map<number, { members: Entity[]; slots: HalfCellNode[]; remaining: number }>();
   const movers = new Set<Entity>();
   for (const entity of [...new Set(members)].sort((a, b) => a - b)) {
     if (!Number.isSafeInteger(entity) || entity <= 0 || !world.has(entity, Settler)) continue;
+    // A captain still walking to board already directs its vehicle. Let that vehicle judge the
+    // clicked surface and clearance, instead of turning a water click into a foot destination.
+    const commandedVehicle = commandedVehicleOf(world, entity);
+    if (commandedVehicle !== null) {
+      result.push({ members: [entity], slots: [{ ...seat }], commandedVehicle });
+      continue;
+    }
     const position = world.tryGet(entity, Position);
     if (position === undefined) continue;
     const { hx, hy } = nodeOfPosition(position.x, position.y);
@@ -45,12 +60,13 @@ export function formationSlotsFor(
     if (group === undefined) {
       group = { members: [], slots: [], remaining: 0 };
       groups.set(component, group);
+      result.push({ members: group.members, slots: group.slots });
     }
     group.members.push(entity);
     group.remaining++;
     movers.add(entity);
   }
-  if (movers.size === 0) return [];
+  if (movers.size === 0) return result;
   const occupied = new Set<NodeId>();
   for (const entity of world.query(Settler, Position)) {
     if (movers.has(entity)) continue;
@@ -59,10 +75,6 @@ export function formationSlotsFor(
     if (terrain.inBounds(hx, hy)) occupied.add(terrain.nodeAt(hx, hy));
   }
   const blocked = walkBlockMask(world, { content }, terrain).levelled();
-  const seat = {
-    hx: Math.max(0, Math.min(terrain.width - 1, target.hx)),
-    hy: Math.max(0, Math.min(terrain.height - 1, target.hy)),
-  };
   const chosen = new Set<NodeId>();
   const unavailable = (hx: number, hy: number): boolean => {
     const node = terrain.nodeAt(hx, hy);
@@ -83,5 +95,5 @@ export function formationSlotsFor(
   }
   for (const slot of slots)
     groups.get(terrain.componentOf(terrain.nodeAt(slot.hx, slot.hy)))?.slots.push(slot);
-  return [...groups.values()].map(({ members, slots }) => ({ members, slots }));
+  return result;
 }
