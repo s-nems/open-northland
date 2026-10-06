@@ -1,4 +1,4 @@
-import type { FrameListAnim, SettlerStateBinding } from '@open-northland/render/data';
+import { type FrameListAnim, type SettlerStateBinding, subClipKey } from '@open-northland/render/data';
 import {
   ATTACK_ATOMIC,
   CHEER_ATOMIC,
@@ -6,6 +6,7 @@ import {
   EAT_CANDY_ATOMIC,
   SLEEP_ATOMIC,
 } from '../../catalog/atomics.js';
+import { JOB_DRUID } from '../../catalog/jobs.js';
 import type { BobSeqRow } from '../ir/rows.js';
 import type { CharacterGfx } from './bindings-character.js';
 import type { CharacterSpec } from './character-specs.js';
@@ -104,12 +105,60 @@ function shortbowNeeds(
   return out;
 }
 
+/** Additional unbound gestures, scoped to the look that actually performs them. */
+function workAndBabyGestures(
+  binding: SettlerStateBinding,
+  spec: CharacterSpec,
+  sequences: ReadonlyMap<string, BobSeqRow>,
+): SettlerStateBinding {
+  // These two strips include the head in the body artwork; their separate head frames are blank.
+  if (spec.gfxJobs[0] === JOB_DRUID) {
+    const work = sequences.get('human_man_Druid_work');
+    if (work?.length === 16) {
+      // The druid's production programs call action 4/subId 0 beside the cauldron. Approximation:
+      // play the unbound work strip once over that window instead of the ordinary wait gesture.
+      return {
+        ...binding,
+        bySubClip: {
+          ...binding.bySubClip,
+          [subClipKey(4, 0)]: {
+            start: work.start,
+            frameLists: [Array.from({ length: work.length }, (_, i) => i)],
+          },
+        },
+      };
+    }
+  }
+  if (spec.waitSeq === 'human_child_baby_generic_wait') {
+    const wait = sequences.get('human_child_baby_generic_wait_1');
+    if (wait?.length === 39) {
+      // Three visually matched 13-frame poses: left, right and front. Unbound timing is approximate;
+      // holding each frame for three ticks keeps the occasional gesture readable.
+      const groups = [0, 0, 0, 1, 1, 1, 2, 2];
+      return {
+        ...binding,
+        idleFidgetGapTicks: 600,
+        idleFidgets: [
+          {
+            start: wait.start,
+            frameLists: groups.map((group) =>
+              Array.from({ length: 39 }, (_, i) => group * 13 + Math.floor(i / 3)),
+            ),
+          },
+        ],
+      };
+    }
+  }
+  return binding;
+}
+
 export function withAdditionalAnimations(
   binding: SettlerStateBinding,
   spec: CharacterSpec,
   sequences: ReadonlyMap<string, BobSeqRow>,
   gfx: CharacterGfx,
 ): SettlerStateBinding {
+  binding = workAndBabyGestures(binding, spec, sequences);
   const choices = attackChoices(spec, sequences, gfx);
   const attacks = choices.length > 1 ? { byAtomicChoices: { [ATTACK_ATOMIC]: choices } } : {};
   const prefix = spec.walkSeq === undefined ? undefined : BOW_PREFIXES[spec.walkSeq];

@@ -23,6 +23,7 @@ import { deathLootScene } from './death-loot.js';
 import { diplomacyScene } from './diplomacy.js';
 import { equipmentScene } from './equipment.js';
 import { equipmentEffectsScene } from './equipment-effects.js';
+import { everydayGesturesScene } from './everyday-gestures.js';
 import { familyScene } from './family.js';
 import { familyAwayScene } from './family-away.js';
 import { farPostScene } from './far-post.js';
@@ -118,6 +119,7 @@ export const SCENES: readonly SceneDefinition[] = [
   chestQueueScene,
   chainScene,
   alchemyScene,
+  everydayGesturesScene,
   warehouseScene,
   constructionScene,
   farmConstructionScene,

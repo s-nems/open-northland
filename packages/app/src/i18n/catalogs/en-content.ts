@@ -199,6 +199,11 @@ export const enContent = {
       title: 'Personal names',
       summary: 'Given names for five civilizations and two creature tribes.',
     },
+    'everyday-gestures': {
+      title: 'Everyday gestures',
+      summary:
+        'Druids work at their cauldrons, a fisher walks with his rod and catches fish, and babies fidget while idle.',
+    },
     'combat-gestures': {
       title: 'Strikes and gestures',
       summary: 'Civilian, unarmed and archer duels beside resting, eating and sleeping bowmen.',

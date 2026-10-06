@@ -196,6 +196,11 @@ export const plContent = {
       title: 'Imiona mieszkańców',
       summary: 'Imiona pięciu nacji oraz wężoludzi i wilkołaków.',
     },
+    'everyday-gestures': {
+      title: 'Codzienne gesty',
+      summary:
+        'Druidzi pracują przy kotłach, rybak idzie z wędką i łowi, a niemowlęta bawią się podczas postoju.',
+    },
     'combat-gestures': {
       title: 'Ciosy i gesty',
       summary: 'Pojedynki cywila, wojownika i łuczników; obok odpoczynek, posiłek i sen z łukiem.',

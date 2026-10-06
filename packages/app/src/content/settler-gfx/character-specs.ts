@@ -239,7 +239,7 @@ export const CHARACTER_SPECS = {
   druid: {
     // The pointed-cap druid record (viking `logicjob 30` binds `cr_hum_body_00` + heads 90..93); a tribe
     // authoring none falls to its civilist record. Its trade actions (produce 71..77) are indoor programs,
-    // so the body needs only the shared civilian gestures here.
+    // the brewing pose is added to their stationary craft window.
     gfxJobs: [JOB_DRUID, JOB_CIVILIST],
     logicJob: JOB_CIVILIST,
     walkSeq: 'human_man_generic_walk',
@@ -288,7 +288,8 @@ export const CHARACTER_SPECS = {
     // 432-bob fishing strip. Actions 36/37/38 select the cast, caught and empty-result frame lists from it.
     gfxJobs: [JOB_FISHER, JOB_CIVILIST],
     logicJob: JOB_CIVILIST,
-    walkSeq: 'human_man_generic_walk',
+    // Unbound eight-direction strip: the unloaded fisher carries his rod; loaded gaits still carry goods.
+    walkSeq: 'human_man_fisher_walk_angle',
     waitSeq: 'human_man_generic_wait',
     carryPrefix: 'human_man_generic_walk_',
     attack: 'human_man_Civilian_Fight_punch',
