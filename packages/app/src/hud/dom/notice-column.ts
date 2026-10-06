@@ -474,6 +474,9 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   });
   const resize = new ResizeObserver(layout);
   resize.observe(column);
+  // A card whose text grew or shrank fans again once the browser has laid it out; a render that only
+  // rewrote counts and labels in cards of unchanged size measures nothing.
+  const cardSizes = new ResizeObserver(layout);
 
   /** Build a card's inside for its shape, keeping focus on the same part when it held it. */
   const shapeCard = (li: HTMLLIElement, stack: NoticeStackView): void => {
@@ -513,6 +516,9 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
 
   return {
     render: (stacks, tally, level, nextOpen): void => {
+      /** Whether a card came, went, moved or changed its shape, or the open stack's rows changed: only
+       *  then do the cards fan again. */
+      let moved = false;
       const focused = document.activeElement;
       const focusInRows = members.element.contains(focused);
       // A dismissed row hands focus to the row that takes its place, then to its stack's card. A row's
@@ -528,6 +534,8 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
         if (li.contains(focused)) lostFocus = key;
         if (li === pinned) pinFull(null);
         li.remove();
+        cardSizes.unobserve(li);
+        moved = true;
         cardsByKey.delete(key);
         viewsByKey.delete(key);
         shapes.delete(li);
@@ -536,6 +544,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       const openMembers = openStack !== undefined && isStack(openStack) ? openStack.members : null;
       const opened = openMembers === null ? null : nextOpen;
       if (opened !== openKey) {
+        moved = true;
         cardsByKey.get(openKey ?? '')?.style.removeProperty('--anchor-shift');
         if (openKey !== null) toggleOf(openKey)?.removeAttribute('aria-controls');
         if (opened === null) anchor = null;
@@ -549,8 +558,13 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
         let li = cardsByKey.get(stack.key);
         if (li === undefined) {
           li = newCard(stack);
+          cardSizes.observe(li);
+          moved = true;
           cardsByKey.set(stack.key, li);
-        } else if (shapes.get(li) !== cardShape(stack)) shapeCard(li, stack);
+        } else if (shapes.get(li) !== cardShape(stack)) {
+          shapeCard(li, stack);
+          moved = true;
+        }
         if (before !== undefined && stack.count > before.count && stack.lead.fresh) {
           // A bump still playing restarts in place: re-adding its class in the same frame would not
           // replay it, and a reflow between the two would lay the whole HUD out.
@@ -559,17 +573,24 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
         }
         viewsByKey.set(stack.key, stack);
         fillCard(li, stack, stack.key === openKey, copy);
-        if (list.children[at] !== li) list.insertBefore(li, list.children[at] ?? null);
+        if (list.children[at] !== li) {
+          list.insertBefore(li, list.children[at] ?? null);
+          moved = true;
+        }
         at++;
         if (stack.key === openKey && openMembers !== null) {
           members.sync(stack.key, openMembers);
+          moved = true;
           if (list.children[at] !== members.element)
             list.insertBefore(members.element, list.children[at] ?? null);
           toggleOf(stack.key)?.setAttribute('aria-controls', MEMBERS_ID);
           at++;
         }
       }
-      if (openKey === null) members.element.remove();
+      if (openKey === null && members.element.isConnected) {
+        members.element.remove();
+        moved = true;
+      }
       hover.listing(openKey);
       // A pinned row whose member left takes its bubble with it.
       if (pinned !== null && !pinned.isConnected) pinFull(null);
@@ -608,7 +629,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
         const value = button.firstElementChild;
         if (value !== null) value.textContent = String(tally[i] ?? 0);
       });
-      layout();
+      if (moved) layout();
     },
     figures: (): NoticeFigureSlots => {
       const nextInset = bottomInset();
@@ -665,6 +686,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     dispose: (): void => {
       hover.dispose();
       resize.disconnect();
+      cardSizes.disconnect();
       column.remove();
     },
   };
