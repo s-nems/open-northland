@@ -48,6 +48,8 @@ export class GroundedFootCache {
   /** Whether the open frame is held to {@link MAX_BAKE_PIXELS_PER_FRAME}. */
   private budgeted = false;
   private deferred = false;
+  /** Requests a spent budget turned away, ever; see {@link SoftShadowCache.deferrals}. */
+  deferrals = 0;
   // The last spot asked for: a body and its two overlays ask for the same one in a row.
   private lastFrame: AtlasFrame | null = null;
   private lastScale = 0;
@@ -187,6 +189,7 @@ export class GroundedFootCache {
   private spend(pixels: number): boolean {
     if (this.budgeted && this.framePixels > 0 && this.framePixels + pixels > MAX_BAKE_PIXELS_PER_FRAME) {
       this.deferred = true;
+      this.deferrals++;
       return false;
     }
     this.framePixels += pixels;

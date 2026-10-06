@@ -49,6 +49,8 @@ export class TextureCache {
   private readonly softShadows = new SoftShadowCache();
   private useSoftShadows = false;
   private revision = 0;
+  /** {@link revision} plus a bump after every frame whose bake budget ran out. */
+  private retry = 0;
   private framesBegun = 0;
   private readonly cache = new Map<AtlasFrame, Texture>();
   /** Cast-silhouette views of the character frames that project onto the ground, kept out of
@@ -67,10 +69,23 @@ export class TextureCache {
   /** Reveal bakes per frame, keyed by quantised threshold. */
   private readonly revealCache = new Map<AtlasFrame, Map<number, RevealBake>>();
 
-  /** Bumps whenever a bind of unchanged layers would pick other textures: a shadow or ground switch, a
-   *  page sampling flip, or a bake the last frame's budget turned away. */
+  /** Bumps whenever a bind of unchanged layers would pick other textures: a shadow or ground switch or
+   *  a page sampling flip. A bake a budget turned away does not bump it: see {@link deferrals}. */
   get textureRevision(): number {
     return this.revision;
+  }
+
+  /** {@link textureRevision}, also bumped after a frame whose bake budget ran out: the signal for a
+   *  consumer that cannot tell which of its binds received a stand-in, so it rebinds them all and the
+   *  backlog drains a frame at a time. */
+  get retryRevision(): number {
+    return this.revision + this.retry;
+  }
+
+  /** Bake requests a spent budget has turned away so far. A bind that saw it grow drew a stand-in (a
+   *  hard silhouette, a plain foot) and should ask again next frame. */
+  get deferrals(): number {
+    return this.softShadows.deferrals + this.groundedFeet.deferrals;
   }
 
   /** Opens a frame. The first frame bakes everything it shows, so a map opens with its soft shadows and
@@ -78,7 +93,7 @@ export class TextureCache {
    *  the revision, so the layers still holding hard silhouettes or plain feet rebind and the backlog
    *  drains a frame at a time. */
   beginFrame(): void {
-    if (this.softShadows.deferredBakes || this.groundedFeet.deferredBakes) this.revision++;
+    if (this.softShadows.deferredBakes || this.groundedFeet.deferredBakes) this.retry++;
     const budgeted = this.framesBegun > 0;
     this.framesBegun++;
     this.softShadows.beginFrame(budgeted);

@@ -71,6 +71,9 @@ export class SoftShadowCache {
   private pixels = 0;
   private framePixels = 0;
   private deferred = false;
+  /** Requests a spent budget turned away, ever: a caller comparing it around a request learns that its
+   *  answer is a stand-in to ask for again. */
+  deferrals = 0;
   /** The per-frame ceiling binds only a frame its owner opens as budgeted. A cache driven outside a draw
    *  loop, such as an art-gallery preview, would otherwise spend its one budget and never bake again. */
   private budgeted = false;
@@ -98,6 +101,7 @@ export class SoftShadowCache {
     if (pixels > MAX_FRAME_PIXELS || this.pixels + pixels > MAX_PIXELS) return null;
     if (this.budgeted && this.framePixels > 0 && this.framePixels + pixels > MAX_PIXELS_PER_FRAME) {
       this.deferred = true;
+      this.deferrals++;
       return null;
     }
     const resource: unknown = source.resource;

@@ -241,7 +241,7 @@ export class MapObjectLayer {
       writeDecorShadowStyle(this.decorStyle.shadow, shadowStyle);
       this.writtenShadowStyle = shadowStyle;
     }
-    const textureRevision = this.textures.textureRevision;
+    const textureRevision = this.textures.retryRevision;
     // A fog probe without an epoch has no change signal, so such a frame never counts as identical.
     const fogKeyed = fogStateOfCell === undefined || fogEpoch !== undefined;
     const last = this.lastInputs;

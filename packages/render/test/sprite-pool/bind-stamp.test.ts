@@ -243,6 +243,24 @@ describe('SpritePool - a still frame presents only what moves with the frame clo
   });
 });
 
+describe('SpritePool - a stand-in for a turned-away bake', () => {
+  it('binds that entity again next frame, and only until a bind gets its answer', () => {
+    const TREE = 7;
+    const snapshot = snapshotOf([entity(TREE, 3, 0, { Resource: { goodType: 3 } })]);
+    const textures = new TextureCache();
+    let turnedAway = 0;
+    vi.spyOn(TextureCache.prototype, 'deferrals', 'get').mockImplementation(() => turnedAway);
+    const pool = new SpritePool(new Container(), textures, sheet);
+    const bind = vi.spyOn(LayerBinder.prototype, 'bind').mockImplementationOnce(() => {
+      turnedAway++;
+    });
+    pool.reconcile(frameOf(snapshot, { tick: 0 }));
+    pool.reconcile(frameOf(snapshot, { tick: 0 }));
+    pool.reconcile(frameOf(snapshot, { tick: 0 }));
+    expect(bind).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('FrameEpoch', () => {
   it('bumps on a frame-wide input the bind reads, not on a new frame object or alpha', () => {
     const epoch = new FrameEpoch();

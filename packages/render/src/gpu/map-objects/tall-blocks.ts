@@ -276,7 +276,7 @@ export class TallObjectLayer {
     const animAdvanced = tick !== this.lastAnimTick;
     const motionAdvanced = motionTime !== this.lastMotionTime || wind !== this.lastWind;
     const motionSwitched = environmentMotion !== this.lastEnvironmentMotion;
-    const texturesChanged = this.lastTextureRevision !== this.textures.textureRevision;
+    const texturesChanged = this.lastTextureRevision !== this.textures.retryRevision;
     for (const block of this.blocks.values()) {
       if (!aabbIntersects(vp, block)) {
         if (block.attachedCount > 0) {
@@ -345,7 +345,7 @@ export class TallObjectLayer {
     this.lastMotionTime = motionTime;
     this.lastEnvironmentMotion = environmentMotion;
     this.lastWind = wind;
-    this.lastTextureRevision = this.textures.textureRevision;
+    this.lastTextureRevision = this.textures.retryRevision;
   }
 
   /** Free the tall-object sprites (a map change re-invalidates them). */

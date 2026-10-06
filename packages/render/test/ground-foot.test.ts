@@ -257,20 +257,24 @@ describe('GroundedFootCache', () => {
 });
 
 describe('TextureCache ground switch', () => {
-  it('rebinds on a ground change and after a deferred bake', () => {
+  it('rebinds on a ground change, and its retry consumers after a deferred bake', () => {
     const cache = new TextureCache();
     const page = new TextureSource({ width: W, height: H });
     expect(cache.groundedPart('body', page, FRAME, 1, 0, 0, false)).toBeNull();
     const before = cache.textureRevision;
     cache.setGroundColours(flat(GRASS));
     expect(cache.textureRevision).toBeGreaterThan(before);
+    // A turned-away bake leaves the textures as they are for every bind that got its answer; only the
+    // all-or-nothing consumers' retry revision moves.
     const deferred = vi.spyOn(GroundedFootCache.prototype, 'deferredBakes', 'get').mockReturnValue(true);
     const settled = cache.textureRevision;
+    const retry = cache.retryRevision;
     cache.beginFrame();
-    expect(cache.textureRevision).toBe(settled + 1);
+    expect(cache.textureRevision).toBe(settled);
+    expect(cache.retryRevision).toBe(retry + 1);
     deferred.mockReturnValue(false);
     cache.beginFrame();
-    expect(cache.textureRevision).toBe(settled + 1);
+    expect(cache.retryRevision).toBe(retry + 1);
   });
 
   it('opens only its first frame unbudgeted', () => {

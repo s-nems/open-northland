@@ -75,6 +75,9 @@ export class FrameEpoch {
   }
 }
 
+/** An epoch no frame reaches, so a stamp holding it never holds. */
+const RETRY_EPOCH = -2;
+
 /**
  * What an entity's last main-frame bind read. Resolved layers are immutable, so the same layer objects
  * at the same drawn anchor bind the same sprites.
@@ -131,6 +134,17 @@ export class BindStamp {
       this.upgradePct === item.upgradePct &&
       this.player === item.player
     );
+  }
+
+  /** Whether the last bind drew a stand-in for a bake the budget turned away. */
+  get retrying(): boolean {
+    return this.bindEpoch === RETRY_EPOCH;
+  }
+
+  /** Make the next frame present and bind again, as a frame-wide input change would. */
+  retry(): void {
+    this.epoch = RETRY_EPOCH;
+    this.bindEpoch = RETRY_EPOCH;
   }
 
   /** Whether the bound layers hold still with the frame clocks: none of them sways. */

@@ -307,7 +307,13 @@ export class SpritePool {
 
   /** Whether `pe` draws the same whatever the frame alpha: what a still frame may leave untouched. */
   private holdsStill(pe: PooledEntity, item: DrawItem): boolean {
-    return pe.reveal === undefined && resolvesWithoutClock(item) && pe.bound.clockFree && atRest(pe.motion);
+    return (
+      pe.reveal === undefined &&
+      !pe.bound.retrying &&
+      resolvesWithoutClock(item) &&
+      pe.bound.clockFree &&
+      atRest(pe.motion)
+    );
   }
 
   /**
@@ -409,8 +415,11 @@ export class SpritePool {
       this.keepBound(pe);
       return;
     }
+    const deferrals = this.textures.deferrals;
     this.binder.bind(pe, item, layers, frame, this.frameId);
     stamp.record(item, this.epoch, highlight, pe.motion, layers);
+    // A bake the budget turned away left a stand-in on this entity alone: it binds again next frame.
+    if (this.textures.deferrals !== deferrals) stamp.retry();
     pe.container.zIndex = pooledDepth(pe, item);
   }
 
