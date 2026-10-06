@@ -202,7 +202,12 @@ describe('decor pages share a mesh', () => {
     layer.update(WIDE, 1); // the animated object's second pose
     const after = shadowPositions(layer);
     expect(after.slice(FLOATS_PER_QUAD, 2 * FLOATS_PER_QUAD)).not.toEqual(before);
-    // The neighbours' quads are left as they were.
+    // The neighbours' quads are left as they were, and only the animated quad uploads.
     expect(after.slice(2 * FLOATS_PER_QUAD)[0]).toBe(30 - 1 - PAD);
+    const uploaded = mesh.geometry.getBuffer('aPosition');
+    expect([uploaded._updateOffset, uploaded._updateSize]).toEqual([
+      FLOATS_PER_QUAD * 4,
+      FLOATS_PER_QUAD * 4,
+    ]);
   });
 });

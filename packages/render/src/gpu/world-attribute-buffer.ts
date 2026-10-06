@@ -24,23 +24,42 @@ export class WorldAttributeBuffer extends Buffer {
       end = this.end;
     this.first = Number.POSITIVE_INFINITY;
     this.end = 0;
-    let pending = false;
-    for (const key in this._gpuData) {
-      const value: unknown = this._gpuData[key];
-      if (
-        typeof value === 'object' &&
-        value !== null &&
-        'updateID' in value &&
-        value.updateID !== this._updateID
-      ) {
-        pending = true;
-        break;
-      }
-    }
-    if (end > first) {
-      const unionFirst = pending ? Math.min(first, this._updateOffset) : first;
-      const unionEnd = pending ? Math.max(end, this._updateOffset + this._updateSize) : end;
-      super.update(unionEnd - unionFirst, unionFirst);
-    } else super.update(sizeInBytes, offsetInBytes);
+    if (end > first) updateByteRange(this, first, end - first, (size, offset) => super.update(size, offset));
+    else super.update(sizeInBytes, offsetInBytes);
   }
+}
+
+/** Whether `buffer` holds an upload no GPU copy has consumed yet. */
+function uploadPending(buffer: Buffer): boolean {
+  for (const key in buffer._gpuData) {
+    const value: unknown = buffer._gpuData[key];
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      'updateID' in value &&
+      value.updateID !== buffer._updateID
+    )
+      return true;
+  }
+  return false;
+}
+
+/**
+ * Upload `size` bytes of `buffer` from `offset`, widened to cover a range an earlier update queued and no
+ * GPU copy consumed yet: WebGL keeps one pending range per buffer, so a second partial update would
+ * otherwise drop the first.
+ */
+export function updateByteRange(
+  buffer: Buffer,
+  offset: number,
+  size: number,
+  update: (size: number, offset: number) => void = (s, o) => buffer.update(s, o),
+): void {
+  if (!uploadPending(buffer)) {
+    update(size, offset);
+    return;
+  }
+  const first = Math.min(offset, buffer._updateOffset);
+  const end = Math.max(offset + size, buffer._updateOffset + buffer._updateSize);
+  update(end - first, first);
 }

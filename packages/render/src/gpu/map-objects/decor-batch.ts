@@ -5,6 +5,7 @@ import type { AtlasFrame } from '../../data/sprites/index.js';
 import { PAGE_SAMPLER_SLOTS } from '../page-samplers.js';
 import { type DecorCoverBinding, makeShadedDecorShader } from '../shading.js';
 import { SHADOW_BLUR_PADDING } from '../soft-shadow-cache.js';
+import { updateByteRange } from '../world-attribute-buffer.js';
 import { type DecorShadowUniforms, makeDecorShadowShader } from './decor-shadow-shader.js';
 import { type MapObjectSprite, objectFrameAt, objectFrameIndexAt } from './map-object-sprite.js';
 
@@ -183,11 +184,18 @@ function buildRun(
         geometry,
         written: spec.objects.map((obj) => laneFrameAt(obj, lane, 0)),
         uploadPending: false,
+        firstQuad: base,
       };
       animated.push(animBatch);
     }
     for (const [q, obj] of spec.objects.entries()) {
-      placed(obj, { positions: views.positions, geometry, quadIndex: q, animated: animBatch });
+      placed(obj, {
+        positions: views.positions,
+        geometry,
+        quadIndex: q,
+        firstQuad: base,
+        animated: animBatch,
+      });
     }
     base += spec.objects.length;
   }
@@ -248,6 +256,8 @@ export interface AnimatedDecorBatch {
   readonly written: (AtlasFrame | undefined)[];
   /** Whether a rewrite since the last upload left the buffers ahead of the GPU copy. */
   uploadPending: boolean;
+  /** Where the batch's quads start in its mesh, which it may share with other batches. */
+  readonly firstQuad: number;
 }
 
 /** Animated decor bins partition a chunk into squares of this many tiles a side. */
@@ -290,11 +300,25 @@ function writeAnimatedQuad(
   return true;
 }
 
+/** Upload quads `[first, end)` of a mesh's per-quad attributes, not the still batches beside them. */
+function uploadQuads(geometry: MeshGeometry, first: number, end: number, frameBounds: boolean): void {
+  const quadBytes = FLOATS_PER_QUAD * Float32Array.BYTES_PER_ELEMENT;
+  for (const name of ['aPosition', 'aUV']) {
+    updateByteRange(geometry.getBuffer(name), first * quadBytes, (end - first) * quadBytes);
+  }
+  if (!frameBounds) return;
+  const frameBytes = FRAME_FLOATS_PER_QUAD * Float32Array.BYTES_PER_ELEMENT;
+  updateByteRange(geometry.getBuffer('aFrame'), first * frameBytes, (end - first) * frameBytes);
+}
+
 /** Upload an animated batch's rewritten quads. */
 function uploadAnimatedBatch(batch: AnimatedDecorBatch): void {
-  batch.geometry.getBuffer('aPosition').update();
-  batch.geometry.getBuffer('aUV').update();
-  if (batch.buffers.frameBounds !== null) batch.geometry.getBuffer('aFrame').update();
+  uploadQuads(
+    batch.geometry,
+    batch.firstQuad,
+    batch.firstQuad + batch.objects.length,
+    batch.buffers.frameBounds !== null,
+  );
 }
 
 /** Where one quad of a decor object lives. */
@@ -302,6 +326,8 @@ interface DecorQuadRef {
   readonly positions: Float32Array;
   readonly geometry: MeshGeometry;
   readonly quadIndex: number;
+  /** Where {@link positions} starts in the mesh, in quads. */
+  readonly firstQuad: number;
   /** The rewrite batch the quad belongs to, or null for a still (never-rewritten) batch. */
   readonly animated: AnimatedDecorBatch | null;
 }
@@ -309,7 +335,12 @@ interface DecorQuadRef {
 /** Collapse a quad for good: zeroed in place, and dropped from its batch's rewrite loop. */
 export function retireDecorQuad(quad: DecorQuadRef): void {
   quad.positions.fill(0, quad.quadIndex * FLOATS_PER_QUAD, (quad.quadIndex + 1) * FLOATS_PER_QUAD);
-  quad.geometry.getBuffer('aPosition').update();
+  const quadBytes = FLOATS_PER_QUAD * Float32Array.BYTES_PER_ELEMENT;
+  updateByteRange(
+    quad.geometry.getBuffer('aPosition'),
+    (quad.firstQuad + quad.quadIndex) * quadBytes,
+    quadBytes,
+  );
   if (quad.animated !== null) quad.animated.objects[quad.quadIndex] = null;
 }
 

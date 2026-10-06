@@ -68,9 +68,13 @@ export async function countGlCalls(page) {
       wrap('drawArrays', (c) => c.draws++);
       wrap('bindTexture', (c) => c.textureBinds++);
       wrap('useProgram', (c) => c.programs++);
+      // (target, byteOffset, source, sourceOffset, length): a ranged upload names its element count.
       wrap('bufferSubData', (c, a) => {
         c.uploads++;
-        c.uploadBytes += a[2]?.byteLength ?? 0;
+        const source = a[2];
+        const element = source?.BYTES_PER_ELEMENT ?? 1;
+        c.uploadBytes +=
+          a[4] !== undefined ? a[4] * element : (source?.byteLength ?? 0) - (a[3] ?? 0) * element;
       });
       wrap('bufferData', (c, a) => {
         c.uploads++;
