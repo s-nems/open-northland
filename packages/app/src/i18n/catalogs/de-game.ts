@@ -7,6 +7,8 @@ export const deGame = {
     retry: 'Erneut versuchen',
   },
   hud: {
+    armyOrderLimit:
+      'Wähle höchstens {limit} Einheiten für einen Befehl aus. Keine Einheit hat diesen Befehl erhalten.',
     mapOverlays: {
       label: 'Einblendungen auf der Hauptkarte',
       signposts: 'Wegweiser',
@@ -340,6 +342,20 @@ export const deGame = {
       withdraw: 'Zurückziehen {yes}/{needed}',
       withdrawTitle: 'Deine Stimme für den Ausschluss zurückziehen: {nick}',
       clock: 'Uhr',
+      responsiveness: {
+        title: 'Reaktion auf Befehle',
+        options: { auto: 'Auto', responsive: 'Schnell', balanced: 'Ausgewogen', smooth: 'Flüssig' },
+        hints: {
+          auto: 'Gilt für den ganzen Raum. Passt den Zeitpuffer automatisch an die Verbindungen der Spieler und das Spieltempo an.',
+          responsive:
+            'Gilt für den ganzen Raum. Schnellere Reaktion, aber höheres Risiko für Ruckler bei instabilen Verbindungen.',
+          balanced: 'Gilt für den ganzen Raum. Ein mittlerer Zeitpuffer für Schwankungen der Verbindung.',
+          smooth:
+            'Gilt für den ganzen Raum. Mehr Zeitpuffer für Schwankungen der Verbindung, dafür eine spätere Reaktion.',
+        },
+        reserve: 'Zeitpuffer: etwa {ms} ms',
+        changed: '{nick} ändert die Reaktion auf Befehle: {mode}',
+      },
       requested: 'Angefordert',
       running: 'Tatsächlich',
       paused: 'pausiert',

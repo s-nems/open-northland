@@ -594,6 +594,16 @@ export const deContent = {
       summary:
         'Hundertzwanzig Soldaten in drei Blöcken: Bogenschützen, Schwertkämpfer und Speerkämpfer, einige davon verwundet. Werden sie gemeinsam per Auswahlrahmen ausgewählt, erscheinen kompakte Miniaturbilder, da die Gruppe mehr als 99 Einheiten umfasst.',
     },
+    'army-control': {
+      title: 'Armeesteuerung: 1000 Soldaten',
+      summary:
+        'Tausend Schwertkämpfer erhalten gleichzeitig einen Befehl zur Angriffsbewegung. Wähle die Armee aus und ändere ihr Ziel mit einem Bewegungsbefehl, einer Angriffsbewegung oder einem direkten Angriff. Shift reiht Wegpunkte in die Befehlsfolge ein.',
+    },
+    'army-passage': {
+      title: 'Armee durch einen Engpass',
+      summary:
+        'Tausend Schwertkämpfer überqueren eine schmale Landenge und verteilen sich auf der anderen Seite. Prüfe, wie sich die Gruppe am Hindernis verengt, dahinter wieder auffächert und während des Marsches auf einen Richtungswechsel reagiert.',
+    },
     'net-panel': {
       title: 'Netzwerkübersicht',
       summary:
