@@ -1,4 +1,4 @@
-import { Sprite, type Texture } from 'pixi.js';
+import { Sprite, Texture } from 'pixi.js';
 import { FOG_GHOST_TINT } from '../../data/fog/index.js';
 import { clamp } from '../../data/math.js';
 import { cameraScreenX, cameraScreenY, snapToDevicePixels } from '../../data/projection/index.js';
@@ -39,6 +39,18 @@ export type BindFrame = Pick<
   | 'pixelArtScaler'
   | 'shadowStyle'
 >;
+
+/**
+ * Take a layer sprite off the picture without taking it out of its band: a `visible` flip rebuilds the
+ * band's instructions, while an empty texture at zero alpha draws nothing and only repacks the quad. The
+ * next bind that uses the slot gives it its texture and alpha back; the picker and the selection outline
+ * already pass over a zero-alpha layer. The empty texture's page lives as long as the page, so a hidden
+ * layer never holds a bake that may be destroyed.
+ */
+function hideLayer(spr: Sprite): void {
+  if (spr.texture !== Texture.EMPTY) spr.texture = Texture.EMPTY;
+  spr.alpha = 0;
+}
 
 /** Assign-mode candidate-building tints, pale so they wash over the building art rather than
  *  repaint it. */
@@ -249,12 +261,12 @@ export class LayerBinder {
     if (!hasSelection) pe.selectionEllipse = undefined;
     for (let i = spriteSlot; i < pe.sprites.length; i++) {
       const s = pe.sprites[i];
-      if (s !== undefined) s.visible = false;
+      if (s !== undefined) hideLayer(s);
     }
     if (pe.paletted) {
       for (let i = shadowSlot; i < pe.shadows.length; i++) {
         const s = pe.shadows[i];
-        if (s !== undefined) s.visible = false;
+        if (s !== undefined) hideLayer(s);
       }
     } else {
       pe.pickExempt.length = spriteSlot;
@@ -301,6 +313,7 @@ export class LayerBinder {
       // every one of them ahead of the paletted layers.
       pe.container.addChildAt(spr, slot);
     }
+    spr.alpha = 1;
     this.placeShadow(spr, layer, box, tint, style);
   }
 
@@ -463,8 +476,10 @@ export class LayerBinder {
             enhanceBuilding,
           );
     if (layer.groundFoot === 'shade' || layer.groundFoot === 'cover') {
-      spr.visible = grounded !== null;
-      if (grounded === null) return;
+      if (grounded === null) {
+        hideLayer(spr);
+        return;
+      }
       spr.texture = grounded;
       spr.position.set(box.ox, box.drawnOy);
       setVegetationShear(spr, layer.scale, 0);
@@ -473,7 +488,7 @@ export class LayerBinder {
     }
     if (revealTexture === null && box.hiddenTop >= layer.frame.height) {
       // Nothing revealed yet; the pixel picker rejects this layer inside the retained bounds.
-      spr.visible = false;
+      hideLayer(spr);
       return;
     }
     spr.texture =

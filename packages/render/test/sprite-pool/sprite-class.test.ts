@@ -1,4 +1,4 @@
-import { Container, Sprite, TextureSource } from 'pixi.js';
+import { Container, Sprite, Texture, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { Camera, Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
@@ -180,7 +180,8 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
     binder.bind(pe, item, [], bindFrame, 2);
 
     expect(pe.shadows[0]).toBe(spr); // retained, not re-minted
-    expect(spr?.visible).toBe(false);
+    expect(spr?.alpha).toBe(0);
+    expect(spr?.texture).toBe(Texture.EMPTY);
   });
 
   it('hides the silhouette behind the placeholder when the entity resolves no layers at all', () => {
@@ -487,7 +488,7 @@ describe("LayerBinder - a hero glow binds under the body on its owner's team row
     binder.bind(pe, armored, [body], bindFrame, 2);
 
     expect([quadAt(pe, 0).glow, quadAt(pe, 0).alpha]).toEqual([false, 1]);
-    expect(pe.sprites[1]?.visible).toBe(false);
+    expect(pe.sprites[1]?.alpha).toBe(0);
   });
 
   it('draws no glow for a look without the LUT', () => {

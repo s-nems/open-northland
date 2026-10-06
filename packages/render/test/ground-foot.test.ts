@@ -303,7 +303,10 @@ describe('grounded bind', () => {
     const pe = createPooled('building', undefined);
     new LayerBinder(cache, undefined).bind(pe, item, layers, frame, 1);
     const [shade, body, cover] = pe.container.children as Sprite[];
-    expect([shade?.visible, body?.visible, cover?.visible]).toEqual([false, true, false]);
+    // A layer drawing nothing keeps its place at zero alpha on the empty texture.
+    const drawn = (s: Sprite | undefined): boolean => s?.visible === true && s.alpha > 0;
+    expect([drawn(shade), drawn(body), drawn(cover)]).toEqual([false, true, false]);
+    expect(shade?.texture).toBe(Texture.EMPTY);
     expect(body?.texture).toBe(cache.get(page, FRAME));
   });
 

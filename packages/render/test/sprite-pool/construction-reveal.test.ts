@@ -86,7 +86,9 @@ function upgradeSite(pct: number): ReturnType<typeof entity> {
 function visibleStages(layer: Container): number {
   const container = layer.children[0] as Container | undefined;
   if (container === undefined) return 0;
-  return (container.children as { visible: boolean }[]).filter((s) => s.visible).length;
+  // A hidden layer keeps its place in the band at zero alpha.
+  return (container.children as { visible: boolean; alpha: number }[]).filter((s) => s.visible && s.alpha > 0)
+    .length;
 }
 
 describe('SpritePool - construction stages track the eased reveal, not the raw sim built', () => {
@@ -209,7 +211,7 @@ describe('SpritePool - a tribe without upgrade rows rebuilds its next tier aroun
   function visibleAlphas(layer: Container): number[] {
     const container = layer.children[0] as Container | undefined;
     return ((container?.children ?? []) as { visible: boolean; alpha: number }[])
-      .filter((s) => s.visible)
+      .filter((s) => s.visible && s.alpha > 0)
       .map((s) => s.alpha);
   }
 
