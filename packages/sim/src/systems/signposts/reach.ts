@@ -18,20 +18,29 @@ import { type SignpostSite, signpostNetwork, signpostNetworkRevision } from './n
 import {
   dropFallenPostReaches,
   postTerrainReach,
-  signpostTerrainKey,
+  signpostMask,
   type TerrainReach,
   terrainReach,
 } from './terrain-reach.js';
 
+/** What a cache's answers depend on beyond the terrain: the walk-block mask version, the mirrored road
+ *  revision, the signpost network revision and the door revision. */
+interface ReachVersions {
+  readonly mask: number;
+  readonly roads: number;
+  readonly network: number;
+  readonly doors: number;
+}
+
 interface ReachCache {
   readonly terrain: TerrainGraph;
-  readonly key: string;
-  readonly spots: Map<string, TerrainReach>;
+  readonly versions: ReachVersions;
+  readonly spots: Map<number, TerrainReach>;
   readonly sites: TileBuckets<SignpostSite & { player: number }>;
   readonly groups: Map<number, GroupGate>;
   /** The previous key's group gates, taken over unchanged when their posts' searches still hold. */
   readonly priorGroups: ReadonlyMap<number, GroupGate>;
-  readonly limits: Map<string, SpatialGate>;
+  readonly limits: Map<number, SpatialGate>;
   readonly views: Map<number, SignpostReachView>;
 }
 const caches = new WeakMap<World, ReachCache>();
@@ -87,19 +96,45 @@ function doorsOf(world: World, content: ContentSet, terrain: TerrainGraph): Door
 }
 
 export function signpostReachKey(world: World, content: ContentSet, terrain: TerrainGraph): string {
-  return `${signpostTerrainKey(world, content, terrain)}:${signpostNetworkRevision(world)}:${doorsOf(world, content, terrain).revision}`;
+  return reachKeyOf(reachVersions(world, content, terrain));
+}
+
+function reachKeyOf(v: ReachVersions): string {
+  return `${v.mask}:${v.roads}:${v.network}:${v.doors}`;
+}
+
+/** Whether `v` still names the world's current versions, read without building a key. */
+function versionsHold(v: ReachVersions, world: World, content: ContentSet, terrain: TerrainGraph): boolean {
+  return (
+    v.mask === signpostMask(world, content, terrain).version &&
+    v.roads === terrain.mirroredRoadRevision &&
+    v.network === signpostNetworkRevision(world) &&
+    v.doors === doorsOf(world, content, terrain).revision
+  );
+}
+
+function reachVersions(world: World, content: ContentSet, terrain: TerrainGraph): ReachVersions {
+  return {
+    mask: signpostMask(world, content, terrain).version,
+    roads: terrain.mirroredRoadRevision,
+    network: signpostNetworkRevision(world),
+    doors: doorsOf(world, content, terrain).revision,
+  };
 }
 
 function cacheOf(world: World, content: ContentSet, terrain: TerrainGraph): ReachCache {
-  const key = signpostReachKey(world, content, terrain);
   let cache = caches.get(world);
-  if (cache === undefined || cache.terrain !== terrain || cache.key !== key) {
+  if (
+    cache === undefined ||
+    cache.terrain !== terrain ||
+    !versionsHold(cache.versions, world, content, terrain)
+  ) {
     const sites = new TileBuckets<SignpostSite & { player: number }>();
     for (const [player, posts] of signpostNetwork(world))
       for (const p of posts) sites.set(p.entity, { ...p, player }, p.hx / 2, p.hy / 2);
     cache = {
       terrain,
-      key,
+      versions: reachVersions(world, content, terrain),
       spots: cache?.terrain === terrain ? cache.spots : new Map(),
       views: new Map(),
       sites,
@@ -121,9 +156,10 @@ export function goodsReachAt(
   hy: number,
 ): ReachArea {
   const cache = cacheOf(world, content, terrain);
-  const key = `${hx}:${hy}`;
-  const held = cache.spots.get(key);
+  const key = spotKey(0, hx, hy);
+  const held = key === null ? undefined : cache.spots.get(key);
   const found = terrainReach(world, content, terrain, hx, hy, GOODS_SEARCH_RANGE_NODES, held);
+  if (key === null) return found.area;
   // Re-inserted on every read, so the map runs least recently asked first and eviction drops the oldest.
   if (held !== undefined) cache.spots.delete(key);
   else if (cache.spots.size >= SPOT_REACH_CAP) {
@@ -158,13 +194,24 @@ export function goodsSearchLimitAt(
 ): SpatialGate | null {
   if (!signpostNavigationEnabled(world) || player === undefined) return null;
   const cache = cacheOf(world, content, terrain);
-  const key = `${player}:${hx}:${hy}`;
-  const held = cache.limits.get(key);
+  const key = spotKey(player, hx, hy);
+  const held = key === null ? undefined : cache.limits.get(key);
   if (held !== undefined) return held;
   const limit = new GoodsSearchLimit(world, content, terrain, cache, player, hx, hy);
+  if (key === null) return limit;
   if (cache.limits.size >= 256) cache.limits.clear();
   cache.limits.set(key, limit);
   return limit;
+}
+
+/** Exclusive bound of each field {@link spotKey} packs. */
+const SPOT_KEY_SPAN = 1 << 16;
+
+/** A player's spot as one number, or null outside the packable span, which is answered uncached. */
+function spotKey(player: number, hx: number, hy: number): number | null {
+  if (player < 0 || player >= SPOT_KEY_SPAN || hx < 0 || hy < 0 || hx >= SPOT_KEY_SPAN || hy >= SPOT_KEY_SPAN)
+    return null;
+  return (player * SPOT_KEY_SPAN + hy) * SPOT_KEY_SPAN + hx;
 }
 
 /**
@@ -179,8 +226,9 @@ class GoodsSearchLimit implements SpatialGate {
   /** Every group with a post inside the hex range: the ones the search may catch. */
   private readonly nearby: readonly SpatialGate[];
   private resolved: SpatialGate | undefined;
-  /** The reach key the limit was built under, and the world mutation version it was last confirmed at. */
-  private readonly key: string;
+  /** The reach versions the limit was built under, and the world mutation version it was last
+   *  confirmed at. */
+  private readonly versions: ReachVersions;
   private confirmedAt: number;
 
   constructor(
@@ -192,7 +240,7 @@ class GoodsSearchLimit implements SpatialGate {
     private readonly hx: number,
     private readonly hy: number,
   ) {
-    this.key = cache.key;
+    this.versions = cache.versions;
     this.confirmedAt = world.mutationVersion;
     const range = GOODS_SEARCH_RANGE_NODES;
     // The local search's own result bounds.
@@ -214,14 +262,17 @@ class GoodsSearchLimit implements SpatialGate {
     this.confirmKey();
     const x = this.terrain.xOf(node);
     const y = this.terrain.yOf(node);
-    if (
-      hexDistanceBetween(this.hx, this.hy, x, y) >= GOODS_SEARCH_RANGE_NODES &&
-      !this.nearby.some((g) => g.allowsNode(node))
-    ) {
+    if (hexDistanceBetween(this.hx, this.hy, x, y) >= GOODS_SEARCH_RANGE_NODES && !this.nearbyAllows(node)) {
       return false;
     }
     this.resolved ??= this.resolve();
     return this.resolved.allowsNode(node);
+  }
+
+  private nearbyAllows(node: NodeId): boolean {
+    for (let i = 0; i < this.nearby.length; i++)
+      if ((this.nearby[i] as SpatialGate).allowsNode(node)) return true;
+    return false;
   }
 
   /** Hex distance obeys the triangle inequality and never exceeds Manhattan distance, so no node within
@@ -230,17 +281,19 @@ class GoodsSearchLimit implements SpatialGate {
   mayAllowNear(x: number, y: number, radius: number): boolean {
     this.confirmKey();
     if (hexDistanceBetween(this.hx, this.hy, x, y) < GOODS_SEARCH_RANGE_NODES + radius) return true;
-    return this.nearby.some(
-      ({ bounds: b }) =>
-        x >= b.minX - radius && x <= b.maxX + radius && y >= b.minY - radius && y <= b.maxY + radius,
-    );
+    for (let i = 0; i < this.nearby.length; i++) {
+      const b = (this.nearby[i] as SpatialGate).bounds;
+      if (x >= b.minX - radius && x <= b.maxX + radius && y >= b.minY - radius && y <= b.maxY + radius)
+        return true;
+    }
+    return false;
   }
 
   /** Throws once a world write moved the reach key since the limit was built. */
   private confirmKey(): void {
     const version = this.world.mutationVersion;
     if (version === this.confirmedAt) return;
-    if (signpostReachKey(this.world, this.content, this.terrain) !== this.key) {
+    if (!versionsHold(this.versions, this.world, this.content, this.terrain)) {
       throw new Error('goods search limit asked after the signpost reach key moved; ask a fresh limit');
     }
     this.confirmedAt = version;
@@ -257,7 +310,13 @@ class GoodsSearchLimit implements SpatialGate {
     );
     const gates: SpatialGate[] = [reachGate(terrain, [local])];
     for (const group of groups) gates.push(groupGate(world, content, terrain, cache, player, group));
-    return { bounds: this.bounds, allowsNode: (node) => gates.some((g) => g.allowsNode(node)) };
+    return {
+      bounds: this.bounds,
+      allowsNode: (node) => {
+        for (let i = 0; i < gates.length; i++) if ((gates[i] as SpatialGate).allowsNode(node)) return true;
+        return false;
+      },
+    };
   }
 }
 
@@ -332,7 +391,7 @@ export function signpostReachView(
     doors.set(entity, door);
     if (posts.length === 0) settlements.push(goodsReachAt(world, content, terrain, door.hx, door.hy));
   }
-  const view = { key: cache.key, player, posts, doors, settlements };
+  const view = { key: reachKeyOf(cache.versions), player, posts, doors, settlements };
   cache.views.set(player, view);
   return view;
 }

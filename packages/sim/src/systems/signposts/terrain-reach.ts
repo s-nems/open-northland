@@ -5,9 +5,22 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { type WalkBlockMask, walkBlockMask } from '../footprint/walk-block-mask.js';
 import { syncRoadLane } from '../roads/index.js';
 
-export function signpostTerrainKey(world: World, content: ContentSet, terrain: TerrainGraph): string {
+/** One context object per content set, so a per-call mask read allocates nothing. */
+const contexts = new WeakMap<ContentSet, { readonly content: ContentSet }>();
+
+/** The world's walk-block mask, levelled now, with the roads mirrored into `terrain` first. */
+export function signpostMask(world: World, content: ContentSet, terrain: TerrainGraph): WalkBlockMask {
   syncRoadLane(world, terrain);
-  return `${walkBlockMask(world, { content }, terrain).version}:${terrain.mirroredRoadRevision}`;
+  let ctx = contexts.get(content);
+  if (ctx === undefined) {
+    ctx = { content };
+    contexts.set(content, ctx);
+  }
+  return walkBlockMask(world, ctx, terrain);
+}
+
+export function signpostTerrainKey(world: World, content: ContentSet, terrain: TerrainGraph): string {
+  return `${signpostMask(world, content, terrain).version}:${terrain.mirroredRoadRevision}`;
 }
 
 export interface TerrainReach extends ReachSearch {
@@ -15,11 +28,11 @@ export interface TerrainReach extends ReachSearch {
   readonly hx: number;
   readonly hy: number;
   readonly range: number;
-  version: string;
-  /** The walk-block mask the flood read, and its version and the terrain's resistance clock at the
-   *  latest moment the answer was known to hold. */
+  /** The walk-block mask the flood read, and its version, the terrain's mirrored road revision and its
+   *  resistance clock at the latest moment the answer was known to hold. */
   readonly mask: WalkBlockMask;
   maskVersion: number;
+  roadRevision: number;
   resistanceClock: number;
 }
 
@@ -33,13 +46,19 @@ export function terrainReach(
   range: number,
   held?: TerrainReach,
 ): TerrainReach {
-  const version = signpostTerrainKey(world, content, terrain);
-  const sameOrigin = held?.terrain === terrain && held.hx === hx && held.hy === hy && held.range === range;
-  if (sameOrigin && held.version === version) return held;
-  const mask = walkBlockMask(world, { content }, terrain);
-  if (sameOrigin && held.mask === mask && !readNodeChanged(held, mask, terrain)) {
-    held.version = version;
-    held.maskVersion = mask.version;
+  const mask = signpostMask(world, content, terrain);
+  const maskVersion = mask.version;
+  const roadRevision = terrain.mirroredRoadRevision;
+  const sameOrigin =
+    held?.terrain === terrain &&
+    held.mask === mask &&
+    held.hx === hx &&
+    held.hy === hy &&
+    held.range === range;
+  if (sameOrigin && held.maskVersion === maskVersion && held.roadRevision === roadRevision) return held;
+  if (sameOrigin && !readNodeChanged(held, mask, terrain)) {
+    held.maskVersion = maskVersion;
+    held.roadRevision = roadRevision;
     held.resistanceClock = terrain.resistanceClock;
     return held;
   }
@@ -49,9 +68,9 @@ export function terrainReach(
     hx,
     hy,
     range,
-    version,
     mask,
-    maskVersion: mask.version,
+    maskVersion,
+    roadRevision,
     resistanceClock: terrain.resistanceClock,
   };
 }
