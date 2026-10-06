@@ -198,6 +198,10 @@ describe('findPath - routes around obstacles', () => {
   });
 });
 
+/** The pocket's inner corners: 16 by 16 nodes, past the goal side's 128-settle probe. */
+const POCKET_LOW = 25;
+const POCKET_HIGH = 40;
+
 describe('findPath - deterministic tie-breaking', () => {
   it('picks the same path across repeated calls (history-independent)', () => {
     const g = open(6, 6);
@@ -294,6 +298,36 @@ describe('findPath - deterministic tie-breaking', () => {
       'unreachable',
     );
   });
+
+  it.each([{ gap: false }, { gap: true }])(
+    'answers as one unguarded forward search when the goal side restarts past its probe (gap $gap)',
+    ({ gap }) => {
+      // A walled pocket larger than the probe, its wall corner the walker's own blocked node: from inside, the
+      // re-admitted start opens a diagonal flanked by that corner, so the goal side must restart on the plain
+      // overlay and race on; with a real gap elsewhere the goal is reachable after all.
+      const g = open(80, 80);
+      const low = POCKET_LOW;
+      const blocked = new Set<NodeId>();
+      for (let i = low - 1; i <= POCKET_HIGH + 1; i++) {
+        blocked.add(g.nodeAt(low - 1, i));
+        blocked.add(g.nodeAt(POCKET_HIGH + 1, i));
+        blocked.add(g.nodeAt(i, low - 1));
+        blocked.add(g.nodeAt(i, POCKET_HIGH + 1));
+      }
+      blocked.add(g.nodeAt(POCKET_HIGH, POCKET_HIGH - 1));
+      if (gap) blocked.delete(g.nodeAt(low - 1, (low + POCKET_HIGH) >> 1));
+      const start = g.nodeAt(POCKET_HIGH + 1, POCKET_HIGH + 1);
+      for (const [x, y] of [
+        [POCKET_HIGH, POCKET_HIGH],
+        [low, low],
+        [(low + POCKET_HIGH) >> 1, POCKET_HIGH],
+      ] as const) {
+        const goal = g.nodeAt(x, y);
+        const forward = findPathWithin(g, start, goal, blocked, { explored: 0 }, Number.POSITIVE_INFINITY);
+        expect(findPath(g, start, goal, blocked)).toEqual(typeof forward === 'string' ? null : forward);
+      }
+    },
+  );
 
   it('answers as one unguarded forward search under random overlays with a blocked start', () => {
     const size = 24;

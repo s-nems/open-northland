@@ -209,18 +209,22 @@ describe('ai-player walk flood', () => {
   });
 
   it('answers over a byte mask exactly as a reference flood and as the same blocks behind any overlay', () => {
-    const sim = new Simulation({
-      seed: 1,
-      content: aiContent(),
-      map: grassNodeMap(WALLED_MAP_NODES, WALLED_MAP_NODES),
-    });
-    const terrain = sim.terrain;
-    if (terrain === undefined) throw new Error('mapped sim expected');
     let state = RANDOM_SEED;
     const draw = (bound: number): number => {
       state = (state * LCG_MULTIPLIER + LCG_INCREMENT) % LCG_MODULUS;
       return state % bound;
     };
+    // Water strewn over the grass, so diagonals meet unwalkable flanks as well as blocked ones.
+    const typeIds = Array.from({ length: WALLED_MAP_NODES * WALLED_MAP_NODES }, () =>
+      draw(PERCENT) < RANDOM_WATER_PERCENT ? WATER_TYPE : GRASS_TYPE,
+    );
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: { resolution: 'half-cell', width: WALLED_MAP_NODES, height: WALLED_MAP_NODES, typeIds },
+    });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
     for (let trial = 0; trial < RANDOM_TRIALS; trial++) {
       const mask = new NodeMask(terrain.nodeCount);
       for (let node = 0; node < terrain.nodeCount; node++) {
@@ -261,6 +265,10 @@ const WALLED_BUDGETS = [SMALL_BUDGET, 400, WHOLE_BANK];
 const WALLED_REACH = 6;
 const RANDOM_TRIALS = 24;
 const RANDOM_BLOCKED_PERCENT = 30;
+const RANDOM_WATER_PERCENT = 15;
+/** The fixture landscape's grass and water type ids. */
+const GRASS_TYPE = 0;
+const WATER_TYPE = 1;
 const PERCENT = 100;
 const RANDOM_BUDGETS = [SMALL_BUDGET, 400, WHOLE_BANK];
 /** Every how many node ids the flood is asked about, so a trial asks across the whole map. */
