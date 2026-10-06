@@ -425,7 +425,7 @@ export const enSurfaces = {
       upgrade: '{key} upgrades the selected building.',
       buildRun:
         'A builder you assign by hand to a road or palisade builds its next sections before working on buildings.',
-      nextCivilian: '{key} selects the next free civilian and centres the view on them.',
+      nextCivilian: '{key} selects the next free civilian.',
       nextSingleWoman: '{key} selects the next unmarried woman without a home.',
       signposts: 'You can build over your own signposts. They move aside and keep their links.',
       porterFlag:

@@ -422,7 +422,7 @@ export const plSurfaces = {
       upgrade: '{key} rozbudowuje zaznaczony budynek.',
       buildRun:
         'Budowniczy przypisany ręcznie do drogi albo palisady stawia kolejne jej odcinki przed pracą przy budynkach.',
-      nextCivilian: '{key} zaznacza następnego wolnego cywila i ustawia na nim widok.',
+      nextCivilian: '{key} zaznacza następnego wolnego cywila.',
       nextSingleWoman: '{key} zaznacza następną niezamężną kobietę bez domu.',
       signposts:
         'Budynki można stawiać na własnych drogowskazach. Drogowskazy przesuną się na bok, a ich połączenia zostaną.',

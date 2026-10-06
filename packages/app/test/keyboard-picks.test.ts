@@ -80,10 +80,10 @@ const effect = (action: Parameters<typeof selectionKeyEffect>[0], selected: read
   selectionKeyEffect(action, people, content, HUMAN_PLAYER, new Set(selected));
 
 describe('selection keys', () => {
-  it('step to the next own civilian after the selected one, wrapping, and centre on it', () => {
-    expect(effect('nextCivilian')).toEqual({ ids: [2], add: false, centre: 2 });
-    expect(effect('nextCivilian', [2])).toEqual({ ids: [5], add: false, centre: 5 });
-    expect(effect('nextCivilian', [5])).toEqual({ ids: [2], add: false, centre: 2 });
+  it('step to the next own civilian after the selected one, wrapping', () => {
+    expect(effect('nextCivilian')).toEqual({ ids: [2], add: false });
+    expect(effect('nextCivilian', [2])).toEqual({ ids: [5], add: false });
+    expect(effect('nextCivilian', [5])).toEqual({ ids: [2], add: false });
     expect(effect('nextScout', [3])?.ids).toEqual([8]);
   });
 
@@ -98,14 +98,14 @@ describe('selection keys', () => {
   });
 
   it('select or add every own soldier and select every hero, whole map', () => {
-    expect(effect('selectSoldiers')).toEqual({ ids: [6, 9], add: false, centre: null });
-    expect(effect('addSoldiers', [2])).toEqual({ ids: [6, 9], add: true, centre: null });
-    expect(effect('selectHeroes')).toEqual({ ids: [7], add: false, centre: null });
+    expect(effect('selectSoldiers')).toEqual({ ids: [6, 9], add: false });
+    expect(effect('addSoldiers', [2])).toEqual({ ids: [6, 9], add: true });
+    expect(effect('selectHeroes')).toEqual({ ids: [7], add: false });
   });
 
   it('narrow the selection to its heroes or soldiers, and change nothing when it already is', () => {
-    expect(effect('keepHeroes', [2, 6, 7])).toEqual({ ids: [7], add: false, centre: null });
-    expect(effect('keepSoldiers', [2, 6, 7])).toEqual({ ids: [6], add: false, centre: null });
+    expect(effect('keepHeroes', [2, 6, 7])).toEqual({ ids: [7], add: false });
+    expect(effect('keepSoldiers', [2, 6, 7])).toEqual({ ids: [6], add: false });
     expect(effect('keepSoldiers', [6, 9])).toBeNull();
   });
 

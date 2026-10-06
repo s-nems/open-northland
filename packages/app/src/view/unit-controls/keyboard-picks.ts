@@ -28,12 +28,10 @@ export const SELECTION_KEY_ACTIONS = [
 
 export type SelectionKeyAction = (typeof SELECTION_KEY_ACTIONS)[number];
 
-/** What a selection key does: the ids to select, whether they join the selection, and the one settler
- *  the camera centres on. */
+/** The ids to select and whether they join the selection. */
 export interface SelectionKeyEffect {
   readonly ids: readonly number[];
   readonly add: boolean;
-  readonly centre: number | null;
 }
 
 type SettlerTest = (snapshot: WorldSnapshot, ent: SnapshotEntity) => boolean;
@@ -85,8 +83,8 @@ function nextAfter(candidates: readonly number[], selected: ReadonlySet<number>)
 /**
  * Original behavior (CnMod 1.3.2 keys included): `.` `,` and `/` select the next civilian, scout or single
  * woman after the current one, M selects every soldier and Shift+M adds them, F selects every hero, X and Y
- * keep only the heroes or the soldiers of the selection. Ours: the next-of-kind keys also centre the
- * camera, and a key that finds nobody leaves the selection as it was. Null when nothing changes.
+ * keep only the heroes or the soldiers of the selection. Our selection keys leave the camera in place;
+ * a key that finds nobody leaves the selection as it was. Null when nothing changes.
  */
 export function selectionKeyEffect(
   action: SelectionKeyAction,
@@ -97,15 +95,15 @@ export function selectionKeyEffect(
 ): SelectionKeyEffect | null {
   const next = (test: SettlerTest): SelectionKeyEffect | null => {
     const id = nextAfter(ownPeople(snapshot, player, test), selected);
-    return id === undefined ? null : { ids: [id], add: false, centre: id };
+    return id === undefined ? null : { ids: [id], add: false };
   };
   const all = (test: SettlerTest, add: boolean): SelectionKeyEffect | null => {
     const ids = ownPeople(snapshot, player, test);
-    return ids.length === 0 ? null : { ids, add, centre: null };
+    return ids.length === 0 ? null : { ids, add };
   };
   const keep = (test: SettlerTest): SelectionKeyEffect | null => {
     const kept = ownPeople(snapshot, player, test).filter((id) => selected.has(id));
-    return kept.length === selected.size ? null : { ids: kept, add: false, centre: null };
+    return kept.length === selected.size ? null : { ids: kept, add: false };
   };
   switch (action) {
     case 'nextCivilian':

@@ -66,7 +66,6 @@ export function createKeyboardOrders(deps: KeyboardOrdersDeps): (e: KeyboardEven
       const effect = selectionKeyEffect(selectionKey, deps.snapshot(), deps.content, player, deps.selected());
       if (effect !== null) {
         deps.select(effect.ids, effect.add);
-        if (effect.centre !== null) deps.centreOn(effect.centre);
       }
       return true;
     }
