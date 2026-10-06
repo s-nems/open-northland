@@ -532,7 +532,9 @@ every return of its token, before `start` and `clock`.
 world `start` names through a port the host supplies, runs it over `RelayTransport`, acknowledges
 every tick, answers pings and snapshot requests, and asks a diverged world's host to restore. It runs
 the sim a frame or two behind the relay's clock (`JITTER_BUFFER_TICKS`) by scaling the time it feeds
-the driver, never by skipping a tick, so a late frame lands inside the buffer. `RelaySocket` keeps
+the driver, never by skipping a tick, so a late frame lands inside the buffer. Catch-up is capped at
+192 ticks/s using the effective governed speed, leaving room for commands and pongs within the
+host's 256 messages/s budget; every applied tick still sends its digest. `RelaySocket` keeps
 the connection and reopens it on the same token after a drop; a connection the relay replaced or
 refused stays closed. A connection attempt that has not opened within 10 seconds, or an open link
 with no JSON message for 30 seconds, is closed and retried even if no socket close event arrives.

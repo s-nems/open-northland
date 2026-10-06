@@ -318,7 +318,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     // A tick's cost runs from the end of the previous tick's work here to its acknowledgement: the
     // frame's admission, the sim step and the host's `onTick`.
     this.tickCost.begin(this.now());
-    this.alpha = driver.advance(elapsedMs * paceScale(transport.bufferedTicks), () => {
+    this.alpha = driver.advance(elapsedMs * paceScale(transport.bufferedTicks, driver.speed), () => {
       if (this.completion.detect(this.sim) || this.tick === this.completion.confirmedTick) {
         driver.setPaused(true);
       }
