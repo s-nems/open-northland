@@ -33,6 +33,7 @@ export class SyncLedger {
   private order: number[] = [];
   private head = 0;
   private readonly references = new Map<number, DigestReport>();
+  private earliestReference = Number.POSITIVE_INFINITY;
 
   /** Record one client's digest. Judged at once against a settled tick, otherwise held; a client
    *  reporting a held tick again speaks for a newer world, and its earlier word is dropped. */
@@ -57,17 +58,21 @@ export class SyncLedger {
   /**
    * Settle every held tick up to `passed`, the last tick every client in sync has acknowledged or
    * been moved past, from the reports of `synced` alone; a tick none of them reported is dropped.
+   * A minority at an earlier tick cannot influence later verdicts in the same batch.
    */
   settle(passed: number, synced: ReadonlySet<string>): Verdict[] {
     const verdicts: Verdict[] = [];
+    const eligible = new Set(synced);
     for (; this.head < this.order.length; this.head++) {
       const tick = this.order[this.head];
       if (tick === undefined || tick > passed) break;
-      const reports = (this.pending.get(tick) ?? []).filter((report) => synced.has(report.token));
+      const reports = (this.pending.get(tick) ?? []).filter((report) => eligible.has(report.token));
       this.pending.delete(tick);
       if (reports.length === 0) continue;
       const verdict = judge(tick, reports);
       this.references.set(tick, verdict.reference);
+      this.earliestReference = Math.min(this.earliestReference, tick);
+      for (const { token } of verdict.outOfSync) eligible.delete(token);
       if (verdict.outOfSync.length > 0) verdicts.push(verdict);
     }
     if (this.head * 2 >= this.order.length) this.compact();
@@ -104,7 +109,12 @@ export class SyncLedger {
 
   /** Forget references before `tick`, once no client can report a tick below it. */
   pruneBefore(tick: number): void {
-    for (const settled of this.references.keys()) if (settled < tick) this.references.delete(settled);
+    if (tick <= this.earliestReference) return;
+    this.earliestReference = Number.POSITIVE_INFINITY;
+    for (const settled of this.references.keys()) {
+      if (settled < tick) this.references.delete(settled);
+      else this.earliestReference = Math.min(this.earliestReference, settled);
+    }
   }
 }
 

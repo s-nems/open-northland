@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { type DigestReport, SyncLedger } from '../src/relay/sync-ledger.js';
 import { digest } from './support/message-stage.js';
 
@@ -31,7 +31,8 @@ describe('sync ledger', () => {
     ledger.report(1, report('b', 5, 1));
     ledger.report(3, report('b', 5, 4));
     ledger.report(2, report('b', 5, 3));
-    expect(ledger.settle(3, AB).map((verdict) => verdict.tick)).toEqual([2, 3]);
+    expect(ledger.settle(3, AB).map((verdict) => verdict.tick)).toEqual([2]);
+    expect(ledger.report(3, report('c', 10, 4))?.reference.token).toBe('a');
   });
 
   it('gives a tie to the longest-connected client, whatever it reported, then to the earlier joiner', () => {
@@ -91,13 +92,69 @@ describe('sync ledger', () => {
       ledger.report(tick, report('b', 1, 2));
       ledger.report(tick, report('c', 2, 1));
     }
-    expect(ledger.settle(3, ABC).map((verdict) => verdict.tick)).toEqual([1, 2, 3]);
+    expect(ledger.settle(3, ABC).map((verdict) => verdict.tick)).toEqual([1]);
     ledger.report(7, report('a', 0, 1));
     ledger.report(7, report('b', 1, 2));
     ledger.report(6, report('a', 0, 1));
     ledger.report(6, report('b', 1, 2));
     ledger.forget('c');
-    expect(ledger.settle(7, AB).map((verdict) => verdict.tick)).toEqual([4, 5, 6, 7]);
+    expect(ledger.settle(7, AB).map((verdict) => verdict.tick)).toEqual([4]);
     expect(ledger.settle(7, AB)).toEqual([]);
+  });
+
+  it('drops held ticks reported only by an earlier minority without mutating the supplied membership', () => {
+    const ledger = new SyncLedger();
+    const synced = new Set(['a', 'b']);
+    ledger.report(1, report('a', 0, 1));
+    ledger.report(1, report('b', 1, 2));
+    ledger.report(2, report('b', 1, 2));
+    expect(ledger.settle(2, synced).map((verdict) => verdict.tick)).toEqual([1]);
+    expect(synced).toEqual(new Set(['a', 'b']));
+    expect(ledger.report(2, report('a', 0, 1))).toBeNull();
+    expect(ledger.settle(2, new Set(['a']))).toEqual([]);
+    expect(ledger.report(2, report('late', 2, 2))?.reference.token).toBe('a');
+  });
+
+  it('keeps prune work independent of retained history while a disconnected member stays behind', () => {
+    const ledger = new SyncLedger();
+    const retained = 1000;
+    const acknowledgements = 100;
+    for (let tick = 1; tick <= retained; tick++) ledger.report(tick, report('a', 0, 1));
+    ledger.settle(retained, new Set(['a']));
+    let visited = 0;
+    const keys = Map.prototype.keys;
+    const spy = vi.spyOn(Map.prototype, 'keys').mockImplementation(function (this: Map<unknown, unknown>) {
+      const iterator = keys.call(this);
+      const next = iterator.next.bind(iterator);
+      iterator.next = () => {
+        const entry = next();
+        if (!entry.done) visited++;
+        return entry;
+      };
+      return iterator;
+    });
+    try {
+      for (let ack = 0; ack < acknowledgements; ack++) ledger.pruneBefore(1);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(visited).toBe(0);
+    expect(ledger.report(1, report('back', 1, 2))?.reference.token).toBe('a');
+    expect(ledger.report(retained, report('back', 1, 2))?.reference.token).toBe('a');
+  });
+
+  it('prunes older references inserted after a later tick settled, even below an earlier prune boundary', () => {
+    const ledger = new SyncLedger();
+    const synced = new Set(['a']);
+    ledger.report(10, report('a', 0, 1));
+    ledger.settle(10, synced);
+    ledger.pruneBefore(8);
+    ledger.report(4, report('a', 0, 1));
+    ledger.settle(4, synced);
+    ledger.pruneBefore(5);
+    expect(ledger.report(4, report('back', 1, 2))).toBeNull();
+    expect(ledger.report(10, report('back', 1, 2))?.reference.token).toBe('a');
+    ledger.pruneBefore(11);
+    expect(ledger.report(10, report('back', 1, 2))).toBeNull();
   });
 });
