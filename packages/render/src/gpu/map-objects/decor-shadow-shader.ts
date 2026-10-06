@@ -1,4 +1,5 @@
 import { GlProgram, Shader, type TextureSource, UniformGroup } from 'pixi.js';
+import { pageChain, pageSamplerDeclarations, pageSamplerResources } from '../page-samplers.js';
 import { type ShadowStyle, shadowTintChannels } from '../shadow-style.js';
 import { SHADOW_BLUR_KERNEL, SHADOW_BLUR_KERNEL_SUM, SHADOW_BLUR_RADIUS } from '../soft-shadow-cache.js';
 
@@ -16,8 +17,10 @@ const SHADOW_VERTEX = `#version 300 es
   in vec2 aPosition;
   in vec2 aUV;
   in vec4 aFrame;
+  in float aPage;
   out vec2 vUV;
   flat out vec4 vFrame;
+  flat out float vPage;
   uniform mat3 uProjectionMatrix;
   uniform mat3 uWorldTransformMatrix;
   uniform mat3 uTransformMatrix;
@@ -26,6 +29,7 @@ const SHADOW_VERTEX = `#version 300 es
     gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
     vUV = aUV;
     vFrame = aFrame;
+    vPage = aPage;
   }
 `;
 
@@ -44,7 +48,8 @@ const SHADOW_FRAGMENT = `#version 300 es
   precision highp int;
   in vec2 vUV;
   flat in vec4 vFrame;
-  uniform sampler2D uTexture;
+  flat in float vPage;
+${pageSamplerDeclarations()}
   uniform vec4 uColor;
   uniform vec3 uShadowTint;
   uniform vec2 uShadowAlpha;
@@ -60,7 +65,7 @@ const SHADOW_FRAGMENT = `#version 300 es
     return mix(PADDED_KERNEL[tap + 1], PADDED_KERNEL[tap], fraction) / KERNEL_SUM;
   }
 
-  float softCoverage(vec2 texel) {
+  float softCoverage(sampler2D uTexture, vec2 texel) {
     vec2 centred = texel - 0.5;
     vec2 base = floor(centred);
     vec2 fraction = centred - base;
@@ -82,14 +87,18 @@ const SHADOW_FRAGMENT = `#version 300 es
     return coverage;
   }
 
-  void main(void) {
+  vec4 shadeShadow(sampler2D uTexture) {
     // Atlas pages load at resolution 1, so the page's pixel size is the size the UVs were divided by.
     vec2 texel = vUV * vec2(textureSize(uTexture, 0));
     float authored = texture(uTexture, vUV).a;
     bool inFrame = all(greaterThanEqual(texel, vFrame.xy)) && all(lessThan(texel, vFrame.zw));
-    float coverage = uShadowSoft > 0.5 ? softCoverage(texel) : (inFrame ? authored : 0.0);
+    float coverage = uShadowSoft > 0.5 ? softCoverage(uTexture, texel) : (inFrame ? authored : 0.0);
     float alpha = min(coverage * uShadowAlpha.x, uShadowAlpha.y);
-    finalColor = vec4(uShadowTint * alpha, alpha) * uColor;
+    return vec4(uShadowTint * alpha, alpha) * uColor;
+  }
+
+  void main(void) {
+${pageChain('finalColor = shadeShadow(uPage$);')}
   }
 `;
 
@@ -121,10 +130,11 @@ export function writeDecorShadowStyle(group: DecorShadowUniforms, style: ShadowS
   group.update();
 }
 
-export function makeDecorShadowShader(source: TextureSource, style: DecorShadowUniforms): Shader {
+export function makeDecorShadowShader(pages: readonly TextureSource[], style: DecorShadowUniforms): Shader {
+  const samplers = pageSamplerResources(pages);
   program ??= new GlProgram({ vertex: SHADOW_VERTEX, fragment: SHADOW_FRAGMENT });
   return new Shader({
     glProgram: program,
-    resources: { uTexture: source, uSampler: source.style, shadowStyle: style },
+    resources: { ...samplers, uSampler: (samplers.uPage0 as TextureSource).style, shadowStyle: style },
   });
 }

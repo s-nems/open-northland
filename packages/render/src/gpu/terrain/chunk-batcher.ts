@@ -4,13 +4,13 @@ import {
   makeShadedTerrainShader,
   makeTintedTerrainShader,
   manualSampling,
-  TERRAIN_PAGE_SLOTS,
   type TerrainCoverBinding,
   type WaveUniforms,
 } from '../shading.js';
 
 export type TerrainChild = Mesh<MeshGeometry, Shader>;
 
+import { PAGE_SAMPLER_SLOTS } from '../page-samplers.js';
 import { registerTerrainNodes } from './vertex-colors.js';
 
 /**
@@ -139,7 +139,7 @@ export class ChunkBatcher {
   /**
    * The chunk's display children in paint order: the flat tints first, one mesh each, then base pages
    * before the overlay layers. Consecutive shaded batches share one mesh of up to
-   * {@link TERRAIN_PAGE_SLOTS} pages, their triangles kept in batch order, so the paint order a mesh per
+   * {@link PAGE_SAMPLER_SLOTS} pages, their triangles kept in batch order, so the paint order a mesh per
    * batch had is the triangle order within the shared one.
    */
   children(): TerrainChild[] {
@@ -169,7 +169,7 @@ export class ChunkBatcher {
       if (
         first !== undefined &&
         (manualSampling(first) !== manualSampling(batch.source) ||
-          (!known && pages.length === TERRAIN_PAGE_SLOTS))
+          (!known && pages.length === PAGE_SAMPLER_SLOTS))
       )
         flush();
       if (!pages.includes(batch.source)) pages.push(batch.source);

@@ -2,14 +2,14 @@ import { FOG_STATE } from '@open-northland/sim';
 import { Container, Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
 import { aabbIntersects, screenToCell, TILE_HALF_W, type Viewport } from '../../data/projection/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
+import { PAGE_SAMPLER_SLOTS } from '../page-samplers.js';
 import { type DecorCoverBinding, makeShadedDecorShader } from '../shading.js';
 import { SHADOW_BLUR_PADDING } from '../soft-shadow-cache.js';
 import { type DecorShadowUniforms, makeDecorShadowShader } from './decor-shadow-shader.js';
 import { type MapObjectSprite, objectFrameAt, objectFrameIndexAt } from './map-object-sprite.js';
 
 /**
- * Flat ground decor batched into per-block quad meshes, one draw call per texture page per block, split
- * static/animated. Translucency rides in the atlas texture's own alpha channel; there is no per-object
+ * Flat ground decor batched into per-block quad meshes, a block's pages sharing its draw calls. Translucency rides in the atlas texture's own alpha channel; there is no per-object
  * opacity. An object's cast shadow batches the same way from its silhouette page, into a container the
  * layer draws under every decor body, in quads the soft edge's reach wider than their frames.
  */
@@ -100,60 +100,141 @@ export interface DecorBatchStyle {
   readonly cover: DecorCoverBinding;
 }
 
-/** One built quad-batch mesh plus the buffers behind it; only an animated batch's caller keeps the
- *  buffers, to rewrite its quads in place when the play-head advances. */
-interface QuadBatch {
-  readonly mesh: Mesh<MeshGeometry, Shader>;
-  readonly buffers: QuadBuffers;
-  readonly geometry: MeshGeometry;
+/** The objects of one page on one lane that draw together, still or animated. */
+interface BatchSpec {
+  readonly source: TextureSource;
+  readonly objects: MapObjectSprite[];
+  readonly moving: boolean;
 }
 
-/** Batch `objects`, which all share `source` on `lane`, into one mesh of quads written for their tick-0
- *  frame. A body batch with any per-object brightness draws through the shaded ground shader, with the
- *  multiplier constant across a quad's four vertices so an animated rewrite never touches it. */
-function buildQuadBatch(
-  objects: readonly MapObjectSprite[],
-  source: TextureSource,
+/** Whether a lane batch draws through a paged shader, which lets it share a mesh with other pages: every
+ *  cast shadow does, and a body with any per-object brightness takes the shaded ground shader. */
+function paged(lane: DecorLane, objects: readonly MapObjectSprite[]): boolean {
+  return lane === 'shadow' || objects.some((obj) => obj.brightness !== undefined);
+}
+
+/** One mesh's buffers, filled run batch by run batch. */
+interface RunBuffers {
+  readonly positions: Float32Array;
+  readonly uvs: Float32Array;
+  readonly frameBounds: Float32Array | null;
+  readonly indices: Uint32Array;
+  readonly brightness: Float32Array | null;
+  readonly anchors: Float32Array | null;
+  readonly pages: Float32Array | null;
+}
+
+/**
+ * Batch `run`, consecutive lane batches in paint order, into one mesh of quads written for their tick-0
+ * frame. Each batch keeps views into the shared buffers, so an animated one rewrites its quads in place
+ * as before, and the quads keep the batches' order, the paint order separate meshes had. A paged mesh
+ * names each quad's page among `pages`; a shaded body's brightness multiplier is constant across a
+ * quad's four vertices, so an animated rewrite never touches it.
+ */
+function buildRun(
+  run: readonly BatchSpec[],
+  pages: readonly TextureSource[],
   lane: DecorLane,
   style: DecorBatchStyle,
-): QuadBatch {
-  const buffers: QuadBuffers = {
-    positions: new Float32Array(objects.length * FLOATS_PER_QUAD),
-    uvs: new Float32Array(objects.length * FLOATS_PER_QUAD),
-    frameBounds: lane === 'shadow' ? new Float32Array(objects.length * FRAME_FLOATS_PER_QUAD) : null,
-    pageW: source.width,
-    pageH: source.height,
+  container: Container,
+  animated: AnimatedDecorBatch[],
+  placed: (obj: MapObjectSprite, quad: DecorQuadRef) => void,
+): void {
+  const quads = run.reduce((n, spec) => n + spec.objects.length, 0);
+  const isPaged = run.every((spec) => paged(lane, spec.objects));
+  const shaded = lane === 'body' && isPaged;
+  const buffers: RunBuffers = {
+    positions: new Float32Array(quads * FLOATS_PER_QUAD),
+    uvs: new Float32Array(quads * FLOATS_PER_QUAD),
+    frameBounds: lane === 'shadow' ? new Float32Array(quads * FRAME_FLOATS_PER_QUAD) : null,
+    indices: new Uint32Array(quads * 6),
+    brightness: shaded ? new Float32Array(quads * VERTICES_PER_QUAD) : null,
+    anchors: shaded ? new Float32Array(quads * VERTICES_PER_QUAD * ANCHOR_FLOATS) : null,
+    pages: isPaged ? new Float32Array(quads * VERTICES_PER_QUAD) : null,
   };
-  const indices = new Uint32Array(objects.length * 6);
-  const shaded = lane === 'body' && objects.some((obj) => obj.brightness !== undefined);
-  const brightness = shaded ? new Float32Array(objects.length * VERTICES_PER_QUAD) : null;
-  const anchors = shaded ? new Float32Array(objects.length * VERTICES_PER_QUAD * ANCHOR_FLOATS) : null;
+  const geometry = new MeshGeometry({
+    positions: buffers.positions,
+    uvs: buffers.uvs,
+    indices: buffers.indices,
+  });
+  let base = 0;
+  for (const spec of run) {
+    const views: QuadBuffers = {
+      positions: buffers.positions.subarray(
+        base * FLOATS_PER_QUAD,
+        (base + spec.objects.length) * FLOATS_PER_QUAD,
+      ),
+      uvs: buffers.uvs.subarray(base * FLOATS_PER_QUAD, (base + spec.objects.length) * FLOATS_PER_QUAD),
+      frameBounds:
+        buffers.frameBounds?.subarray(
+          base * FRAME_FLOATS_PER_QUAD,
+          (base + spec.objects.length) * FRAME_FLOATS_PER_QUAD,
+        ) ?? null,
+      pageW: spec.source.width,
+      pageH: spec.source.height,
+    };
+    writeBatch(spec, views, buffers, base, pages.indexOf(spec.source), lane);
+    let animBatch: AnimatedDecorBatch | null = null;
+    if (spec.moving) {
+      animBatch = {
+        lane,
+        objects: spec.objects,
+        buffers: views,
+        geometry,
+        written: spec.objects.map((obj) => laneFrameAt(obj, lane, 0)),
+        uploadPending: false,
+      };
+      animated.push(animBatch);
+    }
+    for (const [q, obj] of spec.objects.entries()) {
+      placed(obj, { positions: views.positions, geometry, quadIndex: q, animated: animBatch });
+    }
+    base += spec.objects.length;
+  }
+  if (buffers.brightness !== null) geometry.addAttribute('aBrightness', { buffer: buffers.brightness });
+  if (buffers.anchors !== null)
+    geometry.addAttribute('aAnchor', { buffer: buffers.anchors, format: 'float32x2' });
+  if (buffers.frameBounds !== null) geometry.addAttribute('aFrame', { buffer: buffers.frameBounds });
+  if (buffers.pages !== null) geometry.addAttribute('aPage', { buffer: buffers.pages });
+  // A mesh with a shader of its own never reads a texture, so only the plain batch mints one.
+  let mesh: Mesh<MeshGeometry, Shader>;
+  if (lane === 'shadow') mesh = new Mesh({ geometry, shader: makeDecorShadowShader(pages, style.shadow) });
+  else if (shaded) mesh = new Mesh({ geometry, shader: makeShadedDecorShader(pages, style.cover) });
+  else mesh = new Mesh({ geometry, texture: new Texture({ source: pages[0] ?? Texture.EMPTY.source }) });
+  container.addChild(mesh);
+}
+
+/** Write one lane batch's quads at `base` of the run: its own views for the quads, the run's buffers for
+ *  the per-quad constants. */
+function writeBatch(
+  spec: BatchSpec,
+  views: QuadBuffers,
+  buffers: RunBuffers,
+  base: number,
+  page: number,
+  lane: DecorLane,
+): void {
+  const { objects } = spec;
   for (let q = 0; q < objects.length; q++) {
+    const quad = base + q;
     // Indexed whatever the pose holds: a quad without a frame stays degenerate until a rewrite fills it.
-    indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
+    buffers.indices.set(
+      [quad * 4, quad * 4 + 1, quad * 4 + 2, quad * 4, quad * 4 + 2, quad * 4 + 3],
+      quad * 6,
+    );
+    buffers.pages?.fill(page, quad * VERTICES_PER_QUAD, (quad + 1) * VERTICES_PER_QUAD);
     const obj = objects[q];
     const frame = obj === undefined ? undefined : laneFrameAt(obj, lane, 0);
     if (obj === undefined || frame === undefined) continue;
-    writeObjectQuad(buffers, q, obj, frame, laneMargin(lane));
-    brightness?.fill(obj.brightness ?? 1, q * VERTICES_PER_QUAD, (q + 1) * VERTICES_PER_QUAD);
-    if (anchors === null) continue;
+    writeObjectQuad(views, q, obj, frame, laneMargin(lane));
+    buffers.brightness?.fill(obj.brightness ?? 1, quad * VERTICES_PER_QUAD, (quad + 1) * VERTICES_PER_QUAD);
+    if (buffers.anchors === null) continue;
     for (let vertex = 0; vertex < VERTICES_PER_QUAD; vertex++) {
-      const a = (q * VERTICES_PER_QUAD + vertex) * ANCHOR_FLOATS;
-      anchors[a] = obj.x;
-      anchors[a + 1] = obj.y - (obj.lift ?? 0);
+      const a = (quad * VERTICES_PER_QUAD + vertex) * ANCHOR_FLOATS;
+      buffers.anchors[a] = obj.x;
+      buffers.anchors[a + 1] = obj.y - (obj.lift ?? 0);
     }
   }
-  const geometry = new MeshGeometry({ positions: buffers.positions, uvs: buffers.uvs, indices });
-  if (brightness !== null) geometry.addAttribute('aBrightness', { buffer: brightness });
-  if (anchors !== null) geometry.addAttribute('aAnchor', { buffer: anchors, format: 'float32x2' });
-  if (buffers.frameBounds !== null) geometry.addAttribute('aFrame', { buffer: buffers.frameBounds });
-  // A mesh with a shader of its own never reads a texture, so only the plain batch mints one.
-  let mesh: Mesh<MeshGeometry, Shader>;
-  if (lane === 'shadow') mesh = new Mesh({ geometry, shader: makeDecorShadowShader(source, style.shadow) });
-  else if (brightness !== null)
-    mesh = new Mesh({ geometry, shader: makeShadedDecorShader(source, style.cover) });
-  else mesh = new Mesh({ geometry, texture: new Texture({ source }) });
-  return { mesh, buffers, geometry };
 }
 
 /** One animated decor batch: its mesh buffers + the objects whose quads fill them, in quad order.
@@ -258,8 +339,9 @@ export interface DecorChunk {
   readonly quads: Map<MapObjectSprite, DecorObjectQuads>;
 }
 
-/** Batch one lane of a block into `container`, a still and an animated mesh per texture source (quads in
- *  one mesh share a page; opacity is per pixel, in the page). Reports each object's quad to `placed`. */
+/** Batch one lane of a block into `container`: a still and an animated batch per texture source, in
+ *  that order, consecutive paged batches sharing a mesh of up to {@link PAGE_SAMPLER_SLOTS} pages (quads
+ *  of one batch share a page; opacity is per pixel, in the page). Reports each object's quad to `placed`. */
 function buildLane(
   block: readonly MapObjectSprite[],
   lane: DecorLane,
@@ -279,34 +361,28 @@ function buildLane(
     }
     (obj.frames.length > 1 ? group.moving : group.still).push(obj);
   }
+  let run: BatchSpec[] = [];
+  let pages: TextureSource[] = [];
+  const flush = (): void => {
+    if (run.length > 0) buildRun(run, pages, lane, style, container, animated, placed);
+    run = [];
+    pages = [];
+  };
   for (const [source, group] of bySource) {
     for (const objects of [group.still, group.moving]) {
       if (objects.length === 0) continue;
-      const batch = buildQuadBatch(objects, source, lane, style);
-      container.addChild(batch.mesh);
-      let animBatch: AnimatedDecorBatch | null = null;
-      if (objects === group.moving) {
-        const written = objects.map((obj) => laneFrameAt(obj, lane, 0));
-        animBatch = {
-          lane,
-          objects,
-          buffers: batch.buffers,
-          geometry: batch.geometry,
-          written,
-          uploadPending: false,
-        };
-        animated.push(animBatch);
+      const spec: BatchSpec = { source, objects, moving: objects === group.moving };
+      if (!paged(lane, objects)) {
+        flush();
+        buildRun([spec], [source], lane, style, container, animated, placed);
+        continue;
       }
-      for (const [q, obj] of objects.entries()) {
-        placed(obj, {
-          positions: batch.buffers.positions,
-          geometry: batch.geometry,
-          quadIndex: q,
-          animated: animBatch,
-        });
-      }
+      if (!pages.includes(source) && pages.length === PAGE_SAMPLER_SLOTS) flush();
+      if (!pages.includes(source)) pages.push(source);
+      run.push(spec);
     }
   }
+  flush();
 }
 
 interface Bounds {

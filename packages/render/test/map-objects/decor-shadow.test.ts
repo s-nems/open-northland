@@ -71,7 +71,7 @@ describe('MapObjectLayer cast shadows (flat decor)', () => {
     const [left, top, right, bottom] = [8 - PAD, -4 - PAD, 16 + PAD, PAD];
     expect(shadowPositions(layer)).toEqual([left, top, right, top, right, bottom, left, bottom]);
     const mesh = onlyShadowMesh(layer);
-    expect((mesh.shader?.resources as { uTexture?: unknown } | undefined)?.uTexture).toBe(SHADOW_PAGE);
+    expect((mesh.shader?.resources as { uPage0?: unknown } | undefined)?.uPage0).toBe(SHADOW_PAGE);
     const uvs = (mesh.geometry as unknown as { uvs: Float32Array }).uvs;
     const [u0, v0, u1, v1] = [(16 - PAD) / 64, -PAD / 32, (24 + PAD) / 64, (4 + PAD) / 32];
     expect([...uvs.slice(0, 6)]).toEqual([u0, v0, u1, v0, u1, v1]);
@@ -180,5 +180,29 @@ describe('MapObjectLayer cast shadows (flat decor)', () => {
 
     layer.update(WIDE, 0);
     expect(layer.decorShadowContainer.children[0]?.visible).toBe(true);
+  });
+});
+
+describe('decor pages share a mesh', () => {
+  it('draws two silhouette pages in one mesh, quads in batch order, animated quads rewritten in place', () => {
+    const otherPage = new TextureSource({ width: 64, height: 32 });
+    const still = decor(10, [SHADOW_0]);
+    const moving = decor(20, [SHADOW_0, SHADOW_1]);
+    const elsewhere: MapObjectSprite = {
+      ...decor(30, [SHADOW_1]),
+      shadow: { source: otherPage, frames: [SHADOW_1] },
+    };
+    const layer = new MapObjectLayer(new Container(), new TextureCache());
+    layer.set([still, moving, elsewhere]);
+    const mesh = onlyShadowMesh(layer);
+    // SHADOW_PAGE's still quad, its animated quad, then the other page's quad.
+    expect(Array.from(mesh.geometry.getBuffer('aPage').data)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1]);
+    expect((mesh.shader?.resources as { uPage1?: unknown }).uPage1).toBe(otherPage);
+    const before = shadowPositions(layer).slice(FLOATS_PER_QUAD, 2 * FLOATS_PER_QUAD);
+    layer.update(WIDE, 1); // the animated object's second pose
+    const after = shadowPositions(layer);
+    expect(after.slice(FLOATS_PER_QUAD, 2 * FLOATS_PER_QUAD)).not.toEqual(before);
+    // The neighbours' quads are left as they were.
+    expect(after.slice(2 * FLOATS_PER_QUAD)[0]).toBe(30 - 1 - PAD);
   });
 });

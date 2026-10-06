@@ -1,5 +1,6 @@
 import { GlProgram, Shader, type TextureSource, UniformGroup } from 'pixi.js';
 import { BRIGHTNESS_NEUTRAL } from '../data/terrain/index.js';
+import { pageChain, pageSamplerDeclarations, pageSamplerResources } from './page-samplers.js';
 import {
   COVER_FRAGMENT_DECLARATIONS,
   COVER_VERTEX_BODY,
@@ -161,30 +162,16 @@ const LUMA_WEIGHTS = [0.299, 0.587, 0.114] as const;
 const glslVec3 = (rgb: readonly [number, number, number]): string =>
   `vec3(${rgb.map((channel) => channel.toFixed(4)).join(', ')})`;
 
-/** Ground pages one shaded mesh samples: its triangles name theirs in `aPage`, so a chunk draws its
- *  pages in one call rather than one per page. Beside the lane and cover textures this stays under
- *  WebGL 2's guaranteed sixteen fragment texture units. */
-export const TERRAIN_PAGE_SLOTS = 8;
-
-function pageSamplerDeclarations(): string {
-  return Array.from({ length: TERRAIN_PAGE_SLOTS }, (_, i) => `  uniform sampler2D uPage${i};`).join('\n');
-}
-
-/** `statement` run with the fragment's page sampler in place of `$`, through one if-chain: GLSL ES 3.00
- *  indexes samplers by constants only. */
-function pageChain(statement: string): string {
-  return Array.from({ length: TERRAIN_PAGE_SLOTS }, (_, i) => {
-    const guard = i < TERRAIN_PAGE_SLOTS - 1 ? `if (vPage < ${i}.5) ` : '';
-    return `    ${i > 0 ? 'else ' : ''}${guard}{ ${statement.replace('$', String(i))} }`;
-  }).join('\n');
-}
-
 /** A GLSL block whose functions read a global `uTexture`, with that sampler taken as each function's
  *  parameter instead. */
 function withPageParameter(glsl: string): string {
   return glsl
     .replace('vec4 sampleTerrain() {', 'vec4 sampleTerrain(sampler2D uTexture) {')
-    .replace('vec3 groundNeighbourhood() {', 'vec3 groundNeighbourhood(sampler2D uTexture) {');
+    .replace('vec3 groundNeighbourhood() {', 'vec3 groundNeighbourhood(sampler2D uTexture) {')
+    .replace(
+      'vec3 decorSnow(vec3 rgb, float alpha, vec2 uv, float lane) {',
+      'vec3 decorSnow(sampler2D uTexture, vec3 rgb, float alpha, vec2 uv, float lane) {',
+    );
 }
 
 const FIELD_VERTEX = `#version 300 es
@@ -320,6 +307,8 @@ const VERTEX_VERTEX = `#version 300 es
   in vec2 aPosition;
   in vec2 aUV;
   in float aBrightness;
+  in float aPage;
+  flat out float vPage;
 
   out vec2 vUV;
   out float vBrightness;
@@ -330,6 +319,7 @@ const VERTEX_VERTEX = `#version 300 es
     gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
     vUV = aUV;
     vBrightness = aBrightness;
+    vPage = aPage;
     ${DECOR_COVER_VERTEX_BODY}
   }
 `;
@@ -340,18 +330,23 @@ const VERTEX_FRAGMENT = `#version 300 es
   precision highp int;
   in vec2 vUV;
   in float vBrightness;
+  flat in float vPage;
 
-  uniform sampler2D uTexture;
+${pageSamplerDeclarations()}
   uniform vec4 uColor;
 
   out vec4 finalColor;
-  ${DECOR_COVER_FRAGMENT_DECLARATIONS}
+  ${withPageParameter(DECOR_COVER_FRAGMENT_DECLARATIONS)}
 
-  void main(void) {
+  vec4 shadeDecor(sampler2D uTexture) {
     vec4 texel = texture(uTexture, vUV);
     // vSnow is 0 unless the cover switch is on, so a dry map keeps its single fetch.
-    if (vSnow > 0.0) texel.rgb = decorSnow(texel.rgb, texel.a, vUV, vBrightness);
-    finalColor = vec4(texel.rgb * vBrightness, texel.a) * uColor;
+    if (vSnow > 0.0) texel.rgb = decorSnow(uTexture, texel.rgb, texel.a, vUV, vBrightness);
+    return vec4(texel.rgb * vBrightness, texel.a) * uColor;
+  }
+
+  void main(void) {
+${pageChain('finalColor = shadeDecor(uPage$);')}
   }
 `;
 
@@ -387,21 +382,21 @@ export function makeShadedTerrainShader(
   wave: WaveUniforms,
   cover: TerrainCoverBinding,
 ): Shader {
-  const [first] = pages;
-  if (first === undefined || pages.length > TERRAIN_PAGE_SLOTS)
-    throw new Error(`a shaded ground mesh samples 1 to ${TERRAIN_PAGE_SLOTS} pages, not ${pages.length}`);
+  const samplers = pageSamplerResources(pages);
+  const first = samplers.uPage0 as TextureSource;
   fieldProgram ??= new GlProgram({ vertex: FIELD_VERTEX, fragment: FIELD_FRAGMENT });
-  const resources: Record<string, unknown> = {
-    uSampler: first.style,
-    uBrightnessTex: brightnessTex,
-    waveVars: wave,
-    sampling: terrainSamplingUniforms(first),
-    coverVars: cover.uniforms,
-    uCoverTex: cover.texture,
-  };
-  // An unused slot binds the first page, so every declared sampler has a texture.
-  for (let i = 0; i < TERRAIN_PAGE_SLOTS; i++) resources[`uPage${i}`] = pages[i] ?? first;
-  return new Shader({ glProgram: fieldProgram, resources });
+  return new Shader({
+    glProgram: fieldProgram,
+    resources: {
+      ...samplers,
+      uSampler: first.style,
+      uBrightnessTex: brightnessTex,
+      waveVars: wave,
+      sampling: terrainSamplingUniforms(first),
+      coverVars: cover.uniforms,
+      uCoverTex: cover.texture,
+    },
+  });
 }
 
 /** The map's weather-cover texture and switch, shared by every shaded ground mesh. */
@@ -415,13 +410,14 @@ export interface TerrainCoverBinding {
  * anchor cell's value. A flat decal has no cell-space UV lattice to interpolate, so the anchor constant
  * is the recorded approximation.
  */
-export function makeShadedDecorShader(source: TextureSource, cover: DecorCoverBinding): Shader {
+export function makeShadedDecorShader(pages: readonly TextureSource[], cover: DecorCoverBinding): Shader {
+  const samplers = pageSamplerResources(pages);
   vertexProgram ??= new GlProgram({ vertex: VERTEX_VERTEX, fragment: VERTEX_FRAGMENT });
   return new Shader({
     glProgram: vertexProgram,
     resources: {
-      uTexture: source,
-      uSampler: source.style,
+      ...samplers,
+      uSampler: (samplers.uPage0 as TextureSource).style,
       decorCoverVars: cover.uniforms,
       uCoverTex: cover.texture,
     },
