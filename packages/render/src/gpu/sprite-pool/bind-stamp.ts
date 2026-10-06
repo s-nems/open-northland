@@ -7,13 +7,17 @@ import type { PoolFrame } from './sprite-pool.js';
 /**
  * The frame-wide inputs of an entity's present and bind, reduced to counters that bump when any of them
  * changes: {@link current} for every input, {@link bind} for those the bind itself reads. The frame alpha
- * is kept apart, in each stamp, because a bind can outlast it.
+ * is kept apart, in each stamp, because a bind can outlast it. The camera and the screen size are no
+ * input of either: they place only the paletted layers, which {@link viewMoved} tells the pool to
+ * re-place, so a pan keeps every bind.
  */
 export class FrameEpoch {
   current = 0;
   /** Bumps with {@link current} except on the tick, wind and motion setting, which reach a bind only
    *  through the layers a present resolves. */
   bind = 0;
+  /** Whether the last {@link advance} moved the camera or resized the screen. */
+  viewMoved = true;
   private tick = Number.NaN;
   private enhancedSampling: PoolFrame['enhancedSampling'];
   private pixelArtScaler: PoolFrame['pixelArtScaler'];
@@ -32,17 +36,23 @@ export class FrameEpoch {
 
   advance(frame: PoolFrame, textureRevision: number): void {
     const camera = frame.camera;
+    this.viewMoved =
+      camera.offsetX !== this.offsetX ||
+      camera.offsetY !== this.offsetY ||
+      camera.scale !== this.scale ||
+      frame.screenW !== this.screenW ||
+      frame.screenH !== this.screenH;
+    this.offsetX = camera.offsetX;
+    this.offsetY = camera.offsetY;
+    this.scale = camera.scale;
+    this.screenW = frame.screenW;
+    this.screenH = frame.screenH;
     const windy = (frame.wind?.strength ?? 0) > 0;
     const bindHolds =
       frame.enhancedSampling === this.enhancedSampling &&
       frame.pixelArtScaler === this.pixelArtScaler &&
       frame.shadowStyle === this.shadowStyle &&
       textureRevision === this.textureRevision &&
-      camera.offsetX === this.offsetX &&
-      camera.offsetY === this.offsetY &&
-      camera.scale === this.scale &&
-      frame.screenW === this.screenW &&
-      frame.screenH === this.screenH &&
       frame.snapResolution === this.snapResolution;
     if (
       bindHolds &&
@@ -61,11 +71,6 @@ export class FrameEpoch {
     this.windy = windy;
     this.shadowStyle = frame.shadowStyle;
     this.textureRevision = textureRevision;
-    this.offsetX = camera.offsetX;
-    this.offsetY = camera.offsetY;
-    this.scale = camera.scale;
-    this.screenW = frame.screenW;
-    this.screenH = frame.screenH;
     this.snapResolution = frame.snapResolution;
   }
 }

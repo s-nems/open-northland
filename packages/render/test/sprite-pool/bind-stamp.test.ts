@@ -125,6 +125,14 @@ describe('SpritePool - an entity whose inputs held still keeps its bind', () => 
     expect(bind).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps the bind while the camera pans', () => {
+    const { pool, bind, snapshot } = setup();
+    pool.reconcile(frameOf(snapshot));
+    pool.reconcile(frameOf(snapshot, { camera: { offsetX: 7, offsetY: -3 } }));
+    pool.reconcile(frameOf(snapshot, { camera: { offsetX: 7, offsetY: -3, scale: 0.5 } }));
+    expect(bind).toHaveBeenCalledTimes(1);
+  });
+
   it('binds again when a highlight map changes in place', () => {
     const { layer, pool, bind, snapshot } = setup();
     const highlight = new Map<number, boolean>();
@@ -208,10 +216,25 @@ describe('FrameEpoch', () => {
 
     epoch.advance({ ...base, camera: { ...CAMERA }, alpha: 0.5 }, 0);
     expect(epoch.current).toBe(first);
-    epoch.advance({ ...base, camera: { offsetX: 1, offsetY: 0 } }, 0);
+    epoch.advance({ ...base, camera: { ...CAMERA } }, 1);
     expect(epoch.current).toBe(first + 1);
-    epoch.advance({ ...base, camera: { offsetX: 1, offsetY: 0 } }, 1);
-    expect(epoch.current).toBe(first + 2);
+  });
+
+  it('reports a moved camera or resized screen without bumping either epoch', () => {
+    const epoch = new FrameEpoch();
+    const base = frameOf(snapshotOf([]));
+    epoch.advance(base, 0);
+    const { current, bind } = epoch;
+
+    epoch.advance({ ...base, camera: { ...CAMERA } }, 0);
+    expect(epoch.viewMoved).toBe(false);
+    epoch.advance({ ...base, camera: { offsetX: 1, offsetY: 0 } }, 0);
+    expect(epoch.viewMoved).toBe(true);
+    epoch.advance({ ...base, camera: { offsetX: 1, offsetY: 0, scale: 0.5 } }, 0);
+    expect(epoch.viewMoved).toBe(true);
+    epoch.advance({ ...base, camera: { offsetX: 1, offsetY: 0, scale: 0.5 }, screenW: 640 }, 0);
+    expect(epoch.viewMoved).toBe(true);
+    expect([epoch.current, epoch.bind]).toEqual([current, bind]);
   });
 
   it('keeps the bind epoch over a new tick, which reaches a bind only through the layers', () => {

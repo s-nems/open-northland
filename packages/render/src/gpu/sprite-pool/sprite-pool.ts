@@ -261,6 +261,8 @@ export class SpritePool {
       this.attached.delete(pe);
     }
 
+    // A kept bind placed its paletted layers for the camera it was bound under.
+    if (this.epoch.viewMoved) this.placePaletted(frame.camera, frame.screenW, frame.screenH);
     this.reap(scene.liveRefs);
     this.sheet?.palette?.flush();
   }

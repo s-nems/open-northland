@@ -4,6 +4,7 @@ import type { Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
 import { HumanPaletteLut } from '../../src/gpu/human-palette-lut.js';
 import { PalettedQuad } from '../../src/gpu/paletted-sprite/index.js';
+import { LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import type { SpriteAtlas, SpriteSheet } from '../../src/index.js';
@@ -147,5 +148,36 @@ describe('the sprite pool over the human palette LUT', () => {
     expect(calls.filter((c) => c === 'flush')).toHaveLength(1);
     expect(calls.at(-1)).toBe('flush');
     expect(calls.filter((c) => c === 'row').length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('SpritePool - a pan re-places the kept paletted quads', () => {
+  it('snaps a human quad to the moved camera device grid without binding it again', () => {
+    const { pool, layer } = poolWith(syntheticHumanLut(new Map(), SMALL_ROWS));
+    const snapshot = snapshotOf([human(1, WEST)]);
+    const quad = (): PalettedQuad => {
+      const container = layer.children[0] as Container;
+      const found = container.children.find((c): c is PalettedQuad => c instanceof PalettedQuad);
+      if (found === undefined) throw new Error('the human drew no paletted quad');
+      return found;
+    };
+    const SNAP = 2;
+    const at = (offsetX: number): PoolFrame => ({
+      ...frameOf(snapshot),
+      camera: { offsetX, offsetY: 0 },
+      snapResolution: SNAP,
+    });
+    pool.reconcile(at(0));
+    const bind = vi.spyOn(LayerBinder.prototype, 'bind');
+    const panned = at(0.3);
+    pool.reconcile(panned);
+    expect(bind).not.toHaveBeenCalled();
+    const expected = new PalettedQuad();
+    expected.offsetX = quad().offsetX;
+    expected.offsetY = quad().offsetY;
+    const container = layer.children[0] as Container;
+    expected.placeFor(panned.camera, container.position.x, container.position.y, SNAP);
+    expect(quad().position.x).toBe(expected.position.x);
+    expect(quad().position.x).not.toBe(quad().offsetX);
   });
 });
