@@ -13,7 +13,7 @@ import { TILE_BUCKET_SIZE, type TileBox, type WorldSnapshot } from '@open-northl
 import type { WorkerRole } from '../../game/sandbox/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { computeConstructionSigns } from './construction-signs.js';
-import { type BuildingDoorInfoOf, computeDoorBadges } from './door-badges.js';
+import { type BuildingDoorInfoOf, computeDoorBadges, type DoorBadgeCache } from './door-badges.js';
 import type { FogGates } from './fog-gates.js';
 import { hudLabels } from './hud-labels.js';
 import { computeLifeHearts, type LifeHeartInputs } from './life-hearts.js';
@@ -147,6 +147,7 @@ export function createSnapshotProjections(
   // The hearts key on the selection; a seat switch, rare beside a pick, replaces the memo instead.
   let heartsViewer = viewer.version();
   let lifeHearts = heartsMemo();
+  const doorBadges: DoorBadgeCache = { held: new Map() };
   return {
     hudModelFor,
     hudFor: memoBySnapshot(
@@ -154,7 +155,7 @@ export function createSnapshotProjections(
       viewerVersion,
     ),
     doorBadgesFor: memoByScreen((snapshot, box) => {
-      const badges = computeDoorBadges(snapshot, buildingInfoOf, roleOf, box);
+      const badges = computeDoorBadges(snapshot, buildingInfoOf, roleOf, box, doorBadges);
       const fog = fogGates.current();
       return fog === null
         ? badges

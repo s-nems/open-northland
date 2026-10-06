@@ -60,50 +60,107 @@ export type BuildingDoorInfoOf = (
 /** Reused output of the box query; the slots past a query's count hold earlier frames' bodies. */
 const boxed: SnapshotEntity[] = [];
 
-/** The badges of the buildings standing in `box`, ascending by building id; no box reads the whole map. */
+/** What one building's badge was made from: the building's own object, its families grouping and each
+ *  staff member's id and `Settler` (the job a row reads), so a building whose inputs held keeps its badge. */
+interface HeldBadge {
+  readonly building: SnapshotEntity;
+  readonly families: readonly HomeFamily[] | undefined;
+  readonly staff: readonly unknown[];
+  readonly badge: DoorBadge | null;
+}
+
+/** The badges last made per building in view, kept across snapshots by one caller. */
+export interface DoorBadgeCache {
+  held: Map<number, HeldBadge>;
+}
+
+function sameStaff(held: readonly unknown[], staff: readonly SnapshotEntity[]): boolean {
+  if (held.length !== staff.length * 2) return false;
+  for (let i = 0; i < staff.length; i++) {
+    const member = staff[i] as SnapshotEntity;
+    if (held[i * 2] !== member.id || held[i * 2 + 1] !== member.components.Settler) return false;
+  }
+  return true;
+}
+
+/** The badges of the buildings standing in `box`, ascending by building id; no box reads the whole map.
+ *  With `cache`, a building whose own object, families and staff jobs held since the last call keeps
+ *  its badge. */
 export function computeDoorBadges(
   snapshot: WorldSnapshot,
   buildingInfoOf: BuildingDoorInfoOf,
   roleOf: (jobType: number) => WorkerRole,
   box?: TileBox,
+  cache?: DoorBadgeCache,
 ): DoorBadge[] {
   const out: DoorBadge[] = [];
   const buildings = box === undefined ? entitiesWith(snapshot, 'Building') : buildingsIn(snapshot, box);
+  // Only the buildings in this view are kept, so the cache never outgrows a screen.
+  const kept = cache === undefined ? undefined : new Map<number, HeldBadge>();
   for (const e of buildings) {
-    const counts = staffTallyOf(staffOf(snapshot, e.id), roleOf);
-    // One banner row per resident family.
+    const staff = staffOf(snapshot, e.id);
     const families = homeFamiliesOf(snapshot, e.id);
-    const hearts = isMakingLove(e);
-    if (counts === undefined && families === undefined && !hearts) continue;
-    // No flag over a foundation: the mast point is the finished tower's, some 239 px up, and the sim
-    // refuses an unbuilt post anyway.
-    const garrison = e.components.UnderConstruction === undefined ? (counts?.garrison ?? 0) : 0;
-    const pos = positionOf(e);
-    if (pos === undefined) continue;
-    const info = buildingInfoOf(buildingTypeOf(e), buildingTribeOf(e), e.id);
-    const player = ownerPlayerOf(e);
-
-    // Bottom to top: family banners, then worker discs, then the carrier pennants.
-    const rows: DoorBadgeRow[] = [];
-    for (const family of families ?? []) {
-      const settler = selectableResident(snapshot, family);
-      rows.push({ role: householdKindOf(family), ...(settler !== undefined ? { settler } : {}) });
+    const held = cache?.held.get(e.id);
+    if (
+      held !== undefined &&
+      held.building === e &&
+      held.families === families &&
+      sameStaff(held.staff, staff)
+    ) {
+      kept?.set(e.id, held);
+      if (held.badge !== null) out.push(held.badge);
+      continue;
     }
-    for (const id of counts?.craftsmen ?? []) rows.push({ role: 'craftsman', settler: id });
-    for (const id of counts?.gatherers ?? []) rows.push({ role: 'gatherer', settler: id });
-    for (const id of counts?.carriers ?? []) rows.push({ role: 'carrier', settler: id });
-
-    const anchor = anchorOf(pos, info);
-    out.push({
-      id: e.id,
-      ...anchor,
-      ...(player !== undefined ? { player } : {}),
-      rows,
-      ...(hearts ? { hearts } : {}),
-      ...(garrison > 0 ? { garrison: { stars: garrison, ...mastOf(info, anchor) } } : {}),
-    });
+    const badge = doorBadgeOf(snapshot, e, staff, families, buildingInfoOf, roleOf);
+    if (kept !== undefined) {
+      const staffKey: unknown[] = [];
+      for (const member of staff) staffKey.push(member.id, member.components.Settler);
+      kept.set(e.id, { building: e, families, staff: staffKey, badge });
+    }
+    if (badge !== null) out.push(badge);
   }
+  if (cache !== undefined && kept !== undefined) cache.held = kept;
   return out;
+}
+
+function doorBadgeOf(
+  snapshot: WorldSnapshot,
+  e: SnapshotEntity,
+  staff: readonly SnapshotEntity[],
+  families: readonly HomeFamily[] | undefined,
+  buildingInfoOf: BuildingDoorInfoOf,
+  roleOf: (jobType: number) => WorkerRole,
+): DoorBadge | null {
+  const counts = staffTallyOf(staff, roleOf);
+  const hearts = isMakingLove(e);
+  if (counts === undefined && families === undefined && !hearts) return null;
+  // No flag over a foundation: the mast point is the finished tower's, some 239 px up, and the sim
+  // refuses an unbuilt post anyway.
+  const garrison = e.components.UnderConstruction === undefined ? (counts?.garrison ?? 0) : 0;
+  const pos = positionOf(e);
+  if (pos === undefined) return null;
+  const info = buildingInfoOf(buildingTypeOf(e), buildingTribeOf(e), e.id);
+  const player = ownerPlayerOf(e);
+
+  // Bottom to top: family banners, then worker discs, then the carrier pennants.
+  const rows: DoorBadgeRow[] = [];
+  for (const family of families ?? []) {
+    const settler = selectableResident(snapshot, family);
+    rows.push({ role: householdKindOf(family), ...(settler !== undefined ? { settler } : {}) });
+  }
+  for (const id of counts?.craftsmen ?? []) rows.push({ role: 'craftsman', settler: id });
+  for (const id of counts?.gatherers ?? []) rows.push({ role: 'gatherer', settler: id });
+  for (const id of counts?.carriers ?? []) rows.push({ role: 'carrier', settler: id });
+
+  const anchor = anchorOf(pos, info);
+  return {
+    id: e.id,
+    ...anchor,
+    ...(player !== undefined ? { player } : {}),
+    rows,
+    ...(hearts ? { hearts } : {}),
+    ...(garrison > 0 ? { garrison: { stars: garrison, ...mastOf(info, anchor) } } : {}),
+  };
 }
 
 /** The positioned buildings the box query returns, ascending by id. */

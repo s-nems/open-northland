@@ -8,6 +8,7 @@ import {
 import { fx, nodeOfPosition, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerIconOffset } from '../src/catalog/building-tweaks.js';
+import type { DoorBadgeCache } from '../src/view/projections/door-badges.js';
 import { type BuildingDoorInfo, computeDoorBadges } from '../src/view/projections/index.js';
 import { building, buildingInfoOf, type Ent, resident, settler, snapshotOf } from './support/snapshot.js';
 
@@ -299,5 +300,52 @@ describe('computeDoorBadges', () => {
     ]);
 
     expect(computeDoorBadges(snap, buildingInfoOf(new Map()), roleOf)[0]?.player).toBe(4);
+  });
+});
+
+describe('door badge cache', () => {
+  it('keeps a badge while its building, families and staff jobs hold, and remakes it when a job changes', () => {
+    const types = new Map<number, BuildingDoorInfo>([[7, { footprint: { door: { dx: 0, dy: 2 } } }]]);
+    const cache: DoorBadgeCache = { held: new Map() };
+    const house = building(1, 7, 4, 4);
+    const crafter = settler(2, CRAFTSMAN, 1);
+    const carrier = settler(3, CARRIER, 1);
+    const [first] = computeDoorBadges(
+      snapshotOf([house, crafter, carrier]),
+      buildingInfoOf(types),
+      roleOf,
+      undefined,
+      cache,
+    );
+    // The carrier steps: a new object, the same job.
+    const stepped = {
+      ...carrier,
+      components: { ...carrier.components, Position: { x: fx.fromInt(9), y: fx.fromInt(9) } },
+    };
+    const [kept] = computeDoorBadges(
+      snapshotOf([house, crafter, stepped]),
+      buildingInfoOf(types),
+      roleOf,
+      undefined,
+      cache,
+    );
+    expect(kept).toBe(first);
+    // The craftsman turns carrier: the badge is made again.
+    const turned = settler(2, CARRIER, 1);
+    const [remade] = computeDoorBadges(
+      snapshotOf([house, turned, stepped]),
+      buildingInfoOf(types),
+      roleOf,
+      undefined,
+      cache,
+    );
+    expect(remade).not.toBe(first);
+    expect(remade?.rows).toEqual([
+      { role: 'carrier', settler: 2 },
+      { role: 'carrier', settler: 3 },
+    ]);
+    expect(remade).toEqual(
+      computeDoorBadges(snapshotOf([house, turned, stepped]), buildingInfoOf(types), roleOf)[0],
+    );
   });
 });
