@@ -224,7 +224,8 @@ describe.runIf(RUN_PARITY)('relayed sessions on a decoded map', () => {
     expect(diverged?.desyncs).toHaveLength(1);
     expect(diverged?.desyncs[0]).toMatchObject({ tick: DIVERGE_AT_TICK + 1, reference: reference?.nick });
     expect(diverged?.restoredFrom).toHaveLength(1);
-    expect(reference?.snapshotsSent).toBe(1);
+    // Longer runs also refresh the recovery snapshot on its regular cadence.
+    expect(reference?.snapshotsSent).toBeGreaterThanOrEqual(1);
     expect(reference?.desyncs).toEqual([]);
   });
 
