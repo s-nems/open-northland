@@ -533,7 +533,9 @@ every tick, answers pings and snapshot requests, and asks a diverged world's hos
 the sim a frame or two behind the relay's clock (`JITTER_BUFFER_TICKS`) by scaling the time it feeds
 the driver, never by skipping a tick, so a late frame lands inside the buffer. `RelaySocket` keeps
 the connection and reopens it on the same token after a drop; a connection the relay replaced or
-refused stays closed. The client keeps the room's chat as the relay logs it: `chatHistory` replaces
+refused stays closed. A connection attempt that has not opened within 10 seconds, or an open link
+with no JSON message for 30 seconds, is closed and retried even if no socket close event arrives.
+The client keeps the room's chat as the relay logs it: `chatHistory` replaces
 it on every entry and return, each `chat` appends to it, up to `MAX_CHAT_HISTORY_LINES`. The desktop
 and browser app plays through the `?relay=` entry, whose client, link and world run in a network
 worker, the headless test client through an in-memory network. The app's client holds `loaded` until

@@ -111,6 +111,42 @@ describe('RelaySocket', () => {
     expect(events.at(-1)).toBe('open');
   });
 
+  it('retries a connection attempt that never opens or closes', () => {
+    const { socket, sockets, events } = harness();
+    vi.advanceTimersByTime(10_000);
+    expect(sockets[0]?.closedByClient).toBe(true);
+    expect(events).toEqual(['retry:1:1000']);
+    vi.advanceTimersByTime(1000);
+    sockets[1]?.open();
+    expect(socket.connected).toBe(true);
+    sockets[0]?.open();
+    sockets[0]?.drop(CLOSE_ABNORMAL);
+    expect(events).toEqual(['retry:1:1000', 'open']);
+    socket.close();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('reconnects a silent open socket even if closing it produces no close event', () => {
+    const { socket, sockets, events, received } = harness();
+    sockets[0]?.open();
+    vi.advanceTimersByTime(29_000);
+    sockets[0]?.deliver('{"kind":"ping","t":29000,"roundTripMs":0}');
+    vi.advanceTimersByTime(29_000);
+    expect(socket.connected).toBe(true);
+    vi.advanceTimersByTime(1000);
+    expect(socket.connected).toBe(false);
+    expect(sockets[0]?.closedByClient).toBe(true);
+    expect(events.at(-1)).toBe('retry:1:1000');
+    vi.advanceTimersByTime(1000);
+    sockets[1]?.open();
+    sockets[0]?.deliver('{"kind":"left"}');
+    sockets[0]?.drop(CLOSE_PROTOCOL_ERROR);
+    expect(socket.connected).toBe(true);
+    expect(received).toHaveLength(1);
+    socket.close();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('stays closed once the relay replaced or refused the connection', () => {
     for (const code of [CLOSE_REPLACED, CLOSE_PROTOCOL_ERROR]) {
       const { sockets, events } = harness();
