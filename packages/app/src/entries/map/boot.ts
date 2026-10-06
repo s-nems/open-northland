@@ -146,10 +146,58 @@ export async function hostMapWorld<H extends HostedMapWorld>(
   try {
     return await plan.hostWorld(documents);
   } catch (err) {
-    if (plan.stagedSave === null || plan.multiplayer === true || err instanceof WorldNotAdoptedError)
-      throw err;
-    haltOnFailedRestore(err);
-    return null;
+    return failedHosting(plan, err);
+  }
+}
+
+/** A hosting failure: halt on a staged save that did not restore, else throw for the entry. */
+function failedHosting<H extends HostedMapWorld>(plan: MapBootPlan<H>, err: unknown): null {
+  if (plan.stagedSave === null || plan.multiplayer === true || err instanceof WorldNotAdoptedError) throw err;
+  haltOnFailedRestore(err);
+  return null;
+}
+
+type HostingOutcome<H> =
+  | { readonly ok: true; readonly hosted: H }
+  | { readonly ok: false; readonly error: unknown };
+
+/**
+ * A world hosted while the boot loads the art. Its outcome is acted on only where the boot looks at it,
+ * so a failure stops the art load at the next step and only one notice is ever shown.
+ */
+class EarlyHosting<H extends HostedMapWorld> {
+  private outcome: HostingOutcome<H> | null = null;
+  private readonly settled: Promise<HostingOutcome<H>>;
+
+  constructor(
+    private readonly plan: MapBootPlan<H>,
+    documents: MapWorldDocuments,
+  ) {
+    this.settled = plan.hostWorld(documents).then(
+      (hosted): HostingOutcome<H> => (this.outcome = { ok: true, hosted }),
+      (error: unknown): HostingOutcome<H> => (this.outcome = { ok: false, error }),
+    );
+  }
+
+  get failed(): boolean {
+    return this.outcome?.ok === false;
+  }
+
+  /** The hosted world, or null once its failure halted the boot; throws a failure that is not a halt. */
+  async world(): Promise<H | null> {
+    const outcome = await this.settled;
+    return outcome.ok ? outcome.hosted : failedHosting(this.plan, outcome.error);
+  }
+
+  /** The exit of a boot whose world failed: null after the halt notice, or the failure thrown. */
+  stop(): null {
+    if (this.outcome?.ok !== false) throw new Error('the hosted world has not failed');
+    return failedHosting(this.plan, this.outcome.error);
+  }
+
+  /** Wait for the worker on a boot that stops for another reason; its failure then shows nothing. */
+  async drain(): Promise<void> {
+    await this.settled;
   }
 }
 
@@ -173,7 +221,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
   await boot.begin('graphics');
   const app = await createWindowPixiApp(canvas, { resolutionScale: readStoredSettings().renderScale });
   let assembled = false;
-  let hosting: Promise<H | null> | null = null;
+  let early: EarlyHosting<H> | null = null;
   try {
     await boot.begin('map');
     const loaded = verified?.map ?? (mapId !== null ? await loadTerrainMap(mapId) : null);
@@ -220,28 +268,34 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     };
     // A local world builds on its worker while this thread loads the art below. A relayed world keeps
     // its own step: its worker talks to the room while it builds.
-    hosting = plan.multiplayer === true ? null : hostMapWorld(plan, documents);
-    hosting?.catch(() => undefined);
+    early = plan.multiplayer === true ? null : new EarlyHosting(plan, documents);
     await boot.begin('sprites');
     const goods = realContent?.content.goods ?? sandboxGoods();
     // The admin panel's monster presets draw only with their looks loaded; those pages are large, so they
     // load when the admin tools were on at game start.
     const adminCharacterTribes = readStoredSettings().debugToolsEnabled ? [...MONSTER_TRIBES] : [];
-    let sheet =
-      pack !== null
-        ? await pack.spriteSheet(ir, goods, params)
-        : await resolveSpriteSheet(goods, tribes, adminCharacterTribes);
-    await boot.begin('terrain');
+    let sheet: SpriteSheet;
     let terrain: TerrainTextureSet;
     try {
+      sheet =
+        pack !== null
+          ? await pack.spriteSheet(ir, goods, params)
+          : await resolveSpriteSheet(goods, tribes, adminCharacterTribes);
+      if (early?.failed) return early.stop();
+      await boot.begin('terrain');
       terrain = pack !== null ? await pack.terrain(app.renderer, ir) : await loadRealTerrain(ir);
     } catch (err) {
+      // A world that failed while the art loaded owns the one notice; the art's own failure is moot.
+      if (early?.failed) {
+        diag.warn('content', `art load stopped after the world failed: ${String(err)}`);
+        return early.stop();
+      }
       if (!(err instanceof MissingTerrainError)) throw err;
       haltOnMissingContent(err);
       return null;
     }
     await boot.begin('world');
-    const hosted = await (hosting ?? hostMapWorld(plan, documents));
+    const hosted = await (early?.world() ?? hostMapWorld(plan, documents));
     if (hosted === null) return null;
     const { host } = hosted;
     if (pack === null && loaded?.entities !== undefined && ir !== null) {
@@ -335,7 +389,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     if (!assembled) {
       app.destroy(false, { children: true });
       // A boot that stops early still lets its world stand up, so the entry that disposes it sees it.
-      await hosting?.catch(() => undefined);
+      await early?.drain();
     }
   }
 }
