@@ -270,16 +270,8 @@ function defineWorldBatcher(): WorldBatcherClass {
     return (flags & bit) != 0;
   }
 
-  vec4 sampleTexture(vec2 uv) {
-  ${textureChain(maxTextures, 'vTextureId', (i) => `return texture(uTextures[${i}], uv);`)}
-  }
-
   ivec2 textureSizeOf() {
   ${textureChain(maxTextures, 'vTextureId', (i) => `return textureSize(uTextures[${i}], 0);`)}
-  }
-
-  vec4 fetchTexel(ivec2 px) {
-  ${textureChain(maxTextures, 'vTextureId', (i) => `return texelFetch(uTextures[${i}], px, 0);`)}
   }
 
   vec4 fetchLut(ivec2 px) {
@@ -293,14 +285,18 @@ function defineWorldBatcher(): WorldBatcherClass {
 
   // The frame boundary is transparent, not the packed neighbour a two-texel tap could reach. A paletted
   // texel resolves its colour first, so the magnifiers blend colours, never indices.
-  vec4 frameTexel(ivec2 px) {
+  vec4 frameTexel(sampler2D page, ivec2 px) {
     vec2 uv = (vec2(px) + 0.5) / texSize;
     if (any(lessThan(uv, vFrame.xy)) || any(greaterThanEqual(uv, vFrame.zw))) return vec4(0.0);
-    vec4 texel = fetchTexel(px);
+    vec4 texel = texelFetch(page, px, 0);
     return paletted ? vec4(paletteColour(texel.r) * texel.a, texel.a) : texel;
   }
 
-  #define MAGNIFY_FETCH(px) frameTexel(px)
+  // The element's page is picked once per fragment and passed down, rather than every tap walking the
+  // sampler chain again.
+  #define MAGNIFY_PARAMS sampler2D page,
+  #define MAGNIFY_ARGS page,
+  #define MAGNIFY_FETCH(px) frameTexel(page, px)
   /** Each of the four minification taps sits a quarter of the footprint out from the sample point, and
  *  they average evenly: four taps cannot cover more, so the spread stops there. */
 const float MINIFY_TAP_OFFSET = 0.25;
@@ -309,20 +305,45 @@ ${PIXEL_ART_MAGNIFY_GLSL}
 
   // A paletted element samples its nearest texel with magnification off; otherwise every tap resolves
   // its colour before the blend, since the page itself cannot be filtered.
-  vec4 palettedColour(vec2 p, float texelsPerPixel, vec2 uvFootprint) {
+  vec4 palettedColour(sampler2D page, vec2 p, float texelsPerPixel, vec2 uvFootprint) {
     if (WORLD_MAGNIFY < 0.5) {
-      vec4 texel = sampleTexture(vUV);
+      vec4 texel = texture(page, vUV);
       return vec4(paletteColour(texel.r) * texel.a, texel.a);
     }
     if (texelsPerPixel < 1.0 && WORLD_MAGNIFY > 1.5) {
-      return WORLD_MAGNIFY > 2.5 ? magnifyXbr(p, texelsPerPixel) : magnifySharp(p, texelsPerPixel);
+      return WORLD_MAGNIFY > 2.5 ? magnifyXbr(page, p, texelsPerPixel) : magnifySharp(page, p, texelsPerPixel);
     }
     vec2 footprint = max(uvFootprint - 1.0 / texSize, vec2(0.0)) * MINIFY_TAP_OFFSET;
-    if (max(footprint.x, footprint.y) < PALETTED_MIN_FOOTPRINT) return magnifyBilinear(p);
-    return MINIFY_TAP_WEIGHT * (magnifyBilinear((vUV - footprint) * texSize)
-                     + magnifyBilinear((vUV + vec2(footprint.x, -footprint.y)) * texSize)
-                     + magnifyBilinear((vUV + vec2(-footprint.x, footprint.y)) * texSize)
-                     + magnifyBilinear((vUV + footprint) * texSize));
+    if (max(footprint.x, footprint.y) < PALETTED_MIN_FOOTPRINT) return magnifyBilinear(page, p);
+    return MINIFY_TAP_WEIGHT * (magnifyBilinear(page, (vUV - footprint) * texSize)
+                     + magnifyBilinear(page, (vUV + vec2(footprint.x, -footprint.y)) * texSize)
+                     + magnifyBilinear(page, (vUV + vec2(-footprint.x, footprint.y)) * texSize)
+                     + magnifyBilinear(page, (vUV + footprint) * texSize));
+  }
+
+  vec4 pageColour(sampler2D page, vec2 p, float texelsPerPixel, vec2 uvFootprint) {
+    if (paletted) {
+      vec4 outColor = palettedColour(page, p, texelsPerPixel, uvFootprint);
+      if (hasFlag(WORLD_FLAG_GLOW)) {
+        outColor = vec4(paletteColour(GLOW_PALETTE_INDEX / PALETTE_INDEX_MAX), 1.0) * outColor.a;
+      }
+      return outColor;
+    }
+    if (!hasFlag(WORLD_FLAG_MAGNIFY) || WORLD_MAGNIFY < 0.5) return texture(page, vUV);
+    if (texelsPerPixel < 1.0) {
+      return WORLD_MAGNIFY > 2.5 ? magnifyXbr(page, p, texelsPerPixel)
+           : WORLD_MAGNIFY > 1.5 ? magnifySharp(page, p, texelsPerPixel)
+           : texture(page, vUV);
+    }
+    // Minified: a 2x2 footprint over the sampler's own filter reduces sparkle, clamped to the frame.
+    // Not a mipmap substitute at extreme zoom-out: sampling cost is deliberately bounded.
+    vec2 footprint = max(uvFootprint - 1.0 / texSize, vec2(0.0)) * MINIFY_TAP_OFFSET;
+    vec2 low = vFrame.xy + 0.5 / texSize;
+    vec2 high = vFrame.zw - 0.5 / texSize;
+    return MINIFY_TAP_WEIGHT * (texture(page, clamp(vUV - footprint, low, high))
+                     + texture(page, clamp(vUV + vec2(footprint.x, -footprint.y), low, high))
+                     + texture(page, clamp(vUV + vec2(-footprint.x, footprint.y), low, high))
+                     + texture(page, clamp(vUV + footprint, low, high)));
   }
 
   void main(void) {
@@ -336,28 +357,7 @@ ${PIXEL_ART_MAGNIFY_GLSL}
     float texelsPerPixel = max(fwidth(p.x), fwidth(p.y));
     vec2 uvFootprint = fwidth(vUV);
     vec4 outColor;
-    if (paletted) {
-      outColor = palettedColour(p, texelsPerPixel, uvFootprint);
-      if (hasFlag(WORLD_FLAG_GLOW)) {
-        outColor = vec4(paletteColour(GLOW_PALETTE_INDEX / PALETTE_INDEX_MAX), 1.0) * outColor.a;
-      }
-    } else if (!hasFlag(WORLD_FLAG_MAGNIFY) || WORLD_MAGNIFY < 0.5) {
-      outColor = sampleTexture(vUV);
-    } else if (texelsPerPixel < 1.0) {
-      outColor = WORLD_MAGNIFY > 2.5 ? magnifyXbr(p, texelsPerPixel)
-               : WORLD_MAGNIFY > 1.5 ? magnifySharp(p, texelsPerPixel)
-               : sampleTexture(vUV);
-    } else {
-      // Minified: a 2x2 footprint over the sampler's own filter reduces sparkle, clamped to the frame.
-      // Not a mipmap substitute at extreme zoom-out: sampling cost is deliberately bounded.
-      vec2 footprint = max(uvFootprint - 1.0 / texSize, vec2(0.0)) * MINIFY_TAP_OFFSET;
-      vec2 low = vFrame.xy + 0.5 / texSize;
-      vec2 high = vFrame.zw - 0.5 / texSize;
-      outColor = MINIFY_TAP_WEIGHT * (sampleTexture(clamp(vUV - footprint, low, high))
-                       + sampleTexture(clamp(vUV + vec2(footprint.x, -footprint.y), low, high))
-                       + sampleTexture(clamp(vUV + vec2(-footprint.x, footprint.y), low, high))
-                       + sampleTexture(clamp(vUV + footprint, low, high)));
-    }
+  ${textureChain(maxTextures, 'vTextureId', (i) => `outColor = pageColour(uTextures[${i}], p, texelsPerPixel, uvFootprint);`)}
     if (vSelection < 0.0) {
       finalColor = vec4(vColor.rgb * outColor.a, vColor.a * outColor.a);
       return;

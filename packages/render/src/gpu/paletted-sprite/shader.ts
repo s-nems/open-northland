@@ -92,6 +92,8 @@ vec4 resolvedTexel(ivec2 pixel) {
 }
 
 #define MAGNIFY_FETCH(px) resolvedTexel(px)
+#define MAGNIFY_PARAMS
+#define MAGNIFY_ARGS
 ${PIXEL_ART_MAGNIFY_GLSL}
 
 vec4 resolvedBilinear(vec2 uv) {

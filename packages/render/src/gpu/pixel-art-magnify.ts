@@ -1,9 +1,11 @@
 /**
  * GLSL for magnifying pixel art without blur, shared by the paletted-character shader and the world
  * batch shader. The host defines `MAGNIFY_FETCH(ivec2 px)` returning that texel as premultiplied RGBA
- * (transparent outside the current frame) before including this block. `p` is the sample point in
- * texel units and `texelsPerPixel` the screen-pixel footprint; both modes converge on bilinear as
- * texels reach pixel size.
+ * (transparent outside the current frame) before including this block, and `MAGNIFY_PARAMS` /
+ * `MAGNIFY_ARGS` as the leading parameters every function here takes and passes on, each empty or
+ * ending in a comma: a host that resolves its page once per fragment threads that sampler through
+ * them. `p` is the sample point in texel units and `texelsPerPixel` the screen-pixel footprint; both
+ * modes converge on bilinear as texels reach pixel size.
  */
 export const PIXEL_ART_MAGNIFY_GLSL = /* glsl */ `
 /** Floor on the screen-pixel footprint, so a degenerate transform cannot divide by zero. */
@@ -22,22 +24,22 @@ const float XBR_CUT_SHALLOW = 0.25;
 const float XBR_CUT_SHALLOW_GRADIENT = 1.118;
 
 // Blend of the texel at base with its right/down neighbours by weights f; weight 0 is base's centre.
-vec4 magnifyBlend(ivec2 base, vec2 f) {
+vec4 magnifyBlend(MAGNIFY_PARAMS ivec2 base, vec2 f) {
   return mix(mix(MAGNIFY_FETCH(base), MAGNIFY_FETCH(base + ivec2(1, 0)), f.x),
              mix(MAGNIFY_FETCH(base + ivec2(0, 1)), MAGNIFY_FETCH(base + ivec2(1, 1)), f.x), f.y);
 }
 
-vec4 magnifyBilinear(vec2 p) {
+vec4 magnifyBilinear(MAGNIFY_PARAMS vec2 p) {
   vec2 q = p - 0.5;
-  return magnifyBlend(ivec2(floor(q)), fract(q));
+  return magnifyBlend(MAGNIFY_ARGS ivec2(floor(q)), fract(q));
 }
 
 // Nearest inside a texel, one screen pixel of blend across each texel boundary: crisp pixels that
 // no longer shimmer under subpixel placement.
-vec4 magnifySharp(vec2 p, float texelsPerPixel) {
+vec4 magnifySharp(MAGNIFY_PARAMS vec2 p, float texelsPerPixel) {
   vec2 q = p - 0.5;
   vec2 f = clamp((fract(q) - 0.5) / max(texelsPerPixel, MIN_TEXELS_PER_PIXEL) + 0.5, 0.0, 1.0);
-  return magnifyBlend(ivec2(floor(q)), f);
+  return magnifyBlend(MAGNIFY_ARGS ivec2(floor(q)), f);
 }
 
 // Luma-weighted RGB plus alpha on premultiplied texels, so a silhouette against transparency is a
@@ -54,7 +56,7 @@ const float MAGNIFY_DISTINCT = 1.0 / 255.0; // two texels differ once any channe
 // redrawn as a straight cut at 45, ~27 or ~63 degrees, filled with the neighbour that continues
 // the edge. Only the corner nearest the fragment is judged; s mirrors that corner onto one
 // orientation so the 3x3 core plus its two outer taps read the same way for all four corners.
-vec4 magnifyXbr(vec2 p, float texelsPerPixel) {
+vec4 magnifyXbr(MAGNIFY_PARAMS vec2 p, float texelsPerPixel) {
   ivec2 centre = ivec2(floor(p));
   vec2 fp = fract(p);
   ivec2 s = ivec2(fp.x >= 0.5 ? 1 : -1, fp.y >= 0.5 ? 1 : -1);
@@ -73,7 +75,7 @@ vec4 magnifyXbr(vec2 p, float texelsPerPixel) {
   vec4 h5 = MAGNIFY_TAP(0, 2);
   vec4 i5 = MAGNIFY_TAP(1, 2);
   #undef MAGNIFY_TAP
-  vec4 base = magnifySharp(p, texelsPerPixel);
+  vec4 base = magnifySharp(MAGNIFY_ARGS p, texelsPerPixel);
   float ef = magnifyDistance(e, f);
   float eh = magnifyDistance(e, h);
   if (ef < MAGNIFY_DISTINCT || eh < MAGNIFY_DISTINCT) return base;
