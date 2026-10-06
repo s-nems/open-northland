@@ -10,6 +10,9 @@ export const BYTE_BURST = MAX_BLOB_MESSAGE_BYTES * 2;
 export const MAX_BUFFERED_BYTES = MAX_BLOB_MESSAGE_BYTES * 2;
 /** Control pongs can keep a slow download alive before its complete JSON message is delivered. */
 const TEXT_FRAGMENT_BYTES = 128 * 1024;
+// RFC 6455: an unmasked frame needs at most 10 header bytes; a control frame is at most 127 bytes.
+const MAX_FRAME_HEADER_BYTES = 10;
+const MAX_CONTROL_FRAME_BYTES = 127;
 
 /** Deployment budgets allow snapshot bursts alongside acknowledgements at the maximum game speed. */
 export class SocketBudget {
@@ -65,7 +68,9 @@ export function sendBounded(
 ): void {
   if (socket.readyState !== socket.OPEN) return;
   const byteLength = Buffer.byteLength(text);
-  if (socket.bufferedAmount + byteLength > MAX_BUFFERED_BYTES) {
+  const fragments = Math.max(1, Math.ceil(byteLength / TEXT_FRAGMENT_BYTES));
+  const overhead = fragments * MAX_FRAME_HEADER_BYTES + (fragments - 1) * MAX_CONTROL_FRAME_BYTES;
+  if (socket.bufferedAmount + byteLength + overhead > MAX_BUFFERED_BYTES) {
     socket.terminate();
     return;
   }

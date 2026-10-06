@@ -111,6 +111,27 @@ describe('socket traffic budgets', () => {
     expect(healthy.terminate).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { text: 'a', headroom: 0 },
+    { text: 'a'.repeat(128 * 1024 + 1), headroom: 20 },
+  ])(
+    'reserves frame and control bytes before starting an output message ($headroom spare bytes)',
+    ({ text, headroom }) => {
+      const socket = {
+        OPEN: 1 as const,
+        readyState: 1 as const,
+        bufferedAmount: MAX_BUFFERED_BYTES - Buffer.byteLength(text) - headroom,
+        send: vi.fn(),
+        ping: vi.fn(),
+        terminate: vi.fn(),
+      };
+      sendBounded(socket, text);
+      expect(socket.terminate).toHaveBeenCalledOnce();
+      expect(socket.send).not.toHaveBeenCalled();
+      expect(socket.ping).not.toHaveBeenCalled();
+    },
+  );
+
   it('keeps control pings flowing inside a large text message without splitting its UTF-8 contents', async () => {
     const server = new WebSocketServer({ port: 0, host: '127.0.0.1' });
     await new Promise<void>((resolve) => server.once('listening', resolve));
