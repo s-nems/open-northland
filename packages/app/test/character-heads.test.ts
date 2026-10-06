@@ -80,6 +80,18 @@ describe('headBinding', () => {
     expect(headBinding(binding, new Map())).toBeUndefined();
   });
 
+  it('maps every action variant without changing its order or playback timing', () => {
+    const choices = [{ ...wait, spansAtomic: true }, sleep];
+    const head = headBinding(
+      { idle: wait, byAtomicChoices: { 81: choices } },
+      headClips(BODY, HEADS, SEQUENCES),
+    );
+    expect(head?.byAtomicChoices?.[81]).toEqual([
+      { ...wait, start: BOW_WAIT.start, spansAtomic: true },
+      sleep,
+    ]);
+  });
+
   it('reads a six-facing head clip of another block size at the same point of each facing', () => {
     // Body 6 blocks of 4, head 6 blocks of 2: the second facing's swing keeps to the head clip's second block.
     const swing = row('two_hander', 900, 24);

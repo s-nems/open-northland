@@ -89,6 +89,21 @@ describe('animal run gait', () => {
 });
 
 describe('idle gestures', () => {
+  it('keeps a rare idle wave out of movement, combat and carrying', () => {
+    const binding: SettlerStateBinding = {
+      idle: 10,
+      moving: 20,
+      engaged: { idle: 30 },
+      idleFidgets: [{ start: 100, frameLists: [[0, 1, 2]] }],
+      idleFidgetGapTicks: 600,
+    };
+    const item = { ...settlerItem('idle', { facing: 0 }), ref: 0 };
+    const at = (elapsed: number) => resolveSettlerBobId(binding, item, elapsed, elapsed, elapsed);
+    expect([0, 180, 599, 600, 601, 602, 603].map(at)).toEqual([10, 10, 10, 100, 101, 102, 10]);
+    expect(resolveSettlerBobId(binding, { ...item, state: 'moving' }, 601, 601, 601)).toBe(20);
+    expect(resolveSettlerBobId(binding, { ...item, engaged: true }, 601, 601, 601)).toBe(30);
+    expect(resolveSettlerBobId(binding, { ...item, carrying: true }, 601, 601, 601)).toBe(10);
+  });
   it('inserts a fidget after a complete wait schedule, then restarts the first wait', () => {
     const binding: SettlerStateBinding = {
       idle: 10,
@@ -441,5 +456,38 @@ describe('resolveSettlerBobId - an in-house craft sub-clip', () => {
   it('stands rather than borrowing another clip when the body binds none', () => {
     expect(resolveSettlerBobId(binding, crafting(MAKE_BREAD, 9, 0.5), 0)).toBe(IDLE_STAND);
     expect(resolveSettlerBobId(binding, crafting(99, 0, 0.5), 0)).toBe(IDLE_STAND);
+  });
+});
+
+describe('compatible atomic variants', () => {
+  it('keeps a swing across ticks and facing changes, but varies repeated fixed-cadence attacks', () => {
+    const binding: SettlerStateBinding = {
+      idle: 1,
+      byAtomic: { 81: 50, 10: 70 },
+      byAtomicChoices: {
+        81: [100, 200, 300, 400].map((start) => ({
+          start,
+          frameLists: [
+            [0, 1, 2],
+            [10, 11, 12],
+          ],
+          spansAtomic: true,
+        })),
+      },
+    };
+    const selected = new Set<number>();
+    for (let start = 0; start < 240; start += 12) {
+      const item = { ...settlerItem('acting', { atomicId: 81, elapsed: 1, facing: 0 }), atomicDuration: 12 };
+      const first = resolveSettlerBobId(binding, item, start + 1);
+      selected.add(first);
+      for (let elapsed = 1; elapsed <= 12; elapsed++) {
+        const facing = elapsed % 2;
+        const bob = resolveSettlerBobId(binding, { ...item, elapsed, facing }, start + elapsed + 0.8);
+        expect(bob).toBe(first + facing * 10 + Math.floor((elapsed - 1) / 4));
+      }
+    }
+    expect([...selected].sort()).toEqual([100, 200, 300, 400]);
+    expect(resolveSettlerBobId(binding, settlerItem('acting', { atomicId: 10 }), 500)).toBe(70);
+    expect(resolveSettlerBobId(binding, settlerItem('idle'), 500)).toBe(1);
   });
 });

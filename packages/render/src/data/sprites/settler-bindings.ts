@@ -63,12 +63,16 @@ export interface SettlerStateBinding {
   readonly idleChoices?: readonly FrameListAnim[];
   /** One-shot idle gestures, played between base waits or complete idle-choice schedules. */
   readonly idleFidgets?: readonly FrameListAnim[];
+  /** Minimum base-wait gap between gestures, in simulation ticks. */
+  readonly idleFidgetGapTicks?: number;
   readonly moving?: SpriteFrameRef;
   /** The animal's faster unloaded gait, selected while its movement uses run speed. */
   readonly running?: SpriteFrameRef;
   readonly acting?: SpriteFrameRef;
   /** Per-atomic override for the `acting` state (the `setatomic` join). */
   readonly byAtomic?: Readonly<Record<number, SpriteFrameRef>>;
+  /** Compatible clips selected once per action; body and head use the same order. */
+  readonly byAtomicChoices?: Readonly<Record<number, readonly FrameListAnim[]>>;
   /** The clips an in-house craft program plays, keyed by `subClipKey(action, subId)`. Each is stretched
    *  over its window rather than clocked, so one play fills the window whatever its length. */
   readonly bySubClip?: Readonly<Record<string, SpriteFrameRef>>;

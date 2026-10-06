@@ -61,6 +61,57 @@ function sheet(smooth: boolean): SpriteSheet {
 }
 
 describe('subtick work animation presentation', () => {
+  it.each([true, false])('keeps one attack variant across frame boundaries (smooth=%s)', (smooth) => {
+    const pooled = createPooled('settler', undefined);
+    const base = sheet(true);
+    const animated: SpriteSheet = {
+      ...base,
+      characters: {
+        byJob: {},
+        default: {
+          body,
+          interpolateMotion: smooth,
+          binding: {
+            idle: 0,
+            byAtomicChoices: { 81: [0, 6, 12, 18].map((start) => ({ start, frameLists: [[0]] })) },
+          },
+        },
+      },
+    };
+    const attack = { ...item, atomicId: 81, elapsed: 0, atomicDuration: 12 };
+    const poses = Array.from({ length: 7 }, (_, elapsed) =>
+      [0, 0.1, 0.25, 0.5, 0.75, 1].map(
+        (alpha) =>
+          presentEntity(
+            pooled,
+            { ...attack, elapsed },
+            { ...frame, tick: 105 + elapsed, alpha, environmentMotion: true },
+            animated,
+          )?.[0]?.frame.x,
+      ),
+    ).flat();
+    expect(poses[0]).toBeDefined();
+    expect(new Set(poses).size).toBe(1);
+    expect(
+      presentEntity(pooled, { ...attack, elapsed: 7 }, { ...frame, tick: 112, alpha: 0 }, animated)?.[0]
+        ?.frame.x,
+    ).toBe(poses[0]);
+    const gap: DrawItem = {
+      kind: 'settler',
+      ref: item.ref,
+      x: item.x,
+      y: item.y,
+      depth: 0,
+      state: 'idle',
+      facing: 0,
+    };
+    for (const alpha of [0, 0.5, 1]) {
+      expect(
+        presentEntity(pooled, gap, { ...frame, tick: 113, alpha, environmentMotion: true }, animated)?.[0]
+          ?.frame.x,
+      ).toBe(poses[0]);
+    }
+  });
   it('shows both 24 Hz poses inside one 12 Hz simulation tick without mutating the snapshot item', () => {
     const pooled = createPooled('settler', undefined);
     const frames = [0, 0.25, 0.5, 0.75, 1].map(

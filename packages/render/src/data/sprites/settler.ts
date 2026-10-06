@@ -66,23 +66,22 @@ function idleFidgetFrame(
 ): number | undefined {
   const fidgets = binding.idleFidgets;
   if (fidgets === undefined || fidgets.length === 0) return undefined;
+  const gap = Math.max(1, binding.idleFidgetGapTicks ?? IDLE_FIDGET_GAP_TICKS);
   let period = 0;
   for (let i = 0; i < fidgets.length; i++) {
     const clip = fidgets[i];
-    if (clip !== undefined) period += IDLE_FIDGET_GAP_TICKS + clipLength(clip, facing);
+    if (clip !== undefined) period += gap + clipLength(clip, facing);
   }
   const stagger = ref * IDLE_PHASE_STAGGER_TICKS;
   const since =
-    idleElapsed === undefined
-      ? Math.floor(tick) + stagger
-      : Math.floor(idleElapsed) + wrap(stagger, IDLE_FIDGET_GAP_TICKS);
+    idleElapsed === undefined ? Math.floor(tick) + stagger : Math.floor(idleElapsed) + wrap(stagger, gap);
   let time = wrap(since, period);
   const first = wrap(ref, fidgets.length);
   for (let i = 0; i < fidgets.length; i++) {
     const clip = fidgets[(first + i) % fidgets.length];
     if (clip === undefined) continue;
-    if (time < IDLE_FIDGET_GAP_TICKS) return undefined;
-    time -= IDLE_FIDGET_GAP_TICKS;
+    if (time < gap) return undefined;
+    time -= gap;
     const length = clipLength(clip, facing);
     if (time < length) return frameOf(clip, facing, time);
     time -= length;
@@ -114,7 +113,8 @@ function idleChoiceFrame(
   if (fidgets !== undefined && fidgets.length > 0) {
     // Add gestures only between complete wait schedules. Restart the waits afterwards, so a
     // hidden clock cannot resume in the middle of a lie-down or head-lowering program.
-    const gap = Math.ceil(IDLE_FIDGET_GAP_TICKS / duration) * duration;
+    const gap =
+      Math.ceil(Math.max(1, binding.idleFidgetGapTicks ?? IDLE_FIDGET_GAP_TICKS) / duration) * duration;
     let period = gap * fidgets.length;
     for (const clip of fidgets) period += clipLength(clip, facing);
     let remaining = wrap(clock, period);
@@ -263,6 +263,16 @@ export function resolveSettlerBobId(
     }
     // An action runs on the atomic's own clock, rebased to 0 so frame 0 shows on its first tick.
     const clock = Math.max(0, (item.elapsed ?? 1) - 1);
+    const choices = item.atomicId === undefined ? undefined : binding.byAtomicChoices?.[item.atomicId];
+    if (choices !== undefined && choices.length > 0) {
+      // Presentation-only variation: stable for the whole action, including facing changes and heads.
+      // Mix the start tick so attacks at a fixed cadence do not always select the same clip.
+      let seed = (Math.floor(tick) - Math.floor(item.elapsed ?? 0)) ^ Math.imul(item.ref, 0x9e3779b1);
+      seed = Math.imul(seed ^ (seed >>> 16), 0x45d9f3b);
+      seed = (seed ^ (seed >>> 16)) >>> 0;
+      const selected = choices[seed % choices.length];
+      if (selected !== undefined) return atomicFrame(selected, facing, clock, item.atomicDuration);
+    }
     const byAtomic = binding.byAtomic;
     if (byAtomic !== undefined && item.atomicId !== undefined) {
       const specific = byAtomic[item.atomicId];
@@ -278,7 +288,7 @@ export function resolveSettlerBobId(
   if (state === 'moving') {
     return frameOf(movingFrameRef(binding, item), facing, gaitClock);
   }
-  if (!item.engaged && carry === undefined) {
+  if (!item.engaged && !item.carrying) {
     const choice = idleChoiceFrame(binding, item.ref, facing, tick, idleElapsed);
     if (choice !== undefined) return choice;
     const fidget = idleFidgetFrame(binding, item.ref, facing, tick, idleElapsed);

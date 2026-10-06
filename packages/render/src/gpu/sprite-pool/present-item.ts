@@ -136,7 +136,7 @@ export function presentItem(
   // same eased reveal as a from-scratch one.
   track.reveal = easeReveal(track.reveal, item.builtPct ?? item.upgradePct);
   const clocks = track.clocks;
-  writeMotionClocks(clocks, item, tick, frameAlpha, track.motion, smooth, environmentMotion);
+  writeMotionClocks(clocks, pose, tick, frameAlpha, track.motion, smooth, environmentMotion);
   const displayed = revealedItem(walkPose(pose, track.kind, track.motion, track.lastFacing), track.reveal);
   const idleElapsed = idleClipElapsed(track, displayed, tick);
   return resolveLayersInto(

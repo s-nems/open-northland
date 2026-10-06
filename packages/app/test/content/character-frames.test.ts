@@ -13,8 +13,10 @@ import {
   BUILD_WALL_ATOMIC,
 } from '../../src/catalog/atomics.js';
 import {
+  JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_BUILDER,
+  JOB_CIVILIST,
   JOB_HERO_UNARMED,
   JOB_HEROINE_BOW,
   JOB_SOLDIER_UNARMED,
@@ -77,6 +79,11 @@ function* clipPairs(
   for (const [id, ref] of Object.entries(body.byAtomic ?? {})) {
     yield [`atomic ${id}`, ref, head.byAtomic?.[Number(id)] ?? ref];
   }
+  for (const [id, choices] of Object.entries(body.byAtomicChoices ?? {})) {
+    for (const [i, ref] of choices.entries()) {
+      yield [`atomic ${id} choice ${i}`, ref, head.byAtomicChoices?.[Number(id)]?.[i] ?? ref];
+    }
+  }
   for (const [key, ref] of Object.entries(body.bySubClip ?? {})) {
     yield [`sub-clip ${key}`, ref, head.bySubClip?.[key] ?? ref];
   }
@@ -132,6 +139,46 @@ function headlessSlots(char: SettlerCharacter): Set<string> {
 describe.runIf(hasRealIr())('every settler look draws its head', () => {
   const tables = characterTablesUnderTest(CIVILIZATIONS);
   if (tables === null) return;
+
+  it('makes the additional civilian and unarmed attacks reachable, without changing armed attacks', () => {
+    const table = tables.get(VIKING);
+    const starts = (job: number) =>
+      (table?.byJob[job] ?? table?.default)?.binding.byAtomicChoices?.[ATTACK_ATOMIC]?.map(
+        (clip) => clip.start,
+      );
+    // Pinned bobseq ranges in the supplied animation table.
+    expect(starts(JOB_CIVILIST)).toEqual([425, 95, 221, 323]);
+    expect(starts(JOB_SOLDIER_UNARMED)).toEqual([998, 632, 758, 877]);
+    expect(starts(JOB_ARCHER)).toBeUndefined();
+    expect(starts(JOB_ARCHER_LONG)).toBeUndefined();
+  });
+
+  it('gives each bow its own wave and combat gait, and retains the short bow during meals and naps', () => {
+    const table = tables.get(VIKING);
+    const short = table?.byJob[JOB_ARCHER]?.binding;
+    const long = table?.byJob[JOB_ARCHER_LONG]?.binding;
+    expect(short?.idleFidgets?.map((clip) => clip.start)).toContain(1950);
+    expect(long?.idleFidgets?.map((clip) => clip.start)).toContain(1459);
+    expect(short?.idleFidgets).toHaveLength(1);
+    expect(long?.idleFidgets).toHaveLength(1);
+    expect(short?.idleChoices?.length).toBeGreaterThan(0);
+    expect(long?.idleChoices?.length).toBeGreaterThan(0);
+    expect(short?.idleFidgetGapTicks).toBe(600);
+    expect(long?.idleFidgetGapTicks).toBe(600);
+    expect(short?.engaged?.idle).toMatchObject({ start: 2035 });
+    expect(short?.engaged?.moving).toMatchObject({ start: 2159 });
+    expect(long?.engaged?.idle).toMatchObject({ start: 1544 });
+    expect(long?.engaged?.moving).toMatchObject({ start: 1668 });
+    expect(short?.byAtomic?.[10]).toMatchObject({ start: 1932 });
+    expect(short?.byAtomic?.[11]).toMatchObject({ start: 1932 });
+    const sleep = short?.byAtomic?.[8];
+    expect(sleep).toMatchObject({ start: 1986, spansAtomic: true });
+    if (typeof sleep !== 'object' || !('frameLists' in sleep)) throw new Error('missing shortbow nap');
+    const frames = sleep.frameLists[0] ?? [];
+    expect(frames.slice(0, 21)).toEqual(Array.from({ length: 21 }, (_, i) => i));
+    expect(new Set(frames.slice(21, -20))).toEqual(new Set([19, 20]));
+    expect(frames.slice(-20)).toEqual(Array.from({ length: 20 }, (_, i) => 19 - i));
+  });
 
   it('overlays a head on every body frame each look can play', () => {
     const gaps: string[] = [];
@@ -200,7 +247,7 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
     expect(unarmedFidgets).toEqual([]);
   });
 
-  it('rests every civilization look in a moving wait, so none plays its gestures back to back', () => {
+  it('keeps rare gestures out of continuous wait schedules', () => {
     const backToBack: string[] = [];
     for (const [tribe, table] of tables) {
       const slots = {
@@ -213,7 +260,21 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
       for (const [slot, looks] of Object.entries(slots)) {
         for (const [key, char] of Object.entries(looks ?? {})) {
           const variants = [char, ...(char?.variants ?? [])];
-          if (variants.some((look) => look?.binding.idleChoices !== undefined)) {
+          if (
+            variants.some((look) => {
+              const binding = look?.binding;
+              if (binding?.idleChoices === undefined) return false;
+              const fidgets = binding.idleFidgets ?? [];
+              // A continuous schedule may contain ordinary waits, but must leave the rare gesture
+              // on its own clock, with the moving base wait still included in the schedule.
+              return (
+                !binding.idleChoices.some((wait) => wait === binding.idle) ||
+                fidgets.length === 0 ||
+                (binding.idleFidgetGapTicks ?? 0) < 600 ||
+                binding.idleChoices.some((wait) => fidgets.some((gesture) => gesture.start === wait.start))
+              );
+            })
+          ) {
             backToBack.push(`tribe ${tribe} ${slot} ${key}`);
           }
         }

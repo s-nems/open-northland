@@ -209,6 +209,12 @@ function withIdleGestures(
   gestures: readonly FrameListAnim[],
 ): SettlerStateBinding {
   if (gestures.length === 0) return bound;
+  // Keep ordinary waits in a continuous schedule when a separate rare gesture (a bowman's wave)
+  // owns the fidget interval. Otherwise every wait would delay the wave by another full interval.
+  if (bound.idleFidgets !== undefined && bound.idleFidgets.length > 0) {
+    const baseWait = typeof bound.idle === 'object' && 'frameLists' in bound.idle ? [bound.idle] : [];
+    return { ...bound, idleChoices: [...baseWait, ...gestures] };
+  }
   return isHeldFrame(bound.idle) ? { ...bound, idleChoices: gestures } : { ...bound, idleFidgets: gestures };
 }
 
@@ -278,6 +284,9 @@ export function tribeCharacters(
       const layers = inputs.layersByBody.get(look.bodyStem);
       const seqByName = inputs.sequencesByBody.get(look.bodyStem);
       if (layers === undefined || seqByName === undefined) continue;
+      const authoredHeads = look.headStems
+        .map((stem) => layers.headsByStem.get(stem))
+        .filter((l): l is SpriteLayer => l !== undefined);
       const tribeSeqs = tribeJobSeqs(ir, tribe, spec.gfxJobs);
       const bound = characterBinding(spec, seqByName, goods, {
         ...(spec.logicJob !== undefined ? { carrySeqBySlug: carryWalkSeqs(ir, tribe, spec.logicJob) } : {}),
@@ -292,6 +301,12 @@ export function tribeCharacters(
         walkLists,
         subClips,
         bodyAtlas: layers.body.atlas,
+        headAtlases: withBorrowedHeadClips(
+          authoredHeads,
+          layers.headsByStem,
+          seqByName,
+          seqByName.get(spec.walkSeq ?? '')?.start,
+        ).map((head) => head.atlas),
       });
       if (bound === null) continue;
       const idleFidgets = characterIdleFidgets(
@@ -304,9 +319,6 @@ export function tribeCharacters(
         bound.idle,
       );
       const binding = withIdleGestures(bound, idleFidgets);
-      const authoredHeads = look.headStems
-        .map((stem) => layers.headsByStem.get(stem))
-        .filter((l): l is SpriteLayer => l !== undefined);
       // The carry fallback reads the authored frames, so a carry gait keeps the walk's animated head.
       const head = headBindingFor(
         binding,

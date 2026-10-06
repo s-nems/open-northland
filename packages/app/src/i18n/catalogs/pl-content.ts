@@ -196,6 +196,10 @@ export const plContent = {
       title: 'Imiona mieszkańców',
       summary: 'Imiona pięciu nacji oraz wężoludzi i wilkołaków.',
     },
+    'combat-gestures': {
+      title: 'Ciosy i gesty',
+      summary: 'Pojedynki cywila, wojownika i łuczników; obok odpoczynek, posiłek i sen z łukiem.',
+    },
     'armed-idle': {
       title: 'Uzbrojeni w bezczynności',
       summary:

@@ -199,6 +199,10 @@ export const enContent = {
       title: 'Personal names',
       summary: 'Given names for five civilizations and two creature tribes.',
     },
+    'combat-gestures': {
+      title: 'Strikes and gestures',
+      summary: 'Civilian, unarmed and archer duels beside resting, eating and sleeping bowmen.',
+    },
     'armed-idle': {
       title: 'Armed idle',
       summary: "Every civilization's armed soldiers stand idle; each fidget keeps the weapon in hand.",

@@ -15,6 +15,7 @@ import { chestQueueScene } from './chest-queue.js';
 import { chestsScene } from './chests.js';
 import { childrenScene } from './children.js';
 import { collisionScene } from './collision.js';
+import { combatGesturesScene } from './combat-gestures.js';
 import { constructionScene } from './construction.js';
 import { creatureFormsScene } from './creature-forms.js';
 import { creaturesScene } from './creatures.js';
@@ -100,6 +101,7 @@ export const SCENES: readonly SceneDefinition[] = [
   bowFlightScene,
   weaponFacingsScene,
   armedIdleScene,
+  combatGesturesScene,
   personalNamesScene,
   battleWearyScene,
   siegeScene,

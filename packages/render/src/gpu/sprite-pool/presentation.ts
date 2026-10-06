@@ -60,9 +60,10 @@ export function writeMotionClocks(
     out.gait = 0;
     return;
   }
+  // A late worker frame can reach alpha=1 while the original action still belongs to this sim tick.
   const clock = smooth
     ? Math.max(0, tick - 1 + clamp01(alpha))
-    : continuousAnimation
+    : continuousAnimation && item.state !== 'acting'
       ? tick + clamp01(alpha)
       : tick;
   out.animation = animationClock(item, clock);

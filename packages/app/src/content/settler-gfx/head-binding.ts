@@ -104,7 +104,8 @@ export function headBinding(
     ...(slot.idle !== undefined ? { idle: ref(slot.idle) } : {}),
     ...(slot.moving !== undefined ? { moving: ref(slot.moving) } : {}),
   });
-  const { carrying, engaged, byAtomic, bySubClip, idleChoices, idleFidgets, running } = binding;
+  const { carrying, engaged, byAtomic, byAtomicChoices, bySubClip, idleChoices, idleFidgets, running } =
+    binding;
   return {
     ...binding,
     idle: ref(binding.idle),
@@ -114,6 +115,9 @@ export function headBinding(
     ...(running !== undefined ? { running: ref(running) } : {}),
     ...(binding.acting !== undefined ? { acting: ref(binding.acting) } : {}),
     ...(byAtomic !== undefined ? { byAtomic: mapRecord(byAtomic, ref) } : {}),
+    ...(byAtomicChoices !== undefined
+      ? { byAtomicChoices: mapRecord(byAtomicChoices, (choices) => headLists(choices, clips)) }
+      : {}),
     ...(bySubClip !== undefined ? { bySubClip: mapRecord(bySubClip, ref) } : {}),
     ...(engaged !== undefined ? { engaged: slots(engaged) } : {}),
     ...(carrying !== undefined

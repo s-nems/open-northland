@@ -11,7 +11,9 @@ import {
 import { ATTACK_ATOMIC, EAT_ATOMIC, EAT_CANDY_ATOMIC } from '../../catalog/atomics.js';
 import { GFX_ANIM_MODE_LOOP, type GfxAtomicProgram, type TribeClip, type TribeJobSeqs } from '../ir/joins.js';
 import type { BobSeqRow, GfxAnimAtomicRow } from '../ir/rows.js';
+import { withAdditionalAnimations } from './additional-animations.js';
 import type { CharacterSpec } from './character-specs.js';
+import { playableLists } from './frame-program.js';
 import { eightDirAnim, type GoodRef, programFrameLists, singleDirAnim } from './seq-anim.js';
 import { DIRS } from './sequences.js';
 
@@ -37,6 +39,8 @@ export interface CharacterGfx {
   readonly tribeSeqs?: TribeJobSeqs;
   /** The body's own bob pool, consulted for a frame a program addresses past its `[bobseq]` row. */
   readonly bodyAtlas?: SpriteAtlas;
+  /** Optional extra gestures require matching head frames on every head look. */
+  readonly headAtlases?: readonly SpriteAtlas[];
 }
 
 /** The transcribed clip when this body draws it, else the first this tribe's own records name that it
@@ -73,31 +77,6 @@ export function carryAnimsByGood(
     out[good.typeId] = { moving, idle: { ...moving, frames: 1 } };
   }
   return out;
-}
-
-/**
- * The per-facing lists a program plays on this body ({@link programFrameLists}), when every frame they
- * address is a bob the body draws. An offset inside the row is drawable by construction, since the rows come
- * from {@link playableSequences}; one past it has to be proven, because a program can outrun its row in
- * either direction. The werewolf's attack record names the weresnake's 256-frame clip and lays its facings
- * out over its own 264-frame fight, whose extra frames are drawn, while a tribe naming a clip a shorter body
- * carries runs off its pool into blank bobs, which the renderer draws as the missing-sprite placeholder.
- */
-function playableLists(
-  program: GfxAtomicProgram | undefined,
-  row: BobSeqRow,
-  atlas: SpriteAtlas | undefined,
-): readonly (readonly number[])[] | undefined {
-  if (program === undefined || row.length <= 0) return undefined;
-  const lists = programFrameLists(program.dirFrames, row.length);
-  for (const list of lists) {
-    for (const offset of list) {
-      if (offset < row.length) continue;
-      const frame = atlas?.frames.get(row.start + offset);
-      if (frame === undefined || frame.width === 0 || frame.height === 0) return undefined;
-    }
-  }
-  return lists;
 }
 
 /**
@@ -282,15 +261,20 @@ export function characterBinding(
   const bySubClip = subClips !== undefined ? subClipAnims(subClips, seqByName) : {};
   const cartDrive = cartDriveAnims(spec, seqByName, walkLists, programsByAction, bodyAtlas);
 
-  return {
-    idle,
-    ...(walk !== undefined ? { moving: walk } : {}),
-    ...(Object.keys(byAtomic).length > 0 ? { byAtomic } : {}),
-    ...(Object.keys(bySubClip).length > 0 ? { bySubClip } : {}),
-    ...(carrying !== undefined ? { carrying } : {}),
-    ...(engaged !== undefined ? { engaged } : {}),
-    ...(cartDrive !== undefined ? { cartDrive } : {}),
-  };
+  return withAdditionalAnimations(
+    {
+      idle,
+      ...(walk !== undefined ? { moving: walk } : {}),
+      ...(Object.keys(byAtomic).length > 0 ? { byAtomic } : {}),
+      ...(Object.keys(bySubClip).length > 0 ? { bySubClip } : {}),
+      ...(carrying !== undefined ? { carrying } : {}),
+      ...(engaged !== undefined ? { engaged } : {}),
+      ...(cartDrive !== undefined ? { cartDrive } : {}),
+    },
+    spec,
+    seqByName,
+    gfx,
+  );
 }
 
 /**

@@ -438,8 +438,8 @@ export const CHARACTER_SPECS = {
     walkSeq: 'human_man_Warrior_Shortbow_walk',
     waitSeq: 'human_man_Warrior_Shortbow_wait',
     attack: 'human_man_Warrior_Shortbow_attack',
-    // The archer's meal and nap (job 40) bind the bare-hands body's clips, so the bow disappears while he
-    // eats; the `Shortbow_eat/_sleep` strips are unreferenced by the source.
+    // Source fallback for sheets lacking complete shortbow meal/nap artwork and matching heads.
+    // additional-animations prefers the unbound shortbow strips where both layers draw them.
     atomics: {
       [EAT_ATOMIC]: { seq: 'human_man_warrior_empty_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_warrior_empty_sleep' },
