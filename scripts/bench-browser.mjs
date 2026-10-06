@@ -4,7 +4,14 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { loadConfigFromFile } from 'vite';
 import { verifyPreview } from '../packages/app/scripts/dev-verify.mjs';
-import { guardCamera, machineLoad, profileBrowser, throttleCpu } from './bench-browser-profile.mjs';
+import {
+  busyShare,
+  guardCamera,
+  machineLoad,
+  profileBrowser,
+  simWorkerChannel,
+  throttleCpu,
+} from './bench-browser-profile.mjs';
 import { repoRoot } from './content-dir.mjs';
 
 const [checkpoint, origin, output = 'bench-out/browser', secondsText = '15'] = process.argv.slice(2);
@@ -33,6 +40,8 @@ const watchedSeat =
 if (watchedSeat !== null && !Number.isInteger(watchedSeat))
   throw new Error('ON_BENCH_BROWSER_SEAT must be a seat');
 const profileViews = (process.env.ON_BENCH_BROWSER_PROFILE_VIEWS ?? 'dense,wide').split(',');
+/** CPU-profile the sim worker through each baseline window and read its heap after a forced collection. */
+const workerProfile = process.env.ON_BENCH_BROWSER_WORKER_PROFILE === '1';
 if (!profileViews.every((name) => CAMERA_NAMES.includes(name)))
   throw new Error(`ON_BENCH_BROWSER_PROFILE_VIEWS takes ${CAMERA_NAMES}`);
 const saveText = await readFile(checkpoint, 'utf8');
@@ -127,6 +136,7 @@ try {
   });
   await page.goto(url.origin);
   if (metadata.cpuThrottle !== null) await throttleCpu(page, metadata.cpuThrottle);
+  const simWorker = workerProfile ? await simWorkerChannel(page) : null;
   async function restore() {
     progress(`staging checkpoint at tick ${header.tick}`);
     await page.evaluate(async (text) => {
@@ -267,7 +277,13 @@ try {
       };
       requestAnimationFrame(tick);
     });
+    if (simWorker !== null) {
+      await simWorker.send('Profiler.enable');
+      await simWorker.send('Profiler.setSamplingInterval', { interval: 200 });
+      await simWorker.send('Profiler.start');
+    }
     await page.waitForTimeout(seconds * 1000);
+    const workerProfiled = simWorker === null ? null : (await simWorker.send('Profiler.stop')).profile;
     const result = await page.evaluate(async () => {
       window.__rafProbe.stop = true;
       window.__rafProbe.cleanup();
@@ -301,6 +317,14 @@ try {
         },
       };
     });
+    if (simWorker !== null && workerProfiled !== null) {
+      const name = `${cameraName}-x${speed}${suffix}-worker.cpuprofile`;
+      await writeFile(resolve(output, name), JSON.stringify(workerProfiled));
+      await simWorker.send('HeapProfiler.enable');
+      await simWorker.send('HeapProfiler.collectGarbage');
+      const heap = await simWorker.send('Runtime.getHeapUsage');
+      result.worker = { profile: name, ...busyShare(workerProfiled), heapUsedMb: heap.usedSize / 2 ** 20 };
+    }
     const loadAtEnd = machineLoad();
     const invalidSystemLoad = [loadAtStart, loadAtEnd].some(
       (load) => load.available && load.loadPerCpu > 1.5,
@@ -320,6 +344,8 @@ try {
         drawn: result.perf.drawn,
         raf: result.raf,
         delivered: result.perf.throughput.deliveredSpeed,
+        simMsPerTick: result.perf.window.simMsPerTick,
+        worker: result.worker,
       }),
     );
     await page.screenshot({ path: resolve(output, `${cameraName}-x${speed}${suffix}.png`) });

@@ -331,3 +331,55 @@ export async function profileBrowser({ page, cameras, restore, seconds, output, 
     ),
   );
 }
+
+/**
+ * A channel to the page's sim worker over the page's CDP session: workers attach through auto-attach
+ * and answer through `Target.sendMessageToTarget`, so the channel follows the worker a reload restarts.
+ */
+export async function simWorkerChannel(page) {
+  const cdp = await page.context().newCDPSession(page);
+  let worker = null;
+  let nextId = 1;
+  const pending = new Map();
+  cdp.on('Target.receivedMessageFromTarget', ({ message }) => {
+    const reply = JSON.parse(message);
+    const waiter = pending.get(reply.id);
+    if (waiter === undefined) return;
+    pending.delete(reply.id);
+    if (reply.error === undefined) waiter.resolve(reply.result);
+    else waiter.reject(new Error(reply.error.message));
+  });
+  cdp.on('Target.attachedToTarget', ({ sessionId, targetInfo }) => {
+    if (targetInfo.type === 'worker' && targetInfo.url.includes('sim-worker')) worker = { sessionId };
+  });
+  cdp.on('Target.detachedFromTarget', ({ sessionId }) => {
+    if (worker?.sessionId === sessionId) worker = null;
+  });
+  await cdp.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: false, flatten: false });
+  return {
+    send(method, params = {}) {
+      if (worker === null) return Promise.reject(new Error('no sim worker attached'));
+      const id = nextId++;
+      const message = JSON.stringify({ id, method, params });
+      return new Promise((resolve, reject) => {
+        pending.set(id, { resolve, reject });
+        cdp.send('Target.sendMessageToTarget', { sessionId: worker.sessionId, message }).catch(reject);
+      });
+    },
+  };
+}
+
+/** The share of a CPU profile's sampled wall time the thread spent outside idle. */
+export function busyShare(profile) {
+  const idle = new Set(
+    profile.nodes.filter((n) => ['(idle)', '(program)'].includes(n.callFrame.functionName)).map((n) => n.id),
+  );
+  let total = 0;
+  let busy = 0;
+  profile.samples.forEach((id, i) => {
+    const dt = profile.timeDeltas[i] ?? 0;
+    total += dt;
+    if (!idle.has(id)) busy += dt;
+  });
+  return { sampledMs: total / 1000, busyMs: busy / 1000 };
+}

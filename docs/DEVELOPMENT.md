@@ -355,7 +355,10 @@ names the diagnostic views. `ON_BENCH_BROWSER_CPU_THROTTLE=4` slows the main thr
 through DevTools CPU emulation, the weak-CPU proxy for the frame. Chromium refuses the emulation for
 workers, so the sim worker keeps full speed; the report records each thread's answer.
 `ON_BENCH_BROWSER_SEAT=0` has the spectator watch that seat, so the frame draws through its fog and
-fills its HUD figures as a played seat does. The probe verifies
+fills its HUD figures as a played seat does. `ON_BENCH_BROWSER_WORKER_PROFILE=1` CPU-profiles the sim
+worker through every baseline window, writing `<camera>-x<speed>-worker.cpuprofile` and adding the
+worker's busy and sampled milliseconds and its heap after a forced collection to the window's report;
+the sampling slows the worker, so read its `simMsPerTick` from an unprofiled run. The probe verifies
 its checkout, client build and generated content, derives map,
 seed, AI seats and rules from the checkpoint, and checks the restored hash before every condition.
 It opens muted headed Chromium at 1440×900, device scale 1, with fullscreen disabled. Each window
