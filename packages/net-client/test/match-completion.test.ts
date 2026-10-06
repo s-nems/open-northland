@@ -17,12 +17,13 @@ const session: GameSession = {
   speed: 1,
 };
 
-async function clientFor(sim: Simulation) {
+async function clientFor(sim: Simulation, awaitsDisplay = false) {
   const sent: ClientMessage[] = [];
   const errors: string[] = [];
   const client = new RelayClient({
     token: 'abcdefghijklmnop',
     nick: 'Ania',
+    awaitsDisplay,
     onError: (what, error) => errors.push(`${what}: ${String(error)}`),
     world: {
       open: async () => ({ sim, generation: DESCRIPTOR_WORLD }),
@@ -36,6 +37,24 @@ async function clientFor(sim: Simulation) {
 }
 
 describe('client match completion', () => {
+  it('reports a decided world after its held loaded message, so the relay can accept the result', async () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    sim.world.add(sim.world.create(), components.MatchRules, { participants: 3, dead: 0, won: 3 });
+    const { client, sent } = await clientFor(sim, true);
+    client.advance(1000);
+    expect(client.tick).toBe(0);
+    expect(sent).toEqual([]);
+    const worldId = client.worldId;
+    if (worldId === null) throw new Error('missing adopted world');
+    client.worldShown(worldId);
+    client.advance(0);
+    client.advance(1000);
+    expect(sent).toEqual([
+      { kind: 'loaded', tick: 0, world: DESCRIPTOR_WORLD },
+      { kind: 'finish', tick: 0, hash: sim.hashState(), world: DESCRIPTOR_WORLD },
+    ]);
+  });
+
   it('refuses a terminal snapshot with a different full hash before exposing a confirmed result', async () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     sim.world.add(sim.world.create(), components.MatchRules, { participants: 3, dead: 0, won: 3 });

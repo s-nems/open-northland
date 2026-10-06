@@ -350,8 +350,11 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   }
 
   private reportResult(): void {
-    this.completion.report(this.sim, this.world, this.options.connected?.() !== false, (message) =>
-      this.send(message),
+    this.completion.report(
+      this.sim,
+      this.world,
+      !this.loadedHeld && this.options.connected?.() !== false,
+      (message) => this.send(message),
     );
   }
 
